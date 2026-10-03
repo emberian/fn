@@ -304,7 +304,7 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
   `(fnn-cold-call ,name ,@arguments (fnn-live-page-read-pool)))
 
 (defstruct (fnn-cold-worker (:constructor %make-fnn-cold-worker))
-  row thread token result phase next decoded
+  row thread token result phase next decoded scope
   (ready (sb-thread:make-waitqueue :name "fn cold job")))
 
 ;; Allocated only after the installed baseline covers every persistent
@@ -391,6 +391,8 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
       ;; The job activation has unwound. This is distinct from the owner's
       ;; later ledger settlement; a persistent executor thread stays alive.
       (fnn-extent-page-observation "physical-return token=~s row=~s" token row)
+      (when (fnn-cold-worker-scope worker)
+        (fnn-err "DECODED-WINDOW physical token=~s scope=~s" token (fnn-cold-worker-scope worker)))
       (when *fnn-native-observer*
         (unless (or (fn-pwz-tokenp token) (fnn-extent-window-p token))
           (fnn-extent-native-observe :return t token))))))
@@ -511,6 +513,7 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
       (unless (eq word :released) (fnn-fault "window release lost exact returned job"))
       (setf (fnn-cold-worker-row worker) row
             (fnn-cold-worker-token worker) nil
+            (fnn-cold-worker-scope worker) nil
             (fnn-cold-worker-phase worker) :idle)
       (when (and (not *fnn-cold-stopping*)
                  (sb-thread:thread-alive-p (fnn-cold-worker-thread worker)))
@@ -549,6 +552,7 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
       (unless (eq word :released) (fnn-fault "cancelled window lost exact returned job"))
       (setf (fnn-cold-worker-row worker) row
             (fnn-cold-worker-token worker) nil
+            (fnn-cold-worker-scope worker) nil
             (fnn-cold-worker-phase worker) :idle)
       (when (and (not *fnn-cold-stopping*)
                  (sb-thread:thread-alive-p (fnn-cold-worker-thread worker)))
@@ -677,23 +681,41 @@ No cancellation, timeout or thread termination releases a job or baseline."
   worker)
 
 (defun fnn-extent-issue-window (descriptor)
-  "Staged only: core ticket, demand, typed lease and exact slot in one call.
-The served caller must await complete demand/allocator and descriptor joins."
-  (when (eq (fnn-core 'fn-owner-page-decoded-window-price-status descriptor)
-            :unpriced-decoded-window)
-    (return-from fnn-extent-issue-window (values nil :unpriced-decoded-window nil)))
-  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
-    (let ((worker *fnn-cold-free*))
-      (unless (and worker (not *fnn-cold-stopping*))
-        (return-from fnn-extent-issue-window (values nil :read-resources-unavailable nil)))
-      (destructuring-bind (word row token &rest ignored)
-          (fnn-core-cold-pool 'fn-owner-page-window-executor-acquire-funded
-                                  (fnn-cold-worker-row worker) descriptor)
-        (declare (ignore ignored))
-        (unless (eq word :assigned)
-          (when token (fnn-fault "window admitted but its exact worker binding failed"))
-          (return-from fnn-extent-issue-window (values nil word nil)))
-        (values token :admitted (fnn-extent-executor-enqueue worker row token))))))
+  "One SAME-pool issue. Decoded default storage scope is explicitly partial;
+modern complete installations still refuse their unpriced operation."
+  (let ((decodedp (eq (fnn-core 'fn-owner-page-decoded-window-price-status descriptor)
+                      :unpriced-decoded-window)))
+    (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+      (let ((worker *fnn-cold-free*))
+        (unless (and worker (not *fnn-cold-stopping*))
+          (return-from fnn-extent-issue-window (values nil :read-resources-unavailable nil)))
+        ;; Reserve the native custody envelope before the semantic issuer.
+        ;; A torn draw cannot put this worker back on the free roster.
+        (setq *fnn-cold-free* (fnn-cold-worker-next worker))
+        (setf (fnn-cold-worker-phase worker) :issuing
+              (fnn-cold-worker-scope worker) (and decodedp :partial-fixed-storage))
+        (let* ((reply
+                 (if decodedp
+                     (fnn-call 'fn-owner-page-decoded-window-acquire-projected
+                       (fnn-cold-worker-row worker) descriptor (fnn-live-page-read-pool))
+                   (fnn-core-cold-pool 'fn-owner-page-window-executor-acquire-funded
+                     (fnn-cold-worker-row worker) descriptor)))
+               (word (first reply)) (row (second reply)) (token (third reply))
+               (scope (and decodedp (fourth reply))))
+          (unless (eq word :assigned)
+            ;; An admitted-but-unbound token stays charged. Never construct
+            ;; or invent a physical no-child refund after a torn binding.
+            (when token
+              (setf (fnn-cold-worker-token worker) token (fnn-cold-worker-row worker) row
+                    (fnn-cold-worker-scope worker) scope (fnn-cold-worker-phase worker) :binding-fault)
+              (fnn-fault "window admitted but its exact worker binding failed"))
+            (setf (fnn-cold-worker-phase worker) :idle (fnn-cold-worker-scope worker) nil
+                  *fnn-cold-free* worker)
+            (return-from fnn-extent-issue-window (values nil word nil)))
+          (setf (fnn-cold-worker-scope worker) scope)
+          (when decodedp
+            (fnn-err "DECODED-WINDOW issue token=~s scope=~s" token scope))
+          (values token :admitted (fnn-extent-executor-enqueue worker row token)))))))
 
 (defun fnn-extent-executor-acquire (token)
   "Extent lock held; the ledger already funded this exact job."

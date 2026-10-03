@@ -2831,3 +2831,5 @@ trace controls and unrestricted interactive operator shell. SCN1121 actual
 socket/source tests pass (2 tests, ~1.2s); owner mutex and nonblocking transport
 are named fixture adapters. Full native owner + ACL2 LD composed check pending;
 no saved-image gate. Groundwork owns application query/export command surface.
+
+Runtime decoded-window continuation (2026-10-03): actual same-pool projected issuer consumes fn-dwb-fixed-storage-vector, reports :partial-fixed-storage, refuses modern complete installations. Native reservation precedes semantic draw; torn or unbound charge retains worker custody. Response capture lends returned authenticated scalar window through ready/render/replay, then whole-response close cancels/releases after physical return. Mux and Web retain capture across jobs and close it before unpin. Full allocator/GC/token/source graph tariff and full ARTICLE endpoint execution remain open PRF-1288; source-first packet, scoped checks follow.

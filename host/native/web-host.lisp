@@ -44,7 +44,7 @@
   socket fd ssl channel in out deadline job (closedp nil) (semantic-ended nil) (semantic-disposal :idle)
   (phase :head) (want :input) (from 0) request end
   flow event private-begin (events 0) (opened nil) (answered nil)
-  cid leased (cmd-at 0) (cmd-end 0) pending plan closing await completion
+  cid leased response-capture (cmd-at 0) (cmd-end 0) pending plan closing await completion
   cold cold-word (line-since nil) (resume-at 0)
   wire (wire-at 0) (body-at 0) (body-end 0)
   page-segs page-cursor page-response (pagep nil) (page-count 0) (page-done nil)
@@ -160,6 +160,11 @@ exposure admission decides (the id, or NIL when it refused)."
     (when (fnn-web-conn-cold conn)
       (fnn-web-cleanup face conn :cold
         (lambda () (fnn-owner-cold-abandon (first (fnn-web-conn-cold conn))))))
+    (let ((capture (fnn-web-conn-response-capture conn)))
+      (fnn-web-cleanup face conn (list :response-window capture)
+        (lambda ()
+          (fnn-owner-response-window-close service capture)
+          (setf (fnn-web-conn-response-capture conn) nil))))
     (when cid
       (fnn-web-cleanup face conn :response (lambda () (fnn-owner-response-unpin service cid))))
     (unless (fnn-web-conn-answered conn)
@@ -230,7 +235,11 @@ exposure admission decides (the id, or NIL when it refused)."
                 ((fnn-web-face-jobs-closed face) (return-from fnn-web-semantic-body nil))
                 (t (sb-thread:condition-wait (fnn-web-face-job-ready face)
                                             (fnn-web-face-lock face) :timeout 1)))))
-      (let ((conn (fnn-web-job-conn job)))
+      (let* ((conn (fnn-web-job-conn job))
+             (*fnn-response-capture*
+              (or (fnn-web-conn-response-capture conn)
+                  (setf (fnn-web-conn-response-capture conn)
+                        (%make-fnn-response-capture :connection (fnn-web-conn-cid conn))))))
         (unwind-protect
              (handler-case
                  (unless (fnn-web-job-cancelled job)
