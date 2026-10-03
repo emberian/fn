@@ -250,10 +250,6 @@ class TheCorpus(unittest.TestCase):
         self.assertEqual(teeth_check.main(["--summary"]), 0)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class MultiValued(unittest.TestCase):
     """`(mv-nth n (f ...))` in an evaluation context: the form does not run.
 
@@ -438,3 +434,7 @@ class Acl2Errors(unittest.TestCase):
         found = teeth_check.ACL2_ERROR.findall(log)
         self.assertEqual([m[1] for m in found], ["DEFCONST", "DEFTHEORY"])
         self.assertEqual(found[0][0], "Translate")
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -149,10 +149,6 @@ class UnbalancedFormTests(unittest.TestCase):
             self.assertIn("column 0 inside it at {}:3".format(bad), no.stdout)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class LogRouteArmTests(unittest.TestCase):
     """Lane log-2: each record-log arm against books/store-log-route-programs.lisp
     and the log's own programs; every mutation below is a process-death cut
@@ -229,7 +225,6 @@ class LogProgramListingTests(unittest.TestCase):
         with self.assertRaises(AssertionError) as caught:
             native_cuts.log_program_cut_map(self.host.replace(body, moved))
         self.assertIn("fnn-log-ensure-extent", str(caught.exception))
-
 
 
 class LogCutInventoryTests(unittest.TestCase):
@@ -319,3 +314,7 @@ runpy.run_path(sys.argv[0], run_name='__main__')
 '''})
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("log cut inventory: PASS (13 cuts; 7 segment cuts)", result.stdout)
+
+
+if __name__ == "__main__":
+    unittest.main()

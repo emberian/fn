@@ -429,7 +429,7 @@ The parts:
 - **The gate** (`fn-lb-owner-gate`, books/login-binding.lisp) runs first on a
   served POST's Store attempt (host/native/owner.lisp
   `fnn-owner-attempt-served` through host/owner-host.lisp
-  `fn-owner-login-gate`), over the owner's in-flight submission (its
+  `fn-owner-login-gate-buffer`), over the owner's in-flight submission (its
   connection's authenticated login), the live configuration and the binding
   table. Under the policy, for a bound login: no FN-Authorship carrier is
   refused `441 posting failed; this login posts only articles signed by its

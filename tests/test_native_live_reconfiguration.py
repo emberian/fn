@@ -320,10 +320,6 @@ class LiveReconfigurationImageTests(unittest.TestCase):
         self.assertIn(b"fn.live ", fresh_list[1], fresh_list)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 GENERATIONS = 500
 
 
@@ -401,3 +397,7 @@ class LiveReconfigurationCostTests(unittest.TestCase):
         self.assertIsNone(owner.poll(), "the refusal stopped the owner")
         (self.store / "config" / nxt).unlink()
         self.node.stop(process=owner)
+
+
+if __name__ == "__main__":
+    unittest.main()

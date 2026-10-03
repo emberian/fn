@@ -33,10 +33,6 @@ class OwnerGlobalsCheckTests(unittest.TestCase):
         self.assertEqual(ogc.judge(found, {"host/a.lisp": 2}), [])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class ParkedFilesTests(unittest.TestCase):
     """A parked host file (planning/host-parked.json: no build loads it) is not
     the running owner's, so its globals are not counted; one that is not
@@ -56,3 +52,7 @@ class ParkedFilesTests(unittest.TestCase):
                 json.dumps({"parked": {"host/parked-host.lisp": "test"}}))
             found = ogc.scan(root)
         self.assertEqual(sorted(found), ["host/live-host.lisp"])
+
+
+if __name__ == "__main__":
+    unittest.main()
