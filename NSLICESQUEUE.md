@@ -31,10 +31,11 @@ that their recorded state is current at every later revision.
   source and evidence when closing it. Source, certification, executable-image
   checks and deployment remain separate coordinates; a passing prototype or
   the first consumer does not complete a family.
-- Use one primary correctness reviewer and one assembler for overlapping code.
-  Warm admission and focused fixtures precede batched certification where
-  required. Reports follow the engineering work; this queue adds no gate,
-  mandatory benchmark, repeated global check or image run per slice.
+- Push coherent source to public `origin/dev` promptly, before verification, as
+  ember explicitly directed on 2026-10-03. One assembler composes overlapping
+  code as needed; review, focused checks, certification and reports follow
+  asynchronously. Fix forward and retain pending proof/image status. This queue
+  adds no review, report, certification or image gate before source push.
 - Keep completed slices here with their receipts; update the remaining work in
   place. Split a slice when it has independently useful consumers. The list is
   an initial coverage map, not a claim that all remaining defects are enumerated.
