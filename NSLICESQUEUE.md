@@ -40,6 +40,22 @@ that their recorded state is current at every later revision.
   place. Split a slice when it has independently useful consumers. The list is
   an initial coverage map, not a claim that all remaining defects are enumerated.
 
+## Worker consolidation at 08:00 America/New_York
+
+Ember caps running subagents at ten, excluding the root coordinator, from
+08:00 on 2026-10-03; the 10:00 capability mission continues. Handoffs preserve
+current source, warm-session coordinates, concrete consumers and pending claims.
+The continuing owners are Integration (including source assembly), Runtime
+(including HM), Served (including matcher/catalog availability), Foundations,
+History (including carrier/pages/checkpoint), BP transport (including Tools/fair
+rounds), Access (including Operator and the drafted S011 journal consumer), Empirical, Web as a separate implementation owner, and Groundwork for the
+actual application-consumer/E1–E2 boundary. Root absorbs detailed coordination. Helpers complete their current
+coherent packet or transfer it before stopping; a passive assignment does not
+count as active work. No Luna wave resumes. These are ownership transfers, not
+capability completion claims.
+The convergence lieutenant is explicitly excluded from this implementation cap
+and owns routine coordination; Groundwork remains the application consumer owner.
+
 ## Dispatch next
 
 | Slice | Current position | Coordination / implementation | Next useful result |

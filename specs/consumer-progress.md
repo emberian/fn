@@ -248,6 +248,17 @@ attempts a process finds on opening belong to a dead process (PKT-351).
 The lock, the resend and the correlation are the client's own bookkeeping
 under this contract; fn decides none of them.
 
+The client durably retains each poll's exact cursor and report before
+interpreting it. A native projection fault or uncertain answer stops the wake
+without acknowledging; restart reuses those saved bytes instead of replacing
+them with a newer poll. A projection refusal can be handled as non-application
+evidence only after the native report decoder affirmatively identifies an
+article or withdrawal. A refused or failed report decoder leaves the delivery
+pending. Inbox handling and marking that delivery handled share the transaction
+which records the next ACK; saved report bytes remain available as evidence.
+The `after-poll` consumer process-death cut tests this custody boundary. This
+client journal does not add an fn article pin or exactly-once external effects.
+
 ## Two nodes
 
 The exchange also runs across two fn nodes peered over NNTP. Agent A's
