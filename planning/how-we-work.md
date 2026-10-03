@@ -131,3 +131,42 @@ observed on an image, and the evidence file is filed (indexed and archived). A s
 `partial` row is two steps. A branch someone else left is an input to a
 brief, never a thing to resume. Intermediate reds stay visible and never
 excuse a weaker statement or a host twin.
+
+## Short local loops and frozen convergence (2026-10-03)
+
+Send the first discriminating subject result from a warm scoped session or
+selected test method immediately. Finish evidence filing and affected-root
+certification asynchronously; an unfinished check remains unfinished. Reuse the
+unchanged dependency world and resume the failing event. `--ld-leak` is a
+source-discovery facility: final admission/certification reproduces without
+leaked LOCAL rules. Narrow reviews need the changed contract and actual callers,
+not another reread of unchanged whole-system design.
+
+Integration qualifies one immutable runnable candidate while subsequent READY
+source continues in the next wave. Interfaces/world checks required for that
+candidate run against its bytes; unrelated ledger regeneration and subsequent
+repairs must not move the qualification frontier. Integration remains the sole
+dev writer and scarce build scheduler.
+
+Existing-log examples distinguish proof cost from total feedback. Served's
+residual loop took0.5–0.8s wall including sync (0.05 ACL2s/29,380steps), while two
+plan dependency replays took120/125 ACL2s and33Msteps. Foundations reduced a
+reader equality proof53.13s/5.58Msteps to0.06s/446steps; its73 cost fixtures took
+0.68s wall. Runtime's actual real-thread fixtures took0.30s and15 structure tests
+3.78s. Tools' narrow shape method took0.007s while selecting its whole-tree test
+class took71s. Empirical edit-to-first actual native verdict took5.15s and paired
+restart/correctness measurements10.75s on an explicitly historical image.
+Groundwork's HM run took190s overall for10.28s certification, with10.66s measured
+slot wait; remaining wrapper/evidence overhead is being isolated. Scoped
+`green_check --changed-since` currently performs whole-world analysis before
+filtering; Tools owns narrowing that computation while preserving final full
+validation. These measurements describe those loops, not universal baselines.
+
+External model reviews run asynchronously and are timeboxed advisory work. A
+CLI timeout, truncated reasoning or unavailable response is not a completed
+review. Concrete suggestions are independently checked; disagreements remain
+with their reasons. Current Kimi supports an explicit agent file with `tools:
+[]` and `subagents: []`; use an empty task directory and explicit empty skills
+directory for a supplied-source review. Grok's empty tool allowlist still starts
+configured MCP services, so do not assume it isolates all local initialization.
+Never put keys in argv, output or review context; send minimal project source.
