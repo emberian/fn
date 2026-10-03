@@ -370,6 +370,10 @@
         (load "host/native/feed-filename.lisp")
         ; The BP node's Store owner and its configuration (path identity,
         ; enrolled BP boundaries) through the one public operator entry.
+        ; owner.lisp's fnn-owner-serialized-with-control-turn expands this
+        ; file's fnn-with-owner-control-issued-turn: without it the DTN image
+        ; compiled that function as a call to an undefined function.
+        (load "host/native/owner-control-turn.lisp")
         (load "host/native/owner.lisp")
         (load "host/native/receiver-parser-turn.lisp")
         ; Its connections on a fixed set of I/O loops (PKT-605).

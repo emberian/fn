@@ -242,6 +242,26 @@ class ExecuteTests(unittest.TestCase):
         entry = json.loads(next((self.cache / "steps").iterdir()).read_text())
         self.assertEqual(entry["inputs"]["g"][0][:2], [str(ROOT), ["rev-parse", "HEAD"]])
 
+    def test_a_git_read_that_timed_out_is_never_cached(self):
+        """S055: a git read that timed out keyed the step as "error ..." and
+        the same timeout next run matched it, replaying a PASS."""
+        import subprocess
+        from unittest import mock
+        probe = [PY, "-c", f"import subprocess; print(subprocess.run(['git', '-C', {str(ROOT)!r}, "
+                           "'rev-parse', 'HEAD'], capture_output=True, text=True).stdout)"]
+        plan(self.steps, probe)
+        real = subprocess.run
+
+        def slow_git(argv, *args, **kwargs):
+            if argv[:1] == ["git"] and kwargs.get("timeout") == 120:
+                raise subprocess.TimeoutExpired(argv, 120)
+            return real(argv, *args, **kwargs)
+        with mock.patch.object(check_steps.subprocess, "run", side_effect=slow_git):
+            verdict, text, rows = execute(self.steps, self.cache)
+            self.assertIn("did not answer", text)
+            verdict, text, rows = execute(self.steps, self.cache)
+            self.assertFalse(rows[0].get("cached"))
+
     def test_a_copied_tree_is_read_not_written(self):
         (self.data / "src").mkdir()
         (self.data / "src" / "f").write_text("f")

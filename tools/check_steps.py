@@ -235,12 +235,18 @@ def listing(path: str) -> str:
     return hashlib.sha256("\0".join(names).encode()).hexdigest()
 
 
+GIT_FAILED = "error"
+
+
 def git_output(cwd: str, argv: list[str]) -> str:
     try:
         done = subprocess.run(["git", *argv], cwd=cwd, stdin=subprocess.DEVNULL,
                               capture_output=True, timeout=120)
     except (OSError, subprocess.SubprocessError) as error:
-        return f"error {error}"
+        # Not an output: a git read that timed out or could not run keys
+        # nothing (inputs_of refuses to cache on it, and inputs_unchanged
+        # never matches it), so a timeout is never replayed as a PASS.
+        return f"{GIT_FAILED} {error}"
     return hashlib.sha256(bytes([done.returncode & 0xFF]) + done.stdout).hexdigest()
 
 
@@ -325,12 +331,16 @@ def inputs_of(trace: dict, memo: FileMemo) -> tuple[dict | None, str]:
             return None, f"git {' '.join(argv)[:60]}"
     written = trace["w"]
     keep = lambda p: p not in written and not _is_temp(p)  # noqa: E731
+    replayed = [[cwd, argv, git_output(cwd, argv)] for cwd, argv in trace["g"]]
+    for cwd, argv, value in replayed:
+        if value.startswith(GIT_FAILED):
+            return None, f"git {' '.join(argv)[:60]} did not answer ({value[:60]})"
     reads = sorted(p for p in trace["r"] if keep(p))
     return {
         "r": {p: memo.digest(p) for p in reads},
         "l": {p: listing(p) for p in sorted(trace["l"]) if keep(p)},
         "s": {p: path_state(p) for p in sorted(trace["s"] - trace["r"]) if keep(p)},
-        "g": [[cwd, argv, git_output(cwd, argv)] for cwd, argv in trace["g"]],
+        "g": replayed,
     }, ""
 
 
@@ -373,7 +383,7 @@ def inputs_unchanged(inputs: dict, memo: FileMemo) -> bool:
         if path_state(path) != value:
             return False
     for cwd, argv, value in inputs["g"]:
-        if git_output(cwd, argv) != value:
+        if value.startswith(GIT_FAILED) or git_output(cwd, argv) != value:
             return False
     return True
 
