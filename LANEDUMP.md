@@ -1368,3 +1368,11 @@ sol-access continuing owned queue, GPT-6.1-Sol, 2026-10-03 10:49 UTC:
   Corrected evidence sol-access-ssc-cleanup-final-2026-10-03.md explicitly
   retracts the earlier mistaken 17-test PASS line and retains its failed log.
   Matching saved-image pair/recovery qualification remains Integration-owned.
+
+- S119 prepared one physical recovery composition selector:
+  tests.test_native_recovery.NativeRecoveryFidelityTests.
+  test_secret_rotation_orphan_is_swept_without_changing_key_authority. Actual
+  first/second rotations surround constructed interrupted staging state;
+  recovery must preserve current/retained keys and foreign evidence. No secret
+  bytes enter assertion diagnostics. Syntax and existing producer-prefix/sweep
+  source check pass; saved-image execution remains Integration-owned.
