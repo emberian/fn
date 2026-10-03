@@ -2050,7 +2050,8 @@ across both. A sparse miss still consumes one candidate; the final suffix
 keeps the plan live after the article tail ends. The plan's NEWNEWS arm uses
 its scheduling quantum for both budgets and the owner/mux retains the
 existing response reader hold. The catalog tombstone column supplies the
-selection decision for represented rows, avoiding payload-cache retry.
+selection decision for rows with decided facts, avoiding payload-cache retry;
+legacy rows without those facts retain the existing cold dependency.
 Source behavior and REPL residual tests are available; matching composition
 certification and native qualification remain owed. This emitted-byte bound
 does not bound initial selected-group materialization or one-row working

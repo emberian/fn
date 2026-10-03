@@ -193,6 +193,8 @@
   (and (consp effects)
        (or (and (fn-ovw-cursor-effectp (car effects))
                 (fn-ovw-cursorp (cadr (car effects))))
+           (and (fn-nnw-meta-effectp (car effects))
+                (fn-nnw-meta-livep (cadr (car effects))))
            (and (consp (car effects)) (equal (car (car effects)) :reply)
                 (not (equal (take 3 (cadr (car effects))) (list 53 48 48)))))))
 

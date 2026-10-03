@@ -383,7 +383,9 @@
 
 (defthm fn-nnw-meta-initial-status-first
   (implies (fn-nnw-meta-initialp cur)
-           (not (equal (take 3 (fn-nnw-meta-remaining cur fn-arena fn-cat)) '(50 49 49))))
+           (let ((octets (fn-nnw-meta-remaining cur fn-arena fn-cat)))
+             (not (and (consp octets) (equal (car octets) 50)
+                       (consp (cdr octets)) (equal (car (cdr octets)) 49)))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-nnw-meta-initialp fn-nnw-meta-remaining))))
 

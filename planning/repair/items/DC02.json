@@ -8,12 +8,13 @@
  "locus": "served-books",
  "notes": [
   "10-02 22:22 OVER/XOVER rows re-declared from SERVED-CATALOG-LIVE's SCL1 when it lands: the Xref prelude form returns the cursor for a range (fn-nntp-over-range-ovw with a SERVER formal, cursor tuple (GROUP K TOP V LEGACYP OWEDP SERVER)); :by becomes fn-nntp-over-range-ovw-expands-to-over-range-served-cat (server) / -to-over-range-cat (nil); fn-nntp-xref-reply-cat-is-col is modulo fn-ovw-expand, :rule-classes nil, so the xref form's case is proved by :use, not rewriting. Arm order unchanged.",
-  "10-02 22:33 WIND DOWN 2026-10-03: do after SERVED-CATALOG-LIVE's SCL1 (OVER prelude returns the cursor; re-declare OVER/XOVER rows) and SCL4 (LIST row) land; the hand cond + 78-line hint list in served-catalog-dispatch.lisp go then. Recipe in lanedumps/def-command.md."
+  "10-02 22:33 WIND DOWN 2026-10-03: do after SERVED-CATALOG-LIVE's SCL1 (OVER prelude returns the cursor; re-declare OVER/XOVER rows) and SCL4 (LIST row) land; the hand cond + 78-line hint list in served-catalog-dispatch.lisp go then. Recipe in lanedumps/def-command.md.",
+  "GPT-6.1-Sol 2026-10-03: actual fn-scr-command now calls fn-proto-archive-command-cat, included through protocol-served; proof consumer cites generated dispatcher theorem and teeth subject is generated callable. DC03 navigation/retrieval declarations assembled from f76dbfd6c; NEWNEWS is actual buffered cursor. Explicit proved hand fallthrough remains for undeclared archive rows, so hand cond deletion and lower keyword/view policy sites remain open. Assembly composition replay/certification/native qualification pending; helper REPL verdict is not transferred to changed bytes."
  ],
- "owner": "def-command",
+ "owner": "codex-sol-served",
  "severity": "medium",
  "source": "coordinator",
- "state": "deferred",
+ "state": "in-progress",
  "title": "The switch: fn-scr-command calls fn-proto-archive-command-cat; the hand cond and its 78-line hint list in books/served-catalog-dispatch.lisp deleted; fn-nntp-archive-keywordp and fn-served-advance-eventp defined from the table's constants",
  "updated": "2026-10-03T02:33:43Z"
 }
