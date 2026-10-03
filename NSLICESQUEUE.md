@@ -413,12 +413,18 @@ close the correct scope. Anchors: [S003](planning/repair/items/S003.json),
 
 ### Operator commands and trustworthy diagnostics
 
-**Active — Operator owns pre-open DEFAULT partial pool startup and startup-failure custody; Foundations owns its numerical producer and Runtime its persistent executor. Access retains the earlier retire, diagnostic, init and journal continuation.**
-The new native startup consumer installs an admitted plan before Store open,
-and joins orphan workers before releasing run authority. SCN-1130's actual
-source ordering, refusal/fault and escaping-join cases pass; coherent physical
-owner open/read/stop remains the next consumer in History's retained world.
-Complete cold profiles stay refused and full allocation refinement stays open.
+**Active — Operator owns startup/custody, launcher and configured diagnostics, plus S012/S072/S074/S090/S138/S151 and prepared journal native consumers. Foundations owns numerical/resource-policy producers, Runtime the persistent executor, and Access ARTICLE/header plus journal general proof work.**
+The pre-open DEFAULT consumer and launcher now share real root/worker/cache
+captures. Configured STATUS/HEALTH use the same policy extension chain; prior
+actual status dropped output funding. SCN-1136 runs actual ACL2 arithmetic and
+native callers, including exact machine boundaries and prior-body failures.
+SCN-1130 retains joined executor debt and global arena callback debt before
+any Store carrier exists; constructor/cleanup source cases and matching
+component composition pass. Current nonempty owner open/read/stop remains
+pending History's same-process native initializer. Complete cold profiles,
+expanded init-budget/reopen refinement and full allocation tariff remain open.
+Independent explicit peer policy capture/launcher/preopen composition is the
+next source packet; absent policy never synthesizes a grant.
 S012 direct probe/selector source is integrated; its saved-image boundary
 remains a selected check. Finish
 bounded retire/drain, accurate heap/profile/startup diagnostics, safe fixture
