@@ -1,7 +1,7 @@
 ; SCN-1092: real recovery loader fills missing availability from its arena.
 ; Program fixture setup; actual loader/readers are guard verified.
 (in-package "ACL2")
-(include-book "../../books/catalog-availability-owner-load")
+(include-book "../../books/catalog-availability-refinement")
 (include-book "catalog-available-readers-tests")
 
 (defun cav-loader-prepare (i n survivors rows index fn-arena)
@@ -64,3 +64,52 @@
 (assert-event
  (and (eq (symbol-class 'fn-cat-prepare-row-availability (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-sca-load-held-rows (w state)) :common-lisp-compliant)))
+
+; Literal producer theorem teeth over the immutable abstraction values.
+; The live loader fixtures above execute the same entry and reader exports.
+(defconst *cav-loader-legacy-h*
+  (fn-held-with-facts (cav-row 0 nil) (fn-hf-make 0 nil 0 nil)))
+(defconst *cav-loader-legacy-rows* (list *cav-loader-legacy-h*))
+(defconst *cav-loader-legacy-arena* (list (cav-bytes 0 nil)))
+
+(defthm cav-loader-decided-positive
+  (and (fn-sca-held-rowsp *cav-loader-legacy-rows*)
+       (fn-sca-load-availability-ready-p *cav-loader-legacy-rows* *cav-loader-legacy-arena*)
+       (fn-cat-availability-decidedp
+         (fn-sca-load-held-rows *cav-loader-legacy-rows* nil *cav-loader-legacy-arena* nil)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (enable fn-sca-load-availability-ready-p fn-cat-availability-decidedp
+                   fn-cat-rows-availability-decidedp))))
+
+; Omit readiness: held row remains valid, missing handle stays undecided.
+; No necessity of the held-rowsp premise is claimed.
+(defthm cav-loader-decided-without-ready-corrupted-state
+  (and (fn-sca-held-rowsp *cav-loader-legacy-rows*)
+       (not (fn-sca-load-availability-ready-p *cav-loader-legacy-rows* nil))
+       (not (fn-cat-availability-decidedp
+         (fn-sca-load-held-rows *cav-loader-legacy-rows* nil nil nil))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (enable fn-sca-load-availability-ready-p fn-cat-availability-decidedp
+                   fn-cat-rows-availability-decidedp))))
+
+(defthm cav-loader-byte-facts-positive
+  (and (fn-arena-p *cav-loader-legacy-arena*)
+       (fn-scol-history-okp *cav-loader-legacy-rows* *cav-loader-legacy-arena*)
+       (fn-scol-okp *cav-loader-legacy-arena*
+         (fn-sca-load-held-rows *cav-loader-legacy-rows* nil *cav-loader-legacy-arena* nil)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-scol-okp fn-scol-history-okp fn-scol-row-okp))))
+
+(defconst *cav-loader-stale-rows* (list (cav-row 0 nil)))
+(defconst *cav-loader-tomb-arena* (list (cav-bytes 0 t)))
+; Corrupted state: retained arena premise true, omitted byte-fact premise false,
+; and decided stale facts remain stale. Loader must not silently claim repair.
+(defthm cav-loader-byte-facts-without-history-corrupted-state
+  (and (fn-arena-p *cav-loader-tomb-arena*)
+       (not (fn-scol-history-okp *cav-loader-stale-rows* *cav-loader-tomb-arena*))
+       (not (fn-scol-okp *cav-loader-tomb-arena*
+         (fn-sca-load-held-rows *cav-loader-stale-rows* nil *cav-loader-tomb-arena* nil))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-scol-okp fn-scol-history-okp fn-scol-row-okp))))
