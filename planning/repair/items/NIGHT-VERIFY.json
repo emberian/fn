@@ -1,17 +1,33 @@
 {
  "acceptance": "No-test, absent-test, broken-import, infrastructure, timeout, skip, wrong assertion and real assertion red/green fixtures; preserve scope/forbidden checks.",
+ "budget": 900,
  "category": "codex-orientation",
  "detail": "Require one identical runnable regression on base/head; persist named expected assertion and full output/evidence reference; reject missing test/module/import, tool error, timeout and skip as red. A no-test documentation exception must be explicit. Exact field filters must not select untagged entries; separate deferred from runnable work.",
  "disposition": "LOCAL",
+ "expect-failure": "tests.test_repair_verify.RepairVerifyTests.test_missing_selected_module_cannot_use_an_unrelated_harness",
  "exposure": "latent",
+ "failure-message": "True is not false",
  "file": "planning/repair/repair.py",
+ "harness": "tests/test_repair_verify.py",
  "id": "NIGHT-VERIFY",
  "locus": "gates-tests-packaging",
- "notes": [],
- "owner": "integration",
+ "notes": [
+  "10-03 01:52 claimed: scope=['planning/repair/repair.py', 'planning/repair/README.md', 'tools/repair_unittest.py', 'tests/test_repair_verify.py', 'planning/evidence-index.tsv', 'LANEDUMP.md'] test=python3 -m unittest tests.test_repair_verify",
+  "10-03 01:59 claimed: scope=['planning/repair/repair.py', 'planning/repair/README.md', 'tools/repair_unittest.py', 'tests/test_repair_verify.py', 'planning/evidence-index.tsv', 'LANEDUMP.md'] test=python3 -m unittest tests.test_repair_verify.RepairVerifyTests.test_missing_selected_module_cannot_use_an_unrelated_harness"
+ ],
+ "owner": "codex-sol-tools",
+ "scope": [
+  "planning/repair/repair.py",
+  "planning/repair/README.md",
+  "tools/repair_unittest.py",
+  "tests/test_repair_verify.py",
+  "planning/evidence-index.tsv",
+  "LANEDUMP.md"
+ ],
  "severity": "medium",
  "source": "planning/overnight-2026-10-03.md",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_repair_verify.RepairVerifyTests.test_missing_selected_module_cannot_use_an_unrelated_harness",
  "title": "Repair verifier accepts missing tests/infrastructure failures as defect witnesses",
- "updated": "2026-10-03T05:14:09Z"
+ "updated": "2026-10-03T05:59:05Z"
 }
