@@ -518,13 +518,17 @@ step validate python3 tools/proof_artifacts.py validate --profile default --acl2
 # world (tools/host_check.py's default).  limits-live-4 and online-reclaim-4
 # each lost an image build to a forward reference in host/owner-host.lisp.
 step host-forward python3 tools/host_check.py --forward
-step host-ld env FN_ACL2="${IMAGE_ACL2:-\$ACL2}" python3 tools/host_check.py
+# Check the requested image prefixes explicitly. host_check.py without a mode
+# also demands the DTN prefix, whose certificates a default-only run does not
+# acquire. The same translator underlies that aggregate check.
+step host-ld env FN_ACL2="${IMAGE_ACL2:-\$ACL2}" python3 tools/host_translate_check.py --build host/native/build.lisp --log \$L/host-translate-default.log
 BOX
         if [ $DTN -eq 1 ]; then
             # hbox-image-build.sh's dtn acquire/validate, before a DTN image.
             cat <<BOX
 step acquire-dtn python3 tools/proof_artifacts.py acquire --profile dtn --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
 step validate-dtn python3 tools/proof_artifacts.py validate --profile dtn --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
+step host-ld-dtn env FN_ACL2="${IMAGE_ACL2:-\$ACL2}" python3 tools/host_translate_check.py --build host/native/build-dtn.lisp --log \$L/host-translate-dtn.log
 BOX
         fi
         for image in $(echo "$IMAGES" | tr ',' ' '); do
