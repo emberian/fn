@@ -1763,3 +1763,14 @@ future-constructor and native coordinates. This uses the same guarded
 `fnn-runtime-construction-inventory-complete` supplies the actual compiler
 coordinates later. An incomplete capture cannot seal, so observing existing
 objects never silently supplies zero for an unavailable allocation allowance.
+
+The record-log allocator carries the composed owner's identity reservation
+callback through `fnn-advance-frontier` to `fnn-log-reserve`. The callback is
+dynamically bound before an owner publication; ACL2 derives the reservation
+purpose and protected release debt. A retention publication passes its exact
+ACL2-authored five-field event, producing the one-shot grant consumed by
+`fn-owner-prepare-retention`. Refused or malformed gate results precede log
+kernel, owner reservation and frontier effects. Standalone Store reservations
+retain the existing codec successor route. The source routing fixture
+`tests/native_retention_identity_route_raw.lisp` checks these calls and order;
+a matching native BP undertake/release/reopen scenario remains required.
