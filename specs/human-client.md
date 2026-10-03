@@ -323,3 +323,11 @@ reply/gate functions. tests/acl2/web-stream-consumer-source-tests.lisp compares
 complete reference page plans with virtual scan/count/emit under chunk1/2/7/4096
 fixtures. Guard/refinement and complete endpoint/funding qualification remain
 open; concrete-fill invariant-risk warnings are retained in the source receipt.
+
+A closed HTTP continuation cannot submit another semantic job. Terminal disposal
+requires the exact outstanding job's return; cancellation alone leaves its
+captured POST, response and replay references live. The sole disposal activation
+then clears input/output, authored POST state, page state and saved response
+plans before releasing the response's scalar loan and pin. Failed cleanup keeps
+its exact cold-read identity in the debt record. Discard of these references is
+a lifetime receipt; it does not establish a complete physical heap tariff.

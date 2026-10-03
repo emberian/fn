@@ -314,3 +314,31 @@
   (assert (equal (fnn-web-conn-captured-plans conn) (list ready))))
 (assert (null *faults*))
 (format t "native web continuation raw: PASS exact windows, slow+healthy+POST, mailbox, cold resume, session lease, once cleanup~%")
+
+;;; Terminal disposal cannot discard a live worker's captured input, and a
+;;; closed connection cannot acquire another publisher after the receipt.
+(let* ((conn (fixture-conn 81 :event))
+       (face (%make-fnn-web-face :service *fixture-service* :capacity 1))
+       (source (list :retained-post-source))
+       (plan (list :retained-response-plan)))
+  (setf (fnn-web-conn-post-form conn) source
+        (fnn-web-conn-post-source conn) source
+        (fnn-web-conn-post-cursor conn) source
+        (fnn-web-conn-captured-plans conn) plan
+        (fnn-web-conn-replay-plan conn) plan)
+  (assert (fnn-web-job-submit face conn :feed))
+  (fnn-web-finish face conn)
+  (assert (and (eq source (fnn-web-conn-post-source conn))
+               (eq plan (fnn-web-conn-replay-plan conn))))
+  (assert (not (fnn-web-job-submit face conn :render)))
+  ;; Exact independent job-return observation makes disposal eligible.
+  (setf (fnn-web-job-returned (fnn-web-conn-job conn)) t)
+  (fnn-web-dispose-semantic face conn)
+  (assert (and (null (fnn-web-conn-in conn)) (null (fnn-web-conn-out conn))
+               (null (fnn-web-conn-post-form conn)) (null (fnn-web-conn-post-source conn))
+               (null (fnn-web-conn-post-cursor conn)) (null (fnn-web-conn-replay-plan conn))
+               (null (fnn-web-conn-captured-plans conn))
+               (fnn-web-conn-semantic-ended conn)))
+  (fnn-web-job-consume face conn)
+  (assert (not (fnn-web-job-submit face conn :feed))))
+(format t "native_web_reactor_raw: PASS terminal graph discard/no future publisher~%")

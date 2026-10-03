@@ -98,7 +98,9 @@
             (if (eq (fnn-web-conn-phase conn) :write) (fnn-web-write-ready face conn)
               (fnn-web-page-step face conn))
             (assert (<= (length (fnn-web-conn-wire conn)) 4096))
-            (assert (zerop (fnn-web-len (fnn-web-conn-out conn)))))
+            (if (fnn-web-conn-closedp conn)
+                (assert (null (fnn-web-conn-out conn)))
+              (assert (zerop (fnn-web-len (fnn-web-conn-out conn))))))
           (assert (equal (wire-for 31) (append '(72 69 65 68) reference)))
           ;; HEAD counts identically, but does not issue an emit job.
           (let ((head (fixture-conn 32 :page-count)))
