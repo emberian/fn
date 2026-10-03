@@ -166,6 +166,9 @@
     (funcall retain bank)
     (handler-case
         (progn
+          ;; A raw throw can escape the constructor without a condition.
+          ;; Publish calling custody first; a missing return cannot be idle.
+          (setf (fnn-peer-flight-bank-phase bank) :creating)
           (setf (fnn-peer-flight-bank-ledger bank) (fnn-core 'create-fn-resource-ledger)
                 (fnn-peer-flight-bank-phase bank) :installing)
           (destructuring-bind (word returned)
