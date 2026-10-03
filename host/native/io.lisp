@@ -2129,6 +2129,8 @@ resolves the names against `domain' and the host carries that list verbatim."
   (completion-pending nil)
   ;; Terminal physical close uncertainty is sticky; consumed fds are never retried.
   (close-debt nil)
+  ;; Exact application journal/lock holders whose close was unobserved.
+  (application-close-debts nil)
   ;; P3: how the last open reached the Store state: (:checkpoint S K) or
   ;; (:full-replay REASON).  `operator status' prints it.
   (open-mode '(:full-replay :absent))
@@ -2664,7 +2666,9 @@ Generic command callers have no owner authority sink.")
           (when log (fnn-log-discard-spare log))
           (when log (fnn-close (fnn-log-fd log)))
           (when fd (fnn-flock fd +fnn-lock-un+))
-          (when fd (fnn-close fd)))
+          (when fd (fnn-close fd))
+          (when (fnn-store-application-close-debts store)
+            (error (third (car (fnn-store-application-close-debts store))))))
       (serious-condition (condition)
         (setf (fnn-store-fenced store) t
               (fnn-store-close-debt store) (list log fd condition))

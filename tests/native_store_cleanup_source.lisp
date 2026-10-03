@@ -3,7 +3,7 @@
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 (defvar *fnn-store-failed-open-custody* nil)
-(defstruct fnn-store completion-pending log lock-fd fenced close-debt)
+(defstruct fnn-store completion-pending log lock-fd fenced close-debt application-close-debts)
 (defstruct fnn-log fd spare spare-close-debt)
 (defconstant +fnn-lock-un+ 8)
 (defvar *calls* nil)
