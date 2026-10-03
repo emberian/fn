@@ -609,3 +609,20 @@ reply/gate functions. tests/acl2/web-stream-consumer-source-tests.lisp compares
 complete reference page plans with virtual scan/count/emit under chunk1/2/7/4096
 fixtures. Guard/refinement and complete endpoint/funding qualification remain
 open; concrete-fill invariant-risk warnings are retained in the source receipt.
+
+
+### Operator/developer remaining scope at the 2026-10-03 usage pause
+
+S132 still needs full native large-post acceptance and exact readback under an
+adequately funded supported profile; root's 10 MiB and 16 MiB scratch attempts
+refused oversize and unaffordable respectively, not timeout. Narrow policy and
+exchange tests pass. S083 still needs composed native moderation coverage and
+authority/generation-race closure; the published row authorizes a cause, not an
+already completed target withdrawal.
+
+The developer REPL now has actual native-owner admission/refusal/cleanup/fence
+coverage on its named cache coordinate. Admission itself needs a bounded prover
+step/time facility and a tested recovery path: a client timeout currently leaves
+an in-progress proof occupying the serialized owner. Broad command access does
+not establish complete internal observability or allocation accounting. Preserve
+source/proof/cache/image distinctions when completing these domains.
