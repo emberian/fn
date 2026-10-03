@@ -1474,8 +1474,9 @@ the stop spared, fnn-owner-stop-service-locked), then end every connection."
                                                   :wake-read r :wake-write w)))))
         (setf (fnn-owner-service-mux service) loops)
         (dolist (loop loops)
-          (let ((thread (sb-thread:make-thread (lambda () (fnn-mux-run loop))
-                                               :name "fn owner io")))
+          (let ((thread (sb-thread:make-thread
+                         (fnn-native-observed-thread-thunk (lambda () (fnn-mux-run loop)))
+                         :name "fn owner io")))
             (setf (fnn-mux-loop-thread loop) thread)
             (push thread (fnn-owner-service-workers service))))))))
 

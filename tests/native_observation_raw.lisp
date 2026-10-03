@@ -119,6 +119,55 @@
            (error () t)) "failed maker discriminated")
   (record-complete-packet *fnn-native-observer* nil))
 
+;; The real startup scope activates before its body, binds the actual current
+;; native thread reservation, and reports after its unwind. Disabled scope
+;; preserves an explicitly supplied collector; allocation failure is unavailable.
+(let ((s (observation-service)) (captured nil) (identity nil)
+      (report (make-string-output-stream)))
+  (let ((*error-output* report))
+    (check (equal (multiple-value-list
+      (fnn-native-with-observation (t 8)
+        (setq captured *fnn-native-observer* identity *fnn-native-actor-identity*)
+        (fnn-quantum-control s nil (lambda () (values :startup :finished)))))
+      '(:startup :finished)) "startup observation scope preserves values"))
+  (record-complete-packet captured
+                         (list (list :acquire identity :owner) (list :release identity :owner)))
+  (check (search "NATIVE-HM (:COMPLETE NIL" (get-output-stream-string report))
+         "startup scope reports its completed producer packet after unwind"))
+(let* ((*fnn-native-observer* (fnn-native-observation-create 2))
+       (*fnn-native-actor-identity* "supplied-current-thread")
+       (observer *fnn-native-observer*))
+  (fnn-native-with-observation (nil 8)
+    (check (and (eq observer *fnn-native-observer*)
+                (equal *fnn-native-actor-identity* "supplied-current-thread"))
+           "disabled activation preserves caller observation context")))
+(let ((original (symbol-function 'fnn-native-observation-create))
+      (report (make-string-output-stream)))
+  (unwind-protect
+      (progn
+        (setf (symbol-function 'fnn-native-observation-create)
+              (lambda (capacity) (declare (ignore capacity)) (error "trace allocation failed")))
+        (let ((*error-output* report))
+          (check (eq (fnn-native-with-observation (t 8) :ordinary-startup) :ordinary-startup)
+                 "instrumentation allocation failure cannot refuse actual startup"))
+        (check (search ":UNAVAILABLE :ACTIVATION-UNAVAILABLE" (get-output-stream-string report))
+               "failed trace startup is explicitly unavailable"))
+    (setf (symbol-function 'fnn-native-observation-create) original)))
+
+;; The shared extent seam preserves SBCL's :wait-p option and actual mutex
+;; ownership. It emits only the supplied literal measured lock name.
+(let* ((*fnn-native-observer* (fnn-native-observation-create 2))
+       (*fnn-native-actor-identity* (fnn-native-observation-current-identity))
+       (mutex (sb-thread:make-mutex :name "observed extent")))
+  (check (equal (multiple-value-list
+    (fnn-with-observed-mutex (mutex :extent :wait-p t)
+      (check (sb-thread:holding-mutex-p mutex) "generic observer body owns actual extent mutex")
+      (values :extent-body :unchanged))) '(:extent-body :unchanged))
+    "generic observed mutex preserves physical options and values")
+  (record-complete-packet *fnn-native-observer*
+    (list (list :acquire *fnn-native-actor-identity* :extent)
+          (list :release *fnn-native-actor-identity* :extent))))
+
 ;; Export actual literal producer packets with answers/invariant at every step.
 ;; Groundwork consumes this in its already loaded ACL2 HM session.
 (ensure-directories-exist "build/runtime-tests/native-observation-hm.lsp")

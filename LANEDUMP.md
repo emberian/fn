@@ -1107,3 +1107,23 @@ witness and ran actual-source routing fixture PASS because bytes changed.
 Receipt records source base/delta plus exact source/fixture digests, command
 and narrow recording-boundary scope; archive/index supplied. No book or
 semantic decision changed, saved-image undertaking/release/reopen remains.
+
+
+## Sol source assembly — coherent bounded observer consumer
+
+READY observer aggregate composes Runtime0fa activation +8b/e60/09c early
+mutex seam, Empiricalbeb exact admission fields +b4 consumer +0d direct-token
+exclusion. Source base is immutable364eaa14b; no code conflicts or private
+assembly source edits. Actual collector/extent macro composition receipt
+ed1ae6b9 and its four streams archived/indexed; exact io09c/owner0fa/b4 macro
+transport is not actual read assurance or model replay. Eight image-free
+transports already passed. Full held-read consumer needs the new developer
+image. Forty non-wait E regions observed; actual implicit condition waits
+are excluded. Missing waits/P/other O/conditions/digest alignment keep full
+HM comparison unavailable, even when finite collector prefix is COMPLETE.
+Inputs/labels/captured executor identity remain literal; no host classification
+or physical custody/refund decision added. Exact final extent/test bytes,
+Python/JSON/diff checks and five receipt objects verify; no repeated builds,
+proofs, allocation measurements or raw experiments. First image-free selector
+sbcl --script tests/native_extent_observer_raw.lisp; acceptance with new image
+tests.test_native_page_io.PageIOTests.test_matching_success_publishes_and_advances_the_original_request.
