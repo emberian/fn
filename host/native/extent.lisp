@@ -73,10 +73,12 @@
 ;; lookup) instead of walking the issued rows (KEYSTONE
 ;; fn-pio-direct-quiet-is-clear).
 
-(defparameter +fnn-holder-cuts+ '("fn-pio-file-holds-decided" "fn-pio-file-holds-released")
-  "Mirror of the generated *fn-pio-file-holds-cuts* (books/def-holder.lisp,
-table fn-holder-cuts; tools/holder_check.py reads the declaration, this list
-is the selector's vocabulary).")
+;; Mirror of the generated *fn-pio-file-holds-cuts* (books/def-holder.lisp,
+;; table fn-holder-cuts): the selector's vocabulary.  tests/campaign/native_cuts.py
+;; verify_holder_cut_map checks this list against the declarations both ways
+;; (tools/native_program_check.py), tools/holder_check.py the markers.
+(defparameter +fnn-holder-cuts+
+  '("fn-pio-file-holds-decided" "fn-pio-file-holds-released"))
 
 (defun fnn-holder-cut (cut)
   "A holder release reached CUT (a keyword of a declared holder's *NAME-cuts*,

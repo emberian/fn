@@ -68,5 +68,29 @@ class HolderCheck(unittest.TestCase):
         self.assertIn(":installed is marked before :released", text)
 
 
+class HolderCutMap(unittest.TestCase):
+    """tests/campaign/native_cuts.py verify_holder_cut_map: the declared cuts,
+    the host's +fnn-holder-cuts+ and its markers agree both ways."""
+
+    def test_tree_agrees(self):
+        from tests.campaign import native_cuts
+        self.assertEqual(native_cuts.verify_holder_cut_map(), [])
+
+    def test_a_missing_host_name_or_marker_is_a_mismatch(self):
+        from tests.campaign import native_cuts
+        if not native_cuts.holder_cuts():
+            self.skipTest("no def-holder declaration in this tree")
+        host = (Path(__file__).resolve().parent.parent / native_cuts.HOLDER_CUTS_HOST).read_text()
+        dropped = host.replace('"fn-pio-file-holds-released"', "", 1)
+        text = "\n".join(native_cuts.verify_holder_cut_map(host_text=dropped))
+        self.assertIn("declared holder cut fn-pio-file-holds-released is not in +fnn-holder-cuts+", text)
+        unmarked = host.replace("(fnn-holder-cut :fn-pio-file-holds-decided)", "", 1)
+        text = "\n".join(native_cuts.verify_holder_cut_map(host_text=unmarked))
+        self.assertIn("is marked by no (fnn-holder-cut :fn-pio-file-holds-decided)", text)
+        extra = host.replace('"fn-pio-file-holds-released"', '"fn-pio-file-holds-released" "fn-ghost-decided"', 1)
+        text = "\n".join(native_cuts.verify_holder_cut_map(host_text=extra))
+        self.assertIn("+fnn-holder-cuts+ names fn-ghost-decided, which no def-holder declares", text)
+
+
 if __name__ == "__main__":
     unittest.main()

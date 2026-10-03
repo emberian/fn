@@ -1019,7 +1019,16 @@ def main(argv=None) -> int:
         print("statement route mismatch: " + problem)
     print("statement route: {} ({} cut)".format("FAIL" if statement else "PASS",
                                                   len(STATEMENT_CUTS)))
-    return 0 if report.ok and not arms and not statement else 1
+    # Lane def-holder: a declared holder's release cuts (books/def-holder.lisp,
+    # table fn-holder-cuts) and the host's +fnn-holder-cuts+ / markers agree
+    # both ways.
+    from tests.campaign.native_cuts import holder_cuts, verify_holder_cut_map
+    holder = verify_holder_cut_map()
+    for problem in holder:
+        print("holder cut mismatch: " + problem)
+    print("holder cuts: {} ({} cut(s) of {} declaration(s))".format(
+        "FAIL" if holder else "PASS", len(holder_cuts()), len({c[0] for c in holder_cuts()})))
+    return 0 if report.ok and not arms and not statement and not holder else 1
 
 
 if __name__ == "__main__":

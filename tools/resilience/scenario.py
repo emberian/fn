@@ -77,7 +77,7 @@ PENDING_BOUNDARIES = {
         "note": "issued read cancelled, immutable file incarnation retired, then completion discarded",
         "operations": ("read", "reader-snapshot"),
         "owner": "online-reclaim-8",
-        "kill_form": None,
+        "kill_form": "holder-fn-pio-file-holds-decided",
         "coordinate": "matching-image execution pending: source6a6302488 adds "
                       "FN_NATIVE_PAGE_IO_HOLD=RELEASE-FILE after real issue/token/fd/buffer "
                       "acquisition in fnn-extent-prefetch (host/native/extent.lisp). "
@@ -313,6 +313,22 @@ def boundary_registry() -> dict:
             "rule": rule, "rules": {r: rule for r in ROUTES},
             "operations": ["reclaim"], "actions": ["kill"],
             "selector": "FN_NATIVE_RECLAIM_FAULT", "selector_name": name, "executable": True}
+    # A declared holder's release cuts (books/def-holder.lisp, table
+    # fn-holder-cuts; lane def-holder): a :process-local or :durable effect's
+    # two cuts, NAME-decided and NAME-released, marked (fnn-holder-cut :CUT)
+    # and selected by FN_NATIVE_HOLDER_FAULT=CUT:kill.  The rule at either is
+    # "rebuilt": the tables are process memory, rebuilt empty at the open; a
+    # :physical effect's cuts are the reclaim list's own (registered above).
+    for decl, name, kind, host_list in native_cuts.holder_cuts():
+        if host_list != "+fnn-holder-cuts+":
+            continue
+        registry["holder-" + name] = {
+            "source": "books/def-holder.lisp (table fn-holder-cuts): " + decl,
+            "tables": ["HOLDER_CUTS"], "program": None, "book": None,
+            "rule": "rebuilt", "rules": {r: "rebuilt" for r in ROUTES},
+            "operations": ["read"], "actions": ["kill"],
+            "selector": "FN_NATIVE_HOLDER_FAULT", "selector_name": name,
+            "effect": kind, "executable": True}
     # The block replay backend's boundaries (W7d, adapters/power_loss.py):
     # a power cut at a recorded write boundary of the device under the
     # committing node (tools/power_loss.py, dm-log-writes), and one during
