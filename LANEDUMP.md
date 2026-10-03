@@ -1845,3 +1845,12 @@ Final certs underway. ACL2 bounded work credit removes manufactured1ms sleeps
 between empty slots during real source/buffer/output work; actual16384-byte
 source/all8-service raw fixture has0 sleeps, idle9/10turns still waits. Whole
 semantic decode, long-source keepalive/input and full GC/work cost remain open.
+
+Continuing S068 actual window conversion: fn-tcim-turn now serves both private
+TCPCL framing and actual incoming received-source publication.4096-octet
+descending windows retain exact logical suffix; no full vector/list conversion
+remains in either consumer. Guards and unconditional slice boundary warm-proved;
+actual raw framing/source/ACK/16384-byte service-credit fixtures pass. Exact
+window cert pending. Whole semantic decode, allocator/GC latency and long-job
+keepalive/input servicing remain open; fresh source-loaded processes are normal
+integration, saved images off the critical path.

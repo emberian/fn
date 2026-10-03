@@ -5,7 +5,7 @@
 (defvar *decoded* nil)
 (defun fnn-core (name &rest args)
  (case name
-  ((fn-tcf-at fn-tcf-begin fn-tcf-contactp fn-tcf-byte fn-tcf-span) (apply name args))
+  ((fn-tcim-turn fn-tcf-at fn-tcf-begin fn-tcf-contactp fn-tcf-byte fn-tcf-span) (apply name args))
   (fn-tcl-max-message 200000)
   (fn-tcl-host-segment-mru 100000)
   (fn-tcl-host-phase (first args))
