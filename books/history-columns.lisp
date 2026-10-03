@@ -104,7 +104,7 @@
  (defthm fn-hist-nth-past-len
    (implies (and (natp n) (<= (len x) n)) (equal (nth n x) nil))
    :hints (("Goal" :induct (nth n x)
-            :in-theory (union-theories '(nth len nfix natp zp car-cons cdr-cons)
+            :in-theory (union-theories '(nth len (:type-prescription len) nfix natp zp car-cons cdr-cons)
                                        (theory 'minimal-theory))))))
 
 (local
