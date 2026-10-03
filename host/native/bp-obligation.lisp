@@ -203,8 +203,8 @@
       ;; Routing: the carrier's hop is ACL2's choice over this Store's
       ;; bp-route table, at queue time (fn-bprt-job-route) and before the
       ;; offer (fn-bpnj-contact-next).
-      (unwind-protect
-           (let* ((routed (fnn-bps-use-store-routes service store))
+      (fnn-unwind-cleanups
+          ((let* ((routed (fnn-bps-use-store-routes service store))
                   (work-octets (fnn-octet-list (fnn-string-octets (first key))))
                   (attempt-octets
                     (fnn-octet-list (fnn-string-octets (second key))))
@@ -240,7 +240,7 @@
              (fnn-out "BP obligation request carrier durable work=~a attempt=~a generation=~d"
                       (first key) (second key) generation)
              (fnn-bps-attempt-ready service)
-             (fnn-bps-exit-code service))
+             (fnn-bps-exit-code service)))
         (fnn-bps-release service)))))
 
 ;;; `bp-obligation recover STORE WORKFLOW WORK ATTEMPT OUTCOME': the recovery

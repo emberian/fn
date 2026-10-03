@@ -1,5 +1,5 @@
 # Actual native entry candidates; discovery is not full trace coverage.
-^"coordinate"{ source_revision: "47c1ebc9242fb50ee6a1444eeb620e92de9750b9"
+^"coordinate"{ source_revision: "c7637e1a7eb615cbcc028c2461e214420c24f490"
  tier: "exact source discovery; public-image exposure and downstream reading unestablished" }
 ^"fnn-command-acl2"{
  @source: ~"../../../host/native/acl2-session.lisp"
@@ -67,58 +67,58 @@
 ^"fnn-command-bpo-owner-status"{
  @source: ~"../../../host/native/bp-obligation.lisp"
  line: 66
- source_sha256: "e3f028f45471e2b74d75e7d12d30e71f7fa341c6cee3cbadb2fd26f2e94b9f94"
- coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ source_sha256: "b73b8e9ab85cfa1f88ea887cde8f173eae6698adaeaff1d80a213b2c51258640"
+ coverage: "earlier source body read; source file changed; revisit exact definition"
  read_coordinate: "47c1ebc9242fb50ee6a1444eeb620e92de9750b9"
 }
 ^"fnn-command-bpo-owner-undertake"{
  @source: ~"../../../host/native/bp-obligation.lisp"
  line: 79
- source_sha256: "e3f028f45471e2b74d75e7d12d30e71f7fa341c6cee3cbadb2fd26f2e94b9f94"
- coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ source_sha256: "b73b8e9ab85cfa1f88ea887cde8f173eae6698adaeaff1d80a213b2c51258640"
+ coverage: "earlier source body read; source file changed; revisit exact definition"
  read_coordinate: "47c1ebc9242fb50ee6a1444eeb620e92de9750b9"
 }
 ^"fnn-command-bpo-owner-receipt"{
  @source: ~"../../../host/native/bp-obligation.lisp"
  line: 115
- source_sha256: "e3f028f45471e2b74d75e7d12d30e71f7fa341c6cee3cbadb2fd26f2e94b9f94"
- coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ source_sha256: "b73b8e9ab85cfa1f88ea887cde8f173eae6698adaeaff1d80a213b2c51258640"
+ coverage: "earlier source body read; source file changed; revisit exact definition"
  read_coordinate: "47c1ebc9242fb50ee6a1444eeb620e92de9750b9"
 }
 ^"fnn-command-bpo-owner-request"{
  @source: ~"../../../host/native/bp-obligation.lisp"
  line: 193
- source_sha256: "e3f028f45471e2b74d75e7d12d30e71f7fa341c6cee3cbadb2fd26f2e94b9f94"
+ source_sha256: "b73b8e9ab85cfa1f88ea887cde8f173eae6698adaeaff1d80a213b2c51258640"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "47c1ebc9242fb50ee6a1444eeb620e92de9750b9"
+ read_coordinate: "c7637e1a7 + scoped E011 edits"
 }
 ^"fnn-command-bpo-owner-recover"{
  @source: ~"../../../host/native/bp-obligation.lisp"
  line: 258
- source_sha256: "e3f028f45471e2b74d75e7d12d30e71f7fa341c6cee3cbadb2fd26f2e94b9f94"
- coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ source_sha256: "b73b8e9ab85cfa1f88ea887cde8f173eae6698adaeaff1d80a213b2c51258640"
+ coverage: "earlier source body read; source file changed; revisit exact definition"
  read_coordinate: "47c1ebc9242fb50ee6a1444eeb620e92de9750b9"
 }
 ^"fnn-command-bp-service-run"{
  @source: ~"../../../host/native/bp-service.lisp"
- line: 1510
- source_sha256: "b8ef1c57ae3f1f4ee58b69a107c212c0f0f5ed0e2c66c45379921e105763078d"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ line: 1509
+ source_sha256: "9b75977a699d97d64a12034c2e7d5f52e15d53d2b8404390050f0368c234f482"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "c7637e1a7 + scoped E011 edits"
 }
 ^"fnn-command-bp-service-resume"{
  @source: ~"../../../host/native/bp-service.lisp"
- line: 1542
- source_sha256: "b8ef1c57ae3f1f4ee58b69a107c212c0f0f5ed0e2c66c45379921e105763078d"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ line: 1541
+ source_sha256: "9b75977a699d97d64a12034c2e7d5f52e15d53d2b8404390050f0368c234f482"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "c7637e1a7 + scoped E011 edits"
 }
 ^"fnn-command-bp-service-inspect-received"{
  @source: ~"../../../host/native/bp-service.lisp"
- line: 1555
- source_sha256: "b8ef1c57ae3f1f4ee58b69a107c212c0f0f5ed0e2c66c45379921e105763078d"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ line: 1554
+ source_sha256: "9b75977a699d97d64a12034c2e7d5f52e15d53d2b8404390050f0368c234f482"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "c7637e1a7 + scoped E011 edits"
 }
 ^"fnn-command-bp-send"{
  @source: ~"../../../host/native/bp.lisp"

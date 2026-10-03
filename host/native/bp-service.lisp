@@ -1242,7 +1242,10 @@ profile and the generation selection, and recover.  HELD, when given, is a
 service of this process that already holds both locks on JOURNAL
 (fnn-bps-reopen-in-place): the recovery runs under them, takes neither
 again and releases neither on a failure (HELD's owner does)."
-  (let* ((profile-started (progn (fnn-bp-profile-points)
+  (let* ((profile-started (progn
+                                 (unless (or held (eq (fnn-bps-release-observation) :closed))
+                                   (fnn-indeterminate "bp-service: prior lock return remains unobserved"))
+                                 (fnn-bp-profile-points)
                                  (get-internal-real-time)))
          (root (fnn-bp-journal-dir journal))
          ; Shared journal ownership precedes cleanup and the lifecycle lock.
@@ -1250,33 +1253,26 @@ again and releases neither on a failure (HELD's owner does)."
          (spool-lock (if held
                          (fnn-bps-spool-lock held)
                          (fnn-tcl-spool-acquire root)))
-         ;; The selected generation names the lifecycle namespace this
-         ;; process reads and publishes into; generation 0 is "lifecycle".
-         (node-profile (handler-case (fnn-bps-read-profile root)
-                         (error (e)
-                           (unless held (fnn-tcl-spool-release spool-lock))
-                           (error e))))
+         (service nil) (returned nil))
+    (fnn-unwind-cleanups
+        ((setq service (make-fnn-bps :root root :spool-lock spool-lock
+                                      :lock-fd (and held (fnn-bps-lock-fd held))))
+         (let* ((node-profile (fnn-bps-read-profile root))
          (profile (fnn-core 'fn-bpnpf-node-profile-base node-profile))
-         (plan (handler-case
-                   (let* ((selected (fnn-bps-selection-plan root profile))
+         (plan (let* ((selected (fnn-bps-selection-plan root profile))
                           (admission (fnn-core 'fn-bprpf-selection-admit
                                                selected profile)))
                      (unless (eq (first admission) :ready)
                        (fnn-indeterminate "bp-service: checkpoint profile refusal: ~a"
                                           (second admission)))
-                     selected)
-                 (error (e)
-                   (unless held (fnn-tcl-spool-release spool-lock))
-                   (error e))))
+                     selected))
          (life (fnn-join root (fnn-core 'fn-bpnr-plan-directory plan)))
          ;; A reopen in place keeps the run's evidence (its tally).
          (tally (if held
                     (fnn-bps-tally held)
                     (make-fnn-bp-tally :config config :wall wall
                                        :wall-error wall-error
-                                       :journal root :spool-lock spool-lock)))
-         (service nil))
-    (handler-case
+                                       :journal root :spool-lock spool-lock))))
         (progn
           (handler-case
               (progn
@@ -1292,14 +1288,16 @@ again and releases neither on a failure (HELD's owner does)."
             (fnn-os-error (e)
               (fnn-indeterminate
                "bp-service: lifecycle namespace publication failed: ~a" e)))
-          (setq service
-                (make-fnn-bps
-                 :root root :lifecycle life :tally tally
-                 :spool-lock spool-lock
-                 :lock-fd (if held (fnn-bps-lock-fd held) (fnn-bps-lock root))
-                 :plan plan :profile profile :node-profile node-profile
-                 :state (fnn-core 'fn-bpnf-initial-state
-                                  config (first profile) (second profile))))
+          ;; Retain custody before evaluating the heavy ACL2 initial state.
+          (unless held (setf (fnn-bps-lock-fd service) (fnn-bps-lock root)))
+          (setf (fnn-bps-lifecycle service) life
+                (fnn-bps-tally service) tally
+                (fnn-bps-plan service) plan
+                (fnn-bps-profile service) profile
+                (fnn-bps-node-profile service) node-profile
+                (fnn-bps-state service)
+                (fnn-core 'fn-bpnf-initial-state
+                          config (first profile) (second profile)))
           (unless (eq (fnn-core 'fn-bpn-machine-invariantp
                                 (fnn-bps-base service)) t)
             (fnn-indeterminate "bp-service: invalid initial machine state"))
@@ -1369,13 +1367,14 @@ again and releases neither on a failure (HELD's owner does)."
                    "bp-service: recovered base machine invariant failed"))
                 (fnn-bps-fragment-progress service)
                 (fnn-bp-profile-open service profile-started)
-                service))))
-      (error (e)
-        (unless held
-          (if service
-              (fnn-bps-release service)
-            (fnn-tcl-spool-release spool-lock)))
-        (error e)))))
+                (setq returned t)
+                service))))))
+      ;; HELD owns both borrowed locks even if this recovery fails.
+      ;; Release retains the actual service when physical return is uncertain.
+      (when (and (not held) (not returned))
+        (if service
+            (fnn-bps-release service)
+          (fnn-tcl-spool-release spool-lock))))))
 
 (defun fnn-bps-reopen-in-place (service journal config wall wall-error)
   "Recover JOURNAL again into SERVICE, under the locks SERVICE holds (no
@@ -1513,8 +1512,8 @@ first first."
   (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit transfer-mru))
          (peer (fnn-bp-eid peer-id))
          (service (fnn-bps-open journal config wall wall-error)))
-    (unwind-protect
-         (let* ((adu (fnn-octet-list (fnn-read-regular-bounded adu-path transfer-mru)))
+    (fnn-unwind-cleanups
+        ((let* ((adu (fnn-octet-list (fnn-read-regular-bounded adu-path transfer-mru)))
                 (obs (fnn-bp-observation wall wall-error))
                 (work-octets (fnn-octet-list (fnn-string-octets work)))
                 (attempt-octets (fnn-octet-list (fnn-string-octets attempt)))
@@ -1536,7 +1535,7 @@ first first."
                              generation sequence route peer adu obs)))
            (fnn-bps-drive-effects service (fnn-bps-step service event))
            (fnn-bps-attempt-ready service)
-           (fnn-bps-exit-code service))
+           (fnn-bps-exit-code service)))
       (fnn-bps-release service))))
 
 (defun fnn-command-bp-service-resume (journal node-id lifetime crc-type
@@ -1544,12 +1543,12 @@ first first."
                                       &optional store-root)
   (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit transfer-mru))
          (service (fnn-bps-open journal config wall wall-error)))
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+        ((progn
            ;; [STORE]: route the queued jobs by that Store's bp-route table.
            (fnn-bps-use-store-routes service store-root)
            (fnn-bps-attempt-ready service)
-           (fnn-bps-exit-code service))
+           (fnn-bps-exit-code service)))
       (fnn-bps-release service))))
 
 (defun fnn-command-bp-service-inspect-received (frame-path adu-out)
