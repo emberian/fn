@@ -11427,6 +11427,9 @@ c5040b5e04564650002bdc9f3be4e08c5ef41a21017eb55398cf4ce39f24751c 1246 planning/e
 eed34f9d9879487e4939458235924f4ce529485c32f3816901e6238f0d3cebb1 2916 planning/evidence/served-live-sl3-2026-10-03/certify.log
 33065f0fbbadbedfcb1adf347e7e31dfe35e2bc607a8b25b32c69b92785279fe 2670 planning/evidence/served-live-sl3-2026-10-03/run.log
 4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865 2 planning/evidence/served-live-sl3-2026-10-03/status
+77dced13070c57c54f20af42118dee2ff127a4c0ef3cb56f8cd7a7a07ec882f1 192627 planning/evidence/served-matcher-consumer-20261003/adapter-repl.log.gz
+18a40b22558373db1ca131b4b689b5496e2b701a2b4061f223ae3af0bf3bbae1 2225 planning/evidence/served-matcher-consumer-20261003/checks.json
+2a92bae1ba285584a5c5254e05ee14c8d4ec7b3573d929aa2df74072464b1da2 418455 planning/evidence/served-matcher-consumer-20261003/stream-batch-repl.log.gz
 9c5964c6fc8c4215cf7a8edeb5f788c514303fc8b3fcefa70b9a4b87ee3628e4 4229 planning/evidence/served-msgid-index-cost-2026-09-23.md
 99b1e92bd775d777bf1fef111d719eab4fc4d4c4a3964253a7102acc23703300 11730 planning/evidence/served-path-cost-2026-09-24.md
 e8589cc09f039d9f7f579bf2c3a475b90656fd56998ae2fded98bb8aa62fee36 490 planning/evidence/served-path-cost-2026-09-24/after-image.sha256
