@@ -54,6 +54,14 @@ defconst becomes a defparameter and its defun loses its xargs declaration."
                        (defun fnn-indeterminate)
                        (defun fnn-os-fail)))
 
+;; Actual io-only consumer before owner installs collector runtime functions.
+;; Inactive instrumentation must not resolve a late-loaded callback.
+(let ((mutex (sb-thread:make-mutex :name "early extent declaration")))
+  (unless (equal (multiple-value-list
+                  (fnn-with-observed-mutex (mutex :extent :wait-p t) (values :early :inactive)))
+                 '(:early :inactive))
+    (error "inactive early physical mutex changed its values")))
+
 (load-deployed-forms "books/failure-scope.lisp"
                      '((defconst *fn-fs-indeterminate-classes*)
                        (defconst *fn-fs-fault-classes*)

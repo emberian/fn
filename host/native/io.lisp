@@ -161,7 +161,7 @@ observed after physical lock; release reserves under it, completes after unlock.
                 (when *fnn-native-observer*
                   (setq ,row (fnn-native-observation-reserve
                               (list :release *fnn-native-actor-identity* ,name) nil)))))
-         (fnn-native-observation-complete ,row)))))
+         (when ,row (fnn-native-observation-complete ,row))))))
 
 
 (defvar *fnn-section-step* nil

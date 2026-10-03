@@ -244,3 +244,15 @@ Collector structures/runtime functions remain in owner and are available
 before workers run. Extent can compile against the actual macro without an
 early duplicate declaration or build-order change. The fixture extracts that
 actual io macro/variable ownership.
+
+An actual inactive io-only mutex invocation before owner loading refuted the
+unconditional completion callback (undefined owner function). The shared macro
+now resolves that callback only when a release row was reserved; disabled
+instrumentation has no dependency on the late collector. Baseline fails at
+that exact early consumer; repaired source passes all active schedules.
+
+Extent condition waits internally release/reacquire E, including timed waits
+that return without ownership. Empirical wraps only exact non-wait critical
+sections. Missing wait-edge/P/other O producers make full comparison
+unavailable; a coarse wrapper around a hidden wait cannot realize its
+physical lock interval. No scheduling rewrite is part of this observer slice.
