@@ -5999,7 +5999,9 @@ enters the section, which reads the head again under the mutex."
       (when (fnn-owner-cold-read-windowp read) (fnn-owner-cold-cancel read))
       (handler-case (fnn-owner-cold-settle-locked service read)
         (serious-condition (condition)
-          (unless (fnn-owner-cold-read-settledp read) (error condition)))))))
+          (unless (fnn-owner-cold-read-settledp read) (error condition))))))
+  (when (fnn-extent-executor-discard-idle)
+    (fnn-fault "cold workers retain terminal cleanup debt")))
 
 (defun fnn-owner-cold-await (service read &optional line-since)
   "Await an already-captured read off owner lock. Return the core dependency
@@ -7933,15 +7935,12 @@ torn last entry follows.  Answers the offset the writer resumes at."
       (fnn-close rfd))))
 
 (defun fnn-owner-journal-close ()
-  "After the writer stopped: observe descriptor close without silent release."
+  "After writer join, consume fd once; any log/journal close debt stays uncertain."
   (let ((fd *fnn-journal-fd*))
+    (setq *fnn-journal-fd* nil *fnn-journal-w* nil)
     (if fd
-        (handler-case
-            (progn (fnn-close fd)
-                   (setq *fnn-journal-fd* nil *fnn-journal-w* nil)
-                   :closed)
-          (error () :uncertain))
-      :absent)))
+        (fnn-log-physical-close fd :decision-journal)
+      (if (eq (fnn-log-close-debt-observation) :closed) :absent :uncertain))))
 
 (defun fnn-owner-open-log (path)
   (fnn-open path
@@ -7952,6 +7951,8 @@ torn last entry follows.  Answers the offset the writer resumes at."
 (defvar *fnn-owner-log-handled* 0)
 
 (defun fnn-owner-maybe-reopen-log (service)
+  (unless (eq (fnn-log-close-debt-observation) :closed)
+    (fnn-indeterminate "service log physical return remains unobserved"))
   (let ((requested *fnn-sighup-count*))
     (unless (= requested *fnn-owner-log-handled*)
       (let ((decision (fnn-owner-serialized
@@ -7972,43 +7973,29 @@ torn last entry follows.  Answers the offset the writer resumes at."
                 (fnn-log-swap-fd fd)
                 (fnn-owner-log 'fn-owner-log-line))
             (error (condition)
-              ;; The old descriptor stays: a failed reopen loses no line.
+              ;; Before transfer the old descriptor stays; after transfer a
+              ;; close fault is retained by the log debt ledger.
               (fnn-err "service log reopen failed: ~a" condition))))
         (setq *fnn-owner-log-handled* (second decision))))))
 
+(def-actor fnn-owner-spawn-listener :thread-name "fn owner accept" :roster t)
+(def-actor fnn-owner-spawn-tls-listener :thread-name "fn owner TLS accept" :roster t)
+(def-actor fnn-owner-spawn-maintenance :thread-name "fn owner maintenance" :roster t)
+
 (defun fnn-owner-start-tls-accept (service listener &optional (implicit-tls t))
-  "PRF-162: accept implicit-TLS clients on LISTENER until the service stops.
-With IMPLICIT-TLS nil, a further plain listener's clients (NNT-041).  The
-thread is a worker, so the stop joins it with the clients."
-  (fnn-with-roster (service)
-    (let ((thread
-            (sb-thread:make-thread
-             (lambda ()
-               (unwind-protect
-                    (handler-case
-                        (loop
-                          (when (or *fnn-sigterm-requested*
-                                    (fnn-owner-service-stopping service))
-                            (return))
-                          (fnn-owner-accept-one service listener 1 implicit-tls))
-                      ;; A client's event is no condition here (fnn-accept-
-                      ;; observe names it and this loop goes on).  What is
-                      ;; left is the listener's own failure or a defect: past
-                      ;; a stop it is the stop; otherwise the node would serve
-                      ;; on with this port dead, so it is the owner's fault,
-                      ;; named, as the control accept loop's is.
-                      (serious-condition (condition)
-                        (unless (or *fnn-sigterm-requested*
-                                    (fnn-owner-service-stopping service))
-                          (fnn-err "owner ~:[~;TLS ~]listener: ~a" implicit-tls condition)
-                          (ignore-errors (fnn-owner-fault-service service nil condition)))))
-                 (fnn-with-roster (service)
-                   (setf (fnn-owner-service-workers service)
-                         (delete sb-thread:*current-thread*
-                                 (fnn-owner-service-workers service) :test #'eq)))))
-             :name (if implicit-tls "fn owner TLS accept" "fn owner accept"))))
-      (push thread (fnn-owner-service-workers service))
-      thread)))
+  "Registered secondary listener; preserve its custody through physical join.
+Only the stopped listener's named socket condition is ordinary shutdown."
+  (funcall (if implicit-tls #'fnn-owner-spawn-tls-listener #'fnn-owner-spawn-listener)
+    service (list listener)
+    (lambda ()
+      (handler-case
+          (loop
+            (when (or *fnn-sigterm-requested* (fnn-owner-service-stopping service)) (return))
+            (fnn-owner-accept-one service listener 1 implicit-tls))
+        (sb-bsd-sockets:socket-error (condition)
+          (unless (or *fnn-sigterm-requested* (fnn-owner-service-stopping service))
+            (error condition)))))
+    (lambda (condition) (fnn-owner-thread-escape service condition "owner listener"))))
 
 (defun fnn-owner-maintenance-tick (service)
   "The owner's maintenance between accepts: settle returned cold reads, the
@@ -8028,30 +8015,15 @@ retiring node's drain step (row S9, host/native/admin.lisp)."
 ;;; it left); the stop joins it with the other workers.  A fault in it is the
 ;;; owner's, named, as an accept worker's is.
 (defun fnn-owner-start-maintenance (service)
-  (fnn-with-roster (service)
-    (let ((thread
-            (sb-thread:make-thread
-             (lambda ()
-               (unwind-protect
-                    (handler-case
-                        (loop
-                          (when (or *fnn-sigterm-requested*
-                                    (fnn-owner-service-stopping service))
-                            (return))
-                          (fnn-owner-maintenance-tick service)
-                          (sleep 1))
-                      (serious-condition (condition)
-                        (unless (or *fnn-sigterm-requested*
-                                    (fnn-owner-service-stopping service))
-                          (fnn-err "owner maintenance: ~a" condition)
-                          (ignore-errors (fnn-owner-fault-service service nil condition)))))
-                 (fnn-with-roster (service)
-                   (setf (fnn-owner-service-workers service)
-                         (delete sb-thread:*current-thread*
-                                 (fnn-owner-service-workers service) :test #'eq)))))
-             :name "fn owner maintenance")))
-      (push thread (fnn-owner-service-workers service))
-      thread)))
+  "Registered maintenance actor. A late store or unknown fault still reaches
+the shared classifier after stop; cleanup return is not physical join."
+  (fnn-owner-spawn-maintenance service '(:maintenance)
+    (lambda ()
+      (loop
+        (when (or *fnn-sigterm-requested* (fnn-owner-service-stopping service)) (return))
+        (fnn-owner-maintenance-tick service)
+        (sleep 1)))
+    (lambda (condition) (fnn-owner-thread-escape service condition "owner maintenance"))))
 
 (defun fnn-owner-accept (service listener once)
   ;; Darwin does not reliably wake a blocking accept(2) when another context
@@ -8156,6 +8128,11 @@ fn-osd-drain-stops-by-the-deadline).  Nothing here compares times or counts."
   "Install DEFAULT's partial pool before Store recovery registers any file.
 RETAIN records constructor custody immediately after the core installation;
 the caller joins any partial executor before relinquishing run authority."
+  ;; A failed arena callback can precede any returned Store carrier. Retain
+  ;; this run's authority before refusing replacement backing constructors.
+  (unless (eq (fnn-arena-return-observation nil) :closed)
+    (funcall retain)
+    (fnn-indeterminate "cold startup: prior arena return remains unobserved"))
   (let* ((profile (fnn-heap-store-profile root))
          (core (fnn-heap-image-observation))
          (plan (fnn-core 'fn-prstartup-default-plan
@@ -8351,11 +8328,14 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                    (when (and page-read-started (null service))
                      ;; Recovery/startup failed before publishing SERVICE.
                      ;; Join actual workers before Store/run authority can
-                     ;; settle. A join escape preserves the retained authority.
+                     ;; settle. Both a join escape and retained constructor/
+                     ;; decoder custody preserve the retained authority.
                      (setq log-close-action
                            (fnn-core 'fn-ort-report-close-action nil :unobserved))
                      (fnn-extent-executor-stop)
-                     (setq log-close-action nil))
+                     (when (and (fnn-extent-executor-drained-p)
+                                (eq (fnn-arena-return-observation nil) :closed))
+                       (setq log-close-action nil)))
                    (when service
                     ;; Journal closure has not been observed. Retain Store
                     ;; authority if worker/module cleanup escapes before the
@@ -8407,6 +8387,8 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                      '("syncer operation or physical custody remains"))
                                    (unless (fnn-owner-output-drained-p service)
                                      '("output operation or physical dependency remains"))
+                                   (unless (fnn-extent-executor-drained-p)
+                                     '("cold executor custody remains"))
                                    (unless (fnn-mux-drained-p service)
                                      '("mux loop or terminal cleanup debt remains"))
                                    (unless (every (lambda (slot)
@@ -8424,6 +8406,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                  (fnn-mux-drained-p service)
                                  (fnn-owner-syncer-drained-p service)
                                  (fnn-owner-output-drained-p service)
+                                 (fnn-extent-executor-drained-p)
                                  (null (fnn-with-roster (service)
                                          (fnn-owner-service-workers service)))
                                  (null (fnn-owner-service-cold-head service))

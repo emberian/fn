@@ -10,6 +10,7 @@
   (lock (sb-thread:make-mutex :name "native-trace")))
 (defvar *fnn-trace-state* nil)
 (defvar *fnn-trace-parent* nil)
+(defvar *fnn-trace-parent-state* nil)
 (defvar *fnn-trace-operation* nil)
 (defvar *fnn-trace-connection-generation* nil)
 
@@ -31,7 +32,7 @@ is INTERNAL-TIME-UNITS-PER-SECOND, not a promised microsecond clock."
 
 (defun fnn-trace-configure ()
   "Explicit process diagnostic options; no saved build-host trace state."
-  (setf *fnn-trace-state* nil *fnn-trace-parent* nil)
+  (setf *fnn-trace-state* nil *fnn-trace-parent* nil *fnn-trace-parent-state* nil)
   (when (equal (sb-ext:posix-getenv "FN_TRACE") "1")
     (let ((mode (sb-ext:posix-getenv "FN_TRACE_ALLOC")))
       (fnn-trace-start
@@ -58,7 +59,9 @@ is INTERNAL-TIME-UNITS-PER-SECOND, not a promised microsecond clock."
       (when (zerop (mod (1- id) (fnn-trace-state-sample-every state)))
         (if (< (fnn-trace-state-next state) (length (fnn-trace-state-rows state)))
             (let ((row (%make-fnn-trace-row
-                        :id id :parent *fnn-trace-parent* :cid cid :operation operation
+                        :id id :parent (and (eq state *fnn-trace-parent-state*)
+                                            *fnn-trace-parent*)
+                        :cid cid :operation operation
                         :connection-generation connection-generation :phase phase
                         :allocation-scope (fnn-trace-state-allocation state))))
               (setf (aref (fnn-trace-state-rows state) (fnn-trace-state-next state)) row)
@@ -94,6 +97,7 @@ one special-variable test, no identity evaluation, clock read or thunk."
                              (and (fnn-trace-state-allocation ,state) (sb-ext:get-bytes-consed)) t))
                  (if ,ready
                      (let* ((*fnn-trace-parent* (fnn-trace-row-id ,row))
+                            (*fnn-trace-parent-state* ,state)
                             (*fnn-trace-operation* (fnn-trace-row-operation ,row))
                             (*fnn-trace-connection-generation* (fnn-trace-row-connection-generation ,row))
                             (,outcome :nonlocal-exit))
@@ -108,15 +112,32 @@ one special-variable test, no identity evaluation, clock read or thunk."
              (progn ,@body)))
        (progn ,@body))))
 
+(defun fnn-trace-snapshot (state)
+  "Snapshot completed immutable rows and counters under the collector lock.
+A row is published once by FINISH; no writer changes a completed interval.
+Formatting, sorting and destination I/O must occur after this lock is free."
+  (sb-thread:with-mutex ((fnn-trace-state-lock state))
+    (let* ((recorded (fnn-trace-state-next state))
+           (rows (make-array recorded :initial-element nil)) (incomplete 0))
+      (dotimes (i recorded)
+        (let ((row (aref (fnn-trace-state-rows state) i)))
+          (if (eq (fnn-trace-row-outcome row) :active)
+              (incf incomplete)
+            (setf (aref rows i) row))))
+      (values rows (fnn-trace-state-attempts state) recorded
+              (fnn-trace-state-dropped state) incomplete
+              (fnn-trace-state-sample-every state)))))
+
 (defun fnn-trace-report (&optional (stream *error-output*))
-  "JSON lines from the bounded sink. Intended after workers have joined.
-No condition strings, objects, thread names, peer addresses or payloads."
-  (when *fnn-trace-state*
-    (let ((state *fnn-trace-state*))
-      (sb-thread:with-mutex ((fnn-trace-state-lock state))
-        (dotimes (i (fnn-trace-state-next state))
-          (let ((row (aref (fnn-trace-state-rows state) i)))
-            (unless (eq (fnn-trace-row-outcome row) :active)
+  "JSON lines from a bounded snapshot. Destination I/O never holds the sink
+mutex; no conditions, thread names, addresses or payloads are serialized."
+  (let ((state *fnn-trace-state*))
+    (when state
+      (multiple-value-bind (rows attempts recorded dropped incomplete sample-every)
+          (fnn-trace-snapshot state)
+        (dotimes (i recorded)
+          (let ((row (aref rows i)))
+            (when row
               (format stream
                       "~&FN_TRACE {\"type\":\"span\",\"span_id\":~d,\"parent_id\":~a,\"connection_id\":~a,\"operation_id\":~a,\"connection_generation\":~a,\"phase\":\"~(~a~)\",\"start_us\":~d,\"duration_us\":~d,\"allocated_bytes\":~a,\"allocation_scope\":\"~(~a~)\",\"outcome\":\"~(~a~)\"}~%"
                       (fnn-trace-row-id row) (or (fnn-trace-row-parent row) "null")
@@ -128,43 +149,34 @@ No condition strings, objects, thread names, peer addresses or payloads."
                       (or (fnn-trace-row-allocation-scope row) :disabled)
                       (fnn-trace-row-outcome row)))))
         (format stream "~&FN_TRACE {\"type\":\"summary\",\"attempts\":~d,\"recorded\":~d,\"dropped\":~d,\"incomplete\":~d,\"sample_every\":~d,\"clock_ticks_per_second\":~d}~%"
-                (fnn-trace-state-attempts state) (fnn-trace-state-next state)
-                (fnn-trace-state-dropped state)
-                (count :active (fnn-trace-state-rows state) :key
-                       (lambda (row) (and row (fnn-trace-row-outcome row))))
-                (fnn-trace-state-sample-every state)
-                internal-time-units-per-second))
-      (finish-output stream))))
+                attempts recorded dropped incomplete sample-every internal-time-units-per-second)
+        (finish-output stream)))))
 
 (defun fnn-trace-hotspots (&optional (stream *error-output*) (limit 10))
   "Rank the existing bounded sink without dumping every chronological row.
 Totals are inclusive process/nested observations, never unique allocation or
-retained heap. Snapshot aggregation holds only the private trace leaf mutex;
-sorting and output happen after release. The sink remains available."
+retained heap. Completed-row snapshot holds only the private trace leaf mutex;
+aggregation, sorting and output happen after release. The sink remains available."
   (unless (and (integerp limit) (plusp limit))
     (error "trace hotspot limit must be a positive integer"))
-  (let ((state *fnn-trace-state*) (groups (make-hash-table :test 'equal))
+  (let ((state *fnn-trace-state*) (groups (make-hash-table :test 'equal)) (snapshot nil)
         (attempts 0) (recorded 0) (dropped 0) (incomplete 0) (sample-every 1))
     (when state
-      (sb-thread:with-mutex ((fnn-trace-state-lock state))
-        (setf attempts (fnn-trace-state-attempts state)
-              recorded (fnn-trace-state-next state)
-              dropped (fnn-trace-state-dropped state)
-              sample-every (fnn-trace-state-sample-every state))
-        (dotimes (i recorded)
-          (let ((row (aref (fnn-trace-state-rows state) i)))
-            (if (eq (fnn-trace-row-outcome row) :active)
-                (incf incomplete)
-              (let* ((key (list (fnn-trace-row-phase row) (fnn-trace-row-allocation-scope row)))
-                     ;; samples, duration, allocation samples, bytes, max bytes.
-                     (stats (or (gethash key groups)
-                                (setf (gethash key groups) (vector 0 0 0 0 0)))))
-                (incf (aref stats 0))
-                (incf (aref stats 1) (fnn-trace-row-duration row))
-                (when (fnn-trace-row-bytes row)
-                  (incf (aref stats 2))
-                  (incf (aref stats 3) (fnn-trace-row-bytes row))
-                  (setf (aref stats 4) (max (aref stats 4) (fnn-trace-row-bytes row)))))))))
+      (multiple-value-setq (snapshot attempts recorded dropped incomplete sample-every)
+        (fnn-trace-snapshot state))
+      (dotimes (i recorded)
+        (let ((row (aref snapshot i)))
+          (when row
+            (let* ((key (list (fnn-trace-row-phase row) (fnn-trace-row-allocation-scope row)))
+                   ;; samples, duration, allocation samples, bytes, max bytes.
+                   (stats (or (gethash key groups)
+                              (setf (gethash key groups) (vector 0 0 0 0 0)))))
+              (incf (aref stats 0))
+              (incf (aref stats 1) (fnn-trace-row-duration row))
+              (when (fnn-trace-row-bytes row)
+                (incf (aref stats 2))
+                (incf (aref stats 3) (fnn-trace-row-bytes row))
+                (setf (aref stats 4) (max (aref stats 4) (fnn-trace-row-bytes row))))))))
       (let ((rows (loop for key being the hash-keys of groups using (hash-value stats)
                         collect (cons key stats))))
         ;; Allocation-enabled groups rank by mean allocated bytes. Clock-only

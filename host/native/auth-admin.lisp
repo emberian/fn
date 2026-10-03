@@ -171,28 +171,30 @@ production image, which refuses to start with the variable set."
     info))
 
 (defun fnn-native-auth-admin-open-lock (path)
-  (let ((fd nil))
-    (handler-case
-        (setq fd (fnn-open path
-                           (logior sb-posix:o-rdwr sb-posix:o-creat
-                                   +fnn-o-nofollow+)
-                           #o600))
-      (fnn-os-error (condition)
-        (if (= (fnn-os-errno condition) sb-posix:eloop)
-            (fnn-refuse "AUTHINFO administration lock is a symlink")
-          (error condition))))
-    (handler-case
-        (progn
-          (unless (fnn-regular-p (fnn-fstat fd))
-            (fnn-refuse "AUTHINFO administration lock is not regular"))
-          (fnn-flock fd (logior +fnn-lock-ex+ +fnn-lock-nb+))
-          fd)
-      (fnn-os-error ()
-        (fnn-close fd)
-        (fnn-refuse "AUTHINFO credential registry is already locked"))
-      (error (condition)
-        (fnn-close fd)
-        (error condition)))))
+  (let ((fd nil) (returned nil))
+    (fnn-unwind-cleanups
+        ((setq fd
+               (handler-case
+                   (fnn-open path
+                             (logior sb-posix:o-rdwr sb-posix:o-creat
+                                     +fnn-o-nofollow+)
+                             #o600)
+                 (fnn-os-error (condition)
+                   (if (= (fnn-os-errno condition) sb-posix:eloop)
+                       (fnn-refuse "AUTHINFO administration lock is a symlink")
+                     (error condition)))))
+         (unless (fnn-regular-p (fnn-fstat fd))
+           (fnn-refuse "AUTHINFO administration lock is not regular"))
+         (handler-case
+             (fnn-flock fd (logior +fnn-lock-ex+ +fnn-lock-nb+))
+           (fnn-os-error (condition)
+             (if (member (fnn-os-errno condition)
+                         (list sb-posix:eagain sb-posix:eacces))
+                 (fnn-refuse "AUTHINFO credential registry is already locked")
+               (error condition))))
+         (setq returned t)
+         fd)
+      (when (and fd (not returned)) (fnn-close fd)))))
 
 (defun fnn-native-auth-admin-recovery-step (phase event)
   (let ((next (fnn-native-auth-admin-core
@@ -521,17 +523,18 @@ MAX-CREDENTIALS is the store profile's max-credentials (D27, PRF-102)."
   (multiple-value-bind (final lock stage directory)
       (fnn-native-auth-admin-paths auth-path)
     (fnn-native-auth-admin-check-directory directory)
-    (let ((lock-fd (fnn-native-auth-admin-open-lock lock))
+    (let ((lock-fd nil)
           (*fnn-native-auth-admin-cut-callback*
             (or *fnn-native-auth-admin-cut-callback*
                 (fnn-native-auth-admin-test-cut))))
-      (unwind-protect
-           (let* ((presentp
+      (fnn-unwind-cleanups
+           ((setq lock-fd (fnn-native-auth-admin-open-lock lock))
+            (let* ((presentp
                     (fnn-native-auth-admin-recover stage final directory))
                   (octets (fnn-native-auth-admin-read-held final presentp
                                                            max-credentials)))
              (fnn-native-auth-admin-execute-held
               plan-result final stage directory octets presentp
-              max-credentials))
-        (ignore-errors (fnn-flock lock-fd +fnn-lock-un+))
-        (fnn-close lock-fd)))))
+              max-credentials)))
+        (when lock-fd (fnn-flock lock-fd +fnn-lock-un+))
+        (when lock-fd (fnn-close lock-fd))))))

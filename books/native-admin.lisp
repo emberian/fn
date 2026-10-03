@@ -1394,6 +1394,14 @@
 (encapsulate ()
 (local (defthm kind-of-result
   (equal (fn-native-admin-result-kind (fn-native-admin-result s r k n c p v)) k)))
+(local (defthm consumer-plan-neither-create-nor-retire
+  (and (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-consumer-plan words argv)) :create-group))
+       (not (equal (fn-native-admin-result-kind
+                    (fn-native-admin-consumer-plan words argv)) :remove-group)))
+  :hints (("Goal" :in-theory
+           '(fn-native-admin-consumer-plan kind-of-result
+             (:executable-counterpart equal))))))
 (local (defthm status-of-result
   (equal (fn-native-admin-result-status (fn-native-admin-result s r k n c p v)) s)))
 (local (defthm name-of-result
@@ -1453,6 +1461,7 @@
                                    fn-native-admin-control-plan
                                    fn-native-admin-moderate-plan
                                    fn-native-admin-describe-plan
+                                   fn-native-admin-consumer-plan
                                    fn-native-admin-motd-plan
                                    fn-native-admin-access-plan
                                    fn-native-admin-peer-extend-plan))

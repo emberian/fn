@@ -2090,6 +2090,16 @@
   :class ::common-lisp-compliant
   :keystones (fn-splan-window-size-is-positive-until-done))
 
+; Shared ARTICLE/HEAD/BODY plans consumed by native NNTP and Web. Predicates
+; have guard T. The retained renderer still uses its logical counterpart:
+; complete renderer source guards and host/reference refinement remain owed.
+(definterface fn-asto-plan-articlep :class :common-lisp-compliant)
+(definterface fn-asto-plan-cursorp :class :common-lisp-compliant)
+(definterface fn-asto-preflight-planp :class :common-lisp-compliant)
+(definterface fn-asto-plan-render-window
+  :class :ideal
+  :keystones ((fn-ast-render-window-byte-bound :via fn-ast-render-window)))
+
 (definterface fn-splan-cursor-step
   :class ::common-lisp-compliant
   :kinds ((w natp))
@@ -2107,6 +2117,27 @@
 (definterface fn-splan-window-size
   :class ::common-lisp-compliant
   :keystones (fn-splan-window-size-is-positive-until-done))
+
+; Consumed by native owner/mux. LIST is a distinct query residual subject;
+; the old Splan prefix/CW theorems do not establish this facade's contract.
+; PRF-1287 tracks the full query prefix/residual/progress and captured-view
+; boundary. These entries' own guards are verified; W is the only kind gate.
+(definterface fn-qplan-donep
+  :class :common-lisp-compliant)
+
+(definterface fn-qplan-at-cursorp
+  :class :common-lisp-compliant)
+
+(definterface fn-qplan-window-size
+  :class :common-lisp-compliant)
+
+(definterface fn-qplan-window
+  :class :common-lisp-compliant
+  :kinds ((w natp)))
+
+(definterface fn-qplan-cursor-step
+  :class :common-lisp-compliant
+  :kinds ((w natp)))
 
 ; -----------------------------------------------------------------------------
 ; nntp/served (21 entries)
@@ -4623,6 +4654,11 @@
 ;; books/payload-extent-read.lisp
 
 (definterface fn-owner-chunk-span :class :program)
+
+; One retained preflight quantum, with selection installed once on READY;
+; replay consumes the immutable render plan without repeating authority.
+; PROGRAM owner installation and complete guard/refinement bridge are open.
+(definterface fn-owner-article-ready-plan-step :class :program)
 (definterface fn-owner-unavailable-line-at :class :program)
 (definterface fn-store-sco-decode :class :program)
 (definterface fn-store-sco-decode-finish :class :program)
@@ -5255,6 +5291,7 @@
 (definterface fn-owner-payload-view-release :class :program)
 (definterface fn-owner-payload-view-reset :class :program)
 (definterface fn-pvl-runtime-step :class ::common-lisp-compliant)
+(definterface fn-pvl-runtime-return-step :class ::common-lisp-compliant)
 (definterface fn-owner-payload-view-owned-p :class :program)
 
 ; Stage 0 (D46): host/account-adoption-interfaces.lisp is not included; its
@@ -5424,6 +5461,8 @@
  :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-read-is-history-row))
 (definterface fn-hist$p-append :class ::common-lisp-compliant
  :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-append-keeps-wfp))
+(definterface fn-hist$p-dispose :class ::common-lisp-compliant)
+(definterface fn-hrecs$s-dispose :class ::common-lisp-compliant)
 (definterface fn-owner-hroot-resize :class :program)
 (definterface fn-owner-hroot-begin :class :program)
 (definterface fn-owner-hroot-abandon :class :program)
@@ -5433,6 +5472,7 @@
 (definterface fn-owner-hroot-detach :class :program)
 (definterface fn-owner-hroot-pin-funded :class :program)
 (definterface fn-owner-hroot-retire :class :program)
+(definterface fn-owner-hroot-retire-word :class :program)
 (definterface fn-owner-hroot-return :class :program)
 (definterface fn-owner-hroot-read-plan :class :program)
 (definterface fn-owner-hroot-read-owned :class :program)
@@ -5528,3 +5568,15 @@
 
 ; Single-candidate continuation; producer guard/refinement is PRF1309.
 (definterface fn-bpsg-acquire-turn :class :common-lisp-compliant)
+; DEFAULT launcher backing; actual host consumers share captured observations.
+(definterface fn-prstartup-extend-default-reservation :class :common-lisp-compliant)
+(definterface fn-prstartup-extend-operation-reservation :class :common-lisp-compliant)
+
+; Actual bounded BP heap projection and stopping-aware log admission consumers.
+(definterface fn-bph-command-plan :class :common-lisp-compliant)
+(definterface fn-bph-refusal-line :class :common-lisp-compliant)
+(definterface fn-log-sink-offer-live :class :common-lisp-compliant)
+; STATUS/HEALTH project the accepted configuration, never run-only NIL fields.
+(definterface fn-native-operator-host-result-config :class :program)
+(definterface fn-native-config-cold-resources :class :common-lisp-compliant)
+(definterface fn-native-config-output-resources :class :common-lisp-compliant)

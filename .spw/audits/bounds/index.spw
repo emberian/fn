@@ -1,0 +1,100 @@
+# Hardcoded limits and allocation boundary audit
+^"coordinate"{
+ consumer_revision: "9df4a3a4e6ebd22574f1ca49471d806ad5159d7c"
+ workbench_revision: "651b535b5171e9ed419570f4cd64b53914094433"
+ @machines: ~"../../machines.spw"
+ @candidates: ~"./constant-candidates.json"
+ coverage: "Initial executable leaf traces; candidate discovery is not full semantic coverage"
+}
+^"B001-redeem"{
+ source_revision: "ea86cf888"
+ public_revision: "aa1ad2191"
+ @host: ~"../../../host/native/io.lisp"
+ @policy: ~"../../../books/native-redeem-input.lisp"
+ symbols: "fnn-redeem-read-password / fnn-redeem-read-line / fnn-command-redeem"
+ units: "octets per wire command/reply and lifetime retained secret"
+ classification: "Wire representation constraint applied too late and with wrong width"
+ domain: "RFC3977 command510 content+CRLF512; credential usable via AUTHINFO PASS prefix14 =>496"
+ trace: "read-line consumes unlimited input before512 check; reply LF bypasses4096 check entirely; raw CODE/LOGIN interpolation admits CRLF injection; password512 cannot fit command nor later AUTHINFO PASS"
+ repair: "horse-bounds worktree source ready; ACL2 admissions before password retention/reply interpretation, shared core wire constructor; overlong reply is loss so post-password uncertainty remains distinct"
+ tests: "SCN-1132 actual-source SBCL PASS; final ACL2 policy/constructor guards and2theorems435steps/0.18ACL2s plus13literalteeth admitted. Integration composed password-stage fix and actual command fixture, source tests PASS; normal certification and matching image pending"
+}
+^"B002-catchup-retention"{
+ @host: ~"../../../host/native/pull-service.lisp"
+ @core: ~"../../../books/peer-catchup.lisp"
+ symbols: "fn-cu-on-line / fn-cu-step / fn-cu-on-end / fnn-pull-flight-read"
+ units: "article octets requested per batch, retained cons cells across flight lifetime"
+ classification: "262144 request quantum is outbound advice;1048576 line ceiling is local safety policy; neither admits lifetime allocation"
+ domain: "First record may legally exceed quantum, count is u64, repeated512-byte reads"
+ trace: "peer sends status then R header with large u64 count, endless short lines; every line retained before digest/authenticity verdict; on-end joins/hash materializes whole articles; read-limit bounds only one read"
+ repair: "Bounds owns; independent installed peer-flight allocation grant producer does not exist; Foundations contacted. Require actual whole-footprint admission plus concrete retained/spooled source and streamed verification, not borrowed output/syncer funds or higher constant"
+ tests: "Source-confirmed full executable trace; concrete malicious fixture and repair pending"
+}
+^"B003-app-journal"{
+ @core: ~"../../../books/app-journal.lisp"
+ @host: ~"../../../host/native/workflow.lisp"
+ symbols: "fn-aj-statep / fn-aj-fits-p / fn-aj-authorize / fnn-app-journal-append"
+ units: "Lifetime record count4096; workflow aggregate16MiB; receipt aggregate64MiB"
+ classification: "Arbitrary lifetime data ceilings, not format widths or scheduling quanta"
+ domain: "Permanent prepare/outcome/receipt history preserves uniqueness and obligations"
+ trace: "After4096 durable records, next prepare refuses journal-admission forever; reserve-resolutionp keeps one outcome slot but does not permit future history growth"
+ repair: "Owned bounds finding; profile/replay/namespace/reclamation design pending, BP confirms no parallel repair. Never delete receipt or transaction evidence to evade cap"
+}
+^"B004-refuted-consumer-secret"{
+ @core: ~"../../../books/consumer-local-control.lisp"
+ @host: ~"../../../host/native/consumer-local.lisp"
+ symbols: "fn-ncl-secretp / fn-ncl-secret-of-file / fnn-command-consumer-local"
+ units: "secret496 + terminalCRLF2 = file498"
+ classification: "Coherent format bound; initial497+CRLF hypothesis refuted by full definition"
+ trace: "Actual fn-ncl-max-secret is496, so existing498-byte file read admits full legal secret with CRLF"
+ repair: "No source change needed; redeem now shares usable496 credential domain"
+}
+^"B005-reviewed-format-policy-clusters"{
+ @bp: ~"../../../books/bp-adu.lisp"
+ @profile: ~"../../../books/bp-node-profile.lisp"
+ @config: ~"../../../books/config.lisp"
+ @node-secret: ~"../../../books/node-secret.lisp"
+ classification: "BP2^24 profile ceiling is a representation policy, not uint32 codec limit;1024 config rows bound one delta, not whole table; node-secret epoch2^32 and identity2^16 are explicit4/2octet formats"
+ trace: "Full bp-adu request/encode definitions, config delta predicates/callers, node-secret per-entry read/rotation inspected; ring is separate files so per-file bound does not cap total ring"
+ repair: "BP profile ceiling requires format/profile evolution review; config row delta and node-secret per-file bounds are not defective merely because literal"
+}
+^"B006-publication-fd-debt"{
+ @host: ~"../../../host/native/immutable-publish.lisp"
+ classification: "Physical descriptor lifetime debt on ignored close failure"
+ trace: "Full executor trace refines initial report: file-barrier closes and retires descriptor number BEFORE link/namespace barrier, so accepted publication has no stage FD reaching unwind. Suppressed cleanup close occurs on early stage/write/fsync error; OS close ambiguity must never cause retry of a reused number"
+ repair: "Cross-linked to exit horse; inspect actual close/custody owners before editing"
+}
+^"tool-recipe"{
+ commands: "npm --prefix .spw/_workbench run spw -- doctor ../.. --json; query --from .spw/audits/bounds --selector navigable --skim --limit40; select .spw/audits/bounds/index.spw --selector navigable --summary"
+ observed: "Doctor selects consumer root . with clean pinned mount651b535b5171; default scan excludes _workbench"
+ friction: "Node emits DEP0205 warning per invocation; bounds discovery needs source regex plus full caller tracing rather than treating parser navigation as semantic analysis"
+}
+
+^"B007-reclaim-retention"{
+ @host: ~"../../../host/native/checkpoint.lisp"
+ symbols: "fnn-log-reclaim-steps / fnn-recover-log-replay / fnn-log-history-each"
+ units: "retained rewritten vectors for every history record, plus full replay chunks"
+ classification: "The streamed decision fold does not imply bounded physical retention"
+ trace: "Every non-dry-run history record is rewritten and retained before decision, including :none and :refused. Actual reclaim replays whole rewritten history after clearing loaded checkpoint, so simply replacing list with second live scan would lose covered prefix source"
+ repair: "Current whole Store96xH sizing remains justified by real allocation; safe reduction must preserve immutable prefix capture while switching replay. Two-pass lazy rewrite now avoids no-op/refused retention. Actual source fixture verifies one decision scan with zero rewrites for :none/:refused/:dry-run, and second ordered rewrite pass before instant/clear for :reclaim/:recorded. Actual reclaim whole retention remains; no immutable prefix capture or streaming replay claim"
+}
+^"catchup-spool-shape"{
+ state: "Design freeze for Foundations producer; no installed grant or source implementation yet"
+ source: "One ephemeral spool per admitted flight; spool records hold exact normalized article bytes and bounded record metadata for second sequential parse. Header format is269 content/271 wire octets at max250 Message-ID and16hex count; controller window512 shares network buffer. Keep only current header/msgid<=250, line count, offsets and running32byte chain"
+ continuation: "At record end, pause network receive and hash its known immutable spool range with pgs-dcb-begin/read-demand/step/result in64byte windows; then fold chain32+digest32+msgid and resume. At batch END compare complete chain before IHAVE; second spool pass emits IHAVE and dot-stuffed body windows. Never retain record index or complete body lines"
+ authority: "New operator peer-flight allowance owns resident heap, spool disk, simultaneous flights, independent spool worker count, per-turn work. Launcher subtracts dedicated peer heap once before DEFAULT storage planning. No StoreA/T or output/syncer slack as substitute"
+ custody: "Grant before dial/spool open. Hold socket+spool descriptor and actual worker/queue through receive/hash/replay; local replay socket adds simultaneous descriptor. Cancellation revokes publication but retains custody until physical worker completion, join, close observation and spool cleanup; peerACK/local235 does not settle"
+ caps: "Spool quota counts headers/metadata as well as body, so zero-line malicious records consume admitted disk. Insufficient grant holds/refuses before next write, cursor unchanged. Wire quantum yields/resumes, no silent truncation. Source octets and physical heap are distinct dimensions"
+}
+
+^"B008-consumer-cursor-width"{
+ @codec: ~"../../../books/consumer-position.lisp"
+ @fields: ~"../../../books/consumer-position-fields.lisp"
+ @projection: ~"../../../books/consumer-poll-projection.lisp"
+ source: "horse-bounds 1f450325a; unchanged cursor definitions from9df4a3a4e6"
+ symbols: "fn-cpj-max-cursor-octets / fn-cp-cursorp / fn-cp-cursor-encode / fn-cp-uintp"
+ classification: "Reviewed format bound; suspected natural-position mismatch refuted"
+ units: "346 wire octets =5-byte magic/version +5 length-prefixed IDs of at most64 octets +4 u32 fields"
+ trace: "fn-cp-uintp uses fn-cbor-max-uint4294967295; cursor recognizer applies it to query version, view, registration epoch and position. Encoder emits each as u32. Decoder preflight512 is a conservative single fixed-record allocation/work guard, not consumer population bound"
+ repair: "None required for current format; any scalar widening must change grammar, projection bound and roundtrip subject together"
+}

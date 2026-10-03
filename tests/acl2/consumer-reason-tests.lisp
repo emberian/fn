@@ -169,3 +169,8 @@
 (assert-event (equal (fn-ncr-cli-plan '(115 116 97 116 117 115) (list '(47 99) '(98 111 98)))
                      (fn-cwait-cli-plan '(115 116 97 116 117 115) (list '(47 99) '(98 111 98)))))
 (assert-event (equal (fn-ncr-cli-plan *fn-ncr-json-flag* nil) '(:json (:usage :control-path))))
+
+(assert-event (equal (fn-ncr-cli-after :bootstrap :accepted nil) '(:register)))
+(assert-event (and (null (fn-ncr-cli-after :bootstrap :uncertain nil))
+                   (null (fn-ncr-cli-after :bootstrap :fault nil))
+                   (null (fn-ncr-cli-after :bootstrap :refused nil))))

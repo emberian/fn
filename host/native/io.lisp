@@ -1039,6 +1039,22 @@ entropy is a host fault.  WIDTH is ACL2's."
 ;; when no writer runs.
 (defvar *fnn-log-sink* nil)
 (defvar *fnn-log-writer* nil)
+(defvar *fnn-log-writer-stopping* nil)
+(defvar *fnn-log-close-debts* nil
+  "Consumed descriptor identities with unobserved physical return; never retried.")
+
+(defun fnn-log-close-debt-observation ()
+  (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+    (if *fnn-log-close-debts* :uncertain :closed)))
+
+(defun fnn-log-physical-close (fd kind)
+  "Caller consumed its fd slot. Record exact physical debt without retry."
+  (handler-case (progn (fnn-close fd) :closed)
+    (serious-condition (condition)
+      (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+        (push (list kind fd condition) *fnn-log-close-debts*))
+      (ignore-errors (fnn-err "log descriptor return unobserved (~a): ~a" kind condition))
+      :uncertain)))
 ;; PKT-872: the sink dropped a journal entry and no journal entry has been
 ;; queued since.  Read and written under the queue mutex only.
 (defvar *fnn-journal-dropped* nil)
@@ -1063,8 +1079,9 @@ entropy is a host fault.  WIDTH is ACL2's."
 otherwise T, the line queued or dropped as ACL2 decided."
   (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
     (when *fnn-log-writer*
-      (let ((answer (fnn-core 'fn-log-sink-offer *fnn-log-sink* (length octets)
-                              (fnn-core 'fn-log-sink-pending-bound))))
+      (let ((answer (fnn-core 'fn-log-sink-offer-live *fnn-log-sink* (length octets)
+                              (fnn-core 'fn-log-sink-pending-bound)
+                              *fnn-log-writer-stopping*)))
         (unless (and (consp answer) (member (first answer) '(:queue :drop)))
           (fnn-fault "ACL2 returned a malformed log sink decision"))
         (fnn-log-sink-accept (second answer) "an offer")
@@ -1175,7 +1192,7 @@ counts it dropped)."
          ;; Only this thread writes the descriptor while it runs.
          (let ((old *fnn-owner-log-fd*))
            (setq *fnn-owner-log-fd* (cdr item))
-           (when old (ignore-errors (fnn-close old)))))
+           (when old (fnn-log-physical-close old :swap-old))))
         (t
          (let ((outcome (fnn-log-write-item (car item) (cdr item))))
            (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
@@ -1186,7 +1203,10 @@ counts it dropped)."
 (defun fnn-log-writer-start ()
   "Start the owner's log writer with ACL2's empty sink (fn-log-sink-init)."
   (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+    (unless (eq (fnn-log-close-debt-observation) :closed)
+      (fnn-indeterminate "prior log descriptor custody remains unobserved"))
     (unless *fnn-log-writer*
+      (setq *fnn-log-writer-stopping* nil)
       (fnn-log-sink-accept (fnn-core 'fn-log-sink-init) "init")
       (setq *fnn-log-queue-head* nil
             *fnn-log-queue-tail* nil
@@ -1201,14 +1221,17 @@ left running (lines keep being offered and dropped, never waited on) and the
 process exits without it: what it had queued, a wedged sink would lose
 anyway.  Answers the join observation fn-ort-log-close-action reads
 (books/owner-retire-settlement.lisp): :absent when no writer ran, :joined
-when it stopped, :timeout when it is still running.  (It answered NIL until
+when it stopped, :timeout when it is still running, and :uncertain when
+a consumed log descriptor has unobserved physical return.  (It answered NIL until
 stage-0-3, so every owner close was :held and every owner exit 3.)"
   (let ((thread (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
                   (when *fnn-log-writer*
-                    (fnn-log-queue-push (list :stop))
+                    (unless *fnn-log-writer-stopping*
+                      (setq *fnn-log-writer-stopping* t)
+                      (fnn-log-queue-push (list :stop)))
                     *fnn-log-writer*))))
     (if (null thread)
-        :absent
+        (if (eq (fnn-log-close-debt-observation) :closed) :absent :uncertain)
       (multiple-value-bind (value outcome)
           (sb-thread:join-thread thread
                                  :timeout (fnn-core 'fn-log-sink-close-wait-seconds)
@@ -1221,19 +1244,29 @@ stage-0-3, so every owner close was :held and every owner exit 3.)"
               (setq *fnn-log-writer* nil
                     *fnn-log-queue-head* nil
                     *fnn-log-queue-tail* nil))
-            :joined))))))
+            (if (eq (fnn-log-close-debt-observation) :closed) :joined :uncertain)))))))
 
 (defun fnn-log-swap-fd (fd)
-  "Install FD as the service log: through the writer's queue while it runs
-(in order after the lines before it), else under the log mutex."
-  (unless (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
-            (when *fnn-log-writer*
-              (fnn-log-queue-push (cons :swap fd))
-              t))
-    (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
-      (let ((old *fnn-owner-log-fd*))
-        (setq *fnn-owner-log-fd* fd)
-        (when old (ignore-errors (fnn-close old)))))))
+  "Transfer FD into the live writer queue or caller slot; consume rejected FD.
+Admission closes before STOP is queued, so no swap can be abandoned after it."
+  (let ((action
+          (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+            (cond ((or *fnn-log-close-debts*
+                       (and *fnn-log-writer* *fnn-log-writer-stopping*)) :refused)
+                  (*fnn-log-writer* (fnn-log-queue-push (cons :swap fd)) :queued)
+                  (t :direct)))))
+    (case action
+      (:queued :queued)
+      (:refused
+       (fnn-log-physical-close fd :rejected-swap)
+       (fnn-indeterminate "log swap refused while terminal custody is held"))
+      (:direct
+       (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
+         (let ((old *fnn-owner-log-fd*))
+           (setq *fnn-owner-log-fd* fd)
+           (when (and old (not (eq (fnn-log-physical-close old :swap-old) :closed)))
+             (fnn-indeterminate "old service log descriptor custody remains held"))))
+       :installed))))
 
 (defun fnn-journal-line (line)
   "Offer one ACL2-rendered decision-journal entry LINE (its LF included,
@@ -1690,7 +1723,8 @@ and any previous selected checkpoint before initializing the epoch."
 
 (defun fnn-payload-lifecycle-answer (event &optional owned joined)
   "Lifecycle mutex held; ACL2 alone decides the phase transition."
-  (fnn-core 'fn-pvl-runtime-step *fnn-payload-lifecycle-phase* event owned joined))
+  (fnn-core 'fn-pvl-runtime-return-step *fnn-payload-lifecycle-phase*
+            event owned joined (fnn-arena-return-observation nil)))
 
 (defun fnn-payload-startup-reset ()
   "Only startup/recovery may clear. Refuse serving/draining before STATE use."
@@ -1886,13 +1920,12 @@ program the same environment).  NIL when unset."
                   wall +fnn-owner-wall-error-ms+ has-wall)))))
 
 (defun fnn-seal-octets (octets)
-  "The arena update a prepare names: seal OCTETS (the octet list the core
-answered with) through the guard-verified `fn-arena-seal-list'
-(books/payload-arena.lisp).  The core entries only READ the arena: an entry
-that also sealed would carry ACL2's invariant-risk and run through its *1*
-body, checking every callee's guard (the whole history, per POST)."
-  (fnn-call 'fn-arena-seal-list octets (fnn-live-arena))
-  t)
+  "Stage the ACL2-admitted list through the same seal as buffered POST.
+The list seal leaves bytes in the permanent resident arena child; the
+buffer seal gives this transaction a releasable stage and records its
+ACL2-derived handle for the log's durable reseat."
+  (fnn-octets-fill octets)
+  (fnn-seal-live-buffer))
 
 (defvar *fnn-staged-handle* nil
   "The handle the owner's last buffer prepare sealed (staged: books/payload-
@@ -2129,6 +2162,8 @@ resolves the names against `domain' and the host carries that list verbatim."
   (completion-pending nil)
   ;; Terminal physical close uncertainty is sticky; consumed fds are never retried.
   (close-debt nil)
+  ;; Exact application journal/lock holders whose close was unobserved.
+  (application-close-debts nil)
   ;; P3: how the last open reached the Store state: (:checkpoint S K) or
   ;; (:full-replay REASON).  `operator status' prints it.
   (open-mode '(:full-replay :absent))
@@ -2662,9 +2697,16 @@ Generic command callers have no owner authority sink.")
     (handler-case
         (fnn-unwind-cleanups ()
           (when log (fnn-log-discard-spare log))
-          (when log (fnn-close (fnn-log-fd log)))
+          (when log (fnn-log-close-active log))
           (when fd (fnn-flock fd +fnn-lock-un+))
-          (when fd (fnn-close fd)))
+          (when fd (fnn-close fd))
+          (when (fnn-store-application-close-debts store)
+            (error (third (car (fnn-store-application-close-debts store)))))
+          (dolist (observer '(fnn-publication-close-observation fnn-immutable-close-observation))
+            (when (and (fboundp observer) (not (eq (funcall observer) :closed)))
+              (fnn-indeterminate "publication descriptor return remains unobserved")))
+          (unless (eq (fnn-arena-return-observation log) :closed)
+            (fnn-indeterminate "arena staged-page return remains unobserved")))
       (serious-condition (condition)
         (setf (fnn-store-fenced store) t
               (fnn-store-close-debt store) (list log fd condition))
@@ -3469,8 +3511,8 @@ REQUESTED is 1, 0 or NIL (keep the store's policy)."
     (fnn-safe-directory (fnn-store-root store))
     (fnn-safe-directory (fnn-staging store))
     (setf (fnn-store-lock-fd store) (fnn-open-lock store t nil))
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+         ((progn
            (fnn-load-config store)
            (let* ((record (fnn-filesystem-record-observation store))
                   (observation (fnn-filesystem-observation (fnn-store-root store)))
@@ -3483,7 +3525,7 @@ REQUESTED is 1, 0 or NIL (keep the store's policy)."
                                 (fnn-core 'fn-smid-refusal-text plan))))
              (fnn-publish-filesystem-record store (second plan))
              (fnn-out "~a" (fnn-filesystem-text
-                            (fnn-core 'fn-smid-rebind-text record observation requested)))))
+                            (fnn-core 'fn-smid-rebind-text record observation requested))))))
       (fnn-store-close store))
     +fnn-exit-ok+))
 
@@ -3861,10 +3903,10 @@ them across processes, copies, checkpoint and full replay, and boxes."
   (fnn-core-state 'fn-store-sco-want-checkpoint-digest t)
   (multiple-value-bind (store count) (fnn-open-live-store root nil)
     (declare (ignore count))
-    (unwind-protect
-         (progn (fnn-write-report (fnn-core-state 'fn-store-sn-replay-digest-report))
+    (fnn-unwind-cleanups
+         ((progn (fnn-write-report (fnn-core-state 'fn-store-sn-replay-digest-report))
                 (fnn-out "~a" (fnn-open-report store))
-                +fnn-exit-ok+)
+                +fnn-exit-ok+))
       (fnn-store-close store))))
 
 (defun fnn-command-store-journal (root)
@@ -3878,8 +3920,8 @@ never the whole file or prior entries. The owner may continue appending."
     ;; between lstat and open from blocking before fstat can reject it.
     (let ((fd (fnn-open path (logior sb-posix:o-rdonly sb-posix:o-nonblock
                                    +fnn-o-nofollow+))))
-      (unwind-protect
-           (let ((info (fnn-fstat fd)) (st (fnn-core 'fn-otjs-init)))
+      (fnn-unwind-cleanups
+           ((let ((info (fnn-fstat fd)) (st (fnn-core 'fn-otjs-init)))
              (unless (fnn-regular-p info)
                (fnn-fault "refusing non-regular decision journal: ~a" path))
              (let ((remaining (sb-posix:stat-size info)))
@@ -3897,7 +3939,7 @@ never the whole file or prior entries. The owner may continue appending."
              (let ((exit (fnn-core 'fn-otjs-exit st)))
                (unless (member exit '(0 1))
                  (fnn-fault "ACL2 returned a malformed journal verdict"))
-               exit))
+               exit)))
         (fnn-close fd)))))
 
 (defun fnn-command-state-checkpoint (root)
@@ -3906,9 +3948,9 @@ lock, so a running owner refuses this) and publish its exact-state checkpoint
 (fnn-state-checkpoint-publish-steps)."
   (multiple-value-bind (store count)
       (fnn-open-live-store root t (fnn-state-checkpoint-test-fault))
-    (unwind-protect
-         (progn (fnn-out "~a" (fnn-state-checkpoint-publish-steps store count))
-                +fnn-exit-ok+)
+    (fnn-unwind-cleanups
+         ((progn (fnn-out "~a" (fnn-state-checkpoint-publish-steps store count))
+                +fnn-exit-ok+))
       (fnn-store-close store))))
 
 (defun fnn-recover (store)
@@ -4880,6 +4922,33 @@ caller does not know."
               :exists
             (fnn-os-fail errno new)))))))
 
+(defvar *fnn-publication-close-debts* nil
+  "Publication lock descriptor identities with unobserved physical return.
+These records retain evidence; they never authorize retry of a consumed fd.")
+
+(defvar *fnn-publication-lock-roots* nil
+  "Roots of locally owned publication lock descriptors until physical return.")
+
+(defun fnn-publication-close-observation ()
+  (if *fnn-publication-close-debts* :uncertain :closed))
+
+(defun fnn-publication-unlock (fd)
+  (when fd
+    (when (assoc fd *fnn-publication-close-debts*)
+      (fnn-indeterminate "publication lock return remains unobserved"))
+    (let ((root (cdr (assoc fd *fnn-publication-lock-roots*))))
+      ;; Consume custody before issuing return; a descriptor number is never
+      ;; permission to retry after uncertain physical close.
+      (setq *fnn-publication-lock-roots*
+            (remove fd *fnn-publication-lock-roots* :key #'car))
+      (handler-case
+          (fnn-unwind-cleanups ()
+            (fnn-flock fd +fnn-lock-un+)
+            (fnn-close fd))
+        (serious-condition (condition)
+          (push (list fd root condition) *fnn-publication-close-debts*)
+          (fnn-indeterminate "publication lock physical return unobserved: ~a" condition))))))
+
 (defun fnn-publication-lock (root-path)
   "Where rename(2) has no no-replace flag (OpenBSD), the publication program
 (import, init) holds an exclusive advisory lock on the sibling ROOT.lock for
@@ -4892,22 +4961,25 @@ on Linux, where renameat2(RENAME_NOREPLACE) refuses any existing ROOT."
   #+linux (declare (ignore root-path))
   #+linux nil
   #-linux
-  (let ((fd (fnn-open (fnn-concat root-path ".lock")
-                      (logior sb-posix:o-rdwr sb-posix:o-creat +fnn-o-nofollow+) #o600)))
-    (handler-case (progn (unless (fnn-regular-p (fnn-fstat fd))
-                           (fnn-fault "refusing non-regular publication lock ~a.lock" root-path))
-                         (fnn-flock fd (logior +fnn-lock-ex+ +fnn-lock-nb+))
-                         fd)
-      (fnn-os-error ()
-        (fnn-close fd)
-        (fnn-refuse "publication refused reason=publication-locked: another fn process holds ~a.lock"
-                    root-path))
-      (error (e) (fnn-close fd) (error e)))))
-
-(defun fnn-publication-unlock (fd)
-  (when fd
-    (ignore-errors (fnn-flock fd +fnn-lock-un+))
-    (fnn-close fd)))
+  (let ((fd nil) (returned nil))
+    (when *fnn-publication-close-debts*
+      (fnn-indeterminate "publication lock return remains unobserved"))
+    (fnn-unwind-cleanups
+        ((setq fd (fnn-open (fnn-concat root-path ".lock")
+                            (logior sb-posix:o-rdwr sb-posix:o-creat +fnn-o-nofollow+) #o600))
+         (push (cons fd root-path) *fnn-publication-lock-roots*)
+         (unless (fnn-regular-p (fnn-fstat fd))
+           (fnn-fault "refusing non-regular publication lock ~a.lock" root-path))
+         (handler-case
+             (fnn-flock fd (logior +fnn-lock-ex+ +fnn-lock-nb+))
+           (fnn-os-error (condition)
+             (if (member (fnn-os-errno condition) (list sb-posix:eagain sb-posix:eacces))
+                 (fnn-refuse "publication refused reason=publication-locked: another fn process holds ~a.lock"
+                             root-path)
+               (error condition))))
+         (setq returned t)
+         fd)
+      (when (and fd (not returned)) (fnn-publication-unlock fd)))))
 
 (defun fnn-import-leftover-stage (root-path &optional (kind "import"))
   "The path of the first entry of ROOT-PATH's parent named BASENAME.KIND-*
@@ -5113,9 +5185,12 @@ its name (fnn-archive-entry), never a host fault."
                                          +fnn-config-record-bytes+))))
                           config-names))
          (manifest-path (fnn-join dir "MANIFEST")))
-    (let ((fd (fnn-open manifest-path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
+    (let ((fd (fnn-open manifest-path (logior sb-posix:o-rdonly sb-posix:o-nonblock
+                                               +fnn-o-nofollow+)))
           (count 0))
-      (unwind-protect
+      (fnn-unwind-cleanups
+          ((unless (fnn-regular-p (fnn-fstat fd))
+             (fnn-refuse "import refused reason=archive-incomplete entry=MANIFEST"))
            (let* ((head (fnn-core 'fn-sxi-head profile frontier configs))
                   (lines (cdr head))
                   (st (fnn-core 'fn-sxi-start (car head) lines
@@ -5155,7 +5230,7 @@ its name (fnn-archive-entry), never a host fault."
                                ;; most one octet (the MANIFEST must end).
                                (fnn-octet-list (fnn-read-up-to fd 1))
                                profile frontier configs (or request '(:current nil)))
-                     count))
+                     count)))
         (fnn-close fd)))))
 
 (defun fnn-staged-publication (kind stage root-path files record-count
@@ -5637,11 +5712,11 @@ report is never rendered behind an owner."
   "Report the replayed ACL2 ledger's pin count and reserved charge."
   (multiple-value-bind (store records) (fnn-open-live-store root nil)
     (declare (ignore records))
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+         ((progn
            (fnn-out "pins=~d reserved=~d"
                     (fnn-bridge-pin-count) (fnn-bridge-reserved))
-           +fnn-exit-ok+)
+           +fnn-exit-ok+))
       (fnn-store-close store))))
 
 (defun fnn-command-compression (root)
@@ -5651,31 +5726,31 @@ records, the octets the log holds and their expansions, the dictionary ids
 in use (lane compression-extents-2)."
   (multiple-value-bind (store records) (fnn-open-live-store root nil)
     (declare (ignore records))
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+         ((progn
            (fnn-out "~a" (fnn-core 'fn-lzr-tally-text
                                    (fnn-nat (fnn-core-state 'fn-store-compress-min-octets))
                                    (or *fnn-lz-tally* (fnn-core 'fn-lzr-tally-empty))))
-           +fnn-exit-ok+)
+           +fnn-exit-ok+))
       (fnn-store-close store))))
 
 (defun fnn-command-config (root)
   "The replayed configuration: generation, served table, domain."
   (multiple-value-bind (store records) (fnn-open-live-store root nil)
     (declare (ignore records))
-    (unwind-protect
-         (progn (fnn-out "generation=~d served=~{~a~^,~} domain=~{~a~^,~}"
+    (fnn-unwind-cleanups
+         ((progn (fnn-out "generation=~d served=~{~a~^,~} domain=~{~a~^,~}"
                          (fnn-store-config-generation store)
                          (fnn-store-config-served store)
                          (fnn-store-config-domain store))
-                +fnn-exit-ok+)
+                +fnn-exit-ok+))
       (fnn-store-close store))))
 
 (defun fnn-command-inspect (root message-id)
   (multiple-value-bind (store records) (fnn-open-live-store root nil)
     (declare (ignore records))
-    (unwind-protect
-         (let ((msgid (progn
+    (fnn-unwind-cleanups
+         ((let ((msgid (progn
                         ;; Python encodes the Message-ID after opening the
                         ;; store, so a non-ASCII identifier is a usage error
                         ;; only once the store itself opened.
@@ -5685,7 +5760,7 @@ in use (lane compression-extents-2)."
            (cond ((not (fnn-bridge-lookup-found-p msgid)) +fnn-exit-refused+)
                  (t (write-sequence (fnn-bridge-lookup msgid) *fnn-stdout*)
                     (finish-output *fnn-stdout*)
-                    +fnn-exit-ok+)))
+                    +fnn-exit-ok+))))
       (fnn-store-close store))))
 
 (defun fnn-command-provenance (root message-id)
@@ -5696,8 +5771,8 @@ then LF; refused when the store binds no such Message-ID or its pin was
 released.  The host decodes nothing: it relays ACL2's octets."
   (multiple-value-bind (store records) (fnn-open-live-store root nil)
     (declare (ignore records))
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+         ((progn
            (unless (every (lambda (c) (< (char-code c) 128)) message-id)
              (error 'fnn-usage-error :message "Message-ID is not ASCII"))
            (let ((value (fnn-core-state 'fn-store-prov-for-msgid
@@ -5706,7 +5781,7 @@ released.  The host decodes nothing: it relays ACL2's octets."
                    (t (write-sequence (fnn-as-octets value) *fnn-stdout*)
                       (write-byte 10 *fnn-stdout*)
                       (finish-output *fnn-stdout*)
-                      +fnn-exit-ok+))))
+                      +fnn-exit-ok+)))))
       (fnn-store-close store))))
 
 (defun fnn-probe-article (sequence size)
@@ -6941,6 +7016,8 @@ with its depth, and the rows under it name the path that called it."
   ;; preallocated and fenced OFF the owner mutex (fnn-log-prepare-spare); the
   ;; rotation under the mutex only renames it into journal/.  SPARE-LOCK
   ;; serializes preparers; it is never taken under the owner mutex.
+  (reseat-custody nil)
+  (active-close-debt nil)
   (spare nil) (spare-close-debt nil) (spare-lock (sb-thread:make-mutex :name "fn log spare"))
   ;; journal/'s path while the rotated-to segment's name is not yet durable:
   ;; the first fence of the new segment (fnn-log-fence) and the checkpoint
@@ -7528,37 +7605,74 @@ asking reader's own pin, not counted."
   "The live off-mutex arena readers."
   (fnn-arena-pins-step '(:count)))
 
+(defvar *fnn-arena-release-custody* nil
+  "Exact release handoff: #(PHASE ROWS REMAINING ARENA CONDITION).
+A callback escape leaves :calling custody; neither it nor later items retry.")
+
+(defun fnn-arena-return-observation (log)
+  (if (or *fnn-arena-release-custody*
+          (and log (fnn-log-reseat-custody log))) :uncertain :closed))
+
 (defun fnn-arena-release-due ()
-  "The pending retirements ACL2 releases now, ((S . ITEMS) ...)."
+  "Transfer ACL2's eligible rows into exact host custody before callbacks."
+  (when *fnn-arena-release-custody*
+    (fnn-indeterminate "prior arena release callback remains unobserved"))
   (let ((due (fnn-arena-pins-step '(:release))))
     (unless (listp due) (fnn-fault "ACL2 returned a malformed arena release"))
+    (when due
+      (setq *fnn-arena-release-custody* (vector :preparing due nil nil nil))
+      (setf (aref *fnn-arena-release-custody* 2)
+            (loop for row in due append (copy-list (cdr row)))
+            (aref *fnn-arena-release-custody* 0) :ready))
     due))
 
+(defun fnn-arena-release-returned ()
+  "Return each handed-out page once; retain exact unfinished cursor on escape."
+  (let ((custody *fnn-arena-release-custody*))
+    (when custody
+      (unless (eq (aref custody 0) :ready)
+        (fnn-indeterminate "arena release callback cannot be replayed"))
+      (handler-case
+          (progn
+            (setf (aref custody 3) (fnn-live-arena))
+            (loop while (aref custody 2) do
+              (setf (aref custody 0) :calling)
+              (fnn-call 'fn-arena-release (car (aref custody 2)) (aref custody 3))
+              (setf (aref custody 2) (cdr (aref custody 2))
+                    (aref custody 0) :ready))
+            (setq *fnn-arena-release-custody* nil))
+        (serious-condition (condition)
+          (setf (aref custody 4) condition)
+          (error condition))))))
+
 (defun fnn-log-reseat-fenced (log)
-  "The COMPLETE's reseat (PRF-309): each fenced staged member's handle is
-re-pointed at the log extent that now durably holds its payload, as ACL2
-decides it (fn-arx-commit-reseats: KEYSTONE fn-arx-commit-reseats-keep-the-
-arena); the staged pages are then retired, and released (fn-arena-release)
-once no reader outside the owner's mutex (a checkpoint publication) that
-pinned before them runs (books/arena-reader-pins.lisp); until then they wait
-for a later COMPLETE."
+  "Reseat COMPLETE members, retire their staged copies, then return eligible pages.
+Each callback owns an explicit custody record before mutation; torn callbacks
+are recovery debt, never an excuse to replay a partly mutated arena."
+  (unless (eq (fnn-arena-return-observation log) :closed)
+    (fnn-indeterminate "prior log reseat/retire/release callback remains unobserved"))
   (let ((fenced (fnn-log-with-kernel (log)
-                  (prog1 (reverse (fnn-log-fenced log)) (setf (fnn-log-fenced log) nil)))))
+                  (let ((members (reverse (fnn-log-fenced log))))
+                    (when members
+                      (setf (fnn-log-reseat-custody log) (vector :ready members nil nil)
+                            (fnn-log-fenced log) nil))
+                    members))))
     (when fenced
-      (let ((arena (fnn-live-arena)))
-        (if (fnn-log-lz log)
-            ;; KEYSTONE fn-lzr-commit-reseats-keep-the-arena (PRF-326): a
-            ;; framed member is re-pointed at its block when the block
-            ;; decodes to the handle's payload; any other member takes the
-            ;; plain reseat.
-            (fnn-call 'fn-lzr-commit-reseats fenced (fnn-lz-dicts) arena)
-          (fnn-call 'fn-arx-commit-reseats fenced arena))
-        (fnn-arena-retire (mapcar #'first fenced))))
-    (let ((due (fnn-arena-release-due)))
-      (when due
-        (let ((arena (fnn-live-arena)))
-          (dolist (entry due)
-            (dolist (h (cdr entry)) (fnn-call 'fn-arena-release h arena))))))))
+      (let ((custody (fnn-log-reseat-custody log)))
+        (handler-case
+            (let ((arena (fnn-live-arena)))
+              (setf (aref custody 2) arena (aref custody 0) :calling)
+              (if (fnn-log-lz log)
+                  (fnn-call 'fn-lzr-commit-reseats fenced (fnn-lz-dicts) arena)
+                (fnn-call 'fn-arx-commit-reseats fenced arena))
+              (setf (aref custody 0) :retiring)
+              (fnn-arena-retire (mapcar #'first fenced))
+              (setf (fnn-log-reseat-custody log) nil))
+          (serious-condition (condition)
+            (setf (aref custody 3) condition)
+            (error condition)))))
+    (fnn-arena-release-due)
+    (fnn-arena-release-returned)))
 
 
 (defun fnn-log-member-files (log)
@@ -7568,7 +7682,9 @@ NAMED."
   (if log
       (fnn-log-with-kernel (log)
         (remove-duplicates
-         (loop for m in (append (fnn-log-inflight log) (fnn-log-fenced log))
+         (loop for m in (append (fnn-log-inflight log) (fnn-log-fenced log)
+                                   (and (fnn-log-reseat-custody log)
+                                        (aref (fnn-log-reseat-custody log) 1)))
                when (and (consp m) (integerp (second m))) collect (second m))))
     nil))
 
@@ -8005,6 +8121,18 @@ removes one a death left, and the open's segment listing never sees it
 (fn-lgs-indices keeps only NNNNNN.log names)."
   (fnn-join (fnn-staging store) (format nil ".stage-segment-~6,'0d" k)))
 
+(defun fnn-log-close-active (log)
+  "Consume an active descriptor once; an unobserved close remains debt."
+  (when (fnn-log-active-close-debt log)
+    (error (second (fnn-log-active-close-debt log))))
+  (let ((fd (fnn-log-fd log)))
+    (when fd
+      (setf (fnn-log-fd log) nil)
+      (handler-case (fnn-close fd)
+        (serious-condition (condition)
+          (setf (fnn-log-active-close-debt log) (list fd condition))
+          (error condition))))))
+
 (defun fnn-log-discard-spare (log)
   "Close and unlink a spare that will not be renamed (another index, or the
 store closing).  Removing a staged name is never uncertain for the history:
@@ -8050,15 +8178,17 @@ of the checkpoint that wanted the rotation (serving continues)."
                   (when (fnn-lstat path) (fnn-unlink path))
                   (setq fd (fnn-open path (logior sb-posix:o-rdwr sb-posix:o-creat
                                                   sb-posix:o-excl +fnn-o-nofollow+)))
+                  ;; Install candidate custody before any preparation/cut
+                  ;; can escape; failed prepare cannot strand a local fd.
+                  (setf (fnn-log-spare log) (list next path fd))
                   (fnn-log-preallocate fd extent)
                   (fnn-log-at :rotate-created)
                   (fnn-fsync-file fd)
                   (fnn-log-at :rotate-fenced))
               (fnn-os-error (e)
-                (when fd (ignore-errors (fnn-close fd)))
-                (ignore-errors (when (fnn-lstat path) (fnn-unlink path)))
-                (fnn-refuse-io "log rotation's spare failed: ~a" e)))
-            (setf (fnn-log-spare log) (list next path fd))))))))
+                (fnn-unwind-cleanups
+                    ((fnn-refuse-io "log rotation's spare failed: ~a" e))
+                  (fnn-log-discard-spare log))))))))))
 
 (defun fnn-log-rotate (store)
   "P-ROTATE's switch, fn-lgs-rotate-program (design 2026-09-27 storage-log
@@ -8098,20 +8228,20 @@ be in journal/ while the closed segment would take more records)."
     (let ((spare (fnn-log-spare log)))
       (unless (and spare (eql (first spare) next))
         (fnn-refuse "rotation refused reason=spare-unprepared"))
-      (setf (fnn-log-spare log) nil)
+      ;; The spare remains the candidate's physical custody across rename
+      ;; and head-writing cuts, until an atomic host slot transfer below.
       (destructuring-bind (index staged fd) spare
         (declare (ignore index))
         (let* ((path (fnn-segment-path-at store next))
                (renamed (handler-case (fnn-rename-no-replace staged path)
                           (fnn-os-error (e)
-                            (ignore-errors (fnn-close fd))
                             (fnn-indeterminate "log rotation's rename is uncertain: ~a" e)))))
           (when renamed
             ;; :exists (a segment of that index is already there) or
             ;; :unsupported: nothing was renamed.
-            (ignore-errors (fnn-close fd))
-            (ignore-errors (when (fnn-lstat staged) (fnn-unlink staged)))
-            (fnn-refuse "rotation refused reason=spare-rename-~(~a~)" renamed))
+            (fnn-unwind-cleanups
+                ((fnn-refuse "rotation refused reason=spare-rename-~(~a~)" renamed))
+              (fnn-log-discard-spare log)))
           (fnn-log-at :rotate-renamed)
           ;; The head (lane store-lineage; books/store-log-lineage.lisp): the
           ;; rotation entry chained from the closed segment's last trailer,
@@ -8124,10 +8254,15 @@ be in journal/ while the closed segment would take more records)."
               (fnn-os-error (e)
                 (fnn-indeterminate "log rotation's head write is uncertain: ~a" e)))
             (fnn-log-at :rotate-headed)
-            (fnn-close (fnn-log-fd log))
+            (handler-case (fnn-log-close-active log)
+              (serious-condition (condition)
+                (fnn-indeterminate "log rotation active close unobserved; custody held: ~a" condition)))
+            ;; Transfer physical custody before any fallible semantic call;
+            ;; shutdown must see the candidate in exactly one fd slot.
             (setf (fnn-log-path log) path
                   (fnn-log-fd log) fd
-                  (fnn-log-kernel log) (fnn-core 'fn-lgc-rotate ks next unit)
+                  (fnn-log-spare log) nil)
+            (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-rotate ks next unit)
                   (fnn-log-index log) next
                   (fnn-log-genesis log) (fnn-core 'fn-lgc-last ks)
                   (fnn-log-extent log) (fnn-nat (fnn-core 'fn-store-log-initial-extent))

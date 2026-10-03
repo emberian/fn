@@ -434,7 +434,10 @@ ACL2-rendered JSON line.
 
 The reasons: `unbootstrapped` (no consumer history yet; `register` then
 bootstraps it and registers once more, and only for this reason or an old
-owner's unnamed refusal, `fn-ncr-cli-after-retries-only-an-unbootstrapped-register`),
+owner's unnamed refusal, `fn-ncr-cli-after-retries-only-an-unbootstrapped-register`).
+Only an accepted bootstrap permits the second registration; refused, fault
+and uncertain bootstrap outcomes finish the command without another request
+(`fn-ncr-cli-after-bootstrap-needs-acceptance`). Other reasons include
 `unknown-consumer` (no consumer of that name), `no-such-group` and `query`
 (register), `scope`, `unbound`, `credential`, `access`, `bound`, `waiters`,
 `oversize`, `report` and `not-owner` (the socket's peer is not the node's

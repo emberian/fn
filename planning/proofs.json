@@ -8477,7 +8477,7 @@
         "PRF-097"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/manifests/certify-20260928T163441Z-33654.json",
         "books/peer-host.lisp",
@@ -12386,8 +12386,8 @@
         "fn-rcompat-hdr-cat-is-hdr",
         "fn-nntp-number-withdrawn-p-cat-is-archive",
         "fn-nntp-archive-command-cat-is-pinned",
-        "fn-scat-group-summary-is-pass",
-        "fn-scat-group-low-is-pass",
+        "fn-scat-group-summary-is-archive",
+        "fn-scat-group-low-is-archive",
         "fn-scr-repin-is-served-repin",
         "fn-scr-dispatch-is-scar-dispatch"
       ],
@@ -12512,7 +12512,7 @@
         "fn-scol-okp-of-seal-list",
         "fn-scol-okp-of-faithful-reseat",
         "fn-scol-okp-of-intern-list",
-        "fn-scol-okp-of-load-held-rows",
+        "fn-sca-load-held-rows-establishes-byte-facts",
         "fn-scol-row-okp-of-intern-row-at",
         "fn-scol-okp-of-sca-finish"
       ]
@@ -16348,7 +16348,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-set.lisp",
         "books/native-admin-peer.lisp",
@@ -21741,7 +21741,7 @@
     {
       "id": "PRF-1253",
       "title": "Physical actor custody survives failed join and spawn publication failures",
-      "statement": "Host-called fn-fs-actor-step/registered-p/receipt/actor-join-action in fnn-owner-actor-start, fnn-owner-actor-run and fnn-owner-actor-join; actual native producers fnn-owner-start-syncer and fnn-owner-start-committer. Reservation precedes spawn and child start latch. KEYSTONES fn-fs-actor-only-physical-end-or-failed-spawn-deregisters, fn-fs-actor-failed-join-retains-custody, fn-fs-actor-failed-join-produces-no-receipt and fn-fs-actor-early-exit-survives-spawn-publication. Logical witness fn-fs-actor-lifecycle-positive-witness. SBCL primitive/no-child-on-failed-make-thread correspondence and complete HM/native image integration remain obligations; raw schedules tests/native_actor_envelope_raw.lisp exercise deployed model and envelope with physical SBCL threads, failed/timed-out join while live, latch/early exit, failed spawn, post-create publication plus failed compensation, terminal cleanup during stop, uncertainty, duplicate receipt/raw catch, actual syncer and closed-inbox offer. No resource funding or general ACL2 thread safety claim. Existing inbox consumer fnn-mux-adopt-place calls fn-fs-inbox-admit under inbox lock.",
+      "statement": "Host-called fn-fs-actor-step/registered-p/receipt/actor-join-action in fnn-owner-actor-start, fnn-owner-actor-run and fnn-owner-actor-join; actual native producers fnn-owner-start-syncer, fnn-owner-start-committer fnn-mux-start, fnn-owner-start-maintenance and fnn-owner-start-tls-accept. Reservation precedes spawn and child start latch. KEYSTONES fn-fs-actor-only-physical-end-or-failed-spawn-deregisters, fn-fs-actor-failed-join-retains-custody, fn-fs-actor-failed-join-produces-no-receipt and fn-fs-actor-early-exit-survives-spawn-publication. Logical witness fn-fs-actor-lifecycle-positive-witness. SBCL primitive/no-child-on-failed-make-thread correspondence and complete HM/native image integration remain obligations; raw schedules tests/native_actor_envelope_raw.lisp exercise deployed model and envelope with physical SBCL threads, failed/timed-out join while live, latch/early exit, failed spawn, post-create publication plus failed compensation, terminal cleanup during stop, uncertainty, duplicate receipt/raw catch, actual syncer and closed-inbox offer. No resource funding or general ACL2 thread safety claim. Existing inbox consumer fnn-mux-adopt-place calls fn-fs-inbox-admit under inbox lock. Mux loops now publish native loop custody before wake-pipe setup and use the same registered starter; tests/native_mux_lifecycle_raw.lisp exercises actual SBCL threads and pipe syscalls for setup/maker/post-create failures, no-op termination, raw throw and sticky independent wake-FD close receipts. Descriptor close debt blocks fnn-mux-drained-p; these schedules do not discharge complete charging or native interpreter correspondence. Actual shared actor/classifier tests/native_owner_background_raw.lisp covers late maintenance uncertainty/Store faults/raw throw, stopped versus live listener socket conditions, immediate stop and no-child maker failure with physical threads; full host/ACL2 realization remains open.",
       "milestone": "M4",
       "requirements": [
         "HST-003",
@@ -22631,9 +22631,12 @@
         "planning/evidence/list-metadata-controller-20261003/checks.json",
         "books/served-query-plan.lisp",
         "tests/acl2/served-query-plan-tests.lisp",
-        "planning/evidence/served-query-plan-20261003/checks.json"
+        "planning/evidence/served-query-plan-20261003/checks.json",
+        "books/list-row-cursor.lisp",
+        "tests/acl2/list-row-cursor-tests.lisp",
+        "planning/evidence/list-row-stream-20261003/checks.json"
       ],
-      "progress_note": "Proper complete generated command book30forms .26ACL2s/3594steps guards pass; all25 PROGRAM specialized reader functions admit in paid owner world. Twenty actual command/parsed-event cases compare selective available and raw retained subjects. Actual fn-av-mca-read-span GROUP wire endpoint sparse{1,34} and empty fixtures pass exact available reply, consumed input, selected reader, funded ledger before/after (.02ACL2s). These are constructed pin executable witnesses, not selective owner R/refinement or guard/physical funding proof. Initial omitted store groups caused correct finish-read connection discard, preserved and corrected. LIST whole reply producer, captured completeness/frames and native host qualification remain open. Bounded summary component fn-gsc-one guards, unconditional residual, terminal equality, state preservation and remaining-decrease admit in clean25form encapsulate8.90ACL2s/7846443steps;13 literal/actual sparse/prefix/tail/empty fixture forms .03s/101steps pass. Actual LIST controller wiring and captured archive/profile/physical custody boundary remain owed. LIST controller component now source-admitted with guards and generated byte/controller-call bounds in proper20form encapsulate .27ACL2s/83253steps. It retains reference-only init and separate group/matcher/watermark/number/status/row phases. It is not yet connected to dispatcher/plan; full response residual, finite progress, composed witnesses, captured columns and whole-row/physical tariff remain open. Actual generated available aliases now use LIST ACTIVE/COUNTS cursor factories; native owner/mux query-plan facade recognizes their tag, preserves old OVER/NEWNEWS step, and caps the shared existing buffer window at the current effect boundary. Guarded facade10defs admit .09ACL2s;8 private empty-metadata factory-to-buffer replies at W1/256 equal original LIST including filtered misses and y/m/n status. Current owner/generated-dispatcher and sparse metadata composition remain unqualified; full residual/finite progress, row serializer and upstream config/physical tariffs continue."
+      "progress_note": "Actual selective command/parsed-event and owner-credit GROUP sparse/empty fixtures passed on their recorded source. Generated LIST ACTIVE/COUNTS aliases consume retained LIST cursors through the guarded native query-plan facade; eight empty-catalog factory-to-buffer replies at W1/256 equal original LIST. New row renderer retains strings/scalars, emits at most one indexed character/digit/framing byte per call, and avoids full row/decimal explosion. Guards, universal byte/fixed-envelope facts, start/one carried <=10-digit state admit in proper source encapsulates; eight exact old-row comparisons,20k-character offset witness and shape teeth pass. Full current owner/dispatcher sparse composition, full reply residual/finite progress, snapshot columns, logical allocation recurrence and physical tariff/custody remain open. Status matching and upstream authorization/moderation-config preparation remain allocation/work frontiers. No old raw-pinned or Fn-splan theorem is transferred to this selective query boundary."
     },
     {
       "id": "PRF-1288",
@@ -22831,9 +22834,12 @@
         "tests/acl2/article-stream-tests.lisp",
         "planning/evidence/article-selector-guards-source-20261003.log",
         "planning/evidence/article-selector-guards-warm-20261003.log",
-        "planning/evidence/manifests/certify-20261003T161139Z-2311907.json"
+        "planning/evidence/manifests/certify-20261003T161139Z-2311907.json",
+        "planning/evidence/article-msgid-source-20261003.log",
+        "planning/evidence/article-msgid-warm-20261003.log",
+        "planning/evidence/manifests/certify-20261003T165500Z-2590721.json"
       ],
-      "progress_note": "Core source and scan guards plus bounded scan/render work admitted in narrow warm world. Added universal fn-ast-render-window-byte-bound admitted0.01s/762steps after accumulator bound0.01s/3345steps. Actual-source69488 core checks include dense-dot exact W1/2/3/4096 byte windows; actual owner finish, PROGRAM ready wrapper and native helpers pass70841 aggregate checks with recorded list arena/owner-state/cold I/O, once-only commit, immutable replay, malformed/reclaimed refusals and unrelated global config publication under unchanged connection pin. Web shared producer stress fbcae3cd0 separately passes recorded consumer composition. Full factory/native physical execution, lazy metadata setup, renderer guards, original-response and owner preservation refinements remain open. No certificate/image/funding claim. Subsequent lazy Xref captures original membership spine, filters one word/lookup character per transition, preserves duplicate and invalid-word reference behavior; source126337 core/127690 aggregate owner-native checks pass5000-character group cases, windows1/3/4096. Changed core34forms and component bounds warm admitted0.08s. Full initial selection/setup and owner/Xref boundary proofs remain open. Numeric/current lookup now retains the original archive and scans one article/member/character per transition; a missing numeric request scans captured withdrawn rows by the same cursor. No preliminary whole archive/withdrawn walk. Current core38forms warm admitted; actual core126385/owner-native127949 aggregate checks cover absent/current/withdrawn replies and unchanged selection until READY. Parsed factory/physical composition and selector guards/refinement remain open. Fresh initialized ad8+gate336 cache normally admitted exact selected available route, numerical-piece dependencies, current article definitions and actual PROGRAM factory/READY wrappers (guard eagerness0). Selected raw native READY/render bodies reached CLI unknown-verb reply. This is admission/entry evidence only: ordinary native renderer ABI is still old2 vs new3 optional arguments, so no parsed factory/socket or physical decoded composition claim. Hbox /tank/fn/scratch/codex-article-source-execution retains exact events/missing/native/manifest/launcher; Root owns current-union integration. Resumed source removes full moderation/access projected-config construction solely for Xref. New guard-verified fn-asto-server-candidate captures pinned listing; universal fn-asto-server-candidate-is-original-server admitted729steps with unconditional moderation listing lemma139steps and literal moderator/mutation/improper-server teeth. Renderer retains raw server spine and validates one octet per transition before Xref publication; core40forms/byte bounds admitted. Actual current wrapper list-arena tests184344 core/185908 aggregate pass long5000-octet valid/invalid server and W1/3/4096. Physical response activation uncaptured branch executed, not a decoded-pool proof. Full owner cache has89 mismatches including7 primary roots, so no closure replay or whole owner claim; Runtime/History own current whole source consumer join. Renderer/selector guards and complete response/owner boundary remain open. Normal certification certify-20261003T161139Z-2311907 passes immutable39d72 article-stream, article-stream-server and server teeth (3 selected roots,174 matching cached dependencies). That core certificate does not transfer to later selector guard changes; unchanged server boundary and teeth match. Selector fn-ast-select-one guardT and fn-ast-select-step natural-fuel guard now verify in warm current source (3979 and260 steps), with valid fn-statep reference/partition witnesses and separately labeled malformed comparison-state totality. Complete selector/reference theorem and owner/renderer guards remain open."
+      "progress_note": "Core source and scan guards plus bounded scan/render work admitted in narrow warm world. Added universal fn-ast-render-window-byte-bound admitted0.01s/762steps after accumulator bound0.01s/3345steps. Actual-source69488 core checks include dense-dot exact W1/2/3/4096 byte windows; actual owner finish, PROGRAM ready wrapper and native helpers pass70841 aggregate checks with recorded list arena/owner-state/cold I/O, once-only commit, immutable replay, malformed/reclaimed refusals and unrelated global config publication under unchanged connection pin. Web shared producer stress fbcae3cd0 separately passes recorded consumer composition. Full factory/native physical execution, lazy metadata setup, renderer guards, original-response and owner preservation refinements remain open. No certificate/image/funding claim. Subsequent lazy Xref captures original membership spine, filters one word/lookup character per transition, preserves duplicate and invalid-word reference behavior; source126337 core/127690 aggregate owner-native checks pass5000-character group cases, windows1/3/4096. Changed core34forms and component bounds warm admitted0.08s. Full initial selection/setup and owner/Xref boundary proofs remain open. Numeric/current lookup now retains the original archive and scans one article/member/character per transition; a missing numeric request scans captured withdrawn rows by the same cursor. No preliminary whole archive/withdrawn walk. Current core38forms warm admitted; actual core126385/owner-native127949 aggregate checks cover absent/current/withdrawn replies and unchanged selection until READY. Parsed factory/physical composition and selector guards/refinement remain open. Fresh initialized ad8+gate336 cache normally admitted exact selected available route, numerical-piece dependencies, current article definitions and actual PROGRAM factory/READY wrappers (guard eagerness0). Selected raw native READY/render bodies reached CLI unknown-verb reply. This is admission/entry evidence only: ordinary native renderer ABI is still old2 vs new3 optional arguments, so no parsed factory/socket or physical decoded composition claim. Hbox /tank/fn/scratch/codex-article-source-execution retains exact events/missing/native/manifest/launcher; Root owns current-union integration. Resumed source removes full moderation/access projected-config construction solely for Xref. New guard-verified fn-asto-server-candidate captures pinned listing; universal fn-asto-server-candidate-is-original-server admitted729steps with unconditional moderation listing lemma139steps and literal moderator/mutation/improper-server teeth. Renderer retains raw server spine and validates one octet per transition before Xref publication; core40forms/byte bounds admitted. Actual current wrapper list-arena tests184344 core/185908 aggregate pass long5000-octet valid/invalid server and W1/3/4096. Physical response activation uncaptured branch executed, not a decoded-pool proof. Full owner cache has89 mismatches including7 primary roots, so no closure replay or whole owner claim; Runtime/History own current whole source consumer join. Renderer/selector guards and complete response/owner boundary remain open. Normal certification certify-20261003T161139Z-2311907 passes immutable39d72 article-stream, article-stream-server and server teeth (3 selected roots,174 matching cached dependencies). That core certificate does not transfer to later selector guard changes; unchanged server boundary and teeth match. Selector fn-ast-select-one guardT and fn-ast-select-step natural-fuel guard now verify in warm current source (3979 and260 steps), with valid fn-statep reference/partition witnesses and separately labeled malformed comparison-state totality. Complete selector/reference theorem and owner/renderer guards remain open. Message-ID setup now reuses the retained selector: pinned lookup retains the article and lazily derives its selected-group number; non-pinned fallback compares one ID character per transition. Missing IDs scan captured withdrawn rows by the same cursor, preserving430 withdrawn versus430 no article. No full archive/membership walk before capture. Core new search/local helpers and selector guards warm admitted; universal fn-ast-select-fuel-composes proves arbitrary fuel partition (875steps) with literal positive/mutation teeth. Actual source184480 core/187518 aggregate checks include first-ID duplicate behavior,5000-character group, unavailable/oversized/duplicate numbers, cold READY and replay for all three sections; Message-ID reader cursor and recorded owner installation remain unchanged. Full parsed factory/physical join, termination/reference and owner/renderer proof remain open. Normal certification certify-20261003T165500Z-2590721 passes immutable73a0 article-stream and article-stream-tests (2 selected roots,38 matching cached dependencies), including actual selector/search/local guards, fuel composition and existing work/byte bounds. This component verdict does not certify article-stream-owner or the composed runtime."
     },
     {
       "id": "PRF-1293",
@@ -23012,7 +23018,7 @@
         "PRF-1288"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "files": [
         "books/decoded-worker-assignment.lisp",
         "books/decoded-worker-job.lisp",
@@ -23022,7 +23028,8 @@
         "host/native/extent.lisp",
         "host/native/extent-decoded.lisp",
         "tests/native_decoded_worker_raw.lisp",
-        "tests/native_decoded_startup_raw.lisp"
+        "tests/native_decoded_startup_raw.lisp",
+        "tests/acl2/decoded-worker-reuse-execution-tests.lisp"
       ],
       "events": [
         "fn-dwj-retired-job-refuses-scalar-publication",
@@ -23033,14 +23040,19 @@
       "evidence": [
         "tests/acl2/decoded-worker-reuse-tests.lisp",
         "planning/evidence/manifests/certify-20261003T160405Z-2295638.json",
-        "planning/evidence/decoded-reuse-20261003/result.json"
+        "planning/evidence/decoded-reuse-20261003/result.json",
+        "tests/acl2/decoded-worker-reuse-execution-tests.lisp",
+        "planning/evidence/manifests/certify-20261003T165304Z-2583352.json",
+        "planning/evidence/decoded-reuse-20261003/repeated-execution.json",
+        "planning/evidence/manifests/certify-20261003T170022Z-2604612.json",
+        "planning/evidence/decoded-reuse-20261003/repeated-execution-certified.json"
       ],
-      "progress_note": "Normal incremental hbox ACL2 admission: retirement guards, carry revocation and refusal frame, job backing frame, eager reserve, and no-scalar-publication theorem pass. Five literal acquisition/return/cancellation/corruption/reassignment witnesses pass. Native persistent scratch consumer and actual startup baseline are in flight with Runtime/Operator/Foundations; no matching certification or complete allocator/GC/work claim. Scoped certificate certify-20261003T160405Z-2295638 passed assignment/job/backing/tests at817ac (4 roots;35 cached dependencies,19 without cited manifests here). Stronger publication theorem permits arbitrary query ledger/worker/token and normally admitted in11936steps; its changed bytes require fresh certificate. Native startup/reuse remains pending. Runtime now reuses baseline storage only after terminal retirement and physical settlement; torn retire/release quarantines without retry. Actual source schedules pass; full current endpoint remains pending."
+      "progress_note": "Retirement guards, carry authority revocation/refusal frame, private backing frame and arbitrary-query no-scalar-publication theorem are admitted. Scoped certificate certify-20261003T160405Z-2295638 passed four roots at817ac; certify-20261003T165304Z-2583352 passes changed4d job and existing witnesses (2 roots,35 cached dependencies;18 without cited manifests in this branch). Actual single local private job executes five consecutive cycles: authenticated251-byte decode,1-byte successor, corrupted-source refusal, cancelled returned decode, then2-byte successor. Exact bytes, prior-authority refusal and retirement/release checks pass in the scoped normal ACL2 world. Test helpers are not guard-verified. Runtime/Operator/Foundations provide native consumer and startup integration separately; actual whole-current native endpoint and complete allocator/GC/work pricing remain open. Repeated actual-core execution test certified by certify-20261003T170022Z-2604612 (1 root passed,36 cached dependencies). Native baseline startup and persistent scratch reuse are wired in source. Actual startup/reuse/torn-retirement source schedules pass; retirement precedes physical settlement, and torn retire/release remains quarantined without retry. Full current owner execution remains pending. Decoded initial permission, descriptor/incarnation binding and assignment now execute atomically under E; cancellation before assignment returns no alias, and torn assignment retains calling custody. Actual SBCL contender/early-cancel and terminal-cut fixtures pass; this does not establish the current physical endpoint."
     },
     {
       "id": "PRF-1301",
       "title": "DEFAULT pre-open selected backing admission fits captured headroom and descriptor capacity",
-      "statement": "The actual fn-prstartup-plan :admitted result has natural descriptor capacity at least the existing cache insertion overlap, no greater than captured OS descriptor capacity, and its selected persistent plus registration working projection fits headroom after protected heap or occupied usage. SAME-pool installer metadata preserves binding revision, reserved worker count bounds physical constructors, and a ready bit is required before resident-zero reused-window admission. Physical native readiness, full collector/controller/source graph and recovery transient costs remain separate obligations.",
+      "statement": "The actual fn-prstartup-plan :admitted result has natural descriptor capacity at least the existing cache insertion overlap, no greater than captured OS descriptor capacity, and its selected persistent plus registration working projection fits headroom after protected heap or occupied usage. SAME-pool installer metadata preserves binding revision, reserved worker count bounds physical constructors, and a ready bit is required before resident-zero reused-window admission. Physical native readiness, full collector/controller/source graph and recovery transient costs remain separate obligations. The DEFAULT launcher contribution adds the actual minimum selected backing without changing already-reserved worker threads, and an accepted contribution fits captured machine capacity. A named default-plan equality connects the native wrapper to the numerical core.",
       "milestone": "M5",
       "requirements": [
         "HST-048"
@@ -23049,7 +23061,7 @@
         "PRF-1298"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "files": [
         "books/page-read-startup.lisp",
         "books/page-read-pool-state.lisp",
@@ -23060,13 +23072,14 @@
         "tests/acl2/page-read-startup-host-tests.lisp"
       ],
       "events": [
-        "fn-prstartup-admitted-capacity-is-funded"
+        "fn-prstartup-admitted-capacity-is-funded",
+        "fn-prstartup-accepted-default-launch-fits-machine"
       ],
       "evidence": [
         "tests/acl2/page-read-startup-tests.lisp",
         "tests/acl2/page-read-startup-host-tests.lisp"
       ],
-      "progress_note": "Incremental real source admission: selected plan/getter and readiness guards, binding publication proofs, complete admitted-capacity theorem and fresh local-stobj install/readiness/revision-preservation witnesses pass. Proper-local final startup book replay and two heap-wrapper/decoded-acquire guards pending coherent dependency world; no certificate or complete physical tariff claim."
+      "progress_note": "Selected actual source guards now pass for composed protected/default wrappers and decoded acquire, after actual dependency guard facts; no stubs. Numeric admitted-capacity theorem passed in the warm world; final proper-local replay remains pending (30-second theory timeout, not a counterexample). Launcher contribution guard, machine-fit theorem, actual operation wrapper equality and literal numerical witnesses pass. Native nonempty Store recovery subreserve accounting remains open; no certificate or complete physical tariff claim."
     },
     {
       "id": "PRF-1302",
@@ -23160,6 +23173,81 @@
         "planning/evidence/manifests/certify-20261003T172353Z-2674541.json"
       ],
       "progress_note": "Normal guards and transparent scalar/selector facts admitted6527steps;11 grammar/projection literals PASS. Actual projection plus actual heap profile consumer recorded-profile harness PASS, complete DEFAULT extension composition follows Operator source intake. No blanket resource or current native claim. Current producer definitions/guards and literal tests certified in2674541; full reservation correspondence remains planned, no selector corollary promoted."
+    },
+    {
+      "id": "PRF-1304",
+      "title": "Arbitrary header query borrows one immutable source span with bounded parser and normalization work",
+      "statement": "fn-lhq-tick uses the shared fn-lpc-byte-names header parser, retaining the captured handle/length/origin pin. fn-lhq-tick-work-bounded limits actual scalar parser reads by natural fuel; fn-lhq-tick-preserves-source and -ready carry source identity and the cheap four-scalar source guard. fn-lhq-begin-establishes-bounds and fn-lhq-tick-preserves-bounds carry logical parser bounds without running a whole recognizer; fn-lhq-field-retains-bounded-pinned-source establishes returned span handle/pin and start+length within captured source length under bounds and ready hypotheses. fn-lhq-field borrows the first requested field span; existing fn-nsw-step normalizes it without flattening. Actual HDR/XPAT dispatch/host consumer connection is Served-owned and pending; complete arbitrary-name parser/span/reference refinement and composed resource proof remain open. Existing fn-lpc-header-byte/fn-lpc-byte public ABI and fixed five-name NOV behavior are retained.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010",
+        "NNT-016"
+      ],
+      "depends_on": [
+        "PRF-1286"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/legacy-parser-cursor.lisp",
+        "books/legacy-header-query.lisp",
+        "books/nov-span-window.lisp",
+        "tests/acl2/legacy-header-query-tests.lisp",
+        "tests/native_header_query_source.lisp",
+        "planning/evidence/header-query-source-20261003.log",
+        "planning/evidence/header-query-warm-20261003.log",
+        "books/legacy-parser-header.lisp",
+        "planning/evidence/header-query-bounds-source-20261003.log",
+        "planning/evidence/header-query-bounds-warm-20261003.log",
+        "planning/evidence/manifests/certify-20261003T171659Z-2651933.json"
+      ],
+      "progress_note": "41 shared legacy parser events admitted after generic-name refactor with existing guards/statements unchanged. All14 query events/guards admitted (tick guard1547steps, work1004/source9312/ready18087). Literal actual arena positive/fold/firstmatch/absent/invalid-header work/source/ready/reference teeth and pin mutation pass. Source236658 query checks compare actual old fn-nntp-hdr-content across W1/3/4096,10000-octet folded value, repeated names, malformed later field,999-octet line, bodyNUL/CRLF, mixed-case target, and recorded cold scalar reads in parser/normalizer. Captured span contains original fold bytes, normalization removes only first unfoldedSP/CRLF and scrubsTAB as before. Recorded list-arena/cold seams, no actual full owner/physical funding claim. Complete Served consumer and arbitrary-name universal reference proof remain open. Followup carries generic-name parser bounds and returned field scalar READ bounds (begin28/tick5488/field1014steps); literal positive and both hypothesis-removal witnesses pass. Actual source236850 checks pass. Existing legacy default-byte bound statement now proves in15steps with wrapper-only hint instead of expansion refusal. Normal3root certify-20261003T171659Z-2651933 passed immutable46b7 cursor/query/tests with19matching cached dependencies; this followup changes query/test bytes and has warm evidence only until its own selected certification. No verdict transfer."
+    },
+    {
+      "id": "PRF-1307",
+      "title": "Independent peer flight launch and startup grants fit actual captures",
+      "statement": "Accepted peer launcher extension fits captured whole machine; held startup grant fits dynamic heap after protected other banks. Separate lifetime and work rows ensure metered work can consume spent budget while spool/socket/worker custody remains held. General typed draw/settle correspondence is reused; actual host custody and complete allocation representation coverage remain separate obligations.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-049"
+      ],
+      "depends_on": [
+        "PRF-1211"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "files": [
+        "books/peer-flight-reservation.lisp",
+        "tests/acl2/peer-flight-reservation-tests.lisp"
+      ],
+      "events": [
+        "fn-pfr-accepted-launch-fits-machine",
+        "fn-pfr-held-startup-fits-capture"
+      ],
+      "evidence": [
+        "tests/acl2/peer-flight-reservation-tests.lisp"
+      ],
+      "progress_note": "Selected source definitions/guards and both numerical keystones pass in retained actual bank/heap world. Literal machine-fit/startup teeth and fresh private local-stobj flight/work exhaustion/settlement fixture pass. Profile codec, protected DEFAULT composition and actual Bounds worker custody are in progress. No certificate/native complete funding claim."
+    },
+    {
+      "id": "PRF-1308",
+      "title": "Unobserved arena returns survive same-process reset and owner entry",
+      "statement": "Actual fnn-payload-lifecycle-answer supplies fnn-arena-return-observation to fn-pvl-runtime-return-step. Destructive reset, start, recover and joined retirement require the closed physical observation in addition to existing logical lifecycle permission. Torn release callbacks keep their exact original arena and remaining handle cursor. Native custody-to-model correspondence and complete recovery composition remain open; the transparent wrapper facts are component checks, not keystones for full runtime safety.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/payload-view-lease.lisp",
+        "tests/acl2/payload-view-lease-tests.lisp",
+        "host/native/io.lisp",
+        "tests/native_payload_return_source.lisp",
+        "planning/evidence/arena-return-reset-20261003/result.json",
+        "planning/evidence/manifests/certify-20261003T174041Z-2716643.json"
+      ],
+      "progress_note": "Actual release callback/reset composition passes condition, nonlocal escape, unattempted handoff and successful-return cases; preceding native adapter fails the same reset refusal assertion. Normal two-root certificate certify-20261003T174041Z-2716643 passes (2/0, one cached snapshot-source-token dependency without a manifest cited here). Wider custody/model and whole-owner recovery correspondence remain planned; no native endpoint, image or deployment claim."
     }
   ]
 }

@@ -1500,7 +1500,9 @@ served by `books/nntp-auth.lisp`, which emits a `(:starttls)` effect. The
 native owner loads a configured OpenSSL 3 server context and performs the
 handshake in `host/native/tls.lisp`; the development adapter uses Python's
 `ssl` module. Both adapters report `(:tls-established)` to ACL2 only after a
-successful handshake. The book sees plaintext octets on both sides of that
+successful handshake. That receipt clears the selected group and current
+article (RFC 4642 section 2.2.2), preserving MODE effects. The receipt used
+for compression establishment preserves the cursor. The book sees plaintext octets on both sides of that
 boundary, and no theorem in this tree says anything about confidentiality,
 integrity, certificate validation, cipher selection or the handshake itself.
 The OpenSSL library, dynamic loader, C ABI and socket BIO are explicit native
@@ -2649,6 +2651,16 @@ malformed retained comparison fields settle safely without a whole archive
 validator. The valid-state witnesses compare old reader outcomes and split fuel.
 The complete selector/owner reference bridge remains an open proof obligation.
 
+Message-ID retrieval retains the pinned lookup result or walks a non-pinned
+archive one ID character per step. It then walks that article's memberships
+one character per step to derive its optional selected-group number. RFC3977
+6.2.1.2 permits zero with no selected group or no available local number; these
+requests preserve the selected group and current article. An absent ID walks
+captured withdrawn rows before choosing the existing430 withdrawn/no-article
+reply. The same cursor can split fuel arbitrarily without changing its result,
+by fn-ast-select-fuel-composes. Complete termination and original-response
+refinement remain open; no host-side semantic parser is introduced.
+
 Recovery and reclaim may complete legacy availability facts from the same captured
 arena. This changes derived facts, while preserving the article identity, payload
 handle, group memberships, stamp, assigned numbers, sequence and withdrawal
@@ -2711,8 +2723,9 @@ configuration setup still need their complete bounded implementation/refinement.
 The source-only `list-metadata-cursor` component retains group/next/config
 references and advances total wildmat matching, watermark lookup, numbered
 summary probes and status entries in separate controller calls. Its guarded
-step bounds emitted bytes and controller calls; one row still constructs its
-complete group/decimal fields. The available dispatcher and native render facade now consume this tag; full
+step bounds emitted bytes and controller calls. Each retained row now emits
+one indexed string character, decimal digit or framing byte per transition.
+The available dispatcher and native render facade consume this tag; full
 response residual/finite progress, captured column frames, composed witnesses
 and physical funding remain open.
 
@@ -2733,6 +2746,40 @@ their old `fn-splan` proofs keep that subject. Eight private empty-catalog
 factory-to-buffer replies match the original LIST at quanta1/256, including
 filters and y/m/n status. Full selective sparse-catalog/owner composition,
 query-plan residual/finite progress and snapshot column frames remain owed.
-One whole row and upstream authorization/config preparation still need their
-allocation/work tariffs and incremental representation; emitted B alone is
-not a whole-producer bound. The completed LIST-view policy remains PRF1237 debt.
+Rows now retain their string/scalar fields and emit one indexed character,
+decimal digit or framing byte per control call. Decimal construction stops at
+the existing ten-digit field decision instead of exploding an arbitrary integer;
+the carried state retains at most ten digits. Guards, one-byte/fixed-envelope
+facts and carried-state preservation are source-admitted, with exact old-row
+and hypothesis-removal witnesses. The full query residual remains owed. Status
+matching still converts a whole group name; upstream authorization/config setup,
+integer width, metadata and outer render allocation need actual tariffs and
+incremental representation. Emitted B alone is not a whole-producer bound. The completed LIST-view policy remains PRF1237 debt.
+
+
+### Retained arbitrary header backing (PRF-1304, SCN-1135)
+
+HDR/XHDR and XPAT share the existing article header grammar. The query interface
+`fn-lhq-begin(handle,length,pin,field)` retains the captured payload and normalizes
+only the field token from the bounded NNTP request. `fn-lhq-tick(cursor,fuel,arena)`
+returns a continuation and USED scalar reads; complete syntax validation precedes
+`:valid`. `fn-lhq-field` then returns the first matching `(handle,start,length,pin)`
+span, or NIL for a valid absent field. An invalid article is distinguished by
+`fn-lhq-verdict`, never inferred from an empty value. The span keeps physical fold
+bytes and removes only the first unfolded space. Existing `fn-nsw-step` removes
+fold CRLF and scrubs TAB/CR/LF/NUL according to RFC3977 8.3.2; arbitrary field values
+are never flattened by this producer. A cold scalar read leaves the caller's raw
+query/normalizer coordinates unchanged, under the same origin pin.
+
+The logical parser bounds are established by query begin and preserved by each
+tick. Together with the cheap source-ready guard, they establish that a returned
+span retains the captured handle/pin and that start plus length is within the
+captured payload length. The bounds predicate is a proof invariant; query ticks
+do not execute a whole field/archive recognizer. Literal witnesses remove each
+of the two hypotheses independently and demonstrate the failed span conclusion.
+
+The original five-name NOV parser entry keeps its ABI and projection through a
+shared name-parameterized header machine. Component guards, bounded work/source
+preservation and literal/reference source cases pass; Served's actual HDR/XPAT
+consumer and the universal arbitrary-name parser/span correspondence remain open.
+This is no complete physical allocation or qualified endpoint claim.

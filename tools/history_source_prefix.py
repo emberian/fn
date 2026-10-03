@@ -76,7 +76,8 @@ def generate(source: Path, dependencies: Path, world: Path, output: Path) -> Non
                   and head_and_name(f)[1] in {
                       'create-fn-hrecs$s', 'create-fn-hist$p', 'fn-hist$p-adopt-stage',
                       'fn-hist$p-root-index-next', 'fn-hist$p-root-generation',
-                      'fn-hist$p-read', 'fn-hist$p-append', 'fn-hist$p-candidate-word'}
+                      'fn-hist$p-read', 'fn-hist$p-append', 'fn-hist$p-candidate-word',
+                      'fn-hist$p-dispose', 'fn-hrecs$s-dispose'}
                   or head_and_name(f)[0] == 'definterface' and
                   head_and_name(f)[1].startswith(('fn-hroot-', 'fn-owner-hroot-', 'fn-owner-orcp-load-catalog')))
     events.write_text('\n\n'.join(normal) + '\n')

@@ -1,0 +1,342 @@
+{
+  "fnn-command-anchor": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "c623c96e458dead85fc05f76893dd29f7554b19f593afa7b138ae9ccb6b5afdf"
+  },
+  "fnn-command-bp-app-receive": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "0ce05ba10bb581b7a8046d4126ca5c911ab9ac53857abe1851a7afce3538960e"
+  },
+  "fnn-command-bp-receive": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "ef0c899d15afe62e5332484304e24ca2c1a0ddc8d3a33977f980abf87e8ff201"
+  },
+  "fnn-command-bp-decode": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "ef0c899d15afe62e5332484304e24ca2c1a0ddc8d3a33977f980abf87e8ff201"
+  },
+  "fnn-command-compact": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "ae14745a3947e5649ff20fe59b5f78c77b930177587bb459f9e212bba5987be7"
+  },
+  "fnn-command-reclaim": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "ae14745a3947e5649ff20fe59b5f78c77b930177587bb459f9e212bba5987be7"
+  },
+  "fnn-command-config-profile": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "63d28c572492342f64bc5f4c248f367ab4a20eb96ac3028704d25419bbfd156e"
+  },
+  "fnn-command-consumer-local": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "81b91f565f5d29857c65f5abe88548518fe16711964b37c6e4c2986dd1928d8d"
+  },
+  "fnn-command-consumer-article": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "81b91f565f5d29857c65f5abe88548518fe16711964b37c6e4c2986dd1928d8d"
+  },
+  "fnn-command-init": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+  },
+  "fnn-command-init-published": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+  },
+  "fnn-command-developer-init": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+  },
+  "fnn-command-post": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+  },
+  "fnn-command-recover": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+  },
+  "fnn-dispatch": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+  },
+  "fnn-command-redeem": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+  },
+  "fnn-main": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+  },
+  "fnn-owner-run": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "ec911c69097a19406606c31aa3237e0cce762ae2a8c0ccab2e83d40e1e751aa1"
+  },
+  "fnn-command-hybrid-sign": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
+  },
+  "fnn-command-hybrid-sign-carrier": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
+  },
+  "fnn-command-hybrid-verify-carrier": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
+  },
+  "fnn-command-hybrid-verify-source": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
+  },
+  "fnn-command-topic-inspect-carrier": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
+  },
+  "fnn-command-consumer-project": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
+  },
+  "fnn-command-consumer-inspect": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
+  },
+  "fnn-command-statement-sign": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
+  },
+  "fnn-command-topic-local": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
+    "source_sha256": "47bf579bb8bb7d834c4d24dab0c988bc4a734517d91569885d7820360b702910"
+  },
+  "fnn-command-tcpcl-listen": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits",
+    "source_sha256": "8461c6ae76eed91841c859ac76804f890cee58787d41bab0217ea3139c488e0a"
+  },
+  "fnn-command-tcpcl-send": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits",
+    "source_sha256": "8461c6ae76eed91841c859ac76804f890cee58787d41bab0217ea3139c488e0a"
+  },
+  "fnn-command-tcpcl-replay": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits",
+    "source_sha256": "8461c6ae76eed91841c859ac76804f890cee58787d41bab0217ea3139c488e0a"
+  },
+  "fnn-command-bp-node-resume": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits",
+    "source_sha256": "89781b5ff5edcac3f594535eac24db0b79f27b8d37e9deb35ccbde599259a795"
+  },
+  "fnn-command-bp-node-checkpoint": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits",
+    "source_sha256": "89781b5ff5edcac3f594535eac24db0b79f27b8d37e9deb35ccbde599259a795"
+  },
+  "fnn-command-bp-node-profile": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits",
+    "source_sha256": "89781b5ff5edcac3f594535eac24db0b79f27b8d37e9deb35ccbde599259a795"
+  },
+  "fnn-command-bp-contact-tick": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits",
+    "source_sha256": "92e39f9735a7d3634d83f55a02a1d2b270095b9a937398a0b0c2178e1ee41b43"
+  },
+  "fnn-command-workflow-init": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-workflow-enqueue": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-workflow-status": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-workflow-undertake": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-workflow-ion-submit": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-workflow-ion-status": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-workflow-receipt": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-receipt-init": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-receipt-complete": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-receipt-replay": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-bpo-owner-status": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "e3f028f45471e2b74d75e7d12d30e71f7fa341c6cee3cbadb2fd26f2e94b9f94"
+  },
+  "fnn-command-bpo-owner-undertake": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "e3f028f45471e2b74d75e7d12d30e71f7fa341c6cee3cbadb2fd26f2e94b9f94"
+  },
+  "fnn-command-bpo-owner-receipt": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "e3f028f45471e2b74d75e7d12d30e71f7fa341c6cee3cbadb2fd26f2e94b9f94"
+  },
+  "fnn-command-bpo-owner-request": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c7637e1a7 + scoped E011 edits",
+    "source_sha256": "b73b8e9ab85cfa1f88ea887cde8f173eae6698adaeaff1d80a213b2c51258640"
+  },
+  "fnn-command-bpo-owner-recover": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "e3f028f45471e2b74d75e7d12d30e71f7fa341c6cee3cbadb2fd26f2e94b9f94"
+  },
+  "fnn-command-bp-service-run": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c7637e1a7 + scoped E011 edits",
+    "source_sha256": "9b75977a699d97d64a12034c2e7d5f52e15d53d2b8404390050f0368c234f482"
+  },
+  "fnn-command-bp-service-resume": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c7637e1a7 + scoped E011 edits",
+    "source_sha256": "9b75977a699d97d64a12034c2e7d5f52e15d53d2b8404390050f0368c234f482"
+  },
+  "fnn-command-bp-service-inspect-received": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "c7637e1a7 + scoped E011 edits",
+    "source_sha256": "9b75977a699d97d64a12034c2e7d5f52e15d53d2b8404390050f0368c234f482"
+  },
+  "fnn-command-hybrid-enroll": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "17088f4b00783cca3645ce13849077bddb12ce3d",
+    "source_sha256": "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
+  },
+  "fnn-command-hybrid-author": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "17088f4b00783cca3645ce13849077bddb12ce3d",
+    "source_sha256": "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
+  },
+  "fnn-command-hybrid-revoke": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "17088f4b00783cca3645ce13849077bddb12ce3d",
+    "source_sha256": "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
+  },
+  "fnn-command-hybrid-key-history": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "17088f4b00783cca3645ce13849077bddb12ce3d",
+    "source_sha256": "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
+  },
+  "fnn-command-hybrid-enroll-next": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "17088f4b00783cca3645ce13849077bddb12ce3d",
+    "source_sha256": "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
+  },
+  "fnn-command-hybrid-revoke-next": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "17088f4b00783cca3645ce13849077bddb12ce3d",
+    "source_sha256": "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
+  },
+  "fnn-command-acl2": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "17088f4b00783cca3645ce13849077bddb12ce3d",
+    "source_sha256": "b0b6c3735797f551aada7ff7761ff215d7b2726dc324c97e3d268a449d4e49d3"
+  },
+  "fnn-command-heap": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "17088f4b00783cca3645ce13849077bddb12ce3d",
+    "source_sha256": "1b81e71aea5f45086d1e581e824b8bee6c60bb5457af47fccb4dc0c3866856e5"
+  },
+  "fnn-command-digest-check": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "17088f4b00783cca3645ce13849077bddb12ce3d",
+    "source_sha256": "ef5b4eda2a9c7943ba9878eab353e84a321f087a114bf90ce8478bce260a19bb"
+  },
+  "fnn-command-rebind-filesystem": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "17088f4b00783cca3645ce13849077bddb12ce3d",
+    "source_sha256": "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+  },
+  "fnn-command-store-digest": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "17088f4b00783cca3645ce13849077bddb12ce3d",
+    "source_sha256": "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+  },
+  "fnn-command-store-journal": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "17088f4b00783cca3645ce13849077bddb12ce3d",
+    "source_sha256": "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+  },
+  "fnn-command-state-checkpoint": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "17088f4b00783cca3645ce13849077bddb12ce3d",
+    "source_sha256": "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+  },
+  "fnn-command-store-export": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "471922ffb + scoped E013 edits",
+    "source_sha256": "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+  },
+  "fnn-command-store-import": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "471922ffb + scoped E013 edits",
+    "source_sha256": "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+  },
+  "fnn-command-store-bless-snapshot": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "471922ffb + scoped E013 edits",
+    "source_sha256": "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+  }
+}

@@ -119,7 +119,7 @@
 (let ((*fault-at* 'operator-plan) (*condition-kind* 'fnn-store-error))
   (command-outcome (lambda () (fnn-command-heap "--" '("operator" "CONFIG" "run"))) 0 "heap=fixture"))
 (assert (equal (multiple-value-list (fnn-heap-operator-profile "CONFIG" '("run")))
-               '((:recorded-profile) 4 :run nil (:cold) (:output))))
+               '((:recorded-profile) 4 :run nil (:cold) (:output) "/fixture")))
 
 ; Initial configuration keeps only the actual ACL2 named refusal (:bad).
 (let ((*initial-result* :bad))

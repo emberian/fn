@@ -22,7 +22,9 @@ def generate(source: Path, world_manifest: Path, output: Path,
     source = source.resolve()
     world_manifest = world_manifest.resolve()
     world = json.loads(world_manifest.read_text())
-    admitted = {name.removesuffix('.lisp') for name in world['repository_books']}
+    inventory = {name.removesuffix('.lisp') for name in world['repository_books']}
+    admitted = {name.removesuffix('.lisp') for name in
+                world.get('exported_books', world['repository_books'])}
     repository = world.get('repository_sha256', {})
     if Path(world['source']).resolve() != source and set(repository) != set(world['repository_books']):
         raise ValueError('different source roots require the complete logical source inventory')
@@ -38,6 +40,28 @@ def generate(source: Path, world_manifest: Path, output: Path,
     def remember(path):
         inputs[str(path)] = hashlib.sha256(path.read_bytes()).hexdigest()
 
+    def local_input(target):
+        """A local proof input is not an exported rule from a cached parent."""
+        expected = repository.get(target + '.lisp')
+        recorded = world.get('inputs_sha256', {})
+        for name, digest in recorded.items():
+            path = Path(name)
+            if not name.endswith('/' + target + '.lisp') or digest != expected:
+                continue
+            siblings = [path, path.with_suffix('.cert'), path.with_suffix('.port')]
+            if not all(str(p) in recorded and p.is_file() for p in siblings):
+                continue
+            if not all(hashlib.sha256(p.read_bytes()).hexdigest() == recorded[str(p)] for p in siblings):
+                raise ValueError('local proof input changed: ' + target)
+            for suffix in ('.lisp', '.cert', '.port', '.fasl'):
+                candidate = path.with_suffix(suffix)
+                if str(candidate) in recorded:
+                    if not candidate.is_file() or hashlib.sha256(candidate.read_bytes()).hexdigest() != recorded[str(candidate)]:
+                        raise ValueError('local proof input changed: ' + target)
+                    remember(candidate)
+            return '(include-book ' + json.dumps(str(path.with_suffix(''))) + ')'
+        raise ValueError('host proof dependency is not exported and has no bound cached input: ' + target)
+
     def transform(form, directory):
         match = re.match(r'^\(\s*([^\s()]+)', form)
         head = match.group(1).lower() if match else ''
@@ -47,9 +71,9 @@ def generate(source: Path, world_manifest: Path, output: Path,
             return ''
         if head == 'include-book':
             target = proof_repl.include_target(form, directory)
-            if target not in admitted:
+            if target not in inventory:
                 raise ValueError('host include absent from admitted world: ' + form)
-            return ''
+            return '' if target in admitted else local_input(target)
         if head == 'ld':
             match = LD.match(form)
             if not match:
@@ -78,11 +102,16 @@ def generate(source: Path, world_manifest: Path, output: Path,
         body = [transform(form, path.parent) for form in forms(path.read_text())]
         active.remove(path)
         body = [form for form in body if form]
+        # A newly needed nonlocal cached input must be outside encapsulate.
+        # LOCAL wrappers stay inside, so proof-only rules never leak outward.
+        hoisted = [form for form in body if LD.match(form) is None and form.lower().startswith('(include-book ')]
+        body = [form for form in body if form not in hoisted]
         # A host LD exports its nonlocal events. Its LOCAL proof setup must
         # not leak into a dependent host file during source execution.
+        prefix = '\n'.join(hoisted)
         if not body:
-            return ''
-        return '(value-triple (cw "FN_SOURCE_HOST ' + str(path.relative_to(source)) + '~%"))\n' + \
+            return prefix
+        return prefix + '\n(value-triple (cw "FN_SOURCE_HOST ' + str(path.relative_to(source)) + '~%"))\n' + \
                '(encapsulate ()\n' + '\n\n'.join(body) + '\n)'
 
     path = source / build

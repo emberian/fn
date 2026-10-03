@@ -32,6 +32,8 @@
 (defvar *fx-refuse* nil)
 (defvar *fx-rewrite-at* nil)
 (defvar *fx-tail-at-index* nil)
+(defvar *fx-activation-cut* nil)
+(defvar *fx-abandon-result* :released)
 (defun fx-frontier () (list (length *fx-events*) :frontier :config *fx-incarnation*))
 (defun fnn-owner-core (name &rest args)
   (push name *fx-trace*)
@@ -53,10 +55,19 @@
       (destructuring-bind (generation count frontier) args
         (assert (= count (length *fx-events*)))
         (assert (equal frontier (fx-frontier)))
+        (when (eq *fx-activation-cut* :refused)
+          (return-from fnn-owner-core :changed))
         (prog1 (list :installed generation *fx-current*)
           (when *fx-current* (push *fx-current* *fx-retired*))
-          (setq *fx-current* generation))))
-    (fn-owner-hroot-abandon :released)
+          (setq *fx-current* generation)
+          (when (eq *fx-activation-cut* :activated)
+            (error "cut after logical activation")))))
+    (fn-owner-hroot-abandon-word
+      (if (or (eql (first args) *fx-current*)
+              (member (first args) *fx-retired*)
+              (find (first args) *fx-leases* :key #'third))
+          :history-root-held :ready))
+    (fn-owner-hroot-abandon *fx-abandon-result*)
     (fn-owner-hroot-retire-word
       (let ((generation (first args)))
         (if (and (member generation *fx-retired*)
@@ -230,3 +241,67 @@
   (assert (not (member 'fn-hist$p-dispose *fx-trace*)))
   (assert (not (member 'fn-owner-hroot-retire *fx-trace*))))
 (format t "PASS corrupted retired root without physical custody refuses before disposal/refund~%")
+
+; Activated roots are retained even if the installer escapes before returning.
+; The real owner gate fences such escapes; this fixture tests physical custody,
+; not that independent gate's fencing theorem or native scheduler.
+(dolist (mode '(:refresh :reclaim))
+  (dolist (cut '(:activated :before-pointer :after-pointer :refused))
+    (let* ((*fnn-history-roots* (make-hash-table :test 'eql))
+           (*fx-events* '((:article retained)))
+           (*fx-generation* 0) (*fx-current* nil) (*fx-retired* nil)
+           (*fx-incarnation* nil) (*fx-leases* nil) (*fx-trace* nil)
+           (*fx-activation-cut* cut)
+           (*fnn-hist* (vector *fx-events* 0 nil nil))
+           (*the-live-state* (list (cons 'fn-hist *fnn-hist*)))
+           (service (make-fnn-owner-service))
+           (install (symbol-function 'fnn-install-history-root))
+           (candidate nil))
+      (unwind-protect
+          (progn
+            (setf (symbol-function 'fnn-install-history-root)
+                  (lambda (root)
+                    (setq candidate root)
+                    (when (eq cut :before-pointer) (error "cut before pointer"))
+                    (funcall install root)
+                    (when (eq cut :after-pointer) (error "cut after pointer"))))
+            (assert
+             (handler-case
+                 (progn
+                   (if (eq mode :refresh)
+                       (fnn-owner-history-root-refresh service)
+                     (let ((prepared (fnn-owner-history-root-prepare-rows service *fx-events* 0)))
+                       (setq candidate (second prepared))
+                       (unwind-protect (fnn-owner-history-root-install-held prepared)
+                         (fnn-owner-history-root-abandon-candidate service prepared))))
+                   nil)
+               (error () t)))
+            (cond
+             ((eq cut :refused)
+              (assert (null (gethash *fx-generation* *fnn-history-roots*)))
+              (assert (member 'fn-hist$p-dispose *fx-trace*))
+              (assert (member 'fn-owner-hroot-abandon *fx-trace*)))
+             (t
+              (let ((retained (gethash *fx-current* *fnn-history-roots*)))
+                (assert retained)
+                (when candidate (assert (eq retained candidate)))
+                (assert (equal (aref retained 0) *fx-events*))
+                (assert (aref retained 2))
+                (when (eq cut :after-pointer) (assert (eq *fnn-hist* retained)))
+                (assert (not (member 'fn-hist$p-dispose *fx-trace*)))
+                (assert (not (member 'fn-owner-hroot-abandon *fx-trace*)))))))
+        (setf (symbol-function 'fnn-install-history-root) install)))))
+(format t "PASS refresh/reclaim activation and pointer cuts retain live backing; definite refusal disposes before refund~%")
+
+; Corrupted accounting cannot turn failed credit settlement into silent cleanup.
+(let ((*fx-abandon-result* :credit-refused) (*fx-current* nil)
+      (*fx-retired* nil) (*fx-leases* nil) (*fx-trace* nil)
+      (*fnn-history-roots* (make-hash-table :test 'eql)))
+  (assert (handler-case
+              (progn (fnn-history-root-abandon-held 7 (vector '(:private) 7 t nil)) nil)
+            (error () t)))
+  (let ((ordered (reverse *fx-trace*)))
+    (assert (< (position 'fn-owner-hroot-abandon-word ordered)
+               (position 'fn-hist$p-dispose ordered)
+               (position 'fn-owner-hroot-abandon ordered)))))
+(format t "PASS failed private candidate credit return raises after ordered disposal~%")

@@ -20,10 +20,12 @@ certification, qualified packaging and deployment remain separate.
 The immediate shared dependency is one coherent current source-loaded owner
 world with early arena/P3 attachment before generic history and current
 reader/decoded/native interfaces. History is admitting the generated current logical input in the retained
-canonical P3 world; owner entry has not yet been reached. The required payload arena scope now passes ordinary admission. The retained
-continuation has passed the Store trace scope with 40 explicitly deferred
-semantic theorems and two dependent proof-catalog references recorded; it has
-not reached the full normal host or native entry. The
+canonical P3 world; owner entry has not yet been reached. The required payload arena scope now passes ordinary admission. The earlier continuation passed the Store trace scope with 40 explicitly
+deferred semantic theorems and two dependent proof-catalog references recorded,
+then lost its process to an aggregate load timeout. That timeout now uses the
+configured source-load allowance. A fresh early arena/P3 world has been
+checkpointed and restored with both actual attachments intact; required Store
+guards and later logical scopes still precede the full normal host/native entry. The
 shared source generator can explicitly defer named unrelated DEFTHMs while
 retaining definitions and required guard/correspondence obligations, recording
 those books as unproved. No such deferral has yet established owner execution. The earlier alleged eleven-versus-ten-field read-pool
@@ -32,11 +34,14 @@ pool has ten fields. Current decoded-job/controller/window methods and P3
 semantics still require deliberate assembly; old cached execution does not
 establish those joins. History owns one fresh initialization, with Integration
 supporting the shared runner and the other owners continuing their consumers.
-A concrete activation gap is now identified: fresh owner startup has no caller
-of page-read-install-baseline/pool-storage-start, leaving the read pool offline.
+Operator and Empirical have completed their current source batches and await
+the connected endpoint; their domains and remaining criteria stay assigned.
+The formerly absent DEFAULT read-pool startup caller is now wired in source:
 Operator owns the native pre-open consumer, Foundations the numerical plan and
-installer, and Runtime the persistent executor/storage lifecycle; compressed endpoint activity
-is not established by the constructor or recording fixtures.
+installer, and Runtime the persistent executor/storage lifecycle. Composed
+startup, refusal, cancellation and retirement source fixtures pass. Required
+wrapper/acquire guards and actual full-world endpoint execution remain open;
+constructor or recording fixtures do not establish compressed endpoint activity.
 
 ## Usage-limit stop — 2026-10-03 10:18 America/New_York
 

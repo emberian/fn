@@ -9341,9 +9341,11 @@
         "planning/evidence/article-server-source-20261003.log",
         "tests/acl2/article-stream-tests.lisp",
         "planning/evidence/article-selector-guards-source-20261003.log",
-        "planning/evidence/article-selector-guards-warm-20261003.log"
+        "planning/evidence/article-selector-guards-warm-20261003.log",
+        "planning/evidence/article-msgid-source-20261003.log",
+        "planning/evidence/article-msgid-warm-20261003.log"
       ],
-      "execution_scope": "Actual shared core function bodies69488 finite checks; actual owner completion, PROGRAM wrapper and native READY/render helpers execute with recorded list-arena, owner-state installation and cold I/O seams (70841 aggregate checks). Selection commits once after complete framing; replay does not install again; RAW and READY cold continuations are retained by identity; exact503/423/430 refusals and unchanged reader selection; global generation change under unchanged per-connection pin is allowed. Web actual source stress fbcae3cd0 has independent recorded consumer evidence. Full actual parsed factory and physical decoded-window/browser execution, guard proofs and universal owner/reference boundary remain pending. Subsequent lazy Xref captures original membership spine, filters one word/lookup character per transition, preserves duplicate and invalid-word reference behavior; source126337 core/127690 aggregate owner-native checks pass5000-character group cases, windows1/3/4096. Changed core34forms and component bounds warm admitted0.08s. Full initial selection/setup and owner/Xref boundary proofs remain open. Resumable numeric/current selection and withdrawn lookup now pass126385 core/127949 aggregate checks including absent420/423 and withdrawn423, with unchanged selection until READY. Actual parsed factory and physical runtime remain pending. Exact selected definitions and PROGRAM factory/READY wrappers normally admitted in fresh ad8+gate336 cached source world, then raw native helpers reached CLI entry; ordinary renderer ABI mismatch remains explicit. No parsed factory, socket or physical decoded execution claim. Resumed source tests184344 core/185908 aggregate cover incremental server validation including long5000-octet valid/invalid/improper candidates; current native window-activation executes uncaptured branch in recorded seam. Universal pinned-server capture boundary and moderator/mutation/improper teeth admitted separately. Physical decoder/factory/socket join remains Runtime/History-owned. Guard-verified selector reached fn-statep positive, numeric/current reference equality, partitioned fuel and absent-number outcomes; malformed comparison state is separately labeled corrupted-state evidence. Current core warm admission and recorded source185908 aggregate pass; certificate at39d72 applies only to its earlier core bytes. Complete owner/reference and physical consumer remain open."
+      "execution_scope": "Actual shared core function bodies69488 finite checks; actual owner completion, PROGRAM wrapper and native READY/render helpers execute with recorded list-arena, owner-state installation and cold I/O seams (70841 aggregate checks). Selection commits once after complete framing; replay does not install again; RAW and READY cold continuations are retained by identity; exact503/423/430 refusals and unchanged reader selection; global generation change under unchanged per-connection pin is allowed. Web actual source stress fbcae3cd0 has independent recorded consumer evidence. Full actual parsed factory and physical decoded-window/browser execution, guard proofs and universal owner/reference boundary remain pending. Subsequent lazy Xref captures original membership spine, filters one word/lookup character per transition, preserves duplicate and invalid-word reference behavior; source126337 core/127690 aggregate owner-native checks pass5000-character group cases, windows1/3/4096. Changed core34forms and component bounds warm admitted0.08s. Full initial selection/setup and owner/Xref boundary proofs remain open. Resumable numeric/current selection and withdrawn lookup now pass126385 core/127949 aggregate checks including absent420/423 and withdrawn423, with unchanged selection until READY. Actual parsed factory and physical runtime remain pending. Exact selected definitions and PROGRAM factory/READY wrappers normally admitted in fresh ad8+gate336 cached source world, then raw native helpers reached CLI entry; ordinary renderer ABI mismatch remains explicit. No parsed factory, socket or physical decoded execution claim. Resumed source tests184344 core/185908 aggregate cover incremental server validation including long5000-octet valid/invalid/improper candidates; current native window-activation executes uncaptured branch in recorded seam. Universal pinned-server capture boundary and moderator/mutation/improper teeth admitted separately. Physical decoder/factory/socket join remains Runtime/History-owned. Guard-verified selector reached fn-statep positive, numeric/current reference equality, partitioned fuel and absent-number outcomes; malformed comparison state is separately labeled corrupted-state evidence. Current core warm admission and recorded source185908 aggregate pass; certificate at39d72 applies only to its earlier core bytes. Complete owner/reference and physical consumer remain open. Resumable Message-ID setup/current group projection passes184480 core/187518 aggregate actual-source checks, including missing/withdrawn430 distinctions and all ARTICLE/HEAD/BODY cold READY/replay paths. The Message-ID selected reader and recorded owner installation remain unchanged. First duplicate ID and first duplicate membership match original reference; oversized/unavailable local number yields0. Current guard/fuel theorem and literal warm teeth pass. These recorded seams do not claim full parsed factory/physical decoder execution."
     },
     {
       "id": "SCN-1121",
@@ -9620,28 +9622,35 @@
       "milestone": "M5",
       "status": "specified",
       "requirements": [
-        "STO-020"
+        "STO-020",
+        "HST-048"
       ],
       "steps": [
         "Execute actual fnn-owner-run with constructor/recovery observations and actual ACL2 service settlement decisions.",
         "Execute actual fnn-owner-page-read-startup with deliberate admitted/refused/malformed core results and observe exact raw runtime captures and constructor ordering.",
         "Run the prior owner body against the same startup/recovery fixture.",
-        "Observe final settlement when installation retained its actual Store carrier but never returned SERVICE."
+        "Observe final settlement when installation retained its actual Store carrier but never returned SERVICE.",
+        "Observe a normally joined executor whose retained constructor/decoder roster still contains physical custody using the actual locked drained predicate.",
+        "Compose the actual global arena return observation with preconstructor startup and orphan cleanup, including prior callback debt with no Store carrier."
       ],
       "expected": [
         "Pool installation, fixed table allocation, guard preparation and executor startup precede Store open. Named refusals allocate no tables or workers; malformed model decisions fault.",
         "A failure before service publication joins partial executors before run authority settles; an escaping join preserves that authority and outstanding workers.",
         "Prior source fails the startup predicate at Store open because no pool or workers were installed.",
-        "Retained startup Store is closed rather than reported absent; close failure fences it and retains authority. Prior actual settlement performs zero closes."
+        "Retained startup Store is closed rather than reported absent; close failure fences it and retains authority. Prior actual settlement performs zero closes.",
+        "Joined-but-retained executor custody leaves startup and run authority held; prior actual cleanup falsely releases it.",
+        "Prior arena callback debt reports uncertainty before plan/table/worker construction and retains run authority even when all executor threads have drained; callbacks never retry."
       ],
       "implementation": {
         "test": "tests/test_native_owner_pool_startup_source.py"
       },
       "evidence": [
         "tests/native_owner_pool_startup_source.lisp",
-        "planning/evidence/operator-pool-startup-source-2026-10-03-v2.json"
+        "planning/evidence/operator-pool-startup-source-2026-10-03-v2.json",
+        "planning/evidence/operator-executor-custody-source-2026-10-03.json",
+        "planning/evidence/operator-arena-custody-source-2026-10-03.json"
       ],
-      "execution_scope": "Actual native function bodies with observed physical constructors and deliberate core startup results; actual service-settlement ACL2 functions. Numerical producer proof, actual allocator/worker composition and matching image are separate coordinates."
+      "execution_scope": "Actual native function bodies with observed physical constructors and deliberate core startup results; actual service-settlement ACL2 functions. Numerical producer proof, actual allocator/worker composition and matching image are separate coordinates. The actual E-locked executor-drained helper is composed with owner-run in the joined-but-debt case; stop/constructor physical effects remain recorded seams. Actual global arena observation executes from Horse Exits db2e4c87a; prior owner-run and helper bodies independently refute lost custody/preconstructor guard."
     },
     {
       "id": "SCN-1133",
@@ -9727,6 +9736,74 @@
         "tests/acl2/bp-heap-command-tests.lisp"
       ],
       "execution_scope": "Actual ACL2 projection/grammar and actual native heap profile consumer with recorded profile observation pass. Complete DEFAULT reservation extension, actual launcher/resource execution and current native BP joins remain pending."
+    },
+    {
+      "id": "SCN-1135",
+      "title": "Arbitrary HDR/XPAT field query retains immutable span across bounded parser and cold normalization",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "REP-010",
+        "NNT-016"
+      ],
+      "steps": [
+        "Capture actual article handle/length/origin pin and requested bounded NNTP field token.",
+        "Run fn-lhq-tick in natural-fuel quanta through complete syntax validation; distinguish invalid article from valid absent field.",
+        "Normalize borrowed first matching span with fn-nsw-step and resume exact state across cold scalar reads.",
+        "Consume span in actual HDR/XHDR/XPAT dispatcher and owner, retaining pin through reply/matcher settlement."
+      ],
+      "expected": [
+        "First matching name wins, case-insensitively; folded WSP and single initialSP removal match old HDR content.",
+        "No whole field/payload materialization in the producer; USED and bytes remain bounded by fuel.",
+        "Invalid later header or body framing invalidates the entire header query; absent field remains NIL while any present span is a record.",
+        "Cold retains exact handle/pin/raw cursor/normalization coordinates; terminal cleanup waits for actual dependencies.",
+        "Carried parser bounds plus cheap source-ready guard imply returned span has the captured handle/pin and start+length within captured length; removing either hypothesis admits a literal counterexample."
+      ],
+      "implementation": {
+        "test": "tests/native_header_query_source.lisp"
+      },
+      "evidence": [
+        "tests/acl2/legacy-header-query-tests.lisp",
+        "tests/native_header_query_source.lisp",
+        "planning/evidence/header-query-source-20261003.log",
+        "planning/evidence/header-query-warm-20261003.log",
+        "planning/evidence/header-query-bounds-source-20261003.log",
+        "planning/evidence/header-query-bounds-warm-20261003.log"
+      ],
+      "execution_scope": "Actual shared parser/query/normalizer functions236850 recorded list-arena/cold checks; guard and literal work/source/ready/bounds/reference arena teeth warm pass. Actual Served dispatch/owner/physical compressed execution and universal arbitrary-name span/parser/refinement remain pending."
+    },
+    {
+      "id": "SCN-1136",
+      "title": "DEFAULT heap command funds selected backing and next-run diagnostics agree",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-048",
+        "HST-008",
+        "HST-009"
+      ],
+      "steps": [
+        "Execute actual heap profile, command and reservation bodies with actual ACL2 DEFAULT arithmetic and explicit machine/config/base/output observations.",
+        "Check normalized root and actual worker/cache arguments, cold/default/output ordering, run extension, offline/init/explicit-policy scopes and prior refusal preservation.",
+        "Check exact machine fit versus one octet less, next-run status and prior actual heap consumer.",
+        "Execute actual STATUS and HEALTH bodies, generic configuration projections and actual output reservation arithmetic for DEFAULT/output and explicit cold/output captures."
+      ],
+      "expected": [
+        "DEFAULT run increases the chosen256MB fixture to257MB; the unchanged prior consumer prints256MB and fails the accepting reservation assertion.",
+        "The exact machine boundary accepts; one octet less refuses. DEFAULT status prints the same extended reservation from one image/machine capture.",
+        "Offline/init and explicit cold-policy cases retain their existing figure; faults remain distinct in SCN-1098.",
+        "Both diagnostics preserve configured output: selected base256MB +DEFAULT1MB +output16MB prints273MB; explicit cold case passes exact cold descriptor and output contributes16MB. Prior actual STATUS drops the policies and prints257MB."
+      ],
+      "implementation": {
+        "test": "tests/test_native_heap_default_source.py"
+      },
+      "evidence": [
+        "tests/native_heap_default_source.lisp",
+        "planning/evidence/operator-default-heap-source-2026-10-03.json",
+        "tests/native_heap_diagnostic_policy_source.lisp",
+        "planning/evidence/operator-default-heap-source-2026-10-03-v2.json"
+      ],
+      "execution_scope": "Actual native heap/profile/status bodies and actual selected ACL2 reservation/layout arithmetic. Base heap figure, config/machine capture and explicit output extension are deliberate seams; no complete allocation, expanded init/reopen theorem, nonempty recovery, saved-image or deployment qualification. Configured diagnostic cases execute actual STATUS/HEALTH and config field projections plus real output reservation arithmetic. Explicit cold arithmetic remains a declared seam; complete cold startup remains unsupported."
     }
   ]
 }

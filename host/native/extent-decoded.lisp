@@ -93,15 +93,17 @@ allocator/GC and pointed-to controller graphs remain outside that partial scope.
     (unless (and (fnn-decoded-activation-p activation)
                  (eq (fnn-decoded-activation-stage activation) :idle))
       (fnn-fault "decoded baseline scratch unavailable or quarantined"))
-    (setf (fnn-cold-worker-decoded worker) activation)
+    ;; Cancellation and assignment share E. A cancelled dispatch never claims
+    ;; the idle scratch; after authorization, publish the alias before the
+    ;; semantic assign so a torn call remains discoverable for quarantine.
     (sb-thread:with-mutex (*fnn-extent-lock*)
       (unless (first (fnn-core-cold-pool 'fn-owner-page-window-work-permittedp
                        (fnn-cold-worker-row worker) token))
-        (fnn-fault "decoded constructor lacks its exact running pool draw"))
+        (return-from fnn-extent-decoded-window-run nil))
       (setq fd (gethash (fnn-core 'fn-pwz-nth 2 token) *fnn-extent-fds*)
-            incarnation (gethash (fnn-core 'fn-pwz-nth 2 token) *fnn-extent-incarnations*)))
-    (unless (and fd incarnation) (fnn-fault "decoded issued file closed"))
-    (sb-thread:with-mutex (*fnn-extent-lock*)
+            incarnation (gethash (fnn-core 'fn-pwz-nth 2 token) *fnn-extent-incarnations*))
+      (unless (and fd incarnation) (fnn-fault "decoded issued file closed"))
+      (setf (fnn-cold-worker-decoded worker) activation)
       (destructuring-bind (word job &rest ignored)
           (fnn-decoded-semantic (activation)
             (fnn-call 'fn-owner-page-decoded-job-assign

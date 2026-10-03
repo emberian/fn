@@ -63,3 +63,32 @@
  (and (equal (fn-pvl-runtime-step :draining :joined t t) '(:refused :draining))
       (equal (fn-pvl-runtime-step :draining :joined nil nil) '(:refused :draining))
       (equal (fn-pvl-runtime-step :draining :joined nil t) '(:allowed :quiescent))))
+
+; Complete antecedent/conclusion witnesses and literal hypothesis removals.
+(assert-event
+ (let ((event :reset) (returned :uncertain))
+   (and (member-equal event '(:reset :start :recover :joined))
+        (not (eq returned :closed))
+        (equal (fn-pvl-runtime-return-step :quiescent event nil nil returned)
+               '(:refused :quiescent)))))
+(assert-event
+ (let ((event :reset) (returned :closed))
+   (and (member-equal event '(:reset :start :recover :joined))
+        (eq returned :closed)
+        (not (equal (fn-pvl-runtime-return-step :quiescent event nil nil returned)
+                    '(:refused :quiescent))))))
+(assert-event
+ (let ((event :borrow) (returned :uncertain))
+   (and (not (member-equal event '(:reset :start :recover :joined)))
+        (not (eq returned :closed))
+        (not (equal (fn-pvl-runtime-return-step :serving event nil nil returned)
+                    '(:refused :serving))))))
+(assert-event
+ (and (equal (fn-pvl-runtime-return-step :quiescent :start nil nil :uncertain)
+             '(:refused :quiescent))
+      (equal (fn-pvl-runtime-return-step :quiescent :recover nil nil :uncertain)
+             '(:refused :quiescent))
+      (equal (fn-pvl-runtime-return-step :draining :joined nil t :uncertain)
+             '(:refused :draining))
+      (equal (fn-pvl-runtime-return-step :draining :joined nil t :closed)
+             (fn-pvl-runtime-step :draining :joined nil t))))

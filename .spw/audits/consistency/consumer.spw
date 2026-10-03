@@ -1,0 +1,17 @@
+#>fn_consistency_consumer
+^"machine"{
+ @source: ~"../../../books/consumer-reason.lisp"
+ @host: ~"../../../host/native/consumer-local.lisp"
+ @control: ~"../../../host/native/control.lisp"
+ @tests: ~"../../../tests/native_consumer_poll_cli_raw.lisp"
+ source_revision: "37364cfdd; compared integration unchanged host body"
+ state: "operation/input/argument, current reply/reason; no durable authority in CLI"
+ transitions: "register refused unbootstrapped/NONE ->bootstrap; accepted bootstrap ->register; all unresolved bootstrap outcomes ->finish"
+ obligation: "socket transport outcome after a potentially durable action must survive CLI retry policy"
+}
+^"C006"{
+ counterexample: "register refuses unbootstrapped; bootstrap persists but loses reply ->uncertain; CLI discarded it and reissued register, potentially replacing ambiguity with refusal"
+ repair: "ACL2 permits bootstrap successor only acceptance; host preserves intermediate status/reason and propagates unexpected host exception"
+ checks: "actual shipped SBCL adapter harness verifies accepted/uncertain/fault/refused traces and exit status;4scoped actual ACL2 policy forms and two theorems pass186steps"
+ limits: "full consumer-reason source dependency load failed statement-codec before this book; scoped test is not normal certification or full owner integration"
+}

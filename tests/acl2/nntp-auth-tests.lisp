@@ -562,6 +562,27 @@
 (assert-event (not (member-equal (fn-auth-starttls-effect)
                                  (in-arena-au-reply *sr-arena* (fn-post-result-session *au-starttls*) "STARTTLS"))))
 
+ ; An anonymous reader can select a group before STARTTLS. The successful
+; handshake must forget both coordinates (RFC4642 section2.2.2).
+(assert-event
+ (let* ((cfg (fn-auth-make-config nil nil t nil))
+        (opened (fn-auth-open-session *au-archive* nil nil nil cfg nil))
+        (selected (fn-post-result-session
+                   (in-arena-au-step *sr-arena* opened "GROUP fn.letters")))
+        (held (fn-post-result-session
+               (in-arena-au-step *sr-arena* selected "STARTTLS")))
+        (secured (fn-post-result-session (fn-auth-tls-established held))))
+   (and (equal (fn-nntp-session-group (fn-auth-reader-session selected)) "fn.letters")
+        (posp (fn-nntp-session-current (fn-auth-reader-session selected)))
+        (fn-auth-session-handshakingp held)
+        (fn-auth-session-tlsp secured)
+        (null (fn-nntp-session-group (fn-auth-reader-session secured)))
+        (null (fn-nntp-session-current (fn-auth-reader-session secured)))
+        (equal (fn-nntp-session-projected (fn-auth-reader-session secured))
+               (fn-nntp-session-projected (fn-auth-reader-session selected)))
+        (equal (in-arena-au-reply *sr-arena* secured "STAT")
+               (au-single "412 no newsgroup selected")))))
+
 ; Section 2.2.2: unable to initiate, for a configuration reason, is 580.
 (assert-event (equal (in-arena-au-reply *sr-arena* *au-s-open* "STARTTLS")
                      (au-single "580 can not initiate TLS negotiation")))

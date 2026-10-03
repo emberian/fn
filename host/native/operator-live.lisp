@@ -17,6 +17,23 @@
 
 (in-package "ACL2")
 
+(defun fnn-operator-run-final-settlement (cleanup-okp)
+  "Caller log close completes deferred Store retirement; never close under a writer."
+  (let ((caller-action
+          (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+            (fnn-core 'fn-ort-log-caller-action (and *fnn-log-writer* t)))))
+    (when (eq caller-action :write-close)
+      (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
+        (let ((fd *fnn-owner-log-fd*))
+          (setq *fnn-owner-log-fd* nil *fnn-owner-log-path* nil)
+          (when fd (fnn-log-physical-close fd :operator-caller)))))
+    (fnn-owner-store-settlement
+     nil
+     (fnn-core 'fn-ort-report-close-action
+               (if (and cleanup-okp (eq caller-action :write-close))
+                   *fnn-owner-retained-settlement* :held)
+               (fnn-log-close-debt-observation)))))
+
 (defun fnn-operator-execute-run (result)
   "Invoke the one owner entry only with ACL2-normalized plan projections."
   (setq *fnn-owner-last-fault* nil)
@@ -45,11 +62,13 @@
                 result 'fn-native-operator-host-result-run-log-path-octets))
              (tls-context nil)
              (run-code nil)
-             (run-failure nil))
+             (run-failure nil)
+             (terminal-cleanup-okp t))
         (setq *fnn-health-min-percent*
               (fnn-core 'fn-native-operator-host-result-health-min-percent result))
-        (unwind-protect
-            (handler-case
+        (progn
+          (fnn-unwind-cleanups
+            ((handler-case
             (progn
               ;; Append-only, created 0640 if absent, never through a
               ;; symlink, never truncated or rotated here.  Opened before
@@ -123,16 +142,14 @@
                 ;; The owner's fault, when it stopped on one, is the
                 ;; result line's reason: the last line the service
                 ;; manager's journal shows for this run says why.
-                (fnn-operator-emit-status
-                 (fnn-operator-status-of-exit-code code) "run"
-                 (and (/= code +fnn-exit-ok+) *fnn-owner-last-fault*))
                 code))
               (error (condition)
                 ;; Recorded for the stop line below, then handled as before
                 ;; by the outer handler.
                 (setq run-failure condition)
-                (error condition)))
-          (let ((code (or run-code (and run-failure (fnn-exit-code-for run-failure)))))
+                (error condition))))
+          (handler-case
+            (let ((code (or run-code (and run-failure (fnn-exit-code-for run-failure)))))
             (when (integerp code)
               (fnn-operator-log-run-line
                (fnn-core 'fn-native-health-host-run-stopped-line code
@@ -140,12 +157,20 @@
                                               (ignore-errors (format nil "~a" run-failure)))
                                              ((/= code +fnn-exit-ok+) *fnn-owner-last-fault*))))
                            (and (stringp reason) (fnn-octet-list (fnn-string-octets reason))))))))
-          (when tls-context (fnn-tls-close-context tls-context))
-          (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
-            (when *fnn-owner-log-fd*
-              (ignore-errors (fnn-close *fnn-owner-log-fd*))
-              (setq *fnn-owner-log-fd* nil
-                    *fnn-owner-log-path* nil)))))
+            (serious-condition (condition)
+              (setq terminal-cleanup-okp nil) (error condition)))
+          (handler-case (when tls-context (fnn-tls-close-context tls-context))
+            (serious-condition (condition)
+              (setq terminal-cleanup-okp nil) (error condition)))
+          (let ((settlement (fnn-operator-run-final-settlement terminal-cleanup-okp)))
+            (when run-code
+              (setq run-code
+                    (fnn-core 'fn-ort-log-close-exit run-code
+                              +fnn-exit-uncertain+ settlement)))))
+          (fnn-operator-emit-status
+           (fnn-operator-status-of-exit-code run-code) "run"
+           (and (/= run-code +fnn-exit-ok+) *fnn-owner-last-fault*))
+          run-code))
     (error (condition)
       (let ((code (fnn-exit-code-for condition)))
         (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "run" condition)

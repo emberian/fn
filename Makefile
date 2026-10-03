@@ -617,7 +617,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/cold-read-reservation \
 	tests/acl2/cold-read-reservation-tests \
 	books/page-read-startup \
+	books/peer-flight-reservation \
 	tests/acl2/page-read-startup-tests \
+	tests/acl2/peer-flight-reservation-tests \
 	tests/acl2/page-read-startup-host-tests \
 	books/output-reservation \
 	tests/acl2/output-reservation-tests \
@@ -1940,6 +1942,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/newnews-candidate-selector-tests \
 	books/catalog-available-readers \
 	books/group-summary-cursor \
+	books/list-row-cursor \
+	tests/acl2/list-row-cursor-tests \
 	books/list-metadata-cursor \
 	tests/acl2/group-summary-cursor-tests \
 	books/served-availability \
@@ -1948,6 +1952,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/article-stream \
 	tests/acl2/article-stream-tests \
 	books/article-stream-server \
+	books/legacy-header-query \
+	tests/acl2/legacy-header-query-tests \
 	tests/acl2/article-stream-server-tests \
 	tests/acl2/catalog-availability-tests \
 	tests/acl2/catalog-available-readers-tests \

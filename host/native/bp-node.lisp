@@ -74,8 +74,8 @@ its reason class, which ACL2 already returned; the host classifies nothing."
   (when (fnn-bpnode-test-busy-p)
     (return-from fnn-bpnode-request-result-1 (values :busy '(0))))
   (let ((journal nil))
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+         ((progn
            (setq journal (fnn-bpapp-open-journal
                           owner receipt-root destination policy issuer))
            (let* ((request (fourth view))
@@ -114,7 +114,7 @@ its reason class, which ACL2 already returned; the host classifies nothing."
                ;; BP-R17: the owner deferred (a (:busy reason) plan or the
                ;; dispatcher's (:busy)); the node keeps the row held.
                (:busy (values :busy '(0)))
-               (otherwise (values :uncertain '(0))))))
+               (otherwise (values :uncertain '(0)))))))
       (when journal (fnn-app-journal-close journal)))))
 
 (defun fnn-bpnode-receipt-observations (view)
@@ -171,8 +171,8 @@ observations back.  Nil when there is nothing to observe."
          (return-from receipt
            (values :receipt-refused (fnn-bpnode-receipt-detail view obs))))
        (let ((journal nil))
-         (unwind-protect
-              (progn
+         (fnn-unwind-cleanups
+              ((block journal-body
                 (setq journal
                       (fnn-app-open (fnn-owner-service-store owner)
                                     workflow-root :workflow :owner-mode t))
@@ -182,13 +182,13 @@ observations back.  Nil when there is nothing to observe."
                   (unless record
                     (fnn-out "BP node release refused detail=~a"
                              (fnn-octets-string (fnn-octets detail)))
-                    (return-from receipt
+                    (return-from journal-body
                       (values :receipt-refused detail)))
                   (fnn-workflow-commit-receipt-intent
                    journal record
                    (lambda (release)
                      (fnn-bpo-canonical-release owner release)))
-                  (values :receipt-accepted detail)))
+                  (values :receipt-accepted detail))))
            (when journal (fnn-app-journal-close journal)))))))))
 
 (defun fnn-bpnode-app-result
@@ -493,9 +493,8 @@ observations back.  Nil when there is nothing to observe."
   (let* ((config (fnn-bp-config node-id +fnn-bp-lifetime+ +fnn-bp-crc-type+
                                 +fnn-bp-hop-limit+ +fnn-tcl-transfer-mru+))
          (bp (fnn-bps-open journal-root config wall wall-error)))
-    (setq *fnn-bpnode-budgets* (fnn-bpnode-read-budgets journal-root))
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+        ((setq *fnn-bpnode-budgets* (fnn-bpnode-read-budgets journal-root))
            (fnn-bps-drive-effects
             bp (fnn-bps-foundation-step
                 bp (fnn-bpnode-budgeted (list :operator-resume arrival))))
@@ -621,13 +620,20 @@ process could take the journal)."
 ;;; (fn-bpnpf-node-profile-write-octets).  The next open of the journal runs
 ;;; under it.  Run it with the node stopped: it takes the FNBS lifecycle lock
 ;;; as `bp-node serve' does.
+(defun fnn-bpnode-replace-profile (stage final root label)
+  "Once replacement is issued, syscall reply loss leaves publication uncertain."
+  (handler-case
+      (progn (fnn-replace stage final) (fnn-fsync-dir root))
+    (fnn-os-error (condition)
+      (fnn-indeterminate "~a replacement/barrier return is uncertain: ~a" label condition))))
+
 (defun fnn-command-bp-node-profile (journal-root node-id rows octets
                                     &optional adu bundle rotate)
   (let* ((config (fnn-bp-config node-id +fnn-bp-lifetime+ +fnn-bp-crc-type+
                                 +fnn-bp-hop-limit+ +fnn-tcl-transfer-mru+))
          (bp (fnn-bps-open journal-root config nil 0)))
-    (unwind-protect
-         (let* ((root (fnn-bps-root bp))
+    (fnn-unwind-cleanups
+         ((let* ((root (fnn-bps-root bp))
                 (in-force (fnn-bps-node-profile bp))
                 (adu (or adu (third in-force)))
                 (bundle (or bundle (fourth in-force)))
@@ -642,15 +648,10 @@ process could take the journal)."
              (fnn-refuse "bp-node profile: ACL2 refused max-held-rows=~a max-held-octets=~a max-adu-octets=~a max-bundle-octets=~a rotate-records=~a (in force ~{~a~^ ~})"
                          rows octets adu bundle rotate in-force))
            (fnn-write-staged stage (fnn-octets frame))
-           (fnn-replace stage final)
-           ;; The rename is visible: from here a failed barrier leaves the
-           ;; profile's durability unknown.
-           (handler-case (fnn-fsync-dir root)
-             (fnn-os-error (e)
-               (fnn-indeterminate "bp-node profile: directory barrier failed: ~a" e)))
+           (fnn-bpnode-replace-profile stage final root "bp-node profile")
            (fnn-out "BP node profile max-held-rows=~d max-held-octets=~d max-adu-octets=~d max-bundle-octets=~d rotate-records=~d"
                     rows octets adu bundle rotate)
-           +fnn-exit-ok+)
+           +fnn-exit-ok+))
       (fnn-bps-release bp))))
 
 (defvar *fnn-bpnode-receipt-signer* nil
@@ -717,8 +718,8 @@ only runs the two signing primitives, the path `fn hybrid-sign' uses."
              (fnn-core 'fn-bpn-host-existing-sequence
                        (fnn-bps-base bp) work attempt generation)))
       (let ((journal nil))
-        (unwind-protect
-             (progn
+        (fnn-unwind-cleanups
+             ((progn
                (setq journal (fnn-bpapp-open-journal
                               owner receipt-root destination policy issuer))
                (let ((adu (fnn-receipt-adu journal (fourth view))))
@@ -779,7 +780,7 @@ only runs the two signing primitives, the path `fn hybrid-sign' uses."
                  (fnn-bpnode-pause-at-durable-cut
                   "FN_BP_NODE_TEST_PAUSE_AFTER_OUTBOX"
                   "BP NODE OUTBOX DURABLE")
-                 :queued)))
+                 :queued))))
           (when journal (fnn-app-journal-close journal)))))))
 
 (defun fnn-bpnode-route-by-owner (bp)
@@ -1246,18 +1247,16 @@ uncertain, as it does everywhere else."
  (let* ((config (fnn-bp-config node-id +fnn-bp-lifetime+ +fnn-bp-crc-type+
                               +fnn-bp-hop-limit+ +fnn-tcl-transfer-mru+))
         (bp (fnn-bps-open journal-root config nil 0)))
-  (unwind-protect
-   (let* ((root (fnn-bps-root bp))
+  (fnn-unwind-cleanups
+   ((let* ((root (fnn-bps-root bp))
           (frame (fnn-core 'fn-bpsp-write incoming outgoing resident outbound-ms))
           (final (fnn-join root (fnn-core 'fn-bpsp-file-name)))
           (stage (fnn-join root (format nil ".bp-session-profile-~d-~a" (sb-posix:getpid) (fnn-random-hex 12)))))
     (unless frame (fnn-refuse "BP session profile is unrepresentable"))
     (fnn-write-staged stage (fnn-octets frame))
-    (fnn-replace stage final)
-    (handler-case (fnn-fsync-dir root)
-     (fnn-os-error (e) (fnn-indeterminate "BP session profile directory barrier failed: ~a" e)))
+    (fnn-bpnode-replace-profile stage final root "BP session profile")
     (fnn-out "BP session profile installed inbound=~d outbound=~d outbound-ms=~d" incoming outgoing outbound-ms)
-    +fnn-exit-ok+)
+    +fnn-exit-ok+))
    (fnn-bps-release bp))))
 
 (defun fnn-dispatch-bp-node (command args)

@@ -118,7 +118,7 @@ its fixture. Anchors: [HOST-COORDINATION](planning/repair/items/HOST-COORDINATIO
 
 ### Output allocation and funding
 
-**Paused accounting/selector owners — Foundations + Served; Runtime consumes the current producer.** Connect indexed serialization, incremental
+**Active accounting/selector owners — Foundations + Served; Runtime consumes the current producer.** Connect indexed serialization, incremental
 selection and output custody to a real connection/operation funding producer.
 The first actual producer/serializer probe charges a per-CID generational draw
 before serialization and retains worker output until both output completion and
@@ -190,11 +190,18 @@ consumers. Retained numeric/current/withdrawn selection, framing preflight and
 lazy Xref now yield in bounded steps; READY commits selection once and replays
 without authority changes. Source fixtures and exact normal source admission
 pass. Complete actual parsed factory/socket/physical decoded-window/Web browser
-composition, initial authorization/Message-ID/server setup bounds, guards and
+composition, initial authorization setup bounds, renderer/owner guards and
 universal owner/reference refinement remain open (PRF-1286, SCN-1116). The
 retained source-execution process/inputs and precise mixed ABI frontier are in
 LANEDUMP; no certificate, current image or full funded operation follows from
-those checks. Access also continues absorbed operator/journal obligations; Root
+those checks. Numeric/current/Message-ID selector guards and exact fuel split now
+normal-certify at73a0; direct server capture boundary certifies at39d72. These
+component certificates do not certify the whole owner/physical path. Access owns
+shared arbitrary HDR/XPAT span backing (PRF-1304/SCN-1135); Served owns the actual
+command consumer. Generic-name parser/query bounds now preserve captured field
+span READ bounds; literal hypothesis-removal teeth and236850 actual source checks
+pass. Whole arbitrary-name/reference bridge remains open. Operator resumes non-ARTICLE operator work; Access keeps the
+general journal bridge. Root
 S132 strict native ten MiB acceptance/readback now passes on the named initialized-source cache with its supported 128 MiB history profile; whole current-kernel/funding qualification remains separate.
 
 **Next — Served.** Carry the shared cursor/dependency machinery through OVER,
@@ -413,7 +420,7 @@ close the correct scope. Anchors: [S003](planning/repair/items/S003.json),
 
 ### Operator commands and trustworthy diagnostics
 
-**Active — Operator owns pre-open DEFAULT partial pool startup and startup-failure custody; Foundations owns its numerical producer and Runtime its persistent executor. Access retains the earlier retire, diagnostic, init and journal continuation.**
+**Operator’s pre-open DEFAULT partial pool startup and startup-failure custody source batch is complete; its nonempty native endpoint remains pending the current world. Foundations owns the numerical producer and Runtime its persistent executor. Access retains the earlier retire, diagnostic, init and journal continuation.**
 The new native startup consumer installs an admitted plan before Store open,
 and joins orphan workers before releasing run authority. SCN-1130's actual
 source ordering, refusal/fault and escaping-join cases pass; coherent physical

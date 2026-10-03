@@ -1,0 +1,35 @@
+#>fn_consistency_web
+^"machine"{
+ @source: ~"../../../books/web-session.lisp"
+ @protocol: ~"../../../books/protocol-table.lisp"
+ @native: ~"../../../host/native/web-host.lisp"
+ @tests: ~"../../../tests/acl2/web-post-outcome-tests.lisp"
+ source_revision: "9df4a3a4e; repair aa0060e1a"
+ workbench_revision: "651b535"
+ state: "node-local session token/cid/login/csrf/last-use; request flow route/stage/context/data; borrowed command/reply buffers; private worker reply carry"
+ transitions: "signin open -> auth pair ->281 session; redeem open ->password exchange ->close ->signin; session routes lease exact connection; POST340 ->article ->durable/refused/uncertain reply"
+ inspected: "full signin/redeem continuations, table begin/expiry, post/remove reply continuation, native open/send/close/connection lease seam; render/framing leaf coverage remains incomplete"
+}
+^"C003"{
+ status: "source repair READY; normal cert/native pending"
+ producer: "fn-nntp-post-outcome uses protocol-table POST uncertain441; fn-own-fault emits403 internal fault"
+ consumer: "fn-wss-k-submit article stage"
+ counterexample: "core returns441 outcome uncertain do not repost; browser takes numeric4xx branch ->HTTP403 Not posted/The server said no, collapsing ambiguity to refusal"
+ repair: "derive exact uncertain line constant from authoritative protocol table; uncertain441 and403 faults use existing HTTP503 Not sure/inspect before sending again; ordinary441 remains refusal"
+ checks: "actual changed continuations21forms guards pass0.04ACL2s; four exact protocol-table outcome fixtures accepted240/refused441/uncertain441/fault403 pass0.04ACL2s248steps"
+ residual: "No full native request/image test, no whole Web completeness claim. Redeem uncertainty wording and post-removal verification replies remain inspection targets."
+}
+^"C004"{
+ source_revision: "2db0d1fa6"
+ counterexample: "removal verification STAT403 fault/480 authentication denial was rendered Still there, asserting article presence without a223 reply"
+ repair: "430 removed,223 still present, all other replies503 verification uncertain"
+ checks: "five concrete status cases in actual continuation fixtures; source guards pass"
+}
+^"C005"{
+ source_revision: "72bd810cf"
+ counterexample: "lost reply after redemption password send rendered generic unreachable try again, although account creation may have committed"
+ repair: "redeeming lost/malformed reply yields503 account outcome uncertain; try chosen credentials before redeeming again"
+ checks: "nine combined Web fixture forms pass0.05ACL2s566steps;66existing keystone forms pass4.61ACL2s3822038steps on72bd source"
+ cert_scope: "hbox run-20261003T163019Z-970b passed6roots; TCPCL74e source and Webaa006 bytes only; later2db/72bd Web changes have scoped warm checks, no normal certificate yet"
+ residual: "actual full HTTP socket fixture/image qualification pending"
+}

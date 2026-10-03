@@ -303,17 +303,23 @@ finds the transit principal in that ingress."
    service nil
    (lambda ()
      (fnn-bpapp-bind-owner-store)
-     (let ((journal (fnn-app-open (fnn-owner-service-store service)
-                                  receipt-root :receipt)))
-       (case (fnn-owner-action 'fn-bprj-config-status
-                               destination policy issuer)
-         (:absent (fnn-receipt-initialize journal
-                                          (list destination policy issuer)))
-         (:match nil)
-         (otherwise
-          (fnn-app-journal-close journal)
-          (fnn-refuse "BP application receipt configuration conflicts")))
-       journal))))
+     (let ((journal nil) (returned nil))
+       ;; Until this function returns, its callers cannot retain the handle.
+       ;; Initialization/configuration escapes therefore close our acquisition.
+       (fnn-unwind-cleanups
+           ((setq journal (fnn-app-open (fnn-owner-service-store service)
+                                        receipt-root :receipt))
+            (case (fnn-owner-action 'fn-bprj-config-status
+                                    destination policy issuer)
+              (:absent (fnn-receipt-initialize journal
+                                             (list destination policy issuer)))
+              (:match nil)
+              (otherwise
+               (fnn-refuse "BP application receipt configuration conflicts")))
+            (setq returned t)
+            journal)
+         (when (and journal (not returned))
+           (fnn-app-journal-close journal)))))))
 
 (defun fnn-command-bp-app-receive
     (port once spool store-root receipt-root node-id peer-eid destination

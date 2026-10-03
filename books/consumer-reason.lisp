@@ -191,7 +191,8 @@
 ; host sends the register once; when the owner refuses it for want of that
 ; history (the word `unbootstrapped'), or an old owner refused it with no
 ; word (NONE), the host sends these steps, bootstrap then the register again,
-; and the last one's outcome is the command's.  A register refused for any
+; only an accepted bootstrap permits the second register; otherwise the
+; bootstrap outcome is the command's.  A register refused for any
 ; other named reason, and every outcome that is not a refusal (an uncertain
 ; one above all), sends nothing more.
 
@@ -200,17 +201,24 @@
 
 (defun fn-ncr-cli-after (operation status word)
   (declare (xargs :guard t))
-  (if (and (equal operation :register) (equal status :refused)
-           (or (equal word *fn-ncr-unbootstrapped-word*)
-               (equal word *fn-nctrl-no-reason-word*)))
-      (list :bootstrap :register)
-    nil))
+  (cond ((and (equal operation :register) (equal status :refused)
+              (or (equal word *fn-ncr-unbootstrapped-word*)
+                  (equal word *fn-nctrl-no-reason-word*)))
+         (list :bootstrap :register))
+        ((and (equal operation :bootstrap) (equal status :accepted))
+         (list :register))
+        (t nil)))
 
 (defthm fn-ncr-cli-after-retries-only-an-unbootstrapped-register
-  (iff (fn-ncr-cli-after operation status word)
-       (and (equal operation :register) (equal status :refused)
-            (or (equal word *fn-ncr-unbootstrapped-word*)
-                (equal word *fn-nctrl-no-reason-word*)))))
+  (implies (equal operation :register)
+           (iff (fn-ncr-cli-after operation status word)
+                (and (equal status :refused)
+                     (or (equal word *fn-ncr-unbootstrapped-word*)
+                         (equal word *fn-nctrl-no-reason-word*))))))
+
+(defthm fn-ncr-cli-after-bootstrap-needs-acceptance
+  (equal (fn-ncr-cli-after :bootstrap status word)
+         (if (equal status :accepted) (list :register) nil)))
 
 ; -----------------------------------------------------------------------------
 ; 3. The withdrawal report (PKT-710).

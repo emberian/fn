@@ -60,6 +60,47 @@
   (declare (xargs :guard t))
   (member-eq (fn-ast-at 9 it) '(:selected :missing)))
 
+; Message-ID uses the same retained selector. While finding a non-indexed
+; article NUMBER carries the requested ID; after finding it, membership steps
+; settle the optional selected-group number. Neither phase changes the reader.
+(defun fn-ast-msgid-local-start (group article)
+  (declare (xargs :guard t))
+  (fn-ast-select-state :msgid group 0 nil article
+                       (fn-article-memberships article) nil 0
+                       (if (consp article) :members :missing)))
+
+(defun fn-ast-msgid-local-done (it raw-number)
+  (declare (xargs :guard t))
+  (let ((article (fn-ast-at 5 it)))
+    (fn-ast-select-state :msgid (fn-ast-at 2 it)
+      (if (and (posp raw-number) (<= raw-number *fn-nntp-max-article-number*)
+               (fn-nntp-article-idp article)) raw-number 0)
+      nil article nil nil 0 :selected)))
+
+(defun fn-ast-msgid-search-one (it)
+  (declare (xargs :guard t))
+  (let* ((mode (fn-ast-at 1 it)) (group (fn-ast-at 2 it)) (key (fn-ast-at 3 it))
+         (remaining (fn-ast-at 4 it)) (article (fn-ast-at 5 it))
+         (stored (fn-article-msgid article)) (at (nfix (fn-ast-at 8 it)))
+         (next (fn-ast-select-state mode group key (fn-cbor-ag-cdr remaining)
+                                    nil nil nil 0 :msgid-next)))
+    (cond
+     ((not (stringp key))
+      (fn-ast-select-state mode group key nil nil nil nil 0 :missing))
+     ((eq (fn-ast-at 9 it) :msgid-next)
+      (if (consp remaining)
+          (fn-ast-select-state mode group key remaining (car remaining)
+                               nil nil 0 :msgid-compare)
+        (fn-ast-select-state mode group key nil nil nil nil 0 :missing)))
+     ((not (and (stringp stored) (equal (length key) (length stored)))) next)
+     ((>= at (length key))
+      (if (eq mode :withdrawn-msgid)
+          (fn-ast-select-state mode group key remaining article nil nil 0 :selected)
+        (fn-ast-msgid-local-start group article)))
+     ((equal (char key at) (char stored at))
+      (fn-ast-select-state mode group key remaining article nil nil (+ 1 at) :msgid-compare))
+     (t next))))
+
 (defun fn-ast-select-one (it)
   (declare (xargs :guard t))
   (let* ((mode (fn-ast-at 1 it)) (group (fn-ast-at 2 it)) (number (fn-ast-at 3 it))
@@ -71,15 +112,19 @@
                                     nil nil nil 0 :next)))
     (cond
      ((fn-ast-select-donep it) it)
+     ((and (member-eq mode '(:msgid :withdrawn-msgid))
+           (member-eq phase '(:msgid-next :msgid-compare)))
+      (fn-ast-msgid-search-one it))
      ((not (stringp group))
-      (fn-ast-select-state mode group number nil nil nil nil 0 :missing))
+      (if (eq mode :msgid) (fn-ast-msgid-local-done it 0)
+        (fn-ast-select-state mode group number nil nil nil nil 0 :missing)))
      ((eq phase :next)
       (if (atom remaining)
           (fn-ast-select-state mode group number nil nil nil nil 0 :missing)
         (fn-ast-select-state mode group number remaining (car remaining)
                              (fn-article-memberships (car remaining)) nil 0 :members)))
      ((eq phase :members)
-      (if (atom members) next
+      (if (atom members) (if (eq mode :msgid) (fn-ast-msgid-local-done it 0) next)
         (let ((candidate (car members)))
           (if (and (consp candidate) (stringp (car candidate))
                    (equal (length group) (length (car candidate))))
@@ -89,10 +134,11 @@
                 (equal (length row-group) (length group)))) next)
      (t
       (if (>= at (length group))
-          (if (and (equal number (cdr row))
+          (if (eq mode :msgid) (fn-ast-msgid-local-done it (cdr row))
+           (if (and (equal number (cdr row))
                    (or (not (eq mode :current)) (fn-nntp-article-idp article)))
               (fn-ast-select-state mode group number remaining article members row at :selected)
-            next)
+            next))
         (if (equal (char group at) (char row-group at))
             (fn-ast-select-state mode group number remaining article members row (+ 1 at) :compare)
           (fn-ast-select-state mode group number remaining article
@@ -102,6 +148,15 @@
   (declare (xargs :guard (natp fuel) :measure (nfix fuel)))
   (if (or (zp fuel) (fn-ast-select-donep it)) it
     (fn-ast-select-step (fn-ast-select-one it) (- fuel 1))))
+
+; Arbitrary splitting of a work quantum preserves the exact retained cursor,
+; including terminal replies. This says nothing about an archive reference.
+(defthm fn-ast-select-fuel-composes
+  (equal (fn-ast-select-step (fn-ast-select-step it a) b)
+         (fn-ast-select-step it (+ (nfix a) (nfix b))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-ast-select-step it a)
+                  :in-theory (disable fn-ast-select-one fn-ast-select-donep))))
 
 (defun fn-ast-separator-next (matched byte)
   (declare (xargs :guard t))

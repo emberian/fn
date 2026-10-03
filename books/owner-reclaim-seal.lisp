@@ -151,6 +151,22 @@
            :in-theory (e/d (fn-intern-event) (fn-arena-seal-list-is-append
                                               fn-arena-count-is-len)))))
 
+; Boundary of the host-called tuple prediction and its arena sealing effect.
+(defthm fn-orcs-predict-seal-refines-intern
+  (implies (not (fn-orcs-has-bad rows))
+           (equal (fn-orcp-intern-rows rows keyring generation fn-arena)
+                  (mv (car (fn-orcs-predict rows keyring generation
+                                           (fn-arena-count fn-arena)))
+                      (fn-orcs-seal
+                       (cadr (fn-orcs-predict rows keyring generation
+                                             (fn-arena-count fn-arena)))
+                       fn-arena))))
+  :hints (("Goal"
+           :use ((:instance fn-orcs-seal-is-the-intern))
+           :in-theory (e/d (fn-orcs-predict)
+                           (fn-orcs-seal-is-the-intern fn-orcp-intern-rows
+                            fn-orcs-seal fn-orcs-predict-rows fn-orcs-payloads)))))
+
 ; -----------------------------------------------------------------------------
 ; 4. The seal word.
 

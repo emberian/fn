@@ -39,3 +39,32 @@
         (list 'let bindings
               (cons 'cond (fn-iml-clauses (list (car variables)) (cdr variables))))
       nil)))
+
+; Compare a fixed product without constructing another product. Every operand
+; is evaluated once, in order, including operands after a mismatching field.
+; The final NULL check rejects both excess fields and improper tails.
+(defun fn-iml-equal-form (product values)
+  (declare (xargs :mode :program))
+  (if (consp values)
+      (list 'and (list 'consp product)
+            (list 'equal (list 'car product) (car values))
+            (fn-iml-equal-form (list 'cdr product) (cdr values)))
+    (list 'null product)))
+
+(defmacro fn-list/fields= (product &rest values)
+  (let* ((bindings (fn-iml-bindings (cons product values) 0))
+         (variables (strip-cars bindings)))
+    (list 'let bindings
+          (list 'mbe :logic (list 'equal (car variables) (cons 'list (cdr variables)))
+                :exec (fn-iml-equal-form (car variables) (cdr variables))))))
+
+(defthm fn-iml-equal-cons
+  (equal (equal product (cons head tail))
+         (and (consp product) (equal (car product) head)
+              (equal (cdr product) tail)))
+  :hints (("Goal" :cases ((consp product))
+           :use (:instance car-cdr-elim (x product))
+           :in-theory (union-theories '(car-cons cdr-cons)
+                                     (theory 'minimal-theory)))))
+
+(in-theory (disable fn-iml-equal-cons))

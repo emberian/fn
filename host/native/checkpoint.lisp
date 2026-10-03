@@ -60,8 +60,8 @@ then the covered segments are unlinked.  The open answers the history's
 count and keeps no records (PKT-823); the checkpoint is written from the
 state (D27)."
   (multiple-value-bind (store count) (fnn-open-live-store root t)
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+         ((progn
            ;; Every store an image opens is on the record log (batch AW: a format-8
            ;; profile is refused at the open); the pack chain's verb is the
            ;; per-file layout's, deleted with it (design section 9 row 5).
@@ -69,7 +69,7 @@ state (D27)."
              (fnn-fault "a store that is not on the record log opened"))
            (fnn-out "compacted steps=checkpoint,drop records=~d ~a"
                     count (fnn-state-checkpoint-publish-steps store count))
-           +fnn-exit-ok+)
+           +fnn-exit-ok+))
       (fnn-store-close store))))
 
 (setq *fnn-compact-callback* #'fnn-command-compact)
@@ -106,11 +106,12 @@ Answers the report line's field."
 (defun fnn-log-reclaim-steps (store mode)
   "`store reclaim' on a store (books/store-log-reclaim.lisp): the
 history streamed one record at a time into ACL2's fold (fn-rcls-step under the
-store's context, compact-arena's books/store-reclaim-stream.lisp) with each
-record's rewrite (fn-rclp-event) kept as an octet vector, then ACL2's decision
+store's context, compact-arena's books/store-reclaim-stream.lisp), then ACL2's decision
 over the fold (fn-lgr-decide-stream; KEYSTONE fn-lgr-decide-stream-is-lgr-
 decide: the whole-history decision, whose rewritten history is those
-rewrites).  On :reclaim the instant is recorded first (fnn-reclaim-record-
+rewrites).  Only :reclaim makes a second history pass and retains rewritten
+octet vectors; :none, :refused and :dry-run retain no rewritten history.
+On :reclaim the instant is recorded first (fnn-reclaim-record-
 instant: the configuration row the context's NOW came from, PKT-857), then the
 rewritten history is replayed into the store node (the chunked replay every
 open runs, fnn-recover-log-replay) and its state checkpoint published with the
@@ -138,19 +139,13 @@ the report line."
                       (second classes)
                     (fnn-fault "ACL2 returned malformed reclaim classes")))
          (acc (fnn-core 'fn-store-reclaim-init))
-         (count 0)
-         (rewritten nil))
+         (count 0))
     (fnn-log-history-each
      store
      (lambda (record)
        (let ((octets (fnn-octet-list record)))
          (incf count)
-         (setq acc (fnn-core 'fn-store-reclaim-step acc octets ctx))
-         (unless dry
-           (let ((event (fnn-core 'fn-store-log-reclaim-event octets ctx)))
-             (unless (fnn-octet-list-p event)
-               (fnn-fault "ACL2 returned a malformed rewritten record"))
-             (push (fnn-octets event) rewritten))))))
+         (setq acc (fnn-core 'fn-store-reclaim-step acc octets ctx)))))
     (let ((decision (if recorded
                         (fnn-core-state 'fn-store-log-reclaim-decide-recorded
                                         (fnn-store-config store) acc nil)
@@ -171,10 +166,22 @@ the report line."
         (:reclaim
          (destructuring-bind (msgids freed counts) (rest decision)
            (declare (ignore counts))
-           (let ((history (nreverse rewritten)))
+           ;; The command owns the stopped Store.  Capture the same history
+           ;; before recording the instant or clearing its selected prefix.
+           ;; This still retains the actual reclaim's complete rewritten
+           ;; history; the no-op and refusal paths need no such allocation.
+           (let ((history nil))
+             (fnn-log-history-each
+              store
+              (lambda (record)
+                (let ((event (fnn-core 'fn-store-log-reclaim-event
+                                       (fnn-octet-list record) ctx)))
+                  (unless (fnn-octet-list-p event)
+                    (fnn-fault "ACL2 returned a malformed rewritten record"))
+                  (push (fnn-octets event) history))))
+             (setq history (nreverse history))
              (unless (= (length history) count)
                (fnn-fault "the rewritten history is not the history's length"))
-             (setq rewritten nil)
              (fnn-checkpoint-require-mutation-ready store)
              (let ((instant (if recorded
                                 "instant=recorded"
@@ -203,11 +210,11 @@ the report line."
       (fnn-open-live-store root (not (eq mode :dry-run))
                            (and (not (eq mode :dry-run)) (fnn-state-checkpoint-test-fault)))
     (declare (ignore count))
-    (unwind-protect
-         (progn (unless (fnn-store-logp store)
+    (fnn-unwind-cleanups
+         ((progn (unless (fnn-store-logp store)
                   (fnn-fault "a store that is not on the record log opened"))
                 (fnn-out "~a" (fnn-log-reclaim-steps store mode))
-                +fnn-exit-ok+)
+                +fnn-exit-ok+))
       (fnn-store-close store))))
 
 (setq *fnn-reclaim-callback* #'fnn-command-reclaim)
@@ -259,8 +266,8 @@ the report line."
 
 (defun fnn-clone-copy-regular (source destination max-bytes)
   (let ((input nil) (output nil))
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+         ((progn
            (setq input (fnn-open source (logior sb-posix:o-rdonly
                                                 +fnn-o-nofollow+)))
            (let ((info (fnn-fstat input)))
@@ -282,7 +289,7 @@ the report line."
                         (when (> *fnn-clone-copy-bytes* max-bytes)
                           (fnn-refuse "clone exceeds ACL2-owned byte bound"))
                         (fnn-write-all output (subseq buffer 0 count)))))
-           (fnn-fsync-file output))
+           (fnn-fsync-file output)))
       (when output (fnn-close output))
       (when input (fnn-close input)))))
 
@@ -295,8 +302,8 @@ the report line."
   (fnn-safe-directory source)
   (fnn-safe-directory destination)
   (let ((dir (fnn-posix (source) (sb-posix:opendir source))))
-    (unwind-protect
-         (loop
+    (fnn-unwind-cleanups
+         ((loop
            (let ((entry (fnn-posix (source) (sb-posix:readdir dir))))
              (when (sb-alien:null-alien entry) (return))
              (let ((name (sb-posix:dirent-name entry)))
@@ -321,7 +328,7 @@ the report line."
                           (fnn-clone-copy-regular from to max-bytes))
                          (t (fnn-refuse
                              "clone refuses missing, linked, or special source: ~a"
-                             from))))))))
+                             from)))))))))
       (fnn-posix (source) (sb-posix:closedir dir))))
   (fnn-fsync-dir destination))
 
@@ -379,8 +386,8 @@ the report line."
     (unless (and (listp decoded) (eq (first decoded) :ok))
       (fnn-refuse "clone fence is not a canonical rollover event"))
     (let ((*fnn-clone-activation* t))
-      (unwind-protect
-           (progn
+      (fnn-unwind-cleanups
+           ((progn
              (setq service (fnn-owner-install destination 1))
              (case (fnn-owner-core 'fn-owner-checkpoint-clone-phase octets)
                (:pending
@@ -390,19 +397,18 @@ the report line."
                 (fnn-checkpoint-test-stop "clone-rollover-durable"))
                (:completed nil)
                (otherwise (fnn-refuse
-                           "clone fence does not bind recovered Store"))))
-        (when service
-          (ignore-errors (fnn-owner-feed-close-all service))
-          (fnn-store-close (fnn-owner-service-store service))))
+                           "clone fence does not bind recovered Store")))))
+        (when service (fnn-owner-feed-close-all service))
+        (when service (fnn-store-close (fnn-owner-service-store service))))
       ; Reopen independently after the publisher closed.  A completed journal
       ; event, rather than the in-memory owner transition, releases the fence.
       (multiple-value-bind (store records)
           (fnn-open-live-store destination t)
         (declare (ignore records))
-        (unwind-protect
-             (unless (eq (fnn-core-state 'fn-store-checkpoint-clone-phase
+        (fnn-unwind-cleanups
+             ((unless (eq (fnn-core-state 'fn-store-checkpoint-clone-phase
                                          octets) :completed)
-               (fnn-indeterminate "clone rollover did not survive reopen"))
+               (fnn-indeterminate "clone rollover did not survive reopen")))
           (fnn-store-close store)))
       (let* ((store (make-fnn-store destination :writable nil))
              (path (fnn-clone-fence-path store)))
@@ -421,8 +427,8 @@ the report line."
       (fnn-clone-canonical-paths source destination)
     (multiple-value-bind (store records) (fnn-open-live-store source-real t)
       (declare (ignore records))
-      (unwind-protect
-           (let* ((fresh-id
+      (fnn-unwind-cleanups
+           ((let* ((fresh-id
                     (multiple-value-bind (history incarnation)
                         (fnn-owner-consumer-entropy-observation)
                       (declare (ignore history))
@@ -457,8 +463,8 @@ the report line."
                ;; S086: a refused or faulted clone leaves no stage tree; an
                ;; uncertain publication keeps it (it may now be the target).
                (let ((keep-stage nil))
-                 (unwind-protect
-                      (progn
+                 (fnn-unwind-cleanups
+                      ((progn
                (fnn-write-staged
                 (fnn-clone-fence-path (make-fnn-store stage :writable nil))
                 (fnn-octets frame))
@@ -480,12 +486,12 @@ the report line."
                    (progn (setq keep-stage t)
                           (fnn-indeterminate
                            "clone directory publication is uncertain"))))
-                        (setq keep-stage t))
+                        (setq keep-stage t)))
                    (unless keep-stage
                      (ignore-errors
                       (sb-ext:delete-directory
                        (concatenate 'string stage "/") :recursive t)))))
-               (fnn-clone-activate target)))
+               (fnn-clone-activate target))))
         (fnn-store-close store)))))
 
 (defparameter +fnn-checkpoint-retired-verbs+ '("publish" "select" "status"))

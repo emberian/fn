@@ -18,11 +18,15 @@
 (defvar *decoded-cut* nil)
 (defvar *decoded-actions* nil)
 (defvar *decoded-job* nil)
+(defvar *decoded-permission-hook* nil)
+(defvar *decoded-call-hook* nil)
+(defvar *decoded-permission-cell* nil)
 (defun fnn-live-page-read-pool () :same-pool)
 (defun fnn-cold-call (subject &rest args)
   (push (cons subject args) *decoded-calls*)
   (assert (eq subject 'fn-owner-page-window-work-permittedp))
-  (list *decoded-permitted*))
+  (when *decoded-permission-hook* (funcall *decoded-permission-hook*))
+  (list (if *decoded-permission-cell* (car *decoded-permission-cell*) *decoded-permitted*)))
 (defun fnn-core (subject &rest args)
   (push (cons subject args) *decoded-calls*)
   (case subject
@@ -34,6 +38,7 @@
     (otherwise (error "unexpected decoded core subject ~s" subject))))
 (defun fnn-call (subject &rest args)
   (push (cons subject args) *decoded-calls*)
+  (when *decoded-call-hook* (funcall *decoded-call-hook* subject))
   (when (eq subject *decoded-cut*) (error "semantic cut"))
   (case subject
     (fn-owner-page-decoded-job-assign
@@ -67,15 +72,83 @@
         fn-owner-page-decoded-job-assign fn-dwj-begin fn-owner-page-window-work-permittedp
         fn-dwj-one :physical-pread fn-dwj-read-observation
         fn-owner-page-window-work-permittedp fn-dwj-one)))))
-;; Revocation prevents the expensive constructor and retains only the envelope.
+;; An already cancelled dispatch leaves baseline scratch idle and unclaimed.
 (let ((*decoded-permitted* nil) (*decoded-calls* nil))
   (let ((worker (decoded-worker-fixture)))
     (setq *decoded-calls* nil)
-    (assert (handler-case (progn (fnn-extent-decoded-window-run worker :token) nil) (error () t)))
+    (assert (null (fnn-extent-decoded-window-run worker :token)))
     (assert (equal (mapcar #'car *decoded-calls*) '(fn-owner-page-window-work-permittedp)))
-    (assert (fnn-cold-worker-decoded worker))))
+    (assert (null (fnn-cold-worker-decoded worker)))
+    (assert (eq :idle (fnn-decoded-activation-stage (fnn-cold-worker-decoded-storage worker))))))
+;; Real E exclusion: cancellation attempts acquisition while the permission
+;; observation is held. Assignment must still run under E; cancellation then
+;; sees assigned custody before the off-E begin returns. Typed leaves record.
+(let* ((job (vector nil (vector (make-array 64 :element-type '(unsigned-byte 8)) 0)))
+       (*decoded-job* job)
+       (worker (decoded-worker-fixture))
+       (permission (list t))
+       (checked (sb-thread:make-semaphore :count 0))
+       (resume (sb-thread:make-semaphore :count 0))
+       (cancel-entered (sb-thread:make-semaphore :count 0))
+       (cancel-done (sb-thread:make-semaphore :count 0))
+       (assigned nil)
+       (first-check t)
+       (runner
+         (sb-thread:make-thread
+          (lambda ()
+            (let ((*decoded-job* job) (*decoded-calls* nil)
+                  (*decoded-permission-cell* permission)
+                  (*decoded-permission-hook*
+                    (lambda ()
+                      (when first-check
+                        (setq first-check nil)
+                        (assert (sb-thread:holding-mutex-p *fnn-extent-lock*))
+                        (sb-thread:signal-semaphore checked)
+                        (assert (sb-thread:wait-on-semaphore resume :timeout 3)))))
+                  (*decoded-call-hook*
+                    (lambda (subject)
+                      (case subject
+                        (fn-owner-page-decoded-job-assign
+                         (assert (sb-thread:holding-mutex-p *fnn-extent-lock*))
+                         (assert (fnn-cold-worker-decoded worker))
+                         (setq assigned t))
+                        (fn-dwj-begin
+                         (assert (not (sb-thread:holding-mutex-p *fnn-extent-lock*)))
+                         (assert (sb-thread:wait-on-semaphore cancel-done :timeout 3)))))))
+              (fnn-extent-decoded-window-run worker :token))))))
+  (assert (sb-thread:wait-on-semaphore checked :timeout 3))
+  (let ((canceller
+          (sb-thread:make-thread
+           (lambda ()
+             (sb-thread:signal-semaphore cancel-entered)
+             (sb-thread:with-mutex (*fnn-extent-lock*)
+               (assert assigned)
+               (assert (eq (fnn-cold-worker-decoded worker)
+                           (fnn-cold-worker-decoded-storage worker)))
+               (setf (car permission) nil))
+             (sb-thread:signal-semaphore cancel-done)))))
+    (assert (sb-thread:wait-on-semaphore cancel-entered :timeout 3))
+    (sb-thread:signal-semaphore resume)
+    (assert (null (sb-thread:join-thread runner)))
+    (sb-thread:join-thread canceller)
+    (assert assigned)
+    (assert (eq :idle (fnn-decoded-activation-stage (fnn-cold-worker-decoded worker))))))
+;; A physical child cancelled before dispatch never assigns the scratch at all.
+(let* ((*decoded-job* (vector nil))
+       (worker (decoded-worker-fixture))
+       (runner (sb-thread:make-thread
+                (lambda ()
+                  (let ((*decoded-permitted* nil) (*decoded-calls* nil))
+                    (assert (null (fnn-extent-decoded-window-run worker :token)))
+                    (assert (equal (mapcar #'car *decoded-calls*)
+                                   '(fn-owner-page-window-work-permittedp))))))))
+  (sb-thread:join-thread runner)
+  (assert (null (fnn-cold-worker-decoded worker)))
+  (assert (eq :idle (fnn-decoded-activation-stage (fnn-cold-worker-decoded-storage worker)))))
+(format t "native_decoded_worker_raw: PASS cancelled-before-assignment/atomic E assignment with real contender~%")
+
 ;; Both failed constructor and torn private step remain physically discoverable.
-(dolist (cut '(fn-dwj-begin fn-dwj-one fn-dwj-read-observation))
+(dolist (cut '(fn-owner-page-decoded-job-assign fn-dwj-begin fn-dwj-one fn-dwj-read-observation))
   (let ((*decoded-cut* cut) (*decoded-calls* nil)
         (*decoded-job* (vector nil (vector (make-array 64 :element-type '(unsigned-byte 8)) 0)))
         (*decoded-actions* '((:read (:decoded-read :token 3 (:read 7 47 0 100 8))) (:ready nil))))

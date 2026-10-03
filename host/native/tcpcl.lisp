@@ -227,6 +227,8 @@ and faults without following or deleting anything."
 
 (defun fnn-tcl-spool-acquire (root)
   "Establish one process as ROOT's owner, then recover its private staging."
+  (unless (eq (fnn-tcl-spool-close-observation) :closed)
+    (fnn-indeterminate "tcpcl: prior spool custody prevents acquisition"))
   (handler-case
       (progn
         (fnn-safe-directory root t)
@@ -236,8 +238,8 @@ and faults without following or deleting anything."
     (fnn-os-error (e)
       (fnn-indeterminate "tcpcl: spool namespace recovery is uncertain: ~a" e)))
   (let ((lock nil) (owned nil))
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+         ((progn
            (handler-case
                (setq lock (fnn-open (fnn-join root +fnn-tcl-spool-lock+)
                                     (logior sb-posix:o-rdwr sb-posix:o-creat
@@ -254,16 +256,30 @@ and faults without following or deleting anything."
                  (fnn-fault "tcpcl: cannot establish spool ownership: ~a" e))))
            (fnn-tcl-spool-recover root)
            (setq owned t)
-           lock)
+           lock))
       (unless owned
-        (when lock
-          (ignore-errors (fnn-flock lock +fnn-lock-un+))
-          (ignore-errors (fnn-close lock)))))))
+        (let ((fd lock))
+          (setq lock nil)
+          (fnn-tcl-spool-release fd))))))
+
+(defvar *fnn-tcl-spool-close-debts* nil
+  "Exact consumed spool FD identities and original physical cleanup conditions.")
+
+(defun fnn-tcl-spool-close-observation ()
+  (if *fnn-tcl-spool-close-debts* :uncertain :closed))
 
 (defun fnn-tcl-spool-release (lock)
+  "Attempt unlock and close independently; an ambiguous return is never retried."
   (when lock
-    (ignore-errors (fnn-flock lock +fnn-lock-un+))
-    (ignore-errors (fnn-close lock))))
+    (when (assoc lock *fnn-tcl-spool-close-debts*)
+      (fnn-indeterminate "tcpcl: prior spool return remains unobserved"))
+    (handler-case
+        (fnn-unwind-cleanups ()
+          (fnn-flock lock +fnn-lock-un+)
+          (fnn-close lock))
+      (serious-condition (condition)
+        (push (list lock condition) *fnn-tcl-spool-close-debts*)
+        (fnn-indeterminate "tcpcl: spool physical return unobserved: ~a" condition)))))
 
 (defun fnn-tcl-test-pause-after-stage-data (stage)
   ; An explicit native process-death cut for the recovery regression.  It is
@@ -829,10 +845,11 @@ transfer lost after the session was established is connection-local,
 
 (defun fnn-command-tcpcl-listen (port once spool node-id peer keepalive segment-mru
                                  transfer-mru reply trace-path)
-  (let ((listener nil) (code +fnn-exit-ok+) (trace (fnn-tcl-trace-stream trace-path))
-        (spool-lock (fnn-tcl-spool-acquire spool)))
-    (unwind-protect
-         (let ((params (fnn-tcl-params node-id peer keepalive segment-mru transfer-mru))
+  (let ((listener nil) (code +fnn-exit-ok+) (trace nil) (spool-lock nil))
+    (fnn-unwind-cleanups
+         ((setq trace (fnn-tcl-trace-stream trace-path))
+          (setq spool-lock (fnn-tcl-spool-acquire spool))
+          (let ((params (fnn-tcl-params node-id peer keepalive segment-mru transfer-mru))
                (bundle (fnn-tcl-bundle reply)))
            (multiple-value-bind (bound bound-port) (fnn-tcl-listen port)
              (setq listener bound)
@@ -874,24 +891,25 @@ transfer lost after the session was established is connection-local,
                                  (t (error e))))))
                   (fnn-socket-shut socket))))
             once)
-           code)
+           code))
       (when listener (fnn-socket-shut listener))
       (fnn-tcl-spool-release spool-lock)
       (when trace (close trace)))))
 
 (defun fnn-command-tcpcl-send (host port bundle-path spool node-id peer keepalive
                                segment-mru transfer-mru expect trace-path)
-  (let ((socket nil) (trace (fnn-tcl-trace-stream trace-path))
-        (spool-lock (fnn-tcl-spool-acquire spool)))
-    (unwind-protect
-         (let ((params (fnn-tcl-params node-id peer keepalive segment-mru transfer-mru))
+  (let ((socket nil) (trace nil) (spool-lock nil))
+    (fnn-unwind-cleanups
+         ((setq trace (fnn-tcl-trace-stream trace-path))
+          (setq spool-lock (fnn-tcl-spool-acquire spool))
+          (let ((params (fnn-tcl-params node-id peer keepalive segment-mru transfer-mru))
                (bundle (fnn-tcl-bundle bundle-path)))
            (setq socket (fnn-tcl-connect host port))
            (let ((conn (apply #'fnn-tcl-session (fnn-socket-fd socket) :active params "active" spool
                                         :trace trace :expect expect
                                         (when bundle-path (list :bundle bundle)))))
              (fnn-tcl-summary conn)
-             (fnn-tcl-exit-code conn)))
+             (fnn-tcl-exit-code conn))))
       (when socket (fnn-socket-shut socket))
       (fnn-tcl-spool-release spool-lock)
       (when trace (close trace)))))

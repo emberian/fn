@@ -124,7 +124,8 @@ actual pread stall, completion/cache/close observations are SCN-1002.
 Checkpoint/recovery rescue and compressed decoder highwater need additional
 grounded funding; this grammar does not establish them.
 
-An absent cold policy selects DEFAULT's partial native startup. Before Store
+An absent cold policy selects DEFAULT's partial native startup for the
+NNTP/HTTP service through `fnn-owner-run`. Before Store
 recovery registers its first file, ACL2 derives a pool plan from the observed
 dynamic-space reservation and occupancy, protected Store/output allowance,
 selected worker backing, cache capacity and the OS descriptor limit. Native
@@ -139,6 +140,10 @@ existing service authority retains that actual Store. Final settlement consults
 the retained carrier even when installation never returned a service. A sticky
 physical close failure stays uncertain and is not retried as a fresh close;
 only a definite rollback close permits authority release (SCN-1133).
+Offline synchronous owners used by checkpoint/clone, routing-table reads and
+obligation maintenance retain their offline context. Standalone BP node and
+application listeners have separate startup callers; their served DEFAULT
+activation remains Transport-owned work and is not established by this path.
 
 The file-incarnation namespace is distinct from the read namespace. The
 operator limits each independently, with no wrapped identity reuse; the

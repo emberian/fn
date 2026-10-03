@@ -94,6 +94,19 @@
         (list :queue (list (+ po len) (+ 1 pl) d w (+ 1 o)))
       (list :drop (list po pl (+ 1 d) w (+ 1 o))))))
 
+; Terminal admission is distinct from capacity: the first whole line may
+; exceed the pending bound, but no line may follow the writer's stop marker.
+(defun fn-log-sink-offer-live (s len bound stoppingp)
+  (declare (xargs :guard t))
+  (if stoppingp
+      (list :drop
+            (list (fn-log-sink-pending-octets s)
+                  (fn-log-sink-pending-lines s)
+                  (+ 1 (fn-log-sink-dropped s))
+                  (fn-log-sink-written s)
+                  (+ 1 (fn-log-sink-offered s))))
+    (fn-log-sink-offer s len bound)))
+
 ; The writer took the oldest pending line, of LEN octets, and its write
 ; ended with OUTCOME: :written, or anything else (a failed write), which
 ; counts the line dropped.  With nothing pending the sink is unchanged.

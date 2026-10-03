@@ -34,8 +34,8 @@
 (defun fnn-bpo-call-with-owner-journal
     (store-root journal-root writable thunk)
   (let ((service nil) (journal nil) (carry nil))
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+         ((progn
            ;; A writable owner open honours the developer image's post-cut
            ;; selector (fnn-post-entry-fault; NIL on a production image), so
            ;; its Store publications' model cuts are exercised as a POST's.
@@ -56,12 +56,11 @@
                 (fnn-indeterminate "BP obligation owner Store is fenced"))
               (when writable (fnn-bpo-complete-waivers service))
               (let ((*fnn-bpo-carry-journal* carry))
-                (funcall thunk journal service)))))
+                (funcall thunk journal service))))))
       (when carry (fnn-app-journal-close carry))
       (when journal (fnn-app-journal-close journal))
-      (when service
-        (fnn-owner-feed-close-all service)
-        (fnn-store-close (fnn-owner-service-store service))))))
+      (when service (fnn-owner-feed-close-all service))
+      (when service (fnn-store-close (fnn-owner-service-store service))))))
 
 (defun fnn-command-bpo-owner-status (store journal work-id)
   (fnn-bpo-call-with-owner-journal
@@ -203,8 +202,8 @@
       ;; Routing: the carrier's hop is ACL2's choice over this Store's
       ;; bp-route table, at queue time (fn-bprt-job-route) and before the
       ;; offer (fn-bpnj-contact-next).
-      (unwind-protect
-           (let* ((routed (fnn-bps-use-store-routes service store))
+      (fnn-unwind-cleanups
+          ((let* ((routed (fnn-bps-use-store-routes service store))
                   (work-octets (fnn-octet-list (fnn-string-octets (first key))))
                   (attempt-octets
                     (fnn-octet-list (fnn-string-octets (second key))))
@@ -240,7 +239,7 @@
              (fnn-out "BP obligation request carrier durable work=~a attempt=~a generation=~d"
                       (first key) (second key) generation)
              (fnn-bps-attempt-ready service)
-             (fnn-bps-exit-code service))
+             (fnn-bps-exit-code service)))
         (fnn-bps-release service)))))
 
 ;;; `bp-obligation recover STORE WORKFLOW WORK ATTEMPT OUTCOME': the recovery

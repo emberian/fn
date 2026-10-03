@@ -1,0 +1,9 @@
+^[exit-audit]{
+  consumer_revision: "3f39e6df98b3d87881e43200bba9334e47e1af4b"
+  workbench_revision: "651b535b5171e9ed419570f4cd64b53914094433"
+  source_repairs: ["01e4a5e0b" "1200bf85d"]
+  perspective: "Trace terminal effects backwards, execute full definitions forwards"
+  map: ~"./traces.md"
+  neighbors: [~"../entries" ~"../consistency" ~"../bounds"]
+  status: "ongoing"
+}

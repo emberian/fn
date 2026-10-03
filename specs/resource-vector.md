@@ -650,6 +650,19 @@ source alone does not claim the new startup/retirement consumers have executed.
 
 ### DEFAULT page-read startup (HST-048)
 
+The launcher's heap probe carries the normalized Store root and captures the
+actual direct-worker count and cache limit. For a served `:run`,
+`fn-prstartup-extend-operation-reservation` adds DEFAULT's selected minimum
+fixed backing after the explicit cold extension and before the output
+extension; offline and initialization actions retain their own figures.
+`status` and `health` project the accepted configuration's cold and output
+policies through the same extension chain for the next-run line, with one
+image and machine observation. Run-only accessors cannot supply these
+policies for a diagnostic command. SCN-1136 executes these consumers
+against the actual ACL2 arithmetic, including the exact machine boundary.
+This extension does not transfer the older initialization/reopen theorem to
+the expanded reservation; initialization budget refinement remains open.
+
 Before Store open, `fn-prstartup-default-plan` consumes actual dynamic-space,
 occupied usage, sealed Store profile, image observation, nursery, exact cold
 and output policies, connection count, root, existing direct-worker count,
@@ -674,7 +687,7 @@ pool. DATA8 preserves the original five ledger/configuration fields and
 binding revision at position five, followed by the reservation/readiness
 marker and worker count. Both legacy ledger publication and binding revision
 publication preserve that tail. Each native worker constructor must first
-pass `fn-owner-page-read-default-worker-reservedp`; successful constructor,
+pass `fn-owner-page-read-default-worker-constructionp`; successful constructor,
 eager reserve and worker startup precede `default-worker-ready` and physical
 free-roster publication. Torn startup leaves the bit clear and cannot allocate
 an unreserved replacement. Reused decoded-window admission requires the
@@ -682,3 +695,56 @@ matching ready slot, charges a slot and read identity, and retains permanent
 backing throughout return, retirement and settlement. Installation never
 resets or refunds a live pool. SCN-1130 covers the native ordering and orphan
 cleanup independently of the numeric projection.
+
+The actual `:run` launcher calls `fn-prstartup-extend-operation-reservation`
+to add the minimum DEFAULT persistent backing and registration quantum before
+the independent output contribution. Existing direct-worker thread reservation
+is retained, not counted twice. The extension validates total process memory
+against the captured machine. Offline actions and explicit cold policy keep
+their reservation behavior. This additional run requirement is outside the
+older base init-to-reopen affordability theorem; init sizing needs the same
+next-run producer before that stronger claim can hold.
+
+The full Store figure already protects recovery workspace. Legacy funded
+entry/discovery buffers currently draw from the spare pool as well; partitioning
+that protected recovery subreserve is still required to prevent double
+exclusion during nonempty Store open. A minimum DEFAULT launch contribution
+does not establish complete recovery/cache transient funding.
+A joined executor thread does not settle retained constructor, reset or draw
+custody. `fnn-extent-executor-drained-p` observes the roster under E after
+cleanup; startup without a returned service keeps its existing held marker
+until that roster is empty. A complete served close also requires this
+observation before log, journal and Store settlement. SCN-1130 distinguishes
+ordinary stop return from physical custody settlement using the actual helper.
+
+Global arena callback debt can exist before any Store carrier is returned.
+Startup observes `fnn-arena-return-observation(nil)` before replacement
+constructors; an uncertain observation invokes the custody callback and
+reports uncertainty. Orphan cleanup clears the startup marker only after
+both the executor roster and global arena return observation settle.
+
+### Independent peer flight pool (HST-049)
+
+Catchup spool flights use a distinct private typed bank. The operator policy
+captures heap octets, spool disk octets, maximum flights, maximum workers,
+spool allowance per flight and total metered work. Absence creates no grant.
+Each flight has separate lifetime and work rows, selected by ACL2. Actual
+`fn-rl-draw` precedes private buffer, spool and worker constructors. Lifetime
+demand includes the selected direct 512/64/512 byte arrays, digest register
+and fixed frame array backing, native stack/runtime, two descriptors, one
+worker and a spent read identity. Work quanta draw their actual core-selected
+work demand on the companion row; settlement retains spent work. Exhaustion
+refuses before cursor mutation and cannot silently truncate an accepted batch.
+
+The independent launcher contribution adds the policy heap and worker threads
+with whole-machine validation. Startup checks the actual dynamic capture and
+protected other banks. DEFAULT must protect this peer heap rather than consume
+it as spare headroom. No output, syncer or page-pool slack grants peer authority.
+
+This initial producer is explicitly `:partial-fixed-storage`: native flight/
+request/completion/mutex cells, owned controller/hash frame payload graphs,
+transient octet lists and garbage, TLS, integer widths and collector behavior
+still require the concrete consumer representation. The flight lease survives
+peer ACK, local response, timeout and cancellation. Settlement requires actual
+worker return/join, physical socket closure, spool cleanup and no future
+publication or owner-close callback custody. Bounds owns the real spool driver.

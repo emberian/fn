@@ -4,6 +4,23 @@
 (in-package "ACL2")
 (defvar *fnn-history-roots* (make-hash-table :test 'eql))
 
+(defun fnn-history-root-abandon-held (generation candidate)
+  "Owner gate held. Dispose only a definitely private, unleased candidate.
+An entered activation can escape after making this generation authoritative;
+its physical backing and credit then remain in custody for fenced recovery."
+  (let ((word (fnn-owner-core 'fn-owner-hroot-abandon-word generation)))
+    (if (not (eq word :ready)) word
+      (progn
+        (let ((bound (gethash generation *fnn-history-roots*)))
+          (when (and bound (not (eq bound candidate)))
+            (fnn-fault "history candidate custody changed before abandonment: ~a" generation)))
+        (when candidate (fnn-call 'fn-hist$p-dispose candidate))
+        (remhash generation *fnn-history-roots*)
+        (let ((released (fnn-owner-core 'fn-owner-hroot-abandon generation)))
+          (unless (eq released :released)
+            (fnn-fault "history candidate credit return refused after disposal: ~a" released))
+          released)))))
+
 (defun fnn-history-root-retire-held (generation)
   "INTERNAL: owner gate held; a retired generation cannot acquire readers."
   (when (and generation
@@ -107,11 +124,14 @@ ACL2's source incarnation and refuses the candidate before installation."
               (fnn-owner-gated (service :control)
                 (setq row (fnn-owner-core 'fn-owner-hroot-row ordinal source-incarnation))
                 (when (eq (first row) :done)
+                  ;; Retain physical custody before the semantic activation
+                  ;; can change state or escape. Cleanup asks ACL2 whether
+                  ;; this generation is still private before disposing it.
+                  (setf (gethash generation *fnn-history-roots*) candidate)
                   (let ((word (fnn-owner-core 'fn-owner-hroot-activate generation ordinal (second row))))
                     (unless (and (consp word) (eq (first word) :installed))
                       (fnn-refuse-io "live history installation refused: ~a" word))
                     (setq old (third word))
-                    (setf (gethash generation *fnn-history-roots*) candidate)
                     (fnn-install-history-root candidate)
                     (setq installed t))))
               (when installed
@@ -125,10 +145,8 @@ ACL2's source incarnation and refuses the candidate before installation."
               (fnn-checkpoint-yield "live-history-tail" ordinal))))
       (when stage (fnn-call 'fn-hrecs$s-dispose stage))
       (when (and generation (not installed))
-        (when candidate (fnn-call 'fn-hist$p-dispose candidate))
-        (setq candidate nil stage nil)
         (fnn-owner-gated (service :control)
-          (fnn-owner-core 'fn-owner-hroot-abandon generation))))))
+          (fnn-history-root-abandon-held generation candidate))))))
 
 (defun fnn-install-history-root (root)
   ;; Only the successful same-quantum ACL2 activation reaches this installer.
@@ -220,22 +238,21 @@ ACL2's source incarnation and refuses the candidate before installation."
           (list generation candidate count))
       (when stage (fnn-call 'fn-hrecs$s-dispose stage))
       (when (and generation (not returned))
-        (when candidate (fnn-call 'fn-hist$p-dispose candidate))
-        (setq candidate nil stage nil)
         (fnn-owner-gated (service :control)
-          (fnn-owner-core 'fn-owner-hroot-abandon generation))))))
+          (fnn-history-root-abandon-held generation candidate))))))
 
 (defun fnn-owner-history-root-abandon-candidate (service prepared)
   ;; The enclosing failed pass has left its private histogram scope.
   (let ((generation (first prepared)))
-    (when (second prepared) (fnn-call 'fn-hist$p-dispose (second prepared)))
-    (setf (second prepared) nil)
-    (fnn-owner-gated (service :control)
-      (fnn-owner-core 'fn-owner-hroot-abandon generation))))
+    (let ((word (fnn-owner-gated (service :control)
+                  (fnn-history-root-abandon-held generation (second prepared)))))
+      (when (eq word :released) (setf (second prepared) nil))
+      word)))
 
 (defun fnn-owner-history-root-install-held (prepared)
   "Reclaim's durable install and owner swap hold the existing owner gate."
   (destructuring-bind (generation candidate count) prepared
+    (setf (gethash generation *fnn-history-roots*) candidate)
     (let ((detached (fnn-owner-core 'fn-owner-hroot-detach)))
       (unless (and (consp detached) (eq (first detached) :detached))
         (fnn-fault "reclaim history incarnation refused"))
@@ -243,7 +260,6 @@ ACL2's source incarnation and refuses the candidate before installation."
                                  (fnn-owner-core 'fn-owner-hroot-frontier-value))))
         (unless (and (consp word) (eq (first word) :installed))
           (fnn-fault "reclaim history activation refused: ~a" word))
-        (setf (gethash generation *fnn-history-roots*) candidate)
         (fnn-install-history-root candidate)
         (when (second detached)
           (fnn-history-root-retire-held (second detached)))))))
