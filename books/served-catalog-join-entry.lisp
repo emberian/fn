@@ -290,7 +290,8 @@
              (fn-scj-joinp view fn-arena c)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-scj-joinp fn-cat-view-articles fn-ctl-visible-articles)
-                           (fn-scj-acc-rowsp fn-scj-load-invp fn-sca-load-held-rows-from
+                           (fn-scj-acc-rowsp fn-scj-load-invp fn-sca-load-held-rows fn-sca-load-held-available-from
+                            fn-sca-load-held-rows-from
                             fn-midx-build fn-ctl-visible-filter fn-article-listp
                             fn-scj-rows-arts fn-cat-view-below fn-scj-vis-below
                             fn-scj-load-held-rows-keeps-raw-identity))
