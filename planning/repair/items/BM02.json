@@ -1,0 +1,11 @@
+{
+ "file": "host/interfaces.lisp",
+ "id": "BM02",
+ "notes": [],
+ "owner": "reclaim-retention",
+ "severity": "medium",
+ "source": "runner-bm",
+ "state": "open",
+ "title": "host_check --load at dev 951a61745: host/interfaces.lisp:3838 fn-workflow-request-plan declared but the raw host never dispatches it (stale after the lane-head merges; workflow-host changed in reclaim-retention)",
+ "updated": "2026-10-03T03:13:35Z"
+}

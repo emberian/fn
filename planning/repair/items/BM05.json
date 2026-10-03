@@ -1,0 +1,11 @@
+{
+ "file": "tools/lock_discipline_check.py",
+ "id": "BM05",
+ "notes": [],
+ "owner": "def-holder",
+ "severity": "low",
+ "source": "runner-bm",
+ "state": "open",
+ "title": "lock_discipline_check --check at dev 951a61745: STALE baseline rows R2 fnn-extent-pread (probe-file, alien-funcall): the cold pread left the owner lock; lower with --write-baseline after confirming",
+ "updated": "2026-10-03T03:13:35Z"
+}

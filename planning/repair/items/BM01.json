@@ -1,0 +1,11 @@
+{
+ "file": "host/native/owner.lisp",
+ "id": "BM01",
+ "notes": [],
+ "owner": "arena-forget",
+ "severity": "high",
+ "source": "runner-bm",
+ "state": "open",
+ "title": "host_check --load at dev 951a61745: host/interfaces.lisp:4653 fn-orcs-seal-word declared but never dispatched (arena-forget's seal-word call dropped in the fence-boundary merge resolution; re-add inside the fenced reclaim quantum)",
+ "updated": "2026-10-03T03:13:35Z"
+}

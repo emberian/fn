@@ -1,0 +1,11 @@
+{
+ "file": "tools/build_lists_check.py",
+ "id": "BM04",
+ "notes": [],
+ "owner": "stage-5b",
+ "severity": "medium",
+ "source": "runner-bm",
+ "state": "open",
+ "title": "build_lists_check at dev 951a61745: host/owner-retain-host.lisp loaded by build.lisp, not by build-dtn.lisp, and DTN_OMITTED gives no reason",
+ "updated": "2026-10-03T03:13:35Z"
+}
