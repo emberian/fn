@@ -2,6 +2,8 @@
 ;;; Stub only the inner pipeline I/O, preserving actual snapshot/wait consumer.
 (load "tests/native_actor_envelope_raw.lisp")
 (in-package "ACL2")
+(load-deployed-forms "host/native/io.lisp"
+ '((defun fnn-condition-class) (defun fnn-fault) (defun fnn-err)))
 
 ;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
 (define-condition harness-stub-reached (serious-condition)
@@ -15,12 +17,15 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
-(defun fnn-err (control &rest args)
-  (declare (ignorable control args))
-  (harness-stub-reached 'fnn-err "host/native/io.lisp"))
-(defun fnn-fault (control &rest args)
-  (declare (ignorable control args))
-  (harness-stub-reached 'fnn-fault "host/native/io.lisp"))
+(defun fnn-concat (&rest strings)
+  (declare (ignorable strings))
+  (harness-stub-reached 'fnn-concat "host/native/io.lisp"))
+(defun fnn-emit (stream text)
+  (declare (ignorable stream text))
+  (harness-stub-reached 'fnn-emit "host/native/io.lisp"))
+(defun fnn-log-offer (destination octets)
+  (declare (ignorable destination octets))
+  (harness-stub-reached 'fnn-log-offer "host/native/io.lisp"))
 (defun fnn-owner-action (name &rest args)
   (declare (ignorable name args))
   (harness-stub-reached 'fnn-owner-action "host/native/owner.lisp"))
@@ -30,6 +35,9 @@
 (defun fnn-owner-stop-service-locked (service exit-code &optional answering)
   (declare (ignorable service exit-code answering))
   (harness-stub-reached 'fnn-owner-stop-service-locked "host/native/owner.lisp"))
+(defun fnn-string-octets (string)
+  (declare (ignorable string))
+  (harness-stub-reached 'fnn-string-octets "host/native/io.lisp"))
 ;;; ---- derived stubs: END ----
 (defun nfix (n) (if (and (integerp n) (<= 0 n)) n 0))
 (load-deployed-forms "books/committer-actor.lisp"
