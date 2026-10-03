@@ -1351,3 +1351,10 @@ sol-access continuing owned queue, GPT-6.1-Sol, 2026-10-03 10:49 UTC:
   claim. Integration owns dev writes and immutable convergence image.
 - Continuing ownership absorbs Operator S072/S151 and journal-stream handoff
   before08amNY, keeping this queue and worktree alive. No source WIP discarded.
+
+- Post-commit certified_claims --explain confirms PRF-1266/1268/1269 certified
+  at the exact current keystone source/include closure; auth book e045c330,
+  budget2b7d4bf9. Corrected direct keystone provenance citations to102734Z,
+  alongside final teeth104044Z / group access103156Z. Unrelated inherited
+  provenance listing is a separate global convergence concern.
+- All three Access warm REPLs stopped after proof completion, freeing leases.

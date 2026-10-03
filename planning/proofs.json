@@ -21964,10 +21964,11 @@
         "fn-auth-starttls-is-not-advertised-once-authenticated-on-any-connection"
       ],
       "evidence": [
+        "planning/evidence/manifests/certify-20261003T102734Z-1462490.json",
         "planning/evidence/manifests/certify-20261003T104044Z-1503690.json",
         "planning/evidence/sol-access-native-faults-2026-10-03.md"
       ],
-      "note": "Exact changed root and teeth certification passed in the cited per-book entries; global run contains a separately identified failed harness/unsupported standalone host root. Inherited dependency manifest reconciliation and immutable saved-image protocol observation remain pending. No completed image or deployment claim."
+      "note": "Exact keystone book and teeth certification passed in the cited per-book entries; certified_claims and current_view confirm each keystone at this source/include closure. Global runs separately record prior failing harness/unsupported standalone host fragment entries, and inherited unrelated cached dependency provenance remains a separate convergence concern. Immutable saved-image protocol observation and deployment are not claimed."
     },
     {
       "id": "PRF-1269",
@@ -21988,10 +21989,11 @@
         "fn-auth-view-excludes-unreadable-groups-on-any-connection"
       ],
       "evidence": [
+        "planning/evidence/manifests/certify-20261003T102734Z-1462490.json",
         "planning/evidence/manifests/certify-20261003T103156Z-1476136.json",
         "planning/evidence/sol-access-native-faults-2026-10-03.md"
       ],
-      "note": "Exact changed root and teeth certification passed in the cited per-book entries; global run contains a separately identified failed harness/unsupported standalone host root. Inherited dependency manifest reconciliation and immutable saved-image protocol observation remain pending. No completed image or deployment claim."
+      "note": "Exact keystone book and teeth certification passed in the cited per-book entries; certified_claims and current_view confirm each keystone at this source/include closure. Global runs separately record prior failing harness/unsupported standalone host fragment entries, and inherited unrelated cached dependency provenance remains a separate convergence concern. Immutable saved-image protocol observation and deployment are not claimed."
     },
     {
       "id": "PRF-1268",
@@ -22015,7 +22017,7 @@
         "planning/evidence/manifests/certify-20261003T104044Z-1503690.json",
         "planning/evidence/sol-access-native-faults-2026-10-03.md"
       ],
-      "note": "Exact changed root and teeth certification passed in the cited per-book entries; global run contains a separately identified failed harness/unsupported standalone host root. Inherited dependency manifest reconciliation and immutable saved-image protocol observation remain pending. No completed image or deployment claim."
+      "note": "Exact keystone book and teeth certification passed in the cited per-book entries; certified_claims and current_view confirm each keystone at this source/include closure. Global runs separately record prior failing harness/unsupported standalone host fragment entries, and inherited unrelated cached dependency provenance remains a separate convergence concern. Immutable saved-image protocol observation and deployment are not claimed."
     }
   ]
 }
