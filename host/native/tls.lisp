@@ -370,8 +370,11 @@ configured server context and never a protected client session."
 (defconstant +fnn-tls-nid-subject-alt-name+ 85)
 ;; A certificate's times and its subjectAltName extension are a few dozen
 ;; to a few thousand octets; this is a work bound on one copy, far above
-;; any certificate a CA issues, and a larger one is reported absent (so ACL2
-;; refuses it by name) rather than copied.
+;; any certificate a CA issues, and a larger one is not copied: its
+;; validity times are reported absent (ACL2 refuses :validity-malformed) and a
+;; subjectAltName extension that cannot be copied is reported as the one octet
+;; 0, which is no DER SEQUENCE, so ACL2 refuses :names-malformed.  Absent is
+;; reserved for a certificate with no such extension (no names).
 (defconstant +fnn-tls-max-fact-octets+ 65536)
 
 (defun fnn-tls-asn1-octets (string)
@@ -397,8 +400,9 @@ this copies three of its fields and decides nothing."
                         leaf +fnn-tls-nid-subject-alt-name+ -1))
              (extension (and (>= location 0) (fnn-%x509-get-ext leaf location)))
              (san (and extension (not (fnn-tls-null-pointer-p extension))
-                       (fnn-tls-asn1-octets
-                        (fnn-%x509-extension-get-data extension)))))
+                       (or (fnn-tls-asn1-octets
+                            (fnn-%x509-extension-get-data extension))
+                           (list 0)))))
         (values (fnn-tls-asn1-octets (fnn-%x509-get0-not-before leaf))
                 (fnn-tls-asn1-octets (fnn-%x509-get0-not-after leaf))
                 san)))))

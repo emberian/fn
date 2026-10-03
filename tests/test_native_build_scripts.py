@@ -60,5 +60,15 @@ class LfJoinedSweepIsGone(unittest.TestCase):
         self.assertNotIn("(defun fn-store-sn-join-octet-names", text)
 
 
+class TlsOversizeSan(unittest.TestCase):
+    def test_uncopyable_san_extension_is_not_reported_as_no_names(self):
+        # S094: an extension that is present but cannot be copied must not
+        # reach ACL2 as NIL (= "no names", accepted).
+        text = (ROOT / "host/native/tls.lisp").read_text()
+        m = re.search(r"\(defun fnn-tls-leaf-facts .*?\n\n", text, re.S)
+        self.assertIsNotNone(m)
+        self.assertIn("(list 0)", m.group(0))
+
+
 if __name__ == "__main__":
     unittest.main()
