@@ -1498,7 +1498,11 @@ one ring, so the table's key and the served boundary's are one source."
                 (fnn-node-secret-directory store))))
 
 (defun fnn-owner-install (root max-connections &optional fault)
-  (multiple-value-bind (store count) (fnn-open-live-store root t fault)
+  (multiple-value-bind (store count)
+      (let ((*fnn-store-failed-open-custody*
+              (lambda (store)
+                (fnn-owner-retain-run-authority (%make-fnn-owner-service :store store)))))
+        (fnn-open-live-store root t fault))
     (let ((service nil))
       (handler-case
           (progn

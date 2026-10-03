@@ -2635,7 +2635,20 @@ store; anything else is left to the ordinary open."
         (unless (fnn-store-logp store)
           (fnn-fault "a store that is not on the record log opened"))
         (fnn-safe-directory (fnn-journal-dir store)))
-    (error (e) (fnn-store-close store) (error e))))
+    (error (e) (fnn-store-failed-open-close store e))))
+
+(defvar *fnn-store-failed-open-custody* nil
+  "Scoped owner startup sink for an actual Store whose rollback close failed.
+Generic command callers have no owner authority sink.")
+
+(defun fnn-store-failed-open-close (store primary)
+  "Preserve PRIMARY; convey physical close debt before failed open escapes."
+  (handler-case (fnn-store-close store)
+    (serious-condition (cleanup)
+      (when *fnn-store-failed-open-custody*
+        (funcall *fnn-store-failed-open-custody* store))
+      (ignore-errors (fnn-err "Store open cleanup failed: ~a" cleanup))))
+  (error primary))
 
 (defun fnn-store-close (store)
   (when (fnn-store-close-debt store)
@@ -4093,7 +4106,7 @@ the records are read after the open by the verbs that need them
                   (floor (* 1000 (- (get-internal-real-time) before))
                          internal-time-units-per-second))
             (values store count)))
-      (error (e) (fnn-store-close store) (error e)))))
+      (error (e) (fnn-store-failed-open-close store e)))))
 
 (defun fnn-orphan-report (store)
   (if (null (fnn-store-orphans store))
