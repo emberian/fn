@@ -1429,7 +1429,7 @@
 
 (definterface fn-oqw-step
   :class :common-lisp-compliant
-  :keystones (fn-oqw-batch-effect-order fn-oqw-a-failed-effect-ends-the-job))
+  :keystones (fn-oqw-a-failed-effect-ends-the-job))
 
 (definterface fn-oqw-receipt
   :class :common-lisp-compliant
