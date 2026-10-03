@@ -5435,3 +5435,5 @@
 
 (definterface fn-web-host-post-window :class ::program)
 (definterface fn-web-host-post-reply-step :class ::program)
+
+(definterface fn-web-host-post-form-step :class ::program)

@@ -22818,7 +22818,7 @@
     {
       "id": "PRF-1293",
       "title": "Resumable authored POST body agrees with in-place decode and dot framing",
-      "statement": "Host-called fn-web-host-post-window consumes fn-wps-window on retained HTTP IN. Each work quantum emits at most that many octets and retains at most five framing bytes. Exact reference to fn-wss-emit-body plus terminator is execution-tested at quanta 1/2/7/4096. Native prepare/feed follows core-selected 340 then preserves partial consumption and existing await/outcome handling. Subject/header construction, whole form lookup, complete retained HTTP input and qualified physical funding remain open. Program-mode boundary has no guard/refinement proof yet.",
+      "statement": "Host-called fn-web-host-post-form-step resumes one first-occurrence form span traversal, decoding and final field reversal. fn-web-host-post-window consumes fn-wps-window on retained HTTP IN only after core340. It emits at most4096 octets per window; a bounded75-byte RFC2047 fragment uses the existing45-byte UTF8 chunk encoder, and body framing retains at most5 bytes. Actual ACL2 program witnesses compare complete authored wire against prior fn-wss-write-post atW1/2/7/4096, including10003-byte subject and UTF8 boundary/folding. Native prepare/feed preserves partial consumption and existing await/outcome handling. Original HTTP input and decoded subject remain retained; fixed prefix construction depends on captured operator/login profile. Legacy refused form/page construction remains full, and all guard/refinement and qualified physical funding remain open.",
       "milestone": "M6",
       "requirements": [
         "WEB-006"
@@ -22833,7 +22833,8 @@
         "books/web-post-stream.lisp",
         "host/web-host.lisp",
         "host/native/web-host.lisp",
-        "tests/native_web_post_stream_raw.lisp"
+        "tests/native_web_post_stream_raw.lisp",
+        "tests/acl2/web-post-stream-tests.lisp"
       ]
     }
   ]

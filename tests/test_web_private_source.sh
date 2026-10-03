@@ -22,6 +22,9 @@ python3 tools/proof_repl.py send-range "$session" books/web-page-cursor --from f
 python3 tools/proof_repl.py send-range "$session" books/web-list-stream --from fn-wgl-start --limit 30
 python3 tools/proof_repl.py send-range "$session" books/web-article-stream --from fn-was-get --limit 30
 python3 tools/proof_repl.py send-range "$session" books/web-reply-stream --from fn-wov-start --limit 30
+python3 tools/proof_repl.py send-range "$session" books/web-post-stream --from fn-wps-cursor --limit 30
 python3 tools/proof_repl.py send-range "$session" host/web-host --from fn-web-host-private-reply-p --limit 30
 python3 tools/proof_repl.py send-range "$session" tests/acl2/web-stream-consumer-source-tests \
     --from wwst-scan --limit 30
+
+python3 tools/proof_repl.py send-range "$session" tests/acl2/web-post-stream-tests --from wpst-drain --limit 30

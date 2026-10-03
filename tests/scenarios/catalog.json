@@ -9408,7 +9408,8 @@
       "steps": [
         "Compare encoded body cursor against fn-wss-emit-body plus dot terminator at quanta1/2/7/4096, including CR/LF, percent errors and5000 dot lines.",
         "Run actual native prepare/feed under partial117-byte consumed results; retain the original request source across every step.",
-        "Check core valid/bad-CSRF BEGIN and340/refusal continuation against the prior session machine."
+        "Check core valid/bad-CSRF BEGIN and340/refusal continuation against the prior session machine.",
+        "Traverse10003 skipped field bytes and first duplicates incrementally; compare10003-byte subject plus UTF8 encoded-word boundary atW1/7/4096 to exact prior authored wire."
       ],
       "expected": [
         "Every window bounded, exact complete body and framing.",
@@ -9419,7 +9420,7 @@
         "tests/native_web_post_stream_raw.lisp",
         "tests/acl2/web-post-stream-tests.lisp"
       ],
-      "note": "Program/raw execution boundary; full request, form/header/subject and qualified resource accounting remain open."
+      "note": "Actual source programs admit and exact valid/badCSRF/remove/UTF8/duplicate and long subject tests pass, with concrete fill invariant-risk. Native4096 form turns and partial117 feed pass. Full retained request/subject and refused form path, profile-dependent fixed prefix construction and qualified funding remain open."
     }
   ]
 }

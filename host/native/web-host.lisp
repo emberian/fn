@@ -43,7 +43,7 @@
 (defstruct (fnn-web-conn (:constructor %make-fnn-web-conn))
   socket fd ssl channel in out deadline job (closedp nil) (semantic-ended nil) (semantic-disposal :idle)
   (phase :head) (want :input) (from 0) request end
-  flow event private-begin post-source post-cursor post-active post-done (events 0) (opened nil) (answered nil)
+  flow event private-begin post-form post-source post-cursor post-active post-done (events 0) (opened nil) (answered nil)
   cid leased response-capture (cmd-at 0) (cmd-end 0) pending plan closing await completion
   cold cold-word (line-since nil) (resume-at 0)
   wire (wire-at 0) (body-at 0) (body-end 0)
@@ -252,7 +252,8 @@ exposure admission decides (the id, or NIL when it refused)."
                      ((:page-count :page-emit) (fnn-web-page-step face conn))
                      (:private-reply (fnn-web-private-reply face conn))
                      (:private-begin (fnn-web-private-begin face conn))
-                     (:post-prepare (fnn-web-post-prepare face conn))))
+                     (:post-prepare (fnn-web-post-prepare face conn))
+                     (:post-form (fnn-web-post-form face conn))))
                (serious-condition (condition)
                  (unwind-protect
                      (fnn-owner-thread-escape (fnn-web-face-service face) condition "web semantic job")
@@ -385,11 +386,15 @@ exposure admission decides (the id, or NIL when it refused)."
     (case (fnn-core 'fn-web-host-action-kind action)
       (:private-begin (setf (fnn-web-conn-private-begin conn) action
                             (fnn-web-conn-phase conn) :private-begin))
+      (:post-form
+       (setf (fnn-web-conn-post-form conn) (second action)
+             (fnn-web-conn-phase conn) :post-form))
       (:post-command
        (destructuring-bind (cid cursor next) (rest action)
          (setf (fnn-web-conn-post-source conn) (fnn-web-conn-in conn)
                (fnn-web-conn-in conn) (create-fn-octets$c)
-               (fnn-web-conn-post-cursor conn) cursor)
+               (fnn-web-conn-post-cursor conn) cursor
+               (fnn-web-conn-post-form conn) nil)
          (fnn-web-apply-action face conn (list :send cid 0 6 next))))
       (:post-stream
        (setf (fnn-web-conn-cid conn) (second action)
@@ -481,6 +486,12 @@ exposure admission decides (the id, or NIL when it refused)."
                  (yielded
                   (setf (fnn-web-conn-resume-at conn)
                         (fnn-mux-ms-ticks (fnn-core 'fn-splan-cursor-resume-ms)))))))))
+
+(defun fnn-web-post-form (face conn)
+  (fnn-web-apply-action face conn
+    (first (fnn-call 'fn-web-host-post-form-step (fnn-web-face-config face)
+                    (fnn-web-conn-post-form conn)
+                    (fnn-web-conn-in conn) (fnn-web-conn-out conn)))))
 
 (defun fnn-web-post-prepare (face conn)
   (declare (ignore face))
@@ -742,6 +753,7 @@ exposure admission decides (the id, or NIL when it refused)."
                          (fnn-web-event face conn)))
                (:private-begin (fnn-web-job-submit face conn :private-begin))
                (:post-prepare (fnn-web-job-submit face conn :post-prepare))
+               (:post-form (fnn-web-job-submit face conn :post-form))
                (:feed (when (fnn-web-feed-owned-p face conn) (fnn-web-job-submit face conn :feed)))
                (:await (fnn-web-await-step face conn))
                (:ready (fnn-web-job-submit face conn :ready))
@@ -794,7 +806,7 @@ exposure admission decides (the id, or NIL when it refused)."
                                  (:input +fnn-mux-pollin+) (:output +fnn-mux-pollout+) (t 0))) conns)) 'vector))
          ;; Pending semantic work receives another pass immediately; only
          ;; readiness/dependency/completion waits permit the bounded poll.
-         (work (some (lambda (conn) (and (not (fnn-web-conn-job conn)) (not (fnn-web-conn-closedp conn)) (member (fnn-web-conn-phase conn) '(:event :private-begin :post-prepare :ready :render :replay :feed :page-count :page-emit))
+         (work (some (lambda (conn) (and (not (fnn-web-conn-job conn)) (not (fnn-web-conn-closedp conn)) (member (fnn-web-conn-phase conn) '(:event :private-begin :post-form :post-prepare :ready :render :replay :feed :page-count :page-emit))
                                         (or (not (eq (fnn-web-conn-phase conn) :feed))
                                             (fnn-web-feed-owned-p face conn))
                                         (>= (fnn-now) (fnn-web-conn-resume-at conn)))) conns))

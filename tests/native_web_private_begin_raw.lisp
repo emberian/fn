@@ -7,7 +7,7 @@
  '(fn-wss-car fn-web-private-begin-row-p fn-web-private-begin-p fn-web-private-begin-step))
 (load-page-forms "host/web-host.lisp" '(fn-web-host-private-begin-step))
 ; This fixture records the outer private gate, not the new body producer.
-(defun fn-wps-private-begin (config action in out)
+(defun fn-wpf-private-begin (config action in out)
   (fn-web-private-begin-step config action in out))
 (defvar *private-begin-held* nil)
 (defvar *private-begin-release* nil)

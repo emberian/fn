@@ -200,7 +200,7 @@
 
 (defun fn-web-host-private-begin-step (config action fn-web-in fn-web-out)
   (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
-  (fn-wps-private-begin (append (take 6 config) (list :page-plan :private-begin))
+  (fn-wpf-private-begin (append (take 6 config) (list :page-plan :private-begin))
                              action fn-web-in fn-web-out))
 
 (defun fn-web-host-post-window (cursor fn-web-in fn-web-out)
@@ -213,3 +213,10 @@
   (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
   (fn-wps-private-reply (append (take 6 config) (list :page-plan :private-begin))
                         flow event cursor fn-web-in fn-web-out))
+
+(defun fn-web-host-post-form-step (config prep fn-web-in fn-web-out)
+  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (mv-let (next done) (fn-wpf-drive 4096 prep fn-web-in)
+    (if done (fn-wpf-finish (append (take 6 config) (list :page-plan :private-begin))
+                           next fn-web-in fn-web-out)
+      (mv (list :post-form next) fn-web-out))))
