@@ -27,37 +27,68 @@ def definitions(path: Path):
     text = path.read_text(errors="replace")
     for m in re.finditer(r"^\((?:defun|defmacro|defgeneric) ([^\s()]+)", text, re.M):
         yield m.group(1).lower(), path, text.count("\n", 0, m.start()) + 1
-    for m in re.finditer(r"^\(defstruct \(([^\s()]+)((?:.|\n)*?)\)\n((?:.|\n)*?)\)\s*\n\n", text, re.M):
-        name, body = m.group(1).lower(), m.group(3)
+    # A defstruct's accessors, read as an s-expression over the comment- and
+    # string-masked text (2026-10-03: the regex that ended a defstruct at the
+    # next blank line slurped the forms after one with no blank line under
+    # it, and a one-line `(defstruct (name (:constructor ...))' read as
+    # options to the end of the line: host/native/snapshot-producer.lisp
+    # "defined" fnn-snapshot-job-and, -that, ... twice at one line).
+    sys.path.insert(0, str(ROOT / "tools"))
+    import must_fail_check  # the one Lisp comment/string mask in tools/
+    mask = must_fail_check.code_mask(text)
+    for m in re.finditer(r"^\(defstruct\b", text, re.M):
+        items = top_level_items(text, mask, m.start())
+        if len(items) < 2:
+            continue
+        head = items[1]
+        name = (head[1:].split()[0] if head.startswith("(") else head).lower()
+        conc = re.search(r"\(:conc-name\s+([^\s()]+)\)", head) if head.startswith("(") else None
+        prefix = conc.group(1).lower() if conc else name + "-"
         line = text.count("\n", 0, m.start()) + 1
-        body = re.sub(r";[^\n]*", "", body)
-        depth, slots, tok = 0, [], ""
-        for ch in body:
-            if ch == "(":
-                depth += 1
-                if depth == 1:
-                    tok = ""
+        for item in items[2:]:
+            if item.startswith('"'):
                 continue
-            if ch == ")":
-                depth -= 1
-                if depth == 0 and tok.strip():
-                    slots.append(tok.strip().split()[0])
-                    tok = ""
-                continue
-            if depth == 1:
-                tok += ch
-            elif depth == 0:
-                if ch.isspace():
-                    if tok.strip():
-                        slots.append(tok.strip())
-                    tok = ""
-                else:
-                    tok += ch
-        if depth == 0 and tok.strip():
-            slots.append(tok.strip())
-        for slot in slots:
+            slot = item[1:].split()[0] if item.startswith("(") else item
             if re.fullmatch(r"[a-z0-9*+-]+", slot.lower()):
-                yield "%s-%s" % (name, slot.lower()), path, line
+                yield prefix + slot.lower(), path, line
+
+
+def top_level_items(text: str, mask, start: int) -> list[str]:
+    """The top-level elements of the form opening at START, as source text
+    (a list element whole, a string whole); code outside comments only."""
+    items, depth, i, n, begin = [], 0, start, len(text), None
+    while i < n:
+        c = text[i]
+        if not mask[i]:
+            if c == '"' and depth == 1 and begin is None:
+                j = i
+                while j < n and not mask[j]:
+                    j += 1
+                items.append(text[i:j])
+                i = j
+                continue
+            i += 1
+            continue
+        if c == "(":
+            depth += 1
+            if depth == 2:
+                begin = i
+        elif c == ")":
+            if depth == 2 and begin is not None:
+                items.append(text[begin:i + 1])
+                begin = None
+            depth -= 1
+            if depth == 0:
+                break
+        elif depth == 1 and not c.isspace():
+            j = i
+            while j < n and mask[j] and not text[j].isspace() and text[j] not in "()":
+                j += 1
+            items.append(text[i:j])
+            i = j
+            continue
+        i += 1
+    return items
 
 
 def shown(path: Path):
@@ -70,8 +101,15 @@ def shown(path: Path):
 def main(argv=None):
     # The build scripts (build.lisp, build-dtn.lisp, ...) are alternative
     # image entries, each defining its own fn-native-entry: not one image.
+    # A parked file (planning/host-parked.json) is loaded by no image, so it
+    # cannot collide with what one loads; host_loaded_check keeps it out.
+    import json
+    parked_path = ROOT / "planning" / "host-parked.json"
+    parked = (set(json.loads(parked_path.read_text()).get("parked", {}))
+              if parked_path.exists() else set())
     files = [Path(a) for a in (argv or sys.argv[1:])] or sorted(
-        p for p in (ROOT / "host/native").glob("*.lisp") if not p.name.startswith("build"))
+        p for p in (ROOT / "host/native").glob("*.lisp") if not p.name.startswith("build")
+        and str(p.relative_to(ROOT)) not in parked)
     seen, dups = {}, []
     for f in files:
         for name, path, line in definitions(f):
