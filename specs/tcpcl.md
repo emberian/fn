@@ -494,3 +494,13 @@ CONS tag/NIL offer for the consistency owner's zero START|END/ACK machine repair
 Actual begin raw cases PASS. Latest tcpcl-session source must precede native use;
 no native zero-file verdict is claimed. Full semantic decoder/CRC/publication and
 GC/working tariffs still require connected bounded consumers, beyond this step.
+
+One-frame incoming control correspondence (PRF-1303): the actual host-called
+source driver on `(cons 4 rest)` in a transferring phase refines the original
+session KEEP transition, including all events, unchanged remainder and stepped
+status. It preserves the inbound transfer record and records actual reception.
+A reachable partial inbound source plus next-transfer prefix is the positive
+witness; a legitimate closed phase refutes removal of the sole phase hypothesis.
+Normal universal proofs and teeth pass; certificate pending. Native private
+source roots/END ACK/physical aliases and complete semantic decoder/publication
+bounds remain separate open obligations, exercised by prepared SCN1131.

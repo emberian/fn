@@ -758,3 +758,9 @@ to independent captured DEFAULT installation before Store recovery, preserves
 constructor/physical/Store-close debt through owner authority and attempts all
 root cleanup. Actual command/helper recorded-seam fixture PASS; complete tariff
 and current source-native worker/Store/multi-peer/RQ composition remain UNDONE.
+
+BP actual parser correspondence PRF1303: universal complete KEEP/remainder source
+driver/session equality and inbound/reception preservation warm PASS (311/4513
+steps) with full positive/hypothesis-removal teeth; exact certificate pending.
+Concrete control-parser boundary only; full framing, private source/END ACK
+aliases and bounded semantic decode/CRC/publication remain UNDONE.

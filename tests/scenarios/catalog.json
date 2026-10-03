@@ -9606,9 +9606,12 @@
       "evidence": [
         "tests/test_bp_node_native.py",
         "tests/native_tcpcl_source_control_raw.lisp",
-        "books/tcpcl-source-control.lisp"
+        "books/tcpcl-source-control.lisp",
+        "books/tcpcl-source-control-refinement.lisp",
+        "tests/acl2/tcpcl-source-control-refinement-tests.lisp"
       ],
-      "note": "Actual raw controller/private source/original KEEPALIVE step/delivery-plan composition PASS, with recorded wire decoder/socket/publication; normal guards+13 assertions PASS. Current-union native UNEXECUTED."
+      "note": "Actual raw controller/private source/original KEEPALIVE step/delivery-plan composition PASS, with recorded wire decoder/socket/publication; normal guards+13 assertions PASS. Current-union native UNEXECUTED.",
+      "execution_scope": "Prepared current-source native selector; unexecuted. PRF1303 warm universal actual source-parser/session composition and complete partial-transfer/closed-phase literal witnesses pass; native selector remains unexecuted."
     },
     {
       "id": "SCN-1130",
@@ -9681,18 +9684,21 @@
       "steps": [
         "Execute actual BP served-owner startup/stop/settlement helpers using actual ACL2 service authority decisions and recorded physical constructors.",
         "Execute actual bp-node serve and bp-app receive entry functions through partial-constructor failure, failed recovery and escaping worker join.",
-        "Observe independent BP root debt and uncertain Store-close before attempting a fresh owner claim."
+        "Observe independent BP root debt and uncertain Store-close before attempting a fresh owner claim.",
+        "Fail the main node budget read after FNBS acquisition, before any Store or resource constructor."
       ],
       "expected": [
         "Independent run authority and captured DEFAULT pool installation precede Store open; the private BP session bank supplies no decoded worker grant.",
         "Partial constructors and failed-installation Store carriers remain discoverable until actual worker return; no close or authority settlement follows an escaping join.",
-        "Unresolved BP publication/physical root cleanup holds owner authority even after worker return; Store-close uncertainty fences the Store and blocks a second claim."
+        "Unresolved BP publication/physical root cleanup holds owner authority even after worker return; Store-close uncertainty fences the Store and blocks a second claim.",
+        "FNBS is released under the protected budget-read failure; no owner pool or Store is materialized."
       ],
       "implementation": {
         "test": "tests/test_native_bp_owner_startup_source.py"
       },
       "evidence": [
-        "tests/native_bp_owner_startup_source.lisp"
+        "tests/native_bp_owner_startup_source.lisp",
+        "planning/evidence/bp-served-startup-source-2026-10-03.json"
       ],
       "execution_scope": "Actual production BP entry/helper functions and ACL2 service-settlement decisions with recorded physical seams. Complete DEFAULT/BP tariffs, actual allocator/worker/Store composition and current source-native joins remain open."
     },

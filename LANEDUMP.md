@@ -3939,3 +3939,12 @@ and served terminal conditions. Actual E-locked helper + owner-run source
 fixture passes joined-with-debt; previous f2b8 cleanup fails by releasing
 authority after join. Horse Exits independently owns log-close debt and
 execute-run tail; no overlapping io/operator-live changes here.
+PRF1303 actual source-parser followthrough: one-frame concrete KEEP+remainder
+equates complete fn-tcl-host-source-drive output to original session transition
+under sole transferring phase,311steps. Composed actual driver preserves inbound
+and actual reception plus remainder/status4513steps. Reachable partial transfer
+and legitimate closed-phase hypothesis-removal assertions PASS. Exact affected
+roots submitted; native/private root/framing/full decoder correspondence remain
+open. Main node budget capture moved inside its protected body, actual failure
+fixture proves FNBS release before any Store constructor. Entries owns resume
+cleanup independently.
