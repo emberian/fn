@@ -1540,7 +1540,7 @@ closed and the socket was settled here."
   ;; socket itself, as the stopping branch of fnn-mux-adopt does, and leaves
   ;; the client roster.
   (if (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
-        (unless (fnn-mux-loop-closed loop)
+        (when (eq (fn-fs-inbox-admit (fnn-mux-loop-closed loop)) :admitted)
           (push (%make-fnn-mux-conn :socket socket :implicit-tls implicit-tls
                                     :done done)
                 (fnn-mux-loop-inbox loop))

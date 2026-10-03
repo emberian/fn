@@ -405,16 +405,14 @@
     (otherwise :resignal)))
 
 ; -----------------------------------------------------------------------------
-; Actors (def-actor): a thread's lifecycle and its receipt (review Q3, r71
-; F10/F12, sweep S018).  The spawner registers the thread OBJECT after the
-; spawn returned it (never NIL); the thread's own top boundary records how it
-; ended; the registration lasts until the OWNER joins it, and the join is the
-; receipt, carrying the thread's terminal kind.  A thread that ended without
-; its top boundary recording a kind (terminated, or a non-local exit that is
-; no condition) has a fault receipt.
-;
+; Actors (def-actor). Reservation precedes spawn; the native start latch
+; prevents the child's body running before its thread object is installed.
+; Registration survives its exit and a failed/timed-out join. Only an
+; affirmative physical termination observation, after terminal cleanup,
+; produces the lifecycle receipt. An operation's I/O receipt is separate.
 ; States: :spawning, :running, (:exited KIND), (:joined KIND).
-; Events: (:spawned OK), (:exit KIND), (:joined OK).
+; Events: (:spawned OK), (:exit KIND), (:joined PHYSICALLY-ENDED).
+; A failed spawn observes no child was created and ends the reservation.
 
 (defconst *fn-fs-exit-kinds*
   '(:ok :indeterminate :fault :refusal :usage :job-failure))
@@ -435,25 +433,31 @@
   (cond ((and (equal st :spawning) (consp event)
               (equal (car event) :spawned) (consp (cdr event)))
          (if (cadr event) :running (list :joined :fault)))
-        ((and (equal st :running) (consp event)
+        ;; Reserving before spawn also makes an early exit observable.
+        ((and (member-equal st '(:spawning :running)) (consp event)
               (equal (car event) :exit) (consp (cdr event)))
          (list :exited (fn-fs-actor-exit-kind nil (cadr event))))
-        ;; The owner joined a thread whose exit its top boundary never
-        ;; recorded: terminated or left by a non-local exit -- a fault.
-        ((and (equal st :running) (consp event)
-              (equal (car event) :joined))
+        ;; Failed join says nothing about termination or cleanup.
+        ((and (member-equal st '(:spawning :running)) (consp event)
+              (equal (car event) :joined) (consp (cdr event)) (cadr event))
          (list :joined :fault))
         ((and (consp st) (equal (car st) :exited) (consp (cdr st))
-              (consp event) (equal (car event) :joined) (consp (cdr event)))
-         (list :joined (if (cadr event) (cadr st) :fault)))
+              (consp event) (equal (car event) :joined) (consp (cdr event))
+              (cadr event))
+         (list :joined (cadr st)))
         (t st)))
 
-; Registered (the owner's worker roster holds it; fnn-owner-wait-workers
-; waits) from the spawn until the join, never ended by the thread itself.
+; Includes the reservation: shutdown cannot miss a spawn in progress.
 (defun fn-fs-actor-registered-p (st)
   (declare (xargs :guard t))
-  (or (equal st :running)
+  (or (member-equal st '(:spawning :running))
       (and (consp st) (equal (car st) :exited))))
+
+; Fault escalation is independent of discharge. The host names physical
+; termination only after checking the thread's primitive observation.
+(defun fn-fs-actor-join-action (physically-ended)
+  (declare (xargs :guard t))
+  (if physically-ended :settle :fault))
 
 (defun fn-fs-actor-receipt (st)
   (declare (xargs :guard t))
@@ -599,13 +603,20 @@
 
 (defthm fn-fs-actor-exit-keeps-the-registration
   (implies (and (fn-fs-actor-registered-p st)
-                (not (and (consp event) (equal (car event) :joined))))
+                (consp event) (equal (car event) :exit))
            (fn-fs-actor-registered-p (fn-fs-actor-step st event))))
 
-(defthm fn-fs-actor-only-the-join-deregisters
+(defthm fn-fs-actor-only-physical-end-or-failed-spawn-deregisters
   (implies (and (fn-fs-actor-registered-p st)
                 (not (fn-fs-actor-registered-p (fn-fs-actor-step st event))))
-           (and (consp event) (equal (car event) :joined))))
+           (and (consp event) (consp (cdr event))
+                (or (and (equal (car event) :joined) (cadr event))
+                    (and (equal st :spawning)
+                         (equal (car event) :spawned) (not (cadr event)))))))
+
+(defthm fn-fs-actor-failed-join-retains-custody
+  (and (equal (fn-fs-actor-step st '(:joined nil)) st)
+       (equal (fn-fs-actor-join-action nil) :fault)))
 
 (defthm fn-fs-actor-joined-is-final
   (implies (and (consp st) (equal (car st) :joined))
@@ -621,14 +632,29 @@
 
 ; ...and a thread that ended unrecorded, or whose join failed, is a fault
 ; (review Q3 teeth: an unclassified non-local exit yields a fault receipt).
-(defthm fn-fs-actor-unrecorded-exit-is-a-fault-receipt
-  (equal (fn-fs-actor-receipt (fn-fs-actor-step :running (list :joined ok)))
+(defthm fn-fs-actor-unrecorded-physical-end-is-a-fault-receipt
+  (equal (fn-fs-actor-receipt (fn-fs-actor-step :running '(:joined t)))
          :fault))
 
-(defthm fn-fs-actor-failed-join-is-a-fault-receipt
-  (implies (and (consp st) (equal (car st) :exited) (consp (cdr st)))
-           (equal (fn-fs-actor-receipt (fn-fs-actor-step st '(:joined nil)))
-                  :fault)))
+(defthm fn-fs-actor-failed-join-produces-no-receipt
+  (implies (fn-fs-actor-registered-p st)
+           (not (fn-fs-actor-receipt (fn-fs-actor-step st '(:joined nil))))))
+
+(defthm fn-fs-actor-early-exit-survives-spawn-publication
+  (equal (fn-fs-actor-step (fn-fs-actor-step :spawning (list :exit kind))
+                          '(:spawned t))
+         (list :exited (fn-fs-actor-exit-kind nil kind))))
+
+; Reached witnesses: failed join with a live child; early exit; the
+; uncertain outcome after cleanup and join. They affirm entire conclusions.
+(defthm fn-fs-actor-lifecycle-positive-witness
+  (and (fn-fs-actor-registered-p :spawning)
+       (fn-fs-actor-registered-p (fn-fs-actor-step :running '(:joined nil)))
+       (not (fn-fs-actor-receipt (fn-fs-actor-step :running '(:joined nil))))
+       (equal (fn-fs-actor-receipt
+               (fn-fs-actor-step
+                (fn-fs-actor-step :running '(:exit :indeterminate)) '(:joined t)))
+              :indeterminate)))
 
 (defthm fn-fs-actor-exit-kind-of-an-unknown-word-is-a-fault
   (implies (and (not completed) (not (fn-fs-exit-kindp kind)))
@@ -649,4 +675,4 @@
                     fn-fs-unwind fn-fs-section-action fn-fs-classify-connection
                     fn-fs-connection-word fn-fs-connection-action fn-fs-settled-action
                     fn-fs-actor-exit-kind fn-fs-actor-step fn-fs-actor-registered-p
-                    fn-fs-actor-receipt fn-fs-receipt-action fn-fs-inbox-admit))
+                    fn-fs-actor-receipt fn-fs-actor-join-action fn-fs-receipt-action fn-fs-inbox-admit))
