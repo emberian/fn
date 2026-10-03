@@ -26,7 +26,9 @@
                                 '(get-global put-global boundp-global1))
                      (consp (fargs term)) (fquotep (car (fargs term)))
                      (member-eq (unquote (car (fargs term)))
-                                '(fn-owner fn-owner-retain-carry)))
+                                '(fn-owner fn-owner-retain-carry
+                                  fn-owner-catalog-root-counter
+                                  fn-owner-catalog-root-incarnation)))
                 (fn-ocw-owner-globals-listp (fargs term))))))
  (defun fn-ocw-owner-globals-listp (terms)
    (and (consp terms)
