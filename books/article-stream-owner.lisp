@@ -249,7 +249,7 @@
 
 (defun fn-asto-plan-cursorp (plan)
   (declare (xargs :guard t))
-  (or (fn-splan-at-cursorp plan)
+  (or (fn-qplan-at-cursorp plan)
       (and (not (consp (fn-splan-cur plan)))
            (member-eq (fn-cbor-ag-car (fn-cbor-ag-car (fn-splan-rest plan)))
                       '(:article-preflight :article-cursor)) t)))

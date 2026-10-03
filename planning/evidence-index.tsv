@@ -11636,6 +11636,8 @@ a160c6f00c01dca84405411f81d8b4af75bb4217010f023f4f06d5619b3e277d 1231 planning/e
 5b9eebf094ed7f83b1707119494e5172e08f7f211a344b9472b7eacf333626a4 2824 planning/evidence/served-path-scale-2026-09-26/prof-recover-img2-flat.txt
 6bf7d5369008760797aef80cc3a1dd4afaa4d89feeb2faf13c64fff514308743 1470 planning/evidence/served-path-scale-2026-09-26/repl-recognizer-scaling.txt
 8240e6cea445d698fb52e8b7702d4c587fb729b14bec8aa107274f1d5ee34c5d 471 planning/evidence/served-path-scale-2026-09-26/time-base-273cd980.log
+593e6459de09f2bef8f6a9f2855c034e45ee37af49e358fb3a11efda815ede1c 2717 planning/evidence/served-query-plan-20261003/checks.json
+136f7774608cb299f38d00fe60866ca33731144ddcff75a3c8435ab727eb55af 58989 planning/evidence/served-query-plan-20261003/native-admit.log.gz
 bd11047936681cccc34da5faf0dba5ecb28409b1ae714b3e5007f2b841a24d75 9092 planning/evidence/served-readers-2026-09-27.md
 e3569a7e1dcc5c566a3ce7f6d98c4da0eaab745c9d80a05380778568119d0bcd 784 planning/evidence/served-readers-2026-09-27/A-bulk-1.json
 b6d97b98f4d7dc1a930915bcd2c7b2c6989ff24e587c8ded65e5ec719e3dd16e 781 planning/evidence/served-readers-2026-09-27/A-bulk-2.json

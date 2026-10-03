@@ -4,6 +4,7 @@
 (include-book "protocol-served")
 (include-book "catalog-available-readers")
 (include-book "served-availability")
+(include-book "list-metadata-cursor")
 
 (local (in-theory (disable (tau-system))))
 
@@ -253,12 +254,12 @@
     (fn-nntp-listgroup-command-cat . fn-av-nntp-listgroup-command-cat)
     (fn-scat-counts-lines-loop . fn-av-scat-counts-lines-loop)
     (fn-scat-counts-lines . fn-av-scat-counts-lines)
-    (fn-nntp-list-counts-command-cat . fn-av-nntp-list-counts-command-cat)
+    (fn-nntp-list-counts-command-cat . fn-lst-counts-command)
     (fn-scat-active-line . fn-av-scat-active-line)
     (fn-scat-active-status-line . fn-av-scat-active-status-line)
     (fn-scat-active-lines-loop . fn-av-scat-active-lines-loop)
     (fn-scat-active-lines . fn-av-scat-active-lines)
-    (fn-nntp-list-active-cat . fn-av-nntp-list-active-cat)
+    (fn-nntp-list-active-cat . fn-lst-active-command)
     (fn-scat-counts-lines-loop-is-revappend . fn-av-scat-counts-lines-loop-is-revappend)
     (fn-scat-active-lines-loop-is-revappend . fn-av-scat-active-lines-loop-is-revappend)
     (fn-nntp-next-or-last-cat . fn-av-nntp-next-or-last-cat)

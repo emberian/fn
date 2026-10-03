@@ -1962,6 +1962,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/output-command-admission-tests \
 	books/string-line-fill \
 	books/served-plan-line-buffer \
+	books/served-query-plan \
+	tests/acl2/served-query-plan-tests \
 	tests/acl2/served-plan-cursor-tests \
 	books/owner-scheduler \
 	tests/acl2/owner-scheduler-tests \
