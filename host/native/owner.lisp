@@ -4602,12 +4602,14 @@ EPIPE and the client saw a bare close)."
    (lambda ()
      ;; Check inside the same semantic mutex as the read. A mux quantum
      ;; already waiting at the scheduler cannot inject after retirement.
-     (when (eq (fnn-core 'fn-ort-intake-action
-                         (and (fnn-owner-service-retire service) t)) :refused)
-       (return-from fnn-owner-handle-chunk-read
+     ;; A refused intake answers in place: the quantum's value is the
+     ;; answer, no early return crosses its boundary (lane failure-scope: an
+     ;; unwind no condition explains is a fault).
+     (if (eq (fnn-core 'fn-ort-intake-action
+                       (and (fnn-owner-service-retire service) t)) :refused)
          (values (fnn-core 'fn-splan-of-effects nil) t nil
                  (fnn-core 'fn-ort-fenced-input-consumed (length incoming))
-                 nil nil)))
+                 nil nil)
      (let ((admit :admit) (sched nil))
      (block step
        ;; One reading per read, before the transition that decides under it.
@@ -4760,7 +4762,7 @@ EPIPE and the client saw a bare close)."
                        consumed submitted)
              (values (fnn-core 'fn-splan-step-plan step completion nil)
                      (or closing uncertain) starttls consumed nil
-                     submitted)))))))
+                     submitted))))))))
    class))
 
 (defun fnn-owner-exposure-idle (service cid &optional (class :reader))
