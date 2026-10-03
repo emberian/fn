@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 import certs
 import proof_repl
@@ -100,7 +101,11 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0):
     output.write_text('\n\n'.join(events) + '\n')
     manifest = output.with_suffix('.json')
     manifest.write_text(json.dumps({'kind': 'current logical source admission, not certification',
-        'source': str(source), 'cache_roots': [str(p) for p in caches],
+        'source': str(source),
+        'source_revision': subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip() if (source / '.git').exists() else None,
+        'source_sha256': fingerprints,
+        'repository_books': sorted(name + '.lisp' for name in loaded),
+        'logical_prefix': str(output.resolve()), 'cache_roots': [str(p) for p in caches],
         'inputs_sha256': inputs, 'output_sha256': hashlib.sha256(output.read_bytes()).hexdigest(),
         'books': coordinate, 'per_event_prover_seconds': limit}, indent=2) + '\n')
     return manifest
