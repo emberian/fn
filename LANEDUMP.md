@@ -849,8 +849,7 @@ leaf hint fanout; matching batch is outstanding. Generated projections
 are accurate, not a green source verdict.
 
 S097 BP send observation boundary, codex-sol-tools
-================================================
-fnn-bps-send-effect-next preserves every Store condition except the exact
+=========================================fnn-bps-send-effect-next preserves every Store condition except the exact
 base named session refusal; indeterminate/core and unknown subclasses
 escape to the owner boundary without publishing a transport job result.
 The actual transfer index survives clearing the first socket; outer named
@@ -905,3 +904,44 @@ python3 -m unittest tests.test_native_bp_send_boundary. Matching-image BP
 undertake/release/reopen, ordinary POST and fragment send remain Integration.
 Observer activation 983f199 is a separate staged prerequisite awaiting the
 shared Elock/actual extent consumer and is excluded from this patch commit.
+## Astra source trace — AWAIT-COMPLETION-LIFETIME (2026-10-03)
+
+Following the syncer reply into both caller consumers exposed two connected
+normal/failure-path defects: the actual logical wait reused its mutex after a
+one-second SBCL timed wait released it, and deadline withdrawal made eventual
+delivery look like a not-yet-registered caller, retaining its result in DONE
+forever. Same head harness over baseline 5d2ef8c85 refutes each exact assertion.
+
+The wait now reacquires per observation and uses unwind cleanup. Abandonment
+replaces a registered reply callback with an outstanding-delivery marker; the
+real result consumes it. A callback already selected by delivery creates no
+new marker. The actual mux-finish uses the same helper only for its pending
+await, clearing its reply continuation without claiming I/O termination. No
+resource/physical outcome is synthesized. Read the entire deliver/register/
+logical wait/feed-logical/mux-await/await-done/take-arrived/finish chain and the
+shutdown loop closed-flag behavior before changing these consumers.
+
+Actual real-thread timeout, expired late delivery, already-selected callback,
+raw wait escape and mux-finish schedules pass. Exact harness stub/reach declarations
+pass for all four Astra fixtures; host read, ID claims and diff checks pass.
+HST-031/spec and SCN-1088 updated. Full evidence archive:
+planning/evidence/astra-await-completion-lifetime-20261003.json,
+922b8a59da41b8c8bdab8307e96861c70e98dcdc0c21fe0640ee3bbd12183f5a.
+No books changed and no new image or deployment claim. Runtime owns wider mux
+cleanup; Groundwork owns retention reservation. Matching saved-image acceptance
+belongs to Integration. Pre-maker exceptional allocation and broader typed output
+custody remain outside these checked branches, not claimed repaired.
+
+
+## Sol source assembly — logical await lifetime
+
+READY 24b7a84d1 composed without source edits over integrated S081/syncer
+custody and separate BP identity/send packet. Astra/Runtime primary review
+retained; only overlap checked. The existing deliver/mailbox sites and mux
+terminal site remain intact around the added abandonment helper and timeout
+mutex reacquisition. Their other physical custody callbacks are unchanged.
+Exact producer fixture bytes retained; archive 922b8a59da41 verifies, SCN-1088
+claim check passes, source/spec/scenario composition has no code conflict.
+Reuse same-harness timed wait, late result, callback/raw unwind/mux schedules.
+First runnable selector tests/test_native_await_lifetime_raw.sh; matching
+image and wider mux finish cleanup are distinct remaining obligations.

@@ -300,6 +300,9 @@ the TLS session, then the socket.  Idempotent."
           (opened-cid (fnn-mux-conn-opened-cid conn))
           (was (fnn-mux-conn-phase conn)))
       (setf (fnn-mux-conn-phase conn) :done)
+      (when (fnn-mux-conn-await conn)
+        (fnn-owner-await-abandon service (or cid opened-cid))
+        (setf (fnn-mux-conn-await conn) nil))
       ;; r71 F7: a page still owed is no longer this connection's to publish.
       (when (fnn-mux-conn-cold conn)
         (ignore-errors (fnn-owner-cold-abandon (first (fnn-mux-conn-cold conn))))
