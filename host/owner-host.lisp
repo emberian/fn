@@ -4183,12 +4183,12 @@
          (state (f-put-global 'fn-owner-exposure (cdr r) state)))
     (value (car r))))
 
-; The transport accepted a whole output window of the connection's reply:
+; The transport accepted the whole of a reply whose drain outlasted its step:
 ; its last activity advances (books/public-exposure-reply.lisp
 ; fn-exp-progress, keystone fn-exp-idle-keeps-after-progress; Codex r67 F3,
-; Astra c07).  Called by host/native/mux.lisp fnn-mux-flush through
+; Astra c07).  Called by host/native/mux.lisp fnn-mux-after through
 ; host/native/owner.lisp fnn-owner-exposure-progress, in its own reader-class
-; quantum under the owner mutex, after the socket took the window.
+; quantum under the owner mutex, once the socket took the reply's last octet.
 (defun fn-owner-exposure-progress (id state)
   (declare (xargs :stobjs state :mode :program))
   (let ((state (f-put-global 'fn-owner-exposure

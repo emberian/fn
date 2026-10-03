@@ -1880,8 +1880,10 @@ is served by the reference walk over its projected pin,
 
 Two events advance a connection's last activity for the idle limit (RFC
 3977 section 3.1): a command received, and the transport accepting a window
-of a reply (`fn-exp-progress`, called by the mux each time the socket takes
-a whole window; `fn-exp-idle-keeps-after-progress`). A reply that takes
+of a reply whose drain outlasted its step, at the end of that drain
+(`fn-exp-progress`, called by the mux when the socket has taken the reply's
+last octet; `fn-exp-idle-keeps-after-progress`; the mux checks idle only with
+no reply outstanding). A reply that takes
 longer than the idle limit to drain -- a cursor OVER, whose step sends no
 octet, or a large ARTICLE to a slow reader -- is not closed by the first idle
 check after it. A yield or a cursor quantum is not progress (Codex r67 F3,

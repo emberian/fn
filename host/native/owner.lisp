@@ -4684,7 +4684,7 @@ EPIPE and the client saw a bare close)."
     answer))
 
 (defun fnn-owner-exposure-progress (service cid &optional (class :reader))
-  "The transport accepted a whole output window of CID's reply: ACL2 advances
+  "The transport accepted the whole of CID's late-draining reply: ACL2 advances
 the connection's last activity (books/public-exposure-reply.lisp
 fn-exp-progress), so a reply that takes longer than the idle limit to drain
 is not idle-closed just after it drains (Codex r67 F3; Astra c07)."

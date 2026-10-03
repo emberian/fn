@@ -191,7 +191,7 @@ class NativeOverPinsTests(unittest.TestCase):
         node = Node(self, self.image, root=self.root / "idle-article")
         node.operator("init", "--profile", "development", "--max-transactions", "1024",
                       "--max-history-octets", str(64 << 20),
-                      "--max-record-octets", str(size + 8192),
+                      "--max-record-octets", str(size + (1 << 20)),
                       "--max-article-octets", str(size), GROUP, timeout=600, expect=EXIT.OK)
         secret = node.store("node-secret", "create", timeout=600)
         self.assertIn(secret.returncode, (EXIT.OK, EXIT.REFUSED), secret.stderr[-600:])
@@ -239,8 +239,9 @@ class NativeOverPinsTests(unittest.TestCase):
         reply of a warm run.  If no quantum of this node's OVER reads a
         payload (the overview column answers it), no hold is reached and the
         test says so in its output: then there is no pread to place."""
-        node = self.copy_of(self.recorded_base(), "cold-over")
-        warm = self.copy_of(self.recorded_base(), "warm-over")
+        base = self.recorded_base("rbase-cold")
+        node = self.copy_of(base, "cold-over")
+        warm = self.copy_of(base, "warm-over")
         replies = []
         for which, target in (("warm", warm), ("cold", node)):
             release = self.root / ("release-" + which)

@@ -249,9 +249,12 @@
 ; (the mux checks idle only with no reply outstanding) closed a connection
 ; that had just been written to.  Two events now advance LAST: a command
 ; received (fn-exp-observe-effects) and the transport accepting output
-; (fn-exp-progress, called by the host each time the socket takes a whole
-; output window: host/native/mux.lisp fnn-mux-flush through
-; host/owner-host.lisp fn-owner-exposure-progress).  A yield or a cursor
+; (fn-exp-progress, called by the host when the socket has taken the last
+; octet of a reply whose drain outlasted its step -- it waited on the socket
+; or yielded at a cursor: host/native/mux.lisp fnn-mux-after through
+; host/owner-host.lisp fn-owner-exposure-progress; the mux checks idle only
+; with no reply outstanding, so the end of the drain is the moment that
+; matters).  A yield or a cursor
 ; quantum is NOT progress; only octets the socket took are.  Nothing else
 ; changes: no rate, no failed-login or post count, no counter, no other
 ; connection.
