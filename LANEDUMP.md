@@ -679,3 +679,11 @@ Store-class witness red/basec3585ba3a and green/head4b4957525, same harness
 with no infra/skips. Archived S097-df5dcf6e6c3742818b3dac8a07824411.json
 sha256e5995a66db0207837067beab12d98213bfa4a761390fde9c2ab17640d5743973.
 Separate designated later-fragment prefix witness follows; no source change.
+
+Second S097 witness for accepted-prefix uncertainty red/basec3585ba3a,
+green/headd7863d4a1, same harness/no infra/skips. Archived
+S097-23a58fd6279d4748ab51c6e5da07e0a8.json sha256
+b2b6030f5443522a90c35bf96f148d53f5bd90a69e1210e0fe47766f71e33097.
+Final fixture strengthens custody observation to assert every successfully
+opened socket is recorded closed (including later fragments), rather than
+only checking the first when a close event happened.

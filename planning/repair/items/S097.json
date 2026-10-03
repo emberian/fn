@@ -35,21 +35,21 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_later_fragment_named_refusal_retains_uncertain_prefix",
  "title": "bp-service send path reports an indeterminate publication as transport :uncertain/:failed, and reports :failed after fragments were sent",
- "updated": "2026-10-03T08:39:15Z",
+ "updated": "2026-10-03T08:40:07Z",
  "verify": {
   "base": "c3585ba3a36cfd394e3b7f98f423af70b625bfdf",
   "base_observation": {
    "result": {
     "assertions": [
      {
-      "message": "ambiguous Store publication must retain its exact class",
-      "test": "tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class",
+      "message": "accepted fragment prefix cannot become definitely failed",
+      "test": "tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_later_fragment_named_refusal_retains_uncertain_prefix",
       "type": "AssertionError"
      }
     ],
     "errors": [],
     "executed": [
-     "tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class"
+     "tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_later_fragment_named_refusal_retains_uncertain_prefix"
     ],
     "expected_failures": [],
     "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
@@ -62,40 +62,41 @@
    },
    "returncode": 1,
    "revision": "c3585ba3a36cfd394e3b7f98f423af70b625bfdf",
-   "stderr": "test_indeterminate_keeps_exact_class (tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class) ... FAIL\n\n======================================================================\nFAIL: test_indeterminate_keeps_exact_class (tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-g147hi3e/wt/tests/test_native_bp_send_boundary.py\", line 22, in test_indeterminate_keeps_exact_class\n    self.schedule(\"indeterminate\", \"ambiguous Store publication must retain its exact class\")\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-g147hi3e/wt/tests/test_native_bp_send_boundary.py\", line 16, in schedule\n    self.fail(intended)\n    ~~~~~~~~~^^^^^^^^^^\nAssertionError: ambiguous Store publication must retain its exact class\n\n----------------------------------------------------------------------\nRan 1 test in 0.135s\n\nFAILED (failures=1)\n",
+   "stderr": "test_later_fragment_named_refusal_retains_uncertain_prefix (tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_later_fragment_named_refusal_retains_uncertain_prefix) ... FAIL\n\n======================================================================\nFAIL: test_later_fragment_named_refusal_retains_uncertain_prefix (tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_later_fragment_named_refusal_retains_uncertain_prefix)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-8snxp__d/wt/tests/test_native_bp_send_boundary.py\", line 25, in test_later_fragment_named_refusal_retains_uncertain_prefix\n    self.schedule(\"later-refusal\", \"accepted fragment prefix cannot become definitely failed\")\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-8snxp__d/wt/tests/test_native_bp_send_boundary.py\", line 16, in schedule\n    self.fail(intended)\n    ~~~~~~~~~^^^^^^^^^^\nAssertionError: accepted fragment prefix cannot become definitely failed\n\n----------------------------------------------------------------------\nRan 1 test in 0.157s\n\nFAILED (failures=1)\n",
    "stdout": ""
   },
   "changed_files": [
    "LANEDUMP.md",
    "host/native/bp-service.lisp",
+   "planning/evidence-index.tsv",
    "planning/repair/items/S097.json",
    "specs/bp-node-machine.md",
    "tests/native_bp_send_boundary_raw.lisp",
    "tests/test_native_bp_send_boundary.py"
   ],
-  "diff_lines": 225,
+  "diff_lines": 232,
   "evidence": {
-   "bytes": 4156,
-   "path": "planning/evidence/repair/S097-df5dcf6e6c3742818b3dac8a07824411.json",
-   "sha256": "e5995a66db0207837067beab12d98213bfa4a761390fde9c2ab17640d5743973"
+   "bytes": 4458,
+   "path": "planning/evidence/repair/S097-23a58fd6279d4748ab51c6e5da07e0a8.json",
+   "sha256": "b2b6030f5443522a90c35bf96f148d53f5bd90a69e1210e0fe47766f71e33097"
   },
   "evidence_outcome": "archived",
   "expected_failure": {
-   "message": "ambiguous Store publication must retain its exact class",
-   "test": "tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class"
+   "message": "accepted fragment prefix cannot become definitely failed",
+   "test": "tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_later_fragment_named_refusal_retains_uncertain_prefix"
   },
   "green_at_head": true,
   "harness": {
    "tests/native_bp_send_boundary_raw.lisp": "58a07a1cb618caf5038e570b069ada2b15c0773e790dd132504c66158fab41f4",
    "tests/test_native_bp_send_boundary.py": "fd8c592c79103ef0ac1dfab67591b793fdca6c495903bdb49fa424d2f852493e"
   },
-  "head": "4b4957525625451232ef45110aeb791e04b34db8",
+  "head": "d7863d4a1beb8898417cff9dcae8f006d8878413",
   "head_observation": {
    "result": {
     "assertions": [],
     "errors": [],
     "executed": [
-     "tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class"
+     "tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_later_fragment_named_refusal_retains_uncertain_prefix"
     ],
     "expected_failures": [],
     "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
@@ -107,8 +108,8 @@
     "unexpected_successes": []
    },
    "returncode": 0,
-   "revision": "4b4957525625451232ef45110aeb791e04b34db8",
-   "stderr": "test_indeterminate_keeps_exact_class (tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.130s\n\nOK\n",
+   "revision": "d7863d4a1beb8898417cff9dcae8f006d8878413",
+   "stderr": "test_later_fragment_named_refusal_retains_uncertain_prefix (tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_later_fragment_named_refusal_retains_uncertain_prefix) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.150s\n\nOK\n",
    "stdout": ""
   },
   "interpreter": "/opt/homebrew/bin/python3",
@@ -118,7 +119,7 @@
   "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
   "same_tests": true,
   "semantic_ok": true,
-  "test": "python3 -m unittest tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class",
+  "test": "python3 -m unittest tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_later_fragment_named_refusal_retains_uncertain_prefix",
   "timeout": 1800.0
  }
 }
