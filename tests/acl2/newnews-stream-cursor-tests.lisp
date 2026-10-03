@@ -90,13 +90,46 @@
                      (fn-nnm-group-remaining (fn-cur-at 1 next)) 0)
                  (fn-nnm-group-remaining (fn-cur-at 1 progress)))))))
 
-; Phase distinction witness: starting a new configured candidate may
-; introduce selection work, so ordinary article scanning is a different phase.
+; Corrupted-capture hypothesis removal: a valid matcher adapter is placed in
+; the configured group-source slot. Its positive inner rank and shape hold,
+; but starting an entirely new selector may increase the outer rank. The real
+; factory always captures a configured source, not this corrupted input.
 (defthm nnsct-selector-progress-needs-selection-phase
-  (let* ((progress (fn-nnw-stream-scan-cursor
-                    (fn-nnw-group-source *nnsct-patterns* '("fn.test"))
-                    0 (list *nnmt-a*) 7 t))
+  (let* ((source (fn-nnm-match (fn-wmc-start *nnsct-patterns* "fn.test")
+                               (fn-nnw-select-start *nnsct-patterns* nil *nnmt-a*)))
+         (progress (fn-nnw-stream-scan-cursor source 0 (list *nnmt-a*) 7 t))
          (next (mv-nth 1 (fn-nnw-stream-one progress 1 nil nil))))
     (and (not (fn-nnw-stream-selectp progress))
-         (fn-nnw-stream-selectp next)
-         (posp (fn-nnm-group-remaining (fn-cur-at 1 next))))))
+         (fn-nnm-statep (fn-cur-at 1 progress))
+         (or (posp (fn-nnm-group-remaining (fn-cur-at 1 progress)))
+             (posp (fn-nnm-work-remaining (fn-cur-at 1 progress))))
+         (not (or (not (fn-nnw-stream-selectp next))
+                  (< (fn-nnm-group-remaining (fn-cur-at 1 next))
+                     (fn-nnm-group-remaining (fn-cur-at 1 progress)))
+                  (and (equal (fn-nnm-group-remaining (fn-cur-at 1 next))
+                              (fn-nnm-group-remaining (fn-cur-at 1 progress)))
+                       (< (fn-nnm-work-remaining (fn-cur-at 1 next))
+                          (fn-nnm-work-remaining (fn-cur-at 1 progress)))))))))
+
+; Corrupted-state hypothesis removal for the actual stream progress theorem.
+; The other literal antecedents hold; a UTF state with a pre-existing frame
+; violates the carried matcher state and leaves both ranks unchanged.
+(defthm nnsct-selector-progress-needs-carried-state
+  (let* ((selector (fn-nnm-match
+                    (fn-wmc-state (fn-wmc-node :utf8 nil
+                                   (coerce (list (code-char 128)) 'string) 0 nil)
+                                  (list (fn-wmc-node :cons 42 nil nil nil)))
+                    (fn-nnw-select-start nil nil nil)))
+         (progress (fn-nnw-stream-select selector (fn-cur-at 2 *nnsct-select-progress*)))
+         (next (mv-nth 1 (fn-nnw-stream-one progress 1 nil nil))))
+    (and (fn-nnw-stream-selectp progress)
+         (not (fn-nnm-statep (fn-cur-at 1 progress)))
+         (or (posp (fn-nnm-group-remaining (fn-cur-at 1 progress)))
+             (posp (fn-nnm-work-remaining (fn-cur-at 1 progress))))
+         (not (or (not (fn-nnw-stream-selectp next))
+                  (< (fn-nnm-group-remaining (fn-cur-at 1 next))
+                     (fn-nnm-group-remaining (fn-cur-at 1 progress)))
+                  (and (equal (fn-nnm-group-remaining (fn-cur-at 1 next))
+                              (fn-nnm-group-remaining (fn-cur-at 1 progress)))
+                       (< (fn-nnm-work-remaining (fn-cur-at 1 next))
+                          (fn-nnm-work-remaining (fn-cur-at 1 progress)))))))))

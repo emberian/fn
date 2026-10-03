@@ -28,6 +28,8 @@
               (fn-nntp-newnews-candidatep
                (fn-nntp-filter-groups-by-wildmat *nnmt-patterns* '("fn.good"))
                *nnmt-article*))
+       (fn-nnm-statep *nnmt-member*)
+       (posp (fn-nnm-group-remaining *nnmt-member*))
        (fn-nnm-needs-matchp (fn-nnw-select-at 1 *nnmt-member*))
        (fn-nnm-matchp *nnmt-match*)
        (fn-nnm-statep *nnmt-match*)
@@ -85,3 +87,19 @@
          (mv-nth 0 (fn-nnm-one s))
          (not (< (fn-nnm-group-remaining (nnmt-next s)) (fn-nnm-group-remaining s)))
          (not (< (fn-nnm-work-remaining (nnmt-next s)) (fn-nnm-work-remaining s))))))
+
+; Corrupted-state hypothesis removal: UTF entry has pending frames, forbidden
+; by the carried state. Its invalid byte returns to that frame; the production
+; factory never builds this state, and the logical work rank need not shrink.
+(defthm nnmt-progress-needs-carried-state
+  (let* ((following (fn-nnw-select-start nil nil nil))
+         (s (fn-nnm-match
+             (fn-wmc-state (fn-wmc-node :utf8 nil
+                            (coerce (list (code-char 128)) 'string) 0 nil)
+                           (list (fn-wmc-node :cons 42 nil nil nil))) following))
+         (next (nnmt-next s)))
+    (and (not (fn-nnm-statep s))
+         (or (posp (fn-nnm-group-remaining s)) (posp (fn-nnm-work-remaining s)))
+         (not (or (< (fn-nnm-group-remaining next) (fn-nnm-group-remaining s))
+                  (and (equal (fn-nnm-group-remaining next) (fn-nnm-group-remaining s))
+                       (< (fn-nnm-work-remaining next) (fn-nnm-work-remaining s))))))))
