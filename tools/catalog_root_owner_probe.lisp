@@ -1,0 +1,27 @@
+; Actual owner/global wrapper execution, after loading its two source forms.
+; This is a finite program probe, not global-state preservation proof.
+(in-package "ACL2")
+(make-event
+ (mv-let (erp first state) (fn-owner-catalog-root-current state)
+   (mv-let (erp2 same state) (fn-owner-catalog-root-current state)
+     (mv-let (erp3 second state) (fn-owner-catalog-root-reserve state)
+       (mv-let (erp4 current state) (fn-owner-catalog-root-current state)
+         (if (and (null erp) (null erp2) (null erp3) (null erp4)
+                  (fn-cri-tokenp first) (equal same first)
+                  (fn-cri-tokenp second) (not (equal first second))
+                  (equal current second) (< (cadr first) (cadr second)))
+             (value '(value-triple :actual-owner-root-reservation-passed))
+           (er soft 'root-probe "Actual root producer failed.")))))))
+(make-event
+ (let* ((before (f-get-global 'fn-owner-catalog-root-counter state))
+        (root (f-get-global 'fn-owner-catalog-root-incarnation state))
+        (state (f-put-global 'fn-owner-catalog-root-counter :corrupted state)))
+   (mv-let (erp token state) (fn-owner-catalog-root-reserve state)
+     (let* ((ok (and (equal erp :corrupt-catalog-root-counter) (null token)
+                     (equal (f-get-global 'fn-owner-catalog-root-counter state)
+                            :corrupted)
+                     (equal (f-get-global 'fn-owner-catalog-root-incarnation state)
+                            root)))
+            (state (f-put-global 'fn-owner-catalog-root-counter before state)))
+       (if ok (value '(value-triple :actual-owner-root-corruption-refused))
+         (er soft 'root-probe "Corrupt counter silently reset or mutated."))))))

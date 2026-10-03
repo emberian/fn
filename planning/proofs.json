@@ -21780,9 +21780,10 @@
         "tests/acl2/catalog-root-incarnation-tests.lisp",
         "host/owner-host.lisp",
         "host/native/owner.lisp",
-        "tests/native_catalog_root_install_raw.lisp"
+        "tests/native_catalog_root_install_raw.lisp",
+        "tools/catalog_root_owner_probe.lisp"
       ],
-      "progress_note": "Source connected to actual native catalog installer and handed off before verification. Pure book six forms source-admitted in warm hbox world (831 steps, 0.00 ACL2 seconds); four finite literal teeth pass. Actual native installer recording-boundary fixture verifies reservation precedes pointer binding, interrupted reservation/retry uses distinct supplied tokens, history install does not reserve, absent catalog refuses before reservation. This recording fixture does not prove the program-global/native bridge. Matching certificates, real owner-state fault schedule and paired cache consumption remain pending; private tokens never cross owner/image lifetimes."
+      "progress_note": "Source connected to actual native catalog installer and handed off before verification. Pure book six forms source-admitted in warm hbox world (831 steps, 0.00 ACL2 seconds); four finite literal teeth pass. Actual native installer recording-boundary fixture verifies reservation precedes pointer binding, interrupted reservation/retry uses distinct supplied tokens, history install does not reserve, absent catalog refuses before reservation. This recording fixture does not prove the program-global/native bridge. Matching certificates, real owner-state fault schedule and paired cache consumption remain pending; private tokens never cross owner/image lifetimes. Actual two program/global wrapper definitions and tools/catalog_root_owner_probe.lisp also execute in the same warm hbox world: stable repeated current capture, explicit reserve advances, corrupted counter refuses unchanged (all 0.00 seconds). This finite actual-wrapper probe is not global-state preservation or native image qualification."
     }
   ]
 }
