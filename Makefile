@@ -2021,6 +2021,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/web-session \
 	books/web-session-keystones \
 	tests/acl2/web-session-tests \
+	tests/acl2/web-post-outcome-tests \
 	books/web-config \
 	tests/acl2/web-config-tests \
 	books/state-digest \
