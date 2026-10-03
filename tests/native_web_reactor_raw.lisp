@@ -122,7 +122,7 @@
   (let ((n (min *write-limit* (- (length data) offset))))
     (push (list fd (coerce (subseq data offset (+ offset n)) 'list)) *written*) n))
 (defun fnn-mux-read-plain (fd buffer) (declare (ignore fd buffer)) *read-result*)
-(defun fnn-socket-shut (socket) (push socket *closed*))
+(defun fnn-socket-shut (socket) (push socket *closed*) (values nil :closed nil))
 (defun fnn-socket-fd (socket) socket)
 (defun fnn-mux-poll (fds events timeout)
   (declare (ignore events)) (setq *poll-timeout* timeout) (make-array (length fds) :initial-element 0))
@@ -342,3 +342,56 @@
   (fnn-web-job-consume face conn)
   (assert (not (fnn-web-job-submit face conn :feed))))
 (format t "native_web_reactor_raw: PASS terminal graph discard/no future publisher~%")
+
+;;; Actual root close hook must retain semantic debts after independent
+;;; listener closure, and cannot retry an ambiguous physical close.
+(let* ((conn (fixture-conn 83 :done))
+       (face (%make-fnn-web-face :service *fixture-service* :listener 84
+                                :jobs-closed t :wake-closed t :conns (list conn)))
+       (*fnn-web-face* face))
+  (setf (fnn-web-conn-closedp conn) t)
+  (assert (handler-case (progn (fnn-web-close-face *fixture-service*) nil) (error () t)))
+  (assert (and (eq *fnn-web-face* face) (eq (fnn-web-face-listener-close face) :returned)))
+  (setf (fnn-web-conn-semantic-ended conn) t
+        (fnn-web-face-cleanup-debts face) (list (list conn :response :torn)))
+  (assert (handler-case (progn (fnn-web-close-face *fixture-service*) nil) (error () t)))
+  (assert (eq *fnn-web-face* face))
+  (assert (= 1 (count 84 *closed*)))
+  ;; This fixture supplies an affirmative completion to discriminate the
+  ;; successful hook; production torn cleanup is never retried by this gate.
+  (setf (fnn-web-face-cleanup-debts face) nil)
+  (fnn-web-close-face *fixture-service*)
+  (assert (null *fnn-web-face*)))
+(let* ((face (%make-fnn-web-face :service *fixture-service* :listener 85
+                                :jobs-closed t :wake-closed t))
+       (*fnn-web-face* face) (saved (symbol-function 'fnn-socket-shut)) (calls 0))
+  (unwind-protect
+       (progn
+         (setf (symbol-function 'fnn-socket-shut)
+               (lambda (socket) (declare (ignore socket)) (incf calls)
+                 (values nil :unobserved (make-condition 'simple-error))))
+         (dotimes (i 2)
+           (assert (handler-case (progn (fnn-web-close-face *fixture-service*) nil) (error () t))))
+         (assert (and (= calls 1) (eq *fnn-web-face* face)
+                      (eq (fnn-web-face-listener-close face) :calling))))
+    (setf (symbol-function 'fnn-socket-shut) saved)))
+(let* ((hold (sb-thread:make-semaphore))
+       (thread (sb-thread:make-thread (lambda () (sb-thread:wait-on-semaphore hold))))
+       (face (%make-fnn-web-face :service *fixture-service* :listener 86
+                                :jobs-closed t :wake-closed t :semantic-thread thread))
+       (*fnn-web-face* face))
+  (unwind-protect
+       (progn
+         (assert (handler-case (progn (fnn-web-close-face *fixture-service*) nil) (error () t)))
+         (assert (and (eq *fnn-web-face* face) (sb-thread:thread-alive-p thread)))
+         (sb-thread:signal-semaphore hold)
+         (sb-thread:join-thread thread)
+         (setf (fnn-web-face-jobs face) (list (%make-fnn-web-job)))
+         (assert (handler-case (progn (fnn-web-close-face *fixture-service*) nil) (error () t)))
+         (assert (eq *fnn-web-face* face))
+         (setf (fnn-web-face-jobs face) nil)
+         (fnn-web-close-face *fixture-service*)
+         (assert (null *fnn-web-face*)))
+    (when (sb-thread:thread-alive-p thread)
+      (sb-thread:signal-semaphore hold) (sb-thread:join-thread thread))))
+(format t "native_web_reactor_raw: PASS root teardown retains debt/physical close receipt/no torn retry~%")

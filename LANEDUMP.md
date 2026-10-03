@@ -3365,3 +3365,16 @@ release paths print captured scope+actual :released word after last-borrow
 settlement; no descriptor-close inference. Full trace keeper registered.
 Python syntax checked; local endpoint skipped because no native executable.
 This is pending actual History current-source runner execution, not a PASS.
+
+Runtime current-source continuation: f49a60074 fixes measured REPL parser loss
+of surplus closing parentheses (20 focused tests PASS); 8e67ab540 fixes arena
+hint balance (220 strict forms). History confirms unchanged FilesGetMoveList
+formula now passes in broad P3 world; connected arena replay remains theirs.
+Web root close now refuses pending mailbox/live actors/semantic cleanup debt,
+retains global face, and requires actual secondary listener :closed receipt.
+Listener attempt state prevents torn retry. Real held SBCL thread plus queued
+job/debt/ambiguous close and successful drain schedules pass. Complete compressed
+ARTICLE/Web/reopen selector remains pending History's single current-source
+wrapper; complete output/decoded heap funding and global HM coverage remain open.
+Earlier PRF1288 'planned' prose is superseded by its canonical registry status
+uncertified-at-current-digest; no proof or endpoint completion claim.
