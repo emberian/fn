@@ -52,7 +52,7 @@ class NativeInitResumeTests(unittest.TestCase):
         record = self.store / "config" / "00000001.cfg"
         record.write_bytes(b"invalid configuration record")
         self.assert_unchanged_failure(("--profile", "development", "fn.test"),
-                                      EXIT_FAULT, b"fault")
+                                      EXIT_FAULT, b"configuration namespace")
 
 
 if __name__ == "__main__":
