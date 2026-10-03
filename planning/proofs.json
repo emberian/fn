@@ -17935,7 +17935,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/productive-transfer.lisp",
         "tests/acl2/productive-transfer-tests.lisp",
@@ -17957,7 +17957,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/productive-transfer.lisp",
         "tests/acl2/productive-transfer-tests.lisp",
@@ -17979,7 +17979,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/productive-transfer.lisp",
         "tests/acl2/productive-transfer-tests.lisp",
