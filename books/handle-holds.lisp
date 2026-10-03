@@ -42,13 +42,18 @@
 ; functions and status; tools/holder_check.py checks the host side.
 ;
 ; What this book PROVES (KEYSTONE
-; fn-handle-holds-released-handles-are-unnamed-and-postdate-every-pin): a
+; fn-handle-holds-released-handles-are-unnamed-and-postdate-every-pin,
+; parameterised over NAMED, the handles the roots still name): a
 ; retirement the pins step's :release answers, whose items are the handles
-; a swap un-named (fn-arf-retire-event of fn-arf-changed-handles), was
-; pending, its stamp is below every reader still pinned (each pinned after
-; the swap: READERS), its items are exactly those handles, and every one of
-; them is named by no row of the rewritten history (TOP, and CONNS by the
-; repin).  What it does NOT prove: LOG, CUSTODY and OTHER -- those are the
+; a swap un-named (fn-arf-retire-event of fn-arf-changed-handles) and those
+; are disjoint from NAMED, was pending, its stamp is below every reader
+; still pinned (each pinned after the swap: READERS), its items are exactly
+; those handles, and none is in NAMED.  The corollary
+; ...-under-the-pairwise-root-fact discharges the disjointness from today's
+; root fact (PRF-1235: the old rows' handles distinct, NEW a rewrite) with
+; NAMED the rewritten history's rows (TOP, and CONNS by the repin); when
+; ARENA-FORGET's per-handle name count over every root lands (c08 (a)), only
+; that corollary's hypothesis and citation change.  What it does NOT prove: LOG, CUSTODY and OTHER -- those are the
 ; row's :excluded, :serialized and :unwired roots, each a clause the host
 ; establishes (the swap clause, the file pin, the wiring gate), not a
 ; theorem here.  The forget (fn-arf-apply-released, ARENA-FORGET) runs at
@@ -152,19 +157,57 @@
    (implies (and (fn-arf-disjointp xs ys) (member-equal h xs))
             (not (member-equal h ys)))))
 
-; KEYSTONE (PRF-1240).  A released retirement of the handles a swap
-; un-named: it was pending; its stamp S is below every live pin G (every
-; reader still running pinned after the swap:
+; KEYSTONE (PRF-1240), PARAMETERISED over NAMED, the handles the declared
+; roots still name after the swap (today: the rewritten history's rows,
+; fn-arf-rows-handles NEW; ARENA-FORGET's c08 (a): the union of every root,
+; carried as a per-handle name count).  A released retirement whose items
+; are the handles a swap un-named (fn-arf-tag of the walk's answer), those
+; handles disjoint from NAMED: it was pending; its stamp S is below every
+; live pin G (every reader still running pinned after the swap:
 ; fn-arpn-release-postdates-every-live-pin); its items are exactly those
-; handles; and each is named by no row of the rewritten history NEW
-; (fn-arf-changed-handles-are-unnamed) -- TOP, and CONNS by the swap's
-; repin.  Not here: LOG, CUSTODY, OTHER (the row's :excluded, :serialized
-; and :unwired roots).  Host subject: the owner passes
-; (fn-arf-retire-event (fn-arf-changed-handles old new)) to the pins step in
-; the swap's quantum, under the gate, and hands the step's :release answer
-; to fn-arf-apply-released at the :released cut (ARENA-FORGET,
-; host/native/io.lisp fnn-arena-apply-due).
+; handles; and no item is in NAMED.  The root fact -- that the walk's
+; handles ARE disjoint from NAMED -- is the hypothesis, discharged by the
+; corollary below for today's fact and by ARENA-FORGET's name-count theorem
+; when it lands; this statement does not change.  Not here: LOG, CUSTODY,
+; OTHER (the row's :excluded, :serialized and :unwired roots).  Host
+; subject: the owner passes (fn-arf-retire-event (fn-arf-changed-handles old
+; new)) to the pins step in the swap's quantum, under the gate, and hands
+; the step's :release answer to fn-arf-apply-released at the :released cut
+; (ARENA-FORGET, host/native/io.lisp fnn-arena-apply-due).
 (defthm fn-handle-holds-released-handles-are-unnamed-and-postdate-every-pin
+  (implies (and (fn-arpn-okp st)
+                (member-equal e (mv-nth 1 (fn-arpn-step st '(:release))))
+                (equal (cdr e) (fn-arf-tag (fn-arf-changed-handles old new)))
+                (fn-arf-disjointp (fn-arf-changed-handles old new) named))
+           (and (member-equal e (third st))
+                (implies (< 0 (fn-arpn-pins-of g (second (mv-nth 0 (fn-arpn-step st '(:release))))))
+                         (< (car e) g))
+                (equal (fn-arf-items-handles (cdr e)) (fn-arf-changed-handles old new))
+                (implies (member-equal h (fn-arf-items-handles (cdr e)))
+                         (not (member-equal h named)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-arpn-release-postdates-every-live-pin (h g))
+                 ; pending, with or without a live pin: the release is the split
+                 (:instance fn-arpn-split-released-are-clear (pend (third st)) (pins (second st)))
+                 (:instance fn-arf-items-handles-of-tag (hs (fn-arf-changed-handles old new)))
+                 (:instance fn-hh-disjointp-member
+                            (xs (fn-arf-changed-handles old new))
+                            (ys named)))
+           :in-theory (e/d (fn-arpn-step)
+                           (fn-arpn-release-postdates-every-live-pin fn-arpn-split-released-are-clear
+                            fn-arf-items-handles-of-tag
+                            fn-hh-disjointp-member fn-arpn-okp fn-arpn-split fn-arpn-clear-through-p
+                            fn-arf-changed-handles fn-arf-rows-handles fn-arf-tag
+                            fn-arf-items-handles fn-arf-disjointp fn-arf-rewrite-of-p
+                            fn-arf-pend-handles))))
+  :rule-classes nil)
+
+; The corollary under today's root fact (PRF-1235 fn-arf-changed-handles-
+; are-unnamed): NAMED is the rewritten history's rows' handles, and the walk's
+; handles are disjoint from them when the old rows' handles are pairwise
+; distinct and NEW is a rewrite of OLD.  This is the citation that changes
+; when the root fact becomes the per-handle name count.
+(defthm fn-handle-holds-released-handles-are-unnamed-under-the-pairwise-root-fact
   (implies (and (fn-arpn-okp st)
                 (member-equal e (mv-nth 1 (fn-arpn-step st '(:release))))
                 (equal (cdr e) (fn-arf-tag (fn-arf-changed-handles old new)))
@@ -177,26 +220,31 @@
                 (implies (member-equal h (fn-arf-items-handles (cdr e)))
                          (not (member-equal h (fn-arf-rows-handles new))))))
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-arpn-release-postdates-every-live-pin (h g))
-                 ; pending, with or without a live pin: the release is the split
-                 (:instance fn-arpn-split-released-are-clear (pend (third st)) (pins (second st)))
-                 (:instance fn-arf-changed-handles-are-unnamed)
-                 (:instance fn-arf-items-handles-of-tag (hs (fn-arf-changed-handles old new)))
-                 (:instance fn-hh-disjointp-member
-                            (xs (fn-arf-changed-handles old new))
-                            (ys (fn-arf-rows-handles new))))
-           :in-theory (e/d (fn-arpn-step)
-                           (fn-arpn-release-postdates-every-live-pin fn-arpn-split-released-are-clear
-                            fn-arf-changed-handles-are-unnamed fn-arf-items-handles-of-tag
-                            fn-hh-disjointp-member fn-arpn-okp fn-arpn-split fn-arpn-clear-through-p
-                            fn-arf-changed-handles fn-arf-rows-handles fn-arf-tag
-                            fn-arf-items-handles fn-arf-disjointp fn-arf-rewrite-of-p
-                            fn-arf-pend-handles))))
+           :use ((:instance fn-handle-holds-released-handles-are-unnamed-and-postdate-every-pin
+                            (named (fn-arf-rows-handles new)))
+                 (:instance fn-arf-changed-handles-are-unnamed))
+           :in-theory (disable fn-arf-changed-handles-are-unnamed fn-arpn-step fn-arpn-okp
+                               fn-arf-changed-handles fn-arf-rows-handles fn-arf-tag
+                               fn-arf-items-handles fn-arf-disjointp fn-arf-rewrite-of-p)))
   :rule-classes nil)
 
-; The debt (GENERATORS' defteeth v1): the claim is the statement above, in
+; The debts (GENERATORS' defteeth v1): each claim is the statement above, in
 ; its source shape; the subject is the host's step.
 (table fn-teeth-owed 'fn-handle-holds-released-handles-are-unnamed-and-postdate-every-pin
+       '(:by handle-holds
+         :claim (implies (and (fn-arpn-okp st)
+                              (member-equal e (mv-nth 1 (fn-arpn-step st '(:release))))
+                              (equal (cdr e) (fn-arf-tag (fn-arf-changed-handles old new)))
+                              (fn-arf-disjointp (fn-arf-changed-handles old new) named))
+                         (and (member-equal e (third st))
+                              (implies (< 0 (fn-arpn-pins-of g (second (mv-nth 0 (fn-arpn-step st '(:release))))))
+                                       (< (car e) g))
+                              (equal (fn-arf-items-handles (cdr e)) (fn-arf-changed-handles old new))
+                              (implies (member-equal h (fn-arf-items-handles (cdr e)))
+                                       (not (member-equal h named)))))
+         :subject fn-arpn-step))
+
+(table fn-teeth-owed 'fn-handle-holds-released-handles-are-unnamed-under-the-pairwise-root-fact
        '(:by handle-holds
          :claim (implies (and (fn-arpn-okp st)
                               (member-equal e (mv-nth 1 (fn-arpn-step st '(:release))))
