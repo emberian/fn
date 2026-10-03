@@ -7577,7 +7577,7 @@ A callback escape leaves :calling custody; neither it nor later items retry.")
           (and log (fnn-log-reseat-custody log))) :uncertain :closed))
 
 (defun fnn-arena-release-due ()
-  "Transfer ACL2's eligible rows into durable host custody before callbacks."
+  "Transfer ACL2's eligible rows into exact host custody before callbacks."
   (when *fnn-arena-release-custody*
     (fnn-indeterminate "prior arena release callback remains unobserved"))
   (let ((due (fnn-arena-pins-step '(:release))))
@@ -7612,8 +7612,8 @@ A callback escape leaves :calling custody; neither it nor later items retry.")
   "Reseat COMPLETE members, retire their staged copies, then return eligible pages.
 Each callback owns an explicit custody record before mutation; torn callbacks
 are recovery debt, never an excuse to replay a partly mutated arena."
-  (when (fnn-log-reseat-custody log)
-    (fnn-indeterminate "prior log reseat/retire callback remains unobserved"))
+  (unless (eq (fnn-arena-return-observation log) :closed)
+    (fnn-indeterminate "prior log reseat/retire/release callback remains unobserved"))
   (let ((fenced (fnn-log-with-kernel (log)
                   (let ((members (reverse (fnn-log-fenced log))))
                     (when members

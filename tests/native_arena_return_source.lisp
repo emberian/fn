@@ -75,3 +75,12 @@
   (assert (eq (aref *fnn-arena-release-custody* 0) :calling))
   (assert (equal (aref *fnn-arena-release-custody* 2) '(0))))
 (format t "native arena nonlocal custody source PASS~%")
+
+(let* ((*fnn-arena-release-custody* (vector :calling '((0 0)) '(0) :arena nil))
+       (members '((0 77 nil nil))) (log (%make-fnn-log :fenced members))
+       (*arena-calls* nil))
+  (handler-case (fnn-log-reseat-fenced log) (fnn-store-indeterminate () nil))
+  (assert (equal (fnn-log-fenced log) members))
+  (assert (null (fnn-log-reseat-custody log)))
+  (assert (null *arena-calls*)))
+(format t "native arena prior-debt admission source PASS~%")
