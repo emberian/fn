@@ -3487,7 +3487,19 @@ the publication buffer ST."
 WRITES); with no position, (values POSITION NIL): no binding, no image."
   (if (null position)
       (values position nil)
-      (let ((answer (fnn-call 'fn-his-snapshot records salt (fnn-live-hrecs))))
+      (let ((answer
+              (progn
+                (fnn-call 'fn-his-build-begin salt (fnn-live-hrecs))
+                (loop for ev in records
+                      for ordinal from 0 do
+                        (when (fnn-core 'fn-his-build-yieldp ordinal)
+                          (sb-thread:thread-yield))
+                        (let ((verdict (first (fnn-call 'fn-his-build-row
+                                                       ev (fnn-live-hrecs)))))
+                          (unless (eq verdict :ok)
+                            (fnn-refuse-io "history image row refused by name: ~a"
+                                           verdict))))
+                (fnn-call 'fn-his-build-finish (fnn-live-hrecs)))))
         (unless (and (consp answer) (>= (length answer) 3))
           (fnn-fault "ACL2 returned a malformed history image"))
         (destructuring-bind (verdict rec writes &rest ignored) answer

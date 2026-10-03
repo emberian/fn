@@ -178,7 +178,7 @@
 (include-book "../../books/store-budget")
 (include-book "../../books/store-budget-article")
 (include-book "../../books/store-maintenance-reserve")
-(include-book "../../books/history-image-snapshot")
+(include-book "../../books/history-image-builder")
 (include-book "../../books/owner-snapshot-request")
 (include-book "../../books/store-capacity-vector")
 (include-book "../../books/store-carried-folds")

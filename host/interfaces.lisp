@@ -4330,6 +4330,21 @@
   :class ::common-lisp-compliant
   :kinds ((sel natp) (a natp)))
 
+;; books/history-image-builder.lisp, the native publisher's incremental API.
+(definterface fn-his-build-yieldp
+  :class ::common-lisp-compliant
+  :kinds ((ordinal natp)))
+
+(definterface fn-his-build-begin
+  :class ::common-lisp-compliant
+  :kinds ((salt natp)))
+
+(definterface fn-his-build-row
+  :class ::common-lisp-compliant)
+
+(definterface fn-his-build-finish
+  :class ::common-lisp-compliant)
+
 ;; books/limits-live.lisp
 
 ; host/native/admin.lisp dispatches it (lane limits-live).
