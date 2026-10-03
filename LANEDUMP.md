@@ -2853,3 +2853,13 @@ reply/gate functions. tests/acl2/web-stream-consumer-source-tests.lisp compares
 complete reference page plans with virtual scan/count/emit under chunk1/2/7/4096
 fixtures. Guard/refinement and complete endpoint/funding qualification remain
 open; concrete-fill invariant-risk warnings are retained in the source receipt.
+Root dev-REPL followup177b21dfb: actual LD :return produces NIL/:ERROR on
+refusal; only :EOF now succeeds. Controlled refusal sets ERROR without faulting
+owner; earlier admitted events survive. Actual ACL2 channel capture is scoped
+and restored on unwind. Startup records socket identity before chmod/listen.
+Hbox full3test suite PASS0.384s, including real ACL2 worker-thread good/refused/
+subsequent admission and captured proof output, socket/trace/output bounds,
+malformedinput, peerdenial, existingpath and partialstartup cleanup.
+Receipt planning/evidence/repair/dev-repl-177b21dfb.json (archived/indexed).
+Actual complete native owner stop/fence composition remains pending; no image
+or fullphysicaltariff claim. Lieutenant reviewed owner hook/gate/lockorder.
