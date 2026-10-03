@@ -224,8 +224,10 @@
                            (nth 2 c)))
                  (nth 2 c))))
    :hints (("Goal" :use ((:instance fn-hist-grow-fields (fn-hist$c c)))
-            :in-theory (e/d (fn-hist-open) (fn-hist$c-grow nth update-nth fn-hist-key-msgid fn-hist-hash
-))))))
+             :in-theory (union-theories
+              '(fn-hist-open fn-hist$c-append nth-update-nth car-cons cdr-cons
+                fold-consts-in-+ nfix natp zp)
+              (theory 'minimal-theory))))))
 
 (local (in-theory (disable fn-hist$c-append)))
 
