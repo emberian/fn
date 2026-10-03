@@ -19008,6 +19008,10 @@
       "events": [
         {
           "kind": "theorem",
+          "name": "fn-nnw-stream-batch-residual"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-nnw-stream-step-residual"
         },
         {

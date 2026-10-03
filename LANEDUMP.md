@@ -393,3 +393,20 @@ one timer delay per matcher microstep. This is latency follow-through, not hidde
 whole matching or a reason to truncate data. Paired availability command adapter
 is separate, with raw actual formals and logical-only available archive/index;
 no whole second archive/index build under owner.
+
+## Actual bounded control batch (2026-10-03)
+
+Actual fn-splan-rest-cursor-step now calls fn-nnw-stream-batch. New
+world-checked def-cursor/batch composes literal byte/call/residual step contracts;
+at most V empty :candidate control transitions run, with no output accumulator.
+First output/dependency/yield stops; output can drain at zero remaining visits.
+All statements unconditional, byte bound B and calls bound V independent.
+Guard-verified batch plus natural call receipt: .28ACL2s/27319steps. Actual
+pending/output-list/suffix/terminal composition lemmas .14s/11903steps; literal
+W16 matcher progress and output/dependency/zero-byte teeth172steps pass.
+Plan source wiring uses batch residual/pending lemmas, matching full plan
+root replay still pending (existing over/catalog source prefix unavailable in
+this warm stream world). No certificate/image or whole-plan heap coverage.
+Batch creates one recursion/MV envelope per accepted control transition;
+Foundations retains physical allocation/collector tariff ownership. This source
+ships independently of raw catalog/availability proof repair owned Convergence.

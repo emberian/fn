@@ -5,6 +5,7 @@
 (include-book "newnews-metadata-cursor")
 (include-book "string-line-cursor")
 (include-book "newnews-matching-selector")
+(include-book "def-cursor-batch")
 
 (local (in-theory (disable fn-nnm-one fn-nnm-start)))
 
@@ -528,3 +529,62 @@
                                      fn-nntp-make-result fn-nntp-single))))
 
 (in-theory (disable fn-nnw-group-source-effective fn-nntp-newnews-response-stream))
+
+; Use the available control budget for empty group/member/DP steps. No output
+; accumulator is built: the first actual output window ends the batch.
+(def-cursor/batch fn-nnw-stream (fn-arena fn-cat)
+  :step fn-nnw-stream-step :stobjs (fn-arena fn-cat)
+  :byte-proof fn-nnw-stream-step-byte-bound
+  :call-proof fn-nnw-stream-step-call-bound
+  :remaining (fn-nnw-stream-remaining cur fn-arena fn-cat)
+  :residual-proof fn-nnw-stream-step-residual)
+
+(local (defthm fn-nnw-stream-split-output-list
+  (true-listp (car (fn-cur-split xs n)))
+  :hints (("Goal" :induct (fn-cur-split xs n)
+           :in-theory (enable fn-cur-split)))))
+
+(defthm fn-nnw-stream-step-output-true-listp
+  (true-listp (car (fn-nnw-stream-step cur visits bytes fn-arena fn-cat)))
+  :hints (("Goal" :in-theory (e/d (fn-nnw-stream-step)
+                                  (fn-nnw-stream-one fn-cur-split)))))
+
+(defthm fn-nnw-stream-batch-output-true-listp
+  (true-listp (car (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat)))
+  :hints (("Goal" :induct (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat)
+           :in-theory (e/d (fn-nnw-stream-batch) (fn-nnw-stream-step)))))
+
+(defthm fn-nnw-stream-batch-keeps-pending-true-listp
+  (implies (true-listp (fn-cur-pending cur))
+           (true-listp (fn-cur-pending
+                        (mv-nth 1 (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat)))))
+  :hints (("Goal" :induct (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat)
+           :in-theory (e/d (fn-nnw-stream-batch)
+                           (fn-nnw-stream-step fn-cur-pending)))))
+
+(local (defthm fn-nnw-stream-batch-assoc
+  (equal (append (append a b) c) (append a b c))))
+
+(defthm fn-nnw-stream-batch-residual-append
+  (equal (append (car (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat))
+                 (fn-nnw-stream-remaining
+                  (mv-nth 1 (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat)) fn-arena fn-cat)
+                 suffix)
+         (append (fn-nnw-stream-remaining cur fn-arena fn-cat) suffix))
+  :hints (("Goal" :in-theory (disable fn-nnw-stream-batch fn-nnw-stream-remaining
+                                     fn-nnw-stream-batch-assoc)
+           :use (fn-nnw-stream-batch-residual
+                 (:instance fn-nnw-stream-batch-assoc
+                            (a (car (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat)))
+                            (b (fn-nnw-stream-remaining
+                                (mv-nth 1 (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat))
+                                fn-arena fn-cat)) (c suffix))))))
+
+(defthm fn-nnw-stream-batch-terminal-residual
+  (implies (not (fn-nnw-meta-livep
+                 (mv-nth 1 (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat))))
+           (equal (append (car (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat)) suffix)
+                  (append (fn-nnw-stream-remaining cur fn-arena fn-cat) suffix)))
+  :hints (("Goal" :in-theory (disable fn-nnw-stream-batch fn-nnw-stream-remaining
+                                     fn-nnw-meta-livep fn-nnw-stream-batch-residual-append)
+           :use fn-nnw-stream-batch-residual-append)))
