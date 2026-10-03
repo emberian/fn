@@ -3466,3 +3466,11 @@ PASS (~0.25s). Existing mux connection cleanup PASS; await fixture selected
 actual capture/output-close helpers to repair its prior stale extraction.
 Full current source owner still awaiting History initializer; no physical
 endpoint or complete funding/HM claim transferred from these schedules.
+
+Background actor family: maintenance and secondary plain/TLS accept starters
+now share def-actor reservation/latch/physical join, and no longer delete their
+worker entry from inside their own unwind. Late maintenance uncertainty, Store
+fault and raw throw classified afterstop; named stopped-listener socket error
+remains ordinary shutdown, live socket/store/unknown faults escalate. Actual
+shared classifier+actor with physical SBCL thread fixture PASS0.23s over
+recording accept/tick effects. No complete native interpreter/charging claim.
