@@ -183,6 +183,18 @@ Anchors: [GEN-CURSOR](planning/repair/items/GEN-CURSOR.json),
 
 ### Finish streaming and restricted command families
 
+Access owns the continuing shared ARTICLE/HEAD/BODY producer and its NNTP/Web
+consumers. Retained numeric/current/withdrawn selection, framing preflight and
+lazy Xref now yield in bounded steps; READY commits selection once and replays
+without authority changes. Source fixtures and exact normal source admission
+pass. Complete actual parsed factory/socket/physical decoded-window/Web browser
+composition, initial authorization/Message-ID/server setup bounds, guards and
+universal owner/reference refinement remain open (PRF-1286, SCN-1116). The
+retained source-execution process/inputs and precise mixed ABI frontier are in
+LANEDUMP; no certificate, current image or full funded operation follows from
+those checks. Access also continues absorbed operator/journal obligations; Root
+S132 full-native observation still needs an adequate funded supported profile.
+
 **Next — Served.** Carry the shared cursor/dependency machinery through OVER,
 HDR/XHDR, XPAT, LISTGROUP and the restricted route. Complete table-generated
 dispatch, preserving current session and access semantics; remove the remaining
