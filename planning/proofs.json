@@ -22657,7 +22657,7 @@
     {
       "id": "PRF-1289",
       "title": "Production TCPCL concrete framing copy quantum",
-      "statement": "Native fnn-tcl-input-turn calls fn-tcf-span and fn-tcf-byte over a private concrete octet buffer and retained incoming vector. The unconditional fn-tcf-span-physical-quantum event establishes that a framing action consumes a natural number of bytes no greater than available or4096. The original codec still decides complete messages and early extension/MRU refusals. Universal framing-to-codec refinement and complete semantic decode/allocation/GC cost remain owed; this scalar quantum is not a whole-turn or registered received-source authority proof.",
+      "statement": "Native fnn-tcl-input-turn calls fn-tcf-span and fn-tcf-byte over a private concrete octet buffer and retained incoming vector. The unconditional fn-tcf-span-physical-quantum event establishes that a framing action consumes a natural number of bytes no greater than available or4096. The original codec still decides complete messages and early extension/MRU refusals. Universal framing-to-codec refinement and complete semantic decode/allocation/GC cost remain owed; this scalar quantum is not a whole-turn or registered received-source authority proof. Native fnn-tcl-input-materialize-turn and fnn-bp-session-source-turn call guard-verified fn-tcim-turn; unconditional fn-tcim-turn-boundary equates its concrete descending window and returned suffix with the logical octet slice. fn-tcim-quantum bounds each window to4096 under natural END. This removes whole-frame conversion from a turn; the existing semantic decoder remains whole-frame.",
       "milestone": "M4",
       "requirements": [
         "REP-006"
@@ -22668,16 +22668,19 @@
       "assumptions": [],
       "status": "planned",
       "events": [
-        "fn-tcf-span-physical-quantum"
+        "fn-tcf-span-physical-quantum",
+        "fn-tcim-turn-boundary",
+        "fn-tcim-quantum"
       ],
       "evidence": [
         "books/tcpcl-frame-cursor.lisp",
         "tests/acl2/tcpcl-frame-cursor-tests.lisp",
         "host/native/tcpcl.lisp",
         "tests/native_tcpcl_frame_cursor_raw.lisp",
-        "planning/evidence/manifests/certify-20261003T123129Z-1811904.json"
+        "planning/evidence/manifests/certify-20261003T123129Z-1811904.json",
+        "books/tcpcl-input-materialize.lisp"
       ],
-      "progress_note": "BP-TRANSPORT 2026-10-03 source: actual retained consumer no longer reparses/appends growing list carry. Narrow raw driver and65536 one-byte framing/refusal composition pass; exact two-root farm pending. Initial private buffer reserve and full-frame conversion/semantic decode remain unbounded costs; dormant public registered received-source producer still open. Exact two-root manifest certify-20261003T123129Z-1811904 PASSED2/0; guards admitted. No universal framing refinement inferred."
+      "progress_note": "BP-TRANSPORT 2026-10-03 source: actual retained consumer no longer reparses/appends growing list carry. Narrow raw driver and65536 one-byte framing/refusal composition pass; exact two-root farm pending. Initial private buffer reserve and full-frame conversion/semantic decode remain unbounded costs; dormant public registered received-source producer still open. Exact two-root manifest certify-20261003T123129Z-1811904 PASSED2/0; guards admitted. No universal framing refinement inferred. Continuing bounded conversion connected to both actual framing and incoming-source publication; raw exact two-window consumer fixtures pass. Window cert pending; complete semantic decode remains unbounded."
     },
     {
       "id": "PRF-1292",
@@ -22725,7 +22728,7 @@
         "books/tcpcl-received-source-refinement.lisp",
         "tests/acl2/tcpcl-received-source-refinement-tests.lisp"
       ],
-      "progress_note": "2026-10-03 source-first: actual passive node turn installs private constructor/resume callbacks; generic TCPCL spool remains separate. Raw actual caller1000-byte chain copies at most64 cursor actions per turn then one callback/ACK; stale generation and publication cut retain/fence exact borrow, no retry. Exact constructor guards/fixture farm pending; existing received-source driver guard/refinement certification remains owed. Warm actual source driver guards admitted; receiver branch boundary weakened from whole-state/message assumptions to the sole proper-data hypothesis and proved19961steps. Reachable handshake positive and corrupted-data hypothesis-removal fixtures prepared; exact source/guard/refinement certificates pending. ACL2 work credit removes per-empty-slot sleeps during real bounded source/buffer/output actions; raw16384-byte source/all8 services has zero artificial sleeps, idle node keeps waits.",
+      "progress_note": "2026-10-03 source-first: actual passive node turn installs private constructor/resume callbacks; generic TCPCL spool remains separate. Raw actual caller1000-byte chain copies at most64 cursor actions per turn then one callback/ACK; stale generation and publication cut retain/fence exact borrow, no retry. Exact constructor guards/fixture farm pending; existing received-source driver guard/refinement certification remains owed. Warm actual source driver guards admitted; receiver branch boundary weakened from whole-state/message assumptions to the sole proper-data hypothesis and proved19961steps. Reachable handshake positive and corrupted-data hypothesis-removal fixtures prepared; exact source/guard/refinement certificates pending. ACL2 work credit removes per-empty-slot sleeps during real bounded source/buffer/output actions; raw16384-byte source/all8 services has zero artificial sleeps, idle node keeps waits. Exact constructor+teeth certify124133-1845338 PASSED2/0 and live source-driver guards certify124653-1860852 PASSED1/0 archived/indexed. Received source now converts in4096-octet windows with generation checked every phase; whole semantic decoder/GC remain owed.",
       "events": [
         "fn-tcl-source-recv-segment-boundary"
       ]

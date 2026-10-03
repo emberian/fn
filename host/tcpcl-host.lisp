@@ -21,6 +21,7 @@
 (include-book "../books/tcpcl-source-continuation")
 (include-book "../books/tcpcl-retained-turn")
 (include-book "../books/tcpcl-frame-cursor")
+(include-book "../books/tcpcl-input-materialize")
 (include-book "../books/bp-session-received-source")
 (include-book "../books/octets-stobj")
 (include-book "../books/tcpcl-spool")

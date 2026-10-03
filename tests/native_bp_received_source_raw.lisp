@@ -29,7 +29,7 @@
 (defvar *bank-recording-core* (symbol-function 'fnn-core))
 (defun fnn-core (name &rest args)
  (case name
-  ((fn-bpsrx-start fn-bpsrx-turn fn-bpsrx-authorizedp fn-tsc-at fn-bpsg-step fn-bpsg-release-ready) (apply name args))
+  ((fn-tcim-turn fn-bpsrx-start fn-bpsrx-turn fn-bpsrx-authorizedp fn-tsc-at fn-bpsg-step fn-bpsg-release-ready) (apply name args))
   (fn-tcl-source-result-action (if (eq (caar args) :source-yield) :retain :settle))
   (fn-tcl-source-result-token (cadar args))
   (fn-tcl-delivery-plan (third args))

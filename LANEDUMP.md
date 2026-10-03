@@ -2880,3 +2880,11 @@ closed selected reader after correct reply; failure preserved and repaired.
 Receipt served-available-owner-20261003 records source hashes/full warm log.
 Selective owner refinement/PROGRAM guards, captured completeness/frames,
 physical tariffs and actual host process remain open. Bounded LIST next.
+Continuing S068 actual window conversion: fn-tcim-turn now serves both private
+TCPCL framing and actual incoming received-source publication.4096-octet
+descending windows retain exact logical suffix; no full vector/list conversion
+remains in either consumer. Guards and unconditional slice boundary warm-proved;
+actual raw framing/source/ACK/16384-byte service-credit fixtures pass. Exact
+window cert pending. Whole semantic decode, allocator/GC latency and long-job
+keepalive/input servicing remain open; fresh source-loaded processes are normal
+integration, saved images off the critical path.

@@ -377,12 +377,14 @@ before waiting for the data length. Over-MRU lengths likewise reach the codec
 at the length field. These are RFC9174 framing observations, not new bounds.
 
 The initial reserve uses `fn-tcl-max-message` under the configured segment MRU;
-its allocator/collector latency remains unbounded. Complete-frame vector/list
-conversion and semantic decode/publication still run once in a turn. Universal
+its allocator/collector latency remains unbounded. `fnn-tcl-input-materialize-turn`
+calls guard-verified `fn-tcim-turn` to construct the logical frame in4096-octet
+windows. Its unconditional boundary equates the actual window to the octet
+slice and existing suffix. Semantic decode/publication still run once in a turn. Universal
 cursor/codec refinement, guard coverage of that representation boundary and
 the public registered received-source operation producer remain outstanding.
 The existing BP resident projection prepays context storage, but it is not a
-complete allocator, decoder or GC tariff. SCN1110 requires the matching image;
+complete allocator, decoder or GC tariff. SCN1110 requires matching fresh source-loaded native processes;
 raw actual-consumer fixtures establish only their recorded boundary scope.
 
 The passive BP node installs a private received-transfer continuation
@@ -395,9 +397,11 @@ again. One terminal publication calls the existing durable BP delivery callback;
 throwing/uncertain outcomes fence the connection and retain source/token debt.
 This operation is private to the session; it does not manufacture a public
 SAMEPRS provider or authorize another operation family. Its complete buffer
-allocation and final logical conversion/BP decode retain their unbounded time
-costs. Source-driver guards and the universal source-step refinement still
-require certification; the existing proposed refinement is not evidence.
+allocation retains its unbounded time cost. Logical conversion now uses the
+same4096-octet window before the existing whole BP semantic decode. Each copy,
+conversion and publication turn checks the actual session generation. Source
+driver guards and receiver-boundary certification are tracked independently
+of full source-step/native composition.
 
 `fn-bpsched-work-credit` gives actual bounded source, input-buffer and output
 progress one slot sweep without an artificial sleep at each empty slot. Idle
