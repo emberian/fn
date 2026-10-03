@@ -330,12 +330,8 @@ and `fn-ros-outcome-keeps-representation` preserve both typed recognition and
 them. Bootstrap install guards and the general bank/native boundary remain
 owed. These source admissions are not matching certificates.
 
-HST-046 also covers the lifetime of the operation consumer. After successful
-launch, every committer unwind before consumption retains a continuation over
-that operation's ledger and actual result cell. A later physical return consumes
-that result; an already-observed return consumes it during unwind. This includes
-raw nonlocal ACL2 escapes as well as conditions. A consumption that has started
-may have torn, so cleanup never retries it or manufactures settlement. The outer
-committer actor also invokes the service failure boundary when a raw escape
-bypasses its inner condition handler. SCN-1087 exercises the native consumers;
-these schedules do not establish a new image or host-refinement theorem.
+
+SCN-1089 supplies the matching-image consumer: actual mux startup `:hold`,
+POST acceptance, independent literal custody receipts, clean stop and
+restart retrieval. The selector is prepared; image execution is pending.
+Optional diagnostics cannot change custody if formatting or output fails.
