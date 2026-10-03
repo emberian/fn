@@ -1744,3 +1744,19 @@ Owner carrier capability — GPT-6.1-Sol, 2026-10-03
 
 ## Source assembly carrier component/prepared refusal boundaries (2026-10-03)
 4c2c84590 +d172fec2f material composition clean; stale generated current.md omitted, proposed profile/assumption row and owed writers preserved. Physical carrier/tool support source-admitted with existing16+2forms/nine tests; actual unchanged refusal/abort definitions and four unchanged frame theorems move into scoped books. Proposed two raw-with carried annotations use existing incomplete A-OWNER-INVARIANT-CARRIED, not a host guard/wholewriter/native completion claim. Target admission/guard/certification/loaded-world compatibility pending; Integration source flows before verification. Roots owner-carrier/tests plus owner-post-carried/tests,owner-retain-frame/tests and normal owner-carried/interface image world.
+
+## Sol tools: retained pull consumes cursor cold-read outcome
+
+Fix-forward from Integration9343a56ef. The actual pull local continuation
+now binds the render quantum's fifth COLD-READ value, retains its exact plan
+and read with a :cursor tag, and resumes rendering after :serve without
+re-entering the input decoder. The first cursor dependency clock survives
+successive cache misses; each read has its own issue clock. ACL2's wait word
+sets the next poll time. Cold refusal leaves the retained read for cleanup
+and raises the same named I/O refusal as the served cursor; it cannot publish
+an incomplete reply. Close-local clears the cursor clock and attempts read
+abandonment through the existing all-release cleanup.
+
+Source form parse/diff PASS. Source sent before broader verification per
+current coordination; focused actual pull fixture follows separately.
+No proof/image or actual peer scenario claim.
