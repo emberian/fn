@@ -237,3 +237,10 @@ it preserves the original `:wait-p`/other physical options and body values.
 actual extent consumer with literal `:extent`. A real extent-mutex fixture
 checks held ownership, `:wait-p t`, exact labels and values. This does not
 claim uninstrumented extent/pins sites or PageIO realization.
+
+The shared mutex macro and its two dynamic observation variables have one
+early declaration site in `host/native/io.lisp`, which loads before extent.
+Collector structures/runtime functions remain in owner and are available
+before workers run. Extent can compile against the actual macro without an
+early duplicate declaration or build-order change. The fixture extracts that
+actual io macro/variable ownership.

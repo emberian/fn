@@ -142,6 +142,28 @@ fn-lgdm-repair-text: a torn tail dropped, a confirmed repair), newest first;
 (defun fnn-os-fail (errno &optional path)
   (error 'fnn-os-error :errno errno :path path))
 
+;;; Shared observation-only primitive declaration precedes extent compilation.
+;;; Its collector/runtime functions are installed by owner before workers run.
+(defvar *fnn-native-observer* nil)
+(defvar *fnn-native-actor-identity* nil)
+
+(defmacro fnn-with-observed-mutex ((lock label &rest options) &body body)
+  "Literal measured lock label and unchanged SBCL mutex options. Acquire
+observed after physical lock; release reserves under it, completes after unlock."
+  (let ((mutex (gensym "MUTEX")) (name (gensym "LOCK-LABEL"))
+        (row (gensym "RELEASE")))
+    `(let ((,mutex ,lock) (,name ,label) (,row nil))
+       (unwind-protect
+            (sb-thread:with-mutex (,mutex ,@options)
+              (when *fnn-native-observer*
+                (fnn-native-observe (list :acquire *fnn-native-actor-identity* ,name)))
+              (unwind-protect (progn ,@body)
+                (when *fnn-native-observer*
+                  (setq ,row (fnn-native-observation-reserve
+                              (list :release *fnn-native-actor-identity* ,name) nil)))))
+         (fnn-native-observation-complete ,row)))))
+
+
 (defvar *fnn-section-step* nil
   "The publication the boundary this thread is inside has landed and not yet
 fenced: :replaced or :linked once a rename or link returned success
