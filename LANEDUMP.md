@@ -3845,3 +3845,6 @@ passes seven helper outcomes plus both command failure/cleanup paths, with
 recorded physical seams and actual ACL2 service authority functions. Full tariff,
 actual current pool/Store worker composition and native multi-peer/RQ selectors
 remain open. Offline dispatch/checkpoint/route-table paths unchanged.
+
+
+Horse Bounds reclaim decision allocation repair READY: fnn-log-reclaim-steps folds first, rewrites only for :reclaim before instant/clear. Actual reclaim still retains complete rewritten history. Disjoint from Exits outer cleanup83e657c2d. tests.test_native_reclaim_decision_source passes actual host function with supplied core/I/O decisions; checks no-op/refused/dry rewrite absence and accepted replay order. host_check --read passes. No changed ACL2 definitions or theorem claim.

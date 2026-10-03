@@ -106,11 +106,12 @@ Answers the report line's field."
 (defun fnn-log-reclaim-steps (store mode)
   "`store reclaim' on a store (books/store-log-reclaim.lisp): the
 history streamed one record at a time into ACL2's fold (fn-rcls-step under the
-store's context, compact-arena's books/store-reclaim-stream.lisp) with each
-record's rewrite (fn-rclp-event) kept as an octet vector, then ACL2's decision
+store's context, compact-arena's books/store-reclaim-stream.lisp), then ACL2's decision
 over the fold (fn-lgr-decide-stream; KEYSTONE fn-lgr-decide-stream-is-lgr-
 decide: the whole-history decision, whose rewritten history is those
-rewrites).  On :reclaim the instant is recorded first (fnn-reclaim-record-
+rewrites).  Only :reclaim makes a second history pass and retains rewritten
+octet vectors; :none, :refused and :dry-run retain no rewritten history.
+On :reclaim the instant is recorded first (fnn-reclaim-record-
 instant: the configuration row the context's NOW came from, PKT-857), then the
 rewritten history is replayed into the store node (the chunked replay every
 open runs, fnn-recover-log-replay) and its state checkpoint published with the
@@ -138,19 +139,13 @@ the report line."
                       (second classes)
                     (fnn-fault "ACL2 returned malformed reclaim classes")))
          (acc (fnn-core 'fn-store-reclaim-init))
-         (count 0)
-         (rewritten nil))
+         (count 0))
     (fnn-log-history-each
      store
      (lambda (record)
        (let ((octets (fnn-octet-list record)))
          (incf count)
-         (setq acc (fnn-core 'fn-store-reclaim-step acc octets ctx))
-         (unless dry
-           (let ((event (fnn-core 'fn-store-log-reclaim-event octets ctx)))
-             (unless (fnn-octet-list-p event)
-               (fnn-fault "ACL2 returned a malformed rewritten record"))
-             (push (fnn-octets event) rewritten))))))
+         (setq acc (fnn-core 'fn-store-reclaim-step acc octets ctx)))))
     (let ((decision (if recorded
                         (fnn-core-state 'fn-store-log-reclaim-decide-recorded
                                         (fnn-store-config store) acc nil)
@@ -171,10 +166,22 @@ the report line."
         (:reclaim
          (destructuring-bind (msgids freed counts) (rest decision)
            (declare (ignore counts))
-           (let ((history (nreverse rewritten)))
+           ;; The command owns the stopped Store.  Capture the same history
+           ;; before recording the instant or clearing its selected prefix.
+           ;; This still retains the actual reclaim's complete rewritten
+           ;; history; the no-op and refusal paths need no such allocation.
+           (let ((history nil))
+             (fnn-log-history-each
+              store
+              (lambda (record)
+                (let ((event (fnn-core 'fn-store-log-reclaim-event
+                                       (fnn-octet-list record) ctx)))
+                  (unless (fnn-octet-list-p event)
+                    (fnn-fault "ACL2 returned a malformed rewritten record"))
+                  (push (fnn-octets event) history))))
+             (setq history (nreverse history))
              (unless (= (length history) count)
                (fnn-fault "the rewritten history is not the history's length"))
-             (setq rewritten nil)
              (fnn-checkpoint-require-mutation-ready store)
              (let ((instant (if recorded
                                 "instant=recorded"
