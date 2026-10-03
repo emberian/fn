@@ -429,11 +429,18 @@
 
 ;  KEYSTONE (the stored state stays a state).
 (encapsulate ()
+(local (defthm all-memberships-of-reclaim
+  (equal (fn-all-article-memberships (fn-rcl-reclaim-articles xs m tomb))
+         (fn-all-article-memberships xs))
+  :hints (("Goal" :induct (fn-rcl-reclaim-articles xs m tomb)
+           :in-theory (e/d (fn-rcl-reclaim-articles fn-all-article-memberships)
+                            (fn-article-memberships fn-make-article fn-article-msgid))))))
 (local (defthm conflictsp-of-reclaim
   (equal (fn-memberships-conflictsp ms (fn-rcl-reclaim-articles xs m tomb))
          (fn-memberships-conflictsp ms xs))
-  :hints (("Goal" :induct (fn-rcl-reclaim-articles xs m tomb)
-                  :in-theory (enable fn-memberships-conflictsp)))))
+  :hints (("Goal" :induct (fn-memberships-conflictsp ms xs)
+                  :in-theory (e/d (fn-memberships-conflictsp)
+                                   (fn-rcl-reclaim-articles fn-all-article-memberships))))))
 (local (defthm freshp-of-reclaim
   (equal (fn-articles-freshp (fn-rcl-reclaim-articles xs m tomb))
          (fn-articles-freshp xs))
