@@ -5424,6 +5424,8 @@
  :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-read-is-history-row))
 (definterface fn-hist$p-append :class ::common-lisp-compliant
  :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-append-keeps-wfp))
+(definterface fn-hist$p-dispose :class ::common-lisp-compliant)
+(definterface fn-hrecs$s-dispose :class ::common-lisp-compliant)
 (definterface fn-owner-hroot-resize :class :program)
 (definterface fn-owner-hroot-begin :class :program)
 (definterface fn-owner-hroot-abandon :class :program)
@@ -5433,6 +5435,7 @@
 (definterface fn-owner-hroot-detach :class :program)
 (definterface fn-owner-hroot-pin-funded :class :program)
 (definterface fn-owner-hroot-retire :class :program)
+(definterface fn-owner-hroot-retire-word :class :program)
 (definterface fn-owner-hroot-return :class :program)
 (definterface fn-owner-hroot-read-plan :class :program)
 (definterface fn-owner-hroot-read-owned :class :program)
