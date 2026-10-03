@@ -4841,6 +4841,22 @@ caller does not know."
               :exists
             (fnn-os-fail errno new)))))))
 
+(defvar *fnn-publication-close-debts* nil
+  "Publication lock descriptor identities with unobserved physical return.
+These records retain evidence; they never authorize retry of a consumed fd.")
+
+(defun fnn-publication-unlock (fd)
+  (when fd
+    (when (assoc fd *fnn-publication-close-debts*)
+      (fnn-indeterminate "publication lock return remains unobserved"))
+    (handler-case
+        (fnn-unwind-cleanups ()
+          (fnn-flock fd +fnn-lock-un+)
+          (fnn-close fd))
+      (serious-condition (condition)
+        (push (list fd condition) *fnn-publication-close-debts*)
+        (fnn-indeterminate "publication lock physical return unobserved: ~a" condition)))))
+
 (defun fnn-publication-lock (root-path)
   "Where rename(2) has no no-replace flag (OpenBSD), the publication program
 (import, init) holds an exclusive advisory lock on the sibling ROOT.lock for
@@ -4853,22 +4869,24 @@ on Linux, where renameat2(RENAME_NOREPLACE) refuses any existing ROOT."
   #+linux (declare (ignore root-path))
   #+linux nil
   #-linux
-  (let ((fd (fnn-open (fnn-concat root-path ".lock")
-                      (logior sb-posix:o-rdwr sb-posix:o-creat +fnn-o-nofollow+) #o600)))
-    (handler-case (progn (unless (fnn-regular-p (fnn-fstat fd))
-                           (fnn-fault "refusing non-regular publication lock ~a.lock" root-path))
-                         (fnn-flock fd (logior +fnn-lock-ex+ +fnn-lock-nb+))
-                         fd)
-      (fnn-os-error ()
-        (fnn-close fd)
-        (fnn-refuse "publication refused reason=publication-locked: another fn process holds ~a.lock"
-                    root-path))
-      (error (e) (fnn-close fd) (error e)))))
-
-(defun fnn-publication-unlock (fd)
-  (when fd
-    (ignore-errors (fnn-flock fd +fnn-lock-un+))
-    (fnn-close fd)))
+  (let ((fd nil) (returned nil))
+    (when *fnn-publication-close-debts*
+      (fnn-indeterminate "publication lock return remains unobserved"))
+    (fnn-unwind-cleanups
+        ((setq fd (fnn-open (fnn-concat root-path ".lock")
+                            (logior sb-posix:o-rdwr sb-posix:o-creat +fnn-o-nofollow+) #o600))
+         (unless (fnn-regular-p (fnn-fstat fd))
+           (fnn-fault "refusing non-regular publication lock ~a.lock" root-path))
+         (handler-case
+             (fnn-flock fd (logior +fnn-lock-ex+ +fnn-lock-nb+))
+           (fnn-os-error (condition)
+             (if (member (fnn-os-errno condition) (list sb-posix:eagain sb-posix:eacces))
+                 (fnn-refuse "publication refused reason=publication-locked: another fn process holds ~a.lock"
+                             root-path)
+               (error condition))))
+         (setq returned t)
+         fd)
+      (when (and fd (not returned)) (fnn-publication-unlock fd)))))
 
 (defun fnn-import-leftover-stage (root-path &optional (kind "import"))
   "The path of the first entry of ROOT-PATH's parent named BASENAME.KIND-*
