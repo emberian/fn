@@ -11,4 +11,5 @@ class ImportManifestTests(unittest.TestCase):
             ["sbcl", "--noinform", "--script", "tests/native_import_manifest_raw.lisp"],
             text=True, capture_output=True, timeout=5)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("regular/FIFO ingress passed (3 paths)", result.stdout)
+        self.assertIn("Import MANIFEST actual regular/FIFO ingress passed (3 paths)", result.stdout)
+        self.assertIn("Stopped prefix actual regular/FIFO ingress passed (3 paths)", result.stdout)

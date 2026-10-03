@@ -5552,14 +5552,16 @@ reading of the octets printed (fn-oig-report-exit)."
 it is shorter), or NIL when there is none."
   (let ((st (fnn-check-regular path)))
     (and st
-         (let ((fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
-           (unwind-protect
+         (let ((fd (fnn-open path (logior sb-posix:o-rdonly sb-posix:o-nonblock +fnn-o-nofollow+))))
+           (fnn-unwind-cleanups
+               ((unless (fnn-regular-p (fnn-fstat fd))
+                  (fnn-fault "refusing non-regular prefix input: ~a" path))
                 ;; One read of MAXIMUM octets: never the whole file
                 ;; (fnn-read-bounded-fd refuses a longer file by design).
                 (let ((buffer (fnn-make-octets maximum)))
                   (unless (zerop offset) (sb-posix:lseek fd offset sb-posix:seek-set))
                   (let ((count (fnn-read-fd fd buffer)))
-                    (if (= count (length buffer)) buffer (subseq buffer 0 count))))
+                    (if (= count (length buffer)) buffer (subseq buffer 0 count)))))
              (fnn-close fd))))))
 
 (defun fnn-stopped-checkpoint-header (path)
