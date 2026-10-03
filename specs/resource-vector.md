@@ -557,3 +557,13 @@ and preserves the ledger, so it cannot push the same released row onto the
 free chain twice. Literal settled-result positives and removal witnesses
 exercise both receipt orderings. Complete free-chain membership and the
 physical producer's receipt authenticity remain separate obligations.
+
+A settled output row at the final u64 generation is retired; settlement
+preserves the previous free head and never resets its generation
+(`fn-rlo-exhausted-settlement-keeps-free-head`). Other idle rows remain
+issuable in the generic typed protocol. The two receipt orderings have
+logical and normal-counterpart native fixtures. These are protocol witnesses:
+the current fresh native service also exhausts its independent global
+response serial by such a max-draw history, so the subsequent issue witness
+is not claimed as reachable served progress. Physical heap funding is
+unchanged.

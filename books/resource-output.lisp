@@ -135,9 +135,13 @@
     (mv-let (word fn-resource-ledger)
       (fn-rl-settle slot (fn-rl-gensi slot fn-resource-ledger) fn-resource-ledger)
       (if (not (eq word :settled)) (mv word fn-resource-ledger)
-        (let* ((fn-resource-ledger (update-fn-rl-idsi slot (fn-rl-next fn-resource-ledger) fn-resource-ledger))
-               (fn-resource-ledger (update-fn-rl-next slot fn-resource-ledger)))
-          (mv :settled fn-resource-ledger))))))
+        ; An exhausted generation cannot be issued again. Retire this idle
+        ; row instead of blocking every reusable row behind it at the head.
+        (if (not (< (fn-rl-gensi slot fn-resource-ledger) *fn-rl-word-max*))
+            (mv :settled fn-resource-ledger)
+          (let* ((fn-resource-ledger (update-fn-rl-idsi slot (fn-rl-next fn-resource-ledger) fn-resource-ledger))
+                 (fn-resource-ledger (update-fn-rl-next slot fn-resource-ledger)))
+            (mv :settled fn-resource-ledger)))))))
 
 (defun fn-rlo-output (token operation-gen receipt fn-resource-ledger)
   (declare (xargs :stobjs fn-resource-ledger :guard t :verify-guards nil))
@@ -458,10 +462,23 @@
 
         fn-rl-draw-keeps-representation fn-rl-idsi-type fn-rl-idsi-nat)))))
 
+(local (defthm fn-rlo-gens-list-read-nat
+ (implies (and (fn-rl-gensp xs) (natp i) (< i (len xs))) (natp (nth i xs)))
+ :hints (("Goal" :induct (nth i xs) :in-theory (enable fn-rl-gensp)))))
+
+(local (defthm fn-rlo-gens-reader-nat
+ (implies (and (fn-resource-ledgerp ledger) (natp i) (< i (fn-rl-gens-length ledger)))
+          (natp (fn-rl-gensi i ledger)))
+ :hints (("Goal" :in-theory (e/d (fn-resource-ledgerp fn-rl-gensi fn-rl-gens-length)
+                                (fn-rl-gensp nth))))))
+
+
 (verify-guards fn-rlo-settle-ready
  :hints (("Goal"
  :use ((:instance fn-rl-settle-keeps-representation
-         (ledger fn-resource-ledger) (gen (fn-rl-gensi slot fn-resource-ledger))))
+         (ledger fn-resource-ledger) (gen (fn-rl-gensi slot fn-resource-ledger)))
+       (:instance fn-rlo-gens-reader-nat (i slot)
+         (ledger (mv-nth 1 (fn-rl-settle slot (fn-rl-gensi slot fn-resource-ledger) fn-resource-ledger)))))
  :in-theory (e/d (fn-rl-wfp unsigned-byte-p)
        (fn-resource-ledgerp fn-rl-settle update-fn-rl-idsi fn-rl-next fn-rl-count fn-rl-settle-keeps-representation)))))
 
@@ -559,15 +576,6 @@
  :hints (("Goal" :in-theory
   (e/d (fn-rl-draw fn-rl-charge) (nth update-nth fn-rl-charge-from))))))
 
-(local (defthm fn-rlo-gens-list-read-nat
- (implies (and (fn-rl-gensp xs) (natp i) (< i (len xs))) (natp (nth i xs)))
- :hints (("Goal" :induct (nth i xs) :in-theory (enable fn-rl-gensp)))))
-
-(local (defthm fn-rlo-gens-reader-nat
- (implies (and (fn-resource-ledgerp ledger) (natp i) (< i (fn-rl-gens-length ledger)))
-          (natp (fn-rl-gensi i ledger)))
- :hints (("Goal" :in-theory (e/d (fn-resource-ledgerp fn-rl-gensi fn-rl-gens-length)
-                                (fn-rl-gensp nth))))))
 
 (defthm fn-rlo-issued-token-is-live
  (implies (and (fn-resource-ledgerp ledger)
@@ -813,4 +821,29 @@
   :in-theory (e/d (fn-rlo-output fn-rlo-physical)
    (fn-rlo-livep fn-rlo-settle-ready update-fn-rl-elensi update-fn-rl-trailersi)))))
 
+)
+
+; Exhaustion retires a row without blocking the remaining free chain.
+(encapsulate ()
+(local (include-book "std/lists/update-nth" :dir :system))
+(local (defthm fn-rlo-release-preserves-generation-and-head-fields
+ (implies (member-equal field '(4 20))
+  (equal (nth field (fn-rl-release-from i slot mask ledger)) (nth field ledger)))
+ :hints (("Goal" :induct (fn-rl-release-from i slot mask ledger)
+  :in-theory (e/d (fn-rl-release-from fn-rl-update-ci) (nth update-nth))))))
+(local (defthm fn-rlo-base-settlement-frames-generation-and-head
+ (let ((after (mv-nth 1 (fn-rl-settle slot gen ledger))))
+  (and (equal (fn-rl-gensi slot after) (fn-rl-gensi slot ledger))
+       (equal (fn-rl-next after) (fn-rl-next ledger))))
+ :hints (("Goal" :in-theory (e/d (fn-rl-settle fn-rl-gensi fn-rl-next)
+   (fn-rl-release-from nth update-nth))))))
+(defthm fn-rlo-exhausted-settlement-keeps-free-head
+ (implies (<= *fn-rl-word-max* (fn-rl-gensi slot ledger))
+  (let ((after (mv-nth 1 (fn-rlo-settle-ready slot ledger))))
+   (and (equal (fn-rl-next after) (fn-rl-next ledger))
+        (equal (fn-rl-gensi slot after) (fn-rl-gensi slot ledger)))))
+ :hints (("Goal" :use ((:instance fn-rlo-base-settlement-frames-generation-and-head
+    (gen (fn-rl-gensi slot ledger))))
+  :in-theory (e/d (fn-rlo-settle-ready)
+   (fn-rl-settle fn-rl-gensi fn-rl-next update-fn-rl-next update-fn-rl-idsi)))))
 )
