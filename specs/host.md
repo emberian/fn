@@ -1949,7 +1949,7 @@ records monotonic start/duration, its diagnostic span/parent identifiers,
 CID and available ACL2 connection/response generations, phase and exit kind.
 Missing semantic identity is null; a span identifier is not durable acceptance.
 The macro preserves multiple values, conditions and nonlocal exits. Disabled
-owner/mux hooks take the existing measurement flag branch without evaluating
+owner/mux hooks take two cheap diagnostic flag tests without evaluating
 trace identities or reading counters. Legacy `FN_OWNER_MEASURE` output remains
 available, with a monotonic clock replacing its wall clock.
 

@@ -18,36 +18,37 @@ PREFIX = "FN_TRACE "
 def analyze(path: Path) -> dict:
     groups = {}
     summaries = []
-    for number, line in enumerate(path.open(encoding="utf-8", errors="replace"), 1):
-        if not line.startswith(PREFIX):
-            continue
-        try:
-            event = json.loads(line[len(PREFIX):])
-            if event["type"] == "summary":
-                summaries.append(event)
+    with path.open(encoding="utf-8", errors="replace") as stream:
+        for number, line in enumerate(stream, 1):
+            if not line.startswith(PREFIX):
                 continue
-            if event["type"] != "span":
-                raise ValueError("unknown trace record type")
-            key = (event["phase"], event["allocation_scope"])
-            duration = event["duration_us"]
-            allocation = event["allocated_bytes"]
-            if (not isinstance(duration, int) or duration < 0
-                    or (allocation is not None and (not isinstance(allocation, int) or allocation < 0))):
-                raise ValueError("invalid span measurement")
-            row = groups.setdefault(key, dict(phase=key[0], allocation_scope=key[1],
-                samples=0, duration_us_inclusive=0, max_duration_us=0,
-                allocation_samples=0, allocated_bytes_inclusive=0, max_allocated_bytes=0,
-                outcomes=Counter()))
-            row["samples"] += 1
-            row["duration_us_inclusive"] += duration
-            row["max_duration_us"] = max(row["max_duration_us"], duration)
-            row["outcomes"][event["outcome"]] += 1
-            if allocation is not None:
-                row["allocation_samples"] += 1
-                row["allocated_bytes_inclusive"] += allocation
-                row["max_allocated_bytes"] = max(row["max_allocated_bytes"], allocation)
-        except (KeyError, TypeError, ValueError) as error:
-            raise ValueError(f"{path}:{number}: invalid FN_TRACE record: {error}") from error
+            try:
+                event = json.loads(line[len(PREFIX):])
+                if event["type"] == "summary":
+                    summaries.append(event)
+                    continue
+                if event["type"] != "span":
+                    raise ValueError("unknown trace record type")
+                key = (event["phase"], event["allocation_scope"])
+                duration = event["duration_us"]
+                allocation = event["allocated_bytes"]
+                if (not isinstance(duration, int) or duration < 0
+                        or (allocation is not None and (not isinstance(allocation, int) or allocation < 0))):
+                    raise ValueError("invalid span measurement")
+                row = groups.setdefault(key, dict(phase=key[0], allocation_scope=key[1],
+                    samples=0, duration_us_inclusive=0, max_duration_us=0,
+                    allocation_samples=0, allocated_bytes_inclusive=0, max_allocated_bytes=0,
+                    outcomes=Counter()))
+                row["samples"] += 1
+                row["duration_us_inclusive"] += duration
+                row["max_duration_us"] = max(row["max_duration_us"], duration)
+                row["outcomes"][event["outcome"]] += 1
+                if allocation is not None:
+                    row["allocation_samples"] += 1
+                    row["allocated_bytes_inclusive"] += allocation
+                    row["max_allocated_bytes"] = max(row["max_allocated_bytes"], allocation)
+            except (KeyError, TypeError, ValueError) as error:
+                raise ValueError(f"{path}:{number}: invalid FN_TRACE record: {error}") from error
     rows = list(groups.values())
     for row in rows:
         row["mean_allocated_bytes"] = (row["allocated_bytes_inclusive"] / row["allocation_samples"]
@@ -96,7 +97,7 @@ def main() -> int:
                   f'{row["max_allocated_bytes"]} {dict(row["outcomes"])}')
         for summary in report["summaries"]:
             print(f'samples: attempts={summary["attempts"]} recorded={summary["recorded"]} '
-                  f'dropped={summary["dropped"]} every={summary["sample_every"]}')
+                  f'dropped={summary["dropped"]} incomplete={summary.get("incomplete", 0)} every={summary["sample_every"]}')
         for row in report.get("comparisons", []):
             print(f'comparison {row["phase"]} {row["allocation_scope"]}: '
                   f'mean-allocated delta={row["mean_allocated_bytes_delta"]}, '

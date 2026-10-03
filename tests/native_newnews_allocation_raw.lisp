@@ -1,6 +1,8 @@
 ;;; Actual native counterpart/registered-creator discrimination. Not a proof
 ;;; or a whole-plan allocation tariff; source-loaded warnings stay in the log.
 (in-package "ACL2")
+(load "host/native/trace.lisp")
+(fnn-trace-start :capacity 32 :allocation :isolated-process)
 (require :sb-posix)
 (require :sb-bsd-sockets)
 
@@ -150,10 +152,15 @@
                (assert (= (length octets) *fnout-window*)))))
       (dotimes (i 4) (run))
       (sb-ext:gc :full t)
-      (let ((before (sb-ext:get-bytes-consed)))
-        (dotimes (i 32) (run))
+      ;; Trace bookkeeping is outside the original allocation interval;
+      ;; formatting is outside both measurements. This probe is isolated.
+      (let ((allocated (fnn-trace-span (route)
+                         (let ((before (sb-ext:get-bytes-consed)))
+                           (dotimes (i 32) (run))
+                           (- (sb-ext:get-bytes-consed) before)))))
         (format t "native_newnews_allocation: matched-line route=~s quantum=4096 repeats=32 allocated=~d~%"
-                route (- (sb-ext:get-bytes-consed) before))))))
+                route allocated)))))
+(fnn-trace-report *standard-output*)
 
 ; Actual private stobj and semantic window implementation. These grants only
 ; exercise buffer ownership, not admission or typed ledger settlement.
