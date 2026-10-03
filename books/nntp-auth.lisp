@@ -1590,13 +1590,23 @@
 ; The host's re-entry after the handshake (RFC 4642 section 2.2.2).  It is a
 ; wire event and not a command: no client octet produces it, and it emits no
 ; reply.  The session leaves handshaking with a TLS layer recorded; the base
-; session is untouched, because the protocol state was already reset when
-; 382 was emitted.
+; cursor is cleared at this successful-handshake receipt: RFC 4642 section
+; 2.2.2 requires forgetting the current group and article. MODE effects and
+; configured peer identity survive; compression establishment resets neither.
 ; RFC 8054: the same event after a 206 says the host installed the owed
 ; compression layer: the session leaves the hold with the layer active and
 ; its protocol state (pending, subject, TLS) unchanged -- compression is not
 ; a new session (section 2.2.2 resets nothing).  Which transition the host
 ; completed is this session's to know, not the event's.
+(defun fn-auth-tls-reader-base (as)
+  "Forget the pre-TLS reader cursor; preserve MODE and configured peer state."
+  (declare (xargs :guard t))
+  (let* ((ps (fn-auth-session-base as))
+         (post (fn-peer-session-base ps)))
+    (fn-peer-with-base
+     ps (fn-post-make-session
+         (fn-nntp-set-cursor (fn-post-session-base post) nil nil) nil))))
+
 (defun fn-auth-tls-established (as)
   (declare (xargs :guard t))
   (if (fn-zc-owedp (fn-auth-session-compress as))
@@ -1608,7 +1618,7 @@
                              (fn-auth-session-ctx as) (fn-auth-session-failures as))
        nil nil)
     (fn-post-make-result
-     (fn-auth-make-session (fn-auth-session-base as) (fn-auth-session-config as)
+     (fn-auth-make-session (fn-auth-tls-reader-base as) (fn-auth-session-config as)
                            nil nil t nil (fn-auth-session-compress as)
                            (fn-auth-session-ctx as) (fn-auth-session-failures as))
      nil nil)))
@@ -1914,6 +1924,7 @@
 (verify-guards fn-auth-redeem-eventp)
 (verify-guards fn-auth-redeem-outcome)
 (verify-guards fn-auth-starttls)
+(verify-guards fn-auth-tls-reader-base)
 (verify-guards fn-auth-tls-established)
 (verify-guards fn-auth-tls-eventp)
 (verify-guards fn-auth-command)
@@ -2579,6 +2590,25 @@
                             fn-nntp-sessionp fn-nntp-session-consistentp
                             fn-auth-configp fn-auth-single fn-nntp-single
                             fn-nntp-printable-tokenp fn-prin-idp))))))
+
+(local
+ (defthm fn-auth-tls-reader-base-preserves-consistentp
+   (implies (fn-auth-session-consistentp as archive)
+            (fn-peer-session-consistentp (fn-auth-tls-reader-base as) archive))
+   :hints (("Goal" :in-theory
+            (union-theories (theory 'minimal-theory)
+             '(fn-auth-tls-reader-base fn-auth-session-consistentp
+               fn-peer-session-consistentp fn-post-session-consistentp
+               fn-post-sessionp fn-nntp-session-consistentp
+               fn-nntp-set-cursor fn-nntp-make-session
+               fn-nntp-session-group fn-nntp-session-current
+               fn-peer-session-base-of-fn-peer-with-base
+               fn-peer-sessionp-of-fn-peer-with-base
+               fn-post-session-shapep-of-fn-post-make-session
+               fn-post-session-base-of-fn-post-make-session
+               fn-post-session-awaiting-of-fn-post-make-session
+               fn-nntp-set-cursor-sessionp
+               fn-nntp-set-cursor-keeps-projection))))))
 
 (local (defthm fn-auth-tls-established-preserves-consistentp
   (implies (fn-auth-session-consistentp as archive)

@@ -1500,7 +1500,9 @@ served by `books/nntp-auth.lisp`, which emits a `(:starttls)` effect. The
 native owner loads a configured OpenSSL 3 server context and performs the
 handshake in `host/native/tls.lisp`; the development adapter uses Python's
 `ssl` module. Both adapters report `(:tls-established)` to ACL2 only after a
-successful handshake. The book sees plaintext octets on both sides of that
+successful handshake. That receipt clears the selected group and current
+article (RFC 4642 section 2.2.2), preserving MODE effects. The receipt used
+for compression establishment preserves the cursor. The book sees plaintext octets on both sides of that
 boundary, and no theorem in this tree says anything about confidentiality,
 integrity, certificate validation, cipher selection or the handshake itself.
 The OpenSSL library, dynamic loader, C ABI and socket BIO are explicit native
