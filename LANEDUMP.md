@@ -239,3 +239,32 @@ native-extent-observer-b4f03503c-2026-10-03. Actual held-success image pending
 next Integration assembly. No active native runs; current repaired BP or normal
 held-read next when Integration supplies matching image/scope. Curves still held
 until existing fixture152da/native-n7 compatibility is actually established.
+
+
+## Current candidate watch and next failure consumer, 2026-10-03
+
+Integration assigned existing sol2-funded-observer207c34f64 and repaired
+sol2r-funded-observer291daa59c to this lane for read-only watch/first-failure
+routing; sole writer/build authority stays Integration. First cut failed
+world-check before image (three stale generated worlds), then minimal repaired
+cut passed world/interfaces and failed host-books: DTN world lacks
+resource-vector-exec for fn-resource-ledger. Both exact runs preserved; no
+native feature verdict or old-image transfer. First two intended native cases
+are actual funded mux POST/stop and normal held read, sequential24GiB scopes.
+
+Prepared actual SCN-216 held-SIGTERM fixture: direct read held/cancelled,
+actual signal, affirmative native join-call with live thread, physical release,
+actual join-return/settlement, clean exit only after cleanup and exact pre-stop
+ARTICLE bytes after restart. Two join diagnostics sit outside E at existing
+physical join call/return; they do not classify service outcomes or claim
+SBCL internal waiting. Missing observations stay unavailable. Physical hold
+release cleanup is installed before startup so a failed assertion cannot leave
+our worker held during node cleanup. Nine transport checks pass; native image
+fixture remains pending a cut containing these labels.
+
+Groundwork/Runtime froze :job-result TID TOKEN VERDICT for actual stored direct
+literal results and actual owner condition conversion. Extent now emits that
+instead of :io-complete: cache/no-pread outcomes never fabricate a device event.
+Runtime owns condition conversion, Groundwork new machine digest/session.
+Implicit wait/P/other O edges and exact model/image dependency alignment remain
+owed; collector COMPLETE never asserts full physical coverage.

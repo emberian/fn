@@ -36,13 +36,13 @@
                    (fnn-with-observed-mutex (mutex :extent :wait-p t)
                      (assert (sb-thread:holding-mutex-p mutex))
                      ;; Literal transport fixture, not an actual fn read or model verdict.
-                     (fnn-extent-native-observe :io-complete nil '(opaque-token) :read)))))))
+                     (fnn-extent-native-observe :job-result t '(opaque-token) :read)))))))
   (sb-thread:join-thread thread)
   (multiple-value-bind (status events reason) (fnn-native-observation-events *fnn-native-observer*)
     (assert (eq status :complete)) (assert (null reason))
     (assert (stringp measured-identity))
     (assert (equal events (list (list :acquire measured-identity :extent)
-                               (list :io-complete '(opaque-token) :read)
+                               (list :job-result measured-identity '(opaque-token) :read)
                                (list :release measured-identity :extent))))
     (format t "EXTENT-TRANSPORT ~s~%FULL-PAGEIO-COMPARISON :UNAVAILABLE~%" events)))
 ;; Unknown native thread identity cannot acquire a comparable event by alias.
