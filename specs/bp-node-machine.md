@@ -5134,3 +5134,16 @@ list framing/carry and whole message encoding remain S068 frontiers; quantum
 source-matched multi-peer/application-receipt/reopen qualification and whole
 scheduler/refinement theorems remain owed. No stored transfer is truncated when
 a scheduling quantum ends.
+
+Ordinary live-session abort followthrough (PRF-1296): the single writer first
+removes every future TURN/FINISH invocation. ACL2 permits retirement of an
+ordinary context only without pending source/root/token/source-held/fence. The
+host discards held ACK before TCP-closed and drops volatile input/output aliases;
+durable Store/FNBS/FNRJ facts remain. Context release and observed physical close
+are independent receipts. Fenced or unknown publishing debt stays discoverable,
+and an unobserved close still holds the bank/root Store. Actual raw four-way
+ordinary/fenced × observed/unobserved-close matrix PASS; no native or composed
+refinement claim. This fixes normal shutdown of a live accepted peer, which
+otherwise stranded the bank despite its disabled continuation. SCN1110/1125/1126
+remain actual source-process consumers to execute on the current initialized
+world. Matching profile/teeth certification pending.

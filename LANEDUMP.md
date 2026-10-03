@@ -3447,3 +3447,16 @@ ARTICLE/Web/reopen selector remains pending History's single current-source
 wrapper; complete output/decoded heap funding and global HM coverage remain open.
 Earlier PRF1288 'planned' prose is superseded by its canonical registry status
 uncertified-at-current-digest; no proof or endpoint completion claim.
+
+Ordinary live-session abort followthrough (PRF-1296): the single writer first
+removes every future TURN/FINISH invocation. ACL2 permits retirement of an
+ordinary context only without pending source/root/token/source-held/fence. The
+host discards held ACK before TCP-closed and drops volatile input/output aliases;
+durable Store/FNBS/FNRJ facts remain. Context release and observed physical close
+are independent receipts. Fenced or unknown publishing debt stays discoverable,
+and an unobserved close still holds the bank/root Store. Actual raw four-way
+ordinary/fenced × observed/unobserved-close matrix PASS; no native or composed
+refinement claim. This fixes normal shutdown of a live accepted peer, which
+otherwise stranded the bank despite its disabled continuation. SCN1110/1125/1126
+remain actual source-process consumers to execute on the current initialized
+world. Matching profile/teeth certification pending.

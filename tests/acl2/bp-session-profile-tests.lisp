@@ -36,3 +36,13 @@
 (assert-event
  (equal (car (fn-bpsg-step '(:bp-session-grant 2 7 :outgoing nil nil) :rearm-socket)) :fault))
 (assert-event (not (fn-bpsg-release-ready t t nil nil nil nil nil)))
+
+(assert-event (equal (fn-bpsg-context-abort-plan nil nil nil nil nil) :retire-context))
+(assert-event (equal (fn-bpsg-context-abort-plan t nil nil nil nil) :retain-context))
+(assert-event (equal (fn-bpsg-context-abort-plan nil '(:root) nil nil nil) :retain-context))
+(assert-event (equal (fn-bpsg-context-abort-plan nil nil '(:token) nil nil) :retain-context))
+(assert-event (equal (fn-bpsg-context-abort-plan nil nil nil '(:source) nil) :retain-context))
+(assert-event (equal (fn-bpsg-context-abort-plan nil nil nil nil t) :retain-context))
+; Logical terminal alone cannot invent a physical return receipt.
+(assert-event (equal (car (fn-bpsg-step '(:bp-session-grant 2 1 :incoming nil nil)
+                                        :released-context)) :retain))

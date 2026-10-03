@@ -100,6 +100,25 @@
     (fnn-bp-session-observe bank grant :released-context))
    (t nil))))
 
+(defun fnn-bp-session-retire-ordinary-context (grant)
+ ;; Abort has already removed every future host TURN/FINISH invocation.
+ (let ((conn (fnn-bpsg-conn grant)))
+  (when (and conn
+        (eq (fnn-core 'fn-bpsg-context-abort-plan
+              (fnn-tclc-source-pending conn) (fnn-tclc-source-root conn)
+              (fnn-tclc-source-token conn) (fnn-tclc-source-held conn)
+              (fnn-tclc-fenced conn)) :retire-context))
+   ;; No unreleased ACK may be flushed during the logical close. Existing
+   ;; FNBS/Store/FNRJ durable facts outlive these private volatile aliases.
+   (fnn-tcl-drop conn)
+   (fnn-tcl-turn-lost conn)
+   (setf (fnn-tclc-finished conn) t (fnn-tclc-carry conn) nil
+         (fnn-tclc-pending conn) nil (fnn-tclc-on-ready conn) nil
+         (fnn-tclc-input-buffer conn) nil (fnn-tclc-input-vector conn) nil
+         (fnn-tclc-input-octets conn) nil (fnn-tclc-input-materialize-end conn) nil
+         (fnn-tclc-source-more conn) nil)
+   t)))
+
 (defvar *fnn-bp-session-stranded-roots* nil)
 
 (defun fnn-bp-session-abort-all (bank &optional (signal-condition t))
@@ -113,6 +132,8 @@
    ;; dependencies remain discoverable; physical close has its own receipt.
    (setf (fnn-bpsg-turn grant) nil (fnn-bpsg-finish grant) nil)
    (handler-case (fnn-bp-session-retire-private-source grant)
+    (serious-condition (c) (unless first-condition (setq first-condition c))))
+   (handler-case (fnn-bp-session-retire-ordinary-context grant)
     (serious-condition (c) (unless first-condition (setq first-condition c))))
    (handler-case (fnn-bp-session-close bank grant)
     (serious-condition (c) (unless first-condition (setq first-condition c))))

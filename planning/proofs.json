@@ -22891,6 +22891,29 @@
         "tests/native_tcpcl_retained_turn_raw.lisp"
       ],
       "progress_note": "2026-10-03 actual retained-controller raw deadline boundary/established source and held END ACK fixture PASS. Warm hbox normal definitions/guards plus14 literal assertions PASS (whole book1010 steps); definition-expansion helper names are not completion keystones. Matching affected-root certification and proposed composed custody boundary remain pending. SCN-1126 prepared, actual native real-time contact timeout unexecuted. Captured-input followthrough: fourth BUFFERED argument defers expiration only for an already retained bounded framing/materialization action, so a header physically received before deadline can complete without another read. Actual raw fixture and source-control/custody composition PASS; normal four-argument guard admission and15 assertions PASS; helpers87/44 steps, rule-classes NIL. Final exact certificate pending; earlier three-argument2155553 certificate has a different source digest and does not cover this followthrough. Final four-argument book+teeth certify-20261003T152229Z-2170515 PASSED2/0 archived/indexed. This certifies the changed definitions/guards and direct helper/literal assertions, not the still-proposed composed host/custody boundary."
+    },
+    {
+      "id": "PRF-1296",
+      "title": "Ordinary aborted BP contexts retire without manufacturing physical return",
+      "statement": "Proposed composed boundary for fnn-bp-session-abort-all: after the single writer removes TURN/FINISH, fn-bpsg-context-abort-plan permits volatile ordinary context retirement only with no pending source/root/token/held source/fence. END ACK is discarded before TCP-closed. Fenced or unknown publication dependencies remain held, and context retirement cannot settle a grant without an independently observed physical close. The definition-expansion helper is not a completion keystone.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-1276",
+        "PRF-1291"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/bp-session-profile.lisp",
+        "tests/acl2/bp-session-profile-tests.lisp",
+        "host/native/bp-session.lisp",
+        "tests/native_bp_session_bank_raw.lisp"
+      ],
+      "progress_note": "2026-10-03 actual controller/core-leaf raw matrix PASS for ordinary versus fenced context and observed versus unobserved physical close. Source/control composition and exact affected-root certification pending; full host no-future-publication/custody refinement remains proposed."
     }
   ]
 }
