@@ -63,3 +63,12 @@
           (next (fn-ocap-at 1 (fn-ocap-preview wire start end fn-octets))))
      (and (natp start) (not (<= start end))
           (not (and (<= start next) (<= next end)))))))
+
+; No metadata-only descriptor or mutable policy value can manufacture a tariff.
+(assert-event
+ (let ((preview '(:preview 9 :newnews nil)))
+  (and (equal (fn-ocap-unpriced-tariff preview) '(:unpriced :newnews))
+       (not (fn-ocap-tariffp (fn-ocap-unpriced-tariff preview)))
+       (equal (fn-ocap-admit-preview preview
+                (fn-ocap-unpriced-tariff preview) 1048576)
+              '(:refused :unpriced-output-family :newnews)))))

@@ -101,6 +101,12 @@
        (< (caddr x) 18446744073709551616)
        (null (cdddr x))))
 
+; Current producer is explicitly unsupported. A selected family's actual
+; footprint producer replaces this at the caller when its tariff is known.
+(defun fn-ocap-unpriced-tariff (preview)
+  (declare (xargs :guard t))
+  (list :unpriced (fn-ocap-at 2 preview)))
+
 (defun fn-ocap-admit-preview (preview tariff capacity)
   (declare (xargs :guard t))
   (cond ((not (fn-ocap-previewp preview))
