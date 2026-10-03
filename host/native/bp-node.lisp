@@ -1197,16 +1197,17 @@ uncertain, as it does everywhere else."
         ;; Preserve the authority through process termination; neither Store
         ;; nor the FNBS lifecycle lock can be reclaimed under live debt.
         (push (list bank owner bp) *fnn-bp-session-stranded-roots*))
-       (unwind-protect
-           (when control (fnn-bpnc-retire control))
-        (unwind-protect
-             (when listener (fnn-bplc-close-all listener))
-          (unwind-protect
-               (when (and release-roots owner)
-                 (ignore-errors (fnn-owner-action 'fn-owner-app-unbind-receipt-store))
-                 (fnn-owner-feed-close-all owner)
-                 (fnn-store-close (fnn-owner-service-store owner)))
-            (when release-roots (fnn-bps-release bp)))))
+       (flet ((cleanup (operation)
+                (handler-case (funcall operation)
+                 (serious-condition (condition)
+                  (unless cleanup-condition (setq cleanup-condition condition))))))
+        (when control (cleanup (lambda () (fnn-bpnc-retire control))))
+        (when listener (cleanup (lambda () (fnn-bplc-close-all listener))))
+        (when (and release-roots owner)
+         (cleanup (lambda () (fnn-owner-action 'fn-owner-app-unbind-receipt-store)))
+         (cleanup (lambda () (fnn-owner-feed-close-all owner)))
+         (cleanup (lambda () (fnn-store-close (fnn-owner-service-store owner)))))
+        (when release-roots (cleanup (lambda () (fnn-bps-release bp)))))
        (unless primary-condition
         (cond (cleanup-condition (error cleanup-condition))
               ((not release-roots)
