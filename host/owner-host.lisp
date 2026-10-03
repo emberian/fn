@@ -265,6 +265,8 @@
 ;; Lane credits (B5, PRF-380): the memory credits the served read, the
 ;; commit's steps and the close move (fn-mca-read-span over fn-oas-read-span).
 (include-book "../books/owner-credits")
+; Selective available source reader: no legacy raw theorem is transferred.
+(include-book "../books/served-available-read")
 ; lane health-truth-journal (PKT-872, PRF-360): the journal writer never keeps a torn line.
 (include-book "../books/owner-time-journal-writer")
 ; lane time-bars (PRF-384): the committer's ledger of the request in flight
@@ -4382,6 +4384,10 @@
                    (<= end (fn-octets-len fn-octets))))
          (mv :bad-range nil nil state))
         (t
+        ;; Available metadata uses a distinct source reader; its selective
+        ;; owner refinement/guards are owed. Raw identity and chronology stay
+        ;; on the actual selected archive/index, including authorized views.
+        ;; Legacy equations below describe the preserved raw route only.
         ;; PKT-828: at the reader view while the committer holds a capture,
         ;; the working view put back after it (books/owner-reader-read.lisp
         ;; fn-orr-read-span; with no capture it is fn-scr-ocfg-read-span).
@@ -4415,7 +4421,7 @@
         ;; the chain equation's fn-gacc-okp.  Memory: one entry per read rule
         ;; text in use (measure at convergence).
          (let* ((cache (fn-scr-prepare-access (fn-owner-access-cache state) owner id))
-                (RC (fn-mca-read-span
+                (RC (fn-av-mca-read-span
                       (fn-owner-credits state)
                       (fn-owner-ocfg state) (fn-owner-reader-views state)
                       id start end cache sched (fn-owner-article-slots state)

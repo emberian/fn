@@ -280,6 +280,8 @@
      (t (fn-nntp-archive-command-pinned session archive index verdicts
                                        env keyword args fn-arena)))))
 
+(verify-guards fn-proto-archive-command-available-cat)
+
 ; Only enumeration/navigation selects the logical available projection.
 ; Retrieval identities, overview/header ranges and NEWNEWS chronology stay raw.
 (defun fn-av-available-commandp (keyword args)
@@ -320,6 +322,8 @@
    (fn-proto-archive-command-available-cat
     session archive index verdicts env keyword args v fn-arena fn-cat)
    :pinned t))
+
+(verify-guards fn-scr-command-available)
 
 ; No raw-pinned equality claim: metadata availability has a distinct selective
 ; reference and requires captured facts completeness. Guard/proof/image and
