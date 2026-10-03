@@ -3933,3 +3933,9 @@ source/proof evidence remains reusable at its exact coordinates. Next new
 repair is orphan startup settlement consuming actual executor drained state
 and sticky old-log close debt; Runtime and Horse Exits own producer APIs.
 No active operator ACL2/build process; no full image gate or live owner.
+
+Runtime30d6540a4 drained observation now consumed by owner-run orphan startup
+and served terminal conditions. Actual E-locked helper + owner-run source
+fixture passes joined-with-debt; previous f2b8 cleanup fails by releasing
+authority after join. Horse Exits independently owns log-close debt and
+execute-run tail; no overlapping io/operator-live changes here.

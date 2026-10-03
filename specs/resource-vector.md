@@ -708,3 +708,9 @@ entry/discovery buffers currently draw from the spare pool as well; partitioning
 that protected recovery subreserve is still required to prevent double
 exclusion during nonempty Store open. A minimum DEFAULT launch contribution
 does not establish complete recovery/cache transient funding.
+A joined executor thread does not settle retained constructor, reset or draw
+custody. `fnn-extent-executor-drained-p` observes the roster under E after
+cleanup; startup without a returned service keeps its existing held marker
+until that roster is empty. A complete served close also requires this
+observation before log, journal and Store settlement. SCN-1130 distinguishes
+ordinary stop return from physical custody settlement using the actual helper.

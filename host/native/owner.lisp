@@ -8353,11 +8353,13 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                    (when (and page-read-started (null service))
                      ;; Recovery/startup failed before publishing SERVICE.
                      ;; Join actual workers before Store/run authority can
-                     ;; settle. A join escape preserves the retained authority.
+                     ;; settle. Both a join escape and retained constructor/
+                     ;; decoder custody preserve the retained authority.
                      (setq log-close-action
                            (fnn-core 'fn-ort-report-close-action nil :unobserved))
                      (fnn-extent-executor-stop)
-                     (setq log-close-action nil))
+                     (when (fnn-extent-executor-drained-p)
+                       (setq log-close-action nil)))
                    (when service
                     ;; Journal closure has not been observed. Retain Store
                     ;; authority if worker/module cleanup escapes before the
@@ -8409,6 +8411,8 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                      '("syncer operation or physical custody remains"))
                                    (unless (fnn-owner-output-drained-p service)
                                      '("output operation or physical dependency remains"))
+                                   (unless (fnn-extent-executor-drained-p)
+                                     '("cold executor custody remains"))
                                    (unless (fnn-mux-drained-p service)
                                      '("mux loop or terminal cleanup debt remains"))
                                    (unless (every (lambda (slot)
@@ -8426,6 +8430,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                  (fnn-mux-drained-p service)
                                  (fnn-owner-syncer-drained-p service)
                                  (fnn-owner-output-drained-p service)
+                                 (fnn-extent-executor-drained-p)
                                  (null (fnn-with-roster (service)
                                          (fnn-owner-service-workers service)))
                                  (null (fnn-owner-service-cold-head service))
