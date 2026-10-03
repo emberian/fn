@@ -424,4 +424,5 @@
 (include-book "owner-retain-carried")
 (include-book "bp-handoff-report")
 (include-book "tcpcl-delivery-invariants")
+(include-book "resource-syncer")
 (include-book "def-cost")
