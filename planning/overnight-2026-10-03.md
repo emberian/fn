@@ -75,6 +75,14 @@ authoritative `origin/dev` may differ from the protected, untouched shared
 checkout. Agent summaries/reports are leads to source and conversations, not
 reading substitutes. This is a working routine, not an installed runtime hook.
 
+Summaries and recovery notes locate prior reading; they do not replace first-time
+understanding. After a compaction, check file revisions before rereading. Retain a
+concise note of already-read file/revision, conclusions and unresolved questions;
+read complete changed documents and the complete documents needed for the current
+consequential decision, in bounded non-overlapping chunks. Recovery does not
+require rereading the whole corpus every time. Recover the actual exchange and
+latest corrections even when the governing files are unchanged.
+
 ## Execution roster and ownership
 
 The first groundwork wave is active: Integration, Runtime coordination, Served
@@ -165,13 +173,14 @@ tracker):
 
 | Slice / grouped obligations | Producer -> consumer; assembler | Shared prerequisite | Next discriminating check | Source state / actual blocker |
 |---|---|---|---|---|
-| Frozen first candidate | Captured capabilities and physical actors -> real native service; Integration | Exact declared loaded world and normal/DTN host guards | sol1 host-prefix, then saved images and affected native modules | `37f501197` launched; unchanged bytes, subsequent READYs next wave. No new native verdict yet |
-| Direct HM boundary (HM02, PRF-1254, SCN-1082) | Actual direct read entries -> machine and literal realization checker -> empirical trace; Integration assembles, Groundwork/Tools/Empirical own consumers | Same direct dependency bytes, primitive observation scope; funded pool excluded | Actual shared-label cancellation/late-return image trace and clean cancel-preservation proof | Machine `830c23c9c` certified, literal reader `85ef7725d` READY; next wave. Main proof red remains owned by Groundwork |
-| Funded syncer custody (resource exec and PRF-1252) | Actual mux capacity hold -> typed owner ledger -> syncer draw/physical/outcome; Foundations assembles Runtime and resource helper | Private creator/exec applicability, opaque token plus independent operation generation; two receipts before refund | Actual constructor/install/draw and timeout/late terminal/outcome through native caller | Producer `fb277f4d0`/declarations `c144b33b9` READY; Runtime native fixture refutes generic creator route. Foundations owns explicit private allocation bridge; helper owns exec proofs |
-| Command rows into switch (DC03 -> DC02) | Seven frozen table rows -> `fn-proto-archive-command-cat`; Served assembles helper | Stable session/archive/index/verdict/env/view/arena/catalog inputs, pinned-view policy | Actual generated switch same replies/navigation/withdrawal and clean narrow certificate | Helper `f76dbfd6c` plus evidence `c39a0de75` accepted by Served; assembly active. Full helper report regeneration is not a prerequisite |
-| Metadata cursor and output custody (GEN-CURSOR) | One-candidate metadata step -> plan continuation -> mux drain; Served assembles Foundations projection | Exact wire residual; bounded initialization/working bytes; admitted connection draw precedes materialization | Actual plan caller emits same reply across byte/visit suspension | Cursor source WIP, local residual bounds admitted; Served owns plan proof, Foundations owns pre-materialization funding. Capture/completed-view and allocation debt explicit |
-| Actual empirical scenarios (SCN-1083) | Qualified image -> mixed posts/readers/checkpoint/reclaim and restart; Empirical owns, Integration assembles/runs | Exact image/host/profile and seeded trace, four outcomes distinct | Model-backed direct custody trace, then matched current-image smoke | Historical paired source `147c8f2a0` READY;48 exact records recover, reclaim refuses credit. Current-image run waits Integration image; bounded reclaim follow-through remains Groundwork storage scope |
-| Short feedback tooling | Changed books -> scoped exact hash/evidence audit; Tools owns, Integration assembles | Full final audit remains available; source normalization limited to audited paths | Same scoped verdict with unrelated moved books retained outside gate | Implementation active; existing logs show168/173s post-ACL2 overhead. No new agents or broad performance audit |
+| Frozen first candidate | Captured capabilities and physical actors -> real native service; Integration | Exact declared loaded world and normal/DTN host guards | sol1 host-prefix, then saved images and affected native modules | Immutable `37f501197`: certification 234 passed/0 failed,784 matching cached; prefix/images pending, no native verdict |
+| Direct HM boundary (HM02, PRF-1254, SCN-1082) | Actual direct read entries -> machine and literal realization checker -> empirical trace; Integration assembles, Groundwork/Tools/Empirical own consumers | Same direct dependency bytes and grounded primitive observations; funded pool excluded | Shared-label cancellation/late-return image trace and clean cancel-preservation proof | Machine/literal reader source landed; `fa21382ab` adds actual `:READ`, machine/tests certificate passed. Main cancellation proof remains red/owned; full replay unavailable until actual locks/pins match |
+| Funded syncer custody (resource exec and PRF-1252) | Actual mux capacity hold -> typed owner ledger -> syncer draw/physical/outcome; Foundations assembles Runtime and resource helper | Validated private creator, opaque token plus independent operation generation; two receipts before refund | Matching-image actual mux POST/stop, held cleanup, timeout and after-release starter failure | Creator repaired; actual start-syncer, typed methods, physical join and fn-oqw completion fixture passes0.26s, supplied local12-thread/1MiB projection. Helper bank correspondence `724b8e92c` consumed as `b05a2e7ac`; bootstrap guards and matching certification being assembled. Runtime owns production wire/late-fault path |
+| Command rows into switch (DC03 -> DC02) | Seven table rows -> `fn-proto-archive-command-cat` -> actual `fn-scr-command`; Served assembles helper | Stable session/archive/index/verdict/env/view/arena/catalog inputs, pinned-view policy | Actual generated dispatch/chain replay and selected native command cases | DC03 consumed in Served `38f75aaa9`; generated caller installed. Helper continues LIST/NEWGROUPS/DATE, then available for a stable next seam; undeclared hand fallback removal remains Served debt |
+| Metadata cursor and output custody (GEN-CURSOR) | One-candidate metadata step -> plan continuation -> mux drain; Served assembles Foundations projection | Exact wire residual; bounded initialization/working bytes; admitted connection draw precedes materialization | Actual plan drain equality at byte/visit budgets1 and256, then native sparse/cache-churn output | Served `bb0b20203` includes source shell/switch; composition residual and actual plan drain pass warm checks, source repair being committed. Foundations owns pre-materialization funding; capture/completed-view and allocation debt remain |
+| Actual empirical scenarios (SCN-1083) | Matching actual image -> mixed posts/readers/checkpoint/reclaim and restart; Empirical owns, Integration assembles/runs | Exact image/host/profile and seeded trace, four outcomes distinct | Current-image mixed smoke; literal direct I/O trace only with grounded locks/pins | Historical `147c8f2a0`:48 exact records recover; reclaim refuses credit. Diagnostics `e76d5bc72` image execution pending. No current-image reclaim progress or HM trace claim; Groundwork owns bounded reclaim follow-through |
+| Short feedback tooling | Changed books -> scoped exact hash/evidence audit; Tools owns, Integration assembles | Full final audit remains available; indexed bytes verified | Same scoped verdict and immutable-tree acquisition without repeated Git lookup | Scoped source/evidence audit reduced one installed-evidence query180s->4s; frozen-root negative/commondir memo `19decc5f8` READY. Integration owns actual next acquisition measure; no duplicate build |
+| Carrier/pages and transport ownership | Existing page/carrier implementations and durable peer transitions -> actual service; Groundwork prepares named seams, root assigns continuing owner | Source-bound signatures, safe private state/capture and actual consumer | Narrow selected carrier/page or peer acceptance scenario after a disjoint seam is frozen | No dedicated active worker yet. Current helpers first close bank/bootstrap and command rows; retask only a stable consumed seam, not a new speculative tree or automatic team growth |
 
 An assembler consumes READY promptly or names the concrete blocked-on owner in
 this table/LANEDUMP. A helper can prepare a disjoint continuation while waiting;
@@ -351,6 +360,27 @@ HM03 needs a true carried/historical-config statement for P2/M6/P8, not a bridge
 to a static relation that reconfiguration refutes. HM01/crash work follows the
 actual log open and abstract effect prefixes. When a statement fails, implement
 and connect the useful true replacement.
+
+## Runtime validation triggers
+
+Keep four loops distinct. Warm REPL/scoped certification and reviewed source
+integration continue frequently; target under three minutes from reviewed
+coherent source READY to dev when no concrete correctness blocker is found.
+Build or load an executable candidate when a changed host consumer poses a
+specific runtime question that existing matching artifacts cannot answer. Run
+the selected dynamic scenarios that answer that question, reusing exact matching
+image/dependency/profile evidence. Full qualification belongs to a scoped
+operational claim or convergence, not every source batch.
+
+The frozen sol1 candidate answers host-prefix and the first combined physical
+actor/publication behavior. A subsequent executable candidate is warranted for
+the actual funded mux POST/stop and generated cursor/dispatcher paths absent
+from sol1, once those coherent slices are assembled. Source churn alone is no
+trigger. Do not defer all cross-layer validation to the final release: small
+real creator/method/thread fixtures already refuted and repaired a boundary
+that logical admission missed. Those fixtures do not establish whole-image or
+whole-profile behavior. Integration owns build capacity and picks the smallest
+matching load/image/scenario set; reports and later READYs proceed alongside.
 
 ## Integration, evidence and resources
 
