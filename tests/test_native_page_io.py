@@ -47,6 +47,18 @@ def page_io_primitive_trace(data, token):
     return observations
 
 
+def page_io_issue_arguments(admission):
+    """Transport the literal native issue inputs, never derive them from TOKEN.
+
+    Older or dropped observations cannot supply a model issue input. The
+    certified model, when a full matching trace exists, owns its interpretation.
+    """
+    match = re.search(rb" cid=(\d+) inc=(\d+) eoff=(\d+) elen=(\d+) trailer=(\d+)$", admission)
+    if not match:
+        raise ValueError("missing literal native issue arguments")
+    return tuple(int(value) for value in match.groups())
+
+
 class PageIOObservationTests(unittest.TestCase):
     def test_wrapped_exact_token_keeps_held_and_settlement_events_distinct(self):
         text = (b"PAGE-IO held token=(1 2 3\n  4 5 99999999999999999999) file=3\n"
@@ -84,6 +96,13 @@ class PageIOObservationTests(unittest.TestCase):
                             for k in (b"direct-admit", b"fd-capture", b"job-result", b"direct-settle"))
         with self.assertRaisesRegex(ValueError, "physical-return"):
             page_io_primitive_trace(data, (0, 1, 2, 3, 4, 5))
+
+    def test_model_inputs_cannot_be_reconstructed_from_a_token(self):
+        token_only = b"PAGE-IO observed direct-admit token=(0 1 2 3 4 5) row=(0 1)"
+        with self.assertRaisesRegex(ValueError, "missing literal native issue"):
+            page_io_issue_arguments(token_only)
+        literal = token_only + b" cid=7 inc=8 eoff=9 elen=10 trailer=99999999999999999999"
+        self.assertEqual(page_io_issue_arguments(literal), (7, 8, 9, 10, 99999999999999999999))
 
 
 @requires(DEVELOPER)
@@ -139,6 +158,8 @@ class PageIOTests(unittest.TestCase):
         held = next(line for line in lines if re.search(rb"PAGE-IO held token=.* file=" + file_id + rb"$", line))
         token = tuple(int(n) for n in re.search(rb"token=\(([^)]+)\)", held).group(1).split())
         trace = page_io_primitive_trace(owner.stderr.since(0), token)
+        issue = page_io_issue_arguments(trace["direct-admit"][1])
+        self.assertEqual(str(issue[1]).encode("ascii"), file_id)
         positions = [trace[kind][0] for kind in
                      ("direct-admit", "fd-capture", "job-result", "physical-return", "direct-settle")]
         self.assertEqual(positions, sorted(positions), trace)

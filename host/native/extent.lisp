@@ -1079,8 +1079,9 @@ Otherwise (values TOKEN WORD WORKER): WORD :admitted, or ACL2's refusal."
           (unless (eq word :read-resources-unavailable)
             (fnn-fault (format nil "cold worker binding refused: ~a" word)))
           (return-from fnn-extent-issue-direct (values nil word nil)))
-        (fnn-extent-page-observation "direct-admit token=~s previous-next=~s next=~s row=~s"
-                                     token *fnn-extent-direct-next* next worker-row)
+        (fnn-extent-page-observation
+         "direct-admit token=~s previous-next=~s next=~s row=~s cid=~s inc=~s eoff=~s elen=~s trailer=~s"
+         token *fnn-extent-direct-next* next worker-row cid file eoff elen trailer)
         (setq *fnn-extent-direct-next* next
               *fnn-extent-issued* issued
               *fnn-extent-file-holds* holds)

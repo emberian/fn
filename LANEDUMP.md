@@ -164,3 +164,9 @@ reserved native actor identity; Groundwork supplied exact admitted vocabulary.
 Extent fd/job fixture consumer exists; wait concrete seam source before wiring,
 then preserve actual issue tuple and compare only complete grounded traces.
 New combined image qualification still pending; Integration solely schedules.
+
+Extent admission diagnostics now include actual cid/inc/eoff/elen/trailer
+arguments passed to fn-pio-direct-admit. Existing native handoff fixture
+requires the complete literal tuple; it cannot reconstruct missing inputs
+from the token. Seven image-free transport checks pass. Native execution
+requires an image including this source; no certified replay claim yet.
