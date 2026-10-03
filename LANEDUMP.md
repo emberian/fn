@@ -3794,3 +3794,14 @@ these reference-only factories: trace and remove/price that actual path. LIST
 completed view policy PRF1237, remaining LIST variants/NEWGROUPS, bounded
 HDR/XPAT/OVER and selective owner PROGRAM guards/refinement remain owned.
 No whole-NNTP or full-family boundedness claim from this output cursor alone.
+
+BP served startup source followthrough: actual bp-node serve/bp-app receive now
+use shared fnn-bp-served-owner-start/stop/settle over Operator's captured DEFAULT
+installer before Store recovery. Independent owner authority is claimed before
+constructor work; partial constructor/recovery failure, worker join escape,
+root debt and Store close uncertainty preserve exact authority. Private BP bank
+continues to fund only TCPCL/source contexts. SCN1134 actual entry/helper fixture
+passes seven helper outcomes plus both command failure/cleanup paths, with
+recorded physical seams and actual ACL2 service authority functions. Full tariff,
+actual current pool/Store worker composition and native multi-peer/RQ selectors
+remain open. Offline dispatch/checkpoint/route-table paths unchanged.

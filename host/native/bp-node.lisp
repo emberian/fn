@@ -1092,6 +1092,7 @@ uncertain, as it does everywhere else."
          ;; sequence operation.  There is exactly one BP lifecycle owner.
          (bp (fnn-bps-open-node journal-root config wall wall-error))
          (owner nil)
+         (owner-custody (make-fnn-bp-served-owner-custody))
          (bank nil)
          (*fnn-bp-session-bank* nil)
          (control nil)
@@ -1104,7 +1105,10 @@ uncertain, as it does everywhere else."
          (handler-bind ((serious-condition (lambda (condition)
                            (unless primary-condition (setq primary-condition condition)))))
          (progn
-           (setq owner (fnn-owner-install store-root 1))
+           (setq owner
+                 (if listen-port
+                     (fnn-bp-served-owner-start owner-custody store-root 1)
+                   (fnn-owner-install store-root 1)))
            (when listen-port
              (setq bank (fnn-bp-session-install bp owner transfer-mru +fnn-tcl-segment-mru+)))
            (when control-config
@@ -1221,8 +1225,15 @@ uncertain, as it does everywhere else."
         (when (and release-roots owner)
          (cleanup (lambda () (fnn-owner-action 'fn-owner-app-unbind-receipt-store)))
          (cleanup (lambda () (fnn-owner-feed-close-all owner)))
-         (cleanup (lambda () (fnn-store-close (fnn-owner-service-store owner)))))
-        (when release-roots (cleanup (lambda () (fnn-bps-release bp)))))
+         (unless listen-port
+          (cleanup (lambda () (fnn-store-close (fnn-owner-service-store owner))))))
+        (when listen-port
+         (cleanup (lambda () (fnn-bp-served-owner-stop owner-custody owner))))
+        (when release-roots (cleanup (lambda () (fnn-bps-release bp))))
+        (when listen-port
+         (cleanup (lambda ()
+                    (fnn-bp-served-owner-settle owner-custody owner
+                                              (and release-roots (null cleanup-condition)))))))
        (unless primary-condition
         (cond (cleanup-condition (error cleanup-condition))
               ((not release-roots)

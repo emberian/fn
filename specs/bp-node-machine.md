@@ -5162,3 +5162,23 @@ outbound on-ready keeps its physical-write ordering. Unknown admission results
 remain faults. Actual apply/flush raw matrix PASS; current native SCN1128 and
 updated absent-trust request/receipt selectors remain UNEXECUTED. Full config
 traversal, host correspondence and semantic allocation/GC costs stay open.
+
+Served Store resource startup (SCN-1134): `bp-node serve` and `bp-app receive`
+claim independent owner run authority and call the captured DEFAULT pool
+installer before `fnn-owner-install` opens/replays the Store. The existing BP
+session bank remains distinct and cannot fund decoded Store reads. The node's
+serialized Store owner uses its existing connection allowance of one; incoming
+TCPCL concurrency remains the separate supported BP session profile. The app
+uses its existing owner connection allowance. Offline dispatch/checkpoint/route
+table operations retain their separate offline path. No live pool is reset.
+
+The callback records constructor custody immediately after installation. Failed
+installation may retain its actual Store carrier before returning a service.
+Cleanup marks owner settlement held before joining decoded workers; an escaping
+join never records physical return. All independent listener/journal/BP/feed
+cleanups are attempted while preserving the primary condition. Only observed
+worker termination and successful root cleanup permit the existing ACL2 Store
+settlement decision to close the Store and relinquish run authority. Store-close
+uncertainty fences and retains that carrier. SCN1134 exercises actual command
+bodies with recorded constructors and actual ACL2 authority decisions; it does
+not prove complete resource tariffs or qualify a current native process.
