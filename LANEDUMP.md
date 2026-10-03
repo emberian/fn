@@ -1464,3 +1464,80 @@ present at inspected source; original reports are not new confirmed defects.
 
 ## Source assembly: checkpoint verification stop fence (2026-10-03)
 Astra ed276b5aa composed above S045 readback and independent S114 capture. Two actual verifier loops call the existing refusal hook before each image page/frame segment; custody scope still releases before outer cleanup and old checkpoint remains authoritative. Existing seven real-file schedules, including red/base first-page-stop witness, reused; archive708ec946 verified. No book delta or new proof/image claim; S045's matching snapshot dependency certification and native publication consumer remain outstanding. Only cumulative LANEDUMP conflicted; production/fixture bytes match producer.
+First command: python3 -m unittest tests.test_native_pull_journal_registry
+Three fd/cursor schedules pass0.861s after scoped generated trap inventory
+(one unexpected-round trap). Standalone actual ACL2 schedule case added.
+Actual worker/tick/cursor-for, schedule functions and kernel descriptors/close
+run; new-open/replay leaf records invocation, not a codec or saved-image
+claim. Assertion observed during loop BEFORE ordinary worker exit cleanup,
+so old final cleanup cannot falsely make removal look repaired. ACL2 finite
+assertions added to existing peer-pull tests; book/test certification pending
+next combined Integration cut, no standalone cert/image launched here.
+
+
+## Sol transport: resumable pull/catch-up source (2026-10-03)
+
+S054/S106: the actual single worker retains flights across both families.
+ACL2 sweep/select/action choose one turn and preserve pending continuation
+order. Remote connect/TLS/read/write use one nonblocking attempt; the exact
+unsent range persists on WANT/EAGAIN. Local cold/commit/render/input suffix
+state survives each yield, with callbacks restricted to a guarded captured
+await cell and abandoned before close. The stopping/fault path attempts all
+cleanup and preserves the primary core/store condition. Existing blocking
+round adapter now calls this same continuation; no duplicated protocol loop.
+
+Four raw worker/kernel tests PASS (last 1.946s): trickling pull alongside
+healthy pull and catch-up; retained local cold/commit/render/suffix; primary
+core fault versus failed cleanup; actual TCP connect/refusal and all2000
+bounded-write bytes. Four existing S112 journal tests and TLS client chain/
+hostname verification PASS together with the earlier three tests in3.711s.
+Protocol/journal leaves in the raw fixture are recorded. No saved-image or
+ACL2 certification claim.
+
+PRF-1260 and SCN-1090 are claimed and registered planned/specified. The
+prepared actual-node selector is
+`tests.test_native_peer_pull.NativePeerPullTests.test_trickling_body_retained_while_other_pull_and_catchup_complete`: an incomplete ARTICLE body persists
+while a healthy pull and catch-up complete, then the released body is read
+back exactly. Assembly/Integration own scoped driver/test-root certification,
+world/interface regeneration and this matching-image consumer.
+
+Frontiers: synchronous DNS can still block; each physical attempt returning
+is the stable-sweep theorem's scope. No new arbitrary whole-round expiry,
+rate refusal or truncation. The retained per-peer context/buffer/descriptor
+projection is not funded by NNTP output or syncer grants. S067's push-feed
+fairness remains open. No extra worker threads or shared owner/mux edits.
+Source witness filing follows the coherent source handoff separately.
+
+
+Same immutable harness S054/S106 witness filed:
+`planning/evidence/repair/S054-2c4cd248a09b4542a02348d81dc7f778.json`,
+SHA256 `bda0fe45789751e6cc31e3b18eb81344f8fae195d472458e85be47e0d4011ff3`.
+Base cddce7087 returned the exact intended single AssertionError in0.766s;
+head51c5c4f2e executes the identical designated ID successfully in0.827s,
+no infrastructure/errors/skips. Scope/budget checks pass (1382 changedlines).
+The raw fixture does not execute real protocol codecs or durable barriers;
+certification and prepared actual-node body scenario remain pending.
+
+
+Fixture follow-through632a3533d loads the actual whole pull adapter and
+updates only the scoped S112 fixture's derived unreached dependencies. Four
+round tests PASS1.786s; four registry tests PASS1.799s. Updated same-harness
+receipt `S054-a884a8d71f154c0bbbf8ea440298d9f3.json`, SHA256
+`6e940186a0269c75549aeafe4a2b6891b50a40020dcb8e0ff9c2e4139c338667`,
+again exact intended base assertion versus same designated head pass, with
+no errors/skips/infra. No production semantics changed since51c5c4f2e.
+
+
+Assembly caught a real local cleanup gap: failed cold abandonment/unpin
+could skip the remaining local releases. close-local now invalidates the
+captured await under the mutex first, then independently attempts cold
+abandon, await abandon, response unpin and CID close, preserving the first
+condition. Dispose closes its callback publication state under that same
+mutex and still attempts channel/context/socket cleanup. Added actual
+cleanup-caller fixture: first indeterminate cold release plus later unpin
+fault still attempts await/CID and preserves indeterminate. Five scoped
+round tests PASS1.989s before mutex follow-through; final result below.
+
+## Source assembly: retained pull/catch-up controller (2026-10-03)
+Inputs51c5c4f2e,7dc04be92,632a3533d,30561eb2f,f85112fce; S112 prerequisite already integrated. Actual worker consumes ACL2 sweep/select/action while retaining TCP/TLS ranges, input suffix, cold/await/render continuations. Source review caught cold-abandon failure skipping later local releases; Tools f851 now invalidates callback identity under the same runtime mutex and independently attempts cold/await/unpin/CID releases while preserving first serious condition. Exact base local refusal class remains distinct from core/indeterminate/subclass faults. Before that followthrough, current-source four worker/kernel composition tests PASS1.990s archived7e470956; existing final five producer schedules PASS2.016s reused, no duplicate experiments. Both same-harness archived witnesses bda0fe45/6e940186 verified; all claims/checks PASS.
+CuratedPRF1260 now names the actual called sweep keystone, remains planned pending guard/admission/certificate. Deterministic world umbrellas regenerated; their output/syncer additions already exist on current dev. Whole-tree interface emitter correctly refused on laptop; Integration must regenerate candidate interfaces/ledger/current on buildbox. Narrow first selector: python3 -m unittest tests.test_native_peer_round_driver.PeerRoundDriverTests.test_failed_local_release_attempts_all_custody_cleanup; whole actual adapter+kernel fixture five schedules is tests.test_native_peer_round_driver. Cert roots books/peer-round-driver +tests/acl2/peer-round-driver-tests, plus normal host interface loaded world. Matching-image consumer tests.test_native_peer_pull.NativePeerPullTests.test_trickling_body_retained_while_other_pull_and_catchup_complete remains prepared/unrun. DNS/push fairness/whole-round completion/full-step work and allocation/retained context tariff remain open: current active mapping and repeated suffix filtering may be quadratic per stable sweep; 512 only bounds one physical read/write attempt.

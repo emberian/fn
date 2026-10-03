@@ -19103,6 +19103,15 @@
           "name": "fn-orcs-predict-seal-refines-intern"
         }
       ]
+    },
+    {
+      "id": "PRF-1260",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prd-sweep-visits-all-admitted-rounds"
+        }
+      ]
     }
   ]
 }

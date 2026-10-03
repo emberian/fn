@@ -16,6 +16,7 @@
 (include-book "../../books/identity")
 (include-book "../../books/hybrid-store-injected")
 (include-book "../../books/peer-authored-accept")
+(include-book "../../books/peer-round-driver")
 (include-book "../../books/login-binding")
 (include-book "../../books/public-exposure")
 (include-book "../../books/public-exposure-reply")
