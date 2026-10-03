@@ -5111,3 +5111,8 @@
 (definterface fn-tcl-host-source-more-p :class :ideal)
 (definterface fn-tcl-source-result-action :class :common-lisp-compliant)
 (definterface fn-tcl-source-result-token :class :common-lisp-compliant)
+
+; PRF-1272: allocation-generation producer, distinct from history version.
+; Program global/native installation refinement remains pending.
+(definterface fn-owner-catalog-root-reserve :class :program)
+(definterface fn-owner-catalog-root-current :class :program)

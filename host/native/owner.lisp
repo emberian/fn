@@ -6337,6 +6337,10 @@ by evaluating the form (CREATOR), once per pass."
 pointer and the live state's binding)."
   (let ((cell (assoc name (user-stobj-alist *the-live-state*))))
     (unless cell (fnn-fault "the ~(~a~) stobj is not in this image" name))
+    ;; ACL2 reserves allocation identity BEFORE binding. Even a later binding
+    ;; failure cannot reuse the previous root key at paired view capture.
+    (when (eq name 'fn-cat)
+      (fnn-owner-core 'fn-owner-catalog-root-reserve))
     (setf (cdr cell) value)
     (ecase name
       (fn-cat (setq *fnn-cat* value))

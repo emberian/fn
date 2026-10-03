@@ -21763,6 +21763,25 @@
         "fn-orcs-predict-seal-refines-intern"
       ],
       "progress_note": "Actual normal/DTN host prefixes at frozen1a946582c passed. Full output/effect positive and no-bad omission teeth admitted31/33steps; all19 existing/new test forms admitted in scoped cached world. Matching changed-teeth root certification pending; host files are LD-loaded, not certified. No whole reclaim/custody/allocation claim."
+    },
+    {
+      "id": "PRF-1272",
+      "title": "Catalog allocation incarnation is reserved before native root binding",
+      "statement": "fn-cri-reserve produces a distinct natural-number catalog-root token and advances its counter before host/native/owner.lisp fnn-install-stobj binds a replacement fn-cat. Failed binding never reuses the reserved generation. Actual owner globals and paired-view capture must preserve this allocation namespace independently of history version.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/catalog-root-incarnation.lisp",
+        "tests/acl2/catalog-root-incarnation-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp"
+      ],
+      "progress_note": "Coherent reserve-before-binding source connected to actual native catalog installer; source pushed before verification per current instruction. Pure theorems/teeth, program-global bridge, matching certification/native fault schedule and paired cache consumption pending. Tokens are private to one owner/image lifetime, not persisted or compared across processes."
     }
   ]
 }

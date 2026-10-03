@@ -1785,3 +1785,12 @@ kernel, owner reservation and frontier effects. Standalone Store reservations
 retain the existing codec successor route. The source routing fixture
 `tests/native_retention_identity_route_raw.lisp` checks these calls and order;
 a matching native BP undertake/release/reopen scenario remains required.
+
+Catalog availability capture uses an allocation incarnation distinct from the
+retained history version. The actual native catalog installer reserves an
+ACL2 `(:catalog-root N)` before binding the replacement stobj. A failed binding
+spends that reservation. The counter is natural and never wraps; corrupt state
+refuses instead of resetting. The token is private to one owner/image lifetime,
+not durable identity. Both counter and current root must move together through
+owner-carrier migration. Paired authorization/capture connection and the
+program-global/native installation refinement remain PRF-1272 obligations.
