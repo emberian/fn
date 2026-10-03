@@ -293,3 +293,16 @@ store. No Python reconstruction of injection or article semantics; the baseline
 is the native reply. Clean stop is affirmative EXIT.OK. Python compile passes;
 actual native execution remains pending a matching fixture/image selection.
 Existing ad8da41 sol2g image build is immutable and still watched read-only.
+
+
+## Immutable sol2g prefix obstruction, 2026-10-03
+
+Read-only watch of ad8da41fc44ea92968cc0617f0781c86f8db9a13 ended status2
+at10:24:07Z: default host prefix185includes/43hostlds passed13s, DTN
+prefix did not run because this default-only certificate tree lacks
+books/image-world-dtn. Certify/acquire/validate passed;124 cached pairs
+lack cited manifests, so no certification-claim transfer. Image not built,
+funded/read selectors never started. Integration owns repaired continuation;
+no duplicate build/test.16 exact run/script/status/log objects archived as
+native-sol2g-ad8da41-prefix-2026-10-03, manifest
+a18779e9cf0c265e86f6a4114e1bcabcdf37ac7849a3f571f747538583f71bef.
