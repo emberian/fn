@@ -43,7 +43,8 @@
   (lock (sb-thread:make-mutex :name "fn web completions"))
   (jobs nil) (jobs-closed nil)
   (job-ready (sb-thread:make-waitqueue :name "fn web semantic work"))
-  (conns nil) wake-read wake-write (wake-closed nil) (cleanup-debts nil)
+  (conns nil) wake-read wake-write (wake-closed nil)
+  (wake-read-close :idle) (wake-write-close :idle) (cleanup-debts nil)
   (listener-close :idle) (stop nil))
 
 (defstruct (fnn-web-reactor-conn (:conc-name fnn-web-conn-)
@@ -230,7 +231,13 @@ exposure admission decides (the id, or NIL when it refused)."
         (fnn-web-cleanup face conn :ssl
           (lambda () (fnn-%ssl-free (fnn-web-conn-ssl conn)))))
       (fnn-web-cleanup face conn :socket
-        (lambda () (fnn-socket-shut (fnn-web-conn-socket conn)))))))
+        (lambda ()
+          (multiple-value-bind (ignored receipt condition)
+              (fnn-socket-shut (fnn-web-conn-socket conn))
+            (declare (ignore ignored))
+            (unless (eq receipt :closed)
+              (if condition (error condition)
+                (fnn-fault "web socket close returned no physical receipt")))))))))
 
 (defun fnn-web-wake-locked (face)
   (unless (fnn-web-face-wake-closed face)
@@ -864,18 +871,39 @@ exposure admission decides (the id, or NIL when it refused)."
               (fnn-web-finish face conn)
             (fnn-web-advance face conn t)))))))
 
+(defun fnn-web-close-wakes-locked (face)
+  "Caller holds the face lock: disable publication, then consume each fd once.
+A failed physical return retains its fd and condition as face cleanup debt."
+  (setf (fnn-web-face-wake-closed face) t)
+  (flet ((close-one (fd receipt key setter)
+           (case receipt
+             (:returned nil)
+             (:idle
+              (funcall setter :calling)
+              (handler-case
+                  (progn (when fd (sb-posix:close fd)) (funcall setter :returned))
+                (serious-condition (condition)
+                  (funcall setter :unobserved)
+                  (push (list nil key fd condition) (fnn-web-face-cleanup-debts face))
+                  (error condition))))
+             (otherwise (fnn-indeterminate "web wake descriptor return remains unobserved")))))
+    (fnn-unwind-cleanups ()
+      (close-one (fnn-web-face-wake-read face) (fnn-web-face-wake-read-close face) :wake-read
+                 (lambda (word) (setf (fnn-web-face-wake-read-close face) word)))
+      (close-one (fnn-web-face-wake-write face) (fnn-web-face-wake-write-close face) :wake-write
+                 (lambda (word) (setf (fnn-web-face-wake-write-close face) word))))))
+
 (defun fnn-web-actor-body (face)
-  (unwind-protect
-       (loop until (or *fnn-sigterm-requested* (fnn-web-face-stop face)
+  (fnn-unwind-cleanups
+      ((loop until (or *fnn-sigterm-requested* (fnn-web-face-stop face)
                        (fnn-owner-service-stopping (fnn-web-face-service face)))
-             do (fnn-web-iterate face))
+             do (fnn-web-iterate face)))
     (dolist (conn (fnn-web-face-conns face)) (fnn-web-finish face conn))
     ;; Close publication under its lock before freeing either pipe fd.
     (sb-thread:with-mutex ((fnn-web-face-lock face))
       (setf (fnn-web-face-wake-closed face) t (fnn-web-face-jobs-closed face) t)
       (sb-thread:condition-broadcast (fnn-web-face-job-ready face))
-      (sb-posix:close (fnn-web-face-wake-read face))
-      (sb-posix:close (fnn-web-face-wake-write face)))))
+      (fnn-web-close-wakes-locked face))))
 
 (def-actor fnn-web-spawn :thread-name "fn web face" :roster t)
 (def-actor fnn-web-spawn-semantic :thread-name "fn web semantic" :roster t)
@@ -886,6 +914,7 @@ exposure admission decides (the id, or NIL when it refused)."
          (address (fnn-core 'fn-web-host-plan-address plan))
          (tls (fnn-core 'fn-web-host-plan-tls plan))
          (config (fnn-core 'fn-web-host-plan-config plan))
+         (capacity (fnn-core 'fn-web-host-connection-limit config))
          (limits (fnn-owner-serialized service nil (lambda ()
                    (fnn-core 'fn-web-host-limits
                      (first (fnn-call 'fn-web-host-article-limit *the-live-state*)))) :reader)))
@@ -896,12 +925,12 @@ exposure admission decides (the id, or NIL when it refused)."
     (multiple-value-bind (listener bound-port)
         (fnn-listen port :address (coerce address '(simple-array (unsigned-byte 8) (*))) :family family :backlog 64)
       (let ((face (%make-fnn-web-face :plan plan :config config :limits limits :listener listener
-                                    :capacity (fnn-core 'fn-web-host-connection-limit config)
+                                    :capacity capacity
                                     :tls-context (and tls tls-context) :service service)))
         (setq *fnn-web-face* face)
         (let ((started nil))
-          (unwind-protect
-               (progn
+          (fnn-unwind-cleanups
+              ((progn
                  (multiple-value-bind (r w) (sb-posix:pipe)
                    (setf (fnn-web-face-wake-read face) r (fnn-web-face-wake-write face) w)
                    (fnn-set-nonblocking r) (fnn-set-nonblocking w))
@@ -913,22 +942,19 @@ exposure admission decides (the id, or NIL when it refused)."
                          (lambda (condition) (fnn-owner-thread-escape service condition "web actor"))))
                  (setq started t)
                  (fnn-out "LISTENING-WEB ~d" bound-port)
-                 face)
+                 face))
             (unless started
               ;; A second actor's failed maker must not strand the first
               ;; actor on its empty mailbox during service shutdown.
               (sb-thread:with-mutex ((fnn-web-face-lock face))
                 (setf (fnn-web-face-stop face) t (fnn-web-face-jobs-closed face) t)
-                (sb-thread:condition-broadcast (fnn-web-face-job-ready face)))
-              (when (fnn-web-face-semantic-thread face)
-                (fnn-owner-actor-join service (fnn-web-face-semantic-thread face)))
-              (unless (fnn-web-face-thread face)
-                (sb-thread:with-mutex ((fnn-web-face-lock face))
-                  (setf (fnn-web-face-wake-closed face) t)
-                  (when (fnn-web-face-wake-read face) (sb-posix:close (fnn-web-face-wake-read face)))
-                  (when (fnn-web-face-wake-write face) (sb-posix:close (fnn-web-face-wake-write face)))))
-              (handler-case (fnn-web-close-listener face)
-                (serious-condition () nil)))))))))
+                (sb-thread:condition-broadcast (fnn-web-face-job-ready face))))
+            (when (and (not started) (fnn-web-face-semantic-thread face))
+              (fnn-owner-actor-join service (fnn-web-face-semantic-thread face)))
+            (when (and (not started) (not (fnn-web-face-thread face)))
+              (sb-thread:with-mutex ((fnn-web-face-lock face))
+                (fnn-web-close-wakes-locked face)))
+            (unless started (fnn-web-close-listener face))))))))
 
 (defun fnn-web-close-listener (face)
   "Retain a once-only physical close attempt independently of semantic debt."
@@ -950,6 +976,8 @@ exposure admission decides (the id, or NIL when it refused)."
   (sb-thread:with-mutex ((fnn-web-face-lock face))
     (and (fnn-web-face-jobs-closed face)
          (fnn-web-face-wake-closed face)
+         (eq (fnn-web-face-wake-read-close face) :returned)
+         (eq (fnn-web-face-wake-write-close face) :returned)
          (null (fnn-web-face-jobs face))
          (null (fnn-web-face-cleanup-debts face))
          (every (lambda (thread) (or (null thread) (not (sb-thread:thread-alive-p thread))))
