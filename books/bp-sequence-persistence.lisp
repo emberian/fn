@@ -52,6 +52,36 @@
        (true-listp (fn-bpn-sp-authored s))
        (booleanp (fn-bpn-sp-fencedp s))))
 
+; Keep the transition proof at the constructor boundary: the state shape is
+; extracted once from the input and re-established from the fields written by
+; each cut, rather than reopening the ten-field recognizer in every branch.
+(local
+ (defthm fn-bpn-sp-statep-components
+   (implies (fn-bpn-sp-statep s)
+            (and (booleanp (fn-bpn-sp-rootp s))
+                 (booleanp (fn-bpn-sp-sequencep s))
+                 (booleanp (fn-bpn-sp-stagep s))
+                 (booleanp (fn-bpn-sp-namep s))
+                 (booleanp (fn-bpn-sp-directoryp s))
+                 (fn-bpn-sequence-frontierp (fn-bpn-sp-frontier s))
+                 (or (null (fn-bpn-sp-pending s))
+                     (fn-bpn-sequence-frontierp (fn-bpn-sp-pending s)))
+                 (true-listp (fn-bpn-sp-authored s))
+                 (booleanp (fn-bpn-sp-fencedp s))))
+   :rule-classes nil))
+
+(local
+ (defthm fn-bpn-sp-statep-of-state
+   (equal (fn-bpn-sp-statep
+           (fn-bpn-sp-state root sequence stage name directory frontier
+                            pending authored fenced))
+          (and (booleanp root) (booleanp sequence) (booleanp stage)
+               (booleanp name) (booleanp directory)
+               (fn-bpn-sequence-frontierp frontier)
+               (or (null pending) (fn-bpn-sequence-frontierp pending))
+               (true-listp authored) (booleanp fenced)))
+   :hints (("Goal" :in-theory (enable fn-bpn-sp-statep fn-bpn-sp-state)))))
+
 (defun fn-bpn-sp-initial ()
   (declare (xargs :guard t))
   (fn-bpn-sp-state nil nil nil nil nil 0 nil nil nil))
@@ -202,9 +232,12 @@
 (defthm fn-bpn-sp-step-preserves-statep
   (implies (fn-bpn-sp-statep s)
            (fn-bpn-sp-statep (fn-bpn-sp-step s event)))
-  :hints (("Goal" :in-theory (enable fn-bpn-sp-step fn-bpn-sp-statep
-                                      fn-bpn-sp-process-restart
-                                      fn-bpn-sp-power-loss fn-bpn-sp-recover))))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-sp-statep-components))
+           :in-theory
+           (e/d (fn-bpn-sp-step fn-bpn-sp-process-restart
+                                fn-bpn-sp-power-loss fn-bpn-sp-recover)
+                (fn-bpn-sp-statep)))))
 
 (defthm fn-bpn-sp-trace-preserves-statep
   (implies (and (fn-bpn-sp-statep s) (true-listp events))
