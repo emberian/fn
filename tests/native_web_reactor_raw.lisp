@@ -246,7 +246,7 @@
 ;;; rather than paying the idle socket poll before submitting its next job.
 (let ((saved (symbol-function 'fnn-web-advance)))
   (unwind-protect
-      (dolist (phase '(:private-begin :replay))
+      (dolist (phase '(:private-begin :ready :replay))
         (let* ((conn (fixture-conn 61 :event))
                (face (%make-fnn-web-face :service :service :capacity 1
                                          :listener 100 :wake-closed t :conns (list conn))))
@@ -256,5 +256,33 @@
           (fnn-web-iterate face)
           (assert (zerop *poll-timeout*))))
     (setf (symbol-function 'fnn-web-advance) saved)))
+;;; Readiness is a bounded owner producer seam. Its recording adapter checks
+;;; that scan continuations cannot become replay captures; it does not prove
+;;; the ARTICLE producer's framing or once-only session selection.
+(defvar *ready-results* nil)
+(defun fnn-owner-ready-plan-step (service cid plan class)
+  (declare (ignore service cid plan class))
+  (values-list (pop *ready-results*)))
+(let* ((conn (fixture-conn 62 :feed 91))
+       (face (%make-fnn-web-face :service :service))
+       (raw (list :raw-scan)) (tail (list :scan-tail)) (ready (list :immutable-ready)))
+  (setf (fnn-web-conn-reply-scan conn) :scan)
+  (fnn-web-plan-begin conn raw)
+  (assert (eq (fnn-web-conn-phase conn) :ready))
+  (setf *ready-results* (list (list tail nil t nil) (list tail nil nil :read)
+                             (list ready t nil nil)))
+  (fnn-web-ready-step face conn)
+  (assert (eq (fnn-web-conn-plan conn) tail))
+  (assert (null (fnn-web-conn-captured-plans conn)))
+  (fnn-web-ready-step face conn)
+  (assert (eq (fnn-web-conn-phase conn) :cold))
+  (assert (eq (fnn-web-conn-plan conn) tail))
+  (assert (null (fnn-web-conn-captured-plans conn)))
+  (let ((*cold-result* :serve)) (fnn-web-cold-step face conn))
+  (assert (eq (fnn-web-conn-phase conn) :ready))
+  (fnn-web-ready-step face conn)
+  (assert (eq (fnn-web-conn-phase conn) :render))
+  (assert (eq (fnn-web-conn-plan conn) ready))
+  (assert (equal (fnn-web-conn-captured-plans conn) (list ready))))
 (assert (null *faults*))
 (format t "native web continuation raw: PASS exact windows, slow+healthy+POST, mailbox, cold resume, session lease, once cleanup~%")
