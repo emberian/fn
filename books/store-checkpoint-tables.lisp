@@ -68,7 +68,6 @@
 (local (in-theory (enable (:definition fn-scc-atom-octets)
                           (:definition fn-scc-atomp)
                           (:definition fn-scc-frames)
-                          (:definition fn-scc-le-digits)
                           (:definition fn-scc-nat-encodablep)
                           (:definition fn-scc-nat-octets)
                           (:definition fn-scc-octet-listp)
@@ -105,7 +104,8 @@
 
 (local
  (defthm fn-sct-le-digits-true-listp
-   (true-listp (fn-scc-le-digits n))))
+   (true-listp (fn-scc-le-digits n))
+   :hints (("Goal" :in-theory (enable fn-scc-le-digits)))))
 
 (local
  (defthm fn-sct-atom-octets-true-listp
