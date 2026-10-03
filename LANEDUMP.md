@@ -1,3 +1,28 @@
+# Native history roots — continuing Sol owner
+
+Own tree: build/lanes/native-history-roots, branch codex/native-history-roots.
+Integration is the sole dev writer; Assembly is primary source reviewer.
+First builder cdfa862e6 + stop0935fb0fd composed740ed8700/b3, exact four-root
+certificate certify-20261003T101722Z-1422001 remains historical.
+Actual page tick consumer d01053949 composedac85e9e is live source: all guards
+and completion-potential theorem admitted; mixed/empty old/new exact committed
+images and native page stop/grow fixtures pass. New certificate/image pending.
+Encoding, flat-array growth, full commit plan and full logical reclaim rebuild
+remain proportional; reclaim estimate unchanged.
+
+P3 authority wave: logical/foundation split9ed9891bf permits attachment before
+fn-hist generic. Guarded new books/history-paged.lisp owns resident fn-hrecs$c
+prefix, exact arbitrary-event append tail and ordinal-only MID buckets. Resident
+read/count and prefix-unchanged append proofs admitted; helper Proof Engineering
+owns five-export abstract attachment obligations from this exact prefix. History
+owns constant-time swap-stobjs adoption, bound allocation generation/pins and
+actual owner/native install. PRF-1280 claimed. No installed root/open/reclaim
+claim until those consumers connect; root retention must hold actual memory
+credit through pin return, distinct from temporary publication reservation.
+Carrier handoff f69a4c846/25186bd8b remains source-ready, no atomic migration.
+
+Previous lane material inherited from the integrated tree follows unchanged.
+
 # Empirical scenarios deputy — GPT-6.1-Sol
 
 Tree: `/Users/ember/dev/fn/build/lanes/codex-sol-empirical`

@@ -5,14 +5,14 @@
     {
       "id": "PRF-1265",
       "title": "Native incremental history image rows preserve all-event history with a 16-slot consumed suffix envelope",
-      "statement": "The actual native publisher fnn-history-image-build calls fn-his-build-row. Under fn-hrc-wfp and fn-hrs-rel H C, a drained suffix accepts exactly one all-event row and the result represents H appended with that event; a pending suffix refuses without effects. Consumed one-row slots are cleared and recycled. fn-his-build-row-bounds-suffix-capacity proves a suffix capacity at most16 stays at most16 independent of event byte size. This is retained suffix pointer storage only, not whole-image allocation or per-step work: existing row encoding, relocation and flat page-array growth remain proportional. Native publishers own a fresh registered scratch instance through staged readback; finish compares ACL2 captured count to actual nimg before binding.",
+      "statement": "The actual native publisher fnn-history-image-build now calls fn-his-row-begin/step/grow through fnn-history-image-row-run. fn-his-row-begin-appends-history establishes the appended all-event history before private page mutation; fn-his-row-relocate-step-keeps-completion preserves the exact nested concrete completion target across page ticks and identifies the completed outer root. The original fn-his-build-row refinement and 16-slot envelope remain certified reference composition. Native scratch custody, exact finish count, staged readback and cancellation are retained. Encoding the event, flat-array growth and image commit remain proportional; no overall latency or bounded reclaim conclusion follows.",
       "milestone": "M5",
       "requirements": [
         "REP-010"
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/history-image-build-rows.lisp",
         "books/history-image-builder.lisp",
@@ -20,9 +20,10 @@
         "tests/acl2/history-image-builder-tests.lisp",
         "tests/native_history_builder_raw.lisp",
         "planning/evidence/manifests/certify-20261003T101722Z-1422001.json",
-        "planning/evidence/native-history-builder-2026-10-03.json"
+        "planning/evidence/native-history-builder-2026-10-03.json",
+        "books/history-image-row-step.lisp"
       ],
-      "progress_note": "Narrow hbox certification PASSED at exact book bytes (certify-20261003T101722Z-1422001); literal keystone teeth and actual old/new committed image comparison certified. Raw native control-flow fixture passes. Actual saved image qualification remains pending Integration convergence. Scope is retained suffix capacity only; no bounded reclaim or whole-image work claim."
+      "progress_note": "First row builder exact certificate remains historical. Actual native relocation tick consumer d01053949 is source ready, guards/completion theorem and old/new committed mixed-image fixtures admitted in warm hbox; new exact source certification and saved image qualification pending. No transfer of the first certificate to changed bytes."
     },
     {
       "id": "PRF-1225",
