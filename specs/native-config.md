@@ -198,3 +198,8 @@ does not enable its pending operational consumer or change the operator's
 `output_resources` refusal. Existing round-trip and accepted-load keystones
 cover these fields; output-only and combined cold/output fixtures discriminate
 the representation boundary.
+
+Relative-path normalization also preserves both resource policies before
+rendering the resolved configuration for `fn-native-operator-run-at`. It
+cannot turn an explicit unsupported output policy into an absent default;
+the actual operator still receives the policy and refuses it by name.
