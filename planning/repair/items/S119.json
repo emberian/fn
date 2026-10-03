@@ -11,7 +11,8 @@
  "locus": "operator-verbs",
  "notes": [
   "10-02 23:08 fixed (error-path unlink); source-level test only, no fault injection run; crash-time leftovers still unswept",
-  "Current trace found residual initial write-phase and close cleanup gaps after historical d5cdc34cd. Native write/fsync/close removes owned candidate and preserves primary failure; extracted write-new now cleans close failure too. New rotation candidates use recovery-swept staging/.init-node-secret- namespace, leaving historical keys stages unchanged. Actual native syscall fault tests pass; recovery-image scenario pending."
+  "Current trace found residual initial write-phase and close cleanup gaps after historical d5cdc34cd. Native write/fsync/close removes owned candidate and preserves primary failure; extracted write-new now cleans close failure too. New rotation candidates use recovery-swept staging/.init-node-secret- namespace, leaving historical keys stages unchanged. Actual native syscall fault tests pass; recovery-image scenario pending.",
+  "Prepared matching-image NativeRecoveryFidelityTests.test_secret_rotation_orphan_is_swept_without_changing_key_authority: after actual epoch-2 rotation, construct interrupted .init-node-secret candidate, recover, preserve all current/retained key bytes and foreign evidence, then rotate to epoch 3 retaining epochs 1/2. This is a constructed interruption fixture, not an injected process death in rotation. Syntax and producer-prefix/sweep composition source test pass; physical image execution pending."
  ],
  "owner": "GPT-6.1-Sol / sol-access",
  "reviewer": "store-write-host.lisp:1742-1750 fn-xw-write-new returns the write or fsync error without unlinking the O_EXCL stage. fn-xw-secret-rotate (around 1845-1848) unlinks the stage only when the rename fails. So a failed write or fsync leaves keys/.node-secret-<pid>-<hex>.stage holding part of the fresh root, under a new random name on every retry. Nothing in host, books or tools sweeps keys/ for .stage names; the staging sweeps cover staging/. The native rotate (io.lisp:3938-3946) closes in unwind-protect but likewise never unlinks after a write or fsync failure. The file is a leftover of secret material plus disk litter, but it is never used as authority.",
@@ -21,5 +22,5 @@
  "source": "sweep-2026-10-03",
  "state": "in-progress",
  "title": "Node-secret staging files with partial key material are left behind when a write or fsync fails",
- "updated": "2026-10-03T10:43:00Z"
+ "updated": "2026-10-03T11:42:00Z"
 }
