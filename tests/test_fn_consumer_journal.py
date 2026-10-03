@@ -182,6 +182,11 @@ class JournalAgainstAStandIn(unittest.TestCase):
         self.assertEqual(self.run_consumer("report", "r1", "--payload-file", str(payload)).returncode, 0)
         first, retry = self.seen()
         self.assertEqual(first, retry)
+        exported = self.root / "exported.bin"
+        self.assertEqual(self.run_consumer("payload", "r1", str(exported)).returncode, 0)
+        self.assertEqual(exported.read_bytes(), payload.read_bytes())
+        self.assertEqual(self.run_consumer("payload", "r1", str(exported)).returncode, 1)
+        self.assertEqual(exported.read_bytes(), payload.read_bytes())
         payload.write_bytes(b"changed")
         self.assertEqual(self.run_consumer("report", "r1", "--payload-file", str(payload)).returncode, 1)
         self.assertEqual(len(self.seen()), 2)
