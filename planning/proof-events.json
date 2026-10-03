@@ -19049,6 +19049,10 @@
         {
           "kind": "theorem",
           "name": "fn-rlo-physical-bank-correspondence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-issued-token-is-live"
         }
       ]
     },

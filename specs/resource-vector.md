@@ -435,3 +435,11 @@ from native aliasing, physical heap bytes, integer widths, allocator/collector
 behavior, retained source pins and outer controller/mux storage. Those terms
 remain required in the actual selected output tariff before accounted
 command admission can hold.
+
+`fn-rlo-issued-token-is-live` connects an actual successful issue to its
+receipt consumers: with typed input and actual `:drawn` result, the returned
+token is live against the returned ledger and the same operation generation.
+Accepted issue itself establishes input shape; that redundant external
+hypothesis is absent. Negative-generation corruption and uninstalled refusal
+supply separate removal witnesses. This property does not establish free-chain
+completeness or authorize a physical receipt.

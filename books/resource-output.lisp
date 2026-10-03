@@ -516,6 +516,80 @@
  :hints (("Goal" :in-theory (e/d (fn-rlo-physical fn-rlo-livep fn-rlo-ready-p fn-rlo-tokenp)
   (fn-resource-ledgerp fn-rl-wfp fn-rlo-settle-ready update-fn-rl-trailersi
    fn-rl-ids-length fn-rl-elens-length fn-rl-trailers-length fn-rl-count fn-rl-phasesi fn-rl-gensi fn-rl-cidsi fn-rl-filesi fn-rl-eoffsi)))))
+; A successful issuer result is usable by the actual receipt consumers.
+; This does not establish free-chain completeness or physical receipt truth.
+(local (include-book "std/lists/update-nth" :dir :system))
+(local (defthm fn-rlo-drawn-header-and-generation
+ (implies (and (natp slot)
+               (eq (mv-nth 0 (fn-rl-draw slot demand ledger)) :drawn))
+  (let ((after (mv-nth 2 (fn-rl-draw slot demand ledger))))
+   (and (equal (fn-rl-count after) (fn-rl-count ledger))
+        (equal (fn-rl-mode after) (fn-rl-mode ledger))
+        (equal (fn-rl-file-limit after) (fn-rl-file-limit ledger))
+        (equal (fn-rl-phasesi slot after) 1)
+        (equal (fn-rl-gensi slot after)
+               (mv-nth 1 (fn-rl-draw slot demand ledger))))))
+ :hints (("Goal" :in-theory
+  (e/d (fn-rl-draw fn-rl-charge fn-rl-count fn-rl-mode fn-rl-file-limit
+        fn-rl-phasesi fn-rl-gensi)
+       (nth update-nth fn-rl-charge-from
+        fn-resource-ledgerp fn-rl-wfp fn-rl-draw-keeps-okp))))))
+
+(local (defthm fn-rlo-gens-length-bound
+ (implies (fn-rl-wfp ledger) (<= (fn-rl-count ledger) (fn-rl-gens-length ledger)))
+ :rule-classes :linear
+ :hints (("Goal" :in-theory (enable fn-rl-wfp)))))
+
+(local (defthm fn-rlo-drawn-generation-is-natural
+ (implies (and (natp (fn-rl-gensi slot ledger))
+               (eq (mv-nth 0 (fn-rl-draw slot demand ledger)) :drawn))
+          (natp (mv-nth 1 (fn-rl-draw slot demand ledger))))
+ :hints (("Goal" :in-theory (e/d (fn-rl-draw fn-rl-charge)
+   (fn-rl-gensi fn-rl-charge-from nth update-nth))))))
+
+(local (defthm fn-rlo-drawn-input-is-shaped
+ (implies (eq (mv-nth 0 (fn-rlo-issue cid connection-gen operation-gen dependency ledger)) :drawn)
+          (fn-rl-wfp ledger))
+ :hints (("Goal" :in-theory (e/d (fn-rlo-issue fn-rlo-ready-p)
+   (fn-rl-wfp fn-rl-draw nth update-nth))))))
+
+(local (defthm fn-rlo-draw-keeps-header-nth
+ (implies (and (natp field) (or (equal field 2) (<= 14 field)))
+  (equal (nth field (mv-nth 2 (fn-rl-draw slot demand ledger))) (nth field ledger)))
+ :hints (("Goal" :in-theory
+  (e/d (fn-rl-draw fn-rl-charge) (nth update-nth fn-rl-charge-from))))))
+
+(local (defthm fn-rlo-gens-list-read-nat
+ (implies (and (fn-rl-gensp xs) (natp i) (< i (len xs))) (natp (nth i xs)))
+ :hints (("Goal" :induct (nth i xs) :in-theory (enable fn-rl-gensp)))))
+
+(local (defthm fn-rlo-gens-reader-nat
+ (implies (and (fn-resource-ledgerp ledger) (natp i) (< i (fn-rl-gens-length ledger)))
+          (natp (fn-rl-gensi i ledger)))
+ :hints (("Goal" :in-theory (e/d (fn-resource-ledgerp fn-rl-gensi fn-rl-gens-length)
+                                (fn-rl-gensp nth))))))
+
+(defthm fn-rlo-issued-token-is-live
+ (implies (and (fn-resource-ledgerp ledger)
+               (eq (mv-nth 0 (fn-rlo-issue cid connection-gen operation-gen dependency ledger)) :drawn))
+  (fn-rlo-livep (mv-nth 1 (fn-rlo-issue cid connection-gen operation-gen dependency ledger))
+               operation-gen
+               (mv-nth 2 (fn-rlo-issue cid connection-gen operation-gen dependency ledger))))
+ :hints (("Goal"
+  :use ((:instance fn-rlo-drawn-input-is-shaped)
+        (:instance fn-rlo-issue-keeps-representation)
+        (:instance fn-rlo-next-nat)
+        (:instance fn-rlo-gens-length-bound)
+        (:instance fn-rlo-drawn-generation-is-natural
+          (slot (fn-rl-next ledger))
+          (demand (fn-rlo-resident-vector (fn-rl-file-limit ledger))))
+        (:instance fn-rlo-gens-reader-nat (i (fn-rl-next ledger)))
+        (:instance fn-rlo-drawn-header-and-generation
+          (slot (fn-rl-next ledger))
+          (demand (fn-rlo-resident-vector (fn-rl-file-limit ledger)))))
+  :in-theory (e/d (fn-rlo-issue fn-rlo-livep fn-rlo-token fn-rlo-tokenp fn-rlo-ready-p)
+                 (fn-resource-ledgerp fn-rl-wfp fn-rl-draw fn-rl-charge-from nth update-nth)))))
+
 )
 
 ; The custody metadata columns are outside the bank projection. The actual
