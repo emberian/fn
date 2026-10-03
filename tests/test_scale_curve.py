@@ -124,10 +124,6 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(sc.FIXTURES, str(fixtures.ROOT / "curve"))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class HeapProbeTests(unittest.TestCase):
     """The `heap` probe (the fold of f8_curve.py) against a stand-in hook."""
 
@@ -152,3 +148,7 @@ class HeapProbeTests(unittest.TestCase):
             values = sc.PROBES["heap"][1](pt)
         self.assertEqual((values["live_bytes"], values["garbage_bytes"]), (700, 200))
         self.assertIn("heap", sc.VARIANTS)
+
+
+if __name__ == "__main__":
+    unittest.main()

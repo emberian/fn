@@ -6,11 +6,13 @@
  "id": "X13",
  "line": "",
  "locus": "gates-tests-packaging",
- "notes": [],
+ "notes": [
+  "10-02 23:55 run once at a deliberate point: when dev is green and an image set is published, as a snapshot of the assurance debt, not a gate. (Cancelled run-20261003T024319Z-8079 / certify-20261003T025903Z-3960045 at 951a61745 bytes, status 143, coordinator 2026-10-03.)"
+ ],
  "owner": "runner",
  "severity": "high",
  "source": "coordinator",
- "state": "open",
+ "state": "deferred",
  "title": "122 books red at their digest; 1368 stale; whole-tree requested certify owed",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:55:36Z"
 }

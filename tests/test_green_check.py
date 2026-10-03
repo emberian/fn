@@ -504,10 +504,6 @@ class RealManifestsTests(unittest.TestCase):
         self.assertEqual(sum(loaded["counts"].values()), loaded["books"])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class MergeGateTests(unittest.TestCase):
     """--changed-since: a changed book merges with everything that includes it.
 
@@ -679,3 +675,7 @@ class MergeGateTests(unittest.TestCase):
             capture_output=True, text=True, cwd=ROOT)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(result.stdout.startswith("green-gate:"), result.stdout)
+
+
+if __name__ == "__main__":
+    unittest.main()

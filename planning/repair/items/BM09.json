@@ -1,0 +1,12 @@
+{
+ "category": "local",
+ "file": "books/feed-totality.lisp",
+ "id": "BM09",
+ "notes": [],
+ "owner": "dev-serves",
+ "severity": "high",
+ "source": "dev-serves",
+ "state": "in-progress",
+ "title": "books/feed-totality fn-feed-observe-records-are-driven failed at dev (sweep-peer S053 made the lost arm also write :feed-drop); image-world and nine includers uncertifiable, so no image built (native-ds2 at 2600084f2, certify-20261003T035250Z-12596). Fixed by citing feed-correspondence's fn-feed-lost-records-are-driven",
+ "updated": "2026-10-03T04:05:58Z"
+}

@@ -25,12 +25,69 @@ import ledger  # noqa: E402
 # each names the failure, so the exception is a work item, not a hiding place.
 # The check prints every one on each run.
 KNOWN_RED = {
+    "tests/acl2/post-identity-captured-agent-join-tests":
+        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
+    "tests/acl2/post-identity-captured-classification-tests":
+        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
+    "tests/acl2/post-identity-captured-digest-block-tests":
+        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
+    "tests/acl2/post-identity-captured-groups-refinement-tests":
+        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
+    "tests/acl2/post-identity-captured-hash-choice-tests":
+        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
+    "tests/acl2/post-identity-captured-hash-domain-tests":
+        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
+    "tests/acl2/post-identity-captured-hash-entry-tests":
+        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
+    "tests/acl2/post-identity-captured-hash-refinement-tests":
+        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
+    "tests/acl2/post-identity-captured-holder-tests":
+        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
+    "tests/acl2/post-identity-captured-payload-refinement-tests":
+        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
+    "tests/acl2/post-identity-captured-refinement-tests":
+        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
+    "tests/acl2/post-identity-captured-source-completion-tests":
+        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
+    "tests/acl2/post-identity-captured-source-continuation-tests":
+        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
+    "tests/acl2/post-identity-captured-source-pair-context-tests":
+        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
+    "tests/acl2/post-identity-captured-source-parser-context-tests":
+        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
+    "tests/acl2/post-identity-captured-source-trace-tests":
+        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
+    "tests/acl2/post-identity-captured-tests":
+        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
+    "tests/acl2/consumer-account-adoption-tests":
+        "stage 0 (D46, 04ff9b99b) parked the account-adoption chain off the served start; a root again when that chain returns",
+    "tests/acl2/consumer-account-auth-tests":
+        "stage 0 (D46, 04ff9b99b) parked the account-adoption chain off the served start; a root again when that chain returns",
 }
+
+# A test book whose first lines carry `; UNHOOKED <who> (<date>): <why>` was
+# taken out of the roots on purpose (lane cert-roots, 2026-10-02): the header
+# is its named reason, printed on every run like a KNOWN_RED entry.
+UNHOOKED = "; UNHOOKED"
+
+
+def unhooked(root: Path = ROOT) -> dict[str, str]:
+    """The test books whose header says why they are not roots."""
+    out = {}
+    for path in (root / "tests" / "acl2").glob("*-tests.lisp"):
+        with path.open(encoding="utf-8") as stream:
+            for _ in range(3):
+                line = stream.readline()
+                if line.startswith(UNHOOKED):
+                    out[f"tests/acl2/{path.stem}"] = line[len(UNHOOKED):].strip()
+                    break
+    return out
 
 
 def orphans(root: Path = ROOT, roots: list[str] | None = None) -> list[str]:
     """The test books under ROOT that are not Makefile roots, sorted."""
-    listed = set(roots if roots is not None else ledger.makefile_roots()) | set(KNOWN_RED)
+    listed = (set(roots if roots is not None else ledger.makefile_roots()) | set(KNOWN_RED)
+              | set(unhooked(root)))
     return sorted(f"tests/acl2/{path.stem}"
                   for path in (root / "tests" / "acl2").glob("*-tests.lisp")
                   if f"tests/acl2/{path.stem}" not in listed)
@@ -45,14 +102,16 @@ def main() -> int:
                   "(after the books it tests)")
         return 1
     listed = set(ledger.makefile_roots())
-    for book, reason in sorted(KNOWN_RED.items()):
+    excused = {**unhooked(), **KNOWN_RED}
+    for book, reason in sorted(excused.items()):
         if book in listed:
-            print(f"test_roots_check: {book} is a root now: drop it from KNOWN_RED")
+            print(f"test_roots_check: {book} is a root now: drop it from KNOWN_RED "
+                  "or its UNHOOKED header")
             return 1
         print(f"test_roots_check: KNOWN RED, not a root yet: {book}: {reason}")
     count = len(list((ROOT / "tests" / "acl2").glob("*-tests.lisp")))
-    print(f"test_roots_check: {count - len(KNOWN_RED)} of {count} tests/acl2/*-tests.lisp "
-          f"are certification roots; {len(KNOWN_RED)} known red (above)")
+    print(f"test_roots_check: {count - len(excused)} of {count} tests/acl2/*-tests.lisp "
+          f"are certification roots; {len(excused)} known red or unhooked (above)")
     return 0
 
 
