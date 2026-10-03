@@ -6,6 +6,13 @@
 (cl:defun fnn-source-admit-files (paths)
   "Ordinary LD with fail-closed completion. Files control their own explicit
 redefinition policy; existing stobj/attachment compatibility is not bypassed."
+  ;; SAVE-EXEC clears the connected book directory; initialize its ordinary
+  ;; state slot before MAKE-EVENT/SET-CBD consult it. RUN sets the process cwd
+  ;; to the exact manifest world root before any selected source is admitted.
+  (unless (f-get-global 'connected-book-directory *the-live-state*)
+    (setf *the-live-state*
+          (f-put-global 'connected-book-directory
+                        (namestring (truename "./")) *the-live-state*)))
   (dolist (path paths)
     (let ((old-output (get *standard-co* *open-output-channel-key*)))
       (unwind-protect
