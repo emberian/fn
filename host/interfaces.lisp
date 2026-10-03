@@ -5230,5 +5230,6 @@
 (definterface fn-owner-output-preview :class :program)
 (definterface fn-owner-output-tariff-preview :class :program)
 (definterface fn-ocap-admit-preview :class :common-lisp-compliant)
-(definterface fn-ocap-at :class :common-lisp-compliant)
+(definterface fn-ocap-at :class :common-lisp-compliant
+  :kinds ((n natp)))
 (definterface fn-rlo-capacity :class :common-lisp-compliant)
