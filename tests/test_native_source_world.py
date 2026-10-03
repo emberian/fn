@@ -79,6 +79,15 @@ class CurrentSourceWorldTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'required guard'):
             selected_defthms('(defthm f{correspondence} (equal x x))', {'f{correspondence}'}, set())
 
+    def test_omitted_rules_leave_literal_theory_catalog_only(self):
+        pruned = {}
+        text = selected_defthms(
+            "(deftheory catalog '(keep omitted (:rewrite omitted)))\n"
+            "(defun actual (x) (omitted x))", set(), set(), {'omitted'}, pruned)
+        self.assertIn("(deftheory catalog '(keep))", text)
+        self.assertIn('(defun actual (x) (omitted x))', text)
+        self.assertEqual(pruned, {'catalog': ['omitted']})
+
     def test_deferral_and_budget_are_explicit_in_manifest(self):
         with tempfile.TemporaryDirectory() as d:
             root = self.tree(d)
