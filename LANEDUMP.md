@@ -3590,3 +3590,16 @@ hook0.224s, retainedcontrollerrecording0.166s,17source/historychecksPASS.
 4publicobjects archived native-decoded-custody-seam-2026-10-03/manifest.json
 hash63c5579c686181eb95fb0f45647dcba0caed157b074f6db66fa6b841fb4c2ce2.
 Native connectedcase stillpending, no warm world/image/typedgrantclaim.
+
+
+# Horse entries — gpt-6-sol
+
+Coordinate: base3f39e6df98b3d87881e43200bba9334e47e1af4b.
+
+READY E001: redeem uncertainty begins before a password write. `fnn-command-redeem` formerly changed `stage` after physical send returned; its OS/TLS-loss handler reported `(:unreachable :code)` after a partial/complete password send exception, although server durable account creation was possible. Advance stage first; actual core loss classifier already defines the correct uncertain outcome. No logical theorem change.
+
+Verified actual host function extracted from source plus actual ACL2 reply/lost/outcome classifiers evaluated as Common Lisp (xargs metadata removed), physical I/O injected. Seven cases cover connect loss, pre-password loss, partial/complete password-send exception, lost password reply, accepted281, refused482. Pre-change source demonstrably fails with unreachable; changed source passes. `python3 -m unittest tests.test_native_redeem_send_boundary`, `host_check --read host/native/io.lisp`, diff whitespace pass. Evidence archived/indexed: planning/evidence/horse-entries-redeem-send.json. No saved-image/TLS/disk or universal proof claim. Bounds horse owns input/wire helper changes in same io file; preserve them during integration.
+
+Shared .spw canon written directly at consumer root as authorized; no nested workbench source staged. Mount651b535b5171 clean, CLI doctor/roots/tree/navigable selector observed. Initializer's own added commit hook/workflow removed; fn retains no new gate. Map explicit breadth and gaps, entries findings live there. Integration must include explicitly listed consumer files only, exclude nested workbench/node_modules.
+
+Open coverage: map is broad catalogue, not complete leaf reading. Owner lifecycle and process/redeem definitions traced; BP, consumer, identity, anchor,9p and most NNTP/Web/Store leaf closures remain. Other horses/deputies own active boundaries; root coordinates remaining convergence.
