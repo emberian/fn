@@ -60,9 +60,31 @@ class SourceRunnerTests(unittest.TestCase):
                 output=str(root/'entry'), build='host/native/build.lisp',
                 event=['host/owner-host.lisp:gate'], world_revision='a'*40,
                 source_revision='b'*40, sbcl=str(root/'sbcl'), core=str(root/'core'),
-                profile='developer', before_world=[],events_file=[],raw_after=[])
+                profile='developer', before_world=[],events_file=[],raw_after=[],input_manifest=[])
             manifest = runner.prepare(args)
             event.write_text('(defun gate (x) nil)')
+            with self.assertRaisesRegex(ValueError, 'input changed'):
+                runner.run(manifest, [])
+
+    def test_cached_source_inventory_is_bound_as_an_execution_input(self):
+        import json
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'host/native').mkdir(parents=True)
+            (root / 'host/native/build.lisp').write_text('(defttag :fn-native-host)\n:q')
+            (root / 'core').write_bytes(b'generic core')
+            (root / 'sbcl').write_bytes(b'pinned executable')
+            pair = root / 'cached.cert'
+            pair.write_bytes(b'actual pair')
+            inventory = root / 'world.json'
+            inventory.write_text(json.dumps({'inputs_sha256': {str(pair): runner.digest(pair)}}))
+            args = types.SimpleNamespace(world_root=str(root), source_root=str(root),
+                output=str(root/'entry'), build='host/native/build.lisp', event=[],
+                world_revision='a'*40, source_revision='b'*40,
+                sbcl=str(root/'sbcl'), core=str(root/'core'), profile='developer',
+                before_world=[], events_file=[], raw_after=[], input_manifest=[str(inventory)])
+            manifest = runner.prepare(args)
+            pair.write_bytes(b'different pair')
             with self.assertRaisesRegex(ValueError, 'input changed'):
                 runner.run(manifest, [])
 

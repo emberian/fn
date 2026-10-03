@@ -69,6 +69,16 @@ def prepare(args) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
     build = world / args.build
     hashes = {str(build): digest(build)}
+    for name in getattr(args, 'input_manifest', []):
+        path = (source / name).resolve()
+        data = json.loads(path.read_text())
+        hashes[str(path)] = digest(path)
+        for field in ('inputs_sha256', 'source_sha256'):
+            for name, expected in data.get(field, {}).items():
+                actual = Path(name).resolve()
+                if digest(actual) != expected:
+                    raise ValueError(f'source inventory input changed: {actual}')
+                hashes[str(actual)] = expected
     for name in (args.sbcl, args.core):
         path = Path(name).resolve()
         hashes[str(path)] = digest(path)
@@ -165,6 +175,8 @@ def main(argv=None):
     for name in ('world-root', 'world-revision', 'source-root', 'output', 'sbcl', 'core'):
         p.add_argument('--' + name, required=True)
     p.add_argument('--source-revision', help='explicit immutable source archive revision')
+    p.add_argument('--input-manifest', action='append', default=[],
+                   help='hash-bound logical/host source inventory, including cached input pairs')
     p.add_argument('--build', default='host/native/build.lisp')
     p.add_argument('--profile', choices=('developer', 'production'), default='developer')
     p.add_argument('--event', action='append', default=[])
