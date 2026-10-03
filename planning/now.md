@@ -42,8 +42,10 @@ the current eleven-field pool must be retained; an old ten-field pool cannot
 be silently substituted. Root owns that bootstrap frontier. No image run is
 required before source execution.
 
-Known live consumer gaps remain explicit: Web’s selected socket run loses its
-listener on the first POST in its scoped overlay; Runtime enqueue can signal
+The finite closeout repaired Web’s actual POST action-classifier mismatch: the
+same scoped socket case now passes account/POST/read/remove (16.702s, one test,
+zero skips), with the original red retained. Its current whole-world execution
+and concurrent/TLS coverage remain open. Runtime enqueue can signal
 after typed assignment but before read/dependency attachment (capture before
 wake is owed); ARTICLE normal/native renderer arities still differ in the
 old-cache prototype; BP multi-peer SCN1110 and current P3 live reclaim remain

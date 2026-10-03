@@ -9427,9 +9427,11 @@
         "tests/native_web_post_stream_raw.lisp",
         "tests/acl2/web-post-stream-tests.lisp",
         "planning/evidence/web-post-and-producer-source-2026-10-03.md",
-        "planning/evidence/web-post-browser-red-2026-10-03.md"
+        "planning/evidence/web-post-browser-red-2026-10-03.md",
+        "planning/evidence/web-post-action-fix-2026-10-03/browser-one.err",
+        "planning/evidence/web-post-action-fix-2026-10-03/execution.json"
       ],
-      "note": "Actual source programs admit and exact valid/badCSRF/remove/UTF8/duplicate and long subject tests pass, with concrete fill invariant-risk. Native4096 form turns and partial117 feed pass. Full retained request/subject and refused form path, profile-dependent fixed prefix construction and qualified funding remain open. Actual selected fullbrowser replay is RED: account/read precede firstPOST RemoteDisconnected and subsequent listener loss; rootinherits native diagnostic capture/current-union repair. Positiveprogram/raw assertions do not override this actualfailure."
+      "note": "Actual source programs admit and exact valid/badCSRF/remove/UTF8/duplicate and long subject tests pass, with concrete fill invariant-risk. Native4096 form turns and partial117 feed pass. Full retained request/subject and refused form path, profile-dependent fixed prefix construction and qualified funding remain open. The original fullbrowser failure is retained. Firsthand stderr traced malformed web action to three emitted POST continuation tags absent from the actual classifier; source49c933f02 accepts those exact tags and refuses unknowns. The same scoped initialized source coordinate plus normally admitted classifier passes the real account/POST/read/remove case in16.702s,1test,0skips; producer/raw regression also passes through the actual classifier. Latest current-union decoded/P3/runtime, TLS/concurrent endpoints and complete funding remain unexecuted or open; status remains specified."
     }
   ]
 }

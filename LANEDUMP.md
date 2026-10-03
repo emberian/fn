@@ -3307,3 +3307,19 @@ programguards/refinements/invariants, fullretainedIN/subject/refusedpageworking
 funding, profileprefixcapture, upstreamARTICLE/LIST/OVERcomposition, actual
 physicalrelease. Integrationregeneratescanonical currentview after intake;
 registries keepthese scopes planned/open.
+
+Finite Web repair, 2026-10-03: source49c933f02 traces the preserved first-POST
+listener failure to actual "malformed web action": fn-web-host-action-kind
+omitted emitted :post-form/:post-command/:post-stream. Exact tags now admitted;
+unknown tags still refused. Raw producer regression uses the actual classifier
+and passes. Same preserved initialized source coordinate plus ordinary-LD
+classifier overlay passes actual account/POST/read/remove:1test/0skips,16.702s.
+Indexed original diagnostic, overlay, execution hashes and PASS log under
+planning/evidence/web-post-action-fix-2026-10-03/. Replay: on hbox, from retained
+codex-sol-web-live tree, FN_NATIVE_DEVELOPER_HOST=post-action-fix/app-native
+SWARM_MEM_MAX=24G swarm-build python3 -m unittest
+tests.test_native_web.NativeWebFaceTests.test_1_a_friend_makes_an_account_reads_posts_and_removes
+(use absolute wrapper path or resolve relative to that tree). Scope remains
+ad8+gate336+cde+99Web/2Access+native9022; latest11field/P3/decoded/runtime union
+is not established. WEB006/SCN1122 remain open for their full obligations.
+Contributor guides integrated9c944de6e; no certificate/image/deployment claim.
