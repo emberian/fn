@@ -2198,6 +2198,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-image-binding \
 	books/history-image-fold \
 	books/history-image-snapshot \
+	books/history-image-build-rows \
+	books/history-image-builder \
+	tests/acl2/history-image-build-rows-tests \
+	tests/acl2/history-image-builder-tests \
 	tests/acl2/history-image-binding-tests \
 	tests/acl2/history-image-campaign-tests \
 	books/image-world \

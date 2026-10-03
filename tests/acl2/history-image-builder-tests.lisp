@@ -1,0 +1,43 @@
+; Same committed root/plan/page bytes as the existing writer across generic
+; all-event trees and byte pools crossing pages, with constant suffix storage.
+(in-package "ACL2")
+(include-book "../../books/history-image-builder")
+
+(defun hib-test-pages (writes fn-hrecs$c)
+ (declare (xargs :stobjs fn-hrecs$c :verify-guards nil))
+ (if (atom writes) nil
+  (cons (list (car writes)
+              (fn-his-words (nth 1 (car writes)) (nth 2 (car writes)) fn-hrecs$c))
+        (hib-test-pages (cdr writes) fn-hrecs$c))))
+(defun hib-test-rows (events fn-hrecs$c)
+ (declare (xargs :stobjs fn-hrecs$c :verify-guards nil))
+ (if (atom events) (mv :ok fn-hrecs$c)
+  (mv-let (v fn-hrecs$c) (fn-his-build-row (car events) fn-hrecs$c)
+   (if (and (eq v :ok) (equal (fn-hrc-sfx-length fn-hrecs$c) 16)
+            (equal (fn-hrc-lo fn-hrecs$c) 0) (equal (fn-hrc-hi fn-hrecs$c) 0)
+            (null (fn-hrc-sfxi 0 fn-hrecs$c)))
+       (hib-test-rows (cdr events) fn-hrecs$c)
+    (mv :bad fn-hrecs$c)))))
+(defun hib-test-image (events incremental)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn-hrecs$c
+  (mv-let (result fn-hrecs$c)
+   (if incremental
+    (let ((fn-hrecs$c (fn-his-build-begin 3 fn-hrecs$c)))
+     (mv-let (rv fn-hrecs$c) (hib-test-rows events fn-hrecs$c)
+      (mv-let (v root writes count fn-hrecs$c)
+       (fn-his-build-finish (len events) fn-hrecs$c)
+       (mv (list rv v root writes count (hib-test-pages writes fn-hrecs$c)) fn-hrecs$c))))
+    (mv-let (v root writes fn-hrecs$c) (fn-his-snapshot events 3 fn-hrecs$c)
+     (mv (list :ok v root writes (len events) (hib-test-pages writes fn-hrecs$c)) fn-hrecs$c)))
+   result)))
+(defconst *hib-test-events*
+ (list nil '(:config "groups" ("fn.test" "fn.other"))
+       '(:authority 23) '(:withdraw "<a@x>" 2)
+       (list :retained 0 "<a@x>" (make-list 9000 :initial-element 97))
+       '(:consumer 5) '(:feed-restart "remote")
+       '(:topic "a" ((:held . 7)))
+       '(:identity 9)))
+(assert-event (equal (hib-test-image *hib-test-events* t)
+                     (hib-test-image *hib-test-events* nil)))
+(assert-event (equal (hib-test-image nil t) (hib-test-image nil nil)))

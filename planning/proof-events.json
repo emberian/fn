@@ -3,6 +3,19 @@
   "schema_version": 1,
   "targets": [
     {
+      "id": "PRF-1265",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-his-build-row-refines-history-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-his-build-row-bounds-suffix-capacity"
+        }
+      ]
+    },
+    {
       "id": "PRF-1234",
       "events": [
         {

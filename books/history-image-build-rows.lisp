@@ -55,7 +55,17 @@
       (mv (list :refused :pending-suffix) fn-hrecs$c)
     (let ((fn-hrecs$c (fn-hrc-append ev fn-hrecs$c)))
       (mv-let (v fn-hrecs$c) (fn-hrc-flush-one fn-hrecs$c)
-        (mv v (fn-his-build-recycle fn-hrecs$c))))))
+        (let ((fn-hrecs$c (fn-his-build-recycle fn-hrecs$c)))
+          (mv v fn-hrecs$c))))))
+
+(defthm fn-his-build-row-bounds-suffix-capacity
+  (implies (<= (fn-hrc-sfx-length c) 16)
+           (<= (fn-hrc-sfx-length (mv-nth 1 (fn-his-build-row ev c))) 16))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-his-build-row fn-his-build-recycle
+                            fn-hrc-append fn-hrc-flush-one fn-hrc-flush-init
+                            fn-hrc-flush-step)
+                           (fn-hp-x-init fn-hp-x-append-step)))))
 
 ; PRF-1265. This is the subject the native publication calls. It appends
 ; every event type to the image's history, keeps representation faithfulness
@@ -80,4 +90,3 @@
            :in-theory (e/d (fn-his-build-row)
                            (fn-hrc-wfp fn-hrs-rel fn-hrc-append
                             fn-hrc-flush-one fn-his-build-recycle)))))
-

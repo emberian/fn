@@ -1438,3 +1438,15 @@ Next: actual fn-hist P3 attachment/open adoption and root publication, joined to
 No claims of completed native/root capability yet. No image build launched. Integration owns convergence runs/dev writes.
 
 Refined quantum scope: fn-his-build-yieldp is ACL2 row-cadence policy, not a work bound. Existing fn-hp-x-append-step encodes whole row and relocates 2*2048*cap(R) words plus O(image) pgs-x-grow-image. Next connected continuation: page-sized readiness/copy/zero/mark before persistent root adoption. No scheduler-blackout elimination claim.
+
+## First packet current result
+
+Private native publisher scratch allocated through registered create-fn-hrecs$c raw zero-arg ABI. Begin resets/shrinks; row append/flush recycles cleared slot; finish ACL2 compares captured source count to actual nimg, and binding uses that returned nimg. Existing IMAGE=(np writes), codec, exact all3publisher readback custody retained.
+
+Warm hbox session history-build-rows: fn-his-build-row guards 246steps; rowrefinement1638; capacitybound9467; begin122135; recycle9219. Literalkeystonepositive+relation/shape removals alladmitted; liveassert suffix(:ok 0 0 nil16 1)PASS. Newvsoldexactcommittedroot/plan/everypagewords for mixednineevents+9kpool andempty historyPASS. Native actualfnn-history-image-build/controlflow fixture513events, privateinstances, completedfrontier, failedrowterminalreturnPASS. These are source/session results, not certificates/imagequalification.
+
+Narrow farm submitted 2jobs for history-image-build-rows/history-image-builder and theirtwoACL2teeth roots; run pending. Actual image test remains Integration convergence. PRF1265 claimed before writing, IDcheckPASS. Existingframe cache run reused; source dependency writerprefix needed discovery while exactcache missed frame-trailer.
+
+Open: perrecordencoding, whole-region relocation and flatpgs-memresize are NOT bounded turns. Astra implements fn-hpr-begin/step/grow-image in history-pages-relocate-step; intermediateafterzero privateonly, cannotserveoldroots. This lane consumes continuation then authoritativefn-hist attachment/openadopt with actualprefix/reload seam, snapshotseparation/readerpins. Store/node/catalog copies remain; reclaimestimateunchanged.
+
+First packet certification: certify-20261003T101722Z-1422001 PASSED, 103 cached +32 certified dependencies/roots, 2 hbox jobs. Manifest indexed/archive; native recording fixture actual source passed; new/old committed page fixture certified. PRF1265 source/certificate certified, saved-image qualification remains pending. Generic history logical split/attachable preparation is separate WIP and deliberately excluded from this packet. Primary assembly should take aggregate first-packet paths relative3cf623c0d; do not cherry-pick original04d55d45b alone (it originally replaced aggregate LANEDUMP before merge restored it).
