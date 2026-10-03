@@ -734,7 +734,7 @@ exposure admission decides (the id, or NIL when it refused)."
                                  (:input +fnn-mux-pollin+) (:output +fnn-mux-pollout+) (t 0))) conns)) 'vector))
          ;; Pending semantic work receives another pass immediately; only
          ;; readiness/dependency/completion waits permit the bounded poll.
-         (work (some (lambda (conn) (and (not (fnn-web-conn-job conn)) (not (fnn-web-conn-closedp conn)) (member (fnn-web-conn-phase conn) '(:event :render :feed :page-count :page-emit))
+         (work (some (lambda (conn) (and (not (fnn-web-conn-job conn)) (not (fnn-web-conn-closedp conn)) (member (fnn-web-conn-phase conn) '(:event :private-begin :render :replay :feed :page-count :page-emit))
                                         (or (not (eq (fnn-web-conn-phase conn) :feed))
                                             (fnn-web-feed-owned-p face conn))
                                         (>= (fnn-now) (fnn-web-conn-resume-at conn)))) conns))
