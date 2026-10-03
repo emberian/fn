@@ -8529,6 +8529,32 @@
         "tests/native_reclaim_capture_raw.lisp"
       ],
       "implementation_note": "Actual host capture/census, history sync/byte-advance, credit-resize and native trailing-stobj dispatch with recorded Store/array/row-byte-cost/capture boundaries. Source fixture; normal loaded host and image followthrough pending."
+    },
+    {
+      "id": "SCN-1090",
+      "title": "A retained trickling pull body permits healthy pull and catch-up progress",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "NNT-018",
+        "NNT-053"
+      ],
+      "steps": [
+        "Configure slow and healthy pull peers plus a healthy catch-up on one native worker.",
+        "Hold an actual slow ARTICLE body incomplete while delivering exact body octets gradually.",
+        "Observe healthy article durable acceptance and catch-up completion before releasing the slow body.",
+        "Release the exact suffix and read back the complete slow body."
+      ],
+      "expected": [
+        "A readiness yield retains protocol state, local connection and unwritten/unconsumed bytes.",
+        "Both families progress while the slow session remains incomplete.",
+        "No slow cursor acceptance precedes durable local completion; released body is byte-exact."
+      ],
+      "evidence": [
+        "tests/test_native_peer_round_driver.py",
+        "tests/test_native_peer_pull.py"
+      ],
+      "execution_scope": "Raw worker/kernel schedule passes with recorded session and journal leaves. Actual saved-image selector tests.test_native_peer_pull.NativePeerPullTests.test_trickling_body_retained_while_other_pull_and_catchup_complete is prepared, not executed."
     }
   ]
 }

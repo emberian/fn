@@ -1818,6 +1818,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-catchup-effects \
 	books/peer-catchup \
 	tests/acl2/peer-catchup-tests \
+	books/peer-round-driver \
+	tests/acl2/peer-round-driver-tests \
 	books/protocol-table \
 	books/protocol-builders \
 	books/protocol-codes-rows \

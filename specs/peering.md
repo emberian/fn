@@ -3200,3 +3200,33 @@ observer after recording its own assertion. That default-off callback
 returns no owner/admission authority and its result never changes the lab
 assertion. Missing execution creates no corpus receipt; retained scripted
 fixtures establish the observer interface only.
+
+
+### Resumable native pull and catch-up rounds (PRF-1260, SCN-1090)
+
+The pull-service worker retains one session continuation per admitted
+(kind, peer). ACL2's `fn-prd-sweep` and `fn-prd-select` select one quantum
+from each captured sweep across both pull and catch-up. A readiness wait
+keeps the existing protocol state, queued effects, partial write range,
+local input suffix, cold dependency, commit completion, and render plan.
+`fn-prd-action` orders a pending continuation before later effects and events.
+The read/write quantum is the existing ACL2 feed wire chunk bound; exhausting
+it yields with the remaining octets, never truncates them. TCP connect,
+authenticated TLS handshake, and outgoing command deadlines are projected
+by ACL2 from its existing feed connect policy. A slow incoming body retains
+its round and cursor while the other admitted peers continue; there is no
+new arbitrary whole-round expiry or minimum-rate refusal. Existing session
+close effects alone determine the persisted FNPL/FNCU cursor.
+
+`fn-prd-sweep-visits-all-admitted-rounds` states the complete stable-sweep
+property under a true-list and admitted-subset hypothesis. The worker calls
+that subject directly. It assumes each physical attempt returns; it does
+not prove DNS availability, disk latency, or overall network completion.
+Synchronous DNS, push-feed fairness, and the proved resource tariff/admission
+for retained per-peer contexts remain separate frontiers. The NNTP output
+lease and fixed syncer grant do not fund these contexts. The new native
+scenario requires an actual incomplete slow ARTICLE body to remain pending
+while a healthy pull and catch-up complete, then reads the released body back
+exactly. Source/raw scheduling evidence does not qualify a saved image.
+
+The stable-sweep visit property does not establish a whole-turn work or allocation bound. The current worker rebuilds the active key list and filters the remaining suffix for each selection; scheduling work therefore grows with the admitted peer set and may be quadratic over a sweep. A retained scheduler cursor/cost boundary and funded continuation tariff remain open. The feed chunk bound applies to each read/write attempt.

@@ -5948,6 +5948,69 @@ intentionally not timed by this function."
       (:refused (error 'fnn-peer-dial-error :outcome :host-syntax))
       (otherwise (fnn-fault "ACL2 returned a malformed peer dial target")))))
 
+;;; Retained outbound driver custody: one syscall/readiness attempt, no
+;;; private wait loop. A pending socket remains owned by its round context.
+(defun fnn-connect-start (address port &key (family :inet))
+  (let ((socket (make-instance (fnn-socket-class family) :type :stream :protocol :tcp))
+        (retained nil))
+    (unwind-protect
+         (progn
+           (fnn-socket-fd socket)
+           (let ((word (handler-case (funcall *fnn-connect-attempt* socket address port)
+                         (sb-bsd-sockets:socket-error (condition)
+                           (fnn-os-fail (sb-bsd-sockets::socket-error-errno condition))))))
+             (unless (member word '(:connected :pending))
+               (fnn-fault "connect boundary returned an invalid status"))
+             (setq retained t)
+             (values socket word)))
+      (unless retained (fnn-socket-shut socket)))))
+
+(defun fnn-connect-poll (socket)
+  (if (not (funcall *fnn-fd-waiter* (fnn-socket-fd socket) :output 0))
+      :wait
+    (let ((errno (funcall *fnn-socket-pending-error* socket)))
+      (cond ((zerop errno) :connected)
+            ((or (= errno sb-posix:einprogress) (= errno sb-posix:ealready)) :wait)
+            (t (fnn-os-fail errno))))))
+
+(defun fnn-peer-connect-start (host port)
+  "ACL2's literal/resolve/refuse target; pending TCP retains its socket.
+Synchronous DNS remains a named availability frontier outside TCP polling."
+  (let* ((octets (if (stringp host) (map 'list #'char-code host) (fnn-octet-list host)))
+         (target (fnn-core 'fn-peer-dial-target octets)))
+    (case (and (consp target) (first target))
+      (:address
+       (fnn-connect-start (coerce (second target) '(simple-array (unsigned-byte 8) (*))) port))
+      (:resolve
+       (fnn-connect-start (fnn-peer-resolve-ipv4 (map 'string #'code-char (second target))) port))
+      (:refused (error 'fnn-peer-dial-error :outcome :host-syntax))
+      (otherwise (fnn-fault "ACL2 returned a malformed peer dial target")))))
+
+(defun fnn-socket-read-now (fd limit)
+  "One nonblocking read attempt: octets/EOF or :wait on EINTR/EAGAIN."
+  (unless (and (integerp limit) (<= 1 limit +fnn-max-read+))
+    (fnn-fault "invalid socket read quantum"))
+  (let ((buffer (fnn-make-octets limit)))
+    (multiple-value-bind (count errno) (funcall *fnn-read-syscall* fd buffer)
+      (cond ((and (null count) (or (fnn-eintr-p errno) (fnn-would-block-p errno))) :wait)
+            ((null count) (fnn-os-fail errno))
+            ((not (and (integerp count) (<= 0 count limit)))
+             (fnn-fault "socket read made invalid progress"))
+            (t (subseq buffer 0 count))))))
+
+(defun fnn-socket-write-now (fd data offset end)
+  "One nonblocking write attempt; the caller retains every unwritten octet."
+  (unless (and (integerp offset) (integerp end) (<= 0 offset) (< offset end)
+               (<= end (length data)))
+    (fnn-fault "invalid socket write quantum"))
+  (multiple-value-bind (count errno)
+      (funcall *fnn-write-syscall* fd data offset (- end offset))
+    (cond ((and (null count) (or (fnn-eintr-p errno) (fnn-would-block-p errno))) :wait)
+          ((null count) (fnn-os-fail errno))
+          ((not (and (integerp count) (< 0 count) (<= count (- end offset))))
+           (fnn-fault "socket write made invalid progress"))
+          (t count))))
+
 (defun fnn-peer-dial-outcome (condition)
   "The host's classification of a failed peer dial: an observation for ACL2's line."
   (typecase condition

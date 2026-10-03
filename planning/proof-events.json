@@ -19094,6 +19094,15 @@
           "name": "fn-orv-startup-hold-protects-owner-and-one-quantum"
         }
       ]
+    },
+    {
+      "id": "PRF-1260",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prd-sweep-visits-all-admitted-rounds"
+        }
+      ]
     }
   ]
 }
