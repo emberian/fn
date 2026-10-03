@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "host/bp-receipt-journal-host.lisp",
+ "id": "PGO-OWED-BP-RECEIPT-JOURNAL-HOST",
+ "notes": [],
+ "owner": "post-guard-off",
+ "severity": "medium",
+ "slice": "carrier",
+ "source": "post-guard-off",
+ "state": "open",
+ "title": "A-OWNER-INVARIANT-CARRIED owes: 18 state writer(s) defined in host/bp-receipt-journal-host.lisp have no preservation theorem of fn-owner-retain-statep; each is listed in host/owner-served-carried.lisp :incomplete. Prove (def-owner-writer / the carrier move) and move it to :transitions: fn-bprj-apply fn-bprj-config-status fn-bprj-install fn-bprj-pending-receipt-resolution fn-bprj-preflight fn-bprj-preview-receipt fn-bprj-receipt-adu fn-bprj-request-action fn-bprj-request-bound-generation fn-bprj-request-bound-inbound-id fn-bprj-request-planned-result fn-bprj-request-receipt-id fn-bprj-request-result fn-bprj-request-transit-context-record fn-bprj-request-transit-intent-record fn-bprj-request-work-id fn-bprj-reset fn-bprj-valid-config",
+ "updated": "2026-10-03T04:15:32Z"
+}

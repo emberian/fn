@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "host/store-node-host.lisp",
+ "id": "PGO-OWED-STORE-NODE-HOST",
+ "notes": [],
+ "owner": "post-guard-off",
+ "severity": "medium",
+ "slice": "carrier",
+ "source": "post-guard-off",
+ "state": "open",
+ "title": "A-OWNER-INVARIANT-CARRIED owes: 48 state writer(s) defined in host/store-node-host.lisp have no preservation theorem of fn-owner-retain-statep; each is listed in host/owner-served-carried.lisp :incomplete. Prove (def-owner-writer / the carrier move) and move it to :transitions: fn-store-cfg-domain fn-store-cfg-generation fn-store-cfg-last-octets fn-store-cfg-last-reason fn-store-cfg-native-admin-authorize-carried fn-store-cfg-served fn-store-lim-use fn-store-open-refusal-text fn-store-open-stop-text fn-store-prov-for-msgid fn-store-prov-post fn-store-sco-clear fn-store-sco-decode fn-store-sco-decode-finish fn-store-sco-image-open fn-store-sco-last-record-octets fn-store-sco-log-position fn-store-sco-note-checkpoint-digest fn-store-sco-pass-begin fn-store-sco-pass-step fn-store-sco-prefix-octets-range fn-store-sco-publish-next fn-store-sco-publish-setup-of fn-store-sco-want-checkpoint-digest fn-store-sn-article-count fn-store-sn-article-verdict-word fn-store-sn-existing-action fn-store-sn-finish fn-store-sn-group-next fn-store-sn-headroom fn-store-sn-io fn-store-sn-known-abort fn-store-sn-lookup fn-store-sn-lookup-foundp fn-store-sn-next-txid fn-store-sn-pending-octets fn-store-sn-pending-sequence fn-store-sn-pin-count fn-store-sn-prepare fn-store-sn-recover-from-checkpoint fn-store-sn-recover-rows fn-store-sn-refuse-reservation fn-store-sn-replay-digest-report fn-store-sn-reserved fn-store-sn-reset fn-store-sn-staging-observation-limit fn-store-sn-sweep-round fn-store-statement-replay-seed",
+ "updated": "2026-10-03T04:15:33Z"
+}

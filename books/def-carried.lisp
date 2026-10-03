@@ -17,6 +17,7 @@
 ;     :transitions ((FN THM [:hyps (H ...)] [:state I] [:result P]) | FN ...)
 ;     [:concludes ((PRED THM) ...)]   ; bridges to the entry guards
 ;     [:complete-by (:enumeration "why")]   ; a value state only
+;     [:incomplete (A-ID (FN ...))]         ; a stobj state: the named escape
 ;     [:trace nil])
 ;
 ; THE STATEMENTS ARE GENERATED.  Nothing reads a declared theorem's
@@ -137,6 +138,27 @@
 ; completeness check over `fn-interfaces' (tools/interface_emit.py refuses
 ; an undeclared dispatch); that the entry guard runs before raw dispatch is
 ; host/native/io.lisp's.  A value row's enumeration is the claim it says.
+;
+; THE NAMED ESCAPE, :incomplete (A-ID (FN ...)) (lane post-guard-off,
+; 2026-10-03; ember: "we can just not have that guard").  A stobj row whose
+; completeness is not yet earned may name the host-called entries that
+; return ST with no preservation theorem -- the OWED writers -- and the
+; registered assumption A-ID (specs/failures.md) under which the row is
+; nevertheless relied on: that each owed writer keeps R.  The completeness
+; check then refuses every returning entry that is neither listed nor owed
+; (a writer added later is refused, by name, until it is proved or owed),
+; an owed name that is also listed (proved: remove it from the owed list),
+; and an owed name that is no function returning ST in this world (stale).
+; The escape waives completeness ONLY: every listed transition's generated
+; statement, every open's witness and producers, every bridge is checked
+; exactly as before, and an entry that is not a listed transition is still
+; refused raw dispatch.  definterface accepts `:raw-with (:carried NAME)'
+; over such a row only as `:raw-with (:carried NAME :assuming A-ID)', so
+; the escape is written at every entry that relies on it, and
+; host/native/io.lisp prints it at image build (FN_RAW_DISPATCH ... assuming).
+; A-ID is a trust row, not an encapsulate: no theorem is stated under it;
+; it is the dispatch-level premise that the owed writers' theorems, once
+; proved, discharge (each owed name is a ledger item).
 
 (in-package "ACL2")
 (include-book "std/testing/must-fail" :dir :system)
@@ -179,7 +201,7 @@
 ; The form.
 
 (defconst *fn-cd-keys*
-  '(:invariant :established :transitions :concludes :complete-by :trace))
+  '(:invariant :established :transitions :concludes :complete-by :incomplete :trace))
 
 (defconst *fn-cd-entry-keys* '(:hyps :state :result :ok :witness :produced))
 
@@ -246,6 +268,24 @@
       (and (true-listp x) (equal (len x) 2) (eq (car x) :enumeration)
            (stringp (cadr x)) (< 0 (length (cadr x))))))
 
+(defun fn-cd-assumption-namep (x)
+  (declare (xargs :mode :program))
+  ; a registered assumption's id: a symbol A-... (specs/failures.md)
+  (and (symbolp x) x
+       (< 2 (length (symbol-name x)))
+       (equal (subseq (symbol-name x) 0 2) "A-")))
+
+(defun fn-cd-incomplete-formp (x)
+  (declare (xargs :mode :program))
+  ; nil, or (A-ID (FN ...)): the assumption and a non-empty list of owed
+  ; writers, each a non-nil symbol, none twice
+  (or (null x)
+      (and (true-listp x) (equal (len x) 2)
+           (fn-cd-assumption-namep (car x))
+           (consp (cadr x)) (symbol-listp (cadr x))
+           (not (member-eq nil (cadr x)))
+           (no-duplicatesp-eq (cadr x)))))
+
 (defun fn-cd-refusal (name kvs)
   (declare (xargs :mode :program))
   ; nil when the form is well-formed; else (REASON . DETAILS)
@@ -265,6 +305,8 @@
     (list :bad-concludes (fn-cd-get :concludes kvs)))
    ((not (fn-cd-complete-by-formp (fn-cd-get :complete-by kvs)))
     (list :bad-complete-by (fn-cd-get :complete-by kvs)))
+   ((not (fn-cd-incomplete-formp (fn-cd-get :incomplete kvs)))
+    (list :bad-incomplete (fn-cd-get :incomplete kvs)))
    ((not (member-eq (fn-cd-get :trace kvs) '(t nil)))
     (list :bad-trace (fn-cd-get :trace kvs)))
    (t nil)))
@@ -284,6 +326,9 @@
     (:bad-concludes (msg ":concludes ~x0 is not ((PRED THM) ...)." (cadr reason)))
     (:bad-complete-by (msg ":complete-by ~x0 is not (:enumeration \"why\")."
                            (cadr reason)))
+    (:bad-incomplete (msg ":incomplete ~x0 is not (A-ID (FN ...)): a registered ~
+                           assumption's id and the non-empty list of owed writers."
+                          (cadr reason)))
     (:bad-trace (msg ":trace ~x0 is not t or nil." (cadr reason)))
     (:unknown-keyword (msg "unknown keyword(s) ~&0; the keywords are ~&1."
                            (cdr reason) *fn-cd-keys*))
@@ -765,6 +810,23 @@
         ((member-eq (car names) listed) (fn-cd-first-unlisted (cdr names) listed))
         (t (car names))))
 
+(defun fn-cd-stale-owed (owed st w)
+  (declare (xargs :mode :program))
+  ; the first owed name that is no function returning ST in this world
+  (cond ((atom owed) nil)
+        ((and (not (eq (getpropc (car owed) 'formals :none w) :none))
+              (fn-cd-stobj-position st (getpropc (car owed) 'stobjs-out nil w) w))
+         (fn-cd-stale-owed (cdr owed) st w))
+        (t (car owed))))
+
+(defun fn-cd-all-stale-owed (owed st w)
+  (declare (xargs :mode :program))
+  ; every owed name that is no function returning ST in this world
+  (cond ((atom owed) nil)
+        ((fn-cd-stale-owed (list (car owed)) st w)
+         (cons (car owed) (fn-cd-all-stale-owed (cdr owed) st w)))
+        (t (fn-cd-all-stale-owed (cdr owed) st w))))
+
 (defun fn-cd-invariant-problem (r w)
   (declare (xargs :mode :program))
   (let ((formals (getpropc r 'formals :none w)))
@@ -783,9 +845,12 @@
          (established (fn-cd-get :established row))
          (transitions (fn-cd-get :transitions row))
          (complete-by (fn-cd-get :complete-by row))
+         (incomplete (fn-cd-get :incomplete row))
+         (owed (cadr incomplete))
+         (listed (append (strip-cars established) (strip-cars transitions)))
          (unlisted (and st (fn-cd-first-unlisted
                             (fn-cd-returning-entries (table-alist 'fn-interfaces w) st w)
-                            (append (strip-cars established) (strip-cars transitions))))))
+                            (append listed owed)))))
     (cond
      ((fn-cd-invariant-problem r w))
      ((atom established)
@@ -802,11 +867,31 @@
       (msg "~x0's state is a value, not a stobj, so the world cannot say which ~
             declared entries produce it: say :complete-by (:enumeration ~
             \"why the transition list is complete\")" name))
+     ((and (null st) incomplete)
+      (msg ":incomplete on ~x0, whose state is a value: a value row says ~
+            :complete-by; the named escape waives a stobj row's world-derived ~
+            completeness only" name))
+     ((intersection-eq owed listed)
+      (msg "~x0 is owed under ~x1 and also a transition or establishing ~
+            point of ~x2: its theorem is proved, so remove it from the owed list"
+           (car (intersection-eq owed listed)) (car incomplete) name))
+     ((and st (fn-cd-stale-owed owed st w))
+      (msg "~x0 is owed under ~x1 by ~x2 but is no function returning the ~
+            carried state ~x3 in this world: a stale owed name; remove it.  ~
+            Every stale owed name: ~x4"
+           (fn-cd-stale-owed owed st w) (car incomplete) name st
+           (fn-cd-all-stale-owed owed st w)))
      (unlisted
       (msg "host-called entry ~x0 (fn-interfaces) returns the carried state ~
-            ~x1 and is neither a transition nor an establishing point of ~x2: ~
-            its preservation theorem is owed"
-           unlisted st name))
+            ~x1 and is neither a transition nor an establishing point of ~x2~@3: ~
+            its preservation theorem is owed.  Every such entry: ~x4"
+           unlisted st name
+           (if incomplete
+               (msg ", nor owed under ~x0" (car incomplete))
+             "")
+           (set-difference-eq
+            (fn-cd-returning-entries (table-alist 'fn-interfaces w) st w)
+            (append listed owed))))
      (t nil))))
 
 (defun fn-cd-normal-entries (name suffix st entries w)
@@ -863,12 +948,17 @@
         (fn-cd-normal-entries name '-establishes st (fn-cd-get :established kvs) w)
         (mv-let (msg2 transitions)
           (fn-cd-normal-entries name '-carries st (fn-cd-get :transitions kvs) w)
-          (let ((row (list :invariant r :state st
-                           :established established :transitions transitions
-                           :concludes (fn-cd-normal-bridges name (fn-cd-get :concludes kvs))
-                           :complete-by (fn-cd-get :complete-by kvs)
-                           :trace (not (and (assoc-keyword :trace kvs)
-                                            (null (fn-cd-get :trace kvs)))))))
+          (let ((row (append
+                      (list :invariant r :state st
+                            :established established :transitions transitions
+                            :concludes (fn-cd-normal-bridges name (fn-cd-get :concludes kvs))
+                            :complete-by (fn-cd-get :complete-by kvs)
+                            :trace (not (and (assoc-keyword :trace kvs)
+                                             (null (fn-cd-get :trace kvs)))))
+                      ; recorded only when declared: a row without the
+                      ; escape keeps its shape
+                      (and (fn-cd-get :incomplete kvs)
+                           (list :incomplete (fn-cd-get :incomplete kvs))))))
             (cond (msg (mv msg nil))
                   (msg2 (mv msg2 nil))
                   (t (mv (fn-cd-problem name row nil w) row))))))))))
@@ -1276,6 +1366,11 @@
      ((fn-cd-raw-entries-problem name st :transition (fn-cd-get :transitions row) w))
      ((fn-cd-raw-entries-problem name st :open (fn-cd-get :established row) w))
      (t nil))))
+
+(defun fn-cd-row-assumption (name w)
+  (declare (xargs :mode :program))
+  ; the registered assumption the row NAME's :incomplete names, else nil
+  (car (fn-cd-get :incomplete (cdr (assoc-eq name (table-alist 'fn-carried w))))))
 
 (defun fn-cd-raw-problem (name fn w)
   (declare (xargs :mode :program))

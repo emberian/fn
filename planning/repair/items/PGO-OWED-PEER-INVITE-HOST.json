@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "host/peer-invite-host.lisp",
+ "id": "PGO-OWED-PEER-INVITE-HOST",
+ "notes": [],
+ "owner": "post-guard-off",
+ "severity": "medium",
+ "slice": "carrier",
+ "source": "post-guard-off",
+ "state": "open",
+ "title": "A-OWNER-INVARIANT-CARRIED owes: 4 state writer(s) defined in host/peer-invite-host.lisp have no preservation theorem of fn-owner-retain-statep; each is listed in host/owner-served-carried.lisp :incomplete. Prove (def-owner-writer / the carrier move) and move it to :transitions: fn-pinv-host-owner-invitations fn-pinv-host-owner-peers fn-pinv-host-owner-reconfigure fn-pinv-host-owner-reconfigure-deltas",
+ "updated": "2026-10-03T04:15:33Z"
+}

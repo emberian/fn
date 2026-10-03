@@ -401,6 +401,11 @@
 (ld "host/bp-node-host.lisp" :ld-error-action :error)
 (ld "host/bp-node-machine-host.lisp" :ld-error-action :error)
 (ld "host/bp-receive-evidence-host.lisp" :ld-error-action :error)
+; The owner's carried relation over its proved writers, the rest owed under
+; A-OWNER-INVARIANT-CARRIED (lane post-guard-off): after every ACL2-mode host
+; file (each owed writer must be a function of this world) and before the
+; declarations whose :raw-with names its row.
+(ld "host/owner-served-carried.lisp" :ld-error-action :error)
 ; The host-called entries, declared (books/definterface.lisp): after every
 ; ACL2-mode host file, so each declaration is checked against this world
 ; (class, the entry guard's kinds, keystones); a refuted one stops the build.

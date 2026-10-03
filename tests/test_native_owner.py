@@ -600,10 +600,16 @@ class NativeOwnerTests(unittest.TestCase):
         node.stop(process=process)
         return [first, final, dup_first, dup_final, group, answer, body], process.stderr.since(0)
 
-    def test_unqualified_raw_annotations_stay_on_counterpart(self):
-        # D40's real-owner annotations are withheld pending complete host
-        # guard establishment and preservation. The selector must explicitly
-        # report zero entries; both runs still exercise POST and retrieval.
+    # The owner entries raw-dispatched over host/owner-served-carried.lisp's
+    # row, under A-OWNER-INVARIANT-CARRIED (lane post-guard-off): their
+    # whole-Store guard is not evaluated per call in a production run.
+    RAW_OWNER_ENTRIES = 7
+
+    def test_raw_owner_entries_answer_as_the_counterpart(self):
+        # The served POST, its duplicate and the read back are the same with
+        # the owner's entries raw-dispatched and with the developer selector
+        # that evaluates their whole guard (the counterpart path); the
+        # selector reports exactly the declared raw entries.
         raw, raw_stderr = self.served_post_transcript(None)
         counterpart, counterpart_stderr = self.served_post_transcript(
             {"FN_NATIVE_DISPATCH_COUNTERPART": "1"})
@@ -617,7 +623,7 @@ class NativeOwnerTests(unittest.TestCase):
         match = re.search(rb"fn-dispatch: counterpart for (\d+) raw-dispatched entries",
                           counterpart_stderr)
         self.assertIsNotNone(match, counterpart_stderr[-2000:])
-        self.assertEqual(int(match.group(1)), 0, counterpart_stderr[-2000:])
+        self.assertEqual(int(match.group(1)), self.RAW_OWNER_ENTRIES, counterpart_stderr[-2000:])
 
     def test_client_disconnect_is_not_a_global_owner_fault(self):
         process, port = self.node.start_store_owner(once=False)

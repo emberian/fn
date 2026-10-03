@@ -419,5 +419,6 @@
 (include-book "../../books/bp-node-host-machine")
 (include-book "../../books/bp-evidence-host-names")
 (include-book "../../books/definterface")
+(include-book "../../books/owner-retain-carried")
 (include-book "../../books/bp-handoff-report")
 (include-book "../../books/tcpcl-delivery-invariants")
