@@ -22189,7 +22189,7 @@
     {
       "id": "PRF-1283",
       "title": "Bounded virtual ARTICLE scan and replay page cursor refine the captured NNTP article view and HTML reference",
-      "statement": "Actual subjects fn-was-scan/fn-was-page/fn-wpc-window-drive, called through host/web-host.lisp fn-web-host-article-scan, fn-web-host-article-page and fn-web-host-window-page-step by native fnn-web-render-step/replay-step/page-step. Establish fixed metadata/window invariants and exact equality to fn-wss-article-view plus fn-wr-seq on the immutable valid GROUP/ARTICLE reply, including header continuations, first field selection, ownership, percent-encoded Message-ID, dot unstuffing, count and arbitrary emit partitions. The response pin and original persistent plan survive scan/count/replay/emit and the final HTTP suffix or cleanup receipt; cold replay never runs the command again. Program source and raw witnesses are not guard/refinement or physical funding proofs.",
+      "statement": "Actual subjects fn-was-scan/fn-was-page/fn-wpc-window-drive, called through host/web-host.lisp fn-web-host-stream-scan, fn-web-host-stream-page and fn-web-host-window-page-step by native fnn-web-render-step/replay-step/page-step. Establish fixed metadata/window invariants and exact equality to fn-wss-article-view plus fn-wr-seq on the immutable valid GROUP/ARTICLE reply, including header continuations, first field selection, ownership, percent-encoded Message-ID, dot unstuffing, count and arbitrary emit partitions. The response pin and original persistent plan survive scan/count/replay/emit and the final HTTP suffix or cleanup receipt; cold replay never runs the command again. Program source and raw witnesses are not guard/refinement or physical funding proofs.",
       "milestone": "M6",
       "requirements": [
         "WEB-006"
@@ -22205,9 +22205,33 @@
         "books/web-render.lisp",
         "host/web-host.lisp",
         "host/native/web-host.lisp",
-        "tests/native_web_article_stream_raw.lisp"
+        "tests/native_web_article_stream_raw.lisp",
+        "books/web-reply-stream.lisp"
       ],
       "progress_note": "Connected source program boundary; exact raw native consumer, bounded input and final pin witnesses pass. Admission/refinement, matching image and qualified Web allocation/repeated-read tariff remain pending. LIST/OVER full collectors remain."
+    },
+    {
+      "id": "PRF-1284",
+      "title": "Bounded OVER virtual spans refine the existing newest-first overview page",
+      "statement": "Actual subjects fn-wov-scan/fn-wov-rows/fn-wrs-page through fn-web-host-stream-scan/page and fnn-web-render-step/replay-step/page-step. Under the generated OVER of the existing fn-wss-window100-number range, retain at most100 rows of four virtual spans and no full reply bytes; establish exact equality to fn-wss-over-rows and fn-wr-group-main/fn-wr-seq, including newest-first order, empty fields, long/encoded subject and number URL escaping. Cursor and final response pin span count/replay/emit/final HTTP suffix. More than100 generated rows fails the invariant without admitting another row or truncating; no new stored-data ceiling. Programs/raw witnesses are not guard/refinement or funding proofs.",
+      "milestone": "M6",
+      "requirements": [
+        "WEB-006"
+      ],
+      "depends_on": [
+        "PRF-1283",
+        "PRF-339"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/web-reply-stream.lisp",
+        "books/web-render.lisp",
+        "host/web-host.lisp",
+        "host/native/web-host.lisp",
+        "tests/native_web_over_stream_raw.lisp"
+      ],
+      "progress_note": "Connected shared native replay provider and exact100-row/long-field raw consumer pass; matching admission/refinement/image and qualified repeated-read tariff pending. LIST collector remains."
     }
   ]
 }

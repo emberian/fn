@@ -5335,3 +5335,7 @@
 (definterface fn-web-host-window-page-step :class ::program)
 (definterface fn-web-host-replay-slice :class ::program)
 (definterface fn-web-host-replay-forward-p :class ::program)
+(definterface fn-web-host-stream-p :class ::program)
+(definterface fn-web-host-stream-start :class ::program)
+(definterface fn-web-host-stream-scan :class ::program)
+(definterface fn-web-host-stream-page :class ::program)

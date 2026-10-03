@@ -14,7 +14,7 @@
     (list (cons key value))))
 (defun fn-was-start (login)
   (declare (xargs :mode :program))
-  (list (cons :phase :group) (cons :at 0) (cons :ls 0) (cons :prefix nil)
+  (list (cons :kind :article) (cons :phase :group) (cons :at 0) (cons :ls 0) (cons :prefix nil)
         (cons :last nil) (cons :slot nil) (cons :vs nil) (cons :fe 0)
         (cons :name nil) (cons :colon nil) (cons :skipping nil)
         (cons :fields (list nil nil nil nil nil)) (cons :body nil) (cons :be nil)

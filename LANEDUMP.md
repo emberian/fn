@@ -1959,3 +1959,15 @@ lease/funding is separate; Web full tariff remains unpriced, no borrowed native
 grant. LIST/OVER full reply collectors remain next. Web stays separate through
 10:00 under revised ten-deputy cap. Source assembly owns one material review;
 Integration owns affected roots and image convergence.
+
+
+Web OVER follow-on (PRF-1284 planned, SCN-1114): the actual native shared
+stream/replay provider scans the existing100-number OVER request into at most
+100 rows of four virtual spans. Number/subject/From/date text is read from the
+same capture for count/emit, in the reference's newest-first order. Long fields
+are not copied into the row metadata. A101st generated row fails the invariant
+instead of returning truncated data. Raw exact-reference, generic native
+cold/count/partial-write/IN-bound/final-pin witnesses pass. Source programs still
+await guard/refinement and matching image; repeated backward seeks and physical
+reads require qualified Web funding. LIST ACTIVE remains the full collector to
+remove next; no blanket output grant or complete fairness/warranty claim.
