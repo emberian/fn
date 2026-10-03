@@ -8655,6 +8655,35 @@
         "planning/evidence/operator-retire-observation-2026-10-03-v2.json"
       ],
       "execution_scope": "SBCL actual source with explicit clock/scheduling/owner/stat observations; no saved-image or physical durability qualification."
+    },
+    {
+      "id": "SCN-1104",
+      "title": "Actual decision journal replay reads a captured prefix in bounded windows and closes on all paths",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-028"
+      ],
+      "steps": [
+        "Execute actual fnn-command-store-journal and actual stream fold with deterministic descriptor observations and reference replay start/note operations.",
+        "Observe a2.24MB journal, append beyond captured size, partial reads, absent/nonregular replacement, fstat/read/core failures and premature EOF.",
+        "Execute actual prior host body against a real2.24MB scratch journal and reject whole-file ACL2 input. Prepare matching-image large/absent/symlink/FIFO tests."
+      ],
+      "expected": [
+        "New consumer uses35input windows, each at most65536octets, reports all160000complete entries and segments, excludes later append and retains first replay gap.",
+        "Every opened descriptor closes; pre-report faults and shortened-prefix refusal emit no report. Nofollow/NONBLOCK opening and fstat regular check protect the actual descriptor.",
+        "Prior source fails its window assertion with2240000octets; no loader failure counts as the negative."
+      ],
+      "implementation": {
+        "test": "tests/test_native_journal_stream_source.py"
+      },
+      "evidence": [
+        "tests/native_journal_stream_source.lisp",
+        "tests/acl2/owner-time-journal-stream-tests.lisp",
+        "tests/test_native_journal_stream.py",
+        "planning/evidence/operator-journal-stream-2026-10-03-v2.json"
+      ],
+      "execution_scope": "Actual host/fold source with explicit physical/model-operation seams, and separate finite full-model ACL2 equivalence tests. Matching image is prepared but not executed; no universal refinement or heap/durability qualification."
     }
   ]
 }

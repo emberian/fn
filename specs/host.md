@@ -882,8 +882,17 @@ any run of the host's calls reads back whole and replays from the run's
 start (a start entry, SEQ 0, per run) to agreement at the run's disk and
 clock, and every decision the host asks of the value reads only those.
 The operator's replay is `fn store ROOT journal`: ACL2 reads the file back
-and replays it (`fn-otm-journal-report`, `fn-otm-journal-exit`: exit 0 when
-it agrees, 1 at a gap, divergence or malformed entry).
+and replays its captured regular-file prefix through incremental
+`fn-otjs-consume`, `fn-otjs-report` and `fn-otjs-exit`: exit 0 when it agrees,
+1 at a gap, divergence or malformed entry. The input window is at most64KiB;
+complete prior entries are folded into counts, earliest verdict and replay
+state. Long rejected entries keep only their first eight completed fields;
+initial natural fields retain exact arbitrary width. Appends after fstat's
+size are excluded; a shortened prefix is refused. Nofollow/NONBLOCK open,
+regular descriptor checking and unwind close cover the read. PRF-1275 proves
+chunk independence and field-count preservation. Finite full-model equality
+and every-split cases pass; universal report/exit refinement to PRF-322's
+reference remains pending, as do clean certification and matching image.
 What a process death with entries unflushed loses is exactly those entries:
 the replay of decisions that stored nothing. No durable state depends on an
 entry (a disk event keeps the pipeline; a refusal stores nothing), and the

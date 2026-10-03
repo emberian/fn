@@ -19181,6 +19181,19 @@
           "name": "fn-nret-observation-report-requires-stopped"
         }
       ]
+    },
+    {
+      "id": "PRF-1275",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otjs-consume-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otjs-consume-fields-bounded"
+        }
+      ]
     }
   ]
 }

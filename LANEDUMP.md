@@ -1744,3 +1744,21 @@ Owner carrier capability — GPT-6.1-Sol, 2026-10-03
 
 ## Source assembly carrier component/prepared refusal boundaries (2026-10-03)
 4c2c84590 +d172fec2f material composition clean; stale generated current.md omitted, proposed profile/assumption row and owed writers preserved. Physical carrier/tool support source-admitted with existing16+2forms/nine tests; actual unchanged refusal/abort definitions and four unchanged frame theorems move into scoped books. Proposed two raw-with carried annotations use existing incomplete A-OWNER-INVARIANT-CARRIED, not a host guard/wholewriter/native completion claim. Target admission/guard/certification/loaded-world compatibility pending; Integration source flows before verification. Roots owner-carrier/tests plus owner-post-carried/tests,owner-retain-frame/tests and normal owner-carried/interface image world.
+
+## Sol operator: decision journal incremental consumer (2026-10-03)
+
+Root's S011 stream fold and descriptor consumer completed with actual-source
+2.24MB/35window discriminator, captured-prefix/partial-read schedules and all
+error-close branches. Actual prior body passes2240000octets at once and fails
+the window assertion. Finite full-model15cases/every split and literal chunk/
+field bound/omission/guard checks pass in root-journal-stream warm hbox session;
+19of19 named source events match after resync. No oldPRF322operatortransfer: the
+generator/reference retains its proof; quantified new report/exit bridge is
+OPEN under PRF1275. At most8completed fields; arbitrary initial natural widths
+remain exact, so no constant entire-parser heap claim. SCN1104 source archive
+operator-journal-stream-2026-10-03-v2.json5355098c... and complete REPL logbe5018...
+indexed. Four matching developer-image tests prepared in
+tests.test_native_journal_stream.NativeJournalStreamTests. Source before
+normal2-root cert/image; Integration owns imports/capacity. Access may take
+general refinement after immutable source lands; current active root warm
+world /tank/fn/gates/codex-journal-stream-repl, 60min idle.

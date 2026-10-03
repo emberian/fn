@@ -1939,6 +1939,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/clock-unit \
 	books/owner-time-model \
 	books/owner-time-journal \
+	books/owner-time-journal-stream \
+	tests/acl2/owner-time-journal-stream-tests \
 	books/owner-time-admission \
 	tests/acl2/owner-time-model-tests \
 	tests/acl2/owner-time-space-tests \

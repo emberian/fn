@@ -233,6 +233,7 @@
 (include-book "../../books/history-capture-state")
 (include-book "../../books/owner-retain-state")
 (include-book "../../books/owner-retain-transitions")
+(include-book "../../books/owner-post-carried")
 (include-book "../../books/owner-obligation-state")
 (include-book "../../books/deflate-inflate")
 (include-book "../../books/owner-checkpoint-open")

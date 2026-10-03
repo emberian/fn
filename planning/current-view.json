@@ -230,7 +230,7 @@
       },
       "profile": "default",
       "latest": "a resend at a later second is answered duplicate where the image before D25 answered conflict ([d25-dup-conflict](evidence/d25-dup-conflict-2026-09-24.md)).",
-      "obstruction": "no two-node matrix or operator campaign on an image with D25; a poster Date equal to fn's rendering of the injection second is outside the invariance theorems; D25's provenance question (review \u00a7D25) is open.",
+      "obstruction": "no two-node matrix or operator campaign on an image with D25; a poster Date equal to fn's rendering of the injection second is outside the invariance theorems; D25's provenance question (review §D25) is open.",
       "next": "the shared qualification of an image carrying D25, with the transit duplicate rows and K1's died-present resubmissions answered duplicate."
     },
     {
@@ -457,6 +457,21 @@
       "latest": "Actual-source SBCL fixture passes exact60s/70s live/held expiry, offline refusal, fresh/stale reports and malformed observation fault; prior actual source times out (planning/evidence/operator-retire-observation-2026-10-03-v2.json). Warm hbox admission is not certification.",
       "obstruction": "Normal native-retire/teeth certification and matching saved-image consumer validation are pending; no physical final-fence bound is claimed.",
       "next": "Integration batch certifies exact native-retire plus native-retire-observation-tests roots and consumes the matching saved-image fixture at convergence."
+    },
+    {
+      "id": "operator-journal-stream",
+      "name": "incremental decision journal replay",
+      "contract": "The journal command reads a captured regular-file prefix in ACL2 windows of at most64KiB and folds complete entries without retaining them; chunk boundaries preserve the replay continuation.",
+      "host": {
+        "function": "fn-otjs-consume",
+        "file": "host/native/io.lisp"
+      },
+      "keystone": "fn-otjs-consume-of-append",
+      "tested": null,
+      "profile": "development",
+      "latest": "Actual-source2.24MB/35window/partial/append/error-close fixture passes; prior actual body violates window bound with2240000octets. Warm19of19source events and finite full-model/every-split/bound/guard teeth pass (planning/evidence/operator-journal-stream-2026-10-03-v2.json).",
+      "obstruction": "Quantified old-report/exit refinement, normal clean two-root certification and matching developer-image tests remain open. Arbitrary initial natural widths remain exact; field count is not a constant heap bound.",
+      "next": "Access owns general parser/replay reference bridge; Integration imports source then schedules owner-time-journal-stream and test roots plus tests.test_native_journal_stream.NativeJournalStreamTests."
     }
   ],
   "other_deployments": [

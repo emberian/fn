@@ -88,6 +88,7 @@
 ;; Lane time-model-2: the decision journal (fn-otm-disk-step, fn-otm-note-step,
 ;; fn-otm-start-line) and the 440 at the POST command (fn-otm-read-span).
 (include-book "books/owner-time-journal")
+(include-book "books/owner-time-journal-stream")
 (include-book "books/owner-time-admission")
 ;; Lane zero-copy-commit: fn-oas-read-span (the articles in flight).
 (include-book "books/owner-article-slots")
