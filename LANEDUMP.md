@@ -1313,3 +1313,16 @@ Nine DeclarationTests PASS in 0.010s; compile and diff checks PASS. Raw
 declaration file regenerated. No ACL2, umbrella, host-books, image or whole
 check run here; Integration owns exact child-candidate umbrella/interface/
 host-books preflight and image qualification.
+
+## Sol tools: sent includes acquire compatible artifact sets
+
+Resource Exec's warm msgid-linear-exec include initially reused a merely
+valid-looking foreign .cert and ACL2 refused its full-book-name alists.
+Explicit supported install_closure(include_self=True), artifact set
+43b54e261fb03462ff66c8407965a35738f4fcfc2b7d52b0632dd12fb22cf6a3,
+installed87/missing0; the same warm include then passed0.46s. Preparation
+now runs that exact compatible-set acquisition for every repository include,
+including an existing plausible certificate. It deduplicates the same target
+within one command; system includes are untouched. No source/certification
+fallback or source/object/alist relaxation. Five SessionIncludeTests PASS
+0.014s, compile/diff checks PASS; no actual ACL2 or reload launched here.

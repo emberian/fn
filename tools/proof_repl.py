@@ -2541,10 +2541,10 @@ def prepare_includes(name: str, several: list[str], acquire=None) -> tuple[list[
     """The forms to send, each repository include made relative to the
     session's directory, and whether every included book is certified.
 
-    A sent include of a book with no certificate here (a tests/acl2 book is
-    rarely in a books/ session's closure) is acquired from matching cached
-    evidence first. A miss is refused, never implicitly certified; choose
-    certification explicitly or send the intended source forms instead.
+    Every repository include acquires an exact compatible cached artifact
+    set first. A certificate prefix alone does not establish matching source
+    or dependency alists. A miss is refused, never implicitly certified;
+    choose certification explicitly or send the intended source forms instead.
     """
     directory = session_directory(name)
     if directory is None:
@@ -2552,20 +2552,22 @@ def prepare_includes(name: str, several: list[str], acquire=None) -> tuple[list[
     acquire = acquire or (lambda book: install_closure(
         book, (), None, 4, SESSIONS / f"{name}.include.log", include_self=True))
     prepared = []
+    acquired_targets = set()
     for one in several:
         rewritten, target = rooted_include(one, directory)
         if rewritten != one:
             print(f"proof-repl: include path made relative to the session's directory "
                   f"{directory.relative_to(ROOT).as_posix() if directory.is_relative_to(ROOT) else directory}/: "
                   f"{rewritten.strip()}")
-        if (target is not None and (ROOT / f"{target}.lisp").is_file()
-                and not certs.valid_looking(ROOT / f"{target}.cert")):
+        if (target is not None and target not in acquired_targets
+                and (ROOT / f"{target}.lisp").is_file()):
             acquired, detail, _ = acquire(target)
             print(detail)
             if not acquired:
                 print(f"proof-repl: not sending the include of {target}: no certificate "
                       "could be acquired for it")
                 return several, False
+            acquired_targets.add(target)
         prepared.append(rewritten)
     return prepared, True
 
