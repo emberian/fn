@@ -49,3 +49,28 @@
    (list dynamic
          (fn-prstartup-peer-protected profile core nursery output max-connections plan)
          peer (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*)))
+
+; Revalidate the current file capture against the whole native reservation.
+; A file changed after launch cannot obtain extra unfunded worker authority.
+(defun fn-prstartup-peer-native-grant
+ (dynamic profile core nursery output max-connections plan peer observations)
+ (declare (xargs :guard t))
+ (let ((grant (fn-prstartup-peer-grant dynamic profile core nursery output
+                                        max-connections plan peer)))
+  (if (not (eq (fn-pfr-at 0 grant) :hold)) grant
+    (if (< (fn-heap-machine-octets observations)
+           (fn-heap-reservation-octets (fn-heap-mb-of dynamic) core
+             (fn-heap-stack-kib profile)
+             (+ (fn-heap-thread-count max-connections) (nfix (fn-pfr-at 3 peer)))))
+        (list :refused :peer-native-reservation-not-held)
+      (list :hold (fn-prstartup-peer-native-capture dynamic profile core nursery output
+                                                  max-connections plan peer))))))
+
+(defun fn-prstartup-peer-native-refusal-line (grant)
+ (declare (xargs :guard t))
+ (case (fn-pfr-at 1 grant)
+  (:peer-native-reservation-not-held "Peer flight startup refused: native worker reservation is not held.")
+  (:peer-flight-pool-not-held "Peer flight startup refused: independent pool is not held.")
+  (:invalid-peer-flight-profile "Peer flight startup refused: invalid resource profile.")
+  (:default-pool-not-held "Peer flight startup refused: parent DEFAULT pool is not held.")
+  (otherwise "Peer flight startup refused: unsupported resource allowance.")))

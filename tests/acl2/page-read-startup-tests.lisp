@@ -67,3 +67,13 @@
   (and (not cold) (not (equal (fn-prstartup-nth 0 d) :heap))
        (not (<= (fn-heap-reservation-octets (fn-prstartup-nth 1 d) 100
                   (fn-prstartup-nth 4 d) (fn-prstartup-nth 5 d)) (fn-heap-machine-octets nil))))))
+
+; Discriminating runtime trigger growth: naive 128+1 MiB spends collector room.
+(assert-event
+ (let* ((old (* 128 1048576)) (extra 1048576) (cap (* 64 1048576))
+        (backing (- old (* 2 (fn-heap-nursery-trigger old cap))))
+        (naive (+ old extra))
+        (next (fn-heap-grow-runtime-dynamic old extra cap)))
+  (and (< naive (+ backing extra (* 2 (fn-heap-nursery-trigger naive cap))))
+       (<= (+ backing extra (* 2 (fn-heap-nursery-trigger next cap))) next)
+       (<= (+ old extra) next))))

@@ -38,8 +38,9 @@
                (nfix (fn-crv-nth 1 base)) (fn-crv-nth 3 base)))
         ((not (equal (fn-crv-nth 0 base) :heap)) base)
         (t
-         (let* ((mb (fn-heap-mb-of (+ (* *fn-heap-mib* (nfix (fn-crv-nth 1 base)))
-                                       (nfix (fn-crv-nth 0 policy)))))
+         (let* ((mb (fn-heap-mb-of (fn-heap-grow-runtime-dynamic (* *fn-heap-mib* (nfix (fn-crv-nth 1 base)))
+                        (nfix (fn-crv-nth 0 policy))
+                        (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib)))))
                 (stack (nfix (fn-crv-nth 4 base)))
                 (threads (+ (nfix (fn-crv-nth 5 base)) (nfix (fn-crv-nth 1 policy))))
                 (total (fn-heap-reservation-octets mb core stack threads)))
@@ -80,10 +81,12 @@
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-heap-mb-of-covers
-                            (octets (+ (* *fn-heap-mib* (nfix (fn-crv-nth 1 base)))
-                                       (nfix (fn-crv-nth 0 policy))))))
+                            (octets (fn-heap-grow-runtime-dynamic
+                                       (* *fn-heap-mib* (nfix (fn-crv-nth 1 base)))
+                                       (nfix (fn-crv-nth 0 policy))
+                                       (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib))))))
            :in-theory (e/d (fn-crv-extend-reservation fn-crv-nth fn-crv-policy-p)
-                            (fn-heap-mb-of fn-heap-reservation-octets
+                            (fn-heap-grow-runtime-dynamic fn-heap-mb-of fn-heap-reservation-octets
                              fn-heap-machine-octets fn-native-config-cold-resources-wfp)))))
 
 (in-theory (disable fn-crv-nth fn-crv-policy-p fn-crv-native-per-worker
