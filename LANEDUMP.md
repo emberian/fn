@@ -757,3 +757,34 @@ command-repl.log.gz and checks.json, including current subject/consumer file has
 ## Source assembly DC03 discovery forms — GPT-6.1-Sol
 
 Reviewed d8a0af2f3 LIST five-form and NEWGROUPS two-form table additions consumed by actual fn-scr-command -> fn-proto-archive-command-cat. Ordered xref/counts/compatibility/active/reference fallback mirrors existing dispatcher; helper witnesses assert archive/catalog/index/env invariants, reachable discovery and exact result codes. DATE remains actual generated session route, with literal111/501/503 replies. Prior emitter40forms/guards1.93s500442steps and64-event literalteeth0.12s1854steps reused; two changed source/fixture paths exact producer match, no extra replay. Completed-discovery view and whole-reply allocation debts retained. Only cumulative LANEDUMP conflict; source and spec hunk exact. Integration owns generated command/report world and matching native consumer checks.
+# Proof census: served
+
+**Lane:** `codex-proof-luna-served` (`codex/proof-luna-served-20261003`). The code checkout is exactly source origin/dev `bffa8b2c3ac0a5a2d98c2a362561082d0063fbf0`. The coordinator's current inventory parser is at `bf2e1328397d4c30f5b9735557b619313bb407e2`; every one of the 482 served book hashes in that inventory matches this checkout. Detailed row status is in `build/proof-sweep/results.json`.
+
+## Census screen
+
+Machine proof-strategy screening covers 482 books and 11,332 inventory events: 6,600 named theorems, 4,008 admission/guard events, and 724 occurrence-indexed `verify-guards` events. All source SHA-256s match the inventory. Among theorems, 5,272 have explicit hint features; their extracted counts are `:in-theory` 5,085, `enable` 1,232, `e/d` 2,358, `enabled_items` 3,587, `:use` 1,517, `:induct` 747, `disable` 603, `:expand` 141, `:cases` 119, `:do-not-induct` 394, and `:nonlinearp` 3. Every book row also records its local include list and exported theory-form count. This is structural screening, not semantic approval of all 11,332 statements.
+
+Results distinguish structurally inspected rows, two manually reviewed no-change helper events, and tactic candidates; per-event outcomes and coverage are recorded in `build/proof-sweep/results.json`. The auth dispatcher ideas remain hypotheses pending event profiling; archived whole-book cost alone did not establish their event cost.
+
+## Owner-log first-word proof packet
+
+The archived baseline is `planning/evidence/manifests/certify-20261003T064110Z-896002.json` (ACL2 8.7, hbox, two jobs). At the pre-edit source digest `7094068af26f47bc6da9430e0c0c7a44c2740b9235d0b73e9f81ae3febd83309`, it measured `fn-olog-transit-line-says-refused-iff-rejected` at 3,730,462 steps / 3.41 s; the complete book took 4,015,745 steps / 4.739 s. All 253 normalized local include-closure source hashes matched that manifest. Candidate digest: `ef63df5b4e8dc601cd3ac5dc777b4c985cd63fdcdda1f353bf22e733db749bb0` (parent source revision `bffa8b2c3ac0a5a2d98c2a362561082d0063fbf0`). The source delta adds one local lemma and changes hints on seven existing theorems; function definitions, theorem statements, hypotheses, rule classes, exports, and executable behavior are unchanged.
+
+The local abstraction proves that for a true-list `first` containing no space and a nonempty `rest`, `fn-olog-line-word` of the joined parts equals `first` (including an empty `first`, because the separator is then the first octet). Each of the seven existing keystones now keeps `fn-olog-join` opaque so this lemma discharges the first-word extraction; the existing class-word and outcome equations remain the semantic decisions.
+
+Warm validation used the one authorized hbox `proof_repl.py` session `luna-served-owner`, ACL2 `/tank/fn/toolchains/w28/acl2-literal-4g-tls64k`. The 15 dependencies missing from that cache were loaded from source inside local encapsulates; all others used matching cached certificates. After loading the source prefix, one resync sent the changed cluster:
+
+```sh
+python3 tools/proof_repl.py resync luna-served-owner books/owner-log.lisp \
+  --from fn-olog-served-post-line-says-accepted-iff-durable \
+  --through fn-olog-control-refusal-line-says-refused-iff-submit-refused \
+  --limit 20 --host hbox \
+  --acl2 /tank/fn/toolchains/w28/acl2-literal-4g-tls64k
+```
+
+Result: 14 forms, 0 refusals; 299,388 total steps / 0.71 s ACL2 time. The helper took 2,251 steps / 0.02 s. The seven unchanged keystones admitted at: served-post 1,706 / 0.01 s; control-post 422 / 0.01 s; transit 284,444 / 0.56 s; feed-reply 7,290 / 0.03 s; BP-app refusal 779 / 0.01 s; served refusal 98 / 0.01 s; control refusal 256 / 0.01 s. These are observed candidate costs, not a new matched speedup claim against the archived run. Other consumers include owner/native log writes and BP application output; ACL2 builds the lines in `host/owner-host.lisp`, `host/native/owner.lisp`, and `host/bp-native-app-host.lisp`. The packet is ready for Integration's source review and consumer certification; this lane did not certify or request closure.
+
+## Source assembly coherent proof patterns — GPT-6.1-Sol
+
+Source packet532f1eda2/a3a07b98e (CBOR),6e443d1af/e788b1c8d (BP),fdb4e3e7a (checkpoint),db2a0071b (owner log), plus774a7c607 evidence index only. Preserved Sol proof deputy primary whole-source AST review and existing warm admission evidence. Inspected pattern scope: explicit bound/preservation facts prevent repeated unfolding, checkpoint codec theory narrows to the local fact needing it, owner first-word proof uses one LOCAL join lemma. Four final book byte sequences exact producer match; original statements/guards/rule classes/executable definitions remain fixed, no source hunk conflict. Cumulative LANEDUMP conflict retains producer receipts and prior content. Existing CBOR archive verified; remaining packet archival/certification pending under Sol deputy/Integration, no fresh per-proof experiments. Scoped changed roots: books/cbor-invariants, books/bp-workflow-invariants, books/store-checkpoint-tables, books/owner-log; actual BP binding-core consumer was source admitted and may be included in combined root packet. No speed claim for checkpoint or neighboring simplification patches; no certificate/image claim.
