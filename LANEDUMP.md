@@ -1838,3 +1838,10 @@ publication. Raw1000-byte materialization/callback, stale incarnation and
 publication-cut fence/retention PASS. No public SAMEPRS issuer claim; final
 conversion/decode and source-driver guard/refinement remain owed. Framing exact
 2root certify123129-1811904 PASSED2/0, indexed. Source-process integration next.
+Continuing source followthrough: newly live receiver guards warm-admitted;
+actual source receiver boundary weakened/proved with sole proper-data hypothesis,
+reachable handshake positive and corrupted-data removal fixtures prepared.
+Final certs underway. ACL2 bounded work credit removes manufactured1ms sleeps
+between empty slots during real source/buffer/output work; actual16384-byte
+source/all8-service raw fixture has0 sleeps, idle9/10turns still waits. Whole
+semantic decode, long-source keepalive/input and full GC/work cost remain open.
