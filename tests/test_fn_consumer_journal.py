@@ -22,6 +22,7 @@ import unittest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import fn_consumer  # noqa: E402
+CONSUMER_SOURCE = Path(os.environ.get("FN_CONSUMER_TEST_SOURCE", ROOT / "tools" / "fn_consumer.py"))
 
 FAKE = r'''#!/usr/bin/env python3
 import hashlib, json, os, sys, time
@@ -116,7 +117,7 @@ class JournalAgainstAStandIn(unittest.TestCase):
         env.pop("FN_CONSUMER_CUT", None)
         if cut:
             env["FN_CONSUMER_CUT"] = cut
-        result = subprocess.run([sys.executable, str(ROOT / "tools" / "fn_consumer.py"),
+        result = subprocess.run([sys.executable, str(CONSUMER_SOURCE),
                                  str(self.config), *words], env=env,
                                 capture_output=True, timeout=120, check=False)
         return result
