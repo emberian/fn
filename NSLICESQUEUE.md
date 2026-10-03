@@ -523,3 +523,14 @@ cold/count/partial-write/IN-bound/final-pin witnesses pass. Source programs stil
 await guard/refinement and matching image; repeated backward seeks and physical
 reads require qualified Web funding. LIST ACTIVE remains the full collector to
 remove next; no blanket output grant or complete fairness/warranty claim.
+
+
+Web LIST dynamic row source (PRF-1285 planned, SCN-1115): all three large read
+routes now share captured-plan replay; LIST retains nine scanner entries and
+one generated row segment plan, independent of group count. Actual native
+empty/one/1003-group exact reference/cold/count/window/pin raw PASS. Source
+program/refinement/profile arithmetic/image pending. Original NNTP ARTICLE
+payload/block, LIST complete reply and some OVER full NOV/projection replies
+remain upstream materialization frontiers. Served owns LIST producer; Root
+owns shared payload/section producer; Web owns these connected consumers and
+qualified consumer tariff coordination. No full producer funding claim.

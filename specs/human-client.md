@@ -260,31 +260,26 @@ head/window/cursor and job capture remain the actual tariff frontier. Eliminatin
 the complete HTML output buffer does not fund the retained input or plan.
 
 
-The native ARTICLE path additionally scans rendered NNTP windows into five
-virtual header spans, body offsets and bounded field/ownership metadata
-(`books/web-article-stream.lisp`, PRF-1283 planned). It retains the original
-persistent NNTP plan and replays it for requested source windows rather than
-collecting the whole article reply. Count and emit use that same capture; a
-saved renderer tail lets a monotone body continue across windows. Backward
-header/link seeks restart the capture without issuing the command again.
-The final ARTICLE response pin remains until the HTTP suffix drains or actual
-semantic disposal returns; preliminary GROUP status pins settle before another
-command acquires its pin. Cold replay retains the exact plan and deadline.
-SCN-1113 checks exact reference HTML, bounded input and the pin through cold
-replay/partial writes. This program boundary still awaits guard/refinement and
-matching image evidence. LIST/OVER retain their full NNTP collectors. The
-retained plan, renderer/window tails, cursor/decoder working allocation,
-repeated physical reads and mailbox captures still require a qualified Web
-tariff; the native output grant does not cover them implicitly.
+The native ARTICLE/OVER/LIST paths scan rendered NNTP windows into virtual
+metadata (`books/web-reply-stream.lisp`) and replay the captured persistent
+plan for the source windows requested by the page cursor. ARTICLE keeps five
+header spans/body offsets and bounded ownership metadata; OVER keeps at most
+its existing100 requested number rows as spans; LIST keeps only status/block
+offsets and creates one row plan while traversing the source. Long source fields
+are not copied into row metadata, and group count does not grow Web's retained
+row plan. Count and emit use the same capture. A saved renderer tail resumes
+monotone spans; backward field/link seeks restart it without another command.
+The final response pin survives both HTML passes and the HTTP suffix or actual
+semantic disposal; preliminary GROUP status pins settle before the next command.
+Cold replay retains the exact plan and deadline. SCN-1113/1114/1115 compare exact
+reference HTML and the connected native window/pin consumer. These program
+boundaries await guard/refinement and matching image (PRF-1283/1284/1285).
 
-
-Web OVER follow-on (PRF-1284 planned, SCN-1114): the actual native shared
-stream/replay provider scans the existing100-number OVER request into at most
-100 rows of four virtual spans. Number/subject/From/date text is read from the
-same capture for count/emit, in the reference's newest-first order. Long fields
-are not copied into the row metadata. A101st generated row fails the invariant
-instead of returning truncated data. Raw exact-reference, generic native
-cold/count/partial-write/IN-bound/final-pin witnesses pass. Source programs still
-await guard/refinement and matching image; repeated backward seeks and physical
-reads require qualified Web funding. LIST ACTIVE remains the full collector to
-remove next; no blanket output grant or complete fairness/warranty claim.
+This removes Web's additional full NNTP input and row-list collectors. The
+original NNTP ARTICLE producer still realizes payload and complete section
+block, LIST ACTIVE still realizes its complete reply, and some OVER paths
+realize full NOV/projection replies before capture. Those upstream producers,
+the supported numeric representation, working cursor/decoder/renderer vectors,
+repeated physical reads and mailbox captures require a qualified complete
+tariff. Native output grants do not cover Web implicitly. Stateful owner
+admission can still delay the fixed worker/network event flow.
