@@ -200,3 +200,37 @@ restricted NEWNEWS and cold OVER/HDR/XPAT consumers. Legacy missing-facts
 metadata tombstone fallback still reads cold payload and is not qualified as
 bounded off-owner settlement. Foundations owns output grants and Runtime owns
 physical mux discard/return; logical close/cancel cannot settle physical holds.
+
+## DC02 generated switch and complete HDR/XHDR rows, 2026-10-03 Sol
+
+SOURCE READY followup to8f: all16 archive rows now have complete declarations.
+HDR compatibility/verified/control/enrollment/ordinary and XHDR compatibility/
+ordinary preserve literal priority, session and expanded reply. XREF through
+fn-nntp-xref-reply-cat is unreachable for HDR/XHDR and omitted; actual rcompat
+Xref branches remain and have reachable witnesses. Generated executable no
+longer falls through to the hand catalog dispatcher: unknown/nonarchive
+keywords use fn-nntp-archive-command-pinned directly. Hand body remains local
+migration proof reference. New set-equal archive/form assertion refuses any
+missing declaration; declaration-removal mutation loses coverage.
+
+Actual fn-scr-command definition/guards (918steps) and restricted consumer
+source loaded in retained metadata-catalog world. Final table31events0.03s/
+884steps; generated dispatcher/contracts/guards38events2.10s/553491steps;
+view/keyword sites9events0.04s/710steps. Full teeth70events0.23s/2444steps,
+plus coverage mutation25steps: complete boundary and actual literal form
+conditions copied syntactically from table, prior tests false, both-route
+reachability, exact HDR225/XHDR221/syntax501 and special fields. Locals dropped
+by encapsulate. No current certificate/image claim; Integration owns batch.
+
+SCN1093 claimed/added, PRF1236 rewritten around actual switch, requirements and
+spec generated table updated. Debt10 unchanged; protocol_emit34/304 passes,
+strict affected theory/book-order0warnings, diffcheck and two-lane claims pass.
+Archived/indexed dc02-switch-20261003 checks c898d880... / raw124675ee...;
+raw includes refused probes and retained world history. Initial teeth syntax
+substitution used translated SUBLIS-VAR guard, repaired structural copy;
+missing must-fail dependency loaded before final full replay. No theory escape.
+Selector receipt path fixed to indexed selector-repl.log.gz (also assembly fix).
+
+Open: completed discovery/pin-first fallback, restricted streaming, cold read
+suspension and all composed work/heap/physical custody claims unchanged. Matcher
+helper owns only resumable wildmat library; I consume it after source READY.

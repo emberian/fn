@@ -760,9 +760,88 @@
           :restricted "the reference walk over the projected pinned archive (fn-nntp-over-range-indexed, no cursor)")
    :teeth ("XOVER 1-3" "XOVER 2" "XOVER 2-" "XOVER 9-10" "XOVER" "XOVER <a@x>" "XOVER 1-3 x"))
   ("HDR"
-   :view :pinned :view-decided (:pin-or-completed "PRF-1238") :effect :none :view-rfc "NNT-042 (other reads); the Message-ID form is decided c07 C (pin first, then the completed snapshot); RFC 3977 8.5")
+   :view :pinned :view-decided (:pin-or-completed "PRF-1238") :effect :none
+   :view-rfc "NNT-042 (other reads); Message-ID completed fallback remains PRF-1238 debt; RFC 3977 8.5"
+   :forms (("compatibility" :test (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
+                 (:instance fn-nntp-xref-reply-col-is-xref-reply)
+                 (:instance fn-proto-statep-article-listp)
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-proto-pin-buckets-are-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
+           ("verified" :test (and (consp args) (fn-nntp-keywordp (car args) ":FN-VERIFIED"))
+            :cat (fn-nntp-verdict-hdr-response-cat session verdicts args v fn-arena fn-cat) :view :pinned :effect :none
+            :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
+                 (:instance fn-nntp-xref-reply-col-is-xref-reply)
+                 (:instance fn-proto-statep-article-listp)
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-proto-pin-buckets-are-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)
+                 (:instance fn-nntp-verdict-hdr-response-cat-is-archive)))
+           ("control" :test (and (consp args) (fn-nntp-keywordp (car args) ":FN-CONTROL"))
+            :cat (fn-nntp-control-hdr-response-cat session archive index verdicts args v fn-arena fn-cat) :view :pinned :effect :none
+            :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
+                 (:instance fn-nntp-xref-reply-col-is-xref-reply)
+                 (:instance fn-proto-statep-article-listp)
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-proto-pin-buckets-are-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)
+                 (:instance fn-nntp-verdict-hdr-response-cat-is-archive)
+                 (:instance fn-nntp-control-hdr-response-cat-is-pinned)))
+           ("enrollment" :test (and (consp args) (fn-nntp-keywordp (car args) ":FN-ENROLLMENT"))
+            :cat (fn-nntp-enrollment-hdr-response-cat session index verdicts args v fn-arena fn-cat) :view :pinned :effect :none
+            :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
+                 (:instance fn-nntp-xref-reply-col-is-xref-reply)
+                 (:instance fn-proto-statep-article-listp)
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-proto-pin-buckets-are-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)
+                 (:instance fn-nntp-verdict-hdr-response-cat-is-archive)
+                 (:instance fn-nntp-control-hdr-response-cat-is-pinned)
+                 (:instance fn-nntp-enrollment-hdr-response-cat-is-pinned)))
+           ("ordinary" :test t
+            :cat (fn-nntp-hdr-command-cat session args v nil fn-arena fn-cat)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
+                 (:instance fn-nntp-xref-reply-col-is-xref-reply)
+                 (:instance fn-proto-statep-article-listp)
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-proto-pin-buckets-are-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)
+                 (:instance fn-nntp-verdict-hdr-response-cat-is-archive)
+                 (:instance fn-nntp-control-hdr-response-cat-is-pinned)
+                 (:instance fn-nntp-enrollment-hdr-response-cat-is-pinned)
+                 (:instance fn-nntp-hdr-command-cat-is-archive (legacyp nil)))
+            :open (fn-nntp-hdr-response)))
+   :cost (:unrestricted "catalog number probes and overview metadata where available; cold field/payload and whole response working allocation remain GEN-CURSOR debt"
+          :restricted "reference pinned archive walk; whole response allocated")
+   :teeth ("HDR Subject 1-3" "HDR Subject" "HDR Subject <b@x>" "HDR Xref 1-3"
+           "HDR :FN-VERIFIED 1-3" "HDR :FN-CONTROL <b@x>" "HDR :FN-ENROLLMENT <b@x>" "HDR"))
   ("XHDR"
-   :view :pinned :effect :none :view-rfc "NNT-042 (other reads); RFC 2980 2.6")
+   :view :pinned :effect :none :view-rfc "NNT-042 (other reads); RFC 2980 2.6"
+   :forms (("compatibility" :test (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
+                 (:instance fn-nntp-xref-reply-col-is-xref-reply)
+                 (:instance fn-proto-statep-article-listp)
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-proto-pin-buckets-are-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
+           ("ordinary" :test t
+            :cat (fn-nntp-hdr-command-cat session args v t fn-arena fn-cat)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
+                 (:instance fn-nntp-xref-reply-col-is-xref-reply)
+                 (:instance fn-proto-statep-article-listp)
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-proto-pin-buckets-are-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)
+                 (:instance fn-nntp-hdr-command-cat-is-archive (legacyp t)))
+            :open (fn-nntp-xhdr-response)))
+   :cost (:unrestricted "catalog number probes and overview metadata where available; cold field/payload and whole response working allocation remain GEN-CURSOR debt"
+          :restricted "reference pinned archive walk; whole response allocated")
+   :teeth ("XHDR Subject 1-3" "XHDR Subject" "XHDR Subject <b@x>" "XHDR Xref 1-3" "XHDR"))
   ("XPAT"
    :view :pinned :effect :none :view-rfc "NNT-042 (other reads); RFC 2980 2.9"
    :forms (("any" :test t :cat (fn-nntp-xpat-response-cat session args v fn-arena fn-cat)
@@ -851,7 +930,7 @@
             :by ((:instance fn-nntp-newnews-response-stream-expands-to-cat)
                  (:instance fn-nntp-newnews-response-stream-keeps-session)
                  (:instance fn-nntp-newnews-response-cat-is-newnews-response))))
-   :cost (:unrestricted "one metadata candidate per quantum and at most W emitted bytes; retained suffix avoids rescanning and catalog tombstone column avoids payload I/O; initial group selection, renderer working allocation, resource custody and completed-view capture remain GEN-CURSOR debt"
+   :cost (:unrestricted "one retained group/member selection unit or indexed output phase per quantum and at most W emitted bytes; fixed reference-only initialization; matcher/comparison and composed heap tariff, physical resource custody, legacy cold metadata fallback and completed-view capture remain GEN-CURSOR debt"
           :restricted "the reference whole pinned archive walk, including payload tombstone reads")
    :teeth ("NEWNEWS * 20261001 000000 GMT" "NEWNEWS fn.* 20261001 000000 GMT" "NEWNEWS fn.* 20261001 000000" "NEWNEWS"))
   ("DATE"
