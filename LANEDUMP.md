@@ -3496,3 +3496,13 @@ Full owner cached-only preflight refuses89 current dependency mismatches,7primar
 roots; no broad source replay/certification or waiting for image. Next narrow
 certification: article-stream, article-stream-server, article-stream-server-tests;
 whole owner/refinement, selector/renderer guards and MsgID/setup remain active.
+
+Access selector guard continuation: fn-ast-select-one total guardT and step natural-fuel
+guard warm verified (3979/260steps). Reached positive fn-statep fixture now uses
+actual payload handles and aligned group/membership schema; exact numeric/current
+reference, fuel partition and absent-number cases pass. Separate malformed-state
+totality witness passes. Actual recorded source184344/185908 aggregate unchanged.
+Normal3root certificate at39d72 is certify-20261003T161139Z-2311907 (174matching
+cached deps/3PASS), archived index; current selector changes have different core
+bytes so no verdict transfer. Unchanged server/helper teeth match. Next owned
+code is Message-ID selection/local membership setup; no native custody edits.

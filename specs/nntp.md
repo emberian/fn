@@ -2642,6 +2642,13 @@ The first parsed event bounds consumption so following pipelined commands
 wait for completion. Physical compressed/plain window custody, metadata
 setup bounds and the complete owner/reference refinement remain open; the
 source does not establish a funded operation or a qualified image.
+Numeric/current selector transitions have total executable guards: one step
+checks only the retained comparison fields and consumes one article, membership
+or group character. Natural fuel yields an unchanged continuation at zero;
+malformed retained comparison fields settle safely without a whole archive
+validator. The valid-state witnesses compare old reader outcomes and split fuel.
+The complete selector/owner reference bridge remains an open proof obligation.
+
 Recovery and reclaim may complete legacy availability facts from the same captured
 arena. This changes derived facts, while preserving the article identity, payload
 handle, group memberships, stamp, assigned numbers, sequence and withdrawal
