@@ -2917,3 +2917,12 @@ cause; targetwithdrawal requirescause. Reasons/docs nownameauthorizationpublishe
 not alreadywithdrawn. Originalreviewscenariooverstatedphysicaleffect.
 
 Runtime decoded-window continuation (2026-10-03): actual same-pool projected issuer consumes fn-dwb-fixed-storage-vector, reports :partial-fixed-storage, refuses modern complete installations. Native reservation precedes semantic draw; torn or unbound charge retains worker custody. Response capture lends returned authenticated scalar window through ready/render/replay, then whole-response close cancels/releases after physical return. Mux and Web retain capture across jobs and close it before unpin. Full allocator/GC/token/source graph tariff and full ARTICLE endpoint execution remain open PRF-1288; source-first packet, scoped checks follow.
+
+
+2026-10-03 Web POST body packet: PRF-1293 / SCN-1122 adds actual core
+4096-work/octet cursor and native prepare/feed consumer after340, retained
+original request stobj, partial consumed continuation. Source definitions
+admit in web-private-clean; raw dense5000-dot/percent/CR reference atW1/2/7/4096
+and actual117-byte feeds PASS. Program only; form/header/subject/fullIN and
+qualified working funding remain open. Runtime owns response capture slot
+binding and sole-terminal close; do not overlap those additions.

@@ -9396,6 +9396,30 @@
         "test": "tests/test_moderation_outcome.py"
       },
       "execution_scope": "Actual source dispatcher and normal ACL2 guard/admission; complete native durability/transport and concurrent authority scenario pending."
+    },
+    {
+      "id": "SCN-1122",
+      "title": "Authored POST body windows retain source and await340 before feeding",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "WEB-006"
+      ],
+      "steps": [
+        "Compare encoded body cursor against fn-wss-emit-body plus dot terminator at quanta1/2/7/4096, including CR/LF, percent errors and5000 dot lines.",
+        "Run actual native prepare/feed under partial117-byte consumed results; retain the original request source across every step.",
+        "Check core valid/bad-CSRF BEGIN and340/refusal continuation against the prior session machine."
+      ],
+      "expected": [
+        "Every window bounded, exact complete body and framing.",
+        "No whole authored body in OUT; no source replacement or lost partial input.",
+        "Only340 activates body; refusal/uncertain semantics preserved."
+      ],
+      "evidence": [
+        "tests/native_web_post_stream_raw.lisp",
+        "tests/acl2/web-post-stream-tests.lisp"
+      ],
+      "note": "Program/raw execution boundary; full request, form/header/subject and qualified resource accounting remain open."
     }
   ]
 }

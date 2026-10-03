@@ -8,6 +8,7 @@
 (include-book "../books/web-config")
 (include-book "../books/web-page-cursor")
 (include-book "../books/web-reply-stream")
+(include-book "../books/web-post-stream")
 
 (defun fn-web-host-plan (config-octets listener-port tls-port certp)
   (declare (xargs :mode :program :guard (fn-cbor-octet-listp config-octets)))
@@ -199,5 +200,16 @@
 
 (defun fn-web-host-private-begin-step (config action fn-web-in fn-web-out)
   (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
-  (fn-web-private-begin-step (append (take 6 config) (list :page-plan :private-begin))
+  (fn-wps-private-begin (append (take 6 config) (list :page-plan :private-begin))
                              action fn-web-in fn-web-out))
+
+(defun fn-web-host-post-window (cursor fn-web-in fn-web-out)
+  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (mv-let (bytes next done) (fn-wps-window 4096 cursor nil fn-web-in)
+    (let* ((fn-web-out (fn-octets-clear fn-web-out))
+           (fn-web-out (fn-octets-append-list bytes fn-web-out)))
+      (mv next done fn-web-out))))
+(defun fn-web-host-post-reply-step (config flow event cursor fn-web-in fn-web-out)
+  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (fn-wps-private-reply (append (take 6 config) (list :page-plan :private-begin))
+                        flow event cursor fn-web-in fn-web-out))

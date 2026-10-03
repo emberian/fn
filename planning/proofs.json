@@ -22814,6 +22814,27 @@
         "planning/evidence/article-stream-source-20261003.log"
       ],
       "progress_note": "Core source and scan guards plus bounded scan/render work admitted in narrow warm world. Added universal fn-ast-render-window-byte-bound admitted0.01s/762steps after accumulator bound0.01s/3345steps. Actual-source69488 core checks include dense-dot exact W1/2/3/4096 byte windows; actual owner finish, PROGRAM ready wrapper and native helpers pass70841 aggregate checks with recorded list arena/owner-state/cold I/O, once-only commit, immutable replay, malformed/reclaimed refusals and unrelated global config publication under unchanged connection pin. Web shared producer stress fbcae3cd0 separately passes recorded consumer composition. Full factory/native physical execution, lazy metadata setup, renderer guards, original-response and owner preservation refinements remain open. No certificate/image/funding claim."
+    },
+    {
+      "id": "PRF-1293",
+      "title": "Resumable authored POST body agrees with in-place decode and dot framing",
+      "statement": "Host-called fn-web-host-post-window consumes fn-wps-window on retained HTTP IN. Each work quantum emits at most that many octets and retains at most five framing bytes. Exact reference to fn-wss-emit-body plus terminator is execution-tested at quanta 1/2/7/4096. Native prepare/feed follows core-selected 340 then preserves partial consumption and existing await/outcome handling. Subject/header construction, whole form lookup, complete retained HTTP input and qualified physical funding remain open. Program-mode boundary has no guard/refinement proof yet.",
+      "milestone": "M6",
+      "requirements": [
+        "WEB-006"
+      ],
+      "depends_on": [
+        "PRF-1290"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/web-post-stream.lisp",
+        "host/web-host.lisp",
+        "host/native/web-host.lisp",
+        "tests/native_web_post_stream_raw.lisp"
+      ]
     }
   ]
 }
