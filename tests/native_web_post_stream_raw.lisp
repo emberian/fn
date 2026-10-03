@@ -28,7 +28,7 @@
           finally (error "unfinished POST cursor"))))
   ;; Actual native producer/feed continuation, including partial consumed input.
   (let* ((conn (fixture-conn 71 :post-prepare 77))
-         (face (%make-fnn-web-face :service :service :conns (list conn)))
+         (face (%make-fnn-web-face :service *fixture-service* :conns (list conn)))
          (old-call (symbol-function 'fnn-call))
          (old-feed (symbol-function 'fnn-owner-handle-chunk-step)) (fed nil))
     (setf (fnn-web-conn-post-source conn) source
@@ -68,7 +68,7 @@
 (let* ((raw (append (fn-wrq-oct "ignored=") (make-list 10003 :initial-element 120)
                     (fn-wrq-oct "&csrf=token&g=local.general&subject=%C3%A9%0AHi&subject=wrong&body=.%0D%0Alast&body=wrong")))
        (conn (fixture-conn 73 :post-form 79)) (healthy (fixture-conn 74 :event))
-       (face (%make-fnn-web-face :service :service :conns (list conn healthy)))
+       (face (%make-fnn-web-face :service *fixture-service* :conns (list conn healthy)))
        (saved (symbol-function 'fnn-call)) (saved-core (symbol-function 'fnn-core)) (turns 0))
   (fnn-web-fill (fnn-web-conn-in conn) (fnn-octets raw))
   (setf (fnn-web-conn-post-form conn)

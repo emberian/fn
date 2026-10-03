@@ -53,7 +53,7 @@
 (defun native-stream-consumer (xs flow config reference &optional (id 41) (max-replay-rounds 150)
                               provider initial-plan)
     (let* ((conn (fixture-conn id :render 88))
-           (face (%make-fnn-web-face :service :service :config config :conns (list conn)))
+           (face (%make-fnn-web-face :service *fixture-service* :config config :conns (list conn)))
            (plan (or initial-plan
                      (loop for at from 0 below (length xs) by 4096
                            collect (fnn-octets (subseq xs at (min (length xs) (+ at 4096)))))))
