@@ -469,17 +469,17 @@ CURSORP (lane join-f2-13, PRF-1020): the plan's next window is a cursor's
 quantum (books/served-plan.lisp fn-splan-at-cursorp: a served OVER/XOVER
 range), which the caller runs under the owner mutex
 (fnn-owner-cursor-step) before it renders again; nothing is rendered here."
-  (when (fnn-core 'fn-splan-at-cursorp plan)
+  (when (fnn-core 'fn-qplan-at-cursorp plan)
     (return-from fnn-owner-render-next
       (values (fnn-make-octets 0) plan nil t)))
   (let ((size (if compressedp
                   (fnn-core 'fn-zc-render-window-size
-                            (fnn-core 'fn-splan-window-size plan))
-                (fnn-core 'fn-splan-window-size plan))))
+                            (fnn-core 'fn-qplan-window-size plan))
+                (fnn-core 'fn-qplan-window-size plan))))
     (unless (and (integerp size) (>= size 0))
       (fnn-fault "owner returned a malformed render window size"))
     (destructuring-bind (status rest buf)
-        (fnn-call 'fn-splan-window plan size (fnn-make-render-buffer size))
+        (fnn-call 'fn-qplan-window plan size (fnn-make-render-buffer size))
       ;; :cursor (lane join-f2-13): the window ended in front of a cursor
       ;; effect, its octets written; the size above never reaches one (it
       ;; is the octets of the effect the window starts in), so the status
@@ -491,7 +491,7 @@ range), which the caller runs under the owner mutex
                     (the fnn-octets array)
                   (subseq (the fnn-octets array) 0 fill))
                 rest
-                (and (fnn-core 'fn-splan-donep rest) t)
+                (and (fnn-core 'fn-qplan-donep rest) t)
                 nil)))))
 
 ;;; The cursor quantum (lane join-f2-13, PRF-1020; books/served-plan-cursor.lisp).
@@ -564,7 +564,7 @@ never awaits a page or replays a quantum in the same I/O event."
                      (catch 'fnn-extent-cold
                        (let ((*fnn-extent-no-io* t))
                          (destructuring-bind (status rest)
-                             (fnn-call 'fn-splan-cursor-step plan (fnn-owner-over-window)
+                             (fnn-call 'fn-qplan-cursor-step plan (fnn-owner-over-window)
                                        (fnn-live-stobj 'fn-arena) (fnn-live-stobj 'fn-cat))
                            (unless (eq status :ok)
                              (fnn-fault "owner returned a malformed cursor in its served reply"))
@@ -4713,7 +4713,7 @@ in a fault; DEADLINE (internal real time) bounds the whole feed.
           (fnn-fault "invalid FN_NATIVE_PAGE_READ_HOLD (expected MIN-OCTETS:RELEASE-FILE)"))
         (let ((release (subseq raw (1+ colon))))
           (unless (probe-file release)
-            (let ((size (fnn-core 'fn-splan-window-size plan)))
+            (let ((size (fnn-core 'fn-qplan-window-size plan)))
               (unless (and (integerp size) (>= size 0))
                 (fnn-fault "owner returned a malformed render window size"))
               (when (and (plusp size) (>= size min))

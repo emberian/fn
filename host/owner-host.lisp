@@ -205,6 +205,7 @@
 ; the continuation of a served OVER/XOVER range; host/native/owner.lisp
 ; fnn-owner-cursor-step).
 (include-book "../books/served-plan-cursor")
+(include-book "../books/served-query-plan")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to

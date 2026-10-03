@@ -103,18 +103,53 @@
           (nfix calls))
    :hints (("Goal" :in-theory (enable fn-cur-at fn-lst-progress)))))
 
+(local
+ (defthm fn-lst-nfix-successor
+   (equal (nfix (+ 1 (nfix calls))) (+ 1 (nfix calls)))
+   :hints (("Goal" :in-theory '(nfix natp)))))
+
+(local
+ (defthm fn-lst-empty-call-metric
+   (equal (fn-lst-call-metric nil) 0)
+   :hints (("Goal" :in-theory '(fn-lst-call-metric fn-cur-at nfix)))))
+
+(local
+ (defthm fn-lst-empty-field
+   (equal (fn-cur-at n nil) nil)
+   :hints (("Goal" :in-theory '(fn-cur-at)))))
+
 ; This literal metric counts controller calls, not bytes or catalog internals.
 (defthm fn-lst-one-control-at-most-one
   (<= (- (fn-lst-call-metric progress)
           (fn-lst-call-metric (mv-nth 1 (fn-lst-one progress fn-cat)))) 1)
   :hints (("Goal" :in-theory
-           (e/d (fn-lst-one fn-lst-call-metric)
-                (fn-lst-progress fn-cur-at fn-wmc-start fn-wmc-step fn-wmc-demand
-                 fn-wmc-decidedp fn-wmc-matchedp fn-state-nexts fn-state-groups
-                 fn-gsc-one fn-gsc-start fn-gsc-remaining fn-gsc-summary
-                 fn-nntp-moderated-entryp fn-nntp-stuff-lines fn-lst-line)))))
+           (union-theories
+            '(fn-lst-one fn-lst-call-metric fn-lst-progress-calls
+              fn-lst-nfix-successor fn-lst-empty-call-metric fn-lst-empty-field nfix natp)
+            (theory 'minimal-theory)))))
 
 (local (in-theory (disable fn-lst-one fn-lst-progress fn-lst-env fn-lst-call-metric)))
+
+(local
+ (defthm fn-lst-mv-first
+   (equal (mv-nth 0 x) (car x))
+   :hints (("Goal" :expand ((mv-nth 0 x))))))
+
+(local
+ (defthm fn-lst-mv-third
+   (equal (mv-nth 2 (cons a (cons b tail))) (car tail))
+   :hints (("Goal" :expand ((mv-nth 2 (cons a (cons b tail)))
+                            (mv-nth 1 (cons b tail)) (mv-nth 0 tail))))))
+
+(local (deftheory fn-lst-before-generated-bounds (current-theory :here)))
+
+(local
+ (in-theory
+  (union-theories
+   '(fn-cur-context fn-cur-progress fn-cur-pending fn-cur-dependency fn-cur-make
+     fn-cur-at fn-cur-split-byte-bound fn-cur-split-keeps-true-listp
+     fn-lst-mv-first fn-lst-mv-third car-cons cdr-cons nfix natp len mv-nth zp)
+   (theory 'minimal-theory))))
 
 (def-cursor fn-lst (fn-cat) :stobjs (fn-cat)
   :call (fn-lst-one progress fn-cat)
@@ -123,6 +158,8 @@
 
 (verify-guards fn-lst-one)
 (verify-guards fn-lst-step :hints (("Goal" :in-theory (disable fn-lst-one fn-cur-split))))
+
+(local (in-theory (theory 'fn-lst-before-generated-bounds)))
 
 (defun fn-lst-effect (cur)
   (declare (xargs :guard t))
