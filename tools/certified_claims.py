@@ -71,24 +71,28 @@ def uncited_books(root: Path, books, tracked_only: bool = True) -> list[str]:
     --recertify run).  `tracked_only` reads the archive's git-tracked
     manifests (a tree with no git reads every archived one).
     """
+    books = list(books)
+    if not books:
+        return []
+    states, uncited = {}, []
+    for book in books:
+        try:
+            states[book] = current_state(root, book)
+        except (OSError, ValueError, certs.UnreadableBook):
+            uncited.append(book)
+    source_paths = {item.rpartition(":")[0] for _, listing in states.values() for item in listing}
     tracked = evidence_manifests.tracked_manifests(root) if tracked_only else set()
     passed: dict[str, list[dict]] = {}
     for _, manifest in evidence_manifests.load_all_archived(
-            root, tracked_only=bool(tracked)):
+            root, tracked_only=bool(tracked), source_paths=source_paths):
         for book, verdict in (manifest.get("book_results") or {}).items():
             if verdict == "passed":
                 passed.setdefault(book, []).append(manifest)
-    uncited: list[str] = []
-    for book in books:
-        try:
-            digest, listing = current_state(root, book)
-        except (OSError, ValueError, certs.UnreadableBook):
-            uncited.append(book)
-            continue
+    for book, (digest, listing) in states.items():
         if not any(certifies(manifest, book, digest, listing)[0]
                    for manifest in passed.get(book, [])):
             uncited.append(book)
-    return uncited
+    return [book for book in books if book in uncited]
 
 
 def manifest_failures(proofs: list[dict], owners: dict[str, set[str]],

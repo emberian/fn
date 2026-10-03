@@ -165,7 +165,7 @@ def host_of(manifest: dict) -> str:
     return str(manifest.get("hostname") or "unknown-host")
 
 
-def manifests(root: Path = ROOT) -> list[tuple[Run, dict]]:
+def manifests(root: Path = ROOT, source_paths: set[str] | None = None) -> list[tuple[Run, dict]]:
     """Every manifest a reader at this revision can open, newest last.
 
     The archive under `planning/evidence/manifests/` is the committed claim
@@ -181,10 +181,10 @@ def manifests(root: Path = ROOT) -> list[tuple[Run, dict]]:
     # ones it names (evidence_store verifies); an unindexed file under
     # planning/evidence is a local draft, labelled so (r56 F1).
     loaded = [(Path(rel), evidence_manifests.evidence_store.indexed(root, rel), manifest)
-              for rel, manifest in evidence_manifests.load_all_archived(root)]
+              for rel, manifest in evidence_manifests.load_all_archived(root, source_paths=source_paths)]
     loaded += [(path, False, manifest)
                for path in sorted(root.glob(certs.MANIFEST_GLOB))
-               for manifest in certs.load_manifests(root, path)]
+               for manifest in certs.load_manifests(root, path, source_paths)]
     seen: set[str] = set()
     for path, archived, manifest in loaded:
         run_id = (evidence_manifests.run_id_of(path)
@@ -265,8 +265,8 @@ def audit(root: Path = ROOT, roots: list[str] | None = None,
     """Every root and every book those roots include, judged at its digest.
 
     `roots` defaults to the Makefile's `ACL2_BOOKS`, read by the one parser
-    `make certify` reads it with, and is passed explicitly only by a test
-    standing up a synthetic tree with no Makefile in it.
+    `make certify` reads it with. Scoped queries pass explicit affected roots;
+    every selected root's complete include closure is still judged.
 
     `include_local=False` reads committed manifests only, so a generated,
     committed answer (planning/proofs.json's status) is a function of
@@ -283,7 +283,7 @@ def audit(root: Path = ROOT, roots: list[str] | None = None,
     listings = {book: certs.closure_listing(certs.closure(root, book))
                 for book in records}
 
-    read = manifests(root)
+    read = manifests(root, {f"{book}.lisp" for book in records})
     if not include_local:
         read = [(run, manifest) for run, manifest in read if run.archived]
     runs = {run.run_id: run for run, _ in read}
@@ -440,6 +440,38 @@ def dependents(root: Path, report: dict, changed: list[str]) -> dict[str, list[s
         if reached:
             found[book] = reached
     return found
+
+
+def changed_scope(root: Path, changed: list[str], roots: list[str]) -> tuple[list[str], dict]:
+    """Select affected rooted books before evidence/form-hash auditing."""
+    if not changed:
+        return [], {}
+    graph = certs.include_graph(root, roots)
+    reverse = {}
+    for parent, children in graph.items():
+        for child in children:
+            reverse.setdefault(child, set()).add(parent)
+    wanted = set(changed)
+    affected = set(wanted & graph.keys())
+    pending = list(wanted)
+    while pending:
+        for parent in reverse.get(pending.pop(), ()):
+            if parent not in affected:
+                affected.add(parent)
+                pending.append(parent)
+    selected = sorted(book for book in affected if book.startswith(ROOT_DIRS))
+    deps = {}
+    for book in selected:
+        if book in wanted:
+            continue
+        seen, todo = set(), [book]
+        while todo:
+            item = todo.pop()
+            if item not in seen:
+                seen.add(item)
+                todo.extend(graph.get(item, ()))
+        deps[book] = sorted(wanted & seen)
+    return selected, deps
 
 
 def gate(report: dict, changed: list[str], deps: dict[str, list[str]]) -> dict:
@@ -608,8 +640,21 @@ def main(argv: list[str] | None = None) -> int:
                              "--strict, exit 1 unless every one is green")
     args = parser.parse_args(argv)
 
+    changed, deps = [], {}
     try:
-        report = audit()
+        if args.profile:
+            import proof_artifacts
+            report = audit(root=ROOT, roots=proof_artifacts.profile_roots(ROOT, args.profile))
+        elif args.changed_since:
+            changed = changed_books(ROOT, args.changed_since)
+            selected, deps = changed_scope(ROOT, changed, ledger.makefile_roots())
+            report = audit(root=ROOT, roots=selected) if selected else {"books_by_verdict": {}}
+        else:
+            report = audit(root=ROOT)
+    except subprocess.CalledProcessError as error:
+        print(f"green-check: git cannot resolve {args.changed_since}: "
+              f"{error.stderr.strip()}", file=sys.stderr)
+        return 2
     except evidence_manifests.evidence_store.EvidenceError as error:
         store = evidence_manifests.evidence_store
         print(f"green-check: {store.outcome(error)}: committed evidence cannot be "
@@ -620,19 +665,13 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if args.profile:
-        answer = profile_gate(report, args.profile)
+        answer = profile_gate(report, args.profile, root=ROOT)
         print(json.dumps(answer, indent=1, sort_keys=True) if args.json
               else "\n".join(profile_lines(answer)))
         return 1 if args.strict and answer["not_green"] else 0
 
     if args.changed_since:
-        try:
-            changed = changed_books(ROOT, args.changed_since)
-        except subprocess.CalledProcessError as error:
-            print(f"green-check: git cannot resolve {args.changed_since}: "
-                  f"{error.stderr.strip()}", file=sys.stderr)
-            return 2
-        answer = gate(report, certifiable(changed), dependents(ROOT, report, changed))
+        answer = gate(report, certifiable(changed), deps)
         answer["changed_host"] = [name for name in changed
                                   if name not in answer["changed"]]
         if args.json:
