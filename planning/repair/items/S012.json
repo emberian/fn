@@ -9,13 +9,15 @@
  "id": "S012",
  "line": "8290",
  "locus": "operator-verbs",
- "notes": [],
- "owner": "sweep-store",
+ "notes": [
+  "2026-10-03 Codex root: current base 364eaa14b already gates startup and dispatch and parses COUNT through fnn-log-nat-arg. Added the missing direct fnn-command-probe profile guard before writable store construction. Extracted-source regression fails before the change and passes afterward (1.252s), including developer entry, production startup and malformed count grammar. Matching production/developer image checks remain pending; historical evidence above describes the original finding, not current CLI exposure. Evidence: planning/evidence/s012-direct-probe-20261003.txt"
+ ],
+ "owner": "codex-operator-boundaries",
  "reviewer": "Confirmed. The dispatch at io.lisp:8290-8296 has no developer-image gate. fnn-developer-selector-refusal (io.lisp:6090-6100) refuses only `store post`, and docs/operator-internals.md:1101 lists `probe` among the production image's \"Store diagnostics\", which invites an operator to run it. On an existing store, fnn-command-probe (5311ff) behaves as follows: fnn-initialize's publish-initial-file answers :existing and loads the store's own config (2389-2392); fnn-record-filesystem-at-init keeps an existing record (3101-3106); then acquire and recover run, and COUNT durable commits follow before the reopen check (5361-5371) can fault. One limit on reach: fnn-group-codes-for with fn.letters/fn.test refuses up front (1965-1966) if the store does not configure those groups, so the damage needs a store that has them. Because the store's lock is the writer lock, this only happens while the owner is stopped. A non-numeric COUNT makes parse-integer signal a plain error, which fnn-main's serious-condition clause reports as an internal error, not a usage error.",
  "scenario": "An operator, or a script copied from tests/store_capacity_probe.py, runs `fn store /var/fn probe 1000` against the deployed store while the owner is stopped. The writer lock is free, so 1000 durable test articles of the profile's maximum payload are appended to the production history and budget, and fn.letters/fn.test are populated. Only afterwards does the reopen check `(= replayed count)` fail with a fault, and the records stay committed. A non-numeric COUNT raises parse-integer's error, which exits as an internal fault (4) instead of a usage error.",
  "severity": "medium",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "ready",
  "title": "`store ROOT probe COUNT` runs on a production image and commits fixture articles into a real store",
  "updated": "2026-10-03T02:30:23Z"
 }
