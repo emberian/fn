@@ -1,13 +1,16 @@
 # Now — 2026-10-03
 
-Ember authorized substantial remaining engineering across four continuing Sol
-owners after the usage-limit stop: Integration owns
-source assembly and shared execution, History owns storage and the early P3
-bootstrap, Runtime owns reader/Web/decoded execution, and BP owns transport and
-application joins. Root coordinates; no other deputies or automation resumed.
-Root also takes resource accounting/funding. These owners continue missing
-behavior, defects, integration, invariants/guards/proofs and assurance across
-their full domains, rather than stopping at one scenario or a tidying batch.
+Ember authorized ten continuing Sol owners for substantial remaining engineering:
+Integration (assembly/execution/planning), History (storage/P3/reclaim), Runtime
+(reader/Web/decoded lifecycle), BP (transport/application joins), Foundations
+(accounting/banks/tariffs), Served (queries/serializers), Access (ARTICLE/header
+representation), Tools (developer/tracing/allocation), Operator (policy/control/
+journal), and Empirical (system scenarios/defect discovery). Root coordinates and supplies the reusable decoded core. Operator, Foundations
+and Runtime compose the actual DEFAULT read-pool startup producer. Four
+additional source-tracing owners (horse_entries, horse_exits, horse_consistency
+and horse_bounds) trace complete paths and maintain the shared consumer .spw corpus. No lieutenant,
+Luna or automation resumed. Owners continue missing behavior, defects,
+integration, invariants/guards/proofs and assurance across their full domains.
 The continuing domains and open acceptance criteria are in
 [NSLICESQUEUE](../NSLICESQUEUE.md), [the repair ledger](repair/STATUS.md), and the
 [development workstreams](overnight-2026-10-03.md). Contributor setup is in
@@ -17,8 +20,12 @@ certification, qualified packaging and deployment remain separate.
 The immediate shared dependency is one coherent current source-loaded owner
 world with early arena/P3 attachment before generic history and current
 reader/decoded/native interfaces. History is admitting the generated current logical input in the retained
-canonical P3 world; owner entry has not yet been reached. Required payload
-arena framing/representation facts are the current replay obstruction. The
+canonical P3 world; owner entry has not yet been reached. The required payload arena scope now passes ordinary admission. The earlier continuation passed the Store trace scope with 40 explicitly
+deferred semantic theorems and two dependent proof-catalog references recorded,
+then lost its process to an aggregate load timeout. That timeout now uses the
+configured source-load allowance. A fresh early arena/P3 world has been
+checkpointed and restored with both actual attachments intact; required Store
+guards and later logical scopes still precede the full normal host/native entry. The
 shared source generator can explicitly defer named unrelated DEFTHMs while
 retaining definitions and required guard/correspondence obligations, recording
 those books as unproved. No such deferral has yet established owner execution. The earlier alleged eleven-versus-ten-field read-pool
@@ -27,6 +34,14 @@ pool has ten fields. Current decoded-job/controller/window methods and P3
 semantics still require deliberate assembly; old cached execution does not
 establish those joins. History owns one fresh initialization, with Integration
 supporting the shared runner and the other owners continuing their consumers.
+Operator and Empirical have completed their current source batches and await
+the connected endpoint; their domains and remaining criteria stay assigned.
+The formerly absent DEFAULT read-pool startup caller is now wired in source:
+Operator owns the native pre-open consumer, Foundations the numerical plan and
+installer, and Runtime the persistent executor/storage lifecycle. Composed
+startup, refusal, cancellation and retirement source fixtures pass. Required
+wrapper/acquire guards and actual full-world endpoint execution remain open;
+constructor or recording fixtures do not establish compressed endpoint activity.
 
 ## Usage-limit stop — 2026-10-03 10:18 America/New_York
 

@@ -1945,6 +1945,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-availability \
 	books/served-available-commands \
 	books/served-available-read \
+	books/article-stream \
+	tests/acl2/article-stream-tests \
+	books/article-stream-server \
+	tests/acl2/article-stream-server-tests \
 	tests/acl2/catalog-availability-tests \
 	tests/acl2/catalog-available-readers-tests \
 	tests/acl2/served-available-commands-tests \
@@ -1958,6 +1962,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/output-command-admission-tests \
 	books/string-line-fill \
 	books/served-plan-line-buffer \
+	books/served-query-plan \
+	tests/acl2/served-query-plan-tests \
 	tests/acl2/served-plan-cursor-tests \
 	books/owner-scheduler \
 	tests/acl2/owner-scheduler-tests \
@@ -2021,6 +2027,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/web-session \
 	books/web-session-keystones \
 	tests/acl2/web-session-tests \
+	tests/acl2/web-post-outcome-tests \
 	books/web-config \
 	tests/acl2/web-config-tests \
 	books/state-digest \

@@ -1,0 +1,82 @@
+#>fn_consistency_sweep
+^"inspected_boundaries"{
+ @owner: ~"../../../books/owner-commit-steps.lisp"
+ @drain: ~"../../../books/owner-stop-drain.lisp"
+ @retire: ~"../../../books/owner-retire-settlement.lisp"
+ @workflow: ~"../../../books/bp-workflow.lisp"
+ @workflow_host: ~"../../../host/native/workflow.lisp"
+ @reader: ~"../../../books/nntp-responses.lisp"
+ @compat: ~"../../../books/nntp-reader-compat.lisp"
+ revision: "9df4a3a4e baseline; suspected defects compared with current Integration before patch"
+ owner: "full owner commit steps/scheduler selection/stop drain/fault; retirement settlement full; retained prepare/finish first half. No new defect proven; retirement APIs subsequently changed by Root817ac/4d557 and require new-source cross-link"
+ workflow: "records/prepares/complete/recover/status/rank/retry/restart/step; native preflight/apply/publish. Durable-publish followed apply failure lead sent Exits horse, no established defect"
+ consumer: "remote terminal hold/update/cancel/terminal and account adoption return proposal; issuer missing explicitly unavailable. CLI bootstrap defect tracked C006"
+ reader: "cursor shape/setter plus full current/number/msgid/next retrieval, of-bytes reply and compatibility cursor fallback. Malformed/reclaimed replies preserve cursor; exact Message-ID retrieval preserves cursor. Concrete access gate reviewed by Access owner; this source read alone does not establish secrecy/reclaim behavior"
+ decoded: "controller and assignment full on old baseline only; Root/Runtime changed retirement and physical scratch. Do not treat old-source inspection as latest completeness"
+}
+^"open_work"{
+ leaves: ["full NNTP auth/post/reader parsing", "BP receiver fragment/checkpoint and raw workflow journal recovery", "current decoded runtime lifecycle", "extent allocator and bank complete leaves", "history/reclaim full graph", "native whole HTTP outcome fixture"]
+ method: "each executable definition read in full where listed; proof-heavy material skipped except keystones needed for changed behavior; thought experiments are hypotheses until source counterexample and checks"
+}
+^"reader_neighbor_crosslink"{
+ owner: "deputy_access"
+ actual_boundary: "fn-asto-capture ->fn-own-tls-served-conn ->fn-scr-cached-view authorized archive/index; fallback fn-auth-view-archive/index"
+ public_source: "6227 access guards per owner; S121 auth-access-text reader commands require READ+moderation hiding even peer, peerrole bypass only transfer-side"
+ distinction: "by-number retained authorized record gives explicit503/423 identifier/framing/tombstone diagnostics without cursor update; NEXT/LAST/current availability excludes unavailable records"
+ confidence: "owner source-backed report plus local full response definitions; capture/access full definitions still owned by Access audit"
+}
+^"workflow_projection_failure_refutation"{
+ owner: "horse_exits"
+ source_symbols: "fnn-app-publish/fnn-app-authorized-publish/fnn-app-apply, fnn-call-with-journal, fnn-main classifier"
+ result: "durable publication then core apply mismatch uses fnn-fault/exit4 and fences journal; this is a faulted projection, not definite publication refusal"
+ residual: "arbitrary callback signaling store-open-refusal could misclassify but production apply paths do not signal it for ordinary mismatch; do not invent blanket uncertainty"
+}
+^"cli_recipe"{
+ command: "npm --prefix .spw/_workbench run spw -- query --from .spw/audits/consistency --selector pathRefs --count"
+ observed: "28pathRefs across6scanned consumer files; query selectors require --selector, not positional argument; roots require --from, not --dir"
+}
+^"wave2_startup_join"{
+ source_revision: "aa1ad2191; Foundationde170af1d/Runtime194b62b63+9cc0efe31 integrated69a040cb1"
+ @startup: ~"../../../books/page-read-startup.lisp"
+ @pool: ~"../../../host/page-read-host.lisp"
+ @metadata: ~"../../../books/page-read-pool-state.lisp"
+ @revision: ~"../../../books/page-read-binding-revision.lisp"
+ @native_executor: ~"../../../host/native/extent.lisp"
+ @native_owner: ~"../../../host/native/owner.lisp"
+ inspected: "full startup admission/accessors/refusal; native pool-storage/executor-start/enqueue; entire owner startup and cleanup; DATA8 install/reserved/construction/ready/readyp; all DATA writers census"
+ transitions: "plan admitted ->pool installed+retained custody ->fixed tables ->decoded ctor ->thread ->readybit ->free offer ->Store recovery ->startup hooks ->listen; failed ctor/startup joins retained workers before authority release"
+ metadata: "DATA8 indices0..4ledger metadata,5binding revision,6default readiness tag/mask,7worker count. Legacy keeper and revision publishers preserve tail; recovery-prs installer usesDATA6 only with uninitialized mode+nil DATA"
+ trace: "second ready refused already-ready; constructor needs reserved bitclear; repeated draw readyworker zeroresident uses permanentbaseline; physical ctor failure retains discoverable worker before cleanup"
+ live_owner_findings: "Runtime owns executor-stop roster clear despite unsettled/torn custody; Foundation owns protected recovery workspace versus legacy ELEN+32 charge overlap. These are cross-linked obligations, not new independent repairs"
+ scope: "default permanent backing partial-fixed-storage, not complete collector/controller/source tariff"
+}
+^"wave2_retention_reclaim"{
+ @carry: ~"../../../books/post-retain-carried.lisp"
+ @apply: ~"../../../books/identity-retain-carried.lisp"
+ @recovery: ~"../../../books/owner-recovery-retain.lisp"
+ @reclaim: ~"../../../books/owner-reclaim-pass.lisp"
+ inspected: "full carry delta/refresh; identity/retention apply; completion gate and finish; owner retained synced transition; cold extended install; reclaim rebuild/repin/swapped owner/config/admissibility; full native reclaim pass"
+ transitions: "refresh sameledger carry unchanged; release delta ids stay known; shape mismatch rebuild. complete only exact sequence/txid and core+consumer+topic gates; one ledger increment+ready required for durable. reclaim capture ->rewrite ->stage ->predict ->rebuild ->exact capture+idle+reader0+samearena-base ->install+swap+recovery barriers ->release old files"
+ obligations: "config equality and selected-group boundedness gate repin; live connection IDs/nextID maintained; installed but unswapped fences and cleanup clears failed capture mark; uncertain install is contained inside owner serialized boundary before unlock"
+ traces: "new commit since capture defers delta; another reader defers; arena advance defers moved before any seal; nonempty stage refuses identity replay; permanent released obligation IDs remain unavailable for reuse"
+ result: "no new counterexample established in these full bodies; lower retention/replay/record projection leaf graph and native wrapper exception taxonomy remain ongoing"
+}
+^"wave2_retention_leaves"{
+ @ledger: ~"../../../books/retention.lisp"
+ @node: ~"../../../books/node.lisp"
+ @acceptance: ~"../../../books/acceptance.lisp"
+ @replay: ~"../../../books/replay.lisp"
+ @operation: ~"../../../books/resource-operation.lisp"
+ inspected: "full retain known/admissible/admit/matching release/release; node prepare/complete/recover; acceptance prepare/complete/recover; replay advance/apply-retention/apply-identity-neutral/apply-record/loop; resource-operation full install/open/token/draw/admit/timeout/complete/release/close"
+ obligations: "durable publishes staged retention+binding; aborted releases stage only; indeterminate retains stage+fence and exact txid/generation recovery decides. Forwarding release cannot free archive binding. Released ID retains history unit and cannot be reused. Replay strict sequence plus monotonically allocated txids; staged/fenced/pending node cannot advance frontier"
+ physical: "resource-operation timeout retains draw; completion needs terminal receipt, reusable retained<=held with zero spent, exact token generations; closing principal requires no live subordinate draw. Logical reference is not physical runtime receipt proof"
+ outcome: "no new executable transition counterexample established; record field validators and whole bank/tree primitive graph remain separate continuing reads"
+}
+^"decoded_reuse_core_crosslink"{
+ owner: "Root"
+ source_revision: "3bb289698"
+ @tests: ~"../../../tests/acl2/decoded-worker-reuse-execution-tests.lisp"
+ evidence: "planning/evidence/decoded-reuse-20261003/repeated-execution.json"
+ scope: "same with-local-stobj job executes251A,1Z,corruptsource refusal,cancelledX,2BC using exact core assign/begin/one/read/return/byte/retire/release/settle; simulated archive I/O observations; retired scalar getters deny and successor exact bytes pass"
+ residual: "actual host execution remains separate; Runtime executor-stop lost-roster custody repair independent"
+}

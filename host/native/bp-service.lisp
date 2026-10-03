@@ -1408,9 +1408,51 @@ signals with SERVICE still holding its locks; its owner releases them."
 ;;; Routing (spec bp-node-machine 4.6; books/bp-route-jobs.lisp and
 ;;; books/bp-node-contact-driver.lisp).  The Store's table is read once,
 ;;; under the owner, for a verb that holds no owner of its own.
+;;; Served BP commands use the same independently captured DEFAULT pool as
+;;; NNTP/HTTP. The BP session bank remains a separate grant for socket/source
+;;; contexts; it does not authorize decoded Store reads.
+(defstruct fnn-bp-served-owner-custody claimed started stopped)
+
+(defun fnn-bp-served-owner-start (custody root max-connections)
+  (fnn-owner-claim-run-authority *fnn-owner-caller-reservation*)
+  (setf (fnn-bp-served-owner-custody-claimed custody) t)
+  (fnn-owner-page-read-startup
+   root max-connections nil nil
+   (lambda () (setf (fnn-bp-served-owner-custody-started custody) t)))
+  (let ((service (fnn-owner-install root max-connections)))
+    ;; Retain the actual Store even if retiring recovery-only borrows escapes.
+    (fnn-owner-retain-run-authority service)
+    (fnn-extent-end-recovery-cache)
+    service))
+
+(defun fnn-bp-served-owner-stop (custody service)
+  (when (fnn-bp-served-owner-custody-claimed custody)
+    ;; Mark held BEFORE a join that can escape. Failed installation may have
+    ;; retained its actual Store before returning SERVICE to this caller.
+    (fnn-owner-store-settlement service :held)
+    (when (fnn-bp-served-owner-custody-started custody)
+      (let ((actual (or service
+                       (and (fnn-owner-service-p *fnn-owner-retained-service*)
+                            *fnn-owner-retained-service*))))
+        (if actual (fnn-owner-cold-shutdown actual)
+          (fnn-extent-executor-stop))))
+    ;; Only a normal physical return records termination. Timeout/escape
+    ;; cannot turn this bit on or relinquish the retained service carrier.
+    (setf (fnn-bp-served-owner-custody-stopped custody) t)))
+
+(defun fnn-bp-served-owner-settle (custody service roots-ready)
+  (when (fnn-bp-served-owner-custody-claimed custody)
+    (let ((settlement
+            (fnn-core 'fn-ort-service-settlement-action
+                      (if roots-ready :joined :held)
+                      (if (fnn-bp-served-owner-custody-stopped custody)
+                          :closed :unobserved))))
+      (unless (eq (fnn-owner-store-settlement service settlement) :joined)
+        (fnn-indeterminate "BP served owner physical or publication custody remains held")))))
+
 (defun fnn-bps-read-route-table (store-root)
   (let ((owner (fnn-owner-install store-root 1)))
-    (unwind-protect (fnn-owner-core 'fn-owner-bp-route-table)
+    (fnn-unwind-cleanups ((fnn-owner-core 'fn-owner-bp-route-table))
       (fnn-owner-feed-close-all owner)
       (fnn-store-close (fnn-owner-service-store owner)))))
 

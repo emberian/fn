@@ -10,7 +10,9 @@
 (defvar *fnn-extent-incarnations* (make-hash-table))
 (load-deployed-forms "host/native/extent-decoded.lisp"
  '((defstruct fnn-decoded-activation) (defmacro fnn-decoded-semantic)
-   (defun fnn-extent-decoded-window-run)))
+   (defun fnn-extent-decoded-window-pread)
+   (defun fnn-extent-decoded-storage-start) (defun fnn-extent-decoded-storage-retire)
+   (defun fnn-extent-decoded-window-pread) (defun fnn-extent-decoded-window-run)))
 (defvar *decoded-calls* nil)
 (defvar *decoded-permitted* t)
 (defvar *decoded-cut* nil)
@@ -25,6 +27,7 @@
   (push (cons subject args) *decoded-calls*)
   (case subject
     (fn-pwz-nth (assert (equal args '(2 :token))) 7)
+    (fn-dwj-reserve (when (eq *decoded-cut* 'fn-dwj-reserve) (error "reserve cut")) (first args))
     (create-fn-decoded-job
      (when (eq *decoded-cut* :creator) (error "creator cut"))
      *decoded-job*)
@@ -36,6 +39,7 @@
     (fn-owner-page-decoded-job-assign
      (assert (equal args (list :row :token :token 47 *decoded-job* :same-pool)))
      (list :decoded-assigned *decoded-job* :same-pool))
+    (fn-owner-page-decoded-job-retire (list :reusable *decoded-job* :same-pool))
     (fn-dwj-begin (list :decoded-started *decoded-job*))
     (fn-dwj-one (append (pop *decoded-actions*) (list *decoded-job*)))
     (fn-dwj-read-observation
@@ -46,8 +50,11 @@
   (assert (equal (list fd input offset count) (list 9 (svref *decoded-job* 1) 100 8)))
   (push :physical-pread *decoded-calls*) :ok)
 (setf (gethash 7 *fnn-extent-fds*) 9 (gethash 7 *fnn-extent-incarnations*) 47)
+(defun fnn-developer-selector (name) (declare (ignore name)) nil)
 (defun decoded-worker-fixture ()
-  (%make-fnn-cold-worker :row :row :token :token :phase :running))
+  (let ((worker (%make-fnn-cold-worker :row :row :token :token :phase :running)))
+    (fnn-extent-decoded-storage-start worker)
+    worker))
 (let ((*decoded-job* (vector nil (vector (make-array 64 :element-type '(unsigned-byte 8)) 0)))
       (*decoded-actions* '((:read (:decoded-read :token 3 (:read 7 47 0 100 8))) (:ready nil)))
       (*decoded-calls* nil))
@@ -56,18 +63,19 @@
     (assert (eq (fnn-decoded-activation-stage result) :idle))
     (assert (eq *decoded-job* (fnn-decoded-activation-job result)))
     (assert (equal (mapcar (lambda (x) (if (consp x) (car x) x)) (reverse *decoded-calls*))
-      '(fn-owner-page-window-work-permittedp fn-pwz-nth fn-pwz-nth create-fn-decoded-job
+      '(create-fn-decoded-job fn-dwj-reserve fn-owner-page-window-work-permittedp fn-pwz-nth fn-pwz-nth
         fn-owner-page-decoded-job-assign fn-dwj-begin fn-owner-page-window-work-permittedp
         fn-dwj-one :physical-pread fn-dwj-read-observation
         fn-owner-page-window-work-permittedp fn-dwj-one)))))
 ;; Revocation prevents the expensive constructor and retains only the envelope.
 (let ((*decoded-permitted* nil) (*decoded-calls* nil))
   (let ((worker (decoded-worker-fixture)))
+    (setq *decoded-calls* nil)
     (assert (handler-case (progn (fnn-extent-decoded-window-run worker :token) nil) (error () t)))
     (assert (equal (mapcar #'car *decoded-calls*) '(fn-owner-page-window-work-permittedp)))
     (assert (fnn-cold-worker-decoded worker))))
 ;; Both failed constructor and torn private step remain physically discoverable.
-(dolist (cut '(:creator fn-dwj-begin fn-dwj-one fn-dwj-read-observation))
+(dolist (cut '(fn-dwj-begin fn-dwj-one fn-dwj-read-observation))
   (let ((*decoded-cut* cut) (*decoded-calls* nil)
         (*decoded-job* (vector nil (vector (make-array 64 :element-type '(unsigned-byte 8)) 0)))
         (*decoded-actions* '((:read (:decoded-read :token 3 (:read 7 47 0 100 8))) (:ready nil))))
@@ -80,3 +88,34 @@
                     (error () t)))
           (assert (= before (length *decoded-calls*))))))))
 (format t "native_decoded_worker_raw: PASS same-pool preconstructor check/retained read effect/private cut/no retry~%")
+
+;; Repeated dispatch reuses exactly the same backing. Retire authority before
+;; settlement; a torn retirement cannot be re-entered with the same scratch.
+(let ((*decoded-job* (vector nil (vector (make-array 64 :element-type '(unsigned-byte 8)) 0)))
+      (*decoded-calls* nil))
+  (let* ((worker (decoded-worker-fixture)) (storage (fnn-cold-worker-decoded-storage worker)))
+    (dotimes (iteration 2)
+      (let ((*decoded-actions* '((:ready nil))))
+        (assert (eq storage (fnn-extent-decoded-window-run worker :token))))
+      (fnn-extent-decoded-storage-retire worker :token)
+      (setf (fnn-cold-worker-decoded worker) nil))
+    (assert (= 1 (count 'create-fn-decoded-job *decoded-calls* :key #'car)))
+    (assert (= 1 (count 'fn-dwj-reserve *decoded-calls* :key #'car)))
+    (let ((*decoded-actions* '((:ready nil)))) (fnn-extent-decoded-window-run worker :token))
+    (let ((*decoded-cut* 'fn-owner-page-decoded-job-retire))
+      (assert (handler-case (progn (fnn-extent-decoded-storage-retire worker :token) nil) (error () t))))
+    (assert (eq :calling (fnn-decoded-activation-stage storage)))
+    (let ((before (length *decoded-calls*)))
+      (assert (handler-case (progn (fnn-extent-decoded-storage-retire worker :token) nil) (error () t)))
+      (assert (= before (length *decoded-calls*))))))
+;; Both creator and reserve cuts leave the actual partial envelope discoverable.
+(dolist (cut '(:creator fn-dwj-reserve))
+  (let ((*decoded-cut* cut) (*decoded-calls* nil) (*decoded-job* (vector nil)))
+    (let ((worker (%make-fnn-cold-worker :row :row)))
+      (assert (handler-case (progn (fnn-extent-decoded-storage-start worker) nil) (error () t)))
+      (assert (eq :calling (fnn-decoded-activation-stage (fnn-cold-worker-decoded-storage worker)))))))
+;; Missing baseline scratch never triggers an uncharged per-job constructor.
+(let ((*decoded-calls* nil))
+  (assert (handler-case (progn (fnn-extent-decoded-window-run (%make-fnn-cold-worker) :token) nil) (error () t)))
+  (assert (null *decoded-calls*)))
+(format t "native_decoded_worker_raw: PASS persistent backing/repeated dispatch/torn retirement/no replacement~%")

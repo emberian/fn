@@ -15,10 +15,12 @@ identity/anchor operations must not require a Python interpreter, module or
 helper subprocess. Python remains permitted in build, certification, test,
 benchmark and differential-oracle tooling outside the deployed node.
 
-The repository `bin/fn` and its legacy service templates still start the Python
-development owner. `packaging/install-native.sh` now installs a separate native
-`bin/fn`, saved core, relocated SBCL runtime and native service templates without
-starting a service. Its [scoped installation evidence](../planning/evidence/native-distribution-qualification-2026-09-21.md)
+The repository entry is `packaging/fn`, a shell launcher for the saved native
+image. In a checkout it selects `FN_NATIVE_HOST` or `build/fn-host`; installed
+beside `libexec/fn`, it selects that release's image and ignores the developer
+override. `packaging/install-native.sh` installs it as `bin/fn`, with the saved
+core, relocated SBCL runtime and native service templates, without starting a
+service. Its [scoped installation evidence](../planning/evidence/native-distribution-qualification-2026-09-21.md)
 covers the frozen production image's startup and shutdown on persvati; it does
 not establish complete service parity. `FN_HOST=native` through a Python argument
 parser remains a test convenience, not the production entry point.
@@ -1978,3 +1980,33 @@ and measurement mode; phase totals are explicitly inclusive, never unique
 process allocation. The actual native allocation probes can wrap their matched
 renderer loops in the same span macro; no separate per-subsystem tracing recipe
 is required.
+
+In the live developer client, `:trace hotspots [N]` prints a bounded ranking
+from the same sink without dumping every recorded span. It groups phase and
+counter scope separately, reports dropped/incomplete intervals and does not
+consume the sink. Allocation-enabled groups rank by mean sampled allocation;
+timing-only groups rank separately by mean duration. Formatting takes place
+outside the collector mutex. Chronological reports use the same completed-row
+snapshot, so destination I/O does not hold the mutex while workers finish
+spans. This readout helps find late expensive phases
+before a chronological report reaches the developer reply limit.
+
+The incremental decoded-decision probe uses actual guarded compiled core
+counterparts and private digest state. Sharing the issued `fn-ewz-next-action`
+effect and comparing `fn-ews-boundp`'s captured fields through the shared
+`fn-list/fields=` macro reduced a matched20,000-call process allocation
+observation from12,795,040 to2,876,592 bytes. The latter macro preserves exact
+proper product equality and operand evaluation order; it does not build a
+throwaway descriptor. Ordinary guard/equality admissions, all30 controller
+branch combinations, corrupt capture fields and controlled route restoration
+are recorded in
+`planning/evidence/tools/incremental-decoded-allocation-20261003.json`.
+This selected initialized-source result does not qualify the current whole
+worker, its GC tariff, retained heap or native buffer lifecycle.
+
+Span parent IDs belong to one collection. Restarting tracing within an active
+span begins a fresh root in the new sink; semantic operation identity may
+still carry across it. An older compiled hook without parent-sink provenance
+reports a null parent until reloaded. The actual restart/nonlocal lifetime and
+destination-lock checks are filed in
+`planning/evidence/tools/incremental-trace-lifecycle-20261003.json`.

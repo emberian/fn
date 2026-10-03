@@ -74,8 +74,8 @@ its reason class, which ACL2 already returned; the host classifies nothing."
   (when (fnn-bpnode-test-busy-p)
     (return-from fnn-bpnode-request-result-1 (values :busy '(0))))
   (let ((journal nil))
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+         ((progn
            (setq journal (fnn-bpapp-open-journal
                           owner receipt-root destination policy issuer))
            (let* ((request (fourth view))
@@ -114,7 +114,7 @@ its reason class, which ACL2 already returned; the host classifies nothing."
                ;; BP-R17: the owner deferred (a (:busy reason) plan or the
                ;; dispatcher's (:busy)); the node keeps the row held.
                (:busy (values :busy '(0)))
-               (otherwise (values :uncertain '(0))))))
+               (otherwise (values :uncertain '(0)))))))
       (when journal (fnn-app-journal-close journal)))))
 
 (defun fnn-bpnode-receipt-observations (view)
@@ -171,8 +171,8 @@ observations back.  Nil when there is nothing to observe."
          (return-from receipt
            (values :receipt-refused (fnn-bpnode-receipt-detail view obs))))
        (let ((journal nil))
-         (unwind-protect
-              (progn
+         (fnn-unwind-cleanups
+              ((block journal-body
                 (setq journal
                       (fnn-app-open (fnn-owner-service-store owner)
                                     workflow-root :workflow :owner-mode t))
@@ -182,13 +182,13 @@ observations back.  Nil when there is nothing to observe."
                   (unless record
                     (fnn-out "BP node release refused detail=~a"
                              (fnn-octets-string (fnn-octets detail)))
-                    (return-from receipt
+                    (return-from journal-body
                       (values :receipt-refused detail)))
                   (fnn-workflow-commit-receipt-intent
                    journal record
                    (lambda (release)
                      (fnn-bpo-canonical-release owner release)))
-                  (values :receipt-accepted detail)))
+                  (values :receipt-accepted detail))))
            (when journal (fnn-app-journal-close journal)))))))))
 
 (defun fnn-bpnode-app-result
@@ -493,9 +493,8 @@ observations back.  Nil when there is nothing to observe."
   (let* ((config (fnn-bp-config node-id +fnn-bp-lifetime+ +fnn-bp-crc-type+
                                 +fnn-bp-hop-limit+ +fnn-tcl-transfer-mru+))
          (bp (fnn-bps-open journal-root config wall wall-error)))
-    (setq *fnn-bpnode-budgets* (fnn-bpnode-read-budgets journal-root))
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+        ((setq *fnn-bpnode-budgets* (fnn-bpnode-read-budgets journal-root))
            (fnn-bps-drive-effects
             bp (fnn-bps-foundation-step
                 bp (fnn-bpnode-budgeted (list :operator-resume arrival))))
@@ -717,8 +716,8 @@ only runs the two signing primitives, the path `fn hybrid-sign' uses."
              (fnn-core 'fn-bpn-host-existing-sequence
                        (fnn-bps-base bp) work attempt generation)))
       (let ((journal nil))
-        (unwind-protect
-             (progn
+        (fnn-unwind-cleanups
+             ((progn
                (setq journal (fnn-bpapp-open-journal
                               owner receipt-root destination policy issuer))
                (let ((adu (fnn-receipt-adu journal (fourth view))))
@@ -779,7 +778,7 @@ only runs the two signing primitives, the path `fn hybrid-sign' uses."
                  (fnn-bpnode-pause-at-durable-cut
                   "FN_BP_NODE_TEST_PAUSE_AFTER_OUTBOX"
                   "BP NODE OUTBOX DURABLE")
-                 :queued)))
+                 :queued))))
           (when journal (fnn-app-journal-close journal)))))))
 
 (defun fnn-bpnode-route-by-owner (bp)
@@ -987,6 +986,15 @@ uncertain, as it does everywhere else."
    (fnn-tcl-begin (fnn-socket-fd socket) :passive
     (fnn-tcl-params node-id nil +fnn-tcl-keepalive+ +fnn-tcl-segment-mru+ transfer-mru)
     "bp-node" (fnn-bps-root bp)
+    :session-admit
+    (lambda (conn)
+     (let* ((negotiated (fnn-core 'fn-tcl-session-negotiated (fnn-tclc-session conn)))
+            (announced (fnn-core 'fn-tcl-negotiated-peer-node-id negotiated))
+            (answer (fnn-owner-core 'fn-owner-bp-session-admission channel announced)))
+      (when (eq (first answer) :refused)
+       (fnn-bps-note bp :refused)
+       (fnn-out "BP channel admission refused reason=~(~a~)" (second answer)))
+      answer))
     :retain (lambda (conn) (setf (fnn-bpsg-conn grant) conn))))
   (setf (fnn-bpsg-turn grant)
    (lambda ()
@@ -1083,6 +1091,7 @@ uncertain, as it does everywhere else."
          ;; sequence operation.  There is exactly one BP lifecycle owner.
          (bp (fnn-bps-open-node journal-root config wall wall-error))
          (owner nil)
+         (owner-custody (make-fnn-bp-served-owner-custody))
          (bank nil)
          (*fnn-bp-session-bank* nil)
          (control nil)
@@ -1095,7 +1104,10 @@ uncertain, as it does everywhere else."
          (handler-bind ((serious-condition (lambda (condition)
                            (unless primary-condition (setq primary-condition condition)))))
          (progn
-           (setq owner (fnn-owner-install store-root 1))
+           (setq owner
+                 (if listen-port
+                     (fnn-bp-served-owner-start owner-custody store-root 1)
+                   (fnn-owner-install store-root 1)))
            (when listen-port
              (setq bank (fnn-bp-session-install bp owner transfer-mru +fnn-tcl-segment-mru+)))
            (when control-config
@@ -1212,8 +1224,15 @@ uncertain, as it does everywhere else."
         (when (and release-roots owner)
          (cleanup (lambda () (fnn-owner-action 'fn-owner-app-unbind-receipt-store)))
          (cleanup (lambda () (fnn-owner-feed-close-all owner)))
-         (cleanup (lambda () (fnn-store-close (fnn-owner-service-store owner)))))
-        (when release-roots (cleanup (lambda () (fnn-bps-release bp)))))
+         (unless listen-port
+          (cleanup (lambda () (fnn-store-close (fnn-owner-service-store owner))))))
+        (when listen-port
+         (cleanup (lambda () (fnn-bp-served-owner-stop owner-custody owner))))
+        (when release-roots (cleanup (lambda () (fnn-bps-release bp))))
+        (when listen-port
+         (cleanup (lambda ()
+                    (fnn-bp-served-owner-settle owner-custody owner
+                                              (and release-roots (null cleanup-condition)))))))
        (unless primary-condition
         (cond (cleanup-condition (error cleanup-condition))
               ((not release-roots)

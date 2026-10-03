@@ -1831,3 +1831,31 @@ class FlipLinesTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CursorBatchSourceTests(unittest.TestCase):
+    declaration = """(def-cursor/batch walk (arena cat)
+      :step one :stobjs (arena cat) :byte-proof one-bytes
+      :call-proof one-calls :remaining (rest cur arena cat)
+      :residual-proof one-rest)"""
+
+    def test_literal_exported_contract(self):
+        events = ledger.generated_expansion(ledger.read_forms(self.declaration)[0])
+        self.assertEqual([str(e[1]) for e in events],
+                         ['walk-batch', 'walk-batch-byte-bound', 'walk-batch-call-bound',
+                          'walk-batch-residual', 'walk-batch-call-natp', 'walk-batch'])
+        self.assertEqual(events[3][2], ledger.read_forms(
+          '(equal (append (car (walk-batch cur visits bytes arena cat)) '
+          '(rest (mv-nth 1 (walk-batch cur visits bytes arena cat)) arena cat)) '
+          '(rest cur arena cat))')[0])
+        book = tree_from({'books/demo.lisp': self.declaration}).books['books/demo.lisp']
+        self.assertIn('walk-batch-residual', [t.name for t in book.theorems])
+
+    def test_malformed_contract_does_not_invent_events(self):
+        for text in (self.declaration.replace(':step one', ':step (one)'),
+                     self.declaration.replace(':remaining (rest cur arena cat)', ':remaining nil'),
+                     self.declaration + ' :bogus t'):
+            form = ledger.read_forms(text)[0]
+            if text.endswith(' :bogus t'):
+                form += [ledger.Sym(':bogus'), ledger.Sym('t')]
+            self.assertEqual(ledger.generated_expansion(form), [])

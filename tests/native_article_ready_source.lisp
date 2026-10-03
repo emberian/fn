@@ -53,6 +53,7 @@
 (source-load-defuns "books/article-arena-reads.lisp" '(fn-nntp-arena-prefixp fn-nntp-article-tombstonep))
 (source-load-defuns "books/served-plan-shape.lisp" '(fn-splan-cur fn-splan-rest fn-splan-cursor-effectp fn-srb-effect-octets))
 (source-load-defuns "books/served-plan.lisp" '(fn-splan-rest-donep))
+(source-load-defuns "books/article-stream-server.lisp")
 (source-load-defuns "books/article-stream-owner.lisp")
 (defmacro value (x) `(values nil ,x state))
 (defvar *fixture-state*)
@@ -85,7 +86,11 @@
 (defun fnn-fault (format &rest args) (apply #'error format args))
 (source-load-defuns "host/native/io.lisp" '(fnn-make-octets fnn-octets))
 (deftype fnn-octets () '(simple-array (unsigned-byte 8) (*)))
-(source-load-defuns "host/native/owner.lisp" '(fnn-owner-ready-plan-step fnn-owner-render-next-quantum))
+; This recorded seam has no physical response capture; execute the actual
+; activation wrapper in its uncaptured branch, without a decoded-pool claim.
+(defvar *fnn-response-capture* nil)
+(source-load-defuns "host/native/owner.lisp"
+  '(fnn-owner-window-activation fnn-owner-ready-plan-step fnn-owner-render-next-quantum))
 (defun fixture-reader (oc)
   (fn-peer-reader-session (fn-auth-session-base (fn-own-conn-session
     (fn-own-find-conn 7 (fn-own-conns (fn-ocfg-owner oc)))))))
@@ -137,6 +142,57 @@
                 (setq acc (append acc (coerce part 'list)) cur rest done end)))
             (source-check (equal acc (source-reference payload kind 9 "<ready@example>")))
             (source-check (= *fixture-installs* 1))))))))
+; Message-ID selection passes through the same actual owner READY/native
+; producer, but never changes the selected group/current cursor.
+(let* ((payload (append (bytes "Subject: ready") '(13 10 13 10 46 13 10 65 13 10)))
+       (*fixture-arena* (list payload))
+       (reader (fn-nntp-make-session t "fn.a" 1 t))
+       (ps (fn-peer-make-session (fn-post-make-session reader nil) nil nil 0 nil nil nil))
+       (as (fn-auth-make-session ps nil nil nil nil nil nil nil 0))
+       (conn (fn-own-conn-make-group-indexed 7 0 0 nil as nil nil nil nil nil nil nil))
+       (owner (fn-own-make nil nil (list conn) 8 9 nil nil 0 nil nil nil nil nil nil nil))
+       (oc (fn-ocfg-make owner '(2 nil) nil nil)))
+  (dolist (kind '(:article :head :body))
+    (let* ((*fixture-state* (list oc nil)) (*fixture-installs* 0)
+           (*fixture-cold-offset* 4) (*fixture-cold-fired* nil)
+           (article (list "<ready@example>" 0 '(("fn.a" . 9))))
+           (capture (list conn ps
+                          (fn-ast-select-state :msgid "fn.a" "<ready@example>"
+                            (append (loop for n below 8 collect
+                                      (list (format nil "<before~d@example>" n) 0 (list (cons "fn.a" n))))
+                                    (list article)) nil nil nil 0 :msgid-next)
+                          kind nil nil nil))
+           (raw (cons nil (list (list :article-preflight capture))))
+           (plan raw) (ready nil))
+      (loop until ready do
+        (multiple-value-bind (next complete yield cold) (fnn-owner-ready-plan-step nil 7 plan :reader)
+          (source-check (= (fn-nntp-session-current (fixture-reader (car *fixture-state*)))
+                           1))
+          (when cold (source-check (eq next plan)) (source-check (not yield)))
+          (source-check (= *fixture-installs* 0))
+          (setq plan next ready complete)
+          ; Publication for another connection may change the live generation.
+          ; This response retains the same per-connection configuration pin.
+          (unless complete
+            (let ((old (car *fixture-state*)))
+              (setf (car *fixture-state*)
+                    (fn-ocfg-make (fn-ocfg-owner old) '(3 nil)
+                                  (fn-ocfg-pins old) (fn-ocfg-staged old)))))))
+      (source-check *fixture-cold-fired*)
+      (source-check (equal (fixture-reader (car *fixture-state*)) reader))
+      (let ((original plan))
+        (dolist (window '(1 3 4096))
+          (let ((*fixture-window* window) (*fixture-cold-offset* 20) (*fixture-cold-fired* nil)
+                (cur original) (acc nil) (done nil))
+            (loop until done do
+              (multiple-value-bind (part rest end yield cold)
+                  (fnn-owner-render-next-quantum nil 7 cur :reader)
+                (source-check (<= (length part) window))
+                (when cold (source-check (eq rest cur)) (source-check (zerop (length part))))
+                (when yield (source-check (not end)))
+                (setq acc (append acc (coerce part 'list)) cur rest done end)))
+            (source-check (equal acc (source-reference payload kind 9 "<ready@example>")))
+            (source-check (= *fixture-installs* 0))))))))
 (let* ((reader (fn-nntp-make-session t "fn.a" 1 t))
        (ps (fn-peer-make-session (fn-post-make-session reader nil) nil nil 0 nil nil nil))
        (as (fn-auth-make-session ps nil nil nil nil nil nil nil 0))
@@ -170,11 +226,16 @@
   (dolist (case (list (list :current nil nil "420 no current article")
                      (list :number nil nil "423 no article with that number")
                      (list :number nil (list (list "<withdrawn@example>" 0 '(("fn.a" . 9)))) "423 withdrawn")
-                     (list :number nil (list (list "<other@example>" 0 '(("fn.b" . 9)))) "423 no article with that number")))
+                     (list :number nil (list (list "<other@example>" 0 '(("fn.b" . 9)))) "423 no article with that number")
+                     (list :msgid nil nil "430 no article with that message-id")
+                     (list :msgid nil (list (list "<withdrawn@example>" 0 '(("fn.a" . 9)))) "430 withdrawn")
+                     (list :msgid nil (list (list "<other@example>" 0 '(("fn.a" . 9)))) "430 no article with that message-id")))
     (destructuring-bind (mode articles withdrawn text) case
       (let* ((*fixture-state* (list oc nil)) (*fixture-installs* 0)
              (*fixture-cold-offset* nil) (*fixture-cold-fired* nil) (*fixture-arena* nil)
-             (capture (list conn ps (fn-ast-select-state mode "fn.a" 9 articles nil nil nil 0 :next)
+             (capture (list conn ps (fn-ast-select-state mode "fn.a"
+                              (if (eq mode :msgid) "<withdrawn@example>" 9)
+                              articles nil nil nil 0 (if (eq mode :msgid) :msgid-next :next))
                             :article nil nil nil withdrawn))
              (plan (cons nil (list (list :article-preflight capture)))) (ready nil))
         (loop until ready do

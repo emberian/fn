@@ -167,6 +167,34 @@
 (assert-event (equal (fn-tcl-result-events *t-a6*) '((:outbound-sent 0 :bundle-1))))
 (assert-event (null (fn-tcl-session-outbound (fn-tcl-result-session *t-a6*))))
 
+; Empty offered transfer is distinct from no offer: one zero-length
+; START|END, no duplicate pump, then exact ACK settles retained custody.
+(defconst *t-empty-send* (fn-tcl-send *t-a* :empty-transfer nil 40))
+(assert-event
+ (and (fn-tcl-sessionp (fn-tcl-result-session *t-empty-send*))
+      (equal (fn-tcl-result-events *t-empty-send*)
+             (list (list :send (fn-tcl-make-xfer-segment 3 0 nil nil))))
+      (equal (fn-tcl-session-last-tx (fn-tcl-result-session *t-empty-send*)) 40)
+      (equal (fn-tcl-session-next-xfer-id (fn-tcl-result-session *t-empty-send*)) 1)
+      (fn-tcl-session-outbound (fn-tcl-result-session *t-empty-send*))
+      (equal (fn-tcl-result-events (fn-tcl-pump (fn-tcl-result-session *t-empty-send*) 41)) nil)))
+(defconst *t-empty-receive*
+ (fn-tcl-drive *t-b* (fn-t-sent-octets (fn-tcl-result-events *t-empty-send*)) 40))
+(assert-event
+ (equal (fn-tcl-result-events *t-empty-receive*)
+        (list (list :send (fn-tcl-make-xfer-ack 3 0 0))
+              (list :bundle-received 0 nil))))
+(defconst *t-empty-ack*
+ (fn-tcl-drive (fn-tcl-result-session *t-empty-send*)
+               (fn-t-sent-octets (fn-tcl-result-events *t-empty-receive*)) 41))
+(assert-event
+ (and (equal (fn-tcl-result-events *t-empty-ack*) '((:outbound-sent 0 :empty-transfer)))
+      (not (fn-tcl-session-outbound (fn-tcl-result-session *t-empty-ack*)))
+      (equal (fn-tcl-result-events
+              (fn-tcl-drive (fn-tcl-result-session *t-empty-ack*)
+                            (fn-t-sent-octets (fn-tcl-result-events *t-empty-receive*)) 42))
+             (list (list :send (fn-tcl-make-msg-reject *fn-tcl-reject-unexpected* 2))))))
+
 ; B sends the other way: a single-segment transfer, no extension.
 (defconst *t-b4* (fn-tcl-send (fn-tcl-result-session *t-b3*) :bundle-2 '(7 8) 0))
 (assert-event (equal (fn-tcl-result-events *t-b4*)

@@ -447,3 +447,5 @@ anything a book does not already decide.
 | `fn-shd-` | `served-head-bridge`, `tests/acl2/served-head-bridge-tests` | HEAD retrieval composition through the actual served byte fold (PKT-772) |
 
 | `fn-saw-` | `served-auth-wire-bridge`, `tests/acl2/served-auth-wire-bridge-tests` | Served command framing and authentication hold composition (PKT-390) |
+
+| `fn-rip-` | `native-redeem-input` | Redeem client credential and reply admission; actual native input and wire constructor subjects. |

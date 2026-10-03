@@ -127,7 +127,7 @@ class NativeTlsTransportTest(unittest.TestCase):
 
     def _run_client_case(self, certificate: Path, private_key: Path,
                          anchor: Path, name: str, expect: str,
-                         interrupt: bool = False) -> subprocess.CompletedProcess:
+                         interrupt: bool = False, stale_error: bool = False) -> subprocess.CompletedProcess:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(certificate, private_key)
         if expect == "tickets":
@@ -162,6 +162,8 @@ class NativeTlsTransportTest(unittest.TestCase):
         environment.update(FN_TLS_CLIENT_PORT=str(listener.getsockname()[1]),
                            FN_TLS_CLIENT_CA=str(anchor), FN_TLS_CLIENT_NAME=name,
                            FN_TLS_CLIENT_EXPECT=expect)
+        if stale_error:
+            environment["FN_TLS_CLIENT_STALE_ERROR"] = "1"
         result = subprocess.run([shutil.which("sbcl"), "--noinform", "--disable-debugger",
                                  "--script", "tests/native_tls_client.lisp"], cwd=ROOT,
                                 env=environment, stdout=subprocess.PIPE,
@@ -189,6 +191,15 @@ class NativeTlsTransportTest(unittest.TestCase):
                                                 "localhost", "failure", interrupt=True)
             self.assertEqual(interrupted.returncode, 0, interrupted.stdout)
             self.assertIn("TLS-CLIENT-REFUSED", interrupted.stdout)
+
+    def test_client_clears_unrelated_openssl_error_before_handshake(self) -> None:
+        self.assertIsNotNone(shutil.which("sbcl"))
+        with tempfile.TemporaryDirectory(prefix="fn-native-tls-stale-") as raw:
+            certificate, key = self._certificate(Path(raw), "server")
+            result = self._run_client_case(certificate, key, certificate,
+                                          "localhost", "success", stale_error=True)
+            self.assertEqual(result.returncode, 0, result.stdout)
+            self.assertIn("TLS-CLIENT-PASSED", result.stdout)
 
     def test_session_tickets_before_the_greeting_are_no_data_yet(self) -> None:
         """Defect M3: a zero-second read that meets only TLS 1.3

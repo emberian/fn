@@ -61,3 +61,18 @@
 
 ; Already observed input finishes bounded framing before reception expiration.
 (assert-event (not (fn-tcrt-contact-timeout-p :contact 60100 60100 t)))
+
+(assert-event (equal (fn-tcrt-init-deadline :messaging 100 nil) 60100))
+(assert-event (equal (fn-tcrt-init-deadline :messaging 60099 60100) 60100))
+(assert-event (equal (fn-tcrt-init-deadline :established 70000 60100) nil))
+(assert-event (fn-tcrt-init-timeout-p :messaging 60100 60100 nil))
+(assert-event (not (fn-tcrt-init-timeout-p :messaging 60099 60100 nil)))
+(assert-event (not (fn-tcrt-init-timeout-p :messaging 60100 60100 t)))
+(assert-event (not (fn-tcrt-init-timeout-p :established 60100 60100 nil)))
+; Positive literal and hypothesis removal for nonrenewal.
+(assert-event (and (equal :messaging :messaging) (natp 100)
+                  (equal (fn-tcrt-init-deadline :messaging 0 100) 100)))
+(assert-event (and (not (equal :contact :messaging)) (natp 100)
+                  (not (equal (fn-tcrt-init-deadline :contact 0 100) 100))))
+(assert-event (and (equal :messaging :messaging) (not (natp nil))
+                  (not (equal (fn-tcrt-init-deadline :messaging 0 nil) nil))))

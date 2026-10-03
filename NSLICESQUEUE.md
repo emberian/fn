@@ -58,21 +58,24 @@ that their recorded state is current at every later revision.
   place. Split a slice when it has independently useful consumers. The list is
   an initial coverage map, not a claim that all remaining defects are enumerated.
 
-## Current four-owner resumption — 2026-10-03
+## Current engineering and source-tracing wave — 2026-10-03
 
-Ember resumed only Integration, History, Runtime and BP transport; root
-coordinates and takes resource accounting/funding. This is substantial full-domain
-engineering, not finite end-tidying. Integration owns public source assembly, shared execution and
-planning upkeep. History owns current storage/P3/owner bootstrap and reclaim.
-Runtime owns current ARTICLE/Web physical decoder, window lifetime and ABI
-joins. BP owns actual multi-peer transport and immutable application R/Q joins.
-No lieutenant, helper or other deputy resumed. Foundations, Served, Access,
-Web, Tools and Groundwork retain their documented domain obligations as paused
-owners; these are not completion claims. The four active owners consume their
-committed interfaces and coordinate changes across those boundaries.
+Ember authorized Integration, History, Runtime, BP, Foundations, Served, Access,
+Tools, Operator and Empirical, plus horse_entries, horse_exits,
+horse_consistency and horse_bounds for complete source-path tracing and the
+shared consumer .spw corpus. Root coordinates and supplies the reusable decoded
+core; Operator, Foundations and Runtime compose the actual DEFAULT pool startup
+producer. No lieutenant or Luna resumed. Integration owns public
+assembly, current execution and planning; History storage/P3/reclaim; Runtime
+ARTICLE/Web/decoded lifecycle; BP transport and signed application joins;
+Foundations accounting/banks/tariffs; Served query/serializer families; Access
+ARTICLE/header representation; Tools developer/tracing/allocation; Operator
+policy/control/journal; Empirical system scenarios and defect discovery.
+These are full-domain implementation/invariant/assurance obligations, not
+finite end-tidying. Groundwork and other former helpers remain stopped.
 
-The earlier ten-worker roster described the pre-usage-limit wave. All those
-agents wound down; a retained warm handle does not imply an active owner or a
+The earlier ten-worker roster described the pre-usage-limit wave. That earlier wave
+wound down before the explicit resumptions above; a retained warm handle does not imply an active owner or a
 working current-union native process. History now owns one fresh current
 source-world initialization. The alleged11-versus10 read-pool field difference
 was false: :inline is an option, and both declarations have10 fields. Missing
@@ -83,8 +86,8 @@ current decoded methods and early P3 attachment remain actual assembly work.
 | Slice | Current position | Coordination / implementation | Next useful result |
 | --- | --- | --- | --- |
 | [Safe completion and actor rollout](#safe-completion-and-actor-rollout) | Active | Runtime; completed source-tracer packets retained | Escapes preserve actual outcomes, fence the service when required, and settle custody through the real consumer |
-| [Output allocation and funding](#output-allocation-and-funding) | Active partial producer and wider accounting | Root + Runtime; Foundations/Served obligations retained | Actual bounded serializer/selector allocation is funded before creation |
-| [Paged catalog in the service](#paged-catalog-in-the-service) | Active shared execution dependency | History + Runtime; Served adapter source retained | Existing paged attachment serves POST/read/navigation/withdrawal/reopen |
+| [Output allocation and funding](#output-allocation-and-funding) | Active partial producer and wider accounting | Foundations + Root + Runtime; Served serializers | Actual bounded serializer/selector allocation is funded before creation |
+| [Paged catalog in the service](#paged-catalog-in-the-service) | Active shared execution dependency | History + Served + Runtime | Existing paged attachment serves POST/read/navigation/withdrawal/reopen |
 | [Reclaim and physical release](#reclaim-and-physical-release) | Active bounded builder and publication work | History; completed Astra relocation packet retained | Remove observed whole-history-copy credit obstruction and release resources safely |
 | [Fair feed and pull rounds](#fair-feed-and-pull-rounds) | Active repairs; broader continuation next | BP transport + Runtime | Credential fixes and phase outcomes compose with bounded rounds and queue progress |
 | [Runtime/model correspondence](#runtimemodel-correspondence) | Active | Runtime + consumer owners; Integration schedules evidence | Real ordered lock/pin/I/O labels drive the same model transitions |
@@ -115,7 +118,7 @@ its fixture. Anchors: [HOST-COORDINATION](planning/repair/items/HOST-COORDINATIO
 
 ### Output allocation and funding
 
-**Paused accounting/selector owners — Foundations + Served; Runtime consumes the current producer.** Connect indexed serialization, incremental
+**Active accounting/selector owners — Foundations + Served; Runtime consumes the current producer.** Connect indexed serialization, incremental
 selection and output custody to a real connection/operation funding producer.
 The first actual producer/serializer probe charges a per-CID generational draw
 before serialization and retains worker output until both output completion and
@@ -410,7 +413,14 @@ close the correct scope. Anchors: [S003](planning/repair/items/S003.json),
 
 ### Operator commands and trustworthy diagnostics
 
-**Paused operator domain — Access/Operator retain bounded retire/drain, diagnostic classification and ACL2 initialization compatibility. Root supplied the bounded developer proof allowance. S012 direct probe/selector source is integrated; its saved-image boundary remains a selected check.** Finish
+**Operator’s pre-open DEFAULT partial pool startup and startup-failure custody source batch is complete; its nonempty native endpoint remains pending the current world. Foundations owns the numerical producer and Runtime its persistent executor. Access retains the earlier retire, diagnostic, init and journal continuation.**
+The new native startup consumer installs an admitted plan before Store open,
+and joins orphan workers before releasing run authority. SCN-1130's actual
+source ordering, refusal/fault and escaping-join cases pass; coherent physical
+owner open/read/stop remains the next consumer in History's retained world.
+Complete cold profiles stay refused and full allocation refinement stays open.
+S012 direct probe/selector source is integrated; its saved-image boundary
+remains a selected check. Finish
 bounded retire/drain, accurate heap/profile/startup diagnostics, safe fixture
 separation, command outcome classes and interrupted administrative operations.
 Explain retained resources and pending obligations using real state.
@@ -685,3 +695,61 @@ refinement claim. This fixes normal shutdown of a live accepted peer, which
 otherwise stranded the bank despite its disabled continuation. SCN1110/1125/1126
 remain actual source-process consumers to execute on the current initialized
 world. Matching profile/teeth certification pending.
+
+SESS_INIT reception followthrough (PRF-1297, SCN-1127): entering messaging
+captures one ACL2 sixty-second local deadline; further partial input does not
+renew it. Already captured finite framing/materialization finishes before an
+expiration decision; established sessions clear the setup deadline. Actual
+retained driver consumes timeout as TCP-closed, never physical return or custody
+settlement. RFC9174§4.6 requires negotiation before transfer; the sixty-second
+SESS_INIT bound is fn local policy, distinct from §4.1 Contact Header requirement
+and §5.1.1 negotiated idle behavior. Actual raw driver/source-control/custody
+composition PASS; real two-peer durable request + setup expiry + reopen selector
+prepared UNEXECUTED. Early announced-EID/channel admission and concurrent control
+input during held-source work remain next connected work.
+
+Early passive session admission (PRF-1299, SCN-1128): actual fnn-tcl-apply
+invokes an optional BP-only admission callback once, at the decoded established
+transition and before this frame's events or another buffered frame. The live
+owner calls ACL2 fn-bpaj-session-admission on kernel-observed channel and decoded
+announced URI, reusing durable ingress's principal policy. Refusal discards
+unflushed messages and protocol-closes only that connection, records its exact
+policy reason, and cannot install a received-source job or publish a Store/FNBS
+record. The sender observes interruption before any transfer ACK; its pin stays.
+Pre-transfer refusal has no bundle wire to persist as receive evidence. Existing
+per-transfer admission/evidence remains for transfers actually consumed, and
+outbound on-ready keeps its physical-write ordering. Unknown admission results
+remain faults. Actual apply/flush raw matrix PASS; current native SCN1128 and
+updated absent-trust request/receipt selectors remain UNEXECUTED. Full config
+traversal, host correspondence and semantic allocation/GC costs stay open.
+
+Held-source control ingress (PRF-1300, SCN-1131): the actual retained driver
+alternates64-action source quanta with one existing bounded control read/frame
+turn. ACL2 permits only fixed-size control headers2..6; new XFER/SESS_INIT stays
+parked in the same at-most4096-byte socket vector until source terminal. No new
+buffer, source issuer or bank is admitted. Incoming KEEPALIVE uses the original
+session transition, advances actual last-RX and leaves the inbound record and
+host source root/END ACK held. Outgoing timer KEEPALIVE still never fabricates
+reception. EOF/close drains the existing private source before declaring context
+terminal; one publication occurs, and a broken socket cannot flush its ACK.
+Actual raw framing/private operation/session transition/delivery-plan/custody
+composition PASS with recorded decoder/socket/durable callback. Normal source
+book guards and13 assertions PASS; step preservation/reception lemmas1599/1482
+steps. Matching roots pending, complete native caller correspondence open.
+Real canonical sender-pump/encoded coalesced-control/reopen selector prepared
+UNEXECUTED. PRF1273 citation now names only its real physical range keystone;
+selected action IF-arm corollaries stay regressions, not completion evidence.
+
+Empty offer host composition: supplied-p distinguishes an explicit empty payload
+from omitted offer through begin/session. CLI optional absent paths and BP
+receive absent reply omit the bundle keyword, while real empty files retain a
+CONS tag/NIL offer for the consistency owner's zero START|END/ACK machine repair.
+Actual begin raw cases PASS. Latest tcpcl-session source must precede native use;
+no native zero-file verdict is claimed. Full semantic decoder/CRC/publication and
+GC/working tariffs still require connected bounded consumers, beyond this step.
+
+BP served owner startup SCN1134: source connects bp-node serve and bp-app receive
+to independent captured DEFAULT installation before Store recovery, preserves
+constructor/physical/Store-close debt through owner authority and attempts all
+root cleanup. Actual command/helper recorded-seam fixture PASS; complete tariff
+and current source-native worker/Store/multi-peer/RQ composition remain UNDONE.

@@ -133,6 +133,15 @@
                  (state (fn-owner-hroot-put generation
                           (list (car row) (cadr row) (remove1-assoc-equal token (caddr row))) state)))
             (value :returned)))))))
+; INTERNAL pre-destruction word. The caller holds the owner gate through
+; physical disposal and the existing credit return. Retired generations
+; cannot acquire new leases, and an issued lease prevents this word.
+(defun fn-owner-hroot-retire-word (generation state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((row (fn-owner-hroot-get generation state)))
+    (value (if (and (eq (car row) :retired) (null (caddr row)))
+               :ready :history-root-held))))
+
 (defun fn-owner-hroot-retire (generation state)
   (declare (xargs :stobjs state :mode :program))
   (let ((row (fn-owner-hroot-get generation state)))

@@ -542,6 +542,22 @@ live buffer passed before state: its value."
 
 (defun fnn-open (path flags &optional (mode #o600))
   (fnn-posix (path) (sb-posix:open path flags mode)))
+(defmacro fnn-unwind-cleanups ((&rest body) &body cleanups)
+  "Attempt every cleanup. Preserve a body escape; otherwise signal the first
+cleanup failure. Normal body multiple values survive successful cleanup."
+  (let ((completed (gensym "COMPLETED")) (failure (gensym "FAILURE"))
+        (condition (gensym "CONDITION")))
+    `(let ((,completed nil) (,failure nil))
+       (unwind-protect
+            (multiple-value-prog1 (progn ,@body) (setq ,completed t))
+         ,@(mapcar (lambda (cleanup)
+                     `(handler-case ,cleanup
+                        (serious-condition (,condition)
+                          (unless ,failure (setq ,failure ,condition))))) cleanups)
+         (when ,failure
+           (if ,completed (error ,failure)
+             (ignore-errors (fnn-err "cleanup during escape failed: ~a" ,failure))))))))
+
 (defun fnn-close (fd)
   (fnn-posix () (sb-posix:close fd)))
 (defun fnn-fstat (fd)
@@ -1870,13 +1886,12 @@ program the same environment).  NIL when unset."
                   wall +fnn-owner-wall-error-ms+ has-wall)))))
 
 (defun fnn-seal-octets (octets)
-  "The arena update a prepare names: seal OCTETS (the octet list the core
-answered with) through the guard-verified `fn-arena-seal-list'
-(books/payload-arena.lisp).  The core entries only READ the arena: an entry
-that also sealed would carry ACL2's invariant-risk and run through its *1*
-body, checking every callee's guard (the whole history, per POST)."
-  (fnn-call 'fn-arena-seal-list octets (fnn-live-arena))
-  t)
+  "Stage the ACL2-admitted list through the same seal as buffered POST.
+The list seal leaves bytes in the permanent resident arena child; the
+buffer seal gives this transaction a releasable stage and records its
+ACL2-derived handle for the log's durable reseat."
+  (fnn-octets-fill octets)
+  (fnn-seal-live-buffer))
 
 (defvar *fnn-staged-handle* nil
   "The handle the owner's last buffer prepare sealed (staged: books/payload-
@@ -2111,6 +2126,10 @@ resolves the names against `domain' and the host carries that list verbatim."
   ;; next start's open takes about as long): the limit verb's words read it.
   (open-ms 0)
   (completion-pending nil)
+  ;; Terminal physical close uncertainty is sticky; consumed fds are never retried.
+  (close-debt nil)
+  ;; Exact application journal/lock holders whose close was unobserved.
+  (application-close-debts nil)
   ;; P3: how the last open reached the Store state: (:checkpoint S K) or
   ;; (:full-replay REASON).  `operator status' prints it.
   (open-mode '(:full-replay :absent))
@@ -2617,20 +2636,42 @@ store; anything else is left to the ordinary open."
         (unless (fnn-store-logp store)
           (fnn-fault "a store that is not on the record log opened"))
         (fnn-safe-directory (fnn-journal-dir store)))
-    (error (e) (fnn-store-close store) (error e))))
+    (error (e) (fnn-store-failed-open-close store e))))
+
+(defvar *fnn-store-failed-open-custody* nil
+  "Scoped owner startup sink for an actual Store whose rollback close failed.
+Generic command callers have no owner authority sink.")
+
+(defun fnn-store-failed-open-close (store primary)
+  "Preserve PRIMARY; convey physical close debt before failed open escapes."
+  (handler-case (fnn-store-close store)
+    (serious-condition (cleanup)
+      (when *fnn-store-failed-open-custody*
+        (funcall *fnn-store-failed-open-custody* store))
+      (ignore-errors (fnn-err "Store open cleanup failed: ~a" cleanup))))
+  (error primary))
 
 (defun fnn-store-close (store)
+  (when (fnn-store-close-debt store)
+    (error (third (fnn-store-close-debt store))))
   (setf (fnn-store-completion-pending store) nil)
-  (let ((log (fnn-store-log store)))
-    (when log
-      (setf (fnn-store-log store) nil)
-      (ignore-errors (fnn-log-discard-spare log))
-      (ignore-errors (fnn-close (fnn-log-fd log)))))
-  (let ((fd (fnn-store-lock-fd store)))
-    (when fd
-      (setf (fnn-store-lock-fd store) nil)
-      (unwind-protect (fnn-flock fd +fnn-lock-un+)
-        (fnn-close fd)))))
+  (let ((log (fnn-store-log store)) (fd (fnn-store-lock-fd store)))
+    ;; Consume each fd slot before its close attempt: no retry after reuse.
+    ;; Keep uncertainty visible to owner-store-settlement rather than claiming
+    ;; authority returned after a suppressed physical failure.
+    (setf (fnn-store-log store) nil (fnn-store-lock-fd store) nil)
+    (handler-case
+        (fnn-unwind-cleanups ()
+          (when log (fnn-log-discard-spare log))
+          (when log (fnn-log-close-active log))
+          (when fd (fnn-flock fd +fnn-lock-un+))
+          (when fd (fnn-close fd))
+          (when (fnn-store-application-close-debts store)
+            (error (third (car (fnn-store-application-close-debts store))))))
+      (serious-condition (condition)
+        (setf (fnn-store-fenced store) t
+              (fnn-store-close-debt store) (list log fd condition))
+        (error condition)))))
 
 (defun fnn-observe (store operation &optional (result :ok))
   "Submit one already-observed filesystem result and keep failure fenced."
@@ -4068,7 +4109,7 @@ the records are read after the open by the verbs that need them
                   (floor (* 1000 (- (get-internal-real-time) before))
                          internal-time-units-per-second))
             (values store count)))
-      (error (e) (fnn-store-close store) (error e)))))
+      (error (e) (fnn-store-failed-open-close store e)))))
 
 (defun fnn-orphan-report (store)
   (if (null (fnn-store-orphans store))
@@ -6903,7 +6944,8 @@ with its depth, and the rows under it name the path that called it."
   ;; preallocated and fenced OFF the owner mutex (fnn-log-prepare-spare); the
   ;; rotation under the mutex only renames it into journal/.  SPARE-LOCK
   ;; serializes preparers; it is never taken under the owner mutex.
-  (spare nil) (spare-lock (sb-thread:make-mutex :name "fn log spare"))
+  (active-close-debt nil)
+  (spare nil) (spare-close-debt nil) (spare-lock (sb-thread:make-mutex :name "fn log spare"))
   ;; journal/'s path while the rotated-to segment's name is not yet durable:
   ;; the first fence of the new segment (fnn-log-fence) and the checkpoint
   ;; that names it (fnn-owner-publish-captured) fence journal/ first
@@ -7967,17 +8009,36 @@ removes one a death left, and the open's segment listing never sees it
 (fn-lgs-indices keeps only NNNNNN.log names)."
   (fnn-join (fnn-staging store) (format nil ".stage-segment-~6,'0d" k)))
 
+(defun fnn-log-close-active (log)
+  "Consume an active descriptor once; an unobserved close remains debt."
+  (when (fnn-log-active-close-debt log)
+    (error (second (fnn-log-active-close-debt log))))
+  (let ((fd (fnn-log-fd log)))
+    (when fd
+      (setf (fnn-log-fd log) nil)
+      (handler-case (fnn-close fd)
+        (serious-condition (condition)
+          (setf (fnn-log-active-close-debt log) (list fd condition))
+          (error condition))))))
+
 (defun fnn-log-discard-spare (log)
   "Close and unlink a spare that will not be renamed (another index, or the
 store closing).  Removing a staged name is never uncertain for the history:
 the open ignores and sweeps it."
+  (when (fnn-log-spare-close-debt log)
+    (error (second (fnn-log-spare-close-debt log))))
   (let ((spare (fnn-log-spare log)))
     (when spare
       (setf (fnn-log-spare log) nil)
       (destructuring-bind (index path fd) spare
         (declare (ignore index))
-        (ignore-errors (fnn-close fd))
-        (ignore-errors (when (fnn-lstat path) (fnn-unlink path)))))))
+        (handler-case
+            (fnn-unwind-cleanups ()
+              (fnn-close fd)
+              (when (fnn-lstat path) (fnn-unlink path)))
+          (serious-condition (condition)
+            (setf (fnn-log-spare-close-debt log) (list spare condition))
+            (error condition)))))))
 
 (defun fnn-log-prepare-spare (store)
   "P-ROTATE's first half, fn-lgs-spare-program (books/store-log-segments.lisp),
@@ -8005,15 +8066,17 @@ of the checkpoint that wanted the rotation (serving continues)."
                   (when (fnn-lstat path) (fnn-unlink path))
                   (setq fd (fnn-open path (logior sb-posix:o-rdwr sb-posix:o-creat
                                                   sb-posix:o-excl +fnn-o-nofollow+)))
+                  ;; Install candidate custody before any preparation/cut
+                  ;; can escape; failed prepare cannot strand a local fd.
+                  (setf (fnn-log-spare log) (list next path fd))
                   (fnn-log-preallocate fd extent)
                   (fnn-log-at :rotate-created)
                   (fnn-fsync-file fd)
                   (fnn-log-at :rotate-fenced))
               (fnn-os-error (e)
-                (when fd (ignore-errors (fnn-close fd)))
-                (ignore-errors (when (fnn-lstat path) (fnn-unlink path)))
-                (fnn-refuse-io "log rotation's spare failed: ~a" e)))
-            (setf (fnn-log-spare log) (list next path fd))))))))
+                (fnn-unwind-cleanups
+                    ((fnn-refuse-io "log rotation's spare failed: ~a" e))
+                  (fnn-log-discard-spare log))))))))))
 
 (defun fnn-log-rotate (store)
   "P-ROTATE's switch, fn-lgs-rotate-program (design 2026-09-27 storage-log
@@ -8053,20 +8116,20 @@ be in journal/ while the closed segment would take more records)."
     (let ((spare (fnn-log-spare log)))
       (unless (and spare (eql (first spare) next))
         (fnn-refuse "rotation refused reason=spare-unprepared"))
-      (setf (fnn-log-spare log) nil)
+      ;; The spare remains the candidate's physical custody across rename
+      ;; and head-writing cuts, until an atomic host slot transfer below.
       (destructuring-bind (index staged fd) spare
         (declare (ignore index))
         (let* ((path (fnn-segment-path-at store next))
                (renamed (handler-case (fnn-rename-no-replace staged path)
                           (fnn-os-error (e)
-                            (ignore-errors (fnn-close fd))
                             (fnn-indeterminate "log rotation's rename is uncertain: ~a" e)))))
           (when renamed
             ;; :exists (a segment of that index is already there) or
             ;; :unsupported: nothing was renamed.
-            (ignore-errors (fnn-close fd))
-            (ignore-errors (when (fnn-lstat staged) (fnn-unlink staged)))
-            (fnn-refuse "rotation refused reason=spare-rename-~(~a~)" renamed))
+            (fnn-unwind-cleanups
+                ((fnn-refuse "rotation refused reason=spare-rename-~(~a~)" renamed))
+              (fnn-log-discard-spare log)))
           (fnn-log-at :rotate-renamed)
           ;; The head (lane store-lineage; books/store-log-lineage.lisp): the
           ;; rotation entry chained from the closed segment's last trailer,
@@ -8079,10 +8142,15 @@ be in journal/ while the closed segment would take more records)."
               (fnn-os-error (e)
                 (fnn-indeterminate "log rotation's head write is uncertain: ~a" e)))
             (fnn-log-at :rotate-headed)
-            (fnn-close (fnn-log-fd log))
+            (handler-case (fnn-log-close-active log)
+              (serious-condition (condition)
+                (fnn-indeterminate "log rotation active close unobserved; custody held: ~a" condition)))
+            ;; Transfer physical custody before any fallible semantic call;
+            ;; shutdown must see the candidate in exactly one fd slot.
             (setf (fnn-log-path log) path
                   (fnn-log-fd log) fd
-                  (fnn-log-kernel log) (fnn-core 'fn-lgc-rotate ks next unit)
+                  (fnn-log-spare log) nil)
+            (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-rotate ks next unit)
                   (fnn-log-index log) next
                   (fnn-log-genesis log) (fnn-core 'fn-lgc-last ks)
                   (fnn-log-extent log) (fnn-nat (fnn-core 'fn-store-log-initial-extent))
@@ -9167,27 +9235,43 @@ segment' (tests/test_native_topic_local.py)."
 ;;; refused (the OpenBSD rehearsal's finding 8: the web reader counted an
 ;;; unreachable node as a refused code).
 (defun fnn-redeem-read-line (read-chunk pending)
-  "One reply line (without CRLF) and the octets after it, reading chunks with
-READ-CHUNK until an LF; at most 4096 octets (RFC 3977 s3.1: 512 is the
-largest reply line).  :LOST when the server closed or did not answer."
+  "One bounded reply line and its exact following octets. ACL2 checks the
+wire width even when the delimiter arrives in the same chunk."
   (let ((buffer pending))
     (loop
-      (let ((lf (position 10 buffer)))
-        (when lf
-          (return (values (coerce (subseq buffer 0 (if (and (> lf 0) (= (aref buffer (1- lf)) 13))
-                                                       (1- lf) lf))
-                                  'list)
-                          (subseq buffer (1+ lf))))))
-      (when (> (length buffer) 4096)
-        (fnn-refuse "refused redeem reply: the server's line exceeds 4096 octets"))
+      (let* ((lf (position 10 buffer))
+             (status (fnn-core 'fn-rip-reply-status (length buffer) lf)))
+        (case status
+          (:line
+           (return (values (coerce (subseq buffer 0 (if (and (> lf 0) (= (aref buffer (1- lf)) 13))
+                                                       (1- lf) lf)) 'list)
+                           (subseq buffer (1+ lf)))))
+          (:refused (return (values :lost nil))) ; malformed peer input is loss, not an account verdict
+          (:need nil)
+          (t (fnn-fault "invalid ACL2 redeem reply decision"))))
       (let ((chunk (funcall read-chunk)))
         (when (or (eq chunk :timeout) (zerop (length chunk)))
           (return (values :lost buffer)))
         (setq buffer (concatenate 'fnn-octets buffer chunk))))))
 
+(defun fnn-redeem-password-line (stream)
+  "Read at most one wire-sized password, checking before each retained octet.
+CR is allowed only as the line ending; command separators cannot be secrets."
+  (let ((used 0) (returnp nil) (octets nil))
+    (loop
+      (let* ((character (read-char stream nil nil))
+             (octet (if character (char-code character) :eof))
+             (decision (fnn-core 'fn-rip-password-step used returnp octet)))
+        (case decision
+          (:octet (push octet octets) (incf used))
+          (:return (setq returnp t))
+          (:end (return (nreverse octets)))
+          (:refused (fnn-refuse "refused redeem password: use one nonempty printable ASCII token within the NNTP command bound"))
+          (t (fnn-fault "invalid ACL2 redeem password decision")))))))
+
 (defun fnn-redeem-read-password ()
   "The new account's password: from the terminal without echo, else one line
-of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
+of standard input; ACL2 admits each octet within the XREDEEM PASS wire bound."
   (let* ((tty (handler-case
                   (open "/dev/tty" :direction :io :element-type 'character
                                    :external-format :latin-1)
@@ -9207,13 +9291,7 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                      old-flags (sb-posix:termios-lflag attributes))
                (setf (sb-posix:termios-lflag attributes) (logandc2 old-flags sb-posix:echo))
                (sb-posix:tcsetattr fd sb-posix:tcsanow attributes)))
-           (let ((line (read-line stream nil nil)))
-             (when (null line)
-               (fnn-refuse "refused redeem password: no password was given"))
-             (let ((text (string-right-trim '(#\Return) line)))
-               (when (or (zerop (length text)) (> (length text) 512))
-                 (fnn-refuse "refused redeem password: it must be 1 to 512 characters"))
-               (map 'list #'char-code text))))
+           (fnn-redeem-password-line stream))
       (when tty
         (when attributes
           (setf (sb-posix:termios-lflag attributes) old-flags)
@@ -9244,7 +9322,12 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                      (if tls 563 119)))
              (verification (fnn-core 'fn-peer-tls-verification host
                                      (or cafile :system-roots)))
-             (password (fnn-redeem-read-password))
+             (code-command (fnn-core 'fn-rip-command :code code login))
+             (password (progn
+                         (unless code-command
+                           (fnn-refuse "refused redeem: CODE and LOGIN must be single NNTP tokens within the command bound"))
+                         (fnn-redeem-read-password)))
+             (password-command (fnn-core 'fn-rip-command :password password nil))
              (socket nil) (context nil) (channel nil) (pending (fnn-make-octets 0))
              (last nil) (stage :connect))
         (unless (eq (first verification) :verify)
@@ -9253,8 +9336,8 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                       (if (eq (second verification) :trust)
                           "the --cafile path is not usable"
                         "HOST is not a host name or an IPv4 address")))
-        (flet ((send (text)
-                 (let ((octets (fnn-string-octets (fnn-concat text (coerce '(#\Return #\Newline) 'string)))))
+        (flet ((send (line)
+                 (let ((octets (fnn-octets line)))
                    (if channel
                        (fnn-tls-send-all channel octets 30)
                      (fnn-send-all (fnn-socket-fd socket) octets 30))))
@@ -9292,24 +9375,25 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                                       (fnn-core 'fn-redeem-lost stage)
                                     (fnn-core 'fn-redeem-step stage line))))
                        (case (first step)
-                         (:starttls (send "STARTTLS") (setq stage :starttls))
+                         (:starttls (send (fnn-core 'fn-rip-command :starttls nil nil)) (setq stage :starttls))
                          (:handshake
                           (setq context (fnn-tls-open-client-context (fourth verification))
                                 channel (fnn-tls-connect context (fnn-socket-fd socket)
                                                          (second verification) 30
                                                          :sni (third verification))
                                 pending (fnn-make-octets 0))
-                          (send (format nil "XREDEEM ~a ~a" code login))
+                          (send code-command)
                           (setq stage :code))
                          (:send-code
-                          (send (format nil "XREDEEM ~a ~a" code login))
+                          (send code-command)
                           (setq stage :code))
                          (:send-password
-                          (send (format nil "XREDEEM PASS ~a"
-                                        (map 'string #'code-char password)))
-                          (setq stage :password))
+                          ;; Sending may have published the account even if
+                          ;; the local completion raises: retain uncertainty.
+                          (setq stage :password)
+                          (send password-command))
                          ((:uncertain :unreachable) (return (finish step)))
-                         (t (ignore-errors (send "QUIT"))
+                         (t (ignore-errors (send (fnn-core 'fn-rip-command :quit nil nil)))
                             (return (finish step))))))))
                  ;; The node could not be reached, or the connection failed
                  ;; under the exchange: ACL2's lost outcome at this stage.

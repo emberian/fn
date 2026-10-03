@@ -160,3 +160,13 @@
   (equal *bpcin-ambiguous-answer*
          (fn-bpnf-receive-wire-event *bpnf-config* *bpnf-wire* *bpnf-obs*
                                      (caddr *bpcin-ambiguous*)))))
+
+(assert-event (equal (fn-bpaj-session-admission *bpat-cfg* *bpat-channel* *bpcin-uri*)
+                     (list :admitted (fn-record-string-octets "peer") 7)))
+(assert-event (equal (fn-bpaj-session-admission *bpat-no-trust* *bpat-channel* *bpcin-uri*)
+                     '(:refused :no-trust-profile)))
+(assert-event (equal (fn-bpaj-session-admission *bpat-cfg* *bpat-channel* '(100 116 110))
+                     '(:refused :announced-eid)))
+(assert-event (equal (fn-bpaj-session-admission *bpat-cfg* *bpat-channel*
+                      (fn-record-string-octets "dtn://other/"))
+                     '(:refused :eid-mismatch)))

@@ -38,12 +38,61 @@ its full core-selected cold descriptor while the captured owner is held."
          (setf (fnn-decoded-activation-stage ,saved) :idle)
          ,answer))))
 
+(defun fnn-extent-decoded-window-pread (fd input token effect)
+  "Delay only an already selected physical read, off owner/extent exclusion.
+The developer hold retains the actual pending effect/private activation; it
+does not issue, revoke or settle work. No private bytes enter diagnostics."
+  (let ((hold (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")))
+    (when (and hold (plusp (length hold)) (not (probe-file hold)))
+      (let ((*print-pretty* nil))
+        (fnn-err "DECODED-WINDOW held token=~s file=~d fd=~d offset=~d count=~d"
+                 token (second effect) fd (fifth effect) (sixth effect)))
+      (loop until (probe-file hold) do (sleep 0.05)))
+    (let ((status (fnn-extent-window-pread fd input (fifth effect) (sixth effect))))
+      (when hold
+        (let ((*print-pretty* nil))
+          (fnn-err "DECODED-WINDOW read-return token=~s status=~s" token status)))
+      status)))
+
+(defun fnn-extent-decoded-storage-start (worker)
+  "Actual persistent constructor, authorized by the installed startup baseline."
+  (let ((activation (make-fnn-decoded-activation)))
+    (setf (fnn-cold-worker-decoded-storage worker) activation)
+    (setf (fnn-decoded-activation-job activation)
+          (fnn-decoded-semantic (activation) (fnn-core 'create-fn-decoded-job)))
+    (setf (fnn-decoded-activation-job activation)
+          (fnn-decoded-semantic (activation)
+            (fnn-core 'fn-dwj-reserve (fnn-decoded-activation-job activation))))
+    activation))
+
+(defun fnn-extent-decoded-storage-retire (worker token)
+  "E held after final borrow. Clear current authority before token settlement;
+keep baseline backing charged through idle, and quarantine every torn reset."
+  (let ((activation (fnn-cold-worker-decoded worker)))
+    (when activation
+      (unless (eq activation (fnn-cold-worker-decoded-storage worker))
+        (fnn-fault "decoded activation is not the baseline scratch"))
+      (destructuring-bind (word job &rest ignored)
+          (fnn-decoded-semantic (activation)
+            (fnn-call 'fn-owner-page-decoded-job-retire
+              (fnn-cold-worker-row worker) token
+              (fnn-decoded-activation-job activation) (fnn-live-page-read-pool)))
+        (declare (ignore ignored))
+        (setf (fnn-decoded-activation-job activation) job)
+        (unless (eq word :reusable)
+          (fnn-fault "decoded scratch still retains operation authority"))
+        (fnn-err "DECODED-WINDOW backing token=~s word=~s scope=:persistent-partial-fixed-storage"
+                 token word)))))
+
 (defun fnn-extent-decoded-window-run (worker token)
   "Same worker/token/pool; actual retained ACL2 controller selects each step.
 The issuer draws its declared fixed-storage projection before this entry;
 allocator/GC and pointed-to controller graphs remain outside that partial scope."
-  (let* ((activation (make-fnn-decoded-activation))
+  (let* ((activation (fnn-cold-worker-decoded-storage worker))
          (fd nil) (incarnation nil))
+    (unless (and (fnn-decoded-activation-p activation)
+                 (eq (fnn-decoded-activation-stage activation) :idle))
+      (fnn-fault "decoded baseline scratch unavailable or quarantined"))
     (setf (fnn-cold-worker-decoded worker) activation)
     (sb-thread:with-mutex (*fnn-extent-lock*)
       (unless (first (fnn-core-cold-pool 'fn-owner-page-window-work-permittedp
@@ -52,11 +101,6 @@ allocator/GC and pointed-to controller graphs remain outside that partial scope.
       (setq fd (gethash (fnn-core 'fn-pwz-nth 2 token) *fnn-extent-fds*)
             incarnation (gethash (fnn-core 'fn-pwz-nth 2 token) *fnn-extent-incarnations*)))
     (unless (and fd incarnation) (fnn-fault "decoded issued file closed"))
-    ;; This exact registered zero-input creator uses the validated allocation
-    ;; ABI. All decisions below follow normal semantic dispatch.
-    (setf (fnn-decoded-activation-job activation)
-          (fnn-decoded-semantic (activation)
-            (fnn-core 'create-fn-decoded-job)))
     (sb-thread:with-mutex (*fnn-extent-lock*)
       (destructuring-bind (word job &rest ignored)
           (fnn-decoded-semantic (activation)
@@ -85,8 +129,8 @@ allocator/GC and pointed-to controller graphs remain outside that partial scope.
            ;; Only this core-selected effect authorizes the physical write
            ;; into the fixed private child. That alias dies with this call.
            (let* ((read-effect (fourth effect))
-                  (status (fnn-extent-window-pread
-                            fd (svref job 1) (fifth read-effect) (sixth read-effect))))
+                  (status (fnn-extent-decoded-window-pread
+                            fd (svref job 1) token read-effect)))
              (destructuring-bind (answer next)
                  (fnn-decoded-semantic (activation)
                    (fnn-call 'fn-dwj-read-observation token (third effect) status job))

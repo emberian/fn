@@ -141,3 +141,41 @@ class SourceRunnerTests(unittest.TestCase):
             with patch.object(runner.sys, 'platform', 'linux'), patch.object(runner.os, 'chdir'):
                 with self.assertRaisesRegex(ValueError, 'strict source admission driver'):
                     runner.run(path, [])
+
+class LogicalCheckpointTests(unittest.TestCase):
+    def test_prefix_is_hash_bound_and_restart_stays_logical(self):
+        import json
+        import native_source_cache as cache
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            prefix = root / 'early.lisp'
+            prefix.write_text('(in-package "ACL2")\n(defun early (x) x)\n')
+            manifest = root / 'runtime.json'
+            manifest.write_text(json.dumps({'sha256': {}}))
+            prepared = json.loads(cache.prepare(manifest, root / 'cache', prefix).read_text())
+            self.assertEqual(prepared['checkpoint_mode'], 'logical-repl')
+            self.assertEqual(prepared['sha256'][str(prefix.resolve())], runner.digest(prefix))
+            self.assertEqual(Path(prepared['checkpoint_events']).read_text(), prefix.read_text())
+            self.assertIn(":return-from-lp '(acl2::lp)", prepared['after_acl2_loop'])
+            self.assertNotIn('fn-native-entry', prepared['after_acl2_loop'])
+            self.assertIn(':ld-error-action :return', Path(prepared['bootstrap']).read_text())
+
+    def test_logical_prefix_refuses_native_entry(self):
+        import json
+        import native_source_cache as cache
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            prefix = root / 'bad.lisp'; prefix.write_text(cache.ENTRY)
+            manifest = root / 'runtime.json'; manifest.write_text(json.dumps({'sha256': {}}))
+            with self.assertRaisesRegex(ValueError, 'must not enter native'):
+                cache.prepare(manifest, root / 'cache', prefix)
+
+    def test_logical_restart_refuses_native_argv(self):
+        import json
+        import native_source_cache as cache
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = Path(directory) / 'execution.json'
+            manifest.write_text(json.dumps({'execution_sha256': {}, 'checkpoint_mode': 'logical-repl'}))
+            with patch.object(cache.sys, 'platform', 'linux'):
+                with self.assertRaisesRegex(ValueError, 'resumes ACL2 LP'):
+                    cache.execute(manifest, ['--fn', 'owner'])

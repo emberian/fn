@@ -39,7 +39,8 @@
 (source-load-defuns "books/nov-piece-window.lisp" '(fn-npw-one))
 (source-load-defuns "books/nntp-article-pass.lisp"
                     '(fn-nntp-crlf-validp fn-nntp-blank-linep fn-nntp-block-rev))
-(source-load-defuns "books/nntp-xref.lisp" '(fn-xref-octetp fn-xref-octetsp fn-xref-wordp fn-xref-pairs-of fn-xref-pairs))
+(source-load-defuns "books/nntp-xref.lisp" '(fn-xref-octetp fn-xref-octetsp fn-xref-wordp fn-xref-pairs-of fn-xref-pairs
+    fn-xref-server-octetsp fn-xref-serverp))
 (source-load-defuns "books/nntp-syntax.lisp"
   '(fn-nntp-printable-tokenp fn-nntp-message-id-tailp fn-nntp-message-id-tokenp
     fn-nntp-string-octets fn-nntp-string-octets-aux fn-nntp-string-octets-aux-loop))
@@ -136,6 +137,20 @@
           (dolist (window '(1 3 4096))
             (source-check (equal (source-render-window ready window arena)
                                  (source-reference payload kind 7 "<xref@example>" server pairs)))))))))
+(let* ((payload (append (bytes "Subject: server") '(13 10 13 10 46 13 10)))
+       (arena (list payload))
+       (article (list "<server@example>" 0 '(("fn.a" . 2))))
+       (scan (source-scan (fn-ast-source article arena) 3 arena)))
+  (dolist (server (list nil '(33 126 58) '(32) '(127) '(65 . 66) "server"
+                       (append (make-list 5000 :initial-element 65) '(32))
+                       (make-list 5000 :initial-element 65)))
+    (dolist (kind '(:article :head :body))
+      (dolist (window '(1 3 4096))
+        (source-check
+         (equal (source-render-window (fn-ast-ready-memberships scan kind 2 article server) window arena)
+                (source-reference payload kind 2 "<server@example>"
+                                  (and (fn-xref-serverp server) server)
+                                  (fn-xref-pairs article))))))))
 (let ((articles (loop for n from 1 to 200 collect
                   (list (format nil "<select~d@example>" n) 0
                         (list (cons "fn.other" (+ n 300)) (cons "fn.a" n))))))
@@ -149,4 +164,30 @@
                              (fn-nntp-available-article "fn.a" number articles))))
             (source-check (eq (fn-ast-at 5 it) reference))
             (source-check (eq (fn-ast-at 9 it) (if reference :selected :missing)))))))))
+; Actual source archive fallback and selected-group number projection. The
+; requested ID is bounded by the command parser; memberships are unbounded.
+(source-load-defuns "books/acceptance.lisp" '(fn-find-article))
+(let* ((long-group (make-string 5000 :initial-element #\a))
+       (first (list "<same@example>" 0 (list (cons "fn.other" 3) (cons "fn.a" 17))))
+       (duplicate (list "<same@example>" 0 '(("fn.a" . 23))))
+       (long (list "<long@example>" 0 (list (cons long-group 19))))
+       (articles (list (list "invalid ID" 0 nil) first duplicate long)))
+  (dolist (key '("<same@example>" "<long@example>" "<missing@example>"))
+    (dolist (group (list nil "fn.a" "fn.absent" long-group))
+      (dolist (fuel '(1 3 4096))
+        (let ((it (fn-ast-select-state :msgid group key articles nil nil nil 0 :msgid-next)))
+          (loop until (fn-ast-select-donep it) do (setf it (fn-ast-select-step it fuel)))
+          (let ((reference (fn-find-article key articles)))
+            (source-check (eq (fn-ast-at 5 it) reference))
+            (source-check (eq (fn-ast-at 9 it) (if reference :selected :missing)))
+            (when reference
+              (source-check (= (fn-ast-at 3 it) (if group (fn-nntp-article-number group reference) 0)))))))))
+  (dolist (article (list first long (list "bad ID" 0 '(("fn.a" . 17)))
+                        (list "<huge@example>" 0 '(("fn.a" . 2147483648)))
+                        (list "<dup@example>" 0 '(("fn.a" . 0) ("fn.a" . 9)))))
+    (dolist (group (list nil "fn.a" "fn.absent" long-group))
+      (let ((it (fn-ast-msgid-local-start group article)))
+        (loop until (fn-ast-select-donep it) do (setf it (fn-ast-select-step it 1)))
+        (source-check (eq (fn-ast-at 5 it) article))
+        (source-check (= (fn-ast-at 3 it) (if group (fn-nntp-article-number group article) 0)))))))
 (format t "article stream actual-source PASS checks=~d~%" *checks*)

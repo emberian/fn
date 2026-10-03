@@ -648,17 +648,17 @@ range), which the caller runs under the owner mutex
           (return-from fnn-owner-render-next
             (values (if (or borrowp (= fill (length array))) array (subseq array 0 fill))
                     rest nil nil fill))))))
-  (when (fnn-core 'fn-splan-at-cursorp plan)
+  (when (fnn-core 'fn-qplan-at-cursorp plan)
     (return-from fnn-owner-render-next
       (values (fnn-make-octets 0) plan nil t 0)))
   (let ((size (if compressedp
                   (fnn-core 'fn-zc-render-window-size
-                            (fnn-core 'fn-splan-window-size plan))
-                (fnn-core 'fn-splan-window-size plan))))
+                            (fnn-core 'fn-qplan-window-size plan))
+                (fnn-core 'fn-qplan-window-size plan))))
     (unless (and (integerp size) (>= size 0))
       (fnn-fault "owner returned a malformed render window size"))
     (destructuring-bind (status rest buf)
-        (fnn-call 'fn-splan-window plan size (fnn-response-render-buffer size))
+        (fnn-call 'fn-qplan-window plan size (fnn-response-render-buffer size))
       ;; :cursor (lane join-f2-13): the window ended in front of a cursor
       ;; effect, its octets written; the size above never reaches one (it
       ;; is the octets of the effect the window starts in), so the status
@@ -670,7 +670,7 @@ range), which the caller runs under the owner mutex
                     (the fnn-octets array)
                   (subseq (the fnn-octets array) 0 fill))
                 rest
-                (and (fnn-core 'fn-splan-donep rest) t)
+                (and (fnn-core 'fn-qplan-donep rest) t)
                 nil fill)))))
 
 ;;; The cursor quantum (lane join-f2-13, PRF-1020; books/served-plan-cursor.lisp).
@@ -785,7 +785,7 @@ never awaits a page or replays a quantum in the same I/O event."
                      (catch 'fnn-extent-cold
                        (fnn-owner-window-activation (lambda () (let ((*fnn-extent-no-io* t))
                          (destructuring-bind (status rest)
-                             (fnn-call 'fn-splan-cursor-step plan (fnn-owner-over-window)
+                             (fnn-call 'fn-qplan-cursor-step plan (fnn-owner-over-window)
                                        (fnn-live-stobj 'fn-arena) (fnn-live-stobj 'fn-cat))
                            (unless (eq status :ok)
                              (fnn-fault "owner returned a malformed cursor in its served reply"))
@@ -977,7 +977,13 @@ It is not a declaration that the complete producer lifecycle is proved.")
 (defun fnn-owner-store-settlement (service settlement)
   "Retain the actual service and Store lock until writer/journal settlement.
 Store close errors are physical uncertainty, never silent authority release."
-  (let ((action
+  (let* ((service (or service
+                      ;; Failed installation can retain its actual Store in
+                      ;; this same service carrier before returning SERVICE.
+                      ;; The startup reservation T owns no Store descriptor.
+                      (and (fnn-owner-service-p *fnn-owner-retained-service*)
+                           *fnn-owner-retained-service*)))
+         (action
           (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
             (fnn-core 'fn-ort-store-close-action settlement
                       (and *fnn-owner-retained-service* t)
@@ -1318,6 +1324,14 @@ directories because one encoded label can be a prefix of a longer label.
               (t (fnn-fault "conflicting FNFD namespace entry: ~a" path))))))
     (nreverse peers))))
 
+(defun fnn-owner-feed-close-entries (entries)
+  "Attempt every journal close and return the first cleanup condition."
+  (let ((failure nil))
+    (dolist (entry entries)
+      (handler-case (fnn-owner-feed-close (cdr entry))
+        (serious-condition (condition) (unless failure (setq failure condition)))))
+    failure))
+
 (defun fnn-owner-feed-open-all (service configured)
   ;; The order is the configured peers, then the historical journals by name:
   ;; never the directory's listing order, which differs between filesystems
@@ -1334,13 +1348,15 @@ directories because one encoded label can be a prefix of a longer label.
             (push (cons peer (fnn-owner-feed-open store peer)) opened))
           (nreverse opened))
       (error (e)
-        (dolist (entry opened) (fnn-owner-feed-close (cdr entry)))
+        (fnn-owner-feed-close-entries opened)
         (error e)))))
 
 (defun fnn-owner-feed-close-all (service)
-  (dolist (entry (fnn-owner-service-feeds service))
-    (fnn-owner-feed-close (cdr entry)))
-  (setf (fnn-owner-service-feeds service) nil))
+  (let ((failure (fnn-owner-feed-close-entries (fnn-owner-service-feeds service))))
+    ;; Each descriptor's custody was consumed by FEED-CLOSE before close(2).
+    ;; A failed close must not strand later journals or leave stale cache rows.
+    (setf (fnn-owner-service-feeds service) nil)
+    (when failure (error failure))))
 
 (defun fnn-owner-feed-open-missing (service configured)
   "Install journals for newly configured feeds before they can enqueue.
@@ -1361,7 +1377,7 @@ obligations may still name a peer removed from the current configuration."
           (setf (fnn-owner-service-feeds service)
                 (append current (nreverse opened))))
       (error (e)
-        (dolist (entry opened) (fnn-owner-feed-close (cdr entry)))
+        (fnn-owner-feed-close-entries opened)
         (error e)))))
 
 (defun fnn-owner-feed-refresh-configuration (service)
@@ -1488,7 +1504,11 @@ one ring, so the table's key and the served boundary's are one source."
                 (fnn-node-secret-directory store))))
 
 (defun fnn-owner-install (root max-connections &optional fault)
-  (multiple-value-bind (store count) (fnn-open-live-store root t fault)
+  (multiple-value-bind (store count)
+      (let ((*fnn-store-failed-open-custody*
+              (lambda (store)
+                (fnn-owner-retain-run-authority (%make-fnn-owner-service :store store)))))
+        (fnn-open-live-store root t fault))
     (let ((service nil))
       (handler-case
           (progn
@@ -1572,8 +1592,23 @@ one ring, so the table's key and the served boundary's are one source."
               (fnn-log-history-release-prefix store)
               service))
         (error (e)
-          (when service (fnn-owner-feed-close-all service))
-          (fnn-store-close store)
+          ;; Neither cleanup condition replaces E. Keep the actual Store
+          ;; carrier if either physical release is uncertain: outer startup
+          ;; cleanup must not mistake a NIL return value for absent custody.
+          (let ((cleanup-failure nil))
+            (flet ((release (thunk)
+                     (handler-case (funcall thunk)
+                       (serious-condition (cleanup)
+                         (unless cleanup-failure (setq cleanup-failure cleanup))
+                         (ignore-errors (fnn-err "owner open cleanup failed: ~a" cleanup))))))
+              (when service (release (lambda () (fnn-owner-feed-close-all service))))
+              (release (lambda () (fnn-store-close store))))
+            (when cleanup-failure
+              (setf (fnn-store-fenced store) t)
+              (unless (fnn-store-close-debt store)
+                (setf (fnn-store-close-debt store) (list nil nil cleanup-failure)))
+              (fnn-owner-retain-run-authority
+               (or service (%make-fnn-owner-service :store store)))))
           (error e))))))
 
 (defmacro fnn-with-roster ((service) &body body)
@@ -5639,7 +5674,7 @@ in a fault; DEADLINE (internal real time) bounds the whole feed.
           (fnn-fault "invalid FN_NATIVE_PAGE_READ_HOLD (expected MIN-OCTETS:RELEASE-FILE)"))
         (let ((release (subseq raw (1+ colon))))
           (unless (probe-file release)
-            (let ((size (fnn-core 'fn-splan-window-size plan)))
+            (let ((size (fnn-core 'fn-qplan-window-size plan)))
               (unless (and (integerp size) (>= size 0))
                 (fnn-fault "owner returned a malformed render window size"))
               (when (and (plusp size) (>= size min))
@@ -5964,7 +5999,9 @@ enters the section, which reads the head again under the mutex."
       (when (fnn-owner-cold-read-windowp read) (fnn-owner-cold-cancel read))
       (handler-case (fnn-owner-cold-settle-locked service read)
         (serious-condition (condition)
-          (unless (fnn-owner-cold-read-settledp read) (error condition)))))))
+          (unless (fnn-owner-cold-read-settledp read) (error condition))))))
+  (when (fnn-extent-executor-discard-idle)
+    (fnn-fault "cold workers retain terminal cleanup debt")))
 
 (defun fnn-owner-cold-await (service read &optional line-since)
   "Await an already-captured read off owner lock. Return the core dependency
@@ -7518,8 +7555,7 @@ pointer and the live state's binding)."
     ;; generation pins keep it held; an unheld root drops its retained grant
     ;; and hash binding here, including replacement before the next rebuild.
     (when retired
-      (when (eq (fnn-owner-core 'fn-owner-hroot-retire retired) :released)
-        (remhash retired *fnn-history-roots*)))
+      (fnn-history-root-retire-held retired))
     value))
 
 ;;; Q16 (a) (lane online-reclaim-5): the swapped owner is the owner the full
@@ -8118,6 +8154,40 @@ fn-osd-drain-stops-by-the-deadline).  Nothing here compares times or counts."
               (t (fnn-fault "owner returned a malformed drain step ~a" step))))))
         (sleep (/ poll 1000))))))
 
+(defun fnn-owner-page-read-startup (root max-connections cold-resources output-resources retain)
+  "Install DEFAULT's partial pool before Store recovery registers any file.
+RETAIN records constructor custody immediately after the core installation;
+the caller joins any partial executor before relinquishing run authority."
+  (let* ((profile (fnn-heap-store-profile root))
+         (core (fnn-heap-image-observation))
+         (plan (fnn-core 'fn-prstartup-default-plan
+                         (sb-ext:dynamic-space-size) (cdr core) profile core
+                         (fnn-gc-nursery-octets) cold-resources output-resources
+                         max-connections root (fnn-core 'fn-pio-direct-workers)
+                         (fnn-extent-cache-limit)
+                         ;; OS observation, not a profile/data ceiling. Linux
+                         ;; numbers NOFILE7; Darwin and the BSDs number it8.
+                         (fnn-heap-rlimit #+linux 7 #-linux 8))))
+    (case (fnn-core 'fn-prstartup-status plan)
+      (:admitted
+       (unless (fnn-core 'fn-prstartup-planp plan)
+         (fnn-fault "cold startup returned a malformed admitted plan")))
+      (:refused (fnn-refuse "~a" (fnn-core 'fn-prstartup-refusal-line plan)))
+      (otherwise (fnn-fault "cold startup returned a malformed decision")))
+    (let ((word (first (fnn-core-page-read-pool 'fn-owner-page-read-install-default plan))))
+      (unless (eq word :installed)
+        (if (eq (fnn-core 'fn-prstartup-install-status word) :refused)
+            (fnn-refuse "~a" (fnn-core 'fn-prstartup-install-refusal-line word))
+          (fnn-fault "cold startup installation returned ~a" word))))
+    (funcall retain)
+    (fnn-extent-pool-storage-start
+     (fnn-core 'fn-prstartup-file-capacity plan)
+     (fnn-core 'fn-prstartup-decoded-workers plan)
+     (fnn-core 'fn-prstartup-cache-capacity plan))
+    (fnn-cold-guard-cache-prepare plan)
+    (fnn-extent-executor-start (fnn-core 'fn-prstartup-decoded-workers plan) plan)
+    plan))
+
 (defun fnn-owner-run (root port once max-connections
                       &optional fault address (family :inet) tls-context
                         connection-fault-operation tls-port more-addresses
@@ -8133,6 +8203,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
         (equal (sb-ext:posix-getenv "FN_OWNER_MEASURE") "1"))
   (let ((service nil) (listener nil) (tls-listener nil) (more-listeners nil)
         (log-close-action nil) (run-authority-claimed nil)
+        (page-read-started nil)
         (old-active *fnn-sigterm-owner-active*)
         (old-requested *fnn-sigterm-requested*)
         (old-wakeup-fd *fnn-sigterm-wakeup-fd*))
@@ -8148,7 +8219,14 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
            ;; never waited on (host/native/io.lisp fnn-log-offer).
            (fnn-log-writer-start)
            (unwind-protect
-                (progn
+                  (progn
+                  ;; Reserve the process-local pool and persistent executor
+                  ;; before recovery registers its first physical file. The
+                  ;; callback retains startup custody even when a constructor
+                  ;; escapes before any service object exists.
+                  (fnn-owner-page-read-startup
+                   root max-connections cold-resources output-resources
+                   (lambda () (setq page-read-started t)))
                   (setq service (fnn-owner-install root max-connections fault))
                   (setf (fnn-owner-service-cold-resources service) cold-resources
                         (fnn-owner-service-output-resources service) output-resources
@@ -8271,7 +8349,16 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                     (fnn-owner-stop-service service +fnn-exit-ok+))
                   (fnn-owner-service-exit-code service))
              (unwind-protect
-                  (when service
+                  (progn
+                   (when (and page-read-started (null service))
+                     ;; Recovery/startup failed before publishing SERVICE.
+                     ;; Join actual workers before Store/run authority can
+                     ;; settle. A join escape preserves the retained authority.
+                     (setq log-close-action
+                           (fnn-core 'fn-ort-report-close-action nil :unobserved))
+                     (fnn-extent-executor-stop)
+                     (setq log-close-action nil))
+                   (when service
                     ;; Journal closure has not been observed. Retain Store
                     ;; authority if worker/module cleanup escapes before the
                     ;; actual settlement sequence obtains definite receipts.
@@ -8372,7 +8459,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                       log-close-action))
                           (fnn-core 'fn-ort-log-close-exit
                                     (fnn-owner-service-exit-code service)
-                                    +fnn-exit-uncertain+ log-close-action))))))
+                                    +fnn-exit-uncertain+ log-close-action)))))))
                (setq *fnn-sigterm-wakeup-fd* nil)
                (dolist (extra more-listeners) (fnn-socket-shut extra))
                (when tls-listener (fnn-socket-shut tls-listener))
@@ -8459,5 +8546,3 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                    fault nil :inet nil connection-fault-operation)))
 
 (fnn-register-developer-verb "owner" #'fnn-command-owner)
-
-

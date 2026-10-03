@@ -207,6 +207,7 @@
 ; the continuation of a served OVER/XOVER range; host/native/owner.lisp
 ; fnn-owner-cursor-step).
 (include-book "../books/served-plan-cursor")
+(include-book "../books/served-query-plan")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to
@@ -5386,20 +5387,8 @@ existing port only after fn-fc has made this connection ready."
 ; PRF-1258: the subject is the host-called prediction, including both its
 ; returned row column and the arena effects of sealing its payload column.
 ; The loop's guard proof already connects the MBE execution to this logic.
-(defthm fn-orcs-predict-seal-refines-intern
-  (implies (not (fn-orcs-has-bad rows))
-           (equal (fn-orcp-intern-rows rows keyring generation fn-arena)
-                  (mv (car (fn-orcs-predict rows keyring generation
-                                           (fn-arena-count fn-arena)))
-                      (fn-orcs-seal
-                       (cadr (fn-orcs-predict rows keyring generation
-                                             (fn-arena-count fn-arena)))
-                       fn-arena))))
-  :hints (("Goal"
-           :use ((:instance fn-orcs-seal-is-the-intern))
-           :in-theory (e/d (fn-orcs-predict)
-                           (fn-orcs-seal-is-the-intern fn-orcp-intern-rows
-                            fn-orcs-seal fn-orcs-predict-rows fn-orcs-payloads)))))
+; The prediction/seal boundary theorem is in books/owner-reclaim-seal.lisp.
+
 
 ; swap: fn-orcs-predict (off the mutex) and fn-orcs-seal (in the swap
 ; quantum), books/owner-reclaim-seal.lisp.

@@ -303,17 +303,23 @@ finds the transit principal in that ingress."
    service nil
    (lambda ()
      (fnn-bpapp-bind-owner-store)
-     (let ((journal (fnn-app-open (fnn-owner-service-store service)
-                                  receipt-root :receipt)))
-       (case (fnn-owner-action 'fn-bprj-config-status
-                               destination policy issuer)
-         (:absent (fnn-receipt-initialize journal
-                                          (list destination policy issuer)))
-         (:match nil)
-         (otherwise
-          (fnn-app-journal-close journal)
-          (fnn-refuse "BP application receipt configuration conflicts")))
-       journal))))
+     (let ((journal nil) (returned nil))
+       ;; Until this function returns, its callers cannot retain the handle.
+       ;; Initialization/configuration escapes therefore close our acquisition.
+       (fnn-unwind-cleanups
+           ((setq journal (fnn-app-open (fnn-owner-service-store service)
+                                        receipt-root :receipt))
+            (case (fnn-owner-action 'fn-bprj-config-status
+                                    destination policy issuer)
+              (:absent (fnn-receipt-initialize journal
+                                             (list destination policy issuer)))
+              (:match nil)
+              (otherwise
+               (fnn-refuse "BP application receipt configuration conflicts")))
+            (setq returned t)
+            journal)
+         (when (and journal (not returned))
+           (fnn-app-journal-close journal)))))))
 
 (defun fnn-command-bp-app-receive
     (port once spool store-root receipt-root node-id peer-eid destination
@@ -322,10 +328,16 @@ finds the transit principal in that ingress."
   (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit transfer-mru))
          (journal-root (fnn-bp-journal-dir spool))
          (spool-lock (fnn-tcl-spool-acquire journal-root))
-         (service nil) (journal nil) (listener nil))
+         (service nil) (journal nil) (listener nil)
+         (owner-custody (make-fnn-bp-served-owner-custody))
+         (primary-condition nil))
     (unwind-protect
-         (progn
-           (setq service (fnn-owner-install store-root max-connections))
+         (handler-bind ((serious-condition
+                           (lambda (condition)
+                             (unless primary-condition (setq primary-condition condition)))))
+          (progn
+           (setq service (fnn-bp-served-owner-start
+                          owner-custody store-root max-connections))
            (setq journal (fnn-bpapp-open-journal
                           service receipt-root destination policy issuer))
            (let ((tally (fnn-bp-evidence-open
@@ -372,14 +384,23 @@ finds the transit principal in that ingress."
                     (fnn-socket-shut socket)))
                 once)
                (fnn-bp-summary tally)
-               (fnn-bp-exit-code tally nil))))
-      (when listener (fnn-socket-shut listener))
-      (when journal (fnn-app-journal-close journal))
-      (when service
-        (ignore-errors (fnn-owner-action 'fn-owner-app-unbind-receipt-store))
-        (fnn-owner-feed-close-all service)
-        (fnn-store-close (fnn-owner-service-store service)))
-      (fnn-tcl-spool-release spool-lock))))
+               (fnn-bp-exit-code tally nil)))))
+      (let ((cleanup-condition nil))
+       (flet ((cleanup (operation)
+                (handler-case (funcall operation)
+                 (serious-condition (condition)
+                  (unless cleanup-condition (setq cleanup-condition condition))))))
+        (when listener (cleanup (lambda () (fnn-socket-shut listener))))
+        (when journal (cleanup (lambda () (fnn-app-journal-close journal))))
+        (when service
+         (cleanup (lambda () (fnn-owner-action 'fn-owner-app-unbind-receipt-store)))
+         (cleanup (lambda () (fnn-owner-feed-close-all service))))
+        (cleanup (lambda () (fnn-bp-served-owner-stop owner-custody service)))
+        (cleanup (lambda () (fnn-tcl-spool-release spool-lock)))
+        (cleanup (lambda () (fnn-bp-served-owner-settle
+                             owner-custody service (null cleanup-condition)))))
+       (unless primary-condition
+        (when cleanup-condition (error cleanup-condition)))))))
 
 (defun fnn-dispatch-bp-app (command args)
   (unless (string= command "receive")

@@ -4,11 +4,26 @@
 (in-package "ACL2")
 (defvar *fnn-history-roots* (make-hash-table :test 'eql))
 
+(defun fnn-history-root-retire-held (generation)
+  "INTERNAL: owner gate held; a retired generation cannot acquire readers."
+  (when (and generation
+             (eq (fnn-owner-core 'fn-owner-hroot-retire-word generation) :ready))
+    (let ((physical (gethash generation *fnn-history-roots*)))
+      ;; Clear page/suffix backing before the owner returns the retained
+      ;; grant. Removing the hash entry alone leaves arrays live until GC.
+      (unless physical
+        (fnn-fault "retired history generation has no physical custody: ~a" generation))
+      (fnn-call 'fn-hist$p-dispose physical)
+      (remhash generation *fnn-history-roots*)
+      (let ((word (fnn-owner-core 'fn-owner-hroot-retire generation)))
+        (unless (eq word :released)
+          (fnn-fault "history root credit return refused after disposal: ~a" word))
+        word))))
+
 (defun fnn-owner-history-root-release (service generation)
   (when generation
-    (let ((word (fnn-owner-gated (service :control)
-                  (fnn-owner-core 'fn-owner-hroot-retire generation))))
-      (when (eq word :released) (remhash generation *fnn-history-roots*)))))
+    (fnn-owner-gated (service :control)
+      (fnn-history-root-retire-held generation))))
 
 (defun fnn-owner-history-root-fund (service generation amount)
   (let ((word (fnn-owner-gated (service :control)
@@ -108,8 +123,10 @@ ACL2's source incarnation and refuses the candidate before installation."
               (fnn-call 'fn-hist$p-append (second row) candidate)
               (incf ordinal)
               (fnn-checkpoint-yield "live-history-tail" ordinal))))
-      (when stage (fnn-call 'fn-his-release stage))
+      (when stage (fnn-call 'fn-hrecs$s-dispose stage))
       (when (and generation (not installed))
+        (when candidate (fnn-call 'fn-hist$p-dispose candidate))
+        (setq candidate nil stage nil)
         (fnn-owner-gated (service :control)
           (fnn-owner-core 'fn-owner-hroot-abandon generation))))))
 
@@ -201,14 +218,17 @@ ACL2's source incarnation and refuses the candidate before installation."
             (fnn-refuse-io "reclaim history candidate count refused"))
           (setq returned t)
           (list generation candidate count))
-      (when stage (fnn-call 'fn-his-release stage))
+      (when stage (fnn-call 'fn-hrecs$s-dispose stage))
       (when (and generation (not returned))
+        (when candidate (fnn-call 'fn-hist$p-dispose candidate))
+        (setq candidate nil stage nil)
         (fnn-owner-gated (service :control)
           (fnn-owner-core 'fn-owner-hroot-abandon generation))))))
 
 (defun fnn-owner-history-root-abandon-candidate (service prepared)
   ;; The enclosing failed pass has left its private histogram scope.
   (let ((generation (first prepared)))
+    (when (second prepared) (fnn-call 'fn-hist$p-dispose (second prepared)))
     (setf (second prepared) nil)
     (fnn-owner-gated (service :control)
       (fnn-owner-core 'fn-owner-hroot-abandon generation))))
@@ -226,5 +246,4 @@ ACL2's source incarnation and refuses the candidate before installation."
         (setf (gethash generation *fnn-history-roots*) candidate)
         (fnn-install-history-root candidate)
         (when (second detached)
-          (when (eq (fnn-owner-core 'fn-owner-hroot-retire (second detached)) :released)
-            (remhash (second detached) *fnn-history-roots*)))))))
+          (fnn-history-root-retire-held (second detached)))))))

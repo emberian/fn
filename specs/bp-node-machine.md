@@ -5147,3 +5147,38 @@ refinement claim. This fixes normal shutdown of a live accepted peer, which
 otherwise stranded the bank despite its disabled continuation. SCN1110/1125/1126
 remain actual source-process consumers to execute on the current initialized
 world. Matching profile/teeth certification pending.
+
+Early passive session admission (PRF-1299, SCN-1128): actual fnn-tcl-apply
+invokes an optional BP-only admission callback once, at the decoded established
+transition and before this frame's events or another buffered frame. The live
+owner calls ACL2 fn-bpaj-session-admission on kernel-observed channel and decoded
+announced URI, reusing durable ingress's principal policy. Refusal discards
+unflushed messages and protocol-closes only that connection, records its exact
+policy reason, and cannot install a received-source job or publish a Store/FNBS
+record. The sender observes interruption before any transfer ACK; its pin stays.
+Pre-transfer refusal has no bundle wire to persist as receive evidence. Existing
+per-transfer admission/evidence remains for transfers actually consumed, and
+outbound on-ready keeps its physical-write ordering. Unknown admission results
+remain faults. Actual apply/flush raw matrix PASS; current native SCN1128 and
+updated absent-trust request/receipt selectors remain UNEXECUTED. Full config
+traversal, host correspondence and semantic allocation/GC costs stay open.
+
+Served Store resource startup (SCN-1134): `bp-node serve` and `bp-app receive`
+claim independent owner run authority and call the captured DEFAULT pool
+installer before `fnn-owner-install` opens/replays the Store. The existing BP
+session bank remains distinct and cannot fund decoded Store reads. The node's
+serialized Store owner uses its existing connection allowance of one; incoming
+TCPCL concurrency remains the separate supported BP session profile. The app
+uses its existing owner connection allowance. Offline dispatch/checkpoint/route
+table operations retain their separate offline path. No live pool is reset.
+
+The callback records constructor custody immediately after installation. Failed
+installation may retain its actual Store carrier before returning a service.
+Cleanup marks owner settlement held before joining decoded workers; an escaping
+join never records physical return. All independent listener/journal/BP/feed
+cleanups are attempted while preserving the primary condition. Only observed
+worker termination and successful root cleanup permit the existing ACL2 Store
+settlement decision to close the Store and relinquish run authority. Store-close
+uncertainty fences and retains that carrier. SCN1134 exercises actual command
+bodies with recorded constructors and actual ACL2 authority decisions; it does
+not prove complete resource tariffs or qualify a current native process.

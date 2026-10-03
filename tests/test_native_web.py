@@ -164,7 +164,7 @@ class FaceCases:
     def test_compressed_article_uses_physical_windows_through_web_and_restart(self):
         # This selector requires the current physical decoded producer. The
         # ordinary compression report proves the stored form independently.
-        keep_diagnostics(self, lambda: [self.node])
+        keep_diagnostics(self, [self.node])
         user = "decode_tls" if self.TLS else "decode_plain"
         b = self.browser()
         status, where, page, _, _ = self.make_account(b, user)

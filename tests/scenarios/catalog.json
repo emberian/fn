@@ -9333,9 +9333,16 @@
         "tests/native_article_ready_source.lisp",
         "planning/evidence/article-stream-source-20261003.log",
         "planning/evidence/article-stream-source-20261003-selection.log",
-        "planning/evidence/article-source-cache-admission-20261003.log"
+        "planning/evidence/article-source-cache-admission-20261003.log",
+        "tests/acl2/article-stream-server-tests.lisp",
+        "planning/evidence/article-server-source-20261003.log",
+        "tests/acl2/article-stream-tests.lisp",
+        "planning/evidence/article-selector-guards-source-20261003.log",
+        "planning/evidence/article-selector-guards-warm-20261003.log",
+        "planning/evidence/article-msgid-source-20261003.log",
+        "planning/evidence/article-msgid-warm-20261003.log"
       ],
-      "execution_scope": "Actual shared core function bodies69488 finite checks; actual owner completion, PROGRAM wrapper and native READY/render helpers execute with recorded list-arena, owner-state installation and cold I/O seams (70841 aggregate checks). Selection commits once after complete framing; replay does not install again; RAW and READY cold continuations are retained by identity; exact503/423/430 refusals and unchanged reader selection; global generation change under unchanged per-connection pin is allowed. Web actual source stress fbcae3cd0 has independent recorded consumer evidence. Full actual parsed factory and physical decoded-window/browser execution, guard proofs and universal owner/reference boundary remain pending. Subsequent lazy Xref captures original membership spine, filters one word/lookup character per transition, preserves duplicate and invalid-word reference behavior; source126337 core/127690 aggregate owner-native checks pass5000-character group cases, windows1/3/4096. Changed core34forms and component bounds warm admitted0.08s. Full initial selection/setup and owner/Xref boundary proofs remain open. Resumable numeric/current selection and withdrawn lookup now pass126385 core/127949 aggregate checks including absent420/423 and withdrawn423, with unchanged selection until READY. Actual parsed factory and physical runtime remain pending. Exact selected definitions and PROGRAM factory/READY wrappers normally admitted in fresh ad8+gate336 cached source world, then raw native helpers reached CLI entry; ordinary renderer ABI mismatch remains explicit. No parsed factory, socket or physical decoded execution claim."
+      "execution_scope": "Actual shared core function bodies69488 finite checks; actual owner completion, PROGRAM wrapper and native READY/render helpers execute with recorded list-arena, owner-state installation and cold I/O seams (70841 aggregate checks). Selection commits once after complete framing; replay does not install again; RAW and READY cold continuations are retained by identity; exact503/423/430 refusals and unchanged reader selection; global generation change under unchanged per-connection pin is allowed. Web actual source stress fbcae3cd0 has independent recorded consumer evidence. Full actual parsed factory and physical decoded-window/browser execution, guard proofs and universal owner/reference boundary remain pending. Subsequent lazy Xref captures original membership spine, filters one word/lookup character per transition, preserves duplicate and invalid-word reference behavior; source126337 core/127690 aggregate owner-native checks pass5000-character group cases, windows1/3/4096. Changed core34forms and component bounds warm admitted0.08s. Full initial selection/setup and owner/Xref boundary proofs remain open. Resumable numeric/current selection and withdrawn lookup now pass126385 core/127949 aggregate checks including absent420/423 and withdrawn423, with unchanged selection until READY. Actual parsed factory and physical runtime remain pending. Exact selected definitions and PROGRAM factory/READY wrappers normally admitted in fresh ad8+gate336 cached source world, then raw native helpers reached CLI entry; ordinary renderer ABI mismatch remains explicit. No parsed factory, socket or physical decoded execution claim. Resumed source tests184344 core/185908 aggregate cover incremental server validation including long5000-octet valid/invalid/improper candidates; current native window-activation executes uncaptured branch in recorded seam. Universal pinned-server capture boundary and moderator/mutation/improper teeth admitted separately. Physical decoder/factory/socket join remains Runtime/History-owned. Guard-verified selector reached fn-statep positive, numeric/current reference equality, partitioned fuel and absent-number outcomes; malformed comparison state is separately labeled corrupted-state evidence. Current core warm admission and recorded source185908 aggregate pass; certificate at39d72 applies only to its earlier core bytes. Complete owner/reference and physical consumer remain open. Resumable Message-ID setup/current group projection passes184480 core/187518 aggregate actual-source checks, including missing/withdrawn430 distinctions and all ARTICLE/HEAD/BODY cold READY/replay paths. The Message-ID selected reader and recorded owner installation remain unchanged. First duplicate ID and first duplicate membership match original reference; oversized/unavailable local number yields0. Current guard/fuel theorem and literal warm teeth pass. These recorded seams do not claim full parsed factory/physical decoder execution."
     },
     {
       "id": "SCN-1121",
@@ -9494,6 +9501,197 @@
       ],
       "note": "Actual retained-controller raw fixture PASS; real-time native selector test_silent_contact_expires_without_stopping_canonical_delivery prepared but UNEXECUTED. Stalled SESS_INIT and complete handshake/session admission scheduling remain open.",
       "notes": " Ordinary live peer teardown now consumes ACL2 context-abort plan before physical close; fenced source and unobserved closure remain held (PRF-1296). Actual native execution remains pending."
+    },
+    {
+      "id": "SCN-1127",
+      "title": "Stalled SESS_INIT expires beside a canonical durable request",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-006"
+      ],
+      "steps": [
+        "ACL2 authors Contact Header, actual TCP peer sends it and receives passive header but sends no SESS_INIT.",
+        "A second canonical NNTP-produced request crosses retained node into Store/FNRJ while setup peer is retained.",
+        "Actual sixty-second local setup deadline produces physical EOF; node stays live.",
+        "Stop/reopen and dispatch receiving Store, observing exactly one article."
+      ],
+      "expected": [
+        "Contact completion does not permit indefinite SESS_INIT slot retention.",
+        "Partial SESS_INIT input cannot renew deadline; finite captured framing may finish without fresh input.",
+        "Timer cannot manufacture physical return or release source/END ACK custody."
+      ],
+      "evidence": [
+        "tests/test_bp_node_native.py",
+        "tests/native_tcpcl_retained_turn_raw.lisp",
+        "books/tcpcl-retained-turn.lisp"
+      ],
+      "note": "Source/raw composed matrix PASS; native selector test_stalled_session_init_expires_beside_canonical_delivery UNEXECUTED until current initialized source world. Local policy, not an RFC fixed SESS_INIT timeout requirement."
+    },
+    {
+      "id": "SCN-1128",
+      "title": "Forged announced BP peer is refused before any transfer source",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-006"
+      ],
+      "steps": [
+        "A real native TCPCL sender negotiates dtn://forged/ against a receiver configured for the canonical sender.",
+        "Require sender connection interruption and receiver ACL2 eid-mismatch refusal, with no BP source acceptance/publication.",
+        "Deliver a canonical production NNTP article/request through a second peer and observe Store/FNRJ handoff.",
+        "Stop/reopen and dispatch, observing exactly one article."
+      ],
+      "expected": [
+        "Refused session cannot install received-source jobs or release its frame output.",
+        "Peer refusal is connection-local; admitted peer still advances.",
+        "Local refusal and remote interrupted stay distinct, obligations are not released by transport loss."
+      ],
+      "evidence": [
+        "tests/test_bp_node_native.py",
+        "tests/native_tcpcl_source_control_raw.lisp",
+        "books/bp-channel-ingress.lisp"
+      ],
+      "note": "Actual apply/flush raw composition PASS with recorded core admission answer; actual ACL2 producer literals prepared, native current-union UNEXECUTED."
+    },
+    {
+      "id": "SCN-1129",
+      "title": "Actual decoded pending read retains custody through competing POST and cancellation",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017"
+      ],
+      "steps": [
+        "Accept a compressible article through real NNTP and independently observe stored compression; capture its complete native ARTICLE reply.",
+        "Reopen with the developer physical-read hold; require the actual decoded controller pending-read token, fd and effect before any completion.",
+        "While that decoded read is physically held, finish independent DATE and accepted POST on another connection, then cancel the first reader.",
+        "Release the actual read, observe its literal read result, physical return and independent semantic release in that order, then compare both complete accepted articles before and after clean owner restart."
+      ],
+      "expected": [
+        "A legacy PAGE-IO token or a plain successful ARTICLE cannot substitute for the actual decoded worker hold.",
+        "Cancellation never supplies a physical return or settlement; exact native token and partial scope link affirmative observations.",
+        "Previously accepted article bytes and the competing accepted POST survive clean restart; independent progress is scoped to this finite schedule."
+      ],
+      "implementation": {
+        "test": "tests.test_native_decoded_custody.NativeDecodedCustodyTests.test_held_decoded_read_allows_post_then_cancel_return_release_and_reopen",
+        "native": true
+      },
+      "evidence": [
+        "tests/native_decoded_hold_raw.lisp",
+        "tests/test_native_decoded_custody.py",
+        "planning/evidence/native-decoded-custody-seam-2026-10-03/manifest.json"
+      ],
+      "execution_scope": "Actual developer hold seam and physical pread/thread active+inactive fixture pass in0.224s; existing retained controller recording fixture0.166s and17 source-coordinate/history tests pass. Four objects archived with manifest63c5579c686181eb95fb0f45647dcba0caed157b074f6db66fa6b841fb4c2ce2. Connected native selector is prepared, not executed: current initialized host entry and real default funded-pool producer remain required. Fixed-storage scope is partial; no allocator/GC/full funding, full HM replay or proof claim."
+    },
+    {
+      "id": "SCN-1131",
+      "title": "Control ingress during held source publishes once and parks the next transfer",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-006"
+      ],
+      "steps": [
+        "Production NNTP accepts canonical article with larger body before owner closes.",
+        "ACL2 sender machine/pump/encoder authors segmented BP request followed by KEEPALIVE and one next-XFER prefix; Python carries wire unchanged.",
+        "Real passive node logs control input while source held before its first FNBS acceptance and Store/FNRJ handoff.",
+        "Close peer, stop/reopen and dispatch, observing one kind5 payload and one article."
+      ],
+      "expected": [
+        "Incoming control observes reception while source job/END ACK remain held.",
+        "Next transfer prefix is backpressure in one bounded read vector, no second received-source issuer.",
+        "Source terminal survives peer loss; ACK cannot flush on broken socket and physical/context receipts remain separate."
+      ],
+      "evidence": [
+        "tests/test_bp_node_native.py",
+        "tests/native_tcpcl_source_control_raw.lisp",
+        "books/tcpcl-source-control.lisp"
+      ],
+      "note": "Actual raw controller/private source/original KEEPALIVE step/delivery-plan composition PASS, with recorded wire decoder/socket/publication; normal guards+13 assertions PASS. Current-union native UNEXECUTED."
+    },
+    {
+      "id": "SCN-1130",
+      "title": "Owner installs DEFAULT partial page pool before recovery and retains startup custody until worker join",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020",
+        "HST-048"
+      ],
+      "steps": [
+        "Execute actual fnn-owner-run with constructor/recovery observations and actual ACL2 service settlement decisions.",
+        "Execute actual fnn-owner-page-read-startup with deliberate admitted/refused/malformed core results and observe exact raw runtime captures and constructor ordering.",
+        "Run the prior owner body against the same startup/recovery fixture.",
+        "Observe final settlement when installation retained its actual Store carrier but never returned SERVICE."
+      ],
+      "expected": [
+        "Pool installation, fixed table allocation, guard preparation and executor startup precede Store open. Named refusals allocate no tables or workers; malformed model decisions fault.",
+        "A failure before service publication joins partial executors before run authority settles; an escaping join preserves that authority and outstanding workers.",
+        "Prior source fails the startup predicate at Store open because no pool or workers were installed.",
+        "Retained startup Store is closed rather than reported absent; close failure fences it and retains authority. Prior actual settlement performs zero closes."
+      ],
+      "implementation": {
+        "test": "tests/test_native_owner_pool_startup_source.py"
+      },
+      "evidence": [
+        "tests/native_owner_pool_startup_source.lisp",
+        "planning/evidence/operator-pool-startup-source-2026-10-03-v2.json"
+      ],
+      "execution_scope": "Actual native function bodies with observed physical constructors and deliberate core startup results; actual service-settlement ACL2 functions. Numerical producer proof, actual allocator/worker composition and matching image are separate coordinates."
+    },
+    {
+      "id": "SCN-1133",
+      "title": "Failed-open and rollback physical close debt retain owner startup authority through terminal settlement",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Compose actual failed-open cleanup, owner-install retained carrier, sticky Store-close debt and final Store settlement with physical call observations.",
+        "Exercise failure before open returns, failure after open returns, and definitely closed rollback.",
+        "Execute prior actual final settlement against the same retained Store debt."
+      ],
+      "expected": [
+        "Uncertain close debt preserves primary initialization failure and the actual Store carrier; terminal settlement is held and makes no physical close retry.",
+        "Definite rollback close permits authority release.",
+        "Prior settlement answers joined despite retained physical close debt and fails the expected held assertion."
+      ],
+      "implementation": {
+        "test": "tests/test_native_owner_startup_custody_source.py"
+      },
+      "evidence": [
+        "tests/native_owner_startup_custody_source.lisp",
+        "planning/evidence/operator-startup-custody-composition-2026-10-03.json"
+      ],
+      "execution_scope": "Actual owner-install, failed-open close helper, Store-close debt, retained authority and terminal settlement bodies; actual ACL2 service settlement decisions. Open provider and physical close/unlock/unlink calls are recorded observations, not live filesystem durability or saved-image qualification."
+    },
+    {
+      "id": "SCN-1134",
+      "title": "BP listeners install independent DEFAULT pool before Store recovery and retain owner custody through teardown",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Execute actual BP served-owner startup/stop/settlement helpers using actual ACL2 service authority decisions and recorded physical constructors.",
+        "Execute actual bp-node serve and bp-app receive entry functions through partial-constructor failure, failed recovery and escaping worker join.",
+        "Observe independent BP root debt and uncertain Store-close before attempting a fresh owner claim."
+      ],
+      "expected": [
+        "Independent run authority and captured DEFAULT pool installation precede Store open; the private BP session bank supplies no decoded worker grant.",
+        "Partial constructors and failed-installation Store carriers remain discoverable until actual worker return; no close or authority settlement follows an escaping join.",
+        "Unresolved BP publication/physical root cleanup holds owner authority even after worker return; Store-close uncertainty fences the Store and blocks a second claim."
+      ],
+      "implementation": {
+        "test": "tests/test_native_bp_owner_startup_source.py"
+      },
+      "evidence": [
+        "tests/native_bp_owner_startup_source.lisp"
+      ],
+      "execution_scope": "Actual production BP entry/helper functions and ACL2 service-settlement decisions with recorded physical seams. Complete DEFAULT/BP tariffs, actual allocator/worker/Store composition and current source-native joins remain open."
     }
   ]
 }

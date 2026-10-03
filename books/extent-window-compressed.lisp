@@ -150,8 +150,12 @@
           ((not (member-eq (nth 0 plan) '(:scan :trailer :verified)))
            (list :refused :hash (nth 0 plan)))
           ((eq (nth 0 z) :codec) (list :codec))
-          ((fn-ewz-effect z pgs-digest-state) (list :read (fn-ewz-effect z pgs-digest-state)))
-          (t (list :tick)))))
+          (t
+           ;; Issuance is one pure decision, shared by the test and result.
+           ;; Keep it after the refusal/codec branches so those paths do not
+           ;; construct an unused read request either.
+           (let ((effect (fn-ewz-effect z pgs-digest-state)))
+             (if effect (list :read effect) (list :tick)))))))
 
 (in-theory (disable fn-ewz-state fn-ewz-begin fn-ewz-compressed-completep
                     fn-ewz-effect fn-ewz-publication fn-ewz-decision-mode

@@ -4,6 +4,7 @@
 (include-book "extent-window-capture")
 (include-book "pagestore-digest-byte-cursor")
 (include-book "blake3-stobj")
+(include-book "immutable-list")
 
 ; The immutable descriptor/owner tuple is retained in the digest continuation.
 ; No prefix bytes, original payload, or growing processed list is retained here.
@@ -12,6 +13,24 @@
   (list (nth 1 s) (nth 2 s) (nth 3 s) (nth 4 s) (nth 5 s)
         (nth 6 s) (nth 8 s) (nth 9 s) (nth 10 s)
         (nth 11 s) (nth 12 s) (nth 13 s)))
+
+; Same immutable descriptor equality; the compiled check does not allocate a
+; twelve-field throwaway descriptor on every hash/read scheduling quantum.
+(defun fn-ews-capture-matches (capture s)
+  (declare (xargs :guard (true-listp s)
+                  :guard-hints (("Goal" :in-theory
+                                  (union-theories '(fn-iml-equal-cons null)
+                                                  (theory 'minimal-theory))))))
+  (fn-list/fields= capture
+    (nth 1 s) (nth 2 s) (nth 3 s) (nth 4 s) (nth 5 s)
+    (nth 6 s) (nth 8 s) (nth 9 s) (nth 10 s)
+    (nth 11 s) (nth 12 s) (nth 13 s)))
+
+(defthm fn-ews-capture-matches-by-definition
+  (equal (fn-ews-capture-matches capture s)
+         (equal capture (fn-ews-capture s)))
+  :hints (("Goal" :in-theory (union-theories '(fn-ews-capture-matches fn-ews-capture)
+                                           (theory 'minimal-theory)))))
 
 (defun fn-ews-begin (file eoff elen poff plen offset ticket incarnation lease expected pgs-digest-state)
   (declare (xargs :stobjs pgs-digest-state
@@ -27,7 +46,7 @@
   (declare (xargs :stobjs pgs-digest-state :guard (true-listp s)))
   (and (natp (nth 3 s)) (natp (nth 5 s)) (<= (nth 5 s) 16384)
        (natp (nth 7 s)) (<= (nth 7 s) (nth 3 s))
-       (equal (pgs-dc-capture pgs-digest-state) (fn-ews-capture s))
+       (fn-ews-capture-matches (pgs-dc-capture pgs-digest-state) s)
        (equal (pgs-dc-lease pgs-digest-state) (nth 10 s))
        (equal (pgs-dc-total pgs-digest-state) (pgs-dcb-word-count (nth 3 s)))
        (<= (pgs-dc-start pgs-digest-state) (pgs-dc-pos pgs-digest-state))
@@ -105,7 +124,7 @@
   :hints (("Goal" :in-theory (enable fn-ews-effect fn-ews-boundp fn-ewp-demand)
                    :use fn-ewp-demand-bounded)))
 
-(in-theory (disable fn-ews-capture fn-ews-begin fn-ews-boundp fn-ews-effect
+(in-theory (disable fn-ews-capture fn-ews-capture-matches fn-ews-begin fn-ews-boundp fn-ews-effect
                     fn-ews-tick fn-ews-read-trailer fn-ews-read))
 
 (defthm fn-ews-stale-completion-preserves-all-effects

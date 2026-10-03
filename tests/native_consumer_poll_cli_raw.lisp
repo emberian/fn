@@ -23,6 +23,8 @@
 ;;; ---- derived stubs: END ----
 
 (defvar *calls* nil)
+(defvar *register-test* nil)
+(defvar *bootstrap-status* :accepted)
 (defparameter +fnn-exit-usage+ 2)
 (defparameter +fnn-exit-ok+ 0)
 (defun fnn-ascii-octet-list (s) (map 'list #'char-code s))
@@ -31,20 +33,30 @@
 (defun fnn-octet-list-p (x)
   (and (listp x) (every (lambda (b) (and (integerp b) (<= 0 b 255))) x)))
 (defun fnn-core (name &rest args)
-  (declare (ignore args))
   (case name
     (fn-native-control-host-consumer-cli-plan
-     (list :run :poll '(99) '(119) '(99 117 114 115 111 114)
-           '(114 101 112 111 114 116)))
-    (fn-native-control-host-status-exit-code 0)
+     (if *register-test*
+         (list :run :register '(99) '(119) nil nil)
+       (list :run :poll '(99) '(119) '(99 117 114 115 111 114)
+             '(114 101 112 111 114 116))))
+    (fn-native-control-host-status-exit-code
+     (if (eq (first args) :accepted) 0 1))
     ;; PKT-709: no register retry for a poll; the report's summary for the
     ;; line (text mode prints only the status).
-    (fn-native-control-host-consumer-cli-after nil)
+    (fn-native-control-host-consumer-cli-after
+     (cond ((and (eq (first args) :register) (eq (second args) :refused))
+            '(:bootstrap :register))
+           ((and (eq (first args) :bootstrap) (eq (second args) :accepted))
+            '(:register))))
     (fn-native-control-host-consumer-report-summary '(:empty))
     (otherwise (error "unexpected ACL2 entry ~s" name))))
 (defun fnn-control-consumer-local (control operation first second)
   (push (list :request control operation first second) *calls*)
-  (values (list :consumer-poll-reply :accepted '(1 2 3) '(4 5 6)) nil))
+  (if *register-test*
+      (values (list :consumer-reply
+                    (if (eq operation :bootstrap) *bootstrap-status*
+                      (if (= (length *calls*) 1) :refused :accepted))) nil)
+    (values (list :consumer-poll-reply :accepted '(1 2 3) '(4 5 6)) nil)))
 (defun fnn-write-staged (path bytes)
   (push (list :write path bytes) *calls*))
 (defun fnn-out (&rest args) (declare (ignore args)))
@@ -75,3 +87,16 @@
   (error "poll request included output path or lost report-before-cursor writes: ~s"
          (reverse *calls*)))
 (format t "native consumer poll CLI boundary passed~%")
+
+(let ((*register-test* t))
+  (dolist (outcome '(:accepted :uncertain :fault :refused))
+    (let ((*calls* nil) (*bootstrap-status* outcome))
+      (unless (= (fnn-command-consumer-local "register" '("control" "worker"))
+                 (if (eq outcome :accepted) 0 1))
+        (error "bootstrap outcome was lost: ~s" outcome))
+      (unless (equal (mapcar #'third (reverse *calls*))
+                     (if (eq outcome :accepted)
+                         '(:register :bootstrap :register)
+                       '(:register :bootstrap)))
+        (error "register crossed unresolved bootstrap: ~s ~s" outcome *calls*)))))
+(format t "native consumer bootstrap outcome boundary passed~%")

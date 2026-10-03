@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 from pathlib import Path
 import certs
@@ -21,7 +22,9 @@ ATTACH = 'books/history-paged-attach'
 ARENA_ATTACH = 'books/payload-arena-attach'
 
 
-def selected_defthms(text, deferred, removed):
+def selected_defthms(text, deferred, removed, theory_deferred=None, pruned=None):
+    theory_deferred = theory_deferred or set()
+    pruned = pruned if pruned is not None else {}
     result = []
     for form in forms(text):
         head, name = head_and_name(form)
@@ -30,13 +33,27 @@ def selected_defthms(text, deferred, removed):
                 raise ValueError('required guard/abstract obligation cannot be deferred: ' + name)
             removed.add(name)
             continue
-        if head in {'local', 'encapsulate', 'progn'}:
+        if head == 'deftheory' and theory_deferred:
+            # A theory catalog cannot name omitted rules. Only a literal
+            # quoted catalog is adjusted; definitions and guard events stay.
+            match = re.fullmatch(r"(\(deftheory\s+\S+\s+)'(\([\s\S]*\))\s*\)", form, re.I)
+            if match:
+                kept, omitted = [], []
+                for entry in forms(match[2][1:-1]):
+                    atoms = forms(entry[1:-1]) if entry.startswith('(') else []
+                    target = atoms[1].lower() if len(atoms) > 1 else entry.lower()
+                    if target in theory_deferred: omitted.append(target)
+                    else: kept.append(entry)
+                if omitted:
+                    form = match[1] + "'(" + ' '.join(kept) + '))'
+                    pruned[name] = sorted(set(omitted))
+        if head in {'local', 'encapsulate', 'progn', 'with-prover-step-limit', 'with-prover-time-limit'}:
             inner = form.strip()[1:-1]
             spans = proof_repl.spans(inner)
-            start = 2 if head == 'encapsulate' else 1
+            start = 2 if head in {'encapsulate', 'with-prover-step-limit', 'with-prover-time-limit'} else 1
             changes = []
             for begin, end in spans[start:]:
-                replacement = selected_defthms(inner[begin:end], deferred, removed)
+                replacement = selected_defthms(inner[begin:end], deferred, removed, theory_deferred, pruned)
                 if replacement != inner[begin:end]: changes.append((begin, end, replacement))
             for begin, end, replacement in reversed(changes):
                 inner = inner[:begin] + replacement + inner[end:]
@@ -65,6 +82,8 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
     world_book = proof_repl.normalize_book(world_book)
     deferred = deferred or {}
     removed = {}
+    theory_pruned = {}
+    all_deferred = {name for names in deferred.values() for name in names}
     caches = [p.resolve() for p in caches]
     proof_repl.ROOT = source
     graph = certs.include_graph(source, [world_book, *EARLY, ATTACH])
@@ -152,7 +171,10 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
         remember(path)
         original = path.read_text()
         omitted = set()
-        body_text = selected_defthms(original, deferred.get(name, set()), omitted) if deferred.get(name) else original
+        pruned = {}
+        body_text = selected_defthms(original, deferred.get(name, set()), omitted,
+                                    all_deferred, pruned) if all_deferred else original
+        if pruned: theory_pruned[name] = pruned
         if omitted != deferred.get(name, set()):
             raise ValueError('named DEFTHM not found: ' + name)
         if omitted: removed[name] = sorted(omitted)
@@ -187,6 +209,7 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
         'logical_prefix': str(output.resolve()), 'cache_roots': [str(p) for p in caches],
         'inputs_sha256': inputs, 'output_sha256': hashlib.sha256(output.read_bytes()).hexdigest(),
         'books': coordinate, 'deferred_defthms': removed,
+        'deferred_theory_references': theory_pruned,
         'per_event_prover_steps': steps, 'per_event_prover_seconds': limit}, indent=2) + '\n')
     return manifest
 

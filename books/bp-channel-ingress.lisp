@@ -211,3 +211,15 @@
                                   (fn-bpaj-tcpcl-ingress-result
                                    fn-bpnf-receive-wire-event
                                    fn-bpn-nth)))))
+
+; Before consuming a transfer, decide the complete announced EID against the
+; same actual channel/configuration used by the durable ingress producer.
+(defun fn-bpaj-session-admission (cfg channel announced-uri)
+ (declare (xargs :guard t))
+ (let ((eid (fn-bpaj-raw-announced-eid announced-uri)))
+  (if eid (fn-bpaj-session-principal cfg channel eid)
+    (list :refused :announced-eid))))
+(verify-guards fn-bpaj-session-admission)
+(defthm fn-bpaj-session-admission-malformed-announcement-is-refused
+ (implies (not (fn-bpaj-raw-announced-eid uri))
+  (equal (fn-bpaj-session-admission cfg channel uri) '(:refused :announced-eid))))

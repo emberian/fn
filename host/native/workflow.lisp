@@ -10,25 +10,42 @@
 (defstruct fnn-app-journal
   root records staging lock-fd store domain frontier
   (owner-mode nil)
+  (close-debt nil)
   (fenced t))
 
+(defun fnn-app-retain-close-debt (store holder fd condition)
+  "Retain physical journal custody independently of persisted record outcomes."
+  (when store
+    (setf (fnn-store-fenced store) t)
+    (push (list holder fd condition) (fnn-store-application-close-debts store))))
+
 (defun fnn-app-journal-close (journal)
+  (when (fnn-app-journal-close-debt journal)
+    (fnn-indeterminate "application journal physical return unobserved; custody held: ~a"
+                       (second (fnn-app-journal-close-debt journal))))
   (setf (fnn-app-journal-fenced journal) t)
   (let ((fd (fnn-app-journal-lock-fd journal)))
     (when fd
-      (ignore-errors (fnn-flock fd +fnn-lock-un+))
-      (ignore-errors (fnn-close fd))
-      (setf (fnn-app-journal-lock-fd journal) nil)))
+      ;; Consume the integer before close: a failed close may have released it.
+      (setf (fnn-app-journal-lock-fd journal) nil)
+      (handler-case
+          (fnn-unwind-cleanups ()
+            (fnn-flock fd +fnn-lock-un+)
+            (fnn-close fd))
+        (serious-condition (condition)
+          (setf (fnn-app-journal-close-debt journal) (list fd condition))
+          (fnn-app-retain-close-debt (fnn-app-journal-store journal) journal fd condition)
+          (fnn-indeterminate "application journal physical return unobserved; custody held: ~a"
+                             condition)))))
   nil)
 
-(defun fnn-app-journal-lock (root domain)
+(defun fnn-app-journal-lock (root domain &optional store)
   (let* ((name (case domain
                  (:workflow "workflow.lock")
-                 ;; PKT-869: the carry control journal (books/bp-carry-frame).
                  (:carry "carry.lock")
                  (t "receipt.lock")))
          (path (fnn-join root name))
-         (fd nil))
+         (fd nil) (returned nil))
     (handler-case
         (setq fd (fnn-open path
                            (logior sb-posix:o-rdwr sb-posix:o-creat
@@ -36,19 +53,22 @@
                            #o600))
       (fnn-os-error (e)
         (fnn-fault "application journal lock open failed: ~a" e)))
-    (handler-case
-        (unless (fnn-regular-p (fnn-fstat fd))
-          (fnn-fault "refusing non-regular application journal lock"))
-      (error (e) (ignore-errors (fnn-close fd)) (error e)))
-    (handler-case
-        (fnn-flock fd (logior +fnn-lock-ex+ +fnn-lock-nb+))
-      (fnn-os-error (e)
-        (fnn-close fd)
-        (if (or (= (fnn-os-errno e) sb-posix:eagain)
-                (= (fnn-os-errno e) sb-posix:eacces))
-            (fnn-refuse "application journal is already owned")
-          (fnn-fault "application journal lock failed: ~a" e))))
-    fd))
+    (fnn-unwind-cleanups
+        ((unless (fnn-regular-p (fnn-fstat fd))
+           (fnn-fault "refusing non-regular application journal lock"))
+         (handler-case (fnn-flock fd (logior +fnn-lock-ex+ +fnn-lock-nb+))
+           (fnn-os-error (e)
+             (if (or (= (fnn-os-errno e) sb-posix:eagain)
+                     (= (fnn-os-errno e) sb-posix:eacces))
+                 (fnn-refuse "application journal is already owned")
+               (fnn-fault "application journal lock failed: ~a" e))))
+         (setq returned t)
+         fd)
+      (unless returned
+        (handler-case (fnn-close fd)
+          (serious-condition (condition)
+            (fnn-app-retain-close-debt store (list domain path) fd condition)
+            (error condition)))))))
 
 (defun fnn-app-require-live-store (store)
   ; The Store lock establishes ownership, but a fenced Store has no authority
@@ -157,15 +177,15 @@
                  :root absolute :records records :staging staging :store store
                  :domain domain :owner-mode (and owner-mode t)
                  :frontier (fnn-core 'fn-aj-host-initial domain)
-                 :lock-fd (fnn-app-journal-lock absolute domain)))
+                 :lock-fd (fnn-app-journal-lock absolute domain store)))
           (let* ((names (fnn-app-record-names journal))
                  (records-image (fnn-app-read-records journal names)))
             (fnn-app-install journal records-image)
             (setf (fnn-app-journal-fenced journal) nil)
             journal))
       (error (e)
-        (when journal (fnn-app-journal-close journal))
-        (error e)))))
+        (fnn-unwind-cleanups ((error e))
+          (when journal (fnn-app-journal-close journal)))))))
 
 (defun fnn-app-preflight (journal record)
   (let ((domain (fnn-app-journal-domain journal)))
@@ -541,8 +561,8 @@
 
 (defun fnn-app-call-with-journal (store-root journal-root domain writable thunk)
   (let ((store nil) (journal nil))
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+         ((progn
            (setq store
                  (fnn-open-live-store
                   store-root
@@ -551,7 +571,7 @@
                              (or (fnn-developer-selector "FN_APP_JOURNAL_TEST_READ_ONLY_STORE") "")
                              "1")))))
            (setq journal (fnn-app-open store journal-root domain))
-           (funcall thunk journal))
+           (funcall thunk journal)))
       (when journal (fnn-app-journal-close journal))
       (when store (fnn-store-close store)))))
 

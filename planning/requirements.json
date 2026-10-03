@@ -6743,6 +6743,32 @@
         "tests/acl2/page-read-startup-host-tests.lisp"
       ],
       "implementation_note": "Actual runtime captures derive a partial DEFAULT fixed-storage allowance. Five table constructors, guard cache, selected reusable decoder backing and native worker reservation precede Store open. Captured headroom and OS descriptor allowance bound registration capacity without imposing a stored-data ceiling. DATA8 preserves existing revision and tracks reserved worker count/readiness; native constructor and eager reserve must finish before readiness/free-roster publication. SCN-1130 owns actual native ordering and orphan cleanup. Complete collector/controller/source-graph, recovery transient and work coverage remains open; explicit complete cold policies refuse. Selected actual source guards pass for composed heap wrappers and decoded acquire. The launcher prepays the exact minimum DEFAULT backing before run, with whole-machine validation; offline and explicit cold-policy reservations stay unchanged. Base init-to-run affordability does not yet include this added DEFAULT requirement. Protected recovery workspace partition and nonempty Store composition remain open."
+    },
+    {
+      "id": "NNT-1003",
+      "title": "Redeem bounds input before accumulation and sends only validated credential commands",
+      "specification": "specs/peering.md#bounded-redeem-client-input-nnt-1003",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-1302"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "keystones": [
+        "fn-rip-password-admission-stays-within-wire-capacity",
+        "fn-rip-reply-admission-stays-within-wire-capacity"
+      ],
+      "evidence": [
+        "books/native-redeem-input.lisp",
+        "tests/acl2/native-redeem-input-tests.lisp",
+        "host/native/io.lisp",
+        "tests/native_redeem_input_source.lisp",
+        "tests/test_native_redeem_input_source.py"
+      ],
+      "note": "SCN-1132 checks actual source password/reply definitions. Credential width496 accounts for both XREDEEM PASS and subsequent AUTHINFO PASS; oversized or malformed peer reply is loss, so the existing stage outcome preserves password-publication uncertainty. Certification/native image scope remains pending."
     }
   ]
 }

@@ -678,7 +678,6 @@ and is not a greenprefix. Books/certpairs are reused; no duplicateimage build.
 Source reports regenerated atc3:1460declared/1408dispatched/0raw-rule findings;
 stream PRF1256 curatedmap now corrected, subsequent generated refresh owed.
 Transport credential boundary: S107/S108/S109, codex-sol-tools
-=========================================================Isolated transport tree from origin/dev c73372af6. Owned feed auth-profile
 and dial, pull profile/worker boundary only; Runtime owns feed actor/idle
 and shared owner fault-service. Profile opens O_NONBLOCK|O_NOFOLLOW and
 admits descriptor fstat before reading, preserving uid/mode/bound authority.
@@ -758,7 +757,6 @@ journal boundaries, bounded observation packet, discovery rows and hint batch.
 Current generated world reports await independent refresh after assembly.
 
 S110 FNPL/FNCU append classification, codex-sol-tools
-=============================================Actual fnn-pull-journal-append now seals/validates/converts and runs the
 before-write selector before attempted publication. Definite prewrite faults
 retain their class. Attempted write/barrier failures remain indeterminate
 even when descriptor cleanup also fails; actual ACL2 journal phase decides
@@ -1115,7 +1113,6 @@ Existing checkpoint tar, admitted packet tar and CBOR bounds receipt archive
 verify; include only5ca08a7ea evidence index line for prior bounds event.
 Source/admission evidence is separate from scoped certificates and images.
 S112 removed-peer journal custody, codex-sol-tools
-=========================================Actual pull worker/catch-up tick prune cached journals only when the existing
 ACL2 fn-pull-plan-for says the peer has no current plan. Cached cursors drop
 with descriptor custody; returning cursor-for goes through its existing
 open/replay path. Both kinds share one private pruning function. A close
@@ -3470,3 +3467,394 @@ transferred to this new packet. Root discovered no actual default funded pool
 installer caller: fresh normal owner remains offline today, so compressed
 endpoint still needs Root's real pre-open partial baseline producer in addition
 to History initialization. No wrapper/test synthetic pool installation.
+
+SESS_INIT reception followthrough (PRF-1297, SCN-1127): entering messaging
+captures one ACL2 sixty-second local deadline; further partial input does not
+renew it. Already captured finite framing/materialization finishes before an
+expiration decision; established sessions clear the setup deadline. Actual
+retained driver consumes timeout as TCP-closed, never physical return or custody
+settlement. RFC9174§4.6 requires negotiation before transfer; the sixty-second
+SESS_INIT bound is fn local policy, distinct from §4.1 Contact Header requirement
+and §5.1.1 negotiated idle behavior. Actual raw driver/source-control/custody
+composition PASS; real two-peer durable request + setup expiry + reopen selector
+prepared UNEXECUTED. Early announced-EID/channel admission and concurrent control
+input during held-source work remain next connected work.
+
+Ordinary abort source26c4d6ce7 exact profile+teeth certificate
+certify-20261003T154249Z-2241830 PASSED2/0 archived/indexed. Composed raw
+source/control/custody matrix PASS, proposed PRF1296 host boundary remains open.
+SESS_INIT source guards normally admitted;25 literal assertions PASS; phase
+lemma rule-classes NIL fixes illegal rewrite-variable refusal. No native claim.
+
+Early passive session admission (PRF-1299, SCN-1128): actual fnn-tcl-apply
+invokes an optional BP-only admission callback once, at the decoded established
+transition and before this frame's events or another buffered frame. The live
+owner calls ACL2 fn-bpaj-session-admission on kernel-observed channel and decoded
+announced URI, reusing durable ingress's principal policy. Refusal discards
+unflushed messages and protocol-closes only that connection, records its exact
+policy reason, and cannot install a received-source job or publish a Store/FNBS
+record. The sender observes interruption before any transfer ACK; its pin stays.
+Pre-transfer refusal has no bundle wire to persist as receive evidence. Existing
+per-transfer admission/evidence remains for transfers actually consumed, and
+outbound on-ready keeps its physical-write ordering. Unknown admission results
+remain faults. Actual apply/flush raw matrix PASS; current native SCN1128 and
+updated absent-trust request/receipt selectors remain UNEXECUTED. Full config
+traversal, host correspondence and semantic allocation/GC costs stay open.
+
+SESS_INIT source6a9 exact retained-turn+teeth certify2257690 PASSED2/0,
+archived/indexed. Early-admission narrow warm entry REFUSED on uncached current
+history-columns-foundation plus20 dependents before new definition. No duplicate
+wide bootstrap/certify; shared History source world owns additive logical admission.
+No guards/certification/native claim for new early-admission leaves yet.
+History continuing current source, 2026-10-03 11:58NY:
+Complete current arena source scope PASS in retained history-paged-canonical
+(PID1862293):9.36s/2,135,888steps; ordered extent attach -> generic and canonical
+arena smoke PASS. Combined hints19e86a1b5 and orderingb3720e08f are public.
+Merged current public5a3d81 into source09aa3b5da; full DTN logical inventory at
+/tank/fn/scratch/history-current-union-5a3d81/build/current-logical-deferred.json.
+Explicit named DEFTHM deferrals record semantic preparation relation proof
+scope; no definition, guard or physical abstract obligation is omitted. Store
+trace prepare with2named deferrals PASS6.36s/2,360,235steps. Current next optional
+failureSNTstep relation follows omittedprepare relation; Runtime supplies exact
+conservative successors. Paidworld remains idle/recoverable at same scope,
+no current owner/native launcher yet. Integration host-only normal stage binds
+this manifest at /tank/fn/scratch/sol-strict-entry-probe/
+current-dtn-deferred-host-build.normal.lisp; nativehalf remains separate.
+New guarded disposal entries fn-hist$p-dispose/fn-hrecs$s-dispose admitted in
+that retained world, actual native retirement/refusal/control fixture PASS.
+Retirement clears page/suffix backing before ledger refund, issued pins hold
+old generation unchanged. This does not remove whole Store/catalog rebuild,
+change96*history credit estimate, bound hash clear/encode/growth/commit, or
+establish bounded open/full adoption-index correspondence. Those remain owned.
+Empirical current-source resume (2026-10-03)
+------------------------------------------
+New isolated branch codex/sol-empirical-current-20261003 starts from public
+Integration e5ec40043; prior empirical branch/worktree results preserved.
+SCN1129 claimed before writing: actual decoded :read branch bypassed existing
+legacy PAGEIO hold. Runtime delegated that narrow read gate and windowcancel
+literal observer. Added actual decoded pending-effect/private-job hold before
+physical pread, offE/O; literal held/read-return and actual corecancel word,
+no controller/allocator/admission changes. Prepared actual canonical NNTP
+compress-min64 fixture with independent acceptedPOST/DATE whileheld, observed
+cancel→read→physical→release and complete captured replies aftercleanreopen.
+Actual SBCL syscall/thread seamPASS0.18s and existing retainedcontroller
+recording fixturePASS; PythoncompilePASS. NativeconnectedcaseUNEXECUTED,
+currenthostentry andrealpreopenpoolproducerpending; nolegacylabel/oldimage
+verdict transfer. Fullfunding/HM/GC remainopen.
+
+Observedactualffdd Webfixturekeeper callable incompatible with iterable helper;
+Runtime owns/fixed4e167329e staticlist, no endpointverdict. Current tests use
+pre-Node mutablelist so finalnodecleanup precedes diagnostic archiving.
+Access resumed from dev e5ec40043 in own tree build/lanes/codex-sol-access-resume,
+branch codex/access-resume-20261003. Scope: full shared ARTICLE/HEAD/BODY
+logical producer/owner semantics, selection/setup, guards and reference/owner
+bridge, plus continuing auth/TLS/config and absorbed operator/journal queue.
+Runtime owns physical decoded/custody/Web/current compressed endpoint; History
+current source bootstrap/storage; Root default pool installer/scratch retirement.
+No edits to those native seams. READY4/render6 interfaces unchanged.
+
+First connected simplification: pinned Xref server candidate directly captured
+without building complete moderation/access group/status projections. New
+article-stream-server book universally equates candidate after existing server
+predicate to original projected command environment (729steps; unconditional
+moderation listing lemma139); literal moderator status-change, mutation and
+improper-server teeth pass. Candidate guard verified. Core cursor retains raw
+server spine, validates one octet per transition BEFORE Xref publication; invalid
+server omits Xref. Current actual source184344 core/185908 aggregate PASS with
+5000-octet valid/invalid server, dot/section/window1/3/4096, READY commit/replay/cold.
+Fixture now executes current Runtime window-activation in uncaptured branch;
+no physical decoded grant/custody claim. Warm access-article-resume40core forms
+and existing universal byte bound admitted using38 exact cached dependencies;
+access-article-server6book forms+7teeth forms admitted using170exact cached deps.
+Full owner cached-only preflight refuses89 current dependency mismatches,7primary
+roots; no broad source replay/certification or waiting for image. Next narrow
+certification: article-stream, article-stream-server, article-stream-server-tests;
+whole owner/refinement, selector/renderer guards and MsgID/setup remain active.
+
+Current-source workload coordinates followthrough (2026-10-03)
+-------------------------------------------------------------
+BPowner approved single public source_execution_identity helper reusing exact
+existing _execution_source input validator; no separate provenance semantics.
+Mixedrunner nowvalidates explicit FN_NATIVE_SOURCE_EXECUTIONS beforeStoreinit,
+refuses mismatchedsource, retainsactualmanifest/hash/core/raw/logical/runtime
+coordinates separatelyfromsavedimageidentity. Itcannot labeloldbootstrap as
+currentimage. Newdecodedselector consumes samehelper.17focusedprovenance+
+acceptedhistorychecksPASS0.026s; no newnode/bootstrap/nativeexecution. Helper
+andrunnerconsumer shiptogether; connectedselectedsource run stillpending.
+
+Empirical decoded seam evidence followthrough: actual active/inactive physical
+hook0.224s, retainedcontrollerrecording0.166s,17source/historychecksPASS.
+4publicobjects archived native-decoded-custody-seam-2026-10-03/manifest.json
+hash63c5579c686181eb95fb0f45647dcba0caed157b074f6db66fa6b841fb4c2ce2.
+Native connectedcase stillpending, no warm world/image/typedgrantclaim.
+
+
+# Horse entries — gpt-6-sol
+
+Coordinate: base3f39e6df98b3d87881e43200bba9334e47e1af4b.
+
+READY E001: redeem uncertainty begins before a password write. `fnn-command-redeem` formerly changed `stage` after physical send returned; its OS/TLS-loss handler reported `(:unreachable :code)` after a partial/complete password send exception, although server durable account creation was possible. Advance stage first; actual core loss classifier already defines the correct uncertain outcome. No logical theorem change.
+
+Verified actual host function extracted from source plus actual ACL2 reply/lost/outcome classifiers evaluated as Common Lisp (xargs metadata removed), physical I/O injected. Seven cases cover connect loss, pre-password loss, partial/complete password-send exception, lost password reply, accepted281, refused482. Pre-change source demonstrably fails with unreachable; changed source passes. `python3 -m unittest tests.test_native_redeem_send_boundary`, `host_check --read host/native/io.lisp`, diff whitespace pass. Evidence archived/indexed: planning/evidence/horse-entries-redeem-send.json. No saved-image/TLS/disk or universal proof claim. Bounds horse owns input/wire helper changes in same io file; preserve them during integration.
+
+Shared .spw canon written directly at consumer root as authorized; no nested workbench source staged. Mount651b535b5171 clean, CLI doctor/roots/tree/navigable selector observed. Initializer's own added commit hook/workflow removed; fn retains no new gate. Map explicit breadth and gaps, entries findings live there. Integration must include explicitly listed consumer files only, exclude nested workbench/node_modules.
+
+Open coverage: map is broad catalogue, not complete leaf reading. Owner lifecycle and process/redeem definitions traced; BP, consumer, identity, anchor,9p and most NNTP/Web/Store leaf closures remain. Other horses/deputies own active boundaries; root coordinates remaining convergence.
+
+Held-source control ingress (PRF-1300, SCN-1131): the actual retained driver
+alternates64-action source quanta with one existing bounded control read/frame
+turn. ACL2 permits only fixed-size control headers2..6; new XFER/SESS_INIT stays
+parked in the same at-most4096-byte socket vector until source terminal. No new
+buffer, source issuer or bank is admitted. Incoming KEEPALIVE uses the original
+session transition, advances actual last-RX and leaves the inbound record and
+host source root/END ACK held. Outgoing timer KEEPALIVE still never fabricates
+reception. EOF/close drains the existing private source before declaring context
+terminal; one publication occurs, and a broken socket cannot flush its ACK.
+Actual raw framing/private operation/session transition/delivery-plan/custody
+composition PASS with recorded decoder/socket/durable callback. Normal source
+book guards and13 assertions PASS; step preservation/reception lemmas1599/1482
+steps. Matching roots pending, complete native caller correspondence open.
+Real canonical sender-pump/encoded coalesced-control/reopen selector prepared
+UNEXECUTED. PRF1273 citation now names only its real physical range keystone;
+selected action IF-arm corollaries stay regressions, not completion evidence.
+
+Empty offer host composition: supplied-p distinguishes an explicit empty payload
+from omitted offer through begin/session. CLI optional absent paths and BP
+receive absent reply omit the bundle keyword, while real empty files retain a
+CONS tag/NIL offer for the consistency owner's zero START|END/ACK machine repair.
+Actual begin raw cases PASS. Latest tcpcl-session source must precede native use;
+no native zero-file verdict is claimed. Full semantic decoder/CRC/publication and
+GC/working tariffs still require connected bounded consumers, beyond this step.
+Access selector guard continuation: fn-ast-select-one total guardT and step natural-fuel
+guard warm verified (3979/260steps). Reached positive fn-statep fixture now uses
+actual payload handles and aligned group/membership schema; exact numeric/current
+reference, fuel partition and absent-number cases pass. Separate malformed-state
+totality witness passes. Actual recorded source184344/185908 aggregate unchanged.
+Normal3root certificate at39d72 is certify-20261003T161139Z-2311907 (174matching
+cached deps/3PASS), archived index; current selector changes have different core
+bytes so no verdict transfer. Unchanged server/helper teeth match. Next owned
+code is Message-ID selection/local membership setup; no native custody edits.
+
+Runtime persistent decoded consumer (2026-10-03)
+-----------------------------------------------
+Root817 retirement/reserve core consumed without algorithm edits. Native executor
+now takes optional admitted plan; actual installed-slot reservation before
+constructor/reserve, real parked thread then :ready acknowledgment before free
+offer. One decoded-storage envelope persists per worker; each run uses current
+token/incarnation and no replacement allocation. Final borrow retires exact
+binding before release, retaining baseline arrays through idle. :retiring and
+:releasing quarantine all torn calls including dead-thread observation, so no
+retry can turn partial settlement into a fresh free slot. Legacy startup has
+no scratch. Actual SBCL startup/refused readiness/constructor+reserve cut/legacy
+and recording repeated run/retirement/release-cut schedules PASS ~0.10s.
+Empirical beb955 hold helper preserved; real fd/thread syscall hold PASS ~0.18s.
+Foundation DATA8 getter API required (revision index preserved internally);
+Operator9244 actual pre-open startup owns caller. History current source union
+reconstruction remains only full-world route; endpoint not run. Optional full
+heap profile stays unpriced; no complete funding/HM/counterpart proof claim.
+
+Persistent startup follow-through: actual source constructor now consumes
+Foundation constructionp (reserved slot AND ready bit clear), preventing
+second allocation for an already initialized slot. Unused reservedp declaration
+removed; ready/readyp use it internally. Real startup fixture also checks
+distinct worker scratch identities. Normal and cancelled last-borrow release
+retain persistent backing; separate storage-ready and :reusable diagnostics
+distinguish baseline allocation from operation debit. Actual endpoint pending.
+## Continuing Operator: pre-open DEFAULT partial pool startup — 2026-10-03
+
+Source packet from codex/operator-controls-20261003 at base9df4a3a4e;
+Integration remains the sole dev writer. Operator owns fnn-owner-run and new
+fnn-owner-page-read-startup, Foundations owns numerical plan/default installer,
+Runtime owns persistent worker backing and readiness. No owner reset/reuse is
+introduced. The helper captures runtime reservation/occupancy, sealed profile,
+image observation, nursery, existing cache limit and OS descriptor limit;
+ACL2 supplies every bound, capacity and refusal classification. Installation,
+fixed table allocation, guard prewarm and executor startup precede Store open.
+The retained callback marks startup custody immediately after core install.
+Failure before service publication joins orphan workers; an escaping join keeps
+run authority through the existing actual ACL2 settlement decision.
+
+SCN-1130 actual source fixture passes4run cases +6startup-helper cases, including
+malformed model faults and existing-pool refusal before effects. Prior actual
+9df4owner body refutes at Store open: neither pool nor workers exist. Source
+fixture uses deliberate constructor/core observations; it does not certify the
+numerical producer or physical allocator/worker composition. Evidence report
+480818fa6e45aeb8ea80dfa4d089ea07f94a21271c68498c13c26828c08e5dec and full red/green
+log6ad26702c654eefcb35efca97be8384bd76c1ca5eed7c3f7cdcdeb1e045ecb86 are indexed.
+History's retained coherent world is still assembling the remaining Store
+prefix; first real owner open/read/stop runs there after additive source
+composition, without a whole-image gate. Explicit complete profiles stay
+refused, and selected partial storage does not establish a complete tariff.
+
+Operator EX03 companion: fnn-owner-store-settlement now uses the retained actual
+service carrier when installation never returned explicit SERVICE. Startup T
+still means no Store descriptor. Actual settlement source cases close retained
+Store once on success and fence/retain it on a close error. Prior actual9df4
+settlement refutes at CLOSES=0: it mislabeled that retained Store absent.
+SCN1130 now has12cases and immutable v2 source evidence. Horse EX03 owns uncertain
+owner-install rollback retention and persistent physical Store-close receipts;
+that companion source must compose before physical startup-failure qualification.
+# Horse Sol: exits
+
+Model: Sol (inherited). Base3f39e6df9; branch codex/horse-exits.
+
+READY commits:01e4a5e0b feed journal attempt-all cleanup;1200bf85d shared unwind macro, sticky Store/spare close debt and owner-install retained Store carrier;fe5ead1b3 scoped failed-initial-open custody callback. Integration received all; Operator complementary retained-service settlement fallback1e9eb6f52.
+
+Observed checks: actual complete production-definition extraction with injected close/open failures; all three fixtures PASS. Normal values/throw/handled body conditions, first/second feed close faults, spare close/unlink, active log close, unlock/lock close, early-init and initial-open physical cleanup uncertainty. Evidence planning/evidence/horse-exits-2026-10-03/source-cleanup.json archived4600ec439de67d221de64b3574115b8301df30c508bea560030f57e85693f041 atfe5ead1b3. Startup test deliberately supplies only reached early-fault prerequisites; uncalled later symbols produce compiler warnings. No whole-runtime/proof/image claim.
+
+No ACL2 changes/proof claims. Coherent native source reload needed for added Store/log slots and macro; don't reload new functions over stale structs. Narrow saved-image composition remains convergence-owned.
+
+Durable shared knowledge: /Users/ember/dev/fn/.spw/audits/exits/index.spw and traces.md. Full definitions inspected for Pull/catch-up publication, service fence, NNTP close/credits, mux terminal debt, Web job-return cleanup, BP session custody/ACK, immutable publication. Workbench roots/select/tree observed at651b535b5171.
+
+Remaining inspection scope: full cancellation/refund dispatch leaves, consumer remote wait/ACK boundaries, checkpoint terminal failure composition and wider command cleanup (many direct unwind Store close consumers still preserve neither body condition nor recorded command receipt). Immutable post-authority stage cleanup must preserve accepted classification; any fd physical debt must be recorded separately. Startup baseline repairs and actor/executor terminal changes owned by current Deputies, not reopened.
+
+Operator/Horse EX03 actual-source composition: privately composed Horse01e4,
+1200 andfe5 with Operator1e9; the new SCN-1133 executes actual owner-install,
+failed-open close helper, sticky Store-close debt and final settlement. All
+three cases pass: pre-return physical close error, post-return initialization
+rollback error, and definite rollback close. Old actual terminal settlement
+refutes the held assertion by answering joined despite close debt. Physical
+open/close/unlock/unlink observations are recorded seams, not live durability.
+Evidenceba2eef197b9ced3fa5988c2be9f79450395d0f7cf9069f0aa2f2cdaf41d54fdb and
+red/greenlog906b57e1296ce8dea60de8940f4c20f8effcf2850ab6802e52bc410d281a9d03 indexed.
+The final test/evidence packet is additive; Integration must not reimport the
+private cherry-picks of Horse source it already owns.
+
+# Horse Bounds (GPT-6 Sol)
+
+Redeem input source repair READY. New PRF-1302/NNT-1003/SCN-1132.
+Actual source host password/reply helper fixture passed; command constructor probes passed.
+Final book normal source-loaded/guard verified in hbox warm sessionhorse-bounds-redeem over14exact cached deps:0.18ACL2s435steps;2unconditional policy theorems and13literal teeth passed. This is admission, not certification.
+
+Integration must compose entry horse03228b319 password-stage-before-send change with this command constructor host patch. New native-redeem-input included by peer-host; certify roots books/native-redeem-input andtests/acl2/native-redeem-input-tests, plus affected peer-host includers in convergence batch. No saved-image run is claimed; caller regression fixture needs adapting to newfn-rip-command core entry. Regenerate current-view once at Integration.
+
+Shared .spw/audits/bounds contains candidate scan and six source findings. Catchup requester retains unlimited batch despite262144 advice; independent whole-footprint peer-flight grant producer missing. Foundations contacted; bounds owns eventual repair, no duplicate BP/pull edits. App journal4096record and16/64MiB lifetime ceilings have no operator profile/format justification or retirement. Pending repair design must preserve transaction uniqueness and receipt evidence. Publication FDclose debt cross-linked from exits, not yet traced.
+Entry continuation: native TLS client-step now explicitly clears error queue immediately before SSL_connect, matching documented SSL_get_error caller precondition and sibling host read/write/accept paths. Real scratch certificate/nonblockingTCP/TLS peer plus genuine unrelated CA-load error at channel-construction exit: observer detects nonempty queue at old FFI boundary; fixed boundary empty and real handshake/roundtrip passes0.176s. Current OpenSSL3.6 happened to tolerate old caller violation without observer; no reproduced handshake outage claimed. Source read check passes, evidence archivedhorse-entries-tls-client-queue.json. API contract: https://docs.openssl.org/3.0/man3/SSL_get_error/.
+
+Redeem fixture prepared for Boundsfn-rip-command byte-projection seam. Composed ea86cf888 command with03228b319 stage-before-send passes all seven cases; evidence horse-entries-redeem-composed.json archived. Input grammar proof/test remains Bounds owner; Integration must combine (:send-password (setq stage :password) (send password-command)), not restore old post-send assignment.
+## Resumed connected LIST query source
+
+Available emitter overrides only dispatch alias map for LIST ACTIVE/COUNTS;
+original Fn-av formatters remain unchanged reference/testing subjects. Actual
+owner/mux use Fn-qplan at-cursor/window-size/window/done/cursor-step; existing
+plan shape stays identical. Query window shares Fn-splan-window and caps W
+at the current materialized effect boundary, so old fill never skips newtag.
+One LIST step per activation, empty progress retained. Original OVER/NEWNEWS
+Fn-splan subjects/proofs retained; new facade full residual is its own debt.
+Guarded facade10defs proper encap .09ACL2s;8 private empty-metadata complete
+LIST replies atW1/W256 equal old hand LIST (ACTIVE/COUNTS/filter/no-match, y/m/n).
+Native cache is historical ad8; no changed availability/current startup claim.
+Complete sparse/prefix/tail/empty fixtures written, not executed yet; old
+selective command tests now drain actual query windows rather than dropping
+LIST through old OVW expansion. PRF1287 planned/events[] remains accurate.
+
+Actual native additive source loan from Tools PID2260356 was returned healthy
+with no active sends. Socket /tank/fn/scratch/codex-tools-incremental-fa5ff31735/
+owner/dev.sock, new WMC18/GSC5/LST/QPLAN/QPT only; no raw symbol override or
+actual operator stobj mutation. LIST contract proof theory now narrowly scoped
+around generated byte/call facts, restoring prior theory for factory guards.
+Exact failed probes/observation timeout and final results archived in
+served-query-plan-20261003. Both older solheldownerfix/availability worlds
+expired naturally at10:43/10:41; do not restart broad closures. Current earlyP3
+owner source world startup belongs History/Integration; Tools cache loan is
+private and must be renewed before more sends.
+
+Next connected work remains full query residual/finite progress, current
+actual dispatcher+owner and sparse catalog fixtures, stable captured metadata
+column frames, incremental row string/decimal serialization and family
+factory/window physical tariffs with Foundations. Upstream auth/moderation
+configuration preparation may still allocate whole group-derived lists before
+these reference-only factories: trace and remove/price that actual path. LIST
+completed view policy PRF1237, remaining LIST variants/NEWGROUPS, bounded
+HDR/XPAT/OVER and selective owner PROGRAM guards/refinement remain owned.
+No whole-NNTP or full-family boundedness claim from this output cursor alone.
+2026-10-03 resumed incremental tools/trace allocation work (Sol6.1):
+
+* Prior prefix-copy WIP is resolved by7325a4571/bbdcc9bb1. Explicit natural
+  quantum measure and minimal theories admitted termination169steps, exhausted
+  input lemma1313steps, guard512steps and equality495steps. The actual cached
+  1035-step NEWNEWS consumer's full states/results still match; 32drains reduce
+  process allocation8,906,224 ->7,332,640bytes after cursor+prefix sharing.
+  This is historical preconfigured NEWNEWS, not current configured selectors.
+* Hotspot readout e94f67d59 (public462a4afcc) passed in the same actual owner:
+ 31attempts/12rows/19dropped/1incomplete, late allocator1,038,512process bytes
+  ranked first; clock/process groups remain distinct and the sink is retained.
+* Ready decoded source9571ac92c/d770a35ed/367b212e8: issue each effect once,
+  reusable ACL2 fixed-product comparison macro and actual capture consumer.
+  Guarded normal counterparts and unconditional equality admitted; 30branch
+  cases/each corrupt captured field/proper versus malformed tuple checks pass.
+  At20,000calls legacy decision12,795,040bytes/11ms; combined2,876,592/5ms.
+  Capture comparison alone3,818,928 ->0observed bytes. PROCESS inclusive,
+  idle owner threads present; no retainedheap/GC/funding activation claim.
+  Evidence99a9ae2ae3428231c6867eaf90a7d938ca66f96d5e5530c449a0b4c5d4c15d6e
+  at planning/evidence/tools/incremental-decoded-allocation-20261003.json.
+* LIVE own retained developer owner2260356, exec62229:
+  /tank/fn/scratch/codex-tools-incremental-fa5ff31735/owner/dev.sock.
+  Driver JSON eval/file input; quit gracefully stops only this private owner.
+  Historical ad8+Root bounded/reload-safe overlays are hash-bound in its own
+  execution.json. Exact sources/results stay in owner/observations.jsonl;
+  local selected receipts under build/incremental-owner. No cold world,
+  image build or artifact acquisition. Served returned its additive WMC/GSC/
+  LIST/qplan loan healthy, no active send; core old symbols/stobjs unchanged.
+* Continuing next: consume these reductions through Runtime's persistent
+  decoded scratch scenario when its actual compatible source runner is ready;
+  whole DWJ state/storage is absent from this historical cache. General live
+  readout and trace consumer improvements remain owned. No full qualification
+  or decoder allocation tariff follows from these selected leaf observations.
+Access Message-ID setup continuation: pinned lookup now captures article + lazy
+local-number membership cursor; non-pinned archive and captured withdrawn ID
+lookup compare one ID character per transition, no full setup walks. Existing
+430 withdrawn/missing distinction and no selected-reader update preserved.
+Core local/search/select executable guards warm verified (search1440/select7891
+steps); universal fuel split875steps + literal positive/mutation teeth pass.
+Actual source184480 core/187518 owner/native aggregate PASS, first ID/member
+duplicates and5000-character group, invalid/oversized local numbers, all3sections
+cold READY/replay. MsgID recorded owner install remains0 as state is unchanged.
+Full factory/physical join stays Runtime/History; whole termination/reference,
+owner/renderer guards remain open. Next shared header span/extraction backing
+with Served; frozen READY4/render6 remain unchanged and Integration independently
+composes Qplan ordinary fallback.
+BP held-source control certification followthrough (2026-10-03): exact a745d65ed union, including zero-transfer TCPCL dependency, certifies tcpcl-source-control and its literal teeth in certify-20261003T163429Z-2470673 (5 passed, 0 failed). The indexed manifest names these admitted/guarded definitions and received KEEP state preservation; it does not qualify SCN1131 or the complete native source/framing/custody boundary. Actual compatibility wrapper empty-offer supplied-p discriminator also passes in the scoped recorded-terminal harness. Current-union native entry remains pending History; no cached diagnostic claim transfers.
+
+* Trace lifecycle fix765a1e410: restarting inside an active span previously
+  emitted false/self parent1. Macro now carries parent-sink provenance, with
+  null for old compiled unknown ancestry. Actual six-value nested restart
+  fixture reproduced red then passed after narrow native overlay.
+* Readout fix5a435d754: actual report destination proved sink mutex held during
+  output. Shared bounded completed-row snapshot moves report I/O and hotspot
+  aggregation outside lock; active rows/counts/sink preservation PASS, existing
+  hotspot fixture PASS after same-owner overlay. Evidencef66c36a1... at
+  planning/evidence/tools/incremental-trace-lifecycle-20261003.json.
+* Owner2260356 currently healthy, temporarily loaned exclusively to Served for
+  11staged LIST-row events. No Tools sends while loan active. Runtime confirms
+  full current DWJ normal/storage runner not yet available; no duplicate cold
+  loader. Next tracing consumer work can proceed when that producer is ready.
+
+Access73a0 core+teeth normal cert PASS certify-20261003T165500Z-2590721,
+2selected roots/38matchingcacheddeps. Manifest archived+index committed.
+No owner/physical endpoint claim; underlying historical cache citations have
+uncited provenance debt, not silently upgraded to a whole closure verdict.
+
+BP served startup source followthrough: actual bp-node serve/bp-app receive now
+use shared fnn-bp-served-owner-start/stop/settle over Operator's captured DEFAULT
+installer before Store recovery. Independent owner authority is claimed before
+constructor work; partial constructor/recovery failure, worker join escape,
+root debt and Store close uncertainty preserve exact authority. Private BP bank
+continues to fund only TCPCL/source contexts. SCN1134 actual entry/helper fixture
+passes seven helper outcomes plus both command failure/cleanup paths, with
+recorded physical seams and actual ACL2 service authority functions. Full tariff,
+actual current pool/Store worker composition and native multi-peer/RQ selectors
+remain open. Offline dispatch/checkpoint/route-table paths unchanged.
+
+
+Horse Bounds reclaim decision allocation repair READY: fnn-log-reclaim-steps folds first, rewrites only for :reclaim before instant/clear. Actual reclaim still retains complete rewritten history. Disjoint from Exits outer cleanup83e657c2d. tests.test_native_reclaim_decision_source passes actual host function with supplied core/I/O decisions; checks no-op/refused/dry rewrite absence and accepted replay order. host_check --read passes. No changed ACL2 definitions or theorem claim.
+
+Stop custody repair: physical executor joins no longer erase the only global
+roster reference before owner settlement. Clean idle slots can be discarded;
+issued/torn constructor/reset/settlement/result slots remain discoverable.
+Owner cold shutdown prunes after exact read settlement and refuses Store
+teardown if independent roster debt remains, even with an empty read queue.
+Repeated stop does not cancel :issuing/:binding-fault/:retiring/:releasing
+quarantine; explicit cancellation/death observation cannot re-enter those
+semantic boundaries. Real joined SBCL thread schedules and actual shutdown
+empty-queue/debt gate PASS; no full current physical endpoint claim.

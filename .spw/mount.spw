@@ -1,0 +1,22 @@
+# Mount
+#
+#>spw_mount
+#:mount
+
+^[workbench]{
+  @root: ~"./_workbench"
+  repository: "https://github.com/spwashi/spw-workbench.git"
+  revision: "651b535b5171"
+  version: "0.3.0"
+  @spec: ~"./_workbench/lib/spw-v0.3.0/"
+  @cli: ~"./_workbench/packages/spw-cli/"
+  @lsp: ~"./_workbench/packages/spw-lsp/"
+}
+
+^[engage]{
+  surfaces: ["seed", "runtime", "cli", "lsp"]
+}
+
+^[resolve]{
+  paths: [~"./_workbench/lib/spw-v0.3.0/", ~"./_workbench/packages/spw-cli/", ~"./_workbench/packages/spw-lsp/"]
+}

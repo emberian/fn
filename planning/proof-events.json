@@ -12250,13 +12250,13 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-scat-group-summary-is-pass",
-          "note": "KEYSTONE (no hypotheses). GROUP's summary from the catalog's live table at the top view equals the probe pass. Teeth: sct-f2-summary-from-table, sct-f2-below-horizon, sct-f2-older-view."
+          "name": "fn-scat-group-summary-is-archive",
+          "note": "KEYSTONE. Raw compatibility summary equals the archive summary under fn-cnx-freshp, a nonnil group, and exact archive/view article equality. Available metadata summaries use separate readers. The by-definition alias is not evidence."
         },
         {
           "kind": "theorem",
-          "name": "fn-scat-group-low-is-pass",
-          "note": "KEYSTONE (no hypotheses). The group's first live number from the table equals the pass. Teeth: sct-f2-summary-from-table."
+          "name": "fn-scat-group-low-is-archive",
+          "note": "KEYSTONE. Raw compatibility low equals the archive low at fn-cat-view-articles under fn-cnx-freshp and a nonnil group. This is not an unconditional available-membership claim."
         },
         {
           "kind": "theorem",
@@ -12349,7 +12349,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-scol-okp-of-load-held-rows"
+          "name": "fn-sca-load-held-rows-establishes-byte-facts",
+          "note": "KEYSTONE of the actual public loader. Under fn-arena-p and fn-scol-history-okp it establishes fn-scol-okp, including legacy missing facts. The identical fn-scol-okp-of-load-held-rows instance is a corollary."
         },
         {
           "kind": "theorem",
@@ -19342,14 +19343,6 @@
         {
           "kind": "theorem",
           "name": "fn-tcrt-write-range-is-bounded"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-tcrt-source-custody-excludes-input"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-tcrt-ready-write-precedes-source-and-close"
         }
       ]
     },
@@ -19428,6 +19421,31 @@
         {
           "kind": "theorem",
           "name": "fn-prstartup-accepted-default-launch-fits-machine"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1298",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-dwj-retired-job-refuses-scalar-publication",
+          "note": "After actual reusable retirement, no arbitrary query ledger/worker/token can publish a scalar byte from that job. The stronger current statement has ordinary admission; the older817 certificate does not certify its changed bytes."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwj-retirement-preserves-private-backing",
+          "note": "Actual retirement preserves input/hash/zin/win/tab/out/window storage, without publishing an active operation."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwa-retirement-revokes-prior-authority",
+          "note": "Reusable retirement clears token/root/source/controller/action/receipt authority and returns the carry to uninstalled with no borrow."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwa-refused-retirement-preserves-carry",
+          "note": "Every actual non-reusable result leaves the carry unchanged. This is not permission to refund physical custody."
         }
       ]
     }

@@ -1534,6 +1534,9 @@
 (definterface fn-owner-bp-source-decision-line
   :class ::program)
 
+(definterface fn-owner-bp-session-admission
+  :class ::program)
+
 (definterface fn-owner-bp-tcpcl-ingress
   :class ::program)
 
@@ -2437,6 +2440,17 @@
 (definterface fn-redeem-lost
   :class ::common-lisp-compliant
   :keystones (fn-redeem-lost-is-fenced-and-server-answers-are-not))
+
+(definterface fn-rip-command
+  :class ::common-lisp-compliant)
+
+(definterface fn-rip-password-step
+  :class ::common-lisp-compliant
+  :keystones (fn-rip-password-admission-stays-within-wire-capacity))
+
+(definterface fn-rip-reply-status
+  :class ::common-lisp-compliant
+  :keystones (fn-rip-reply-admission-stays-within-wire-capacity))
 
 (definterface fn-redeem-outcome-class
   :class ::common-lisp-compliant
@@ -5222,6 +5236,19 @@
 (definterface fn-cgb-specp :class :common-lisp-compliant
   :direct "Guard-t bounded cached-metadata validation in the funded fixed roster prewarm")
 
+; DEFAULT partial startup: actual pre-open native consumer declarations.
+; Numerical admission proof and selected layout refinement are separate.
+(definterface fn-prstartup-default-plan :class :common-lisp-compliant)
+(definterface fn-prstartup-status :class :common-lisp-compliant)
+(definterface fn-prstartup-planp :class :common-lisp-compliant)
+(definterface fn-prstartup-refusal-line :class :common-lisp-compliant)
+(definterface fn-prstartup-install-status :class :common-lisp-compliant)
+(definterface fn-prstartup-install-refusal-line :class :common-lisp-compliant)
+(definterface fn-prstartup-file-capacity :class :common-lisp-compliant)
+(definterface fn-prstartup-cache-capacity :class :common-lisp-compliant)
+(definterface fn-prstartup-decoded-workers :class :common-lisp-compliant)
+(definterface fn-owner-page-read-install-default :class :common-lisp-compliant)
+
 ; Exact logical view declarations imported from producer 57b70ff2b.
 (definterface fn-owner-payload-view-acquire :class :program)
 (definterface fn-owner-payload-view-live-p :class :program)
@@ -5437,3 +5464,11 @@
 (definterface fn-web-host-post-reply-step :class ::program)
 
 (definterface fn-web-host-post-form-step :class ::program)
+
+; Persistent baseline backing: offered only after actual construction.
+(definterface fn-dwj-reserve :class :common-lisp-compliant)
+(definterface fn-owner-page-decoded-job-retire :class :common-lisp-compliant)
+(definterface fn-prstartup-planp :class :common-lisp-compliant)
+(definterface fn-prstartup-decoded-workers :class :common-lisp-compliant)
+(definterface fn-owner-page-read-default-worker-ready :class :common-lisp-compliant)
+(definterface fn-owner-page-read-default-worker-constructionp :class :common-lisp-compliant)
