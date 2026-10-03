@@ -306,3 +306,16 @@ funded/read selectors never started. Integration owns repaired continuation;
 no duplicate build/test.16 exact run/script/status/log objects archived as
 native-sol2g-ad8da41-prefix-2026-10-03, manifest
 a18779e9cf0c265e86f6a4114e1bcabcdf37ac7849a3f571f747538583f71bef.
+
+
+## Retain successful native observation streams, 2026-10-03
+
+PageIO finite image fixtures now reuse native_harness.keep_diagnostics under
+explicit FN_NATIVE_TEST_DIAGNOSTIC_DIR. Registered before node creation/cleanup,
+it retains each started owner's bounded stderr after cleanup on success as well
+as failure, including copies used by late/stale/duplicate schedules. Current
+ad8 automatic PASS only preserves assertion/source/result logs; successful raw
+receipt/collector bytes were dropped by test_budget and stay unavailable. Future
+matching selection should name a scratch diagnostic directory; no semantic
+classification, source injection or second oracle. Python compile passes; native
+keeper execution remains pending matching source selection.
