@@ -11,15 +11,16 @@
  "locus": "operator-verbs",
  "notes": [
   "sub-lane sweep-ops-cfg",
-  "10-02 22:32 WIP pushed per ember's dev directive: book REPL-admitted, uncertified; world/interfaces regen pending; before-native running, after-native not run"
+  "10-02 22:32 WIP pushed per ember's dev directive: book REPL-admitted, uncertified; world/interfaces regen pending; before-native running, after-native not run",
+  "2026-10-03 Codex source reconciliation: ab38342724df139ea5f57a3ca41bb660665d87ba is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-ops-cfg",
  "reviewer": "admin.lisp:258 calls fnn-config-record-observation inside fnn-owner-live-reconfigure-locked, which runs under the owner mutex. That function (io.lisp:2121-2144) lists the config directory and reads every record file (fnn-check-regular plus fnn-read-regular-bounded per name), bounded only by max-config-generations. Every live reconfiguration does this: admin vectors, peer invite/accept/confirm, and XREDEEM through fnn-owner-account-redeem (admin.lisp:293). Each one also adds a generation, so the cost per call grows with the history. The comment 'no Store record read, no history replayed' describes the authorization step, but the observation just above it reads every record. fnn-lim-decision (admin.lisp:465-468) also calls fnn-heap-history-observation inside the serialized lambda (admin.lisp:500). This conflicts with the AGENTS rule against whole-state revalidation on a served path.",
  "scenario": "Every live reconfiguration does O(generations) opens and reads under the owner mutex while every reader, transit and poster quantum waits. That covers peer invite/accept/confirm, `account` changes, reclaim's instant, and each successful NNTP XREDEEM via fnn-owner-account-redeem. With a history near max-config-generations, or on a slow disk, every live reconfiguration stalls service in proportion to history length. The comment states the opposite, and HST-033's rule (no statvfs inside the critical section) is undercut by reads of every file there.",
  "severity": "medium",
- "sha": "ab3834272",
+ "sha": "ab38342724df139ea5f57a3ca41bb660665d87ba",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "Live reconfiguration reads the whole configuration history from disk under the owner mutex, contradicting its comment",
- "updated": "2026-10-03T02:32:03Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

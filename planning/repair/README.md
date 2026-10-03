@@ -14,3 +14,12 @@ quoted `evidence`, the failure `scenario`, the proposed `fix` and the `reviewer`
    (`forbidden.txt`), diffs over the budget (60 lines unless the item sets `budget`), a missing item id in the commit
    messages, or a test that does not fail at the base and pass at the head. Fix or escalate until it exits 0.
 5. `repair.py set ID note="READY <sha>"`; the runner sets `ready` on merging into origin/next and `landed` on dev.
+
+## Current verification limitation (NIGHT-VERIFY)
+
+The current verifier accepts any nonzero base exit and permits an absent test.
+A missing test file, import/tool failure, timeout or skip is not a defect witness.
+Until NIGHT-VERIFY lands, reviewers must inspect the actual base/head output and
+require the same runnable regression with the intended assertion failing at base.
+Do not treat `verify.ok` alone as semantic validation. Source `landed` receipts
+record ancestry; native/proof completion remains separately evidenced.

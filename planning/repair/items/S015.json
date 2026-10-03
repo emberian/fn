@@ -12,16 +12,17 @@
  "locus": "lifecycle",
  "notes": [
   "10-02 22:20 t45 lane/codex-fence-boundary: one READY covers r71-F1/F2 S015-S020 S023 X08 r72-F6",
-  "10-02 22:33 t45 lane/codex-fence-boundary 8e8041218: structure tests 15/15 local, program check PASS; natives NOT green yet (the 6ea819b75 run aborted at interfaces-check before the regen commit; relaunch at 8e8041218); farm run-20261003T022549Z-f421 certified the books before the last comment-only change"
+  "10-02 22:33 t45 lane/codex-fence-boundary 8e8041218: structure tests 15/15 local, program check PASS; natives NOT green yet (the 6ea819b75 run aborted at interfaces-check before the regen commit; relaunch at 8e8041218); farm run-20261003T022549Z-f421 certified the books before the last comment-only change",
+  "2026-10-03 Codex source reconciliation: 8e80412185de20e3c22e884bbcae948354e1676b is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "failure-scope",
  "reviewer": "On SIGTERM, fnn-owner-run calls fnn-owner-drain-service and then fnn-owner-stop-service with +fnn-exit-ok+ (6196-6199). The drain can return :stop after the release, while a batch is still in its barrier (6044-6047; the syncer's release at 3484-3488). Then stopping=t and exit-code=0, and the first-stop-wins guard (1703-1707) makes every later uncertain stop a no-op. In the syncer's COMPLETE (3611-3620) the stopping branch is taken before step is examined, so a failed barrier only delivers :uncertain. It neither calls commit-complete-locked :stop nor changes the exit code. A re-signalled condition goes through shared-action-locked, whose stop-service-locked is also a no-op. fnn-store-close (io.lisp:2452) normally succeeds, so settlement can be :joined, and the run returns exit-code 0. The members were already told uncertain at the release, so no client is misled, but the process exit code does not say that recovery is needed.",
  "scenario": "SIGTERM arrives. fnn-owner-drain-service decides :stop once the release grace passes while a sealed batch is still in its barrier on a stalled disk, and fnn-owner-stop-service sets exit-code +fnn-exit-ok+. The barrier then fails. The syncer sees stopping, tells the members :uncertain and does not fence. Any fence-service or uncertain stop that follows is a no-op because stopping is already set. The run returns fn-ort-log-close-exit of exit code 0 unless the Store-close settlement happens to observe something. The service manager sees a clean exit after an indeterminate batch, which breaks 'uncertain, refused and accepted stay distinct ... exit codes included'.",
  "severity": "medium",
- "sha": "8e8041218",
+ "sha": "8e80412185de20e3c22e884bbcae948354e1676b",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "First-stop-wins drops a later uncertain outcome: a failed barrier during a graceful stop leaves exit 0 and no fence",
- "updated": "2026-10-03T02:33:24Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

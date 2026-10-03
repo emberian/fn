@@ -10,15 +10,16 @@
  "line": "408",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-02 22:29 merged into next e6b827d21"
+  "10-02 22:29 merged into next e6b827d21",
+  "2026-10-03 Codex source reconciliation: e6b827d210ec8d539250ccf668a8afddb7b756fb is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-gates",
  "reviewer": "tools/deploy_fresh.sh:310-319 supports resume: OLD_NODE absent and a retired node names TARGET gives 'resuming'. At :408, the presence of $TARGET/store alone skips the import cp -a, node-secret create and rebind-filesystem (:410-421). It also skips the fresh init and the set-password enrolment loop (:424-431). A die inside the piped while (:428) ends the script under set -e. A partial copy or a partial enrolment is therefore taken as complete on re-run, which contradicts the header at :18. The probe at :245 uses only the first login. A truncated store may still be refused at open by its own integrity checks, which limits the import case.",
  "scenario": "(a) --store import: cp -a fails partway (ENOSPC, or Ctrl-C). set -e stops the script with a partial $TARGET/store. The documented re-run (resume via the retired manifest) sees the directory, skips the copy, node-secret create and rebind-filesystem, and starts the node on a truncated copy of the store. (b) --store fresh: init succeeds, then set-password for the second login fails (die inside the pipeline). On re-run the store is present, so enrolment is skipped. verify_up probes only the first login (line 245), which was enrolled, so the script prints DEPLOY DONE while the other logins cannot authenticate.",
  "severity": "medium",
- "sha": "e6b827d21",
+ "sha": "e6b827d210ec8d539250ccf668a8afddb7b756fb",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "deploy_fresh.sh skips a step because a directory exists, so an interrupted store copy or enrolment is treated as complete on re-run",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

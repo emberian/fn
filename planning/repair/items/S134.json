@@ -10,15 +10,16 @@
  "line": "305",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-02 22:29 merged into next e6b827d21"
+  "10-02 22:29 merged into next e6b827d21",
+  "2026-10-03 Codex source reconciliation: e6b827d210ec8d539250ccf668a8afddb7b756fb is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-gates",
  "reviewer": "test_native_owner_scheduler.py:305-306 puts skipUnless(DEVELOPER) on the helper group_count, while the tests at :327, :386, :532, :636 and :739 start image=DEVELOPER with no gate (only :447 is gated). Without the developer image they error instead of skipping. The finding is wrong about :710 and :800: those are restarts inside the developer tests (:636 and :739), not production-image tests.",
  "scenario": "Without a developer image: the five barrier tests try to launch a missing DEVELOPER path and error instead of skipping. The production-image tests at :710/:800 start an owner and then raise SkipTest inside group_count partway through, so production-only behaviour is reported as skipped for a reason unrelated to it. With the developer image present the misplacement is invisible.",
  "severity": "low",
- "sha": "e6b827d21",
+ "sha": "e6b827d210ec8d539250ccf668a8afddb7b756fb",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "skipUnless is on the group_count helper instead of the developer-image tests",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

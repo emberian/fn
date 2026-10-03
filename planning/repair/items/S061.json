@@ -10,15 +10,16 @@
  "line": "134",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-02 22:29 merged into next e6b827d21"
+  "10-02 22:29 merged into next e6b827d21",
+  "2026-10-03 Codex source reconciliation: e6b827d210ec8d539250ccf668a8afddb7b756fb is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-gates",
  "reviewer": "packaging/install.sh:131-141: ask() returns 1 only when the output contains reason=store-format. Any other non-zero rc (packaging/fn:104-106 heap-probe fault, exit 4; fenced exit 3; usage 5) prints a 'this continues' note and returns 0. Callers at :268-277 (upgrade), :294-302 (rollback) and :327 (install) then switch_to, render_service, start_node and health_wait. health_wait exits 4 after 180 s and never restores previous. That breaks the header's promise at :42-44 that a refusal puts nothing in place. Treating rc != 0 as continue is deliberate (the message says so), but a fault or fence from the next release is still allowed to switch current.",
  "scenario": "An operator runs --upgrade to a release whose image cannot run on this machine. For example, the heap probe faults (packaging/fn:104 'fault heap-probe-did-not-run', exit 4), libssl 3 is missing, or the store answers exit 3 (fenced: recover before further mutation). ask() prints the rc and returns 0. switch_to then points current at the new release, render_service installs its unit and start_node runs. health_wait then times out after 180 s and exits 4. The node is left down on a release that already said it could not open the store, and nothing switches it back. This breaks the header's promise (lines 42-44) that 'a refusal puts nothing in place'. The same applies to --rollback (line 294) and to a first install over an existing fn.toml (line 327). Uncertain (3), fault (4) and usage (5) all end up in the accepted path.",
  "severity": "medium",
- "sha": "e6b827d21",
+ "sha": "e6b827d210ec8d539250ccf668a8afddb7b756fb",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "install.sh --upgrade/--rollback/install: ask() only refuses on the literal reason=store-format. Every other failure, including fault, fenced and a probe that never ran, carries on and switches current",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

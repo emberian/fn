@@ -10,15 +10,16 @@
  "line": "122",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-02 22:29 merged into next e6b827d21"
+  "10-02 22:29 merged into next e6b827d21",
+  "2026-10-03 Codex source reconciliation: e6b827d210ec8d539250ccf668a8afddb7b756fb is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-gates",
  "reviewer": "test_native_crash_model.py:121-126: a FN_NATIVE_LOWLEVEL_CUT value that matches no POST_LOG_CUTS name skips every iteration and the test passes with zero subtests. The env var is a developer filter, not a default path, so the impact is limited to a mistyped selection.",
  "scenario": "An operator sets FN_NATIVE_LOWLEVEL_CUT=log-fence (a typo) or a retired name such as record-attempted. Every cut is skipped, no subTest runs, and test_all_native_post_log_process_death_cuts reports OK with zero process deaths checked.",
  "severity": "low",
- "sha": "e6b827d21",
+ "sha": "e6b827d210ec8d539250ccf668a8afddb7b756fb",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "FN_NATIVE_LOWLEVEL_CUT that names no cut makes the crash campaign run nothing and pass",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

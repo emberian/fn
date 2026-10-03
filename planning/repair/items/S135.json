@@ -10,15 +10,16 @@
  "line": "165",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-02 22:29 merged into next e6b827d21"
+  "10-02 22:29 merged into next e6b827d21",
+  "2026-10-03 Codex source reconciliation: e6b827d210ec8d539250ccf668a8afddb7b756fb is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-gates",
  "reviewer": "test_native_conformance.py:157-165: after the postpublish fault (log-fenced, record durable per io.lisp:4828-4831), the test checks only exit codes and the substring 'recovered transactions='. It never rereads or resubmits <outcome-unsure@example.invalid>, so V0-OUT-RECOVER's resolution of the article is not checked.",
  "scenario": "The postpublish fault fires after the log fence, so the record is durable. If recovery dropped it, or kept a torn record, `recover` still prints `recovered transactions=N` and exits 0. The test never rereads <outcome-unsure@example.invalid> and never resubmits it to confirm a duplicate (exit 0) with no second copy, so V0-OUT-RECOVER, which 'resolves the third' outcome, is not checked.",
  "severity": "low",
- "sha": "e6b827d21",
+ "sha": "e6b827d210ec8d539250ccf668a8afddb7b756fb",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "The conformance test of recovering the uncertain outcome checks only a substring, not what happened to the article",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

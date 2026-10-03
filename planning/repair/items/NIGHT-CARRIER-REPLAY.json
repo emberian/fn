@@ -1,0 +1,17 @@
+{
+ "acceptance": "Dirty input survives unchanged; wrong signatures/unknown syntax refuse; clean repeatable transform; :instance substitution and callback/refinement fixtures; atomic full migration admits at current integration candidate.",
+ "category": "codex-orientation",
+ "detail": "At fa32ac06f redo.sh uses blanket git checkout of all diff paths and deletes books/owner-carrier.lisp; run.py/world.py also need packaged imports/source-bound signatures and :instance substitution repair. Replace continuation with isolated explicit input/output and refusal on unknown forms or wrong source.",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "tools/owner_carrier/redo.sh",
+ "id": "NIGHT-CARRIER-REPLAY",
+ "locus": "generators",
+ "notes": [],
+ "owner": "host-deputy",
+ "severity": "medium",
+ "source": "planning/overnight-2026-10-03.md",
+ "state": "open",
+ "title": "Carrier replay discards dirty work and transformation inputs are not safely packaged",
+ "updated": "2026-10-03T05:14:09Z"
+}

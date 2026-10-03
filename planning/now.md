@@ -1,4 +1,18 @@
-# Now — 2026-09-28
+# Now — 2026-10-03
+
+The active dispatch plan is [the Codex overnight plan](overnight-2026-10-03.md).
+Read it with [the repair ledger](repair/STATUS.md) and [the contributor guide](../CONTRIBUTORS.md).
+Remote dev was verified at `9af0cd1a9`; the current image run builds `4671ace0f`.
+It has passed its requested image-root certification and is still building;
+no current-head native verdict or new deployment is claimed. The plan records
+unmerged source, evidence coordinates, model roles and the first execution packets.
+
+The earlier page below is retained as historical scope, not a current roster,
+release instruction, source coordinate or deployment observation.
+
+---
+
+# Historical plan — 2026-09-28
 
 The one page a new agent reads first: where dev is, what is being worked on,
 and where the rest is. Written by lane records-steward from dev `940bc3104`

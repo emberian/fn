@@ -11,15 +11,16 @@
  "locus": "gates-tests-packaging",
  "notes": [
   "lane/sweep-gates-prereq b0e1250b6",
-  "10-02 22:29 merged into next e6b827d21"
+  "10-02 22:29 merged into next e6b827d21",
+  "2026-10-03 Codex source reconciliation: e6b827d210ec8d539250ccf668a8afddb7b756fb is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-gates",
  "reviewer": "changed_books (green_check.py:346-357) diffs only `books` and `tests/acl2` against the merge base. host/*.lisp edits are therefore invisible, even though books include them: books/admission-semantic-census-*-refinement.lisp:2-7 include ../host/admission-semantic-census-host, and image-world-dtn includes ../host/page-read-host. dependents() (:361-379) only searches for closures reaching `wanted`, so an empty changed list yields not_green==[] and exit 0. `git diff <base>` without --untracked does not list new untracked files, which contradicts the docstring's claim that the working tree is judged. The gate is the documented merge gate (green_check.py:21, how-we-work.md). Under the land-and-fix-forward mode its weight is reduced, but the false green is real.",
  "scenario": "A lane edits host/page-read-host.lisp only. changed_books returns [], dependents() is computed over an empty `wanted`, and the gate prints \"no book or test book differs from the merge base\" with not_green == []. `--changed-since dev --strict` exits 0, although image-world-dtn's include closure changed and nothing has certified it. In a second case, a lane creates books/x.lisp without `git add`. `git diff <base>` does not list untracked files, so the new book escapes the gate, even though the docstring says the working tree is what is judged.",
  "severity": "medium",
- "sha": "e6b827d21",
+ "sha": "e6b827d210ec8d539250ccf668a8afddb7b756fb",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "green_check --changed-since merge gate misses host files that books include and new untracked books",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

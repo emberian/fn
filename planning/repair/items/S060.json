@@ -10,15 +10,16 @@
  "line": "369",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-02 22:29 merged into next e6b827d21"
+  "10-02 22:29 merged into next e6b827d21",
+  "2026-10-03 Codex source reconciliation: e6b827d210ec8d539250ccf668a8afddb7b756fb is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-gates",
  "reviewer": "native_block_fault.py:368-369 transaction_files iterates store/transactions, which a log store does not have (io.lisp:4017 'No allocator file and no transactions/'), so :409 raises right after init/post. It also arms FN_NATIVE_POST_FAULT=record-attempted:stop. io.lisp:4836-4877 accepts only the cuts in +fnn-post-model-cuts+ / +fnn-post-log-model-cuts+ (record-attempted is in neither) and only the eio|kill actions, so the selector would fault anyway. The campaign is dead on the shipped format.",
  "scenario": "Every scenario (record-dir-eio, frontier-dir-eio, record-dir-sigkill, record-cut-snapshot) raises FileNotFoundError at line 409 right after `store init`, because a log store has no transactions/. FN_NATIVE_POST_FAULT=record-attempted:stop is not in +fnn-post-model-cuts+ either. So the only device-level EIO and SIGKILL evidence for directory barriers cannot run on the shipped format. The only test of the module (test_native_block_fault_ownership.py) checks pid-ownership helpers with mocks, so nothing shows the campaign is dead.",
  "severity": "medium",
- "sha": "e6b827d21",
+ "sha": "e6b827d210ec8d539250ccf668a8afddb7b756fb",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "Block-fault campaign drives the retired per-file programs and reads store/transactions/",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

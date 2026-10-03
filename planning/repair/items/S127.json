@@ -10,15 +10,16 @@
  "line": "292",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-02 22:29 merged into next e6b827d21"
+  "10-02 22:29 merged into next e6b827d21",
+  "2026-10-03 Codex source reconciliation: e6b827d210ec8d539250ccf668a8afddb7b756fb is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-gates",
  "reviewer": "manifests() (green_check.py:145-178) merges archived manifests with local build/acl2 ones (archived=False). The selection at :288-296 takes the newest by stamp regardless of archived, and certified_archived (:334) reflects only that run. ledger.derived_status (ledger.py:4040-4048) calls green_check.audit and requires green_at_these_bytes, which requires certified_archived. So a newer local green, or a newer local red, downgrades the generated status in that worktree only, and ledger --check then diverges between trees. The effect is only a downgrade, never a false certified, so it is a reproducibility and confusion problem rather than a soundness hole.",
  "scenario": "Two worktrees sit at the same commit. Book B has an archived green run at its current bytes and closure. One worktree also holds a newer, unfiled local run under build/acl2/certify-*/manifest.json that also certified B. In that tree record.green is the local run, so certified_archived is False and every proofs.json row citing B regenerates as \"uncertified-at-current-digest\". `ledger.py --check` reports proofs.json stale in that tree and clean in the other. A `--write` there commits a downgrade that a committed manifest contradicts. A newer local red has the same effect.",
  "severity": "low",
- "sha": "e6b827d21",
+ "sha": "e6b827d210ec8d539250ccf668a8afddb7b756fb",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "A newer local unarchived manifest hides an archived green, so the committed proofs.json status depends on untracked build/acl2 contents",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

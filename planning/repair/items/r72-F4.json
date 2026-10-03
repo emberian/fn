@@ -10,14 +10,15 @@
  "locus": "committer",
  "notes": [
   "10-02 22:22 READY 1: seal capture under owner, extension+append+fence are job phases off the owner (lane/owner-offlock cc97926c1)",
-  "10-02 22:31 pushed for merge; natives pending"
+  "10-02 22:31 pushed for merge; natives pending",
+  "2026-10-03 Codex source reconciliation: d7fe7f5c8474c518ea48bfd9e309b1eab72c423a is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "owner-offlock",
  "severity": "high",
- "sha": "d7fe7f5c8",
+ "sha": "d7fe7f5c8474c518ea48bfd9e309b1eab72c423a",
  "slice": "committer",
  "source": "r72",
- "state": "ready",
+ "state": "landed",
  "title": "fnn-log-seal-open-batch (bug)",
- "updated": "2026-10-03T02:31:49Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

@@ -11,15 +11,16 @@
  "locus": "gates-tests-packaging",
  "notes": [
   "lane/sweep-gates-prereq b0e1250b6 in BM 3",
-  "10-02 22:29 merged into next e6b827d21"
+  "10-02 22:29 merged into next e6b827d21",
+  "2026-10-03 Codex source reconciliation: e6b827d210ec8d539250ccf668a8afddb7b756fb is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-gates",
  "reviewer": "tools/green_check.py:552 strict exit counts only red, so 'never'/'absent' books pass `--strict`. profile_gate (:430-441) maps verdict straight from books_by_verdict and never consults deps_moved_since or certified_archived, unlike gate() (:398-401) and green_at_these_bytes (:127-136). audit() (:302-306) leaves verdict 'green' with deps_moved set when no exact_green exists. cut_release.sh:305-307 runs exactly these two commands as gate 05, and release-v6.6.0.md:187 says they mean 'green at its current digest in a committed manifest'. Mitigations: an absent book inside the default closure is caught by the profile gate, because absent != green. Part (c) is mostly unreachable, because the cut must run in a clean `git worktree add --detach build/cut-tree` (cut_release.sh:230), so build/acl2 is normally empty there. Part (b), a stale green whose dependency moved, is fully reachable and counts as green in the release gate.",
  "scenario": "(a) A lane adds books/new-thing.lisp to ACL2_BOOKS and nobody certifies it. Its verdict is \"absent\" (or \"never\" after a failed-to-attribute run), counts[\"red\"] stays 0, and `green_check.py --strict` exits 0. cut_release.sh then reports the closure as certified. (b) A book in the default image closure has a green run at its own bytes, but a dependency changed since that run. audit() sets verdict \"green\" with deps_moved non-empty (:303-306), and profile_gate counts it green. (c) The only green is a local build/acl2 manifest that was never filed (archived=False). The profile gate accepts it as well. So the release cut certifies a closure whose certificate key no committed manifest backs.",
  "severity": "high",
- "sha": "e6b827d21",
+ "sha": "e6b827d210ec8d539250ccf668a8afddb7b756fb",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "Release gate green_check --strict / --profile passes books that are never certified, stale, or green only in a local unarchived manifest",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

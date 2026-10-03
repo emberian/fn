@@ -8,13 +8,14 @@
  "locus": "generators",
  "notes": [
   "10-02 22:19 narrowed to *fn-di-fail-loud-primitives* (boundp-global, boundp-global1); teeth on both raw-with paths (definterface-tests fn-dit-r-bounded, def-carried-tests r72); in the REPL",
-  "10-02 22:32 narrowed to *fn-di-fail-loud-primitives*; teeth on both raw-with paths; four test books green in REPL (dit 93, cdt 216, cwt 108, ort 31); certify hbox in flight"
+  "10-02 22:32 narrowed to *fn-di-fail-loud-primitives*; teeth on both raw-with paths; four test books green in REPL (dit 93, cdt 216, cwt 108, ort 31); certify hbox in flight",
+  "2026-10-03 Codex source reconciliation: 67ee29e371e9415b7eb290722e7aa16e26934a97 is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "def-entry",
  "severity": "high",
- "sha": "67ee29e37",
+ "sha": "67ee29e371e9415b7eb290722e7aa16e26934a97",
  "source": "coordinator",
- "state": "ready",
+ "state": "landed",
  "title": "definterface raw-with drops predefined-headed guard conjuncts (unsound raw dispatch)",
- "updated": "2026-10-03T02:32:11Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

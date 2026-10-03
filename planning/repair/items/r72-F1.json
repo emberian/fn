@@ -10,14 +10,15 @@
  "locus": "log-kernel",
  "notes": [
   "sweep-store priority",
-  "10-02 22:33 on lane/sweep-store; natives pending (interfaces.json regen needed)"
+  "10-02 22:33 on lane/sweep-store; natives pending (interfaces.json regen needed)",
+  "2026-10-03 Codex source reconciliation: ecf40c2bd12ca0794bad10acdbeb028256e08453 is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-store",
  "severity": "high",
  "sha": "ecf40c2bd12ca0794bad10acdbeb028256e08453",
  "slice": "log-kernel",
  "source": "r72",
- "state": "ready",
+ "state": "landed",
  "title": "fnn-log-complete-rotation (bug)",
- "updated": "2026-10-03T02:33:52Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

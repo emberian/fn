@@ -8,13 +8,14 @@
  "locus": "generators",
  "note": "fn-cw-conjunct-class: the (getpropc head 'predefined) :skipped arm precedes fn-di-non-stobj-vars; (< n 100) over formal n is skipped, not refused; move the argument check first (liaison review of c1d69fb6a)",
  "notes": [
-  "10-02 22:19 argument check moved above the primitive skip; in the REPL with X06"
+  "10-02 22:19 argument check moved above the primitive skip; in the REPL with X06",
+  "2026-10-03 Codex source reconciliation: 67ee29e371e9415b7eb290722e7aa16e26934a97 is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "def-entry",
  "severity": "medium",
- "sha": "67ee29e37",
+ "sha": "67ee29e371e9415b7eb290722e7aa16e26934a97",
  "source": "liaison",
- "state": "ready",
+ "state": "landed",
  "title": "def-carried-writer skips a predefined-headed guard conjunct over a host-passed argument before the :argument refusal",
- "updated": "2026-10-03T02:32:11Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

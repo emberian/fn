@@ -6,13 +6,14 @@
  "locus": "served-books",
  "notes": [
   "10-02 22:31 sent to runner for the all-onto-dev merge; scl-a3 natives + f323 pending",
-  "10-02 22:33 sent to runner at 45c9ec0f6; scl-a3 natives + farm run-20261003T020434Z-f323 unharvested (wind-down)"
+  "10-02 22:33 sent to runner at 45c9ec0f6; scl-a3 natives + farm run-20261003T020434Z-f323 unharvested (wind-down)",
+  "2026-10-03 Codex source reconciliation: 45c9ec0f6053a73e56d162ae797cc5a9dbc9f7fb is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "served-catalog-live",
  "severity": "high",
- "sha": "45c9ec0f6",
+ "sha": "45c9ec0f6053a73e56d162ae797cc5a9dbc9f7fb",
  "source": "over_pins",
- "state": "ready",
+ "state": "landed",
  "title": "OVER/XOVER on the cursor on configured nodes (Xref arm), O(1) quantum guard (r67 F1), drain idle progress (r67 F3/c07), off-lock cold miss in the quantum (r67 F2)",
- "updated": "2026-10-03T02:33:05Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

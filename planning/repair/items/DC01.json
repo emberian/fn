@@ -8,13 +8,14 @@
  "locus": "served-books",
  "notes": [
   "10-02 22:29 check-fast-lane at 61e7d8751 green except the three pre-existing origin/dev reds (spec_cite_check CL20, test_roots_check withdrawal-index-carried-tests, main_last_check test_depth_check.py); manifest certify-20261002T232442Z-2105883; served path unchanged (no host file; protocol-table byte-identical)",
-  "10-02 22:30 merged into next"
+  "10-02 22:30 merged into next",
+  "2026-10-03 Codex source reconciliation: a359028122a703466a80851b8dffd786c664a8c2 is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "def-command",
  "severity": "high",
- "sha": "a35902812",
+ "sha": "a359028122a703466a80851b8dffd786c664a8c2",
  "source": "coordinator",
- "state": "ready",
+ "state": "landed",
  "title": "A served NNTP command is a declaration: books/protocol-served-table.lisp (the served columns) + books/protocol-served.lisp (the generated served dispatcher, per-form view contracts, the case-split keystone, the view-site keystones) + the spec's generated served command table + the view-policy debt ratchet; XPAT, GROUP, OVER, XOVER declared",
- "updated": "2026-10-03T02:30:34Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

@@ -12,16 +12,17 @@
  "locus": "peer-services",
  "notes": [
   "10-02 22:21 t45 lane/codex-fence-boundary: one READY covers r71-F1/F2 S015-S020 S023 X08 r72-F6",
-  "10-02 22:33 t45 lane/codex-fence-boundary 8e8041218: structure tests 15/15 local, program check PASS; natives NOT green yet (the 6ea819b75 run aborted at interfaces-check before the regen commit; relaunch at 8e8041218); farm run-20261003T022549Z-f421 certified the books before the last comment-only change"
+  "10-02 22:33 t45 lane/codex-fence-boundary 8e8041218: structure tests 15/15 local, program check PASS; natives NOT green yet (the 6ea819b75 run aborted at interfaces-check before the regen commit; relaunch at 8e8041218); farm run-20261003T022549Z-f421 certified the books before the last comment-only change",
+  "2026-10-03 Codex source reconciliation: 8e80412185de20e3c22e884bbcae948354e1676b is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "failure-scope",
  "reviewer": "fnn-tcl-stage (tcpcl.lisp:264-274) turns an fsync/rename os-error into fnn-indeterminate. fnn-tcl-act re-signals it (tcpcl.lisp:396-403), so it leaves fnn-tcl-session. The listen handler (tcpcl.lisp:635-643) catches it, only sets code to 3, and fnn-accept-loop (io.lisp:5721-5723) goes on accepting when ONCE=0. The next session's (setq code (fnn-tcl-exit-code conn)) overwrites that 3, so the process may not exit 3 at all. fnn-store-fault is a subclass of fnn-store-error (io.lisp:77), so faults map to +fnn-exit-refused+. This contradicts the file header (tcpcl.lisp:22-25) and the re-signal pattern in bp.lisp:785-791. Severity is limited because tcpcl listen is the lab/interop verb, not the served node.",
  "scenario": "1) `tcpcl listen PORT 0 ...`: fnn-tcl-stage's fnn-fsync-dir fails (EIO), which raises fnn-indeterminate. The handler sets code 3 and the loop accepts the next peer, which stages and renames more files into the same spool after an ambiguous persistence failure. The process never exits 3. 2) With ONCE=1, an internal fault (for example `TCPCL delivery result did not match held final ACK` or an invalid spool plan) exits with the refused code. A fault looks like an ordinary refusal.",
  "severity": "medium",
- "sha": "8e8041218",
+ "sha": "8e80412185de20e3c22e884bbcae948354e1676b",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "tcpcl listen reports a fault as refused and keeps accepting after an uncertain staging barrier",
- "updated": "2026-10-03T02:33:24Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

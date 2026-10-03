@@ -10,15 +10,16 @@
  "line": "266",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-02 22:29 merged into next e6b827d21"
+  "10-02 22:29 merged into next e6b827d21",
+  "2026-10-03 Codex source reconciliation: e6b827d210ec8d539250ccf668a8afddb7b756fb is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-gates",
  "reviewer": "test_native_open_depth.py:241-276: an EOF or OSError on any command, with the owner alive, prints '(closed)' and reconnects. Only owner deaths are recorded, and :202 asserts only that list. Reply codes are printed, never asserted. The test's stated scope is 'commands or reports that stopped the owner' (plus open timing), so this is a weak test, not a hidden failure.",
  "scenario": "At a deep store, OVER/LISTGROUP/HDR overrun a work bound and the owner closes the session (EOF) instead of answering. Or the client's 1800 s read times out with OSError while the owner is still alive. Either way run() prints `(closed)`, reconnects and moves on. The test asserts only that the owner did not die, so a command that never returns a reply at depth passes. The comment admits this is meant only for QUIT, but it applies to every command. Reply codes are not checked either, so a 503 for every command passes.",
  "severity": "low",
- "sha": "e6b827d21",
+ "sha": "e6b827d210ec8d539250ccf668a8afddb7b756fb",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "The open-depth sweep counts any connection the server drops while still alive as success",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

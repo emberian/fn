@@ -10,15 +10,16 @@
  "line": "452",
  "locus": "operator-verbs",
  "notes": [
-  "10-02 22:22 fnn-operator-apply-admin: one liveness dispatch for every mutating admin verb"
+  "10-02 22:22 fnn-operator-apply-admin: one liveness dispatch for every mutating admin verb",
+  "2026-10-03 Codex source reconciliation: 8acfdeba770c4c725e0447f86b7b573d5fd617e2 is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-ops",
  "reviewer": "operator.lisp:452-461 (account invite) and peer-invite.lisp:475-477 (peer login) choose the live path from fnn-olo-socket-present alone. They never call fnn-olo-admin-observe, which lets ACL2 decide :live/:stale/:held and removes a stale node (operator.lisp:385-388, control-transport.lisp:66-84). After a crash leaves the socket node behind, fnn-operator-live-admin (operator-control-client.lisp:38) tries fnn-control-admin, the connect fails, and the verb returns non-ok. The offline arm is never taken until another verb or an owner start clears the node. operator.lisp:714 and 798 use the same pattern.",
  "scenario": "The owner crashes and leaves its socket node behind. `account invite` sees a socket and sends to it. The connect fails, so the invite is refused or uncertain and never takes the offline arm, even though no owner holds the lock. Every retry fails the same way until some other verb happens to remove the stale node. If the result is uncertain, the invitation code is never printed. `peer login` fails the same way after it has already rewritten FILE (see the previous finding).",
  "severity": "low",
- "sha": "8acfdeba7",
+ "sha": "8acfdeba770c4c725e0447f86b7b573d5fd617e2",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "`account invite` and `peer login` bypass the PKT-344 liveness decision and use bare socket presence",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

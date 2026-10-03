@@ -12,16 +12,17 @@
  "locus": "reclaim-publication",
  "notes": [
   "10-02 22:21 t45 lane/codex-fence-boundary: one READY covers r71-F1/F2 S015-S020 S023 X08 r72-F6",
-  "10-02 22:33 t45 lane/codex-fence-boundary 8e8041218: structure tests 15/15 local, program check PASS; natives NOT green yet (the 6ea819b75 run aborted at interfaces-check before the regen commit; relaunch at 8e8041218); farm run-20261003T022549Z-f421 certified the books before the last comment-only change"
+  "10-02 22:33 t45 lane/codex-fence-boundary 8e8041218: structure tests 15/15 local, program check PASS; natives NOT green yet (the 6ea819b75 run aborted at interfaces-check before the regen commit; relaunch at 8e8041218); farm run-20261003T022549Z-f421 certified the books before the last comment-only change",
+  "2026-10-03 Codex source reconciliation: 8e80412185de20e3c22e884bbcae948354e1676b is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "failure-scope",
  "reviewer": "owner.lisp:5745-5768: the install, the swap and fnn-owner-reclaim-barriers all run in a bare fnn-owner-gated. The macro at 1573-1605 neither fences nor checks STOPPING, and the body is not wrapped in fnn-owner-shared-action-locked. On fnn-os-error, reclaim-barriers raises fnn-indeterminate (5615-5619). The call chain is admin.lisp:577 to fnn-owner-reclaim-request to fnn-owner-reclaim-pass (admin.lisp:437). control.lisp:369-372 then logs 'owner fenced' and answers :uncertain, but nothing called stop-service. (b) is also true: in the cleanup at 5792-5798, the indeterminate raise when installed and not swapped comes before the orcp-finish form, so finish is skipped and nothing stops the service. (c) is also true: fnn-owner-gated never checks STOPPING, so the swap quantum can install after a fence. The triggers are rare (EIO or an ACL2 swap fault during a reclaim), so severity is medium.",
  "scenario": "(a) The checkpoint is installed and the owner, catalog and history are swapped, then a recovery barrier gets an fnn-os-error. fnn-indeterminate propagates out of the gated body, which never calls fnn-owner-stop-service-locked. The control handler logs 'owner fenced' and answers :uncertain, but STOPPING is nil and the node keeps serving a swapped owner that is not :ready. Per the comment at 5606-5607, every later POST then waits forever. (b) fn-owner-orcp-swap faults after fnn-state-checkpoint-install. The cleanup raises 'recovery required' outside any lock, no stop happens, and the old state is served over a new durable publication. The raise also skips fn-owner-orcp-finish, so every later `store reclaim` answers :in-flight. (c) fnn-owner-gated never checks STOPPING, so a pass already past capture still installs a new checkpoint after an uncertain batch fenced the store at exit 3.",
  "severity": "medium",
- "sha": "8e8041218",
+ "sha": "8e80412185de20e3c22e884bbcae948354e1676b",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "Reclaim recovery events are raised from unfenced gated bodies and cleanup: the control reply says 'owner fenced' while the node keeps serving",
- "updated": "2026-10-03T02:33:24Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

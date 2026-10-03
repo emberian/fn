@@ -10,14 +10,16 @@
  "line": "461",
  "locus": "operator-verbs",
  "notes": [
-  "8acfdeba7"
+  "8acfdeba7",
+  "2026-10-03 Codex source reconciliation: 8acfdeba770c4c725e0447f86b7b573d5fd617e2 is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-ops",
  "reviewer": "peer-invite.lisp:458 calls fnn-pinv-write-private, which renames the new credentials over FILE, before the peer-set plan is built and checked (461-469) and before the live owner answers (470-474). If ACL2 refuses the plan or the owner refuses, the command exits refused, but FILE has already been replaced. If FILE was an existing peer's login file, that peer's next dial uses the new secret. In fnn-pinv-write-private (around 440-450), a short write raises fnn-refuse inside the unwind-protect, which only closes the fd, so the tmp file is left behind. There is also no directory fsync after the rename.",
  "scenario": "`peer login NAME LOGIN FILE`, where FILE is the login file a configured peer already uses, and the plan is refused (for example NAME is not a configured peer, or the path is refused by the grammar). The file has already been renamed over with the new credentials, so the existing peer's next dial uses a password the remote side does not have. The command exits refused, which tells the operator nothing changed. fnn-pinv-write-private also leaves path.tmp-PID behind on a short write (no unlink) and does not fsync the directory after the rename.",
  "severity": "medium",
+ "sha": "8acfdeba770c4c725e0447f86b7b573d5fd617e2",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "`peer login` replaces the credential file before checking the `peer set` plan",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

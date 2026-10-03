@@ -1,0 +1,17 @@
+{
+ "acceptance": "Failed/timed-out join with live child; child exits before spawn returns; failed spawn; held final cleanup; duplicate receipt; uncertain completion during stop. Both observation and ownership are checked.",
+ "category": "codex-orientation",
+ "detail": "On lane/wrapper 4e0e11c78 fn-fs-actor-step turns (:joined nil) into joined/fault and registered-p becomes nil. Retain registration until observed physical termination, escalating fault separately. Reserve identity before spawn or use a start latch so early child exit is retained.",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/failure-scope.lisp",
+ "id": "NIGHT-ACTOR-JOIN",
+ "locus": "lifecycle",
+ "notes": [],
+ "owner": "host-deputy",
+ "severity": "high",
+ "source": "planning/overnight-2026-10-03.md",
+ "state": "open",
+ "title": "Prototype actor join failure discharges a potentially live worker registration",
+ "updated": "2026-10-03T05:14:09Z"
+}

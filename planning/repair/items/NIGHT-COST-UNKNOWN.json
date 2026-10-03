@@ -1,0 +1,17 @@
+{
+ "acceptance": "Unknown leaf -> declared partial callee -> caller remains unaccounted; fully accounted counterpart clears unknowns; generated declarations report the correct set.",
+ "category": "codex-orientation",
+ "detail": "fn-cost-call existing fn-cost table row arm returns the twin with nil unknowns. Propagate unresolved dependencies so an already declared partial callee cannot make its caller appear fully accounted.",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/def-cost.lisp",
+ "id": "NIGHT-COST-UNKNOWN",
+ "locus": "generators",
+ "notes": [],
+ "owner": "served-deputy",
+ "severity": "medium",
+ "source": "planning/overnight-2026-10-03.md",
+ "state": "open",
+ "title": "Derived callee cost drops transitive unresolved dependencies",
+ "updated": "2026-10-03T05:14:09Z"
+}

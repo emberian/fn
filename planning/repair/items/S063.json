@@ -10,15 +10,16 @@
  "line": "194",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-02 22:29 merged into next e6b827d21"
+  "10-02 22:29 merged into next e6b827d21",
+  "2026-10-03 Codex source reconciliation: e6b827d210ec8d539250ccf668a8afddb7b756fb is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-gates",
  "reviewer": "tools/image_set.py:185-232: publish takes every build/FILE plus FILE.core that is_file() (which follows symlinks), copy2 follows links, and it writes TREE_SHA=sha. It never checks build/REUSED_SOURCE (written by link_run :332) or whether the entries are symlinks placed by place_links (:279-286), which both link() and link_run() use (hbox_native.sh:543,549). Catalogs written by link carry the source's 'old' catalog, so wrong_catalog passes. Publishing from a tree whose images were linked from set OLD or run RUN therefore labels OLD's cores as the new sha. Nothing guards against it. Whether the batch runner actually publishes from such a tree is operational, but batch-bc.txt:3 directs a publish for every pushed head.",
  "scenario": "The batch runner is told to 'publish the image set for every pushed dev head ... from the native tree' (build/coordinator/queue/batch-bc.txt:3). For a tests-only tranche the native run used --image-set OLD or --reuse-image RUN, so TREE/build/fn-host* are symlinks into /tank/fn/images/OLD. publish TREE NEW then copies OLD's cores into /tank/fn/images/NEW and records TREE_SHA=NEW. Its SHA256SUMS verify, and every later `hbox_native --image-set NEW` runs lanes against images built from OLD's source while the evidence says NEW. Images left in a reused tree from an earlier head are published under the new sha the same way.",
  "severity": "medium",
- "sha": "e6b827d21",
+ "sha": "e6b827d210ec8d539250ccf668a8afddb7b756fb",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "image_set publish labels whatever is in TREE/build as SHA, including images symlinked in from another set or run",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

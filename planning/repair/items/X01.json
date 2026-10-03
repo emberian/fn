@@ -7,13 +7,14 @@
  "line": "78",
  "locus": "reclaim-publication",
  "notes": [
-  "10-02 22:33 BP slot = canonical :forward pins via bindings; keystones + teeth REPL-admitted; recert run-20261003T020256Z-76e2 unharvested"
+  "10-02 22:33 BP slot = canonical :forward pins via bindings; keystones + teeth REPL-admitted; recert run-20261003T020256Z-76e2 unharvested",
+  "2026-10-03 Codex source reconciliation: 2f27ae7292dd1069b5d7dd21b8158cd5b3b20f22 is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "reclaim-retention",
  "severity": "high",
- "sha": "2f27ae729",
+ "sha": "2f27ae7292dd1069b5d7dd21b8158cd5b3b20f22",
  "source": "coordinator",
- "state": "ready",
+ "state": "landed",
  "title": "reclaim ignores BP retention: fn-rcl-store-holders returns nil BP slot",
- "updated": "2026-10-03T02:33:28Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

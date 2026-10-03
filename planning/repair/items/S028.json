@@ -11,15 +11,17 @@
  "line": "386",
  "locus": "operator-verbs",
  "notes": [
-  "8acfdeba7"
+  "8acfdeba7",
+  "2026-10-03 Codex source reconciliation: 8acfdeba770c4c725e0447f86b7b573d5fd617e2 is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-ops",
  "reviewer": "fnn-os-error is a plain error, not a subclass of fnn-store-error (io.lisp:124). fnn-config-record-observation (io.lisp:2121-2144) calls fnn-check-regular and fnn-read-regular-bounded (io.lisp:639, which opens through fnn-open and so raises fnn-os-error) inside the handler-case at admin.lisp:258. That handler catches only fnn-store-error. The os-error therefore reaches fnn-owner-shared-action-locked (owner.lisp:1801-1806), which stops the owner with +fnn-exit-fault+ and re-raises. control.lisp:386-390 then answers (:reason :refused :os-error), so the operator is told REFUSED for a node that has stopped as a FAULT. The comment at control.lisp:369-371 lists only indeterminate and fault as the cases that fence the owner. A socket-error raised inside a serialized thunk takes the same route.",
  "scenario": "A live admin request (`peer add`, `account ...`, a POST via control) reaches fnn-owner-live-reconfigure-locked, and fnn-config-record-observation -> fnn-read-regular-bounded fails with EMFILE or EIO, which raises fnn-os-error. The owner wrapper stops the service with exit 4 and re-raises. The control worker's os-error clause then sends the operator REFUSED plus the reason os-error, which is exit 1 and means nothing happened, try again. In fact the node has stopped as a fault. The comment at 369-371 says only indeterminate and fault fence the owner, so it misses this path. A sb-bsd-sockets:socket-error signalled inside a serialized thunk takes the same route.",
  "severity": "medium",
+ "sha": "8acfdeba770c4c725e0447f86b7b573d5fd617e2",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "Control reply says REFUSED (exit 1) for an OS error after the owner already stopped itself as a FAULT",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

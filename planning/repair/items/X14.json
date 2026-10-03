@@ -9,14 +9,15 @@
  "locus": "cold-line",
  "notes": [
   "10-02 22:20 fix on lane/def-holder (c05 F1 checked exclusion): *fnn-extent-image-id* set at adoption; fnn-owner-release-extents faults by name before retiring if the image id is among the dropped or the previous checkpoint; declared as fn-pio-file-holds' :excluded root; native test_a_publication_never_retires_the_history_image (page_io) running next; lands with the cold-read instance (DH01)",
-  "10-02 22:33 in lane/def-holder 297e4f700 with DH01; the native witness test_a_publication_never_retires_the_history_image not yet run"
+  "10-02 22:33 in lane/def-holder 297e4f700 with DH01; the native witness test_a_publication_never_retires_the_history_image not yet run",
+  "2026-10-03 Codex source reconciliation: 297e4f700491ffe43fbd6b2cdaf3f6eb96f1d438 is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "def-holder",
  "severity": "high",
- "sha": "297e4f700",
+ "sha": "297e4f700491ffe43fbd6b2cdaf3f6eb96f1d438",
  "slice": "cold-line",
  "source": "coordinator",
- "state": "ready",
+ "state": "landed",
  "title": "fn-pgs-fill-realize preads off the lock with no row or lease (lock-check R3)",
- "updated": "2026-10-03T02:33:04Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

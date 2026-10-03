@@ -10,14 +10,15 @@
  "locus": "committer",
  "notes": [
   "10-02 22:22 READY 1: FNFD intents/resolutions are batch-job phases off the owner (lane/owner-offlock cc97926c1); natives running",
-  "10-02 22:31 pushed for merge; natives pending (hbox native-d7fe7f5c8474)"
+  "10-02 22:31 pushed for merge; natives pending (hbox native-d7fe7f5c8474)",
+  "2026-10-03 Codex source reconciliation: d7fe7f5c8474c518ea48bfd9e309b1eab72c423a is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "owner-offlock",
  "severity": "high",
- "sha": "d7fe7f5c8",
+ "sha": "d7fe7f5c8474c518ea48bfd9e309b1eab72c423a",
  "slice": "committer",
  "source": "r71",
- "state": "ready",
+ "state": "landed",
  "title": "fnn-owner-drain-one (bug)",
- "updated": "2026-10-03T02:31:49Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

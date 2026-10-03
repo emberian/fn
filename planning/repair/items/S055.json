@@ -11,15 +11,16 @@
  "locus": "gates-tests-packaging",
  "notes": [
   "lane/sweep-gates-prereq b0e1250b6 in BM 3",
-  "10-02 22:29 merged into next e6b827d21"
+  "10-02 22:29 merged into next e6b827d21",
+  "2026-10-03 Codex source reconciliation: e6b827d210ec8d539250ccf668a8afddb7b756fb is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-gates",
  "reviewer": "tools/check_steps.py:478-486 computes inputs_of only after process.wait(). FileMemo.digest (:275-293) restats size/mtime and rehashes, so it records the file's post-run content. hazards() (:496-529) runs after all steps. It only adds the writer to self.learned and prints a WARNING (:577-579), and never unlinks the reader's cache entry. On the next run, inputs_unchanged replays the reader's PASS against bytes it never judged. This holds when a parallel step that is not yet a known writer, or an outside edit, changes a read file during the run. The writer is serialized from the next run on, but the poisoned reader entry survives until the input changes again.",
  "scenario": "Step A (a reader such as current_view --check) reads planning/proofs.json at version v1 and passes. During the same parallel `make check`, step B (a writer not yet in WRITERS or writers.json), or a person or lane editing the worktree, rewrites proofs.json to v2 before A's key is computed. A's cache entry records digest(v2) with A's PASS. On the next `make check` proofs.json is still v2, so inputs_unchanged() is true and A is replayed as \"cached (inputs unchanged since <sha>)\" exit 0. A has never judged v2. The hazard run itself only prints a warning, so the stale verdict persists until v2 changes again. The only protection is a FORCE=1 run.",
  "severity": "medium",
- "sha": "e6b827d21",
+ "sha": "e6b827d210ec8d539250ccf668a8afddb7b756fb",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "check_steps caches a PASS under input digests taken after the step finished, including runs that hit a write hazard",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

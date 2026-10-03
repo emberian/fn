@@ -11,15 +11,16 @@
  "locus": "operator-verbs",
  "notes": [
   "10-02 22:22 committed; awaiting branch regen + natives (slow_disk)",
-  "10-02 22:32 merge-all; natives pending"
+  "10-02 22:32 merge-all; natives pending",
+  "2026-10-03 Codex source reconciliation: 15c695cebca2241fac689ee5f0a13de9d6da1a84 is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-ops",
  "reviewer": "The load order is build.lisp:526-543 (hybrid-control, peer-invite, keys, login-bindings, tls-reload), so tls-reload is the outermost handler. Each handler calls (fnn-octet-list frame) unconditionally whenever frame is fnn-octets: tls-reload.lisp:107, login-bindings.lisp:45, keys.lisp:66, peer-invite.lisp:240 (followed by up to 3 decodes) and hybrid-control.lisp:194 (followed by 5 decodes, all run before the cond). control.lisp:308 runs the chain for every frame, including operator posts, before the PRF-311 :busy shed at control.lisp:345-349. That contradicts the 'No list of the frame is built' comment at 276-278. Peer invite, accept and confirm, keys redecide, tls reload and hybrid author/enroll/revoke are mutating requests answered by the chain, so they are never shed as BUSY while the disk is stalled.",
  "scenario": "An operator `post` of an article near the profile bound (the control read bound is derived from the article bound) is turned into a cons list five separate times, about 16 bytes of cons per octet each time, and is run through about 11 ACL2 decoders before it reaches the request arm. That contradicts the D27 comment and costs O(article) allocation several times over. Because the chain runs before the disk-admit shed, mutating requests served by it are never answered BUSY while the disk is stalled: peer invite/accept/confirm (live reconfiguration), keys redecide, tls reload and hybrid `author` (an article submission). Instead they queue on the owner gate that the stalled barrier holds, against the PRF-311 comment at 338-344.",
  "severity": "medium",
- "sha": "15c695ceb",
+ "sha": "15c695cebca2241fac689ee5f0a13de9d6da1a84",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "Hybrid handler chain runs on every frame before the BUSY shed and converts the whole frame to a list about five times",
- "updated": "2026-10-03T02:32:09Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

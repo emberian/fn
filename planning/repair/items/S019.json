@@ -12,16 +12,17 @@
  "locus": "reclaim-publication",
  "notes": [
   "10-02 22:21 t45 lane/codex-fence-boundary: one READY covers r71-F1/F2 S015-S020 S023 X08 r72-F6",
-  "10-02 22:33 t45 lane/codex-fence-boundary 8e8041218: structure tests 15/15 local, program check PASS; natives NOT green yet (the 6ea819b75 run aborted at interfaces-check before the regen commit; relaunch at 8e8041218); farm run-20261003T022549Z-f421 certified the books before the last comment-only change"
+  "10-02 22:33 t45 lane/codex-fence-boundary 8e8041218: structure tests 15/15 local, program check PASS; natives NOT green yet (the 6ea819b75 run aborted at interfaces-check before the regen commit; relaunch at 8e8041218); farm run-20261003T022549Z-f421 certified the books before the last comment-only change",
+  "2026-10-03 Codex source reconciliation: 8e80412185de20e3c22e884bbcae948354e1676b is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "failure-scope",
  "reviewer": "owner.lisp:5127-5131: fnn-store-indeterminate from fnn-log-make-durable or fnn-state-checkpoint-write is logged as 'CHECKPOINT auto failed', and the serious-condition clause absorbs any fault, so serving continues with no fence. The reseat fault in fnn-owner-release-extents is swallowed the same way at 5011-5012. Partly mitigated: the checkpoint is derived state, durablep stays nil so nothing is dropped, and dir-pending stays set (io.lisp fnn-log-make-durable), so the commit path's first fence retries the journal/ fsync. That retry after an EIO can report success on Linux (fsync error consumed), so a later acknowledgement may rest on a directory entry that is not durable. This violates the rule that an ambiguous persistence failure is a recovery event.",
  "scenario": "The journal directory fsync in fnn-log-make-durable returns EIO, or the checkpoint rename lands and its directory fsync fails. Both are fnn-store-indeterminate, which AGENTS.md calls a recovery event. Here they are logged as 'CHECKPOINT auto failed' and the owner keeps accepting POSTs on a filesystem whose last fsync was lost. A digest mismatch while reseating a just-written frame (fnn-extent-fault, a store fault that must be exit 4) or an fnn-fault from a malformed ACL2 answer is swallowed the same way, possibly after some frames were reseated in the live arena and others were not.",
  "severity": "medium",
- "sha": "8e8041218",
+ "sha": "8e80412185de20e3c22e884bbcae948354e1676b",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "Checkpoint publication and extent release swallow indeterminate fsync outcomes and store faults, then keep serving",
- "updated": "2026-10-03T02:33:24Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

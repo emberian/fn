@@ -10,15 +10,16 @@
  "line": "142",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-02 22:29 merged into next e6b827d21"
+  "10-02 22:29 merged into next e6b827d21",
+  "2026-10-03 Codex source reconciliation: e6b827d210ec8d539250ccf668a8afddb7b756fb is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-gates",
  "reviewer": "native_cuts.py:41-61: ALL_CUTS has no record-attempted, and native_operator_campaign.py:615 filters by name, so the test's cuts[\"record-attempted\"] at test_native_operator_campaign.py:146 raises KeyError. Its snapshot at native_operator_campaign.py:140-149 lists transactions/ and allocation-frontier.json, both absent on a log store, so after_again == after_first only really compares staging/. recover_counts[\"transactions\"] == 2 tracks the retired per-file layout.",
  "scenario": "On hbox with FN_NATIVE_IMAGES set, the only place it isn't skipped, the driver runs just recovery-stage-unlinked, and line 146 raises KeyError. The test can never pass, and it is skipped everywhere else, so it gives no signal. Fixing the cut name is not enough: the D25 cross-entry retry rows and the production-refusal `unchanged` row compare snapshots whose transactions and frontier are None on a log store. A retry that appended a duplicate record to journal/ would still compare equal; only staging/ is really checked. The same goes for `recover_counts[\"transactions\"] == 2`, which still tracks the per-file count.",
  "severity": "medium",
- "sha": "e6b827d21",
+ "sha": "e6b827d210ec8d539250ccf668a8afddb7b756fb",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "Operator-campaign test filters on a cut that no longer exists (KeyError wherever it runs), and its store-unchanged snapshots compare None to None",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

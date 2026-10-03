@@ -10,15 +10,16 @@
  "line": "196",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-02 22:29 merged into next e6b827d21"
+  "10-02 22:29 merged into next e6b827d21",
+  "2026-10-03 Codex source reconciliation: e6b827d210ec8d539250ccf668a8afddb7b756fb is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-gates",
  "reviewer": "packaging/install.sh:195-201 treats any 'health exit=' line as answered except not-running, fenced, 19 and an empty line. books/native-health.lisp:92-98 defines exits 20+ for exhausted (21), unqualified-profile (22), space-pressure, disk and the rest, and all of these return 0 from health_wait, so the upgrade exits 0. tools/deploy_fresh.sh:234-241 requires 0 and retries only 20. The two paths disagree. The function's intent is liveness ('the node answered'), and it prints the health line, so the impact is limited to the exit status misleading automation.",
  "scenario": "After --upgrade the new release starts, but its health answers 'health exit=22 state=unqualified-profile', 'exit=21 state=exhausted' or a disk/space-pressure state (books/native-health.lisp *fn-nh-states*, exits 20+). health_wait prints 'the node answered' and the upgrade exits 0. Automation or an operator reading the exit status records a successful upgrade on a node that is unhealthy. tools/deploy_fresh.sh:241 requires exit 0 for the same step, so the two deploy paths disagree on what 'up' means.",
  "severity": "low",
- "sha": "e6b827d21",
+ "sha": "e6b827d210ec8d539250ccf668a8afddb7b756fb",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "install.sh health_wait counts any health state other than not-running, fenced and 19 as success, including exhausted, unqualified-profile and disk",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

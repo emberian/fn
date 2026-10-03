@@ -10,15 +10,16 @@
  "line": "388",
  "locus": "operator-verbs",
  "notes": [
-  "10-02 22:22 OUT reserved O_EXCL before the owner records; fsync+dir fsync; friends_feed asserts"
+  "10-02 22:22 OUT reserved O_EXCL before the owner records; fsync+dir fsync; friends_feed asserts",
+  "2026-10-03 Codex source reconciliation: 8acfdeba770c4c725e0447f86b7b573d5fd617e2 is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-ops",
  "reviewer": "peer-invite.lisp:384-390 sends :issue to the owner, which records the invitation durably, before fnn-pinv-write-new (46-51) opens OUT with :if-exists :error. Nothing checks earlier whether OUT exists or is writable (no lstat or probe in fnn-pinv-invite). An existing or unwritable OUT therefore fails after the row is recorded and the signed document is lost. A retry draws a new nonce and records another orphan row. fnn-pinv-write-new only calls finish-output, with no fsync of the file or the directory. The record-first order is intentional per the comment, but a pre-check of OUT is missing. The impact is limited to orphan unconsumed invitation rows.",
  "scenario": "OUT already exists (a re-run with the same path) or is unwritable. The owner has durably published the invitation row, then with-open-file signals, and fnn-pinv-execute reports a fault (exit 4). The signed document is lost, a live unconsumed invitation row is left that nobody can present, and the operator's retry draws a new nonce, which adds another orphan row. On a crash after 'invitation ... out=' is printed, OUT can also vanish because it was never fsynced.",
  "severity": "low",
- "sha": "8acfdeba7",
+ "sha": "8acfdeba770c4c725e0447f86b7b573d5fd617e2",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "`peer invite` records the invitation with the owner before checking that it can write OUT",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

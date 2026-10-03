@@ -65,6 +65,10 @@ None of this is hidden: each item is in the ledger with its evidence and owner.
 
 ## 4. How the work is organized
 
+The current model roles, dispatch order and behavior-first operating contract are
+in [the overnight plan](planning/overnight-2026-10-03.md). Earlier role names below
+describe the previous team, not additional agents to launch.
+
 ### Roles
 - **Coordinator** (one session): priorities, decisions, conflicts. Does not relay routine messages.
 - **Runner** (one agent): the sole integrator of `origin/dev`.
@@ -84,8 +88,8 @@ acceptance test), or BRIDGE (live today, so a small fix now that the slice later
 New findings go into the ledger, not only into a message. Each lane holds at most two items in flight.
 
 ### The merge train: `origin/next`
-The runner merges each review-cleared READY into `origin/next` as it arrives; fast checks run continuously on
-its tip; a breaking merge is reverted on `next` and returned to its lane. When `next` passes the fast checks
+The runner merges review-cleared work into `origin/next`; fast checks run once per batch.
+A breaking merge is repaired forward, with the affected candidate or claim held until repaired. When `next` passes the fast checks
 and one native and image run, `dev` fast-forwards to it and an image set is published. Base new work on
 `origin/next`.
 

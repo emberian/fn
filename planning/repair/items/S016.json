@@ -12,16 +12,17 @@
  "locus": "committer",
  "notes": [
   "10-02 22:21 t45 lane/codex-fence-boundary: one READY covers r71-F1/F2 S015-S020 S023 X08 r72-F6",
-  "10-02 22:33 t45 lane/codex-fence-boundary 8e8041218: structure tests 15/15 local, program check PASS; natives NOT green yet (the 6ea819b75 run aborted at interfaces-check before the regen commit; relaunch at 8e8041218); farm run-20261003T022549Z-f421 certified the books before the last comment-only change"
+  "10-02 22:33 t45 lane/codex-fence-boundary 8e8041218: structure tests 15/15 local, program check PASS; natives NOT green yet (the 6ea819b75 run aborted at interfaces-check before the regen commit; relaunch at 8e8041218); farm run-20261003T022549Z-f421 certified the books before the last comment-only change",
+  "2026-10-03 Codex source reconciliation: 8e80412185de20e3c22e884bbcae948354e1676b is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "failure-scope",
  "reviewer": "io.lisp:77,92: fnn-store-fault and fnn-store-indeterminate are both subclasses of fnn-store-error, so the first clause at owner.lisp:3704 catches them. Faults raised inside fnn-owner-shared-action-locked (1771-1802) have already fenced the owner before they reach this handler, so those are harmless. Several faults in fnn-owner-commit-pipeline are raised outside it and are not fenced: fn-otb-issue at 3461-3462; fnn-owner-disk-event's :fault or malformed-word faults at 1462-1466 (called at 3471, 3504, 3507 and 3537); fnn-owner-commit-wake at 3333; fnn-owner-stall-release at 3528; fnn-owner-complete-generation at 3589, which runs before the COMPLETE gate. In those cases the committer returns nil, nothing stops the service, and the syncer and the in-flight phase are never collected. The COMPLETE's unwind-protect only covers faults raised after its gate. All of the triggers are ACL2 verdicts the host treats as defects (malformed or :fault), so this needs a core defect to happen. The containment for exactly that case is broken, though.",
  "scenario": "Any fnn-fault on these paths (a malformed ledger verdict, malformed stall releases, a :fault disk or commit event) is a subclass of fnn-store-error. The first handler-case clause catches it, so the committer returns nil. fnn-owner-fault-service never runs: no stop, no exit 4, and no 'owner core/store fault' line. The batch stays in flight in ACL2's scheduler, so the gate keeps admitting only :inspect, :commit and :reader. Every poster, control and transit quantum waits forever, nothing commits again, and the node looks alive. The handler meant for a refusal also absorbs the two conditions that must fence (exit 3 and exit 4).",
  "severity": "medium",
- "sha": "8e8041218",
+ "sha": "8e80412185de20e3c22e884bbcae948354e1676b",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "Committer swallows every store fault and indeterminate as 'service stopped': the committer thread dies silently and the gate is left with a batch in flight",
- "updated": "2026-10-03T02:33:24Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

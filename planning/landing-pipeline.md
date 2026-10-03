@@ -36,6 +36,16 @@ at the end; a lane with more than two unlanded READY-able items stops starting n
 - origin/next is the integration branch. The runner merges each review-cleared READY into next as it arrives.
 - Ledger states: `ready` = merged into origin/next; `landed` = on origin/dev. A lane's own branch being done is
   `in-progress` until the runner merges it.
-- Fast checks run continuously on next's tip; a red pass reverts the breaking merge on next and returns it to its lane.
+- Fast checks run once per integration batch. A red pass stays visible and is fixed forward; it blocks the affected candidate/claim without reverting work or freezing unrelated lanes.
 - next fast-forwards to dev when its tip passes fast checks AND the batch native/image run; the image set is published then.
 - Lanes base new work on origin/next (it has everyone's merged fixes hours before dev).
+
+## Current operating contract
+
+[The overnight plan](overnight-2026-10-03.md) supplies the current roster,
+resource budget and source coordinates. Behavior-first work may land with exact
+`proof-owed` ledger entries; whole-tree certification does not gate source merges.
+Image/native claims still require matching evidence, including when image book
+closures change without host Lisp edits. One integrator owns next/dev. Do not
+transfer an image verdict to a different source label or call a suite with known
+failed modules green. A source-landed ledger item is not proof/native completion.

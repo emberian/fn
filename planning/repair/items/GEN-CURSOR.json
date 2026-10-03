@@ -5,11 +5,13 @@
  "id": "GEN-CURSOR",
  "locus": "generators",
  "note": "after GEN-CARRIED-VIEW lands; DEF-COMMAND owns the :quantum column, progress effect and off-lock rule",
- "notes": [],
+ "notes": [
+  "2026-10-03 Astra decision: metadata NEWNEWS is first served instance. Visits and bytes separately bounded; preserve response residual and snapshot. Fewer than eight rows is not termination: shared cache eviction and multiple entries per article require saved progress or owned dependencies. HDR/XPAT follow as cold-data instance."
+ ],
  "owner": "generators",
  "severity": "medium",
  "source": "served-catalog-live-finding",
  "state": "open",
  "title": "def-cursor: the resumable-continuation generator (step, run = reference, per-quantum VISIT bound, residual, progress); instances fn-nnw and OVER's fn-ovw",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

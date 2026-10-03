@@ -11,15 +11,16 @@
  "locus": "connections",
  "notes": [
   "lane/sweep-ops 8aa451848",
-  "10-02 22:32 pushed for merge-all at lane/sweep-ops cc4ef2db6; heap native pending"
+  "10-02 22:32 pushed for merge-all at lane/sweep-ops cc4ef2db6; heap native pending",
+  "2026-10-03 Codex source reconciliation: e5e8b2e5c070a05b08fb28155831321d1f07e0ad is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-ops",
  "reviewer": "fnn-owner-attempt-served (2512) converts the payload with (fnn-octet-list payload) for fn-owner-login-gate. fnn-owner-attempt-transit then builds a second list at 2208 (*fnn-owner-payload-list*) for control-filing, carrier-form and carrier-plan. A grep over host/, books/ and tools/ finds no caller of fn-owner-login-gate-buffer, fn-owner-control-filing-buffer, fn-owner-peer-carrier-form-buffer or fn-owner-peer-carrier-plan-buffer, other than their definitions (owner-host.lisp:3775-3795) and the comments in books/article-buffer.lisp. So the owner-host.lisp:3767-3774 comment saying they are 'Called by ... fnn-owner-attempt-served and fnn-owner-attempt-transit through fnn-core-buffer-state' is false. The served path builds two full cons lists of the article under the owner mutex, against D27. The 'converted once' comment at 2205-2207 is also wrong, because the gate converted the payload separately.",
  "scenario": "A client POSTs an article at the profile's size bound, e.g. 10 MB. Under the owner mutex the login gate conses a 10M-element list (about 160 MB on 64-bit SBCL), then fnn-owner-attempt-transit conses a second one (about 160 MB more) for filing, carrier form and plan. Only after that does fnn-owner-attempt fill the octet buffer. Peak heap per POST is about 32x the article, the owner is held for the whole allocation and GC, and that violates D27 (no octet lists on the served path) while owner-host.lisp's comment claims the opposite.",
  "severity": "high",
- "sha": "e5e8b2e5c",
+ "sha": "e5e8b2e5c070a05b08fb28155831321d1f07e0ad",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "Served POST builds the whole article as cons lists twice under the owner mutex; the D27 buffer twins documented as called from here have no caller",
- "updated": "2026-10-03T02:32:08Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

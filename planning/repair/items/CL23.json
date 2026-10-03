@@ -7,12 +7,14 @@
  "id": "CL23",
  "line": "",
  "locus": "gates-tests-packaging",
- "notes": [],
+ "notes": [
+  "2026-10-03 Codex source reconciliation: 932678472e231d9e44fdd78f86a6516f03dd7e25 is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
+ ],
  "owner": "sweep-gates",
  "severity": "medium",
- "sha": "932678472",
+ "sha": "932678472e231d9e44fdd78f86a6516f03dd7e25",
  "source": "check-lane-355a5c843",
- "state": "ready",
+ "state": "landed",
  "title": "check-lane red: alphabet_check",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

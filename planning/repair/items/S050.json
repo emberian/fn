@@ -11,15 +11,16 @@
  "locus": "reclaim-publication",
  "notes": [
   "ctx free measured; READY pending",
-  "10-02 22:33 fn-rclp-ctx-free/fn-owner-orc-ctx-free + status frees holders; 50 passes: 0 growth freed vs 672k slots unfreed; driver call is arena-forget's"
+  "10-02 22:33 fn-rclp-ctx-free/fn-owner-orc-ctx-free + status frees holders; 50 passes: 0 growth freed vs 672k slots unfreed; driver call is arena-forget's",
+  "2026-10-03 Codex source reconciliation: 2f27ae7292dd1069b5d7dd21b8158cd5b3b20f22 is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "reclaim-retention",
  "reviewer": "fn-rclp-index-into (store-reclaim-pack.lisp:84-89) builds a fast alist with hons-acons over every article. fn-rclp-ctx-expiring stores it in the ctx (:631-638). The owner builds a fresh ctx for each dry run or recorded reclaim (owner.lisp:5476, 5674, through fn-owner-orc-ctx at owner-host.lisp:1038-1042). Nothing in the reclaim, expiry or owner paths calls fast-alist-free. The codebase frees fast alists explicitly elsewhere (peer-feed.lisp:275, expiry.lisp:355, served-catalog.lisp:2569), which shows the hash tables are not reclaimed when the alist is simply dropped. Each owner pass therefore leaves an index of every article behind.",
  "scenario": "A node with 5M articles runs `store reclaim --recorded`, or the owner's dry-run reclaim, once a day. Each pass allocates a 5M-entry hash table in ACL2's fast-alist table and norms 5M Message-ID strings. ACL2 keeps a fast alist's hash table reachable until fast-alist-free (or until the alist is extended), so dropping the ctx does not release it. Heap use climbs by hundreds of MB per pass until the owner hits its dynamic-space limit.",
  "severity": "medium",
- "sha": "2f27ae729",
+ "sha": "2f27ae7292dd1069b5d7dd21b8158cd5b3b20f22",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "Every reclaim context builds a fast alist of all articles (hons-acons) that is never freed: it leaks in the long-running owner on each reclaim and dry run",
- "updated": "2026-10-03T02:33:28Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

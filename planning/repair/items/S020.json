@@ -12,16 +12,17 @@
  "locus": "reclaim-publication",
  "notes": [
   "10-02 22:21 t45 lane/codex-fence-boundary: one READY covers r71-F1/F2 S015-S020 S023 X08 r72-F6",
-  "10-02 22:33 t45 lane/codex-fence-boundary 8e8041218: structure tests 15/15 local, program check PASS; natives NOT green yet (the 6ea819b75 run aborted at interfaces-check before the regen commit; relaunch at 8e8041218); farm run-20261003T022549Z-f421 certified the books before the last comment-only change"
+  "10-02 22:33 t45 lane/codex-fence-boundary 8e8041218: structure tests 15/15 local, program check PASS; natives NOT green yet (the 6ea819b75 run aborted at interfaces-check before the regen commit; relaunch at 8e8041218); farm run-20261003T022549Z-f421 certified the books before the last comment-only change",
+  "2026-10-03 Codex source reconciliation: 8e80412185de20e3c22e884bbcae948354e1676b is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "failure-scope",
  "reviewer": "In fnn-owner-maybe-publish-quantum, fnn-log-rotate (5234-5235) runs inside a bare fnn-owner-gated (5212), and fault/indeterminate are re-raised with no fenced boundary. The gated macro (1573-1605) releases the owner mutex during the unwind with STOPPING still nil. Mux and committer quanta can then run before fnn-owner-run's cleanup stop, whose window is only as long as the unwind. On the publisher-thread path (5162) the error is unhandled under --disable-debugger and exits the process with code 1. The 'exit code never set' part depends on the top-level classification, which I did not trace. The unfenced mutex release is real. fnn-log-rotate (io.lisp) does raise fnn-indeterminate for an uncertain rename.",
  "scenario": "A rename or directory fsync fails during the capture's rotation. The re-raised fnn-store-indeterminate unwinds through fnn-owner-gated, which releases the owner mutex with STOPPING still nil. Queued reader and poster quanta are admitted and append to a log whose rotation outcome is unknown, before anything fences. On the accept-loop path the condition then unwinds fnn-owner-run with the service exit code never set to exit 3. On the publisher-thread path (5162) it is an unhandled error in a non-main thread.",
  "severity": "medium",
- "sha": "8e8041218",
+ "sha": "8e80412185de20e3c22e884bbcae948354e1676b",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "Publication capture rotates the log in a bare fnn-owner-gated quantum: a rotation fault or indeterminate escapes without fencing the owner",
- "updated": "2026-10-03T02:33:24Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

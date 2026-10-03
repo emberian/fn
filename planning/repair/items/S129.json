@@ -10,15 +10,16 @@
  "line": "652",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-02 22:29 merged into next e6b827d21"
+  "10-02 22:29 merged into next e6b827d21",
+  "2026-10-03 Codex source reconciliation: e6b827d210ec8d539250ccf668a8afddb7b756fb is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-gates",
  "reviewer": "classify (:80-89) maps both no-reply/timeout and any non-240/441 reply to UNEXPECTED, and verdict() at :652 treats UNEXPECTED exactly like UNCERTAIN, giving the passing verdicts died-present-identical/died-absent. A 5xx or 403 to a POST therefore passes once reread/resubmit agree. The judge only records reply text per exit code (:733-737); it never fails on an unexpected reply. The hung-owner part is weaker: every iteration SIGKILLs the owner on a schedule, so a hang usually ends as EOF -> UNCERTAIN anyway.",
  "scenario": "The owner stops answering a POST without dying, for example a wedged committer. The client's 60 s readline returns None, which classify() turns into UNEXPECTED. After the SIGKILL and restart the article rereads present and identical (or absent, and the resubmission is accepted), so the row is judged `died-present-identical`/`died-absent` and counts as a pass. The same happens to a reply such as `500 internal error` or `403` to the article: an unexpected outcome is merged into uncertain, which the project rules say must stay distinct.",
  "severity": "low",
- "sha": "e6b827d21",
+ "sha": "e6b827d210ec8d539250ccf668a8afddb7b756fb",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "Kill campaign counts a client timeout or an unexpected reply as 'uncertain', so a hung owner or a 5xx passes",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }

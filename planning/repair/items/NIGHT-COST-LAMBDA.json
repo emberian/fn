@@ -1,0 +1,17 @@
+{
+ "acceptance": "Two-formal lambda with nonzero body and actual costs; nested binding; generated term translates and evaluates the expected cost.",
+ "category": "codex-orientation",
+ "detail": "fn-cost-term builds (list lambda-form (cdr term)) for a nonzero cost-bearing lambda; preserve the translated application argument spine. Sol specifies fixtures and owns ACL2 admission; eligible for a bounded Luna implementation packet afterward.",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/def-cost.lisp",
+ "id": "NIGHT-COST-LAMBDA",
+ "locus": "generators",
+ "notes": [],
+ "owner": "served-deputy",
+ "severity": "medium",
+ "source": "planning/overnight-2026-10-03.md",
+ "state": "open",
+ "title": "Derived lambda cost reconstruction nests the actual argument spine",
+ "updated": "2026-10-03T05:14:09Z"
+}

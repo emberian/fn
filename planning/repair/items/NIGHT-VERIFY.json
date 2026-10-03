@@ -1,0 +1,17 @@
+{
+ "acceptance": "No-test, absent-test, broken-import, infrastructure, timeout, skip, wrong assertion and real assertion red/green fixtures; preserve scope/forbidden checks.",
+ "category": "codex-orientation",
+ "detail": "Require one identical runnable regression on base/head; persist named expected assertion and full output/evidence reference; reject missing test/module/import, tool error, timeout and skip as red. A no-test documentation exception must be explicit. Exact field filters must not select untagged entries; separate deferred from runnable work.",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "planning/repair/repair.py",
+ "id": "NIGHT-VERIFY",
+ "locus": "gates-tests-packaging",
+ "notes": [],
+ "owner": "integration",
+ "severity": "medium",
+ "source": "planning/overnight-2026-10-03.md",
+ "state": "open",
+ "title": "Repair verifier accepts missing tests/infrastructure failures as defect witnesses",
+ "updated": "2026-10-03T05:14:09Z"
+}

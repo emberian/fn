@@ -10,15 +10,16 @@
  "line": "239",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-02 22:29 merged into next e6b827d21"
+  "10-02 22:29 merged into next e6b827d21",
+  "2026-10-03 Codex source reconciliation: e6b827d210ec8d539250ccf668a8afddb7b756fb is an ancestor of dev 9af0cd1a9. This is a source-landing receipt only; native/proof completion is not inferred, and existing residuals and evidence requirements remain."
  ],
  "owner": "sweep-gates",
  "reviewer": "tests/test_native_expiry.py:237-241: when --recorded returns anything other than OK, the test falls back to a plain reclaim, so at the created/written/staged-durable cuts a refused, uncertain or faulting --recorded is masked. purge 30 expires the same p0/p1 at a fresh instant, so the 'same expiry' property is never distinguished. Partial coverage elsewhere: recorded_base plus test_a_recorded_reclaim_installs... (:277) requires --recorded to install after the 'created' cut on a serving node.",
  "scenario": "`store reclaim --recorded` regresses at the created/written/staged-durable cuts, before the install, where the comment says it must complete the recorded instant. It refuses, or exits 3 (uncertain), or faults. The test then runs a plain `store reclaim`, which picks a new instant, reclaims p0/p1, and passes. Uncertain and refused are both silently replaced by a retry, and the 'same expiry' property is never checked.",
  "severity": "low",
- "sha": "e6b827d21",
+ "sha": "e6b827d210ec8d539250ccf668a8afddb7b756fb",
  "source": "sweep-2026-10-03",
- "state": "ready",
+ "state": "landed",
  "title": "The test of resuming the recorded expiry falls back to a fresh reclaim, so a broken --recorded still passes",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T05:14:09Z"
 }
