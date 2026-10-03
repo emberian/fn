@@ -2059,3 +2059,29 @@ private gate equivalence now describes compatibility/refusal fallback;
 successful streamed POST remains separate planned PRF-1293. Actual fullnode
 socket/account/read/post/remove still needs selected logical definitions
 loaded alongside native overlays; GW/Lt own ordinaryLD seam.
+
+FINAL WINDDOWN / MATERIAL ACTUAL BROWSER DEFECT (2026-10-03 ~10:16ET):
+Source all pushed through9022cca0a; c2a1503 loadsactual Runtime constructor/
+windowterminalcleanup in fixtures,9022 gives reactor record distinct native
+type identity with same constructor/accessor API. Hboxselected actual normalLD
+99current Web defs+2Accesspreflightpredicates andnative9022entryPASS. Full
+plainbrowser scenario account/read assertions progress, then firstPOST /post
+at tests/test_native_web.py:188 RemoteDisconnected; later Web listener refuses
+connections. Repeated isolated firstscenario red. Native escape condition
+NOT captured: ordinary unittest retains no stderr file; diagnostic attempt
+used nonexistentprocess.describe (correctmethoddiagnostics). This is material
+known defect, not only missingcoverage; no actualconcurrentPOST/TLSgreenclaim.
+Rootinherits capture/current-union repair. Exact replay/source/cache andlogs
+archived planning/evidence/web-post-browser-red-2026-10-03.md; hboxpreserved
+/tank/fn/scratch/codex-sol-web-live execution.json/events.lisp/selected.json/
+admit.lisp/native-leaves.lisp/app-native/browser*.err; localgenerated copies
+build/web-live-selected remain, no files/caches deleted. Cachedbasead8+gate/exit;
+selectedJSONhashes everyloadedfile, sameACL2stobjABI, explicit isolatednormalLD
+redefinition with no stale-dependent-theorem qualification. Ownbrowser/nodes
+finished, no matchingowner/testprocess infinalpsinventory; ownwarmACL2expired,
+stop confirmednotlive. Shared/otherworldsuntouched. Remainingfullownership:
+actualPOST/lostlistenerrepair, current-unionplain+TLS+stalled/healthyPOSTpipeline,
+programguards/refinements/invariants, fullretainedIN/subject/refusedpageworking
+funding, profileprefixcapture, upstreamARTICLE/LIST/OVERcomposition, actual
+physicalrelease. Integrationregeneratescanonical currentview after intake;
+registries keepthese scopes planned/open.

@@ -8978,9 +8978,10 @@
       "evidence": [
         "tests/native_web_post_stream_raw.lisp",
         "tests/acl2/web-post-stream-tests.lisp",
-        "planning/evidence/web-post-and-producer-source-2026-10-03.md"
+        "planning/evidence/web-post-and-producer-source-2026-10-03.md",
+        "planning/evidence/web-post-browser-red-2026-10-03.md"
       ],
-      "note": "Actual source programs admit and exact valid/badCSRF/remove/UTF8/duplicate and long subject tests pass, with concrete fill invariant-risk. Native4096 form turns and partial117 feed pass. Full retained request/subject and refused form path, profile-dependent fixed prefix construction and qualified funding remain open."
+      "note": "Actual source programs admit and exact valid/badCSRF/remove/UTF8/duplicate and long subject tests pass, with concrete fill invariant-risk. Native4096 form turns and partial117 feed pass. Full retained request/subject and refused form path, profile-dependent fixed prefix construction and qualified funding remain open. Actual selected fullbrowser replay is RED: account/read precede firstPOST RemoteDisconnected and subsequent listener loss; rootinherits native diagnostic capture/current-union repair. Positiveprogram/raw assertions do not override this actualfailure."
     }
   ]
 }
