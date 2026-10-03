@@ -6213,6 +6213,13 @@ tree root), or stop the build."
     "FN_NATIVE_STATE_CHECKPOINT_READBACK_FLIP"
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST" "FN_NATIVE_RECLAIM_FAULT"
     "FN_NATIVE_TEST_RECLAIM_STALL_FILE" "FN_NATIVE_RECLAIM_HOLD"
+    ;; lane arena-forget: a labelled MUTATION witness of the reclaim seal
+    ;; word's :moved (a seal with no commit between the prediction and the
+    ;; swap: today only a POST prepare refused after its seal makes one)
+    "FN_NATIVE_TEST_RECLAIM_MOVE_FILE"
+    ;; lane arena-forget: a labelled MUTATION witness: the catalog gate
+    ;; answers no before the POST seal (as a held index-writer ticket does)
+    "FN_NATIVE_TEST_CAT_SEAL_REFUSE"
     "FN_NATIVE_PAGE_READ_HOLD"
     ;; lane host-lifecycle: lifecycle windows held open for the natives
     ;; (host/native/owner.lisp fnn-owner-worker-tail-hold, host/native/mux.lisp

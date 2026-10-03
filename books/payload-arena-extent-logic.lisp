@@ -67,6 +67,20 @@
            (ignore h))
   fn-arena$a)
 
+; The FORGET (lane arena-forget, 2026-10-03): the one export that takes a
+; payload away.  Handle H's logical value becomes the empty payload; every
+; other handle keeps its payload and the count is unchanged (a handle is
+; still never reused).  The concrete arena drops H's extent entry (its file's
+; count falls by one, books/payload-arena-extent.lisp) and its staged page.
+; A handle outside the arena is left alone.  It is admissible only for a
+; handle no row of the served history names and no reader pinned at or below
+; its retirement stamp still holds (books/arena-forget.lisp).
+(defun fn-arena$a-forget (h fn-arena$a)
+  (declare (xargs :guard (natp h)))
+  (if (and (natp h) (< h (len fn-arena$a)))
+      (fn-oct-update h nil fn-arena$a)
+    fn-arena$a))
+
 ; -----------------------------------------------------------------------------
 ; COMPRESSED extents (lane compression-extents, PRF-326).  E = (FILE EOFF ELEN
 ; POFF PLEN TRAILER N DICT): a DEFLATE stream C at [POFF, POFF+PLEN) inside the

@@ -25,6 +25,7 @@
 (in-package "ACL2")
 (include-book "../books/owner-report-capture")
 (include-book "../books/index-writer-ticket")
+(include-book "../books/catalog-may-seal")
 (include-book "payload-view-host")
 ; books/owner-fault includes books/owner and adds the host-fault transition
 ; `fn-own-fault'.  The host needs it: `fn-owner-fault' below is the only way
@@ -82,6 +83,7 @@
 ;; online-reclaim-5: the swapped owner is :ready after the open's barriers.
 (include-book "../books/owner-reclaim-ready")
 (include-book "../books/owner-reclaim-carry")
+(include-book "../books/owner-reclaim-seal")
 (include-book "../books/owner-recovery-retain")
 (include-book "../books/owner-cursor-domain")
 ; Q16 (b): online disk release of dropped files (fn-xrt-).
@@ -1905,11 +1907,23 @@
               (value :prepared))
           (value (if (consp pending) (car pending) :fault)))))))
 
+; The pending catalog commit (nil when none).
+(defun fn-owner-cat-pending-now (state)
+  (declare (xargs :stobjs state :guard t))
+  (and (f-boundp-global 'fn-owner-cat-pending state)
+       (f-get-global 'fn-owner-cat-pending state)))
+
+; Asked BEFORE the POST's seal (host/native/owner.lisp fnn-owner-attempt):
+; t when the prepare after the seal can take it (books/catalog-may-seal.lisp).
+(defun fn-owner-cat-may-seal (state)
+  (declare (xargs :stobjs state :guard t))
+  (value (fn-cat-may-seal (fn-owner-index-writer-ticket state)
+                          (fn-owner-cat-pending-now state))))
+
 (defun fn-owner-cat-prepare-sealed (fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-arena fn-cat state) :guard t))
-  (if (or (not (fn-iwt-idlep (fn-owner-index-writer-ticket state)))
-          (and (f-boundp-global 'fn-owner-cat-pending state)
-               (f-get-global 'fn-owner-cat-pending state)))
+  (if (not (fn-cat-may-seal (fn-owner-index-writer-ticket state)
+                            (fn-owner-cat-pending-now state)))
       (value :recovery-required)
     (fn-owner-cat-prepare-sealed-produced fn-arena fn-cat state)))
 
@@ -5216,9 +5230,9 @@ existing port only after fn-fc has made this connection ready."
           (value (list :captured captured
                        (fn-own-max-conns (fn-owner-core state)))))))))
 
-; Under the mutex, a chunk of the rewritten rows: its tombstoned records
-; interned into the live arena under the captured Store's key ring
-; (fn-orcp-intern-rows).  (mv ROWS FN-ARENA).
+; The rewritten rows' tombstoned records are no longer interned before the
+; swap: fn-orcs-predict (off the mutex) and fn-orcs-seal (in the swap
+; quantum), books/owner-reclaim-seal.lisp.
 ;; Q16 (lane online-reclaim-6): the reclaim's instant recorded LIVE, the twin
 ;; of the offline host/checkpoint-host.lisp fn-store-reclaim-instant-record:
 ;; the one delta fn-rci-delta of CLOCK's stamp, staged on the private
@@ -5239,9 +5253,6 @@ existing port only after fn-fc has made this connection ready."
         (fn-owner-reconfigure-deltas cid (list (fn-rci-delta now)) fn-arena state)
       (value (fn-ores-config-refused :reclaim-instant)))))
 
-(defun fn-owner-orcp-intern-chunk (rows keyring generation fn-arena)
-  (declare (xargs :stobjs fn-arena :mode :program))
-  (fn-orcp-intern-rows rows keyring generation fn-arena))
 
 (defun fn-owner-orcp-keyring (s)
   (declare (xargs :mode :program))

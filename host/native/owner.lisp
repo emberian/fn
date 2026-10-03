@@ -2176,6 +2176,15 @@ follows is justified only by this line."
                 ;; The prepare reads the arena only; on acceptance it answers
                 ;; :seal-buffer and the host seals the buffer's payload
                 ;; (host/owner-host.lisp fn-owner-prepare-buffer).
+                ;; The catalog's gate BEFORE the seal: a prepare it would
+                ;; refuse seals nothing (books/catalog-may-seal.lisp; the
+                ;; refusal path below consumes the reservation as before).
+                (when (and (eq prepared :seal-buffer)
+                           (or (fnn-developer-selector "FN_NATIVE_TEST_CAT_SEAL_REFUSE")
+                               (not (eq (fnn-owner-core 'fn-owner-cat-may-seal) t))))
+                  (setq prepared :recovery-required)
+                  (fnn-err "POST seal-gate refused arena=~d"
+                           (first (fnn-call 'fn-arena-count (fnn-live-arena)))))
                 (when (eq prepared :seal-buffer)
                   (fnn-seal-live-buffer)
                   ;; Step 8: the catalog prepares the store's row, which names
@@ -5754,19 +5763,36 @@ the reply word: :dry-run, or ACL2's refusal."
     (unwind-protect
          (progn
            (fnn-owner-gated (service :control)
-             (setq captured (fnn-owner-core 'fn-owner-orc-capture :dry-run clock
-                                            (fnn-checkpoint-budget-test-override nil)
-                                            free (fnn-checkpoint-revision)))
+             (let ((answer (fnn-owner-core 'fn-owner-orc-capture :dry-run clock
+                                           (fnn-checkpoint-budget-test-override nil)
+                                           free (fnn-checkpoint-revision))))
+               ;; S038: a pass in flight refuses the dry run by name; nothing
+               ;; was captured, so nothing is finished and no pin is taken
+               (when (and (consp answer) (eq (first answer) :refused)
+                          (member (second answer) '(:in-flight :queued)))
+                 ;; DEFERRED-IN-FLIGHT / -QUEUED: refused by name
+                 ;; (fn-owner-orc-request-status; a bare :in-flight would
+                 ;; classify :accepted there)
+                 (fnn-err "RECLAIM dry-run refused: ~(~a~)" (second answer))
+                 (return-from fnn-owner-reclaim-dry-run
+                   (intern (format nil "DEFERRED-~a" (symbol-name (second answer))) :keyword)))
+               (setq captured answer))
              (setq pin (fnn-arena-pin)))
-           (unless (and (true-listp captured) (= (length captured) 12))
+           (unless (and (true-listp captured) (= (length captured) 13))
              (fnn-fault "owner returned a malformed reclaim capture"))
            (destructuring-bind (records count v s profile configs frontier budget free revision
-                                now record-octets)
+                                now record-octets feeds)
                captured
              (declare (ignore configs frontier budget free revision record-octets))
-             (let* ((ctx (fnn-core 'fn-owner-orc-ctx :dry-run v s now (fnn-live-arena)))
-                    (classes (fnn-core 'fn-owner-orc-classes ctx (fnn-live-arena)))
-                    (acc (fnn-owner-reclaim-walk records ctx nil))
+             (let* ((ctx (fnn-core 'fn-owner-orc-ctx :dry-run v s now feeds (fnn-live-arena)))
+                    (classes nil) (acc nil))
+               ;; the context's hash tables freed whatever the walk does
+               (unwind-protect
+                    (setq classes (fnn-core 'fn-owner-orc-classes ctx (fnn-live-arena))
+                          acc (fnn-owner-reclaim-walk records ctx nil))
+                 (fnn-core 'fn-owner-orc-ctx-free ctx))
+             (let* ((decision (fnn-core 'fn-owner-orc-decide :dry-run profile v s now acc
+                                        (fnn-live-arena)))
                     (decision (fnn-core 'fn-owner-orc-decide :dry-run profile v s now acc
                                         (fnn-live-arena)))
                     (expired (if (and (listp classes) (= (length classes) 6)
@@ -5791,7 +5817,7 @@ the reply word: :dry-run, or ACL2's refusal."
                     (dolist (m msgids)
                       (fnn-err "RECLAIM would-reclaim ~a"
                                (if (stringp m) m (fnn-fault "malformed msgid")))))
-                  :dry-run)))))
+                  :dry-run))))))
       (when pin (fnn-arena-unpin pin))
       (when captured
         (fnn-owner-gated (service :control)
@@ -5874,22 +5900,6 @@ pointer and the live state's binding)."
       (fn-cat (setq *fnn-cat* value))
       (fn-hist (setq *fnn-hist* value)))))
 
-(defun fnn-owner-reclaim-intern (service rows keyring generation)
-  "The rewritten ROWS with their tombstoned records interned into the live
-arena, +fnn-reclaim-chunk-rows+ rows per owner quantum (fn-owner-orcp-
-intern-chunk).  NIL when ACL2 refused a record."
-  (let ((out nil) (rest rows))
-    (loop while rest do
-      (let* ((chunk (loop repeat +fnn-reclaim-chunk-rows+ while rest collect (pop rest)))
-             (done (fnn-owner-gated (service :control)
-                     (first (fnn-call 'fn-owner-orcp-intern-chunk chunk keyring generation
-                                      (fnn-live-arena))))))
-        (when (eq done :bad) (return-from fnn-owner-reclaim-intern nil))
-        (unless (and (listp done) (= (length done) (length chunk)))
-          (fnn-fault "owner returned a malformed interned chunk"))
-        (push done out)))
-    (let ((all nil)) (dolist (c out all) (setq all (nconc c all))))))
-
 ;;; Q16 (a) (lane online-reclaim-5): the swapped owner is the owner the full
 ;;; open of the rewritten history installs, BEFORE the open's recovery
 ;;; barriers (its Store :recovering; books/owner-reclaim-ready.lisp).  The
@@ -5929,12 +5939,17 @@ publication).  Answers the reply word."
          (clock (fnn-store-prepare-observation))
          (answer nil) (captured nil) (pin nil) (position nil) (stage nil) (ident nil)
          (installed nil) (swapped nil) (word :failed) (*fnn-checkpoint-frames* nil)
+         (base nil) (seal-payloads nil) (seal-us 0)
          (image nil)
          (started (get-internal-real-time)))
     (flet ((ms () (round (* 1000 (- (get-internal-real-time) started))
                          internal-time-units-per-second))
            (deferred (reason &rest more)
-             (fnn-err "RECLAIM deferred reason=~(~a~)~{ ~a~}" reason more)
+             ;; arena=: the live arena's count (natives: a deferred pass
+             ;; leaves it as it found it)
+             (fnn-err "RECLAIM deferred reason=~(~a~)~{ ~a~} arena=~d" reason more
+                      (fnn-owner-gated (service :control)
+                        (first (fnn-call 'fn-arena-count (fnn-live-arena)))))
              (setq word (intern (format nil "DEFERRED-~a" (symbol-name reason)) :keyword))))
       (unwind-protect
            (block pass
@@ -5951,20 +5966,31 @@ publication).  Answers the reply word."
                  ;; an off-mutex arena reader from here (arena-reader-pins)
                  (setq pin (fnn-arena-pin))))
              (unless captured
-               (unless (and (eq (first answer) :deferred) (integerp (third answer)))
-                 (fnn-fault "owner returned a malformed reclaim capture"))
-               (deferred :credit (format nil "estimate=~d" (third answer)))
+               ;; S038: another pass in flight or queued is refused by name
+               ;; before any credit is reserved (CAPTURED stays nil, so the
+               ;; cleanup never finishes the other pass's slot)
+               (cond ((and (eq (first answer) :deferred)
+                           (member (second answer) '(:in-flight :queued))
+                           (null (third answer)))
+                      (deferred (second answer)))
+                     ((and (eq (first answer) :deferred) (integerp (third answer)))
+                      (deferred :credit (format nil "estimate=~d" (third answer))))
+                     (t (fnn-fault "owner returned a malformed reclaim capture")))
                (return-from pass))
-             (unless (and (true-listp captured) (= (length captured) 12))
+             (unless (and (true-listp captured) (= (length captured) 13))
                (fnn-fault "owner returned a malformed reclaim capture"))
              (fnn-reclaim-cut :captured)
              (destructuring-bind (records count v s profile configs frontier budget free* revision
-                                  now record-octets)
+                                  now record-octets feeds)
                  captured
                (declare (ignore now))
-               (let* ((ctx (fnn-core 'fn-owner-orc-ctx :recorded v s nil (fnn-live-arena)))
+               (let* ((ctx (fnn-core 'fn-owner-orc-ctx :recorded v s nil feeds (fnn-live-arena)))
                       (acc nil) (rows nil) (decision nil))
-                 (multiple-value-setq (acc rows) (fnn-owner-reclaim-walk records ctx t))
+                 ;; the context freed right after the walk (orc-decide does
+                 ;; not read it), also when the walk faults
+                 (unwind-protect
+                      (multiple-value-setq (acc rows) (fnn-owner-reclaim-walk records ctx t))
+                   (fnn-core 'fn-owner-orc-ctx-free ctx))
                  (setq decision (fnn-core 'fn-owner-orc-decide :recorded profile v s nil acc
                                           (fnn-live-arena)))
                  (fnn-reclaim-cut :rewritten)
@@ -6015,10 +6041,19 @@ publication).  Answers the reply word."
                                        (length rows)))
                        (fnn-octets-pub-release))))
                  (fnn-reclaim-cut :staged)
+                 ;; The tombstones are PREDICTED here (their handles from
+                 ;; BASE, the live arena's count now) and sealed only in the
+                 ;; swap quantum, after the seal word answers :swap: a
+                 ;; deferred pass seals nothing (books/owner-reclaim-seal.lisp,
+                 ;; KEYSTONE fn-orcs-seal-is-the-intern).
                  (destructuring-bind (keyring generation)
                      (fnn-core 'fn-owner-orcp-keyring s)
-                   (setq rows (fnn-owner-reclaim-intern service rows keyring generation)))
-                 (unless rows (deferred :unencodable) (return-from pass))
+                   (setq base (fnn-owner-gated (service :control)
+                                (first (fnn-call 'fn-arena-count (fnn-live-arena)))))
+                   (destructuring-bind (predicted payloads)
+                       (fnn-core 'fn-orcs-predict rows keyring generation base)
+                     (setq rows predicted seal-payloads payloads)))
+                 (when (eq rows :bad) (deferred :unencodable) (return-from pass))
                  (fnn-reclaim-cut :interned)
                  (let* ((rebuilt (fnn-core 'fn-owner-orcp-rebuild rows configs frontier
                                            (third answer)))
@@ -6035,10 +6070,27 @@ publication).  Answers the reply word."
                    (fnn-reclaim-cut :rebuilt)
                    (dotimes (round +fnn-reclaim-swap-rounds+)
                      (let ((sw (fnn-owner-gated (service :control)
-                                 (let ((w (fnn-owner-core 'fn-owner-orcp-swap-word count frontier s
-                                                          (1- (fnn-arena-reader-count))
-                                                          rebuilt)))
+                                 ;; MUTATION witness (developer image): one
+                                 ;; empty seal the prediction did not see
+                                 (let ((move (fnn-developer-selector
+                                              "FN_NATIVE_TEST_RECLAIM_MOVE_FILE")))
+                                   (when (and move (probe-file move))
+                                     (delete-file move)
+                                     (fnn-call 'fn-arena-seal-list nil (fnn-live-arena))
+                                     (fnn-err "RECLAIM test-moved")))
+                                 (let ((w (fnn-core 'fn-orcs-seal-word
+                                                    (fnn-owner-core 'fn-owner-orcp-swap-word count frontier s
+                                                                    (1- (fnn-arena-reader-count))
+                                                                    rebuilt)
+                                                    (first (fnn-call 'fn-arena-count (fnn-live-arena)))
+                                                    base)))
                                    (when (eq w :swap)
+                                     ;; the predicted tombstones sealed: their
+                                     ;; handles are BASE + i (the seal word)
+                                     (let ((t0 (get-internal-real-time)))
+                                       (fnn-call 'fn-orcs-seal seal-payloads (fnn-live-arena))
+                                       (setq seal-us (round (* 1000000 (- (get-internal-real-time) t0))
+                                                            internal-time-units-per-second)))
                                      ;; the commit point, then the swap, in one quantum
                                      ;; (stage 0: the report-writer enter/leave/fault
                                      ;; fences around it dispatched entries of
@@ -6062,6 +6114,7 @@ publication).  Answers the reply word."
                        (case sw
                          (:swap (return))
                          (:delta (deferred :delta) (return-from pass))
+                         (:moved (deferred :moved) (return-from pass))
                          (:unbound (deferred :unbound) (return-from pass))
                          ((:busy :readers)
                           (when (= round (1- +fnn-reclaim-swap-rounds+))
@@ -6073,8 +6126,11 @@ publication).  Answers the reply word."
                    (let* ((covered (fnn-log-covered-indices store (first position)))
                           (paths (mapcar (lambda (k) (fnn-segment-path-at store k)) covered))
                           (dropped (fnn-log-drop store covered)))
-                     (fnn-err "RECLAIM installed records=~d reclaimed=~d dropped=~d ms=~d"
-                              count (length (second decision)) dropped (ms))
+                     ;; sealed= the tombstones sealed in the swap quantum and
+                     ;; seal-us= that seal's time under the owner mutex
+                     (fnn-err "RECLAIM installed records=~d reclaimed=~d dropped=~d ms=~d sealed=~d seal-us=~d"
+                              count (length (second decision)) dropped (ms)
+                              (length seal-payloads) seal-us)
                      (fnn-owner-release-extents service store *fnn-checkpoint-frames* paths pin))
                    (fnn-reclaim-cut :released)))))
         (when pin (fnn-arena-unpin pin))

@@ -788,6 +788,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-reclaim-tests \
 	books/extent-retire \
 	tests/acl2/extent-retire-tests \
+	books/arena-forget \
+	tests/acl2/arena-forget-tests \
+	books/arena-forget-columns \
+	books/owner-reclaim-seal \
+	books/catalog-may-seal \
+	tests/acl2/owner-reclaim-seal-tests \
 	books/owner-reclaim-instant \
 	tests/acl2/owner-reclaim-instant-tests \
 	books/store-log-route-phases \
