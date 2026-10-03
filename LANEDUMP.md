@@ -1434,3 +1434,23 @@ including an existing plausible certificate. It deduplicates the same target
 within one command; system includes are untouched. No source/certification
 fallback or source/object/alist relaxation. Five SessionIncludeTests PASS
 0.014s, compile/diff checks PASS; no actual ACL2 or reload launched here.
+## Astra source trace — S114 reclaim census (2026-10-03)
+
+Followthrough after 16e1491a1: `fn-owner-orcp-capture` now synchronizes through
+`fn-owner-record-octets` before credit reservation, taking/returning fn-hist on
+both branches. Existing native metadata-driven trailing-stobj dispatch supplies
+it; no hardcoded argument list added. Actual host census, history sync/advance,
+credit resize and native value dispatch fixture PASS: stale census refuses when
+only the old amount fits; sufficient credit admits current amount; missing and
+out-of-range cache fallback; unrelated reservation preserved. Store/array/row-cost
+and capture-result seams are recorded, not a full native-image claim. Same fixture
+on 16e1491a1 fails intended unfunded-admission assertion. Evidence archived at
+planning/evidence/astra-reclaim-census-2026-10-03.json (84754a72e762de272a4a6dd9598bf4024f51ed9732b1071a1160858887cd9a47).
+S114 stays open pending normal loaded host/image followthrough; no book changed,
+no new proof claim. SCN-1096/STO-017/spec updated. Bounded history representation
+work is now deputy_history's; this does not reduce current whole-history copy cost.
+
+## Sol source assembly: synchronized reclaim capture census (2026-10-03)
+
+- Astra6c917f91b composes after S045e56: actualfn-owner-orcp-capture calls existing fn-owner-record-octets(fn-hist,state) before creditreserve and returns updatedhist/state onboth refusal/capture. Actual native trailing-stobj metadatadispatch supplies newhistoryformal; no hostcensus arithmetic or directtest-only argument shortcut. Primary4source schedules reused; stale/missing/aheadcache and actualincrementalsync/creditresize throughnativeentry, baselineunfundedadmission assertionfails.
+- Source/function fixture exactproducerbytes; claimSCN1096check and indexed84754receipt verified. Normal loadedworld admission/interface regeneration and matching native reclaim followthrough remainowed; no book change/certificate/imageclaim. S045page/frameverifyyield-stop followupAstraownedpending, not masked bycapture fix.

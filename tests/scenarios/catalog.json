@@ -8539,6 +8539,26 @@
         "tests/test_native_state_checkpoint.py"
       ],
       "implementation_note": "Actual raw host stage/readback/install, ACL2 header/page codec and kernel files exercised with recorded snapshot storage and framed-run verifier boundaries. Matching saved-image scenario and certification pending; no image/deployment claim."
+    },
+    {
+      "id": "SCN-1096",
+      "title": "Reclaim reserves against synchronized committed history census",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-017",
+        "STO-020"
+      ],
+      "steps": [
+        "Commit a row after the carried byte cache and history columns were last queried; enter reclaim through native trailing-stobj dispatch.",
+        "A budget sufficient only for stale history refuses the actual current estimate, captures no pass and retains unrelated reservations.",
+        "A sufficient budget reserves the current estimate and captures once; missing and out-of-range caches recompute from authoritative state."
+      ],
+      "evidence": [
+        "tests/test_native_reclaim_capture_raw.sh",
+        "tests/native_reclaim_capture_raw.lisp"
+      ],
+      "implementation_note": "Actual host capture/census, history sync/byte-advance, credit-resize and native trailing-stobj dispatch with recorded Store/array/row-byte-cost/capture boundaries. Source fixture; normal loaded host and image followthrough pending."
     }
   ]
 }
