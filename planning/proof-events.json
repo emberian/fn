@@ -19061,6 +19061,10 @@
         {
           "kind": "theorem",
           "name": "fn-rlo-physical-settled-token-is-not-live"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-exhausted-settlement-keeps-free-head"
         }
       ]
     },
