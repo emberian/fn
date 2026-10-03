@@ -301,3 +301,11 @@ passed; all14test forms973steps passed afterlocalsdrop. Strict scoped
 theory/book-order0warnings. Physical unique-pointer graph interpretation
 requires borrowed-region/alias mapping by Root; theorems claim the named
 logical projection/maximum suffix metric, not Lisp EQ allocation identity.
+
+Evidence-only final receipt: planning/evidence/dc03-wildmat-live-20261003/
+checks.json hash1b2998ada5 and repl.log.gz hash7b8631f90c are archived/indexed.
+Current exact fourteen testforms971steps0refused after maxima pin (the earlier
+973count applied the weaker lower-overlap fixture). Source remains9362438d3
+book plusc7e5d9219 test bytes. Foundations absorbs PRF-1261 and Makefile
+root wiring by Lieutenant/Root instruction; Served consumes component;
+Integration owns certificates/image. Own warm slot stops on completion.
