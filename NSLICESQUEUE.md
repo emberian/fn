@@ -23,6 +23,11 @@ that their recorded state is current at every later revision.
   continuation is identified; **queued** means implementation ownership still
   needs dispatch. A coordinating owner is not an assertion that another agent
   is running. Check actual agent state and explicitly resume a completed agent.
+- Owners continue through their entire capability areas and the outstanding
+  backlog. A landed commit, completed slice or passing check triggers the next
+  useful connected change without waiting for assignment. Root retains the full
+  scope; the lieutenant clears dependencies and integration flow, rather than
+  selecting a smaller finishable subset.
 - Dependencies below name the interface or evidence needed for a particular
   consumer. They do not serialize entire initiatives. Source reading, disjoint
   implementation and fixture preparation can proceed alongside them.
@@ -40,8 +45,13 @@ that their recorded state is current at every later revision.
   dependencies and next owner. An unresolved component proof is a separate
   workitem from an enabled capability; do not call an unpriced profile funded.
 - Route the first candidate failure to one precise leaf owner immediately.
-  Keep a matching minimal repair candidate moving alongside the coherent next
-  capability wave. Use the last good image only for its valid baseline scope.
+  Use scoped coherent loaded-world checks and actual source-loaded host consumers
+  as primary integration feedback while capability work continues. Fresh
+  source-loaded processes can exercise restart and recovery. Record exact loaded
+  source/interface identities and never mix obsolete stobj layouts. Saved-image
+  production is not a development dependency; eventual packaging/startup
+  qualification retains its own coordinate. Use historical images only for
+  their valid baseline scope.
   Reuse an exact published artifact set instead of repeating acquisition or
   checks; do not wait for a whole subsystem or repeat unchanged polls.
 - Keep completed slices here with their receipts; update the remaining work in
@@ -136,7 +146,8 @@ Anchors: [RESOURCE-OPERATIONS](planning/repair/items/RESOURCE-OPERATIONS.json),
 ### Owner carrier and removal of whole-state revalidation
 
 **Active continuation — History owns the carrier and native authority consumer.
-The completed proof packet is retained; the focused export helper hands back to History.**
+The completed proof packet is retained; the stopped export helper handed its
+source and warm world back to History.**
 Resume the existing carrier transformation safely, using current signatures and
 actual native dispatch. Complete the POST bridge and the named owner-writer
 preservation obligations, then carry the invariant through other live writers.
