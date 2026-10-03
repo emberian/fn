@@ -3340,6 +3340,27 @@ barrier that does not return leaves the sealed batch uncertain
         (fnn-log-sealed-abandon store))
       (values word condition))))
 
+(defun fnn-owner-frames-job (service job)
+  "A START that kept no member of the log (every member a refusal told at
+its drain, or the START ended uncertain) still owes its drain's FNFD frames
+and its refusals' replies: JOB run as a :frames job (one phase, :intents),
+off the owner mutex except on the inline path.  Its uncertainty fences the
+service (exit 3) and its fault stops it (exit 4), as the same frames
+written inside START did."
+  (when (and job (fnn-owner-job-intents job))
+    (multiple-value-bind (final condition)
+        (fnn-owner-run-job :frames
+                           (lambda (phase)
+                             (if (eq phase :intents)
+                                 (fnn-owner-job-word
+                                  (lambda () (fnn-owner-job-items service (fnn-owner-job-intents job))))
+                               (fnn-owner-job-word
+                                (lambda () (fnn-fault "owner named the frames phase ~a" phase))))))
+      (case (fnn-core 'fn-oqw-outcome-of-final final)
+        (:fenced nil)
+        (:failed (fnn-owner-fence-service service))
+        (t (fnn-owner-fault-service service nil condition))))))
+
 (defun fnn-owner-batch-job (service job)
   "The whole batch JOB, off the owner mutex (the syncer thread's body, or
 inline in a bound submission's quantum).  Returns (values FINAL CONDITION)."
@@ -3467,7 +3488,9 @@ was queued)."
         ((:complete :stop)
          (fnn-owner-commit-complete-locked service action members deferred))
         (:none nil)
-        (t (fnn-fault "owner named ~a for an inline commit" action))))
+        (t (fnn-fault "owner named ~a for an inline commit" action)))
+      ;; No batch was captured: the drain's frames and refusals still go.
+      (unless (fnn-owner-job-plan job) (fnn-owner-frames-job service job)))
     (length members)))
 
 (defun fnn-owner-reader-capture (event)
@@ -3601,7 +3624,7 @@ flight).  While any batch is in flight or open ACL2's pick admits only
 leave only in its COMPLETE, after its barrier returned
 (fn-ocp-complete-only-after-the-barrier)."
   (let ((members nil) (uncertain nil) (deferred nil) (action nil) (job nil)
-        (next nil) (next-deferred nil) (next-job nil) (syncer nil) (result nil) (limits nil)
+        (next nil) (next-deferred nil) (next-job nil) (frames-only nil) (syncer nil) (result nil) (limits nil)
         (need nil)
         ;; Lane time-bars (PRF-384): ACL2's ledger of the request in
         ;; flight -- its generation, whether its completion is still owed,
@@ -3634,6 +3657,9 @@ leave only in its COMPLETE, after its barrier returned
          (:none (fnn-owner-reader-capture :drop))
          (t (fnn-fault "owner named ~a after a START" action))))
      :commit)
+    ;; A START that captured no batch: its drain's frames and its refusals'
+    ;; replies, off the owner mutex (lane owner-offlock).
+    (unless (eq action :sync) (fnn-owner-frames-job service job))
     (loop while (eq action :sync) do
       ;; PRF-359 (PKT-872): the free space at every barrier's issue, before
       ;; its append: the POSTs admitted from here on join the next batch, so
@@ -3755,6 +3781,8 @@ leave only in its COMPLETE, after its barrier returned
                                              ((null m) :next-none)
                                              (t :next-started))))
                    (when (and (null m) (not u)) (fnn-owner-reader-capture :unnext))
+                   ;; Nothing kept: the drain's frames go after this quantum.
+                   (when (null m) (setq frames-only j next-job nil))
                    (when (eq step :stop)
                      (fnn-owner-reader-capture :drop)
                      ;; Every member of both batches is uncertain; the owner
@@ -3763,7 +3791,9 @@ leave only in its COMPLETE, after its barrier returned
                          (fnn-owner-answer-early ledger (append members next))
                        (setq ledger ledger2)
                        (fnn-owner-commit-complete-locked service :stop tell deferred))
-                     (setq members nil next nil))))))))))))
+                     (setq members nil next nil)))))))))
+            (fnn-owner-frames-job service frames-only)
+            (setq frames-only nil))))
       (sb-thread:join-thread syncer :default nil)
       (destructuring-bind (rgen final . job-condition) (car result)
        (let ((word nil) (condition nil))

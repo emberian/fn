@@ -34,6 +34,10 @@
 ;      durable, and no resolution before the barrier that made its record
 ;      durable (fn-oqw-batch-effect-order).
 ;
+;      KIND :frames is a START that kept no member of the log (every member
+;      a refusal told at its drain, or the START ended uncertain): only the
+;      FNFD frames its drain owes, and its refusals' replies, in order.
+;
 ;   2. THE RECEIPT (fn-oqw-receipt) over the time-bars ledger
 ;      (books/owner-time-bars.lisp: a job is a request issued under a fresh
 ;      generation; its completion is consumed once, into its own
@@ -53,6 +57,7 @@
 (defun fn-oqw-phases (kind)
   (declare (xargs :guard t))
   (cond ((equal kind :batch) '(:intents :extend :append :fence :resolutions))
+        ((equal kind :frames) '(:intents))
         (t nil)))
 
 (defun fn-oqw-terminalp (phase)

@@ -18,6 +18,10 @@
 (assert-event (equal (fn-oqw-trace :batch :intents '(:ok :ok :ok :fault :ok))
                      '(:intents :extend :append :fence)))
 (assert-event (equal (fn-oqw-final :batch :intents '(:ok :ok :ok :fault :ok)) :fault))
+; A :frames job (a START that kept no member): its one phase, then :done.
+(assert-event (equal (fn-oqw-trace :frames (fn-oqw-start :frames) '(:ok)) '(:intents)))
+(assert-event (equal (fn-oqw-final :frames (fn-oqw-start :frames) '(:ok)) :done))
+(assert-event (equal (fn-oqw-final :frames (fn-oqw-start :frames) '(:uncertain)) :uncertain))
 ; An unknown kind faults at its start; an unknown phase faults at its step.
 (assert-event (equal (fn-oqw-start :nothing) :fault))
 (assert-event (equal (fn-oqw-step :batch :elsewhere :ok) :fault))
