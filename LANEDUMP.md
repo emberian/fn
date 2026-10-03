@@ -3460,3 +3460,13 @@ refinement claim. This fixes normal shutdown of a live accepted peer, which
 otherwise stranded the bank despite its disabled continuation. SCN1110/1125/1126
 remain actual source-process consumers to execute on the current initialized
 world. Matching profile/teeth certification pending.
+Runtime wait source: actual shared condition-wait producer now covers the two
+extent wait regions. Release reserved under E; wait return confirms release,
+actual mutex ownership permits reacquire, timeout avoids duplicate release.
+Contender/timeout/pre-release primitive escape/inactive load-order schedules
+pass; earlier actor/section, decoded issuer and response-window composition
+still passes. Full O/P/global HM realization remains open; no oracle replay
+transferred to this new packet. Root discovered no actual default funded pool
+installer caller: fresh normal owner remains offline today, so compressed
+endpoint still needs Root's real pre-open partial baseline producer in addition
+to History initialization. No wrapper/test synthetic pool installation.

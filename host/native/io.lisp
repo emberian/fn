@@ -146,22 +146,49 @@ fn-lgdm-repair-text: a torn tail dropped, a confirmed repair), newest first;
 ;;; Its collector/runtime functions are installed by owner before workers run.
 (defvar *fnn-native-observer* nil)
 (defvar *fnn-native-actor-identity* nil)
+(defvar *fnn-native-wait-release* nil)
 
 (defmacro fnn-with-observed-mutex ((lock label &rest options) &body body)
   "Literal measured lock label and unchanged SBCL mutex options. Acquire
 observed after physical lock; release reserves under it, completes after unlock."
   (let ((mutex (gensym "MUTEX")) (name (gensym "LOCK-LABEL"))
         (row (gensym "RELEASE")))
-    `(let ((,mutex ,lock) (,name ,label) (,row nil))
+    `(let ((,mutex ,lock) (,name ,label) (,row nil)
+            (*fnn-native-wait-release* nil))
        (unwind-protect
             (sb-thread:with-mutex (,mutex ,@options)
               (when *fnn-native-observer*
                 (fnn-native-observe (list :acquire *fnn-native-actor-identity* ,name)))
               (unwind-protect (progn ,@body)
                 (when *fnn-native-observer*
-                  (setq ,row (fnn-native-observation-reserve
-                              (list :release *fnn-native-actor-identity* ,name) nil)))))
+                  (cond ((sb-thread:holding-mutex-p ,mutex)
+                         (setq ,row (fnn-native-observation-reserve
+                                     (list :release *fnn-native-actor-identity* ,name) nil)))
+                        ((not *fnn-native-wait-release*)
+                         (fnn-native-observation-unavailable :unobserved-unlock))))))
          (when ,row (fnn-native-observation-complete ,row))))))
+
+
+(defun fnn-observed-condition-wait (queue mutex label &key timeout)
+  "Unchanged physical wait. Reserve release while held; confirm it only on
+normal wait return, then record reacquisition only if this thread owns MUTEX.
+A timeout can return unlocked; the surrounding observed mutex must not invent
+another release. An escaping wait makes comparison unavailable."
+  (if (null *fnn-native-observer*)
+      (sb-thread:condition-wait queue mutex :timeout timeout)
+    (let ((row (fnn-native-observation-reserve
+                (list :release *fnn-native-actor-identity* label) nil))
+          (returned nil))
+      (setq *fnn-native-wait-release* t)
+      (unwind-protect
+           (multiple-value-prog1 (sb-thread:condition-wait queue mutex :timeout timeout)
+             (setq returned t)
+             (when row (fnn-native-observation-complete row))
+             (when (sb-thread:holding-mutex-p mutex)
+               (setq *fnn-native-wait-release* nil)
+               (fnn-native-observe (list :acquire *fnn-native-actor-identity* label))))
+        (unless returned
+          (fnn-native-observation-unavailable :wait-observation-escaped))))))
 
 
 (defvar *fnn-section-step* nil
