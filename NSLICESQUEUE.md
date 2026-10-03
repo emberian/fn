@@ -198,7 +198,9 @@ those checks. Numeric/current/Message-ID selector guards and exact fuel split no
 normal-certify at73a0; direct server capture boundary certifies at39d72. These
 component certificates do not certify the whole owner/physical path. Access owns
 shared arbitrary HDR/XPAT span backing (PRF-1304/SCN-1135); Served owns the actual
-command consumer. Operator resumes non-ARTICLE operator work; Access keeps the
+command consumer. Generic-name parser/query bounds now preserve captured field
+span READ bounds; literal hypothesis-removal teeth and236850 actual source checks
+pass. Whole arbitrary-name/reference bridge remains open. Operator resumes non-ARTICLE operator work; Access keeps the
 general journal bridge. Root
 S132 strict native ten MiB acceptance/readback now passes on the named initialized-source cache with its supported 128 MiB history profile; whole current-kernel/funding qualification remains separate.
 

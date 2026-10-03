@@ -3970,3 +3970,17 @@ PASS (~0.25s). Existing mux connection cleanup PASS; await fixture selected
 actual capture/output-close helpers to repair its prior stale extraction.
 Full current source owner still awaiting History initializer; no physical
 endpoint or complete funding/HM claim transferred from these schedules.
+
+Access header bounds followup: generic header/byte bounds preserve the old
+five-name theorem statements, repairing downstream default-byte proof expansion
+to15steps. New query begin/tick bounds28/5488steps and returned pinned field span
+bound1014steps warm pass. Literal actual arena positive plus each independent
+hypothesis-removal witness pass; actual source236850 checks pass. API/body and
+Runtime custody unchanged, Served owns the command join. Immutable46b7 normal
+3root cert PASS certify-20261003T171659Z-2651933 (19matching cached dependencies),
+archived/indexed. Changed query/test bytes have warm evidence only until next
+selected header/query/test certification; unchanged cursor bytes retain exact
+manifest match. Universal arbitrary-name reference and full owner/physical scope
+remain open. Warm access-header-query /tank/fn/gates/codex-access-header-query-repl
+retained; tests resync had undone later bounds events, now reloaded header then
+query bounds and tests in order, all pass. No second full initializer or image.

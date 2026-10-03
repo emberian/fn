@@ -23098,7 +23098,7 @@
     {
       "id": "PRF-1304",
       "title": "Arbitrary header query borrows one immutable source span with bounded parser and normalization work",
-      "statement": "fn-lhq-tick uses the shared fn-lpc-byte-names header parser, retaining the captured handle/length/origin pin. fn-lhq-tick-work-bounded limits actual scalar parser reads by natural fuel; fn-lhq-tick-preserves-source and -ready carry source identity and the cheap four-scalar source guard. fn-lhq-field borrows the first requested field span; existing fn-nsw-step normalizes it without flattening. Actual HDR/XPAT dispatch/host consumer connection is Served-owned and pending; complete arbitrary-name parser/span/reference refinement and composed resource proof remain open. Existing fn-lpc-header-byte/fn-lpc-byte public ABI and fixed five-name NOV behavior are retained.",
+      "statement": "fn-lhq-tick uses the shared fn-lpc-byte-names header parser, retaining the captured handle/length/origin pin. fn-lhq-tick-work-bounded limits actual scalar parser reads by natural fuel; fn-lhq-tick-preserves-source and -ready carry source identity and the cheap four-scalar source guard. fn-lhq-begin-establishes-bounds and fn-lhq-tick-preserves-bounds carry logical parser bounds without running a whole recognizer; fn-lhq-field-retains-bounded-pinned-source establishes returned span handle/pin and start+length within captured source length under bounds and ready hypotheses. fn-lhq-field borrows the first requested field span; existing fn-nsw-step normalizes it without flattening. Actual HDR/XPAT dispatch/host consumer connection is Served-owned and pending; complete arbitrary-name parser/span/reference refinement and composed resource proof remain open. Existing fn-lpc-header-byte/fn-lpc-byte public ABI and fixed five-name NOV behavior are retained.",
       "milestone": "M5",
       "requirements": [
         "REP-010",
@@ -23116,9 +23116,13 @@
         "tests/acl2/legacy-header-query-tests.lisp",
         "tests/native_header_query_source.lisp",
         "planning/evidence/header-query-source-20261003.log",
-        "planning/evidence/header-query-warm-20261003.log"
+        "planning/evidence/header-query-warm-20261003.log",
+        "books/legacy-parser-header.lisp",
+        "planning/evidence/header-query-bounds-source-20261003.log",
+        "planning/evidence/header-query-bounds-warm-20261003.log",
+        "planning/evidence/manifests/certify-20261003T171659Z-2651933.json"
       ],
-      "progress_note": "41 shared legacy parser events admitted after generic-name refactor with existing guards/statements unchanged. All14 query events/guards admitted (tick guard1547steps, work1004/source9312/ready18087). Literal actual arena positive/fold/firstmatch/absent/invalid-header work/source/ready/reference teeth and pin mutation pass. Source236658 query checks compare actual old fn-nntp-hdr-content across W1/3/4096,10000-octet folded value, repeated names, malformed later field,999-octet line, bodyNUL/CRLF, mixed-case target, and recorded cold scalar reads in parser/normalizer. Captured span contains original fold bytes, normalization removes only first unfoldedSP/CRLF and scrubsTAB as before. Recorded list-arena/cold seams, no actual full owner/physical funding claim. Complete Served consumer and arbitrary-name universal reference proof remain open."
+      "progress_note": "41 shared legacy parser events admitted after generic-name refactor with existing guards/statements unchanged. All14 query events/guards admitted (tick guard1547steps, work1004/source9312/ready18087). Literal actual arena positive/fold/firstmatch/absent/invalid-header work/source/ready/reference teeth and pin mutation pass. Source236658 query checks compare actual old fn-nntp-hdr-content across W1/3/4096,10000-octet folded value, repeated names, malformed later field,999-octet line, bodyNUL/CRLF, mixed-case target, and recorded cold scalar reads in parser/normalizer. Captured span contains original fold bytes, normalization removes only first unfoldedSP/CRLF and scrubsTAB as before. Recorded list-arena/cold seams, no actual full owner/physical funding claim. Complete Served consumer and arbitrary-name universal reference proof remain open. Followup carries generic-name parser bounds and returned field scalar READ bounds (begin28/tick5488/field1014steps); literal positive and both hypothesis-removal witnesses pass. Actual source236850 checks pass. Existing legacy default-byte bound statement now proves in15steps with wrapper-only hint instead of expansion refusal. Normal3root certify-20261003T171659Z-2651933 passed immutable46b7 cursor/query/tests with19matching cached dependencies; this followup changes query/test bytes and has warm evidence only until its own selected certification. No verdict transfer."
     },
     {
       "id": "PRF-1303",
