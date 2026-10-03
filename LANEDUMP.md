@@ -1,30 +1,15 @@
-# Integration deputy — GPT-6.1-Sol, 2026-10-03
+# Resource exec helper — GPT-6.1-Sol
 
-Worktree codex-sol-integrate, sole dev push writer this wave. Base 30529279e.
+Base dev4479f2acf plus frozen receipt e3412f1dc, exact HEAD9977d6a03. Own books/resource-vector-exec.lisp and tests/acl2/resource-vector-exec-tests.lisp only. Foundations owns books/resource-syncer.lisp and assembles this helper; Runtime owns actual service ledger and syncer wiring. Send READY with exact source/check debt to Foundations, Groundwork and Integration.
 
-## Integrated source
-- 8cf37a368 merges burndown-3 2f7f5bda2 (CL08/09, BM08/CL20, CL10, CL12 and partial CL11).
-- witness_check, spec_cite_check --strict, harness_check acl2-arity, payload_kind_check, must_fail_check pass; 21 relevant unittest tests pass.
-- Independently reproduced base 86f94aee0: uncited payload-lifecycle raw witness, 11 wrong-arity fixture sites, 12 undeclared payload consumers, 12 stale spec citations. BM08 original verify base was a new-at-head missing unittest, so that red reason is not accepted as semantic evidence.
-- CL12 source declarations integrated; affected roots still need certification. CL11 unchecked macro refusal teeth need actual target-root certification, remains in-progress.
+Prove executable fn-rl-draw(slot,demand,ledger)->(mv word gen ledger) and fn-rl-settle(slot,gen,ledger)->(mv word ledger) correspond to existing flat model. Preserve install correspondence, abstraction, guards/wfp/okp, old indices and four appended receipt scalars. Exhausted u64 generation returns :slot-exhausted, never wraps. Settlement retains spent charge and returns reusable charge. No served-path table reconstruction, subtree/refund expansion or user-bank guarantee.
 
-## Harvested (archived/indexed; no image verdict)
-- ov1 at 4671ace0ff1b5922fd83ab7cda137e02c444ce92 ended 05:22:46Z status 1. certify-20261003T043548Z-620519 passed 32/0, acquire/validate/host-forward pass. Both host prefixes timeout 600s at fn-owner-page-executor-acquire-refines-pxe-by-definition. Exact normal/DTN logs archived under planning/evidence/overnight-ov1-2026-10-03/. No image or native module ran.
-- served-live sl3 at b7ef4410c: certify-20261003T041248Z-3998343 558 passed/9 failed, old feed-totality/BP guard blockers and dependents. Logs archived planning/evidence/served-live-sl3-2026-10-03/.
-- wrapper run-20261003T041004Z-fe23: certify-20261003T041156Z-3987839 561 passed/11 failed. Manifest archived/indexed; failure-scope passed at matching bytes, old feed/BP blockers prevent whole-run green.
-- Manifests have git_revision null; source coordinate is native run.log/source digest, not inferred from successful status.
+Consumer issues real owner worker token (:resource :owner 2 gen) with operation generation. Physical token/observation and operation token/generation separately record receipt bits; settlement only after both. This is an owner projection under actual mux :hold, not an invented spare/rescue allocation or R>=W claim.
 
-## Next integrated batch
-- Coordinator owns page-executor host theorem proof-cost fix; next frozen candidate gets one warmed normal/DTN host-prefix validation before replacement images.
-- Runtime owns wrapper/section changes; Served owns served-live repairs. Do not duplicate fixes or image runs.
-- Post-guard-off 812082a53 needs final-world inventory and matched raw/counterpart POST measurement; broken carrier fa32ac06f stays out.
-- hbox observed 05:51Z: ARC 24 GiB at cap, memory_available ~49 GiB; no fn build, Lean ~3.5 GiB. Foundations may run two-job narrow def-cost certification; revisit inventory before batch image.
+Read AGENTS and guides/overnight plan. Claim IDs before writing. Integration owns expensive runs; laptop ACL2 only slot tools, hbox swarm-build. Narrow roots/tests, no --closure. External Kimi/Grok/ZAI advisory reviews authorized selectively with minimal project context, no personal files/keys; advisory source review is not execution evidence. No live nodes/deployment.
 
-## Continuing wave
-- dev819af5d54 includes page-executor proof-cost repair4207030f4 and harvested current-view regeneration. Exact host prefix still pending.
-- Served3436966b0 source merged79850a877: metadata NEWNEWS, cold line deadline/mux polling/feed idle, protected publication ARENA capture.2 capture tests/read/protocol pass; native paths remain owed. hbox regen/lock check in progress.
-- Tools verifierd6fd41a8c merged1bdc62a1f,19 tests pass; typed selector harness4740c59af merged,3 actual classifier/admission mutation tests pass.
-- Foundations ee7c686c0 def-cost application/transitive unknown repairs merged; both roots certified in certify-20261003T055532Z-754160; indexed manifest verified.
-- Groundwork active plan/nowb1b425870 cherry-pickedcf8343310.
-- Burndown narrow certification run-20261003T060224Z-902c on hbox, certify-20261003T060555Z-796321:7 roots,323 cached/46 missing. No lane --closure. Harvest pending.
-- Runtime first physical actor source/failure envelope pending. Post-guard-off812082a53 reviewed by Foundations/Groundwork; root deciding native-trust versus formal-assumption label; final-world/matched POST still owed.
+2026-10-03 helper source freeze: 2d3747fd0 verifies guards for draw/open/settle and mutable loops, proves typed+wfp preservation and all four receipt scalars unchanged. 724b8e92c adds fn-rl-draw-correspondence and fn-rl-settle-correspondence over typed+wfp ledgers: exact word/token/effects, u64 generation exhaustion explicitly refines logical success to :slot-exhausted, every refusal preserves the exact concrete ledger. Supporting fn-rl-draw-keeps-okp / fn-rl-settle-keeps-okp transfer the logical invariant; they are not independent keystones and necessity of their typed/wfp premises for an okp-only theorem is not claimed. Public refusal-preserves-ledger facts have no representation premises. Actual algorithms and receipt fields unchanged.
+
+Whole final encapsulate replays in solrlexec (laptop tools/proof_repl slot) in 13.03 seconds / 2,803,737 prover steps. All tests through form 53 admit; final range forms 12..53 takes 0.13 seconds / 55,411 steps, including complete literal correspondence witnesses for accepted/refused/exhausted/noncanonical cases and affirmative typed/wfp removals labelled corrupted-state. theory_check --strict --book-order for resource-vector-exec passes with zero warnings. These are REPL admissions, not certificates: resource-vector and proof-local std/lists/update-nth loaded from source because laptop certificates were unavailable. Archived summary planning/evidence/resource-vector-exec-20261003-repl.json hash b4b1e6a25ea7a7042eb122ed0f3f6e17c1408a8b323309815c45c0f86597e80b; commit only the evidence index, not logs.
+
+Foundations prototypes the same consumer's install/store bootstrap guard follow-through and will send exact proved forms for this owned book. Integration owns final narrow certification and actual consumer inclusion checks. Foundations owns PRF-1211/current-view assembly: update stale wording that says no correspondence or guards exist; keep certification/qualification coordinates separate. No new requirement/proof ID: this closes existing PRF-1211 boundary obligations.
