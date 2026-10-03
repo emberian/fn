@@ -5321,3 +5321,6 @@
 ; Program global/native installation refinement remains pending.
 (definterface fn-owner-catalog-root-reserve :class :program)
 (definterface fn-owner-catalog-root-current :class :program)
+
+(definterface fn-web-host-page-cursor :class ::program)
+(definterface fn-web-host-page-step :class ::program)

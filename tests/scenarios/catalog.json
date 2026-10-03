@@ -1151,7 +1151,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -8317,7 +8317,7 @@
         "Run tests/acl2/newnews-metadata-cursor-tests.lisp: unmatched first article advances with empty output, matching final article retains its output after scan completion; compare emitted prefix plus remaining with original response.",
         "Run actual native NEWNEWS wildcard workload with more candidates than shared cache slots; compare complete Message-ID reply while a second connection remains responsive.",
         "Run newnews-stream-cursor-tests and actual served-plan-newnews-tests: indexed line wider than byte quantum drains without candidate visits, sparse selection retains final renderer, tiny/large plan outputs equal.",
-        "Run actual configured factory→plan witness with eleven captured configured groups, sparse first article, selector retained through one-call/one-byte quanta, and complete equality to original catalog reply.",
+        "Run actual configured factory\u2192plan witness with eleven captured configured groups, sparse first article, selector retained through one-call/one-byte quanta, and complete equality to original catalog reply.",
         "Run tests.test_cursor_cold_poll against actual extracted native cursor/mux bodies: cold attempt returns unchanged plan+issued read, pending yields to timer, repeated miss retains first clock, returned page resumes plan rather than input, refusal adds no body line. This is mocked-I/O source flow, not matching native image custody."
       ],
       "expected": [
@@ -8797,6 +8797,30 @@
         "tests/acl2/catalog-availability-owner-load-tests.lisp"
       ],
       "execution_scope": "First actual foundation writer classification fixtures pass in warm REPL; generated complete command antecedents/conclusions, recovery loader, paged attachment and native reclaim/reopen remain pending. Tombstone-shaped byte fixture is classification evidence, not execution of a native reclaim pass. Actual generic catalog available summary/range/navigation complete tuple cases now pass with guard-verified exports, including empty (0,35,34) and preserved raw#2 lookup. Protocol/session effect teeth and native reclaim remain pending. Actual recovery loader with legacy missing NOV now passes the same sparse/prefix/tail/empty/cancel tuples from sealed arena payloads; invalid-handle classification remains unavailable. This is live-stobj execution in a warm source world, not native reclaim qualification."
+    },
+    {
+      "id": "SCN-1105",
+      "title": "Count and stream an escaped web page from retained segments without a complete HTML output buffer",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "WEB-006"
+      ],
+      "steps": [
+        "Construct mixed markup/text/URL/span/dot-stuffed/encoded-header segments over a retained input, including a header beyond the decoder quantum.",
+        "Count and emit the same plan using fuel 1, 2, 7 and 4096; compare all emitted octets and count with fn-wr-seq.",
+        "Run actual fnn-web-page-step and write-ready through 137-byte partial writes; retain zero-length HTML OUT throughout."
+      ],
+      "expected": [
+        "Every partition gives exactly the reference page and counted Content-Length; count mode returns no output list.",
+        "Each emitted window is at most its fuel; the long decoded-header fallback is exact.",
+        "Native output is exactly the response head followed by reference bytes while no complete HTML output is materialized."
+      ],
+      "evidence": [
+        "tests/native_web_page_cursor_raw.lisp",
+        "tests/test_native_web_page_cursor_raw.sh"
+      ],
+      "note": "Actual source/raw witness only; program-mode cursor guard/refinement and matching image remain open (PRF-1277)."
     }
   ]
 }

@@ -6,6 +6,7 @@
 (in-package "ACL2")
 (include-book "../books/web-session-keystones")
 (include-book "../books/web-config")
+(include-book "../books/web-page-cursor")
 
 (defun fn-web-host-plan (config-octets listener-port tls-port certp)
   (declare (xargs :mode :program :guard (fn-cbor-octet-listp config-octets)))
@@ -52,7 +53,7 @@
                       (f-get-global 'fn-web-sessions state)
                     nil)))
     (mv-let (action sessions fn-web-out)
-      (fn-web-step config sessions flow event fn-web-in fn-web-out)
+      (fn-web-step (append (take 6 config) (list :page-plan)) sessions flow event fn-web-in fn-web-out)
       (let ((state (f-put-global 'fn-web-sessions sessions state)))
         (mv action fn-web-out state)))))
 
@@ -140,3 +141,13 @@
   (declare (xargs :mode :program))
   (if (<= (nfix need) (nfix capacity)) (nfix capacity)
     (max 1024 (* 2 (nfix need)))))
+
+; Count and emit use the same immutable segment cursor outside the owner
+; section. IN remains the exact retained NNTP reply through the HTTP body.
+(defun fn-web-host-page-cursor (segs)
+  (declare (xargs :mode :program))
+  (fn-wpc-cursor segs))
+
+(defun fn-web-host-page-step (cursor count emitp fn-web-in)
+  (declare (xargs :mode :program :stobjs fn-web-in))
+  (fn-wpc-step cursor count emitp fn-web-in))
