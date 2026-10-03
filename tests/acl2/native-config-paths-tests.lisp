@@ -119,3 +119,30 @@
         (not (equal (fn-ncpath-config-octets text *ncpt-node*) :bad))
         (equal (fn-native-config-load (fn-ncpath-config-octets text *ncpt-node*))
                (list :accepted *ncpt-extended-resolved*)))))
+
+; Output resources are authority, even when the actual consumer is still
+; refused. Relative-path normalization must not erase the explicit policy.
+(defconst *ncpt-output* '(4096 1024))
+(defconst *ncpt-output-config* (update-nth 30 *ncpt-output* *ncpt-written*))
+(defconst *ncpt-both-config* (update-nth 30 *ncpt-output* *ncpt-extended*))
+(assert-event
+ (let* ((text (fn-native-config-show-octets *ncpt-output-config*))
+        (resolved (fn-ncpath-resolve-config *ncpt-output-config* *ncpt-node*))
+        (handed (fn-ncpath-config-octets text *ncpt-node*)))
+   (and (fn-ncpath-basep *ncpt-node*)
+        (equal (car (fn-native-config-load text)) :accepted)
+        (not (equal handed :bad))
+        ; Complete antecedent/conclusion of the actual octet consumer.
+        (equal (fn-native-config-load handed) (list :accepted resolved))
+        (equal resolved (update-nth 30 *ncpt-output* *ncpt-resolved*))
+        (equal (fn-native-config-output-resources (cadr (fn-native-config-load handed)))
+               *ncpt-output*)
+        (equal (fn-native-config-unsupported-key (cadr (fn-native-config-load handed)))
+               "output_resources")
+        (not (fn-native-config-operator-availablep (cadr (fn-native-config-load handed)))))))
+(assert-event
+ (and (not (fn-ncpath-basep nil))
+      (fn-ncfg-show-shapep *ncpt-both-config*)
+      (equal (fn-ncpath-resolve-config *ncpt-both-config* nil) *ncpt-both-config*)
+      (equal (fn-ncpath-resolve-config *ncpt-both-config* *ncpt-node*)
+             (update-nth 30 *ncpt-output* *ncpt-extended-resolved*))))

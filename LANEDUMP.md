@@ -1390,3 +1390,9 @@ sol-access continuing owned queue, GPT-6.1-Sol, 2026-10-03 10:49 UTC:
   group/list view and Message-ID availability; independent transit CHECK
   remains admitted throughout. No cache/delegate code edits. Syntax passes;
   matching-image result remains open.
+
+- Actual operator consumer continuation: fn-ncpath-resolve-config now retains
+  outputfield30 as well as coldfield29 before rendering/reloading at run-at.
+  This prevents relative-path resolution erasing explicit output policy and
+  bypassing the current output_resources refusal. PRF1021 public octet-consumer
+  theorem unchanged; output-only/combined-policy full witnesses prepared.
