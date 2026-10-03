@@ -39,5 +39,99 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_invalid_profile_refuses_before_any_connect",
  "title": "Outbound feed dials TCP before reading the credential profile, and logs a profile failure as a peer connect failure",
- "updated": "2026-10-03T08:01:13Z"
+ "updated": "2026-10-03T08:04:27Z",
+ "verify": {
+  "base": "c73372af6f5fd383090399c7c89e8c2951a05add",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "credential admitted before any TCP connect",
+      "test": "tests.test_native_feed_credential.CredentialAdmissionTests.test_invalid_profile_refuses_before_any_connect",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_native_feed_credential.CredentialAdmissionTests.test_invalid_profile_refuses_before_any_connect"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_feed_credential.py": "caa8a6478b4a1c7c1361577d918153f8c4c2d5aa00ca76a882dfc0ede4f3779a"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "c73372af6f5fd383090399c7c89e8c2951a05add",
+   "stderr": "test_invalid_profile_refuses_before_any_connect (tests.test_native_feed_credential.CredentialAdmissionTests.test_invalid_profile_refuses_before_any_connect) ... FAIL\n\n======================================================================\nFAIL: test_invalid_profile_refuses_before_any_connect (tests.test_native_feed_credential.CredentialAdmissionTests.test_invalid_profile_refuses_before_any_connect)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-jc4_kw9e/wt/tests/test_native_feed_credential.py\", line 52, in test_invalid_profile_refuses_before_any_connect\n    self.run_schedule(\"invalid\", path, \"credential admitted before any TCP connect\")\n    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-jc4_kw9e/wt/tests/test_native_feed_credential.py\", line 27, in run_schedule\n    self.fail(intended)\n    ~~~~~~~~~^^^^^^^^^^\nAssertionError: credential admitted before any TCP connect\n\n----------------------------------------------------------------------\nRan 1 test in 0.185s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "LANEDUMP.md",
+   "books/feed-link-backoff.lisp",
+   "books/peer-host.lisp",
+   "host/native/feed-service.lisp",
+   "host/native/pull-service.lisp",
+   "planning/repair/items/S107.json",
+   "planning/repair/items/S108.json",
+   "planning/repair/items/S109.json",
+   "specs/peering.md",
+   "tests/acl2/feed-link-backoff-tests.lisp",
+   "tests/acl2/peer-host-tests.lisp",
+   "tests/native_feed_credential_raw.lisp",
+   "tests/scenarios/catalog.json",
+   "tests/test_native_feed_credential.py",
+   "tests/test_native_peer_pull.py"
+  ],
+  "diff_lines": 408,
+  "evidence": {
+   "bytes": 4574,
+   "path": "planning/evidence/repair/S108-a88e9293aec24d2dadf7fa305f3b67e4.json",
+   "sha256": "95aefb24a8abd30493398725a4fe9868280e8a626b11172c516e6a66510f9386"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "credential admitted before any TCP connect",
+   "test": "tests.test_native_feed_credential.CredentialAdmissionTests.test_invalid_profile_refuses_before_any_connect"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/native_feed_credential_raw.lisp": "ca5591093fe76eb119fb77cfaa48bbab19943b502a67e2e5e3ef91aed7f8dd44",
+   "tests/test_native_feed_credential.py": "caa8a6478b4a1c7c1361577d918153f8c4c2d5aa00ca76a882dfc0ede4f3779a"
+  },
+  "head": "88a116a909d9e297991a9d967b81c2f05e9312b2",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_native_feed_credential.CredentialAdmissionTests.test_invalid_profile_refuses_before_any_connect"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_feed_credential.py": "caa8a6478b4a1c7c1361577d918153f8c4c2d5aa00ca76a882dfc0ede4f3779a"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "88a116a909d9e297991a9d967b81c2f05e9312b2",
+   "stderr": "test_invalid_profile_refuses_before_any_connect (tests.test_native_feed_credential.CredentialAdmissionTests.test_invalid_profile_refuses_before_any_connect) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.221s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_invalid_profile_refuses_before_any_connect",
+  "timeout": 1800.0
+ }
 }

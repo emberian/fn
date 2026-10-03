@@ -39,5 +39,99 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_fifo_refuses_without_blocking",
  "title": "Credential profile opened without O_NONBLOCK before the regular-file check: a FIFO hangs the feed worker and the owner close join",
- "updated": "2026-10-03T08:00:47Z"
+ "updated": "2026-10-03T08:04:22Z",
+ "verify": {
+  "base": "c73372af6f5fd383090399c7c89e8c2951a05add",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "credential FIFO must refuse without blocking",
+      "test": "tests.test_native_feed_credential.CredentialAdmissionTests.test_fifo_refuses_without_blocking",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_native_feed_credential.CredentialAdmissionTests.test_fifo_refuses_without_blocking"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_feed_credential.py": "caa8a6478b4a1c7c1361577d918153f8c4c2d5aa00ca76a882dfc0ede4f3779a"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "c73372af6f5fd383090399c7c89e8c2951a05add",
+   "stderr": "test_fifo_refuses_without_blocking (tests.test_native_feed_credential.CredentialAdmissionTests.test_fifo_refuses_without_blocking) ... FAIL\n\n======================================================================\nFAIL: test_fifo_refuses_without_blocking (tests.test_native_feed_credential.CredentialAdmissionTests.test_fifo_refuses_without_blocking)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-nv410uvq/wt/tests/test_native_feed_credential.py\", line 17, in run_schedule\n    result = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=5)\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py\", line 557, in run\n    stdout, stderr = process.communicate(input, timeout=timeout)\n                     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py\", line 1221, in communicate\n    stdout, stderr = self._communicate(input, endtime, timeout)\n                     ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py\", line 2154, in _communicate\n    self._check_timeout(endtime, orig_timeout, stdout, stderr)\n    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py\", line 1268, in _check_timeout\n    raise TimeoutExpired(\n    ...<2 lines>...\n            stderr=b''.join(stderr_seq) if stderr_seq else None)\nsubprocess.TimeoutExpired: Command '['/opt/homebrew/bin/sbcl', '--noinform', '--script', 'tests/native_feed_credential_raw.lisp', '/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmpgzc243u0/fifo', 'fifo']' timed out after 5 seconds\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-nv410uvq/wt/tests/test_native_feed_credential.py\", line 46, in test_fifo_refuses_without_blocking\n    result = self.run_schedule(\"fifo\", path)\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-nv410uvq/wt/tests/test_native_feed_credential.py\", line 23, in run_schedule\n    self.fail(\"credential FIFO must refuse without blocking\")\n    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: credential FIFO must refuse without blocking\n\n----------------------------------------------------------------------\nRan 1 test in 5.032s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "LANEDUMP.md",
+   "books/feed-link-backoff.lisp",
+   "books/peer-host.lisp",
+   "host/native/feed-service.lisp",
+   "host/native/pull-service.lisp",
+   "planning/repair/items/S107.json",
+   "planning/repair/items/S108.json",
+   "planning/repair/items/S109.json",
+   "specs/peering.md",
+   "tests/acl2/feed-link-backoff-tests.lisp",
+   "tests/acl2/peer-host-tests.lisp",
+   "tests/native_feed_credential_raw.lisp",
+   "tests/scenarios/catalog.json",
+   "tests/test_native_feed_credential.py",
+   "tests/test_native_peer_pull.py"
+  ],
+  "diff_lines": 408,
+  "evidence": {
+   "bytes": 6063,
+   "path": "planning/evidence/repair/S107-ec773c45a43940e7aea8c54a3d975651.json",
+   "sha256": "092e229d1a42f8bdf5261cc0c1601eda39c2c597ca30671c5c16da525cbd38dc"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "credential FIFO must refuse without blocking",
+   "test": "tests.test_native_feed_credential.CredentialAdmissionTests.test_fifo_refuses_without_blocking"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/native_feed_credential_raw.lisp": "ca5591093fe76eb119fb77cfaa48bbab19943b502a67e2e5e3ef91aed7f8dd44",
+   "tests/test_native_feed_credential.py": "caa8a6478b4a1c7c1361577d918153f8c4c2d5aa00ca76a882dfc0ede4f3779a"
+  },
+  "head": "88a116a909d9e297991a9d967b81c2f05e9312b2",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_native_feed_credential.CredentialAdmissionTests.test_fifo_refuses_without_blocking"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_feed_credential.py": "caa8a6478b4a1c7c1361577d918153f8c4c2d5aa00ca76a882dfc0ede4f3779a"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "88a116a909d9e297991a9d967b81c2f05e9312b2",
+   "stderr": "test_fifo_refuses_without_blocking (tests.test_native_feed_credential.CredentialAdmissionTests.test_fifo_refuses_without_blocking) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.186s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_fifo_refuses_without_blocking",
+  "timeout": 1800.0
+ }
 }

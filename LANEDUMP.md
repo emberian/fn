@@ -600,3 +600,8 @@ clean shutdown; extends existing SCN071. Has not run here, historical scenario
 evidence does not cover this case. Books/peer-host and feed-link-backoff plus
 two existing test roots changed; scoped cert/composed image consumer pending
 Integration. No full suite/image launched by this lane.
+
+Three same-harness receipts at source88a116a90 are archived: S107 real FIFO
+blocked-base/prompt-head assertion, S108 invalid-before-connect assertion,
+S109 exact read fault assertion; all designated identities red/base and
+green/head with no infra/skips. File hashes live in each item/index.

@@ -41,5 +41,99 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_exact_read_and_core_faults_propagate_while_stopping",
  "title": "fnn-pull-profile swallows every error, including ACL2 faults, as an unreadable credential",
- "updated": "2026-10-03T08:01:13Z"
+ "updated": "2026-10-03T08:04:32Z",
+ "verify": {
+  "base": "c73372af6f5fd383090399c7c89e8c2951a05add",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "read fault retains exact class",
+      "test": "tests.test_native_feed_credential.CredentialAdmissionTests.test_exact_read_and_core_faults_propagate_while_stopping",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_native_feed_credential.CredentialAdmissionTests.test_exact_read_and_core_faults_propagate_while_stopping"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_feed_credential.py": "caa8a6478b4a1c7c1361577d918153f8c4c2d5aa00ca76a882dfc0ede4f3779a"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "c73372af6f5fd383090399c7c89e8c2951a05add",
+   "stderr": "test_exact_read_and_core_faults_propagate_while_stopping (tests.test_native_feed_credential.CredentialAdmissionTests.test_exact_read_and_core_faults_propagate_while_stopping) ... FAIL\n\n======================================================================\nFAIL: test_exact_read_and_core_faults_propagate_while_stopping (tests.test_native_feed_credential.CredentialAdmissionTests.test_exact_read_and_core_faults_propagate_while_stopping)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-x1n8y5dr/wt/tests/test_native_feed_credential.py\", line 73, in test_exact_read_and_core_faults_propagate_while_stopping\n    self.run_schedule(\"faults\", self.profile(Path(directory)), \"read fault retains exact class\")\n    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-x1n8y5dr/wt/tests/test_native_feed_credential.py\", line 27, in run_schedule\n    self.fail(intended)\n    ~~~~~~~~~^^^^^^^^^^\nAssertionError: read fault retains exact class\n\n----------------------------------------------------------------------\nRan 1 test in 0.174s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "LANEDUMP.md",
+   "books/feed-link-backoff.lisp",
+   "books/peer-host.lisp",
+   "host/native/feed-service.lisp",
+   "host/native/pull-service.lisp",
+   "planning/repair/items/S107.json",
+   "planning/repair/items/S108.json",
+   "planning/repair/items/S109.json",
+   "specs/peering.md",
+   "tests/acl2/feed-link-backoff-tests.lisp",
+   "tests/acl2/peer-host-tests.lisp",
+   "tests/native_feed_credential_raw.lisp",
+   "tests/scenarios/catalog.json",
+   "tests/test_native_feed_credential.py",
+   "tests/test_native_peer_pull.py"
+  ],
+  "diff_lines": 408,
+  "evidence": {
+   "bytes": 4670,
+   "path": "planning/evidence/repair/S109-43ee9faac80d4a2d98e31fc3f42d90f3.json",
+   "sha256": "e5dec7bff2256b6d448cc9bb87768d36b1266e9dea9a65fad90d43d442c8c3bf"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "read fault retains exact class",
+   "test": "tests.test_native_feed_credential.CredentialAdmissionTests.test_exact_read_and_core_faults_propagate_while_stopping"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/native_feed_credential_raw.lisp": "ca5591093fe76eb119fb77cfaa48bbab19943b502a67e2e5e3ef91aed7f8dd44",
+   "tests/test_native_feed_credential.py": "caa8a6478b4a1c7c1361577d918153f8c4c2d5aa00ca76a882dfc0ede4f3779a"
+  },
+  "head": "88a116a909d9e297991a9d967b81c2f05e9312b2",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_native_feed_credential.CredentialAdmissionTests.test_exact_read_and_core_faults_propagate_while_stopping"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_feed_credential.py": "caa8a6478b4a1c7c1361577d918153f8c4c2d5aa00ca76a882dfc0ede4f3779a"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "88a116a909d9e297991a9d967b81c2f05e9312b2",
+   "stderr": "test_exact_read_and_core_faults_propagate_while_stopping (tests.test_native_feed_credential.CredentialAdmissionTests.test_exact_read_and_core_faults_propagate_while_stopping) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.155s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_exact_read_and_core_faults_propagate_while_stopping",
+  "timeout": 1800.0
+ }
 }
