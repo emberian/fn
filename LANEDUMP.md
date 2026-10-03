@@ -1596,3 +1596,19 @@ BP8e39ed176 reviewed actual ACL2 config→helper-seconds→native submit→pinne
 
 ## Source assembly: bounded retire operator observation (2026-10-03)
 c5984febd +cc70 intended host subject composed; stale generated current.md omitted, only new current-view capability input retained (correct fn-nret-observation-step subject). Actual raw caller clock/liveness/report route reviewed: ACL2 deadline returns uncertainty without stopping owner/custody; offline/stale only permits fresh-report inspection; invalid observations fault. Found missing four native dispatcher declarations; added common entries, decision cites both keystones. Operator confirms existing guard-verified hbox targets +16teeth; no repeated experiments. V2 source receipt verified, claims codex-operator-retire PASS. Candidate loaded-world interfaces and normal native-retire+tests/acl2/native-retire-observation-tests certification, then matching saved-image retire consumer remain owed. No physical final-fence bound claimed.
+S026 consumer source, 2026-10-03: actual service holds arrival/job/limit/key,
+one fn-bpfj-step per turn. Receive callback only raises rescan after durable
+custody; :family-ready never recursively sweeps. Completed stale/refused
+family yields another candidate on another turn (tried keys, cleared by new
+custody/family replacement). TCPCL hooks run after ACK on every input/timeout,
+zero-poll retained work; pending received-source hook excluded. Idle listener
+and once-after-close control/service/yield turns continue jobs. Reopen resets
+all fragment continuation fields. Actual raw service test passes3quanta,
+no callback sweep, exact carry/proposal, stale rejection; actual TCPCL/accept
+test passes flush order, keepalive/input progress, EOF, once drain. Source
+Assembly primary review requested; matching existing fragment guards/job-test
+certification and native image pending Integration convergence. Scan/encode
+cost and full BP funded retained-session fairness remain open.
+
+## Source assembly S026 push-before-verify (2026-10-03)
+cbf057be2 source composed atop ION882 prerequisite; only cumulative notes conflicted. Producer raw fragment/turn/TCPCL/forward leaves pass, reused. Actual EOF/sourcepending/once/stale-rescan primary review follows source push per Ember correction; proof roots/native new-image consumer remain pending, no report or review gate.

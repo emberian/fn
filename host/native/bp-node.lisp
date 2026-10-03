@@ -1033,6 +1033,10 @@ uncertain, as it does everywhere else."
                        ;; ends (a keepalive session need never end).  The
                        ;; forwarding, outbox and receipt sends, which open
                        ;; sessions of their own, still run between sessions.
+                       (*fnn-tcl-work-pending*
+                         (lambda (conn)
+                           (declare (ignore conn))
+                           (fnn-bps-fragment-work-p bp)))
                        (*fnn-tcl-progress*
                          (lambda (conn)
                            (declare (ignore conn))
@@ -1046,7 +1050,8 @@ uncertain, as it does everywhere else."
                             "BP NODE KIND5 DURABLE")
                            (fnn-bpc-advance-clock
                             bp (fnn-bp-observation wall wall-error))
-                           (fnn-bpnode-dispatch-pending
+                           (fnn-bps-fragment-progress bp)
+                           (fnn-bpnode-dispatch-one
                             bp owner receipt-root workflow-root destination policy
                             issuer node-id peer-id))))
                        (let ((conn
@@ -1083,6 +1088,7 @@ uncertain, as it does everywhere else."
                  bp journal-root config wall wall-error)
                 (fnn-bpc-advance-clock
                  bp (fnn-bp-observation wall wall-error))
+                (fnn-bps-fragment-progress bp)
                 (fnn-bpnode-delete-expired bp reports-enabled)
                 (fnn-bpnode-observe-reports bp node-id)
                 (fnn-bpnode-dispatch-pending
@@ -1098,7 +1104,16 @@ uncertain, as it does everywhere else."
                  bp peer-id node-id contact-host contact-port transfer-mru
                  wall wall-error)
                 (fnn-bp-profile-session bp profile-started))
-              once))
+              once
+              :pending (lambda () (fnn-bps-fragment-work-p bp))
+              :progress
+              (lambda ()
+                (when (eq (fnn-bps-outcome bp) :fenced)
+                  (fnn-indeterminate "BP node custody uncertain; recovery required"))
+                (fnn-bps-fragment-progress bp)
+                (fnn-bpnode-dispatch-one
+                 bp owner receipt-root workflow-root destination policy issuer
+                 node-id peer-id))))
            ;; ACL2's code for the node's evidence with the last session's
            ;; (fn-bprc-run-exit-code; specs/host.md "BP run classes").
            (fnn-core 'fn-bprc-run-exit-code
