@@ -309,6 +309,7 @@
                   :hints (("Goal" :do-not-induct t
                            :in-theory (e/d (fn-proto-archive-command-cat
                                             fn-nntp-archive-command-pinned fn-nntp-archive-command
+                                            fn-nntp-result-session fn-nntp-result-effects
                                             ,@(fn-proto-form-get :open form))
                                            ,(append
                                              (list 'fn-nntp-archive-command-cat-is-pinned

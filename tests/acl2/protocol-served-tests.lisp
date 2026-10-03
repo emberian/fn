@@ -148,7 +148,7 @@
 
 ;; The lines are not trivial: a 221 (XPAT), a 211 (GROUP) and a 224 (OVER)
 ;; answered; GROUP of an unknown group 411; and OVER's cursor arm answers
-;; the range as a cursor only with no Xref server named.
+;; the range as a cursor with either Xref environment.
 (defun pst-code (env line arch index fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let ((tokens (fn-nntp-tokenize (fn-nntp-string-octets line))))
@@ -171,7 +171,7 @@
          (equal (pst-code *pst-env-x* "GROUP fn.none" arch index *pst-a*) (list 52 49 49))
          (equal (pst-code *pst-env-x* "OVER 1-3" arch index *pst-a*) (list 50 50 52))
          (pst-cursorp *pst-env-0* "OVER 1-3" arch index *pst-a* *pst-c*)
-         (not (pst-cursorp *pst-env-x* "OVER 1-3" arch index *pst-a* *pst-c*))))
+         (pst-cursorp *pst-env-x* "OVER 1-3" arch index *pst-a* *pst-c*)))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-ovw-cursor-effectp))))
 
@@ -190,8 +190,11 @@
 
 (defun pst-not-500 (effects)
   (declare (xargs :verify-guards nil))
-  (and (consp effects) (consp (car effects)) (equal (car (car effects)) :reply)
-       (not (equal (take 3 (cadr (car effects))) (list 53 48 48)))))
+  (and (consp effects)
+       (or (and (fn-ovw-cursor-effectp (car effects))
+                (fn-ovw-cursorp (cadr (car effects))))
+           (and (consp (car effects)) (equal (car (car effects)) :reply)
+                (not (equal (take 3 (cadr (car effects))) (list 53 48 48)))))))
 
 (defun pst-reaches (lines arch index fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
