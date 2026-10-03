@@ -21759,9 +21759,13 @@
       "events": [
         "fn-orv-accepted-launch-fits-observed-machine",
         "fn-orv-accepted-launch-funds-output-dynamic-allowance",
-        "fn-orv-startup-hold-protects-owner-and-one-quantum"
+        "fn-orv-startup-hold-protects-owner-and-one-quantum",
+        "fn-rlo-install-keeps-representation",
+        "fn-rlo-issue-keeps-representation",
+        "fn-rlo-output-keeps-representation",
+        "fn-rlo-physical-keeps-representation"
       ],
-      "progress_note": "Numerical launch/startup properties source-admitted (1.76s/491692steps) with 23 literal/refusal/grammar checks. Typed output custody definitions, six helper/receipt/drain guards source-admitted; receipt proof package1.39s/277122steps, 16 actual live-stobj receipt/free-row trace cases pass. First actual normal-counterpart native producer/serializer/real-worker join probe passes. Install/issue guards, metadata/free-row typed invariant and bank projection, concrete bookkeeping/whole-plan allocation refinement and Runtime mux activation remain owed. No matching output certificate or image verdict. Explicit config remains unsupported until consumer activation; absence partial."
+      "progress_note": "Numerical launch/startup properties and actual typed output methods source-admitted. Install/issue/output/physical preserve typed recognizer plus shape with only typed+shape input; all mutation guards admit through proof-local field recipes and the typed bank boundary. Twelve literal accepted-branch and corrupted-state type/shape removal witnesses accompany the four public preservation exports. An upfront fixed shape check safely refuses malformed typed install state. Sixteen actual live-stobj receipt/free-row trace cases and normal-counterpart native producer/serializer/real-worker join probe remain discriminating consumers. Free-row protocol/bank correspondence, concrete bookkeeping and whole-plan allocation refinement, actual Runtime mux activation and matching output certification/image verdict remain owed. Explicit config remains unsupported; absence partial. Fresh full proper-local resource-output replay admits21.07ACL2s/4,694,217steps (proof packet1,127,718), then fresh16 live traces+12 literal teeth pass28/0 in0.18s/39,682steps. Matching changed-source normal native fixture passes; archived output-custody-20261003-guards.json names exact scope and hashes."
     }
   ]
 }
