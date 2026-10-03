@@ -1556,3 +1556,40 @@ actual replay/scenario execution. Existing two-peer application receipt adapter
 remains the release/reopen consumer; historical retention refusal stays filed.
 ## Source assembly: independent literal job result / physical return (2026-10-03)
 Groundwork cf5cfd64a composed with missing exact prerequisite274819e2f physical-return theorem/26teeth. Registry conflict retained union of evidence coordinates and current source-pending condition-order scope; old certificates explicitly do not transfer. Machine, main theorem book and full finite teeth now byte-identical to primary clean hbox168-form/13.18s/6,847,951-step world plus31assertions; no replay. Existing old080416 certificate archive verified only as historical prerequisite evidence. Actual native24cd/fb JOB-RESULT producer reviewed: current E-holder identifies semantic recorder, worker selected independently byTOKEN; normal literal before physical return and owner condition classification after return both accepted without releasing holds. Realization sites name both actual functions; all-schedules/funded/native complete comparison remain open. Scoped roots books/host-model-machine,books/host-model,tests/acl2/host-model-tests; first matching-image normal/condition held-read trace must consume new machine, not old O-only packet. No new ID, generated report counts not manually rewritten; Integration candidate ledger/current regeneration required.
+
+
+# BP-TRANSPORT continuing owner, 2026-10-03
+
+Model: GPT-6.1-Sol. Worktree build/lanes/bp-transport-oct03; base origin/dev
+041fceb1. Sole dev writer is deputy_integration.
+
+ION first slice: X10A root is passing FNWF milliseconds to the helper's seconds
+argument; X10B is missing ACL2 representability admission before attempt
+publication. New fn-bpit-helper-seconds (verified guards + exact-range/lifetime
+keystone) is called via fn-workflow-ion-helper-seconds before any publication.
+Native restored fixtures canonically undertake through bp-obligation; optional
+real LTP/receipt fixtures inherit that canonical pin.
+
+Checks: local protected REPL admitted book (941 prover steps, 0.01 s); shipped
+native caller raw fixture passes exact route/seconds, pre-attempt no-publication
+refusal, post-attempt helper refusal/fault/death and unbound observation
+uncertainty. Python files compile, host files read. Farm two roots submitted
+hbox run-20261003T094938Z-19cf / certify-20261003T095031Z-1342869; still waiting.
+Harvested: PASSED2/0 manifest certify-20261003T095031Z-1342869 indexed.
+Evidence planning/evidence/bp-ion-lifetime-2026-10-03.md indexed.
+One actual developer + DTN developer convergence image is Integration's next
+carrier packet; these native image fixtures have not run at current bytes.
+
+Next coherent slice: remove reassembly from receive callback; carry one
+fn-bpfj-step quantum between scheduling turns, with stale-family decision
+remaining ACL2's. Tools one-action socket seam is 51c5c4f2e. Retained BP session
+funding must be an actual BP-specific supported-profile producer over fn-rl;
+Fundations confirms no borrowing syncer/output reserves. Demand order is
+*fn-rv-coordinates*: resident,disk,descriptors,workers,read-ids,txids,config-gens,
+conn-ids,work. Timeout is not a physical receipt or settlement.
+
+Open owned family: S025/S026/S068/S146; historical S006 already source-repaired
+by connection scoping (4e409 ancestor), no duplicate implementation.
+
+## Source assembly: exact ION helper lifetime (2026-10-03)
+BP8e39ed176 reviewed actual ACL2 config→helper-seconds→native submit→pinned C decimal_ttl route. Attempt constructor uses the same config lifetime; retry state does not alter it. ACL2 converts milliseconds only when exact whole seconds within pinned helper range; refusal occurs before directory/publication/launch, keeping stored lifetime scope separate. Canonical Store undertaking fixtures retained; helper refusal/fault/unobserved send outcomes remain distinct. Existing actual caller receipt and matching two-root certificate095031-1342869 archives verified, no repeated proof/image. Deterministic world regeneration PASS; only cumulative LANEDUMP conflict. New-source loaded host/image +real LTP/application receipt consumption pending Integration; candidate global interface/ledger/current regeneration owed.

@@ -368,6 +368,7 @@
 (include-book "anchor-invariants")
 (include-book "anchor-replace")
 (include-book "bp-workflow-constructors")
+(include-book "bp-ion-lifetime")
 (include-book "bp-payload-gate")
 (include-book "bp-channel-ingress")
 (include-book "bp-listener-set")

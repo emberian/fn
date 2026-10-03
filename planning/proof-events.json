@@ -19143,6 +19143,15 @@
           "note": "Partial concurrent-reference invariant: an independently classified literal worker result preserves the full invariant, including classification after physical return. This is not the all-schedules or native realization theorem."
         }
       ]
+    },
+    {
+      "id": "PRF-1267",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpit-helper-seconds-preserves-lifetime"
+        }
+      ]
     }
   ]
 }

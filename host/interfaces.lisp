@@ -3939,6 +3939,9 @@
 (definterface fn-workflow-fencedp
   :class ::program)
 
+(definterface fn-workflow-ion-helper-seconds
+  :class ::program)
+
 (definterface fn-workflow-ion-attempt-plan
   :class ::program)
 

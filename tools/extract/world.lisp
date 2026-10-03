@@ -403,6 +403,7 @@
 (include-book "../../books/web-config")
 (include-book "../../books/topic-history-authorship")
 (include-book "../../books/bp-workflow-constructors")
+(include-book "../../books/bp-ion-lifetime")
 (include-book "../../books/bp-payload-gate")
 (include-book "../../books/bp-channel-ingress")
 (include-book "../../books/bp-listener-set")
