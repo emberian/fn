@@ -114,7 +114,7 @@ def run(manifest: Path, argv: list[str]) -> None:
     env['ACL2_BOOK_HASH_ALISTP'] = 'NIL'
     env.pop('ACL2_SYSTEM_BOOKS', None)
     env['ACL2_CUSTOMIZATION'] = data['bootstrap']
-    env['ACL2_CUSTOMIZATION_QUIET'] = 'ALL'
+    env.pop('ACL2_CUSTOMIZATION_QUIET', None)
     env['FN_NATIVE_PROFILE'] = data['profile']
     env['FN_NATIVE_WORLD'] = 'full'
     # ACL2's output channels initialize from these Lisp streams. The native
