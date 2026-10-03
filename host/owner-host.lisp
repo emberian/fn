@@ -28,6 +28,7 @@
 (include-book "../books/owner-report-capture")
 (include-book "../books/index-writer-ticket")
 (include-book "../books/catalog-may-seal")
+(include-book "../books/catalog-root-incarnation")
 (include-book "payload-view-host")
 ; books/owner-fault includes books/owner and adds the host-fault transition
 ; `fn-own-fault'.  The host needs it: `fn-owner-fault' below is the only way
@@ -343,6 +344,31 @@
 ;; owner's invariant it equals fn-olau-authorize over the carried history and
 ;; the names on disk).  Called from host/native/admin.lisp
 ;; fnn-admin-authorize-owner.  Neither writes any global.
+; Private allocation identity. The actual native catalog installer reserves
+; before publishing a replacement pointer. The counter is never reset by open,
+; reclaim or failed publication; the owner carrier migration must move both
+; globals together. STATE lifetime bounds the identity namespace.
+(defun fn-owner-catalog-root-reserve (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((next (if (boundp-global 'fn-owner-catalog-root-counter state)
+                  (f-get-global 'fn-owner-catalog-root-counter state) 0)))
+    (mv-let (token next1) (fn-cri-reserve next)
+      (if (not token)
+          (mv :corrupt-catalog-root-counter nil state)
+        (let* ((state (f-put-global 'fn-owner-catalog-root-counter next1 state))
+               (state (f-put-global 'fn-owner-catalog-root-incarnation token state)))
+          (mv nil token state))))))
+
+(defun fn-owner-catalog-root-current (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-catalog-root-incarnation state)
+      (let ((token (f-get-global 'fn-owner-catalog-root-incarnation state)))
+        (if (fn-cri-tokenp token)
+            (mv nil token state)
+          (mv :corrupt-catalog-root-incarnation nil state)))
+    ; The initially installed catalog has no exposed capture key yet.
+    (fn-owner-catalog-root-reserve state)))
+
 (defun fn-owner-cfg-next-name (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-olau-next-name (fn-owner-ocfg state))))

@@ -8413,6 +8413,34 @@
         "host/native/mux.lisp"
       ],
       "execution_scope": "Actual native capture/factory/lease/receipt functions with recording typed method boundaries and actual held SBCL children. Typed output/bank correspondence has separate producer evidence. Optional policy stays unsupported; no complete allocation tariff or matching image claim."
+    },
+    {
+      "id": "SCN-1103",
+      "title": "Catalog replacement or failed binding cannot reuse a paired view allocation key",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-002"
+      ],
+      "steps": [
+        "Capture the initial catalog root token, reserve and bind a replacement with identical logical history version.",
+        "Inject failure after reservation and before pointer publication, then reserve the next attempted replacement.",
+        "Check old paired-view keys miss; corrupt counter refuses without reset; natural counters beyond fixed-width codecs advance."
+      ],
+      "expected": [
+        "Allocation identity is independent of the logical view/version.",
+        "A spent failed reservation is never reused; a malformed counter never silently resets.",
+        "Pure examples alone do not establish native installation/capture correspondence."
+      ],
+      "implementation": {
+        "test": "tests/acl2/catalog-root-incarnation-tests.lisp"
+      },
+      "evidence": [
+        "books/catalog-root-incarnation.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp"
+      ],
+      "execution_scope": "Source connected, verification and actual native fault/capture scenario pending."
     }
   ]
 }

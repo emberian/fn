@@ -21858,6 +21858,25 @@
         "fn-rlo-physical-keeps-representation"
       ],
       "progress_note": "Numerical launch/startup properties and actual typed output methods source-admitted. Install/issue/output/physical preserve typed recognizer plus shape with only typed+shape input; all mutation guards admit through proof-local field recipes and the typed bank boundary. Twelve literal accepted-branch and corrupted-state type/shape removal witnesses accompany the four public preservation exports. An upfront fixed shape check safely refuses malformed typed install state. Sixteen actual live-stobj receipt/free-row trace cases and normal-counterpart native producer/serializer/real-worker join probe remain discriminating consumers. Free-row protocol/bank correspondence, concrete bookkeeping and whole-plan allocation refinement, actual Runtime mux activation and matching output certification/image verdict remain owed. Explicit config remains unsupported; absence partial. Fresh full proper-local resource-output replay admits21.07ACL2s/4,694,217steps (proof packet1,127,718), then fresh16 live traces+12 literal teeth pass28/0 in0.18s/39,682steps. Matching changed-source normal native fixture passes; archived output-custody-20261003-guards.json names exact scope and hashes. SCN-1097 connects exact accepted descriptors through actual mux hold/private install, headroom before allocation. New ACL2 row-count helper and normal startup declarations source-admitted in actual loaded output world. Response generation producer and complete response continuation lifetime issue/release remain open; this is staged projection only. The actual independent CID-lifetime and response serial producer fn-rid-connection/fn-rid-response is guard-verified source with three bounded/capture statements and 12 literal/refusal assertions (0.03 ACL2 s/20,345 steps); actual mux admission captures CID before generation refusal, queue-plan reserves before factory and retains operation identity across cursor resume. SCN-1102 actual producer/native helper/queue fixture passes. Complete resource issue/terminal consumer, matching certification and image remain open. Ordinary matching certification now passes books/response-identity and tests/acl2/response-identity-tests, manifest certify-20261003T103508Z-81314; this certifies only the bounded lifetime identity producer, not the native lease interpreter or complete PRF-1259. Actual mux renderer now calls conservative issue before first factory and holds one native grant across response windows; exact cold capture records physical return before pool recycling and retains only pending dependency references until transfer ends. Whole output closure terminates future issue authority; physical receipt waits for all captured children, and root close checks typed/native output drain. SCN-1107 raw actual native functions plus held SBCL children pass with recording semantic boundaries, including second-child, no-child, and torn-step retention. Complete allocator/retained-graph tariff, captured root affinity and native interpreter refinement remain owed; optional policy stays unsupported pending composition."
+    },
+    {
+      "id": "PRF-1272",
+      "title": "Catalog allocation incarnation is reserved before native root binding",
+      "statement": "fn-cri-reserve produces a distinct natural-number catalog-root token and advances its counter before host/native/owner.lisp fnn-install-stobj binds a replacement fn-cat. Failed binding never reuses the reserved generation. Actual owner globals and paired-view capture must preserve this allocation namespace independently of history version.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/catalog-root-incarnation.lisp",
+        "tests/acl2/catalog-root-incarnation-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp"
+      ],
+      "progress_note": "Coherent reserve-before-binding source connected to actual native catalog installer; source pushed before verification per current instruction. Pure theorems/teeth, program-global bridge, matching certification/native fault schedule and paired cache consumption pending. Tokens are private to one owner/image lifetime, not persisted or compared across processes."
     }
   ]
 }
