@@ -21434,6 +21434,28 @@
         "fn-pio-direct-settle-happens-once"
       ],
       "progress_note": "Lane cold-read-ownership (Opus, 2026-10-01): REPL-admitted (6.7 s with dependencies from source) and 44 teeth forms passed on the laptop; certification and natives (test_native_page_io, slow_disk storm) in the lane's LANEDUMP."
+    },
+    {
+      "id": "PRF-1249",
+      "title": "The per-connection authentication failure budget: the third failed authentication answers 481, then 400, and closes the reader session",
+      "statement": "books/nntp-auth.lisp fn-auth-failed (called from fn-auth-authinfo's failed PASS arm and fn-auth-sasl-finish's failed arm; the served step host/native/owner.lisp fnn-owner-handle-chunk runs reaches them through fn-served-step). KEYSTONE fn-auth-failed-pass-below-the-limit-is-481-and-keeps-the-connection: for an unauthenticated session not refused 483, a PASS token, the keyword PASS, a cached name and a password that does not check, with fewer than *fn-auth-failure-limit* (3) failures after this one, the effects are exactly the 481 line and the peer/post/reader layers are unchanged. KEYSTONE fn-auth-failed-pass-at-the-limit-is-481-400-and-closes: the same hypotheses with the count reaching the limit: the effects are the 481 line, the 400 '(connection)' :auth-failures line and (:close), and the reader session is not open, so fn-served-step-stops-at-quit (books/served.lisp, cited) gives that no octet after the closing line is framed, answered or submitted. fn-auth-failed-pass-leaves-the-session-unauthenticated now also states the count goes up by one. Teeth: tests/acl2/nntp-auth-failure-budget-tests.lisp (both positive witnesses; six hypothesis-removal witnesses per keystone plus the limit hypothesis each way; a fn-served-step read of ten pipelined wrong USER/PASS pairs answered 381 481 381 481 381 481 400 then closed; a failed SASL PLAIN response counting; a labelled mutation). Not claimed: offline guessing resistance of the stored verifier.",
+      "milestone": "M6",
+      "requirements": [
+        "NNT-1002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-auth-failed-pass-below-the-limit-is-481-and-keeps-the-connection",
+        "fn-auth-failed-pass-at-the-limit-is-481-400-and-closes"
+      ],
+      "evidence": [
+        "books/nntp-auth.lisp",
+        "tests/acl2/nntp-auth-failure-budget-tests.lisp",
+        "tests/test_native_auth.py"
+      ],
+      "progress_note": "Lane sweep-ops-auth (sweep S044, 2026-10-03)."
     }
   ]
 }

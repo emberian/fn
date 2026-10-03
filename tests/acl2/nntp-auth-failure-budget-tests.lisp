@@ -102,6 +102,9 @@
 
 ; Hypothesis removal, one per hypothesis, for each keystone.  WITNESS is
 ; (AS KEYWORD SECRET); I is the omitted hypothesis's position.
+(defun remove-nth-fb (i xs)
+  (if (zp i) (cdr xs) (cons (car xs) (remove-nth-fb (1- i) (cdr xs)))))
+
 (defun fb-removal-okp (i as keyword secret limitp)
   (let ((h (fb-hyps as keyword secret)))
     (and (not (nth i h))
@@ -109,9 +112,6 @@
          (if limitp
              (and (not (fb-below as)) (not (fb-concl-limit as keyword secret)))
            (and (fb-below as) (not (fb-concl-below as keyword secret)))))))
-
-(defun remove-nth-fb (i xs)
-  (if (zp i) (cdr xs) (cons (car xs) (remove-nth-fb (1- i) (cdr xs)))))
 
 (defun fb-subject-at (n)
   (fn-auth-make-session (fn-auth-session-base *fb-s0*) *fb-acfg* (fb-o "reader")

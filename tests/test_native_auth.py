@@ -53,6 +53,32 @@ class NativeAuthTests(unittest.TestCase):
             client.close(quit=False)
         self.node.exited(EXIT_OK)
 
+    def test_ten_pipelined_wrong_passwords_get_three_481s_then_400_and_eof(self):
+        # Sweep S044, NNT-1002 (fn-auth-failed-pass-at-the-limit-is-481-400-
+        # and-closes): one read carrying ten USER/PASS pairs with a wrong
+        # password, and a GROUP after them, is answered 381/481 three times,
+        # then the 400, then the connection closes; the fourth guess and the
+        # GROUP are never answered.  The owner is still serving: a new
+        # connection logs in.
+        self.node.start()
+        with self.client() as client:
+            client.send(b"AUTHINFO USER native-reader\r\nAUTHINFO PASS wrong\r\n" * 10
+                        + b"GROUP fn.test\r\n")
+            replies = []
+            try:
+                while True:
+                    replies.append(client.line()[:3])
+            except EOFError:
+                pass
+            client.close(quit=False)
+        self.assertEqual(replies, [b"381", b"481"] * 3 + [b"400"], replies)
+        with self.client() as client:
+            self.expect_line(client, b"AUTHINFO USER native-reader", b"381 ")
+            self.expect_line(client, b"AUTHINFO PASS correct-horse", b"281 ")
+            self.expect_line(client, b"QUIT", b"205 ")
+            client.close(quit=False)
+        self.node.stop()
+
     def test_restricted_command_before_login_is_480_and_leaves_no_article(self):
         # P1 (b) on the image: fn-served-dispatch-of-a-gated-command-is-480-
         # and-changes-nothing says a restricted command before the login is

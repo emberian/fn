@@ -1530,6 +1530,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-tests \
 	tests/acl2/nntp-auth-teeth-tests \
 	tests/acl2/nntp-auth-fold-tests \
+	tests/acl2/nntp-auth-failure-budget-tests \
 	books/config-stream \
 	tests/acl2/config-stream-tests \
 	books/config-physical-replay \

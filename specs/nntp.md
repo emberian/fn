@@ -1489,6 +1489,41 @@ ownership and stable `MSG_PEEK`/consume behavior are explicit scheduling and
 platform premises; a short, changed or failed consume closes the connection
 without replaying the logical transition.
 
+### Authentication failures (NNT-1002)
+
+One connection gets three failed authentications. A failure is a 481 to
+AUTHINFO PASS (a wrong password for the cached name) or to an AUTHINFO SASL
+exchange (`fn-auth-sasl-finish`'s failed arm); a syntax error, a 483, a 503,
+a 504 or a cancelled exchange (`481 authentication cancelled`) is not one.
+The third failure is answered with its 481, then `400 too many
+authentication failures; closing connection`, and the connection closes:
+the reader session is left closed exactly as QUIT leaves it, so nothing
+after that line in the same read is framed or answered
+(`fn-served-step-stops-at-quit`). The count is per connection, kept in the
+auth session (`fn-auth-session-failures`), and survives STARTTLS.
+
+- **RFC requirements.** RFC 4643 section 6: a server MAY drop the
+  connection after failed attempts and SHOULD NOT before at least three
+  have failed; section 2.3.1: AUTHINFO MUST NOT be pipelined, so a
+  conforming client never has a command after the closing failure in
+  flight. RFC 3977 section 3.2.1 gives the 400 and the close.
+- **fn guarantee.** No connection has more than three passwords checked,
+  however many USER/PASS pairs one read carries (before 2026-10-03 a 64 KiB
+  read of pipelined pairs was about 1,600 guesses in one served step).
+- **Local policy.** The per-address budget across connections
+  (`exposure-auth-failures`, "Public exposure (NNT-031)") is unchanged and
+  separate: it is observed after each served step and refuses new
+  connections from the address.
+- **Not here.** The stored verifier is still one fast salted digest per
+  guess (see "The stored AUTHINFO credential"): a leaked configuration
+  verifier is cheap to search offline. An iterated or memory-hard verifier
+  is an open item, not this guarantee.
+
+Keystones (`books/nntp-auth.lisp`, PRF-1249):
+`fn-auth-failed-pass-below-the-limit-is-481-and-keeps-the-connection`,
+`fn-auth-failed-pass-at-the-limit-is-481-400-and-closes`; teeth in
+`tests/acl2/nntp-auth-failure-budget-tests.lisp`.
+
 ### AUTHINFO SASL (NNT-056)
 
 NNT-056: AUTHINFO SASL: SCRAM-SHA-256 (and -PLUS over TLS 1.3 with tls-exporter) and PLAIN over TLS, with ACL2 deciding the whole exchange and the server never storing the password
