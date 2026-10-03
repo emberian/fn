@@ -22298,6 +22298,27 @@
         "planning/evidence/sol-access-native-faults-2026-10-03.md"
       ],
       "note": "Exact keystone book and teeth certification passed in the cited per-book entries; certified_claims and current_view confirm each keystone at this source/include closure. Global runs separately record prior failing harness/unsupported standalone host fragment entries, and inherited unrelated cached dependency provenance remains a separate convergence concern. Immutable saved-image protocol observation and deployment are not claimed."
+    },
+    {
+      "id": "PRF-1277",
+      "title": "Native incremental web page count/emit refines the segment renderer with retained input spans",
+      "statement": "Planned: the actual host-called fn-web-host-page-step (fn-wpc-step/fn-wpc-drive) maintains a cursor over a validated fn-wr segment plan and immutable retained NNTP input. Arbitrary quantum partitions concatenate exactly fn-wr-seq; count mode reports its exact length while allocating no output list. Every emitted window is bounded by fuel and every span read lies in the captured input. Establish guards and carry the cursor/input invariant through actual native count, write, cancel and terminal cleanup. Existing fn-wr-emit-is-seq does not establish this new boundary.",
+      "milestone": "M6",
+      "requirements": [
+        "WEB-006"
+      ],
+      "depends_on": [
+        "PRF-338"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/web-page-cursor.lisp",
+        "host/web-host.lisp",
+        "host/native/web-host.lisp",
+        "tests/native_web_page_cursor_raw.lisp"
+      ],
+      "progress_note": "Source program boundary and actual raw native consumer present; no logical refinement, guard verification or matching image claim yet."
     }
   ]
 }

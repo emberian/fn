@@ -8860,6 +8860,30 @@
         "planning/evidence/operator-init-resume-2026-10-03-v2.json"
       ],
       "execution_scope": "Actual-source SBCL and warm ACL2 literal exact-codec witnesses. Four saved-image cases are prepared but not executed; no physical durability qualification."
+    },
+    {
+      "id": "SCN-1105",
+      "title": "Count and stream an escaped web page from retained segments without a complete HTML output buffer",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "WEB-006"
+      ],
+      "steps": [
+        "Construct mixed markup/text/URL/span/dot-stuffed/encoded-header segments over a retained input, including a header beyond the decoder quantum.",
+        "Count and emit the same plan using fuel 1, 2, 7 and 4096; compare all emitted octets and count with fn-wr-seq.",
+        "Run actual fnn-web-page-step and write-ready through 137-byte partial writes; retain zero-length HTML OUT throughout."
+      ],
+      "expected": [
+        "Every partition gives exactly the reference page and counted Content-Length; count mode returns no output list.",
+        "Each emitted window is at most its fuel; the long decoded-header fallback is exact.",
+        "Native output is exactly the response head followed by reference bytes while no complete HTML output is materialized."
+      ],
+      "evidence": [
+        "tests/native_web_page_cursor_raw.lisp",
+        "tests/test_native_web_page_cursor_raw.sh"
+      ],
+      "note": "Actual source/raw witness only; program-mode cursor guard/refinement and matching image remain open (PRF-1277)."
     }
   ]
 }

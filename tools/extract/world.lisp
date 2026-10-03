@@ -404,6 +404,7 @@
 (include-book "../../books/tls-reload")
 (include-book "../../books/web-session-keystones")
 (include-book "../../books/web-config")
+(include-book "../../books/web-page-cursor")
 (include-book "../../books/topic-history-authorship")
 (include-book "../../books/bp-workflow-constructors")
 (include-book "../../books/bp-ion-lifetime")

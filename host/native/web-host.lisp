@@ -47,6 +47,7 @@
   cid leased (cmd-at 0) (cmd-end 0) pending plan closing await completion
   cold cold-word (line-since nil) (resume-at 0)
   wire (wire-at 0) (body-at 0) (body-end 0)
+  page-segs page-cursor page-response (pagep nil) (page-count 0) (page-done nil)
   (cleanup-attempts nil))
 
 (defvar *fnn-web-face* nil)
@@ -233,7 +234,8 @@ exposure admission decides (the id, or NIL when it refused)."
                    (ecase (fnn-web-job-kind job)
                      (:feed (fnn-web-feed-step face conn))
                      (:render (fnn-web-render-step face conn))
-                     (:cold (fnn-web-cold-step face conn))))
+                     (:cold (fnn-web-cold-step face conn))
+                     ((:page-count :page-emit) (fnn-web-page-step face conn))))
                (serious-condition (condition)
                  (unwind-protect
                      (fnn-owner-thread-escape (fnn-web-face-service face) condition "web semantic job")
@@ -254,15 +256,14 @@ exposure admission decides (the id, or NIL when it refused)."
       (fnn-fault "socket returned a malformed peer address"))
     (values (if (= (length address) 4) :inet :inet6) (coerce address 'list))))
 
-(defun fnn-web-response (face conn code fields bodyp)
-  (let* ((out (fnn-web-conn-out conn))
-         (head (fnn-core 'fn-web-host-head code fields (fnn-web-len out)
+(defun fnn-web-response (face conn code fields bodyp &optional (length (fnn-web-len (fnn-web-conn-out conn))))
+  (let* ((head (fnn-core 'fn-web-host-head code fields length
                         (fnn-web-face-config face) (and (fnn-web-face-tls-context face) t))))
     (unless (fnn-octet-list-p head) (fnn-fault "malformed web response head"))
     (setf (fnn-web-conn-wire conn) (fnn-octets head)
           (fnn-web-conn-wire-at conn) 0
           (fnn-web-conn-body-at conn) 0
-          (fnn-web-conn-body-end conn) (if bodyp (fnn-web-len out) 0)
+          (fnn-web-conn-body-end conn) (if bodyp length 0)
           (fnn-web-conn-phase conn) :write
           (fnn-web-conn-want conn) :output)))
 
@@ -337,8 +338,14 @@ exposure admission decides (the id, or NIL when it refused)."
                      (fnn-web-conn-flow conn) (fnn-web-conn-event conn)
                      (fnn-web-conn-in conn) (fnn-web-conn-out conn) *the-live-state*)) :reader))))
     (case (fnn-core 'fn-web-host-action-kind action)
-      (:respond (destructuring-bind (code fields bodyp) (rest action)
-                  (fnn-web-response face conn code fields bodyp)))
+      (:respond (destructuring-bind (code fields bodyp &optional page-kind segs) (rest action)
+                  (if (eq page-kind :page-plan)
+                      (setf (fnn-web-conn-pagep conn) t
+                            (fnn-web-conn-page-segs conn) segs
+                            (fnn-web-conn-page-cursor conn) (fnn-core 'fn-web-host-page-cursor segs)
+                            (fnn-web-conn-page-response conn) (list code fields bodyp)
+                            (fnn-web-conn-phase conn) :page-count)
+                    (fnn-web-response face conn code fields bodyp))))
       (:health
        (fnn-owner-space-preobserve service t)
        (setf (fnn-web-conn-flow conn) (second action)
@@ -487,6 +494,34 @@ exposure admission decides (the id, or NIL when it refused)."
                      (fnn-web-conn-cold-word conn)
                      (and (eq mode :feed) (list word since now limit (fnn-web-conn-line-since conn)))))))))
 
+(defun fnn-web-page-step (face conn)
+  ;; The retained reply and immutable segment plan belong to this exact
+  ;; job; neither is read under O or copied into a whole HTML buffer.
+  (let ((emitp (eq (fnn-web-conn-phase conn) :page-emit)))
+    (destructuring-bind (octets next count done)
+        (fnn-call 'fn-web-host-page-step (fnn-web-conn-page-cursor conn)
+                  (fnn-web-conn-page-count conn) emitp (fnn-web-conn-in conn))
+      (setf (fnn-web-conn-page-cursor conn) next
+            (fnn-web-conn-page-count conn) count)
+      (if emitp
+          (progn
+            (setf (fnn-web-conn-page-done conn) done)
+            (when octets
+              (unless (fnn-octet-list-p octets) (fnn-fault "malformed web page window"))
+              (setf (fnn-web-conn-wire conn) (fnn-octets octets)
+                    (fnn-web-conn-wire-at conn) 0 (fnn-web-conn-phase conn) :write
+                    (fnn-web-conn-want conn) :output))
+            (when (and done (null octets))
+              (setf (fnn-web-conn-answered conn) t)
+              (fnn-web-finish face conn)))
+        (when done
+          (destructuring-bind (code fields bodyp) (fnn-web-conn-page-response conn)
+            (setf (fnn-web-conn-page-cursor conn)
+                  (fnn-core 'fn-web-host-page-cursor (fnn-web-conn-page-segs conn))
+                  (fnn-web-conn-page-count conn) 0
+                  (fnn-web-conn-page-done conn) (not bodyp))
+            (fnn-web-response face conn code fields bodyp count)))))))
+
 (defun fnn-web-write-ready (face conn)
   (let* ((data (fnn-web-conn-wire conn))
          (progress (fnn-transport-write-now (fnn-web-conn-fd conn) (fnn-web-conn-channel conn)
@@ -495,14 +530,20 @@ exposure admission decides (the id, or NIL when it refused)."
           (t
            (incf (fnn-web-conn-wire-at conn) progress)
            (when (= (fnn-web-conn-wire-at conn) (length data))
-             (let ((at (fnn-web-conn-body-at conn)) (end (fnn-web-conn-body-end conn)))
+             (if (fnn-web-conn-pagep conn)
+                 (if (fnn-web-conn-page-done conn)
+                     (progn (setf (fnn-web-conn-answered conn) t)
+                            (fnn-web-finish face conn))
+                   (setf (fnn-web-conn-phase conn) :page-emit
+                         (fnn-web-conn-want conn) nil))
+               (let ((at (fnn-web-conn-body-at conn)) (end (fnn-web-conn-body-end conn)))
                (if (= at end)
                    (progn (setf (fnn-web-conn-answered conn) t)
                           (fnn-web-finish face conn))
                  (let ((next (fnn-core 'fn-web-host-window-end at end)))
                    (setf (fnn-web-conn-wire conn) (fnn-web-slice (fnn-web-conn-out conn) at next)
                          (fnn-web-conn-wire-at conn) 0 (fnn-web-conn-body-at conn) next
-                         (fnn-web-conn-want conn) :output)))))))))
+                         (fnn-web-conn-want conn) :output))))))))))
 
 (defun fnn-web-handshake-ready (conn)
   (let ((result (fnn-tls-accept-step (fnn-web-conn-ssl conn))))
@@ -525,6 +566,7 @@ exposure admission decides (the id, or NIL when it refused)."
                (:feed (when (fnn-web-feed-owned-p face conn) (fnn-web-job-submit face conn :feed)))
                (:await (fnn-web-await-step face conn))
                (:render (fnn-web-job-submit face conn :render))
+               ((:page-count :page-emit) (fnn-web-job-submit face conn (fnn-web-conn-phase conn)))
                (:cold (fnn-web-job-submit face conn :cold))
                (:handshake (when ready (fnn-web-handshake-ready conn)))
                ((:head :body) (when (or ready (and (fnn-web-conn-channel conn)
@@ -552,7 +594,9 @@ exposure admission decides (the id, or NIL when it refused)."
 
 (defun fnn-web-iterate (face)
   ;; Each live record receives one semantic or readiness quantum per pass.
-  ;; No actor blocks on a socket, dependency or commit completion.
+  ;; Socket readiness and asynchronous completions do not block this actor.
+  ;; Event/session owner admission and segment construction still run to
+  ;; completion under O; this is not a full semantic-event fairness claim.
   (dolist (conn (fnn-web-face-conns face)) (fnn-web-advance face conn))
   (setf (fnn-web-face-conns face)
         (remove-if (lambda (conn) (and (fnn-web-conn-closedp conn) (fnn-web-conn-semantic-ended conn)
@@ -568,7 +612,7 @@ exposure admission decides (the id, or NIL when it refused)."
                                  (:input +fnn-mux-pollin+) (:output +fnn-mux-pollout+) (t 0))) conns)) 'vector))
          ;; Pending semantic work receives another pass immediately; only
          ;; readiness/dependency/completion waits permit the bounded poll.
-         (work (some (lambda (conn) (and (not (fnn-web-conn-job conn)) (not (fnn-web-conn-closedp conn)) (member (fnn-web-conn-phase conn) '(:event :render :feed))
+         (work (some (lambda (conn) (and (not (fnn-web-conn-job conn)) (not (fnn-web-conn-closedp conn)) (member (fnn-web-conn-phase conn) '(:event :render :feed :page-count :page-emit))
                                         (or (not (eq (fnn-web-conn-phase conn) :feed))
                                             (fnn-web-feed-owned-p face conn))
                                         (>= (fnn-now) (fnn-web-conn-resume-at conn)))) conns))
