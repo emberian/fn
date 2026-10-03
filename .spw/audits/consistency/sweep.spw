@@ -80,3 +80,53 @@
  scope: "same with-local-stobj job executes251A,1Z,corruptsource refusal,cancelledX,2BC using exact core assign/begin/one/read/return/byte/retire/release/settle; simulated archive I/O observations; retired scalar getters deny and successor exact bytes pass"
  residual: "actual host execution remains separate; Runtime executor-stop lost-roster custody repair independent"
 }
+^"tls_reader_reset"{
+ source_revision: "fbcd9f17a"
+ @source: ~"../../../books/nntp-auth.lisp"
+ @scenario: ~"../../../tests/acl2/nntp-auth-tests.lisp"
+ @raw: ~"../../../tests/native_starttls_cursor_raw.lisp"
+ counterexample: "anonymous real GROUP selects fn.letters/current; STARTTLS hold then successful fn-auth-tls-established retained both; STAT used pre-TLS cursor. RFC4642 section2.2.2 requires discarding group/article while preserving MODE READER effects"
+ repair: "fn-auth-tls-reader-base resets nested reader group/current and POST awaiting; successful TLS receipt uses helper; compression owed receipt preserves base unchanged"
+ checks: "actual extracted executable definitions raw SBCL fixture PASS reset/preserved MODE+peer and compression cursor; renamed helper admitted and guard verified in Tools private historical ad8 warm world. Reachable GROUP/STARTTLS/receipt/STAT412 ACL2 scenario added, admission pending"
+ residual: "local helper consistency lemma and changed receipt consistency/root certification open; three bounded200k proof attempts exceeded budget; minimal-theory generated temporary module reader error stopped private ad8 owner (Tools confirms zombie PID2260356/socket removed); corrected local source fixture passes, Tools owns evaluator-boundary repair, no cold restart. No TLS socket or full-current claim"
+}
+^"redeem_outcome_refutation"{
+ @source: ~"../../../books/nntp-auth.lisp"
+ @native: ~"../../../host/native/owner.lisp"
+ inspected: "full SASL/authinfo/xredeem/starttls/auth-step and native owner-account-redeem/reconfigure publication"
+ outcome: "abstract redeem reply maps every non-bound to482, but actual owner injects only accepted/refused durable outcomes; indeterminate reconfigure fences and escapes. No reachable uncertain→482 defect established"
+}
+
+^"reference_bank_tree_sweep"{
+ source_revision: "aa1ad2191"
+ @bank: ~"../../../books/resource-vector.lisp"
+ @tree: ~"../../../books/resource-vector-tree.lisp"
+ inspected: "full executable bank row/recognizers/charge/draw/open/settle/refund/grow/destroy/step/run/install; full tree fresh/sub-after/root-step/sub-step/step/run/install and invariant"
+ obligations: "idle→draw/subbank increments generation, settle/refund exactphase+generation, refund only reusable held, destroy uses actual subordinate spent rather than caller claim; tree substeps only draw/settle/refund, stale parent generation denies successor access"
+ scope: "logical reference no served path; naked bank destroy caller-supplied spent is deliberately trusted accounting input, tree reads it from owned substate. No concrete new invariant violation found; typed ledger physical custody remains a separate subject"
+}
+^"anchor_publication_sweep"{
+ source_revision: "aa1ad2191"
+ @machine: ~"../../../books/anchor-replace.lisp"
+ @native: ~"../../../host/native/anchor.lisp"
+ @bridge: ~"../../../host/anchor-host.lisp"
+ @decision: ~"../../../books/anchor.lisp"
+ inspected: "full replacement start/recover/action/step/outcome and actual native acquisition/parse/primitive observation/recovery/load/publication/decision/CLI; bridge full definitions; accept/verified/window/pinned/newer/observed advance+restore decisions"
+ obligations: "exclusive writer spans held load/acquire/decision/publication; stage durable before replace-issued; every failure after issued becomes uncertain; directory barrier alone creates durable; restart file+directory barriers before decoding held final; host signature/one-nonce observations distinct, ACL2 decides window/pin/nonoverlap"
+ outcome: "no new publication/acceptance inconsistency established. Finite fd waits share deadline but blocking DNS may precede waits; Bounds notified exact source, no total-deadline claim"
+ parser: "full anchor-wire executable definitions through split/read offsets/read tags/increasing order/build fields/parse nested DELE CERT SREP/top/compose/response/single leaf; full record anchor/okp/encode/decode and server selection. Count/length checked before descent, strict tags forbid duplicates, monotone offsets consume exact body; canonical signed subjects and exact nonce bind response; batched tree remains explicit uncertainty"
+ residual: "shared frame codec leaves and incarnation restore nonnative consumer composition remain separate continuing reads; no native restore caller found"
+}
+^"limit_completion_join"{
+ source_revision: "f05ff1388"
+ @decision: ~"../../../books/limits-live.lisp"
+ @native: ~"../../../host/native/admin.lisp"
+ @live_use: ~"../../../host/owner-host.lisp"
+ @offline_use: ~"../../../host/store-node-host.lisp"
+ @reserve: ~"../../../books/store-capacity-vector.lisp"
+ @scenario: ~"../../../tests/acl2/limits-live-tests.lisp"
+ counterexample: "fn-lim-decide admitted lower T/H against committed use only; fn-owner-limit-use and fn-store-lim-use omitted outstanding completion debt. T100 with100 committed and1 alreadyaccepted forward undertaking fits committed use but actual fn-cvec-verdict-at :release becomesunaffordable; T101 permitsfirstrelease but losesmaintenance"
+ repair: "both actual use adapters carry(count bytes debt); live uses existing advanced cache, offline folds recoveredhistory. Decision appliesactualfn-cvec-roomp candidate beforeheapdecision includingnextrestart; explicitcompletion-reserve refusal classifiedpolicy; accepted/funded/resource theoremstatements connectnewguard"
+ checks: "changedLisprawreaderPASS,gitdiffcheckPASS. AddedACL2 exactT100/101 refusal,T102completevectorpositive,H20millionrefusal plusprecisereleasebytespositive; warmworlddependencies unavailable, fixture/admission pending, no certclaim"
+ residual: "appliedprofile increase versus startup permanentbaseline/spare funding next; no change tolivegrantidentityorforgiveness"
+}
