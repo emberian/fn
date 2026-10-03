@@ -406,6 +406,7 @@
 ; ACL2-mode host file, so each declaration is checked against this world
 ; (class, the entry guard's kinds, keystones); a refuted one stops the build.
 (ld "host/interfaces.lisp" :ld-error-action :error)
+(ld "host/cost-host.lisp" :ld-error-action :error)
 
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.

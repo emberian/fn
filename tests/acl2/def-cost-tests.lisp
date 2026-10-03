@@ -133,7 +133,78 @@
    (and (null msg) (null un) (equal bcost '(fn-cst-walk-visits xs)))))
 
 ; ---------------------------------------------------------------------------
+; Lambda applications keep their actual argument spine.  Both actual and
+; body costs are nonzero; two formals and nested shadowing exercise binding.
+
+(defun fn-cst-lambda-cost (xs ys)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((n (len xs)) (tail (cdr ys)))
+    (+ (nth n tail) (len tail))))
+(def-cost fn-cst-lambda-cost)
+(assert-event (equal (fn-cst-lambda-cost-visits '(a b) '(3 4 5 6)) 10))
+(assert-event
+ (mv-let (cost un)
+   (fn-cost-term '((lambda (x y) (binary-+ (len x) (nth '1 y)))
+                  (cdr xs) (nthcdr '1 ys))
+                 'fn-cst-lambda-cost nil *fn-cost-fuel* (w state))
+   (and (null un)
+        (equal cost
+               '(binary-+ (binary-+ '1 (nfix '1))
+                          ((lambda (x)
+                             (binary-+ (binary-+ '1 (len x))
+                                       (binary-+ '1 (nfix '1))))
+                           (cdr xs)))))))
+(defun fn-cst-lambda-nested (xs ys)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((x (cdr xs)) (y (nthcdr 1 ys)))
+    (let ((x (nthcdr 1 x)))
+      (+ (len x) (len y)))))
+(def-cost fn-cst-lambda-nested)
+(assert-event (equal (fn-cst-lambda-nested-visits '(a b c d) '(1 2 3)) 10))
+
+; The value uses both variables, but its constant cost needs neither.  This
+; occurs in the real syncer receipt update's translated mv-let application.
+(defun fn-cst-lambda-constant (xs ys)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((x (cdr xs)) (y (cdr ys))) (nth 0 (cons x y))))
+(def-cost fn-cst-lambda-constant)
+(assert-event (equal (fn-cst-lambda-constant-visits '(a b) '(c d)) 1))
+(assert-event
+ (mv-let (cost un)
+   (fn-cost-term '((lambda (x y) (nth '0 (cons x y))) (cdr xs) (cdr ys))
+                 'fn-cst-lambda-constant nil *fn-cost-fuel* (w state))
+   (and (null un) (equal cost '(binary-+ '1 (nfix '0))))))
+
+; ---------------------------------------------------------------------------
 ; 4. Refusals.
+
+; A partial declared callee never conceals its unknown leaf from callers.
+(defun fn-cst-unknown-leaf (xs)
+  (declare (xargs :guard t))
+  (if (consp xs) (fn-cst-unknown-leaf (cdr xs)) nil))
+(defun fn-cst-partial-callee (xs)
+  (declare (xargs :guard t))
+  (fn-cst-unknown-leaf xs))
+(def-cost fn-cst-partial-callee :visits 0 :unaccounted (fn-cst-unknown-leaf))
+(defun fn-cst-partial-caller (xs)
+  (declare (xargs :guard t))
+  (fn-cst-partial-callee xs))
+(assert-event
+ (mv-let (msg route rcost bcost un)
+   (fn-cost-derive 'fn-cst-partial-caller (w state))
+   (declare (ignore route rcost))
+   (and (null msg) (equal un '(fn-cst-unknown-leaf))
+        (equal bcost '(fn-cst-partial-callee-visits xs)))))
+(fn-cst-refused fn-cst-partial-caller (:visits 0) "unaccounted (no contract")
+(def-cost fn-cst-partial-caller :unaccounted (fn-cst-unknown-leaf))
+(defun fn-cst-partial-grandcaller (xs)
+  (declare (xargs :guard t))
+  (fn-cst-partial-caller xs))
+(fn-cst-refused fn-cst-partial-grandcaller () "unaccounted (no contract")
+(def-cost fn-cst-partial-grandcaller :unaccounted (fn-cst-unknown-leaf))
+(def-cost-check fn-cst-partial-callee)
+(def-cost-check fn-cst-partial-caller)
+(def-cost-check fn-cst-partial-grandcaller)
 
 (fn-cst-refused fn-id-hex-octets (:visits 1 :sizes ()) "already has a cost row")
 (fn-cst-refused fn-cst-nothing () "is not a function in this world")

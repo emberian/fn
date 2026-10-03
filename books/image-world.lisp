@@ -423,3 +423,4 @@
 (include-book "definterface")
 (include-book "bp-handoff-report")
 (include-book "tcpcl-delivery-invariants")
+(include-book "def-cost")

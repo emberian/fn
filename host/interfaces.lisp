@@ -24,6 +24,25 @@
 ; brings into the image world (decision-keystones-5; host_check --books).
 (include-book "../books/bp-handoff-report")
 (include-book "../books/tcpcl-delivery-invariants")
+(include-book "../books/resource-syncer")
+
+; A private owner syncer ledger is installed only after the parent's real
+; startup :hold.  This is thread resident/worker custody, not full resource
+; admission accounting; unresolved costs are explicit in the operation row.
+(definterface create-fn-resource-ledger :class :common-lisp-compliant)
+(definterface fn-ros-install-syncer :class :ideal)
+(definterface fn-ros-issue
+  :class :ideal
+  :operation (:stage :projection :funding fn-ros-install-syncer
+              :tariff fn-ros-worker-vector :draw fn-rl-draw
+              :principal :owner :slot 2
+              :physical fn-ros-physical :outcome fn-ros-outcome
+              :retention :physical-and-operation
+              :coverage (:resident :workers)
+              :unaccounted (fn-rl-wfp fn-rl-draw mv-nth)))
+(definterface fn-ros-physical :class :ideal)
+(definterface fn-ros-outcome :class :ideal)
+(definterface fn-ros-drainedp :class :ideal)
 
 ; -----------------------------------------------------------------------------
 ; The extraction roots: the functions the extracted served program's driver
