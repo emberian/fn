@@ -1,0 +1,96 @@
+;;; Actual native committer pacing over the deployed private ACL2 machine.
+;;; Stub only the inner pipeline I/O, preserving actual snapshot/wait consumer.
+(load "tests/native_actor_envelope_raw.lisp")
+(in-package "ACL2")
+(defun nfix (n) (if (and (integerp n) (<= 0 n)) n 0))
+(load-deployed-forms "books/committer-actor.lisp"
+ '((defun fn-cmt-field) (defun fn-cmt-init) (defun fn-cmt-state)
+   (defun fn-cmt-invp) (defun fn-cmt-step)
+   (defun fn-cmt-pass-target) (defun fn-cmt-pass-ready)))
+(defvar *snapshot-label* nil)
+(defun fnn-mux-wake (loop)
+  (declare (ignore loop)) (sb-thread:signal-semaphore *snapshot-label*))
+(load-deployed-forms "host/native/owner.lisp"
+ '((defun fnn-owner-loops-snapshot) (defun fnn-owner-loops-passed-p)
+   (defun fnn-owner-committer-loop)))
+(defvar *fnn-owner-measure-label* nil)
+(defun fnn-owner-committer-test-fault () nil)
+(defun fnn-owner-thread-escape (service condition label)
+  (declare (ignore label)) (fnn-owner-fault-service service nil condition) :fault)
+(defvar *pipeline-count* 0)
+(defvar *pipeline-label* nil)
+(defvar *returned-events* nil)
+(defun fnn-owner-commit-pipeline (service)
+  (incf *pipeline-count*)
+  (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+    (setf (fnn-owner-service-stopping service) t))
+  (sb-thread:signal-semaphore *pipeline-label*)
+  '(:pipeline-returned 19 :fenced (:physical-ended syncer-19 :ok)
+    ((:resource :owner 2 4))))
+
+;; A real thread captures before pipeline entry; missing passes park it.
+;; A complete observation permits exactly one pipeline and retains its receipt.
+(let* ((s (%make-fnn-owner-service)) (mux (%make-fnn-mux-loop))
+       (original (symbol-function 'fn-cmt-step)))
+  (setf *snapshot-label* (sb-thread:make-semaphore :count 0)
+        *pipeline-label* (sb-thread:make-semaphore :count 0)
+        *pipeline-count* 0 *returned-events* nil)
+  (setf (fnn-owner-service-mux s) (list mux)
+        (fnn-owner-service-queued s) 1)
+  (unwind-protect
+       (progn
+         (setf (symbol-function 'fn-cmt-step)
+               (lambda (state event)
+                 (when (eq (first event) :pipeline-returned) (push event *returned-events*))
+                 (funcall original state event)))
+         (let ((worker (fnn-owner-spawn-committer s nil
+                        (lambda () (fnn-owner-committer-loop s)))))
+           (check (sb-thread:wait-on-semaphore *snapshot-label* :timeout 2)
+                  (format nil "snapshot reached; faults=~s actors=~s" *join-faults* (fnn-owner-service-actors s)))
+           (sb-thread:with-mutex ((fnn-owner-service-commit-lock s))
+             (check (= *pipeline-count* 0) "snapshot alone cannot enter pipeline")
+             (setf (fnn-mux-loop-passes mux) 1)
+             (sb-thread:condition-notify (fnn-owner-service-commit-ready s)))
+           ;; Pass1 not polling is below captured target2. Acquire exclusion
+           ;; again: whether wake consumed or not, readiness is still false.
+           (sb-thread:with-mutex ((fnn-owner-service-commit-lock s))
+             (check (= *pipeline-count* 0) "incomplete pass cannot enter pipeline")
+             (setf (fnn-mux-loop-passes mux) 2)
+             (sb-thread:condition-notify (fnn-owner-service-commit-ready s)))
+           (check (sb-thread:wait-on-semaphore *pipeline-label* :timeout 2)
+                  (format nil "pipeline reached; faults=~s actors=~s" *join-faults* (fnn-owner-service-actors s)))
+           (check (fnn-owner-actor-join s worker) "committer physically terminates")
+           (check (and (= *pipeline-count* 1)
+                       (equal *returned-events*
+                              '((:pipeline-returned 19 :fenced
+                                 (:physical-ended syncer-19 :ok)
+                                 ((:resource :owner 2 4))))))
+                  "actual consumer keeps operation and independent physical/custody receipt")))
+    (setf (symbol-function 'fn-cmt-step) original)))
+
+;; Stop while the captured passes are missing never begins the inner pipeline.
+(let* ((s (%make-fnn-owner-service)) (mux (%make-fnn-mux-loop))
+       (unused nil))
+  (declare (ignore unused))
+  (setf *snapshot-label* (sb-thread:make-semaphore :count 0)
+        *pipeline-label* (sb-thread:make-semaphore :count 0)
+        *pipeline-count* 0 *returned-events* nil)
+  (setf (fnn-owner-service-mux s) (list mux) (fnn-owner-service-queued s) 1)
+  (let ((worker (fnn-owner-spawn-committer s nil
+                  (lambda () (fnn-owner-committer-loop s)))))
+    (check (sb-thread:wait-on-semaphore *snapshot-label* :timeout 2)
+                  (format nil "snapshot reached; faults=~s actors=~s" *join-faults* (fnn-owner-service-actors s)))
+    (sb-thread:with-mutex ((fnn-owner-service-commit-lock s))
+      (setf (fnn-owner-service-stopping s) t)
+      (sb-thread:condition-notify (fnn-owner-service-commit-ready s)))
+    (check (and (fnn-owner-actor-join s worker) (= *pipeline-count* 0))
+           "stop held during pass wait starts no pipeline")))
+
+(let* ((issued (first (fn-cmt-step (fn-cmt-init) '(:observe nil t nil))))
+       (captured (first (fn-cmt-step issued '(:snapshot 1 (2))))) )
+  (check (equal (second (fn-cmt-step issued '(:snapshot 2 (2)))) '(:exit :fault))
+         "wrong snapshot identity faults")
+  (check (equal (second (fn-cmt-step captured '(:observe nil t nil))) '(:wait))
+         "missing pass observation preserves capture")
+  (check (fn-cmt-pass-ready 1 t 2) "polling preceding pass is the declared readiness"))
+(format t "PASS actual private committer snapshot/wait/pipeline/stop schedules~%")

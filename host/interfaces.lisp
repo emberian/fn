@@ -313,6 +313,23 @@
   :class :common-lisp-compliant
   :direct "fnn-mux-adopt-place decides admission under the same inbox lock as closure")
 
+;; Private committer control: immutable, guard-t values off the owner section.
+(definterface fn-cmt-init
+  :class :common-lisp-compliant
+  :keystones (fn-cmt-init-is-valid)
+  :direct "fnn-owner-committer-loop creates its private immutable control state")
+(definterface fn-cmt-step
+  :class :common-lisp-compliant
+  :keystones (fn-cmt-step-state-is-valid fn-cmt-pipeline-requires-its-captured-passes
+              fn-cmt-wrong-snapshot-ticket-faults)
+  :direct "fnn-owner-committer-loop interprets private actor actions; no shared live state or protected stobj")
+(definterface fn-cmt-pass-target
+  :class :common-lisp-compliant
+  :direct "fnn-owner-loops-snapshot captures each mux pass target under commit exclusion")
+(definterface fn-cmt-pass-ready
+  :class :common-lisp-compliant
+  :direct "fnn-owner-loops-passed-p observes progress against the retained snapshot")
+
 ; ======================================================================; Every other entry the raw host dispatches through fnn-call, by subsystem
 ; (tools/interface_emit.py SUBSYSTEMS).  Class and kinds are the image
 ; world's; a keystone is a cited theorem (planning/proofs.json) whose

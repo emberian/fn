@@ -1769,3 +1769,14 @@ future-constructor and native coordinates. This uses the same guarded
 `fnn-runtime-construction-inventory-complete` supplies the actual compiler
 coordinates later. An incomplete capture cannot seal, so observing existing
 objects never silently supplies zero for an unavailable allocation allowance.
+
+The committer pacing actor (`books/committer-actor.lisp`, consumed by
+`fnn-owner-committer-loop`) holds immutable private control. Its snapshot
+ticket identifies the retained mux-pass capture; this ticket is distinct from
+a barrier operation generation. Pipeline entry requires the captured passes,
+and stop while waiting starts no pipeline. The native consumer performs the
+declared snapshot/wait/pipeline actions. A pipeline return retains the actual
+operation generation/outcome, independent physical actor readout and resource
+tokens. The existing inner `fn-oqw` driver retains its I/O order and owner
+sections while its remaining coordination is transferred to the actor. This
+is a first installed pacing slice, not a full HM or native refinement claim.

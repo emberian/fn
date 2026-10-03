@@ -30,6 +30,7 @@
 ;; leaves a boundary (fn-fs-classify) and escalates the service's exit
 ;; (fn-fs-stop-exit-escalate); both run in handlers, called directly.
 (include-book "books/failure-scope")
+(include-book "books/committer-actor")
 (include-book "books/replay")
 ; Every codec seam's attachment (books/codec-attach.lisp): the books above
 ; the seams call the constrained encoders and decoders, and this is what makes

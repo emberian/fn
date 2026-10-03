@@ -7,6 +7,7 @@
 (set-compiler-enabled nil state)
 (include-book "../../books/outcome-class")
 (include-book "../../books/failure-scope")
+(include-book "../../books/committer-actor")
 (include-book "../../books/replay")
 (include-book "../../books/codec-attach")
 (include-book "../../books/records-attach-concrete")

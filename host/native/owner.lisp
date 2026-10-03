@@ -3978,7 +3978,7 @@ preparing another batch (books/owner-commit-fairness.lisp)."
 operation receipt is usable only after the independent physical actor join."
   (let ((result (list (list gen :fault))))
     (setf (fnn-owner-service-synced service) nil)
-    (values
+    (multiple-value-bind (worker actor)
      (fnn-owner-spawn-syncer
       service (list job)
       (lambda ()
@@ -3992,7 +3992,7 @@ operation receipt is usable only after the independent physical actor join."
           (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
             (setf (fnn-owner-service-synced service) t)
             (sb-thread:condition-notify (fnn-owner-service-commit-ready service))))))
-     result)))
+     (values worker result actor))))
 
 (defun fnn-owner-members-named (members cids)
   "The MEMBERS (CID REPLY WORD RENDER) whose cid ACL2 named in CIDS, in order."
@@ -4053,7 +4053,8 @@ leave only in its COMPLETE, after its barrier returned
 (fn-ocp-complete-only-after-the-barrier)."
   (let ((members nil) (uncertain nil) (deferred nil) (action nil) (job nil)
         (next nil) (next-deferred nil) (next-job nil) (frames-only nil) (syncer nil) (result nil) (limits nil)
-        (need nil)
+        (need nil) (syncer-actor nil)
+        (return-receipt '(:pipeline-returned nil :none nil nil))
         ;; Lane time-bars (PRF-384): ACL2's ledger of the request in
         ;; flight -- its generation, whether its completion is still owed,
         ;; and the connections told before it (at a stall or a stop), which
@@ -4100,7 +4101,7 @@ leave only in its COMPLETE, after its barrier returned
         (unless (eq issued :issued)
           (fnn-fault "owner refused a barrier's issue: generation ~a is unresolved" gen))
         (setq ledger ledger2)
-        (multiple-value-setq (syncer result) (fnn-owner-start-syncer service gen job)))
+        (multiple-value-setq (syncer result syncer-actor) (fnn-owner-start-syncer service gen job)))
       ;; Lane time-model (PRF-311): the barrier is a request with a
       ;; deadline; its issue is a disk event at this reading.
       (fnn-owner-disk-event service :issue limits)
@@ -4236,7 +4237,12 @@ leave only in its COMPLETE, after its barrier returned
         (multiple-value-bind (outcome answer ledger2)
             (fnn-owner-complete-generation ledger rgen final members)
           (setq ledger ledger2 members answer
-                word (if (eq outcome :fenced) :fenced :failed))
+                word (if (eq outcome :fenced) :fenced :failed)
+                return-receipt
+                (list :pipeline-returned rgen outcome
+                      (list :physical-ended (fnn-owner-actor-id syncer-actor)
+                            (fn-fs-actor-receipt (fnn-owner-actor-state syncer-actor)))
+                      nil))
           (when (eq outcome :fault)
             (setq condition (or job-condition
                                 (make-condition 'fnn-store-fault
@@ -4321,7 +4327,8 @@ leave only in its COMPLETE, after its barrier returned
               (if (and next (eq action :sync))
                   (setq members next deferred next-deferred job next-job
                         next nil next-deferred nil next-job nil)
-                (setq members nil next nil))))))))))
+                (setq members nil next nil))))))))
+    return-receipt))
 
 (defun fnn-owner-loops-snapshot (service)
   "Per I/O loop, the pass count by which it will have polled (and stepped)
@@ -4329,8 +4336,8 @@ every connection ready now: the next pass when it sleeps in poll(2), the
 pass after its current one otherwise.  Each loop is woken (its wake pipe),
 so the pass comes at once, not at the poll's timeout."
   (loop for loop in (fnn-owner-service-mux service)
-        collect (prog1 (+ (fnn-mux-loop-passes loop)
-                          (if (fnn-mux-loop-polling loop) 1 2))
+        collect (prog1 (fn-cmt-pass-target (fnn-mux-loop-passes loop)
+                                         (fnn-mux-loop-polling loop))
                   (fnn-mux-wake loop))))
 
 (defun fnn-owner-loops-passed-p (service targets)
@@ -4342,33 +4349,47 @@ queued."
   (loop for loop in (fnn-owner-service-mux service)
         for n in targets
         always (let ((passes (fnn-mux-loop-passes loop)))
-                 (or (>= passes n)
-                     (and (fnn-mux-loop-polling loop) (>= passes (- n 1)))))))
+                 (fn-cmt-pass-ready passes (fnn-mux-loop-polling loop) n))))
 
 (defun fnn-owner-committer-loop (service)
-  "The committer thread: one commit quantum whenever a submission is queued,
-requested once every I/O loop has finished the pass it was in (the batch is
-every submission ready by then: the design's barrier-paced close, without a
-timer)."
-  (let ((*fnn-section-step* nil))
+  "Private ACL2 actor drives queue/pass pacing; native code performs the
+named snapshot, wait or existing serialized batch pipeline."
+  (let ((*fnn-section-step* nil) (control (fn-cmt-init)) (targets nil))
     (handler-case
         (loop
-          (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
-            (loop until (or (plusp (fnn-owner-service-queued service))
-                            (fnn-owner-service-stopping service))
-                  do (sb-thread:condition-wait (fnn-owner-service-commit-ready service)
-                                               (fnn-owner-service-commit-lock service)))
-            (let ((targets (fnn-owner-loops-snapshot service)))
-              (loop until (or (fnn-owner-service-stopping service)
-                              (fnn-owner-loops-passed-p service targets))
-                    do (sb-thread:condition-wait (fnn-owner-service-commit-ready service)
-                                                 (fnn-owner-service-commit-lock service)))))
-          (when (fnn-owner-service-stopping service) (return))
-          ;; Developer image only: the native witness of this boundary.
-          (fnn-owner-committer-test-fault)
-          ;; FN_OWNER_MEASURE: the committer's quanta are labelled :commit.
-          (let ((*fnn-owner-measure-label* :commit))
-            (fnn-owner-commit-pipeline service)))
+          (let ((action nil))
+            (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+              (loop
+                (destructuring-bind (next named)
+                    (fn-cmt-step control
+                     (list :observe (fnn-owner-service-stopping service)
+                           (plusp (fnn-owner-service-queued service))
+                           (fnn-owner-loops-passed-p service targets)))
+                  (setq control next action named))
+                (case (first action)
+                  (:wait
+                   (sb-thread:condition-wait (fnn-owner-service-commit-ready service)
+                                             (fnn-owner-service-commit-lock service)))
+                  (:snapshot
+                   (setq targets (fnn-owner-loops-snapshot service))
+                   (destructuring-bind (next named)
+                       (fn-cmt-step control (list :snapshot (second action) targets))
+                     (setq control next action named))
+                   (unless (eq (first action) :again) (return)))
+                  (otherwise (return)))))
+            (case (first action)
+              (:pipeline
+               (fnn-owner-committer-test-fault)
+               (let* ((*fnn-owner-measure-label* :commit)
+                      (receipt (fnn-owner-commit-pipeline service)))
+                 (destructuring-bind (next named) (fn-cmt-step control receipt)
+                   (setq control next action named)))
+               (when (equal action '(:exit :fault))
+                 (fnn-fault "committer actor refused pipeline receipt")))
+              (:exit
+               (when (eq (second action) :fault) (fnn-fault "committer actor fault"))
+               (return))
+              (otherwise (fnn-fault "committer actor returned unknown action")))))
       ;; GEN: def-actor committer :failure -- one arm; ACL2 decides the kind
       ;; (fnn-owner-thread-escape): an uncertain outcome fences (exit 3), a
       ;; fault stops the service (exit 4), never a silent thread death with
