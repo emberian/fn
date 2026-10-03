@@ -553,10 +553,11 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
                                :message "arena-extent-read: cold executor runtime failure")))))
     (sb-thread:with-mutex (*fnn-extent-lock*)
       (setf (fnn-cold-worker-result worker) result)
-      (unless (or (fn-pwz-tokenp token) (fnn-extent-window-p token))
-        (fnn-extent-page-observation "job-result token=~s condition=~s verdict=~s"
-                                     token (typep result 'condition)
-                                     (and (not (typep result 'condition)) (first result)))))
+      (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
+        (unless (or (fn-pwz-tokenp token) (fnn-extent-window-p token))
+          (fnn-extent-page-observation "job-result token=~s condition=~s verdict=~s"
+                                       token (typep result 'condition)
+                                       (and (not (typep result 'condition)) (first result))))))
     ;; The activation returns no buffer-bearing value to the loop. Only the
     ;; retained worker field owns the result when actual return is announced.
     nil))
