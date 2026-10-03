@@ -167,8 +167,10 @@ quantum and `fnn-owner-serialized` run through) classifies a condition that
 leaves a quantum's body, its gate check or its cleanup, and installs the
 fence before the owner mutex is released; no bare quantum runs outside it.
 The host observes two things and decides nothing: the condition's concrete
-class and the last namespace-changing primitive the boundary completed (a
-rename or link that landed, an unlink, a mkdir). ACL2 decides the kind
+class and whether the boundary has a publication landed and not yet fenced
+(a rename or link that returned success and whose directory barrier has not
+completed: the byte model's uncertain window; an unlink or a mkdir opens
+none). ACL2 decides the kind
 (books/failure-scope.lisp `fn-fs-classify`, closed tables: an unlisted class
 is a fault, never the refusal its parent is): indeterminate persistence
 installs the exit-3 fence; a core/store fault, an OS failure before any

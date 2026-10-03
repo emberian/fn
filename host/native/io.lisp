@@ -143,20 +143,24 @@ fn-lgdm-repair-text: a torn tail dropped, a confirmed repair), newest first;
   (error 'fnn-os-error :errno errno :path path))
 
 (defvar *fnn-section-step* nil
-  "The last namespace-changing primitive the boundary this thread is inside
-completed (fnn-durable-step: a rename or link that landed, an unlink, a
-mkdir), or nil when it completed none.  Every boundary binds it, per thread:
-an owner quantum (host/native/owner.lisp fnn-owner-gated), a worker thread's
-top; a command is one boundary from its start.  ACL2 classifies a condition
-that leaves a boundary from its concrete class AND this step
-(books/failure-scope.lisp fn-fs-classify): an OS error after a durable step
-is the fence, not a fault (lane failure-scope review M2; r72 F6: a rename
-that landed and a directory barrier that failed).")
+  "The publication the boundary this thread is inside has landed and not yet
+fenced: :replaced or :linked once a rename or link returned success
+(fnn-durable-step), nil again once a directory barrier completed
+(fnn-fsync-dir) -- the byte model's uncertain window, from the rename on
+until the directory is durable (fn-bs-scp-program-crash-is-old-or-new).  An
+unlink or a mkdir opens no window: a failure after them is known.  Every
+boundary binds it, per thread: an owner quantum (host/native/owner.lisp
+fnn-owner-gated), a worker thread's top; a command is one boundary from its
+start.  ACL2 classifies a condition that leaves a boundary from its
+concrete class AND this step (books/failure-scope.lisp fn-fs-classify): an
+OS error inside the window is the fence, not a fault (lane failure-scope
+review M2; r72 F6: a rename that landed and a directory barrier that
+failed).")
 
 (defun fnn-durable-step (step)
-  "Record STEP (a keyword naming the primitive) as the last durable step of
-this thread's boundary.  Called by the namespace-changing primitives after
-the syscall returned success; nothing else writes the step."
+  "Record STEP (:replaced or :linked) as this thread's boundary's landed,
+unfenced publication.  Called by the publishing primitives after the syscall
+returned success; fnn-fsync-dir clears it; nothing else writes it."
   (setq *fnn-section-step* step))
 
 (defun fnn-condition-class (condition)
@@ -503,9 +507,13 @@ power-loss qualification."
   nil)
 
 (defun fnn-fsync-dir (path)
+  "The directory barrier.  Returning, it closes the boundary's uncertain
+window (*fnn-section-step*): a publication fenced here is durable, and a
+failure after it is known."
   (let ((fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-directory+))))
     (unwind-protect (fnn-durable-barrier fd)
-      (fnn-close fd))))
+      (fnn-close fd))
+    (setq *fnn-section-step* nil)))
 
 (defun fnn-fsync-file (fd)
   (fnn-durable-barrier fd))
@@ -738,18 +746,17 @@ label; it does not select a policy."
       (fnn-posix (path) (sb-posix:closedir dir)))
     (values (nreverse names) more)))
 
-;; The namespace-changing primitives.  Each records itself as the boundary's
-;; last durable step once the kernel reports success (fnn-durable-step): an
-;; OS error after it is an uncertain outcome, never a fault
-;; (books/failure-scope.lisp; lane failure-scope review M2).
+;; The publishing primitives.  A rename or link that returned success opens
+;; the boundary's uncertain window (fnn-durable-step; fnn-fsync-dir closes
+;; it): an OS error inside it is an uncertain outcome, never a fault
+;; (books/failure-scope.lisp; lane failure-scope review M2).  An unlink or a
+;; mkdir opens none: a failure after them is known.
 (defun fnn-link (old new)
   (prog1 (fnn-posix (new) (sb-posix:link old new)) (fnn-durable-step :linked)))
 (defun fnn-replace (old new)
   (prog1 (fnn-posix (new) (sb-posix:rename old new)) (fnn-durable-step :replaced)))
-(defun fnn-unlink (path)
-  (prog1 (fnn-posix (path) (sb-posix:unlink path)) (fnn-durable-step :unlinked)))
-(defun fnn-mkdir (path mode)
-  (prog1 (fnn-posix (path) (sb-posix:mkdir path mode)) (fnn-durable-step :made-directory)))
+(defun fnn-unlink (path) (fnn-posix (path) (sb-posix:unlink path)))
+(defun fnn-mkdir (path mode) (fnn-posix (path) (sb-posix:mkdir path mode)))
 (defun fnn-chmod (path mode) (fnn-posix (path) (sb-posix:chmod path mode)))
 
 (defun fnn-flock (fd operation)
