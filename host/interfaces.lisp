@@ -5476,3 +5476,8 @@
 ; DEFAULT launcher backing; actual host consumers share captured observations.
 (definterface fn-prstartup-extend-default-reservation :class :common-lisp-compliant)
 (definterface fn-prstartup-extend-operation-reservation :class :common-lisp-compliant)
+
+; Actual bounded BP heap projection and stopping-aware log admission consumers.
+(definterface fn-bph-command-plan :class :common-lisp-compliant)
+(definterface fn-bph-refusal-line :class :common-lisp-compliant)
+(definterface fn-log-sink-offer-live :class :common-lisp-compliant)

@@ -116,6 +116,7 @@
 (include-book "../../books/heap-figure")
 (include-book "../../books/heap-open-nursery")
 (include-book "../../books/heap-reservation")
+(include-book "../../books/bp-heap-command")
 (include-book "../../books/cold-read-reservation")
 (include-book "../../books/allocation-turn-slots")
 (include-book "../../books/store-intern")

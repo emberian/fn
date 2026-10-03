@@ -102,6 +102,7 @@
 (include-book "../../books/heap-figure")
 (include-book "../../books/heap-open-nursery")
 (include-book "../../books/heap-reservation")
+(include-book "../../books/bp-heap-command")
 (include-book "../../books/cold-read-reservation")
 (include-book "../../books/output-reservation")
 (include-book "../../books/resource-output")
