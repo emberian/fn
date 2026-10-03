@@ -824,3 +824,60 @@ Result: 14 forms, 0 refusals; 299,388 total steps / 0.71 s ACL2 time. The helper
 ## Source assembly coherent proof patterns — GPT-6.1-Sol
 
 Source packet532f1eda2/a3a07b98e (CBOR),6e443d1af/e788b1c8d (BP),fdb4e3e7a (checkpoint),db2a0071b (owner log), plus774a7c607 evidence index only. Preserved Sol proof deputy primary whole-source AST review and existing warm admission evidence. Inspected pattern scope: explicit bound/preservation facts prevent repeated unfolding, checkpoint codec theory narrows to the local fact needing it, owner first-word proof uses one LOCAL join lemma. Four final book byte sequences exact producer match; original statements/guards/rule classes/executable definitions remain fixed, no source hunk conflict. Cumulative LANEDUMP conflict retains producer receipts and prior content. Existing CBOR archive verified; remaining packet archival/certification pending under Sol deputy/Integration, no fresh per-proof experiments. Scoped changed roots: books/cbor-invariants, books/bp-workflow-invariants, books/store-checkpoint-tables, books/owner-log; actual BP binding-core consumer was source admitted and may be included in combined root packet. No speed claim for checkpoint or neighboring simplification patches; no certificate/image claim.
+S097 BP send observation boundary, codex-sol-tools
+================================================
+fnn-bps-send-effect-next preserves every Store condition except the exact
+base named session refusal; indeterminate/core and unknown subclasses
+escape to the owner boundary without publishing a transport job result.
+The actual transfer index survives clearing the first socket; outer named
+refusal/OS results use ACL2 fn-bpfs-fragment-outcome, so a later failure
+after an accepted fragment remains uncertain. Both socket custody scopes
+use one private generated cleanup envelope preserving the escaping primary
+condition. No retention/allocator/source producer changes (Groundwork owns).
+
+First command: python3 -m unittest tests.test_native_bp_send_boundary
+Eight focused schedules pass1.490s before final scoped inventory rerun.
+Actual send function/macro/structures and ACL2 fragment normalization run;
+transport/session/plan answers recorded, not a real TCPCL/qualified image
+claim. Whole/fragment success, first-connect failed, later-connect uncertain,
+later named refusal uncertain, indeterminate first/later and cleanup faults,
+unknown Store subclass and core fault are distinguished. Known assertion
+marker alone yields defect red; other raw failures remain infrastructure.
+Scoped new fixture inventory has zero stale/unresolved calls. No broad
+qualification or historical BP retry started.
+
+Final eight S097 schedules pass1.571s after scoped fixture inventory. Exact
+Store-class witness red/basec3585ba3a and green/head4b4957525, same harness
+with no infra/skips. Archived S097-df5dcf6e6c3742818b3dac8a07824411.json
+sha256e5995a66db0207837067beab12d98213bfa4a761390fde9c2ab17640d5743973.
+Separate designated later-fragment prefix witness follows; no source change.
+
+Second S097 witness for accepted-prefix uncertainty red/basec3585ba3a,
+green/headd7863d4a1, same harness/no infra/skips. Archived
+S097-23a58fd6279d4748ab51c6e5da07e0a8.json sha256
+b2b6030f5443522a90c35bf96f148d53f5bd90a69e1210e0fe47766f71e33097.
+Final fixture strengthens custody observation to assert every successfully
+opened socket is recorded closed (including later fragments), rather than
+only checking the first when a close event happened.
+
+
+## Sol source assembly — BP identity route and send boundary
+
+READY aggregate source inputs 7c6d135f3 + 4b4957525/d7863d4a1/5022d65bf.
+Actual owner retention event reaches the declared dynamic callback through
+advance-frontier/log-reserve; fn-owner-identity-reservation derives purpose,
+protects release debt and installs the one-shot grant consumed by preparation.
+The gate precedes kernel/reservation/frontier effects; ordinary owner calls
+use NIL and standalone Store retains its successor route. Source fixture
+checks routing/order with recording ACL2 boundaries, not grant realization.
+BP send preserves serious Store/core/unknown faults through both socket
+cleanup boundaries; later failed fragment transfer uses actual ACL2
+fn-bpfs-fragment-outcome with its transfer index after first socket clears.
+Source/test bytes match producers. Python/JSON parse and diff check pass;
+both S097 evidence archive objects verify. Reuse completed narrow producer
+routing and eight focused send schedules; no duplicate experiments/image.
+First selectors: sbcl --script tests/native_retention_identity_route_raw.lisp;
+python3 -m unittest tests.test_native_bp_send_boundary. Matching-image BP
+undertake/release/reopen, ordinary POST and fragment send remain Integration.
+Observer activation 983f199 is a separate staged prerequisite awaiting the
+shared Elock/actual extent consumer and is excluded from this patch commit.

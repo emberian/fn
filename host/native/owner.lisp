@@ -3294,10 +3294,10 @@ theorems).  Only a present carrier's arm builds the article's list, once."
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
                 (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation)
           (*fnn-finish-callback* #'fnn-owner-finish))
-      ;; Stage 0: fnn-advance-frontier takes (STORE TXID); the Codex era
-      ;; passed EVENT as a third argument here (host_check --load: arity).
+      ;; The exact ACL2-authored event funds its reserved release identity
+      ;; and produces the one-shot capability consumed by preparation.
       (fnn-advance-frontier store
-                            (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
+                            (fnn-nat (fnn-owner-core 'fn-owner-next-txid)) event)
       (let ((prepared
              (fnn-owner-action
               'fn-owner-prepare-retention (first event)
