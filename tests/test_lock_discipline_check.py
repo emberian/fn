@@ -42,6 +42,15 @@ def run(source, rules=None, reach=None):
         return [f for f in found if f.category != "exception"]
 
 
+def analyzed(source):
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "host" / "native").mkdir(parents=True)
+        (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + source)
+        an, _, _ = ldc.analyze_tree(root, CONTRACTS, ["host/native/fixture.lisp"], {})
+        return an
+
+
 def keys(findings, rule):
     return [(f.function, f.key) for f in findings if f.rule == rule]
 
@@ -350,6 +359,42 @@ class Baseline(unittest.TestCase):
         self.assertEqual(len(ldc.judge([f, g], base, set())["new"]), 1)
         self.assertEqual(ldc.judge([f], base, set())["stale"], [g.baseline_key()])
         self.assertEqual(len(ldc.judge([f], {f.baseline_key(): {"count": 1}}, {"fn-a"})["new"]), 1)
+
+    # Lane WRAPPER: a def-section declares a generated owner entry; the check
+    # analyzes the function the macro emits, so the template it writes and the
+    # macro in host/native/owner.lisp must be the same shape.
+    def test_the_def_section_template_is_the_macro_s_expansion(self):
+        owner = (ROOT / "host" / "native" / "owner.lisp").read_text(encoding="utf-8")
+        macro = owner[owner.index("(defmacro def-section"):]
+        macro = macro[:macro.index("\n(def", 1)]
+        self.assertIn("(defun ,name (service cid thunk &optional (class ,(first classes)))", macro)
+        self.assertIn("(if (eq admits :live) 'fnn-section-run 'fnn-section-run-cleanup)", macro)
+        self.assertIn("service class cid ',admits ',classes ',name thunk", macro)
+        self.assertIn("(defun {name} (service cid thunk &optional (class {default}))",
+                      ldc.SECTION_TEMPLATE)
+        self.assertIn("({run} service class cid '{admits} '{classes} '{name} thunk)",
+                      ldc.SECTION_TEMPLATE)
+
+    def test_a_declared_section_is_an_analyzed_function(self):
+        an = analyzed("""
+(defun fnn-section-run (service class cid admits classes name thunk)
+  (declare (ignore service class cid admits classes name)) (funcall thunk))
+(defun fnn-section-run-cleanup (service class cid admits classes name thunk)
+  (declare (ignore service class cid admits classes name)) (funcall thunk))
+(def-section fnn-quantum-x :actors (:control) :classes (:control :inspect) :admits :live)
+(def-section fnn-quantum-y :actors (:maintenance) :classes (:control) :admits (:cleanup :fault))
+""")
+        self.assertEqual(an.tree.sections["fnn-quantum-x"][2:], ([":control"], [":control", ":inspect"], ":live"))
+        self.assertIn("fnn-section-run", [e.name for e in an.infos["fnn-quantum-x"].events if e.kind == "call"])
+        self.assertIn("fnn-section-run-cleanup",
+                      [e.name for e in an.infos["fnn-quantum-y"].events if e.kind == "call"])
+
+    def test_a_lambda_is_named_by_its_definition_not_its_line(self):
+        an = analyzed("""
+(defun fn-a (x) (mapc (lambda (y) y) x) (mapc (lambda (z) z) x))
+""")
+        names = [n for n in an.infos if n.startswith("lambda@")]
+        self.assertTrue(all(":fn-a#" in n for n in names), names)
 
 
 if __name__ == "__main__":

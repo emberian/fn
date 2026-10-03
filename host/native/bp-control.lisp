@@ -87,7 +87,7 @@
     (let ((owner (fnn-bpnc-owner node)) (plan (second grant)))
       (if (eq (fnn-owner-disk-admit owner) :shed)
           :busy
-        (fnn-owner-serialized
+        (fnn-quantum-bp
          owner nil
          (lambda ()
            (multiple-value-bind (word reason)

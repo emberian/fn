@@ -16,7 +16,7 @@
 (in-package "ACL2")
 
 (defun fnn-login-bindings-owner-reload (service)
-  (fnn-owner-serialized
+  (fnn-quantum-control
    service nil
    (lambda ()
      (let ((path *fnn-native-auth-live-path*))

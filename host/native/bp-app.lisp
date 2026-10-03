@@ -239,7 +239,7 @@ finds the transit principal in that ingress."
               (receipt nil)
               (class nil))
          (multiple-value-setq (app-result receipt class)
-           (fnn-owner-transit-serialized
+           (fnn-quantum-bp
             service nil
             (lambda ()
               ;; Per transfer: a Store-side reason names only its own line.
@@ -299,7 +299,7 @@ finds the transit principal in that ingress."
        (list :uncertain reason)))))
 
 (defun fnn-bpapp-open-journal (service receipt-root destination policy issuer)
-  (fnn-owner-transit-serialized
+  (fnn-quantum-bp
    service nil
    (lambda ()
      (fnn-bpapp-bind-owner-store)

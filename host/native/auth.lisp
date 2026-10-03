@@ -101,7 +101,7 @@ MAX-CREDENTIALS is the store profile's max-credentials (D27, PRF-102)."
       ;; books/login-binding-live.lisp) before the listener opens.
       (setq *fnn-native-auth-live-path* path
             *fnn-native-auth-live-policy* (list requiredp protected-onlyp))
-      (unless (eq (fnn-owner-serialized
+      (unless (eq (fnn-quantum-control
                    service nil
                    (lambda ()
                      (fnn-native-auth-publish-bindings service octets presentp
