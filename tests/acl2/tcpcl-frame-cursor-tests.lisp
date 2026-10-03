@@ -60,9 +60,10 @@
   (mv v fn-octets)))
 ; Unconditional boundary positive, using the actual private concrete buffer
 ; operation over two windows. There is no removable boundary hypothesis.
-(assert-event
+(defun fn-test-tcim-window-value ()
  (with-local-stobj fn-octets
   (mv-let (v fn-octets) (fn-test-tcim-window fn-octets) v)))
+(assert-event (fn-test-tcim-window-value))
 ; Scalar-quantum literal positive and sole hypothesis-removal witness.
 (assert-event
  (let ((end 4099))

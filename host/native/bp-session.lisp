@@ -108,6 +108,12 @@
  (let ((held (loop for grant being the hash-keys of (fnn-bpsb-held bank) collect grant))
        (first-condition nil))
   (dolist (grant held)
+   ;; This single writer removes the source continuation before retiring only
+   ;; an ACL2-authorized private pre-publication operation. Unknown/publishing
+   ;; dependencies remain discoverable; physical close has its own receipt.
+   (setf (fnn-bpsg-turn grant) nil (fnn-bpsg-finish grant) nil)
+   (handler-case (fnn-bp-session-retire-private-source grant)
+    (serious-condition (c) (unless first-condition (setq first-condition c))))
    (handler-case (fnn-bp-session-close bank grant)
     (serious-condition (c) (unless first-condition (setq first-condition c))))
    (handler-case (fnn-bp-session-release-context bank grant)
@@ -348,3 +354,29 @@
    (fnn-tcl-deliver-transfer conn (fnn-tclc-source-id conn)
                             (fnn-bpsrx-materialize-octets job)))
   (otherwise (fnn-fault "BP received publication cannot be retried"))))
+
+(defun fnn-bp-session-retire-private-source (grant)
+ (let* ((conn (fnn-bpsg-conn grant))
+        (job (and conn (fnn-tclc-source-token conn))))
+  (when (and (typep job 'fnn-bpsrx) (eq conn (fnn-bpsrx-connection job)))
+   (let ((plan (fnn-core 'fn-bpsrx-abort-plan (fnn-bpsrx-key job)
+                        (fnn-bpsg-row grant) (fnn-bpsrx-cursor job) (fnn-bpsrx-phase job))))
+    (when (eq (first plan) :retire-private-source)
+     ;; :publishing was installed before entering the external durable callback.
+     ;; There is no background worker or surviving continuation in this private
+     ;; operation. Clear its buffers/root and every future output alias before
+     ;; release-context can issue its logical receipt. No held ACK is emitted.
+     (setf (fnn-bpsrx-phase job) :retired (fnn-bpsrx-cursor job) nil
+           (fnn-bpsrx-buffer job) nil (fnn-bpsrx-octet-buffer job) nil
+           (fnn-bpsrx-materialize-octets job) nil (fnn-bpsrx-connection job) nil
+           (fnn-tclc-source-pending conn) nil (fnn-tclc-source-root conn) nil
+           (fnn-tclc-source-token conn) nil (fnn-tclc-source-held conn) nil
+           (fnn-tclc-source-id conn) nil (fnn-tclc-source-count conn) nil (fnn-tclc-held conn) nil
+           (fnn-tclc-source-more conn) nil
+           (fnn-tclc-tx-messages conn) nil (fnn-tclc-tx-data conn) nil
+           (fnn-tclc-pending conn) nil (fnn-tclc-on-ready conn) nil
+           (fnn-tclc-input-buffer conn) nil (fnn-tclc-input-vector conn) nil
+           (fnn-tclc-input-octets conn) nil (fnn-tclc-input-materialize-end conn) nil
+           (fnn-tclc-finished conn) t (fnn-tclc-fenced conn) t
+           (fnn-tclc-outcome conn) :uncertain)
+     t)))))

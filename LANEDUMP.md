@@ -2888,3 +2888,10 @@ actual raw framing/source/ACK/16384-byte service-credit fixtures pass. Exact
 window cert pending. Whole semantic decode, allocator/GC latency and long-job
 keepalive/input servicing remain open; fresh source-loaded processes are normal
 integration, saved images off the critical path.
+
+Connected cleanup followthrough: operator abort disables each grant turn/finish
+then calls ACL2 private-source abort-plan. Current-generation copy/convert/publish
+(before entry) drop exact private buffers/root/held ACK and future-output aliases;
+publishing or foreign/stale source stays held. Raw actual teardown matrix PASS
+with both affirmative and ambiguous physical close; no ACK or refund on uncertain
+close. New source constructor/control teeth cert pending. No durable rollback.
