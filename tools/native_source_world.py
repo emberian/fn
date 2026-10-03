@@ -60,13 +60,14 @@ def bounded_body(body, steps):
 
 
 def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
-             revision=None, deferred=None, steps=200000):
+             revision=None, deferred=None, steps=200000, world_book='books/image-world'):
     source = source.resolve()
+    world_book = proof_repl.normalize_book(world_book)
     deferred = deferred or {}
     removed = {}
     caches = [p.resolve() for p in caches]
     proof_repl.ROOT = source
-    graph = certs.include_graph(source, ['books/image-world', *EARLY, ATTACH])
+    graph = certs.include_graph(source, [world_book, *EARLY, ATTACH])
     fingerprints = {name: certs.book_facts(source / (name + '.lisp'))[0]
                     for name in graph}
     match_memo = {}
@@ -172,13 +173,13 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
     output.parent.mkdir(parents=True, exist_ok=True)
     early = output.with_name(output.stem + '.early.lisp')
     early.write_text('\n\n'.join(events) + '\n')
-    visit('books/image-world')
+    visit(world_book)
     events.append('(value-triple (cw "FN_SOURCE_LOGICAL_WORLD_READY~%"))')
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text('\n\n'.join(events) + '\n')
     manifest = output.with_suffix('.json')
     manifest.write_text(json.dumps({'kind': 'current logical source admission, not certification',
-        'source': str(source),
+        'source': str(source), 'world_book': world_book,
         'source_revision': revision or subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip() if revision or (source / '.git').exists() else None,
         'source_sha256': fingerprints,
         'repository_sha256': {name + '.lisp': fingerprints[name] for name in sorted(loaded)},
@@ -193,6 +194,8 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--source-root', type=Path, required=True)
+    p.add_argument('--world-book', default='books/image-world',
+                   help='actual default or DTN logical umbrella; attachment order is unchanged')
     p.add_argument('--cache-root', type=Path, action='append', default=[])
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--limit', type=float, default=25.0)
@@ -206,6 +209,6 @@ def main():
         book, name = selection.rsplit(':', 1)
         deferred.setdefault(book.removesuffix('.lisp'), set()).add(name.lower())
     print(generate(a.source_root, a.cache_root, a.output, a.limit, a.source_revision,
-                   deferred, a.step_limit))
+                   deferred, a.step_limit, a.world_book))
 
 if __name__ == '__main__': main()

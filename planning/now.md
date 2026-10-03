@@ -1,9 +1,13 @@
 # Now — 2026-10-03
 
-Four Sol owners resumed by ember after the usage-limit stop: Integration owns
+Ember authorized substantial remaining engineering across four continuing Sol
+owners after the usage-limit stop: Integration owns
 source assembly and shared execution, History owns storage and the early P3
 bootstrap, Runtime owns reader/Web/decoded execution, and BP owns transport and
 application joins. Root coordinates; no other deputies or automation resumed.
+Root also takes resource accounting/funding. These owners continue missing
+behavior, defects, integration, invariants/guards/proofs and assurance across
+their full domains, rather than stopping at one scenario or a tidying batch.
 The continuing domains and open acceptance criteria are in
 [NSLICESQUEUE](../NSLICESQUEUE.md), [the repair ledger](repair/STATUS.md), and the
 [development workstreams](overnight-2026-10-03.md). Contributor setup is in

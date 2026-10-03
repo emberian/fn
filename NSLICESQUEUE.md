@@ -60,32 +60,31 @@ that their recorded state is current at every later revision.
 
 ## Worker consolidation at 08:00 America/New_York
 
-Ember's latest request explicitly resumes Sol Tools for fully incremental
-tracing work in the REPL: ten implementation deputies again, excluding root
-and the convergence lieutenant. The full backlog mission continues. Handoffs preserve
-current source, warm-session coordinates, concrete consumers and pending claims.
-The continuing owners are Integration (including source assembly), Runtime
-(including HM), Served (including matcher/catalog availability), Foundations,
-History (including carrier/pages/checkpoint), BP transport (including the completed
-Tools fair-round packet), Access (including Operator and the S011 journal consumer),
-Tools for continuing incremental tracing-driven implementation, Web, and
-Groundwork for the actual application-consumer/E1–E2 boundary. The prior Tools
-probe handoff is retained; its explicit resumption advances actual connected
-code in retained worlds rather than another finite report packet. Empirical completed its archive
-and watch handoff; Integration owns the pending candidate watch. Helpers complete their current
-coherent packet or transfer it before stopping; a passive assignment does not
-count as active work. No Luna wave resumes. These are ownership transfers, not
-capability completion claims.
-The convergence lieutenant is explicitly excluded from this implementation cap
-and owns routine coordination; Groundwork remains the application consumer owner.
+Ember resumed only Integration, History, Runtime and BP transport; root
+coordinates and takes resource accounting/funding. This is substantial full-domain
+engineering, not finite end-tidying. Integration owns public source assembly, shared execution and
+planning upkeep. History owns current storage/P3/owner bootstrap and reclaim.
+Runtime owns current ARTICLE/Web physical decoder, window lifetime and ABI
+joins. BP owns actual multi-peer transport and immutable application R/Q joins.
+No lieutenant, helper or other deputy resumed. Foundations, Served, Access,
+Web, Tools and Groundwork retain their documented domain obligations as paused
+owners; these are not completion claims. The four active owners consume their
+committed interfaces and coordinate changes across those boundaries.
+
+The earlier ten-worker roster described the pre-usage-limit wave. All those
+agents wound down; a retained warm handle does not imply an active owner or a
+working current-union native process. History now owns one fresh current
+source-world initialization. The alleged11-versus10 read-pool field difference
+was false: :inline is an option, and both declarations have10 fields. Missing
+current decoded methods and early P3 attachment remain actual assembly work.
 
 ## Dispatch next
 
 | Slice | Current position | Coordination / implementation | Next useful result |
 | --- | --- | --- | --- |
 | [Safe completion and actor rollout](#safe-completion-and-actor-rollout) | Active | Runtime; completed source-tracer packets retained | Escapes preserve actual outcomes, fence the service when required, and settle custody through the real consumer |
-| [Output allocation and funding](#output-allocation-and-funding) | Active | Foundations + Served | Actual bounded serializer/selector allocation is funded before creation |
-| [Paged catalog in the service](#paged-catalog-in-the-service) | Active, execution dependency | Served; completed paged-store packet retained; Integration schedules | Existing paged attachment serves POST/read/navigation/withdrawal/reopen |
+| [Output allocation and funding](#output-allocation-and-funding) | Active partial producer and wider accounting | Root + Runtime; Foundations/Served obligations retained | Actual bounded serializer/selector allocation is funded before creation |
+| [Paged catalog in the service](#paged-catalog-in-the-service) | Active shared execution dependency | History + Runtime; Served adapter source retained | Existing paged attachment serves POST/read/navigation/withdrawal/reopen |
 | [Reclaim and physical release](#reclaim-and-physical-release) | Active bounded builder and publication work | History; completed Astra relocation packet retained | Remove observed whole-history-copy credit obstruction and release resources safely |
 | [Fair feed and pull rounds](#fair-feed-and-pull-rounds) | Active repairs; broader continuation next | BP transport + Runtime | Credential fixes and phase outcomes compose with bounded rounds and queue progress |
 | [Runtime/model correspondence](#runtimemodel-correspondence) | Active | Runtime + consumer owners; Integration schedules evidence | Real ordered lock/pin/I/O labels drive the same model transitions |
