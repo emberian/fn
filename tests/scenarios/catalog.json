@@ -8920,6 +8920,32 @@
         "planning/evidence/operator-journal-stream-2026-10-03-v2.json"
       ],
       "execution_scope": "Actual host/fold source with explicit physical/model-operation seams, and separate finite full-model ACL2 equivalence tests. Matching image is prepared but not executed; no universal refinement or heap/durability qualification."
+    },
+    {
+      "id": "SCN-1106",
+      "title": "A pending TLS push link permits a later healthy peer to receive exact article bytes",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-005",
+        "REP-002",
+        "STO-004"
+      ],
+      "steps": [
+        "Configure one implicit TLS peer, post an article, and capture its actual TCP connection while withholding the TLS response.",
+        "Add a healthy streaming peer after that capture, post another article, and observe its complete bytes before the original TLS deadline.",
+        "Compare the healthy bytes with the actual locally served article while the slow peer response remains withheld."
+      ],
+      "expected": [
+        "Pending TLS state is retained while the sole feed worker serves another peer.",
+        "Journal-authorized healthy output is exact and the owner remains live.",
+        "No TLS handshake success or durable peer acceptance is inferred for the silent peer."
+      ],
+      "evidence": [
+        "tests/test_native_feed_fair_round.py",
+        "tests/test_native_peering.py"
+      ],
+      "execution_scope": "Five raw actual-adapter/kernel/recorded-owner schedules pass. Selector tests.test_native_peering.NativePeeringTests.test_pending_tls_feed_does_not_starve_new_healthy_peer is prepared, not executed; matching image, funding tariff and full scheduling-cost proof remain owed."
     }
   ]
 }

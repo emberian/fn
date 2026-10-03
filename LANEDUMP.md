@@ -2142,7 +2142,7 @@ loss/backoff, terminal close and output-order checks. Credential admitted
 profile fixture retains decoded octets until the later connected turn.
 Peer-octet fixture's inherited missing def-actor source macro was repaired
 without an actor stub and passes; actual feed actor raw schedule passes.
-Derived traps regenerated only for the affected credential extraction.
+Derived traps checked for the affected credential extraction; no change.
 No saved-image/proof claim; Integration/continuing BPTransport own those.
 Current source submitted promptly per user push-before-verify direction; owner history/column establishment proof hints still target the old raw fold and need availability-fold refinement. Available reader archive/selected protocol effects and full paged representation closure remain pending. Paged commit now uses the same classified live candidate; its warm replay awaits Integration’s exact unchanged tree/tree-walk macro certificate repair run-20261003T101749Z-4e31. Keep solcatavailabilityfarm at /tank/fn/gates/codex-sol-resource-exec-paged-probe healthy; no duplicate image/cert/closure. New proof PRF-1262 remains planned, SCN-1092 specified with partial scope, no native image or completed reclaim warranty.
 
@@ -2189,3 +2189,11 @@ world /tank/fn/gates/codex-journal-stream-repl, 60min idle.
 Paged obstruction resolved by root’s exact dependency comparison: own frame-invariants and store-checkpoint-buffer were stale. Merge currentdev37ef1c817 retains owned later source and takes matching canonical form hashes b1384e7999026744281ee68c5ea107b78f070cff7bb85a442e8e72004f7d8f18 / a93cfc30c2c17a013e549bb307a38c2b6804ae096037e7e689801c6075f4fd59. Supported acquisition succeeds126/0/fasl126 artifact-set f30255b6b2bd1367127db6ca44ca1f40fca6bab58920a6ee1a3d82de2b7e75ce. Six cached includes admit0.46s; Python exact-set acquisition took several minutes before ACL2. Full changed catalog-paged358forms admits24.72s/5,549,771steps, guards+representation included. Existing paged teeth32forms pass0.04s after ordinary cpt rows gain actual NOV facts; new direct paged-export sparse/prefix/tail/empty/cancel cases pass0.01s and preserve raw#2/msgidseq1 while no liveness/link at unavailable number2. Attachment smoke ordinary rows likewise classified. Warm generic fn-cat remains its foundation, so these direct paged tests do not claim new generic attachment/native execution. Existing85-era attachment proof cannot transfer to changed bytes without fresh matching use.
 
 Handoff exact remaining boundary questions: books/served-catalog-owner fn-sca-load-held-rows-establishes-relation still uses raw fn-sca-load-held-rows-from-keeps-relation; prove classified fold keeps R using prepare-keeps-wire/read-identity. Old served-catalog group-summary/view-list/next/previous theorems targeted raw archive, now need the distinct available logical model under freshness+classification/byte-fact join, while retrieval/HDR/XPAT raw ranges stay intact. Served owns adapter consumer and Groundwork root/capture context; actual root freshness must name allocation incarnation, not count. No secondary whole archive/index allocation under owner mutex; logical available archive/index disabled on executed command path.
+
+SCN-1106 is claimed and prepared as the exact native selector
+tests.test_native_peering.NativePeeringTests.test_pending_tls_feed_does_not_starve_new_healthy_peer.
+It captures a real silent implicit-TLS socket before adding the healthy peer,
+then requires exact healthy article bytes before the original handshake
+deadline. Source setup/code compile/claim checks pass; no image execution.
+Source receipt planning/evidence/repair/S067-fair-push-source-8df99c90a.json
+records the11-test scoped verdict and exact subject/harness byte hashes.
