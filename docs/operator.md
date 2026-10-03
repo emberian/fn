@@ -1302,3 +1302,47 @@ with `policy set max-transactions N` (and `max-history-octets`,
 - `pins`, `obligations`: what the store is holding, and why.
 - `retire [--drain SECONDS]`: drain the feeds, report, checkpoint and stop a node that goes away for good ([Retire the node](#retire-the-node)).
 - `run`: what the service runs.
+
+
+### Interactive development and live inspection
+
+`python3 tools/fn_dev.py shell --executable /path/to/fn --config fn.toml`
+provides an interactive prompt for the complete operator command set. Enter
+`help` or `help VERB`; arguments use shell-style quoting without invoking a
+shell. `operation`, `pins`, `obligations`, `status`, and the existing Store,
+history, peer and configuration commands retain their ordinary semantics.
+Application evidence has its own client: `tools/fn_consumer.py` exposes status,
+operation inspection, paged table queries, evidence export and exact payload
+export (see that tool's help).
+
+A developer node can also expose its **actual running Lisp world**. Start it
+with `FN_NATIVE_DEV_REPL=/absolute/private/directory/fn-dev.sock`, then attach:
+
+```sh
+python3 tools/fn_dev.py repl --socket /absolute/private/directory/fn-dev.sock
+```
+
+Use `:operation`, `:threads`, `:apropos NAME`, or ordinary Common Lisp forms.
+Definitions survive connections. `:load PATH` loads a source file on the server;
+`:acl2 FORM` submits an ordinary ACL2 event to the live logical world, where the
+loaded world's metadata must support admission. `PROGN` batches Lisp forms.
+`--eval '(+ 20 22)'` is the noninteractive form. The existing `fn acl2 session`
+starts a separate process; this socket attaches to an already running owner.
+
+`:trace on` starts bounded structured timing plus **process-wide allocation**
+sampling; `:trace timing` records only timing. Run work, use `:trace report`,
+then `:trace off`. Allocation deltas include concurrent threads and nested
+spans; they do not measure retained heap. An active report may show incomplete
+spans. Output truncation and trace-buffer drops are reported separately.
+
+This is an explicit trusted debugger, enabled only on a developer process.
+The socket is mode 0600 and verifies the connecting UID; existing paths are
+never replaced. Forms execute serially inside the owner boundary, with
+`*fnn-dev-service*` bound to that owner. They can change code and state: do not
+nest owner entry or assume arbitrary edits preserve invariants. Evaluation
+errors follow the owner's normal fault/fence rules. A long-running form holds
+the owner; closing the client or its observation timeout does not cancel it.
+Inputs are limited to 65,536 UTF-8 bytes and captured output to 65,536 characters,
+with an explicit truncation marker. Reader evaluation (`#.`) is disabled.
+Production startup refuses this selector; ordinary protocol data never enters
+this evaluator.

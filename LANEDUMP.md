@@ -2692,3 +2692,11 @@ partial suffix and early extension/MRU refusal pass. PRF1289 exact two-root
 farm pending; universal codec refinement/full-frame decode/GC and registered
 received-source issuer still owed. Source-first packet follows657; no old image
 or certificate claim transferred. Runtime owns decoded-window physical leaves.
+
+
+Root operation-readout: developer attachment implements actual same-world Unix
+REPL, opt-in FN_NATIVE_DEV_REPL, production refusal, peer UID, bounded output,
+trace controls and unrestricted interactive operator shell. SCN1121 actual
+socket/source tests pass (2 tests, ~1.2s); owner mutex and nonblocking transport
+are named fixture adapters. Full native owner + ACL2 LD composed check pending;
+no saved-image gate. Groundwork owns application query/export command surface.
