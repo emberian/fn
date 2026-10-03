@@ -1139,7 +1139,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -8448,6 +8448,32 @@
         "tests/native_syncer_typed_raw.lisp"
       ],
       "execution_scope": "Matching saved-image selector prepared; image execution pending Integration. Local actual-method/raw schedules pass, including diagnostic failure without custody mutation."
+    },
+    {
+      "id": "SCN-1092",
+      "title": "Sparse carried availability agrees across GROUP, LISTGROUP and navigation after reclaim",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-042"
+      ],
+      "steps": [
+        "Build ordinary classified rows and reclaimed tombstone rows through the actual catalog writer/recovery loader.",
+        "Select sparse survivors 1 and 34, prefix survivors 33 and 34, tail survivor 1, and an empty available group; cancel an already unavailable row.",
+        "Compare GROUP tuple, LISTGROUP numbers, NEXT/LAST cursor effects and failed-navigation state; verify retained numeric/Message-ID lookup and no number reuse across reopen."
+      ],
+      "expected": [
+        "Sparse answer is count2, low1, high34; allocated next35 remains independent. Empty GROUP tuple is 0,35,34.",
+        "Unavailable numeric positions are skipped by enumeration/navigation; raw reclaimed retrieval retains diagnostics and duplicate identity.",
+        "Cancel after reclaim does not decrement twice; failed selection/navigation preserves cursor and pin."
+      ],
+      "implementation": {
+        "test": "tests/acl2/catalog-availability-tests.lisp"
+      },
+      "evidence": [
+        "tests/acl2/catalog-availability-tests.lisp"
+      ],
+      "execution_scope": "First actual foundation writer classification fixtures pass in warm REPL; generated complete command antecedents/conclusions, recovery loader, paged attachment and native reclaim/reopen remain pending. Tombstone-shaped byte fixture is classification evidence, not execution of a native reclaim pass."
     }
   ]
 }
