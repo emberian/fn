@@ -38,9 +38,9 @@ def prefix(text: str, overlays: list[str]) -> str:
             continue
         if lower.startswith('(defttag :fn-native-host'):
             if overlays:
-                result.append("(set-ld-redef-action '(:warn . :overwrite) state)")
+                result.append("(set-ld-redefinition-action '(:warn . :overwrite) state)")
                 result.extend(overlays)
-                result.append("(set-ld-redef-action nil state)")
+                result.append("(set-ld-redefinition-action nil state)")
             inserted = True
         result.append(form)
     if not inserted:

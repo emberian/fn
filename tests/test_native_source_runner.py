@@ -25,6 +25,7 @@ class SourceRunnerTests(unittest.TestCase):
         result = runner.prefix(source, ['(defun gate (x) x)'])
         self.assertLess(result.index('arena-attach'), result.index('generic'))
         self.assertLess(result.index('(defun gate'), result.index(':fn-native-host'))
+        self.assertIn("(set-ld-redefinition-action '(:warn . :overwrite) state)", result)
         self.assertNotIn(':q', result)
         self.assertNotIn('raw saved metadata', result)
         self.assertNotIn('save-exec', result)
