@@ -76,7 +76,7 @@
  units: "retained rewritten vectors for every history record, plus full replay chunks"
  classification: "The streamed decision fold does not imply bounded physical retention"
  trace: "Every non-dry-run history record is rewritten and retained before decision, including :none and :refused. Actual reclaim replays whole rewritten history after clearing loaded checkpoint, so simply replacing list with second live scan would lose covered prefix source"
- repair: "Current whole Store96xH sizing remains justified by real allocation; safe reduction must preserve immutable prefix capture while switching replay. Two-pass lazy rewrite can avoid no-op/refused retention without pretending actual reclaim is bounded; ownership coordination pending"
+ repair: "Current whole Store96xH sizing remains justified by real allocation; safe reduction must preserve immutable prefix capture while switching replay. Two-pass lazy rewrite now avoids no-op/refused retention. Actual source fixture verifies one decision scan with zero rewrites for :none/:refused/:dry-run, and second ordered rewrite pass before instant/clear for :reclaim/:recorded. Actual reclaim whole retention remains; no immutable prefix capture or streaming replay claim"
 }
 ^"catchup-spool-shape"{
  state: "Design freeze for Foundations producer; no installed grant or source implementation yet"
