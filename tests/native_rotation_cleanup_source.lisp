@@ -8,6 +8,7 @@
 (define-condition fnn-store-indeterminate (error) ())
 (define-condition fixture-refused (error) ())
 (defvar *physical-condition* (make-condition 'fnn-os-error))
+(defvar *fnn-arena-release-custody* nil)
 (defvar *calls* nil)
 (defvar *fail* nil)
 (defvar *rename-result* nil)
@@ -48,7 +49,7 @@
                         (consp (second form)) (member (car (second form)) '(fnn-store fnn-log)))
                    (and (eq (car form) 'defmacro) (eq (second form) 'fnn-unwind-cleanups))
                    (and (eq (car form) 'defun)
-                        (member (second form) '(fnn-store-close fnn-log-close-active
+                        (member (second form) '(fnn-arena-return-observation fnn-store-close fnn-log-close-active
                           fnn-log-discard-spare fnn-log-prepare-spare fnn-log-rotate)))))
       (eval form))))
 (defun fixture-store ()
