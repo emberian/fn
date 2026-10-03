@@ -1782,3 +1782,23 @@ image claim. DNS, trust/profile/durable filesystem latency, whole-command
 copying/tariff and total scheduler-cost bound remain open. The generic output
 and syncer leases are not reused. Planned source fixtures will exercise slow
 write/TCP/TLS plus healthy peer and exact retained reply/EOF ordering.
+
+Focused completion: five fair-push tests plus six credential tests PASS in
+3.753s, actual raw phase/sequencing shell PASS. New actual worker over real
+loopback/kernel output exercises a saturated slow send queue and healthy
+exact2000-octet drain, plus recorded pending TCP/TLS while healthy output
+completes. TLS WANT/short-prefix retains exact vector/range/deadline; a
+600-octet supported quantum fixture verifies512 attempts never cross its
+window. One-event reply/EOF fixture checks FNFD-before-output, retained NIL
+framer suffix and stopping fault propagation. Pending connect/TLS/output/
+drain keeps existing busy cadence instead of exponential idle backoff.
+
+The old coarse sequencing fixture now explicitly drives the actual retained
+adapter to quiescence between supplied chunks, using actual ACL2 driver
+definitions and recorded nonblocking leaves. It preserves auth/ready, named
+loss/backoff, terminal close and output-order checks. Credential admitted
+profile fixture retains decoded octets until the later connected turn.
+Peer-octet fixture's inherited missing def-actor source macro was repaired
+without an actor stub and passes; actual feed actor raw schedule passes.
+Derived traps regenerated only for the affected credential extraction.
+No saved-image/proof claim; Integration/continuing BPTransport own those.

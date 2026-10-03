@@ -55,7 +55,9 @@
     ;; host/owner-host.lisp fn-owner-feed-send-quantum's answer.
     (fn-owner-feed-send-quantum (cons 65536 10))
     (fn-owner-feed-connect-timeout 13)
-    (t (error "unexpected raw core call ~s" name))))
+    (t (if (and (search "FN-PRD-" (symbol-name name)) (fboundp name))
+           (apply (symbol-function name) args)
+         (error "unexpected raw core call ~s" name)))))
 (defvar *test-log-lines* nil)
 (defun fnn-log-line (line) (push line *test-log-lines*))
 (defun fnn-octet-list-p (x)
@@ -120,21 +122,27 @@
 (defun fnn-connect (&rest ignored)
   (declare (ignore ignored))
   (error "unexpected raw TCP connect"))
-;; PKT-613: the feed dials through fnn-peer-connect (host/native/io.lisp).
+;; PKT-613: the feed dials through fnn-peer-connect-start (host/native/io.lisp).
 (define-condition fnn-peer-dial-error (error) ((outcome :initarg :outcome)))
-(defun fnn-peer-connect (&rest ignored)
+(defun fnn-peer-connect-start (&rest ignored)
   (declare (ignore ignored))
   (error "unexpected raw peer connect"))
 (defvar *test-dial-reports* nil)
 (defun fnn-peer-dial-report (via peer host condition)
   (push (list via peer host (type-of condition)) *test-dial-reports*))
 (defun fnn-tls-open-client-context (&rest ignored) (declare (ignore ignored)) :context)
-(defun fnn-tls-connect (&rest ignored) (declare (ignore ignored)) (error 'fnn-tls-error))
+(defun fnn-tls-client-begin (&rest ignored) (declare (ignore ignored)) (error 'fnn-tls-error))
 (defun fnn-tls-close-context (&rest ignored) (declare (ignore ignored)) nil)
 (defun fnn-tls-close-channel (&rest ignored) (declare (ignore ignored)) nil)
 (defun fnn-tls-send-all (&rest ignored) (declare (ignore ignored)) nil)
-(defun fnn-tls-read (&rest ignored) (declare (ignore ignored)) :timeout)
+(defun fnn-tls-read-now (&rest ignored) (declare (ignore ignored)) :timeout)
 (defun fnn-developer-selector (&rest ignored) (declare (ignore ignored)) nil)
+
+(defun fnn-monotonic-ms () 0)
+(defun fnn-socket-read-now (fd limit) (fnn-recv fd 0 limit))
+(defun fnn-socket-write-now (fd data offset end)
+  (push (list fd (coerce (subseq data offset end) 'list)) *test-sends*)
+  (- end offset))
 
 ;;; Load the actual declaration generator before the whole feed module. This
 ;;; sequencing fixture never starts an actor; physical lifecycle schedules
@@ -150,9 +158,29 @@
     (when missing (error "deployed forms missing: ~s" missing))))
 (load-deployed-forms "host/native/owner.lisp" '((defmacro def-actor)))
 
+(declaim (declaration xargs))
+(defun nfix (x) (if (and (integerp x) (>= x 0)) x 0))
+(defun natp (x) (and (integerp x) (>= x 0)))
+(defun posp (x) (and (integerp x) (> x 0)))
+(defparameter *fn-feed-wire-input-max-chunk-octets* 512)
+;; Consume actual ACL2 driver definitions, never a copied deadline/limit rule.
+(with-open-file (stream "books/peer-round-driver.lisp")
+  (loop for form = (read stream nil :eof) until (eq form :eof)
+        when (and (consp form) (eq (car form) 'defun)) do (eval form)))
+
 ;;; Only read here; worker/lifecycle functions are not entered until the final
 ;;; no-offer-before-ready check below.
 (load "host/native/feed-service.lisp")
+
+;; This coarse phase fixture observes complete command effects. Drive the
+;; actual retained adapter until quiescent between supplied chunks; the new
+;; fair-round fixture separately runs its real worker with competing links.
+(defparameter *actual-feed-consume* (symbol-function 'fnn-feed-consume))
+(defun fnn-feed-consume (runtime link octets eofp now)
+  (funcall *actual-feed-consume* runtime link octets eofp now)
+  (loop while (or (fnn-feed-link-output link) (fnn-feed-link-drain link)) do
+    (if (fnn-feed-link-output link) (fnn-feed-write-step link now)
+      (funcall *actual-feed-consume* runtime link nil nil now))))
 
 (let* ((runtime (%make-fnn-feed-runtime :service :test
                                          :lock (sb-thread:make-mutex)
@@ -324,7 +352,7 @@
                                   :next-dial 0))
        (seen nil)
        (old-plan (symbol-function 'fnn-feed-dial-plan))
-       (old-connect (symbol-function 'fnn-peer-connect))
+       (old-connect (symbol-function 'fnn-peer-connect-start))
        (old-fd (symbol-function 'fnn-socket-fd))
        (old-core (symbol-function 'fnn-feed-connect-core)))
   (unwind-protect
@@ -333,10 +361,11 @@
                (lambda (&rest ignored)
                  (declare (ignore ignored))
                  (values t "127.0.0.1" 119 7 13))
-               (symbol-function 'fnn-peer-connect)
+               (symbol-function 'fnn-peer-connect-start)
                (lambda (host port &key timeout)
-                 (setq seen (list host port timeout))
-                 :connected-socket)
+                 (declare (ignore timeout))
+                 (setq seen (list host port))
+                 (values :connected-socket :connected))
                (symbol-function 'fnn-socket-fd)
                (lambda (socket)
                  (unless (eq socket :connected-socket)
@@ -346,10 +375,12 @@
                (lambda (&rest ignored)
                  (declare (ignore ignored)) :await-greeting))
          (fnn-feed-dial runtime link 0)
-         (unless (equal seen '("127.0.0.1" 119 13))
+         (unless (and (equal seen '("127.0.0.1" 119))
+                      (= (fnn-feed-link-deadline link) 13000)
+                      (eq (fnn-feed-link-phase link) :connected))
            (error "feed did not pass ACL2 TCP timeout to shared connect: ~s" seen)))
     (setf (symbol-function 'fnn-feed-dial-plan) old-plan
-          (symbol-function 'fnn-peer-connect) old-connect
+          (symbol-function 'fnn-peer-connect-start) old-connect
           (symbol-function 'fnn-socket-fd) old-fd
           (symbol-function 'fnn-feed-connect-core) old-core)))
 
@@ -361,7 +392,7 @@
        (link (%make-fnn-feed-link :peer "named" :peer-octets #(110) :next-dial 0))
        (dropped nil)
        (old-plan (symbol-function 'fnn-feed-dial-plan))
-       (old-connect (symbol-function 'fnn-peer-connect))
+       (old-connect (symbol-function 'fnn-peer-connect-start))
        (old-drop (symbol-function 'fnn-feed-drop-link)))
   (setq *test-dial-reports* nil)
   (unwind-protect
@@ -370,7 +401,7 @@
                (lambda (&rest ignored)
                  (declare (ignore ignored))
                  (values t "no-such-peer.invalid" 119 250 13 '(:clear) nil))
-               (symbol-function 'fnn-peer-connect)
+               (symbol-function 'fnn-peer-connect-start)
                (lambda (&rest ignored)
                  (declare (ignore ignored))
                  (error 'fnn-peer-dial-error :outcome :unresolved))
@@ -385,7 +416,7 @@
                         '((:feed #(110) "no-such-peer.invalid" fnn-peer-dial-error)))
            (error "an unresolved peer was not reported: ~s" *test-dial-reports*)))
     (setf (symbol-function 'fnn-feed-dial-plan) old-plan
-          (symbol-function 'fnn-peer-connect) old-connect
+          (symbol-function 'fnn-peer-connect-start) old-connect
           (symbol-function 'fnn-feed-drop-link) old-drop)))
 
 ;; A failed authenticated handshake transfers context ownership to the link
@@ -395,13 +426,13 @@
        (link (%make-fnn-feed-link :peer "tls" :peer-octets #(116) :fd 19))
        (opens 0) (closes 0)
        (old-open (symbol-function 'fnn-tls-open-client-context))
-       (old-connect (symbol-function 'fnn-tls-connect))
+       (old-connect (symbol-function 'fnn-tls-client-begin))
        (old-close (symbol-function 'fnn-tls-close-context)))
   (unwind-protect
        (progn
          (setf (symbol-function 'fnn-tls-open-client-context)
                (lambda (anchor) (declare (ignore anchor)) (incf opens) (list :ctx opens))
-               (symbol-function 'fnn-tls-connect)
+               (symbol-function 'fnn-tls-client-begin)
                (lambda (&rest ignored) (declare (ignore ignored)) (error 'fnn-tls-error))
                (symbol-function 'fnn-tls-close-context)
                (lambda (context) (declare (ignore context)) (incf closes)))
@@ -410,13 +441,13 @@
            (handler-case
                (fnn-feed-enable-tls runtime link
                                     '(:tls :implicit "news.example" "/tmp/ca.pem"))
-             (fnn-tls-error () nil)))
+             (fnn-tls-error () (fnn-feed-close-link runtime link))))
          (unless (and (= opens 2) (= closes 2)
                       (null (fnn-feed-link-tls-context link)))
            (error "failed TLS retries leaked contexts: opens=~a closes=~a held=~s"
                   opens closes (fnn-feed-link-tls-context link))))
     (setf (symbol-function 'fnn-tls-open-client-context) old-open
-          (symbol-function 'fnn-tls-connect) old-connect
+          (symbol-function 'fnn-tls-client-begin) old-connect
           (symbol-function 'fnn-tls-close-context) old-close)))
 
 
@@ -431,7 +462,7 @@
        (losses 0)
        (old-plan (symbol-function 'fnn-feed-dial-plan))
        (old-lost (symbol-function 'fnn-feed-lost))
-       (old-read (symbol-function 'fnn-tls-read)))
+       (old-read (symbol-function 'fnn-tls-read-now)))
   (setq *test-log-lines* nil)
   (unwind-protect
        (progn
@@ -442,7 +473,7 @@
                          '(:tls :implicit "fsn1.example" "/tmp/ca.pem") nil))
                (symbol-function 'fnn-feed-lost)
                (lambda (&rest ignored) (declare (ignore ignored)) (incf losses) :ok)
-               (symbol-function 'fnn-tls-read)
+               (symbol-function 'fnn-tls-read-now)
                (lambda (&rest ignored)
                  (declare (ignore ignored)) (error 'fnn-tls-io-error)))
          (fnn-feed-pump-link runtime link 100)
@@ -469,7 +500,7 @@
            (error "ready did not restart the streak: ~s" (fnn-feed-link-streak link))))
     (setf (symbol-function 'fnn-feed-dial-plan) old-plan
           (symbol-function 'fnn-feed-lost) old-lost
-          (symbol-function 'fnn-tls-read) old-read)))
+          (symbol-function 'fnn-tls-read-now) old-read)))
 
 ;; S036 (inspection sweep 2026-10-03): a peer removed by live
 ;; reconfiguration while this pass held its link.  Its dial plan is
@@ -560,12 +591,14 @@
                (dotimes (i (length v) v) (setf (aref v i) (mod i 251))))))
   (setq *test-sends* nil *test-send-seconds* nil)
   (fnn-feed-send link data)
+  (loop while (fnn-feed-link-output link) do (fnn-feed-write-step link 0))
   (let ((slices (reverse *test-sends*)))
-    (unless (equal (mapcar (lambda (s) (length (second s))) slices) '(65536 65536 65536 3392))
+    (unless (and (= (length slices) 391)
+                 (every (lambda (s) (<= (length (second s)) 512)) slices))
       (error "feed send did not write ACL2's quanta: ~s"
              (mapcar (lambda (s) (length (second s))) slices)))
-    (unless (equal *test-send-seconds* '(10 10 10 10))
-      (error "feed send quanta did not each get ACL2's seconds: ~s" *test-send-seconds*))
+    ;; Exact original window deadline is exercised with partial TLS writes in
+    ;; native_feed_fair_round_raw.lisp; readiness no longer passes wait seconds.
     (unless (equal (apply #'append (mapcar #'second slices)) (coerce data 'list))
       (error "feed send quanta are not the command in order"))
     (unless (every (lambda (s) (eql (first s) 7)) slices)
