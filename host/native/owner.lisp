@@ -91,7 +91,7 @@
 
 (defstruct (fnn-owner-service (:constructor %make-fnn-owner-service))
   store lock listener stopping (exit-code +fnn-exit-ok+) (feeds nil)
-  (workers nil) (clients nil) tls-context
+  (workers nil) (actors nil) (clients nil) tls-context
   ;; Intrusive cold-read queue, guarded by owner mutex. Metadata remains
   ;; owned until worker relinquishment and atomic result settlement.
   (cold-head nil) (cold-tail nil)
@@ -1370,6 +1370,132 @@ one ring, so the table's key and the served boundary's are one source."
   (aborted nil)
   (sched nil))
 
+;;; Physical actor lifecycle. An operation receipt never discharges this
+;;; registration. Custody tokens are retained opaque values, supplied by the
+;;; consumer; their accounting remains the resource ledger's decision.
+(defstruct (fnn-owner-actor (:constructor %make-fnn-owner-actor))
+  id (state :spawning) thread custody)
+
+(defvar *fnn-actor-thread-maker* #'sb-thread:make-thread)
+(defvar *fnn-actor-thread-joiner* #'sb-thread:join-thread)
+(defvar *fnn-actor-start-signal* #'sb-thread:signal-semaphore)
+(defvar *fnn-actor-thread-terminator* #'sb-thread:terminate-thread)
+
+(defun fnn-owner-actor-run (service actor thunk escape)
+  "A private actor's top boundary; a torn step is never retried."
+  (let ((*fnn-section-step* nil) (completed nil) (kind nil))
+    (unwind-protect
+         (handler-case
+             (let ((returned nil))
+               (multiple-value-prog1
+                   (catch 'raw-ev-fncall
+                     (multiple-value-prog1 (funcall thunk) (setq returned t)))
+                 (unless returned (fnn-fault "actor ACL2 step escaped"))
+                 (setq completed t)))
+           (serious-condition (condition)
+             (setq kind (fn-fs-classify (fnn-condition-class condition)
+                                        *fnn-section-step*))
+             (when escape (funcall escape condition))))
+      ;; THUNK has completed its entire unwind before recording its end.
+      ;; Registration remains until a parent physically joins the thread.
+      (fnn-with-roster (service)
+        (setf (fnn-owner-actor-state actor)
+              (fn-fs-actor-step (fnn-owner-actor-state actor)
+                                (list :exit (fn-fs-actor-exit-kind completed kind))))))))
+
+(defun fnn-owner-actor-start (service custody thunk name rosterp escape)
+  "Reserve before spawn, then publish the thread object before releasing its
+start latch. Failure after thread creation retains custody through physical
+termination; only the maker's no-child failure cancels the reservation."
+  (let ((actor (%make-fnn-owner-actor :id (gensym "ACTOR-") :custody custody))
+        (latch (sb-thread:make-semaphore :count 0)) (worker nil))
+    (fnn-with-roster (service)
+      (push actor (fnn-owner-service-actors service)))
+    ;; Only this primitive's failure means no child exists. Never interpret
+    ;; a later publication/latch failure as a failed spawn.
+    (setq worker
+          (handler-case
+              (funcall *fnn-actor-thread-maker*
+                       (lambda ()
+                         (sb-thread:wait-on-semaphore latch)
+                         (fnn-owner-actor-run service actor thunk escape))
+                       :name name)
+            (serious-condition (condition)
+              (fnn-with-roster (service)
+                (setf (fnn-owner-actor-state actor)
+                      (fn-fs-actor-step (fnn-owner-actor-state actor) '(:spawned nil)))
+                (setf (fnn-owner-service-actors service)
+                      (delete actor (fnn-owner-service-actors service) :test #'eq)))
+              (error condition))))
+    ;; Install the physical object before any operation that could fail.
+    (fnn-with-roster (service)
+      (setf (fnn-owner-actor-thread actor) worker))
+    (handler-case
+        (progn
+          (fnn-with-roster (service)
+            (setf (fnn-owner-actor-state actor)
+                  (fn-fs-actor-step (fnn-owner-actor-state actor) '(:spawned t)))
+            (when rosterp (push worker (fnn-owner-service-workers service))))
+          (funcall *fnn-actor-start-signal* latch)
+          (values worker actor))
+      (serious-condition (condition)
+        ;; A child exists, possibly parked on the latch. Prevent its body
+        ;; executing and join its terminal cleanup. If compensation fails,
+        ;; its reservation/thread/custody remain available to shutdown.
+        (unwind-protect
+             (progn
+               (funcall *fnn-actor-thread-terminator* worker)
+               (fnn-owner-actor-join service worker))
+          (fnn-owner-fault-service service nil condition))
+        (error condition)))))
+
+(defmacro def-actor (name &key thread-name roster)
+  "Generate the physical lifecycle starter, sharing ACL2's failure model.
+Private decision steps must avoid live STATE, hons/memoize and protected
+abstract-stobj exports; shared-state work enters declared owner sections."
+  `(defun ,name (service custody thunk &optional escape)
+     (fnn-owner-actor-start service custody thunk ,thread-name ,roster escape)))
+
+(def-actor fnn-owner-spawn-syncer :thread-name "fn owner syncer" :roster t)
+(def-actor fnn-owner-spawn-committer :thread-name "fn owner committer" :roster nil)
+
+(defun fnn-owner-actor-join (service worker &key timeout)
+  "Return physical-ended-p and one (:joined ID KIND CUSTODY) receipt. On a
+failed/timed-out join fault the service and retain registration and custody."
+  (let ((condition nil))
+    (handler-case
+        (if timeout
+            (funcall *fnn-actor-thread-joiner* worker :default :abnormal :timeout timeout)
+          (funcall *fnn-actor-thread-joiner* worker :default :abnormal))
+      (serious-condition (e) (setq condition e)))
+    (let ((ended (not (sb-thread:thread-alive-p worker))))
+      (when (eq (fn-fs-actor-join-action ended) :fault)
+        (fnn-owner-fault-service
+         service nil (or condition (make-condition 'fnn-store-fault
+                                                   :message "actor join did not observe termination"))))
+      (fnn-with-roster (service)
+        (let ((actor (find worker (fnn-owner-service-actors service)
+                           :key #'fnn-owner-actor-thread :test #'eq)))
+          (when actor
+            (setf (fnn-owner-actor-state actor)
+                  (fn-fs-actor-step (fnn-owner-actor-state actor) (list :joined ended)))
+            (when (fn-fs-actor-receipt (fnn-owner-actor-state actor))
+              (setf (fnn-owner-service-actors service)
+                    (delete actor (fnn-owner-service-actors service) :test #'eq))
+              (setf (fnn-owner-service-workers service)
+                    (delete worker (fnn-owner-service-workers service) :test #'eq))
+              (return-from fnn-owner-actor-join
+                (values t
+                        (list :joined (fnn-owner-actor-id actor)
+                              (fn-fs-actor-receipt (fnn-owner-actor-state actor))
+                              (fnn-owner-actor-custody actor))))))
+          ;; Legacy workers have no actor reservation; physical observation
+          ;; still precedes discharge. Duplicate join produces no receipt.
+          (when ended
+            (setf (fnn-owner-service-workers service)
+                  (delete worker (fnn-owner-service-workers service) :test #'eq)))
+          (values ended nil))))))
+
 (defun fnn-owner-gate-abort-locked (gate condition)
   "Caller holds the gate mutex; retain accounting and the first failure."
   (unless (fnn-owner-gate-aborted gate)
@@ -1679,19 +1805,36 @@ finds nil was left by something that is no condition -- a throw, a thread
 termination -- an unclassified exit, which is a fault (lane failure-scope
 review M3), installed before the mutex is released.")
 
-(defmacro fnn-owner-gated ((service class &key cid) &body body)
-  "Run BODY as one owner quantum of CLASS, under owner exclusion and inside
-the ONE fence boundary (lane failure-scope, t45; r71 F1, sweep S017/S019/
-S020).  A condition leaving BODY, the gate's check or its cleanup is
-classified by ACL2 from its concrete class and the last durable step the
-quantum completed (books/failure-scope.lisp fn-fs-classify, through
-fnn-owner-shared-action-locked): the fence (exit 3) or the fault (exit 4)
-is installed BEFORE the mutex is released, a known refusal passes to the
-caller unfenced; an exit that is no condition is a fault.  CID names the
-connection the quantum serves (the core's connection-fault transition on a
-fault), or nil.  fnn-owner-serialized adds the stopping refusal: a bare
-quantum is admitted after the fence, so only a cleanup quantum (the fault
-itself, a pass's finish) may be bare."
+(defmacro fnn-section-envelope ((service class &key cid classes name admission)
+                                &body body)
+  "GEN: the ONE host envelope of an owner section (lane WRAPPER, rebuild step
+0).  def-section emits it from a declaration; nothing else writes it but
+the two transitional forms below.  It orders the section's steps and
+installs what ACL2 decided, and decides nothing itself:
+  1. the class the entry runs as is one its section declared
+     (books/failure-scope.lisp fn-fs-section-class-ok; an undeclared class is
+     a fault of the host) -- then the gate's check and admission, a failure
+     of which fences the service before the owner mutex is taken;
+  2. under the owner mutex, inside the ONE fence boundary
+     (fnn-owner-shared-action-locked: a condition leaving the body, the
+     gate's recheck or the admission is classified by ACL2 from its concrete
+     class and the last durable step, fn-fs-classify / fn-fs-section-action,
+     and the fence (exit 3) or the fault (exit 4) is installed BEFORE the
+     mutex is released; a known refusal passes to the caller unfenced):
+     the gate's recheck, then the admission (fn-fs-section-admit: a :live
+     section is refused once the service is stopping, a (:cleanup PURPOSE)
+     section runs after the fence), then BODY;
+  3. the unwind (fn-fs-unwind): an exit that is neither the body's return
+     nor a classified condition -- a throw, a thread termination -- is a
+     fault, installed while the mutex is still held (review M3), the line
+     after the fence;
+  4. the gate's leave, whose failure fences before the mutex is released.
+CLASSES and NAME are evaluated (CLASSES nil skips step 1's declaration
+check: the transitional forms).  ADMISSION is the admission step's form:
+fn-fs-section-admit's stopping refusal for a :live entry, nil for the
+cleanup entry (whose declarations ACL2 admits after the fence), so that the
+cleanup expansion has no stopping refusal at all.  Expanded twice:
+fnn-section-run and fnn-section-run-cleanup."
   (let ((s (gensym "SERVICE")) (g (gensym "GATE"))
         (c (gensym "CLASS")) (w (gensym "WAITED"))
         (h (gensym "HELD")) (failure (gensym "FAILURE")))
@@ -1700,6 +1843,9 @@ itself, a pass's finish) may be bare."
             (,c ,class)
             (,w (handler-case
                     (progn
+                      (when (and ,classes (not (fn-fs-section-class-ok ,classes ,c)))
+                        (fnn-fault "section ~(~a~) entered as the undeclared class ~s"
+                                   ,name ,c))
                       (fnn-owner-gate-check ,g)
                       ;; Keep filesystem observation outside owner exclusion.
                       (fnn-owner-space-preobserve ,s)
@@ -1723,6 +1869,7 @@ itself, a pass's finish) may be bare."
                        (handler-case (fnn-owner-gate-check ,g)
                          (serious-condition (,failure)
                            (fnn-owner-gate-fail-locked ,s ,g ,failure)))
+                       ,admission
                        (fnn-owner-measured ((if (eq *fnn-owner-measure-label* :other)
                                                  ,c
                                                *fnn-owner-measure-label*))
@@ -1731,7 +1878,9 @@ itself, a pass's finish) may be bare."
            ;; An unwind no condition explains (a throw, a thread termination):
            ;; a fault, installed while the mutex is still held (review M3);
            ;; the line after the fence, never before it.
-           (unless *fnn-boundary-outcome*
+           (when (eq (fn-fs-unwind (eq *fnn-boundary-outcome* :completed)
+                                   *fnn-boundary-outcome*)
+                     :fault)
              (fnn-owner-stop-service-locked ,s +fnn-exit-fault+)
              (fnn-err "owner quantum left by an unclassified exit; process stopped"))
            ;; Cleanup calls the core too. Fence its failure before releasing
@@ -1739,6 +1888,98 @@ itself, a pass's finish) may be bare."
            (handler-case (fnn-owner-gate-leave ,g ,c (fnn-ms-since ,h) ,w)
              (serious-condition (,failure)
                (fnn-owner-gate-fail-locked ,s ,g ,failure))))))))
+
+(defun fnn-section-run (service class cid admits classes name thunk)
+  "A :live section's entry (ADMITS :live): THUNK through the one envelope,
+refused once the service is stopping.  CLASSES nil skips the declaration
+check (the transitional forms)."
+  (fnn-section-envelope
+      (service class :cid cid :classes classes :name name
+       :admission (when (eq (fn-fs-section-admit admits (fnn-owner-service-stopping service))
+                            :refuse)
+                    (fnn-refuse "owner service is stopping")))
+    (funcall thunk)))
+
+(defun fnn-section-run-cleanup (service class cid admits classes name thunk)
+  "A (:cleanup PURPOSE) section's entry, and the transitional bare quantum
+(ADMITS nil): THUNK through the one envelope, admitted after the fence.
+The same envelope as fnn-section-run; two entries only so that an entry
+which can never be refused for stopping is one the analysis can see."
+  (declare (ignore admits))
+  (fnn-section-envelope (service class :cid cid :classes classes :name name)
+    (funcall thunk)))
+
+(defmacro fnn-owner-gated ((service class &key cid) &body body)
+  "Transitional: BODY as one bare owner quantum of CLASS (no stopping
+refusal), through the one envelope.  Deleted when the last site is a
+declared (:cleanup PURPOSE) or :live section (def-section)."
+  `(fnn-section-run-cleanup ,service ,class ,cid nil nil nil (lambda () ,@body)))
+
+;;; ---------------------------------------------------------------------------
+;;; def-section: the declared owner section (lane WRAPPER, rebuild step 0;
+;;; planning/handoff-2026-10-03/failure-scope.md).  One declaration per kind
+;;; of quantum: who runs it (ACTORS), the gate classes it enters as
+;;; (CLASSES; the first is the default), and what it admits once the
+;;; service is stopping (ADMITS: :live, or (:cleanup PURPOSE) for one of
+;;; ACL2's closed post-fence purposes).  ACL2 accepts the declaration when
+;;; the image loads (fn-fs-section-declp; a refused one stops the build)
+;;; and decides every failure, admission and unwind of the generated entry
+;;; (fnn-section-envelope).  The generated entry is
+;;; (NAME SERVICE CID THUNK &optional CLASS): THUNK runs as the section's
+;;; body.  tools/lock_discipline_check.py reads the declarations
+;;; (*fnn-sections* is the same table at run time).
+
+(defvar *fnn-sections* nil
+  "The declared sections, (NAME ACTORS CLASSES ADMITS) each, in load order.")
+
+(defun fnn-section-declare (name actors classes admits)
+  "Record NAME's declaration once ACL2 accepts it; a refused declaration
+stops the load (the image is not built)."
+  (unless (fn-fs-section-declp actors classes admits)
+    (error "def-section ~(~a~): ACL2 refuses the declaration ~s (books/failure-scope.lisp fn-fs-section-declp)"
+           name (list actors classes admits)))
+  (setq *fnn-sections*
+        (append (remove name *fnn-sections* :key #'first)
+                (list (list name actors classes admits))))
+  name)
+
+(defmacro def-section (name &key actors classes admits (doc ""))
+  `(progn
+     (fnn-section-declare ',name ',actors ',classes ',admits)
+     (defun ,name (service cid thunk &optional (class ,(first classes)))
+       ,doc
+       (,(if (eq admits :live) 'fnn-section-run 'fnn-section-run-cleanup)
+        service class cid ',admits ',classes ',name thunk))))
+
+(def-section fnn-quantum-control
+  :actors (:control :command)
+  :classes (:control :inspect :poster)
+  :admits :live
+  :doc "A quantum of a request on the local control socket (or of the
+startup command that installs the same configuration): the control verbs,
+their inspections (:inspect) and a submission (:poster).")
+
+(def-section fnn-quantum-command
+  :actors (:command)
+  :classes (:transit :control)
+  :admits :live
+  :doc "A quantum of a one-shot command on the owner it opened for itself
+(the BP obligation commands): no connection, no socket.")
+
+(def-section fnn-quantum-bp
+  :actors (:bp)
+  :classes (:transit :control)
+  :admits :live
+  :doc "A quantum of the BP node: an application's delivery or receipt
+(:transit) and its control requests' reconfiguration (:control).")
+
+(def-section fnn-quantum-connection
+  :actors (:mux :web)
+  :classes (:reader :transit :control)
+  :admits :live
+  :doc "A quantum of a client connection served by an I/O loop or the web
+face: :reader for a reader's steps, :transit for a peer's, :control for a
+connection's account ingress.")
 
 (defstruct (fnn-snapshot-payload-view (:constructor fnn-make-snapshot-payload-view (token arena)))
   token arena)
@@ -2028,11 +2269,9 @@ a peer connection's and for the feeds', the BP node's and its applications'
 socket, and :control (the default) for the control socket's requests and the
 maintenance steps (the checkpoint capture, the publication's done step, the
 log reopen)."
-  ;; One boundary: the quantum's own (fnn-owner-gated classifies and fences).
-  (fnn-owner-gated (service class :cid cid)
-    (when (fnn-owner-service-stopping service)
-      (fnn-refuse "owner service is stopping"))
-    (funcall thunk)))
+  ;; Transitional: the one envelope, :live (fn-fs-section-admit refuses
+  ;; once stopping).  Deleted when its last caller is a declared section.
+  (fnn-section-run service class cid :live nil 'fnn-owner-serialized thunk))
 
 (defun fnn-owner-serialized-with-control-turn
  (service cid callback &optional (class :control) epilogue result-publisher)
@@ -2044,9 +2283,9 @@ No numeric BODY or supplied receipt is accepted."
   (if (not binding) (values :owner-control-unavailable :refused)
    (fnn-with-owner-control-issued-turn (binding slot nonce slots pool)
     (multiple-value-prog1
-     (fnn-owner-gated (service class :cid cid)
-      (when (fnn-owner-service-stopping service)
-       (fnn-refuse "owner service is stopping"))
+     (fnn-section-run
+      service class cid :live nil 'fnn-owner-serialized-with-control-turn
+      (lambda ()
         (multiple-value-bind (word answer next-slots next-pool next-state)
             (funcall callback slot nonce slots pool)
          (when next-slots
@@ -2060,7 +2299,7 @@ No numeric BODY or supplied receipt is accepted."
          ; Source-specific publication remains inside the owner mutex and
          ; follows retention of every actual returned stobj.
          (if result-publisher (funcall result-publisher word answer)
-           (values word answer))))
+           (values word answer)))))
      ; The actual scheduler cleanup has returned. The caller must already
      ; have relinquished its registered private aliases; NIL here alone is
      ; not a retirement receipt. The static epilogue leaves ATS slots readonly.
@@ -3741,33 +3980,25 @@ preparing another batch (books/owner-commit-fairness.lisp)."
       wake)))
 
 (defun fnn-owner-start-syncer (service gen job)
-  "Run the sealed batch's JOB off owner lock (fnn-owner-batch-job: the FNFD
-intents, the extension, the append, the barrier, the resolutions).  Its
-receipt, (GEN FINAL . CONDITION), is the committer's after the join.
-Roster ownership survives a failed committer until actual shutdown joins
-this worker."
-  (let ((result (list nil)))
+  "Run the batch operation off owner lock. Its (GEN FINAL . CONDITION)
+operation receipt is usable only after the independent physical actor join."
+  (let ((result (list (list gen :fault))))
     (setf (fnn-owner-service-synced service) nil)
-    (fnn-with-roster (service)
-      (let ((worker
-              (sb-thread:make-thread
-               (lambda ()
-                 (unwind-protect
-                      (progn
-                        (multiple-value-bind (final condition)
-                            (handler-case (fnn-owner-batch-job service job)
-                              (serious-condition (e) (values :fault e)))
-                          (setf (car result) (list* gen final condition)))
-                        (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
-                          (setf (fnn-owner-service-synced service) t)
-                          (sb-thread:condition-notify (fnn-owner-service-commit-ready service))))
-                   (fnn-with-roster (service)
-                     (setf (fnn-owner-service-workers service)
-                           (delete sb-thread:*current-thread*
-                                   (fnn-owner-service-workers service) :test #'eq)))))
-               :name "fn owner syncer")))
-        (push worker (fnn-owner-service-workers service))
-        (values worker result)))))
+    (values
+     (fnn-owner-spawn-syncer
+      service (list job)
+      (lambda ()
+        (unwind-protect
+             (multiple-value-bind (final condition)
+                 (handler-case (fnn-owner-batch-job service job)
+                   (serious-condition (e) (values :fault e)))
+               (setf (car result) (list* gen final condition)))
+          ;; Even a raw ACL2 throw or abnormal unwind wakes its parent.
+          ;; The initial operation receipt is a fault until replaced.
+          (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+            (setf (fnn-owner-service-synced service) t)
+            (sb-thread:condition-notify (fnn-owner-service-commit-ready service))))))
+     result)))
 
 (defun fnn-owner-members-named (members cids)
   "The MEMBERS (CID REPLY WORD RENDER) whose cid ACL2 named in CIDS, in order."
@@ -3997,7 +4228,8 @@ leave only in its COMPLETE, after its barrier returned
                      (setq members nil next nil)))))))))
             (fnn-owner-frames-job service frames-only)
             (setq frames-only nil))))
-      (sb-thread:join-thread syncer :default nil)
+      (unless (fnn-owner-actor-join service syncer)
+        (fnn-fault "syncer physical lifecycle receipt missing"))
       (destructuring-bind (rgen final . job-condition) (car result)
        (let ((word nil) (condition nil))
         ;; Lane time-bars (PRF-384): the late completion, consumed once into
@@ -4176,8 +4408,8 @@ tests/test_native_fence_boundary.py)."
   "Start the committer on a batching service."
   (when (fnn-owner-service-batching service)
     (setf (fnn-owner-service-committer service)
-          (sb-thread:make-thread (lambda () (fnn-owner-committer-loop service))
-                                 :name "fn owner committer"))))
+          (fnn-owner-spawn-committer service nil
+                                     (lambda () (fnn-owner-committer-loop service))))))
 
 (defun fnn-owner-bound-commit-word (commit-callback)
   "Classify a custom Store callback into the ordinary post's outcome words.
@@ -5519,24 +5751,19 @@ renamed into place, the directory fenced."
         action))))
 
 (defun fnn-owner-wait-workers (service)
-  "Join client workers before closing any shared journal or Store object.
-A worker leaves the roster as the last act of its own unwind, so an empty
-roster means every one has run all its cleanup.  A worker that ended
-abnormally has ended all the same: the join observes its termination
-(:default, never join-thread-error escaping the stop) and names it."
+  "Join terminal cleanup before closing shared journal/Store objects.
+Discharge only physically ended threads. Include incomplete actor starts."
   (loop
-    (let ((workers
-            (fnn-with-roster (service)
-              (copy-list (fnn-owner-service-workers service)))))
-      (when (null workers) (return))
-      (dolist (worker workers)
-        (when (eq (sb-thread:join-thread worker :default '%fnn-worker-abnormal)
-                  '%fnn-worker-abnormal)
-          (fnn-err "stopping: worker ~a ended abnormally" (sb-thread:thread-name worker))
-          ;; Its unwind may not have reached the roster: it is joined.
-          (fnn-with-roster (service)
-            (setf (fnn-owner-service-workers service)
-                  (delete worker (fnn-owner-service-workers service) :test #'eq))))))))
+    (multiple-value-bind (workers reservations)
+        (fnn-with-roster (service)
+          (values (union (copy-list (fnn-owner-service-workers service))
+                         (remove nil (mapcar #'fnn-owner-actor-thread
+                                             (fnn-owner-service-actors service)))
+                         :test #'eq)
+                  (and (fnn-owner-service-actors service) t)))
+      (when (and (null workers) (not reservations)) (return))
+      (dolist (worker workers) (fnn-owner-actor-join service worker))
+      (when (null workers) (sb-thread:thread-yield)))))
 
 ;;; Garbage between collections in the owner process.  SBCL's default
 ;;; trigger is 5% of the dynamic space the launcher reserves (32,000 MB,
@@ -6322,7 +6549,7 @@ The arena is read below the captured count only, and the pass is counted
 as an off-mutex arena reader while it runs (no staged page is released
 under it: its arena-reader pin, books/arena-reader-pins.lisp).  Answers
 the reply word: :dry-run, or ACL2's refusal."
-  (let ((clock (fnn-store-prepare-observation)) (captured nil) (pin nil))
+  (let ((clock (fnn-store-prepare-observation)) (captured nil) (pin nil) (deferred nil))
     (unwind-protect
          (progn
            (fnn-owner-gated (service :control)
@@ -6330,17 +6557,22 @@ the reply word: :dry-run, or ACL2's refusal."
                                            (fnn-checkpoint-budget-test-override nil)
                                            free (fnn-checkpoint-revision))))
                ;; S038: a pass in flight refuses the dry run by name; nothing
-               ;; was captured, so nothing is finished and no pin is taken
-               (when (and (consp answer) (eq (first answer) :refused)
-                          (member (second answer) '(:in-flight :queued)))
-                 ;; DEFERRED-IN-FLIGHT / -QUEUED: refused by name
-                 ;; (fn-owner-orc-request-status; a bare :in-flight would
-                 ;; classify :accepted there)
-                 (fnn-err "RECLAIM dry-run refused: ~(~a~)" (second answer))
-                 (return-from fnn-owner-reclaim-dry-run
-                   (intern (format nil "DEFERRED-~a" (symbol-name (second answer))) :keyword)))
-               (setq captured answer))
-             (setq pin (fnn-arena-pin)))
+               ;; was captured, so nothing is finished and no pin is taken.
+               ;; The answer leaves the quantum as its value, never by a
+               ;; return-from across it (an unwind no condition explains is
+               ;; the boundary's fault, review M3: it stopped the node).
+               (if (and (consp answer) (eq (first answer) :refused)
+                        (member (second answer) '(:in-flight :queued)))
+                   ;; DEFERRED-IN-FLIGHT / -QUEUED: refused by name
+                   ;; (fn-owner-orc-request-status; a bare :in-flight would
+                   ;; classify :accepted there)
+                   (setq deferred (second answer))
+                 (setq captured answer
+                       pin (fnn-arena-pin)))))
+           (when deferred
+             (fnn-err "RECLAIM dry-run refused: ~(~a~)" deferred)
+             (return-from fnn-owner-reclaim-dry-run
+               (intern (format nil "DEFERRED-~a" (symbol-name deferred)) :keyword)))
            (unless (and (true-listp captured) (= (length captured) 13))
              (fnn-fault "owner returned a malformed reclaim capture"))
            (destructuring-bind (records count v s profile configs frontier budget free revision
@@ -7207,7 +7439,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                     (fnn-owner-cold-shutdown service)
                     (let ((committer (fnn-owner-service-committer service)))
                       (when committer
-                        (ignore-errors (sb-thread:join-thread committer :default nil))))
+                        (fnn-owner-actor-join service committer)))
                     ;; A failed committer can leave an in-flight syncer. No
                     ;; further syncer can start once the committer has returned.
                     (let ((worker (fnn-owner-service-committer service)))

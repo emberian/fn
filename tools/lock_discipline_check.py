@@ -243,6 +243,7 @@ class Tree:
     raw_replaced: set = field(default_factory=set)    # ACL2 names the host replaces
     files: dict = field(default_factory=dict)         # path -> loaded?
     unreadable: dict = field(default_factory=dict)
+    sections: dict = field(default_factory=dict)      # def-section name -> (path, line, actors, classes, admits)
 
 
 GUARDED = re.compile(r"guarded-by:\s*([^(;]+?)\s*(?:\(|\.\s|\.$|$)")
@@ -288,9 +289,55 @@ def collect_tree(root: Path, files: list[str] | None = None) -> Tree:
     return tree
 
 
+# def-section (host/native/owner.lisp, lane WRAPPER): a declared owner section
+# is a generated function.  The check reads the declaration and analyzes the
+# function the macro emits, written here exactly as the macro's template
+# writes it (tests/test_lock_discipline_check.py holds the two together).
+SECTION_TEMPLATE = ("(defun {name} (service cid thunk &optional (class {default})) "
+                    "({run} service class cid '{admits} '{classes} '{name} thunk))")
+
+
+def _at_line(form, line: int):
+    if isinstance(form, list):
+        node = Node(_at_line(x, line) for x in form)
+        node.line = line
+        return node
+    return form
+
+
+def section_definition(form, line: int):
+    """The defun a (def-section NAME :actors A :classes C :admits X) emits,
+    and its declaration (actors, classes, admits)."""
+    name = sym(form[1]) if len(form) > 1 else None
+    keys = {}
+    rest = list(form[2:])
+    for k in range(0, len(rest) - 1, 2):
+        if isinstance(rest[k], Sym):
+            keys[str(rest[k])] = rest[k + 1]
+    classes = keys.get(":classes")
+    admits = keys.get(":admits")
+    if not name or not isinstance(classes, list) or not classes or admits is None:
+        return None, None
+    runner = "fnn-section-run" if render(admits) == ":live" else "fnn-section-run-cleanup"
+    text = SECTION_TEMPLATE.format(run=runner, name=name, default=render(classes[0], 10_000),
+                                   admits=render(admits, 10_000),
+                                   classes=render(classes, 10_000))
+    defun = _at_line(read_forms(text)[0][0], line)
+    actors = keys.get(":actors")
+    decl = ([str(x) for x in actors] if isinstance(actors, list) else [],
+            [str(x) for x in classes], render(admits, 200))
+    return defun, decl
+
+
 def visit_top(tree: Tree, form, line: int, rel: str, lines: list[str]) -> None:
     h = head(form)
     if h is None:
+        return
+    if h == "def-section":
+        defun, decl = section_definition(form, line)
+        if defun is not None:
+            tree.sections[str(form[1])] = (rel, line) + decl
+            visit_top(tree, defun, line, rel, lines)
         return
     if h in ("progn", "eval-when", "locally"):
         for sub in form[1:]:
@@ -694,12 +741,25 @@ class Analyzer:
                 if ps in ("&body", "&rest"):
                     mode = "rest"
                     continue
-                if ps in ("&optional", "&key"):
+                if ps == "&optional":
                     mode = "opt"
+                    continue
+                if ps == "&key":
+                    mode = "key"
                     continue
                 if mode == "rest":
                     binding[ps] = ("many", vals[i:])
                     i = len(vals)
+                    continue
+                if mode == "key":
+                    # a keyword argument binds by its name, wherever it stands
+                    kname = sym(p[0]) if isinstance(p, list) and p else ps
+                    kval = Sym("nil")
+                    for k in range(i, len(vals) - 1, 2):
+                        if sym(vals[k]) == ":" + str(kname):
+                            kval = vals[k + 1]
+                            break
+                    binding[str(kname)] = ("one", kval)
                     continue
                 if isinstance(p, list) and mode == "opt":
                     p = p[0]
@@ -746,12 +806,18 @@ class Analyzer:
     # -- walking -----------------------------------------------------------
     def analyze(self) -> None:
         # pass 1: how each function runs the callables its parameters hold
+        self.lambda_ordinals = {}
+        self.rid_alias = {}
         for name, d in self.tree.defs.items():
+            self.top_name = name
             self.walk_def(name, d, record=False)
         self.solve_param_ctx()
         self.infos = {}
         self.lambda_count = 0
+        self.lambda_ordinals = {}
+        self.rid_alias = {}
         for name, d in self.tree.defs.items():
+            self.top_name = name
             self.walk_def(name, d, record=True)
 
     def walk_def(self, name: str, d: Def, record: bool, ctx: Ctx | None = None,
@@ -1053,7 +1119,10 @@ class Analyzer:
         cls = self.gate_class
         inner = Ctx(ctx.locks, ctx.noio, None, cls, ctx.ignore)
         sig = self.walk_body(form[1:], inner, env, line)
-        if self.recording:
+        # a gated macro declared "fenced" wraps its body in the shared-action
+        # boundary by its own template (fnn-section-envelope): the body runs
+        # inside the fence by construction, not by what it calls.
+        if self.recording and not getattr(self, "gate_fenced", False):
             self.cur.gated.append((line, cls, sig, ctx))
         return sig
 
@@ -1081,8 +1150,24 @@ class Analyzer:
             self.ev("unresolved", "make-thread of a computed function " + render(fn, 40), line, ctx)
         return EMPTY_SIG
 
+    def lambda_id(self, lam, line) -> str:
+        """A lambda's name: its file, the top-level definition it is written
+        in and its ordinal among that definition's lambdas (by source line).
+        Not its line number: a baseline row keyed by a line moved with every
+        edit above it in the file (lane WRAPPER).  The line-keyed name is
+        kept as an alias for re-keying a baseline (--rekey-lambdas)."""
+        lline = line_of(lam, line)
+        old = "lambda@" + self.cur.path + ":" + str(lline)
+        top = getattr(self, "top_name", None) or self.cur.name
+        lines = self.lambda_ordinals.setdefault((self.cur.path, top), [])
+        if lline not in lines:
+            lines.append(lline)
+        rid = "lambda@" + self.cur.path + ":" + top + "#" + str(lines.index(lline) + 1)
+        self.rid_alias[old] = rid
+        return rid
+
     def spawn_lambda(self, lam, line, thread_of, env):
-        rid = "lambda@" + self.cur.path + ":" + str(line_of(lam, line))
+        rid = self.lambda_id(lam, line)
         if not self.recording:
             return rid
         d = Def(rid, self.cur.path, line_of(lam, line), lam[1] if len(lam) > 1 else [], list(lam[2:]),
@@ -1153,11 +1238,14 @@ class Analyzer:
                 self.ev("unresolved", "declared template macro " + h + " has no template", line, ctx)
                 return self.walk_body(form[1:], ctx, env, line)
             saved = getattr(self, "gate_class", None)
+            saved_fenced = getattr(self, "gate_fenced", False)
             if gated:
                 self.gate_class = self.class_value(form, gated, env)
+                self.gate_fenced = bool(gated.get("fenced"))
                 self.ev("gate", h, line, ctx, self.gate_class)
             sig = self.walk(expansion, ctx, env, line)
             self.gate_class = saved
+            self.gate_fenced = saved_fenced
             return sig
         if h in self.unknown_macros:
             self.ev("unresolved", "macro " + h + " hides a synchronization or handler primitive", line, ctx)
@@ -2233,6 +2321,7 @@ class Checker:
                     continue
                 if self.body_in_shared(body):
                     continue
+
                 self.add("R7", info, line,
                          f"gated body (class {cls}) can signal {sorted(can)} outside the shared-action fence",
                          "unfenced-gated", [])
@@ -2577,6 +2666,10 @@ def main(argv=None) -> int:
     ap.add_argument("--initial", action="store_true")
     ap.add_argument("--emit-realization", action="store_true")
     ap.add_argument("--summary", action="store_true")
+    ap.add_argument("--rekey-lambdas", action="store_true",
+                    help="rewrite the baseline's line-keyed lambda names (lambda@FILE:LINE) "
+                         "to the stable ones (lambda@FILE:DEFINITION#N) of THIS tree; run it on "
+                         "the tree the baseline was written for")
     args = ap.parse_args(argv)
     started = time.time()
     root = Path(args.root).resolve()
@@ -2598,6 +2691,26 @@ def main(argv=None) -> int:
         print(f"lock_discipline_check: wrote {REALIZATION}")
         return 0
     enclave = set(checker.c.raw.get("enclave", {}).get("functions", []))
+    if args.rekey_lambdas:
+        path = Path(args.baseline)
+        data = json.loads(path.read_text())
+        pat = re.compile(r"lambda@[^|:]+:[0-9]+(?![0-9#])")
+        missing = []
+
+        def swap(m):
+            new = an.rid_alias.get(m.group(0))
+            if new is None:
+                missing.append(m.group(0))
+                return m.group(0)
+            return new
+        for row in data["findings"]:
+            row["key"] = pat.sub(swap, row["key"])
+        if missing:
+            print("lock_discipline_check: no lambda at " + ", ".join(sorted(set(missing))))
+            return 1
+        path.write_text(json.dumps(data, indent=1) + "\n")
+        print(f"lock_discipline_check: re-keyed {args.baseline}")
+        return 0
     baseline = load_baseline(Path(args.baseline))
     if args.write_baseline:
         grown = write_baseline(Path(args.baseline), findings, baseline, args.initial)

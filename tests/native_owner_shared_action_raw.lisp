@@ -141,4 +141,4 @@ the durable step the quantum completed (*fnn-section-step*)."
                         '(fnn-store-error fnn-os-error sb-bsd-sockets:socket-error)))
       (error "the control worker can answer a stopped owner's fault as a refusal: ~s"
              clauses))))
-(format t "native_owner_shared_action_raw: ok~%")
+(format t "native_owner_shared_action_raw: PASS~%")

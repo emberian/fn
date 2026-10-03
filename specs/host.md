@@ -192,6 +192,24 @@ the roster mutex) performs no I/O and cannot fail. Once either fence is set,
 connection unwind performs no later owner close transition; service cleanup
 wakes and joins all workers before closing journals or the Store.
 
+The physical actor envelope reserves its identity and captured custody before
+spawn, and releases a start latch only after installing the thread object.
+A spawn primitive reporting no child may cancel the reservation. A failure
+later in publication or latch release retains the child through compensating
+termination and physical join; failed compensation retains it for shutdown.
+A worker never releases this registration itself. Failed or timed-out join
+faults the service and retains ownership; it gives no lifecycle receipt.
+After physical termination, including terminal cleanup, the parent receives
+one lifecycle receipt `(:joined actor-id terminal-kind custody)`. Repeated
+join observations may confirm termination but issue no second receipt.
+The syncer's batch operation receipt `(generation final . condition)` is
+separate: it neither proves physical termination nor releases actor custody.
+Opaque resource tokens, when supplied by a real producer, stay retained until
+that physical receipt; this envelope does not create a funded bank. The first
+native consumers are the committer and syncer starters; the pipeline's full
+coordination transfer to ACL2 remains in progress.
+
+
 HST-004: I/O, clocks, cryptographic primitives, and authentication are explicit
 trust-boundary entries. The production integration must not contaminate book
 certification with arbitrary raw-mode changes or hide trusted code inside a

@@ -257,11 +257,14 @@
   "fnn-with-runtime-participants-bootstrap",
   "fnn-with-world-key-printing",
   "fnn-connection-scoped",
-  "fnn-log-sealed-effect"
+  "fnn-log-sealed-effect",
+  "fnn-section-envelope"
  ],
  "gated_macros": {
-  "fnn-owner-gated": {
-   "class_position": 1
+  "fnn-section-envelope": {
+   "class_position": 1,
+   "fenced": true,
+   "why": "the one envelope (def-section): its own template runs the body inside fnn-owner-shared-action-locked (tests.test_native_owner NativeOwnerHandlerStructureTests)"
   }
  },
  "fence_boundaries": [

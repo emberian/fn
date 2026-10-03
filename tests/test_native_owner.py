@@ -114,34 +114,60 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
                 yield from NativeOwnerHandlerStructureTests._ancestors(child, target, parents + (form,))
 
     BOUNDARIES = ("fnn-owner-gated", "fnn-owner-serialized", "fnn-owner-transit-serialized",
-                  "fnn-owner-serialized-with-control-turn")
+                  "fnn-owner-serialized-with-control-turn", "fnn-section-run",
+                  "fnn-section-run-cleanup", "fnn-section-envelope")
     NIL_BLOCKS = ("loop", "dolist", "dotimes", "do", "do*")
 
+    def _declared_sections(self):
+        sys.path.insert(0, str(ROOT / "tools"))
+        from ledger import head
+        return [str(form[1]) for form in self._forms("host/native/owner.lisp")
+                if head(form) == "def-section"]
+
     def test_every_owner_quantum_runs_inside_the_one_fence_boundary(self):
-        # r71 F1, sweep S017/S019/S020: fnn-owner-gated's body (and its gate
-        # check and cleanup) run inside fnn-owner-shared-action-locked, so the
-        # fence is installed before the mutex is released; fnn-owner-serialized
-        # adds only the stopping refusal (one boundary, not two); an unwind no
-        # condition explains is a fault installed under the mutex (M3).
+        # r71 F1, sweep S017/S019/S020, lane WRAPPER: the one envelope
+        # (fnn-section-envelope, which def-section's entries and the
+        # transitional forms reach through fnn-section-run /
+        # fnn-section-run-cleanup) runs its body, its gate recheck and its
+        # admission inside fnn-owner-shared-action-locked under the owner
+        # mutex, so the fence is installed before the mutex is released; an
+        # unwind no condition explains is a fault (ACL2's fn-fs-unwind)
+        # installed under the mutex before the gate's leave (review M3).
         sys.path.insert(0, str(ROOT / "tools"))
         from ledger import head
         owner = (ROOT / "host/native/owner.lisp").read_text(encoding="utf-8")
         forms = self._forms("host/native/owner.lisp")
-        gated = self._definition(forms, "defmacro", "fnn-owner-gated")
-        paths = list(self._ancestors(gated, "fnn-owner-measured"))
+        envelope = self._definition(forms, "defmacro", "fnn-section-envelope")
+        paths = list(self._ancestors(envelope, "fnn-owner-measured"))
         self.assertEqual(len(paths), 1)
         self.assertIn("fnn-owner-shared-action-locked", [head(p) for p in paths[0]])
         self.assertIn("with-mutex", [head(p)[-10:] for p in paths[0]])
-        start = owner.index("(defmacro fnn-owner-gated")
+        admission = list(self._ancestors(envelope, "admission"))
+        self.assertTrue(admission and all("fnn-owner-shared-action-locked" in [head(p) for p in a]
+                                          for a in admission))
+        start = owner.index("(defmacro fnn-section-envelope")
         text = owner[start:owner.index("\n(def", start + 1)]
-        self.assertLess(text.index("(unless *fnn-boundary-outcome*"),
-                        text.index("(fnn-owner-gate-leave"))
+        self.assertLess(text.index("(fn-fs-unwind"), text.index("(fnn-owner-gate-leave"))
         self.assertIn("(fnn-owner-stop-service-locked ,s +fnn-exit-fault+)", text)
         self.assertIn("(*fnn-section-step* nil)", text)
+        self.assertIn("(fn-fs-section-class-ok ,classes ,c)", text)
+        # The two entries are the envelope's only expansions; the :live one
+        # carries ACL2's stopping refusal, the cleanup one none at all.
+        live = host_function(owner, "fnn-section-run")
+        self.assertIn("(fn-fs-section-admit admits (fnn-owner-service-stopping service))", live)
+        self.assertIn("(fnn-refuse \"owner service is stopping\")", live)
+        cleanup = host_function(owner, "fnn-section-run-cleanup")
+        self.assertNotIn("fnn-refuse", cleanup)
+        self.assertEqual(sum(1 for form in forms for node in self._nodes(form)
+                             if head(node) == "fnn-section-envelope"), 2)
         serialized = host_function(owner, "fnn-owner-serialized")
-        self.assertNotIn("fnn-owner-shared-action-locked", serialized)
-        self.assertIn("(fnn-owner-gated (service class :cid cid)", serialized)
-        self.assertIn("(fnn-refuse \"owner service is stopping\")", serialized)
+        self.assertIn("(fnn-section-run service class cid :live", serialized)
+        self.assertNotIn("fnn-owner-service-stopping", serialized)
+        # def-section emits the entry through those two only.
+        macro = owner[owner.index("(defmacro def-section"):]
+        macro = macro[:macro.index("\n(def", 1)]
+        self.assertIn("(if (eq admits :live) 'fnn-section-run 'fnn-section-run-cleanup)", macro)
+        self.assertIn("(fnn-section-declare ',name ',actors ',classes ',admits)", macro)
         # No non-local exit crosses a boundary: a return-from, return or throw
         # inside a quantum targets a block, loop or catch established inside it.
         escapes = []
@@ -168,6 +194,7 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
             for child in form:
                 walk(child, inside, blocks, catches, where)
 
+        self.BOUNDARIES = self.BOUNDARIES + tuple(self._declared_sections())
         for path in sorted((ROOT / "host/native").glob("*.lisp")):
             for form in self._forms("host/native/" + path.name):
                 if head(form) in ("defun", "defmacro"):
