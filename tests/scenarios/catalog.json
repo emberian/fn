@@ -599,7 +599,8 @@
         "Receive a nonzero fragment, restart, then receive offset zero and reassemble only from a complete coherent live family.",
         "Reopen an FNWF journal interleaving ION route/observation records with application attempt, receipt and release records.",
         "For the ION adapter, undertake the canonical Store forward pin, submit through the explicit application/BP route, and reopen the durable observation. Refuse fractional or out-of-helper-range lifetime before publishing any attempt or launching the helper; entered-send observation failures stay uncertain.",
-        "Complete a multi-quantum fragment family: final custody ACK precedes reassembly, a keepalive/input turn resumes one quantum, EOF moves pending work to listener turns, and diagnostic once drains only after socket closure."
+        "Complete a multi-quantum fragment family: final custody ACK precedes reassembly, a keepalive/input turn resumes one quantum, EOF moves pending work to listener turns, and diagnostic once drains only after socket closure.",
+        "Open BP budgets with missing/default and ASCII rows; refuse repeated owner-backoff/retry-budget, unknown keys, malformed or non-ASCII decimal input before running a node."
       ],
       "expected": [
         "Transport status is not a retention undertaking.",
@@ -621,7 +622,9 @@
         "tests/acl2/bp-ion-lifetime-tests.lisp",
         "tests/test_native_ion_workflow.py",
         "tests/native_bp_fragment_turn_raw.lisp",
-        "tests/native_tcpcl_progress_turn_raw.lisp"
+        "tests/native_tcpcl_progress_turn_raw.lisp",
+        "tests/acl2/bp-node-budget-input-tests.lisp",
+        "tests/native_bp_budget_input_raw.lisp"
       ],
       "execution_scope": "Partial: the actual pinned BPA exchange carries an experimental whole-article ADU and matching receipt through outage/restart/lost receipt/duplicate retry. Sender and receiver logical assurance and five receiver process-death cuts have separate evidence. Complete portable batches, explicit expiry/contact/quota cases, authenticated handoff and additional CLA profiles remain open. Moved to M4 to match the user's A06 active BP path; status remains specified. Native TCPCL request-to-owner-Store-to-receipt composition has a separate loopback restart witness; it is not external BPA interoperability or a complete contact-plan test. The fragment-carrier and observation-bound kind-18 transitions have ACL2 evidence; the two-process interrupted-fragment native fixture awaits a source-matched saved image. The optional offline ION sender has a certified ACL2 observation/route/replay component and a source-present native caller; native image qualification, real death/reopen and receipt-return over ION remain open."
     },
