@@ -119,6 +119,61 @@
     (list :initial (fn-ast-initial-pieces kind number article) 0
           (and (not (eq kind :body)) pairs) source t server)))
 
+; Xref filtering retains the original membership spine. Word validation and
+; the reference's first matching group lookup each advance one character or
+; one membership per transition, including duplicate/corrupted memberships.
+; Iterator = (:xref-source remaining all phase pair position lookup compare).
+(defun fn-ast-xref-state (remaining all phase pair at lookup compare)
+  (declare (xargs :guard t))
+  (list :xref-source remaining all phase pair at lookup compare))
+
+(defun fn-ast-xref-one (it)
+  (declare (xargs :verify-guards nil))
+  (let* ((remaining (fn-ast-at 1 it)) (all (fn-ast-at 2 it))
+         (phase (fn-ast-at 3 it)) (pair (fn-ast-at 4 it))
+         (at (nfix (fn-ast-at 5 it))) (lookup (fn-ast-at 6 it))
+         (compare (nfix (fn-ast-at 7 it)))
+         (skip (fn-ast-xref-state (cdr remaining) all :next nil 0 nil 0)))
+    (cond
+     ((eq phase :next)
+      (if (atom remaining) (mv :end nil it)
+        (let ((candidate (car remaining)))
+          (if (and (consp candidate) (stringp (car candidate))
+                   (< 0 (length (car candidate)))
+                   (integerp (cdr candidate)) (< 0 (cdr candidate))
+                   (<= (cdr candidate) *fn-nntp-max-article-number*))
+              (mv :wait nil (fn-ast-xref-state remaining all :word candidate 0 nil 0))
+            (mv :wait nil skip)))))
+     ((eq phase :word)
+      (if (>= at (length (car pair)))
+          (mv :wait nil (fn-ast-xref-state remaining all :lookup pair 0 all 0))
+        (if (let ((byte (char-code (char (car pair) at))))
+              (and (<= 33 byte) (<= byte 126) (not (equal byte 58))))
+            (mv :wait nil (fn-ast-xref-state remaining all :word pair (+ 1 at) nil 0))
+          (mv :wait nil skip))))
+     ((eq phase :lookup)
+      (if (atom lookup) (mv :wait nil skip)
+        (let ((row (car lookup)))
+          (if (and (consp row) (stringp (car row))
+                   (equal (length (car row)) (length (car pair))))
+              (mv :wait nil (fn-ast-xref-state remaining all :compare pair 0 lookup 0))
+            (mv :wait nil (fn-ast-xref-state remaining all :lookup pair 0 (cdr lookup) 0))))))
+     (t
+      (if (>= compare (length (car pair)))
+          (mv (if (equal (cdr (car lookup)) (cdr pair)) :pair :wait) pair skip)
+        (if (equal (char (car pair) compare) (char (car (car lookup)) compare))
+            (mv :wait nil (fn-ast-xref-state remaining all :compare pair 0 lookup (+ 1 compare)))
+          (mv :wait nil (fn-ast-xref-state remaining all :lookup pair 0 (cdr lookup) 0))))))))
+
+(defun fn-ast-ready-memberships (scan kind number article server)
+  (declare (xargs :verify-guards nil))
+  (let ((cur (fn-ast-ready scan kind number article server nil)))
+    (list (fn-ast-at 0 cur) (fn-ast-at 1 cur) (fn-ast-at 2 cur)
+          (and server (not (eq kind :body)) (fn-nntp-article-idp article)
+               (fn-ast-xref-state (fn-article-memberships article)
+                                  (fn-article-memberships article) :next nil 0 nil 0))
+          (fn-ast-at 4 cur) (fn-ast-at 5 cur) (fn-ast-at 6 cur))))
+
 ; Each transition spends one unit, even when numerical setup or a phase
 ; transition produces no bytes. The payload branch emits at most two octets
 ; (a leading dot is doubled); it never scans for the end of a line.
@@ -131,10 +186,24 @@
       (mv-let (out next at) (fn-npw-one pieces pos fn-arena)
         (mv out (list phase next at (fn-ast-at 3 cur) (fn-ast-at 4 cur) (fn-ast-at 5 cur) (fn-ast-at 6 cur)))))
      ((eq phase :initial)
-      (if (consp (fn-ast-at 3 cur))
+      (if (eq (fn-ast-at 0 (fn-ast-at 3 cur)) :xref-source)
+          (mv nil (list :xref-seek-first nil 0 (fn-ast-at 3 cur) (fn-ast-at 4 cur) t (fn-ast-at 6 cur)))
+       (if (consp (fn-ast-at 3 cur))
           (mv nil (list :xref (list "Xref: " (fn-ast-at 6 cur)) 0
                         (fn-ast-at 3 cur) (fn-ast-at 4 cur) t nil))
-        (mv nil (list :payload nil 0 nil (fn-ast-at 4 cur) t nil))))
+        (mv nil (list :payload nil 0 nil (fn-ast-at 4 cur) t nil)))))
+     ((member-eq phase '(:xref-seek-first :xref-seek))
+      (mv-let (word pair next) (fn-ast-xref-one (fn-ast-at 3 cur))
+        (cond
+         ((eq word :pair)
+          (mv nil (list :xref-seek
+                    (append (and (eq phase :xref-seek-first) (list "Xref: " (fn-ast-at 6 cur)))
+                            (list " " (car pair) ":" (list :decimal (nfix (cdr pair)) nil)))
+                    0 next (fn-ast-at 4 cur) t nil)))
+         ((eq word :end)
+          (mv nil (list :payload (and (eq phase :xref-seek) (list '(13 10)))
+                        0 nil (fn-ast-at 4 cur) t nil)))
+         (t (mv nil (list phase nil 0 next (fn-ast-at 4 cur) t (fn-ast-at 6 cur)))))))
      ((eq phase :xref)
       (if (consp (fn-ast-at 3 cur))
           (let ((pair (car (fn-ast-at 3 cur))))

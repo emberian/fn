@@ -2962,3 +2962,13 @@ Root actualdevREPL nativeownerPASS: scopedGWad8 initializedsource+gate336+cde
 +exact177module/trace overlays, tests/dev_repl_native.py exercisesrealowner,
 ACL2admission/refusalcontinuation, SIGTERMexit0cleanup, rawerrorfenceexit4cleanup.
 ExecutionJSON+log+assertions archivedseparately; notcurrentwholedevqualification.
+
+ARTICLE lazy Xref source: READY captures raw immutable membership spine rather
+than fn-xref-pairs' complete filtered list. Every transition validates one
+word character, skips one row or compares one first-match group character,
+preserving old duplicate/invalid-word filtering. Whole filtered Xref list is
+never allocated. Actual core126337 and owner/native127690 aggregate checks
+pass including5000-character group and windows1/3/4096; 34core forms now
+admitted in warm0.08s and universal byte-window bound remains admitted.
+Initial article selection/authorization-cache setup bounds remain continuing
+work; universal Xref equivalence, renderer guards and owner refinement open.
