@@ -2500,3 +2500,53 @@ Root owns NEWNEWS tariff; Tools final fair push93e/8df/879 and COLD pullb138/deb
 receipts remain inherited intact, native SCN1106 execution delegated to the same
 convergence image. Important pending BP source borrow is conservatively held at
 terminal; no producer cancellation/refund is manufactured.
+
+2026-10-03 usage-limit winddown, Sol tools/matcher-graph continuation:
+
+* Ready source: 0f59cb5f9 immutable matcher constructor tails (already integrated
+  publicly as 6c067d99f); 1af21b72f immutable fn-cur-make tails; 5f10c2b16 and
+  aa085f7f6 correct the actual stream live predicate and add a diagnostic-only
+  runaway bound; bf5551065 removes the temporary identity list from skipped
+  shared trace samples; 0f575f745 adds an actual initialized-cache NEWNEWS
+  consumer fixture. All were sent to Integration. Cherry-pick identities are
+  not evidence that a change is still unintegrated.
+* Actual warm matcher engine probe: all ten cases/every retained state agree.
+  The 460-octet case's 32 compiled replays allocate 20,127,712 versus 13,720,736
+  process bytes; owned live peak is 52,208 versus 29,856 direct bytes. Shared
+  program constants retain 176 direct bytes once. Guard/equality admissions
+  covered the actual constructor source. This does not discharge GC pricing.
+* Actual shared trace macro sampling probe passed in the borrowed healthy
+  solheldownerfix world: 100,000 attempts, one recorded row, legacy 5,008,800
+  versus candidate zero observed process bytes at counter granularity; 7ms
+  versus 5ms. Scope is caller-isolated inclusive probe. Identity classes match.
+  Exact log: build/trace-sampling/probe.log. The healthy loan was returned to
+  Lieutenant/Served immediately; no shared world remains owned by this lane.
+* Actual own cached developer owner probe passed: ad8's preconfigured NEWNEWS
+  stream, eight articles with long Message-IDs, 1,035 transitions/1,027 reply
+  octets, every state and multiple value equal. Across 32 drains, legacy cursor
+  versus shared cursor allocated 8,906,224/7,857,264 PROCESS inclusive bytes,
+  with 9ms/7ms observations. Idle owner threads were present. New WMC/configured
+  stream composition remains pending because the cache lacks those symbols;
+  do not transfer this result to changed matcher/selector bytes.
+* The earlier full configured-stream diagnostic used Lisp NIL as completion
+  instead of fn-nnw-meta-livep and lost the matcher-stream loan at its 120s
+  timeout. Its fixture is repaired and bounded, but has not been rerun. No cold
+  closure, image build or certification acquisition was launched.
+* UNVERIFIED WIP remains in books/def-cursor.lisp: reuse immutable whole front
+  when fn-cur-split exhausts its input, with identical :logic and no length
+  scan. The broad warm-theory admission of the renamed prototype ran away;
+  the 30s client timeout did not cancel it. No guard/consumer verdict is claimed
+  for this WIP. Patch and exact attempted forms are preserved under
+  build/incremental-owner/whole-prefix-copy.wip.patch and admit-split.lisp.
+  Next proof should use a minimal theory and a controlled prover step limit.
+  Requested developer-REPL improvement: caller-selected ordinary ACL2 prover
+  limits that return a controlled refusal without fault-fencing the owner.
+* Owned execution was /tank/fn/scratch/codex-tools-incremental-19c101d977/owner,
+  private copy of Root's hash-bound source cache execution manifest. PID2008855
+  received normal SIGTERM, remained blocked after the driver's 20s drain, and
+  was then killed by that same owned driver as explicitly authorized for
+  winddown. Exit -9; PID confirmed absent, exec session26396 finished. Its
+  private stale sockets, Store, manifests, source inputs and logs are preserved
+  rather than deleted. No live owned computation remains. Root/shared wrapper
+  and execution manifest were never changed. All helper assets remain in
+  build/incremental-owner and the unique remote driver's directory.
