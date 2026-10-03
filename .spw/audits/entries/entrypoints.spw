@@ -1,5 +1,5 @@
 # Actual native entry candidates; discovery is not full trace coverage.
-^"coordinate"{ source_revision: "c80d05424648553ea495b6c4fe3a51dd138798ed"
+^"coordinate"{ source_revision: "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f"
  tier: "exact source discovery; public-image exposure and downstream reading unestablished" }
 ^"fnn-command-acl2"{
  @source: ~"../../../host/native/acl2-session.lisp"
@@ -26,41 +26,41 @@
  @source: ~"../../../host/native/bp-contact.lisp"
  line: 26
  source_sha256: "92e39f9735a7d3634d83f55a02a1d2b270095b9a937398a0b0c2178e1ee41b43"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits"
 }
 ^"fnn-command-bp-node-resume"{
  @source: ~"../../../host/native/bp-node.lisp"
  line: 492
- source_sha256: "e724ee34d3fea20accd62c2ce840a0c97bfb50f43c8ee85f15e3196da21f5164"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ source_sha256: "89781b5ff5edcac3f594535eac24db0b79f27b8d37e9deb35ccbde599259a795"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits"
 }
 ^"fnn-command-bp-node-checkpoint"{
  @source: ~"../../../host/native/bp-node.lisp"
- line: 512
- source_sha256: "e724ee34d3fea20accd62c2ce840a0c97bfb50f43c8ee85f15e3196da21f5164"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ line: 511
+ source_sha256: "89781b5ff5edcac3f594535eac24db0b79f27b8d37e9deb35ccbde599259a795"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits"
 }
 ^"fnn-command-bp-node-profile"{
  @source: ~"../../../host/native/bp-node.lisp"
- line: 624
- source_sha256: "e724ee34d3fea20accd62c2ce840a0c97bfb50f43c8ee85f15e3196da21f5164"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ line: 623
+ source_sha256: "89781b5ff5edcac3f594535eac24db0b79f27b8d37e9deb35ccbde599259a795"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits"
 }
 ^"fnn-command-bp-node"{
  @source: ~"../../../host/native/bp-node.lisp"
- line: 1082
- source_sha256: "e724ee34d3fea20accd62c2ce840a0c97bfb50f43c8ee85f15e3196da21f5164"
+ line: 1081
+ source_sha256: "89781b5ff5edcac3f594535eac24db0b79f27b8d37e9deb35ccbde599259a795"
  coverage: "catalogued; entry body untouched by entries horse"
  read_coordinate: "unread"
 }
 ^"fnn-command-bp-session-profile"{
  @source: ~"../../../host/native/bp-node.lisp"
- line: 1231
- source_sha256: "e724ee34d3fea20accd62c2ce840a0c97bfb50f43c8ee85f15e3196da21f5164"
+ line: 1230
+ source_sha256: "89781b5ff5edcac3f594535eac24db0b79f27b8d37e9deb35ccbde599259a795"
  coverage: "catalogued; entry body untouched by entries horse"
  read_coordinate: "unread"
 }
@@ -543,23 +543,23 @@
 ^"fnn-command-tcpcl-listen"{
  @source: ~"../../../host/native/tcpcl.lisp"
  line: 812
- source_sha256: "a76aabe5ab72ea25cffb25dedaa9f2169afd0dcb4768c3d874742975119d8f94"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ source_sha256: "8461c6ae76eed91841c859ac76804f890cee58787d41bab0217ea3139c488e0a"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits"
 }
 ^"fnn-command-tcpcl-send"{
  @source: ~"../../../host/native/tcpcl.lisp"
- line: 864
- source_sha256: "a76aabe5ab72ea25cffb25dedaa9f2169afd0dcb4768c3d874742975119d8f94"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ line: 865
+ source_sha256: "8461c6ae76eed91841c859ac76804f890cee58787d41bab0217ea3139c488e0a"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits"
 }
 ^"fnn-command-tcpcl-replay"{
  @source: ~"../../../host/native/tcpcl.lisp"
- line: 911
- source_sha256: "a76aabe5ab72ea25cffb25dedaa9f2169afd0dcb4768c3d874742975119d8f94"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ line: 913
+ source_sha256: "8461c6ae76eed91841c859ac76804f890cee58787d41bab0217ea3139c488e0a"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits"
 }
 ^"fnn-command-topic-local"{
  @source: ~"../../../host/native/topic-local.lisp"

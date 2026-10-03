@@ -133,5 +133,40 @@
     "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
     "revision": "c80d05424648553ea495b6c4fe3a51dd138798ed",
     "source_sha256": "47bf579bb8bb7d834c4d24dab0c988bc4a734517d91569885d7820360b702910"
+  },
+  "fnn-command-tcpcl-listen": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits",
+    "source_sha256": "8461c6ae76eed91841c859ac76804f890cee58787d41bab0217ea3139c488e0a"
+  },
+  "fnn-command-tcpcl-send": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits",
+    "source_sha256": "8461c6ae76eed91841c859ac76804f890cee58787d41bab0217ea3139c488e0a"
+  },
+  "fnn-command-tcpcl-replay": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits",
+    "source_sha256": "8461c6ae76eed91841c859ac76804f890cee58787d41bab0217ea3139c488e0a"
+  },
+  "fnn-command-bp-node-resume": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits",
+    "source_sha256": "89781b5ff5edcac3f594535eac24db0b79f27b8d37e9deb35ccbde599259a795"
+  },
+  "fnn-command-bp-node-checkpoint": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits",
+    "source_sha256": "89781b5ff5edcac3f594535eac24db0b79f27b8d37e9deb35ccbde599259a795"
+  },
+  "fnn-command-bp-node-profile": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits",
+    "source_sha256": "89781b5ff5edcac3f594535eac24db0b79f27b8d37e9deb35ccbde599259a795"
+  },
+  "fnn-command-bp-contact-tick": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits",
+    "source_sha256": "92e39f9735a7d3634d83f55a02a1d2b270095b9a937398a0b0c2178e1ee41b43"
   }
 }
