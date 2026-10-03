@@ -9627,14 +9627,16 @@
         "Execute actual fnn-owner-page-read-startup with deliberate admitted/refused/malformed core results and observe exact raw runtime captures and constructor ordering.",
         "Run the prior owner body against the same startup/recovery fixture.",
         "Observe final settlement when installation retained its actual Store carrier but never returned SERVICE.",
-        "Observe a normally joined executor whose retained constructor/decoder roster still contains physical custody using the actual locked drained predicate."
+        "Observe a normally joined executor whose retained constructor/decoder roster still contains physical custody using the actual locked drained predicate.",
+        "Compose the actual global arena return observation with preconstructor startup and orphan cleanup, including prior callback debt with no Store carrier."
       ],
       "expected": [
         "Pool installation, fixed table allocation, guard preparation and executor startup precede Store open. Named refusals allocate no tables or workers; malformed model decisions fault.",
         "A failure before service publication joins partial executors before run authority settles; an escaping join preserves that authority and outstanding workers.",
         "Prior source fails the startup predicate at Store open because no pool or workers were installed.",
         "Retained startup Store is closed rather than reported absent; close failure fences it and retains authority. Prior actual settlement performs zero closes.",
-        "Joined-but-retained executor custody leaves startup and run authority held; prior actual cleanup falsely releases it."
+        "Joined-but-retained executor custody leaves startup and run authority held; prior actual cleanup falsely releases it.",
+        "Prior arena callback debt reports uncertainty before plan/table/worker construction and retains run authority even when all executor threads have drained; callbacks never retry."
       ],
       "implementation": {
         "test": "tests/test_native_owner_pool_startup_source.py"
@@ -9642,9 +9644,10 @@
       "evidence": [
         "tests/native_owner_pool_startup_source.lisp",
         "planning/evidence/operator-pool-startup-source-2026-10-03-v2.json",
-        "planning/evidence/operator-executor-custody-source-2026-10-03.json"
+        "planning/evidence/operator-executor-custody-source-2026-10-03.json",
+        "planning/evidence/operator-arena-custody-source-2026-10-03.json"
       ],
-      "execution_scope": "Actual native function bodies with observed physical constructors and deliberate core startup results; actual service-settlement ACL2 functions. Numerical producer proof, actual allocator/worker composition and matching image are separate coordinates. The actual E-locked executor-drained helper is composed with owner-run in the joined-but-debt case; stop/constructor physical effects remain recorded seams."
+      "execution_scope": "Actual native function bodies with observed physical constructors and deliberate core startup results; actual service-settlement ACL2 functions. Numerical producer proof, actual allocator/worker composition and matching image are separate coordinates. The actual E-locked executor-drained helper is composed with owner-run in the joined-but-debt case; stop/constructor physical effects remain recorded seams. Actual global arena observation executes from Horse Exits db2e4c87a; prior owner-run and helper bodies independently refute lost custody/preconstructor guard."
     },
     {
       "id": "SCN-1133",

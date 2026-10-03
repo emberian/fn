@@ -8128,6 +8128,11 @@ fn-osd-drain-stops-by-the-deadline).  Nothing here compares times or counts."
   "Install DEFAULT's partial pool before Store recovery registers any file.
 RETAIN records constructor custody immediately after the core installation;
 the caller joins any partial executor before relinquishing run authority."
+  ;; A failed arena callback can precede any returned Store carrier. Retain
+  ;; this run's authority before refusing replacement backing constructors.
+  (unless (eq (fnn-arena-return-observation nil) :closed)
+    (funcall retain)
+    (fnn-indeterminate "cold startup: prior arena return remains unobserved"))
   (let* ((profile (fnn-heap-store-profile root))
          (core (fnn-heap-image-observation))
          (plan (fnn-core 'fn-prstartup-default-plan
@@ -8328,7 +8333,8 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                      (setq log-close-action
                            (fnn-core 'fn-ort-report-close-action nil :unobserved))
                      (fnn-extent-executor-stop)
-                     (when (fnn-extent-executor-drained-p)
+                     (when (and (fnn-extent-executor-drained-p)
+                                (eq (fnn-arena-return-observation nil) :closed))
                        (setq log-close-action nil)))
                    (when service
                     ;; Journal closure has not been observed. Retain Store

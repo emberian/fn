@@ -4039,3 +4039,11 @@ using existing guarded native-config getters and same native extension
 helper as launcher. Actual STATUS/HEALTH +config projections +output
 arithmetic PASS4 cases; old actual STATUS prints257MB instead of273MB
 after dropping configured output. No new logical price or host arithmetic.
+
+Horse Exits db2e4c87a global arena return observation now guards DEFAULT
+startup before constructors and joins the orphan marker-clear condition.
+Actual preconstructor guard and owner-run +global arena observation PASS15
+cases; prior d443 helper constructs backing despite debt, and prior run
+clears authority after E drained while the arena callback remains calling.
+BP Transport notified to preserve this observation in its own nil-carrier
+settlement. Private decoded reset/recovery arenas remain Root/History-owned.
