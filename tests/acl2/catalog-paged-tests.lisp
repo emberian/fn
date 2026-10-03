@@ -27,11 +27,12 @@
 
 (defun cpt-row (i)
   (declare (xargs :mode :program))
-  (let ((art (append (fn-record-string-octets "Subject: a") '(13 10 13 10 97 13 10))))
-    (fn-held-plain (fn-record-make i (+ 1 i) 0
+  (let* ((art (append (fn-record-string-octets "Subject: a") '(13 10 13 10 97 13 10)))
+         (h (fn-held-plain (fn-record-make i (+ 1 i) 0
                                    (concatenate 'string "<" (coerce (explode-atom i 10) 'string) "@x>")
                                    art '("fn.test") "o" "s" "e" 1 5)
                    i)))
+    (fn-held-with-facts h (fn-held-facts-of art))))
 
 (defun cpt-commit (i n fn-cat$p)
   (declare (xargs :mode :program :stobjs fn-cat$p))

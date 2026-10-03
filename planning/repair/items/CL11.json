@@ -9,7 +9,8 @@
  "locus": "gates-tests-packaging",
  "notes": [
   "10-02 22:32 converted at 24676b5d4; REPL admission running",
-  "10-02 22:34 REPL: raw-guarded-interface-tests stops at a converted tooth (DEFINTERFACE make-event); fix forward per lanedump"
+  "10-02 22:34 REPL: raw-guarded-interface-tests stops at a converted tooth (DEFINTERFACE make-event); fix forward per lanedump",
+  "Codex integration 2026-10-03: raw-guarded unchecked teeth source merged 8cf37a368; must_fail_check 0 bare forms, but scoped REPL is not certification; CL11 remains in-progress for target test roots."
  ],
  "owner": "sweep-gates",
  "severity": "medium",

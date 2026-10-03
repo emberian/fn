@@ -3,11 +3,19 @@ from pathlib import Path
 from types import SimpleNamespace
 import unittest
 
-from tools.resilience.adapters.bp_node import BpRun, HarnessFailure, control_path
+from tools.resilience.adapters.bp_node import BpRun, HarnessFailure, control_path, transfer_outcome
+from tools.outcome_codes import EXIT
 from tools.resilience import schedule_points
 
 
 class BpControlAdapterTests(unittest.TestCase):
+    def test_native_exit_classes_are_not_all_lost_completions(self):
+        self.assertEqual([transfer_outcome(code) for code in
+                          (EXIT.OK, EXIT.REFUSED, EXIT.UNCERTAIN, EXIT.FAULT,
+                           EXIT.INTERRUPTED, EXIT.NOT_CONNECTED, EXIT.USAGE, -9)],
+                         ["accepted", "refused", "uncertain", "fault", "lost",
+                          "not-connected", "usage", "unknown"])
+
     def fixture(self, variant):
         scenario = next(s for s in schedule_points.scenarios()
                         if s.id == "schedule-receipt-observed-" + variant)

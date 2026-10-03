@@ -61,7 +61,9 @@ The other keys, if you need them:
   without use (12 hours).
 - `max_sessions = 64`: how many people can be signed in at once. Each
   signed-in person is one connection to the node, counted like a
-  newsreader's.
+  newsreader's. This also bounds the HTTP connections the page can serve at
+  once; extra connections wait in the listener's backlog. A browser waiting
+  on a slow request does not block the other connections.
 
 ## 2. Give it a padlock with Caddy
 
@@ -169,3 +171,22 @@ the complete namespace, profile, route, peer and receipt diagnostics.
 The endpoint uses the web listener's existing TLS and request limits;
 other methods on this path are refused. This readiness policy is fn's,
 not a requirement imposed by HTTP.
+
+
+Native ARTICLE/OVER/LIST pages now scan and replay captured NNTP plans through
+bounded Web windows, retaining article/overview virtual spans or one dynamic
+LIST row plan. Both HTML passes retain the response pin through final socket
+drain. WEB-006 and SCN-1113/1114/1115 distinguish this extra-collector removal
+from original NNTP producer materialization, which remains the complete tariff
+frontier. Programs PRF-1283/1284/1285 still await guard/refinement and matching
+image evidence; no universal allocation or full event fairness claim.
+
+
+Streaming Web command and await plans enter a fixed-worker `:ready` phase before
+replay capture. `fnn-owner-ready-plan-step` resolves one shared ARTICLE framing
+preflight quantum; yielded/raw and cold continuations are retained without
+publication. Only READY stores the immutable original plan for both HTML passes.
+No preflight/selection scan is replayed during count or emit. The consumer pairs
+with Access source e7624ab8a/e41b22c21 and Served a3bd4513f; its raw adversarial
+owner adapter checks cold/yield/READY capture custody, not producer semantics.
+Actual composed source execution and complete Web tariff remain pending.

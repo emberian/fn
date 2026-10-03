@@ -15,6 +15,15 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
+(defun fnn-mux-handshake-refused (loop conn line)
+  (declare (ignorable loop conn line))
+  (harness-stub-reached 'fnn-mux-handshake-refused "host/native/mux.lisp"))
+(defun fnn-mux-handshake-step (loop conn)
+  (declare (ignorable loop conn))
+  (harness-stub-reached 'fnn-mux-handshake-step "host/native/mux.lisp"))
+(defun fnn-mux-ms-ticks (ms)
+  (declare (ignorable ms))
+  (harness-stub-reached 'fnn-mux-ms-ticks "host/native/mux.lisp"))
 (defun fnn-owner-syncer-physical (service grant receipt)
   (declare (ignorable service grant receipt))
   (harness-stub-reached 'fnn-owner-syncer-physical "host/native/owner.lisp"))
@@ -26,7 +35,8 @@
   (harness-stub-reached 'fnn-zout-free "host/native/deflate.lisp"))
 ;;; ---- derived stubs: END ----
 (load-deployed-forms "host/native/owner.lisp"
- '((def-section fnn-quantum-mux-finish) (defun fnn-owner-thread-escape)))
+ '((def-section fnn-quantum-mux-finish) (defun fnn-owner-thread-escape)
+   (defun fnn-owner-output-close)))
 (load-deployed-forms "host/native/mux.lisp"
  '((defstruct (fnn-mux-cleanup-receipt (:constructor %make-fnn-mux-cleanup-receipt)))
    (defun fnn-mux-service) (defun fnn-mux-cleanup-debt)
@@ -166,3 +176,80 @@
   (sb-thread:join-thread thread)
   (check (fnn-mux-drained-p service) "actual terminal loop and empty debt can authorize root drain observation"))
 (format t "native_mux_cleanup_raw: PASS actual socket receipts and live-loop root hold~%")
+
+;; Composition with the current cold slot: the actual owner helper projects
+;; its read token to the recording extent-cancellation boundary. That call
+;; only revokes publication; it supplies no physical dependency receipt.
+(load-deployed-forms "host/native/owner.lisp"
+ '((defstruct (fnn-owner-cold-read (:constructor %make-fnn-owner-cold-read)))
+   (defun fnn-owner-cold-abandon)))
+(defvar *cold-cleanup-tokens* nil)
+(defvar *cold-cleanup-fault* nil)
+(defun fnn-extent-cancel-read (token)
+  (push token *cold-cleanup-tokens*)
+  (when *cold-cleanup-fault* (error "cold cancellation callback failed"))
+  :cancelled)
+(dolist (fault '(nil t))
+  (let* ((service (%make-fnn-owner-service))
+         (loop (%make-fnn-mux-loop :service service :closed t))
+         (read (%make-fnn-owner-cold-read :token :literal-current-cold-token))
+         (conn (%make-fnn-mux-conn :phase :serving :cold (list read 1 2)
+                                  :socket (make-instance 'sb-bsd-sockets:inet-socket
+                                                         :type :stream :protocol :tcp)))
+         (*cold-cleanup-tokens* nil) (*cold-cleanup-fault* fault))
+    (setf (fnn-owner-service-mux service) (list loop)
+          (fnn-mux-loop-conns loop) (list conn))
+    (fnn-mux-finish loop conn)
+    (fnn-mux-finish loop conn)
+    (let ((receipt (cdr (assoc (list :cold-abandon read)
+                              (fnn-mux-conn-cleanup-receipts conn) :test #'equal))))
+      (check (and receipt (equal *cold-cleanup-tokens* '(:literal-current-cold-token)))
+             "actual cold helper receives exact token once even on failed cancellation")
+      (if fault
+          (check (and (eq (first (fnn-mux-conn-cold conn)) read)
+                      (not (fnn-mux-cleanup-receipt-section-returned receipt))
+                      (fnn-mux-loop-cleanup-debts loop)
+                      (not (fnn-mux-drained-p service)))
+                 "failed cold callback keeps exact read and debt after scheduling removal")
+        (check (and (null (fnn-mux-conn-cold conn))
+                    (fnn-mux-cleanup-receipt-section-returned receipt)
+                    (fnn-mux-drained-p service))
+               "returned cold revocation clears only connection publication slot")))))
+(format t "native_mux_cleanup_cold_composition: PASS actual current cold helper/slot success+fault~%")
+
+;;; S085: admit consumes queued waiting before native SSL allocation.
+;;; Extract the actual request/start functions and fail at accept-begin;
+;;; existing finish/release callbacks then settle the admitted identity once.
+(load-deployed-forms "host/native/mux.lisp"
+ '((defun fnn-mux-request-handshake) (defun fnn-mux-start-handshake)))
+(defun fnn-mux-handshake-ask (loop conn queuedp)
+  (declare (ignore loop conn))
+  (check queuedp "fault witness enters via queued STARTTLS admission")
+  (values :admit 41 1000 nil))
+(defvar *queued-accept-begin-reached* nil)
+(defun fnn-tls-accept-begin (context fd)
+  (declare (ignore context fd))
+  (setf *queued-accept-begin-reached* t)
+  (error "injected SSL_new failure before handshake phase"))
+(let* ((*cleanup-mode* nil) (*cleanup-calls* nil) (*queued-accept-begin-reached* nil)
+       (service (%make-fnn-owner-service :lock (sb-thread:make-mutex)))
+       (loop (%make-fnn-mux-loop :service service :closed t))
+       (conn (%make-fnn-mux-conn :phase :hs-wait
+                                :socket (make-instance 'sb-bsd-sockets:inet-socket
+                                                       :type :stream :protocol :tcp))))
+  (setf (fnn-owner-service-stopping service) t
+        (fnn-owner-service-mux service) (list loop)
+        (fnn-mux-loop-conns loop) (list conn)
+        (fnn-mux-loop-waiting loop) (list conn))
+  (handler-case (progn (fnn-mux-request-handshake loop conn t)
+                      (error "allocation failure was not reached"))
+    (error () (fnn-mux-finish loop conn)))
+
+  (check (and *queued-accept-begin-reached* (null (fnn-mux-loop-waiting loop))
+              (eq (fnn-mux-conn-phase conn) :done)
+              (null (fnn-mux-conn-hs-id conn))
+              (= 1 (count 'fn-owner-handshake-done *cleanup-calls* :key (lambda (x) (if (consp x) (car x) x))))
+              (= 0 (count 'fn-owner-handshake-leave *cleanup-calls* :key (lambda (x) (if (consp x) (car x) x))))
+              (null (fnn-mux-loop-cleanup-debts loop)))
+         "queued native allocation failure reports admitted done once and no duplicate leave"))
+(format t "native_mux_queued_handshake_failure: PASS~%")

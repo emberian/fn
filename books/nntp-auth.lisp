@@ -940,9 +940,9 @@
   (declare (xargs :guard t))
   (append (fn-nntp-string-octets "SASL") (fn-auth-mechanism-words mechs)))
 
-(defun fn-auth-starttls-lines (acfg tlsp)
+(defun fn-auth-starttls-lines (acfg subject tlsp)
   (declare (xargs :guard t))
-  (if (and (fn-auth-config-tls-availablep acfg) (not tlsp))
+  (if (and (fn-auth-config-tls-availablep acfg) (not subject) (not tlsp))
       (list (fn-nntp-string-octets "STARTTLS"))
     nil))
 
@@ -978,7 +978,7 @@
 
 (defun fn-auth-access-capability-lines (acfg subject tlsp ctx)
   (declare (xargs :guard t))
-  (append (fn-auth-starttls-lines acfg tlsp)
+  (append (fn-auth-starttls-lines acfg subject tlsp)
           (fn-auth-authinfo-lines acfg subject tlsp ctx)
           (fn-auth-sasl-lines acfg tlsp ctx)))
 
@@ -1560,6 +1560,10 @@
    ((fn-auth-session-tlsp as)
     (fn-post-make-result as (fn-auth-single as (fn-proto-text "STARTTLS" :active))
                          nil))
+   ; RFC 4642 section 2.2.1 note [1]: authentication also makes the
+   ; command unavailable.  Preserve identity and every pending state slot.
+   ((fn-auth-session-subject as)
+    (fn-post-make-result as (fn-auth-single as (fn-proto-text * :already)) nil))
    ; Section 2.2.2: unable to initiate, for a configuration reason, is 580.
    ((not (fn-auth-config-tls-availablep (fn-auth-session-config as)))
     (fn-post-make-result
@@ -2004,10 +2008,10 @@
        (or (member-equal x a) (member-equal x b)))))
 
 (local (defthm fn-auth-starttls-lines-facts
-  (and (fn-nntp-block-textp (fn-auth-starttls-lines acfg tlsp))
-       (iff (member-equal x (fn-auth-starttls-lines acfg tlsp))
+  (and (fn-nntp-block-textp (fn-auth-starttls-lines acfg subject tlsp))
+       (iff (member-equal x (fn-auth-starttls-lines acfg subject tlsp))
             (and (equal x (fn-scram-text "STARTTLS"))
-                 (fn-auth-config-tls-availablep acfg) (not tlsp))))
+                 (fn-auth-config-tls-availablep acfg) (not subject) (not tlsp))))
   :hints (("Goal" :in-theory (e/d (fn-auth-starttls-lines)
                                   (fn-auth-config-tls-availablep))))))
 
@@ -3171,6 +3175,17 @@
                                    fn-auth-config-requiredp
                                    fn-auth-config-creds fn-auth-login-offeredp)))))
 
+; PRF-1266: RFC 4642 section 2.1, including configured peer connections.
+(defthm fn-auth-starttls-is-not-advertised-once-authenticated-on-any-connection
+  (implies subject
+           (not (member-equal (fn-nntp-string-octets "STARTTLS")
+                              (fn-auth-capability-lines-for-peer
+                               acfg subject tlsp postingp record ctx))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines-for-peer
+                                   fn-auth-access-capability-lines)
+                                  (fn-peer-capability-lines
+                                   fn-auth-authinfo-lines fn-auth-sasl-lines)))))
+
 (defthm fn-auth-starttls-is-not-advertised-under-tls
   (implies tlsp
            (not (member-equal (fn-nntp-string-octets "STARTTLS")
@@ -3425,6 +3440,18 @@
   :hints (("Goal" :in-theory (e/d (fn-auth-starttls fn-auth-starttls-effect)
                                   (fn-nntp-single fn-auth-single))))
   :rule-classes nil)
+
+; PRF-1266: RFC 4642 section 2.2.1 note [1].  This is the called
+; decision, including the whole reply, all state, and absence of submissions.
+(defthm fn-auth-starttls-after-authentication-is-refused-without-reset
+  (implies (and (fn-auth-session-subject as) (null args)
+                (not (fn-auth-session-tlsp as)))
+           (and (equal (fn-post-result-session (fn-auth-starttls as args)) as)
+                (equal (fn-post-result-effects (fn-auth-starttls as args))
+                       (fn-auth-single as "502 already authenticated"))
+                (null (fn-post-result-submission (fn-auth-starttls as args)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-auth-starttls))))
 
 (defthm fn-auth-second-starttls-is-refused
   (implies (fn-auth-session-tlsp as)
@@ -3837,9 +3864,11 @@
 ;; connection pinned (books/owner-agent.lisp `fn-oag-listing'): the login is
 ;; the AUTHINFO USER name once the connection authenticated (the pending
 ;; slot keeps it, as books/login-binding.lisp reads it), and the rule of a
-;; connection that has not authenticated is the row keyed on "".  A peer
-;; connection has no rule: what a peer is fed is its feed patterns', not
-;; this node's reader view.  The READ text restricts only a projected
+;; connection that has not authenticated is the row keyed on "".  Peer
+;; roles authorize transit through their pinned peer record; their reader
+;; commands retain this same account/anonymous view (D48).  Transit decisions
+;; read their node and feed configuration from the peer session, independently
+;; of the archive and posting-view inputs below.  READ restricts a projected
 ;; session (an unprojected one answers 503 to every archive command).
 
 (defun fn-auth-access-login (as)
@@ -3852,8 +3881,7 @@
 ;; entries); an unrestricted login's rule is then "*" with the queues hidden.
 (defun fn-auth-access-text (as config field)
   (declare (xargs :guard t))
-  (and (null (fn-auth-session-peer as))
-       (let ((base (fn-gac-pattern
+  (let ((base (fn-gac-pattern
                     (fn-gac-listing-table (fn-inj-config-listing config))
                     (fn-auth-access-login as) field))
              (hidden (and (equal field 1)
@@ -3861,7 +3889,7 @@
                                                 (fn-auth-access-login as)))))
          (if (consp hidden)
              (list* :hide (or base "*") hidden)
-           base))))
+           base)))
 
 (defun fn-auth-access-read (as config)
   (declare (xargs :guard t))
@@ -3998,7 +4026,6 @@
   (implies (and (fn-mod-queue-hiddenp (fn-gac-text-octets g)
                                       (fn-inj-config-closed config)
                                       (fn-auth-access-login as))
-                (null (fn-auth-session-peer as))
                 (fn-nntp-session-projected (fn-auth-reader-session as)))
            (and (not (member-equal g (fn-state-groups
                                       (fn-auth-view-archive as config archive))))
@@ -4019,6 +4046,24 @@
                             (text (fn-auth-access-text as config 1))
                             (s archive))
 ))))
+
+ ;; PRF-1269: all reader roles use this same captured projection.
+(defthm fn-auth-view-excludes-unreadable-groups-on-any-connection
+  (implies (and (fn-nntp-session-projected (fn-auth-reader-session as))
+                (fn-auth-access-text as config 1)
+                (not (fn-gac-readablep (fn-auth-access-text as config 1) g)))
+           (and (not (member-equal g (fn-state-groups
+                                      (fn-auth-view-archive as config archive))))
+                (not (fn-auth-arts-name-groupp
+                      g (fn-state-articles (fn-auth-view-archive as config archive))))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-view-archive fn-auth-access-read)
+                           (fn-auth-access-text fn-gac-readablep fn-gac-restrict-state
+                            fn-gac-restrict-state-groups-are-readable fn-auth-restrict-articles-exclude))
+           :use ((:instance fn-gac-restrict-state-groups-are-readable
+                            (text (fn-auth-access-text as config 1)) (s archive))
+                 (:instance fn-auth-restrict-articles-exclude
+                            (text (fn-auth-access-text as config 1))
+                            (arts (fn-state-articles archive)))))))
 
 (in-theory (disable fn-auth-access-login fn-auth-access-text fn-auth-access-read
                     fn-auth-access-post fn-auth-access-restrictedp

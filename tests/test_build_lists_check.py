@@ -253,3 +253,60 @@ class BuildListsCheckTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DuplicateLoadTests(unittest.TestCase):
+    def test_findings_refuse_duplicate_ld_before_set_closure_hides_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host").mkdir(); (root / "books").mkdir()
+            (root / "host/empty.lisp").write_text('(in-package "ACL2")\n')
+            text = '(ld "host/empty.lisp")\n(ld "host/empty.lisp")\n'
+            found = check.findings(root, default_text=text, dtn_text=text,
+                                   omitted={}, reach={})
+            self.assertTrue(any(row.startswith("duplicate-load:") for row in found),
+                            "duplicate literal load must be refused")
+            self.assertEqual(len(found), 2)
+
+    def test_repeated_include_and_path_alias_are_refused(self):
+        for kind, target in (("ld", "host/file.lisp"), ("include-book", "books/core")):
+            text = f'({kind} "{target}")\n({kind} "{target.replace("/", "/./", 1)}")\n'
+            found = check.duplicate_load_findings(text, "fixture")
+            self.assertEqual(len(found), 1)
+            self.assertIn("fixture:2", found[0])
+            self.assertIn("line 1", found[0])
+
+    def test_quoted_comment_and_macro_template_are_not_load_directives(self):
+        text = '''
+; (ld "host/a.lisp")
+#| (ld "host/a.lisp") |#
+(defconst *data* '((ld "host/a.lisp")))
+(defmacro template () `(ld "host/a.lisp"))
+'(include-book "books/a")
+(ld "host/a.lisp")
+(include-book "books/a")
+'''
+        self.assertEqual(check.duplicate_load_findings(text, "fixture"), [])
+
+    def test_nested_admitted_event_and_different_options_still_repeat(self):
+        text = '(progn (ld "host/a.lisp") (ld "host/a.lisp" :ld-error-action :error))'
+        self.assertEqual(len(check.duplicate_load_findings(text, "fixture")), 1)
+
+    def test_distinct_namespaces_and_distinct_scripts_do_not_conflict(self):
+        text = '(include-book "core")\n(include-book "core" :dir :system)\n'
+        self.assertEqual(check.duplicate_load_findings(text, "one"), [])
+        self.assertEqual(check.duplicate_load_findings(text, "two"), [])
+
+    def test_shared_transitive_include_is_allowed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); (root / "books").mkdir()
+            (root / "books/shared.lisp").write_text('(in-package "ACL2")')
+            for book in ("a", "b"):
+                (root / f"books/{book}.lisp").write_text('(include-book "shared")')
+            text = '(include-book "books/a")\n(include-book "books/b")\n'
+            self.assertEqual(check.findings(root, default_text=text, dtn_text=text,
+                                            omitted={}, reach={}), [])
+
+    def test_unreadable_load_list_is_a_finding(self):
+        self.assertIn("unreadable", check.duplicate_load_findings('(ld "broken"', "fixture")[0])
+

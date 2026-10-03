@@ -102,3 +102,21 @@
  (declare (xargs :guard t))
  (and (eq (fn-cbor-ag-car (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr result)))) :stepped)
       (consp (fn-cbor-ag-car (fn-cbor-ag-cdr (fn-cbor-ag-cdr result))))))
+
+; This is now called by the real incoming BP retained consumer. Guard closure
+; uses the session book's exported field facts, locally in each hint.
+(verify-guards fn-tcl-complete-source)
+(verify-guards fn-tcl-recv-segment-source
+ :hints (("Goal" :in-theory
+  (e/d (fn-tcl-messagep fn-tcl-ext-decision-ok-total fn-tcl-ext-decision-ok-total-u64)
+       (fn-tcl-refuse fn-tcl-complete-source fn-tcl-stage fn-tcl-broken-stream fn-tcl-ext-decision)))))
+(verify-guards fn-tcl-step-source
+ :hints (("Goal" :in-theory
+  (e/d (fn-tcl-messagep fn-tcl-touch-rx-fields)
+       (fn-tcl-recv-segment-source fn-tcl-step fn-tcl-settle fn-tcl-touch-rx fn-tcl-segment-mru))
+  :use ((:instance fn-tcl-touch-rx-preserves-cheapp)))))
+(verify-guards fn-tcl-host-source-drive
+ :hints (("Goal" :in-theory
+  (e/d (fn-tcl-decode-for-yields-message-cheap)
+       (fn-tcl-step-source fn-tcl-decode-for fn-tcl-input-error fn-tcl-messagep fn-tcl-segment-mru)))))
+(verify-guards fn-tcl-host-source-more-p)

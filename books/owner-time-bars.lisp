@@ -322,6 +322,26 @@
           ((<= d e) :unavailable)
           (t (list :wait (- d e))))))
 
+; A LINE's deadline (lane served-live, cg-newnews-hang).  A served line that
+; misses a page is discarded and runs again once the page came; a line that
+; reads more pages than the realizer keeps (fn-arx-read-cache-entries)
+; misses again on every run, each page arriving within its own deadline.
+; LINE-SINCE is the recorded time of the line's FIRST miss: once the
+; declared limit has passed since then the line is :unavailable (answered
+; by fn-otb-unavailable-line, 403), whatever its latest page did; else it
+; may :proceed to await its page under fn-otb-dependency-step.
+(defun fn-otb-line-dependency-step (line-since now limit)
+  (declare (xargs :guard t))
+  (if (<= (fn-otb-dependency-of-limit limit)
+          (fn-otb-dependency-elapsed line-since now))
+      :unavailable
+    :proceed))
+
+(defthm fn-otb-line-dependency-step-is-the-deadline
+  (iff (equal (fn-otb-line-dependency-step line-since now limit) :unavailable)
+       (<= (fn-otb-dependency-of-limit limit)
+           (fn-otb-dependency-elapsed line-since now))))
+
 ; The reply to a read whose page did not come: RFC 3977 section 3.2.1's
 ; 403 ("internal fault or problem preventing action from being taken"),
 ; with the reason.  Never 430 or 423: those say there is no such article,

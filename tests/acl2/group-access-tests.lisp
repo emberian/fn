@@ -325,3 +325,70 @@
 (assert-event (equal (len (fn-state-articles
                            (car (fn-gac-view-entry *gat-bob-read* *gat-state* *gat-ctl*))))
                      2))
+
+; D48/PRF-1269: successful AUTHINFO promotes bob into the configured
+; principal peer, but its reader commands retain bob's READ rule.
+(defconst *gat-peer-record*
+  (fn-cfg-peer-make "bob-peer" "bob.example.invalid" '(:nntp "127.0.0.1" 119)
+                    '("fn.*" 32768 16) '("fn.*" t 256 1000)
+                    (list :principal (fn-digest-hex (make-list 32 :initial-element 8)))))
+(defconst *gat-peer-cfg*
+  (fn-config-replay 0 510
+    (list (fn-cfg-record-make 0 0 1
+             (append *fn-cfg-default-change* (list (fn-cfg-set-peer-delta *gat-peer-record*)))
+             *fn-cfg-default-stamp*))))
+(defconst *gat-peer-node* (fn-node-initial-state *gat-groups* 1048576))
+(defun gat-peer-login (fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (gat-after
+    (gat-after (fn-auth-open-session *gat-state* nil *gat-peer-node* *gat-peer-cfg* *gat-acfg* nil)
+               "AUTHINFO USER bob" fn-arena)
+    "AUTHINFO PASS correct-horse" fn-arena))
+(bpr-lift gat-peer-login 0)
+(defmacro gat-as-peer () '(in-arena-gat-peer-login *sr-arena*))
+(assert-event (fn-auth-principal-rolep (gat-as-peer)))
+(assert-event (equal (fn-auth-session-peer (gat-as-peer)) "bob-peer"))
+(assert-event (equal (fn-auth-session-subject (gat-as-peer)) (make-list 32 :initial-element 8)))
+(assert-event
+ (and (fn-nntp-session-projected (fn-auth-reader-session (gat-as-peer)))
+      (fn-auth-access-text (gat-as-peer) *gat-config* 1)
+      (not (fn-gac-readablep (fn-auth-access-text (gat-as-peer) *gat-config* 1) "fn.private.x"))
+      (not (member-equal "fn.private.x"
+                         (fn-state-groups (fn-auth-view-archive (gat-as-peer) *gat-config* *gat-state*))))
+      (not (fn-auth-arts-name-groupp "fn.private.x"
+              (fn-state-articles (fn-auth-view-archive (gat-as-peer) *gat-config* *gat-state*))))))
+(assert-event (gat-prefixp "411 " (in-arena-gat-text *sr-arena* (gat-as-peer) "GROUP fn.private.x")))
+(assert-event (gat-prefixp "430 " (in-arena-gat-text *sr-arena* (gat-as-peer) "ARTICLE <s@example.invalid>")))
+(assert-event (not (gat-searchp "fn.private.x" (in-arena-gat-text *sr-arena* (gat-as-peer) "LIST ACTIVE"))))
+; Transit is decided from the independently configured peer record.
+(assert-event (gat-prefixp "238 " (in-arena-gat-text *sr-arena* (gat-as-peer) "CHECK <new@example.invalid>")))
+; Removing unreadability keeps the projection hypothesis and fails both
+; exclusions on the public group, an actual retained article membership.
+(assert-event
+ (and (fn-nntp-session-projected (fn-auth-reader-session (gat-as-peer)))
+      (fn-auth-access-text (gat-as-peer) *gat-config* 1)
+      (fn-gac-readablep (fn-auth-access-text (gat-as-peer) *gat-config* 1) "fn.public")
+      (member-equal "fn.public" (fn-state-groups (fn-auth-view-archive (gat-as-peer) *gat-config* *gat-state*)))
+      (fn-auth-arts-name-groupp "fn.public"
+          (fn-state-articles (fn-auth-view-archive (gat-as-peer) *gat-config* *gat-state*)))))
+
+; Removing a pinned projection keeps a nonempty excluding rule; archive
+; filtering is unavailable, so the diagnostic archive still holds the group.
+(defmacro gat-peer-unprojected ()
+  '(fn-auth-with-base (gat-as-peer)
+    (fn-peer-with-base (fn-auth-session-base (gat-as-peer))
+      (fn-post-make-session (fn-nntp-make-session t nil nil nil) nil))))
+(assert-event
+ (and (not (fn-nntp-session-projected (fn-auth-reader-session (gat-peer-unprojected))))
+      (fn-auth-access-text (gat-peer-unprojected) *gat-config* 1)
+      (not (fn-gac-readablep (fn-auth-access-text (gat-peer-unprojected) *gat-config* 1) "fn.private.x"))
+      (member-equal "fn.private.x" (fn-state-groups (fn-auth-view-archive (gat-peer-unprojected) *gat-config* *gat-state*)))
+      (fn-auth-arts-name-groupp "fn.private.x" (fn-state-articles (fn-auth-view-archive (gat-peer-unprojected) *gat-config* *gat-state*)))))
+; Removing a nonempty rule means unrestricted access. NIL is the absence of
+; a rule, and is deliberately not an empty parsed wildmat.
+(assert-event
+ (and (fn-nntp-session-projected (fn-auth-reader-session *gat-as-alice*))
+      (null (fn-auth-access-text *gat-as-alice* *gat-config* 1))
+      (not (fn-gac-readablep (fn-auth-access-text *gat-as-alice* *gat-config* 1) "fn.private.x"))
+      (member-equal "fn.private.x" (fn-state-groups (fn-auth-view-archive *gat-as-alice* *gat-config* *gat-state*)))
+      (fn-auth-arts-name-groupp "fn.private.x" (fn-state-articles (fn-auth-view-archive *gat-as-alice* *gat-config* *gat-state*)))))

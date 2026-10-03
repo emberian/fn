@@ -67,6 +67,11 @@
 ;     carried relation, the bridge theorem concludes the head from it); and
 ;     the guard has at least one such conjunct (a raw dispatch that skips
 ;     nothing is refused: the annotation is a boundary claim, not a default).
+;     Over a row that declares def-carried's named escape `:incomplete (A-ID
+;     (OWED ...))' (its completeness waived for the named owed writers under
+;     the registered assumption A-ID), the annotation must be `:raw-with
+;     (:carried NAME :assuming A-ID)', with that A-ID exactly; over any
+;     other row `:assuming' is refused (lane post-guard-off, 2026-10-03).
 ;     host/native/io.lisp fnn-install-raw-dispatch reads the table at image
 ;     build and dispatches those entries raw; the developer selector
 ;     FN_NATIVE_DISPATCH_COUNTERPART keeps the counterpart path for a native
@@ -160,10 +165,16 @@
   (declare (xargs :mode :program))
   ; (THM ...): a non-empty list of theorem names, none a keyword; or exactly
   ; (:carried NAME), the carried invariant whose row names them
-  ; (books/def-carried.lisp)
+  ; (books/def-carried.lisp), or (:carried NAME :assuming A-ID) over a row
+  ; that declares def-carried's named escape :incomplete (A-ID ...)
   (and (consp x)
        (if (eq (car x) :carried)
-           (and (consp (cdr x)) (null (cddr x)) (symbolp (cadr x)) (cadr x) t)
+           (and (consp (cdr x)) (symbolp (cadr x)) (cadr x)
+                (or (null (cddr x))
+                    (and (true-listp x) (equal (len x) 4)
+                         (eq (caddr x) :assuming)
+                         (fn-cd-assumption-namep (cadddr x))))
+                t)
          (and (symbol-listp x) (not (member-eq nil x))
               (not (fn-di-any-keyword x))))))
 
@@ -606,6 +617,18 @@
         (cond
          ((and carried (fn-cd-raw-problem carried name w))
           (msg ":raw-with ~x0 on ~x1: ~@2" form name (fn-cd-raw-problem carried name w)))
+         ; def-carried's named escape is written at every entry relying on
+         ; it, and only there: the row's :incomplete assumption, exactly
+         ((and carried
+               (not (eq (fn-cd-row-assumption carried w)
+                        (and (cddr form) (cadddr form)))))
+          (if (fn-cd-row-assumption carried w)
+              (msg ":raw-with ~x0 on ~x1: the row ~x2 is complete only under the ~
+                    named assumption ~x3 (its :incomplete owed writers); write ~
+                    :raw-with (:carried ~x2 :assuming ~x3)"
+                   form name carried (fn-cd-row-assumption carried w))
+            (msg ":raw-with ~x0 on ~x1: the row ~x2 declares no :incomplete, so ~
+                  :assuming names no assumption it rests on" form name carried)))
          ((not (eq (fn-di-get :class kvs) :common-lisp-compliant))
           (msg ":raw-with on ~x0, which is not :common-lisp-compliant: only a ~
                 guard-verified definition executes faithfully raw" name))
@@ -741,7 +764,8 @@
     (:dual-raw-routes (msg ":raw-with and :raw-guarded are incompatible."))
     (:bad-operation (msg ":operation ~x0 is not a staged funding/cost/custody contract."
                          (cadr reason)))
-    (:bad-raw-with (msg ":raw-with ~x0 is not a non-empty list of theorem names."
+    (:bad-raw-with (msg ":raw-with ~x0 is not a non-empty list of theorem names, ~
+                         (:carried NAME) or (:carried NAME :assuming A-ID)."
                         (cadr reason)))
     (otherwise (msg "malformed form: ~x0." reason))))
 

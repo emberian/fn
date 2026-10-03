@@ -16,9 +16,8 @@
 ;
 ;   fn-proto-archive-command-cat    one flat cond, a clause per row with :forms
 ;                                   in table order (the forms' arms in order),
-;                                   falling through to the hand dispatcher for
-;                                   a row not yet declared (the fallthrough
-;                                   goes at the switch, with the hand cond);
+;                                   every archive row declared; other keywords
+;                                   use the original pinned reference directly;
 ;   fn-proto-cat-row-NAME-is-cat    per row: under that keyword the generated
 ;                                   dispatcher IS the hand one (the row's text
 ;                                   says what the dispatcher does; local);
@@ -112,7 +111,8 @@
                     :verify-guards nil))
     (cond
      ,@(fn-proto-cat-flat-clauses *fn-proto-served-table*)
-     (t (fn-nntp-archive-command-cat ,@*fn-proto-cat-formals*)))))
+     (t (fn-nntp-archive-command-pinned session archive index verdicts
+                                         env keyword args fn-arena)))))
 
 ; -----------------------------------------------------------------------------
 ; Keyword exclusivity (books/protocol-dispatch.lisp's, restated locally), the
@@ -309,6 +309,7 @@
                   :hints (("Goal" :do-not-induct t
                            :in-theory (e/d (fn-proto-archive-command-cat
                                             fn-nntp-archive-command-pinned fn-nntp-archive-command
+                                            fn-nntp-result-session fn-nntp-result-effects
                                             ,@(fn-proto-form-get :open form))
                                            ,(append
                                              (list 'fn-nntp-archive-command-cat-is-pinned
@@ -361,8 +362,10 @@
 (make-event (cons 'progn (fn-proto-cat-row-is-pinned-events *fn-proto-cat-rows* *fn-proto-served-table*)))
 
 ; -----------------------------------------------------------------------------
-; The case split: a declared row by its generated case, an undeclared one by
-; the fallthrough (the hand dispatcher under its keystone, until the switch).
+; The case split: a declared archive row by its generated form contracts.
+; Other keywords use the original pinned reference directly. The generated
+; executable has no hand catalog-dispatch fallback. The hand catalog body
+; remains a migration reference for the local per-row equality checks.
 
 (defun fn-proto-cat-not-any (names term)
   (declare (xargs :guard t))
@@ -380,10 +383,9 @@
 
 (make-event
  `(local
-   (defthm fn-proto-cat-row-none-is-cat
+   (defthm fn-proto-cat-row-none-is-pinned-by-definition
      (implies (and ,@(fn-proto-cat-not-any *fn-proto-cat-rows* 'keyword))
-              (equal (fn-proto-archive-command-cat ,@*fn-proto-cat-formals*)
-                     (fn-nntp-archive-command-cat ,@*fn-proto-cat-formals*)))
+              ,(fn-proto-cat-conclusion 'fn-proto-archive-command-cat))
      :hints (("Goal" :in-theory (union-theories '(fn-proto-archive-command-cat)
                                                 (theory 'minimal-theory)))))))
 
@@ -395,7 +397,7 @@
      :hints (("Goal" :do-not-induct t
               :cases ,(fn-proto-cat-cases *fn-proto-cat-rows* 'keyword)
               :in-theory (union-theories
-                          '(fn-proto-cat-row-none-is-cat fn-nntp-archive-command-cat-is-pinned
+                          '(fn-proto-cat-row-none-is-pinned-by-definition
                             ,@(fn-proto-cat-thm-names *fn-proto-cat-rows* "-IS-PINNED"))
                           (theory 'minimal-theory)))))))
 
@@ -438,7 +440,7 @@
          '(:by defprotocol
            :claim (,*fn-proto-cat-claim-hyps*
                    ,(fn-proto-cat-conclusion 'fn-proto-archive-command-cat))
-           :subject fn-nntp-archive-command-cat)))
+           :subject fn-proto-archive-command-cat)))
 
 ; Guards: every arm is guard-verified in books/served-catalog.lisp.
 (verify-guards fn-proto-archive-command-cat
@@ -524,3 +526,12 @@
       (subsetp-equal *fn-proto-served-names*
                      (fn-proto-flatten-rows *fn-nntp-served-command-table*)))
  :msg "HELP's served command table and the protocol table's served rows differ")
+
+;; DC02 coverage: all archive-route rows must carry generated forms.  A
+;; missing declaration refuses instead of silently restoring a hand fallback.
+(assert-event
+ (and (subsetp-equal (fn-proto-names-with-dispatch :archive *fn-proto-table*)
+                     *fn-proto-cat-rows*)
+      (subsetp-equal *fn-proto-cat-rows*
+                     (fn-proto-names-with-dispatch :archive *fn-proto-table*)))
+ :msg "Every archive-route command must declare generated served forms")

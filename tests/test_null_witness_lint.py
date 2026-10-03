@@ -23,24 +23,24 @@ def findings(text: str) -> list:
 class NullWitnessTests(unittest.TestCase):
     def test_an_empty_lace_over_a_produced_node_without_a_witness_is_named(self):
         self.assertEqual(findings(
-            "(assert-event (equal (fn-stx-lace (fn-step *s0* 1)) nil))\n"), ["fn-stx-lace"])
-        self.assertEqual(findings("(assert-event (null (fn-stx-lace (fn-step *s0* 1))))\n"),
-                         ["fn-stx-lace"])
+            "(assert-event (equal (fn-x-lace (fn-step *s0* 1)) nil))\n"), ["fn-x-lace"])
+        self.assertEqual(findings("(assert-event (null (fn-x-lace (fn-step *s0* 1))))\n"),
+                         ["fn-x-lace"])
         self.assertEqual(findings(
-            "(assert-event (equal (len (fn-stx-lace (fn-step *s0* 1))) 0))\n"),
-            ["fn-stx-lace"])
+            "(assert-event (equal (len (fn-x-lace (fn-step *s0* 1))) 0))\n"),
+            ["fn-x-lace"])
         self.assertEqual(findings(
-            "(defthm t1 (implies (natp n) (endp (fn-stx-lace (fn-step s n)))))\n"),
-            ["fn-stx-lace"])
+            "(defthm t1 (implies (natp n) (endp (fn-x-lace (fn-step s n)))))\n"),
+            ["fn-x-lace"])
 
     def test_a_positive_witness_beside_it_clears_it(self):
-        for witness in ("(assert-event (consp (fn-stx-lace (fn-step *s0* 2))))",
-                        "(assert-event (not (null (fn-stx-lace (fn-step *s0* 2)))))",
-                        "(assert-event (equal (fn-stx-lace (fn-step *s0* 2)) '(1 2)))",
-                        "(assert-event (member-equal 3 (fn-stx-lace (fn-step *s0* 2))))",
-                        "(assert-event (< 0 (len (fn-stx-lace (fn-step *s0* 2)))))"):
+        for witness in ("(assert-event (consp (fn-x-lace (fn-step *s0* 2))))",
+                        "(assert-event (not (null (fn-x-lace (fn-step *s0* 2)))))",
+                        "(assert-event (equal (fn-x-lace (fn-step *s0* 2)) '(1 2)))",
+                        "(assert-event (member-equal 3 (fn-x-lace (fn-step *s0* 2))))",
+                        "(assert-event (< 0 (len (fn-x-lace (fn-step *s0* 2)))))"):
             self.assertEqual(findings(
-                "(assert-event (equal (fn-stx-lace (fn-step *s0* 1)) nil))\n" + witness),
+                "(assert-event (equal (fn-x-lace (fn-step *s0* 1)) nil))\n" + witness),
                 [], witness)
 
     def test_predicates_literals_hypotheses_and_must_fail_are_not_findings(self):

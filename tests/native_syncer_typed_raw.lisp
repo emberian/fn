@@ -28,8 +28,10 @@
        "only actual registered creator allocation survives counterpart selection")
 (load-deployed-forms "host/native/owner.lisp"
  '((defstruct (fnn-syncer-grant (:constructor %make-fnn-syncer-grant)))
-   (defun fnn-owner-custody-trace) (defun fnn-owner-syncer-install) (defun fnn-owner-syncer-issue)
-   (defun fnn-owner-syncer-receipt) (defun fnn-owner-syncer-abort) (defun fnn-owner-syncer-physical)
+   (defun fnn-owner-custody-trace)
+   (defun fnn-owner-syncer-install) (defun fnn-owner-syncer-issue)
+   (defun fnn-owner-syncer-receipt) (defun fnn-owner-syncer-abort)
+   (defun fnn-owner-syncer-abandon) (defun fnn-owner-syncer-physical)
    (defun fnn-owner-syncer-outcome) (defun fnn-owner-members-named)
    (defun fnn-owner-complete-generation) (defun fnn-owner-syncer-drained-p)))
 
@@ -157,6 +159,42 @@
                   (fnn-owner-syncer-drained-p s))
              "reported completed operation preserved through failed starter physical return"))))
 (format t "native_syncer_typed_producer_raw: PASS actual start-syncer/fn-oqw/after-release consumer~%")
+
+
+;; The new abandoned-parent consumer uses the actual private operation ledger,
+;; actual typed resource methods, selected dispatch and physical actor callback.
+;; I/O result/fence are recording boundaries, as in the schedules above.
+(defvar *abandon-fences* 0)
+(defun fnn-owner-fence-service (service)
+  (declare (ignore service)) (incf *abandon-fences*))
+(let ((original (symbol-function 'fnn-owner-batch-job)))
+  (unwind-protect
+       (dolist (final '(:done :uncertain :fault))
+         (dolist (physical-first '(nil t))
+           (let ((s (%make-fnn-owner-service)) (*abandon-fences* 0))
+             (setf (symbol-function 'fnn-owner-batch-job)
+                   (let ((final final))
+                     (lambda (service job) (declare (ignore service job))
+                       (values final nil))))
+             (fnn-owner-syncer-install s 12 1048576)
+             (destructuring-bind (issued gen ledger)
+                 (fnn-core 'fn-otb-issue (fnn-core 'fn-otb-ledger-init))
+               (check (eq issued :issued) "actual abandoned operation is issued")
+               (multiple-value-bind (worker result actor grant)
+                   (fnn-owner-start-syncer s gen :abandoned-job)
+                 (declare (ignore result actor))
+                 (when physical-first (fnn-owner-actor-join s worker))
+                 (fnn-owner-syncer-abandon s grant ledger nil)
+                 (unless physical-first
+                   (check (not (fnn-owner-syncer-drained-p s))
+                          "actual abandonment alone retains physical custody")
+                   (fnn-owner-actor-join s worker))
+                 (check (fnn-owner-syncer-drained-p s)
+                        "actual typed grant drains after both abandonment receipts")
+                 (check (= *abandon-fences* (if (eq final :uncertain) 1 0))
+                        "actual fn-oqw outcome preserves uncertainty across abandonment"))))))
+    (setf (symbol-function 'fnn-owner-batch-job) original)))
+(format t "native_syncer_typed_abandon_raw: PASS six actual typed abandonment schedules~%")
 
 ;; Enabled diagnostic failure cannot orphan a successfully issued draw or
 ;; prevent the actual independent receipts from settling its private ledger.

@@ -47,6 +47,11 @@
         (fn-record-string-octets
          "feed peer=fsn1 link=dropped reason=lost-read retry-ms=1000")))
 
+(assert-event
+ (equal (fn-flb-drop-line '(102 115 110 49) :credential 1000)
+        (fn-record-string-octets
+         "feed peer=fsn1 link=dropped reason=credential-refused retry-ms=1000")))
+
 ; -----------------------------------------------------------------------------
 ; Teeth: fn-flb-lost-advances-the-backoff
 ;

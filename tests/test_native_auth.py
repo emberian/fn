@@ -53,6 +53,32 @@ class NativeAuthTests(unittest.TestCase):
             client.close(quit=False)
         self.node.exited(EXIT_OK)
 
+    def test_authenticated_starttls_is_unavailable_and_keeps_reader_selection(self):
+        # S120 / PRF-1266: real TLS availability makes pre-login advertisement
+        # affirmative, so missing STARTTLS after 281 is a discriminator.
+        self.node.use_tls(protected_only=False)
+        self.config.write_text(self.config.read_text() +
+            '\n[auth]\nrequired = true\nprotected_only = false\npath = "{}"\n'.format(self.auth))
+        self.start()
+        with self.client() as client:
+            status, before = client.multiline("CAPABILITIES")
+            self.assertTrue(status.startswith(b"101 "), status)
+            self.assertIn(b"STARTTLS\r\n", before)
+            self.expect_line(client, b"AUTHINFO USER native-reader", b"381 ")
+            self.expect_line(client, b"AUTHINFO PASS correct-horse", b"281 ")
+            self.expect_line(client, b"GROUP fn.test", b"211 ")
+            status, after = client.multiline("CAPABILITIES")
+            self.assertTrue(status.startswith(b"101 "), status)
+            self.assertNotIn(b"STARTTLS\r\n", after)
+            self.expect_line(client, b"STARTTLS", b"502 ")
+            # Login and selection both survive refusal; LISTGROUP with no
+            # name would be 480/412 if either had been reset.
+            status, rows = client.multiline("LISTGROUP")
+            self.assertTrue(status.startswith(b"211 "), (status, rows))
+            self.expect_line(client, b"QUIT", b"205 ")
+            client.close(quit=False)
+        self.node.exited(EXIT_OK)
+
     def test_ten_pipelined_wrong_passwords_get_three_481s_then_400_and_eof(self):
         # Sweep S044, NNT-1002 (fn-auth-failed-pass-at-the-limit-is-481-400-
         # and-closes): one read carrying ten USER/PASS pairs with a wrong

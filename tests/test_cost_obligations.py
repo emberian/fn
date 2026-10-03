@@ -45,7 +45,7 @@ class CostObligationsTests(unittest.TestCase):
             {"x.lisp": "(def-cost fn-a :visits (+ 1 n) :sizes ((n (len octets))))\n"
                        "(def-cost fn-z)\n"},
             {"cost-host.lisp": "(def-cost fn-b :visits (+ 2 n) :sizes ((n (len octets)))"
-                               " :unaccounted (fn-served-step))\n"})
+                               " :unaccounted (fn-example-step))\n"})
         doc = cost_obligations.build(root)
         rows = {r["name"]: r for r in doc["entries"]}
         self.assertEqual(set(rows), {"fn-a", "fn-b", "fn-c", "fn-d"})   # fn-e is not dispatched
@@ -53,7 +53,7 @@ class CostObligationsTests(unittest.TestCase):
         self.assertEqual(rows["fn-a"]["theorem"], "fn-a-visits-bound")
         self.assertEqual(rows["fn-a"]["sizes"], ["n"])
         self.assertEqual(rows["fn-b"]["claim"], "partial")
-        self.assertEqual(rows["fn-b"]["unaccounted"], ["fn-served-step"])
+        self.assertEqual(rows["fn-b"]["unaccounted"], ["fn-example-step"])
         self.assertEqual(rows["fn-b"]["declared_in"], "host/cost-host.lisp")
         self.assertEqual(rows["fn-c"]["claim"], "none")
         self.assertEqual(doc["counts"], {"proved": 1, "partial": 1, "derived": 0, "none": 2})
@@ -63,6 +63,18 @@ class CostObligationsTests(unittest.TestCase):
         self.assertEqual([c["primitive"] for c in contracts["contracts"]], ["car", "len"])
         self.assertEqual(contracts["contracts"][1]["template"], "(binary-+ (quote 1) (len a1))")
         self.assertEqual(contracts["unwitnessed"], 2)
+
+    def test_constructor_dimension_is_independent(self):
+        root = tree([entry("fn-a")],
+                    {"x.lisp": "(def-cost fn-a :conses (+ (* 8 n) 2)"
+                               " :sizes ((n (nfix bytes))) :unaccounted (char length)"
+                               " :cons-unaccounted ())"}, {})
+        row = cost_obligations.build(root)["entries"][0]
+        self.assertEqual(row["claim"], "derived")
+        self.assertEqual(row["unaccounted"], ["char", "length"])
+        self.assertEqual(row["conses"]["claim"], "proved")
+        self.assertEqual(row["conses"]["unaccounted"], [])
+        self.assertEqual(row["conses"]["theorem"], "fn-a-conses-bound")
 
     def test_two_declarations_of_one_name_refused(self):
         root = tree([entry("fn-a")],

@@ -199,6 +199,10 @@
   (implies (and (fn-hmc-invp st) (not (fn-hmc-ended st)))
            (fn-hmc-invp (mv-nth 0 (fn-hmc-do-io-complete st ev)))))
 
+(defthm fn-hmc-do-job-result-keeps-invp
+  (implies (fn-hmc-invp st)
+           (fn-hmc-invp (mv-nth 0 (fn-hmc-do-job-result st ev)))))
+
 (defthm fn-hmc-do-crash-keeps-invp
   (implies (and (fn-hmc-invp st) (not (fn-hmc-ended st)))
            (fn-hmc-invp (mv-nth 0 (fn-hmc-do-crash st)))))
@@ -559,9 +563,143 @@
    :hints (("Goal" :induct (fn-hmc-reqs-okp reqs fds rows leases)
             :in-theory (disable fn-hmc-key-inc fn-hmc-row-of-rows-put)))))
 
-(defthm fn-hmc-do-cancel-keeps-invp
-  (implies (and (fn-hmc-invp st) (not (fn-hmc-ended st)))
-           (fn-hmc-invp (mv-nth 0 (fn-hmc-do-cancel st ev)))))
+; Actual direct cancellation updates its issued row in place and retains
+; the physical hold table. These LOCAL bridges keep that order and prove
+; every carried invariant component, instead of assuming rows-put equality.
+(local
+ (defthm fn-hmc-issued-rows-of-issued
+  (implies (fn-hmc-rowsp rows)
+           (equal (fn-pio-issued-rows (fn-hmc-issued rows)) rows))
+  :hints (("Goal" :induct (fn-hmc-rowsp rows)
+           :in-theory (enable fn-hmc-issued fn-pio-issued-rows fn-hmc-rowsp fn-pio-rowp)))))
+
+(local
+ (defthm fn-hmc-issued-row-of-issued
+  (implies (fn-hmc-rowsp rows)
+           (equal (fn-pio-issued-row token (fn-hmc-issued rows))
+                  (fn-hmc-row-of token rows)))
+  :hints (("Goal" :induct (fn-hmc-rowsp rows)
+           :in-theory (enable fn-hmc-issued fn-pio-issued-row fn-hmc-row-of fn-hmc-rowsp fn-pio-rowp)))))
+
+(local
+ (defun fn-hmc-cancel-row-view (token rows)
+  (declare (xargs :guard t))
+  (cond ((atom rows) nil)
+        ((and (true-listp (car rows)) (equal token (fn-pio-token (car rows))))
+         (cons (fn-pio-cancel (car rows) token) (cdr rows)))
+        (t (cons (car rows) (fn-hmc-cancel-row-view token (cdr rows)))))))
+
+(local
+ (defthm fn-hmc-direct-cancel-row-view
+  (implies (fn-hmc-rowsp rows)
+   (equal (fn-pio-issued-rows (fn-pio-direct-cancel token (fn-hmc-issued rows)))
+          (fn-hmc-cancel-row-view token rows)))
+  :hints (("Goal" :induct (fn-hmc-rowsp rows)
+   :in-theory (enable fn-pio-direct-cancel fn-pio-issued-put fn-hmc-cancel-row-view
+                      fn-hmc-issued fn-pio-issued-row fn-pio-issued-rows fn-hmc-rowsp fn-pio-rowp)))))
+
+(local
+ (defthm fn-hmc-rowsp-of-cancel-row-view
+  (implies (fn-hmc-rowsp rows)
+   (fn-hmc-rowsp (fn-hmc-cancel-row-view token rows)))
+  :hints (("Goal" :induct (fn-hmc-rowsp rows)
+           :in-theory (enable fn-hmc-cancel-row-view fn-hmc-rowsp)))))
+
+(local
+ (defthm fn-hmc-row-of-cancel-row-view
+  (implies (fn-hmc-rowsp rows)
+   (equal (fn-hmc-row-of other (fn-hmc-cancel-row-view token rows))
+    (if (and (equal other token) (fn-hmc-row-of token rows))
+        (fn-pio-cancel (fn-hmc-row-of token rows) token)
+      (fn-hmc-row-of other rows))))
+  :hints (("Goal" :induct (fn-hmc-cancel-row-view token rows)
+           :in-theory (enable fn-hmc-cancel-row-view fn-hmc-row-of fn-hmc-rowsp)))))
+
+(local
+ (defthm fn-hmc-row-ids-of-cancel-row-view
+  (equal (fn-hmc-row-ids (fn-hmc-cancel-row-view token rows)) (fn-hmc-row-ids rows))
+  :hints (("Goal" :induct (fn-hmc-cancel-row-view token rows)
+           :in-theory (enable fn-hmc-cancel-row-view fn-hmc-row-ids)))))
+
+(local
+ (defthm fn-hmc-rows-below-p-of-cancel-row-view
+  (equal (fn-hmc-rows-below-p (fn-hmc-cancel-row-view token rows) next)
+         (fn-hmc-rows-below-p rows next))
+  :hints (("Goal" :induct (fn-hmc-cancel-row-view token rows)
+           :in-theory (enable fn-hmc-cancel-row-view fn-hmc-rows-below-p)))))
+
+(local
+ (defthm fn-hmc-rows-open-p-of-cancel-row-view
+  (equal (fn-hmc-rows-open-p (fn-hmc-cancel-row-view token rows) fds closed)
+         (fn-hmc-rows-open-p rows fds closed))
+  :hints (("Goal" :induct (fn-hmc-cancel-row-view token rows)
+           :in-theory (enable fn-hmc-cancel-row-view fn-hmc-rows-open-p)))))
+
+(local
+ (defthm fn-hmc-workersp-of-cancel-row-view
+  (implies (fn-hmc-rowsp rows)
+   (equal (fn-hmc-workersp workers (fn-hmc-cancel-row-view token rows))
+          (fn-hmc-workersp workers rows)))
+  :hints (("Goal" :induct (fn-hmc-workersp workers rows)
+           :in-theory (enable fn-hmc-workersp)))))
+
+(local
+ (defthm fn-hmc-key-inc-of-cancel-row-view
+  (implies (fn-hmc-rowsp rows)
+   (equal (fn-hmc-key-inc key (fn-hmc-cancel-row-view token rows) leases)
+          (fn-hmc-key-inc key rows leases)))
+  :hints (("Goal" :in-theory (enable fn-hmc-key-inc)))))
+
+(local
+ (defthm fn-hmc-reqs-okp-of-cancel-row-view
+  (implies (fn-hmc-rowsp rows)
+   (equal (fn-hmc-reqs-okp reqs fds (fn-hmc-cancel-row-view token rows) leases)
+          (fn-hmc-reqs-okp reqs fds rows leases)))
+  :hints (("Goal" :induct (fn-hmc-reqs-okp reqs fds rows leases)
+           :in-theory (enable fn-hmc-reqs-okp)))))
+
+(local
+ (defthm fn-hmc-cancel-nth6-settled
+  (implies (true-listp r)
+   (equal (equal (nth 6 (fn-pio-cancel r tok)) :settled)
+          (equal (nth 6 r) :settled)))
+  :hints (("Goal" :use ((:instance fn-hmc-cancel-keeps-identity))
+   :in-theory (e/d (fn-hmc-row-settledp fn-hmc-row-phase)
+                   (fn-hmc-cancel-keeps-identity))))))
+
+(local
+ (defthm fn-hmc-issuedp-of-cancel-row-view
+  (implies (and (fn-hmc-rowsp rows) (fn-pio-issuedp (fn-hmc-issued rows)))
+   (fn-pio-issuedp (fn-hmc-issued (fn-hmc-cancel-row-view token rows))))
+  :hints (("Goal" :induct (fn-hmc-cancel-row-view token rows)
+   :in-theory (enable fn-hmc-cancel-row-view fn-hmc-issued fn-pio-issuedp fn-hmc-rowsp)))))
+
+(local
+ (defthm fn-hmc-issued-in-holds-p-of-cancel-row-view
+   (implies (fn-hmc-rowsp rows)
+     (equal (fn-pio-issued-in-holds-p
+              (fn-hmc-issued (fn-hmc-cancel-row-view token rows)) holds)
+            (fn-pio-issued-in-holds-p (fn-hmc-issued rows) holds)))
+   :hints (("Goal" :induct (fn-hmc-cancel-row-view token rows)
+            :in-theory (enable fn-hmc-cancel-row-view fn-hmc-issued
+                               fn-pio-issued-in-holds-p fn-hmc-rowsp)))))
+
+(local
+ (defthm fn-hmc-tokens-in-issued-p-of-cancel-row-view
+  (implies (fn-hmc-rowsp rows)
+   (equal (fn-pio-tokens-in-issued-p file tokens (fn-hmc-issued (fn-hmc-cancel-row-view token rows)))
+          (fn-pio-tokens-in-issued-p file tokens (fn-hmc-issued rows))))
+  :hints (("Goal" :induct (len tokens)
+   :in-theory (e/d (fn-pio-tokens-in-issued-p)
+                   (fn-hmc-issued fn-hmc-cancel-row-view fn-hmc-rowsp fn-hmc-row-of fn-pio-issued-row))))))
+
+(local
+ (defthm fn-hmc-holds-in-issued-p-of-cancel-row-view (implies (fn-hmc-rowsp rows) (equal (fn-pio-holds-in-issued-p holds (fn-hmc-issued (fn-hmc-cancel-row-view token rows))) (fn-pio-holds-in-issued-p holds (fn-hmc-issued rows)))) :hints (("Goal" :induct (len holds) :in-theory (e/d (fn-pio-holds-in-issued-p) (fn-hmc-issued fn-hmc-cancel-row-view fn-hmc-rowsp fn-pio-tokens-in-issued-p))))))
+
+(local
+ (defthm fn-hmc-direct-okp-of-cancel-row-view (implies (and (fn-hmc-rowsp rows) (fn-pio-direct-okp (fn-hmc-issued rows) holds)) (fn-pio-direct-okp (fn-hmc-issued (fn-hmc-cancel-row-view token rows)) holds)) :hints (("Goal" :in-theory (e/d (fn-pio-direct-okp) (fn-hmc-issued fn-hmc-cancel-row-view fn-hmc-rowsp fn-pio-issuedp fn-pio-issued-in-holds-p fn-pio-holds-in-issued-p))))))
+
+(defthm fn-hmc-do-cancel-keeps-invp (implies (and (fn-hmc-invp st) (not (fn-hmc-ended st))) (fn-hmc-invp (mv-nth 0 (fn-hmc-do-cancel st ev)))) :hints (("Goal" :in-theory (e/d (fn-hmc-do-cancel fn-hmc-invp) (fn-pio-direct-cancel fn-pio-issued-rows fn-hmc-issued fn-hmc-cancel-row-view fn-hmc-rowsp fn-pio-direct-okp fn-hmc-rows-open-p fn-hmc-rows-below-p fn-hmc-workersp fn-hmc-reqs-okp fn-hmc-row-ids)))))
 
 ; ---- the generation pins: funding under pin, unpin, capture, drain
 
@@ -640,16 +778,27 @@
                (fn-hmc-funded-at-p b owners readers pins)))))
 
 (local
+ (defthm fn-hmc-member-of-append
+   (iff (member-equal g (append a b))
+        (or (member-equal g a) (member-equal g b)))))
+
+(local
  (defthm fn-hmc-funded-universal
    (implies (and (fn-arpn-pinsp pins)
-                 (fn-hmc-funded-at-p (append (fn-hmc-cdrs owners) (fn-hmc-cdrs readers))
+                 (fn-hmc-funded-at-p (append (fn-hmc-cdrs owners)
+                                            (fn-hmc-cdrs readers))
                                      owners readers pins))
             (fn-hmc-funded-g-p g owners readers pins))
    :hints (("Goal" :cases ((member-equal g (fn-hmc-cdrs owners))
                            (member-equal g (fn-hmc-cdrs readers)))
-            :in-theory (disable fn-hmc-funded-at-p-of-append)
+            :in-theory (e/d (fn-hmc-funded-g-p)
+                            (fn-hmc-funded-at-p-of-append
+                             fn-hmc-funded-at-p-member fn-hmc-funded-at-p
+                             fn-rpin-count-at fn-hmc-readers-at
+                             fn-arpn-pins-of fn-hmc-cdrs))
             :use ((:instance fn-hmc-funded-at-p-member
-                             (gs (append (fn-hmc-cdrs owners) (fn-hmc-cdrs readers)))))))))
+                             (gs (append (fn-hmc-cdrs owners)
+                                         (fn-hmc-cdrs readers)))))))))
 
 (defun fn-hmc-nat-listp (xs)
   (declare (xargs :guard t))
@@ -737,6 +886,18 @@
             (fn-hmc-funded-g-p g (fn-rpin-remove cid owners) readers
                                (fn-arpn-unpin-at (cdr (fn-rpin-owner cid owners)) pins)))))
 
+(local
+ (defthm fn-hmc-funded-at-p-of-cons
+   (equal (fn-hmc-funded-at-p (cons g gs) owners readers pins)
+          (and (natp g) (fn-hmc-funded-g-p g owners readers pins)
+               (fn-hmc-funded-at-p gs owners readers pins)))
+   :hints (("Goal" :in-theory (enable fn-hmc-funded-at-p fn-hmc-funded-g-p)))))
+
+(local
+ (defthm fn-hmc-funded-at-p-when-atom
+   (implies (not (consp gs)) (fn-hmc-funded-at-p gs owners readers pins))
+   :hints (("Goal" :in-theory (enable fn-hmc-funded-at-p)))))
+
 ; ... so funded-at-p holds over any list of naturals after the edit, from
 ; the universal fact before it.
 (local
@@ -747,7 +908,10 @@
             (fn-hmc-funded-at-p gs owners (cons (cons tid g2) readers)
                                 (fn-arpn-pin-at g2 pins)))
    :hints (("Goal" :induct (fn-hmc-nat-listp gs)
-            :in-theory (disable fn-hmc-funded-g-p fn-hmc-funded-at-p-of-append)))))
+            :in-theory (disable fn-hmc-funded-g-p fn-hmc-funded-at-p
+                                fn-hmc-funded-at-p-of-append fn-arpn-pin-at
+                                fn-arpn-unpin-at fn-hmc-cdrs fn-hmc-readers-at
+                                fn-rpin-count-at fn-arpn-pins-of)))))
 
 (local
  (defthm fn-hmc-funded-at-p-after-capture
@@ -757,7 +921,10 @@
             (fn-hmc-funded-at-p gs (cons (cons cid g2) owners) readers
                                 (fn-arpn-pin-at g2 pins)))
    :hints (("Goal" :induct (fn-hmc-nat-listp gs)
-            :in-theory (disable fn-hmc-funded-g-p fn-hmc-funded-at-p-of-append)))))
+            :in-theory (disable fn-hmc-funded-g-p fn-hmc-funded-at-p
+                                fn-hmc-funded-at-p-of-append fn-arpn-pin-at
+                                fn-arpn-unpin-at fn-hmc-cdrs fn-hmc-readers-at
+                                fn-rpin-count-at fn-arpn-pins-of)))))
 
 (local
  (defthm fn-hmc-funded-at-p-after-unpin
@@ -768,7 +935,10 @@
             (fn-hmc-funded-at-p gs owners (fn-hmc-remove1 (cons tid g2) readers)
                                 (fn-arpn-unpin-at g2 pins)))
    :hints (("Goal" :induct (fn-hmc-nat-listp gs)
-            :in-theory (disable fn-hmc-funded-g-p fn-hmc-funded-at-p-of-append)))))
+            :in-theory (disable fn-hmc-funded-g-p fn-hmc-funded-at-p
+                                fn-hmc-funded-at-p-of-append fn-arpn-pin-at
+                                fn-arpn-unpin-at fn-hmc-cdrs fn-hmc-readers-at
+                                fn-rpin-count-at fn-arpn-pins-of)))))
 
 (local
  (defthm fn-hmc-funded-at-p-after-drain
@@ -779,7 +949,10 @@
             (fn-hmc-funded-at-p gs (fn-rpin-remove cid owners) readers
                                 (fn-arpn-unpin-at (cdr (fn-rpin-owner cid owners)) pins)))
    :hints (("Goal" :induct (fn-hmc-nat-listp gs)
-            :in-theory (disable fn-hmc-funded-g-p fn-hmc-funded-at-p-of-append)))))
+            :in-theory (disable fn-hmc-funded-g-p fn-hmc-funded-at-p
+                                fn-hmc-funded-at-p-of-append fn-arpn-pin-at
+                                fn-arpn-unpin-at fn-hmc-cdrs fn-hmc-readers-at
+                                fn-rpin-count-at fn-arpn-pins-of)))))
 
 (local
  (defthm fn-hmc-cdrs-of-cons
@@ -810,14 +983,18 @@
    (implies (fn-arpn-okp st)
             (fn-arpn-okp (list (car st) (fn-arpn-pin-at (car st) (cadr st)) (caddr st))))
    :hints (("Goal" :use ((:instance fn-hmc-arpn-okp-of-car-step (ev '(:pin))))
-            :in-theory (disable fn-hmc-arpn-okp-of-car-step)))))
+            :in-theory (e/d (fn-arpn-step)
+                            (fn-hmc-arpn-okp-of-car-step fn-arpn-okp
+                             fn-arpn-pin-at))))))
 
 (local
  (defthm fn-hmc-arpn-okp-of-unpin-form
    (implies (and (fn-arpn-okp st) (natp g) (fn-arpn-held-p g (cadr st)))
             (fn-arpn-okp (list (car st) (fn-arpn-unpin-at g (cadr st)) (caddr st))))
    :hints (("Goal" :use ((:instance fn-hmc-arpn-okp-of-car-step (ev (list :unpin g))))
-            :in-theory (disable fn-hmc-arpn-okp-of-car-step)))))
+            :in-theory (e/d (fn-arpn-step)
+                            (fn-hmc-arpn-okp-of-car-step fn-arpn-okp
+                             fn-arpn-held-p fn-arpn-unpin-at))))))
 
 (local
  (defthm fn-hmc-arpn-okp-car-natp
@@ -838,7 +1015,8 @@
 
 (defthm fn-hmc-do-capture-keeps-invp
   (implies (and (fn-hmc-invp st) (not (fn-hmc-ended st)))
-           (fn-hmc-invp (mv-nth 0 (fn-hmc-do-capture st ev)))))
+           (fn-hmc-invp (mv-nth 0 (fn-hmc-do-capture st ev))))
+  :hints (("Goal" :in-theory (enable fn-rpin-step))))
 
 (local
  (defthm fn-hmc-rpin-owner-generation-natp
@@ -853,9 +1031,106 @@
                  (fn-hmc-funded-at-p (append (fn-hmc-cdrs owners) (fn-hmc-cdrs readers))
                                      owners readers pins))
             (fn-arpn-held-p (cdr (fn-rpin-owner cid owners)) pins))
-   :hints (("Goal" :in-theory (enable fn-arpn-held-p)
-            :use ((:instance fn-hmc-funded-universal (g (cdr (fn-rpin-owner cid owners)))))))))
+   :hints (("Goal"
+            :in-theory (e/d (fn-arpn-held-p fn-hmc-funded-g-p)
+                            (fn-hmc-funded-universal fn-hmc-funded-at-p
+                             fn-hmc-funded-at-p-of-append
+                             fn-hmc-funded-at-p-of-cons fn-rpin-count-at
+                             fn-hmc-readers-at fn-arpn-pins-of fn-rpin-owner
+                             fn-hmc-cdrs fn-arpn-pinsp))
+            :use ((:instance fn-hmc-funded-universal
+                             (g (cdr (fn-rpin-owner cid owners)))))))))
 
 (defthm fn-hmc-do-drain-keeps-invp
   (implies (and (fn-hmc-invp st) (not (fn-hmc-ended st)))
-           (fn-hmc-invp (mv-nth 0 (fn-hmc-do-drain st ev)))))
+           (fn-hmc-invp (mv-nth 0 (fn-hmc-do-drain st ev))))
+  :hints (("Goal"
+           :use ((:instance fn-hmc-funded-at-p-nat-listp
+                            (gs (append (fn-hmc-cdrs (fn-hmc-owners st))
+                                        (fn-hmc-cdrs (fn-hmc-readers st))))
+                            (owners (fn-hmc-owners st))
+                            (readers (fn-hmc-readers st))
+                            (pins (cadr (fn-hmc-arpn st)))))
+           :in-theory (e/d (fn-rpin-step fn-arpn-step)
+                           (fn-hmc-funded-at-p fn-hmc-funded-at-p-of-append
+                            fn-hmc-funded-at-p-of-cons fn-hmc-funded-g-p
+                            fn-rpin-owner fn-rpin-remove fn-arpn-pin-at
+                            fn-arpn-unpin-at fn-hmc-cdrs fn-rpin-count-at
+                            fn-hmc-readers-at fn-arpn-pins-of)))))
+
+; ---- physical worker return: preserve identity and ownership until settlement
+
+(local
+ (defthm fn-hmc-workersp-of-workers-remove (implies (fn-hmc-workersp ws rows) (fn-hmc-workersp
+   (fn-hmc-workers-remove slot ws) rows)) :hints (("Goal" :induct (fn-hmc-workers-remove slot ws)
+   :in-theory (enable fn-hmc-workers-remove fn-hmc-workersp)))))
+
+(local
+ (defthm fn-hmc-worker-slots-of-workers-remove (equal (fn-hmc-worker-slots (fn-hmc-workers-remove
+   slot ws)) (remove-equal slot (fn-hmc-worker-slots ws))) :hints (("Goal" :induct
+   (fn-hmc-workers-remove slot ws) :in-theory (enable fn-hmc-workers-remove fn-hmc-worker-slots
+   remove-equal)))))
+
+(local
+ (defthm fn-hmc-worker-slots-remove-absent (not (member-equal slot (fn-hmc-worker-slots
+   (fn-hmc-workers-remove slot ws)))) :hints (("Goal" :in-theory (enable remove-equal)))))
+
+(local
+ (defthm fn-hmc-workersp-of-worker-of (implies (and (fn-hmc-workersp ws rows) (fn-hmc-worker-of tok
+   ws)) (and (fn-pxe-rowp (fn-hmc-worker-of tok ws)) (not (equal (fn-hmc-worker-phase
+   (fn-hmc-worker-of tok ws)) :idle)) (equal (fn-hmc-worker-token (fn-hmc-worker-of tok ws)) tok)
+   (fn-hmc-row-of tok rows) (not (fn-hmc-row-settledp (fn-hmc-row-of tok rows))))) :hints (("Goal"
+   :induct (fn-hmc-worker-of tok ws) :in-theory (enable fn-hmc-worker-of fn-hmc-workersp)))))
+
+(local
+ (defthm fn-hmc-busy-member-of-workers-remove (implies (member-equal tok (fn-hmc-busy-tokens
+   (fn-hmc-workers-remove slot ws))) (member-equal tok (fn-hmc-busy-tokens ws))) :hints (("Goal"
+   :induct (fn-hmc-workers-remove slot ws) :in-theory (enable fn-hmc-workers-remove
+   fn-hmc-busy-tokens)))))
+
+(local
+ (defthm fn-hmc-busy-no-dup-of-workers-remove (implies (no-duplicatesp-equal (fn-hmc-busy-tokens
+   ws)) (no-duplicatesp-equal (fn-hmc-busy-tokens (fn-hmc-workers-remove slot ws)))) :hints (("Goal"
+   :induct (fn-hmc-workers-remove slot ws) :in-theory (enable fn-hmc-workers-remove
+   fn-hmc-busy-tokens)))))
+
+(local
+ (defthm fn-hmc-worker-token-absent-after-removing-found-slot (implies (and (no-duplicatesp-equal
+   (fn-hmc-busy-tokens ws)) (fn-hmc-worker-of tok ws)) (not (member-equal tok (fn-hmc-busy-tokens
+   (fn-hmc-workers-remove (fn-hmc-worker-slot (fn-hmc-worker-of tok ws)) ws))))) :hints (("Goal"
+   :induct (fn-hmc-worker-of tok ws) :in-theory (enable fn-hmc-worker-of fn-hmc-busy-tokens
+   fn-hmc-workers-remove)))))
+
+(local
+ (defthm fn-hmc-prl-nth-unfolds (implies (natp n) (equal (fn-prl-nth n x) (nth n x))) :hints
+   (("Goal" :induct (fn-prl-nth n x) :in-theory (enable fn-prl-nth nth)))))
+
+(local
+ (defthm fn-hmc-return-worker-fields (implies (equal (mv-nth 0 (fn-pxe-return w tok)) :returned)
+   (and (fn-pxe-rowp w) (equal (fn-hmc-worker-slot (mv-nth 1 (fn-pxe-return w tok)))
+   (fn-hmc-worker-slot w)) (equal (fn-hmc-worker-token (mv-nth 1 (fn-pxe-return w tok)))
+   (fn-hmc-worker-token w)) (not (equal (fn-hmc-worker-phase (mv-nth 1 (fn-pxe-return w tok)))
+   :idle)))) :hints (("Goal" :in-theory (e/d (fn-pxe-return fn-hmc-worker-slot fn-hmc-worker-token
+   fn-hmc-worker-phase) (fn-prl-nth))))))
+
+(local
+ (defthm fn-hmc-do-return-keeps-invp (implies (and (fn-hmc-invp st) (not (fn-hmc-ended st)))
+   (fn-hmc-invp (mv-nth 0 (fn-hmc-do-return st ev)))) :hints (("Goal" :in-theory (disable
+   fn-pxe-return fn-hmc-workers-remove fn-hmc-worker-of fn-hmc-worker-slot fn-hmc-worker-token
+   fn-hmc-worker-phase fn-hmc-funded-at-p-of-append)))))
+
+(local
+ (defthm fn-hmc-worker-of-nil (equal (fn-hmc-worker-of tok nil) nil)))
+
+(local
+ (defthm fn-hmc-return-refused-with-no-workers (implies (not (fn-hmc-workers st)) (equal
+   (fn-hmc-do-return st ev) (mv st :refused))) :hints (("Goal" :in-theory (e/d (fn-hmc-do-return)
+   (fn-hmc-worker-of))))))
+
+(local
+ (defthm fn-hmc-ended-invariant-has-no-workers (implies (and (fn-hmc-invp st) (fn-hmc-ended st))
+   (not (fn-hmc-workers st))) :hints (("Goal" :in-theory (enable fn-hmc-invp)))))
+
+(defthm fn-hmc-do-return-preserves-invp (implies (fn-hmc-invp st) (fn-hmc-invp (mv-nth 0
+   (fn-hmc-do-return st ev)))) :hints (("Goal" :cases ((fn-hmc-ended st)) :in-theory (disable
+   fn-hmc-invp fn-hmc-do-return) :use ((:instance fn-hmc-do-return-keeps-invp)))))

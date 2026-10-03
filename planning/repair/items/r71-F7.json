@@ -8,12 +8,14 @@
  "id": "r71-F7",
  "line": "4366",
  "locus": "connections",
- "notes": [],
+ "notes": [
+  "GPT-6.1-Sol: imported mux cold polling continuation and native regression test. Matching native verdict pending integrator batch; physical cancellation/return custody remains runtime/resource composition debt."
+ ],
  "owner": "owner-offlock",
  "severity": "high",
  "slice": "mux",
  "source": "r71",
- "state": "open",
+ "state": "in-progress",
  "title": "fnn-owner-cold-await (bug)",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T06:00:00Z"
 }

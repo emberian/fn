@@ -4,6 +4,7 @@
 ; too large/has unresolved dependencies for this derivation's inliner.
 (in-package "ACL2")
 (include-book "../books/def-cost")
+(include-book "../books/string-line-cursor-cost")
 
 (def-cost fn-reader-chunk
   :visits (+ 1 request-octets)

@@ -40,8 +40,12 @@
 (defconst *cpa-w2*
   (fn-record-make 1 2 0 "<b@x>" (append (fn-record-string-octets "Subject: b") '(13 10 13 10 98 13 10))
                   '("fn.test" "fn.other") "o" "s" "e" 1 6))
-(defconst *cpa-h1* (fn-held-plain *cpa-w1* 0))
-(defconst *cpa-h2* (fn-held-plain *cpa-w2* 1))
+(defconst *cpa-h1*
+  (fn-held-with-facts (fn-held-plain *cpa-w1* 0)
+                      (fn-held-facts-of (fn-record-payload *cpa-w1*))))
+(defconst *cpa-h2*
+  (fn-held-with-facts (fn-held-plain *cpa-w2* 1)
+                      (fn-held-facts-of (fn-record-payload *cpa-w2*))))
 
 (defconst *cpa-ctx* (fn-hc-make (fn-stx-make-verdict :verified nil 3) nil 3))
 

@@ -32,7 +32,8 @@ installed against those sections while the owner carrier migration proceeds.
 A blanket carrier-before-any-actor dependency was too strong.
 
 The generator continuations describe implemented libraries and waiting consumers:
-`def-command`'s generated dispatcher is not yet the served dispatcher;
+`def-command` now feeds the actual served dispatcher for declared rows; remaining
+hand fallbacks and their consumer coverage still need closure;
 `def-holder`'s accounting does not itself license forget/close; `def-cost` has no
 served operation accounting; carried-view and keyset have implementations to
 finish connecting. A first consumer validates a contract. Its owner then keeps
@@ -43,18 +44,76 @@ authorizes direct integration onto dev while stabilizing it. Source integration
 does not wait behind the old next-to-dev image gate. Qualification still belongs
 to one immutable candidate and never transfers a verdict to changed bytes.
 
+Ember’s latest correction is **push before verify**: put coherent source on
+public `origin/dev` promptly so concurrent workers can consume it. Integration
+composes overlapping source as needed, then pushes; review, tests, certification
+and generated reports run asynchronously rather than gating that push. Fix
+forward on failures. Pending proof/native status stays explicit; a source push
+creates no certification, executable or operational claim.
+
+## Reorientation after compaction or takeover
+
+A summary is a locator, not sufficient reorientation. Recover the actual
+top-level user **and assistant** exchanges with `cv prompts 01a0fe41`, then
+`cv show 01a0fe41 --around N --context K`. Useful prompts are 317 (ambition),
+362 (team/design), 640 (correction to serial/preservation advice), 830 (Sol
+deputies), 967 (context deputy), 1009 (integration/shipping), 1037 (skeptical
+external reviews), 1058 (empirical/helpers), 1189/1245/1256 (speed/batching),
+1273 (trajectory) and 1312 (recovery). Read surrounding responses and latest
+corrections, advancing beyond long tool stretches through the assistant final
+response. These three verified windows include the correction, subsequent
+batching discussion and complete promised trajectory/capability answer:
+
+```sh
+cv show 01a0fe41 --around 640 --context 5
+cv show 01a0fe41 --around 1273 --context 8
+cv show 01a0fe41 --range 1295..1307
+```
+
+If output truncates, continue at the range printed by `cv`. Do not count
+repeated forked history as independent evidence or commit transcript dumps or
+personal context.
+
+Before substantive decisions, read the complete needed governing files:
+`docs/README.md`, `docs/architecture.md`, `planning/decisions.md`, this active
+plan, `planning/now.md`, `planning/current.md`, and applicable complete subsystem
+designs/specifications. If output truncates, read the remaining chunks. Confirm
+live ownership and the frozen candidate with Groundwork and Integration;
+authoritative `origin/dev` may differ from the protected, untouched shared
+checkout. Agent summaries/reports are leads to source and conversations, not
+reading substitutes. This is a working routine, not an installed runtime hook.
+
+Summaries and recovery notes locate prior reading; they do not replace first-time
+understanding. After a compaction, check file revisions before rereading. Retain a
+concise note of already-read file/revision, conclusions and unresolved questions;
+read complete changed documents and the complete documents needed for the current
+consequential decision, in bounded non-overlapping chunks. Recovery does not
+require rereading the whole corpus every time. Recover the actual exchange and
+latest corrections even when the governing files are unchanged.
+
 ## Execution roster and ownership
 
-Prepared roster, not a claim that workers have been launched. Start around ten
-active sessions including the coordinator: eight Sol owners and one Astra owner.
-Adjust width for actual independent work and machine/review capacity. There is
-no Luna pilot or model promotion ceremony. Astra takes the hard composition work
-and shared contract review; Sol owns substantial design and implementation too.
+The first groundwork wave is active: Integration, Runtime coordination, Served
+commands, Generators and accounting, and Tools and harvest have GPT-6.1-Sol
+deputies. Approved helpers feed existing consumers: empirical native scenarios,
+typed owner-ledger proofs followed by paged catalog closure, command-table rows,
+and a source semantic-review/conflict-staging helper. Integration remains the
+sole dev writer; source review proceeds alongside executable debugging. A
+GPT-6.1-Sol groundwork deputy owns detailed cross-lane coordination, composition
+and representation contracts alongside the strategic coordinator. Corrected:
+these are active workers, not a prepared launch. The wider roster below remains
+a target. Native history/root, operator, access, web and BP transport now have continuing Sol owners; Groundwork retains shared composition design. Start additional lanes only for useful independent
+work after agreement with the coordinator. Sol lays the integrated foundation
+first. The active Astra source tracer now fixes connected native/logical
+completion and cleanup families; the wider composition responsibility below
+remains broader than that current assignment.
 
 | Owner | Model | Continuing responsibility |
 |---|---|---|
 | Coordinator | this session | System design, priorities, shared contracts, overlap resolution and following every workstream through use |
 | Integration | GPT-6.1-Sol | Sole dev writer; harvest running builds, source/evidence reconciliation, review assembly and candidate qualification |
+| Source assembly helper | GPT-6.1-Sol | Concrete READY batch semantic review and isolated conflict staging for Integration; no independent dev push or global audit |
+| Owner carrier continuation | Former proof GPT-6.1-Sol | Actual refused/aborted POST writers and carried invariant boundary; broad Luna sweep stopped, validated simplifications retained |
 | Runtime coordination | GPT-6.1-Sol | Section/actor generator, lifecycle, committer and queued work, then mux/cold/service conversion and web concurrency |
 | Composition | GPT-6-Astra | HM actions and capability contracts; real runtime linkage, schedule harness, carried read and crash composition; initial implementation as well as review |
 | Served commands | GPT-6.1-Sol | NEWNEWS/OVER/HDR/XPAT and remaining streaming commands, view policy, reclaim-aware navigation, generated command switch |
@@ -64,8 +123,31 @@ and shared contract review; Sol owns substantial design and implementation too.
 | Transport and operations | GPT-6.1-Sol | NNTP feeds, pull, BP/ION/TCPCL, authentication/configuration/operator repairs and bounded peer work |
 | Tools and harvest | GPT-6.1-Sol | Repair/checker correctness and speed; mine useful historical implementations into current subsystem owners' work |
 
-Existing ledger owner names remain historical workstream labels until dispatch;
-this table assigns successor responsibility, not fictional active claims. The
+Existing sessions are `deputy_integration`, `deputy_runtime`,
+`deputy_served`, `deputy_foundations`, `deputy_tools`, `deputy_groundwork`,
+`deputy_empirical`, `helper_resource_exec`, `helper_command_rows`,
+`helper_source_assembly`, `deputy_proof_engineering` (now carrier), `deputy_history`,
+`deputy_operator`, `deputy_access`, `deputy_web` and `deputy_bp_transport` (Sol),
+plus `astra_source_trace` (Astra). The four Luna proof helpers are stopped. Session existence does not
+mean every helper is running: explicitly resume completed helpers for a concrete
+next consumer. The resource helper completed the cached paged attachment and
+creator probe and now owns carried catalog availability through reclaim to
+GROUP/LISTGROUP/NEXT/LAST; Groundwork assembles with Served. The
+command helper continues bounded matcher work for Served/Foundations. Empirical
+designs actual-image workloads and replayable faults, with Integration budgeting
+runs. The broad Luna sweep is stopped at ember's request; validated changes are
+retained, unfinished experiments parked. The former proof Sol now implements
+the owner carrier on the actual refused/aborted POST path. Astra owns bounded
+checkpoint image read-back/publication/reopen and authoritative reclaim capture;
+History implements actual native history/root and bounded reclaim; Groundwork retains shared representation design. Operator owns retire/diagnostic/init, Access auth/TLS/reconfiguration, Web concurrent service, and BP transport TCPCL/ION continuation. Primary capability
+implementation stays ahead of supporting proof work.
+The groundwork deputy routes routine findings and READY source directly to peers
+and Integration; only consequential decisions and user outcomes reach the
+strategic coordinator. Integration alone pushes dev and coordinates expensive
+builds. All workers use isolated trees under `build/lanes/`.
+
+Existing ledger owner names remain historical workstream labels; the table
+assigns continuing responsibility without asserting every future lane is active. The
 coverage is: composition -> Composition; wrapper/failure-scope/host-lifecycle/
 owner-offlock/host-deputy -> Runtime; served-catalog-live/def-command/liaison ->
 Served; arena-forget/def-holder/reclaim-retention/sweep-store -> Storage;
@@ -86,6 +168,58 @@ committer parts of owner/mux; Served for command/cursor parts; Storage for
 reclaim/release; Representation for carrier signatures/dispatch. Agree on the
 specific function boundary before concurrent edits. This does not serialize
 whole subsystems because they share owner.lisp.
+
+## Active consumer closure (groundwork wave, 2026-10-03)
+
+These records describe the current executed boundary and the next acceptance
+scenario; declarations and unused libraries do not close an initiative. Each
+implementation owner follows its wiring, displaced-path removal and failures
+through dev. Before starting another independent slice/lane, reduce orphaned READY
+or integration-blocked work; useful preparation may continue beside a running
+check. Integration owns the first combined candidate and its scoped host-prefix,
+image and native checks. That candidate proceeds with runnable slices and does
+not wait for completion of the actor/cursor/resource frameworks.
+
+| Initiative | Actual producer and host consumer | First acceptance and continuing owner | Dependency owner / present evidence |
+|---|---|---|---|
+| Physical actor lifecycle | `fnn-owner-spawn-syncer` -> `fnn-owner-start-syncer` -> pipeline parent `fnn-owner-actor-join`; actual captured job is retained custody | Stop with held batch cleanup, failed/timed-out join and post-create latch failure retain the child/job until physical end; Runtime wires families and removes hand registration/failure recipes | Runtime model scoped certificate and native SBCL schedules; source READY `3bda776c6` to Integration, combined image pending |
+| Owner worker accounting | Existing capacity input at `fnn-mux-budget-install` -> typed `fn-rl` owner worker account -> Runtime syncer draw and join/completion consumer | One worker draw before spawn remains held until physical join AND operation settlement, returns reusable projection exactly once; Foundations owns concrete producer/correspondence, Runtime wiring | Foundations/Runtime; real typed startup/issue/physical/outcome and actual fn-oqw receipt execute in the native fixture. Matching-image mux/profile acceptance remains pending. Flat owner accounting does not claim user subbanks/refunds or full rescue funding. Historical fixed12 'two spare' is stale: committer/syncer already consume them |
+| Served metadata and continuation | `fn-nntp-newnews-response-cat` -> `fn-scr-command` -> owner handle chunk -> mux reply drain | `native_newnews_wildmat` with 1,000 articles and second reader, cold dependency deadline, maintenance alongside acceptance; Served owns command/cursor wiring and removes displaced response paths | Metadata/capture source landed; generated command caller and cursor shell assembled in `bb0b20203`, warm composition/drain checks pass. Combined native verdict and Foundations output funding remain pending |
+| Typed worker ledger execution | Existing `fn-rl` draw/settle implementation -> Foundations `resource-syncer` producer -> Runtime syncer consumer | Preserve guards/abstraction, exhaustion refusal and exactly-once reusable return with pending receipt scalars; Resource exec helper owns book/tests, Foundations assembles | Helper guard/correspondence/bootstrap source assembled by Foundations; matching typed retry passed7/0. Actual native counterpart/physical receipt fixture passes; image mux/profile activation remains pending, no tree/refund expansion |
+| Command table continuation | NEXT/LAST/LISTGROUP and ARTICLE/HEAD/BODY/STAT rows -> `fn-proto-archive-command-cat` -> Served DC02 switch | Literal dispatch behavior and teeth preserve pinned-view policy; Command rows helper owns rows/tests, Served assembles and removes old switch paths | Navigation/retrieval plus LIST/NEWGROUPS rows consumed; DATE remains the session route. Helper now owns bounded matcher library; Served retains NEWNEWS/OVER/HDR/XPAT and fallback removal |
+| Empirical mixed workload | Actual qualified fn image -> concurrent posts/cold-slow readers/checkpoint-reclaim harness, then peer and late-return schedules | Seeded replay, four outcomes, latency/throughput/fairness and peak resident/disk/FD under matched profiles; Empirical owns harness/matrix, Integration budgets isolated-node runs | Active executable smoke on explicitly historical image coordinate while combined candidate builds; measurements never imply proof or current-image qualification |
+| Publication capability | Arena plus generation pin captured in owner quantum -> `fnn-owner-publish-captured` -> checkpoint walk/write/release | Publication while accepts/readers proceed uses captured capability without off-section protected getters; Served carries capture through reclaim/export, Runtime later converts actor lifecycle | Publication actual graph+mutation checks passed at source merge; reclaim/export capture source READY `cb941ede3` with31 narrow checks, combined-image verdict pending |
+| Host schedule composition | Actual `fn-pio-direct-admit/cancel/settle/quiet-p` outputs -> `fn-hmc-*` direct labels carrying holder effects | Cancellation, retirement, late physical return, fd/CID/worker reuse and stale receipts through same direct subjects; Groundwork owns machine, proof continuation and native label linkage | Actual admit/settle machine and finite witnesses certified; literal `:READ` witness certified in `fa21382ab`. All-schedules and actual HM/native realization remain owed. Funded sites require distinct transitions |
+| Verifier and checker | Current unittest harness transplanted unchanged to base/head -> structured assertion observations; host graph -> stable source identities | Exact base assertion fails/head same IDs pass; shifted callback line numbers preserve debt rather than hiding new paths; Tools owns checker/fixture consumers and historical implementation routing | NIGHT-VERIFY 19 fixtures+archived witness source integrated; selector fixture READY, lock identity repair under narrow verification |
+| Candidate assembly | Reviewed source -> Integration's immutable assembled candidate -> actual loaded host world and native modules | Host-prefix normal/DTN, real NEWNEWS/cold/publication and syncer custody scenario; Integration owns builds and source/evidence coordinates | dev contains integrated physical actors, publication capture, dispatcher source, model and checker/tool slices. Frozen37 certification234/0+784cached was reused for repaired1a946 host prefixes, both passed; developer image POST/duplicate/readback and mixed/sparse reopen pass. This earlier executable does not validate all later dev source or imply deployment |
+
+The current coherent source queue (refresh the state, do not create another
+tracker):
+
+| Slice / grouped obligations | Producer -> consumer; assembler | Shared prerequisite | Next discriminating check | Source state / actual blocker |
+|---|---|---|---|---|
+| Frozen first candidate | Captured capabilities and physical actors -> real native service; Integration | Exact declared loaded world and normal/DTN host guards | Selected actual funded worker/output and transport consumers on matching executables | Original37 failed host LD; repaired1a946 reuses exact unchanged books and passes both prefixes. Developer POST/duplicate/readback, mixed and sparse/reopen pass. Newer source requires its own selected runtime checks |
+| Direct HM boundary (HM02, PRF-1254, SCN-1082) | Actual direct read entries -> machine/literal checker -> actual observation packets; Integration assembles, Groundwork/Runtime/Empirical own consumers | Exact machine and direct dependency bytes; native event order/identity produced at primitive boundary | Actual extent normal/:READ packet with O/E/pins and completion/physical-return order | Main cancel/pin/capture/drain and physical return certified at matching source in074717/080416 manifests. Actual generated actor/shared section O-only packets replay with prefix invariants. Issue/settle/all-schedules, full extent/pin realization and funded pool remain owed |
+| Funded syncer custody (resource exec and PRF-1252) | Actual mux capacity hold -> typed owner ledger -> syncer draw/physical/outcome; Foundations assembles Runtime and resource helper | Validated private creator, opaque token plus independent operation generation; two receipts before refund | Matching-image actual mux POST/stop, held cleanup, timeout and after-release starter failure | Creator repaired; actual start-syncer, typed methods, physical join and fn-oqw completion fixture passes0.26s, supplied local12-thread/1MiB projection. Helper bank/bootstrap guards consumed by Foundations final source59d46c3ff; Runtime342c7f153 consumed and matching typed certificate7/0 passed. Matching mux/profile image closure follows. Runtime owns production wire/late-fault path |
+| Command rows into switch (DC03 -> DC02) | Seven table rows -> `fn-proto-archive-command-cat` -> actual `fn-scr-command`; Served assembles helper | Stable session/archive/index/verdict/env/view/arena/catalog inputs, pinned-view policy | Actual generated dispatch/chain replay and selected native command cases | DC03 consumed in Served `38f75aaa9`; generated caller installed. LIST/NEWGROUPS consumed and DATE session route checked; matcher/library helper completed and stopped; Served/Foundation own continuation. Undeclared hand fallback removal remains Served debt |
+| Metadata cursor and output custody (GEN-CURSOR) | One-candidate metadata step -> plan continuation -> mux drain; Served assembles Foundations projection | Exact wire residual; bounded initialization/working bytes; admitted connection draw precedes materialization | Actual plan drain equality at byte/visit budgets1 and256, then native sparse/cache-churn output | Served8f6fa63a2 wires reference-only configured factory/selector into actual plan, with sparse tiny/large drain teeth. Foundations0f39cfa59 supplies first actual producer/serializer custody probe; Runtime activation, matcher/outer heap tariff and capture/completed-view remain open. Wire bytes alone are not heap funding |
+| Actual empirical scenarios (SCN-1083) | Matching actual image -> mixed posts/readers/checkpoint/reclaim and restart; Empirical owns, Integration assembles/runs | Exact image/host/profile and seeded trace, four outcomes distinct | Current-image mixed smoke; literal direct I/O trace only with grounded locks/pins | Matching1a946 mixed/sparse evidence70cc0fa5c:48 exact records reopen,26retained+2tombstones correct. Reclaim refuses16,680,640/8,098,624 credit; extent observation sourceb4f new-image execution pending, no full HM trace claim. Groundwork owns reclaim follow-through |
+| Short feedback tooling | Changed books -> scoped exact hash/evidence audit; Tools owns, Integration assembles | Full final audit remains available; indexed bytes verified | Same scoped verdict and immutable-tree acquisition without repeated Git lookup | Scoped source/evidence audit reduced one installed-evidence query180s->4s; frozen-root negative/commondir memo `19decc5f8` READY. Integration owns actual next acquisition measure; no duplicate build |
+| Transport credential boundary (S107/108/109) | `fnn-feed-auth-profile` -> push dial and `fnn-pull-profile` -> pull/catch-up; Tools owns, Integration assembles | Nonblocking descriptor capture/regular-file authority; ACL2-owned named outcome; Runtime retains feed actor/idle scope | FIFO/missing/insecure profile refuses before TCP, Store/core fault reaches service guard | Credential source/raw consumers pass; durable append/fragment classification and removed-peer schedule/cache source handed Integration. Tools now owns resumable pull/catch-up context; selected native execution and full round fairness remain pending |
+| Carrier/pages and reclaim | Existing paged state/captured history -> checkpoint/reclaim/service; Groundwork owns, helper retask when current seam closes | Source-bound signatures, safe capture and actual allocating consumer; no invented maintenance grant | Refute whole-history-copy credit obstruction under same supported profile, then bounded captured-page replacement | Resource helper now owns existing paged-catalog attachment and real generic POST/reader/withdraw/reopen closure, Groundwork assembles. Groundwork owns separate page-backed history/node-root/reclaim implementation still pending; catalog attachment alone cannot close it. Matching current-image credit refusals remain. Command helper completed matcher/library handoff to Served/Foundation; no new worker |
+
+An assembler consumes READY promptly or names the concrete blocked-on owner in
+this table/LANEDUMP. A helper can prepare a disjoint continuation while waiting;
+it retains responsibility for consumer failures. Shared reports/evidence may
+follow source integration with explicit pending status. One owner runs each
+expensive check and reuses matching evidence; no new incoming READY moves the
+frozen candidate.
+
+Temporary raw-dispatch trust is a native realization facility with explicit owed
+writers, not an `encapsulate` theorem assumption. The seven entries' actual
+loaded-world guard bridges and matched raw/counterpart POST must pass before an
+execution claim. The carrier migration owns eliminating that exception; source
+integration does not retire its debt.
 
 ## Work that starts together
 
@@ -253,6 +387,27 @@ to a static relation that reconfiguration refutes. HM01/crash work follows the
 actual log open and abstract effect prefixes. When a statement fails, implement
 and connect the useful true replacement.
 
+## Runtime validation triggers
+
+Keep four loops distinct. Warm REPL/scoped certification and reviewed source
+integration continue frequently; target under three minutes from reviewed
+coherent source READY to dev when no concrete correctness blocker is found.
+Build or load an executable candidate when a changed host consumer poses a
+specific runtime question that existing matching artifacts cannot answer. Run
+the selected dynamic scenarios that answer that question, reusing exact matching
+image/dependency/profile evidence. Full qualification belongs to a scoped
+operational claim or convergence, not every source batch.
+
+The frozen sol1 candidate answers host-prefix and the first combined physical
+actor/publication behavior. A subsequent executable candidate is warranted for
+the actual funded mux POST/stop and generated cursor/dispatcher paths absent
+from sol1, once those coherent slices are assembled. Source churn alone is no
+trigger. Do not defer all cross-layer validation to the final release: small
+real creator/method/thread fixtures already refuted and repaired a boundary
+that logical admission missed. Those fixtures do not establish whole-image or
+whole-profile behavior. Integration owns build capacity and picks the smallest
+matching load/image/scenario set; reports and later READYs proceed alongside.
+
 ## Integration, evidence and resources
 
 The Integration deputy merges reviewed source directly onto dev during
@@ -324,3 +479,46 @@ Re-read job status and current dev at dispatch.
   BM09/BM10 failures elsewhere prevent a whole-run green claim.
 - Burndown-3 already contains CL08/09, BM08/CL20, CL10, CL12 and CL11 work.
   Read its verification, including the base failure reason, before redispatch.
+
+The lasting post-foundation capability queue is [NSLICESQUEUE.md](../NSLICESQUEUE.md).
+Primary capability implementation continues with the broad proof sweep stopped:
+Served owns the
+configured-group selector through actual NEWNEWS factory/plan; Foundations
+owns explicit heap funding and Runtime the retained output drain/discard
+consumer; Groundwork owns history/page-backed reclamation, with the page
+helper now implementing carried availability after passing the catalog
+attachment/creator/smoke boundary. Astra owns checkpoint image verification and
+authoritative reclaim capture. The strategic coordinator owns S012 probe and
+selector boundaries.
+Tools owns BP send/refusal boundaries; Groundwork owns canonical retention
+reservation and Empirical the undertake/release/reopen delivery scenario.
+Integration owns one exact executable candidate and its selected questions.
+Host all-schedules assurance, later operator-path closure and unstarted
+capabilities remain explicit queue work, not implications of POST smoke.
+
+The first developer old-catalog executable at frozen `1a946582c` has actual
+normal/DTN host-prefix passes and POST/duplicate/readback passes. It does not
+contain every newer source slice. The retention producer repair `7c6d135f3`
+restores ACL2's identity gate before log allocation; the reviewed aggregate
+`56f97b4d3` is handed to Integration. Actual BP undertaking/release/reopen is
+the next discriminating consumer, not another historical-image retry.
+
+The resumed mission is to maximize complete integrated consumer capabilities before
+10am America/New_York on 2026-10-03. Existing workers continue; the broad Luna
+wave remains paused. Source receipts do not substitute for matching executable
+consumer checks, and reports do not delay coherent source integration.
+
+### Latest execution and ownership correction (2026-10-03)
+
+Ember directs continuing ownership through whole capability areas and the entire
+outstanding backlog. Commits, slices and checks are checkpoints: owners take the
+next useful connected change immediately, without returning for assignment. Root
+retains breadth; convergence coordination clears stale waits and dependencies and
+does not select a smaller finishable scope.
+
+Coherent warm REPL and source-loaded actual host/ACL2 consumers are the primary
+integration feedback, including fresh source-loaded processes for restart and
+recovery. Record exact loaded source/interface identities and preserve compatible
+stobj layouts. Saved-image production is off the swarm critical path; eventual
+packaging/startup qualification is a separate coordinate and does not block
+capability implementation or focused execution.

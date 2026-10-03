@@ -44,6 +44,10 @@ applies directly, and refuses
   declared);
 * a `:raw-with (:carried NAME)` when any dispatch is undeclared:
   def-carried's completeness depends on the complete interface table;
+* a `:raw-with (:carried NAME [:assuming A-ID])` whose :assuming is not
+  exactly the assumption the row's named escape `:incomplete (A-ID ...)`
+  states (books/def-carried.lisp), or names an assumption that
+  specs/failures.md does not register;
 * a generated file that differs from what the forms say;
 
 * any way the raw host could reach a book function other than a quoted
@@ -207,23 +211,32 @@ def declarations(root: Path = ROOT) -> list[dict]:
         if raw and raw[0] == ":carried":
             if rows is None:
                 rows = carried_rows(root)
-            # exactly (:carried NAME): anything else resolves to nothing and
-            # is a finding (books/definterface.lisp fn-di-raw-with-formp
-            # refuses the same forms)
-            d["raw_with_carried"] = raw[1] if len(raw) == 2 else "(malformed)"
+            # exactly (:carried NAME) or (:carried NAME :assuming A-ID):
+            # anything else resolves to nothing and is a finding
+            # (books/definterface.lisp fn-di-raw-with-formp refuses the
+            # same forms)
+            wellformed = len(raw) == 2 or (len(raw) == 4 and raw[2] == ":assuming")
+            d["raw_with_carried"] = raw[1] if wellformed else "(malformed)"
+            d["raw_with_assuming"] = raw[3] if wellformed and len(raw) == 4 else None
             d["raw_with"] = (carried_theorems(rows, raw[1], d["name"])
-                             if len(raw) == 2 else [])
+                             if wellformed else [])
     return found
 
 
-CARRIED_SOURCES = "books"
+# A def-carried row is a book's or, when its transitions are host functions
+# (the owner's writers, host/owner-host.lisp), an ld'd host file's
+# (host/owner-served-carried.lisp).
+CARRIED_SOURCES = ("books", "host")
+FAILURES = ROOT / "specs" / "failures.md"
 
 
 def carried_rows(root: Path = ROOT) -> dict[str, dict]:
-    """NAME -> {established, transitions, concludes} of every top-level
-    def-carried form in the tree's books, each a list of [function, theorem]."""
+    """NAME -> {established, transitions, concludes, source, incomplete} of
+    every top-level def-carried form in the tree's books and host files,
+    each of the first three a list of [function, theorem]; incomplete is
+    [A-ID, [OWED ...]] for a row with def-carried's named escape, else None."""
     rows: dict[str, dict] = {}
-    for path in sorted((root / CARRIED_SOURCES).glob("*.lisp")):
+    for path in [p for d in CARRIED_SOURCES for p in sorted((root / d).glob("*.lisp"))]:
         text = path.read_text(encoding="utf-8")
         if "(def-carried " not in text:
             continue
@@ -236,6 +249,12 @@ def carried_rows(root: Path = ROOT) -> dict[str, dict]:
                       if isinstance(e, list) and len(e) >= 2
                       and isinstance(e[0], (str, ledger.Sym)) and isinstance(e[1], (str, ledger.Sym))]
                 for key in ("established", "transitions", "concludes")}
+            rows[_sym(form[1])]["source"] = path.relative_to(root).as_posix()
+            incomplete = kv.get(":incomplete")
+            rows[_sym(form[1])]["incomplete"] = (
+                [_sym(incomplete[0]), [_sym(x) for x in incomplete[1]]]
+                if isinstance(incomplete, list) and len(incomplete) == 2
+                and isinstance(incomplete[1], list) else None)
             # the opens whose argument def-carried says is PRODUCED: the raw
             # host must never hand them one (books/def-carried.lisp :produced)
             rows[_sym(form[1])]["produced"] = [
@@ -383,12 +402,75 @@ def _lisp_data(value) -> str:
     return str(value)
 
 
-def render_raw_declarations(decls: list[dict]) -> str:
-    """Selected image table source; absent or invalid targets fail closed."""
+DTN_BUILD = ROOT / "host" / "native" / "build-dtn.lisp"
+
+
+def dtn_host_files(path: Path = DTN_BUILD) -> set[str] | None:
+    """The host files build-dtn.lisp ld's (repository-relative), or None
+    when it cannot be read (then nothing is scoped out)."""
+    if not path.is_file():
+        return None
+    return set(re.findall(r'^\(ld "(host/[^"]+\.lisp)"', path.read_text(encoding="utf-8"), re.M))
+
+
+def raw_guarded_books(decls: list[dict], root: Path = ROOT) -> list[str]:
+    """Literal stobj ABI slots require their defining books in the raw world.
+
+    Derive dependencies from source definitions, never from a live ACL2 world
+    or an availability filter. Malformed ABIs remain for definterface to refuse.
+    """
+    needed: set[str] = set()
+    for declaration in decls:
+        spec = declaration.get("raw_guarded")
+        if not isinstance(spec, list) or len(spec) != 3:
+            continue
+        for slots in spec[1:]:
+            if not isinstance(slots, list):
+                continue
+            needed.update(_sym(slot) for slot in slots
+                          if isinstance(slot, ledger.Sym) and _sym(slot) not in {"nil", "state"})
+    if not needed:
+        return []
+    definitions: dict[str, list[str]] = {name: [] for name in needed}
+    for path in sorted((root / "books").rglob("*.lisp")):
+        source = path.read_text(encoding="utf-8")
+        # Only parse candidate definitions, keeping ordinary emission scoped.
+        if not any(re.search(r"\(def(?:abs)?stobj\s+" + re.escape(name) + r"(?=\s|\))",
+                             source, re.I) for name in needed):
+            continue
+        for form, _line in ledger.Reader(source).top_level():
+            if ledger.head(form) in {"defstobj", "defabsstobj"} and len(form) > 1:
+                name = _sym(form[1])
+                if name in definitions:
+                    definitions[name].append(path.relative_to(root).with_suffix("").as_posix())
+    for name, books in definitions.items():
+        if len(books) != 1:
+            raise ValueError("raw-guarded stobj {} needs one literal defining book; found {}".format(
+                name, ", ".join(books) or "none"))
+    return sorted({books[0] for books in definitions.values()})
+
+
+def render_raw_declarations(decls: list[dict], rows: dict | None = None,
+                            scope: set[str] | None = None, root: Path = ROOT) -> str:
+    """Selected image table source; absent or invalid targets fail closed.
+    The one scope rule, written into the file: a `:raw-with (:carried ROW)'
+    whose ROW is defined in a host file the DTN build does not load is
+    outside the DTN image (its row and its entry are not in that world),
+    and is listed as such, never dropped silently."""
+    rows = rows or {}
     forms = ["; GENERATED by tools/interface_emit.py from raw route declarations.",
              "; No availability filter: an absent target refuses the selected image.",
              '(in-package "ACL2")', '(include-book "../books/definterface")']
+    forms.extend('(include-book "../{}")'.format(book)
+                 for book in raw_guarded_books(decls, root))
     for d in decls:
+        row_source = (rows.get(d.get("raw_with_carried") or "") or {}).get("source", "")
+        if (scope is not None and row_source.startswith("host/")
+                and row_source not in scope):
+            forms.append("; outside the DTN image: {} :raw-with (:carried {}), whose row is "
+                         "defined in {}, which host/native/build-dtn.lisp does not load".format(
+                             d["name"], d["raw_with_carried"], row_source))
+            continue
         guarded = d.get("raw_guarded")
         if not d.get("raw_with") and guarded is None:
             if d["name"] in {"fn-di-raw-with-problem", "fn-di-raw-guarded-problem", "fn-di-raw-guarded-target"}:
@@ -398,7 +480,8 @@ def render_raw_declarations(decls: list[dict]) -> str:
         kinds = " ".join("({} {})".format(*pair) for pair in d["kinds"])
         route = ""
         if d.get("raw_with_carried"):
-            route += " :raw-with (:carried " + d["raw_with_carried"] + ")"
+            route += " :raw-with (:carried " + d["raw_with_carried"] + (
+                " :assuming " + d["raw_with_assuming"].upper() if d.get("raw_with_assuming") else "") + ")"
         elif d.get("raw_with"):
             route += " :raw-with (" + " ".join(d["raw_with"]) + ")"
         if guarded is not None:
@@ -511,8 +594,11 @@ def render_registry(decls: list[dict], reading: dict) -> str:
         # definition, with the theorems its declaration names; ACL2 checks
         # each against the loaded world at image build
         # (books/definterface.lisp fn-di-raw-with-problem).
-        "raw_dispatched": [{"name": d["name"], "raw_with": d["raw_with"],
-                            "raw_with_carried": d.get("raw_with_carried")}
+        "raw_dispatched": [dict({"name": d["name"], "raw_with": d["raw_with"],
+                                 "raw_with_carried": d.get("raw_with_carried")},
+                                **({"raw_with_assuming": d["raw_with_assuming"].upper(),
+                                    "raw_dispatch_trust": "temporary-native-dispatch"}
+                                   if d.get("raw_with_assuming") else {}))
                            for d in decls if d.get("raw_with")],
         "raw_guarded": [{"name": d["name"], "abi": d["raw_guarded"]}
                         for d in decls if d.get("raw_guarded") is not None],
@@ -530,11 +616,47 @@ def tree_theorems(root: Path = ROOT) -> set[str]:
     return found | carried_generated(carried_rows(root))
 
 
+def registered_assumptions(path: Path) -> set[str]:
+    """The assumption ids specs/failures.md registers: its table rows
+    `| A-ID | ... |`, lower-cased as the reader reads symbols."""
+    if not path.is_file():
+        return set()
+    return {m.group(1).lower() for m in
+            re.finditer(r"^\|\s*(A-[A-Z0-9-]+)\s*\|", path.read_text(encoding="utf-8"), re.M)}
+
+
+def assumption_findings(where: str, d: dict, rows: dict, registered: set[str]) -> list[str]:
+    """def-carried's named escape, written at the entry: a :raw-with over a
+    row with :incomplete (A-ID ...) says :assuming A-ID exactly, over a row
+    without one says no :assuming, and A-ID is a registered assumption."""
+    row = rows.get(d["raw_with_carried"]) or {}
+    owed = row.get("incomplete")
+    assuming = d.get("raw_with_assuming")
+    out = []
+    if owed and assuming != owed[0]:
+        out.append("{}: {} :raw-with (:carried {}) relies on a row complete only under the "
+                   "named assumption {}: write :raw-with (:carried {} :assuming {})".format(
+                       where, d["name"], d["raw_with_carried"], owed[0].upper(),
+                       d["raw_with_carried"], owed[0].upper()))
+    elif assuming and not owed:
+        out.append("{}: {} :raw-with (:carried {} :assuming {}): the row declares no "
+                   ":incomplete escape, so the assumption names nothing it rests on".format(
+                       where, d["name"], d["raw_with_carried"], assuming.upper()))
+    if assuming and assuming not in registered:
+        out.append("{}: {} :raw-with ... :assuming {}, which specs/failures.md does not "
+                   "register (a named assumption is a row of its table)".format(
+                       where, d["name"], assuming.upper()))
+    return out
+
+
 def findings(decls: list[dict], reading: dict, root: Path = ROOT) -> list[str]:
     out: list[str] = []
     seen: dict[str, str] = {}
     undeclared = sorted(set(reading["dispatched"]) - {d["name"] for d in decls})
     theorems = tree_theorems(root) if any(d.get("raw_with") for d in decls) else set()
+    rows = carried_rows(root) if any(d.get("raw_with_carried") for d in decls) else {}
+    registered = (registered_assumptions(root / "specs" / "failures.md")
+                  if any(d.get("raw_with_carried") for d in decls) else set())
     for d in decls:
         where = "{}:{}".format(d["source"], d["line"])
         name = d["name"]
@@ -559,8 +681,11 @@ def findings(decls: list[dict], reading: dict, root: Path = ROOT) -> list[str]:
                            where, name, d["raw_with_carried"], ", ".join(undeclared)))
         if d.get("raw_with_carried") is not None and not d.get("raw_with"):
             out.append("{}: {} :raw-with (:carried {}) resolves to no theorems: no def-carried "
-                       "row of that name in {}/ names {} among its transitions".format(
-                           where, name, d["raw_with_carried"], CARRIED_SOURCES, name))
+                       "row of that name in {} names {} among its transitions".format(
+                           where, name, d["raw_with_carried"],
+                           " or ".join(s + "/" for s in CARRIED_SOURCES), name))
+        if d.get("raw_with_carried") is not None:
+            out.extend(assumption_findings(where, d, rows, registered))
         if d.get("raw_with"):
             # D40: the source can say this much; the world check (the guard's
             # carried conjuncts concluded by the named theorems) is ACL2's at
@@ -599,7 +724,8 @@ def findings(decls: list[dict], reading: dict, root: Path = ROOT) -> list[str]:
         out.append("planning/interfaces.json is not what the declarations say; "
                    "run tools/interface_emit.py --write")
     if (not RAW_DECLARATIONS.is_file()
-            or RAW_DECLARATIONS.read_text() != render_raw_declarations(decls)):
+            or RAW_DECLARATIONS.read_text() != render_raw_declarations(
+                decls, carried_rows(root), dtn_host_files(root / "host" / "native" / "build-dtn.lisp"))):
         out.append("host/interfaces-raw.lisp is not what the declarations say; "
                    "run tools/interface_emit.py --write")
     return out
@@ -620,7 +746,7 @@ def main(argv=None) -> int:
     if args.write:
         ROOTS_SH.write_text(render_roots(decls))
         REGISTRY.write_text(render_registry(decls, reading))
-        RAW_DECLARATIONS.write_text(render_raw_declarations(decls))
+        RAW_DECLARATIONS.write_text(render_raw_declarations(decls, carried_rows(), dtn_host_files()))
     problems = findings(decls, reading)
     # the raw host reaches a book function only through the dispatcher
     # (tools/raw_dispatch_rule.py: r28-F1, by construction)

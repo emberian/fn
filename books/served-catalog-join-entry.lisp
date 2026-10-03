@@ -64,6 +64,27 @@
         (fn-scj-vis-below (1- i) c)
       (cons (fn-scj-row-art (nth (1- i) c)) (fn-scj-vis-below (1- i) c)))))
 
+(defthm fn-scj-same-identity-vis-below
+  (implies (equal (fn-scj-catalog-identity c) (fn-scj-catalog-identity d))
+           (equal (fn-scj-vis-below i c) (fn-scj-vis-below i d)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-scj-vis-below i c)
+           :in-theory (e/d (fn-scj-vis-below fn-scj-row-identity fn-scj-row-art)
+                           (fn-scj-catalog-identity)))
+          ("Subgoal *1/3" :use ((:instance fn-scj-same-identity-nth (k (1- i)))))
+          ("Subgoal *1/2" :use ((:instance fn-scj-same-identity-nth (k (1- i)))))))
+
+(defthm fn-scj-vis-below-of-available-load
+  (equal (fn-scj-vis-below i (fn-sca-load-held-rows rows idx fn-arena fn-cat))
+         (fn-scj-vis-below i (fn-sca-load-held-rows-from rows idx nil)))
+  :hints (("Goal" :in-theory (disable fn-scj-vis-below fn-sca-load-held-rows
+                 fn-sca-load-held-rows-from fn-scj-catalog-identity
+                 fn-scj-load-held-rows-keeps-raw-identity)
+           :use ((:instance fn-scj-load-held-rows-keeps-raw-identity)
+                 (:instance fn-scj-same-identity-vis-below
+                  (c (fn-sca-load-held-rows rows idx fn-arena fn-cat))
+                  (d (fn-sca-load-held-rows-from rows idx nil)))))))
+
 (defthm fn-scj-view-below-is-vis-below
   (implies (and (fn-scj-marks-below c (len c)) (natp i) (<= i (len c)))
            (equal (fn-cat-view-below i (len c) fn-arena c) (fn-scj-vis-below i c)))
@@ -111,6 +132,12 @@
 (defun-nx fn-scj-load-invp (c idx)
   (and (fn-scj-marks-below c (len c))
        (equal (fn-scj-vis-below (len c) c) (fn-scj-shown (fn-scj-rows-arts c) idx))))
+
+(defthm fn-scj-load-invp-of-available-load
+  (equal (fn-scj-load-invp (fn-sca-load-held-rows rows idx fn-arena fn-cat) idx)
+         (fn-scj-load-invp (fn-sca-load-held-rows-from rows idx nil) idx))
+  :hints (("Goal" :in-theory (e/d (fn-scj-load-invp fn-scj-rows-arts)
+               (fn-sca-load-held-rows fn-sca-load-held-rows-from)))))
 
 ; Every row the loader commits is unwithdrawn in the store (the intern and
 ; the POST's row write no withdrawal: fn-intern-row-at).
@@ -263,17 +290,17 @@
              (fn-scj-joinp view fn-arena c)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-scj-joinp fn-cat-view-articles fn-ctl-visible-articles)
-                           (fn-scj-acc-rowsp fn-scj-load-invp fn-sca-load-held-rows-from
+                           (fn-scj-acc-rowsp fn-scj-load-invp fn-sca-load-held-rows fn-sca-load-held-available-from
+                            fn-sca-load-held-rows-from
                             fn-midx-build fn-ctl-visible-filter fn-article-listp
                             fn-scj-rows-arts fn-cat-view-below fn-scj-vis-below
-                            fn-scj-load-held-rows-is-from-empty))
-           :use ((:instance fn-scj-load-held-rows-is-from-empty (idx (fn-own-view-index view)))
-                 (:instance fn-scj-load-invp-of-load-held-rows-from (c nil) (idx (fn-own-view-index view)))
+                            fn-scj-load-held-rows-keeps-raw-identity))
+           :use ((:instance fn-scj-load-invp-of-load-held-rows-from (c nil) (idx (fn-own-view-index view)))
                  (:instance fn-scj-seqs-below-of-load-held-rows-from (c nil) (idx (fn-own-view-index view))
                             (v (fn-own-view-version view)))
                  (:instance fn-scj-view-below-is-vis-below
-                            (c (fn-sca-load-held-rows-from rows (fn-own-view-index view) nil))
-                            (i (len (fn-sca-load-held-rows-from rows (fn-own-view-index view) nil))))
+                            (c (fn-sca-load-held-rows rows (fn-own-view-index view) fn-arena fn-cat))
+                            (i (len (fn-sca-load-held-rows rows (fn-own-view-index view) fn-arena fn-cat))))
                  (:instance fn-scj-acc-rowsp (c (fn-sca-load-held-rows-from rows (fn-own-view-index view) nil)))
                  (:instance fn-scj-load-invp (c (fn-sca-load-held-rows-from rows (fn-own-view-index view) nil))
                             (idx (fn-own-view-index view)))

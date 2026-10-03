@@ -173,7 +173,8 @@ def archived_paths(root: Path = ROOT, pattern: str = "certify-*.json",
     return sorted(found, key=lambda rel: Path(rel).name)
 
 
-def load_archived(root: Path, rel: str) -> list[dict]:
+def load_archived(root: Path, rel: str,
+                  source_paths: set[str] | None = None) -> list[dict]:
     """One archived manifest, read as `certs.load_manifests` reads a file.
 
     Its `evidence` is the logical path under `root`, whichever store held
@@ -205,15 +206,17 @@ def load_archived(root: Path, rel: str) -> list[dict]:
                 f"{rel}: the indexed manifest is not a JSON object")
         return []
     manifest.setdefault("evidence", str(root / rel))
-    return [certs.read_as_current(manifest, root)]
+    return [certs.read_as_current(manifest, root, source_paths)]
 
 
 def load_all_archived(root: Path = ROOT, pattern: str = "certify-*.json",
-                      tracked_only: bool = False) -> list[tuple[str, dict]]:
+                      tracked_only: bool = False,
+                      source_paths: set[str] | None = None) -> list[tuple[str, dict]]:
     """(logical path, manifest) for every archived manifest, one fetch."""
     paths = archived_paths(root, pattern, tracked_only)
     evidence_store.prefetch(root, paths)
-    return [(rel, manifest) for rel in paths for manifest in load_archived(root, rel)]
+    return [(rel, manifest) for rel in paths
+            for manifest in load_archived(root, rel, source_paths)]
 
 
 def lost_run_ids(root: Path = ROOT) -> dict[str, str]:

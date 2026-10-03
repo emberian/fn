@@ -299,6 +299,18 @@ This is a source linkage check for an enforced projection; it does not prove
 funding transfer, total allocation, refusal work or native receipt honesty.
 The full operation gate remains owed and cannot be activated by annotation.
 
+`books/resource-operation.lisp` is the logical tree reference for the next
+connection/output slice. It uses the existing `fn-rt`/`fn-rv` transitions:
+owner baseline/reserve installation precedes sub-bank open; an explicitly
+funded gate draw precedes the operation draw; retained reusable output stays
+on its draw after transient refund; timeout keeps the tree; close refuses
+while any child draw remains. Its three preservation facts unfold the
+reference decisions and are not physical-I/O or served-representation
+keystones. Input demand construction and gate setup require prior caller
+funding; this reference does not derive their tariff. The typed syncer
+producer is currently the connected consumer; typed subtree/refund and full
+connection/output custody remain owed.
+
 Private ledger allocation requires the registered creator's validated
 `:raw-guarded (0 nil (fn-resource-ledger))` route. ACL2's live-stobj
 counterpart refuses this private construction; the actual native fixture
@@ -318,12 +330,22 @@ and `fn-ros-outcome-keeps-representation` preserve both typed recognition and
 them. Bootstrap install guards and the general bank/native boundary remain
 owed. These source admissions are not matching certificates.
 
+HST-046 also covers the lifetime of the operation consumer. After successful
+launch, every committer unwind before consumption retains a continuation over
+that operation's ledger and actual result cell. A later physical return consumes
+that result; an already-observed return consumes it during unwind. This includes
+raw nonlocal ACL2 escapes as well as conditions. A consumption that has started
+may have torn, so cleanup never retries it or manufactures settlement. The outer
+committer actor also invokes the service failure boundary when a raw escape
+bypasses its inner condition handler. SCN-1087 exercises the native consumers;
+these schedules do not establish a new image or host-refinement theorem.
+
 SCN-1089 supplies the matching-image consumer: actual mux startup `:hold`,
 POST acceptance, independent literal custody receipts, clean stop and
 restart retrieval. The selector is prepared; image execution is pending.
 Optional diagnostics cannot change custody if formatting or output fails.
 
-## Shared output allocation pool (HST-047)
+## Shared output pool (HST-047)
 
 The output pool is an explicit heap allowance beyond the composed store,
 thread and cold-resource launch reservation. `resources.output_heap_octets`
@@ -366,8 +388,9 @@ The first native fixture draws before actual `fn-sl-step` rendering through
 normal semantic counterparts and retains a second window through a real
 worker join. It is a discrimination test of funding and custody, not complete
 NEWNEWS allocation coverage. Initial matcher/metadata work, integer widths,
-outer plan/mux copies, concrete allocator margins and free-row/bank
-correspondence remain PRF-1259 work. The actual install/issue/output/physical
+outer plan/mux copies, concrete allocator margins and free-row protocol
+validity remain PRF-1259 work. The actual install/draw/receipt methods now
+refine the existing typed bank operations; metadata does not alter accounting. The actual install/issue/output/physical
 methods preserve typed representation and fixed column shape; their mutation
 guards are verified in the source proof world. No accounted operation
 gate may be inferred from the serializer's logical cons bound or this pool.
@@ -427,6 +450,9 @@ empty native grant roster. SCN-1107 checks actual native control flow with
 recording typed boundaries and actual held children; configured activation,
 complete retained graph/allocator tariff and interpreter correspondence remain
 open. Declaration of a live caller is not those claims.
+
+## Logical constructor cost dimension (PRF-1274)
+
 `def-cost :conses BOUND :cons-unaccounted (CALLEES ...)` derives a logical
 cons constructor twin from the same executed translated body as visit cost.
 It preserves independent unknown leaves and reconstructs multiple-value
@@ -436,6 +462,26 @@ contract. The actual string renderer's derived count is bounded by its source
 recurrence and by `8*nfix(bytes)+2`. This supplies a per-turn constructor bound;
 it does not price retained state, native integer/vector allocation, physical
 bytes, collector copying or custody of borrowed archive references.
+
+### Direct immutable line windows (PRF-1281, SCN-1109)
+
+NEWNEWS line emission can fill the response's private octet buffer directly.
+The actual fn-splan-line-window checks the retained phase, excludes outstanding
+dependencies and pending octets, and preserves the captured context/following
+cursor. fnn-owner-render-next calls it outside the owner mutex because this
+phase reads only the immutable captured string. Scalar loop registers replace
+per-byte cursor and output-list construction; a new continuation is constructed
+at the window boundary. Other cursor phases retain their serialized consumer.
+
+Buffer reuse requires the previous borrowed output to be consumed before another
+render. The mux opts into a borrowed capacity vector plus explicit valid END;
+partial socket/TLS writes retain that range and never transmit spare capacity.
+The sixth render-quantum value carries END while the fifth remains COLD-READ.
+Default non-mux callers retain exact-length vectors. Compression still receives
+an exact prefix (copying a short window). Full response termination still controls
+settlement. Compression copies, continuation/matcher allocation, pinned roots, register widths
+and GC are separate resource obligations; this optimization does not activate an
+unsupported output profile or establish complete physical heap coverage.
 
 ## Pre-factory output command admission (PRF-1278)
 
@@ -479,3 +525,59 @@ helper/admission bodies, with recording wire/typed boundaries; its positive
 tariff is injected to discriminate prefix consumption and is not a produced
 physical footprint. Allocator/collector, setup workspace, root/version custody
 and complete native realization remain open.
+## Retained matcher extent (PRF-1261)
+
+The NEWNEWS matcher continuation has a carried proof-only extent invariant,
+not a served whole-state scan. `fn-wml-start-retainedp`,
+`fn-wml-one-retainedp` and `fn-wml-step-retainedp` connect the actual matcher
+entries to that invariant. With natural decoded-name bound N and a carried
+retained state, `fn-wml-retained-owned-bound` bounds control/rows plus shared
+decoded target by `38+6P+6M+11N`; borrowed parsed-pattern tree cells are
+exactly `3P+M` under the parsed-pattern-list premise and charged once by their
+owner. P counts parsed patterns and M their token items. This maximum logical
+region extent is separate from cumulative per-step constructor charges and
+from native aliasing, physical heap bytes, integer widths, allocator/collector
+behavior, retained source pins and outer controller/mux storage. Those terms
+remain required in the actual selected output tariff before accounted
+command admission can hold.
+
+`fn-rlo-issued-token-is-live` connects an actual successful issue to its
+receipt consumers: with typed input and actual `:drawn` result, the returned
+token is live against the returned ledger and the same operation generation.
+Accepted issue itself establishes input shape; that redundant external
+hypothesis is absent. Negative-generation corruption and uninstalled refusal
+supply separate removal witnesses. This property does not establish free-chain
+completeness or authorize a physical receipt.
+
+Actual `fn-rlo-output` and `fn-rlo-physical` settlement invalidate the token
+against the resulting ledger (`fn-rlo-output-settled-token-is-not-live`,
+`fn-rlo-physical-settled-token-is-not-live`). The only premise is their actual
+`:settled` result. Replaying either receipt with that token returns `:stale`
+and preserves the ledger, so it cannot push the same released row onto the
+free chain twice. Literal settled-result positives and removal witnesses
+exercise both receipt orderings. Complete free-chain membership and the
+physical producer's receipt authenticity remain separate obligations.
+
+A settled output row at the final u64 generation is retired; settlement
+preserves the previous free head and never resets its generation
+(`fn-rlo-exhausted-settlement-keeps-free-head`). Other idle rows remain
+issuable in the generic typed protocol. The two receipt orderings have
+logical and normal-counterpart native fixtures. These are protocol witnesses:
+the current fresh native service also exhausts its independent global
+response serial by such a max-draw history, so the subsequent issue witness
+is not claimed as reachable served progress. Physical heap funding is
+unchanged.
+
+The actual private decoded worker has a separately named partial backing
+projection, `fn-dwb-fixed-storage-vector`: `(86928 0 0 1 1)` in the existing
+five-component page-read ledger, with `fn-dwb-coverage` explicitly returning
+`:partial-fixed-storage`. The selected `fn-crl-array-octets` model counts the
+eight-field job, twelve-field carry, sixteen-field digest plus sixty-four
+frame pointers, one-field decoder plus twenty registers, one-field requested
+window plus 16384 octets, and four two-field octet wrappers. It includes their
+four original empty arrays and exact reserved buffers of 64, 65536, 3494 and
+64 octets. It does not price pointed-to integers/conses, controller and token
+graphs, borrowed sources, registry slots, constructor transients or GC.
+Same-pool draw precedes construction; this partial projection cannot authorize
+the configured complete-profile issuer. Actual constructor dimension checks
+and the physical allocator boundary remain separate from this arithmetic.

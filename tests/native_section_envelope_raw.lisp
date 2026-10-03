@@ -12,6 +12,7 @@
 (require :sb-bsd-sockets)
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
+(load "host/native/trace.lisp")
 
 (declaim (declaration xargs))
 (defun member-equal (x l) (member x l :test #'equal))

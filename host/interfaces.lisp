@@ -51,14 +51,14 @@
 
 ; Guarded private output methods preserve typed representation. Complete
 ; free-chain/bank correspondence and allocation tariff remain PRF-1259; no gate.
-(definterface fn-heap-figure-octets :class :common-lisp-compliant)
-(definterface fn-orv-startup-slots :class :common-lisp-compliant)
-(definterface fn-orv-startup-grant :class :common-lisp-compliant)
 (definterface fn-rlo-install :class :common-lisp-compliant)
 (definterface fn-rlo-issue :class :common-lisp-compliant)
 (definterface fn-rlo-output :class :common-lisp-compliant)
 (definterface fn-rlo-physical :class :common-lisp-compliant)
 (definterface fn-rlo-drainedp :class :common-lisp-compliant)
+(definterface fn-heap-figure-octets :class :common-lisp-compliant)
+(definterface fn-orv-startup-slots :class :common-lisp-compliant)
+(definterface fn-orv-startup-grant :class :common-lisp-compliant)
 
 ; -----------------------------------------------------------------------------
 ; The extraction roots: the functions the extracted served program's driver
@@ -209,7 +209,11 @@
 (definterface fn-owner-control-submit
   :class :common-lisp-compliant
   :kinds ((msgid-octets fn-cbor-octet-listp) (group-octets fn-octet-list-listp))
-  :exempt ((payload "the received article's buffer (host/native/hybrid-control.lisp)")))
+  :exempt ((payload "the received article's buffer (host/native/hybrid-control.lisp)"))
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 
 (definterface fn-native-health-host-exit
@@ -807,14 +811,17 @@
 (definterface fn-otm-init
   :class ::common-lisp-compliant)
 
-(definterface fn-otm-journal-exit
+(definterface fn-otjs-init
+  :class ::common-lisp-compliant)
+(definterface fn-otjs-consume
   :class ::common-lisp-compliant
-  :kinds ((octets fn-cbor-octet-listp)))
-
-(definterface fn-otm-journal-report
-  :class ::common-lisp-compliant
-  :kinds ((octets fn-cbor-octet-listp))
-  :keystones (fn-otm-journal-report-of-a-run))
+  :keystones (fn-otjs-consume-of-append fn-otjs-consume-fields-bounded))
+(definterface fn-otjs-read-count
+  :class ::common-lisp-compliant)
+(definterface fn-otjs-report
+  :class ::common-lisp-compliant)
+(definterface fn-otjs-exit
+  :class ::common-lisp-compliant)
 
 (definterface fn-otm-jw-after
   :class ::common-lisp-compliant)
@@ -1415,6 +1422,9 @@
 (definterface fn-ores-feedpub-word
   :class ::common-lisp-compliant)
 
+(definterface fn-ores-submission-taken-p
+  :class ::common-lisp-compliant)
+
 (definterface fn-ores-taken-groups
   :class ::common-lisp-compliant)
 
@@ -1538,8 +1548,9 @@
 
 ; host/native/owner.lisp asks it before the POST's seal (lane arena-forget).
 (definterface fn-owner-cat-may-seal
-  :class :common-lisp-compliant
-  :keystones (fn-cat-may-seal-is-the-prepare-gate))
+  :class :common-lisp-compliant)
+; Its named host wrapper equality is -by-definition. The old Boolean gate
+; restatement is not a prepare-transition keystone; that relation remains owed.
 
 (definterface fn-owner-catchup-plans
   :class :common-lisp-compliant)
@@ -1747,9 +1758,21 @@
 
 (definterface fn-owner-io
   :class :common-lisp-compliant
-  ;; D40 proposal withheld: model preservation alone does not establish
-  ;; the complete host-called guard. Retain executable-counterpart dispatch.
-)
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
+
+;; The POST's take (host/native/owner.lisp fnn-owner-take).  Undeclared until
+;; lane post-guard-off: the raw host reached it through fnn-owner-result,
+;; which the host reading does not see, so it now dispatches it through
+;; fnn-owner-core and checks the result's recognizer itself.
+(definterface fn-owner-take
+  :class :common-lisp-compliant
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 (definterface fn-owner-key-statement-event
   :class ::program)
@@ -1781,9 +1804,7 @@
 
 (definterface fn-owner-known-abort
   :class :common-lisp-compliant
-  ;; D40 proposal withheld: model preservation alone does not establish
-  ;; the complete host-called guard. Retain executable-counterpart dispatch.
-)
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 (definterface fn-owner-limit-carried
   :class ::program)
@@ -1861,22 +1882,32 @@
 
 (definterface fn-owner-prepare-consumer
   :class :common-lisp-compliant
-  ;; D40 proposal withheld: model preservation alone does not establish
-  ;; the complete host-called guard. Retain executable-counterpart dispatch.
-)
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 (definterface fn-owner-prepare-identity
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 (definterface fn-owner-prepare-retention
   :class :common-lisp-compliant
-  :kinds ((id-octets fn-cbor-octet-listp) (subject-octets fn-cbor-octet-listp) (evidence-octets fn-cbor-octet-listp)))
+  :kinds ((id-octets fn-cbor-octet-listp) (subject-octets fn-cbor-octet-listp) (evidence-octets fn-cbor-octet-listp))
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 (definterface fn-owner-prepare-topic
   :class :common-lisp-compliant
-  ;; D40 proposal withheld: model preservation alone does not establish
-  ;; the complete host-called guard. Retain executable-counterpart dispatch.
-)
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 (definterface fn-owner-prov-post
   :class :common-lisp-compliant)
@@ -1910,9 +1941,7 @@
 
 (definterface fn-owner-refuse-reservation
   :class :common-lisp-compliant
-  ;; D40 proposal withheld: model preservation alone does not establish
-  ;; the complete host-called guard. Retain executable-counterpart dispatch.
-)
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 (definterface fn-owner-sco-capture
   :class ::program)
@@ -2044,6 +2073,15 @@
   :class ::common-lisp-compliant
   :kinds ((w natp))
   :keystones (fn-splan-window-is-a-prefix-of-the-reply))
+
+; PRF-1281 direct immutable-line renderer; exact buffer/continuation bridge
+; remains a planned proof until its named theorem is admitted.
+(definterface fn-splan-line-ready-p
+  :class ::common-lisp-compliant)
+
+(definterface fn-splan-line-window
+  :class ::common-lisp-compliant
+  :kinds ((bytes natp)))
 
 (definterface fn-splan-at-cursorp
   :class ::common-lisp-compliant
@@ -2968,6 +3006,12 @@
               fn-bpnjc-contact-next-is-the-head-scan
               fn-bpnjc-ask-position-bounds))
 
+(definterface fn-bpnb-read
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnb-installed-backoff-refuses-another-backoff
+              fn-bpnb-installed-retries-refuses-another-retries
+              fn-bpnb-input-past-read-bound-is-refused))
+
 (definterface fn-bpnp-configured-budgets
   :class ::common-lisp-compliant
   :keystones (fn-bpnp-configured-budgets-admits-exactly-the-frame-bounded-positive-budgets))
@@ -3381,8 +3425,6 @@
   :class ::program
   :keystones ((fn-web-health-step-preserves-sessions-and-bounds-body :via fn-web-step)))
 
-(definterface fn-web-req-clen
-  :class ::common-lisp-compliant)
 
 ; -----------------------------------------------------------------------------
 ; admin/operator (175 entries)
@@ -3916,6 +3958,9 @@
 (definterface fn-workflow-fencedp
   :class ::program)
 
+(definterface fn-workflow-ion-helper-seconds
+  :class ::program)
+
 (definterface fn-workflow-ion-attempt-plan
   :class ::program)
 
@@ -4292,20 +4337,50 @@
 (definterface fn-his-release
   :class ::common-lisp-compliant)
 
+(definterface fn-his-readback-header-p
+  :class ::common-lisp-compliant
+  :kinds ((np natp)))
+
+(definterface fn-his-readback-page
+  :class ::common-lisp-compliant)
+
 ; host/native/io.lisp dispatches it (lane composed-owner).
 (definterface fn-his-skip-octets
   :class ::common-lisp-compliant
   :kinds ((np natp)))
 
 ; host/native/io.lisp dispatches it (lane composed-owner).
-(definterface fn-his-snapshot
-  :class ::common-lisp-compliant
-  :kinds ((records true-listp) (salt natp)))
-
-; host/native/io.lisp dispatches it (lane composed-owner).
 (definterface fn-his-words
   :class ::common-lisp-compliant
   :kinds ((sel natp) (a natp)))
+
+;; books/history-image-builder.lisp, the native publisher's incremental API.
+; The audited registered zero-arg constructor allocates a PRIVATE snapshot,
+; never ACL2's live-stobj counterpart returned by an ordinary creator route.
+(definterface create-fn-hrecs$c :class ::common-lisp-compliant
+  :raw-guarded (0 nil (fn-hrecs$c)))
+
+(definterface fn-his-build-source-count
+  :class ::common-lisp-compliant
+  :kinds ((records true-listp)))
+(definterface fn-his-build-yieldp
+  :class ::common-lisp-compliant
+  :kinds ((ordinal natp)))
+
+(definterface fn-his-build-begin
+  :class ::common-lisp-compliant
+  :kinds ((salt natp)))
+
+(definterface fn-his-row-begin
+  :class ::common-lisp-compliant)
+(definterface fn-his-row-step
+  :class ::common-lisp-compliant)
+(definterface fn-his-row-grow
+  :class ::common-lisp-compliant)
+
+(definterface fn-his-build-finish
+  :class ::common-lisp-compliant
+  :kinds ((expected-count natp)))
 
 ;; books/limits-live.lisp
 
@@ -4506,6 +4581,11 @@
 ; host/native/owner.lisp dispatches it (lane composed-owner-3 (row A4)).
 (definterface fn-otb-dependency-step
   :class ::common-lisp-compliant)
+
+; host/native/owner.lisp fnn-owner-cold-await dispatches it (lane served-live:
+; a re-run line's deadline from its first miss).
+(definterface fn-otb-line-dependency-step
+  :class :common-lisp-compliant)
 
 ;; books/payload-arena-extent-logic.lisp
 
@@ -4747,7 +4827,7 @@
 (definterface fn-orcs-predict
   :class ::common-lisp-compliant
   :kinds ((generation natp) (h natp))
-  :keystones (fn-orcs-seal-is-the-intern))
+  :keystones (fn-orcs-predict-seal-refines-intern))
 
 (definterface fn-orcs-seal
   :class ::common-lisp-compliant
@@ -4759,10 +4839,6 @@
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orcp-keyring
-  :class ::program)
-
-; host/native/owner.lisp dispatches it (lane online-reclaim).
-(definterface fn-owner-orcp-load-columns
   :class ::program)
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
@@ -4985,6 +5061,13 @@
   :class :common-lisp-compliant)
 
 (definterface fn-nret-no-report-line
+  :class :common-lisp-compliant)
+
+(definterface fn-nir-resume-decision
+  :class :common-lisp-compliant
+  :keystones (fn-nir-resume-admits-identical-initial-contract-across-stamps
+              fn-nir-resume-refuses-distinct-initial-changes))
+(definterface fn-nir-resume-line
   :class :common-lisp-compliant)
 
 (definterface fn-nret-not-running-line
@@ -5220,20 +5303,117 @@
 (definterface fn-tcl-source-result-action :class :common-lisp-compliant)
 (definterface fn-tcl-source-result-token :class :common-lisp-compliant)
 
+; Resumable pull/catch-up scheduling decisions consumed by pull-service.
+(definterface fn-prd-key :class :common-lisp-compliant)
+(definterface fn-prd-select :class :common-lisp-compliant :kinds ((active true-listp)))
+(definterface fn-prd-sweep :class :common-lisp-compliant :kinds ((active true-listp))
+  :keystones (fn-prd-sweep-visits-all-admitted-rounds))
+(definterface fn-prd-action :class :common-lisp-compliant)
+(definterface fn-prd-deadline :class :common-lisp-compliant)
+(definterface fn-prd-resume-at :class :common-lisp-compliant)
+(definterface fn-prd-read-limit :class :common-lisp-compliant)
+(definterface fn-prd-write-end :class :common-lisp-compliant)
+(definterface fn-prd-feed-action :class :common-lisp-compliant)
+(definterface fn-prd-write-quantum-end :class :common-lisp-compliant)
+(definterface fn-prd-idle-ms :class :common-lisp-compliant)
+(definterface fn-prd-loss-class-ok :class :common-lisp-compliant)
+
+; ACL2 bounds operator observation without terminating owner custody.
+(definterface fn-nret-observation-step :class :common-lisp-compliant
+  :keystones (fn-nret-observation-expiry-is-uncertain
+              fn-nret-observation-report-requires-stopped))
+(definterface fn-nret-observation-poll-seconds :class :common-lisp-compliant)
+(definterface fn-nret-observation-expired-line :class :common-lisp-compliant)
+(definterface fn-nret-observation-fault-line :class :common-lisp-compliant)
+
+; HTTP reactor uses these actual ACL2 scheduling and lease projections.
+(definterface fn-web-host-connection-limit :class ::program)
+(definterface fn-web-host-request-end :class ::program)
+(definterface fn-web-host-window-end :class ::program)
+(definterface fn-web-host-read-size :class ::program)
+(definterface fn-web-host-event-cid :class ::program)
+(definterface fn-web-host-reserve-size :class ::program)
+
 ; PRF-1272: allocation-generation producer, distinct from history version.
 ; Program global/native installation refinement remains pending.
 (definterface fn-owner-catalog-root-reserve :class :program)
-
+;; Actual pre-chunk reader consumer; starting context is not per-command auth/pin.
 (definterface fn-owner-catalog-capture-context :class :program)
 
+; Actual retire CLI projection consumed before observation starts.
+(definterface fn-native-operator-host-result-retire-argv :class :program)
+; Retained TCPCL I/O quanta and custody action precedence.
+(definterface fn-tcrt-read-limit :class :common-lisp-compliant)
+(definterface fn-tcrt-write-end :class :common-lisp-compliant
+  :keystones (fn-tcrt-write-range-is-bounded))
+(definterface fn-tcrt-write-deadline :class :common-lisp-compliant)
+(definterface fn-tcrt-action :class :common-lisp-compliant
+  :keystones (fn-tcrt-source-custody-excludes-input
+              fn-tcrt-ready-write-precedes-source-and-close))
+
+(definterface fn-web-host-page-cursor :class ::program)
+(definterface fn-web-host-page-step :class ::program)
+
+(definterface fn-web-host-private-reply-p :class ::program)
+(definterface fn-web-host-private-reply-step :class ::program)
 ; Actual admitted pre-factory output consumer. Incomplete tariffs refuse.
 (definterface fn-owner-output-preview :class :program)
 (definterface fn-owner-output-tariff-preview :class :program)
 (definterface fn-ocap-admit-preview :class :common-lisp-compliant)
-(definterface fn-ocap-at :class :common-lisp-compliant
-  :kinds ((n natp)))
+(definterface fn-ocap-at :class :common-lisp-compliant)
 (definterface fn-rlo-capacity :class :common-lisp-compliant)
 
+(definterface fn-web-host-article-p :class ::program)
+(definterface fn-web-host-article-start :class ::program)
+(definterface fn-web-host-article-scan :class ::program)
+(definterface fn-web-host-article-page :class ::program)
+(definterface fn-web-host-window-page-step :class ::program)
+(definterface fn-web-host-replay-slice :class ::program)
+(definterface fn-web-host-replay-forward-p :class ::program)
+(definterface fn-web-host-stream-p :class ::program)
+(definterface fn-web-host-stream-start :class ::program)
+(definterface fn-web-host-stream-scan :class ::program)
+(definterface fn-web-host-stream-page :class ::program)
+(definterface fn-web-host-private-begin-step :class ::program)
+; Live P3 history authority and actual native generation-pinned consumer.
+(definterface create-fn-hrecs$s :class ::common-lisp-compliant
+ :raw-guarded (0 nil (fn-hrecs$s)))
+(definterface create-fn-hist$p :class ::common-lisp-compliant
+ :raw-guarded (0 nil (fn-hist$p)))
+(definterface fn-hroot-event-demand :class ::common-lisp-compliant :kinds ((ordinal natp)))
+(definterface fn-hroot-grow-demand :class ::common-lisp-compliant :kinds ((ordinal natp)))
+(definterface fn-hroot-retain-demand :class ::common-lisp-compliant)
+(definterface fn-hroot-root-retain-demand :class ::common-lisp-compliant)
+(definterface fn-hroot-tail-demand :class ::common-lisp-compliant :kinds ((ordinal natp)))
+(definterface fn-hroot-index-demand :class ::common-lisp-compliant :kinds ((ordinal natp))
+ :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-root-is-physical))
+(definterface fn-hroot-read-demand :class ::common-lisp-compliant :kinds ((ordinal natp) (retained natp))
+ :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-root-is-physical))
+(definterface fn-hist$p-adopt-stage :class ::common-lisp-compliant :kinds ((generation posp)))
+(definterface fn-hist$p-root-index-next :class ::common-lisp-compliant :kinds ((ordinal natp))
+ :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-index-next-keeps-wfp))
+(definterface fn-hist$p-root-generation :class ::common-lisp-compliant)
+(definterface fn-hist$p-read :class ::common-lisp-compliant :kinds ((ordinal natp))
+ :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-read-is-history-row))
+(definterface fn-hist$p-append :class ::common-lisp-compliant
+ :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-append-keeps-wfp))
+(definterface fn-owner-hroot-resize :class :program)
+(definterface fn-owner-hroot-begin :class :program)
+(definterface fn-owner-hroot-abandon :class :program)
+(definterface fn-owner-hroot-frontier-value :class :program)
+(definterface fn-owner-hroot-row :class :program)
+(definterface fn-owner-hroot-activate :class :program)
+(definterface fn-owner-hroot-detach :class :program)
+(definterface fn-owner-hroot-pin-funded :class :program)
+(definterface fn-owner-hroot-retire :class :program)
+(definterface fn-owner-hroot-return :class :program)
+(definterface fn-owner-hroot-read-plan :class :program)
+(definterface fn-owner-hroot-read-owned :class :program)
+(definterface fn-owner-hroot-read-fund :class :program)
+
+(definterface fn-hist$p-candidate-word :class ::common-lisp-compliant :kinds ((expected-count natp))
+ :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-count-natp))
+(definterface fn-owner-orcp-load-catalog :class :program)
 ; PRF-1288: actual private decoded activation and SAME-pool scalar borrow.
 ; Complete decoded constructor/GC tariff remains explicitly unpriced.
 (definterface create-fn-decoded-job :class :common-lisp-compliant

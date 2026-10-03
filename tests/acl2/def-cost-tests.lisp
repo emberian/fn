@@ -264,3 +264,86 @@
 (must-fail-checked (def-cost-check fn-cst-uses-walk)
                    :unchecked "the callee's later row changes the derivation; the stale row refuses")
 (must-fail-checked (def-cost-check fn-cst-uses-walk-2) :unchecked "no cost row")
+
+; A guarded raw declaration is the actual native allocation/callback route,
+; including private stobj creators. Changing the route invalidates its row
+; even when the two routes happen to have equal scalar costs.
+(defun fn-cst-raw-probe (x) (declare (xargs :guard t)) x)
+(definterface fn-cst-raw-probe :class :common-lisp-compliant)
+(assert-event (eq (fn-cost-route 'fn-cst-raw-probe (w state)) :served))
+(def-cost fn-cst-raw-probe :visits 0 :unaccounted nil)
+(definterface fn-cst-raw-probe :class :common-lisp-compliant
+  :raw-guarded (1 (nil) (nil)))
+(assert-event (eq (fn-cost-route 'fn-cst-raw-probe (w state)) :raw))
+(must-fail-checked (def-cost-check fn-cst-raw-probe)
+  :unchecked "changed guarded raw route invalidates the previous served row")
+(defun fn-cst-raw-fresh (x) (declare (xargs :guard t)) x)
+(definterface fn-cst-raw-fresh :class :common-lisp-compliant
+  :raw-guarded (1 (nil) (nil)))
+(def-cost fn-cst-raw-fresh :visits 0 :unaccounted nil)
+(def-cost-check fn-cst-raw-fresh)
+(assert-event (equal (fn-cst-raw-fresh-route-visits '(a b c)) 0))
+
+(defstobj fn-cst-private-ledger (fn-cst-private-word :type (unsigned-byte 64) :initially 0))
+(definterface create-fn-cst-private-ledger :class :common-lisp-compliant
+  :raw-guarded (0 nil (fn-cst-private-ledger)))
+(assert-event
+ (and (fn-di-raw-creatorp 'create-fn-cst-private-ledger
+        '(:class :common-lisp-compliant :raw-guarded (0 nil (fn-cst-private-ledger))) (w state))
+      (eq (fn-cost-route 'create-fn-cst-private-ledger (w state)) :raw)))
+
+; Logical constructor dimension shares the executed-body derivation.
+(defun fn-cst-cons-copy (xs)
+  (declare (xargs :guard t))
+  (if (consp xs) (cons (car xs) (fn-cst-cons-copy (cdr xs))) nil))
+(def-cost fn-cst-cons-copy :conses n :sizes ((n (len xs))) :cons-unaccounted nil)
+(assert-event (equal (fn-cst-cons-copy-conses '(a b c)) 3))
+(assert-event (equal (fn-cst-cons-copy-route-conses '(a b c)) 3))
+(def-cost-check fn-cst-cons-copy)
+(defun fn-cst-cons-let (xs ys)
+  (declare (xargs :guard t))
+  (let ((a (cons xs ys)) (b (cons ys xs)))
+    (cons (car a) (cons b nil))))
+(def-cost fn-cst-cons-let :conses 4 :cons-unaccounted nil)
+(assert-event (equal (fn-cst-cons-let-conses '(a) '(b)) 4))
+(assert-event
+ (mv-let (c un)
+   (fn-cost-term-dimension '(cons 'a '(b c)) 'fn-cst-cons-let nil *fn-cost-fuel* (w state) :conses)
+   (and (null un) (equal c ''1))))
+(defun fn-cst-cons-partial (xs)
+  (declare (xargs :guard t))
+  (cons xs (fn-cst-unknown-leaf xs)))
+(def-cost fn-cst-cons-partial :unaccounted (fn-cst-unknown-leaf)
+  :cons-unaccounted (fn-cst-unknown-leaf))
+(defun fn-cst-cons-partial-caller (xs)
+  (declare (xargs :guard t))
+  (fn-cst-cons-partial xs))
+(def-cost fn-cst-cons-partial-caller :unaccounted (fn-cst-unknown-leaf)
+  :cons-unaccounted (fn-cst-unknown-leaf))
+(assert-event
+ (mv-let (msg route rc bc un)
+   (fn-cost-derive-dimension 'fn-cst-cons-partial-caller (w state) :conses)
+   (declare (ignore route rc))
+   (and (null msg) (equal bc '(fn-cst-cons-partial-conses xs))
+        (equal un '(fn-cst-unknown-leaf)))))
+(def-cost-check fn-cst-cons-partial-caller)
+
+(defun fn-cst-cons-mv (x)
+  (declare (xargs :guard t))
+  (mv x (cons x nil)))
+(def-cost fn-cst-cons-mv :conses 3 :cons-unaccounted nil)
+(defun fn-cst-cons-mv-use (x)
+  (declare (xargs :guard t))
+  (mv-let (a b) (fn-cst-cons-mv x) (cons a b)))
+(def-cost fn-cst-cons-mv-use :unaccounted (mv-nth)
+  :conses 4 :cons-unaccounted nil)
+(assert-event (equal (fn-cst-cons-mv-use-conses 'a) 4))
+(def-cost-check fn-cst-cons-mv-use)
+; A concrete native field operation has no automatic cons contract.
+(assert-event
+ (mv-let (c un)
+   (fn-cost-call-dimension 'fn-cst-private-word '(fn-cst-private-ledger)
+                          'fn-cst-cons-mv-use nil *fn-cost-fuel* (w state) :conses)
+   (and (equal un '(fn-cst-private-word))
+        (equal c '(fn-cost-unaccounted-conses 'fn-cst-private-word
+                                      (list fn-cst-private-ledger))))))

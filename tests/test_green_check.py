@@ -19,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -679,3 +680,52 @@ class MergeGateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ScopedAuditTests(unittest.TestCase):
+    def test_cli_selects_affected_roots_before_audit(self):
+        report = {"books_by_verdict": {"books/dep": {"verdict": "red"},
+                                        "books/top": {"verdict": "red"}}}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            book(root, "books/dep", '(in-package "ACL2")')
+            book(root, "books/top", '(include-book "dep")')
+            book(root, "books/aside", '(in-package "ACL2")')
+            calls = []
+            def scoped(*args, **kwargs):
+                calls.append(kwargs.get("roots"))
+                return report
+            with patch.object(green_check, "ROOT", root), \
+                    patch.object(green_check.ledger, "makefile_roots", return_value=["books/top", "books/aside"]), \
+                    patch.object(green_check, "changed_books", return_value=["books/dep"]), \
+                    patch.object(green_check, "audit", side_effect=scoped), \
+                    patch("builtins.print"):
+                code = green_check.main(["--changed-since", "HEAD", "--strict"])
+            self.assertTrue(calls == [["books/dep", "books/top"]],
+                            "changed gate must select affected roots before auditing")
+            self.assertEqual(code, 1)
+
+    def test_reverse_graph_matches_existing_dependent_scope_including_host_sources(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            book(root, "books/dep", '(in-package "ACL2")')
+            book(root, "host/helper", '(include-book "../books/dep")')
+            book(root, "books/mid", '(local (include-book "../host/helper"))')
+            book(root, "books/top", '(include-book "mid")')
+            book(root, "books/aside", '(in-package "ACL2")')
+            roots = ["books/top", "books/aside"]
+            full = green_check.audit(root, roots=roots)
+            for changed in (["books/dep"], ["host/helper"], ["books/new"]):
+                selected, deps = green_check.changed_scope(root, changed, roots)
+                scoped = green_check.audit(root, roots=selected)
+                self.assertEqual(deps, green_check.dependents(root, full, changed))
+                self.assertEqual(green_check.gate(scoped, green_check.certifiable(changed), deps),
+                                 green_check.gate(full, green_check.certifiable(changed), deps))
+
+    def test_empty_changed_query_reads_neither_world_nor_evidence(self):
+        with patch.object(green_check, "changed_books", return_value=[]), \
+                patch.object(green_check.ledger, "makefile_roots", return_value=["books/top"]), \
+                patch.object(green_check.certs, "include_graph", side_effect=AssertionError("unneeded graph")), \
+                patch.object(green_check, "audit", side_effect=AssertionError("unneeded archive")), \
+                patch("builtins.print"):
+            self.assertEqual(green_check.main(["--changed-since", "HEAD", "--strict"]), 0)

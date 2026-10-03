@@ -305,6 +305,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/reclaim-cuts \
 	books/def-carried-writer \
 	tests/acl2/def-carried-writer-tests \
+	books/owner-carrier \
+	tests/acl2/owner-carrier-tests \
+	books/owner-retain-writer-frame \
+	books/owner-post-carried \
+	tests/acl2/owner-post-carried-tests \
 	books/owner-retain-frame \
 	tests/acl2/owner-retain-frame-tests \
 	books/def-carried-view \
@@ -331,6 +336,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/wildmat-parser-invariants \
 	books/wildmat-matcher-invariants \
 	books/wildmat-work \
+	books/wildmat-cursor \
+	tests/acl2/wildmat-cursor-tests \
+	books/wildmat-live \
+	tests/acl2/wildmat-live-tests \
 	tests/acl2/wildmat-parser-invariants-tests \
 	tests/acl2/wildmat-tests \
 	tests/acl2/wildmat-teeth-tests \
@@ -432,6 +441,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/native-config-paths \
 	tests/acl2/native-config-paths-tests \
 	books/native-retire \
+	books/native-init-resume \
+	tests/acl2/native-init-resume-tests \
+	tests/acl2/native-retire-observation-tests \
 	books/owner-retire \
 	tests/acl2/native-retire-tests \
 	books/tls-self-signed \
@@ -1058,6 +1070,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-forward-live-tests \
 	books/bp-forward-image \
 	tests/acl2/bp-forward-image-tests \
+	books/tcpcl-retained-turn \
+	tests/acl2/tcpcl-retained-turn-tests \
+	books/bp-node-budget-input \
+	tests/acl2/bp-node-budget-input-tests \
 	books/bp-forward-attempt \
 	tests/acl2/bp-forward-attempt-tests \
 	books/bp-fnbs-forward-codec \
@@ -1263,6 +1279,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-outbound \
 	tests/acl2/bp-outbound-tests \
 	tests/acl2/bp-outbound-guards-tests \
+	books/bp-ion-lifetime \
+	tests/acl2/bp-ion-lifetime-tests \
 	books/bp-ion-observation \
 	tests/acl2/bp-ion-observation-tests \
 	books/bp-ion-workflow \
@@ -1501,6 +1519,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/octet-text-tests \
 	tests/acl2/hostile-reader-archive \
 	tests/acl2/octets-bulk-tests \
+	tests/acl2/string-line-fill-tests \
+	tests/acl2/served-plan-line-buffer-tests \
 	tests/acl2/payload-arena-tests \
 	tests/acl2/payload-arena-paged-tests \
 	tests/acl2/payload-arena-extent-tests \
@@ -1519,6 +1539,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-entries-tests \
 	tests/acl2/catalog-refresh-tests \
 	tests/acl2/served-catalog-tests \
+	tests/acl2/served-catalog-raw-availability-tests tests/acl2/served-catalog-load-identity-tests \
 	tests/acl2/served-incremental-tests \
 	tests/acl2/over-window-tests \
 	tests/acl2/served-catalog-view-tests \
@@ -1820,6 +1841,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-catchup-effects \
 	books/peer-catchup \
 	tests/acl2/peer-catchup-tests \
+	books/peer-round-driver \
+	tests/acl2/peer-round-driver-tests \
 	books/protocol-table \
 	books/protocol-builders \
 	books/protocol-codes-rows \
@@ -1899,7 +1922,31 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-reply-buffer-tests \
 	books/served-plan \
 	tests/acl2/served-plan-tests \
+	books/def-cursor \
+	tests/acl2/def-cursor-tests \
+	books/string-line-cursor \
+	books/newnews-metadata-cursor \
+	tests/acl2/newnews-metadata-cursor-tests \
+	books/newnews-candidate-selector \
+	books/newnews-matching-selector \
+	tests/acl2/newnews-matching-selector-tests \
+	tests/acl2/newnews-candidate-selector-tests \
+	books/catalog-available-readers \
+	books/served-availability \
+	books/served-available-commands \
+	books/served-available-read \
+	tests/acl2/catalog-availability-tests \
+	tests/acl2/catalog-available-readers-tests \
+	tests/acl2/served-available-commands-tests \
+	books/def-cursor-batch \
+	books/newnews-stream-cursor \
+	tests/acl2/newnews-stream-cursor-tests \
+	tests/acl2/served-plan-newnews-tests \
 	books/served-plan-cursor \
+	books/output-command-admission \
+	tests/acl2/output-command-admission-tests \
+	books/string-line-fill \
+	books/served-plan-line-buffer \
 	tests/acl2/served-plan-cursor-tests \
 	books/owner-scheduler \
 	tests/acl2/owner-scheduler-tests \
@@ -1921,6 +1968,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/clock-unit \
 	books/owner-time-model \
 	books/owner-time-journal \
+	books/owner-time-journal-stream \
+	tests/acl2/owner-time-journal-stream-tests \
 	books/owner-time-admission \
 	tests/acl2/owner-time-model-tests \
 	tests/acl2/owner-time-space-tests \
@@ -2170,6 +2219,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-pages-grow-cap \
 	books/history-pages-grow-append \
 	books/history-pages-relocate \
+	books/history-pages-relocate-step \
+	books/history-pages-relocate-run \
+	tests/acl2/history-pages-relocate-step-tests \
 	tests/acl2/history-pages-relocate-tests \
 	books/history-pages-append-grown \
 	books/history-pages-grow-then-append \
@@ -2190,6 +2242,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-image-binding \
 	books/history-image-fold \
 	books/history-image-snapshot \
+	books/history-image-build-rows \
+	books/history-image-builder \
+	tests/acl2/history-image-build-rows-tests \
+	tests/acl2/history-image-builder-tests \
 	tests/acl2/history-image-binding-tests \
 	tests/acl2/history-image-campaign-tests \
 	books/image-world \

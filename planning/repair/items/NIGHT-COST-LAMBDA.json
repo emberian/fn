@@ -7,11 +7,15 @@
  "file": "books/def-cost.lisp",
  "id": "NIGHT-COST-LAMBDA",
  "locus": "generators",
- "notes": [],
- "owner": "served-deputy",
+ "notes": [
+  "10-03 01:56 GPT-6.1-Sol: actual spine reconstructed with cons; nonzero actual/body, multi-formal and nested-binding fixtures admitted in laptop solcost REPL, all 68 forms. Narrow two-root certification run-20261003T055450Z-12e4 in flight.",
+  "10-03 01:59 GPT-6.1-Sol: narrow roots books/def-cost and tests/acl2/def-cost-tests PASSED certify-20261003T055532Z-754160 (farm run-20261003T055450Z-12e4). Three lambda regressions admitted/evaluated expected costs, body/actual nonzero, multiple formals and nested binding.",
+  "Codex integration: reviewed source merged 2026-10-03; matching narrow evidence retained. Image qualification/deployment not implied."
+ ],
+ "owner": "codex-sol-foundations",
  "severity": "medium",
  "source": "planning/overnight-2026-10-03.md",
- "state": "open",
+ "state": "landed",
  "title": "Derived lambda cost reconstruction nests the actual argument spine",
- "updated": "2026-10-03T05:14:09Z"
+ "updated": "2026-10-03T06:07:50Z"
 }

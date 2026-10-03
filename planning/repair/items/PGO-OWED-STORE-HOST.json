@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "host/store-host.lisp",
+ "id": "PGO-OWED-STORE-HOST",
+ "notes": [],
+ "owner": "post-guard-off",
+ "severity": "medium",
+ "slice": "carrier",
+ "source": "post-guard-off",
+ "state": "open",
+ "title": "A-OWNER-INVARIANT-CARRIED owes: 3 state writer(s) defined in host/store-host.lisp have no preservation theorem of fn-owner-retain-statep; each is listed in host/owner-served-carried.lisp :incomplete. Prove (def-owner-writer / the carrier move) and move it to :transitions: fn-store-compress-min-octets fn-store-genesis-ident fn-store-genesis-install",
+ "updated": "2026-10-03T04:15:33Z"
+}

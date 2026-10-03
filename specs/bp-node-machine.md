@@ -251,7 +251,9 @@ that could release them (T2's confinement pair).
 **Implemented (2026-09-25).** The owner backoff and the retry budget are
 the node's configuration rows `owner-backoff N` and `retry-budget N` in
 `JOURNAL/bp-node-budgets`. ACL2 supplies the defaults (5000 ms, 3) and
-validates them (`fn-bpnp-configured-budgets`, `fn-bpnp-budgetsp`: frame
+reads the bounded file's exact octets (`fn-bpnb-read`: at most256 octets,
+ASCII decimal fields1..20digits, exact keys, duplicate keys refused) and
+validates the resulting values (`fn-bpnp-configured-budgets`, `fn-bpnp-budgetsp`: frame
 naturals, budget at least 1); each deciding host event carries them as its
 optional last field (`fn-bpnp-budgeted-lengthp`). The policy record above
 is the design; no book defines it.
@@ -3991,7 +3993,12 @@ tick` does. Over `fn-bpnp-step`, the event's one proposal is the
 `:cl-send` of that job's route, peer, key and wire
 (`fn-bpnp-receipt-contact-offers-the-queued-job`). A connect that never
 produced a socket reads `:failed` (no octet left; ACL2 requeues the job);
-any failure after the connection exists stays `:uncertain`, and that
+a transport failure after the connection exists stays `:uncertain`. After
+an accepted fragment, even a later transfer that sent no octet is normalized
+through ACL2's `fn-bpfs-fragment-outcome` to `:uncertain`. Store publication
+uncertainty, core faults and unknown condition subclasses retain their class
+through socket cleanup and escape to the owner's fault/fence boundary; they
+never become a transport retry observation. The transport
 reading is connection-local (§4.3.2): the pass logs it and continues. A
 one-shot verb that asked for the transfer renders the durable `:requeued`
 record's reason as its run class (specs/host.md "BP run classes",
@@ -5042,3 +5049,88 @@ name the changed boundary. Full source replay, bounded restart codec work,
 qualified native interruption/restart and complete held-field symbol grammar
 remain separate pending coordinates.
 
+
+### Native reassembly scheduling (S026, 2026-10-03)
+
+Kind-5 receive custody settles and its TCPCL final ACK is flushed before the
+node begins fragment reassembly. The native service retains one volatile
+`(arrival job limit family-key)` continuation and calls `fn-bpfj-step` at most
+once per service turn with a 4096-position quantum (PRF-989). Completion asks
+the existing ACL2 `:family` step to validate the current family and publish
+kind 18; the host never installs its own reassembled value. A stale or
+refused family yields to a different candidate on a later turn; candidate
+selection and the completed image encoding retain their existing cost.
+
+TCPCL input and timeout turns run the service hook after final-ACK settlement,
+including keepalive input. A retained job requests a zero-time input poll so
+a quiet session cannot make each quantum wait for its read timeout. No hook
+runs while a received-source disposition remains pending. The idle listener
+loop also runs one service turn and polls acceptance between quanta. The
+diagnostic `once` mode closes its socket first, then drains retained local
+work through distinct control/service/yield turns before exiting. Opening
+or rotating resets those volatile continuations from durable rows. Process
+death loses work already spent, never acknowledged custody. This is the
+reassembly sweep bound; whole-image encode, candidate scan, context funding
+and concurrent listener/forwarding fairness remain explicit obligations.
+
+### Retained TCPCL physical turns (PRF-1273, 2026-10-03)
+
+The native `fnn-tcl-begin` retains a connection without writing its opening
+messages. `fnn-tcl-turn` selects one action through `fn-tcrt-action`: encode
+one released message, attempt one read/write of at most4096 octets, advance
+one received-source continuation, pump one outbound segment, or run the
+local callback boundary. Exact encoded vectors and offsets survive short
+writes and readiness waits. The write deadline denotes connection loss; it
+never supplies a physical close receipt or settles a grant. Only the named
+socket primitive is inside the transport-error handler: a publication error
+in a local callback escapes to the existing persistence fence.
+
+Custody-held messages are distinct from released output. A final ACK can
+enter released output only after the existing delivery planner's durable
+answer; application progress follows its completed physical write. Input
+and outbound pump turns alternate, and source custody excludes new input.
+`fnn-tcl-session`, used by current TCPCL/BP commands, consumes this retained
+API until completion. That compatibility consumer still monopolizes its
+caller until completion: concurrent BP acceptance, forwarding/receipt turns
+and explicit supported-profile session grants remain S025 obligations.
+Legacy logical parsing/carry and whole-message encoding retain their cost
+and refinement scope; S068 is not discharged by a bounded socket attempt.
+
+
+### Retained physical session consumer (2026-10-03, S025, PRF-1276)
+
+The single writer now multiplexes retained TCPCL sessions in `bp-node serve`:
+`fnn-bp-session-loop` attempts one ready installed listener, advances one direct
+indexed context and services one of eight ACL2-selected classes per loop.
+Reassembly, dispatch, expiry, outbox queueing, forwarding, receipt sends, report
+queueing and rotation run independently of a peer closing its session. This
+supersedes the native between-session scheduling limitation described above;
+the existing protocol and durable kind-5/kind-8/kind-9 decisions remain ACL2-owned.
+RFC9174 section4 transport acknowledgment remains distinct from application
+commitment and its durable returned receipt.
+
+The operator's separate `bp-session-profile` is strict bounded ASCII text:
+`inbound N`, `outbound N`, optional `resident N`, and `outbound-ms N`, one per LF
+line, no duplicate key. Absent rows default to 2 incoming, 1 outgoing, derived
+resident projection and 30000ms outbound deadline. Counts are representable
+slot counts; zero in one class is allowed, but their total is positive.
+`bp-node session-profile JOURNAL NODE-ID INBOUND OUTBOUND [RESIDENT|- [OUTBOUND-MS]]`
+uses the ACL2 encoder and publishes it under the existing journal lifecycle lock.
+
+Startup captures Store heap profile, BP held profile, actual runtime dynamic
+space and the supported transfer/bundle span. ACL2 refuses an unrepresentable
+or insufficient session partition. A private typed ledger reserves the named
+resident/descriptor/connection-ID projection before accept/connect/context
+construction. Generation tokens identify exact reservations; an unfinished
+fragment operation retains its token across successive physical connections.
+Only affirmative socket termination and no remaining context/publication/source
+borrow together permit settlement. An ambiguous close is attempted once and
+holds custody; a timeout is an operation observation, never physical return.
+
+Scope remains partial: the named layout projection does not establish complete
+semantic-decode/collector/work/DNS/filesystem/other-actor cost refinement. Legacy
+list framing/carry and whole message encoding remain S068 frontiers; quantum
+4096 bounds physical socket ranges, not every local computation. Native
+source-matched multi-peer/application-receipt/reopen qualification and whole
+scheduler/refinement theorems remain owed. No stored transfer is truncated when
+a scheduling quantum ends.

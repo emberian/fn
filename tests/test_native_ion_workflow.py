@@ -36,6 +36,10 @@ class NativeIonWorkflowTests(unittest.TestCase):
             result = self.invoke(*args)
             self.assertEqual(result.returncode, EXIT.OK, result.stderr)
 
+        undertaken = self.invoke("bp-obligation", "undertake", self.store,
+                                 self.journal, "work-a", "3")
+        self.assertEqual(undertaken.returncode, EXIT.OK, undertaken.stderr)
+
     def invoke(self, *args):
         return run([IMAGE, "--fn", *args], env=environment(), timeout=60, text=True)
 
@@ -132,6 +136,8 @@ class NativeIonWorkflowTests(unittest.TestCase):
             "1", "0", "work-a", self.msgid, "forward-a",
             "dtn://fn-b/", "policy-a", "terms-a")
         self.assertEqual(enqueued.returncode, EXIT.OK, enqueued.stderr)
+        # Canonical pin from setUp remains live; this is another workflow
+        # using the same bound work, not another Store undertaking.
         before = {p.name: p.read_bytes() for p in (self.journal / "records").iterdir()}
         marker = self.tmp / "helper-entered"
         result = self.submit(f'touch "{marker}"\nexit 0\n')

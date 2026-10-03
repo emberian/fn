@@ -8,6 +8,7 @@
 ; The host reaches it through books/served-catalog-chain.lisp fn-scr-command.
 (in-package "ACL2")
 (include-book "served-catalog")
+(include-book "newnews-stream-cursor")
 
 ;; The rules books/served-catalog.lisp's proofs run under (its header).
 (local (in-theory (enable (:definition fn-nntp-article-idp)
@@ -18,6 +19,47 @@
 (local (in-theory (disable fn-nntp-index-msgid-okp-stringp
                            fn-nntp-find-group-number-of-fresh-member)))
 (local (in-theory (disable (tau-system))))
+
+(defthm fn-scat-newnews-reference-keeps-session
+   (equal (car (fn-nntp-newnews-response session archive env args fn-arena))
+          session)
+   :hints (("Goal" :in-theory (enable fn-nntp-newnews-response
+                                      fn-nntp-single fn-nntp-multi
+                                      fn-nntp-make-result))))
+
+(defthm fn-scat-newnews-reference-has-no-cursor
+   (equal (fn-ovw-expand
+           (cdr (fn-nntp-newnews-response session archive env args fn-arena))
+           fn-arena fn-cat)
+          (cdr (fn-nntp-newnews-response session archive env args fn-arena)))
+   :hints (("Goal" :in-theory (enable fn-ovw-expand fn-ovw-cursor-effectp fn-nnw-meta-effectp
+                                      fn-nntp-newnews-response fn-nntp-single
+                                      fn-nntp-multi fn-nntp-make-result
+                                      fn-nntp-reply-effect))))
+
+(local
+ (defthm fn-scat-over-reference-one-reply
+   (equal (list (fn-nntp-reply-effect
+                 (fn-served-reply-octets
+                  (cdr (fn-nntp-over-range session archive token fn-arena)))))
+          (cdr (fn-nntp-over-range session archive token fn-arena)))
+   :hints (("Goal" :in-theory (e/d (fn-nntp-over-range fn-nntp-single
+                                      fn-nntp-multi fn-nntp-make-result
+                                      fn-nntp-reply-effect fn-served-reply-octets)
+                                     (fn-nntp-parse-range fn-nntp-group-range-numbers
+                                      fn-nov-lines-for-numbers))))))
+
+(local
+ (defthm fn-scat-xover-reference-one-reply
+   (equal (list (fn-nntp-reply-effect
+                 (fn-served-reply-octets
+                  (cdr (fn-nntp-xover-range session archive token fn-arena)))))
+          (cdr (fn-nntp-xover-range session archive token fn-arena)))
+   :hints (("Goal" :in-theory (e/d (fn-nntp-xover-range fn-nntp-single
+                                      fn-nntp-multi fn-nntp-make-result
+                                      fn-nntp-reply-effect fn-served-reply-octets)
+                                     (fn-nntp-parse-range fn-nntp-group-range-numbers
+                                      fn-nov-lines-for-numbers))))))
 
 ;; Group names: books/served-catalog.lisp's local lemmas, restated.
 (local
@@ -160,6 +202,9 @@
                ((fn-nntp-keywordp keyword "BODY") :body)
                (t :stat))
          v fn-arena fn-cat))
+       ;; cg-newnews-hang: the scan reads the tombstone column, no payload.
+       ((fn-nntp-keywordp keyword "NEWNEWS")
+        (fn-nntp-newnews-response-stream session archive env args fn-arena fn-cat))
        (t (fn-nntp-archive-command session archive env keyword args fn-arena))))))
 
 ;;; KEYSTONE (the boundary theorem of this increment): under archive = the
@@ -168,8 +213,7 @@
 
 ;; The by-number line of the pinned dispatcher reaches fn-nntp-number-retrieval
 ;; through the fallthrough (fn-nntp-archive-command, fn-nntp-retrieval).
-(local
- (defthm fn-scat-pinned-number-line-is-number-retrieval
+(defthm fn-scat-pinned-number-line-is-number-retrieval
    (implies (and (or (fn-nntp-keywordp keyword "ARTICLE")
                      (fn-nntp-keywordp keyword "HEAD")
                      (fn-nntp-keywordp keyword "BODY")
@@ -187,7 +231,7 @@
    :hints (("Goal" :in-theory (e/d (fn-nntp-archive-command fn-nntp-retrieval)
                                    (fn-nntp-number-retrieval fn-nntp-msgid-retrieval
                                     fn-nntp-current-retrieval fn-nntp-number-tokenp
-                                    fn-nntp-message-id-tokenp fn-nntp-upcase-keyword))))))
+                                    fn-nntp-message-id-tokenp fn-nntp-upcase-keyword)))))
 
 ;; The three pinned bucket arms are the archive folds under the pin's
 ;; correspondence (books/nntp-list-counts.lisp, group-bucket-invariants.lisp,
@@ -215,8 +259,7 @@
 ;; for every state (books/group-bucket-invariants.lisp and
 ;; books/nntp-list-counts.lisp state them under fn-nntp-projectionp, of which
 ;; their proofs read only fn-statep and string group names).
-(local
- (defthm fn-scat-built-listgroup-is-fold
+(defthm fn-scat-built-listgroup-is-fold
    (implies (fn-statep archive)
             (equal (fn-gidx-listgroup-command
                     session archive (fn-gidx-build (fn-state-articles archive)) args)
@@ -237,7 +280,7 @@
             (e/d (fn-gidx-listgroup-command fn-nntp-listgroup-command
                    fn-nntp-token-string)
                  (fn-gidx-listgroup-result fn-nntp-listgroup-result
-                  fn-nntp-parse-range fn-nntp-printable-tokenp))))))
+                  fn-nntp-parse-range fn-nntp-printable-tokenp)))))
 
 (local
  (defthm fn-scat-gidx-counts-lines-of-build
@@ -254,8 +297,7 @@
            ("Subgoal *1/1" :use ((:instance fn-gidx-group-summary-of-build
                                   (group (car groups))))))))
 
-(local
- (defthm fn-scat-gidx-list-counts-is-fold
+(defthm fn-scat-gidx-list-counts-is-fold
    (implies (and (fn-statep archive)
                  (equal buckets (fn-gidx-build (fn-state-articles archive))))
             (equal (fn-gidx-list-counts-command session archive buckets closed args)
@@ -266,7 +308,7 @@
                             (fn-gidx-build fn-statep
                              fn-gidx-counts-lines fn-nntp-counts-lines
                              fn-nntp-filter-groups-by-wildmat
-                             fn-wildmat-parse fn-nntp-multi fn-nntp-single))))))
+                             fn-wildmat-parse fn-nntp-multi fn-nntp-single)))))
 
 (local
  (defthm fn-scat-statep-article-listp
@@ -306,6 +348,8 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-nntp-archive-command-cat fn-nntp-archive-command-pinned
                             fn-ovw-expand-result fn-nntp-over-range-ovw-expands-to-over-range-cat
+                            fn-nntp-newnews-response-stream-expands-to-cat
+                            fn-nntp-newnews-response-stream-keeps-session
                             fn-nntp-archive-command fn-nntp-list-command
                             fn-nntp-hdr-response fn-nntp-xhdr-response
                             fn-nntp-over-response fn-nntp-xover-response
@@ -399,4 +443,3 @@
 ; Guards: every arm is guard-verified in books/served-catalog.lisp.
 (verify-guards fn-nntp-archive-command-cat
   :hints (("Goal" :in-theory (enable (tau-system)))))
-

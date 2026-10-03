@@ -127,3 +127,109 @@ grounded funding; this grammar does not establish them.
 The file-incarnation namespace is distinct from the read namespace. The
 operator limits each independently, with no wrapped identity reuse; the
 local file allocator refuses before opening beyond `cold_file_ids`.
+
+### Retire operator observation (PKT-895)
+
+`retire [--drain SECONDS]` asks the live owner to retire and observes its
+socket/store-lock state. ACL2's `fn-nret-observation-step` bounds this
+observation to the accepted drain window plus a 60-second operator allowance,
+starting before the request, using monotonic host ticks and their positive
+rate. The poll interval is one second. This is local operator policy, independent
+of the live owner's current barrier policy; it does not bound physical fence
+completion or prove that the process stops within that time.
+
+At or past the boundary, a live or held owner produces uncertainty (exit 3).
+The operator leaves the owner, retained resources and custody obligations
+untouched and prints `retire uncertain reason=observation-deadline`.
+An offline or stale observation permits report inspection, including at the
+exact boundary. Success still requires a fresh regular report; an unchanged
+prior report or no report produces uncertainty. Invalid clock/request inputs
+and unknown observations produce a fault with `reason=invalid-observation`;
+they cannot produce a stopped/report decision or a deadline-expiry claim.
+
+### Operator diagnostic outcomes
+
+The heap launcher's operator profile observation may fall back to an absent
+profile only for a condition ACL2's closed failure classifier names as a
+refusal. A failed core call, corrupt durable profile, uncertain outcome or
+unlisted condition propagates before any accepting `heap=` line is printed.
+This applies to the nested store-profile reader as well as the operator plan,
+initializer profile resolution and resource-policy projections. A genuinely
+absent store still has no profile; the command subsequently reports its own
+refusal under the no-store reservation.
+
+The initial-group encoder's named `:bad` result is a refusal. A malformed
+result, or disagreement between the host and core's frame header/trailer
+widths, is a fault. These checks preserve HST-008/HST-009's shared outcome
+classes; they do not manufacture a policy refusal from an image defect.
+
+## Resumable developer init (STO-10005)
+
+`store ROOT init` may resume interrupted initialization. Under its exclusive
+writer lock, it supplies the requested decoded profile, the immutable sealed
+profile and exact generation-one record bytes to ACL2's
+`fn-nir-resume-decision`. The recorded initial change list must match the
+requested initial groups. A new clock stamp and later configuration/limit
+changes do not change that initial intent. Profile or group mismatch is a
+named refusal before resume directory creation, staged publication, genesis
+work or node-secret creation. Initial root/lock acquisition precedes this
+check. Corrupt generation-one evidence faults; missing generation one when
+configuration history exists faults. Absence with no history is the legal
+interrupted-before-publication case.
+
+The keystones prove compatibility across independent clock stamps and named
+refusal of distinct initial changes under exact decode premises; literal
+real-codec witnesses include each premise removal.
+The actual host fixture discriminates prior init's silent success on profile
+mismatch. This does not add a streaming history loader or prove physical init
+syscall order: the existing bounded history observation and init publication
+program retain their separate contracts. Operator init's staged-publication
+verb retains its existing path refusal.
+### Explicit output resources in the canonical rendering
+
+The optional pair `resources.output_heap_octets` and
+`resources.output_quantum_heap_octets` is rendered in the same resources table
+as cold resources. Both values survive whole-config and individual-key
+`operator show`; loading the rendering preserves the complete normalized
+record, including absence of either resource policy. The renderable invariant
+carries the loader's output-policy predicate: two positive u64 naturals, with
+total heap at least twice the quantum heap. Parsing and rendering this pair
+does not enable its pending operational consumer or change the operator's
+`output_resources` refusal. Existing round-trip and accepted-load keystones
+cover these fields; output-only and combined cold/output fixtures discriminate
+the representation boundary.
+
+Relative-path normalization also preserves both resource policies before
+rendering the resolved configuration for `fn-native-operator-run-at`. It
+cannot turn an explicit unsupported output policy into an absent default;
+the actual operator still receives the policy and refuses it by name.
+
+## Current operation observation
+
+`fn operator CONFIG operation` selects the existing authenticated local status
+transport, report kind 14. ACL2 reads the canonical pending admission and writer
+state under the owner gate, renders fixed scalar fields within the status-page
+octet budget, and retains the normal immutable report buffer for paging. It
+never serializes the borrowed operation/source graph, walks the Store, issues
+an allocation token or changes custody. Oversized scalar rendering produces an
+explicit unavailable/budget report rather than partial fields. An offline query
+reports owner-not-running without opening or replaying the Store. Held charges
+are the pending operation's five-dimensional resource vector, not total live
+heap or proof of complete physical accounting. SCN-1120 exercises the literal
+source route; PRF-1292 retains the pending guard/size-proof obligations.
+
+
+## Trusted development attachment
+
+`FN_NATIVE_DEV_REPL` is a developer-only selector naming an absolute Unix socket
+path. Production selector validation refuses it before owner startup. The
+opted-in owner installs one local evaluator worker with same-UID authentication,
+0600 socket mode, one request at a time, bounded UTF-8 input and captured output,
+and inode/device-checked cleanup. It never removes a pre-existing path.
+Developer forms are explicitly trusted code, separate from all Store, NNTP, BP
+and operator wire grammars. They run through the owner serialization/fence
+boundary; this facility does not promise semantic invariants after arbitrary
+code edits or forceful cancellation of evaluation. `SCN-1121` exercises the
+actual socket evaluator and production selector, with named owner/I/O adapters;
+full native owner composition and ordinary ACL2 event admission remain separate
+execution checks. There is no new proof or image qualification claim.

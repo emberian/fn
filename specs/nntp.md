@@ -496,17 +496,30 @@ the owner hands every read its committed view as the live pin
 statement of the same semantics; the retrieval arms read the catalog through
 the view in the next increment (PKT-585).
 
-What a selection costs at the view (PKT-870, PRF-363, 2026-09-28): the
-reader's view is the durable one, so while a batch is in flight a GROUP's
-view is one batch below the catalog's count. The group's count, least and
-greatest number at that view are the catalog's live summary at its count
-(kept by commit and withdrawal) corrected over the numbers of the rows
-appended since the view and of the rows withdrawn at or after it (the
-catalog lists withdrawals per version, `fn-cat-withdrawn-at-is-from`), never a
-pass over the group's numbers (`fn-scv-summary`, equal to the pass by
-`fn-scv-count-is-count-p`, `fn-scv-first-is-first-p`,
-`fn-scv-last-is-last-p` and `fn-scat-group-summary-is-pass`). The answer
-is RFC 3977 section 6.1.1's, unchanged.
+Available selection summaries use the catalog's classified live table,
+corrected over appended and withdrawn rows since the view (`fn-scv-summary`,
+PRF-363). Its count/first/last theorems describe `fn-scv-keptp`, including
+available metadata. Raw retained-identity compatibility readers have a separate
+`fn-scat-raw-keptp` and range pass (PRF-346). Raw summary/low enumerate that
+clamped range; raw next/previous probe through the number gap. Their archive
+refinements do not equate reclaimed identities with available memberships.
+Actual GROUP/LISTGROUP/LIST/NEXT/LAST adapters use the available metadata
+readers under PRF-1262; their source and image status are separate.
+
+Option 2′ (2026-10-03): GROUP, LISTGROUP, LIST ACTIVE/COUNTS and
+NEXT/LAST use available memberships: a retained row with decided overview
+facts whose tombstone bit is clear, and visible at the selected completed
+view. Reclaimed rows retain their raw Message-ID and local-number identity
+for retrieval diagnostics and duplicate suppression. The allocation watermark
+never decreases or reuses a number; it is separate from the greatest available
+number. Sparse survivors 1 and 34 report `211 2 1 34`. With no available
+members, the tuple is `(0 watermark+1 watermark)` (RFC 3977 6.1.1.2).
+Recovery/reclaim reconstruction completes missing legacy classification once
+from the captured arena; GROUP reads carried summaries without arena scans.
+A reclaim swap is a refresh boundary and re-pins every connection. Availability
+and raw identity share one coherent root; a count-based version alone cannot
+identify a rewritten root. Implementation/proof target PRF-1262 remains in
+progress; this decision is not a native execution or certification claim.
 
 NNT-007: the session also carries the archive-configuration verdict computed
 when the connection opens. No command recomputes a whole-archive recognizer:
@@ -549,7 +562,7 @@ Before it a peer streaming an endless TAKETHIS body grew the owner to 3.94 GiB
 
 Every keyword the served step answers is one row of `books/protocol-table.lisp`,
 and a served row names its VIEW policy or the table refuses to certify
-(`fn-proto-served-columns-okp`): `:none` (no archive), `:pinned` (the
+(`fn-proto-served-tablep`, `books/protocol-served-table.lisp`): `:none` (no archive), `:pinned` (the
 connection's pinned view, NNT-042's "other reads"), `:select` (GROUP and
 LISTGROUP: re-pinned to the owner's committed view before the arm, kept iff
 211; `fn-proto-advance-eventp-is-served-advance-eventp` pins the column to
@@ -571,7 +584,15 @@ view contract is a generated theorem proved from the form's `:by`, and the
 pinned-boundary theorem is their case split
 (`fn-proto-archive-command-cat-is-pinned`; one context, replaced by the
 two-context refinement when the first `:completed` or `:pin-or-completed`
-form lands). The restricted route (a session with a group-access rule,
+form lands). All sixteen archive keywords now declare their forms, including
+HDR's compatibility, ordinary and fn metadata fields and XHDR's compatibility
+and ordinary fields. The actual unrestricted command layer calls this generated
+dispatcher. Other keywords go directly to the pinned reference; the executable
+has no hand catalog-dispatch fallback. The retained hand catalog dispatcher is
+only the migration reference for per-row equality proofs. This switch preserves
+current reply and view semantics; completed discovery, pin-first Message-ID
+fallback and bounded cold field reads remain explicit work. DATE follows its
+separate generated session route. The restricted route (a session with a group-access rule,
 PRF-222) is always the reference walk over the projected pin, so the cost
 column states both routes and a `-cat` cost claim is never the restricted
 client's. The table below is written from the book
@@ -590,32 +611,81 @@ The EXECUTED rule per command and form; a ruling recorded but not landed is DEBT
 | GROUP | re-pinned to the owner's committed view; kept iff 211 | select |  |  | the carried group summary at the top view, the probe pass otherwise (fn-scat-group-summary, fn-scat-group-low) / the reference fold over the projected pinned archive (fn-nntp-group-result) | NNT-042; RFC 3977 6.1.1.2 |
 | GROUP / name | re-pinned to the owner's committed view; kept iff 211 | select |  |  | generated: (fn-nntp-group-result-cat session archive (fn-nntp-token-string (car args)) v fn-cat) |  |
 | GROUP / syntax | none (no archive) | none |  |  | generated: (fn-nntp-single session (fn-proto-text * :syntax)) |  |
-| LISTGROUP | re-pinned to the owner's committed view; kept iff 211 | select |  |  | hand arms, forms not yet declared | NNT-042; RFC 3977 6.1.2 |
-| LAST | the connection's pinned view | current |  |  | hand arms, forms not yet declared | NNT-042 (other reads); RFC 3977 6.1.3 |
-| NEXT | the connection's pinned view | current |  |  | hand arms, forms not yet declared | NNT-042 (other reads); RFC 3977 6.1.4 |
-| ARTICLE | the connection's pinned view | current | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | hand arms, forms not yet declared | NNT-042 (pinned retrieval; a cancel after the pin leaves the article visible); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot, number fields 0 on fallback; RFC 3977 6.2.1 |
-| HEAD | the connection's pinned view | current | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | hand arms, forms not yet declared | NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.2 |
-| BODY | the connection's pinned view | current | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | hand arms, forms not yet declared | NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.3 |
-| STAT | the connection's pinned view | current | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | hand arms, forms not yet declared | NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.4 |
-| OVER | the connection's pinned view | none |  | cursor fn-ovw-cursor-effectp | a range with no Xref server named: one cursor quantum of W numbers per scheduling step (books/served-plan-cursor.lisp); with one (the served environment always names one): the column arm, whole (fn-nntp-over-range-served-cat) / the reference walk over the projected pinned archive (fn-nntp-over-range-indexed, no cursor) | NNT-042 (other reads); RFC 3977 8.3 |
+| LISTGROUP | re-pinned to the owner's committed view; kept iff 211 | select |  |  | carried group summary and number-table range probes (fn-nntp-listgroup-command-cat) / the pinned group bucket command, refined to the reference archive fold | NNT-042; RFC 3977 6.1.2 |
+| LISTGROUP / indexed | re-pinned to the owner's committed view; kept iff 211 | select |  |  | generated: (fn-nntp-listgroup-command-cat session archive args v fn-cat) |  |
+| LISTGROUP / other | re-pinned to the owner's committed view; kept iff 211 | select |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
+| LAST | the connection's pinned view | current |  |  | number-table probes from the current article to the next visible number, plus one catalog lookup / the reference fold over the projected pinned archive (fn-nntp-next-or-last) | NNT-042 (other reads); RFC 3977 6.1.3 |
+| LAST / current | the connection's pinned view | current |  |  | generated: (fn-nntp-next-or-last-cat session archive :last v fn-arena fn-cat) |  |
+| LAST / syntax | none (no archive) | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
+| NEXT | the connection's pinned view | current |  |  | number-table probes from the current article to the next visible number, plus one catalog lookup / the reference fold over the projected pinned archive (fn-nntp-next-or-last) | NNT-042 (other reads); RFC 3977 6.1.4 |
+| NEXT / current | the connection's pinned view | current |  |  | generated: (fn-nntp-next-or-last-cat session archive :next v fn-arena fn-cat) |  |
+| NEXT / syntax | none (no archive) | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
+| ARTICLE | the connection's pinned view | current | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article / pinned Message-ID trie lookup or the reference number/current archive walk | NNT-042 (pinned retrieval; a cancel after the pin leaves the article visible); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot, number fields 0 on fallback; RFC 3977 6.2.1 |
+| ARTICLE / number-withdrawn | the connection's pinned view | none |  |  | generated: (fn-nntp-withdrawn-reply session nil) |  |
+| ARTICLE / msgid-withdrawn | the connection's pinned view | none |  |  | generated: (fn-nntp-withdrawn-reply session t) |  |
+| ARTICLE / compatibility | the connection's pinned view | current |  |  | generated: test value |  |
+| ARTICLE / msgid | the connection's pinned view | none |  |  | generated: (fn-nntp-msgid-retrieval-cat session v :article (car args) fn-arena fn-cat) |  |
+| ARTICLE / number | the connection's pinned view | current |  |  | generated: (fn-nntp-number-retrieval-cat session v :article (car args) fn-arena fn-cat) |  |
+| ARTICLE / current | the connection's pinned view | current |  |  | generated: (fn-nntp-current-retrieval-cat session :article v fn-arena fn-cat) |  |
+| ARTICLE / syntax | none (no archive) | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
+| HEAD | the connection's pinned view | current | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article / pinned Message-ID trie lookup or the reference number/current archive walk | NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.2 |
+| HEAD / number-withdrawn | the connection's pinned view | none |  |  | generated: (fn-nntp-withdrawn-reply session nil) |  |
+| HEAD / msgid-withdrawn | the connection's pinned view | none |  |  | generated: (fn-nntp-withdrawn-reply session t) |  |
+| HEAD / compatibility | the connection's pinned view | current |  |  | generated: test value |  |
+| HEAD / msgid | the connection's pinned view | none |  |  | generated: (fn-nntp-msgid-retrieval-cat session v :head (car args) fn-arena fn-cat) |  |
+| HEAD / number | the connection's pinned view | current |  |  | generated: (fn-nntp-number-retrieval-cat session v :head (car args) fn-arena fn-cat) |  |
+| HEAD / current | the connection's pinned view | current |  |  | generated: (fn-nntp-current-retrieval-cat session :head v fn-arena fn-cat) |  |
+| HEAD / syntax | none (no archive) | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
+| BODY | the connection's pinned view | current | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article / pinned Message-ID trie lookup or the reference number/current archive walk | NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.3 |
+| BODY / number-withdrawn | the connection's pinned view | none |  |  | generated: (fn-nntp-withdrawn-reply session nil) |  |
+| BODY / msgid-withdrawn | the connection's pinned view | none |  |  | generated: (fn-nntp-withdrawn-reply session t) |  |
+| BODY / compatibility | the connection's pinned view | current |  |  | generated: test value |  |
+| BODY / msgid | the connection's pinned view | none |  |  | generated: (fn-nntp-msgid-retrieval-cat session v :body (car args) fn-arena fn-cat) |  |
+| BODY / number | the connection's pinned view | current |  |  | generated: (fn-nntp-number-retrieval-cat session v :body (car args) fn-arena fn-cat) |  |
+| BODY / current | the connection's pinned view | current |  |  | generated: (fn-nntp-current-retrieval-cat session :body v fn-arena fn-cat) |  |
+| BODY / syntax | none (no archive) | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
+| STAT | the connection's pinned view | current | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article / pinned Message-ID trie lookup or the reference number/current archive walk | NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.4 |
+| STAT / number-withdrawn | the connection's pinned view | none |  |  | generated: (fn-nntp-withdrawn-reply session nil) |  |
+| STAT / msgid-withdrawn | the connection's pinned view | none |  |  | generated: (fn-nntp-withdrawn-reply session t) |  |
+| STAT / compatibility | the connection's pinned view | current |  |  | generated: test value |  |
+| STAT / msgid | the connection's pinned view | none |  |  | generated: (fn-nntp-msgid-retrieval-cat session v :stat (car args) fn-arena fn-cat) |  |
+| STAT / number | the connection's pinned view | current |  |  | generated: (fn-nntp-number-retrieval-cat session v :stat (car args) fn-arena fn-cat) |  |
+| STAT / current | the connection's pinned view | current |  |  | generated: (fn-nntp-current-retrieval-cat session :stat v fn-arena fn-cat) |  |
+| STAT / syntax | none (no archive) | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
+| OVER | the connection's pinned view | none |  | cursor fn-ovw-cursor-effectp | one cursor quantum of W numbers per scheduling step (books/served-plan-cursor.lisp), including the configured Xref server captured by the cursor; retained output bytes are not yet separately bounded / the reference walk over the projected pinned archive (fn-nntp-over-range-indexed, no cursor) | NNT-042 (other reads); RFC 3977 8.3 |
 | OVER / xref | the connection's pinned view | none |  |  | generated: test value |  |
-| OVER / range | the connection's pinned view | none |  |  | generated: (fn-nntp-over-range-ovw session v (car args) (fn-nntp-keywordp keyword "XOVER") fn-cat) |  |
+| OVER / range | the connection's pinned view | none |  |  | generated: (fn-nntp-over-range-ovw session v (car args) (fn-nntp-keywordp keyword "XOVER") nil fn-cat) |  |
 | OVER / current | the connection's pinned view | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
 | OVER / msgid | the connection's pinned view | none | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
 | OVER / other | the connection's pinned view | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
-| XOVER | the connection's pinned view | none |  | cursor fn-ovw-cursor-effectp | a range with no Xref server named: one cursor quantum of W numbers per scheduling step (books/served-plan-cursor.lisp); with one (the served environment always names one): the column arm, whole (fn-nntp-over-range-served-cat) / the reference walk over the projected pinned archive (fn-nntp-over-range-indexed, no cursor) | NNT-042 (other reads); RFC 2980 2.8 |
+| XOVER | the connection's pinned view | none |  | cursor fn-ovw-cursor-effectp | one cursor quantum of W numbers per scheduling step (books/served-plan-cursor.lisp), including the configured Xref server captured by the cursor; retained output bytes are not yet separately bounded / the reference walk over the projected pinned archive (fn-nntp-over-range-indexed, no cursor) | NNT-042 (other reads); RFC 2980 2.8 |
 | XOVER / xref | the connection's pinned view | none |  |  | generated: test value |  |
-| XOVER / range | the connection's pinned view | none |  |  | generated: (fn-nntp-over-range-ovw session v (car args) (fn-nntp-keywordp keyword "XOVER") fn-cat) |  |
+| XOVER / range | the connection's pinned view | none |  |  | generated: (fn-nntp-over-range-ovw session v (car args) (fn-nntp-keywordp keyword "XOVER") nil fn-cat) |  |
 | XOVER / current | the connection's pinned view | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
 | XOVER / msgid | the connection's pinned view | none | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
 | XOVER / other | the connection's pinned view | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
-| HDR | the connection's pinned view | none | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | hand arms, forms not yet declared | NNT-042 (other reads); the Message-ID form is decided c07 C (pin first, then the completed snapshot); RFC 3977 8.5 |
-| XHDR | the connection's pinned view | none |  |  | hand arms, forms not yet declared | NNT-042 (other reads); RFC 2980 2.6 |
+| HDR | the connection's pinned view | none | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | catalog number probes and overview metadata where available; cold field/payload and whole response working allocation remain GEN-CURSOR debt / reference pinned archive walk; whole response allocated | NNT-042 (other reads); Message-ID completed fallback remains PRF-1238 debt; RFC 3977 8.5 |
+| HDR / compatibility | the connection's pinned view | none |  |  | generated: test value |  |
+| HDR / verified | the connection's pinned view | none |  |  | generated: (fn-nntp-verdict-hdr-response-cat session verdicts args v fn-arena fn-cat) |  |
+| HDR / control | the connection's pinned view | none |  |  | generated: (fn-nntp-control-hdr-response-cat session archive index verdicts args v fn-arena fn-cat) |  |
+| HDR / enrollment | the connection's pinned view | none |  |  | generated: (fn-nntp-enrollment-hdr-response-cat session index verdicts args v fn-arena fn-cat) |  |
+| HDR / ordinary | the connection's pinned view | none |  |  | generated: (fn-nntp-hdr-command-cat session args v nil fn-arena fn-cat) |  |
+| XHDR | the connection's pinned view | none |  |  | catalog number probes and overview metadata where available; cold field/payload and whole response working allocation remain GEN-CURSOR debt / reference pinned archive walk; whole response allocated | NNT-042 (other reads); RFC 2980 2.6 |
+| XHDR / compatibility | the connection's pinned view | none |  |  | generated: test value |  |
+| XHDR / ordinary | the connection's pinned view | none |  |  | generated: (fn-nntp-hdr-command-cat session args v t fn-arena fn-cat) |  |
 | XPAT | the connection's pinned view | none |  |  | the range's numbers from the number table and one catalog probe per article (fn-scat-range-numbers, fn-scat-available-article), the field from the overview column / the reference walk over the projected pinned archive (fn-nntp-xpat-response) | NNT-042 (other reads); RFC 2980 2.9 |
 | XPAT / any | the connection's pinned view | none |  |  | generated: (fn-nntp-xpat-response-cat session args v fn-arena fn-cat) |  |
-| LIST | the connection's pinned view | none | the latest completed durable view; pin unmoved (PRF-1237) |  | hand arms, forms not yet declared | NNT-042 today (ACTIVE and COUNTS: the pinned groups and summaries; NEWSGROUPS, SUBSCRIPTIONS, MOTD and ACTIVE.TIMES: the pinned groups and the pinned configuration); decided 2026-10-02 (build/coordinator/decisions/list-view-2026-10-02.md): LIST, ACTIVE and COUNTS answer the latest completed durable view, the pin unmoved; NEWSGROUPS and ACTIVE.TIMES under consultation c07; RFC 3977 7.6.1, 7.6.3; RFC 6048 2.2.2 |
-| NEWGROUPS | the connection's pinned view | none | the latest completed durable view; pin unmoved (PRF-1237) |  | hand arms, forms not yet declared | NNT-042 by silence today (the pinned creation facts filtered to the pinned groups); decided c07 B: the completed discovery snapshot; RFC 3977 7.3 |
-| NEWNEWS | the connection's pinned view | none | the latest completed durable view; pin unmoved (PRF-1237) |  | hand arms, forms not yet declared | NNT-042 by silence today (the pinned articles, one whole walk per call); decided c07 C: one completed discovery snapshot captured at the first quantum and held across quanta; RFC 3977 7.4 |
+| LIST | the connection's pinned view | none | the latest completed durable view; pin unmoved (PRF-1237) |  | ACTIVE and COUNTS use carried group summaries with configured-group walks; compatibility and other variants walk pinned listing/creation facts; whole reply allocated / pinned group bucket COUNTS or the reference archive/listing walks; whole reply allocated | NNT-042 today (ACTIVE and COUNTS: the pinned groups and summaries; NEWSGROUPS, SUBSCRIPTIONS, MOTD and ACTIVE.TIMES: the pinned groups and the pinned configuration); decided 2026-10-02 (build/coordinator/decisions/list-view-2026-10-02.md): LIST, ACTIVE and COUNTS answer the latest completed durable view, the pin unmoved; NEWSGROUPS and ACTIVE.TIMES under consultation c07; RFC 3977 7.6.1, 7.6.3; RFC 6048 2.2.2 |
+| LIST / xref | the connection's pinned view | none |  |  | generated: test value |  |
+| LIST / counts | the connection's pinned view | none |  |  | generated: (fn-nntp-list-counts-command-cat session archive (fn-nntp-env-closed env) (cdr args) v fn-cat) |  |
+| LIST / compatibility | the connection's pinned view | none |  |  | generated: test value |  |
+| LIST / active | the connection's pinned view | none |  |  | generated: (fn-nntp-list-active-cat session archive (fn-nntp-env-closed env) args v fn-cat) |  |
+| LIST / other | the connection's pinned view | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
+| NEWGROUPS | the connection's pinned view | none | the latest completed durable view; pin unmoved (PRF-1237) |  | creation-fact and configured-group walks over the pinned environment and archive; whole reply allocated / the same pinned creation-fact and configured-group walks; whole reply allocated | NNT-042 by silence today (the pinned creation facts filtered to the pinned groups); decided c07 B: the completed discovery snapshot; RFC 3977 7.3 |
+| NEWGROUPS / compatibility | the connection's pinned view | none |  |  | generated: test value |  |
+| NEWGROUPS / other | the connection's pinned view | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
+| NEWNEWS | the connection's pinned view | none | the latest completed durable view; pin unmoved (PRF-1237) | cursor fn-nnw-meta-effectp | bounded control calls per quantum and at most W emitted bytes; configured selection retains group/member references and inspects at most one entry per selector call; retained suffix avoids rescanning and catalog tombstone column avoids payload I/O; matcher/name comparison, composed heap tariff, resource custody, legacy cold metadata fallback and completed-view capture remain GEN-CURSOR debt / the reference whole pinned archive walk, including payload tombstone reads | NNT-042 by silence today (the pinned article root retained across one-candidate quanta); decided c07 C: one completed discovery snapshot captured at the first quantum and held across quanta; RFC 3977 7.4 |
+| NEWNEWS / any | the connection's pinned view | none |  |  | generated: (fn-nntp-newnews-response-stream session archive env args fn-arena fn-cat) |  |
 | DATE | none (no archive) | none |  |  |  | RFC 3977 7.1; no article view. DEFECT (c07): answers the clock observation pinned at accept (fn-nntp-env-observation; books/served.lisp fn-served-conn-observation), not the current reading; fixed separately |
 | POST | none (no archive) | offer |  |  |  | RFC 3977 6.3.1 (no archive) |
 | IHAVE | the live Message-ID index (peer offers) | none |  |  |  | a reader connection: 502; a peer connection decides the offer on the LIVE Message-ID index (books/served-catalog-chain.lisp fn-scr-history-hasp); RFC 3977 6.3.2 |
@@ -1301,7 +1371,13 @@ the node identity's length (2 octets) and octets, the root
 `fn-ns-file-parse-of-render`). `store ROOT node-secret create [IDENTITY]` (and
 `init`) writes epoch 1 once and refuses by name when a secret exists; `store
 ROOT node-secret rotate [IDENTITY]` keeps the current file as
-`node-secret-E.key` and writes epoch E+1. A start reads the current file and
+`node-secret-E.key` and writes epoch E+1. New candidates are 0600 files in
+`staging/.init-node-secret-*`, within the existing recovery-swept namespace.
+Write, file-fence and close failures unlink the owned candidate and preserve
+the first write/fence error; a process-death candidate is collected on recovery.
+The current and retained epoch files remain the only authority. Historical
+`.node-secret-*.stage` files in `keys/` predate this namespace and are not
+collected by this change. A start reads the current file and
 every kept older epoch and hands ACL2 the ring (current first, epochs
 strictly decreasing, `fn-ns-ringp`); it refuses by name when a file is
 missing, accessible to group or others, or does not parse, and it never
@@ -1438,8 +1514,12 @@ implementation dependency, not a TLS correctness theorem.
 What is proved is the protocol state machine around the upgrade: the
 capability label appears only where RFC 4642 §2.1 allows, 382 is emitted only
 from the branch that also records that a handshake is owed, a second STARTTLS
-is 502, and the cached username and authenticated subject are discarded
-across the handshake. The clause-by-clause split is the RFC 4642 matrix in
+is 502. Successful authentication also makes STARTTLS unavailable (502)
+and removes its capability label (RFC 4642 sections 2.1 and 2.2.1 note [1]);
+the refused command preserves the complete authenticated session. A permitted
+handshake starts unauthenticated and discards the cached username.
+PRF-1266 adds the literal refusal and capability keystones; their certification
+and matching native image evidence remain pending. The clause-by-clause split is the RFC 4642 matrix in
 [the audit](nntp-audit.md).
 
 AUTHINFO USER/PASS is likewise a **cleartext mechanism on the wire**, and no
@@ -1511,6 +1591,13 @@ when such a pair is configured. The authentication profile receives TLS
 availability from the successfully loaded context; configured path text alone
 does not establish it. Credentials and the TLS context are startup-pinned;
 live reload/generation switching remains open.
+
+The native self-signed pair writer removes each exclusively created candidate
+if its write, file fence or close fails (S093). It closes the descriptor once
+and preserves the first write/fence error when close also fails. Cleanup is
+best effort and removes only a file this invocation created. The actual-source
+fault fixture covers these ordinary failures; process death and durable
+publication of the pair still require the matching image/recovery scenario.
 
 **Login binding 2026-09-25**: `principal bind LOGIN PRINCIPAL-HEX` and
 `principal unbind LOGIN` write or remove the login's `signing` field through
@@ -1840,7 +1927,7 @@ gives them.
 
 NNT-046: A login's access rule restricts its connections to the groups its read wildmat admits, as if the other groups were absent, and its posts to the groups its post wildmat admits
 
-SEC-007: Group access is this node's reader view: it hides groups from a login's NNTP connections, never from the operator, from peers the feed patterns name, or from the node's own consumer; confidentiality beyond that is the posters' own encryption
+SEC-007: Group access is this node's reader view: it hides groups from a login's NNTP connections, never from the operator, from authorized peer transit governed by feed patterns, or from the node's own local consumer; confidentiality beyond that is the posters' own encryption
 
 fn's reference is INN's readers.conf access groups (a `read` and a `post`
 wildmat per authenticated identity); RFC 3977 section 4.2 is the wildmat, and
@@ -1885,8 +1972,10 @@ this is a local policy with one stronger fn guarantee: no existence oracle.
   may neither read nor post to leave its served list, so a POST naming one
   answers the unknown-group 441 of a group the node does not carry. A group
   it may post to but not read is a drop box.
-- **Scope.** A peer connection has no rule: peering is unchanged, and what a
-  peer is fed is its feed patterns' decision. The consumer poll is the
+- **Scope (D48).** A transport peer role leaves reader access tied to the
+  authenticated login or anonymous rule, including moderation-queue hiding.
+  Transit offers and received bodies remain governed by the pinned peer record
+  and feed patterns, independent of the reader archive/index/posting view. The consumer poll is the
   owner's local socket (one owner principal, mode 0600) and reads
   everything, as the operator does. Not guarantees: the Newsgroups header
   of a cross-posted article names every group it was posted to (its own
@@ -1997,6 +2086,18 @@ Web and pull worker threads yield after empty progress too. This bounds
 cursor chaining per I/O event; it preserves the existing complete-residual
 contract and introduces no new bytes into a response.
 
+A cursor's cold miss returns its exact uncommitted plan and issued read from
+`fnn-owner-render-next-quantum` as a fifth value. The mux retains both and
+polls `fnn-owner-cold-poll` through its timer; it does not await the page on
+the shared I/O loop. A returned read resumes the retained plan without
+stepping incoming input. A dependency deadline or resource refusal terminates
+the incomplete body without adding a reply line or final dot. The first miss
+clock persists across repeated misses of this plan. Cancellation revokes
+publication; the existing actor return/settlement still owns physical cleanup.
+This scheduling repair does not prove cache-independent consumption: a retry
+may still lose a shared cached extent before resumption, and multi-entry
+quantum progress needs retained consumption custody or smaller semantic state.
+
 The cursor carries the node's Xref server name when the environment has
 one (`fn-nntp-xref-server`), and its rows are then the served rows (the Xref
 field, the overview column): `fn-nntp-over-range-ovw-expands-to-over-range-
@@ -2006,6 +2107,41 @@ name was configured, so the cursor was reached only by a node with no name.
 Not yet on the cursor: the read-restricted route (a session with a READ rule
 is served by the reference walk over its projected pin,
 `fn-scr-auth-delegate`), OVER by Message-ID and with no argument (one row).
+
+The metadata NEWNEWS continuation is the first `def-cursor` consumer
+(PRF-1256, PRF-1257, SCN-1084). The generated NEWNEWS command calls
+`fn-nntp-newnews-response-stream`; its initializer retains parsed wildcard
+patterns, configured groups and article tails by reference in fixed envelopes.
+`fn-nnw-stream-step` accepts separate control-call and emitted-byte budgets.
+The actual plan calls generated `fn-nnw-stream-batch`, which takes at most its
+visit grant of empty control transitions in one quantum and stops at the first
+output, dependency or exhausted grant. It accumulates no intermediate output;
+its unconditional prefix/residual and byte/call bounds compose the step contracts.
+A candidate retains `fn-nnm-start` state while `fn-nnm-one`
+inspects one configured group/member entry or takes one wildcard matcher
+microstep per call. The matcher retains its decoder offset, DP row and
+continuation frames; a scheduling call cannot drain the whole match. The first equal
+membership decides that group's number, including an invalid first duplicate;
+this preserves the original filtered-group candidate semantics. A sparse miss
+continues through the retained group/member position, and matching installs a
+string reference, offset and stuffing phase rather than a complete line.
+Output phases consume no candidate visits. Prefix plus remaining equals the
+original catalog reply, including its status and final terminator, and the
+captured archive/environment/arguments stay fixed throughout the plan.
+
+The actual plan uses its scheduling quantum for both budgets, and owner/mux
+retains the existing response reader hold. Decided catalog tombstone metadata
+avoids the old payload-cache retry; legacy rows missing those facts retain cold
+dependency debt. Source residual/refinement, guard and tiny/large actual plan
+checks are tracked separately from matching certificates and native images.
+The disabled logical residual and remaining models may walk captured lists;
+the execution initializer and selector do not build a selected-group list or
+copy membership/archive data. This still does not establish a composed heap
+funding bound: group-name comparisons, matcher retained graph/native byte tariff, metadata checks,
+outer copying, allocator/collector margin and physical output custody need
+matching tariffs and a producer before materialization. The decided completed
+discovery snapshot, restricted NEWNEWS and cold HDR/XPAT remain open; the
+current unrestricted command captures its pinned archive.
 
 Two events advance a connection's last activity for the idle limit (RFC
 3977 section 3.1): a command received, and the transport accepting a window
@@ -2453,6 +2589,22 @@ and actual last-borrow. Their lower source/guard components and older
 response-pin model are separate scopes. New constructor/holder/frame/GC,
 installed allowance and changed native image qualification remain open.
 
+
+The selective availability adapter is a separate boundary (PRF-1287, SCN-1117).
+Its generated forms use available metadata readers for GROUP, LISTGROUP,
+NEXT/LAST and LIST ACTIVE/COUNTS. The executable entry retains raw archive/index
+formals; it does not build another complete archive or index under the owner.
+Raw ARTICLE/HEAD/BODY/STAT identity diagnostics, HDR/XPAT ranges, OVER and NEWNEWS
+chronology remain retained-history semantics. Successful metadata NEXT/LAST
+formats its STAT line from the held identifier without reading payload bytes.
+The disabled logical reference uses the available projection only for those
+selected commands. Its intended composition requires decided facts that match
+the same captured arena/root; existing raw-pinned equality does not establish it.
+Command-helper source fixtures pass through actual arena intern and generic
+catalog commit. Production owner routing, selective boundary proof and captured
+completeness establishment remain open. LIST ACTIVE/COUNTS still build a complete
+NNTP reply; a bounded group/row cursor is continuing work, and removing a Web
+copy does not bound this producer.
 ### Shared compressed article scalar seam (PRF-1288, SCN-1118)
 
 The actual compressed arena scalar arm calls `fn-durable-realize-lz-octet`,
@@ -2465,3 +2617,28 @@ integrity assumption. Same-pool constructor/slot/buffers admission, physical
 worker return and last borrow, and the owner article quantum adapter remain
 open. The optional complete output tariff stays unsupported; this source
 seam is not a physical funding or qualified-image claim.
+
+
+The actual owner read now calls `fn-av-mca-read-span`, generated by
+`available_read_emit.py` from the existing command, authentication, scanner,
+reader-view, disk admission, article-slot and connection-credit recipes.
+This source route is PROGRAM mode while its selective reference, guards,
+carried catalog completeness and credit correspondence are proved; the existing
+raw logical route and its theorems retain their original subjects. Restricted
+reader commands receive their actual authorized cache entry (or the existing
+fallback authorization projection), including peer reader commands. Transfer
+and explicit transit arms keep their original priority. This connects the
+source endpoint; it does not close PRF-1287 or make LIST production bounded.
+## Retained shared article producer (PRF-1286, source in progress)
+
+ARTICLE, HEAD and BODY share immutable selected-payload preflight and READY
+rendering state. Preflight validates complete CRLF framing and the first
+header/body separator in bounded steps before the selected-session commit;
+malformed framing retains the original503 behavior. READY emits initial
+status, the configured synthetic Xref for ARTICLE/HEAD, the selected section
+with dot-stuffing, and exactly one terminator. READY contains no authority or
+selection effect and can be replayed by Web's count and emission traversals.
+The first parsed event bounds consumption so following pipelined commands
+wait for completion. Physical compressed/plain window custody, metadata
+setup bounds and the complete owner/reference refinement remain open; the
+source does not establish a funded operation or a qualified image.

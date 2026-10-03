@@ -293,3 +293,43 @@
 (assert-event (equal (fn-cbud-step-read-octets
                       (fn-exp-limits *cbt-v-norate* *fn-exp-owner-connection-bound* t nil))
                      4096))
+
+; PRF-1268 / PKT-897: a published lowering keeps actual live allocations,
+; then settled done releases them. Every literal hypothesis/conclusion.
+(defconst *cbt-live-v4* (fn-cfg-apply *cbt-v-empty* 1 0 *cbt-lower-l4*))
+(defmacro cbt-live-keystone (v active held)
+  `(let ((h2 (fn-cbud-live-held ,v ,active ,held)))
+     (and (equal (fn-cbud-held-at 8 h2)
+                 (max (nfix ,active)
+                      (fn-cbud-config-handshake-slots ,v (fn-cbud-held-at 7 ,held))))
+          (equal (list (fn-cbud-held-at 0 h2) (fn-cbud-held-at 1 h2) (fn-cbud-held-at 2 h2) (fn-cbud-held-at 3 h2) (fn-cbud-held-at 4 h2) (fn-cbud-held-at 5 h2) (fn-cbud-held-at 6 h2) (fn-cbud-held-at 7 h2))
+                 (list (fn-cbud-held-at 0 ,held) (fn-cbud-held-at 1 ,held) (fn-cbud-held-at 2 ,held) (fn-cbud-held-at 3 ,held) (fn-cbud-held-at 4 ,held) (fn-cbud-held-at 5 ,held) (fn-cbud-held-at 6 ,held) (fn-cbud-held-at 7 ,held))))))
+(assert-event (and (consp *cbt-held*)
+                   (cbt-live-keystone *cbt-live-v4* 12 *cbt-held*)
+                   (equal (fn-cbud-held-at 8 (fn-cbud-live-held *cbt-live-v4* 12 *cbt-held*)) 12)))
+(assert-event (equal (fn-cbud-held-at 8 (fn-cbud-live-held *cbt-live-v4* 3 *cbt-held*)) 4))
+; Remove consp: no run owns a record, hence no slots are manufactured.
+(assert-event (and (not (consp nil))
+                   (not (cbt-live-keystone *cbt-live-v4* 12 nil))))
+; Complete shrinking theorem's positive antecedent + conclusion.
+(assert-event (and (consp *cbt-held*)
+                   (<= (nfix 12) (nfix (fn-cbud-held-at 8 *cbt-held*)))
+                   (<= (fn-cbud-config-handshake-slots *cbt-live-v4* (fn-cbud-held-at 7 *cbt-held*))
+                       (nfix (fn-cbud-held-at 8 *cbt-held*)))
+                   (<= (fn-cbud-held-at 8 (fn-cbud-live-held *cbt-live-v4* 12 *cbt-held*))
+                       (nfix (fn-cbud-held-at 8 *cbt-held*)))))
+; Remove actual-live bound alone: 20 owned allocations must charge 20.
+(assert-event (and (consp *cbt-held*)
+                   (not (<= (nfix 20) (nfix (fn-cbud-held-at 8 *cbt-held*))))
+                   (<= (fn-cbud-config-handshake-slots *cbt-live-v4* (fn-cbud-held-at 7 *cbt-held*))
+                       (nfix (fn-cbud-held-at 8 *cbt-held*)))
+                   (not (<= (fn-cbud-held-at 8 (fn-cbud-live-held *cbt-live-v4* 20 *cbt-held*))
+                            (nfix (fn-cbud-held-at 8 *cbt-held*))))))
+; Remove published-limit bound alone: a raise to 64 must charge 64.
+(defconst *cbt-live-v64* (fn-cfg-apply *cbt-v-empty* 1 0 *cbt-raise-l64*))
+(assert-event (and (consp *cbt-held*)
+                   (<= (nfix 12) (nfix (fn-cbud-held-at 8 *cbt-held*)))
+                   (not (<= (fn-cbud-config-handshake-slots *cbt-live-v64* (fn-cbud-held-at 7 *cbt-held*))
+                            (nfix (fn-cbud-held-at 8 *cbt-held*))))
+                   (not (<= (fn-cbud-held-at 8 (fn-cbud-live-held *cbt-live-v64* 12 *cbt-held*))
+                            (nfix (fn-cbud-held-at 8 *cbt-held*))))))

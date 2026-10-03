@@ -3,7 +3,8 @@
  "file": "books/bp-node-fragment-guards.lisp",
  "id": "BM10",
  "notes": [
-  "10-03 00:30 landed 4671ace0f (overnight integrator): helper guards tightened + verified; guards book admitted whole in the hbox REPL; check-fast persvati 13/13; certify in hbox native ov1"
+  "10-03 00:30 landed 4671ace0f (overnight integrator): helper guards tightened + verified; guards book admitted whole in the hbox REPL; check-fast persvati 13/13; certify in hbox native ov1",
+  "Codex harvest 2026-10-03: certify-20261003T043548Z-620519 passed 32/0 including bp-node-fragment-guards and image-world/image-world-dtn; manifest archived/indexed. ov1 stopped host-ld at page executor theorem; no image/native verdict."
  ],
  "owner": "post-guard-off",
  "severity": "high",

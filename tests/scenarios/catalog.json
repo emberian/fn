@@ -511,7 +511,8 @@
         "With two native owner clients already connected, inject uncertainty after publication on one client while the other attempts further input; then exercise shared-resource shutdown and independent recovery.",
         "Start two distinct Store roots with one control socket path; issue concurrent native control posts and then repeat SIGTERM while NNTP and partial control clients are connected.",
         "Send control frames in one-byte fragments and stall them; exceed the active control-client ceiling while a valid client continues; drop a post reply after durable completion and reopen independently.",
-        "On production default and DTN images, invoke raw store ROOT post with fresh and existing Store roots and an observable payload path; attempt a runtime profile override. Repeat raw insertion on the developer image, then exercise ordinary operator/NNTP posting, inspection and recovery on production."
+        "On production default and DTN images, invoke raw store ROOT post with fresh and existing Store roots and an observable payload path; attempt a runtime profile override. Repeat raw insertion on the developer image, then exercise ordinary operator/NNTP posting, inspection and recovery on production.",
+        "For store ROOT probe COUNT [article], repeat production default/DTN refusal with fresh and existing roots; test direct handler refusal before store construction and developer handler availability. Malformed COUNT values must produce usage errors."
       ],
       "expected": [
         "Stale completions cannot publish another transaction.",
@@ -523,7 +524,8 @@
         "A live store prepare may omit repeated history replay only through a named equality to fn-sn-prepare whose invariant is established at observed open and preserved by every post-open mutator; the shared owner additionally requires a named equality to its actual configured-owner event and exact preservation of owner/configuration context.",
         "Only the endpoint lease holder receives control submissions; shutdown wakes clients without closing descriptors beneath their workers, joins before releasing resources, and permits independent reopen.",
         "Control transport bounds active clients and total frame time, bounds allocation before consuming excess bytes, and accumulates input in linear work; a lost post reply is uncertain and a retry cannot duplicate durable acceptance.",
-        "Production raw insertion exits 5 as an unsupported entry before Store or payload I/O, regardless of a runtime profile override; no publication occurs. Developer raw insertion remains available. Ordinary production submission still injects and preserves its accepted/refused/uncertain contract, and production inspection/recovery remain available. This selected 2026-09-23 requirement is not yet implemented or witnessed by da5fd8cb."
+        "Production raw insertion exits 5 as an unsupported entry before Store or payload I/O, regardless of a runtime profile override; no publication occurs. Developer raw insertion remains available. Ordinary production submission still injects and preserves its accepted/refused/uncertain contract, and production inspection/recovery remain available. This selected 2026-09-23 requirement is not yet implemented or witnessed by da5fd8cb.",
+        "Production capacity probes refuse before writable-store construction or fixture publication. The developer handler remains available; malformed COUNT uses the operator decimal-natural usage outcome. Extracted-source checks do not substitute for matching saved-image tests."
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -597,7 +599,10 @@
         "Observe transport status before application acceptance.",
         "Expire a bundle or interrupt its path and retry.",
         "Receive a nonzero fragment, restart, then receive offset zero and reassemble only from a complete coherent live family.",
-        "Reopen an FNWF journal interleaving ION route/observation records with application attempt, receipt and release records."
+        "Reopen an FNWF journal interleaving ION route/observation records with application attempt, receipt and release records.",
+        "For the ION adapter, undertake the canonical Store forward pin, submit through the explicit application/BP route, and reopen the durable observation. Refuse fractional or out-of-helper-range lifetime before publishing any attempt or launching the helper; entered-send observation failures stay uncertain.",
+        "Complete a multi-quantum fragment family: final custody ACK precedes reassembly, a keepalive/input turn resumes one quantum, EOF moves pending work to listener turns, and diagnostic once drains only after socket closure.",
+        "Open BP budgets with missing/default and ASCII rows; refuse repeated owner-backoff/retry-budget, unknown keys, malformed or non-ASCII decimal input before running a node."
       ],
       "expected": [
         "Transport status is not a retention undertaking.",
@@ -614,9 +619,18 @@
         "tests/test_bp_app_native.py",
         "tests/test_bp_fragment_node_native.py",
         "planning/evidence/bp-fragment-expiry-activation-2026-09-24.md",
-        "planning/evidence/ion-observation-binding-2026-09-24.md"
+        "planning/evidence/ion-observation-binding-2026-09-24.md",
+        "books/bp-ion-lifetime.lisp",
+        "tests/acl2/bp-ion-lifetime-tests.lisp",
+        "tests/test_native_ion_workflow.py",
+        "tests/native_bp_fragment_turn_raw.lisp",
+        "tests/native_tcpcl_progress_turn_raw.lisp",
+        "tests/acl2/bp-node-budget-input-tests.lisp",
+        "tests/native_bp_budget_input_raw.lisp",
+        "tests/native_tcpcl_retained_turn_raw.lisp"
       ],
-      "execution_scope": "Partial: the actual pinned BPA exchange carries an experimental whole-article ADU and matching receipt through outage/restart/lost receipt/duplicate retry. Sender and receiver logical assurance and five receiver process-death cuts have separate evidence. Complete portable batches, explicit expiry/contact/quota cases, authenticated handoff and additional CLA profiles remain open. Moved to M4 to match the user's A06 active BP path; status remains specified. Native TCPCL request-to-owner-Store-to-receipt composition has a separate loopback restart witness; it is not external BPA interoperability or a complete contact-plan test. The fragment-carrier and observation-bound kind-18 transitions have ACL2 evidence; the two-process interrupted-fragment native fixture awaits a source-matched saved image. The optional offline ION sender has a certified ACL2 observation/route/replay component and a source-present native caller; native image qualification, real death/reopen and receipt-return over ION remain open."
+      "execution_scope": "Partial: the actual pinned BPA exchange carries an experimental whole-article ADU and matching receipt through outage/restart/lost receipt/duplicate retry. Sender and receiver logical assurance and five receiver process-death cuts have separate evidence. Complete portable batches, explicit expiry/contact/quota cases, authenticated handoff and additional CLA profiles remain open. Moved to M4 to match the user's A06 active BP path; status remains specified. Native TCPCL request-to-owner-Store-to-receipt composition has a separate loopback restart witness; it is not external BPA interoperability or a complete contact-plan test. The fragment-carrier and observation-bound kind-18 transitions have ACL2 evidence; the two-process interrupted-fragment native fixture awaits a source-matched saved image. The optional offline ION sender has a certified ACL2 observation/route/replay component and a source-present native caller; native image qualification, real death/reopen and receipt-return over ION remain open.",
+      "notes": " Retained TCPCL actual-driver recording fixture distinguishes partial/wait writes, ACK-write-before-progress, pump/input interleaving, source-owned input, EOF/deadline loss, and publication errors that escape the socket scope. Matching saved-image execution remains pending."
     },
     {
       "id": "SCN-018",
@@ -1139,7 +1153,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -2052,13 +2066,15 @@
         "A: store with STARTTLS, `[auth] required = true, protected_only = true`, `principal set-password nodeB`; two articles posted with `operator post`. B: `peer add A a.pull.example.invalid 127.0.0.1 PORT fn.* fn.* source-address 127.0.0.9 PROFILE false false starttls localhost A-CERT`, `peer pull A 2`, PROFILE = FNAUTH1 nodeB and its password; a recording proxy in front of A.",
         "The same with PROFILE naming a login A does not hold.",
         "The same with no security arguments (a clear transport) and the permission false.",
-        "Packet 5's campaign over the TLS transport: FN_PULL_TEST_KILL=CUT:N at before-write, after-write and after-fsync of appends 1 and 2, restart without the fault."
+        "Packet 5's campaign over the TLS transport: FN_PULL_TEST_KILL=CUT:N at before-write, after-write and after-fsync of appends 1 and 2, restart without the fault.",
+        "The TLS pull with its local profile changed to mode 0644 before B starts."
       ],
       "expected": [
         "Both articles stored once at B; B logs `pull peer=A round=done cursor=advanced transport=tls`; the proxy's first plaintext command is STARTTLS and it sees no AUTHINFO, DATE, NEWNEWS or ARTICLE in the clear.",
         "B logs `round=failed cursor=held at=preamble` for every round, stores nothing, and its FNPL journal stays at the first-instant record.",
         "B logs `round=failed cursor=held refused=clear-credential` for every round and the proxy accepts no connection.",
-        "At every cut every article is stored exactly once at B and a later round logs `cursor=advanced transport=tls`."
+        "At every cut every article is stored exactly once at B and a later round logs `cursor=advanced transport=tls`.",
+        "B names the ACL2 credential outcome, holds its cursor with refused=profile, stays live and the recording proxy accepts no connection; native credential case requires matching new source/image evidence."
       ],
       "evidence": [
         "planning/evidence/peering-tls-pull-2026-09-26.md",
@@ -2071,7 +2087,8 @@
           "test_tls_pull_as_its_own_principal",
           "test_wrong_principal_is_refused_by_the_serving_node",
           "test_clear_credential_is_refused_before_any_connection",
-          "test_cursor_publication_cuts_over_tls"
+          "test_cursor_publication_cuts_over_tls",
+          "test_unreadable_credential_refuses_before_any_connection"
         ],
         "native": true,
         "log": "planning/evidence/peering-tls-pull-2026-09-26/native-peer-pull.log",
@@ -2331,6 +2348,7 @@
       ],
       "evidence": [
         "tests/acl2/payload-arena-tests.lisp",
+        "tests/test_native_payload_lifecycle_raw.sh",
         "planning/evidence/rep-wave-d-2026-09-25.md"
       ]
     },
@@ -6306,14 +6324,16 @@
         "Issue another cold pread, observe 403 deadline, disconnect the client, open a replacement request and install a reclaim that retires the old file.",
         "Observe close-held for that issued file before release; deliver success, injected stale and duplicate completion variants; assert no publish after cancellation and eventual descriptor close.",
         "Deliver short/error after timeout and assert named store fault and fault exit rather than an unobserved detached exception.",
-        "Refuse an injected thread launch before worker/buffer creation; settle the issued token as error and fence."
+        "Refuse an injected thread launch before worker/buffer creation; settle the issued token as error and fence.",
+        "Cancel a physically held direct read, issue actual SIGTERM, observe the native executor join call with live thread before release; release physical I/O, require actual join return and settlement before clean process exit, then compare exact pre-stop article bytes after a fresh owner opens the store."
       ],
       "expected": [
         "Matching verified success advances the original request with exact article bytes.",
         "Cancellation retains buffer/fd ownership; retirement cannot close the fd while worker still runs.",
         "Late completion never delivers into the replacement request; duplicate/stale has no second publication or settlement.",
         "Late error/short faults the store, with no fabricated article and no uncertain/absent classification.",
-        "Definite launch failure creates no detached worker and releases no ownership twice."
+        "Definite launch failure creates no detached worker and releases no ownership twice.",
+        "A join call marker does not imply an internal SBCL wait or successful join. Missing return/settlement cannot be filled from process liveness or an exit code; faults and pending cleanup remain distinct. Full PageIO model coverage remains unavailable where physical wait/pin/other owner edges are absent."
       ],
       "implementation": {
         "test": "tests.test_native_page_io",
@@ -6321,7 +6341,8 @@
           "PageIOTests.test_matching_success_publishes_and_advances_the_original_request",
           "PageIOTests.test_cancel_retire_and_reuse_keep_the_old_fd_until_actual_completion",
           "PageIOTests.test_a_late_short_or_error_is_settled_and_fences_the_store",
-          "PageIOTests.test_failed_launch_settles_without_worker_or_buffer"
+          "PageIOTests.test_failed_launch_settles_without_worker_or_buffer",
+          "PageIOTests.test_sigterm_held_read_joins_then_reopens_exact_content"
         ],
         "native": true
       },
@@ -6329,7 +6350,7 @@
         "tests/test_native_page_io.py",
         "tests/acl2/page-read-ownership-tests.lisp"
       ],
-      "execution_scope": "Pending matching union image; ownership only, no funded worker/buffer admission claim."
+      "execution_scope": "Native image normal/cancellation/held-SIGTERM selectors prepared; matching current image execution pending. Exact primitive direct inputs and bounded collector prefix are consumed, not full HM proof. Stored literal result uses frozen :job-result TID TOKEN VERDICT distinct from device :io-complete; actual owner condition conversion belongs to Runtime. No funded cold worker/buffer admission claim."
     },
     {
       "id": "SCN-1007",
@@ -8232,11 +8253,13 @@
         "Issue a real direct read on incarnation1/fd9 and assert all admit outputs including issued/holder effects.",
         "Begin physical read, cancel, retire/release its generation; attempt close, descriptor reuse and premature settle.",
         "Return physical success or error, settle once with the same token, close, then reuse fd/CID/worker for incarnation2.",
+        "Also return an issued worker after a pre-read launch failure before the owner classifies its literal :error; assert settlement and close remain refused until that separate result.",
         "Replay the original completion/token and check every reached prefix satisfies the full concurrent invariant."
       ],
       "expected": [
         "Cancellation and logical generation release preserve physical read custody; close and fd reuse are refused until terminal settlement.",
         "A physical return still needs owner settlement; late error remains a fault and duplicate/old receipts preserve the later row/hold.",
+        "An E-held executor or owner publishes a literal :job-result against the same issued token; its current physical identity need not be the worker identity. Physical return and classification may occur in either order; neither alone releases custody.",
         "These finite executable witnesses do not establish the all-schedules theorem or native realization."
       ],
       "implementation": {
@@ -8245,9 +8268,142 @@
       "evidence": [
         "books/host-model-machine.lisp",
         "tests/acl2/host-model-tests.lisp",
-        "planning/evidence/manifests/certify-20261003T062320Z-3305.json"
+        "planning/evidence/manifests/certify-20261003T062320Z-3305.json",
+        "planning/evidence/manifests/certify-20261003T080416Z-85944.json"
       ],
       "execution_scope": "ACL2 actual direct host-called subjects within concurrent reference schedules; native bridge and funded-pool extension remain owed."
+    },
+    {
+      "id": "SCN-1083",
+      "title": "Native mixed posting reading maintenance and exact reopen",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "OBJ-002",
+        "OBJ-005",
+        "STO-002",
+        "HST-002",
+        "NNT-005"
+      ],
+      "steps": [
+        "Initialize two isolated scratch stores on the same image and explicit profile; seed identical articles.",
+        "Release concurrent POST writers and warm, fresh TCP and slow ARTICLE readers alongside live checkpoint and reclaim requests.",
+        "Observe actor progress, every client reply class, latency samples and owner/store resource peaks; retain the complete realized event trace.",
+        "Check every acknowledged source and unique local number, perform quiet maintenance, reopen, and compare exact served bytes and Message-ID to number mappings."
+      ],
+      "expected": [
+        "Accepted, refused, uncertain and fault observations remain separate.",
+        "Every acknowledged article and its local number survives maintenance and reopen unchanged.",
+        "The experiment reports finite observed progress and resource samples without inferring bounds or proof.",
+        "Paired runs share image/profile/seed; replay preserves requests/barriers while actual concurrent interleaving remains recorded."
+      ],
+      "evidence": [
+        "tools/native_mixed_workload.py",
+        "planning/empirical-workloads.md",
+        "tests/test_native_mixed_history.py",
+        "planning/evidence/native-mixed-45e05c7f-2026-10-03/report.md",
+        "planning/evidence/native-mixed-1a946582c-2026-10-03/report.md"
+      ],
+      "execution_scope": "Historical45e paired smoke and current developer image1a946582c baseline finite correctness passed: 48 acknowledged articles retain exact served hashes and local numbers after checkpoint/restart, 36 concurrent reads match and24 concurrent posts accept. Quiet reclaim credit-refused estimate16,680,640, so maintenance coverage incomplete. Current baseline4.198s total/0.314s mixed phase; no matched current perturbation or performance improvement inference. Exact image/tool inputs and sampling errors archived. No deployment, cold filesystem cache, socket-backpressure, later funded/cursor/observer or whole-image qualification claim."
+    },
+    {
+      "id": "SCN-1084",
+      "title": "NEWNEWS sparse candidate progress and retained final output under independent budgets",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-023"
+      ],
+      "steps": [
+        "Run tests/acl2/def-cursor-tests.lisp: one candidate emits more bytes than its output quantum; drain with zero visits and preserve context; suspend with opaque operation/resource custody.",
+        "Run tests/acl2/newnews-metadata-cursor-tests.lisp: unmatched first article advances with empty output, matching final article retains its output after scan completion; compare emitted prefix plus remaining with original response.",
+        "Run actual native NEWNEWS wildcard workload with more candidates than shared cache slots; compare complete Message-ID reply while a second connection remains responsive.",
+        "Run newnews-stream-cursor-tests and actual served-plan-newnews-tests: indexed line wider than byte quantum drains without candidate visits, sparse selection retains final renderer, tiny/large plan outputs equal.",
+        "Run actual configured factory→plan witness with eleven captured configured groups, sparse first article, selector retained through one-call/one-byte quanta, and complete equality to original catalog reply.",
+        "Run tests.test_cursor_cold_poll against actual extracted native cursor/mux bodies: cold attempt returns unchanged plan+issued read, pending yields to timer, repeated miss retains first clock, returned page resumes plan rather than input, refusal adds no body line. This is mocked-I/O source flow, not matching native image custody.",
+        "Retain a wildcard continuation after the first valid equal membership; resume one decoder/DP microstep per controller call, with exact phase demand, zero group/member visits and residual equality. Excluded groups continue to the following selector; an invalid first duplicate never starts the matcher."
+      ],
+      "expected": [
+        "Separate control calls, actual selector entry visits and emitted bytes obey their stated bounds; sparse misses retain selection progress rather than ending the scan.",
+        "Buffered final output keeps the continuation live until drained; no repeated candidate and no omitted terminator.",
+        "Library tests do not establish initialization/working-allocation bounds, custody producer or completed-view capture; native image matching this source remains owed.",
+        "The shared mux loop never awaits a cursor page; response plan/action remain retained. Cache-independent consumption and multi-entry replay progress remain separate open obligations."
+      ],
+      "proofs": [
+        "PRF-1256",
+        "PRF-1257",
+        "PRF-1261"
+      ],
+      "evidence": [
+        "tests/acl2/def-cursor-tests.lisp",
+        "tests/acl2/newnews-metadata-cursor-tests.lisp",
+        "tests/test_native_newnews_wildmat.py",
+        "tests/acl2/served-plan-newnews-tests.lisp",
+        "tests/acl2/newnews-stream-cursor-tests.lisp",
+        "tests/acl2/newnews-candidate-selector-tests.lisp",
+        "tests/test_cursor_cold_poll.py",
+        "tests/cursor_cold_poll_recording.lisp",
+        "planning/evidence/cursor-cold-poll-20261003/checks-final.json",
+        "tests/acl2/newnews-matching-selector-tests.lisp",
+        "tests/acl2/wildmat-cursor-tests.lisp"
+      ]
+    },
+    {
+      "id": "SCN-1085",
+      "title": "Sparse native NEWNEWS with tombstones competing work and reopen",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-008",
+        "STO-002",
+        "STO-017"
+      ],
+      "steps": [
+        "Accept 24 native articles with literal sparse matching memberships across more than eight rows; expire two older matches using actual retention and offline reclaim.",
+        "Check the complete NEWNEWS block while other clients read retained articles, publish nonmatching articles and request live reclamation.",
+        "Restart the scratch node and verify exact discovery results, all retained source content and both tombstones; archive the complete realized client/maintenance trace."
+      ],
+      "expected": [
+        "Every successful complete discovery block contains exactly the intended available matching Message-IDs, with no duplicate, omitted or tombstoned ID.",
+        "Competing clients and the discovery connection make finite observed progress; accepted, refused, uncertain and fault remain separate.",
+        "Retained acknowledged content and tombstones persist across restart; per-command payload-I/O attribution remains unavailable until a real observer exists."
+      ],
+      "evidence": [
+        "tools/native_sparse_newnews.py",
+        "planning/empirical-workloads.md",
+        "planning/evidence/native-sparse-newnews-45e05c7f-2026-10-03/report.md",
+        "planning/evidence/native-sparse-1a946582c-2026-10-03/report.md"
+      ],
+      "execution_scope": "Historical45e and current1a946582c finite whole-scan command correctness passed: ten exact blocks of four remaining matches over24seed rows including two actual tombstones, eight competing ARTICLEs/four POSTs, 26retained articles and two tombstones correct on reopen. Current total4.829s; offline expiry/reclaim accepted2, live reclaim credit-refused estimate8,098,624. Exact image/input/config/resource errors archived; per-command payload-I/O attribution, later bounded cursor qualification and whole-image assurance remain open."
+    },
+    {
+      "id": "SCN-1087",
+      "title": "Committer escape preserves actual syncer outcome and independently settles physical custody",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-046",
+        "HST-033"
+      ],
+      "steps": [
+        "Launch the actual pipeline syncer, then escape its parent observation through a condition or raw throw; exercise done, uncertain and fault results with physical return before or after unwind.",
+        "Observe physical termination and consume the retained actual fn-oqw outcome once; inject a torn normal consumption and forbid retry.",
+        "Run the actual committer starter/loop with a raw ACL2 pipeline throw."
+      ],
+      "expected": [
+        "A live child retains its grant; both receipts remove the grant and uncertainty alone invokes its recovery fence.",
+        "A torn outcome keeps custody visible despite physical termination, and is attempted once.",
+        "The committer actor records fault and stops service; it does not leave active service without a committer."
+      ],
+      "evidence": [
+        "tests/test_native_syncer_pipeline_escape_raw.sh",
+        "tests/native_syncer_pipeline_escape_raw.lisp",
+        "tests/test_native_committer_actor_raw.sh",
+        "tests/native_committer_actor_raw.lisp",
+        "tests/test_native_syncer_typed_raw.sh",
+        "tests/native_syncer_typed_raw.lisp"
+      ],
+      "execution_scope": "Deployed native bodies and actual fn-oqw/actor decisions under SBCL, plus six actual typed-ledger abandonment schedules through validated creator allocation and semantic counterparts in scoped ACL2. I/O/fence are recording boundaries. No new theorem or saved-image/shutdown qualification."
     },
     {
       "id": "SCN-1088",
@@ -8273,6 +8429,32 @@
         "tests/native_await_lifetime_raw.lisp"
       ],
       "execution_scope": "Actual deployed native wait/mailbox/mux-finish bodies with real SBCL threads, mutexes and condition timeout; recording socket/owner cleanup boundaries. Saved-image/runtime qualification remains Integration work."
+    },
+    {
+      "id": "SCN-1086",
+      "title": "Actual reclaim prediction returns intern rows and arena effect only under its no-bad premise",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017"
+      ],
+      "steps": [
+        "Build retained and record rows over a nonempty arena; execute actual prediction and sealing and compare the complete intern result.",
+        "Insert :bad after a valid record; affirm the omitted no-bad premise fails and complete result/effect equality fails."
+      ],
+      "expected": [
+        "The full result agrees on reachable valid rows.",
+        "Partial interning before refusal distinguishes the no-bad omission; an immediate :bad alone is not a counterexample.",
+        "These teeth do not establish native reclamation progress or bounded memory funding."
+      ],
+      "implementation": {
+        "test": "tests/acl2/owner-reclaim-seal-tests.lisp"
+      },
+      "evidence": [
+        "host/owner-host.lisp",
+        "tests/acl2/owner-reclaim-seal-tests.lisp"
+      ],
+      "execution_scope": "Literal ACL2 boundary subjects; host theorem qualified by actual LD, new teeth matching qualification pending."
     },
     {
       "id": "SCN-1089",
@@ -8330,6 +8512,105 @@
       "execution_scope": "Actual native cleanup/section and socket helper bodies, real SBCL exclusion/thread/socket close, recording semantic primitives with raw ACL2 cut. No full output tariff, physical dependency grant or saved-image verdict."
     },
     {
+      "id": "SCN-1093",
+      "title": "Generated archive dispatch reaches every HDR/XHDR literal form and preserves both-route replies",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-038",
+        "NNT-042"
+      ],
+      "proofs": [
+        "PRF-1236"
+      ],
+      "steps": [
+        "Replay the complete protocol-served-tests with actual fn-scr-command and fn-pix-command-pinned source consumers loaded.",
+        "Assert catalog view, state, pin/trie correspondence, freshness and columns for the three-article fixture, then each literal HDR/XHDR form condition including failure of earlier tests.",
+        "Compare generated sessions and expanded effects with the pinned reference for current/number/Message-ID, Xref compatibility, the three HDR fn metadata fields and malformed syntax, with/without configured Xref server.",
+        "Require actual unrestricted and restricted routes to answer each line, and retain existing view/trie hypothesis-removal and selection-mutation cases."
+      ],
+      "expected": [
+        "Every archive keyword declares forms and the generated executable has no hand catalog-dispatch fallback.",
+        "Exact current reply semantics and selection/view effects are preserved under the full boundary; HDR ordinary225 and XHDR ordinary221 are exercised.",
+        "Source teeth do not establish cold suspension, allocation tariffs, completed-view policy, certificates or matching image."
+      ],
+      "evidence": [
+        "tests/acl2/protocol-served-tests.lisp",
+        "books/protocol-served.lisp",
+        "books/protocol-served-table.lisp",
+        "planning/evidence/dc02-switch-20261003/checks.json",
+        "planning/evidence/dc02-switch-20261003/command-repl.log.gz"
+      ]
+    },
+    {
+      "id": "SCN-1094",
+      "title": "Staged checkpoint history image readback retains old checkpoint and publisher snapshot custody",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-011",
+        "STO-026"
+      ],
+      "steps": [
+        "Write a valid FNSI image and five framed runs through the actual stage/install functions; valid bytes install once.",
+        "Corrupt a used page or unwritten zero page after fsync; refuse before rename, retain the old checkpoint and release the private writer snapshot.",
+        "Reject a damaged header; release on raw nonlocal exit and prewrite deferral; successful stage returns snapshot before publication admission can reopen.",
+        "A stop fence after the first image page is observed before the next page; refuse before replacement and return snapshot custody."
+      ],
+      "evidence": [
+        "tests/test_native_checkpoint_image_readback.py",
+        "tests/native_checkpoint_image_readback_raw.lisp",
+        "tests/test_native_state_checkpoint.py"
+      ],
+      "implementation_note": "Actual raw host stage/readback/install, ACL2 header/page codec and kernel files exercised with recorded snapshot storage and framed-run verifier boundaries. Matching saved-image scenario and certification pending; no image/deployment claim."
+    },
+    {
+      "id": "SCN-1096",
+      "title": "Reclaim reserves against synchronized committed history census",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-017",
+        "STO-020"
+      ],
+      "steps": [
+        "Commit a row after the carried byte cache and history columns were last queried; enter reclaim through native trailing-stobj dispatch.",
+        "A budget sufficient only for stale history refuses the actual current estimate, captures no pass and retains unrelated reservations.",
+        "A sufficient budget reserves the current estimate and captures once; missing and out-of-range caches recompute from authoritative state."
+      ],
+      "evidence": [
+        "tests/test_native_reclaim_capture_raw.sh",
+        "tests/native_reclaim_capture_raw.lisp"
+      ],
+      "implementation_note": "Actual host capture/census, history sync/byte-advance, credit-resize and native trailing-stobj dispatch with recorded Store/array/row-byte-cost/capture boundaries. Source fixture; normal loaded host and image followthrough pending."
+    },
+    {
+      "id": "SCN-1090",
+      "title": "A retained trickling pull body permits healthy pull and catch-up progress",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "NNT-018",
+        "NNT-053"
+      ],
+      "steps": [
+        "Configure slow and healthy pull peers plus a healthy catch-up on one native worker.",
+        "Hold an actual slow ARTICLE body incomplete while delivering exact body octets gradually.",
+        "Observe healthy article durable acceptance and catch-up completion before releasing the slow body.",
+        "Release the exact suffix and read back the complete slow body."
+      ],
+      "expected": [
+        "A readiness yield retains protocol state, local connection and unwritten/unconsumed bytes.",
+        "Both families progress while the slow session remains incomplete.",
+        "No slow cursor acceptance precedes durable local completion; released body is byte-exact."
+      ],
+      "evidence": [
+        "tests/test_native_peer_round_driver.py",
+        "tests/test_native_peer_pull.py"
+      ],
+      "execution_scope": "Raw worker/kernel schedule passes with recorded session and journal leaves. Actual saved-image selector tests.test_native_peer_pull.NativePeerPullTests.test_trickling_body_retained_while_other_pull_and_catchup_complete is prepared, not executed."
+    },
+    {
       "id": "SCN-1097",
       "title": "Accepted resource descriptors reach actual mux hold and headroom precedes output pool allocation",
       "milestone": "M5",
@@ -8355,6 +8636,117 @@
         "books/output-reservation.lisp"
       ],
       "execution_scope": "Actual native transport/install/caller bodies with recorded ACL2 funding/method boundaries. Exact new helper and three normal declarations source-admitted in Foundations actual loaded output world; typed producer fixture independent. No configured live activation/full tariff/image claim."
+    },
+    {
+      "id": "SCN-1095",
+      "title": "Actual retire operator source observes deadlines and fresh reports",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "PKT-895"
+      ],
+      "steps": [
+        "Execute actual fnn-operator-execute-retire and fn-nret-observation-step with deterministic monotonic ticks and live/held owner observations.",
+        "Exercise exact expiry, drain plus allowance, offline refusal, fresh/stale reports and unknown liveness.",
+        "Execute the prior host source under the same owner fixture with a bounded test timeout."
+      ],
+      "expected": [
+        "Persistent live/held observations expire as uncertainty at60s for zero drain and70s for10s; expiry does not inspect a report, only a stopped owner with a changed report succeeds.",
+        "No second retirement request, owner kill, custody waiver or report success occurs on observation expiry.",
+        "Prior source fails by remaining indefinitely live under its unbounded sleep loop."
+      ],
+      "implementation": {
+        "test": "tests/test_native_retire_observation_source.py"
+      },
+      "evidence": [
+        "tests/native_retire_observation_source.lisp",
+        "tests/acl2/native-retire-observation-tests.lisp",
+        "planning/evidence/operator-retire-observation-2026-10-03-v2.json"
+      ],
+      "execution_scope": "SBCL actual source with explicit clock/scheduling/owner/stat observations; no saved-image or physical durability qualification."
+    },
+    {
+      "id": "SCN-1099",
+      "title": "Stalled HTTP input, handshake and POST completion yield to healthy readers; cancelled semantic operations retain custody",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "WEB-006"
+      ],
+      "steps": [
+        "Hold a plain partial request or a TLS connection without its handshake, then GET health/signin and redeem an invitation on healthy connections.",
+        "Hold a POST barrier; fetch HTTP health while POST is pending, then release and read its accepted answer.",
+        "Drive actual raw continuation consumer through partial writes, cold render/poll, same-session competing requests, cancelled semantic worker activation and late completion."
+      ],
+      "expected": [
+        "Healthy HTTP requests finish before the stalled socket deadline; exactly one configured bounded actor family, never one thread per client.",
+        "A pending POST emits no early outcome, health remains responsive and its acceptance follows the barrier.",
+        "Exact output bytes survive partial writes/windows; same-session semantic flows cannot share one await slot; cancellation closes transport immediately but releases operation custody only after no-future-worker-publication, and cleanup is once-only."
+      ],
+      "evidence": [
+        "tests/test_native_web.py",
+        "tests/test_native_host_lifecycle.py",
+        "tests/native_web_reactor_raw.lisp",
+        "planning/evidence/web-continuations-2026-10-03.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_web",
+        "cases": [
+          "NativeWebFaceTests.test_stalled_socket_does_not_block_health_reader_or_account_post",
+          "NativeWebFaceTlsTests.test_stalled_socket_does_not_block_health_reader_or_account_post"
+        ],
+        "native": true
+      },
+      "note": "Raw fixture passed on lane source; native-image scenario pending. No runtime/qualification claim transferred from an earlier image."
+    },
+    {
+      "id": "SCN-1101",
+      "title": "Private history relocation yields by page without changing its completed concrete",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-017",
+        "STO-026"
+      ],
+      "steps": [
+        "Move a nonzero two-page region to four new pages; complete through explicit grow and page ticks and compare all six concrete arrays to existing relocation.",
+        "Check each ordinary tick changes at most 2048 words, successful yields strictly reduce rank, and replacement placement is unavailable before done.",
+        "Cold table and page waits preserve the cursor and every concrete array; verified cache completion retries that exact cursor.",
+        "Insufficient capacity and inconsistent image sizes refuse before mutation."
+      ],
+      "evidence": [
+        "books/history-pages-relocate-step.lisp",
+        "tests/acl2/history-pages-relocate-step-tests.lisp"
+      ],
+      "implementation_note": "Concrete ACL2 stobj schedules. Private snapshot consumer integration and matching certificate follow separately; flat-array growth and event encoding are not bounded by this page-step result."
+    },
+    {
+      "id": "SCN-1103",
+      "title": "Catalog replacement or failed binding cannot reuse a paired view allocation key",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-002"
+      ],
+      "steps": [
+        "Capture the initial catalog root token, reserve and bind a replacement with identical logical history version.",
+        "Inject failure after reservation and before pointer publication, then reserve the next attempted replacement.",
+        "Check old paired-view keys miss; corrupt counter refuses without reset; natural counters beyond fixed-width codecs advance."
+      ],
+      "expected": [
+        "Allocation identity is independent of the logical view/version.",
+        "A spent failed reservation is never reused; a malformed counter never silently resets.",
+        "Pure examples alone do not establish native installation/capture correspondence."
+      ],
+      "implementation": {
+        "test": "tests/acl2/catalog-root-incarnation-tests.lisp"
+      },
+      "evidence": [
+        "books/catalog-root-incarnation.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp"
+      ],
+      "execution_scope": "Source connected, verification and actual native fault/capture scenario pending."
     },
     {
       "id": "SCN-1102",
@@ -8383,6 +8775,119 @@
         "tests/native_response_identity_raw.lisp"
       ],
       "execution_scope": "Actual pure producer, native helpers and queue-plan with recording owner admission and factory boundaries. Source guards/theorems and 12 ACL2 assertions admitted; no matching certificate/image/full output lifetime gate claim."
+    },
+    {
+      "id": "SCN-1092",
+      "title": "Sparse carried availability agrees across GROUP, LISTGROUP and navigation after reclaim",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-042"
+      ],
+      "steps": [
+        "Build ordinary classified rows and reclaimed tombstone rows through the actual catalog writer/recovery loader.",
+        "Select sparse survivors 1 and 34, prefix survivors 33 and 34, tail survivor 1, and an empty available group; cancel an already unavailable row.",
+        "Compare GROUP tuple, LISTGROUP numbers, NEXT/LAST cursor effects and failed-navigation state; verify retained numeric/Message-ID lookup and no number reuse across reopen."
+      ],
+      "expected": [
+        "Sparse answer is count2, low1, high34; allocated next35 remains independent. Empty GROUP tuple is 0,35,34.",
+        "Unavailable numeric positions are skipped by enumeration/navigation; raw reclaimed retrieval retains diagnostics and duplicate identity.",
+        "Cancel after reclaim does not decrement twice; failed selection/navigation preserves cursor and pin."
+      ],
+      "implementation": {
+        "test": "tests/acl2/catalog-available-readers-tests.lisp"
+      },
+      "evidence": [
+        "tests/acl2/catalog-availability-tests.lisp",
+        "tests/acl2/catalog-available-readers-tests.lisp",
+        "tests/acl2/catalog-availability-owner-load-tests.lisp",
+        "tests/acl2/catalog-availability-paged-tests.lisp"
+      ],
+      "execution_scope": "First actual foundation writer classification fixtures pass in warm REPL; generated complete command antecedents/conclusions, recovery loader, paged attachment and native reclaim/reopen remain pending. Tombstone-shaped byte fixture is classification evidence, not execution of a native reclaim pass. Actual generic catalog available summary/range/navigation complete tuple cases now pass with guard-verified exports, including empty (0,35,34) and preserved raw#2 lookup. Protocol/session effect teeth and native reclaim remain pending. Actual recovery loader with legacy missing NOV now passes the same sparse/prefix/tail/empty/cancel tuples from sealed arena payloads; invalid-handle classification remains unavailable. This is live-stobj execution in a warm source world, not native reclaim qualification. Changed paged representation now admits in full; direct live paged-export sparse/prefix/tail/empty/cancel fixtures pass, with raw lookup retained and link absence for unavailable number2. Generic attachment/native image execution remains distinct and pending."
+    },
+    {
+      "id": "SCN-1098",
+      "title": "Operator diagnostic source preserves faults, uncertainty and named refusals",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-008",
+        "HST-009"
+      ],
+      "steps": [
+        "Execute actual heap operator/store-profile/outer command bodies and actual ACL2 failure classifier with plan/config/profile/init/resource faults, generic/unlisted conditions and uncertainty.",
+        "Exercise initial-group :bad refusal versus malformed core result, valid octets and matching/mismatched frame widths.",
+        "Run the same fixture with prior actual heap source and prior actual IO source independently."
+      ],
+      "expected": [
+        "Only recognized refusal may use the no-store heap fallback. Fault and uncertain paths emit no accepting heap line; unknown subclasses remain faults.",
+        "Initial :bad is refusal1; malformed results and frame disagreements are fault4. Positive profile/resources/octet results survive unchanged.",
+        "Both prior-source runs fail their expected fault-code assertion; no loader failures count as regressions."
+      ],
+      "implementation": {
+        "test": "tests/test_native_operator_diagnostics_source.py"
+      },
+      "evidence": [
+        "tests/native_operator_diagnostics_source.lisp",
+        "planning/evidence/operator-diagnostics-classification-2026-10-03.json"
+      ],
+      "execution_scope": "Actual source plus deliberate model/I/O observations, with actual closed ACL2 condition classifier. Saved-image matching consumer qualification remains Integration work."
+    },
+    {
+      "id": "SCN-1100",
+      "title": "Actual resumable init refuses mismatched original intent before publication",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-10005"
+      ],
+      "steps": [
+        "Execute actual fnn-initialize-resume-check, fnn-initialize and fnn-command-init bodies with the actual ACL2 resume decision and deliberate config/history observations.",
+        "Exercise profile/group mismatch, same sealed profile despite live overlay/new stamp, interrupted-before-gen1, corrupt/wrong/missing gen1, fresh init and malformed decision.",
+        "Execute prior actual init body under the same fixture; prepare matching developer-image profile/group refusal, compatible resume and corrupt evidence cases."
+      ],
+      "expected": [
+        "Profile/group mismatch exits refusal1 with no resume effects; corrupt or missing required generation-one evidence and malformed core decision fault4 without publication.",
+        "Matching initial intent resumes; a not-yet-published gen1 with empty history may publish initial groups. Fresh init still completes.",
+        "Prior source fails expected refusal assertion because incompatible profile incorrectly returns success0."
+      ],
+      "implementation": {
+        "test": "tests/test_native_init_resume_source.py"
+      },
+      "evidence": [
+        "tests/native_init_resume_source.lisp",
+        "tests/acl2/native-init-resume-tests.lisp",
+        "tests/test_native_init_resume.py",
+        "planning/evidence/operator-init-resume-2026-10-03-v2.json"
+      ],
+      "execution_scope": "Actual-source SBCL and warm ACL2 literal exact-codec witnesses. Four saved-image cases are prepared but not executed; no physical durability qualification."
+    },
+    {
+      "id": "SCN-1105",
+      "title": "Count and stream an escaped web page from retained segments without a complete HTML output buffer",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "WEB-006"
+      ],
+      "steps": [
+        "Construct mixed markup/text/URL/span/dot-stuffed/encoded-header segments over a retained input, including a header beyond the decoder quantum.",
+        "Count and emit the same plan using fuel 1, 2, 7 and 4096; compare all emitted octets and count with fn-wr-seq.",
+        "Run actual fnn-web-page-step and write-ready through 137-byte partial writes; retain zero-length HTML OUT throughout.",
+        "Count HEAD without emitting its body; cancel a queued page job before the worker activation and observe its terminal cleanup receipt."
+      ],
+      "expected": [
+        "Every partition gives exactly the reference page and counted Content-Length; count mode returns no output list.",
+        "Each emitted window is at most its fuel; the long decoded-header fallback is exact.",
+        "Native output is exactly the response head followed by reference bytes while no complete HTML output is materialized.",
+        "HEAD reports the same length with no body; cancellation retains input/plan through worker return and publishes no late page."
+      ],
+      "evidence": [
+        "tests/native_web_page_cursor_raw.lisp",
+        "tests/test_native_web_page_cursor_raw.sh",
+        "planning/evidence/web-page-cursor-2026-10-03.md"
+      ],
+      "note": "Actual source/raw witness only; program-mode cursor guard/refinement and matching image remain open (PRF-1277)."
     },
     {
       "id": "SCN-1107",
@@ -8417,32 +8922,114 @@
       "execution_scope": "Actual native capture/factory/lease/receipt functions with recording typed method boundaries and actual held SBCL children. Typed output/bank correspondence has separate producer evidence. Optional policy stays unsupported; no complete allocation tariff or matching image claim."
     },
     {
-      "id": "SCN-1103",
-      "title": "Catalog replacement or failed binding cannot reuse a paired view allocation key",
+      "id": "SCN-1104",
+      "title": "Actual decision journal replay reads a captured prefix in bounded windows and closes on all paths",
       "milestone": "M5",
       "status": "specified",
       "requirements": [
-        "HST-002"
+        "HST-028"
       ],
       "steps": [
-        "Capture the initial catalog root token, reserve and bind a replacement with identical logical history version.",
-        "Inject failure after reservation and before pointer publication, then reserve the next attempted replacement.",
-        "Check old paired-view keys miss; corrupt counter refuses without reset; natural counters beyond fixed-width codecs advance."
+        "Execute actual fnn-command-store-journal and actual stream fold with deterministic descriptor observations and reference replay start/note operations.",
+        "Observe a2.24MB journal, append beyond captured size, partial reads, absent/nonregular replacement, fstat/read/core failures and premature EOF.",
+        "Execute actual prior host body against a real2.24MB scratch journal and reject whole-file ACL2 input. Prepare matching-image large/absent/symlink/FIFO tests."
       ],
       "expected": [
-        "Allocation identity is independent of the logical view/version.",
-        "A spent failed reservation is never reused; a malformed counter never silently resets.",
-        "Pure examples alone do not establish native installation/capture correspondence."
+        "New consumer uses35input windows, each at most65536octets, reports all160000complete entries and segments, excludes later append and retains first replay gap.",
+        "Every opened descriptor closes; pre-report faults and shortened-prefix refusal emit no report. Nofollow/NONBLOCK opening and fstat regular check protect the actual descriptor.",
+        "Prior source fails its window assertion with2240000octets; no loader failure counts as the negative."
       ],
       "implementation": {
-        "test": "tests/acl2/catalog-root-incarnation-tests.lisp"
+        "test": "tests/test_native_journal_stream_source.py"
       },
       "evidence": [
-        "books/catalog-root-incarnation.lisp",
-        "host/owner-host.lisp",
+        "tests/native_journal_stream_source.lisp",
+        "tests/acl2/owner-time-journal-stream-tests.lisp",
+        "tests/test_native_journal_stream.py",
+        "planning/evidence/operator-journal-stream-2026-10-03-v2.json"
+      ],
+      "execution_scope": "Actual host/fold source with explicit physical/model-operation seams, and separate finite full-model ACL2 equivalence tests. Matching image is prepared but not executed; no universal refinement or heap/durability qualification."
+    },
+    {
+      "id": "SCN-1106",
+      "title": "A pending TLS push link permits a later healthy peer to receive exact article bytes",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-005",
+        "REP-002",
+        "STO-004"
+      ],
+      "steps": [
+        "Configure one implicit TLS peer, post an article, and capture its actual TCP connection while withholding the TLS response.",
+        "Add a healthy streaming peer after that capture, post another article, and observe its complete bytes before the original TLS deadline.",
+        "Compare the healthy bytes with the actual locally served article while the slow peer response remains withheld."
+      ],
+      "expected": [
+        "Pending TLS state is retained while the sole feed worker serves another peer.",
+        "Journal-authorized healthy output is exact and the owner remains live.",
+        "No TLS handshake success or durable peer acceptance is inferred for the silent peer."
+      ],
+      "evidence": [
+        "tests/test_native_feed_fair_round.py",
+        "tests/test_native_peering.py"
+      ],
+      "execution_scope": "Five raw actual-adapter/kernel/recorded-owner schedules pass. Selector tests.test_native_peering.NativePeeringTests.test_pending_tls_feed_does_not_starve_new_healthy_peer is prepared, not executed; matching image, funding tariff and full scheduling-cost proof remain owed."
+    },
+    {
+      "id": "SCN-1108",
+      "title": "Captured read/post reply planning uses fixed semantic worker without owner lock or live-table mutation",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "WEB-006"
+      ],
+      "steps": [
+        "Reach authenticated GROUP/OVER flow through existing web request tests, compare actual live-table and private-reply action/output with the same immutable input.",
+        "Remove private-reply eligibility using a reached parsed authenticated BEGIN; check exact predicate failure, changed table and unequal action/output.",
+        "Run native core classifier and queued private-reply job with owner admission forbidden in recording adapter."
+      ],
+      "expected": [
+        "Private action/output equals table step and table is preserved under exact eligibility.",
+        "BEGIN/auth/gone/expiry are ineligible; no table-free stateful transition.",
+        "Actual fixed worker completes private reply while no owner section runs."
+      ],
+      "evidence": [
+        "tests/acl2/web-private-reply-tests.lisp",
+        "tests/native_web_page_cursor_raw.lisp",
+        "planning/evidence/web-private-source-2026-10-03.md"
+      ],
+      "note": "Exact ACL2 source equivalences and reached positive/predicate-removal witnesses pass at49dc6fa5e; raw fixed-worker scheduling/classifier adapter passes. Certification and actual composed native/browser execution remain pending. Full preparation/working allocation remains unpriced; no complete fairness claim."
+    },
+    {
+      "id": "SCN-1109",
+      "title": "Direct immutable line windows use the actual private output buffer",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-047"
+      ],
+      "steps": [
+        "Invoke actual fnn-owner-render-next over immutable render continuations with a private response grant.",
+        "Drain empty, dot-stuffed, ordinary and4097-character lines at quanta1,2,7,256.",
+        "Drain complete configured NEWNEWS at tiny and large quantum, preserving following candidate and terminator.",
+        "Reuse same-capacity buffer1024times, grow it, render a shorter valid prefix, and repeat without a grant."
+      ],
+      "expected": [
+        "Every eligible step emits positive output no larger than its quantum and exact complete bytes equal the existing line residual.",
+        "Complete NEWNEWS equals its original logical reply across quantum partitions.",
+        "Equal-capacity windows retain identical private buffer/vector; short output has no trailing capacity bytes; no-grant callers retain independent vectors."
+      ],
+      "implementation": {
+        "test": "tests/test_native_newnews_allocation_raw.sh"
+      },
+      "evidence": [
+        "tests/native_newnews_allocation_raw.lisp",
+        "books/string-line-fill.lisp",
+        "books/served-plan-line-buffer.lisp",
         "host/native/owner.lisp"
       ],
-      "execution_scope": "Source connected, verification and actual native fault/capture scenario pending."
+      "execution_scope": "Actual normal counterparts/private stobj on explicitly frozen dependency sources with source-loaded new renderer; no generic model, matching certificate/image or whole-response heap bound claim."
     },
     {
       "id": "SCN-1111",
@@ -8477,6 +9064,151 @@
       "execution_scope": "Actual native begin/prefix/span/cleanup handoff, actual ACL2 unpriced program producer and admission definitions. Wire preview/typed projection are recording boundaries; positive complete tariff is injected only for prefix refutation and is unreachable with current unpriced producer. No supported profile, whole native driver realization, full physical tariff or matching image claim."
     },
     {
+      "id": "SCN-1110",
+      "title": "A retained BP peer cannot monopolize listener, forwarding, receipt and expiry turns",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-006"
+      ],
+      "steps": [
+        "Install independent BP incoming/outgoing counts and resident profile; start one persistent node.",
+        "Keep one admitted TCPCL session alive while a second peer sends a canonical NNTP-produced BP source.",
+        "Observe durable kind-5 ACK then exactly one application delivery before the first session closes, with forwarding/receipt/expiry turns advancing.",
+        "Interrupt a fragmented outbound operation between affirmative physical socket close and next socket construction, preserving its original grant token; reopen durable custody."
+      ],
+      "expected": [
+        "Each loop admits at most one funded listener attempt, runs one retained slot and one ACL2-selected service class; a waiting peer keeps its own context.",
+        "Neither timeout nor uncertain close settles a grant; source borrowing and unfinished operation custody prevent logical return.",
+        "Application commitment and returned receipt remain distinct from TCPCL ACK; restart does not duplicate delivery."
+      ],
+      "evidence": [
+        "tests/native_bp_session_bank_raw.lisp",
+        "tests/native_tcpcl_retained_turn_raw.lisp",
+        "host/native/bp-session.lisp",
+        "host/native/bp-node.lisp",
+        "tests/test_bp_node_native.py",
+        "tests/acl2/bp-session-generations-tests.lisp",
+        "tests/native_tcpcl_frame_cursor_raw.lisp",
+        "tests/native_bp_received_source_raw.lisp",
+        "tests/acl2/tcpcl-frame-cursor-tests.lisp",
+        "tests/acl2/bp-session-received-source-tests.lisp"
+      ],
+      "note": "Actual source raw scheduler/custody discrimination passes; canonical two-peer DTN image scenario and comprehensive physical-cut/restart qualification pending. Native selector now prepared using actual image tcpcl send with no payload/EXPECT1, canonical same-source producer and receiver Store reopen; execution pending matching image. S068 now prepares actual concrete input framing and private received operation under incoming grant; whole-frame decode remains open. Source-loaded actual ACL2/native process is the integration target, saved image is optional; raw predicates/consumer pass do not imply that result.",
+      "implementation": {
+        "test": "tests.test_bp_node_native",
+        "cases": [
+          "NativeBpNodeTests.test_keepalive_peer_does_not_block_second_canonical_request"
+        ],
+        "native": true
+      }
+    },
+    {
+      "id": "SCN-1113",
+      "title": "ARTICLE scan/replay/count/emit keeps bounded input and the final response pin through cold replay and partial HTTP drain",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "WEB-006"
+      ],
+      "steps": [
+        "Scan actual GROUP+ARTICLE octets with partitions 1/2/7/4096; compare selected field/body spans and ownership with fn-wss-article-view.",
+        "Count and emit the virtual segment plan through source-window requests and compare exact HTML to fn-wr-seq.",
+        "Run actual native scanner/replay/page/writer bodies with a persistent render-plan adapter, a cold replay and137-byte partial writes.",
+        "Resolve shared ARTICLE preflight on the fixed worker before storing the immutable replay plan; force yield/cold then READY.",
+        "Compose actual shared fn-asto-plan-render-window with native Web provider on5,000 dot-leading lines; force cold replay and137-byte socket writes."
+      ],
+      "expected": [
+        "Exact reference HTML, including escaped text, RFC2047 subject, dot unstuffing and percent-encoded Message-ID.",
+        "IN logical length remains at most4096; HTML OUT remains empty; monotone replay resumes rather than rescanning for every octet.",
+        "Final response pin is never released before HTTP drain and releases once after terminal cleanup; cold replay resumes the retained plan.",
+        "No raw scan continuation enters captured plans; cold retains exact original scan, and only READY publishes one immutable replay capture.",
+        "Every shared producer window and native IN length stays<=4096; exact reference HTML/count and final pin receipt survive repeated immutable cursor traversals."
+      ],
+      "evidence": [
+        "tests/native_web_article_stream_raw.lisp",
+        "planning/evidence/web-stream-consumers-2026-10-03.md",
+        "tests/native_web_reactor_raw.lisp",
+        "tests/native_web_article_producer_raw.lisp"
+      ],
+      "note": "Raw actual-source consumer passes. PRF-1283 guard/refinement, matching native image and Web allocation/repeated-read tariff remain pending. Actual shared ARTICLE byte-window/native Web composition passes with recording arena/owner/cold/I/O seams; old work-only producer returns5408 bytes for W4096 and fails the same assertion. This is not composed browser execution."
+    },
+    {
+      "id": "SCN-1114",
+      "title": "Shared native OVER replay gives exact newest-first HTML with bounded row metadata and source windows",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "WEB-006"
+      ],
+      "steps": [
+        "Scan100-row OVER with1/2/7/4096 source partitions and a10003-byte subject.",
+        "Compare virtual page to existing full-buffer fn-wss-over-rows/fn-wr-group-main/fn-wr-seq.",
+        "Run actual generic native scan/replay/count/cold/partial-writer consumer; force101st row in invalid generated input."
+      ],
+      "expected": [
+        "Exact newest-first overview and older-post link; long subject remains a span rather than copied text.",
+        "IN<=4096, OUT empty, final response pin retained through drain.",
+        "Row101 fails the source invariant; metadata stays at100 and no successful truncation is returned."
+      ],
+      "evidence": [
+        "tests/native_web_over_stream_raw.lisp",
+        "planning/evidence/web-stream-consumers-2026-10-03.md"
+      ],
+      "note": "Actual raw consumer passes; program refinement, qualified image and Web repeated-read tariff pending."
+    },
+    {
+      "id": "SCN-1115",
+      "title": "Dynamic LIST source cursor produces exact empty one and1003-group HTML with fixed Web metadata",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "WEB-006"
+      ],
+      "steps": [
+        "Scan captured LIST with1/7/4096 source partitions for0/1/1003 groups.",
+        "Count/emit dynamic row segments and compare exact HTML with fn-wss-active-rows/fn-wr-groups-main/fn-wr-seq.",
+        "Run actual native shared scanner/replay/page/partial-writer consumer, including cold replay for nonempty pages."
+      ],
+      "expected": [
+        "Exact group counts, names, URLs, readonly markers and empty-table page.",
+        "Scanner stays nine scalar/prefix entries and initial page segment spine remains fixed; no retained group-row list.",
+        "IN<=4096, HTML OUT empty, response pin survives count/replay/write and releases only after terminal drain."
+      ],
+      "evidence": [
+        "tests/native_web_list_stream_raw.lisp",
+        "planning/evidence/web-stream-consumers-2026-10-03.md"
+      ],
+      "note": "Actual raw source consumer passes. Original NNTP LIST producer still materializes its captured reply; source programs/arithmetic profile/refinement and matching image/funding are pending."
+    },
+    {
+      "id": "SCN-1117",
+      "title": "Available command formatting and metadata navigation agree with the captured byte view",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-042"
+      ],
+      "proofs": [
+        "PRF-1287"
+      ],
+      "steps": [
+        "Seal all34 fixture payloads through actual fn-cat-intern-list, commit through generic fn-cat-commit, then capture the raw archive from visible held records.",
+        "Choose sparse survivors1/34 and empty availability, assert raw and available statep plus exact stored facts/arena bytes correspondence.",
+        "Compare complete GROUP, LISTGROUP, NEXT, LAST, LIST ACTIVE and LIST COUNTS helper results with the captured logical available archive; verify raw number2 and Message-ID remain retained."
+      ],
+      "expected": [
+        "Sparse metadata navigation moves1→34 and34→1 while enumerating only1/34; complete responses equal the bytes reference.",
+        "Empty availability preserves NEXT/LAST cursor on421/422 and produces empty GROUP0,35,34; retained identity lookup remains.",
+        "Fixture is source live-stobj command-helper acceptance, not production owner/capture proof or native reclaim qualification. LIST still has a whole-reply producer frontier."
+      ],
+      "evidence": [
+        "tests/acl2/served-available-commands-tests.lisp"
+      ],
+      "execution_scope": "Actual arena-intern and generic catalog writer with guarded specialized formatter/navigation exports; source fixtures pass. Generated dispatcher and owner route propagation/proof/image remain pending.",
+      "notes": " Actual owner PROGRAM source route consumes the selective dispatcher through fn-av-mca-read-span; full owner/native fixture and selective refinement remain pending."
+    },
+    {
       "id": "SCN-1118",
       "title": "Compressed arena scalar dispatch never uses whole decode under window mode",
       "milestone": "M5",
@@ -8508,6 +9240,109 @@
         "host/native/extent-decoded.lisp"
       ],
       "execution_scope": "Actual source branches/dispatch; full decoder, physical returned-worker borrow and arena storage field are recording boundaries. No complete decoded allocator/controller/issuer activation, profile, certificate or image claim."
+    },
+    {
+      "id": "SCN-1120",
+      "title": "Operation readout reports actual retained admission without scanning Store",
+      "requirements": [
+        "HST-008"
+      ],
+      "setup": "Actual scalar functions, writer gate, operator command selector and live-status host answer bodies; fixture STATE and framing/digest adapters.",
+      "steps": [
+        "Query a live retained article admission, then fence its writer.",
+        "Read next page after clearing owner admission, then start a fresh query.",
+        "Query absent/malformed admission and a scalar larger than the response budget.",
+        "Select operation CLI action and its report kind."
+      ],
+      "expected": [
+        "Report binds actual nonce, kind, phase, epoch, txid and held charges, with no borrowed graph or invented allocation total.",
+        "Fenced writer reports recovery-required; cached page retains captured text, fresh query reports absence.",
+        "Oversized scalar refuses whole report; unavailable state is explicit.",
+        "Actual operation route bypasses general Store-report walker."
+      ],
+      "implementation": {
+        "test": "tests/test_owner_operation_report.py"
+      },
+      "evidence": [
+        "tests/fixtures/owner_operation_report.lisp"
+      ],
+      "execution_scope": "Ordinary Lisp selected literal source; STATE map and framing/digest are explicit fixture adapters, not full native process or proof evidence."
+    },
+    {
+      "id": "SCN-1119",
+      "title": "Captured private POST/remove begin runs its gate on the fixed worker outside O",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "WEB-006"
+      ],
+      "steps": [
+        "Compare reached valid POST, bad-CSRF and remove BEGIN against prior live-table gate/action/output after the same session touch.",
+        "Run actual core classifier/private wrapper and native action/worker dispatch with a held gate adapter; forbid owner admission on worker thread.",
+        "While private gate is held, perform an actual healthy network actor owner event; remove the predicate on a reached old send action."
+      ],
+      "expected": [
+        "Same action/output and touched session table; CSRF/refusal semantics preserved.",
+        "Heavy gate/body preparation is outside O, and healthy owner event progresses during the held private gate.",
+        "Only actual POST/remove table rows are eligible; failed predicate witnesses fail the claimed gate equality."
+      ],
+      "evidence": [
+        "tests/acl2/web-private-begin-tests.lisp",
+        "tests/native_web_private_begin_raw.lisp",
+        "planning/evidence/web-private-source-2026-10-03.md"
+      ],
+      "note": "Exact ACL2 source equivalences and reached positive/predicate-removal witnesses pass at49dc6fa5e; raw fixed-worker scheduling/classifier adapter passes. Certification and actual composed native/browser execution remain pending. Full preparation/working allocation remains unpriced; no complete fairness claim."
+    },
+    {
+      "id": "SCN-1116",
+      "title": "Shared ARTICLE section preflight and immutable READY replay",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "REP-012"
+      ],
+      "steps": [
+        "Capture one parsed retrieval and immutable selected payload; preserve unread pipelined suffix.",
+        "Scan full framing in bounded quanta before selected-session commit.",
+        "Replay READY at differing quanta, comparing ARTICLE/HEAD/BODY plus synthetic Xref with original reference.",
+        "Exercise actual owner native helper with cold/yield and Web two-pass traversal."
+      ],
+      "expected": [
+        "Malformed framing returns503 without selected cursor movement.",
+        "HEAD retains final header CRLF, BODY excludes separator, initial line and dot terminator occur exactly once.",
+        "READY replay repeats no selected-session/authority commit.",
+        "Cold retains exact RAW/READY continuation and response custody."
+      ],
+      "implementation": {
+        "test": "tests/native_article_stream_source.lisp"
+      },
+      "evidence": [
+        "tests/native_article_stream_source.lisp"
+      ],
+      "execution_scope": "Actual shared core function bodies over the list arena model pass5128 finite checks. Owner/native cold and Web consumer execution remain pending; not physical-window or universal refinement evidence."
+    },
+    {
+      "id": "SCN-1121",
+      "title": "Trusted live developer REPL preserves its world and bounds output",
+      "requirements": [
+        "HST-008"
+      ],
+      "setup": "Actual developer socket evaluator, peer credentials, selector and trace module; named owner mutex and transport adapters.",
+      "steps": [
+        "Connect to private socket; evaluate values and retain a definition across connections.",
+        "Reject reader evaluation and multiple top-level forms; capture oversized output.",
+        "Enable process allocation trace, execute another form, and read trace rows.",
+        "Deny unauthorized peer and stop/join/close the owner attachment."
+      ],
+      "expected": [
+        "0600 socket and developer-only selector; same-world values survive.",
+        "Explicit errors and truncation; trace scope is process, never retained heap.",
+        "Unauthorized connections do not evaluate; owned socket is removed after shutdown."
+      ],
+      "implementation": {
+        "test": "tests/test_dev_repl.py"
+      },
+      "execution_scope": "Socket/source fixture only: actual full native owner composition and ACL2 LD admission pending."
     }
   ]
 }

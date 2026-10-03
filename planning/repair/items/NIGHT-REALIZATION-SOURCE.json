@@ -1,0 +1,108 @@
+{
+ "budget": 800,
+ "category": "checker-correctness",
+ "expect-failure": "tests.test_lock_discipline_check.Realization.test_model_literal_cannot_be_replaced_by_old_json_seed",
+ "failure-message": "False is not true : realization must check the model literal instead of its JSON seed",
+ "file": "tools/lock_discipline_check.py",
+ "harness": "tests/test_lock_discipline_check.py",
+ "id": "NIGHT-REALIZATION-SOURCE",
+ "notes": [
+  "10-03 02:36 claimed: scope=['tools/lock_discipline_check.py', 'tests/test_lock_discipline_check.py', 'planning/host-realization.json', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_lock_discipline_check.Realization.test_model_literal_cannot_be_replaced_by_old_json_seed"
+ ],
+ "owner": "codex-sol-tools",
+ "scope": [
+  "tools/lock_discipline_check.py",
+  "tests/test_lock_discipline_check.py",
+  "planning/host-realization.json",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
+ "severity": "medium",
+ "source": "host-model-convergence",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_lock_discipline_check.Realization.test_model_literal_cannot_be_replaced_by_old_json_seed",
+ "title": "Realization coverage uses an obsolete JSON seed instead of the actual model literal",
+ "updated": "2026-10-03T06:36:21Z",
+ "verify": {
+  "base": "d5c7ba1550f467202f9963912ac69d6f758248c5",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "False is not true : realization must check the model literal instead of its JSON seed",
+      "test": "tests.test_lock_discipline_check.Realization.test_model_literal_cannot_be_replaced_by_old_json_seed",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_lock_discipline_check.Realization.test_model_literal_cannot_be_replaced_by_old_json_seed"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_lock_discipline_check.py": "d2660a193d159b3fdcd6f7f1535b04c67dffca8abc14808de4b0f116a52579b5"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "d5c7ba1550f467202f9963912ac69d6f758248c5",
+   "stderr": "test_model_literal_cannot_be_replaced_by_old_json_seed (tests.test_lock_discipline_check.Realization.test_model_literal_cannot_be_replaced_by_old_json_seed) ... FAIL\n\n======================================================================\nFAIL: test_model_literal_cannot_be_replaced_by_old_json_seed (tests.test_lock_discipline_check.Realization.test_model_literal_cannot_be_replaced_by_old_json_seed)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-xt6dtc_d/wt/tests/test_lock_discipline_check.py\", line 366, in test_model_literal_cannot_be_replaced_by_old_json_seed\n    self.assertTrue(self.realize(self.CLOSE, self.ROW, seed=seed) == [],\n    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                    \"realization must check the model literal instead of its JSON seed\")\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: False is not true : realization must check the model literal instead of its JSON seed\n\n----------------------------------------------------------------------\nRan 1 test in 0.004s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "planning/host-realization.json",
+   "planning/repair/items/NIGHT-REALIZATION-SOURCE.json",
+   "tests/test_lock_discipline_check.py",
+   "tools/lock_discipline_check.py"
+  ],
+  "diff_lines": 684,
+  "evidence": {
+   "bytes": 4160,
+   "path": "planning/evidence/repair/NIGHT-REALIZATION-SOURCE-cbc4eca6252a453ea07a8a65e2533e20.json",
+   "sha256": "7c3f25a5d0b9f8c5b64f42dc6ac83d43ce07aed34e0e5e9aa908829f7f08708f"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "False is not true : realization must check the model literal instead of its JSON seed",
+   "test": "tests.test_lock_discipline_check.Realization.test_model_literal_cannot_be_replaced_by_old_json_seed"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/test_lock_discipline_check.py": "d2660a193d159b3fdcd6f7f1535b04c67dffca8abc14808de4b0f116a52579b5"
+  },
+  "head": "85ef7725d7723ea66e59e3a4559602af77e2023d",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_lock_discipline_check.Realization.test_model_literal_cannot_be_replaced_by_old_json_seed"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_lock_discipline_check.py": "d2660a193d159b3fdcd6f7f1535b04c67dffca8abc14808de4b0f116a52579b5"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "85ef7725d7723ea66e59e3a4559602af77e2023d",
+   "stderr": "test_model_literal_cannot_be_replaced_by_old_json_seed (tests.test_lock_discipline_check.Realization.test_model_literal_cannot_be_replaced_by_old_json_seed) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.004s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_lock_discipline_check.Realization.test_model_literal_cannot_be_replaced_by_old_json_seed",
+  "timeout": 1800.0
+ }
+}

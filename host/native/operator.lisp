@@ -573,9 +573,10 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
 ;;; no owner the verb is refused by name (nothing drains a stopped node).
 ;;; After the answer the operator waits while ACL2's liveness decision over
 ;;; the socket and the lock says an owner runs (the owner's drain ends by its
-;;; window, books/owner-retire.lisp fn-oret-drain-step-ends-by-the-window,
-;;; and its stop by the deadline, PRF-357), then prints the report the owner
-;;; fenced before it stopped.  No report is uncertain, never success.
+;;; window, books/owner-retire.lisp fn-oret-drain-step-ends-by-the-window).
+;;; ACL2 separately bounds this operator's observation; PRF-357 does not
+;;; bound a physical final fence.  Expiry is uncertain and leaves the owner
+;;; running.  After a stopped observation, print only its fresh report.
 (defun fnn-retire-report-path (root)
   (fnn-join root (fnn-octets-string
                   (fnn-octets (fnn-core 'fn-nret-report-file-name)))))
@@ -587,11 +588,15 @@ regular file (a symlink, a directory)."
     (and st (fnn-regular-p st) (not (fnn-symlink-p st))
          (list (sb-posix:stat-ino st) (sb-posix:stat-mtime st)))))
 
+(defvar *fnn-retire-pause* #'sleep
+  "Observation scheduling seam; ACL2 supplies the poll interval.")
+
 (defun fnn-operator-execute-retire (result root)
   ;; A report left by an earlier retire is not this drain's report (S103):
   ;; only a regular file that differs from the one present before the request
   ;; is printed.
   (let* ((before (fnn-retire-report-identity (fnn-retire-report-path root)))
+         (start (fnn-now))
          (code (fnn-operator-execute-owner-request
                result root
                (lambda ()
@@ -603,10 +608,24 @@ regular file (a symlink, a directory)."
         code
       (let* ((live *fnn-operator-live-owner*)
              (path-list (fnn-core 'fn-native-operator-host-result-retire-control-path-octets
-                                  result)))
-        (loop while (member (funcall (fnn-olo-admin-observe live) root path-list nil)
-                            '(:live :held))
-              do (sleep 1))
+                                  result))
+             (argv (fnn-core 'fn-native-operator-host-result-retire-argv result)))
+        (loop
+          (let* ((liveness (funcall (fnn-olo-admin-observe live) root path-list nil))
+                 (step (fnn-core 'fn-nret-observation-step argv start (fnn-now)
+                                 internal-time-units-per-second liveness)))
+            (case step
+              (:report (return))
+              (:wait (funcall *fnn-retire-pause*
+                              (fnn-core 'fn-nret-observation-poll-seconds)))
+              (:uncertain
+               (fnn-out "~a" (fnn-octets-string
+                              (fnn-octets (fnn-core 'fn-nret-observation-expired-line))))
+               (return-from fnn-operator-execute-retire +fnn-exit-uncertain+))
+              (:fault
+               (fnn-fault "~a" (fnn-octets-string
+                                (fnn-octets (fnn-core 'fn-nret-observation-fault-line)))))
+              (t (fnn-fault "ACL2 returned a malformed retire observation decision")))))
         (let* ((report (fnn-retire-report-path root))
                (after (fnn-retire-report-identity report)))
           (if (and after (not (equal after before)))
@@ -744,6 +763,9 @@ nothing answers and nothing holds the lock."
                +fnn-exit-ok+)
       (case (fnn-core 'fn-native-live-status-host-route socket-present answer)
         (:offline
+         (when (eq kind :operation)
+           (fnn-write-report (fnn-core 'fn-native-operation-host-offline))
+           (return-from fnn-operator-status-once +fnn-exit-ok+))
          ;; friend-path-2: say first, in ACL2's words, that the node is not
          ;; running and how its last run ended; then the store's facts.
          (when (and result (eq kind :status)
@@ -765,6 +787,12 @@ nothing answers and nothing holds the lock."
            code))
         (:refused +fnn-exit-refused+)
         (t +fnn-exit-uncertain+)))))
+
+(defun fnn-operator-execute-operation (result)
+  "A bounded owner observation; a stopped owner needs no store replay."
+  (let ((root (fnn-core 'fn-native-operator-host-result-store-root result))
+        (path (fnn-core 'fn-native-operator-host-result-status-control-path-octets result)))
+    (fnn-operator-status-once root (and path (fnn-octets path)) :operation result)))
 
 (defun fnn-operator-execute-status (result)
   "One report, or with `--watch N' one every N seconds until interrupted."
@@ -1136,6 +1164,7 @@ answer that is neither the report nor a refusal (the transport) is uncertain."
           (:tls-self-signed (fnn-operator-execute-tls-self-signed result))
           (:init (fnn-operator-execute-init result))
           (:status (fnn-operator-execute-status result))
+          (:operation (fnn-operator-execute-operation result))
           (:health (fnn-operator-execute-health result))
           ((:recover :compact :checkpoint :export :export-status :import :bless-snapshot
             :reclaim :reclaim-dry-run :reclaim-recorded :rebind-filesystem)

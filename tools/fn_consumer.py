@@ -73,6 +73,7 @@ anything.
 Exit codes: 0 finished, 1 refused (an fn or application refusal it cannot
 settle, or the database held by another process), 3 stopped on an uncertain fn outcome (wake again to settle), 4 fault.
 Developer cuts (`FN_CONSUMER_CUT`) stop the process with os._exit(97):
+`after-poll` (the exact delivery saved, before interpretation);
 `in-transaction`, `after-commit`, `after-ack` (the consumer transaction and
 its ack); `before-post` (no attempt recorded), `attempt-recorded` (in-flight
 attempt committed, nothing sent), `after-post` (fn answered, the answer not
@@ -80,6 +81,8 @@ recorded), `in-result-transaction` (inside the answer's BEGIN IMMEDIATE,
 before COMMIT).
 """
 import argparse
+import base64
+import binascii
 import datetime
 import email.utils
 import fcntl
@@ -94,6 +97,8 @@ import sys
 import tempfile
 
 APP_MAGIC = b"fn-app: e1/1"
+APP_MAGIC_V2 = b"fn-app: e1/2"
+INSPECTION_TABLES = ("meta", "app_state", "operations", "transitions", "inbox", "submissions", "attempts", "observations", "deliveries", "unattributed", "unattributed_deliveries", "outbox")
 SCHEMA_VERSION = "fn-consumer-2"
 VERIFIER = Path(__file__).resolve().parent / "fn_verify.py"
 SCHEMA = """
@@ -150,6 +155,14 @@ CREATE TABLE IF NOT EXISTS observations(
   store_sequence INTEGER, detail TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS unattributed(
   store_sequence INTEGER PRIMARY KEY, reason TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS deliveries(
+  id INTEGER PRIMARY KEY, before_cursor BLOB NOT NULL,
+  cursor BLOB NOT NULL, report BLOB NOT NULL,
+  state TEXT NOT NULL CHECK (state IN ('pending', 'handled')));
+CREATE UNIQUE INDEX IF NOT EXISTS one_pending_delivery
+  ON deliveries(state) WHERE state='pending';
+CREATE TABLE IF NOT EXISTS unattributed_deliveries(
+  delivery_id INTEGER PRIMARY KEY REFERENCES deliveries(id), reason TEXT NOT NULL);
 """
 
 
@@ -232,7 +245,7 @@ def cut(point):
 
 
 class Consumer:
-    def __init__(self, config_path):
+    def __init__(self, config_path, *, read_only=False):
         self.config = json.loads(Path(config_path).read_text(encoding="utf-8"))
         self.image = self.config["image"]
         self.control = self.config["control"]
@@ -243,6 +256,12 @@ class Consumer:
         # Absent: the operator's unbound consumer, exactly as before.
         self.secret_file = self.config.get("secret_file")
         self.work = Path(self.config["work"])
+        self.lock = None
+        if read_only:
+            self.db = sqlite3.connect(Path(self.config["db"]).resolve().as_uri() + "?mode=ro", uri=True, isolation_level=None)
+            self.db.execute("PRAGMA query_only=ON")
+            self.db.execute("BEGIN")
+            return
         self.work.mkdir(parents=True, exist_ok=True)
         self.lock = lock_database(self.config["db"])
         self.db = sqlite3.connect(self.config["db"], isolation_level=None)
@@ -262,11 +281,94 @@ class Consumer:
         self.db.execute("UPDATE attempts SET state='unanswered' WHERE state='in-flight'")
         self.db.execute("COMMIT")
 
+    def close(self):
+        self.db.close()
+        if self.lock is not None:
+            os.close(self.lock)
+            self.lock = None
+
+    @staticmethod
+    def inspect_value(value, include_bytes=False):
+        if isinstance(value, bytes):
+            result = {"encoding": "hex", "octets": len(value), "sha256": digest(value)}
+            if include_bytes:
+                result["hex"] = value.hex()
+            return result
+        return value
+
+    def inspect_rows(self, table, *, after=0, limit=None, include_bytes=False,
+                     where="", params=()):
+        if table not in INSPECTION_TABLES:
+            raise Stop(1, "unknown application table")
+        if not self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone():
+            return {"table": table, "available": False, "rows": [], "next_after": None}
+        # TABLE/WHERE are fixed client source, not operator SQL. Values are
+        # bound parameters. client_row is SQLite custody, never a fn ordinal.
+        sql = "SELECT rowid AS client_row,* FROM " + table + " WHERE rowid>?"
+        args = [after]
+        if where:
+            sql += " AND (" + where + ")"
+            args.extend(params)
+        sql += " ORDER BY rowid"
+        if limit is not None:
+            if limit < 1:
+                raise Stop(1, "query limit must be positive")
+            sql += " LIMIT ?"
+            args.append(limit + 1)
+        cursor = self.db.execute(sql, args)
+        columns = [field[0] for field in cursor.description]
+        rows = cursor.fetchall()
+        more = limit is not None and len(rows) > limit
+        if more:
+            rows = rows[:limit]
+        result = [{key: self.inspect_value(value, include_bytes) for key, value in zip(columns, row)} for row in rows]
+        return {"table": table, "available": True, "rows": result,
+                "next_after": rows[-1][0] if more else None}
+
+    def inspect_operation(self, operation_id, *, application_id=None, include_bytes=False):
+        aid = application_id or self.config["application_id"]
+        result = {"application_id": aid, "operation_id": operation_id}
+        for table in ("operations", "transitions", "inbox", "submissions"):
+            result[table] = self.inspect_rows(table, where="application_id=? AND operation_id=?",
+                params=(aid, operation_id), include_bytes=include_bytes)
+        operation = self.db.execute("SELECT submission_id FROM operations WHERE application_id=? AND operation_id=?", (aid, operation_id)).fetchone()
+        ids = {row["id"] for row in result["submissions"]["rows"]}
+        if operation and operation[0] is not None:
+            ids.add(operation[0])
+            result["related_artifacts"] = self.inspect_rows("submissions", where="id=?", params=(operation[0],), include_bytes=include_bytes)
+        for table in ("attempts", "observations"):
+            result[table] = self.inspect_rows(table, where="submission_id IN (" + ",".join("?" for _ in ids) + ")" if ids else "0", params=tuple(sorted(ids)), include_bytes=include_bytes)
+        result["submission_outcomes"] = {str(sid): submission_state(*self.journal(sid)) for sid in sorted(ids)}
+        source_rows = self.db.execute("SELECT source FROM inbox WHERE application_id=? AND operation_id=?", (aid, operation_id)).fetchall()
+        source_rows += self.db.execute("SELECT source FROM submissions WHERE application_id=? AND operation_id=?", (aid, operation_id)).fetchall()
+        result["application_envelopes"] = []
+        for source in sorted({row[0] for row in source_rows}):
+            fields = self.envelope(source)
+            result["application_envelopes"].append({"source_sha256": digest(source),
+                "fields": None if fields is None else {key: self.inspect_value(self.payload_bytes(value) if key == "payload" else value, include_bytes) for key, value in fields.items()}})
+        if not result["operations"]["rows"] and not result["inbox"]["rows"] and not result["submissions"]["rows"]:
+            raise Stop(1, "application operation has no recorded evidence")
+        return result
+
+    def inspection_status(self):
+        tables = [row[0] for row in self.db.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")]
+        return {"consumer": self.name, "database": str(Path(self.config["db"]).resolve()),
+                "snapshot": "SQLite read transaction; no fn calls or recovery mutation",
+                "tables": {table: self.db.execute("SELECT count(*) FROM " + table).fetchone()[0] for table in INSPECTION_TABLES if table in tables},
+                "meta": self.inspect_rows("meta"), "application_state": self.inspect_rows("app_state")}
+
     # -- native calls --------------------------------------------------------
     def native(self, *words):
-        result = subprocess.run([self.image, "--fn", *map(str, words)],
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                timeout=300, check=False)
+        try:
+            result = subprocess.run([self.image, "--fn", *map(str, words)],
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                    timeout=300, check=False)
+        except subprocess.TimeoutExpired:
+            # In particular a timed-out ACK or POST might have committed.
+            # Its existing durable client record is settled on the next wake.
+            raise Stop(3, "native %s timed out; outcome unavailable" % words[0])
+        except OSError as error:
+            raise Stop(4, "native %s could not start: %s" % (words[0], error))
         return result.returncode, result.stdout, result.stderr
 
     def scratch(self, stem):
@@ -327,7 +429,10 @@ class Consumer:
         code, out, err = self.native("consumer-project", cursor_path, report_path)
         line = out.decode("ascii", "replace").strip().splitlines()
         line = line[-1] if line else ""
-        if code != 0:
+        if code in (3, 4) or code not in (0, 1):
+            raise Stop(code if code == 3 else 4,
+                       "consumer-project: %s %s" % (out.decode(), err.decode()))
+        if code == 1:
             return None, line
         words = line.split()
         if len(words) != 18 or words[0] != "fn-consumer-project-v1":
@@ -350,15 +455,30 @@ class Consumer:
                           "itself and trusts no author by default")
         article = self.scratch("article")
         article.write_bytes(event["received"])
-        result = subprocess.run(
-            [sys.executable, str(VERIFIER), "check-article", str(article),
-             event["message_id"], "--keyring", keyring],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=300, check=False)
+        try:
+            result = subprocess.run(
+                [sys.executable, str(VERIFIER), "check-article", str(article),
+                 event["message_id"], "--keyring", keyring],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=300, check=False)
+        except subprocess.TimeoutExpired:
+            raise Stop(3, "independent verifier timed out; saved delivery remains pending")
+        except OSError as error:
+            raise Stop(4, "independent verifier could not start: %s" % error)
+        expected = {0: "verified", 1: "unverified", 3: "undecided"}
+        if result.returncode not in expected:
+            raise Stop(4, "independent verifier answered %d: %s" %
+                       (result.returncode, result.stderr.decode("utf-8", "replace")))
         try:
             check = json.loads(result.stdout.decode("utf-8"))
-        except ValueError:
-            check = {"outcome": "undecided",
-                     "reason": "verifier: " + result.stderr.decode("utf-8", "replace")[-500:]}
+        except (ValueError, UnicodeError):
+            raise Stop(4, "independent verifier returned a malformed result")
+        if not isinstance(check, dict) or check.get("outcome") != expected[result.returncode]:
+            raise Stop(4, "independent verifier result disagrees with its exit status")
+        if result.returncode == 0 and not (
+                isinstance(check.get("principal"), str) and
+                isinstance(check.get("source-sha256"), str) and
+                isinstance(check.get("signatures"), dict)):
+            raise Stop(4, "independent verifier omitted verified source evidence")
         detail = check.get("reason") or ""
         if result.returncode == 0 and check.get("outcome") == "verified":
             if check.get("principal") != event["verdict_principal"]:
@@ -369,7 +489,7 @@ class Consumer:
                 return dict(check, own="disagree",
                             detail="the verified authored source is not fn's projection")
             return dict(check, own="verified", detail="")
-        own = {1: "unverified", 3: "undecided"}.get(result.returncode, "undecided")
+        own = {1: "unverified", 3: "undecided"}[result.returncode]
         return dict(check, own=own, detail=detail)
 
     # -- durable state --------------------------------------------------------
@@ -398,20 +518,59 @@ class Consumer:
 
     # -- application ----------------------------------------------------------
     @staticmethod
+    def payload_bytes(payload):
+        return payload.encode("utf-8") if isinstance(payload, str) else bytes(payload)
+
+    @staticmethod
+    def payload_wire(payload):
+        encoded = base64.b64encode(payload)
+        return b"\r\n".join(encoded[i:i + 76] for i in range(0, len(encoded), 76)) + b"\r\n"
+
+    @staticmethod
     def envelope(source):
-        head, sep, body = source.partition(b"\r\n\r\n")
+        _, sep, body = source.partition(b"\r\n\r\n")
         if not sep:
             return None
-        lines = body.split(b"\r\n")
-        if not lines or lines[0] != APP_MAGIC:
+        magic, sep, rest = body.partition(b"\r\n")
+        if not sep or magic not in (APP_MAGIC, APP_MAGIC_V2):
             return None
+        if magic == APP_MAGIC_V2:
+            metadata, sep, wire = rest.partition(b"\r\n\r\n")
+            if not sep:
+                return None
+            lines = metadata.split(b"\r\n")
+        else:
+            lines = rest.split(b"\r\n")
         fields = {}
-        for line in lines[1:]:
+        for line in lines:
+            if not line and magic == APP_MAGIC:
+                continue
             key, colon, value = line.partition(b": ")
-            if colon:
-                fields[key.decode("ascii", "replace")] = value.decode("ascii", "replace")
+            if not colon or not key or b"\r" in line or b"\n" in line:
+                return None
+            try:
+                key, value = key.decode("ascii"), value.decode("ascii")
+            except UnicodeError:
+                return None
+            if key in fields or not re.fullmatch(r"[a-z][a-z0-9-]*", key) or any(ord(c) < 32 or ord(c) > 126 for c in value):
+                return None
+            fields[key] = value
         if not {"application-id", "operation-id", "kind"} <= fields.keys():
             return None
+        if not fields["application-id"] or not fields["operation-id"] or fields["kind"] not in ("report-receipt", "reply"):
+            return None
+        if magic == APP_MAGIC_V2:
+            if fields.get("payload-encoding") != "base64" or "payload" in fields:
+                return None
+            try:
+                payload = base64.b64decode(wire.replace(b"\r\n", b""), validate=True)
+            except (binascii.Error, ValueError):
+                return None
+            # One canonical payload region: no alternate whitespace, trailing
+            # metadata, or malformed length can change the application meaning.
+            if fields.get("payload-length") != str(len(payload)) or wire != Consumer.payload_wire(payload):
+                return None
+            fields["payload"] = payload
         return fields
 
     def claimant(self, application_id, operation_id):
@@ -427,7 +586,25 @@ class Consumer:
         return best[1] if best else None
 
     def compose(self, message_id, subject, fields):
-        body = [APP_MAGIC] + [("%s: %s" % kv).encode("ascii") for kv in fields]
+        metadata = []
+        payload = b""
+        seen = set()
+        for key, value in fields:
+            if key in seen or key in ("payload-encoding", "payload-length"):
+                raise Stop(1, "duplicate or reserved application field")
+            seen.add(key)
+            if key == "payload":
+                payload = self.payload_bytes(value)
+                continue
+            if not re.fullmatch(r"[a-z][a-z0-9-]*", key) or any(ord(c) < 32 or ord(c) > 126 for c in value):
+                raise Stop(1, "application metadata must contain printable ASCII fields")
+            try:
+                metadata.append(("%s: %s" % (key, value)).encode("ascii"))
+            except UnicodeError:
+                raise Stop(1, "application metadata must be ASCII")
+        metadata.extend((b"payload-encoding: base64", ("payload-length: %d" % len(payload)).encode("ascii")))
+        body = (APP_MAGIC_V2 + b"\r\n" + b"\r\n".join(metadata) +
+                b"\r\n\r\n" + self.payload_wire(payload))
         # The Date is fixed when the source is composed; the submission keeps
         # these exact bytes, so every retry posts the same source.
         date = email.utils.format_datetime(
@@ -437,7 +614,7 @@ class Consumer:
                 b"Newsgroups: " + self.config["group"].encode("ascii") + b"\r\n"
                 b"Subject: " + subject.encode("ascii") + b"\r\n"
                 b"Message-ID: " + message_id.encode("ascii") + b"\r\n\r\n"
-                + b"\r\n".join(body) + b"\r\n")
+                + body)
 
     def artifact(self, application_id, operation_id, message_id, source):
         """Sign SOURCE once and return the complete submission artifact: the
@@ -449,7 +626,8 @@ class Consumer:
                                      keys["ed_public"], keys["ed_secret"],
                                      keys["ml_public"], keys["ml_private"], path)
         if code != 0:
-            raise Stop(4, "hybrid-sign: " + err.decode())
+            raise Stop(code if code in (1, 3) else 4,
+                       "hybrid-sign: " + err.decode("utf-8", "replace"))
         parts = dict(line.split() for line in out.decode("ascii").splitlines())
         context = {"consumer": self.name, "group": self.config["group"],
                    "from": self.config["from"], "route": "hybrid-author",
@@ -471,7 +649,18 @@ class Consumer:
 
     def originate(self, operation_id, payload):
         """Author a report R as a new local operation with its submission."""
+        payload = self.payload_bytes(payload)
         aid = self.config["application_id"]
+        prior = self.db.execute(
+            "SELECT o.kind,s.source FROM operations o LEFT JOIN submissions s ON s.id=o.submission_id "
+            "WHERE o.application_id=? AND o.operation_id=?", (aid, operation_id)).fetchone()
+        if prior is not None:
+            fields = self.envelope(prior[1]) if prior[1] is not None else None
+            if prior[0] != "originated" or fields is None or fields.get("kind") != "report-receipt" or self.payload_bytes(fields.get("payload", "")) != payload:
+                raise Stop(1, "operation already has a different report; saved artifact unchanged")
+            # Reuse the committed artifact without reading today's keys,
+            # changing its Date/context or even producing discarded signatures.
+            return
         message_id = "<%s.%s@%s.invalid>" % (aid, operation_id, self.name)
         source = self.compose(message_id, "report " + operation_id,
                               [("application-id", aid),
@@ -497,6 +686,33 @@ class Consumer:
             self.db.execute("ROLLBACK")
             raise
 
+    def payload(self, operation_id):
+        """Return the exact payload of this application's committed operation.
+
+        Conflict evidence never replaces the source chosen by the operation's
+        SQLite transaction. This is the application's SHA-256, not a fn identity.
+        """
+        aid = self.config["application_id"]
+        operation = self.db.execute(
+            "SELECT source_sha256,kind,submission_id FROM operations "
+            "WHERE application_id=? AND operation_id=?", (aid, operation_id)).fetchone()
+        if operation is None:
+            raise Stop(1, "application operation is not recorded")
+        if operation[1] == "originated":
+            row = self.db.execute("SELECT source FROM submissions WHERE id=?", (operation[2],)).fetchone()
+            sources = [row[0]] if row else []
+        else:
+            sources = [row[0] for row in self.db.execute(
+                "SELECT source FROM inbox WHERE application_id=? AND operation_id=? "
+                "AND disposition IN ('applied','repeat')", (aid, operation_id))]
+        sources = {source for source in sources if digest(source) == operation[0]}
+        if len(sources) != 1:
+            raise Stop(4, "committed operation has missing or conflicting source evidence")
+        fields = self.envelope(sources.pop())
+        if fields is None or fields["application-id"] != aid or fields["operation-id"] != operation_id:
+            raise Stop(4, "committed operation has malformed source evidence")
+        return self.payload_bytes(fields.get("payload", ""))
+
     def reply_for(self, fields, event):
         oid = "reply-" + fields["operation-id"]
         aid = fields["application-id"]
@@ -506,7 +722,7 @@ class Consumer:
                                ("kind", "reply"),
                                ("correlation-id", fields["operation-id"]),
                                ("dependency", digest(event["source"])),
-                               ("payload", "received " + fields.get("payload", ""))])
+                               ("payload", b"received " + self.payload_bytes(fields.get("payload", "")))])
         return self.artifact(aid, oid, message_id, source)
 
     def observe_stored(self, event, check):
@@ -534,8 +750,11 @@ class Consumer:
         claimant = self.claimant(aid, oid)
         entitled = principal is not None and principal == claimant
         reply = None
+        known = self.db.execute(
+            "SELECT 1 FROM operations WHERE application_id=? AND operation_id=?",
+            (aid, oid)).fetchone()
         if entitled and fields["kind"] == "report-receipt" and \
-                principal != self.config["principal_hex"]:
+                principal != self.config["principal_hex"] and known is None:
             reply = self.reply_for(fields, event)
         self.db.execute("BEGIN IMMEDIATE")
         try:
@@ -602,6 +821,7 @@ class Consumer:
                     (aid, oid, before, after))
             self.set_meta("pending_ack", cursor.hex())
             self.set_meta("pending_ack_state", "unsent")
+            self.finish_delivery(cursor)
             cut("in-transaction")
             self.db.execute("COMMIT")
         except BaseException:
@@ -613,10 +833,52 @@ class Consumer:
 
     def note_unattributed(self, sequence, reason, cursor):
         self.db.execute("BEGIN IMMEDIATE")
-        self.db.execute("INSERT OR IGNORE INTO unattributed VALUES (?, ?)", (sequence, reason))
+        if sequence is None:
+            delivery = self.db.execute(
+                "SELECT id FROM deliveries WHERE state='pending' AND cursor=?",
+                (cursor,)).fetchone()
+            if delivery is None:
+                raise Stop(4, "unattributed event lacks its retained delivery")
+            self.db.execute("INSERT OR IGNORE INTO unattributed_deliveries VALUES (?, ?)",
+                            (delivery[0], reason))
+        else:
+            # This sequence came from the native projection. Unsupported
+            # reports have no such coordinate; their exact delivery owns it.
+            self.db.execute("INSERT OR IGNORE INTO unattributed VALUES (?, ?)", (sequence, reason))
         self.set_meta("pending_ack", cursor.hex())
         self.set_meta("pending_ack_state", "unsent")
+        self.finish_delivery(cursor)
         self.db.execute("COMMIT")
+
+    def finish_delivery(self, cursor):
+        """Called in the SAME transaction as inbox handling and pending ACK."""
+        self.db.execute("UPDATE deliveries SET state='handled' "
+                        "WHERE state='pending' AND cursor=?", (cursor,))
+
+    def delivery(self):
+        """Retain exact native output before interpreting or acknowledging it."""
+        row = self.db.execute("SELECT before_cursor, cursor, report FROM deliveries "
+                              "WHERE state='pending'").fetchone()
+        if row is None:
+            before = self.position()
+            _, cursor, report_path = self.poll()
+            report = report_path.read_bytes()
+            self.db.execute("BEGIN IMMEDIATE")
+            try:
+                self.db.execute("INSERT INTO deliveries(before_cursor,cursor,report,state) "
+                                "VALUES (?,?,?,'pending')", (before, cursor, report))
+                self.db.execute("COMMIT")
+            except BaseException:
+                if self.db.in_transaction:
+                    self.db.execute("ROLLBACK")
+                raise
+            row = (before, cursor, report)
+            cut("after-poll")
+        before, cursor, report = row
+        cursor_path, report_path = self.scratch("delivery-cursor"), self.scratch("delivery-report")
+        cursor_path.write_bytes(cursor)
+        report_path.write_bytes(report)
+        return before, cursor_path, cursor, report_path
 
     # -- fn progress ----------------------------------------------------------
     def settle_ack(self):
@@ -630,7 +892,14 @@ class Consumer:
             if current == cursor:
                 self.clear_ack()
                 return
-        code = self.ack(cursor)
+        try:
+            code = self.ack(cursor)
+        except Stop as stopped:
+            if stopped.code == 3:
+                self.db.execute("BEGIN IMMEDIATE")
+                self.set_meta("pending_ack_state", "uncertain")
+                self.db.execute("COMMIT")
+            raise
         if code == 0:
             self.clear_ack()
             cut("after-ack")
@@ -704,16 +973,19 @@ class Consumer:
         self.settle_ack()
         self.drive_outbox()
         for _ in range(max_pages):
-            before = self.position()
-            cursor_path, cursor, report_path = self.poll()
+            before, cursor_path, cursor, report_path = self.delivery()
             report = report_path.read_bytes()
             if not report:
                 if cursor == before:
+                    self.db.execute("BEGIN IMMEDIATE")
+                    self.finish_delivery(cursor)
+                    self.db.execute("COMMIT")
                     break
                 # An empty page still progresses over the scanned prefix.
                 self.db.execute("BEGIN IMMEDIATE")
                 self.set_meta("pending_ack", cursor.hex())
                 self.set_meta("pending_ack_state", "unsent")
+                self.finish_delivery(cursor)
                 self.db.execute("COMMIT")
                 self.settle_ack()
                 # A window shorter than the poll's scan bound reached the
@@ -728,12 +1000,20 @@ class Consumer:
                     # article, or it was superseded) carries a Message-ID
                     # and no content; the native decoder names it.  Nothing
                     # to verify or answer: it is noted and acked.
-                    code, out, _ = self.native("consumer-article", report_path)
+                    code, out, err = self.native("consumer-article", report_path)
+                    if code != 0:
+                        raise Stop(code if code in (1, 3) else 4,
+                                   "consumer-article: %s %s" % (out.decode(), err.decode()))
                     words = out.decode("ascii", "replace").split()
-                    if code == 0 and len(words) == 2 and words[0] == "fn-consumer-withdrawn-v1":
+                    if len(words) == 2 and words[0] == "fn-consumer-withdrawn-v1":
                         line = "withdrawn " + bytes.fromhex(words[1]).decode("ascii", "replace")
-                    self.note_unattributed(len(self.db.execute(
-                        "SELECT 1 FROM unattributed").fetchall()), line, cursor)
+                    elif len(words) == 3 and words[0] == "fn-consumer-article-v1":
+                        # A valid legacy/unsupported-authorship article is
+                        # retained as evidence, not an application operation.
+                        line = "unattributed " + line
+                    else:
+                        raise Stop(4, "unexpected consumer-article output")
+                    self.note_unattributed(None, line, cursor)
                 else:
                     fields = self.envelope(event["source"])
                     if fields is None:
@@ -746,8 +1026,9 @@ class Consumer:
     def summary(self):
         q = lambda sql: self.db.execute(sql).fetchall()
         outbox = []
-        for sid, message_id, source, principal in q(
-                "SELECT id, message_id, source, principal FROM submissions ORDER BY id"):
+        for sid, message_id, source, principal, aid, oid in q(
+                "SELECT id, message_id, source, principal, application_id, operation_id "
+                "FROM submissions ORDER BY id"):
             attempts, observed = self.journal(sid)
             rows = q("SELECT purpose, state, exit, status FROM attempts "
                      "WHERE submission_id=%d ORDER BY id" % sid)
@@ -757,6 +1038,7 @@ class Consumer:
             answered = [r for r in rows if r[1] == "answered"]
             outbox.append({
                 "message_id": message_id, "sha256": digest(source), "principal": principal,
+                "application_id": aid, "operation_id": oid,
                 "state": submission_state(attempts, observed),
                 "attempts": len(rows),
                 "journal": [dict(zip(("purpose", "state", "exit", "status"), r))
@@ -780,7 +1062,10 @@ class Consumer:
             "outbox": outbox,
             "state": dict(q("SELECT key, value FROM app_state")),
             "pending_ack": self.meta("pending_ack_state"),
-            "unattributed": len(q("SELECT 1 FROM unattributed")),
+            "pending_delivery": self.db.execute(
+                "SELECT count(*) FROM deliveries WHERE state='pending'").fetchone()[0],
+            "unattributed": (q("SELECT count(*) FROM unattributed")[0][0] +
+                             q("SELECT count(*) FROM unattributed_deliveries")[0][0]),
         }
 
 
@@ -791,32 +1076,112 @@ def build_parser():
     sub = parser.add_subparsers(dest="command", required=True)
     report = sub.add_parser("report")
     report.add_argument("operation_id")
-    report.add_argument("payload")
+    report.add_argument("payload", nargs="?")
+    report.add_argument("--payload-file", type=Path, help="read the exact payload bytes from a file")
     sub.add_parser("wake")
     sub.add_parser("summary")
+    payload = sub.add_parser("payload", help="export a recorded operation's exact payload")
+    payload.add_argument("operation_id")
+    payload.add_argument("output", type=Path)
+    sub.add_parser("status", help="read a consistent local snapshot without recovery")
+    inspect = sub.add_parser("inspect", help="inspect an operation and its source/attempt/receipt provenance")
+    inspect.add_argument("operation_id")
+    inspect.add_argument("--application-id")
+    inspect.add_argument("--bytes", action="store_true", help="include exact public BLOB bytes as hex")
+    query = sub.add_parser("query", help="query client state with optional explicit pagination")
+    query.add_argument("table", choices=INSPECTION_TABLES)
+    query.add_argument("--after", type=int, default=0)
+    query.add_argument("--limit", type=int)
+    query.add_argument("--bytes", action="store_true")
+    export = sub.add_parser("export", help="export a consistent public client-state snapshot")
+    export.add_argument("output", type=Path)
     return parser
 
 
 def main(argv=None):
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command == "report" and (args.payload is None) == (args.payload_file is None):
+        parser.error("report needs exactly one PAYLOAD or --payload-file")
     try:
-        consumer = Consumer(args.config)
+        consumer = Consumer(args.config, read_only=args.command in ("payload", "status", "inspect", "query", "export"))
+    except Stop as stop:
+        sys.stderr.write("consumer stopped: %s\n" % stop)
+        return stop.code
+    except (ValueError, KeyError, OSError, sqlite3.Error) as fault:
+        sys.stderr.write("consumer fault: %s\n" % fault)
+        return 4
     except InUse as busy:
         sys.stderr.write("fn_consumer: database in use by pid %s\n" % busy)
         return 1
     try:
         if args.command == "report":
-            consumer.originate(args.operation_id, args.payload)
+            payload = args.payload_file.read_bytes() if args.payload_file is not None else args.payload
+            consumer.originate(args.operation_id, payload)
             consumer.drive_outbox()
         elif args.command == "wake":
             consumer.wake()
-        print(json.dumps(consumer.summary(), sort_keys=True))
+        elif args.command in ("status", "inspect", "query", "export"):
+            if args.command == "status":
+                result = consumer.inspection_status()
+            elif args.command == "inspect":
+                result = consumer.inspect_operation(args.operation_id, application_id=args.application_id, include_bytes=args.bytes)
+            elif args.command == "query":
+                if args.after < 0:
+                    raise Stop(1, "query cursor must be nonnegative")
+                result = consumer.inspect_rows(args.table, after=args.after, limit=args.limit, include_bytes=args.bytes)
+            else:
+                result = {"format": "fn-consumer-public-snapshot-1", "status": consumer.inspection_status(),
+                          "tables": {table: consumer.inspect_rows(table, include_bytes=True) for table in INSPECTION_TABLES}}
+                try:
+                    with args.output.open("x", encoding="utf-8") as output:
+                        json.dump(result, output, sort_keys=True, indent=2)
+                        output.write("\n")
+                except FileExistsError:
+                    raise Stop(1, "snapshot output already exists")
+                return 0
+            print(json.dumps(result, sort_keys=True))
+            return 0
+        elif args.command == "payload":
+            payload = consumer.payload(args.operation_id)
+            try:
+                with args.output.open("xb") as output:
+                    output.write(payload)
+            except FileExistsError:
+                raise Stop(1, "payload output already exists")
+            return 0
+        summary = consumer.summary()
+        print(json.dumps(summary, sort_keys=True))
+        if args.command != "summary":
+            entries = summary["outbox"]
+            if args.command == "report":
+                entries = [entry for entry in entries
+                           if entry["application_id"] == consumer.config["application_id"]
+                           and entry["operation_id"] == args.operation_id]
+            states = {entry["state"] for entry in entries}
+            if "uncertain" in states:
+                sys.stderr.write("consumer stopped: submission outcome remains uncertain\n")
+                return 3
+            if "refused" in states:
+                sys.stderr.write("consumer stopped: submission refused\n")
+                return 1
         return 0
     except Stop as stop:
+        if consumer.db.in_transaction:
+            consumer.db.execute("ROLLBACK")
         sys.stderr.write("consumer stopped: %s\n" % stop)
-        print(json.dumps(consumer.summary(), sort_keys=True))
+        if args.command not in ("payload", "status", "inspect", "query", "export"):
+            print(json.dumps(consumer.summary(), sort_keys=True))
         return stop.code
+    except (ValueError, KeyError, OSError, sqlite3.Error) as fault:
+        # Parsing or local persistence failures never become a refusal or
+        # permission to advance the declared position. Pending bytes remain.
+        if consumer.db.in_transaction:
+            consumer.db.execute("ROLLBACK")
+        sys.stderr.write("consumer fault: %s\n" % fault)
+        return 4
+    finally:
+        consumer.close()
 
 
 if __name__ == "__main__":

@@ -1647,6 +1647,33 @@ The native comparison records zero raw owner entries while this obligation
 remains open. The DTN image loads an explicit generated raw declaration scope;
 an absent target refuses instead of silently dropping its declaration.
 
+D40 source implementation status, lane post-guard-off (2026-10-03; ember's decision:
+"we can just not have that guard"): seven owner entries are declared for raw dispatch --
+`fn-owner-io`, `fn-owner-take`, `fn-owner-control-submit`,
+`fn-owner-prepare-retention`, `fn-owner-prepare-identity`,
+`fn-owner-prepare-consumer`, `fn-owner-prepare-topic` -- each a listed
+transition of the row `fn-owner-served-carried`
+(host/owner-served-carried.lisp: the pilot's open, the thirteen proved
+writers, the bridges to `fn-sn-statep` and `fn-prc-carryp`), so the generated
+preservation and bridge statements are checked as before.  What is NOT
+earned is the row's completeness: the state is the whole ACL2 state, so every
+state-returning host entry is a writer, and most have no preservation
+theorem.  They are named one by one in the row's `:incomplete
+(A-OWNER-INVARIANT-CARRIED (...))`, def-carried's NAMED ESCAPE
+(books/def-carried.lisp): it waives completeness for exactly those writers
+(a new unlisted writer, a proved one left owed and a stale name are each
+refused), and definterface accepts the annotation only as `:raw-with
+(:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED)`.
+A-OWNER-INVARIANT-CARRIED is a temporary native dispatch trust marker in
+specs/failures.md, retaining its stable identifier and declaration syntax. It
+is outside the formal named-assumption table and introduces no logical
+encapsulate or whole-host invariant theorem. The source row names 338 owed
+writers; each is a proof-owed ledger item; STAGE-5B's carrier move retires the
+escape.  The developer selector FN_NATIVE_DISPATCH_COUNTERPART=1 keeps the
+whole-guard path (tests.test_native_owner compares both). Actual loaded-world
+admission and matching raw/counterpart POST measurements remain outstanding
+at source integration; no image or runtime verdict transfers from old bytes.
+
 ### 2026-09-29: authenticated remote consumers (PKT-673)
 
 Ember's explicit answer to whether a remote agent may poll and acknowledge
@@ -1700,3 +1727,22 @@ Completion (forward, MODE 2026-10-01 rule 2b: a revert that relieves a red is no
 goal: Keep W9's obligation view (`fn-rov`, `books/retention-obligation-view.lisp`) parked: lane figure-and-contract removed its maintenance at owner install/open and reclaim rebuild, and removed its 546,341,504-octet small-profile figure term because no served reader used the view. The remaining empty global plumbing does not constitute an active view. See docs/resource-contract.md M11.
 Status: DECIDED (coordinator, 2026-10-01; lane figure-and-contract).
 Completion: W9 re-adds the obligation view, its served reader and its resource-figure term together, with the behavior and its invariants. Parking the unused view does not complete W9's bounded pilot.
+
+### 2026-10-03: D48 — reader access survives a configured peer role
+
+Engineering resolution by sol-access of S121 under ember's delegated backlog
+analysis. An NNTP connection may carry a transport peer role and an authenticated
+reader identity at once. Its reader commands and POST retain the account's read
+and post patterns and moderation-queue hiding. A source peer without a reader
+login uses the anonymous rule. Peer identity supplies no reader permission.
+
+Transit offers and received bodies continue to use the pinned peer node, peer
+record and feed patterns. `fn-peer-command` reads these from its peer session,
+independently of the archive/index/posting-view arguments. Its carried and
+catalog counterparts use the live Message-ID trie and the same feed record.
+Consequently the existing authentication projection and per-pin cache apply to
+reader commands on peers, with no second per-command projection or new delegate.
+This narrows SEC-007's old blanket peer exemption to transit governed by feed
+policy. Encryption remains the posters' boundary for confidentiality from an
+operator or an authorized transport recipient. PRF-1269 covers the reader view;
+matching native evidence remains pending.

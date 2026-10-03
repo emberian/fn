@@ -8,6 +8,18 @@ extend the selected v0 gate, define a server API, or add proof events. It
 specifies the experiment to implement after the T10 authorship/verdict and
 A1–A3 BP joins have their own evidence.
 
+The continuing application implementation is `tools/fn_consumer.py`, with
+SQLite provenance inbox, unique application operations, immutable signed
+outbox and explicit native poll/ACK. Current source retains the exact returned
+report/cursor before interpretation, stops without ACK on projection faults,
+and reuses a saved submission without reopening signing keys. Client journal
+and delivery fixtures pass; the new saved-delivery/restart image case exposed
+an article-only native publication gate at consumer bootstrap, before any
+application transition. That gate now consumes the existing all-record
+preservation boundary; matching native execution is pending. The full
+legacy-relay/BP/media composition described below remains its own experiment,
+not implied by this local application profile.
+
 ## E1: one immutable exchange
 
 Agent A authors article **R**, a versioned dregg report with its application
@@ -200,3 +212,15 @@ the concrete E1 payload grammar with two independent consumers. Key custody
 and succession, private-group confidentiality, cross-silo untrusted receipt
 authority and external-effect execution remain separate decisions. No claim in
 this proposal depends on silently selecting them.
+
+The concrete external client emits `fn-app: e1/2` for new submissions. A single
+ASCII metadata region names the application, operation, kind, optional
+correlation/dependency, payload encoding and exact decoded byte length; a blank
+line separates its canonical base64 payload (76 characters per encoded line).
+`report OP --payload-file FILE` carries arbitrary bytes without permitting them
+to replace metadata. This is an application codec, not a fn Store or transport
+format. Existing immutable v1 artifacts remain readable and are retried exactly,
+without re-signing. Article/profile acceptance remains the native core's decision;
+base64 overhead is included in the submitted article. Local codec and SQLite
+retry checks establish client behavior; matching native report/reply and restart
+execution remains separately required.

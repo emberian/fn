@@ -122,7 +122,7 @@ RULES = ("R1", "R1b", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10")
 class Node(list):
     """A read list that remembers the line it starts on."""
 
-    __slots__ = ("line",)
+    __slots__ = ("line", "identity")
 
 
 class SpanReader(ledger.Reader):
@@ -270,6 +270,29 @@ def lambda_params(lst) -> list[str]:
     return out
 
 
+def identify_nodes(form, owner):
+    """Lexical IDs survive formatting; distinct same-line lambdas stay distinct.
+
+    Inserting/removing a lambda within a function can change its ordinals and is
+    reviewed as a source change. Never alias unrelated callbacks by body text.
+    """
+    nodes = lambdas = 0
+    stack = [form]
+    while stack:
+        item = stack.pop()
+        if not isinstance(item, list):
+            continue
+        nodes += 1
+        if head(item) == "lambda":
+            lambdas += 1
+            identity = f"{owner}#lambda{lambdas}"
+        else:
+            identity = f"{owner}#form{nodes}"
+        if isinstance(item, Node):
+            item.identity = identity
+        stack.extend(reversed(item))
+
+
 def collect_tree(root: Path, files: list[str] | None = None) -> Tree:
     tree = Tree(root=root)
     loaded = loaded_native_files(root)
@@ -345,6 +368,7 @@ def visit_top(tree: Tree, form, line: int, rel: str, lines: list[str]) -> None:
         return
     if h in ("defun", "defmacro") and len(form) >= 3 and isinstance(form[1], Sym):
         name = str(form[1])
+        identify_nodes(form, name)
         if name.startswith("acl2_*1*_acl2::"):
             tree.raw_replaced.add(name.split("::", 1)[1])
             return
@@ -724,7 +748,8 @@ class Analyzer:
     def expand(self, form, d: Def):
         """Substitute FORM's arguments into D's backquote template.  Nothing is
         evaluated: an unquote of a macro parameter becomes the argument form, any
-        other unquote an opaque symbol."""
+        other unquote a distinct opaque symbol.  Repeated references to the same
+        macro-local symbol keep one identity; no expression is evaluated."""
         binding: dict = {}
 
         def bind(pattern, value):
@@ -778,15 +803,30 @@ class Analyzer:
         if template is None:
             return None
 
+        opaque_symbols = {}
+        expansion_id = (getattr(form, "identity", self.cur.name) + "::" + d.name)
+
+        def opaque(expr):
+            # Local gensym variables are opaque, but distinct variables must
+            # not alias: a later NIL bookkeeping binding is not the mutex.
+            # Computed unquotes remain unknown; never interpret macro code.
+            key = ("symbol", str(expr)) if isinstance(expr, Sym) else (
+                "expression", getattr(expr, "identity", render(expr)))
+            if key not in opaque_symbols:
+                opaque_symbols[key] = Sym("#:opaque:" + expansion_id + ":" + str(len(opaque_symbols)))
+            return opaque_symbols[key]
+
         def sub(t):
             if isinstance(t, list):
                 h = head(t)
                 if h == "unquote" and len(t) == 2:
                     if isinstance(t[1], Sym) and str(t[1]) in binding and binding[str(t[1])][0] == "one":
                         return binding[str(t[1])][1]
-                    return Sym("#:opaque")
+                    return opaque(t[1])
                 out = Node()
                 out.line = getattr(form, "line", 0)
+                out.identity = (getattr(form, "identity", self.cur.name) + "::" + d.name
+                                + "::" + getattr(t, "identity", "template"))
                 for item in t:
                     if isinstance(item, list) and head(item) == "unquote-splicing" and len(item) == 2:
                         name = sym(item[1])
@@ -806,16 +846,12 @@ class Analyzer:
     # -- walking -----------------------------------------------------------
     def analyze(self) -> None:
         # pass 1: how each function runs the callables its parameters hold
-        self.lambda_ordinals = {}
-        self.rid_alias = {}
         for name, d in self.tree.defs.items():
             self.top_name = name
             self.walk_def(name, d, record=False)
         self.solve_param_ctx()
         self.infos = {}
         self.lambda_count = 0
-        self.lambda_ordinals = {}
-        self.rid_alias = {}
         for name, d in self.tree.defs.items():
             self.top_name = name
             self.walk_def(name, d, record=True)
@@ -1138,7 +1174,7 @@ class Analyzer:
             rid = self.spawn_lambda(fn, line, (creator.name, line, tname), env)
             self.ev("thread", rid, line, ctx, tname)
         elif isinstance(fn, list) and head(fn) == "function" and sym(fn[1]) in self.tree.defs:
-            rid = "thread:" + sym(fn[1]) + "@" + creator.path + ":" + str(line)
+            rid = "thread:" + sym(fn[1]) + "@" + creator.path + ":" + getattr(form, "identity", creator.name)
             if self.recording:
                 lam = Def(rid, creator.path, line, [], [Node([fn[1]])], "lambda", "", creator.loaded)
                 lam.body[0].line = line
@@ -1150,24 +1186,12 @@ class Analyzer:
             self.ev("unresolved", "make-thread of a computed function " + render(fn, 40), line, ctx)
         return EMPTY_SIG
 
-    def lambda_id(self, lam, line) -> str:
-        """A lambda's name: its file, the top-level definition it is written
-        in and its ordinal among that definition's lambdas (by source line).
-        Not its line number: a baseline row keyed by a line moved with every
-        edit above it in the file (lane WRAPPER).  The line-keyed name is
-        kept as an alias for re-keying a baseline (--rekey-lambdas)."""
-        lline = line_of(lam, line)
-        old = "lambda@" + self.cur.path + ":" + str(lline)
-        top = getattr(self, "top_name", None) or self.cur.name
-        lines = self.lambda_ordinals.setdefault((self.cur.path, top), [])
-        if lline not in lines:
-            lines.append(lline)
-        rid = "lambda@" + self.cur.path + ":" + top + "#" + str(lines.index(lline) + 1)
-        self.rid_alias[old] = rid
-        return rid
-
     def spawn_lambda(self, lam, line, thread_of, env):
-        rid = self.lambda_id(lam, line)
+        identity = getattr(lam, "identity", None)
+        if identity is None:
+            raise ValueError(f"lambda lacks a lexical identity at {self.cur.path}:{line_of(lam, line)}")
+        rid = "lambda@" + self.cur.path + ":" + identity
+
         if not self.recording:
             return rid
         d = Def(rid, self.cur.path, line_of(lam, line), lam[1] if len(lam) > 1 else [], list(lam[2:]),
@@ -2511,8 +2535,97 @@ class Checker:
 # --------------------------------------------------------------------------
 
 
-def realization_rows(contracts: Contracts) -> list:
-    return contracts.raw.get("realization", [])
+def realization_table(root: Path) -> dict:
+    """Read the model's table with the non-evaluating reader, never a JSON seed.
+
+    The machine split is followed only when the model actually includes it.
+    A parked machine file cannot replace the model's current table.
+    """
+    paths = [root / "books/host-model.lisp"]
+    found = []
+    for path in paths:
+        text = path.read_text()
+        forms = ledger.Reader(text).top_level()
+        for form, line in forms:
+            if (head(form) == "include-book" and len(form) >= 2
+                    and form[1] == "host-model-machine"
+                    and not isinstance(form[1], Sym)):
+                machine = root / "books/host-model-machine.lisp"
+                if machine not in paths:
+                    paths.append(machine)
+            if (head(form) == "defconst" and len(form) >= 2
+                    and str(form[1]) == "*fn-hmc-realization*"):
+                if len(form) != 3 or head(form[2]) != "quote" or len(form[2]) != 2:
+                    raise ValueError("*fn-hmc-realization* must be one quoted literal")
+                found.append((path, text, line, form[2][1]))
+    if len(found) != 1:
+        raise ValueError(f"model must define exactly one *fn-hmc-realization*, found {len(found)}")
+
+    def literal(value):
+        if isinstance(value, Sym):
+            if str(value) == "nil":
+                return None
+            if str(value).startswith(":"):
+                return str(value)
+            raise ValueError("nonliteral realization symbol: " + str(value))
+        if isinstance(value, list):
+            if value and isinstance(value[0], Sym) and str(value[0]).startswith(":"):
+                if len(value) % 2:
+                    raise ValueError("realization property list has an unmatched key")
+                data = {}
+                for key, item in zip(value[::2], value[1::2]):
+                    if not isinstance(key, Sym) or not str(key).startswith(":"):
+                        raise ValueError("realization property key must be a keyword")
+                    key = str(key)[1:]
+                    if key in data:
+                        raise ValueError("duplicate realization property: " + key)
+                    data[key] = literal(item)
+                return data
+            return [literal(item) for item in value]
+        if isinstance(value, str):
+            return value
+        raise ValueError("unsupported realization literal")
+
+    path, text, line, form = found[0]
+    rows = literal(form)
+    if not isinstance(rows, list) or not rows:
+        raise ValueError("realization must be a nonempty row list")
+    labels = set()
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get("label"), str):
+            raise ValueError("realization row needs a label")
+        if row["label"] in labels:
+            raise ValueError("duplicate realization label: " + row["label"])
+        labels.add(row["label"])
+        if not isinstance(row.get("layer"), str):
+            raise ValueError("realization layer must be a string")
+        enabled = row.get("enabled")
+        row["enabled"] = [enabled] if isinstance(enabled, str) else enabled or []
+        row["sites"] = row.get("sites") or []
+        if not isinstance(row["enabled"], list) or not all(isinstance(x, str) for x in row["enabled"]):
+            raise ValueError("realization enabled must name functions")
+        if not isinstance(row["sites"], list):
+            raise ValueError("realization sites must be a list")
+        for site in row["sites"]:
+            if not isinstance(site, dict) or not isinstance(site.get("function"), str):
+                raise ValueError("realization site needs a function")
+            for key in ("file", "primitive", "core"):
+                if site.get(key) is not None and not isinstance(site[key], str):
+                    raise ValueError("realization " + key + " must be a string or nil")
+            if site.get("capability") is not None and not isinstance(site["capability"], dict):
+                raise ValueError("realization capability must be a property list or nil")
+            for key in ("locks_held", "requires_before"):
+                site[key] = site.get(key) or []
+                if not isinstance(site[key], list) or not all(isinstance(x, str) for x in site[key]):
+                    raise ValueError("realization " + key + " must be a string list")
+    return {"source": {"file": path.relative_to(root).as_posix(),
+                       "constant": "*fn-hmc-realization*", "line": line,
+                       "sha256": hashlib.sha256(text.encode()).hexdigest()},
+            "rows": rows}
+
+
+def realization_rows(root: Path) -> list:
+    return realization_table(root)["rows"]
 
 
 LABEL_LAYERS = {"C", "P"}
@@ -2522,16 +2635,28 @@ def check_realization(checker: Checker) -> None:
     """The host-model realization table (review M3): each label's host sites
     exist, call their primitive and ACL2 subject, hold the label's locks, and
     call each requires_before subject before the primitive; the row's own
-    shape is the agreed one (layer C|P, a P label names its A-PRIM-* row,
+    shape is the agreed one (layer C|P, a P label names its A-PRIM-* row
+    or :crash's A-CRASH-IMAGE,
     'enabled' names ACL2 functions that exist)."""
     known = getattr(checker.an.reach, "known", set())
-    for row in realization_rows(checker.c):
+    try:
+        checker.realization = realization_table(checker.an.tree.root)
+    except (OSError, ValueError, ledger.ReadError) as error:
+        checker.realization = None
+        anchor = FnInfo("realization source", "books/host-model.lisp", 0, True)
+        checker.add("R3", anchor, 0, "realization source refused: " + str(error),
+                    "realization-source")
+        return
+    for row in checker.realization["rows"]:
         label = row.get("label", "?")
-        anchor = FnInfo("realization " + label, "planning/host-realization.json", 0, True)
+        anchor = FnInfo("realization " + label, checker.realization["source"]["file"],
+                        checker.realization["source"]["line"], True)
         if row.get("layer") not in LABEL_LAYERS:
             checker.add("R3", anchor, 0, f"realization {label}: layer must be C or P", "realization-shape:" + label)
-        if row.get("layer") == "P" and not str(row.get("assumption", "")).startswith("A-PRIM-"):
-            checker.add("R3", anchor, 0, f"realization {label}: a P label names its A-PRIM-* row",
+        assumption = row.get("assumption", "")
+        if (row.get("layer") == "P" and not str(assumption).startswith("A-PRIM-")
+                and not (label == ":crash" and assumption == "A-CRASH-IMAGE")):
+            checker.add("R3", anchor, 0, f"realization {label}: a P label names its primitive assumption",
                         "realization-shape:" + label)
         for name in row.get("enabled", []):
             if known and name not in known:
@@ -2544,6 +2669,10 @@ def check_realization(checker: Checker) -> None:
                 where = FnInfo(fn, site.get("file", "?"), 0, True)
                 checker.add("R3", where, 0, f"realization {label}: {fn} does not exist", "realization:" + label)
                 continue
+            if site.get("file") != info.path:
+                checker.add("R3", info, info.line,
+                            f"realization {label}: {fn} is in {info.path}, table names {site.get('file')}",
+                            "realization-file:" + label)
             prim = site.get("primitive")
             prim_events = [e for e in info.events if (e.kind in ("leaf", "call") and e.name == prim)] if prim else []
             if prim and not prim_events:
@@ -2666,10 +2795,6 @@ def main(argv=None) -> int:
     ap.add_argument("--initial", action="store_true")
     ap.add_argument("--emit-realization", action="store_true")
     ap.add_argument("--summary", action="store_true")
-    ap.add_argument("--rekey-lambdas", action="store_true",
-                    help="rewrite the baseline's line-keyed lambda names (lambda@FILE:LINE) "
-                         "to the stable ones (lambda@FILE:DEFINITION#N) of THIS tree; run it on "
-                         "the tree the baseline was written for")
     args = ap.parse_args(argv)
     started = time.time()
     root = Path(args.root).resolve()
@@ -2684,33 +2809,15 @@ def main(argv=None) -> int:
         findings = [f for f in findings if f.function == args.function]
     if args.emit_realization:
         out = root / REALIZATION
-        out.write_text(json.dumps({"comment": "generated by tools/lock_discipline_check.py "
-                                   "--emit-realization; source: the model book's *fn-hmc-realization* "
-                                   "(seeded from tools/lock_discipline_contracts.json until it lands)",
-                                   "rows": realization_rows(checker.c)}, indent=1) + "\n")
+        table = getattr(checker, "realization", None)
+        if table is None:
+            print("lock_discipline_check: refused realization source; no snapshot written")
+            return 1
+        out.write_text(json.dumps({"comment": "generated literal model table; host sites are checked "
+                                   "syntactically, not a refinement proof", **table}, indent=1) + "\n")
         print(f"lock_discipline_check: wrote {REALIZATION}")
         return 0
     enclave = set(checker.c.raw.get("enclave", {}).get("functions", []))
-    if args.rekey_lambdas:
-        path = Path(args.baseline)
-        data = json.loads(path.read_text())
-        pat = re.compile(r"lambda@[^|:]+:[0-9]+(?![0-9#])")
-        missing = []
-
-        def swap(m):
-            new = an.rid_alias.get(m.group(0))
-            if new is None:
-                missing.append(m.group(0))
-                return m.group(0)
-            return new
-        for row in data["findings"]:
-            row["key"] = pat.sub(swap, row["key"])
-        if missing:
-            print("lock_discipline_check: no lambda at " + ", ".join(sorted(set(missing))))
-            return 1
-        path.write_text(json.dumps(data, indent=1) + "\n")
-        print(f"lock_discipline_check: re-keyed {args.baseline}")
-        return 0
     baseline = load_baseline(Path(args.baseline))
     if args.write_baseline:
         grown = write_baseline(Path(args.baseline), findings, baseline, args.initial)
@@ -2728,7 +2835,9 @@ def main(argv=None) -> int:
     out = root / REALIZATION
     if out.exists() and not args.rule:
         try:
-            if json.loads(out.read_text()).get("rows") != realization_rows(checker.c):
+            snapshot = json.loads(out.read_text())
+            table = getattr(checker, "realization", None)
+            if table is None or any(snapshot.get(key) != table[key] for key in ("source", "rows")):
                 realization_drift = f"{REALIZATION} is stale: regenerate with --emit-realization"
         except ValueError:
             realization_drift = f"{REALIZATION} does not parse"

@@ -216,6 +216,46 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr)
         self.assertEqual(list((store / "staging").iterdir()), [])
 
+    def test_secret_rotation_orphan_is_swept_without_changing_key_authority(self):
+        """Recover a constructed interrupted rotation candidate, then rotate.
+
+        This exercises the physical recovery consumer of the producer's
+        `.init-node-secret-' namespace; it is not a process-death injection
+        into rotation. Candidate bytes are placeholders, never secret output.
+        """
+        store = self.initialized("rotation-orphan")
+        rotated = self.store_words(store, "node-secret", "rotate")
+        self.assertEqual(rotated.returncode, EXIT_OK, rotated.stderr)
+        keys = store / "keys"
+        current = keys / "node-secret.key"
+        retained = keys / "node-secret-1.key"
+        self.assertTrue(current.is_file())
+        self.assertTrue(retained.is_file())
+        before = {path.name: path.read_bytes() for path in keys.iterdir()
+                  if path.is_file()}
+        stage = store / "staging" / ".init-node-secret-interrupted-rotation"
+        unknown = store / "staging" / ".operator-evidence"
+        stage.write_bytes(b"incomplete candidate, never published")
+        unknown.write_bytes(b"foreign recovery evidence")
+
+        recovered = self.invoke(store, "recover")
+        self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr)
+        self.assertFalse(stage.exists())
+        self.assertTrue(unknown.exists())
+        after = {path.name: path.read_bytes() for path in keys.iterdir()
+                 if path.is_file()}
+        # Keep secret bytes out of assertion diagnostics, including failures.
+        self.assertTrue(after == before, "recovery changed key authority")
+
+        again = self.store_words(store, "node-secret", "rotate")
+        self.assertEqual(again.returncode, EXIT_OK, again.stderr)
+        self.assertTrue(retained.read_bytes() == before[retained.name],
+                        "rotation changed the retained epoch-1 key")
+        self.assertTrue((keys / "node-secret-2.key").read_bytes() == before[current.name],
+                        "rotation did not retain the previous current key")
+        self.assertTrue(current.read_bytes() != before[current.name],
+                        "rotation did not publish a fresh current key")
+
     def test_over_limit_unrecognized_names_refuse_without_removing_them(self):
         store = self.initialized("over-limit")
         for number in range(65):

@@ -81,6 +81,41 @@
 (assert-event (equal (fn-native-config-listener-tls-port *ncst-tls*) 1563))
 (assert-event (equal (fn-native-config-load (fn-native-config-show-octets *ncst-tls*))
                      (list :accepted *ncst-tls*)))
+ ; Explicit output resources survive show/load, alone and beside cold resources.
+(defconst *ncst-output*
+  (ncst-with '("[resources]" "output_heap_octets = 4096"
+               "output_quantum_heap_octets = 1024")))
+(defconst *ncst-cold-output*
+  (ncst-with '("[resources]" "cold_heap_octets = 8192" "cold_workers = 1"
+               "cold_descriptors = 2" "cold_read_ids = 3" "cold_file_ids = 4"
+               "output_heap_octets = 4096" "output_quantum_heap_octets = 1024")))
+(assert-event
+ (let ((c (cadr *ncst-output*)))
+   (and (equal (car *ncst-output*) :accepted)
+        (fn-native-config-show-wfp c)
+        (equal (fn-native-config-output-resources c) '(4096 1024))
+        (equal (fn-native-config-load (fn-native-config-show-octets c))
+               (list :accepted c)))))
+(assert-event
+ (let ((c (cadr *ncst-cold-output*)))
+   (and (equal (car *ncst-cold-output*) :accepted)
+        (fn-native-config-show-wfp c)
+        (equal (fn-native-config-cold-resources c) '(8192 1 2 3 4))
+        (equal (fn-native-config-output-resources c) '(4096 1024))
+        (equal (fn-native-config-load (fn-native-config-show-octets c))
+               (list :accepted c)))))
+(assert-event
+ (equal (fn-native-config-show (cadr *ncst-output*) "resources" "output_heap_octets")
+        (list :shown (fn-record-string-octets "4096"))))
+(assert-event
+ (equal (fn-native-config-show (cadr *ncst-cold-output*) "resources" "output_quantum_heap_octets")
+        (list :shown (fn-record-string-octets "1024"))))
+(assert-event (equal (ncst-with '("[resources]" "output_heap_octets = 4096"))
+                     '(:refused :invalid)))
+(assert-event (equal (ncst-with '("[resources]" "output_heap_octets = 1024"
+                                 "output_quantum_heap_octets = 1024"))
+                     '(:refused :invalid)))
+
 ; Teeth (the one hypothesis, well-formedness): a store path with a quote
 ; is not a configuration the grammar can name, and it does not come back.
 (defconst *ncst-quoted*
