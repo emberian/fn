@@ -11,16 +11,17 @@
  "line": "277",
  "locus": "connections",
  "notes": [
-  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
+  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification",
+  "10-03 06:36 2026-10-03 codex-sol-web generated actor envelope and once-only independent physical/semantic cleanup; cancelled worker activation remains retained through return and sole whole-disposal receipt. Forced pause refutes934 early record removal and e259 second observer early semantic receipt. Raw current passes; native fault/custody image checks pending, no completed repair claim."
  ],
- "owner": "host-lifecycle",
+ "owner": "codex-sol-web",
  "reviewer": "fnn-web-serve (web-host.lisp:275-280) re-raises every error that is not an os, socket or TLS error. The thread lambda (web-host.lisp:314-326) handles only sb-bsd-sockets:socket-error. The images are saved with --disable-debugger (build.lisp:622), so an unhandled error in this thread exits the whole process with code 1, not the owner's 3 or 4. That is worse than the reported 'web face dies silently'. Errors that reach this path include: fnn-fault outside any owner-serialized call (fnn-web-slice at web-host.lisp:63, 'more events than ACL2 allows' at 225, malformed-action faults), which never fenced the owner; and fnn-web-open's 'owner service is stopping' refusal (owner.lisp fnn-owner-serialized), which during an exit-3 stop can replace the uncertain code with 1. The leaked-session part is moot because the process dies, although fnn-web-request does lack an unwind-protect between :open and :close.",
  "scenario": "Several things raise an fnn-store-error inside fnn-web-request: an ACL2 slice fault (fnn-web-slice at 253), the event-cap fault (225), or fnn-web-open's 'owner service is stopping' refusal during a stop. None of these stop the owner, despite the comment \"an ACL2 fault is the owner's (it stopped)\". The error is re-raised out of fnn-web-serve and out of the thread lambda unhandled. Under --disable-debugger, an unhandled error in a thread ends the process abruptly with SBCL's code, not the owner's 3 or 4. At best the web face dies silently while the node keeps serving NNTP. If the error came after :open, the logical reader connection and its exposure slot (fn-owner-exposure-open) are never closed or released, so per-address exposure limits fill up until restart.",
  "severity": "medium",
- "sha": "4e409a9d6",
+ "sha": "8e37db4f2",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
  "state": "in-progress",
  "title": "Web face thread lets non-socket errors escape the thread, and an opened owner session is never released on that path",
- "updated": "2026-10-03T02:32:57Z"
+ "updated": "2026-10-03T10:36:03Z"
 }

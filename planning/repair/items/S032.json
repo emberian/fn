@@ -11,16 +11,17 @@
  "line": "120",
  "locus": "connections",
  "notes": [
-  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
+  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification",
+  "10-03 06:36 2026-10-03 source consumes shared render windows linearly in geometrically reserved private input, sends retained HTTP body in ACL2-decided4KiB windows with exact partial offsets under absolute15s request deadline. Full NNTP reply/HTML materialization is still open preallocation funding/incremental renderer debt; raw exactbytes passed, matching native image pending."
  ],
- "owner": "host-lifecycle",
+ "owner": "codex-sol-web",
  "reviewer": "web-host.lisp:120 concatenates the whole accumulated reply once per render quantum, which is O(N*Q) copying, and the full reply is held in memory before fnn-web-fill. The :defer loop (112-113) and the yield sleeps (124-125) have no deadline; the deadline built at 209 goes only to fnn-web-read-request. The accept loop (web-host.lisp:318-323) serves one connection at a time in the single 'fn web face' thread, so one slow or repeatedly deferred request blocks every other browser.",
  "scenario": "A browser asks for a large article or a long group listing. Each render quantum copies the whole accumulated reply again, so a reply of N octets in Q quanta costs O(N*Q) copying, and the full reply sits in memory before any byte is written (D27: bound work, not data). One face thread serves every connection, so a single such request, or a session the owner keeps deferring (login pacing, gate pressure), stalls the whole web face past the advertised request window with no timeout.",
  "severity": "medium",
- "sha": "4e409a9d6",
+ "sha": "8e37db4f2",
  "slice": "services",
  "source": "sweep-2026-10-03",
  "state": "in-progress",
  "title": "Web reply is buffered whole with quadratic concatenation, and the feed has no deadline despite the per-request time claim",
- "updated": "2026-10-03T02:32:57Z"
+ "updated": "2026-10-03T10:36:03Z"
 }
