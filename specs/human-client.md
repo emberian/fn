@@ -169,6 +169,12 @@ node. The request is framed and parsed in place from a byte buffer
 an N-octet head; the operator's head limit, 431 past it; the body limit the
 owner's article limit implies, 413 past it; chunked transfer coding is 501,
 a stated local policy because the face accepts only its own HTML forms).
+After article submission, the browser preserves the core's outcome distinction.
+The owner's exact uncertain 441 reply and internal 403 fault produce a
+503 uncertainty page advising inspection before another submission; ordinary
+441 posting refusal remains definite refusal. A numeric 4xx class alone cannot
+settle the article's durable outcome.
+
 A browser session is bound to a logical reader connection of the owner,
 opened through the owner's own exposure admission for the browser's address
 (the socket peer, or with `proxied` the proxy's last `X-Forwarded-For`

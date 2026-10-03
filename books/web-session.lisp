@@ -71,6 +71,7 @@
 (in-package "ACL2")
 (include-book "web-render")
 (include-book "web-health")
+(include-book "protocol-table")
 (include-book "def-loop")
 
 ; -----------------------------------------------------------------------------
@@ -1590,6 +1591,9 @@
                       (fn-wrq-oct "That post isn't here: it may have been removed.")
                       ctx config sessions fn-web-in fn-web-out))))
 
+(defconst *fn-wss-post-uncertain-line*
+  (fn-wrq-chars-octets (coerce (fn-proto-text "POST" :uncertain) 'list)))
+
 ; --- Posting and removing: "POST" alone first (RFC 3977 6.3.1: the article
 ; only after 340), then the rest of what fn-web-out holds.
 (defun fn-wss-k-submit (sessions flow event config fn-web-in fn-web-out)
@@ -1618,7 +1622,13 @@
               (fn-wss-send-session :remove :check data
                                    (fn-wss-cmd (list (fn-wrq-oct "STAT") msgid))
                                    session ctx sessions fn-web-out))
-             ((and (natp code) (<= 400 code) (< code 500))
+             ; POST's 441 also carries an uncertain persistence outcome.
+             ; Connection/session403 is a fault, never a definite refusal.
+             ; Preserve the exact core reply's distinction at the browser.
+             ((and (natp code) (<= 400 code) (< code 500)
+                   (not (equal code 403))
+                   (not (equal (fn-wss-status-text 0 fn-web-in)
+                               *fn-wss-post-uncertain-line*)))
               (fn-wss-trouble 403 (if (equal route :post) (fn-wrq-oct "Not posted")
                                     (fn-wrq-oct "Not removed"))
                               (fn-wrq-oct "The server said no.")
