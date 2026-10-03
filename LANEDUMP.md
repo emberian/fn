@@ -1800,5 +1800,13 @@ loss/backoff, terminal close and output-order checks. Credential admitted
 profile fixture retains decoded octets until the later connected turn.
 Peer-octet fixture's inherited missing def-actor source macro was repaired
 without an actor stub and passes; actual feed actor raw schedule passes.
-Derived traps regenerated only for the affected credential extraction.
+Derived traps checked for the affected credential extraction; no change.
 No saved-image/proof claim; Integration/continuing BPTransport own those.
+
+SCN-1106 is claimed and prepared as the exact native selector
+tests.test_native_peering.NativePeeringTests.test_pending_tls_feed_does_not_starve_new_healthy_peer.
+It captures a real silent implicit-TLS socket before adding the healthy peer,
+then requires exact healthy article bytes before the original handshake
+deadline. Source setup/code compile/claim checks pass; no image execution.
+Source receipt planning/evidence/repair/S067-fair-push-source-8df99c90a.json
+records the11-test scoped verdict and exact subject/harness byte hashes.
