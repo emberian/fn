@@ -2556,3 +2556,20 @@ and common response factory; physical owns registered worker acquisition
 and actual last-borrow. Their lower source/guard components and older
 response-pin model are separate scopes. New constructor/holder/frame/GC,
 installed allowance and changed native image qualification remain open.
+
+
+The selective availability adapter is a separate boundary (PRF-1287, SCN-1117).
+Its generated forms use available metadata readers for GROUP, LISTGROUP,
+NEXT/LAST and LIST ACTIVE/COUNTS. The executable entry retains raw archive/index
+formals; it does not build another complete archive or index under the owner.
+Raw ARTICLE/HEAD/BODY/STAT identity diagnostics, HDR/XPAT ranges, OVER and NEWNEWS
+chronology remain retained-history semantics. Successful metadata NEXT/LAST
+formats its STAT line from the held identifier without reading payload bytes.
+The disabled logical reference uses the available projection only for those
+selected commands. Its intended composition requires decided facts that match
+the same captured arena/root; existing raw-pinned equality does not establish it.
+Command-helper source fixtures pass through actual arena intern and generic
+catalog commit. Production owner routing, selective boundary proof and captured
+completeness establishment remain open. LIST ACTIVE/COUNTS still build a complete
+NNTP reply; a bounded group/row cursor is continuing work, and removing a Web
+copy does not bound this producer.
