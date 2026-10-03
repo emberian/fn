@@ -1870,13 +1870,12 @@ program the same environment).  NIL when unset."
                   wall +fnn-owner-wall-error-ms+ has-wall)))))
 
 (defun fnn-seal-octets (octets)
-  "The arena update a prepare names: seal OCTETS (the octet list the core
-answered with) through the guard-verified `fn-arena-seal-list'
-(books/payload-arena.lisp).  The core entries only READ the arena: an entry
-that also sealed would carry ACL2's invariant-risk and run through its *1*
-body, checking every callee's guard (the whole history, per POST)."
-  (fnn-call 'fn-arena-seal-list octets (fnn-live-arena))
-  t)
+  "Stage the ACL2-admitted list through the same seal as buffered POST.
+The list seal leaves bytes in the permanent resident arena child; the
+buffer seal gives this transaction a releasable stage and records its
+ACL2-derived handle for the log's durable reseat."
+  (fnn-octets-fill octets)
+  (fnn-seal-live-buffer))
 
 (defvar *fnn-staged-handle* nil
   "The handle the owner's last buffer prepare sealed (staged: books/payload-
