@@ -1,17 +1,19 @@
 {
- "acceptance": "wrapper:class-plus-step",
- "disposition": "DISSOLVES-IN",
- "evidence": "hbox native-ion-x10; test_unrepresentable_lifetime_refuses_before_attempt_or_helper",
- "exposure": "conditional",
- "file": "host/native/workflow.lisp",
- "id": "X10B",
- "locus": "operator-verbs",
- "notes": [],
- "owner": "reclaim-retention",
- "severity": "medium",
- "slice": "wrapper",
- "source": "sweep-gates-X10",
- "state": "open",
- "title": "ION workflow: an unrepresentable lifetime answers 3 (uncertain, 'observation binding requires recovery', ENOENT on the observation file) where refused-before-attempt (1) is owed: uncertain and refused must stay distinct",
- "updated": "2026-10-03T02:30:23Z"
+  "acceptance": "wrapper:class-plus-step",
+  "disposition": "DISSOLVES-IN",
+  "evidence": "hbox native-ion-x10; test_unrepresentable_lifetime_refuses_before_attempt_or_helper",
+  "exposure": "conditional",
+  "file": "host/native/workflow.lisp",
+  "id": "X10B",
+  "locus": "operator-verbs",
+  "notes": [
+    "2026-10-03 BP-TRANSPORT: ACL2 exact helper-seconds before any attempt publication; canonical pin fixture updated. Shipped raw caller passed; scoped cert/image pending."
+  ],
+  "owner": "bp-transport",
+  "severity": "medium",
+  "slice": "wrapper",
+  "source": "sweep-gates-X10",
+  "state": "in-progress",
+  "title": "ION workflow: an unrepresentable lifetime answers 3 (uncertain, 'observation binding requires recovery', ENOENT on the observation file) where refused-before-attempt (1) is owed: uncertain and refused must stay distinct",
+  "updated": "2026-10-03T02:30:23Z"
 }

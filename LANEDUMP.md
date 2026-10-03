@@ -1295,3 +1295,37 @@ until existing fixture152da/native-n7 compatibility is actually established.
 - Runtimeea8f14b82 composed with current actor/await/observer/cold slots. New actual finish section, exact handshake identity and literal effect vs section-return receipts retained; independent close continues, scheduling removal retains debt, rootStore requires physically ended mux loops and empty inbox/conns/arrived/debt. Socket helper preserves NIL primary with separate failed/closed receipt.
 - Material overlap: current cold-abandon preserved under once-only key containing exact READ; whole returned callback alone clears connection cold slot, fault retains read/key/debt. Runtime primary ownership confirmed; cancellation never implies dependency physical completion or output discard.
 - New narrow actual current cold helper/token recording boundary success+fault and real socket composition passed; mux cleanup scriptPASS and actual await scriptPASS (rerun only after regenerated affected derived stub). SCN1091 claimPASS. Indexed composition receiptv2 preserves initial placeholder-socket failed fixture attempt and prior receipt hash. No global harness rewrite, proof/image/build or repeated producer experiments. Matching native shutdown/image and full refinement/allocation/custody remain owed.
+
+
+# BP-TRANSPORT continuing owner, 2026-10-03
+
+Model: GPT-6.1-Sol. Worktree build/lanes/bp-transport-oct03; base origin/dev
+041fceb1. Sole dev writer is deputy_integration.
+
+ION first slice: X10A root is passing FNWF milliseconds to the helper's seconds
+argument; X10B is missing ACL2 representability admission before attempt
+publication. New fn-bpit-helper-seconds (verified guards + exact-range/lifetime
+keystone) is called via fn-workflow-ion-helper-seconds before any publication.
+Native restored fixtures canonically undertake through bp-obligation; optional
+real LTP/receipt fixtures inherit that canonical pin.
+
+Checks: local protected REPL admitted book (941 prover steps, 0.01 s); shipped
+native caller raw fixture passes exact route/seconds, pre-attempt no-publication
+refusal, post-attempt helper refusal/fault/death and unbound observation
+uncertainty. Python files compile, host files read. Farm two roots submitted
+hbox run-20261003T094938Z-19cf / certify-20261003T095031Z-1342869; still waiting.
+Harvested: PASSED2/0 manifest certify-20261003T095031Z-1342869 indexed.
+Evidence planning/evidence/bp-ion-lifetime-2026-10-03.md indexed.
+One actual developer + DTN developer convergence image is Integration's next
+carrier packet; these native image fixtures have not run at current bytes.
+
+Next coherent slice: remove reassembly from receive callback; carry one
+fn-bpfj-step quantum between scheduling turns, with stale-family decision
+remaining ACL2's. Tools one-action socket seam is 51c5c4f2e. Retained BP session
+funding must be an actual BP-specific supported-profile producer over fn-rl;
+Fundations confirms no borrowing syncer/output reserves. Demand order is
+*fn-rv-coordinates*: resident,disk,descriptors,workers,read-ids,txids,config-gens,
+conn-ids,work. Timeout is not a physical receipt or settlement.
+
+Open owned family: S025/S026/S068/S146; historical S006 already source-repaired
+by connection scoping (4e409 ancestor), no duplicate implementation.

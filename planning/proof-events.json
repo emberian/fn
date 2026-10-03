@@ -19094,6 +19094,15 @@
           "name": "fn-orv-startup-hold-protects-owner-and-one-quantum"
         }
       ]
+    },
+    {
+      "id": "PRF-1267",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpit-helper-seconds-preserves-lifetime"
+        }
+      ]
     }
   ]
 }

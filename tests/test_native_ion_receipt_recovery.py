@@ -26,9 +26,6 @@ class NativeIonReceiptRecoveryTests(unittest.TestCase):
                    timeout=60, text=True)
 
     def prepare_receipt(self, decision_fault=False):
-        undertaken = self.invoke("app-journal", "workflow-undertake", self.store,
-                                 self.journal, "work-a", "3")
-        self.assertEqual(undertaken.returncode, EXIT.OK, undertaken.stderr)
         self.request = self.tmp / "request.adu"
         sent = self.submit(
             f'cp "$4" {shlex.quote(str(self.request))}\n'
