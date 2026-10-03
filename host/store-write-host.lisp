@@ -701,7 +701,7 @@
            (hd (fn-xw-pread h pos (fn-lgw-header-len st extent))))
       (if (not (fn-xw-okp hd))
           (mv hd st tally replay fn-octets-lg fn-arena)
-        (let* ((n (fn-lgw-entry-len (cadr hd) st extent)))
+        (let* ((n (fn-lgw-entry-len-bounded (cadr hd) st extent max)))
           (mv-let (count fn-octets-lg) (fn-hx-fill h pos (if n n 0) fn-octets-lg)
             (if (not (equal count (if n n 0)))
                 (mv (if (< count 0) (fn-xw-os-errno 5) (fn-xw-fault "log segment shorter than its extent"))
@@ -724,7 +724,7 @@
     (let* ((q (fn-lgdm-q ps))
            (hd (fn-xw-pread h q (fn-lgdm-header-len ps extent))))
       (if (not (fn-xw-okp hd)) hd
-        (let* ((n (fn-lgdm-entry-len (cadr hd) ps extent))
+        (let* ((n (fn-lgdm-entry-len-bounded (cadr hd) ps extent max))
                (e (if n (fn-xw-pread h q n) (list :ok nil))))
           (if (not (fn-xw-okp e)) e
             (fn-xw-probe-tail h extent unit max (fn-lgdm-step (cadr hd) (and n (cadr e)) ps unit max))))))))

@@ -452,6 +452,18 @@
   :class ::common-lisp-compliant
   :keystones (fn-lgdm-repair-is-only-the-confirmed-damage))
 
+(definterface fn-lgdm-entry-len-bounded
+  :class :common-lisp-compliant
+  :kinds ((ps true-listp))
+  :keystones (fn-lgdm-entry-len-bounded-step
+              fn-lgdm-entry-len-bounded-is-entry-len))
+
+(definterface fn-lgw-entry-len-bounded
+  :class :common-lisp-compliant
+  :kinds ((st true-listp))
+  :keystones (fn-lgw-entry-len-bounded-step
+              fn-lgw-entry-len-bounded-is-entry-len))
+
 (definterface fn-lgdm-entry-len
   :class ::common-lisp-compliant
   :kinds ((ps true-listp)))

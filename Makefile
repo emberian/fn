@@ -757,6 +757,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-log-stream \
 	tests/acl2/store-log-stream-tests \
 	books/store-log-damage \
+	books/store-log-entry-bound \
+	tests/acl2/store-log-entry-bound-tests \
 	tests/acl2/store-log-damage-tests \
 	books/store-log-buffer \
 	tests/acl2/store-log-buffer-tests \

@@ -57,6 +57,9 @@
 (include-book "../books/store-log-stream")
 ;; The open tells a torn tail from damage (lane log-corruption).
 (include-book "../books/store-log-damage")
+; sweep S048: the entry lengths the host reads, bounded before the read
+; (host/native/io.lisp fnn-log-stream-segment, fnn-log-probe-tail).
+(include-book "../books/store-log-entry-bound")
 (include-book "../books/store-log-lineage")
 ;; The walk over the entry's octet buffer (lane snapshot-open-3; KEYSTONE
 ;; fn-lgw-step-buf-is-step): host/native/io.lisp fnn-log-stream-segment.

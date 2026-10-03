@@ -6666,14 +6666,16 @@ offline `store ROOT post'), the store's replayed configuration's
   "After the stream's stop ST: ACL2's probe of the rest of the segment
 (books/store-log-damage.lisp).  At each offset ACL2 names (fn-lgdm-q), the
 header window it names (fn-lgdm-header-len), the entry length it answers from
-that window (fn-lgdm-entry-len; NIL: none starts there) and that entry's
+that window (fn-lgdm-entry-len-bounded, books/store-log-entry-bound.lisp:
+NIL when none starts there or it is longer than any entry the open accepts
+under MAX, sweep S048) and that entry's
 octets, then ACL2's step (fn-lgdm-step).  One unit's header, or one entry, per
 step.  Returns the probe's final state."
   (let ((ps (fnn-core 'fn-lgdm-start st)))
     (loop until (fnn-core 'fn-lgdm-done-p ps extent) do
       (let* ((q (fnn-nat (fnn-core 'fn-lgdm-q ps)))
              (h (fnn-octet-list (fnn-log-pread fd q (fnn-nat (fnn-core 'fn-lgdm-header-len ps extent)))))
-             (n (fnn-core 'fn-lgdm-entry-len h ps extent))
+             (n (fnn-core 'fn-lgdm-entry-len-bounded h ps extent max))
              (e (and n (fnn-octet-list (fnn-log-pread fd q (fnn-nat n))))))
         (setq ps (fnn-core 'fn-lgdm-step h e ps unit max))))
     ps))
@@ -6701,7 +6703,9 @@ NIL otherwise: the step folds (fn-lgw-step-buf).")
 (defun fnn-log-stream-segment (fd extent unit max genesis sink &optional label writable)
   "The segment's decode from GENESIS as a stream of entries
 (books/store-log-stream.lisp): at the state's offset the header octets ACL2
-names (fn-lgw-header-len), the entry's length from them (fn-lgw-entry-len),
+names (fn-lgw-header-len), the entry's length from them, never past the
+longest entry the open accepts (fn-lgw-entry-len-bounded, sweep S048:
+KEYSTONE fn-lgw-step-of-oversized-is-step-of-nil),
 that entry's octets read into the walk's octet buffer (none: an empty
 buffer), and ACL2's step over the buffer (fn-lgw-step-buf,
 books/store-log-buffer.lisp: KEYSTONE fn-lgw-step-buf-is-step, the list step
@@ -6731,7 +6735,7 @@ the open proceeds on (:complete, :torn or :repaired)."
          (loop until (fnn-core 'fn-lgw-stop st) do
            (let* ((pos (fnn-nat (fnn-core 'fn-lgw-pos st)))
                   (h (fnn-log-pread fd pos (fnn-nat (fnn-core 'fn-lgw-header-len st extent))))
-                  (n (fnn-core 'fn-lgw-entry-len (fnn-octet-list h) st extent))
+                  (n (fnn-core 'fn-lgw-entry-len-bounded (fnn-octet-list h) st extent max))
                   (e (if n (fnn-log-pread fd pos (fnn-nat n)) (fnn-make-octets 0))))
              ;; The buffer holds exactly the entry's octets (its array E, its
              ;; fill (length E)), as fnn-extent-entry-ok fills the realizer's.
