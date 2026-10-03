@@ -9,7 +9,9 @@
  "id": "S113",
  "line": "1315",
  "locus": "store-books",
- "notes": [],
+ "notes": [
+  "10-02 23:22 escalate: fix lives in host/owner-host.lisp (forbidden zone)"
+ ],
  "owner": "sweep-ops",
  "reviewer": "The ratchet is real. fn-owner-reconfigure-deltas (owner-host.lisp:1313-1318) writes held before fn-owner-reconfigure-deltas-admitted, which can still refuse at 1270-1273 (fn-cca-preflight). fn-owner-reconfigure-unstage (1523-1528) never restores held. fn-cbud-deltas-slots takes the max (books/connection-budget.lisp:757). This is a documented, deliberate choice: connection-budget.lisp:787-789 says \"Taken at the check, before the staging's durable write: a staging that then fails leaves a charge at most larger than needed, never smaller.\" It fails safe, refusing too much rather than admitting too much. The effect is spurious :connections-exceed-memory refusals until restart after a refused large handshake setting. That is an availability nuisance, not a soundness hole.",
  "scenario": "An operator runs `policy set tls-handshakes-in-flight 4096`. The memory check passes, so held becomes 4096 slots. The staging step then refuses (preflight refusal on a node with a consumer position), or the live request is unstaged after authorization fails. The configuration still says the old value, but fn-owner-connection-held keeps the 4096-slot scratch for the rest of the run. Lowering the row later cannot reduce it, because the slots are a max. Every later reconfiguration that raises max-connections is refused :connections-exceed-memory, against handshake scratch that no live configuration can use, until the process restarts.",
@@ -17,5 +19,5 @@
  "source": "sweep-2026-10-03",
  "state": "open",
  "title": "Connection memory charge is ratcheted before the reconfiguration is admitted, and never released",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:22:28Z"
 }
