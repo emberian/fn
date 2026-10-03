@@ -2303,3 +2303,22 @@ and image status remain pending; no deployment action.
 
 Groundwork continues application consumer/E1E2. No app transfer. Lieutenant
 exempt from ten-agent cap per Ember's latest 07:14 correction.
+
+## Convergence: classified-load join boundary, current source execution
+
+The actual available loader may add facts while retaining row identity. The
+false whole-row equality is replaced by seven-field identity and downstream
+article, sequence, group/number and visibility projections; no runtime scan is
+added. Sources dbddd7105, 155e7b6c8 and dd7109b1e are integrated. Actual loaded
+join-open and join-entry source executions pass, and join-finish passes through
+the host-finish boundary; its final identity-finish still lacks RIX context in
+this retained prefix. Legacy held-row fixture asserts the full history relation,
+changed facts, unchanged metadata and exact bytes. This is loaded-source evidence,
+not fresh normal certification or completion of every literal theorem witness.
+
+Receipt catalog-join-availability-source-2026-10-03/manifest.json
+43c4f88856543ba1ca24b083fcb72e3a1af879dc338cb4c2572021254c806a18.
+The solheldownerfix session is loaned to Served for actual available owner route
+ancestors; coordinate sends and return the healthy handle rather than overwriting
+or replaying its prefix. Source-loaded consumer execution is the development
+feedback path; saved-image packaging is separate and does not block area work.
