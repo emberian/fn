@@ -644,3 +644,10 @@ at099d28d94 was truthfully rejected: two intended subtest assertions conflict
 with verifier's single-assertion contract. That receipt remains archived.
 Fixture now stops on first failed protocol variant; successful runs still
 execute both. Semantic verifier contract unchanged.
+
+S110 intended single assertion red at basee3b6eee46 and green at head31c79cb07,
+same designated test/harness, no infra/skips; final six schedules pass1.903s.
+Archived planning/evidence/repair/S110-e20e6254e71e4151b41907b94d897130.json
+sha256f26785cea305d06c3faed1083ac8e47d6b7519ad598dece5fd6894738204fe3e.
+Receipt-only commit does not change source coordinate. S110 remains
+in-progress pending combined consumer boundary; no whole-owner/image claim.
