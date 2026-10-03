@@ -441,9 +441,18 @@ class Consumer:
             return None
         fields = {}
         for line in lines[1:]:
+            if not line:
+                continue
             key, colon, value = line.partition(b": ")
-            if colon:
-                fields[key.decode("ascii", "replace")] = value.decode("ascii", "replace")
+            if not colon:
+                return None
+            try:
+                key, value = key.decode("ascii"), value.decode("ascii")
+            except UnicodeError:
+                return None
+            if key in fields:
+                return None
+            fields[key] = value
         if not {"application-id", "operation-id", "kind"} <= fields.keys():
             return None
         return fields
@@ -461,6 +470,10 @@ class Consumer:
         return best[1] if best else None
 
     def compose(self, message_id, subject, fields):
+        # This existing application profile uses one ASCII line per field.
+        # Never let opaque input replace its operation/kind through framing.
+        if any("\r" in value or "\n" in value for _, value in fields):
+            raise Stop(1, "the application v1 field contains a line break")
         body = [APP_MAGIC] + [("%s: %s" % kv).encode("ascii") for kv in fields]
         # The Date is fixed when the source is composed; the submission keeps
         # these exact bytes, so every retry posts the same source.

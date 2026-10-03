@@ -178,6 +178,23 @@ class DeliveryRecovery(unittest.TestCase):
                 self.assertEqual(self.client.db.execute("SELECT count(*) FROM operations").fetchone(), (0,))
                 self.assertEqual(self.client.db.execute("SELECT count(*) FROM submissions").fetchone(), (0,))
 
+    def test_application_envelope_never_reinterprets_duplicate_or_broken_fields(self):
+        envelope = (b"From: sender\r\n\r\n" + fn_consumer.APP_MAGIC +
+                    b"\r\napplication-id: fn-e1\r\noperation-id: r1\r\nkind: report-receipt\r\n")
+        self.assertEqual(self.client.envelope(envelope)["operation-id"], "r1")
+        for suffix in (b"operation-id: r2\r\n", b"kind: reply\r\n",
+                       b"payload-without-field\r\n", b"payload: \xff\r\n"):
+            with self.subTest(suffix=suffix):
+                self.assertIsNone(self.client.envelope(envelope + suffix))
+        self.client.config.update(application_id="fn-e1")
+        def forbidden(*args):
+            self.fail("malformed application fields must not reach signing")
+        self.client.artifact = forbidden
+        with self.assertRaises(fn_consumer.Stop) as stopped:
+            self.client.originate("r1", "receipt\r\noperation-id: r2")
+        self.assertEqual(stopped.exception.code, 1)
+        self.assertEqual(self.client.db.execute("SELECT count(*) FROM operations").fetchone(), (0,))
+
 
 if __name__ == "__main__":
     unittest.main()
