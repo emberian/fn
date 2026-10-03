@@ -22,6 +22,7 @@ import sys
 import threading
 import time
 import unittest
+from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -98,6 +99,7 @@ class Resources:
         self.done = threading.Event()
         self.samples = []
         self.errors = []
+        self.phase = "seed-and-mixed"
         self.thread = threading.Thread(target=self.run, daemon=True)
 
     def run(self):
@@ -114,11 +116,12 @@ class Resources:
                     value = subprocess.check_output(["ps", "-o", "rss=", "-p", str(pid)], text=True).strip()
                     rss = int(value) if value else None
                 sizes = [p.stat() for p in self.node.store_path.rglob("*") if p.is_file()]
-                self.samples.append(dict(t=time.monotonic(), rss_kib=rss, hwm_kib=hwm,
+                self.samples.append(dict(t=time.monotonic(), pid=pid, phase=self.phase, rss_kib=rss, hwm_kib=hwm,
                                          fd_count=fds, disk_bytes=sum(s.st_size for s in sizes),
                                          disk_allocated_bytes=sum(s.st_blocks * 512 for s in sizes)))
             except (OSError, ValueError, subprocess.SubprocessError) as error:
-                self.errors.append(str(error))
+                self.errors.append(dict(t=time.monotonic(), pid=pid,
+                                        phase=self.phase, diagnostic=str(error)))
             self.done.wait(0.1)
 
     def begin(self):
@@ -127,10 +130,15 @@ class Resources:
     def end(self):
         self.done.set()
         self.thread.join(timeout=10)
-        return dict(interval_s=0.1, scope="owner process and store only; sampled peaks",
+        keys = ("rss_kib", "hwm_kib", "fd_count", "disk_bytes", "disk_allocated_bytes")
+        def peaks(samples):
+            return {key: max((s[key] for s in samples if s[key] is not None), default=None) for key in keys}
+        return dict(interval_s=0.1, scope="both owner lifetimes and store; sampled peaks, split by PID",
                     samples=len(self.samples), errors=self.errors,
-                    peaks={key: max((s[key] for s in self.samples if s[key] is not None), default=None)
-                           for key in ("rss_kib", "hwm_kib", "fd_count", "disk_bytes", "disk_allocated_bytes")})
+                    peaks=peaks(self.samples),
+                    owners={str(pid): dict(samples=sum(s["pid"] == pid for s in self.samples),
+                                           peaks=peaks([s for s in self.samples if s["pid"] == pid]))
+                            for pid in sorted({s["pid"] for s in self.samples})})
 
 
 def read_exact(client, tag, delay=0):
@@ -198,6 +206,7 @@ def check_history(journal, recipe):
 def run_case(image, image_source, work, recipe, mode, deadline=120):
     work.mkdir(parents=True, exist_ok=False)
     rec = Recorder("mixed-" + mode)
+    started_utc = datetime.now(timezone.utc).isoformat()
     case = unittest.TestCase()
     node = Node(case, image, root=work / "node")
     resources = None
@@ -259,7 +268,10 @@ def run_case(image, image_source, work, recipe, mode, deadline=120):
                   stderr=initialized.stderr.decode("utf-8", "replace"))
         if initialized.returncode != EXIT.OK:
             raise AssertionError("profile init refused/faulted; see trace")
+        boot_begun = time.monotonic()
         node.start(timeout=600)
+        rec.event("environment", "owner-ready", pid=node.process.pid,
+                  boot_s=time.monotonic() - boot_begun, opening="initial")
         resources = Resources(node)
         resources.begin()
         with Client(node.port, timeout=deadline) as client:
@@ -314,9 +326,16 @@ def run_case(image, image_source, work, recipe, mode, deadline=120):
             coverage_gaps.append("quiet-reclaim-refused:" + quiet.stdout.decode("utf-8", "replace").strip())
         elif quiet.returncode != EXIT.OK:
             raise AssertionError(f"quiet reclaim uncertain/fault: {quiet.returncode}")
+        resources.phase = "shutdown"
+        shutdown_begun = time.monotonic()
         node.stop(grace=deadline)
         rec.event("environment", "owner-stopped", returncode=node.process.returncode)
+        rec.event("environment", "shutdown-duration", duration_s=time.monotonic() - shutdown_begun)
+        resources.phase = "recovery-and-verification"
+        boot_begun = time.monotonic()
         node.start(timeout=600)
+        rec.event("environment", "owner-ready", pid=node.process.pid,
+                  boot_s=time.monotonic() - boot_begun, opening="recovery")
         with Client(node.port, timeout=deadline) as client:
             for tag, old in accepted.items():
                 data = read_exact(client, tag)
@@ -365,7 +384,7 @@ def run_case(image, image_source, work, recipe, mode, deadline=120):
                    post_outcomes=dict(Counter(r["outcome"] for r in rows if r["event"] == "post")),
                    recovered=len([r for r in rec.journal.records if r.get("event") == "recovered"]),
                    mixed_elapsed_s=locals().get("mixed_elapsed"), resources=peaks,
-                   accepted_posts_per_s=(sum(r.get("outcome") == "accepted" for r in rows
+                   accepted_posts_per_mixed_phase_s=(sum(r.get("outcome") == "accepted" for r in rows
                                              if r["event"] == "post") / mixed_elapsed
                                          if "mixed_elapsed" in locals() and mixed_elapsed else None),
                    journal_digest=rec.journal.digest(),
@@ -381,6 +400,7 @@ def run_case(image, image_source, work, recipe, mode, deadline=120):
     manifest = dict(image=str(image), image_identity=image_identity(Path(image), source=image_source),
                     host=platform.uname()._asdict(), python=sys.version, profile=recipe["profile"],
                     seed=recipe["seed"], mode=mode, tool_revision=tool_source,
+                    started_utc=started_utc, finished_utc=datetime.now(timezone.utc).isoformat(),
                     runtime=runtime[0] if runtime else None,
                     inputs={p: file_hash(ROOT / p) for p in (
                         "tools/native_mixed_workload.py", "tests/native_harness.py",
@@ -392,14 +412,26 @@ def run_case(image, image_source, work, recipe, mode, deadline=120):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--image", required=True)
-    parser.add_argument("--image-source", required=True)
-    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--image")
+    parser.add_argument("--image-source")
+    parser.add_argument("--out", type=Path)
+    parser.add_argument("--check-run", type=Path, help="verify a sealed run's observed promises without a node")
     parser.add_argument("--plan", type=Path, help="replay this actor plan and barriers")
     parser.add_argument("--mode", choices=("baseline", "slow", "paired"), default="paired")
     parser.add_argument("--seed", type=int, default=19)
     parser.add_argument("--initial", type=int, default=24)
     args = parser.parse_args()
+    if args.check_run:
+        recipe = json.loads((args.check_run / "plan.json").read_text())
+        journal = Journal.read(args.check_run / "journal.jsonl")
+        check_history(journal, recipe)
+        summary = json.loads((args.check_run / "summary.json").read_text())
+        print(json.dumps(dict(history_check="passed", recorded_run_verdict=summary["verdict"],
+                              recorded_coverage_gaps=summary.get("coverage_gaps", []),
+                              scope="acknowledged content/number promise history only", journal=journal.seal()), indent=2))
+        return 0
+    if not args.image or not args.image_source or not args.out:
+        parser.error("native execution requires --image, --image-source and --out")
     recipe = json.loads(args.plan.read_text()) if args.plan else plan(args.seed, args.initial)
     if not recipe["initial"] or recipe["profile"] != PROFILE:
         parser.error("requires nonempty initial articles and the supported matched profile")
