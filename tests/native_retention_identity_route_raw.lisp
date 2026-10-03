@@ -75,7 +75,7 @@
     (assert (eq (fnn-log-kernel (fnn-store-log store)) :old))
     (assert (null (fnn-log-reserved (fnn-store-log store))))))
 ;; Malformed/core faults remain faults before any mutation, never refusal.
-(dolist (result '("bad" (8)))
+(dolist (result '("bad" (8) :unknown-result nil))
   (let ((store (fresh-store)) (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation))
     (setq *calls* nil *gate-result* result)
     (assert (handler-case (progn (fnn-advance-frontier store 7) nil) (fault () t)))

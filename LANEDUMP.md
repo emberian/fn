@@ -1044,3 +1044,16 @@ red/green receipt objects verify. Reuse four focused raw schedules1.217s.
 First runnable selector python3 -m unittest tests.test_native_pull_journal_registry.
 Next combined cert needs books/peer-pull.lisp + tests/acl2/peer-pull-tests.lisp;
 current321 verdict cannot transfer. S054/S067/S106 starvation remains open.
+
+
+## Sol source assembly — identity result vocabulary follow-up
+
+Groundwork b55f79ff5 follows integrated BP identity route. Review caught
+active owner NIL still accepted as exhaustion; Groundwork confirmed actual
+producer returns NAT/four named tags and authorized the exact correction.
+Refusal is now only those tags or standalone successor NIL; unknown keywords
+and active callback NIL fault before allocator effects. Added active NIL
+witness and ran actual-source routing fixture PASS because bytes changed.
+Receipt records source base/delta plus exact source/fixture digests, command
+and narrow recording-boundary scope; archive/index supplied. No book or
+semantic decision changed, saved-image undertaking/release/reopen remains.
