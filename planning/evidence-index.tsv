@@ -8151,6 +8151,11 @@ aceb97a0226481ef239d36f196b6ffd7f6578fe99cc1c156e0340f2ea55e995e 2443 planning/e
 f1d94c25e295eb16fe4db905f58c04bc1eb22ddb16c83dc659e910826a730e15 4549 planning/evidence/operator-journal-stream-2026-10-03-v2.json
 5355098c966460409324c2b3b806ac2de9882911be0c64b37f88c12b0444f96b 4362 planning/evidence/operator-journal-stream-2026-10-03.json
 be5018d0a536c4f24f11fa3ba252187309c3b5a6facc92e3224110d756007d89 13000 planning/evidence/operator-journal-stream-repl-2026-10-03.log.gz
+93c65e74520f64d3cb91e7f6e449eafeb33a63f7efc56cf7d80af6005573f819 6002 planning/evidence/operator-peer-bank-prior-negative-2026-10-03.log
+cfeedce9ee135c669ab7b41460f737fe5c1fc2e22ae3dc75d13069079be7593d 32 planning/evidence/operator-peer-bank-source-2026-10-03.log
+be1de6c1e02b926962623a1bcb742eb095f8b835d9fd636a80d62c662a22ef68 104 planning/evidence/operator-peer-composed-unit-2026-10-03.log
+6e2005d93c6331e3a70b363f7bdee637f7ef1cf7f37adbdea6e3f7649efe28de 1915 planning/evidence/operator-peer-convergence-source-2026-10-03.json
+02c0716b905321cb9ad132b1fb7b8a9eaea3b10f0e88a31542f053c3c08f4a46 1970 planning/evidence/operator-peer-file-source-2026-10-03.log
 45056448e22e2fc8e772ecb1db6ab597d72fd2fc088157d88bc1a03cee75f3b5 1849 planning/evidence/operator-pool-startup-source-2026-10-03-v2.json
 2be36c7f38648b4079d79a3be312f336de15128175a552e8a07a6e002bede0a6 17218 planning/evidence/operator-pool-startup-source-2026-10-03-v2.log
 480818fa6e45aeb8ea80dfa4d089ea07f94a21271c68498c13c26828c08e5dec 1544 planning/evidence/operator-pool-startup-source-2026-10-03.json
@@ -8185,6 +8190,7 @@ ba2eef197b9ced3fa5988c2be9f79450395d0f7cf9069f0aa2f2cdaf41d54fdb 1796 planning/e
 906b57e1296ce8dea60de8940f4c20f8effcf2850ab6802e52bc410d281a9d03 12191 planning/evidence/operator-startup-custody-composition-2026-10-03.log
 072eb3ac883cfd016dc4a2e461ddf6167d357fa277bb2255500410aa8d73257b 1606 planning/evidence/operator-surface-audit-2026-09-21-witnesses.txt
 898c4c8aae67e8006e579b94150e29d8cc1395cd2a4fa80a2d73609b8075cb99 4588 planning/evidence/operator-surface-audit-2026-09-21.md
+7c80d8a3268d3efe7a69754620f80271d3d5eea6dd1bb37b4fb3c13428ff0b68 37 planning/evidence/operator-terminal-cohorts-source-2026-10-03.log
 26eae03121ce6b629ce020363457968fe3f875472d1a83bc9c540668c371cc6d 15942 planning/evidence/operator-verdicts-2026-09-25.md
 2bd9bf52bb74bad132ba7c9bbb95b020ea70f766ec827ab0792d8a447eb47412 1318 planning/evidence/operator-verdicts-2026-09-25/build.sh
 5e17d5406d76287b1d0945ee0f5aeff5545dbfa6d47a0215db760ff2a35022c2 170 planning/evidence/operator-verdicts-2026-09-25/image-2.sha256
