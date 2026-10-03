@@ -23064,6 +23064,25 @@
         "tests/acl2/page-read-startup-host-tests.lisp"
       ],
       "progress_note": "Incremental real source admission: selected plan/getter and readiness guards, binding publication proofs, complete admitted-capacity theorem and fresh local-stobj install/readiness/revision-preservation witnesses pass. Proper-local final startup book replay and two heap-wrapper/decoded-acquire guards pending coherent dependency world; no certificate or complete physical tariff claim."
+    },
+    {
+      "id": "PRF-1302",
+      "title": "Redeem input admission precedes bounded retention and interpretation",
+      "statement": "The actual host fnn-redeem-password-line calls fn-rip-password-step before retaining an octet; :octet implies graphic ASCII, a natural carried count, no pending terminal CR, and room for the complete XREDEEM PASS wire command. fnn-redeem-read-line calls fn-rip-reply-status before interpreting a delimited reply; :line implies its LF is within the512-octet wire capacity. Input-policy theorems do not prove the raw host loop or socket I/O. Command synthesis is owned by fn-rip-command, with token and wire validation before dialing.",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-1003"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/native-redeem-input.lisp",
+        "tests/acl2/native-redeem-input-tests.lisp",
+        "host/native/io.lisp",
+        "tests/native_redeem_input_source.lisp"
+      ],
+      "progress_note": "2026-10-03 final actual-source SBCL edge fixture passed (0.059s); final guard-verified policy and command constructor source-loaded in warm hbox session over14 exact cached dependencies (0.18ACL2s,435steps); both unconditional admission theorems and13 literal teeth passed. Normal certification and matching saved-image run remain open."
     }
   ]
 }
