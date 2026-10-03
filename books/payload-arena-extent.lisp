@@ -39,6 +39,7 @@
 (in-package "ACL2")
 (include-book "payload-arena-paged")
 (include-book "payload-arena-extent-logic")
+(include-book "payload-lz-scalar-realizer")
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
@@ -448,8 +449,8 @@
     (cond ((fn-arn-extentp e)
            (fn-durable-realize-octet (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e) (nth 5 e) i))
           ((fn-arn-lz-extentp e)
-           (fn-oct-nth i (fn-durable-realize-lz (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e)
-                                                (nth 5 e) (nth 6 e) (nth 7 e))))
+           (fn-durable-realize-lz-octet (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e)
+                                       (nth 5 e) (nth 6 e) (nth 7 e) i))
           ((eq e :staged) (fn-arx-stage-get h i fn-arena$x))
           ((eq e :forgotten) 0)
           (t (stobj-let ((fn-arena-paged (fn-arena$x-inner fn-arena$x)))

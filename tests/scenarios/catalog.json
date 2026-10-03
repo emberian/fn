@@ -9195,6 +9195,39 @@
         "tests/acl2/served-available-commands-tests.lisp"
       ],
       "execution_scope": "Actual arena-intern and generic catalog writer with guarded specialized formatter/navigation exports; source fixtures pass. Generated dispatcher and owner route propagation/proof/image remain pending."
+    },
+    {
+      "id": "SCN-1118",
+      "title": "Compressed arena scalar dispatch never uses whole decode under window mode",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-047",
+        "NNT-055"
+      ],
+      "steps": [
+        "Call actual native normal scalar getter with a recording full decoder and original index.",
+        "Select window mode with no installed physical leaf, then with actual decoded descriptor getter and recording returned-worker borrow.",
+        "Drive cold capture, success, cancelled/stale and malformed pending outcomes through actual native bodies.",
+        "Call actual compressed fn-arena$x-get branch and count full-decode invocations."
+      ],
+      "expected": [
+        "Normal mode preserves existing decoded nth value/coordinates.",
+        "Missing installed provider preserves named unavailable word; captured miss carries exact complete descriptor.",
+        "Window byte preserves exact token/dictionary/offset identity; cancelled/stale refuse and malformed pending faults.",
+        "No whole-decode fallback occurs under window mode."
+      ],
+      "implementation": {
+        "test": "tests/test_native_lz_scalar_raw.sh"
+      },
+      "evidence": [
+        "tests/native_lz_scalar_raw.lisp",
+        "books/payload-lz-scalar-realizer.lisp",
+        "books/payload-arena-extent.lisp",
+        "host/native/extent.lisp",
+        "host/native/extent-decoded.lisp"
+      ],
+      "execution_scope": "Actual source branches/dispatch; full decoder, physical returned-worker borrow and arena storage field are recording boundaries. No complete decoded allocator/controller/issuer activation, profile, certificate or image claim."
     }
   ]
 }

@@ -2605,3 +2605,15 @@ catalog commit. Production owner routing, selective boundary proof and captured
 completeness establishment remain open. LIST ACTIVE/COUNTS still build a complete
 NNTP reply; a bounded group/row cursor is continuing work, and removing a Web
 copy does not bound this producer.
+### Shared compressed article scalar seam (PRF-1288, SCN-1118)
+
+The actual compressed arena scalar arm calls `fn-durable-realize-lz-octet`,
+whose logical byte is the existing A-DURABLE-LZ decoded value at the same
+index. Normal native mode preserves the original whole decoder. A selected
+window mode must borrow the exact authenticated returned decoded window or
+return its named unavailable/cold/refusal outcome; it never silently falls
+back to materializing the full decoded payload. This adds no decode or
+integrity assumption. Same-pool constructor/slot/buffers admission, physical
+worker return and last borrow, and the owner article quantum adapter remain
+open. The optional complete output tariff stays unsupported; this source
+seam is not a physical funding or qualified-image claim.

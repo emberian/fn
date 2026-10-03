@@ -19380,6 +19380,15 @@
           "name": "fn-ocap-preview-keeps-input-prefix-bounds"
         }
       ]
+    },
+    {
+      "id": "PRF-1288",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-durable-realize-lz-octet-is-decoded-nth"
+        }
+      ]
     }
   ]
 }

@@ -22610,6 +22610,33 @@
         "tests/acl2/served-available-commands-tests.lisp"
       ],
       "progress_note": "Source helpers guarded in transferred exact availability world: GROUP/LISTGROUP/ACTIVE/COUNTS18forms0.19ACL2s/2567steps, held metadata/NEXT/LAST3forms0.03s. Actual sealed arena intern+generic catalog writer sparse{1,34} and empty fixtures compare six complete command-helper results, assert raw/projected statep and fact/byte completeness, preserve retained number2 and Message-ID row;9forms0.02s pass. Initial inherited classification-only fixture did not seal its synthetic handles; failed full correspondence preserved, corrected through actual fn-cat-intern-list. Generated dispatcher and command-layer consumer are source-written; proper complete book, owner production propagation and selective proof remain pending. LIST still materializes its full reply; no native image, bounded producer or funding claim."
+    },
+    {
+      "id": "PRF-1288",
+      "title": "Compressed arena scalar getter refines existing decoded nth and consumes one authenticated returned window",
+      "statement": "Host-called arena export fn-arena$x-get compressed arm calls fn-durable-realize-lz-octet. The scalar logical function equals nth of existing A-DURABLE-LZ decoded value; no new assumption. Native normal mode preserves original full decode/nth behavior, while window mode borrows only through the authenticated decoded provider or returns the named unavailable/cold/refusal boundary, never a whole-decode fallback. Complete same-pool decoded constructor/slot/buffers issuer, physical controller/return/last-borrow joining and owner quantum adapter remain required. A scalar seam alone establishes no allocation bound or complete runtime funding.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-047",
+        "NNT-055"
+      ],
+      "depends_on": [
+        "PRF-1259"
+      ],
+      "assumptions": [
+        "A-DURABLE-LZ",
+        "A-DURABLE-EXTENT"
+      ],
+      "status": "planned",
+      "evidence": [
+        "books/payload-lz-scalar-realizer.lisp",
+        "books/payload-arena-extent.lisp",
+        "host/native/extent.lisp",
+        "host/native/extent-decoded.lisp",
+        "tests/acl2/payload-lz-scalar-realizer-tests.lisp",
+        "tests/native_lz_scalar_raw.lisp"
+      ],
+      "progress_note": "New derived scalar book source-admitted6forms0.16ACL2s/41steps; three literal logical positives0.00s/87steps. Actual compressed arena branch/raw scalar schedules pass, recording full-decode and worker-borrow boundaries. Initial fixture lacked ACL2 ZP primitive; repaired. Constrained durable values cannot execute assert-event: literal logical positives use local defthm, physical discrimination remains native fixture. No changed arena certificate/native image or complete decoded worker activation claim."
     }
   ]
 }
