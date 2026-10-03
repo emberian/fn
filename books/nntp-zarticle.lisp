@@ -49,6 +49,7 @@
               s
             nil))
       nil)))
+(fn-payload-kind fn-zar-stored :handle "tests the payload as a natural below the arena count and reads the arena at it")
 
 (defun fn-zar-initial (digest n clen)
   (declare (xargs :guard t))
