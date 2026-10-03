@@ -1364,7 +1364,8 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
              "last_active": now, "acl2_pgid": None, "ended": None,
              "upto": upto, "through": through, "ld": ld, "ld_loaded": {},
              "ld_local": ld_local, "keep_source_prefix": keep_source_prefix,
-             "load_limit": limit if load_limit is None else load_limit}
+             "load_limit": limit if load_limit is None else load_limit,
+             "load_timeout": load_timeout}
     # SIGTERM (reap's fallback) unwinds through the finally below, which
     # kills the owned ACL2 group; without this it would outlive the server.
     signal.signal(signal.SIGTERM, _on_term)
@@ -1504,9 +1505,14 @@ def handle(request: dict, acl2: Acl2, state: dict, default_limit: float) -> dict
                 "`proof_repl.py send-range NAME FILE`, or `send NAME -` from stdin)"}
     if count != 1:
         return {"error": True, "output": f"send exactly one form, not {count}"}
-    limit = request.get("limit") or default_limit
+    limit = default_limit if request.get("limit") is None else request["limit"]
+    hard = limit * 1.5 + 30
+    if head_and_name(form)[0] == "ld":
+        # A source LD contains many individually budgeted events. Its total
+        # time is not the budget of one proof; use the startup load allowance.
+        hard = max(hard, state.get("load_timeout", 600.0))
     started = time.monotonic()
-    output, timed_out = acl2.send(wrap_limit(form, limit), limit * 1.5 + 30)
+    output, timed_out = acl2.send(wrap_limit(form, limit), hard)
     elapsed = round(time.monotonic() - started, 1)
     state["sends"] += 1
     if timed_out:
