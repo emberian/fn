@@ -122,10 +122,17 @@ Existing sessions are `deputy_integration`, `deputy_runtime`,
 `helper_source_assembly` and `deputy_proof_engineering` (Sol), plus the four
 Luna proof helpers and `astra_source_trace` (Astra). Session existence does not
 mean every helper is running: explicitly resume completed helpers for a concrete
-next consumer. The resource helper now probes paged catalog attachment; the
+next consumer. The resource helper completed the cached paged attachment and
+creator probe and now owns carried catalog availability through reclaim to
+GROUP/LISTGROUP/NEXT/LAST; Groundwork assembles with Served. The
 command helper continues bounded matcher work for Served/Foundations. Empirical
 designs actual-image workloads and replayable faults, with Integration budgeting
-runs. Primary capability implementation stays ahead of the proof sweep sidecar.
+runs. The broad Luna sweep is stopped at ember's request; validated changes are
+retained, unfinished experiments parked. The former proof Sol now implements
+the owner carrier on the actual refused/aborted POST path. Astra owns bounded
+checkpoint image read-back/publication/reopen and authoritative reclaim capture;
+Groundwork retains history/root representation design. Primary capability
+implementation stays ahead of supporting proof work.
 The groundwork deputy routes routine findings and READY source directly to peers
 and Integration; only consequential decisions and user outcomes reach the
 strategic coordinator. Integration alone pushes dev and coordinates expensive
