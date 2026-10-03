@@ -84,6 +84,12 @@ class SpecCiteCheckTests(unittest.TestCase):
     def test_the_tree_is_green_under_strict(self):
         self.assertEqual(scc.main(["--summary", "--strict"]), 0)
 
+    def test_no_citation_is_filed_stale(self):
+        # BM08: the listing is repaired prose or a reasoned exemption, never a parked debt.
+        import json
+        listing = json.loads((Path(scc.__file__).resolve().parent / "spec_cite_exemptions.json").read_text())
+        self.assertEqual(listing["stale"], {})
+
 
 if __name__ == "__main__":
     unittest.main()
