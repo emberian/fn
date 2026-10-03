@@ -22183,7 +22183,7 @@
     {
       "id": "PRF-1261",
       "title": "Retained wildcard matcher preserves the original result and charges one microstep before each transition",
-      "statement": "Actual NEWNEWS fn-nnm-one calls fn-wmc-start and fn-wmc-step through fn-nnw-stream-one, fn-nnw-stream-step and host fnn-owner-cursor-step. Reference-only start retains parsed patterns and configured group. The resumable task/frame engine preserves the exact original wildcard work-result, including UTF-8 decoding, input-length refusal and rightmost inclusion/exclusion ordering. Accepted step consumes exactly one work unit and its phase-specific logical cons demand; absent work or grant returns the identical state. The shaped invariant is established and preserved, and logical remaining strictly drops for each accepted step. These disabled reference/shape/remaining models are not runtime scans. Constructor cells are not native heap bytes: tight retained graph, bounded integer representation, allocator/collector margin and the actual physical output/cold producer remain open. No certificate or image claim.",
+      "statement": "Actual NEWNEWS fn-nnm-one calls fn-wmc-start and fn-wmc-step through fn-nnw-stream-one, fn-nnw-stream-step and host fnn-owner-cursor-step. Reference-only start retains parsed patterns and configured group. The resumable task/frame engine preserves the exact original wildcard work-result, including UTF-8 decoding, input-length refusal and rightmost inclusion/exclusion ordering. Accepted step consumes exactly one work unit and its phase-specific logical cons demand; absent work or grant returns the identical state. The shaped invariant is established and preserved, and logical remaining strictly drops for each accepted step. These disabled reference/shape/remaining models are not runtime scans. Constructor cells are not native heap bytes: physical retained alias correspondence, bounded integer representation, allocator/collector margin and the actual physical output/cold producer remain open. No certificate or image claim. Actual matcher start/one/step establish and preserve the proof-only retained extent: owned control/rows plus shared decoded target <=38+6P+6M+11N under natural N and carried retained predicate. Borrowed parsed patterns have exactly3P+M logical tree cells and are counted once by their owner. These metrics describe maximum logical region extent, not cumulative phase13/15 charge or native heap residency.",
       "milestone": "M5",
       "requirements": [
         "HST-023"
@@ -22202,7 +22202,9 @@
         "planning/evidence/dc03-wildmat-20261003/repl.log.gz",
         "planning/evidence/served-matcher-consumer-20261003/checks.json",
         "planning/evidence/served-matcher-consumer-20261003/stream-batch-repl.log.gz",
-        "planning/evidence/served-matcher-consumer-20261003/adapter-repl.log.gz"
+        "planning/evidence/served-matcher-consumer-20261003/adapter-repl.log.gz",
+        "books/wildmat-live.lisp",
+        "tests/acl2/wildmat-live-tests.lisp"
       ],
       "events": [
         "fn-wmc-start-value-is-group-match",
@@ -22210,9 +22212,14 @@
         "fn-wmc-step-preserves-value",
         "fn-wmc-funded-step-progress",
         "fn-wmc-accepted-cons-cells-covered",
-        "fn-wmc-cumulative-cons-bound"
+        "fn-wmc-cumulative-cons-bound",
+        "fn-wml-start-retainedp",
+        "fn-wml-one-retainedp",
+        "fn-wml-step-retainedp",
+        "fn-wml-retained-owned-bound",
+        "fn-wml-borrowed-pattern-cells"
       ],
-      "progress_note": "Original core source906ff1498 admissions and component probe are scoped separately from the total UTF-8 wrapper and actual NEWNEWS adapter/controller composition. Matching certificate, native route qualification and physical heap funding remain owed."
+      "progress_note": "Original core source906ff1498 admissions and component probe are scoped separately from the total UTF-8 wrapper and actual NEWNEWS adapter/controller composition. Matching certificate, native route qualification and physical heap funding remain owed. Helper source1b06cec19/9362438d3/c7e5d9219 adds exact live extent consumed by Root/Served. Clean89-form replay13.75ACL2s/5,656,759steps and14tests971steps pass; actual overlap fixture13frames86cells, ownedcapacity161, borrowed21. Numeric capacity guards verified. No duplicate replay here, matching certificate and complete literal per-export teeth remain distinct from helper source admission. Physical aliasing/bytes/GC/bignums/caller/mux/source pin funding remain Root-owned debt."
     },
     {
       "id": "PRF-1273",

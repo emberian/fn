@@ -19255,6 +19255,26 @@
         {
           "kind": "theorem",
           "name": "fn-wmc-cumulative-cons-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wml-start-retainedp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wml-one-retainedp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wml-step-retainedp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wml-retained-owned-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wml-borrowed-pattern-cells"
         }
       ]
     },

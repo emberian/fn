@@ -525,3 +525,18 @@ helper/admission bodies, with recording wire/typed boundaries; its positive
 tariff is injected to discriminate prefix consumption and is not a produced
 physical footprint. Allocator/collector, setup workspace, root/version custody
 and complete native realization remain open.
+## Retained matcher extent (PRF-1261)
+
+The NEWNEWS matcher continuation has a carried proof-only extent invariant,
+not a served whole-state scan. `fn-wml-start-retainedp`,
+`fn-wml-one-retainedp` and `fn-wml-step-retainedp` connect the actual matcher
+entries to that invariant. With natural decoded-name bound N and a carried
+retained state, `fn-wml-retained-owned-bound` bounds control/rows plus shared
+decoded target by `38+6P+6M+11N`; borrowed parsed-pattern tree cells are
+exactly `3P+M` under the parsed-pattern-list premise and charged once by their
+owner. P counts parsed patterns and M their token items. This maximum logical
+region extent is separate from cumulative per-step constructor charges and
+from native aliasing, physical heap bytes, integer widths, allocator/collector
+behavior, retained source pins and outer controller/mux storage. Those terms
+remain required in the actual selected output tariff before accounted
+command admission can hold.
