@@ -537,6 +537,7 @@ DNS/profile/context filesystem work remains a separate availability frontier."
            (fnn-feed-drop-link runtime link now
                                (fnn-feed-loss-backoff service (fnn-feed-link-peer-octets link)) :eof)))
         ((:closed :invalid :connection-refused :streaming-refused :unsendable)
+         (setf (fnn-feed-link-drain link) nil)
          (fnn-feed-drop-link runtime link now
                              (fnn-feed-loss-backoff service (fnn-feed-link-peer-octets link))
                              (if (eq word :unsendable) :unsendable :peer)))
@@ -556,6 +557,11 @@ DNS/profile/context filesystem work remains a separate availability frontier."
                                  (not (null (fnn-feed-link-output link))) (fnn-feed-link-drain link)
                                  (and (fnn-feed-link-ready link) (fnn-feed-link-tick-due link))
                                  now (fnn-feed-link-deadline link))))
+          ;; Retained work keeps the existing busy cadence even on WANT;
+          ;; the idle backoff is only for links with no pending operation.
+          (when (or (fnn-feed-link-phase link) (fnn-feed-link-output link)
+                    (fnn-feed-link-drain link))
+            (setq *fnn-feed-active* t))
           (setq *fnn-feed-io-phase*
                 (case action ((:connect :connected) :dial) (:tls :tls) (:write :send) (t :read)))
           (case action

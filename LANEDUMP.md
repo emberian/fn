@@ -1959,3 +1959,23 @@ Owner carrier current continuation — GPT-6.1-Sol, 2026-10-03
 - Preserved prior tree clean at25186bd8b; current source tree365657213. Actual owner-post cached-only refused before ACL2 for14 base roots+51 dependents; exact hashes/repro in owner-carrier-current-20261003.json. Integration owns narrow dependency/target certification; no retry/source closure.
 - Catalog counter/incarnation now included in loaded-world authority closure; actual program fixture passed. Threader refuses their access until explicit private unset/corrupt semantics are supplied;12tool tests pass. No production migration.
 - Two writer definitions defer guard verification to existing def-carried-writer scoped ordinary verify-guards; original formals/bodies/guard unchanged. Target remains unadmitted. All experimental sessions released. History absorbs authority migration under8am cap; normal owner snapshot and finish prefix/reload producer still owed.
+
+Focused completion: five fair-push tests plus six credential tests PASS in
+3.753s, actual raw phase/sequencing shell PASS. New actual worker over real
+loopback/kernel output exercises a saturated slow send queue and healthy
+exact2000-octet drain, plus recorded pending TCP/TLS while healthy output
+completes. TLS WANT/short-prefix retains exact vector/range/deadline; a
+600-octet supported quantum fixture verifies512 attempts never cross its
+window. One-event reply/EOF fixture checks FNFD-before-output, retained NIL
+framer suffix and stopping fault propagation. Pending connect/TLS/output/
+drain keeps existing busy cadence instead of exponential idle backoff.
+
+The old coarse sequencing fixture now explicitly drives the actual retained
+adapter to quiescence between supplied chunks, using actual ACL2 driver
+definitions and recorded nonblocking leaves. It preserves auth/ready, named
+loss/backoff, terminal close and output-order checks. Credential admitted
+profile fixture retains decoded octets until the later connected turn.
+Peer-octet fixture's inherited missing def-actor source macro was repaired
+without an actor stub and passes; actual feed actor raw schedule passes.
+Derived traps regenerated only for the affected credential extraction.
+No saved-image/proof claim; Integration/continuing BPTransport own those.
