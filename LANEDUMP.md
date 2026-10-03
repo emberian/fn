@@ -2550,3 +2550,37 @@ terminal; no producer cancellation/refund is manufactured.
   rather than deleted. No live owned computation remains. Root/shared wrapper
   and execution manifest were never changed. All helper assets remain in
   build/incremental-owner and the unique remote driver's directory.
+
+2026-10-03 resumed incremental tools/trace allocation work (Sol6.1):
+
+* Prior prefix-copy WIP is resolved by7325a4571/bbdcc9bb1. Explicit natural
+  quantum measure and minimal theories admitted termination169steps, exhausted
+  input lemma1313steps, guard512steps and equality495steps. The actual cached
+  1035-step NEWNEWS consumer's full states/results still match; 32drains reduce
+  process allocation8,906,224 ->7,332,640bytes after cursor+prefix sharing.
+  This is historical preconfigured NEWNEWS, not current configured selectors.
+* Hotspot readout e94f67d59 (public462a4afcc) passed in the same actual owner:
+ 31attempts/12rows/19dropped/1incomplete, late allocator1,038,512process bytes
+  ranked first; clock/process groups remain distinct and the sink is retained.
+* Ready decoded source9571ac92c/d770a35ed/367b212e8: issue each effect once,
+  reusable ACL2 fixed-product comparison macro and actual capture consumer.
+  Guarded normal counterparts and unconditional equality admitted; 30branch
+  cases/each corrupt captured field/proper versus malformed tuple checks pass.
+  At20,000calls legacy decision12,795,040bytes/11ms; combined2,876,592/5ms.
+  Capture comparison alone3,818,928 ->0observed bytes. PROCESS inclusive,
+  idle owner threads present; no retainedheap/GC/funding activation claim.
+  Evidence99a9ae2ae3428231c6867eaf90a7d938ca66f96d5e5530c449a0b4c5d4c15d6e
+  at planning/evidence/tools/incremental-decoded-allocation-20261003.json.
+* LIVE own retained developer owner2260356, exec62229:
+  /tank/fn/scratch/codex-tools-incremental-fa5ff31735/owner/dev.sock.
+  Driver JSON eval/file input; quit gracefully stops only this private owner.
+  Historical ad8+Root bounded/reload-safe overlays are hash-bound in its own
+  execution.json. Exact sources/results stay in owner/observations.jsonl;
+  local selected receipts under build/incremental-owner. No cold world,
+  image build or artifact acquisition. Served returned its additive WMC/GSC/
+  LIST/qplan loan healthy, no active send; core old symbols/stobjs unchanged.
+* Continuing next: consume these reductions through Runtime's persistent
+  decoded scratch scenario when its actual compatible source runner is ready;
+  whole DWJ state/storage is absent from this historical cache. General live
+  readout and trace consumer improvements remain owned. No full qualification
+  or decoder allocation tariff follows from these selected leaf observations.

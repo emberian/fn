@@ -1978,3 +1978,24 @@ and measurement mode; phase totals are explicitly inclusive, never unique
 process allocation. The actual native allocation probes can wrap their matched
 renderer loops in the same span macro; no separate per-subsystem tracing recipe
 is required.
+
+In the live developer client, `:trace hotspots [N]` prints a bounded ranking
+from the same sink without dumping every recorded span. It groups phase and
+counter scope separately, reports dropped/incomplete intervals and does not
+consume the sink. Allocation-enabled groups rank by mean sampled allocation;
+timing-only groups rank separately by mean duration. Formatting takes place
+outside the collector mutex. This readout helps find late expensive phases
+before a chronological report reaches the developer reply limit.
+
+The incremental decoded-decision probe uses actual guarded compiled core
+counterparts and private digest state. Sharing the issued `fn-ewz-next-action`
+effect and comparing `fn-ews-boundp`'s captured fields through the shared
+`fn-list/fields=` macro reduced a matched20,000-call process allocation
+observation from12,795,040 to2,876,592 bytes. The latter macro preserves exact
+proper product equality and operand evaluation order; it does not build a
+throwaway descriptor. Ordinary guard/equality admissions, all30 controller
+branch combinations, corrupt capture fields and controlled route restoration
+are recorded in
+`planning/evidence/tools/incremental-decoded-allocation-20261003.json`.
+This selected initialized-source result does not qualify the current whole
+worker, its GC tariff, retained heap or native buffer lifecycle.
