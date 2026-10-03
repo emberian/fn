@@ -41,6 +41,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [M6](#m6) the human client | `fn-served-step-list-counts-is-the-archive-counts` | yes | no: closure moved | no: source changed since 69046a76 | no: dev source not on the node |
 | [T17](#t17) the Message-ID index on the served path | `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` | yes | no: closure moved | no: source changed since 69046a76 | no: dev source not on the node |
 | [operator-retire-observation](#operator-retire-observation) bounded retire operator observation | `fn-nret-observation-expiry-is-uncertain` | yes | no: source uncertified | no: no matching image evidence | no: dev source not on the node |
+| [operator-init-resume](#operator-init-resume) resumable developer init compatibility | `fn-nir-resume-admits-identical-initial-contract-across-stamps` | yes | no: source uncertified | no: no matching image evidence | no: profile not deployed |
 
 ## Records
 
@@ -235,3 +236,15 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 - Latest positive result: Actual-source SBCL fixture passes exact60s/70s live/held expiry, offline refusal, fresh/stale reports and malformed observation fault; prior actual source times out (planning/evidence/operator-retire-observation-2026-10-03-v2.json). Warm hbox admission is not certification.
 - Remaining obstruction: Normal native-retire/teeth certification and matching saved-image consumer validation are pending; no physical final-fence bound is claimed.
 - Next positive gate: Integration batch certifies exact native-retire plus native-retire-observation-tests roots and consumes the matching saved-image fixture at convergence.
+
+### operator-init-resume
+
+**resumable developer init compatibility.** A resumed init keeps the sealed profile and generation-one group changes; mismatched requested intent is refused before resume publication, while invalid initial evidence faults.
+
+- Host-called subject: `fn-nir-resume-decision` at host/native/io.lisp:2462.
+- Keystone: `fn-nir-resume-admits-identical-initial-contract-across-stamps` (books/native-init-resume.lisp:42; PRF-1270 (planned)); no archived manifest records `books/native-init-resume.lisp` passed at its current source.
+- Tested: no matching image; source proof experiments are recorded separately below.
+- Deployed: no: the node runs default, this needs development.
+- Latest positive result: Actual source fixture passes nine compatibility/fault/fresh/interrupted branches; prior initializer fails the expected refusal assertion. Exact-codec teeth and final keystone source-admitted over14cached hbox dependencies (planning/evidence/operator-init-resume-2026-10-03-v2.json).
+- Remaining obstruction: Normal native-init-resume/teeth certification and matching developer-image execution remain pending. Existing bounded history load scope remains unchanged; physical init program refinement is separate.
+- Next positive gate: Integration batch certifies books/native-init-resume and tests/acl2/native-init-resume-tests, then runs tests.test_native_init_resume.NativeInitResumeTests in the matching developer image.

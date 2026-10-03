@@ -6625,6 +6625,33 @@
         "planning/evidence/operator-retire-observation-2026-10-03-v2.json"
       ],
       "note": "Actual source host consumes the ACL2 observation decision; expiry after requested drain plus60s reports uncertainty without owner/custody effects. Warm REPL admission and actual-source positive/prior-source timeout recorded; normal certification and matching image remain pending. No physical process-stop deadline is claimed."
+    },
+    {
+      "id": "STO-10005",
+      "title": "Resumable developer init preserves its sealed profile and initial groups",
+      "specification": "specs/native-config.md#resumable-developer-init-sto-10005",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-1270"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "keystones": [
+        "fn-nir-resume-admits-identical-initial-contract-across-stamps",
+        "fn-nir-resume-refuses-distinct-initial-changes"
+      ],
+      "evidence": [
+        "books/native-init-resume.lisp",
+        "host/native/io.lisp",
+        "tests/acl2/native-init-resume-tests.lisp",
+        "tests/test_native_init_resume_source.py",
+        "tests/test_native_init_resume.py",
+        "planning/evidence/operator-init-resume-2026-10-03-v2.json"
+      ],
+      "note": "Actual init checks requested profile against sealed configuration and exact generation-one changes under the writer lock before resume publication. Stamps and later limit history are not initial intent. Warm source admission and actual-source regression passed; normal certification and matching image remain pending."
     }
   ]
 }

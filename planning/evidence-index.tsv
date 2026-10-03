@@ -7721,6 +7721,10 @@ b7ffa215cd5cc180dd28339264907114856d3f4cf0342db22d21cbf964216907 103 planning/ev
 3843e5a89d39a22edb1df54c6dcaa0756b58e6839e90be3fa6bcd425de3c3cf3 48 planning/evidence/operator-health-2026-09-25/native-out/wf-enq.out
 990b3246efdcef52920152d2d6a9c1df4b1ac15f3dfa1165425667197eb55c5a 27 planning/evidence/operator-health-2026-09-25/native-out/wf-init.out
 75f2d817f9c3ed0fcc43c80db329dfd538cb2e2e7e3d392b29b9cbb76346d9cd 6409 planning/evidence/operator-health-2026-09-25/native.sh
+ba660f7ad9f3f4886c1f345b415af6f2b2631a6daa3febf4568ae35e2a188ba9 5098 planning/evidence/operator-init-resume-2026-10-03-v2.json
+66037dc2d50dc38399e483eba8dec466caa56aaf5017022fd0c75e94dc8ec0c2 4655 planning/evidence/operator-init-resume-2026-10-03.json
+4adb9e9c31bc93ed31ecf7a3036db3c25c1b65019105c8f27b53bab0884325cd 4583 planning/evidence/operator-init-resume-final-repl-2026-10-03.log.gz
+e24993c0c4aee15d1744e9befef855124e7423dab06d54df2a7df694e5246bee 5984 planning/evidence/operator-init-resume-repl-2026-10-03.log.gz
 aceb97a0226481ef239d36f196b6ffd7f6578fe99cc1c156e0340f2ea55e995e 2443 planning/evidence/operator-inn-controls-source-2026-09-29.md
 9f54d2b37595e74164fe5cd5387660cbe62dbdabb2ae2fa56d300ce9ed3b5268 2224 planning/evidence/operator-inn-protected-feed-source-2026-09-29.md
 60bd5e888fdcf9b8a68c949a0966550784b7d4c7cbd462b1d26c7b58f00f6b3f 2660 planning/evidence/operator-inn-protected-reader-source-2026-09-29.md

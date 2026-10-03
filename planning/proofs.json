@@ -21968,6 +21968,28 @@
         "fn-nret-observation-expiry-is-uncertain",
         "fn-nret-observation-report-requires-stopped"
       ]
+    },
+    {
+      "id": "PRF-1270",
+      "title": "Resumable init accepts identical intent across stamps and refuses distinct initial changes",
+      "statement": "Host-called fn-nir-resume-decision in books/native-init-resume.lisp, called by fnn-initialize-resume-check in host/native/io.lisp. Under exact decoder premises for sequence0/txid0/generation1 records carrying the same change, equal profile values admit resume independently of requested/recorded stamps and later observed history. Positive literal encoded-record witness and each decode-premise removal witness ship in native-init-resume-tests. Actual host publication-order/mismatch consumer is tested separately, not proved by this theorem. Under exact initial-record decoder premises and distinct requested/recorded changes, matching profiles return the named initial-groups-mismatch refusal. Literal positive and all three hypothesis-removal witnesses accompany that keystone.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-10005"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/native-init-resume.lisp",
+        "tests/acl2/native-init-resume-tests.lisp",
+        "planning/evidence/operator-init-resume-2026-10-03-v2.json"
+      ],
+      "events": [
+        "fn-nir-resume-admits-identical-initial-contract-across-stamps",
+        "fn-nir-resume-refuses-distinct-initial-changes"
+      ],
+      "progress_note": "Fresh hbox cached-only admission over14matching dependencies; seven forms/22665steps/.32s, accepting keystone9852steps and refusing keystone12813steps. All3functions common-lisp-compliant;21literal/guard forms pass with final source diff5of5. Normal certification and matching developer image remain pending; no new paged startup or physical publication refinement claim."
     }
   ]
 }

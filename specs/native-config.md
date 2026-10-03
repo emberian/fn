@@ -162,3 +162,26 @@ The initial-group encoder's named `:bad` result is a refusal. A malformed
 result, or disagreement between the host and core's frame header/trailer
 widths, is a fault. These checks preserve HST-008/HST-009's shared outcome
 classes; they do not manufacture a policy refusal from an image defect.
+
+## Resumable developer init (STO-10005)
+
+`store ROOT init` may resume interrupted initialization. Under its exclusive
+writer lock, it supplies the requested decoded profile, the immutable sealed
+profile and exact generation-one record bytes to ACL2's
+`fn-nir-resume-decision`. The recorded initial change list must match the
+requested initial groups. A new clock stamp and later configuration/limit
+changes do not change that initial intent. Profile or group mismatch is a
+named refusal before resume directory creation, staged publication, genesis
+work or node-secret creation. Initial root/lock acquisition precedes this
+check. Corrupt generation-one evidence faults; missing generation one when
+configuration history exists faults. Absence with no history is the legal
+interrupted-before-publication case.
+
+The keystones prove compatibility across independent clock stamps and named
+refusal of distinct initial changes under exact decode premises; literal
+real-codec witnesses include each premise removal.
+The actual host fixture discriminates prior init's silent success on profile
+mismatch. This does not add a streaming history loader or prove physical init
+syscall order: the existing bounded history observation and init publication
+program retain their separate contracts. Operator init's staged-publication
+verb retains its existing path refusal.

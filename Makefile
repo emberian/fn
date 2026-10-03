@@ -432,6 +432,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/native-config-paths \
 	tests/acl2/native-config-paths-tests \
 	books/native-retire \
+	books/native-init-resume \
+	tests/acl2/native-init-resume-tests \
 	tests/acl2/native-retire-observation-tests \
 	books/owner-retire \
 	tests/acl2/native-retire-tests \

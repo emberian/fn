@@ -2955,3 +2955,10 @@ renders the line. No source store is opened and no file is repaired.
 The running snapshot producer, including bounded capture and key/config
 ownership, is a separate unfinished S7 increment. The native checker
 fixtures are stopped copies with an explicit completion observation.
+
+Resumable developer `store ROOT init` checks the original sealed profile and
+generation-one groups before resume effects (STO-10005). Requested profile
+and exact initial changes are ACL2's comparison; later live limits and clock
+stamps do not count as an init mismatch. A mismatch refuses by name, while
+invalid required initial evidence faults. The operator staged-publication
+`init` verb still refuses an existing destination.

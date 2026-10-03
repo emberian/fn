@@ -8507,6 +8507,35 @@
         "planning/evidence/operator-diagnostics-classification-2026-10-03.json"
       ],
       "execution_scope": "Actual source plus deliberate model/I/O observations, with actual closed ACL2 condition classifier. Saved-image matching consumer qualification remains Integration work."
+    },
+    {
+      "id": "SCN-1100",
+      "title": "Actual resumable init refuses mismatched original intent before publication",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-10005"
+      ],
+      "steps": [
+        "Execute actual fnn-initialize-resume-check, fnn-initialize and fnn-command-init bodies with the actual ACL2 resume decision and deliberate config/history observations.",
+        "Exercise profile/group mismatch, same sealed profile despite live overlay/new stamp, interrupted-before-gen1, corrupt/wrong/missing gen1, fresh init and malformed decision.",
+        "Execute prior actual init body under the same fixture; prepare matching developer-image profile/group refusal, compatible resume and corrupt evidence cases."
+      ],
+      "expected": [
+        "Profile/group mismatch exits refusal1 with no resume effects; corrupt or missing required generation-one evidence and malformed core decision fault4 without publication.",
+        "Matching initial intent resumes; a not-yet-published gen1 with empty history may publish initial groups. Fresh init still completes.",
+        "Prior source fails expected refusal assertion because incompatible profile incorrectly returns success0."
+      ],
+      "implementation": {
+        "test": "tests/test_native_init_resume_source.py"
+      },
+      "evidence": [
+        "tests/native_init_resume_source.lisp",
+        "tests/acl2/native-init-resume-tests.lisp",
+        "tests/test_native_init_resume.py",
+        "planning/evidence/operator-init-resume-2026-10-03-v2.json"
+      ],
+      "execution_scope": "Actual-source SBCL and warm ACL2 literal exact-codec witnesses. Four saved-image cases are prepared but not executed; no physical durability qualification."
     }
   ]
 }

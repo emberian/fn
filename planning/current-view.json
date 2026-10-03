@@ -460,6 +460,21 @@
       "latest": "Actual-source SBCL fixture passes exact60s/70s live/held expiry, offline refusal, fresh/stale reports and malformed observation fault; prior actual source times out (planning/evidence/operator-retire-observation-2026-10-03-v2.json). Warm hbox admission is not certification.",
       "obstruction": "Normal native-retire/teeth certification and matching saved-image consumer validation are pending; no physical final-fence bound is claimed.",
       "next": "Integration batch certifies exact native-retire plus native-retire-observation-tests roots and consumes the matching saved-image fixture at convergence."
+    },
+    {
+      "id": "operator-init-resume",
+      "name": "resumable developer init compatibility",
+      "contract": "A resumed init keeps the sealed profile and generation-one group changes; mismatched requested intent is refused before resume publication, while invalid initial evidence faults.",
+      "host": {
+        "function": "fn-nir-resume-decision",
+        "file": "host/native/io.lisp"
+      },
+      "keystone": "fn-nir-resume-admits-identical-initial-contract-across-stamps",
+      "tested": null,
+      "profile": "development",
+      "latest": "Actual source fixture passes nine compatibility/fault/fresh/interrupted branches; prior initializer fails the expected refusal assertion. Exact-codec teeth and final keystone source-admitted over14cached hbox dependencies (planning/evidence/operator-init-resume-2026-10-03-v2.json).",
+      "obstruction": "Normal native-init-resume/teeth certification and matching developer-image execution remain pending. Existing bounded history load scope remains unchanged; physical init program refinement is separate.",
+      "next": "Integration batch certifies books/native-init-resume and tests/acl2/native-init-resume-tests, then runs tests.test_native_init_resume.NativeInitResumeTests in the matching developer image."
     }
   ],
   "other_deployments": [

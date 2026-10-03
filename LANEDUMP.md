@@ -1252,3 +1252,20 @@ Ember stopped Luna waves; no survey resumes or measurements. First four proof ro
 - 0f39cfa59 optional output config→launcher extension and private typed custody producer composed independently; Runtimee426 same patch not separately imported. Existing numerical23checks,126configregressions,16typedtraces and actual normal-counterpart renderer+real-worker custody probe reused. Exact resource-vector-exec836b6f digest matches receipt; current generic declaration carried-assumption checks are disjoint from these normal counterparts. No proof/native replay.
 - Spec append retained actual syncer unwind semantics; heading corrected to requirement anchor. PRF1259 three numerical source keystones added to curated map so later regeneration retains producer events. HST047/PRF1259 claim checkPASS; output objectsed2aa/5c384 verified.
 - Explicit policy stays operator-unsupported, absence partial. Ideal install/issue guards, metadata/freechain/bank preservation, bookkeeping/refinement/fulltariff, consumeractivation and matchingcert/image remain owed. Necessary roots output-reservation, resource-output, native-config/operator and corresponding tests; first exact producer discriminator tests/test_native_output_custody_raw.sh after matching scoped prerequisites, Integration schedules.
+
+## Sol operator capability: resumable init (2026-10-03)
+
+S072 delegated engineering decision implemented: requested profile vs sealed
+profile and exact generation-one DELTAS, stamps/later overlays ignored. ACL2
+owns compatibility/refusal/fault before resume mutation; interrupted-before-gen1
+remains legal. Corrupt/missing required initial evidence faults. New declared
+common entries fn-nir-resume-decision/line are loaded through config-host.
+PRF1270 accepting9852steps/refusing12813steps and21literal/guard checks admitted on hbox over14
+matching cached dependencies. Actual initializer/outer command fixture passes9
+cases; prior actual source wrongly returns0 instead of refusal1. Source record
+operator-init-resume-2026-10-03-v2.json and full refused/final REPL log archived.
+Scoped roots native-init-resume and native-init-resume-tests; four matching
+developer-image tests prepared in tests/test_native_init_resume.py. Existing
+fidelity resume-cut consumer updated because sealed config is no longer
+needlessly staged on normal resume. Normal cert/image remain Integration-owned.
+No deployment, paged startup or physical init refinement claim.
