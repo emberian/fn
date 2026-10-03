@@ -5,13 +5,14 @@
 ; The served caller retains a cursor, never invokes this drain.
 (defun wmct-drain (s work grant)
   (declare (xargs :guard (and (natp work) (natp grant)) :measure (nfix work)))
-  (if (or (zp work) (< grant 13) (fn-wmc-decidedp s)) s
-    (wmct-drain (fn-wmc-step s work grant) (1- work) (- grant 13))))
+  (if (fn-wmc-acceptedp s work grant)
+      (wmct-drain (fn-wmc-step s work grant)
+                  (fn-wmc-work-left s work grant) (fn-wmc-cons-left s work grant)) s))
 (defconst *wmct-patterns*
   (fn-wildmat-result-value
    (fn-wildmat-parse (fn-nntp-string-octets "fn.*,!fn.block,fn.block.good"))))
 (defconst *wmct-start* (fn-wmc-start *wmct-patterns* "fn.block.good"))
-(defconst *wmct-mid* (wmct-drain *wmct-start* 35 455))
+(defconst *wmct-mid* (wmct-drain *wmct-start* 35 525))
 (defconst *wmct-done* (wmct-drain *wmct-mid* 1000 13000))
 
 ; Literal entry keystones: full safe-name antecedent, model equality and profile.
@@ -65,9 +66,9 @@
        (equal (fn-wmc-consumed-cons *wmct-mid* 1 12) 0))
   :rule-classes nil)
 (defthm wmct-budget-does-not-reuse-grant
-  (and (equal (wmct-drain *wmct-start* 1000 13)
-              (fn-wmc-step *wmct-start* 1 13))
-       (not (fn-wmc-decidedp (wmct-drain *wmct-start* 1000 13)))
+  (and (equal (wmct-drain *wmct-start* 1000 15)
+              (fn-wmc-step *wmct-start* 1 15))
+       (not (fn-wmc-decidedp (wmct-drain *wmct-start* 1000 15)))
        (equal (wmct-drain *wmct-start* 1000 0) *wmct-start*)
        (fn-wmc-decidedp *wmct-done*))
   :rule-classes nil)
@@ -101,23 +102,21 @@
          (fn-wmc-decidedp star) (fn-wmc-matchedp star)))
   :rule-classes nil)
 
-; Hypothesis removal: unsafe stored name lies outside the shared decoder seam.
-(defthm wmct-safe-name-hypothesis-removal
+ ; The old safe-name/index hypotheses are removed by proved total refinement.
+(defthm wmct-unsafe-name-total-positive
   (let* ((name (coerce (list (code-char 128)) 'string))
          (patterns '((:positive (128)))) (s (fn-wmc-start patterns name)))
     (and (not (fn-nntp-safe-group-namep name))
          (fn-wmc-shapedp s)
-         (not (equal (fn-wmc-value s)
-                     (fn-nntp-group-matches-parsed-wildmatp patterns name)))))
-  :rule-classes nil)
-; Corrupted state, not external input: invalid decode offset breaks residual.
-(defthm wmct-decode-index-hypothesis-removal
+         (equal (fn-wmc-value s) (fn-nntp-group-matches-parsed-wildmatp patterns name))
+         (fn-wmc-decidedp (wmct-drain s 10 150))
+         (not (fn-wmc-matchedp (wmct-drain s 10 150))))) :rule-classes nil)
+(defthm wmct-corrupted-decode-index-total-positive
   (let ((s (fn-wmc-state (fn-wmc-node :decode '((:positive (102))) "f" -1 nil) nil)))
     (and (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :decode)
          (not (natp (fn-wmc-at 3 (fn-wmc-at 0 s))))
          (not (fn-wmc-shapedp s))
-         (not (equal (fn-wmc-result (fn-wmc-one s)) (fn-wmc-result s)))))
-  :rule-classes nil)
+         (equal (fn-wmc-result (fn-wmc-one s)) (fn-wmc-result s)))) :rule-classes nil)
 
 (defthm wmct-grant-ledger-positive
   (and (fn-wmc-acceptedp *wmct-mid* 1 13)
@@ -127,7 +126,43 @@
                  (fn-wmc-work-left *wmct-mid* 1 13)) 1)
        (equal (+ (fn-wmc-consumed-cons *wmct-mid* 1 13)
                  (fn-wmc-cons-left *wmct-mid* 1 13)) 13)
-       (<= (fn-wmc-run-cons *wmct-start* 1000 13) 13)
-       (equal (fn-wmc-run-cons *wmct-start* 1000 13) 13)
-       (<= (fn-wmc-run-cons *wmct-start* 1000 13000) 13000))
+       (<= (fn-wmc-run-cons *wmct-start* 1000 15) 15)
+       (equal (fn-wmc-run-cons *wmct-start* 1000 15) 15)
+       (<= (fn-wmc-run-cons *wmct-start* 1000 15000) 13000))
   :rule-classes nil)
+
+(defthm wmct-total-utf8-two-three-four
+  (let* ((name (coerce (list (code-char 195) (code-char 169)
+                            (code-char 226) (code-char 130) (code-char 172)
+                            (code-char 244) (code-char 143) (code-char 191) (code-char 191)) 'string))
+         (patterns '((:positive (233 8364 1114111)))) (s (fn-wmc-start patterns name))
+         (next (fn-wmc-step s 1 15)) (done (wmct-drain s 1000 15000)))
+    (and (not (fn-nntp-safe-group-namep name)) (fn-wmc-shapedp s)
+         (equal (fn-wmc-value s) (fn-nntp-group-matches-parsed-wildmatp patterns name))
+         (equal (fn-wmc-at 3 (fn-wmc-at 0 next)) 2)
+         (equal (fn-wmc-result next) (fn-wmc-result s))
+         (equal (fn-wmc-remaining next) (1- (fn-wmc-remaining s)))
+         (fn-wmc-decidedp done) (fn-wmc-matchedp done))) :rule-classes nil)
+(defthm wmct-total-nonstring-and-limit
+  (let* ((p '((:positive (42))))
+         (long (coerce (make-list 498 :initial-element #\f) 'string))
+         (non (fn-wmc-start p '(invalid name))) (limit (fn-wmc-start p long)))
+    (and (equal (fn-wmc-value non) (fn-nntp-group-matches-parsed-wildmatp p '(invalid name)))
+         (fn-wmc-matchedp (wmct-drain non 100 1500))
+         (equal (length long) 498) (fn-wmc-decidedp limit) (not (fn-wmc-matchedp limit))
+         (equal (fn-wmc-value limit) (fn-nntp-group-matches-parsed-wildmatp p long)))) :rule-classes nil)
+(defthm wmct-total-malformed-utf8-refuses
+  (let* ((bad (coerce (list (code-char 237) (code-char 160) (code-char 128)) 'string))
+         (s (fn-wmc-start '((:positive (42))) bad))
+         (done (fn-wmc-step s 1 15)))
+    (and (equal (fn-wmc-demand s) 15)
+         (not (fn-wmc-acceptedp s 1 14)) (equal (fn-wmc-step s 1 14) s)
+         (fn-wmc-acceptedp s 1 15) (fn-wmc-decidedp done) (not (fn-wmc-matchedp done))
+         (equal (fn-wmc-result done) (fn-wmc-result s))
+         (equal (fn-wmc-remaining done) (1- (fn-wmc-remaining s))))) :rule-classes nil)
+(defthm wmct-corrupted-utf8-accumulator-frames-total
+  (let* ((s (fn-wmc-state (fn-wmc-node :utf8 '((:positive (102))) "f" -2 "bad")
+                           (list (fn-wmc-node :cons nil nil nil nil))))
+         (next (fn-wmc-step s 1 15)))
+    (and (not (fn-wmc-shapedp s))
+         (equal (fn-wmc-result next) (fn-wmc-result s)))) :rule-classes nil)

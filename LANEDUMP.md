@@ -317,3 +317,28 @@ Actual served selector :match continuation, matching certificates and image
 are assembler/integrator work. Parent owns PRF-1261 registry/spec/scenario and
 Makefile ACL2_BOOKS test-root wiring. Current source alone is no funded producer
 or completed served-path claim.
+
+## Total matcher entry source handoff (2026-10-03)
+
+Extends frozen906 pure matcher only; Served owns actual :match consumer.
+fn-wmc-start now preserves old empty-octet semantics for nonstrings, refuses
+strings longer than original decoder497 limit via LENGTH without coerce,
+otherwise retains original references and UTF8 offset/decoded accumulator.
+One UTF8 microstep reads at most four indexed chars and reuses existing decoder.
+Entry equality fn-wmc-start-value-is-group-match is unconditional for arbitrary
+groups; fn-wmc-one-preserves-result and step/result/value are unconditional,
+using model-only accumulator fixing and constant legacy offset normalization.
+Reachable shape and exact remaining-work decrease stay explicit.
+
+API signatures unchanged; fn-wmc-demand is15 engine cons for UTF8/legacy decode,
+13 for core phases,0 when decided. consumed-work/cons, work-left/cons-left
+subtract current accepted demand; cumulative run-cons<=initial grant. No MV
+envelope. Caller/collector/mux/native byte and retained graph costs remain
+separate. Start remains seven fixed cons borrowing refs. All current executable
+definitions/guards and key entry/result/remaining/charge facts admitted in
+narrow warm source world; coherent source is handed off before final whole-book
+clean replay. Final renamed full replay, updated UTF8/nonstring/limit/corrupted
+state tests and evidence index are pending on these bytes. Matching certificates,
+qualified image and actual composed consumer remain integrator/Served scope.
+ASCII polynomial bound applies to core; total UTF8 exact finite remaining proved,
+public Unicode polynomial bound and tight retained target/row/frame peak owed.
