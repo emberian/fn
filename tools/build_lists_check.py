@@ -69,6 +69,10 @@ DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
         "checked against the default image's world when it is built; several "
         "declared entries (the extraction roots, the NNTP reader's) are not in the "
         "DTN world, and the file defines no function any raw file calls", {}),
+    "host/owner-retain-host.lisp": (
+        "only theorems (fn-owner-retain-statep across host/owner-host.lisp's writers, "
+        "stage 5); the DTN image does not ld owner-host.lisp, and the file defines no "
+        "function any raw file calls", {}),
     "host/anchor-wire-host.lisp": (
         "only host/native/anchor.lisp uses it; the DTN image does not load anchor.lisp", {}),
     "host/anchor-server-host.lisp": (
