@@ -3105,3 +3105,31 @@ can execute canonical keepalive+second request in private Store paths directly.
 Full ownership remains decoder/CRC/publication/GC cost, concurrent input control,
 registered SAMEPRS issuer, full scheduler/custody crash refinement, canonical
 signed R/Q/reopen and actual ION adapter outcomes. No saved-image gate.
+
+User-requested winddown checkpoint: f5ecbf4b6 numeric/current/withdrawn source
+pushed. Fresh ad8+gate336 initialized source cache normally admitted missing-only
+original helpers, all available route, twelve numerical-piece definitions, all
+article core/owner definitions and actual PROGRAM factory/READY wrappers. Guard
+eagerness0: admission does not establish guards/certification. Raw native helpers
+reached CLI entry (unknown help verb); ordinary native renderer remains old2 vs
+new3 argument ABI and is NOT qualified as a full consumer. No parsed factory,
+physical decoder/socket/Web-browser claim from this process. Exact retained
+hbox dir /tank/fn/scratch/codex-article-source-execution contains missing.lisp,
+events.lisp, native.lisp, admit.lisp, execution.json, app-native and final log;
+laptop build/article-source-execution has staged inputs/manifest. Source admission
+log archived as planning/evidence/article-source-cache-admission-20261003.log.
+Root retains current-union bootstrap; Runtime additive prefix d34189def+c91bceb9d
+adds only fn-decoded-job stobj and exact controller declarations, then physical
+window/controller/owner adapters8f218 must join actual producer and Web31a/fbca.
+Do not substitute old MCA/renderer or transfer proof/image/funding verdicts.
+
+Continuing owned queue: complete numeric/MsgID/current lookup and authorized
+metadata/server setup bounds; selector/renderer guards; universal reference and
+actual owner preservation; current authorization/context invalidation; parsed
+factory pipeline and actual compressed/plain decoder/custody +Web replay/browser;
+auth/TLS/reconfiguration/secret interruption actual scenarios; absorbed operator
+S072 init4/S151 retire/S090 diagnostics/S074 classifier and S011 journal physical
+consumer checks (journal universal bridge is certified); current-source proof
+index and generated view convergence. S132 full-native supported-profile funding
+and170s observation remains open, with Root attempts recorded in existing item.
+Only this lane's warm ARTICLE/journal sessions are stopped at this checkpoint.
