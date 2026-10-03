@@ -56,3 +56,20 @@
       (equal (cadr (mv-nth 0 (web-remove-check-fixture "bad reply"))) 503))
  :rule-classes nil
  :hints (("Goal" :in-theory (enable fn-wss-k-submit))))
+
+(defun-nx web-redeem-lost-fixture ()
+ (fn-wss-k-redeem nil
+   (fn-wss-flow :redeem :redeeming nil '(nil nil nil 7)) '(:gone)
+   (fn-web-config nil nil nil 60 2) (create-fn-octets) (create-fn-octets)))
+
+(defthm web-redeem-lost-after-password-keeps-uncertainty-message
+ (let* ((config (fn-web-config nil nil nil 60 2))
+        (input (create-fn-octets)) (output (create-fn-octets))
+        (actual (web-redeem-lost-fixture))
+        (uncertain (fn-wss-redeem-refused :uncertain nil nil config input output))
+        (unreachable (fn-wss-redeem-refused :other nil nil config input output)))
+  (and (equal (mv-nth 0 actual) (mv-nth 0 uncertain))
+       (equal (mv-nth 2 actual) (mv-nth 1 uncertain))
+       (not (equal (mv-nth 2 actual) (mv-nth 1 unreachable)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (enable fn-wss-k-redeem))))
