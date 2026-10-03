@@ -7999,6 +7999,8 @@ a28b07ae501c859584775185f1577872b0bf1ac1e27f1fba617166d0f9d7fc9e 263 planning/ev
 ffdd3598c8a2f463c0b91498000f25495e9dab5d6e34d2f345195e96e083ec6c 103905 planning/evidence/page-digest-cursor-source-2026-09-30/acl2.log
 bc8ba0e35a673e766bdccb77984633bd8255e8e2446aea8de5644a06029d3fdc 1394 planning/evidence/page-digest-cursor-source-2026-09-30/repl-state.json
 e82436a6775fc48dd49085dc407741c2a68a94c44456ad636e7d8b6fb8816335 621 planning/evidence/page-digest-cursor-source-2026-09-30/source-sha256.json
+4f6ccc674c531b177cd075b710d33ddd04fc450101d7360e4d8c54c8459f0407 11804 planning/evidence/page-executor-2026-10-03/repl.log
+be50df3b1dbb28e15b34cc21764a6652e308fee029b987b7ebcb2f6249f3ebcd 1098 planning/evidence/page-executor-2026-10-03/result.json
 fe86febc0a5bdcd231b879094349d651b7610bf5784de4e20c049ee3ccac7bec 7849 planning/evidence/page-read-ownership-2026-09-29.md
 8f57d5fee038da5109aa019b86ef3e849388ddd01121cf371f850e7a9ebaa6bc 7774 planning/evidence/page-read-ownership-certify-20260929T220145Z.json
 39ed1229eb4e4ccbca6e7ffa503aa344c08b5c3b10fe9734bcefa223fc94acf2 1606 planning/evidence/page-read-resource-shapes-2026-09-29.lisp
