@@ -19128,6 +19128,21 @@
           "name": "fn-prd-sweep-visits-all-admitted-rounds"
         }
       ]
+    },
+    {
+      "id": "PRF-1254",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hmc-do-return-preserves-invp",
+          "note": "Partial concurrent-reference invariant: physical return alone preserves the full invariant; issue/settle/all-schedules and native realization remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hmc-do-job-result-keeps-invp",
+          "note": "Partial concurrent-reference invariant: an independently classified literal worker result preserves the full invariant, including classification after physical return. This is not the all-schedules or native realization theorem."
+        }
+      ]
     }
   ]
 }
