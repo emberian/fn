@@ -8876,9 +8876,10 @@
         "tests/native_web_article_stream_raw.lisp",
         "planning/evidence/web-stream-consumers-2026-10-03.md",
         "tests/native_web_reactor_raw.lisp",
-        "tests/native_web_article_producer_raw.lisp"
+        "tests/native_web_article_producer_raw.lisp",
+        "tests/acl2/web-stream-consumer-source-tests.lisp"
       ],
-      "note": "Raw actual-source consumer passes. PRF-1283 guard/refinement, matching native image and Web allocation/repeated-read tariff remain pending. Actual shared ARTICLE byte-window/native Web composition passes with recording arena/owner/cold/I/O seams; old work-only producer returns5408 bytes for W4096 and fails the same assertion. This is not composed browser execution."
+      "note": "Raw actual-source consumer passes. PRF-1283 guard/refinement, matching native image and Web allocation/repeated-read tariff remain pending. Actual shared ARTICLE byte-window/native Web composition passes with recording arena/owner/cold/I/O seams; old work-only producer returns5408 bytes for W4096 and fails the same assertion. This is not composed browser execution. Actual ACL2 program/window/host wrapper source admission and exact legacy page-plan/count/emit witnesses pass in one coherent stobj world; guard/refinement and complete native endpoint qualification remain open."
     },
     {
       "id": "SCN-1114",
@@ -8900,9 +8901,10 @@
       ],
       "evidence": [
         "tests/native_web_over_stream_raw.lisp",
-        "planning/evidence/web-stream-consumers-2026-10-03.md"
+        "planning/evidence/web-stream-consumers-2026-10-03.md",
+        "tests/acl2/web-stream-consumer-source-tests.lisp"
       ],
-      "note": "Actual raw consumer passes; program refinement, qualified image and Web repeated-read tariff pending."
+      "note": "Actual raw consumer passes; program refinement, qualified image and Web repeated-read tariff pending. Actual ACL2 program/window/host wrapper source admission and exact legacy page-plan/count/emit witnesses pass in one coherent stobj world; guard/refinement and complete native endpoint qualification remain open."
     },
     {
       "id": "SCN-1115",
@@ -8924,9 +8926,10 @@
       ],
       "evidence": [
         "tests/native_web_list_stream_raw.lisp",
-        "planning/evidence/web-stream-consumers-2026-10-03.md"
+        "planning/evidence/web-stream-consumers-2026-10-03.md",
+        "tests/acl2/web-stream-consumer-source-tests.lisp"
       ],
-      "note": "Actual raw source consumer passes. Original NNTP LIST producer still materializes its captured reply; source programs/arithmetic profile/refinement and matching image/funding are pending."
+      "note": "Actual raw source consumer passes. Original NNTP LIST producer still materializes its captured reply; source programs/arithmetic profile/refinement and matching image/funding are pending. Actual ACL2 program/window/host wrapper source admission and exact legacy page-plan/count/emit witnesses pass in one coherent stobj world; guard/refinement and complete native endpoint qualification remain open."
     },
     {
       "id": "SCN-1119",

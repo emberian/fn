@@ -518,3 +518,11 @@ pass5,000 dot-leading lines, cold replay, partial drain and exact HTML/count/pin
 receipt. The old work-only producer fails this same fixture with5,408 output
 bytes for W4,096. Recording arena/owner/cold/I/O seams remain; full native
 source-loaded browser execution and qualified Web funding are not established.
+
+
+The host-reached ARTICLE/OVER/LIST program functions and Web window wrappers
+now admit and execute in the same actual ACL2 source stobj world as the private
+reply/gate functions. tests/acl2/web-stream-consumer-source-tests.lisp compares
+complete reference page plans with virtual scan/count/emit under chunk1/2/7/4096
+fixtures. Guard/refinement and complete endpoint/funding qualification remain
+open; concrete-fill invariant-risk warnings are retained in the source receipt.
