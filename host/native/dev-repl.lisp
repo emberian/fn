@@ -110,6 +110,58 @@ Lisp execution. NIL explicitly uses the world's ordinary prover allowance."
        (values :refused reason)))))
    (setf (get *standard-co* *open-output-channel-key*) old-output))))
 
+(defun fnn-dev-load-file (path admitp step-limit)
+ "Read trusted developer source with reader evaluation disabled. Read/open
+failures are controlled inside the owner boundary; evaluation faults retain
+normal fencing. Earlier evaluated/admitted forms are never rolled back."
+ (let ((attempted 0) (completed 0) (stream nil))
+  (labels ((refuse (reason condition)
+             (setf *fnn-dev-admission-failed* t)
+             (format *error-output*
+                     "Developer file ~a: ~d top-level forms attempted, ~d completed; earlier evaluated/admitted prefix remains.~%"
+                     reason attempted completed)
+             (when condition (format *error-output* "~a~%" condition))
+             (values (if (plusp attempted) :partial :refused)
+                     reason attempted completed)))
+   ;; Catch OPEN's file error only here, never a file/storage error signalled
+   ;; while a form is being evaluated.
+   (handler-case (setf stream (open path :direction :input))
+    (file-error (condition)
+     (return-from fnn-dev-load-file (refuse :open-error condition))))
+   (unwind-protect
+    (let ((*read-eval* nil) (*package* (find-package "ACL2"))
+          (*load-pathname* (pathname path)) (*load-truename* (pathname stream))
+          (end (gensym "EOF")))
+     (loop
+      (let ((form
+             (handler-case (read stream nil end)
+              (reader-error (condition)
+               (return-from fnn-dev-load-file (refuse :reader-error condition)))
+              (stream-error (condition)
+               (return-from fnn-dev-load-file (refuse :read-error condition))))))
+       (when (eq form end)
+        (return (values (if admitp :admitted :loaded) attempted completed)))
+       (incf attempted)
+       (if admitp
+           (unless (eq (fnn-dev-admit (list form) :step-limit step-limit) :admitted)
+            (return (refuse :acl2-refusal nil)))
+         (progn
+          (eval form)
+          ;; A native module may itself use bounded ACL2 admission. Stop at
+          ;; its explicit refusal, retaining whatever prefix it admitted.
+          (when *fnn-dev-admission-failed*
+           (return (refuse :acl2-refusal nil)))))
+       (incf completed))))
+    (close stream)))))
+
+(defun fnn-dev-load (path)
+ "Load trusted native developer forms with explicit partial-load reporting."
+ (fnn-dev-load-file path nil nil))
+
+(defun fnn-dev-admit-file (path &key (step-limit 200000))
+ "Admit ordinary source events incrementally; read errors preserve the prefix."
+ (fnn-dev-load-file path t step-limit))
+
 (defun fnn-dev-repl-loop (control service)
  (loop
   (when (fnn-with-control (control) (fnn-control-state-stopping control)) (return))

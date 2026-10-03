@@ -53,10 +53,11 @@ def repl(args):
             if line in (':quit', ':exit'):
                 return 0
             if line == ':help':
-                print(':operation, :threads, :apropos TEXT, :describe FORM, :load PATH, :acl2 FORM,\n:paste, :trace on|timing|report|hotspots [N]|off, :quit\n'
+                print(':operation, :threads, :apropos TEXT, :describe FORM, :load PATH,\n:acl2 FORM, :acl2-file PATH, :paste, :trace on|timing|report|hotspots [N]|off, :quit\n'
                       'Enter one Common Lisp form, or PROGN for a batch.\n'
                       '*fnn-dev-service* is the current owner; fnn-core calls the core.\n'
-                      'Reader evaluation (#.) is disabled. :load names a path on the server.\n'
+                      'Reader evaluation (#.) is disabled. File paths name server source.\n'
+                      ':load and :acl2-file preserve completed prefixes on reader refusal.\n'
                       f':acl2 uses at most {args.prover_steps} prover steps per form; '
                       'this is not a wall-time or arbitrary Lisp limit.')
                 continue
@@ -91,7 +92,9 @@ def repl(args):
             elif line.startswith(':apropos '):
                 line = '(apropos ' + lisp_string(line[9:]) + ')'
             elif line.startswith(':load '):
-                line = '(load ' + lisp_string(line[6:]) + ')'
+                line = '(fnn-dev-load ' + lisp_string(line[6:]) + ')'
+            elif line.startswith(':acl2-file '):
+                line = '(fnn-dev-admit-file ' + lisp_string(line[11:]) + f' :step-limit {args.prover_steps})'
             elif line.startswith(':acl2 '):
                 line = "(fnn-dev-admit '(" + line[6:] + f') :step-limit {args.prover_steps})'
             ok, text = evaluate(args.socket, line, args.timeout)
