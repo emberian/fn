@@ -147,3 +147,71 @@
         (not (fn-hmc-invp (car r)))
         (equal (cadr r) :refused)
         (equal (car r) broken))))
+
+; A launch error has an issued worker but no pread request. Its physical
+; return precedes the owner's literal error classification. Neither return
+; nor classification alone releases the file hold or makes settlement early.
+(defconst *hmct-no-read-returned*
+  (fn-hmc-next-state *hmct-issued* '(:return 2 (0 7 1 0 10 7))))
+(assert-event
+ (and (fn-hmc-invp *hmct-issued*) (fn-hmc-invp *hmct-no-read-returned*)
+      (equal (fn-hmc-answer *hmct-issued* '(:return 2 (0 7 1 0 10 7))) :returned)
+      (equal (fn-hmc-holds *hmct-no-read-returned*) (fn-hmc-holds *hmct-issued*))
+      (null (fn-hmc-reqs *hmct-no-read-returned*))
+      (null (fn-hmc-results *hmct-no-read-returned*))
+      (equal (fn-hmc-answer *hmct-no-read-returned* '(:settle 2 (0 7 1 0 10 7))) :refused)
+      (equal (fn-hmc-answer *hmct-no-read-returned* '(:close 2 1)) :refused)
+      (equal (fn-hmc-answer *hmct-no-read-returned* '(:return 2 (0 7 1 0 10 7))) :stale-job)))
+
+(defconst *hmct-no-read-classified*
+  (fn-hmc-next-state *hmct-no-read-returned* '(:job-result 2 (0 7 1 0 10 7) :error)))
+(assert-event
+ (let ((settled (fn-hmc-next-state *hmct-no-read-classified* '(:settle 2 (0 7 1 0 10 7)))))
+   (and (fn-hmc-invp *hmct-no-read-classified*) (fn-hmc-invp settled)
+        (equal (fn-hmc-answer *hmct-no-read-returned*
+                             '(:job-result 2 (0 7 1 0 10 7) :error)) :completed)
+        (equal (fn-hmc-holds *hmct-no-read-classified*) (fn-hmc-holds *hmct-issued*))
+        (equal (fn-hmc-answer *hmct-no-read-classified*
+                             '(:job-result 2 (0 7 1 0 10 7) :error)) :refused)
+        (equal (fn-hmc-answer *hmct-no-read-classified* '(:settle 2 (0 7 1 0 10 7)))
+               '(:fault :error))
+        (null (fn-hmc-holds settled)) (null (fn-hmc-rows settled))
+        (equal (fn-hmc-answer settled '(:job-result 2 (0 7 1 0 10 7) :error)) :refused))))
+
+; A real stored result may instead precede physical return (normal read or
+; cache hit). The same E-held worker token is required, and any pending
+; request is consumed without making the still-running worker settleable.
+(assert-event
+ (let* ((result (fn-hmc-next-state *hmct-cancelled*
+                                  '(:job-result 2 (0 7 1 0 10 7) :read)))
+        (returned (fn-hmc-next-state result '(:return 2 (0 7 1 0 10 7))))
+        (settled (fn-hmc-next-state returned '(:settle 2 (0 7 1 0 10 7)))))
+   (and (fn-hmc-invp result) (fn-hmc-invp returned) (fn-hmc-invp settled)
+        (equal (fn-hmc-answer *hmct-cancelled* '(:job-result 2 (0 7 1 0 10 7) :read))
+               :completed)
+        (null (fn-hmc-reqs result))
+        (equal (fn-hmc-answer result '(:settle 2 (0 7 1 0 10 7))) :stale)
+        (equal (fn-hmc-holds result) (fn-hmc-holds *hmct-cancelled*))
+        (equal (fn-hmc-answer returned '(:settle 2 (0 7 1 0 10 7))) '(:fault :read))
+        (null (fn-hmc-holds settled)))))
+
+; Missing E authority or a nonliteral condition word cannot publish a result.
+(assert-event
+ (and (equal (fn-hmc-next-state *hmct-issued* '(:job-result 8 (0 7 1 0 10 7) :error))
+             *hmct-issued*)
+      (equal (fn-hmc-answer *hmct-issued* '(:job-result 8 (0 7 1 0 10 7) :error)) :refused)
+      (equal (fn-hmc-next-state *hmct-issued* '(:job-result 2 (0 7 1 0 10 7) :condition))
+             *hmct-issued*)
+      (equal (fn-hmc-answer *hmct-issued* '(:job-result 2 (0 7 1 0 10 7) :condition)) :refused)))
+
+; Hypothesis removal for result preservation, explicitly corrupted state:
+; the only theorem hypothesis is the full invariant; refusal does not
+; repair corrupt lock storage.
+(assert-event
+ (let* ((broken (fn-hmc-set 0 :corrupted-locks (fn-hmc-init)))
+        (r (mv-list 2 (fn-hmc-do-job-result
+                       broken '(:job-result 2 (0 7 1 0 10 7) :error)))))
+   (and (not (fn-hmc-invp broken))
+        (not (fn-hmc-invp (car r)))
+        (equal (cadr r) :refused)
+        (equal (car r) broken))))

@@ -21735,7 +21735,7 @@
         "planning/evidence/manifests/certify-20261003T074717Z-46601.json",
         "planning/evidence/manifests/certify-20261003T080416Z-85944.json"
       ],
-      "progress_note": "Groundwork: current clean main pin/capture/drain/cancel invariants certified in certify-20261003T074717Z-46601; strengthened physical-return invariant and literal antecedent/removal teeth certified with main/tests in certify-20261003T080416Z-85944. Issue/settle preservation and all-schedules theorem remain planned. Actual Runtime generated-actor/shared-section O-only native packets replay against exact machine with all prefix invariants; this finite observation bridge does not establish full extent/pin realization or funded-pool coverage."
+      "progress_note": "Groundwork: current clean main pin/capture/drain/cancel invariants certified in certify-20261003T074717Z-46601; strengthened physical-return invariant and literal antecedent/removal teeth certified with main/tests in certify-20261003T080416Z-85944. Issue/settle preservation and all-schedules theorem remain planned. Actual Runtime generated-actor/shared-section O-only native packets replay against exact machine with all prefix invariants; this finite observation bridge does not establish full extent/pin realization or funded-pool coverage. Condition-order extension: physical return no longer requires a prior literal result; E-held actual job-result classification is independent, including launch failures without pread. Changed machine/main and old+new finite teeth source-admitted cleanly in a scoped hbox world; matching certificates and new-source native trace remain pending. Earlier certificates do not transfer to these changed bytes."
     },
     {
       "id": "PRF-1258",

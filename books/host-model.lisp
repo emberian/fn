@@ -199,6 +199,10 @@
   (implies (and (fn-hmc-invp st) (not (fn-hmc-ended st)))
            (fn-hmc-invp (mv-nth 0 (fn-hmc-do-io-complete st ev)))))
 
+(defthm fn-hmc-do-job-result-keeps-invp
+  (implies (fn-hmc-invp st)
+           (fn-hmc-invp (mv-nth 0 (fn-hmc-do-job-result st ev)))))
+
 (defthm fn-hmc-do-crash-keeps-invp
   (implies (and (fn-hmc-invp st) (not (fn-hmc-ended st)))
            (fn-hmc-invp (mv-nth 0 (fn-hmc-do-crash st)))))
