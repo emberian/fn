@@ -12,7 +12,7 @@ import unittest
 from tests.campaign.native_cuts import host_function
 from tests.native_harness import (
     EXIT, ROOT, Client, Node, dot_stuff, environment, native_image, native_peer_add,
-    runtime_sbcl)
+    runtime_sbcl, keep_diagnostics)
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 
@@ -564,7 +564,12 @@ class NativeOwnerTests(unittest.TestCase):
                 "(FN_NATIVE_PROFILE=developer tools/build_native_host.sh)".format(IMAGE))
 
     def setUp(self):
+        nodes = []
+        # Registered before Node cleanup: retain actual successful receipt
+        # bytes after physical shutdown when the campaign requests diagnostics.
+        keep_diagnostics(self, nodes)
         self.node = Node(self, IMAGE, listener=False, control=False)
+        nodes.append(self.node)
         self.store = self.node.store_path
         self.node.store("init", "fn.test", expect=EXIT.OK)
 
