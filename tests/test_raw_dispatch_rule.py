@@ -7,6 +7,7 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -210,3 +211,16 @@ class DirectMacroHeads(unittest.TestCase):
     def test_neighboring_undeclared_head_still_refuses(self):
         found = self.observed("(defmacro m (x) `(progn (fn-open ,x) (fn-step ,x)))")
         self.assertEqual([(s.rule, s.detail) for s in found], [("NAME", "template head fn-step")])
+
+    def test_actual_direct_declaration_is_used_by_findings(self):
+        from tools import interface_emit
+        forms = ledger.Reader("(defmacro m (x) `(fn-open ,x))").top_level()
+        with patch.object(rule, "raw_sources", return_value={"host/native/t.lisp": forms}), \
+                patch.object(rule, "book_functions", return_value=set(BOOK)), \
+                patch.object(rule, "ALLOW", []), patch.object(rule, "PENDING", []), \
+                patch.object(rule, "carried_functions", return_value=set()), \
+                patch.object(interface_emit, "carried_rows", return_value={}), \
+                patch.object(interface_emit, "entry_direct_allowed", return_value={"fn-open": "literal primitive"}):
+            problems, _ = rule.findings(tree=object(), declared=set(BOOK))
+        self.assertTrue(problems == [],
+                        "declared direct macro call must follow its actual interface")
