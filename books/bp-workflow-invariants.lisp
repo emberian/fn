@@ -72,8 +72,9 @@
   (implies (and (fn-bp-workp config work)
                 (fn-bp-receiptp receipt))
            (fn-bp-workp config (fn-bp-work-with-receipt work receipt)))
-  :hints (("Goal" :in-theory (enable fn-bp-workp
-                                      fn-bp-work-with-receipt))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-bp-workp fn-bp-work-with-receipt)
+                (fn-bp-attemptp fn-bp-receiptp)))))
 
 (defthm fn-bp-work-receipt-of-work-with-receipt
   (equal (fn-bp-work-receipt (fn-bp-work-with-receipt work receipt))
@@ -104,7 +105,18 @@
 (defthm fn-bp-restart-work-preserves-workp
   (implies (fn-bp-workp config work)
            (fn-bp-workp config (fn-bp-restart-work work)))
-  :hints (("Goal" :in-theory (enable fn-bp-restart-work))))
+  :hints (("Goal"
+           :cases ((and (consp (fn-bp-work-attempt work))
+                        (not (fn-bp-retryable-statusp
+                              (fn-bp-attempt-status
+                               (fn-bp-work-attempt work))))
+                        (not (equal (fn-bp-attempt-status
+                                     (fn-bp-work-attempt work))
+                                    :delivered))))
+           :use ((:instance fn-bp-work-with-status-preserves-workp
+                            (status :restart-observed)))
+           :in-theory (enable fn-bp-restart-work
+                              fn-bp-transport-statusp))))
 
 (defthm fn-bp-restart-works-preserves-work-listp
   (implies (fn-bp-work-listp config works)
