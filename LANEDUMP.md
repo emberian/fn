@@ -3829,3 +3829,8 @@ BP held-source control certification followthrough (2026-10-03): exact a745d65ed
   11staged LIST-row events. No Tools sends while loan active. Runtime confirms
   full current DWJ normal/storage runner not yet available; no duplicate cold
   loader. Next tracing consumer work can proceed when that producer is ready.
+
+Access73a0 core+teeth normal cert PASS certify-20261003T165500Z-2590721,
+2selected roots/38matchingcacheddeps. Manifest archived+index committed.
+No owner/physical endpoint claim; underlying historical cache citations have
+uncited provenance debt, not silently upgraded to a whole closure verdict.
