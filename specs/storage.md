@@ -796,7 +796,8 @@ Before replacing the checkpoint or dropping any covered segments, all three
 publishers (offline, automatic owner, and reclaim) read the staged file back.
 The history image's exact header and each 16 KiB physical page are compared
 by ACL2 against the writer's retained snapshot, including unwritten zero pages;
-then the five framed runs pass their chain verifier. The snapshot is returned
+then the five framed runs pass their chain verifier. Each page/segment boundary
+observes the owner stop fence before reading the next unit. The snapshot is returned
 before install/swap can admit another publisher and on every earlier exit.
 This detects disagreement between writing and readback; page-cache readback
 is not a guarantee against later media loss. Whole-history snapshot allocation
