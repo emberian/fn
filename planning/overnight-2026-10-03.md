@@ -44,6 +44,13 @@ authorizes direct integration onto dev while stabilizing it. Source integration
 does not wait behind the old next-to-dev image gate. Qualification still belongs
 to one immutable candidate and never transfers a verdict to changed bytes.
 
+Ember’s latest correction is **push before verify**: put coherent source on
+public `origin/dev` promptly so concurrent workers can consume it. Integration
+composes overlapping source as needed, then pushes; review, tests, certification
+and generated reports run asynchronously rather than gating that push. Fix
+forward on failures. Pending proof/native status stays explicit; a source push
+creates no certification, executable or operational claim.
+
 ## Reorientation after compaction or takeover
 
 A summary is a locator, not sufficient reorientation. Recover the actual
