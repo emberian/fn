@@ -231,6 +231,24 @@ class NativeConsumerExchangeTests(unittest.TestCase):
             ).fetchone(), (*saved[:2], "handled"))
         self.consumer(a, "wake")
         self.assertEqual(self.summary(a)["state"]["replies"], "1")
+        evidence = os.environ.get("FN_CONSUMER_EXCHANGE_EVIDENCE")
+        if evidence:
+            # Preserve only consumer-owned/public source artifacts; no key
+            # files or wholesale scratch tree. SQLite contains public signed
+            # artifacts and application state, not private signing keys.
+            prefix = Path(evidence)
+            prefix.parent.mkdir(parents=True, exist_ok=True)
+            prefix.with_suffix(".delivery.fncu").write_bytes(saved[0])
+            prefix.with_suffix(".delivery.report").write_bytes(saved[1])
+            for label, config in (("agent-a", a), ("agent-b", b)):
+                cfg = json.loads(config.read_text())
+                with sqlite3.connect(cfg["db"]) as source:
+                    with sqlite3.connect(prefix.with_suffix("." + label + ".db")) as target:
+                        source.backup(target)
+            self.write_evidence("saved-delivery-restart", {
+                "image": str(IMAGE), "a": self.summary(a), "b": self.summary(b),
+                "b_position": self.status("agent-b")[0],
+                "saved_cursor_hex": saved[0].hex()})
 
     def test_two_sleeping_agents_exchange_across_every_ownership_cut(self):
         self.start_node()
