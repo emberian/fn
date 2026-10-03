@@ -144,3 +144,23 @@ Final native workload through reopen 17.042 s, total including artifacts/cleanup
 100 successful samples; offline-control processes excluded. No further scarce
 run started. Extent observer review fix ee142a184 gates job-only classification
 before developer selection; Integration queues e76+ee142 for next source batch.
+
+## Selected repeated recovery result, 2026-10-03
+
+Historical 45e05c7f actual log-written death then recover-barrier-1 owner-open
+death: existing checker consistent, prior and candidate exact source reads,
+both candidate memberships visible after recovery, duplicate retry with two
+records retained. Atomic-memberships explicitly pending. Wall 7.54s, healing
+1.776s, GNU time child-command max RSS 571724KiB; FD/disk peaks unmeasured.
+Long-path first attempt native CONTROL-PATH-TOO-LONG refusal before faults,
+preserved separately. Sixteen archived objects indexed under
+native-recovery-45e05c7f-2026-10-03. Executed adapter exact 2e2d101a6; latest
+10e342872 initial POST uncertainty branch unit-only. EOF completeness and
+literal uncertainty transport fixes plus early selected-cut construction
+are committed and READY. No speedup inference without matched baseline.
+
+Runtime offers actual section-envelope acquire/release primitive callback and
+reserved native actor identity; Groundwork supplied exact admitted vocabulary.
+Extent fd/job fixture consumer exists; wait concrete seam source before wiring,
+then preserve actual issue tuple and compare only complete grounded traces.
+New combined image qualification still pending; Integration solely schedules.
