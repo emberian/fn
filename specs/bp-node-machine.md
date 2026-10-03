@@ -5182,3 +5182,15 @@ settlement decision to close the Store and relinquish run authority. Store-close
 uncertainty fences and retains that carrier. SCN1134 exercises actual command
 bodies with recorded constructors and actual ACL2 authority decisions; it does
 not prove complete resource tariffs or qualify a current native process.
+
+Served launcher profile (PRF1306/SCN1137): ACL2 identifies `bp-node serve` and
+`bp-app receive`, the exact Store argument and the serialized owner allowance.
+It refuses incomplete served arguments or nonpositive/unrepresentable app
+concurrency before Store-profile observation. Positive decimal u64 input uses
+at most20 digits, with the length checked before character materialization;
+this is the existing profile-integer representation, not a stored-data cap.
+The host observes the actual absolute root and passes it as the seventh heap
+reservation input. DEFAULT backing composes after cold reservation and before
+output, through the shared Operator producer. Runtime BP startup uses that same
+absolute root before Store open. Node private TCPCL session grant and BP-app's
+still-unconnected session bank remain separate obligations.

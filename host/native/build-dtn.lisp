@@ -294,6 +294,7 @@
 ;; as in build.lisp.
 (include-book "books/heap-open-nursery")
 (include-book "books/heap-reservation")
+(include-book "books/bp-heap-command")
 (include-book "books/cold-read-reservation")
 ;; host/native/owner-control-turn.lisp (loaded for owner.lisp's control-turn
 ;; macro) names fn-ats-uncertain-internal, as in the default image's world.

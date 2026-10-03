@@ -34,6 +34,7 @@
  (case name
   (fn-bpsp-root-release-ready (zerop (first args)))
   (otherwise (apply name args))))
+(defun fnn-absolute (path) (assert (equal path "/store")) path)
 (defun fnn-indeterminate (&rest args) (declare (ignore args)) (error 'fixture-stop))
 (defun fnn-owner-page-read-startup (root connections cold output retain)
  (assert (equal root "/store")) (assert (member connections '(1 2)))

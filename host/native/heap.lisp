@@ -328,7 +328,14 @@ command (NIL otherwise: a developer `store ROOT' verb gets the serve
 figure), and the store's observed history octets for an offline verb ACL2
 sizes by them (NIL otherwise), and its normalized explicit cold-resource
 policy and output-allocation policy (each NIL when absent)."
-  (cond ((and (string= (or (first argv) "") "operator") (second argv))
+  (let ((bp-plan (fnn-core 'fn-bph-command-plan argv)))
+  (cond ((eq (car bp-plan) :run)
+         (let* ((root (fnn-absolute (second bp-plan)))
+                (profile (fnn-heap-store-profile root)))
+           (values profile (third bp-plan) :run nil nil nil root)))
+        ((eq (car bp-plan) :refused)
+         (fnn-refuse "~a" (fnn-core 'fn-bph-refusal-line (second bp-plan))))
+        ((and (string= (or (first argv) "") "operator") (second argv))
          (multiple-value-bind (profile connections action observed cold-resources output-resources)
              (fnn-heap-operator-profile (second argv) (cddr argv))
            (values profile (if (integerp connections) connections 0) action observed cold-resources output-resources)))
@@ -337,7 +344,7 @@ policy and output-allocation policy (each NIL when absent)."
            (values profile 0 nil
                    (and profile (fnn-heap-history-observation (fnn-absolute (second argv))
                                                               profile)))))
-        (t (values nil 0 nil nil))))
+        (t (values nil 0 nil nil)))))
 
 ;; The whole reservation (books/heap-reservation.lisp
 ;; fn-heap-reserve-operation-decide, HST-025, PKT-686): heap-figure's heap for
