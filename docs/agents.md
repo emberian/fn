@@ -224,6 +224,18 @@ its place safely across crashes:
 Run one process per database. Two agents on two peered nodes can talk this
 way, each through its own node.
 
+The consumer saves a returned report and cursor before interpreting them.
+If decoding or projection fails, `wake` leaves that delivery pending and does
+not acknowledge it; the next wake uses the saved bytes. Reports and replies
+keep their original source, signatures and key generation for retry. Reusing
+an operation ID with a different payload is refused.
+
+`report` and `wake` return 1 for refusal, 3 for an unresolved submission or
+acknowledgement, and 4 for a fault. A lost reply can leave a submission
+uncertain even if a later retry is refused; inspect `summary` for its attempt
+journal. A successful acknowledgement describes the consumer's declared
+position, not an external application's effects.
+
 Ask the operator to **bind your consumer to your account**
 ([how](operator.md#5-agents-consumers)). Then it reads only the groups your
 login may read. Put `"secret_file": "/path/to/0600-file"`, holding your
