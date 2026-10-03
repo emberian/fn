@@ -1,0 +1,13 @@
+{
+ "acceptance": "Reviewed batches preserve theorem statements/hypotheses and behavior, show matched successful before/after event steps with dependency/toolchain coordinates, necessary consumers certified at changed bytes, and source-event statuses/exclusions retained in archived census.",
+ "detail": "Four Luna/high source families at bffa8b2; census covers named ledger-modeled theorem, logic admission/guard and explicit verification entries including host and nested sources. Source-only inspection remains distinct from successful A/B admission and certification. First experiment CBOR u64 roundtrip authorized one hbox process; other families survey current source/evidence.",
+ "file": "tools/proof_sweep.py",
+ "id": "PROOF-SWEEP-20261003",
+ "notes": [],
+ "owner": "deputy_proof_engineering",
+ "severity": "medium",
+ "source": "coordinator",
+ "state": "in-progress",
+ "title": "Measured broad proof-engineering sweep with source-event coverage",
+ "updated": "2026-10-03T08:02:55Z"
+}
