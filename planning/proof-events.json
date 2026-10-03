@@ -19428,6 +19428,31 @@
         }
       ],
       "pending_subject": "fnn-owner-page-read-startup consumes fn-prstartup-default-plan which calls fn-prstartup-plan; composed wrapper/source replay pending."
+    },
+    {
+      "id": "PRF-1298",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-dwj-retired-job-refuses-scalar-publication",
+          "note": "After actual reusable retirement, no arbitrary query ledger/worker/token can publish a scalar byte from that job. The stronger current statement has ordinary admission; the older817 certificate does not certify its changed bytes."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwj-retirement-preserves-private-backing",
+          "note": "Actual retirement preserves input/hash/zin/win/tab/out/window storage, without publishing an active operation."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwa-retirement-revokes-prior-authority",
+          "note": "Reusable retirement clears token/root/source/controller/action/receipt authority and returns the carry to uninstalled with no borrow."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwa-refused-retirement-preserves-carry",
+          "note": "Every actual non-reusable result leaves the carry unchanged. This is not permission to refund physical custody."
+        }
+      ]
     }
   ]
 }
