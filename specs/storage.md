@@ -1534,6 +1534,12 @@ install leaves the old publication, from it the new
 verdict lands: a pass under continuous posting defers (`delta`). `store
 reclaim` without `--recorded` (which records the instant first) stays
 `offline-only` on a running owner.
+The reservation's history-octet census first synchronizes the history columns
+with committed rows and advances the carried `(count . octets)` cache through
+`fn-owner-record-octets`. A stale raw cache is never used as the current census.
+A credit refusal captures no reclaim pass and leaves the credit ledger intact;
+the synchronized census remains available for the next attempt. This correct
+census does not remove the current rebuild's proportional history allocation.
 
 What becomes available again, precisely: the payload octets of each
 reclaimed record, on disk when the covered segments are dropped, and in the
