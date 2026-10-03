@@ -5270,3 +5270,11 @@
 (definterface fn-prd-write-end :class :common-lisp-compliant)
 (definterface fn-prd-idle-ms :class :common-lisp-compliant)
 (definterface fn-prd-loss-class-ok :class :common-lisp-compliant)
+
+; ACL2 bounds operator observation without terminating owner custody.
+(definterface fn-nret-observation-step :class :common-lisp-compliant
+  :keystones (fn-nret-observation-expiry-is-uncertain
+              fn-nret-observation-report-requires-stopped))
+(definterface fn-nret-observation-poll-seconds :class :common-lisp-compliant)
+(definterface fn-nret-observation-expired-line :class :common-lisp-compliant)
+(definterface fn-nret-observation-fault-line :class :common-lisp-compliant)

@@ -6606,6 +6606,32 @@
         "tests/acl2/output-reservation-tests.lisp"
       ],
       "implementation_note": "Explicit pool extends the composed store/thread/cold launcher allowance. Startup captures actual dynamic space and separately names store and cold terms, funds bookkeeping and one maintenance lease, and requires one user quantum affordable. Per-CID and connection generation window custody is scoped to the actual NEWNEWS producer. Full matcher/initialization/outer-plan/mux allocation refinement, refusal work and owner R>=W remain open."
+    },
+    {
+      "id": "PKT-895",
+      "title": "Bounded retire operator observation with honest uncertainty",
+      "specification": "specs/native-config.md#retire-operator-observation-pkt-895",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-1263"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "keystones": [
+        "fn-nret-observation-expiry-is-uncertain",
+        "fn-nret-observation-report-requires-stopped"
+      ],
+      "evidence": [
+        "books/native-retire.lisp",
+        "host/native/operator.lisp",
+        "tests/acl2/native-retire-observation-tests.lisp",
+        "tests/test_native_retire_observation_source.py",
+        "planning/evidence/operator-retire-observation-2026-10-03-v2.json"
+      ],
+      "note": "Actual source host consumes the ACL2 observation decision; expiry after requested drain plus60s reports uncertainty without owner/custody effects. Warm REPL admission and actual-source positive/prior-source timeout recorded; normal certification and matching image remain pending. No physical process-stop deadline is claimed."
     }
   ]
 }

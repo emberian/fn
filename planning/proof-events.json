@@ -19127,6 +19127,19 @@
           "name": "fn-bpit-helper-seconds-preserves-lifetime"
         }
       ]
+    },
+    {
+      "id": "PRF-1263",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nret-observation-expiry-is-uncertain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nret-observation-report-requires-stopped"
+        }
+      ]
     }
   ]
 }
