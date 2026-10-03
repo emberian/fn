@@ -2247,3 +2247,32 @@ tests.test_native_journal_stream.NativeJournalStreamTests. Source before
 normal2-root cert/image; Integration owns imports/capacity. Access may take
 general refinement after immutable source lands; current active root warm
 world /tank/fn/gates/codex-journal-stream-repl, 60min idle.
+
+## Sol tools: one compatible acquisition for a sent include batch
+
+Resource Exec's existing warm catalog-paged world accepted its six matching
+literal includes in 0.46 ACL2 seconds, while prepare_includes repeatedly
+scanned compatible sets for more than three minutes of Python CPU. The
+supported prior union126 acquisition selected artifact set
+f30255b6b2bd1367127db6ca44ca1f40fca6bab58920a6ee1a3d82de2b7e75ce;
+no cache or source fallback was bypassed.
+
+Preparation now collects the command's repository include roots, retaining
+form order and path rewriting, then acquires one exact compatible union.
+The existing install_closure solver accepts additional literal include roots;
+its graph visits shared dependencies once. System includes stay outside this
+acquisition. Even plausible existing certificates undergo exact source,
+object and dependency-alist checks. A union miss or incompatible alist refuses
+the whole send, with no implicit certification or source load. This replaces
+per-root acquisition, not the cache trust boundary or root native-preflight
+reuse work.
+
+Sixteen focused include/source-dependency/refusal/certify-fallback tests PASS
+0.084s. New fixtures cover multi-root deduplication, system-only commands,
+shared graph reads and real cache publication/selection/install with a
+recorded ACL2 alist probe, including an incompatible-alist refusal. Compile
+and diff checks PASS. No live ACL2, source reproof or benchmark run here; the
+reported old timing belongs to Resource Exec's existing warm session, and a
+new live speed result remains unmeasured. Transport continuation is handed to
+BPTransport with fair-push93e/8df/879 and pull cold b138/deb; no pending edits
+in those trees.
