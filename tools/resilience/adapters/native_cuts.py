@@ -453,7 +453,8 @@ def _served_outcome(first: bytes, final) -> tuple:
     """(outcome, status) of a served POST: 240 accepted; the 441 that names
     the stored article a duplicate; a closed connection a lost reply."""
     if final is None:
-        return ("lost" if first == b"" else "refused"), first
+        return ("lost" if first == b"" else
+                "uncertain" if b"uncertain" in first.lower() else "refused"), first
     if final.startswith(b"240"):
         return "accepted", final
     if final == b"":

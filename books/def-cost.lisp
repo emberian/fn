@@ -45,7 +45,8 @@
 ; route, below) to (NAME-visits ...): a kind check is never counted per
 ; recursive call of the body's twin.
 ;
-; THE ROUTE, from the world.  NAME in `fn-interfaces' with :raw-with: the
+; THE ROUTE, from the world. NAME in `fn-interfaces' with :raw-with or
+; :raw-guarded: the
 ; host evaluates the kind checks only (fnn-entry-guard), so the entry's cost
 ; is kinds + body (:raw).  NAME in `fn-interfaces' without: the counterpart
 ; evaluates the whole guard before the body (:served): kinds + the rest of
@@ -332,7 +333,8 @@
   (declare (xargs :mode :program))
   (let ((entry (assoc-eq fn (table-alist 'fn-interfaces w))))
     (cond ((null entry) :internal)
-          ((assoc-keyword :raw-with (cdr entry)) :raw)
+          ((or (assoc-keyword :raw-with (cdr entry))
+               (assoc-keyword :raw-guarded (cdr entry))) :raw)
           (t :served))))
 
 (defun fn-cost-kind-conjuncts (conjuncts formals stobjs kinds)
@@ -377,7 +379,7 @@
             (let ((size (and (eq route :served)
                              (fn-cost-mentions rcost *fn-cost-whole-state-sizes*))))
               (if size
-                  (mv (msg "~x0 is a served entry (fn-interfaces, no :raw-with) whose guard ~
+                  (mv (msg "~x0 is a served entry (fn-interfaces, no raw declaration) whose guard ~
                             the counterpart evaluates on every call, and that guard's ~
                             derived cost depends on ~x1, a whole-state size: the walk ~
                             AGENTS.md forbids on a served path.  It is not charged: carry ~
