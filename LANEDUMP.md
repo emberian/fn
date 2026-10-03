@@ -3868,3 +3868,20 @@ thread-runtime to the actual retained service bank installer. Global live ledger
 in this world is installed (Root BP probe); all further tests use local stobjs.
 Open: actual peer worker/driver composition, full native/GC/owned graph tariff,
 DEFAULT recovery workspace partition and live protected-growth consumer.
+
+Foundations convergence 2026-10-03: source063ca peer capture/codec and af63a->ff6c
+protected-growth packet sent Integration. Latest launcher extensions account for
+actual trigger growth; DEFAULT runtime protection uses base+2*actual trigger,
+not the least-space figure. Actual selected renamed guards and six machine /
+allowance theorem replays pass; trigger-growth positive/red-naive fixture passes.
+No full GC/allocator claim follows. Final native peer grant has nine args ending
+machine observations and returns (:hold five-field-capture) or explicit refused /
+partial result; changed policy worker count cannot exceed whole native machine
+reservation. Operator consumes this and refusal text; Bounds owns physical bank
+worker/driver. Live Store growth remains monotonic, A changes route at-restart.
+Recovery protected workspace double charge and init->run DEFAULT affordability
+remain open. Owned live solrlocover is healthy PID28084/ACL2 PID28086, no pending
+send; global ledger installed6slots, use only local stobjs. Source-selected native
+memory/guards, certificates and whole-current endpoint remain distinct. Root
+owns new matching typed certificate; do not duplicate it. Existing scratch source
+probes remain under build/runtime-* and build/peer-*.

@@ -73,7 +73,7 @@
 
 (defun fn-prstartup-protected (profile core nursery output max-connections)
  (declare (xargs :guard t) (ignore max-connections))
- (+ (fn-heap-figure-octets profile core nursery)
+ (+ (fn-heap-runtime-protected-octets profile core nursery)
     (nfix (fn-crv-nth 0 output))))
 
 (defun fn-prstartup-default-plan
@@ -203,8 +203,10 @@
                   (fn-crl-table-supportedp (max 8 (+ 1 cache-limit)))))
         (list :refused :invalid-default-pool-capture 0 (fn-prstartup-nth 3 base)))
        (t
-        (let* ((octets (+ (* *fn-heap-mib* (nfix (fn-prstartup-nth 1 base)))
-                          (fn-prstartup-required-heap (max 8 (+ 1 cache-limit)) workers root)))
+        (let* ((octets (fn-heap-grow-runtime-dynamic
+                          (* *fn-heap-mib* (nfix (fn-prstartup-nth 1 base)))
+                          (fn-prstartup-required-heap (max 8 (+ 1 cache-limit)) workers root)
+                          (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib))))
                (mb (fn-heap-mb-of octets))
                (stack (nfix (fn-prstartup-nth 4 base)))
                (threads (nfix (fn-prstartup-nth 5 base)))

@@ -82,8 +82,10 @@
        ((not (fn-pfr-policy-p policy))
         (list :refused :invalid-peer-flight-profile 0 (fn-pfr-at 3 base)))
        (t
-        (let* ((mb (fn-heap-mb-of (+ (* *fn-heap-mib* (nfix (fn-pfr-at 1 base)))
-                                     (fn-pfr-at 0 policy))))
+        (let* ((mb (fn-heap-mb-of (fn-heap-grow-runtime-dynamic
+                                     (* *fn-heap-mib* (nfix (fn-pfr-at 1 base)))
+                                     (fn-pfr-at 0 policy)
+                                     (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib)))))
                (stack (nfix (fn-pfr-at 4 base)))
                (threads (+ (nfix (fn-pfr-at 5 base)) (fn-pfr-at 3 policy)))
                (total (fn-heap-reservation-octets mb core stack threads)))

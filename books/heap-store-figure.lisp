@@ -869,6 +869,8 @@
  :hints (("Goal" :in-theory (e/d (fn-heap-grow-runtime-dynamic)
                                 (fn-heap-with-nursery fn-heap-nursery-trigger)))))
 
+(in-theory (disable fn-heap-runtime-protected-octets fn-heap-grow-runtime-dynamic))
+
 ; THE FIGURE, in octets.
 (defun fn-heap-store-figure-octets (profile core nursery observed)
   (declare (xargs :guard t))
