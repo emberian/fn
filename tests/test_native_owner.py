@@ -8,6 +8,7 @@ import sys
 import time
 import unittest
 
+from tests.campaign.native_cuts import host_function
 from tests.native_harness import (
     EXIT, ROOT, Client, Node, dot_stuff, environment, native_image, native_peer_add,
     runtime_sbcl)
@@ -16,6 +17,361 @@ IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 
 
 class NativeOwnerHandlerStructureTests(unittest.TestCase):
+    def test_extent_close_uncertainty_fences_before_unlock_and_never_retries(self):
+        from tests.campaign.native_cuts import host_function
+        sys.path.insert(0, str(ROOT / "tools"))
+        from ledger import head, read_forms
+        owner = (ROOT / "host/native/owner.lisp").read_text()
+        extent = (ROOT / "host/native/extent.lisp").read_text()
+        release = host_function(owner, "fnn-owner-release-extents")
+        release_form = read_forms(release)[0]
+        release_handler = release_form[-1][-1]
+        self.assertEqual(head(release_handler), "handler-case")
+        # Lane failure-scope (t45): ONE arm; ACL2 decides the kind from the
+        # concrete class (fnn-owner-thread-escape: an uncertain outcome
+        # fences, a fault stops, a known refusal retries).  A parent-class
+        # arm would pass an unlisted subclass as a refusal (review M1).
+        self.assertEqual([head(arm) for arm in release_handler[2:]], ["serious-condition"])
+        self.assertIn("(fnn-owner-thread-escape service e \"CHECKPOINT release\")", release)
+        pending = host_function(owner, "fnn-owner-release-pending-extents-locked")
+        self.assertIn("(service &optional pin)", pending)
+        self.assertLess(pending.index("(fnn-owner-service-stopping service)"),
+                        pending.index("(fnn-extent-close"))
+        form = read_forms(pending)[0]
+
+        def ancestors(form, target, parents=()):
+            if isinstance(form, list):
+                if head(form) == target:
+                    yield parents
+                for child in form:
+                    yield from ancestors(child, target, parents + (form,))
+
+        paths = list(ancestors(form, "fnn-extent-close"))
+        self.assertEqual(len(paths), 1)
+        self.assertIn("fnn-owner-shared-action-locked", [head(p) for p in paths[0]])
+        close = host_function(extent, "fnn-extent-close")
+        forms = read_forms(close)[0]
+        for target in ("fnn-close", "remhash"):
+            for parents in ancestors(forms, target):
+                handlers = [p for p in parents if head(p) == "handler-case"]
+                self.assertTrue(handlers, target)
+                self.assertEqual(head(handlers[-1][-1]), "serious-condition")
+                self.assertTrue(list(ancestors(handlers[-1][-1], "fnn-indeterminate")))
+        self.assertLess(close.index("(fnn-close fd)"),
+                        close.index("'fn-owner-page-read-close id"))
+        # Held files are normal retry results, not ambiguous close errors.
+        def nodes(form):
+            if isinstance(form, list):
+                yield form
+                for child in form:
+                    yield from nodes(child)
+        held = next(f for f in nodes(forms) if head(f) == ":read-file-held")
+        self.assertEqual(held[1], ["push", "id", "keep"])
+        self.assertFalse(list(ancestors(held, "fnn-close")))
+        release = host_function(owner, "fnn-owner-release-extents")
+        escape = host_function(owner, "fnn-owner-thread-escape")
+        self.assertIn("(fnn-owner-fence-service service)", escape)
+        self.assertIn("(fnn-owner-fault-service service nil condition)", escape)
+        self.assertNotIn("release failed (files stay retired)", release)
+        # Every family caller supplies the service needed to fence under lock.
+        for path in (ROOT / "host/native").glob("*.lisp"):
+            text = path.read_text()
+            for call in re.findall(r"\(fnn-owner-release-pending-extents-locked([^)]*)\)", text):
+                self.assertIn("service", call, str(path))
+
+    # Lane failure-scope (t45): the ONE fence boundary (r71 F1/F2; sweep S015,
+    # S016, S017, S019, S020, S023; r72 F6; review failure-scope-review-1.md
+    # M1/M2/M3).  Each test fails on d52815d5d (t43) and passes after.
+
+    @staticmethod
+    def _forms(path):
+        sys.path.insert(0, str(ROOT / "tools"))
+        from ledger import read_forms
+        return read_forms((ROOT / path).read_text(encoding="utf-8"))
+
+    @staticmethod
+    def _definition(forms, kind, name):
+        sys.path.insert(0, str(ROOT / "tools"))
+        from ledger import head
+        return next(f for f in forms if head(f) == kind and str(f[1]) == name)
+
+    @staticmethod
+    def _nodes(form):
+        if isinstance(form, list):
+            yield form
+            for child in form:
+                yield from NativeOwnerHandlerStructureTests._nodes(child)
+
+    @staticmethod
+    def _ancestors(form, target, parents=()):
+        sys.path.insert(0, str(ROOT / "tools"))
+        from ledger import head
+        if isinstance(form, list):
+            if head(form) == target or (len(form) > 1 and str(form[1]) == target):
+                yield parents
+            for child in form:
+                yield from NativeOwnerHandlerStructureTests._ancestors(child, target, parents + (form,))
+
+    BOUNDARIES = ("fnn-owner-gated", "fnn-owner-serialized", "fnn-owner-transit-serialized",
+                  "fnn-owner-serialized-with-control-turn")
+    NIL_BLOCKS = ("loop", "dolist", "dotimes", "do", "do*")
+
+    def test_every_owner_quantum_runs_inside_the_one_fence_boundary(self):
+        # r71 F1, sweep S017/S019/S020: fnn-owner-gated's body (and its gate
+        # check and cleanup) run inside fnn-owner-shared-action-locked, so the
+        # fence is installed before the mutex is released; fnn-owner-serialized
+        # adds only the stopping refusal (one boundary, not two); an unwind no
+        # condition explains is a fault installed under the mutex (M3).
+        sys.path.insert(0, str(ROOT / "tools"))
+        from ledger import head
+        owner = (ROOT / "host/native/owner.lisp").read_text(encoding="utf-8")
+        forms = self._forms("host/native/owner.lisp")
+        gated = self._definition(forms, "defmacro", "fnn-owner-gated")
+        paths = list(self._ancestors(gated, "fnn-owner-measured"))
+        self.assertEqual(len(paths), 1)
+        self.assertIn("fnn-owner-shared-action-locked", [head(p) for p in paths[0]])
+        self.assertIn("with-mutex", [head(p)[-10:] for p in paths[0]])
+        start = owner.index("(defmacro fnn-owner-gated")
+        text = owner[start:owner.index("\n(def", start + 1)]
+        self.assertLess(text.index("(unless *fnn-boundary-outcome*"),
+                        text.index("(fnn-owner-gate-leave"))
+        self.assertIn("(fnn-owner-stop-service-locked ,s +fnn-exit-fault+)", text)
+        self.assertIn("(*fnn-section-step* nil)", text)
+        serialized = host_function(owner, "fnn-owner-serialized")
+        self.assertNotIn("fnn-owner-shared-action-locked", serialized)
+        self.assertIn("(fnn-owner-gated (service class :cid cid)", serialized)
+        self.assertIn("(fnn-refuse \"owner service is stopping\")", serialized)
+        # No non-local exit crosses a boundary: a return-from, return or throw
+        # inside a quantum targets a block, loop or catch established inside it.
+        escapes = []
+
+        def walk(form, inside, blocks, catches, where):
+            if not isinstance(form, list):
+                return
+            h = head(form)
+            if h in self.BOUNDARIES:
+                inside, blocks, catches = True, (), ()
+            elif inside:
+                if h == "block" and len(form) > 1:
+                    blocks = blocks + (str(form[1]),)
+                elif h in self.NIL_BLOCKS:
+                    blocks = blocks + ("nil",)
+                elif h == "catch" and len(form) > 1:
+                    catches = catches + (str(form[1]),)
+                elif h == "return-from" and len(form) > 1 and str(form[1]) not in blocks:
+                    escapes.append((where, "return-from", str(form[1])))
+                elif h == "return" and "nil" not in blocks:
+                    escapes.append((where, "return", ""))
+                elif h == "throw" and len(form) > 1 and str(form[1]) not in catches:
+                    escapes.append((where, "throw", str(form[1])))
+            for child in form:
+                walk(child, inside, blocks, catches, where)
+
+        for path in sorted((ROOT / "host/native").glob("*.lisp")):
+            for form in self._forms("host/native/" + path.name):
+                if head(form) in ("defun", "defmacro"):
+                    walk(form, False, (), (), "{}:{}".format(path.name, form[1]))
+        self.assertEqual(escapes, [])
+
+    def test_a_condition_leaving_a_boundary_is_classified_by_acl2_from_its_concrete_class(self):
+        # Review M1: the host names the condition's concrete class, never a
+        # parent; ACL2's tables are closed (books/failure-scope.lisp), so an
+        # unlisted subclass is a fault, not the refusal its parent is.  Every
+        # condition the host defines under fnn-store-error or fnn-os-error is
+        # in a table.  Review M2: the step the boundary completed is named by
+        # the namespace primitives, and the top-level classifier takes it.
+        sys.path.insert(0, str(ROOT / "tools"))
+        from ledger import head
+        owner = (ROOT / "host/native/owner.lisp").read_text(encoding="utf-8")
+        io = (ROOT / "host/native/io.lisp").read_text(encoding="utf-8")
+        forms = self._forms("host/native/owner.lisp")
+        shared = self._definition(forms, "defun", "fnn-owner-shared-action-locked")
+        handler = next(f for f in self._nodes(shared) if head(f) == "handler-case")
+        self.assertEqual([head(arm) for arm in handler[2:]], ["serious-condition"])
+        self.assertTrue(list(self._ancestors(handler[2], "fnn-owner-classify-escape-locked")))
+        classify = host_function(owner, "fnn-owner-classify-escape-locked")
+        self.assertIn("(fn-fs-classify (fnn-condition-class condition) *fnn-section-step*)", classify)
+        self.assertLess(classify.index("+fnn-exit-uncertain+"), classify.index("+fnn-exit-fault+"))
+        condition_class = host_function(io, "fnn-condition-class")
+        self.assertIn("(class-of condition)", condition_class)
+        exit_code = host_function(io, "fnn-exit-code-for")
+        self.assertNotIn("typecase", exit_code)
+        self.assertIn("(fn-fs-exit-code (fnn-condition-class condition) step)", exit_code)
+        book = (ROOT / "books/failure-scope.lisp").read_text(encoding="utf-8")
+        tables = {}
+        for name in ("indeterminate", "fault", "usage", "refusal", "os"):
+            start = book.index("(defconst *fn-fs-{}-classes*".format(name))
+            end = book.index("))", start)
+            tables[name] = set(re.findall(r'"([a-z0-9-]+)"', book[start:end]))
+        named = set().union(*tables.values())
+        parents = {}
+        for path in sorted((ROOT / "host/native").glob("*.lisp")):
+            for cls, parent in re.findall(r"\(define-condition\s+([a-z0-9-]+)\s+\(([a-z0-9:-]+)",
+                                          path.read_text(encoding="utf-8")):
+                parents[cls] = parent
+
+        def store_rooted(cls):
+            while cls in parents:
+                if cls in ("fnn-store-error", "fnn-os-error"):
+                    return True
+                cls = parents[cls]
+            return cls in ("fnn-store-error", "fnn-os-error")
+
+        rooted = {cls for cls in parents if store_rooted(cls)}
+        self.assertEqual(sorted(rooted - named), [], "a host condition no table names")
+        self.assertEqual(sorted(named - rooted - {"fnn-store-error", "fnn-os-error"}), [],
+                         "a table names a condition the host does not define")
+        # Each refusal is listed by its own name: fnn-store-error's subclasses
+        # are not refusals by inheritance.
+        self.assertIn("fnn-owner-admission-pending", tables["refusal"])
+        self.assertEqual(parents["fnn-owner-admission-pending"], "fnn-store-error")
+        self.assertIn("fnn-store-indeterminate", tables["indeterminate"])
+        self.assertIn("fnn-extent-fault", tables["fault"])
+        for primitive in ("fnn-link", "fnn-replace", "fnn-unlink", "fnn-mkdir"):
+            self.assertIn("(fnn-durable-step", host_function(io, primitive), primitive)
+        self.assertGreaterEqual(host_function(io, "fnn-rename-no-replace").count("(fnn-durable-step :replaced)"), 2)
+        self.assertNotIn("*fnn-section-step*", host_function(io, "fnn-at"))
+        for name in ("fnn-owner-committer-loop", "fnn-owner-publish-captured", "fnn-owner-export-captured"):
+            self.assertIn("(*fnn-section-step* nil)", host_function(owner, name), name)
+
+    def test_worker_threads_classify_through_the_thread_boundary(self):
+        # Sweep S016 (Astra B1): the committer's refusal arm caught every store
+        # fault and uncertain outcome and died silently with the batch in
+        # flight.  S019 / t43 rows 233-235: the publisher's and the exporter's
+        # parent catches logged an uncertain publication and served on.
+        sys.path.insert(0, str(ROOT / "tools"))
+        from ledger import head
+        owner = (ROOT / "host/native/owner.lisp").read_text(encoding="utf-8")
+        forms = self._forms("host/native/owner.lisp")
+        escape = host_function(owner, "fnn-owner-thread-escape")
+        self.assertIn("(fn-fs-classify (fnn-condition-class condition) *fnn-section-step*)", escape)
+        self.assertLess(escape.index("(fnn-owner-fence-service service)"),
+                        escape.index("(fnn-owner-fault-service service nil condition)"))
+        committer = self._definition(forms, "defun", "fnn-owner-committer-loop")
+        handler = next(f for f in self._nodes(committer) if head(f) == "handler-case")
+        self.assertEqual([head(arm) for arm in handler[2:]], ["serious-condition"])
+        self.assertTrue(list(self._ancestors(handler[2], "fnn-owner-thread-escape")))
+        self.assertNotIn("(fnn-store-error ()", host_function(owner, "fnn-owner-committer-loop"))
+        publisher = self._definition(forms, "defun", "fnn-owner-publish-captured")
+        handlers = [f for f in self._nodes(publisher) if head(f) == "handler-case"]
+        heads = [[head(arm) for arm in h[2:]] for h in handlers]
+        # the write's arm names only the known refusal; the thread's arm is one
+        self.assertIn(["fnn-store-io-refusal"], heads)
+        self.assertNotIn(["(or", "fnn-store-io-refusal"], [h[:2] for h in heads])
+        thread_arm = [h for h in handlers if [head(arm) for arm in h[2:]] == ["serious-condition"]
+                      and list(self._ancestors(h[2], "fnn-owner-thread-escape"))]
+        self.assertEqual(len(thread_arm), 1)
+        self.assertNotIn("(or fnn-store-io-refusal fnn-store-indeterminate)",
+                         host_function(owner, "fnn-owner-publish-captured"))
+        # the publication's done step is a live quantum (refused once stopping)
+        done = list(self._ancestors(publisher, "fn-owner-sco-publication-done"))
+        self.assertTrue(done)
+        self.assertIn("fnn-owner-serialized", [head(p) for p in done[0]])
+        exporter = host_function(owner, "fnn-owner-export-captured")
+        self.assertIn("(fn-fs-classify-job (fnn-condition-class e) *fnn-section-step*)", exporter)
+        self.assertIn("(cons :uncertain :archive-publication)", exporter)
+        book = (ROOT / "books/owner-export-request.lisp").read_text(encoding="utf-8")
+        self.assertIn("(equal (car outcome) :uncertain)) :archive-uncertain)", book)
+        self.assertIn("((equal word :archive-uncertain) :uncertain)", book)
+        operator = (ROOT / "host/native/operator.lisp").read_text(encoding="utf-8")
+        self.assertEqual(operator.count("(eq status-word :archive-uncertain)")
+                         + operator.count("(eq word :archive-uncertain)"), 2)
+
+    def test_the_stop_exit_escalates_on_the_lattice_and_a_failed_barrier_fences(self):
+        # Sweep S015: the first stop won; a graceful SIGTERM's exit 0 hid a
+        # barrier that failed after it.  ACL2's lattice decides the exit (a
+        # fence is never masked), and the syncer's stopping branch fences the
+        # store on a :stop step.
+        owner = (ROOT / "host/native/owner.lisp").read_text(encoding="utf-8")
+        stop = host_function(owner, "fnn-owner-stop-service-locked")
+        self.assertIn("(fn-fs-stop-exit-escalate current exit-code)", stop)
+        # the fence step (STOPPING, the exit code) precedes every log line
+        self.assertLess(stop.index("(fn-fs-stop-exit-escalate"), stop.index("(fnn-err "))
+        self.assertIn("dominated by exit", stop)
+        pipeline = host_function(owner, "fnn-owner-commit-pipeline")
+        told = pipeline.index("(fnn-owner-deliver service (first m) :uncertain)")
+        fence = pipeline.index("(when (eq step :stop)", told)
+        self.assertLess(fence, pipeline.index("((eq step :complete)", told))
+        self.assertIn("(setf (fnn-store-fenced store) t)", pipeline[fence:fence + 400])
+        self.assertIn("(fnn-owner-stop-service-locked service +fnn-exit-uncertain+)",
+                      pipeline[fence:fence + 400])
+        book = (ROOT / "books/failure-scope.lisp").read_text(encoding="utf-8")
+        for theorem in ("fn-fs-stop-exit-fence-is-never-masked", "fn-fs-stop-exit-escalate-is-monotone",
+                        "fn-fs-stop-exit-ok-is-the-bottom", "fn-fs-unknown-class-is-a-fault",
+                        "fn-fs-os-error-after-a-durable-step-is-the-fence"):
+            self.assertIn("(defthm {}\n".format(theorem), book)
+
+    def test_the_reclaim_install_quantum_is_live_and_its_cleanup_finishes_before_the_raise(self):
+        # r71 F1, sweep S017: the capture and the install/swap ran in bare
+        # gated quanta (no stopping check, no fence); the cleanup raised before
+        # finishing the pass and unlinked the stage after a fence.
+        sys.path.insert(0, str(ROOT / "tools"))
+        from ledger import head
+        owner = (ROOT / "host/native/owner.lisp").read_text(encoding="utf-8")
+        forms = self._forms("host/native/owner.lisp")
+        reclaim = self._definition(forms, "defun", "fnn-owner-reclaim-pass")
+        for target in ("fnn-state-checkpoint-install", "fn-owner-orcp-swap", "fnn-owner-reclaim-barriers",
+                       "fn-owner-orcp-capture"):
+            paths = list(self._ancestors(reclaim, target))
+            self.assertTrue(paths, target)
+            heads = [head(p) for p in paths[0]]
+            self.assertIn("fnn-owner-serialized", heads, target)
+            self.assertNotIn("fnn-owner-gated", heads, target)
+        text = host_function(owner, "fnn-owner-reclaim-pass")
+        cleanup = text[text.index("(when pin (fnn-arena-unpin pin))"):]
+        finish = cleanup.index("'fn-owner-orcp-finish")
+        unlink = cleanup.index("(fnn-unlink stage)")
+        fence = cleanup.index("(fnn-owner-fence-service service)")
+        raise_ = cleanup.index("reclaim swap failed after the install")
+        self.assertLess(finish, unlink)
+        self.assertLess(unlink, fence)
+        self.assertLess(fence, raise_)
+        self.assertNotIn("(ignore-errors (fnn-unlink stage))", cleanup)
+        self.assertLess(cleanup.index("(not (fnn-owner-service-stopping service))"), unlink)
+
+    def test_tcpcl_listen_re_signals_an_uncertain_outcome_and_a_fault(self):
+        # Sweep S023: a store fault was this session's refusal and the loop
+        # accepted the next peer after an uncertain staging barrier.
+        sys.path.insert(0, str(ROOT / "tools"))
+        from ledger import head
+        forms = self._forms("host/native/tcpcl.lisp")
+        listen = self._definition(forms, "defun", "fnn-command-tcpcl-listen")
+        handler = next(f for f in self._nodes(listen) if head(f) == "handler-case")
+        self.assertEqual([head(arm) for arm in handler[2:]], ["serious-condition"])
+        self.assertTrue(list(self._ancestors(handler[2], "fn-fs-classify")))
+        text = host_function((ROOT / "host/native/tcpcl.lisp").read_text(encoding="utf-8"),
+                             "fnn-command-tcpcl-listen")
+        self.assertIn("(t (error e))", text)
+        self.assertNotIn("(fnn-store-error (e)", text)
+
+    def test_a_node_secret_publication_barrier_failure_is_uncertain(self):
+        # r72 F6: the directory barrier after the secret's rename escaped as a
+        # raw OS error (exit 4) for what is an uncertain publication (exit 3).
+        io = (ROOT / "host/native/io.lisp").read_text(encoding="utf-8")
+        durable = host_function(io, "fnn-node-secret-durable")
+        self.assertIn("(fnn-os-error (e)", durable)
+        self.assertIn("(fnn-indeterminate ", durable)
+        for name in ("fnn-node-secret-create", "fnn-node-secret-rotate"):
+            text = host_function(io, name)
+            self.assertIn("(fnn-node-secret-durable dir", text, name)
+            # the only bare barrier left in rotate is the keep link's, before
+            # any publication
+            self.assertLessEqual(text.count("(fnn-fsync-dir dir)"), 1 if name.endswith("rotate") else 0, name)
+
+    def test_an_admission_pending_verdict_is_a_refusal_of_the_request(self):
+        # TCB-SHRINK review: fnn-owner-admission-pending was a serious condition
+        # no handler named, ending the owner with exit 4; a pending verdict is
+        # a refusal of that request, named, connection-scoped.
+        owner = (ROOT / "host/native/owner.lisp").read_text(encoding="utf-8")
+        self.assertIn("(define-condition fnn-owner-admission-pending (fnn-store-error)", owner)
+        signal = host_function(owner, "fnn-owner-admission-pending")
+        self.assertIn(":message", signal)
+        verdict = host_function(owner, "fnn-owner-existing-verdict")
+        self.assertNotIn("(error 'fnn-owner-admission-pending", verdict)
+        self.assertEqual(verdict.count("(fnn-owner-admission-pending verdict)"), 2)
+        book = (ROOT / "books/failure-scope.lisp").read_text(encoding="utf-8")
+        self.assertIn('"fnn-owner-admission-pending"', book)
+
     def test_transit_take_uses_transfer_decision_and_store_outcome(self):
         # A transit take is a normal queued submission.  Treating the tag as
         # a fault stopped the whole owner before Store ran; the later reply

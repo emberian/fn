@@ -40,7 +40,8 @@ import unittest
 
 from tests.campaign import native_cuts
 from tests import test_native_state_checkpoint as scp
-from tests.native_harness import EXIT_OK, ROOT, native_image
+from tests.native_harness import (EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, EXIT_USAGE,
+                                  ROOT, article, native_image)
 
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 
@@ -566,6 +567,60 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         self.assertEqual(recovered.returncode, EXIT_OK, recovered.stderr.decode())
         self.assertEqual(self.open_line(), "open=checkpoint:12 suffix=3")
         self.assertEqual(self.headroom()["transactions-used"], 15)
+
+
+class ExtentCloseFenceTests(AutoCheckpointFixture):
+    """Developer EIO on both possible sides of close(2); no process-death cut."""
+
+    def close_failure(self, fault):
+        self.init_development()
+        self.node.start()
+        self.ids = self.post_batch(0, 8)  # Below automatic publication's threshold.
+        with self.node.session() as client:
+            expected = [client.article(mid) for mid in self.ids]
+        self.node.stop()
+        owner = self.node.start(env={"FN_NATIVE_EXTENT_CLOSE_FAULT": fault})
+        # Force retirement of replay's extents, without racing a POST reply.
+        asked = self.op("store", "compact")
+        self.assertEqual(asked.returncode, EXIT_OK, asked.stderr.decode())
+        self.node.exited(EXIT_UNCERTAIN, timeout=180, process=owner)
+        log = owner.stderr.since(0)
+        self.assertIn(b"CHECKPOINT release uncertain; recovery required:", log)
+        retained = re.findall(rb"EXTENT close uncertain file=(\d+) registered=T lease=CLOSABLE", log)
+        self.assertEqual(len(retained), 1, log.decode("utf-8", "replace"))
+        # ACL2 still reports the incarnation lease, and the descriptor table
+        # retains it even when close actually succeeded. Shutdown must not
+        # retry this fd (which the OS may already have reused).
+        self.assertNotIn(b"CHECKPOINT release refused", log)
+        missing = "<after-close-fence@example.invalid>"
+        rejected = self.node.post(missing, article(missing))
+        self.assertEqual(rejected.returncode, EXIT_REFUSED, rejected.stderr.decode())
+        absent = self.store_cli("inspect", missing)
+        self.assertEqual(absent.returncode, EXIT_REFUSED, absent.stderr.decode())
+        # A fresh process recovers the durable checkpoint; no acknowledgement
+        # is lost, and a new commit can now be accepted.
+        self.node.start()
+        with self.node.session() as client:
+            self.assertEqual([client.article(mid) for mid in self.ids], expected)
+        accepted = self.node.post(missing, article(missing))
+        self.assertEqual(accepted.returncode, EXIT_OK, accepted.stderr.decode())
+        self.node.stop()
+
+    def test_close_error_before_os_release_fences_without_refund(self):
+        self.close_failure("before-close")
+
+    def test_close_error_after_os_release_fences_without_refund(self):
+        self.close_failure("after-close")
+
+    def test_production_refuses_the_close_selector_before_dispatch(self):
+        production = native_image("FN_NATIVE_HOST")
+        if not os.access(production, os.X_OK):
+            self.skipTest("production image is required for the startup gate witness")
+        result = self.node.operator("run", image=production,
+                                    env={"FN_NATIVE_EXTENT_CLOSE_FAULT": "after-close"})
+        self.assertEqual(result.returncode, EXIT_USAGE, result.stderr.decode())
+        self.assertIn(b"FN_NATIVE_EXTENT_CLOSE_FAULT", result.stderr)
+        self.assertFalse(self.store.exists())
 
 
 if __name__ == "__main__":

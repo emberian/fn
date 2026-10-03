@@ -240,10 +240,35 @@
 (definterface fn-outcome-host-condition-exit-code
   :class :common-lisp-compliant
   :keystones (fn-outcome-host-condition-fences-iff-indeterminate)
-  :direct "runs in handlers, where a dispatcher's own fault would recurse"
-  ; the extracted driver's exit for the condition that ended a store verb
-  ; (tools/extract/served-main.scm store-report; lane extract-writable)
+  ; the raw host reaches it through fn-fs-exit-code (books/failure-scope.lisp)
+  ; since lane failure-scope; the extracted driver's exit for the condition
+  ; that ended a store verb (tools/extract/served-main.scm store-report; lane
+  ; extract-writable)
   :root :extract)
+
+;; The failure scope of a host boundary (books/failure-scope.lisp; lane
+;; failure-scope, t45): the host names a condition's concrete class and the
+;; boundary's last durable step, ACL2 decides the kind; the service's exit
+;; escalates on a lattice.  All four run in handlers, called directly.
+(definterface fn-fs-classify
+  :class :common-lisp-compliant
+  :keystones (fn-fs-unknown-class-is-a-fault fn-fs-refusal-only-from-the-table
+              fn-fs-indeterminate-iff fn-fs-os-error-after-a-durable-step-is-the-fence)
+  :direct "runs in handlers (fnn-owner-classify-escape-locked, fnn-owner-thread-escape), where a dispatcher's own fault would recurse")
+(definterface fn-fs-classify-job
+  :class :common-lisp-compliant
+  :keystones (fn-fs-classify-job-differs-only-on-an-early-os-error
+              fn-fs-classify-job-fences-after-a-durable-step)
+  :direct "runs in the exporter's handler, where a dispatcher's own fault would recurse")
+(definterface fn-fs-exit-code
+  :class :common-lisp-compliant
+  :keystones (fn-fs-exit-code-is-fenced-iff-indeterminate)
+  :direct "runs in handlers (fnn-exit-code-for), where a dispatcher's own fault would recurse")
+(definterface fn-fs-stop-exit-escalate
+  :class :common-lisp-compliant
+  :keystones (fn-fs-stop-exit-fence-is-never-masked fn-fs-stop-exit-escalate-is-monotone
+              fn-fs-stop-exit-ok-is-the-bottom)
+  :direct "runs under the roster mutex inside the fence (fnn-owner-stop-service-locked), which must not fail")
 
 ; ======================================================================; Every other entry the raw host dispatches through fnn-call, by subsystem
 ; (tools/interface_emit.py SUBSYSTEMS).  Class and kinds are the image

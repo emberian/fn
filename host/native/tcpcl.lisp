@@ -643,15 +643,31 @@ transfer lost after the session was established is connection-local,
                                                       :bundle bundle :trace trace)))
                            (fnn-tcl-summary conn)
                            (setq code (fnn-tcl-exit-code conn)))
-                       (fnn-store-indeterminate (e)
-                         (fnn-err "tcpcl: ~a" e)
-                         (setq code +fnn-exit-uncertain+))
-                       (fnn-store-error (e)
-                         (fnn-err "tcpcl: ~a" e)
-                         (setq code +fnn-exit-refused+))
-                       ((or fnn-os-error sb-bsd-sockets:socket-error) (e)
-                         (fnn-err "tcpcl: ~a" e)
-                         (setq code +fnn-exit-uncertain+)))
+                       ;; GEN: def-actor tcpcl-listen :end-connection -- ACL2
+                       ;; decides the kind from the concrete class
+                       ;; (books/failure-scope.lisp fn-fs-classify).  A
+                       ;; journal ambiguity or a core fault is the verb's
+                       ;; outcome, never one session's: re-signalled out of
+                       ;; the accept loop, as `bp receive' does, so
+                       ;; unwind-protect closes the listener and no later
+                       ;; peer stages into the spool after an uncertain
+                       ;; barrier (sweep S023; before, a fault was this
+                       ;; session's refusal and the loop went on).  A known
+                       ;; refusal is this session's refused code; a lost
+                       ;; connection (an OS or socket failure before any
+                       ;; durable step) this session's uncertain code.
+                       (serious-condition (e)
+                         (let ((kind (fn-fs-classify (fnn-condition-class e)
+                                                     *fnn-section-step*)))
+                           (cond ((and (eq kind :fault)
+                                       (typep e '(or fnn-os-error
+                                                     sb-bsd-sockets:socket-error)))
+                                  (fnn-err "tcpcl: ~a" e)
+                                  (setq code +fnn-exit-uncertain+))
+                                 ((member kind '(:refusal :usage))
+                                  (fnn-err "tcpcl: ~a" e)
+                                  (setq code +fnn-exit-refused+))
+                                 (t (error e))))))
                   (fnn-socket-shut socket))))
             once)
            code)

@@ -616,18 +616,19 @@ ACL2's fn-native-admin-result-owner-requestp, -inspect-msgid and
    service nil
    (lambda ()
      ;; PKT-453 (a): a refusal answers (:reason :refused REASON), the
-     ;; plan's reason or the staging step's, both ACL2's.
+     ;; plan's reason or the staging step's, both ACL2's.  The quantum's
+     ;; value is the answer: no early return crosses its boundary (lane
+     ;; failure-scope: an unwind no condition explains is a fault).
      (let ((plan (fnn-core 'fn-native-admin-host-plan argv)))
-       (unless (fnn-admin-plan-acceptedp plan)
-         (return-from fnn-owner-live-admin-serialized
-           (list :reason :refused (fnn-admin-plan-reason plan))))
-       (multiple-value-bind (word reason)
-           (fnn-owner-live-reconfigure-locked
-            service
-            (lambda (cid)
-              (fnn-owner-result 'fn-ores-config-result-p
-                                'fn-native-admin-host-owner-reconfigure cid plan)))
-         (if (eq word :refused) (list :reason :refused reason) word))))))
+       (if (not (fnn-admin-plan-acceptedp plan))
+           (list :reason :refused (fnn-admin-plan-reason plan))
+         (multiple-value-bind (word reason)
+             (fnn-owner-live-reconfigure-locked
+              service
+              (lambda (cid)
+                (fnn-owner-result 'fn-ores-config-result-p
+                                  'fn-native-admin-host-owner-reconfigure cid plan)))
+           (if (eq word :refused) (list :reason :refused reason) word)))))))
 
 (defun fnn-admin-publish-record (store record)
   "Authorize, publish and read back one configuration RECORD (ACL2's octets)

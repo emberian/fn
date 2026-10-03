@@ -76,11 +76,15 @@
     (fnn-owner-serialized
      service nil
      (lambda ()
+      ;; The quantum's value is the answer; every refusing arm leaves through
+      ;; this block, never across the quantum's boundary (lane failure-scope:
+      ;; an unwind no condition explains is a fault).
+      (block author
        (unless (eq (fnn-owner-advance-clock) :observed)
-         (return-from fnn-hybrid-control-author :clock-unusable))
+         (return-from author :clock-unusable))
        (unless (integerp (fnn-core 'fn-record-stamp-of-observation
                                    (fnn-owner-core 'fn-owner-clock-observation)))
-         (return-from fnn-hybrid-control-author :clock-unusable))
+         (return-from author :clock-unusable))
        (let* ((selected (fnn-owner-core 'fn-owner-hybrid-current-enrollment
                                          keyring-generation))
               (snapshot (first selected))
@@ -89,11 +93,11 @@
          ;; PKT-147: every refusing arm answers ACL2's word for it
          ;; (books/native-hybrid-control.lisp fn-nhc-author-refusal).
          (unless selected
-           (return-from fnn-hybrid-control-author
+           (return-from author
              (fnn-core 'fn-nhc-author-refusal :enrollment nil)))
          (let* ((fields (fnn-core 'fn-hsig-host-authored-source-fields source)))
            (unless fields
-             (return-from fnn-hybrid-control-author
+             (return-from author
                (fnn-core 'fn-nhc-author-refusal :source nil)))
            (let* ((msgid (fnn-octets (fnn-string-octets (first fields))))
                 (groups (mapcar (lambda (g) (fnn-octets (fnn-string-octets g)))
@@ -111,7 +115,7 @@
            ;; (books/hybrid-store-injected.lisp KEYSTONE
            ;; fn-hsig-injected-carrier-unserved-group-is-refused-by-name).
            (unless received
-             (return-from fnn-hybrid-control-author
+             (return-from author
                (fnn-core 'fn-nhc-author-refusal :carrier
                          (fnn-core 'fn-hsig-injected-carrier-reason
                                    source principal keys signatures
@@ -130,7 +134,7 @@
                           (member (first filing) '(:file :refused)))
                (fnn-fault "owner returned malformed control filing ~a" filing))
              (when (eq (first filing) :refused)
-               (return-from fnn-hybrid-control-author
+               (return-from author
                  (fnn-core 'fn-nhc-author-refusal :filing (second filing))))
              (unless (and (listp (second filing))
                           (every #'fnn-octet-list-p (second filing)))
@@ -187,7 +191,7 @@
                         (:absent (fnn-owner-identity-commit service event))
                         (t (fnn-fault "owner returned malformed existing action")))))
                   t))
-             (fnn-core 'fn-nhc-author-refusal :event nil))))))))))
+             (fnn-core 'fn-nhc-author-refusal :event nil)))))))))))
 
 (defun fnn-hybrid-control-handle (service frame)
   (when (typep frame 'fnn-octets)

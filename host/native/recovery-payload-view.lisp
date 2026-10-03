@@ -60,4 +60,4 @@
       (unless (eq (first (fnn-core-page-read-pool
                          'fn-owner-recovery-initial-root-release source maintenance token)) :released)
         (fnn-fault "startup root custody retained")))
-    (fnn-owner-release-pending-extents-locked)))
+    (fnn-owner-release-pending-extents-locked service)))

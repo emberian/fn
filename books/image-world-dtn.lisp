@@ -7,6 +7,7 @@
 ; of a constrained stub takes a TLS index SBCL never frees (world.py).
 (in-package "ACL2")
 (include-book "outcome-class")
+(include-book "failure-scope")
 (include-book "replay")
 (include-book "hybrid-store-injected")
 (include-book "codec-attach")

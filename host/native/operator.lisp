@@ -961,7 +961,13 @@ then `export status' every 250 ms until the word is no longer :in-flight
                                                  (fnn-core 'fn-oex-outcome-line
                                                            status-word dir)))
                                (return (cond ((eq status-word :done) +fnn-exit-ok+)
-                                             ((null status-word) +fnn-exit-uncertain+)
+                                             ;; the archive may be published:
+                                             ;; uncertain, by name (lane
+                                             ;; failure-scope; books/owner-
+                                             ;; export-request.lisp)
+                                             ((or (null status-word)
+                                                  (eq status-word :archive-uncertain))
+                                              +fnn-exit-uncertain+)
                                              (t +fnn-exit-refused+))))))))))))))
 
 (defun fnn-operator-execute-export-status (result)
@@ -977,7 +983,7 @@ the last export failed."
              +fnn-exit-uncertain+)
             (t
              (fnn-out "~a" (or line (fnn-core 'fn-oex-outcome-line word "")))
-             (cond ((null word) +fnn-exit-uncertain+)
+             (cond ((or (null word) (eq word :archive-uncertain)) +fnn-exit-uncertain+)
                    ((eq word :failed) +fnn-exit-refused+)
                    (t +fnn-exit-ok+)))))))
 
