@@ -473,6 +473,11 @@
                                     fn-wss-status-fields fn-ot-decimal-octets fn-ot-decimal-parse
                                     fn-wss-reply-code fn-wss-flow)))))
 
+(local
+ (defthm fn-web-mv-nth-one-is-cadr
+   (equal (mv-nth 1 x) (cadr x))
+   :hints (("Goal" :in-theory (enable mv-nth)))))
+
 (defthm fn-web-private-reply-is-table-step
   (implies (fn-web-private-reply-p flow event)
            (and
@@ -481,8 +486,12 @@
             (equal (mv-nth 1 (fn-web-private-reply-step config flow event fn-web-in fn-web-out))
                    (mv-nth 2 (fn-web-step config sessions flow event fn-web-in fn-web-out)))
             (equal (mv-nth 1 (fn-web-step config sessions flow event fn-web-in fn-web-out)) sessions)))
-  :hints (("Goal" :in-theory (e/d (fn-web-private-reply-step fn-web-private-reply-p fn-web-step)
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-wss-k-reads-ignore-session-table)
+                       (:instance fn-wss-k-reads-leave-sessions))
+                  :in-theory (e/d (fn-web-private-reply-step fn-web-private-reply-p fn-web-step)
                                    (fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit
+                                    fn-wss-k-reads-ignore-session-table
                                     fn-wss-begin fn-wss-trouble fn-wss-k-signin fn-wss-k-redeem)))))
 
 
@@ -502,8 +511,11 @@
                 (mv-nth 0 (fn-wss-gate row session nil ctx config fn-web-in fn-web-out)))
          (equal (mv-nth 2 (fn-wss-gate row session sessions ctx config fn-web-in fn-web-out))
                 (mv-nth 2 (fn-wss-gate row session nil ctx config fn-web-in fn-web-out)))))
-  :hints (("Goal" :in-theory (e/d (fn-web-private-begin-row-p fn-wss-gate fn-wss-trouble)
+  :hints (("Goal" :use ((:instance fn-web-private-start-ignores-session-table (name :post))
+                       (:instance fn-web-private-start-ignores-session-table (name :remove)))
+                  :in-theory (e/d (fn-web-private-begin-row-p fn-wss-gate fn-wss-trouble)
                                   (fn-wss-start fn-wss-page fn-wss-outcome fn-wss-redirect
+                                   fn-web-private-start-ignores-session-table
                                    fn-wss-form fn-wss-same-site fn-wss-cookie-val)))))
 
 (defthm fn-web-private-begin-is-captured-gate
@@ -516,5 +528,11 @@
                                         (fn-wrq-nth 3 action) config fn-web-in fn-web-out)))
          (equal (mv-nth 1 (fn-wss-gate (fn-wrq-nth 1 action) (fn-wrq-nth 2 action) sessions
                                       (fn-wrq-nth 3 action) config fn-web-in fn-web-out)) sessions)))
-  :hints (("Goal" :in-theory (e/d (fn-web-private-begin-p fn-web-private-begin-step)
-                                  (fn-wss-gate fn-web-private-begin-row-p)))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-web-private-gate-ignores-session-table
+                                  (row (fn-wrq-nth 1 action))
+                                  (session (fn-wrq-nth 2 action))
+                                  (ctx (fn-wrq-nth 3 action))))
+                  :in-theory (e/d (fn-web-private-begin-p fn-web-private-begin-step)
+                                  (fn-wss-gate fn-web-private-begin-row-p
+                                   fn-web-private-gate-ignores-session-table)))))
