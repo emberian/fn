@@ -54,7 +54,7 @@
                       (f-get-global 'fn-web-sessions state)
                     nil)))
     (mv-let (action sessions fn-web-out)
-      (fn-web-step (append (take 6 config) (list :page-plan)) sessions flow event fn-web-in fn-web-out)
+      (fn-web-step (append (take 6 config) (list :page-plan :private-begin)) sessions flow event fn-web-in fn-web-out)
       (let ((state (f-put-global 'fn-web-sessions sessions state)))
         (mv action fn-web-out state)))))
 
@@ -97,7 +97,7 @@
 ; Host observations whose meaning ACL2 decides.
 (defun fn-web-host-action-kind (action)
   (declare (xargs :mode :program))
-  (and (consp action) (member (car action) '(:respond :open :send :close :health)) (car action)))
+  (and (consp action) (member (car action) '(:respond :open :send :close :health :private-begin)) (car action)))
 
 ; Q10d: observe only the fixed scheduler/disk and checkpoint values, no
 ; whole-state walk. Called under the existing owner mutex by the web face.
@@ -159,7 +159,7 @@
 
 (defun fn-web-host-private-reply-step (config flow event fn-web-in fn-web-out)
   (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
-  (fn-web-private-reply-step (append (take 6 config) (list :page-plan))
+  (fn-web-private-reply-step (append (take 6 config) (list :page-plan :private-begin))
                             flow event fn-web-in fn-web-out))
 
 ; Virtual ARTICLE source: scan only one rendered window, then replay the
@@ -196,3 +196,8 @@
   (declare (xargs :mode :program :stobjs fn-web-in)) (fn-wrs-scan scan fn-web-in))
 (defun fn-web-host-stream-page (config flow scan)
   (declare (xargs :mode :program)) (fn-wrs-page config flow scan))
+
+(defun fn-web-host-private-begin-step (config action fn-web-in fn-web-out)
+  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (fn-web-private-begin-step (append (take 6 config) (list :page-plan :private-begin))
+                             action fn-web-in fn-web-out))

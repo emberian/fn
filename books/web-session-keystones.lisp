@@ -484,3 +484,37 @@
   :hints (("Goal" :in-theory (e/d (fn-web-private-reply-step fn-web-private-reply-p fn-web-step)
                                    (fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit
                                     fn-wss-begin fn-wss-trouble fn-wss-k-signin fn-wss-k-redeem)))))
+
+
+(defthm fn-web-private-start-ignores-session-table
+  (implies (member name '(:post :remove))
+    (and (equal (mv-nth 0 (fn-wss-start name session sessions ctx config fn-web-in fn-web-out))
+                (mv-nth 0 (fn-wss-start name session nil ctx config fn-web-in fn-web-out)))
+         (equal (mv-nth 2 (fn-wss-start name session sessions ctx config fn-web-in fn-web-out))
+                (mv-nth 2 (fn-wss-start name session nil ctx config fn-web-in fn-web-out)))))
+  :hints (("Goal" :in-theory (e/d (fn-wss-start fn-wss-m-post fn-wss-m-remove fn-wss-trouble)
+                                  (fn-wss-page fn-wss-outcome fn-wss-write-post fn-wss-write
+                                   fn-wss-form fn-wss-cancel-octets)))))
+
+(defthm fn-web-private-gate-ignores-session-table
+  (implies (fn-web-private-begin-row-p row)
+    (and (equal (mv-nth 0 (fn-wss-gate row session sessions ctx config fn-web-in fn-web-out))
+                (mv-nth 0 (fn-wss-gate row session nil ctx config fn-web-in fn-web-out)))
+         (equal (mv-nth 2 (fn-wss-gate row session sessions ctx config fn-web-in fn-web-out))
+                (mv-nth 2 (fn-wss-gate row session nil ctx config fn-web-in fn-web-out)))))
+  :hints (("Goal" :in-theory (e/d (fn-web-private-begin-row-p fn-wss-gate fn-wss-trouble)
+                                  (fn-wss-start fn-wss-page fn-wss-outcome fn-wss-redirect
+                                   fn-wss-form fn-wss-same-site fn-wss-cookie-val)))))
+
+(defthm fn-web-private-begin-is-captured-gate
+  (implies (fn-web-private-begin-p action)
+    (and (equal (mv-nth 0 (fn-web-private-begin-step config action fn-web-in fn-web-out))
+                (mv-nth 0 (fn-wss-gate (fn-wrq-nth 1 action) (fn-wrq-nth 2 action) sessions
+                                        (fn-wrq-nth 3 action) config fn-web-in fn-web-out)))
+         (equal (mv-nth 1 (fn-web-private-begin-step config action fn-web-in fn-web-out))
+                (mv-nth 2 (fn-wss-gate (fn-wrq-nth 1 action) (fn-wrq-nth 2 action) sessions
+                                        (fn-wrq-nth 3 action) config fn-web-in fn-web-out)))
+         (equal (mv-nth 1 (fn-wss-gate (fn-wrq-nth 1 action) (fn-wrq-nth 2 action) sessions
+                                      (fn-wrq-nth 3 action) config fn-web-in fn-web-out)) sessions)))
+  :hints (("Goal" :in-theory (e/d (fn-web-private-begin-p fn-web-private-begin-step)
+                                  (fn-wss-gate fn-web-private-begin-row-p)))))
