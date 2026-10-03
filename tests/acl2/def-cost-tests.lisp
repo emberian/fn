@@ -150,10 +150,10 @@
    (and (null un)
         (equal cost
                '(binary-+ (binary-+ '1 (nfix '1))
-                          ((lambda (x y)
+                          ((lambda (x)
                              (binary-+ (binary-+ '1 (len x))
                                        (binary-+ '1 (nfix '1))))
-                           (cdr xs) (nthcdr '1 ys)))))))
+                           (cdr xs)))))))
 (defun fn-cst-lambda-nested (xs ys)
   (declare (xargs :guard t :verify-guards nil))
   (let ((x (cdr xs)) (y (nthcdr 1 ys)))
@@ -161,6 +161,19 @@
       (+ (len x) (len y)))))
 (def-cost fn-cst-lambda-nested)
 (assert-event (equal (fn-cst-lambda-nested-visits '(a b c d) '(1 2 3)) 10))
+
+; The value uses both variables, but its constant cost needs neither.  This
+; occurs in the real syncer receipt update's translated mv-let application.
+(defun fn-cst-lambda-constant (xs ys)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((x (cdr xs)) (y (cdr ys))) (nth 0 (cons x y))))
+(def-cost fn-cst-lambda-constant)
+(assert-event (equal (fn-cst-lambda-constant-visits '(a b) '(c d)) 1))
+(assert-event
+ (mv-let (cost un)
+   (fn-cost-term '((lambda (x y) (nth '0 (cons x y))) (cdr xs) (cdr ys))
+                 'fn-cst-lambda-constant nil *fn-cost-fuel* (w state))
+   (and (null un) (equal cost '(binary-+ '1 (nfix '0))))))
 
 ; ---------------------------------------------------------------------------
 ; 4. Refusals.

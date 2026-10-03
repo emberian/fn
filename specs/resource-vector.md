@@ -282,3 +282,14 @@ Captured batch buffers retain their existing memory credits. Setup/refusal
 work belongs to the parent startup/runtime baseline. Full tariff allocation,
 work, descriptors, user principal, supported actor census, guards and boundary
 proofs remain obligations; this slice does not claim them. PRF-1252 is planned.
+
+The initial `definterface :operation` contract has stage `:projection`,
+funding/tariff/draw/physical/outcome function names, owner principal, fixed
+slot, declared covered coordinates and the complete unresolved cost set.
+`def-operation-check` first rederives the entry's own `def-cost` row, then
+checks those unresolved names exactly, coordinates against `fn-rv`'s table,
+and the actual translated draw's slot and tariff call. It refuses missing
+logical producers, duplicate keys and attempts to claim `:accounted`.
+This is a source linkage check for an enforced projection; it does not prove
+funding transfer, total allocation, refusal work or native receipt honesty.
+The full operation gate remains owed and cannot be activated by annotation.

@@ -2,12 +2,15 @@
  "file": "books/def-cost.lisp",
  "id": "DE-R2",
  "note": "generator + tests (REPL 49/49, uncertified) + tools/cost_obligations.py + registries landed at 67ee29e37 as WIP; owed: the fn-reader-chunk row in host/cost-host.lisp via the image-world REPL (lanedump NEXT 1), the six-root certify run-2490 cite, contract witnesses, :stamped, allocation",
- "notes": [],
- "owner": "def-entry",
+ "notes": [
+  "10-03 02:13 GPT-6.1-Sol: cost defects certified ee7c686c0; real fn-reader-chunk image-world derivation found BOTH fn-served-step and fn-reader-install-result unaccounted (installer not inlinable), route served/kind1+len. Partial bound/row now being admitted from that actual world; syncer typed custody producer/real actor consumer underway.",
+  "10-03 GPT-6.1-Sol: actual image-world fn-reader-chunk row admitted with explicit fn-served-step and fn-reader-install-result unknowns; served route/kind cost 1+len pinned. Minimal bound hint reduced replay from 53.13s/5.58M steps to 0.06s/446 steps. Bound teeth and allocation remain owed. Actual syncer issue row now derived/checked against operation fixed slot/tariff; projection cannot enable full tariff accounting. New lambda unused-cost-binding regression admitted; certification pending helper assembly."
+ ],
+ "owner": "codex-sol-foundations",
  "severity": "medium",
  "sha": "67ee29e37",
  "source": "coordinator",
  "state": "in-progress",
  "title": "def-cost round two: derived visit cost; fn-reader-chunk instance owed",
- "updated": "2026-10-03T02:33:36Z"
+ "updated": "2026-10-03T06:13:17Z"
 }

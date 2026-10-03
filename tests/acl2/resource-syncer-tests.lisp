@@ -97,3 +97,59 @@
    (if (and (eq word :settled) (fn-ros-drainedp fn-resource-ledger))
        (mv nil '(value-triple :reverse-order-settles-once) state fn-resource-ledger)
      (mv t nil state fn-resource-ledger))))
+
+; The declaration checks the actual entry's one cost row and draw arguments.
+; Projection remains partial and cannot turn on full admission accounting.
+(include-book "../../books/def-cost")
+(definterface fn-ros-issue :class :ideal
+  :operation (:stage :projection :funding fn-ros-install-syncer
+              :tariff fn-ros-worker-vector :draw fn-rl-draw :principal :owner
+              :slot 2 :physical fn-ros-physical :outcome fn-ros-outcome
+              :retention :physical-and-operation :coverage (:resident :workers)
+              :unaccounted (fn-rl-wfp fn-rl-draw mv-nth)))
+(def-cost fn-ros-issue :unaccounted (fn-rl-wfp fn-rl-draw mv-nth))
+(def-operation-check fn-ros-issue)
+(assert-event
+ (equal (fn-cost-get :unaccounted
+                    (cdr (assoc-eq 'fn-ros-issue (table-alist 'fn-cost (w state)))))
+        '(fn-rl-wfp fn-rl-draw mv-nth)))
+
+; Refused: hidden unknown.
+(encapsulate ()
+ (local (definterface fn-ros-issue :class :ideal
+          :operation (:stage :projection :funding fn-ros-install-syncer :tariff fn-ros-worker-vector :draw fn-rl-draw :principal :owner :slot 2 :physical fn-ros-physical :outcome fn-ros-outcome :retention :physical-and-operation :coverage (:resident :workers) :unaccounted (fn-rl-draw))))
+ (local (assert-event (fn-cost-operation-problem 'fn-ros-issue (w state)))))
+
+; Refused: wrong slot.
+(encapsulate ()
+ (local (definterface fn-ros-issue :class :ideal
+          :operation (:stage :projection :funding fn-ros-install-syncer :tariff fn-ros-worker-vector :draw fn-rl-draw :principal :owner :slot 1 :physical fn-ros-physical :outcome fn-ros-outcome :retention :physical-and-operation :coverage (:resident :workers) :unaccounted (fn-rl-wfp fn-rl-draw mv-nth))))
+ (local (assert-event (fn-cost-operation-problem 'fn-ros-issue (w state)))))
+
+; Refused: wrong tariff.
+(encapsulate ()
+ (local (definterface fn-ros-issue :class :ideal
+          :operation (:stage :projection :funding fn-ros-install-syncer :tariff fn-ros-token :draw fn-rl-draw :principal :owner :slot 2 :physical fn-ros-physical :outcome fn-ros-outcome :retention :physical-and-operation :coverage (:resident :workers) :unaccounted (fn-rl-wfp fn-rl-draw mv-nth))))
+ (local (assert-event (fn-cost-operation-problem 'fn-ros-issue (w state)))))
+
+; Refused: unfunded metadata.
+(encapsulate ()
+ (local (definterface fn-ros-issue :class :ideal
+          :operation (:stage :projection :funding fn-ros-missing-producer :tariff fn-ros-worker-vector :draw fn-rl-draw :principal :owner :slot 2 :physical fn-ros-physical :outcome fn-ros-outcome :retention :physical-and-operation :coverage (:resident :workers) :unaccounted (fn-rl-wfp fn-rl-draw mv-nth))))
+ (local (assert-event (fn-cost-operation-problem 'fn-ros-issue (w state)))))
+
+; Refused: full accounting annotation.
+(encapsulate ()
+ (local (definterface fn-ros-issue :class :ideal
+          :operation (:stage :accounted :funding fn-ros-install-syncer :tariff fn-ros-worker-vector :draw fn-rl-draw :principal :owner :slot 2 :physical fn-ros-physical :outcome fn-ros-outcome :retention :physical-and-operation :coverage (:resident :workers) :unaccounted (fn-rl-wfp fn-rl-draw mv-nth))))
+ (local (assert-event (fn-cost-operation-problem 'fn-ros-issue (w state)))))
+
+; Refused: unknown dimension.
+(encapsulate ()
+ (local (definterface fn-ros-issue :class :ideal
+          :operation (:stage :projection :funding fn-ros-install-syncer :tariff fn-ros-worker-vector :draw fn-rl-draw :principal :owner :slot 2 :physical fn-ros-physical :outcome fn-ros-outcome :retention :physical-and-operation :coverage (:resident :invented) :unaccounted (fn-rl-wfp fn-rl-draw mv-nth))))
+ (local (assert-event (fn-cost-operation-problem 'fn-ros-issue (w state)))))
+
+; Duplicate contract keys cannot hide a second producer or tariff.
+(assert-event
+ (not (fn-di-operation-formp '(:stage :projection :funding fn-ros-install-syncer :tariff fn-ros-worker-vector :draw fn-rl-draw :principal :owner :slot 2 :physical fn-ros-physical :outcome fn-ros-outcome :retention :physical-and-operation :coverage (:resident :workers) :unaccounted (fn-rl-wfp fn-rl-draw mv-nth) :slot 9))))
