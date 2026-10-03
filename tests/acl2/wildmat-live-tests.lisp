@@ -61,3 +61,26 @@
        (not (fn-wml-livep s))
        (not (<= (fn-wml-room next) (fn-wml-room s)))
        (not (<= (fn-wml-room non) (fn-wml-capacity (len p) (fn-wm-total-items p) 0))))) :rule-classes nil)
+(defthm wmlt-owned-target-positive
+ (let ((next (fn-wmc-step *wmlt-row* 1 (fn-wmc-demand *wmlt-row*))))
+  (and (fn-wml-retainedp *wmlt-start* 3 12 3)
+       (fn-wml-retainedp *wmlt-row* 3 12 3)
+       (fn-wml-retainedp next 3 12 3) (natp 3)
+       (equal (fn-wml-target *wmlt-row*) 3)
+       (<= (fn-wml-target next) (fn-wml-target *wmlt-row*))
+       (equal (fn-wml-owned-capacity 3 12 3) 161)
+       (<= (+ (fn-wml-live-cells next) (fn-wml-target next)) 161)
+       (fn-wildmat-pattern-listp *wmlt-patterns*)
+       (equal (fn-wml-tree-cells *wmlt-patterns*) 21))) :rule-classes nil)
+; Corrupted count/receipt: retained predicate holds, only natural-octet omitted.
+(defthm wmlt-negative-octet-removal
+ (let ((s (fn-wmc-state (fn-wmc-return (make-list 21 :initial-element nil) 0) nil)))
+  (and (fn-wml-retainedp s 0 0 -1) (not (natp -1))
+       (not (<= (+ (fn-wml-live-cells s) (fn-wml-target s))
+                 (fn-wml-owned-capacity 0 0 -1))))) :rule-classes nil)
+; Corrupted uncarried receipt: natural-octet retained, carried bound omitted.
+(defthm wmlt-retained-profile-removal
+ (let ((s (fn-wmc-state (fn-wmc-return (make-list 40 :initial-element nil) 0) nil)))
+  (and (natp 0) (fn-wmc-shapedp s) (not (fn-wml-retainedp s 0 0 0))
+       (not (<= (+ (fn-wml-live-cells s) (fn-wml-target s))
+                 (fn-wml-owned-capacity 0 0 0))))) :rule-classes nil)
