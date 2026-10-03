@@ -66,6 +66,37 @@ class DeclarationTests(unittest.TestCase):
                       ':direct "Image-build declaration lint")', rendered)
         self.assertNotIn('(definterface fn-unrelated-helper', rendered)
 
+    def test_raw_stobj_creator_emits_its_actual_defining_book(self):
+        root = tree('(definterface create-fn-resource-ledger :class :common-lisp-compliant '
+                    ':raw-guarded (0 nil (fn-resource-ledger)))\n')
+        (root / "books").mkdir()
+        (root / "books" / "resource-vector-exec.lisp").write_text(
+            '(defstobj fn-resource-ledger (value :initially 0))\n')
+        rendered = interface_emit.render_raw_declarations(interface_emit.declarations(root), root=root)
+        include = '(include-book "../books/resource-vector-exec")'
+        self.assertIn(include, rendered)
+        self.assertLess(rendered.index(include), rendered.index('(definterface create-fn-resource-ledger'))
+
+    def test_raw_input_output_stobjs_deduplicate_and_state_is_builtin(self):
+        root = tree('(definterface fn-a :class :common-lisp-compliant '
+                    ':raw-guarded (2 (state fn-bank) (nil fn-bank)))\n')
+        (root / "books").mkdir()
+        (root / "books" / "bank.lisp").write_text('(defabsstobj fn-bank)\n')
+        rendered = interface_emit.render_raw_declarations(interface_emit.declarations(root), root=root)
+        self.assertEqual(rendered.count('(include-book "../books/bank")'), 1)
+
+    def test_raw_stobj_missing_or_ambiguous_definition_refuses(self):
+        root = tree('(definterface create-fn-bank :class :common-lisp-compliant '
+                    ':raw-guarded (0 nil (fn-bank)))\n')
+        (root / "books").mkdir()
+        decls = interface_emit.declarations(root)
+        with self.assertRaisesRegex(ValueError, "fn-bank.*found none"):
+            interface_emit.render_raw_declarations(decls, root=root)
+        for name in ("one", "two"):
+            (root / "books" / (name + ".lisp")).write_text('(defstobj fn-bank)\n')
+        with self.assertRaisesRegex(ValueError, "fn-bank.*one.*two"):
+            interface_emit.render_raw_declarations(decls, root=root)
+
     def test_harness_tables(self):
         root = tree(SOURCE)
         self.assertEqual(interface_emit.entry_kind_exempt(root), {("fn-c", "frame"): "total scan"})

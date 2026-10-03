@@ -4315,6 +4315,13 @@
 (definterface fn-his-release
   :class ::common-lisp-compliant)
 
+(definterface fn-his-readback-header-p
+  :class ::common-lisp-compliant
+  :kinds ((np natp)))
+
+(definterface fn-his-readback-page
+  :class ::common-lisp-compliant)
+
 ; host/native/io.lisp dispatches it (lane composed-owner).
 (definterface fn-his-skip-octets
   :class ::common-lisp-compliant
