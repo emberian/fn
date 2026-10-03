@@ -114,6 +114,31 @@
       (assert (<= steps (+ 3 (length text)))))))
 (format t "native_newnews_allocation: direct-line-fill PASS empty/dot/text/4097char at1/2/7/256, positive bounded exact output~%")
 
+; Matched allocation observation, not a peak-residency/zero-allocation proof.
+; Both routes start from the identical immutable plan and reuse a pre-sized
+; private buffer. Fixture text/plan/grant construction is outside the interval.
+(let* ((*fnout-window* 4096)
+       (*fnn-output-grant* (%make-fnn-output-grant))
+       (text (make-string 4097 :initial-element #\X))
+       (cur (fn-cur-make nil (fn-nnw-stream-render (fn-sl-start text) nil) nil nil))
+       (plan (fn-splan-of-effects (list (fn-nnw-meta-effect cur)))))
+  (fnn-response-render-buffer *fnout-window*)
+  (dolist (route '(:list-cursor :direct-buffer))
+    (flet ((run ()
+             (let ((octets
+                    (if (eq route :direct-buffer)
+                        (fnn-owner-render-next plan)
+                      (let ((answer (fnn-call 'fn-splan-cursor-step plan *fnout-window* nil nil)))
+                        (assert (eq (first answer) :ok))
+                        (fnn-owner-render-next (second answer))))))
+               (assert (= (length octets) *fnout-window*)))))
+      (dotimes (i 4) (run))
+      (sb-ext:gc :full t)
+      (let ((before (sb-ext:get-bytes-consed)))
+        (dotimes (i 32) (run))
+        (format t "native_newnews_allocation: matched-line route=~s quantum=4096 repeats=32 allocated=~d~%"
+                route (- (sb-ext:get-bytes-consed) before))))))
+
 ; Actual private stobj and semantic window implementation. These grants only
 ; exercise buffer ownership, not admission or typed ledger settlement.
 (defun fnout-render-list (octets)
