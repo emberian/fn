@@ -493,9 +493,8 @@ observations back.  Nil when there is nothing to observe."
   (let* ((config (fnn-bp-config node-id +fnn-bp-lifetime+ +fnn-bp-crc-type+
                                 +fnn-bp-hop-limit+ +fnn-tcl-transfer-mru+))
          (bp (fnn-bps-open journal-root config wall wall-error)))
-    (setq *fnn-bpnode-budgets* (fnn-bpnode-read-budgets journal-root))
-    (unwind-protect
-         (progn
+    (fnn-unwind-cleanups
+        ((setq *fnn-bpnode-budgets* (fnn-bpnode-read-budgets journal-root))
            (fnn-bps-drive-effects
             bp (fnn-bps-foundation-step
                 bp (fnn-bpnode-budgeted (list :operator-resume arrival))))
