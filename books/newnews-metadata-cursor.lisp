@@ -182,7 +182,8 @@
 (def-cursor fn-nnw-meta (fn-arena fn-cat)
   :stobjs (fn-arena fn-cat)
   :call (fn-nnw-meta-one progress fn-arena fn-cat)
-  :visit-proof fn-nnw-meta-one-visits-at-most-one)
+  :visit-proof fn-nnw-meta-one-visits-at-most-one
+  :visit-metric (len (fn-nnw-tail progress)))
 
 ; Complete reply residual after its initially buffered status line. A
 ; pending suffix belongs to the continuation even when scan progress ended.
