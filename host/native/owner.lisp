@@ -5373,6 +5373,12 @@ alias; the caller may refund only AFTER this activation has returned."
          (hold (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD"))
          (mode (fnn-developer-selector "FN_NATIVE_PAGE_IO_RESULT"))
          (answer :stale) (settled-io nil) (cachedp nil) (evicted nil))
+    ;; The worker has physically returned; only here is its retained
+    ;; condition converted to the literal verdict consumed by settlement.
+    ;; Normal literal worker results are observed at their storage site.
+    (when (and directp token condition *fnn-native-observer*)
+      (fnn-native-observe
+       (list :job-result *fnn-native-actor-identity* token verdict)))
     (when (equal mode "stale")
       (fnn-err "PAGE-IO stale answer=~s"
                (if directp (fnn-extent-direct-settle worker nil :ok)
