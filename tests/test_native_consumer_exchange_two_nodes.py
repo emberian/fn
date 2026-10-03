@@ -50,8 +50,10 @@ import time
 import unittest
 
 from tests.native_harness import (
-    EXIT_OK, ROOT, Client, Node, environment, native_image, requires, run, scratch, start)
+    EXIT_OK, ROOT, Acl2Session, Client, Node, environment, free_port, native_image, requires, run, scratch, start)
 from tests.test_native_peer_pull import RecordingProxy
+from tests.test_bp_contact_relay_native import ByteRelay
+from tests.native_image_provenance import assert_same_native_source
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 ENABLED = os.environ.get("FN_RUN_CONSUMER_EXCHANGE") == "1"
@@ -496,6 +498,140 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
             "q_settled_by": q_out["settled_by"], "b_acked": b_acked,
             "positions": {"agent-a": self.status(a, "agent-a")[0],
                           "agent-b": self.status(b, "agent-b")[0]}})
+        self.stop(a)
+        self.stop(b)
+
+    def bp_words(self, node, peer, *, listen=False):
+        # The same retained node owns FNBS, its Store/FNRJ publication, and
+        # receipt dispatch. No NNTP owner may hold either Store at this point.
+        return ["bp-node", "serve" if listen else "dispatch",
+                *([node.bp_port] if listen else []),
+                node.root / "bp-fnbs", node.store_path, node.root / "bp-fnrj",
+                node.root / "bp-fnwf", node.bp_eid, peer.bp_eid,
+                node.bp_eid, "native-policy", node.bp_eid, "127.0.0.1",
+                self.bp_relay.port, "0" if listen else "1", "3600000", "2",
+                "32", "1048576", "0", "0", "0"]
+
+    def start_bp(self, node, peer):
+        process = start([IMAGE, "--fn", *self.bp_words(node, peer, listen=True)],
+                        cwd=ROOT, env=self.env)
+        self.addCleanup(process.stop, 10)
+        line = process.announcement(b"BP NODE LISTENING ", timeout=120)
+        self.assertEqual(int(line.rsplit(b" ", 1)[1]), node.bp_port)
+        return process
+
+    def carry_bp_artifact(self, source, target, config, operation_id):
+        """A real canonical producer, request, FNRJ handoff and returned receipt.
+
+        The public SQLite export is compared after both contacts; it is never
+        used to invent a stored projection or a bundle/application decision.
+        """
+        saved = self.submission(config, operation_id)
+        export = self.root / (operation_id + "-public-artifact")
+        self.consumer(config, "artifact", operation_id, str(export))
+        manifest_before = (export / "manifest.json").read_bytes()
+        public_before = {name: (export / name).read_bytes() for name in
+                         ("source.eml", "ed.sig", "ml.sig", "ed.public", "ml.public.pem")}
+        message_id = saved["message_id"]
+        article = self.native("store", source.store_path, "inspect", message_id).stdout
+        work = "bp-" + operation_id
+        workflow = source.root / "bp-fnwf"
+        self.native("app-journal", "workflow-enqueue", source.store_path,
+                    workflow, 1, 0, work, message_id, "forward-" + work,
+                    target.bp_eid, "native-policy", "terms-native")
+        self.native("bp-obligation", "undertake", source.store_path, workflow, work, 3)
+        request = self.root / (operation_id + ".request.adu")
+        with Acl2Session(IMAGE) as bridge:
+            fields = [work.encode(), bridge.subject(message_id.encode(), article),
+                      source.bp_eid.encode(), target.bp_eid.encode(),
+                      b"native-policy", b"origin-native", b"wire-auth", b"terms-native"]
+            request.write_bytes(bridge.bp_request(fields, article))
+        receiver = self.start_bp(target, source)
+        sent = self.native("bp-service", "run", "127.0.0.1", target.bp_port,
+                           request, source.root / "bp-fnbs", source.bp_eid,
+                           target.bp_eid, work, work + "-attempt", 0,
+                           3600000, 2, 32, 1048576, 0, 0)
+        delivered = receiver.output_until(b"BP node delivery request-accepted", timeout=120)
+        self.assertIn(b"BP application handoff durable", delivered)
+        receiver.stop(grace=10)
+        # The successful transport contact does not release the application pin.
+        status = self.native("bp-obligation", "status", source.store_path, workflow, work)
+        self.assertIn(b"pinned=yes", status.stdout)
+        self.native("store", target.store_path, "inspect", message_id)
+        sender = self.start_bp(source, target)
+        self.bp_relay.route(source.bp_port)
+        resumed = self.native(*self.bp_words(target, source))
+        receipt = sender.output_until(b"BP node delivery receipt-accepted", timeout=120)
+        sender.stop(grace=10)
+        self.bp_relay.route(None)
+        status = self.native("bp-obligation", "status", source.store_path, workflow, work)
+        self.assertIn(b"pinned=no", status.stdout)
+        self.assertEqual((export / "manifest.json").read_bytes(), manifest_before)
+        self.assertEqual({name: (export / name).read_bytes() for name in public_before}, public_before)
+        return {"submission": saved, "transport_exit": sent.returncode,
+                "handoff": delivered.decode("utf-8", "replace")[-3000:],
+                "returned_receipt": receipt.decode("utf-8", "replace")[-3000:],
+                "reopened_pin": status.stdout.decode("utf-8", "replace")}
+
+    def test_signed_report_reply_cross_bp_and_reopen(self):
+        """SCN-1125: immutable application R/Q across actual BP custody owners."""
+        self.execution_source = assert_same_native_source(self, IMAGE, IMAGE)
+        a, b = self.initialize("A"), self.initialize("B")
+        # There are no NNTP peer routes: all inter-node article delivery below
+        # is the native BP node request/receipt path.
+        for node in (a, b):
+            self.start(node)
+            self.native("consumer", "bootstrap", node.control)
+        agent_a = self.agent("agent-a", 0xA1, 1, a)
+        agent_b = self.agent("agent-b", 0xB2, 2, b)
+        for config in (agent_a, agent_b):
+            self.trust(config, ("agent-a", "agent-b"),
+                       (("r", "agent-a"), ("reply-", "agent-b")))
+        payload = self.root / "bp-report.payload"
+        payload.write_bytes(bytes(range(256)) + b"\x00R\r\n.\xff" * 1000)
+        self.consumer(agent_a, "report", "r1", "--payload-file", str(payload))
+        for node in (a, b):
+            self.stop(node)
+            node.bp_port = free_port()
+            node.bp_eid = "dtn://" + node.name.lower() + "/"
+        self.bp_relay = ByteRelay()
+        self.addCleanup(self.bp_relay.close)
+        for node, peer in ((a, b), (b, a)):
+            self.native("operator", node.config, "bp-boundary", "add", peer.name,
+                        peer.path, peer.bp_eid, node.bp_port, "fn.test", 32768, 16,
+                        "contact", self.bp_relay.port)
+            self.native("operator", node.config, "bp-route", "add", peer.bp_eid + "*", peer.name)
+            self.native("app-journal", "workflow-init", node.store_path,
+                        node.root / "bp-fnwf", node.bp_eid, peer.bp_eid,
+                        "native-policy", peer.bp_eid, 3600000, "origin-native", "wire-auth")
+        r_carrier = self.carry_bp_artifact(a, b, agent_a, "r1")
+        self.start(b)
+        # A committed delivery survives an application death before ACK; the
+        # resumed consumer reuses the single immutable reply artifact.
+        self.consumer(agent_b, "wake", cut="after-commit", expected=97)
+        self.consumer(agent_b, "wake")
+        self.assertEqual(self.summary(agent_b)["transitions"], [[APP, "r1"]])
+        self.stop(b)
+        q_carrier = self.carry_bp_artifact(b, a, agent_b, "reply-r1")
+        for node in (a, b):
+            self.start(node)
+        self.consumer(agent_a, "wake")
+        self.consumer(agent_b, "wake")
+        self.assertEqual(self.summary(agent_a)["transitions"], [[APP, "reply-r1"]])
+        self.assertEqual(self.summary(agent_a)["state"].get("replies"), "1")
+        self.assertEqual(self.summary(agent_b)["transitions"], [[APP, "r1"]])
+        hops = {"R": dict(r_carrier, at_a=self.inbox(agent_a, "r1"), at_b=self.inbox(agent_b, "r1")),
+                "Q": dict(q_carrier, at_a=self.inbox(agent_a, "reply-r1"), at_b=self.inbox(agent_b, "reply-r1"))}
+        for name, hop in hops.items():
+            want = hop["submission"]
+            for where in ("at_a", "at_b"):
+                [row] = hop[where]
+                self.assertEqual((row["message_id"], row["source_sha256"], row["check_source_sha256"],
+                                  row["signatures_sha256"], row["check"], row["own_verdict"]),
+                                 (want["message_id"], want["source_sha256"], want["source_sha256"],
+                                  want["signatures_sha256"], "verified", "verified"), (name, where, row))
+        self.assertEqual((self.articles(a), self.articles(b)), (2, 2))
+        self.witness("signed-report-reply-bp", dict(source=self.execution_source, hops=hops))
         self.stop(a)
         self.stop(b)
 

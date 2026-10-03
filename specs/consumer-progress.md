@@ -1001,3 +1001,16 @@ incorrectly fenced a consumer bootstrap after its record had been persisted.
 Unknown observations still return `:unsafe-observation` without changing owner
 state. The source predicate regression is separate from the pending matching
 native bootstrap/register/ACK and application restart evidence.
+
+SCN-1125 connects the same immutable signed R/Q application artifacts to the
+native BP node. Each source is first accepted by its production NNTP owner;
+that owner stops before a Store-bound workflow undertaking and ACL2 request
+construction. The retained receiving node commits Store/FNRJ publication. The
+sender pin must survive the transport contact, and a restarted native receipt
+contact must release it through the existing matching-obligation join. The
+application resumes after a SQLite commit/death cut and observes one R and one
+correlated Q, with exact authored headers/body and both signatures verified at
+both hops independently. The prepared selector is
+`NativeTwoNodeConsumerExchangeTests.test_signed_report_reply_cross_bp_and_reopen`.
+It has not executed on the current source world; compilation is not a native
+verdict or a complete tariff/refinement claim.
