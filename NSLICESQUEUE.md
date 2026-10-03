@@ -534,3 +534,8 @@ payload/block, LIST complete reply and some OVER full NOV/projection replies
 remain upstream materialization frontiers. Served owns LIST producer; Root
 owns shared payload/section producer; Web owns these connected consumers and
 qualified consumer tariff coordination. No full producer funding claim.
+BP-TRANSPORT S068 continuation (2026-10-03): production concrete framing cursor
+and actual retained :read/:buffer consumer source ready; PRF1289 local4096-copy
+quantum and codec composition fixtures. Full-frame conversion/decode, initial
+reserve/GC latency and public received-source issuer remain open. No image
+claim transferred from657; matching SCN1110 continues with Integration.

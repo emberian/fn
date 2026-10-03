@@ -2685,3 +2685,10 @@ Worktree/branch preserved, no shared/private/cache deletion or devpush.
   and indexed. Source showed no other configuration reconstructors needing
   policy preservation (mission constructors intentionally begin absent).
   All Access warm sessions stopped. Physical operator selector pending.
+BP-TRANSPORT continuing S068 source: actual per-connection concrete input buffer,
+ACL2 scalar frame cursor, retained incoming vector replaces expanding list
+carry. Raw actual driver +65536 one-byte reads/one decode, coalesced frames,
+partial suffix and early extension/MRU refusal pass. PRF1289 exact two-root
+farm pending; universal codec refinement/full-frame decode/GC and registered
+received-source issuer still owed. Source-first packet follows657; no old image
+or certificate claim transferred. Runtime owns decoded-window physical leaves.
