@@ -1267,6 +1267,14 @@ Anything but :stale removes the row (the file pin) and idles the worker."
 ;; guarded-by: the owner mutex ((S . IDS) ...: quiet file ids waiting for
 ;; the readers pinned at or below the stamp S)
 (defvar *fnn-extent-checkpoint-id* nil)
+(defvar *fnn-extent-image-id* nil
+  "The file id the history image was registered under at the open
+(host/native/io.lisp fnn-state-checkpoint-adopt-image, fnn-extent-register-at):
+fn-pgs-fill-realize preads it OFF the extent lock for the process's life, so
+it is never retired -- a CHECKED exclusion (fnn-owner-release-extents faults
+by name if it ever enters the retired set), the file resource's :excluded
+root history-image (books/page-read-direct.lisp, def-holder fn-pio-file-holds;
+c05 finding F1).")
 ;; guarded-by: the owner mutex (the realizer id of the installed checkpoint
 ;; the last reseat pointed payloads at)
 

@@ -2628,7 +2628,14 @@ checked; the last row compared with the checkpoint's last record): (values
     (declare (ignore np))
     (fnn-genesis-open store)
     (let* ((file (fnn-extent-register-at path base))
-           (answer (fnn-call 'fn-store-sco-image-open file (fnn-live-hrecs) *the-live-state*))
+           (answer (progn
+                     ;; the image's id is excluded from retirement for the
+                     ;; process's life (fn-pgs-fill-realize preads it off the
+                     ;; lock): fnn-owner-release-extents checks it
+                     (setq *fnn-extent-image-id* file)
+                     (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
+                       (fnn-err "PAGE-IO image file=~d" file))
+                     (fnn-call 'fn-store-sco-image-open file (fnn-live-hrecs) *the-live-state*)))
            (verdict (second answer)))
       (unless (and (consp answer) (null (first answer)))
         (fnn-fault "ACL2 error in fn-store-sco-image-open"))

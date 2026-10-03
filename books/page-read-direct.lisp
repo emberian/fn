@@ -346,7 +346,9 @@
                        :token token
                        :ok (not (member-equal (mv-nth 0 _) '(:stale :unheld)))))
             (cold-worker :root t :in (fnn-extent-prefetch fnn-extent-executor-job)
-                         :status (:excluded "the worker takes the descriptor under the extent lock and preads off it; fnn-extent-close asks fn-pio-direct-quiet-p first, so no descriptor closes under a pread (the read's token holds the file until the worker's actual return settles it)")))
+                         :status (:excluded "the worker takes the descriptor under the extent lock and preads off it; fnn-extent-close asks fn-pio-direct-quiet-p first, so no descriptor closes under a pread (the read's token holds the file until the worker's actual return settles it)"))
+            (history-image :root t :in (fnn-state-checkpoint-adopt-image fn-pgs-fill-realize fnn-owner-release-extents)
+                           :status (:excluded "the history image's file id (*fnn-extent-image-id*, registered at the open) is preread off the lock by fn-pgs-fill-realize for the process's life and is never retired: fnn-owner-release-extents faults by name before retiring anything if that id is among the dropped or the previous checkpoint (c05 finding F1: a checked exclusion in place of a docstring)")))
   :effect (:process-local "the tables are host memory (host/native/extent.lisp *fnn-extent-issued*, *fnn-extent-file-holds*), both empty at fnn-extent-direct-start (fn-pio-direct-initial); a death between :fn-pio-file-holds-decided (the settlement answered) and :fn-pio-file-holds-released (the row removed, the worker idled) loses the process; descriptors are not durable state")
   :complete-by "fn-pio-direct-admit and fn-pio-direct-settle are the only functions of the world that call fn-hd-ident-step on this table (def-holder-check's walk); fn-pio-direct-cancel and fn-pio-direct-quiet-p read it; the host's sites are fnn-extent-issue-direct, fnn-extent-cancel-read, fnn-extent-direct-settle, fnn-extent-close (tools/holder_check.py)")
 

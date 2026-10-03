@@ -157,6 +157,43 @@ class PageIOTests(unittest.TestCase):
                 new.close(False)
                 node.stop(expect=None, grace=300)
 
+    def test_a_publication_never_retires_the_history_image(self):
+        # c05 finding F1 (lane def-holder): the history image's file,
+        # registered at the open and preread OFF the extent lock
+        # (fn-pgs-fill-realize), is a CHECKED exclusion of retirement:
+        # fnn-owner-release-extents faults by name if that id ever enters
+        # the retired set (the file resource's :excluded root history-image,
+        # books/page-read-direct.lisp).  A store whose checkpoint carries
+        # the image is opened (the image adopted; its file id printed under
+        # the hold selector), then compacted while serving (the covered
+        # segments and the previous checkpoint retire): the image's file is
+        # never closed, nothing is refused, and the node serves on.
+        base = self.filled()
+        owner = base.start(timeout=600)
+        try:
+            asked = base.operator("store", "compact", timeout=1200, expect=None)
+            self.assertEqual(asked.returncode, EXIT.OK, asked.stdout + asked.stderr)
+        finally:
+            base.stop(expect=None, grace=300)
+        node = self.copy_of(base, "image")
+        release = node.store_path.parent / "page-io-release"
+        owner = node.start(timeout=600, env={"FN_NATIVE_PAGE_IO_HOLD": str(release)})
+        line = self.wait_line(owner, rb"PAGE-IO image file=\d+")
+        image_id = re.search(rb"file=(\d+)", line).group(1)
+        client = Client(node.port, timeout=120, greeting=None)
+        self.addCleanup(client.close, False)
+        self.assertIn(b"body of n0", client.article(msgid("n0")) or b"")
+        asked = node.operator("store", "compact", timeout=1200, expect=None)
+        self.assertEqual(asked.returncode, EXIT.OK, asked.stdout + asked.stderr)
+        self.wait_line(owner, rb"CHECKPOINT release reseated=\d+ incomplete=\d+ ")
+        text = owner.stderr.since(0)
+        self.assertNotRegex(text, rb"PAGE-IO closed file=" + image_id + rb"\r?\n")
+        self.assertNotIn(b"would be retired", text)
+        self.assertIn(b"body of n0", client.article(msgid("n0")) or b"")
+        self.assertIn(b"body of p0", client.article(msgid("p0")) or b"")
+        client.close(False)
+        node.stop(expect=None, grace=300)
+
     def test_a_late_short_or_error_is_settled_and_fences_the_store(self):
         base = self.filled()
         for mode in ("short", "error", "runtime-error"):

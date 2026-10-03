@@ -4945,6 +4945,14 @@ or pending (closed by a later release) and serving continues."
         (progn
           (setq new-id (fnn-extent-register (fnn-state-checkpoint-path store)))
           (let ((drop-ids (fnn-extent-ids-of-paths dropped-paths)))
+            ;; The history image's file is never retired (its descriptor is
+            ;; read off the lock for the process's life): refused by name
+            ;; before anything is retired, never a close under a pread.
+            (when (and *fnn-extent-image-id*
+                       (or (member *fnn-extent-image-id* drop-ids)
+                           (eql *fnn-extent-image-id* *fnn-extent-checkpoint-id*)))
+              (fnn-fault (format nil "the history image's file ~d would be retired"
+                                 *fnn-extent-image-id*)))
             (fnn-owner-gated (service :control)
               (setq *fnn-extent-retired*
                     (sort (remove-duplicates
