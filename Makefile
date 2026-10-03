@@ -616,7 +616,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/heap-reservation-tests \
 	books/cold-read-reservation \
 	books/peer-flight-reservation \
+	books/peer-flight-profile \
+	books/peer-flight-startup \
 	tests/acl2/peer-flight-reservation-tests \
+	tests/acl2/peer-flight-profile-tests \
+	tests/acl2/peer-flight-startup-tests \
 	tests/acl2/cold-read-reservation-tests \
 	books/output-reservation \
 	tests/acl2/output-reservation-tests \

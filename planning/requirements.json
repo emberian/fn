@@ -6765,9 +6765,13 @@
       ],
       "evidence": [
         "books/peer-flight-reservation.lisp",
-        "tests/acl2/peer-flight-reservation-tests.lisp"
+        "tests/acl2/peer-flight-reservation-tests.lisp",
+        "books/peer-flight-profile.lisp",
+        "books/peer-flight-startup.lisp",
+        "tests/acl2/peer-flight-profile-tests.lisp",
+        "tests/acl2/peer-flight-startup-tests.lisp"
       ],
-      "implementation_note": "Selected fixed backing and independent private-bank producer guards/launcher machine fit/source fixture pass. Actual Bounds spool worker, profile capture and lifetime settlement consumer being connected. This is partial fixed storage, excluding native structs/cells, pointed-to hash frames, controller/temporary cons, TLS and global collector behavior; no complete-profile activation claim."
+      "implementation_note": "Selected fixed backing and independent private-bank producer guards/launcher machine fit/source fixture pass. Actual Bounds spool worker, profile capture and lifetime settlement consumer being connected. This is partial fixed storage, excluding native structs/cells, pointed-to hash frames, controller/temporary cons, TLS and global collector behavior; no complete-profile activation claim. Root peer-flight-profile is an inert versioned 52-byte file reusing the catchup u64 codec. Spool per flight is strictly below signed64 off_t capacity; DEFAULT protects this independent heap slice. Absence creates no grant. Actual native capture/consumer pending composition."
     }
   ]
 }
