@@ -10,8 +10,6 @@
 (defun mbe (&key logic exec) (declare (ignore exec)) logic)
 (defparameter *fn-feed-wire-input-max-chunk-octets* 512)
 (defconstant +fnn-max-read+ 65536)
-(defconstant +fnn-pull-poll-seconds+ 0)
-(defconstant +fnn-pull-read-seconds+ 1)
 (load-deployed-forms "host/native/io.lisp"
  '((defun fnn-make-octets) (deftype fnn-octets) (defun fnn-octets)
    (defun fnn-octet-list) (defun fnn-octets-string) (defun fnn-string-octets)
@@ -20,8 +18,11 @@
    (defun fnn-socket-class) (defvar *fnn-monotonic-ticks*) (defun fnn-now) (defun fnn-seconds-to-deadline)
    (defun fnn-eintr-p) (defun fnn-would-block-p) (defun fnn-set-nonblocking)
    (defun fnn-socket-fd) (defun fnn-socket-shut) (defun fnn-retry-eintr) (defun fnn-read-fd) (defun fnn-recv)))
-;; Read trusted source only, so the old base has no invented missing module.
-(dolist (path '("host/native/pull-service.lisp" "books/peer-round-driver.lisp"))
+;; Load the actual adapter, including its custody definitions. On the old
+;; defect base the optional new logic book is absent; the old worker still
+;; runs over these identical real kernel leaves and recorded protocol leaves.
+(load "host/native/pull-service.lisp")
+(dolist (path '("books/peer-round-driver.lisp"))
   (when (probe-file path)
     (with-open-file (stream path)
       (loop for form = (read stream nil :eof) until (eq form :eof)
