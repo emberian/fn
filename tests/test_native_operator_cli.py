@@ -55,6 +55,31 @@ class NativeOperatorCliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr.decode())
         self.assertEqual(result.stdout.decode(), "usage: fn operator CONFIG run [--once]\n")
 
+    def test_show_preserves_output_policy_after_relative_path_resolution(self):
+        config = self.root / "resources.toml"
+        config.write_text(
+            '[store]\npath = "store"\n[resources]\n'
+            'cold_heap_octets = 8192\ncold_workers = 1\n'
+            'cold_descriptors = 2\ncold_read_ids = 3\ncold_file_ids = 4\n'
+            'output_heap_octets = 4096\noutput_quantum_heap_octets = 1024\n',
+            encoding="ascii")
+        for key, expected in (("output_heap_octets", b"4096\n"),
+                              ("output_quantum_heap_octets", b"1024\n")):
+            shown = invoke(config, "show", "resources", key)
+            self.assertEqual(shown.returncode, EXIT.OK, shown.stderr)
+            self.assertEqual(shown.stdout, expected)
+        whole = invoke(config, "show")
+        self.assertEqual(whole.returncode, EXIT.OK, whole.stderr)
+        self.assertEqual(whole.stdout.count(b"[resources]"), 1)
+        self.assertIn(b"output_heap_octets=4096", whole.stdout)
+        self.assertIn(b"output_quantum_heap_octets=1024", whole.stdout)
+        self.assertIn(b"cold_heap_octets=8192", whole.stdout)
+        rendered = self.root / "rendered-resources.toml"
+        rendered.write_bytes(whole.stdout)
+        again = invoke(rendered, "show")
+        self.assertEqual(again.returncode, EXIT.OK, again.stderr)
+        self.assertEqual(again.stdout, whole.stdout)
+
     def test_missing_directory_and_oversize_config_are_usage(self):
         missing = invoke(self.root / "missing.toml", "status")
         directory = self.root / "directory"

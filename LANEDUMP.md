@@ -1396,3 +1396,10 @@ sol-access continuing owned queue, GPT-6.1-Sol, 2026-10-03 10:49 UTC:
   This prevents relative-path resolution erasing explicit output policy and
   bypassing the current output_resources refusal. PRF1021 public octet-consumer
   theorem unchanged; output-only/combined-policy full witnesses prepared.
+
+- native-config-show + exact tests normalcert PASS115041Z-1706527 at
+  immutable32579fb5b: 10matchingcached dependencies/2selected rebuilt roots.
+  Archive indexed; native-config/records-shape cached provenance are global
+  convergence metadata debt, not reproof requests. No image verdict. Paths
+  warm23book/54test forms PASS; scoped path normalcert next. Actual native
+  operator show/key/reload selector added, syntaxPASS, matching-image pending.
