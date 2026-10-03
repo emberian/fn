@@ -5525,3 +5525,6 @@
 (definterface fn-bpnpf-bundle-octets :class :common-lisp-compliant)
 (definterface fn-bpnpf-rows :class :common-lisp-compliant)
 (definterface fn-tcl-host-segment-mru :class :common-lisp-compliant)
+
+; Single-candidate continuation; producer guard/refinement is PRF1309.
+(definterface fn-bpsg-acquire-turn :class :common-lisp-compliant)

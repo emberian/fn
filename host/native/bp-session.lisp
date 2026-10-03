@@ -1,6 +1,6 @@
 ;;; Explicit BP retained-session projection; one physical owner, no threads.
 (in-package "ACL2")
-(defstruct (fnn-bp-session-bank (:conc-name fnn-bpsb-)) grant ledger (held (make-hash-table :test #'eq)) slots)
+(defstruct (fnn-bp-session-bank (:conc-name fnn-bpsb-)) grant ledger (held (make-hash-table :test #'eq)) slots incoming-cursor outgoing-cursor)
 (defstruct (fnn-bp-session-grant (:conc-name fnn-bpsg-)) row socket conn
   turn finish result peer (close-attempted nil) (connecting nil))
 (defvar *fnn-bp-session-bank* nil)
@@ -43,15 +43,24 @@
   bank))
 
 (defun fnn-bp-session-acquire (bank class)
- "Reserve before accept/connect or retained connection construction."
- (destructuring-bind (word row ledger)
-  (fnn-call 'fn-bpsg-acquire (fnn-bpsb-grant bank) class (fnn-bpsb-ledger bank))
+ "Reserve one candidate before accept/connect or context construction."
+ (destructuring-bind (word row next-cursor ledger)
+  (fnn-call 'fn-bpsg-acquire-turn (fnn-bpsb-grant bank) class
+    (ecase class
+     (:incoming (fnn-bpsb-incoming-cursor bank))
+     (:outgoing (fnn-bpsb-outgoing-cursor bank)))
+    (fnn-bpsb-ledger bank))
   (setf (fnn-bpsb-ledger bank) ledger)
+  ;; ACL2 normalizes, advances and wraps the position. It is not authority.
+  (ecase class
+   (:incoming (setf (fnn-bpsb-incoming-cursor bank) next-cursor))
+   (:outgoing (setf (fnn-bpsb-outgoing-cursor bank) next-cursor)))
   (case word
    (:drawn (let ((grant (make-fnn-bp-session-grant :row row)))
              (setf (gethash grant (fnn-bpsb-held bank)) t
-                   (aref (fnn-bpsb-slots bank) (second row)) grant) grant))
-   (:bp-session-capacity nil)
+                   (aref (fnn-bpsb-slots bank) (second row)) grant)
+             (values grant word)))
+   ((:bp-session-yield :bp-session-capacity) (values nil word))
    (otherwise (fnn-refuse "BP context reservation refused ~a" word)))))
 
 (defun fnn-bp-session-observe (bank grant observation)

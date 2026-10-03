@@ -937,8 +937,8 @@ uncertain, as it does everywhere else."
 ;;; Retained forwarding uses the same durable kind-8/9 and routed session
 ;;; events as the compatibility sender; transport waits retain one grant.
 (defun fnn-bpnode-forward-start (bank bp node-id transfer-mru wall wall-error entry table)
- (let ((reservation (fnn-bp-session-acquire bank :outgoing)))
-  (unless reservation (return-from fnn-bpnode-forward-start nil))
+ (multiple-value-bind (reservation word) (fnn-bp-session-acquire bank :outgoing)
+  (unless reservation (return-from fnn-bpnode-forward-start (values nil word)))
  (let* ((peer (first entry)) (hop (second entry)) (hop-eid (third entry)) (port (fourth entry))
         (sent nil) (opened nil)
         (session-id (cons (fnn-core 'fn-bpnf-epoch (fnn-bps-state bp))
@@ -1144,7 +1144,7 @@ uncertain, as it does everywhere else."
              ;; per turn; a live peer cannot monopolize the lifecycle owner.
              (setq listener (fnn-bplc-start listen-port))
              (when control (setf (fnn-bpnc-listeners control) listener))
-             (let ((outbox-after nil) (report-after nil) (observe-after nil) (forward-tried nil)
+             (let ((outbox-after nil) (report-after nil) (observe-after nil) (forward-tried nil) (forward-awaiting nil)
                    (receipt-contact (make-fnn-bp-receipt-cursor)))
               (fnn-bp-session-loop
                bank control listener
@@ -1180,8 +1180,11 @@ uncertain, as it does everywhere else."
                          (entry (fnn-core 'fn-bpsched-forward-entry
                           (fnn-core 'fn-bpnp-forward-plan
                            (fnn-core 'fn-bpnf-held-list (fnn-bps-state bp)) table) busy)))
+                   (setq forward-awaiting nil)
                    (when entry
-                    (let ((job (fnn-bpnode-forward-start bank bp node-id transfer-mru wall wall-error entry table)))
+                    (multiple-value-bind (job word)
+                     (fnn-bpnode-forward-start bank bp node-id transfer-mru wall wall-error entry table)
+                     (setq forward-awaiting (eq word :bp-session-yield))
                      (when (and once job) (push (first entry) forward-tried))))))
                  (:receipt (fnn-bpnode-receipt-turn bank bp peer-id receipt-contact once))
                  (:report
@@ -1200,7 +1203,7 @@ uncertain, as it does everywhere else."
                   ;; No retained operation crosses an owner reopen.
                   (when (zerop (hash-table-count (fnn-bpsb-held bank)))
                    (fnn-bps-serve-rotate-when-due bp journal-root config wall wall-error)))))
-               (lambda () (or outbox-after report-after
+               (lambda () (or outbox-after report-after forward-awaiting
                                (not (fnn-bp-receipt-cursor-done receipt-contact))
                                (fnn-bps-fragment-work-p bp))))))
            ;; ACL2's code for the node's evidence with the last session's
