@@ -1,0 +1,41 @@
+(in-package "ACL2")
+(include-book "../../books/newnews-stream-cursor")
+(include-book "newnews-metadata-cursor-tests")
+
+(defthm nnsct-line-wider-than-quantum
+  (let* ((cur (fn-sl-start "..abc"))
+         (first (fn-sl-step cur 2))
+         (next (mv-nth 1 first))
+         (last (fn-sl-step next 6)))
+    (and (fn-sl-okp cur) (fn-sl-okp next)
+         (equal (car first) '(46 46))
+         (equal (fn-cur-at 0 next) "..abc")
+         (equal (fn-cur-at 1 next) 1)
+         (not (mv-nth 1 last))
+         (equal (append (car first) (car last)) '(46 46 46 97 98 99 13 10))
+         (equal (append (car first) (fn-sl-remaining next))
+                (fn-sl-remaining cur)))))
+
+(defthm nnsct-render-does-not-revisit-candidate
+  (let* ((context (fn-cur-context *nnmt-cur*))
+         (cur (fn-cur-make context
+                           (fn-nnw-stream-render (fn-sl-start "<a@x>") nil) nil nil))
+         (step (fn-nnw-stream-step cur 0 2 nil nil)))
+    (and (fn-nnw-stream-okp cur)
+         (equal (car step) '(60 97))
+         (equal (mv-nth 2 step) 0)
+         (equal (mv-nth 3 step) :output)
+         (equal (fn-cur-context (mv-nth 1 step)) context)
+         (fn-nnw-meta-livep (mv-nth 1 step))
+         (equal (append (car step) (fn-nnw-stream-remaining (mv-nth 1 step) nil nil))
+                (fn-nnw-stream-remaining cur nil nil)))))
+
+(defthm nnsct-sparse-scan-retains-renderer
+  (let* ((one (fn-nnw-stream-step *nnmt-cur* 1 1 nil nil))
+         (two (fn-nnw-stream-step (mv-nth 1 one) 1 1 nil nil)))
+    (and (not (car one)) (not (car two))
+         (equal (mv-nth 2 one) 1) (equal (mv-nth 2 two) 1)
+         (fn-nnw-stream-renderp (fn-cur-progress (mv-nth 1 two)))
+         (equal (append (car one) (car two)
+                        (fn-nnw-stream-remaining (mv-nth 1 two) nil nil))
+                (fn-nnw-stream-remaining *nnmt-cur* nil nil)))))

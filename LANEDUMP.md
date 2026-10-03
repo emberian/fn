@@ -405,3 +405,17 @@ served-span owner TLS result definitions. Raw log includes corrected failures
 and is archived/indexed as served-cursor-20261003/composition-repl.log.gz.
 Initialization/whole Message-ID working allocation, per-connection output draw,
 completed discovery view and remaining cursor consumers remain explicit debt.
+
+
+Indexed renderer source: actual NEWNEWS plan now calls fn-nnw-stream-step.
+Captured factory unchanged; scan installs string reference/offset/stuff/CR/LF
+phase, then renderer drains even with zero candidate visits, separately charged
+from article visits. fn-sl-step and fn-nnw-stream-step have unconditional exact
+residual theorems. Encapsulated source renderer 0.41 s / 57,924 ACL2 steps; stream
+0.58 s / 280,194; plan residual/invariants 1.60 s / 655,907. Wider-than-quantum,
+zero-visit renderer and sparse progress teeth plus actual tiny/large plan witness
+pass. Fresh predicate additionally excludes renderer/terminator phase; actual
+factory proves it. Full string coerce is only disabled logical residual, never
+plan output execution. Physical cell allocation recurrence, shape invariant and
+per-CID tariff remain follow-through with Foundations; init group list and
+wildmat/name/membership work remain unknown. No certificate/native claim.
