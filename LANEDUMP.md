@@ -214,3 +214,28 @@ Matching image execution remains pending Integration's next source batch;
 1a946 current image excludes this packet. Full replay still owes actual wait,
 pin and remaining owner edges, literal condition boundary and exact dependency
 coordinates. No mux/owner/io edits in this lane.
+
+
+## Current image results filed, 2026-10-03
+
+Image1a946582c/core6f5bf888, immutable earlier catalog, sequential isolated
+24GiB scope: baseline mixed4.198s total (0.314s mixed phase),24concurrent posts
+accepted/36exact reads/all48acknowledged hashes and numbers after reopen.
+Actual checkpoint/reseating observed; quiet reclaim still credit-refused
+estimate16,680,640. Current sparse4.829s, ten exact four-ID discovery blocks,
+eight exact reads/four competing accepted POSTs, offline expiry/reclaim2accepted,
+26retained+2tombstones after reopen; live reclaim credit-refused8,098,624.
+Report coordinates native-mixed-1a946582c-2026-10-03 and
+native-sparse-1a946582c-2026-10-03 in archived evidence. This image excludes
+later funding/cursor/extent hooks; no performance improvement or whole-image
+qualification inference. Exact config/input hashes and sampler errors retained.
+Mixed used copied native_cuts2e2; sparse updated to10e bytes before execution;
+manifest input hashes govern, supplied driver revision is not whole-tree identity.
+
+Observer b4f03503c + follow-up0d0eee69a exclude both staged window/PWZ tokens
+from direct return labels. Eight transport checks + exact deployed raw macro/
+collector SBCL thread/mutex composition0.099s passed; five evidence objects
+native-extent-observer-b4f03503c-2026-10-03. Actual held-success image pending
+next Integration assembly. No active native runs; current repaired BP or normal
+held-read next when Integration supplies matching image/scope. Curves still held
+until existing fixture152da/native-n7 compatibility is actually established.

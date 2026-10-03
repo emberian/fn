@@ -8251,9 +8251,10 @@
         "tools/native_mixed_workload.py",
         "planning/empirical-workloads.md",
         "tests/test_native_mixed_history.py",
-        "planning/evidence/native-mixed-45e05c7f-2026-10-03/report.md"
+        "planning/evidence/native-mixed-45e05c7f-2026-10-03/report.md",
+        "planning/evidence/native-mixed-1a946582c-2026-10-03/report.md"
       ],
-      "execution_scope": "Historical real-image paired smoke45e05c7f: both48 acknowledged articles preserve exact served hashes and local numbers after checkpoint/restart, all36 mixed reads match and24 mixed posts accept. Quiet live reclaim refuses by name deferred-credit in both, so maintenance progress remains incomplete. No current-image qualification, deployment, cold filesystem cache or socket-backpressure claim."
+      "execution_scope": "Historical45e paired smoke and current developer image1a946582c baseline finite correctness passed: 48 acknowledged articles retain exact served hashes and local numbers after checkpoint/restart, 36 concurrent reads match and24 concurrent posts accept. Quiet reclaim credit-refused estimate16,680,640, so maintenance coverage incomplete. Current baseline4.198s total/0.314s mixed phase; no matched current perturbation or performance improvement inference. Exact image/tool inputs and sampling errors archived. No deployment, cold filesystem cache, socket-backpressure, later funded/cursor/observer or whole-image qualification claim."
     },
     {
       "id": "SCN-1085",
@@ -8278,9 +8279,10 @@
       "evidence": [
         "tools/native_sparse_newnews.py",
         "planning/empirical-workloads.md",
-        "planning/evidence/native-sparse-newnews-45e05c7f-2026-10-03/report.md"
+        "planning/evidence/native-sparse-newnews-45e05c7f-2026-10-03/report.md",
+        "planning/evidence/native-sparse-1a946582c-2026-10-03/report.md"
       ],
-      "execution_scope": "Historical image 45e05c7f finite command correctness passed: 10 exact blocks of four remaining matches across 24 seed rows including two actual tombstones, eight competing ARTICLEs and four POSTs, 26 retained articles and two tombstones correct on reopen. Live reclaim credit-refused; payload-I/O attribution, new bounded cursor and current-image qualification remain open."
+      "execution_scope": "Historical45e and current1a946582c finite whole-scan command correctness passed: ten exact blocks of four remaining matches over24seed rows including two actual tombstones, eight competing ARTICLEs/four POSTs, 26retained articles and two tombstones correct on reopen. Current total4.829s; offline expiry/reclaim accepted2, live reclaim credit-refused estimate8,098,624. Exact image/input/config/resource errors archived; per-command payload-I/O attribution, later bounded cursor qualification and whole-image assurance remain open."
     }
   ]
 }
