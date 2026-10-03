@@ -1274,16 +1274,6 @@
 ; faithful across the owner's steps and the opens is the same obligation as
 ; the join's establishment (books/served-catalog-join.lisp), still OPEN.
 
-(defun fn-scol-history-okp (rows fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (if (consp rows)
-      (and (or (not (fn-cat-rowp (car rows)))
-               (fn-scol-row-okp (car rows) fn-arena))
-           (or (not (fn-sca-composite-shapep (car rows)))
-               (fn-scol-row-okp (fn-hstxa-held (car rows)) fn-arena))
-           (fn-scol-history-okp (cdr rows) fn-arena))
-    t))
-
 (local (defthm fn-scol-okp-of-load-held-row
    (implies (and (fn-scol-okp fn-arena fn-cat)
                  (or (not (fn-cat-rowp r)) (fn-scol-row-okp r fn-arena))
