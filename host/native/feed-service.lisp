@@ -22,6 +22,20 @@
 
 (defconstant +fnn-feed-poll-seconds+ 1/20)
 
+;;; S145 (lane served-live): an idle worker no longer enters the owner gate
+;;; twenty times a second.  After +fnn-feed-busy-rounds+ rounds with nothing
+;;; done (no offer, no octet read, no dial, no drop) the worker sleeps on the
+;;; owner's commit signal (fnn-owner-signal-commit: every durable
+;;; publication and the stop), doubling the sleep up to
+;;; +fnn-feed-idle-max-seconds+ and never past a link's next dial.  Any work
+;;; returns it to the poll cadence.  Scheduling only: ACL2 still decides
+;;; every offer, dial and backoff.
+(defconstant +fnn-feed-busy-rounds+ 20)
+(defconstant +fnn-feed-idle-max-seconds+ 1)
+
+;;; Set by a round that did something; bound per round by the worker loop.
+(defvar *fnn-feed-active* nil)
+
 (define-condition fnn-feed-auth-error (error) ())
 
 ;;; STREAK is the value books/feed-link-backoff.lisp `fn-flb-lost' last
@@ -412,6 +426,7 @@ the delay before the next dial from the peer record's BASE and the link's
 streak, and the drop is logged by ACL2's line, whatever its cause."
   ;; A failed dial is still a named loss: it advances the ACL2-owned retry
   ;; state even though no descriptor was established to close.
+  (setq *fnn-feed-active* t)
   (let ((stopping (fnn-feed-stoppingp runtime)))
     (unless stopping
       (fnn-feed-lost (fnn-feed-runtime-service runtime) link now))
@@ -443,6 +458,7 @@ the shared link table."
         (fnn-feed-dial-plan (fnn-feed-runtime-service runtime)
                             (fnn-feed-link-peer-octets link))
       (when queued
+        (setq *fnn-feed-active* t)
         (let ((socket nil) (published nil))
           (handler-case
               (progn
@@ -534,6 +550,8 @@ ACL2 framer."
           (when (fnn-feed-link-ready link)
             (multiple-value-bind (word command)
                 (fnn-feed-tick (fnn-feed-runtime-service runtime) link now)
+              (when (eq word :offer)
+                (setq *fnn-feed-active* t))
               (when (> (length command) 0)
                 (fnn-feed-send link command))
               (when (eq word :unsendable)
@@ -546,6 +564,8 @@ ACL2 framer."
             ;; The ACL2-projected limit sizes this buffer before read(2); a
             ;; peer cannot make the host allocate a larger coalesced batch.
             (let ((incoming (fnn-feed-recv link (fnn-feed-runtime-limit runtime))))
+              (unless (eq incoming :timeout)
+                (setq *fnn-feed-active* t))
               (cond ((eq incoming :timeout) nil)
                     ((zerop (length incoming))
                      (fnn-feed-consume runtime link nil t now))
@@ -581,19 +601,62 @@ ACL2 framer."
   (let ((*fnn-feed-io-phase* :read))
     (fnn-feed-worker-loop runtime)))
 
+(defun fnn-feed-idle-seconds (runtime idle now)
+  "How long an idle round may sleep: the poll for the first busy rounds,
+then doubling to +fnn-feed-idle-max-seconds+, and never past the earliest
+next dial of a link with no socket (its ACL2 backoff)."
+  (let ((seconds (if (< idle +fnn-feed-busy-rounds+)
+                     +fnn-feed-poll-seconds+
+                   (min +fnn-feed-idle-max-seconds+
+                        (* +fnn-feed-poll-seconds+
+                           (expt 2 (min 8 (- idle +fnn-feed-busy-rounds+ -1))))))))
+    (dolist (link (fnn-feed-links runtime) seconds)
+      (unless (fnn-feed-link-socket link)
+        (let ((due (- (fnn-feed-link-next-dial link) now)))
+          (when (plusp due)
+            (setq seconds (min seconds (max +fnn-feed-poll-seconds+ (/ due 1000))))))))))
+
+(defun fnn-feed-idle-wait (runtime seen seconds)
+  "Sleep up to SECONDS on the owner's commit signal unless a commit (or the
+stop) came after SEEN was read; a missed signal is seen by the count."
+  (let* ((service (fnn-feed-runtime-service runtime))
+         (lock (fnn-owner-service-wait-lock service))
+         (queue (fnn-owner-service-wait-queue service)))
+    (sb-thread:grab-mutex lock)
+    (unwind-protect
+         ;; The stop hook raises the signal after setting stopping, so a
+         ;; stop after SEEN changes the count and is never slept through.
+         (when (= seen (fnn-owner-service-commits service))
+           (sb-thread:condition-wait queue lock :timeout (coerce seconds 'double-float)))
+      ;; A timed-out condition-wait may return without the mutex.
+      (when (sb-thread:holding-mutex-p lock)
+        (sb-thread:release-mutex lock)))))
+
+(defun fnn-feed-commits-seen (runtime)
+  (let ((service (fnn-feed-runtime-service runtime)))
+    (sb-thread:with-mutex ((fnn-owner-service-wait-lock service))
+      (fnn-owner-service-commits service))))
+
 (defun fnn-feed-worker-loop (runtime)
   (unwind-protect
-       (loop until (fnn-feed-stoppingp runtime) do
-         (fnn-feed-refresh-links runtime)
-         (let ((now (fnn-feed-now)))
-           (dolist (link (fnn-feed-links runtime))
-             (unless (fnn-feed-stoppingp runtime)
-               (fnn-feed-dial runtime link now)
-               (unless (fnn-feed-stoppingp runtime)
-                 (fnn-feed-pump-link runtime link now)))))
-         ;; The worker's cadence is availability-only.  ACL2 gates actual
-         ;; offers with its monotonic observation and peer backoff state.
-         (sleep +fnn-feed-poll-seconds+))
+       (let ((idle 0))
+         (loop until (fnn-feed-stoppingp runtime) do
+           (let ((seen (fnn-feed-commits-seen runtime))
+                 (*fnn-feed-active* nil))
+             (fnn-feed-refresh-links runtime)
+             (let ((now (fnn-feed-now)))
+               (dolist (link (fnn-feed-links runtime))
+                 (unless (fnn-feed-stoppingp runtime)
+                   (fnn-feed-dial runtime link now)
+                   (unless (fnn-feed-stoppingp runtime)
+                     (fnn-feed-pump-link runtime link now))))
+               ;; The worker's cadence is availability-only.  ACL2 gates
+               ;; actual offers with its monotonic observation and peer
+               ;; backoff state.
+               (if *fnn-feed-active*
+                   (progn (setq idle 0) (sleep +fnn-feed-poll-seconds+))
+                 (fnn-feed-idle-wait runtime seen
+                                     (fnn-feed-idle-seconds runtime (incf idle) now)))))))
     ;; Stop only shutdowns; this worker is the sole final closer.
     (dolist (link (fnn-feed-links runtime))
       (fnn-feed-close-link runtime link))))
@@ -647,7 +710,9 @@ from being closed then reused before this stop hook touches it."
         (setf (fnn-feed-runtime-stopping runtime) t)
         (dolist (link (fnn-feed-runtime-links runtime))
           (let ((socket (fnn-feed-link-socket link)))
-            (when socket (ignore-errors (fnn-socket-shutdown socket))))))))
+            (when socket (ignore-errors (fnn-socket-shutdown socket))))))
+      ;; An idle worker sleeps on the commit signal (S145): wake it.
+      (fnn-owner-signal-commit service)))
   nil)
 
 (defun fnn-feed-service-close (service)
