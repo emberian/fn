@@ -42,14 +42,14 @@ def emit(root, dependencies, output, declarations=True):
         ('host/page-window-executor-host.lisp', {'fn-owner-page-window-legacy-writablep', 'fn-owner-page-window-work-permittedp'}),
         ('host/page-decoded-window-host.lisp', {
             'fn-owner-page-decoded-job-assign', 'fn-owner-page-decoded-job-outcome',
-            'fn-owner-page-decoded-job-byte-at', 'fn-owner-page-decoded-window-price-status',
+            'fn-owner-page-decoded-job-byte-at', 'fn-owner-page-decoded-job-retire', 'fn-owner-page-decoded-window-price-status',
             'fn-owner-page-decoded-window-acquire-projected', 'fn-owner-page-window-discovery-kind'}),
     ]
     if declarations:
         selections.append(('host/interfaces.lisp', {
-            'create-fn-decoded-job', 'fn-dwj-begin', 'fn-dwj-one', 'fn-dwj-read-observation',
+            'create-fn-decoded-job', 'fn-dwj-reserve', 'fn-dwj-begin', 'fn-dwj-one', 'fn-dwj-read-observation',
             'fn-owner-page-decoded-job-assign', 'fn-owner-page-decoded-job-outcome',
-            'fn-owner-page-decoded-job-byte-at', 'fn-pwz-cold-descriptor', 'fn-pwz-nth',
+            'fn-owner-page-decoded-job-byte-at', 'fn-owner-page-decoded-job-retire', 'fn-pwz-cold-descriptor', 'fn-pwz-nth',
             'fn-owner-page-decoded-window-price-status', 'fn-oct-nth',
             'fn-owner-page-decoded-window-acquire-projected', 'fn-owner-page-window-discovery-kind'}))
     for relative, names in selections:

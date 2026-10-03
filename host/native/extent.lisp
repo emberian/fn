@@ -304,7 +304,7 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
   `(fnn-cold-call ,name ,@arguments (fnn-live-page-read-pool)))
 
 (defstruct (fnn-cold-worker (:constructor %make-fnn-cold-worker))
-  row thread token result phase next decoded scope
+  row thread token result phase next decoded decoded-storage scope
   (ready (sb-thread:make-waitqueue :name "fn cold job")))
 
 ;; Allocated only after the installed baseline covers every persistent
@@ -505,6 +505,11 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
                (eq (fnn-decoded-activation-stage (fnn-cold-worker-decoded worker)) :calling))
       (fnn-fault "decoded torn semantic step retains its cold debit"))
     (let ((scope (fnn-cold-worker-scope worker)))
+      ;; A torn reset or settlement must never be retried or offered as idle.
+      (setf (fnn-cold-worker-phase worker) :retiring)
+      (when (fnn-cold-worker-decoded worker)
+        (fnn-extent-decoded-storage-retire worker token))
+      (setf (fnn-cold-worker-phase worker) :releasing)
       (setf (fnn-cold-worker-decoded worker) nil)
       (setf (fnn-cold-worker-result worker) nil)
       (destructuring-bind (word row &rest ignored)
@@ -553,6 +558,11 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
                (eq (fnn-decoded-activation-stage (fnn-cold-worker-decoded worker)) :calling))
       (fnn-fault "decoded torn semantic step retains its cancelled debit"))
     (let ((scope (fnn-cold-worker-scope worker)))
+      ;; A torn reset or settlement must never be retried or offered as idle.
+      (setf (fnn-cold-worker-phase worker) :retiring)
+      (when (fnn-cold-worker-decoded worker)
+        (fnn-extent-decoded-storage-retire worker token))
+      (setf (fnn-cold-worker-phase worker) :releasing)
       (setf (fnn-cold-worker-decoded worker) nil)
       (setf (fnn-cold-worker-result worker) nil)
       (destructuring-bind (word row &rest ignored)
@@ -627,21 +637,40 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
       (fnn-extent-executor-actual-return worker)
       (sb-thread:condition-broadcast (fnn-cold-worker-ready worker)))))
 
-(defun fnn-extent-executor-start (workers)
-  "Called once after ACL2 baseline installation, before recovery/listen."
+(defun fnn-extent-executor-start (workers &optional plan)
+  "Baseline-backed scratch is created once, before a worker is offered.
+Legacy direct startup has no decoded scratch and cannot borrow this grant."
   (when *fnn-cold-workers* (fnn-fault "cold executor already installed"))
+  (when plan
+    (unless (and (fnn-core 'fn-prstartup-planp plan)
+                 (eql workers (fnn-core 'fn-prstartup-decoded-workers plan)))
+      (fnn-fault "cold executor lacks its admitted baseline plan")))
   (setq *fnn-cold-stopping* nil)
   (handler-case
       (dotimes (slot workers)
-        (let ((worker (%make-fnn-cold-worker :row (fnn-core 'fn-pxe-new slot) :phase :idle)))
-          ;; Keep partially constructed slots for definite cleanup on failure.
+        (let ((worker (%make-fnn-cold-worker :row (fnn-core 'fn-pxe-new slot)
+                                            :phase :initializing)))
+          ;; Publish before constructor/reserve/maker: partial backing remains
+          ;; discoverable and never causes an uncharged replacement allocation.
           (push worker *fnn-cold-workers*)
+          (when plan
+            (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+              (unless (first (fnn-core-cold-pool
+                               'fn-owner-page-read-default-worker-constructionp slot))
+                (fnn-fault "decoded backing lacks its installed slot reservation")))
+            (fnn-extent-decoded-storage-start worker))
           (setf (fnn-cold-worker-thread worker)
                 (sb-thread:make-thread
                  (fnn-native-observed-thread-thunk (lambda () (fnn-extent-executor-loop worker)))
-                                       :name "fn cold executor"))
+                 :name "fn cold executor"))
           (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
-            (setf (fnn-cold-worker-next worker) *fnn-cold-free*
+            (when plan
+              (unless (eq (first (fnn-core-cold-pool
+                                   'fn-owner-page-read-default-worker-ready slot)) :ready)
+                (fnn-fault "cold worker backing was not acknowledged"))
+              (fnn-err "DECODED-WINDOW storage-ready slot=~s scope=:persistent-partial-fixed-storage" slot))
+            (setf (fnn-cold-worker-phase worker) :idle
+                  (fnn-cold-worker-next worker) *fnn-cold-free*
                   *fnn-cold-free* worker))))
     (serious-condition (condition)
       (fnn-extent-executor-stop)
@@ -757,6 +786,8 @@ modern complete installations still refuse their unpriced operation."
 (defun fnn-extent-executor-observe-returned (worker)
   "Extent lock held. An unexpected death requires a real join before failure
 settlement; the dead executor is never reused for another admitted job."
+  (when (member (fnn-cold-worker-phase worker) '(:retiring :releasing))
+    (fnn-fault "cold terminal semantic call was already entered"))
   (unless (eq (fnn-cold-worker-phase worker) :returned)
     (when (eq (fnn-core 'fn-pio-worker-death-step
                         (not (sb-thread:thread-alive-p (fnn-cold-worker-thread worker)))) :settle)

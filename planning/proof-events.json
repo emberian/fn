@@ -19418,6 +19418,16 @@
           "name": "fn-durable-realize-lz-octet-is-decoded-nth"
         }
       ]
+    },
+    {
+      "id": "PRF-1301",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prstartup-admitted-capacity-is-funded"
+        }
+      ],
+      "pending_subject": "fnn-owner-page-read-startup consumes fn-prstartup-default-plan which calls fn-prstartup-plan; composed wrapper/source replay pending."
     }
   ]
 }

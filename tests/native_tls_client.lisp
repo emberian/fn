@@ -12,7 +12,32 @@
 (defun fnn-seconds-to-deadline (deadline)
   (max 0 (/ (- deadline (fnn-now)) (float internal-time-units-per-second))))
 
-(load "host/native/tls.lisp")
+(load (or (sb-ext:posix-getenv "FN_TLS_CLIENT_SOURCE") "host/native/tls.lisp"))
+
+;; Real thread-local OpenSSL error queue, left by an unrelated failed call
+;; after channel construction and before the actual client-step attempt.
+(sb-alien:define-alien-routine ("ERR_peek_error" fnn-test-err-peek-error)
+    sb-alien:unsigned-long)
+(when (equal (sb-ext:posix-getenv "FN_TLS_CLIENT_STALE_ERROR") "1")
+  (let ((begin (symbol-function 'fnn-tls-client-begin))
+        (connect (symbol-function 'fnn-%ssl-connect)))
+    (setf (symbol-function 'fnn-%ssl-connect)
+          (lambda (ssl)
+            ;; Check the documented caller precondition at the actual FFI
+            ;; boundary, then execute the real TLS operation.
+            (unless (zerop (fnn-test-err-peek-error))
+              (error "SSL_connect caller left a stale OpenSSL error queue"))
+            (funcall connect ssl)))
+    (setf (symbol-function 'fnn-tls-client-begin)
+          (lambda (context fd name &rest options)
+            (let ((channel (apply begin context fd name options)))
+              (unless (zerop (fnn-%ssl-ctx-load-verify-locations
+                              (fnn-tls-context-pointer context)
+                              "/nonexistent/fn-tls-unrelated-ca.pem" nil))
+                (error "stale-error injection unexpectedly loaded a CA"))
+              (unless (plusp (fnn-test-err-peek-error))
+                (error "stale-error injection left no actual OpenSSL error"))
+              channel)))))
 
 (let* ((port (parse-integer (sb-ext:posix-getenv "FN_TLS_CLIENT_PORT")))
        (anchor (sb-ext:posix-getenv "FN_TLS_CLIENT_CA"))

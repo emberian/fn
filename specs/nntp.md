@@ -2642,6 +2642,13 @@ The first parsed event bounds consumption so following pipelined commands
 wait for completion. Physical compressed/plain window custody, metadata
 setup bounds and the complete owner/reference refinement remain open; the
 source does not establish a funded operation or a qualified image.
+Numeric/current selector transitions have total executable guards: one step
+checks only the retained comparison fields and consumes one article, membership
+or group character. Natural fuel yields an unchanged continuation at zero;
+malformed retained comparison fields settle safely without a whole archive
+validator. The valid-state witnesses compare old reader outcomes and split fuel.
+The complete selector/owner reference bridge remains an open proof obligation.
+
 Recovery and reclaim may complete legacy availability facts from the same captured
 arena. This changes derived facts, while preserving the article identity, payload
 handle, group memberships, stamp, assigned numbers, sequence and withdrawal
@@ -2705,9 +2712,9 @@ The source-only `list-metadata-cursor` component retains group/next/config
 references and advances total wildmat matching, watermark lookup, numbered
 summary probes and status entries in separate controller calls. Its guarded
 step bounds emitted bytes and controller calls; one row still constructs its
-complete group/decimal fields. The available dispatcher and render plan have
-not yet consumed this tag, and full response residual/finite progress, captured
-column frames, composed witnesses and physical funding remain open.
+complete group/decimal fields. The available dispatcher and native render facade now consume this tag; full
+response residual/finite progress, captured column frames, composed witnesses
+and physical funding remain open.
 
 The retained article producer captures the raw Xref server from the pinned
 listing. `fn-asto-server-candidate-is-original-server` equates it, after the
@@ -2717,3 +2724,15 @@ group/status configurations merely to read that field. Rendering validates
 one server octet per transition, then publishes Xref only if the whole
 nonempty proper list is printable ASCII (RFC5536 section3.2.14 permits a
 colon in this path identity). Invalid candidates omit Xref as before.
+The available LIST ACTIVE/COUNTS dispatcher now emits `:list-cursor`. Native
+owner and mux call the guarded query-plan facade: the same immutable plan
+shape, the existing render-buffer window capped at its current effect, and
+one LIST controller step per cursor activation. Empty control progress keeps
+the plan and response capture. OVER/NEWNEWS still use their original step;
+their old `fn-splan` proofs keep that subject. Eight private empty-catalog
+factory-to-buffer replies match the original LIST at quanta1/256, including
+filters and y/m/n status. Full selective sparse-catalog/owner composition,
+query-plan residual/finite progress and snapshot column frames remain owed.
+One whole row and upstream authorization/config preparation still need their
+allocation/work tariffs and incremental representation; emitted B alone is
+not a whole-producer bound. The completed LIST-view policy remains PRF1237 debt.

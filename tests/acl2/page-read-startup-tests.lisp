@@ -1,0 +1,31 @@
+(in-package "ACL2")
+(include-book "../../books/page-read-startup")
+
+(defconst *prst-plan* (fn-prstartup-plan 536870912 67108864 268435456 "/tmp/store" 4 1048576 4194304 8 256))
+(assert-event (and (fn-prstartup-planp *prst-plan*)
+  (equal (fn-prstartup-file-capacity *prst-plan*) 256)
+  (equal (fn-prstartup-cache-capacity *prst-plan*) 256)
+  (equal (fn-prstartup-decoded-workers *prst-plan*) 4)
+  (<= (fn-prstartup-required-heap 256 4 "/tmp/store") 268435456)))
+(assert-event (equal (fn-prstartup-status (fn-prstartup-plan 1024 0 0 "/tmp/store" 4 1048576 4194304 8 256)) :refused))
+(assert-event (equal (fn-prstartup-status (fn-prstartup-plan 536870912 67108864 268435456 "/tmp/store" 4 1048576 4194304 8 8)) :refused))
+(assert-event (not (fn-prstartup-planp (update-nth 2 '(0 0 0 0 0) *prst-plan*))))
+(assert-event (equal (fn-prstartup-decoded-workers (update-nth 2 '(0 0 0 0 0) *prst-plan*)) 0))
+(assert-event (and (equal (fn-prstartup-status '(garbage)) :fault)
+                  (equal (fn-prstartup-install-status :invalid-default-pool-plan) :fault)
+                  (equal (fn-prstartup-install-status :invalid-resource-profile) :fault)
+                  (equal (fn-prstartup-install-status :already-installed) :refused)))
+
+; Literal positive and antecedent-removal teeth for the actual admitted plan.
+(assert-event
+ (and (equal (fn-prstartup-nth 0 *prst-plan*) :admitted)
+      (natp (fn-prstartup-file-capacity *prst-plan*))
+      (<= (max 8 (+ 1 (nfix 8))) (fn-prstartup-file-capacity *prst-plan*))
+      (<= (fn-prstartup-file-capacity *prst-plan*) 256)
+      (<= (fn-prstartup-required-heap (fn-prstartup-file-capacity *prst-plan*) 4 "/tmp/store")
+          (nfix (- 536870912 (max 67108864 268435456))))))
+(assert-event
+ (let ((plan (fn-prstartup-plan 1024 0 0 "/tmp/store" 4 1048576 4194304 8 256)))
+  (and (not (equal (fn-prstartup-nth 0 plan) :admitted))
+       (not (<= (fn-prstartup-required-heap (fn-prstartup-file-capacity plan) 4 "/tmp/store")
+                1024)))))

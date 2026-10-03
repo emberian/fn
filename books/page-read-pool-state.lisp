@@ -23,8 +23,15 @@
   (declare (xargs :stobjs fn-page-read-pool))
   (fn-prl-nth 0 (fn-prp-data fn-page-read-pool)))
 
+(defun fn-prp-metadata-tail (n data)
+  (declare (xargs :guard (natp n)))
+  (if (zp n) data
+    (fn-prp-metadata-tail (1- n) (if (consp data) (cdr data) nil))))
+
 (defun fn-owner-page-read-keep-ledger (ledger fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
   (let ((data (fn-prp-data fn-page-read-pool)))
-    (update-fn-prp-data (list ledger (fn-prl-nth 1 data) (fn-prl-nth 2 data)
-                              (fn-prl-nth 3 data) (fn-prl-nth 4 data)) fn-page-read-pool)))
+    (update-fn-prp-data
+      (append (list ledger (fn-prl-nth 1 data) (fn-prl-nth 2 data)
+                    (fn-prl-nth 3 data) (fn-prl-nth 4 data))
+              (fn-prp-metadata-tail 5 data)) fn-page-read-pool)))

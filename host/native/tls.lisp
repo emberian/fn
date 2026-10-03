@@ -570,7 +570,9 @@ them).  Nothing else opens a client context."
 (defun fnn-tls-client-step (channel server-name)
   "One SSL_connect attempt: :connected or the required readiness direction."
   (let* ((ssl (fnn-tls-channel-pointer channel))
-         (result (fnn-%ssl-connect ssl)))
+         ;; SSL_get_error inspects this thread's error queue as well as the
+         ;; result. An earlier operation must not turn WANT_* into failure.
+         (result (progn (fnn-%err-clear-error) (fnn-%ssl-connect ssl))))
     (if (= result 1)
         (multiple-value-bind (outcome code) (fnn-tls-verify-failure ssl)
           (when outcome

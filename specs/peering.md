@@ -3255,3 +3255,26 @@ then adds a healthy peer and compares its complete article with locally
 served bytes before the original handshake deadline. It is prepared for a
 matching image, not an executed qualification. Its ordering excludes an
 initial healthy-first configuration from masquerading as concurrent progress.
+
+### Bounded redeem client input (NNT-1003)
+
+The native `fn redeem` client reads a password one character at a time. Before
+retaining each octet it asks `fn-rip-password-step` (PRF-1302). The credential
+is one nonempty graphic ASCII token of at most496octets: both the13octet
+`XREDEEM PASS ` prefix and the14octet `AUTHINFO PASS ` prefix must fit
+RFC3977 section3.1's510octet command content bound. One terminal CR
+before LF or EOF is permitted. A longer or invalid token is refused before
+more input is retained. ACL2's `fn-rip-command` builds the complete command,
+validates CODE/LOGIN token boundaries and wire width, and refuses the reserved
+PASS keyword in CODE. No embedded CR/LF, whitespace token splitting or
+non-octet character reaches the wire. Server account policy still owns whether
+a syntactically valid login or invitation is usable.
+
+Reply framing checks the LF position against the512octet response wire bound
+before interpreting the line, including when a single chunk contains both an
+oversized prefix and LF. A malformed/overlong reply ends the exchange as loss,
+never as a definitive account refusal: the existing redemption stage decides
+unreachable or uncertain. Actual source SCN-1132 exercises password retention,
+LF/CRLF/EOF edges, exact command widths, token injection and oversized complete
+reply refusal. The input-policy proofs are narrower than physical host-loop
+refinement or a saved-image interoperability claim.

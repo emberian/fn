@@ -646,3 +646,39 @@ but each job still consumes its worker slot and a nonrefundable read identity.
 The existing per-job constructor projection stays available for older callers;
 a host flag or the existence of a buffer is not reservation authority. Current
 source alone does not claim the new startup/retirement consumers have executed.
+
+
+### DEFAULT page-read startup (HST-048)
+
+Before Store open, `fn-prstartup-default-plan` consumes actual dynamic-space,
+occupied usage, sealed Store profile, image observation, nursery, exact cold
+and output policies, connection count, root, existing direct-worker count,
+cache limit and OS descriptor allowance. A complete cold policy remains
+unpriced and refuses. DEFAULT selects an explicitly partial fixed-storage
+projection, without inferring global collector, controller or source-graph
+coverage from a storage count.
+
+The producer protects the existing composed heap figure and explicit output
+pool, then derives an affordable descriptor/table capacity bounded by the OS
+allowance and the selected table representation. Its minimum covers the
+existing cache insertion overlap. It prepays all five native tables, the
+fixed guard cache and reusable decoder backing; per-file registration
+working reserve is a minimum affordable root-path quantum. Existing issuers
+charge actual paths and integer metadata. Capacity exhaustion refuses further
+registration and requires resumable maintenance/backpressure; it is not a
+ceiling on stored data or a claim that Store transaction count bounds retired
+file incarnations.
+
+`fn-owner-page-read-install-default` installs only into the existing fresh
+pool. DATA8 preserves the original five ledger/configuration fields and
+binding revision at position five, followed by the reservation/readiness
+marker and worker count. Both legacy ledger publication and binding revision
+publication preserve that tail. Each native worker constructor must first
+pass `fn-owner-page-read-default-worker-reservedp`; successful constructor,
+eager reserve and worker startup precede `default-worker-ready` and physical
+free-roster publication. Torn startup leaves the bit clear and cannot allocate
+an unreserved replacement. Reused decoded-window admission requires the
+matching ready slot, charges a slot and read identity, and retains permanent
+backing throughout return, retirement and settlement. Installation never
+resets or refunds a live pool. SCN-1130 covers the native ordering and orphan
+cleanup independently of the numeric projection.

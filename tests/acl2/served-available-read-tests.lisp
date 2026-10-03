@@ -2,12 +2,23 @@
 ; Owner credit/capture and native endpoint composition remain separate debt.
 (in-package "ACL2")
 (include-book "served-available-commands-tests")
+(include-book "served-query-plan-tests")
 (include-book "../../books/served-available-read")
 
 (defun cav-read-index (archive)
   (declare (xargs :mode :program))
   (fn-gidx-pin-with-control (fn-midx-build (fn-state-articles archive))
                             (fn-gidx-build (fn-state-articles archive)) nil))
+
+(defun cav-read-render-agrees (effects expected fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (with-local-stobj fn-octets
+    (mv-let (answer fn-octets)
+      (mv-let (status octets final fn-octets)
+        (qpt-drain (fn-splan-of-effects effects) 3 100000 fn-octets fn-arena fn-cat)
+        (mv (and (eq status :done) (fn-qplan-donep final)
+                 (equal octets (fn-served-reply-octets expected))) fn-octets))
+      answer)))
 
 (defun cav-read-agrees (line session raw index reference ref-index v fn-arena fn-cat)
   (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
@@ -20,8 +31,8 @@
          (fn-nntp-command-arguments-at-mostp tokens)
          (equal command event)
          (equal (fn-nntp-result-session command) (fn-nntp-result-session expected))
-         (equal (fn-ovw-expand (fn-nntp-result-effects command) fn-arena fn-cat)
-                (fn-ovw-expand (fn-nntp-result-effects expected) fn-arena fn-cat)))))
+         (cav-read-render-agrees (fn-nntp-result-effects command)
+                                (fn-nntp-result-effects expected) fn-arena fn-cat))))
 
 (defun cav-read-run (survivors fn-arena fn-cat)
   (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
