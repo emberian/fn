@@ -3390,3 +3390,13 @@ both hops. Selector tests.test_native_consumer_exchange_two_nodes.
 NativeTwoNodeConsumerExchangeTests.test_signed_report_reply_cross_bp_and_reopen.
 Python compilation PASS; actual native run UNEXECUTED. Requires current source
 launcher from History/Integration. No new protocol or host semantic decision.
+Current compressed endpoint selector prepared:
+tests.test_native_web.NativeWebFaceTests.test_compressed_article_uses_physical_windows_through_web_and_restart
+(and TLS sibling). Actual browser authored compressed POST, NNTP ARTICLE,
+Web exact escaped256-line body, stopped compression report, fresh process
+signin/Web/byte-identical NNTP ARTICLE, clean exits and actual issue/physical/
+literal release counts+partial tag. Ordinary ready and cancelled returned
+release paths print captured scope+actual :released word after last-borrow
+settlement; no descriptor-close inference. Full trace keeper registered.
+Python syntax checked; local endpoint skipped because no native executable.
+This is pending actual History current-source runner execution, not a PASS.
