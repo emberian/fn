@@ -12,7 +12,8 @@
  "native": "control",
  "notes": [
   "10-02 23:22 claimed: scope=['host/native/control-transport.lisp', 'tests/test_control_listen_umask.py'] test=python3 -m unittest tests.test_control_listen_umask",
-  "10-02 23:23 READY 0787039345196cbc735f7faa731065f4f8167054"
+  "10-02 23:23 READY 0787039345196cbc735f7faa731065f4f8167054",
+  "10-02 23:25 burndown-2 e5726bf86 merged onto dev; verify ok"
  ],
  "owner": "sweep-ops",
  "reviewer": "control-transport.lisp:92-99 binds and listens before fnn-chmod 0600, and nothing sets the umask (grep finds none). Only the topic and consumer arms call fnn-control-peer-is-owner-p (control.lisp:310-333). The hybrid chain, request, admin and moderation arms have no peer-UID check. Exploiting this needs a permissive umask (with the default 022 the socket gets no group or other write bit, so connect is denied) and a parent directory that others can reach, since the control path is configured. Someone must also connect during a window of a few microseconds at startup. Darwin, Linux and OpenBSD all enforce socket-file permissions, so the 'permanent gap' variant does not apply. The real weakness is defense-in-depth: the admin arms rely on the file mode alone.",
@@ -22,11 +23,12 @@
   "tests/test_control_listen_umask.py"
  ],
  "severity": "low",
+ "sha": "742475fe1",
  "source": "sweep-2026-10-03",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_control_listen_umask",
  "title": "Admin, POST, moderation and peer/keys/tls control frames have no peer-UID check, and the socket is world-connectable between bind and chmod",
- "updated": "2026-10-03T03:23:10Z",
+ "updated": "2026-10-03T03:25:30Z",
  "verify": {
   "base": "1dd766a9d783931be5daab14b6ee9b74e7b72812",
   "changed_files": [

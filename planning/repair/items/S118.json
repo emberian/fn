@@ -12,7 +12,8 @@
  "native": "operator_verbs",
  "notes": [
   "10-02 23:24 claimed: scope=['host/store-node-host.lisp', 'tests/test_finish_success_count.py'] test=python3 -m unittest tests.test_finish_success_count",
-  "10-02 23:24 READY 2a0052bb7b47fca2ea133cdbd9fa0d6c81135fa1"
+  "10-02 23:24 READY 2a0052bb7b47fca2ea133cdbd9fa0d6c81135fa1",
+  "10-02 23:25 burndown-2 e5726bf86 merged onto dev; verify ok"
  ],
  "owner": "sweep-store",
  "reviewer": "host/store-node-host.lisp:1512-1513 compares (len (fn-sf-successes ...)) before and after. fn-sf-successes (books/store-files.lisp:117) is fn-sl-list, which for the snoc form calls fn-sl-rev-take and builds a fresh O(N) list (books/snoc-list.lisp:62-66), while fn-sl-count (snoc-list.lisp:116-120) is O(1). The function is reached through fnn-bridge-finish, the default *fnn-finish-callback* (io.lisp:1809, 1816), and through fn-xw-finish (store-write-host.lisp:1390). The cost is two O(N) allocations per standalone commit, which contradicts the comment at 1497-1503. The composed owner binds its own callback, and the offline `store post` already pays O(N) to replay at open, so the impact is small.",
@@ -22,11 +23,12 @@
   "tests/test_finish_success_count.py"
  ],
  "severity": "low",
+ "sha": "742475fe1",
  "source": "sweep-2026-10-03",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_finish_success_count",
  "title": "fn-store-sn-finish copies the whole successes history twice per commit to compare lengths",
- "updated": "2026-10-03T03:24:48Z",
+ "updated": "2026-10-03T03:25:31Z",
  "verify": {
   "base": "5228d7240be670f0991139f252d4dae8d9addeb5",
   "changed_files": [
