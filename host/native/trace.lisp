@@ -47,8 +47,11 @@ is INTERNAL-TIME-UNITS-PER-SECOND, not a promised microsecond clock."
   (unless (and (keywordp phase)
                (every (lambda (c) (or (find c "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_") nil))
                       (symbol-name phase))
-               (every (lambda (id) (or (null id) (and (integerp id) (<= 0 id))))
-                      (list cid operation connection-generation)))
+               ;; Sampling can skip almost every span. Do not allocate a
+               ;; temporary identity list on each skipped attempt.
+               (typep cid '(or null (integer 0 *)))
+               (typep operation '(or null (integer 0 *)))
+               (typep connection-generation '(or null (integer 0 *))))
     (error "trace phase must be a keyword; CID must be a nonnegative integer"))
   (sb-thread:with-mutex ((fnn-trace-state-lock state))
     (let ((id (incf (fnn-trace-state-attempts state))))
