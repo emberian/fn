@@ -1986,3 +1986,102 @@ or fairness guarantee; slowlineconsumption not physicalPageIOhold/backpressure.
 e7bd2dba1adf4a6887ccf0424d1813e97605f768484c9534cb734bfff80e1757, manifest
 296f394f63f8c78856d98dd952974ab51c0ced8634ecc2d43819a924f5bc8c4a.
 NewJOB-RESULT/HM/heldSIGTERM/0cf and maintenance remainoutsideimageclaim.
+## Total matcher entry source handoff (2026-10-03)
+
+Extends frozen906 pure matcher only; Served owns actual :match consumer.
+fn-wmc-start now preserves old empty-octet semantics for nonstrings, refuses
+strings longer than original decoder497 limit via LENGTH without coerce,
+otherwise retains original references and UTF8 offset/decoded accumulator.
+One UTF8 microstep reads at most four indexed chars and reuses existing decoder.
+Entry equality fn-wmc-start-value-is-group-match is unconditional for arbitrary
+groups; fn-wmc-one-preserves-result and step/result/value are unconditional,
+using model-only accumulator fixing and constant legacy offset normalization.
+Reachable shape and exact remaining-work decrease stay explicit.
+
+API signatures unchanged; fn-wmc-demand is15 engine cons for UTF8/legacy decode,
+13 for core phases,0 when decided. consumed-work/cons, work-left/cons-left
+subtract current accepted demand; cumulative run-cons<=initial grant. No MV
+envelope. Caller/collector/mux/native byte and retained graph costs remain
+separate. Start remains seven fixed cons borrowing refs. All current executable
+definitions/guards and key entry/result/remaining/charge facts admitted in
+narrow warm source world; coherent source is handed off before final whole-book
+clean replay. Final renamed full replay, updated UTF8/nonstring/limit/corrupted
+state tests and evidence index are pending on these bytes. Matching certificates,
+qualified image and actual composed consumer remain integrator/Served scope.
+ASCII polynomial bound applies to core; total UTF8 exact finite remaining proved,
+public Unicode polynomial bound and tight retained target/row/frame peak owed.
+
+8599d0b97 final source replay and teeth completed without code changes:
+whole book#4-#174 in one encapsulate,171forms/59locals discarded,
+21.88ACL2s/10,124,497steps; updated22test forms .01s/4,275steps,0refused.
+Literal tests include UTF8 two/three/four octet scalar decoding, suspension,
+malformed surrogate refusal, nonstring empty-target compatibility, original
+498-octet rejection, phase15 grant14 refusal and charge depletion, plus
+corrupted offset/accumulator/frame unconditional residual preservation.
+Compiled component probe(T T T T T) passes; SBCL reports0allocated bytes for
+this small probe, not a tariff. Strict scoped theory/book-order0warnings and
+diffcheck pass. Evidence archived/indexed at
+planning/evidence/dc03-wildmat-total-20261003/{checks.json,repl.log.gz},
+checks hashd6c5f72071/raw5666a52844. These are source admissions, not certs.
+Served imported8599 asd95e and consumes actual matching-selector continuation;
+Foundations received phase accounting and remaining retained-graph/native debt.
+
+## Served matcher consumer source (2026-10-03)
+
+Actual NEWNEWS stream now drives fn-nnm-start/one, retaining either the fixed
+original group/member selector or (:match MATCHER FOLLOWING). First valid equal
+membership starts the reference-only matcher. A controller call takes one
+selector entry or one decoder/DP microstep; settled match resumes exact following
+selection or installs the unchanged indexed Message-ID renderer. No complete
+wildcard match executes inside a candidate visit. Total matcher8599d0b97 plus
+receipt530bdd7bc imported; UTF/legacy-decode demand15, core13, done0, accessors
+used rather than literal13. Arbitrary configured names preserve old decoding and
+length refusal. Disabled logical value/remaining models never execute on served
+steps. Existing unconditional stream residual statements are retained.
+
+Adapter complete encapsulated33forms .71ACL2s/211004steps, guards included:
+start exact candidate value, unconditional residual and decided receipt,
+shape preservation, at most one entry/work unit and phase demand, and strict
+lexicographic group/work progress under carried shape. Original selector30forms
+replay was redundant matching source. Total matcher171forms clean source replay
+23.48ACL2s/9940532steps; its proper local book prelude is necessary. Initial
+bare definition-range probe omitted that prelude and refused, then full book
+range passed; no source defect or false certificate claim. Actual adapter sparse,
+exclusion, invalid-first duplicate, matching suspension and empty settlement
+fixtures pass. Consumer stream/plan source replay is running independently,
+with only three uncached catalog source dependencies; no image or closure run.
+
+PRF1257 now names actual adapter keystones; PRF1261 names consumed matcher
+keystones. Curated events, subsystem spec, existing SCN1084 and Makefile roots
+move together. SOURCE is coherent; exact matching certification, native image,
+tight retained graph/native integer/collector tariff and funded output/cold
+custody remain open. Current shell executes one controller call even at W256;
+next generator batch should run <=W bounded calls per scheduler quantum to avoid
+one timer delay per matcher microstep. This is latency follow-through, not hidden
+whole matching or a reason to truncate data. Paired availability command adapter
+is separate, with raw actual formals and logical-only available archive/index;
+no whole second archive/index build under owner.
+Owner carrier current continuation — GPT-6.1-Sol, 2026-10-03
+- Preserved prior tree clean at25186bd8b; current source tree365657213. Actual owner-post cached-only refused before ACL2 for14 base roots+51 dependents; exact hashes/repro in owner-carrier-current-20261003.json. Integration owns narrow dependency/target certification; no retry/source closure.
+- Catalog counter/incarnation now included in loaded-world authority closure; actual program fixture passed. Threader refuses their access until explicit private unset/corrupt semantics are supplied;12tool tests pass. No production migration.
+- Two writer definitions defer guard verification to existing def-carried-writer scoped ordinary verify-guards; original formals/bodies/guard unchanged. Target remains unadmitted. All experimental sessions released. History absorbs authority migration under8am cap; normal owner snapshot and finish prefix/reload producer still owed.
+
+Focused completion: five fair-push tests plus six credential tests PASS in
+3.753s, actual raw phase/sequencing shell PASS. New actual worker over real
+loopback/kernel output exercises a saturated slow send queue and healthy
+exact2000-octet drain, plus recorded pending TCP/TLS while healthy output
+completes. TLS WANT/short-prefix retains exact vector/range/deadline; a
+600-octet supported quantum fixture verifies512 attempts never cross its
+window. One-event reply/EOF fixture checks FNFD-before-output, retained NIL
+framer suffix and stopping fault propagation. Pending connect/TLS/output/
+drain keeps existing busy cadence instead of exponential idle backoff.
+
+The old coarse sequencing fixture now explicitly drives the actual retained
+adapter to quiescence between supplied chunks, using actual ACL2 driver
+definitions and recorded nonblocking leaves. It preserves auth/ready, named
+loss/backoff, terminal close and output-order checks. Credential admitted
+profile fixture retains decoded octets until the later connected turn.
+Peer-octet fixture's inherited missing def-actor source macro was repaired
+without an actor stub and passes; actual feed actor raw schedule passes.
+Derived traps regenerated only for the affected credential extraction.
+No saved-image/proof claim; Integration/continuing BPTransport own those.
