@@ -312,7 +312,7 @@
                        (nth i (nth 0 c))
                      (nth (- i (nth 1 c)) events))))
    :hints (("Goal" :in-theory (e/d (fn-hist-build fn-hist-nth-cons-natural)
-                             (fn-hist$c-grow fn-hist$c-append))
+                             (fn-hist$c-grow fn-hist$c-append nth update-nth))
             :induct (fn-hist-build events c)))))
 
 (local
@@ -414,7 +414,10 @@
    :hints (("Goal" :in-theory (e/d (fn-hist-open)
                                    (nth update-nth fn-hist-collect-acc
                                     fn-hist-collect-append-acc fn-held-p
-                                    fn-cei-event-article))))))
+                                    fn-cei-event-article fn-hist$c-grow (:definition fn-hist$c-collect)))
+            :induct (fn-hist$c-collect m s acc c)
+            :expand ((fn-hist$c-collect m s acc c)
+                     (fn-hist$c-collect m s acc (fn-hist$c-append x c)))))))
 
 (defun fn-hist$c-bucket (h c)
   (declare (xargs :guard t :verify-guards nil))
