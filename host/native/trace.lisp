@@ -10,6 +10,7 @@
   (lock (sb-thread:make-mutex :name "native-trace")))
 (defvar *fnn-trace-state* nil)
 (defvar *fnn-trace-parent* nil)
+(defvar *fnn-trace-parent-state* nil)
 (defvar *fnn-trace-operation* nil)
 (defvar *fnn-trace-connection-generation* nil)
 
@@ -31,7 +32,7 @@ is INTERNAL-TIME-UNITS-PER-SECOND, not a promised microsecond clock."
 
 (defun fnn-trace-configure ()
   "Explicit process diagnostic options; no saved build-host trace state."
-  (setf *fnn-trace-state* nil *fnn-trace-parent* nil)
+  (setf *fnn-trace-state* nil *fnn-trace-parent* nil *fnn-trace-parent-state* nil)
   (when (equal (sb-ext:posix-getenv "FN_TRACE") "1")
     (let ((mode (sb-ext:posix-getenv "FN_TRACE_ALLOC")))
       (fnn-trace-start
@@ -58,7 +59,9 @@ is INTERNAL-TIME-UNITS-PER-SECOND, not a promised microsecond clock."
       (when (zerop (mod (1- id) (fnn-trace-state-sample-every state)))
         (if (< (fnn-trace-state-next state) (length (fnn-trace-state-rows state)))
             (let ((row (%make-fnn-trace-row
-                        :id id :parent *fnn-trace-parent* :cid cid :operation operation
+                        :id id :parent (and (eq state *fnn-trace-parent-state*)
+                                            *fnn-trace-parent*)
+                        :cid cid :operation operation
                         :connection-generation connection-generation :phase phase
                         :allocation-scope (fnn-trace-state-allocation state))))
               (setf (aref (fnn-trace-state-rows state) (fnn-trace-state-next state)) row)
@@ -94,6 +97,7 @@ one special-variable test, no identity evaluation, clock read or thunk."
                              (and (fnn-trace-state-allocation ,state) (sb-ext:get-bytes-consed)) t))
                  (if ,ready
                      (let* ((*fnn-trace-parent* (fnn-trace-row-id ,row))
+                            (*fnn-trace-parent-state* ,state)
                             (*fnn-trace-operation* (fnn-trace-row-operation ,row))
                             (*fnn-trace-connection-generation* (fnn-trace-row-connection-generation ,row))
                             (,outcome :nonlocal-exit))
