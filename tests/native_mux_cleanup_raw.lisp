@@ -35,7 +35,8 @@
   (harness-stub-reached 'fnn-zout-free "host/native/deflate.lisp"))
 ;;; ---- derived stubs: END ----
 (load-deployed-forms "host/native/owner.lisp"
- '((def-section fnn-quantum-mux-finish) (defun fnn-owner-thread-escape)))
+ '((def-section fnn-quantum-mux-finish) (defun fnn-owner-thread-escape)
+   (defun fnn-owner-output-close)))
 (load-deployed-forms "host/native/mux.lisp"
  '((defstruct (fnn-mux-cleanup-receipt (:constructor %make-fnn-mux-cleanup-receipt)))
    (defun fnn-mux-service) (defun fnn-mux-cleanup-debt)
