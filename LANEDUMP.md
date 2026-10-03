@@ -101,3 +101,36 @@ script shared as lane build artifacts; no integrator tree mutations.
 - No new native image or final loaded-world/POST matched verdict yet. Historical empirical image45e05:48articles exact hashes/local numbers survive mixed workload/checkpoint/restart; quiet reclaim deferred-credit, so reclamation incomplete.
 
 - sol1 detached PID875046 on hbox; certify-20261003T064110Z-896002 started06:40:55Z. Image closure1018books:784matching/234missing. Measured cold interface108s,host-books31s,cacheinstall161s. Ledger/current regenerated alongside; PRF1255 private-control scoped certification recognized, image/whole-host claim pending. Source lock390findings/16new/16stale retained; capture-derived removal candidates nextwave.
+NIGHT-DIRECT-TEMPLATE source `332067287`, stable-interface witness `990838c97`:
+raw_dispatch_rule uses exact definterface :direct declarations for literal
+emitted heads only. Quoted data/function values and neighboring undeclared
+heads retain NAME refusals. 31 full rule tests pass; the added stable-interface
+witness passes. Actual Runtime envelope inspection has zero NAME findings.
+Same-harness intended assertion red/base and green/head archived
+`planning/evidence/repair/NIGHT-DIRECT-TEMPLATE-77b830fbfc204a1fbe6452329a2ab12c.json`,
+sha256 `3fa7f78e8576c5a40cc6e4c97283ff42393a49e0dee7214fc8620145e2d70440`.
+Initial witness used a new scanner argument and was rightly refused as an
+infra TypeError; indexed evidence preserved. Replacement tests the existing
+findings API with actual declaration reader boundary mocked, not missing API.
+
+NIGHT-REALIZATION-SOURCE source `85ef7725d`: realization is now read from the
+actual quoted model constant, following its machine include only when present.
+Missing, duplicate, computed and malformed literals refuse; JSON contracts
+seed is ignored. All row/site/capability metadata survives normalization;
+source path, line and sha256 bind the generated snapshot. Site file anchors
+match the actual graph; :crash narrowly recognizes A-CRASH-IMAGE. 36 checker
+tests pass in 0.074s. Designated seed-bypass assertion red/base and green/head
+archived `planning/evidence/repair/NIGHT-REALIZATION-SOURCE-cbc4eca6252a453ea07a8a65e2533e20.json`,
+sha256 `7c3f25a5d0b9f8c5b64f42dc6ac83d43ce07aed34e0e5e9aa908829f7f08708f`.
+Snapshot here matches this lane's older monolith; integrator must regenerate
+from Groundwork's 830c23c9c actual machine source. This is syntactic host site
+validation, not a proved realization/refinement or whole HM claim.
+
+Measured recent local loops: statement29tests8.488s; macro/interface31tests
+7.843s; raw dispatch31tests14.899s; exact baseline dual-reader translation
+2.05s. Macro/raw class16tests71.013s accidentally includes the full-tree
+raw-arity lint; the first five fixture tests need milliseconds. Future
+selection should keep first discriminating fixture verdict separate. No
+trusted archive-only duration was measured. Next X17 concrete question: preserve
+successful source-world prefix when a dependency refuses, avoiding Served's
+reported 125 ACL2-second/33.6M-step replay; inspect supported resync/preload first.
