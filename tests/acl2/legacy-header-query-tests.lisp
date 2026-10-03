@@ -91,3 +91,39 @@
   (with-local-stobj fn-arena
     (mv-let (answer fn-arena) (lhqt-hyp-removal-case fn-arena) answer)))
 (assert-event (lhqt-hyp-removal-exec))
+
+; Literal source boundary and scheduling teeth. READY is affirmed on the
+; positive witness and removed explicitly on the shorter captured-length
+; corruption; that corruption reads only valid physical offsets.
+(defun lhqt-continuation-case (fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((bytes '(88 45 84 101 115 116 58 32 118 13 10 13 10))
+         (fn-arena (fn-arena-clear fn-arena))
+         (fn-arena (fn-arena-seal-list bytes fn-arena))
+         (start (fn-lhq-begin 0 (len bytes) :pin '(88 45 84 101 115 116)))
+         (bad-ready (fn-lhq-begin 0 5 :pin '(88 45 84 101 115 116))))
+    (mv-let (first used-a) (fn-lhq-tick start 1 fn-arena)
+      (mv-let (split used-b) (fn-lhq-tick first 2 fn-arena)
+        (mv-let (whole used-ab) (fn-lhq-tick start 3 fn-arena)
+          (mv-let (wrong used-wrong) (fn-lhq-tick start 4 fn-arena)
+            (mv-let (source source-used) (fn-lhq-list-tick bytes 3 start)
+              (mv-let (bad bad-used) (fn-lhq-tick bad-ready 8 fn-arena)
+                (mv-let (bad-source bad-source-used)
+                  (fn-lhq-list-tick bytes 8 bad-ready)
+                  (mv (and (fn-lhq-ready-p start fn-arena)
+                           (equal split whole) (equal (+ used-a used-b) used-ab)
+                           (equal whole source) (equal used-ab source-used)
+                           (not (equal wrong whole)) (not (equal used-wrong used-ab))
+                           (not (fn-lhq-ready-p bad-ready fn-arena))
+                           (not (equal bad bad-source))
+                           (not (equal bad-used bad-source-used)))
+                      fn-arena))))))))))
+
+(defun lhqt-continuation-exec ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (ok fn-arena) (lhqt-continuation-case fn-arena) ok)))
+
+; Deliberately remove the public READ guard for the corrupt-length witness;
+; the positive witness above explicitly establishes that guard.
+(assert-event (with-guard-checking :none (lhqt-continuation-exec)))

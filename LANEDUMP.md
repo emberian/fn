@@ -3566,3 +3566,12 @@ Qplan fallback composition. Shared header bounds immutablec1f6 normal selected
 3root cert PASS certify-20261003T173231Z-2697440 (20matching cache dependencies,
 9uncited historical cache dependencies explicitly retained as provenance debt).
 Manifest archived/indexed; no book over10s and no image/physical transfer.
+
+Access continuation/source bridge: fn-lhq-tick-fuel-state-composes and
+fn-lhq-tick-fuel-used-composes hold without hypotheses (12494/17587steps).
+fn-lhq-tick-is-source-list-tick equals BOTH actual state and USED count to
+the captured source suffix under cheap READ-ready guard (3601steps), with
+guard-verified proof-only list observation. Literal positive/source/fuelmutation
+and READ hypothesis-removal teeth warm PASS; actual source237138 checks PASS.
+Full arbitrary-name old-parser/value correspondence still open, no physical
+guard/funding/endpoint transfer. Source before selected query+test recertification.
