@@ -1821,3 +1821,15 @@ needlessly staged on normal resume. Normal cert/image remain Integration-owned.
 No deployment, paged startup or physical init refinement claim.
 
 - Native carrier ABI support is dormant until atomic threading: actual wrappers accept fn-owner-st in declared trailing order and read only its live user-stobj binding. One hbox recording-world raw dispatch test PASS (2.292s), including missing/replaced/removed binding and legacy ABI. Indexed receipt owner-carrier-native-dispatch-20261003.json; no semantic or image claim. Runtime confirmed io dispatch seam disjoint.
+BP-TRANSPORT retained driver 2026-10-03: generic fnn-tcl-session now consumes
+fnn-tcl-begin/turn, one socket attempt/range<=4096 per turn, exact encoded
+vector/offset retained, ordered released output distinct from custody ACK.
+Input/pump alternate; physical ACK write finishes before application hook.
+Source borrow excludes input; EOF/deadline protocol loss preserves caller's
+physical close debt. Transport handler encloses socket primitive only, so
+publication/core faults escape. Actual raw driver+old once drain+forward
+close selectors PASS; scalar guarded book+literal teeth hbox manifest
+certify-20261003T104100Z-1504853 PASSED2/0, harvest in progress. Primary source
+review Assembly. S025 node mux stillnext; Foundations owns explicit profile
+count/demand producer, cannot borrow syncer/output grants. S068 carry/source
+activation and whole-session refinement remain open.

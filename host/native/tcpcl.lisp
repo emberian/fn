@@ -70,7 +70,12 @@
   ;; and OUTCOME keeps meaning the outbound transfer's (inspection sweep
   ;; 2026-10-03 S024: such a transfer was ACKed into a plain spool file in
   ;; the FNBS root, never admitted, and renamed over by the next session).
-  (refuse-inbound nil))
+  (refuse-inbound nil)
+  ;; Retained driver state. Held protocol messages remain custody-gated;
+  ;; only released messages enter TX-MESSAGES, in the machine's order.
+  (retained nil) (tx-messages nil) (tx-data nil) (tx-offset 0) (tx-deadline nil)
+  (input-due t) (pump-pending nil) role bundlep (expect 0) on-ready
+  (ready-called nil) (finished nil))
 
 ;;; ---------------------------------------------------------------------------
 ;;; The clock.  One monotonic reading per wakeup, in milliseconds, handed to
@@ -289,6 +294,10 @@ and faults without following or deleting anything."
   (let ((queued (nreverse (fnn-tclc-held conn))))
     (setf (fnn-tclc-held conn) nil)
     (unless (fnn-tclc-broken conn)
+      (when (fnn-tclc-retained conn)
+        (setf (fnn-tclc-tx-messages conn)
+              (nconc (fnn-tclc-tx-messages conn) queued))
+        (return-from fnn-tcl-flush))
       (handler-case
           (dolist (message queued)
             (fnn-send-all (fnn-tclc-fd conn)
@@ -469,6 +478,9 @@ and faults without following or deleting anything."
 ;;; pump until the machine stops emitting.
 
 (defun fnn-tcl-pump-out (conn now)
+  (when (fnn-tclc-retained conn)
+    (setf (fnn-tclc-pump-pending conn) t)
+    (return-from fnn-tcl-pump-out))
   (loop
     (let ((triple (fnn-core 'fn-tcl-host-pump (fnn-tclc-session conn) now)))
       (fnn-tcl-apply conn triple)
@@ -486,81 +498,126 @@ and faults without following or deleting anything."
 ;;; The loop.  One `fn-tcl-drive' per chunk, with the carry prepended; a tick
 ;;; on every wakeup; `fn-tcl-tcp-closed' when the peer goes away.
 
-(defun fnn-tcl-session (fd role params tag spool &key bundle trace (expect 0) on-ready
-                                                     refuse-inbound)
-  "Drive one connection to its end and return the connection record.
-
-Only the active entity initiates the SESS_TERM handshake, and only when
-ACL2's fn-tcl-host-active-closep says so: once the transfer it was given has
-an outcome and the EXPECT transfers it was told to await have arrived, or
-that outcome was a refusal or uncertain, which no receipt follows: a session closed by whichever side finished first would
-cut the other side's transfer, and the machine would be right to call that a
-failure rather than a refusal."
+(defun fnn-tcl-begin (fd role params tag spool &key bundle trace (expect 0) on-ready refuse-inbound)
+  "Retain a session. Opening emits messages but performs no socket write."
   (let* ((now (fnn-tcl-now))
          (session (fnn-core 'fn-tcl-host-initial role params now))
          (conn (make-fnn-tcl-conn :fd fd :tag tag :spool spool :session session
-                                  :trace trace :refuse-inbound refuse-inbound
-                                  :pending (and bundle (cons tag bundle))))
-         (ready-called nil))
+                :trace trace :refuse-inbound refuse-inbound :retained t
+                :role role :bundlep (and bundle t) :expect expect :on-ready on-ready
+                :pending (and bundle (cons tag bundle)))))
     (unless session (fnn-refuse "tcpcl: the session machine refused these parameters"))
     (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-open session now))
-    (loop
-      (when (fnn-tclc-closing conn) (return))
-      (when (eq (fnn-core 'fn-tcl-host-phase (fnn-tclc-session conn)) :closed) (return))
-      (cond
-        ((fnn-tclc-source-pending conn)
-         (fnn-tcl-source-tick conn)
-         (sb-thread:thread-yield))
-        ((fnn-tclc-source-more conn)
-         (fnn-tcl-source-input-turn conn nil (fnn-tcl-now))
-         (sb-thread:thread-yield))
-        (t
-      (let* ((timeout (if (and *fnn-tcl-work-pending*
-                                (funcall *fnn-tcl-work-pending* conn))
-                           0 (fnn-tcl-read-timeout conn)))
-             (incoming (fnn-recv fd timeout))
-             (wake (fnn-tcl-now)))
-        (cond
-          ((eq incoming :timeout)
-           (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) wake)))
-          ((zerop (length incoming))
-           (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tcp-closed (fnn-tclc-session conn)))
-           (return))
-          (t
-           (let ((chunk (fnn-octet-list incoming)))
-             (fnn-tcl-record-trace conn wake chunk)
-             (if *fnn-tcl-source-start*
-                 (fnn-tcl-source-input-turn conn chunk wake)
-               (let ((triple (fnn-core 'fn-tcl-host-drive (fnn-tclc-session conn)
-                                       (append (fnn-tclc-carry conn) chunk) wake)))
-                 (setf (fnn-tclc-carry conn) (third triple))
-                 (fnn-tcl-apply conn triple "event"))))
-           (unless (fnn-tclc-source-pending conn)
-             (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) wake)))))
-        ;; Delivery settlement has flushed its ACK before this boundary.
-        ;; Keepalive input cannot suppress already retained reassembly work.
-        (when (and *fnn-tcl-progress* (not (fnn-tclc-closing conn))
-                   (not (fnn-tclc-source-pending conn)))
-          (setf (fnn-tclc-progress conn) nil)
-          (funcall *fnn-tcl-progress* conn)
-          (sb-thread:thread-yield))
-        (when (and on-ready (not ready-called)
-                   (eq (fnn-core 'fn-tcl-host-phase
-                                 (fnn-tclc-session conn)) :established))
-          (setq ready-called t)
-          (funcall on-ready conn))
-        (unless (fnn-tclc-source-pending conn) (fnn-tcl-offer conn wake))
-        (when (and (not (fnn-tclc-source-pending conn)) (eq role :active)
-                   (not (fnn-tclc-closing conn))
-                   (eq (fnn-core 'fn-tcl-host-active-closep
-                                 (fnn-tclc-session conn) (and bundle t)
-                                 (and (fnn-tclc-pending conn) t)
-                                 (fnn-tclc-outcome conn)
-                                 (fnn-tclc-inbound conn) expect)
-                       t))
-          (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-terminate (fnn-tclc-session conn) wake)))))))
-    (when (fnn-tclc-broken conn)
-      (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tcp-closed (fnn-tclc-session conn))))
+    conn))
+
+(defun fnn-tcl-turn-lost (conn)
+  ;; This is protocol loss, never a delivery settlement or physical receipt.
+  (setf (fnn-tclc-broken conn) t (fnn-tclc-closing conn) t
+        (fnn-tclc-tx-data conn) nil (fnn-tclc-tx-messages conn) nil)
+  (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tcp-closed (fnn-tclc-session conn))))
+
+(defun fnn-tcl-turn-local (conn now)
+  ;; The progress callback follows actual released ACK writes, not merely
+  ;; enqueueing them. A retained received-source borrow also excludes it.
+  (when (and *fnn-tcl-progress* (not (fnn-tclc-source-pending conn)))
+    (setf (fnn-tclc-progress conn) nil)
+    (funcall *fnn-tcl-progress* conn))
+  (when (and (fnn-tclc-on-ready conn) (not (fnn-tclc-ready-called conn))
+             (eq (fnn-core 'fn-tcl-host-phase (fnn-tclc-session conn)) :established))
+    (setf (fnn-tclc-ready-called conn) t)
+    (funcall (fnn-tclc-on-ready conn) conn))
+  (unless (fnn-tclc-pump-pending conn) (fnn-tcl-offer conn now))
+  (when (and (eq (fnn-tclc-role conn) :active)
+             (eq (fnn-core 'fn-tcl-host-active-closep
+                   (fnn-tclc-session conn) (fnn-tclc-bundlep conn)
+                   (and (fnn-tclc-pending conn) t) (fnn-tclc-outcome conn)
+                   (fnn-tclc-inbound conn) (fnn-tclc-expect conn)) t))
+    (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-terminate (fnn-tclc-session conn) now))))
+
+(defun fnn-tcl-physical-attempt (conn operation)
+  ;; Only the named socket call is connection-scoped. Publication and core
+  ;; failures outside this thunk must escape to their existing fault fence.
+  (handler-case (funcall operation)
+    ((or fnn-os-error sb-bsd-sockets:socket-error) (condition)
+      (fnn-tcl-log conn "event" "peer lost during retained attempt: ~a" condition)
+      (fnn-tcl-turn-lost conn)
+      :lost)))
+
+(defun fnn-tcl-turn (conn)
+  "One retained action; at most one bounded socket attempt. Returns work/wait/done.
+The caller keeps this connection and its socket until actual physical close."
+  (when (fnn-tclc-finished conn) (return-from fnn-tcl-turn :done))
+  (let* ((now (fnn-tcl-now))
+         (action (fnn-core 'fn-tcrt-action
+                  (fnn-tclc-source-pending conn) (fnn-tclc-source-more conn)
+                  (and (fnn-tclc-tx-data conn) t) (and (fnn-tclc-tx-messages conn) t)
+                  (fnn-tclc-input-due conn) (fnn-tclc-pump-pending conn)
+                  (fnn-tclc-closing conn)
+                  (fnn-core 'fn-tcl-host-phase (fnn-tclc-session conn))
+                  now (fnn-tclc-tx-deadline conn)))
+         (result :work))
+    (case action
+        (:done (setf (fnn-tclc-finished conn) t) (setq result :done))
+        (:lost (fnn-tcl-turn-lost conn))
+        (:encode
+         (setf (fnn-tclc-tx-data conn)
+               (fnn-octets (fnn-core 'fn-tcl-host-encode (pop (fnn-tclc-tx-messages conn))))
+               (fnn-tclc-tx-offset conn) 0
+               (fnn-tclc-tx-deadline conn) (fnn-core 'fn-tcrt-write-deadline now)))
+        (:write
+         (let* ((data (fnn-tclc-tx-data conn)) (offset (fnn-tclc-tx-offset conn))
+                (end (fnn-core 'fn-tcrt-write-end offset (length data)))
+                (written (fnn-tcl-physical-attempt conn
+                          (lambda () (fnn-socket-write-now (fnn-tclc-fd conn) data offset end)))))
+           (cond ((eq written :lost) nil)
+                 ((eq written :wait) (setq result :wait))
+                 (t (progn
+               (incf (fnn-tclc-tx-offset conn) written)
+               (when (= (fnn-tclc-tx-offset conn) (length data))
+                 (setf (fnn-tclc-tx-data conn) nil (fnn-tclc-tx-deadline conn) nil)))))))
+        (:source (fnn-tcl-source-tick conn))
+        (:buffer (fnn-tcl-source-input-turn conn nil now))
+        (:pump
+         (fnn-tcl-turn-local conn now)
+         (let ((triple (fnn-core 'fn-tcl-host-pump (fnn-tclc-session conn) now)))
+           (fnn-tcl-apply conn triple)
+           (setf (fnn-tclc-pump-pending conn) (and (second triple) t)
+                 (fnn-tclc-input-due conn) t)))
+        (:local
+         (fnn-tcl-turn-local conn now)
+         (setf (fnn-tclc-input-due conn) t))
+        (:read
+         (let ((incoming (fnn-tcl-physical-attempt conn
+                           (lambda () (fnn-socket-read-now (fnn-tclc-fd conn)
+                                        (fnn-core 'fn-tcrt-read-limit))))))
+           (setf (fnn-tclc-input-due conn) nil)
+           (cond
+             ((eq incoming :lost) nil)
+             ((eq incoming :wait)
+              (setq result :wait)
+              (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) now)))
+             ((zerop (length incoming)) (fnn-tcl-turn-lost conn))
+             (t
+              (let ((chunk (fnn-octet-list incoming)))
+                (fnn-tcl-record-trace conn now chunk)
+                (if *fnn-tcl-source-start*
+                  (fnn-tcl-source-input-turn conn chunk now)
+                  (let ((triple (fnn-core 'fn-tcl-host-drive (fnn-tclc-session conn)
+                                  (append (fnn-tclc-carry conn) chunk) now)))
+                    (setf (fnn-tclc-carry conn) (third triple))
+                    (fnn-tcl-apply conn triple "event"))))
+              (unless (fnn-tclc-source-pending conn)
+                (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) now)))))))
+        (otherwise (fnn-fault "TCPCL retained turn action unavailable")))
+    result))
+
+(defun fnn-tcl-session (fd role params tag spool &key bundle trace (expect 0) on-ready refuse-inbound)
+  "Compatibility consumer of the retained session driver."
+  (let ((conn (fnn-tcl-begin fd role params tag spool :bundle bundle :trace trace
+                :expect expect :on-ready on-ready :refuse-inbound refuse-inbound)))
+    (loop for result = (fnn-tcl-turn conn) until (eq result :done) do
+      (sb-thread:thread-yield)
+      (when (eq result :wait) (sleep 0.01)))
     (when (fnn-tclc-closing conn) (ignore-errors (fnn-graceful-close fd)))
     conn))
 

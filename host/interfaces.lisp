@@ -5316,3 +5316,12 @@
 (definterface fn-web-host-read-size :class ::program)
 (definterface fn-web-host-event-cid :class ::program)
 (definterface fn-web-host-reserve-size :class ::program)
+
+; Retained TCPCL I/O quanta and custody action precedence.
+(definterface fn-tcrt-read-limit :class :common-lisp-compliant)
+(definterface fn-tcrt-write-end :class :common-lisp-compliant
+  :keystones (fn-tcrt-write-range-is-bounded))
+(definterface fn-tcrt-write-deadline :class :common-lisp-compliant)
+(definterface fn-tcrt-action :class :common-lisp-compliant
+  :keystones (fn-tcrt-source-custody-excludes-input
+              fn-tcrt-ready-write-precedes-source-and-close))

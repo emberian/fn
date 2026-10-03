@@ -148,6 +148,7 @@
 (include-book "history-capture-state")
 (include-book "owner-retain-state")
 (include-book "owner-retain-transitions")
+(include-book "owner-post-carried")
 (include-book "owner-obligation-state")
 (include-book "deflate-inflate")
 (include-book "owner-checkpoint-open")
@@ -267,3 +268,4 @@
 (include-book "owner-connection-callbacks")
 (include-book "../host/owner-exposure-host")
 (include-book "../host/index-reader-request-host")
+(include-book "native-init-resume")

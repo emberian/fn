@@ -22113,6 +22113,32 @@
         "fn-nir-resume-refuses-distinct-initial-changes"
       ],
       "progress_note": "Fresh hbox cached-only admission over14matching dependencies; seven forms/22665steps/.32s, accepting keystone9852steps and refusing keystone12813steps. All3functions common-lisp-compliant;21literal/guard forms pass with final source diff5of5. Normal certification and matching developer image remain pending; no new paged startup or physical publication refinement claim."
+    },
+    {
+      "id": "PRF-1273",
+      "title": "Retained TCPCL syscall ranges and custody/output action precedence",
+      "statement": "Native fnn-tcl-turn calls fn-tcrt-action, fn-tcrt-write-end and fn-tcrt-read-limit. Under natp offset, integerp total and offset<=total, write end is within the existing range and extends at most4096 octets. With retained source custody and no released output/closed session, action selects source continuation rather than input. A released ready write precedes source/local/close actions. This is a local scheduling guarantee; it does not establish whole-session representation refinement, concurrent node fairness, allocation funding, DNS availability or physical custody settlement. RFC9174 protocol semantics remain the existing session machine, and the quantum does not limit stored transfers.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-tcrt-write-range-is-bounded",
+        "fn-tcrt-source-custody-excludes-input",
+        "fn-tcrt-ready-write-precedes-source-and-close"
+      ],
+      "evidence": [
+        "books/tcpcl-retained-turn.lisp",
+        "tests/acl2/tcpcl-retained-turn-tests.lisp",
+        "host/native/tcpcl.lisp",
+        "tests/native_tcpcl_retained_turn_raw.lisp",
+        "planning/evidence/manifests/certify-20261003T104100Z-1504853.json",
+        "planning/evidence/bp-retained-tcpcl-turn-2026-10-03.md"
+      ],
+      "progress_note": "BP-TRANSPORT 2026-10-03: protected REPL guarded book+literal teeth admitted848steps; two-root farm manifest certify-20261003T104100Z-1504853 PASSED2/0. Actual generic fnn-tcl-session consumes begin/turn and narrow raw actual-driver test passes partialwrites/wait, ACK-before-progress, alternating input/pump, receivedsourceborrow, EOF/deadline, publication-error escape. New source-matched image and node funded scheduler remain pending."
     }
   ]
 }
