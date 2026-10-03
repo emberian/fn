@@ -240,7 +240,7 @@
          (mv (fn-cost-plus acost
                            (if (equal bcost ''0)
                                ''0
-                             (list (list 'lambda (cadr (car term)) bcost) (cdr term))))
+                             (cons (list 'lambda (cadr (car term)) bcost) (cdr term))))
              (union-eq aun bun)))))
     ((eq (car term) 'if)
      (mv-let (tcost tun) (fn-cost-term (cadr term) self stack fuel w)
@@ -278,7 +278,11 @@
        (mv ''1 nil))
       ((eq fn self) (mv (cons (fn-cost-twin-name fn) actuals) nil))
       ((assoc-eq fn (table-alist 'fn-cost w))
-       (mv (cons (fn-cost-twin-name fn) actuals) nil))
+       ; A twin is callable even when its derivation is partial.  Its row's
+       ; unknown leaves remain unknown in every caller, not just here.
+       (mv (cons (fn-cost-twin-name fn) actuals)
+           (fn-cost-get :unaccounted
+                        (cdr (assoc-eq fn (table-alist 'fn-cost w))))))
       ((and body
             (not (eq (symbol-class fn w) :program))
             (not (member-eq fn stack))
