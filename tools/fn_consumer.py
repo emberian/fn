@@ -73,6 +73,7 @@ anything.
 Exit codes: 0 finished, 1 refused (an fn or application refusal it cannot
 settle, or the database held by another process), 3 stopped on an uncertain fn outcome (wake again to settle), 4 fault.
 Developer cuts (`FN_CONSUMER_CUT`) stop the process with os._exit(97):
+`after-poll` (the exact delivery saved, before interpretation);
 `in-transaction`, `after-commit`, `after-ack` (the consumer transaction and
 its ack); `before-post` (no attempt recorded), `attempt-recorded` (in-flight
 attempt committed, nothing sent), `after-post` (fn answered, the answer not
@@ -150,6 +151,12 @@ CREATE TABLE IF NOT EXISTS observations(
   store_sequence INTEGER, detail TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS unattributed(
   store_sequence INTEGER PRIMARY KEY, reason TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS deliveries(
+  id INTEGER PRIMARY KEY, before_cursor BLOB NOT NULL,
+  cursor BLOB NOT NULL, report BLOB NOT NULL,
+  state TEXT NOT NULL CHECK (state IN ('pending', 'handled')));
+CREATE UNIQUE INDEX IF NOT EXISTS one_pending_delivery
+  ON deliveries(state) WHERE state='pending';
 """
 
 
@@ -264,9 +271,16 @@ class Consumer:
 
     # -- native calls --------------------------------------------------------
     def native(self, *words):
-        result = subprocess.run([self.image, "--fn", *map(str, words)],
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                timeout=300, check=False)
+        try:
+            result = subprocess.run([self.image, "--fn", *map(str, words)],
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                    timeout=300, check=False)
+        except subprocess.TimeoutExpired:
+            # In particular a timed-out ACK or POST might have committed.
+            # Its existing durable client record is settled on the next wake.
+            raise Stop(3, "native %s timed out; outcome unavailable" % words[0])
+        except OSError as error:
+            raise Stop(4, "native %s could not start: %s" % (words[0], error))
         return result.returncode, result.stdout, result.stderr
 
     def scratch(self, stem):
@@ -327,7 +341,10 @@ class Consumer:
         code, out, err = self.native("consumer-project", cursor_path, report_path)
         line = out.decode("ascii", "replace").strip().splitlines()
         line = line[-1] if line else ""
-        if code != 0:
+        if code in (3, 4) or code not in (0, 1):
+            raise Stop(code if code == 3 else 4,
+                       "consumer-project: %s %s" % (out.decode(), err.decode()))
+        if code == 1:
             return None, line
         words = line.split()
         if len(words) != 18 or words[0] != "fn-consumer-project-v1":
@@ -602,6 +619,7 @@ class Consumer:
                     (aid, oid, before, after))
             self.set_meta("pending_ack", cursor.hex())
             self.set_meta("pending_ack_state", "unsent")
+            self.finish_delivery(cursor)
             cut("in-transaction")
             self.db.execute("COMMIT")
         except BaseException:
@@ -616,7 +634,38 @@ class Consumer:
         self.db.execute("INSERT OR IGNORE INTO unattributed VALUES (?, ?)", (sequence, reason))
         self.set_meta("pending_ack", cursor.hex())
         self.set_meta("pending_ack_state", "unsent")
+        self.finish_delivery(cursor)
         self.db.execute("COMMIT")
+
+    def finish_delivery(self, cursor):
+        """Called in the SAME transaction as inbox handling and pending ACK."""
+        self.db.execute("UPDATE deliveries SET state='handled' "
+                        "WHERE state='pending' AND cursor=?", (cursor,))
+
+    def delivery(self):
+        """Retain exact native output before interpreting or acknowledging it."""
+        row = self.db.execute("SELECT before_cursor, cursor, report FROM deliveries "
+                              "WHERE state='pending'").fetchone()
+        if row is None:
+            before = self.position()
+            _, cursor, report_path = self.poll()
+            report = report_path.read_bytes()
+            self.db.execute("BEGIN IMMEDIATE")
+            try:
+                self.db.execute("INSERT INTO deliveries(before_cursor,cursor,report,state) "
+                                "VALUES (?,?,?,'pending')", (before, cursor, report))
+                self.db.execute("COMMIT")
+            except BaseException:
+                if self.db.in_transaction:
+                    self.db.execute("ROLLBACK")
+                raise
+            row = (before, cursor, report)
+            cut("after-poll")
+        before, cursor, report = row
+        cursor_path, report_path = self.scratch("delivery-cursor"), self.scratch("delivery-report")
+        cursor_path.write_bytes(cursor)
+        report_path.write_bytes(report)
+        return before, cursor_path, cursor, report_path
 
     # -- fn progress ----------------------------------------------------------
     def settle_ack(self):
@@ -630,7 +679,14 @@ class Consumer:
             if current == cursor:
                 self.clear_ack()
                 return
-        code = self.ack(cursor)
+        try:
+            code = self.ack(cursor)
+        except Stop as stopped:
+            if stopped.code == 3:
+                self.db.execute("BEGIN IMMEDIATE")
+                self.set_meta("pending_ack_state", "uncertain")
+                self.db.execute("COMMIT")
+            raise
         if code == 0:
             self.clear_ack()
             cut("after-ack")
@@ -704,16 +760,19 @@ class Consumer:
         self.settle_ack()
         self.drive_outbox()
         for _ in range(max_pages):
-            before = self.position()
-            cursor_path, cursor, report_path = self.poll()
+            before, cursor_path, cursor, report_path = self.delivery()
             report = report_path.read_bytes()
             if not report:
                 if cursor == before:
+                    self.db.execute("BEGIN IMMEDIATE")
+                    self.finish_delivery(cursor)
+                    self.db.execute("COMMIT")
                     break
                 # An empty page still progresses over the scanned prefix.
                 self.db.execute("BEGIN IMMEDIATE")
                 self.set_meta("pending_ack", cursor.hex())
                 self.set_meta("pending_ack_state", "unsent")
+                self.finish_delivery(cursor)
                 self.db.execute("COMMIT")
                 self.settle_ack()
                 # A window shorter than the poll's scan bound reached the
@@ -728,10 +787,19 @@ class Consumer:
                     # article, or it was superseded) carries a Message-ID
                     # and no content; the native decoder names it.  Nothing
                     # to verify or answer: it is noted and acked.
-                    code, out, _ = self.native("consumer-article", report_path)
+                    code, out, err = self.native("consumer-article", report_path)
+                    if code != 0:
+                        raise Stop(code if code in (1, 3) else 4,
+                                   "consumer-article: %s %s" % (out.decode(), err.decode()))
                     words = out.decode("ascii", "replace").split()
-                    if code == 0 and len(words) == 2 and words[0] == "fn-consumer-withdrawn-v1":
+                    if len(words) == 2 and words[0] == "fn-consumer-withdrawn-v1":
                         line = "withdrawn " + bytes.fromhex(words[1]).decode("ascii", "replace")
+                    elif len(words) == 3 and words[0] == "fn-consumer-article-v1":
+                        # A valid legacy/unsupported-authorship article is
+                        # retained as evidence, not an application operation.
+                        line = "unattributed " + line
+                    else:
+                        raise Stop(4, "unexpected consumer-article output")
                     self.note_unattributed(len(self.db.execute(
                         "SELECT 1 FROM unattributed").fetchall()), line, cursor)
                 else:
@@ -780,6 +848,8 @@ class Consumer:
             "outbox": outbox,
             "state": dict(q("SELECT key, value FROM app_state")),
             "pending_ack": self.meta("pending_ack_state"),
+            "pending_delivery": self.db.execute(
+                "SELECT count(*) FROM deliveries WHERE state='pending'").fetchone()[0],
             "unattributed": len(q("SELECT 1 FROM unattributed")),
         }
 
@@ -817,6 +887,13 @@ def main(argv=None):
         sys.stderr.write("consumer stopped: %s\n" % stop)
         print(json.dumps(consumer.summary(), sort_keys=True))
         return stop.code
+    except (ValueError, KeyError, OSError, sqlite3.Error) as fault:
+        # Parsing or local persistence failures never become a refusal or
+        # permission to advance the declared position. Pending bytes remain.
+        if consumer.db.in_transaction:
+            consumer.db.execute("ROLLBACK")
+        sys.stderr.write("consumer fault: %s\n" % fault)
+        return 4
 
 
 if __name__ == "__main__":

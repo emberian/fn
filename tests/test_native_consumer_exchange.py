@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import re
 import signal
+import sqlite3
 import sys
 import unittest
 
@@ -176,6 +177,60 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 3, (stdout + stderr).decode("utf-8", "replace"))
         self.owner = self.start_owner()
         return json.loads(stdout)
+
+    def test_saved_delivery_survives_projection_fault_and_owner_restart(self):
+        self.start_node()
+        a = self.agent("agent-a", 0xA1, 1)
+        b = self.agent("agent-b", 0xB2, 2)
+        for label in ("agent-a", "agent-b"):
+            self.register(label)
+        for config in (a, b):
+            self.trust(config, ("agent-a", "agent-b"),
+                       (("r", "agent-a"), ("reply-", "agent-b")))
+        self.consumer(a, "report", "r1", "saved-delivery-receipt")
+        self.consumer(b, "wake", cut="after-poll", expected=97)
+        data = json.loads(b.read_text())
+        with sqlite3.connect(data["db"]) as db:
+            saved = db.execute("SELECT cursor, report, state FROM deliveries").fetchone()
+        self.assertTrue(saved[1])
+        self.assertEqual(saved[2], "pending")
+        self.assertEqual(self.status("agent-b")[0], 0)
+
+        # Fail only the client-side projection process. All owner, decoder,
+        # signing and publication calls still cross the actual saved image.
+        wrapper = self.root / "projection-fault"
+        wrapper.write_text(
+            "#!/usr/bin/env python3\nimport os,sys\n"
+            "if sys.argv[1:3] == ['--fn','consumer-project']: sys.exit(4)\n"
+            "real = " + repr(str(IMAGE)) + "\n"
+            "os.execv(real, [real, *sys.argv[1:]])\n")
+        wrapper.chmod(0o755)
+        data["image"] = str(wrapper)
+        b.write_text(json.dumps(data))
+        self.consumer(b, "wake", expected=4)
+        self.assertEqual(self.status("agent-b")[0], 0)
+        self.assertEqual(self.summary(b)["transitions"], [])
+        with sqlite3.connect(data["db"]) as db:
+            self.assertEqual(db.execute(
+                "SELECT cursor, report, state FROM deliveries").fetchone(), saved)
+
+        self.stop_owner(self.owner)
+        self.owner = self.start_owner()
+        data["image"] = str(IMAGE)
+        b.write_text(json.dumps(data))
+        self.consumer(b, "wake")
+        final = self.summary(b)
+        self.assertEqual(final["transitions"], [[APP, "r1"]])
+        self.assertEqual(len(final["outbox"]), 1)
+        self.assertEqual(final["outbox"][0]["state"], "stored")
+        self.assertEqual(final["pending_delivery"], 0)
+        self.assertGreater(self.status("agent-b")[0], 0)
+        with sqlite3.connect(data["db"]) as db:
+            self.assertEqual(db.execute(
+                "SELECT cursor, report, state FROM deliveries ORDER BY id LIMIT 1"
+            ).fetchone(), (*saved[:2], "handled"))
+        self.consumer(a, "wake")
+        self.assertEqual(self.summary(a)["state"]["replies"], "1")
 
     def test_two_sleeping_agents_exchange_across_every_ownership_cut(self):
         self.start_node()
