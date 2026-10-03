@@ -511,3 +511,12 @@ proper decoded data hypothesis; the production consumer never executes the
 proof-only concatenating abstraction. PRF1292 is the independent owner operation
 readout and is not this theorem's coordinate. Historical evidence bytes retain
 their original source coordinate; current union certification is refreshed.
+
+The received-source durable callback still invokes the semantic BP decoder.
+Its `fn-bpc-dec` text/byte item checks and `fn-bpb-take-bytes` availability checks
+now execute `fn-cbor-at-leastp` over the declared prefix, preserving the old
+logical length comparison through guarded MBE equality. A four-byte item before
+a65536-byte suffix needs4 prefix visits rather than65540 length visits. This
+measures only item availability: primary prefix extraction, complete semantic
+decode, CRC computation, canonical encoding and Store publication still require
+bounded continuation work. It adds no representation or stored-data ceiling.

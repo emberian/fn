@@ -1,0 +1,75 @@
+;;; Actual BP decoder bodies: identical logical outputs, bounded prefix probes.
+;;; Trusted repository forms only. No source-native endpoint or full-step claim.
+(defpackage "ACL2" (:use "COMMON-LISP"))
+(in-package "ACL2")
+(declaim (declaration xargs))
+(defmacro defconst (name value) `(defparameter ,name ,value))
+(defvar *prefix-mode* :exec)
+(defmacro mbe (&key logic exec) (if (eq *prefix-mode* :logic) logic exec))
+(defun natp (x) (and (integerp x) (<= 0 x)))
+(defun zp (x) (or (not (integerp x)) (<= x 0)))
+(defun nfix (x) (if (natp x) x 0))
+(defun true-listp (x) (if (consp x) (true-listp (cdr x)) (null x)))
+(defun take (n xs) (if (zp n) nil (cons (car xs) (take (1- n) (cdr xs)))))
+(defun binary-append (x y) (append x y))
+(defvar *len-visits* 0)
+(defvar *prefix-visits* 0)
+(defun len (x)
+ (loop for rest = x then (cdr rest) while (consp rest)
+       do (incf *len-visits*) count t))
+(defun selected-forms (path names)
+ (with-open-file (in path)
+  (loop for form = (read in nil :eof) until (eq form :eof)
+   when (and (consp form) (member (car form) '(defun defconst))
+             (member (second form) names)) collect form)))
+(dolist (form (selected-forms "books/cbor.lisp"
+ '(fn-cbor-ag-car fn-cbor-ag-cdr fn-cbor-octetp fn-cbor-octet-listp
+   fn-cbor-ok fn-cbor-error fn-cbor-result-okp fn-cbor-result-value
+   fn-cbor-result-rest fn-cbor-u16-from fn-cbor-u32-from
+   fn-cbor-decode-argument fn-cbor-at-leastp))) (eval form))
+(let ((actual (symbol-function 'fn-cbor-at-leastp)))
+ (setf (symbol-function 'fn-cbor-at-leastp)
+  (lambda (xs n)
+   (when (and (not (zp n)) (consp xs)) (incf *prefix-visits*))
+   (funcall actual xs n))))
+(dolist (form (selected-forms "books/bp-primary-cbor.lisp"
+ '(*fn-bpc-max-uint* *fn-bpc-max-bytes* *fn-bpc-max-text* *fn-bpc-max-arity*
+   fn-bpc-u64-from fn-bpc-canonical-argumentp fn-bpc-decode-argument
+   fn-bpc-decode-head))) (eval form))
+(dolist (entry '(("books/bp-primary-cbor.lisp" fn-bpc-dec fn-bpc-dec-baseline)
+                ("books/bp-bundle.lisp" fn-bpb-take-bytes fn-bpb-take-bytes-baseline)))
+ (let ((form (first (selected-forms (first entry) (list (second entry))))))
+  (assert form)
+  (let ((*prefix-mode* :logic)) (eval (subst (third entry) (second entry) form)))
+  (let ((*prefix-mode* :exec)) (eval form))))
+(defun compare-prefix (baseline current args expected-visits)
+ (let ((*len-visits* 0) (*prefix-visits* 0))
+  (let* ((old (apply baseline args)) (old-visits *len-visits*))
+   (setq *len-visits* 0)
+   (let ((new (apply current args)))
+    (assert (equal old new))
+    (when expected-visits
+     (assert (zerop *len-visits*))
+     (assert (= *prefix-visits* expected-visits)))
+    (values old-visits *prefix-visits*)))))
+;;; Same four-byte text/bytes item, followed by a 65536-byte untouched suffix.
+;;; Complete result equality includes both value and the exact remainder.
+(let ((suffix (make-list 65536 :initial-element 17)))
+ (dolist (head '(68 100))
+  (let ((wire (append (list head 1 2 3 4) suffix)))
+   (multiple-value-bind (old-visits new-visits)
+    (compare-prefix 'fn-bpc-dec-baseline 'fn-bpc-dec (list :item 0 wire 20) 4)
+    (assert (= old-visits 65540))
+    (assert (= new-visits 4)))))
+ (multiple-value-bind (old-visits new-visits)
+  (compare-prefix 'fn-bpb-take-bytes-baseline 'fn-bpb-take-bytes
+                  (list (append '(68 1 2 3 4) suffix) 4) 4)
+  (assert (= old-visits 65540)) (assert (= new-visits 4))))
+;;; Truncation, zero size, canonicality and limit outcomes agree too.
+(dolist (wire '((68 1 2) (100 1 2) (64) (96) (88 4 1 2 3 4)
+               (120 1 65) (89 1 0) (121 4 1) (130 1 2)))
+ (compare-prefix 'fn-bpc-dec-baseline 'fn-bpc-dec (list :item 0 wire 20) nil))
+(dolist (entry '(((68 1 2) 4) ((64) 4) ((88 4 1 2 3 4) 4)
+                ((69 1 2 3 4 5) 4) ((100 1 2) 4)))
+ (compare-prefix 'fn-bpb-take-bytes-baseline 'fn-bpb-take-bytes entry nil))
+(format t "PASS actual BP prefix probes: complete decoder results agree; matched 65540-cell suffix scan becomes4 prefix visits for text/bytes/CRC admission.~%")

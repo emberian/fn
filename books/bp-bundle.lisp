@@ -319,7 +319,8 @@
                 (rest (fn-cbor-result-rest h)))
             (if (< bound n)
                 (fn-cbor-error :limit)
-              (if (not (<= n (len rest)))
+              (if (not (mbe :logic (<= n (len rest))
+                            :exec (fn-cbor-at-leastp rest n)))
                   (fn-cbor-error :truncated)
                 (fn-cbor-ok (take n rest) (nthcdr n rest))))))))))
 

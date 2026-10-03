@@ -9806,6 +9806,31 @@
         "tests/acl2/bp-heap-command-tests.lisp"
       ],
       "execution_scope": "Actual ACL2 projection/grammar and actual native heap profile consumer with recorded profile observation pass. Complete DEFAULT reservation extension, actual launcher/resource execution and current native BP joins remain pending."
+    },
+    {
+      "id": "SCN-1138",
+      "title": "BP decoder availability checks stop at the declared item prefix",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-006"
+      ],
+      "steps": [
+        "Run actual fn-bpc-dec and fn-bpb-take-bytes bodies with logical and executable MBE branches on the same four-byte item followed by65536 suffix octets.",
+        "Compare complete results, including rest, on byte/text items, CRC-shaped bounded bytes, truncation, zero-length, limit and noncanonical heads.",
+        "Count LEN cons visits and bounded-prefix visits under the same source harness."
+      ],
+      "expected": [
+        "Complete logical and executable result equality; no prefix availability check scans the untouched suffix.",
+        "The matched four-byte text/bytes/CRC availability check performs4 prefix visits instead of65540 LEN visits; whole decode, integrity and publication costs are outside this comparison."
+      ],
+      "implementation": {
+        "test": "tests/test_native_bp_prefix_probe_source.py"
+      },
+      "evidence": [
+        "tests/native_bp_prefix_probe_source.lisp"
+      ],
+      "execution_scope": "Actual trusted repository function bodies with Common Lisp shims and two MBE choices; normal ACL2 guards prove branch equivalence. No native endpoint, full semantic decode quantum or GC tariff claim."
     }
   ]
 }

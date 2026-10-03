@@ -4161,3 +4161,12 @@ thread-runtime to the actual retained service bank installer. Global live ledger
 in this world is installed (Root BP probe); all further tests use local stobjs.
 Open: actual peer worker/driver composition, full native/GC/owned graph tariff,
 DEFAULT recovery workspace partition and live protected-growth consumer.
+
+BP S068/SCN1138 decoder prefix cost: actual fn-bpc-dec text/bytes and
+fn-bpb-take-bytes execute existing guarded at-least prefix predicate through
+MBE, original logical outputs unchanged. Normal decoder guards PASS110313steps,
+bounded bytes reader guards PASS4806steps. Actual-body matched4-byte item plus
+65536 untouched octets preserves complete result and replaces65540 LEN visits
+with4 prefix visits. Affected two-root certificate submitted; full primary
+prefix extraction, semantic decode/CRC/canonical/publication continuation and
+current source-native multi-peer/RQ remain open. No arbitrary ceiling added.
