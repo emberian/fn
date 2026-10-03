@@ -174,3 +174,70 @@
   :in-theory (e/d (fn-prstartup-plan fn-prstartup-nth fn-prstartup-file-capacity fn-crl-table-supportedp fn-crl-table-capacity)
       (fn-prstartup-affordable-capacity fn-prstartup-required-heap fn-prstartup-baseline-heap fn-prstartup-capacity-stays-affordable fn-prstartup-capacity-in-range)))))
 )
+
+; Named equality bridge from the actual native subject to the numerical core.
+; This definitional bridge is not a separate funding keystone.
+(defthm fn-prstartup-default-plan-refines-plan-by-definition
+ (equal (fn-prstartup-default-plan dynamic occupied profile core nursery cold output
+                                   max-connections root workers cache-limit fd-limit)
+        (cond (cold (list :refused :unpriced-complete-cold-profile))
+              ((not (or (not output) (fn-orv-policy-p output)))
+               (list :refused :invalid-output-resource-profile))
+              (t (fn-prstartup-plan dynamic occupied
+                   (fn-prstartup-protected profile core nursery output max-connections)
+                   root workers (fn-heap-stack-octets profile)
+                   *fn-heap-thread-runtime-octets* cache-limit fd-limit))))
+ :hints (("Goal" :in-theory (e/d (fn-prstartup-default-plan)
+                               (fn-prstartup-plan fn-prstartup-protected
+                                fn-orv-policy-p fn-heap-stack-octets)))))
+
+; DEFAULT's fixed backing is a real launcher contribution. The existing base
+; already reserves its direct-worker threads; add only the selected heap
+; minimum, before the independent explicit output contribution.
+(defun fn-prstartup-extend-default-reservation
+ (base cold root workers cache-limit core observations)
+ (declare (xargs :guard t))
+ (cond (cold base)
+       ((not (eq (fn-prstartup-nth 0 base) :heap)) base)
+       ((not (and (stringp root) (posp workers) (natp cache-limit)
+                  (fn-crl-table-supportedp (max 8 (+ 1 cache-limit)))))
+        (list :refused :invalid-default-pool-capture 0 (fn-prstartup-nth 3 base)))
+       (t
+        (let* ((octets (+ (* *fn-heap-mib* (nfix (fn-prstartup-nth 1 base)))
+                          (fn-prstartup-required-heap (max 8 (+ 1 cache-limit)) workers root)))
+               (mb (fn-heap-mb-of octets))
+               (stack (nfix (fn-prstartup-nth 4 base)))
+               (threads (nfix (fn-prstartup-nth 5 base)))
+               (total (fn-heap-reservation-octets mb core stack threads)))
+         (if (<= total (fn-heap-machine-octets observations))
+             (list :heap mb (fn-prstartup-nth 2 base) (fn-prstartup-nth 3 base) stack threads)
+           (list :refused :machine-cannot-hold-threads (fn-heap-mb-of total)
+                 (fn-prstartup-nth 3 base)))))))
+
+(defthm fn-prstartup-accepted-default-launch-fits-machine
+ (implies (and (not cold)
+               (equal (fn-prstartup-nth 0
+                        (fn-prstartup-extend-default-reservation base cold root workers cache-limit core observations)) :heap))
+  (let ((d (fn-prstartup-extend-default-reservation base cold root workers cache-limit core observations)))
+   (<= (fn-heap-reservation-octets (fn-prstartup-nth 1 d) core
+                                  (fn-prstartup-nth 4 d) (fn-prstartup-nth 5 d))
+       (fn-heap-machine-octets observations))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-prstartup-extend-default-reservation fn-prstartup-nth)
+                          (fn-heap-mb-of fn-heap-machine-octets fn-heap-reservation-octets
+                           fn-prstartup-required-heap fn-crl-table-supportedp)))))
+
+(defun fn-prstartup-extend-operation-reservation
+ (base action cold root workers cache-limit core observations)
+ (declare (xargs :guard t))
+ (if (eq action :run)
+     (fn-prstartup-extend-default-reservation base cold root workers cache-limit core observations)
+   base))
+
+(defthm fn-prstartup-operation-extension-refines-default-by-definition
+ (equal (fn-prstartup-extend-operation-reservation base action cold root workers cache-limit core observations)
+        (if (eq action :run)
+            (fn-prstartup-extend-default-reservation base cold root workers cache-limit core observations)
+          base))
+ :hints (("Goal" :in-theory (e/d (fn-prstartup-extend-operation-reservation)
+                               (fn-prstartup-extend-default-reservation)))))

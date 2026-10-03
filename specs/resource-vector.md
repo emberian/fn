@@ -674,7 +674,7 @@ pool. DATA8 preserves the original five ledger/configuration fields and
 binding revision at position five, followed by the reservation/readiness
 marker and worker count. Both legacy ledger publication and binding revision
 publication preserve that tail. Each native worker constructor must first
-pass `fn-owner-page-read-default-worker-reservedp`; successful constructor,
+pass `fn-owner-page-read-default-worker-constructionp`; successful constructor,
 eager reserve and worker startup precede `default-worker-ready` and physical
 free-roster publication. Torn startup leaves the bit clear and cannot allocate
 an unreserved replacement. Reused decoded-window admission requires the
@@ -682,3 +682,18 @@ matching ready slot, charges a slot and read identity, and retains permanent
 backing throughout return, retirement and settlement. Installation never
 resets or refunds a live pool. SCN-1130 covers the native ordering and orphan
 cleanup independently of the numeric projection.
+
+The actual `:run` launcher calls `fn-prstartup-extend-operation-reservation`
+to add the minimum DEFAULT persistent backing and registration quantum before
+the independent output contribution. Existing direct-worker thread reservation
+is retained, not counted twice. The extension validates total process memory
+against the captured machine. Offline actions and explicit cold policy keep
+their reservation behavior. This additional run requirement is outside the
+older base init-to-reopen affordability theorem; init sizing needs the same
+next-run producer before that stronger claim can hold.
+
+The full Store figure already protects recovery workspace. Legacy funded
+entry/discovery buffers currently draw from the spare pool as well; partitioning
+that protected recovery subreserve is still required to prevent double
+exclusion during nonempty Store open. A minimum DEFAULT launch contribution
+does not establish complete recovery/cache transient funding.

@@ -23047,7 +23047,7 @@
     {
       "id": "PRF-1301",
       "title": "DEFAULT pre-open selected backing admission fits captured headroom and descriptor capacity",
-      "statement": "The actual fn-prstartup-plan :admitted result has natural descriptor capacity at least the existing cache insertion overlap, no greater than captured OS descriptor capacity, and its selected persistent plus registration working projection fits headroom after protected heap or occupied usage. SAME-pool installer metadata preserves binding revision, reserved worker count bounds physical constructors, and a ready bit is required before resident-zero reused-window admission. Physical native readiness, full collector/controller/source graph and recovery transient costs remain separate obligations.",
+      "statement": "The actual fn-prstartup-plan :admitted result has natural descriptor capacity at least the existing cache insertion overlap, no greater than captured OS descriptor capacity, and its selected persistent plus registration working projection fits headroom after protected heap or occupied usage. SAME-pool installer metadata preserves binding revision, reserved worker count bounds physical constructors, and a ready bit is required before resident-zero reused-window admission. Physical native readiness, full collector/controller/source graph and recovery transient costs remain separate obligations. The DEFAULT launcher contribution adds the actual minimum selected backing without changing already-reserved worker threads, and an accepted contribution fits captured machine capacity. A named default-plan equality connects the native wrapper to the numerical core.",
       "milestone": "M5",
       "requirements": [
         "HST-048"
@@ -23067,13 +23067,14 @@
         "tests/acl2/page-read-startup-host-tests.lisp"
       ],
       "events": [
-        "fn-prstartup-admitted-capacity-is-funded"
+        "fn-prstartup-admitted-capacity-is-funded",
+        "fn-prstartup-accepted-default-launch-fits-machine"
       ],
       "evidence": [
         "tests/acl2/page-read-startup-tests.lisp",
         "tests/acl2/page-read-startup-host-tests.lisp"
       ],
-      "progress_note": "Incremental real source admission: selected plan/getter and readiness guards, binding publication proofs, complete admitted-capacity theorem and fresh local-stobj install/readiness/revision-preservation witnesses pass. Proper-local final startup book replay and two heap-wrapper/decoded-acquire guards pending coherent dependency world; no certificate or complete physical tariff claim."
+      "progress_note": "Selected actual source guards now pass for composed protected/default wrappers and decoded acquire, after actual dependency guard facts; no stubs. Numeric admitted-capacity theorem passed in the warm world; final proper-local replay remains pending (30-second theory timeout, not a counterexample). Launcher contribution guard, machine-fit theorem, actual operation wrapper equality and literal numerical witnesses pass. Native nonempty Store recovery subreserve accounting remains open; no certificate or complete physical tariff claim."
     },
     {
       "id": "PRF-1302",
