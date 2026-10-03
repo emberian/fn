@@ -1795,3 +1795,10 @@ and all source tests pass. A reused scratch-tree old manifest also differed
 from its archive index; next run ships its exact verified indexed bytes.
 Failed logs retained. The new matching-image mixed verdict/count test is
 prepared alongside large/absent/symlink/FIFO, with no claimed image result.
+
+Normal exact current two-root certification PASS at c91ac446b:
+certify-20261003T112822Z-1637229, 10matching dependencies installed,
+jobs2/imagesoff. Manifest archived/indexed; logical universal report/exit
+bridge and full tests certified. Warm diff66of66named events matches source;
+root-journal-stream stopped, freeing its lease. Branch pushed. Integration
+still owns immutable image and five physical NativeJournalStreamTests.

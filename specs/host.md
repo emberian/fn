@@ -897,8 +897,9 @@ for arbitrary input (`fn-otjs-report-refines-journal-report` and
 advancing after a replay failure while its first verdict and replay state stay
 fixed; malformed and torn endings agree with the reference. Literal witnesses
 cover huge natural fields, later segment resets and overlong rejected lines.
-These changed definitions/theorems and teeth pass the warm proof session;
-normal certification of the exact changed book and matching image remain pending.
+These changed definitions/theorems and teeth pass normal exact two-root
+certification at c91ac446b (`certify-20261003T112822Z-1637229`, archived in the
+evidence index). Matching-image qualification remains pending.
 What a process death with entries unflushed loses is exactly those entries:
 the replay of decisions that stored nothing. No durable state depends on an
 entry (a disk event keeps the pipeline; a refusal stores nothing), and the
