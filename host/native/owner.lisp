@@ -317,6 +317,8 @@ not armed. Instrumentation has no semantic or admission role."
   ;; Exact normalized launch descriptors, and private output pool projection.
   ;; Explicit policy activation/full tariffs are still PRF-1259 obligations.
   (cold-resources nil) (output-resources nil) (output-slots nil)
+  ;; ACL2 serials, independent of configuration and ledger draw generations.
+  (connection-generation 0) (response-generation 0)
   (output-ledger nil) (output-grants nil)
   (output-ledger-lock (sb-thread:make-mutex :name "fn output custody")))
 
@@ -1654,6 +1656,26 @@ A diagnostic failure does not alter custody, classification or settlement."
         (unless (eq word :installed) (fnn-fault "syncer funding refused ~a" word))
         (fnn-owner-custody-trace "custody: install threads=~s stack=~s word=~s" threads stack word))))
   nil)
+
+(defun fnn-owner-connection-identity-locked (service cid)
+  "Actual admitted open retains CID before this step; caller holds O."
+  (destructuring-bind (word identity next)
+      (fnn-call 'fn-rid-connection cid (fnn-owner-service-connection-generation service))
+    (setf (fnn-owner-service-connection-generation service) next)
+    (unless (eq word :reserved) (fnn-fault "connection identity refused ~s" word))
+    identity))
+
+(defun fnn-owner-response-identity (service connection class)
+  "Reserve once before materialization under the admitted connection section."
+  (fnn-owner-serialized
+   service (second connection)
+   (lambda ()
+     (destructuring-bind (word identity next)
+         (fnn-call 'fn-rid-response connection (fnn-owner-service-response-generation service))
+       (setf (fnn-owner-service-response-generation service) next)
+       (unless (eq word :reserved) (fnn-fault "response identity refused ~s" word))
+       identity))
+   class))
 
 (defun fnn-owner-output-install (service dynamic store-need)
   "Actual mux :hold caller. Validate captured headroom before private allocation.

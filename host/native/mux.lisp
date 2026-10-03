@@ -101,6 +101,8 @@
 
 (defstruct (fnn-mux-conn (:constructor %make-fnn-mux-conn))
   socket fd implicit-tls channel ssl cid opened-cid
+  ;; Exact ACL2 lifetime identities; response retained across all cursor windows.
+  connection-identity response-identity
   ;; :new :proxy :tls-queued :handshake :hs-wait :serving :draining :done
   (phase :new)
   ;; PRF-986 item 4 (books/tls-proxy.lisp): a trusted proxy's connection
@@ -574,6 +576,11 @@ The connection holds one window and the plan's continuation, never the
 whole reply; a plan with nothing to write runs AFTER at once."
   (unless (fnn-mux-conn-plan conn)
     (setf (fnn-mux-conn-cursor-cold-since conn) nil))
+  (unless (fnn-mux-conn-response-identity conn)
+    (setf (fnn-mux-conn-response-identity conn)
+          (fnn-owner-response-identity
+           (fnn-mux-service loop) (fnn-mux-conn-connection-identity conn)
+           (fnn-mux-conn-class conn))))
   (multiple-value-bind (octets rest donep yieldedp cold-read)
       (fnn-mux-render-next loop conn plan)
     (setf (fnn-mux-conn-plan conn) (if donep nil rest))
@@ -671,6 +678,10 @@ contract, without blocking the loop)."
     (setf (fnn-mux-conn-drained-late conn) nil)
     (fnn-owner-exposure-progress (fnn-mux-service loop) (fnn-mux-conn-cid conn) :reader))
   (setf (fnn-mux-conn-drained-late conn) nil)
+  ;; This is response terminal, including the continuation and socket suffix.
+  ;; No resource grant exists yet: future settlement must consume this identity
+  ;; before retirement, after independent dependency/no-publisher evidence.
+  (setf (fnn-mux-conn-response-identity conn) nil)
   (case after
     (:close (fnn-mux-begin-drain loop conn))
     (:starttls (fnn-mux-request-handshake loop conn))
@@ -1281,6 +1292,12 @@ is the deadline of the handshake ACL2 already admitted (implicit TLS)."
                       ;; The greeting before the context's step replaces
                       ;; fn-owner-output (it emits no reply).
                       (greeting (fnn-owner-octets-global 'fn-owner-output)))
+                 (when (integerp opened)
+                   ;; Retain cleanup identity before generation step can refuse.
+                   (setf (fnn-mux-conn-cid conn) opened
+                         (fnn-mux-conn-opened-cid conn) opened
+                         (fnn-mux-conn-connection-identity conn)
+                         (fnn-owner-connection-identity-locked service opened)))
                  (when opened (fnn-owner-log))
                  (when (and seed (integerp opened))
                    (fnn-owner-sasl-context opened seed nil))
