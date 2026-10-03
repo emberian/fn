@@ -1877,3 +1877,39 @@ can execute canonical keepalive+second request in private Store paths directly.
 Full ownership remains decoder/CRC/publication/GC cost, concurrent input control,
 registered SAMEPRS issuer, full scheduler/custody crash refinement, canonical
 signed R/Q/reopen and actual ION adapter outcomes. No saved-image gate.
+
+Usage-limit winddown, 2026-10-03: safe source and evidence pushed through
+01ccc1a43 (b0f window -> e9c private prepub retirement -> be75 independent
+KEEPALIVE ->532 exact evidence/view sidecar;01ccc includes Lieutenant cde lexical
+refusal exits). Final constructor/control certify133443-1954215 PASSED2/0;
+control/window-teeth certify134436-1978092 PASSED3/0; window+receiver refinement
+certify134842-1987626 PASSED3/0. All immutable manifests indexed; failed fixture
+translation133032/133826 retained. Raw actual-controller/core-leaf be75 receipt
+planning/evidence/bp-source-continuations/be75-native-components.json hash
+acf995527813e5fe8035c2370b8ac385fcb6df306399757f7ceadbfce8bc0fa9. It is not
+full native-process qualification. Current sidecar plus generated current.md now
+track bounded window and no-ACK source control separately. Historical a355 host
+and book digests were pinned from that actual Git source; no deployment changed.
+
+Full ownership open: source-loaded canonical multi-peer SCN1110, immutable signed
+R/Q request/Store/FNRJ receipt/reopen join (Groundwork fixture owner); actual ION
+native outcomes; full registered SAMEPRS source operation; concurrent incoming
+control while local source holds ACK; whole semantic decoder/CRC/publication/GC
+work tariff; scheduler/custody crash/refinement closure. These remain UNDONE.
+
+Fresh startup work preserved, no Store ever opened and no full native selector
+run: /tank/fn/scratch/codex-bp-source-live/{execution.json,logic-events.lisp,
+logic-admission.lisp,native/,probe*.out,probe*.err}; local generated copy under
+build/source-bp-live/. Actual resource-vector-exec/stobj ABI, segment-source
+cursor, fragment-job and receive-boundary digests match initialized ad8 world.
+Raw overlays are exact own io/tcpcl/bp-session/bp-node snapshot; book prefix uses
+exact farm certified leaves, then actual tcl-host wrappers. Definition/proof
+replay in whole world stalled; stopped only those private before-entry processes.
+Include prefix refused NIL saved connected-book-directory. Lieutenant fix
+f0dfe56bf now provides versioned normal-admission helper:
+/tank/fn/scratch/codex-source-native-consumer/lieutenant-logical-loader/source-load-cbd-final.lisp
+which initializes book context with F-PUT-GLOBAL. Its MAKE-EVENT/fail-closed
+checks passed independently; BP prefix and SCN1110 remain unexecuted. Integration
+should reuse this helper before our prefix, hash-bind it and preserve GW base
+execution/cache coordinates; do not call old source-load.lisp. No new run during
+winddown. Owned startup probes ended; only this owner's warm REPLs were stopped.
