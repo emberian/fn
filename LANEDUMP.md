@@ -2362,3 +2362,6 @@ exempt from ten-agent cap per Ember's latest 07:14 correction.
 
 Source assembly: captured Web reply worker64 composed with page cursor; two actual consumed program declarations. Stateful session/admission still owner-bound; PRF1279 admission/cert/image/funding pending.
 Journal general parser/report/exit refinement source composed; exact new-source normal certificate/image scope stays separate.
+
+Assembly current 07:40: reader context301 +currentcallee fixture288, Webaba, Historysplit4d4, journaled5a, application89f, directline+admissionff256/world755 delivered Integration. Both isolated trees preserve source; no dev push/build ours.
+Reader-context fixture b092 uses18 actual selected definitions in warm ownerworld: held/working/connection pin distinction, root/index/config/read and refusedcorruptroot/unknownconn PASS. This closes scopedconstructor question only; no fullowner invariant/nativephysicalaffinity/image claim.
