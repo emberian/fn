@@ -26,8 +26,9 @@
  ; DATA6 constructor used by the sole installer and every publication.
 (defun fn-prb-data6 (ledger data revision)
  (declare (xargs :guard t))
- (list ledger (fn-prl-nth 1 data) (fn-prl-nth 2 data)
-       (fn-prl-nth 3 data) (fn-prl-nth 4 data) revision))
+ (append (list ledger (fn-prl-nth 1 data) (fn-prl-nth 2 data)
+               (fn-prl-nth 3 data) (fn-prl-nth 4 data) revision)
+         (fn-prp-metadata-tail 6 data)))
 
 ; Internal metadata publication, not allocation/nonce authority. The caller
 ; proves its semantic transition counter-only and obtains actual BODY funding.
