@@ -10,14 +10,17 @@
  "id": "S037",
  "line": "317",
  "locus": "connections",
- "notes": [],
- "owner": "host-lifecycle",
+ "notes": [
+  "10-03 06:36 2026-10-03 codex-sol-web source 934b416cb and cleanup 8e37db4f2 replace inline HTTP service with bounded I/O actor plus fixed semantic worker; exact shared async await/cold consumers and per-CID lease. Raw continuation consumer passed, assembled source e822 primary fixture passed; matching native-image scenario pending. Full NNTP/HTML materialization funding remains open (WEB-006/SCN-1099)."
+ ],
+ "owner": "codex-sol-web",
  "reviewer": "web-host.lisp:313-320: the single web-face thread calls fnn-web-serve inline for each accepted socket. fnn-web-serve (265-282) does fnn-tls-accept with a 10 s deadline and then fnn-web-request, which reads up to fn-web-host-request-seconds. No worker is spawned per connection, so a slow or stalled client holds the only web thread for that whole period, and a serial stream of such clients denies the whole web face (backlog 64, line 303). The NNTP owner is unaffected.",
  "scenario": "A client opens a connection and trickles header bytes, or stalls the TLS handshake. That holds the only web thread for up to 10 s plus request-seconds. Back-to-back slow connections keep it occupied permanently, so health checks and every other web request go unanswered (they queue in the backlog of 64 and are then refused).",
  "severity": "medium",
+ "sha": "8e37db4f2",
  "slice": "services",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "Web face serves every connection inline on its single accept thread: one slow client blocks all web traffic",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T10:36:03Z"
 }

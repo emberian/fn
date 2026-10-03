@@ -11,16 +11,17 @@
  "line": "131",
  "locus": "connections",
  "notes": [
-  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
+  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification",
+  "10-03 06:36 2026-10-03 web continuation uses shared owner failure classifier; bare uncertain completion closes HTTP without accepted/refused outcome. Async submission route is abandoned independently of physical task/cold custody. Matching image scopes remain pending; historical fault/uncertain/gone collapsed function retired in934."
  ],
- "owner": "host-lifecycle",
+ "owner": "codex-sol-web",
  "reviewer": "web-host.lisp:131 has (fnn-store-error () :gone), and fnn-store-fault and fnn-store-indeterminate are subclasses of fnn-store-error (io.lisp:77, 92). An indeterminate outcome from fnn-owner-handle-chunk (the owner fences with exit 3 in owner.lisp:1791) is shown to the browser as session-gone, not as uncertain. The fnn-fault at web-host.lisp:128 ('owner consumed no octets') is raised outside any owner-serialized call, so this handler swallows it: the owner is never stopped and the fault becomes :gone while the node keeps serving. This breaks the rule that uncertain, refused and accepted stay distinct.",
  "scenario": "A browser POST is fed through fnn-owner-handle-chunk and the store's publication is ambiguous. fnn-store-indeterminate propagates (the owner fences with exit 3). The web face reports :gone and ACL2 renders the session-gone page, so the user is not told the outcome is uncertain and may repost. A host fault in the feed (line 128) is likewise rendered as a vanished session instead of a fault. This violates the rule that uncertain, refused and accepted stay distinct at every boundary.",
  "severity": "medium",
- "sha": "4e409a9d6",
+ "sha": "8e37db4f2",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
  "state": "in-progress",
  "title": "fnn-web-feed turns fault, indeterminate and refusal into :gone",
- "updated": "2026-10-03T02:32:57Z"
+ "updated": "2026-10-03T10:36:03Z"
 }

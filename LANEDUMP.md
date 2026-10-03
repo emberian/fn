@@ -1889,6 +1889,19 @@ image claim. DNS, trust/profile/durable filesystem latency, whole-command
 copying/tariff and total scheduler-cost bound remain open. The generic output
 and syncer leases are not reused. Planned source fixtures will exercise slow
 write/TCP/TLS plus healthy peer and exact retained reply/EOF ordering.
+Read-only watch of ad8da41fc44ea92968cc0617f0781c86f8db9a13 ended status2
+at10:24:07Z: default host prefix185includes/43hostlds passed13s, DTN
+prefix did not run because this default-only certificate tree lacks
+books/image-world-dtn. Certify/acquire/validate passed;124 cached pairs
+lack cited manifests, so no certification-claim transfer. Image not built,
+funded/read selectors never started. Integration owns repaired continuation;
+no duplicate build/test.16 exact run/script/status/log objects archived as
+native-sol2g-ad8da41-prefix-2026-10-03, manifest
+a18779e9cf0c265e86f6a4114e1bcabcdf37ac7849a3f571f747538583f71bef.
+
+
+## Retain successful native observation streams, 2026-10-03
+
 PageIO finite image fixtures now reuse native_harness.keep_diagnostics under
 explicit FN_NATIVE_TEST_DIAGNOSTIC_DIR. Registered before node creation/cleanup,
 it retains each started owner's bounded stderr after cleanup on success as well
