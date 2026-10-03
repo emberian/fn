@@ -8487,6 +8487,37 @@
         "tests/native_await_lifetime_raw.lisp"
       ],
       "execution_scope": "Actual native cleanup/section and socket helper bodies, real SBCL exclusion/thread/socket close, recording semantic primitives with raw ACL2 cut. No full output tariff, physical dependency grant or saved-image verdict."
+    },
+    {
+      "id": "SCN-1093",
+      "title": "Generated archive dispatch reaches every HDR/XHDR literal form and preserves both-route replies",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-038",
+        "NNT-042"
+      ],
+      "proofs": [
+        "PRF-1236"
+      ],
+      "steps": [
+        "Replay the complete protocol-served-tests with actual fn-scr-command and fn-pix-command-pinned source consumers loaded.",
+        "Assert catalog view, state, pin/trie correspondence, freshness and columns for the three-article fixture, then each literal HDR/XHDR form condition including failure of earlier tests.",
+        "Compare generated sessions and expanded effects with the pinned reference for current/number/Message-ID, Xref compatibility, the three HDR fn metadata fields and malformed syntax, with/without configured Xref server.",
+        "Require actual unrestricted and restricted routes to answer each line, and retain existing view/trie hypothesis-removal and selection-mutation cases."
+      ],
+      "expected": [
+        "Every archive keyword declares forms and the generated executable has no hand catalog-dispatch fallback.",
+        "Exact current reply semantics and selection/view effects are preserved under the full boundary; HDR ordinary225 and XHDR ordinary221 are exercised.",
+        "Source teeth do not establish cold suspension, allocation tariffs, completed-view policy, certificates or matching image."
+      ],
+      "evidence": [
+        "tests/acl2/protocol-served-tests.lisp",
+        "books/protocol-served.lisp",
+        "books/protocol-served-table.lisp",
+        "planning/evidence/dc02-switch-20261003/checks.json",
+        "planning/evidence/dc02-switch-20261003/command-repl.log.gz"
+      ]
     }
   ]
 }
