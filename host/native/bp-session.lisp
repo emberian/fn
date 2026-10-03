@@ -149,8 +149,12 @@
      (when (eq (funcall (fnn-bpsg-turn grant)) :done)
       (let ((key (fnn-core 'fn-bpsg-key (fnn-bpsg-row grant)))
             (incoming (eq (fourth (fnn-bpsg-row grant)) :incoming)))
-       (let ((continued (and (fnn-bpsg-finish grant)
-                             (eq (funcall (fnn-bpsg-finish grant) grant) :continue))))
+       (let* ((finish (fnn-bpsg-finish grant))
+              (continued nil))
+        ;; A terminal controller cannot publish twice while another dependency
+        ;; still holds custody. Fragment rearm installs the next continuation.
+        (setf (fnn-bpsg-turn grant) nil (fnn-bpsg-finish grant) nil)
+        (setq continued (and finish (eq (funcall finish grant) :continue)))
         (unless continued
          (fnn-bp-session-close bank grant)
          (fnn-bp-session-release-context bank grant)))
