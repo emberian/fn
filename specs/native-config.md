@@ -146,3 +146,19 @@ exact boundary. Success still requires a fresh regular report; an unchanged
 prior report or no report produces uncertainty. Invalid clock/request inputs
 and unknown observations produce a fault with `reason=invalid-observation`;
 they cannot produce a stopped/report decision or a deadline-expiry claim.
+
+### Operator diagnostic outcomes
+
+The heap launcher's operator profile observation may fall back to an absent
+profile only for a condition ACL2's closed failure classifier names as a
+refusal. A failed core call, corrupt durable profile, uncertain outcome or
+unlisted condition propagates before any accepting `heap=` line is printed.
+This applies to the nested store-profile reader as well as the operator plan,
+initializer profile resolution and resource-policy projections. A genuinely
+absent store still has no profile; the command subsequently reports its own
+refusal under the no-store reservation.
+
+The initial-group encoder's named `:bad` result is a refusal. A malformed
+result, or disagreement between the host and core's frame header/trailer
+widths, is a fault. These checks preserve HST-008/HST-009's shared outcome
+classes; they do not manufacture a policy refusal from an image defect.

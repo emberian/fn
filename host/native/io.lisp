@@ -1939,8 +1939,10 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
                            (mapcar (lambda (n) (fnn-octet-list (fnn-string-octets n))) names)
                            (fnn-monotonic-ms)
                            wall has-wall))))
-    (when (or (keywordp value) (not (fnn-octet-list-p value)))
+    (when (eq value :bad)
       (fnn-refuse "refused initial group table"))
+    (unless (fnn-octet-list-p value)
+      (fnn-fault "ACL2 returned a malformed initial group table"))
     (fnn-octets value)))
 
 (defun fnn-bridge-lookup-found-p (msgid)
@@ -1964,9 +1966,9 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
           ;; The two slice constants the store host still holds, checked
           ;; against the ACL2 grammar at session open as frame_bridge does.
           (unless (= (cdr (assoc :trailer table)) 32)
-            (fnn-refuse "host store trailer is 32 but the model says ~d" (cdr (assoc :trailer table))))
+            (fnn-fault "host store trailer is 32 but the model says ~d" (cdr (assoc :trailer table))))
           (unless (= (cdr (assoc :header table)) 10)
-            (fnn-refuse "host store header is 10 but the model says ~d" (cdr (assoc :header table))))
+            (fnn-fault "host store header is 10 but the model says ~d" (cdr (assoc :header table))))
           (setq *fnn-constants* table)))))
 
 (defun fnn-constant (name) (cdr (assoc name (fnn-constants))))

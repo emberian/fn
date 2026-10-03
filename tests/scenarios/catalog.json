@@ -8479,6 +8479,34 @@
         "planning/evidence/operator-retire-observation-2026-10-03-v2.json"
       ],
       "execution_scope": "SBCL actual source with explicit clock/scheduling/owner/stat observations; no saved-image or physical durability qualification."
+    },
+    {
+      "id": "SCN-1098",
+      "title": "Operator diagnostic source preserves faults, uncertainty and named refusals",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-008",
+        "HST-009"
+      ],
+      "steps": [
+        "Execute actual heap operator/store-profile/outer command bodies and actual ACL2 failure classifier with plan/config/profile/init/resource faults, generic/unlisted conditions and uncertainty.",
+        "Exercise initial-group :bad refusal versus malformed core result, valid octets and matching/mismatched frame widths.",
+        "Run the same fixture with prior actual heap source and prior actual IO source independently."
+      ],
+      "expected": [
+        "Only recognized refusal may use the no-store heap fallback. Fault and uncertain paths emit no accepting heap line; unknown subclasses remain faults.",
+        "Initial :bad is refusal1; malformed results and frame disagreements are fault4. Positive profile/resources/octet results survive unchanged.",
+        "Both prior-source runs fail their expected fault-code assertion; no loader failures count as regressions."
+      ],
+      "implementation": {
+        "test": "tests/test_native_operator_diagnostics_source.py"
+      },
+      "evidence": [
+        "tests/native_operator_diagnostics_source.lisp",
+        "planning/evidence/operator-diagnostics-classification-2026-10-03.json"
+      ],
+      "execution_scope": "Actual source plus deliberate model/I/O observations, with actual closed ACL2 condition classifier. Saved-image matching consumer qualification remains Integration work."
     }
   ]
 }
