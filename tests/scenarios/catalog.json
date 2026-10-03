@@ -9317,9 +9317,11 @@
         "test": "tests/native_article_stream_source.lisp"
       },
       "evidence": [
-        "tests/native_article_stream_source.lisp"
+        "tests/native_article_stream_source.lisp",
+        "tests/native_article_ready_source.lisp",
+        "planning/evidence/article-stream-source-20261003.log"
       ],
-      "execution_scope": "Actual shared core function bodies over the list arena model pass5128 finite checks. Owner/native cold and Web consumer execution remain pending; not physical-window or universal refinement evidence."
+      "execution_scope": "Actual shared core function bodies69488 finite checks; actual owner completion, PROGRAM wrapper and native READY/render helpers execute with recorded list-arena, owner-state installation and cold I/O seams (70841 aggregate checks). Selection commits once after complete framing; replay does not install again; RAW and READY cold continuations are retained by identity; exact503/423/430 refusals and unchanged reader selection; global generation change under unchanged per-connection pin is allowed. Web actual source stress fbcae3cd0 has independent recorded consumer evidence. Full actual parsed factory and physical decoded-window/browser execution, guard proofs and universal owner/reference boundary remain pending."
     },
     {
       "id": "SCN-1121",

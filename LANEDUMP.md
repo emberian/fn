@@ -2831,3 +2831,17 @@ trace controls and unrestricted interactive operator shell. SCN1121 actual
 socket/source tests pass (2 tests, ~1.2s); owner mutex and nonblocking transport
 are named fixture adapters. Full native owner + ACL2 LD composed check pending;
 no saved-image gate. Groundwork owns application query/export command surface.
+
+ARTICLE retained owner/native source fixture now executes actual fn-asto-finish,
+fn-asto-ready-plan-step, fn-owner-article-ready-plan-step and both native
+helpers with list arena + recorded global-state/serialized cold I/O seam.
+70841 aggregate checks pass: preflight retains selection, READY commits once,
+three section replays at W1/3/4096 never recommit, RAW/READY cold pointer stays
+identical, exact503/423/430 refusals preserve reader. Tombstone/invalid-ID
+preflight now stops after fixed metadata checks instead of scanning payload.
+R5 configuration fence compares exact connection pin, permitting unrelated
+live generation publication; app bound-ACK current authorization unchanged.
+fn-ast-render-window-byte-bound universally admitted in narrow warm world;
+component bound is not complete owner refinement/certification. Remaining
+metadata Xref setup and selection work, full factory/physical execution,
+renderer guards and complete original-response/owner invariants remain owned.

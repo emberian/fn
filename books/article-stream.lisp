@@ -45,6 +45,10 @@
   (declare (xargs :guard t))
   (list source source nil t 0 nil nil))
 
+(defun fn-ast-refused-preflight (source)
+  (declare (xargs :guard t))
+  (list (fn-ast-source-left source 0) source nil t 0 nil t))
+
 (defun fn-ast-separator-next (matched byte)
   (declare (xargs :guard t))
   (cond ((equal matched 0) (if (equal byte 13) 1 0))
@@ -194,6 +198,25 @@
   (fn-ast-render-window-aux (fn-ast-window-cur window)
                             (fn-ast-window-pending window)
                             (nfix fuel) (nfix octets) nil fn-arena))
+
+(defthm fn-ast-render-window-acc-bound
+  (<= (len (mv-nth 0 (fn-ast-render-window-aux cur pending fuel left acc fn-arena)))
+      (+ (len acc) (nfix left)))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-ast-render-window-aux cur pending fuel left acc fn-arena)
+                  :in-theory (disable fn-ast-render-one))))
+
+(defthm fn-ast-render-window-byte-bound
+  (<= (len (mv-nth 0 (fn-ast-render-window window fuel octets fn-arena)))
+      (nfix octets))
+  :rule-classes :linear
+  :hints (("Goal"
+           :use ((:instance fn-ast-render-window-acc-bound
+                            (cur (fn-ast-window-cur window))
+                            (pending (fn-ast-window-pending window))
+                            (fuel (nfix fuel)) (left (nfix octets)) (acc nil)))
+           :in-theory (disable fn-ast-render-window-aux
+                               fn-ast-window-cur fn-ast-window-pending))))
 
 (defthm fn-ast-scan-work-bounded
   (<= (mv-nth 1 (fn-ast-scan-step scan fuel fn-arena)) (nfix fuel))
