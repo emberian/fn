@@ -8299,6 +8299,35 @@
         "tests/native_syncer_typed_raw.lisp"
       ],
       "execution_scope": "Matching saved-image selector prepared; image execution pending Integration. Local actual-method/raw schedules pass, including diagnostic failure without custody mutation."
+    },
+    {
+      "id": "SCN-1091",
+      "title": "Mux terminal cleanup retains exact once-only semantic debt and independent physical receipts",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-031",
+        "HST-046"
+      ],
+      "steps": [
+        "Run actual stopping cleanup through the generated finish section and its handshake-leave, owner-close and exposure-release callbacks.",
+        "Reject a handshake-done section before callback, and fail gate leave after its literal :ok return; repeat cleanup and admit another handshake identity.",
+        "Cut an actual owner-close callback, fail unpin or socket close, and verify independent physical cleanup still runs.",
+        "Hold a real mux thread after logical closure; verify root drain remains false until its physical return and debt-free cleanup."
+      ],
+      "expected": [
+        "Each callback identity is attempted once; exact effect return is retained independently from section return. Rejected or torn cleanup retains debt and blocks Store teardown.",
+        "Handshake identity remains available on rejected cleanup; a later distinct identity gets its own receipt.",
+        "Actual socket helper retains NIL primary result and separately returns :closed or original unobserved condition. Logical DONE does not substitute for physical thread return."
+      ],
+      "implementation": {
+        "test": "tests/test_native_mux_cleanup_raw.sh"
+      },
+      "evidence": [
+        "tests/native_mux_cleanup_raw.lisp",
+        "tests/native_await_lifetime_raw.lisp"
+      ],
+      "execution_scope": "Actual native cleanup/section and socket helper bodies, real SBCL exclusion/thread/socket close, recording semantic primitives with raw ACL2 cut. No full output tariff, physical dependency grant or saved-image verdict."
     }
   ]
 }
