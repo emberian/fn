@@ -8,7 +8,7 @@ about 20 x (1 + links) transit holds a second while idle.  Now an idle
 worker sleeps on the owner's commit signal, its sleep growing to a second
 (host/native/feed-service.lisp fnn-feed-idle-wait).  With one ready peer and
 IDLE seconds of nothing to send, the owner's own account of its holds
-(FN_OWNER_MEASURE=1, label transit) stays under HOLD_LIMIT; an article
+(FN_OWNER_MEASURE=1: label other) stays under HOLD_LIMIT; an article
 posted after the idle stretch reaches the peer within DELIVER_SECONDS (the
 commit wakes the worker).  Before the change the idle stretch alone was
 about 40 transit holds a second.
@@ -59,8 +59,10 @@ class NativeFeedIdleTests(unittest.TestCase):
         print("NATIVE-FEED-IDLE-WITNESS " + json.dumps(
             {"idle_seconds": IDLE, "holds": holds, "deliver_seconds": round(delivered, 3)},
             sort_keys=True), flush=True)
-        self.assertIn("transit", holds, holds)
-        self.assertLess(holds["transit"], HOLD_LIMIT, holds)
+        # The feed's quanta carry no label of their own (FN_OWNER_MEASURE's
+        # default, other); the run's few posts are control.  On 45e05c7fd:
+        # other=506 over this run (about 40 a second while idle).
+        self.assertLess(holds.get("other", 0) + holds.get("transit", 0), HOLD_LIMIT, holds)
         self.assertLess(delivered, DELIVER_SECONDS)
 
 
