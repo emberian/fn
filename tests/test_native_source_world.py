@@ -15,7 +15,10 @@ class CurrentSourceWorldTests(unittest.TestCase):
         books = {
             'codec-attach': '(in-package "ACL2")\n',
             'records-attach-concrete': '(in-package "ACL2")\n',
-            'payload-arena-attach': '(in-package "ACL2")\n',
+            'payload-arena-extent': '(in-package "ACL2")\n(defun arena-physical (x) x)\n',
+            'payload-arena': '(in-package "ACL2")\n(defun arena-generic (x) x)\n',
+            'catalog-record': '(in-package "ACL2")\n',
+            'payload-arena-attach': '(in-package "ACL2")\n(include-book "payload-arena-extent")\n(attach-stobj fn-arena fn-arena-extent)\n(include-book "payload-arena")\n(include-book "catalog-record")\n(assert-event t)\n',
             'history-paged': '(in-package "ACL2")\n(defun physical (x) x)\n',
             'history-columns': '(in-package "ACL2")\n(defun generic (x) x)\n',
             'history-paged-attach': '(in-package "ACL2")\n(include-book "history-paged")\n(attach-stobj fn-hist fn-hist-paged)\n(include-book "history-columns")\n',
@@ -32,6 +35,9 @@ class CurrentSourceWorldTests(unittest.TestCase):
             output = root / 'prefix.lisp'
             manifest = generate(root, [], output, revision='immutable-test')
             text = output.read_text()
+            self.assertLess(text.index('(defun arena-physical'), text.index('(attach-stobj fn-arena fn-arena-extent)'))
+            self.assertLess(text.index('(attach-stobj fn-arena fn-arena-extent)'), text.index('(defun arena-generic'))
+            self.assertLess(text.index('(defun arena-generic'), text.index('(assert-event t)'))
             self.assertLess(text.index('(attach-stobj fn-hist fn-hist-paged)'), text.index('(defun generic'))
             data = json.loads(manifest.read_text())
             self.assertEqual(data['source_revision'], 'immutable-test')
