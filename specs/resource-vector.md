@@ -591,6 +591,12 @@ terminating free-chain witness (`fn-rlo-issued-chain-is-tail`,
 issue consumes its head; settlement pushes the reusable row once or preserves
 the old chain when that generation is exhausted. The proof-only witness checks
 idle phases, reusable natural generations, in-range row identities and exact
-links without adding a served scan. Installation completeness and coverage of
-every reusable idle row remain owed; these boundaries assume the prior chain
-is valid and the actual method reports `:drawn` or `:settled`.
+links without adding a served scan. Successful actual installation establishes this chain for every user row
+from2 through slots-1 (`fn-rlo-install-establishes-free-chain`); its only
+premise is the actual `:installed` result. A zero-count input must be genuinely
+fresh: padded arrays with old phases/generations are refused before mutation,
+even when typed and shape-valid. Positive-count repeat installation keeps
+its existing `:already-installed` refusal. Coverage of every reusable idle
+row after arbitrary histories remains owed; the issue/settlement boundaries
+assume the prior chain is valid and the actual method reports `:drawn` or
+`:settled`.

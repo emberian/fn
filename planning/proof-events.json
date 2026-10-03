@@ -19156,6 +19156,10 @@
         {
           "kind": "theorem",
           "name": "fn-rlo-physical-settled-chain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-install-establishes-free-chain"
         }
       ]
     },
