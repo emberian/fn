@@ -227,7 +227,7 @@ class CheckoutMemoTests(unittest.TestCase):
                 self.assertEqual(store.checkout_of(root), Path(directory) / "two")
                 self.assertEqual(git.call_count, 2)
 
-    def test_missing_git_marker_is_not_remembered(self):
+    def test_absent_marker_memo_invalidates_when_git_is_created(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             store._CHECKOUTS.clear()
@@ -237,4 +237,50 @@ class CheckoutMemoTests(unittest.TestCase):
                 (root / ".git").write_text("gitdir: created")
                 git.return_value.stdout = str(root / "shared/.git")
                 self.assertEqual(store.checkout_of(root), root / "shared")
+                self.assertEqual(git.call_count, 2)
+
+    def test_frozen_root_locates_once_and_ancestor_git_init_invalidates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            root = parent / "frozen" / "source"
+            root.mkdir(parents=True)
+            store._CHECKOUTS.clear()
+            with mock.patch.object(store.subprocess, "run") as git:
+                git.return_value.stdout = ""
+                for _ in range(3):
+                    self.assertEqual(store.checkout_of(root), root)
+                self.assertEqual(git.call_count, 1,
+                                 "unchanged frozen source must locate archive cache once")
+                (parent / ".git").mkdir()
+                git.return_value.stdout = str(parent / ".git")
+                self.assertEqual(store.checkout_of(root), parent)
+                self.assertEqual(git.call_count, 2)
+
+    def test_worktree_commondir_change_invalidates_without_pointer_change(self):
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            root = parent / "lane"
+            admin = parent / "admin"
+            root.mkdir(); admin.mkdir()
+            (root / ".git").write_text("gitdir: ../admin")
+            common = admin / "commondir"
+            common.write_text("../one/.git")
+            store._CHECKOUTS.clear()
+            with mock.patch.object(store.subprocess, "run") as git:
+                git.return_value.stdout = str(parent / "one/.git")
+                self.assertEqual(store.checkout_of(root), parent / "one")
+                common.write_text("../two/.git")
+                git.return_value.stdout = str(parent / "two/.git")
+                self.assertEqual(store.checkout_of(root), parent / "two")
+                self.assertEqual(git.call_count, 2)
+
+    def test_git_environment_redirect_invalidates_location(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            store._CHECKOUTS.clear()
+            with mock.patch.object(store.subprocess, "run") as git:
+                git.return_value.stdout = ""
+                store.checkout_of(root)
+                with mock.patch.dict(os.environ, {"GIT_COMMON_DIR": str(root / "redirect")}):
+                    store.checkout_of(root)
                 self.assertEqual(git.call_count, 2)

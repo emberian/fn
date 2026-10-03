@@ -1,0 +1,25 @@
+{
+ "budget": 220,
+ "category": "tools-speed",
+ "expect-failure": "tests.test_evidence_store.CheckoutMemoTests.test_frozen_root_locates_once_and_ancestor_git_init_invalidates",
+ "failure-message": "3 != 1 : unchanged frozen source must locate archive cache once",
+ "file": "tools/evidence_store.py",
+ "harness": "tests/test_evidence_store.py",
+ "id": "NIGHT-FROZEN-CACHE",
+ "notes": [
+  "10-03 03:06 claimed: scope=['tools/evidence_store.py', 'tests/test_evidence_store.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_evidence_store.CheckoutMemoTests.test_frozen_root_locates_once_and_ancestor_git_init_invalidates"
+ ],
+ "owner": "codex-sol-tools",
+ "scope": [
+  "tools/evidence_store.py",
+  "tests/test_evidence_store.py",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
+ "severity": "medium",
+ "source": "tools-speed-X17",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_evidence_store.CheckoutMemoTests.test_frozen_root_locates_once_and_ancestor_git_init_invalidates",
+ "title": "Frozen source evidence lookup invokes Git for every object",
+ "updated": "2026-10-03T07:06:20Z"
+}
