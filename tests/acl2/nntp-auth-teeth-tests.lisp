@@ -2092,24 +2092,17 @@
 ; TLS and retains its independently configured role.  Check every hypothesis
 ; and the complete conclusion of the literal keystone together.
 (assert-event
- (let* ((as *aut-src*) (archive *aut-node-archive*) (config *aut-config*)
-        (observation *aut-obs*) (injection *aut-obs*)
-        (wire-event (list :command (fn-nntp-string-octets "STARTTLS"))))
-   (with-local-stobj fn-arena
-     (mv-let (ok fn-arena)
-       (let* ((r (fn-auth-step as archive config observation injection wire-event fn-arena))
-              (next (fn-post-result-session r)))
-         (mv (and (not (fn-auth-session-handshakingp as))
-                  (fn-auth-session-handshakingp next)
-                  (not (fn-auth-redeem-waitp next))
-                  (not (fn-zc-owedp (fn-auth-session-compress next)))
-                  (null (fn-auth-session-subject next))
-                  (null (fn-auth-session-pending next))
-                  (not (fn-auth-principal-rolep next))
-                  (equal (fn-auth-session-peer next)
-                         (if (fn-auth-principal-rolep as) nil (fn-auth-session-peer as))))
-             fn-arena))
-       ok))))
+ (let* ((as *aut-src*)
+        (next (in-arena-aut-role-after *aut-arena* as "STARTTLS")))
+   (and (not (fn-auth-session-handshakingp as))
+        (fn-auth-session-handshakingp next)
+        (not (fn-auth-redeem-waitp next))
+        (not (fn-zc-owedp (fn-auth-session-compress next)))
+        (null (fn-auth-session-subject next))
+        (null (fn-auth-session-pending next))
+        (not (fn-auth-principal-rolep next))
+        (equal (fn-auth-session-peer next)
+               (if (fn-auth-principal-rolep as) nil (fn-auth-session-peer as))))))
 ; The established unauthenticated reader may authenticate over TLS.
 (defmacro aut-after-tls ()
   '(fn-post-result-session
