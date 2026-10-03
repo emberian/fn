@@ -512,3 +512,21 @@ typed admission or replace the connected native scenario. That scenario still
 requires the initialized current host and real default funded-pool producer.
 The declared fixed-storage projection remains partial; complete runtime
 funding and full physical HM realization remain separate obligations.
+
+### Persistent default decoded backing (PRF-1298)
+
+The default executor constructs and reserves one private decoded scratch per
+installed worker slot before offering that worker. The actual pool reservation
+getter authorizes allocation; the ready bit records construction afterward. A
+plan alone does not authorize an additional slot. Legacy direct startup creates
+no decoded scratch. The partial fixed-storage baseline remains held while
+workers are idle; per-window settlement cannot refund it.
+
+Each decoded activation uses that same scratch with the current issued token,
+file incarnation and controller inputs. After physical return and final scalar
+borrow, native retirement consumes the exact returned binding before token
+settlement. Retirement clears operation authority while preserving backing. A
+torn private step, retirement or settlement quarantines the worker; it cannot
+be offered again or replaced with an allocation outside the baseline. Complete
+allocator/GC/controller graph pricing and the current-source ARTICLE/Web
+endpoint remain separate open obligations.
