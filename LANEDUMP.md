@@ -1238,3 +1238,11 @@ tests/test_native_string_line_allocation_raw.sh ACTUAL_SOURCE_ROOT.
 Sol tracker now names exact first4-root certificate scope/digest, retaining
 five cursor failures,44 installed uncited dependencies and general CBOR tests
 installed cached-only. It does not transfer that certificate to newer packet.
+## Proof engineering — user pause, 2026-10-03
+
+Ember stopped Luna waves; no survey resumes or measurements. First four proof roots source-integrated e1ad0d875 and freshly certified under manifest d7dddf5b61ca1403e6a4671b92ef2a57d182131f3cc9e183cff0b0ec1a11a140 (known unrelated cursor failures and installed-uncited obligations retained). Reviewed pending packets: 9b940d6a3 sequence/buffer, c4449490b cache-only tool, 954c21dee frame with corrected receipt 1dd27daa. Unproved receiver b3146873 and arena sibling 43c180956 remain parked; unfinished Foundations BLAKE3 files and separate tool copy preserved in their worktree and archived byte-for-byte at planning/evidence/proof-sweep-user-paused-20261003.tar, SHA 6fdcbc2dc6b22631f73e8139156efaa045cf337def5000c2f620112fce140217. Existing repair item records user-paused/deferred and exact pending distinctions. Sol capacity offered Groundwork for capability implementation; no deletions, resets or replay.
+
+## Sol source assembly: admitted frame bounds + sweep pause (2026-10-03)
+
+- Exact frame954c21dee two hint-only bounds edits; Sol primary whole-book AST preserved statements/rules/exports. Existing cached-dependency admissions complete for both targets; corrected1dd v2 receipt verified/indexed, no fresh proof or benchmark. Necessary next certificate roots books/frame-invariants + tests/acl2/frame-tests; Unix socket path-length error after verdict retained in receipt, no hidden green claim.
+- Final9ad347d08 pause tracker applied after earlier tracker updates; deferred/user_paused=true. Exact unfinished partial archive6fdcbc verified; original worktree files untouched. Receiver b314, arena sibling43c and BLAKE3 prototype excluded; no census, measurement or new optimization campaign.

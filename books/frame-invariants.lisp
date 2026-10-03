@@ -65,8 +65,11 @@
 (defthm fn-frame-u16-from-bounded
   (implies (and (fn-cbor-octet-listp xs) (equal (len xs) 2))
            (< (fn-cbor-u16-from xs) 65536))
-  :hints (("Goal" :in-theory (enable fn-cbor-u16-from fn-cbor-octet-listp
-                                     fn-cbor-octetp)))
+  :hints (("Goal"
+           :use ((:instance fn-cbor-u16-from-upper-bound (xs xs))
+                 (:instance fn-frame-len-2-conses (xs xs)))
+           :in-theory (disable fn-cbor-u16-from-upper-bound fn-cbor-u16-from
+                               fn-cbor-octet-listp fn-frame-len-2-conses)))
   :rule-classes :linear)
 
 (defthm fn-frame-u32-from-is-integerp
@@ -86,8 +89,11 @@
 (defthm fn-frame-u32-from-bounded
   (implies (and (fn-cbor-octet-listp xs) (equal (len xs) 4))
            (< (fn-cbor-u32-from xs) 4294967296))
-  :hints (("Goal" :in-theory (enable fn-cbor-u32-from fn-cbor-octet-listp
-                                     fn-cbor-octetp)))
+  :hints (("Goal"
+           :use ((:instance fn-cbor-u32-from-upper-bound (xs xs))
+                 (:instance fn-frame-len-4-conses (xs xs)))
+           :in-theory (disable fn-cbor-u32-from-upper-bound fn-cbor-u32-from
+                               fn-cbor-octet-listp fn-frame-len-4-conses)))
   :rule-classes :linear)
 
 (defthm fn-frame-u16-from-is-natural
