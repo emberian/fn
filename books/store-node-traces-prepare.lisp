@@ -136,6 +136,7 @@
   :hints (("Goal"
     :use (fn-sn-extended-history-equals-live-completion
           fn-snt-prepare-replayed-node
+          fn-snt-record-counters-natural
           (:instance fn-snt-successful-replay-history-length (records history))
           (:instance fn-snt-replayed-node-idle-and-frontier
             (records history) (frontier (fn-record-txid record)))
@@ -143,6 +144,11 @@
             (frontier (fn-record-txid record)))
           (:instance fn-snt-prepared-durable-is-idle-at-successor
             (node (fn-replay-result-node (fn-replay groups capacity history))))
+          (:instance fn-snt-canonical-preparation-advance-ok
+            (frontier (fn-record-txid record)))
+          (:instance fn-snt-advance-replayed-node
+            (records history) (first (fn-record-txid record))
+            (second (1+ (fn-record-txid record))))
           (:instance fn-snt-prepared-abort-is-frontier-advance
             (node (fn-sf-replay-node groups capacity history (fn-record-txid record))))
           (:instance fn-snt-replay-node-of-success
@@ -153,8 +159,8 @@
                    (fn-sn-prepare-node
                     (fn-replay-result-node (fn-replay groups capacity history)) record)
                    (fn-record-txid record) (fn-record-generation record) :durable))))
-    :in-theory (disable fn-sf-history-recoverablep fn-replay-okp
-                        fn-node-pending-matchesp))))
+    :in-theory (union-theories '(fn-replay-advance-okp natp)
+                               (theory 'minimal-theory)))))
 
 (defun fn-snt-idle-phasep (phase)
   (declare (xargs :guard t))
