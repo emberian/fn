@@ -102,7 +102,7 @@
 (defstruct (fnn-mux-conn (:constructor %make-fnn-mux-conn))
   socket fd implicit-tls channel ssl cid opened-cid
   ;; Exact ACL2 lifetime identities; response retained across all cursor windows.
-  connection-identity response-identity output-grant
+  connection-identity response-identity output-grant response-capture
   ;; :new :proxy :tls-queued :handshake :hs-wait :serving :draining :done
   (phase :new)
   ;; PRF-986 item 4 (books/tls-proxy.lisp): a trusted proxy's connection
@@ -352,7 +352,8 @@ failed effects remain discoverable while independent physical cleanup runs."
       ;; not yet an output-pool discard receipt for an issued dependency.
       (setf (fnn-mux-conn-out conn) nil (fnn-mux-conn-plan conn) nil
             (fnn-mux-conn-input conn) nil (fnn-mux-conn-greeting conn) nil
-            (fnn-mux-conn-zstash conn) nil)
+            (fnn-mux-conn-zstash conn) nil
+            (fnn-mux-conn-response-capture conn) nil)
       (unwind-protect
            (progn
              (when (fnn-mux-conn-await conn)
@@ -531,7 +532,8 @@ DONEP YIELDP COLD-READ)."
   (unless (fnn-mux-conn-output-grant conn)
     (setf (fnn-mux-conn-output-grant conn)
           (fnn-owner-output-issue (fnn-mux-service loop)
-                                  (fnn-mux-conn-response-identity conn))))
+                                  (fnn-mux-conn-response-identity conn)
+                                  (fnn-mux-conn-response-capture conn))))
   (let ((*fnn-output-grant* (fnn-mux-conn-output-grant conn)))
     (fnn-owner-render-next-quantum (fnn-mux-service loop) (fnn-mux-conn-cid conn) plan
                                    (fnn-mux-conn-class conn)
@@ -692,9 +694,10 @@ contract, without blocking the loop)."
   (fnn-owner-output-close (fnn-mux-service loop) (fnn-mux-conn-output-grant conn) :drained)
   (setf (fnn-mux-conn-output-grant conn) nil)
   ;; This is response terminal, including the continuation and socket suffix.
-  ;; No resource grant exists yet: future settlement must consume this identity
-  ;; before retirement, after independent dependency/no-publisher evidence.
-  (setf (fnn-mux-conn-response-identity conn) nil)
+  ;; The whole-output receipt above precedes identity retirement; pending
+  ;; physical dependencies retain their own native grant and original capture.
+  (setf (fnn-mux-conn-response-identity conn) nil
+        (fnn-mux-conn-response-capture conn) nil)
   (case after
     (:close (fnn-mux-begin-drain loop conn))
     (:starttls (fnn-mux-request-handshake loop conn))
@@ -769,12 +772,14 @@ the same octets are handed to the next step."
          (incoming (fnn-mux-conn-input conn))
          (channel (fnn-mux-conn-channel conn))
          (word (fnn-mux-conn-cold-word conn))
+         ;; Publish before entering the fallible semantic boundary. A
+         ;; later pre-factory draw can retain its receipt here on escape.
+         (capture (setf (fnn-mux-conn-response-capture conn)
+                        (%make-fnn-response-capture)))
          (results (multiple-value-list
-                   ;; PKT-858: a peer connection's read enters as ACL2's
-                   ;; class for it (fnn-owner-peer-read-class: :reader while
-                   ;; the disk sheds, so IHAVE/CHECK are answered 436/431
-                   ;; at once instead of waiting for the barrier).
-                   (let ((peerp (eq (fnn-mux-conn-class conn) :transit)))
+                   ;; A peer read uses the owner's current ACL2 class.
+                   (let ((peerp (eq (fnn-mux-conn-class conn) :transit))
+                         (*fnn-response-capture* capture))
                      (setf (fnn-mux-conn-cold-word conn) nil)
                      (destructuring-bind (&optional w since now limit line-since) word
                        (fnn-owner-handle-chunk-step service (fnn-mux-conn-cid conn) incoming
@@ -783,8 +788,7 @@ the same octets are handed to the next step."
                                                         (fnn-owner-peer-read-class service)
                                                       (fnn-mux-conn-class conn))
                                                     peerp w line-since since now limit))))))
-    ;; r71 F7: the page is read off this loop; the input stays in hand and
-    ;; the timer asks for it (fnn-mux-cold-check).
+    ;; The page is read off this loop; the input and first clock stay held.
     (when (eq (first results) :cold)
       (setf (fnn-mux-conn-cold conn)
             (list (second results) (fifth word) (fnn-owner-monotonic-ms))

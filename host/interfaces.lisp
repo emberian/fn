@@ -5332,6 +5332,8 @@
 ; PRF-1272: allocation-generation producer, distinct from history version.
 ; Program global/native installation refinement remains pending.
 (definterface fn-owner-catalog-root-reserve :class :program)
+;; Actual pre-chunk reader consumer; starting context is not per-command auth/pin.
+(definterface fn-owner-catalog-capture-context :class :program)
 
 ; Actual retire CLI projection consumed before observation starts.
 (definterface fn-native-operator-host-result-retire-argv :class :program)
