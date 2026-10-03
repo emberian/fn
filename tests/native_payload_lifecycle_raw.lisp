@@ -125,10 +125,12 @@
   (assert (eq *fnn-payload-lifecycle-phase* :quiescent))
   (assert (eq (first (fnn-payload-startup-reset)) :reset)))
 ; An abandoned committer still leaves its actual syncer in the join roster.
-(defstruct fnn-owner-service
-  (roster (sb-thread:make-mutex)) workers synced
-  (commit-lock (sb-thread:make-mutex))
-  (commit-ready (sb-thread:make-waitqueue)))
+; Reuse the current typed-adapter/actor fixture rather than a stale partial
+; service structure or a fake syncer issuer. Its funding responses remain
+; explicitly recording boundaries; real typed methods have their own suite.
+(load "tests/native_syncer_custody_raw.lisp")
+(in-package "ACL2")
+(load-deployed-forms "host/native/owner.lisp" '((defun fnn-owner-wait-workers)))
 (defvar *fixture-sync-entered* nil)
 (defvar *fixture-sync-proceed* nil)
 (defun fnn-owner-batch-job (service job)
@@ -136,18 +138,24 @@
   (sb-thread:signal-semaphore *fixture-sync-entered*)
   (sb-thread:wait-on-semaphore *fixture-sync-proceed*)
   (values :done nil))
-(fixture-load-definitions "host/native/owner.lisp"
- '(fnn-with-roster fnn-owner-start-syncer fnn-owner-wait-workers))
 (setq *fixture-sync-entered* (sb-thread:make-semaphore)
       *fixture-sync-proceed* (sb-thread:make-semaphore))
-(let ((service (make-fnn-owner-service)))
-  (multiple-value-bind (worker result) (fnn-owner-start-syncer service 7 nil)
-    (sb-thread:wait-on-semaphore *fixture-sync-entered*)
+(let ((service (funded-service)))
+  (multiple-value-bind (worker result actor grant) (fnn-owner-start-syncer service 7 nil)
+    (wait-label *fixture-sync-entered*)
     (assert (member worker (fnn-with-roster (service)
                              (copy-list (fnn-owner-service-workers service)))))
+    (assert (registered service actor))
     (sb-thread:signal-semaphore *fixture-sync-proceed*)
     (fnn-owner-wait-workers service)
     (assert (not (sb-thread:thread-alive-p worker)))
     (assert (null (fnn-with-roster (service) (fnn-owner-service-workers service))))
-    (assert (equal (car result) '(7 :done)))))
-(format t "PAYLOAD-LIFECYCLE: reset-first, start-first, draining, joined cleanup, syncer roster passed~%")
+    (assert (null (fnn-owner-service-actors service)))
+    (assert (equal (car result) '(7 :done)))
+    ;; Join ended this physical actor, not its separately consumed operation.
+    (assert (member grant (fnn-owner-service-syncer-grants service)))
+    (assert (eq (test-ledger-physical (fnn-owner-service-syncer-ledger service)) :terminal))
+    (assert (null (test-ledger-outcome (fnn-owner-service-syncer-ledger service))))
+    (fnn-owner-syncer-outcome service grant 7)
+    (assert (null (fnn-owner-service-syncer-grants service)))))
+(format t "PAYLOAD-LIFECYCLE: reset-first, start-first, draining, joined cleanup, current syncer roster/dual receipt passed~%")
