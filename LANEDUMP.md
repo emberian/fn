@@ -342,3 +342,18 @@ state tests and evidence index are pending on these bytes. Matching certificates
 qualified image and actual composed consumer remain integrator/Served scope.
 ASCII polynomial bound applies to core; total UTF8 exact finite remaining proved,
 public Unicode polynomial bound and tight retained target/row/frame peak owed.
+
+8599d0b97 final source replay and teeth completed without code changes:
+whole book#4-#174 in one encapsulate,171forms/59locals discarded,
+21.88ACL2s/10,124,497steps; updated22test forms .01s/4,275steps,0refused.
+Literal tests include UTF8 two/three/four octet scalar decoding, suspension,
+malformed surrogate refusal, nonstring empty-target compatibility, original
+498-octet rejection, phase15 grant14 refusal and charge depletion, plus
+corrupted offset/accumulator/frame unconditional residual preservation.
+Compiled component probe(T T T T T) passes; SBCL reports0allocated bytes for
+this small probe, not a tariff. Strict scoped theory/book-order0warnings and
+diffcheck pass. Evidence archived/indexed at
+planning/evidence/dc03-wildmat-total-20261003/{checks.json,repl.log.gz},
+checks hashd6c5f72071/raw5666a52844. These are source admissions, not certs.
+Served imported8599 asd95e and consumes actual matching-selector continuation;
+Foundations received phase accounting and remaining retained-graph/native debt.
