@@ -2700,3 +2700,11 @@ withdrawn rows with the same bounded cursor before choosing the existing423
 reply. Xref filtering also retains raw memberships and validates/compares one
 character per transition. Message-ID setup and initial authorization/server
 configuration setup still need their complete bounded implementation/refinement.
+
+The source-only `list-metadata-cursor` component retains group/next/config
+references and advances total wildmat matching, watermark lookup, numbered
+summary probes and status entries in separate controller calls. Its guarded
+step bounds emitted bytes and controller calls; one row still constructs its
+complete group/decimal fields. The available dispatcher and render plan have
+not yet consumed this tag, and full response residual/finite progress, captured
+column frames, composed witnesses and physical funding remain open.

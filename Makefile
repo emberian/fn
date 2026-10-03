@@ -1937,6 +1937,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/newnews-candidate-selector-tests \
 	books/catalog-available-readers \
 	books/group-summary-cursor \
+	books/list-metadata-cursor \
 	tests/acl2/group-summary-cursor-tests \
 	books/served-availability \
 	books/served-available-commands \
