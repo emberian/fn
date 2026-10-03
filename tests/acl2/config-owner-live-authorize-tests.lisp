@@ -1,6 +1,7 @@
 ; Teeth for books/config-owner-live-authorize.lisp (PKT-837): the live
 ; owner's administrative authorization from its carried state, as the host
-; calls it (host/owner-host.lisp fn-owner-cfg-native-admin-authorize, from
+; calls it (host/owner-host.lisp fn-owner-cfg-native-admin-authorize-carried
+; through fn-olau-authorize-carried, from
 ; host/native/admin.lisp fnn-admin-authorize-owner).  The witness is
 ; config-owner-publish-tests' native live arm: a reader mid-command, a group
 ; request staged by a second connection, the admin connection closed.
