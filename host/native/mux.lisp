@@ -559,9 +559,12 @@ DONEP YIELDP COLD-READ END)."
                                   (fnn-mux-conn-response-identity conn)
                                   (fnn-mux-conn-response-capture conn))))
   (let ((*fnn-output-grant* (fnn-mux-conn-output-grant conn)))
-    (fnn-owner-render-next-quantum (fnn-mux-service loop) (fnn-mux-conn-cid conn) plan
-                                   (fnn-mux-conn-class conn)
-                                   (and (fnn-mux-conn-zout conn) t) t)))
+    (fnn-owner-measured (:mux-render (fnn-mux-conn-cid conn)
+                         (fourth (fnn-mux-conn-response-identity conn))
+                         (third (fnn-mux-conn-response-identity conn)))
+      (fnn-owner-render-next-quantum (fnn-mux-service loop) (fnn-mux-conn-cid conn) plan
+                                     (fnn-mux-conn-class conn)
+                                     (and (fnn-mux-conn-zout conn) t) t))))
 
 (defun fnn-mux-plan-yield (loop conn plan after &optional empty-progressp)
   "Retain the cursor's exact continuation and ownership until its
@@ -812,12 +815,13 @@ the same octets are handed to the next step."
                          (*fnn-response-capture* capture))
                      (setf (fnn-mux-conn-cold-word conn) nil)
                      (destructuring-bind (&optional w since now limit line-since) word
-                       (fnn-owner-handle-chunk-step service (fnn-mux-conn-cid conn) incoming
-                                                    (fnn-mux-conn-socket conn)
-                                                    (if peerp
-                                                        (fnn-owner-peer-read-class service)
-                                                      (fnn-mux-conn-class conn))
-                                                    peerp w line-since since now limit))))))
+                       (fnn-owner-measured (:mux-input (fnn-mux-conn-cid conn))
+                         (fnn-owner-handle-chunk-step service (fnn-mux-conn-cid conn) incoming
+                                                      (fnn-mux-conn-socket conn)
+                                                      (if peerp
+                                                          (fnn-owner-peer-read-class service)
+                                                        (fnn-mux-conn-class conn))
+                                                      peerp w line-since since now limit)))))))
     (fnn-mux-capture-output-grant conn)
     ;; The page is read off this loop; the input and first clock stay held.
     (when (eq (first results) :cold)

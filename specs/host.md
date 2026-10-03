@@ -1940,3 +1940,41 @@ grant's captured references until dual settlement; connection references end at
 whole response drain/discard. SCN-1107 exercises the actual native helper and
 renderer retention with recording semantic capture; the program constructor's
 held-versus-working view and native root-affinity realization remain owed.
+
+### Opt-in native operation spans
+
+`FN_TRACE=1` enables the shared `fnn-trace-span` macro. The first consumers
+are existing owner section measurements and mux input/render phases. A span
+records monotonic start/duration, its diagnostic span/parent identifiers,
+CID and available ACL2 connection/response generations, phase and exit kind.
+Missing semantic identity is null; a span identifier is not durable acceptance.
+The macro preserves multiple values, conditions and nonlocal exits. Disabled
+owner/mux hooks take the existing measurement flag branch without evaluating
+trace identities or reading counters. Legacy `FN_OWNER_MEASURE` output remains
+available, with a monotonic clock replacing its wall clock.
+
+The sink retains at most `FN_TRACE_CAPACITY` spans (default4096), samples every
+`FN_TRACE_SAMPLE_EVERY` attempts (default1), and emits `FN_TRACE` JSON lines to
+stderr after owner workers join. Overflow is counted; incomplete or sampled
+traces cannot establish complete operation coverage. Phase labels are source
+keywords, identities are numeric; no payloads, credentials, addresses,
+condition strings or arbitrary objects are serialized. Diagnostic storage is
+opt-in overhead, not a proved production resource projection.
+
+Allocation sampling is separately opt-in: `FN_TRACE_ALLOC=process` uses SBCL's
+process-wide cumulative `get-bytes-consed` counter. `isolated-process` marks a
+probe caller's explicit isolation assertion, never an inference from CID or
+thread identity. Installed SBCL exposes allocator histogram counters, but this
+implementation has no verified portable always-on per-thread counter across
+served toolchains. Concurrent threads and nested spans overlap in each sampled
+process delta; allocation-region granularity and observer overhead apply. The
+counter is neither retained heap, live residency nor bytes reclaimed by GC.
+Zero sampled allocation is not a zero-allocation proof.
+
+`python3 tools/native_trace.py LOG [--compare BASELINE] [--json]` ranks phases
+by mean sampled allocation and duration, reports overflow/sampling, and keeps
+counter scopes separate. Comparison requires matched workload, profile, runtime
+and measurement mode; phase totals are explicitly inclusive, never unique
+process allocation. The actual native allocation probes can wrap their matched
+renderer loops in the same span macro; no separate per-subsystem tracing recipe
+is required.
