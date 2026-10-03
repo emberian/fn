@@ -631,3 +631,11 @@ composition unchanged; actor setup failures and concurrent callback drain timing
 are unconfirmed leads still being traced. Witness checker retains six preexisting
 actor/script catalog-header findings; new SCN-1087 scripts are cited. No book
 source changed, so no independent certification/full image was launched.
+
+Typed follow-through: existing scoped tools/acl2 native_syncer_typed_raw script
+also passed six actual abandonment schedules (done/uncertain/fault, physical
+before/after) over real typed ledger, validated creator and normal semantic
+counterparts. Final raw form 0.21 s; no new certification/image. Full transcript
+archived as planning/evidence/astra-syncer-typed-abandon-20261003.log. Script now
+requires the final abandonment sentinel so an earlier producer pass cannot hide
+a later fixture failure. Source SCN-1087 updated to this stronger tested scope.
