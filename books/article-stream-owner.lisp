@@ -48,8 +48,16 @@
      (t nil))))
 
 ; Capture = (expected-conn auth-view-peer selection kind server scan
-;            configuration-generation). EXPECTED-CONN includes the installed
+;            connection-configuration-pin). EXPECTED-CONN includes the installed
 ; post-command wire but its reader selection is unchanged until preflight.
+(defun fn-asto-payload-preflight (article fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((source (fn-ast-source article fn-arena)))
+    (if (or (not (fn-nntp-article-idp article))
+            (fn-nntp-article-tombstonep article fn-arena))
+        (fn-ast-refused-preflight source)
+      (fn-ast-preflight source))))
+
 (defun fn-asto-capture (oc id w cache fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let* ((o (fn-ocfg-owner oc)) (conn (fn-own-find-conn id (fn-own-conns o)))
@@ -95,8 +103,8 @@
                  (expected (fn-asto-with-wire-session conn (fn-wsp-state w)
                                                      (fn-own-conn-session conn))))
             (list expected ps selection kind server
-                  (fn-ast-preflight (fn-ast-source article fn-arena))
-                  (fn-cfg-generation (fn-ocfg-config oc)))))))))
+                  (fn-asto-payload-preflight article fn-arena)
+                  (fn-ocfg-conn-config oc id))))))))
 
 ; One wire event per request: a following NEXT/ARTICLE remains unconsumed
 ; while this retrieval's preflight owns its response. This is a core parser
@@ -130,7 +138,7 @@
          (kind (fn-ast-at 3 capture)) (scan (fn-ast-at 5 capture))
          (session (fn-peer-reader-session ps)))
     (if (not (and (equal current expected)
-                  (equal (fn-cfg-generation (fn-ocfg-config oc)) (fn-ast-at 6 capture))
+                  (equal (fn-ocfg-conn-config oc id) (fn-ast-at 6 capture))
                   (fn-ast-scan-donep scan)))
         (mv :stale oc nil)
       (let* ((tomb (fn-nntp-article-tombstonep article fn-arena))

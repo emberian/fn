@@ -2521,3 +2521,17 @@ Dense 5,000-dot-line BODY exact reference/replay checks pass W=1/2/3/4096;
 all actual-source core checks69488. Owner/native full composition and
 universal byte-bound/guard/refinement remain pending. Served a3 available
 reader fallback is preserved inside fn-asto-mca-read-span.
+
+ARTICLE retained owner/native source fixture now executes actual fn-asto-finish,
+fn-asto-ready-plan-step, fn-owner-article-ready-plan-step and both native
+helpers with list arena + recorded global-state/serialized cold I/O seam.
+70841 aggregate checks pass: preflight retains selection, READY commits once,
+three section replays at W1/3/4096 never recommit, RAW/READY cold pointer stays
+identical, exact503/423/430 refusals preserve reader. Tombstone/invalid-ID
+preflight now stops after fixed metadata checks instead of scanning payload.
+R5 configuration fence compares exact connection pin, permitting unrelated
+live generation publication; app bound-ACK current authorization unchanged.
+fn-ast-render-window-byte-bound universally admitted in narrow warm world;
+component bound is not complete owner refinement/certification. Remaining
+metadata Xref setup and selection work, full factory/physical execution,
+renderer guards and complete original-response/owner invariants remain owned.
