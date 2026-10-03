@@ -21,3 +21,17 @@ wrapper's control section conversion, coordinating Runtime's real API; then
 stabilize lock finding identities under line shifts without baseline inflation.
 S141 duplicate-load gate and useful historical harvest remain after these
 consumer blockers. No subagents spawned. No source obstruction on NIGHT-VERIFY.
+
+NIGHT-SELECTOR-HARNESS source `347fe45b6`: stale S029 frame fixture repaired.
+The real control-buffer mutex macro runs; recording ACL2 decode/fill assert
+one decode with the exact frame. New cases reject an unclassified handler and
+shed a mutating frame before dispatch. `tests.test_developer_selectors_harness`
+passes 3 tests, including actual classifier/admission guard removals. Existing
+NativeOwner structure selector test passes; raw script also passes against
+Runtime's worktree source. Self-verification shows the old fixture lets the
+classifier-guard mutation through (named assertion `0 == 0`), head catches it.
+Evidence `planning/evidence/repair/NIGHT-SELECTOR-HARNESS-463c9f3bc5154b63a4042c987025b516.json`,
+hash `ae334d56e2c2cc0bbb32b7b4cc96ec7a3a3f59cf8778e61956138b4892c7ca65`.
+The first incorrect expected assertion message was refused and its evidence
+remains indexed. No native image or runtime behavior claim. Own derived stubs
+regenerated only for this fixture; unrelated existing stale blocks left intact.

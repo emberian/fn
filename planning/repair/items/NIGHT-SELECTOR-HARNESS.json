@@ -2,12 +2,14 @@
  "budget": 200,
  "category": "harness-repair",
  "expect-failure": "tests.test_developer_selectors_harness.DeveloperSelectorsHarnessTests.test_unclassified_handler_guard_removal_is_seen",
- "failure-message": "False is not true : classifier mutation must fail its named classification check",
+ "failure-message": "0 == 0",
  "file": "tests/native_developer_selectors_raw.lisp",
  "harness": "tests/test_developer_selectors_harness.py",
  "id": "NIGHT-SELECTOR-HARNESS",
  "notes": [
-  "10-03 02:04 claimed: scope=['tests/native_developer_selectors_raw.lisp', 'tests/test_developer_selectors_harness.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_developer_selectors_harness.DeveloperSelectorsHarnessTests.test_unclassified_handler_guard_removal_is_seen"
+  "10-03 02:04 claimed: scope=['tests/native_developer_selectors_raw.lisp', 'tests/test_developer_selectors_harness.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_developer_selectors_harness.DeveloperSelectorsHarnessTests.test_unclassified_handler_guard_removal_is_seen",
+  "10-03 02:05 First claimed message was wrong: base fixture becomes green when classifier guard is removed, demonstrating missing classification coverage. Verifier correctly refused that mismatched expected message (archived hash 174dc2914a9e479f0727b9b23e9098bf2a253b1e67dcc2250a7b017aa6a57d22). Correct witness is named test assertNotEqual(code,0), actual AssertionError 0 == 0.",
+  "10-03 02:06 codex-sol-tools: source347fe45b6 fixes stale S029 control classification inputs; recording ACL2 boundary requires real frame vector, exact filled-frame identity, buffer mutex, one decode; unclassified-chain and mutating-shed negatives exercised. Existing targeted NativeOwnerHandlerStructure test passes. Raw fixture passes against own source and runtime worktree source. Three mutation harness tests pass. Self-verify base d6fd41a8c mutation slips through old fixture (AssertionError 0 == 0), new fixture catches it. Evidence planning/evidence/repair/NIGHT-SELECTOR-HARNESS-463c9f3bc5154b63a4042c987025b516.json hash ae334d56e2c2cc0bbb32b7b4cc96ec7a3a3f59cf8778e61956138b4892c7ca65. No runtime behavior change or image verdict."
  ],
  "owner": "codex-sol-tools",
  "scope": [
@@ -21,5 +23,86 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_developer_selectors_harness.DeveloperSelectorsHarnessTests.test_unclassified_handler_guard_removal_is_seen",
  "title": "Developer selector fixture supplies an untyped frame after S029 classification",
- "updated": "2026-10-03T06:04:55Z"
+ "updated": "2026-10-03T06:06:26Z",
+ "verify": {
+  "base": "d6fd41a8c28374b8c877dc04b18e3914faa3660c",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "0 == 0",
+      "test": "tests.test_developer_selectors_harness.DeveloperSelectorsHarnessTests.test_unclassified_handler_guard_removal_is_seen",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_developer_selectors_harness.DeveloperSelectorsHarnessTests.test_unclassified_handler_guard_removal_is_seen"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_developer_selectors_harness.py": "3a01f0f0fe373f8e00b0acbcb9e20a215e6a741f128946dfa1b9bbccce17773a"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "d6fd41a8c28374b8c877dc04b18e3914faa3660c",
+   "stderr": "test_unclassified_handler_guard_removal_is_seen (tests.test_developer_selectors_harness.DeveloperSelectorsHarnessTests.test_unclassified_handler_guard_removal_is_seen) ... FAIL\n\n======================================================================\nFAIL: test_unclassified_handler_guard_removal_is_seen (tests.test_developer_selectors_harness.DeveloperSelectorsHarnessTests.test_unclassified_handler_guard_removal_is_seen)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-3cibp0b6/wt/tests/test_developer_selectors_harness.py\", line 39, in test_unclassified_handler_guard_removal_is_seen\n    self.assertNotEqual(code, 0)\n    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^\nAssertionError: 0 == 0\n\n----------------------------------------------------------------------\nRan 1 test in 1.164s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "planning/repair/items/NIGHT-SELECTOR-HARNESS.json",
+   "tests/native_developer_selectors_raw.lisp",
+   "tests/test_developer_selectors_harness.py"
+  ],
+  "diff_lines": 115,
+  "evidence": {
+   "bytes": 3779,
+   "path": "planning/evidence/repair/NIGHT-SELECTOR-HARNESS-463c9f3bc5154b63a4042c987025b516.json",
+   "sha256": "ae334d56e2c2cc0bbb32b7b4cc96ec7a3a3f59cf8778e61956138b4892c7ca65"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "0 == 0",
+   "test": "tests.test_developer_selectors_harness.DeveloperSelectorsHarnessTests.test_unclassified_handler_guard_removal_is_seen"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/test_developer_selectors_harness.py": "3a01f0f0fe373f8e00b0acbcb9e20a215e6a741f128946dfa1b9bbccce17773a"
+  },
+  "head": "347fe45b6f6555adfd99a04d1ffe4be0d1a978d1",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_developer_selectors_harness.DeveloperSelectorsHarnessTests.test_unclassified_handler_guard_removal_is_seen"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_developer_selectors_harness.py": "3a01f0f0fe373f8e00b0acbcb9e20a215e6a741f128946dfa1b9bbccce17773a"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "347fe45b6f6555adfd99a04d1ffe4be0d1a978d1",
+   "stderr": "test_unclassified_handler_guard_removal_is_seen (tests.test_developer_selectors_harness.DeveloperSelectorsHarnessTests.test_unclassified_handler_guard_removal_is_seen) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 1.069s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_developer_selectors_harness.DeveloperSelectorsHarnessTests.test_unclassified_handler_guard_removal_is_seen",
+  "timeout": 1800.0
+ }
 }
