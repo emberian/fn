@@ -229,6 +229,7 @@
  },
  "direct_owner_sites": [
   "fnn-owner-stop-service",
+  "fnn-owner-fault-service",
   "fnn-owner-cold-shutdown",
   "fnn-snapshot-source-root-release",
   "fnn-owner-run"

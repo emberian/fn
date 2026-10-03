@@ -69,11 +69,12 @@
 ; (books/peer-pull-session.lisp fn-peer-lost-word) -- or the peer answered
 ; what ends the connection (the reply machine logged its line), or the offer
 ; could not be rendered.
-(defconst *fn-flb-causes* '(:dial :tls :eof :read :send :peer :unsendable))
+(defconst *fn-flb-causes* '(:dial :tls :eof :read :send :peer :unsendable :credential))
 
 (defun fn-flb-cause-word (cause)
   (declare (xargs :guard t))
-  (cond ((equal cause :peer) "lost-peer")
+  (cond ((equal cause :credential) "credential-refused")
+        ((equal cause :peer) "lost-peer")
         ((equal cause :unsendable) "lost-unsendable")
         (t (fn-peer-lost-word cause))))
 
