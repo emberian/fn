@@ -8860,6 +8860,36 @@
         "planning/evidence/operator-init-resume-2026-10-03-v2.json"
       ],
       "execution_scope": "Actual-source SBCL and warm ACL2 literal exact-codec witnesses. Four saved-image cases are prepared but not executed; no physical durability qualification."
+    },
+    {
+      "id": "SCN-1107",
+      "title": "Full response lease retains pending physical dependencies and torn custody steps",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-047"
+      ],
+      "steps": [
+        "Invoke actual native mux renderer with one captured response identity and private output projection.",
+        "Retain a cursor across windows, physically finish one child while response remains open, then capture a second child.",
+        "Close whole output while second child stays alive; physically join and consume its result, then repeat terminal callback.",
+        "Exercise no-child completion and raw exits from issuance/output receipt."
+      ],
+      "expected": [
+        "Exactly one conservative issued draw precedes factory and spans the response; fifth cold result is preserved.",
+        "Finishing an early child cannot close future dependency authority; only pending child references remain live.",
+        "Output completion alone retains debit; actual terminal child plus consumed result settles once.",
+        "No-child receipt occurs only after authority closes; torn issuance/receipt remains retained and never retries or settles."
+      ],
+      "implementation": {
+        "test": "tests/test_native_output_response_lease_raw.sh"
+      },
+      "evidence": [
+        "tests/native_output_response_lease_raw.lisp",
+        "host/native/owner.lisp",
+        "host/native/mux.lisp"
+      ],
+      "execution_scope": "Actual native capture/factory/lease/receipt functions with recording typed method boundaries and actual held SBCL children. Typed output/bank correspondence has separate producer evidence. Optional policy stays unsupported; no complete allocation tariff or matching image claim."
     }
   ]
 }
