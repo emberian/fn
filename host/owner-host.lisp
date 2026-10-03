@@ -268,6 +268,8 @@
 ;; commit's steps and the close move (fn-mca-read-span over fn-oas-read-span).
 (include-book "../books/owner-credits")
 (include-book "../books/article-stream-owner")
+; Selective available source reader: no legacy raw theorem is transferred.
+(include-book "../books/served-available-read")
 ; lane health-truth-journal (PKT-872, PRF-360): the journal writer never keeps a torn line.
 (include-book "../books/owner-time-journal-writer")
 ; lane time-bars (PRF-384): the committer's ledger of the request in flight
@@ -4429,7 +4431,7 @@
         (stop (if w (fn-wsp-next w) end))
         (capture (and w (fn-asto-capture readerOC id w cache fn-arena))))
   (if (not capture)
-      (fn-mca-read-span credits oc views id start stop cache sched slots reserve fn-octets fn-arena fn-cat)
+      (fn-av-mca-read-span credits oc views id start stop cache sched slots reserve fn-octets fn-arena fn-cat)
     (let* ((result (fn-asto-captured-result oc capture (- stop start)))
            (charge (fn-mcr-resize credits (fn-mca-conn-key id)
                      (fn-mca-need (fn-own-tls-result-owner result) id reserve))))
@@ -4453,6 +4455,10 @@
                    (<= end (fn-octets-len fn-octets))))
          (mv :bad-range nil nil state))
         (t
+        ;; Available metadata uses a distinct source reader; its selective
+        ;; owner refinement/guards are owed. Raw identity and chronology stay
+        ;; on the actual selected archive/index, including authorized views.
+        ;; Legacy equations below describe the preserved raw route only.
         ;; PKT-828: at the reader view while the committer holds a capture,
         ;; the working view put back after it (books/owner-reader-read.lisp
         ;; fn-orr-read-span; with no capture it is fn-scr-ocfg-read-span).

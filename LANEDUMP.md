@@ -2486,3 +2486,30 @@ open. Availability prereq source is exact helper770/40ca/c404; Integration has
 coherent changed catalog availability semantics. No raw proof or table cost
 claim is transferred. Root owns the line-window direct buffer bridge; latest
 matcher-stream world lent exclusively until release.
+
+
+## Actual selective owner source route (2026-10-03)
+
+`available_read_emit.py` specializes25 actual command/auth/scanner/orr/otm/oas/
+mca definitions into a distinct PROGRAM route; shared parsing/transit/admission/
+credit primitives remain the original ACL2 functions. The actual host program
+`fn-owner-chunk-span-evaluate` now calls `fn-av-mca-read-span`. Restricted
+commands use the actual cached authorized archive/index (existing fallback
+projection if absent); peer reader fallbacks use the same available delegate,
+while transfer/explicit transit priority is unchanged. No physical secondary
+availability projection/index. Existing raw logical functions/theorems remain
+unchanged; none establishes the new route's guards, selective refinement,
+completeness/frame propagation or credit coverage. Full source admission and
+actual owner/native acceptance are next, with paid high-level world requested;
+no saved-image gate. Access will wrap this exact caller for article preflight;
+our overlap is only the single reader call/include.
+
+Added actual available dispatcher/command verify-guards events for the pending
+whole-book admission. Source reader balance/strict order passes, both emitter
+freshness checks pass; no semantic whole-route claim from source generation.
+Available helper+sealed fixture receipts archived/indexed: checks3237557f,
+full warm replaye2c2ca29, including failed unsealed fixture and invariant-risk.
+Response pin excludes reclaim swap but does not freeze live summaries. Bounded
+LIST will use captured v/raw groups/high watermark and per-number visibility/
+NOV checks; named non-reclaim preserved-column frame remains owed (Runtime
+identified redecide updates context but preserves payload/numbered keys).

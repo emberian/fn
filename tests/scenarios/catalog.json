@@ -9141,7 +9141,8 @@
       "evidence": [
         "tests/acl2/served-available-commands-tests.lisp"
       ],
-      "execution_scope": "Actual arena-intern and generic catalog writer with guarded specialized formatter/navigation exports; source fixtures pass. Generated dispatcher and owner route propagation/proof/image remain pending."
+      "execution_scope": "Actual arena-intern and generic catalog writer with guarded specialized formatter/navigation exports; source fixtures pass. Generated dispatcher and owner route propagation/proof/image remain pending.",
+      "notes": " Actual owner PROGRAM source route consumes the selective dispatcher through fn-av-mca-read-span; full owner/native fixture and selective refinement remain pending."
     }
   ]
 }
