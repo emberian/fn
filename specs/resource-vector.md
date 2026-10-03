@@ -397,3 +397,11 @@ consumer must consume the identity before retirement and retain custody until
 all continuation/output/dependency/no-future-publication obligations hold.
 SCN-1102 covers actual pure producer/native helper/pre-render control flow;
 full output activation and cost/refinement remain PRF-1259.
+
+The actual owner cold-result transfer and readiness observation now use the
+shared observed E mutex seam. The transfer has no hidden condition-wait: its
+actual acquire surrounds retained-condition classification and exact settle,
+and release is reserved before physical unlock/completed afterward. The
+finite fixture observes acquire, literal `:job-result`, release while preserving
+the original condition. Remaining O/P/hidden-wait sites keep complete PageIO
+comparison unavailable.
