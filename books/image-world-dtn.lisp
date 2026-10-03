@@ -333,6 +333,7 @@
 (include-book "owner-queued-work")
 (include-book "owner-cold-line")
 (include-book "owner-resource-line")
+(include-book "output-command-admission")
 (include-book "arena-reader-pins")
 (include-book "response-plan-pins")
 (include-book "owner-reader-read")

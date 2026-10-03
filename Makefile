@@ -1931,6 +1931,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/newnews-stream-cursor-tests \
 	tests/acl2/served-plan-newnews-tests \
 	books/served-plan-cursor \
+	books/output-command-admission \
+	tests/acl2/output-command-admission-tests \
+	books/string-line-fill \
+	books/served-plan-line-buffer \
 	tests/acl2/served-plan-cursor-tests \
 	books/owner-scheduler \
 	tests/acl2/owner-scheduler-tests \

@@ -90,6 +90,29 @@
    (defvar *fnn-output-grant*)
    (defun fnn-make-render-buffer) (defun fnn-response-render-buffer)
    (defun fnn-owner-render-next)))
+(defvar *fnout-window* 256)
+; Scheduling-policy observation only; the direct renderer and buffer entry
+; are the actual source functions. No owner/store operation is replaced here.
+(defun fnn-owner-over-window () *fnout-window*)
+
+(dolist (text (list "" "." "abc" ".dot-stuffed" (make-string 4097 :initial-element #\X)))
+  (dolist (*fnout-window* '(1 2 7 256))
+    (let* ((*fnn-output-grant* (%make-fnn-output-grant))
+           (line (fn-sl-start text))
+           (expected (fn-sl-remaining line))
+           (cur (fn-cur-make nil (fn-nnw-stream-render line nil) nil nil))
+           (plan (fn-splan-of-effects (list (fn-nnw-meta-effect cur))))
+           (got nil) (steps 0))
+      (loop while (fnn-core 'fn-splan-line-ready-p plan) do
+        (multiple-value-bind (octets rest donep cursorp) (fnn-owner-render-next plan)
+          (assert (and (not donep) (not cursorp) (plusp (length octets))))
+          (assert (<= (length octets) *fnout-window*))
+          (loop for byte across octets do (push byte got))
+          (setf plan rest)
+          (incf steps)))
+      (assert (equal (nreverse got) expected))
+      (assert (<= steps (+ 3 (length text)))))))
+(format t "native_newnews_allocation: direct-line-fill PASS empty/dot/text/4097char at1/2/7/256, positive bounded exact output~%")
 
 ; Actual private stobj and semantic window implementation. These grants only
 ; exercise buffer ownership, not admission or typed ledger settlement.
@@ -121,6 +144,7 @@
 
 (defun fnout-drain-newnews (archive args quantum)
  (let* ((*fnn-output-grant* (%make-fnn-output-grant))
+        (*fnout-window* quantum)
         (result (fnn-core 'fn-nntp-newnews-response-stream nil archive nil args nil nil))
         (plan (fnn-core 'fn-splan-of-effects (cdr result)))
         (output (make-array 0 :element-type '(unsigned-byte 8) :adjustable t :fill-pointer 0))

@@ -462,3 +462,46 @@ contract. The actual string renderer's derived count is bounded by its source
 recurrence and by `8*nfix(bytes)+2`. This supplies a per-turn constructor bound;
 it does not price retained state, native integer/vector allocation, physical
 bytes, collector copying or custody of borrowed archive references.
+
+### Direct immutable line windows (PRF-1281, SCN-1109)
+
+NEWNEWS line emission can fill the response's private octet buffer directly.
+The actual fn-splan-line-window checks the retained phase, excludes outstanding
+dependencies and pending octets, and preserves the captured context/following
+cursor. fnn-owner-render-next calls it outside the owner mutex because this
+phase reads only the immutable captured string. Scalar loop registers replace
+per-byte cursor and output-list construction; a new continuation is constructed
+at the window boundary. Other cursor phases retain their serialized consumer.
+
+Buffer reuse requires the previous borrowed output to be consumed before another
+render. Full response termination still controls settlement. Partial-vector
+copies, remaining continuation/matcher allocation, pinned roots, register widths
+and GC are separate resource obligations; this optimization does not activate an
+unsupported output profile or establish complete physical heap coverage.
+
+## Pre-factory output command admission (PRF-1278)
+
+The owner previews its current wire and exact input range with the existing
+`fn-wire-scan`, without executing any command factory or changing STATE.
+`fn-ocap-preview` returns `(:preview NEXT FAMILY TOKENS)` for the first event;
+standard NNTP families, extensions, malformed commands, partial input and
+article mode remain distinct. `fn-ocap-admit-preview` requires an actual
+ACL2 footprint descriptor `(:tariff FAMILY OCTETS)` matching that family and
+fitting captured capacity. The descriptor comes from the selected implemented
+footprint producer; operator annotations cannot manufacture one.
+
+The response generation and actual lease must be retained before preview,
+since scanning/tokenization also allocate. The native owner then evaluates
+only the accepted `NEXT` prefix and retains every suffix byte for a later
+operation, so a second unpriced command cannot enter its factory under the
+first command's tariff. Unknown families refuse in accounted mode. Absence
+of output accounting policy keeps the existing explicitly partial path.
+The logical admission theorem does not prove physical footprint, collector
+behavior, refusal workspace funding or native issue/settlement authenticity.
+
+The pre-factory caller reads `fn-rlo-capacity` from its installed private
+ledger (ready instance: the captured `FILE-LIMIT`; otherwise zero). It does
+not reread a mutable service policy to decide an existing lease's capacity.
+Until an actual command footprint producer exists, `fn-ocap-unpriced-tariff`
+produces an explicit `(:unpriced FAMILY)` and accounted admission refuses
+before the command factory; this is not a priced NEWNEWS descriptor.

@@ -66,6 +66,7 @@
 ;; continuation of a served OVER/XOVER range (fnn-owner-cursor-step calls
 ;; fn-splan-cursor-step; fnn-owner-render-next asks fn-splan-at-cursorp).
 (include-book "books/served-plan-cursor")
+(include-book "books/served-plan-line-buffer")
 (include-book "books/response-plan-pins")
 (include-book "books/owner-scheduler")
 (include-book "books/owner-commit-class")
