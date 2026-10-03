@@ -1245,6 +1245,10 @@ offered to the writer while the owner runs (PKT-508), else written here."
 (defvar *fnn-raw-dispatch* (make-hash-table :test 'eq)
   "entry name -> its raw (guard-verified, compiled) function symbol")
 
+(defvar *fnn-startup-creators* (make-hash-table :test 'eq)
+  "Validated registered zero-input stobj creators; allocation has no executable
+counterpart. The image installer fills this once before any worker exists.")
+
 (defvar *fnn-dispatch-counterpart* nil
   "T when the developer selector keeps the executable-counterpart path.")
 
@@ -1253,6 +1257,7 @@ offered to the writer while the owner runs (PKT-508), else written here."
 the :raw-with and :raw-guarded entries, checked against the world; the count."
   (let ((wrld (w *the-live-state*)))
     (clrhash *fnn-raw-dispatch*)
+    (clrhash *fnn-startup-creators*)
     (dolist (entry (table-alist 'fn-interfaces wrld))
       (let ((name (car entry))
             (theorems (cadr (assoc-keyword :raw-with (cdr entry))))
@@ -1285,6 +1290,10 @@ the :raw-with and :raw-guarded entries, checked against the world; the count."
             (when (and guarded (not (compiled-function-p (symbol-function raw))))
               (error "fnn-install-raw-dispatch: ~a has no compiled guarded callback" name))
             (setf (gethash name *fnn-raw-dispatch*) raw)
+            ;; ACL2's loaded-world predicate limits this to the exact creator
+            ;; role and validated compiled target, never semantic methods.
+            (when (fn-di-raw-creatorp name (cdr entry) wrld)
+              (setf (gethash name *fnn-startup-creators*) raw))
             (when report
               (format t "~&FN_RAW_DISPATCH ~(~a~) ~(~a~) invariant-risk=~a with=~(~a~)~%"
                       name (symbol-class name wrld)
@@ -1295,8 +1304,10 @@ the :raw-with and :raw-guarded entries, checked against the world; the count."
 (defun fnn-dispatch-function (name)
   "The function fnn-call applies for NAME: its raw definition when NAME is
 raw-dispatched and the counterpart selector is off, else its executable
-counterpart."
-  (or (and (not *fnn-dispatch-counterpart*)
+counterpart. Registered startup creators retain validated allocation routes;
+ACL2 refuses their counterparts, independent of semantic method selection."
+  (or (gethash name *fnn-startup-creators*)
+      (and (not *fnn-dispatch-counterpart*)
            (gethash name *fnn-raw-dispatch*))
       (fnn-counterpart name)))
 

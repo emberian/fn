@@ -4899,6 +4899,9 @@
 (definterface fn-di-raw-guarded-target
   :class :program
   :direct "Image-build resolution of actual compiled callback or registered creator EXEC")
+(definterface fn-di-raw-creatorp
+  :class :program
+  :direct "fnn-install-raw-dispatch identifies exact registered startup creators from the validated immutable image world")
 
 ; Serialized BP listener installation and actual owner configuration control.
 (definterface fn-bplc-step
