@@ -899,7 +899,7 @@
 ;; it, a family is swept only when it can be complete, and that sweep walks
 ;; no more positions than the octets the family holds.
 (defun fn-bpfj-rows-payload-octets (rows acc)
-  (declare (xargs :guard (natp acc)))
+  (declare (xargs :guard (and (natp acc) (fn-bpnf-all-heldp rows))))
   (if (consp rows)
       (fn-bpfj-rows-payload-octets
        (cdr rows)
@@ -907,7 +907,7 @@
     acc))
 
 (defun fn-bpfj-family-coveredp (st anchor)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpnf-fragment-candidatep anchor)))
   (<= (nfix (fn-bpp-total-adu-length
              (fn-bpb-bundle-primary (fn-bpnf-held-bundle anchor))))
       (fn-bpfj-rows-payload-octets (fn-bpnf-active-set st anchor) 0)))
