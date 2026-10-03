@@ -6,11 +6,14 @@
  "id": "S125",
  "line": "17",
  "locus": "store-books",
- "notes": [],
+ "notes": [
+  "10-02 23:05 comment-only (cert unaffected by comments; not re-certified)"
+ ],
  "owner": "sweep-store",
  "severity": "low",
+ "sha": "6cbd9061b",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "Budget comment cites a host function and an enumeration that no longer exist",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:05:26Z"
 }

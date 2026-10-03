@@ -6,11 +6,14 @@
  "id": "S078",
  "line": "4567",
  "locus": "store-books",
- "notes": [],
+ "notes": [
+  "10-02 23:05 fixed; ran tests.test_native_build_scripts (3 new red->green); io.lisp not recompiled"
+ ],
  "owner": "sweep-store",
  "severity": "low",
+ "sha": "d1f408dee",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "Duplicated store-exists check in import, dead fnn-accept-any-loop, and a docstring that says five recovery barriers where the code has three",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:05:53Z"
 }

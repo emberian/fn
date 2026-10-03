@@ -6,11 +6,14 @@
  "id": "S115",
  "line": "3",
  "locus": "store-books",
- "notes": [],
+ "notes": [
+  "10-02 23:05 comments fixed (dead entries not removed: books cite them, see S150); comment-only, no test"
+ ],
  "owner": "sweep-ops",
  "severity": "low",
+ "sha": "733b376c9",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "Header and comments claim a Python bridge that no longer exists; its entry points are dead and have drifted from the live twins",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:05:03Z"
 }
