@@ -19108,6 +19108,22 @@
         {
           "kind": "theorem",
           "name": "fn-rlo-physical-keeps-representation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-install-bank-correspondence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-issue-drawn-bank-correspondence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-output-bank-correspondence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-physical-bank-correspondence"
         }
       ]
     },
