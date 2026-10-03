@@ -13,14 +13,14 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 2767 |
 | Certification roots in the Makefile | 2320 |
 | Books inside the root closure | 2585 |
-| `defthm` and `defthmd` events | 37133 |
-| `defun` events | 23552 |
+| `defthm` and `defthmd` events | 37134 |
+| `defun` events | 23553 |
 | Functions with verified guards | 3920 |
 | Functions declared `:verify-guards nil` and never verified | 3041 |
-| Functions left at the default with an explicit guard | 12991 |
+| Functions left at the default with an explicit guard | 12992 |
 | Functions left at the default with no guard | 3600 |
-| `assert-event` checks | 25950 |
-| `must-fail` checks | 2651 |
+| `assert-event` checks | 25953 |
+| `must-fail` checks | 2652 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 229 |
 | Theorems flagged SUSPECT by shape | 1371 |
@@ -28,7 +28,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 282 |
 | Include-hygiene warnings | 3609 |
-| Host-names warnings | 3152 |
+| Host-names warnings | 3156 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -1180,7 +1180,7 @@ that `make certify` requests.
 | `books/owner-tls-prefix.lisp` | root | 4 | 3 | 0/0/3/0 | 0 | 0 | 1 |
 | `books/owner-verdict-read.lisp` | root | 21 | 2 | 0/0/1/1 | 0 | 0 | 3 |
 | `books/owner-xref-read.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 1 |
-| `books/owner.lisp` | root | 103 | 186 | 13/1/172/0 | 0 | 0 | 61 |
+| `books/owner.lisp` | root | 104 | 187 | 13/1/173/0 | 0 | 0 | 61 |
 | `books/packed-octets.lisp` | closure | 48 | 17 | 2/0/15/0 | 0 | 0 | 0 |
 | `books/packed-submission.lisp` | closure | 37 | 27 | 1/0/24/2 | 0 | 0 | 0 |
 | `books/page-discovery-ledger.lisp` | root | 2 | 2 | 0/0/2/0 | 0 | 0 | 0 |
@@ -2511,7 +2511,7 @@ that `make certify` requests.
 | `tests/acl2/payload-deflate-vectors.lisp` | closure | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/payload-extent-tests.lisp` | root | 5 | 1 | 0/0/0/1 | 13 | 7 | 0 |
 | `tests/acl2/payload-kinds-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
-| `tests/acl2/payload-lz-append-tests.lisp` | root | 5 | 0 | 0/0/0/0 | 22 | 8 | 0 |
+| `tests/acl2/payload-lz-append-tests.lisp` | root | 5 | 0 | 0/0/0/0 | 23 | 8 | 0 |
 | `tests/acl2/payload-lz-record-tests.lisp` | root | 11 | 0 | 0/0/0/0 | 14 | 10 | 0 |
 | `tests/acl2/payload-view-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/payload-window-profile-width-tests.lisp` | root | 22 | 3 | 0/0/0/3 | 0 | 0 | 0 |
@@ -2808,7 +2808,7 @@ that `make certify` requests.
 | `tests/acl2/substrate-committed-transcript-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 23 | 0 | 0 |
 | `tests/acl2/substrate-profile-entry-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 5 | 0 | 0 |
 | `tests/acl2/substrate-profile-selection-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 3 | 0 | 0 |
-| `tests/acl2/tcpcl-delivery-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 5 | 0 |
+| `tests/acl2/tcpcl-delivery-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 5 | 0 |
 | `tests/acl2/tcpcl-received-count-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
 | `tests/acl2/tcpcl-segment-source-cursor-tests.lisp` | root | 2 | 1 | 0/0/1/0 | 4 | 0 | 0 |
 | `tests/acl2/tcpcl-spool-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
@@ -2835,7 +2835,7 @@ that `make certify` requests.
 | `tests/acl2/topic-history-v2-crash-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 1 | 0 |
 | `tests/acl2/transfer-journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 59 | 0 | 0 |
 | `tests/acl2/transfer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 60 | 0 | 0 |
-| `tests/acl2/transit-header-limits-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 37 | 8 | 0 |
+| `tests/acl2/transit-header-limits-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 38 | 9 | 0 |
 | `tests/acl2/transit-hygiene-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 87 | 3 | 0 |
 | `tests/acl2/transit-same-decision-tests.lisp` | root | 0 | 13 | 0/0/0/13 | 60 | 2 | 0 |
 | `tests/acl2/view-delta-cursor-tests.lisp` | - | 0 | 3 | 0/0/1/2 | 9 | 0 | 0 |
