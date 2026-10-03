@@ -178,3 +178,21 @@
     (check (and ended (eq (third receipt) :fault) (zerop steps))
            "physical compensating join settles parked child once")))
 (format t "native_actor_post_create_failure_raw: PASS~%")
+
+;; A terminator that returns without ending the child cannot block the parent
+;; forever in compensation, and does not discharge the parked actor.
+(let* ((s (%make-fnn-owner-service)) (entered nil)
+       (*fnn-actor-start-signal* (lambda (&rest args) (declare (ignore args))
+                                 (error "latch failed/no-op terminate")))
+       (*fnn-actor-thread-terminator* (lambda (&rest args) (declare (ignore args)) nil)))
+  (check (handler-case (progn (fnn-owner-spawn-syncer s '(:held)
+                               (lambda () (setf entered t))) nil)
+           (error () t)) "no-op termination compensation returns fault")
+  (let* ((actor (first (fnn-owner-service-actors s)))
+         (worker (fnn-owner-actor-thread actor)))
+    (check (and actor worker (registered s actor) (sb-thread:thread-alive-p worker)
+                (not entered) (equal (fnn-owner-actor-custody actor) '(:held)))
+           "no-op terminator retains parked physical actor and custody")
+    (sb-thread:terminate-thread worker)
+    (check (fnn-owner-actor-join s worker) "eventual termination is independently joined")))
+(format t "native_actor_noop_termination_raw: PASS~%")

@@ -1427,9 +1427,10 @@ termination; only the maker's no-child failure cancels the reservation."
                 (setf (fnn-owner-service-actors service)
                       (delete actor (fnn-owner-service-actors service) :test #'eq)))
               (error condition))))
-    ;; Install the physical object before any operation that could fail.
-    (fnn-with-roster (service)
-      (setf (fnn-owner-actor-thread actor) worker))
+    ;; The reference store is monotone while the child is latched. Publish
+    ;; before acquiring any fallible exclusion/notification primitive, so
+    ;; shutdown can discover a created child even if publication fails.
+    (setf (fnn-owner-actor-thread actor) worker)
     (handler-case
         (progn
           (fnn-with-roster (service)
@@ -1445,7 +1446,10 @@ termination; only the maker's no-child failure cancels the reservation."
         (unwind-protect
              (progn
                (funcall *fnn-actor-thread-terminator* worker)
-               (fnn-owner-actor-join service worker))
+               ;; Termination request does not prove termination. Observe
+               ;; once without blocking this compensation; shutdown retains
+               ;; the reservation and performs the eventual physical drain.
+               (fnn-owner-actor-join service worker :timeout 0))
           (fnn-owner-fault-service service nil condition))
         (error condition)))))
 
