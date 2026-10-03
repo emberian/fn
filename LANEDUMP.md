@@ -424,3 +424,25 @@ Groundwork/Runtime/Lieutenant/Integration haveactualfailure; no repeat before
 concrete diagnosis. Fixturecleanupremovedtemporaryscratch; rejectedrecordbytes
 werenotprinted and remainunavailable. Futureownedpublicevidencehook cannot
 retroactivelysupply thisrecord. No privatekey/whole-scratch archive.
+
+
+## Narrow repaired candidate retry and lane finish, 2026-10-03
+
+Current immutable01ad20b420984c3ef17cac432f25985048981470 farm
+run-20261003T113344Z-3413 at hbox /tank/fn/gates/codex-sol3-raw-repair, cert
+certify-20261003T113727Z-1662520 terminalFAIL25PASS22FAIL11:40:30Z.
+47fresh/1003cached/1050closure/44roots. Served-catalog originalrepair now
+freshPASS; primaries native-config-show FN-NCFG-NORMALIZE-OF-SHOW-PAIRS
+3.36s/1326266steps and served-catalog-owner
+FN-SCA-LOAD-HELD-ROWS-ESTABLISHES-RELATION6.43s/44545steps.643cacheduncited
+scope preserved; noimage/nativecases.16publicproof/source/driver/recordobjects
+archived native-sol3-01ad20b42-retry-failure-2026-10-03.
+
+Accessowns configrepresentationrepair, Lieutenantheldloaderrelation.
+Integration nowowns pendingwatch; thislane finishes authorizedcurrentwork to
+freeimplementation slot for Tools/usertracing. No further rerun before actual
+primaryfixes; root can resume focusednativeconsumers with repairedartifact.
+Correctread-onlywatch invokes tools/native_cert_watch.py on SAMEbuildhost/tree
+and exact certifydirectory; sharedbook_result verdict remains authoritative.
+Allapprovedad8 native+fundedmixedresults and bootstrapuncertainty filed/pushed.
+Worktree/branch preserved, no shared/private/cache deletion or devpush.
