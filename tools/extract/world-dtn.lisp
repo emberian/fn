@@ -392,4 +392,5 @@
 (include-book "../../books/bp-node-host-machine")
 (include-book "../../books/bp-evidence-host-names")
 (include-book "../../books/definterface")
+(include-book "../../books/history-records")
 (include-book "../../books/resource-vector-exec")

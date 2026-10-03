@@ -620,6 +620,20 @@ CURSORP (lane join-f2-13, PRF-1020): the plan's next window is a cursor's
 quantum (books/served-plan.lisp fn-splan-at-cursorp: a served OVER/XOVER
 range), which the caller runs under the owner mutex
 (fnn-owner-cursor-step) before it renders again; nothing is rendered here."
+  ;; The line phase reads only its immutable captured string. It fills the
+  ;; private output buffer directly, off O, instead of materializing octet
+  ;; lists through the catalog cursor entry and copying them a second time.
+  (when (fnn-core 'fn-splan-line-ready-p plan)
+    (let* ((quantum (fnn-owner-over-window))
+           (size (if compressedp (fnn-core 'fn-zc-render-window-size quantum) quantum)))
+      (destructuring-bind (status rest buf)
+          (fnn-call 'fn-splan-line-window plan size (fnn-response-render-buffer size))
+        (unless (eq status :ok)
+          (fnn-fault "owner refused an eligible direct line window"))
+        (let ((array (svref buf 0)) (fill (svref buf 1)))
+          (return-from fnn-owner-render-next
+            (values (if (= fill (length array)) array (subseq array 0 fill))
+                    rest nil nil))))))
   (when (fnn-core 'fn-splan-at-cursorp plan)
     (return-from fnn-owner-render-next
       (values (fnn-make-octets 0) plan nil t)))
@@ -8179,8 +8193,6 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                    fault nil :inet nil connection-fault-operation)))
 
 (fnn-register-developer-verb "owner" #'fnn-command-owner)
-
-
 
 
 

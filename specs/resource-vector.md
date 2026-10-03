@@ -450,3 +450,19 @@ empty native grant roster. SCN-1107 checks actual native control flow with
 recording typed boundaries and actual held children; configured activation,
 complete retained graph/allocator tariff and interpreter correspondence remain
 open. Declaration of a live caller is not those claims.
+
+### Direct immutable line windows (PRF-1281, SCN-1109)
+
+NEWNEWS line emission can fill the response's private octet buffer directly.
+The actual fn-splan-line-window checks the retained phase, excludes outstanding
+dependencies and pending octets, and preserves the captured context/following
+cursor. fnn-owner-render-next calls it outside the owner mutex because this
+phase reads only the immutable captured string. Scalar loop registers replace
+per-byte cursor and output-list construction; a new continuation is constructed
+at the window boundary. Other cursor phases retain their serialized consumer.
+
+Buffer reuse requires the previous borrowed output to be consumed before another
+render. Full response termination still controls settlement. Partial-vector
+copies, remaining continuation/matcher allocation, pinned roots, register widths
+and GC are separate resource obligations; this optimization does not activate an
+unsupported output profile or establish complete physical heap coverage.

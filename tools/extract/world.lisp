@@ -23,6 +23,7 @@
 (include-book "../../books/served-reply-buffer")
 (include-book "../../books/served-plan")
 (include-book "../../books/served-plan-cursor")
+(include-book "../../books/served-plan-line-buffer")
 (include-book "../../books/response-plan-pins")
 (include-book "../../books/owner-scheduler")
 (include-book "../../books/owner-commit-class")
