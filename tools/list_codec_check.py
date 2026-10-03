@@ -43,6 +43,13 @@ from tools.ledger import Sym, head  # noqa: E402
 BASELINE = ROOT / "tools" / "list_codec_baseline.json"
 CONVERSIONS = ("fnn-octet-list", "fnn-owner-payload-octets")
 BINDERS = ("let", "let*")
+# A binding whose value is coerced to a number is not an octet list, whatever
+# codec computed it: `(let ((next (fnn-nat (fnn-core 'fn-store-cfg-next-txid
+# (mapcar #'fnn-octet-list records) ...)))) ...)' binds a txid, and
+# fnn-recover-log's (fnn-core 'fn-lgc-consume-to kernel next) is not a site
+# (2026-10-03, check-lane CL16: that counted it; the codec site itself, the
+# cfg-next-txid dispatch, is judged where it is).
+SCALAR_HEADS = ("fnn-nat", "length")
 
 
 def host_files() -> list[Path]:
@@ -81,7 +88,9 @@ def bound_names(form, bound: set[str]) -> None:
     if isinstance(form[0], Sym) and str(form[0]) in BINDERS and len(form) > 1 and isinstance(form[1], list):
         for b in form[1]:
             if isinstance(b, list) and len(b) >= 2 and isinstance(b[0], Sym):
-                if mentions_conversion(b[1], bound):
+                scalar = (isinstance(b[1], list) and b[1] and isinstance(b[1][0], Sym)
+                          and str(b[1][0]) in SCALAR_HEADS)
+                if not scalar and mentions_conversion(b[1], bound):
                     bound.add(str(b[0]))
     for y in form:
         bound_names(y, bound)

@@ -24,19 +24,19 @@
  :raw-guarded (2 (nil rg-test) (nil rg-test)))
 (definterface rg-scalar :class :common-lisp-compliant
  :raw-guarded (1 (nil) (nil)))
-(must-fail (definterface rg-kind :class :common-lisp-compliant :raw-guarded (1 (nil) (nil))))
-(must-fail (definterface rg-relation :class :common-lisp-compliant :raw-guarded (2 (nil nil) (nil))))
-(must-fail (definterface rg-invariant :class :common-lisp-compliant :raw-guarded (1 (rg-test) (nil))))
-(must-fail (definterface rg-field-guard :class :common-lisp-compliant :raw-guarded (1 (rg-test) (nil))))
-(must-fail (definterface rg-program :class :program :raw-guarded (1 (nil) (nil))))
-(must-fail (definterface rg-step :class :common-lisp-compliant :raw-guarded (1 (rg-test) (nil rg-test))))
-(must-fail (definterface rg-step :class :common-lisp-compliant :raw-guarded (2 (nil nil) (nil rg-test))))
-(must-fail (definterface rg-step :class :common-lisp-compliant :raw-guarded (2 (nil rg-test) (nil nil))))
-(must-fail (definterface rg-scalar :class :common-lisp-compliant :raw-guarded (1 (nil) (nil)) :raw-with (unrelated)))
-(must-fail (definterface rg-scalar :class :common-lisp-compliant :raw-guarded nil))
-(must-fail (definterface rg-scalar :class :common-lisp-compliant :raw-guarded (1 (nil) ("nil"))))
+(must-fail-checked (definterface rg-kind :class :common-lisp-compliant :raw-guarded (1 (nil) (nil))))
+(must-fail-checked (definterface rg-relation :class :common-lisp-compliant :raw-guarded (2 (nil nil) (nil))))
+(must-fail-checked (definterface rg-invariant :class :common-lisp-compliant :raw-guarded (1 (rg-test) (nil))))
+(must-fail-checked (definterface rg-field-guard :class :common-lisp-compliant :raw-guarded (1 (rg-test) (nil))))
+(must-fail-checked (definterface rg-program :class :program :raw-guarded (1 (nil) (nil))))
+(must-fail-checked (definterface rg-step :class :common-lisp-compliant :raw-guarded (1 (rg-test) (nil rg-test))))
+(must-fail-checked (definterface rg-step :class :common-lisp-compliant :raw-guarded (2 (nil nil) (nil rg-test))))
+(must-fail-checked (definterface rg-step :class :common-lisp-compliant :raw-guarded (2 (nil rg-test) (nil nil))))
+(must-fail-checked (definterface rg-scalar :class :common-lisp-compliant :raw-guarded (1 (nil) (nil)) :raw-with (unrelated)))
+(must-fail-checked (definterface rg-scalar :class :common-lisp-compliant :raw-guarded nil))
+(must-fail-checked (definterface rg-scalar :class :common-lisp-compliant :raw-guarded (1 (nil) ("nil"))))
 ; Existing raw-with continues to reject a guard-t annotation that skips none.
-(must-fail (definterface rg-scalar :class :common-lisp-compliant :raw-with (unrelated)))
+(must-fail-checked (definterface rg-scalar :class :common-lisp-compliant :raw-with (unrelated)))
 
 ; Actual abstract creator role/EXEC metadata, followed by corrupted metadata.
 (make-event

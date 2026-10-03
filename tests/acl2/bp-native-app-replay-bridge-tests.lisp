@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-native-app-replay-bridge")
 (include-book "bp-native-app-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; fn-bpaj-replay-receiver-is-receiver-replay: complete positive antecedent
 ; and conclusion, with an accepted request AND committed receipt.  These
@@ -37,7 +37,7 @@
       (not (car *bpaj-bridge-transit-model*))
       (not (equal (fn-bpaj-receiver-result *bpaj-intent-replay*)
                   *bpaj-bridge-transit-model*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpaj-receiver-result *bpaj-intent-replay*)
          *bpaj-bridge-transit-model*)))
@@ -104,7 +104,7 @@
       (car *bpaj-bridge-strict-model*)
       (not (equal (fn-bpaj-receiver-result *bpaj-bridge-strict-actual*)
                   *bpaj-bridge-strict-model*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpaj-receiver-result *bpaj-bridge-strict-actual*)
          *bpaj-bridge-strict-model*)))
@@ -128,7 +128,7 @@
       (not (car *bpaj-bridge-rest-transit-model*))
       (not (equal (fn-bpaj-receiver-result *bpaj-bridge-rest-transit-actual*)
                   *bpaj-bridge-rest-transit-model*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpaj-receiver-result *bpaj-bridge-rest-transit-actual*)
          *bpaj-bridge-rest-transit-model*)))

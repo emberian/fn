@@ -77,15 +77,39 @@ def definition(path: pathlib.Path, name: str) -> str:
     raise SystemExit(f"alphabet_check: {path.relative_to(ROOT)} defines no {name}")
 
 
+def defevent_codes(path: pathlib.Path, encoder: str) -> "set[str] | None":
+    """The kinds of the `defevent' whose :encode is ENCODER, or None when no
+    defevent generates it (a hand-written encoder)."""
+    text = path.read_text(encoding="utf-8", errors="replace")
+    for form in reach_check.forms(text):
+        if form.startswith("(defevent") and re.search(r":encode\s+" + re.escape(encoder) + r"[\s)]", form):
+            codes = re.search(r":codes\s*\((.*?)\)\s*:", form, re.S)
+            return set(re.findall(r"\((:[a-z][a-z0-9-]*)\s+\d+\)", codes.group(1) if codes else ""))
+    return None
+
+
 def kinds_in(form: str, pattern: str) -> set[str]:
     return set(re.findall(pattern, form))
 
 
 def config_tables() -> dict[str, set[str]]:
     declared = kinds_in(definition(CONFIG, "*fn-cfg-delta-kinds*"), r":[a-z][a-z0-9-]*")
-    kind_code = kinds_in(definition(CONFIG, "fn-cfg-kind-code"), r"\(equal kind (:[a-z][a-z0-9-]*)\)")
-    code_kind = kinds_in(definition(CONFIG, "fn-cfg-code-kind"), r"\)\s*(:[a-z][a-z0-9-]*)\)")
-    apply = kinds_in(definition(CONFIG, "fn-cfg-apply-delta"), r"\(equal kind (:[a-z][a-z0-9-]*)\)")
+    generated = defevent_codes(CONFIG, "fn-cfg-kind-code")
+    if generated is not None:
+        # One defevent form (books/defevent.lisp) generates the encoder and
+        # the decoder from one :codes table and asserts their round trip at
+        # expansion (since 8b622123d): both tables are that table.
+        kind_code = code_kind = generated
+    else:
+        kind_code = kinds_in(definition(CONFIG, "fn-cfg-kind-code"),
+                             r"\(equal kind (:[a-z][a-z0-9-]*)\)")
+        code_kind = kinds_in(definition(CONFIG, "fn-cfg-code-kind"),
+                             r"\)\s*(:[a-z][a-z0-9-]*)\)")
+    apply_form = definition(CONFIG, "fn-cfg-apply-delta")
+    apply = kinds_in(apply_form, r"\(equal kind (:[a-z][a-z0-9-]*)\)")
+    # An arm may test several kinds at once: (member-equal kind '(:a :b)).
+    for group in re.findall(r"\(member-equal kind '\(([^()]*)\)\)", apply_form):
+        apply |= set(re.findall(r":[a-z][a-z0-9-]*", group))
     writers: set[str] = set()
     for path in sorted(ROOT.glob("books/*.lisp")) + sorted(ROOT.glob("host/**/*.lisp")):
         text = path.read_text(encoding="utf-8", errors="replace")
