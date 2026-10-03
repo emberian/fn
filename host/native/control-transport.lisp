@@ -89,7 +89,12 @@ unlinked; the lease is released before the verb runs."
                                  :type :stream :protocol 0)))
     (handler-case
         (progn
-          (sb-bsd-sockets:socket-bind listener path)
+          ;; S102/S143: the node is born 0600 (bind under umask 0077), so no
+          ;; window exists between bind and the chmod below.
+          (let ((old-umask (sb-posix:umask #o077)))
+            (unwind-protect
+                 (sb-bsd-sockets:socket-bind listener path)
+              (sb-posix:umask old-umask)))
           (sb-bsd-sockets:socket-listen listener 16)
           ;; The accept owner polls a nonblocking listener with a one-second
           ;; ceiling.  Stop remains shutdown-only, yet close can join accept
