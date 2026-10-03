@@ -808,33 +808,6 @@ class NativeBpNodeTests(unittest.TestCase):
             arrival,
         )
 
-    def test_a_peer_that_resets_ends_only_its_connection(self):
-        """Sweep S006 (lane host-lifecycle): a TCPCL peer that resets its
-        connection mid-session ended `bp-node serve' (fnn-recv's ECONNRESET
-        unwound the accept loop, which closed the listeners and the Store).
-        It is the connection's :uncertain session word now
-        (io.lisp fnn-connection-scoped); the node serves the next peer."""
-        receiver, port = self.start_node(True, once=False)
-        for _ in range(3):
-            peer = socket.create_connection(("127.0.0.1", port), timeout=30)
-            # TCPCLv4 contact header (RFC 9174 4.2): magic, version 4, no flags.
-            peer.sendall(b"dtn!\x04\x00")
-            answer = peer.recv(6)
-            self.assertTrue(answer.startswith(b"dtn!"), answer)
-            # SO_LINGER 0: close(2) sends a RST while the node reads SESS_INIT.
-            peer.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, b"\x01\x00\x00\x00\x00\x00\x00\x00")
-            peer.close()
-            time.sleep(1)
-            self.assertIsNone(receiver.poll(), "a peer's reset stopped bp-node serve")
-        again = socket.create_connection(("127.0.0.1", port), timeout=30)
-        try:
-            again.sendall(b"dtn!\x04\x00")
-            self.assertTrue(again.recv(6).startswith(b"dtn!"))
-        finally:
-            again.close()
-        self.assertIsNone(receiver.poll(), "the node stopped serving after a reset")
-        receiver.stop(grace=5)
-
     def test_uncertain_transfer_is_connection_local_and_resume_rearms(self):
         """Spec 4.3.1: an uncertain transfer costs that connection only.
 
@@ -1789,6 +1762,52 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(b"pinned=yes", self.sender_status().stdout)
         self.assertIn(b"pinned=yes", self.unrelated_status().stdout)
 
+
+
+@requires(IMAGE)
+class NativeBpNodePeerResetTests(unittest.TestCase):
+    """Only the receiving node (no sender obligation: the producer fixture
+    is not needed to show a peer's reset)."""
+
+    invoke = NativeBpNodeTests.invoke
+    start_node = NativeBpNodeTests.start_node
+
+    def setUp(self):
+        self.tmp = scratch(self, "fn-bp-node-reset-")
+        self.relay = ByteRelay()
+        self.addCleanup(self.relay.close)
+        self.receiver_store = self.tmp / "receiver-store"
+        self.receiver_journal = self.tmp / "receiver-fnbs"
+        self.receiver_receipts = self.tmp / "receiver-fnrj"
+        initialized = self.invoke("store", self.receiver_store, "init", "fn.test")
+        self.assertEqual(initialized.returncode, EXIT.OK, initialized.stderr)
+
+    def test_a_peer_that_resets_ends_only_its_connection(self):
+        """Sweep S006 (lane host-lifecycle): a TCPCL peer that resets its
+        connection mid-session ended `bp-node serve' (fnn-recv's ECONNRESET
+        unwound the accept loop, which closed the listeners and the Store).
+        It is the connection's :uncertain session word now
+        (io.lisp fnn-connection-scoped); the node serves the next peer."""
+        receiver, port = self.start_node(True, once=False)
+        for _ in range(3):
+            peer = socket.create_connection(("127.0.0.1", port), timeout=30)
+            # TCPCLv4 contact header (RFC 9174 4.2): magic, version 4, no flags.
+            peer.sendall(b"dtn!\x04\x00")
+            answer = peer.recv(6)
+            self.assertTrue(answer.startswith(b"dtn!"), answer)
+            # SO_LINGER 0: close(2) sends a RST while the node reads SESS_INIT.
+            peer.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, b"\x01\x00\x00\x00\x00\x00\x00\x00")
+            peer.close()
+            time.sleep(1)
+            self.assertIsNone(receiver.poll(), "a peer's reset stopped bp-node serve")
+        again = socket.create_connection(("127.0.0.1", port), timeout=30)
+        try:
+            again.sendall(b"dtn!\x04\x00")
+            self.assertTrue(again.recv(6).startswith(b"dtn!"))
+        finally:
+            again.close()
+        self.assertIsNone(receiver.poll(), "the node stopped serving after a reset")
+        receiver.stop(grace=5)
 
 
 if __name__ == "__main__":

@@ -213,8 +213,10 @@ never a vanished session (sweep S031)."
                               family address))
                  (flow nil)
                  ;; The owner sessions this request opened and has not
-                 ;; closed: released however the request ends (sweep S030).
-                 (opened nil))
+                 ;; closed: a browser session outlives its request (its
+                 ;; cookie names it), so they are released only when the
+                 ;; request ends abnormally, before its response (sweep S030).
+                 (opened nil) (answered nil))
             (unwind-protect
              (dotimes (i (fnn-core 'fn-web-host-max-events)
                          (fnn-fault "a web request took more events than ACL2 allows"))
@@ -228,6 +230,7 @@ never a vanished session (sweep S031)."
                     (destructuring-bind (code fields bodyp) (rest action)
                       (fnn-web-respond face fd channel code fields
                                        (fnn-web-slice out 0 (fnn-web-len out)) bodyp))
+                    (setq answered t)
                     (return))
                    (:health
                     (fnn-owner-space-preobserve service t)
@@ -262,7 +265,8 @@ never a vanished session (sweep S031)."
                       (fnn-web-close service cid)
                       (setq flow next event (list :closed))))
                    (otherwise (fnn-fault "ACL2 returned a malformed web action")))))
-              (dolist (cid opened) (fnn-web-close service cid))))))))))
+              (unless answered
+                (dolist (cid opened) (fnn-web-close service cid)))))))))))
 
 (defun fnn-web-serve (face socket)
   (let ((fd (fnn-socket-fd socket)) (channel nil))
