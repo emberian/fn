@@ -228,7 +228,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **bounded retire operator observation.** The retire command stops waiting at its ACL2 observation deadline with uncertainty while leaving the live owner and custody untouched; report inspection requires a stopped observation.
 
-- Host-called subject: `fnn-operator-execute-retire` at host/native/operator.lisp:1167.
+- Host-called subject: `fn-nret-observation-step` at host/native/operator.lisp:615.
 - Keystone: `fn-nret-observation-expiry-is-uncertain` (books/native-retire.lisp:214; PRF-1263 (planned)); no archived manifest records `books/native-retire.lisp` passed at its current source.
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; absent from it: `books/native-retire.lisp`.
