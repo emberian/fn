@@ -130,12 +130,12 @@
 (defthm fn-dwj-retired-job-refuses-scalar-publication
   (implies (equal (mv-nth 0 (fn-dwj-retire ledger worker token job)) :reusable)
     (not (equal (mv-nth 0
-             (fn-dwj-byte-at ledger worker token file eoff elen poff compressed
+             (fn-dwj-byte-at query-ledger query-worker query-token file eoff elen poff compressed
                              trailer decoded dict-id i
                              (mv-nth 1 (fn-dwj-retire ledger worker token job))))
            :byte)))
   :hints (("Goal" :in-theory (e/d (fn-dwj-retire fn-dwj-byte-at fn-dwa-controller
-                                           fn-pwz-byte-at fn-pwz-outcome fn-pwz-plan-matches-token)
+                                           fn-pwz-byte-at fn-pwz-outcome fn-pwz-plan-matches-token fn-ewz-publication)
                                   (fn-dwa-retire fn-pwx-boundp))
            :use ((:instance fn-dwa-retirement-revokes-prior-authority
                             (carry (fn-dwj-carry job)))))))
