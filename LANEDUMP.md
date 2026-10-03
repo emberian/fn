@@ -2878,3 +2878,45 @@ Root actualdevREPL nativeownerPASS: scopedGWad8 initializedsource+gate336+cde
 +exact177module/trace overlays, tests/dev_repl_native.py exercisesrealowner,
 ACL2admission/refusalcontinuation, SIGTERMexit0cleanup, rawerrorfenceexit4cleanup.
 ExecutionJSON+log+assertions archivedseparately; notcurrentwholedevqualification.
+
+
+## Root operator stopping state — 2026-10-03 10:12 EDT
+
+Ember requested a usage-limit wind-down, allowing agents 3–10 minutes from
+10:08. This pauses implementation; it does not close the capability goal.
+Root's tracked implementation is committed through 0f320528a and has been
+sent to Integration. The shared checkout and other agents' files are untouched.
+
+- Developer REPL: actual native-owner scenario passes on the explicitly scoped
+  ad8 source cache plus gate336/cde and exact developer overlays. Ordinary ACL2
+  admission, refused-event continuation, normal SIGTERM cleanup and raw-error
+  owner fencing are exercised. This is not a current whole-dev qualification.
+- S132: ACL2-owned observation allowance and actual exchange-loop tests pass.
+  Full native 10 MiB acceptance/readback remains unverified: the first scratch
+  profile refused oversize after authored-header injection; the 16 MiB article,
+  64 MiB history/64-transaction profile refused unaffordable in 6.874 seconds.
+  Neither refusal demonstrates a reply timeout. Choose an adequately funded
+  supported profile before rerunning. Scratch scripts remain under this tree's
+  build/large-control/{setup.py,check.py,overlay.lisp,exchange.lisp}; remote
+  files/logs remain /tank/fn/scratch/codex-root-large-control, including
+  scenario16 and check16.log. Test owners exited; no root-owned native owner
+  remains. These scratch scripts are not published test evidence.
+- S083: published moderation row authorizes the cause; it does not itself
+  withdraw the target. Partial-result reasons now say withdrawal-authorized.
+  Narrow actual dispatcher and normal ACL2 checks pass. Full native composition
+  and authorization/generation races across separate owner quanta remain open.
+- Development admission needs an explicit ordinary ACL2 prover-step/time bound.
+  Tools' new proof attempt demonstrated that socket timeout does not cancel
+  admission: the serialized owner remains occupied. Preserve admitted state,
+  distinguish event refusal from timeout/unknown outcome, and test subsequent
+  owner progress before claiming the bounded-admission feature. Tools owns
+  termination of its private scratch owner; root does not kill it or shared worlds.
+- Coherent current execution still requires fresh current 11-field page-read
+  pool and early canonical P3 attachment before generic history. The reusable
+  app cache has the old 10-field pool. History repaired FN-HIST-NTH-PAST-LEN
+  (679bc5222,3dcf4b06f), with complete generic force-replay passing; full native
+  current-union owner entry and POST/reclaim/reopen remain unexecuted.
+
+The 44-minute coordination automation was deleted for the requested stop.
+Future work resumes the same agents and comprehensive domain ownership, not a
+new narrowed queue or a claim that these remaining tasks are complete.
