@@ -138,7 +138,10 @@
   (let ((h (fn-rcl-store-holders s))
         (verdicts (fn-rcl-held-verdicts (fn-sn-verdicts s)))
         (articles (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
-    (fn-nsc-tally-loop rule now h verdicts articles 0 0 0 0 0 0 0 fn-arena fn-cat)))
+    ; The holders' fast alists live for this one walk (fn-rcl-holders-free).
+    (let ((tally (fn-nsc-tally-loop rule now h verdicts articles 0 0 0 0 0 0 0
+                                    fn-arena fn-cat)))
+      (prog2$ (fn-rcl-holders-free h) tally))))
 
 ; KEYSTONE (the one walk is the four).  Under F, the seven figures the
 ; owner's reclaim line reads are fn-rcl-store-counts (reclaimable,

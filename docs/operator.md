@@ -706,7 +706,11 @@ fn operator CONFIG carry /srv/fn/workflow drop WORK --abandon the reason
 store still pins the article (`pinned=yes`), its hold (`none`, `paused`,
 `dropped` with the reason) and its last attempt. While a work is paused or
 dropped, `bp-obligation request` for it is refused (`reason=carry-paused`,
-`reason=carry-dropped`) and nothing is written. A drop is final. It stops the
+`reason=carry-dropped`) and nothing is written. A request for a work whose
+store pin is gone (`pinned=no`: released by a receipt or an abandon, or
+never undertaken) is refused the same way, `reason=forward-pin-not-durable`:
+without the pin, reclaim may have taken the article, and the request is
+never built from what replaced it (`reason=article-reclaimed`). A drop is final. It stops the
 carrying but does not free the article: only the peer's receipt releases the
 store's pin.
 

@@ -304,6 +304,14 @@
                                    fn-rcl-pinned-p fn-rcl-undelivered-p
                                    fn-rcl-unacknowledged-p fn-rcl-verdict-heldp)))))
 
+; The holders' fast alists freed once a caller is done with them (the BP
+; slot fn-rcl-bp-holders builds; a feed slot).  The identity on nothing in
+; the logic.
+(defun fn-rcl-holders-free (h)
+  (declare (xargs :guard t))
+  (prog2$ (fast-alist-free (fn-rcl-feeds h))
+          (prog2$ (fast-alist-free (fn-rcl-bp h)) nil)))
+
 ; -----------------------------------------------------------------------------
 ; The counts `status' prints: (reclaimable reclaimable-octets reclaimed
 ; freed-octets held).  HELD counts articles some holder keeps (reader pin,
