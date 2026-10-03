@@ -600,3 +600,12 @@ its existing `:already-installed` refusal. Coverage of every reusable idle
 row after arbitrary histories remains owed; the issue/settlement boundaries
 assume the prior chain is valid and the actual method reports `:drawn` or
 `:settled`.
+
+The native decoded issuer reserves its worker before the semantic draw and
+publishes that reservation to the retained response read. After an assigned
+result, it installs the exact token and response dependency before setting the
+worker runnable or notifying its waitqueue. A notification failure therefore
+retains a discoverable read/token even if the physical child runs. Ordinary
+no-token refusal removes the reservation; an escaped draw or binding preserves
+it and is never retried as a fresh issue. This is native custody ordering,
+not a proof of a complete decoded tariff or interpreter realization.

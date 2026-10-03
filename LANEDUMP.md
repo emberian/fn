@@ -1115,8 +1115,7 @@ Existing checkpoint tar, admitted packet tar and CBOR bounds receipt archive
 verify; include only5ca08a7ea evidence index line for prior bounds event.
 Source/admission evidence is separate from scoped certificates and images.
 S112 removed-peer journal custody, codex-sol-tools
-================================================
-Actual pull worker/catch-up tick prune cached journals only when the existing
+=========================================Actual pull worker/catch-up tick prune cached journals only when the existing
 ACL2 fn-pull-plan-for says the peer has no current plan. Cached cursors drop
 with descriptor custody; returning cursor-for goes through its existing
 open/replay path. Both kinds share one private pruning function. A close
@@ -1329,7 +1328,6 @@ Ember stopped Luna waves; no survey resumes or measurements. First four proof ro
 - 0f39cfa59 optional output config→launcher extension and private typed custody producer composed independently; Runtimee426 same patch not separately imported. Existing numerical23checks,126configregressions,16typedtraces and actual normal-counterpart renderer+real-worker custody probe reused. Exact resource-vector-exec836b6f digest matches receipt; current generic declaration carried-assumption checks are disjoint from these normal counterparts. No proof/native replay.
 - Spec append retained actual syncer unwind semantics; heading corrected to requirement anchor. PRF1259 three numerical source keystones added to curated map so later regeneration retains producer events. HST047/PRF1259 claim checkPASS; output objectsed2aa/5c384 verified.
 - Explicit policy stays operator-unsupported, absence partial. Ideal install/issue guards, metadata/freechain/bank preservation, bookkeeping/refinement/fulltariff, consumeractivation and matchingcert/image remain owed. Necessary roots output-reservation, resource-output, native-config/operator and corresponding tests; first exact producer discriminator tests/test_native_output_custody_raw.sh after matching scoped prerequisites, Integration schedules.
-=======
 Native raw transport composition passed using deployed io/owner forms from
 those dependencies plus this extent macro and a real SBCL thread/mutex;
 no fn semantic decisions are mocked. Eight image-free transport checks pass.
@@ -3331,7 +3329,7 @@ Own branch bp-transport-oct03 merged public52f728918 as b62a3cc5a. Public BP
 source and SCN1110 already match the prior657/be75 coherent packet; no current
 native verdict has been transferred. History owns the fresh current TEN-field
 ordinary decoded pool/earlyP3 initialization; the oldad8 cached bootstrap is
-only diagnostic and cannot substitute that ABI. Integration owns the launcher.
+only diagnostic and does not establish current decoded/P3 assembly. Integration owns the launcher.
 
 The canonical BP fixture now accepts an explicit initialized-source binding
 through tests.native_image_provenance.assert_same_native_source. Environment
@@ -3348,3 +3346,22 @@ Next connected consumers: actual live keepalive plus canonical second request
 through Store/FNRJ/reopen, then immutable application R/Q with exact source and
 both signatures. Full codec/native cursor refinement and whole decoder/GC work
 and resident tariff remain open as recorded above.
+Runtime resume correction, 2026-10-03: exact current page-read-pool-state has
+TEN fields; earlier current11 vs ad8pool10 prose mistakenly counted :inline t.
+No measured shared-pool ABI mismatch is established. Historical evidence keeps
+its original erroneous observation; this correction supersedes that inference.
+Fresh current definitions and early canonical P3 attachment remain actual
+requirements. History owns one fresh full source world/current raw native load;
+Runtime does not duplicate it. Current ordinary renderer takes BORROWP third
+argument; Access's preserved old-cache selected quantum called that ABI but had
+not loaded the newer ordinary leaf. Full current native load resolves that
+composition seam, pending actual compressed ARTICLE/Web execution.
+
+Capture-before-wake follow-up: actual extent issuer now calls native retention
+before draw and before runnable queue publication; actual owner creates and
+registers read first, attaches exact token/dependency before notification. Real
+SBCL waitqueue child plus injected post-wake error confirms retained response
+read/token/dependency. Ordinary refusal unregisters, torn issuer keeps reserved
+worker/read. No full funding/profile/GC claim; current partial86928 scope and
+modern full unpriced refusal unchanged. Current native source fixture passes;
+registry PRF1288 remains planned. Integration sole dev writer.
