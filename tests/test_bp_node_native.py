@@ -45,7 +45,8 @@ class NativeBpNodeTests(unittest.TestCase):
     def setUp(self):
         if self._testMethodName in (
                 "test_disconnected_delivery_restarts_and_releases_only_matching_obligation",
-                "test_keepalive_peer_does_not_block_second_canonical_request"):
+                "test_keepalive_peer_does_not_block_second_canonical_request",
+                "test_silent_contact_expires_without_stopping_canonical_delivery"):
             self.image_source = assert_same_native_source(self, PRODUCER, IMAGE)
         self.tmp = scratch(self, "fn-bp-node-a3-")
         self.relay = ByteRelay()
@@ -260,6 +261,25 @@ class NativeBpNodeTests(unittest.TestCase):
         # Reopen observes exactly the one application delivery; a TCPCL ACK
         # alone is not the Store/FNRJ/application evidence asserted here.
         keepalive.stop(grace=5)
+        receiver.stop(grace=5)
+        self.assertEqual(self.receiver_articles(), 1)
+        restarted = self.dispatch_receiver()
+        self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
+        self.assertEqual(self.receiver_articles(), 1)
+
+    def test_silent_contact_expires_without_stopping_canonical_delivery(self):
+        """SCN-1126: real RFC9174 contact timeout, no synthetic clock advance."""
+        receiver, port = self.start_node(True, once=False)
+        silent = socket.create_connection(("127.0.0.1", port), timeout=10)
+        self.addCleanup(silent.close)
+        sent = self.send_request(port, "beside-silent-contact", timeout=30)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        delivered = receiver.output_until(b"BP node delivery request-accepted", timeout=45)
+        self.assertIn(b"BP application handoff durable", delivered)
+        receiver.output_until(b"peer Contact Header timeout", timeout=75)
+        silent.settimeout(10)
+        self.assertEqual(silent.recv(1), b"", "expired contact must actually close")
+        self.assertIsNone(receiver.poll(), receiver.diagnostics())
         receiver.stop(grace=5)
         self.assertEqual(self.receiver_articles(), 1)
         restarted = self.dispatch_receiver()

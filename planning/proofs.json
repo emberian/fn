@@ -22869,6 +22869,28 @@
         "tests/native_tcpcl_source_control_raw.lisp"
       ],
       "progress_note": "2026-10-03 actual raw retained consumer with actual ACL2 control function PASS: KEEPALIVE alone writes, exact END ACK/root held, no duplicate while physical write waits,64-action private cursor resumes; receiving clock remains9. Constructor/control certificate pending. No transfer acceptance or settlement inferred. Exact control+teeth successor certify-20261003T134436Z-1978092 PASSED3/0 archived/indexed, guards verified. Actual be75 controller/core-leaf receipt planning/evidence/bp-source-continuations/be75-native-components.json indexed."
+    },
+    {
+      "id": "PRF-1295",
+      "title": "Retained TCPCL Contact Header deadline excludes established custody",
+      "statement": "Proposed composed boundary for actual fnn-tcl-turn Contact Header expiration: only a pre-header context reaches ordinary TCP-closed, established source/root/END ACK remain unchanged, and no timeout observation can create physical-close/context-release or typed-bank settlement receipts. Guard-verified fn-tcrt-contact-timeout-p selects the contact phase and captured sixty-second deadline; its named definition-expansion helpers are not cited keystones. RFC9174 section4.1 requires a timeout/close and recommends <=60seconds; fn chooses60seconds. Stalled SESS_INIT, full peer admission and total decoder/collector work remain separate open work.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-1273"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/tcpcl-retained-turn.lisp",
+        "tests/acl2/tcpcl-retained-turn-tests.lisp",
+        "host/native/tcpcl.lisp",
+        "tests/native_tcpcl_retained_turn_raw.lisp"
+      ],
+      "progress_note": "2026-10-03 actual retained-controller raw deadline boundary/established source and held END ACK fixture PASS. Warm hbox normal definitions/guards plus14 literal assertions PASS (whole book1010 steps); definition-expansion helper names are not completion keystones. Matching affected-root certification and proposed composed custody boundary remain pending. SCN-1126 prepared, actual native real-time contact timeout unexecuted."
     }
   ]
 }

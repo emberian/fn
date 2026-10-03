@@ -58,7 +58,7 @@
  (unless (fnn-tclc-source-pending conn) (fnn-tcl-flush conn)))
 (defun fnn-core (name &rest args)
  (case name
-  ((fn-tcim-turn fn-tcf-at fn-tcf-begin fn-tcf-contactp fn-tcf-byte fn-tcf-span fn-tcrt-action fn-tcrt-write-end fn-tcrt-read-limit fn-tcrt-write-deadline) (apply name args))
+  ((fn-tcim-turn fn-tcf-at fn-tcf-begin fn-tcf-contactp fn-tcf-byte fn-tcf-span fn-tcrt-action fn-tcrt-write-end fn-tcrt-read-limit fn-tcrt-write-deadline fn-tcrt-contact-deadline fn-tcrt-contact-timeout-p) (apply name args))
   (fn-tclsctl-turn (list (first args) nil))
   (fn-tcl-max-message 200000)
   (fn-tcl-host-segment-mru 100000)
@@ -142,3 +142,27 @@
  (assert (fnn-tclc-broken conn))
  (assert (eq (fnn-tcl-turn conn) :done)))
 (format t "PASS retained TCPCL actual driver: exact partial writes/wait, ACK flush before progress, read/pump turns, source borrow, EOF/deadline loss.~%")
+
+;;; An incomplete Contact Header cannot consume a retained slot forever.
+;;; Deadline loss itself neither closes a socket nor settles a bank token.
+(let ((conn (make-fnn-tcl-conn :retained t :session :contact
+                             :contact-deadline 60100))
+      (*now* 60100) (*calls* nil))
+ (assert (eq (fnn-tcl-turn conn) :done))
+ (assert (null *calls*)) (assert (fnn-tclc-broken conn))
+ (assert (eq (fnn-tclc-session conn) :closed)))
+(let ((conn (make-fnn-tcl-conn :retained t :session :contact
+                             :contact-deadline 60100))
+      (*now* 60099) (*incoming* :wait) (*calls* nil))
+ (assert (eq (fnn-tcl-turn conn) :wait))
+ (assert (not (fnn-tclc-broken conn))) (assert (equal *calls* '(:read))))
+(let ((conn (make-fnn-tcl-conn :retained t :session :established
+                             :contact-deadline 60100 :source-pending t
+                             :source-root '(:exact-root) :held '(:end-ack)))
+      (*now* 60101) (*calls* nil))
+ (fnn-tcl-turn conn)
+ (assert (equal *calls* '(:source)))
+ (assert (not (fnn-tclc-broken conn)))
+ (assert (equal (fnn-tclc-held conn) '(:end-ack)))
+ (assert (equal (fnn-tclc-source-root conn) '(:exact-root))))
+(format t "PASS actual retained Contact Header timeout: boundary timing/no syscall, established source/END ACK unaffected.~%")

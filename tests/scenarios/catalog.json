@@ -9464,6 +9464,32 @@
         "tests/native_image_provenance.py"
       ],
       "note": "Prepared actual consumer selector tests.test_native_consumer_exchange_two_nodes.NativeTwoNodeConsumerExchangeTests.test_signed_report_reply_cross_bp_and_reopen. Python compilation passes; native execution UNEXECUTED. Requires one explicitly bound initialized current source execution or the existing published coordinate. No image qualification, native result or full work/GC funding inferred."
+    },
+    {
+      "id": "SCN-1126",
+      "title": "Silent Contact Header peer expires while canonical delivery remains available",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-006"
+      ],
+      "steps": [
+        "Start native BP node and open one real TCP peer that sends no Contact Header.",
+        "Deliver a second canonical NNTP-produced ACL2 request while the silent contact remains retained, observing Store/FNRJ publication.",
+        "Wait the actual sixty-second RFC9174 section4.1 contact reception deadline; require peer EOF and the node still alive.",
+        "Stop/reopen and dispatch the receiving node, observing exactly one application article."
+      ],
+      "expected": [
+        "A pre-header peer cannot retain its incoming slot forever.",
+        "Established requests and their source/END-ACK custody are unaffected by contact reception expiration.",
+        "Actual physical socket close belongs to the session caller; timer observation alone cannot settle the typed grant."
+      ],
+      "evidence": [
+        "tests/test_bp_node_native.py",
+        "tests/native_tcpcl_retained_turn_raw.lisp",
+        "books/tcpcl-retained-turn.lisp"
+      ],
+      "note": "Actual retained-controller raw fixture PASS; real-time native selector test_silent_contact_expires_without_stopping_canonical_delivery prepared but UNEXECUTED. Stalled SESS_INIT and complete handshake/session admission scheduling remain open."
     }
   ]
 }

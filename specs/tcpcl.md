@@ -253,7 +253,7 @@ that was never accepted.
 
 | Clause | Status | Where / why |
 | --- | --- | --- |
-| §4.1 active sends CH first, passive waits, CH timeout | implemented (timeouts are the host's) | `fn-tcl-open`, `fn-tcl-recv-contact`; the host applies the ≤60 s contact timeout and calls `fn-tcl-tcp-closed` |
+| §4.1 active sends CH first, passive waits, CH timeout | source implemented; retained-controller fixture passes, current native timeout unexecuted | `fn-tcl-open`, `fn-tcl-recv-contact`; actual `fnn-tcl-turn` consumes ACL2 `fn-tcrt-contact-timeout-p` at captured60s deadline and calls `fn-tcl-tcp-closed` (PRF-1295, SCN-1126). This is Contact Header reception, not SESS_INIT or an established-session bound |
 | §4.2 Contact Header, CAN_TLS, reserved flags ignored | implemented | `fn-tcl-decode-contact`, `fn-tcl-flag-can-tls`; CAN_TLS = 0 sent (`fn-tcl-own-contact`) |
 | §4.3 magic check closes silently; version mismatch (passive: CH then SESS_TERM, then close in the same step -- "immediately terminate"; the rest of the peer's stream is never parsed as v4 messages and draws no MSG_REJECT, PKT-650; active: close); Enable TLS = AND, unacceptable → Contact Failure | implemented | `fn-tcl-input-error` before contact; `fn-tcl-recv-contact`; `fn-tcl-passive-version-mismatch-closes-without-reject` (PRF-977, REP-016); native: tests/test_bp_service_native.py `test_v3_contact_is_refused_without_msg_reject` |
 | §4.3 version fallback to TCPCLv3 | deferred | fn implements version 4 only; a peer's lower version is Version mismatch |
@@ -436,3 +436,14 @@ ACK; source work resumes afterwards. RFC9174 §5.1.1 permits independent KEEPALI
 this local scheduling change does not certify peer reception or acceptance. Normal
 input/tick observations resume after the local operation. Concurrent input control
 servicing and whole semantic decode latency remain open.
+
+
+The retained TCPCL context captures an ACL260-second Contact Header reception
+policy at socket/session begin. Partial header bytes do not reset it. On
+expiry in `:tcp-connected`/`:contact`, the next turn applies TCP-closed without
+another read/write; the outer socket owner still requires actual physical close
+and no-future-publication context release before settling its bank token.
+Established sessions, local received-source work and the held END ACK are
+outside this timer. RFC9174§4.1 requires a timeout/close and recommends at most
+60seconds; fn chooses60seconds. A peer stalled after its header in SESS_INIT
+and full admission/total semantic decode latency remain separate open work.
