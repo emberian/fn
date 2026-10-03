@@ -591,6 +591,22 @@
       "latest": "Actual native retained turn plus actual ACL2 control function PASS: physical wait retains output/no duplicate, KEEPALIVE alone writes, root/END ACK remain held and bounded source resumes. certify-20261003T134436Z-1978092 PASSED3/0.",
       "obstruction": "Concurrent incoming control servicing and total source/decoder/GC latency remain open; this is neither reception evidence nor transfer acceptance.",
       "next": "Same fresh-source canonical multi-peer native execution and slow-source control fixture."
+    },
+    {
+      "id": "operator-default-launch",
+      "name": "DEFAULT launcher and configured next-run resource projection",
+      "contract": "For an accepted DEFAULT run with no explicit cold policy, the extended selected reservation fits the captured least positive machine allowance; STATUS and HEALTH use the same actual configuration policy chain. This is a partial selected storage projection.",
+      "host": {
+        "function": "fn-prstartup-extend-operation-reservation",
+        "file": "host/native/heap.lisp"
+      },
+      "keystone": "fn-prstartup-accepted-default-launch-fits-machine",
+      "bridge": "fn-prstartup-operation-extension-refines-default-by-definition",
+      "tested": null,
+      "profile": "default",
+      "latest": "Actual heap arithmetic/STATUS/HEALTH source consumers pass root, DEFAULT, configured output, exact machine boundary and prior-body negatives (planning/evidence/operator-default-heap-source-2026-10-03-v2.json). Executor/arena startup custody cases pass separately (planning/evidence/operator-arena-custody-source-2026-10-03.json). Foundation cd48 source guard/theorem admission is not matching certification.",
+      "obstruction": "Matching normal certificate/image, expanded init-budget/reopen refinement, protected recovery partition and complete tariff remain open; no physical deployment claim.",
+      "next": "Compose exact Foundation/Runtime/Horse producer bytes with native consumers; certify affected roots once and execute current nonempty Store startup/read/stop."
     }
   ],
   "other_deployments": [
