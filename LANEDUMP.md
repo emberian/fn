@@ -2994,3 +2994,14 @@ Message-ID setup and remaining authorization/server setup bounds stay open.
 Next connected test is the actual parsed factory in Groundwork source cache
 with Runtime window custody; no image/proof wait. Continuing whole access and
 absorbed operator queue beyond this checkpoint.
+
+Matching current193111788 fresh source runner PASS (short private UNIXsocket
+name fixes failed runner initialization). All current program books/host
+wrappers +all3 read-route and POST exact wire witnesses run in one coherent
+stobj world. Receipt archived as
+planning/evidence/web-post-and-producer-source-2026-10-03.md with raw/native,
+fresh source transcript and Access2a dense-dot red/pass contrast. Existing
+private gate equivalence now describes compatibility/refusal fallback;
+successful streamed POST remains separate planned PRF-1293. Actual fullnode
+socket/account/read/post/remove still needs selected logical definitions
+loaded alongside native overlays; GW/Lt own ordinaryLD seam.
