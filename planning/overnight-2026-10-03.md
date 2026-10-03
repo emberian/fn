@@ -107,7 +107,7 @@ remains broader than that current assignment.
 | Coordinator | this session | System design, priorities, shared contracts, overlap resolution and following every workstream through use |
 | Integration | GPT-6.1-Sol | Sole dev writer; harvest running builds, source/evidence reconciliation, review assembly and candidate qualification |
 | Source assembly helper | GPT-6.1-Sol | Concrete READY batch semantic review and isolated conflict staging for Integration; no independent dev push or global audit |
-| Proof engineering sweep | GPT-6.1-Sol with four GPT-6-Luna helpers | Reusable proof simplifications across the corpus; multi-edit family batches follow active owners, unchanged statements and final clean reproduction. A/B timing only for representative or uncertain cases; no new assurance gate |
+| Owner carrier continuation | Former proof GPT-6.1-Sol | Actual refused/aborted POST writers and carried invariant boundary; broad Luna sweep stopped, validated simplifications retained |
 | Runtime coordination | GPT-6.1-Sol | Section/actor generator, lifecycle, committer and queued work, then mux/cold/service conversion and web concurrency |
 | Composition | GPT-6-Astra | HM actions and capability contracts; real runtime linkage, schedule harness, carried read and crash composition; initial implementation as well as review |
 | Served commands | GPT-6.1-Sol | NEWNEWS/OVER/HDR/XPAT and remaining streaming commands, view policy, reclaim-aware navigation, generated command switch |
@@ -474,11 +474,15 @@ Re-read job status and current dev at dispatch.
   Read its verification, including the base failure reason, before redispatch.
 
 The lasting post-foundation capability queue is [NSLICESQUEUE.md](../NSLICESQUEUE.md).
-Primary implementation continues alongside the proof sweep: Served owns the
+Primary capability implementation continues with the broad proof sweep stopped:
+Served owns the
 configured-group selector through actual NEWNEWS factory/plan; Foundations
 owns explicit heap funding and Runtime the retained output drain/discard
 consumer; Groundwork owns history/page-backed reclamation, with the page
-helper answering the existing catalog attachment/creator/smoke question first.
+helper now implementing carried availability after passing the catalog
+attachment/creator/smoke boundary. Astra owns checkpoint image verification and
+authoritative reclaim capture. The strategic coordinator owns S012 probe and
+selector boundaries.
 Tools owns BP send/refusal boundaries; Groundwork owns canonical retention
 reservation and Empirical the undertake/release/reopen delivery scenario.
 Integration owns one exact executable candidate and its selected questions.
