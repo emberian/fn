@@ -2188,6 +2188,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-pages-grow-cap \
 	books/history-pages-grow-append \
 	books/history-pages-relocate \
+	books/history-pages-relocate-step \
+	tests/acl2/history-pages-relocate-step-tests \
 	tests/acl2/history-pages-relocate-tests \
 	books/history-pages-append-grown \
 	books/history-pages-grow-then-append \

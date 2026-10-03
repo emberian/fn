@@ -187,7 +187,7 @@ Anchors: [STORE-PAGES](planning/repair/items/STORE-PAGES.json),
 
 ### Page-backed history and node roots
 
-**Active — History implements; Groundwork coordinates representation, Astra owns publication safety.** Extend
+**Active — History owns native roots and builder; Astra owns page relocation continuation; Groundwork coordinates.** Extend
 the existing page representation to history and node roots, with actual open,
 tail replay, checkpoint and retained-view consumers. The first connected packet replaces the three publication callers’ whole suffix construction with a bounded append/flush builder; it does not yet establish effective reclaim. Keep progress and
 allocation bounded per step without truncating admitted data.
@@ -197,6 +197,12 @@ the intended served/startup paths; exact content, local numbering and retained
 roots survive replay and restart. Work can proceed beside carrier migration
 where interfaces are independent. Anchors: [STORE-PAGES](planning/repair/items/STORE-PAGES.json),
 [S147](planning/repair/items/S147.json), [store design](planning/design-store-representation-2026-10-01.md).
+
+The private builder continuation now separates page readiness/copy/zero/header/mark
+ticks from explicit flat-array growth (`history-pages-relocate-step`, SCN-1101).
+Completed concrete equality and finite progress are component obligations;
+flat-array resize, whole-event encoding, commit work and native root attachment
+remain open and must not be described as bounded by a row yield.
 
 ### Reclaim and physical release
 

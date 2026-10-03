@@ -1784,3 +1784,26 @@ funded/read selectors never started. Integration owns repaired continuation;
 no duplicate build/test.16 exact run/script/status/log objects archived as
 native-sol2g-ad8da41-prefix-2026-10-03, manifest
 a18779e9cf0c265e86f6a4114e1bcabcdf37ac7849a3f571f747538583f71bef.
+- Carrier snapshot adapter now consumes the actual program dump plus its recorded admission/image source binding (no after-the-fact current-tree binding); eleven combined snapshot/thread tests pass. History agrees root+frontier/prefix-reload ownership is the stronger eventual seam, retaining independent fn-hist signatures until its attachment contract lands.
+## Astra — page relocation continuation (2026-10-03)
+
+New history-pages-relocate-step: fn-hpr-begin/step/grow-image/placement,
+private cursor, one page per readiness/copy/zero/mark tick, 13-word header.
+Explicit prepaid grow remains flat O(image). Clean warm source replay passes
+all definitions/guards, whole-concrete completion preservation, old relocation
+bridge, cursor preservation and decreasing-yield rank. Actual stobj schedules
+SCN-1101 pass full six-array equivalence, cold needs/retry, refusal and tick
+word bound. Scoped two-root hbox certification running, source may integrate
+before evidence follows. History consumes only in fresh private builder;
+old placement is unreadable during zero phase, no live-root/read claim.
+Inspected leaves: history-pages-row readiness, history-pages-relocate copy/
+zero/mark/relocate, history-pages-write-exec append plan/put, pagestore-exec
+flat grow and generic commit. Rejected council lead: generic commit accepts
+arbitrary txid, though snapshot wrapper uses 1. Still unbounded: event encode,
+flat backing resize and commit dirty/digest work; native root attachment is
+History's. No pgs existing leaf or shared fn-hrecs carrier modified.
+
+Relocation component certificate: certify-20261003T102524Z-1455069, two roots
+PASS, 110 cache dependencies. Archive/index retained. This certifies d2a424486's
+component bytes; History requested the finite runner composition theorem next,
+which is a follow-on proof/API packet and requires its own matching evidence.
