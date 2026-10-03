@@ -4773,8 +4773,8 @@ MANIFEST over every entry with its octets."
     (fnn-refuse "export refused reason=archive-exists"))
   (multiple-value-bind (store count) (fnn-open-live-store root nil)
     (declare (ignore count))
-    (unwind-protect
-         (let* ((fault (fnn-export-test-fault))
+    (fnn-unwind-cleanups
+         ((let* ((fault (fnn-export-test-fault))
                 (profile (fnn-octet-list (fnn-read-regular-bounded (fnn-config-path store) 16384)))
                 ;; The store holds no frontier file: the archive carries the
                 ;; frontier the log derived at this open (ACL2's frame of
@@ -4797,8 +4797,8 @@ MANIFEST over every entry with its octets."
                                               +fnn-o-nofollow+)
                                #o600))
                  (chunk nil) (n 0))
-             (unwind-protect
-                  (flet ((flush ()
+             (fnn-unwind-cleanups
+                  ((flet ((flush ()
                            (when chunk
                              (fnn-export-step dir fd
                                               (fnn-core 'fn-sxp-export-chunk (nreverse chunk))
@@ -4822,17 +4822,27 @@ MANIFEST over every entry with its octets."
                     (fnn-export-sync-data dir)
                     (fnn-export-at fault "export-data-durable")
                     ;; fn-sxd-publish-program
-                    (fnn-fsync-file fd))
-               (fnn-close fd)))
+                    (fnn-fsync-file fd)))
+               (let ((handle fd))
+                 (setq fd nil)
+                 (handler-case
+                     (fnn-immutable-close-handle handle staged nil :export-manifest store)
+                   (serious-condition (condition)
+                     (setf (fnn-store-fenced store) t)
+                     (fnn-indeterminate "export manifest return unobserved: ~a" condition))))))
            (fnn-fsync-dir (fnn-join dir "records"))
            (fnn-fsync-dir (fnn-join dir "config"))
            (fnn-export-at fault "export-manifest-staged")
-           (fnn-replace staged (fnn-join dir "MANIFEST"))
-           (fnn-export-at fault "export-manifest-renamed")
-           (fnn-fsync-dir dir)
+           (handler-case
+               (progn
+                 (fnn-replace staged (fnn-join dir "MANIFEST"))
+                 (fnn-export-at fault "export-manifest-renamed")
+                 (fnn-fsync-dir dir))
+             (fnn-os-error (condition)
+               (fnn-indeterminate "export manifest replacement/barrier is uncertain: ~a" condition)))
            (fnn-export-at fault "export-durable")
            (fnn-out "exported records=~d configuration=~d" records (length configs))
-           +fnn-exit-ok+)
+           +fnn-exit-ok+))
       (fnn-store-close store))))
 
 (defun fnn-archive-read-dir (dir sub)
