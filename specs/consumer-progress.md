@@ -258,6 +258,14 @@ pending. Inbox handling and marking that delivery handled share the transaction
 which records the next ACK; saved report bytes remain available as evidence.
 The `after-poll` consumer process-death cut tests this custody boundary. This
 client journal does not add an fn article pin or exactly-once external effects.
+The report command reuses an existing operation's immutable artifact without
+opening current signing keys; a different payload under that operation ID is
+refused without a new attempt. Its completion code follows the journal:
+unresolved submissions are uncertain (3), definitive refusals are refused (1),
+and known stored submissions are successful (0). Report completion names that
+requested application operation; wake completion covers its entire outbox. The
+summary retains each operation's own outcome independently. A refused retry cannot turn an
+earlier unanswered attempt into a refusal or a successful command.
 
 ## Two nodes
 

@@ -489,6 +489,16 @@ class Consumer:
     def originate(self, operation_id, payload):
         """Author a report R as a new local operation with its submission."""
         aid = self.config["application_id"]
+        prior = self.db.execute(
+            "SELECT o.kind,s.source FROM operations o LEFT JOIN submissions s ON s.id=o.submission_id "
+            "WHERE o.application_id=? AND o.operation_id=?", (aid, operation_id)).fetchone()
+        if prior is not None:
+            fields = self.envelope(prior[1]) if prior[1] is not None else None
+            if prior[0] != "originated" or fields is None or fields.get("kind") != "report-receipt" or fields.get("payload") != payload:
+                raise Stop(1, "operation already has a different report; saved artifact unchanged")
+            # Reuse the committed artifact without reading today's keys,
+            # changing its Date/context or even producing discarded signatures.
+            return
         message_id = "<%s.%s@%s.invalid>" % (aid, operation_id, self.name)
         source = self.compose(message_id, "report " + operation_id,
                               [("application-id", aid),
@@ -551,8 +561,11 @@ class Consumer:
         claimant = self.claimant(aid, oid)
         entitled = principal is not None and principal == claimant
         reply = None
+        known = self.db.execute(
+            "SELECT 1 FROM operations WHERE application_id=? AND operation_id=?",
+            (aid, oid)).fetchone()
         if entitled and fields["kind"] == "report-receipt" and \
-                principal != self.config["principal_hex"]:
+                principal != self.config["principal_hex"] and known is None:
             reply = self.reply_for(fields, event)
         self.db.execute("BEGIN IMMEDIATE")
         try:
@@ -814,8 +827,9 @@ class Consumer:
     def summary(self):
         q = lambda sql: self.db.execute(sql).fetchall()
         outbox = []
-        for sid, message_id, source, principal in q(
-                "SELECT id, message_id, source, principal FROM submissions ORDER BY id"):
+        for sid, message_id, source, principal, aid, oid in q(
+                "SELECT id, message_id, source, principal, application_id, operation_id "
+                "FROM submissions ORDER BY id"):
             attempts, observed = self.journal(sid)
             rows = q("SELECT purpose, state, exit, status FROM attempts "
                      "WHERE submission_id=%d ORDER BY id" % sid)
@@ -825,6 +839,7 @@ class Consumer:
             answered = [r for r in rows if r[1] == "answered"]
             outbox.append({
                 "message_id": message_id, "sha256": digest(source), "principal": principal,
+                "application_id": aid, "operation_id": oid,
                 "state": submission_state(attempts, observed),
                 "attempts": len(rows),
                 "journal": [dict(zip(("purpose", "state", "exit", "status"), r))
@@ -881,7 +896,21 @@ def main(argv=None):
             consumer.drive_outbox()
         elif args.command == "wake":
             consumer.wake()
-        print(json.dumps(consumer.summary(), sort_keys=True))
+        summary = consumer.summary()
+        print(json.dumps(summary, sort_keys=True))
+        if args.command != "summary":
+            entries = summary["outbox"]
+            if args.command == "report":
+                entries = [entry for entry in entries
+                           if entry["application_id"] == consumer.config["application_id"]
+                           and entry["operation_id"] == args.operation_id]
+            states = {entry["state"] for entry in entries}
+            if "uncertain" in states:
+                sys.stderr.write("consumer stopped: submission outcome remains uncertain\n")
+                return 3
+            if "refused" in states:
+                sys.stderr.write("consumer stopped: submission refused\n")
+                return 1
         return 0
     except Stop as stop:
         sys.stderr.write("consumer stopped: %s\n" % stop)

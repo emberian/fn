@@ -103,6 +103,24 @@ class DeliveryRecovery(unittest.TestCase):
         self.assertEqual(stopped.exception.code, 4)
         self.assertFalse(any(c[:2] == ("consumer", "ack") for c in self.calls))
 
+    def test_repeated_committed_report_does_not_construct_another_signed_reply(self):
+        self.client.config.update(principal_hex="receiver", claims=[["fn-e1", "r", "sender"]])
+        event = dict(history="history", incarnation="incarnation", source_id="source",
+                     message_id="<report>", source=b"authored-source", received=b"received",
+                     sequence=1, verdict_principal="sender", verdict="verified")
+        fields = {"application-id": "fn-e1", "operation-id": "r1", "kind": "report-receipt"}
+        self.client.db.execute("INSERT INTO operations VALUES (?,?,?,?,?,?,?)",
+                               ("fn-e1", "r1", fn_consumer.digest(event["source"]),
+                                "report-receipt", "replied", "sender", None))
+        def forbidden(*args):
+            self.fail("a committed reply must not read new keys or sign again")
+        self.client.reply_for = forbidden
+        disposition = self.client.transaction(event, fields, b"next-cursor",
+                                              {"own": "verified", "principal": "sender"})
+        self.assertEqual(disposition, "repeat")
+        self.assertEqual(self.client.summary()["transitions"], [])
+        self.assertEqual(self.client.summary()["pending_ack"], "unsent")
+
 
 if __name__ == "__main__":
     unittest.main()
