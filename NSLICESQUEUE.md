@@ -639,3 +639,11 @@ the explicit prover-allowance gap on that source coordinate; wall time, arbitrar
 Lisp evaluation and full current-owner composition remain unbounded or pending. Broad command access does
 not establish complete internal observability or allocation accounting. Preserve
 source/proof/cache/image distinctions when completing these domains.
+
+2026-10-03 BP continuation: source-execution fixture provenance now compares
+explicit launcher/manifest hashes and every actually loaded execution input,
+separately from published-image qualification. Eight positive/refusal checks
+PASS locally; SCN1110 still unexecuted. History owns the current TEN-field
+ordinary pool/earlyP3 bootstrap; Integration will supply exact manifest/launcher.
+BP owner continues actual keepalive/second canonical request and signed R/Q
+Store/FNRJ/reopen join. Oldad8 cache is diagnostic only, not current-union proof.

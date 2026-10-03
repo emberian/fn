@@ -18,7 +18,7 @@ from tests.native_harness import (
     requires, run, scratch, start)
 from tests.test_bp_contact_relay_native import ByteRelay
 from tests.bp_producer import post_articles
-from tests.native_image_provenance import assert_same_published_source
+from tests.native_image_provenance import assert_same_native_source
 
 # specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
 # connection lost after it existed is EXIT.INTERRUPTED (connection-local:
@@ -46,7 +46,7 @@ class NativeBpNodeTests(unittest.TestCase):
         if self._testMethodName in (
                 "test_disconnected_delivery_restarts_and_releases_only_matching_obligation",
                 "test_keepalive_peer_does_not_block_second_canonical_request"):
-            self.image_source = assert_same_published_source(self, PRODUCER, IMAGE)
+            self.image_source = assert_same_native_source(self, PRODUCER, IMAGE)
         self.tmp = scratch(self, "fn-bp-node-a3-")
         self.relay = ByteRelay()
         self.addCleanup(self.relay.close)
