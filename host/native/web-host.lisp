@@ -33,14 +33,20 @@
 
 (in-package "ACL2")
 
-(defstruct (fnn-web-face (:constructor %make-fnn-web-face))
+; New reactor records have their own native type identity. The previous
+; inline face may exist in a developer execution cache; no old instance is
+; reinterpreted as the concurrent reactor. Public constructor/accessor names
+; remain the same, and startup constructs these records before use.
+(defstruct (fnn-web-reactor-face (:conc-name fnn-web-face-)
+                                (:constructor %make-fnn-web-face))
   plan config limits listener thread tls-context service capacity semantic-thread
   (lock (sb-thread:make-mutex :name "fn web completions"))
   (jobs nil) (jobs-closed nil)
   (job-ready (sb-thread:make-waitqueue :name "fn web semantic work"))
   (conns nil) wake-read wake-write (wake-closed nil) (cleanup-debts nil) (stop nil))
 
-(defstruct (fnn-web-conn (:constructor %make-fnn-web-conn))
+(defstruct (fnn-web-reactor-conn (:conc-name fnn-web-conn-)
+                                (:constructor %make-fnn-web-conn))
   socket fd ssl channel in out deadline job (closedp nil) (semantic-ended nil) (semantic-disposal :idle)
   (phase :head) (want :input) (from 0) request end
   flow event private-begin post-form post-source post-cursor post-active post-done (events 0) (opened nil) (answered nil)
