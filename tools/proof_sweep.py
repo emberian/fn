@@ -32,6 +32,26 @@ def literal_theorems(value: object) -> set[str]:
     return names
 
 
+def hint_features(value: object) -> dict:
+    """Screen every modeled hint; features are leads, never cost estimates."""
+    counts = Counter()
+    def visit(term):
+        if isinstance(term, ledger.Sym):
+            if str(term) in {":in-theory", ":use", ":expand", ":induct", ":cases", ":nonlinearp", ":do-not-induct"}:
+                counts[str(term)] += 1
+        elif isinstance(term, list):
+            if term and str(term[0]) in {"enable", "disable", "e/d"}:
+                counts[str(term[0])] += 1
+                if str(term[0]) == "enable":
+                    counts["enabled_items"] += len(term) - 1
+                elif str(term[0]) == "e/d" and len(term) > 1 and isinstance(term[1], list):
+                    counts["enabled_items"] += len(term[1])
+            for item in term:
+                visit(item)
+    visit(value)
+    return dict(counts)
+
+
 def family(path: str) -> str:
     name = Path(path).stem
     if name.startswith(("bp-", "dtn", "ltp", "tcpcl", "peer", "replication", "inventory", "batch", "contact")):
@@ -60,6 +80,7 @@ def census(root: Path) -> dict:
                            "kind": "theorem", "name": theorem.name,
                            "line": theorem.line, "local": theorem.local,
                            "generator_origin": theorem.name not in literal_names,
+                           "hint_features": hint_features(theorem.hints),
                            "status": "unvisited"})
         for fn in book.functions:
             # Raw Common Lisp definitions are not ACL2 admission events.
@@ -81,6 +102,8 @@ def census(root: Path) -> dict:
                      "source_class": "certifiable-book" if path in tree.books else "raw-host" if path.startswith("host/") else "nested-support",
                      "status": "unvisited", "events": events,
                      "verify_guards": book.verify_guards,
+                     "local_book_includes": book.includes,
+                     "exported_theory_forms": len(book.in_theory_forms),
                      "system_includes": book.system_includes,
                      "source_read_error": book.read_error,
                      "macro_definitions": sorted(book.macro_bodies)})
