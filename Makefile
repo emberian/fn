@@ -303,6 +303,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/def-holder \
 	tests/acl2/def-holder-tests \
 	books/reclaim-cuts \
+	books/def-carried-writer \
+	tests/acl2/def-carried-writer-tests \
+	books/owner-retain-frame \
+	tests/acl2/owner-retain-frame-tests \
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \

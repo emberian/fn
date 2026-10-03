@@ -241,7 +241,96 @@ def carried_rows(root: Path = ROOT) -> dict[str, dict]:
                 and isinstance(e[0], (str, ledger.Sym))
                 and any(isinstance(x, (str, ledger.Sym)) and _sym(x) == ":produced"
                         for x in e[2:])]
+    writer_rows(root, rows)
     return rows
+
+
+# books/def-carried-writer.lisp: a `(def-carried-writers-row NAME :profile P
+# :from PILOT)` form (a book or an ld'd host file) is a def-carried row ACL2
+# writes from the pilot's row and the table of writers declared against P --
+# `(def-carried-writer FN :profile P ...)` or a profile's shorthand, a
+# `(defmacro M (fn &rest kvs) `(def-carried-writer ,fn :profile P ,@kvs))`
+# read from its own definition, never from a map typed here.  The same forms
+# are mirrored: the pilot's open and bridges, the transitions the pilot's
+# then the writers' (FN, its theorem FN-preserves-SUFFIX, the profile's
+# :suffix or its invariant, or the writer's :name), the bridges the pilot's
+# then the writers' :bridges.
+WRITER_SOURCES = ("books", "host")
+
+
+def _writer_forms(root: Path):
+    for directory in WRITER_SOURCES:
+        for path in sorted((root / directory).glob("*.lisp")):
+            text = path.read_text(encoding="utf-8", errors="replace")
+            if "def-carried" not in text and "defmacro" not in text:
+                continue
+            for form, _line in ledger.Reader(text).top_level():
+                yield form
+
+
+def _shorthand_profile(form) -> str | None:
+    """The profile P of (defmacro M (fn &rest kvs) `(def-carried-writer ,fn
+    :profile P ,@kvs)), else None."""
+    if ledger.head(form) != "defmacro" or len(form) < 4:
+        return None
+    body = form[3]
+    if not (isinstance(body, list) and len(body) == 2
+            and ledger.head(body) == "quasiquote" and isinstance(body[1], list)):
+        return None
+    inner = body[1]
+    if ledger.head(inner) != "def-carried-writer" or len(inner) < 4:
+        return None
+    if not (isinstance(inner[1], list) and ledger.head(inner[1]) == "unquote"):
+        return None
+    if _sym(inner[2]) != ":profile" or not isinstance(inner[3], (str, ledger.Sym)):
+        return None
+    return _sym(inner[3])
+
+
+def writer_rows(root: Path, rows: dict[str, dict]) -> None:
+    profiles: dict[str, dict] = {}
+    shorthands: dict[str, str] = {}
+    writers: list[tuple[str, str, dict]] = []     # (profile, fn, options)
+    row_forms: list[tuple[str, dict]] = []
+    for form in _writer_forms(root):
+        head = ledger.head(form)
+        if head == "def-carried-profile" and len(form) >= 2:
+            kv = ledger.keyword_plist(form[2:])
+            profiles[_sym(form[1])] = {
+                "invariant": _sym(kv[":invariant"]) if kv.get(":invariant") is not None else "",
+                "suffix": _sym(kv[":suffix"]) if kv.get(":suffix") is not None else None}
+        elif head == "def-carried-writer" and len(form) >= 2:
+            kv = ledger.keyword_plist(form[2:])
+            if kv.get(":profile") is not None:
+                writers.append((_sym(kv[":profile"]), _sym(form[1]), kv))
+        elif head == "def-carried-writers-row" and len(form) >= 2:
+            row_forms.append((_sym(form[1]), ledger.keyword_plist(form[2:])))
+        elif (profile := _shorthand_profile(form)) is not None:
+            shorthands[_sym(form[1])] = profile
+        elif head in shorthands and len(form) >= 2:
+            writers.append((shorthands[head], _sym(form[1]), ledger.keyword_plist(form[2:])))
+    for name, kv in row_forms:
+        profile_name = _sym(kv[":profile"]) if kv.get(":profile") is not None else ""
+        pilot = rows.get(_sym(kv[":from"]) if kv.get(":from") is not None else "")
+        profile = profiles.get(profile_name)
+        if pilot is None or profile is None:
+            continue
+        suffix = profile["suffix"] or profile["invariant"]
+        transitions = list(pilot["transitions"])
+        concludes = list(pilot["concludes"])
+        for p, fn, options in writers:
+            if p != profile_name:
+                continue
+            theorem = (_sym(options[":name"]) if options.get(":name") is not None
+                       else "{}-preserves-{}".format(fn, suffix))
+            transitions.append([fn, theorem])
+            for bridge in options.get(":bridges") or []:
+                if (isinstance(bridge, list) and len(bridge) == 2
+                        and not any(_sym(bridge[0]) == c[0] for c in concludes)):
+                    concludes.append([_sym(bridge[0]), _sym(bridge[1])])
+        rows[name] = {"established": list(pilot["established"]),
+                      "transitions": transitions, "concludes": concludes,
+                      "produced": list(pilot["produced"])}
 
 
 def carried_generated(rows: dict[str, dict]) -> set[str]:
