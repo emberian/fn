@@ -42,6 +42,10 @@
 (defstruct (fnn-pull-runtime (:constructor %make-fnn-pull-runtime))
   service worker (stopping nil) lock (schedule nil) (cursors nil)
   (journals nil) (socket nil) (flights nil)
+  ;; Physical thread completion cannot discharge a failed terminal release.
+  ;; Retain the runtime and its journals/flights until recovery, never retry
+  ;; the worker's already attempted cleanup from the close hook.
+  (cleanup-debt nil) (cleanup-stage nil)
   ;; PRF-325: the catch-up rounds' own schedule, cursors and FNCU journals.
   (cu-schedule nil) (cu-cursors nil) (cu-journals nil))
 
@@ -826,6 +830,7 @@ acceptance (the owner is stopping or fenced then)."
              ;; polling work without truncating input or ending any round.
              (unless remaining (sleep (/ (fnn-core 'fn-prd-idle-ms) 1000)))))
       (let ((failure nil))
+        (setf (fnn-pull-runtime-cleanup-stage runtime) :calling)
         (flet ((release (thunk)
                  (handler-case (funcall thunk)
                    (serious-condition (condition) (unless failure (setq failure condition))))))
@@ -834,6 +839,8 @@ acceptance (the owner is stopping or fenced then)."
           (dolist (entry (append (fnn-pull-runtime-journals runtime)
                                 (fnn-pull-runtime-cu-journals runtime)))
             (release (lambda () (fnn-owner-feed-close (cdr entry))))))
+        (when failure (setf (fnn-pull-runtime-cleanup-debt runtime) failure))
+        (setf (fnn-pull-runtime-cleanup-stage runtime) :returned)
         (when (and failure (null primary)) (error failure)))))))
 
 (defun fnn-pull-worker-guarded (runtime)
@@ -842,16 +849,38 @@ acceptance (the owner is stopping or fenced then)."
       ;; Stopping does not erase a late store fault or uncertain outcome.
       (fnn-owner-thread-escape (fnn-pull-runtime-service runtime) e "pull feed"))))
 
+(def-actor fnn-pull-spawn :thread-name "fn pull feed" :roster t)
+
 (defun fnn-pull-service-start (service)
-  (unless (fnn-pull-runtime-get service)
-    (let ((runtime (%make-fnn-pull-runtime
-                    :service service
-                    :lock (sb-thread:make-mutex :name "fn pull runtime"))))
-      (sb-thread:with-mutex (*fnn-pull-runtime-lock*)
-        (setf (gethash service *fnn-pull-runtimes*) runtime))
-      (setf (fnn-pull-runtime-worker runtime)
-            (sb-thread:make-thread (lambda () (fnn-pull-worker-guarded runtime))
-                                   :name "fn pull feed"))))
+  ;; Publish the runtime before spawn; only one start owns its reservation.
+  ;; Do not hold the table or runtime mutex across actor creation/cleanup.
+  (let ((runtime
+          (sb-thread:with-mutex (*fnn-pull-runtime-lock*)
+            (unless (gethash service *fnn-pull-runtimes*)
+              (setf (gethash service *fnn-pull-runtimes*)
+                    (%make-fnn-pull-runtime
+                     :service service
+                     :lock (sb-thread:make-mutex :name "fn pull runtime")))))))
+    (when runtime
+      (handler-case
+          (setf (fnn-pull-runtime-worker runtime)
+                (fnn-pull-spawn
+                 service (list runtime) (lambda () (fnn-pull-worker runtime))
+                 (lambda (condition) (fnn-owner-thread-escape service condition "pull feed"))))
+        (serious-condition (condition)
+          ;; A post-create starter escape may leave a parked/live child.
+          ;; Its registration retains RUNTIME independently of this slot.
+          (let ((actor (fnn-owner-actor-for-custody service runtime)))
+            (if actor
+                (setf (fnn-pull-runtime-worker runtime) (fnn-owner-actor-thread actor))
+              ;; No reservation remains: either no child existed or the
+              ;; starter physically terminated it before its body ran.
+              (unless (or (fnn-pull-runtime-cleanup-debt runtime)
+                          (eq (fnn-pull-runtime-cleanup-stage runtime) :calling))
+                (sb-thread:with-mutex (*fnn-pull-runtime-lock*)
+                  (when (eq (gethash service *fnn-pull-runtimes*) runtime)
+                    (remhash service *fnn-pull-runtimes*))))))
+          (error condition)))))
   nil)
 
 (defun fnn-pull-service-wake (service)
@@ -870,7 +899,13 @@ acceptance (the owner is stopping or fenced then)."
     (when runtime
       (fnn-pull-service-wake service)
       (let ((worker (fnn-pull-runtime-worker runtime)))
-        (when worker (sb-thread:join-thread worker)))
+        (when (and worker (not (fnn-owner-actor-join service worker)))
+          (fnn-fault "pull worker remains physically live during close")))
+      (when (fnn-pull-runtime-cleanup-debt runtime)
+        (error (fnn-pull-runtime-cleanup-debt runtime)))
+      (when (eq (fnn-pull-runtime-cleanup-stage runtime) :calling)
+        (fnn-fault "pull terminal cleanup escaped without a receipt"))
       (sb-thread:with-mutex (*fnn-pull-runtime-lock*)
-        (remhash service *fnn-pull-runtimes*))))
+        (when (eq (gethash service *fnn-pull-runtimes*) runtime)
+          (remhash service *fnn-pull-runtimes*)))))
   nil)

@@ -129,3 +129,12 @@ nonlocal escapes still reach the shared failure classifier after stop. A
 secondary listener's named socket condition during shutdown is its ordinary
 terminal observation; the same socket condition while live and a Store fault
 or unknown escape after stop remain process faults.
+
+The pull/catch-up runtime is installed once before its registered worker can
+start. Failed/timed-out join retains the runtime and journals/flights; a
+post-create start failure recovers the actual actor's thread. Worker unwind
+records terminal cleanup separately from physical completion. A failed cleanup
+retains its primary condition and runtime, while a nonlocal cleanup exit
+retains the once-only calling stage. Close refuses both debts and never retries
+those release steps. A definite no-child start can remove the unused runtime.
+These receipts do not establish full transport custody or a resource refund.
