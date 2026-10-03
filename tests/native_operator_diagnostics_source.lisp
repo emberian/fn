@@ -45,7 +45,7 @@
 (source-forms (or (third sb-ext:*posix-argv*) "host/native/heap.lisp")
               '(fnn-heap-store-profile fnn-heap-operator-profile
                 fnn-heap-command-profile fnn-command-heap)
-              '(fnn-heap-profile-refusal))
+              '(fnn-heap-profile-refusal fnn-heap-command-profile-base))
 
 (define-condition unlisted-profile-condition (fnn-store-error) ())
 (defstruct fixture-store (config '(:recorded-profile)))
@@ -60,6 +60,7 @@
       (error *condition-kind* :message "fixture condition"))))
 (defun fnn-load-config (store) (declare (ignore store)) (maybe-condition 'store-profile))
 (defun fnn-absolute (path) path)
+(defun fnn-peer-flight-profile (root) (declare (ignore root)) nil)
 (defun fnn-operator-argv-octets (words) words)
 (defun fnn-operator-read-config (&rest args)
   (declare (ignore args)) (maybe-condition 'config-read) '(1))
@@ -73,6 +74,7 @@
 (defun fnn-core (entry &rest args)
   (declare (ignore args)) (maybe-condition entry)
   (case entry
+    (fn-pfr-operation-observes-p (eq (first args) :run))
     (fn-native-operator-host-preflight :preflight)
     (fn-native-operator-host-preflight-needs-config-path-p nil)
     (fn-native-operator-host-preflight-needs-config-p t)

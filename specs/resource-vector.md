@@ -708,3 +708,28 @@ Startup observes `fnn-arena-return-observation(nil)` before replacement
 constructors; an uncertain observation invokes the custody callback and
 reports uncertainty. Orphan cleanup clears the startup marker only after
 both the executor roster and global arena return observation settle.
+
+
+The optional root `peer-flight-profile` is independent authority. Its inert
+52-byte FNP1 frame contains six unsigned64 resource allowances; absence grants
+nothing. Native capture uses nofollow, nonblocking open and a regular-file
+check before the ACL2-bounded read. Malformed or unsupported frames refuse;
+physical I/O failures remain faults. The launcher carries this exact policy
+beside the Store projection and asks ACL2 to extend selected heap and native
+worker storage before output allocation. Pre-open DEFAULT protects the peer
+heap slice, and the current peer worker capture must also fit the observed
+whole machine before constructor authority is returned.
+
+After Store installation, the retained service publishes its private bank
+before the ledger constructor or funded mutation. Calling custody precedes
+that constructor, so an error or raw nonlocal escape cannot turn an unreturned
+ledger into an idle bank. Close hooks retire an idle bank; actual terminal
+Store settlement also requires both the bank and the snapshot-job cohort to
+be drained. Pin release before terminal join, or uncertain cleanup after join,
+is held custody. SCN-1130/1136 execute these native boundaries separately from
+full saved-image startup and activation of the retained catchup driver.
+
+This is partial selected fixed storage. Complete native/controller/collector
+pricing, protected recovery partition, expanded init/reopen refinement,
+current nonempty Store execution and matching normal certificates/image remain
+open. Installing an idle bank does not activate the catchup flight controller.

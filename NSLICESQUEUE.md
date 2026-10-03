@@ -753,3 +753,11 @@ CONS tag/NIL offer for the consistency owner's zero START|END/ACK machine repair
 Actual begin raw cases PASS. Latest tcpcl-session source must precede native use;
 no native zero-file verdict is claimed. Full semantic decoder/CRC/publication and
 GC/working tariffs still require connected bounded consumers, beyond this step.
+
+
+Operator convergence: independent inert peer authority capture and retained
+service-bank startup/cleanup are source-wired; snapshot/peer debt prevents
+terminal Store success. Current physical command checks await History's
+same-process native endpoint and Integration composition. Selected source
+fixtures are distinct from normal certification/image and full catchup flight
+activation. No Operator proof/build/live-owner process is left for takeover.
