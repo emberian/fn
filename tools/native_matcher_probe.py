@@ -18,6 +18,7 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 from proof_repl import forms
+import native_trace
 
 PREFIX = 'FN_MATCHER_GRAPH '
 SUBJECTS = ('books/wildmat-cursor.lisp', 'books/wildmat-work.lisp', 'books/wildmat.lisp',
@@ -32,20 +33,30 @@ def digest(path):
 def report(text):
     rows = [json.loads(line[len(PREFIX):]) for line in text.splitlines() if line.startswith(PREFIX)]
     cases = []
+    spans = [json.loads(line[len(native_trace.PREFIX):]) for line in text.splitlines()
+             if line.startswith(native_trace.PREFIX)]
+    summary = [s for s in spans if s.get('type') == 'summary']
+    if len(summary) != 1 or summary[0].get('dropped') or summary[0].get('incomplete'):
+        raise ValueError('incomplete allocation trace')
     for case in (row for row in rows if row['type'] == 'case'):
         states = [row for row in rows if row['type'] == 'state' and row['case_id'] == case['case_id']]
         done = [row for row in rows if row['type'] == 'done' and row['case_id'] == case['case_id']]
-        if len(done) != 1 or len(states) != done[0]['steps'] + 1:
+        if len(done) != 1 or [s['step'] for s in states] != list(range(done[0]['steps'] + 1)):
             raise ValueError('incomplete retained state trace')
+        samples = [s for s in spans if s.get('type') == 'span' and s.get('phase') == 'matcher-round'
+                   and s.get('operation_id') == case['case_id']]
+        if len(samples) != 1 or samples[0].get('outcome') != 'returned':
+            raise ValueError('missing matched allocation replay')
         cases.append(dict(case, steps=done[0]['steps'], matched=done[0]['matched'],
             max_owned_conses=max(s['owned']['conses'] for s in states),
             max_owned_direct_bytes=max(s['owned']['direct-bytes'] for s in states),
             max_union_conses=max(s.get('old_new_union', s['owned'])['conses'] for s in states),
             max_union_direct_bytes=max(s.get('old_new_union', s['owned'])['direct-bytes'] for s in states),
+            allocation_sample=samples[0],
             over_bound_steps=[s['step'] for s in states if s['over_bound']],
             union_over_single_state_bound_steps=[s['step'] for s in states
                                                   if s.get('union_over_single_state_bound')]))
-    if 'NATIVE_MATCHER_HEAP_PASS' not in text or len(cases) != 9:
+    if 'NATIVE_MATCHER_HEAP_PASS' not in text or len(cases) != 11:
         raise ValueError('actual matcher probe did not complete all cases')
     return {'scope': 'distinct EQ retained graph/direct primitive object bytes; not GC/allocator overhead, '
                      'production pricing, or whole process retained heap. The bound is owned cons cells '
@@ -58,27 +69,39 @@ def literal(value):
     return '"' + str(value).replace('\\', '\\\\').replace('"', '\\"') + '"'
 
 
+def remote_digests(host, root, names):
+    code = 'import hashlib,json,pathlib,sys; print(json.dumps({p:hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest() for p in sys.argv[1:]}))'
+    command = 'cd ' + shlex.quote(root) + ' && python3 -c ' + shlex.quote(code) + ' ' + \
+              ' '.join(map(shlex.quote, names))
+    return json.loads(subprocess.run(['ssh', host, command], capture_output=True, text=True,
+                                    timeout=15, check=True).stdout)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('source_root', type=Path)
-    parser.add_argument('--live-book', required=True, type=Path)
-    parser.add_argument('--warm', required=True, help='Explicitly loaned existing session name')
-    parser.add_argument('--control-root', required=True, type=Path)
+    parser.add_argument('source_root', nargs='?', type=Path)
+    parser.add_argument('--report-only', type=Path, help='Analyze an existing complete raw log without a runtime')
+    parser.add_argument('--live-book', type=Path)
+    parser.add_argument('--warm', help='Explicitly loaned existing session name')
+    parser.add_argument('--control-root', type=Path)
     parser.add_argument('--host', default='hbox')
-    parser.add_argument('--remote-tree', required=True)
+    parser.add_argument('--remote-tree')
     args = parser.parse_args()
+    if args.report_only:
+        print(json.dumps(report(args.report_only.read_text()), indent=2))
+        return
+    if not all((args.source_root, args.live_book, args.warm, args.control_root, args.remote_tree)):
+        parser.error('run needs source_root, --live-book, --warm, --control-root and --remote-tree')
     dest = ROOT / 'build/runtime-tests' / ('matcher-graph-' + uuid.uuid4().hex[:10])
     dest.mkdir(parents=True)
     snapshot = {str(path): digest(path) for path in
                 [args.source_root / p for p in SUBJECTS] + [ROOT / p for p in ASSETS] +
                 [args.live_book, Path(__file__)]}
     # Exact warm source coordinate, no remote source sync or replacement.
-    command = 'cd ' + shlex.quote(args.remote_tree) + ' && sha256 ' + ' '.join(map(shlex.quote, SUBJECTS))
-    remote_hashes = subprocess.run(['ssh', args.host, command], capture_output=True, text=True,
-                                   timeout=15, check=True).stdout
+    remote_hashes = remote_digests(args.host, args.remote_tree, SUBJECTS)
     for name in SUBJECTS:
         expected = snapshot[str(args.source_root / name)]
-        if expected not in remote_hashes:
+        if expected != remote_hashes.get(name):
             raise SystemExit('REFUSED warm source differs or is missing: ' + name)
     # No definitions are rewritten or duplicated here: literal original forms.
     capacity_forms = [f for f in forms(args.live_book.read_text())
@@ -93,9 +116,12 @@ def main():
     for name in ASSETS:
         subprocess.run(['scp', '-q', str(ROOT / name), args.host + ':' + remote + '/' + name],
                        check=True, timeout=15)
+    asset_hashes = remote_digests(args.host, remote, ASSETS)
+    if asset_hashes != {name: snapshot[str(ROOT / name)] for name in ASSETS}:
+        raise SystemExit('REFUSED copied diagnostic assets differ')
     source = '(in-package "ACL2")\n' + '\n'.join(capacity_forms) + '\n' + \
              '(defttag :fn-matcher-heap-debug)\n' + \
-             '(progn! (set-raw-mode t) (defvar *fnmg-probe-root* ' + literal(remote) + ') ' + \
+             '(progn! (set-raw-mode t) (defparameter *fnmg-probe-root* ' + literal(remote) + ') ' + \
              '(load ' + literal(remote + '/tests/native_matcher_heap_raw.lisp') + '))\n'
     (dest / 'input.lisp').write_text(source)
     (dest / 'sources.json').write_text(json.dumps({'sha256': snapshot, 'warm_tree': args.remote_tree,
@@ -108,6 +134,9 @@ def main():
     for name, expected in snapshot.items():
         if digest(Path(name)) != expected:
             raise SystemExit('REFUSED source changed during observation: ' + name)
+    if remote_digests(args.host, args.remote_tree, SUBJECTS) != remote_hashes or \
+            remote_digests(args.host, remote, ASSETS) != asset_hashes:
+        raise SystemExit('REFUSED remote source changed during observation')
     if result.returncode:
         raise SystemExit('REFUSED actual probe; preserved log ' + str(dest / 'repl.log'))
     summary = report((dest / 'repl.log').read_text())

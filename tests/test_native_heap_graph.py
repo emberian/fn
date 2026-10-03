@@ -5,8 +5,11 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'tools'))
+import native_matcher_probe
 
 
 class NativeHeapGraphTests(unittest.TestCase):
@@ -49,3 +52,27 @@ class NativeHeapGraphTests(unittest.TestCase):
         row = json.loads(next(line[6:] for line in result.stdout.splitlines() if line.startswith('GRAPH ')))
         self.assertEqual((row['conses'], row['bignums'], row['objects']), (7, 1, 8))
         self.assertGreater(row['direct-bytes'], 7 * 16)
+
+    def test_report_preserves_counterexamples_and_refuses_missing_states_or_samples(self):
+        rows = []
+        for case_id in range(1, 12):
+            rows.append(native_matcher_probe.PREFIX + json.dumps(dict(type='case', case_id=case_id,
+                patterns=1, tokens=1, input_octets=1, owned_cons_bound=55, allocation_replays=32)))
+            rows.append(native_matcher_probe.PREFIX + json.dumps(dict(type='state', case_id=case_id,
+                step=0, owned={'conses': 56, 'direct-bytes': 896}, over_bound=True)))
+            rows.append(native_matcher_probe.PREFIX + json.dumps(dict(type='done', case_id=case_id,
+                steps=0, matched=False)))
+            rows.append('FN_TRACE ' + json.dumps(dict(type='span', operation_id=case_id,
+                phase='matcher-round', allocation_scope='isolated-process', allocated_bytes=1024,
+                duration_us=1, outcome='returned')))
+        rows.append('FN_TRACE ' + json.dumps(dict(type='summary', dropped=0, incomplete=0)))
+        rows.append('NATIVE_MATCHER_HEAP_PASS')
+        result = native_matcher_probe.report('\n'.join(rows))
+        self.assertEqual(result['cases'][0]['over_bound_steps'], [0])
+        self.assertEqual(result['cases'][0]['allocation_sample']['allocated_bytes'], 1024)
+        with self.assertRaisesRegex(ValueError, 'incomplete retained state'):
+            native_matcher_probe.report('\n'.join(rows[:1] + rows[2:]))
+        with self.assertRaisesRegex(ValueError, 'missing matched allocation'):
+            native_matcher_probe.report('\n'.join(rows[:3] + rows[4:]))
+        with self.assertRaisesRegex(ValueError, 'incomplete allocation'):
+            native_matcher_probe.report('\n'.join(rows[:-2] + rows[-1:]))
