@@ -5,5 +5,6 @@
  @map: ~"../../machines.spw"
  @tooling: ~"./tooling.md"
  @findings: ~"./findings.md"
+ @entrypoints: ~"./entrypoints.spw"
  @coverage: ~"./coverage.md"
 }
