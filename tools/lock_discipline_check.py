@@ -2521,8 +2521,97 @@ class Checker:
 # --------------------------------------------------------------------------
 
 
-def realization_rows(contracts: Contracts) -> list:
-    return contracts.raw.get("realization", [])
+def realization_table(root: Path) -> dict:
+    """Read the model's table with the non-evaluating reader, never a JSON seed.
+
+    The machine split is followed only when the model actually includes it.
+    A parked machine file cannot replace the model's current table.
+    """
+    paths = [root / "books/host-model.lisp"]
+    found = []
+    for path in paths:
+        text = path.read_text()
+        forms = ledger.Reader(text).top_level()
+        for form, line in forms:
+            if (head(form) == "include-book" and len(form) >= 2
+                    and form[1] == "host-model-machine"
+                    and not isinstance(form[1], Sym)):
+                machine = root / "books/host-model-machine.lisp"
+                if machine not in paths:
+                    paths.append(machine)
+            if (head(form) == "defconst" and len(form) >= 2
+                    and str(form[1]) == "*fn-hmc-realization*"):
+                if len(form) != 3 or head(form[2]) != "quote" or len(form[2]) != 2:
+                    raise ValueError("*fn-hmc-realization* must be one quoted literal")
+                found.append((path, text, line, form[2][1]))
+    if len(found) != 1:
+        raise ValueError(f"model must define exactly one *fn-hmc-realization*, found {len(found)}")
+
+    def literal(value):
+        if isinstance(value, Sym):
+            if str(value) == "nil":
+                return None
+            if str(value).startswith(":"):
+                return str(value)
+            raise ValueError("nonliteral realization symbol: " + str(value))
+        if isinstance(value, list):
+            if value and isinstance(value[0], Sym) and str(value[0]).startswith(":"):
+                if len(value) % 2:
+                    raise ValueError("realization property list has an unmatched key")
+                data = {}
+                for key, item in zip(value[::2], value[1::2]):
+                    if not isinstance(key, Sym) or not str(key).startswith(":"):
+                        raise ValueError("realization property key must be a keyword")
+                    key = str(key)[1:]
+                    if key in data:
+                        raise ValueError("duplicate realization property: " + key)
+                    data[key] = literal(item)
+                return data
+            return [literal(item) for item in value]
+        if isinstance(value, str):
+            return value
+        raise ValueError("unsupported realization literal")
+
+    path, text, line, form = found[0]
+    rows = literal(form)
+    if not isinstance(rows, list) or not rows:
+        raise ValueError("realization must be a nonempty row list")
+    labels = set()
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get("label"), str):
+            raise ValueError("realization row needs a label")
+        if row["label"] in labels:
+            raise ValueError("duplicate realization label: " + row["label"])
+        labels.add(row["label"])
+        if not isinstance(row.get("layer"), str):
+            raise ValueError("realization layer must be a string")
+        enabled = row.get("enabled")
+        row["enabled"] = [enabled] if isinstance(enabled, str) else enabled or []
+        row["sites"] = row.get("sites") or []
+        if not isinstance(row["enabled"], list) or not all(isinstance(x, str) for x in row["enabled"]):
+            raise ValueError("realization enabled must name functions")
+        if not isinstance(row["sites"], list):
+            raise ValueError("realization sites must be a list")
+        for site in row["sites"]:
+            if not isinstance(site, dict) or not isinstance(site.get("function"), str):
+                raise ValueError("realization site needs a function")
+            for key in ("file", "primitive", "core"):
+                if site.get(key) is not None and not isinstance(site[key], str):
+                    raise ValueError("realization " + key + " must be a string or nil")
+            if site.get("capability") is not None and not isinstance(site["capability"], dict):
+                raise ValueError("realization capability must be a property list or nil")
+            for key in ("locks_held", "requires_before"):
+                site[key] = site.get(key) or []
+                if not isinstance(site[key], list) or not all(isinstance(x, str) for x in site[key]):
+                    raise ValueError("realization " + key + " must be a string list")
+    return {"source": {"file": path.relative_to(root).as_posix(),
+                       "constant": "*fn-hmc-realization*", "line": line,
+                       "sha256": hashlib.sha256(text.encode()).hexdigest()},
+            "rows": rows}
+
+
+def realization_rows(root: Path) -> list:
+    return realization_table(root)["rows"]
 
 
 LABEL_LAYERS = {"C", "P"}
@@ -2532,16 +2621,28 @@ def check_realization(checker: Checker) -> None:
     """The host-model realization table (review M3): each label's host sites
     exist, call their primitive and ACL2 subject, hold the label's locks, and
     call each requires_before subject before the primitive; the row's own
-    shape is the agreed one (layer C|P, a P label names its A-PRIM-* row,
+    shape is the agreed one (layer C|P, a P label names its A-PRIM-* row
+    or :crash's A-CRASH-IMAGE,
     'enabled' names ACL2 functions that exist)."""
     known = getattr(checker.an.reach, "known", set())
-    for row in realization_rows(checker.c):
+    try:
+        checker.realization = realization_table(checker.an.tree.root)
+    except (OSError, ValueError, ledger.ReadError) as error:
+        checker.realization = None
+        anchor = FnInfo("realization source", "books/host-model.lisp", 0, True)
+        checker.add("R3", anchor, 0, "realization source refused: " + str(error),
+                    "realization-source")
+        return
+    for row in checker.realization["rows"]:
         label = row.get("label", "?")
-        anchor = FnInfo("realization " + label, "planning/host-realization.json", 0, True)
+        anchor = FnInfo("realization " + label, checker.realization["source"]["file"],
+                        checker.realization["source"]["line"], True)
         if row.get("layer") not in LABEL_LAYERS:
             checker.add("R3", anchor, 0, f"realization {label}: layer must be C or P", "realization-shape:" + label)
-        if row.get("layer") == "P" and not str(row.get("assumption", "")).startswith("A-PRIM-"):
-            checker.add("R3", anchor, 0, f"realization {label}: a P label names its A-PRIM-* row",
+        assumption = row.get("assumption", "")
+        if (row.get("layer") == "P" and not str(assumption).startswith("A-PRIM-")
+                and not (label == ":crash" and assumption == "A-CRASH-IMAGE")):
+            checker.add("R3", anchor, 0, f"realization {label}: a P label names its primitive assumption",
                         "realization-shape:" + label)
         for name in row.get("enabled", []):
             if known and name not in known:
@@ -2554,6 +2655,10 @@ def check_realization(checker: Checker) -> None:
                 where = FnInfo(fn, site.get("file", "?"), 0, True)
                 checker.add("R3", where, 0, f"realization {label}: {fn} does not exist", "realization:" + label)
                 continue
+            if site.get("file") != info.path:
+                checker.add("R3", info, info.line,
+                            f"realization {label}: {fn} is in {info.path}, table names {site.get('file')}",
+                            "realization-file:" + label)
             prim = site.get("primitive")
             prim_events = [e for e in info.events if (e.kind in ("leaf", "call") and e.name == prim)] if prim else []
             if prim and not prim_events:
@@ -2690,10 +2795,12 @@ def main(argv=None) -> int:
         findings = [f for f in findings if f.function == args.function]
     if args.emit_realization:
         out = root / REALIZATION
-        out.write_text(json.dumps({"comment": "generated by tools/lock_discipline_check.py "
-                                   "--emit-realization; source: the model book's *fn-hmc-realization* "
-                                   "(seeded from tools/lock_discipline_contracts.json until it lands)",
-                                   "rows": realization_rows(checker.c)}, indent=1) + "\n")
+        table = getattr(checker, "realization", None)
+        if table is None:
+            print("lock_discipline_check: refused realization source; no snapshot written")
+            return 1
+        out.write_text(json.dumps({"comment": "generated literal model table; host sites are checked "
+                                   "syntactically, not a refinement proof", **table}, indent=1) + "\n")
         print(f"lock_discipline_check: wrote {REALIZATION}")
         return 0
     enclave = set(checker.c.raw.get("enclave", {}).get("functions", []))
@@ -2714,7 +2821,9 @@ def main(argv=None) -> int:
     out = root / REALIZATION
     if out.exists() and not args.rule:
         try:
-            if json.loads(out.read_text()).get("rows") != realization_rows(checker.c):
+            snapshot = json.loads(out.read_text())
+            table = getattr(checker, "realization", None)
+            if table is None or any(snapshot.get(key) != table[key] for key in ("source", "rows")):
                 realization_drift = f"{REALIZATION} is stale: regenerate with --emit-realization"
         except ValueError:
             realization_drift = f"{REALIZATION} does not parse"
