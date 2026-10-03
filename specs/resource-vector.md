@@ -450,3 +450,15 @@ empty native grant roster. SCN-1107 checks actual native control flow with
 recording typed boundaries and actual held children; configured activation,
 complete retained graph/allocator tariff and interpreter correspondence remain
 open. Declaration of a live caller is not those claims.
+
+## Logical constructor cost dimension (PRF-1274)
+
+`def-cost :conses BOUND :cons-unaccounted (CALLEES ...)` derives a logical
+cons constructor twin from the same executed translated body as visit cost.
+It preserves independent unknown leaves and reconstructs multiple-value
+bindings. Quoted objects are borrowed; fresh conses and copied list spines
+are charged. Concrete stobj operations remain unknown without a representation
+contract. The actual string renderer's derived count is bounded by its source
+recurrence and by `8*nfix(bytes)+2`. This supplies a per-turn constructor bound;
+it does not price retained state, native integer/vector allocation, physical
+bytes, collector copying or custody of borrowed archive references.

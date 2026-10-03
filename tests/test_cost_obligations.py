@@ -64,6 +64,18 @@ class CostObligationsTests(unittest.TestCase):
         self.assertEqual(contracts["contracts"][1]["template"], "(binary-+ (quote 1) (len a1))")
         self.assertEqual(contracts["unwitnessed"], 2)
 
+    def test_constructor_dimension_is_independent(self):
+        root = tree([entry("fn-a")],
+                    {"x.lisp": "(def-cost fn-a :conses (+ (* 8 n) 2)"
+                               " :sizes ((n (nfix bytes))) :unaccounted (char length)"
+                               " :cons-unaccounted ())"}, {})
+        row = cost_obligations.build(root)["entries"][0]
+        self.assertEqual(row["claim"], "derived")
+        self.assertEqual(row["unaccounted"], ["char", "length"])
+        self.assertEqual(row["conses"]["claim"], "proved")
+        self.assertEqual(row["conses"]["unaccounted"], [])
+        self.assertEqual(row["conses"]["theorem"], "fn-a-conses-bound")
+
     def test_two_declarations_of_one_name_refused(self):
         root = tree([entry("fn-a")],
                     {"x.lisp": "(def-cost fn-a)\n", "y.lisp": "(def-cost fn-a)\n"}, {})
