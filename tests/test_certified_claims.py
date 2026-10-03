@@ -197,3 +197,22 @@ class CertifiedClaimsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ScopedInstalledEvidenceTests(unittest.TestCase):
+    def test_uncited_query_normalizes_only_installed_complete_closures(self):
+        rows = {"books/a": ("a", ["books/a.lisp:a", "books/dep.lisp:d"])}
+        held = {"book_results": {"books/a": "passed"},
+                "source_digests_sha256": {"books/a.lisp": "a", "books/dep.lisp": "d"}}
+        def manifests(root, **kwargs):
+            self.assertEqual(kwargs["source_paths"], {"books/a.lisp", "books/dep.lisp"})
+            return [("archive", held)]
+        with mock.patch.object(certified_claims, "current_state", side_effect=lambda root, book: rows[book]), \
+                mock.patch.object(certified_claims.evidence_manifests, "tracked_manifests", return_value=set()), \
+                mock.patch.object(certified_claims.evidence_manifests, "load_all_archived", side_effect=manifests):
+            self.assertEqual(certified_claims.uncited_books(Path("."), ["books/a"]), [])
+        held["source_digests_sha256"]["books/dep.lisp"] = "moved"
+        with mock.patch.object(certified_claims, "current_state", side_effect=lambda root, book: rows[book]), \
+                mock.patch.object(certified_claims.evidence_manifests, "tracked_manifests", return_value=set()), \
+                mock.patch.object(certified_claims.evidence_manifests, "load_all_archived", side_effect=manifests):
+            self.assertEqual(certified_claims.uncited_books(Path("."), ["books/a"]), ["books/a"])

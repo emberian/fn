@@ -144,8 +144,24 @@ def local_archive(spec: str | None = None) -> Path | None:
     return None
 
 
+_CHECKOUTS: dict[tuple, Path] = {}
+
+
 def checkout_of(root: Path) -> Path:
-    """The shared checkout a worktree belongs to (its cache is shared)."""
+    """The shared checkout, remembered while this root's .git marker holds.
+
+    This only locates the cache; every evidence object still verifies on read.
+    A changed/replaced marker requires a new Git lookup. Missing markers are
+    not remembered (a later git init must be visible).
+    """
+    try:
+        marker = (root / ".git").stat()
+        key = (str(root.absolute()), marker.st_dev, marker.st_ino,
+               marker.st_mtime_ns, marker.st_size)
+    except OSError:
+        key = None
+    if key is not None and key in _CHECKOUTS:
+        return _CHECKOUTS[key]
     try:
         common = subprocess.run(
             ["git", "-C", str(root), "rev-parse", "--path-format=absolute",
@@ -153,9 +169,10 @@ def checkout_of(root: Path) -> Path:
         ).stdout.strip()
     except OSError:
         common = ""
-    if common and Path(common).name == ".git":
-        return Path(common).parent
-    return root
+    checkout = Path(common).parent if common and Path(common).name == ".git" else root
+    if key is not None:
+        _CHECKOUTS[key] = checkout
+    return checkout
 
 
 def cache_dir(root: Path) -> Path:

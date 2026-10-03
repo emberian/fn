@@ -1,0 +1,32 @@
+{
+ "budget": 500,
+ "category": "tools-speed",
+ "expect-failure": "tests.test_green_check.ScopedAuditTests.test_cli_selects_affected_roots_before_audit",
+ "failure-message": "False is not true : changed gate must select affected roots before auditing",
+ "file": "tools/green_check.py",
+ "harness": "tests/test_green_check.py",
+ "id": "NIGHT-SCOPED-GREEN",
+ "notes": [
+  "10-03 02:49 claimed: scope=['tools/green_check.py', 'tools/certs.py', 'tools/certified_claims.py', 'tools/evidence_manifests.py', 'tools/evidence_store.py', 'tests/test_green_check.py', 'tests/test_certs.py', 'tests/test_certified_claims.py', 'tests/test_evidence_store.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_green_check.ScopedAuditTests.test_cli_selects_affected_roots_before_audit"
+ ],
+ "owner": "codex-sol-tools",
+ "scope": [
+  "tools/green_check.py",
+  "tools/certs.py",
+  "tools/certified_claims.py",
+  "tools/evidence_manifests.py",
+  "tools/evidence_store.py",
+  "tests/test_green_check.py",
+  "tests/test_certs.py",
+  "tests/test_certified_claims.py",
+  "tests/test_evidence_store.py",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
+ "severity": "medium",
+ "source": "tools-speed-X17",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_green_check.ScopedAuditTests.test_cli_selects_affected_roots_before_audit",
+ "title": "Changed-books check audits unrelated roots and rehashes all manifest source worlds",
+ "updated": "2026-10-03T06:49:42Z"
+}
