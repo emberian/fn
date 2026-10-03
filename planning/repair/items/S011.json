@@ -11,9 +11,11 @@
  "line": "3503",
  "locus": "operator-verbs",
  "notes": [
-  "2026-10-03 root/Operator source implementation: ACL2 incremental parser/replay retains no entries, caps completed fields at8without numerical ceilings, owns64KiBread quantum. Host reads captured prefix through nofollow/NONBLOCK/fstat descriptor and unwind close. Actual2.24MB35window/partial/append/nonregular/error/EOF fixture green; actualpriorwholefile input assertionred. PRF-1275 source chunk/bound keystones admitted; finite15fullmodel/every split equality passes. Quantified oldreport/exit bridge and clean2rootcert/image remain open; source before verification authorized."
+  "2026-10-03 root/Operator source implementation: ACL2 incremental parser/replay retains no entries, caps completed fields at8without numerical ceilings, owns64KiBread quantum. Host reads captured prefix through nofollow/NONBLOCK/fstat descriptor and unwind close. Actual2.24MB35window/partial/append/nonregular/error/EOF fixture green; actualpriorwholefile input assertionred. PRF-1275 source chunk/bound keystones admitted; finite15fullmodel/every split equality passes. Quantified oldreport/exit bridge and clean2rootcert/image remain open; source before verification authorized.",
+  "2026-10-03 immutable9e75078bb two exact journal roots normal-certified on hbox,10matching cached deps/jobs2/imagesoff. Manifest certify-20261003T110141Z-1558540 archived8565349c... All12source digests match immutableGit candidate. Access now owns changed-book general old-report/exit refinement; source/cert/image coordinates stay separate and this certificate does not transfer.",
+  "2026-10-03 Access universal parser/replay continuation bridge and actual fn-otjs-report/exit equivalence proved for arbitrary input with no hypotheses, including first failure, counts/segments, overlong/natural-width and malformed/torn cases. Normal exact two-root certify-20261003T112822Z-1637229 PASS at c91ac446b; failed prior theory run archived. Matching-image five physical tests remain pending Integration; no image/deployment claim."
  ],
- "owner": "codex-journal-stream",
+ "owner": "GPT-6.1-Sol / sol-access",
  "reviewer": "io.lisp:3503-3507 reads the whole decisions.fnj into a vector with no bound, then coerces it to a list (about 16 B per octet), and hands it to fn-otm-journal-report and again to fn-otm-journal-exit. The path is checked with probe-file and opened as a CL stream, with no nofollow, no regular-file check and no bounded reader, unlike fnn-read-regular-bounded elsewhere. It is an offline operator verb, not a served path, but the journal grows for the owner's life, so on a 2 GB node this is a real way to exhaust memory and an unbounded-work violation.",
  "scenario": "The owner appends to STORE/decisions/decisions.fnj for its whole life. With a journal of a few hundred MB, `store ROOT journal` allocates the file as a vector and then one cons per octet (about 16 B each, so roughly 16x the file size). That can exhaust the heap and fault, or push a small node (the 2 GB OpenBSD friend node) into swap. This is the octet-list representation D27 forbids on any path, and there is no admission bound. A symlinked or FIFO decisions.fnj is also followed or blocked on, unlike every other store file read.",
  "severity": "medium",
@@ -21,5 +23,5 @@
  "source": "sweep-2026-10-03",
  "state": "in-progress",
  "title": "`store journal` reads the whole decision journal into memory as an octet list, with no bound",
- "updated": "2026-10-03T10:57:19.300265+00:00"
+ "updated": "2026-10-03T11:29:00Z"
 }

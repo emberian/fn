@@ -2217,3 +2217,5 @@ owner admission and plan construction still run to completion under O, and one
 worker can wait on admission; no full semantic-event fairness claim. Root and
 Foundations own funding; Runtime absorbs Web at 08:00. Source assembly owns one
 material review; Integration owns affected roots/interface/image convergence.
+
+Journal general parser/report/exit refinement source composed; exact new-source normal certificate/image scope stays separate.

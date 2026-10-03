@@ -59,3 +59,28 @@
       (eq (symbol-class 'fn-otjs-read-count (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-otjs-report (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-otjs-exit (w state)) :common-lisp-compliant)))
+
+; Literal unconditional report keystone: continue counting complete entries
+; and segment markers after the first replay gap, including an overlong
+; rejected segment. A later restart cannot erase the earlier verdict.
+(assert-event
+ (let* ((xs (append (fn-otm-start-line (expt 10 100) t)
+                    (fn-otm-jline '(1 5 0 1 2 0 0))
+                    (fn-otm-jline '(3 5 0 1 2 0 0))
+                    (fn-otm-jline '(999 0 0 0 0 0 0 0 0 0 0))
+                    (fn-otm-start-line 1700000000 t)
+                    (fn-otm-jline '(1 5 0 1 2 0 0)) '(255)))
+        (st (fn-otjs-consume xs (fn-otjs-init))))
+   (and (equal (fn-otjs-report st) (fn-otm-journal-report xs))
+        (equal (fn-otjs-report st)
+               (fn-osch-text "journal: entries=6 segments=3 status=malformed replay=gap-at-2
+")))))
+
+; Literal unconditional exit keystone, with a torn suffix after the gap.
+(assert-event
+ (let* ((xs (append (fn-otm-start-line 1 t)
+                    (fn-otm-jline '(2 5 0 1 2 0 0)) '(48 32)))
+        (st (fn-otjs-consume xs (fn-otjs-init))))
+   (and (equal (fn-otjs-exit st) (fn-otm-journal-exit xs))
+        (equal (fn-otjs-exit st) 1)
+        (equal (fn-otjs-status st) :torn))))

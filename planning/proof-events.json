@@ -19281,6 +19281,14 @@
         {
           "kind": "theorem",
           "name": "fn-otjs-consume-fields-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otjs-report-refines-journal-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otjs-exit-refines-journal-exit"
         }
       ]
     },
