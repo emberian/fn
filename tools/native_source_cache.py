@@ -27,12 +27,14 @@ def prepare(manifest, output):
     original = Path(data['bootstrap']).read_text()
     if original.count(ENTRY) != 1 or not original.rstrip().endswith(ENTRY):
         raise ValueError('expected one terminal source entry, before any Store/owner')
-    checkpoint = '(progn! (set-raw-mode t) (save-exec ' + runner.literal(str(output)) + ' "internal source execution cache" :return-from-lp \'(fn-native-entry state) :inert-args t :host-lisp-args "--noinform" :toplevel-args "--disable-debugger"))'
+    checkpoint = ':q'
+    after = '(acl2::save-exec ' + runner.literal(str(output)) + ' "internal source execution cache" :return-from-lp \'(acl2::fn-native-entry acl2::state) :inert-args t :host-lisp-args "--noinform" :toplevel-args "--disable-debugger")'
     bootstrap = output.with_suffix('.checkpoint.lisp')
     bootstrap.write_text(original.replace(ENTRY, checkpoint))
     data['bootstrap'] = str(bootstrap)
     data['sha256'][str(bootstrap)] = runner.digest(bootstrap)
     data['cache_output'] = str(output)
+    data['after_acl2_loop'] = after
     data['kind'] = 'initialized source execution cache; no Store/owner, certification or qualification claim'
     target = output.with_suffix('.checkpoint.json')
     target.write_text(json.dumps(data, indent=2) + '\n')
@@ -79,16 +81,38 @@ def execute(manifest, argv):
     os.execve(command[0], command, env)
 
 
+def initialize(manifest):
+    data = json.loads(manifest.read_text())
+    for path, expected in data['sha256'].items():
+        if runner.digest(Path(path)) != expected:
+            raise ValueError('checkpoint input changed: ' + path)
+    if sys.platform == 'darwin':
+        raise ValueError('source execution cache requires the governed hbox route')
+    os.chdir(data['world_root'])
+    env = dict(os.environ, ACL2_CUSTOMIZATION=data['bootstrap'], ACL2_BOOK_HASH_ALISTP='NIL',
+               FN_NATIVE_PROFILE=data['profile'], FN_NATIVE_WORLD='full')
+    env.pop('ACL2_CUSTOMIZATION_QUIET', None)
+    env.pop('ACL2_SYSTEM_BOOKS', None)
+    command = [data['sbcl'], '--tls-limit', '65536', '--dynamic-space-size', '12000',
+               '--control-stack-size', '64', '--core', data['core'], '--noinform',
+               '--disable-debugger', '--no-userinit',
+               '--eval', '(setf *standard-output* *error-output* *trace-output* *error-output*)',
+               '--eval', '(acl2::sbcl-restart)', '--eval', data['after_acl2_loop']]
+    os.execve(command[0], command, env)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
     p = sub.add_parser('prepare'); p.add_argument('manifest', type=Path); p.add_argument('output', type=Path)
     p = sub.add_parser('seal'); p.add_argument('manifest', type=Path)
+    p = sub.add_parser('initialize'); p.add_argument('manifest', type=Path)
     p = sub.add_parser('run'); p.add_argument('manifest', type=Path); p.add_argument('argv', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     try:
         if args.command == 'prepare': print(prepare(args.manifest, args.output))
         elif args.command == 'seal': print(seal(args.manifest))
+        elif args.command == 'initialize': initialize(args.manifest)
         else: execute(args.manifest, args.argv[1:] if args.argv[:1] == ['--'] else args.argv)
     except (OSError, ValueError) as error:
         print('source execution cache refused: ' + str(error), file=sys.stderr)
