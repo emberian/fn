@@ -7030,6 +7030,7 @@ c7d30fcd00edeb738f787276149355492121730878b87721b49007ace07bcae5 629 planning/ev
 2890cb2ea9901f757a0e608c9d6cc73c5ce37861880c29725508dd5114bc6008 424 planning/evidence/native-freeze-gate-2026-09-21/freeze-8c231978-owner-repaired.tests.log
 b9e0f89f9645fadd0fc2efe9d8f25c7ac51ba7f45fed1bd8324d07949fea8dab 51 planning/evidence/native-freeze-gate-2026-09-21/freeze-8c231978-production.log
 1c8f8c8f6688986266a8329208a0cb7b1d98c88040f50a066e71e5f1c467726b 40563 planning/evidence/native-funded-mixed-ad8da41-2026-10-03/baseline/journal.jsonl
+61bea7302a601299342befa6a7d56e99c259f256126ed9145a3e57c806996077 2170 planning/evidence/native-funded-mixed-ad8da41-2026-10-03/baseline/manifest.json
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 0 planning/evidence/native-funded-mixed-ad8da41-2026-10-03/baseline/node/control.sock.lock
 b3e0e6209eab3ee1ce3cfd83adfc9954a47738b4516a4e01da1dc49cc389c049 250 planning/evidence/native-funded-mixed-ad8da41-2026-10-03/baseline/node/fn.toml
 40c8e016175875d4d3feba406f2b1631d7529504857284c3c97ce9e65aca65db 175 planning/evidence/native-funded-mixed-ad8da41-2026-10-03/baseline/node/store/config.json
@@ -7056,6 +7057,7 @@ cafbd7c8c6b2514bf4d3c55283b681a577f44c7269bd03fff1ca61802fc1cc21 61201 planning/
 e7bd2dba1adf4a6887ccf0424d1813e97605f768484c9534cb734bfff80e1757 3188 planning/evidence/native-funded-mixed-ad8da41-2026-10-03/report.md
 4f9f5ebcd04e77d78d648b346ce85994507fc382d4e71328020f974ea8d1f050 275 planning/evidence/native-funded-mixed-ad8da41-2026-10-03/run.log
 4f42f41aef7865bdcca59c3568e81357c268cd662adb729bc5de06e34852a935 40543 planning/evidence/native-funded-mixed-ad8da41-2026-10-03/slow/journal.jsonl
+f7ffa88f1ba52e5a5bead984374b6f09dd04efa47d5a8c3941afc28f6a5fe3ff 2166 planning/evidence/native-funded-mixed-ad8da41-2026-10-03/slow/manifest.json
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 0 planning/evidence/native-funded-mixed-ad8da41-2026-10-03/slow/node/control.sock.lock
 279c12905fd37217c5bf77a8befcf6b15c4461286149513a86e4d44a11ffbbd9 242 planning/evidence/native-funded-mixed-ad8da41-2026-10-03/slow/node/fn.toml
 40c8e016175875d4d3feba406f2b1631d7529504857284c3c97ce9e65aca65db 175 planning/evidence/native-funded-mixed-ad8da41-2026-10-03/slow/node/store/config.json
