@@ -1953,3 +1953,18 @@ needlessly staged on normal resume. Normal cert/image remain Integration-owned.
 No deployment, paged startup or physical init refinement claim.
 
 - Native carrier ABI support is dormant until atomic threading: actual wrappers accept fn-owner-st in declared trailing order and read only its live user-stobj binding. One hbox recording-world raw dispatch test PASS (2.292s), including missing/replaced/removed binding and legacy ABI. Indexed receipt owner-carrier-native-dispatch-20261003.json; no semantic or image claim. Runtime confirmed io dispatch seam disjoint.
+
+
+## Combined funded posting/slow-reader consumer, 2026-10-03
+
+Root authorized currentad8 combined expansion; Integration approved one24GiB
+scope, no new image/build. Existing mixed runner now selects replay-plan
+owner_env counterpart/custody tracing and excludes maintenance for this
+question. Actor first/last completion times supplement latency/completion gaps.
+Initial posting owner's final retained stderr feeds Runtime's exact shared
+assert_funded_syncer_custody from3e637bfe3 unchanged; recovery owner receives
+read requests only, so no fabricated job is required there. Both owner exits
+must be clean; complete bytes/local numbers/allaccepted accounting persist
+through restart.7 existing meaningful history corruption/missing promise tests
+and Python compile pass. Paired baseline/slow schedules use sameprofile/seed
+with24seed+24mixedPOST/36reads percase; actual run pending this source push.
