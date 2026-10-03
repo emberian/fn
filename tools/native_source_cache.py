@@ -21,6 +21,8 @@ def prepare(manifest, output):
         if runner.digest(Path(path)) != expected:
             raise ValueError('source cache input changed: ' + path)
     output = output.resolve()
+    if output.exists() or Path(str(output) + '.core').exists():
+        raise ValueError('checkpoint output already exists; choose a fresh cache coordinate')
     output.parent.mkdir(parents=True, exist_ok=True)
     if output.exists() or Path(str(output) + '.core').exists():
         raise ValueError('execution cache output already exists; prepare a fresh coordinate')
@@ -50,6 +52,9 @@ def seal(manifest):
             raise ValueError('checkpoint input changed: ' + path)
     data['sha256'][str(core)] = runner.digest(core)
     data['sha256'][str(output)] = runner.digest(output)
+    for field in ('sbcl', 'core'):
+        path = Path(data[field]).resolve()
+        data['sha256'][str(path)] = runner.digest(path)
     data['execution_core'] = str(core)
     target = output.with_suffix('.execution.json')
     target.write_text(json.dumps(data, indent=2) + '\n')
