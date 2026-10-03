@@ -121,3 +121,29 @@
    (and (equal (fn-hmc-answer returned '(:settle 2 (0 7 1 0 10 7))) '(:fault :read))
         (fn-hmc-invp returned) (fn-hmc-invp settled)
         (null (fn-hmc-holds settled)))))
+
+; PRF-1254 physical-return preservation: a reachable positive witness
+; checks the complete invariant antecedent and the literal conclusion,
+; including the existing read token and ownership retained after return.
+(assert-event
+ (let* ((ready (fn-hmc-next-state *hmct-cancelled*
+                 '(:io-complete (0 7 1 0 10 7) :ok)))
+        (r (mv-list 2 (fn-hmc-do-return ready '(:return 2 (0 7 1 0 10 7))))))
+   (and (fn-hmc-invp ready)
+        (fn-hmc-invp (car r))
+        (equal (cadr r) :returned)
+        (equal (fn-hmc-holds (car r)) (fn-hmc-holds ready))
+        (equal (fn-hmc-rows (car r)) (fn-hmc-rows ready))
+        (equal (fn-hmc-worker-phase
+                 (fn-hmc-worker-of *hmct-token-a* (fn-hmc-workers (car r))))
+               :returned))))
+
+; Hypothesis removal, deliberately corrupted state: with the invariant
+; omitted, a refused physical return cannot repair invalid lock storage.
+(assert-event
+ (let* ((broken (fn-hmc-set 0 :corrupted-locks (fn-hmc-init)))
+        (r (mv-list 2 (fn-hmc-do-return broken '(:return 2 (0 7 1 0 10 7))))))
+   (and (not (fn-hmc-invp broken))
+        (not (fn-hmc-invp (car r)))
+        (equal (cadr r) :refused)
+        (equal (car r) broken))))

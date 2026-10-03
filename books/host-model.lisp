@@ -1053,3 +1053,80 @@
                             fn-rpin-owner fn-rpin-remove fn-arpn-pin-at
                             fn-arpn-unpin-at fn-hmc-cdrs fn-rpin-count-at
                             fn-hmc-readers-at fn-arpn-pins-of)))))
+
+; ---- physical worker return: preserve identity and ownership until settlement
+
+(local
+ (defthm fn-hmc-workersp-of-workers-remove (implies (fn-hmc-workersp ws rows) (fn-hmc-workersp
+   (fn-hmc-workers-remove slot ws) rows)) :hints (("Goal" :induct (fn-hmc-workers-remove slot ws)
+   :in-theory (enable fn-hmc-workers-remove fn-hmc-workersp)))))
+
+(local
+ (defthm fn-hmc-worker-slots-of-workers-remove (equal (fn-hmc-worker-slots (fn-hmc-workers-remove
+   slot ws)) (remove-equal slot (fn-hmc-worker-slots ws))) :hints (("Goal" :induct
+   (fn-hmc-workers-remove slot ws) :in-theory (enable fn-hmc-workers-remove fn-hmc-worker-slots
+   remove-equal)))))
+
+(local
+ (defthm fn-hmc-worker-slots-remove-absent (not (member-equal slot (fn-hmc-worker-slots
+   (fn-hmc-workers-remove slot ws)))) :hints (("Goal" :in-theory (enable remove-equal)))))
+
+(local
+ (defthm fn-hmc-workersp-of-worker-of (implies (and (fn-hmc-workersp ws rows) (fn-hmc-worker-of tok
+   ws)) (and (fn-pxe-rowp (fn-hmc-worker-of tok ws)) (not (equal (fn-hmc-worker-phase
+   (fn-hmc-worker-of tok ws)) :idle)) (equal (fn-hmc-worker-token (fn-hmc-worker-of tok ws)) tok)
+   (fn-hmc-row-of tok rows) (not (fn-hmc-row-settledp (fn-hmc-row-of tok rows))))) :hints (("Goal"
+   :induct (fn-hmc-worker-of tok ws) :in-theory (enable fn-hmc-worker-of fn-hmc-workersp)))))
+
+(local
+ (defthm fn-hmc-busy-member-of-workers-remove (implies (member-equal tok (fn-hmc-busy-tokens
+   (fn-hmc-workers-remove slot ws))) (member-equal tok (fn-hmc-busy-tokens ws))) :hints (("Goal"
+   :induct (fn-hmc-workers-remove slot ws) :in-theory (enable fn-hmc-workers-remove
+   fn-hmc-busy-tokens)))))
+
+(local
+ (defthm fn-hmc-busy-no-dup-of-workers-remove (implies (no-duplicatesp-equal (fn-hmc-busy-tokens
+   ws)) (no-duplicatesp-equal (fn-hmc-busy-tokens (fn-hmc-workers-remove slot ws)))) :hints (("Goal"
+   :induct (fn-hmc-workers-remove slot ws) :in-theory (enable fn-hmc-workers-remove
+   fn-hmc-busy-tokens)))))
+
+(local
+ (defthm fn-hmc-worker-token-absent-after-removing-found-slot (implies (and (no-duplicatesp-equal
+   (fn-hmc-busy-tokens ws)) (fn-hmc-worker-of tok ws)) (not (member-equal tok (fn-hmc-busy-tokens
+   (fn-hmc-workers-remove (fn-hmc-worker-slot (fn-hmc-worker-of tok ws)) ws))))) :hints (("Goal"
+   :induct (fn-hmc-worker-of tok ws) :in-theory (enable fn-hmc-worker-of fn-hmc-busy-tokens
+   fn-hmc-workers-remove)))))
+
+(local
+ (defthm fn-hmc-prl-nth-unfolds (implies (natp n) (equal (fn-prl-nth n x) (nth n x))) :hints
+   (("Goal" :induct (fn-prl-nth n x) :in-theory (enable fn-prl-nth nth)))))
+
+(local
+ (defthm fn-hmc-return-worker-fields (implies (equal (mv-nth 0 (fn-pxe-return w tok)) :returned)
+   (and (fn-pxe-rowp w) (equal (fn-hmc-worker-slot (mv-nth 1 (fn-pxe-return w tok)))
+   (fn-hmc-worker-slot w)) (equal (fn-hmc-worker-token (mv-nth 1 (fn-pxe-return w tok)))
+   (fn-hmc-worker-token w)) (not (equal (fn-hmc-worker-phase (mv-nth 1 (fn-pxe-return w tok)))
+   :idle)))) :hints (("Goal" :in-theory (e/d (fn-pxe-return fn-hmc-worker-slot fn-hmc-worker-token
+   fn-hmc-worker-phase) (fn-prl-nth))))))
+
+(local
+ (defthm fn-hmc-do-return-keeps-invp (implies (and (fn-hmc-invp st) (not (fn-hmc-ended st)))
+   (fn-hmc-invp (mv-nth 0 (fn-hmc-do-return st ev)))) :hints (("Goal" :in-theory (disable
+   fn-pxe-return fn-hmc-workers-remove fn-hmc-worker-of fn-hmc-worker-slot fn-hmc-worker-token
+   fn-hmc-worker-phase fn-hmc-funded-at-p-of-append)))))
+
+(local
+ (defthm fn-hmc-worker-of-nil (equal (fn-hmc-worker-of tok nil) nil)))
+
+(local
+ (defthm fn-hmc-return-refused-with-no-workers (implies (not (fn-hmc-workers st)) (equal
+   (fn-hmc-do-return st ev) (mv st :refused))) :hints (("Goal" :in-theory (e/d (fn-hmc-do-return)
+   (fn-hmc-worker-of))))))
+
+(local
+ (defthm fn-hmc-ended-invariant-has-no-workers (implies (and (fn-hmc-invp st) (fn-hmc-ended st))
+   (not (fn-hmc-workers st))) :hints (("Goal" :in-theory (enable fn-hmc-invp)))))
+
+(defthm fn-hmc-do-return-preserves-invp (implies (fn-hmc-invp st) (fn-hmc-invp (mv-nth 0
+   (fn-hmc-do-return st ev)))) :hints (("Goal" :cases ((fn-hmc-ended st)) :in-theory (disable
+   fn-hmc-invp fn-hmc-do-return) :use ((:instance fn-hmc-do-return-keeps-invp)))))
