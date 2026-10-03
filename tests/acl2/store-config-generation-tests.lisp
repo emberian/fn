@@ -1,4 +1,5 @@
 (in-package "ACL2")
+(include-book "must-fail-checked")
 (include-book "../../books/store-config-generation")
 (include-book "store-capacity-config-tests")
 
@@ -23,7 +24,7 @@
       (not (equal (fn-cfg-generation
                    (fn-cnode-config (fn-replay-result-node *cvcg-stale-replayed*)))
                   (len *cvcg-stale-configs*)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-cfg-generation
           (fn-cnode-config (fn-replay-result-node *cvcg-stale-replayed*)))
@@ -57,7 +58,7 @@
                    (+ 1 (len *cvcg-existing-configs*)))
             (<= (+ 1 (len *cvcg-existing-configs*))
                 (nfix (fn-bs-profile-max-config-generations *cvcg-short-profile*)))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (and (equal (fn-native-admin-publication-generation *cvcg-refused*)
               (+ 1 (len *cvcg-existing-configs*)))
