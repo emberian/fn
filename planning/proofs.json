@@ -21896,13 +21896,15 @@
         "books/catalog-availability.lisp",
         "books/catalog-availability-load.lisp",
         "books/served-availability.lisp",
-        "tests/acl2/catalog-availability-tests.lisp"
+        "tests/acl2/catalog-availability-tests.lisp",
+        "books/catalog-available-readers.lisp",
+        "tests/acl2/catalog-available-readers-tests.lisp"
       ],
       "events": [
         "fn-scat-available-archive-is-reference",
         "fn-scat-available-archive-keeps-statep"
       ],
-      "progress_note": "Warm farm REPL admits low classification/updater, foundation writer correspondence/guards, live-link preservation, loader completion helper and metadata-versus-bytes available projection including state preservation. First sparse/prefix/tail/empty foundation writer classification fixtures pass, including cancel of already unavailable row with raw lookup retained. Actual loader establishment, summary/navigation boundary and paged/native consumer closure remain in progress; no matching certification or native reclaim claim."
+      "progress_note": "Warm farm REPL admits low classification/updater, foundation writer correspondence/guards, live-link preservation, loader completion helper and metadata-versus-bytes available projection including state preservation. First sparse/prefix/tail/empty foundation writer classification fixtures pass, including cancel of already unavailable row with raw lookup retained. Actual loader establishment, summary/navigation boundary and paged/native consumer closure remain in progress; no matching certification or native reclaim claim. New distinct available-summary/low/range/next/previous exports and their numeric membership pass admit with guards; complete generic writer/reader tuple fixtures pass sparse/prefix/tail/empty and already-unavailable cancellation, raw lookup retained. Archive projection correspondence of these command readers, actual loader producer closure, paged attachment and generated served dispatch remain pending."
     }
   ]
 }

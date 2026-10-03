@@ -8468,12 +8468,13 @@
         "Cancel after reclaim does not decrement twice; failed selection/navigation preserves cursor and pin."
       ],
       "implementation": {
-        "test": "tests/acl2/catalog-availability-tests.lisp"
+        "test": "tests/acl2/catalog-available-readers-tests.lisp"
       },
       "evidence": [
-        "tests/acl2/catalog-availability-tests.lisp"
+        "tests/acl2/catalog-availability-tests.lisp",
+        "tests/acl2/catalog-available-readers-tests.lisp"
       ],
-      "execution_scope": "First actual foundation writer classification fixtures pass in warm REPL; generated complete command antecedents/conclusions, recovery loader, paged attachment and native reclaim/reopen remain pending. Tombstone-shaped byte fixture is classification evidence, not execution of a native reclaim pass."
+      "execution_scope": "First actual foundation writer classification fixtures pass in warm REPL; generated complete command antecedents/conclusions, recovery loader, paged attachment and native reclaim/reopen remain pending. Tombstone-shaped byte fixture is classification evidence, not execution of a native reclaim pass. Actual generic catalog available summary/range/navigation complete tuple cases now pass with guard-verified exports, including empty (0,35,34) and preserved raw#2 lookup. Protocol/session effect teeth and native reclaim remain pending."
     }
   ]
 }
