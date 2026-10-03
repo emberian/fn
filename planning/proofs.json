@@ -22920,9 +22920,11 @@
         "fn-dwa-refused-retirement-preserves-carry"
       ],
       "evidence": [
-        "tests/acl2/decoded-worker-reuse-tests.lisp"
+        "tests/acl2/decoded-worker-reuse-tests.lisp",
+        "planning/evidence/manifests/certify-20261003T160405Z-2295638.json",
+        "planning/evidence/decoded-reuse-20261003/result.json"
       ],
-      "progress_note": "Normal incremental hbox ACL2 admission: retirement guards, carry revocation and refusal frame, job backing frame, eager reserve, and no-scalar-publication theorem pass. Five literal acquisition/return/cancellation/corruption/reassignment witnesses pass. Native persistent scratch consumer and actual startup baseline are in flight with Runtime/Operator/Foundations; no matching certification or complete allocator/GC/work claim."
+      "progress_note": "Normal incremental hbox ACL2 admission: retirement guards, carry revocation and refusal frame, job backing frame, eager reserve, and no-scalar-publication theorem pass. Five literal acquisition/return/cancellation/corruption/reassignment witnesses pass. Native persistent scratch consumer and actual startup baseline are in flight with Runtime/Operator/Foundations; no matching certification or complete allocator/GC/work claim. Scoped certificate certify-20261003T160405Z-2295638 passed assignment/job/backing/tests at817ac (4 roots;35 cached dependencies,19 without cited manifests here). Stronger publication theorem permits arbitrary query ledger/worker/token and normally admitted in11936steps; its changed bytes require fresh certificate. Native startup/reuse remains pending."
     }
   ]
 }
