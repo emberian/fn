@@ -21455,6 +21455,26 @@
         "fn-sccv-final-ok-is-runs-ok",
         "fn-sccv-step-is-seg-step"
       ]
+    },
+    {
+      "id": "PRF-1250",
+      "title": "The log entry length the host reads is bounded by the frame open's own bound before the read, and the stream and the damage probe decide exactly as before",
+      "statement": "books/store-log-entry-bound.lisp fn-lgw-entry-len-bounded-step and fn-lgdm-entry-len-bounded-step: when the bounded length (fn-lgw-entry-len-bounded / fn-lgdm-entry-len-bounded: NIL also past *fn-frame-overhead-octets* plus fn-lg-open-bound at the header's kind octet) answers NIL where the unbounded one named an entry E whose kind octet is the header window's, the stream's step (fn-lgw-step) and the probe's step (fn-lgdm-step) over E equal their steps over no entry; fn-lgw-/fn-lgdm-entry-len-bounded-is-entry-len: when the bounded length answers, it is the unbounded one. Host: host/native/io.lisp fnn-log-stream-segment and fnn-log-probe-tail (and the extracted fn-xo-/fn-xw- walks and probes) call the bounded lengths, so one read is at most the overhead plus the open's bound. Sweep 2026-10-03 S048.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-028"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": "tests/acl2/store-log-entry-bound-tests.lisp (reachable walk equal both ways; corrupted segment: the first entry's length field 5000, unbounded 5042, bounded NIL, both steps equal over E and over nothing; removal of the NIL hypothesis and of the length hypothesis).",
+      "progress_note": "sweep-store, 2026-10-03: REPL-admitted.",
+      "events": [
+        "fn-lgw-entry-len-bounded-step",
+        "fn-lgdm-entry-len-bounded-step",
+        "fn-lgw-entry-len-bounded-is-entry-len",
+        "fn-lgdm-entry-len-bounded-is-entry-len"
+      ]
     }
   ]
 }

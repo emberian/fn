@@ -464,10 +464,6 @@
   :keystones (fn-lgw-entry-len-bounded-step
               fn-lgw-entry-len-bounded-is-entry-len))
 
-(definterface fn-lgdm-entry-len
-  :class ::common-lisp-compliant
-  :kinds ((ps true-listp)))
-
 (definterface fn-lgdm-header-len
   :class ::common-lisp-compliant
   :kinds ((ps true-listp)))
@@ -522,10 +518,6 @@
 
 (definterface fn-lgs-segment-name
   :class ::common-lisp-compliant)
-
-(definterface fn-lgw-entry-len
-  :class ::common-lisp-compliant
-  :kinds ((st true-listp)))
 
 (definterface fn-lgw-header-len
   :class ::common-lisp-compliant
