@@ -6723,6 +6723,32 @@
         "planning/evidence/operator-init-resume-2026-10-03-v2.json"
       ],
       "note": "Actual init checks requested profile against sealed configuration and exact generation-one changes under the writer lock before resume publication. Stamps and later limit history are not initial intent. Warm source admission and actual-source regression passed; normal certification and matching image remain pending."
+    },
+    {
+      "id": "NNT-1003",
+      "title": "Redeem bounds input before accumulation and sends only validated credential commands",
+      "specification": "specs/peering.md#bounded-redeem-client-input-nnt-1003",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-1302"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "keystones": [
+        "fn-rip-password-admission-stays-within-wire-capacity",
+        "fn-rip-reply-admission-stays-within-wire-capacity"
+      ],
+      "evidence": [
+        "books/native-redeem-input.lisp",
+        "tests/acl2/native-redeem-input-tests.lisp",
+        "host/native/io.lisp",
+        "tests/native_redeem_input_source.lisp",
+        "tests/test_native_redeem_input_source.py"
+      ],
+      "note": "SCN-1132 checks actual source password/reply definitions. Credential width496 accounts for both XREDEEM PASS and subsequent AUTHINFO PASS; oversized or malformed peer reply is loss, so the existing stage outcome preserves password-publication uncertainty. Certification/native image scope remains pending."
     }
   ]
 }

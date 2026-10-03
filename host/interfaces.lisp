@@ -2438,6 +2438,17 @@
   :class ::common-lisp-compliant
   :keystones (fn-redeem-lost-is-fenced-and-server-answers-are-not))
 
+(definterface fn-rip-command
+  :class ::common-lisp-compliant)
+
+(definterface fn-rip-password-step
+  :class ::common-lisp-compliant
+  :keystones (fn-rip-password-admission-stays-within-wire-capacity))
+
+(definterface fn-rip-reply-status
+  :class ::common-lisp-compliant
+  :keystones (fn-rip-reply-admission-stays-within-wire-capacity))
+
 (definterface fn-redeem-outcome-class
   :class ::common-lisp-compliant
   :keystones (fn-redeem-lost-is-fenced-and-server-answers-are-not))

@@ -3365,3 +3365,14 @@ read/token/dependency. Ordinary refusal unregisters, torn issuer keeps reserved
 worker/read. No full funding/profile/GC claim; current partial86928 scope and
 modern full unpriced refusal unchanged. Current native source fixture passes;
 registry PRF1288 remains planned. Integration sole dev writer.
+
+
+# Horse Bounds (GPT-6 Sol)
+
+Redeem input source repair READY. New PRF-1302/NNT-1003/SCN-1132.
+Actual source host password/reply helper fixture passed; command constructor probes passed.
+Final book normal source-loaded/guard verified in hbox warm sessionhorse-bounds-redeem over14exact cached deps:0.18ACL2s435steps;2unconditional policy theorems and13literal teeth passed. This is admission, not certification.
+
+Integration must compose entry horse03228b319 password-stage-before-send change with this command constructor host patch. New native-redeem-input included by peer-host; certify roots books/native-redeem-input andtests/acl2/native-redeem-input-tests, plus affected peer-host includers in convergence batch. No saved-image run is claimed; caller regression fixture needs adapting to newfn-rip-command core entry. Regenerate current-view once at Integration.
+
+Shared .spw/audits/bounds contains candidate scan and six source findings. Catchup requester retains unlimited batch despite262144 advice; independent whole-footprint peer-flight grant producer missing. Foundations contacted; bounds owns eventual repair, no duplicate BP/pull edits. App journal4096record and16/64MiB lifetime ceilings have no operator profile/format justification or retirement. Pending repair design must preserve transaction uniqueness and receipt evidence. Publication FDclose debt cross-linked from exits, not yet traced.

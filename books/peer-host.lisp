@@ -32,6 +32,7 @@
 
 (in-package "ACL2")
 (include-book "native-config")
+(include-book "native-redeem-input")
 
 (defconst *fn-phost-max-name* 253)   ; RFC 1123 s2.1 / RFC 1035 s2.3.4, text form
 (defconst *fn-phost-max-label* 63)

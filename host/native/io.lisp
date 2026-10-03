@@ -9140,27 +9140,43 @@ segment' (tests/test_native_topic_local.py)."
 ;;; refused (the OpenBSD rehearsal's finding 8: the web reader counted an
 ;;; unreachable node as a refused code).
 (defun fnn-redeem-read-line (read-chunk pending)
-  "One reply line (without CRLF) and the octets after it, reading chunks with
-READ-CHUNK until an LF; at most 4096 octets (RFC 3977 s3.1: 512 is the
-largest reply line).  :LOST when the server closed or did not answer."
+  "One bounded reply line and its exact following octets. ACL2 checks the
+wire width even when the delimiter arrives in the same chunk."
   (let ((buffer pending))
     (loop
-      (let ((lf (position 10 buffer)))
-        (when lf
-          (return (values (coerce (subseq buffer 0 (if (and (> lf 0) (= (aref buffer (1- lf)) 13))
-                                                       (1- lf) lf))
-                                  'list)
-                          (subseq buffer (1+ lf))))))
-      (when (> (length buffer) 4096)
-        (fnn-refuse "refused redeem reply: the server's line exceeds 4096 octets"))
+      (let* ((lf (position 10 buffer))
+             (status (fnn-core 'fn-rip-reply-status (length buffer) lf)))
+        (case status
+          (:line
+           (return (values (coerce (subseq buffer 0 (if (and (> lf 0) (= (aref buffer (1- lf)) 13))
+                                                       (1- lf) lf)) 'list)
+                           (subseq buffer (1+ lf)))))
+          (:refused (return (values :lost nil))) ; malformed peer input is loss, not an account verdict
+          (:need nil)
+          (t (fnn-fault "invalid ACL2 redeem reply decision"))))
       (let ((chunk (funcall read-chunk)))
         (when (or (eq chunk :timeout) (zerop (length chunk)))
           (return (values :lost buffer)))
         (setq buffer (concatenate 'fnn-octets buffer chunk))))))
 
+(defun fnn-redeem-password-line (stream)
+  "Read at most one wire-sized password, checking before each retained octet.
+CR is allowed only as the line ending; command separators cannot be secrets."
+  (let ((used 0) (returnp nil) (octets nil))
+    (loop
+      (let* ((character (read-char stream nil nil))
+             (octet (if character (char-code character) :eof))
+             (decision (fnn-core 'fn-rip-password-step used returnp octet)))
+        (case decision
+          (:octet (push octet octets) (incf used))
+          (:return (setq returnp t))
+          (:end (return (nreverse octets)))
+          (:refused (fnn-refuse "refused redeem password: use one nonempty printable ASCII token within the NNTP command bound"))
+          (t (fnn-fault "invalid ACL2 redeem password decision")))))))
+
 (defun fnn-redeem-read-password ()
   "The new account's password: from the terminal without echo, else one line
-of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
+of standard input; ACL2 admits each octet within the XREDEEM PASS wire bound."
   (let* ((tty (handler-case
                   (open "/dev/tty" :direction :io :element-type 'character
                                    :external-format :latin-1)
@@ -9180,13 +9196,7 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                      old-flags (sb-posix:termios-lflag attributes))
                (setf (sb-posix:termios-lflag attributes) (logandc2 old-flags sb-posix:echo))
                (sb-posix:tcsetattr fd sb-posix:tcsanow attributes)))
-           (let ((line (read-line stream nil nil)))
-             (when (null line)
-               (fnn-refuse "refused redeem password: no password was given"))
-             (let ((text (string-right-trim '(#\Return) line)))
-               (when (or (zerop (length text)) (> (length text) 512))
-                 (fnn-refuse "refused redeem password: it must be 1 to 512 characters"))
-               (map 'list #'char-code text))))
+           (fnn-redeem-password-line stream))
       (when tty
         (when attributes
           (setf (sb-posix:termios-lflag attributes) old-flags)
@@ -9217,7 +9227,12 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                      (if tls 563 119)))
              (verification (fnn-core 'fn-peer-tls-verification host
                                      (or cafile :system-roots)))
-             (password (fnn-redeem-read-password))
+             (code-command (fnn-core 'fn-rip-command :code code login))
+             (password (progn
+                         (unless code-command
+                           (fnn-refuse "refused redeem: CODE and LOGIN must be single NNTP tokens within the command bound"))
+                         (fnn-redeem-read-password)))
+             (password-command (fnn-core 'fn-rip-command :password password nil))
              (socket nil) (context nil) (channel nil) (pending (fnn-make-octets 0))
              (last nil) (stage :connect))
         (unless (eq (first verification) :verify)
@@ -9226,8 +9241,8 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                       (if (eq (second verification) :trust)
                           "the --cafile path is not usable"
                         "HOST is not a host name or an IPv4 address")))
-        (flet ((send (text)
-                 (let ((octets (fnn-string-octets (fnn-concat text (coerce '(#\Return #\Newline) 'string)))))
+        (flet ((send (line)
+                 (let ((octets (fnn-octets line)))
                    (if channel
                        (fnn-tls-send-all channel octets 30)
                      (fnn-send-all (fnn-socket-fd socket) octets 30))))
@@ -9265,24 +9280,23 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                                       (fnn-core 'fn-redeem-lost stage)
                                     (fnn-core 'fn-redeem-step stage line))))
                        (case (first step)
-                         (:starttls (send "STARTTLS") (setq stage :starttls))
+                         (:starttls (send (fnn-core 'fn-rip-command :starttls nil nil)) (setq stage :starttls))
                          (:handshake
                           (setq context (fnn-tls-open-client-context (fourth verification))
                                 channel (fnn-tls-connect context (fnn-socket-fd socket)
                                                          (second verification) 30
                                                          :sni (third verification))
                                 pending (fnn-make-octets 0))
-                          (send (format nil "XREDEEM ~a ~a" code login))
+                          (send code-command)
                           (setq stage :code))
                          (:send-code
-                          (send (format nil "XREDEEM ~a ~a" code login))
+                          (send code-command)
                           (setq stage :code))
                          (:send-password
-                          (send (format nil "XREDEEM PASS ~a"
-                                        (map 'string #'code-char password)))
+                          (send password-command)
                           (setq stage :password))
                          ((:uncertain :unreachable) (return (finish step)))
-                         (t (ignore-errors (send "QUIT"))
+                         (t (ignore-errors (send (fnn-core 'fn-rip-command :quit nil nil)))
                             (return (finish step))))))))
                  ;; The node could not be reached, or the connection failed
                  ;; under the exchange: ACL2's lost outcome at this stage.
