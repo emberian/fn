@@ -265,3 +265,9 @@ Still open: cache eviction between return/resume, multi-entry replay progress,
 funded consumption custody, output/collector tariffs and bounded web logical feed.
 No <8 quantum workaround or inference from cache warmth. Matcher source admission
 progresses independently and will be consumed after immutable READY.
+
+Cold packet receipt correction: initial checks.json was indexed before the
+legacy logical consumer/source log compatibility followup, so archive correctly
+refused replacing its bytes. Preserve that earlier receipt; final source hashes
+and private-feed check are now checks-final.json, indexed separately. Registry
+citations point at final receipt. Source c922036e8 unchanged by this correction.

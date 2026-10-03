@@ -8255,7 +8255,7 @@
         "tests/acl2/newnews-candidate-selector-tests.lisp",
         "tests/test_cursor_cold_poll.py",
         "tests/cursor_cold_poll_recording.lisp",
-        "planning/evidence/cursor-cold-poll-20261003/checks.json"
+        "planning/evidence/cursor-cold-poll-20261003/checks-final.json"
       ]
     },
     {
