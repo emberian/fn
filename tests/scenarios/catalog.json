@@ -8592,6 +8592,33 @@
         "tests/test_native_peer_pull.py"
       ],
       "execution_scope": "Raw worker/kernel schedule passes with recorded session and journal leaves. Actual saved-image selector tests.test_native_peer_pull.NativePeerPullTests.test_trickling_body_retained_while_other_pull_and_catchup_complete is prepared, not executed."
+    },
+    {
+      "id": "SCN-1097",
+      "title": "Accepted resource descriptors reach actual mux hold and headroom precedes output pool allocation",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-047"
+      ],
+      "steps": [
+        "Invoke actual operator/control/normalized-owner boundary functions with one accepted result and its recorded resource projections.",
+        "Invoke actual mux budget caller with hold and refusal decisions; install explicit private output projection only after numerical headroom grant.",
+        "Refuse insufficient headroom and check no private constructor/resize occurs; absent staged policy creates no pool."
+      ],
+      "expected": [
+        "Cold and output descriptors remain the exact same accepted-plan objects through all boundary calls; pre-extension store figure is captured by ACL2.",
+        "Actual mux hold invokes both projections; parent or output headroom refusal grants no output allocation.",
+        "Startup rows come from ACL2, without clamping; explicit output policy remains staged and full response custody/tariff remains open."
+      ],
+      "implementation": {
+        "test": "tests/test_native_output_startup_raw.sh"
+      },
+      "evidence": [
+        "tests/native_output_startup_raw.lisp",
+        "books/output-reservation.lisp"
+      ],
+      "execution_scope": "Actual native transport/install/caller bodies with recorded ACL2 funding/method boundaries. Exact new helper and three normal declarations source-admitted in Foundations actual loaded output world; typed producer fixture independent. No configured live activation/full tariff/image claim."
     }
   ]
 }

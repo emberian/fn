@@ -49,6 +49,9 @@
 ; free-chain/bank correspondence and allocation tariff remain PRF-1259; no gate.
 (definterface fn-rlo-install :class :common-lisp-compliant)
 (definterface fn-rlo-issue :class :common-lisp-compliant)
+(definterface fn-heap-figure-octets :class :common-lisp-compliant)
+(definterface fn-orv-startup-slots :class :common-lisp-compliant)
+(definterface fn-orv-startup-grant :class :common-lisp-compliant)
 (definterface fn-rlo-output :class :common-lisp-compliant)
 (definterface fn-rlo-physical :class :common-lisp-compliant)
 (definterface fn-rlo-drainedp :class :common-lisp-compliant)
