@@ -224,6 +224,7 @@
               +fnn-state-checkpoint-model-cuts+ fnn-state-checkpoint-test-fault
               +fnn-cli-faults+ +fnn-post-model-cuts+ +fnn-post-log-model-cuts+
               fnn-post-test-fault
+              +fnn-log-model-cuts+ +fnn-log-segment-model-cuts+ fnn-log-at
               fnn-post-entry-fault fnn-command-post fnn-main))
 
 (defun setenv (name value) (sb-posix:setenv name value 1))
@@ -505,6 +506,49 @@
                       (fnn-store-fault () :fault)))
          "an unknown stop cut is refused")
   (clear-selectors))
+
+;;; Log cuts validate their point even unarmed, and an unknown selector
+;;; faults before a matching cut could kill. Real kills run only in children.
+(clear-selectors)
+(with-profile (:developer)
+  (check (eq :fault (handler-case (fnn-log-at :unknown-point)
+                      (fnn-store-fault () :fault)))
+         "an unknown log POINT faults without a selector")
+  (setenv "FN_NATIVE_LOG_FAULT" "unknown-selector")
+  (check (eq :fault (handler-case (fnn-log-at :log-written)
+                      (fnn-store-fault () :fault)))
+         "an unknown log selector faults at a valid POINT")
+  (setenv "FN_NATIVE_LOG_FAULT" "unknown-point")
+  ;; A faulty implementation must not kill the runner on matching unknowns.
+  (let ((pid (sb-posix:fork)))
+    (when (zerop pid)
+      (handler-case (progn (fnn-log-at :unknown-point)
+                           (sb-ext:exit :code 2 :abort t))
+        (fnn-store-fault () (sb-ext:exit :code 0 :abort t))))
+    (multiple-value-bind (waited status) (sb-posix:waitpid pid 0)
+      (declare (ignore waited))
+      (check (and (sb-posix:wifexited status) (zerop (sb-posix:wexitstatus status)))
+             "matching unknown point and selector fault before SIGKILL")))
+  (clear-selectors)
+  (dolist (name (append +fnn-log-model-cuts+ +fnn-log-segment-model-cuts+))
+    (let ((point (intern (string-upcase name) :keyword)))
+      (check (null (fnn-log-at point)) (format nil "valid unarmed ~a returns" name))
+      (setenv "FN_NATIVE_LOG_FAULT" name)
+      (check (null (fnn-log-at (if (eq point :log-written) :log-fenced :log-written)))
+             (format nil "valid selector ~a leaves other points unarmed" name))
+      (let ((pid (sb-posix:fork)))
+        (when (zerop pid)
+          (fnn-log-at point)
+          (sb-ext:exit :code 2 :abort t))
+        (multiple-value-bind (waited status) (sb-posix:waitpid pid 0)
+          (declare (ignore waited))
+          (check (and (sb-posix:wifsignaled status)
+                      (= (sb-posix:wtermsig status) sb-posix:sigkill))
+                 (format nil "armed ~a kills only its child" name))))
+      (with-profile (:production)
+        (check (null (fnn-log-at point))
+               (format nil "production does not arm ~a" name)))
+      (clear-selectors))))
 
 ;;; F3: pthread_kill of the calling thread stops that thread before its next
 ;;; instruction.  A child's worker thread stops itself and then writes one

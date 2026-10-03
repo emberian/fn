@@ -612,6 +612,25 @@ hbox): live heap at the replay 6,217.8 to 640.3 MB, peak RSS 14.1 to
 1.25 GB, wall 4:38.5 to 0:55.2 (planning/evidence/log-open-stream-2026-09-27.md
 section 3); of the 640 MB, about 310 MB is the image's own world.
 
+Developer log-cut enforcement: `fnn-log-at` accepts the union of the six
+`+fnn-log-model-cuts+` and seven `+fnn-log-segment-model-cuts+` names.
+An unknown POINT faults even without a selector; an unknown armed
+`FN_NATIVE_LOG_FAULT` value faults before injection. The production startup
+gate still refuses developer selectors. The non-evaluating inventory check
+(`tools/native_program_check.py`, also `tests/test_native_cut_map.py`) scans
+all host Lisp files and compares actual literal sites, declarations and model
+coordinates in both directions. Dynamic points fail until an explicit bounded
+mapping is supplied. It checks the log and segment programs' step order;
+comments and strings are not cut sites. This is source checking, not runtime
+reachability or a recovery proof.
+
+`tests/test_native_log_compaction.py` derives its seven process-death cases
+from the segment programs through `segment_cut_inventory`. Each child must
+exit by SIGKILL, recover with exit 0, preserve every article and the genesis,
+leave the expected segments, and compact successfully again. Segment recovery
+outcomes remain separate from batch acceptance outcomes. These tests do not
+qualify power loss or discharge PRF-1221's composed recovery join.
+
 STO-006: replacing history with a checkpoint preserves the full logical state
 needed for future behavior, including allocation watermarks, duplicate history,
 outstanding obligations, relevant policy context, and receipt/release evidence.

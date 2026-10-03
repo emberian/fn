@@ -5206,12 +5206,12 @@
       ],
       "steps": [
         "A format-9 store filled by the served node (12 articles); `store compact`; 6 more articles; `store compact` again.",
-        "On the developer image, `store compact` killed at rotate-created, rotate-fenced, rotate-renamed, rotate-headed, rotate-durable, drop-unlinked and drop-durable (FN_NATIVE_LOG_FAULT); `store recover`; `store compact`.",
+        "On the developer image, `store compact` killed at every row of segment_cut_inventory: rotate-created, rotate-fenced, rotate-renamed, rotate-headed, rotate-durable, drop-unlinked and drop-durable (FN_NATIVE_LOG_FAULT); `store recover`; `store compact`. The shared source inventory checks declarations, host sites and model coordinates, rejects dynamic or unknown cuts, and checks segment step order.",
         "A stale copy of the active segment as the next one; the checkpoint's first segment renamed away; the checkpoint removed after a drop."
       ],
       "expected": [
         "journal/ holds 000002.log then 000003.log only; `store inspect` answers for every article as before each compaction; the node commits after it.",
-        "The recover exits 0 and serves every article as before; after a drop cut the covered segment is gone; at rotate-created and rotate-fenced (the spare staged, never renamed) segment 1 alone remains and the staged spare is swept; at rotate-renamed and rotate-durable segments 1 and 2 remain; the later compaction succeeds and leaves one segment.",
+        "Each injected child exits -9; recover exits 0 and serves every article as before, keeping the genesis; after a drop cut the covered segment is gone; at rotate-created and rotate-fenced (the spare staged, never renamed) segment 1 alone remains and the staged spare is swept; at rotate-renamed, rotate-headed and rotate-durable segments 1 and 2 remain; the later compaction succeeds and leaves one segment.",
         "`store recover` exits 1 naming log-chain-broken, history-short-of-checkpoint and checkpoint-damaged."
       ],
       "implementation": {

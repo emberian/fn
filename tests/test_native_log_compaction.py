@@ -35,16 +35,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.campaign.native_cuts import segment_cut_inventory
 from tests.test_native_commit_log import Node, msgid, post_concurrently
 
 DEVELOPER = os.environ.get("FN_NATIVE_DEVELOPER_HOST", "")
 PRODUCTION = os.environ.get("FN_NATIVE_HOST", "")
-
-ROTATION_CUTS = ("rotate-created", "rotate-fenced", "rotate-renamed", "rotate-headed", "rotate-durable",
-                 "drop-unlinked", "drop-durable")
-# The spare's cuts: the next segment is staged, not yet named in journal/.
-SPARE_CUTS = ("rotate-created", "rotate-fenced")
-
 
 GENESIS = "000000.log"
 
@@ -224,7 +219,10 @@ class DeveloperLogCompactionTests(LogCompactionMixin, unittest.TestCase):
         before = self.inspect_all(node, range(8))
         pristine = self.root / "pristine"
         shutil.copytree(node.store_path, pristine)
-        for cut in ROTATION_CUTS:
+        rows = segment_cut_inventory()
+        self.assertEqual(len(rows), 7)
+        for row in rows:
+            cut = row.name
             with self.subTest(cut=cut):
                 shutil.rmtree(node.store_path)
                 shutil.copytree(pristine, node.store_path)
@@ -236,16 +234,17 @@ class DeveloperLogCompactionTests(LogCompactionMixin, unittest.TestCase):
                 present = segments(node.store_path)
                 # the genesis survives every rotation and drop cut
                 self.assertTrue(genesis_kept(node.store_path), cut)
-                if cut.startswith("drop"):
+                if row.surviving == "next-only":
                     # the checkpoint was installed: the recover finished the drop
                     self.assertEqual(present, ["000002.log"], cut)
-                elif cut in SPARE_CUTS:
+                elif row.surviving == "old-active":
                     # the spare was staged, never named: segment 1 is still
                     # the active one, and the writable open swept the spare
                     self.assertEqual(present, ["000001.log"], cut)
                     self.assertEqual([p.name for p in (node.store_path / "staging").glob(".stage-segment-*")],
                                      [], cut)
                 else:
+                    self.assertEqual(row.surviving, "old-and-next")
                     # no checkpoint names segment 2 yet: the open scans 1 then 2
                     self.assertEqual(present, ["000001.log", "000002.log"], cut)
                 again = self.compact(node)

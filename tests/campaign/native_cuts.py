@@ -264,6 +264,8 @@ STEP_KINDS = ("observe", "cut", "create", "write-all", "fsync-file", "fsync-dir"
               "mkdir", "rename-dir-noreplace",
               # books/store-log-programs.lisp's positioned write and barrier.
               "write-at", "fence",
+              # books/store-log-segments.lisp's rotation head.
+              "write",
               # books/store-log-extend.lisp's zero extension.
               "extend-to",
               # books/store-export-durability.lisp's one filesystem sync.
@@ -680,6 +682,42 @@ def verify_compact_is_rotation() -> None:
         raise AssertionError("store compact is not the checkpoint's rotation and drop")
 
 
+def verify_log_program_steps(body: str, host: str, program: str,
+                             book: str, step_hosts: dict[str, str]) -> None:
+    """Compare calls, never comment/string lookalikes, in source order."""
+    from tools.native_program_check import Str, parse_at, tokenize
+
+    steps = model_steps(program, book)
+    prefixes = {kind: list(tokenize(needle))[1:]
+                for kind, needle in step_hosts.items()}
+    actual = []
+
+    def walk(form):
+        if not isinstance(form, list) or not form:
+            return
+        head = form[0]
+        if isinstance(head, str) and not isinstance(head, Str):
+            if head == "quote":
+                return
+            if head == "fnn-log-at":
+                if (len(form) != 2 or not isinstance(form[1], str)
+                        or isinstance(form[1], Str) or not form[1].startswith(":")):
+                    raise AssertionError(f"{host}: dynamic fnn-log-at point")
+                actual.append(("cut", form[1][1:]))
+            for kind, prefix in prefixes.items():
+                if form[:len(prefix)] == prefix:
+                    actual.append((kind, None))
+        for child in form:
+            walk(child)
+
+    walk(parse_at(body, 0))
+    expected = [(s.kind, s.args[0] if s.kind == "cut" else None)
+                for s in steps]
+    if actual != expected:
+        raise AssertionError(f"{host}: {program} steps missing or out of order: "
+                             f"host {actual!r}, model {expected!r}")
+
+
 def log_program_cut_map(source: str | None = None) -> list[tuple[str, str, tuple[str, ...]]]:
     """The host's log cuts are the log programs', in their order: the declared
     names (+fnn-log-model-cuts+) are LOG_CUTS's and the programs' cuts in
@@ -706,23 +744,7 @@ def log_program_cut_map(source: str | None = None) -> list[tuple[str, str, tuple
     for program, host in LOG_PROGRAM_HOSTS.items():
         book = LOG_PROGRAM_BOOKS.get(program, LOG_BOOK)
         body = host_function(source, host)
-        at, order = 0, []
-        for step in model_steps(program, book):
-            needle = ("(fnn-log-at :{})".format(step.args[0]) if step.kind == "cut"
-                      else LOG_STEP_HOST[step.kind])
-            found = body.find(needle, at)
-            if found < 0:
-                raise AssertionError("{}: {} {} missing or out of order".format(
-                    host, step.kind, step.args))
-            order.append(found)
-            at = found + len(needle)
-        cuts = set(re.findall(r"\(fnn-log-at :([a-z-]+)\)", body))
-        if cuts != set(model_cut_names(program, book)):
-            raise AssertionError("{} cuts {} are not {}'s".format(host, sorted(cuts), program))
-        for kind, needle in LOG_STEP_HOST.items():
-            if body.count(needle) != sum(1 for s in model_steps(program, book)
-                                         if s.kind == kind):
-                raise AssertionError("{}: {} count differs from {}".format(host, kind, program))
+        verify_log_program_steps(body, host, program, book, LOG_STEP_HOST)
         listing.append((program, host, tuple(model_cut_names(program, book))))
     for cut in LOG_CUTS:
         cut_step_index(cut)
@@ -730,8 +752,8 @@ def log_program_cut_map(source: str | None = None) -> list[tuple[str, str, tuple
 
 
 def verify_log_cut_map() -> None:
-    """The log cut map holds (log_program_cut_map raises at the first drift)."""
-    log_program_cut_map()
+    """Both log families, all host sites, and their model programs agree."""
+    verify_log_cut_inventory()
 
 
 # The log's segment programs (lane log-recovery; books/store-log-segments.lisp):
@@ -753,6 +775,101 @@ SEGMENT_STEP_HOST = {"create": "(fnn-open path", "fsync-file": "(fnn-fsync-file 
                      "write": "(fnn-log-pwrite "}
 
 
+@dataclass(frozen=True)
+class SegmentCut:
+    """A process-death recovery oracle, separate from a batch's candidate."""
+    name: str
+    program: str
+    surviving: str
+    book: str = SEGMENT_BOOK
+    outcome: str = "kill"
+
+
+def segment_cut_inventory() -> tuple[SegmentCut, ...]:
+    """Derive the seven rows from the existing programs, not a second name list.
+
+    SURVIVING describes journal/ after writable recovery; the genesis and
+    every article survive all rows. These are not batch-acceptance outcomes.
+    """
+    surviving = {"fn-lgs-spare-program": "old-active",
+                 "fn-lgs-rotate-program": "old-and-next",
+                 "fn-lgs-rotate-durable-program": "old-and-next",
+                 "fn-lgs-drop-program": "next-only"}
+    return tuple(SegmentCut(name, program, surviving[program])
+                 for program in SEGMENT_PROGRAM_HOSTS
+                 for name in model_cut_names(program, SEGMENT_BOOK))
+
+
+def verify_log_cut_inventory() -> tuple[int, int]:
+    """Declarations = actual host sites = model mapping, in both directions.
+
+    Scan every host Lisp file with the non-evaluating program-check reader.
+    Literal keyword arguments only: dynamic points need an explicit bounded
+    mapping before they can be admitted. This is a syntactic inventory, not
+    runtime reachability or the composed crash-recovery theorem.
+    """
+    from collections import Counter
+    from itertools import chain
+    from tools.native_program_check import Str, read_one, tokenize
+
+    declarations, sites = {}, []
+
+    def walk(form, path, host):
+        if not isinstance(form, list) or not form:
+            return
+        head = form[0]
+        if isinstance(head, str) and not isinstance(head, Str):
+            if head == "quote":
+                return
+            if head in ("defun", "defmacro"):
+                host = form[1]
+            if head == "defparameter" and form[1] in (
+                    "+fnn-log-model-cuts+", "+fnn-log-segment-model-cuts+"):
+                name, value = form[1:3]
+                if (path != "host/native/io.lisp" or name in declarations
+                        or not isinstance(value, list) or len(value) != 2
+                        or value[0] != "quote" or not isinstance(value[1], list)
+                        or not all(isinstance(x, Str) for x in value[1])):
+                    raise AssertionError("invalid log cut declaration: " + name)
+                declarations[name] = tuple(value[1])
+            if head == "fnn-log-at":
+                if (len(form) != 2 or not isinstance(form[1], str)
+                        or isinstance(form[1], Str) or not form[1].startswith(":")):
+                    raise AssertionError(f"{path}: {host}: dynamic fnn-log-at point: {form[1:]!r}")
+                sites.append((path, host, form[1][1:]))
+        for child in form:
+            walk(child, path, host)
+
+    for path in sorted((ROOT / "host").rglob("*.lisp")):
+        tokens = tokenize(path.read_text())
+        for token in tokens:
+            try:
+                form = read_one(chain((token,), tokens))
+            except (StopIteration, ValueError) as error:
+                raise AssertionError(f"{path.relative_to(ROOT)}: cannot read log cut inventory") from error
+            walk(form, str(path.relative_to(ROOT)), "<top-level>")
+
+    rows = segment_cut_inventory()
+    families = (("+fnn-log-model-cuts+", tuple(c.name for c in LOG_CUTS)),
+                ("+fnn-log-segment-model-cuts+", tuple(c.name for c in rows)))
+    for declaration, expected in families:
+        actual = declarations.get(declaration)
+        if actual != expected:
+            raise AssertionError(f"{declaration}: declared {actual!r}, mapped {expected!r}")
+    names = tuple(c.name for c in LOG_CUTS) + tuple(c.name for c in rows)
+    if len(set(names)) != len(names):
+        raise AssertionError("duplicate log cut names across model families")
+    mapped = Counter(("host/native/io.lisp", LOG_PROGRAM_HOSTS[c.program], c.name) for c in LOG_CUTS)
+    mapped.update(("host/native/io.lisp", SEGMENT_PROGRAM_HOSTS[c.program], c.name) for c in rows)
+    actual = Counter(sites)
+    if actual != mapped:
+        raise AssertionError(f"log cut sites: unmapped {list((actual - mapped).elements())!r}; "
+                             f"missing {list((mapped - actual).elements())!r}")
+    log_program_cut_map()
+    verify_log_segment_cut_map()
+    return len(names), len(rows)
+
+
 def verify_log_segment_cut_map() -> None:
     """Each segment program's hosting function performs its steps in the
     program's order (the syscall's call, then `(fnn-log-at :NAME)' for each
@@ -760,18 +877,12 @@ def verify_log_segment_cut_map() -> None:
     source = (ROOT / "host/native/io.lisp").read_text()
     for program, host in SEGMENT_PROGRAM_HOSTS.items():
         body = host_function(source, host)
-        at = 0
-        for step in model_steps(program, SEGMENT_BOOK):
-            needle = ("(fnn-log-at :{})".format(step.args[0]) if step.kind == "cut"
-                      else SEGMENT_STEP_HOST[step.kind])
-            found = body.find(needle, at)
-            if found < 0:
-                raise AssertionError("{}: {} {} missing or out of order".format(
-                    host, step.kind, step.args))
-            at = found + len(needle)
-        cuts = set(re.findall(r"\(fnn-log-at :([a-z-]+)\)", body))
-        if cuts != set(model_cut_names(program, SEGMENT_BOOK)):
-            raise AssertionError("{} cuts {} are not {}'s".format(host, sorted(cuts), program))
+        # Spare disposal and failed-rename cleanup unlinks are outside
+        # these success programs; do not confuse them with P-DROP.
+        primitives = {kind: needle for kind, needle in SEGMENT_STEP_HOST.items()
+                      if not (program in ("fn-lgs-spare-program", "fn-lgs-rotate-program")
+                              and kind == "unlink")}
+        verify_log_program_steps(body, host, program, SEGMENT_BOOK, primitives)
     # The switch under the owner mutex is a rename and nothing else of the
     # disk; the new segment's name is durable before a member in it is
     # acknowledged (the fence) and before a checkpoint names it.
@@ -1019,22 +1130,14 @@ _LOG_ROUTE_TOKEN = re.compile(
 
 def _strip_lisp_text(body: str) -> str:
     """BODY without comments and string literals (a docstring may name a call)."""
-    out, i, n = [], 0, len(body)
-    while i < n:
-        c = body[i]
-        if c == ";":
-            j = body.find("\n", i)
-            i = n if j < 0 else j
-        elif c == '"':
-            j = i + 1
-            while j < n and body[j] != '"':
-                j += 2 if body[j] == "\\" else 1
-            if body[i:j].startswith('"RECOVER-BARRIER-'):
-                out.append("RECOVER-BARRIER-")
-            i = j + 1
-        else:
-            out.append(c)
-            i += 1
+    from tools.native_program_check import Str, positioned_tokens
+
+    out = [" "] * len(body)
+    for offset, token in positioned_tokens(body):
+        if isinstance(token, Str):
+            # This one literal denotes the existing bounded recovery loop.
+            token = "RECOVER-BARRIER-" if token.startswith("RECOVER-BARRIER-") else ""
+        out[offset:offset + len(token)] = token
     return "".join(out)
 
 

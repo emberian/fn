@@ -8,9 +8,24 @@ class NativeCutMapTests(unittest.TestCase):
         native_cuts.verify_native_cut_map()
 
     def test_log_cuts_match_the_log_programs(self):
+        self.assertEqual(native_cuts.verify_log_cut_inventory(), (13, 7))
         native_cuts.verify_log_cut_map()
         native_cuts.verify_post_log_cut_map()
         native_cuts.verify_log_segment_cut_map()
+
+    def test_segment_inventory_has_separate_recovery_outcomes(self):
+        rows = native_cuts.segment_cut_inventory()
+        self.assertEqual([step.kind for step in native_cuts.model_steps(
+            "fn-lgs-rotate-program", native_cuts.SEGMENT_BOOK)],
+            ["rename", "cut", "write", "cut"])
+        self.assertEqual([row.name for row in rows],
+                         ["rotate-created", "rotate-fenced", "rotate-renamed",
+                          "rotate-headed", "rotate-durable", "drop-unlinked", "drop-durable"])
+        self.assertEqual([row.surviving for row in rows],
+                         ["old-active"] * 2 + ["old-and-next"] * 3 + ["next-only"] * 2)
+        self.assertEqual({row.outcome for row in rows}, {"kill"})
+        self.assertTrue(set(row.name for row in rows).isdisjoint(
+            cut.name for cut in native_cuts.LOG_CUTS))
 
     def test_statement_cut_follows_its_barrier(self):
         native_cuts.verify_statement_cut_map()

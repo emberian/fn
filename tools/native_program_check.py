@@ -1054,7 +1054,17 @@ def main(argv=None) -> int:
         print("holder cut mismatch: " + problem)
     print("holder cuts: {} ({} cut(s) of {} declaration(s))".format(
         "FAIL" if holder else "PASS", len(holder_cuts()), len({c[0] for c in holder_cuts()})))
-    return 0 if report.ok and not arms and not statement and not holder else 1
+    from tests.campaign.native_cuts import verify_log_cut_inventory
+    inventory = []
+    try:
+        total, segments = verify_log_cut_inventory()
+    except AssertionError as error:
+        inventory.append(str(error))
+        print("log cut inventory mismatch: " + str(error))
+        print("log cut inventory: FAIL")
+    else:
+        print(f"log cut inventory: PASS ({total} cuts; {segments} segment cuts)")
+    return 0 if report.ok and not arms and not statement and not holder and not inventory else 1
 
 
 if __name__ == "__main__":
