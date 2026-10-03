@@ -1188,3 +1188,10 @@ Relocation component certificate: certify-20261003T102524Z-1455069, two roots
 PASS, 110 cache dependencies. Archive/index retained. This certifies d2a424486's
 component bytes; History requested the finite runner composition theorem next,
 which is a follow-on proof/API packet and requires its own matching evidence.
+
+History-requested finite runner follow-on: history-pages-relocate-run supplies
+fn-hpr-tick/run and named exact placement/effect composition. Rank+1 excludes
+fuel refusal; completion is conditional on actual :done and existing relocation
+:ok (resident non-failure remains History's obligation). Clean warm replay of
+25 forms passes in3.66s; real stobj full-run positive and short-run missing-done
+counterexample pass. The original step book remains byte-identical to d2a424486.

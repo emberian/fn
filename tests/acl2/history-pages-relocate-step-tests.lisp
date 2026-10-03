@@ -1,6 +1,6 @@
 ; Real concrete page-store schedules, not simulated relocation effects.
 (in-package "ACL2")
-(include-book "../../books/history-pages-relocate-step")
+(include-book "../../books/history-pages-relocate-run")
 (defconst *hpr-lens* '(8 8 8 8 32768))
 (defconst *hpr-starts* '(1 2 3 4 5))
 
@@ -101,3 +101,28 @@
    res)))
 (assert-event (equal (hpr-test-refuse 1 7) '((:refused :capacity) t nil)))
 (assert-event (equal (hpr-test-refuse 4 6) '((:refused :image) t nil)))
+
+; Positive witness for fn-hpr-run-is-old-relocation and removal of its :done
+; hypothesis. The short run keeps every other antecedent and does not have the
+; old final concrete, so partial completion cannot be substituted for :done.
+(defun hpr-test-finite-run (short)
+ (declare (xargs :mode :program))
+ (with-local-stobj pgs-mem
+  (mv-let (res pgs-mem)
+   (let* ((pgs-mem (hpr-test-base pgs-mem))
+          (cursor (fn-hpr-cursor :header-ready 4 4 1 *hpr-lens* *hpr-starts* 7 0)))
+    (mv-let (v next pgs-mem)
+     (fn-hpr-run (if short 1 (+ 1 (fn-hpr-rank cursor))) cursor pgs-mem)
+     (mv (list v (fn-hpr-placement next) (hpr-test-snapshot pgs-mem)) pgs-mem)))
+   res)))
+(assert-event
+ (let ((old (hpr-test-run t)) (full (hpr-test-finite-run nil))
+       (short (hpr-test-finite-run t)))
+  (and (natp 4) (< 4 5) (natp 4) (natp 1) (natp 7)
+       (nat-listp *hpr-lens*) (equal (len *hpr-lens*) 5)
+       (nat-listp *hpr-starts*) (equal (len *hpr-starts*) 5)
+       (eq (car old) :ok) (eq (car full) :done)
+       (equal (cdr full) (cdr old))
+       (not (eq (car short) :done))
+       (equal (car short) '(:refused :continuation-fuel))
+       (not (equal (caddr short) (caddr old))))))
