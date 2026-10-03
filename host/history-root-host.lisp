@@ -13,11 +13,11 @@
          (f-get-global 'fn-owner-history-roots state)))))
 (defun fn-owner-hroot-put (generation row state)
   (declare (xargs :stobjs state :mode :program))
-  (f-put-global 'fn-owner-history-roots
-    (acons generation row
-      (remove1-assoc-equal generation
-        (and (boundp-global 'fn-owner-history-roots state)
-             (f-get-global 'fn-owner-history-roots state)))) state))
+  (let ((rest (remove1-assoc-equal generation
+                (and (boundp-global 'fn-owner-history-roots state)
+                     (f-get-global 'fn-owner-history-roots state)))))
+    (f-put-global 'fn-owner-history-roots
+      (if row (acons generation row rest) rest) state)))
 (defun fn-owner-hroot-resize (generation amount state)
   (declare (xargs :stobjs state :mode :program))
   (let ((r (fn-mcr-resize (fn-owner-credits state) (fn-hroot-credit-key generation) amount)))
