@@ -150,3 +150,17 @@ retains its primary condition and runtime, while a nonlocal cleanup exit
 retains the once-only calling stage. Close refuses both debts and never retries
 those release steps. A definite no-child start can remove the unused runtime.
 These receipts do not establish full transport custody or a resource refund.
+
+### Publication and export snapshot custody
+
+A captured job envelope is retained before its arena pin call. The activity
+slot and worker reference are installed under the roster before releasing the
+actor start latch. Early exit cannot be followed by a stale parent slot store.
+Pin cleanup enters a once-only releasing stage before its semantic call; a
+condition or nonlocal escape retains that stage, pin and immutable capture.
+Physical join is independent: a successful unpin alone does not remove the
+envelope, and a joined actor with pin cleanup debt remains undrained. Definite
+no-child or actual terminal parked-child cleanup may release a holding pin;
+calling/unknown cleanup is never retried. The root close consumer must require
+fnn-owner-snapshot-jobs-drained-p. Starts within a capture section use its held
+fault fence during compensation rather than recursively acquiring O.

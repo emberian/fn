@@ -34,6 +34,7 @@
    (defmacro fnn-with-roster) (defvar *fnn-actor-thread-maker*)
    (defvar *fnn-actor-thread-joiner*) (defvar *fnn-actor-start-signal*)
    (defvar *fnn-actor-thread-terminator*) (defun fnn-owner-actor-run)
+   (defun fnn-owner-actor-fault-service)
    (defun fnn-owner-actor-start) (defmacro def-actor)
    (def-actor fnn-owner-spawn-syncer) (def-actor fnn-owner-spawn-committer)
    (defun fnn-owner-actor-join) (defun fnn-owner-start-syncer)))
