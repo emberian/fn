@@ -3863,7 +3863,7 @@ multi-peer-relay).** `bp-node serve -` binds ACL2's listener set,
 `fn-owner-bp-listener-ports`): one port per transport-bp boundary listener
 row of the live configuration that admits exactly one boundary. A numeric
 PORT binds that port alone (the one-row case). The host waits on every bound
-listener with poll(2) (`fnn-accept-any-loop`, host/native/io.lisp), accepts
+listener with poll(2) (`fnn-bpnc-accept-loop`, host/native/bp-control.lisp), accepts
 from the first ready one and runs that session to its end before it waits
 again: still one session at a time, no threads. The theorems:
 `fn-bpaj-listener-session-is-admitted-under-its-row` (a session on a bound

@@ -34,5 +34,23 @@ class BuildScripts(unittest.TestCase):
                 body, r"^\s*\(fnn-crypto-startup\)", f"{script}: unguarded startup checks")
 
 
+class IoLispLeftovers(unittest.TestCase):
+    """S078: dead code and a stale docstring in host/native/io.lisp."""
+
+    def setUp(self):
+        self.io = (ROOT / "host/native/io.lisp").read_text()
+
+    def test_import_checks_store_exists_once(self):
+        form = '(when (fnn-lstat root)\n    (fnn-refuse "import refused reason=store-exists"))'
+        self.assertEqual(self.io.count(form), 1)
+
+    def test_dead_accept_any_loop_is_gone(self):
+        self.assertNotIn("(defun fnn-accept-any-loop", self.io)
+
+    def test_recovery_barrier_docstring_matches_the_three(self):
+        self.assertNotIn("five recovery\nbarriers", self.io)
+        self.assertNotIn("five recovery barriers", self.io)
+
+
 if __name__ == "__main__":
     unittest.main()
