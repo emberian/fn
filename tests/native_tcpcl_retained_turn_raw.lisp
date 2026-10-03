@@ -7,6 +7,7 @@
 (defun fn-cbor-ag-car (x) (if (consp x) (car x) nil))
 (defun fn-cbor-ag-cdr (x) (if (consp x) (cdr x) nil))
 (defun zp (x) (<= (nfix x) 0))
+(defun member-equal (x xs) (member x xs :test #'equal))
 (defun member-eq (x xs) (member x xs :test #'eq))
 (defconstant *fn-tcl-ext-cap* 4096)
 (defun natp (x) (and (integerp x) (<= 0 x)))
@@ -17,7 +18,7 @@
 (defvar *fnn-tcl-progress* nil)
 (defvar *fnn-tcl-source-start* nil)
 (defun fnn-core (&rest args) (declare (ignore args)))
-(dolist (path '("books/tcpcl-retained-turn.lisp" "books/tcpcl-frame-cursor.lisp" "books/tcpcl-input-materialize.lisp"))
+(dolist (path '("books/tcpcl-retained-turn.lisp" "books/tcpcl-source-control.lisp" "books/tcpcl-frame-cursor.lisp" "books/tcpcl-input-materialize.lisp"))
 (with-open-file (stream path)
  (loop for form = (read stream nil :eof) until (eq form :eof) do
   (when (and (consp form) (eq (first form) 'defun))
@@ -34,7 +35,7 @@
     (or (and (eq (first form) 'defstruct) (eq (car (second form)) 'fnn-tcl-conn))
         (and (eq (first form) 'defun)
           (member (second form) '(fnn-tcl-flush fnn-tcl-drop fnn-tcl-pump-out fnn-tcl-offer
-            fnn-tcl-input-initialize fnn-tcl-input-decode fnn-tcl-input-materialize-turn fnn-tcl-input-turn fnn-tcl-physical-attempt fnn-tcl-begin fnn-tcl-turn-lost fnn-tcl-turn-local fnn-tcl-turn fnn-tcl-session)))))
+            fnn-tcl-input-initialize fnn-tcl-input-decode fnn-tcl-input-materialize-turn fnn-tcl-input-turn fnn-tcl-physical-attempt fnn-tcl-begin fnn-tcl-turn-lost fnn-tcl-turn-local fnn-tcl-source-control-octet fnn-tcl-turn fnn-tcl-session)))))
    (eval form))))
 (defvar *fnn-tcl-progress* nil)
 (defvar *fnn-tcl-source-start* nil)
@@ -58,7 +59,7 @@
  (unless (fnn-tclc-source-pending conn) (fnn-tcl-flush conn)))
 (defun fnn-core (name &rest args)
  (case name
-  ((fn-tcim-turn fn-tcf-at fn-tcf-begin fn-tcf-contactp fn-tcf-byte fn-tcf-span fn-tcrt-action fn-tcrt-write-end fn-tcrt-read-limit fn-tcrt-write-deadline fn-tcrt-contact-deadline fn-tcrt-contact-timeout-p fn-tcrt-init-deadline fn-tcrt-init-timeout-p) (apply name args))
+  ((fn-tclsctl-source-action fn-tcim-turn fn-tcf-at fn-tcf-begin fn-tcf-contactp fn-tcf-byte fn-tcf-span fn-tcrt-action fn-tcrt-write-end fn-tcrt-read-limit fn-tcrt-write-deadline fn-tcrt-contact-deadline fn-tcrt-contact-timeout-p fn-tcrt-init-deadline fn-tcrt-init-timeout-p) (apply name args))
   (fn-tclsctl-turn (list (first args) nil))
   (fn-tcl-max-message 200000)
   (fn-tcl-host-segment-mru 100000)
@@ -201,3 +202,12 @@
  (fnn-tcl-turn conn)
  (assert (null (fnn-tclc-init-deadline conn))))
 (format t "PASS actual SESS_INIT fixed reception deadline: partial progress never renews, retained input finishes, established custody excluded.~%")
+
+;;; Supplied empty payload is a real offer; omitted payload has no transfer.
+(let ((empty (fnn-tcl-begin 99 :active :params "empty" "/spool" :bundle nil))
+      (absent (fnn-tcl-begin 99 :active :params "absent" "/spool")))
+ (assert (fnn-tclc-bundlep empty))
+ (assert (equal (fnn-tclc-pending empty) '("empty")))
+ (assert (not (fnn-tclc-bundlep absent)))
+ (assert (not (fnn-tclc-pending absent))))
+(format t "PASS actual retained begin distinguishes supplied empty payload from absent offer.~%")

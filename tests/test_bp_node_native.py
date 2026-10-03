@@ -48,7 +48,8 @@ class NativeBpNodeTests(unittest.TestCase):
                 "test_keepalive_peer_does_not_block_second_canonical_request",
                 "test_silent_contact_expires_without_stopping_canonical_delivery",
                 "test_stalled_session_init_expires_beside_canonical_delivery",
-                "test_forged_session_peer_is_closed_before_canonical_delivery"):
+                "test_forged_session_peer_is_closed_before_canonical_delivery",
+                "test_control_input_advances_while_received_source_is_held"):
             self.image_source = assert_same_native_source(self, PRODUCER, IMAGE)
         self.tmp = scratch(self, "fn-bp-node-a3-")
         self.relay = ByteRelay()
@@ -70,6 +71,8 @@ class NativeBpNodeTests(unittest.TestCase):
             b"Message-ID: " + self.msgid + b"\r\n"
             b"\r\nA3 body\r\n"
         )
+        if self._testMethodName == "test_control_input_advances_while_received_source_is_held":
+            self.article += b"held-source control fixture\r\n" * 500
         for store in (self.receiver_store, self.sender_store):
             initialized = self.invoke("store", store, "init", "fn.test")
             self.assertEqual(initialized.returncode, EXIT.OK, initialized.stderr)
@@ -339,6 +342,56 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(self.receiver_articles(), 1)
         restarted = self.dispatch_receiver()
         self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
+        self.assertEqual(self.receiver_articles(), 1)
+
+    def test_control_input_advances_while_received_source_is_held(self):
+        """SCN-1131: ACL2 authors pipelined transfer, KEEPALIVE and next prefix."""
+        with Acl2Session(IMAGE) as bridge:
+            # Test-only program composes the actual sender pump and encoder.
+            # Python carries the resulting octets and never picks segmentation.
+            bridge.call(
+                "(defun fn-test-held-source-pump-wire (s) "
+                "(declare (xargs :mode :program)) "
+                "(let* ((r (fn-tcl-pump s 1)) (events (fn-tcl-result-events r))) "
+                "(if events (append (fn-tcl-encode (cadar events)) "
+                "(fn-test-held-source-pump-wire (fn-tcl-result-session r))) nil)))")
+            adu = bridge.literal(self.request_path.read_bytes())
+            sender = "(cons :dtn '(47 47 115 101 110 100 101 114 47))"
+            receiver = "(cons :dtn '(47 47 114 101 99 101 105 118 101 114 47))"
+            wire = bytes(acl2_octets(bridge.call(
+                "(let* ((bundle (fn-bpb-encode (fn-bpn-send-bundle "
+                f"(fn-bpn-config {sender} 3600000 2 32 1048576) {receiver} '{adu} 77 "
+                "(fn-clock-observation 0 0 0 nil)))) "
+                "(local (fn-tcl-make-params 0 65536 1048576 "
+                "(fn-record-string-octets \"dtn://sender/\") nil nil)) "
+                "(s0 (fn-tcl-result-session (fn-tcl-open (fn-tcl-initial-session :active local 0) 0))) "
+                "(s1 (fn-tcl-result-session (fn-tcl-step s0 (fn-tcl-make-contact 4 0) 0))) "
+                "(s2 (fn-tcl-result-session (fn-tcl-step s1 (fn-tcl-make-sess-init 0 1024 1048576 "
+                "(fn-record-string-octets \"dtn://receiver/\") nil) 0))) "
+                "(first (fn-tcl-send s2 \"held-source\" bundle 1))) "
+                "(append (fn-tcl-encode (fn-tcl-own-contact s2)) "
+                "(fn-tcl-encode (fn-tcl-own-init s2)) "
+                "(fn-tcl-encode (cadar (fn-tcl-result-events first))) "
+                "(fn-test-held-source-pump-wire (fn-tcl-result-session first)) "
+                "(fn-tcl-encode (fn-tcl-make-keepalive)) "
+                "(take 1 (fn-tcl-encode (fn-tcl-make-xfer-segment 3 1 nil '(65))))))")))
+        self.assertTrue(wire)
+        receiver, port = self.start_node(True, once=False)
+        sender_socket = socket.create_connection(("127.0.0.1", port), timeout=10)
+        self.addCleanup(sender_socket.close)
+        sender_socket.sendall(wire)
+        output = receiver.output_until(b"BP node delivery request-accepted", timeout=60)
+        self.assertIn(b"control input while source held", output)
+        self.assertLess(output.index(b"control input while source held"),
+                        output.index(b"BP accepted xfer=0"))
+        self.assertIn(b"BP application handoff durable", output)
+        self.assertIsNone(receiver.poll(), receiver.diagnostics())
+        sender_socket.close()
+        receiver.stop(grace=5)
+        self.assertEqual(self.receiver_articles(), 1)
+        self.assertEqual(len(self.acl2_lifecycle_payloads(self.receiver_journal, 5)), 1)
+        reopened = self.dispatch_receiver()
+        self.assertEqual(reopened.returncode, EXIT.OK, reopened.stderr)
         self.assertEqual(self.receiver_articles(), 1)
 
     def test_older_unrouted_transit_does_not_block_younger_local_request(self):

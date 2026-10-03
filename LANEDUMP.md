@@ -678,7 +678,6 @@ and is not a greenprefix. Books/certpairs are reused; no duplicateimage build.
 Source reports regenerated atc3:1460declared/1408dispatched/0raw-rule findings;
 stream PRF1256 curatedmap now corrected, subsequent generated refresh owed.
 Transport credential boundary: S107/S108/S109, codex-sol-tools
-=========================================================Isolated transport tree from origin/dev c73372af6. Owned feed auth-profile
 and dial, pull profile/worker boundary only; Runtime owns feed actor/idle
 and shared owner fault-service. Profile opens O_NONBLOCK|O_NOFOLLOW and
 admits descriptor fstat before reading, preserving uid/mode/bound authority.
@@ -758,7 +757,6 @@ journal boundaries, bounded observation packet, discovery rows and hint batch.
 Current generated world reports await independent refresh after assembly.
 
 S110 FNPL/FNCU append classification, codex-sol-tools
-=============================================Actual fnn-pull-journal-append now seals/validates/converts and runs the
 before-write selector before attempted publication. Definite prewrite faults
 retain their class. Attempted write/barrier failures remain indeterminate
 even when descriptor cleanup also fails; actual ACL2 journal phase decides
@@ -1115,7 +1113,6 @@ Existing checkpoint tar, admitted packet tar and CBOR bounds receipt archive
 verify; include only5ca08a7ea evidence index line for prior bounds event.
 Source/admission evidence is separate from scoped certificates and images.
 S112 removed-peer journal custody, codex-sol-tools
-=========================================Actual pull worker/catch-up tick prune cached journals only when the existing
 ACL2 fn-pull-plan-for says the peer has no current plan. Cached cursors drop
 with descriptor custody; returning cursor-for goes through its existing
 open/replay path. Both kinds share one private pruning function. A close
@@ -3603,3 +3600,28 @@ Verified actual host function extracted from source plus actual ACL2 reply/lost/
 Shared .spw canon written directly at consumer root as authorized; no nested workbench source staged. Mount651b535b5171 clean, CLI doctor/roots/tree/navigable selector observed. Initializer's own added commit hook/workflow removed; fn retains no new gate. Map explicit breadth and gaps, entries findings live there. Integration must include explicitly listed consumer files only, exclude nested workbench/node_modules.
 
 Open coverage: map is broad catalogue, not complete leaf reading. Owner lifecycle and process/redeem definitions traced; BP, consumer, identity, anchor,9p and most NNTP/Web/Store leaf closures remain. Other horses/deputies own active boundaries; root coordinates remaining convergence.
+
+Held-source control ingress (PRF-1300, SCN-1131): the actual retained driver
+alternates64-action source quanta with one existing bounded control read/frame
+turn. ACL2 permits only fixed-size control headers2..6; new XFER/SESS_INIT stays
+parked in the same at-most4096-byte socket vector until source terminal. No new
+buffer, source issuer or bank is admitted. Incoming KEEPALIVE uses the original
+session transition, advances actual last-RX and leaves the inbound record and
+host source root/END ACK held. Outgoing timer KEEPALIVE still never fabricates
+reception. EOF/close drains the existing private source before declaring context
+terminal; one publication occurs, and a broken socket cannot flush its ACK.
+Actual raw framing/private operation/session transition/delivery-plan/custody
+composition PASS with recorded decoder/socket/durable callback. Normal source
+book guards and13 assertions PASS; step preservation/reception lemmas1599/1482
+steps. Matching roots pending, complete native caller correspondence open.
+Real canonical sender-pump/encoded coalesced-control/reopen selector prepared
+UNEXECUTED. PRF1273 citation now names only its real physical range keystone;
+selected action IF-arm corollaries stay regressions, not completion evidence.
+
+Empty offer host composition: supplied-p distinguishes an explicit empty payload
+from omitted offer through begin/session. CLI optional absent paths and BP
+receive absent reply omit the bundle keyword, while real empty files retain a
+CONS tag/NIL offer for the consistency owner's zero START|END/ACK machine repair.
+Actual begin raw cases PASS. Latest tcpcl-session source must precede native use;
+no native zero-file verdict is claimed. Full semantic decoder/CRC/publication and
+GC/working tariffs still require connected bounded consumers, beyond this step.

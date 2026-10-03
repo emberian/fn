@@ -783,13 +783,13 @@ admitted and ACL2 refuses every inbound bundle at the receive boundary."
                                        (fnn-bp-deliver-node
                                         service conn session-counter xfer-id octets
                                         owner channel)))
-                                   (conn (fnn-tcl-session
+                                   (conn (apply #'fnn-tcl-session
                                           fd :passive
                                           (fnn-tcl-params node-id peer-eid
                                                           +fnn-tcl-keepalive+
                                                           +fnn-tcl-segment-mru+
                                                           transfer-mru)
-                                          "passive" journal-root :bundle reply)))
+                                          "passive" journal-root (when reply-adu (list :bundle reply)))))
                               (fnn-tcl-summary conn)
                               (setq code (fnn-bp-exit-code tally conn))))
                        (fnn-socket-shut socket)))

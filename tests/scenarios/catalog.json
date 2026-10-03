@@ -9578,6 +9578,32 @@
         "planning/evidence/native-decoded-custody-seam-2026-10-03/manifest.json"
       ],
       "execution_scope": "Actual developer hold seam and physical pread/thread active+inactive fixture pass in0.224s; existing retained controller recording fixture0.166s and17 source-coordinate/history tests pass. Four objects archived with manifest63c5579c686181eb95fb0f45647dcba0caed157b074f6db66fa6b841fb4c2ce2. Connected native selector is prepared, not executed: current initialized host entry and real default funded-pool producer remain required. Fixed-storage scope is partial; no allocator/GC/full funding, full HM replay or proof claim."
+    },
+    {
+      "id": "SCN-1131",
+      "title": "Control ingress during held source publishes once and parks the next transfer",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-006"
+      ],
+      "steps": [
+        "Production NNTP accepts canonical article with larger body before owner closes.",
+        "ACL2 sender machine/pump/encoder authors segmented BP request followed by KEEPALIVE and one next-XFER prefix; Python carries wire unchanged.",
+        "Real passive node logs control input while source held before its first FNBS acceptance and Store/FNRJ handoff.",
+        "Close peer, stop/reopen and dispatch, observing one kind5 payload and one article."
+      ],
+      "expected": [
+        "Incoming control observes reception while source job/END ACK remain held.",
+        "Next transfer prefix is backpressure in one bounded read vector, no second received-source issuer.",
+        "Source terminal survives peer loss; ACK cannot flush on broken socket and physical/context receipts remain separate."
+      ],
+      "evidence": [
+        "tests/test_bp_node_native.py",
+        "tests/native_tcpcl_source_control_raw.lisp",
+        "books/tcpcl-source-control.lisp"
+      ],
+      "note": "Actual raw controller/private source/original KEEPALIVE step/delivery-plan composition PASS, with recorded wire decoder/socket/publication; normal guards+13 assertions PASS. Current-union native UNEXECUTED."
     }
   ]
 }
