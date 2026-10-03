@@ -244,3 +244,19 @@ under concurrent work is Served's next command consumer. No additional scarce
 run started while archiving; ask Integration to budget selected1k→100k curves.
 Kimi tools[]/subagents[] isolated review partial output then180s timeout,
 not a completed review; useful verified metric clarifications queued.
+
+NIGHT-SOURCE-PREFIX source `38beea741`: opt-in start --keep-source-prefix
+retains only a live, ready encapsulated dependency prefix after refusal,
+still exit75 and truthful LIVE PARTIAL DEPENDENCY status. Target forms remain
+unsent; timed-out/dead/form-by-form worlds still stop. No certify fallback
+or resource/lock bypass. 20 scoped driver/locality tests pass0.055s.
+Same-harness designated retained-prefix assertion red/base and green/head:
+`planning/evidence/repair/NIGHT-SOURCE-PREFIX-f53170fc77474665b6d3e52fac7324e1.json`,
+sha256 `6805cd3733c1056dfd74d7bff704489308f5c3e9c7151f1526c8d01d4b2d1a41`.
+No actual ACL2 startup was run for this option. Served independently succeeded
+with supported failing-dependency-as-root workflow, preserving its warm world.
+
+Scoped evidence advisory Kimi source-only process timed out180s without final;
+no tool invocation appears in captured reasoning. Advisory is incomplete, not
+approval. Leads checked next: orphan-book conservative gate behavior; include
+reader parity; linked-worktree commondir locator invalidation.

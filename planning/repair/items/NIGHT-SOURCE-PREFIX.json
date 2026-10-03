@@ -21,5 +21,86 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_proof_repl.SourcePrefixTests.test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status",
  "title": "Dependency source refusal discards the successful encapsulated proof prefix",
- "updated": "2026-10-03T06:59:39Z"
+ "updated": "2026-10-03T06:59:44Z",
+ "verify": {
+  "base": "97a3c7d91cb8a62c408df033b602187e130c35fe",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "False is not true : live encapsulated dependency prefix must remain available",
+      "test": "tests.test_proof_repl.SourcePrefixTests.test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_proof_repl.SourcePrefixTests.test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_proof_repl.py": "feb199bf6a55f42a81544b0dd7c1b790d7ff58187599726a667ceb5e9d2cb07e"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "97a3c7d91cb8a62c408df033b602187e130c35fe",
+   "stderr": "test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status (tests.test_proof_repl.SourcePrefixTests.test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status) ... FAIL\n\n======================================================================\nFAIL: test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status (tests.test_proof_repl.SourcePrefixTests.test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-m22fpe7n/wt/tests/test_proof_repl.py\", line 2977, in test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status\n    self.assertTrue(not stop.called, \"live encapsulated dependency prefix must remain available\")\n    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: False is not true : live encapsulated dependency prefix must remain available\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "planning/repair/items/NIGHT-SOURCE-PREFIX.json",
+   "tests/test_proof_repl.py",
+   "tools/proof_repl.py"
+  ],
+  "diff_lines": 118,
+  "evidence": {
+   "bytes": 4148,
+   "path": "planning/evidence/repair/NIGHT-SOURCE-PREFIX-f53170fc77474665b6d3e52fac7324e1.json",
+   "sha256": "6805cd3733c1056dfd74d7bff704489308f5c3e9c7151f1526c8d01d4b2d1a41"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "False is not true : live encapsulated dependency prefix must remain available",
+   "test": "tests.test_proof_repl.SourcePrefixTests.test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/test_proof_repl.py": "feb199bf6a55f42a81544b0dd7c1b790d7ff58187599726a667ceb5e9d2cb07e"
+  },
+  "head": "38beea7410a28ffb514a00316a5690541660e581",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_proof_repl.SourcePrefixTests.test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_proof_repl.py": "feb199bf6a55f42a81544b0dd7c1b790d7ff58187599726a667ceb5e9d2cb07e"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "38beea7410a28ffb514a00316a5690541660e581",
+   "stderr": "test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status (tests.test_proof_repl.SourcePrefixTests.test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_proof_repl.SourcePrefixTests.test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status",
+  "timeout": 1800.0
+ }
 }
