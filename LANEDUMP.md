@@ -4101,3 +4101,12 @@ cases; prior d443 helper constructs backing despite debt, and prior run
 clears authority after E drained while the arena callback remains calling.
 BP Transport notified to preserve this observation in its own nil-carrier
 settlement. Private decoded reset/recovery arenas remain Root/History-owned.
+
+BP S068/SCN1138 decoder prefix cost: actual fn-bpc-dec text/bytes and
+fn-bpb-take-bytes execute existing guarded at-least prefix predicate through
+MBE, original logical outputs unchanged. Normal decoder guards PASS110313steps,
+bounded bytes reader guards PASS4806steps. Actual-body matched4-byte item plus
+65536 untouched octets preserves complete result and replaces65540 LEN visits
+with4 prefix visits. Affected two-root certificate submitted; full primary
+prefix extraction, semantic decode/CRC/canonical/publication continuation and
+current source-native multi-peer/RQ remain open. No arbitrary ceiling added.

@@ -9804,6 +9804,31 @@
         "planning/evidence/operator-default-heap-source-2026-10-03-v2.json"
       ],
       "execution_scope": "Actual native heap/profile/status bodies and actual selected ACL2 reservation/layout arithmetic. Base heap figure, config/machine capture and explicit output extension are deliberate seams; no complete allocation, expanded init/reopen theorem, nonempty recovery, saved-image or deployment qualification. Configured diagnostic cases execute actual STATUS/HEALTH and config field projections plus real output reservation arithmetic. Explicit cold arithmetic remains a declared seam; complete cold startup remains unsupported."
+    },
+    {
+      "id": "SCN-1138",
+      "title": "BP decoder availability checks stop at the declared item prefix",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-006"
+      ],
+      "steps": [
+        "Run actual fn-bpc-dec and fn-bpb-take-bytes bodies with logical and executable MBE branches on the same four-byte item followed by65536 suffix octets.",
+        "Compare complete results, including rest, on byte/text items, CRC-shaped bounded bytes, truncation, zero-length, limit and noncanonical heads.",
+        "Count LEN cons visits and bounded-prefix visits under the same source harness."
+      ],
+      "expected": [
+        "Complete logical and executable result equality; no prefix availability check scans the untouched suffix.",
+        "The matched four-byte text/bytes/CRC availability check performs4 prefix visits instead of65540 LEN visits; whole decode, integrity and publication costs are outside this comparison."
+      ],
+      "implementation": {
+        "test": "tests/test_native_bp_prefix_probe_source.py"
+      },
+      "evidence": [
+        "tests/native_bp_prefix_probe_source.lisp"
+      ],
+      "execution_scope": "Actual trusted repository function bodies with Common Lisp shims and two MBE choices; normal ACL2 guards prove branch equivalence. No native endpoint, full semantic decode quantum or GC tariff claim."
     }
   ]
 }
