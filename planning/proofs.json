@@ -18447,9 +18447,10 @@
         "books/native-config-show.lisp",
         "books/native-operator.lisp",
         "tests/acl2/native-config-paths-tests.lisp",
-        "tests/acl2/native-config-show-tests.lisp"
+        "tests/acl2/native-config-show-tests.lisp",
+        "planning/evidence/manifests/certify-20261003T120245Z-1732642.json"
       ],
-      "progress_note": "Lane operability-6 (Claude Opus 5.5, 2026-09-29). REPL-admitted (persvati) clean over native-config-paths-tests (native-config-paths loaded in one encapsulate) and native-config-show-tests; teeth: a positive witness asserting every hypothesis and the conclusion on a mission's fn.toml the resolution changes, the base and loader hypotheses each failing, a must-fail identity, the path-bound :bad; native case tests.test_native_operator_walk test_a_node_moved_by_copying_its_directory. Access 2026-10-03: path normalization retains field30 output policy, preventing explicit resource refusal from disappearing before the actual operator run-at consumer. Existing octet-consumer theorem retained; output-only and combined-policy literal witnesses prepared; scoped certification pending."
+      "progress_note": "Lane operability-6 (Claude Opus 5.5, 2026-09-29). REPL-admitted (persvati) clean over native-config-paths-tests (native-config-paths loaded in one encapsulate) and native-config-show-tests; teeth: a positive witness asserting every hypothesis and the conclusion on a mission's fn.toml the resolution changes, the base and loader hypotheses each failing, a must-fail identity, the path-bound :bad; native case tests.test_native_operator_walk test_a_node_moved_by_copying_its_directory. Access 2026-10-03: path normalization retains field30 output policy, preventing explicit resource refusal from disappearing before the actual operator run-at consumer. Existing octet-consumer theorem retained; output-only and combined-policy literal witnesses pass. Normal certification120245Z-1732642 passes native-config-paths/show and exact paths tests at75ad7a81a, with10matching cached dependencies. Native operator show/key/reload scenario prepared, matching image pending."
     },
     {
       "id": "PRF-1029",

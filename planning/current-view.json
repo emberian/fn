@@ -487,6 +487,21 @@
       "obstruction": "Inherited cached dependency manifests need assembled-tree evidence reconciliation; no immutable saved-image result or deployment is claimed.",
       "next": "Integrate source and reconcile exact existing manifests, then run the selected actual native protocol/fault packet on the convergence image.",
       "tested": null
+    },
+    {
+      "id": "PRF-1021",
+      "name": "operator configuration preserves resource policy",
+      "contract": "The operator loads relative paths resolved under its config directory while retaining both explicit cold/output resource policies; canonical show reloads the complete normalized configuration.",
+      "host": {
+        "function": "fn-native-operator-host-run-at",
+        "file": "host/native-operator-host.lisp"
+      },
+      "keystone": "fn-ncpath-config-octets-load-the-resolved-configuration",
+      "tested": null,
+      "profile": "default",
+      "latest": "Canonical rendering/source171+325 and resolverbb089: show+tests normal115041Z-1706527 PASS; paths/show+paths tests normal120245Z-1732642 PASS at75ad7a81a. Complete output-only/combined resource fixtures pass; exact manifests archived and indexed.",
+      "obstruction": "No matching saved-image run of the physical operator show/key/reload selector. Full operator includer convergence remains separate; two cached prerequisite manifest coordinates need global reconciliation. Resource rendering does not activate the pending allocator consumer.",
+      "next": "Run tests.test_native_operator_cli.NativeOperatorCliTests.test_show_preserves_output_policy_after_relative_path_resolution on the coherent convergence image."
     }
   ],
   "other_deployments": [
