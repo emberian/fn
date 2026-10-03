@@ -600,3 +600,49 @@ its existing `:already-installed` refusal. Coverage of every reusable idle
 row after arbitrary histories remains owed; the issue/settlement boundaries
 assume the prior chain is valid and the actual method reports `:drawn` or
 `:settled`.
+
+The native decoded issuer reserves its worker before the semantic draw and
+publishes that reservation to the retained response read. After an assigned
+result, it installs the exact token and response dependency before setting the
+worker runnable or notifying its waitqueue. A notification failure therefore
+retains a discoverable read/token even if the physical child runs. Ordinary
+no-token refusal removes the reservation; an escaped draw or binding preserves
+it and is never retried as a fresh issue. This is native custody ordering,
+not a proof of a complete decoded tariff or interpreter realization.
+
+The shared native condition-wait observation reserves the release record while
+E is owned and completes it only after the actual primitive returns. It emits
+reacquisition only when the returning thread owns the mutex. A timeout returning
+unlocked has no fabricated reacquisition or second release; an escaping wait or
+unobserved unlock invalidates comparison. The executor loop and timed executor
+wait consume this seam. Finite actual SBCL contention/timeout schedules check
+producer order; remaining O/P coverage, packet/model replay and global schedule
+preservation remain open, independently of decoded storage funding.
+
+## Reusable decoded backing (PRF-1298)
+
+A physical cold worker may retain one private decoded job across requests only
+when its installer has permanently reserved that backing. The selected partial
+layout projection is `fn-dwb-reusable-baseline-vector(workers)`: the existing
+fixed constructor backing plus the two-field native activation envelope, with
+one copying allowance. `fn-dwj-reserve` reserves input/ring/table/output capacity
+before worker launch. These are startup reservations, never refunded merely
+because a job finishes. Controller graphs, arbitrary integer widths, collector
+behavior beyond that allowance and work tariffs remain separate obligations.
+
+After actual worker return and the last scalar borrow, native code holds E and
+calls `fn-owner-page-decoded-job-retire` before settling the pool token. The core
+requires the matching returned or cancelled-returned token, stable owned carry
+and no pending read. `fn-dwa-retire` removes all prior root/source/token/controller
+references and resets assignment metadata; `fn-dwj-retire` retains its private
+backing. It refuses running, torn, stale and pending-read states. The retired
+job cannot publish a scalar byte even before the old token is settled. A new
+assignment must obtain a fresh pool token. Native `:calling` activations are
+never candidates for reuse after a failed semantic call.
+
+Only the actual permanent-backing installer can select
+`fn-dwb-reused-window-vector`: no resident backing is charged a second time,
+but each job still consumes its worker slot and a nonrefundable read identity.
+The existing per-job constructor projection stays available for older callers;
+a host flag or the existence of a buffer is not reservation authority. Current
+source alone does not claim the new startup/retirement consumers have executed.

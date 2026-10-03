@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 import sys
 import socket
 ROOT = Path(__file__).resolve().parents[1]
@@ -95,5 +96,13 @@ class DeveloperRepl(unittest.TestCase):
     def test_client_refuses_oversized_code_before_connect(self):
         with self.assertRaises(ValueError):
             fn_dev.evaluate('/missing', 'x'*65537)
+
+    def test_interactive_acl2_uses_selected_prover_allowance(self):
+        with mock.patch('builtins.input', side_effect=[':acl2 (value-triple :ok)', ':quit']), \
+             mock.patch.object(fn_dev, 'evaluate', return_value=(True, '')) as evaluate, \
+             mock.patch('builtins.print'):
+            self.assertEqual(fn_dev.main(['repl', '--socket', '/unused', '--prover-steps', '37']), 0)
+        evaluate.assert_called_once_with('/unused',
+            "(fnn-dev-admit '((value-triple :ok)) :step-limit 37)", None)
 
 if __name__ == '__main__': unittest.main()

@@ -251,10 +251,11 @@
         (t (list :transport))))
 
 ; The word the operator's line carries after the status: the reason of a
-; refusal, nothing for any other class or for no reason.
+; refusal, uncertainty or fault; accepted replies and absent reasons stay silent.
 (defun fn-native-control-reply-detail (status word)
   (declare (xargs :guard t))
-  (if (and (equal (fn-native-control-status-class status) :refused)
+  (if (and (member-equal (fn-native-control-status-class status)
+                         '(:refused :uncertain :fault))
            (not (equal word *fn-nctrl-no-reason-word*)))
       word
     nil))
@@ -461,8 +462,8 @@
 ; fnn-control-reasoned-exchange) and prints the detail
 ; (`fn-native-control-reply-detail', host/native/operator.lisp
 ; fnn-operator-execute-post and fnn-operator-execute-admin).  For every
-; status the client reports the owner's status and word, and for a refusal
-; that named a reason the printed word is exactly
+; status the client reports the owner's status and word, and for a refusal,
+; uncertainty or fault that named a reason the printed word is exactly
 ; `fn-nctrl-reason-word' of that reason: no host string stands between.
 (defthm fn-native-control-printed-reason-is-the-decisions
   (implies (member-equal status *fn-nctrl-statuses*)
@@ -470,8 +471,8 @@
                         (fn-native-control-reasoned-reply-read
                          (fn-native-control-reasoned-reply-encode status reason)))))
              (and (equal step (list :status status (fn-nctrl-reason-word reason)))
-                  (implies (and (equal (fn-native-control-status-class status)
-                                       :refused)
+                  (implies (and (member-equal (fn-native-control-status-class status)
+                                              '(:refused :uncertain :fault))
                                 reason)
                            (equal (fn-native-control-reply-detail
                                    (cadr step) (caddr step))

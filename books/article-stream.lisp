@@ -212,14 +212,32 @@
             (mv :wait nil (fn-ast-xref-state remaining all :compare pair 0 lookup (+ 1 compare)))
           (mv :wait nil (fn-ast-xref-state remaining all :lookup pair 0 (cdr lookup) 0))))))))
 
+; Server validity is checked before any Xref bytes are published. Retain the
+; original octet spine and consume one octet per transition; malformed/improper
+; server lists omit Xref exactly as fn-nntp-xref-server does.
+(defun fn-ast-server-state (original remaining)
+  (declare (xargs :guard t))
+  (list :xref-server original remaining))
+
+(defun fn-ast-server-one (server-state)
+  (declare (xargs :guard t))
+  (let ((remaining (fn-ast-at 2 server-state)))
+    (if (consp remaining)
+        (if (and (integerp (car remaining))
+                 (<= 33 (car remaining)) (<= (car remaining) 126))
+            (mv :wait (fn-ast-server-state (fn-ast-at 1 server-state) (cdr remaining)))
+          (mv :invalid server-state))
+      (mv (if (null remaining) :valid :invalid) server-state))))
+
 (defun fn-ast-ready-memberships (scan kind number article server)
   (declare (xargs :verify-guards nil))
   (let ((cur (fn-ast-ready scan kind number article server nil)))
     (list (fn-ast-at 0 cur) (fn-ast-at 1 cur) (fn-ast-at 2 cur)
-          (and server (not (eq kind :body)) (fn-nntp-article-idp article)
+          (and (consp server) (not (eq kind :body)) (fn-nntp-article-idp article)
                (fn-ast-xref-state (fn-article-memberships article)
                                   (fn-article-memberships article) :next nil 0 nil 0))
-          (fn-ast-at 4 cur) (fn-ast-at 5 cur) (fn-ast-at 6 cur))))
+          (fn-ast-at 4 cur) (fn-ast-at 5 cur)
+          (fn-ast-server-state server server))))
 
 ; Each transition spends one unit, even when numerical setup or a phase
 ; transition produces no bytes. The payload branch emits at most two octets
@@ -234,11 +252,21 @@
         (mv out (list phase next at (fn-ast-at 3 cur) (fn-ast-at 4 cur) (fn-ast-at 5 cur) (fn-ast-at 6 cur)))))
      ((eq phase :initial)
       (if (eq (fn-ast-at 0 (fn-ast-at 3 cur)) :xref-source)
-          (mv nil (list :xref-seek-first nil 0 (fn-ast-at 3 cur) (fn-ast-at 4 cur) t (fn-ast-at 6 cur)))
+          (mv nil (list :xref-server nil 0 (fn-ast-at 3 cur) (fn-ast-at 4 cur) t (fn-ast-at 6 cur)))
        (if (consp (fn-ast-at 3 cur))
           (mv nil (list :xref (list "Xref: " (fn-ast-at 6 cur)) 0
                         (fn-ast-at 3 cur) (fn-ast-at 4 cur) t nil))
         (mv nil (list :payload nil 0 nil (fn-ast-at 4 cur) t nil)))))
+     ((eq phase :xref-server)
+      (mv-let (word next) (fn-ast-server-one (fn-ast-at 6 cur))
+        (cond
+         ((eq word :valid)
+          (mv nil (list :xref-seek-first nil 0 (fn-ast-at 3 cur)
+                        (fn-ast-at 4 cur) t (fn-ast-at 1 next))))
+         ((eq word :invalid)
+          (mv nil (list :payload nil 0 nil (fn-ast-at 4 cur) t nil)))
+         (t (mv nil (list :xref-server nil 0 (fn-ast-at 3 cur)
+                          (fn-ast-at 4 cur) t next))))))
      ((member-eq phase '(:xref-seek-first :xref-seek))
       (mv-let (word pair next) (fn-ast-xref-one (fn-ast-at 3 cur))
         (cond

@@ -36,13 +36,14 @@
   (:reply (fn-9p-metadata-at 1 answer))
   (otherwise nil)))
 
-; No mounted generation is settled here. The absent/returned cases contain
-; no retained generation alias; a held mount must go through actual return.
+; No mounted generation is settled here. A definite PRS refusal issued no
+; debit or generation pin, so it can reset just like an absent mount. Issued
+; and uncertain phases still require their actual return/recovery producer.
 (defun fn-9pt-version-after-quiescence (fn-ninep-session)
  (declare (xargs :stobjs fn-ninep-session :guard t))
  (let ((answer (fn-9ps-pending-version fn-ninep-session)))
   (if (not (and (eq (fn-9ps-phase fn-ninep-session) :mount-return-ready)
-                (member-eq (fn-9ps-mount-phase fn-ninep-session) '(:empty :returned))
+                (member-eq (fn-9ps-mount-phase fn-ninep-session) '(:empty :returned :refused))
                 (not (fn-9ps-mount-token fn-ninep-session))
                 (not (fn-9ps-mount-source fn-ninep-session))
                 (eq (fn-9p-metadata-at 0 answer) :version)

@@ -59,6 +59,14 @@ octets)`, `(:inbound-refused xfer-id reason)`, `(:inbound-failed xfer-id)`,
 `(:peer-terminating reason)`, `(:peer-rejected reason header)`, `(:close)`
 (close the TCP connection after the writes), `(:session-down)`.
 
+An explicitly offered empty transfer is distinct from no offered transfer.
+RFC 9174 §5.2.1 carries Data length as an unsigned 64-bit integer without a
+positive-length restriction. `fn-tcl-send` emits one zero-length START|END
+segment and retains its outbound identity until the matching END ACK arrives;
+later `fn-tcl-pump` calls emit nothing for that transfer. The receiving BP
+application can refuse empty data as an invalid bundle through the ordinary
+delivery disposition; TCPCL emission itself does not confer bundle validity.
+
 Three outcomes of an inbound transfer stay distinct all the way out:
 complete (`:bundle-received`), refused (`:inbound-refused`, with the Table 6
 reason), failed (`:inbound-failed`, TCP close or a decode error). A decode

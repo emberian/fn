@@ -169,6 +169,12 @@ node. The request is framed and parsed in place from a byte buffer
 an N-octet head; the operator's head limit, 431 past it; the body limit the
 owner's article limit implies, 413 past it; chunked transfer coding is 501,
 a stated local policy because the face accepts only its own HTML forms).
+After article submission, the browser preserves the core's outcome distinction.
+The owner's exact uncertain 441 reply and internal 403 fault produce a
+503 uncertainty page advising inspection before another submission; ordinary
+441 posting refusal remains definite refusal. A numeric 4xx class alone cannot
+settle the article's durable outcome.
+
 A browser session is bound to a logical reader connection of the owner,
 opened through the owner's own exposure admission for the browser's address
 (the socket peer, or with `proxied` the proxy's last `X-Forwarded-For`
@@ -323,3 +329,18 @@ reply/gate functions. tests/acl2/web-stream-consumer-source-tests.lisp compares
 complete reference page plans with virtual scan/count/emit under chunk1/2/7/4096
 fixtures. Guard/refinement and complete endpoint/funding qualification remain
 open; concrete-fill invariant-risk warnings are retained in the source receipt.
+
+A closed HTTP continuation cannot submit another semantic job. Terminal disposal
+requires the exact outstanding job's return; cancellation alone leaves its
+captured POST, response and replay references live. The sole disposal activation
+then clears input/output, authored POST state, page state and saved response
+plans before releasing the response's scalar loan and pin. Failed cleanup keeps
+its exact cold-read identity in the debt record. Discard of these references is
+a lifetime receipt; it does not establish a complete physical heap tariff.
+
+The Web root close hook retains the face until its actors have ended, the job
+mailbox is closed and empty, and every retained connection has a terminal
+semantic receipt with no cleanup debt. Listener disposal proceeds independently;
+its actual close receipt must be `:closed`. A failed or torn listener attempt
+retains the face and is never retried. A Web close-hook failure blocks successful
+Store teardown rather than discarding the only record of unfinished custody.

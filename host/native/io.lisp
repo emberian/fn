@@ -146,22 +146,49 @@ fn-lgdm-repair-text: a torn tail dropped, a confirmed repair), newest first;
 ;;; Its collector/runtime functions are installed by owner before workers run.
 (defvar *fnn-native-observer* nil)
 (defvar *fnn-native-actor-identity* nil)
+(defvar *fnn-native-wait-release* nil)
 
 (defmacro fnn-with-observed-mutex ((lock label &rest options) &body body)
   "Literal measured lock label and unchanged SBCL mutex options. Acquire
 observed after physical lock; release reserves under it, completes after unlock."
   (let ((mutex (gensym "MUTEX")) (name (gensym "LOCK-LABEL"))
         (row (gensym "RELEASE")))
-    `(let ((,mutex ,lock) (,name ,label) (,row nil))
+    `(let ((,mutex ,lock) (,name ,label) (,row nil)
+            (*fnn-native-wait-release* nil))
        (unwind-protect
             (sb-thread:with-mutex (,mutex ,@options)
               (when *fnn-native-observer*
                 (fnn-native-observe (list :acquire *fnn-native-actor-identity* ,name)))
               (unwind-protect (progn ,@body)
                 (when *fnn-native-observer*
-                  (setq ,row (fnn-native-observation-reserve
-                              (list :release *fnn-native-actor-identity* ,name) nil)))))
+                  (cond ((sb-thread:holding-mutex-p ,mutex)
+                         (setq ,row (fnn-native-observation-reserve
+                                     (list :release *fnn-native-actor-identity* ,name) nil)))
+                        ((not *fnn-native-wait-release*)
+                         (fnn-native-observation-unavailable :unobserved-unlock))))))
          (when ,row (fnn-native-observation-complete ,row))))))
+
+
+(defun fnn-observed-condition-wait (queue mutex label &key timeout)
+  "Unchanged physical wait. Reserve release while held; confirm it only on
+normal wait return, then record reacquisition only if this thread owns MUTEX.
+A timeout can return unlocked; the surrounding observed mutex must not invent
+another release. An escaping wait makes comparison unavailable."
+  (if (null *fnn-native-observer*)
+      (sb-thread:condition-wait queue mutex :timeout timeout)
+    (let ((row (fnn-native-observation-reserve
+                (list :release *fnn-native-actor-identity* label) nil))
+          (returned nil))
+      (setq *fnn-native-wait-release* t)
+      (unwind-protect
+           (multiple-value-prog1 (sb-thread:condition-wait queue mutex :timeout timeout)
+             (setq returned t)
+             (when row (fnn-native-observation-complete row))
+             (when (sb-thread:holding-mutex-p mutex)
+               (setq *fnn-native-wait-release* nil)
+               (fnn-native-observe (list :acquire *fnn-native-actor-identity* label))))
+        (unless returned
+          (fnn-native-observation-unavailable :wait-observation-escaped))))))
 
 
 (defvar *fnn-section-step* nil
@@ -515,6 +542,22 @@ live buffer passed before state: its value."
 
 (defun fnn-open (path flags &optional (mode #o600))
   (fnn-posix (path) (sb-posix:open path flags mode)))
+(defmacro fnn-unwind-cleanups ((&rest body) &body cleanups)
+  "Attempt every cleanup. Preserve a body escape; otherwise signal the first
+cleanup failure. Normal body multiple values survive successful cleanup."
+  (let ((completed (gensym "COMPLETED")) (failure (gensym "FAILURE"))
+        (condition (gensym "CONDITION")))
+    `(let ((,completed nil) (,failure nil))
+       (unwind-protect
+            (multiple-value-prog1 (progn ,@body) (setq ,completed t))
+         ,@(mapcar (lambda (cleanup)
+                     `(handler-case ,cleanup
+                        (serious-condition (,condition)
+                          (unless ,failure (setq ,failure ,condition))))) cleanups)
+         (when ,failure
+           (if ,completed (error ,failure)
+             (ignore-errors (fnn-err "cleanup during escape failed: ~a" ,failure))))))))
+
 (defun fnn-close (fd)
   (fnn-posix () (sb-posix:close fd)))
 (defun fnn-fstat (fd)
@@ -2084,6 +2127,8 @@ resolves the names against `domain' and the host carries that list verbatim."
   ;; next start's open takes about as long): the limit verb's words read it.
   (open-ms 0)
   (completion-pending nil)
+  ;; Terminal physical close uncertainty is sticky; consumed fds are never retried.
+  (close-debt nil)
   ;; P3: how the last open reached the Store state: (:checkpoint S K) or
   ;; (:full-replay REASON).  `operator status' prints it.
   (open-mode '(:full-replay :absent))
@@ -2593,17 +2638,24 @@ store; anything else is left to the ordinary open."
     (error (e) (fnn-store-close store) (error e))))
 
 (defun fnn-store-close (store)
+  (when (fnn-store-close-debt store)
+    (error (third (fnn-store-close-debt store))))
   (setf (fnn-store-completion-pending store) nil)
-  (let ((log (fnn-store-log store)))
-    (when log
-      (setf (fnn-store-log store) nil)
-      (ignore-errors (fnn-log-discard-spare log))
-      (ignore-errors (fnn-close (fnn-log-fd log)))))
-  (let ((fd (fnn-store-lock-fd store)))
-    (when fd
-      (setf (fnn-store-lock-fd store) nil)
-      (unwind-protect (fnn-flock fd +fnn-lock-un+)
-        (fnn-close fd)))))
+  (let ((log (fnn-store-log store)) (fd (fnn-store-lock-fd store)))
+    ;; Consume each fd slot before its close attempt: no retry after reuse.
+    ;; Keep uncertainty visible to owner-store-settlement rather than claiming
+    ;; authority returned after a suppressed physical failure.
+    (setf (fnn-store-log store) nil (fnn-store-lock-fd store) nil)
+    (handler-case
+        (fnn-unwind-cleanups ()
+          (when log (fnn-log-discard-spare log))
+          (when log (fnn-close (fnn-log-fd log)))
+          (when fd (fnn-flock fd +fnn-lock-un+))
+          (when fd (fnn-close fd)))
+      (serious-condition (condition)
+        (setf (fnn-store-fenced store) t
+              (fnn-store-close-debt store) (list log fd condition))
+        (error condition)))))
 
 (defun fnn-observe (store operation &optional (result :ok))
   "Submit one already-observed filesystem result and keep failure fenced."
@@ -6876,7 +6928,7 @@ with its depth, and the rows under it name the path that called it."
   ;; preallocated and fenced OFF the owner mutex (fnn-log-prepare-spare); the
   ;; rotation under the mutex only renames it into journal/.  SPARE-LOCK
   ;; serializes preparers; it is never taken under the owner mutex.
-  (spare nil) (spare-lock (sb-thread:make-mutex :name "fn log spare"))
+  (spare nil) (spare-close-debt nil) (spare-lock (sb-thread:make-mutex :name "fn log spare"))
   ;; journal/'s path while the rotated-to segment's name is not yet durable:
   ;; the first fence of the new segment (fnn-log-fence) and the checkpoint
   ;; that names it (fnn-owner-publish-captured) fence journal/ first
@@ -7944,13 +7996,20 @@ removes one a death left, and the open's segment listing never sees it
   "Close and unlink a spare that will not be renamed (another index, or the
 store closing).  Removing a staged name is never uncertain for the history:
 the open ignores and sweeps it."
+  (when (fnn-log-spare-close-debt log)
+    (error (second (fnn-log-spare-close-debt log))))
   (let ((spare (fnn-log-spare log)))
     (when spare
       (setf (fnn-log-spare log) nil)
       (destructuring-bind (index path fd) spare
         (declare (ignore index))
-        (ignore-errors (fnn-close fd))
-        (ignore-errors (when (fnn-lstat path) (fnn-unlink path)))))))
+        (handler-case
+            (fnn-unwind-cleanups ()
+              (fnn-close fd)
+              (when (fnn-lstat path) (fnn-unlink path)))
+          (serious-condition (condition)
+            (setf (fnn-log-spare-close-debt log) (list spare condition))
+            (error condition)))))))
 
 (defun fnn-log-prepare-spare (store)
   "P-ROTATE's first half, fn-lgs-spare-program (books/store-log-segments.lisp),
@@ -9278,9 +9337,12 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                           (send (format nil "XREDEEM ~a ~a" code login))
                           (setq stage :code))
                          (:send-password
+                          ;; The write may have reached the server even when
+                          ;; its local completion raises. Account creation is
+                          ;; already possible: loss from here is uncertain.
+                          (setq stage :password)
                           (send (format nil "XREDEEM PASS ~a"
-                                        (map 'string #'code-char password)))
-                          (setq stage :password))
+                                        (map 'string #'code-char password))))
                          ((:uncertain :unreachable) (return (finish step)))
                          (t (ignore-errors (send "QUIT"))
                             (return (finish step))))))))

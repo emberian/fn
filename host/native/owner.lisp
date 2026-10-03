@@ -100,6 +100,13 @@ record mutex; it never calls a hook, I/O, ACL2, or another owner lock."
         (setf (fnn-native-observation-valid *fnn-native-observer*) nil
               (fnn-native-observation-reason *fnn-native-observer*) :observer-fault)))))
 
+(defun fnn-native-observation-unavailable (reason)
+  "Observation failure cannot classify a service fault. Preserve no replay."
+  (when *fnn-native-observer*
+    (setf (fnn-native-observation-valid *fnn-native-observer*) nil
+          (fnn-native-observation-reason *fnn-native-observer*) reason))
+  nil)
+
 (defun fnn-native-observation-events (observer)
   "Completed prefix in reserved producer order; never sort by clock or ID.
 Return status, events, reason. An incomplete release stops the prefix."
@@ -1311,6 +1318,14 @@ directories because one encoded label can be a prefix of a longer label.
               (t (fnn-fault "conflicting FNFD namespace entry: ~a" path))))))
     (nreverse peers))))
 
+(defun fnn-owner-feed-close-entries (entries)
+  "Attempt every journal close and return the first cleanup condition."
+  (let ((failure nil))
+    (dolist (entry entries)
+      (handler-case (fnn-owner-feed-close (cdr entry))
+        (serious-condition (condition) (unless failure (setq failure condition)))))
+    failure))
+
 (defun fnn-owner-feed-open-all (service configured)
   ;; The order is the configured peers, then the historical journals by name:
   ;; never the directory's listing order, which differs between filesystems
@@ -1327,13 +1342,15 @@ directories because one encoded label can be a prefix of a longer label.
             (push (cons peer (fnn-owner-feed-open store peer)) opened))
           (nreverse opened))
       (error (e)
-        (dolist (entry opened) (fnn-owner-feed-close (cdr entry)))
+        (fnn-owner-feed-close-entries opened)
         (error e)))))
 
 (defun fnn-owner-feed-close-all (service)
-  (dolist (entry (fnn-owner-service-feeds service))
-    (fnn-owner-feed-close (cdr entry)))
-  (setf (fnn-owner-service-feeds service) nil))
+  (let ((failure (fnn-owner-feed-close-entries (fnn-owner-service-feeds service))))
+    ;; Each descriptor's custody was consumed by FEED-CLOSE before close(2).
+    ;; A failed close must not strand later journals or leave stale cache rows.
+    (setf (fnn-owner-service-feeds service) nil)
+    (when failure (error failure))))
 
 (defun fnn-owner-feed-open-missing (service configured)
   "Install journals for newly configured feeds before they can enqueue.
@@ -1354,7 +1371,7 @@ obligations may still name a peer removed from the current configuration."
           (setf (fnn-owner-service-feeds service)
                 (append current (nreverse opened))))
       (error (e)
-        (dolist (entry opened) (fnn-owner-feed-close (cdr entry)))
+        (fnn-owner-feed-close-entries opened)
         (error e)))))
 
 (defun fnn-owner-feed-refresh-configuration (service)
@@ -1565,8 +1582,23 @@ one ring, so the table's key and the served boundary's are one source."
               (fnn-log-history-release-prefix store)
               service))
         (error (e)
-          (when service (fnn-owner-feed-close-all service))
-          (fnn-store-close store)
+          ;; Neither cleanup condition replaces E. Keep the actual Store
+          ;; carrier if either physical release is uncertain: outer startup
+          ;; cleanup must not mistake a NIL return value for absent custody.
+          (let ((cleanup-failure nil))
+            (flet ((release (thunk)
+                     (handler-case (funcall thunk)
+                       (serious-condition (cleanup)
+                         (unless cleanup-failure (setq cleanup-failure cleanup))
+                         (ignore-errors (fnn-err "owner open cleanup failed: ~a" cleanup))))))
+              (when service (release (lambda () (fnn-owner-feed-close-all service))))
+              (release (lambda () (fnn-store-close store))))
+            (when cleanup-failure
+              (setf (fnn-store-fenced store) t)
+              (unless (fnn-store-close-debt store)
+                (setf (fnn-store-close-debt store) (list nil nil cleanup-failure)))
+              (fnn-owner-retain-run-authority
+               (or service (%make-fnn-owner-service :store store)))))
           (error e))))))
 
 (defmacro fnn-with-roster ((service) &body body)
@@ -5727,16 +5759,36 @@ cold-read-ownership, Codex r31 F1/F2).  A refusal is ACL2's word."
         (fnn-owner-cold-window-result-locked service old)
         (setf (fnn-response-capture-window-read capture) nil)))
     (let ((directp (and (not windowp) (not (fnn-extent-pool-funded-p)))))
-      (multiple-value-bind (token word worker)
-          (if windowp (fnn-extent-issue-window entry)
-            (apply (if directp #'fnn-extent-issue-direct #'fnn-extent-issue-read) cid entry))
-        (if (and word (not (eq word :admitted))) word
-          (let ((read (%make-fnn-owner-cold-read :token token :worker worker
-                       :windowp windowp :directp (and token directp))))
+      (if windowp
+          (let ((read (%make-fnn-owner-cold-read :windowp t)))
+            ;; Allocate and register before admission/notification. The
+            ;; extent callback runs under E while this activation holds O;
+            ;; it performs only native retention, never another ACL2 step.
+            (setf (fnn-response-capture-window-read capture) read)
             (fnn-owner-cold-enqueue-locked service read)
-            (when windowp (setf (fnn-response-capture-window-read capture) read))
-            (fnn-owner-output-dependency
-             service (or *fnn-output-grant* (and capture (fnn-response-capture-grant capture))) read)))))))
+            (multiple-value-bind (token word worker)
+                (fnn-extent-issue-window entry
+                  (lambda (reserved issued-token)
+                    (setf (fnn-owner-cold-read-worker read) reserved
+                          (fnn-owner-cold-read-token read) issued-token)
+                    (when issued-token
+                      (fnn-owner-output-dependency
+                       service (or *fnn-output-grant* (fnn-response-capture-grant capture)) read))))
+              (declare (ignore token worker))
+              (if (eq word :admitted) read
+                (progn
+                  ;; Only an ordinary refusal proves no job was launched.
+                  ;; An escape preserves this registered read and worker.
+                  (fnn-owner-cold-remove-locked service read)
+                  (setf (fnn-response-capture-window-read capture) nil)
+                  word))))
+        (multiple-value-bind (token word worker)
+            (apply (if directp #'fnn-extent-issue-direct #'fnn-extent-issue-read) cid entry)
+          (if (and word (not (eq word :admitted))) word
+            (let ((read (%make-fnn-owner-cold-read :token token :worker worker
+                         :directp (and token directp))))
+              (fnn-owner-cold-enqueue-locked service read)
+              (fnn-owner-output-dependency service *fnn-output-grant* read))))))))
 
 (declaim (notinline fnn-owner-cold-transfer-result-locked))
 (defun fnn-owner-cold-transfer-result-locked (read)
@@ -7491,8 +7543,7 @@ pointer and the live state's binding)."
     ;; generation pins keep it held; an unheld root drops its retained grant
     ;; and hash binding here, including replacement before the next rebuild.
     (when retired
-      (when (eq (fnn-owner-core 'fn-owner-hroot-retire retired) :released)
-        (remhash retired *fnn-history-roots*)))
+      (fnn-history-root-retire-held retired))
     value))
 
 ;;; Q16 (a) (lane online-reclaim-5): the swapped owner is the owner the full
@@ -8432,6 +8483,5 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                    fault nil :inet nil connection-fault-operation)))
 
 (fnn-register-developer-verb "owner" #'fnn-command-owner)
-
 
 

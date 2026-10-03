@@ -1938,10 +1938,67 @@ def def_keyset_check_expansion(form: list) -> list:
     return events
 
 
+
+def def_cursor_batch_expansion(form: list) -> list:
+    """Mirror exported events of books/def-cursor-batch, without evaluating Lisp.
+
+    Literal step contracts supply the actual batch function and theorem subjects.
+    This source model establishes event presence, never ACL2 admission evidence.
+    Local proof setup and checked prerequisite MAKE-EVENTs are not exported.
+    """
+    if not (len(form) >= 3 and isinstance(form[1], Sym)
+            and isinstance(form[2], list)
+            and all(isinstance(x, Sym) for x in form[2])):
+        return []
+    opts = _dk_plist(list(form[3:]))
+    allowed = {":step", ":stobjs", ":byte-proof", ":call-proof", ":remaining", ":residual-proof"}
+    if opts is None or set(opts) - allowed:
+        return []
+    if not all(isinstance(opts.get(k), Sym) for k in
+               (":step", ":byte-proof", ":call-proof", ":residual-proof")):
+        return []
+    remaining = opts.get(":remaining")
+    if not isinstance(remaining, list) or not remaining:
+        return []
+    name, extra, step = form[1], form[2], opts[":step"]
+    batch = _gen_sym(name, "-batch")
+    cur, visits, byte_count = Sym("cur"), Sym("visits"), Sym("bytes")
+    call = [batch, cur, visits, byte_count] + extra
+    step_call = [step, cur, visits, byte_count] + extra
+    recurse = [batch, Sym("next"), [Sym("1-"), visits], byte_count] + extra
+    body = [Sym("mv-let"), [Sym("octets"), Sym("next"), Sym("calls"), Sym("status")], step_call,
+            [Sym("if"), [Sym("and"), [Sym("not"), Sym("octets")],
+                          [Sym("eq"), Sym("status"), Sym(":candidate")],
+                          [Sym("equal"), Sym("calls"), 1], [Sym("posp"), visits]],
+             [Sym("mv-let"), [Sym("out"), Sym("rest"), Sym("more"), Sym("state")], recurse,
+              [Sym("mv"), Sym("out"), Sym("rest"), [Sym("+"), 1, Sym("more")], Sym("state")]],
+             [Sym("mv"), Sym("octets"), Sym("next"), Sym("calls"), Sym("status")]]]
+    guard = [Sym("and"), [Sym("natp"), visits], [Sym("natp"), byte_count]]
+    definition = _gen_defun(batch, [cur, visits, byte_count] + extra, body,
+                            guard, opts.get(":stobjs"))
+    definition[3][1] += [Sym(":measure"), [Sym("nfix"), visits], Sym(":verify-guards"), Sym("nil")]
+    def nth(index):
+        return [Sym("mv-nth"), index, call]
+    rest = _gen_sub([Sym("lambda"), [cur], remaining], [nth(1)])
+    return [definition,
+            [Sym("defthm"), _gen_sym(name, "-batch-byte-bound"),
+             [Sym("<="), [Sym("len"), nth(0)], [Sym("nfix"), byte_count]],
+             Sym(":rule-classes"), Sym(":linear")],
+            [Sym("defthm"), _gen_sym(name, "-batch-call-bound"),
+             [Sym("<="), nth(2), [Sym("nfix"), visits]], Sym(":rule-classes"), Sym(":linear")],
+            [Sym("defthm"), _gen_sym(name, "-batch-residual"),
+             [Sym("equal"), [Sym("append"), [Sym("car"), call], rest], remaining],
+             Sym(":rule-classes"), Sym("nil")],
+            [Sym("defthm"), _gen_sym(name, "-batch-call-natp"), [Sym("natp"), nth(2)],
+             Sym(":rule-classes"), [Sym(":rewrite"), Sym(":type-prescription")]],
+            [Sym("verify-guards"), batch]]
+
+
 GENERATOR_EXPANSIONS = {
     "fn-defrecord": defrecord_expansion,
     "fn-defrecord-export": defrecord_export_expansion,
     "def-loop": def_loop_expansion,
+    "def-cursor/batch": def_cursor_batch_expansion,
     "defprotocol": defprotocol_expansion,
     "defprotocol-served": defprotocol_served_expansion,
     "defkeystone": defkeystone_expansion,

@@ -61,3 +61,19 @@
 ; Excluded: pointed-to integer/cons payloads, controller/token/borrowed
 ; graphs, source/pool registry slots, constructor transients, and collector
 ; copying/reclamation. In particular this does not open a complete profile.
+
+; Persistent scratch: the known backing plus the two-field native activation
+; envelope stays reserved through worker idleness. The doubled layout term
+; covers one copying allowance; this remains a selected partial projection,
+; not a universal collector/retained-controller/work tariff.
+(defun fn-dwb-reusable-baseline-vector (workers)
+  (declare (xargs :guard t))
+  (list (* (nfix workers) 2
+           (+ (fn-dwb-fixed-storage-octets) (fn-crl-array-octets 2 8)))
+        0 0 0 0))
+
+; Only an installer that retained the backing baseline may select this draw.
+; The existing per-job constructor projection remains separate for old callers.
+(defun fn-dwb-reused-window-vector ()
+  (declare (xargs :guard t))
+  '(0 0 0 1 1))

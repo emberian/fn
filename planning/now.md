@@ -1,26 +1,42 @@
 # Now — 2026-10-03
 
-The active plan is [the development workstreams](overnight-2026-10-03.md), revised
-after deeper source/design reading and ember's correction: Sol for implementation,
-Astra for composition, continuing subsystem ownership through integration and use.
-After compaction or takeover, follow the plan’s [reorientation routine](overnight-2026-10-03.md#reorientation-after-compaction-or-takeover), including actual user and assistant exchanges, revision-aware reading of complete needed files, and retained reading conclusions.
-Read it with [the repair ledger](repair/STATUS.md) and [the contributor guide](../CONTRIBUTORS.md).
-The [next implementation slices](../NSLICESQUEUE.md) preserve the remaining
-capability work, dependencies, ownership gaps and concrete completion criteria.
-The capability wave is active: subsystem deputies, empirical execution, a
-source assembler and consumed representation/command helpers. The former proof
-Sol now owns the owner carrier; the four Luna sweep helpers are stopped.
-Astra owns checkpoint publication/read-back, the page helper carried catalog
-availability. History owns native history/root and effective reclaim; Operator owns retire/diagnostic/init consumers, with S012 source integrated. Access, Web and BP transport now have continuing Sol owners.
-The plan names the current sessions without treating a paused or completed
-session as running. Composition and representation
-contracts remain with the groundwork deputy while the wider roster is a target. New lanes wait for a
-useful independent need and coordinator agreement. The initial orientation
-snapshot is recorded in the plan; `8d17b09dd` integrated that planning/ledger
-reconciliation onto dev. Runtime qualification and deployment remain separate
-from source integration. Integrate directly onto dev during
-stabilization. Build/load and selected dynamic checks answer concrete changed-consumer questions; full qualification is for a scoped operational claim or convergence. Reuse matching artifacts while development continues.
+Ember authorized ten continuing Sol owners for substantial remaining engineering:
+Integration (assembly/execution/planning), History (storage/P3/reclaim), Runtime
+(reader/Web/decoded lifecycle), BP (transport/application joins), Foundations
+(accounting/banks/tariffs), Served (queries/serializers), Access (ARTICLE/header
+representation), Tools (developer/tracing/allocation), Operator (policy/control/
+journal), and Empirical (system scenarios/defect discovery). Root coordinates and supplies the reusable decoded core. Operator, Foundations
+and Runtime compose the actual DEFAULT read-pool startup producer. Four
+additional source-tracing owners (horse_entries, horse_exits, horse_consistency
+and horse_bounds) trace complete paths and maintain the shared consumer .spw corpus. No lieutenant,
+Luna or automation resumed. Owners continue missing behavior, defects,
+integration, invariants/guards/proofs and assurance across their full domains.
+The continuing domains and open acceptance criteria are in
+[NSLICESQUEUE](../NSLICESQUEUE.md), [the repair ledger](repair/STATUS.md), and the
+[development workstreams](overnight-2026-10-03.md). Contributor setup is in
+[CONTRIBUTING](../CONTRIBUTING.md); source integration, ordinary admission,
+certification, qualified packaging and deployment remain separate.
 
+The immediate shared dependency is one coherent current source-loaded owner
+world with early arena/P3 attachment before generic history and current
+reader/decoded/native interfaces. History is admitting the generated current logical input in the retained
+canonical P3 world; owner entry has not yet been reached. The required payload arena scope now passes ordinary admission. The retained
+continuation has passed the Store trace scope with 40 explicitly deferred
+semantic theorems and two dependent proof-catalog references recorded; it has
+not reached the full normal host or native entry. The
+shared source generator can explicitly defer named unrelated DEFTHMs while
+retaining definitions and required guard/correspondence obligations, recording
+those books as unproved. No such deferral has yet established owner execution. The earlier alleged eleven-versus-ten-field read-pool
+incompatibility was a counting mistake: `:inline` is an option, and the current
+pool has ten fields. Current decoded-job/controller/window methods and P3
+semantics still require deliberate assembly; old cached execution does not
+establish those joins. History owns one fresh initialization, with Integration
+supporting the shared runner and the other owners continuing their consumers.
+A concrete activation gap is now identified: fresh owner startup has no caller
+of page-read-install-baseline/pool-storage-start, leaving the read pool offline.
+Operator owns the native pre-open consumer, Foundations the numerical plan and
+installer, and Runtime the persistent executor/storage lifecycle; compressed endpoint activity
+is not established by the constructor or recording fixtures.
 
 ## Usage-limit stop — 2026-10-03 10:18 America/New_York
 
@@ -38,18 +54,28 @@ repairs with current application source; it is not the current whole kernel.
 Root’s actual live-owner developer REPL admission/refusal/stop/fence checks
 passed on that coordinate. The current Store/P3/reader/decoded/Web/BP union
 still needs one coherent execution world: early arena/P3 attachment order and
-the current eleven-field pool must be retained; an old ten-field pool cannot
-be silently substituted. Root owns that bootstrap frontier. No image run is
+current source interfaces must be retained. The earlier claimed eleven-versus-
+ten-field pool difference was false (`:inline` was counted as a field); current
+and cached declarations each have ten fields. Missing decoded methods and
+attachment semantics remain real assembly gaps. Root owned that frontier at the pause; History owns its resumed initialization. No image run is
 required before source execution.
 
 The finite closeout repaired Web’s actual POST action-classifier mismatch: the
 same scoped socket case now passes account/POST/read/remove (16.702s, one test,
 zero skips), with the original red retained. Its current whole-world execution
-and concurrent/TLS coverage remain open. Runtime enqueue can signal
-after typed assignment but before read/dependency attachment (capture before
-wake is owed); ARTICLE normal/native renderer arities still differ in the
+and concurrent/TLS coverage remain open. Runtime now attaches owner read, reservation, exact token and dependency
+before physical wake, including failed binding; actual waiter/error schedules
+pass. Complete physical ARTICLE execution still remains open. ARTICLE
+normal/native renderer arities still differ in the
 old-cache prototype; BP multi-peer SCN1110 and current P3 live reclaim remain
-unexecuted. Complete tariffs, original-response refinements, guards, proofs
+unexecuted. The shared host/raw source emitter validates exact logical book identities
+and retains current load order. Fresh entry now requires strict nested LD
+:RETURN and a successful EOF verdict before native entry; actual good/invalid
+minimal-prefix checks pass, with later markers absent on refusal. This control
+check does not establish full current-world admission. S132 strict ten MiB
+NNTP/operator acceptance and readback pass on the named initialized-source
+cache under the supported 128 MiB history profile; current-union qualification
+remains separate. Complete tariffs, original-response refinements, guards, proofs
 and all remaining domain work continue from their owner records.
 
 Generated ledger regeneration exposed unresolved curated-event mappings,

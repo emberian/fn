@@ -15,10 +15,12 @@ identity/anchor operations must not require a Python interpreter, module or
 helper subprocess. Python remains permitted in build, certification, test,
 benchmark and differential-oracle tooling outside the deployed node.
 
-The repository `bin/fn` and its legacy service templates still start the Python
-development owner. `packaging/install-native.sh` now installs a separate native
-`bin/fn`, saved core, relocated SBCL runtime and native service templates without
-starting a service. Its [scoped installation evidence](../planning/evidence/native-distribution-qualification-2026-09-21.md)
+The repository entry is `packaging/fn`, a shell launcher for the saved native
+image. In a checkout it selects `FN_NATIVE_HOST` or `build/fn-host`; installed
+beside `libexec/fn`, it selects that release's image and ignores the developer
+override. `packaging/install-native.sh` installs it as `bin/fn`, with the saved
+core, relocated SBCL runtime and native service templates, without starting a
+service. Its [scoped installation evidence](../planning/evidence/native-distribution-qualification-2026-09-21.md)
 covers the frozen production image's startup and shutdown on persvati; it does
 not establish complete service parity. `FN_HOST=native` through a Python argument
 parser remains a test convenience, not the production entry point.

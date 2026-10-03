@@ -89,3 +89,53 @@
 (verify-guards fn-dwj-read-observation)
 (verify-guards fn-dwj-outcome)
 (verify-guards fn-dwj-byte-at)
+
+; Retire only authority-bearing metadata. Private byte arrays remain reserved
+; for this physical worker and cannot escape through the scalar borrow API.
+(defun fn-dwj-retire (ledger worker token fn-decoded-job)
+  (declare (xargs :stobjs fn-decoded-job :guard t :verify-guards nil))
+  (stobj-let ((fn-pww-carry (fn-dwj-carry fn-decoded-job)))
+    (word fn-pww-carry)
+    (fn-dwa-retire ledger worker token fn-pww-carry)
+    (mv word fn-decoded-job)))
+(verify-guards fn-dwj-retire)
+
+(defthm fn-dwj-retirement-preserves-private-backing
+  (let ((next (mv-nth 1 (fn-dwj-retire ledger worker token job))))
+    (and (equal (fn-dwj-input next) (fn-dwj-input job))
+         (equal (fn-dwj-hash next) (fn-dwj-hash job))
+         (equal (fn-dwj-zin next) (fn-dwj-zin job))
+         (equal (fn-dwj-win next) (fn-dwj-win job))
+         (equal (fn-dwj-tab next) (fn-dwj-tab job))
+         (equal (fn-dwj-out next) (fn-dwj-out job))
+         (equal (fn-dwj-window next) (fn-dwj-window job))))
+  :hints (("Goal" :in-theory (disable fn-dwa-retire))))
+
+; Run under the startup baseline before any executor thread or job. Reserve
+; changes capacity only; all logical bytes/authority remain exactly unchanged.
+(defun fn-dwj-reserve (fn-decoded-job)
+  (declare (xargs :stobjs fn-decoded-job :guard t))
+  (stobj-let ((fn-octets (fn-dwj-input fn-decoded-job))
+              (fn-zin-win (fn-dwj-win fn-decoded-job))
+              (fn-zin-tab (fn-dwj-tab fn-decoded-job))
+              (fn-zin-out (fn-dwj-out fn-decoded-job)))
+    (fn-octets fn-zin-win fn-zin-tab fn-zin-out)
+    (let* ((fn-octets (fn-octets-reserve 64 fn-octets))
+           (fn-zin-win (fn-zin-win-reserve *fn-zin-win-octets* fn-zin-win))
+           (fn-zin-tab (fn-zin-tab-reserve *fn-zin-tab-octets* fn-zin-tab))
+           (fn-zin-out (fn-zin-out-reserve 64 fn-zin-out)))
+      (mv fn-octets fn-zin-win fn-zin-tab fn-zin-out))
+    fn-decoded-job))
+
+(defthm fn-dwj-retired-job-refuses-scalar-publication
+  (implies (equal (mv-nth 0 (fn-dwj-retire ledger worker token job)) :reusable)
+    (not (equal (mv-nth 0
+             (fn-dwj-byte-at query-ledger query-worker query-token file eoff elen poff compressed
+                             trailer decoded dict-id i
+                             (mv-nth 1 (fn-dwj-retire ledger worker token job))))
+           :byte)))
+  :hints (("Goal" :in-theory (e/d (fn-dwj-retire fn-dwj-byte-at fn-dwa-controller
+                                           fn-pwz-byte-at fn-pwz-outcome fn-pwz-plan-matches-token fn-ewz-publication)
+                                  (fn-dwa-retire fn-pwx-boundp))
+           :use ((:instance fn-dwa-retirement-revokes-prior-authority
+                            (carry (fn-dwj-carry job)))))))

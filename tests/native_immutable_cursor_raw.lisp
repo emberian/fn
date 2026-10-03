@@ -14,16 +14,39 @@
       (error "actual compiled counterpart unavailable: ~s" name))
     (symbol-function counterpart)))
 
-(defmacro fnic-with-route ((sharedp) &body body)
-  (let ((old (gensym "ORIGINAL")))
-    `(let ((,old (symbol-function 'fn-cur-make)))
+(defmacro fnic-with-route ((sharedp &optional prefixp) &body body)
+  (let ((old (gensym "ORIGINAL")) (split (gensym "SPLIT")))
+    `(let ((,old (symbol-function 'fn-cur-make))
+           (,split (symbol-function 'fn-cur-split)))
        (unwind-protect
             (progn
               (when ,sharedp
                 (setf (symbol-function 'fn-cur-make)
                       (symbol-function 'fn-cur-shared-make)))
+              (when ,prefixp
+                (setf (symbol-function 'fn-cur-split)
+                      (symbol-function 'fn-cur-shared-split)))
               ,@body)
-         (setf (symbol-function 'fn-cur-make) ,old)))))
+         (setf (symbol-function 'fn-cur-make) ,old
+               (symbol-function 'fn-cur-split) ,split)))))
+
+(defun fnic-check-split ()
+  (let ((legacy (fnic-function 'fn-cur-split))
+        (shared (fnic-function 'fn-cur-shared-split)))
+    (dolist (xs (list nil :atom '(1) '(1 2 3) '(1 2 . :tail)))
+      (dotimes (n 6)
+        (multiple-value-bind (front rest) (funcall shared xs n)
+          (assert (equal (list front rest)
+                         (multiple-value-list (funcall legacy xs n))))
+          (when (and (consp xs) (null rest)) (assert (eq front xs))))))
+    (let ((make (symbol-function 'fn-cur-make))
+          (split (symbol-function 'fn-cur-split)))
+      (assert (eq (catch 'fnic-exit
+                    (fnic-with-route (t t) (throw 'fnic-exit :left))) :left))
+      (assert (handler-case (fnic-with-route (t t) (error "diagnostic exit"))
+                (error () t)))
+      (assert (eq (symbol-function 'fn-cur-make) make))
+      (assert (eq (symbol-function 'fn-cur-split) split)))))
 
 (defun fnic-drain (cur live step)
   (let ((transitions 0))
@@ -44,6 +67,7 @@
          (article (fnic-function 'fn-make-article))
          (cur (fnic-function 'fn-cur-make))
          (original (symbol-function 'fn-cur-make))
+         (original-split (symbol-function 'fn-cur-split))
          (articles (loop for i below 8 collect
                      (funcall article
                        (format nil "<~d-~a@x>" i (make-string 120 :initial-element #\a))
@@ -55,11 +79,12 @@
          (*fnn-trace-state* nil) (*fnn-trace-parent* nil)
          (*fnn-trace-operation* nil) (*fnn-trace-connection-generation* nil))
     (fnic-function 'fn-cur-shared-make)
+    (fnic-check-split)
     (loop while (funcall live old) do
       (assert (< transitions 16384))
       (assert (equal old new))
       (let ((a (multiple-value-list (funcall step old 1 1 nil nil)))
-            (b (fnic-with-route (t)
+            (b (fnic-with-route (t t)
                  (multiple-value-list (funcall step new 1 1 nil nil)))))
         (assert (equal a b))
         (assert (<= (third a) 1))
@@ -73,13 +98,14 @@
             transitions (length expected))
     (fnn-trace-start :capacity 4 :allocation :process)
     (unwind-protect
-         (dolist (sharedp '(nil t))
-           (fnic-with-route (sharedp)
+         (dolist (route '(:legacy-cursor :shared-cursor :shared-prefix))
+           (fnic-with-route ((not (eq route :legacy-cursor)) (eq route :shared-prefix))
              (dotimes (i 4) (fnic-drain initial live step))
              (sb-ext:gc :full t)
-             (fnn-trace-span ((if sharedp :shared-cursor :legacy-cursor) :operation 1)
+             (fnn-trace-span (route :operation 1)
                (dotimes (i 32) (fnic-drain initial live step)))))
-      (assert (eq (symbol-function 'fn-cur-make) original)))
+      (assert (eq (symbol-function 'fn-cur-make) original))
+      (assert (eq (symbol-function 'fn-cur-split) original-split)))
     (fnn-trace-report *standard-output*)
     (format t "NATIVE_IMMUTABLE_CURSOR_PASS~%")
     :passed))

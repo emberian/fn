@@ -248,7 +248,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **resumable developer init compatibility.** A resumed init keeps the sealed profile and generation-one group changes; mismatched requested intent is refused before resume publication, while invalid initial evidence faults.
 
-- Host-called subject: `fn-nir-resume-decision` at host/native/io.lisp:2481.
+- Host-called subject: `fn-nir-resume-decision` at host/native/io.lisp:2508.
 - Keystone: `fn-nir-resume-admits-identical-initial-contract-across-stamps` (books/native-init-resume.lisp:42; PRF-1270 (uncertified-at-current-digest)); no archived manifest records `books/native-init-resume.lisp` passed at its current source.
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: the node runs default, this needs development.
@@ -296,7 +296,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **incremental decision journal replay.** The journal command reads a captured regular-file prefix in ACL2 windows of at most64KiB and folds complete entries without retaining them; arbitrary input yields exactly the reference report and exit verdict, independent of chunk boundaries.
 
-- Host-called subject: `fn-otjs-report` at host/native/io.lisp:3831.
+- Host-called subject: `fn-otjs-report` at host/native/io.lisp:3858.
 - Keystone: `fn-otjs-report-refines-journal-report` (books/owner-time-journal-stream.lisp:522; PRF-1275 (certified)); certified at the current source and closure by `certify-20261003T112822Z-1637229` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: the node runs default, this needs development.
@@ -324,15 +324,15 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 - Keystone: `fn-tcim-turn-boundary` (books/tcpcl-input-materialize.lisp:41; in no registry row); certified at the current source and closure by `certify-20261003T133032Z-1944927` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: the node runs default, this needs dtn.
-- Latest positive result: Actual retained source/control/framing/root-cleanup fixtures PASS on be75fde27; archive planning/evidence/bp-source-continuations/be75-native-components.json. Narrow window guards and unconditional slice boundary passed; final manifest indexing pending.
+- Latest positive result: Actual retained source/control/framing/root-cleanup fixtures PASS on be75fde27; archive planning/evidence/bp-source-continuations/be75-native-components.json. Exact window guards/slice boundary and receiver refinement roots certify-20261003T134842Z-1987626 PASSED3/0 archived/indexed. Initialized-source producer matching has8 discriminating checks PASS; this is fixture provenance, not a native transfer result.
 - Remaining obstruction: Whole semantic decoder/CRC/publication and allocator/GC latency remain unbounded; universal framing-to-codec and full native source/publication composition remain unproved.
-- Next positive gate: Fresh initialized matching-source SCN1110 canonical second request while first keepalive peer remains live, then same-source immutable signed R/Q delivery/reopen.
+- Next positive gate: Execute SCN1110 canonical second request while first keepalive peer remains live on current initialized source; then SCN-1125 immutable signed R/Q plus returned receipt/pin release/reopen and SCN-1126 real-time silent Contact Header deadline.
 
 ### bp-source-control
 
 **KEEPALIVE while exact received-source ACK remains held.** The retained TCPCL source controller emits only independent KEEPALIVE output while local work owns received bytes and the final ACK; it preserves reception state and clock.
 
-- Host-called subject: `fn-tclsctl-turn` at host/native/tcpcl.lisp:646.
+- Host-called subject: `fn-tclsctl-turn` at host/native/tcpcl.lisp:665.
 - Keystone: `fn-tclsctl-never-releases-ack` (books/tcpcl-source-control.lisp:17; in no registry row); certified at the current source and closure by `certify-20261003T134436Z-1978092` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: the node runs default, this needs dtn.

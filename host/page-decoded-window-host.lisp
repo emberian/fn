@@ -81,3 +81,12 @@
   (cond ((fn-pwz-descriptorp descriptor) :decoded-window)
         ((fn-crw-supportedp descriptor 0) :raw-window)
         (t :legacy-entry)))
+
+; The live SAME pool supplies retirement authority. Native E excludes scalar
+; borrowers across this call and the subsequent token settlement.
+(defun fn-owner-page-decoded-job-retire (worker token fn-decoded-job fn-page-read-pool)
+  (declare (xargs :stobjs (fn-decoded-job fn-page-read-pool) :guard t))
+  (mv-let (word fn-decoded-job)
+    (fn-dwj-retire (fn-owner-page-read-ledger fn-page-read-pool)
+                   worker token fn-decoded-job)
+    (mv word fn-decoded-job fn-page-read-pool)))

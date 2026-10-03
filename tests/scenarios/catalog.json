@@ -1153,7 +1153,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -8319,7 +8319,7 @@
         "Run tests/acl2/newnews-metadata-cursor-tests.lisp: unmatched first article advances with empty output, matching final article retains its output after scan completion; compare emitted prefix plus remaining with original response.",
         "Run actual native NEWNEWS wildcard workload with more candidates than shared cache slots; compare complete Message-ID reply while a second connection remains responsive.",
         "Run newnews-stream-cursor-tests and actual served-plan-newnews-tests: indexed line wider than byte quantum drains without candidate visits, sparse selection retains final renderer, tiny/large plan outputs equal.",
-        "Run actual configured factory\u2192plan witness with eleven captured configured groups, sparse first article, selector retained through one-call/one-byte quanta, and complete equality to original catalog reply.",
+        "Run actual configured factory→plan witness with eleven captured configured groups, sparse first article, selector retained through one-call/one-byte quanta, and complete equality to original catalog reply.",
         "Run tests.test_cursor_cold_poll against actual extracted native cursor/mux bodies: cold attempt returns unchanged plan+issued read, pending yields to timer, repeated miss retains first clock, returned page resumes plan rather than input, refusal adds no body line. This is mocked-I/O source flow, not matching native image custody.",
         "Retain a wildcard continuation after the first valid equal membership; resume one decoder/DP microstep per controller call, with exact phase demand, zero group/member visits and residual equality. Excluded groups continue to the following selector; an invalid first duplicate never starts the matcher."
       ],
@@ -9206,7 +9206,7 @@
         "Advance fixed captured-view summary one numbered metadata probe at a time; verify eight calls leave26 of34 candidates, then complete sparse/prefix/tail/empty results."
       ],
       "expected": [
-        "Sparse metadata navigation moves1\u219234 and34\u21921 while enumerating only1/34; complete responses equal the bytes reference.",
+        "Sparse metadata navigation moves1→34 and34→1 while enumerating only1/34; complete responses equal the bytes reference.",
         "Empty availability preserves NEXT/LAST cursor on421/422 and produces empty GROUP0,35,34; retained identity lookup remains.",
         "Fixture is source live-stobj command-helper acceptance, not production owner/capture proof or native reclaim qualification. LIST still has a whole-reply producer frontier."
       ],
@@ -9333,9 +9333,11 @@
         "tests/native_article_ready_source.lisp",
         "planning/evidence/article-stream-source-20261003.log",
         "planning/evidence/article-stream-source-20261003-selection.log",
-        "planning/evidence/article-source-cache-admission-20261003.log"
+        "planning/evidence/article-source-cache-admission-20261003.log",
+        "tests/acl2/article-stream-server-tests.lisp",
+        "planning/evidence/article-server-source-20261003.log"
       ],
-      "execution_scope": "Actual shared core function bodies69488 finite checks; actual owner completion, PROGRAM wrapper and native READY/render helpers execute with recorded list-arena, owner-state installation and cold I/O seams (70841 aggregate checks). Selection commits once after complete framing; replay does not install again; RAW and READY cold continuations are retained by identity; exact503/423/430 refusals and unchanged reader selection; global generation change under unchanged per-connection pin is allowed. Web actual source stress fbcae3cd0 has independent recorded consumer evidence. Full actual parsed factory and physical decoded-window/browser execution, guard proofs and universal owner/reference boundary remain pending. Subsequent lazy Xref captures original membership spine, filters one word/lookup character per transition, preserves duplicate and invalid-word reference behavior; source126337 core/127690 aggregate owner-native checks pass5000-character group cases, windows1/3/4096. Changed core34forms and component bounds warm admitted0.08s. Full initial selection/setup and owner/Xref boundary proofs remain open. Resumable numeric/current selection and withdrawn lookup now pass126385 core/127949 aggregate checks including absent420/423 and withdrawn423, with unchanged selection until READY. Actual parsed factory and physical runtime remain pending. Exact selected definitions and PROGRAM factory/READY wrappers normally admitted in fresh ad8+gate336 cached source world, then raw native helpers reached CLI entry; ordinary renderer ABI mismatch remains explicit. No parsed factory, socket or physical decoded execution claim."
+      "execution_scope": "Actual shared core function bodies69488 finite checks; actual owner completion, PROGRAM wrapper and native READY/render helpers execute with recorded list-arena, owner-state installation and cold I/O seams (70841 aggregate checks). Selection commits once after complete framing; replay does not install again; RAW and READY cold continuations are retained by identity; exact503/423/430 refusals and unchanged reader selection; global generation change under unchanged per-connection pin is allowed. Web actual source stress fbcae3cd0 has independent recorded consumer evidence. Full actual parsed factory and physical decoded-window/browser execution, guard proofs and universal owner/reference boundary remain pending. Subsequent lazy Xref captures original membership spine, filters one word/lookup character per transition, preserves duplicate and invalid-word reference behavior; source126337 core/127690 aggregate owner-native checks pass5000-character group cases, windows1/3/4096. Changed core34forms and component bounds warm admitted0.08s. Full initial selection/setup and owner/Xref boundary proofs remain open. Resumable numeric/current selection and withdrawn lookup now pass126385 core/127949 aggregate checks including absent420/423 and withdrawn423, with unchanged selection until READY. Actual parsed factory and physical runtime remain pending. Exact selected definitions and PROGRAM factory/READY wrappers normally admitted in fresh ad8+gate336 cached source world, then raw native helpers reached CLI entry; ordinary renderer ABI mismatch remains explicit. No parsed factory, socket or physical decoded execution claim. Resumed source tests184344 core/185908 aggregate cover incremental server validation including long5000-octet valid/invalid/improper candidates; current native window-activation executes uncaptured branch in recorded seam. Universal pinned-server capture boundary and moderator/mutation/improper teeth admitted separately. Physical decoder/factory/socket join remains Runtime/History-owned."
     },
     {
       "id": "SCN-1121",
@@ -9348,18 +9350,20 @@
         "Connect to private socket; evaluate values and retain a definition across connections.",
         "Reject reader evaluation and multiple top-level forms; capture oversized output.",
         "Enable process allocation trace, execute another form, and read trace rows.",
-        "Deny unauthorized peer and stop/join/close the owner attachment."
+        "Deny unauthorized peer and stop/join/close the owner attachment.",
+        "Admit an ACL2 batch under zero/default/explicit prover allowance; verify refusal stops later forms and following proof/Lisp work succeeds."
       ],
       "expected": [
         "0600 socket and developer-only selector; same-world values survive.",
         "Explicit errors and truncation; trace scope is process, never retained heap.",
-        "Unauthorized connections do not evaluate; owned socket is removed after shutdown."
+        "Unauthorized connections do not evaluate; owned socket is removed after shutdown.",
+        "Ordinary proof-step limits preserve global allowance and the admitted world; no wall-time or arbitrary Lisp execution bound is implied."
       ],
       "implementation": {
         "test": "tests/test_dev_repl.py",
         "native_test": "tests/dev_repl_native.py"
       },
-      "execution_scope": "Actual socket fixtures plus real native owner admission/refusal continuation, normal shutdown and fault-fence exit4/socket cleanup. Native coordinate: ad8 source cache +gate336+cde lexical fixes +177b21dfb dev REPL/trace overlays; not whole current dev qualification."
+      "execution_scope": "Actual socket fixtures plus real native owner admission/refusal continuation, normal shutdown and fault-fence exit4/socket cleanup. Native coordinate: ad8 source cache +gate336+cde lexical fixes +177b21dfb dev REPL/trace overlays; not whole current dev qualification. Source720d66c29 adds ordinary with-prover-step-limit (default200000 per perform; explicit override/NIL allowed). Actual ACL2 worker and socket4testsPASS1.436s establish refusal recovery, unchanged global allowance and later-form suppression; full current-owner composition and wall-time/arbitrary-Lisp bounds remain open. Subsequent actual native owner scenario-v2 covers prover exhaustion/refusal, later evaluation and proof admission recovery, hook reload deduplication, SIGTERM cleanup and fault fence on the named initialized cache with current developer module. Indexed dev-repl native execution evidence accompanies source a5d6c496d and tests/dev_repl_native.py; whole current union remains pending."
     },
     {
       "id": "SCN-1123",
@@ -9379,9 +9383,10 @@
         "No timeout implies accepted; before submission is refused and after submission uncertain."
       ],
       "implementation": {
-        "test": "tests/test_control_observation.py"
+        "test": "tests/test_control_observation.py",
+        "native_test": "tests.test_native_bounds_join.TenMibArticleTests.test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post"
       },
-      "execution_scope": "Actual source consumer and normal ACL2 guard/boundary checks; matching full-owner ten MiB scenario pending."
+      "execution_scope": "Actual source consumer and normal ACL2 guard/boundary checks pass. Actual native ten MiB NNTP and operator POST accepted with exact readback and owner alive: 1 test/0 skips/28.443s, supported 128 MiB history/16 MiB article/64 transactions. Indexed control-observation-ten-mib-native.json/log/execution.json bind the ad8 initialized-source cache plus ordinary observer overlay. No whole current-kernel, complete funding or overloaded deadline guarantee follows."
     },
     {
       "id": "SCN-1124",
@@ -9401,9 +9406,10 @@
         "Admin refusal does not submit; malformed cause is fault."
       ],
       "implementation": {
-        "test": "tests/test_moderation_outcome.py"
+        "test": "tests/test_moderation_outcome.py",
+        "native_test": "tests/test_native_moderation_outcome.py"
       },
-      "execution_scope": "Actual source dispatcher and normal ACL2 guard/admission; complete native durability/transport and concurrent authority scenario pending."
+      "execution_scope": "Actual source dispatcher, normal ACL2 formatter book49forms/7425steps and65literal teeth pass. Actual native partial publication/restart/retry PASS1test/0skips/10.444s: durable authorization, named uncertainty/exit3 on known cause refusal, healthy owner and target readable, row preserved after restart, retry accepted and target withdrawn. Indexed native-moderation-outcome evidence binds historical ad8 initialized cache plus exact current formatter/consumer overlay, not whole current union. Concurrent authority/generation interactions remain an investigation item, not an established defect or atomicity guarantee."
     },
     {
       "id": "SCN-1122",
@@ -9568,6 +9574,36 @@
         "books/tcpcl-source-control.lisp"
       ],
       "note": "Actual raw controller/private source/original KEEPALIVE step/delivery-plan composition PASS, with recorded wire decoder/socket/publication; normal guards+13 assertions PASS. Current-union native UNEXECUTED."
+    },
+    {
+      "id": "SCN-1129",
+      "title": "Actual decoded pending read retains custody through competing POST and cancellation",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017"
+      ],
+      "steps": [
+        "Accept a compressible article through real NNTP and independently observe stored compression; capture its complete native ARTICLE reply.",
+        "Reopen with the developer physical-read hold; require the actual decoded controller pending-read token, fd and effect before any completion.",
+        "While that decoded read is physically held, finish independent DATE and accepted POST on another connection, then cancel the first reader.",
+        "Release the actual read, observe its literal read result, physical return and independent semantic release in that order, then compare both complete accepted articles before and after clean owner restart."
+      ],
+      "expected": [
+        "A legacy PAGE-IO token or a plain successful ARTICLE cannot substitute for the actual decoded worker hold.",
+        "Cancellation never supplies a physical return or settlement; exact native token and partial scope link affirmative observations.",
+        "Previously accepted article bytes and the competing accepted POST survive clean restart; independent progress is scoped to this finite schedule."
+      ],
+      "implementation": {
+        "test": "tests.test_native_decoded_custody.NativeDecodedCustodyTests.test_held_decoded_read_allows_post_then_cancel_return_release_and_reopen",
+        "native": true
+      },
+      "evidence": [
+        "tests/native_decoded_hold_raw.lisp",
+        "tests/test_native_decoded_custody.py",
+        "planning/evidence/native-decoded-custody-seam-2026-10-03/manifest.json"
+      ],
+      "execution_scope": "Actual developer hold seam and physical pread/thread active+inactive fixture pass in0.224s; existing retained controller recording fixture0.166s and17 source-coordinate/history tests pass. Four objects archived with manifest63c5579c686181eb95fb0f45647dcba0caed157b074f6db66fa6b841fb4c2ce2. Connected native selector is prepared, not executed: current initialized host entry and real default funded-pool producer remain required. Fixed-storage scope is partial; no allocator/GC/full funding, full HM replay or proof claim."
     }
   ]
 }

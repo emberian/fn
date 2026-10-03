@@ -53,10 +53,12 @@ def repl(args):
             if line in (':quit', ':exit'):
                 return 0
             if line == ':help':
-                print(':operation, :threads, :apropos TEXT, :describe FORM, :load PATH, :acl2 FORM,\n:paste, :trace on|timing|report|off, :quit\n'
+                print(':operation, :threads, :apropos TEXT, :describe FORM, :load PATH, :acl2 FORM,\n:paste, :trace on|timing|report|hotspots [N]|off, :quit\n'
                       'Enter one Common Lisp form, or PROGN for a batch.\n'
                       '*fnn-dev-service* is the current owner; fnn-core calls the core.\n'
-                      'Reader evaluation (#.) is disabled. :load names a path on the server.')
+                      'Reader evaluation (#.) is disabled. :load names a path on the server.\n'
+                      f':acl2 uses at most {args.prover_steps} prover steps per form; '
+                      'this is not a wall-time or arbitrary Lisp limit.')
                 continue
             if line == ':paste':
                 print('Paste one form or PROGN; finish with :end on its own line.')
@@ -77,6 +79,11 @@ def repl(args):
                 line = '(progn (fnn-trace-start) :tracing)'
             elif line == ':trace report':
                 line = '(fnn-trace-report *standard-output*)'
+            elif line == ':trace hotspots' or line.startswith(':trace hotspots '):
+                count = 10 if line == ':trace hotspots' else int(line[len(':trace hotspots '):])
+                if count <= 0:
+                    raise ValueError('trace hotspot count must be positive')
+                line = f'(fnn-trace-hotspots *standard-output* {count})'
             elif line == ':trace off':
                 line = '(setf *fnn-trace-state* nil)'
             elif line.startswith(':describe '):
@@ -86,7 +93,7 @@ def repl(args):
             elif line.startswith(':load '):
                 line = '(load ' + lisp_string(line[6:]) + ')'
             elif line.startswith(':acl2 '):
-                line = "(fnn-dev-admit '(" + line[6:] + '))'
+                line = "(fnn-dev-admit '(" + line[6:] + f') :step-limit {args.prover_steps})'
             ok, text = evaluate(args.socket, line, args.timeout)
             sys.stdout.write(text)
             if not ok:
@@ -134,8 +141,12 @@ def main(argv=None):
     p.add_argument('--socket', required=True)
     p.add_argument('--eval', help='evaluate one form without an interactive prompt')
     p.add_argument('--timeout', type=float, help='client observation timeout; does not cancel evaluation')
+    p.add_argument('--prover-steps', type=int, default=200000,
+                   help='ACL2 prover steps per :acl2 form (default: 200000; not a wall-time limit)')
     p.set_defaults(run=repl)
     args = parser.parse_args(argv)
+    if args.command == 'repl' and args.prover_steps < 0:
+        parser.error('--prover-steps must be nonnegative')
     try:
         return args.run(args)
     except (OSError, ValueError) as error:
