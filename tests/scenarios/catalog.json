@@ -9546,6 +9546,35 @@
         "books/bp-channel-ingress.lisp"
       ],
       "note": "Actual apply/flush raw composition PASS with recorded core admission answer; actual ACL2 producer literals prepared, native current-union UNEXECUTED."
+    },
+    {
+      "id": "SCN-1129",
+      "title": "Actual decoded pending read retains custody through competing POST and cancellation",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017"
+      ],
+      "steps": [
+        "Accept a compressible article through real NNTP and independently observe stored compression; capture its complete native ARTICLE reply.",
+        "Reopen with the developer physical-read hold; require the actual decoded controller pending-read token, fd and effect before any completion.",
+        "While that decoded read is physically held, finish independent DATE and accepted POST on another connection, then cancel the first reader.",
+        "Release the actual read, observe its literal read result, physical return and independent semantic release in that order, then compare both complete accepted articles before and after clean owner restart."
+      ],
+      "expected": [
+        "A legacy PAGE-IO token or a plain successful ARTICLE cannot substitute for the actual decoded worker hold.",
+        "Cancellation never supplies a physical return or settlement; exact native token and partial scope link affirmative observations.",
+        "Previously accepted article bytes and the competing accepted POST survive clean restart; independent progress is scoped to this finite schedule."
+      ],
+      "implementation": {
+        "test": "tests.test_native_decoded_custody.NativeDecodedCustodyTests.test_held_decoded_read_allows_post_then_cancel_return_release_and_reopen",
+        "native": true
+      },
+      "evidence": [
+        "tests/native_decoded_hold_raw.lisp",
+        "tests/test_native_decoded_custody.py"
+      ],
+      "execution_scope": "Actual developer hold seam and physical pread/thread fixture pass. Connected native selector is prepared, not executed: current initialized host entry and real default funded-pool producer remain required. Fixed-storage scope is partial; no allocator/GC/full funding, full HM replay or proof claim."
     }
   ]
 }

@@ -10,6 +10,7 @@
 (defvar *fnn-extent-incarnations* (make-hash-table))
 (load-deployed-forms "host/native/extent-decoded.lisp"
  '((defstruct fnn-decoded-activation) (defmacro fnn-decoded-semantic)
+   (defun fnn-extent-decoded-window-pread)
    (defun fnn-extent-decoded-window-run)))
 (defvar *decoded-calls* nil)
 (defvar *decoded-permitted* t)
