@@ -23236,9 +23236,11 @@
       "evidence": [
         "books/resource-bp-session.lisp",
         "tests/acl2/bp-session-turn-tests.lisp",
-        "host/native/bp-session.lisp"
+        "host/native/bp-session.lisp",
+        "planning/evidence/bp-session-turn-20261003/certified-result.json",
+        "planning/evidence/manifests/certify-20261003T180036Z-2785570.json"
       ],
-      "progress_note": "New acquire-turn guards and yield/representation/logical-bank correspondence admitted in Foundations retained solrlocover. Actual with-local-stobj sequence exposes old N lifetime connection ceiling and passes with budget repair; installer uniquely renamed in shared loan to avoid redefining existing event. Exact unchanged source certification and native consumer composition pending; BP owns c644dadeb consumer."
+      "progress_note": "Exact production source certificate certify-20261003T180036Z-2785570 PASS3/0: typed ledger, resource-bp-session and actual turn tests; three dependency certificates cached. Actual typed N+1 connection reuse after settlement, class cursor separation, occupied yield/no bank mutation, generation continuity and empty class pass. Original installer fails at N+1 due to spent conn-id ceiling. BP native c644dadeb consumer is integrated separately; complete literal hypothesis teeth and whole-owner/funding/scheduler claims remain planned."
     }
   ]
 }

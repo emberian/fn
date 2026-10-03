@@ -5485,4 +5485,4 @@
 (definterface fn-bph-refusal-line :class :common-lisp-compliant)
 (definterface fn-log-sink-offer-live :class :common-lisp-compliant)
 
-(definterface fn-bpsg-acquire-turn :class ::common-lisp-compliant)
+(definterface fn-bpsg-acquire-turn :class :common-lisp-compliant)

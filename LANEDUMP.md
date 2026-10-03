@@ -4002,3 +4002,10 @@ with-local-stobj scenarios pass after repair; original install produces
 resources-unavailable after4draws/one return. Installer/test helpers renamed
 only in shared normal loan to avoid undo; exact source cert pending. No new
 full world, no deployment or complete resource/whole-loop claim.
+
+Convergence: exact unrenamed production source/tests now certify in
+certify-20261003T180036Z-2785570:3/0 (typed bank17s, BP+tests below10s,
+threecacheddependencies). Integration has coherent producerfd29 +nativec644.
+No owned process remains: failed newREPL neverstarted; Foundation andRootDWJ
+loans returned, targetedfarmterminalexit0/cachepublished. PRF1309 remains
+planned for complete teeth/composed behavior, not misreported fullfunding.
