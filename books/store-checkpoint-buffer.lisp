@@ -51,7 +51,6 @@
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-scc-atom-octets)
                           (:definition fn-scc-atomp)
-                          (:definition fn-scc-le-digits)
                           (:definition fn-scc-nat-encodablep)
                           (:definition fn-scc-nat-octets)
                           (:definition fn-scc-octet-listp)

@@ -28,6 +28,7 @@
 (include-book "../books/owner-report-capture")
 (include-book "../books/index-writer-ticket")
 (include-book "../books/catalog-may-seal")
+(include-book "../books/catalog-root-incarnation")
 (include-book "payload-view-host")
 ; books/owner-fault includes books/owner and adds the host-fault transition
 ; `fn-own-fault'.  The host needs it: `fn-owner-fault' below is the only way
@@ -56,6 +57,7 @@
 (include-book "../books/history-capture-state")
 (include-book "../books/owner-retain-state")
 (include-book "../books/owner-retain-transitions")
+(include-book "../books/owner-post-carried")
 (include-book "../books/owner-obligation-state")
 ; The compression threshold (fn-owner-compress-min-octets; PRF-341).
 (include-book "../books/payload-lz-append")
@@ -343,6 +345,31 @@
 ;; owner's invariant it equals fn-olau-authorize over the carried history and
 ;; the names on disk).  Called from host/native/admin.lisp
 ;; fnn-admin-authorize-owner.  Neither writes any global.
+; Private allocation identity. The actual native catalog installer reserves
+; before publishing a replacement pointer. The counter is never reset by open,
+; reclaim or failed publication; the owner carrier migration must move both
+; globals together. STATE lifetime bounds the identity namespace.
+(defun fn-owner-catalog-root-reserve (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((next (if (boundp-global 'fn-owner-catalog-root-counter state)
+                  (f-get-global 'fn-owner-catalog-root-counter state) 0)))
+    (mv-let (token next1) (fn-cri-reserve next)
+      (if (not token)
+          (mv :corrupt-catalog-root-counter nil state)
+        (let* ((state (f-put-global 'fn-owner-catalog-root-counter next1 state))
+               (state (f-put-global 'fn-owner-catalog-root-incarnation token state)))
+          (mv nil token state))))))
+
+(defun fn-owner-catalog-root-current (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-catalog-root-incarnation state)
+      (let ((token (f-get-global 'fn-owner-catalog-root-incarnation state)))
+        (if (fn-cri-tokenp token)
+            (mv nil token state)
+          (mv :corrupt-catalog-root-incarnation nil state)))
+    ; The initially installed catalog has no exposed capture key yet.
+    (fn-owner-catalog-root-reserve state)))
+
 (defun fn-owner-cfg-next-name (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-olau-next-name (fn-owner-ocfg state))))
@@ -1976,19 +2003,7 @@
 ; exactly when the Store's gate fn-sn-refuse-reservation-enabledp holds, else
 ; :fault (KEYSTONE fn-pout-refuse-reservation-answers-the-host-test: the word
 ; the before/after comparison this entry used to make).
-(defun fn-owner-refuse-reservation (fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :guard (and (boundp-global 'fn-owner state)
-                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state))))))
-  (mv-let (word next)
-    (fn-pout-refuse-reservation (fn-owner-ocfg state) fn-arena)
-    (let* ((state (fn-owner-install-ocfg next state))
-           ; The store holds no transaction now, so the catalog holds no
-           ; pending row either (books/served-catalog-join-host-post.lisp
-           ; fn-sjh-okp-at-owner-refuse-reservation: LINK with none).
-           (state (if (equal word :refused)
-                      (f-put-global 'fn-owner-cat-pending nil state)
-                    state)))
-      (value word))))
+; Defined and proved in books/owner-post-carried.lisp.
 
 ; fn-owner-prepare with the payload in the octet buffer (books/octets-stobj.lisp;
 ; host/native/owner.lisp fnn-owner-attempt).  Three things differ from the
@@ -2276,22 +2291,7 @@
 ; fn-pout-known-abort (books/owner-prepare-outcome.lisp): :aborted exactly
 ; when the Store's gate fn-sn-known-abort-enabledp holds, else :fault
 ; (KEYSTONE fn-pout-known-abort-answers-the-host-test).
-(defun fn-owner-known-abort (fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :guard (and (boundp-global 'fn-owner state)
-                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state))))))
-  (mv-let (word next)
-    (fn-pout-known-abort (fn-owner-ocfg state) fn-arena)
-    (let* ((state (fn-owner-install-ocfg next state))
-           ; The aborted transaction's catalog row goes with it: its pending
-           ; row is no longer the store's in-flight row, and a later
-           ; non-sealing identity completion would otherwise run the
-           ; catalog's finish with it (a :stale-token fault;
-           ; books/served-catalog-join-host-post.lisp
-           ; fn-sjh-okp-at-owner-known-abort: LINK with none).
-           (state (if (equal word :aborted)
-                      (f-put-global 'fn-owner-cat-pending nil state)
-                    state)))
-      (value word))))
+; Defined and proved in books/owner-post-carried.lisp.
 
 (defun fn-owner-pending-octets (fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :guard (boundp-global 'fn-owner state)))
@@ -5301,20 +5301,20 @@ existing port only after fn-fc has made this connection ready."
 ; pass and the publication in flight at COUNT) and the owner's connection
 ; bound.  Answers (:deferred :credit ESTIMATE) or (:captured CAPTURE
 ; MAX-CONNS).
-(defun fn-owner-orcp-capture (mode clock override free revision state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((carried (and (boundp-global 'fn-owner-record-octets state)
-                       (f-get-global 'fn-owner-record-octets state)))
-         (octets (if (and (consp carried) (natp (cdr carried))) (cdr carried) 0))
-         (r (fn-orcp-reserve (fn-owner-credits state) octets)))
-    (if (not (eq (car r) :ok))
-        (value (list :deferred :credit (fn-orcp-estimate octets)))
-      (let ((state (fn-owner-put-credits (cadr r) state)))
-        (mv-let (erp captured state)
-          (fn-owner-orc-capture mode clock override free revision state)
-          (declare (ignore erp))
-          (value (list :captured captured
-                       (fn-own-max-conns (fn-owner-core state)))))))))
+(defun fn-owner-orcp-capture (mode clock override free revision fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  ;; Synchronize the committed history and its carried byte count before
+  ;; reserving. The raw (K . SUM) cache may lag the last committed batch.
+  (mv-let (octets fn-hist state) (fn-owner-record-octets fn-hist state)
+    (let ((r (fn-orcp-reserve (fn-owner-credits state) octets)))
+      (if (not (eq (car r) :ok))
+          (mv nil (list :deferred :credit (fn-orcp-estimate octets)) fn-hist state)
+        (let ((state (fn-owner-put-credits (cadr r) state)))
+          (mv-let (erp captured state)
+            (fn-owner-orc-capture mode clock override free revision state)
+            (declare (ignore erp))
+            (mv nil (list :captured captured
+                          (fn-own-max-conns (fn-owner-core state))) fn-hist state)))))))
 
 ; The rewritten rows' tombstoned records are no longer interned before the
 ; PRF-1258: the subject is the host-called prediction, including both its

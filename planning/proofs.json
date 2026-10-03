@@ -15937,9 +15937,11 @@
         "books/bp-node-fragment-job.lisp",
         "tests/acl2/bp-node-fragment-job-tests.lisp",
         "books/bp-fragment-job-shape.lisp",
-        "tests/acl2/bp-node-fragment-step-job-tests.lisp"
+        "tests/acl2/bp-node-fragment-step-job-tests.lisp",
+        "tests/native_bp_fragment_turn_raw.lisp",
+        "tests/native_tcpcl_progress_turn_raw.lisp"
       ],
-      "progress_note": "Lane bp-remainder-2 (Fable, 2026-09-29): REPL-admitted on hbox (13 defthms). Lane bp-remainder-3 (Fable, 2026-09-29): host-reached -- Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step). The debt-delta twin in bp-node-progress is deferred (the credit path still reassembles once per proposal and once per result, today's cost); the whole-bundle encode stays one step's work until PKT-585. Lane bp-remainder-4 (Fable, 2026-09-29): the job's shape is books/bp-fragment-job-shape (fn-bpfj-jobp: what a step needs, linear in the fragments; fn-bpfj-readable-jobp: the cells a true list too, for the readings), the guard of fn-bpfj-start / -step / -finishedp / -query / -plan / -apply and of the twins, checked by fn-bpnf-host-eventp of a job-carrying event; fn-bpfj-start-is-readable and fn-bpfj-step-keeps-readable carry it across the host's loop; every fn-bpfj-* the host reaches is guard-verified in books/bp-node-fragment-guards (fn-bpfj-image-octets, a specification function, is not). 2026-09-30: the host image limit is corrected to the held-octet budget. E739 SCN-077 reached the last fragment but produced no family because the old host supplied the 1 MiB received-wire limit for the 10 MiB whole image. The original 10 MiB profile and durability assertions remain unchanged; matching native validation is pending."
+      "progress_note": "Lane bp-remainder-2 (Fable, 2026-09-29): REPL-admitted on hbox (13 defthms). Lane bp-remainder-3 (Fable, 2026-09-29): host-reached -- Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step). The debt-delta twin in bp-node-progress is deferred (the credit path still reassembles once per proposal and once per result, today's cost); the whole-bundle encode stays one step's work until PKT-585. Lane bp-remainder-4 (Fable, 2026-09-29): the job's shape is books/bp-fragment-job-shape (fn-bpfj-jobp: what a step needs, linear in the fragments; fn-bpfj-readable-jobp: the cells a true list too, for the readings), the guard of fn-bpfj-start / -step / -finishedp / -query / -plan / -apply and of the twins, checked by fn-bpnf-host-eventp of a job-carrying event; fn-bpfj-start-is-readable and fn-bpfj-step-keeps-readable carry it across the host's loop; every fn-bpfj-* the host reaches is guard-verified in books/bp-node-fragment-guards (fn-bpfj-image-octets, a specification function, is not). 2026-09-30: the host image limit is corrected to the held-octet budget. E739 SCN-077 reached the last fragment but produced no family because the old host supplied the 1 MiB received-wire limit for the 10 MiB whole image. The original 10 MiB profile and durability assertions remain unchanged; matching native validation is pending. BP-TRANSPORT 2026-10-03 S026: actual native consumer now carries one job across service turns, performs one quantum per turn, and never reassembles within receive callback. Post-ACK TCPCL input/timeout and idle listener/once turns continue it. Source-matched guard/job-root certification, native image and full allocation/cost boundary still owed; recording actual caller tests pass."
     },
     {
       "id": "PRF-991",
@@ -21474,7 +21476,7 @@
     {
       "id": "PRF-1236",
       "title": "A served NNTP command is a declaration: the served catalog dispatcher, each form's view contract, the pinned-boundary case split, the re-pin keyword list and the archive keyword list are generated from the protocol table's served columns, and a served keyword without a declared view policy refuses to certify",
-      "statement": "books/protocol-table.lisp gains the served columns (lane def-command, 2026-10-03; consultation c07): every row the served dispatcher answers names :view (:none | :pinned | :select | :completed | :pin-or-completed | :live-index), :effect and :view-rfc, or fn-proto-tablep refuses (fn-proto-served-columns-okp); a converted row declares its FORMS ((NAME :test TEST [:cat TERM] [:view V] [:effect E] [:decided (V ID)] [:by (LEMMA ...)] [:open ...]) ...) with :cost per route and :teeth; :view-decided (V ID) is counted debt carried by an open registry row (tools/view_policy_debt.json, a ratchet tools/protocol_emit.py --check enforces) and the spec's served command table (specs/nntp.md, generated by tools/docs_check.py) shows the EXECUTED rule with the debt beside it. books/protocol-served.lisp generates from the rows: fn-proto-archive-command-cat, one flat cond over the declared rows' forms in order (XPAT, GROUP, OVER, XOVER declared; the hand dispatcher fn-nntp-archive-command-cat is the fallthrough for the rest until the switch); per form the view contract fn-proto-form-ROW-FORM-is-pinned (under the keystone's hypotheses, the row's keyword, the form's test and no earlier form's, the result's session and expanded effects equal the pinned reference's; proved from the form's :by with the hand keystone closed); per row the case split; and KEYSTONE fn-proto-archive-command-cat-is-pinned (the hand keystone's statement over the generated dispatcher; one context, replaced by the two-context refinement when the first :completed or :pin-or-completed form lands, PRF-1237/1238). KEYSTONE fn-proto-advance-eventp-is-served-advance-eventp: the :view :select rows are exactly the keywords fn-served-advance-eventp re-pins on, the one executable site of NNT-042's policy. KEYSTONE fn-proto-archive-keywordp-is-nntp-archive-keywordp: the :dispatch :archive rows are exactly fn-nntp-archive-keywordp's. HELP's table is asserted set-equal to the served rows (a drift check; the closure is PRF-194's theorem and the reachability teeth on both routes). Subject: fn-nntp-archive-command-cat's role (host/owner-host.lisp fn-owner-chunk-span -> books/served-catalog-chain.lisp fn-scr-command), taken by the generated dispatcher at the switch; fn-served-advance-eventp (books/served.lisp). Not claimed: the restricted route's arms (the reference walk over the projected pin; -cat cost claims are the unrestricted session's only, c07 F); the forms not yet declared; composed closure beyond PRF-194 and the reachability witnesses.",
+      "statement": "Every served protocol row declares a view policy and effect, and converted archive rows declare ordered literal forms, per-route cost debt and reachable teeth. books/protocol-served.lisp generates the actual unrestricted fn-proto-archive-command-cat flat dispatcher from all sixteen archive rows, including complete HDR/XHDR compatibility, special fn metadata fields and ordinary forms. Its executable fallback calls fn-nntp-archive-command-pinned directly for other keywords; it no longer calls the hand catalog dispatcher. The hand catalog dispatcher remains the migration reference for local per-row equality proofs. Each generated form contract asserts the complete boundary hypotheses, its keyword/test and failure of all prior tests, and equates result session plus expanded effects to the pinned reference using declared component refinements. fn-proto-archive-command-cat-is-pinned is the generated forms' case split. fn-proto-advance-eventp-is-served-advance-eventp ties :select rows to actual repin keywords; fn-proto-archive-keywordp-is-nntp-archive-keywordp ties declared archive rows to the generated command route. fn-scr-command calls this dispatcher through fn-nntp-command-dispatch; host fn-owner-chunk-span consumes the served chain. Literal positive HDR/XHDR witnesses assert the full boundary, every declared form's condition copied from the actual row and both-route reachability. DATE remains its separate generated session route. This preserves current pinned semantics; completed discovery, pin-first Message-ID fallback, restricted streaming, cold dependency custody and composed work/allocation remain PRF-1237/1238 and GEN-CURSOR work. The view-policy ratchet remains ten decided-not-landed entries. No cost improvement, current certificate, matching image or deployment is claimed by source replay.",
       "milestone": "M5",
       "requirements": [
         "NNT-042",
@@ -21493,14 +21495,17 @@
         "tools/protocol_emit.py",
         "tools/view_policy_debt.json",
         "specs/nntp.md",
-        "build/coordinator/decisions/command-view-policy-2026-10-03.md"
+        "build/coordinator/decisions/command-view-policy-2026-10-03.md",
+        "books/protocol-served-table.lisp",
+        "planning/evidence/dc02-switch-20261003/checks.json",
+        "planning/evidence/dc02-switch-20261003/command-repl.log.gz"
       ],
       "events": [
         "fn-proto-archive-command-cat-is-pinned",
         "fn-proto-advance-eventp-is-served-advance-eventp",
         "fn-proto-archive-keywordp-is-nntp-archive-keywordp"
       ],
-      "progress_note": "Lane def-command (Fable, 2026-10-03): certified on hbox, run-20261002T232211Z-f0bd, manifest certify-20261002T232442Z-2105883 (books/protocol-served-table, books/protocol-served, tests/acl2/protocol-served-tests: 3/0); books/protocol-table.lisp is byte-identical to origin/dev (its certificates and the 753 roots' stand). REPL: the four declared rows' form cases 77.5k prover steps, the case split 1.8k, the view-site keystones 0.7k; teeth 44/44 forms (the two both-route reachability forms with books/served-catalog-chain included). The served path is unchanged at this READY (nothing calls the generated dispatcher until the switch)."
+      "progress_note": "GPT-6.1-Sol DC02/DC03 closure 2026-10-03: actual generated switch already consumed by fn-scr-command; all sixteen archive rows now declare complete forms. Final table replay31 events0.03ACL2s/884steps; generated dispatcher/form and row refinements plus guards38events2.10s/553491steps; remaining view/keyword sites9events0.04s/710steps. Actual fn-scr-command source/guards918steps and restricted command source loaded; complete protocol-served teeth70events0.23s/2444steps, including new literal HDR/XHDR boundary witnesses and existing negative/mutation cases. Retained source catalog REPL, local events encapsulated/dropped; no clean certificate or image claim. Historical c07/Fable certificate evidence is unchanged for its older source, not transferred. SCN-1093 names the composed scenario; Integration owns matching certification and global projections."
     },
     {
       "id": "PRF-1237",
@@ -21565,7 +21570,7 @@
     {
       "id": "PRF-1241",
       "title": "A staged state checkpoint is read back from disk and verified before its rename, so the drop of the segments it covers never follows a file the open cannot frame",
-      "statement": "books/store-checkpoint-verify.lisp fn-sccv-final-ok-is-runs-ok (one hypothesis): when fn-sccv-final of the fold of fn-sccv-seg-step from (fn-sccv-initial SEQUENCE) over a file's segments is (:ok ...), the segments are exactly *fn-sccv-runs* (five: the arena run and the F, P, E, R tables) consecutive runs, each its first header's count of segments joining under the list codec's fn-scc-join from index 0 with SEQUENCE and the genesis, and nothing after them (fn-sccv-runs-okp). fn-sccv-step-is-seg-step: the buffer step the host calls (fn-sccv-step over a frame (HEADER A B TRAILER) of the octet buffer) is the list step on the frame's octets (fn-sccb-frame-octets). Host: host/native/io.lisp fnn-state-checkpoint-stage calls fnn-state-checkpoint-verify after the staged-durable cut and before fnn-state-checkpoint-install's rename; it reads the stage one admitted segment at a time (fn-store-sco-segment-admit), the chunk alone in the publication buffer, and calls fn-sccv-initial, fn-sccv-step and fn-sccv-final; a refusal is the known failure (fnn-refuse-io, the stage unlinked), so the old checkpoint and every log segment stay (fnn-log-drop runs only after the install). Scope: framing and seals only; the decode of the runs' contents is fn-scka-load-of-written-file's (PRF-083) for every file the writer produces; the history image region before the frames is not verified (its pages are checked at the open's first touch); the read-back may be served by the page cache, so it detects a write-path disagreement and corruption between write and read, not later media loss. Sweep 2026-10-03 S045.",
+      "statement": "books/store-checkpoint-verify.lisp fn-sccv-final-ok-is-runs-ok (one hypothesis): when fn-sccv-final of the fold of fn-sccv-seg-step from (fn-sccv-initial SEQUENCE) over a file's segments is (:ok ...), the segments are exactly *fn-sccv-runs* (five: the arena run and the F, P, E, R tables) consecutive runs, each its first header's count of segments joining under the list codec's fn-scc-join from index 0 with SEQUENCE and the genesis, and nothing after them (fn-sccv-runs-okp). fn-sccv-step-is-seg-step: the buffer step the host calls (fn-sccv-step over a frame (HEADER A B TRAILER) of the octet buffer) is the list step on the frame's octets (fn-sccb-frame-octets). Host: host/native/io.lisp fnn-state-checkpoint-stage calls fnn-state-checkpoint-verify after the staged-durable cut and before fnn-state-checkpoint-install's rename; it reads the stage one admitted segment at a time (fn-store-sco-segment-admit), the chunk alone in the publication buffer, and calls fn-sccv-initial, fn-sccv-step and fn-sccv-final; a refusal is the known failure (fnn-refuse-io, the stage unlinked), so the old checkpoint and every log segment stay (fnn-log-drop runs only after the install). Scope: framing and seals only; the decode of the runs' contents is fn-scka-load-of-written-file's (PRF-083) for every file the writer produces; this theorem covers only the framed runs; the native stage separately compares the preceding history image header/pages against the retained writer snapshot through fn-his-readback-header-p and fn-his-readback-page before allowing installation; the read-back may be served by the page cache, so it detects a write-path disagreement and corruption between write and read, not later media loss. Sweep 2026-10-03 S045.",
       "milestone": "M5",
       "requirements": [
         "STO-028",
@@ -21766,7 +21771,8 @@
         "fn-cmt-pipeline-requires-its-captured-passes",
         "fn-cmt-wrong-snapshot-ticket-faults",
         "fn-cmt-stop-observation-never-enters-a-pipeline"
-      ]
+      ],
+      "progress_note": " SCN-1091 adds actual once-only mux finish section and distinct effect/section debt receipts; native interpreter/refinement, all cleanup cut composition and matching-image acceptance remain owed. Finite raw schedules do not close this target."
     },
     {
       "id": "PRF-1254",
@@ -21794,20 +21800,24 @@
         "planning/evidence/runtime-observation-2026-10-03/native.log",
         "planning/evidence/runtime-observation-2026-10-03/observed-hm.lsp",
         "planning/evidence/manifests/certify-20261003T074717Z-46601.json",
-        "planning/evidence/manifests/certify-20261003T080416Z-85944.json"
+        "planning/evidence/manifests/certify-20261003T080416Z-85944.json",
+        "planning/evidence/hm-job-result-20261003/result.json",
+        "planning/evidence/hm-job-result-20261003/repl.log",
+        "planning/evidence/hm-job-result-20261003/state.json"
       ],
-      "progress_note": "Groundwork: current clean main pin/capture/drain/cancel invariants certified in certify-20261003T074717Z-46601; strengthened physical-return invariant and literal antecedent/removal teeth certified with main/tests in certify-20261003T080416Z-85944. Issue/settle preservation and all-schedules theorem remain planned. Actual Runtime generated-actor/shared-section O-only native packets replay against exact machine with all prefix invariants; this finite observation bridge does not establish full extent/pin realization or funded-pool coverage. Runtime actual shared section producer now records acquire after physical O acquisition, reserves release under O and completes it after physical unlock; completed-prefix collector prevents preemption inversion. Native one-actor and contested two-actor schedules pass, emit literal actor reservation strings and HM assertions for exact answers/invariant at every prefix. Overflow, missing identity and observer failure invalidate comparison without changing service outcome. Finite ACL2 replay and real image extent composition remain separately qualified; this is not universal native realization. Groundwork clean loaded-world replay of all four actual native-produced assertion packets PASS (<0.01s, 0 proof steps); protected source machine hash matches the recorded coordinate. This is finite O-only replay, not complete PageIO/native realization."
+      "progress_note": "Groundwork: current clean main pin/capture/drain/cancel invariants certified in certify-20261003T074717Z-46601; strengthened physical-return invariant and literal antecedent/removal teeth certified with main/tests in certify-20261003T080416Z-85944. Issue/settle preservation and all-schedules theorem remain planned. Actual Runtime generated-actor/shared-section O-only native packets replay against exact machine with all prefix invariants; this finite observation bridge does not establish full extent/pin realization or funded-pool coverage. Condition-order extension: physical return no longer requires a prior literal result; E-held actual job-result classification is independent, including launch failures without pread. Changed machine/main and old+new finite teeth source-admitted cleanly in a scoped hbox world; matching certificates and new-source native trace remain pending. Earlier certificates do not transfer to these changed bytes. Historical finite O-only producer schedules and literal replay remain archived; collector overflow/missing identity invalidate comparison without changing service outcome. Full extent/pin native realization remains open."
     },
     {
       "id": "PRF-1256",
-      "title": "Served metadata NEWNEWS retains the exact reply residual under independent candidate and emitted-byte budgets",
-      "statement": "Host/native/owner.lisp fnn-owner-cursor-step calls fn-splan-cursor-step, whose NEWNEWS branch calls generated fn-nnw-stream-step(cur,visits,bytes,fn-arena,fn-cat). The immutable context references the captured archive/environment/arguments; scan progress, pending output and opaque dependency are separate. KEYSTONE fn-nnw-stream-step-residual: output appended to the next continuation remaining equals current remaining, unconditionally. fn-nnw-stream-candidate-progresses establishes exact one-candidate tail decrease, including misses; fn-nnw-stream-one-visits-at-most-one and fn-nnw-stream-output-does-not-visit world-check the generated scan/output distinction; generated -step-byte-bound and -step-call-bound separately bound emitted octets and candidate calls. Consumer metadata facts avoid payload reads for rows with decided tombstone facts; the existing legacy missing-facts fallback remains a cold dependency. This is not a working-allocation bound: initial group selection, renderer working-cell tariff, selected-runtime concrete representation, completed discovery snapshot capture, reply resource draw and cold dependency settlement remain open. Existing OVER remains its current windowed implementation.",
+      "title": "Served metadata NEWNEWS retains the exact reply residual under independent control-call and emitted-byte budgets",
+      "statement": "Host/native/owner.lisp fnn-owner-cursor-step calls fn-splan-cursor-step, whose NEWNEWS branch calls generated fn-nnw-stream-step(cur,visits,bytes,fn-arena,fn-cat). The actual generated NEWNEWS declaration calls fn-nntp-newnews-response-stream, whose valid initializer retains configured-group, parsed-pattern and article references in fixed envelopes. The immutable context references archive/environment/arguments; selection progress, pending output and opaque dependency are separate. KEYSTONE fn-nnw-stream-step-residual: emitted output appended to the next continuation remaining equals current remaining, unconditionally. fn-nnw-stream-select-progresses proves positive selection remainder shrinks or selection ends; configured selection retains the current article across group/member steps, using PRF-1257. The legacy article-tail progress theorem remains a compatibility helper and is not cited as an actual configured-phase keystone. fn-nnw-stream-one-visits-at-most-one and fn-nnw-stream-output-does-not-visit world-check the generated scan/output distinction; generated byte/call bounds separately bound emitted octets and control calls. fn-nntp-newnews-response-stream-expands-to-cat ties the actual producer to the original catalog reply. Metadata facts avoid payload reads for rows with decided tombstone facts; legacy missing-facts fallback remains cold dependency debt. Matcher/name comparison and composed heap tariffs, concrete representation, completed discovery snapshot capture, output draw and cold dependency settlement remain open. Existing OVER remains its current windowed implementation.",
       "milestone": "M5",
       "requirements": [
         "HST-023"
       ],
       "depends_on": [
-        "PRF-1020"
+        "PRF-1020",
+        "PRF-1257"
       ],
       "assumptions": [],
       "status": "uncertified-at-current-digest",
@@ -21825,9 +21835,16 @@
         "tests/acl2/newnews-stream-cursor-tests.lisp",
         "planning/evidence/served-cursor-20261003/renderer-repl.log.gz",
         "planning/evidence/served-cursor-20261003/output-shell-repl.log.gz",
-        "planning/evidence/served-cursor-20261003/allocation-repl.log.gz"
+        "planning/evidence/served-cursor-20261003/allocation-repl.log.gz",
+        "books/newnews-candidate-selector.lisp",
+        "tests/acl2/newnews-candidate-selector-tests.lisp",
+        "planning/evidence/served-cursor-20261003/selector-composition-checks.json",
+        "planning/evidence/served-cursor-20261003/selector-composition-repl.log.gz",
+        "tests/test_cursor_cold_poll.py",
+        "tests/cursor_cold_poll_recording.lisp",
+        "planning/evidence/cursor-cold-poll-20261003/checks-final.json"
       ],
-      "progress_note": "GPT-6.1-Sol 2026-10-03: consumer core, residual, guard checks and literal sparse/final-output teeth admitted in narrow hbox REPL; not a certificate or native image qualification. Plan/dispatcher composition proof replay pending. Generated declaration selects cursor response; plan continuation signature unchanged. Current view policy remains pinned pending decided completed discovery capture; initialization selector and renderer working allocation remain unbounded debt. Exact def-cursor visit formula and actual core call are translated/world-checked against named theorem; missing and wrong-statement theorem declarations are refused. Fresh shell tests12 forms admitted0.11 ACL2s/12,434steps; metadata declaration literal formula validated in hbox world. Mixed incremental metadata REPL and fresh shell logs archived/indexed; full composition still pending. Composed served-plan exact residual, expanded-reply and retained-buffer invariant proofs now admitted in the warm catalog source world, with actual plan drain equality at byte/visit budgets 1 and 256. Existing OVER plan teeth also pass. Hand dispatcher replay 2.02 ACL2 s / 862,947 steps; actual generated dispatcher replay 1.75 ACL2 s / 451,950 steps, guards included. Chain/owner composition replay still pending (served-span dependency absent in this world). These are source REPL admissions, not certificates/image qualification; allocation/custody/view debts unchanged. Indexed string renderer now consumed by actual plan: matching article installs string reference/offset/stuffing phase with no whole line rendering. Output phase drains with zero candidate visits; shell and line residuals proved unconditionally. Encapsulated library replay: renderer 0.41 ACL2 s / 57,924 steps, metadata stream 0.58 s / 280,194 steps; plan residual/invariants 1.60 s / 655,907 steps. Wider-than-quantum, zero-visit renderer, sparse scan and actual plan small/large drain witnesses pass. Physical allocation recurrence/tariff, initialized group selector and matcher bounds remain owed; no certificate/native claim. Output-phase bypass now requires its literal zero-tail-decrease theorem; missing/wrong output proofs refused in fresh18-form shell replay0.04 ACL2s/18,162steps. Actual stream exact-candidate, zero-output-visits and residual replay0.66s/298,468steps. Fixed constructor shape established/preserved; conservative logical renderer cons recurrence <=8B+2 admitted, distinct from native allocation/funding. Curated proof-events map now names the actual stream/renderer keystones instead of the old metadata consumer. No certificate or image claim.",
+      "progress_note": "GPT-6.1-Sol 2026-10-03: consumer core, residual, guard checks and literal sparse/final-output teeth admitted in narrow hbox REPL; not a certificate or native image qualification. Plan/dispatcher composition proof replay pending. Generated declaration selects cursor response; plan continuation signature unchanged. Current view policy remains pinned pending decided completed discovery capture; initialization selector and renderer working allocation remain unbounded debt. Exact def-cursor visit formula and actual core call are translated/world-checked against named theorem; missing and wrong-statement theorem declarations are refused. Fresh shell tests12 forms admitted0.11 ACL2s/12,434steps; metadata declaration literal formula validated in hbox world. Mixed incremental metadata REPL and fresh shell logs archived/indexed; full composition still pending. Composed served-plan exact residual, expanded-reply and retained-buffer invariant proofs now admitted in the warm catalog source world, with actual plan drain equality at byte/visit budgets 1 and 256. Existing OVER plan teeth also pass. Hand dispatcher replay 2.02 ACL2 s / 862,947 steps; actual generated dispatcher replay 1.75 ACL2 s / 451,950 steps, guards included. Chain/owner composition replay still pending (served-span dependency absent in this world). These are source REPL admissions, not certificates/image qualification; allocation/custody/view debts unchanged. Indexed string renderer now consumed by actual plan: matching article installs string reference/offset/stuffing phase with no whole line rendering. Output phase drains with zero candidate visits; shell and line residuals proved unconditionally. Encapsulated library replay: renderer 0.41 ACL2 s / 57,924 steps, metadata stream 0.58 s / 280,194 steps; plan residual/invariants 1.60 s / 655,907 steps. Wider-than-quantum, zero-visit renderer, sparse scan and actual plan small/large drain witnesses pass. Physical allocation recurrence/tariff, initialized group selector and matcher bounds remain owed; no certificate/native claim. Output-phase bypass now requires its literal zero-tail-decrease theorem; missing/wrong output proofs refused in fresh18-form shell replay0.04 ACL2s/18,162steps. Actual stream exact-candidate, zero-output-visits and residual replay0.66s/298,468steps. Fixed constructor shape established/preserved; conservative logical renderer cons recurrence <=8B+2 admitted, distinct from native allocation/funding. Curated proof-events map now names the actual stream/renderer keystones instead of the old metadata consumer. No certificate or image claim. Incremental configured selector now consumed by the actual factory/controller: fixed reference-only start, one group/member unit, retained first-membership receipt, zero-visit output. Configured fresh residual/refinement and producer/expander source admissions pass; composed plan witness and matching certificate/image are separately tracked. Assembled actual factory/expander0.25s/56023steps; catalog tail3.69s/787250; hand dispatcher4.33s/890073; literal generated rows+guards1.78s/499732; actual plan1.89s/708065 and configured eleven-group sparse tiny/large drain witness252steps passed. Selection-progress positive and two hypothesis-removal witnesses passed (corrupted capture labelled separately). Current certificate/image qualification remains owed. Native cursor miss now returns exact plan+issued read to mux polling instead of blocking cold-await on the shared loop. Actual extracted native bodies pass warm/suspend/wait/retry/resume/deadline/resource-refusal/line-compatibility control-flow checks; no new ACL2 semantic proof, native image or cache-independent progress claim.",
       "events": [
         "fn-nnw-stream-step-residual",
         "fn-nnw-stream-candidate-progresses",
@@ -21910,6 +21927,245 @@
         "fn-sca-load-held-rows-establishes-byte-facts"
       ],
       "progress_note": "Warm farm REPL admits low classification/updater, foundation writer correspondence/guards, live-link preservation, loader completion helper and metadata-versus-bytes available projection including state preservation. First sparse/prefix/tail/empty foundation writer classification fixtures pass, including cancel of already unavailable row with raw lookup retained. Actual loader establishment, summary/navigation boundary and paged/native consumer closure remain in progress; no matching certification or native reclaim claim. New distinct available-summary/low/range/next/previous exports and their numeric membership pass admit with guards; complete generic writer/reader tuple fixtures pass sparse/prefix/tail/empty and already-unavailable cancellation, raw lookup retained. Archive projection correspondence of these command readers, actual loader producer closure, paged attachment and generated served dispatch remain pending. Actual fn-sca-load-held-rows now classifies missing NOV once with an unchanged public signature; its loader family guards admit in 0.09s/5,217 steps. Real arena-loader sparse/prefix/tail/empty/cancel and invalid-handle cases admit. Existing owner history/column establishment theorem fanout, complete available-reader archive boundary and paged closure remain pending; current source is submitted before asynchronous certification. Actual public loader now establishes carried decided classification under explicit ready+held-row domain; commit/withdraw/redecide/clear preserve it. Actual loader preserves existing byte-fact F with the original arena+history premises, including legacy completion. Literal positive and omitted-readiness/omitted-byte-fact corrupted-state witnesses admit. Owner R/wire establishment and command archive boundaries remain pending."
+    },
+    {
+      "id": "PRF-1257",
+      "title": "Incremental NEWNEWS configured-group selector preserves first-membership selection and settles with finite progress",
+      "statement": "Host fnn-owner-cursor-step reaches fn-nnw-select-start and fn-nnw-select-one through actual fn-splan-cursor-step \u2192 fn-nnw-stream-step \u2192 fn-nnw-stream-one. Fixed ten-cell selector retains parsed patterns, configured group tails, article and membership tails by reference. fn-nnw-select-start-value equals the original candidate predicate over filtered configured groups; fn-nnw-select-one-preserves-value is unconditional; a decided result equals that value. Positive logical remaining strictly decreases, zero remaining settles, and done retains its receipt. Under selector statep, each call inspects at most one group/member entry, with the exact charge tied to group/member offsets. The logical remaining/value functions are disabled reference models, never execution gates. First equal membership wins even when invalid, preserving duplicate/invalid-number behavior. A visit count alone does not fund name EQUAL, Message-ID validation or wildcard DP; byte/working-allocation tariffs and physical output funding remain open.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/newnews-candidate-selector.lisp",
+        "tests/acl2/newnews-candidate-selector-tests.lisp",
+        "tests/acl2/served-plan-newnews-tests.lisp",
+        "planning/evidence/dc03-selector-20261003/checks.json",
+        "planning/evidence/dc03-selector-20261003/selector-repl.log.gz",
+        "planning/evidence/served-cursor-20261003/selector-composition-checks.json",
+        "planning/evidence/served-cursor-20261003/selector-composition-repl.log.gz"
+      ],
+      "events": [
+        "fn-nnw-select-start-value",
+        "fn-nnw-select-one-preserves-value",
+        "fn-nnw-select-one-decided-value",
+        "fn-nnw-select-one-progress",
+        "fn-nnw-select-one-entry-charge",
+        "fn-nnw-select-zero-remaining-settles"
+      ],
+      "progress_note": "GPT-6.1-Sol helper14ce3e9ec source replay: encapsulated30forms2.14ACL2s/1,513,918steps,15teeth652steps, guards verified. Actual controller/factory consumes this API; matching cert/native qualification remains owed. Sparse12-step first-success, excluded wildcard, invalid first duplicate, overflow, invalidID, empty settlement and statep-removal teeth retained. No matcher tariff or heap-funding claim."
+    },
+    {
+      "id": "PRF-1259",
+      "title": "Funded shared output pool and generation-matched window custody",
+      "statement": "Actual launcher fn-orv-extend-reservation must preserve existing refusal and reserve output allowance beyond composed store/cold heap; startup fn-orv-startup-grant validates captured dynamic funding and protects baseline/maintenance plus a minimum user lease. Actual typed fn-rlo-install/issue/output/physical must preserve representation and bank accounting, retain CID and connection generation independently of window and draw generation, and settle only actual drained/discarded output plus physical/no-future-publication completion. Full operation allocation gate requires composed init/matcher/renderer/plan/mux refinement, bounded integers and allocator/collector assumptions.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-047"
+      ],
+      "depends_on": [
+        "PRF-1211",
+        "PRF-1252"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/output-reservation.lisp",
+        "books/resource-output.lisp",
+        "tests/acl2/output-reservation-tests.lisp",
+        "tests/acl2/resource-output-tests.lisp",
+        "tests/native_output_custody_raw.lisp",
+        "tests/test_native_output_custody_raw.sh",
+        "books/response-identity.lisp",
+        "tests/acl2/response-identity-tests.lisp",
+        "planning/evidence/manifests/certify-20261003T103508Z-81314.json"
+      ],
+      "events": [
+        "fn-orv-accepted-launch-fits-observed-machine",
+        "fn-orv-accepted-launch-funds-output-dynamic-allowance",
+        "fn-orv-startup-hold-protects-owner-and-one-quantum",
+        "fn-rlo-install-keeps-representation",
+        "fn-rlo-issue-keeps-representation",
+        "fn-rlo-output-keeps-representation",
+        "fn-rlo-physical-keeps-representation"
+      ],
+      "progress_note": "Numerical launch/startup properties and actual typed output methods source-admitted. Install/issue/output/physical preserve typed recognizer plus shape with only typed+shape input; all mutation guards admit through proof-local field recipes and the typed bank boundary. Twelve literal accepted-branch and corrupted-state type/shape removal witnesses accompany the four public preservation exports. An upfront fixed shape check safely refuses malformed typed install state. Sixteen actual live-stobj receipt/free-row trace cases and normal-counterpart native producer/serializer/real-worker join probe remain discriminating consumers. Free-row protocol/bank correspondence, concrete bookkeeping and whole-plan allocation refinement, actual Runtime mux activation and matching output certification/image verdict remain owed. Explicit config remains unsupported; absence partial. Fresh full proper-local resource-output replay admits21.07ACL2s/4,694,217steps (proof packet1,127,718), then fresh16 live traces+12 literal teeth pass28/0 in0.18s/39,682steps. Matching changed-source normal native fixture passes; archived output-custody-20261003-guards.json names exact scope and hashes. Actual install/draw/output/physical bank correspondence now admits in a separate proof-local package1.06s/71,540steps: metadata fields never affect bank, accepted issue matches typed draw, each output/physical receipt matches typed settlement exactly iff its independent counterpart receipt is present. Twelve literal bank boundary positives/accepted-word removals plus6 supporting OKP positives/corrupted-bank removals admit. Supporting typed+wfp OKP exports are not independent cited keystones. Free-chain validity and heap tariff remain open; this does not prove environmental receipts. SCN-1097 actual live descriptor chain/mux hold/private install connected, headroom precedes allocation. New ACL2 row-count helper and normal startup declarations source-admitted in actual loaded output world. Explicit policy remains staged; response generation producer, full continuation lifetime issue/release, full allocation coverage and matching-image activation remain open. Actual mux startup captures ACL2 connection and response generation identities before factories, retained across cold/quantum continuation and retired at response terminal. Identity producer source is pending matching composed image; output lease settlement, physical authenticity, full tariff and free-chain obligations remain open. Bounded response identity producer and its tests have matching local certificate certify-20261003T103508Z-81314; this certifies generation only, not composed native response lease settlement."
+    },
+    {
+      "id": "PRF-1260",
+      "title": "Resumable pull/catch-up stable sweeps retain every admitted round",
+      "statement": "The actual pull worker calls fn-prd-sweep; under true-listp remaining and subsetp-equal remaining active, fn-prd-sweep-visits-all-admitted-rounds gives the complete ordered remaining list. fn-prd-action retains partial I/O before later effects/events. Assumes each physical attempt returns; DNS, physical latency, whole-round completion and retained-context funding are not proved.",
+      "milestone": "M4",
+      "requirements": [
+        "NNT-018",
+        "NNT-053"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/peer-round-driver.lisp",
+        "tests/acl2/peer-round-driver-tests.lisp"
+      ],
+      "progress_note": "Source implemented in codex-sol-transport-rounds; ACL2 admission/guard certification and matching-image SCN-1090 are pending Integration. Stable-sweep visit property does not bound the whole host scheduling turn: current worker maps active flights and re-filters each remaining suffix, giving peer-dependent work/allocation (quadratic over a stable sweep). Retained scheduler cursor/cost refinement and context tariff remain owed; the 512-octet bound applies to each read/write attempt only."
+    },
+    {
+      "id": "PRF-1267",
+      "title": "ION lifetime conversion is exact and within the pinned helper representation",
+      "statement": "fn-bpit-helper-seconds-preserves-lifetime: every non-nil result of fn-bpit-helper-seconds is an integer from 1 through 2147483 whose product with 1000 equals the input lifetime. fn-workflow-ion-helper-seconds calls this subject; fnn-workflow-ion-submit calls that wrapper before journal publication or helper launch. Scope: representation of the pinned helper, not a stored data limit or physical send proof.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/bp-ion-lifetime.lisp",
+        "tests/acl2/bp-ion-lifetime-tests.lisp",
+        "host/workflow-host.lisp",
+        "host/native/workflow.lisp",
+        "specs/bp-workflow-host.md",
+        "tests/native_ion_lifetime_raw.lisp",
+        "planning/evidence/manifests/certify-20261003T095031Z-1342869.json",
+        "planning/evidence/bp-ion-lifetime-2026-10-03.md"
+      ],
+      "progress_note": "BP-TRANSPORT 2026-10-03: certified two roots, certify-20261003T095031Z-1342869; actual shipped raw caller passes exact route/seconds, no-publication refusal and helper outcome separation. Source-matched image and real LTP/receipt packet pending coordinated convergence.",
+      "events": [
+        "fn-bpit-helper-seconds-preserves-lifetime"
+      ]
+    },
+    {
+      "id": "PRF-1263",
+      "title": "Live retire observation expires as uncertain and report inspection requires stopped",
+      "statement": "Host-called subject fn-nret-observation-step in books/native-retire.lisp, called by host/native/operator.lisp fnn-operator-execute-retire. At or beyond fn-nret-observation-budget-ticks for the requested drain plus the explicit60-second operator allowance, live/held observations return :uncertain; a :report decision requires offline/stale liveness. Invalid request/clock and unknown liveness never mean stopped. This bounds operator observation under advancing monotonic host clock observations, not physical owner stop or final fence completion. Literal positive and each retained/omitted hypothesis witness in tests/acl2/native-retire-observation-tests.lisp; actual source loop fixtures in tests/native_retire_observation_source.lisp.",
+      "milestone": "M5",
+      "requirements": [
+        "PKT-895"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "planned",
+      "evidence": [
+        "books/native-retire.lisp",
+        "tests/acl2/native-retire-observation-tests.lisp",
+        "planning/evidence/operator-retire-observation-2026-10-03-v2.json"
+      ],
+      "progress_note": "hbox warm admission over6matching cached dependencies passed; final expiry720steps/report1558steps and16fixtureforms, both decision/budget :common-lisp-compliant. Normal certification and matching saved image pending Integration; no physical stop claim.",
+      "events": [
+        "fn-nret-observation-expiry-is-uncertain",
+        "fn-nret-observation-report-requires-stopped"
+      ]
+    },
+    {
+      "id": "PRF-1264",
+      "title": "Actual owner reservation-refusal and known-abort carry the owner invariant and preserve the retention value",
+      "statement": "Proposed host-called boundary fn-owner-refuse-reservation / fn-owner-known-abort in books/owner-post-carried.lisp, called by host/native/owner.lisp through fnn-owner-action: under fn-owner-retain-statep, the complete returned state satisfies the same relation. Exact effect theorems connect each error/word/installed owner to its fn-pout model result and preserve the retention carry unchanged. Tests exercise actual writers on nonempty writer-built reservation/staging fixtures. These statements have not yet been admitted or certified; Raw dispatch annotations are proposed in source under the existing explicitly incomplete A-OWNER-INVARIANT-CARRIED runtime marker; matching book admission and image-world guard/completeness checks remain owed before any execution claim. Private owner-carrier authority migration and history-qualified completion remain open. Local implementation guarantee, no new RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010",
+        "REP-014"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/owner-post-carried.lisp",
+        "tests/acl2/owner-post-carried-tests.lisp"
+      ],
+      "progress_note": "Source prepared at 041fceb1a. First cached-only startup refused before ACL2 for missing exact dependency artifacts; no proof/admission/certification claim. Physical carrier component separately source-admitted; current globals remain authoritative."
+    },
+    {
+      "id": "PRF-1271",
+      "title": "ACL2 reads BP node budget octets and rejects repeated named rows",
+      "statement": "fn-bpnb-read is the actual native fnn-bpnode-read-budgets parser subject. It reads at most256 input octets with ASCII decimal fields1..20digits and exact owner-backoff/retry-budget keys, producing rows for the existing fn-bpnp-configured-budgets numeric/default policy. fn-bpnb-installed-backoff-refuses-another-backoff and fn-bpnb-installed-retries-refuses-another-retries refuse a matching row after its value is installed, including zero. fn-bpnb-input-past-read-bound-is-refused refuses larger input. Scope: parser and literal duplicate-row keystones, not yet a whole-file denotation/refinement theorem or physical file authenticity.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-1035"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/bp-node-budget-input.lisp",
+        "tests/acl2/bp-node-budget-input-tests.lisp",
+        "tests/native_bp_budget_input_raw.lisp",
+        "host/native/bp-node.lisp",
+        "specs/bp-node-machine.md",
+        "planning/evidence/manifests/certify-20261003T102343Z-1448390.json",
+        "planning/evidence/bp-budget-input-2026-10-03.md"
+      ],
+      "progress_note": "BP-TRANSPORT 2026-10-03: guarded parser and literal tests certified hbox certify-20261003T102343Z-1448390 PASSED 2/0. Actual shipped bounded-file caller + exact parser definitions raw PASS defaults, ASCII rows, duplicate/Unicode/unknown/negative refusal. Whole-file denotation and source-matched image remain open."
+    },
+    {
+      "id": "PRF-1265",
+      "title": "Native incremental history image rows preserve all-event history with a 16-slot consumed suffix envelope",
+      "statement": "The actual native publisher fnn-history-image-build calls fn-his-build-row. Under fn-hrc-wfp and fn-hrs-rel H C, a drained suffix accepts exactly one all-event row and the result represents H appended with that event; a pending suffix refuses without effects. Consumed one-row slots are cleared and recycled. fn-his-build-row-bounds-suffix-capacity proves a suffix capacity at most16 stays at most16 independent of event byte size. This is retained suffix pointer storage only, not whole-image allocation or per-step work: existing row encoding, relocation and flat page-array growth remain proportional. Native publishers own a fresh registered scratch instance through staged readback; finish compares ACL2 captured count to actual nimg before binding.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/history-image-build-rows.lisp",
+        "books/history-image-builder.lisp",
+        "tests/acl2/history-image-build-rows-tests.lisp",
+        "tests/acl2/history-image-builder-tests.lisp",
+        "tests/native_history_builder_raw.lisp",
+        "planning/evidence/manifests/certify-20261003T101722Z-1422001.json",
+        "planning/evidence/native-history-builder-2026-10-03.json"
+      ],
+      "progress_note": "Narrow hbox certification PASSED at exact book bytes (certify-20261003T101722Z-1422001); literal keystone teeth and actual old/new committed image comparison certified. Raw native control-flow fixture passes. Actual saved image qualification remains pending Integration convergence. Scope is retained suffix capacity only; no bounded reclaim or whole-image work claim."
+    },
+    {
+      "id": "PRF-1272",
+      "title": "Catalog allocation incarnation is reserved before native root binding",
+      "statement": "fn-cri-reserve produces a distinct natural-number catalog-root token and advances its counter before host/native/owner.lisp fnn-install-stobj binds a replacement fn-cat. Failed binding never reuses the reserved generation. Actual owner globals and paired-view capture must preserve this allocation namespace independently of history version.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/catalog-root-incarnation.lisp",
+        "tests/acl2/catalog-root-incarnation-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp"
+      ],
+      "progress_note": "Coherent reserve-before-binding source connected to actual native catalog installer; source pushed before verification per current instruction. Pure theorems/teeth, program-global bridge, matching certification/native fault schedule and paired cache consumption pending. Tokens are private to one owner/image lifetime, not persisted or compared across processes."
+    },
+    {
+      "id": "PRF-1270",
+      "title": "Resumable init accepts identical intent across stamps and refuses distinct initial changes",
+      "statement": "Host-called fn-nir-resume-decision in books/native-init-resume.lisp, called by fnn-initialize-resume-check in host/native/io.lisp. Under exact decoder premises for sequence0/txid0/generation1 records carrying the same change, equal profile values admit resume independently of requested/recorded stamps and later observed history. Positive literal encoded-record witness and each decode-premise removal witness ship in native-init-resume-tests. Actual host publication-order/mismatch consumer is tested separately, not proved by this theorem. Under exact initial-record decoder premises and distinct requested/recorded changes, matching profiles return the named initial-groups-mismatch refusal. Literal positive and all three hypothesis-removal witnesses accompany that keystone.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-10005"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/native-init-resume.lisp",
+        "tests/acl2/native-init-resume-tests.lisp",
+        "planning/evidence/operator-init-resume-2026-10-03-v2.json"
+      ],
+      "events": [
+        "fn-nir-resume-admits-identical-initial-contract-across-stamps",
+        "fn-nir-resume-refuses-distinct-initial-changes"
+      ],
+      "progress_note": "Fresh hbox cached-only admission over14matching dependencies; seven forms/22665steps/.32s, accepting keystone9852steps and refusing keystone12813steps. All3functions common-lisp-compliant;21literal/guard forms pass with final source diff5of5. Normal certification and matching developer image remain pending; no new paged startup or physical publication refinement claim."
     }
   ]
 }

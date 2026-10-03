@@ -11,7 +11,7 @@ import re
 import time
 import unittest
 
-from tests.native_harness import Client, EXIT, requires, scratch
+from tests.native_harness import Client, EXIT, keep_diagnostics, requires, scratch
 from tests import test_native_expiry as expiry  # module access: no second run of its test classes here
 from tests.test_native_expiry import DEVELOPER, ExpiryMixin, msgid
 
@@ -57,6 +57,20 @@ def page_io_issue_arguments(admission):
     if not match:
         raise ValueError("missing literal native issue arguments")
     return tuple(int(value) for value in match.groups())
+
+
+def page_io_join_trace(data, token):
+    """Exact physical join call/return observations; no inferred wait edge."""
+    text = b"(" + b" ".join(str(n).encode("ascii") for n in token) + b")"
+    rows = {}
+    for kind in ("call", "return"):
+        prefix = b"PAGE-IO observed executor-join-" + kind.encode("ascii") + b" token=" + text + b" "
+        matches = [(index, line) for index, line in enumerate(page_io_logical_lines(data))
+                   if line.startswith(prefix)]
+        if len(matches) != 1:
+            raise ValueError("missing or duplicate actual join-" + kind)
+        rows[kind] = matches[0]
+    return rows
 
 
 def page_io_native_collection(data):
@@ -128,14 +142,24 @@ class PageIOObservationTests(unittest.TestCase):
             page_io_native_collection(b"PAGE-IO settled token=(0 1 2 3 4 5) answer=:PUBLISH\n")
 
 
+    def test_join_return_cannot_be_inferred_from_physical_job_return(self):
+        data = b"PAGE-IO observed physical-return token=(0 1 2 3 4 5) row=(0 1)\n"
+        with self.assertRaisesRegex(ValueError, "join-call"):
+            page_io_join_trace(data, (0, 1, 2, 3, 4, 5))
+        data += b"PAGE-IO observed executor-join-call token=(0 1 2 3 4 5) alive=T\n"
+        with self.assertRaisesRegex(ValueError, "join-return"):
+            page_io_join_trace(data, (0, 1, 2, 3, 4, 5))
+        data += b"PAGE-IO observed executor-join-return token=(0 1 2\n 3 4 5) alive=NIL\n"
+        self.assertLess(page_io_join_trace(data, (0, 1, 2, 3, 4, 5))["call"][0],
+                        page_io_join_trace(data, (0, 1, 2, 3, 4, 5))["return"][0])
+
+
 @requires(DEVELOPER)
 class PageIOTests(unittest.TestCase):
     image = DEVELOPER
     post_all = ExpiryMixin.post_all
     filled = ExpiryMixin.filled
     owner_lines = ExpiryMixin.owner_lines
-    node = ExpiryMixin.node
-    copy_of = expiry.DeveloperExpiryTests.copy_of
 
     # The unfunded served line (books/page-read-direct.lisp, lane
     # cold-read-ownership): an operator run refuses a [resources] cold pool
@@ -144,7 +168,22 @@ class PageIOTests(unittest.TestCase):
     # one of the fixed persistent workers.
 
     def setUp(self):
+        self.observed_nodes = []
+        # Registered first: retain bounded owner streams after every node's
+        # cleanup, including passing schedules, when the existing keeper is
+        # explicitly selected by the experiment's diagnostic directory.
+        keep_diagnostics(self, self.observed_nodes)
         self.root = scratch(self, "fn-page-io-")
+
+    def node(self, name="node"):
+        node = ExpiryMixin.node(self, name)
+        self.observed_nodes.append(node)
+        return node
+
+    def copy_of(self, base, name):
+        node = expiry.DeveloperExpiryTests.copy_of(self, base, name)
+        self.observed_nodes.append(node)
+        return node
 
     def wait_line(self, owner, pattern, count=1):
         end = time.monotonic() + 120
@@ -162,6 +201,7 @@ class PageIOTests(unittest.TestCase):
         env = {"FN_NATIVE_PAGE_IO_HOLD": str(release)}
         if mode:
             env["FN_NATIVE_PAGE_IO_RESULT"] = mode
+        self.addCleanup(release.write_bytes, b"cleanup physical hold")
         owner = node.start(timeout=600, env=env)
         client = Client(node.port, timeout=120, greeting=None)
         self.addCleanup(client.close, False)
@@ -197,21 +237,82 @@ class PageIOTests(unittest.TestCase):
         self.assertTrue(trace["direct-settle"][1].endswith(b" verdict=" + verdict + b" answer=" + answer), trace)
         return trace
 
+    def observed_articles(self, node, *tags):
+        """Capture complete native replies to compare across later schedules."""
+        node.start(timeout=600)
+        client = Client(node.port, timeout=120, greeting=None)
+        try:
+            replies = {tag: client.article(msgid(tag)) for tag in tags}
+            for tag, reply in replies.items():
+                self.assertIsNotNone(reply, tag)
+            return replies
+        finally:
+            client.close(False)
+            node.stop(expect=EXIT.OK, grace=300)
+
     def test_matching_success_publishes_and_advances_the_original_request(self):
         node = self.filled()
+        expected = self.observed_articles(node, "p0")
         owner, client, release, _file = self.held(node)
         release.write_bytes(b"release")
         self.assertTrue(client.line().startswith(b"220"))
-        self.assertIn(b"body of p0", client.block())
+        self.assertEqual(client.block(), expected["p0"])
         self.wait_line(owner, rb"PAGE-IO settled token=.* answer=:PUBLISH")
         self.assert_primitive_handoff(owner, _file, b":OK", b":PUBLISH")
         self.assertTrue(client.command("DATE").startswith(b"111"))
-        node.stop(expect=None, grace=300)
+        client.close(False)
+        node.stop(expect=EXIT.OK, grace=300)
         collection = page_io_native_collection(owner.stderr.since(0))
         self.assertEqual(collection["collector_status"], ":COMPLETE", collection)
-        for label in (b":FD-OPEN", b":ISSUE", b":IO-BEGIN", b":IO-COMPLETE", b":RETURN", b":SETTLE", b":EXTENT"):
+        for label in (b":FD-OPEN", b":ISSUE", b":IO-BEGIN", b":JOB-RESULT", b":RETURN", b":SETTLE", b":EXTENT"):
             self.assertIn(label, collection["opaque_readout"])
         self.assertEqual(collection["full_comparison"], "unavailable")
+        self.assertEqual(self.observed_articles(node, "p0"), expected)
+
+    def test_sigterm_held_read_joins_then_reopens_exact_content(self):
+        node = self.filled()
+        node.start(timeout=600)
+        before = Client(node.port, timeout=120, greeting=None)
+        try:
+            expected = before.article(msgid("p0"))
+            self.assertIsNotNone(expected)
+        finally:
+            before.close(False)
+            node.stop(expect=EXIT.OK, grace=300)
+        owner, client, release, file_id = self.held(node)
+        # Always release our own physical hold before the node cleanup, even
+        # when an assertion fails. No timeout/kill substitutes for a receipt.
+        self.assertTrue(client.line().startswith(b"403 article temporarily unavailable"))
+        held = self.wait_line(owner, rb"PAGE-IO held token=.* file=" + file_id + rb"$")
+        token = tuple(int(n) for n in re.search(rb"token=\(([^)]+)\)", held).group(1).split())
+        self.wait_line(owner, rb"PAGE-IO cancelled token=")
+        client.close(False)
+        owner.terminate()  # Actual SIGTERM, not a synthetic owner outcome.
+        token_text = rb"\(" + rb"\s+".join(str(n).encode("ascii") for n in token) + rb"\)"
+        self.wait_line(owner, rb"PAGE-IO observed executor-join-call token=" + token_text + rb" alive=T$")
+        self.assertIsNone(owner.poll(), owner.diagnostics())
+        self.assertNotRegex(owner.stderr.since(0),
+                            rb"PAGE-IO observed executor-join-return token=" + token_text)
+        release.write_bytes(b"release physical hold")
+        # Only the actual physical return/receipt and completed cleanup allow
+        # this expected clean outcome; faults or pending joins fail distinctly.
+        node.exited(EXIT.OK, timeout=120)
+        joins = page_io_join_trace(owner.stderr.since(0), token)
+        trace = self.assert_primitive_handoff(owner, file_id, b":OK", b":CANCELLED")
+        self.assertTrue(joins["return"][1].endswith(b"alive=NIL"), joins)
+        self.assertLess(joins["call"][0], trace["physical-return"][0])
+        self.assertLess(trace["physical-return"][0], joins["return"][0])
+        self.assertLess(joins["return"][0], trace["direct-settle"][0])
+        # Process exit releases remaining descriptors. No individual native
+        # fd-close label is invented for OS exit or missing cleanup paths.
+        node.start(timeout=600)
+        after = Client(node.port, timeout=120, greeting=None)
+        try:
+            self.assertEqual(after.article(msgid("p0")), expected)
+        finally:
+            after.close(False)
+            node.stop(expect=EXIT.OK, grace=300)
+
 
     def test_cancel_retire_and_reuse_keep_the_old_fd_until_actual_completion(self):
         # The retirement is an operator compaction while serving: its
@@ -226,6 +327,7 @@ class PageIOTests(unittest.TestCase):
         # known gap of Q16, filed by lane cold-read-ownership-2, not an
         # ownership question.)
         base = self.filled()
+        expected = self.observed_articles(base, "p0", "n0")
         for mode in ("", "stale", "duplicate"):
             with self.subTest(completion=mode or "success"):
                 node = self.copy_of(base, "late-" + (mode or "success"))
@@ -264,12 +366,13 @@ class PageIOTests(unittest.TestCase):
                     self.wait_line(owner, ("PAGE-IO %s answer=:STALE" % mode).encode("ascii"))
                 # No late 220/body is delivered into this replacement request.
                 self.assertTrue(new.command("DATE").startswith(b"111"))
-                self.assertIsNotNone(new.article(msgid("n0")))
+                self.assertEqual(new.article(msgid("n0")), expected["n0"])
                 # The reclaimed-free retirement served on: p0 reads its octets
                 # through the checkpoint's frame.
-                self.assertIn(b"body of p0", new.article(msgid("p0")) or b"")
+                self.assertEqual(new.article(msgid("p0")), expected["p0"])
                 new.close(False)
-                node.stop(expect=None, grace=300)
+                node.stop(expect=EXIT.OK, grace=300)
+                self.assertEqual(self.observed_articles(node, "p0", "n0"), expected)
 
     def test_a_publication_never_retires_the_history_image(self):
         # c05 finding F1 (lane def-holder): the history image's file,

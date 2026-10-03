@@ -7,10 +7,13 @@ After compaction or takeover, follow the plan’s [reorientation routine](overni
 Read it with [the repair ledger](repair/STATUS.md) and [the contributor guide](../CONTRIBUTORS.md).
 The [next implementation slices](../NSLICESQUEUE.md) preserve the remaining
 capability work, dependencies, ownership gaps and concrete completion criteria.
-The groundwork wave is active: nine GPT-6.1-Sol workers and the strategic
-coordinator. Five subsystem deputies and the groundwork deputy are joined by
-empirical scenarios, typed-ledger execution proofs and command-table rows, each
-feeding an existing consumer and assembler. Composition and representation
+The capability wave is active: subsystem deputies, empirical execution, a
+source assembler and consumed representation/command helpers. The former proof
+Sol now owns the owner carrier; the four Luna sweep helpers are stopped.
+Astra owns checkpoint publication/read-back, the page helper carried catalog
+availability. History owns native history/root and effective reclaim; Operator owns retire/diagnostic/init consumers, with S012 source integrated. Access, Web and BP transport now have continuing Sol owners.
+The plan names the current sessions without treating a paused or completed
+session as running. Composition and representation
 contracts remain with the groundwork deputy while the wider roster is a target. New lanes wait for a
 useful independent need and coordinator agreement. The initial orientation
 snapshot is recorded in the plan; `8d17b09dd` integrated that planning/ledger

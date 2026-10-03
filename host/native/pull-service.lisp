@@ -41,7 +41,7 @@
 
 (defstruct (fnn-pull-runtime (:constructor %make-fnn-pull-runtime))
   service worker (stopping nil) lock (schedule nil) (cursors nil)
-  (journals nil) (socket nil)
+  (journals nil) (socket nil) (flights nil)
   ;; PRF-325: the catch-up rounds' own schedule, cursors and FNCU journals.
   (cu-schedule nil) (cu-cursors nil) (cu-journals nil))
 
@@ -305,170 +305,19 @@ acceptance (the owner is stopping or fenced then)."
           nil)))))
 
 (defun fnn-pull-round (runtime plan journal cursor &optional (kind :pull))
-  "Drive one ACL2 pull session (KIND :pull) or catch-up session (KIND
-:catch-up, PRF-325); return the cursor after its close."
-  (let* ((service (fnn-pull-runtime-service runtime))
-         (peer (fnn-core 'fn-pull-plan-peer plan))
-         (catch-up (eq kind :catch-up))
-         (begun (if catch-up
-                    ;; The catch-up round reads no clock: its cursor is a log
-                    ;; position and a digest chain.
-                    (fnn-core 'fn-cu-session-begin-pair plan cursor
-                              (fnn-pull-profile plan))
-                  (fnn-core 'fn-pull-session-begin-pair plan cursor
-                            (fnn-owner-wall-milliseconds)
-                            (fnn-pull-profile plan))))
-         (session (first begun))
-         (socket nil) (fd nil) (context nil) (channel nil) (cid nil) (events nil)
-         ;; friend-path-2: ACL2's name for why the round failed (the first
-         ;; failing step's fn-pull-session-failure), for the log line.
-         (why nil))
-    (labels ((enqueue (event) (setq events (append events (list event))))
-             ;; Sweep S007: the owner's refusal of the local transit
-             ;; connection (its connection table full: fn-own-open-peer
-             ;; answers no id) or of a step on it is this round's lost local
-             ;; connection, (:lost :local), never the node's fault.  A Store
-             ;; fault or an uncertain outcome is still the node's.
-             (local-scoped (thunk)
-               (handler-case (funcall thunk)
-                 ((or fnn-store-fault fnn-store-indeterminate) (e) (error e))
-                 (fnn-store-error (e)
-                   (fnn-err "pull: the local transit connection of peer ~a was refused: ~a"
-                            (fnn-pull-peer-string peer) e)
-                   ;; CID, if one was open, stays for the round's own close.
-                   (enqueue (list :lost :local)))))
-             (open-local ()
-               (local-scoped
-                (lambda ()
-                  (multiple-value-bind (opened greeting)
-                      (fnn-pull-local-open service peer)
-                    (setq cid opened)
-                    (enqueue (cons :local (fnn-octet-list greeting)))))))
-             (send-remote (octets)
-               (if channel
-                   (fnn-tls-send-all channel octets 10)
-                 (fnn-send-all fd octets 10)))
-             (perform (effects)
-               (dolist (effect effects)
-                 (case (car effect)
-                   (:journal (fnn-pull-journal-append journal (cdr effect) kind))
-                   (:dial
-                    ;; PKT-613: the host as ACL2 decides to reach it
-                    ;; (`fn-peer-dial-target'); a failed resolution or connect
-                    ;; is logged by name and is this round's :lost.
-                    (handler-case
-                        (setq socket (fnn-peer-connect (fnn-core 'fn-pull-plan-host plan)
-                                                       (fnn-core 'fn-pull-plan-port plan)
-                                                       :timeout 10)
-                              fd (fnn-socket-fd socket))
-                      (error (condition)
-                        (fnn-peer-dial-report :pull peer (fnn-core 'fn-pull-plan-host plan)
-                                              condition)
-                        (enqueue (list :lost :dial))))
-                    (sb-thread:with-mutex ((fnn-pull-runtime-lock runtime))
-                      (setf (fnn-pull-runtime-socket runtime) socket)))
-                   ;; (:tls SERVER-NAME TRUST-ANCHOR): the handshake ACL2 asked
-                   ;; for, verified against exactly that name and anchor; only a
-                   ;; verified handshake is reported (:tls-up).
-                   (:tls
-                    (if (null fd)
-                        (enqueue (list :lost :dial))
-                      (handler-case
-                          ;; PKT-613 (PRF-231): the check is ACL2's
-                          ;; `fn-peer-tls-verification' of the configured name
-                          ;; and trust.
-                          (let ((verification (fnn-core 'fn-peer-tls-verification
-                                                        (second effect) (third effect))))
-                            (unless (eq (first verification) :verify)
-                              (error 'fnn-peer-dial-error
-                                     :outcome (if (eq (second verification) :trust)
-                                                  :trust :server-name)))
-                            (setq context (fnn-tls-open-client-context (fourth verification)))
-                            (setq channel (fnn-tls-connect context fd (second verification) 10
-                                                           :sni (third verification)))
-                            (enqueue (list :tls-up)))
-                        (error (e)
-                          (fnn-err "pull: TLS to peer ~a failed: ~a"
-                                   (fnn-pull-peer-string peer) e)
-                          (fnn-peer-dial-report :pull peer (fnn-core 'fn-pull-plan-host plan) e)
-                          (enqueue (list :lost :tls))))))
-                   (:remote (handler-case (send-remote (fnn-octets (cdr effect)))
-                              (error () (enqueue (list :lost :send)))))
-                   (:open-local (open-local))
-                   ;; PRF-165: the peer answered ARTICLE 430; the transit
-                   ;; connection is inside an IHAVE it cannot finish.  Close
-                   ;; it (the owner discards the unfinished IHAVE) and open a
-                   ;; fresh one; its greeting is the round's next event.
-                   (:reopen-local
-                    (when cid
-                      (let ((old cid))
-                        (setq cid nil)
-                        (fnn-owner-response-unpin service old)
-                        (fnn-owner-transit-serialized service nil
-                                              (lambda () (fnn-owner-action 'fn-owner-close old)))))
-                    (open-local))
-                   (:local
-                    (local-scoped
-                     (lambda ()
-                       (multiple-value-bind (reply closing)
-                           (fnn-pull-local-send service cid (cdr effect))
-                         (when (> (length reply) 0)
-                           (enqueue (cons :local (fnn-octet-list reply))))
-                         (when closing
-                           (setq cid nil)
-                           (enqueue (list :lost :local)))))))
-                   (:close nil)
-                   (t (fnn-fault "unknown pull effect ~s" (car effect))))))
-             (advance (event)
-               (let ((triple (if catch-up
-                                 ;; the catch-up session names no failure reason
-                                 (let ((pair (fnn-core 'fn-cu-session-step-pair session event)))
-                                   (list (first pair) (second pair) nil))
-                               (fnn-core 'fn-pull-session-step-triple session event))))
-                 (setq session (first triple))
-                 (unless why (setq why (third triple)))
-                 (perform (second triple))))
-             (receive ()
-               (let ((limit (or (fnn-core (if catch-up 'fn-cu-session-read-limit
-                                            'fn-pull-session-read-limit)
-                                          session)
-                                +fnn-max-read+)))
-                 (handler-case
-                     (if channel
-                         (fnn-tls-read channel +fnn-pull-read-seconds+ limit)
-                       (fnn-recv fd +fnn-pull-read-seconds+ limit))
-                   (error () :read-error)))))
+  "Blocking compatibility adapter; the worker uses retained flights directly."
+  (let ((flight (fnn-pull-flight-begin runtime plan journal cursor kind)) (primary nil))
+    (handler-bind ((serious-condition (lambda (condition) (unless primary (setq primary condition)))))
       (unwind-protect
            (progn
-             (perform (second begun))
-             (loop until (or (fnn-core (if catch-up 'fn-cu-session-done-p
-                                         'fn-pull-session-done-p)
-                                       session)
-                             (fnn-pull-stoppingp runtime)) do
-               (if (or events (null fd))
-                   (advance (if events (pop events) (list :lost :dial)))
-                 (let ((incoming (receive)))
-                   (advance (cond ((eq incoming :timeout) (list :lost :timeout))
-                                  ((member incoming '(:lost :read-error)) (list :lost :read))
-                                  ((zerop (length incoming)) (list :lost :eof))
-                                  (t (cons :remote (fnn-octet-list incoming)))))))))
-        (sb-thread:with-mutex ((fnn-pull-runtime-lock runtime))
-          (setf (fnn-pull-runtime-socket runtime) nil))
-        (when cid
-          (fnn-owner-response-unpin service cid)
-          (ignore-errors
-           (fnn-owner-transit-serialized service nil
-                                 (lambda () (fnn-owner-action 'fn-owner-close cid)))))
-        (when channel (ignore-errors (fnn-tls-close-channel channel)))
-        (when context (ignore-errors (fnn-tls-close-context context)))
-        (when socket (ignore-errors (fnn-socket-shut socket))))
-      (perform (fnn-core (if catch-up 'fn-cu-session-close-effects
-                           'fn-pull-session-close-effects)
-                         session))
-      (fnn-log-line (if catch-up
-                        (fnn-core 'fn-cu-session-log-line session)
-                      (fnn-core 'fn-pull-session-log-line-why session why)))
-      (fnn-core (if catch-up 'fn-cu-session-close 'fn-pull-session-close) session))))
+             (loop until (or (fnn-pull-stoppingp runtime)
+                             (eq (fnn-pull-flight-step flight) :finished)) do
+               (sleep (/ (fnn-core 'fn-prd-idle-ms) 1000)))
+             (fnn-pull-flight-finish flight)
+             (fnn-core (if (eq kind :catch-up) 'fn-cu-session-close 'fn-pull-session-close)
+                       (fnn-pull-flight-session flight)))
+        (if primary (ignore-errors (fnn-pull-flight-dispose flight))
+          (fnn-pull-flight-dispose flight))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; The worker
@@ -500,6 +349,36 @@ acceptance (the owner is stopping or fenced then)."
         (push (cons key cursor) (fnn-pull-runtime-cu-cursors runtime))
         (values journal cursor)))))
 
+(defun fnn-pull-prune-journals (runtime plans &optional (kind :pull))
+  "Retire descriptor custody only for peers ACL2's current plans no longer name."
+  (let* ((catchup (eq kind :catch-up))
+         (journals (if catchup (fnn-pull-runtime-cu-journals runtime)
+                     (fnn-pull-runtime-journals runtime)))
+         (retired (make-hash-table :test #'equal))
+         (keep nil) (close nil))
+    (dolist (entry journals)
+      (if (fnn-core 'fn-pull-plan-for
+                    (fnn-octet-list (fnn-string-octets (car entry))) plans)
+          (push entry keep)
+        (progn
+          (setf (gethash (car entry) retired) t)
+          (push (cdr entry) close))))
+    (flet ((live-cursor (entry) (not (gethash (car entry) retired))))
+      (if catchup
+          (setf (fnn-pull-runtime-cu-journals runtime) (nreverse keep)
+                (fnn-pull-runtime-cu-cursors runtime)
+                (remove-if-not #'live-cursor (fnn-pull-runtime-cu-cursors runtime)))
+        (setf (fnn-pull-runtime-journals runtime) (nreverse keep)
+              (fnn-pull-runtime-cursors runtime)
+              (remove-if-not #'live-cursor (fnn-pull-runtime-cursors runtime)))))
+    ;; Drop retired cache entries before close: a close fault never leaves
+    ;; a cached nil descriptor available to a later round.
+    (let ((failure nil))
+      (dolist (journal close)
+        (handler-case (fnn-owner-feed-close journal)
+          (serious-condition (condition) (unless failure (setq failure condition)))))
+      (when failure (error failure)))))
+
 ;;; PRF-325: one due catch-up round, scheduled exactly as a pull
 ;;; (fn-pull-schedule and fn-sched-pull-* over the catch-up plans, which are
 ;;; pull plans with the catch-up interval) but on its own table.
@@ -508,6 +387,7 @@ acceptance (the owner is stopping or fenced then)."
          (plans (fnn-owner-transit-serialized
                  service nil (lambda () (fnn-owner-core 'fn-owner-catchup-plans))))
          (now (fnn-pull-monotonic)))
+    (fnn-pull-prune-journals runtime plans :catch-up)
     (setf (fnn-pull-runtime-cu-schedule runtime)
           (fnn-core 'fn-pull-schedule plans now (fnn-pull-runtime-cu-schedule runtime)))
     (let ((peer (fnn-core 'fn-sched-pull-due (fnn-pull-runtime-cu-schedule runtime) now)))
@@ -524,35 +404,437 @@ acceptance (the owner is stopping or fenced then)."
                 (fnn-core 'fn-sched-pull-finish peer (fnn-pull-monotonic)
                           (fnn-pull-runtime-cu-schedule runtime))))))))
 
+;;; A worker owns these continuations. Callback threads publish only a cell
+;;; under the runtime mutex; they never call the owner while holding it.
+(defstruct (fnn-pull-flight (:constructor %make-fnn-pull-flight))
+  runtime plan journal kind key peer session effects events why
+  socket fd context channel tls-name io deadline data (offset 0) end
+  cid input cold cold-word await completion render cursor-cold-since parts closing resume-at
+  (closed nil))
+
+(defun fnn-pull-flight-event (flight event)
+  (setf (fnn-pull-flight-events flight)
+        (append (fnn-pull-flight-events flight) (list event))))
+
+(defun fnn-pull-flight-service (flight)
+  (fnn-pull-runtime-service (fnn-pull-flight-runtime flight)))
+
+(defun fnn-pull-flight-set-socket (flight socket)
+  (let ((runtime (fnn-pull-flight-runtime flight)))
+    (sb-thread:with-mutex ((fnn-pull-runtime-lock runtime))
+      (setf (fnn-pull-flight-socket flight) socket))))
+
+(defun fnn-pull-flight-close-local (flight)
+  "Revoke publication and attempt every local release, preserving first failure."
+  (let ((cid (fnn-pull-flight-cid flight))
+        (cold (fnn-pull-flight-cold flight))
+        (service (fnn-pull-flight-service flight)) (await nil) (failure nil))
+    ;; Invalidate the callback's captured await identity before owner calls.
+    ;; Abandonment revokes publication; it is not a physical-job receipt.
+    (sb-thread:with-mutex ((fnn-pull-runtime-lock (fnn-pull-flight-runtime flight)))
+      (setq await (fnn-pull-flight-await flight))
+      (setf (fnn-pull-flight-cid flight) nil
+            (fnn-pull-flight-await flight) nil
+            (fnn-pull-flight-completion flight) nil))
+    (setf (fnn-pull-flight-cold flight) nil
+          (fnn-pull-flight-input flight) nil
+          (fnn-pull-flight-render flight) nil
+          (fnn-pull-flight-cursor-cold-since flight) nil)
+    (flet ((release (thunk)
+             (handler-case (funcall thunk)
+               (serious-condition (condition) (unless failure (setq failure condition))))))
+      (when cold (release (lambda () (fnn-owner-cold-abandon (first cold)))))
+      (when cid
+        (when await (release (lambda () (fnn-owner-await-abandon service cid))))
+        (release (lambda () (fnn-owner-response-unpin service cid)))
+        (release (lambda ()
+                   (fnn-owner-transit-serialized
+                    service nil (lambda () (fnn-owner-action 'fn-owner-close cid)))))))
+    (when failure (error failure))))
+
+(defun fnn-pull-flight-dispose (flight)
+  "Attempt all releases; preserve the first cleanup condition."
+  (when (sb-thread:with-mutex ((fnn-pull-runtime-lock (fnn-pull-flight-runtime flight)))
+          (unless (fnn-pull-flight-closed flight)
+            (setf (fnn-pull-flight-closed flight) t)
+            t))
+    (let ((failure nil))
+      (flet ((release (thunk)
+               (handler-case (funcall thunk)
+                 (serious-condition (condition) (unless failure (setq failure condition))))))
+        (release (lambda () (fnn-pull-flight-close-local flight)))
+        (release (lambda () (fnn-tls-close-channel (fnn-pull-flight-channel flight))))
+        (release (lambda () (fnn-tls-close-context (fnn-pull-flight-context flight))))
+        (release (lambda () (when (fnn-pull-flight-socket flight)
+                              (fnn-socket-shut (fnn-pull-flight-socket flight)))))
+        (fnn-pull-flight-set-socket flight nil))
+      (when failure (error failure)))))
+
+(defun fnn-pull-flight-begin (runtime plan journal cursor kind)
+  (let* ((peer (fnn-core 'fn-pull-plan-peer plan))
+         (begun (if (eq kind :catch-up)
+                    (fnn-core 'fn-cu-session-begin-pair plan cursor (fnn-pull-profile plan))
+                  (fnn-core 'fn-pull-session-begin-pair plan cursor
+                            (fnn-owner-wall-milliseconds) (fnn-pull-profile plan)))))
+    (%make-fnn-pull-flight :runtime runtime :plan plan :journal journal :kind kind
+                          :key (fnn-core 'fn-prd-key kind peer) :peer peer
+                          :session (first begun) :effects (second begun))))
+
+(defun fnn-pull-flight-advance (flight event)
+  (let ((triple (if (eq (fnn-pull-flight-kind flight) :catch-up)
+                    (append (fnn-core 'fn-cu-session-step-pair
+                                      (fnn-pull-flight-session flight) event) (list nil))
+                  (fnn-core 'fn-pull-session-step-triple
+                            (fnn-pull-flight-session flight) event))))
+    (setf (fnn-pull-flight-session flight) (first triple)
+          (fnn-pull-flight-effects flight) (second triple))
+    (unless (fnn-pull-flight-why flight)
+      (setf (fnn-pull-flight-why flight) (third triple)))))
+
+(defun fnn-pull-flight-set-io (flight io &optional timed)
+  (setf (fnn-pull-flight-io flight) io
+        (fnn-pull-flight-deadline flight)
+        (and timed (fnn-core 'fn-prd-deadline (fnn-pull-monotonic)
+                            (fnn-core 'fn-owner-feed-connect-timeout)))))
+
+(defun fnn-pull-flight-local-open (flight)
+  (multiple-value-bind (cid greeting)
+      (fnn-pull-local-open (fnn-pull-flight-service flight) (fnn-pull-flight-peer flight))
+    (setf (fnn-pull-flight-cid flight) cid)
+    (fnn-pull-flight-event flight (cons :local (fnn-octet-list greeting)))))
+
+(defun fnn-pull-flight-effect (flight effect)
+  (case (car effect)
+    (:journal (fnn-pull-journal-append (fnn-pull-flight-journal flight) (cdr effect)
+                                     (fnn-pull-flight-kind flight)))
+    (:dial
+     (multiple-value-bind (socket word)
+         (fnn-peer-connect-start (fnn-core 'fn-pull-plan-host (fnn-pull-flight-plan flight))
+                                 (fnn-core 'fn-pull-plan-port (fnn-pull-flight-plan flight)))
+       (fnn-pull-flight-set-socket flight socket)
+       (setf (fnn-pull-flight-fd flight) (fnn-socket-fd socket))
+       (unless (eq word :connected) (fnn-pull-flight-set-io flight :dial t))))
+    (:tls
+     (unless (fnn-pull-flight-fd flight)
+       (fnn-pull-flight-event flight (list :lost :dial))
+       (return-from fnn-pull-flight-effect nil))
+     (let ((verification (fnn-core 'fn-peer-tls-verification (second effect) (third effect))))
+       (unless (eq (first verification) :verify)
+         (error 'fnn-peer-dial-error :outcome (if (eq (second verification) :trust)
+                                                :trust :server-name)))
+       (setf (fnn-pull-flight-context flight) (fnn-tls-open-client-context (fourth verification))
+             (fnn-pull-flight-tls-name flight) (second verification)
+             (fnn-pull-flight-channel flight)
+             (fnn-tls-client-begin (fnn-pull-flight-context flight) (fnn-pull-flight-fd flight)
+                                   (second verification) :sni (third verification)))
+       (fnn-pull-flight-set-io flight :tls t)))
+    (:remote
+     (setf (fnn-pull-flight-data flight) (fnn-octets (cdr effect))
+           (fnn-pull-flight-offset flight) 0
+           (fnn-pull-flight-end flight) nil)
+     (unless (zerop (length (fnn-pull-flight-data flight)))
+       (fnn-pull-flight-set-io flight :send t)))
+    (:open-local (fnn-pull-flight-local-open flight))
+    (:reopen-local (fnn-pull-flight-close-local flight) (fnn-pull-flight-local-open flight))
+    (:local
+     (setf (fnn-pull-flight-input flight) (fnn-octets (cdr effect))
+           (fnn-pull-flight-parts flight) nil
+           (fnn-pull-flight-closing flight) nil
+           (fnn-pull-flight-resume-at flight) nil)
+     (fnn-pull-flight-set-io flight :local))
+    (:close nil)
+    (t (fnn-fault "unknown pull effect ~s" (car effect)))))
+
+(defun fnn-pull-flight-local-step (flight)
+  "One local cold/commit/render/input quantum; no page or completion waits."
+  (let ((service (fnn-pull-flight-service flight)) (cid (fnn-pull-flight-cid flight))
+        (now (fnn-pull-monotonic)))
+    (when (and (fnn-pull-flight-resume-at flight)
+               (< now (fnn-pull-flight-resume-at flight)))
+      (return-from fnn-pull-flight-local-step :wait))
+    (setf (fnn-pull-flight-resume-at flight) nil)
+    (cond
+      ((fnn-pull-flight-cold flight)
+       (destructuring-bind (read line-since since &optional kind) (fnn-pull-flight-cold flight)
+         (multiple-value-bind (word since at limit)
+             (fnn-owner-cold-poll service read line-since since)
+           (cond
+             ((consp word)
+              (when (eq kind :cursor)
+                (setf (fnn-pull-flight-resume-at flight)
+                      (fnn-core 'fn-prd-resume-at now (second word)))))
+             ((eq kind :cursor)
+              ;; A rendered response resumes its exact plan, never the input
+              ;; decoder. Keep the read for cleanup if polling refuses/faults.
+              (unless (eq word :serve)
+                (error 'fnn-store-io-refusal
+                       :message (format nil "pull cursor: payload read ~(~a~); the reply is terminated" word)))
+              (setf (fnn-pull-flight-cold flight) nil))
+             (t
+              (setf (fnn-pull-flight-cold flight) nil
+                    (fnn-pull-flight-cold-word flight)
+                    (list word since at limit (or line-since since))))))))
+      ((fnn-pull-flight-await flight)
+       (let ((completion nil))
+         (sb-thread:with-mutex ((fnn-pull-runtime-lock (fnn-pull-flight-runtime flight)))
+           (setq completion (fnn-pull-flight-completion flight))
+           (setf (fnn-pull-flight-completion flight) nil))
+         (unless completion (return-from fnn-pull-flight-local-step :wait))
+         (destructuring-bind (step redeem) (fnn-pull-flight-await flight)
+           (sb-thread:with-mutex ((fnn-pull-runtime-lock (fnn-pull-flight-runtime flight)))
+             (setf (fnn-pull-flight-await flight) nil))
+           (let ((value (car completion)))
+             (if (eq value :uncertain)
+                 (setf (fnn-pull-flight-closing flight) t)
+               (let ((closing (and (consp value) (eq (car value) :close))))
+                 (when closing (setf (fnn-pull-flight-closing flight) t))
+                 (setf (fnn-pull-flight-render flight)
+                       (fnn-core 'fn-splan-step-plan step (if closing (cdr value) value) redeem))))))))
+      ((fnn-pull-flight-render flight)
+       (multiple-value-bind (part rest done yielded cold-read)
+           (fnn-owner-render-next-quantum service cid (fnn-pull-flight-render flight) :transit)
+         (setf (fnn-pull-flight-render flight) (unless done rest))
+         (if cold-read
+             (progn
+               (unless (fnn-pull-flight-cursor-cold-since flight)
+                 (setf (fnn-pull-flight-cursor-cold-since flight) now))
+               (setf (fnn-pull-flight-cold flight)
+                     (list cold-read (fnn-pull-flight-cursor-cold-since flight) now :cursor)))
+           (push part (fnn-pull-flight-parts flight)))
+         (when (and (not done) yielded)
+           (setf (fnn-pull-flight-resume-at flight)
+                 (fnn-core 'fn-prd-resume-at now (fnn-core 'fn-splan-cursor-resume-ms))))
+         (when done
+           (setf (fnn-pull-flight-cursor-cold-since flight) nil)
+           (fnn-owner-response-unpin service cid))))
+      ((or (fnn-pull-flight-closing flight)
+           (zerop (length (fnn-pull-flight-input flight))))
+       (let ((reply (fnn-owner-join-octets (nreverse (fnn-pull-flight-parts flight)))))
+         (when (> (length reply) 0)
+           (fnn-pull-flight-event flight (cons :local (fnn-octet-list reply)))))
+       (when (fnn-pull-flight-closing flight)
+         (fnn-pull-flight-close-local flight)
+         (fnn-pull-flight-event flight (list :lost :local)))
+       (fnn-pull-flight-set-io flight nil))
+      (t
+       (let* ((input (fnn-pull-flight-input flight))
+              (word (fnn-pull-flight-cold-word flight))
+              (results (multiple-value-list
+                        (destructuring-bind (&optional w since at limit line-since) word
+                          (fnn-owner-handle-chunk-step service cid input nil
+                                                      (fnn-owner-peer-read-class service) t
+                                                      w line-since since at limit)))))
+         (setf (fnn-pull-flight-cold-word flight) nil)
+         (case (first results)
+           (:cold (setf (fnn-pull-flight-cold flight)
+                        (list (second results) (fifth word) now)))
+           (:defer (setf (fnn-pull-flight-resume-at flight)
+                         (fnn-core 'fn-prd-resume-at now (second results))))
+           (t
+            (let* ((await (eq (first results) :await))
+                   (used (if await (sixth results) (fourth results)))
+                   (closing (if await (fourth results) (second results))))
+              (unless (and (integerp used) (<= 0 used (length input))
+                           (or (plusp used) closing))
+                (fnn-fault "owner consumed no octets of a pull transit write"))
+              (setf (fnn-pull-flight-input flight) (subseq input used)
+                    (fnn-pull-flight-closing flight) closing)
+              (if await
+                  (progn
+                    (sb-thread:with-mutex ((fnn-pull-runtime-lock (fnn-pull-flight-runtime flight)))
+                      (setf (fnn-pull-flight-await flight) (list (second results) (third results))))
+                    (let* ((marker (fnn-pull-flight-await flight))
+                           (early
+                            (fnn-owner-await-register
+                             service cid
+                             (lambda (completion)
+                               (sb-thread:with-mutex
+                                   ((fnn-pull-runtime-lock (fnn-pull-flight-runtime flight)))
+                                 (when (and (not (fnn-pull-flight-closed flight))
+                                            (eq marker (fnn-pull-flight-await flight)))
+                                   (setf (fnn-pull-flight-completion flight) (list completion)))))
+                             nil)))
+                      (when early
+                        (sb-thread:with-mutex ((fnn-pull-runtime-lock (fnn-pull-flight-runtime flight)))
+                          (setf (fnn-pull-flight-completion flight) (list early))))))
+                (progn
+                  (setf (fnn-pull-flight-render flight) (first results))
+                  (unless (first results) (fnn-owner-response-unpin service cid))))))))))))
+
+(defun fnn-pull-flight-try (flight action stage)
+  (handler-case (funcall action)
+    (serious-condition (condition)
+      (unless (fnn-core 'fn-prd-loss-class-ok stage (fnn-condition-class condition))
+        (error condition))
+      (when (eq stage :dial)
+        (fnn-peer-dial-report :pull (fnn-pull-flight-peer flight)
+                              (fnn-core 'fn-pull-plan-host (fnn-pull-flight-plan flight)) condition))
+      (fnn-pull-flight-set-io flight nil)
+      (setf (fnn-pull-flight-effects flight) nil (fnn-pull-flight-events flight) nil)
+      (fnn-pull-flight-advance flight (list :lost stage)))))
+
+(defun fnn-pull-flight-read (flight)
+  (unless (fnn-pull-flight-fd flight)
+    (fnn-pull-flight-event flight (list :lost :dial))
+    (return-from fnn-pull-flight-read nil))
+  (let* ((limit (fnn-core 'fn-prd-read-limit
+                          (fnn-core (if (eq (fnn-pull-flight-kind flight) :catch-up)
+                                        'fn-cu-session-read-limit 'fn-pull-session-read-limit)
+                                    (fnn-pull-flight-session flight))))
+         (incoming (if (fnn-pull-flight-channel flight)
+                       (fnn-tls-read-now (fnn-pull-flight-channel flight) limit)
+                     (fnn-socket-read-now (fnn-pull-flight-fd flight) limit))))
+    (if (member incoming '(:wait :input :output))
+        :wait
+      (fnn-pull-flight-event flight (if (zerop (length incoming)) (list :lost :eof)
+                                     (cons :remote (fnn-octet-list incoming)))))))
+
+(defun fnn-pull-flight-io-step (flight)
+  (case (fnn-pull-flight-io flight)
+    (:dial (when (eq (fnn-connect-poll (fnn-pull-flight-socket flight)) :connected)
+             (fnn-pull-flight-set-io flight nil)))
+    (:tls (when (eq (fnn-tls-client-step (fnn-pull-flight-channel flight)
+                                       (fnn-pull-flight-tls-name flight)) :connected)
+            (fnn-pull-flight-set-io flight nil)
+            (fnn-pull-flight-event flight (list :tls-up))))
+    (:send
+     (let* ((data (fnn-pull-flight-data flight)) (offset (fnn-pull-flight-offset flight))
+            (end (or (fnn-pull-flight-end flight)
+                     (setf (fnn-pull-flight-end flight)
+                           (fnn-core 'fn-prd-write-end offset (length data)))))
+            (written (if (fnn-pull-flight-channel flight)
+                         (fnn-tls-write-now-range (fnn-pull-flight-channel flight) data offset end)
+                       (fnn-socket-write-now (fnn-pull-flight-fd flight) data offset end))))
+       (when (integerp written)
+         (incf (fnn-pull-flight-offset flight) written)
+         (when (= (fnn-pull-flight-offset flight) end)
+           (setf (fnn-pull-flight-end flight) nil))
+         (when (= (fnn-pull-flight-offset flight) (length data))
+           (setf (fnn-pull-flight-data flight) nil)
+           (fnn-pull-flight-set-io flight nil)))))
+    (:local (fnn-pull-flight-local-step flight))
+    (t (fnn-fault "unknown pull continuation"))))
+
+(defun fnn-pull-flight-step (flight)
+  (let* ((catchup (eq (fnn-pull-flight-kind flight) :catch-up))
+         (action (fnn-core 'fn-prd-action
+                           (fnn-core (if catchup 'fn-cu-session-done-p 'fn-pull-session-done-p)
+                                     (fnn-pull-flight-session flight))
+                           (fnn-pull-flight-effects flight) (fnn-pull-flight-events flight)
+                           (fnn-pull-flight-io flight) (fnn-pull-monotonic)
+                           (fnn-pull-flight-deadline flight))))
+    (case (car action)
+      (:lost (fnn-pull-flight-set-io flight nil)
+             (setf (fnn-pull-flight-effects flight) nil (fnn-pull-flight-events flight) nil)
+             (fnn-pull-flight-advance flight action))
+      (:io (fnn-pull-flight-try flight (lambda () (fnn-pull-flight-io-step flight)) (second action)))
+      (:effect
+       (pop (fnn-pull-flight-effects flight))
+       (fnn-pull-flight-try flight
+                            (lambda () (fnn-pull-flight-effect flight (second action)))
+                            (case (car (second action))
+                              ((:local :open-local :reopen-local) :local)
+                              (:remote :send) (t (car (second action))))))
+      (:event (pop (fnn-pull-flight-events flight))
+              (fnn-pull-flight-advance flight (second action)))
+      (:read (fnn-pull-flight-try flight (lambda () (fnn-pull-flight-read flight)) :read))
+      (:finish :finished)
+      (t (fnn-fault "unknown ACL2 pull driver action")))))
+
+(defun fnn-pull-flight-finish (flight)
+  (let* ((runtime (fnn-pull-flight-runtime flight))
+         (catchup (eq (fnn-pull-flight-kind flight) :catch-up))
+         (session (fnn-pull-flight-session flight)))
+    (fnn-pull-flight-dispose flight)
+    (dolist (effect (fnn-core (if catchup 'fn-cu-session-close-effects 'fn-pull-session-close-effects)
+                             session))
+      (fnn-pull-flight-effect flight effect))
+    (fnn-log-line (if catchup (fnn-core 'fn-cu-session-log-line session)
+                   (fnn-core 'fn-pull-session-log-line-why session (fnn-pull-flight-why flight))))
+    (let ((closed (fnn-core (if catchup 'fn-cu-session-close 'fn-pull-session-close) session))
+          (key (fnn-pull-peer-string (fnn-pull-flight-peer flight))))
+      (setf (cdr (assoc key (if catchup (fnn-pull-runtime-cu-cursors runtime)
+                             (fnn-pull-runtime-cursors runtime)) :test #'string=)) closed))
+    (if catchup
+        (setf (fnn-pull-runtime-cu-schedule runtime)
+              (fnn-core 'fn-sched-pull-finish (fnn-pull-flight-peer flight) (fnn-pull-monotonic)
+                        (fnn-pull-runtime-cu-schedule runtime)))
+      (setf (fnn-pull-runtime-schedule runtime)
+            (fnn-core 'fn-sched-pull-finish (fnn-pull-flight-peer flight) (fnn-pull-monotonic)
+                      (fnn-pull-runtime-schedule runtime))))))
+
+(defun fnn-pull-admit-flight (runtime plans kind)
+  (let* ((catchup (eq kind :catch-up)) (now (fnn-pull-monotonic))
+         (schedule (fnn-core 'fn-pull-schedule plans now
+                             (if catchup (fnn-pull-runtime-cu-schedule runtime)
+                               (fnn-pull-runtime-schedule runtime))))
+         (peer (fnn-core 'fn-sched-pull-due schedule now)))
+    (when peer
+      (setq schedule (fnn-core 'fn-sched-pull-start peer schedule))
+      (let ((plan (fnn-core 'fn-pull-plan-for peer plans)))
+        (multiple-value-bind (journal cursor)
+            (if catchup (fnn-catchup-cursor-for runtime plan) (fnn-pull-cursor-for runtime plan))
+          (let ((flight (fnn-pull-flight-begin runtime plan journal cursor kind)))
+            (sb-thread:with-mutex ((fnn-pull-runtime-lock runtime))
+              (setf (fnn-pull-runtime-flights runtime)
+                    (append (fnn-pull-runtime-flights runtime) (list flight))))))))
+    (if catchup (setf (fnn-pull-runtime-cu-schedule runtime) schedule)
+      (setf (fnn-pull-runtime-schedule runtime) schedule))))
+
+(defun fnn-pull-retire-flights (runtime plans kind)
+  (dolist (flight (copy-list (fnn-pull-runtime-flights runtime)))
+    (when (and (eq kind (fnn-pull-flight-kind flight))
+               (not (fnn-core 'fn-pull-plan-for (fnn-pull-flight-peer flight) plans)))
+      ;; A removed peer's unfinished session closes through its existing
+      ;; cursor machine before the cached journal descriptor is retired.
+      (fnn-pull-flight-advance flight (list :lost :local))
+      (fnn-pull-flight-finish flight)
+      (sb-thread:with-mutex ((fnn-pull-runtime-lock runtime))
+        (setf (fnn-pull-runtime-flights runtime)
+              (remove flight (fnn-pull-runtime-flights runtime)))))))
+
 (defun fnn-pull-worker (runtime)
-  (let ((service (fnn-pull-runtime-service runtime)))
+  (let ((service (fnn-pull-runtime-service runtime)) (remaining nil) (primary nil))
+    (handler-bind ((serious-condition (lambda (condition) (unless primary (setq primary condition)))))
     (unwind-protect
          (loop until (fnn-pull-stoppingp runtime) do
-           (let* ((plans (fnn-owner-transit-serialized
-                          service nil (lambda () (fnn-owner-core 'fn-owner-pull-plans))))
-                  (now (fnn-pull-monotonic)))
-             (setf (fnn-pull-runtime-schedule runtime)
-                   (fnn-core 'fn-pull-schedule plans now (fnn-pull-runtime-schedule runtime)))
-             (let ((peer (fnn-core 'fn-sched-pull-due (fnn-pull-runtime-schedule runtime) now)))
-               (when peer
-                 (let ((plan (fnn-core 'fn-pull-plan-for peer plans)))
-                   (setf (fnn-pull-runtime-schedule runtime)
-                         (fnn-core 'fn-sched-pull-start peer (fnn-pull-runtime-schedule runtime)))
-                   (multiple-value-bind (journal cursor) (fnn-pull-cursor-for runtime plan)
-                     (let ((closed (fnn-pull-round runtime plan journal cursor))
-                           (key (fnn-pull-peer-string peer)))
-                       (setf (cdr (assoc key (fnn-pull-runtime-cursors runtime) :test #'string=))
-                             closed)))
-                   (setf (fnn-pull-runtime-schedule runtime)
-                         (fnn-core 'fn-sched-pull-finish peer (fnn-pull-monotonic)
-                                   (fnn-pull-runtime-schedule runtime)))))))
-           (unless (fnn-pull-stoppingp runtime)
-             (fnn-catchup-tick runtime))
-           (sleep +fnn-pull-poll-seconds+))
-      (dolist (entry (fnn-pull-runtime-journals runtime))
-        (fnn-owner-feed-close (cdr entry)))
-      (dolist (entry (fnn-pull-runtime-cu-journals runtime))
-        (fnn-owner-feed-close (cdr entry))))))
+           (let ((plans (fnn-owner-transit-serialized
+                         service nil (lambda () (fnn-owner-core 'fn-owner-pull-plans))))
+                 (cu-plans (fnn-owner-transit-serialized
+                            service nil (lambda () (fnn-owner-core 'fn-owner-catchup-plans)))))
+             (fnn-pull-retire-flights runtime plans :pull)
+             (fnn-pull-retire-flights runtime cu-plans :catch-up)
+             (fnn-pull-prune-journals runtime plans)
+             (fnn-pull-prune-journals runtime cu-plans :catch-up)
+             (fnn-pull-admit-flight runtime plans :pull)
+             (fnn-pull-admit-flight runtime cu-plans :catch-up))
+           (let* ((active (mapcar #'fnn-pull-flight-key (fnn-pull-runtime-flights runtime)))
+                  ;; The host calls the keystone's actual subject. Removed
+                  ;; keys drop out; newcomers join only after this sweep.
+                  (sweep (fnn-core 'fn-prd-sweep active (or remaining active)))
+                  (selected (fnn-core 'fn-prd-select active sweep))
+                  (flight (find (first selected) (fnn-pull-runtime-flights runtime)
+                                :key #'fnn-pull-flight-key :test #'equal)))
+             (setq remaining (second selected))
+             (when flight
+               (when (eq (fnn-pull-flight-step flight) :finished)
+                 (fnn-pull-flight-finish flight)
+                 (sb-thread:with-mutex ((fnn-pull-runtime-lock runtime))
+                   (setf (fnn-pull-runtime-flights runtime)
+                         (remove flight (fnn-pull-runtime-flights runtime))))))
+             ;; One scheduling pause per sweep, not per peer. It limits
+             ;; polling work without truncating input or ending any round.
+             (unless remaining (sleep (/ (fnn-core 'fn-prd-idle-ms) 1000)))))
+      (let ((failure nil))
+        (flet ((release (thunk)
+                 (handler-case (funcall thunk)
+                   (serious-condition (condition) (unless failure (setq failure condition))))))
+          (dolist (flight (fnn-pull-runtime-flights runtime))
+            (release (lambda () (fnn-pull-flight-dispose flight))))
+          (dolist (entry (append (fnn-pull-runtime-journals runtime)
+                                (fnn-pull-runtime-cu-journals runtime)))
+            (release (lambda () (fnn-owner-feed-close (cdr entry))))))
+        (when (and failure (null primary)) (error failure)))))))
 
 (defun fnn-pull-worker-guarded (runtime)
   (handler-case (fnn-pull-worker runtime)
@@ -577,7 +859,9 @@ acceptance (the owner is stopping or fenced then)."
     (when runtime
       (sb-thread:with-mutex ((fnn-pull-runtime-lock runtime))
         (setf (fnn-pull-runtime-stopping runtime) t)
-        (let ((socket (fnn-pull-runtime-socket runtime)))
+        (dolist (socket (cons (fnn-pull-runtime-socket runtime)
+                             (mapcar #'fnn-pull-flight-socket
+                                     (fnn-pull-runtime-flights runtime))))
           (when socket (ignore-errors (fnn-socket-shutdown socket)))))))
   nil)
 

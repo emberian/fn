@@ -95,10 +95,48 @@
 ; Host observations whose meaning ACL2 decides.
 (defun fn-web-host-action-kind (action)
   (declare (xargs :mode :program))
-  (and (consp action) (member (car action) '(:respond :open :send :close)) (car action)))
+  (and (consp action) (member (car action) '(:respond :open :send :close :health)) (car action)))
 
 ; Q10d: observe only the fixed scheduler/disk and checkpoint values, no
 ; whole-state walk. Called under the existing owner mutex by the web face.
 (defun fn-web-host-health-observe (sched state)
   (declare (xargs :mode :program :stobjs state))
   (fn-whl-observe sched (fn-owner-sco-deferred state)))
+
+; Scheduling ceilings are the configured supported profile and a work window,
+; never a truncation of a stored article. The HTTP actor consumes these exact
+; core decisions before allocating/reading or slicing a continuation.
+(defun fn-web-host-connection-limit (config)
+  (declare (xargs :mode :program))
+  (fn-wss-cfg-max config))
+
+(defun fn-web-host-request-end (end request)
+  (declare (xargs :mode :program))
+  (+ (nfix end) (fn-web-req-clen request)))
+
+(defun fn-web-host-window-end (start end)
+  (declare (xargs :mode :program))
+  (min (nfix end) (+ (nfix start) 4096)))
+
+(defun fn-web-host-read-size (used limits end request)
+  (declare (xargs :mode :program))
+  (min 4096 (nfix (- (if request (fn-web-host-request-end end request)
+                       (fn-wrq-limits-head limits)) (nfix used)))))
+
+(defun fn-web-host-event-cid (config flow event state)
+  (declare (xargs :mode :program :stobjs state))
+  (if (or (equal (fn-wss-car event) :begin) (equal (fn-wss-f-route flow) :expire))
+      (let* ((begin (if (equal (fn-wss-car event) :begin) event (fn-wss-f-data flow)))
+             (request (fn-wrq-nth 1 begin)) (now (nfix (fn-wrq-nth 4 begin)))
+             (sessions (if (boundp-global 'fn-web-sessions state) (f-get-global 'fn-web-sessions state) nil))
+             (expired (fn-wss-expired sessions now (fn-wss-cfg-idle config)))
+             (token (fn-web-cookie-get (fn-wrq-oct "fnr_session") (fn-web-req-cookie request)))
+             (session (if (consp expired) (car expired)
+                        (and (fn-wss-tokenp token) (fn-wss-find token sessions now (fn-wss-cfg-idle config))))))
+        (and session (fn-wss-s-cid session)))
+    nil))
+
+(defun fn-web-host-reserve-size (need capacity)
+  (declare (xargs :mode :program))
+  (if (<= (nfix need) (nfix capacity)) (nfix capacity)
+    (max 1024 (* 2 (nfix need)))))

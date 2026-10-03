@@ -511,7 +511,8 @@
         "With two native owner clients already connected, inject uncertainty after publication on one client while the other attempts further input; then exercise shared-resource shutdown and independent recovery.",
         "Start two distinct Store roots with one control socket path; issue concurrent native control posts and then repeat SIGTERM while NNTP and partial control clients are connected.",
         "Send control frames in one-byte fragments and stall them; exceed the active control-client ceiling while a valid client continues; drop a post reply after durable completion and reopen independently.",
-        "On production default and DTN images, invoke raw store ROOT post with fresh and existing Store roots and an observable payload path; attempt a runtime profile override. Repeat raw insertion on the developer image, then exercise ordinary operator/NNTP posting, inspection and recovery on production."
+        "On production default and DTN images, invoke raw store ROOT post with fresh and existing Store roots and an observable payload path; attempt a runtime profile override. Repeat raw insertion on the developer image, then exercise ordinary operator/NNTP posting, inspection and recovery on production.",
+        "For store ROOT probe COUNT [article], repeat production default/DTN refusal with fresh and existing roots; test direct handler refusal before store construction and developer handler availability. Malformed COUNT values must produce usage errors."
       ],
       "expected": [
         "Stale completions cannot publish another transaction.",
@@ -523,7 +524,8 @@
         "A live store prepare may omit repeated history replay only through a named equality to fn-sn-prepare whose invariant is established at observed open and preserved by every post-open mutator; the shared owner additionally requires a named equality to its actual configured-owner event and exact preservation of owner/configuration context.",
         "Only the endpoint lease holder receives control submissions; shutdown wakes clients without closing descriptors beneath their workers, joins before releasing resources, and permits independent reopen.",
         "Control transport bounds active clients and total frame time, bounds allocation before consuming excess bytes, and accumulates input in linear work; a lost post reply is uncertain and a retry cannot duplicate durable acceptance.",
-        "Production raw insertion exits 5 as an unsupported entry before Store or payload I/O, regardless of a runtime profile override; no publication occurs. Developer raw insertion remains available. Ordinary production submission still injects and preserves its accepted/refused/uncertain contract, and production inspection/recovery remain available. This selected 2026-09-23 requirement is not yet implemented or witnessed by da5fd8cb."
+        "Production raw insertion exits 5 as an unsupported entry before Store or payload I/O, regardless of a runtime profile override; no publication occurs. Developer raw insertion remains available. Ordinary production submission still injects and preserves its accepted/refused/uncertain contract, and production inspection/recovery remain available. This selected 2026-09-23 requirement is not yet implemented or witnessed by da5fd8cb.",
+        "Production capacity probes refuse before writable-store construction or fixture publication. The developer handler remains available; malformed COUNT uses the operator decimal-natural usage outcome. Extracted-source checks do not substitute for matching saved-image tests."
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -597,7 +599,10 @@
         "Observe transport status before application acceptance.",
         "Expire a bundle or interrupt its path and retry.",
         "Receive a nonzero fragment, restart, then receive offset zero and reassemble only from a complete coherent live family.",
-        "Reopen an FNWF journal interleaving ION route/observation records with application attempt, receipt and release records."
+        "Reopen an FNWF journal interleaving ION route/observation records with application attempt, receipt and release records.",
+        "For the ION adapter, undertake the canonical Store forward pin, submit through the explicit application/BP route, and reopen the durable observation. Refuse fractional or out-of-helper-range lifetime before publishing any attempt or launching the helper; entered-send observation failures stay uncertain.",
+        "Complete a multi-quantum fragment family: final custody ACK precedes reassembly, a keepalive/input turn resumes one quantum, EOF moves pending work to listener turns, and diagnostic once drains only after socket closure.",
+        "Open BP budgets with missing/default and ASCII rows; refuse repeated owner-backoff/retry-budget, unknown keys, malformed or non-ASCII decimal input before running a node."
       ],
       "expected": [
         "Transport status is not a retention undertaking.",
@@ -614,7 +619,14 @@
         "tests/test_bp_app_native.py",
         "tests/test_bp_fragment_node_native.py",
         "planning/evidence/bp-fragment-expiry-activation-2026-09-24.md",
-        "planning/evidence/ion-observation-binding-2026-09-24.md"
+        "planning/evidence/ion-observation-binding-2026-09-24.md",
+        "books/bp-ion-lifetime.lisp",
+        "tests/acl2/bp-ion-lifetime-tests.lisp",
+        "tests/test_native_ion_workflow.py",
+        "tests/native_bp_fragment_turn_raw.lisp",
+        "tests/native_tcpcl_progress_turn_raw.lisp",
+        "tests/acl2/bp-node-budget-input-tests.lisp",
+        "tests/native_bp_budget_input_raw.lisp"
       ],
       "execution_scope": "Partial: the actual pinned BPA exchange carries an experimental whole-article ADU and matching receipt through outage/restart/lost receipt/duplicate retry. Sender and receiver logical assurance and five receiver process-death cuts have separate evidence. Complete portable batches, explicit expiry/contact/quota cases, authenticated handoff and additional CLA profiles remain open. Moved to M4 to match the user's A06 active BP path; status remains specified. Native TCPCL request-to-owner-Store-to-receipt composition has a separate loopback restart witness; it is not external BPA interoperability or a complete contact-plan test. The fragment-carrier and observation-bound kind-18 transitions have ACL2 evidence; the two-process interrupted-fragment native fixture awaits a source-matched saved image. The optional offline ION sender has a certified ACL2 observation/route/replay component and a source-present native caller; native image qualification, real death/reopen and receipt-return over ION remain open."
     },
@@ -1139,7 +1151,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6310,14 +6322,16 @@
         "Issue another cold pread, observe 403 deadline, disconnect the client, open a replacement request and install a reclaim that retires the old file.",
         "Observe close-held for that issued file before release; deliver success, injected stale and duplicate completion variants; assert no publish after cancellation and eventual descriptor close.",
         "Deliver short/error after timeout and assert named store fault and fault exit rather than an unobserved detached exception.",
-        "Refuse an injected thread launch before worker/buffer creation; settle the issued token as error and fence."
+        "Refuse an injected thread launch before worker/buffer creation; settle the issued token as error and fence.",
+        "Cancel a physically held direct read, issue actual SIGTERM, observe the native executor join call with live thread before release; release physical I/O, require actual join return and settlement before clean process exit, then compare exact pre-stop article bytes after a fresh owner opens the store."
       ],
       "expected": [
         "Matching verified success advances the original request with exact article bytes.",
         "Cancellation retains buffer/fd ownership; retirement cannot close the fd while worker still runs.",
         "Late completion never delivers into the replacement request; duplicate/stale has no second publication or settlement.",
         "Late error/short faults the store, with no fabricated article and no uncertain/absent classification.",
-        "Definite launch failure creates no detached worker and releases no ownership twice."
+        "Definite launch failure creates no detached worker and releases no ownership twice.",
+        "A join call marker does not imply an internal SBCL wait or successful join. Missing return/settlement cannot be filled from process liveness or an exit code; faults and pending cleanup remain distinct. Full PageIO model coverage remains unavailable where physical wait/pin/other owner edges are absent."
       ],
       "implementation": {
         "test": "tests.test_native_page_io",
@@ -6325,7 +6339,8 @@
           "PageIOTests.test_matching_success_publishes_and_advances_the_original_request",
           "PageIOTests.test_cancel_retire_and_reuse_keep_the_old_fd_until_actual_completion",
           "PageIOTests.test_a_late_short_or_error_is_settled_and_fences_the_store",
-          "PageIOTests.test_failed_launch_settles_without_worker_or_buffer"
+          "PageIOTests.test_failed_launch_settles_without_worker_or_buffer",
+          "PageIOTests.test_sigterm_held_read_joins_then_reopens_exact_content"
         ],
         "native": true
       },
@@ -6333,7 +6348,7 @@
         "tests/test_native_page_io.py",
         "tests/acl2/page-read-ownership-tests.lisp"
       ],
-      "execution_scope": "Pending matching union image; ownership only, no funded worker/buffer admission claim."
+      "execution_scope": "Native image normal/cancellation/held-SIGTERM selectors prepared; matching current image execution pending. Exact primitive direct inputs and bounded collector prefix are consumed, not full HM proof. Stored literal result uses frozen :job-result TID TOKEN VERDICT distinct from device :io-complete; actual owner condition conversion belongs to Runtime. No funded cold worker/buffer admission claim."
     },
     {
       "id": "SCN-1007",
@@ -8236,11 +8251,13 @@
         "Issue a real direct read on incarnation1/fd9 and assert all admit outputs including issued/holder effects.",
         "Begin physical read, cancel, retire/release its generation; attempt close, descriptor reuse and premature settle.",
         "Return physical success or error, settle once with the same token, close, then reuse fd/CID/worker for incarnation2.",
+        "Also return an issued worker after a pre-read launch failure before the owner classifies its literal :error; assert settlement and close remain refused until that separate result.",
         "Replay the original completion/token and check every reached prefix satisfies the full concurrent invariant."
       ],
       "expected": [
         "Cancellation and logical generation release preserve physical read custody; close and fd reuse are refused until terminal settlement.",
         "A physical return still needs owner settlement; late error remains a fault and duplicate/old receipts preserve the later row/hold.",
+        "An E-held executor or owner publishes a literal :job-result against the same issued token; its current physical identity need not be the worker identity. Physical return and classification may occur in either order; neither alone releases custody.",
         "These finite executable witnesses do not establish the all-schedules theorem or native realization."
       ],
       "implementation": {
@@ -8282,9 +8299,10 @@
         "tools/native_mixed_workload.py",
         "planning/empirical-workloads.md",
         "tests/test_native_mixed_history.py",
-        "planning/evidence/native-mixed-45e05c7f-2026-10-03/report.md"
+        "planning/evidence/native-mixed-45e05c7f-2026-10-03/report.md",
+        "planning/evidence/native-mixed-1a946582c-2026-10-03/report.md"
       ],
-      "execution_scope": "Historical real-image paired smoke45e05c7f: both48 acknowledged articles preserve exact served hashes and local numbers after checkpoint/restart, all36 mixed reads match and24 mixed posts accept. Quiet live reclaim refuses by name deferred-credit in both, so maintenance progress remains incomplete. No current-image qualification, deployment, cold filesystem cache or socket-backpressure claim."
+      "execution_scope": "Historical45e paired smoke and current developer image1a946582c baseline finite correctness passed: 48 acknowledged articles retain exact served hashes and local numbers after checkpoint/restart, 36 concurrent reads match and24 concurrent posts accept. Quiet reclaim credit-refused estimate16,680,640, so maintenance coverage incomplete. Current baseline4.198s total/0.314s mixed phase; no matched current perturbation or performance improvement inference. Exact image/tool inputs and sampling errors archived. No deployment, cold filesystem cache, socket-backpressure, later funded/cursor/observer or whole-image qualification claim."
     },
     {
       "id": "SCN-1084",
@@ -8298,22 +8316,30 @@
         "Run tests/acl2/def-cursor-tests.lisp: one candidate emits more bytes than its output quantum; drain with zero visits and preserve context; suspend with opaque operation/resource custody.",
         "Run tests/acl2/newnews-metadata-cursor-tests.lisp: unmatched first article advances with empty output, matching final article retains its output after scan completion; compare emitted prefix plus remaining with original response.",
         "Run actual native NEWNEWS wildcard workload with more candidates than shared cache slots; compare complete Message-ID reply while a second connection remains responsive.",
-        "Run newnews-stream-cursor-tests and actual served-plan-newnews-tests: indexed line wider than byte quantum drains without candidate visits, sparse selection retains final renderer, tiny/large plan outputs equal."
+        "Run newnews-stream-cursor-tests and actual served-plan-newnews-tests: indexed line wider than byte quantum drains without candidate visits, sparse selection retains final renderer, tiny/large plan outputs equal.",
+        "Run actual configured factory→plan witness with eleven captured configured groups, sparse first article, selector retained through one-call/one-byte quanta, and complete equality to original catalog reply.",
+        "Run tests.test_cursor_cold_poll against actual extracted native cursor/mux bodies: cold attempt returns unchanged plan+issued read, pending yields to timer, repeated miss retains first clock, returned page resumes plan rather than input, refusal adds no body line. This is mocked-I/O source flow, not matching native image custody."
       ],
       "expected": [
-        "Separate candidate calls and emitted bytes obey their declared budgets; sparse misses do not terminate the scan.",
+        "Separate control calls, actual selector entry visits and emitted bytes obey their stated bounds; sparse misses retain selection progress rather than ending the scan.",
         "Buffered final output keeps the continuation live until drained; no repeated candidate and no omitted terminator.",
-        "Library tests do not establish initialization/working-allocation bounds, custody producer or completed-view capture; native image matching this source remains owed."
+        "Library tests do not establish initialization/working-allocation bounds, custody producer or completed-view capture; native image matching this source remains owed.",
+        "The shared mux loop never awaits a cursor page; response plan/action remain retained. Cache-independent consumption and multi-entry replay progress remain separate open obligations."
       ],
       "proofs": [
-        "PRF-1256"
+        "PRF-1256",
+        "PRF-1257"
       ],
       "evidence": [
         "tests/acl2/def-cursor-tests.lisp",
         "tests/acl2/newnews-metadata-cursor-tests.lisp",
         "tests/test_native_newnews_wildmat.py",
         "tests/acl2/served-plan-newnews-tests.lisp",
-        "tests/acl2/newnews-stream-cursor-tests.lisp"
+        "tests/acl2/newnews-stream-cursor-tests.lisp",
+        "tests/acl2/newnews-candidate-selector-tests.lisp",
+        "tests/test_cursor_cold_poll.py",
+        "tests/cursor_cold_poll_recording.lisp",
+        "planning/evidence/cursor-cold-poll-20261003/checks-final.json"
       ]
     },
     {
@@ -8339,9 +8365,10 @@
       "evidence": [
         "tools/native_sparse_newnews.py",
         "planning/empirical-workloads.md",
-        "planning/evidence/native-sparse-newnews-45e05c7f-2026-10-03/report.md"
+        "planning/evidence/native-sparse-newnews-45e05c7f-2026-10-03/report.md",
+        "planning/evidence/native-sparse-1a946582c-2026-10-03/report.md"
       ],
-      "execution_scope": "Historical image 45e05c7f finite command correctness passed: 10 exact blocks of four remaining matches across 24 seed rows including two actual tombstones, eight competing ARTICLEs and four POSTs, 26 retained articles and two tombstones correct on reopen. Live reclaim credit-refused; payload-I/O attribution, new bounded cursor and current-image qualification remain open."
+      "execution_scope": "Historical45e and current1a946582c finite whole-scan command correctness passed: ten exact blocks of four remaining matches over24seed rows including two actual tombstones, eight competing ARTICLEs/four POSTs, 26retained articles and two tombstones correct on reopen. Current total4.829s; offline expiry/reclaim accepted2, live reclaim credit-refused estimate8,098,624. Exact image/input/config/resource errors archived; per-command payload-I/O attribution, later bounded cursor qualification and whole-image assurance remain open."
     },
     {
       "id": "SCN-1087",
@@ -8476,6 +8503,357 @@
         "tests/acl2/catalog-availability-owner-load-tests.lisp"
       ],
       "execution_scope": "First actual foundation writer classification fixtures pass in warm REPL; generated complete command antecedents/conclusions, recovery loader, paged attachment and native reclaim/reopen remain pending. Tombstone-shaped byte fixture is classification evidence, not execution of a native reclaim pass. Actual generic catalog available summary/range/navigation complete tuple cases now pass with guard-verified exports, including empty (0,35,34) and preserved raw#2 lookup. Protocol/session effect teeth and native reclaim remain pending. Actual recovery loader with legacy missing NOV now passes the same sparse/prefix/tail/empty/cancel tuples from sealed arena payloads; invalid-handle classification remains unavailable. This is live-stobj execution in a warm source world, not native reclaim qualification."
+    },
+    {
+      "id": "SCN-1091",
+      "title": "Mux terminal cleanup retains exact once-only semantic debt and independent physical receipts",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-031",
+        "HST-046"
+      ],
+      "steps": [
+        "Run actual stopping cleanup through the generated finish section and its handshake-leave, owner-close and exposure-release callbacks.",
+        "Reject a handshake-done section before callback, and fail gate leave after its literal :ok return; repeat cleanup and admit another handshake identity.",
+        "Cut an actual owner-close callback, fail unpin or socket close, and verify independent physical cleanup still runs.",
+        "Hold a real mux thread after logical closure; verify root drain remains false until its physical return and debt-free cleanup."
+      ],
+      "expected": [
+        "Each callback identity is attempted once; exact effect return is retained independently from section return. Rejected or torn cleanup retains debt and blocks Store teardown.",
+        "Handshake identity remains available on rejected cleanup; a later distinct identity gets its own receipt.",
+        "Actual socket helper retains NIL primary result and separately returns :closed or original unobserved condition. Logical DONE does not substitute for physical thread return."
+      ],
+      "implementation": {
+        "test": "tests/test_native_mux_cleanup_raw.sh"
+      },
+      "evidence": [
+        "tests/native_mux_cleanup_raw.lisp",
+        "tests/native_await_lifetime_raw.lisp"
+      ],
+      "execution_scope": "Actual native cleanup/section and socket helper bodies, real SBCL exclusion/thread/socket close, recording semantic primitives with raw ACL2 cut. No full output tariff, physical dependency grant or saved-image verdict."
+    },
+    {
+      "id": "SCN-1093",
+      "title": "Generated archive dispatch reaches every HDR/XHDR literal form and preserves both-route replies",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-038",
+        "NNT-042"
+      ],
+      "proofs": [
+        "PRF-1236"
+      ],
+      "steps": [
+        "Replay the complete protocol-served-tests with actual fn-scr-command and fn-pix-command-pinned source consumers loaded.",
+        "Assert catalog view, state, pin/trie correspondence, freshness and columns for the three-article fixture, then each literal HDR/XHDR form condition including failure of earlier tests.",
+        "Compare generated sessions and expanded effects with the pinned reference for current/number/Message-ID, Xref compatibility, the three HDR fn metadata fields and malformed syntax, with/without configured Xref server.",
+        "Require actual unrestricted and restricted routes to answer each line, and retain existing view/trie hypothesis-removal and selection-mutation cases."
+      ],
+      "expected": [
+        "Every archive keyword declares forms and the generated executable has no hand catalog-dispatch fallback.",
+        "Exact current reply semantics and selection/view effects are preserved under the full boundary; HDR ordinary225 and XHDR ordinary221 are exercised.",
+        "Source teeth do not establish cold suspension, allocation tariffs, completed-view policy, certificates or matching image."
+      ],
+      "evidence": [
+        "tests/acl2/protocol-served-tests.lisp",
+        "books/protocol-served.lisp",
+        "books/protocol-served-table.lisp",
+        "planning/evidence/dc02-switch-20261003/checks.json",
+        "planning/evidence/dc02-switch-20261003/command-repl.log.gz"
+      ]
+    },
+    {
+      "id": "SCN-1094",
+      "title": "Staged checkpoint history image readback retains old checkpoint and publisher snapshot custody",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-011",
+        "STO-026"
+      ],
+      "steps": [
+        "Write a valid FNSI image and five framed runs through the actual stage/install functions; valid bytes install once.",
+        "Corrupt a used page or unwritten zero page after fsync; refuse before rename, retain the old checkpoint and release the private writer snapshot.",
+        "Reject a damaged header; release on raw nonlocal exit and prewrite deferral; successful stage returns snapshot before publication admission can reopen.",
+        "A stop fence after the first image page is observed before the next page; refuse before replacement and return snapshot custody."
+      ],
+      "evidence": [
+        "tests/test_native_checkpoint_image_readback.py",
+        "tests/native_checkpoint_image_readback_raw.lisp",
+        "tests/test_native_state_checkpoint.py"
+      ],
+      "implementation_note": "Actual raw host stage/readback/install, ACL2 header/page codec and kernel files exercised with recorded snapshot storage and framed-run verifier boundaries. Matching saved-image scenario and certification pending; no image/deployment claim."
+    },
+    {
+      "id": "SCN-1096",
+      "title": "Reclaim reserves against synchronized committed history census",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-017",
+        "STO-020"
+      ],
+      "steps": [
+        "Commit a row after the carried byte cache and history columns were last queried; enter reclaim through native trailing-stobj dispatch.",
+        "A budget sufficient only for stale history refuses the actual current estimate, captures no pass and retains unrelated reservations.",
+        "A sufficient budget reserves the current estimate and captures once; missing and out-of-range caches recompute from authoritative state."
+      ],
+      "evidence": [
+        "tests/test_native_reclaim_capture_raw.sh",
+        "tests/native_reclaim_capture_raw.lisp"
+      ],
+      "implementation_note": "Actual host capture/census, history sync/byte-advance, credit-resize and native trailing-stobj dispatch with recorded Store/array/row-byte-cost/capture boundaries. Source fixture; normal loaded host and image followthrough pending."
+    },
+    {
+      "id": "SCN-1090",
+      "title": "A retained trickling pull body permits healthy pull and catch-up progress",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "NNT-018",
+        "NNT-053"
+      ],
+      "steps": [
+        "Configure slow and healthy pull peers plus a healthy catch-up on one native worker.",
+        "Hold an actual slow ARTICLE body incomplete while delivering exact body octets gradually.",
+        "Observe healthy article durable acceptance and catch-up completion before releasing the slow body.",
+        "Release the exact suffix and read back the complete slow body."
+      ],
+      "expected": [
+        "A readiness yield retains protocol state, local connection and unwritten/unconsumed bytes.",
+        "Both families progress while the slow session remains incomplete.",
+        "No slow cursor acceptance precedes durable local completion; released body is byte-exact."
+      ],
+      "evidence": [
+        "tests/test_native_peer_round_driver.py",
+        "tests/test_native_peer_pull.py"
+      ],
+      "execution_scope": "Raw worker/kernel schedule passes with recorded session and journal leaves. Actual saved-image selector tests.test_native_peer_pull.NativePeerPullTests.test_trickling_body_retained_while_other_pull_and_catchup_complete is prepared, not executed."
+    },
+    {
+      "id": "SCN-1097",
+      "title": "Accepted resource descriptors reach actual mux hold and headroom precedes output pool allocation",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-047"
+      ],
+      "steps": [
+        "Invoke actual operator/control/normalized-owner boundary functions with one accepted result and its recorded resource projections.",
+        "Invoke actual mux budget caller with hold and refusal decisions; install explicit private output projection only after numerical headroom grant.",
+        "Refuse insufficient headroom and check no private constructor/resize occurs; absent staged policy creates no pool."
+      ],
+      "expected": [
+        "Cold and output descriptors remain the exact same accepted-plan objects through all boundary calls; pre-extension store figure is captured by ACL2.",
+        "Actual mux hold invokes both projections; parent or output headroom refusal grants no output allocation.",
+        "Startup rows come from ACL2, without clamping; explicit output policy remains staged and full response custody/tariff remains open."
+      ],
+      "implementation": {
+        "test": "tests/test_native_output_startup_raw.sh"
+      },
+      "evidence": [
+        "tests/native_output_startup_raw.lisp",
+        "books/output-reservation.lisp"
+      ],
+      "execution_scope": "Actual native transport/install/caller bodies with recorded ACL2 funding/method boundaries. Exact new helper and three normal declarations source-admitted in Foundations actual loaded output world; typed producer fixture independent. No configured live activation/full tariff/image claim."
+    },
+    {
+      "id": "SCN-1095",
+      "title": "Actual retire operator source observes deadlines and fresh reports",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "PKT-895"
+      ],
+      "steps": [
+        "Execute actual fnn-operator-execute-retire and fn-nret-observation-step with deterministic monotonic ticks and live/held owner observations.",
+        "Exercise exact expiry, drain plus allowance, offline refusal, fresh/stale reports and unknown liveness.",
+        "Execute the prior host source under the same owner fixture with a bounded test timeout."
+      ],
+      "expected": [
+        "Persistent live/held observations expire as uncertainty at60s for zero drain and70s for10s; expiry does not inspect a report, only a stopped owner with a changed report succeeds.",
+        "No second retirement request, owner kill, custody waiver or report success occurs on observation expiry.",
+        "Prior source fails by remaining indefinitely live under its unbounded sleep loop."
+      ],
+      "implementation": {
+        "test": "tests/test_native_retire_observation_source.py"
+      },
+      "evidence": [
+        "tests/native_retire_observation_source.lisp",
+        "tests/acl2/native-retire-observation-tests.lisp",
+        "planning/evidence/operator-retire-observation-2026-10-03-v2.json"
+      ],
+      "execution_scope": "SBCL actual source with explicit clock/scheduling/owner/stat observations; no saved-image or physical durability qualification."
+    },
+    {
+      "id": "SCN-1099",
+      "title": "Stalled HTTP input, handshake and POST completion yield to healthy readers; cancelled semantic operations retain custody",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "WEB-006"
+      ],
+      "steps": [
+        "Hold a plain partial request or a TLS connection without its handshake, then GET health/signin and redeem an invitation on healthy connections.",
+        "Hold a POST barrier; fetch HTTP health while POST is pending, then release and read its accepted answer.",
+        "Drive actual raw continuation consumer through partial writes, cold render/poll, same-session competing requests, cancelled semantic worker activation and late completion."
+      ],
+      "expected": [
+        "Healthy HTTP requests finish before the stalled socket deadline; exactly one configured bounded actor family, never one thread per client.",
+        "A pending POST emits no early outcome, health remains responsive and its acceptance follows the barrier.",
+        "Exact output bytes survive partial writes/windows; same-session semantic flows cannot share one await slot; cancellation closes transport immediately but releases operation custody only after no-future-worker-publication, and cleanup is once-only."
+      ],
+      "evidence": [
+        "tests/test_native_web.py",
+        "tests/test_native_host_lifecycle.py",
+        "tests/native_web_reactor_raw.lisp",
+        "planning/evidence/web-continuations-2026-10-03.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_web",
+        "cases": [
+          "NativeWebFaceTests.test_stalled_socket_does_not_block_health_reader_or_account_post",
+          "NativeWebFaceTlsTests.test_stalled_socket_does_not_block_health_reader_or_account_post"
+        ],
+        "native": true
+      },
+      "note": "Raw fixture passed on lane source; native-image scenario pending. No runtime/qualification claim transferred from an earlier image."
+    },
+    {
+      "id": "SCN-1101",
+      "title": "Private history relocation yields by page without changing its completed concrete",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-017",
+        "STO-026"
+      ],
+      "steps": [
+        "Move a nonzero two-page region to four new pages; complete through explicit grow and page ticks and compare all six concrete arrays to existing relocation.",
+        "Check each ordinary tick changes at most 2048 words, successful yields strictly reduce rank, and replacement placement is unavailable before done.",
+        "Cold table and page waits preserve the cursor and every concrete array; verified cache completion retries that exact cursor.",
+        "Insufficient capacity and inconsistent image sizes refuse before mutation."
+      ],
+      "evidence": [
+        "books/history-pages-relocate-step.lisp",
+        "tests/acl2/history-pages-relocate-step-tests.lisp"
+      ],
+      "implementation_note": "Concrete ACL2 stobj schedules. Private snapshot consumer integration and matching certificate follow separately; flat-array growth and event encoding are not bounded by this page-step result."
+    },
+    {
+      "id": "SCN-1103",
+      "title": "Catalog replacement or failed binding cannot reuse a paired view allocation key",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-002"
+      ],
+      "steps": [
+        "Capture the initial catalog root token, reserve and bind a replacement with identical logical history version.",
+        "Inject failure after reservation and before pointer publication, then reserve the next attempted replacement.",
+        "Check old paired-view keys miss; corrupt counter refuses without reset; natural counters beyond fixed-width codecs advance."
+      ],
+      "expected": [
+        "Allocation identity is independent of the logical view/version.",
+        "A spent failed reservation is never reused; a malformed counter never silently resets.",
+        "Pure examples alone do not establish native installation/capture correspondence."
+      ],
+      "implementation": {
+        "test": "tests/acl2/catalog-root-incarnation-tests.lisp"
+      },
+      "evidence": [
+        "books/catalog-root-incarnation.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp"
+      ],
+      "execution_scope": "Source connected, verification and actual native fault/capture scenario pending."
+    },
+    {
+      "id": "SCN-1102",
+      "title": "ACL2 lifetime identities precede response rendering and survive cursor resumption",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-047"
+      ],
+      "steps": [
+        "Reserve connection and response serials using the actual ACL2 producer.",
+        "Invoke actual native identity helpers and mux queue-plan with a retained cursor, then resume the same cursor.",
+        "Exhaust the response serial and attempt another render factory entry."
+      ],
+      "expected": [
+        "Connection generation differs for separate admitted lifetimes even with the same CID; response identity carries the exact connection generation.",
+        "Identity exists before factory entry, and resumption retains the same operation identity without another reservation.",
+        "Exhaustion retains the final serial and refuses before materialization; no wrap."
+      ],
+      "implementation": {
+        "test": "tests/test_native_response_identity_raw.sh"
+      },
+      "evidence": [
+        "books/response-identity.lisp",
+        "tests/acl2/response-identity-tests.lisp",
+        "tests/native_response_identity_raw.lisp"
+      ],
+      "execution_scope": "Actual pure producer, native helpers and queue-plan with recording owner admission and factory boundaries. Source guards/theorems and 12 ACL2 assertions admitted; no matching certificate/image/full output lifetime gate claim."
+    },
+    {
+      "id": "SCN-1098",
+      "title": "Operator diagnostic source preserves faults, uncertainty and named refusals",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-008",
+        "HST-009"
+      ],
+      "steps": [
+        "Execute actual heap operator/store-profile/outer command bodies and actual ACL2 failure classifier with plan/config/profile/init/resource faults, generic/unlisted conditions and uncertainty.",
+        "Exercise initial-group :bad refusal versus malformed core result, valid octets and matching/mismatched frame widths.",
+        "Run the same fixture with prior actual heap source and prior actual IO source independently."
+      ],
+      "expected": [
+        "Only recognized refusal may use the no-store heap fallback. Fault and uncertain paths emit no accepting heap line; unknown subclasses remain faults.",
+        "Initial :bad is refusal1; malformed results and frame disagreements are fault4. Positive profile/resources/octet results survive unchanged.",
+        "Both prior-source runs fail their expected fault-code assertion; no loader failures count as regressions."
+      ],
+      "implementation": {
+        "test": "tests/test_native_operator_diagnostics_source.py"
+      },
+      "evidence": [
+        "tests/native_operator_diagnostics_source.lisp",
+        "planning/evidence/operator-diagnostics-classification-2026-10-03.json"
+      ],
+      "execution_scope": "Actual source plus deliberate model/I/O observations, with actual closed ACL2 condition classifier. Saved-image matching consumer qualification remains Integration work."
+    },
+    {
+      "id": "SCN-1100",
+      "title": "Actual resumable init refuses mismatched original intent before publication",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-10005"
+      ],
+      "steps": [
+        "Execute actual fnn-initialize-resume-check, fnn-initialize and fnn-command-init bodies with the actual ACL2 resume decision and deliberate config/history observations.",
+        "Exercise profile/group mismatch, same sealed profile despite live overlay/new stamp, interrupted-before-gen1, corrupt/wrong/missing gen1, fresh init and malformed decision.",
+        "Execute prior actual init body under the same fixture; prepare matching developer-image profile/group refusal, compatible resume and corrupt evidence cases."
+      ],
+      "expected": [
+        "Profile/group mismatch exits refusal1 with no resume effects; corrupt or missing required generation-one evidence and malformed core decision fault4 without publication.",
+        "Matching initial intent resumes; a not-yet-published gen1 with empty history may publish initial groups. Fresh init still completes.",
+        "Prior source fails expected refusal assertion because incompatible profile incorrectly returns success0."
+      ],
+      "implementation": {
+        "test": "tests/test_native_init_resume_source.py"
+      },
+      "evidence": [
+        "tests/native_init_resume_source.lisp",
+        "tests/acl2/native-init-resume-tests.lisp",
+        "tests/test_native_init_resume.py",
+        "planning/evidence/operator-init-resume-2026-10-03-v2.json"
+      ],
+      "execution_scope": "Actual-source SBCL and warm ACL2 literal exact-codec witnesses. Four saved-image cases are prepared but not executed; no physical durability qualification."
     }
   ]
 }

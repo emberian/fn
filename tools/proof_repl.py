@@ -1827,8 +1827,31 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
 SOURCE_DEPS_FAILED = 75
 
 
+def reject_cached_only_conflicts(args) -> bool:
+    """A cached-only dependency world never falls back to source or a build."""
+    if not getattr(args, "cached_only", False):
+        return False
+    conflicts = []
+    for field, option in (("ld", "--ld"), ("ld_missing", "--ld-missing"),
+                          ("certify_missing", "--certify-missing"),
+                          ("keep_source_prefix", "--keep-source-prefix")):
+        if getattr(args, field, False):
+            conflicts.append(option)
+    if getattr(args, "source_deps", None) is not None:
+        conflicts.append("--source-deps")
+    if not getattr(args, "ld_local", True):
+        conflicts.append("--ld-leak")
+    if conflicts:
+        print("proof-repl: --cached-only cannot combine with " + ", ".join(conflicts),
+              file=sys.stderr)
+        return True
+    return False
+
+
 def start(args) -> int:
     """Start a session without turning a source refusal into an implicit build."""
+    if reject_cached_only_conflicts(args):
+        return 2
     keep = getattr(args, "keep_source_prefix", False)
     if keep and (not getattr(args, "ld_local", True) or getattr(args, "certify_missing", False)):
         print("proof-repl: --keep-source-prefix requires encapsulated --ld-local "
@@ -2518,10 +2541,10 @@ def prepare_includes(name: str, several: list[str], acquire=None) -> tuple[list[
     """The forms to send, each repository include made relative to the
     session's directory, and whether every included book is certified.
 
-    A sent include of a book with no certificate here (a tests/acl2 book is
-    rarely in a books/ session's closure) is acquired from matching cached
-    evidence first. A miss is refused, never implicitly certified; choose
-    certification explicitly or send the intended source forms instead.
+    Every repository include acquires an exact compatible cached artifact
+    set first. A certificate prefix alone does not establish matching source
+    or dependency alists. A miss is refused, never implicitly certified;
+    choose certification explicitly or send the intended source forms instead.
     """
     directory = session_directory(name)
     if directory is None:
@@ -2529,20 +2552,22 @@ def prepare_includes(name: str, several: list[str], acquire=None) -> tuple[list[
     acquire = acquire or (lambda book: install_closure(
         book, (), None, 4, SESSIONS / f"{name}.include.log", include_self=True))
     prepared = []
+    acquired_targets = set()
     for one in several:
         rewritten, target = rooted_include(one, directory)
         if rewritten != one:
             print(f"proof-repl: include path made relative to the session's directory "
                   f"{directory.relative_to(ROOT).as_posix() if directory.is_relative_to(ROOT) else directory}/: "
                   f"{rewritten.strip()}")
-        if (target is not None and (ROOT / f"{target}.lisp").is_file()
-                and not certs.valid_looking(ROOT / f"{target}.cert")):
+        if (target is not None and target not in acquired_targets
+                and (ROOT / f"{target}.lisp").is_file()):
             acquired, detail, _ = acquire(target)
             print(detail)
             if not acquired:
                 print(f"proof-repl: not sending the include of {target}: no certificate "
                       "could be acquired for it")
                 return several, False
+            acquired_targets.add(target)
         prepared.append(rewritten)
     return prepared, True
 
@@ -3899,6 +3924,8 @@ def changed_dependencies(book: str, named=(), base_ref: str = "origin/dev") -> l
 
 def run_remote(args, argv: list[str]) -> int:
     """This command, on args.host, in the lane's tree there, after syncing what it reads."""
+    if reject_cached_only_conflicts(args):
+        return 2
     host = args.host
     lane, tree = remote_lane_and_tree(args, host)
     forwarded = strip_remote_options(argv)
@@ -3915,7 +3942,7 @@ def run_remote(args, argv: list[str]) -> int:
         source_deps = getattr(args, "source_deps", None)
         if source_deps and source_deps != "*":
             books += [normalize_book(one.strip()) for one in source_deps.split(",") if one.strip()]
-        if not (source_deps == "*" or getattr(args, "ld_missing", False)
+        if not (getattr(args, "cached_only", False) or source_deps == "*" or getattr(args, "ld_missing", False)
                 or getattr(args, "certify_missing", False)):
             changed = changed_dependencies(args.book, books[1:])
             if changed:
@@ -4111,6 +4138,11 @@ def main(argv: list[str] | None = None) -> int:
                    help="a book the session's book INCLUDES (not the book itself): load it "
                         "from source, not from a certificate (repeatable); the closure's "
                         "books that include it follow")
+    p.add_argument("--cached-only", action="store_true",
+                   help="require exact cached dependency certificates; refuse misses "
+                        "without source loading or certification, including dependencies "
+                        "changed since this branch's merge base (the target still loads "
+                        "from source)")
     p.add_argument("--ld-missing", action="store_true",
                    help="load every dependency the cache lacks from source")
     p.add_argument("--source-deps", nargs="?", const="*", default=None, metavar="A,B",
@@ -4313,6 +4345,8 @@ def main(argv: list[str] | None = None) -> int:
     elif lead:
         argv = lead
     args = parser.parse_args(argv)
+    if reject_cached_only_conflicts(args):
+        return 2
     if args.command in ("start", "probe") and getattr(args, "book", None) \
             and args.book.endswith(".lisp"):
         # `start NAME books/X.lisp` reached the box as books/X.lisp.lisp

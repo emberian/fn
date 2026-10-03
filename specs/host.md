@@ -126,6 +126,17 @@ observed behavior; PRF-1254 remains the all-schedule preservation target, and
 native realization requires a matched image run. This direct model does not
 claim to cover the typed funded read pool.
 
+The direct worker's physical `:return` is independent of result classification.
+An actual stored literal or the owner's later condition classification emits
+`(:job-result TID TOKEN VERDICT)` while that actor holds the extent mutex;
+the worker is found by its issued token, independently of the classifying
+actor's identity. A cache hit or a pre-read launch failure need not have an
+I/O request. This result event retains custody, and settlement still requires
+both actual worker return and the literal result. `:io-complete` remains the
+device-request event. A condition is never converted into a model verdict by
+the observer or replay harness. These additional ordering witnesses extend
+SCN-1082; they do not establish complete native trace coverage.
+
 Q10d: each accepted NNTP socket's service-log connection line carries exactly
 one `client-address` field projected by ACL2 from the supplied fixed-width
 family/address observation. This is the kernel transport source on direct
@@ -433,7 +444,8 @@ The DTN-only build writes `build/fn-host-dtn` by default and
 Changing that environment variable when a saved image restarts does not change
 its serialized profile. The developer image also honours the developer
 selectors (the environment variables of `+fnn-developer-selectors+` and the
-`store ROOT post` entry and its FAULT argument; [the operator guide](../docs/operator-internals.md#developer-selectors)
+`store ROOT post` entry and its FAULT argument, and the fixture-writing
+`store ROOT probe COUNT [article]` entry; [the operator guide](../docs/operator-internals.md#developer-selectors)
 lists them). A production image refuses to start with any of them: `fnn-main`
 runs `fnn-developer-selector-gate` before dispatch and exits 5 naming the
 selector, before any store or socket is opened. Store diagnostics and the existing BP/TCPCL/application
@@ -461,10 +473,17 @@ or performing any publication. The serialized image profile controls this
 restriction; an environment override at invocation cannot enable it.
 Production posting goes through `operator CONFIG post` or the served NNTP
 submission path, with the normal injection and durable outcome contract.
+The capacity probe (`store ROOT probe COUNT [article]`) also writes fixture
+articles and is developer-only. Production startup, dispatch and direct handler
+calls refuse it with usage exit 5 before constructing a writable store. Its
+COUNT follows the operator decimal-natural grammar; malformed counts are usage
+errors. Developer availability does not make it safe to use on an existing
+valuable store: it deliberately commits fixture data.
 Store inspection and recovery remain available. The host startup gate and a
 direct handler guard implement this restriction; saved-image evidence remains
 required for the combined source. SCN-015 must exercise both
-rejection orders (fresh and existing store), developer raw insertion, and
+rejection orders (fresh and existing store) for both fixture-writing entries,
+developer raw insertion and probe availability, and
 successful ordinary production submission. This changes the required
 production surface; the da5fd8cb image still exposes raw posting.
 
@@ -1851,3 +1870,36 @@ kernel, owner reservation and frontier effects. Standalone Store reservations
 retain the existing codec successor route. The source routing fixture
 `tests/native_retention_identity_route_raw.lisp` checks these calls and order;
 a matching native BP undertake/release/reopen scenario remains required.
+
+## Once-only mux cleanup receipts (SCN-1091)
+
+The actual `fnn-mux-finish` terminal scheduling state is distinct from release.
+Its four semantic cleanup subjects are handshake-done (exact admitted ID),
+handshake-leave, owner-close and exposure-release. Each uses the declared
+`fnn-quantum-mux-finish` cleanup section once. A native receipt records
+scheduled, calling and the literal returned value, then independently records
+section return. A gate-leave failure preserves an already-returned effect;
+a rejected or torn call retains debt and is never retried. The earlier phase
+and identities remain reachable with the debt after scheduling removal.
+
+Output references are cleared before unpin. This alone does not establish
+output-pool discard or absence of a future publisher for an issued dependency.
+Independent socket cleanup still runs after semantic failure. The existing
+socket helper retains its NIL primary value and exposes a separate actual
+`:closed` or `:unobserved` receipt and condition. Root Store settlement requires
+physical mux loop return, empty connection/inbox/arrival lists and no cleanup
+debt. Socket close cannot settle an output grant by itself.
+
+SCN-1091 checks these actual native boundaries with real exclusion and physical
+threads/socket close, recording semantic primitives and a raw callback cut.
+Full native refinement, output custody composition and matching-image shutdown
+remain open under HOST-COORDINATION and PRF-1255/PRF-1259.
+
+Catalog availability capture uses an allocation incarnation distinct from the
+retained history version. The actual native catalog installer reserves an
+ACL2 `(:catalog-root N)` before binding the replacement stobj. A failed binding
+spends that reservation. The counter is natural and never wraps; corrupt state
+refuses instead of resetting. The token is private to one owner/image lifetime,
+not durable identity. Both counter and current root must move together through
+owner-carrier migration. Paired authorization/capture connection and the
+program-global/native installation refinement remain PRF-1272 obligations.

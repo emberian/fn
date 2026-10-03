@@ -50,6 +50,7 @@
 (include-book "books/identity")
 (include-book "books/hybrid-store-injected")
 (include-book "books/peer-authored-accept")
+(include-book "books/peer-round-driver")
 (include-book "books/login-binding")
 ;; PRF-161: host/owner-host.lisp calls the fn-exp- exposure subjects.
 (include-book "books/public-exposure")
@@ -199,6 +200,8 @@
 (include-book "books/heap-open-nursery")
 (include-book "books/heap-reservation")
 (include-book "books/cold-read-reservation")
+(include-book "books/output-reservation")
+(include-book "books/resource-output")
 (include-book "books/native-control")
 (include-book "books/native-control-reason")
 ; PKT-209: `control log' and `control evidence'.

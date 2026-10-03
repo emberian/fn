@@ -114,7 +114,11 @@
                         (and tls-context
                              (fnn-core
                               'fn-native-operator-host-result-run-implicit-tls-port
-                              result)))))
+                              result))
+                        ;; Same accepted plan as launcher reservation; never
+                        ;; reparse configuration or grant cold/output twice.
+                        (fnn-core 'fn-native-operator-host-result-run-cold-resources result)
+                        (fnn-core 'fn-native-operator-host-result-run-output-resources result))))
                 (setq run-code code)
                 ;; The owner's fault, when it stopped on one, is the
                 ;; result line's reason: the last line the service

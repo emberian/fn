@@ -2227,15 +2227,16 @@ class SessionIncludeTests(unittest.TestCase):
                 self.assertEqual(acquired, ["tests/acl2/fixture-tests"])
                 self.assertIn("made relative to the session's directory books/",
                               out.getvalue())
-                # A certified include is sent as it is, nothing acquired.
+                # A plausible certificate may belong to another dependency
+                # set: even this include must acquire matching artifacts.
                 (root / "tests/acl2/fixture-tests.cert").write_text(
                     '(IN-PACKAGE "ACL2")\n:BEGIN-PORTCULLIS-CMDS\n')
                 acquired.clear()
                 with mock.patch.object(proof_repl.certs, "valid_looking", lambda p: True):
                     proof_repl.prepare_includes(
                         "s", ['(include-book "../tests/acl2/fixture-tests")'],
-                        acquire=lambda book: acquired.append(book))
-                self.assertEqual(acquired, [])
+                        acquire=lambda book: acquired.append(book) or (True, "compatible set", []))
+                self.assertEqual(acquired, ["tests/acl2/fixture-tests"])
                 # One that cannot be acquired is not sent: send answers 1.
                 with mock.patch.object(proof_repl, "install_closure",
                                        lambda *a, **k: (False, "no certificate", [])), \
@@ -2245,6 +2246,32 @@ class SessionIncludeTests(unittest.TestCase):
                         name="s", form='(include-book "tests/acl2/fixture-tests")',
                         limit=None, full=False, allow_undo=False))
                 self.assertEqual((code, sent), (1, []))
+
+    def test_looking_valid_foreign_certificate_still_refuses_without_exact_set(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory)
+            (root / "books/near.cert").write_text('(IN-PACKAGE "ACL2")\n:BEGIN-PORTCULLIS-CMDS\n')
+            acquire = mock.Mock(return_value=(False, "incompatible alists", []))
+            with mock.patch.object(proof_repl, "ROOT", root), \
+                    mock.patch.object(proof_repl, "read_state", return_value={"book": "books/model"}), \
+                    mock.patch.object(proof_repl.certs, "valid_looking", return_value=True), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                _forms, ready = proof_repl.prepare_includes("s", ['(include-book "near")'], acquire=acquire)
+            self.assertFalse(ready)
+            acquire.assert_called_once_with("books/near")
+
+    def test_duplicate_include_acquires_one_exact_set_per_command(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory)
+            acquire = mock.Mock(return_value=(True, "compatible alists", []))
+            with mock.patch.object(proof_repl, "ROOT", root), \
+                    mock.patch.object(proof_repl, "read_state", return_value={"book": "books/model"}), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                forms, ready = proof_repl.prepare_includes(
+                    "s", ['(include-book "near")', '(local (include-book "near"))'], acquire=acquire)
+            self.assertTrue(ready)
+            self.assertEqual(len(forms), 2)
+            acquire.assert_called_once_with("books/near")
 
     def test_sent_include_cache_miss_does_not_certify_or_send_any_form(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -2862,6 +2889,66 @@ class ChangedDependencyTests(unittest.TestCase):
                     ["start", "s82", "tests/acl2/mid-tests", "--host", "hbox"])
             self.assertNotIn("--ld books/base", seen[-1][-1], extra)
 
+
+
+class CachedOnlyTests(unittest.TestCase):
+    def test_conflicting_modes_refuse_before_host_selection_or_session_start(self):
+        for option in (("--ld", "books/base"), ("--source-deps",),
+                       ("--source-deps", "books/base"), ("--ld-missing",),
+                       ("--certify-missing",), ("--ld-leak",),
+                       ("--keep-source-prefix",)):
+            with self.subTest(option=option), \
+                    mock.patch.object(proof_repl, "resolve_auto_host") as resolve, \
+                    mock.patch.object(proof_repl, "run_remote") as remote, \
+                    mock.patch.object(proof_repl, "_start") as start, \
+                    contextlib.redirect_stderr(io.StringIO()) as error:
+                self.assertEqual(proof_repl.main(
+                    ["start", "cached", "books/example", "--host", "auto",
+                     "--cached-only", *option]), 2)
+                resolve.assert_not_called()
+                remote.assert_not_called()
+                start.assert_not_called()
+                self.assertIn("--cached-only cannot combine", error.getvalue())
+
+    def test_remote_changed_dependency_does_not_force_source_loading(self):
+        args = SimpleNamespace(command="start", name="cached", lane="l", remote_tree=None,
+                               host="hbox", book="books/example", ld=[], cached_only=True,
+                               source_deps=None, ld_missing=False, certify_missing=False,
+                               no_sync=False, acl2=None)
+        seen = []
+        with mock.patch.object(proof_repl, "box_settings",
+                               lambda host: {"acl2": "acl2", "cache": "/c"}), \
+                mock.patch.object(proof_repl, "refuse_or_wait_for_lease", lambda *a: None), \
+                mock.patch.object(proof_repl, "own_remote_tree", lambda a, h, l, t: t), \
+                mock.patch.object(proof_repl, "remember_host", lambda *a: None), \
+                mock.patch.object(proof_repl, "sync_files", return_value=[]), \
+                mock.patch.object(proof_repl, "sync_to", lambda *a: 0.0), \
+                mock.patch.object(proof_repl, "changed_dependencies",
+                                  return_value=["books/base"]) as changed, \
+                mock.patch.object(proof_repl.subprocess, "run",
+                                  lambda command, **kw: seen.append(command)
+                                  or SimpleNamespace(returncode=0)), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(proof_repl.run_remote(args,
+                ["start", "cached", "books/example", "--host", "hbox", "--cached-only"]), 0)
+        changed.assert_not_called()
+        self.assertIn("--cached-only", seen[-1][-1])
+        self.assertNotIn("--ld", seen[-1][-1])
+
+    def test_exact_cache_miss_refuses_without_source_or_certification_fallback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            sessions = pathlib.Path(tmp)
+            fd = os.open(sessions / "lock", os.O_CREAT | os.O_RDWR, 0o600)
+            args = SimpleNamespace(name="cached", book="books/example", cached_only=True)
+            with mock.patch.object(proof_repl, "SESSIONS", sessions), \
+                    mock.patch.object(proof_repl, "open_session_lock", return_value=fd), \
+                    mock.patch.object(proof_repl, "install_closure",
+                                      return_value=(False, "exact cache miss", [])) as install, \
+                    mock.patch.object(proof_repl.subprocess, "Popen") as launch, \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(proof_repl.start(args), 1)
+            self.assertEqual(install.call_args.args[1:3], ([], None))
+            launch.assert_not_called()
 
 
 class AttachmentOrderTests(unittest.TestCase):

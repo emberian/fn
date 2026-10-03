@@ -344,3 +344,87 @@ SCN-1089 supplies the matching-image consumer: actual mux startup `:hold`,
 POST acceptance, independent literal custody receipts, clean stop and
 restart retrieval. The selector is prepared; image execution is pending.
 Optional diagnostics cannot change custody if formatting or output fails.
+
+## Shared output pool (HST-047)
+
+The output pool is an explicit heap allowance beyond the composed store,
+thread and cold-resource launch reservation. `resources.output_heap_octets`
+and `resources.output_quantum_heap_octets` form an optional normalized pair;
+the quantum is allocation heap octets, not wire octets or a maximum reply.
+Absent policy remains a partial resource frontier. Explicit policy stays
+unsupported by operator run until the actual consumer and its allocation
+coverage are installed; recognizing grammar does not activate a gate.
+
+`fn-orv-extend-reservation` extends the existing composed launch decision
+exactly once and checks the whole observed machine reservation. Startup
+`fn-orv-startup-grant(dynamic, store-need, cold, policy, slots)` receives actual
+captured dynamic space, the existing pre-extension store need and the exact
+normalized cold descriptor. It requires all three allowances to fit, protects
+bookkeeping and one owner maintenance lease, and leaves at least one user
+lease affordable. Bookkeeping is currently an explicit layout projection;
+its runtime allocator/collector refinement and owner rescue tariff remain
+owed. Rounding surplus and an old connection machine-memory reply allowance
+do not fund this pool.
+
+A separate private `fn-resource-ledger` instance backs the shared pool.
+`fn-rlo-install` installs it; `fn-rlo-issue(cid, connection-gen, operation-gen,
+dependency, ledger)` draws a fixed lease before semantic materialization and
+returns `(:resource (:connection CID CONNECTION-GEN) SLOT DRAW-GEN)`. Row
+metadata stores operation generation independently. CID, both generations
+and slot must match every receipt. Free rows are reused after settlement;
+pressure refuses a new window without truncating stored data.
+
+`fn-rlo-output(token, operation-gen, :drained|:discarded, ledger)` observes
+release of the actual output references and no future publisher for that
+window. `fn-rlo-physical(token, operation-gen, :terminal|:no-actor-created,
+ledger)` observes its actual dependency completion. Issued dependencies
+require both receipts in either order. Timeout, failed/torn cleanup, socket
+close and stale receipts never release the debit. `:none` is restricted to a
+scoped synchronous quantum that issues no physical I/O. Native shutdown also
+requires the retained custody roster empty; the fixed typed drain projection
+alone is insufficient to establish that fact.
+
+The first native fixture draws before actual `fn-sl-step` rendering through
+normal semantic counterparts and retains a second window through a real
+worker join. It is a discrimination test of funding and custody, not complete
+NEWNEWS allocation coverage. Initial matcher/metadata work, integer widths,
+outer plan/mux copies, concrete allocator margins and free-row protocol
+validity remain PRF-1259 work. The actual install/draw/receipt methods now
+refine the existing typed bank operations; metadata does not alter accounting. The actual install/issue/output/physical
+methods preserve typed representation and fixed column shape; their mutation
+guards are verified in the source proof world. No accounted operation
+gate may be inferred from the serializer's logical cons bound or this pool.
+
+SCN-1097 connects the same accepted cold/output projections through operator,
+control and normalized owner entry to service fields. Actual mux startup
+`:hold` invokes output installation; `fn-orv-startup-grant` must accept
+captured dynamic space, exact pre-extension store figure, cold descriptor,
+output policy and ACL2 row count before private allocation.
+`fn-orv-startup-slots` adds the bank's two protected rows to the admitted
+connection count; it never clamps an unrepresentable profile. Row count is
+metadata capacity, not a heap grant for whole replies. Explicit policy stays
+staged until actual issue and full allocation/custody coverage are connected.
+A response lease must retain its PLAN/selector/renderer continuation and all
+output/socket suffixes until operation completion and no future publisher,
+plus actual issued dependency termination; clearing OUT alone settles none.
+
+The response identity producer is `fn-rid-connection`/`fn-rid-response` in
+`books/response-identity.lisp`. The service retains two ACL2 serials under O;
+actual mux admission first retains admitted CID for cleanup, then captures
+`(:connection CID CIDGEN)`. Before the first response render factory, mux
+reserves `(:response CID CIDGEN OPGEN)`; cursor/cold resumption keeps that exact
+object. Both counters refuse at the u64 maximum, without wrap. Response
+identity retirement follows the existing all-windows/suffix terminal path.
+This capture seam is not a grant or a settlement: the future response lease
+consumer must consume the identity before retirement and retain custody until
+all continuation/output/dependency/no-future-publication obligations hold.
+SCN-1102 covers actual pure producer/native helper/pre-render control flow;
+full output activation and cost/refinement remain PRF-1259.
+
+The actual owner cold-result transfer and readiness observation now use the
+shared observed E mutex seam. The transfer has no hidden condition-wait: its
+actual acquire surrounds retained-condition classification and exact settle,
+and release is reserved before physical unlock/completed afterward. The
+finite fixture observes acquire, literal `:job-result`, release while preserving
+the original condition. Remaining O/P/hidden-wait sites keep complete PageIO
+comparison unavailable.

@@ -54,6 +54,7 @@
 (in-package "ACL2")
 (include-book "../books/definterface") ; def-carried, with the :incomplete escape
 (include-book "../books/owner-retain-carried") ; the pilot row and its open
+(include-book "../books/owner-post-carried") ; actual refusal/known-abort writers
 
 (def-carried fn-owner-served-carried
   :invariant fn-owner-retain-statep
@@ -75,6 +76,8 @@
                 (fn-owner-prepare-identity fn-owner-prepare-identity-preserves-retain-state)
                 (fn-owner-prepare-consumer fn-owner-prepare-consumer-preserves-retain-state)
                 (fn-owner-prepare-topic fn-owner-prepare-topic-preserves-retain-state)
+                (fn-owner-refuse-reservation fn-owner-refuse-reservation-preserves-retain-state)
+                (fn-owner-known-abort fn-owner-known-abort-preserves-retain-state)
                 ; STAGE-5B tier A (host/owner-retain-host.lisp)
                 (fn-owner-io fn-owner-io-preserves-retain-state)
                 (fn-owner-take fn-owner-take-preserves-retain-state)
@@ -173,7 +176,7 @@
                 fn-owner-key-statement-redecide-find
                 fn-owner-key-statement-redecide-log-line
                 fn-owner-key-statement-redecide-plan
-                fn-owner-key-statement-request fn-owner-known-abort
+                fn-owner-key-statement-request
                 fn-owner-limit-carried fn-owner-limit-decided
                 fn-owner-limit-use fn-owner-live-post-config
                 fn-owner-log-bounds fn-owner-log-reopen
@@ -202,7 +205,7 @@
                 fn-owner-reader-views-capture fn-owner-reconfigure-authorizedp
                 fn-owner-reconfigure-complete fn-owner-reconfigure-deltas
                 fn-owner-reconfigure-unstage fn-owner-recover-from-store-open
-                fn-owner-refuse-reservation fn-owner-remote-ingress
+                 fn-owner-remote-ingress
                 fn-owner-remote-operation-preflight
                 fn-owner-resource-unavailable-line-at
                 fn-owner-retire-intake-refused fn-owner-retire-report

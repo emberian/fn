@@ -3,7 +3,9 @@
  "file": "planning/design-store-representation-2026-10-01.md",
  "id": "STORE-PAGES",
  "note": "Codex 2026-10-03: Start from existing catalog-paged attachment and paged image route. Establish current actual image behavior, refinement/guard and matched cost evidence; advance dense number/overview pools and history/node roots, bounded open/checkpoint, then the remaining index/recovery design. This is an umbrella for the unfinished initiative, not a claim all design stages remain unimplemented.",
- "notes": [],
+ "notes": [
+  "Astra 2026-10-03: books/history-pages-relocate-step.lisp supplies History a private scratch relocation cursor. Actual readiness/copy/zero/header/mark leaves inspected; guard and completion/progress lemmas warm-admitted, SCN-1101 concrete schedules pass. Explicit grow remains flat O(image); event encoding, commit work, authoritative root attachment and live-read isolation remain separate obligations. Native builder consumer belongs to deputy_history."
+ ],
  "owner": "representation",
  "severity": "medium",
  "source": "planning/design-store-representation-2026-10-01.md",

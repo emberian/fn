@@ -251,7 +251,9 @@ that could release them (T2's confinement pair).
 **Implemented (2026-09-25).** The owner backoff and the retry budget are
 the node's configuration rows `owner-backoff N` and `retry-budget N` in
 `JOURNAL/bp-node-budgets`. ACL2 supplies the defaults (5000 ms, 3) and
-validates them (`fn-bpnp-configured-budgets`, `fn-bpnp-budgetsp`: frame
+reads the bounded file's exact octets (`fn-bpnb-read`: at most256 octets,
+ASCII decimal fields1..20digits, exact keys, duplicate keys refused) and
+validates the resulting values (`fn-bpnp-configured-budgets`, `fn-bpnp-budgetsp`: frame
 naturals, budget at least 1); each deciding host event carries them as its
 optional last field (`fn-bpnp-budgeted-lengthp`). The policy record above
 is the design; no book defines it.
@@ -5047,3 +5049,26 @@ name the changed boundary. Full source replay, bounded restart codec work,
 qualified native interruption/restart and complete held-field symbol grammar
 remain separate pending coordinates.
 
+
+### Native reassembly scheduling (S026, 2026-10-03)
+
+Kind-5 receive custody settles and its TCPCL final ACK is flushed before the
+node begins fragment reassembly. The native service retains one volatile
+`(arrival job limit family-key)` continuation and calls `fn-bpfj-step` at most
+once per service turn with a 4096-position quantum (PRF-989). Completion asks
+the existing ACL2 `:family` step to validate the current family and publish
+kind 18; the host never installs its own reassembled value. A stale or
+refused family yields to a different candidate on a later turn; candidate
+selection and the completed image encoding retain their existing cost.
+
+TCPCL input and timeout turns run the service hook after final-ACK settlement,
+including keepalive input. A retained job requests a zero-time input poll so
+a quiet session cannot make each quantum wait for its read timeout. No hook
+runs while a received-source disposition remains pending. The idle listener
+loop also runs one service turn and polls acceptance between quanta. The
+diagnostic `once` mode closes its socket first, then drains retained local
+work through distinct control/service/yield turns before exiting. Opening
+or rotating resets those volatile continuations from durable rows. Process
+death loses work already spent, never acknowledged custody. This is the
+reassembly sweep bound; whole-image encode, candidate scan, context funding
+and concurrent listener/forwarding fairness remain explicit obligations.

@@ -39,9 +39,6 @@ class NativeIonLtpTests(unittest.TestCase):
         stage = self.tmp / "stage"
         stage.mkdir(mode=0o700)
         request_copy = self.tmp / "submitted-request.adu"
-        undertaken = self.invoke("app-journal", "workflow-undertake", self.store,
-                                 self.journal, "work-a", "3")
-        self.assertEqual(undertaken.returncode, EXIT.OK, undertaken.stderr)
         archive_before = self.invoke("store", self.store, "retention")
         self.assertEqual(archive_before.returncode, EXIT.OK, archive_before.stderr)
         self.assertIn("pins=1 ", archive_before.stdout)
