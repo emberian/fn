@@ -1376,3 +1376,11 @@ sol-access continuing owned queue, GPT-6.1-Sol, 2026-10-03 10:49 UTC:
   recovery must preserve current/retained keys and foreign evidence. No secret
   bytes enter assertion diagnostics. Syntax and existing producer-prefix/sweep
   source check pass; saved-image execution remains Integration-owned.
+
+- Continuing Operator convergence: native-config-show accepts output field30
+  in its shape and resource invariant, renders both resource policies in one
+  table, and retains both output fields in parsed pairs. Original minimal01
+  checkpoint fixed by the complete producer/render/load composition. Existing
+  public round-trip and loader-renderable statements preserved; warm65of65
+  forms pass. New output-only + combined-policy full-antecedent/conclusion
+  fixtures and refusal checks prepared. Normal exact-root cert remains owed.
