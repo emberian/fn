@@ -22889,7 +22889,7 @@
         "host/native/tcpcl.lisp",
         "tests/native_tcpcl_retained_turn_raw.lisp"
       ],
-      "progress_note": "2026-10-03 actual retained-controller raw deadline boundary/established source and held END ACK fixture PASS. Warm hbox normal definitions/guards plus14 literal assertions PASS (whole book1010 steps); definition-expansion helper names are not completion keystones. Matching affected-root certification and proposed composed custody boundary remain pending. SCN-1126 prepared, actual native real-time contact timeout unexecuted."
+      "progress_note": "2026-10-03 actual retained-controller raw deadline boundary/established source and held END ACK fixture PASS. Warm hbox normal definitions/guards plus14 literal assertions PASS (whole book1010 steps); definition-expansion helper names are not completion keystones. Matching affected-root certification and proposed composed custody boundary remain pending. SCN-1126 prepared, actual native real-time contact timeout unexecuted. Captured-input followthrough: fourth BUFFERED argument defers expiration only for an already retained bounded framing/materialization action, so a header physically received before deadline can complete without another read. Actual raw fixture and source-control/custody composition PASS; normal four-argument guard admission and15 assertions PASS; helpers87/44 steps, rule-classes NIL. Final exact certificate pending; earlier three-argument2155553 certificate has a different source digest and does not cover this followthrough."
     }
   ]
 }
