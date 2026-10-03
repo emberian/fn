@@ -6774,6 +6774,25 @@
         "tests/test_native_redeem_input_source.py"
       ],
       "note": "SCN-1132 checks actual source password/reply definitions. Credential width496 accounts for both XREDEEM PASS and subsequent AUTHINFO PASS; oversized or malformed peer reply is loss, so the existing stage outcome preserves password-publication uncertainty. Certification/native image scope remains pending."
+    },
+    {
+      "id": "HST-049",
+      "title": "Independent catchup spool flight backing is drawn before buffers, descriptors and worker construction",
+      "specification": "specs/resource-vector.md#independent-peer-flight-pool-hst-049",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1307"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-flight-reservation.lisp",
+        "tests/acl2/peer-flight-reservation-tests.lisp"
+      ],
+      "implementation_note": "Selected fixed backing and independent private-bank producer guards/launcher machine fit/source fixture pass. Actual Bounds spool worker, profile capture and lifetime settlement consumer being connected. This is partial fixed storage, excluding native structs/cells, pointed-to hash frames, controller/temporary cons, TLS and global collector behavior; no complete-profile activation claim."
     }
   ]
 }

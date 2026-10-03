@@ -23190,6 +23190,32 @@
         "tests/native_bp_heap_source.lisp"
       ],
       "progress_note": "Normal guards and transparent scalar/selector facts admitted6527steps;11 grammar/projection literals PASS. Actual projection plus actual heap profile consumer recorded-profile harness PASS, complete DEFAULT extension composition follows Operator source intake. No blanket resource or current native claim."
+    },
+    {
+      "id": "PRF-1307",
+      "title": "Independent peer flight launch and startup grants fit actual captures",
+      "statement": "Accepted peer launcher extension fits captured whole machine; held startup grant fits dynamic heap after protected other banks. Separate lifetime and work rows ensure metered work can consume spent budget while spool/socket/worker custody remains held. General typed draw/settle correspondence is reused; actual host custody and complete allocation representation coverage remain separate obligations.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-049"
+      ],
+      "depends_on": [
+        "PRF-1211"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "files": [
+        "books/peer-flight-reservation.lisp",
+        "tests/acl2/peer-flight-reservation-tests.lisp"
+      ],
+      "events": [
+        "fn-pfr-accepted-launch-fits-machine",
+        "fn-pfr-held-startup-fits-capture"
+      ],
+      "evidence": [
+        "tests/acl2/peer-flight-reservation-tests.lisp"
+      ],
+      "progress_note": "Selected source definitions/guards and both numerical keystones pass in retained actual bank/heap world. Literal machine-fit/startup teeth and fresh private local-stobj flight/work exhaustion/settlement fixture pass. Profile codec, protected DEFAULT composition and actual Bounds worker custody are in progress. No certificate/native complete funding claim."
     }
   ]
 }

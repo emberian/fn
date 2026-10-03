@@ -617,7 +617,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/cold-read-reservation \
 	tests/acl2/cold-read-reservation-tests \
 	books/page-read-startup \
+	books/peer-flight-reservation \
 	tests/acl2/page-read-startup-tests \
+	tests/acl2/peer-flight-reservation-tests \
 	tests/acl2/page-read-startup-host-tests \
 	books/output-reservation \
 	tests/acl2/output-reservation-tests \
