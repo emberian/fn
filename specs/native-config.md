@@ -217,3 +217,19 @@ reports owner-not-running without opening or replaying the Store. Held charges
 are the pending operation's five-dimensional resource vector, not total live
 heap or proof of complete physical accounting. SCN-1120 exercises the literal
 source route; PRF-1292 retains the pending guard/size-proof obligations.
+
+
+## Trusted development attachment
+
+`FN_NATIVE_DEV_REPL` is a developer-only selector naming an absolute Unix socket
+path. Production selector validation refuses it before owner startup. The
+opted-in owner installs one local evaluator worker with same-UID authentication,
+0600 socket mode, one request at a time, bounded UTF-8 input and captured output,
+and inode/device-checked cleanup. It never removes a pre-existing path.
+Developer forms are explicitly trusted code, separate from all Store, NNTP, BP
+and operator wire grammars. They run through the owner serialization/fence
+boundary; this facility does not promise semantic invariants after arbitrary
+code edits or forceful cancellation of evaluation. `SCN-1121` exercises the
+actual socket evaluator and production selector, with named owner/I/O adapters;
+full native owner composition and ordinary ACL2 event admission remain separate
+execution checks. There is no new proof or image qualification claim.

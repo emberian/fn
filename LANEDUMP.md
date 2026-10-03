@@ -2825,3 +2825,9 @@ pass5,000 dot-leading lines, cold replay, partial drain and exact HTML/count/pin
 receipt. The old work-only producer fails this same fixture with5,408 output
 bytes for W4,096. Recording arena/owner/cold/I/O seams remain; full native
 source-loaded browser execution and qualified Web funding are not established.
+Root operation-readout: developer attachment implements actual same-world Unix
+REPL, opt-in FN_NATIVE_DEV_REPL, production refusal, peer UID, bounded output,
+trace controls and unrestricted interactive operator shell. SCN1121 actual
+socket/source tests pass (2 tests, ~1.2s); owner mutex and nonblocking transport
+are named fixture adapters. Full native owner + ACL2 LD composed check pending;
+no saved-image gate. Groundwork owns application query/export command surface.

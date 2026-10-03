@@ -6509,7 +6509,7 @@ tree root), or stop the build."
 ;;; and no refusal can arrive in the middle of a request as an outcome it is
 ;;; not (review of the dabebb84 campaign, F4 to F6).
 (defparameter +fnn-developer-selectors+
-  '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
+  '("FN_NATIVE_DEV_REPL" "FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
     ;; lane join-f2-13: the OVER/XOVER cursor quantum (numbers per hold of
     ;; the owner mutex) for the natives; ACL2's fn-splan-cursor-window
     ;; decides the value (books/served-plan-cursor.lisp).

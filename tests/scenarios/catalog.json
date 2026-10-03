@@ -9320,6 +9320,29 @@
         "tests/native_article_stream_source.lisp"
       ],
       "execution_scope": "Actual shared core function bodies over the list arena model pass5128 finite checks. Owner/native cold and Web consumer execution remain pending; not physical-window or universal refinement evidence."
+    },
+    {
+      "id": "SCN-1121",
+      "title": "Trusted live developer REPL preserves its world and bounds output",
+      "requirements": [
+        "HST-008"
+      ],
+      "setup": "Actual developer socket evaluator, peer credentials, selector and trace module; named owner mutex and transport adapters.",
+      "steps": [
+        "Connect to private socket; evaluate values and retain a definition across connections.",
+        "Reject reader evaluation and multiple top-level forms; capture oversized output.",
+        "Enable process allocation trace, execute another form, and read trace rows.",
+        "Deny unauthorized peer and stop/join/close the owner attachment."
+      ],
+      "expected": [
+        "0600 socket and developer-only selector; same-world values survive.",
+        "Explicit errors and truncation; trace scope is process, never retained heap.",
+        "Unauthorized connections do not evaluate; owned socket is removed after shutdown."
+      ],
+      "implementation": {
+        "test": "tests/test_dev_repl.py"
+      },
+      "execution_scope": "Socket/source fixture only: actual full native owner composition and ACL2 LD admission pending."
     }
   ]
 }

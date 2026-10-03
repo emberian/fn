@@ -591,6 +591,7 @@
         (load "host/native/bp-node.lisp")
         ; `acl2 session': developer images only (the test fixtures' ACL2).
         (load "host/native/acl2-session.lisp")
+        (load "host/native/dev-repl.lisp")
         ; Native anchor acquisition and its real primitive facility.  The
         ; anchor command calls fnn-crypto-startup in the restarted image, so
         ; it never trusts the serialized FFI readiness state.
