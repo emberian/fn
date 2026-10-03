@@ -795,7 +795,7 @@
   :hints (("Goal" :induct (fn-ag-rev-onto rows zs)
                   :in-theory (union-theories
                               '(fn-wr-group-rows-loop fn-wr-group-rows fn-wr-group-rows-step fn-wr-group-row-segments fn-wrq-true fn-ag-rev-onto
-                                car-cons cdr-cons)
+                                binary-append car-cons cdr-cons)
                               (union-theories (theory 'minimal-theory)
                                               (executable-counterpart-theory :here))))))
 
@@ -872,7 +872,7 @@
           (fn-wr-over-rows-loop group zs (fn-wr-over-rows group rows)))
    :hints (("Goal" :induct (fn-ag-rev-onto rows zs)
                    :in-theory (union-theories '(fn-wr-over-rows-loop fn-wr-over-rows fn-wr-over-row-segments fn-wrq-true fn-ag-rev-onto
-                                                car-cons cdr-cons)
+                                                binary-append car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 
 (verify-guards fn-wr-over-rows-loop)
