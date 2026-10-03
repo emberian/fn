@@ -12,16 +12,38 @@
 (include-book "immutable-list")
 
 (defun fn-cur-split (xs n)
-  (declare (xargs :guard (natp n)))
+  (declare (xargs :guard (natp n) :verify-guards nil :measure (nfix n)
+                  :hints (("Goal" :in-theory
+                           (union-theories '(nfix natp zp o< o-p o-finp o-first-expt
+                                                  o-first-coeff o-rst)
+                                           (theory 'minimal-theory))))))
   (if (or (atom xs) (zp n))
       (mv nil xs)
     (mv-let (front rest) (fn-cur-split (cdr xs) (1- n))
-      (mv (cons (car xs) front) rest))))
+      ;; A fully exhausted immutable input is already the desired front.
+      ;; Reuse it instead of copying the whole output again. A nonempty
+      ;; remainder still needs a separate prefix; no length scan is added.
+      (mv (mbe :logic (cons (car xs) front)
+               :exec (if rest (cons (car xs) front) xs)) rest))))
 
 (defthm fn-cur-split-residual
   (equal (append (mv-nth 0 (fn-cur-split xs n))
                  (mv-nth 1 (fn-cur-split xs n)))
          xs))
+
+(local
+ (defthm fn-cur-split-exhausted-is-source
+   (implies (not (mv-nth 1 (fn-cur-split xs n)))
+            (equal (mv-nth 0 (fn-cur-split xs n)) xs))
+   :hints (("Goal" :induct (fn-cur-split xs n)
+            :in-theory (union-theories '(fn-cur-split mv-nth zp car-cons cdr-cons car-cdr-elim)
+                                      (theory 'minimal-theory))))))
+
+(verify-guards fn-cur-split
+  :hints (("Goal" :use ((:instance fn-cur-split-exhausted-is-source
+                                  (xs (cdr xs)) (n (1- n)))
+                       (:instance car-cdr-elim (x xs)))
+           :in-theory (theory 'minimal-theory))))
 
 (defthm fn-cur-split-byte-bound
   (<= (len (car (fn-cur-split xs n))) (nfix n))
