@@ -9075,12 +9075,14 @@
         "Install independent BP incoming/outgoing counts and resident profile; start one persistent node.",
         "Keep one admitted TCPCL session alive while a second peer sends a canonical NNTP-produced BP source.",
         "Observe durable kind-5 ACK then exactly one application delivery before the first session closes, with forwarding/receipt/expiry turns advancing.",
-        "Interrupt a fragmented outbound operation between affirmative physical socket close and next socket construction, preserving its original grant token; reopen durable custody."
+        "Interrupt a fragmented outbound operation between affirmative physical socket close and next socket construction, preserving its original grant token; reopen durable custody.",
+        "Retain separate allocator class cursors and yield twice while a once-node owes an outgoing receipt."
       ],
       "expected": [
         "Each loop admits at most one funded listener attempt, runs one retained slot and one ACL2-selected service class; a waiting peer keeps its own context.",
         "Neither timeout nor uncertain close settles a grant; source borrowing and unfinished operation custody prevent logical return.",
-        "Application commitment and returned receipt remain distinct from TCPCL ACK; restart does not duplicate delivery."
+        "Application commitment and returned receipt remain distinct from TCPCL ACK; restart does not duplicate delivery.",
+        "Each acquire invocation calls one typed candidate operation; yields create no context, every local service runs, and once returns only after the owed outgoing terminal settles."
       ],
       "evidence": [
         "tests/native_bp_session_bank_raw.lisp",
@@ -9103,7 +9105,8 @@
         ],
         "native": true
       },
-      "notes": " Ordinary live peer teardown now consumes ACL2 context-abort plan before physical close; fenced source and unobserved closure remain held (PRF-1296). Actual native execution remains pending."
+      "notes": " Ordinary live peer teardown now consumes ACL2 context-abort plan before physical close; fenced source and unobserved closure remain held (PRF-1296). Actual native execution remains pending.",
+      "execution_scope": " Candidate bank results are recorded in this native source fixture; PRF1309 actual typed-stobj producer and draw correspondence are separate. Current source-native endpoint remains pending."
     },
     {
       "id": "SCN-1113",

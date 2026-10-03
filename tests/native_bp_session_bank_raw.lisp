@@ -23,6 +23,7 @@
 (define-condition fnn-peer-dial-error (error) ())
 (defun fnn-indeterminate (&rest xs) (error "indeterminate ~s" xs))
 (load "host/native/bp-session.lisp")
+(defvar *actual-bp-session-acquire* (symbol-function 'fnn-bp-session-acquire))
 (defvar *receipts* nil)
 (defvar *closures* 0)
 (defvar *close-receipt* :closed)
@@ -163,3 +164,85 @@
            (assert (null (fnn-bpsg-conn grant)))
            (assert (eq (not (null (gethash grant (fnn-bpsb-held bank)))) (eq physical :unobserved))))))))
 (format t "PASS ordinary live abort retires volatile aliases without ACK; publication fence and unobserved physical return remain held.~%")
+
+;;; Actual acquisition wrapper retains independent ACL2-produced cursors.
+;;; The typed-bank observation is recorded here; root's ACL2 fixture exercises
+;;; actual occupied-slot probing, draw correspondence and generation reuse.
+(setf (symbol-function 'fnn-bp-session-acquire) *actual-bp-session-acquire*)
+(defvar *allocation-answers* nil)
+(defvar *allocation-requests* nil)
+(defun fnn-call (name &rest args)
+ (case name
+  (fn-bpsg-acquire-turn
+   (push args *allocation-requests*)
+   (or (pop *allocation-answers*) (error "unexpected extra candidate probe")))
+  (fn-bpsg-return
+   (assert (fifth (first args))) (assert (sixth (first args)))
+   (push :settled *receipts*) (list :settled (second args)))
+  (otherwise (error "unexpected call ~s" name))))
+(let ((bank (test-bank))
+      (*allocation-answers* (list (list :bp-session-yield nil 3 :incoming-ledger)
+                                  (list :bp-session-yield nil 4 :outgoing-ledger)
+                                  (list :drawn (fn-bpsg-row 2 9 :incoming) 2 :drawn-ledger)))
+      (*allocation-requests* nil))
+ (multiple-value-bind (grant word) (fnn-bp-session-acquire bank :incoming)
+  (assert (null grant)) (assert (eq word :bp-session-yield)))
+ (assert (zerop (hash-table-count (fnn-bpsb-held bank))))
+ (assert (= (fnn-bpsb-incoming-cursor bank) 3))
+ (assert (null (fnn-bpsb-outgoing-cursor bank)))
+ (assert (eq (fnn-bpsb-ledger bank) :incoming-ledger))
+ (fnn-bp-session-acquire bank :outgoing)
+ (assert (= (fnn-bpsb-incoming-cursor bank) 3))
+ (assert (= (fnn-bpsb-outgoing-cursor bank) 4))
+ (let ((grant (fnn-bp-session-acquire bank :incoming)))
+  (assert (equal (fnn-bpsg-row grant) (fn-bpsg-row 2 9 :incoming)))
+  (assert (eq grant (aref (fnn-bpsb-slots bank) 2))))
+ (assert (= (length *allocation-requests*) 3))
+ (assert (equal (mapcar 'third (reverse *allocation-requests*)) '(nil nil 3)))
+ (assert (eq (fnn-bpsb-ledger bank) :drawn-ledger)))
+;;; Once drains an owed outgoing attempt across allocator yields while still
+;;; running every local service; only the exact terminal grant is settled.
+(let ((bank (test-bank)) (owed t) (outgoing nil) (services 0)
+      (*accepted* 0) (*served* nil) (*allocation-requests* nil)
+      (*allocation-answers*
+       (list (list :drawn (fn-bpsg-row 2 1 :incoming) 3 :ledger)
+             (list :bp-session-yield nil 4 :ledger)
+             (list :bp-session-yield nil 4 :ledger)
+             (list :drawn (fn-bpsg-row 4 7 :outgoing) 4 :ledger))))
+ (fnn-bp-session-loop bank nil :listeners
+  (lambda (grant socket)
+   (declare (ignore socket))
+   (setf (fnn-bpsg-turn grant) (lambda () :done))) t
+  (lambda (action)
+   (incf services) (assert (< services 40)) (pushnew action *served*)
+   (when (and owed (not outgoing) (eq action :receipt))
+    (setq outgoing (fnn-bp-session-acquire bank :outgoing))
+    (when outgoing
+     (setf (fnn-bpsg-turn outgoing) (lambda () :done)
+           (fnn-bpsg-finish outgoing)
+            (lambda (grant) (declare (ignore grant)) (setq owed nil) nil)))))
+  (lambda () owed))
+ (assert (not owed)) (assert outgoing)
+ (assert (= (length *allocation-requests*) 4))
+ (assert (equal (mapcar 'third (reverse *allocation-requests*)) '(nil nil 4 4)))
+ (assert (= (length *served*) 8))
+ (assert (>= services 22))
+ (assert (zerop (hash-table-count (fnn-bpsb-held bank))))
+ (assert (null *allocation-answers*)))
+(format t "PASS actual single-candidate consumer: independent cursors, yield without custody, once/drain keeps owed receipt and runs all services.~%")
+
+;;; Actual forwarding caller preserves the typed yield before constructing
+;;; session IDs, intents, peer metadata, sockets or packet continuations.
+(with-open-file (stream "host/native/bp-node.lisp")
+ (loop for form = (read stream nil :eof) until (eq form :eof) do
+  (when (and (consp form) (eq (first form) 'defun)
+             (eq (second form) 'fnn-bpnode-forward-start)) (eval form))))
+(let ((bank (test-bank)) (*allocation-requests* nil)
+      (*allocation-answers* (list (list :bp-session-yield nil 4 :forward-ledger))))
+ (multiple-value-bind (grant word)
+  (fnn-bpnode-forward-start bank nil nil nil nil nil nil nil)
+  (assert (null grant)) (assert (eq word :bp-session-yield)))
+ (assert (= (length *allocation-requests*) 1))
+ (assert (zerop (hash-table-count (fnn-bpsb-held bank))))
+ (assert (eq (fnn-bpsb-ledger bank) :forward-ledger)))
+(format t "PASS actual forward caller keeps allocation yield distinct before any session or durable intent construction.~%")

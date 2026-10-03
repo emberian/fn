@@ -4133,3 +4133,13 @@ with-local-stobj scenarios pass after repair; original install produces
 resources-unavailable after4draws/one return. Installer/test helpers renamed
 only in shared normal loan to avoid undo; exact source cert pending. No new
 full world, no deployment or complete resource/whole-loop claim.
+
+Root PRF1309 single-candidate BP allocator actual consumer connected: native
+bank retains independent incoming/outgoing ACL2 cursor positions and exact
+ledger results, one candidate call per attempt. Yield materializes no grant,
+socket or context; forwarding explicitly retains a pending retry and receipt
+cursor remains owed across --once drain. Actual bank/loop recording-boundary
+fixture passes two yields, complete service rotation and terminal settlement.
+Root owns actual stobj/guard/draw correspondence and typed producer fixtures;
+no whole-ledger scan allegation (WFP is17 header/length checks). Current native
+multi-peer/RQ durability remains unexecuted pending shared current entry.

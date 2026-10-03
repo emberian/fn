@@ -5201,3 +5201,11 @@ its executor join. A join alone does not erase a prior release-callback debt:
 owner stopped, including failed constructors with no Store carrier. Uncertain
 physical return retains the exact owner authority. This is a cleanup guarantee;
 the complete BP decoder/collector tariff remains open.
+
+The retained node uses `fn-bpsg-acquire-turn` to inspect one candidate slot per
+listener or outgoing attempt. ACL2 normalizes and wraps separate class cursors.
+An occupied candidate yields without a grant or a capacity verdict; a zero-sized
+class is capacity. Incoming acceptance and outgoing context construction occur
+only after an exact generation-bearing draw. Forwarding and receipt work remain
+pending across yield, including `--once` drain. The older full-scan allocator is
+a compatibility operation and is no longer the retained node consumer.
