@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -40,6 +41,8 @@ def main() -> int:
         '^"coordinate"{ source_revision: "' + revision + '"',
         ' tier: "exact source discovery; public-image exposure and downstream reading unestablished" }',
     ]
+    reading_path = root / ".spw/audits/entries/reading-status.json"
+    reading = json.loads(reading_path.read_text()) if reading_path.exists() else {}
     count = 0
     for path in sorted((root / "host/native").glob("*.lisp")):
         data = path.read_bytes()
@@ -51,12 +54,21 @@ def main() -> int:
                 continue
             count += 1
             relative = Path(os.path.relpath(path, output.parent)).as_posix()
+            status = reading.get(definition.name)
+            if status:
+                coverage = status["coverage"]
+                if status["source_sha256"] != hashlib.sha256(data).hexdigest():
+                    coverage = "earlier source body read; source file changed; revisit exact definition"
+            else:
+                coverage = "catalogued; entry body untouched by entries horse"
+
             cards.extend([
                 '^"' + definition.name + '"{',
                 ' @source: ~"' + relative + '"',
                 " line: " + str(definition.line),
                 ' source_sha256: "' + hashlib.sha256(data).hexdigest() + '"',
-                ' coverage: "catalogued; see coverage.md for actual reading and fixtures"',
+                " coverage: " + json.dumps(coverage),
+                " read_coordinate: " + json.dumps(status["revision"] if status else "unread"),
                 "}",
             ])
     output.parent.mkdir(parents=True, exist_ok=True)
