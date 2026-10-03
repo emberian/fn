@@ -293,3 +293,25 @@ logical producers, duplicate keys and attempts to claim `:accounted`.
 This is a source linkage check for an enforced projection; it does not prove
 funding transfer, total allocation, refusal work or native receipt honesty.
 The full operation gate remains owed and cannot be activated by annotation.
+
+`books/resource-operation.lisp` is the logical tree reference for the next
+connection/output slice. It uses the existing `fn-rt`/`fn-rv` transitions:
+owner baseline/reserve installation precedes sub-bank open; an explicitly
+funded gate draw precedes the operation draw; retained reusable output stays
+on its draw after transient refund; timeout keeps the tree; close refuses
+while any child draw remains. Its three preservation facts unfold the
+reference decisions and are not physical-I/O or served-representation
+keystones. Input demand construction and gate setup require prior caller
+funding; this reference does not derive their tariff. The typed syncer
+producer is currently the connected consumer; typed subtree/refund and full
+connection/output custody remain owed.
+
+Private ledger allocation requires the registered creator's validated
+`:raw-guarded (0 nil (fn-resource-ledger))` route. ACL2's live-stobj
+counterpart refuses this private construction; the actual native fixture
+caught that refusal before install. `fn-di-raw-creatorp` checks the exact
+registered zero-input creator and verified ABI, so ordinary methods cannot
+claim this exception. Startup preserves this narrow allocation route even
+in developer counterpart mode; install, issue and receipt methods remain
+on their normal selected routes. This is a concrete allocation bridge, not
+an accounting theorem or an exemption from funding the created object.
