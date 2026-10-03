@@ -21810,14 +21810,16 @@
         "tests/acl2/def-cursor-tests.lisp",
         "tests/acl2/newnews-metadata-cursor-tests.lisp",
         "planning/evidence/served-cursor-20261003/metadata-repl.log.gz",
-        "planning/evidence/served-cursor-20261003/shell-repl.log.gz"
+        "planning/evidence/served-cursor-20261003/shell-repl.log.gz",
+        "tests/acl2/served-plan-newnews-tests.lisp",
+        "planning/evidence/served-cursor-20261003/composition-repl.log.gz"
       ],
       "events": [
         "fn-nnw-meta-step-residual",
         "fn-nnw-meta-one-progresses",
         "fn-nnw-meta-one-visits-at-most-one"
       ],
-      "progress_note": "GPT-6.1-Sol 2026-10-03: consumer core, residual, guard checks and literal sparse/final-output teeth admitted in narrow hbox REPL; not a certificate or native image qualification. Plan/dispatcher composition proof replay pending. Generated declaration selects cursor response; plan continuation signature unchanged. Current view policy remains pinned pending decided completed discovery capture; initialization selector and renderer working allocation remain unbounded debt. Exact def-cursor visit formula and actual core call are translated/world-checked against named theorem; missing and wrong-statement theorem declarations are refused. Fresh shell tests12 forms admitted0.11 ACL2s/12,434steps; metadata declaration literal formula validated in hbox world. Mixed incremental metadata REPL and fresh shell logs archived/indexed; full composition still pending."
+      "progress_note": "GPT-6.1-Sol 2026-10-03: consumer core, residual, guard checks and literal sparse/final-output teeth admitted in narrow hbox REPL; not a certificate or native image qualification. Plan/dispatcher composition proof replay pending. Generated declaration selects cursor response; plan continuation signature unchanged. Current view policy remains pinned pending decided completed discovery capture; initialization selector and renderer working allocation remain unbounded debt. Exact def-cursor visit formula and actual core call are translated/world-checked against named theorem; missing and wrong-statement theorem declarations are refused. Fresh shell tests12 forms admitted0.11 ACL2s/12,434steps; metadata declaration literal formula validated in hbox world. Mixed incremental metadata REPL and fresh shell logs archived/indexed; full composition still pending. Composed served-plan exact residual, expanded-reply and retained-buffer invariant proofs now admitted in the warm catalog source world, with actual plan drain equality at byte/visit budgets 1 and 256. Existing OVER plan teeth also pass. Hand dispatcher replay 2.02 ACL2 s / 862,947 steps; actual generated dispatcher replay 1.75 ACL2 s / 451,950 steps, guards included. Chain/owner composition replay still pending (served-span dependency absent in this world). These are source REPL admissions, not certificates/image qualification; allocation/custody/view debts unchanged."
     }
   ]
 }

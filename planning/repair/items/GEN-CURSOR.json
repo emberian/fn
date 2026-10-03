@@ -1,20 +1,21 @@
 {
- "disposition": "LOCAL",
- "exposure": "latent",
- "file": "books/def-cursor.lisp",
- "id": "GEN-CURSOR",
- "locus": "generators",
- "note": "after GEN-CARRIED-VIEW lands; DEF-COMMAND owns the :quantum column, progress effect and off-lock rule",
- "notes": [
-  "2026-10-03 Astra decision: metadata NEWNEWS is first served instance. Visits and bytes separately bounded; preserve response residual and snapshot. Fewer than eight rows is not termination: shared cache eviction and multiple entries per article require saved progress or owned dependencies. HDR/XPAT follow as cold-data instance.",
-  "GPT-6.1-Sol owns continuing consumers. Concrete source seam fn-nnw-step(cur,q,arena)->(lines,next), fn-ovw-step(cur,w,arena,cat)->(octets,next), fn-splan-cursor-step(plan,w,arena,cat)->(status,plan). Separate snapshot, scan progress, buffered output, operation generation and physical custody; visits and bytes separately bounded. In implementation after metadata NEWNEWS bridge.",
-  "GPT-6.1-Sol 2026-10-03: actual metadata cursor producer and NEWNEWS declaration/plan branch wired. Per-step exact residual, independent candidate-call/emitted-byte bounds and sparse/final-buffer tests admitted in REPL (PRF-1256, SCN-1084); source only, composition/certification/native image pending. Initial selected-group materialization and one-row renderer working bytes remain unbounded; output draw/custody and decided completed discovery capture remain open. Captured archive context retains roots by reference, no whole archive copy. OVER and cold HDR/XPAT still await the common resumable/dependency consumer.",
-  "Generator seam now world-checks translated literal :visit-metric decrease statement against the admitted theorem for the actual :call. Missing/wrong theorem fixtures refused; fresh shell12forms passed0.11ACL2s/12,434steps. This does not infer working allocation from scan-tail decrease. Evidence metadata-repl/shell-repl archived under served-cursor-20261003; composition qualification pending."
- ],
- "owner": "codex-sol-served",
- "severity": "medium",
- "source": "served-catalog-live-finding",
- "state": "in-progress",
- "title": "def-cursor: the resumable-continuation generator (step, run = reference, per-quantum VISIT bound, residual, progress); instances fn-nnw and OVER's fn-ovw",
- "updated": "2026-10-03T06:00:00Z"
+  "disposition": "LOCAL",
+  "exposure": "latent",
+  "file": "books/def-cursor.lisp",
+  "id": "GEN-CURSOR",
+  "locus": "generators",
+  "note": "after GEN-CARRIED-VIEW lands; DEF-COMMAND owns the :quantum column, progress effect and off-lock rule",
+  "notes": [
+    "2026-10-03 Astra decision: metadata NEWNEWS is first served instance. Visits and bytes separately bounded; preserve response residual and snapshot. Fewer than eight rows is not termination: shared cache eviction and multiple entries per article require saved progress or owned dependencies. HDR/XPAT follow as cold-data instance.",
+    "GPT-6.1-Sol owns continuing consumers. Concrete source seam fn-nnw-step(cur,q,arena)->(lines,next), fn-ovw-step(cur,w,arena,cat)->(octets,next), fn-splan-cursor-step(plan,w,arena,cat)->(status,plan). Separate snapshot, scan progress, buffered output, operation generation and physical custody; visits and bytes separately bounded. In implementation after metadata NEWNEWS bridge.",
+    "GPT-6.1-Sol 2026-10-03: actual metadata cursor producer and NEWNEWS declaration/plan branch wired. Per-step exact residual, independent candidate-call/emitted-byte bounds and sparse/final-buffer tests admitted in REPL (PRF-1256, SCN-1084); source only, composition/certification/native image pending. Initial selected-group materialization and one-row renderer working bytes remain unbounded; output draw/custody and decided completed discovery capture remain open. Captured archive context retains roots by reference, no whole archive copy. OVER and cold HDR/XPAT still await the common resumable/dependency consumer.",
+    "Generator seam now world-checks translated literal :visit-metric decrease statement against the admitted theorem for the actual :call. Missing/wrong theorem fixtures refused; fresh shell12forms passed0.11ACL2s/12,434steps. This does not infer working allocation from scan-tail decrease. Evidence metadata-repl/shell-repl archived under served-cursor-20261003; composition qualification pending.",
+    "GPT-6.1-Sol 2026-10-03: NEWNEWS plan residual/expanded reply and buffer preservation admitted; tiny/large budget actual plan witness plus existing OVER teeth pass. Hand/generated dispatcher replay passed with guards; chain/owner replay pending missing served-span source prefix. Evidence is archived composition REPL, no certificate/image claim. Allocation, custody, completed snapshot and other consumer debts unchanged."
+  ],
+  "owner": "codex-sol-served",
+  "severity": "medium",
+  "source": "served-catalog-live-finding",
+  "state": "in-progress",
+  "title": "def-cursor: the resumable-continuation generator (step, run = reference, per-quantum VISIT bound, residual, progress); instances fn-nnw and OVER's fn-ovw",
+  "updated": "2026-10-03T06:00:00Z"
 }

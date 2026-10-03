@@ -389,3 +389,19 @@ Local1fa188839 wires buffered metadata NEWNEWS declaration/plan consumer with PR
 DC02 assembly: fn-scr-command now calls generated fn-proto-archive-command-cat and uses its theorem; all helper rows preserved, and pst-not-500 recognizes NEWNEWS cursor. Explicit hand fallthrough still proves undeclared rows; hand cond removal remains outstanding.1fa188839 source is not READY qualification; composition replay currently blocked by startup world loss. Exact initial phase lemma now matches car/cadr used by generic selectedp proof (metadata REPL1,773steps), no arbitrary continuation status211 assumption.
 
 Generator hardening: :visit-metric is mandatory, translated literal decrease<=1 for actualcorecall must equal admitted theorem in ACL2world. Missing/wrong statement fixtures refused, freshshell12forms0.11ACL2s/12,434steps. Metadata declaration match validated separately. Archived metadata incremental REPL2d653fd3 and freshshell8e3740a6 under planning/evidence/served-cursor-20261003; exact component evidence only.
+
+
+Composition checkpoint: metadata-catalog warm source world now admits NEWNEWS
+plan exact residual/expanded reply and retained-buffer invariants. Actual plan
+fixture at one-byte/one-visit and 256-byte/256-visit budgets drains to the same
+complete reference reply; sparse/final-buffer core teeth and existing OVER plan
+teeth pass. Reference NEWNEWS session/no-cursor helpers exported for the
+generated row proof; hand dispatcher replay 2.02 ACL2 seconds / 862,947 steps,
+generated dispatcher replay 1.75 ACL2 seconds / 451,950 steps, guards included.
+These are source exploration admissions, not certificates or an image verdict.
+Whole catalog root load used ordinary local events; its dependencies were
+encapsulated. Full chain replay remains pending because this world lacks the
+served-span owner TLS result definitions. Raw log includes corrected failures
+and is archived/indexed as served-cursor-20261003/composition-repl.log.gz.
+Initialization/whole Message-ID working allocation, per-connection output draw,
+completed discovery view and remaining cursor consumers remain explicit debt.

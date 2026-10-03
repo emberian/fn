@@ -8306,7 +8306,8 @@
       "evidence": [
         "tests/acl2/def-cursor-tests.lisp",
         "tests/acl2/newnews-metadata-cursor-tests.lisp",
-        "tests/test_native_newnews_wildmat.py"
+        "tests/test_native_newnews_wildmat.py",
+        "tests/acl2/served-plan-newnews-tests.lisp"
       ]
     }
   ]
