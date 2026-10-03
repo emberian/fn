@@ -21757,9 +21757,15 @@
         "PRF-1253"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "certified",
       "evidence": [
         "planning/evidence/manifests/certify-20261003T062425Z-6659.json"
+      ],
+      "events": [
+        "fn-cmt-step-state-is-valid",
+        "fn-cmt-pipeline-requires-its-captured-passes",
+        "fn-cmt-wrong-snapshot-ticket-faults",
+        "fn-cmt-stop-observation-never-enters-a-pipeline"
       ]
     }
   ]
