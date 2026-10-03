@@ -8310,12 +8310,14 @@
         "Run tests/acl2/newnews-metadata-cursor-tests.lisp: unmatched first article advances with empty output, matching final article retains its output after scan completion; compare emitted prefix plus remaining with original response.",
         "Run actual native NEWNEWS wildcard workload with more candidates than shared cache slots; compare complete Message-ID reply while a second connection remains responsive.",
         "Run newnews-stream-cursor-tests and actual served-plan-newnews-tests: indexed line wider than byte quantum drains without candidate visits, sparse selection retains final renderer, tiny/large plan outputs equal.",
-        "Run actual configured factory→plan witness with eleven captured configured groups, sparse first article, selector retained through one-call/one-byte quanta, and complete equality to original catalog reply."
+        "Run actual configured factory→plan witness with eleven captured configured groups, sparse first article, selector retained through one-call/one-byte quanta, and complete equality to original catalog reply.",
+        "Run tests.test_cursor_cold_poll against actual extracted native cursor/mux bodies: cold attempt returns unchanged plan+issued read, pending yields to timer, repeated miss retains first clock, returned page resumes plan rather than input, refusal adds no body line. This is mocked-I/O source flow, not matching native image custody."
       ],
       "expected": [
         "Separate control calls, actual selector entry visits and emitted bytes obey their stated bounds; sparse misses retain selection progress rather than ending the scan.",
         "Buffered final output keeps the continuation live until drained; no repeated candidate and no omitted terminator.",
-        "Library tests do not establish initialization/working-allocation bounds, custody producer or completed-view capture; native image matching this source remains owed."
+        "Library tests do not establish initialization/working-allocation bounds, custody producer or completed-view capture; native image matching this source remains owed.",
+        "The shared mux loop never awaits a cursor page; response plan/action remain retained. Cache-independent consumption and multi-entry replay progress remain separate open obligations."
       ],
       "proofs": [
         "PRF-1256",
@@ -8327,7 +8329,10 @@
         "tests/test_native_newnews_wildmat.py",
         "tests/acl2/served-plan-newnews-tests.lisp",
         "tests/acl2/newnews-stream-cursor-tests.lisp",
-        "tests/acl2/newnews-candidate-selector-tests.lisp"
+        "tests/acl2/newnews-candidate-selector-tests.lisp",
+        "tests/test_cursor_cold_poll.py",
+        "tests/cursor_cold_poll_recording.lisp",
+        "planning/evidence/cursor-cold-poll-20261003/checks-final.json"
       ]
     },
     {

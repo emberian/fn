@@ -1894,6 +1894,10 @@ a94b374ca0cb9284a24f61ba9353323855bfd3fbf5d9bc47952892add4429507 51764 planning/
 d9af127c21c9b658bd03134601395c9be53b807ef9c7bcdb80802b861fa9b0a6 20176 planning/evidence/current-release-fence-2026-10-01/index-backing-resource-driver.lisp
 ac8ece84d0a8c056f67185516a7366f1701ed89dc4a70a6d532f82a4b286223d 1406 planning/evidence/current-release-fence-2026-10-01/index-backing-resource-driver.lisp.patch
 413f6ebfd2fa3748252d266dc0c88b38577344c4d6016014d78309a4b931205f 810 planning/evidence/current-release-fence-2026-10-01/manifest.json
+174dcd9b94eeac96ec4e35bc54c587ad4a44ef7cb09dd861799340c266f60a54 1708 planning/evidence/cursor-cold-poll-20261003/checks-final.json
+f4f3e1281e91c269fbf8de721417b42e45e8318628fad2a07defc45dd82a4862 1614 planning/evidence/cursor-cold-poll-20261003/checks.json
+0c58c13fe79a4eb0c36214de905ad5b1eae7dbd6380eabfdf0aad1c94952d66a 87 planning/evidence/cursor-cold-poll-20261003/native-bodies.log
+f8e1eb8cf6023257de9608657de05d6905579d2c7e98798bdd7f3b2739f7a8ba 98 planning/evidence/cursor-cold-poll-20261003/unittest.log
 db67d4450328fe3c8fe3cb8d8887bdd4d25195bcaf4714dbf2a74e09b0431ef2 9459 planning/evidence/d23-bp-carrier-2026-09-24.md
 f71c1443d3ef3ee59e0119400d9f00f8a5555c650763a6a7f25b29f12f0dd301 17557 planning/evidence/d23-bp-carrier-2026-09-24/SHA256SUMS
 07bd583e2280c8bb05318fedb52f4ad347f04d9cb1876c7c745e1e7cb466d48e 2576 planning/evidence/d23-bp-carrier-2026-09-24/d23-lab.sh
