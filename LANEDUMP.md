@@ -410,3 +410,11 @@ this warm stream world). No certificate/image or whole-plan heap coverage.
 Batch creates one recursion/MV envelope per accepted control transition;
 Foundations retains physical allocation/collector tariff ownership. This source
 ships independently of raw catalog/availability proof repair owned Convergence.
+
+Actual matcher/controller/batch source receipts archived/indexed under
+served-matcher-consumer-20261003: checks18a40b2255, stream/batch full log2a92bae1ba,
+adapter full log77dced1307. Failed probes retained alongside successful proper
+encapsulates. Source coordinate b27df16a7; statement scope is source admissions,
+not matching whole-plan certification or native qualification. Scoped strict
+three-book theory/order check0warnings; actual plan consumer remains next
+composition check for Integration.

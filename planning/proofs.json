@@ -21751,7 +21751,10 @@
         "tests/test_cursor_cold_poll.py",
         "tests/cursor_cold_poll_recording.lisp",
         "planning/evidence/cursor-cold-poll-20261003/checks-final.json",
-        "books/def-cursor-batch.lisp"
+        "books/def-cursor-batch.lisp",
+        "planning/evidence/served-matcher-consumer-20261003/checks.json",
+        "planning/evidence/served-matcher-consumer-20261003/stream-batch-repl.log.gz",
+        "planning/evidence/served-matcher-consumer-20261003/adapter-repl.log.gz"
       ],
       "events": [
         "fn-nnw-stream-batch-residual",
@@ -21783,7 +21786,10 @@
         "planning/evidence/served-cursor-20261003/selector-composition-checks.json",
         "planning/evidence/served-cursor-20261003/selector-composition-repl.log.gz",
         "books/newnews-matching-selector.lisp",
-        "tests/acl2/newnews-matching-selector-tests.lisp"
+        "tests/acl2/newnews-matching-selector-tests.lisp",
+        "planning/evidence/served-matcher-consumer-20261003/checks.json",
+        "planning/evidence/served-matcher-consumer-20261003/stream-batch-repl.log.gz",
+        "planning/evidence/served-matcher-consumer-20261003/adapter-repl.log.gz"
       ],
       "events": [
         "fn-nnm-start-value",
@@ -21814,7 +21820,10 @@
         "tests/acl2/wildmat-cursor-tests.lisp",
         "tests/acl2/newnews-matching-selector-tests.lisp",
         "planning/evidence/dc03-wildmat-20261003/checks.json",
-        "planning/evidence/dc03-wildmat-20261003/repl.log.gz"
+        "planning/evidence/dc03-wildmat-20261003/repl.log.gz",
+        "planning/evidence/served-matcher-consumer-20261003/checks.json",
+        "planning/evidence/served-matcher-consumer-20261003/stream-batch-repl.log.gz",
+        "planning/evidence/served-matcher-consumer-20261003/adapter-repl.log.gz"
       ],
       "events": [
         "fn-wmc-start-value-is-group-match",
