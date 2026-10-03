@@ -47,10 +47,13 @@
     (fn-feedp fn-feed-journal-entryp fn-feed-apply-record fn-feed-state-of
      fn-feed-state-inflightp fn-feed-offeredp fn-feed-droppedp
      fn-feed-state-attempt fn-feed-find fn-feed-with-queue fn-feed-with-backoff
-     fn-feed-queue-requeue fn-feed-backoff-delay))
+     fn-feed-queue-requeue fn-feed-backoff-delay fn-feed-lost-records))
+           ;; the lost arm (a loss at the retry bound also writes its
+           ;; :feed-drop, SWEEP-PEER S053) is feed-correspondence's lemma
            :use ((:instance fn-feed-apply-live-retry-is-back-off
                             (msgid (fn-feed-response-msgid response))
-                            (code (fn-feed-response-code response)))))))
+                            (code (fn-feed-response-code response)))
+                 (:instance fn-feed-lost-records-are-driven)))))
 
 ; Port readiness contains the journal grammar check; its extra payload test is
 ; what separates an abstractly well-formed feed record from one FNFD can emit.
