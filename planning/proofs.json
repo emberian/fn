@@ -22478,9 +22478,11 @@
         "tests/acl2/bp-session-profile-tests.lisp",
         "tests/native_bp_session_bank_raw.lisp",
         "planning/evidence/manifests/certify-20261003T113645Z-1660138.json",
-        "planning/evidence/bp-retained-node-2026-10-03.md"
+        "planning/evidence/bp-retained-node-2026-10-03.md",
+        "planning/evidence/manifests/certify-20261003T114543Z-1687865.json",
+        "tests/native_bp_root_cleanup_raw.lisp"
       ],
-      "progress_note": "Warm hbox source admission verified every new guard (98,006 prover steps). Four-root farm run113540-b22f PASSED4/0 before final additive captured-wire-span helper; final exact source recertification and native DTN image pending. Actual raw bank/loop passes physical-alone custody, ambiguous close no refund/retry, same-token fragment rearm, live first peer plus second acceptance and all eight service phases. No full funding or native-image fairness claim."
+      "progress_note": "Final exact four-root manifest certify-20261003T114543Z-1687865 PASSED4/0, archived/indexed. All component guards verified. Actual raw bank/loop passes physical-alone custody, ambiguous close no refund/retry, all independent grant cleanup, same-token fragment rearm, live first peer plus second acceptance and all eight service phases. Actual command root-cleanup fixture verifies all six cleanup faults cannot replace original body fault and held source custody prevents Store/FNBS root release while preserving process-owned authority. Matching DTN image SCN1110/application-receipt/reopen and complete allocator/GC/work/actor and scheduler/cut refinement remain open."
     }
   ]
 }
