@@ -174,3 +174,15 @@ semantic-read-error concern is rebutted: old analyze_book.read_error catches
 only Reader.ReadError; both use identical literal include/:dir policy.
 Orphan-book gate refusal already has a durable test. Commondir invalidation
 lead was actionable and is included in this slice.
+
+S141 residual source `bfa00dac6`: build_lists_check now refuses repeated
+literal ld/include-book directives within each build script before closure
+deduplication hides them. Path aliases/options do not evade it; system
+namespaces remain separate, shared included-book dependencies stay allowed,
+quoted/comment/macro-body mentions do not count. Seven scoped tests pass
+0.025s; actual default/DTN lists zero findings (41/29 ld closure). Existing
+cfc0980c4 script cleanup preserved. Intended duplicate assertion red/base
+and green/head archived
+`planning/evidence/repair/S141-20d56b6e8f544518b2865742149af33e.json`,
+sha256 `9cbce3906368ee3dec9db92ae4e4ded65fef8b515d1482522a9e70274672b30c`.
+No image build run.
