@@ -441,7 +441,13 @@
 (defthm fn-bs-nth-of-rows-wire
   (implies (< (nfix n) (len rows))
            (equal (nth n (fn-bs-rows-wire rows arena))
-                  (fn-bs-row-wire (nth n rows) arena))))
+                  (fn-bs-row-wire (nth n rows) arena)))
+  :hints (("Goal" :induct (nth n rows) :do-not '(generalize)
+           :expand ((fn-bs-rows-wire rows arena))
+           :in-theory (union-theories
+                       '(nth fn-bs-rows-wire len nfix zp natp atom
+                         car-cons cdr-cons)
+                       (theory 'minimal-theory)))))
 
 ; The vocabularies are disjoint by shape: a held row's wire form is an
 ; eleven-wide list with a natural head, which no other wire kind is (the
