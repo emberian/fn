@@ -271,3 +271,49 @@ legacy logical consumer/source log compatibility followup, so archive correctly
 refused replacing its bytes. Preserve that earlier receipt; final source hashes
 and private-feed check are now checks-final.json, indexed separately. Registry
 citations point at final receipt. Source c922036e8 unchanged by this correction.
+## Resumable Wildmat component SOURCE READY (2026-10-03)
+
+PRF-1261 adds only books/wildmat-cursor.lisp and its test book. Served owns
+selector/controller integration; Foundations owns native tariff/typed lease;
+Integration owns matching certification/image. No HDR or controller edits.
+
+Frozen API: fn-wmc-start(patterns,group) -> state, caller funds seven logical
+cons cells BEFORE calling; borrowed patterns/string references, no decode/list
+scan at start. State=(task frames), task/frame fixed five cells. fn-wmc-step
+(state,work,cons-grant) -> state executes exactly one microstep iff undecided,
+positive work and grant>=13. Otherwise exactly same state, no engine cons.
+fn-wmc-decidedp/matchedp retain boolean receipt. fn-wmc-demand, consumed-work,
+consumed-cons, work-left/cons-left supply ACL2 accounting; no host arithmetic.
+The13-cell charge is conservative engine constructor recurrence, excluding
+caller/result/mux/collector wrappers and integer storage. No MV envelope.
+
+Defunctionalizes existing wildmat-work recursions, preserves exact work-result,
+DP rows and original rightmost inclusion/exclusion semantics. Logical
+fn-wmc-result/value/remaining/run-cons never called by step and disabled at book
+end. Shaped invariant preserves task/frame envelope and natural decode offset,
+no runtime whole-state revalidation. Safe-name entry refinement to actual
+fn-nntp-group-matches-parsed-wildmatp uses carried ASCII<=460-octet premise;
+current decoder limit497 encompasses it. Arbitrary finite pattern lists remain
+supported. Remaining model drops EXACTLY one per accepted microstep; initial
+polynomial bound:5+2n+12p+4pn+M(6+2n). Cumulative charged cons<=initial grant,
+not repeated grant reuse. All executable entry/step/accessor guards verified;
+logical models deliberately not executable guard claims.
+
+Clean complete source encapsulate #4-#97:94forms,29locals discarded,15.15ACL2s,
+7,228,701steps.18tests,1,349steps include reachable residual/shape/progress,
+receipt, zero-work/12-cell refusal,13-cell grant one-step exhaustion/resume,
+exclusion/reinclusion, empty-star, literal profile/work/charge conclusions,
+unsafe-name and corrupted-decode-offset hypothesis removal. First compiled
+component probe returns(T T T T),163,712SBCL bytes includes two drains plus
+caller/time/result envelopes; not native tariff or qualified served image.
+Strict scoped theory/book-order zero warnings and diff checks pass.
+Evidence archived/indexed:planning/evidence/dc03-wildmat-20261003/{checks.json,repl.log.gz}.
+
+DEBT: tight reachable retained graph target/rows/frames bound is not proved;
+13*steps cumulative allocation is distinct from the tighter2-row/frame peak.
+Physical bytes, bounded integer representation, allocator/collector/issuer/mux
+coverage and profile-to-lease validation remain Foundations composition.
+Actual served selector :match continuation, matching certificates and image
+are assembler/integrator work. Parent owns PRF-1261 registry/spec/scenario and
+Makefile ACL2_BOOKS test-root wiring. Current source alone is no funded producer
+or completed served-path claim.
