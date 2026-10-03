@@ -6,7 +6,7 @@
 
 (load-deployed-forms "host/native/owner.lisp"
  '((defstruct (fnn-syncer-grant (:constructor %make-fnn-syncer-grant)))
-   (defun fnn-owner-syncer-install) (defun fnn-owner-syncer-issue)
+   (defun fnn-owner-custody-trace) (defun fnn-owner-syncer-install) (defun fnn-owner-syncer-issue)
    (defun fnn-owner-syncer-receipt) (defun fnn-owner-syncer-abort) (defun fnn-owner-syncer-physical)
    (defun fnn-owner-syncer-outcome)))
 (defvar *calls* nil)

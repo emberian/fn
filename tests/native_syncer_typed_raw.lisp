@@ -28,7 +28,7 @@
        "only actual registered creator allocation survives counterpart selection")
 (load-deployed-forms "host/native/owner.lisp"
  '((defstruct (fnn-syncer-grant (:constructor %make-fnn-syncer-grant)))
-   (defun fnn-owner-syncer-install) (defun fnn-owner-syncer-issue)
+   (defun fnn-owner-custody-trace) (defun fnn-owner-syncer-install) (defun fnn-owner-syncer-issue)
    (defun fnn-owner-syncer-receipt) (defun fnn-owner-syncer-abort) (defun fnn-owner-syncer-physical)
    (defun fnn-owner-syncer-outcome) (defun fnn-owner-members-named)
    (defun fnn-owner-complete-generation) (defun fnn-owner-syncer-drained-p)))
@@ -157,3 +157,25 @@
                   (fnn-owner-syncer-drained-p s))
              "reported completed operation preserved through failed starter physical return"))))
 (format t "native_syncer_typed_producer_raw: PASS actual start-syncer/fn-oqw/after-release consumer~%")
+
+;; Enabled diagnostic failure cannot orphan a successfully issued draw or
+;; prevent the actual independent receipts from settling its private ledger.
+(let ((old-selector (symbol-function 'fnn-developer-selector))
+      (old-err (symbol-function 'fnn-err)))
+  (unwind-protect
+      (progn
+        (setf (symbol-function 'fnn-developer-selector)
+              (lambda (name) (and (string= name "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE") "1"))
+              (symbol-function 'fnn-err)
+              (lambda (&rest args) (declare (ignore args)) (error "diagnostic unavailable")))
+        (let ((s (%make-fnn-owner-service)))
+          (fnn-owner-syncer-install s 12 1048576)
+          (let ((grant (fnn-owner-syncer-issue s 20 :no-child-created)))
+            (check (eq (fnn-owner-syncer-physical s grant :no-actor-created) :pending)
+                   "failed trace cannot turn one receipt into settlement")
+            (check (and (eq (fnn-owner-syncer-outcome s grant 20) :settled)
+                        (fnn-owner-syncer-drained-p s) (null (fnn-owner-service-stopping s)))
+                   "enabled trace failure cannot change custody settlement or stop the service"))))
+    (setf (symbol-function 'fnn-developer-selector) old-selector
+          (symbol-function 'fnn-err) old-err)))
+(format t "native_syncer_diagnostic_failure_raw: PASS actual ledger unchanged~%")

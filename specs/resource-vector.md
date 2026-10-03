@@ -317,3 +317,8 @@ and `fn-ros-outcome-keeps-representation` preserve both typed recognition and
 `fn-rl-wfp`; literal positive and each hypothesis-removal witness accompany
 them. Bootstrap install guards and the general bank/native boundary remain
 owed. These source admissions are not matching certificates.
+
+SCN-1089 supplies the matching-image consumer: actual mux startup `:hold`,
+POST acceptance, independent literal custody receipts, clean stop and
+restart retrieval. The selector is prepared; image execution is pending.
+Optional diagnostics cannot change custody if formatting or output fails.

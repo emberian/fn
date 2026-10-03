@@ -627,6 +627,59 @@ class NativeOwnerTests(unittest.TestCase):
         node.stop(process=process)
         return [first, final, dup_first, dup_final, group, answer, body], process.stderr.since(0)
 
+    def test_funded_syncer_from_mux_hold_post_and_stop(self):
+        # Actual startup :hold installs the private typed projection. This
+        # image test consumes opaque producer/receipt observations rather
+        # than constructing a ledger or supplying an operation completion.
+        process, port = self.node.start_store_owner(once=False, env={
+            "FN_NATIVE_DISPATCH_COUNTERPART": "1",
+            "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE": "1",
+            "FN_NATIVE_OWNER_TEST_BARRIER_MS": "300",
+        })
+        message_id = b"<funded-syncer-post-stop@example.invalid>"
+        writer = self.connect_owner(port)
+        first, final = writer.post(self.article(message_id))
+        self.assertTrue(first.startswith(b"340 "), first)
+        self.assertTrue(final.startswith(b"240 "), final)
+        self.assertTrue(writer.command(b"QUIT").startswith(b"205 "))
+        self.node.stop(process=process)
+        trace = process.stderr.since(0)
+        self.assertRegex(trace, rb"(?i)custody: install threads=\d+ stack=\d+ word=:installed")
+        issues = list(re.finditer(
+            rb"custody: issue generation=(\d+) token=(\(:resource :owner 2 \d+\)) word=:drawn",
+            trace, re.IGNORECASE))
+        self.assertTrue(issues, trace[-4000:])
+        receipts = list(re.finditer(
+            rb"custody: receipt kind=:(physical|outcome) operation=(\d+) "
+            rb"token=(\(:resource :owner 2 \d+\)) receipt=([^ ]+) word=:(pending|settled)",
+            trace, re.IGNORECASE))
+        for issue in issues:
+            generation, token = issue.groups()
+            own = [row for row in receipts
+                   if row.group(2) == generation and row.group(3).lower() == token.lower()]
+            self.assertEqual([row.group(1).lower() for row in own].count(b"physical"), 1, trace[-4000:])
+            self.assertEqual([row.group(1).lower() for row in own].count(b"outcome"), 1, trace[-4000:])
+            self.assertTrue(all(row.start() > issue.start() for row in own), trace[-4000:])
+            self.assertEqual([row.group(5).lower() for row in own], [b"pending", b"settled"], trace[-4000:])
+            physical = next(row for row in own if row.group(1).lower() == b"physical")
+            outcome = next(row for row in own if row.group(1).lower() == b"outcome")
+            self.assertEqual(physical.group(4).lower(), b":terminal", trace[-4000:])
+            self.assertEqual(outcome.group(4), generation, trace[-4000:])
+        drained = list(re.finditer(
+            rb"custody: drained typed=t retained=nil result=t", trace, re.IGNORECASE))
+        self.assertTrue(drained, trace[-4000:])
+        self.assertGreater(drained[-1].start(), receipts[-1].start(), trace[-4000:])
+        # Clean stop cannot substitute for persisted acceptance: a fresh
+        # owner must retrieve the accepted article from the actual Store.
+        restarted, port = self.node.start_store_owner(once=False, env={
+            "FN_NATIVE_DISPATCH_COUNTERPART": "1"})
+        reader = self.connect_owner(port)
+        answer, received = reader.multiline(b"ARTICLE " + message_id)
+        self.assertTrue(answer.startswith(b"220 "), answer)
+        self.assertIn(b"Message-ID: " + message_id + b"\r\n", received)
+        self.assertTrue(reader.command(b"QUIT").startswith(b"205 "))
+        self.node.stop(process=restarted)
+
     def test_unqualified_raw_annotations_stay_on_counterpart(self):
         # D40's real-owner annotations are withheld pending complete host
         # guard establishment and preservation. The selector must explicitly
