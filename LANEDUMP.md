@@ -2219,3 +2219,6 @@ Foundations own funding; Runtime absorbs Web at 08:00. Source assembly owns one
 material review; Integration owns affected roots/interface/image convergence.
 
 Journal general parser/report/exit refinement source composed; exact new-source normal certificate/image scope stays separate.
+
+Assembly current 07:40: reader context301 +currentcallee fixture288, Webaba, Historysplit4d4, journaled5a, application89f, directline+admissionff256/world755 delivered Integration. Both isolated trees preserve source; no dev push/build ours.
+Reader-context fixture b092 uses18 actual selected definitions in warm ownerworld: held/working/connection pin distinction, root/index/config/read and refusedcorruptroot/unknownconn PASS. This closes scopedconstructor question only; no fullowner invariant/nativephysicalaffinity/image claim.
