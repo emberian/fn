@@ -8693,6 +8693,7 @@ fc5f92f1d5c5ecf3075cfd129dce1af49eec6e1aaaa09d6c7e34a7ea002729b2 3622 planning/e
 472ea4b986c880a8607821c7088d47b366afe61991daaf79bd14430d43e6e6ff 3388 planning/evidence/proof-repl-raw-debugger-2026-09-30.md
 cb5111ed107afd592648dac5e656683d52cf49604b035cef200263bd77a2f0c4 1663 planning/evidence/proof-repl-stop-2026-09-23.md
 2d174c93bf2ffb144eee29248d0db521889e68f1be413cb34d05410a8f952de2 90081280 planning/evidence/proof-sweep-checkpoint-20261003T082640Z.tar
+6fdcbc2dc6b22631f73e8139156efaa045cf337def5000c2f620112fce140217 481280 planning/evidence/proof-sweep-user-paused-20261003.tar
 7b54b1a1289c098db6587c05d20d326fe5ef71109f7cf6730c2291cc62a8d433 34182 planning/evidence/proto-adt-2026-09-27.md
 f33346245cbe860afb830afae013ca80e80a793270ca0b4216aef62e638bd577 19503 planning/evidence/proto-determinism-2026-09-27.md
 f58512eb74f11f0aff219a387d4c0d39ce1a7851dac3120cf6069651b40083a5 4170 planning/evidence/proto-determinism-2026-09-27/hbox-d2.log
@@ -12494,3 +12495,4 @@ a875bf6c1f7b93af59fe601cb07b1fa8d342573523905a2ae2cba1a586b619c8 8267 planning/t
 c620de3f9e1266b928536469e27af88589bbc188153fd38eefc54fe80bd9a642 3792 planning/takeover-2026-09-29/queue/MODE-2026-09-29.txt
 f5d91af088fc17ff96a9010dbba92e21cd15d3395b58b4b411c4878ae0a7a7f3 236 planning/workstream-review-2026-09-24.md
 26c2c33c0c3bd6ce7bc2658bb7995b82616f80d83da1b86b246cf2ad784f8056 3286 planning/worktree-recovery-2026-09-24.md
+cc5a385742261f4e7a48dfee8511c78cbf8b6bd0df7dbd935a9bd2e7d726bc55 37184 planning/evidence/frame-cbor-bounds-cached-20261003-v2.json
