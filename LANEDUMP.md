@@ -2303,3 +2303,15 @@ and image status remain pending; no deployment action.
 
 Groundwork continues application consumer/E1E2. No app transfer. Lieutenant
 exempt from ten-agent cap per Ember's latest 07:14 correction.
+
+2026-10-03 07:39 ET, Sol lieutenant: actual reader capture composition
+- tools/check_owner_capture_context.py extracts actual selected constructor
+  and accessor source verbatim into an existing warm owner logical world.
+  tests/owner_capture_context_fixture.lisp calls the ACTUAL program-mode
+  fn-owner-catalog-capture-context with held/working/pinned views distinct.
+- PASS: held view captured during batch, working view after release, exact
+  connection archive/index/config/read decision and allocation root retained;
+  unknown connection and corrupt incarnation refuse without reset.
+- Scope: selected-source program composition, not a full owner invariant,
+  image, physical root pin, or final command authorization/pin theorem.
+  Selected definitions are hashed separately; no semantic stubs introduced.
