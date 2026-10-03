@@ -22484,6 +22484,31 @@
         "planning/evidence/bp-retained-node-2026-10-03-final.md"
       ],
       "progress_note": "Final exact four-root manifest certify-20261003T114543Z-1687865 PASSED4/0, archived/indexed. All component guards verified. Actual raw bank/loop passes physical-alone custody, ambiguous close no refund/retry, all independent grant cleanup, same-token fragment rearm, live first peer plus second acceptance and all eight service phases. Actual command root-cleanup fixture verifies all six cleanup faults cannot replace original body fault and held source custody prevents Store/FNBS root release while preserving process-owned authority. Matching DTN image SCN1110/application-receipt/reopen and complete allocator/GC/work/actor and scheduler/cut refinement remain open."
+    },
+    {
+      "id": "PRF-1286",
+      "title": "Shared retained ARTICLE preflight and replayable bounded section producer",
+      "statement": "Actual fn-owner-chunk-span-evaluate isolates one ACL2 wire event and captures a selected immutable payload request. fn-owner-article-ready-plan-step scans framing in bounded quanta before selected-session commit; READY has only immutable rendering state. fnn-owner-render-next-quantum drains shared ARTICLE/HEAD/BODY and synthetic initial/Xref pieces, keeping original plan on cold and READY replay free of authority effects. Complete refinement to original served response, composed owner preservation and physical window custody remain open.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-012"
+      ],
+      "depends_on": [
+        "PRF-334",
+        "PRF-1020"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/article-stream.lisp",
+        "books/article-stream-owner.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/mux.lisp",
+        "tests/native_article_stream_source.lisp"
+      ],
+      "progress_note": "Core framing scan guards and scan/render work bounds admitted in narrow hbox warm world; actual-source5128 checks pass section/Xref/dot/CRLF boundary/wide-decimal/replay cases for quanta1..256. Renderer guards, universal original-response bridge, retained owner completion and actual cold physical consumer remain open. Native factory/helper source staged; no source-complete, certificate, image or physical funding claim."
     }
   ]
 }

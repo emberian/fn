@@ -655,7 +655,7 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
         ;; A completed output window must not chain another semantic
         ;; cursor quantum into this same I/O event, even when the socket
         ;; could accept every window immediately.  Timers re-feed it.
-        (when (and plan (fnn-core 'fn-splan-at-cursorp plan))
+        (when (and plan (fnn-core 'fn-asto-plan-cursorp plan))
           (fnn-mux-plan-yield loop conn plan (fnn-mux-conn-after conn))
           (return-from fnn-mux-flush nil))
         (if plan
