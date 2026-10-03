@@ -3298,7 +3298,7 @@ theorems).  Only a present carrier's arm builds the article's list, once."
                  (consp (rest filing)))
       (fnn-fault "owner returned malformed control filing ~a" filing))
     (when (eq (first filing) :refused)
-      (return-from fnn-owner-attempt-transit
+      (return-from fnn-owner-attempt-filled
         (fnn-owner-transit-refused filing)))
     (unless (and (listp (second filing))
                  (every #'fnn-octet-list-p (second filing)))
@@ -3321,27 +3321,27 @@ theorems).  Only a present carrier's arm builds the article's list, once."
                   (charge (fnn-charge (length payload))))
              (when (or (keywordp codes) (not (listp codes))
                        (/= (length codes) (length groups)))
-               (return-from fnn-owner-attempt-transit
+               (return-from fnn-owner-attempt-filled
                  (fnn-owner-transit-refused :groups)))
              (let ((boundary (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
                                              (length payload) (length codes) charge)))
                (when (member boundary '(:mpx-saturated :invalid-binding :canonical-size-unavailable))
-                 (return-from fnn-owner-attempt-transit boundary))
+                 (return-from fnn-owner-attempt-filled boundary))
                (fnn-validate-post-boundary boundary))
              (case (fnn-owner-existing-verdict
                     (fnn-owner-arena-action 'fn-owner-existing-action
                                            (fnn-octet-list msgid)
                                            (fnn-owner-payload-octets payload) codes))
-               (:duplicate (return-from fnn-owner-attempt-transit :duplicate))
-               (:conflict (return-from fnn-owner-attempt-transit
+               (:duplicate (return-from fnn-owner-attempt-filled :duplicate))
+               (:conflict (return-from fnn-owner-attempt-filled
                             (fnn-owner-transit-refused :conflict)))
-               (:invalid-binding (return-from fnn-owner-attempt-transit :invalid-binding)))
+               (:invalid-binding (return-from fnn-owner-attempt-filled :invalid-binding)))
              (let ((plan (fnn-owner-core 'fn-owner-peer-carrier-plan
                                          (fnn-owner-payload-octets payload)
                                          (and nntp-transit-p t))))
                (when (and (consp plan) (eq (first plan) :carried))
                  (unless (eq (fnn-owner-advance-clock) :observed)
-                   (return-from fnn-owner-attempt-transit :clock-unusable))
+                   (return-from fnn-owner-attempt-filled :clock-unusable))
                  (multiple-value-bind (obligation subject ignored)
                      (fnn-metadata msgid payload)
                    (declare (ignore ignored))
@@ -3358,19 +3358,19 @@ theorems).  Only a present carrier's arm builds the article's list, once."
                      ;; decided inside the event constructor over the
                      ;; owner-carried usage; a refusal names its bound.
                      (when (and (consp event) (eq (first event) :refused))
-                       (return-from fnn-owner-attempt-transit
+                       (return-from fnn-owner-attempt-filled
                          (fnn-owner-transit-refused event)))
                      (let ((boundary (fnn-owner-core
                                       'fn-owner-signed-event-boundary event)))
                        (unless (eq boundary :ok)
-                         (return-from fnn-owner-attempt-transit
+                         (return-from fnn-owner-attempt-filled
                            (fnn-owner-transit-refused boundary))))
                      ;; A log detail only (fn-olog-transit-line): the Store
                      ;; record's token, not an input to any decision.
                      (setq *fnn-owner-transit-detail* :carried)
                      (fnn-owner-note-transit-verdict payload nntp-transit-p
                                                      nil nil)
-                     (return-from fnn-owner-attempt-transit
+                     (return-from fnn-owner-attempt-filled
                        (fnn-owner-statement-committed
                         service event
                         (fnn-owner-identity-commit service event))))))
@@ -3378,12 +3378,12 @@ theorems).  Only a present carrier's arm builds the article's list, once."
                ;; same two primitive observations as :ok, over the carrier's
                ;; keys, and commits fn-pa-revoked-event's composite.
                (unless (and (consp plan) (member (first plan) '(:ok :revoked)))
-                 (return-from fnn-owner-attempt-transit
+                 (return-from fnn-owner-attempt-filled
                    (fnn-owner-transit-refused
                     (fnn-owner-transit-class plan payload nntp-transit-p
                                              nil nil))))
              (unless (eq (fnn-owner-advance-clock) :observed)
-               (return-from fnn-owner-attempt-transit :clock-unusable))
+               (return-from fnn-owner-attempt-filled :clock-unusable))
              (let* ((source (second plan))
                     (principal (third plan))
                     (keys (fourth plan))
@@ -3403,7 +3403,7 @@ theorems).  Only a present carrier's arm builds the article's list, once."
                (unless (and observed-ml-key
                             (eq (first observations) :verified)
                             (eq (first ml-observation) :verified))
-                 (return-from fnn-owner-attempt-transit
+                 (return-from fnn-owner-attempt-filled
                    (fnn-owner-transit-refused
                     (fnn-owner-transit-class
                      (list :refused :signature) payload nntp-transit-p
@@ -3430,7 +3430,7 @@ theorems).  Only a present carrier's arm builds the article's list, once."
                    (let ((boundary (fnn-owner-core
                                     'fn-owner-signed-event-boundary event)))
                      (unless (eq boundary :ok)
-                       (return-from fnn-owner-attempt-transit
+                       (return-from fnn-owner-attempt-filled
                          (fnn-owner-transit-refused boundary))))
                    (when (eq (first plan) :revoked)
                      ;; A log detail only: the Store record's token.

@@ -160,7 +160,7 @@ observations back.  Nil when there is nothing to observe."
   (let ((obs (fnn-bpnode-receipt-observations view)))
     (fnn-bpnode-release-line view obs)
     (unless (eq (fnn-owner-core 'fn-owner-bp-receipt-gatep view obs) t)
-      (return-from receipt
+      (return-from fnn-bpnode-receipt-result
         (values :receipt-refused (fnn-bpnode-receipt-detail view obs))))
     (fnn-quantum-bp
      owner nil
