@@ -1,0 +1,25 @@
+{
+ "budget": 200,
+ "category": "checker-correctness",
+ "expect-failure": "tests.test_native_program_check.StatementRouteTests.test_named_filled_helper_route_keeps_every_kind_four_commit_fenced",
+ "failure-message": "statement checker must follow the actual filled-buffer route: fnn-owner-attempt-transit: 0 kind-4 commits, 0 through fnn-owner-statement-committed",
+ "file": "tests/campaign/native_cuts.py",
+ "harness": "tests/test_native_program_check.py",
+ "id": "NIGHT-STATEMENT-ROUTE",
+ "notes": [
+  "10-03 02:17 claimed: scope=['tests/campaign/native_cuts.py', 'tests/test_native_program_check.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_program_check.StatementRouteTests.test_named_filled_helper_route_keeps_every_kind_four_commit_fenced"
+ ],
+ "owner": "codex-sol-tools",
+ "scope": [
+  "tests/campaign/native_cuts.py",
+  "tests/test_native_program_check.py",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
+ "severity": "medium",
+ "source": "runtime-convergence",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_native_program_check.StatementRouteTests.test_named_filled_helper_route_keeps_every_kind_four_commit_fenced",
+ "title": "Statement cut checker ignores the filled-buffer implementation called by transit",
+ "updated": "2026-10-03T06:17:33Z"
+}
