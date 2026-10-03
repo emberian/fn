@@ -657,7 +657,7 @@
  (defthm fn-hist-clear-is-empty
    (implies (fn-hist$cp c)
             (equal (fn-hist$c-clear salt c) (fn-hist$c-empty salt)))
-   :hints (("Goal" :in-theory (enable fn-hist-open fn-hist$cp fn-hist$c-empty)
+   :hints (("Goal" :in-theory (enable fn-hist-open fn-hist$cp fn-hist$c-empty update-nth)
             :expand ((len c) (len (cdr c)) (len (cddr c)) (len (cdddr c))
                      (len (cddddr c)))))))
 
