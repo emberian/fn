@@ -1,0 +1,25 @@
+{
+ "budget": 250,
+ "category": "tools-speed",
+ "expect-failure": "tests.test_proof_repl.SourcePrefixTests.test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status",
+ "failure-message": "False is not true : live encapsulated dependency prefix must remain available",
+ "file": "tools/proof_repl.py",
+ "harness": "tests/test_proof_repl.py",
+ "id": "NIGHT-SOURCE-PREFIX",
+ "notes": [
+  "10-03 02:59 claimed: scope=['tools/proof_repl.py', 'tests/test_proof_repl.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_proof_repl.SourcePrefixTests.test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status"
+ ],
+ "owner": "codex-sol-tools",
+ "scope": [
+  "tools/proof_repl.py",
+  "tests/test_proof_repl.py",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
+ "severity": "medium",
+ "source": "tools-speed-X17",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_proof_repl.SourcePrefixTests.test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status",
+ "title": "Dependency source refusal discards the successful encapsulated proof prefix",
+ "updated": "2026-10-03T06:59:39Z"
+}
