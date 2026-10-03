@@ -229,6 +229,7 @@
 (include-book "../../books/incoming-buffer-carrier")
 (include-book "../../books/page-read-pool-state")
 (include-book "../../books/page-read-binding-revision")
+(include-book "../../books/page-read-budget-growth")
 (include-book "../../books/incoming-copy-stobj")
 (include-book "../../books/page-read-startup")
 (include-book "../../host/page-read-host")
