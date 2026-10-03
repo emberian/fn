@@ -9,7 +9,8 @@
  "notes": [
   "10-03 02:11 claimed: scope=['tools/lock_discipline_check.py', 'tools/lock_baseline_migrate.py', 'tools/lock_discipline_baseline.json', 'tests/test_lock_discipline_check.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_lock_discipline_check.Baseline.test_comment_and_blank_line_shifts_preserve_callback_keys",
   "Baseline identity migration only: exact source046aa740f baseline bytes verified;374 rows, weight1609 preserved without --initial or added rows. 31 scoped tests pass. Served comparison at unchanged runtime bytes has412 findings before/after; new18->13, stale16->11. Remaining moved-site or actual new debt preserved.",
-  "10-03 02:15 Source-only Grok advisory attempted with allowlist empty, tools/web/subagents explicitly forbidden, empty temporary cwd and minimal diff. CLI repeatedly initializes configured MCP and produced no review response after several minutes; stopped own process. This unavailable advisory does not certify or block the source change. No model tool invocation observed."
+  "10-03 02:15 Source-only Grok advisory attempted with allowlist empty, tools/web/subagents explicitly forbidden, empty temporary cwd and minimal diff. CLI repeatedly initializes configured MCP and produced no review response after several minutes; stopped own process. This unavailable advisory does not certify or block the source change. No model tool invocation observed.",
+  "10-03 02:16 READY f24e2be0e;31 scoped checker tests pass. Identical-harness self-witness fails at base4740c59af with exact expected assertion, clean at head. Evidence planning/evidence/repair/NIGHT-LOCK-IDENTITY-85a7a139bfbb470982de68399368d24f.json hash66a36c653c52036897e15c8f9d967c64c7c2a5c295e2268595fff0cdff49b20c. Historical baseline translation preserves374 rows/weight1609; actual new paths stay new. Served comparison is a host-source inspection, not immutable image/proof qualification."
  ],
  "owner": "codex-sol-tools",
  "scope": [
@@ -25,5 +26,88 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_lock_discipline_check.Baseline.test_comment_and_blank_line_shifts_preserve_callback_keys",
  "title": "Callback lock finding identities change under source line shifts",
- "updated": "2026-10-03T06:15:58Z"
+ "updated": "2026-10-03T06:16:39Z",
+ "verify": {
+  "base": "4740c59afffbb6f7f375450bed1e5052998670a6",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "False is not true : callback identities must survive comments and blank lines",
+      "test": "tests.test_lock_discipline_check.Baseline.test_comment_and_blank_line_shifts_preserve_callback_keys",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_lock_discipline_check.Baseline.test_comment_and_blank_line_shifts_preserve_callback_keys"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_lock_discipline_check.py": "85ad61b9911353e9e436b15566daf6d076f06d87b9485e5fb43f283b51085fb4"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "4740c59afffbb6f7f375450bed1e5052998670a6",
+   "stderr": "test_comment_and_blank_line_shifts_preserve_callback_keys (tests.test_lock_discipline_check.Baseline.test_comment_and_blank_line_shifts_preserve_callback_keys) ... FAIL\n\n======================================================================\nFAIL: test_comment_and_blank_line_shifts_preserve_callback_keys (tests.test_lock_discipline_check.Baseline.test_comment_and_blank_line_shifts_preserve_callback_keys)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-p4d2xpnc/wt/tests/test_lock_discipline_check.py\", line 349, in test_comment_and_blank_line_shifts_preserve_callback_keys\n    self.assertTrue([f.baseline_key() for f in before] == [f.baseline_key() for f in after],\n    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                    \"callback identities must survive comments and blank lines\")\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: False is not true : callback identities must survive comments and blank lines\n\n----------------------------------------------------------------------\nRan 1 test in 0.004s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "planning/repair/items/NIGHT-LOCK-IDENTITY.json",
+   "tests/test_lock_discipline_check.py",
+   "tools/lock_baseline_migrate.py",
+   "tools/lock_discipline_baseline.json",
+   "tools/lock_discipline_check.py"
+  ],
+  "diff_lines": 248,
+  "evidence": {
+   "bytes": 4208,
+   "path": "planning/evidence/repair/NIGHT-LOCK-IDENTITY-85a7a139bfbb470982de68399368d24f.json",
+   "sha256": "66a36c653c52036897e15c8f9d967c64c7c2a5c295e2268595fff0cdff49b20c"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "False is not true : callback identities must survive comments and blank lines",
+   "test": "tests.test_lock_discipline_check.Baseline.test_comment_and_blank_line_shifts_preserve_callback_keys"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/test_lock_discipline_check.py": "85ad61b9911353e9e436b15566daf6d076f06d87b9485e5fb43f283b51085fb4"
+  },
+  "head": "f24e2be0ec9a3e7e8b0b9acd5cf103a7aa7eef14",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_lock_discipline_check.Baseline.test_comment_and_blank_line_shifts_preserve_callback_keys"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_lock_discipline_check.py": "85ad61b9911353e9e436b15566daf6d076f06d87b9485e5fb43f283b51085fb4"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "f24e2be0ec9a3e7e8b0b9acd5cf103a7aa7eef14",
+   "stderr": "test_comment_and_blank_line_shifts_preserve_callback_keys (tests.test_lock_discipline_check.Baseline.test_comment_and_blank_line_shifts_preserve_callback_keys) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.004s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_lock_discipline_check.Baseline.test_comment_and_blank_line_shifts_preserve_callback_keys",
+  "timeout": 1800.0
+ }
 }
