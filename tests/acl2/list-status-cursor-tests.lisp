@@ -1,0 +1,36 @@
+(in-package "ACL2")
+(include-book "../../books/list-status-cursor")
+
+(defun lss-test-drain (cur fuel)
+  (declare (xargs :mode :program :guard (natp fuel)))
+  (if (fn-lss-donep cur) (list :done (fn-lss-status cur))
+    (if (zp fuel) (list :limit nil)
+      (lss-test-drain (fn-lss-one cur) (1- fuel)))))
+
+(defun lss-test-agrees (group closed)
+  (declare (xargs :mode :program :guard t))
+  (equal (lss-test-drain (fn-lss-start group closed) 10000)
+         (list :done (fn-nntp-closed-status (fn-nntp-string-octets group) closed))))
+
+(assert-event
+ (and (lss-test-agrees "fn.a" nil)
+      (lss-test-agrees "fn.a" '((102 110 46 98) (102 110 46 97)))
+      (lss-test-agrees "fn.a" '((:moderated (102 110 46 97) queue nil)))
+      (lss-test-agrees "fn.a" '((:approver (102 110 46 97) queue)))
+      (lss-test-agrees "fn.a" '((:moderated (102 110 46 97) queue nil)
+                                (102 110 46 97)))
+      (lss-test-agrees "fn.a" '((102 110 46 97)
+                                (:moderated (102 110 46 97) queue nil)))
+      (lss-test-agrees "fn.a" '((102 110 46 97 . bad) (:moderated (102 110 46 97))))
+      (lss-test-agrees "" '(nil))
+      (lss-test-agrees nil '(nil))
+      (lss-test-agrees "" '((:moderated nil queue nil)))))
+
+(assert-event
+ (let* ((cur (fn-lss-start "fn.a" '((102 110 46 97))))
+        (one (fn-lss-one cur))
+        (two (fn-lss-one one)))
+   (and (equal (fn-cur-at 5 one) 0)
+        (equal (fn-cur-at 5 two) 1)
+        (equal (fn-cur-at 4 two) '(110 46 97))
+        (not (fn-lss-donep two)))))

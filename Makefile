@@ -1944,6 +1944,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/group-summary-cursor \
 	books/list-row-cursor \
 	tests/acl2/list-row-cursor-tests \
+	books/list-status-cursor \
+	tests/acl2/list-status-cursor-tests \
 	books/list-metadata-cursor \
 	tests/acl2/group-summary-cursor-tests \
 	books/served-availability \
