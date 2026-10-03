@@ -7038,29 +7038,40 @@ FN_NATIVE_RECLAIM_FAULT names it."
 (defun fnn-fresh-stobj (name)
   "A fresh, empty instance of the live stobj NAME (fn-cat, fn-hist) for the
 rebuild off the mutex: its creator's value, of the live instance's type.
-The creator may be a macro (a defstobj's raw creator is), so it is called
-by evaluating the form (CREATOR), once per pass."
-  (let* ((creator (find-if #'fboundp
+The history creator uses its registered zero-argument raw ABI. The
+catalog's existing creator selection is retained."
+  (if (eq name 'fn-hist)
+      (fnn-core 'create-fn-hist$p)
+    (let* ((creator (find-if #'fboundp
                            (list (intern (format nil "CREATE-~a" (symbol-name name)) "ACL2")
                                  (intern (format nil "CREATE-~a$C" (symbol-name name)) "ACL2"))))
          (fresh (and creator (eval (list creator))))
          (live (fnn-live-stobj name)))
     (unless (and fresh (equal (type-of fresh) (type-of live)))
       (fnn-fault "no fresh instance of the ~(~a~) stobj" name))
-    fresh))
+    fresh)))
 
 (defun fnn-install-stobj (name value)
   "Under the owner mutex: VALUE becomes the live stobj NAME (the host's
 pointer and the live state's binding)."
-  (let ((cell (assoc name (user-stobj-alist *the-live-state*))))
+  (let ((cell (assoc name (user-stobj-alist *the-live-state*))) (retired nil))
     (unless cell (fnn-fault "the ~(~a~) stobj is not in this image" name))
     (when (eq name 'fn-hist)
-      (unless (eq (fnn-owner-core 'fn-owner-hroot-detach) :detached)
-        (fnn-fault "history replacement incarnation refused")))
+      (let ((word (fnn-owner-core 'fn-owner-hroot-detach)))
+        (unless (and (consp word) (eq (first word) :detached))
+          (fnn-fault "history replacement incarnation refused"))
+        (setq retired (second word))))
     (setf (cdr cell) value)
     (ecase name
       (fn-cat (setq *fnn-cat* value))
-      (fn-hist (setq *fnn-hist* value)))))
+      (fn-hist (setq *fnn-hist* value)))
+    ;; The old physical authority is no longer the live binding. Issued
+    ;; generation pins keep it held; an unheld root drops its retained grant
+    ;; and hash binding here, including replacement before the next rebuild.
+    (when retired
+      (when (eq (fnn-owner-core 'fn-owner-hroot-retire retired) :released)
+        (remhash retired *fnn-history-roots*)))
+    value))
 
 ;;; Q16 (a) (lane online-reclaim-5): the swapped owner is the owner the full
 ;;; open of the rewritten history installs, BEFORE the open's recovery

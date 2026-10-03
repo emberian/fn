@@ -22,9 +22,12 @@
         "books/history-root-credit.lisp",
         "host/history-root-host.lisp",
         "host/native/history-root.lisp",
-        "tests/native_history_root_raw.lisp"
+        "tests/native_history_root_raw.lisp",
+        "tests/acl2/history-paged-adopt-tests.lisp",
+        "tests/acl2/history-paged-canonical-tests.lisp",
+        "planning/evidence/native-history-roots-2026-10-03.json"
       ],
-      "progress_note": "Five-export abstract stobj and physical adoption/index/read guards admitted in retained hbox world. Actual native installer/reclaim walk fixture passes with recorded ACL2 producer doubles; this is control-flow evidence, not codec or complete installed correspondence proof. Fresh canonical source loading and exact affected-root certification pending. Saved images are off the current feedback path."
+      "progress_note": "Fresh hbox source replay admitted the foundation, resident and five-export abstract books with their local proof events dropped; attachment table binds FN-HIST to FN-HIST-PAGED before the generic book. Guard-verified canonical five-export fixture passes. Actual mixed-event 5000-character page build/adoption/index/tail execution and native installer/reclaim/replacement control fixtures pass. This is source execution, not exact affected-root certification or a saved image. Complete adoption/index correspondence and tariff bounds remain open."
     },
     {
       "id": "PRF-1265",

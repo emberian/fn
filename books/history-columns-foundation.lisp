@@ -222,7 +222,7 @@
                  (nth 2 c))))
    :hints (("Goal" :use ((:instance fn-hist-grow-fields (fn-hist$c c)))
             :in-theory (e/d (fn-hist-open) (fn-hist$c-grow nth update-nth fn-hist-key-msgid fn-hist-hash
-                                         adt-nth-0 adt-nth-1+ adt-car-of-update-nth adt-cdr-of-update-nth))))))
+))))))
 
 (local (in-theory (disable fn-hist$c-append)))
 
