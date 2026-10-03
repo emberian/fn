@@ -1612,3 +1612,22 @@ cost and full BP funded retained-session fairness remain open.
 
 ## Source assembly S026 push-before-verify (2026-10-03)
 cbf057be2 source composed atop ION882 prerequisite; only cumulative notes conflicted. Producer raw fragment/turn/TCPCL/forward leaves pass, reused. Actual EOF/sourcepending/once/stale-rescan primary review follows source push per Ember correction; proof roots/native new-image consumer remain pending, no report or review gate.
+
+## Sol tools: distinct opaque macro temporaries
+
+The literal macro expander used one opaque symbol for every non-parameter
+unquote. In the actual observed-mutex template, RELEASE's NIL initializer
+overwrote MUTEX's alias, falsely replacing the generated owner lock with
+?nil. Expansion now gives distinct macro-local symbols stable identities
+within each lexical expansion. Repeated references retain the same identity;
+computed unquotes remain opaque, with no evaluation.
+
+Exact Runtime source52cbaaf623904478d4862c4700c03150e22dd848, three-file
+io/owner/mux syntactic analysis with its actual contracts and no ACL2 reach:
+old expander0.369s reports ?nil->XSYNCER and ?nil->XOUTPUT; repaired
+expander0.393s reports no R5 rows and observes O->XSYNCER/O->XOUTPUT.
+All actual lock edges remain; no baseline or contract change. Four new
+fixtures consume actual observed-mutex/section source and check the owner
+callback, unknown inner lock, real NIL lock and E->O inversion. All43 lock
+checker tests PASS0.527s. No proof, full-tree lock qualification or image
+claim; Integration owns composition with Runtime's declared private locks.

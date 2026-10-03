@@ -281,6 +281,59 @@ class R5R6R8R10(unittest.TestCase):
         found = run(src, ["R5"])
         self.assertTrue(any(f.key == "E->O" and "INVERTS" in f.message for f in found))
 
+    @staticmethod
+    def observed_mutex_template():
+        # Consume the actual non-evaluated macro source: its gensym MUTEX,
+        # LABEL and RELEASE bindings previously collapsed to one NIL alias.
+        forms = ldc.read_forms((ROOT / "host/native/io.lisp").read_text())
+        return ldc.render(next(f for f, _ in forms if ldc.head(f) == "defmacro"
+                               and ldc.sym(f[1]) == "fnn-with-observed-mutex"), limit=100000)
+
+    def test_observed_mutex_preserves_owner_and_real_unknown_inner_lock(self):
+        src = self.observed_mutex_template() + """
+(defun fnn-nested (service)
+  (fnn-with-observed-mutex ((fnn-owner-service-lock service) :owner)
+    (sb-thread:with-mutex ((fnn-owner-service-syncer-ledger-lock service)) 1)))
+"""
+        found = run(src, ["R5"])
+        self.assertIn("O->?(fnn-owner-service-syncer-ledger-lock)", [f.key for f in found])
+        self.assertFalse(any("?nil" in f.key for f in found))
+
+    def test_actual_section_envelope_keeps_owner_callback_lock(self):
+        wanted = {"fnn-section-envelope", "fnn-with-observed-owner",
+                  "fnn-owner-measured", "fnn-section-run", "fnn-owner-serialized"}
+        forms = ldc.read_forms((ROOT / "host/native/owner.lisp").read_text())
+        src = self.observed_mutex_template() + "\n" + "\n".join(
+            ldc.render(f, limit=100000) for f, _ in forms
+            if ldc.head(f) in ("defmacro", "defun") and ldc.sym(f[1]) in wanted)
+        src += """
+(defun fnn-owner-shared-action-locked (service cid thunk) (funcall thunk))
+(defun fnn-budget (service)
+  (fnn-owner-serialized service nil
+    (lambda ()
+      (sb-thread:with-mutex ((fnn-owner-service-syncer-ledger-lock service)) 1))))
+"""
+        found = run(src, ["R5"])
+        self.assertIn("O->?(fnn-owner-service-syncer-ledger-lock)", [f.key for f in found])
+        self.assertFalse(any("?nil" in f.key for f in found))
+
+    def test_observed_mutex_still_refuses_reverse_order(self):
+        src = self.observed_mutex_template() + """
+(defun fnn-inverted (service)
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+    (fnn-with-observed-mutex ((fnn-owner-service-lock service) :owner) 1)))
+"""
+        found = run(src, ["R5"])
+        self.assertTrue(any(f.key == "E->O" and "INVERTS" in f.message for f in found))
+
+    def test_observed_mutex_actual_nil_is_unresolved(self):
+        src = self.observed_mutex_template() + """
+(defun fnn-bad (service)
+  (fnn-with-observed-mutex (nil :bad)
+    (sb-thread:with-mutex ((fnn-owner-service-lock service)) 1)))
+"""
+        self.assertIn("?nil->O", [f.key for f in run(src, ["R5"])])
+
     def test_dispatch_administration_takes_no_lock(self):
         src = """
 (defvar *specs* (make-hash-table :synchronized t))
