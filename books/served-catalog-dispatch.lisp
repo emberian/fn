@@ -105,9 +105,18 @@
                   (fn-nntp-newnews-scan groups threshold articles horizon fn-arena)))
   :hints (("Goal" :induct (fn-nntp-newnews-scan-cat groups threshold articles horizon fn-arena fn-cat)
                   :in-theory (e/d (fn-nntp-newnews-scan fn-scol-tombstonep-is-bytes)
-                                  (fn-nntp-newnews-candidatep fn-scol-tombstonep
+                                  (fn-nntp-newnews-scan-is-the-acceptance-filter
+                                   fn-nntp-newnews-candidatep fn-scol-tombstonep
                                    fn-nntp-article-tombstonep fn-nntp-newnews-newp
                                    fn-nntp-string-octets fn-article-stamp fn-article-msgid)))))
+
+(verify-guards fn-nntp-newnews-scan-cat-loop)
+
+(verify-guards fn-nntp-newnews-scan-cat
+  :hints (("Goal" :in-theory (disable fn-nntp-newnews-scan-cat-loop fn-nntp-newnews-candidatep
+                                      fn-scol-tombstonep fn-nntp-newnews-newp
+                                      fn-nntp-string-octets fn-article-stamp fn-article-msgid)
+                  :use ((:instance fn-nntp-newnews-scan-cat-loop-is-revappend (acc nil))))))
 
 (defun fn-nntp-newnews-response-cat (session archive env args fn-arena fn-cat)
   ; fn-nntp-newnews-response, its scan reading the catalog's tombstone
@@ -157,6 +166,8 @@
                                    fn-nntp-filter-groups-by-wildmat fn-wildmat-parse
                                    fn-nntp-newgroups-date-parse fn-nntp-newgroups-time-parse
                                    fn-nntp-civil-dtn-ms fn-nntp-multi fn-nntp-single)))))
+
+(verify-guards fn-nntp-newnews-response-cat)
 
 (in-theory (disable fn-nntp-newnews-response-cat))
 
