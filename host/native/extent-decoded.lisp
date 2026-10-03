@@ -81,9 +81,8 @@ keep baseline backing charged through idle, and quarantine every torn reset."
         (setf (fnn-decoded-activation-job activation) job)
         (unless (eq word :reusable)
           (fnn-fault "decoded scratch still retains operation authority"))
-        (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
-          (fnn-err "DECODED-WINDOW backing token=~s word=~s scope=:persistent-partial-fixed-storage"
-                   token word))))))
+        (fnn-err "DECODED-WINDOW backing token=~s word=~s scope=:persistent-partial-fixed-storage"
+                 token word)))))
 
 (defun fnn-extent-decoded-window-run (worker token)
   "Same worker/token/pool; actual retained ACL2 controller selects each step.

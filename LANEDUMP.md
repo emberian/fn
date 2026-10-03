@@ -3652,3 +3652,11 @@ Foundation DATA8 getter API required (revision index preserved internally);
 Operator9244 actual pre-open startup owns caller. History current source union
 reconstruction remains only full-world route; endpoint not run. Optional full
 heap profile stays unpriced; no complete funding/HM/counterpart proof claim.
+
+Persistent startup follow-through: actual source constructor now consumes
+Foundation constructionp (reserved slot AND ready bit clear), preventing
+second allocation for an already initialized slot. Unused reservedp declaration
+removed; ready/readyp use it internally. Real startup fixture also checks
+distinct worker scratch identities. Normal and cancelled last-borrow release
+retain persistent backing; separate storage-ready and :reusable diagnostics
+distinguish baseline allocation from operation debit. Actual endpoint pending.

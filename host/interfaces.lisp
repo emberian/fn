@@ -5447,4 +5447,4 @@
 (definterface fn-prstartup-planp :class :common-lisp-compliant)
 (definterface fn-prstartup-decoded-workers :class :common-lisp-compliant)
 (definterface fn-owner-page-read-default-worker-ready :class :common-lisp-compliant)
-(definterface fn-owner-page-read-default-worker-reservedp :class :common-lisp-compliant)
+(definterface fn-owner-page-read-default-worker-constructionp :class :common-lisp-compliant)
