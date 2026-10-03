@@ -168,5 +168,80 @@
     "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
     "revision": "3a4444ddf15f1ce2ef5b49147c1ea22bdc827f2f + scoped pending edits",
     "source_sha256": "92e39f9735a7d3634d83f55a02a1d2b270095b9a937398a0b0c2178e1ee41b43"
+  },
+  "fnn-command-workflow-init": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-workflow-enqueue": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-workflow-status": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-workflow-undertake": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-workflow-ion-submit": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-workflow-ion-status": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-workflow-receipt": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-receipt-init": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-receipt-complete": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-receipt-replay": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+  },
+  "fnn-command-bpo-owner-status": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "e3f028f45471e2b74d75e7d12d30e71f7fa341c6cee3cbadb2fd26f2e94b9f94"
+  },
+  "fnn-command-bpo-owner-undertake": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "e3f028f45471e2b74d75e7d12d30e71f7fa341c6cee3cbadb2fd26f2e94b9f94"
+  },
+  "fnn-command-bpo-owner-receipt": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "e3f028f45471e2b74d75e7d12d30e71f7fa341c6cee3cbadb2fd26f2e94b9f94"
+  },
+  "fnn-command-bpo-owner-request": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "e3f028f45471e2b74d75e7d12d30e71f7fa341c6cee3cbadb2fd26f2e94b9f94"
+  },
+  "fnn-command-bpo-owner-recover": {
+    "coverage": "entry body read; downstream leaf closure partial, see coverage.md",
+    "revision": "47c1ebc9242fb50ee6a1444eeb620e92de9750b9",
+    "source_sha256": "e3f028f45471e2b74d75e7d12d30e71f7fa341c6cee3cbadb2fd26f2e94b9f94"
   }
 }
