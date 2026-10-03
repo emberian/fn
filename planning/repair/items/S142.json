@@ -1,8 +1,11 @@
 {
  "category": "error-handling",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tools/build_native_host.sh:144-147\nif ! FN_NATIVE_PROFILE=... \"$ACL2\" < \"$RUN_BUILD\" > \"$LOG\" 2>&1; then\n    echo \"build_native_host: acl2 exited with status $?; see $LOG\" >&2",
  "exposure": "latent",
  "file": "tools/build_native_host.sh",
+ "fix": "Capture the status first: `\"$ACL2\" < ... > \"$LOG\" 2>&1 || rc=$?` and test and print $rc.",
  "id": "S142",
  "line": "147",
  "locus": "gates-tests-packaging",
@@ -10,6 +13,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "tools/build_native_host.sh:144-147: inside `if ! cmd; then`, $? is the status of the negated pipeline, which is 0, so the message always says 'status 0'. It exits 1 regardless and points at $LOG. The defect is cosmetic, but it does misdirect triage.",
+ "scenario": "Inside the then-branch of `if ! cmd`, $? is the status of the negated pipeline, which is 0. Every failed image build therefore prints 'acl2 exited with status 0'. An OOM kill (137), a timeout from the swarm-build cgroup and an ACL2 error all look the same, and the line says the process succeeded. Triage of a failed tranche then goes to the wrong cause; the batch runner's builds read this message.",
  "severity": "low",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",

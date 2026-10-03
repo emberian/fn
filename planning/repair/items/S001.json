@@ -1,9 +1,12 @@
 {
  "acceptance": "wrapper:accept-outcome-table",
  "category": "error-handling",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "BRIDGE",
+ "evidence": "io.lisp:5714-5717\n  (let ((fd (fnn-socket-fd listener)))\n    (if (funcall *fnn-fd-waiter* fd :input seconds)\n        (sb-bsd-sockets:socket-accept listener)\n      :timeout))\nThe docstring says \"Return one accepted socket or :TIMEOUT\". But fnn-socket-fd makes the listener nonblocking, and SBCL's socket-accept returns NIL on EAGAIN. Callers: owner.lisp:5968-5972 `(unless (eq socket :timeout) ... (fnn-owner-launch-client service socket))`, which hands NIL to fnn-mux-adopt (mux.lisp:1388 pushes it onto the client roster). owner.lisp:5982-5985 re-signals any socket-error: `(sb-bsd-sockets:socket-error (condition) (unless (or *fnn-sigterm-requested* ...) (error condition)))`. The TLS accept thread (owner.lisp:5937-5946) wraps its whole loop in a handler-case on socket-error, so one error logs once and ends that listener.",
  "exposure": "live",
  "file": "host/native/io.lisp",
+ "fix": "In fnn-accept-observe, treat a NIL from socket-accept like :timeout (wait again). Classify transient accept errnos (ECONNABORTED, EINTR, EMFILE, ENFILE, ENOBUFS) as a named per-attempt outcome the caller logs and backs off on, never as a condition that ends the loop. The same pattern needs fixing in bp-control.lisp fnn-bpnc-pump and fnn-bpnc-accept-loop.",
  "id": "S001",
  "line": "5714",
  "locus": "lifecycle",
@@ -11,6 +14,8 @@
   "10-02 22:22 one fix with S004: io.lisp fnn-accept-attempt (lane/host-lifecycle 36670bccc+375bc9b57); native green pending (green8)"
  ],
  "owner": "host-lifecycle",
+ "reviewer": "Confirmed, and the effect is worse than the report says. SBCL 2.6.8's socket-accept (contrib/sb-bsd-sockets/sockets.lisp:102-113 with util.lisp:6-7) returns NIL on EAGAIN or EINTR, and fnn-socket-fd (io.lisp:5538-5540) makes the listener nonblocking. fnn-accept-observe (io.lisp:5714-5717) passes that NIL on. In owner.lisp:5968-5972 the main accept loop checks only for :timeout, so NIL goes to fnn-owner-launch-client and then fnn-mux-adopt (mux.lisp:1388 pushes NIL onto the client roster). fnn-mux-begin (mux.lisp:906-907) then calls (fnn-socket-fd nil), which signals no-applicable-method. fnn-mux-guarded's serious-condition clause (mux.lisp:359-363) catches that and calls fnn-owner-fault-service (owner.lisp:1758-1768), which stops the whole owner with the fault exit code. So one aborted connection takes down the node, not just a mux thread. Getting EAGAIN after poll reports the listener readable needs a BSD-style kernel that drops a queued connection reset before accept (OpenBSD, Darwin), so it is timing-dependent. The EMFILE/ENFILE half needs no race: owner.lisp:5982-5985 re-signals any socket-error out of fnn-owner-accept, which unwinds fnn-owner-run (owner.lisp:6195). Nothing in host/native caps descriptors before accept (no RLIMIT_NOFILE or connection-count check), so a remote client holding connections open can end the owner. The TLS and extra-listener threads (owner.lisp:5937-5946) log once and end that listener permanently. The same pattern appears in web-host.lisp:320 and control.lisp:481; the control loop faults the service.",
+ "scenario": "1) On OpenBSD or Darwin (the friend node is OpenBSD 7.9), a client completes the TCP handshake and resets before accept(2), which is what an nmap connect scan does. The kernel drops the queued connection. poll reported the listener readable, accept gets EWOULDBLOCK, socket-accept returns NIL, and NIL is adopted as a client. The mux loop thread then faults on (fnn-socket-fd nil). 2) A connection flood exhausts descriptors: accept fails with EMFILE or ENFILE, or ECONNABORTED on BSD. That socket-error is re-signalled out of fnn-owner-accept and ends the owner process for every connected client. On the implicit-TLS listener it silently stops accepting TLS until restart.",
  "severity": "high",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",

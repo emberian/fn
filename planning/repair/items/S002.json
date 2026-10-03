@@ -1,8 +1,11 @@
 {
  "category": "claim-gap",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "owner.lisp:2512 `(fnn-owner-core 'fn-owner-login-gate (fnn-octet-list payload))`; owner.lisp:2208 `(let ((*fnn-owner-payload-list* (cons payload (fnn-octet-list payload))))` followed by fn-owner-control-filing / fn-owner-peer-carrier-form / fn-owner-peer-carrier-plan on that list. Meanwhile host/owner-host.lisp:3765-3774 says the *-buffer twins (fn-owner-login-gate-buffer, fn-owner-control-filing-buffer, fn-owner-peer-carrier-form-buffer, fn-owner-peer-carrier-plan-buffer) are 'Called by host/native/owner.lisp fnn-owner-attempt-served and fnn-owner-attempt-transit through fnn-core-buffer-state after fnn-octets-fill', but grep finds no caller of any of them. The comment at 2205-2207 ('converted once') is also wrong, because the login gate converts the payload separately first.",
  "exposure": "live",
  "file": "host/native/owner.lisp",
+ "fix": "Fill the octet buffer once at the top of fnn-owner-attempt-served and call the existing *-buffer wrappers through fnn-core-buffer-state for the login gate, filing, carrier form and plan, as owner-host.lisp documents. Drop *fnn-owner-payload-list* from the served path. If a twin cannot be used yet, correct the owner-host.lisp comment and record the open D27 item.",
  "id": "S002",
  "line": "2512",
  "locus": "connections",
@@ -11,6 +14,8 @@
   "10-02 22:32 pushed for merge-all at lane/sweep-ops cc4ef2db6; heap native pending"
  ],
  "owner": "sweep-ops",
+ "reviewer": "fnn-owner-attempt-served (2512) converts the payload with (fnn-octet-list payload) for fn-owner-login-gate. fnn-owner-attempt-transit then builds a second list at 2208 (*fnn-owner-payload-list*) for control-filing, carrier-form and carrier-plan. A grep over host/, books/ and tools/ finds no caller of fn-owner-login-gate-buffer, fn-owner-control-filing-buffer, fn-owner-peer-carrier-form-buffer or fn-owner-peer-carrier-plan-buffer, other than their definitions (owner-host.lisp:3775-3795) and the comments in books/article-buffer.lisp. So the owner-host.lisp:3767-3774 comment saying they are 'Called by ... fnn-owner-attempt-served and fnn-owner-attempt-transit through fnn-core-buffer-state' is false. The served path builds two full cons lists of the article under the owner mutex, against D27. The 'converted once' comment at 2205-2207 is also wrong, because the gate converted the payload separately.",
+ "scenario": "A client POSTs an article at the profile's size bound, e.g. 10 MB. Under the owner mutex the login gate conses a 10M-element list (about 160 MB on 64-bit SBCL), then fnn-owner-attempt-transit conses a second one (about 160 MB more) for filing, carrier form and plan. Only after that does fnn-owner-attempt fill the octet buffer. Peak heap per POST is about 32x the article, the owner is held for the whole allocation and GC, and that violates D27 (no octet lists on the served path) while owner-host.lisp's comment claims the opposite.",
  "severity": "high",
  "sha": "e5e8b2e5c",
  "source": "sweep-2026-10-03",

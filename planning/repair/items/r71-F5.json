@@ -1,6 +1,7 @@
 {
  "acceptance": "committer:no-inline-reader",
  "category": "bug",
+ "detail": "planning/repair/sources/astra-r71-owner-mux.md (## F5)",
  "disposition": "BRIDGE",
  "exposure": "conditional",
  "file": "host/native/owner.lisp",

@@ -1,8 +1,11 @@
 {
  "category": "correctness",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "books/peer-feed.lisp:997-1009 fn-feed-lost: `(delay (fn-feed-backoff-delay (fn-feed-backoff-base (fn-feed-limits-of f)) 0))` then fn-feed-queue-requeue-inflight (:397-401), which increments attempts. The retry bound is consulted only in the 431/436 arm of fn-feed-observe (:1075-1079 `(if (fn-feed-retry-exhaustedp g msgid) (fn-feed-give-up g msgid :retry-bound) g)`); `(t (mv (fn-feed-lost f obs) nil))` (:1080) never checks it. fn-feed-head-queued (:358-364) always picks the first :queued entry, and the requeue keeps its position.",
  "exposure": "live",
  "file": "books/peer-feed.lisp",
+ "fix": "Apply the retry bound in the loss arm too, either through the same fn-feed-retry-exhaustedp/give-up path or a separate loss-count bound with its own drop reason. Grow the loss delay with the in-flight entry's attempts (or the link streak). Consider rotating a requeued entry behind other queued entries so one article cannot head-of-line block the peer.",
  "id": "S053",
  "line": "997",
  "locus": "peer-services",
@@ -11,6 +14,8 @@
   "10-02 22:33 sent in 5536e2f08; REPL-admitted, feed-closure cert in flight"
  ],
  "owner": "sweep-peer",
+ "reviewer": "books/peer-feed.lisp:1001-1012: fn-feed-lost uses fn-feed-backoff-delay with attempts fixed at 0, so the delay is constant. It requeues every in-flight entry through fn-feed-queue-requeue-inflight (:397-401), which keeps queue position and increments attempts. fn-feed-observe consults retry-exhaustedp only in the 431/436 arm (:1074-1079). The fallthrough `(t (mv (fn-feed-lost f obs) nil))` (:1080) never does, and neither does feed-events.lisp:66. fn-feed-head-queued (:358-364) always picks the first :queued entry, so a poison article blocks the peer's FIFO forever. The host's carried version is proved equal (feed-live-carried.lisp:334, 350). feed-service.lisp:267 and :298 show that :unsendable also drops the link into fn-feed-lost, which gives a second path into the same loop. The give-up only through 436 after the attempts have climbed works as described.",
+ "scenario": "An article whose IHAVE/TAKETHIS makes the peer answer 400/503 or close the socket (a peer-side limit, a malformed or huge article, a peer bug) is requeued with attempts+1 and re-offered first after the constant base delay, every time, forever. Every later article to that peer sits behind it and is never offered, and the delay does not grow because attempts are fixed at 0 in the loss arm. Its attempts climb past retry-bound unseen, so if the peer ever answers it 436 once, it is dropped immediately with :retry-bound. Two different retry policies are applied to the same entry.",
  "severity": "medium",
  "sha": "206623f29",
  "source": "sweep-2026-10-03",

@@ -1,9 +1,12 @@
 {
  "acceptance": "committer:feed-off-owner",
  "category": "performance",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "BRIDGE",
+ "evidence": "owner.lisp:2964 `(fnn-owner-feed-flush service intent-publication)` (inside fnn-owner-drain-one, called per member from fnn-owner-commit-start-locked:3105 under the owner mutex); owner.lisp:897-902 fnn-owner-feed-append: `(fnn-write-all ...) ... (fnn-fsync-file (fnn-owner-feed-journal-fd journal))` once per (peer . frame) pair; owner.lisp:3250-3253 in COMPLETE: `(dolist (item (reverse (cdr deferred))) ... (fnn-owner-feed-flush service (cdr item)))`. The section comment at 3005-3011 says the quantum 'fences the log ONCE'.",
  "exposure": "live",
  "file": "host/native/owner.lisp",
+ "fix": "Collect the intent frames per peer journal for the whole START and write each journal once, with one fsync per journal per quantum, before the first Store mutation of the batch. Do the same for the resolutions in COMPLETE. Alternatively, put the feed fsync under the same disk-event deadline model as the log barrier and move it off the owner mutex the way the syncer does.",
  "id": "S014",
  "line": "2964",
  "locus": "committer",
@@ -12,6 +15,8 @@
   "10-02 22:33 Off-owner in d7fe7f5c8 (with r71-F6); coalescing to one fsync/journal/batch remains: lanedumps/owner-offlock.md NEXT 6"
  ],
  "owner": "owner-offlock",
+ "reviewer": "fnn-owner-drain-one (owner.lisp:2964) calls fnn-owner-feed-flush, which loops over fn-ores-feedpub-plan (1054-1068) and calls fnn-owner-feed-append once per (peer . frame). Each append does fnn-write-all and then fnn-fsync-file (897-902). The per-member resolution goes through fnn-owner-feed-flush-after-barrier (3024-3029), which is deferred inside a quantum and then flushed per item in COMPLETE (3250-3253), again one fsync per peer, under the owner mutex. With feed peers configured, a batch of N members costs about 2*N*peers journal fsyncs. Nothing coalesces them and no disk-time deadline covers them. The 'fence ONCE' comment (3005-3011) is about the log segment and is true for the log, but the feed journals are not batched. This is a throughput problem and an unbounded stall under the mutex, not a correctness bug.",
+ "scenario": "A node with 3 configured feed peers receives a batch of 64 served POSTs. Each drain-one appends and fsyncs the intent frame to every target peer's journal, which is 64x3 fsyncs, all serial under the owner mutex in START. COMPLETE then fsyncs each deferred resolution again, another 64x3 fsyncs under the mutex. The batch therefore costs about 384 fsyncs where the design promises one log fence. The disk time model (fn-otm-*) only watches the log barrier, so a feed-journal device that stalls in fdatasync holds the owner mutex with no deadline, and no control, reader or inspect quantum (not even `health`) can run.",
  "severity": "medium",
  "slice": "committer",
  "source": "sweep-2026-10-03",

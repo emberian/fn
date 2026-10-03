@@ -1,9 +1,12 @@
 {
  "acceptance": "wrapper:connection-scoped",
  "category": "fail-open",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "BRIDGE",
+ "evidence": "pull-service.lisp:263-265: (let ((cid (fnn-owner-core 'fn-owner-open-peer peer-octets))) (unless (and (integerp cid) (>= cid 0)) (fnn-refuse \"owner refused the pull transit connection\")) ... pull-service.lisp:551-558: (defun fnn-pull-worker-guarded (runtime) (handler-case (fnn-pull-worker runtime) ... (serious-condition (e) (unless (fnn-pull-stoppingp runtime) (fnn-owner-fault-service (fnn-pull-runtime-service runtime) nil e))))). books/owner.lisp:1502 fn-own-open-peer: (if (< (len (fn-own-conns o)) (nfix (fn-own-max-conns o))) ... (cons nil o)), and books/owner-connection-callbacks.lisp:208-210 answers (value nil) when no connection was added.",
  "exposure": "conditional",
  "file": "host/native/pull-service.lisp",
+ "fix": "Make a refused local open an event of the round, for example (:lost :local) enqueued with ACL2's refusal word, so the session closes and the cursor stays where ACL2 leaves it. In fnn-pull-worker-guarded, add a fnn-store-error arm that ends only the round and keeps the worker, and fault only on fnn-store-fault or an unclassified serious condition. The feed worker guard (feed-service.lisp:572-576) has the same refusal-to-fault collapse.",
  "id": "S007",
  "line": "265",
  "locus": "peer-services",
@@ -11,6 +14,8 @@
   "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
  ],
  "owner": "host-lifecycle",
+ "reviewer": "pull-service.lisp:258-266 fnn-pull-local-open calls fnn-refuse (io.lisp:132, a plain fnn-store-error) when fn-owner-open-peer answers no cid. books/owner.lisp:1502 fn-own-open-peer shares the fn-own-conns/max-conns bound with fn-own-open (owner.lisp:1430), which reader clients consume (host/native/owner.lisp:36 comment: no other host cap). The :open-local and :reopen-local arms (pull-service.lisp:381-399) have no handler. fnn-pull-round's unwind-protect only cleans up, fnn-pull-worker has no handler, and fnn-pull-worker-guarded (551-558) sends every non-indeterminate serious-condition to fnn-owner-fault-service (owner.lisp:1758-1769), which stops the service with +fnn-exit-fault+. A full connection table at the moment a pull or catch-up round is due therefore stops the node with exit 4. The same applies to any refusal fnn-owner-handle-chunk raises inside fnn-pull-local-send.",
+ "scenario": "Clients (anyone who can reach the reader port) hold the owner's connection table at fn-own-max-conns. The next due pull or catch-up round runs the :open-local effect. fn-owner-open-peer answers NIL. fnn-pull-local-open signals fnn-refuse, a fnn-store-error, which the shared action boundary passes through as a connection-scoped refusal. Nothing in fnn-pull-round handles it, so it unwinds out of fnn-pull-worker. fnn-pull-worker-guarded's serious-condition arm calls fnn-owner-fault-service, which stops the node with exit 4 (fault). A capacity refusal becomes a process-wide fault: remote clients can stop the node by occupying connection slots at the time a pull is due. The same arm also turns every other fnn-store-error refusal in the round (for example a refusal inside fnn-owner-handle-chunk) into a fault.",
  "severity": "high",
  "sha": "4e409a9d6",
  "slice": "wrapper",

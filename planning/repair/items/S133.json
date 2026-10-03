@@ -1,8 +1,11 @@
 {
  "category": "fail-open",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tests/test_native_open_depth.py:266-269 `if proc.poll() is None:\n                # The connection closed and the owner lives (QUIT): reconnect.\n                print(\"OPEN-DEPTH {} {} SERVED {} (closed) seconds={:.1f}\".format(` with only owner deaths appended to `deaths`, and :202 `self.assertEqual([(t, e) for t, e, _ in self.deaths], [], ...)`",
  "exposure": "latent",
  "file": "tests/test_native_open_depth.py",
+ "fix": "Record a non-QUIT EOF or OSError against a live owner as a failure (a `drops` list asserted empty, like `deaths`). At least require the first line to be a known reply code for that command.",
  "id": "S133",
  "line": "266",
  "locus": "gates-tests-packaging",
@@ -10,6 +13,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "test_native_open_depth.py:241-276: an EOF or OSError on any command, with the owner alive, prints '(closed)' and reconnects. Only owner deaths are recorded, and :202 asserts only that list. Reply codes are printed, never asserted. The test's stated scope is 'commands or reports that stopped the owner' (plus open timing), so this is a weak test, not a hidden failure.",
+ "scenario": "At a deep store, OVER/LISTGROUP/HDR overrun a work bound and the owner closes the session (EOF) instead of answering. Or the client's 1800 s read times out with OSError while the owner is still alive. Either way run() prints `(closed)`, reconnects and moves on. The test asserts only that the owner did not die, so a command that never returns a reply at depth passes. The comment admits this is meant only for QUIT, but it applies to every command. Reply codes are not checked either, so a 503 for every command passes.",
  "severity": "low",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",

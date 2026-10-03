@@ -1,8 +1,11 @@
 {
  "category": "correctness",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tcpcl.lisp:161-162: with no callback bound, `(t (fnn-tcl-stage conn xfer-id octets))` writes `(format nil \"~a-~d.bundle\" (fnn-tclc-tag conn) xfer-id)` with `(fnn-replace stage final)` (rename-over) and returns `(list :accepted final)`, so the final ACK is released. In bp-node serve, *fnn-tcl-deliver* is bound only inside the per-session let* (bp-node.lisp:1003-1007, scope ends at 1046). The between-session passes open active sessions with it unbound: bp-service.lisp:554-556 `(fnn-tcl-session ... :active params \"bp-service\" (fnn-bps-root service) :expect 0 ...)`, the fragment sessions at 599-602, and bp-node.lisp:394-404 `\"bp-node-forward\" (fnn-bps-root bp)`. TCPCL sessions are bidirectional; `bp send`'s :expect shows that active sessions take inbound transfers.",
  "exposure": "conditional",
  "file": "host/native/tcpcl.lisp",
+ "fix": "For every outbound session, bind *fnn-tcl-deliver* to the node's FNBS delivery (fnn-bp-deliver-node with an anonymous or refused ingress) or to an explicit refusal callback. Drop the implicit spool fallback when the root is an FNBS journal, and never stage into the FNBS root by tag-xfer-id name.",
  "id": "S024",
  "line": "259",
  "locus": "peer-services",
@@ -11,6 +14,8 @@
   "10-02 22:33 sent in 5536e2f08; native test added, not yet run"
  ],
  "owner": "sweep-peer",
+ "reviewer": "fnn-tcl-deliver-transfer (tcpcl.lisp:154-162) falls back to fnn-tcl-stage when no deliver callback is bound. fnn-tcl-stage writes <tag>-<xfer>.bundle with fnn-replace (rename-over) and returns :accepted, which releases the ACK. The ACL2 machine does not restrict inbound transfers by role: fn-tcl-complete (books/tcpcl-session.lisp:635-643) emits the XFER_ACK and :bundle-received for either role. In bp-node serve, *fnn-tcl-deliver* is bound only in the per-session let* (bp-node.lisp:1003-1046). The between-session passes open active sessions with the FNBS root as spool and no deliver binding: the forward session (bp-node.lisp:384-404, tag bp-node-forward) and the bp-service send and fragment sessions (bp-service.lisp:554-556 and 599-602). Only bp.lisp:690 and 769 and bp-app:355 bind it. An inbound transfer that arrives before the active close is ACKed as plain custody, never admitted or recorded, and overwritten by name on the next session's xfer 1. The peer must pass the SESS_INIT node-ID check, which is a claimed ID, not crypto.",
+ "scenario": "During fnn-bpnode-send-receipts or fnn-bpnode-forward-contact, the contacted peer offers a bundle on the session. fn ACKs it as accepted, but it never passes channel admission, profile admission or a kind-5 record. It lands as FNBS_ROOT/bp-node-forward-1.bundle and is never delivered or forwarded. The next session's xfer 1 renames over that file, so acknowledged custody is silently destroyed. A peer that keeps doing this grows the journal root, which fnn-bps-retire-generations and fnn-bps-rotate-when-due enumerate with fnn-list-directory-bounded, until rotation faults.",
  "severity": "medium",
  "sha": "9b7508ccb",
  "source": "sweep-2026-10-03",

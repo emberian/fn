@@ -1,8 +1,11 @@
 {
  "category": "resource-leak",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "books/store-reclaim-pack.lisp:84-89: `(defun fn-rclp-index-into (xs acc) ... (if (hons-get m acc) acc (hons-acons m (car xs) acc))))`; :631-638 fn-rclp-ctx-expiring stores `(fn-rclp-index-built articles)` in the ctx. The online owner builds it per pass: host/owner-host.lisp:1038-1042 `fn-owner-orc-ctx` -> fn-xpy-rci-context / fn-xpy-ctx -> fn-rclp-ctx-expiring (books/expiry.lisp:465-471). No fast-alist-free appears in the reclaim books, checkpoint-host, checkpoint.lisp or owner.lisp (grep).",
  "exposure": "live",
  "file": "books/store-reclaim-pack.lisp",
+ "fix": "Free the index when the pass ends. Add an ACL2 entry such as fn-rclp-ctx-release that calls (fast-alist-free (fn-rcl-nth 6 ctx)), and call it from an unwind-protect in fnn-owner-reclaim-pass and fnn-log-reclaim-steps. Or build the index with with-fast-alist scoped to the pass.",
  "id": "S050",
  "line": "84",
  "locus": "reclaim-publication",
@@ -11,6 +14,8 @@
   "10-02 22:33 fn-rclp-ctx-free/fn-owner-orc-ctx-free + status frees holders; 50 passes: 0 growth freed vs 672k slots unfreed; driver call is arena-forget's"
  ],
  "owner": "reclaim-retention",
+ "reviewer": "fn-rclp-index-into (store-reclaim-pack.lisp:84-89) builds a fast alist with hons-acons over every article. fn-rclp-ctx-expiring stores it in the ctx (:631-638). The owner builds a fresh ctx for each dry run or recorded reclaim (owner.lisp:5476, 5674, through fn-owner-orc-ctx at owner-host.lisp:1038-1042). Nothing in the reclaim, expiry or owner paths calls fast-alist-free. The codebase frees fast alists explicitly elsewhere (peer-feed.lisp:275, expiry.lisp:355, served-catalog.lisp:2569), which shows the hash tables are not reclaimed when the alist is simply dropped. Each owner pass therefore leaves an index of every article behind.",
+ "scenario": "A node with 5M articles runs `store reclaim --recorded`, or the owner's dry-run reclaim, once a day. Each pass allocates a 5M-entry hash table in ACL2's fast-alist table and norms 5M Message-ID strings. ACL2 keeps a fast alist's hash table reachable until fast-alist-free (or until the alist is extended), so dropping the ctx does not release it. Heap use climbs by hundreds of MB per pass until the owner hits its dynamic-space limit.",
  "severity": "medium",
  "sha": "2f27ae729",
  "source": "sweep-2026-10-03",

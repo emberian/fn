@@ -1,6 +1,7 @@
 {
  "acceptance": "pure:word-table",
  "category": "claim-gap",
+ "detail": "planning/repair/sources/astra-r71-owner-mux.md (## F15)",
  "disposition": "DISSOLVES-IN",
  "exposure": "latent",
  "file": "host/native/owner.lisp",

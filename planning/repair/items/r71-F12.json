@@ -1,6 +1,7 @@
 {
  "acceptance": "wrapper:receipt-join",
  "category": "bug",
+ "detail": "planning/repair/sources/astra-r71-owner-mux.md (## F12)",
  "disposition": "BRIDGE",
  "exposure": "conditional",
  "file": "host/native/owner.lisp",

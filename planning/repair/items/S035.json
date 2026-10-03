@@ -1,9 +1,12 @@
 {
  "acceptance": "services:per-window-deadline",
  "category": "correctness",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "BRIDGE",
+ "evidence": "feed-service.lisp:239-243: (defun fnn-feed-send (link octets) ... (if (fnn-feed-link-tls-channel link) (fnn-tls-send-all (fnn-feed-link-tls-channel link) octets 10) (fnn-send-all (fnn-feed-link-fd link) octets 10))). io.lisp:5491-5507: fnn-send-all uses \"one deadline for readiness waits\": (deadline (+ (fnn-now) (* seconds internal-time-units-per-second))) ... (fnn-os-fail sb-posix:etimedout). The command carries the article (feed-service.lisp:452-455: \"before its TAKETHIS/article bytes reach the protected socket\").",
  "exposure": "live",
  "file": "host/native/feed-service.lisp",
+ "fix": "Have ACL2 supply the send deadline as a progress or idle bound (no forward progress within N seconds), not a total bound for the whole command. Or have ACL2 project it from the command length and the profile's minimum rate. Bound work per scheduling step by writing the command in resumable quanta, so other links still get pumped.",
  "id": "S035",
  "line": "242",
  "locus": "peer-services",
@@ -12,6 +15,8 @@
   "10-02 22:33 sent in 5536e2f08; raw harness passes"
  ],
  "owner": "sweep-peer",
+ "reviewer": "feed-service.lisp:239-243 sends with a fixed 10 s. fnn-feed-reply-step (278-320) and fnn-feed-tick (254-276) return the whole ACL2 command (TAKETHIS plus the article) as one octet vector. fnn-feed-consume (452-455) and fnn-feed-pump-link (482-484) send it in one fnn-feed-send. fnn-send-all (io.lisp:5491-5507) and fnn-tls-send-all (tls.lisp:708-730) apply a single absolute deadline to the whole buffer. An article that needs more than 10 s at the path's rate always times out: the fnn-os-error arm (517-536) drops the link, and the entry is requeued and offered again. The constant is host-chosen and independent of size, and the single feed worker is blocked while it sends.",
+ "scenario": "An article of several MB is offered to a peer whose path sustains less than size/10 s (for example 5 MB at 300 KB/s). fnn-send-all raises ETIMEDOUT partway through the article. fnn-feed-pump-link drops the link and fn-feed-lost requeues the same entry. After backoff the same entry is offered again and times out again, every time. That peer's feed never moves past the article, and each attempt sends the peer a truncated TAKETHIS body. This 10-second ceiling is a host constant, not an ACL2-owned bound, and depends on data size, which D27 forbids. While the send blocks, the single feed worker also serves no other peer.",
  "severity": "medium",
  "sha": "32cb8f8a9",
  "slice": "services",

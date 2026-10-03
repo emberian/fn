@@ -1,6 +1,6 @@
 {
  "category": "check-lane",
- "detail": "host_loaded_check: host/store-checkpoint-context-host.lisp: no build loads it (reach_check IMAGE_BUILDS/TEST_IMAGE_BUILDS): wire it into a build, move a test ha",
+ "detail": "planning/repair/sources/check-lane-reds-355a5c843.md",
  "disposition": "LOCAL",
  "exposure": "latent",
  "file": "",

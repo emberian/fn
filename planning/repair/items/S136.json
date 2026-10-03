@@ -1,8 +1,11 @@
 {
  "category": "fail-open",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tests/test_native_crash_model.py:121-125 `for cut in native_cuts.POST_LOG_CUTS:\n                selected = os.environ.get(\"FN_NATIVE_LOWLEVEL_CUT\")\n                if selected and cut.name != selected:\n                    continue`",
  "exposure": "latent",
  "file": "tests/test_native_crash_model.py",
+ "fix": "Before the loop, assert the selected name is in the POST_LOG_CUTS names (or skipTest naming the unknown selector).",
  "id": "S136",
  "line": "122",
  "locus": "gates-tests-packaging",
@@ -10,6 +13,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "test_native_crash_model.py:121-126: a FN_NATIVE_LOWLEVEL_CUT value that matches no POST_LOG_CUTS name skips every iteration and the test passes with zero subtests. The env var is a developer filter, not a default path, so the impact is limited to a mistyped selection.",
+ "scenario": "An operator sets FN_NATIVE_LOWLEVEL_CUT=log-fence (a typo) or a retired name such as record-attempted. Every cut is skipped, no subTest runs, and test_all_native_post_log_process_death_cuts reports OK with zero process deaths checked.",
  "severity": "low",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",

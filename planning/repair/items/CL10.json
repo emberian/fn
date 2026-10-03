@@ -1,6 +1,6 @@
 {
  "category": "check-lane",
- "detail": "harness_check acl2-arity: 10 findings (22964 definitions, 5818 applications, 192 host_files, 735 python_strings, 423 undecidable_strings, 3 declared_fixtures)",
+ "detail": "planning/repair/sources/check-lane-reds-355a5c843.md",
  "disposition": "LOCAL",
  "exposure": "latent",
  "file": "",

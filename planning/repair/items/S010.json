@@ -1,9 +1,12 @@
 {
  "acceptance": "mux:no-cold-await",
  "category": "fail-open",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "BRIDGE",
+ "evidence": "host/native/mux.lisp:631-638\n        (channel\n         ...\n         (cond ((or closing (= consumed (length incoming))))\n               ((or redeemed submitted)\n                (setf (fnn-mux-conn-input conn) (subseq incoming consumed)))\n               (t (fnn-fault \"protected owner read left a TLS suffix\"))))\n\nhost/native/owner.lisp:4165-4176 (fnn-owner-chunk-span-no-io)\n      (let ((whole (try (length incoming))))\n        (if (eq (car whole) :warm)\n            (second whole)\n          (let* ((line-end (first (fnn-call 'fn-oct-line-end 0 (fnn-live-octets))))\n                 (first-line (try line-end)))\n            ...\n            (if (eq (car first-line) :warm)\n                (second first-line)\n              (cons :fnn-extent-cold first-line))))))))\n\nhost/native/owner.lisp:4418-4425 (fnn-owner-unavailable-line) returns `consumed` = the first line only, with REDEEMED and SUBMITTED both nil.",
  "exposure": "live",
  "file": "host/native/mux.lisp",
+ "fix": "Let the channel branch keep any suffix of a non-closing step as the next step's input, exactly as the plain and compressed branches do. Plaintext that OpenSSL has already decrypted cannot be reclassified as a handshake. Keep the fault only for a step that consumed zero octets. Alternatively, have the step report its own yield (a first-line-only re-run) and accept it alongside redeemed/submitted. Add a native TLS case that pipelines a warm line and a cold line.",
  "id": "S010",
  "line": "638",
  "locus": "connections",
@@ -12,6 +15,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "host-lifecycle",
+ "reviewer": "I followed the path end to end. fnn-mux-step's channel branch (host/native/mux.lisp:631-638) faults when consumed < length unless the step closed, redeemed or submitted. The channel is set after every completed TLS handshake (mux.lisp:877), so this covers both STARTTLS and the TLS port. fnn-owner-chunk-span-no-io (owner.lisp:4160-4176) re-runs a cold whole span on its first line only, and fnn-extent-no-io-usable-p is always t (extent.lisp:719-721). A warm first line returns a step whose consumed is the first line only. fnn-owner-handle-chunk (owner.lisp:4530-4600) takes submitted from the step and leaves redeem nil. The :unavailable path, fnn-owner-unavailable-line (owner.lisp:4407-4425), returns consumed=first line with nil nil. fnn-fault signals fnn-store-fault (io.lisp:134-135). fnn-mux-guarded catches that (mux.lisp:328-332) and calls fnn-owner-fault-service, which stops the service with exit 4 (owner.lisp fnn-owner-fault-service). The compressed branch (625) and the plain branch (640-648) keep the suffix. Any pipelining reader over TLS whose second line needs a cold extent can trigger this, with no authentication.",
+ "scenario": "A reader on STARTTLS or the TLS port sends \"ARTICLE <warm@x>\\r\\nARTICLE <cold@y>\\r\\n\" in one TLS record. Many clients pipeline like this. The second article's extent is not in the realizer cache, which is the normal state after a restart or an eviction. The whole-span no-I/O run aborts and is re-run on the first line only. That step consumes fewer octets than were read, and it is neither closing, redeemed nor submitted. A cold first line ending :unavailable after the dependency deadline gives the same shape. mux-step reaches `(fnn-fault \"protected owner read left a TLS suffix\")`, which is an fnn-store-fault. fnn-mux-guarded then calls fnn-owner-fault-service, and the node stops with exit 4 for every client. The plain path (line 640) and the compressed path (line 625) keep the suffix. Only the TLS path faults. tests/test_fn_verify.py:861 records that the oversize-article case of this bug already stopped the node once. The cold-line yield (PKT-600's 'the caller feeds the rest of INCOMING as the next read') was never added to the channel branch.",
  "severity": "high",
  "sha": "e6b827d21",
  "slice": "mux",

@@ -1,9 +1,12 @@
 {
  "acceptance": "wrapper:connection-scoped",
  "category": "error-handling",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
+ "evidence": "feed-service.lisp:145-146: (unless (and (integerp port) (<= 1 port 65535)) (fnn-fault \"feed core returned malformed peer port\")). This check runs inside fnn-feed-dial-plan, which is called only for BACKOFF at feed-service.lisp:468-471, 476-480, 507-511 and 525-527 (for example (multiple-value-bind (ignored host port backoff timeout security auth) (fnn-feed-dial-plan service ...) (declare (ignore ignored host port timeout security auth)) ...)). host/owner-host.lisp:4652-4659: fn-owner-feed-port answers 0 when the record has no :nntp transport (unknown peer).",
  "exposure": "conditional",
  "file": "host/native/feed-service.lisp",
+ "fix": "Ask ACL2 for the backoff alone (fn-owner-feed-backoff-ms), and treat an absent peer record as a named outcome that closes the link without scheduling a redial. Do not reuse the full dial-plan validator on loss paths. Alternatively, run refresh-links per link immediately before its pump.",
  "id": "S036",
  "line": "145",
  "locus": "peer-services",
@@ -12,6 +15,8 @@
   "10-02 22:33 sent in 5536e2f08; raw harness passes"
  ],
  "owner": "sweep-peer",
+ "reviewer": "fnn-feed-worker-loop (543-556) refreshes links once, then dials and pumps each link serially, and earlier links can block for up to 10 s sends or dial timeouts. books/owner-feed.lisp:567-573 and 639-644 (fn-own-feed-reconfigure after :remove-peer) forget an idle removed peer's entry. fn-owner-feed-record then returns nil, and fn-owner-feed-port (owner-host.lisp:4652-4659) answers 0. fnn-feed-dial-plan faults on port 0 (feed-service.lisp:145-146) before it checks queued. That happens on the next dial of that link (fnn-feed-dial 410-412, unconditionally for a link with no socket whose next-dial has passed) and on every error or drop path (468-471, 476-480, 507-511, 525-527). fnn-store-fault then reaches the feed worker's guard and fault-stops the owner. The race window is narrow (one iteration), but it is reachable through live reconfiguration.",
+ "scenario": "fnn-feed-worker-loop snapshots the links after fnn-feed-refresh-links (lines 549-551) and then dials and pumps each link in turn, with up to 10 s sends per link. During that window a control thread removes or retransports peer X through live reconfiguration. When the worker reaches X's still-open socket, the next EOF, refusal, :invalid reply or socket error calls fnn-feed-dial-plan for X only to obtain the backoff. fn-owner-feed-port answers 0, fnn-fault signals fnn-store-fault, and fnn-feed-worker-guarded calls fnn-owner-fault-service, so the node stops with exit 4. The lookup was made only to schedule a retry for a link that is being removed anyway.",
  "severity": "medium",
  "sha": "32cb8f8a9",
  "slice": "wrapper",

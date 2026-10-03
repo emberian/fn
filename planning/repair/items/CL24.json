@@ -1,6 +1,6 @@
 {
  "category": "check-lane",
- "detail": "premise_audit: NEW unestablished premise adt-pg-pokp (established off the host path): assumed by adt-pg-put-tree-is-put-field",
+ "detail": "planning/repair/sources/check-lane-reds-355a5c843.md",
  "disposition": "LOCAL",
  "exposure": "latent",
  "file": "",

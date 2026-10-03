@@ -1,8 +1,11 @@
 {
  "category": "locking",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "host/owner-host.lisp:1018-1019 (fn-owner-orc-capture): `(state (f-put-global 'fn-owner-orc-pass mode state)) (state (if dry state (f-put-global 'fn-owner-sco-inflight count state)))` with no test of the current fn-owner-orc-pass or fn-owner-sco-inflight. fn-owner-orcp-capture (5120-5133) only checks the credit reserve before calling it. The admission test is a separate entry, fn-owner-orc-request (970-984), which host/native/admin.lisp:404-407 calls in one fnn-owner-serialized quantum. The capture runs later, in another quantum (host/native/owner.lisp:5651-5653 fnn-owner-gated ... 'fn-owner-orcp-capture). fn-owner-sco-publication-done:939 `(f-put-global 'fn-owner-sco-inflight nil state)` and fn-owner-orc-finish:1068-1069 both clear the flag without checking who set it.",
  "exposure": "conditional",
  "file": "host/owner-host.lisp",
+ "fix": "Decide admission inside the capture entry itself. fn-owner-orcp-capture / fn-owner-orc-capture should evaluate fn-orc-request-word over the current orc-pass and sco-inflight in the same mutex hold, and return a named refusal (:in-flight) without writing anything. Make the clearing entries conditional: publication-done clears sco-inflight only if it still holds the count that capture set, and orc-finish only if orc-pass is the mode it set. Alternatively, carry an owner token for the in-flight slot.",
  "id": "S038",
  "line": "1018",
  "locus": "reclaim-publication",
@@ -12,6 +15,8 @@
   "10-02 22:33 book half on lane/sweep-ops cc4ef2db6; host half NEXT in lanedumps/sweep-ops.md"
  ],
  "owner": "sweep-ops",
+ "reviewer": "The admission and the capture run in two separate quanta. fnn-owner-reclaim-request (host/native/admin.lisp:403-407) gets :requested in one fnn-owner-serialized quantum. fnn-owner-reclaim-pass then captures in a later fnn-owner-gated quantum (host/native/owner.lisp:5651-5653). Nothing at host level serializes reclaims, since each control client gets its own thread (control.lisp:452-461). fn-owner-orcp-capture (owner-host.lisp:5120-5133) checks only the credit. fn-orcp-reserve resizes the :reclaim key to the estimate, so a second pass does not fail on credit. fn-owner-orc-capture:1018-1019 then overwrites orc-pass and sco-inflight without checking them. For (b): fn-owner-sco-due (737-752) and fn-owner-sco-capture (809-822) never read fn-owner-orc-pass. The auto path (owner.lisp:5211-5240) guards only on the publisher roster, which a reclaim pass does not occupy. So between a reclaim's request and its capture, an auto publication can capture. Its publication-done (939) then clears sco-inflight while the reclaim is still running, and sco-due can answer :due again. The fn-orc-one-pass-in-flight property (books/owner-reclaim.lisp:285) holds only per request quantum, not across request and capture. It is triggered by operator reclaims, which are rare, hence medium.",
+ "scenario": "host/native/control.lisp:456 starts one worker thread per control client. (a) Two operators, or a script that retries, send `store reclaim --recorded` on two control connections. Both fn-owner-orc-request calls answer :requested, because no pass is in flight yet. Both threads then reach fn-owner-orcp-capture: the credit is reserved twice, the second capture overwrites fn-owner-orc-pass and fn-owner-sco-inflight, and two rebuild passes run over the same history. The first pass to finish clears orc-pass and sco-inflight while the second is still running. (b) A single reclaim is answered :requested. Before its capture quantum, the automatic publication quantum (owner.lisp:5220-5240) captures and sets sco-inflight to COUNT. The reclaim capture then overwrites sco-inflight. Whichever of the two finishes first sets sco-inflight to nil. fn-owner-sco-due then answers :due, and a third checkpoint writer starts while one is still running. That breaks the 'never a second in flight' rule fn-ock-requested-next relies on.",
  "severity": "medium",
  "source": "sweep-2026-10-03",
  "state": "in-progress",

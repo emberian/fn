@@ -1,6 +1,7 @@
 {
  "acceptance": "log-kernel:windowed-zeroing",
  "category": "bug",
+ "detail": "planning/repair/sources/astra-r72-io-extent.md (## F8)",
  "disposition": "DISSOLVES-IN",
  "exposure": "conditional",
  "file": "host/native/io.lisp",

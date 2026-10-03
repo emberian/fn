@@ -1,6 +1,6 @@
 {
  "category": "check-lane",
- "detail": "FAIL tests/fixtures/host-tables/refused.lisp:7 *fx-shared*: a global hash table that is neither :synchronized t nor declared `;; thread-confined: <reason>` or `",
+ "detail": "planning/repair/sources/check-lane-reds-355a5c843.md",
  "disposition": "LOCAL",
  "exposure": "latent",
  "file": "",

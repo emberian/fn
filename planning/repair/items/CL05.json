@@ -1,6 +1,6 @@
 {
  "category": "check-lane",
- "detail": "host_check: NOT RUN host/native/build-dtn.lisp (its include-books and host lds, in order)",
+ "detail": "planning/repair/sources/check-lane-reds-355a5c843.md",
  "disposition": "LOCAL",
  "exposure": "latent",
  "file": "",

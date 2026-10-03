@@ -1,9 +1,12 @@
 {
  "acceptance": "wrapper:fence-before-unlock",
  "category": "error-handling",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
+ "evidence": "host/native/owner.lisp:5212 `(fnn-owner-gated (service :control)` ... 5234-5235\n                 (position (handler-case (fnn-log-rotate store)\n                             ((or fnn-store-fault fnn-store-indeterminate) (e) (error e))\nfnn-owner-gated (1573-1605) only manages admission. It does not wrap the body in fnn-owner-shared-action-locked, which is what 'fences before its mutex can be released' (1771-1777).",
  "exposure": "conditional",
  "file": "host/native/owner.lisp",
+ "fix": "Run the publication-decision quantum through fnn-owner-serialized, or call fnn-owner-stop-service-locked with the exit-3 or exit-4 code inside the handler before re-signalling, as shared-action-locked does.",
  "id": "S020",
  "line": "5234",
  "locus": "reclaim-publication",
@@ -12,6 +15,8 @@
   "10-02 22:33 t45 lane/codex-fence-boundary 8e8041218: structure tests 15/15 local, program check PASS; natives NOT green yet (the 6ea819b75 run aborted at interfaces-check before the regen commit; relaunch at 8e8041218); farm run-20261003T022549Z-f421 certified the books before the last comment-only change"
  ],
  "owner": "failure-scope",
+ "reviewer": "In fnn-owner-maybe-publish-quantum, fnn-log-rotate (5234-5235) runs inside a bare fnn-owner-gated (5212), and fault/indeterminate are re-raised with no fenced boundary. The gated macro (1573-1605) releases the owner mutex during the unwind with STOPPING still nil. Mux and committer quanta can then run before fnn-owner-run's cleanup stop, whose window is only as long as the unwind. On the publisher-thread path (5162) the error is unhandled under --disable-debugger and exits the process with code 1. The 'exit code never set' part depends on the top-level classification, which I did not trace. The unfenced mutex release is real. fnn-log-rotate (io.lisp) does raise fnn-indeterminate for an uncertain rename.",
+ "scenario": "A rename or directory fsync fails during the capture's rotation. The re-raised fnn-store-indeterminate unwinds through fnn-owner-gated, which releases the owner mutex with STOPPING still nil. Queued reader and poster quanta are admitted and append to a log whose rotation outcome is unknown, before anything fences. On the accept-loop path the condition then unwinds fnn-owner-run with the service exit code never set to exit 3. On the publisher-thread path (5162) it is an unhandled error in a non-main thread.",
  "severity": "medium",
  "sha": "8e8041218",
  "slice": "wrapper",

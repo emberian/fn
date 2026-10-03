@@ -1,8 +1,11 @@
 {
  "category": "correctness",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tools/image_set.py:194-195\n    found = {name: file for name, file in IMAGES.items()\n             if (build / file).is_file() and (build / f\"{file}.core\").is_file()}\nthen :212 shutil.copy2(build / f\"{file}.core\", core) (follows symlinks) and :227 (partial / \"TREE_SHA\").write_text(sha + \"\\n\"). publish never looks at build/REUSED_SOURCE (written by link_run :332) or at whether the files are symlinks placed by link()/place_links.",
  "exposure": "latent",
  "file": "tools/image_set.py",
+ "fix": "Refuse to publish when build/REUSED_SOURCE exists or when any launcher or core is a symlink. Also require proof that each image was built from SHA, for example a source-revision or build record written by build_native_host.sh next to the image and compared to SHA.",
  "id": "S063",
  "line": "194",
  "locus": "gates-tests-packaging",
@@ -10,6 +13,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "tools/image_set.py:185-232: publish takes every build/FILE plus FILE.core that is_file() (which follows symlinks), copy2 follows links, and it writes TREE_SHA=sha. It never checks build/REUSED_SOURCE (written by link_run :332) or whether the entries are symlinks placed by place_links (:279-286), which both link() and link_run() use (hbox_native.sh:543,549). Catalogs written by link carry the source's 'old' catalog, so wrong_catalog passes. Publishing from a tree whose images were linked from set OLD or run RUN therefore labels OLD's cores as the new sha. Nothing guards against it. Whether the batch runner actually publishes from such a tree is operational, but batch-bc.txt:3 directs a publish for every pushed head.",
+ "scenario": "The batch runner is told to 'publish the image set for every pushed dev head ... from the native tree' (build/coordinator/queue/batch-bc.txt:3). For a tests-only tranche the native run used --image-set OLD or --reuse-image RUN, so TREE/build/fn-host* are symlinks into /tank/fn/images/OLD. publish TREE NEW then copies OLD's cores into /tank/fn/images/NEW and records TREE_SHA=NEW. Its SHA256SUMS verify, and every later `hbox_native --image-set NEW` runs lanes against images built from OLD's source while the evidence says NEW. Images left in a reused tree from an earlier head are published under the new sha the same way.",
  "severity": "medium",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",

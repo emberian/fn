@@ -1,8 +1,11 @@
 {
  "category": "correctness",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "books/owner.lisp:1674 `(cond ((not (equal (fn-peer-decision-kind decision) :want)) :refused)` maps fn-peer-decide-transfer-under's `:defer :staged/:busy/:fenced` (books/peer-inbound.lisp:647-653) and `:have :history` to :refused. host/native/owner.lisp:3859-3863 does the same at the second gate (`(unless (eq kind :want) ... :refused)`). host/native/bp-app.lisp:129-132 returns `(values :clock-unusable nil)`, and books/owner-log.lisp:561 classes it `((member-equal result '(:refused :clock-unusable)) :refused)`. host/native/bp-app.lisp:262 `((:refused :deferred) ... (list :refused app-result))`; books/tcpcl-delivery.lisp:45-49 sends No Resources only for :busy/:capacity/:persistence and Not Acceptable otherwise.",
  "exposure": "conditional",
  "file": "books/owner.lisp",
+ "fix": "Return a distinct :deferred word from fn-own-bp-transit-submit-result and fn-owner-transit-decide for :defer decisions, and :duplicate for :have. Class :clock-unusable as :deferred in fn-olog-bp-app-class. Have fn-tcl-delivery-refuse-reason map deferral to No Resources (or Retransmit), and keep :deferred apart from :refused in fnn-bpapp-deliver's tally.",
  "id": "S052",
  "line": "1674",
  "locus": "peer-services",
@@ -11,6 +14,8 @@
   "10-02 22:33 sent in 5536e2f08; books certified"
  ],
  "owner": "sweep-peer",
+ "reviewer": "books/owner.lisp:1674: fn-own-bp-transit-submit-result maps every non-:want decision to :refused. That includes fn-peer-decide-transfer's :defer :staged/:busy/:fenced/:disk-slow/:inflight-limit/:capacity (books/peer-inbound.lisp:517-536, 619-622). Only the owner-queue check yields :busy. The host's second gate at host/native/owner.lisp:3859-3863 also returns :refused for any kind other than :want. Clock failure at host/native/bp-app.lisp:129-132 returns :clock-unusable, which fn-olog-bp-app-class (books/owner-log.lisp:561) classes as :refused. bp-app.lisp:262 then returns (list :refused app-result) with app-result = :refused or :clock-unusable. fn-tcl-delivery-refuse-reason (books/tcpcl-delivery.lisp:45-49) gives No Resources only for :busy/:capacity/:persistence, so these transient cases go out as XFER_REFUSE Not Acceptable. The transient/permanent distinction is lost at the boundary, against the AGENTS.md rule. Severity is medium: fenced and clock-unusable are rare, but stage-busy deferrals under load are plausible.",
+ "scenario": "A BP delivery of a wanted article arrives while the owner is fenced (recovery pending), while the node stage is non-empty, or at a moment the wall clock is unusable (the TCPCL tally's wall error). The NNTP path answers these with 436/431 (retry). The BP path returns :refused, logged as `refused`, and the delivery plan sends XFER_REFUSE with reason Not Acceptable for an already-acknowledged custody. An RFC 9174 sender treats that as final and drops the bundle, so the article is lost although nothing about it was unacceptable. AGENTS.md: 'Uncertain, refused and accepted stay distinct at every boundary'.",
  "severity": "medium",
  "sha": "9b7508ccb",
  "source": "sweep-2026-10-03",

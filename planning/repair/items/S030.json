@@ -1,9 +1,12 @@
 {
  "acceptance": "wrapper:actor-top-boundary",
  "category": "error-handling",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
+ "evidence": "web-host.lisp:275-280\n(fnn-os-error () nil)\n(sb-bsd-sockets:socket-error () nil)\n(error (condition)\n  (if (and (find-class 'fnn-tls-error nil) (typep condition 'fnn-tls-error))\n      nil\n    (error condition)))\nThe thread body (314-326) handles only sb-bsd-sockets:socket-error. fnn-web-request (247-262) calls fnn-web-open, then later fnn-web-close, with no unwind-protect between them.",
  "exposure": "conditional",
  "file": "host/native/web-host.lisp",
+ "fix": "Wrap the :open..:close span in an unwind-protect that runs fnn-web-close for any cid that was opened. In the accept-loop thread, route non-socket conditions to fnn-owner-fault-service as fnn-control-accept-loop does, or log the condition and continue for a connection-scoped refusal.",
  "id": "S030",
  "line": "277",
  "locus": "connections",
@@ -11,6 +14,8 @@
   "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
  ],
  "owner": "host-lifecycle",
+ "reviewer": "fnn-web-serve (web-host.lisp:275-280) re-raises every error that is not an os, socket or TLS error. The thread lambda (web-host.lisp:314-326) handles only sb-bsd-sockets:socket-error. The images are saved with --disable-debugger (build.lisp:622), so an unhandled error in this thread exits the whole process with code 1, not the owner's 3 or 4. That is worse than the reported 'web face dies silently'. Errors that reach this path include: fnn-fault outside any owner-serialized call (fnn-web-slice at web-host.lisp:63, 'more events than ACL2 allows' at 225, malformed-action faults), which never fenced the owner; and fnn-web-open's 'owner service is stopping' refusal (owner.lisp fnn-owner-serialized), which during an exit-3 stop can replace the uncertain code with 1. The leaked-session part is moot because the process dies, although fnn-web-request does lack an unwind-protect between :open and :close.",
+ "scenario": "Several things raise an fnn-store-error inside fnn-web-request: an ACL2 slice fault (fnn-web-slice at 253), the event-cap fault (225), or fnn-web-open's 'owner service is stopping' refusal during a stop. None of these stop the owner, despite the comment \"an ACL2 fault is the owner's (it stopped)\". The error is re-raised out of fnn-web-serve and out of the thread lambda unhandled. Under --disable-debugger, an unhandled error in a thread ends the process abruptly with SBCL's code, not the owner's 3 or 4. At best the web face dies silently while the node keeps serving NNTP. If the error came after :open, the logical reader connection and its exposure slot (fn-owner-exposure-open) are never closed or released, so per-address exposure limits fill up until restart.",
  "severity": "medium",
  "sha": "4e409a9d6",
  "slice": "wrapper",

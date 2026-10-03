@@ -1,6 +1,7 @@
 {
  "acceptance": "log-kernel:program-cut",
  "category": "bug",
+ "detail": "planning/repair/sources/astra-r72-io-extent.md (## F1)",
  "disposition": "BRIDGE",
  "exposure": "live",
  "file": "host/native/io.lisp",

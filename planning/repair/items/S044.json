@@ -1,8 +1,11 @@
 {
  "category": "security",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "books/nntp-auth.lisp:1361-1381: when PASS fails, `(fn-post-make-result (fn-auth-make-session (fn-auth-session-base as) acfg nil nil ...) (fn-auth-single as (fn-proto-text \"AUTHINFO\" :failed)) nil)`. The session keeps no failure count, there is no close effect and no delay. The comparison at books/auth-secret.lisp:155-158 and 285-293 is `(fn-digest-tagged *fn-authsec-tag* (fn-authsec-preimage salt secret))`, one tagged digest with no iteration count or KDF.",
  "exposure": "live",
  "file": "books/nntp-auth.lisp",
+ "fix": "Carry a failed-attempt count in the auth session. After K failures answer with a refusal and a (:close) effect, which the RFC allows (a 400-class code and close), and optionally refuse AUTHINFO for the rest of the connection. Record the policy as a local guarantee in specs/nntp.md. Replace the single digest with an iterated KDF (the SCRAM salted-password iteration already exists for SASL) in the verifier format.",
  "id": "S044",
  "line": "1361",
  "locus": "served-books",
@@ -12,6 +15,8 @@
   "10-02 22:33 lane/sweep-ops-auth a9e9a9c46: per-connection failure budget (3, RFC 4643 s6) in books/nntp-auth.lisp, keystones PRF-1249/NNT-1002, teeth tests/acl2/nntp-auth-failure-budget-tests.lisp REPL-green on hbox, native test added to tests/test_native_auth.py. NOT yet: certify (farm run-20261003T021813Z-8184 on hbox, 707 books, unwaited), fast checks (remote_check unfinished), native s044 (unfinished). KDF verifier half open."
  ],
  "owner": "sweep-ops",
+ "reviewer": "A failed PASS (books/nntp-auth.lisp:1376-1383) resets the session with no failure count, close effect or delay, and pipelined pairs are folded within one served read. fn-authsec-checkp (books/auth-secret.lisp:285-292) compares one fn-digest-tagged of salt||secret. The book admits this at auth-secret.lisp:46-48: 'one fast tagged ... computation per guess, with no tunable work factor', and at :29-37, PBKDF2 is kept off the served mutex. The weakness is real and reachable on any listener that offers USER/PASS. It is documented, but no throttle exists.",
+ "scenario": "An attacker on the public node opens a connection and sends one read with thousands of 'AUTHINFO USER alice\\r\\nAUTHINFO PASS guessN\\r\\n' pairs. The served fold answers each pair (381, then 481) inside one step with no limit. Because the hash is fast, the attacker is limited only by bandwidth across as many connections as max-conns allows. A single digest per verifier also means a leaked configuration verifier can be brute-forced offline cheaply. RFC 4643 section 7 (Security Considerations) warns about exactly this exposure for USER/PASS.",
  "severity": "medium",
  "sha": "a9e9a9c46",
  "source": "sweep-2026-10-03",

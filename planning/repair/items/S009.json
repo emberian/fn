@@ -1,8 +1,11 @@
 {
  "category": "fail-open",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "tools/green_check.py:552 `return 1 if args.strict and report[\"counts\"][\"red\"] else 0`; tools/green_check.py:437-439 `rows = [{\"book\": book, \"verdict\": by.get(book, {}).get(\"verdict\", \"absent\")} ...]` / `not_green = [row[\"book\"] for row in rows if row[\"verdict\"] != \"green\"]` (the profile gate never consults `deps_moved_since` or `certified_archived`, unlike gate() at :398-401, which maps deps-moved to \"stale\", and green_at_these_bytes at :127-130). tools/cut_release.sh:306-307 runs exactly these two as the cut's check. planning/release-v6.6.0.md:187 describes them as \"every book green at its current digest in a committed manifest\".",
  "exposure": "latent",
  "file": "tools/green_check.py",
+ "fix": "Make --strict fail on every verdict other than green (red, never, absent), as the release doc says. In profile_gate, judge each row with green_at_these_bytes(record) and report \"stale\" or \"unarchived\" separately. If a red-only mode is still wanted, give it its own flag (--red-only).",
  "id": "S009",
  "line": "552",
  "locus": "gates-tests-packaging",
@@ -11,6 +14,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "tools/green_check.py:552 strict exit counts only red, so 'never'/'absent' books pass `--strict`. profile_gate (:430-441) maps verdict straight from books_by_verdict and never consults deps_moved_since or certified_archived, unlike gate() (:398-401) and green_at_these_bytes (:127-136). audit() (:302-306) leaves verdict 'green' with deps_moved set when no exact_green exists. cut_release.sh:305-307 runs exactly these two commands as gate 05, and release-v6.6.0.md:187 says they mean 'green at its current digest in a committed manifest'. Mitigations: an absent book inside the default closure is caught by the profile gate, because absent != green. Part (c) is mostly unreachable, because the cut must run in a clean `git worktree add --detach build/cut-tree` (cut_release.sh:230), so build/acl2 is normally empty there. Part (b), a stale green whose dependency moved, is fully reachable and counts as green in the release gate.",
+ "scenario": "(a) A lane adds books/new-thing.lisp to ACL2_BOOKS and nobody certifies it. Its verdict is \"absent\" (or \"never\" after a failed-to-attribute run), counts[\"red\"] stays 0, and `green_check.py --strict` exits 0. cut_release.sh then reports the closure as certified. (b) A book in the default image closure has a green run at its own bytes, but a dependency changed since that run. audit() sets verdict \"green\" with deps_moved non-empty (:303-306), and profile_gate counts it green. (c) The only green is a local build/acl2 manifest that was never filed (archived=False). The profile gate accepts it as well. So the release cut certifies a closure whose certificate key no committed manifest backs.",
  "severity": "high",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",

@@ -1,8 +1,11 @@
 {
  "category": "claim-gap",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "admin.lisp:258-264\n(let* ((observation (fnn-config-record-observation store))\n       (config-records (fnn-config-records-from-observation observation))\n       (authorization\n         ;; Over the state the owner carries (PKT-837, dev's\n         ;; PKT-840): no Store record read, no history replayed.\n         (fnn-admin-authorize-owner store config-records record ...\nio.lisp:2121-2144: fnn-config-record-observation lists the config directory and opens and reads every record file (fnn-read-regular-bounded per name). The same applies at admin.lisp:506 -> 469: fnn-lim-decision calls fnn-heap-history-observation (directory walks of the journal and history) inside the fnn-owner-serialized lambda.",
  "exposure": "live",
  "file": "host/native/admin.lisp",
+ "fix": "Carry the observed names and records in owner state, updated at each completion as the authorization already does, and pass those. Otherwise take the observation before entering the owner gate and let ACL2 check that the generation has not moved. Move the heap-history observation for `policy set` off the mutex with the other observations (lines 487-490).",
  "id": "S033",
  "line": "258",
  "locus": "operator-verbs",
@@ -11,6 +14,8 @@
   "10-02 22:32 WIP pushed per ember's dev directive: book REPL-admitted, uncertified; world/interfaces regen pending; before-native running, after-native not run"
  ],
  "owner": "sweep-ops-cfg",
+ "reviewer": "admin.lisp:258 calls fnn-config-record-observation inside fnn-owner-live-reconfigure-locked, which runs under the owner mutex. That function (io.lisp:2121-2144) lists the config directory and reads every record file (fnn-check-regular plus fnn-read-regular-bounded per name), bounded only by max-config-generations. Every live reconfiguration does this: admin vectors, peer invite/accept/confirm, and XREDEEM through fnn-owner-account-redeem (admin.lisp:293). Each one also adds a generation, so the cost per call grows with the history. The comment 'no Store record read, no history replayed' describes the authorization step, but the observation just above it reads every record. fnn-lim-decision (admin.lisp:465-468) also calls fnn-heap-history-observation inside the serialized lambda (admin.lisp:500). This conflicts with the AGENTS rule against whole-state revalidation on a served path.",
+ "scenario": "Every live reconfiguration does O(generations) opens and reads under the owner mutex while every reader, transit and poster quantum waits. That covers peer invite/accept/confirm, `account` changes, reclaim's instant, and each successful NNTP XREDEEM via fnn-owner-account-redeem. With a history near max-config-generations, or on a slow disk, every live reconfiguration stalls service in proportion to history length. The comment states the opposite, and HST-033's rule (no statvfs inside the critical section) is undercut by reads of every file there.",
  "severity": "medium",
  "sha": "ab3834272",
  "source": "sweep-2026-10-03",

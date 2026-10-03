@@ -1,9 +1,12 @@
 {
  "acceptance": "pure:encoder-roundtrip",
  "category": "correctness",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "BRIDGE",
+ "evidence": "deflate.lisp:261-264\n    (when (< (length syms) 2)\n      (setf syms (sort (remove-duplicates (append syms (list 0 1))) #'<))\n      (dolist (s syms) (setf (aref lens s) 1))\n      (return-from fnn-ldf-huffman-lengths lens))\nThe caller is deflate.lisp:367 `(dlens (fnn-ldf-huffman-lengths df 15))`. fnn-ldf-canonical-codes (302-317) then assigns codes 0,1,2 at length 1, and the 1-bit reversal of 2 is 0, so symbol s gets the same code as symbol 0.",
  "exposure": "live",
  "file": "host/native/deflate.lisp",
+ "fix": "Add exactly one symbol, giving two codes: if one symbol s is used, pair it with 0 when s != 0, otherwise with 1. If no symbol is used, use symbols 0 and 1. Then lens has exactly two entries of length 1. Add a teeth test: a payload with a single match at distance > 2 must inflate exactly under the ACL2 decoder.",
  "id": "S005",
  "line": "261",
  "locus": "connections",
@@ -12,6 +15,8 @@
   "10-02 22:33 READY sent to runner with lane/sweep-peer 5536e2f08: encoder fix 07d21aaaf + refused-candidate stored uncompressed bf0d882c2; cert passed; natives pending"
  ],
  "owner": "sweep-peer",
+ "reviewer": "deflate.lisp:261-264: when exactly one symbol s>=2 is used, syms becomes (0 1 s) and all three get length 1, so the Kraft sum is 3/2 (oversubscribed). fnn-ldf-canonical-codes (302-317) gives codes 0,1,2 at length 1; the 1-bit reversal of 2 is 0, so symbol s gets symbol 0's code. The dynamic path (deflate.lisp:392-400) emits dlens/dcodes when dyn<fix, so every match is written as distance code 0. The ACL2 side is fn-lzr-append-decide (books/payload-lz-append.lisp:150-151). It decodes the candidate with fn-pzd-decode and returns (:refused :lz-candidate) on mismatch; it does not fall back to :kept. fnn-log-compress (io.lisp:6545-6546) turns :refused into fnn-fault, so the append fails the same way every time for that payload. Reaching it needs every match in one distance bucket >= 2 and a dynamic block cheaper than a fixed one. That is uncommon but deterministic, and a df with exactly one used code is easy to hit on short records. The same bug applies to the code-length alphabet (cf), though that case is less likely.",
+ "scenario": "A block whose matches all fall in one distance code >= 2 (for example a few-hundred-octet body with one repeated phrase 44 octets back, which is distance code 10) gives df one used symbol. syms becomes (0 1 10), so three symbols get length 1. That code is oversubscribed (RFC 1951 3.2.2; zlib refuses it with 'invalid distances set'), and the distance is written as code 0. Dynamic Huffman is the cheapest choice for such text, so this block gets emitted. ACL2's fn-lzr-append-decide runs the proved decoder, which refuses the stream or decodes it wrongly. fnn-log-compress (io.lisp:6545) then signals `fnn-fault ... ACL2 refused the encoder's block` and the append stops. The same payload fails the same way every time, so with compress-min set that article can never be stored. zlib's build_tree adds exactly one symbol to get two codes.",
  "severity": "high",
  "sha": "bf0d882c2",
  "slice": "pure",

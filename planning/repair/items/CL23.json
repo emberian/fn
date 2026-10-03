@@ -1,6 +1,6 @@
 {
  "category": "check-lane",
- "detail": "alphabet_check: books/config.lisp defines no fn-cfg-kind-code",
+ "detail": "planning/repair/sources/check-lane-reds-355a5c843.md",
  "disposition": "LOCAL",
  "exposure": "latent",
  "file": "",

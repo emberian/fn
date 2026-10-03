@@ -1,8 +1,11 @@
 {
  "category": "fail-open",
+ "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
+ "evidence": "packaging/install.sh:195-201\n    case $line in\n      \"health exit=\"*\" state=not-running\"*|\"health exit=\"*\" state=fenced\"*|\"health exit=19\"*|\"\") ;;\n      \"health exit=\"*)\n        ...\n        echo \"the node answered on ... after $away s away\"\n        return 0 ;;",
  "exposure": "conditional",
  "file": "packaging/install.sh",
+ "fix": "Parse the exit= number. Return success only for exit=0. Keep looping on 20 (state=fenced reason=starting) and 19, and on a deadline report the last state with a non-zero exit. If degraded-but-serving should be allowed, return a distinct exit code for it rather than 0.",
  "id": "S139",
  "line": "196",
  "locus": "gates-tests-packaging",
@@ -10,6 +13,8 @@
   "10-02 22:29 merged into next e6b827d21"
  ],
  "owner": "sweep-gates",
+ "reviewer": "packaging/install.sh:195-201 treats any 'health exit=' line as answered except not-running, fenced, 19 and an empty line. books/native-health.lisp:92-98 defines exits 20+ for exhausted (21), unqualified-profile (22), space-pressure, disk and the rest, and all of these return 0 from health_wait, so the upgrade exits 0. tools/deploy_fresh.sh:234-241 requires 0 and retries only 20. The two paths disagree. The function's intent is liveness ('the node answered'), and it prints the health line, so the impact is limited to the exit status misleading automation.",
+ "scenario": "After --upgrade the new release starts, but its health answers 'health exit=22 state=unqualified-profile', 'exit=21 state=exhausted' or a disk/space-pressure state (books/native-health.lisp *fn-nh-states*, exits 20+). health_wait prints 'the node answered' and the upgrade exits 0. Automation or an operator reading the exit status records a successful upgrade on a node that is unhealthy. tools/deploy_fresh.sh:241 requires exit 0 for the same step, so the two deploy paths disagree on what 'up' means.",
  "severity": "low",
  "sha": "e6b827d21",
  "source": "sweep-2026-10-03",
