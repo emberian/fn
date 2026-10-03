@@ -28,7 +28,7 @@
         when (and (consp f) (eq (car f) 'defun))
         do (eval (append (subseq f 0 3) (remove-if (lambda (x) (and (consp x) (eq (car x) 'declare))) (nthcdr 3 f))))))
 (load-deployed-forms "host/native/owner.lisp"
- '((defun fnn-owner-connection-identity-locked) (defun fnn-owner-response-identity)))
+ '((defun fnn-owner-connection-identity-locked) (defun fnn-owner-response-identity-locked) (defun fnn-owner-response-identity)))
 (load-deployed-forms "host/native/mux.lisp"
  '((defstruct (fnn-mux-loop (:constructor %make-fnn-mux-loop)))
    (defstruct (fnn-mux-conn (:constructor %make-fnn-mux-conn)))

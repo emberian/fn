@@ -1919,3 +1919,17 @@ actual reader section before plan creation. Runtime must retain that same result
 with the actual arena/catalog custody and plan; reacquiring it at renderer entry
 would capture a different root. The fixed constructor shares existing values.
 It neither constructs an available archive/index nor acquires a physical pin.
+
+The mux captures the catalog incarnation and exact effective reader view at
+the admitted pre-chunk reader section through
+`fn-owner-catalog-capture-context`, alongside the actual arena/catalog objects.
+It carries that starting context through await, cursor windows and the output
+lease; rendering never reacquires a current root. The six shared context fields
+describe the pre-command pin/configuration/authorization: a span may process
+multiple commands or repin, so the resulting ACL2 plan and response pin remain
+the authority for command outcomes. This capture is not an authorization cache
+or a physical root-affinity refinement. Pending dependencies retain the native
+grant's captured references until dual settlement; connection references end at
+whole response drain/discard. SCN-1107 exercises the actual native helper and
+renderer retention with recording semantic capture; the program constructor's
+held-versus-working view and native root-affinity realization remain owed.
