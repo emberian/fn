@@ -8209,7 +8209,9 @@ the observe callback): the frontier is the log's derived one."
     ;; The gate runs before any kernel, owner reservation or frontier effect.
     ;; Its purpose and protected release debt are decided in ACL2, including
     ;; the exact retention event capability later consumed by preparation.
-    (when (or (null next) (keywordp next))
+    (when (or (null next)
+              (member next '(:identity-exhausted :operation-refused
+                             :identity-reserve :unaffordable)))
       (fnn-refuse "Store transaction identity reservation refused (~a)" next))
     (unless (and (integerp next) (>= next 0))
       (fnn-fault "ACL2 returned malformed transaction identity reservation"))
