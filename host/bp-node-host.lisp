@@ -13,6 +13,7 @@
 
 (in-package "ACL2")
 (include-book "../books/bp-node")
+(include-book "../books/bp-node-budget-input")
 (include-book "../books/bp-node-records")
 (include-book "../books/bp-authored-wire")
 (include-book "../books/bp-channel-ingress")

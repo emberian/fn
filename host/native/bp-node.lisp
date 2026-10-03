@@ -222,27 +222,17 @@ observations back.  Nil when there is nothing to observe."
 (defvar *fnn-bpnode-budgets* nil)
 
 (defun fnn-bpnode-read-budgets (journal-root)
-  (let* ((path (concatenate 'string journal-root "/bp-node-budgets"))
-         (backoff nil) (retries nil))
-    (when (probe-file path)
-      (let ((text (fnn-octets-string (fnn-read-regular-bounded path 256))))
-        (dolist (line (loop with start = 0
-                            for end = (position #\Newline text :start start)
-                            collect (subseq text start (or end (length text)))
-                            while end do (setq start (1+ end))))
-          (let* ((space (position #\Space line))
-                 (key (and space (subseq line 0 space)))
-                 (value (and space (subseq line (1+ space)))))
-            (cond ((zerop (length line)))
-                  ((not (and key (<= 1 (length value) 20)
-                             (every #'digit-char-p value)))
-                   (fnn-refuse "bp-node: malformed budget row"))
-                  ((string= key "owner-backoff")
-                   (setq backoff (parse-integer value)))
-                  ((string= key "retry-budget")
-                   (setq retries (parse-integer value)))
-                  (t (fnn-refuse "bp-node: unknown budget row")))))))
-    (let ((budgets (fnn-core 'fn-bpnp-configured-budgets backoff retries)))
+  (let* ((path (fnn-join journal-root "bp-node-budgets"))
+         (present (fnn-check-regular path))
+         ;; Bounded octets go directly to the core; no Lisp reader, UTF-8
+         ;; decoder, key selection, decimal conversion or duplicate policy.
+         (rows (fnn-core 'fn-bpnb-read
+                         (and present
+                              (fnn-octet-list
+                               (fnn-read-regular-bounded path 256))))))
+    (unless rows (fnn-refuse "bp-node: ACL2 refused the budget file grammar"))
+    (let ((budgets (fnn-core 'fn-bpnp-configured-budgets
+                             (second rows) (third rows))))
       (unless budgets (fnn-refuse "bp-node: ACL2 refused the budget rows"))
       (fnn-out "BP node budgets owner-backoff=~d retry-budget=~d"
                (second budgets) (third budgets))

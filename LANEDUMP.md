@@ -1343,3 +1343,14 @@ test passes flush order, keepalive/input progress, EOF, once drain. Source
 Assembly primary review requested; matching existing fragment guards/job-test
 certification and native image pending Integration convergence. Scan/encode
 cost and full BP funded retained-session fairness remain open.
+
+S146 source: books/bp-node-budget-input actual fn-bpnb-read parser; native
+reads bounded regularfile octets and delegates all grammar/keys/ASCIIdecimal/
+duplicates. Existing configured-budgets owns numeric/default policy. Protected
+REPL guards+22teeth PASS968steps (all literal positive/removal premises), raw
+actual parser+boundedfile caller PASS. Farm2roots in launch, wholefile denotation
+and image still open.
+
+S146 harvested hbox run-20261003T102328Z-db3d, manifest
+certify-20261003T102343Z-1448390 PASSED 2/0. Manifest and evidence
+bp-budget-input-2026-10-03.md indexed; source-matched image still owed.

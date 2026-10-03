@@ -251,7 +251,9 @@ that could release them (T2's confinement pair).
 **Implemented (2026-09-25).** The owner backoff and the retry budget are
 the node's configuration rows `owner-backoff N` and `retry-budget N` in
 `JOURNAL/bp-node-budgets`. ACL2 supplies the defaults (5000 ms, 3) and
-validates them (`fn-bpnp-configured-budgets`, `fn-bpnp-budgetsp`: frame
+reads the bounded file's exact octets (`fn-bpnb-read`: at most256 octets,
+ASCII decimal fields1..20digits, exact keys, duplicate keys refused) and
+validates the resulting values (`fn-bpnp-configured-budgets`, `fn-bpnp-budgetsp`: frame
 naturals, budget at least 1); each deciding host event carries them as its
 optional last field (`fn-bpnp-budgeted-lengthp`). The policy record above
 is the design; no book defines it.

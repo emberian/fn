@@ -21973,6 +21973,30 @@
       "events": [
         "fn-bpit-helper-seconds-preserves-lifetime"
       ]
+    },
+    {
+      "id": "PRF-1271",
+      "title": "ACL2 reads BP node budget octets and rejects repeated named rows",
+      "statement": "fn-bpnb-read is the actual native fnn-bpnode-read-budgets parser subject. It reads at most256 input octets with ASCII decimal fields1..20digits and exact owner-backoff/retry-budget keys, producing rows for the existing fn-bpnp-configured-budgets numeric/default policy. fn-bpnb-installed-backoff-refuses-another-backoff and fn-bpnb-installed-retries-refuses-another-retries refuse a matching row after its value is installed, including zero. fn-bpnb-input-past-read-bound-is-refused refuses larger input. Scope: parser and literal duplicate-row keystones, not yet a whole-file denotation/refinement theorem or physical file authenticity.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-1035"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/bp-node-budget-input.lisp",
+        "tests/acl2/bp-node-budget-input-tests.lisp",
+        "tests/native_bp_budget_input_raw.lisp",
+        "host/native/bp-node.lisp",
+        "specs/bp-node-machine.md",
+        "planning/evidence/manifests/certify-20261003T102343Z-1448390.json",
+        "planning/evidence/bp-budget-input-2026-10-03.md"
+      ],
+      "progress_note": "BP-TRANSPORT 2026-10-03: guarded parser and literal tests certified hbox certify-20261003T102343Z-1448390 PASSED 2/0. Actual shipped bounded-file caller + exact parser definitions raw PASS defaults, ASCII rows, duplicate/Unicode/unknown/negative refusal. Whole-file denotation and source-matched image remain open."
     }
   ]
 }

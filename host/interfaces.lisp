@@ -2991,6 +2991,12 @@
               fn-bpnjc-contact-next-is-the-head-scan
               fn-bpnjc-ask-position-bounds))
 
+(definterface fn-bpnb-read
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnb-installed-backoff-refuses-another-backoff
+              fn-bpnb-installed-retries-refuses-another-retries
+              fn-bpnb-input-past-read-bound-is-refused))
+
 (definterface fn-bpnp-configured-budgets
   :class ::common-lisp-compliant
   :keystones (fn-bpnp-configured-budgets-admits-exactly-the-frame-bounded-positive-budgets))
