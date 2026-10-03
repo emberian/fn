@@ -576,10 +576,11 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
           (fnn-extent-page-observation "job-result token=~s condition=~s verdict=~s"
                                        token (typep result 'condition)
                                        (and (not (typep result 'condition)) (first result))
-          ;; Only an actually stored literal result supplies the device label.
+          ;; A stored job result is distinct from a device request/result.
+          ;; Cache/no-pread outcomes must not invent an io-complete event.
           ;; Conditions stay unclassified until the owner's later boundary.
           (when (and *fnn-native-observer* (not (typep result 'condition)))
-            (fnn-extent-native-observe :io-complete nil token (first result)))))))
+            (fnn-extent-native-observe :job-result t token (first result)))))))
     ;; The activation returns no buffer-bearing value to the loop. Only the
     ;; retained worker field owns the result when actual return is announced.
     nil))
@@ -637,8 +638,18 @@ No cancellation, timeout or thread termination releases a job or baseline."
             (when (eq word :cancelled) (setf (fnn-cold-worker-row worker) row)))))
       (sb-thread:condition-broadcast (fnn-cold-worker-ready worker))))
   (dolist (worker *fnn-cold-workers*)
-    (when (fnn-cold-worker-thread worker)
-      (sb-thread:join-thread (fnn-cold-worker-thread worker) :default nil)))
+    (let ((thread (fnn-cold-worker-thread worker))
+          (token (fnn-cold-worker-token worker)))
+      (when thread
+        ;; These are actual call/return observations outside E; a call-site
+        ;; marker does not claim an internal SBCL waiting state or success.
+        (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
+          (fnn-extent-page-observation "executor-join-call token=~s alive=~s"
+                                       token (sb-thread:thread-alive-p thread)))
+        (sb-thread:join-thread thread :default nil)
+        (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
+          (fnn-extent-page-observation "executor-join-return token=~s alive=~s"
+                                       token (sb-thread:thread-alive-p thread))))))
   ;; Every worker has actually returned and exited: no slot can be offered
   ;; again (fnn-extent-direct-start may install a fresh set in a later run).
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
