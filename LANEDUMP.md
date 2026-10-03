@@ -1823,3 +1823,11 @@ Root owns NEWNEWS tariff; Tools final fair push93e/8df/879 and COLD pullb138/deb
 receipts remain inherited intact, native SCN1106 execution delegated to the same
 convergence image. Important pending BP source borrow is conservatively held at
 terminal; no producer cancellation/refund is manufactured.
+
+BP-TRANSPORT continuing S068 source: actual per-connection concrete input buffer,
+ACL2 scalar frame cursor, retained incoming vector replaces expanding list
+carry. Raw actual driver +65536 one-byte reads/one decode, coalesced frames,
+partial suffix and early extension/MRU refusal pass. PRF1289 exact two-root
+farm pending; universal codec refinement/full-frame decode/GC and registered
+received-source issuer still owed. Source-first packet follows657; no old image
+or certificate claim transferred. Runtime owns decoded-window physical leaves.

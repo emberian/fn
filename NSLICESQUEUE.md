@@ -431,3 +431,9 @@ evidence. Done: outages, retries and restart preserve authored bytes and the
 application's correlation/conflict semantics; external effects are not claimed
 exactly-once merely because a message was accepted.
 Anchor: [E1/E2 experiment contract](planning/experiments/e1-e2-agent-exchange.md).
+
+BP-TRANSPORT S068 continuation (2026-10-03): production concrete framing cursor
+and actual retained :read/:buffer consumer source ready; PRF1289 local4096-copy
+quantum and codec composition fixtures. Full-frame conversion/decode, initial
+reserve/GC latency and public received-source issuer remain open. No image
+claim transferred from657; matching SCN1110 continues with Integration.

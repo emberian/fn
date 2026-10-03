@@ -20,6 +20,8 @@
 (include-book "../books/tcpcl-received-source")
 (include-book "../books/tcpcl-source-continuation")
 (include-book "../books/tcpcl-retained-turn")
+(include-book "../books/tcpcl-frame-cursor")
+(include-book "../books/octets-stobj")
 (include-book "../books/tcpcl-spool")
 
 ; Directory names and lstat kinds in; a complete recovery plan out.  The raw
@@ -184,3 +186,9 @@
         (list (fn-tcl-session-phase (car out))
               (fn-tcl-host-event-digests (car (cdr out)))
               (len (car (cdr (cdr out)))))))))
+
+; Concrete framing defers the existing codec until a complete frame or its
+; extension prefix. These observations select no alternate protocol policy.
+(defun fn-tcl-host-segment-mru (s) (fn-tcl-segment-mru s))
+(defun fn-tcl-host-input-probe (s buf)
+ (fn-tcl-parse-needp (fn-tcl-decode-for s buf)))

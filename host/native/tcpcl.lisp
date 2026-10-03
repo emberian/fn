@@ -75,7 +75,10 @@
   ;; only released messages enter TX-MESSAGES, in the machine's order.
   (retained nil) (tx-messages nil) (tx-data nil) (tx-offset 0) (tx-deadline nil)
   (input-due t) (pump-pending nil) role bundlep (expect 0) on-ready
-  (ready-called nil) (finished nil))
+  (ready-called nil) (finished nil)
+  ;; Private concrete octet buffer, one incomplete frame only. The incoming
+  ;; socket vector survives cursor turns; no list carry is appended/reparsed.
+  input-buffer input-cursor input-vector (input-offset 0))
 
 ;;; ---------------------------------------------------------------------------
 ;;; The clock.  One monotonic reading per wakeup, in milliseconds, handed to
@@ -336,6 +339,69 @@ and faults without following or deleting anything."
            (fnn-tclc-source-id conn) nil (fnn-tclc-source-count conn) nil
            (fnn-tclc-source-held conn) nil))
     (otherwise (fnn-fault "TCPCL source continuation result unavailable"))))
+(defun fnn-tcl-input-initialize (conn)
+  (unless (fnn-tclc-input-buffer conn)
+    (let ((buffer (create-fn-octets$c)))
+      ;; Reserve the codec's supported message span once per context. The
+      ;; BP bank already prepaid its captured wire/segment resident tariff.
+      ;; Allocation/GC time of this initial reserve remains an explicit cost.
+      (fn-octets$c-reserve
+       (fnn-core 'fn-tcl-max-message
+         (fnn-core 'fn-tcl-host-segment-mru (fnn-tclc-session conn))) buffer)
+      (setf (fnn-tclc-input-buffer conn) buffer)))
+  (unless (fnn-tclc-input-cursor conn)
+    (setf (fnn-tclc-input-cursor conn)
+      (fnn-core 'fn-tcf-begin
+       (fnn-core 'fn-tcf-contactp
+        (fnn-core 'fn-tcl-host-phase (fnn-tclc-session conn)))))))
+
+(defun fnn-tcl-input-decode (conn now probe)
+  (let* ((buffer (fnn-tclc-input-buffer conn))
+         ;; Existing decoder/publication still consumes a complete logical
+         ;; frame once. Full-frame conversion/decode is the remaining frontier.
+         (octets (fnn-octet-list
+                   (subseq (svref buffer 0) 0 (svref buffer 1)))))
+    (unless (and probe (fnn-core 'fn-tcl-host-input-probe (fnn-tclc-session conn) octets))
+      (let ((triple (fnn-core
+                     (if *fnn-tcl-source-start* 'fn-tcl-host-source-drive 'fn-tcl-host-drive)
+                     (fnn-tclc-session conn) octets now)))
+        (setf (fnn-tclc-carry conn) (third triple))
+        (fnn-tcl-apply conn triple (if *fnn-tcl-source-start* "source-event" "event"))
+        (setf (svref buffer 1) 0 (fnn-tclc-input-cursor conn) nil)))))
+
+(defun fnn-tcl-input-turn (conn incoming now)
+  "One scalar framing action and at most4096 byte copies. Retain unread input."
+  (when incoming
+    (when (fnn-tclc-input-vector conn) (fnn-fault "TCPCL input vector still borrowed"))
+    (setf (fnn-tclc-input-vector conn) incoming (fnn-tclc-input-offset conn) 0))
+  (fnn-tcl-input-initialize conn)
+  (let* ((vector (fnn-tclc-input-vector conn))
+         (offset (fnn-tclc-input-offset conn))
+         (available (if vector (- (length vector) offset) 0))
+         (plan (fnn-core 'fn-tcf-span (fnn-tclc-input-cursor conn) available))
+         (action (first plan)) (used (third plan))
+         (buffer (fnn-tclc-input-buffer conn)) (fill (svref buffer 1)))
+    (setf (fnn-tclc-input-cursor conn) (second plan))
+    (when (plusp used)
+      (replace (svref buffer 0) vector :start1 fill :start2 offset :end2 (+ offset used))
+      (setf (svref buffer 1) (+ fill used))
+      (incf (fnn-tclc-input-offset conn) used)
+      (when (eq action :byte)
+        (setf (fnn-tclc-input-cursor conn)
+          (fnn-core 'fn-tcf-byte (fnn-tclc-input-cursor conn) (aref vector offset)
+                    (fnn-core 'fn-tcl-host-segment-mru (fnn-tclc-session conn))))))
+    (when (and vector (= (fnn-tclc-input-offset conn) (length vector)))
+      (setf (fnn-tclc-input-vector conn) nil (fnn-tclc-input-offset conn) 0))
+    (case action
+      (:decode (fnn-tcl-input-decode conn now nil))
+      (:probe (fnn-tcl-input-decode conn now t)))
+    (setf (fnn-tclc-source-more conn)
+      (or (and (fnn-tclc-input-vector conn) t)
+          (member (first (fnn-tclc-input-cursor conn)) '(:complete :probe))
+          ;; Zero-length skips must advance without another socket read.
+          (and (fnn-tclc-input-cursor conn)
+               (zerop (second (fnn-tclc-input-cursor conn))) t)))))
+
 (defun fnn-tcl-source-input-turn (conn chunk now)
   (unless (and *fnn-tcl-source-start* *fnn-tcl-source-turn*)
     (fnn-fault "TCPCL registered source driver unavailable"))
@@ -577,7 +643,7 @@ The caller keeps this connection and its socket until actual physical close."
                (when (= (fnn-tclc-tx-offset conn) (length data))
                  (setf (fnn-tclc-tx-data conn) nil (fnn-tclc-tx-deadline conn) nil)))))))
         (:source (fnn-tcl-source-tick conn))
-        (:buffer (fnn-tcl-source-input-turn conn nil now))
+        (:buffer (fnn-tcl-input-turn conn nil now))
         (:pump
          (fnn-tcl-turn-local conn now)
          (let ((triple (fnn-core 'fn-tcl-host-pump (fnn-tclc-session conn) now)))
@@ -599,14 +665,8 @@ The caller keeps this connection and its socket until actual physical close."
               (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) now)))
              ((zerop (length incoming)) (fnn-tcl-turn-lost conn))
              (t
-              (let ((chunk (fnn-octet-list incoming)))
-                (fnn-tcl-record-trace conn now chunk)
-                (if *fnn-tcl-source-start*
-                  (fnn-tcl-source-input-turn conn chunk now)
-                  (let ((triple (fnn-core 'fn-tcl-host-drive (fnn-tclc-session conn)
-                                  (append (fnn-tclc-carry conn) chunk) now)))
-                    (setf (fnn-tclc-carry conn) (third triple))
-                    (fnn-tcl-apply conn triple "event"))))
+              (fnn-tcl-record-trace conn now incoming)
+              (fnn-tcl-input-turn conn incoming now)
               (unless (fnn-tclc-source-pending conn)
                 (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tick (fnn-tclc-session conn) now)))))))
         (otherwise (fnn-fault "TCPCL retained turn action unavailable")))

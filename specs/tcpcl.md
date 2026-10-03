@@ -364,3 +364,23 @@ transiently beyond it.
 - C1's hypotheses have no separating witness (see §4) and could be
   dropped by proving the composition over the `mbe` no-op cases too.
 - Transfer pipelining, reception interruption, TLS.
+
+### Production retained input cursor (S068, PRF-1289)
+
+`fnn-tcl-input-turn` retains one private concrete `fn-octets$c` frame buffer,
+its ACL2 `fn-tcf` cursor, and the original unread socket vector. Header fields
+advance byte by byte; payload, node and extension spans copy at most4096
+bytes per framing action. A partial payload does not invoke the complete
+codec again. One exact complete frame reaches the existing codec; a completed
+segment extension prefix reaches it early to preserve extension-item refusal
+before waiting for the data length. Over-MRU lengths likewise reach the codec
+at the length field. These are RFC9174 framing observations, not new bounds.
+
+The initial reserve uses `fn-tcl-max-message` under the configured segment MRU;
+its allocator/collector latency remains unbounded. Complete-frame vector/list
+conversion and semantic decode/publication still run once in a turn. Universal
+cursor/codec refinement, guard coverage of that representation boundary and
+the public registered received-source operation producer remain outstanding.
+The existing BP resident projection prepays context storage, but it is not a
+complete allocator, decoder or GC tariff. SCN1110 requires the matching image;
+raw actual-consumer fixtures establish only their recorded boundary scope.

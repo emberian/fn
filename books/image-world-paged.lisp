@@ -421,6 +421,7 @@
 (include-book "tcpcl-received-source")
 (include-book "tcpcl-source-continuation")
 (include-book "tcpcl-retained-turn")
+(include-book "tcpcl-frame-cursor")
 (include-book "bp-node-budget-input")
 (include-book "bp-run-class")
 (include-book "bp-node-profile")
