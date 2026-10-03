@@ -43,6 +43,31 @@ class OpaqueEnvelope(unittest.TestCase):
             self.assertEqual(stopped.exception.code, 1)
         self.assertEqual(self.client.db.execute("SELECT source FROM submissions").fetchone()[0], legacy)
 
+    def test_originated_payload_export_detects_missing_evidence(self):
+        self.client.config.update(application_id="fn-e1", group="fn.test", **{"from": "sender@example.invalid"})
+        source = self.client.compose("<r1>", "report", [("application-id", "fn-e1"), ("operation-id", "r1"), ("kind", "report-receipt"), ("payload", b"\x00\xff\nreceipt")])
+        sid = self.client.insert_submission(("fn-e1", "r1", "<r1>", source, b"ed", b"ml", "sender", b"edpub", b"mlpub", "1", "{}"))
+        self.client.db.execute("INSERT INTO operations VALUES (?,?,?,?,?,?,?)", ("fn-e1", "r1", fn_consumer.digest(source), "originated", "awaiting-reply", "sender", sid))
+        self.assertEqual(self.client.payload("r1"), b"\x00\xff\nreceipt")
+        with self.assertRaises(fn_consumer.Stop) as missing:
+            self.client.payload("unrecorded")
+        self.assertEqual(missing.exception.code, 1)
+        self.client.db.execute("UPDATE operations SET source_sha256='corrupted' WHERE operation_id='r1'")
+        with self.assertRaises(fn_consumer.Stop) as corrupt:
+            self.client.payload("r1")
+        self.assertEqual(corrupt.exception.code, 4)
+
+    def test_received_payload_export_uses_committed_source_not_later_conflict(self):
+        self.client.config.update(application_id="fn-e1", group="fn.test", principal_hex="sender", claims=[["fn-e1", "r", "sender"]], **{"from": "sender@example.invalid"})
+        for sequence, payload in ((1, b"first\x00\xff"), (2, b"changed\r\nkind: reply")):
+            source = self.client.compose("<r1>", "report", [("application-id", "fn-e1"), ("operation-id", "r1"), ("kind", "report-receipt"), ("payload", payload)])
+            event = dict(history="history", incarnation="incarnation", source_id=str(sequence), message_id="<r1>", source=source, received=source, sequence=sequence, verdict_principal="sender", verdict="verified")
+            outcome = self.client.transaction(event, self.client.envelope(source), str(sequence).encode(), {"own": "verified", "principal": "sender"})
+            self.assertEqual(outcome, "applied" if sequence == 1 else "conflict")
+        self.assertEqual(self.client.payload("r1"), b"first\x00\xff")
+        self.assertEqual(self.client.summary()["transitions"], [["fn-e1", "r1"]])
+        self.assertEqual([row["disposition"] for row in self.client.summary()["inbox"]], ["applied", "conflict"])
+
     def test_reply_preserves_opaque_payload_and_source_dependency(self):
         self.client.config.update(group="fn.test", **{"from": "sender@example.invalid"})
         with mock.patch.object(self.client, "artifact", side_effect=lambda a, o, m, s: s):

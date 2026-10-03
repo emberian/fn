@@ -243,6 +243,12 @@ class NativeConsumerExchangeTests(unittest.TestCase):
             fields = Consumer.envelope(authored)
             self.assertEqual(fields["payload"], expected_payload)
             self.assertEqual(fields["operation-id"], "r1" if config == a else "reply-r1")
+            exported = self.root / (config.parent.name + ".payload")
+            self.consumer(config, "payload", fields["operation-id"], str(exported))
+            self.assertEqual(exported.read_bytes(), expected_payload)
+        received_payload = self.root / "received-report.payload"
+        self.consumer(b, "payload", "r1", str(received_payload))
+        self.assertEqual(received_payload.read_bytes(), payload)
         evidence = os.environ.get("FN_CONSUMER_EXCHANGE_EVIDENCE")
         if evidence:
             # Preserve only consumer-owned/public source artifacts; no key

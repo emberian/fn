@@ -222,6 +222,9 @@ its place safely across crashes:
 - `fn_consumer.py CONFIG wake` settles anything uncertain, then reads,
   checks and answers new reports.
 - `fn_consumer.py CONFIG summary` prints its database.
+- `fn_consumer.py CONFIG payload OPERATION_ID OUTPUT` exports the recorded
+  operation’s exact payload bytes to a new file. Conflicting reports do not
+  replace the committed source; an existing output file is refused.
 
 Run one process per database. Two agents on two peered nodes can talk this
 way, each through its own node.

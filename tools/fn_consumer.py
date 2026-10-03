@@ -603,6 +603,33 @@ class Consumer:
             self.db.execute("ROLLBACK")
             raise
 
+    def payload(self, operation_id):
+        """Return the exact payload of this application's committed operation.
+
+        Conflict evidence never replaces the source chosen by the operation's
+        SQLite transaction. This is the application's SHA-256, not a fn identity.
+        """
+        aid = self.config["application_id"]
+        operation = self.db.execute(
+            "SELECT source_sha256,kind,submission_id FROM operations "
+            "WHERE application_id=? AND operation_id=?", (aid, operation_id)).fetchone()
+        if operation is None:
+            raise Stop(1, "application operation is not recorded")
+        if operation[1] == "originated":
+            row = self.db.execute("SELECT source FROM submissions WHERE id=?", (operation[2],)).fetchone()
+            sources = [row[0]] if row else []
+        else:
+            sources = [row[0] for row in self.db.execute(
+                "SELECT source FROM inbox WHERE application_id=? AND operation_id=? "
+                "AND disposition IN ('applied','repeat')", (aid, operation_id))]
+        sources = {source for source in sources if digest(source) == operation[0]}
+        if len(sources) != 1:
+            raise Stop(4, "committed operation has missing or conflicting source evidence")
+        fields = self.envelope(sources.pop())
+        if fields is None or fields["application-id"] != aid or fields["operation-id"] != operation_id:
+            raise Stop(4, "committed operation has malformed source evidence")
+        return self.payload_bytes(fields.get("payload", ""))
+
     def reply_for(self, fields, event):
         oid = "reply-" + fields["operation-id"]
         aid = fields["application-id"]
@@ -970,6 +997,9 @@ def build_parser():
     report.add_argument("--payload-file", type=Path, help="read the exact payload bytes from a file")
     sub.add_parser("wake")
     sub.add_parser("summary")
+    payload = sub.add_parser("payload", help="export a recorded operation's exact payload")
+    payload.add_argument("operation_id")
+    payload.add_argument("output", type=Path)
     return parser
 
 
@@ -990,6 +1020,14 @@ def main(argv=None):
             consumer.drive_outbox()
         elif args.command == "wake":
             consumer.wake()
+        elif args.command == "payload":
+            payload = consumer.payload(args.operation_id)
+            try:
+                with args.output.open("xb") as output:
+                    output.write(payload)
+            except FileExistsError:
+                raise Stop(1, "payload output already exists")
+            return 0
         summary = consumer.summary()
         print(json.dumps(summary, sort_keys=True))
         if args.command != "summary":
