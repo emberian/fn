@@ -255,7 +255,12 @@
 
 (defthm fn-hpr-step-keeps-cursor
  (implies (fn-hpr-cursorp cursor)
-          (fn-hpr-cursorp (mv-nth 1 (fn-hpr-step cursor pgs-mem)))))
+          (fn-hpr-cursorp (mv-nth 1 (fn-hpr-step cursor pgs-mem))))
+ :hints (("Goal" :in-theory
+   (e/d (fn-hpr-cursorp fn-hpr-step fn-hpr-phase fn-hpr-cursor)
+        (fn-hp-x-ready fn-hp-x-copy fn-hp-x-zero fn-hp-x-put fn-hp-x-mark
+         adt-cap adt-placement-ok fn-hp-hdr-m fn-hp-u64-listp
+         nth adt-nth-0 adt-nth-1+)))))
 
 (local (defthm fn-hpr-ready-not-yield
   (not (equal (fn-hp-x-ready p pgs-mem) :yield))
