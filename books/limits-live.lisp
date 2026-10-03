@@ -32,6 +32,7 @@
 (include-book "byte-store-frame")
 (include-book "heap-reservation")
 (include-book "native-control-reason")
+(include-book "store-capacity-vector")
 
 (defconst *fn-lim-fields*
   '("max-transactions" "max-history-octets" "max-article-octets"))
@@ -118,7 +119,7 @@
 ; -----------------------------------------------------------------------------
 ; The decision
 
-; USE is (TRANSACTIONS HISTORY-OCTETS): the store's committed transactions
+; USE is (TRANSACTIONS HISTORY-OCTETS COMPLETION-DEBT): the store's committed transactions
 ; (store-budget.lisp fn-sbud-used) and the history octets charged
 ; (fn-sbud-bytes-used).  VALUES is the profile the configuration history
 ; records (fn-lim-effective over it: a change recorded for the next start
@@ -142,6 +143,13 @@
   (cond ((equal field "max-transactions") (nfix (fn-cfg-ag-car use)))
         ((equal field "max-history-octets") (nfix (fn-cfg-ag-car (fn-cfg-ag-cdr use))))
         (t 0)))
+
+(defun fn-lim-completion-roomp (profile use)
+  "A changed profile keeps space for owed releases and maintenance."
+  (declare (xargs :guard t))
+  (fn-cvec-roomp profile (nfix (fn-cfg-ag-car use))
+                 (nfix (fn-cfg-ag-car (fn-cfg-ag-cdr use)))
+                 (nfix (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr use))))))
 
 ; The immutable representation ceiling of a live field: the largest N the
 ; format can carry for it, whatever the machine or the policy.  The verb's
@@ -172,6 +180,9 @@
            (list :refused :below-current-use field (fn-lim-use-of field use)))
           ((not (fn-bs-profile-admittedp candidate))
            (list :refused :profile-invalid (fn-bs-profile-invalid-reason candidate) 0))
+          ((not (fn-lim-completion-roomp candidate use))
+           (list :refused :completion-reserve field
+                 (nfix (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr use))))))
           (t
            (let ((d (fn-heap-status-decide candidate core nursery observations observed)))
              (if (not (and (consp d) (equal (car d) :heap)))
@@ -203,6 +214,7 @@
                   (fn-bs-profile-admittedp p)
                   (<= (fn-lim-use-of field use) (nfix n))
                   (<= (nfix n) (fn-lim-ceiling field))
+                  (fn-lim-completion-roomp p use)
                   (implies (equal (car d) :applied)
                            (<= (cadr d) (nfix run-mb))))))
   :rule-classes nil
@@ -238,6 +250,11 @@
           ((equal (nth 1 d) :below-current-use)
            (concatenate 'string "refused " head " below-current-use: the store holds "
                         (fn-heap-decimal (nth 3 d))))
+          ((equal (nth 1 d) :completion-reserve)
+           (concatenate 'string "refused " head
+                        " completion-reserve: keep space for "
+                        (fn-heap-decimal (nth 3 d))
+                        " owed releases and one maintenance release"))
           ((equal (nth 1 d) :profile-invalid)
            (concatenate 'string "refused " head " profile-invalid: " (fn-lim-word (nth 2 d))))
           ((equal (nth 1 d) :not-a-live-limit)
@@ -314,6 +331,7 @@
                        (fn-bs-profile-admittedp c)
                        (<= (fn-lim-use-of field use) (nfix n))
                        (<= (nfix n) (fn-lim-ceiling field))
+                       (fn-lim-completion-roomp c use)
                        (<= (cadr d) (nfix run-mb))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories '(fn-lim-decide fn-lim-funded-after car-cons cdr-cons
@@ -330,7 +348,7 @@
   (let ((d (true-list-fix d)))
     (cond ((not (equal (car d) :refused)) nil)
           ((equal (nth 4 d) :resource) :resource)
-          ((member-equal (nth 1 d) '(:not-a-live-limit :below-current-use)) :policy)
+          ((member-equal (nth 1 d) '(:not-a-live-limit :below-current-use :completion-reserve)) :policy)
           (t :representation))))
 
 ;; KEYSTONE (a resource refusal is never a policy or format verdict): the
@@ -347,6 +365,7 @@
                 (<= (nfix n) (fn-lim-ceiling field))
                 (<= (fn-lim-use-of field use) (nfix n))
                 (fn-bs-profile-admittedp c)
+                (fn-lim-completion-roomp c use)
                 (not (and (consp (fn-heap-status-decide c core nursery observations observed))
                           (equal (car (fn-heap-status-decide c core nursery observations observed))
                                  :heap))))))

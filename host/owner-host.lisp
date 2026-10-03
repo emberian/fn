@@ -1226,16 +1226,6 @@
                               (cons (fn-hist-count fn-hist) bytes) state)))
     (mv bytes fn-hist state)))
 
-;; Row S1 (books/limits-live.lisp, PRF-940): the store's use a limit
-;; decision reads, (TRANSACTIONS HISTORY-OCTETS): the owner's committed
-;; record count (fn-sf-records-count-is-used-by-definition) and its carried
-;; record octets (fn-owner-record-octets; fn-sbud-bytes-used).
-(defun fn-owner-limit-use (fn-hist state)
-  (declare (xargs :stobjs (fn-hist state) :mode :program))
-  (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
-    (let ((s (fn-owner-store state)))
-      (mv nil (list (fn-sf-records-count (fn-sn-files s)) bytes) fn-hist state))))
-
 ; The completion debt of the carried Store (the open forward undertakings,
 ; each owing a release record), carried as (K . DEBT) and advanced over the
 ; records committed since through the synced history stobj
@@ -1254,6 +1244,17 @@
          (state (f-put-global 'fn-owner-record-debt
                               (cons (fn-hist-count fn-hist) debt) state)))
     (mv debt fn-hist state)))
+
+;; Row S1 (books/limits-live.lisp, PRF-940): the store's use a limit
+;; decision reads, (TRANSACTIONS HISTORY-OCTETS COMPLETION-DEBT): committed
+;; record count (fn-sf-records-count-is-used-by-definition) and its carried
+;; record octets and completion debt, each advanced from carried history.
+(defun fn-owner-limit-use (fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
+    (let ((s (fn-owner-store state)))
+      (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
+        (mv nil (list (fn-sf-records-count (fn-sn-files s)) bytes debt) fn-hist state)))))
 
 ; The owner's verdict on one more record of KIND: the carried profile's count
 ; and history gates against the Store it carries, and the capacity vector

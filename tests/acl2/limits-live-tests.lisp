@@ -215,6 +215,7 @@
 (assert! (fn-lim-fieldp "max-transactions"))
 (assert! (<= 4096 (fn-lim-ceiling "max-transactions")))
 (assert! (fn-bs-profile-admittedp *lim-t-c4096*))
+(assert! (fn-lim-completion-roomp *lim-t-c4096* *lim-t-use*))
 (assert! (not (equal (car (fn-heap-status-decide *lim-t-c4096* *lim-t-core* *lim-t-nursery*
                                                  *lim-t-small* nil))
                      :heap)))
@@ -353,3 +354,40 @@
                       (fn-lim-carry-after "max-payload" 5 '(:applied 2342)
                                           (cons *lim-t-p* *lim-t-p*)))
                      (fn-lim-effective *lim-t-p* (list *lim-t-rec-bogus*)))))
+
+; Real neighbor failure: an already accepted undertaking owes a release.
+; A profile that fits committed use alone can strand that release.
+(defconst *lim-t-debt-use* '(100 20000000 1))
+(defconst *lim-t-no-room* (fn-lim-apply-row *lim-t-p* "max-transactions" 100))
+(assert! (fn-bs-profile-admittedp *lim-t-no-room*))
+(assert! (<= (fn-lim-use-of "max-transactions" *lim-t-debt-use*) 100))
+(assert! (equal (fn-cvec-verdict-at *lim-t-no-room* :release 100 20000000 1)
+                :unaffordable))
+(assert! (equal (fn-lim-decide "max-transactions" 100 *lim-t-p* *lim-t-debt-use*
+                              *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine* nil)
+                '(:refused :completion-reserve "max-transactions" 1)))
+; Count101 fits the first release but loses the maintenance release; both
+; live and offline decisions preserve the whole vector, not just one call.
+(assert! (equal (car (fn-lim-decide "max-transactions" 101 *lim-t-p* *lim-t-debt-use*
+                                    0 *lim-t-core* *lim-t-nursery* *lim-t-machine* nil))
+                :refused))
+(defconst *lim-t-release-room*
+  (fn-lim-decide "max-transactions" 102 *lim-t-p* *lim-t-debt-use*
+                 *lim-t-run-mb* *lim-t-core* *lim-t-nursery* *lim-t-machine* nil))
+(assert! (fn-lim-acceptedp *lim-t-release-room*))
+(assert! (fn-lim-completion-roomp
+          (fn-lim-apply-row *lim-t-p* "max-transactions" 102) *lim-t-debt-use*))
+(defconst *lim-t-release-bytes* (fn-smr-reserve-octets))
+(assert! (equal (car (fn-lim-decide "max-history-octets" 20000000 *lim-t-p*
+                                    *lim-t-debt-use* 0 *lim-t-core* *lim-t-nursery*
+                                    *lim-t-machine* nil))
+                :refused))
+(assert! (fn-lim-completion-roomp
+          (fn-lim-apply-row *lim-t-p* "max-history-octets"
+                            (+ 20000000 (* 2 *lim-t-release-bytes*)))
+          *lim-t-debt-use*))
+(assert! (equal (fn-lim-refusal-class
+                 '(:refused :completion-reserve "max-transactions" 1)) :policy))
+(assert! (equal (fn-lim-decision-line "max-transactions" 100
+                 '(:refused :completion-reserve "max-transactions" 1) 0)
+                "refused limit max-transactions=100 completion-reserve: keep space for 1 owed releases and one maintenance release"))
