@@ -405,3 +405,22 @@ no secondverdict rule. Samehost archived-run replay matches390passed/43failed,
 firstprimaryserved-catalog, process0 but missingfreshmarker/cert+ACL2error.
 Running/multiwave/missingmetadata remains pending. No ACL2 run/candidatechange.
 Nextwatch uses this exact existingpredicate beforefinalmanifest to route sooner.
+
+
+## Application consumer native bootstrap obstruction, 2026-10-03
+
+One Integration-approved24GiB case appfc6d85335/kernelad8/core14ab00 failed
+1.562s0skips at native consumer bootstrap EXIT.UNCERTAIN3, ownerfenced
+`ACL2 rejected the record's place in the log`. BEFORE agents/report/savedpoll/
+projectionfault/ownerrestart question; no claim of pendingSQLite/recoveryPASS.
+Seven unchanged interface blobs independentlychecked; composedbootstrapproducer
+compatibility stillowed. Exact16logs/source/ABIhash objects archived
+native-consumer-fc6-ad8-2026-10-03, manifest
+759e50e6341c90fd7ed11d53d28f1ca7f4fcd899c59c9854bb1019f5d993787d.
+
+Initial invocation raced unfinished sourceshipment (norunnerfile/notestloaded),
+thatsetupresult preserved; sameauthorizedcase executedonce after shipment.
+Groundwork/Runtime/Lieutenant/Integration haveactualfailure; no repeat before
+concrete diagnosis. Fixturecleanupremovedtemporaryscratch; rejectedrecordbytes
+werenotprinted and remainunavailable. Futureownedpublicevidencehook cannot
+retroactivelysupply thisrecord. No privatekey/whole-scratch archive.
