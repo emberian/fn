@@ -34,8 +34,6 @@
 (defstruct (fnn-native-observation (:constructor %make-fnn-native-observation))
   rows (count 0) (valid t) reason
   (lock (sb-thread:make-mutex :name "fn primitive observations")))
-(defvar *fnn-native-observer* nil)
-(defvar *fnn-native-actor-identity* nil)
 
 (defun fnn-native-observation-create (capacity)
   "Explicit developer profile capacity; preallocate before spawning workers."
@@ -148,20 +146,9 @@ not armed. Instrumentation has no semantic or admission role."
        (unwind-protect (progn ,@body)
          (when ,armed (fnn-native-observation-report *fnn-native-observer*))))))
 
+
 (defmacro fnn-with-observed-owner ((lock) &body body)
-  "Acquire observed after physical lock. Reserve release under the same
-lock, complete after physical unlock: preemption cannot invert producer order."
-  (let ((mutex (gensym "MUTEX")) (row (gensym "RELEASE")))
-    `(let ((,mutex ,lock) (,row nil))
-       (unwind-protect
-            (sb-thread:with-mutex (,mutex)
-              (when *fnn-native-observer*
-                (fnn-native-observe (list :acquire *fnn-native-actor-identity* :owner)))
-              (unwind-protect (progn ,@body)
-                (when *fnn-native-observer*
-                  (setq ,row (fnn-native-observation-reserve
-                              (list :release *fnn-native-actor-identity* :owner) nil)))))
-         (fnn-native-observation-complete ,row)))))
+  `(fnn-with-observed-mutex (,lock :owner) ,@body))
 
 (defvar *fnn-owner-start-hooks* nil)
 (defvar *fnn-owner-stop-hooks* nil)

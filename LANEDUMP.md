@@ -936,3 +936,20 @@ POST240/stored-source evidence stopped at retention refusal, not peer recovery.
 First matching-image selector: python3 -m tools.resilience.adapters.bp_node
 --image DEVELOPER --producer-image MATCHING_DEFAULT --variant lose-completion.
 Replay after actual retention repair remains Integration's source/image task.
+
+
+## Sol source assembly — shared early observation mutex
+
+Source prerequisite 0fa276f82 staged as983f199; shared seam inputs
+8b777bf9f -> e60d9f0d2 -> 09c7e72a3 now composed without code conflicts.
+Single macro/dynamic variable declarations live in io before extent compiles;
+owner collector functions remain runtime-installed before observed startup.
+Inactive early consumer invokes no late owner helper (actual source fixture
+failed before conditional ROW completion and passed after). Physical SBCL
+options/values and acquire-under-lock/release-after-unlock protocol retained.
+Producer exact fixture bytes, JSON and diffcheck pass; reuse completed
+0.14s actual observer fixture and six literal HM producer packets.
+This prerequisite does not supply full PageIO comparison: extent executor
+condition waits implicitly release/reacquire E; Empirical excludes those
+coarse spans and marks full trace unavailable. Actual extent consumer pending.
+First selector tests/test_native_observation_raw.sh, no image claim.

@@ -154,6 +154,20 @@
                "failed trace startup is explicitly unavailable"))
     (setf (symbol-function 'fnn-native-observation-create) original)))
 
+;; The shared extent seam preserves SBCL's :wait-p option and actual mutex
+;; ownership. It emits only the supplied literal measured lock name.
+(let* ((*fnn-native-observer* (fnn-native-observation-create 2))
+       (*fnn-native-actor-identity* (fnn-native-observation-current-identity))
+       (mutex (sb-thread:make-mutex :name "observed extent")))
+  (check (equal (multiple-value-list
+    (fnn-with-observed-mutex (mutex :extent :wait-p t)
+      (check (sb-thread:holding-mutex-p mutex) "generic observer body owns actual extent mutex")
+      (values :extent-body :unchanged))) '(:extent-body :unchanged))
+    "generic observed mutex preserves physical options and values")
+  (record-complete-packet *fnn-native-observer*
+    (list (list :acquire *fnn-native-actor-identity* :extent)
+          (list :release *fnn-native-actor-identity* :extent))))
+
 ;; Export actual literal producer packets with answers/invariant at every step.
 ;; Groundwork consumes this in its already loaded ACL2 HM session.
 (ensure-directories-exist "build/runtime-tests/native-observation-hm.lsp")
