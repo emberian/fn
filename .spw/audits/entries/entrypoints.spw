@@ -1,0 +1,555 @@
+# Actual native entry candidates; discovery is not full trace coverage.
+^"coordinate"{ source_revision: "e5e108eca54bee4c7e063cab61abe932244f7433"
+ tier: "exact source discovery; public-image exposure and downstream reading unestablished" }
+^"fnn-command-acl2"{
+ @source: ~"../../../host/native/acl2-session.lisp"
+ line: 21
+ source_sha256: "b0b6c3735797f551aada7ff7761ff215d7b2726dc324c97e3d268a449d4e49d3"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-anchor"{
+ @source: ~"../../../host/native/anchor.lisp"
+ line: 377
+ source_sha256: "c623c96e458dead85fc05f76893dd29f7554b19f593afa7b138ae9ccb6b5afdf"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-bp-app-receive"{
+ @source: ~"../../../host/native/bp-app.lisp"
+ line: 318
+ source_sha256: "f7faa180de6006b283102f37407551c565c3aaa9745b9797e16be0fbef0c9dc2"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-bp-contact-tick"{
+ @source: ~"../../../host/native/bp-contact.lisp"
+ line: 26
+ source_sha256: "92e39f9735a7d3634d83f55a02a1d2b270095b9a937398a0b0c2178e1ee41b43"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-bp-node-resume"{
+ @source: ~"../../../host/native/bp-node.lisp"
+ line: 492
+ source_sha256: "e724ee34d3fea20accd62c2ce840a0c97bfb50f43c8ee85f15e3196da21f5164"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-bp-node-checkpoint"{
+ @source: ~"../../../host/native/bp-node.lisp"
+ line: 512
+ source_sha256: "e724ee34d3fea20accd62c2ce840a0c97bfb50f43c8ee85f15e3196da21f5164"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-bp-node-profile"{
+ @source: ~"../../../host/native/bp-node.lisp"
+ line: 624
+ source_sha256: "e724ee34d3fea20accd62c2ce840a0c97bfb50f43c8ee85f15e3196da21f5164"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-bp-node"{
+ @source: ~"../../../host/native/bp-node.lisp"
+ line: 1082
+ source_sha256: "e724ee34d3fea20accd62c2ce840a0c97bfb50f43c8ee85f15e3196da21f5164"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-bp-session-profile"{
+ @source: ~"../../../host/native/bp-node.lisp"
+ line: 1231
+ source_sha256: "e724ee34d3fea20accd62c2ce840a0c97bfb50f43c8ee85f15e3196da21f5164"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-bpo-owner-status"{
+ @source: ~"../../../host/native/bp-obligation.lisp"
+ line: 66
+ source_sha256: "e3f028f45471e2b74d75e7d12d30e71f7fa341c6cee3cbadb2fd26f2e94b9f94"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-bpo-owner-undertake"{
+ @source: ~"../../../host/native/bp-obligation.lisp"
+ line: 79
+ source_sha256: "e3f028f45471e2b74d75e7d12d30e71f7fa341c6cee3cbadb2fd26f2e94b9f94"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-bpo-owner-receipt"{
+ @source: ~"../../../host/native/bp-obligation.lisp"
+ line: 115
+ source_sha256: "e3f028f45471e2b74d75e7d12d30e71f7fa341c6cee3cbadb2fd26f2e94b9f94"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-bpo-owner-request"{
+ @source: ~"../../../host/native/bp-obligation.lisp"
+ line: 193
+ source_sha256: "e3f028f45471e2b74d75e7d12d30e71f7fa341c6cee3cbadb2fd26f2e94b9f94"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-bpo-owner-recover"{
+ @source: ~"../../../host/native/bp-obligation.lisp"
+ line: 258
+ source_sha256: "e3f028f45471e2b74d75e7d12d30e71f7fa341c6cee3cbadb2fd26f2e94b9f94"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-bp-service-run"{
+ @source: ~"../../../host/native/bp-service.lisp"
+ line: 1510
+ source_sha256: "b8ef1c57ae3f1f4ee58b69a107c212c0f0f5ed0e2c66c45379921e105763078d"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-bp-service-resume"{
+ @source: ~"../../../host/native/bp-service.lisp"
+ line: 1542
+ source_sha256: "b8ef1c57ae3f1f4ee58b69a107c212c0f0f5ed0e2c66c45379921e105763078d"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-bp-service-inspect-received"{
+ @source: ~"../../../host/native/bp-service.lisp"
+ line: 1555
+ source_sha256: "b8ef1c57ae3f1f4ee58b69a107c212c0f0f5ed0e2c66c45379921e105763078d"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-bp-send"{
+ @source: ~"../../../host/native/bp.lisp"
+ line: 646
+ source_sha256: "ef0c899d15afe62e5332484304e24ca2c1a0ddc8d3a33977f980abf87e8ff201"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-bp-receive"{
+ @source: ~"../../../host/native/bp.lisp"
+ line: 728
+ source_sha256: "ef0c899d15afe62e5332484304e24ca2c1a0ddc8d3a33977f980abf87e8ff201"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-bp-decode"{
+ @source: ~"../../../host/native/bp.lisp"
+ line: 810
+ source_sha256: "ef0c899d15afe62e5332484304e24ca2c1a0ddc8d3a33977f980abf87e8ff201"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-compact"{
+ @source: ~"../../../host/native/checkpoint.lisp"
+ line: 53
+ source_sha256: "ae14745a3947e5649ff20fe59b5f78c77b930177587bb459f9e212bba5987be7"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-reclaim"{
+ @source: ~"../../../host/native/checkpoint.lisp"
+ line: 195
+ source_sha256: "ae14745a3947e5649ff20fe59b5f78c77b930177587bb459f9e212bba5987be7"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-config-profile"{
+ @source: ~"../../../host/native/config.lisp"
+ line: 11
+ source_sha256: "63d28c572492342f64bc5f4c248f367ab4a20eb96ac3028704d25419bbfd156e"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-consumer-local"{
+ @source: ~"../../../host/native/consumer-local.lisp"
+ line: 19
+ source_sha256: "81b91f565f5d29857c65f5abe88548518fe16711964b37c6e4c2986dd1928d8d"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-consumer-article"{
+ @source: ~"../../../host/native/consumer-local.lisp"
+ line: 138
+ source_sha256: "81b91f565f5d29857c65f5abe88548518fe16711964b37c6e4c2986dd1928d8d"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-remote-receive-installed"{
+ @source: ~"../../../host/native/consumer-remote.lisp"
+ line: 71
+ source_sha256: "a038884eb11ce83d409364abeff5e353bbfaeb836067575da90bc445eb9ce5fd"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-digest-check"{
+ @source: ~"../../../host/native/digest.lisp"
+ line: 537
+ source_sha256: "ef5b4eda2a9c7943ba9878eab353e84a321f087a114bf90ce8478bce260a19bb"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-heap"{
+ @source: ~"../../../host/native/heap.lisp"
+ line: 358
+ source_sha256: "1b81e71aea5f45086d1e581e824b8bee6c60bb5457af47fccb4dc0c3866856e5"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-hybrid-enroll"{
+ @source: ~"../../../host/native/hybrid-control.lisp"
+ line: 235
+ source_sha256: "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-hybrid-author"{
+ @source: ~"../../../host/native/hybrid-control.lisp"
+ line: 252
+ source_sha256: "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-hybrid-revoke"{
+ @source: ~"../../../host/native/hybrid-control.lisp"
+ line: 278
+ source_sha256: "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-hybrid-key-history"{
+ @source: ~"../../../host/native/hybrid-control.lisp"
+ line: 292
+ source_sha256: "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-hybrid-enroll-next"{
+ @source: ~"../../../host/native/hybrid-control.lisp"
+ line: 317
+ source_sha256: "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-hybrid-revoke-next"{
+ @source: ~"../../../host/native/hybrid-control.lisp"
+ line: 331
+ source_sha256: "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-rebind-filesystem"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 3422
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-store-digest"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 3814
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-store-journal"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 3832
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-state-checkpoint"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 3865
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-node-secret"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 4329
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-init"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 4346
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-init-published"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 4357
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-developer-init"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 4419
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-store-export"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 4656
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-store-import"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 4907
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-store-bless-snapshot"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 5008
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-post"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 5297
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-recover"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 5393
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-live-pages"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 5464
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-live-report"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 5479
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-inspect-group-offline"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 5499
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-stopped-status"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 5582
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-status"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 5590
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-retention"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 5598
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-compression"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 5609
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-config"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 5624
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-inspect"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 5636
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-provenance"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 5653
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-probe"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 5696
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-model"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 6372
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-reader"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 6392
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-log-scan-store"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 8853
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-log"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 8917
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-dispatch"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 8989
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-redeem"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 9225
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-main"{
+ @source: ~"../../../host/native/io.lisp"
+ line: 9335
+ source_sha256: "e142f28dcb39088b6fe61cf1be2cebcf4f1518cfbd257bb3765d9a206295119f"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-ninep-start"{
+ @source: ~"../../../host/native/ninep.lisp"
+ line: 68
+ source_sha256: "5dbb5cf5654c6bf32c30f9b287212c42460cc33a7281526f69c9a66b781c4fed"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-operator"{
+ @source: ~"../../../host/native/operator.lisp"
+ line: 1198
+ source_sha256: "f66ffa102db532d5ab32d981f6b70e023cc7346de48a87dc3450e3af69e086f9"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-owner-run"{
+ @source: ~"../../../host/native/owner.lisp"
+ line: 8120
+ source_sha256: "ec911c69097a19406606c31aa3237e0cce762ae2a8c0ccab2e83d40e1e751aa1"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-owner"{
+ @source: ~"../../../host/native/owner.lisp"
+ line: 8444
+ source_sha256: "ec911c69097a19406606c31aa3237e0cce762ae2a8c0ccab2e83d40e1e751aa1"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-hybrid-sign"{
+ @source: ~"../../../host/native/signature-command.lisp"
+ line: 46
+ source_sha256: "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-hybrid-sign-carrier"{
+ @source: ~"../../../host/native/signature-command.lisp"
+ line: 60
+ source_sha256: "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-hybrid-verify-carrier"{
+ @source: ~"../../../host/native/signature-command.lisp"
+ line: 83
+ source_sha256: "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-hybrid-verify-source"{
+ @source: ~"../../../host/native/signature-command.lisp"
+ line: 96
+ source_sha256: "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-topic-inspect-carrier"{
+ @source: ~"../../../host/native/signature-command.lisp"
+ line: 128
+ source_sha256: "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-consumer-project"{
+ @source: ~"../../../host/native/signature-command.lisp"
+ line: 172
+ source_sha256: "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-consumer-inspect"{
+ @source: ~"../../../host/native/signature-command.lisp"
+ line: 217
+ source_sha256: "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-statement-sign"{
+ @source: ~"../../../host/native/signature-command.lisp"
+ line: 252
+ source_sha256: "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-tcpcl-listen"{
+ @source: ~"../../../host/native/tcpcl.lisp"
+ line: 812
+ source_sha256: "a76aabe5ab72ea25cffb25dedaa9f2169afd0dcb4768c3d874742975119d8f94"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-tcpcl-send"{
+ @source: ~"../../../host/native/tcpcl.lisp"
+ line: 864
+ source_sha256: "a76aabe5ab72ea25cffb25dedaa9f2169afd0dcb4768c3d874742975119d8f94"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-tcpcl-replay"{
+ @source: ~"../../../host/native/tcpcl.lisp"
+ line: 911
+ source_sha256: "a76aabe5ab72ea25cffb25dedaa9f2169afd0dcb4768c3d874742975119d8f94"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-topic-local"{
+ @source: ~"../../../host/native/topic-local.lisp"
+ line: 5
+ source_sha256: "47bf579bb8bb7d834c4d24dab0c988bc4a734517d91569885d7820360b702910"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-web-start"{
+ @source: ~"../../../host/native/web-host.lisp"
+ line: 883
+ source_sha256: "def56b98d1e3b2bb11aa7ac63185c9b793f854ae70025d7bee431f7d6c82907c"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-workflow-init"{
+ @source: ~"../../../host/native/workflow.lisp"
+ line: 558
+ source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-workflow-enqueue"{
+ @source: ~"../../../host/native/workflow.lisp"
+ line: 566
+ source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-workflow-status"{
+ @source: ~"../../../host/native/workflow.lisp"
+ line: 579
+ source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-workflow-undertake"{
+ @source: ~"../../../host/native/workflow.lisp"
+ line: 587
+ source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-workflow-ion-submit"{
+ @source: ~"../../../host/native/workflow.lisp"
+ line: 596
+ source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-workflow-ion-status"{
+ @source: ~"../../../host/native/workflow.lisp"
+ line: 609
+ source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-workflow-receipt"{
+ @source: ~"../../../host/native/workflow.lisp"
+ line: 632
+ source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-receipt-init"{
+ @source: ~"../../../host/native/workflow.lisp"
+ line: 643
+ source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-receipt-complete"{
+ @source: ~"../../../host/native/workflow.lisp"
+ line: 651
+ source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
+^"fnn-command-receipt-replay"{
+ @source: ~"../../../host/native/workflow.lisp"
+ line: 667
+ source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
+ coverage: "catalogued; see coverage.md for actual reading and fixtures"
+}
