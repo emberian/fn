@@ -21727,7 +21727,9 @@
       "status": "planned",
       "evidence": [
         "books/resource-syncer.lisp",
-        "tests/acl2/resource-syncer-tests.lisp"
+        "tests/acl2/resource-syncer-tests.lisp",
+        "books/resource-operation.lisp",
+        "tests/acl2/resource-operation-tests.lisp"
       ],
       "events": [],
       "progress_note": "Source definitions and 11 typed-ledger scenario forms admitted in laptop solsync; no certificate, guards, preservation theorem, physical runtime correspondence or full resource/cost coverage claim yet. Executable draw/settle refinement work stays PRF-1211; receipt producer boundary remains here."
