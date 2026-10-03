@@ -2,12 +2,14 @@
  "file": "books/nntp-responses.lisp",
  "id": "cg-newnews-hang",
  "notes": [
-  "10-02 23:18 10-03 served-live: CAUSE: the served line runs under *fnn-extent-no-io*; fn-nntp-newnews-scan reads every candidate's payload head (fn-nntp-article-tombstonep); each miss discards the line, reads one entry off the mutex, reruns; the realizer keeps 8 entries (fn-arx-read-cache-entries), so >8 candidates evict their own entries every run: livelock (sb-sprof on 45e05c7fd: fnn-owner-handle-chunk-read -> cold-issue/settle loop). FIX: -cat arm fn-nntp-newnews-response-cat reads the catalog tombstone column (fn-scol-tombstonep), = reference under fn-scol-okp. RED on 45e05c7fd: tests.test_native_newnews_wildmat at N=1000 timed out (60 s)."
+  "10-02 23:18 10-03 served-live: CAUSE: the served line runs under *fnn-extent-no-io*; fn-nntp-newnews-scan reads every candidate's payload head (fn-nntp-article-tombstonep); each miss discards the line, reads one entry off the mutex, reruns; the realizer keeps 8 entries (fn-arx-read-cache-entries), so >8 candidates evict their own entries every run: livelock (sb-sprof on 45e05c7fd: fnn-owner-handle-chunk-read -> cold-issue/settle loop). FIX: -cat arm fn-nntp-newnews-response-cat reads the catalog tombstone column (fn-scol-tombstonep), = reference under fn-scol-okp. RED on 45e05c7fd: tests.test_native_newnews_wildmat at N=1000 timed out (60 s).",
+  "10-03 00:20 10-03 wind-down: fix on lane/served-live b7ef4410c, book admitted in REPL; native GREEN NOT YET (persvati run sl3 pending). See build/coordinator/lanedumps/served-live.md"
  ],
  "owner": "served-live",
  "severity": "high",
+ "sha": "b7ef4410c",
  "source": "cost-gate",
  "state": "in-progress",
  "title": "NEWNEWS with a wildmat hangs the reader at about 12-50 articles: N=3 and N=8 answer in 2-8 ms; N=12..24 never answered within 100 s; N=50 'NEWNEWS fn.* 20261001 000000 GMT' ran 225 s at ~77% owner CPU then the connection closed (b''); 'NEWNEWS fn.g1' at N=50 answered in 7 ms. Image set 45e05c7fd developer, plain launcher (no probe), 2 KiB POSTs across 8 groups. Not yet bisected (single group vs wildmat vs cross-posts)",
- "updated": "2026-10-03T03:18:07Z"
+ "updated": "2026-10-03T04:20:49Z"
 }

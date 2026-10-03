@@ -7,11 +7,14 @@
  "id": "sl-cold-line-deadline",
  "line": "fnn-owner-cold-line",
  "locus": "cold-line",
- "notes": [],
+ "notes": [
+  "10-03 00:20 10-03 wind-down: coded; native GREEN NOT YET (sl3 pending)"
+ ],
  "owner": "served-live",
  "severity": "high",
+ "sha": "b7ef4410c",
  "source": "served-live",
  "state": "in-progress",
  "title": "A served line that reads more payloads than the realizer keeps (fn-arx-read-cache-entries = 8) is re-run forever under the owner: each miss discards the line, reads one entry, re-runs; cyclic LRU never warms. On 45e05c7fd at 40 articles in one group HDR/XHDR Newsgroups, XPAT Newsgroups, HDR/XHDR Xref, HDR Path, XPAT Path, HDR Organization over 1-100 and NEWNEWS fn.g1 all gave NO ANSWER in 20 s (one fresh node each). A one-client DoS of the owner",
- "updated": "2026-10-03T03:27:00Z"
+ "updated": "2026-10-03T04:20:49Z"
 }
