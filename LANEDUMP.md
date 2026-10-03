@@ -605,3 +605,16 @@ Three same-harness receipts at source88a116a90 are archived: S107 real FIFO
 blocked-base/prompt-head assertion, S108 invalid-before-connect assertion,
 S109 exact read fault assertion; all designated identities red/base and
 green/head with no infra/skips. File hashes live in each item/index.
+
+S109 follow-through source0c7dc0ea8: preserve the first serious condition
+when descriptor close also fails, so cleanup OS error cannot turn a core
+fault into credential refusal. Sixth actual-source schedule injects core
+fault plus closeEIO after actual close; intended assertion red/base and
+green/head archived S109-d92aa72565cd4483815b2da7f70f3da5.json, sha256
+ef3372181f2fa6ddd54226c89d6142a6d79bb83afedabbf1c28beed5f6a32135.
+Fixture worker fault injection uses explicit hand leaf definitions rather
+than symbol-function replacement, so static inventory does not invent worker
+loop extraction. Only this new credential fixture's derived trap block was
+generated with current nested-reader source; no unrelated fixture rewrite.
+Trap functions remain executable failures for unexpected paths, not coverage
+waivers. Final six schedule command re-run after exact fixture block update.
