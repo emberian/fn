@@ -1141,3 +1141,19 @@ store-log plus history-image-binding/fold; Integration schedules affected root,
 no broad closure or new image started here. S114 authoritative octets capture is
 next confirmed connected item; whole-history representation redesign stays with
 Groundwork. No new architecture or durable-acceptance semantics claimed.
+
+## Astra source trace — S114 reclaim census (2026-10-03)
+
+Followthrough after 16e1491a1: `fn-owner-orcp-capture` now synchronizes through
+`fn-owner-record-octets` before credit reservation, taking/returning fn-hist on
+both branches. Existing native metadata-driven trailing-stobj dispatch supplies
+it; no hardcoded argument list added. Actual host census, history sync/advance,
+credit resize and native value dispatch fixture PASS: stale census refuses when
+only the old amount fits; sufficient credit admits current amount; missing and
+out-of-range cache fallback; unrelated reservation preserved. Store/array/row-cost
+and capture-result seams are recorded, not a full native-image claim. Same fixture
+on 16e1491a1 fails intended unfunded-admission assertion. Evidence archived at
+planning/evidence/astra-reclaim-census-2026-10-03.json (84754a72e762de272a4a6dd9598bf4024f51ed9732b1071a1160858887cd9a47).
+S114 stays open pending normal loaded host/image followthrough; no book changed,
+no new proof claim. SCN-1096/STO-017/spec updated. Bounded history representation
+work is now deputy_history's; this does not reduce current whole-history copy cost.

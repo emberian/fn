@@ -5301,20 +5301,20 @@ existing port only after fn-fc has made this connection ready."
 ; pass and the publication in flight at COUNT) and the owner's connection
 ; bound.  Answers (:deferred :credit ESTIMATE) or (:captured CAPTURE
 ; MAX-CONNS).
-(defun fn-owner-orcp-capture (mode clock override free revision state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((carried (and (boundp-global 'fn-owner-record-octets state)
-                       (f-get-global 'fn-owner-record-octets state)))
-         (octets (if (and (consp carried) (natp (cdr carried))) (cdr carried) 0))
-         (r (fn-orcp-reserve (fn-owner-credits state) octets)))
-    (if (not (eq (car r) :ok))
-        (value (list :deferred :credit (fn-orcp-estimate octets)))
-      (let ((state (fn-owner-put-credits (cadr r) state)))
-        (mv-let (erp captured state)
-          (fn-owner-orc-capture mode clock override free revision state)
-          (declare (ignore erp))
-          (value (list :captured captured
-                       (fn-own-max-conns (fn-owner-core state)))))))))
+(defun fn-owner-orcp-capture (mode clock override free revision fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  ;; Synchronize the committed history and its carried byte count before
+  ;; reserving. The raw (K . SUM) cache may lag the last committed batch.
+  (mv-let (octets fn-hist state) (fn-owner-record-octets fn-hist state)
+    (let ((r (fn-orcp-reserve (fn-owner-credits state) octets)))
+      (if (not (eq (car r) :ok))
+          (mv nil (list :deferred :credit (fn-orcp-estimate octets)) fn-hist state)
+        (let ((state (fn-owner-put-credits (cadr r) state)))
+          (mv-let (erp captured state)
+            (fn-owner-orc-capture mode clock override free revision state)
+            (declare (ignore erp))
+            (mv nil (list :captured captured
+                          (fn-own-max-conns (fn-owner-core state))) fn-hist state)))))))
 
 ; The rewritten rows' tombstoned records are no longer interned before the
 ; PRF-1258: the subject is the host-called prediction, including both its
