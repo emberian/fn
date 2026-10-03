@@ -507,3 +507,11 @@ The resumed mission is to maximize complete integrated consumer capabilities bef
 10am America/New_York on 2026-10-03. Existing workers continue; the broad Luna
 wave remains paused. Source receipts do not substitute for matching executable
 consumer checks, and reports do not delay coherent source integration.
+
+From 08:00 America/New_York on 2026-10-03, ember caps running subagents at eight
+excluding root: Integration/assembly, Runtime/Web/HM, Served/matcher/availability,
+Foundations, History/carrier/pages/checkpoint, BP transport/Tools, Access/Operator,
+and Empirical. Root absorbs Groundwork coordination. Each departing worker
+transfers actual code and unresolved consumer questions before stopping; pending
+proof/native work remains pending. The 10:00 mission and push-before-verify
+instruction continue. The capability queue records this consolidation.
