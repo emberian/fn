@@ -662,14 +662,14 @@ this path can neither mutate the configuration nor take the lock from it."
     (fnn-refuse "administrative request refused: ~a" (fnn-admin-plan-reason plan)))
   (multiple-value-bind (store ignored-records) (fnn-open-live-store root nil)
     (declare (ignore ignored-records))
-    (unwind-protect
-         (let ((report (fnn-core-state 'fn-native-admin-host-query-report plan)))
+    (fnn-unwind-cleanups
+        ((let ((report (fnn-core-state 'fn-native-admin-host-query-report plan)))
            (unless (fnn-octet-list-p report)
              (fnn-fault "ACL2 returned a malformed configuration listing"))
            (when report
              (write-sequence (fnn-octets report) *fnn-stdout*)
              (finish-output *fnn-stdout*))
-           +fnn-exit-ok+)
+           +fnn-exit-ok+))
       (fnn-store-close store))))
 
 (defun fnn-admin-execute (root plan)
@@ -683,8 +683,8 @@ turning a refusal into a physical mutation."
     ; owner.  A live owner therefore reaches the explicit `already locked'
     ; refusal; this command never starts another owner.
     (let ((store nil))
-      (unwind-protect
-           (multiple-value-bind (opened count) (fnn-open-live-store root t)
+      (fnn-unwind-cleanups
+          ((multiple-value-bind (opened count) (fnn-open-live-store root t)
              (declare (ignore count))
              (setq store opened)
              (fnn-require-writer store)
@@ -697,5 +697,5 @@ turning a refusal into a physical mutation."
                    (fnn-admin-publish-record store record)
                  (fnn-out "configured generation=~d record=~a verification=~a"
                           generation name verification)
-                 +fnn-exit-ok+)))
+                 +fnn-exit-ok+))))
         (when store (fnn-store-close store)))))
