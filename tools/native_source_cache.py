@@ -22,6 +22,8 @@ def prepare(manifest, output):
             raise ValueError('source cache input changed: ' + path)
     output = output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
+    if output.exists() or Path(str(output) + '.core').exists():
+        raise ValueError('execution cache output already exists; prepare a fresh coordinate')
     original = Path(data['bootstrap']).read_text()
     if original.count(ENTRY) != 1 or not original.rstrip().endswith(ENTRY):
         raise ValueError('expected one terminal source entry, before any Store/owner')
