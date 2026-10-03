@@ -39,3 +39,13 @@ sample count, not distribution or latency guarantees.
 Archive completed run bytes under a named `planning/evidence/` coordinate with
 `tools/evidence_store.py put`; commit the resulting index lines, not logs. Keep
 this matrix and SCN-1083 scope aligned when execution exposes missing consumers.
+
+Current-source continuation, 2026-10-03: SCN-1129 adds a decoder-specific
+pending-read hold. The legacy PageIO selector cannot demonstrate this branch:
+actual typed decoded jobs previously bypassed its hold entirely. The new
+connected selector preserves an actual compressed article, admits competing
+POST/DATE while its physical read remains held, then observes literal cancel,
+read return, physical return and independent release before exact reopen.
+Actual SBCL physical seam passes with a real fd/syscall; connected native run
+is pending current host entry and Root's real pre-open default pool producer.
+No old image or raw recording fixture verdict is transferred to that outcome.

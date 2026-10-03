@@ -492,3 +492,23 @@ basic loop and its charged semantic budget, not a native allocation tariff.
 General interleaved input refill, registered controller composition, captured
 dictionary/source custody and total selected runtime funding remain open.
 See `planning/evidence/decoded-window-finite-canonical-source-2026-10-01.md`.
+
+## Actual pending decoded-read schedule (SCN-1129)
+
+The developer `FN_NATIVE_PAGE_IO_HOLD` gate also reaches the actual decoded
+controller's `:read` branch, after the controller has retained its pending
+read effect and private activation, immediately before physical pread off
+owner and extent exclusion. Releasing the gate lets that already selected
+read complete and supply its literal observation before the next cancellation
+permission check. The gate makes no admission, cancellation or settlement
+choice. Native held/read-return/cancel labels transport the actual token,
+fd/effect and returned core word; they contain no private buffer bytes.
+
+The connected scenario requires stored compression, independent POST/DATE
+progress while held, cancellation followed by actual read/physical/semantic
+release, and complete accepted replies unchanged after restart. Its raw seam
+fixture exercises a real thread, scratch fd and syscall, but does not supply
+typed admission or replace the connected native scenario. That scenario still
+requires the initialized current host and real default funded-pool producer.
+The declared fixed-storage projection remains partial; complete runtime
+funding and full physical HM realization remain separate obligations.

@@ -3389,3 +3389,23 @@ transferred to this new packet. Root discovered no actual default funded pool
 installer caller: fresh normal owner remains offline today, so compressed
 endpoint still needs Root's real pre-open partial baseline producer in addition
 to History initialization. No wrapper/test synthetic pool installation.
+
+Empirical current-source resume (2026-10-03)
+------------------------------------------
+New isolated branch codex/sol-empirical-current-20261003 starts from public
+Integration e5ec40043; prior empirical branch/worktree results preserved.
+SCN1129 claimed before writing: actual decoded :read branch bypassed existing
+legacy PAGEIO hold. Runtime delegated that narrow read gate and windowcancel
+literal observer. Added actual decoded pending-effect/private-job hold before
+physical pread, offE/O; literal held/read-return and actual corecancel word,
+no controller/allocator/admission changes. Prepared actual canonical NNTP
+compress-min64 fixture with independent acceptedPOST/DATE whileheld, observed
+cancel→read→physical→release and complete captured replies aftercleanreopen.
+Actual SBCL syscall/thread seamPASS0.18s and existing retainedcontroller
+recording fixturePASS; PythoncompilePASS. NativeconnectedcaseUNEXECUTED,
+currenthostentry andrealpreopenpoolproducerpending; nolegacylabel/oldimage
+verdict transfer. Fullfunding/HM/GC remainopen.
+
+Observedactualffdd Webfixturekeeper callable incompatible with iterable helper;
+Runtime owns/fixed4e167329e staticlist, no endpointverdict. Current tests use
+pre-Node mutablelist so finalnodecleanup precedes diagnostic archiving.
