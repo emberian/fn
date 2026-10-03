@@ -4,6 +4,7 @@
 (include-book "nntp-responses")
 (local (include-book "arithmetic/top" :dir :system))
 (local (in-theory (disable (tau-system))))
+(local (deftheory fn-wmc-entry-base (current-theory :here)))
 
 (defun fn-wmc-at (n x)
   (declare (xargs :guard (natp n)))
@@ -23,7 +24,7 @@
   (declare (xargs :guard t))
   (fn-wmc-state (fn-wmc-node tag a b c nil) (cons frame frames)))
 
-(defun fn-wmc-start (patterns group)
+(defun fn-wmc-core-start (patterns group)
   (declare (xargs :guard t))
   ; Invoke only after the caller reserves the seven-cell fixed envelope.
   (fn-wmc-state (fn-wmc-node :decode patterns group 0 nil) nil))
@@ -40,7 +41,7 @@
   (declare (xargs :guard t))
   (if (and (fn-wmc-decidedp s) (fn-wmc-at 1 (fn-wmc-at 0 s))) t nil))
 
-(defun fn-wmc-one (s)
+(defun fn-wmc-core-one (s)
   (declare (xargs :guard t))
   (let* ((task (fn-wmc-at 0 s)) (frames (fn-wmc-at 1 s))
          (tag (fn-wmc-at 0 task)) (a (fn-wmc-at 1 task))
@@ -124,52 +125,52 @@
            (t (fn-wmc-state (fn-wmc-return a b) rest))))))
      (t (fn-wmc-state (fn-wmc-return nil 0) frames)))))
 
-(defun fn-wmc-demand (s)
+(defun fn-wmc-core-demand (s)
   (declare (xargs :guard t))
   (if (fn-wmc-decidedp s) 0 13))
-(defun fn-wmc-acceptedp (s work cons-grant)
+(defun fn-wmc-core-acceptedp (s work cons-grant)
   (declare (xargs :guard t))
   (and (not (fn-wmc-decidedp s)) (posp work) (<= 13 (nfix cons-grant))))
-(defun fn-wmc-step (s work cons-grant)
+(defun fn-wmc-core-step (s work cons-grant)
   (declare (xargs :guard t))
-  (if (fn-wmc-acceptedp s work cons-grant) (fn-wmc-one s) s))
-(defun fn-wmc-consumed-work (s work cons-grant)
+  (if (fn-wmc-core-acceptedp s work cons-grant) (fn-wmc-core-one s) s))
+(defun fn-wmc-core-consumed-work (s work cons-grant)
   (declare (xargs :guard t))
-  (if (fn-wmc-acceptedp s work cons-grant) 1 0))
-(defun fn-wmc-consumed-cons (s work cons-grant)
+  (if (fn-wmc-core-acceptedp s work cons-grant) 1 0))
+(defun fn-wmc-core-consumed-cons (s work cons-grant)
   (declare (xargs :guard t))
   ; Conservative charge, not a physical-byte tariff or heap settlement.
-  (if (fn-wmc-acceptedp s work cons-grant) 13 0))
+  (if (fn-wmc-core-acceptedp s work cons-grant) 13 0))
 
-(defun fn-wmc-work-left (s work cons-grant)
+(defun fn-wmc-core-work-left (s work cons-grant)
   (declare (xargs :guard t))
-  (- (nfix work) (fn-wmc-consumed-work s work cons-grant)))
-(defun fn-wmc-cons-left (s work cons-grant)
+  (- (nfix work) (fn-wmc-core-consumed-work s work cons-grant)))
+(defun fn-wmc-core-cons-left (s work cons-grant)
   (declare (xargs :guard t))
-  (- (nfix cons-grant) (fn-wmc-consumed-cons s work cons-grant)))
-(defthm fn-wmc-work-left-natural
-  (natp (fn-wmc-work-left s work cons-grant)) :rule-classes :type-prescription)
-(defthm fn-wmc-cons-left-natural
-  (natp (fn-wmc-cons-left s work cons-grant)) :rule-classes :type-prescription)
-(defthm fn-wmc-work-conservation
-  (equal (+ (fn-wmc-consumed-work s work cons-grant) (fn-wmc-work-left s work cons-grant))
+  (- (nfix cons-grant) (fn-wmc-core-consumed-cons s work cons-grant)))
+(defthm fn-wmc-core-work-left-natural
+  (natp (fn-wmc-core-work-left s work cons-grant)) :rule-classes :type-prescription)
+(defthm fn-wmc-core-cons-left-natural
+  (natp (fn-wmc-core-cons-left s work cons-grant)) :rule-classes :type-prescription)
+(defthm fn-wmc-core-work-conservation
+  (equal (+ (fn-wmc-core-consumed-work s work cons-grant) (fn-wmc-core-work-left s work cons-grant))
          (nfix work)))
-(defthm fn-wmc-cons-conservation
-  (equal (+ (fn-wmc-consumed-cons s work cons-grant) (fn-wmc-cons-left s work cons-grant))
+(defthm fn-wmc-core-cons-conservation
+  (equal (+ (fn-wmc-core-consumed-cons s work cons-grant) (fn-wmc-core-cons-left s work cons-grant))
          (nfix cons-grant)))
 
  ; Proof-only cumulative charge recurrence; the served caller uses ONE STEP.
-(defun fn-wmc-run-cons (s work cons-grant)
+(defun fn-wmc-core-run-cons (s work cons-grant)
   (declare (xargs :verify-guards nil :measure (nfix work)))
-  (if (fn-wmc-acceptedp s work cons-grant)
-      (+ (fn-wmc-consumed-cons s work cons-grant)
-         (fn-wmc-run-cons (fn-wmc-step s work cons-grant)
-                          (fn-wmc-work-left s work cons-grant)
-                          (fn-wmc-cons-left s work cons-grant))) 0))
-(defthm fn-wmc-cumulative-cons-bound
-  (<= (fn-wmc-run-cons s work cons-grant) (nfix cons-grant))
-  :hints (("Goal" :induct (fn-wmc-run-cons s work cons-grant)
-           :in-theory (disable fn-wmc-step fn-wmc-one fn-wmc-decidedp))))
+  (if (fn-wmc-core-acceptedp s work cons-grant)
+      (+ (fn-wmc-core-consumed-cons s work cons-grant)
+         (fn-wmc-core-run-cons (fn-wmc-core-step s work cons-grant)
+                          (fn-wmc-core-work-left s work cons-grant)
+                          (fn-wmc-core-cons-left s work cons-grant))) 0))
+(defthm fn-wmc-core-cumulative-cons-bound
+  (<= (fn-wmc-core-run-cons s work cons-grant) (nfix cons-grant))
+  :hints (("Goal" :induct (fn-wmc-core-run-cons s work cons-grant)
+           :in-theory (disable fn-wmc-core-step fn-wmc-core-one fn-wmc-decidedp))))
 
 ; The interpreter below is a proof residual, never called by ONE or STEP.
 (defun fn-wmc-task-result (task)
@@ -228,21 +229,21 @@
   (declare (xargs :guard t :verify-guards nil))
   (if (consp frames)
       (fn-wmc-resume (cdr frames) (fn-wmc-frame-result (car frames) result)) result))
-(defun fn-wmc-result (s)
+(defun fn-wmc-core-result (s)
   (declare (xargs :guard t :verify-guards nil))
   (fn-wmc-resume (fn-wmc-at 1 s) (fn-wmc-task-result (fn-wmc-at 0 s))))
-(defun fn-wmc-value (s)
+(defun fn-wmc-core-value (s)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-wm-work-value (fn-wmc-result s)))
+  (fn-wm-work-value (fn-wmc-core-result s)))
 
-(defthm fn-wmc-unfunded-step-is-identical
-  (implies (not (fn-wmc-acceptedp s work cons-grant))
-           (equal (fn-wmc-step s work cons-grant) s)))
-(defthm fn-wmc-step-work-bound
-  (<= (fn-wmc-consumed-work s work cons-grant) (nfix work))
+(defthm fn-wmc-core-unfunded-step-is-identical
+  (implies (not (fn-wmc-core-acceptedp s work cons-grant))
+           (equal (fn-wmc-core-step s work cons-grant) s)))
+(defthm fn-wmc-core-step-work-bound
+  (<= (fn-wmc-core-consumed-work s work cons-grant) (nfix work))
   :rule-classes :linear)
-(defthm fn-wmc-step-cons-bound
-  (<= (fn-wmc-consumed-cons s work cons-grant) (nfix cons-grant))
+(defthm fn-wmc-core-step-cons-bound
+  (<= (fn-wmc-core-consumed-cons s work cons-grant) (nfix cons-grant))
   :rule-classes :linear)
 
 (local
@@ -316,12 +317,12 @@
    (equal (* (+ 1 x) y) (+ y (* x y)))
    :hints (("Goal" :in-theory (enable distributivity commutativity-of-*)))))
 
-(defthm fn-wmc-one-preserves-result
+(defthm fn-wmc-core-one-preserves-result
   (implies (or (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :decode))
                (natp (fn-wmc-at 3 (fn-wmc-at 0 s))))
-           (equal (fn-wmc-result (fn-wmc-one s)) (fn-wmc-result s)))
+           (equal (fn-wmc-core-result (fn-wmc-core-one s)) (fn-wmc-core-result s)))
   :hints (("Goal" :in-theory
-           (e/d (fn-wmc-result fn-wmc-task-result fn-wmc-frame-result fn-wmc-one
+           (e/d (fn-wmc-core-result fn-wmc-task-result fn-wmc-frame-result fn-wmc-core-one
                   fn-wm-work-result fn-wm-work-value fn-wm-work-cost
                   fn-ag-car fn-ag-cdr revappend
                   fn-wm-match-codepoints-work fn-wm-rightmost-match-work
@@ -337,7 +338,7 @@
   (if (consp frames)
       (and (true-listp (car frames)) (equal (len (car frames)) 5)
            (fn-wmc-framesp (cdr frames))) (null frames)))
-(defun fn-wmc-shapedp (s)
+(defun fn-wmc-core-shapedp (s)
   (declare (xargs :guard t))
   (let ((task (fn-wmc-at 0 s)))
     (and (true-listp s) (equal (len s) 2)
@@ -345,39 +346,39 @@
          (fn-wmc-framesp (fn-wmc-at 1 s))
          (or (not (eq (fn-wmc-at 0 task) :decode)) (natp (fn-wmc-at 3 task))))))
 
-(defthm fn-wmc-start-has-shape
-  (fn-wmc-shapedp (fn-wmc-start patterns group)))
-(defthm fn-wmc-one-preserves-shape
-  (implies (fn-wmc-shapedp s) (fn-wmc-shapedp (fn-wmc-one s))))
-(defthm fn-wmc-step-preserves-shape
-  (implies (fn-wmc-shapedp s) (fn-wmc-shapedp (fn-wmc-step s work cons-grant)))
-  :hints (("Goal" :in-theory (disable fn-wmc-one fn-wmc-shapedp))))
+(defthm fn-wmc-core-start-has-shape
+  (fn-wmc-core-shapedp (fn-wmc-core-start patterns group)))
+(defthm fn-wmc-core-one-preserves-shape
+  (implies (fn-wmc-core-shapedp s) (fn-wmc-core-shapedp (fn-wmc-core-one s))))
+(defthm fn-wmc-core-step-preserves-shape
+  (implies (fn-wmc-core-shapedp s) (fn-wmc-core-shapedp (fn-wmc-core-step s work cons-grant)))
+  :hints (("Goal" :in-theory (disable fn-wmc-core-one fn-wmc-core-shapedp))))
 
-(defthm fn-wmc-step-preserves-result
-  (implies (fn-wmc-shapedp s)
-           (equal (fn-wmc-result (fn-wmc-step s work cons-grant)) (fn-wmc-result s)))
-  :hints (("Goal" :in-theory (disable fn-wmc-one fn-wmc-result))))
+(defthm fn-wmc-core-step-preserves-result
+  (implies (fn-wmc-core-shapedp s)
+           (equal (fn-wmc-core-result (fn-wmc-core-step s work cons-grant)) (fn-wmc-core-result s)))
+  :hints (("Goal" :in-theory (disable fn-wmc-core-one fn-wmc-core-result))))
 
-(defthm fn-wmc-step-preserves-value
-  (implies (fn-wmc-shapedp s)
-           (equal (fn-wmc-value (fn-wmc-step s work cons-grant)) (fn-wmc-value s)))
-  :hints (("Goal" :in-theory (e/d (fn-wmc-value) (fn-wmc-result fn-wmc-step fn-wmc-shapedp)))))
+(defthm fn-wmc-core-step-preserves-value
+  (implies (fn-wmc-core-shapedp s)
+           (equal (fn-wmc-core-value (fn-wmc-core-step s work cons-grant)) (fn-wmc-core-value s)))
+  :hints (("Goal" :in-theory (e/d (fn-wmc-core-value) (fn-wmc-core-result fn-wmc-core-step fn-wmc-core-shapedp)))))
 
-(defthm fn-wmc-codepoints-result-is-work
-  (equal (fn-wmc-result (fn-wmc-start-codepoints patterns target))
+(defthm fn-wmc-core-codepoints-result-is-work
+  (equal (fn-wmc-core-result (fn-wmc-start-codepoints patterns target))
          (fn-wm-match-codepoints-work patterns target))
-  :hints (("Goal" :in-theory (enable fn-wmc-result fn-wmc-resume fn-wmc-task-result))))
+  :hints (("Goal" :in-theory (enable fn-wmc-core-result fn-wmc-resume fn-wmc-task-result))))
 
-(defthm fn-wmc-decided-value
+(defthm fn-wmc-core-decided-value
   (implies (fn-wmc-decidedp s)
-           (equal (fn-wmc-matchedp s) (if (fn-wmc-value s) t nil)))
-  :hints (("Goal" :in-theory (enable fn-wmc-value fn-wmc-result fn-wmc-task-result fn-wmc-resume))))
+           (equal (fn-wmc-matchedp s) (if (fn-wmc-core-value s) t nil)))
+  :hints (("Goal" :in-theory (enable fn-wmc-core-value fn-wmc-core-result fn-wmc-task-result fn-wmc-resume))))
 
 ; Constructor-level logical cell recurrence. At most one call frame is pushed
 ; in a microstep: state2 + task5 + frame5 + stack-link1. Decode/row cons steps
 ; allocate state2 + task5 + one data cell. This excludes caller/mux/collector
 ; envelopes and integer storage; it is not a physical heap-byte guarantee.
-(defun fn-wmc-one-cons-cells (s)
+(defun fn-wmc-core-one-cons-cells (s)
   (declare (xargs :guard t))
   (let* ((task (fn-wmc-at 0 s)) (tag (fn-wmc-at 0 task))
          (a (fn-wmc-at 1 task)) (b (fn-wmc-at 2 task)) (c (fn-wmc-at 3 task))
@@ -396,14 +397,14 @@
             (t 7)))
      (t 7))))
 
-(defthm fn-wmc-one-cons-cells-bound
-  (<= (fn-wmc-one-cons-cells s) (fn-wmc-demand s))
+(defthm fn-wmc-core-one-cons-cells-bound
+  (<= (fn-wmc-core-one-cons-cells s) (fn-wmc-core-demand s))
   :rule-classes :linear)
-(defthm fn-wmc-accepted-cons-cells-covered
-  (implies (fn-wmc-acceptedp s work cons-grant)
-           (<= (fn-wmc-one-cons-cells s) (fn-wmc-consumed-cons s work cons-grant)))
+(defthm fn-wmc-core-accepted-cons-cells-covered
+  (implies (fn-wmc-core-acceptedp s work cons-grant)
+           (<= (fn-wmc-core-one-cons-cells s) (fn-wmc-core-consumed-cons s work cons-grant)))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (disable fn-wmc-one-cons-cells))))
+  :hints (("Goal" :in-theory (disable fn-wmc-core-one-cons-cells))))
 
 (defun fn-wmc-ascii-octetsp (xs)
   (declare (xargs :guard t))
@@ -451,12 +452,12 @@
    (true-listp (fn-nntp-string-octets group))
    :hints (("Goal" :in-theory (enable fn-nntp-string-octets fn-nntp-string-octets-aux)))))
 
-(defthm fn-wmc-start-value-is-group-match
+(defthm fn-wmc-core-start-value-is-group-match
   (implies (fn-nntp-safe-group-namep group)
-           (equal (fn-wmc-value (fn-wmc-start patterns group))
+           (equal (fn-wmc-core-value (fn-wmc-core-start patterns group))
                   (fn-nntp-group-matches-parsed-wildmatp patterns group)))
   :hints (("Goal" :in-theory
-           (e/d (fn-wmc-value fn-wmc-result fn-wmc-task-result fn-wmc-resume
+           (e/d (fn-wmc-core-value fn-wmc-core-result fn-wmc-task-result fn-wmc-resume
                   fn-nntp-group-matches-parsed-wildmatp fn-nntp-safe-group-namep
                   fn-nntp-string-octets fn-wildmat-result-okp fn-wildmat-result-value fn-wildmat-ok)
                  (fn-nntp-string-octets-aux fn-wildmat-decode fn-wm-match-codepoints-work)))))
@@ -513,7 +514,7 @@
   (if (consp frames)
       (+ (fn-wmc-frame-steps (car frames) result)
          (fn-wmc-stack-steps (cdr frames) (fn-wmc-frame-result (car frames) result))) 0))
-(defun fn-wmc-remaining (s)
+(defun fn-wmc-core-remaining (s)
   (+ (fn-wmc-task-steps (fn-wmc-at 0 s))
      (fn-wmc-stack-steps (fn-wmc-at 1 s) (fn-wmc-task-result (fn-wmc-at 0 s)))))
 
@@ -576,12 +577,12 @@
                                  (:instance fn-wmc-len-cdr-fact (x (fn-wildmat-pattern-row items target row))))
             :in-theory (e/d (len) (fn-wildmat-pattern-row))))))
 
-(defthm fn-wmc-one-progress
-  (implies (and (fn-wmc-shapedp s) (not (fn-wmc-decidedp s)))
-           (equal (fn-wmc-remaining (fn-wmc-one s)) (1- (fn-wmc-remaining s))))
+(defthm fn-wmc-core-one-progress
+  (implies (and (fn-wmc-core-shapedp s) (not (fn-wmc-decidedp s)))
+           (equal (fn-wmc-core-remaining (fn-wmc-core-one s)) (1- (fn-wmc-core-remaining s))))
   :hints (("Goal" :cases ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return))
            :in-theory
-           (e/d (fn-wmc-remaining fn-wmc-task-steps fn-wmc-frame-steps fn-wmc-one
+           (e/d (fn-wmc-core-remaining fn-wmc-task-steps fn-wmc-frame-steps fn-wmc-core-one
                   fn-wmc-task-result fn-wmc-frame-result fn-wm-work-result
                   fn-wm-work-value fn-wm-work-cost fn-ag-car fn-ag-cdr revappend
                   fn-wm-match-codepoints-work fn-wm-rightmost-match-work
@@ -615,28 +616,28 @@
    :rule-classes :type-prescription
    :hints (("Goal" :in-theory (enable fn-wmc-task-steps fn-wmc-last-steps)))))
 
-(defthm fn-wmc-remaining-natural
-  (natp (fn-wmc-remaining s))
+(defthm fn-wmc-core-remaining-natural
+  (natp (fn-wmc-core-remaining s))
   :rule-classes :type-prescription
-  :hints (("Goal" :in-theory (e/d (fn-wmc-remaining fn-wmc-task-steps fn-wmc-frame-steps
+  :hints (("Goal" :in-theory (e/d (fn-wmc-core-remaining fn-wmc-task-steps fn-wmc-frame-steps
                                    fn-wmc-stack-steps fn-wmc-row-steps fn-wmc-last-steps
                                    fn-wmc-pattern-steps fn-wmc-right-steps fn-wmc-match-steps)
-                                  (fn-wmc-task-result fn-wmc-frame-result fn-wmc-one
+                                  (fn-wmc-task-result fn-wmc-frame-result fn-wmc-core-one
                                    fn-wildmat-rightmost-match fn-wm-pattern-row-work)))))
-(defthm fn-wmc-live-remaining-positive
-  (implies (and (fn-wmc-shapedp s) (not (fn-wmc-decidedp s)))
-           (< 0 (fn-wmc-remaining s)))
+(defthm fn-wmc-core-live-remaining-positive
+  (implies (and (fn-wmc-core-shapedp s) (not (fn-wmc-decidedp s)))
+           (< 0 (fn-wmc-core-remaining s)))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (e/d (fn-wmc-remaining fn-wmc-task-steps fn-wmc-frame-steps
+  :hints (("Goal" :in-theory (e/d (fn-wmc-core-remaining fn-wmc-task-steps fn-wmc-frame-steps
                                    fn-wmc-stack-steps fn-wmc-row-steps fn-wmc-last-steps
                                    fn-wmc-pattern-steps fn-wmc-right-steps fn-wmc-match-steps)
-                                  (fn-wmc-task-result fn-wmc-frame-result fn-wmc-one
+                                  (fn-wmc-task-result fn-wmc-frame-result fn-wmc-core-one
                                    fn-wildmat-rightmost-match fn-wm-pattern-row-work)))))
-(defthm fn-wmc-funded-step-progress
-  (implies (fn-wmc-shapedp s)
-           (equal (fn-wmc-remaining (fn-wmc-step s work cons-grant))
-                  (- (fn-wmc-remaining s) (fn-wmc-consumed-work s work cons-grant))))
-  :hints (("Goal" :in-theory (disable fn-wmc-one fn-wmc-remaining fn-wmc-shapedp))))
+(defthm fn-wmc-core-funded-step-progress
+  (implies (fn-wmc-core-shapedp s)
+           (equal (fn-wmc-core-remaining (fn-wmc-core-step s work cons-grant))
+                  (- (fn-wmc-core-remaining s) (fn-wmc-core-consumed-work s work cons-grant))))
+  :hints (("Goal" :in-theory (disable fn-wmc-core-one fn-wmc-core-remaining fn-wmc-core-shapedp))))
 
 (defthm fn-wmc-right-steps-bound
   (<= (fn-wmc-right-steps patterns target)
@@ -645,24 +646,24 @@
   :hints (("Goal" :induct (fn-wmc-right-steps patterns target)
            :in-theory (e/d (fn-wmc-right-steps fn-wmc-pattern-steps fn-wm-total-items)
                             (fn-wildmat-rightmost-match)))))
-(defthm fn-wmc-codepoint-start-work-bound
-  (<= (fn-wmc-remaining (fn-wmc-start-codepoints patterns target))
+(defthm fn-wmc-core-codepoint-start-work-bound
+  (<= (fn-wmc-core-remaining (fn-wmc-start-codepoints patterns target))
       (+ 3 (* 12 (len patterns)) (* 4 (len patterns) (len target))
          (* (fn-wm-total-items patterns) (+ 6 (* 2 (len target))))))
   :hints (("Goal" :use ((:instance fn-wmc-right-steps-bound)) :in-theory
-           (e/d (fn-wmc-remaining fn-wmc-task-steps fn-wmc-match-steps fn-wmc-stack-steps)
+           (e/d (fn-wmc-core-remaining fn-wmc-task-steps fn-wmc-match-steps fn-wmc-stack-steps)
                  (fn-wmc-right-steps fn-wmc-task-result fn-wmc-right-steps-bound fn-wm-total-items)))))
 
-(defthm fn-wmc-start-work-bound
+(defthm fn-wmc-core-start-work-bound
   (implies (stringp group)
-           (<= (fn-wmc-remaining (fn-wmc-start patterns group))
+           (<= (fn-wmc-core-remaining (fn-wmc-core-start patterns group))
                (+ 5 (* 2 (length group)) (* 12 (len patterns))
                   (* 4 (len patterns) (len (fn-nntp-string-octets group)))
                   (* (fn-wm-total-items patterns)
                      (+ 6 (* 2 (len (fn-nntp-string-octets group))))))))
   :hints (("Goal" :use ((:instance fn-wmc-right-steps-bound
                                   (target (fn-nntp-string-octets group))))
-           :in-theory (e/d (fn-wmc-remaining fn-wmc-task-steps fn-wmc-match-steps
+           :in-theory (e/d (fn-wmc-core-remaining fn-wmc-task-steps fn-wmc-match-steps
                              fn-wmc-stack-steps fn-nntp-string-octets revappend)
                             (fn-wmc-right-steps fn-wmc-task-result fn-wmc-right-steps-bound
                              fn-nntp-string-octets-aux fn-wm-total-items)))))
@@ -675,6 +676,455 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-nntp-safe-group-namep))))
 
-(in-theory (disable fn-wmc-run-cons fn-wmc-task-result fn-wmc-frame-result fn-wmc-resume fn-wmc-result fn-wmc-value
-                    fn-wmc-task-steps fn-wmc-frame-steps fn-wmc-stack-steps fn-wmc-remaining
+(in-theory (disable fn-wmc-core-run-cons fn-wmc-task-result fn-wmc-frame-result fn-wmc-resume fn-wmc-core-result fn-wmc-core-value
+                    fn-wmc-task-steps fn-wmc-frame-steps fn-wmc-stack-steps fn-wmc-core-remaining
                     fn-wmc-right-steps fn-wmc-match-steps fn-wmc-row-steps fn-wmc-pattern-steps fn-wmc-last-steps))
+
+(local (include-book "arithmetic/top" :dir :system))
+; Total entry extension: retain a string reference and materialize <=4 octets
+; for the existing UTF8 decoder. Core DP/refinement remains unchanged above.
+(defun fn-wmc-window (text offset fuel)
+  (declare (xargs :guard (and (natp offset) (natp fuel)) :measure (nfix fuel)))
+  (if (and (not (zp fuel)) (stringp text) (< offset (length text)))
+      (cons (char-code (char text offset))
+            (fn-wmc-window text (1+ offset) (1- fuel))) nil))
+(defun fn-wmc-start (patterns group)
+  (declare (xargs :guard t))
+  (cond ((not (stringp group)) (fn-wmc-start-codepoints patterns nil))
+        ((< *fn-wildmat-max-octets* (length group))
+         (fn-wmc-state (fn-wmc-return nil 0) nil))
+        (t (fn-wmc-state (fn-wmc-node :utf8 patterns group 0 nil) nil))))
+(defun fn-wmc-utf8-one (s)
+  (declare (xargs :guard t))
+  (let* ((task (fn-wmc-at 0 s)) (patterns (fn-wmc-at 1 task))
+         (text (fn-wmc-at 2 task)) (offset (nfix (fn-wmc-at 3 task)))
+         (acc (fn-wmc-at 4 task)) (frames (fn-wmc-at 1 s)))
+    (if (and (stringp text) (< offset (length text)))
+        (let* ((window (fn-wmc-window text offset 4)) (next (fn-wildmat-utf8-next window)))
+          (if (fn-wildmat-result-okp next)
+              (fn-wmc-state
+               (fn-wmc-node :utf8 patterns text
+                            (+ offset (- (len window) (len (fn-wildmat-utf8-rest next))))
+                            (cons (fn-wildmat-result-value next) acc)) frames)
+            (fn-wmc-state (fn-wmc-return nil 0) frames)))
+      (fn-wmc-state (fn-wmc-node :reverse patterns acc nil nil) frames))))
+(defun fn-wmc-normalize-decode (s)
+  (declare (xargs :guard t))
+  (let ((task (fn-wmc-at 0 s)))
+    (fn-wmc-state (fn-wmc-node :decode (fn-wmc-at 1 task) (fn-wmc-at 2 task)
+                              (nfix (fn-wmc-at 3 task)) (fn-wmc-at 4 task))
+                  (fn-wmc-at 1 s))))
+(defun fn-wmc-one (s)
+  (declare (xargs :guard t))
+  (let ((task (fn-wmc-at 0 s)))
+    (cond ((eq (fn-wmc-at 0 task) :utf8) (fn-wmc-utf8-one s))
+          ((eq (fn-wmc-at 0 task) :decode)
+           (fn-wmc-core-one (fn-wmc-normalize-decode s)))
+          (t (fn-wmc-core-one s)))))
+(defun fn-wmc-demand (s)
+  (declare (xargs :guard t))
+  (if (member-eq (fn-wmc-at 0 (fn-wmc-at 0 s)) '(:utf8 :decode)) 15 (fn-wmc-core-demand s)))
+(defun fn-wmc-acceptedp (s work cons-grant)
+  (declare (xargs :guard t))
+  (and (not (fn-wmc-decidedp s)) (posp work) (<= (fn-wmc-demand s) (nfix cons-grant))))
+(defun fn-wmc-step (s work cons-grant)
+  (declare (xargs :guard t))
+  (if (fn-wmc-acceptedp s work cons-grant) (fn-wmc-one s) s))
+(defun fn-wmc-consumed-work (s work cons-grant)
+  (declare (xargs :guard t))
+  (if (fn-wmc-acceptedp s work cons-grant) 1 0))
+(defun fn-wmc-consumed-cons (s work cons-grant)
+  (declare (xargs :guard t))
+  (if (fn-wmc-acceptedp s work cons-grant) (fn-wmc-demand s) 0))
+(defun fn-wmc-work-left (s work cons-grant)
+  (declare (xargs :guard t))
+  (- (nfix work) (fn-wmc-consumed-work s work cons-grant)))
+(defun fn-wmc-cons-left (s work cons-grant)
+  (declare (xargs :guard t))
+  (- (nfix cons-grant) (fn-wmc-consumed-cons s work cons-grant)))
+(defun fn-wmc-shapedp (s)
+  (declare (xargs :guard t))
+  (and (fn-wmc-core-shapedp s)
+       (or (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :utf8))
+           (and (natp (fn-wmc-at 3 (fn-wmc-at 0 s)))
+                (true-listp (fn-wmc-at 4 (fn-wmc-at 0 s)))
+                (not (consp (fn-wmc-at 1 s)))))))
+(defun fn-wmc-utf8-result (patterns text offset acc)
+  (declare (xargs :verify-guards nil))
+  (let ((decoded (fn-wildmat-decode-aux
+                  (if (stringp text)
+                      (fn-nntp-string-octets-aux (nthcdr (nfix offset) (coerce text 'list))) nil) (true-list-fix acc))))
+    (if (fn-wildmat-result-okp decoded)
+        (fn-wm-match-codepoints-work patterns (fn-wildmat-result-value decoded))
+      (fn-wm-work-result nil 0))))
+(defun fn-wmc-result (s)
+  (declare (xargs :verify-guards nil))
+  (let ((task (fn-wmc-at 0 s)))
+    (if (eq (fn-wmc-at 0 task) :utf8)
+        (fn-wmc-resume (fn-wmc-at 1 s)
+                       (fn-wmc-utf8-result (fn-wmc-at 1 task) (fn-wmc-at 2 task)
+                                           (fn-wmc-at 3 task) (fn-wmc-at 4 task)))
+      (fn-wmc-core-result s))))
+(defun fn-wmc-value (s)
+  (declare (xargs :verify-guards nil))
+  (fn-wm-work-value (fn-wmc-result s)))
+
+(defun fn-wmc-list-window (xs fuel)
+  (declare (xargs :guard (natp fuel) :measure (nfix fuel)))
+  (if (and (not (zp fuel)) (consp xs))
+      (cons (car xs) (fn-wmc-list-window (cdr xs) (1- fuel))) nil))
+(local
+ (defthm fn-wmc-next-window
+   (let* ((window (fn-wmc-list-window xs 4)) (next (fn-wildmat-utf8-next window))
+          (width (- (len window) (len (fn-wildmat-utf8-rest next)))))
+     (equal (fn-wildmat-utf8-next xs)
+            (if (fn-wildmat-result-okp next)
+                (fn-wildmat-utf8-ok (fn-wildmat-result-value next) (nthcdr width xs)) next)))
+   :hints (("Goal" :in-theory (union-theories (theory 'fn-wmc-entry-base) '( fn-wmc-list-window fn-wildmat-utf8-next
+                                      fn-wildmat-utf8-2p fn-wildmat-utf8-3-tailsp
+                                      fn-wildmat-utf8-4-tailsp fn-wildmat-utf8-2-value
+                                      fn-wildmat-utf8-3-value fn-wildmat-utf8-4-value
+                                      fn-wildmat-result-okp fn-wildmat-result-value
+                                      fn-wildmat-utf8-rest fn-wildmat-utf8-ok fn-wildmat-error nthcdr))))))
+(local
+ (defthm fn-wmc-offset-open
+   (implies (and (natp k) (< k (len xs)))
+            (equal (nthcdr k xs) (cons (nth k xs) (nthcdr (1+ k) xs))))
+   :hints (("Goal" :in-theory (enable nth nthcdr)))))
+(local
+ (defthm fn-wmc-string-tail-empty
+   (implies (and (natp k) (<= (len xs) k))
+            (equal (fn-nntp-string-octets-aux (nthcdr k xs)) nil))
+   :hints (("Goal" :in-theory (enable nthcdr fn-nntp-string-octets-aux)))))
+(local
+ (defthm fn-wmc-string-window-is-list-window
+   (implies (and (stringp text) (natp offset) (natp fuel))
+            (equal (fn-wmc-window text offset fuel)
+                   (fn-wmc-list-window
+                    (fn-nntp-string-octets-aux (nthcdr offset (coerce text 'list))) fuel)))
+   :hints (("Goal" :induct (fn-wmc-window text offset fuel)
+            :in-theory (e/d (fn-wmc-window fn-wmc-list-window char fn-nntp-string-octets-aux)
+                             (nthcdr))))))
+(local (in-theory (disable fn-wmc-next-window)))
+(local
+ (defthm fn-wmc-next-window-width
+   (let* ((window (fn-wmc-list-window xs 4)) (next (fn-wildmat-utf8-next window))
+          (width (- (len window) (len (fn-wildmat-utf8-rest next)))))
+     (implies (fn-wildmat-result-okp next) (and (natp width) (< 0 width) (<= width 4))))
+   :hints (("Goal" :in-theory (enable fn-wmc-list-window fn-wildmat-utf8-next
+                                      fn-wildmat-result-okp fn-wildmat-utf8-rest
+                                      fn-wildmat-utf8-2p fn-wildmat-utf8-3-tailsp
+                                      fn-wildmat-utf8-4-tailsp fn-wildmat-utf8-ok fn-wildmat-error)))))
+(local
+ (defthm fn-wmc-decode-on-window
+   (implies (consp xs)
+    (let* ((window (fn-wmc-list-window xs 4)) (next (fn-wildmat-utf8-next window))
+           (width (- (len window) (len (fn-wildmat-utf8-rest next)))))
+      (equal (fn-wildmat-decode-aux xs acc)
+             (if (fn-wildmat-result-okp next)
+                 (fn-wildmat-decode-aux (nthcdr width xs)
+                                       (cons (fn-wildmat-result-value next) acc)) next))))
+   :hints (("Goal" :use fn-wmc-next-window
+            :expand ((fn-wildmat-decode-aux xs acc))
+            :in-theory (enable fn-wildmat-result-okp fn-wildmat-result-value fn-wildmat-utf8-rest
+                                fn-wildmat-utf8-ok)))))
+(local
+ (defthm fn-wmc-nthcdr-octets
+   (implies (natp k)
+            (equal (nthcdr k (fn-nntp-string-octets-aux chars))
+                   (fn-nntp-string-octets-aux (nthcdr k chars))))
+   :hints (("Goal" :in-theory (enable nthcdr fn-nntp-string-octets-aux)))))
+(local
+ (defthm fn-wmc-nthcdr-sum
+   (implies (and (natp i) (natp j))
+            (equal (nthcdr i (nthcdr j xs)) (nthcdr (+ i j) xs)))
+   :hints (("Goal" :in-theory (enable nthcdr)))))
+(local
+ (defthm fn-wmc-octet-tail-consp
+   (implies (and (stringp text) (natp offset) (< offset (length text)))
+            (consp (fn-nntp-string-octets-aux (nthcdr offset (coerce text 'list)))))
+   :hints (("Goal" :in-theory (e/d (fn-nntp-string-octets-aux) (nthcdr))))))
+(local
+ (defthm fn-wmc-decode-empty
+   (implies (true-listp acc)
+            (equal (fn-wildmat-decode-aux nil acc) (fn-wildmat-ok (revappend acc nil))))
+   :hints (("Goal" :in-theory (e/d (fn-wildmat-decode-aux reverse revappend)
+                                  (revappend-removal reverse-removal))))))
+(local (defthm fn-wmc-ok-value (equal (fn-wildmat-result-value (fn-wildmat-ok xs)) xs)))
+(local (defthm fn-wmc-ok-ok (fn-wildmat-result-okp (fn-wildmat-ok xs))))
+
+(local
+ (defthm fn-wmc-revappend-fixed
+   (equal (revappend (true-list-fix acc) tail) (revappend acc tail))
+   :hints (("Goal" :induct (true-list-fix acc)
+            :in-theory (e/d (true-list-fix revappend) (revappend-removal))))))
+(defthm fn-wmc-utf8-one-preserves-result
+  (implies (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :utf8)
+           (equal (fn-wmc-result (fn-wmc-utf8-one s)) (fn-wmc-result s)))
+  :hints (("Goal" :use ((:instance fn-wmc-decode-on-window
+                            (xs (fn-nntp-string-octets-aux
+                                 (nthcdr (nfix (fn-wmc-at 3 (fn-wmc-at 0 s)))
+                                          (coerce (fn-wmc-at 2 (fn-wmc-at 0 s)) 'list))))
+                            (acc (true-list-fix (fn-wmc-at 4 (fn-wmc-at 0 s)))))
+                            (:instance fn-wmc-next-window-width
+                             (xs (fn-nntp-string-octets-aux
+                                  (nthcdr (nfix (fn-wmc-at 3 (fn-wmc-at 0 s)))
+                                           (coerce (fn-wmc-at 2 (fn-wmc-at 0 s)) 'list))))))
+           :in-theory
+           (e/d (fn-wmc-result fn-wmc-utf8-result fn-wmc-utf8-one fn-wmc-shapedp
+                  fn-wmc-core-shapedp fn-wmc-core-result fn-wmc-task-result true-list-fix
+                  fn-wm-work-result fn-wm-work-value fn-wm-work-cost
+                  fn-wildmat-ok fn-wildmat-error fn-wildmat-result-okp fn-wildmat-result-value fn-wildmat-utf8-rest reverse revappend)
+                 (fn-wmc-resume fn-wmc-decode-on-window fn-wildmat-decode-aux
+                  fn-wildmat-utf8-next fn-wmc-window fn-wmc-list-window
+                  fn-nntp-string-octets-aux nthcdr char revappend-removal reverse-removal
+                  fn-wm-match-codepoints-work fn-wmc-next-window fn-wmc-offset-open fn-wmc-nthcdr-open fn-wmc-octets-at-offset)))))
+(local
+ (defthm fn-wmc-core-one-not-utf8
+   (not (eq (fn-wmc-at 0 (fn-wmc-at 0 (fn-wmc-core-one s))) :utf8))
+   :hints (("Goal" :in-theory (enable fn-wmc-core-one)))))
+(local
+ (defthm fn-wmc-normalize-decode-result
+   (implies (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :decode)
+            (equal (fn-wmc-core-result (fn-wmc-normalize-decode s)) (fn-wmc-core-result s)))
+   :hints (("Goal" :in-theory (e/d (fn-wmc-normalize-decode fn-wmc-core-result fn-wmc-task-result)
+                                   (fn-wmc-resume fn-wm-match-codepoints-work))))))
+(local
+ (defthm fn-wmc-normalize-decode-shaped
+   (implies (and (fn-wmc-core-shapedp s) (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :decode))
+            (fn-wmc-core-shapedp (fn-wmc-normalize-decode s)))
+   :hints (("Goal" :in-theory (enable fn-wmc-normalize-decode fn-wmc-core-shapedp fn-wmc-at)))))
+(local
+ (defthm fn-wmc-normalize-decode-remaining
+   (implies (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :decode)
+            (equal (fn-wmc-core-remaining (fn-wmc-normalize-decode s)) (fn-wmc-core-remaining s)))
+   :hints (("Goal" :in-theory (e/d (fn-wmc-normalize-decode fn-wmc-core-remaining
+                                   fn-wmc-task-steps fn-wmc-task-result)
+                                  (fn-wmc-stack-steps fn-wmc-resume fn-wmc-match-steps
+                                   fn-wm-match-codepoints-work))))))
+(local (defthm fn-wmc-normalize-decode-tag
+  (equal (fn-wmc-at 0 (fn-wmc-at 0 (fn-wmc-normalize-decode s))) :decode)))
+(local (defthm fn-wmc-normalize-decode-index
+  (natp (fn-wmc-at 3 (fn-wmc-at 0 (fn-wmc-normalize-decode s))))))
+(defthm fn-wmc-one-preserves-result
+  (equal (fn-wmc-result (fn-wmc-one s)) (fn-wmc-result s))
+  :hints (("Goal" :cases ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :utf8)
+                           (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :decode))
+           :use (fn-wmc-core-one-not-utf8 fn-wmc-core-one-preserves-result
+                 (:instance fn-wmc-core-one-not-utf8 (s (fn-wmc-normalize-decode s)))
+                 (:instance fn-wmc-core-one-preserves-result (s (fn-wmc-normalize-decode s))))
+           :in-theory (e/d (fn-wmc-one fn-wmc-result)
+                            (fn-wmc-normalize-decode fn-wmc-at fn-wmc-utf8-one fn-wmc-core-one fn-wmc-core-result
+                             fn-wmc-core-one-not-utf8 fn-wmc-core-one-preserves-result
+                             fn-wmc-utf8-result)))))
+(local
+ (defthm fn-wmc-string-octets-length
+   (equal (len (fn-nntp-string-octets-aux chars)) (len chars))
+   :hints (("Goal" :in-theory (enable fn-nntp-string-octets-aux)))))
+(local
+ (defthm fn-wmc-characters-are-octets
+   (implies (character-listp chars)
+            (fn-wildmat-octet-listp (fn-nntp-string-octets-aux chars)))
+   :hints (("Goal" :induct (fn-nntp-string-octets-aux chars)
+            :in-theory (enable fn-nntp-string-octets-aux fn-wildmat-octet-listp
+                                fn-cbor-octet-listp fn-cbor-octetp character-listp)))))
+(local
+ (defthm fn-wmc-list-limit-iff
+   (implies (and (true-listp xs) (natp bound))
+            (equal (fn-wildmat-at-mostp xs bound) (<= (len xs) bound)))
+   :hints (("Goal" :induct (fn-cbor-at-mostp xs bound)
+            :in-theory (enable fn-wildmat-at-mostp fn-cbor-at-mostp)))))
+(defthm fn-wmc-start-value-is-group-match
+  (equal (fn-wmc-value (fn-wmc-start patterns group))
+         (fn-nntp-group-matches-parsed-wildmatp patterns group))
+  :hints (("Goal" :in-theory
+           (e/d (fn-wmc-start fn-wmc-value fn-wmc-result fn-wmc-utf8-result
+                  fn-wmc-core-result fn-wmc-task-result fn-wmc-resume
+                  fn-nntp-group-matches-parsed-wildmatp fn-nntp-string-octets
+                  fn-wildmat-decode fn-wildmat-result-okp fn-wildmat-result-value
+                  fn-wildmat-ok fn-wildmat-error nthcdr)
+                 (fn-wildmat-decode-aux fn-nntp-string-octets-aux fn-wildmat-at-mostp
+                  fn-wildmat-octet-listp fn-wm-match-codepoints-work)))))
+(defthm fn-wmc-start-has-shape
+  (fn-wmc-shapedp (fn-wmc-start patterns group))
+  :hints (("Goal" :in-theory (enable fn-wmc-shapedp fn-wmc-core-shapedp))))
+(defthm fn-wmc-utf8-one-preserves-shape
+  (implies (and (fn-wmc-shapedp s) (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :utf8))
+           (fn-wmc-shapedp (fn-wmc-utf8-one s)))
+  :hints (("Goal" :use ((:instance fn-wmc-next-window-width
+                              (xs (fn-nntp-string-octets-aux
+                                   (nthcdr (fn-wmc-at 3 (fn-wmc-at 0 s))
+                                            (coerce (fn-wmc-at 2 (fn-wmc-at 0 s)) 'list))))))
+           :in-theory
+           (e/d (fn-wmc-utf8-one fn-wmc-shapedp fn-wmc-core-shapedp)
+                 (fn-wmc-next-window-width nthcdr fn-wmc-nthcdr-open fn-wmc-octets-at-offset fn-wmc-offset-open fn-wmc-window fn-wmc-list-window fn-wildmat-utf8-next
+                  fn-wildmat-result-okp fn-wildmat-result-value fn-wildmat-utf8-rest)))))
+(defthm fn-wmc-one-preserves-shape
+  (implies (fn-wmc-shapedp s) (fn-wmc-shapedp (fn-wmc-one s)))
+  :hints (("Goal" :use (fn-wmc-core-one-not-utf8
+                 (:instance fn-wmc-core-one-not-utf8 (s (fn-wmc-normalize-decode s))))
+           :in-theory (e/d (fn-wmc-one fn-wmc-shapedp)
+                            (fn-wmc-normalize-decode fn-wmc-utf8-one fn-wmc-core-one fn-wmc-at
+                             fn-wmc-core-one-not-utf8 fn-wmc-core-shapedp)))))
+(defthm fn-wmc-step-preserves-shape
+  (implies (fn-wmc-shapedp s) (fn-wmc-shapedp (fn-wmc-step s work cons-grant)))
+  :hints (("Goal" :in-theory (disable fn-wmc-one fn-wmc-shapedp))))
+(defthm fn-wmc-step-preserves-result
+  (equal (fn-wmc-result (fn-wmc-step s work cons-grant)) (fn-wmc-result s))
+  :hints (("Goal" :in-theory (disable fn-wmc-one fn-wmc-result fn-wmc-shapedp))))
+(defthm fn-wmc-step-preserves-value
+  (equal (fn-wmc-value (fn-wmc-step s work cons-grant)) (fn-wmc-value s))
+  :hints (("Goal" :in-theory (e/d (fn-wmc-value) (fn-wmc-result fn-wmc-step fn-wmc-shapedp)))))
+(defthm fn-wmc-decided-value
+  (implies (fn-wmc-decidedp s)
+           (equal (fn-wmc-matchedp s) (if (fn-wmc-value s) t nil)))
+  :hints (("Goal" :in-theory (enable fn-wmc-value fn-wmc-result fn-wmc-core-result fn-wmc-core-value
+                                      fn-wmc-task-result fn-wmc-resume))))
+
+(local
+ (defthm fn-wmc-utf8-rest-count-less
+   (implies (fn-wildmat-result-okp (fn-wildmat-utf8-next xs))
+            (< (acl2-count (fn-wildmat-utf8-rest (fn-wildmat-utf8-next xs))) (acl2-count xs)))
+   :hints (("Goal" :in-theory (enable fn-wildmat-utf8-next fn-wildmat-result-okp
+                                      fn-wildmat-utf8-rest fn-wildmat-utf8-ok fn-wildmat-error)))))
+(defun fn-wmc-utf8-count (xs)
+  (declare (xargs :measure (acl2-count xs) :verify-guards nil
+                  :hints (("Goal" :use fn-wmc-utf8-rest-count-less
+                           :in-theory (disable fn-wmc-utf8-rest-count-less fn-wildmat-result-okp
+                                               fn-wildmat-utf8-rest acl2-count)))))
+  (if (consp xs)
+      (let ((next (fn-wildmat-utf8-next xs)))
+        (if (fn-wildmat-result-okp next)
+            (1+ (fn-wmc-utf8-count (fn-wildmat-utf8-rest next))) 1)) 1))
+(local
+ (defthm fn-wmc-count-on-window
+   (implies (consp xs)
+    (let* ((window (fn-wmc-list-window xs 4)) (next (fn-wildmat-utf8-next window))
+           (width (- (len window) (len (fn-wildmat-utf8-rest next)))))
+      (equal (fn-wmc-utf8-count xs)
+             (if (fn-wildmat-result-okp next) (1+ (fn-wmc-utf8-count (nthcdr width xs))) 1))))
+   :hints (("Goal" :use fn-wmc-next-window
+            :expand ((fn-wmc-utf8-count xs))
+            :in-theory (enable fn-wildmat-result-okp fn-wildmat-result-value fn-wildmat-utf8-rest
+                                fn-wildmat-utf8-ok)))))
+(defun fn-wmc-remaining (s)
+  (declare (xargs :verify-guards nil))
+  (let ((task (fn-wmc-at 0 s)))
+    (if (eq (fn-wmc-at 0 task) :utf8)
+        (let* ((text (fn-wmc-at 2 task)) (offset (nfix (fn-wmc-at 3 task)))
+               (xs (if (stringp text) (fn-nntp-string-octets-aux
+                                      (nthcdr offset (coerce text 'list))) nil))
+               (decoded (fn-wildmat-decode-aux xs (fn-wmc-at 4 task))))
+          (+ (fn-wmc-utf8-count xs)
+             (if (fn-wildmat-result-okp decoded)
+                 (+ (len (fn-wildmat-result-value decoded)) 1
+                    (fn-wmc-match-steps (fn-wmc-at 1 task) (fn-wildmat-result-value decoded))) 0)))
+      (fn-wmc-core-remaining s))))
+(local
+ (defthm fn-wmc-revappend-length
+   (equal (len (revappend xs ys)) (+ (len xs) (len ys)))
+   :hints (("Goal" :induct (revappend xs ys)
+            :in-theory (e/d (revappend) (revappend-removal))))))
+(local (defthm fn-wmc-count-empty (equal (fn-wmc-utf8-count nil) 1)))
+(defthm fn-wmc-utf8-one-progress
+  (implies (and (fn-wmc-shapedp s) (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :utf8))
+           (equal (fn-wmc-remaining (fn-wmc-utf8-one s)) (1- (fn-wmc-remaining s))))
+  :hints (("Goal"
+           :use ((:instance fn-wmc-decode-on-window
+                  (xs (fn-nntp-string-octets-aux
+                       (nthcdr (fn-wmc-at 3 (fn-wmc-at 0 s))
+                                (coerce (fn-wmc-at 2 (fn-wmc-at 0 s)) 'list))))
+                  (acc (fn-wmc-at 4 (fn-wmc-at 0 s))))
+                 (:instance fn-wmc-count-on-window
+                  (xs (fn-nntp-string-octets-aux
+                       (nthcdr (fn-wmc-at 3 (fn-wmc-at 0 s))
+                                (coerce (fn-wmc-at 2 (fn-wmc-at 0 s)) 'list)))))
+                 (:instance fn-wmc-next-window-width
+                  (xs (fn-nntp-string-octets-aux
+                       (nthcdr (fn-wmc-at 3 (fn-wmc-at 0 s))
+                                (coerce (fn-wmc-at 2 (fn-wmc-at 0 s)) 'list))))))
+           :in-theory
+           (e/d (fn-wmc-remaining fn-wmc-utf8-one fn-wmc-shapedp fn-wmc-core-shapedp
+                  fn-wmc-core-remaining fn-wmc-task-steps fn-wmc-stack-steps
+                  fn-wildmat-ok fn-wildmat-error fn-wildmat-result-okp fn-wildmat-result-value
+                  fn-wildmat-utf8-rest reverse revappend)
+                 (fn-wmc-decode-on-window fn-wmc-count-on-window fn-wmc-utf8-count
+                  fn-wildmat-decode-aux fn-wmc-window fn-wmc-list-window
+                  fn-nntp-string-octets-aux nthcdr char revappend-removal reverse-removal
+                  fn-wmc-match-steps fn-wmc-task-result fn-wildmat-utf8-next
+                  fn-wmc-next-window fn-wmc-nthcdr-open fn-wmc-octets-at-offset fn-wmc-offset-open)))))
+(defthm fn-wmc-one-progress
+  (implies (and (fn-wmc-shapedp s) (not (fn-wmc-decidedp s)))
+           (equal (fn-wmc-remaining (fn-wmc-one s)) (1- (fn-wmc-remaining s))))
+  :hints (("Goal" :cases ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :utf8))
+           :use (fn-wmc-core-one-not-utf8 fn-wmc-core-one-progress
+                 (:instance fn-wmc-core-one-not-utf8 (s (fn-wmc-normalize-decode s)))
+                 (:instance fn-wmc-core-one-progress (s (fn-wmc-normalize-decode s))))
+           :in-theory (e/d (fn-wmc-one fn-wmc-shapedp fn-wmc-remaining)
+                            (fn-wmc-normalize-decode fn-wmc-at fn-wmc-utf8-one fn-wmc-core-one fn-wmc-core-remaining
+                             fn-wmc-core-one-not-utf8 fn-wmc-core-one-progress
+                             fn-wmc-core-shapedp fn-wmc-utf8-count fn-wildmat-decode-aux
+                             fn-wildmat-result-okp fn-wildmat-result-value fn-wmc-match-steps)))))
+(defthm fn-wmc-unfunded-step-is-identical
+  (implies (not (fn-wmc-acceptedp s work cons-grant))
+           (equal (fn-wmc-step s work cons-grant) s)))
+(defthm fn-wmc-step-work-bound
+  (<= (fn-wmc-consumed-work s work cons-grant) (nfix work)) :rule-classes :linear)
+(defthm fn-wmc-step-cons-bound
+  (<= (fn-wmc-consumed-cons s work cons-grant) (nfix cons-grant)) :rule-classes :linear)
+(defthm fn-wmc-work-left-natural
+  (natp (fn-wmc-work-left s work cons-grant)) :rule-classes :type-prescription)
+(defthm fn-wmc-cons-left-natural
+  (natp (fn-wmc-cons-left s work cons-grant)) :rule-classes :type-prescription)
+(defthm fn-wmc-work-conservation
+  (equal (+ (fn-wmc-consumed-work s work cons-grant) (fn-wmc-work-left s work cons-grant))
+         (nfix work)))
+(defthm fn-wmc-cons-conservation
+  (equal (+ (fn-wmc-consumed-cons s work cons-grant) (fn-wmc-cons-left s work cons-grant))
+         (nfix cons-grant)))
+(defun fn-wmc-run-cons (s work cons-grant)
+  (declare (xargs :verify-guards nil :measure (nfix work)))
+  (if (fn-wmc-acceptedp s work cons-grant)
+      (+ (fn-wmc-consumed-cons s work cons-grant)
+         (fn-wmc-run-cons (fn-wmc-step s work cons-grant)
+                          (fn-wmc-work-left s work cons-grant)
+                          (fn-wmc-cons-left s work cons-grant))) 0))
+(defthm fn-wmc-cumulative-cons-bound
+  (<= (fn-wmc-run-cons s work cons-grant) (nfix cons-grant))
+  :hints (("Goal" :induct (fn-wmc-run-cons s work cons-grant)
+           :in-theory (disable fn-wmc-step fn-wmc-one fn-wmc-decidedp))))
+(defun fn-wmc-one-cons-cells (s)
+  (declare (xargs :guard t))
+  (if (member-eq (fn-wmc-at 0 (fn-wmc-at 0 s)) '(:utf8 :decode)) 15
+    (fn-wmc-core-one-cons-cells s)))
+(defthm fn-wmc-one-cons-cells-bound
+  (<= (fn-wmc-one-cons-cells s) (fn-wmc-demand s))
+  :rule-classes :linear)
+(defthm fn-wmc-accepted-cons-cells-covered
+  (implies (fn-wmc-acceptedp s work cons-grant)
+           (<= (fn-wmc-one-cons-cells s) (fn-wmc-consumed-cons s work cons-grant)))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (disable fn-wmc-one-cons-cells))))
+(local
+ (defthm fn-wmc-utf8-count-positive
+   (< 0 (fn-wmc-utf8-count xs)) :rule-classes :linear
+   :hints (("Goal" :induct (fn-wmc-utf8-count xs)
+            :in-theory (e/d (fn-wmc-utf8-count) (fn-wildmat-utf8-next))))))
+(defthm fn-wmc-remaining-natural
+  (natp (fn-wmc-remaining s)) :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (e/d (fn-wmc-remaining) (fn-wildmat-decode-aux fn-wmc-match-steps
+                                                   fn-wmc-core-remaining fn-wmc-utf8-count)))))
+(defthm fn-wmc-live-remaining-positive
+  (implies (and (fn-wmc-shapedp s) (not (fn-wmc-decidedp s)))
+           (< 0 (fn-wmc-remaining s)))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (e/d (fn-wmc-remaining fn-wmc-shapedp)
+                                  (fn-wildmat-decode-aux fn-wmc-match-steps fn-wmc-core-remaining
+                                   fn-wmc-utf8-count fn-wmc-core-shapedp)))))
+(defthm fn-wmc-funded-step-progress
+  (implies (fn-wmc-shapedp s)
+           (equal (fn-wmc-remaining (fn-wmc-step s work cons-grant))
+                  (- (fn-wmc-remaining s) (fn-wmc-consumed-work s work cons-grant))))
+  :hints (("Goal" :in-theory (disable fn-wmc-one fn-wmc-remaining fn-wmc-shapedp))))
+(in-theory (disable fn-wmc-utf8-result fn-wmc-result fn-wmc-value fn-wmc-remaining
+                    fn-wmc-utf8-count fn-wmc-run-cons fn-wmc-list-window))
