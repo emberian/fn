@@ -313,3 +313,19 @@ and green/head archived
 `planning/evidence/repair/S141-20d56b6e8f544518b2865742149af33e.json`,
 sha256 `9cbce3906368ee3dec9db92ae4e4ded65fef8b515d1482522a9e70274672b30c`.
 No image build run.
+
+NIGHT-NESTED-FIXTURE source `fa0d4b774`: harness scans now follow literal
+repository test-fixture loads before deriving trap stubs; nested hand stubs
+retain arity checks and nested real extraction mentions join the existing
+source inventory. Quoted/dynamic loads aren't evaluated; missing fixtures,
+cycles and repository escapes refuse; generated trap blocks don't count as
+hand implementations. Existing mention-based extraction model remains static,
+not an executable coverage claim. Ten nested/template fixtures pass0.015s,
+four prior derived-stub fixtures pass0.009s. Runtime actor static inspection
+shows class/fault not unresolved, stale0; no runtime fixture edits or raw
+schedule runs by this lane. Root lane scan reads18harnesses successfully.
+Intended nested-real assertion red/base and green/head archived
+`planning/evidence/repair/NIGHT-NESTED-FIXTURE-d6ba519ad655405aa16a9e063192bdb6.json`,
+sha256 `eb1a775488022fb4d8621f959d23ae076f59c3af17c082486be2634ea97304ea`.
+Initial local selection named nonexistent TestStubsTests; corrected existing
+DerivedStubTests fixtures passed. No blanket stub regeneration.
