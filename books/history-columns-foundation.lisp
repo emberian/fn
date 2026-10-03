@@ -296,6 +296,14 @@
             (equal (nth (nth 1 c) (nth 0 (fn-hist$c-append x c))) x))))
 
 (local
+ (defthm fn-hist-nth-cons-natural
+  (implies (natp i)
+   (equal (nth i (cons x xs))
+          (if (zp i) x (nth (- i 1) xs))))
+  :hints (("Goal" :in-theory (union-theories
+             '(nth nfix natp zp car-cons cdr-cons) (theory 'minimal-theory))))))
+
+(local
  (defthm fn-hist-build-rows
    (implies (and (natp i) (natp (nth 1 c))
                  (< i (+ (nth 1 c) (len events))))
@@ -303,7 +311,8 @@
                    (if (< i (nth 1 c))
                        (nth i (nth 0 c))
                      (nth (- i (nth 1 c)) events))))
-   :hints (("Goal" :in-theory (enable fn-hist-build)
+   :hints (("Goal" :in-theory (e/d (fn-hist-build fn-hist-nth-cons-natural)
+                             (fn-hist$c-grow fn-hist$c-append))
             :induct (fn-hist-build events c)))))
 
 (local
