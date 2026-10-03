@@ -8365,9 +8365,11 @@
         "tests/test_native_syncer_pipeline_escape_raw.sh",
         "tests/native_syncer_pipeline_escape_raw.lisp",
         "tests/test_native_committer_actor_raw.sh",
-        "tests/native_committer_actor_raw.lisp"
+        "tests/native_committer_actor_raw.lisp",
+        "tests/test_native_syncer_typed_raw.sh",
+        "tests/native_syncer_typed_raw.lisp"
       ],
-      "execution_scope": "Deployed native bodies and actual fn-oqw/actor decisions under SBCL with recording funding and I/O boundaries. Typed ledger theorem unchanged. Full saved-image/shutdown qualification remains Integration work."
+      "execution_scope": "Deployed native bodies and actual fn-oqw/actor decisions under SBCL, plus six actual typed-ledger abandonment schedules through validated creator allocation and semantic counterparts in scoped ACL2. I/O/fence are recording boundaries. No new theorem or saved-image/shutdown qualification."
     }
   ]
 }

@@ -784,3 +784,11 @@ command-repl.log.gz and checks.json, including current subject/consumer file has
 ## Source assembly DC03 discovery forms — GPT-6.1-Sol
 
 Reviewed d8a0af2f3 LIST five-form and NEWGROUPS two-form table additions consumed by actual fn-scr-command -> fn-proto-archive-command-cat. Ordered xref/counts/compatibility/active/reference fallback mirrors existing dispatcher; helper witnesses assert archive/catalog/index/env invariants, reachable discovery and exact result codes. DATE remains actual generated session route, with literal111/501/503 replies. Prior emitter40forms/guards1.93s500442steps and64-event literalteeth0.12s1854steps reused; two changed source/fixture paths exact producer match, no extra replay. Completed-discovery view and whole-reply allocation debts retained. Only cumulative LANEDUMP conflict; source and spec hunk exact. Integration owns generated command/report world and matching native consumer checks.
+
+Typed follow-through: existing scoped tools/acl2 native_syncer_typed_raw script
+also passed six actual abandonment schedules (done/uncertain/fault, physical
+before/after) over real typed ledger, validated creator and normal semantic
+counterparts. Final raw form 0.21 s; no new certification/image. Full transcript
+archived as planning/evidence/astra-syncer-typed-abandon-20261003.log. Script now
+requires the final abandonment sentinel so an earlier producer pass cannot hide
+a later fixture failure. Source SCN-1087 updated to this stronger tested scope.

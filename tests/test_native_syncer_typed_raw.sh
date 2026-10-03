@@ -16,8 +16,8 @@ tools/acl2 --timeout 90 --wait-seconds 30 --label runtime-typed-syncer >"$log" 2
 (progn! (set-raw-mode t) (load "tests/native_syncer_typed_raw.lisp"))
 (good-bye)
 ACL2
-if ! rg -q '^native_syncer_typed_producer_raw: PASS' "$log"; then
+if ! rg -q '^native_syncer_typed_abandon_raw: PASS' "$log"; then
   tail -70 "$log"
   exit 1
 fi
-rg '^native_syncer_typed_producer_raw: PASS' "$log"
+rg '^native_syncer_typed_(producer|abandon)_raw: PASS' "$log"
