@@ -66,3 +66,12 @@ advisory approval or dissent was claimed.
 
 ## Combined lifecycle identity integration
 - Runtime baseline at3bda776c6 translated with exact historical host/contracts and both historical+lexical analyzers.366rows/weight1469 retained;40callback-bearing keys changed, no additions/collisions.39combined lock/selector/publication tests pass. Removed superseded current-tree --rekey-lambdas alias path. Source identity migration is distinct from resolved runtime lock debt.
+NIGHT-STATEMENT-ROUTE source `0200b0f4a`: statement-cut inventory follows the
+syntactic call to the filled-buffer helper and counts every reached kind-4
+commit, including wrapper commits. Each requires the actual statement fence
+and matching service/event arguments. Quoted/docstring-only helpers do not
+count. 29 native_program_check tests pass, including naked commits and wrong
+fence/event negatives. Same-harness base assertion failure and head pass archived
+as `planning/evidence/repair/NIGHT-STATEMENT-ROUTE-6b4f5cd5ab7740cc98e45c29ddcc467b.json`,
+sha256 `e0b932d497810bff79d5a31a9fa4c1c2c161d8f3fd383863f725f2acfe2974a3`.
+This is source route validation, not an image or runtime equivalence claim.

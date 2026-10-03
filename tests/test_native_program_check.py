@@ -93,6 +93,42 @@ class NativeProgramCheckTests(unittest.TestCase):
         self.assert_fails(self.host.replace(body, moved), "fn-bs-recover-stage-cleanup-program")
 
 
+class StatementRouteTests(unittest.TestCase):
+    COMMIT = "(fnn-owner-statement-committed service event (fnn-owner-identity-commit service event))"
+    WRAPPER = "(defun fnn-owner-attempt-transit (service event) (fnn-owner-attempt-filled service event))"
+    HELPER = "(defun fnn-owner-attempt-filled (service event) %s)" % COMMIT
+
+    def test_named_filled_helper_route_keeps_every_kind_four_commit_fenced(self):
+        try:
+            native_cuts.verify_statement_cut_map()
+        except AssertionError as error:
+            self.fail("statement checker must follow the actual filled-buffer route: " + str(error))
+
+    def test_direct_and_filled_routes_are_checked(self):
+        native_cuts.verify_statement_commit_routes(self.WRAPPER + self.HELPER)
+        native_cuts.verify_statement_commit_routes(
+            "(defun fnn-owner-attempt-transit (service event) %s)" % self.COMMIT)
+
+    def test_unfenced_commit_in_helper_or_wrapper_is_refused(self):
+        naked = "(fnn-owner-identity-commit service event)"
+        for owner in (self.WRAPPER + self.HELPER.replace(self.COMMIT, naked),
+                      self.WRAPPER.replace("(fnn-owner-attempt-filled service event)",
+                                           naked + " (fnn-owner-attempt-filled service event)") + self.HELPER):
+            with self.subTest(owner=owner), self.assertRaises(AssertionError):
+                native_cuts.verify_statement_commit_routes(owner)
+
+    def test_docstring_helper_name_does_not_make_an_unreachable_commit_count(self):
+        fake = '(defun fnn-owner-attempt-transit (service event) "(fnn-owner-attempt-filled service event)" nil)'
+        with self.assertRaises(AssertionError):
+            native_cuts.verify_statement_commit_routes(fake + self.HELPER)
+
+    def test_wrong_event_fence_or_changed_commit_arguments_are_refused(self):
+        for helper in (self.HELPER.replace("committed service event", "committed service other"),
+                       self.HELPER.replace("commit service event", "commit service other")):
+            with self.subTest(helper=helper), self.assertRaises(AssertionError):
+                native_cuts.verify_statement_commit_routes(self.WRAPPER + helper)
+
+
 class UnbalancedFormTests(unittest.TestCase):
     """PKT-345: an unbalanced form is located, never a bare StopIteration."""
 

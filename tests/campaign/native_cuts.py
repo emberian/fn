@@ -1031,6 +1031,49 @@ def _in_order(body: str, needles, where: str) -> None:
         at = found + len(needle)
 
 
+def verify_statement_commit_routes(owner: str) -> None:
+    """Every syntactic kind-4 commit on the named transit route is fenced.
+
+    Follow the actual wrapper call into the filled-buffer implementation. A
+    docstring naming that helper is not a call. This is a source shape check;
+    barrier/crash behavior still requires the model and runtime witnesses.
+    """
+    from tools import ledger
+    pending = ["fnn-owner-attempt-transit"]
+    seen = set()
+    commits = wrapped = 0
+    while pending:
+        name = pending.pop()
+        if name in seen:
+            continue
+        seen.add(name)
+        forms = ledger.Reader(host_function(owner, name)).top_level()
+        stack = [(forms[0][0], False)]
+        while stack:
+            form, fenced = stack.pop()
+            if not isinstance(form, list):
+                continue
+            head = ledger.head(form)
+            if head in ("quote", "quasiquote"):
+                continue
+            if head == "fnn-owner-attempt-filled":
+                pending.append(head)
+            if head == "fnn-owner-statement-committed":
+                if [str(a) for a in form[1:3]] != ["service", "event"]:
+                    raise AssertionError(f"{name}: statement fence does not name the commit's service/event")
+                stack.extend((part, True) for part in form[3:])
+                continue
+            if head == "fnn-owner-identity-commit":
+                if [str(a) for a in form[1:]] != ["service", "event"]:
+                    raise AssertionError(f"{name}: unrecognized kind-4 commit arguments")
+                commits += 1
+                wrapped += int(fenced)
+            stack.extend((part, fenced) for part in form)
+    if commits == 0 or wrapped != commits:
+        raise AssertionError("transit route {}: {} kind-4 commits, {} through fnn-owner-statement-committed".format(
+            ", ".join(sorted(seen)), commits, wrapped))
+
+
 def verify_statement_cut_map() -> None:
     """The statement route's cut follows the statement's barrier, and every
     line or reply that names a record follows the barrier that persists it:
@@ -1039,7 +1082,7 @@ def verify_statement_cut_map() -> None:
     fences (fnn-owner-statement-barrier), then cuts, then runs the executor;
     the barrier commits the open batch inside a quantum; the executor's line
     waits for the COMPLETE inside a quantum; every commit of a kind-4
-    composite in fnn-owner-attempt-transit goes through
+    composite reached through fnn-owner-attempt-transit goes through
     fnn-owner-statement-committed; only LOG_BATCH_BINDERS bind
     *fnn-log-batch*; COMPLETE writes the deferred lines after the
     acknowledgement."""
@@ -1076,13 +1119,7 @@ def verify_statement_cut_map() -> None:
     _in_order(host_function(owner, "fnn-owner-line-after-barrier"),
               ("(if *fnn-owner-deferred*", "(push (cons :log line)", "(fnn-log-line line)"),
               "fnn-owner-line-after-barrier")
-    transit = host_function(owner, "fnn-owner-attempt-transit")
-    commits = transit.count("(fnn-owner-identity-commit service event)")
-    wrapped = len(re.findall(r"\(fnn-owner-statement-committed\s+service event\s+"
-                             r"\(fnn-owner-identity-commit service event\)\)", transit))
-    if commits == 0 or wrapped != commits:
-        raise AssertionError("fnn-owner-attempt-transit: {} kind-4 commits, {} through "
-                             "fnn-owner-statement-committed".format(commits, wrapped))
+    verify_statement_commit_routes(owner)
     complete = host_function(owner, "fnn-owner-commit-complete-locked")
     _in_order(complete, ("(:complete", "(fnn-log-batch-finish store)",
                          "(fnn-log-line (cdr item))", "(fnn-owner-commit-release-member "),
