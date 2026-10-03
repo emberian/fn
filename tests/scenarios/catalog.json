@@ -9370,6 +9370,28 @@
         "test": "tests/test_control_observation.py"
       },
       "execution_scope": "Actual source consumer and normal ACL2 guard/boundary checks; matching full-owner ten MiB scenario pending."
+    },
+    {
+      "id": "SCN-1124",
+      "title": "Withdrawn configuration remains visible when cause submission fails",
+      "requirements": [
+        "HST-008"
+      ],
+      "setup": "Literal native moderation dispatcher, ACL2 combined outcome and wrapper; named publication/submission adapters record actual call order and completed publication.",
+      "steps": [
+        "Publish withdrawal, then return each cause outcome.",
+        "Refuse before publication and check no cause submission.",
+        "Execute already-withdrawn plan and malformed cause results."
+      ],
+      "expected": [
+        "Incomplete cause never reports bare refusal of the whole action; reason explicitly names completed withdrawal.",
+        "Cause fault remains fault and successful/duplicate cause remains successful.",
+        "Admin refusal does not submit; malformed cause is fault."
+      ],
+      "implementation": {
+        "test": "tests/test_moderation_outcome.py"
+      },
+      "execution_scope": "Actual source dispatcher and normal ACL2 guard/admission; complete native durability/transport and concurrent authority scenario pending."
     }
   ]
 }
