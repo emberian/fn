@@ -988,8 +988,7 @@ Existing checkpoint tar, admitted packet tar and CBOR bounds receipt archive
 verify; include only5ca08a7ea evidence index line for prior bounds event.
 Source/admission evidence is separate from scoped certificates and images.
 S112 removed-peer journal custody, codex-sol-tools
-================================================
-Actual pull worker/catch-up tick prune cached journals only when the existing
+=========================================Actual pull worker/catch-up tick prune cached journals only when the existing
 ACL2 fn-pull-plan-for says the peer has no current plan. Cached cursors drop
 with descriptor custody; returning cursor-for goes through its existing
 open/replay path. Both kinds share one private pruning function. A close
@@ -1073,3 +1072,78 @@ tests/test_native_string_line_allocation_raw.sh ACTUAL_SOURCE_ROOT.
 Sol tracker now names exact first4-root certificate scope/digest, retaining
 five cursor failures,44 installed uncited dependencies and general CBOR tests
 installed cached-only. It does not transfer that certificate to newer packet.
+Runtime offers actual section-envelope acquire/release primitive callback and
+reserved native actor identity; Groundwork supplied exact admitted vocabulary.
+Extent fd/job fixture consumer exists; wait concrete seam source before wiring,
+then preserve actual issue tuple and compare only complete grounded traces.
+New combined image qualification still pending; Integration solely schedules.
+
+Extent admission diagnostics now include actual cid/inc/eoff/elen/trailer
+arguments passed to fn-pio-direct-admit. Existing native handoff fixture
+requires the complete literal tuple; it cannot reconstruct missing inputs
+from the token. Seven image-free transport checks pass. Native execution
+requires an image including this source; no certified replay claim yet.
+
+## Peer preflight source and refusal, 2026-10-03
+
+3716a9926 reuses existing same-source native NNTP producer for BP fixture;
+fa9e9ef19 separates native exit classes instead of every nonzero becoming
+lost; 5afc1e275 corrects shared bp_producer bytes MID CLI transport. Three
+focused control/transport tests pass. Final historical production+DTN45e
+fixture accepted POST240 and generated stored source/ADU through ACL2, then
+actual bp-obligation undertake rc1 canonical Store refused retention event.
+No peer nodes or fault reached; no custody/recovery result. Historical retries
+stopped.26objects archived native-bp-preflight-45e05c7f-2026-10-03. Groundwork
+owns retention producer follow-through, Tools command consumer; no user gate.
+
+First current image1a946 source/core6f5bf888 now available and Integration's
+raw/counterpart POST+duplicate+readback passed. One approved baseline mixed
+completed correctness, all48acknowledged content/numbers reopen,24mixedposts
+accepted and36reads; quiet reclaim credit-refused remainsincomplete. Sparse
+current schedule executing sequentially under approved24Gscope; nohook/funding
+claim because image excludes these later sources. Evidence filing follows.
+Runtime d4/0fa observer activation/source ready; generic E seam requested
+before extent collection/executorwrapping. FullPageIO remains unavailable.
+
+
+## Extent observer consumer, 2026-10-03
+
+Dependency packet Runtime d4cb69168/0fa276f82 + shared early io seam
+8b777bf9f/e60d9f0d2/09c7e72a3 (assembled 983f199/ad0f1666f). This lane
+owns extent only: actual executor thunk captures native identity; direct
+fd-open/issue/io-begin/literal io-complete/cancel/physical-return/settle/close
+inputs enter the bounded collector. Observer arguments are unevaluated when
+absent. Forty finite E mutex regions observe actual acquire/release; the two
+condition-wait regions are deliberately unobserved. Conditions and unexpected
+worker death are not converted or reordered into literal :error completion.
+
+Native raw transport composition passed using deployed io/owner forms from
+those dependencies plus this extent macro and a real SBCL thread/mutex;
+no fn semantic decisions are mocked. Eight image-free transport checks pass.
+The actual normal held-read image selector now consumes post-cleanup NATIVE-HM,
+checks complete collector prefix plus direct labels, and explicitly reports
+full PageIO comparison unavailable. COMPLETE is never full physical coverage.
+Matching image execution remains pending Integration's next source batch;
+1a946 current image excludes this packet. Full replay still owes actual wait,
+pin and remaining owner edges, literal condition boundary and exact dependency
+coordinates. No mux/owner/io edits in this lane.
+
+
+## Sol source assembly — coherent bounded observer consumer
+
+READY observer aggregate composes Runtime0fa activation +8b/e60/09c early
+mutex seam, Empiricalbeb exact admission fields +b4 consumer +0d direct-token
+exclusion. Source base is immutable364eaa14b; no code conflicts or private
+assembly source edits. Actual collector/extent macro composition receipt
+ed1ae6b9 and its four streams archived/indexed; exact io09c/owner0fa/b4 macro
+transport is not actual read assurance or model replay. Eight image-free
+transports already passed. Full held-read consumer needs the new developer
+image. Forty non-wait E regions observed; actual implicit condition waits
+are excluded. Missing waits/P/other O/conditions/digest alignment keep full
+HM comparison unavailable, even when finite collector prefix is COMPLETE.
+Inputs/labels/captured executor identity remain literal; no host classification
+or physical custody/refund decision added. Exact final extent/test bytes,
+Python/JSON/diff checks and five receipt objects verify; no repeated builds,
+proofs, allocation measurements or raw experiments. First image-free selector
+sbcl --script tests/native_extent_observer_raw.lisp; acceptance with new image
+tests.test_native_page_io.PageIOTests.test_matching_success_publishes_and_advances_the_original_request.
