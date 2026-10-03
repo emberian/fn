@@ -3660,3 +3660,28 @@ removed; ready/readyp use it internally. Real startup fixture also checks
 distinct worker scratch identities. Normal and cancelled last-borrow release
 retain persistent backing; separate storage-ready and :reusable diagnostics
 distinguish baseline allocation from operation debit. Actual endpoint pending.
+## Continuing Operator: pre-open DEFAULT partial pool startup — 2026-10-03
+
+Source packet from codex/operator-controls-20261003 at base9df4a3a4e;
+Integration remains the sole dev writer. Operator owns fnn-owner-run and new
+fnn-owner-page-read-startup, Foundations owns numerical plan/default installer,
+Runtime owns persistent worker backing and readiness. No owner reset/reuse is
+introduced. The helper captures runtime reservation/occupancy, sealed profile,
+image observation, nursery, existing cache limit and OS descriptor limit;
+ACL2 supplies every bound, capacity and refusal classification. Installation,
+fixed table allocation, guard prewarm and executor startup precede Store open.
+The retained callback marks startup custody immediately after core install.
+Failure before service publication joins orphan workers; an escaping join keeps
+run authority through the existing actual ACL2 settlement decision.
+
+SCN-1130 actual source fixture passes4run cases +6startup-helper cases, including
+malformed model faults and existing-pool refusal before effects. Prior actual
+9df4owner body refutes at Store open: neither pool nor workers exist. Source
+fixture uses deliberate constructor/core observations; it does not certify the
+numerical producer or physical allocator/worker composition. Evidence report
+480818fa6e45aeb8ea80dfa4d089ea07f94a21271c68498c13c26828c08e5dec and full red/green
+log6ad26702c654eefcb35efca97be8384bd76c1ca5eed7c3f7cdcdeb1e045ecb86 are indexed.
+History's retained coherent world is still assembling the remaining Store
+prefix; first real owner open/read/stop runs there after additive source
+composition, without a whole-image gate. Explicit complete profiles stay
+refused, and selected partial storage does not establish a complete tariff.

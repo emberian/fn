@@ -8142,6 +8142,40 @@ fn-osd-drain-stops-by-the-deadline).  Nothing here compares times or counts."
               (t (fnn-fault "owner returned a malformed drain step ~a" step))))))
         (sleep (/ poll 1000))))))
 
+(defun fnn-owner-page-read-startup (root max-connections cold-resources output-resources retain)
+  "Install DEFAULT's partial pool before Store recovery registers any file.
+RETAIN records constructor custody immediately after the core installation;
+the caller joins any partial executor before relinquishing run authority."
+  (let* ((profile (fnn-heap-store-profile root))
+         (core (fnn-heap-image-observation))
+         (plan (fnn-core 'fn-prstartup-default-plan
+                         (sb-ext:dynamic-space-size) (cdr core) profile core
+                         (fnn-gc-nursery-octets) cold-resources output-resources
+                         max-connections root (fnn-core 'fn-pio-direct-workers)
+                         (fnn-extent-cache-limit)
+                         ;; OS observation, not a profile/data ceiling. Linux
+                         ;; numbers NOFILE7; Darwin and the BSDs number it8.
+                         (fnn-heap-rlimit #+linux 7 #-linux 8))))
+    (case (fnn-core 'fn-prstartup-status plan)
+      (:admitted
+       (unless (fnn-core 'fn-prstartup-planp plan)
+         (fnn-fault "cold startup returned a malformed admitted plan")))
+      (:refused (fnn-refuse "~a" (fnn-core 'fn-prstartup-refusal-line plan)))
+      (otherwise (fnn-fault "cold startup returned a malformed decision")))
+    (let ((word (first (fnn-core-page-read-pool 'fn-owner-page-read-install-default plan))))
+      (unless (eq word :installed)
+        (if (eq (fnn-core 'fn-prstartup-install-status word) :refused)
+            (fnn-refuse "~a" (fnn-core 'fn-prstartup-install-refusal-line word))
+          (fnn-fault "cold startup installation returned ~a" word))))
+    (funcall retain)
+    (fnn-extent-pool-storage-start
+     (fnn-core 'fn-prstartup-file-capacity plan)
+     (fnn-core 'fn-prstartup-decoded-workers plan)
+     (fnn-core 'fn-prstartup-cache-capacity plan))
+    (fnn-cold-guard-cache-prepare plan)
+    (fnn-extent-executor-start (fnn-core 'fn-prstartup-decoded-workers plan) plan)
+    plan))
+
 (defun fnn-owner-run (root port once max-connections
                       &optional fault address (family :inet) tls-context
                         connection-fault-operation tls-port more-addresses
@@ -8157,6 +8191,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
         (equal (sb-ext:posix-getenv "FN_OWNER_MEASURE") "1"))
   (let ((service nil) (listener nil) (tls-listener nil) (more-listeners nil)
         (log-close-action nil) (run-authority-claimed nil)
+        (page-read-started nil)
         (old-active *fnn-sigterm-owner-active*)
         (old-requested *fnn-sigterm-requested*)
         (old-wakeup-fd *fnn-sigterm-wakeup-fd*))
@@ -8172,7 +8207,14 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
            ;; never waited on (host/native/io.lisp fnn-log-offer).
            (fnn-log-writer-start)
            (unwind-protect
-                (progn
+                  (progn
+                  ;; Reserve the process-local pool and persistent executor
+                  ;; before recovery registers its first physical file. The
+                  ;; callback retains startup custody even when a constructor
+                  ;; escapes before any service object exists.
+                  (fnn-owner-page-read-startup
+                   root max-connections cold-resources output-resources
+                   (lambda () (setq page-read-started t)))
                   (setq service (fnn-owner-install root max-connections fault))
                   (setf (fnn-owner-service-cold-resources service) cold-resources
                         (fnn-owner-service-output-resources service) output-resources
@@ -8295,7 +8337,16 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                     (fnn-owner-stop-service service +fnn-exit-ok+))
                   (fnn-owner-service-exit-code service))
              (unwind-protect
-                  (when service
+                  (progn
+                   (when (and page-read-started (null service))
+                     ;; Recovery/startup failed before publishing SERVICE.
+                     ;; Join actual workers before Store/run authority can
+                     ;; settle. A join escape preserves the retained authority.
+                     (setq log-close-action
+                           (fnn-core 'fn-ort-report-close-action nil :unobserved))
+                     (fnn-extent-executor-stop)
+                     (setq log-close-action nil))
+                   (when service
                     ;; Journal closure has not been observed. Retain Store
                     ;; authority if worker/module cleanup escapes before the
                     ;; actual settlement sequence obtains definite receipts.
@@ -8396,7 +8447,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                       log-close-action))
                           (fnn-core 'fn-ort-log-close-exit
                                     (fnn-owner-service-exit-code service)
-                                    +fnn-exit-uncertain+ log-close-action))))))
+                                    +fnn-exit-uncertain+ log-close-action)))))))
                (setq *fnn-sigterm-wakeup-fd* nil)
                (dolist (extra more-listeners) (fnn-socket-shut extra))
                (when tls-listener (fnn-socket-shut tls-listener))
@@ -8483,5 +8534,3 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                    fault nil :inet nil connection-fault-operation)))
 
 (fnn-register-developer-verb "owner" #'fnn-command-owner)
-
-

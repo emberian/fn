@@ -9607,6 +9607,33 @@
         "books/tcpcl-source-control.lisp"
       ],
       "note": "Actual raw controller/private source/original KEEPALIVE step/delivery-plan composition PASS, with recorded wire decoder/socket/publication; normal guards+13 assertions PASS. Current-union native UNEXECUTED."
+    },
+    {
+      "id": "SCN-1130",
+      "title": "Owner installs DEFAULT partial page pool before recovery and retains startup custody until worker join",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Execute actual fnn-owner-run with constructor/recovery observations and actual ACL2 service settlement decisions.",
+        "Execute actual fnn-owner-page-read-startup with deliberate admitted/refused/malformed core results and observe exact raw runtime captures and constructor ordering.",
+        "Run the prior owner body against the same startup/recovery fixture."
+      ],
+      "expected": [
+        "Pool installation, fixed table allocation, guard preparation and executor startup precede Store open. Named refusals allocate no tables or workers; malformed model decisions fault.",
+        "A failure before service publication joins partial executors before run authority settles; an escaping join preserves that authority and outstanding workers.",
+        "Prior source fails the startup predicate at Store open because no pool or workers were installed."
+      ],
+      "implementation": {
+        "test": "tests/test_native_owner_pool_startup_source.py"
+      },
+      "evidence": [
+        "tests/native_owner_pool_startup_source.lisp",
+        "planning/evidence/operator-pool-startup-source-2026-10-03.json"
+      ],
+      "execution_scope": "Actual native function bodies with observed physical constructors and deliberate core startup results; actual service-settlement ACL2 functions. Numerical producer proof, actual allocator/worker composition and matching image are separate coordinates."
     }
   ]
 }
