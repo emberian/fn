@@ -9,7 +9,8 @@
  "line": "5977",
  "locus": "lifecycle",
  "notes": [
-  "GPT-6.1-Sol: imported maintenance worker. Publication arena captured with generation pin under owner section and passed through worker, walk, writer and release helpers; release diagnostics captured in section. Publication worker R1 regression and indirect mutation checked. Maintenance lifecycle/fault declaration and SIGHUP log getter routed to Runtime; no baseline growth or whole-maintenance owner lock."
+  "GPT-6.1-Sol: imported maintenance worker. Publication arena captured with generation pin under owner section and passed through worker, walk, writer and release helpers; release diagnostics captured in section. Publication worker R1 regression and indirect mutation checked. Maintenance lifecycle/fault declaration and SIGHUP log getter routed to Runtime; no baseline growth or whole-maintenance owner lock.",
+  "GPT-6.1-Sol continuation: export captures arena plus pin before spawn; dry-run and recorded reclaim capture arena and column key/salt within owner section, use captured capability throughout rewrite/writer/rebuild/release. Actual call graph exposes no R1 export/reclaim getter path (15 more sites removed); unit graph+mutation checks31/31; native acceptance remains pending integration. Redundant dry-run decision call removed."
  ],
  "owner": "owner-offlock",
  "severity": "high",
