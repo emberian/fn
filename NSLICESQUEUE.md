@@ -53,6 +53,8 @@ actual application-consumer/E1–E2 boundary. Root absorbs detailed coordination
 coherent packet or transfer it before stopping; a passive assignment does not
 count as active work. No Luna wave resumes. These are ownership transfers, not
 capability completion claims.
+The convergence lieutenant is explicitly excluded from this implementation cap
+and owns routine coordination; Groundwork remains the application consumer owner.
 
 ## Dispatch next
 
