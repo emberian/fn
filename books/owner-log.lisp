@@ -702,6 +702,15 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
       (cons (car line) (fn-olog-line-word (cdr line)))
     nil))
 
+(local
+ (defthm fn-olog-line-word-of-join-first-part
+   (implies (and (true-listp first)
+                 (not (member-equal 32 first))
+                 (consp rest))
+            (equal (fn-olog-line-word (fn-olog-join (cons first rest)))
+                   first))
+   :hints (("Goal" :in-theory (enable fn-olog-join fn-olog-line-word)))))
+
 ; KEYSTONE.  A served line says `accepted' exactly when the owner's
 ; completion for the word is :durable -- the completion fn-own-outcome hands
 ; fn-served-post-outcome, which is the only path to a 240
@@ -713,7 +722,7 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
          (equal (fn-own-outcome-completion o word) :durable))
   :hints (("Goal" :in-theory (e/d (fn-olog-class-word fn-olog-text)
                                   (fn-own-outcome-completion fn-olog-field
-                                   fn-olog-decimal fn-olog-time)))))
+                                   fn-olog-decimal fn-olog-time fn-olog-join)))))
 
 ; A control line's first word is the control reply's word.
 (defthm fn-olog-control-post-line-says-the-control-result
@@ -721,7 +730,7 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
          (fn-olog-class-word (fn-own-control-outcome-result o word)))
   :hints (("Goal" :in-theory (e/d (fn-olog-class-word fn-olog-text)
                                   (fn-own-control-outcome-result fn-olog-field
-                                   fn-olog-decimal fn-olog-time)))))
+                                   fn-olog-decimal fn-olog-time fn-olog-join)))))
 
 ; KEYSTONE (receiver).  A transit line says `refused' exactly when the code
 ; the peer was sent is a rejection (437/439) and the completion was not
@@ -739,7 +748,7 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
                                    fn-olog-code-class-word fn-olog-text)
                                   (fn-olog-transit-code fn-olog-transit-completion
                                    fn-olog-field fn-olog-decimal fn-olog-time
-                                   fn-olog-symbol-text)))))
+                                   fn-olog-symbol-text fn-olog-join)))))
 
 ; KEYSTONE (sender).  A feed line exists exactly for a reply that is not a
 ; send-it prompt, and its first word is the class of the code ACL2 parsed.
@@ -749,7 +758,8 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
              nil
            (fn-olog-code-class-word (fn-feed-response-code response))))
   :hints (("Goal" :in-theory (e/d (fn-olog-code-class-word fn-olog-text)
-                                  (fn-olog-field fn-olog-decimal fn-olog-time)))))
+                                  (fn-olog-field fn-olog-decimal fn-olog-time
+                                   fn-olog-join)))))
 
 ; KEYSTONE (BP application receiver).  The line says `refused' exactly when
 ; the receiver's answer was a refusal -- never for a deferral (a busy or
@@ -763,7 +773,7 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
   :hints (("Goal" :in-theory (e/d (fn-olog-bp-app-class-word
                                    fn-olog-class-word fn-olog-text)
                                   (fn-olog-field fn-olog-decimal
-                                   fn-olog-symbol-text)))))
+                                   fn-olog-symbol-text fn-olog-join)))))
 
 ; -----------------------------------------------------------------------------
 ; Refused POSTs (PKT-095)
@@ -778,7 +788,8 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
          (fn-olog-text "refused"))
   :hints (("Goal" :in-theory (e/d (fn-olog-class-word fn-olog-text)
                                   (fn-olog-field fn-olog-decimal fn-olog-time
-                                   fn-olog-symbol-text fn-olog-post-refusal-reason)))))
+                                   fn-olog-symbol-text fn-olog-post-refusal-reason
+                                   fn-olog-join)))))
 (defun fn-olog-441-count (effects)
   (declare (xargs :guard t))
   (if (consp effects)
@@ -828,4 +839,4 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
                                    fn-own-operator-submit-result)
                                   (fn-olog-field fn-olog-decimal fn-olog-time
                                    fn-olog-symbol-text
-                                   fn-own-operator-decision-of)))))
+                                   fn-own-operator-decision-of fn-olog-join)))))
