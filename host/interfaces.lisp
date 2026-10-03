@@ -1442,7 +1442,9 @@
 
 (definterface fn-oqw-step
   :class :common-lisp-compliant
-  :keystones (fn-oqw-batch-effect-order fn-oqw-a-failed-effect-ends-the-job))
+  ;; Batch order is a theorem of the START/TRACE/FINAL composition above;
+  ;; this entry's literal host-called subject is the individual STEP.
+  :keystones (fn-oqw-a-failed-effect-ends-the-job))
 
 (definterface fn-oqw-receipt
   :class :common-lisp-compliant
