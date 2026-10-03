@@ -1,0 +1,14 @@
+# Paths a burn-down fix must not touch (verify refuses unless the item has allow_forbidden).
+# These are being rebuilt or carry wide proof fan-in; an item that needs them escalates to an Opus lane.
+host/native/owner.lisp
+host/native/mux.lisp
+host/native/extent.lisp
+host/native/io.lisp
+host/owner-host.lisp
+host/interfaces.lisp
+books/assumptions*.lisp
+books/definterface.lisp
+books/def-carried*.lisp
+books/store-files.lisp
+books/protocol-table.lisp
+books/image-world*.lisp
