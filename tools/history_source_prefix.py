@@ -39,8 +39,9 @@ def generate(source: Path, dependencies: Path, world: Path, output: Path) -> Non
     result.append('(set-cbd ' + quote(source / 'books')[:-1] + '/")')
     # These exact compatible cached dependencies were also used by the fresh
     # canonical source session. They do not introduce generic fn-hist.
-    for book in ('consumer-event-index', 'history-records', 'memory-credits'):
+    for book in ('consumer-event-index', 'history-records'):
         result.append('(include-book ' + quote(dependencies / 'books' / book) + ')')
+    result.append('(include-book ' + quote(world / 'books/memory-credits') + ')')
     skip = {'books/' + book for book in BOOKS}
     skip.update({'books/consumer-event-index', 'books/history-records',
                  'books/history-pages-placed', 'books/history-pages-relocate',
