@@ -6310,14 +6310,16 @@
         "Issue another cold pread, observe 403 deadline, disconnect the client, open a replacement request and install a reclaim that retires the old file.",
         "Observe close-held for that issued file before release; deliver success, injected stale and duplicate completion variants; assert no publish after cancellation and eventual descriptor close.",
         "Deliver short/error after timeout and assert named store fault and fault exit rather than an unobserved detached exception.",
-        "Refuse an injected thread launch before worker/buffer creation; settle the issued token as error and fence."
+        "Refuse an injected thread launch before worker/buffer creation; settle the issued token as error and fence.",
+        "Cancel a physically held direct read, issue actual SIGTERM, observe the native executor join call with live thread before release; release physical I/O, require actual join return and settlement before clean process exit, then compare exact pre-stop article bytes after a fresh owner opens the store."
       ],
       "expected": [
         "Matching verified success advances the original request with exact article bytes.",
         "Cancellation retains buffer/fd ownership; retirement cannot close the fd while worker still runs.",
         "Late completion never delivers into the replacement request; duplicate/stale has no second publication or settlement.",
         "Late error/short faults the store, with no fabricated article and no uncertain/absent classification.",
-        "Definite launch failure creates no detached worker and releases no ownership twice."
+        "Definite launch failure creates no detached worker and releases no ownership twice.",
+        "A join call marker does not imply an internal SBCL wait or successful join. Missing return/settlement cannot be filled from process liveness or an exit code; faults and pending cleanup remain distinct. Full PageIO model coverage remains unavailable where physical wait/pin/other owner edges are absent."
       ],
       "implementation": {
         "test": "tests.test_native_page_io",
@@ -6325,7 +6327,8 @@
           "PageIOTests.test_matching_success_publishes_and_advances_the_original_request",
           "PageIOTests.test_cancel_retire_and_reuse_keep_the_old_fd_until_actual_completion",
           "PageIOTests.test_a_late_short_or_error_is_settled_and_fences_the_store",
-          "PageIOTests.test_failed_launch_settles_without_worker_or_buffer"
+          "PageIOTests.test_failed_launch_settles_without_worker_or_buffer",
+          "PageIOTests.test_sigterm_held_read_joins_then_reopens_exact_content"
         ],
         "native": true
       },
@@ -6333,7 +6336,7 @@
         "tests/test_native_page_io.py",
         "tests/acl2/page-read-ownership-tests.lisp"
       ],
-      "execution_scope": "Pending matching union image; ownership only, no funded worker/buffer admission claim."
+      "execution_scope": "Native image normal/cancellation/held-SIGTERM selectors prepared; matching current image execution pending. Exact primitive direct inputs and bounded collector prefix are consumed, not full HM proof. Stored literal result uses frozen :job-result TID TOKEN VERDICT distinct from device :io-complete; actual owner condition conversion belongs to Runtime. No funded cold worker/buffer admission claim."
     },
     {
       "id": "SCN-1007",
