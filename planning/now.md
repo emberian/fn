@@ -14,9 +14,11 @@ components, BP single-candidate allocation and bounded control ingress, and
 primary-preserving cleanup with explicit retained physical debt. Selected source
 fixtures pass. Owner-run now captures independent peer policy, retains its bank
 before constructors, and requires snapshot jobs and peer bank to drain before
-terminal Store settlement. Standalone BP startup still ignores the helper's
-second funding capture and lacks that peer-bank/snapshot terminal conjunction;
-its earlier startup fixture does not close this new consumer gap.
+terminal Store settlement. Standalone BP now retains the same second funding
+capture and checks peer-bank, snapshot and executor custody before settlement.
+SCN-1134 passes 31 selected source cases, including both actual listener entry
+failure paths; prior source fails the new bank-retention assertion. Whole-current
+native execution and complete funding remain open.
 
 **There is no current whole-system native endpoint.** History's tested saved
 checkpoint is `/tank/fn/scratch/history-current-union-5a3d81/build/current-owner-storage-retained`

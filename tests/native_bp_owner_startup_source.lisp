@@ -6,7 +6,8 @@
 (in-package "ACL2")
 (declaim (declaration xargs))
 (defun source-forms (path names)
- (with-open-file (in path)
+ (with-open-file (in (if (equal path "host/native/bp-service.lisp")
+                          (or (sb-ext:posix-getenv "FN_BP_STARTUP_SOURCE") path) path))
   (loop for form = (read in nil :eof) until (eq form :eof)
    when (and (consp form) (member (car form) '(defun defstruct))
              (member (if (consp (second form)) (car (second form)) (second form)) names))
@@ -22,7 +23,9 @@
 (defvar *fnn-log-queue-mutex* (sb-thread:make-mutex))
 (defvar *fnn-log-writer* nil)
 (defvar *fnn-owner-log-fd* nil)
-(defstruct fnn-owner-service store)
+(defstruct fnn-owner-service store peer-flight-bank close-hooks snapshot-jobs)
+(defmacro fnn-with-roster ((service) &body body)
+ (declare (ignore service)) `(progn ,@body))
 (defstruct fnn-store fenced)
 (define-condition fixture-stop (error) ())
 (defvar *mode* nil)
@@ -33,7 +36,22 @@
 (defun fnn-core (name &rest args)
  (case name
   (fn-bpsp-root-release-ready (zerop (first args)))
+  (fn-pfr-startup-grant (list :hold (third args)))
+  (create-fn-resource-ledger
+   (case *mode*
+    (:peer-create-error (error 'fixture-stop))
+    (:peer-create-throw (throw 'peer-cut :escaped)))
+   :peer-ledger)
+  (fn-csp-bank-idle-p (not (eq *mode* :peer-ledger-debt)))
   (otherwise (apply name args))))
+(defun fnn-call (name &rest args)
+ (assert (eq name 'fn-pfr-install-funded))
+ (assert (equal (butlast args) '(1000 100 :peer-policy 8192 1024)))
+ (assert (eq (car (last args)) :peer-ledger))
+ (list (if (eq *mode* :peer-install-error) :refused :installed) :peer-ledger))
+(defun fnn-fault (&rest args) (declare (ignore args)) (error 'fixture-stop))
+(defun fnn-extent-executor-drained-p ()
+ (and (not *workers*) (not (eq *mode* :executor-debt))))
 (defun fnn-absolute (path) (assert (equal path "/store")) path)
 (defun fnn-indeterminate (&rest args) (declare (ignore args)) (error 'fixture-stop))
 (defun fnn-owner-page-read-startup (root connections cold output retain)
@@ -47,7 +65,11 @@
  (push :pool-retained *events*)
  (when (member *mode* '(:constructor-error :constructor-arena-debt)) (error 'fixture-stop))
  (setf *workers* t)
- (push :workers *events*))
+ (push :workers *events*)
+ (values :plan
+  (when (member *mode* '(:peer-ok :peer-create-error :peer-create-throw
+                        :peer-install-error :peer-ledger-debt :peer-lease-debt))
+   '(1000 100 :peer-policy 8192 1024))))
 (defun fnn-owner-install (root connections)
  (declare (ignore root connections))
  (assert (and *pool* *workers*))
@@ -72,8 +94,12 @@
  (assert (eq store *store*)) (assert (not *workers*))
  (push :store-close *events*)
  (when (eq *mode* :close-error) (error 'fixture-stop)))
+(source-forms "host/native/catchup-spool.lisp"
+ '(fnn-peer-flight-bank fnn-peer-flight-bank-install
+   fnn-peer-flight-bank-drained fnn-peer-flight-bank-close))
 (source-forms "host/native/owner.lisp"
- '(fnn-owner-claim-run-authority fnn-owner-retain-run-authority fnn-owner-store-settlement))
+ '(fnn-owner-claim-run-authority fnn-owner-retain-run-authority fnn-owner-store-settlement
+   fnn-owner-peer-flight-startup fnn-owner-snapshot-jobs-drained-p))
 (source-forms "host/native/bp-service.lisp"
  '(fnn-bp-served-owner-custody fnn-bp-served-owner-start
    fnn-bp-served-owner-stop fnn-bp-served-owner-settle))
@@ -106,6 +132,39 @@
 (helper-case :arena-debt '(:preflight :pool-retained :workers :store-open :recovery-end :executor-join) t)
 (helper-case :constructor-arena-debt '(:preflight :pool-retained :executor-join) t)
 
+;;; Use the actual bank constructor/close and snapshot observer under the
+;;; actual BP entry helper. Core ledger calls are recorded allocation seams.
+(dolist (mode '(:peer-ok :peer-create-error :peer-create-throw :peer-install-error
+                :peer-ledger-debt :peer-lease-debt :snapshot-unjoined
+                :snapshot-pin-debt :executor-debt))
+ (let ((*mode* mode) (*events* nil) (*pool* nil) (*workers* nil)
+       (*store* (make-fnn-store)) (*fnn-owner-retained-service* nil)
+       (*fnn-owner-reserving-thread* nil) (service nil)
+       (custody (make-fnn-bp-served-owner-custody)))
+  (catch 'peer-cut
+   (handler-case (setf service (fnn-bp-served-owner-start custody "/store" 2))
+    (fixture-stop () nil)))
+  (let* ((actual (or service *fnn-owner-retained-service*))
+         (bank (fnn-owner-service-peer-flight-bank actual)))
+   (assert (fnn-owner-service-p actual))
+   (when (member mode '(:peer-ok :peer-create-error :peer-create-throw
+                       :peer-install-error :peer-ledger-debt :peer-lease-debt))
+    (assert bank)
+    (assert (= (length (fnn-owner-service-close-hooks actual)) 1)))
+   (when (eq mode :peer-lease-debt)
+    (setf (fnn-peer-flight-bank-leases bank) '(:retained-lease)))
+   (when (member mode '(:snapshot-unjoined :snapshot-pin-debt))
+    (setf (fnn-owner-service-snapshot-jobs actual) (list mode)))
+   (handler-case (fnn-bp-served-owner-stop custody service) (fixture-stop () nil))
+   (handler-case (fnn-bp-served-owner-settle custody service t) (fixture-stop () nil))
+   (assert (eql (fnn-bp-served-owner-custody-stopped custody) (eq mode :peer-ok)))
+   (assert (eql (and *fnn-owner-retained-service* t) (not (eq mode :peer-ok))))
+   (assert (eql (and (member :store-close *events*) t) (eq mode :peer-ok)))
+   (when (eq mode :peer-ok) (assert (eq (fnn-peer-flight-bank-phase bank) :closed)))
+   (format t "~a terminal-stopped=~s held=~s~%" mode
+           (fnn-bp-served-owner-custody-stopped custody)
+           (and *fnn-owner-retained-service* t)))))
+
 ;;; Call the production commands, not a reconstructed entry recipe. Refusal
 ;;; before owner return must still stop the partial pool and preserve authority
 ;;; on join escape. Unrelated FNBS/spool construction is recorded.
@@ -126,20 +185,24 @@
 (source-forms "host/native/bp-node.lisp" '(fnn-command-bp-node))
 (source-forms "host/native/bp-app.lisp" '(fnn-command-bp-app-receive))
 (dolist (command '(:node :app))
- (dolist (mode '(:constructor-error :recovery-error :join-error))
+ (dolist (mode '(:constructor-error :recovery-error :join-error
+                 :peer-create-error :peer-create-throw :peer-install-error))
   (let ((*mode* mode) (*events* nil) (*pool* nil) (*workers* nil)
         (*store* (make-fnn-store)) (*fnn-owner-retained-service* nil)
         (*fnn-owner-reserving-thread* nil))
-   (handler-case
+   (catch 'peer-cut
+    (handler-case
     (if (eq command :node)
      (fnn-command-bp-node 0 nil "/fnbs" "/store" "/receipts" "/workflow"
       "node" "peer" "dest" "policy" "issuer" "host" 4556 1000 2 16 32768 nil 0 nil)
      (fnn-command-bp-app-receive 0 nil "/spool" "/store" "/receipts"
       "node" "peer" "dest" "policy" "issuer" 1000 2 16 32768 2 nil 0))
-    (fixture-stop () nil))
+    (fixture-stop () nil)))
    (assert (member :executor-join *events*))
-   (assert (eql (and *fnn-owner-retained-service* t) (eq mode :join-error)))
-   (when (eq mode :join-error) (assert (not (member :store-close *events*))))
+   (let ((held (and (member mode '(:join-error :peer-create-error
+                                 :peer-create-throw :peer-install-error)) t)))
+    (assert (eql (and *fnn-owner-retained-service* t) held))
+    (when held (assert (not (member :store-close *events*)))))
    (assert (member (if (eq command :node) :fnbs-release :spool-release) *events*)))))
 (let ((*mode* :budget-error) (*events* nil))
  (handler-case

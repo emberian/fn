@@ -5202,6 +5202,18 @@ owner stopped, including failed constructors with no Store carrier. Uncertain
 physical return retains the exact owner authority. This is a cleanup guarantee;
 the complete BP decoder/collector tariff remains open.
 
+Standalone BP also consumes the peer funding capture returned alongside the
+DEFAULT plan. After retaining the actual Store carrier, it installs that bank
+through `fnn-owner-peer-flight-startup`, which retains constructor custody before
+ledger allocation. Error, raw throw or installation refusal leaves the bank on
+the retained service even when startup never returns a service to its caller.
+Shutdown uses that retained carrier, requires snapshot jobs, peer leases and
+the decoded executor to be drained, and closes the idle peer bank before marking
+the BP owner stopped. A missing constructor return or outstanding snapshot pin
+cannot authorize Store settlement. SCN-1134 exercises these source helpers and
+both actual listener entry failure paths with recorded physical seams; this is
+not whole-system execution or a proof of complete resource funding.
+
 The retained node uses `fn-bpsg-acquire-turn` to inspect one candidate slot per
 listener or outgoing attempt. ACL2 normalizes and wraps separate class cursors.
 An occupied candidate yields without a grant or a capacity verdict; a zero-sized

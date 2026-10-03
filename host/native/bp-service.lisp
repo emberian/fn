@@ -1433,31 +1433,46 @@ signals with SERVICE still holding its locks; its owner releases them."
   (let ((root (fnn-absolute root)))
   (fnn-owner-claim-run-authority *fnn-owner-caller-reservation*)
   (setf (fnn-bp-served-owner-custody-claimed custody) t)
-  (fnn-owner-page-read-startup
-   root max-connections nil nil
-   (lambda () (setf (fnn-bp-served-owner-custody-started custody) t)))
+  (multiple-value-bind (plan peer-capture)
+      (fnn-owner-page-read-startup
+       root max-connections nil nil
+       (lambda () (setf (fnn-bp-served-owner-custody-started custody) t)))
+    (declare (ignore plan))
   (let ((service (fnn-owner-install root max-connections)))
     ;; Retain the actual Store even if retiring recovery-only borrows escapes.
     (fnn-owner-retain-run-authority service)
+    (fnn-owner-peer-flight-startup service peer-capture)
     (fnn-extent-end-recovery-cache)
-    service)))
+    service))))
 
 (defun fnn-bp-served-owner-stop (custody service)
   (when (fnn-bp-served-owner-custody-claimed custody)
     ;; Mark held BEFORE a join that can escape. Failed installation may have
     ;; retained its actual Store before returning SERVICE to this caller.
+    (setf (fnn-bp-served-owner-custody-stopped custody) nil)
     (fnn-owner-store-settlement service :held)
-    (when (fnn-bp-served-owner-custody-started custody)
-      (let ((actual (or service
-                       (and (fnn-owner-service-p *fnn-owner-retained-service*)
-                            *fnn-owner-retained-service*))))
+    (let ((actual (or service
+                     (and (fnn-owner-service-p *fnn-owner-retained-service*)
+                          *fnn-owner-retained-service*))))
+      (when (fnn-bp-served-owner-custody-started custody)
         (if actual (fnn-owner-cold-shutdown actual)
-          (fnn-extent-executor-stop))))
+          (fnn-extent-executor-stop)))
+      (when actual
+        ;; A released pin is not a joined snapshot actor; a torn bank
+        ;; constructor is not an idle bank, even without a returned ledger.
+        (unless (fnn-owner-snapshot-jobs-drained-p actual)
+          (fnn-indeterminate "BP snapshot job or pin custody remains"))
+        (unless (fnn-peer-flight-bank-drained
+                 (fnn-owner-service-peer-flight-bank actual))
+          (fnn-indeterminate "BP peer flight custody remains"))
+        (fnn-peer-flight-bank-close (fnn-owner-service-peer-flight-bank actual))))
+    (unless (fnn-extent-executor-drained-p)
+      (fnn-indeterminate "BP cold executor custody remains"))
     ;; Prior arena callback debt can survive before any Store carrier exists.
     ;; This observes it; it neither resets nor retries the failed callback.
     (unless (eq (fnn-arena-return-observation nil) :closed)
       (fnn-indeterminate "BP served owner arena physical return remains unobserved"))
-    ;; Only normal physical return of both executor and arena records terminal.
+    ;; Every observed physical cohort must return before terminal settlement.
     (setf (fnn-bp-served-owner-custody-stopped custody) t)))
 
 (defun fnn-bp-served-owner-settle (custody service roots-ready)

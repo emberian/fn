@@ -75,8 +75,9 @@ no initializer is live. See [now](planning/now.md) for exact recipe, checkpoint,
 missing additive method cohort and model-state reset required on resume. The
 current pool has ten fields; the earlier eleven-field claim counted :inline.
 Source startup is connected for owner-run, but whole-current execution remains
-open. Standalone BP must consume the second funding capture and peer-bank/
-snapshot drain gates. The retained catchup driver is still unwired; its draft
+open. Standalone BP now consumes the second funding capture and peer-bank/
+snapshot/executor drain gates; SCN-1134 selected source cases pass, with full
+native composition still open. The retained catchup driver is still unwired; its draft
 controller strand0373a76c1 remains unmerged. Source landing is not activation.
 
 ## Dispatch next
@@ -832,7 +833,8 @@ native endpoint and whole semantic decode/publication remain unexecuted/open.
 Operator convergence: independent inert peer authority capture and retained
 service-bank startup/cleanup are source-wired; snapshot/peer debt prevents
 terminal Store success. Current physical command checks remain unexecuted; the saved logical checkpoint
-has no native entry. Standalone BP still needs the second funding capture and
-peer-bank/snapshot terminal gates. Selected source
+has no native entry. Standalone BP second funding capture and peer-bank/
+snapshot/executor terminal gates are now connected and source-tested by SCN-1134.
+Selected source
 fixtures are distinct from normal certification/image and full catchup flight
 activation. No Operator proof/build/live-owner process is left for takeover.
