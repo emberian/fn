@@ -9434,6 +9434,33 @@
         "planning/evidence/web-post-action-fix-2026-10-03/execution.json"
       ],
       "note": "Actual source programs admit and exact valid/badCSRF/remove/UTF8/duplicate and long subject tests pass, with concrete fill invariant-risk. Native4096 form turns and partial117 feed pass. Full retained request/subject and refused form path, profile-dependent fixed prefix construction and qualified funding remain open. The original fullbrowser failure is retained. Firsthand stderr traced malformed web action to three emitted POST continuation tags absent from the actual classifier; source49c933f02 accepts those exact tags and refuses unknowns. The same scoped initialized source coordinate plus normally admitted classifier passes the real account/POST/read/remove case in16.702s,1test,0skips; producer/raw regression also passes through the actual classifier. Latest current-union decoded/P3/runtime, TLS/concurrent endpoints and complete funding remain unexecuted or open; status remains specified."
+    },
+    {
+      "id": "SCN-1130",
+      "title": "Owner installs DEFAULT partial page pool before recovery and retains startup custody until worker join",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Execute actual fnn-owner-run with constructor/recovery observations and actual ACL2 service settlement decisions.",
+        "Execute actual fnn-owner-page-read-startup with deliberate admitted/refused/malformed core results and observe exact raw runtime captures and constructor ordering.",
+        "Run the prior owner body against the same startup/recovery fixture."
+      ],
+      "expected": [
+        "Pool installation, fixed table allocation, guard preparation and executor startup precede Store open. Named refusals allocate no tables or workers; malformed model decisions fault.",
+        "A failure before service publication joins partial executors before run authority settles; an escaping join preserves that authority and outstanding workers.",
+        "Prior source fails the startup predicate at Store open because no pool or workers were installed."
+      ],
+      "implementation": {
+        "test": "tests/test_native_owner_pool_startup_source.py"
+      },
+      "evidence": [
+        "tests/native_owner_pool_startup_source.lisp",
+        "planning/evidence/operator-pool-startup-source-2026-10-03.json"
+      ],
+      "execution_scope": "Actual native function bodies with observed physical constructors and deliberate core startup results; actual service-settlement ACL2 functions. Numerical producer proof, actual allocator/worker composition and matching image are separate coordinates."
     }
   ]
 }

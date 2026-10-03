@@ -326,10 +326,19 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
 - Mechanism: `fn-crv-extend-reservation` (`books/cold-read-reservation.lisp`),
   called by `fnn-heap-reservation` (`host/native/heap.lisp`).
 - Evidence: THEOREM (`fn-crv-accepted-launch-fits-observed-machine`; no
-  proof id registered). At dev the funded pool is never installed
-  (`fnn-extent-pool-storage-start` has no caller): a policy that names a
-  pool reserves memory for a structure that does not run. Stage 0 opens
-  every store in the pool's `:offline` context. A served cold miss takes
+  proof id registered). DEFAULT now has a partial startup consumer:
+  `fnn-owner-page-read-startup` installs ACL2's admitted plan and calls
+  `fnn-extent-pool-storage-start`, prepares the guard cache and starts the
+  executor before `fnn-owner-install` opens recovery files. The plan protects
+  the Store/output allowance and prices selected fixed tables and persistent
+  worker storage against captured dynamic reservation and OS descriptor
+  limits. Complete cold policies remain refused; this is a partial storage
+  inventory, not a complete allocation guarantee. SCN-1130 executes actual
+  startup/run bodies with constructor observations and actual service
+  settlement decisions: orphan startup workers must join before authority
+  settles, and an escaping join keeps that authority. Current numerical
+  certification and physical owner/allocator composition remain separate.
+  Offline utilities still enter the pool's `:offline` context. That path takes
   the unfunded cold line (`fnn-owner-cold-issue-locked` in
   `host/native/owner.lisp`, then `fnn-extent-issue-direct` in
   `host/native/extent.lisp`; lane cold-read-ownership): ACL2's
@@ -341,7 +350,7 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
   thread. Synchronous misses use `fnn-extent-entry-direct`'s `:offline` arm.
   The worker count is `fn-pio-direct-workers`, a profile-limits row the
   launcher's thread reservation counts. This figure charges neither
-  direct path; the funded install (`fn-crv-pool-budget` to
+  direct path; the explicit complete install (`fn-crv-pool-budget` to
   `fnn-extent-executor-start`,
   PRF-1057) is the resource vector's (stage 6), and it charges the pool
   as it installs it.
@@ -349,7 +358,8 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
 - Not bounded: the extent buffers the unfunded direct reads hold, which
   this figure does not charge; a dependency timeout only cancels the issued
   row, and its worker keeps the file incarnation pinned and its buffer until
-  the read actually returns. The funded installation remains stage 6 work.
+  the read actually returns. Complete installation and the allocation
+  refinement of the partial DEFAULT inventory remain stage 6 work.
 
 **M10** -- the allocation epoch.
 - Bounded: no active allocation-epoch admission is charged by this figure.
