@@ -41,6 +41,9 @@
 ; host's fn-scka-seal-n calls, fn-scka-finish) and its writer
 ; (fn-scka-write-setup, fn-scka-write-step, fn-scka-canon-rows).
 (include-book "../books/store-checkpoint-arena-load")
+; S045: the staged checkpoint's read-back (host/native/io.lisp
+; fnn-state-checkpoint-verify calls fn-sccv-step).
+(include-book "../books/store-checkpoint-verify")
 ; PKT-854: `store ROOT digest' reads fn-sckd-tables-digest (the checkpoint's
 ; tables digest) at the open; no other host file brings it into the world.
 (include-book "../books/store-checkpoint-digest")

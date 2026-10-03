@@ -701,7 +701,7 @@
            (hd (fn-xw-pread h pos (fn-lgw-header-len st extent))))
       (if (not (fn-xw-okp hd))
           (mv hd st tally replay fn-octets-lg fn-arena)
-        (let* ((n (fn-lgw-entry-len (cadr hd) st extent)))
+        (let* ((n (fn-lgw-entry-len-bounded (cadr hd) st extent max)))
           (mv-let (count fn-octets-lg) (fn-hx-fill h pos (if n n 0) fn-octets-lg)
             (if (not (equal count (if n n 0)))
                 (mv (if (< count 0) (fn-xw-os-errno 5) (fn-xw-fault "log segment shorter than its extent"))
@@ -724,7 +724,7 @@
     (let* ((q (fn-lgdm-q ps))
            (hd (fn-xw-pread h q (fn-lgdm-header-len ps extent))))
       (if (not (fn-xw-okp hd)) hd
-        (let* ((n (fn-lgdm-entry-len (cadr hd) ps extent))
+        (let* ((n (fn-lgdm-entry-len-bounded (cadr hd) ps extent max))
                (e (if n (fn-xw-pread h q n) (list :ok nil))))
           (if (not (fn-xw-okp e)) e
             (fn-xw-probe-tail h extent unit max (fn-lgdm-step (cadr hd) (and n (cadr e)) ps unit max))))))))
@@ -779,25 +779,48 @@
           (if (not (fn-xw-okp w)) w
             (fn-xw-copy-out in out (+ at (len (cadr chunk))) extent)))))))
 
+(defun fn-xw-quarantine-copy (h extent dir stage target)
+  ; the copy under STAGE (a dead attempt's stage of the same name removed
+  ; first), fenced, renamed onto TARGET; the stage removed on a failure
+  (declare (xargs :mode :program))
+  (let* ((sl (fn-xw-lstat stage))
+         (u (cond ((not (fn-xw-okp sl)) sl)
+                  ((cadr sl) (fn-xw-sys (fn-hx-unlink stage)))
+                  (t (list :ok)))))
+    (if (not (fn-xw-okp u)) u
+      (let ((o (fn-hx-create-excl stage t)))
+        (if (fn-xw-errp o) (fn-xw-os o)
+          (let* ((c (fn-xw-copy-out h (cadr o) 0 extent))
+                 (s (if (fn-xw-okp c) (fn-xw-sys (fn-hx-fsync (cadr o))) c))
+                 (x (fn-hx-close (cadr o)))
+                 (r (if (fn-xw-okp s) (fn-xw-sys (fn-hx-rename stage target)) s)))
+            (declare (ignore x))
+            (if (fn-xw-okp r)
+                (fn-xw-fsync-dir dir)
+              (let ((d (fn-hx-unlink stage)))
+                (declare (ignore d))
+                r))))))))
+
 (defun fn-xw-quarantine (path h extent name)
-  ; fnn-log-quarantine: the segment's octets kept as quarantine/NAME
+  ; fnn-log-quarantine: the segment's octets kept as quarantine/NAME, copied
+  ; under quarantine/.stage-NAME and renamed, so NAME only names a complete
+  ; copy; a NAME already present is an earlier attempt's complete copy and
+  ; is kept (sweep S040/S124)
   (declare (xargs :mode :program))
   (let* ((journal (fn-xw-parent path))
          (dir (fn-xw-join (fn-xw-parent journal) "quarantine"))
          (target (fn-xw-join dir name))
+         (stage (fn-xw-join dir (concatenate 'string ".stage-" name)))
          (l (fn-xw-lstat dir)))
     (if (not (fn-xw-okp l)) l
       (let ((m (if (cadr l) (list :ok)
                  (let ((r (fn-xw-sys (fn-hx-mkdir dir))))
                    (if (not (fn-xw-okp r)) r (fn-xw-fsync-dir (fn-xw-parent journal)))))))
         (if (not (fn-xw-okp m)) m
-          (let ((o (fn-hx-create-excl target t)))
-            (if (fn-xw-errp o) (fn-xw-os o)
-              (let* ((c (fn-xw-copy-out h (cadr o) 0 extent))
-                     (s (if (fn-xw-okp c) (fn-xw-sys (fn-hx-fsync (cadr o))) c))
-                     (x (fn-hx-close (cadr o))))
-                (declare (ignore x))
-                (if (not (fn-xw-okp s)) s (fn-xw-fsync-dir dir))))))))))
+          (let ((tl (fn-xw-lstat target)))
+            (cond ((not (fn-xw-okp tl)) tl)
+                  ((cadr tl) (fn-xw-fsync-dir dir))
+                  (t (fn-xw-quarantine-copy h extent dir stage target)))))))))
 
 (defun fn-xw-log-recover (path extent unit max genesis file store replay fn-octets-lg fn-arena)
   ; fnn-log-recover: (mv RESULT STORE REPLAY fn-octets-lg fn-arena), RESULT (:ok LOG)
@@ -821,7 +844,9 @@
                         (w (if (fn-xw-okp w) (fn-xw-sys (fn-hx-fdatasync h)) w))
                         (w (if (fn-xw-okp w) (fn-xw-log-at "log-recovered") w)))
                   (if (not (fn-xw-okp w))
-                      (mv w store replay fn-octets-lg fn-arena)
+                      ;; the segment's handle closed here too (sweep S116):
+                      ;; it is not yet the log's, so nothing else reaches it
+                      (prog2$ (fn-hx-close h) (mv w store replay fn-octets-lg fn-arena))
                     (mv (list :ok (list (cons :path path) (cons :h h) (cons :kernel ks) (cons :unit unit)
                                         (cons :max max) (cons :extent extent) (cons :count 0)
                                         (cons :octets 0) (cons :bmax 64) (cons :omax 67108864)
@@ -1072,8 +1097,13 @@
                                     (mv-let (f replay fn-arena) (fn-xw-replay-flush replay fn-arena)
                                       (if (not (fn-xw-okp f)) (mv f store fn-octets-lg fn-arena state)
                                         (let* ((log (cadr r))
+                                               ;; the configuration records' txids join
+                                               ;; the frontier too, as the native open and
+                                               ;; the read-only port do (sweep S039, walk F3)
                                                (next (fn-store-log-next-txid-join
-                                                      (fn-store-log-next-txid-join (nth 3 replay) 0)
+                                                      (fn-store-log-next-txid-join
+                                                       (fn-store-log-next-txid-join (nth 3 replay) 0)
+                                                       (fn-store-cfg-next-txid (cadr config-records) 0))
                                                       (fn-lgc-next-txid (fn-xw-get log :kernel))))
                                                (log (fn-xw-put log :kernel (fn-lgc-consume-to (fn-xw-get log :kernel) next)))
                                                (store (fn-xw-put (fn-xw-put (fn-xw-put store :log log) :frontier next)

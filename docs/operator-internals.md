@@ -1098,7 +1098,7 @@ administration and the control socket. Its verbs:
 | `bp-obligation status\|undertake\|request\|recover\|receipt` | the owner-mode forwarding obligation journal; `request` publishes ACL2's attempt for one work and hands its request ADU to the FNBS carrier; `recover` resolves an attempt fenced by a process death (see [Fenced workflow attempts](#fenced-workflow-attempts)) |
 | `bp-app receive` | the application receiver over the owner |
 | `operator CONFIG init\|status\|recover\|help` and the administrative plans (`policy set path-identity`, `bp-boundary add`, groups) | node configuration through the one ACL2 operator plan; `run`, `post` and `principal` exit 5 (their surfaces are not in this image) |
-| `store ROOT init\|recover\|status\|retention\|config\|inspect\|probe` | Store diagnostics, as in the default image |
+| `store ROOT init\|recover\|status\|retention\|config\|inspect` | Store diagnostics, as in the default image (`probe`, which commits fixture articles, and `post` are developer-image verbs) |
 | `app-journal`, `bp-service`, `bp-contact`, `tcpcl` | journals, the queue service, contact windows, the convergence layer |
 | `bp send`, `bp receive`, `bp decode` | the lab's transport tools, not the node: `bp send` reports a contact severed after it connected as interrupted (exit 6) and one that never connected as not-connected (exit 7), and a fence as uncertain (exit 3) and its RETRY argument re-offers a named durable `authored-N.wire` with its original identity; `bp receive`'s STORE argument admits sessions against that Store's enrolled boundaries, and without it every inbound bundle is refused at the receive boundary |
 

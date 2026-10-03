@@ -452,9 +452,17 @@
   :class ::common-lisp-compliant
   :keystones (fn-lgdm-repair-is-only-the-confirmed-damage))
 
-(definterface fn-lgdm-entry-len
-  :class ::common-lisp-compliant
-  :kinds ((ps true-listp)))
+(definterface fn-lgdm-entry-len-bounded
+  :class :common-lisp-compliant
+  :kinds ((ps true-listp))
+  :keystones (fn-lgdm-entry-len-bounded-step
+              fn-lgdm-entry-len-bounded-is-entry-len))
+
+(definterface fn-lgw-entry-len-bounded
+  :class :common-lisp-compliant
+  :kinds ((st true-listp))
+  :keystones (fn-lgw-entry-len-bounded-step
+              fn-lgw-entry-len-bounded-is-entry-len))
 
 (definterface fn-lgdm-header-len
   :class ::common-lisp-compliant
@@ -510,10 +518,6 @@
 
 (definterface fn-lgs-segment-name
   :class ::common-lisp-compliant)
-
-(definterface fn-lgw-entry-len
-  :class ::common-lisp-compliant
-  :kinds ((st true-listp)))
 
 (definterface fn-lgw-header-len
   :class ::common-lisp-compliant
@@ -947,6 +951,9 @@
 (definterface fn-store-log-initial-extent
   :class ::ideal)
 
+(definterface fn-store-log-partial-segment-verdict
+  :class ::ideal)
+
 (definterface fn-store-log-next-txid-join
   :class ::program)
 
@@ -1093,6 +1100,19 @@
 
 (definterface fn-store-sco-segment-admit
   :class ::program)
+
+; S045: the staged checkpoint read back before its rename
+; (host/native/io.lisp fnn-state-checkpoint-verify).
+(definterface fn-sccv-initial
+  :class :common-lisp-compliant)
+
+(definterface fn-sccv-step
+  :class :common-lisp-compliant
+  :keystones (fn-sccv-step-is-seg-step))
+
+(definterface fn-sccv-final
+  :class :common-lisp-compliant
+  :keystones (fn-sccv-final-ok-is-runs-ok))
 
 (definterface fn-store-sco-segment-header-octets
   :class ::program)

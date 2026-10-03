@@ -5356,7 +5356,8 @@ the crash keystone) and serving continues."
                                    (fnn-history-image-write fd image)
                                    (setq steps (fnn-checkpoint-write-steps
                                                 fd setup segment sequence (fnn-store-config store)
-                                                (fnn-live-octets-pub) arun))))
+                                                (fnn-live-octets-pub) arun)))
+                                 sequence)
                              ;; the buffer's array back (PKT-PRS-2)
                              (fnn-octets-pub-release))
                            (setq durablep t)
@@ -6007,7 +6008,8 @@ publication).  Answers the reply word."
                                          (fnn-history-image-write fd image)
                                          (fnn-checkpoint-write-steps
                                           fd setup segment (length rows) (fnn-store-config store)
-                                          (fnn-live-octets-pub) arun))))
+                                          (fnn-live-octets-pub) arun))
+                                       (length rows)))
                        (fnn-octets-pub-release))))
                  (fnn-reclaim-cut :staged)
                  (destructuring-bind (keyring generation)

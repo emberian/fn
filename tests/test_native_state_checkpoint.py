@@ -601,6 +601,22 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.path().write_bytes(mine)
         self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=0")
 
+    def test_a_second_image_header_is_refused_not_seeked_forever(self):
+        """codex r72 F3: an FNSI image header with NP=0 at the file's start
+        and again at its seek target (16384) made the plan seek to 16384
+        forever, holding the store lock.  The image header is taken once:
+        the second is a segment header the admission refuses, the open goes
+        on as for a corrupt checkpoint (no segment dropped: full replay)."""
+        created = self.op("init", "--profile", "development", "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        self.ids = ["<scp-fnsi@example.invalid>"]
+        self.post(self.ids)
+        header = (b"FNSI" + bytes([1]) + (0).to_bytes(8, "little")
+                  + (16384).to_bytes(8, "little") + bytes(16))
+        self.assertEqual(len(header), 37)
+        self.path().write_bytes(header + bytes(16384 - 37) + header)
+        self.assertTrue(self.open_line().startswith("open=full-replay"), self.open_line())
+
     def test_a_running_owner_is_asked_and_answers_by_name(self):
         """PKT-868 (lane operations; host/native/operator.lisp
         fnn-operator-execute-compaction): `store checkpoint' on a running
@@ -657,6 +673,33 @@ class StateCheckpointCutTests(StateCheckpointFixture):
         self.assertEqual(retried.returncode, EXIT_OK, retried.stderr.decode())
         self.assertEqual(self.open_line(), "open=checkpoint:5 suffix=0")
         return line
+
+    def test_a_staged_file_that_does_not_read_back_keeps_the_old_and_the_log(self, entry="store"):
+        """Sweep 2026-10-03 S045: the staged checkpoint is read back from
+        disk and verified (books/store-checkpoint-verify.lisp) after its
+        fence and before the rename.  One bit of the stage flipped in
+        between (FN_NATIVE_STATE_CHECKPOINT_READBACK_FLIP, at an offset
+        inside the new file's frames: past the old file's length) makes the
+        publication a known failure: exit 1, the stage removed, the old
+        checkpoint byte for byte, no log segment dropped, and the same
+        reconstructed state."""
+        self.init_with_checkpoint_at_three(entry)
+        old = self.digest()
+        expected = self.observation()
+        segments = {p.name for p in (self.store / "journal").iterdir()}
+        offset = self.path().stat().st_size - 1
+        refused = self.checkpoint(entry, env={
+            "FN_NATIVE_STATE_CHECKPOINT_READBACK_FLIP": str(offset)})
+        self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
+        self.assertIn(b"does not read back", refused.stderr)
+        self.assertEqual(self.digest(), old)
+        self.assertEqual(list((self.store / "staging").iterdir()), [])
+        self.assertLessEqual(segments, {p.name for p in (self.store / "journal").iterdir()})
+        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
+        self.assertEqual(self.observation(), expected)
+        retried = self.checkpoint(entry)
+        self.assertEqual(retried.returncode, EXIT_OK, retried.stderr.decode())
+        self.assertEqual(self.open_line(), "open=checkpoint:5 suffix=0")
 
     def test_a_killed_owner_reopens_from_the_checkpoint_without_replay(self):
         """Records flip (checkpoint-arena-2): the checkpoint carries the arena,

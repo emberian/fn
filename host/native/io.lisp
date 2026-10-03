@@ -265,6 +265,15 @@ array's size); it decides nothing ACL2 decides."
     (setf (svref st 0) (make-array 0 :element-type '(unsigned-byte 8)))
     st))
 
+(defun fnn-octets-pub-fill (vector)
+  "Make VECTOR's bytes the publication buffer's contents; return the live
+stobj (fnn-octets-fill's boundary, on the publication thread's buffer)."
+  (let* ((st (fnn-live-octets-pub)) (n (length vector)))
+    (fn-octets$c-reserve n st)
+    (replace (the fnn-octets (svref st 0)) vector)
+    (setf (svref st 1) n)
+    st))
+
 (defun fnn-octets-pub-release ()
   "Empty the publication buffer and give its array back after a checkpoint's
 publication (the verb's or the owner's thread): the array grew to the
@@ -2056,6 +2065,10 @@ route's point and the record log's, lane commit-onto-log)."
           ((eq (fnn-store-fault-class store) :fnn-test-kill)
            (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
            (fnn-fault "test SIGKILL did not terminate the process"))
+          ;; Developer-only (fnn-post-test-fault's stop): the process stops
+          ;; itself at the cut; a SIGCONT resumes it past the cut unchanged.
+          ((eq (fnn-store-fault-class store) :fnn-test-stop)
+           (sb-posix:kill (sb-posix:getpid) sb-unix:sigstop))
           ;; A test-only setup action.  fnn-config-record-names invokes this
           ;; immediately before its real fnn-list-directory call, so that call
           ;; itself returns EACCES.  A handler that turned its error into NIL
@@ -2528,7 +2541,13 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
           (trailer-octets (fnn-core 'fn-store-sco-trailer-octets))
           (profile (fnn-store-config store))
           (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
-          (frames nil) (total 0) (at 0))
+          (frames nil) (total 0) (at 0)
+          ;; The image region is recognized at the file's first header
+          ;; only: once (codex r72 F3).  A second image header at the seek
+          ;; target was taken again and seeked to the same offset forever,
+          ;; under the store lock; now it is a segment header, refused by
+          ;; the admission.
+          (at-start t))
       (unless (and (integerp header-octets) (> header-octets 0)
                    (integerp trailer-octets) (> trailer-octets 0))
         (fnn-close fd)
@@ -2549,10 +2568,11 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
                  (let ((rest (fnn-read-exact-fd fd (1- header-octets))))
                    (unless rest
                      (return-from fnn-state-checkpoint-plan (values :refused :truncated)))
-                  (let ((np (and (= at 0) (null frames)
+                  (let ((np (and at-start
                                  (fnn-core 'fn-his-image-header-np
                                            (fnn-octet-list
                                             (concatenate '(vector (unsigned-byte 8)) first rest))))))
+                   (setq at-start nil)
                    ;; The history image region (books/history-image-snapshot.lisp):
                    ;; ACL2 recognized its header at the file's start; the framed
                    ;; segments begin after it.  Its pages are not read here: the
@@ -2778,16 +2798,19 @@ for fn-bs-scp-program's five cuts."
                       (t (fnn-fault "invalid FN_NATIVE_STATE_CHECKPOINT_FAULT action: ~a" action)))
                 "developer-only native state-checkpoint fault"))))))
 
-(defun fnn-state-checkpoint-write (store octets)
+(defun fnn-state-checkpoint-write (store octets sequence)
   "P-STATE-CHECKPOINT, books fn-bs-scp-program: stage, fence, rename onto
 the checkpoint name, fence the root.  Before the rename a failure is known
 (exit 1): the old checkpoint, or none, stays.  At or after it the outcome is
 uncertain (exit 3): the next open reads the old or the new file, never a
-torn one (fn-bs-scp-program-crash-is-old-or-new), and a corrupt or missing
-one falls back to full replay."
-  (fnn-state-checkpoint-install store (fnn-state-checkpoint-stage store octets)))
+torn one (fn-bs-scp-program-crash-is-old-or-new).  A checkpoint the open
+cannot use is refused by name once the segments it covers are dropped
+(fnn-log-drop): there is no full replay to fall back to
+(fnn-recover-log-from-log-checkpoint).  That is why the staged file is
+read back and verified before its rename (fnn-state-checkpoint-stage, S045)."
+  (fnn-state-checkpoint-install store (fnn-state-checkpoint-stage store octets sequence)))
 
-(defun fnn-state-checkpoint-stage (store octets)
+(defun fnn-state-checkpoint-stage (store octets sequence)
   "fnn-state-checkpoint-write's first half: the staged file written and fenced
 (cuts created, written, staged-durable).  A failure is known: the old
 checkpoint stays, and the stage is removed (or, when its unlink fails, left
@@ -2795,7 +2818,11 @@ to the staging sweep under its .stage- prefix), as
 fnn-publish-filesystem-record does; that includes a publication the
 stopping owner refuses at a batch boundary (fnn-checkpoint-yield), which
 left its stage behind as a staging orphan.  A process death leaves it to
-the sweep.  Answers the staged path, for fnn-state-checkpoint-install
+the sweep.  After the fence the stage is read back from disk and verified
+(fnn-state-checkpoint-verify, S045): a file that does not read back as the
+frames of SEQUENCE is the same known failure, so neither the rename that
+would replace the old checkpoint nor the drop of the segments it covers
+happens over it.  Answers the staged path, for fnn-state-checkpoint-install
 (Q16's reclaim pass stages off the owner mutex and installs under it)."
   (let ((stage (fnn-join (fnn-staging store)
                          (format nil ".stage-checkpoint-~d-~a" (sb-posix:getpid) (fnn-random-hex 12)))))
@@ -2810,6 +2837,11 @@ the sweep.  Answers the staged path, for fnn-state-checkpoint-install
                                  :unlink-on-failure t)
             (setq written t)
             (fnn-at store :state-checkpoint-staged-durable)
+            (fnn-state-checkpoint-test-flip stage)
+            (let ((verdict (fnn-state-checkpoint-verify store stage sequence)))
+              (unless (and (consp verdict) (eq (first verdict) :ok))
+                (fnn-refuse-io "the staged state checkpoint does not read back: ~(~s~)"
+                               verdict)))
             stage)
         (fnn-os-error (e)
           (when written (ignore-errors (fnn-unlink stage)))
@@ -2817,6 +2849,74 @@ the sweep.  Answers the staged path, for fnn-state-checkpoint-install
         (fnn-store-io-refusal (e)
           (when written (ignore-errors (fnn-unlink stage)))
           (error e))))))
+
+(defun fnn-state-checkpoint-test-flip (path)
+  "Developer-only FN_NATIVE_STATE_CHECKPOINT_READBACK_FLIP=OFFSET: one bit of
+the staged file's octet at OFFSET flipped after its fence, so a native sees
+the read-back refuse it (tests.test_native_state_checkpoint)."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_STATE_CHECKPOINT_READBACK_FLIP")))
+    (when raw
+      (let ((offset (ignore-errors (parse-integer raw))))
+        (unless (and (integerp offset) (>= offset 0))
+          (fnn-fault "invalid FN_NATIVE_STATE_CHECKPOINT_READBACK_FLIP (expected a natural)"))
+        (let ((fd (fnn-open path (logior sb-posix:o-rdwr +fnn-o-nofollow+))))
+          (unwind-protect
+               (let ((one (fnn-make-octets 1)))
+                 (sb-posix:lseek fd offset sb-posix:seek-set)
+                 (when (= (fnn-read-fd fd one) 1)
+                   (setf (aref one 0) (logxor 1 (aref one 0)))
+                   (fnn-log-pwrite fd offset one)))
+            (fnn-close fd)))))))
+
+(defun fnn-state-checkpoint-verify (store path sequence)
+  "S045: the staged checkpoint at PATH read back from disk one segment at a
+time and verified by ACL2 (books/store-checkpoint-verify.lisp fn-sccv-step:
+each frame's header, index, count, SEQUENCE and seal over the chain;
+fn-sccv-final: five complete runs and nothing after them; KEYSTONE
+fn-sccv-final-ok-is-runs-ok).  Each segment is admitted against the
+profile's segment and file bounds before it is read (fn-store-sco-segment-
+admit, as the open's plan reads), and only its chunk is in the publication
+buffer: work and allocation per step are one segment's.  The history image
+region at the file's start is skipped as the plan skips it.  Answers
+fn-sccv-final's (:ok SEQUENCE), or (:refused REASON)."
+  (let ((header-octets (fnn-core 'fn-store-sco-segment-header-octets))
+        (trailer-octets (fnn-core 'fn-store-sco-trailer-octets))
+        (profile (fnn-store-config store))
+        (v (fnn-core 'fn-sccv-initial sequence))
+        (total 0) (at-start t)
+        (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
+    (unwind-protect
+         (loop
+           (let ((first (fnn-make-octets 1)))
+             (when (zerop (fnn-read-fd fd first))
+               (return (fnn-core 'fn-sccv-final v)))
+             (let ((rest (fnn-read-exact-fd fd (1- header-octets))))
+               (unless rest (return (list :refused :truncated)))
+               (let* ((head (concatenate '(vector (unsigned-byte 8)) first rest))
+                      (np (and at-start
+                               (fnn-core 'fn-his-image-header-np (fnn-octet-list head)))))
+                 (setq at-start nil)
+                 (if (integerp np)
+                     (sb-posix:lseek fd (+ header-octets (fnn-core 'fn-his-skip-octets np))
+                                     sb-posix:seek-set)
+                     (let* ((header (fnn-octet-list head))
+                            (admission (fnn-core 'fn-store-sco-segment-admit
+                                                 header total profile)))
+                       (unless (and (consp admission) (eq (first admission) :ok))
+                         (return (list :refused (if (consp admission)
+                                                    (second admission)
+                                                    :malformed))))
+                       (let* ((n (third admission))
+                              (chunk (fnn-read-exact-fd fd n))
+                              (trailer (and chunk (fnn-read-exact-fd fd trailer-octets))))
+                         (unless trailer (return (list :refused :truncated)))
+                         (incf total (second admission))
+                         (setq v (fnn-core 'fn-sccv-step v
+                                           (list header 0 n (fnn-octet-list trailer))
+                                           (fnn-octets-pub-fill chunk)))
+                         (when (and (consp v) (eq (first v) :refused))
+                           (return v)))))))))
+      (fnn-close fd))))
 
 (defun fnn-state-checkpoint-install (store stage)
   "fnn-state-checkpoint-write's second half: the staged file STAGE renamed
@@ -3460,7 +3560,8 @@ it covers are dropped (fnn-log-drop; T8)."
                  (lambda (fd)
                    (fnn-history-image-write fd image)
                    (setq steps (fnn-checkpoint-write-steps fd setup segment sequence
-                                                           profile st arun))))
+                                                           profile st arun)))
+                 sequence)
              (fnn-octets-pub-release))
            (when position
              (handler-case
@@ -4851,7 +4952,8 @@ books/store-init-log-publication.lisp)."
   '(:record-completing :finish-consumed :finish-durable :log-written :log-fenced))
 
 (defun fnn-post-test-fault ()
-  "Developer-only FN_NATIVE_POST_FAULT=MODEL-CUT:eio|kill selector, or
+  "Developer-only FN_NATIVE_POST_FAULT=MODEL-CUT:eio|kill selector (or
+log-written|log-fenced:stop, the process stopped there), or
 record-prepublish:refuse (a known refusal before the record's first write).
 
 The point is one of fnn-advance-frontier/fnn-publish/fnn-finish's actual
@@ -4876,9 +4978,16 @@ observes a genuine new-process image."
           (unless (or (member point +fnn-post-model-cuts+)
                       (member point +fnn-post-log-model-cuts+))
             (fnn-fault "unknown FN_NATIVE_POST_FAULT cut: ~a" label))
+          ;; stop: SIGSTOP at a log cut, so the block-fault campaign
+          ;; (tests/campaign/native_block_fault.py) can change the device
+          ;; under a process paused exactly there, then continue or kill it.
+          (when (and (string= action "stop")
+                     (not (member point '(:log-written :log-fenced))))
+            (fnn-fault "FN_NATIVE_POST_FAULT stop is only at log-written or log-fenced"))
           (list point
                 (cond ((string= action "eio") 'fnn-os-error)
                       ((string= action "kill") :fnn-test-kill)
+                      ((string= action "stop") :fnn-test-stop)
                       (t (fnn-fault
                           "invalid FN_NATIVE_POST_FAULT action: ~a" action)))
                 "developer-only native post fault"))))))
@@ -6099,6 +6208,9 @@ tree root), or stop the build."
     ;; environment readings the image and the extracted program then share.
     "FN_NATIVE_TEST_CLOCK" "FN_NATIVE_TEST_ENTROPY"
     "FN_NATIVE_STATE_CHECKPOINT_FAULT" "FN_NATIVE_IMPORT_FAULT" "FN_NATIVE_EXPORT_FAULT"
+    ;; S045: one octet of the staged state checkpoint flipped after its
+    ;; fence, before the read-back (fnn-state-checkpoint-stage).
+    "FN_NATIVE_STATE_CHECKPOINT_READBACK_FLIP"
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST" "FN_NATIVE_RECLAIM_FAULT"
     "FN_NATIVE_TEST_RECLAIM_STALL_FILE" "FN_NATIVE_RECLAIM_HOLD"
     "FN_NATIVE_PAGE_READ_HOLD"
@@ -6184,7 +6296,13 @@ tree root), or stop the build."
         (and (>= (length argv) 3)
              (string= (first argv) "store")
              (string= (third argv) "post")
-             "store post"))))
+             "store post")
+        ;; sweep S012: the capacity probe commits fixture articles into the
+        ;; store it is given; a production image refuses it at startup.
+        (and (>= (length argv) 3)
+             (string= (first argv) "store")
+             (string= (third argv) "probe")
+             "store probe"))))
 
 (defun fnn-stack-exhaustion-report (next)
   "FN_NATIVE_FAULT_BACKTRACE's report of a control-stack exhaustion, printed
@@ -6483,8 +6601,10 @@ written here."
         (incf at n)))))
 
 (defun fnn-log-parent (path)
-  (let ((slash (position #\/ path :from-end t)))
-    (cond ((null slash) ".") ((zerop slash) "/") (t (subseq path 0 slash)))))
+  "PATH's parent directory: fnn-parent's, trailing slashes trimmed first (a
+second copy without the trim fenced PATH itself for \"dir/\", so a rename's
+directory fence missed the directory that names it: TCB-SHRINK review)."
+  (fnn-parent path))
 
 (defun fnn-log-open-segment (path extent unit &optional read-only)
   "The segment's descriptor.  Absent and not READ-ONLY: created, preallocated
@@ -6495,21 +6615,32 @@ EXTENT octets, or refused."
            :message (format nil "log extent ~a is not a positive number of ~a-octet units"
                             extent unit)))
   (let ((st (fnn-check-regular path)))
+    ;; The descriptor is the caller's only when this returns it: every
+    ;; fallible step after the open closes it on failure (codex r72 F11).
     (cond (st
            (let ((fd (fnn-open path (logior (if read-only sb-posix:o-rdonly sb-posix:o-rdwr)
-                                            +fnn-o-nofollow+))))
-             (unless (= (sb-posix:stat-size (fnn-fstat fd)) extent)
-               (fnn-close fd)
-               (fnn-refuse "log segment ~a is not ~a octets long" path extent))
-             fd))
+                                            +fnn-o-nofollow+)))
+                 (done nil))
+             (unwind-protect
+                  (progn
+                    (unless (= (sb-posix:stat-size (fnn-fstat fd)) extent)
+                      (fnn-refuse "log segment ~a is not ~a octets long" path extent))
+                    (setq done t)
+                    fd)
+               (unless done (fnn-close fd)))))
           (read-only (fnn-refuse "no log segment at ~a" path))
           (t
            (let ((fd (fnn-open path (logior sb-posix:o-rdwr sb-posix:o-creat
-                                            sb-posix:o-excl +fnn-o-nofollow+))))
-             (fnn-log-preallocate fd extent)
-             (fnn-fsync-file fd)
-             (fnn-fsync-dir (fnn-log-parent path))
-             fd)))))
+                                            sb-posix:o-excl +fnn-o-nofollow+)))
+                 (done nil))
+             (unwind-protect
+                  (progn
+                    (fnn-log-preallocate fd extent)
+                    (fnn-fsync-file fd)
+                    (fnn-fsync-dir (fnn-log-parent path))
+                    (setq done t)
+                    fd)
+               (unless done (fnn-close fd))))))))
 
 (defun fnn-log-pread (fd offset count)
   "COUNT octets of the segment at OFFSET (lseek, then read to completion); a
@@ -6636,14 +6767,16 @@ offline `store ROOT post'), the store's replayed configuration's
   "After the stream's stop ST: ACL2's probe of the rest of the segment
 (books/store-log-damage.lisp).  At each offset ACL2 names (fn-lgdm-q), the
 header window it names (fn-lgdm-header-len), the entry length it answers from
-that window (fn-lgdm-entry-len; NIL: none starts there) and that entry's
+that window (fn-lgdm-entry-len-bounded, books/store-log-entry-bound.lisp:
+NIL when none starts there or it is longer than any entry the open accepts
+under MAX, sweep S048) and that entry's
 octets, then ACL2's step (fn-lgdm-step).  One unit's header, or one entry, per
 step.  Returns the probe's final state."
   (let ((ps (fnn-core 'fn-lgdm-start st)))
     (loop until (fnn-core 'fn-lgdm-done-p ps extent) do
       (let* ((q (fnn-nat (fnn-core 'fn-lgdm-q ps)))
              (h (fnn-octet-list (fnn-log-pread fd q (fnn-nat (fnn-core 'fn-lgdm-header-len ps extent)))))
-             (n (fnn-core 'fn-lgdm-entry-len h ps extent))
+             (n (fnn-core 'fn-lgdm-entry-len-bounded h ps extent max))
              (e (and n (fnn-octet-list (fnn-log-pread fd q (fnn-nat n))))))
         (setq ps (fnn-core 'fn-lgdm-step h e ps unit max))))
     ps))
@@ -6671,7 +6804,9 @@ NIL otherwise: the step folds (fn-lgw-step-buf).")
 (defun fnn-log-stream-segment (fd extent unit max genesis sink &optional label writable)
   "The segment's decode from GENESIS as a stream of entries
 (books/store-log-stream.lisp): at the state's offset the header octets ACL2
-names (fn-lgw-header-len), the entry's length from them (fn-lgw-entry-len),
+names (fn-lgw-header-len), the entry's length from them, never past the
+longest entry the open accepts (fn-lgw-entry-len-bounded, sweep S048:
+KEYSTONE fn-lgw-step-of-oversized-is-step-of-nil),
 that entry's octets read into the walk's octet buffer (none: an empty
 buffer), and ACL2's step over the buffer (fn-lgw-step-buf,
 books/store-log-buffer.lisp: KEYSTONE fn-lgw-step-buf-is-step, the list step
@@ -6701,7 +6836,7 @@ the open proceeds on (:complete, :torn or :repaired)."
          (loop until (fnn-core 'fn-lgw-stop st) do
            (let* ((pos (fnn-nat (fnn-core 'fn-lgw-pos st)))
                   (h (fnn-log-pread fd pos (fnn-nat (fnn-core 'fn-lgw-header-len st extent))))
-                  (n (fnn-core 'fn-lgw-entry-len (fnn-octet-list h) st extent))
+                  (n (fnn-core 'fn-lgw-entry-len-bounded (fnn-octet-list h) st extent max))
                   (e (if n (fnn-log-pread fd pos (fnn-nat n)) (fnn-make-octets 0))))
              ;; The buffer holds exactly the entry's octets (its array E, its
              ;; fill (length E)), as fnn-extent-entry-ok fills the realizer's.
@@ -6752,24 +6887,41 @@ the open proceeds on (:complete, :torn or :repaired)."
 
 (defun fnn-log-quarantine (path fd extent name)
   "Keep the segment's octets [0, EXTENT) as quarantine/NAME beside journal/
-(created O_EXCL, fenced with its directory) before a confirmed repair
-truncates the segment: the dropped entries stay available to the operator."
+before a confirmed repair truncates the segment: the dropped entries stay
+available to the operator.  The copy is written under quarantine/.stage-NAME
+(a stage of the same name left by a process that died mid-copy goes first:
+the writer lock is held, so no live attempt owns it), fenced, then renamed
+onto NAME and the directory fenced, so NAME only ever names a complete copy
+(sweep S040/S124: it was created O_EXCL in place, and a copy cut short left
+a partial NAME every rerun refused with EEXIST).  A NAME already present is
+an earlier attempt's complete copy of this damage (the repair died before
+its truncation was durable): it is kept and nothing is copied; a failure
+before the rename removes the stage."
   (let* ((journal (fnn-log-parent path))
          (dir (fnn-join (fnn-log-parent journal) "quarantine"))
-         (target (fnn-join dir name)))
+         (target (fnn-join dir name))
+         (stage (fnn-join dir (concatenate 'string ".stage-" name))))
     (unless (fnn-lstat dir)
       (fnn-posix () (sb-posix:mkdir dir #o700))
       (fnn-fsync-dir (fnn-log-parent journal)))
-    (let ((out (fnn-open target (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl
-                                        +fnn-o-nofollow+))))
-      (unwind-protect
-           (let ((at 0))
-             (loop while (< at extent) do
-               (let ((chunk (fnn-log-pread fd at (min 1048576 (- extent at)))))
-                 (fnn-write-range out chunk 0 (length chunk))
-                 (incf at (length chunk))))
-             (fnn-fsync-file out))
-        (fnn-close out)))
+    (unless (fnn-lstat target)
+      (when (fnn-lstat stage) (fnn-unlink stage))
+      (let ((out (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl
+                                         +fnn-o-nofollow+)))
+            (done nil))
+        (unwind-protect
+             (progn
+               (unwind-protect
+                    (let ((at 0))
+                      (loop while (< at extent) do
+                        (let ((chunk (fnn-log-pread fd at (min 1048576 (- extent at)))))
+                          (fnn-write-range out chunk 0 (length chunk))
+                          (incf at (length chunk))))
+                      (fnn-fsync-file out))
+                 (fnn-close out))
+               (fnn-replace stage target)
+               (setq done t))
+          (unless done (ignore-errors (fnn-unlink stage))))))
     (fnn-fsync-dir dir)
     target))
 
@@ -6781,10 +6933,15 @@ the records, ACL2's octet lists): for the log rig's oracle, never the open."
                                      (lambda (r) (push r records)))))
     (values (nreverse records) ks)))
 
+(defconstant +fnn-log-zero-chunk+ 1048576
+  "The octets of zeros one write of the recovered tail carries: a bound on
+the buffer, not on the tail (fnn-log-recover).")
+
 (defun fnn-log-recover (path extent unit max &optional (genesis *fn-lg-genesis*) (sink #'identity))
   "P-LOG-RECOVER (fn-lg-recover-program): the kernel of the segment's decode
 from GENESIS, each record handed to SINK as it is read (fnn-log-stream-
-segment), then the tail [F, EXTENT) zeroed by one write and fenced.  The
+segment), then the tail [F, EXTENT) zeroed (the program's one write, from a
+bounded buffer) and fenced.  The
 kernel is R-related to the segment at log-recovered
 (fn-lg-recover-program-establishes-the-relation)."
   (let* ((fd (fnn-log-open-segment path extent unit))
@@ -6799,12 +6956,24 @@ kernel is R-related to the segment at log-recovered
                    ks)
                (error (e) (fnn-close fd) (error e)))))
     ;; fn-lg-recover-tail-of-abstraction: the range read from the
-    ;; concrete kernel is the logical kernel's.
-    (destructuring-bind (offset count) (fnn-call 'fn-lg-recover-tail ks extent)
-      (fnn-log-pwrite fd offset (fnn-make-octets count))
-      (fnn-log-at :log-truncated)
-      (fnn-log-fdatasync fd)
-      (fnn-log-at :log-recovered))
+    ;; concrete kernel is the logical kernel's.  The program's one write of
+    ;; zeros over [OFFSET, OFFSET+COUNT) is written from one reusable buffer
+    ;; of at most +fnn-log-zero-chunk+ octets (sweep S047, codex r72 F8: it
+    ;; was one vector of the whole tail, GiBs after the extent doubled):
+    ;; the same octets at the same places, the allocation bounded.  A
+    ;; failure here or at the fence closes FD before it is passed on.
+    (handler-case
+        (destructuring-bind (offset count) (fnn-call 'fn-lg-recover-tail ks extent)
+          (let ((zeros (fnn-make-octets (min count +fnn-log-zero-chunk+)))
+                (end (+ offset count)))
+            (loop for at from offset below end by +fnn-log-zero-chunk+ do
+              (fnn-log-pwrite fd at (if (<= (+ at (length zeros)) end)
+                                        zeros
+                                        (subseq zeros 0 (- end at))))))
+          (fnn-log-at :log-truncated)
+          (fnn-log-fdatasync fd)
+          (fnn-log-at :log-recovered))
+      (error (e) (fnn-close fd) (error e)))
     (%make-fnn-log :path path :fd fd :kernel ks :unit unit :max max :extent extent)))
 
 (defun fnn-log-prepare (log record)
@@ -7321,23 +7490,54 @@ go (the same book's fn-lgob-two-barriers-without-* counterexamples)."
                               (fnn-nat (fnn-core 'fn-lgs-listing-bound))
                               "log segment"))
 
+(defun fnn-log-first-nonzero (path)
+  "The offset of the first nonzero octet of the file at PATH, or NIL when
+every octet is zero: one bounded buffer, read to the first nonzero chunk."
+  (let ((fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
+        (buffer (fnn-make-octets 65536)) (at 0))
+    (unwind-protect
+         (loop
+           (let ((got (fnn-read-fd fd buffer)))
+             (when (zerop got) (return nil))
+             (let ((i (position-if-not #'zerop buffer :end got)))
+               (when i (return (+ at i))))
+             (incf at got)))
+      (fnn-close fd))))
+
 (defun fnn-log-complete-rotation (store path)
   "The active segment as an interrupted rotation left it (created, not yet
 preallocated to whole units): a writable open completes the rotation's
 steps -- preallocate to ACL2's initial extent, fence the file, fence
 journal/ -- before it scans; a reader refuses it.  A segment the rotation
-created holds no entry (every append follows its rotate-durable)."
-  (let ((size (sb-posix:stat-size (fnn-check-regular path)))
-        (unit (fnn-store-log-unit)))
-    (unless (fnn-core 'fn-lg-extent-okp size unit)
-      (unless (fnn-store-writable store)
-        (fnn-refuse "log segment ~a is an interrupted rotation: open it writable (recover)" path))
-      (let ((fd (fnn-open path (logior sb-posix:o-rdwr +fnn-o-nofollow+))))
-        (unwind-protect
-             (progn (fnn-log-preallocate fd (fnn-nat (fnn-core 'fn-store-log-initial-extent)))
-                    (fnn-fsync-file fd))
-          (fnn-close fd)))
-      (fnn-fsync-dir (fnn-journal-dir store)))))
+created holds no entry (every append follows its rotate-durable), so ACL2
+admits the completion only when no octet of the segment is nonzero
+(host/store-host.lisp fn-store-log-partial-segment-verdict, codex r72 F1):
+any other segment at a length that is not whole units is refused by name
+with nothing written (on a host without fallocate the preallocation writes
+zeros from offset 0, which over committed records would destroy them)."
+  (let* ((size (sb-posix:stat-size (fnn-check-regular path)))
+         (unit (fnn-store-log-unit))
+         (verdict (if (fnn-core 'fn-lg-extent-okp size unit)
+                      :whole
+                      (fnn-core 'fn-store-log-partial-segment-verdict size unit
+                                (fnn-log-first-nonzero path)))))
+    (case verdict
+      (:whole nil)
+      (:complete-rotation
+       (unless (fnn-store-writable store)
+         (fnn-refuse "log segment ~a is an interrupted rotation: open it writable (recover)" path))
+       (let ((fd (fnn-open path (logior sb-posix:o-rdwr +fnn-o-nofollow+))))
+         (unwind-protect
+              (progn (fnn-log-preallocate fd (fnn-nat (fnn-core 'fn-store-log-initial-extent)))
+                     (fnn-fsync-file fd))
+           (fnn-close fd)))
+       (fnn-fsync-dir (fnn-journal-dir store)))
+      (t
+       (unless (equal verdict '(:refused :segment-misaligned))
+         (fnn-fault "ACL2 returned a malformed partial-segment verdict"))
+       (error 'fnn-store-open-refusal
+              :message (format nil "open refused reason=segment-misaligned: log segment ~a holds data at ~d octets, not whole ~d-octet units; nothing was written (restore it, or quarantine it by hand)"
+                               path size unit))))))
 
 (defun fnn-log-drop (store indices)
   "P-DROP (design 2026-09-27 storage-log section 6): unlink each covered
@@ -7586,12 +7786,15 @@ the process's life) and the stream binds each record's place for SINK
       (let ((path (fnn-segment-path-at store k)))
         (if more
             (let* ((extent (fnn-log-observed-extent path))
-                   (fd (fnn-log-open-segment path extent unit t))
-                   (*fnn-extent-file* (and places (fnn-extent-register path))))
+                   (fd (fnn-log-open-segment path extent unit t)))
+              ;; FD is closed whatever follows its open, the extent
+              ;; registration included (codex r72 F11).
               (unwind-protect
-                   (setq genesis (fnn-core 'fn-lgc-last
-                                           (fnn-log-stream-segment fd extent unit max genesis sink
-                                                                   (file-namestring path))))
+                   (let ((*fnn-extent-file* (and places (fnn-extent-register path))))
+                     (setq genesis (fnn-core 'fn-lgc-last
+                                             (fnn-log-stream-segment fd extent unit max genesis
+                                                                     sink
+                                                                     (file-namestring path)))))
                 (fnn-close fd)))
           (progn
             (fnn-log-complete-rotation store path)
@@ -8376,7 +8579,10 @@ segment' (tests/test_native_topic_local.py)."
                  ((string= command "provenance") (need 4) (fnn-command-provenance root (first rest)))
                  ((string= command "probe")
                   (need 4)
-                  (fnn-command-probe root (parse-integer (first rest))
+                  (unless (fnn-developer-image-p)
+                    (error 'fnn-usage-error
+                           :message "store probe is a developer-image verb: it commits fixture articles"))
+                  (fnn-command-probe root (fnn-log-nat-arg (first rest) "probe COUNT")
                                      (cond ((null (second rest)) nil)
                                            ((string= (second rest) "article") t)
                                            (t (error 'fnn-usage-error

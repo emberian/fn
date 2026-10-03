@@ -405,7 +405,7 @@
     (let* ((q (fn-lgdm-q ps))
            (hd (fn-xo-pread-exact h q (fn-lgdm-header-len ps extent))))
       (if (not (fn-xo-okp hd)) hd
-        (let* ((n (fn-lgdm-entry-len (cadr hd) ps extent))
+        (let* ((n (fn-lgdm-entry-len-bounded (cadr hd) ps extent max))
                (e (if n (fn-xo-pread-exact h q n) (list :ok nil))))
           (if (not (fn-xo-okp e)) e
             (fn-xo-probe-tail h extent unit max
@@ -420,7 +420,7 @@
            (hd (fn-xo-pread-exact h pos (fn-lgw-header-len st extent))))
       (if (not (fn-xo-okp hd))
           (mv hd st replay fn-octets-lg fn-arena)
-        (let ((n (fn-lgw-entry-len (cadr hd) st extent)))
+        (let ((n (fn-lgw-entry-len-bounded (cadr hd) st extent max)))
           (mv-let (count fn-octets-lg)
             (fn-hx-fill h pos (if n n 0) fn-octets-lg)
             (if (not (equal count (if n n 0)))

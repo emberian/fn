@@ -226,6 +226,106 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         self.assertIn(b"recovered transactions=0 articles=0", reopened.stdout)
         self.assertGreater((store / "journal" / "000001.log").stat().st_size, 0)
 
+    def test_a_partly_zero_filled_segment_completes_as_a_rotation(self):
+        # codex r72 F1: a segment at a length that is not whole units with
+        # every octet zero is an interrupted rotation (or init) the writable
+        # open completes.
+        store = self.base / "killed-segment-partial-fill"
+        killed = self.invoke(store, "init", "init-segment-created:kill")
+        self.assertEqual(killed.returncode, -9, killed.stderr)
+        segment = store / "journal" / "000001.log"
+        segment.write_bytes(bytes(70000))
+        reopened = self.invoke(store, "recover")
+        self.assertEqual(reopened.returncode, EXIT_OK, reopened.stderr)
+        self.assertIn(b"recovered transactions=0 articles=0", reopened.stdout)
+
+    def test_committed_segment_at_a_misaligned_length_is_refused_untouched(self):
+        # codex r72 F1: a committed segment with one stray trailing octet is
+        # NOT an interrupted rotation.  Before the fix the writable open
+        # preallocated it from offset 0 (on a host without fallocate: zeros
+        # over the first MiB of acknowledged records) before any scan.  Now
+        # it is refused by name and not one octet is written.
+        if not executable(DEVELOPER):
+            self.skipTest("store post is a developer-image verb")
+        store = self.base / "misaligned-committed"
+        payload = self.base / "misaligned-payload"
+        payload.write_bytes(b"misaligned segment payload\r\n")
+        made = run([DEVELOPER, "--fn", "store", store, "init", "fn.letters"], timeout=None,
+                   env=environment({}))
+        self.assertEqual(made.returncode, EXIT_OK, made.stderr)
+        posted = run([DEVELOPER, "--fn", "store", store, "post", "<misaligned@example.invalid>",
+                      payload, "-", "-", "fn.letters"], timeout=None, env=environment({}))
+        self.assertEqual(posted.returncode, EXIT_OK, posted.stderr)
+        segment = store / "journal" / "000001.log"
+        with open(segment, "ab") as f:
+            f.write(b"\x00")
+        before = segment.read_bytes()
+        self.assertNotEqual(before.strip(b"\x00"), b"")
+        for command in ("recover", "status"):
+            result = self.invoke(store, command)
+            self.assertEqual(result.returncode, EXIT_REFUSED, (command, result.stderr))
+            self.assertIn(b"reason=segment-misaligned", result.stderr)
+            self.assertEqual(segment.read_bytes(), before, command)
+
+    def test_production_refuses_the_capacity_probe(self):
+        # Sweep S012: `store ROOT probe COUNT' commits COUNT fixture articles
+        # into the store it names; the production image refuses it at
+        # startup (exit 5) and the store is untouched.  A developer image
+        # takes COUNT as a natural or refuses it as usage, not as a fault.
+        store = self.base / "probe-refused"
+        made = self.invoke(store, "init")
+        self.assertEqual(made.returncode, EXIT_OK, made.stderr)
+        before = {p: p.read_bytes() for p in store.rglob("*") if p.is_file()}
+        refused = run([IMAGE, "--fn", "store", store, "probe", "3"], timeout=None,
+                      env=environment({}))
+        self.assertEqual(refused.returncode, 5, refused.stderr)
+        self.assertIn(b"store probe", refused.stderr)
+        self.assertEqual({p: p.read_bytes() for p in store.rglob("*") if p.is_file()}, before)
+        if executable(DEVELOPER):
+            usage = run([DEVELOPER, "--fn", "store", store, "probe", "3x"], timeout=None,
+                        env=environment({}))
+            self.assertEqual(usage.returncode, 5, usage.stderr)
+            self.assertNotIn(b"internal", usage.stderr)
+
+    def test_post_stops_at_a_log_cut_and_continues(self):
+        # FN_NATIVE_POST_FAULT=log-written:stop (for the block-fault
+        # campaign, S060): the developer process SIGSTOPs itself at the cut;
+        # SIGCONT resumes it and the post completes.  stop at another cut is
+        # refused.
+        if not executable(DEVELOPER) or not os.path.exists("/proc"):
+            self.skipTest("developer image and /proc required")
+        import signal, subprocess, time
+        store = self.base / "post-stop"
+        payload = self.base / "post-stop-payload"
+        payload.write_bytes(b"stop payload\r\n")
+        made = run([DEVELOPER, "--fn", "store", store, "init", "fn.letters"], timeout=None,
+                   env=environment({}))
+        self.assertEqual(made.returncode, EXIT_OK, made.stderr)
+        for cut in ("log-written", "log-fenced"):
+            msgid = "<stop-%s@example.invalid>" % cut
+            proc = subprocess.Popen([str(DEVELOPER), "--fn", "store", str(store), "post", msgid,
+                                     str(payload), "-", "-", "fn.letters"],
+                                    env=environment({"FN_NATIVE_POST_FAULT": cut + ":stop"}),
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            state = None
+            for _ in range(600):
+                try:
+                    state = open("/proc/%d/stat" % proc.pid).read().rsplit(")", 1)[1].split()[0]
+                except OSError:
+                    state = None
+                if state == "T" or proc.poll() is not None:
+                    break
+                time.sleep(0.1)
+            self.assertEqual(state, "T", (cut, proc.poll()))
+            os.kill(proc.pid, signal.SIGCONT)
+            out, err = proc.communicate(timeout=300)
+            self.assertEqual(proc.returncode, EXIT_OK, (cut, err))
+            self.assertIn(b"committed", out)
+        bad = run([DEVELOPER, "--fn", "store", store, "post", "<stop-x@example.invalid>",
+                   payload, "-", "-", "fn.letters"], timeout=None,
+                  env=environment({"FN_NATIVE_POST_FAULT": "finish-durable:stop"}))
+        self.assertNotEqual(bad.returncode, EXIT_OK)
+
     def test_sigkill_after_the_segment_recovers_in_a_new_process(self):
         # Lane log-2: init's last cut is the fenced segment; the store is
         # complete and a new process recovers it empty.

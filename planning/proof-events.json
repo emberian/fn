@@ -18933,6 +18933,40 @@
           "kind": "theorem"
         }
       ]
+    },
+    {
+      "id": "PRF-1241",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sccv-final-ok-is-runs-ok"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sccv-step-is-seg-step"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1250",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgw-entry-len-bounded-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgdm-entry-len-bounded-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgw-entry-len-bounded-is-entry-len"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgdm-entry-len-bounded-is-entry-len"
+        }
+      ]
     }
   ]
 }

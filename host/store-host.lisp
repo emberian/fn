@@ -57,6 +57,9 @@
 (include-book "../books/store-log-stream")
 ;; The open tells a torn tail from damage (lane log-corruption).
 (include-book "../books/store-log-damage")
+; sweep S048: the entry lengths the host reads, bounded before the read
+; (host/native/io.lisp fnn-log-stream-segment, fnn-log-probe-tail).
+(include-book "../books/store-log-entry-bound")
 (include-book "../books/store-log-lineage")
 ;; The walk over the entry's octet buffer (lane snapshot-open-3; KEYSTONE
 ;; fn-lgw-step-buf-is-step): host/native/io.lisp fnn-log-stream-segment.
@@ -414,6 +417,19 @@
 (defun fn-store-log-segment-name () (fn-olr-segment-name))
 (defun fn-store-log-unit () (fn-olr-unit))
 (defun fn-store-log-initial-extent () (fn-olr-initial-extent))
+;; The active segment observed at SIZE octets (codex r72 F1).  Whole units
+;; (fn-lg-extent-okp) is the log's own shape: :whole.  Otherwise it can only
+;; be a rotation that died between its create and the end of its zero fill
+;; (P-ROTATE: every append follows rotate-durable, so the segment it
+;; created holds no entry), and that is so only when no octet of it is
+;; nonzero (FIRST-NONZERO, the host's observation of the first nonzero
+;; octet's offset, is NIL): :complete-rotation, the writable open completes
+;; it.  A nonzero octet in a segment at a length the log never leaves is
+;; damage the open must not write over: refused by name, the bytes kept.
+(defun fn-store-log-partial-segment-verdict (size unit first-nonzero)
+  (cond ((fn-lg-extent-okp size unit) :whole)
+        ((null first-nonzero) :complete-rotation)
+        (t (list :refused :segment-misaligned))))
 
 ;; The store profile (D27, format 8): every value the host reads from it is
 ;; one of these accessors over the decoded values, never a list position.
