@@ -6502,8 +6502,10 @@ written here."
         (incf at n)))))
 
 (defun fnn-log-parent (path)
-  (let ((slash (position #\/ path :from-end t)))
-    (cond ((null slash) ".") ((zerop slash) "/") (t (subseq path 0 slash)))))
+  "PATH's parent directory: fnn-parent's, trailing slashes trimmed first (a
+second copy without the trim fenced PATH itself for \"dir/\", so a rename's
+directory fence missed the directory that names it: TCB-SHRINK review)."
+  (fnn-parent path))
 
 (defun fnn-log-open-segment (path extent unit &optional read-only)
   "The segment's descriptor.  Absent and not READ-ONLY: created, preallocated
