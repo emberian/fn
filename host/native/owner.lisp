@@ -1548,17 +1548,17 @@ ledger. Retain returned storage before classification. No possibly torn retry."
     (sb-thread:with-mutex ((fnn-owner-service-syncer-ledger-lock service))
       (destructuring-bind (word returned)
           (ecase subject
-            (fn-ros-physical
+            (:physical
              (fnn-call 'fn-ros-physical (fnn-syncer-grant-token grant) receipt
                        (fnn-owner-service-syncer-ledger service)))
-            (fn-ros-outcome
+            (:outcome
              (fnn-call 'fn-ros-outcome (fnn-syncer-grant-token grant) receipt
                        (fnn-owner-service-syncer-ledger service))))
         (setf (fnn-owner-service-syncer-ledger service) returned)
         (unless (member word '(:pending :settled))
           (fnn-fault "syncer custody receipt refused ~a" word))
         (setq answer word)
-        (when (eq subject 'fn-ros-physical)
+        (when (eq subject :physical)
           (setf (fnn-syncer-grant-physical grant) receipt)
           ;; A failed starter's operation cannot complete before the child
           ;; physically ends. Take its retained completion exactly once.
@@ -1585,10 +1585,18 @@ Arm or take its immutable-ledger completion under private exclusion."
     (when now (funcall now))))
 
 (defun fnn-owner-syncer-physical (service grant receipt)
-  (fnn-owner-syncer-receipt service grant 'fn-ros-physical receipt))
+  (fnn-owner-syncer-receipt service grant :physical receipt))
 
 (defun fnn-owner-syncer-outcome (service grant generation)
-  (fnn-owner-syncer-receipt service grant 'fn-ros-outcome generation))
+  (fnn-owner-syncer-receipt service grant :outcome generation))
+
+(defun fnn-owner-syncer-drained-p (service)
+  "Shutdown observation: typed draw is idle and no captured native grant
+remains. No operation or physical receipt is manufactured by this check."
+  (sb-thread:with-mutex ((fnn-owner-service-syncer-ledger-lock service))
+    (and (null (fnn-owner-service-syncer-grants service))
+         (or (null (fnn-owner-service-syncer-ledger service))
+             (fnn-core 'fn-ros-drainedp (fnn-owner-service-syncer-ledger service))))))
 
 (defun fnn-owner-gate-abort-locked (gate condition)
   "Caller holds the gate mutex; retain accounting and the first failure."
@@ -7617,6 +7625,8 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                      '("workers remain"))
                                    (when (fnn-owner-service-cold-head service)
                                      '("a cold read is outstanding"))
+                                   (unless (fnn-owner-syncer-drained-p service)
+                                     '("syncer operation or physical custody remains"))
                                    (unless (every (lambda (slot)
                                                     (let ((worker (fnn-cold-worker-thread slot)))
                                                       (or (null worker)
@@ -7629,6 +7639,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                         (when open
                           (fnn-err "stopping: the close is not joined: ~{~a~^; ~}" open)))
                       (when (and modules-joined
+                                 (fnn-owner-syncer-drained-p service)
                                  (null (fnn-with-roster (service)
                                          (fnn-owner-service-workers service)))
                                  (null (fnn-owner-service-cold-head service))
@@ -7748,7 +7759,6 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                    fault nil :inet nil connection-fault-operation)))
 
 (fnn-register-developer-verb "owner" #'fnn-command-owner)
-
 
 
 
