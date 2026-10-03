@@ -10840,6 +10840,9 @@ d062e8994b5c057ec7cfe4fe0c49ed455c0a1c6db24796369428dafd84347978 656 planning/ev
 3e4550040492da09bc8bd2d5aca428aaa215daf7f1982b2e398674a8fa0dab31 288 planning/evidence/runtime-constructors-2026-09-30/tests.log
 6bbfc28974317ad45f074edb8d21b3dc8b12323e6a2e512ae256a45ea7585ef2 966 planning/evidence/runtime-constructors-2026-09-30/world-after.txt
 bd15194bd9ea3beebe7c0f4099a1c70247ebd37d5d47e96405e125786dfc2715 1207 planning/evidence/runtime-constructors-2026-09-30/world-before.txt
+1172c48da425cf180d665c78b53383b9e0868d45a8106862277bcb1e36b213da 1432 planning/evidence/runtime-funded-syncer-2026-10-03/coordinate.json
+d10cfcd3eeef56da9d94d63cb6c6ca60fad571aa3f84f15fcbdecf67980477a4 294 planning/evidence/runtime-funded-syncer-2026-10-03/feed-native.log
+097530688fb6b3119a670f8b4c605674fc7ed5b7b550f565ff317f714236714f 3988 planning/evidence/runtime-funded-syncer-2026-10-03/typed-native.log
 224f203349c773750527398b6ee231f6c7ea6694de9ef26890a1e525222bcabd 11774 planning/evidence/runtime-image-2026-09-26.md
 45970b4bf98513ad339636dbcc8976ea9fceba2d531cdee8092a9996873dc2bf 474 planning/evidence/runtime-image-2026-09-26/acl2-ri.txt
 88c467847ab983f13d6a2a1f8706865e21d5534f78686368ddd162edf2d406a6 134 planning/evidence/runtime-image-2026-09-26/bare.txt
