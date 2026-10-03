@@ -481,7 +481,8 @@ class Consumer:
                                      keys["ed_public"], keys["ed_secret"],
                                      keys["ml_public"], keys["ml_private"], path)
         if code != 0:
-            raise Stop(4, "hybrid-sign: " + err.decode())
+            raise Stop(code if code in (1, 3) else 4,
+                       "hybrid-sign: " + err.decode("utf-8", "replace"))
         parts = dict(line.split() for line in out.decode("ascii").splitlines())
         context = {"consumer": self.name, "group": self.config["group"],
                    "from": self.config["from"], "route": "hybrid-author",
