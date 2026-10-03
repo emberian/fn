@@ -3253,10 +3253,15 @@ nil when nothing was queued (or the store does not commit through the log)."
   "One phase's effect, THUNK, run off the owner mutex, as its word for
 fn-oqw-step: :ok when it returned; (values :uncertain C) when its outcome is
 not known (an ambiguous persistence failure: the recovery event); (values
-:fault C) for any other serious condition, re-signalled by the receipt's
+:fault C) for any other serious condition (an OS error is :uncertain), re-signalled by the receipt's
 consumer under the owner so the fault boundary classifies it."
   (handler-case (progn (funcall thunk) :ok)
     (fnn-store-indeterminate (e)
+      (fnn-err "Store outcome uncertain; the store needs recovery: ~a" e)
+      (values :uncertain e))
+    ;; An OS error (an errno) from a phase's syscall is the effect's
+    ;; uncertainty, never a fault or a refusal: its bytes may have landed.
+    (fnn-os-error (e)
       (fnn-err "Store outcome uncertain; the store needs recovery: ~a" e)
       (values :uncertain e))
     (serious-condition (e) (values :fault e))))
