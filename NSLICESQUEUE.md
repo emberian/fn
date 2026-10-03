@@ -78,6 +78,10 @@ its fixture. Anchors: [HOST-COORDINATION](planning/repair/items/HOST-COORDINATIO
 
 **Active — Foundations + Served.** Connect indexed serialization, incremental
 selection and output custody to a real connection/operation funding producer.
+The first actual producer/serializer probe charges a per-CID generational draw
+before serialization and retains worker output until both output completion and
+physical join. Runtime activation and full matcher/outer-copy tariffs remain
+open; the probe is not complete NEWNEWS accounting.
 Count temporary cons/copy windows, retained continuation and failed/refused
 work; a wire-byte reservation is not a dynamic-heap allocation budget.
 
@@ -226,8 +230,10 @@ have accurate outcomes and bounded allocation. Anchors:
 
 ### Fair feed and pull rounds
 
-**Active repairs / next family completion — Tools/transport + Runtime.** Consume
-credential preflight and error-classification fixes, then finish queue-head
+**Active continuation — Tools/transport + Runtime.** Credential, durable journal
+phase, fragment uncertainty and removed-peer cache/schedule source batches are
+consumed. Tools now owns the actual resumable pull/catch-up round context and
+ACL2 selection; Runtime retains feed actor/idle ownership. Finish queue-head
 progress, bounded rounds, streaming large transfers and captured peer config.
 Connect phase-aware durable journal outcomes and close removed-peer resources.
 
@@ -241,9 +247,13 @@ fault remain distinct. Anchors: [S035](planning/repair/items/S035.json),
 
 ### BP custody, retained work and restart
 
-**Next — Groundwork + Tools/transport; expand implementation ownership as needed.**
-Reproduce the historical Store-retention refusal on current source before calling
-it a current defect. Complete real producer-to-Store custody, exact application
+**Active — Groundwork owns the canonical Store producer; Tools owns transport
+boundaries; Empirical owns the real scenario.** Current source tracing found
+that the record-log route never invoked the identity-grant producer required by
+retention preparation. Source `7c6d135f3` and reviewed outcome validation restore
+that connection; actual current-image undertaking/release/reopen remains the
+next check. The historical refused workload is archived separately. Complete
+real producer-to-Store custody, exact application
 receipts, release/waiver, retry and restart across the BP workflow.
 
 Done: accepted obligations survive outages; only the correct durable evidence
@@ -331,7 +341,8 @@ do not manufacture success. Anchors: [S012](planning/repair/items/S012.json),
 
 **Active — Groundwork + Runtime + Empirical.** Connect actual ordered section,
 pin, I/O, physical-return and settlement observations to the executable host
-model. Complete issue/return/settle preservation and the all-schedules argument;
+model. Cancel, pin/capture/drain and physical-return preservation have matching
+certificates. Complete issue/settle preservation and the all-schedules argument;
 finite passing schedules alone do not establish it.
 
 Done for the selected boundary: real traces replay against the exact corresponding
