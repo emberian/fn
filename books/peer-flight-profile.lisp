@@ -2,7 +2,7 @@
 ; file uses the existing big-endian catchup u64 codec; never the Lisp reader.
 (in-package "ACL2")
 (include-book "peer-flight-reservation")
-(include-book "peer-catchup-serve")
+(include-book "peer-u64-codec")
 
 (defun fn-pfp-file-name () (declare (xargs :guard t)) "peer-flight-profile")
 (defun fn-pfp-read-bound () (declare (xargs :guard t)) 53)
@@ -38,3 +38,7 @@
        :bad
      (let ((policy (fn-pfp-values 6 (fn-pfp-drop 4 bytes))))
        (if (fn-pfr-policy-p policy) policy :bad)))))
+
+(defun fn-pfp-refusal-line ()
+ (declare (xargs :guard t))
+ "Peer flight profile refused: malformed or unsupported resource allowance.")

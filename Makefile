@@ -618,6 +618,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/cold-read-reservation-tests \
 	books/page-read-startup \
 	books/peer-flight-reservation \
+	books/peer-u64-codec \
 	books/peer-flight-profile \
 	books/peer-flight-startup \
 	tests/acl2/page-read-startup-tests \

@@ -4152,3 +4152,12 @@ positive + disposition-hypothesis removal and separate corrupted-state literal
 teeth pass. Actual all-section/window/Xref old-reference source184483 checks pass;
 full renderer/owner guards remain open and actual dispatch stays :ideal. No raw
 guard bypass introduced. Native physical join remains Runtime/History.
+Foundations resumed peer capture packet: shared peer-u64-codec extracts the three
+unchanged big-endian codec functions from served catchup; operator file parsing
+no longer imports its served machine. fn-pfp-refusal-line, run-only operation
+selection and fn-prstartup-peer-native-capture are guard verified in retained
+solrlocover, 0 steps. Five-field capture carries dynamic/protected/policy/stack/
+thread-runtime to the actual retained service bank installer. Global live ledger
+in this world is installed (Root BP probe); all further tests use local stobjs.
+Open: actual peer worker/driver composition, full native/GC/owned graph tariff,
+DEFAULT recovery workspace partition and live protected-growth consumer.
