@@ -191,7 +191,7 @@ universal owner/reference refinement remain open (PRF-1286, SCN-1116). The
 retained source-execution process/inputs and precise mixed ABI frontier are in
 LANEDUMP; no certificate, current image or full funded operation follows from
 those checks. Access also continues absorbed operator/journal obligations; Root
-S132 full-native observation still needs an adequate funded supported profile.
+S132 strict native ten MiB acceptance/readback now passes on the named initialized-source cache with its supported 128 MiB history profile; whole current-kernel/funding qualification remains separate.
 
 **Next — Served.** Carry the shared cursor/dependency machinery through OVER,
 HDR/XHDR, XPAT, LISTGROUP and the restricted route. Complete table-generated
@@ -623,19 +623,25 @@ open; concrete-fill invariant-risk warnings are retained in the source receipt.
 
 ### Operator/developer remaining scope at the 2026-10-03 usage pause
 
-S132 still needs full native large-post acceptance and exact readback under an
-adequately funded supported profile; root's 10 MiB and 16 MiB scratch attempts
-refused oversize and unaffordable respectively, not timeout. Narrow policy and
-exchange tests pass. S083 still needs composed native moderation coverage and
-authority/generation-race closure; the published row authorizes a cause, not an
-already completed target withdrawal.
+S132 now passes strict native ten MiB NNTP/operator acceptance and exact
+readback: one test, zero skips, 28.443s, supported 128 MiB history/16 MiB
+article/64 transactions. The named ad8 initialized cache plus ordinary observer
+overlay is the execution coordinate; whole current-kernel/funding qualification
+and completion under every overloaded deadline remain open. Earlier scratch
+refusals were oversize or underfunded, not timeouts. S083 still needs composed
+native partial-publication coverage. Current authority/generation interactions
+remain an investigation item, not an established security defect or an inferred
+atomicity requirement: the trusted local control route does not use login for
+withdrawal, and the published row authorizes a cause rather than completing
+target withdrawal.
 
 The developer REPL now has actual native-owner admission/refusal/cleanup/fence
 coverage on its named cache coordinate. Ordinary ACL2 proof admission now uses with-prover-step-limit: default200000
 steps per perform, explicit override or NIL ordinary allowance. Actual ACL2
 worker/socket tests cover zero-allowance refusal, stopping later batch forms,
 unchanged global allowance and following valid proof/Lisp progress. This closes
-the explicit prover-allowance gap on that source coordinate; wall time, arbitrary
+the explicit prover-allowance gap. Actual native initialized-cache proof-limit
+refusal/recovery and hot-reload hook deduplication also pass; wall time, arbitrary
 Lisp evaluation and full current-owner composition remain unbounded or pending. Broad command access does
 not establish complete internal observability or allocation accounting. Preserve
 source/proof/cache/image distinctions when completing these domains.
