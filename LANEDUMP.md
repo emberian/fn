@@ -2595,3 +2595,25 @@ open. Availability prereq source is exact helper770/40ca/c404; Integration has
 coherent changed catalog availability semantics. No raw proof or table cost
 claim is transferred. Root owns the line-window direct buffer bridge; latest
 matcher-stream world lent exclusively until release.
+## Live matcher continuation extent source (2026-10-03)
+
+New proof-only books/wildmat-live.lisp consumes actual fn-wmc-start/one/step.
+A maximum task/frame continuation potential bounds fixed control7+6F+current
+row spine; it does not sum15 per historical microstep. fn-wml-capacity(P,M,N)
+=38+6P+6M+10N, with P parsed pattern count,M scalar token count,N configured
+string octets (nonstring0). fn-wml-start-coveredp establishes this bound for
+fn-wildmat-pattern-listp; fn-wml-one/step-coveredp preserve it through actual
+UTF8/decode/reverse/core suspension; fn-wml-covered-live-bound gives current
+logical live projection<=capacity. Public one-retained-room and initial/UTF8
+entry bounds admitted, core peak monotonicity10.16ACL2s/4,378,948steps.
+Carried profile excludes legacy decode and requires parsed patterns in UTF8;
+no served revalidation. fn-wml-capacity numeric accessor guard verified.
+All expensive potential/profile functions disabled, never runtime work.
+
+Pattern/target references in right/initial/row frames remain borrowed; row-tail
+frames carry scalars and cons frames booleans. Projection counts one current
+row; simultaneous old/new and graph alias mapping remain Root physical tariff
+work. Shared target region N is NOT yet part of the proved live projection:
+additive target-extent carry/proof is next. Candidate owned graph bound with
+that region38+6P+6M+11N; do not claim it proved from this first handoff.
+New literal live tests/source full replay/evidence pending at handoff.
