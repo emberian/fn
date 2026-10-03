@@ -45,6 +45,7 @@
 (defun fn-ndh-handle (p)
   (declare (xargs :guard t))
   (if (natp p) 0 p))
+(fn-payload-kind fn-ndh-handle :handle "tests the payload as a natural and zeroes it")
 
 (defun fn-ndh-article (a)
   (declare (xargs :guard t))
@@ -53,6 +54,7 @@
                        (fn-article-groups a) (fn-article-memberships a)
                        (fn-article-pin a) (fn-article-stamp a))
     a))
+(fn-payload-kind fn-ndh-article :handle "replaces the article's handle by fn-ndh-handle")
 
 (defun fn-ndh-articles (xs)
   (declare (xargs :guard t))
@@ -103,6 +105,7 @@
                     (fn-held-charge h) (fn-held-stamp h) (fn-held-facts h)
                     (fn-held-context h) (fn-held-numbers h) (fn-held-withdrawn h))
     h))
+(fn-payload-kind fn-ndh-held :handle "replaces the held row's handle by fn-ndh-handle")
 
 (defun fn-ndh-event (e)
   (declare (xargs :guard t))

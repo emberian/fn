@@ -77,6 +77,7 @@
     '(:refused :remote-visible-codec))
    (t (list :yield (fn-crvp-state key :prepare row groups groups 0 0
         (fn-arena-payload-len h fn-arena) ceiling used used 0 nil nil nil))))))
+(fn-payload-kind fn-crvp-begin :handle "compares the row's handle with the article's; reads no octets")
 
 ; PREPARE walks one projected name, whose maximum is the existing codec's.
 ; Later phases queue only one name or the fixed bounded record metadata.

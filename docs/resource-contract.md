@@ -330,20 +330,26 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
   (`fnn-extent-pool-storage-start` has no caller): a policy that names a
   pool reserves memory for a structure that does not run. Stage 0 opens
   every store in the pool's `:offline` context. A served cold miss takes
-  `fnn-owner-cold-line-direct` (`host/native/owner.lisp`), which starts a
-  per-miss thread calling `fnn-extent-prefetch-direct`: it reads, verifies
-  and caches the extent, then the owner retries the line warm or answers
-  unavailable at the dependency deadline. Synchronous misses use
-  `fnn-extent-entry-direct`'s `:offline` arm. This figure charges neither
+  the unfunded cold line (`fnn-owner-cold-issue-locked` in
+  `host/native/owner.lisp`, then `fnn-extent-issue-direct` in
+  `host/native/extent.lisp`; lane cold-read-ownership): ACL2's
+  `fn-pio-direct-admit` binds an idle persistent worker, started once by
+  `fnn-extent-direct-start`, to an issued row naming the file incarnation. The
+  worker reads, verifies and caches the extent, then the owner retries the line
+  warm or answers unavailable at the dependency deadline; a miss with every
+  worker busy is refused by name (`:read-resources-unavailable`), never given a
+  thread. Synchronous misses use `fnn-extent-entry-direct`'s `:offline` arm.
+  The worker count is `fn-pio-direct-workers`, a profile-limits row the
+  launcher's thread reservation counts. This figure charges neither
   direct path; the funded install (`fn-crv-pool-budget` to
   `fnn-extent-executor-start`,
   PRF-1057) is the resource vector's (stage 6), and it charges the pool
   as it installs it.
 - Exceeded: at start, `:machine-cannot-hold-threads`, exit 1.
-- Not bounded: the unfunded direct reads (their threads and extent
-  buffers); a dependency timeout can leave a read thread running, so
-  retries can accumulate threads and buffers. The funded installation
-  remains stage 6 work.
+- Not bounded: the extent buffers the unfunded direct reads hold, which
+  this figure does not charge; a dependency timeout only cancels the issued
+  row, and its worker keeps the file incarnation pinned and its buffer until
+  the read actually returns. The funded installation remains stage 6 work.
 
 **M10** -- the allocation epoch.
 - Bounded: no active allocation-epoch admission is charged by this figure.

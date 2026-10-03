@@ -2331,6 +2331,7 @@
       ],
       "evidence": [
         "tests/acl2/payload-arena-tests.lisp",
+        "tests/test_native_payload_lifecycle_raw.sh",
         "planning/evidence/rep-wave-d-2026-09-25.md"
       ]
     },

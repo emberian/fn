@@ -549,7 +549,7 @@ Before it a peer streaming an endless TAKETHIS body grew the owner to 3.94 GiB
 
 Every keyword the served step answers is one row of `books/protocol-table.lisp`,
 and a served row names its VIEW policy or the table refuses to certify
-(`fn-proto-served-columns-okp`): `:none` (no archive), `:pinned` (the
+(`fn-proto-served-tablep`, `books/protocol-served-table.lisp`): `:none` (no archive), `:pinned` (the
 connection's pinned view, NNT-042's "other reads"), `:select` (GROUP and
 LISTGROUP: re-pinned to the owner's committed view before the arm, kept iff
 211; `fn-proto-advance-eventp-is-served-advance-eventp` pins the column to

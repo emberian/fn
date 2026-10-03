@@ -78,35 +78,18 @@ The final ordinary standalone test root proves its fixture view decodes the
 complete state and checks actual complete results across reachable positive and
 premise-removal branches, with raw/corrupted/mutation cases labeled separately.
 
-PRF-1170 observes the actual connection evaluator's complete five-value result,
-its bounded input consumption and its ordered material arithmetic operands.
-`fn-copod-evaluate-material-operators-fit` establishes that every reached
-ADD/SUBTRACT/MULTIPLY/FLOOR operand and result fits the actual descriptor domain,
-including checked refusals before an oversized ADD or MULTIPLY could run. The
-actual five-coordinate issuer predicate has that envelope when domain >= 5,
-which includes its fixed traversal fuel. Malformed input comparisons remain
-outside that arithmetic claim.
-
-PRF-1171 connects proof-only `fn-copsc-prepare` and `fn-copsc-start` to all seven
-actual results and concrete effects, and `fn-coptc-finish`/`fn-coptc-fault` to all
-five actual ticket-wrapper results. PREPARE joins actual ATS entry, evaluator,
-body prepayment and definite refusal settlement; START joins actual input checks,
-retained ticket updates and the five-coordinate issuer preflight. Its actual
-reserve/register/abort call remains named with exact arguments and output, with
-its internal census still open. Successful ticket FINISH has four explicit
-source CONS cells and three material subtractions; every finish path is bounded
-by those counts. The observers' own records are proof scaffolding, never served
-allocations. Full composed-state literal teeth, nested callee accounting and the
-complete source/native installation contract remain in progress. No source
-count supplies an installed tariff or prices native scheduler cleanup.
-
-The PRF-1171 reserve successor reuses the existing actual PRS observer inside
-`fn-icrc-reserve`. An actual successful reservation has52 explicit source CONS
-cells and36/35 material operators for fresh/recycled candidates, including the
-capacity multiplication and token FLOOR/MOD/+1 operations. Guarded complete
-result refinements also cover actual registration and its ICS preflight join.
-Nested registry event and abort/settle internal census remains named and open;
-its absence is not a zero cost assumption.
+PRF-1170 and PRF-1171 were claimed by a Codex-era lane (the connection
+evaluator's ADD/SUBTRACT/MULTIPLY/FLOOR operand fit, and proof-only observers of
+the actual ticket PREPARE, START, FINISH and reserve wrappers with their explicit
+source CONS and material-operator counts). Neither is in this tree: no book
+defines those observers, `planning/proofs.json` has no row for either, and no
+count from them stands. What they would have supplied remains open: the actual
+evaluator's operand envelope, the complete results and effects of the ticket
+wrappers, the census of the reserve/register/abort call and its nested registry
+event, and the complete source/native installation contract. The observers'
+records, when written, are proof scaffolding, never served allocations. No source
+count supplies an installed tariff or prices native scheduler cleanup, and the
+absence of a census is not a zero cost assumption.
 
 The readonly internal `fn-ats-role-bodyp(slot, nonce, role, slots, pool)` requires
 that exact installed role and phase3 together with the direct current SAMEpool

@@ -160,7 +160,7 @@ progress is a separate contract below.
   the article's octets by one `fn-own-read-step` -- one step of the served
   step function -- with the view unchanged; and a read of a number the
   view does not hold is answered 423/430 by the same one step, never
-  uncertain. The subject is `fn-own-read-step` (host: `fn-owner-read`).
+  uncertain. The subject is `fn-own-read-step` (host: `fn-ocfg-read-step`, called by `host/owner-host.lisp`).
 - **Transfer.** A peer submission the transit decision wants
   (`fn-peer-decision :want`), admissible at the Store as in section 2 and
   naming the submission through the arena, reaches 235 (IHAVE) or 239

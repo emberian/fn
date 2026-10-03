@@ -58,6 +58,7 @@
     (cons (cons (fn-article-msgid (car articles))
                 (fn-article-payload (car articles)))
           (fn-snc-article-keys (cdr articles)))))
+(fn-payload-kind fn-snc-article-keys :handle "returns each article's handle beside its Message-ID")
 
 (defun fn-snc-row-key (row)
   (declare (xargs :guard t))
@@ -89,6 +90,7 @@
   (if (atom articles)
       nil
     (cons (fn-article-payload (car articles)) (fn-snc-payloads (cdr articles)))))
+(fn-payload-kind fn-snc-payloads :handle "returns each article's handle")
 
 (defun fn-snc-lace-of-payloads (payloads keyring)
   (declare (xargs :guard (fn-prin-keyringp keyring)))

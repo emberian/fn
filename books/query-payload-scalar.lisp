@@ -20,6 +20,7 @@
         (t (let* ((h (fn-held-payload held))
                   (n (fn-arena-payload-len h fn-arena)))
              (mv :ready (list :payload-length selected grant h n) (- fuel 1))))))
+(fn-payload-kind fn-qps-selected-length :handle "reads the arena at the handle")
 (defun fn-qps-selected-byte (selected held grant ledger index fuel fn-arena)
   (declare (xargs :stobjs fn-arena :guard (and (natp index) (natp fuel))
                   :guard-hints (("Goal" :in-theory (enable fn-qps-eligiblep)))))
@@ -30,6 +31,7 @@
                  (mv :refused nil (- fuel 1))
                (mv :ready (list :payload-byte selected grant h index
                                (fn-arena-get h index fn-arena)) (- fuel 1)))))))
+(fn-payload-kind fn-qps-selected-byte :handle "reads the arena at the handle")
 (defthm fn-qps-length-observation-by-definition
   (implies (and (natp fuel) (not (zp fuel))
                 (fn-qps-eligiblep held grant ledger fn-arena))
