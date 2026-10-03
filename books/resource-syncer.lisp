@@ -118,8 +118,10 @@
        (equal (fn-rl-count fn-resource-ledger) 3)
        (equal (fn-rl-phasesi 2 fn-resource-ledger) 0)))
 
-; The real owner issue/receipt entries have bounded stobj guards. Bootstrap
-; install guards and the native physical-receipt boundary remain separate.
+; The startup producer and the real owner issue/receipt entries have
+; verified stobj guards. The native physical-receipt boundary is separate.
+(verify-guards fn-ros-install)
+(verify-guards fn-ros-install-syncer)
 (verify-guards fn-ros-livep
  :hints (("Goal" :in-theory (enable fn-ros-tokenp fn-rl-wfp))))
 (verify-guards fn-ros-issue
@@ -134,6 +136,15 @@
  :hints (("Goal" :in-theory (enable fn-rl-wfp))))
 
 (encapsulate ()
+(local
+ (defthm fn-ros-resident-update-keeps-wfp
+  (equal (fn-rl-wfp (update-fn-rl-worker-resident v ledger)) (fn-rl-wfp ledger))
+  :hints (("Goal" :in-theory (enable fn-rl-wfp)))))
+(local
+ (defthm fn-ros-resident-update-keeps-type
+  (implies (and (fn-resource-ledgerp ledger) (unsigned-byte-p 64 v))
+           (fn-resource-ledgerp (update-fn-rl-worker-resident v ledger)))
+  :hints (("Goal" :in-theory (enable fn-resource-ledgerp unsigned-byte-p)))))
 (local
  (defthm fn-ros-operation-update-keeps-wfp
   (equal (fn-rl-wfp (update-fn-rl-worker-operation v ledger)) (fn-rl-wfp ledger))
@@ -161,6 +172,21 @@
   (implies (and (fn-resource-ledgerp ledger) (unsigned-byte-p 1 v))
            (fn-resource-ledgerp (update-fn-rl-worker-outcome v ledger)))
   :hints (("Goal" :in-theory (enable fn-resource-ledgerp unsigned-byte-p)))))
+
+(defthm fn-ros-install-keeps-representation
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger))
+  (let ((after (mv-nth 1 (fn-ros-install threads baseline-workers rescue-workers resident-each ledger))))
+   (and (fn-resource-ledgerp after) (fn-rl-wfp after))))
+ :hints (("Goal" :in-theory
+  (e/d (fn-ros-install unsigned-byte-p integer-range-p)
+       (fn-rl-install fn-resource-ledgerp fn-rl-wfp update-fn-rl-worker-resident)))))
+(defthm fn-ros-install-syncer-keeps-representation
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger))
+  (let ((after (mv-nth 1 (fn-ros-install-syncer qualified-threads observed-stack ledger))))
+   (and (fn-resource-ledgerp after) (fn-rl-wfp after))))
+ :hints (("Goal" :in-theory
+  (e/d (fn-ros-install-syncer)
+       (fn-ros-install fn-resource-ledgerp fn-rl-wfp)))))
 
 (defthm fn-ros-issue-keeps-representation
  (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger))

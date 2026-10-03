@@ -98,6 +98,63 @@
        (mv nil '(value-triple :reverse-order-settles-once) state fn-resource-ledger)
      (mv t nil state fn-resource-ledger))))
 
+; Startup producer teeth. Corrupted-state removals use refusal branches:
+; refusal must retain the input ledger and cannot establish its missing invariant.
+(defthm rost-install-representation-witness
+ (let* ((ledger (create-fn-resource-ledger))
+        (result (fn-ros-install 1 0 0 1048576 ledger))
+        (after (mv-nth 1 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger)
+       (equal (mv-nth 0 result) :installed)
+       (fn-resource-ledgerp after) (fn-rl-wfp after)))
+ :rule-classes nil)
+(defthm rost-install-syncer-representation-witness
+ (let* ((ledger (create-fn-resource-ledger))
+        (result (fn-ros-install-syncer 80 1048576 ledger))
+        (after (mv-nth 1 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger)
+       (equal (mv-nth 0 result) :installed)
+       (fn-resource-ledgerp after) (fn-rl-wfp after)))
+ :rule-classes nil)
+(defthm rost-install-without-type-corrupted-state-witness
+ (let* ((ledger (update-nth 0 nil (create-fn-resource-ledger)))
+        (after (mv-nth 1 (fn-ros-install 0 0 0 1048576 ledger))))
+  (and (not (fn-resource-ledgerp ledger)) (fn-rl-wfp ledger)
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+  (e/d (fn-ros-install fn-rl-install fn-rl-freshp)
+       ((:executable-counterpart fn-ros-install) (:executable-counterpart fn-rl-install))))))
+(defthm rost-install-without-shape-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-count 1 (create-fn-resource-ledger)))
+        (after (mv-nth 1 (fn-ros-install 0 0 0 1048576 ledger))))
+  (and (fn-resource-ledgerp ledger) (not (fn-rl-wfp ledger))
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+  (e/d (fn-ros-install fn-rl-install fn-rl-freshp)
+       ((:executable-counterpart fn-ros-install) (:executable-counterpart fn-rl-install))))))
+(defthm rost-install-syncer-without-type-corrupted-state-witness
+ (let* ((ledger (update-nth 0 nil (create-fn-resource-ledger)))
+        (after (mv-nth 1 (fn-ros-install-syncer 0 1048576 ledger))))
+  (and (not (fn-resource-ledgerp ledger)) (fn-rl-wfp ledger)
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+  (e/d (fn-ros-install-syncer fn-ros-install fn-rl-install fn-rl-freshp)
+       ((:executable-counterpart fn-ros-install-syncer) (:executable-counterpart fn-ros-install)
+        (:executable-counterpart fn-rl-install))))))
+(defthm rost-install-syncer-without-shape-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-count 1 (create-fn-resource-ledger)))
+        (after (mv-nth 1 (fn-ros-install-syncer 0 1048576 ledger))))
+  (and (fn-resource-ledgerp ledger) (not (fn-rl-wfp ledger))
+       (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+  (e/d (fn-ros-install-syncer fn-ros-install fn-rl-install fn-rl-freshp)
+       ((:executable-counterpart fn-ros-install-syncer) (:executable-counterpart fn-ros-install)
+        (:executable-counterpart fn-rl-install))))))
+
 ; Literal preservation teeth: actual functions, full hypotheses/conclusions.
 (defthm rost-issue-representation-witness
  (let* ((ledger (mv-nth 1 (fn-ros-install-syncer 80 1048576 (create-fn-resource-ledger)))) (result (fn-ros-issue 7 ledger)) (after (mv-nth 2 result)))

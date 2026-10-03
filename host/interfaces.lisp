@@ -31,7 +31,7 @@
 ; admission accounting; unresolved costs are explicit in the operation row.
 (definterface create-fn-resource-ledger :class :common-lisp-compliant
   :raw-guarded (0 nil (fn-resource-ledger)))
-(definterface fn-ros-install-syncer :class :ideal)
+(definterface fn-ros-install-syncer :class :common-lisp-compliant)
 (definterface fn-ros-issue
   :class :common-lisp-compliant
   :operation (:stage :projection :funding fn-ros-install-syncer
