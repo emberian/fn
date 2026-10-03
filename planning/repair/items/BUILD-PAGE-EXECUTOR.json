@@ -1,0 +1,13 @@
+{
+ "category": "build",
+ "file": "host/page-executor-host.lisp",
+ "id": "BUILD-PAGE-EXECUTOR",
+ "note": "Codex: ov1 source 4671ace0f passes image certification but normal/DTN host loading times out at acquire adapter equality. Scoped wrapper-only theory admits unchanged acquire/commit statements in 366/392 steps. Evidence planning/evidence/page-executor-2026-10-03/result.json and repl.log archived. Actual image-world host-prefix validation pending; no image/native verdict.",
+ "notes": [],
+ "owner": "coordinator",
+ "severity": "high",
+ "source": "overnight-ov1",
+ "state": "in-progress",
+ "title": "Image host loading times out proving page executor wrapper equalities",
+ "updated": "2026-10-03T05:55:10Z"
+}
