@@ -78,3 +78,37 @@ wildmat/name/membership work remain unknown. No certificate/native claim.
 
 
 Output/cell contract checkpoint: generated output-phase bypass now world-checks a literal zero-candidate-decrease theorem. The actual stream has exact one-candidate tail decrease on scan calls, including misses, and zero decrease while serializing; current PRF-1256 curated proof-event map names these actual stream and renderer keystones. Fixed three-cell string renderer shape is established and preserved. Conservative logical renderer cons recurrence <=8B+2 counts one-byte/state/MV envelopes, accumulator and reverse copy; direct fixed-index accessor allocates no cells. This is a source cost model, not a native heap guarantee: allocator/collector/integer/vector and producer tariff remain Foundations follow-through. Fresh shell18 forms0.04 ACL2s/18,162steps; stream29 forms encapsulated0.66s/298,468steps; composed plan41 forms encapsulated1.88s/706,856steps. Literal candidate/output/render teeth5 forms306steps and actual plan tiny/large drain84steps pass after fixture reload. Logs include failed fixture-prefix probe, followed by corrected loading; source admission only, no certificate/image claim. Initial selected-group list and name/membership matcher work remain unknown; cold continuation consumers and completed-view policy remain open.
+## DC03 discovery continuation (2026-10-03)
+
+Merged Served985be0c14 in isolated tree (767fbf3a7), preserving both lane records
+and Served's NEWNEWS cursor reachability predicate. LIST now declares Xref,
+COUNTS, compatibility, active and other forms; NEWGROUPS declares compatibility
+and other forms. Existing pinned semantics and PRF-1237 completed-view debt remain
+explicit. No new formal, helper export, behavior, or NEWNEWS/OVER/HDR/XPAT edit.
+
+DATE finding agreed with Served: it is already a :dispatch :session declaration
+in protocol-table, whose :arms generate fn-nntp-session-command. The archive
+reference has no DATE arm and falls through to STAT retrieval. A DATE catalog
+form would be unreachable in composition, so none was added. New DATE teeth
+assert the actual session route's entire 111 reply, equality to fn-nntp-date-response
+and the restricted command route, plus syntax/missing-clock refusals.
+
+Narrow live verdict (hbox dc03-discovery): protocol-served #12–51 40/40,
+1.93 ACL2 seconds / 500,442 steps; generated form/row event 1.51 s / 479,519;
+all guards pass. Kept that warm world for teeth: loaded only the exact existing
+fn-scr-command source event and three fn-pix command/retrieval definitions needed
+by the command-layer witness (no source twins or full TLS/span replay);
+fn-scr-command guards 918 steps. Complete teeth #5–68 64/64, 0.12 s / 1,854 steps.
+New discovery positive (188 steps) asserts full boundary hypotheses and conclusion
+with valid configured creation/listing facts, both server contexts and both routes;
+DATE session positive 120 steps. Prefix setup alone was 128.77 s / 36,354,221 steps.
+
+protocol_emit --check passes 34 rows/304 replies with unchanged 10 policy debts;
+docs_check --write passes and regenerates the served spec table. No new IDs.
+No repeat full-report pipeline, certificate, image or deployment claim. Integration
+owns generated registry/ledger assembly and coordinated certification; Served owns
+remaining HDR/XHDR declarations and hand-fallthrough removal. Bounded NEWNEWS
+selector follow-through is a separately assigned next seam, not changed here.
+
+Evidence is archived/indexed under planning/evidence/dc03-discovery-20261003:
+command-repl.log.gz and checks.json, including current subject/consumer file hashes.
