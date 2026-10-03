@@ -32,6 +32,29 @@ sys.path.insert(0, str(ROOT / "tools"))
 import proof_repl  # noqa: E402
 from tests.test_certs import manifest_for, worktree, TEST_COMPATIBILITY  # noqa: E402
 
+
+class AggregateLoadBudgetTests(unittest.TestCase):
+    def test_source_ld_uses_load_budget_and_preserves_explicit_zero(self):
+        acl2 = mock.Mock()
+        acl2.send.return_value = ("ACL2 !>\n", False)
+        state = {"sends": 0, "load_timeout": 600.0}
+        result = proof_repl.handle(
+            {"form": '(ld "current-source.lisp")', "limit": 0},
+            acl2, state, 15.0)
+        self.assertFalse(result["error"])
+        acl2.send.assert_called_once_with('(ld "current-source.lisp")', 600.0)
+        acl2.kill.assert_not_called()
+
+    def test_ordinary_event_keeps_its_individual_budget(self):
+        acl2 = mock.Mock()
+        acl2.send.return_value = ("ACL2 !>\n", False)
+        state = {"sends": 0, "load_timeout": 600.0}
+        proof_repl.handle({"form": "(value-triple :ready)", "limit": None},
+                          acl2, state, 15.0)
+        acl2.send.assert_called_once_with(
+            proof_repl.wrap_limit("(value-triple :ready)", 15.0), 52.5)
+
+
 FAKE_ACL2 = r'''#!/usr/bin/env python3
 import sys, time
 world, labels = 0, {}
