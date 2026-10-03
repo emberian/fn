@@ -6,6 +6,7 @@
 
 (defvar *fnn-dev-repl* nil)
 (defvar *fnn-dev-service* nil)
+(defvar *fnn-dev-admission-failed* nil)
 (defconstant +fnn-dev-repl-input+ 65536)
 (defconstant +fnn-dev-repl-output+ 65536)
 
@@ -43,14 +44,16 @@ never enter O. *FNN-DEV-SERVICE* names this owner; nested owner entry is invalid
  (let ((out (make-instance 'fnn-dev-output)) (status "OK"))
   (let ((*standard-output* out) (*error-output* out) (*trace-output* out)
         (*print-length* 64) (*print-level* 12) (*print-circle* t)
-        (*package* (find-package "ACL2")) (*fnn-dev-service* service))
+        (*package* (find-package "ACL2")) (*fnn-dev-service* service)
+        (*fnn-dev-admission-failed* nil))
    (handler-case
     (let ((form (fnn-dev-read-form text)))
      (fnn-owner-serialized service nil
       (lambda ()
        (fnn-trace-span (:developer-eval)
         (dolist (value (multiple-value-list (eval form)))
-         (write value :stream out :escape t) (terpri out)))) :inspect))
+         (write value :stream out :escape t) (terpri out)))) :inspect)
+     (when *fnn-dev-admission-failed* (setf status "ERROR")))
     (serious-condition (condition)
      (setf status "ERROR")
      (format out "~a~%" condition))))
@@ -60,13 +63,30 @@ never enter O. *FNN-DEV-SERVICE* names this owner; nested owner entry is invalid
                    (format nil "~%[output truncated]~%") ""))))
 
 (defun fnn-dev-admit (forms)
- "Inside this developer REPL, admit ordinary ACL2 events into the live world."
- (let ((state *the-live-state*))
-  (ld-fn (list (cons 'standard-oi forms)
-               (cons 'standard-co *standard-co*)
-               (cons 'proofs-co *standard-co*)
-               (cons 'ld-prompt nil) (cons 'ld-error-action :return))
-         state nil)))
+ "Admit ordinary ACL2 events. A controlled LD refusal reports failure without
+throwing across the owner fence; earlier successful events remain admitted."
+ (let ((state *the-live-state*)
+       (old-output (get *standard-co* *open-output-channel-key*)))
+  ;; ACL2 channels retain stream objects, not the current *STANDARD-OUTPUT*
+  ;; binding. Redirect its existing standard channel inside this owner quantum
+  ;; and restore on every exit, so proof output also respects the capture bound.
+  (unwind-protect
+   (progn
+    (setf (get *standard-co* *open-output-channel-key*) *standard-output*)
+    (multiple-value-bind (erp reason new-state)
+     (ld-fn (list (cons 'standard-oi forms)
+                  (cons 'standard-co *standard-co*)
+                  (cons 'proofs-co *standard-co*)
+                  (cons 'ld-prompt nil) (cons 'ld-error-action :return))
+            state nil)
+     (declare (ignore new-state))
+     (if (and (not erp) (eq reason :eof))
+         :admitted
+      (progn
+       (setf *fnn-dev-admission-failed* t)
+       (format *error-output* "ACL2 admission incomplete: ~s~%" reason)
+       (values :refused reason)))))
+   (setf (get *standard-co* *open-output-channel-key*) old-output))))
 
 (defun fnn-dev-repl-loop (control service)
  (loop
@@ -92,18 +112,21 @@ never enter O. *FNN-DEV-SERVICE* names this owner; nested owner entry is invalid
     (unless (fnn-with-control (control) (fnn-control-state-stopping control))
      (fnn-err "developer REPL connection: ~a" condition))))))
 
-(defun fnn-dev-listen (path)
- (let ((socket (make-instance 'sb-bsd-sockets:local-socket :type :stream :protocol 0))
-       (ready nil))
-  (unwind-protect
-   (progn
-    (let ((old (sb-posix:umask #o077)))
-     (unwind-protect (sb-bsd-sockets:socket-bind socket path) (sb-posix:umask old)))
-    (sb-posix:chmod path #o600)
-    (sb-bsd-sockets:socket-listen socket 1)
-    (setf ready t)
-    socket)
-   (unless ready (fnn-socket-shut socket)))))
+(defun fnn-dev-listen (control)
+ ;; Record ownership before chmod/listen can fail. START's one unwind closes
+ ;; the descriptor and removes only this exact bound inode on partial startup.
+ (let* ((path (fnn-control-state-path control))
+        (socket (make-instance 'sb-bsd-sockets:local-socket :type :stream :protocol 0)))
+  (setf (fnn-control-state-listener control) socket)
+  (let ((old (sb-posix:umask #o077)))
+   (unwind-protect (sb-bsd-sockets:socket-bind socket path) (sb-posix:umask old)))
+  (let ((info (fnn-lstat path)))
+   (unless (fnn-control-socket-path-p info) (error "Developer socket missing after bind"))
+   (setf (fnn-control-state-device control) (sb-posix:stat-dev info)
+         (fnn-control-state-inode control) (sb-posix:stat-ino info)))
+  (sb-posix:chmod path #o600)
+  (sb-bsd-sockets:socket-listen socket 1)
+  socket))
 
 (defun fnn-dev-unlink-owned (control)
  (let ((info (fnn-lstat (fnn-control-state-path control))))
@@ -122,14 +145,9 @@ never enter O. *FNN-DEV-SERVICE* names this owner; nested owner entry is invalid
    (let ((control (%make-fnn-control-state :path path :service service)))
     (setf *fnn-dev-repl* control)
     (unwind-protect
-     (let* ((listener (fnn-dev-listen path))
-            (installed (setf (fnn-control-state-listener control) listener))
-            (info (fnn-lstat path)))
-      (declare (ignore installed))
-      (unless (fnn-control-socket-path-p info) (error "Developer socket missing after bind"))
-      (setf (fnn-control-state-device control) (sb-posix:stat-dev info)
-            (fnn-control-state-inode control) (sb-posix:stat-ino info)
-            (fnn-control-state-accept-thread control)
+     (progn
+      (fnn-dev-listen control)
+      (setf (fnn-control-state-accept-thread control)
             (sb-thread:make-thread (lambda () (fnn-dev-repl-loop control service))
                                    :name "fn trusted developer REPL")))
      (unless (fnn-control-state-accept-thread control)

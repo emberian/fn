@@ -231,5 +231,6 @@ and operator wire grammars. They run through the owner serialization/fence
 boundary; this facility does not promise semantic invariants after arbitrary
 code edits or forceful cancellation of evaluation. `SCN-1121` exercises the
 actual socket evaluator and production selector, with named owner/I/O adapters;
-full native owner composition and ordinary ACL2 event admission remain separate
-execution checks. There is no new proof or image qualification claim.
+A separate real ACL2 worker-thread check covers successful/refused/subsequent
+admissions and bounded channel capture; full native owner composition remains
+a separate execution check. There is no new proof or image qualification claim.

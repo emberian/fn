@@ -52,6 +52,17 @@
  (assert (handler-case (progn (fnn-dev-repl-start :fixture-owner) nil) (error () t)))
  (with-open-file (in path) (assert (string= (read-line in) "preserve me")))
  (delete-file path))
+; Failure after binding/listening must release our own path and descriptor.
+(let ((original (symbol-function 'fnn-dev-listen))
+      (path (sb-ext:posix-getenv "FN_NATIVE_DEV_REPL")))
+ (unwind-protect
+  (progn
+   (setf (symbol-function 'fnn-dev-listen)
+         (lambda (control) (funcall original control) (error "injected start failure")))
+   (assert (handler-case (progn (fnn-dev-repl-start :fixture-owner) nil) (error () t)))
+   (assert (null (fnn-lstat path)))
+   (assert (null *fnn-dev-repl*)))
+  (setf (symbol-function 'fnn-dev-listen) original)))
 (fnn-dev-repl-start :fixture-owner)
 (format t "READY~%")
 (finish-output)
