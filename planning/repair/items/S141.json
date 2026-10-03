@@ -1,24 +1,36 @@
 {
+ "budget": 220,
  "category": "dead-code",
  "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
  "evidence": "host/native/build.lisp:318 (ld \"host/page-read-host.lisp\" :ld-error-action :error) and again at :365 (just after the stage-0 account-adoption comment). host/native/build-dtn.lisp:219 and :256 do the same.",
+ "expect-failure": "tests.test_build_lists_check.DuplicateLoadTests.test_findings_refuse_duplicate_ld_before_set_closure_hides_it",
  "exposure": "latent",
+ "failure-message": "False is not true : duplicate literal load must be refused",
  "file": "host/native/build.lisp",
  "fix": "Delete the second ld in each script (build.lisp:365, build-dtn.lisp:256), and have build_lists_check refuse a duplicated ld or include-book line.",
+ "harness": "tests/test_build_lists_check.py",
  "id": "S141",
  "line": "365",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-02 23:04 fixed; ran tests.test_native_build_scripts (image build not run)"
+  "10-02 23:04 fixed; ran tests.test_native_build_scripts (image build not run)",
+  "10-03 03:08 claimed: scope=['tools/build_lists_check.py', 'tests/test_build_lists_check.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_build_lists_check.DuplicateLoadTests.test_findings_refuse_duplicate_ld_before_set_closure_hides_it"
  ],
- "owner": "sweep-gates",
+ "owner": "codex-sol-tools",
  "reviewer": "host/native/build.lisp:318 and :365, and host/native/build-dtn.lisp:219 and :256, both ld host/page-read-host.lisp. The file holds only include-books, defuns and defthms. The build succeeds, so the second ld is all redundant events: wasted build time plus a latent ordering hazard, with no functional effect today.",
  "scenario": "The second ld re-reads a file of about 30 defuns and several defthms (fn-owner-incoming-*). Every event is redundant today, so it adds build time and nothing else. It also hides an edit hazard: if the first load is ever removed or reordered (the stage-0 comment at 358-364 shows these lists are being edited), the image silently depends on the later copy, whose position differs. tools/build_lists_check / host_check compare these lists as sets and do not flag a duplicate. The line at 365 looks like a leftover from replacing the account-adoption lds.",
+ "scope": [
+  "tools/build_lists_check.py",
+  "tests/test_build_lists_check.py",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
  "severity": "low",
  "sha": "cfc0980c4",
  "source": "sweep-2026-10-03",
  "state": "in-progress",
+ "test": "python3 -m unittest tests.test_build_lists_check.DuplicateLoadTests.test_findings_refuse_duplicate_ld_before_set_closure_hides_it",
  "title": "host/page-read-host.lisp is ld'ed twice in both the production and the DTN build scripts",
- "updated": "2026-10-03T03:04:35Z"
+ "updated": "2026-10-03T07:08:34Z"
 }
