@@ -1,0 +1,1885 @@
+{
+  "consumer_revision": "9df4a3a4e6ebd22574f1ca49471d806ad5159d7c",
+  "workbench_revision": "651b535b5171e9ed419570f4cd64b53914094433",
+  "scope": "Literal named bound/limit/quantum constants in books and host. Inline literals, macro-derived capacities and caller interactions require continued source tracing. This is candidate discovery, not exhaustive semantic coverage.",
+  "candidates": [
+    {
+      "path": "books/anchor-record.lisp",
+      "line": 54,
+      "declaration": "(defconst *fn-anchor-max-payload* 1024)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/anchor-servers.lisp",
+      "line": 12,
+      "declaration": "(defconst *fn-anchor-server-max-timeout-seconds* 60)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/anchor-wire.lisp",
+      "line": 10,
+      "declaration": "(defconst *fn-anchor-wire-max-response* 4096)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/anchor-wire.lisp",
+      "line": 11,
+      "declaration": "(defconst *fn-anchor-wire-max-tags* 32)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/anchor-wire.lisp",
+      "line": 12,
+      "declaration": "(defconst *fn-anchor-wire-max-path-nodes* 32)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/anchor.lisp",
+      "line": 93,
+      "declaration": "(defconst *fn-anchor-max-time* *fn-clock-max*)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/anchor.lisp",
+      "line": 110,
+      "declaration": "(defconst *fn-anchor-tag-maxt* '(77 65 88 84))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/app-journal.lisp",
+      "line": 15,
+      "declaration": "(defconst *fn-aj-max-records* 4096)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/app-journal.lisp",
+      "line": 16,
+      "declaration": "(defconst *fn-aj-workflow-max-aggregate* 16777216)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/app-journal.lisp",
+      "line": 17,
+      "declaration": "(defconst *fn-aj-receipt-max-aggregate* 67108864)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/app-journal.lisp",
+      "line": 20,
+      "declaration": "(defconst *fn-aj-carry-max-aggregate*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/article-fields.lisp",
+      "line": 15,
+      "declaration": "(defconst *fn-af-max-message-id-octets* 250)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/article-fields.lisp",
+      "line": 24,
+      "declaration": "(defconst *fn-af-max-field-value-octets*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/article.lisp",
+      "line": 25,
+      "declaration": "(defconst *fn-article-max-octets* 4261412864)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/article.lisp",
+      "line": 38,
+      "declaration": "(defconst *fn-article-max-header-octets* 16384)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/article.lisp",
+      "line": 39,
+      "declaration": "(defconst *fn-article-max-header-lines* 256)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/article.lisp",
+      "line": 40,
+      "declaration": "(defconst *fn-article-max-fields* 64)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/article.lisp",
+      "line": 41,
+      "declaration": "(defconst *fn-article-default-limits*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/article.lisp",
+      "line": 72,
+      "declaration": "(defconst *fn-article-max-line-octets* 998)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/article.lisp",
+      "line": 530,
+      "declaration": "(defconst *fn-article-ceiling-limits*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/auth-credentials.lisp",
+      "line": 25,
+      "declaration": "(defconst *fn-auth-max-name-octets* 64)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-adu.lisp",
+      "line": 23,
+      "declaration": "(defconst *fn-bpa-max-metadata* 256)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-adu.lisp",
+      "line": 31,
+      "declaration": "(defconst *fn-bpa-max-octets* 16777216)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-adu.lisp",
+      "line": 37,
+      "declaration": "(defconst *fn-bpa-max-article* (- *fn-bpa-max-octets* 2106))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-bundle.lisp",
+      "line": 56,
+      "declaration": "(defconst *fn-bpb-max-data* 16777216)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-bundle.lisp",
+      "line": 60,
+      "declaration": "(defconst *fn-bpb-max-blocks* 32)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-bundle.lisp",
+      "line": 67,
+      "declaration": "(defconst *fn-bpb-max-input* 16777216)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-carry-frame.lisp",
+      "line": 26,
+      "declaration": "(defconst *fn-bpcc-frame-max-payload*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-clock-domain.lisp",
+      "line": 14,
+      "declaration": "(defconst *fn-bpcd-payload-limit* 40)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-fnbs-namespace.lisp",
+      "line": 12,
+      "declaration": "(defconst *fn-bpnf-received-max-records*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-forward-attempt.lisp",
+      "line": 41,
+      "declaration": "(defconst *fn-bpnp-max-forward-retries* 3)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-fragment.lisp",
+      "line": 50,
+      "declaration": "(defconst *fn-bpf-max-length* 65538)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-fragment.lisp",
+      "line": 51,
+      "declaration": "(defconst *fn-bpf-max-fragments* 64)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-node-foundation.lisp",
+      "line": 18,
+      "declaration": "(defconst *fn-bpnf-max-held-image* 16777216)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-node-machine-codec.lisp",
+      "line": 30,
+      "declaration": "(defconst *fn-bpn-lifecycle-max-payload* 16780288)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-node-machine-codec.lisp",
+      "line": 31,
+      "declaration": "(defconst *fn-bpn-lifecycle-max-hidden-stages* 16)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-node-machine-codec.lisp",
+      "line": 32,
+      "declaration": "(defconst *fn-bpn-lifecycle-max-stage-name-chars* 128)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-node-machine.lisp",
+      "line": 18,
+      "declaration": "(defconst *fn-bpn-machine-max-jobs* 64)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-node-machine.lisp",
+      "line": 19,
+      "declaration": "(defconst *fn-bpn-machine-max-octets* 16777216)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-node-machine.lisp",
+      "line": 20,
+      "declaration": "(defconst *fn-bpn-machine-max-job-octets* *fn-frame-max-blob*)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-node-machine.lisp",
+      "line": 21,
+      "declaration": "(defconst *fn-bpn-machine-max-records* 4096)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-node-progress.lisp",
+      "line": 14,
+      "declaration": "(defconst *fn-bpnp-max-routes* 64)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-primary-cbor.lisp",
+      "line": 108,
+      "declaration": "(defconst *fn-bpc-max-uint* 18446744073709551615)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-primary-cbor.lisp",
+      "line": 111,
+      "declaration": "(defconst *fn-bpc-max-text* 1024)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-primary-cbor.lisp",
+      "line": 114,
+      "declaration": "(defconst *fn-bpc-max-arity* 16)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-primary-cbor.lisp",
+      "line": 118,
+      "declaration": "(defconst *fn-bpc-max-bytes* 64)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-primary-cbor.lisp",
+      "line": 120,
+      "declaration": "(defconst *fn-bpc-max-items* 128)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-primary-cbor.lisp",
+      "line": 121,
+      "declaration": "(defconst *fn-bpc-max-input* 65536)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-receive-evidence.lisp",
+      "line": 21,
+      "declaration": "(defconst *fn-bpn-evidence-max-records* 4096)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-signed-receipt.lisp",
+      "line": 21,
+      "declaration": "(defconst *fn-bpsr-max-signature-octets* 4096)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-signed-receipt.lisp",
+      "line": 22,
+      "declaration": "(defconst *fn-bpsr-max-octets* 16384)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/bp-status-report.lisp",
+      "line": 8,
+      "declaration": "(defconst *fn-bpn-report-max-input* 4096)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 37,
+      "declaration": "(defconst *fn-bs-meta-max-frontier-payload* 5)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 44,
+      "declaration": "(defconst *fn-bs-meta-max-frontier-payload-3* 9)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 45,
+      "declaration": "(defconst *fn-bs-meta-max-config-payload* 600)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 131,
+      "declaration": "(defconst *fn-bs-pf-max-transactions* 1)        ; T",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 132,
+      "declaration": "(defconst *fn-bs-pf-max-history-octets* 2)      ; H",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 133,
+      "declaration": "(defconst *fn-bs-pf-max-record-octets* 3)       ; R",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 134,
+      "declaration": "(defconst *fn-bs-pf-max-article-octets* 4)      ; A",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 135,
+      "declaration": "(defconst *fn-bs-pf-max-groups-per-article* 5)  ; G",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 136,
+      "declaration": "(defconst *fn-bs-pf-max-group-name-octets* 6)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 137,
+      "declaration": "(defconst *fn-bs-pf-max-open-suffix* 7)         ; K",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 138,
+      "declaration": "(defconst *fn-bs-pf-max-consumers* 8)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 139,
+      "declaration": "(defconst *fn-bs-pf-max-bp-rows* 9)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 140,
+      "declaration": "(defconst *fn-bs-pf-max-config-generations* 10)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 141,
+      "declaration": "(defconst *fn-bs-pf-max-credentials* 11)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 142,
+      "declaration": "(defconst *fn-bs-pf-max-policy-members* 12)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 145,
+      "declaration": "(defconst *fn-bs-pf-max-header-fields* 13)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 146,
+      "declaration": "(defconst *fn-bs-pf-max-header-lines* 14)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 147,
+      "declaration": "(defconst *fn-bs-pf-max-header-octets* 15)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 164,
+      "declaration": "(defconst *fn-bs-profile-transaction-ceiling* *fn-cbor-max-uint*)   ; txid width",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 165,
+      "declaration": "(defconst *fn-bs-profile-record-ceiling-codec* *fn-frame-max-store-payload*)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 166,
+      "declaration": "(defconst *fn-bs-profile-article-ceiling-codec* *fn-record-max-payload*)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 167,
+      "declaration": "(defconst *fn-bs-profile-groups-ceiling-codec* *fn-record-max-groups*)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 168,
+      "declaration": "(defconst *fn-bs-profile-group-name-ceiling-codec* *fn-record-max-group-name*)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/byte-store-frame.lisp",
+      "line": 169,
+      "declaration": "(defconst *fn-bs-profile-count-ceiling* *fn-cbor-max-uint*)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/cbor.lisp",
+      "line": 24,
+      "declaration": "(defconst *fn-cbor-max-uint* 4294967295)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/cbor.lisp",
+      "line": 25,
+      "declaration": "(defconst *fn-cbor-max-bytes* 65535)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/cbor.lisp",
+      "line": 28,
+      "declaration": "(defconst *fn-cbor-max-input* 65538)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/cbor.lisp",
+      "line": 429,
+      "declaration": "(defconst *fn-cbor-max-uint64* 18446744073709551615)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/checkpoint-auxiliary.lisp",
+      "line": 13,
+      "declaration": "(defconst *fn-cpa-clone-max-depth* 16)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/checkpoint-auxiliary.lisp",
+      "line": 14,
+      "declaration": "(defconst *fn-cpa-clone-max-entries* 1000000)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/checkpoint-auxiliary.lisp",
+      "line": 15,
+      "declaration": "(defconst *fn-cpa-clone-max-bytes* 1099511627776)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/checkpoint-codec.lisp",
+      "line": 62,
+      "declaration": "(defconst *fn-cpc-max-groups* *fn-record-max-groups*)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/checkpoint-codec.lisp",
+      "line": 63,
+      "declaration": "(defconst *fn-cpc-max-payload* *fn-frame-max-payload*)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/checkpoint-compaction.lisp",
+      "line": 18,
+      "declaration": "(defconst *fn-cc-max-events* 4096)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/checkpoint-compaction.lisp",
+      "line": 19,
+      "declaration": "(defconst *fn-cc-max-octets* 4194304)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/checkpoint-publish.lisp",
+      "line": 352,
+      "declaration": "(defconst *fn-cpp-selection-read-bound*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/clock.lisp",
+      "line": 37,
+      "declaration": "(defconst *fn-clock-max* 18446744073709551615)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/config.lisp",
+      "line": 53,
+      "declaration": "(defconst *fn-cfg-max-label* 256)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/config.lisp",
+      "line": 54,
+      "declaration": "(defconst *fn-cfg-max-rows* 1024)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/config.lisp",
+      "line": 55,
+      "declaration": "(defconst *fn-cfg-max-deltas* 64)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/config.lisp",
+      "line": 56,
+      "declaration": "(defconst *fn-cfg-max-items* 65535)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/config.lisp",
+      "line": 57,
+      "declaration": "(defconst *fn-cfg-max-octets* 65538)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/connection-read-quantum.lisp",
+      "line": 6,
+      "declaration": "(defconst *fn-cbud-read-quantum* 4096)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/consumer-local-control.lisp",
+      "line": 22,
+      "declaration": "(defconst *fn-ncl-max-payload* 513)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/consumer-local-control.lisp",
+      "line": 23,
+      "declaration": "(defconst *fn-ncl-poll-max-payload* (+ 9 346 *fn-stxa-max-octets*))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/consumer-local-control.lisp",
+      "line": 24,
+      "declaration": "(defconst *fn-ncl-status-max-payload* 13)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/consumer-local-control.lisp",
+      "line": 25,
+      "declaration": "(defconst *fn-ncl-max-secret* 496)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/consumer-local-control.lisp",
+      "line": 26,
+      "declaration": "(defconst *fn-ncl-bound-max-payload* 1024)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/consumer-poll-index.lisp",
+      "line": 19,
+      "declaration": "(defconst *fn-col-poll-max-scan* 16)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/consumer-position.lisp",
+      "line": 10,
+      "declaration": "(defconst *fn-cp-max-id* 64)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/consumer-position.lisp",
+      "line": 15,
+      "declaration": "(defconst *fn-cp-max-token* 512)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/consumer-remote-event-buffer.lisp",
+      "line": 8,
+      "declaration": "(defconst *fn-crevb-max-chunk* (+ 38 (* 4 *fn-cp-max-id*)))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/consumer-remote-query-profile.lisp",
+      "line": 8,
+      "declaration": "(defconst *fn-crp-limit-slot* \"max-consumer-query-groups\")",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/consumer-store-events.lisp",
+      "line": 8,
+      "declaration": "(defconst *fn-cpe-max-octets* 512)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/consumer-wait-codec.lisp",
+      "line": 39,
+      "declaration": "(defconst *fn-cwait-max-seconds* 3600)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/consumer-wait-codec.lisp",
+      "line": 41,
+      "declaration": "(defconst *fn-cwait-bound-wait-code* 10)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/control-evidence-grammar.lisp",
+      "line": 21,
+      "declaration": "(defconst *fn-cevg-max-msgid-octets* 250)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/control-evidence.lisp",
+      "line": 814,
+      "declaration": "(defconst *fn-cev-max-argument-octets*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/crypto-seam.lisp",
+      "line": 42,
+      "declaration": "(defconst *fn-sig-max-public-key-octets* 4096)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/crypto-seam.lisp",
+      "line": 43,
+      "declaration": "(defconst *fn-sig-max-signature-octets* 4096)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/crypto-seam.lisp",
+      "line": 44,
+      "declaration": "(defconst *fn-digest-max-tag-octets* 64)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/defkeystone.lisp",
+      "line": 143,
+      "declaration": "(defconst *fn-dk-bound-kinds* '((:visits . -visits-) (:allocation . -allocation-)))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/feed-auth-profile.lisp",
+      "line": 6,
+      "declaration": "(defconst *fn-fap-max-octets* 1024)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/feed-auth-profile.lisp",
+      "line": 10,
+      "declaration": "(defconst *fn-fap-max-token-octets* 494)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/feed-filename.lisp",
+      "line": 12,
+      "declaration": "(defconst *fn-ff-max-name* 256)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/feed-filename.lisp",
+      "line": 13,
+      "declaration": "(defconst *fn-ff-legacy-max-name* 250)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/feed-filename.lisp",
+      "line": 15,
+      "declaration": "(defconst *fn-ff-max-v1-chunks* 5)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/feed-filename.lisp",
+      "line": 16,
+      "declaration": "(defconst *fn-ff-max-components* 7)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/feed-filename.lisp",
+      "line": 22,
+      "declaration": "(defconst *fn-ff-max-observations* 8192)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/feed-journal.lisp",
+      "line": 14,
+      "declaration": "(defconst *fn-feed-journal-frame-max*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/feed-link-backoff.lisp",
+      "line": 34,
+      "declaration": "(defconst *fn-flb-max-delay* 300000)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/feed-wire-input.lisp",
+      "line": 19,
+      "declaration": "(defconst *fn-feed-wire-input-max-chunk-octets* 512)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/frame-journal.lisp",
+      "line": 24,
+      "declaration": "(defconst *fn-frame-magic-inbound* '(70 78 66 73))  ; FNBI",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/frame-journal.lisp",
+      "line": 30,
+      "declaration": "(defconst *fn-frame-inbound-kind* 1)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/frame-journal.lisp",
+      "line": 38,
+      "declaration": "(defconst *fn-frame-max-store-payload* 4294967295)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/frame-journal.lisp",
+      "line": 48,
+      "declaration": "(defconst *fn-frame-max-workflow-payload* 16342)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/frame-journal.lisp",
+      "line": 49,
+      "declaration": "(defconst *fn-frame-max-receipt-payload* 269958)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/frame-journal.lisp",
+      "line": 52,
+      "declaration": "(defconst *fn-frame-max-inbound-payload* 4294967295)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/frame-journal.lisp",
+      "line": 53,
+      "declaration": "(defconst *fn-frame-max-bundle-store-payload* 8)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/frame-octets.lisp",
+      "line": 30,
+      "declaration": "(defconst *fn-frame-max-payload* 4294967295)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/frame-octets.lisp",
+      "line": 34,
+      "declaration": "(defconst *fn-frame-max-text* 512)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/frame-octets.lisp",
+      "line": 41,
+      "declaration": "(defconst *fn-frame-max-blob* 131072)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/frame-octets.lisp",
+      "line": 42,
+      "declaration": "(defconst *fn-frame-max-nat* 18446744073709551615)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/frame.lisp",
+      "line": 57,
+      "declaration": "(defconst *fn-frame-max-identity* 1152)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/heap-reservation.lisp",
+      "line": 472,
+      "declaration": "(defconst *fn-heap-capacity-fields*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/history-record-cursor.lisp",
+      "line": 11,
+      "declaration": "(defconst *fn-hrcur-u64-bound* 18446744073709551616)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/history-scalar-cursor.lisp",
+      "line": 7,
+      "declaration": "(defconst *fn-hrsc-integer-bound* (expt 256 255))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/hybrid-carrier.lisp",
+      "line": 19,
+      "declaration": "(defconst *fn-hc-max-binary-octets* 5405)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/hybrid-carrier.lisp",
+      "line": 20,
+      "declaration": "(defconst *fn-hc-max-field-octets* 8192)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/hybrid-signature.lisp",
+      "line": 36,
+      "declaration": "(defconst *fn-hsig-v1-max-source* 65535)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/hybrid-signature.lisp",
+      "line": 37,
+      "declaration": "(defconst *fn-hsig-v2-max-source* 4294967295)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/injection.lisp",
+      "line": 108,
+      "declaration": "(defconst *fn-inj-max-agent-octets* 128)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/log-sink.lisp",
+      "line": 50,
+      "declaration": "(defconst *fn-log-sink-pending-bound* 1048576)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/login-binding.lisp",
+      "line": 50,
+      "declaration": "(defconst *fn-lb-policy-bound-logins* \"bound-logins\")",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/mailbox.lisp",
+      "line": 49,
+      "declaration": "(defconst *fn-mbx-max-octets* 8192)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/msgid-linear-exec.lisp",
+      "line": 80,
+      "declaration": "(defconst *fn-mlh-tag-limit* (expt 2 60))    ; tags and seq words are below it",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/msgid-linear-exec.lisp",
+      "line": 82,
+      "declaration": "(defconst *fn-mlh-word-limit* (expt 2 61))   ; every word is below it: a fixnum",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/msgid-pages-exec.lisp",
+      "line": 90,
+      "declaration": "(defconst *fn-mpxt-word-limit* (expt 2 64))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/msgid-probe-cursor.lisp",
+      "line": 8,
+      "declaration": "(defconst *fn-mpr-slot-quantum* (* 2 *fn-mpxt-page-slots*))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-admin-shape.lisp",
+      "line": 22,
+      "declaration": "(defconst *fn-native-admin-config-name-limit* 100000000)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-auth-admin.lisp",
+      "line": 13,
+      "declaration": "(defconst *fn-native-auth-admin-max-secret-octets* 256)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-config-show.lisp",
+      "line": 1358,
+      "declaration": "(defconst *fn-ncfg-max-node-path* 480)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-config.lisp",
+      "line": 23,
+      "declaration": "(defconst *fn-ncfg-max-octets* 16384)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-config.lisp",
+      "line": 24,
+      "declaration": "(defconst *fn-ncfg-max-lines* 128)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-config.lisp",
+      "line": 25,
+      "declaration": "(defconst *fn-ncfg-max-path* 512)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-config.lisp",
+      "line": 26,
+      "declaration": "(defconst *fn-ncfg-max-text* 256)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-config.lisp",
+      "line": 27,
+      "declaration": "(defconst *fn-ncfg-max-server* 128)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-config.lisp",
+      "line": 30,
+      "declaration": "(defconst *fn-ncfg-default-max-connections* (fn-profile-limit :max-connections))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-config.lisp",
+      "line": 45,
+      "declaration": "(defconst *fn-ncfg-default-log-max-bytes* 67108864)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-config.lisp",
+      "line": 203,
+      "declaration": "(defconst *fn-ncfg-max-decimal-digits* 20)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-config.lisp",
+      "line": 204,
+      "declaration": "(defconst *fn-ncfg-max-u64* 18446744073709551615)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-control-line.lisp",
+      "line": 17,
+      "declaration": "(defconst *fn-ncline-max-line-octets* 1024)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-control-reason.lisp",
+      "line": 37,
+      "declaration": "(defconst *fn-nctrl-max-reason-octets* 512)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-control.lisp",
+      "line": 31,
+      "declaration": "(defconst *fn-nctrl-max-groups-octets*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-control.lisp",
+      "line": 74,
+      "declaration": "(defconst *fn-nctrl-max-payload*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-control.lisp",
+      "line": 76,
+      "declaration": "(defconst *fn-nctrl-max-frame*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-control.lisp",
+      "line": 84,
+      "declaration": "(defconst *fn-nctrl-max-command-frame* 262708)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-control.lisp",
+      "line": 111,
+      "declaration": "(defconst *fn-nctrl-max-active-clients* (fn-profile-limit :control-clients))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-control.lisp",
+      "line": 113,
+      "declaration": "(defconst *fn-nctrl-max-lease-path* (+ *fn-ncfg-max-path* 5))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-health.lisp",
+      "line": 1753,
+      "declaration": "(defconst *fn-nh-reason-max-octets* 480)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-hybrid-control.lisp",
+      "line": 38,
+      "declaration": "(defconst *fn-nhctrl-max-source*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-hybrid-control.lisp",
+      "line": 48,
+      "declaration": "(defconst *fn-nhctrl-max-payload*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-live-pages.lisp",
+      "line": 282,
+      "declaration": "(defconst *fn-nlp-max-versions* 4)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-live-status.lisp",
+      "line": 697,
+      "declaration": "(defconst *fn-nls-max-restarts* 8)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-live-status.lisp",
+      "line": 700,
+      "declaration": "(defconst *fn-nls-max-payload* (+ *fn-nls-chunk-octets* 64))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-live-status.lisp",
+      "line": 701,
+      "declaration": "(defconst *fn-nls-max-frame* (+ *fn-frame-overhead-octets* *fn-nls-max-payload*))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-operator.lisp",
+      "line": 819,
+      "declaration": "(defconst *fn-nop-max-watch-seconds* 86400)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-operator.lisp",
+      "line": 3221,
+      "declaration": "(defconst *fn-nop-control-path-max-octets* 103)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/native-retire.lisp",
+      "line": 26,
+      "declaration": "(defconst *fn-nret-max-drain-seconds* 86400)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/nntp-auth.lisp",
+      "line": 782,
+      "declaration": "(defconst *fn-auth-failure-limit* 3)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/nntp-responses.lisp",
+      "line": 930,
+      "declaration": "(defconst *fn-nntp-max-rendered-year* 9999)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/nntp-syntax.lisp",
+      "line": 97,
+      "declaration": "(defconst *fn-nntp-max-command-octets* 510)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/nntp-syntax.lisp",
+      "line": 99,
+      "declaration": "(defconst *fn-nntp-max-argument-octets* 497)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/nntp-syntax.lisp",
+      "line": 108,
+      "declaration": "(defconst *fn-nntp-max-response-octets* 512)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/nntp-syntax.lisp",
+      "line": 110,
+      "declaration": "(defconst *fn-nntp-max-initial-line-octets* 510)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/nntp-syntax.lisp",
+      "line": 112,
+      "declaration": "(defconst *fn-nntp-max-article-number* 2147483647)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/nntp-syntax.lisp",
+      "line": 114,
+      "declaration": "(defconst *fn-nntp-max-group-octets* 460)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/nntp-syntax.lisp",
+      "line": 116,
+      "declaration": "(defconst *fn-nntp-max-message-id-octets* 250)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/nntp-syntax.lisp",
+      "line": 118,
+      "declaration": "(defconst *fn-nntp-max-decimal-octets* 10)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/nntp-zarticle.lisp",
+      "line": 35,
+      "declaration": "(defconst *fn-zar-bound* 4294967296) ; the frame's u32 fields (payload-lz-record)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/node-secret.lisp",
+      "line": 108,
+      "declaration": "(defconst *fn-ns-epoch-limit* 4294967296)   ; 2^32",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/node-secret.lisp",
+      "line": 109,
+      "declaration": "(defconst *fn-ns-identity-limit* 65536)     ; 2^16",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/owner-commit-class.lisp",
+      "line": 31,
+      "declaration": "(defconst *fn-ocm-bound* 4)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/owner-commit-pipeline.lisp",
+      "line": 75,
+      "declaration": "(defconst *fn-ocp-pass-bound* 4)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/owner-feed.lisp",
+      "line": 446,
+      "declaration": "(defconst *fn-own-feed-retry-bound* 3)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/owner-log.lisp",
+      "line": 30,
+      "declaration": "(defconst *fn-olog-max-field-octets* 256)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/owner-scheduler.lisp",
+      "line": 51,
+      "declaration": "(defconst *fn-osch-bound* 3)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/owner.lisp",
+      "line": 1399,
+      "declaration": "(defconst *fn-own-body-limit* 8192)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/payload-lz-record.lisp",
+      "line": 180,
+      "declaration": "(defconst *fn-lzr-dict-max* 65536) ; the table's bound (the inflater presets the last 32 KiB)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/peer-catchup-serve.lisp",
+      "line": 78,
+      "declaration": "(defconst *fn-cu-max-quantum* 1048576)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/peer-catchup-serve.lisp",
+      "line": 192,
+      "declaration": "(defconst *fn-cu-u64-limit* 18446744073709551616)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/peer-catchup.lisp",
+      "line": 62,
+      "declaration": "(defconst *fn-cu-request-quantum* 262144)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/peer-catchup.lisp",
+      "line": 67,
+      "declaration": "(defconst *fn-cu-max-line* 1048576)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/peer-catchup.lisp",
+      "line": 893,
+      "declaration": "(defconst *fn-cu-max-payload* 1024)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/peer-feed.lisp",
+      "line": 78,
+      "declaration": "(defconst *fn-feed-max-backoff* 3600000)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/peer-feed.lisp",
+      "line": 1175,
+      "declaration": "(defconst *fn-feed-max-payload* 1024)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/peer-host.lisp",
+      "line": 36,
+      "declaration": "(defconst *fn-phost-max-name* 253)   ; RFC 1123 s2.1 / RFC 1035 s2.3.4, text form",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/peer-host.lisp",
+      "line": 37,
+      "declaration": "(defconst *fn-phost-max-label* 63)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/peer-invite.lisp",
+      "line": 1231,
+      "declaration": "(defconst *fn-pinv-max-redecide-msgid* 250)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/peer-pull.lisp",
+      "line": 67,
+      "declaration": "(defconst *fn-pull-max-line* 512)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/peer-pull.lisp",
+      "line": 1571,
+      "declaration": "(defconst *fn-pull-max-payload* 1024)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/policy.lisp",
+      "line": 58,
+      "declaration": "(defconst *fn-pol-max-members* 64)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/policy.lisp",
+      "line": 59,
+      "declaration": "(defconst *fn-pol-max-name-octets* 128)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/policy.lisp",
+      "line": 60,
+      "declaration": "(defconst *fn-pol-max-terms-octets* 256)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/policy.lisp",
+      "line": 61,
+      "declaration": "(defconst *fn-pol-max-policy-items* 68)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/principal.lisp",
+      "line": 38,
+      "declaration": "(defconst *fn-prin-max-token-octets* 64)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/profile-limits.lisp",
+      "line": 36,
+      "declaration": "(defconst *fn-profile-limits*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/proto/adt-bytes-lib.lisp",
+      "line": 18,
+      "declaration": "(defconst *adt-u64-limit* 18446744073709551616)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/provenance-codec.lisp",
+      "line": 60,
+      "declaration": "(defconst *fn-prov-max-field* 32)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/public-exposure-rows.lisp",
+      "line": 32,
+      "declaration": "(defconst *fn-exp-limit-slots*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/public-exposure-rows.lisp",
+      "line": 67,
+      "declaration": "(defconst *fn-exp-owner-connection-bound* (+ 1 *fn-cbor-max-uint*))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/public-exposure.lisp",
+      "line": 101,
+      "declaration": "(defconst *fn-exp-quantum-ms* 1000)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/records-shape.lisp",
+      "line": 37,
+      "declaration": "(defconst *fn-record-max-msgid* 250)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/records-shape.lisp",
+      "line": 42,
+      "declaration": "(defconst *fn-record-max-octets* 4294967295)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/records-shape.lisp",
+      "line": 51,
+      "declaration": "(defconst *fn-record-max-group-name* 256)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/records-shape.lisp",
+      "line": 56,
+      "declaration": "(defconst *fn-record-max-groups* 65535)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/records-shape.lisp",
+      "line": 59,
+      "declaration": "(defconst *fn-record-max-metadata* 256)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/records-shape.lisp",
+      "line": 63,
+      "declaration": "(defconst *fn-record-max-payload* 4261412864)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/recovery-profile-buffer.lisp",
+      "line": 7,
+      "declaration": "(defconst *fn-rpf-file-limit* (nth 5 (fn-recovery-profile-envelope)))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/relay-checks.lisp",
+      "line": 338,
+      "declaration": "(defconst *fn-rck-capacity-slot* \"refused-offer-capacity\")",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/relay-checks.lisp",
+      "line": 344,
+      "declaration": "(defconst *fn-rck-default-capacity* 4096)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/resource-vector-exec.lisp",
+      "line": 43,
+      "declaration": "(defconst *fn-rl-word-max* (1- (expt 2 64)))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/scheduler.lisp",
+      "line": 423,
+      "declaration": "(defconst *fn-sched-max-payload* 4096)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/scram.lisp",
+      "line": 77,
+      "declaration": "(defconst *fn-scram-max-iterations* 1000000)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/snapshot-segments.lisp",
+      "line": 62,
+      "declaration": "(defconst *fn-snap-max-columns* 255)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/snapshot-segments.lisp",
+      "line": 63,
+      "declaration": "(defconst *fn-snap-u64-limit* 18446744073709551616)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/statement.lisp",
+      "line": 60,
+      "declaration": "(defconst *fn-stmt-max-preds* 16)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/statement.lisp",
+      "line": 61,
+      "declaration": "(defconst *fn-stmt-max-header-items* 24)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/statement.lisp",
+      "line": 62,
+      "declaration": "(defconst *fn-stmt-max-header-octets* 1024)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/statement.lisp",
+      "line": 63,
+      "declaration": "(defconst *fn-stmt-max-payload-octets* 8192)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/statement.lisp",
+      "line": 64,
+      "declaration": "(defconst *fn-stmt-max-items* 26)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/statement.lisp",
+      "line": 65,
+      "declaration": "(defconst *fn-stmt-max-octets* 16384)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/statement.lisp",
+      "line": 66,
+      "declaration": "(defconst *fn-stmt-max-obligation-octets* 256)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/statement.lisp",
+      "line": 67,
+      "declaration": "(defconst *fn-stmt-max-receipt-octets* 512)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/store-budget-naming.lisp",
+      "line": 207,
+      "declaration": "(defconst *fn-sbud-refusal-payload-bound*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/store-budget-naming.lisp",
+      "line": 209,
+      "declaration": "(defconst *fn-sbud-refusal-group-bound*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/store-budget-naming.lisp",
+      "line": 211,
+      "declaration": "(defconst *fn-sbud-refusal-charge-bound*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/store-checkpoint-codec.lisp",
+      "line": 93,
+      "declaration": "(defconst *fn-scc-u64-bound* 18446744073709551616)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/store-events.lisp",
+      "line": 22,
+      "declaration": "(defconst *fn-store-event-max-octets* 4096)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/store-files-traces.lisp",
+      "line": 27,
+      "declaration": "(defconst *fn-sf-max-trace-events* 4096)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/store-files.lisp",
+      "line": 44,
+      "declaration": "(defconst *fn-sf-max-uint* 4294967295)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/store-genesis.lisp",
+      "line": 66,
+      "declaration": "(defconst *fn-gen-max-payload* 512)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/store-log-segments.lisp",
+      "line": 41,
+      "declaration": "(defconst *fn-lgs-max-segment* 999999)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/store-mount-identity.lisp",
+      "line": 81,
+      "declaration": "(defconst *fn-smid-field-max* 65535)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/store-mount-identity.lisp",
+      "line": 82,
+      "declaration": "(defconst *fn-smid-max-payload* (* 5 (+ 2 65535)))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/store-mount-identity.lisp",
+      "line": 85,
+      "declaration": "(defconst *fn-smid-mountinfo-line-max* 65536)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/store-sweep.lisp",
+      "line": 93,
+      "declaration": "(defconst *fn-sn-max-staging-observation* 64)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/stx-accept-records.lisp",
+      "line": 31,
+      "declaration": "(defconst *fn-stxa-max-octets* (- *fn-cbor-max-uint* (+ 9 346)))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/stx-accept-records.lisp",
+      "line": 32,
+      "declaration": "(defconst *fn-stxa-max-article-record* *fn-record-max-octets*)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/stx-accept-records.lisp",
+      "line": 33,
+      "declaration": "(defconst *fn-stxa-max-authored-source* *fn-cbor-max-uint*)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/stx-accept-records.lisp",
+      "line": 36,
+      "declaration": "(defconst *fn-stxa-max-item* *fn-cbor-max-uint*)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/stx-carrier.lisp",
+      "line": 60,
+      "declaration": "(defconst *fn-stx-max-field-octets* 8192)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/stx-carrier.lisp",
+      "line": 61,
+      "declaration": "(defconst *fn-stx-max-detached-octets* 6144)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/stx-carrier.lisp",
+      "line": 62,
+      "declaration": "(defconst *fn-stx-max-detached-items* 25)   ; *fn-stmt-max-items* less the payload",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/stx-commit-codec.lisp",
+      "line": 5,
+      "declaration": "(defconst *fn-stx-max-commit-octets* 512)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/stx-evidence-records.lisp",
+      "line": 15,
+      "declaration": "(defconst *fn-stxe-max-octets* 65538)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/stx-evidence-records.lisp",
+      "line": 16,
+      "declaration": "(defconst *fn-stxe-max-profile* 64)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/stx-evidence-records.lisp",
+      "line": 17,
+      "declaration": "(defconst *fn-stxe-max-detail* 8192)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/stx-keyring-records.lisp",
+      "line": 15,
+      "declaration": "(defconst *fn-stxk-max-octets* 131072)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/stx-keyring-records.lisp",
+      "line": 16,
+      "declaration": "(defconst *fn-stxk-max-profile* 64)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/stx-keyring-records.lisp",
+      "line": 17,
+      "declaration": "(defconst *fn-stxk-max-snapshot* 65536)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/substrate-commit-profile-bounds.lisp",
+      "line": 4,
+      "declaration": "(defconst *fn-stcp-max-argument-refusal* (+ (* 256 *fn-cbor-max-uint64*) 255))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/tcpcl-octets.lisp",
+      "line": 84,
+      "declaration": "(defconst *fn-tcl-max-u16* 65535)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/tcpcl-octets.lisp",
+      "line": 85,
+      "declaration": "(defconst *fn-tcl-max-u32* 4294967295)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/tcpcl-octets.lisp",
+      "line": 86,
+      "declaration": "(defconst *fn-tcl-max-u64* 18446744073709551615)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/tcpcl-octets.lisp",
+      "line": 897,
+      "declaration": "(defconst *fn-tcl-max-message-overhead*",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/tcpcl-octets.lisp",
+      "line": 1183,
+      "declaration": "(defconst *fn-tcl-init-need-bound* (+ 24 *fn-tcl-node-id-cap* *fn-tcl-ext-cap*))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/tls-proxy.lisp",
+      "line": 42,
+      "declaration": "(defconst *fn-pxy-v1-max* 107)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/tls-proxy.lisp",
+      "line": 43,
+      "declaration": "(defconst *fn-pxy-v2-max-body* 512)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/tls-proxy.lisp",
+      "line": 44,
+      "declaration": "(defconst *fn-pxy-max* (+ 16 *fn-pxy-v2-max-body*))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/tls-reload.lisp",
+      "line": 585,
+      "declaration": "(defconst *fn-tlsr-max-word* 16)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/tls-reload.lisp",
+      "line": 592,
+      "declaration": "(defconst *fn-tlsr-max-line* *fn-record-max-payload*)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/tls-self-signed.lisp",
+      "line": 29,
+      "declaration": "(defconst *fn-ssc-length-limit* 16777216)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/topic-history-admission.lisp",
+      "line": 8,
+      "declaration": "(defconst *fn-th-max-anchors* 16)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/topic-history-admission.lisp",
+      "line": 9,
+      "declaration": "(defconst *fn-th-max-report-quota* 64)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/topic-history-metadata.lisp",
+      "line": 9,
+      "declaration": "(defconst *fn-th-max-binary* 1536)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/topic-history-metadata.lisp",
+      "line": 10,
+      "declaration": "(defconst *fn-th-max-field* 2048)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/topic-history-metadata.lisp",
+      "line": 11,
+      "declaration": "(defconst *fn-th-max-items* 39)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/topic-history-metadata.lisp",
+      "line": 12,
+      "declaration": "(defconst *fn-th-max-authors* 16)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/topic-history-metadata.lisp",
+      "line": 13,
+      "declaration": "(defconst *fn-th-max-parents* 8)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/topic-history-store-events.lisp",
+      "line": 15,
+      "declaration": "(defconst *fn-th-topic-max-octets* 1024)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/topic-history-store-events.lisp",
+      "line": 16,
+      "declaration": "(defconst *fn-th-topic-max-items* 24)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/transfer-journal.lisp",
+      "line": 85,
+      "declaration": "(defconst *fn-tj-max-payload* (fn-frame-specs-width (fn-tj-spec-for :chunk)))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/utf8.lisp",
+      "line": 22,
+      "declaration": "(defconst *fn-wildmat-max-octets* 497)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/utf8.lisp",
+      "line": 23,
+      "declaration": "(defconst *fn-wildmat-max-codepoint* 1114111)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/web-2047.lisp",
+      "line": 40,
+      "declaration": "(defconst *fn-w47-max* 4096)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/web-2047.lisp",
+      "line": 41,
+      "declaration": "(defconst *fn-w47-word-max* 75)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/web-config.lisp",
+      "line": 33,
+      "declaration": "(defconst *fn-web-max-idle* 2592000)      ; 30 days",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/web-config.lisp",
+      "line": 34,
+      "declaration": "(defconst *fn-web-max-sessions* 4096)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "books/web-request.lisp",
+      "line": 329,
+      "declaration": "(defconst *fn-wrq-max-name* 24)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "host/native/bp-service.lisp",
+      "line": 1054,
+      "declaration": "(defconstant +fnn-bps-fragment-quantum+ 4096",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "host/native/bp.lisp",
+      "line": 34,
+      "declaration": "(defconstant +fnn-bp-hop-limit+ 32)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "host/native/crypto.lisp",
+      "line": 19,
+      "declaration": "(defconstant +fnn-crypto-max-message-octets+ 4096)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "host/native/feed-service.lisp",
+      "line": 34,
+      "declaration": "(defconstant +fnn-feed-idle-max-seconds+ 1)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "host/native/io.lisp",
+      "line": 4173,
+      "declaration": "(defconstant +fnn-node-secret-file-bound+ (+ 18 4 2 65535 32))",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "host/native/io.lisp",
+      "line": 5738,
+      "declaration": "(defconstant +fnn-max-read+ 512)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "host/native/peer-invite.lisp",
+      "line": 20,
+      "declaration": "(defconstant +fnn-pinv-max-token-octets+ 64)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "host/native/peer-invite.lisp",
+      "line": 346,
+      "declaration": "(defconstant +fnn-pinv-pem-capacity+ 8192)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "host/native/tls.lisp",
+      "line": 378,
+      "declaration": "(defconstant +fnn-tls-max-fact-octets+ 65536)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "host/owner-host.lisp",
+      "line": 5080,
+      "declaration": "(defconst *fn-owner-feed-send-quantum-octets* 65536)",
+      "review": "candidate; not automatically a defect"
+    },
+    {
+      "path": "host/owner-host.lisp",
+      "line": 5081,
+      "declaration": "(defconst *fn-owner-feed-send-quantum-seconds* 10)",
+      "review": "candidate; not automatically a defect"
+    }
+  ]
+}

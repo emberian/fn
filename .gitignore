@@ -20,3 +20,4 @@ planning/evidence/manifests/*.json
 # The evidence index writers' flock (tools/evidence_store.py index_lock_path)
 /planning/evidence-index.tsv.lock
 /planning/evidence/
+/.spw/_workbench/

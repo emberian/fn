@@ -1,0 +1,71 @@
+# Observed interaction contracts; descriptions are audit interpretations, not proofs.
+^"launcher-process"{
+ @from: ~"../packaging/fn"
+ @to: ~"../host/native/io.lisp"
+ contract: "same release image; argv bytes reach fnn-main; heap probe is ACL2 decision; no alternate semantic CLI owner"
+}
+^"operator-owner"{
+ @from: ~"../host/native/operator.lisp"
+ @to: ~"../host/native/owner.lisp"
+ contract: "fn-native-operator-host-run-at decides normalized config/run plan; fnn-owner-run-normalized shape-checks then claims run authority"
+}
+^"owner-store"{
+ @from: ~"../host/native/owner.lisp"
+ @to: ~"../host/native/io.lisp"
+ contract: "only serialized owner mutates; barrier outcomes flow to commit; uncertainty fences before mutex release; socket writes do not accept"
+}
+^"owner-reader"{
+ @from: ~"../host/owner-host.lisp"
+ @to: ~"../host/native/mux.lisp"
+ contract: "reader span captures catalog allocation and effective authorization; carried response retains same context through yield/drain/cancel"
+}
+^"reader-extent"{
+ @from: ~"../host/native/mux.lisp"
+ @to: ~"../host/native/extent.lisp"
+ contract: "issued token and actual descriptor custody survive cancellation; physical return plus result and owner settlement precede release"
+}
+^"owner-actor"{
+ @from: ~"../host/native/owner.lisp"
+ @to: ~"../host/native/runtime-bootstrap.lisp"
+ contract: "startup construction requires typed allocator capability; thread launch/return and logical retirement independently observed"
+}
+^"consumer-control"{
+ @from: ~"../host/native/consumer-local.lisp"
+ @to: ~"../host/native/control.lisp"
+ contract: "cursor/report is authenticated local Store view; polling read-only, report written before cursor; ack is explicit durable owner action"
+}
+^"consumer-application"{
+ @from: ~"../host/native/signature-command.lisp"
+ @to: ~"../books/consumer-poll-projection.lisp"
+ contract: "supplied files establish composite bindings only; authenticated Store provenance and durable application processing remain separate"
+}
+^"bp-retention"{
+ @from: ~"../host/native/bp-node.lisp"
+ @to: ~"../host/native/bp-obligation.lisp"
+ contract: "attempt identity and retained source; transport progress distinct from undertaking release and durable receipt"
+}
+^"tcpcl-bp"{
+ @from: ~"../host/native/tcpcl.lisp"
+ @to: ~"../host/native/bp-app.lisp"
+ contract: "bounded received-source windows retain final ACK until local source work; ACK alone is not durable fn acceptance"
+}
+^"anchor-publication"{
+ @from: ~"../host/native/anchor.lisp"
+ @to: ~"../books/anchor-replace.lisp"
+ contract: "issue before rename; accepted only after successful directory barrier; recovery file/directory barriers establish held state"
+}
+^"identity-source"{
+ @from: ~"../host/native/signature-command.lisp"
+ @to: ~"../host/hybrid-signature-host.lisp"
+ contract: "ACL2 determines exact-source preimage and carrier; both native signature observations checked; key primitives remain trusted"
+}
+^"redeem-account"{
+ @from: ~"../host/native/io.lisp"
+ @to: ~"../books/peer-host.lisp"
+ contract: "password send may have created account even before local return; pre-send :password stage drives uncertainty classifier"
+}
+^"ninep-runtime"{
+ @from: ~"../host/native/ninep.lisp"
+ @to: ~"../host/ninep-transport-host.lisp"
+ contract: "public start unavailable until installed typed family; internal output return does not fabricate custody completion"
+}

@@ -1,0 +1,20 @@
+#>fn_consistency_tcpcl
+^"machine"{
+ @source: ~"../../../books/tcpcl-session.lisp"
+ @host: ~"../../../host/native/tcpcl.lisp"
+ @spec: ~"../../../specs/tcpcl.md"
+ @tests: ~"../../../tests/acl2/tcpcl-tests.lisp"
+ source_revision: "9df4a3a4e; repair74e8573a7 integrated6dc485ef2"
+ workbench_revision: "651b535"
+ states: "tcp-connected/contact/messaging/established/ending/closed, negotiated MRUs/keepalive, distinct inbound/outbound identities, cumulative sent/ACKed lengths, term sent/both"
+ neighbors: "core segment completion emits final ACK plus delivery event; host retains END ACK until delivery disposition; outbound ACK is transport evidence, not semantic receipt"
+ inspected: "full recv segment, ACK/refuse, term/tcp-close, send/pump/tick/step bodies; construction and predicates; raw host offer/pump/begin seam"
+}
+^"C002"{
+ status: "core repair integrated; native supplied-p seam owned by BP transport"
+ counterexample: "send NIL at established free session installs total=sent=0; pump's sent=total branch emits nothing; future offers busy; transfer never starts"
+ repair: "send emits flags3 zero-length START|END exactly once and retains outbound until exact END ACK; ID increments; pump emits nothing thereafter"
+ rfc: "rfc9174.txt section5.2.1 unsigned Data length; START and END first/last flags"
+ checks: "warm actual session212forms/6.05ACL2s admitted guards/invariants; actual encoded empty frame -> peer zero ACK+delivery -> outbound-sent -> duplicate ACK reject, all assertions passed; ordinary multi-segment fixture reused"
+ residual: "Native begin currently aliases offered NIL with absent offer. BP transport composing keyword supplied-p and optional caller repair; no native/image claim yet. Normal narrow certification pending."
+}
