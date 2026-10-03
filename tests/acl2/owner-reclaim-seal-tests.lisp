@@ -27,7 +27,7 @@
 ; rows, and the seal is the intern's arena (ground, both sides executed).
 (defthm orcst-predict-is-intern-positive
   (and (equal (fn-arena-count *orcst-arena*) 2)
-       (not (member-equal :bad *orcst-rows*))
+       (not (fn-orcs-has-bad *orcst-rows*))
        (equal (mv-nth 0 (fn-orcp-intern-rows *orcst-rows* nil 0 *orcst-arena*))
               (first (fn-orcs-predict *orcst-rows* nil 0 2)))
        (equal (mv-nth 1 (fn-orcp-intern-rows *orcst-rows* nil 0 *orcst-arena*))
@@ -47,7 +47,7 @@
 (local
  (must-fail-checked
   (defthm orcst-predict-at-any-base
-    (implies (not (member-equal :bad rows))
+    (implies (not (fn-orcs-has-bad rows))
              (equal (mv-nth 0 (fn-orcp-intern-rows rows keyring generation fn-arena))
                     (fn-orcs-predict-rows rows keyring generation h))))))
 
@@ -73,7 +73,7 @@
 ; Without the hypothesis: a row that is the word :bad makes the intern
 ; refuse, the prediction not.
 (defthm orcst-without-no-bad
-  (and (member-equal :bad '(:bad))
+  (and (fn-orcs-has-bad '(:bad))
        (equal (mv-nth 0 (fn-orcp-intern-rows '(:bad) nil 0 *orcst-arena*)) :bad)
        (equal (fn-orcs-predict-rows '(:bad) nil 0 2) '(:bad))
        (equal (first (fn-orcs-predict '(:bad) nil 0 2)) :bad))
