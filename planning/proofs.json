@@ -22182,9 +22182,10 @@
         "host/web-host.lisp",
         "host/native/web-host.lisp",
         "tests/acl2/web-private-reply-tests.lisp",
-        "tests/native_web_page_cursor_raw.lisp"
+        "tests/native_web_page_cursor_raw.lisp",
+        "planning/evidence/web-private-source-2026-10-03.md"
       ],
-      "progress_note": "Source definitions/theorems and connected fixed-worker raw consumer submitted; matching admission/certification and literal witness execution are pending. Not a complete bounded plan-construction or worker-fairness claim."
+      "progress_note": "Fresh pool-governed ACL2 source replay admits the complete web-session-keystones book at49dc6fa5e. Exact private action/output/table equivalences and reached positive/predicate-removal witnesses pass, alongside the unchanged123-form web-session-tests range. This is source admission, not certification or composed native/browser execution. Test programs report concrete fill invariant-risk; full preparation/working/capture funding and bounded worker fairness remain open."
     },
     {
       "id": "PRF-1283",
@@ -22263,7 +22264,7 @@
     {
       "id": "PRF-1290",
       "title": "Captured POST/remove gate on fixed worker gives the exact live-table gate action and output",
-      "statement": "Subject fn-web-private-begin-step, called by fn-web-host-private-begin-step and native fnn-web-private-begin on the existing fixed semantic worker. Under exact fn-web-private-begin-p (core-generated row is in fn-web-routes and names post/remove), fn-web-private-begin-is-captured-gate equates private action/output to fn-wss-gate with the live table, and the gate preserves that table. BEGIN alone finds/touches the session and closes expired sessions under the owner section; the deferred gate still checks same-site/session/CSRF using that immutable captured context. Full form parsing and authored POST/cancel construction leave O. Source theorems/positive and predicate-removal witnesses await admission; raw scheduling adapter does not prove form semantics or complete worker fairness.",
+      "statement": "Subject fn-web-private-begin-step, called by fn-web-host-private-begin-step and native fnn-web-private-begin on the existing fixed semantic worker. Under exact fn-web-private-begin-p (core-generated row is in fn-web-routes and names post/remove), fn-web-private-begin-is-captured-gate equates private action/output to fn-wss-gate with the live table, and the gate preserves that table. BEGIN alone finds/touches the session and closes expired sessions under the owner section; the deferred gate still checks same-site/session/CSRF using that immutable captured context. Full form parsing and authored POST/cancel construction leave O. Source theorems/positive and predicate-removal witnesses admit in a fresh ACL2 source world; raw scheduling adapter does not prove form semantics or complete worker fairness.",
       "milestone": "M6",
       "requirements": [
         "WEB-006"
@@ -22283,9 +22284,10 @@
         "host/web-host.lisp",
         "host/native/web-host.lisp",
         "tests/acl2/web-private-begin-tests.lisp",
-        "tests/native_web_private_begin_raw.lisp"
+        "tests/native_web_private_begin_raw.lisp",
+        "planning/evidence/web-private-source-2026-10-03.md"
       ],
-      "progress_note": "Connected source capture/action/fixed-worker consumer. Raw exact classifier/private wrapper with a held gate adapter allows healthy owner event, and the worker never enters O; form/body equivalence witness and theorem admission plus matching image are pending. Form construction remains a full worker operation and its full allocation tariff is unpriced."
+      "progress_note": "Fresh pool-governed ACL2 source replay admits the complete web-session-keystones book at49dc6fa5e. Exact private action/output/table equivalences and reached positive/predicate-removal witnesses pass, alongside the unchanged123-form web-session-tests range. This is source admission, not certification or composed native/browser execution. Test programs report concrete fill invariant-risk; full preparation/working/capture funding and bounded worker fairness remain open."
     }
   ]
 }

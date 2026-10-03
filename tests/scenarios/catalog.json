@@ -8845,9 +8845,10 @@
       ],
       "evidence": [
         "tests/acl2/web-private-reply-tests.lisp",
-        "tests/native_web_page_cursor_raw.lisp"
+        "tests/native_web_page_cursor_raw.lisp",
+        "planning/evidence/web-private-source-2026-10-03.md"
       ],
-      "note": "Native raw source consumer passes; source theorem/witness admission and matching image pending (PRF-1279)."
+      "note": "Exact ACL2 source equivalences and reached positive/predicate-removal witnesses pass at49dc6fa5e; raw fixed-worker scheduling/classifier adapter passes. Certification and actual composed native/browser execution remain pending. Full preparation/working allocation remains unpriced; no complete fairness claim."
     },
     {
       "id": "SCN-1113",
@@ -8941,9 +8942,10 @@
       ],
       "evidence": [
         "tests/acl2/web-private-begin-tests.lisp",
-        "tests/native_web_private_begin_raw.lisp"
+        "tests/native_web_private_begin_raw.lisp",
+        "planning/evidence/web-private-source-2026-10-03.md"
       ],
-      "note": "Raw scheduling/classifier adapter passes; actual ACL2 equivalence witnesses and matching image pending. No full form producer heap/fairness claim."
+      "note": "Exact ACL2 source equivalences and reached positive/predicate-removal witnesses pass at49dc6fa5e; raw fixed-worker scheduling/classifier adapter passes. Certification and actual composed native/browser execution remain pending. Full preparation/working allocation remains unpriced; no complete fairness claim."
     }
   ]
 }

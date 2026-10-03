@@ -488,3 +488,14 @@ pending; raw classifier/held-worker scheduling passes with a healthy owner
 event progressing. Body preparation still runs to completion on one worker;
 full body/working/capture allocation is unpriced, and stateful owner admission
 can still delay events. No second worker or full fairness warranty.
+
+
+Web private source checkpoint49dc6fa5e: complete web-session-keystones fresh
+ACL2 source replay admits, plus full existing123-form session witness range and
+private reply/POST/remove positive and predicate-removal witnesses pass.
+Evidence planning/evidence/web-private-source-2026-10-03.md archives final
+source hashes, clean world log and earlier proof/refusal repair log. This is
+source admission; no certification/composed native browser/funding claim.
+Missing-session POST/remove stays immediate refusal; captured body preparation
+remains one full private worker operation. Integration owns coherent source
+launcher; Web drives actual endpoint once that execution route is available.
