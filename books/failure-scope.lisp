@@ -12,9 +12,12 @@
 ;          lower-case name of that CL class (host/native/io.lisp
 ;          fnn-condition-class) -- never a parent: a subclass this book does
 ;          not list is not a refusal, whatever it inherits from;
-;   STEP   the last namespace-changing primitive the boundary's body
-;          completed (host/native/io.lisp fnn-durable-step: a rename or link
-;          that landed, an unlink, a mkdir), or nil when it completed none.
+;   STEP   the publication the boundary's body has landed and not yet
+;          fenced (host/native/io.lisp fnn-durable-step: :replaced or
+;          :linked once a rename or link returned success; nil again once a
+;          directory barrier completed, fnn-fsync-dir): the byte model's
+;          uncertain window, from the rename on until the directory is
+;          durable.  An unlink or a mkdir opens no window.
 ;
 ; This book decides the KIND, in the words books/outcome-class.lisp
 ; fn-outcome-of-host-condition takes:

@@ -227,10 +227,22 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
         self.assertEqual(parents["fnn-owner-admission-pending"], "fnn-store-error")
         self.assertIn("fnn-store-indeterminate", tables["indeterminate"])
         self.assertIn("fnn-extent-fault", tables["fault"])
-        for primitive in ("fnn-link", "fnn-replace", "fnn-unlink", "fnn-mkdir"):
+        # The uncertain window is the byte model's: a rename or link that
+        # landed opens it, the directory barrier closes it; an unlink (a
+        # failed stage's cleanup) or a mkdir opens none.
+        for primitive in ("fnn-link", "fnn-replace"):
             self.assertIn("(fnn-durable-step", host_function(io, primitive), primitive)
+        for primitive in ("fnn-unlink", "fnn-mkdir", "fnn-at", "fnn-log-at"):
+            self.assertNotIn("fnn-durable-step", host_function(io, primitive), primitive)
+            self.assertNotIn("*fnn-section-step*", host_function(io, primitive), primitive)
         self.assertGreaterEqual(host_function(io, "fnn-rename-no-replace").count("(fnn-durable-step :replaced)"), 2)
-        self.assertNotIn("*fnn-section-step*", host_function(io, "fnn-at"))
+        self.assertIn("(setq *fnn-section-step* nil)", host_function(io, "fnn-fsync-dir"))
+        # the publisher is a private job: a failed stage write is a failed
+        # publication (serving continues), not the service's fault
+        self.assertIn('(fnn-owner-thread-escape service e "CHECKPOINT auto" t)',
+                      host_function(owner, "fnn-owner-publish-captured"))
+        self.assertIn("(fn-fs-classify-job (fnn-condition-class condition) *fnn-section-step*)",
+                      host_function(owner, "fnn-owner-thread-escape"))
         for name in ("fnn-owner-committer-loop", "fnn-owner-publish-captured", "fnn-owner-export-captured"):
             self.assertIn("(*fnn-section-step* nil)", host_function(owner, name), name)
 

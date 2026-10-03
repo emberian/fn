@@ -1976,22 +1976,26 @@ it re-signals (the syncer's COMPLETE)."
       (fnn-owner-classify-escape-locked service cid condition)
       (error condition))))
 
-(defun fnn-owner-thread-escape (service condition label)
+(defun fnn-owner-thread-escape (service condition label &optional jobp)
   "A worker thread's top boundary, off the owner mutex (the committer, the
 publisher, the exporter, the publication's release): ACL2 decides the kind
-of CONDITION as a quantum's boundary does (fn-fs-classify).  An uncertain
-outcome installs the fence (exit 3; idempotent and escalating: a quantum
-that raised it has fenced already) and is logged under LABEL; a fault or any
-other serious condition stops the service as a fault (exit 4,
-fnn-owner-fault-service).  A known refusal is answered as its kind for the
-caller to scope.  Answers the kind."
+of CONDITION as a quantum's boundary does (fn-fs-classify; with JOBP
+fn-fs-classify-job: the thread is a private job whose OS failure before it
+published anything is its own, :job-failure, never the service's).  An
+uncertain outcome installs the fence (exit 3; idempotent and escalating: a
+quantum that raised it has fenced already) and is logged under LABEL; a
+fault or any other serious condition stops the service as a fault (exit 4,
+fnn-owner-fault-service).  A known refusal or a job failure is answered as
+its kind for the caller to scope.  Answers the kind."
   ;; GEN: def-actor :failure
-  (let ((kind (fn-fs-classify (fnn-condition-class condition) *fnn-section-step*)))
+  (let ((kind (if jobp
+                  (fn-fs-classify-job (fnn-condition-class condition) *fnn-section-step*)
+                (fn-fs-classify (fnn-condition-class condition) *fnn-section-step*))))
     (case kind
       (:indeterminate
        (fnn-owner-fence-service service)
        (fnn-err "~a uncertain; recovery required: ~a" label condition))
-      ((:refusal :usage) nil)
+      ((:refusal :usage :job-failure) nil)
       (t (fnn-owner-fault-service service nil condition)))
     kind))
 
@@ -5778,12 +5782,16 @@ the crash keystone) and serving continues."
                        (fnn-store-io-refusal (e)
                          (fnn-err "CHECKPOINT auto failed sequence=~d: ~a" sequence e)))))
                   (t (fnn-fault "owner returned a malformed checkpoint verdict")))))
-          ;; GEN: def-actor publisher :failure -- one arm; ACL2 decides the
-          ;; kind (fnn-owner-thread-escape): the fence or the fault before
-          ;; the cleanup below; a known refusal is logged, serving continues.
+          ;; GEN: def-actor publisher :failure :private-job -- one arm; ACL2
+          ;; decides the kind (fnn-owner-thread-escape with fn-fs-classify-
+          ;; job): an OS failure before the checkpoint's rename is a failed
+          ;; publication, the old checkpoint stands, serving continues (the
+          ;; docstring's promise); inside the rename's uncertain window it is
+          ;; the fence, a core/store fault the fault, both before the cleanup
+          ;; below; a known refusal is logged, serving continues.
           (serious-condition (e)
-            (when (member (fnn-owner-thread-escape service e "CHECKPOINT auto")
-                          '(:refusal :usage))
+            (when (member (fnn-owner-thread-escape service e "CHECKPOINT auto" t)
+                          '(:refusal :usage :job-failure))
               (fnn-err "CHECKPOINT auto failed: ~a" e)))))
       (unwind-protect
            (progn
