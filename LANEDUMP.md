@@ -2213,3 +2213,4 @@ sol-access continuing owned queue, GPT-6.1-Sol, 2026-10-03 10:49 UTC:
   alongside final teeth104044Z / group access103156Z. Unrelated inherited
   provenance listing is a separate global convergence concern.
 - All three Access warm REPLs stopped after proof completion, freeing leases.
+Source assembly response lease: Runtime851998516 plus root26b84f908 composed on dev3e77c6fed; four actual rlo declarations reactivated. Cold-abandon and output-discard both retained; renderer returns all five values. Independent bank evidence retained, whole tariff/native refinement/image activation pending.
