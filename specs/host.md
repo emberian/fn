@@ -1886,3 +1886,10 @@ SCN-1091 checks these actual native boundaries with real exclusion and physical
 threads/socket close, recording semantic primitives and a raw callback cut.
 Full native refinement, output custody composition and matching-image shutdown
 remain open under HOST-COORDINATION and PRF-1255/PRF-1259.
+
+`fn-owner-catalog-capture-context` produces the opaque allocation/root, immutable
+logical view, connection archive/index, config and authorization read rule at the
+actual reader section before plan creation. Runtime must retain that same result
+with the actual arena/catalog custody and plan; reacquiring it at renderer entry
+would capture a different root. The fixed constructor shares existing values.
+It neither constructs an available archive/index nor acquires a physical pin.
