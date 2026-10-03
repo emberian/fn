@@ -17,7 +17,7 @@
 (defvar *source-control-recording-core* (symbol-function 'fnn-core))
 (defun fnn-core (name &rest args)
  (case name
-  ((fn-tclsctl-turn fn-tcrt-action fn-tcrt-write-end fn-tcrt-read-limit fn-tcrt-write-deadline) (apply name args))
+  ((fn-tclsctl-turn fn-tcrt-action fn-tcrt-write-end fn-tcrt-read-limit fn-tcrt-write-deadline fn-tcrt-contact-deadline fn-tcrt-contact-timeout-p) (apply name args))
   (fn-tcl-host-phase (fn-tcl-session-phase (first args)))
   (fn-tcl-host-encode (assert (equal (first args) (fn-tcl-make-keepalive))) '(4))
   (otherwise (apply *source-control-recording-core* name args))))

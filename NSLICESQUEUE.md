@@ -652,3 +652,12 @@ actual ACL2-authored request, Store/FNRJ publication, reopened native return
 receipt and matching pin release, then independent consumer source/signature
 verification and correlation. No NNTP inter-node peer route. Compile-only
 source state; native execution remains pending current initialized world.
+
+BP owner source repaired missing RFC9174§4.1 Contact Header timeout: actual
+retained begin captures core60s deadline, turn closes protocol only before
+header completion; established source/END ACK unaffected. Raw controller and
+source-control/custody composition PASS,14 warm literal assertions PASS. PRF-1295
+proposed composed boundary remains planned; direct definition helpers not cited.
+SCN-1126 real-time silent-contact/canonical request/reopen prepared, unexecuted.
+SESS_INIT stalls/full admission, whole decode/GC and physical-cut refinement
+remain owned open work. Exact two-root certification pending.

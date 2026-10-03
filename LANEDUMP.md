@@ -3361,3 +3361,18 @@ both hops. Selector tests.test_native_consumer_exchange_two_nodes.
 NativeTwoNodeConsumerExchangeTests.test_signed_report_reply_cross_bp_and_reopen.
 Python compilation PASS; actual native run UNEXECUTED. Requires current source
 launcher from History/Integration. No new protocol or host semantic decision.
+
+Contact Header gap fixed forward: RFC9174§4.1 requires timeout/close but the
+retained native driver had no reception deadline, despite the prior spec claim.
+Actual begin captures ACL2's60s deadline; actual turn applies TCP-closed before
+another socket action only in tcp-connected/contact. Partial header bytes do
+not renew it. Established sessions and held received-source/END ACK are outside
+the timer. Physical close/context termination remain independent bank receipts.
+Raw actual driver deadline boundary and established private-source custody PASS;
+source-control/cadence/retirement composition PASS. Warm definitions/guards and
+14 literal assertions PASS (book1010 prover steps); the two direct expansion
+helpers are named -by-definition and are not completion keystones. PRF-1295 is
+PLANNED for the proposed composed host/custody boundary. Exact certification
+pending. SCN-1126 real-time silent contact plus canonical request/reopen prepared,
+UNEXECUTED. SESS_INIT stall/admission and whole semantic decoder latency remain
+open; sixty seconds is contact reception policy, never a stored-data ceiling.
