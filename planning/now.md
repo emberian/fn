@@ -40,7 +40,7 @@ still needs one coherent execution world: early arena/P3 attachment order and
 current source interfaces must be retained. The earlier claimed eleven-versus-
 ten-field pool difference was false (`:inline` was counted as a field); current
 and cached declarations each have ten fields. Missing decoded methods and
-attachment semantics remain real assembly gaps. Root owns that bootstrap frontier. No image run is
+attachment semantics remain real assembly gaps. Root owned that frontier at the pause; History owns its resumed initialization. No image run is
 required before source execution.
 
 The finite closeout repaired Web’s actual POST action-classifier mismatch: the

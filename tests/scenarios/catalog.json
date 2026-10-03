@@ -9347,18 +9347,20 @@
         "Connect to private socket; evaluate values and retain a definition across connections.",
         "Reject reader evaluation and multiple top-level forms; capture oversized output.",
         "Enable process allocation trace, execute another form, and read trace rows.",
-        "Deny unauthorized peer and stop/join/close the owner attachment."
+        "Deny unauthorized peer and stop/join/close the owner attachment.",
+        "Admit an ACL2 batch under zero/default/explicit prover allowance; verify refusal stops later forms and following proof/Lisp work succeeds."
       ],
       "expected": [
         "0600 socket and developer-only selector; same-world values survive.",
         "Explicit errors and truncation; trace scope is process, never retained heap.",
-        "Unauthorized connections do not evaluate; owned socket is removed after shutdown."
+        "Unauthorized connections do not evaluate; owned socket is removed after shutdown.",
+        "Ordinary proof-step limits preserve global allowance and the admitted world; no wall-time or arbitrary Lisp execution bound is implied."
       ],
       "implementation": {
         "test": "tests/test_dev_repl.py",
         "native_test": "tests/dev_repl_native.py"
       },
-      "execution_scope": "Actual socket fixtures plus real native owner admission/refusal continuation, normal shutdown and fault-fence exit4/socket cleanup. Native coordinate: ad8 source cache +gate336+cde lexical fixes +177b21dfb dev REPL/trace overlays; not whole current dev qualification."
+      "execution_scope": "Actual socket fixtures plus real native owner admission/refusal continuation, normal shutdown and fault-fence exit4/socket cleanup. Native coordinate: ad8 source cache +gate336+cde lexical fixes +177b21dfb dev REPL/trace overlays; not whole current dev qualification. Source720d66c29 adds ordinary with-prover-step-limit (default200000 per perform; explicit override/NIL allowed). Actual ACL2 worker and socket4testsPASS1.436s establish refusal recovery, unchanged global allowance and later-form suppression; full current-owner composition and wall-time/arbitrary-Lisp bounds remain open."
     },
     {
       "id": "SCN-1123",
