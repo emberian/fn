@@ -1581,8 +1581,23 @@ one ring, so the table's key and the served boundary's are one source."
               (fnn-log-history-release-prefix store)
               service))
         (error (e)
-          (when service (fnn-owner-feed-close-all service))
-          (fnn-store-close store)
+          ;; Neither cleanup condition replaces E. Keep the actual Store
+          ;; carrier if either physical release is uncertain: outer startup
+          ;; cleanup must not mistake a NIL return value for absent custody.
+          (let ((cleanup-failure nil))
+            (flet ((release (thunk)
+                     (handler-case (funcall thunk)
+                       (serious-condition (cleanup)
+                         (unless cleanup-failure (setq cleanup-failure cleanup))
+                         (ignore-errors (fnn-err "owner open cleanup failed: ~a" cleanup))))))
+              (when service (release (lambda () (fnn-owner-feed-close-all service))))
+              (release (lambda () (fnn-store-close store))))
+            (when cleanup-failure
+              (setf (fnn-store-fenced store) t)
+              (unless (fnn-store-close-debt store)
+                (setf (fnn-store-close-debt store) (list nil nil cleanup-failure)))
+              (fnn-owner-retain-run-authority
+               (or service (%make-fnn-owner-service :store store)))))
           (error e))))))
 
 (defmacro fnn-with-roster ((service) &body body)
