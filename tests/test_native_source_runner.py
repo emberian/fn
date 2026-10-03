@@ -31,6 +31,15 @@ class SourceRunnerTests(unittest.TestCase):
         self.assertNotIn('strip-world', result)
         self.assertTrue(result.rstrip().endswith('(fn-native-entry state))'))
 
+    def test_ordered_source_attachment_and_raw_overlay_match_actual_loads(self):
+        result=runner.prefix('(include-book "umbrella")\n(defttag :fn-native-host)\n(progn! (set-raw-mode t) (load "owner.lisp"))\n:q',
+            ['(defun new-host (x) x)'], ['(attach-stobj hist paged)'],
+            [('owner.lisp','/source/history-root.lisp')])
+        self.assertLess(result.index('attach-stobj'),result.index('umbrella'))
+        self.assertLess(result.index('load "owner.lisp"'),result.index('load "/source/history-root.lisp"'))
+        with self.assertRaisesRegex(ValueError,'anchor'):
+            runner.prefix('(defttag :fn-native-host)',[],raw_after=[('absent.lisp','new.lisp')])
+
     def test_missing_logical_native_boundary_refuses(self):
         with self.assertRaises(ValueError):
             runner.prefix('(include-book "generic")', [])
@@ -48,7 +57,7 @@ class SourceRunnerTests(unittest.TestCase):
                 output=str(root/'entry'), build='host/native/build.lisp',
                 event=['host/owner-host.lisp:gate'], world_revision='a'*40,
                 source_revision='b'*40, sbcl='/bin/false', core='/tmp/core',
-                profile='developer')
+                profile='developer', before_world=[],events_file=[],raw_after=[])
             manifest = runner.prepare(args)
             event.write_text('(defun gate (x) nil)')
             with self.assertRaisesRegex(ValueError, 'input changed'):
