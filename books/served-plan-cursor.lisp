@@ -62,7 +62,7 @@
 ;   twice); exact octets, one status line, one terminator, in order
 ;   (fn-ovw-run-is-reply: a run IS the status line, the stuffed lines, the
 ;   dot).
-;   THE CURSOR PINS (GROUP K TOP V LEGACYP OWEDP): the group, the FIXED range
+;   THE CURSOR PINS (GROUP K TOP V LEGACYP OWEDP SERVER): the group, the FIXED range
 ;   (TOP clamped once by fn-ovw-start, never re-read against the current
 ;   catalog), the pinned view V, the interpretation (XOVER or OVER) and the
 ;   response phase (the status line owed).  Pipelined commands: one cursor
@@ -135,8 +135,7 @@
 
 (defun fn-splan-rest-cursor-step (rest w fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (and (natp w)
-                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :guard (natp w)
                   :verify-guards nil))
   (if (consp rest)
       (if (fn-splan-cursor-effectp (car rest))
@@ -157,11 +156,15 @@
 (verify-guards fn-splan-rest-cursor-step
   :hints (("Goal" :in-theory (disable fn-ovw-step fn-ovw-cursorp))))
 
-; The host-called subject (W a natural: the entry guard's kind).
+; The host-called subject (W a natural: the entry guard's kind).  The guard
+; is O(1): with no raw dispatch the counterpart evaluates it on EVERY quantum
+; under the owner mutex, and until lane served-catalog-live it included
+; fn-cat-handles-inp of the whole catalog, a walk of all N rows per quantum
+; (a quantized OVER of a whole group cost about N x ceil(N/W): Codex r67 F1).
+; A quantum's reads are its window's: fn-ovw-step-window-at-most-w.
 (defun fn-splan-cursor-step (p w fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (and (natp w)
-                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
+                  :guard (natp w)))
   (mv-let (status rest)
     (fn-splan-rest-cursor-step (fn-splan-rest p) w fn-arena fn-cat)
     (mv status (cons (fn-splan-cur p) rest))))
@@ -299,7 +302,8 @@
 (defun fn-splan-fresh-cursorp (cur)
   (declare (xargs :guard t))
   (and (consp cur) (true-listp cur)
-       (equal cur (fn-ovw-cursor (nth 0 cur) (nth 1 cur) (nth 2 cur) (nth 3 cur) (nth 4 cur) t))
+       (equal cur (fn-ovw-cursor (nth 0 cur) (nth 1 cur) (nth 2 cur) (nth 3 cur) (nth 4 cur) t
+                                 (nth 6 cur)))
        (natp (nth 1 cur)) (natp (nth 2 cur)) (natp (nth 3 cur))))
 
 (defun fn-splan-fresh-effectsp (effects)
@@ -317,7 +321,8 @@
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-ovw-run-is-reply
                             (group (nth 0 cur)) (k (nth 1 cur)) (top (nth 2 cur))
-                            (v (nth 3 cur)) (legacyp (nth 4 cur)) (owedp t) (w wl)))
+                            (v (nth 3 cur)) (legacyp (nth 4 cur)) (owedp t)
+                            (server (nth 6 cur)) (w wl)))
            :in-theory (e/d (fn-ovw-cursor-octets)
                            (fn-ovw-run fn-ovw-run-is-reply fn-ovw-lines fn-ovw-reply)))))
 
@@ -377,7 +382,8 @@
 
 (defthm fn-nntp-over-range-ovw-emits-a-fresh-cursor
   (implies (natp v)
-           (fn-splan-fresh-effectsp (cdr (fn-nntp-over-range-ovw session v token legacyp fn-cat))))
+           (fn-splan-fresh-effectsp
+            (cdr (fn-nntp-over-range-ovw session v token legacyp server fn-cat))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-range-ovw fn-ovw-start fn-ovw-cursor
                                    fn-ovw-cursor-effect fn-nntp-make-result fn-nntp-reply-effect)
                                   (fn-nntp-parse-range fn-cat-group-next fn-ovw-status)))))
@@ -393,36 +399,48 @@
    (true-listp (fn-served-reply-octets effects))
    :hints (("Goal" :in-theory (enable fn-served-reply-octets)))))
 
+;; The arm's reference at its server name: the plain unbounded reader with
+;; none, the served one (the Xref field) with one.
+(defun fn-splan-arm-reference (session v token legacyp server fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (if server
+      (fn-nntp-over-range-served-cat session v token legacyp server fn-arena fn-cat)
+    (fn-nntp-over-range-cat session v token legacyp fn-arena fn-cat)))
+
 (defthm fn-splan-cw-octets-of-the-arm
   (implies (natp v)
-           (equal (fn-splan-cw-octets (cdr (fn-nntp-over-range-ovw session v token legacyp fn-cat))
-                                      wl fn-arena fn-cat)
+           (equal (fn-splan-cw-octets
+                   (cdr (fn-nntp-over-range-ovw session v token legacyp server fn-cat))
+                   wl fn-arena fn-cat)
                   (fn-served-reply-octets
-                   (cdr (fn-nntp-over-range-cat session v token legacyp fn-arena fn-cat)))))
+                   (cdr (fn-splan-arm-reference session v token legacyp server fn-arena fn-cat)))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (union-theories '(fn-splan-cw-octets-is-the-expanded-reply
+           :in-theory (union-theories '(fn-splan-arm-reference
+                                        fn-splan-cw-octets-is-the-expanded-reply
                                         fn-nntp-over-range-ovw-emits-a-fresh-cursor
                                         fn-ovw-cursor-effect-expands-to-run
                                         fn-ovw-run-is-over-range-cat
+                                        fn-ovw-run-is-over-range-served-cat
                                         fn-splan-cw-reply-octets-of-one-listp
                                         fn-splan-cw-reply-octets-true-listp)
                                       (theory 'minimal-theory))
            :use ((:instance fn-ovw-cursor-effect-expands-to-run (w wl))
-                 (:instance fn-ovw-run-is-over-range-cat (w wl))))))
+                 (:instance fn-ovw-run-is-over-range-cat (w wl))
+                 (:instance fn-ovw-run-is-over-range-served-cat (w wl))))))
 
 (defthm fn-splan-cw-drain-of-the-arm-is-the-unbounded-reply
   (implies (and (natp v)
                 (fn-splan-donep
                  (mv-nth 2 (fn-splan-cw-drain
                             (fn-splan-of-effects
-                             (cdr (fn-nntp-over-range-ovw session v token legacyp fn-cat)))
+                             (cdr (fn-nntp-over-range-ovw session v token legacyp server fn-cat)))
                             w wl n fn-arena fn-cat))))
            (equal (mv-nth 1 (fn-splan-cw-drain
                              (fn-splan-of-effects
-                              (cdr (fn-nntp-over-range-ovw session v token legacyp fn-cat)))
+                              (cdr (fn-nntp-over-range-ovw session v token legacyp server fn-cat)))
                              w wl n fn-arena fn-cat))
                   (fn-served-reply-octets
-                   (cdr (fn-nntp-over-range-cat session v token legacyp fn-arena fn-cat)))))
+                   (cdr (fn-splan-arm-reference session v token legacyp server fn-arena fn-cat)))))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn-splan-cw-drain-is-the-expanded-reply
                                         fn-nntp-over-range-ovw-emits-a-fresh-cursor
@@ -430,9 +448,11 @@
                                         fn-splan-cw-octets-of-the-arm)
                                       (theory 'minimal-theory))
            :use ((:instance fn-splan-cw-drain-is-the-expanded-reply
-                            (effects (cdr (fn-nntp-over-range-ovw session v token legacyp fn-cat))))
+                            (effects (cdr (fn-nntp-over-range-ovw session v token legacyp server
+                                                                  fn-cat))))
                  (:instance fn-splan-cw-octets-is-the-expanded-reply
-                            (effects (cdr (fn-nntp-over-range-ovw session v token legacyp fn-cat))))))))
+                            (effects (cdr (fn-nntp-over-range-ovw session v token legacyp server
+                                                                  fn-cat))))))))
 
 ; -----------------------------------------------------------------------------
 ; The plan's invariant between quanta: every cursor in it is a cursor.
@@ -486,4 +506,4 @@
 (in-theory (disable fn-splan-cursor-window fn-splan-rest-cursor-step fn-splan-cursor-step
                     fn-splan-cw-octets fn-splan-cw-remaining fn-splan-cw-drain
                     fn-splan-fresh-cursorp fn-splan-fresh-effectsp
-                    fn-splan-cw-rest-okp fn-splan-cw-okp))
+                    fn-splan-cw-rest-okp fn-splan-cw-okp fn-splan-arm-reference))

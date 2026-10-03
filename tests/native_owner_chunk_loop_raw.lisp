@@ -291,6 +291,8 @@ unbounded (&rest or &key)."
     (fn-owner-observe (push args *observations*) (push :observe *timeline*) :observed)
     (fn-owner-close :closed)
     (fn-owner-exposure-idle :keep)
+    ;; The transport took a reply window (fn-exp-progress, Astra c07).
+    (fn-owner-exposure-progress (push :output-progress *timeline*) :ok)
     (fn-owner-exposure-release :released)
     (fn-owner-tls-established :ok)
     ;; The plaintext open installs the SASL context (books/nntp-auth.lisp

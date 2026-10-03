@@ -1953,6 +1953,31 @@ Web and pull worker threads yield after empty progress too. This bounds
 cursor chaining per I/O event; it preserves the existing complete-residual
 contract and introduces no new bytes into a response.
 
+The cursor carries the node's Xref server name when the environment has
+one (`fn-nntp-xref-server`), and its rows are then the served rows (the Xref
+field, the overview column): `fn-nntp-over-range-ovw-expands-to-over-range-
+served-cat`, `fn-ovw-run-is-over-range-served-cat`. Before 2026-10-02 the
+dispatcher's Xref arm answered the whole range in one step whenever a server
+name was configured, so the cursor was reached only by a node with no name.
+Not yet on the cursor: the read-restricted route (a session with a READ rule
+is served by the reference walk over its projected pin,
+`fn-scr-auth-delegate`), OVER by Message-ID and with no argument (one row).
+
+Two events advance a connection's last activity for the idle limit (RFC
+3977 section 3.1): a command received, and the transport accepting a window
+of a reply whose drain outlasted its step, at the end of that drain
+(`fn-exp-progress`, called by the mux when the socket has taken the reply's
+last octet; `fn-exp-idle-keeps-after-progress`; the mux checks idle only with
+no reply outstanding). A reply that takes
+longer than the idle limit to drain -- a cursor OVER, whose step sends no
+octet, or a large ARTICLE to a slow reader -- is not closed by the first idle
+check after it. A yield or a cursor quantum is not progress (Codex r67 F3,
+Astra c07).
+
+A quantum's guard is O(1): `fn-splan-cursor-step` asks `(natp w)`. Until
+2026-10-02 it also asked `fn-cat-handles-inp` of the whole catalog, which a
+guard-checked call evaluated on every quantum (Codex r67 F1).
+
 The current quantum bounds numbers probed and overview rows formatted.
 It still parses a complete article and formats a complete overview row;
 byte-budgeted long-row continuation remains an identified Q5c/J1 obligation.

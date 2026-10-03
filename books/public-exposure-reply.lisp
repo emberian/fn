@@ -236,3 +236,109 @@
                             (octets (fn-served-reply-octets effects)))))))
 
 (in-theory (disable fn-exp-observe-effects))
+
+; -----------------------------------------------------------------------------
+; Output progress: the transport accepted octets of a reply (lane
+; served-catalog-live, 2026-10-02; Codex r67 F3; Astra c07)
+;
+; The observation above runs once per served step, when the step DECIDES its
+; reply; it never sees the reply DRAIN.  A reply that takes longer than the
+; idle limit to drain -- a large ARTICLE to a slow reader, or an OVER range
+; written in cursor quanta, whose step sends no octet at all -- left the
+; connection's LAST at the command, and the first idle check after the drain
+; (the mux checks idle only with no reply outstanding) closed a connection
+; that had just been written to.  Two events now advance LAST: a command
+; received (fn-exp-observe-effects) and the transport accepting output
+; (fn-exp-progress, called by the host when the socket has taken the last
+; octet of a reply whose drain outlasted its step -- it waited on the socket
+; or yielded at a cursor: host/native/mux.lisp fnn-mux-after through
+; host/owner-host.lisp fn-owner-exposure-progress; the mux checks idle only
+; with no reply outstanding, so the end of the drain is the moment that
+; matters).  A yield or a cursor
+; quantum is NOT progress; only octets the socket took are.  Nothing else
+; changes: no rate, no failed-login or post count, no counter, no other
+; connection.
+
+(defun fn-exp-progress (xs id now)
+  (declare (xargs :guard t))
+  (let ((e (fn-exp-find id (fn-exp-conns xs))))
+    (if (not e)
+        xs
+      (fn-exp-with xs
+                   (fn-exp-replace (fn-exp-entry id (fn-exp-entry-address e) (nfix now) t
+                                                 (fn-exp-entry-principal e)
+                                                 (fn-exp-entry-pending e))
+                                   (fn-exp-conns xs))
+                   (fn-exp-rates xs) (fn-exp-fails xs) (fn-exp-posts xs)
+                   (fn-exp-counters xs)))))
+
+(local
+ (defthm fn-exp-find-of-replace-same
+   (implies (and (fn-exp-find id conns)
+                 (equal (fn-exp-entry-id e) id))
+            (equal (fn-exp-find id (fn-exp-replace e conns)) e))
+   :hints (("Goal" :induct (fn-exp-replace e conns)
+            :in-theory (e/d (fn-exp-replace fn-exp-find) (fn-exp-entry-id))))))
+
+(local
+ (defthm fn-exp-find-of-replace-other
+   (implies (not (equal (fn-exp-entry-id e) other))
+            (equal (fn-exp-find other (fn-exp-replace e conns))
+                   (fn-exp-find other conns)))
+   :hints (("Goal" :induct (fn-exp-replace e conns)
+            :in-theory (e/d (fn-exp-replace fn-exp-find) (fn-exp-entry-id))))))
+
+(local
+ (defthm fn-exp-entry-fields-of-entry
+   (and (equal (fn-exp-entry-id (fn-exp-entry id address last answered principal pending)) id)
+        (equal (fn-exp-entry-last (fn-exp-entry id address last answered principal pending))
+               (nfix last))
+        (equal (fn-exp-entry-answered (fn-exp-entry id address last answered principal pending))
+               answered))
+   :hints (("Goal" :in-theory (enable fn-exp-entry fn-exp-entry-id fn-exp-entry-last
+                                      fn-exp-entry-answered fn-exp-at fn-exp-nat)))))
+
+(local
+ (defthm fn-exp-conns-of-make
+   (and (equal (fn-exp-conns (fn-exp-make conns rates fails posts counters)) conns)
+        (equal (fn-exp-rates (fn-exp-make conns rates fails posts counters)) rates)
+        (equal (fn-exp-fails (fn-exp-make conns rates fails posts counters)) fails)
+        (equal (fn-exp-posts (fn-exp-make conns rates fails posts counters)) posts)
+        (equal (fn-exp-counters (fn-exp-make conns rates fails posts counters)) counters))
+   :hints (("Goal" :in-theory (enable fn-exp-make fn-exp-conns fn-exp-rates fn-exp-fails
+                                      fn-exp-posts fn-exp-counters fn-exp-at)))))
+
+; KEYSTONE: after a quantum's progress at NOW, the idle check keeps the
+; connection until the whole idle limit has passed since NOW -- the idle
+; limit, not the shorter first-command limit, whatever the connection had
+; answered before.
+(defthm fn-exp-idle-keeps-after-progress
+  (implies (< (nfix later) (+ (nfix now) (* 1000 (fn-exp-lim-idle lim))))
+           (equal (car (fn-exp-idle (fn-exp-progress xs id now) lim id later)) :keep))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-exp-idle fn-exp-progress fn-exp-with fn-exp-idle-limit)
+                           (fn-exp-find fn-exp-replace fn-exp-entry fn-exp-entry-id
+                            fn-exp-entry-last fn-exp-entry-answered fn-exp-entry-address
+                            fn-exp-entry-principal fn-exp-entry-pending fn-exp-make
+                            fn-exp-conns fn-exp-rates fn-exp-fails fn-exp-posts
+                            fn-exp-counters fn-exp-counters-bump fn-exp-lim-idle
+                            fn-exp-lim-first)))))
+
+; FRAME: progress touches the one connection's entry and nothing else.
+(defthm fn-exp-progress-frame
+  (and (equal (fn-exp-rates (fn-exp-progress xs id now)) (fn-exp-rates xs))
+       (equal (fn-exp-fails (fn-exp-progress xs id now)) (fn-exp-fails xs))
+       (equal (fn-exp-posts (fn-exp-progress xs id now)) (fn-exp-posts xs))
+       (equal (fn-exp-counters (fn-exp-progress xs id now)) (fn-exp-counters xs))
+       (implies (not (equal other id))
+                (equal (fn-exp-find other (fn-exp-conns (fn-exp-progress xs id now)))
+                       (fn-exp-find other (fn-exp-conns xs)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-exp-progress fn-exp-with)
+                           (fn-exp-find fn-exp-replace fn-exp-entry fn-exp-entry-id
+                            fn-exp-entry-last fn-exp-entry-answered fn-exp-entry-address
+                            fn-exp-entry-principal fn-exp-entry-pending fn-exp-make
+                            fn-exp-conns fn-exp-rates fn-exp-fails fn-exp-posts
+                            fn-exp-counters nfix)))))
+
+(in-theory (disable fn-exp-progress))

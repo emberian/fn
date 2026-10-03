@@ -117,6 +117,10 @@
   ;; :transit when ACL2 named a peer at open) and the render plan whose
   ;; windows the loop is writing (nil between replies).
   (class :reader) plan
+  ;; T once the reply in flight waited on the socket or yielded at a cursor:
+  ;; its drain outlasted the step, so its end is output progress
+  ;; (fnn-mux-after, fn-exp-progress).  NIL between replies.
+  drained-late
   ;; Lane commit-onto-log: (STEP REDEEM AFTER) while the step's submission
   ;; waits for its commit quantum; nil otherwise.
   (await nil)
@@ -428,6 +432,7 @@ positive ACL2 scheduling delay expires.  AFTER belongs to the whole reply."
       (fnn-err "OVER ~a cid=~d passes=~d" (if empty-progressp "empty-yield" "cursor-yield")
                (fnn-mux-conn-cid conn) (fnn-mux-loop-passes loop)))
     (setf (fnn-mux-conn-plan conn) plan
+          (fnn-mux-conn-drained-late conn) t
           (fnn-mux-conn-after conn) after
           (fnn-mux-conn-out conn) nil
           (fnn-mux-conn-out-at conn) 0
@@ -461,7 +466,8 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
                  (if (integerp progress)
                      (setf (fnn-mux-conn-out-at conn) (+ (fnn-mux-conn-out-at conn) progress)
                            (fnn-mux-conn-want conn) nil)
-                   (progn (setf (fnn-mux-conn-want conn) progress)
+                   (progn (setf (fnn-mux-conn-want conn) progress
+                                (fnn-mux-conn-drained-late conn) t)
                           (return-from fnn-mux-flush nil)))))
       (unless (fnn-mux-conn-out conn)
         (return-from fnn-mux-flush nil))
@@ -521,6 +527,18 @@ contract, without blocking the loop)."
   ;; All windows, including a partial socket write's pending suffix, have
   ;; drained.  A replacement catalog is now safe for this connection.
   (fnn-owner-response-unpin (fnn-mux-service loop) (fnn-mux-conn-cid conn))
+  ;; Output progress (Codex r67 F3, Astra c07): a reply whose drain outlasted
+  ;; its step -- it waited on the socket or yielded at a cursor -- ends now,
+  ;; and the transport has accepted all of it.  ACL2 advances the
+  ;; connection's last activity (fn-exp-progress), so the idle check that
+  ;; follows (the mux checks idle only with no reply outstanding) measures
+  ;; from the drain, not from the command.  A reply the socket took within
+  ;; its step's own turn needs none: its command's observation is as recent.
+  (when (and (fnn-mux-conn-drained-late conn) (eq (fnn-mux-conn-phase conn) :serving)
+             (not (fnn-owner-service-stopping (fnn-mux-service loop))))
+    (setf (fnn-mux-conn-drained-late conn) nil)
+    (fnn-owner-exposure-progress (fnn-mux-service loop) (fnn-mux-conn-cid conn) :reader))
+  (setf (fnn-mux-conn-drained-late conn) nil)
   (case after
     (:close (fnn-mux-begin-drain loop conn))
     (:starttls (fnn-mux-request-handshake loop conn))

@@ -115,7 +115,7 @@
              (consp args) (null (cdr args))
              (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
         (fn-nntp-over-range-ovw session v (car args) (fn-nntp-keywordp keyword "XOVER")
-                                fn-cat))
+                                nil fn-cat))
        ((and (fn-nntp-keywordp keyword "HDR")
              (consp args)
              (fn-nntp-keywordp (car args) ":FN-VERIFIED"))
@@ -276,8 +276,10 @@
 
 ; The dispatcher agrees with the pinned reference modulo the OVER cursor:
 ; the results' sessions are equal and their effects are equal once both are
-; expanded (fn-ovw-expand; the OVER/XOVER range arm is the one place the two
-; differ, by fn-nntp-over-range-ovw-expands-to-over-range-cat).  Proved once
+; expanded (fn-ovw-expand; the OVER/XOVER range arms are the one place the two
+; differ: with no Xref server name by fn-nntp-over-range-ovw-expands-to-over-
+; range-cat, with one inside fn-nntp-xref-reply-cat, by fn-nntp-xref-reply-
+; cat-is-col).  Proved once
 ; as the equality of the expanded results, then read component by component.
 (defun fn-ovw-expand-result (result fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
@@ -339,7 +341,7 @@
                             fn-nntp-single fn-gidx-build fn-midx-build fn-statep
                             fn-nntp-over-range-indexed-is-walk
                             fn-nntp-xref-reply-cat fn-nntp-msgid-withdrawn-p-cat
-                            fn-nntp-xref-reply-cat-is-col fn-nntp-msgid-withdrawn-p-cat-is-trie
+                            fn-nntp-msgid-withdrawn-p-cat-is-trie
                             fn-nntp-control-hdr-response-cat fn-nntp-enrollment-hdr-response-cat
                             fn-nntp-over-range-ovw fn-ovw-expand fn-ovw-start fn-ovw-cursor-effect
                             fn-nntp-multi fn-nntp-multi-octets fn-nntp-reply-effect

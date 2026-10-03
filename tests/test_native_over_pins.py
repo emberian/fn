@@ -10,7 +10,7 @@ import socket
 import time
 import unittest
 
-from tests.native_harness import Client, EXIT, native_image, requires
+from tests.native_harness import Client, EXIT, Node, native_image, requires
 from tests import test_native_expiry as expiry
 
 GROUP, msgid = expiry.GROUP, expiry.msgid
@@ -137,6 +137,146 @@ class NativeOverPinsTests(unittest.TestCase):
                     self.assertRegex(log[yielded.end():], settled)
             finally:
                 node.stop(expect=None, grace=300)
+        self.assertEqual(replies[0], replies[1])
+
+    def test_a_long_over_refreshes_the_idle_deadline(self):
+        """Codex r67 F3, Astra c07: output the transport accepts is progress.
+        The cursor step sends no octet and the reply is held off the socket
+        past the idle limit; the connection's last command (GROUP) is older
+        than the limit when the reply drains.  The connection stays open
+        through the drain and the idle check after it; silence afterwards
+        still closes it."""
+        node = self.filled("idle-over")
+        node.operator("policy", "set", "exposure-idle-seconds", "3", expect=EXIT.OK)
+        node.operator("policy", "set", "exposure-first-seconds", "3", expect=EXIT.OK)
+        stall = self.root / "over-idle-stall"
+        stall.touch()
+        owner = node.start(timeout=600, env={
+            "FN_NATIVE_OVER_WINDOW": "1",
+            "FN_NATIVE_OVER_TEST_PAUSE_AFTER_QUANTUM": str(stall),
+        })
+        client = Client(node.port, timeout=300, greeting=None)
+        try:
+            self.assertTrue(client.command("GROUP " + GROUP).startswith(b"211 5 "))
+            client.send(b"OVER 1-100\r\n")
+            held = self.owner_lines(owner, re.compile(rb"OVER quantum-held cid="), 1)
+            self.assertEqual(len(held), 1, owner.stderr.since(0)[-3000:])
+            time.sleep(5)                      # past the idle limit since GROUP
+            stall.unlink()
+            self.assertTrue(client.line().startswith(b"224 "))
+            rows = []
+            while True:
+                line = client.line()
+                if line == b".\r\n":
+                    break
+                rows.append(line)
+            self.assertEqual([int(row.split(b"\t", 1)[0]) for row in rows], [1, 2, 3, 4, 5])
+            time.sleep(1.5)                    # at least one idle check after the drain
+            self.assertTrue(client.command("STAT " + msgid("n0")).startswith(b"223 "),
+                            owner.stderr.since(0)[-3000:])
+            # Silence is still closed: nothing sent, the node closes with no line.
+            client.sock.settimeout(30)
+            self.assertEqual(client.sock.recv(1), b"")
+        finally:
+            stall.unlink(missing_ok=True)
+            client.close(False)
+            node.stop(expect=None, grace=300)
+
+    def test_a_large_article_drained_slowly_refreshes_the_idle_deadline(self):
+        """The same for an ordinary reply: a 12 MiB ARTICLE (larger than the
+        loopback socket buffers) to a reader that does not read for longer
+        than the idle limit, then reads it all.  The connection must stay
+        open through the drain and the idle check after it."""
+        size = 12 << 20
+        node = Node(self, self.image, root=self.root / "idle-article")
+        node.operator("init", "--profile", "development", "--max-transactions", "1024",
+                      "--max-history-octets", str(64 << 20),
+                      "--max-record-octets", str(size + (1 << 20)),
+                      "--max-article-octets", str(size), GROUP, timeout=600, expect=EXIT.OK)
+        secret = node.store("node-secret", "create", timeout=600)
+        self.assertIn(secret.returncode, (EXIT.OK, EXIT.REFUSED), secret.stderr[-600:])
+        head = ("From: xpy@example.invalid\r\nNewsgroups: %s\r\nSubject: large\r\n"
+                "Message-ID: %s\r\n\r\n" % (GROUP, msgid("big"))).encode("ascii")
+        line = b"b" * 78 + b"\r\n"
+        body = line * ((size - len(head) - 4096) // len(line))
+        node.operator("policy", "set", "exposure-idle-seconds", "3", expect=EXIT.OK)
+        node.operator("policy", "set", "exposure-first-seconds", "3", expect=EXIT.OK)
+        owner = node.start(timeout=600)
+        try:
+            with Client(node.port, timeout=300, greeting=None) as poster:
+                first, final = poster.post(head + body)
+                self.assertTrue((final or first).startswith(b"240"), (first, final))
+            client = Client(node.port, timeout=300, greeting=None)
+            try:
+                client.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4096)
+                client.send(("ARTICLE %s\r\n" % msgid("big")).encode())
+                time.sleep(5)                  # past the idle limit, reading nothing
+                self.assertTrue(client.line().startswith(b"220 "))
+                got = 0
+                while True:
+                    row = client.line()
+                    if row == b".\r\n":
+                        break
+                    got += len(row)
+                self.assertGreater(got, size // 2)
+                time.sleep(1.5)                # at least one idle check after the drain
+                self.assertTrue(client.command("STAT " + msgid("big")).startswith(b"223 "),
+                                owner.stderr.since(0)[-3000:])
+                client.sock.settimeout(30)
+                self.assertEqual(client.sock.recv(1), b"")
+            finally:
+                client.close(False)
+        finally:
+            node.stop(expect=None, grace=300)
+
+    def test_a_cold_quantum_reads_off_the_owner_mutex(self):
+        """Codex r67 F2 for OVER: a cursor quantum that needs a payload not in
+        the realizer's cache issues the read and waits for it OFF the owner
+        mutex.  The node is restarted (its cache empty) with every cold read
+        held before its pread (FN_NATIVE_PAGE_IO_HOLD).  While an OVER's read
+        is held, another connection's command is answered (it needs the
+        owner mutex); after release the OVER completes, byte for byte the
+        reply of a warm run.  If no quantum of this node's OVER reads a
+        payload (the overview column answers it), no hold is reached and the
+        test says so in its output: then there is no pread to place."""
+        base = self.recorded_base("rbase-cold")
+        node = self.copy_of(base, "cold-over")
+        warm = self.copy_of(base, "warm-over")
+        replies = []
+        for which, target in (("warm", warm), ("cold", node)):
+            release = self.root / ("release-" + which)
+            env = {"FN_NATIVE_OVER_WINDOW": "1"}
+            if which == "cold":
+                env["FN_NATIVE_PAGE_IO_HOLD"] = str(release)
+            else:
+                release.touch()
+            owner = target.start(timeout=600, env=env)
+            client = Client(target.port, timeout=300, greeting=None)
+            try:
+                self.assertTrue(client.command("GROUP " + GROUP).startswith(b"211 5 "))
+                client.send(b"OVER 1-100\r\n")
+                if which == "cold":
+                    held = self.owner_lines(owner, re.compile(rb"PAGE-IO held token="), 1, deadline=20)
+                    if held:
+                        with Client(target.port, timeout=30, greeting=None) as other:
+                            self.assertTrue(other.command("DATE").startswith(b"111 "))
+                    else:
+                        print("OVER-COLD no payload read by the OVER quanta", flush=True)
+                    release.touch()
+                self.assertTrue(client.line().startswith(b"224 "))
+                rows = []
+                while True:
+                    line = client.line()
+                    if line == b".\r\n":
+                        break
+                    rows.append(line)
+                replies.append(rows)
+                if which == "cold" and held:
+                    self.assertTrue(self.owner_lines(owner, re.compile(rb"OVER cold-quantum cid="), 1))
+            finally:
+                client.close(False)
+                target.stop(expect=None, grace=300)
+        self.assertEqual([int(r.split(b"\t", 1)[0]) for r in replies[0]], [1, 2, 3, 4, 5])
         self.assertEqual(replies[0], replies[1])
 
     def test_service_stop_settles_a_paused_response(self):

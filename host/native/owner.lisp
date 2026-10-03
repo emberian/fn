@@ -519,19 +519,56 @@ The same lock protects both this call and every other arena pin event."
         (fnn-err "OVER response-settled cid=~d status=released" (second event)))
       status)))
 
+(defun fnn-owner-cursor-step-serialized (service cid thunk class)
+  (let ((*fnn-owner-measure-label* :over-cursor))
+    (fnn-owner-serialized service cid thunk class)))
+
 (defun fnn-owner-cursor-step (service cid plan class)
   "One quantum of PLAN's cursor under the owner mutex: the plan with the
-quantum's reply in the cursor's place (and the cursor that remains)."
-  (fnn-owner-serialized
-   service cid
-   (lambda ()
-     (destructuring-bind (status rest)
-         (fnn-call 'fn-splan-cursor-step plan (fnn-owner-over-window)
-                   (fnn-live-stobj 'fn-arena) (fnn-live-stobj 'fn-cat))
-       (unless (eq status :ok)
-         (fnn-fault "owner returned a malformed cursor in its served reply"))
-       rest))
-   class))
+quantum's reply in the cursor's place (and the cursor that remains).
+FN_OWNER_MEASURE counts these holds under their own label, :over-cursor.
+
+The quantum runs with the extent realizer in its no-I/O mode, as a served
+read span does (fnn-owner-chunk-span-no-io; Codex r67 F2, the composition
+review's section 1c): a payload extent not in the cache THROWS the entry it
+needs, the quantum (pure over its stobjs) is discarded, the read is issued
+at the validated capture under the mutex (fnn-owner-cold-issue-locked) and
+awaited OFF the mutex within ACL2's dependency deadline
+(fnn-owner-cold-await, fn-otb-dependency-step); then the same quantum runs
+again, warm.  No pread runs under the owner mutex.  Past the deadline, or on
+ACL2's resource refusal, the reply cannot be completed and no line may be
+written into its body (specs/nntp.md, resumable overview responses: a
+response that cannot finish is terminated): the connection is finished
+with the read's word named in the log."
+  (loop
+    (let ((result
+            (fnn-owner-cursor-step-serialized
+             service cid
+             (lambda ()
+               (let ((attempt
+                       (catch 'fnn-extent-cold
+                         (let ((*fnn-extent-no-io* t))
+                           (destructuring-bind (status rest)
+                               (fnn-call 'fn-splan-cursor-step plan (fnn-owner-over-window)
+                                         (fnn-live-stobj 'fn-arena) (fnn-live-stobj 'fn-cat))
+                             (unless (eq status :ok)
+                               (fnn-fault "owner returned a malformed cursor in its served reply"))
+                             (list :warm rest))))))
+                 (if (eq (car attempt) :warm)
+                     attempt
+                   ;; Owner->extent lock order: issue before the mutex that
+                   ;; excludes file retirement is released.
+                   (list :cold (fnn-owner-cold-issue-locked service cid attempt)))))
+             class)))
+      (when (eq (first result) :warm)
+        (return (second result)))
+      (multiple-value-bind (word) (fnn-owner-cold-await service (second result))
+        (unless (eq word :serve)
+          (error 'fnn-store-io-refusal
+                 :message (format nil "OVER cursor quantum: payload read ~(~a~); the reply is terminated"
+                                  word)))
+        (when (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")
+          (fnn-err "OVER cold-quantum cid=~d" cid))))))
 
 (defun fnn-owner-render-next-quantum (service cid plan class &optional compressedp)
   "Render a window, running at most one cursor quantum under the owner
@@ -4752,6 +4789,21 @@ EPIPE and the client saw a bare close)."
                  class)))
     (unless (member answer '(:keep :close))
       (fnn-fault "owner returned a malformed idle decision"))
+    answer))
+
+(defun fnn-owner-exposure-progress (service cid &optional (class :reader))
+  "The transport accepted the whole of CID's late-draining reply: ACL2 advances
+the connection's last activity (books/public-exposure-reply.lisp
+fn-exp-progress), so a reply that takes longer than the idle limit to drain
+is not idle-closed just after it drains (Codex r67 F3; Astra c07)."
+  (let ((answer (fnn-owner-serialized
+                 service cid
+                 (lambda ()
+                   (fnn-owner-advance-clock)
+                   (fnn-owner-action 'fn-owner-exposure-progress cid))
+                 class)))
+    (unless (eq answer :ok)
+      (fnn-fault "owner returned a malformed output progress answer"))
     answer))
 
 (defun fnn-owner-receive (service fd channel seconds)
