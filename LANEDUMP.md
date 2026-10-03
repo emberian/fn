@@ -2808,3 +2808,11 @@ Dense 5,000-dot-line BODY exact reference/replay checks pass W=1/2/3/4096;
 all actual-source core checks69488. Owner/native full composition and
 universal byte-bound/guard/refinement remain pending. Served a3 available
 reader fallback is preserved inside fn-asto-mca-read-span.
+Streaming Web command and await plans enter a fixed-worker `:ready` phase before
+replay capture. `fnn-owner-ready-plan-step` resolves one shared ARTICLE framing
+preflight quantum; yielded/raw and cold continuations are retained without
+publication. Only READY stores the immutable original plan for both HTML passes.
+No preflight/selection scan is replayed during count or emit. The consumer pairs
+with Access source e7624ab8a/e41b22c21 and Served a3bd4513f; its raw adversarial
+owner adapter checks cold/yield/READY capture custody, not producer semantics.
+Actual composed source execution and complete Web tariff remain pending.

@@ -9114,16 +9114,19 @@
       "steps": [
         "Scan actual GROUP+ARTICLE octets with partitions 1/2/7/4096; compare selected field/body spans and ownership with fn-wss-article-view.",
         "Count and emit the virtual segment plan through source-window requests and compare exact HTML to fn-wr-seq.",
-        "Run actual native scanner/replay/page/writer bodies with a persistent render-plan adapter, a cold replay and137-byte partial writes."
+        "Run actual native scanner/replay/page/writer bodies with a persistent render-plan adapter, a cold replay and137-byte partial writes.",
+        "Resolve shared ARTICLE preflight on the fixed worker before storing the immutable replay plan; force yield/cold then READY."
       ],
       "expected": [
         "Exact reference HTML, including escaped text, RFC2047 subject, dot unstuffing and percent-encoded Message-ID.",
         "IN logical length remains at most4096; HTML OUT remains empty; monotone replay resumes rather than rescanning for every octet.",
-        "Final response pin is never released before HTTP drain and releases once after terminal cleanup; cold replay resumes the retained plan."
+        "Final response pin is never released before HTTP drain and releases once after terminal cleanup; cold replay resumes the retained plan.",
+        "No raw scan continuation enters captured plans; cold retains exact original scan, and only READY publishes one immutable replay capture."
       ],
       "evidence": [
         "tests/native_web_article_stream_raw.lisp",
-        "planning/evidence/web-stream-consumers-2026-10-03.md"
+        "planning/evidence/web-stream-consumers-2026-10-03.md",
+        "tests/native_web_reactor_raw.lisp"
       ],
       "note": "Raw actual-source consumer passes. PRF-1283 guard/refinement, matching native image and Web allocation/repeated-read tariff remain pending."
     },

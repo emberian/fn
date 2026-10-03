@@ -236,6 +236,7 @@ exposure admission decides (the id, or NIL when it refused)."
                  (unless (fnn-web-job-cancelled job)
                    (ecase (fnn-web-job-kind job)
                      (:feed (fnn-web-feed-step face conn))
+                     (:ready (fnn-web-ready-step face conn))
                      (:render (fnn-web-render-step face conn))
                      (:replay (fnn-web-replay-step face conn))
                      (:cold (fnn-web-cold-step face conn))
@@ -434,6 +435,26 @@ exposure admission decides (the id, or NIL when it refused)."
           (fnn-web-conn-phase conn) :cold
           (fnn-web-conn-resume-at conn) (fnn-mux-ms-ticks 2))))
 
+(defun fnn-web-plan-begin (conn plan)
+  ;; A streaming response may contain a deferred framing/selection scan.
+  ;; Capture only its immutable ready plan, never the scan continuation.
+  (setf (fnn-web-conn-plan conn) plan
+        (fnn-web-conn-phase conn) (if (fnn-web-conn-reply-scan conn) :ready :render)))
+
+(defun fnn-web-ready-step (face conn)
+  (multiple-value-bind (plan ready yielded read)
+      (fnn-owner-ready-plan-step (fnn-web-face-service face) (fnn-web-conn-cid conn)
+                                 (fnn-web-conn-plan conn) :reader)
+    (cond (read (fnn-web-cold-start conn read :ready))
+          (t
+           (setf (fnn-web-conn-plan conn) plan)
+           (cond (ready
+                  (push plan (fnn-web-conn-captured-plans conn))
+                  (setf (fnn-web-conn-phase conn) :render))
+                 (yielded
+                  (setf (fnn-web-conn-resume-at conn)
+                        (fnn-mux-ms-ticks (fnn-core 'fn-splan-cursor-resume-ms)))))))))
+
 (defun fnn-web-feed-step (face conn)
   (unless (fnn-web-feed-owned-p face conn) (return-from fnn-web-feed-step nil))
   (let* ((service (fnn-web-face-service face)) (cid (fnn-web-conn-cid conn))
@@ -475,9 +496,7 @@ exposure admission decides (the id, or NIL when it refused)."
                (declare (ignore more))
                (when starttls (fnn-fault "web logical connection requested a transport change"))
                (setq plan step-plan used consumed closing close)
-               (when (fnn-web-conn-reply-scan conn)
-                 (push plan (fnn-web-conn-captured-plans conn)))
-               (setf (fnn-web-conn-plan conn) plan (fnn-web-conn-phase conn) :render)))
+               (fnn-web-plan-begin conn plan)))
            (unless (and (integerp used) (<= 0 used (length pending))
                         (or (> used 0) closing))
              (fnn-fault "logical web feed consumed no input"))
@@ -500,11 +519,8 @@ exposure admission decides (the id, or NIL when it refused)."
               (setq completion (cdr completion))
               (setf (fnn-web-conn-closing conn) t))
             (destructuring-bind (step redeem) (fnn-web-conn-await conn)
-              (setf (fnn-web-conn-plan conn) (fnn-core 'fn-splan-step-plan step completion redeem)
-                    (fnn-web-conn-phase conn) :render
-                    (fnn-web-conn-await conn) nil)
-              (when (fnn-web-conn-reply-scan conn)
-                (push (fnn-web-conn-plan conn) (fnn-web-conn-captured-plans conn))))))))))
+              (fnn-web-plan-begin conn (fnn-core 'fn-splan-step-plan step completion redeem))
+              (setf (fnn-web-conn-await conn) nil))))))))
 
 (defun fnn-web-render-step (face conn)
   (let ((service (fnn-web-face-service face)) (cid (fnn-web-conn-cid conn))
@@ -544,7 +560,7 @@ exposure admission decides (the id, or NIL when it refused)."
         (fnn-owner-cold-poll (fnn-web-face-service face) read (fnn-web-conn-line-since conn) issued)
       (cond ((and (consp word) (eq (first word) :wait))
              (setf (fnn-web-conn-resume-at conn) (fnn-mux-ms-ticks (min (second word) 2))))
-            ((and (member mode '(:render :replay)) (not (eq word :serve)))
+            ((and (member mode '(:ready :render :replay)) (not (eq word :serve)))
              ;; No substitute reply or fabricated terminator after a partial
              ;; semantic reply. The browser receives no HTTP outcome.
              (fnn-web-finish face conn))
@@ -685,6 +701,7 @@ exposure admission decides (the id, or NIL when it refused)."
                (:private-begin (fnn-web-job-submit face conn :private-begin))
                (:feed (when (fnn-web-feed-owned-p face conn) (fnn-web-job-submit face conn :feed)))
                (:await (fnn-web-await-step face conn))
+               (:ready (fnn-web-job-submit face conn :ready))
                (:render (fnn-web-job-submit face conn :render))
                (:replay (fnn-web-job-submit face conn :replay))
                ((:page-count :page-emit) (fnn-web-job-submit face conn (fnn-web-conn-phase conn)))
@@ -734,7 +751,7 @@ exposure admission decides (the id, or NIL when it refused)."
                                  (:input +fnn-mux-pollin+) (:output +fnn-mux-pollout+) (t 0))) conns)) 'vector))
          ;; Pending semantic work receives another pass immediately; only
          ;; readiness/dependency/completion waits permit the bounded poll.
-         (work (some (lambda (conn) (and (not (fnn-web-conn-job conn)) (not (fnn-web-conn-closedp conn)) (member (fnn-web-conn-phase conn) '(:event :private-begin :render :replay :feed :page-count :page-emit))
+         (work (some (lambda (conn) (and (not (fnn-web-conn-job conn)) (not (fnn-web-conn-closedp conn)) (member (fnn-web-conn-phase conn) '(:event :private-begin :ready :render :replay :feed :page-count :page-emit))
                                         (or (not (eq (fnn-web-conn-phase conn) :feed))
                                             (fnn-web-feed-owned-p face conn))
                                         (>= (fnn-now) (fnn-web-conn-resume-at conn)))) conns))

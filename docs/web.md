@@ -180,3 +180,13 @@ drain. WEB-006 and SCN-1113/1114/1115 distinguish this extra-collector removal
 from original NNTP producer materialization, which remains the complete tariff
 frontier. Programs PRF-1283/1284/1285 still await guard/refinement and matching
 image evidence; no universal allocation or full event fairness claim.
+
+
+Streaming Web command and await plans enter a fixed-worker `:ready` phase before
+replay capture. `fnn-owner-ready-plan-step` resolves one shared ARTICLE framing
+preflight quantum; yielded/raw and cold continuations are retained without
+publication. Only READY stores the immutable original plan for both HTML passes.
+No preflight/selection scan is replayed during count or emit. The consumer pairs
+with Access source e7624ab8a/e41b22c21 and Served a3bd4513f; its raw adversarial
+owner adapter checks cold/yield/READY capture custody, not producer semantics.
+Actual composed source execution and complete Web tariff remain pending.
