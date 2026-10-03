@@ -192,3 +192,96 @@
   (and (fn-resource-ledgerp ledger) (not (fn-rl-wfp ledger))
        (not (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
  :rule-classes nil)
+
+; Exact bank boundary teeth, including refusal without the accepted-word
+; hypotheses. Supporting OKP transfer exports are not independent keystones.
+
+(defthm rot-install-bank-positive-witness
+ (let* ((ledger (create-fn-resource-ledger)) (policy '(16777216 1048576)) (result (fn-rlo-install 1073741824 536870912 nil policy 4 ledger)) (grant (fn-orv-startup-grant 1073741824 536870912 nil policy 4)))
+  (and (eq (car result) :installed) (equal (fn-rl-bank (mv-nth 1 result)) (fn-rl-bank (mv-nth 1 (fn-rl-install (fn-rlo-resident-vector (nth 1 grant)) (fn-rlo-resident-vector (nth 3 grant)) (fn-rlo-resident-vector (nth 2 grant)) 4 ledger))))))
+ :rule-classes nil)
+
+(defthm rot-install-bank-without-installed-witness
+ (let* ((ledger (create-fn-resource-ledger)) (policy nil) (result (fn-rlo-install 1073741824 536870912 nil policy 4 ledger)) (grant (fn-orv-startup-grant 1073741824 536870912 nil policy 4)))
+  (and (not (eq (car result) :installed)) (not (equal (fn-rl-bank (mv-nth 1 result)) (fn-rl-bank (mv-nth 1 (fn-rl-install (fn-rlo-resident-vector (nth 1 grant)) (fn-rlo-resident-vector (nth 3 grant)) (fn-rlo-resident-vector (nth 2 grant)) 4 ledger)))))))
+ :rule-classes nil)
+
+(defthm rot-issue-bank-positive-witness
+ (let* ((ledger (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger)))) (result (fn-rlo-issue 7 11 8 :issued ledger)))
+  (and (eq (car result) :drawn) (equal (fn-rl-bank (mv-nth 2 result)) (fn-rl-bank (mv-nth 2 (fn-rl-draw (fn-rl-next ledger) (fn-rlo-resident-vector (fn-rl-file-limit ledger)) ledger))))))
+ :rule-classes nil)
+
+(defthm rot-issue-bank-without-drawn-witness
+ (let* ((ledger (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger)))) (result (fn-rlo-issue -1 11 8 :issued ledger)))
+  (and (not (eq (car result) :drawn)) (not (equal (fn-rl-bank (mv-nth 2 result)) (fn-rl-bank (mv-nth 2 (fn-rl-draw (fn-rl-next ledger) (fn-rlo-resident-vector (fn-rl-file-limit ledger)) ledger)))))))
+ :rule-classes nil)
+
+(defthm rot-output-bank-pending-witness
+ (let* ((ledger (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger)))))) (token '(:resource (:connection 7 11) 2 1)) (receipt :discarded) (result (fn-rlo-output token 8 receipt ledger)))
+  (and (eq (car result) :pending) (equal (fn-rl-bank (mv-nth 1 result)) (if (and (fn-rlo-livep token 8 ledger) (member-eq receipt '(:drained :discarded)) (equal (fn-rl-trailersi (caddr token) ledger) 1)) (fn-rl-bank (mv-nth 1 (fn-rl-settle (caddr token) (fn-rl-gensi (caddr token) ledger) ledger))) (fn-rl-bank ledger)))))
+ :rule-classes nil)
+
+(defthm rot-output-bank-settled-witness
+ (let* ((ledger (mv-nth 1 (fn-rlo-physical '(:resource (:connection 7 11) 2 1) 8 :terminal (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger)))))))) (token '(:resource (:connection 7 11) 2 1)) (receipt :discarded) (result (fn-rlo-output token 8 receipt ledger)))
+  (and (eq (car result) :settled) (equal (fn-rl-bank (mv-nth 1 result)) (if (and (fn-rlo-livep token 8 ledger) (member-eq receipt '(:drained :discarded)) (equal (fn-rl-trailersi (caddr token) ledger) 1)) (fn-rl-bank (mv-nth 1 (fn-rl-settle (caddr token) (fn-rl-gensi (caddr token) ledger) ledger))) (fn-rl-bank ledger)))))
+ :rule-classes nil)
+
+(defthm rot-output-bank-timeout-witness
+ (let* ((ledger (mv-nth 1 (fn-rlo-physical '(:resource (:connection 7 11) 2 1) 8 :terminal (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger)))))))) (token '(:resource (:connection 7 11) 2 1)) (receipt :timeout) (result (fn-rlo-output token 8 receipt ledger)))
+  (and (eq (car result) :pending) (equal (fn-rl-bank (mv-nth 1 result)) (if (and (fn-rlo-livep token 8 ledger) (member-eq receipt '(:drained :discarded)) (equal (fn-rl-trailersi (caddr token) ledger) 1)) (fn-rl-bank (mv-nth 1 (fn-rl-settle (caddr token) (fn-rl-gensi (caddr token) ledger) ledger))) (fn-rl-bank ledger)))))
+ :rule-classes nil)
+
+(defthm rot-output-bank-stale-witness
+ (let* ((ledger (mv-nth 1 (fn-rlo-physical '(:resource (:connection 7 11) 2 1) 8 :terminal (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger)))))))) (token '(:resource (:connection 7 12) 2 1)) (receipt :discarded) (result (fn-rlo-output token 8 receipt ledger)))
+  (and (eq (car result) :stale) (equal (fn-rl-bank (mv-nth 1 result)) (if (and (fn-rlo-livep token 8 ledger) (member-eq receipt '(:drained :discarded)) (equal (fn-rl-trailersi (caddr token) ledger) 1)) (fn-rl-bank (mv-nth 1 (fn-rl-settle (caddr token) (fn-rl-gensi (caddr token) ledger) ledger))) (fn-rl-bank ledger)))))
+ :rule-classes nil)
+
+(defthm rot-physical-bank-pending-witness
+ (let* ((ledger (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger)))))) (token '(:resource (:connection 7 11) 2 1)) (receipt :terminal) (result (fn-rlo-physical token 8 receipt ledger)))
+  (and (eq (car result) :pending) (equal (fn-rl-bank (mv-nth 1 result)) (if (and (fn-rlo-livep token 8 ledger) (member-eq receipt '(:terminal :no-actor-created)) (equal (fn-rl-elensi (caddr token) ledger) 1)) (fn-rl-bank (mv-nth 1 (fn-rl-settle (caddr token) (fn-rl-gensi (caddr token) ledger) ledger))) (fn-rl-bank ledger)))))
+ :rule-classes nil)
+
+(defthm rot-physical-bank-settled-witness
+ (let* ((ledger (mv-nth 1 (fn-rlo-output '(:resource (:connection 7 11) 2 1) 8 :discarded (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger)))))))) (token '(:resource (:connection 7 11) 2 1)) (receipt :terminal) (result (fn-rlo-physical token 8 receipt ledger)))
+  (and (eq (car result) :settled) (equal (fn-rl-bank (mv-nth 1 result)) (if (and (fn-rlo-livep token 8 ledger) (member-eq receipt '(:terminal :no-actor-created)) (equal (fn-rl-elensi (caddr token) ledger) 1)) (fn-rl-bank (mv-nth 1 (fn-rl-settle (caddr token) (fn-rl-gensi (caddr token) ledger) ledger))) (fn-rl-bank ledger)))))
+ :rule-classes nil)
+
+(defthm rot-physical-bank-timeout-witness
+ (let* ((ledger (mv-nth 1 (fn-rlo-output '(:resource (:connection 7 11) 2 1) 8 :discarded (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger)))))))) (token '(:resource (:connection 7 11) 2 1)) (receipt :timeout) (result (fn-rlo-physical token 8 receipt ledger)))
+  (and (eq (car result) :pending) (equal (fn-rl-bank (mv-nth 1 result)) (if (and (fn-rlo-livep token 8 ledger) (member-eq receipt '(:terminal :no-actor-created)) (equal (fn-rl-elensi (caddr token) ledger) 1)) (fn-rl-bank (mv-nth 1 (fn-rl-settle (caddr token) (fn-rl-gensi (caddr token) ledger) ledger))) (fn-rl-bank ledger)))))
+ :rule-classes nil)
+
+(defthm rot-physical-bank-stale-witness
+ (let* ((ledger (mv-nth 1 (fn-rlo-output '(:resource (:connection 7 11) 2 1) 8 :discarded (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger)))))))) (token '(:resource (:connection 7 12) 2 1)) (receipt :terminal) (result (fn-rlo-physical token 8 receipt ledger)))
+  (and (eq (car result) :stale) (equal (fn-rl-bank (mv-nth 1 result)) (if (and (fn-rlo-livep token 8 ledger) (member-eq receipt '(:terminal :no-actor-created)) (equal (fn-rl-elensi (caddr token) ledger) 1)) (fn-rl-bank (mv-nth 1 (fn-rl-settle (caddr token) (fn-rl-gensi (caddr token) ledger) ledger))) (fn-rl-bank ledger)))))
+ :rule-classes nil)
+
+(defthm rot-issue-bank-okp-support-positive-witness
+ (let* ((ledger (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger)))) (after (mv-nth 2 (fn-rlo-issue 7 11 8 :issued ledger))))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rv-okp (fn-rl-bank ledger)) (fn-rv-okp (fn-rl-bank after))))
+ :rule-classes nil)
+
+(defthm rot-issue-bank-okp-without-okp-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-drawni 0 16777217 (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger))))) (after (mv-nth 2 (fn-rlo-issue -1 0 0 :none ledger))))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (not (fn-rv-okp (fn-rl-bank ledger))) (not (fn-rv-okp (fn-rl-bank after)))))
+ :rule-classes nil)
+
+(defthm rot-output-bank-okp-support-positive-witness
+ (let* ((ledger (mv-nth 1 (fn-rlo-physical '(:resource (:connection 7 11) 2 1) 8 :terminal (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger)))))))) (after (mv-nth 1 (fn-rlo-output '(:resource (:connection 7 11) 2 1) 8 :discarded ledger))))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rv-okp (fn-rl-bank ledger)) (fn-rv-okp (fn-rl-bank after))))
+ :rule-classes nil)
+
+(defthm rot-output-bank-okp-without-okp-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-drawni 0 16777217 (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger))))) (after (mv-nth 1 (fn-rlo-output nil 0 :timeout ledger))))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (not (fn-rv-okp (fn-rl-bank ledger))) (not (fn-rv-okp (fn-rl-bank after)))))
+ :rule-classes nil)
+
+(defthm rot-physical-bank-okp-support-positive-witness
+ (let* ((ledger (mv-nth 1 (fn-rlo-output '(:resource (:connection 7 11) 2 1) 8 :discarded (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger)))))))) (after (mv-nth 1 (fn-rlo-physical '(:resource (:connection 7 11) 2 1) 8 :terminal ledger))))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rv-okp (fn-rl-bank ledger)) (fn-rv-okp (fn-rl-bank after))))
+ :rule-classes nil)
+
+(defthm rot-physical-bank-okp-without-okp-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-drawni 0 16777217 (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (create-fn-resource-ledger))))) (after (mv-nth 1 (fn-rlo-physical nil 0 :timeout ledger))))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (not (fn-rv-okp (fn-rl-bank ledger))) (not (fn-rv-okp (fn-rl-bank after)))))
+ :rule-classes nil)
