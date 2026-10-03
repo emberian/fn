@@ -889,6 +889,29 @@
 ;; finished job by fn-bpfj-propose-step; a family whose plan is not ready is
 ;; added to TRIED by the host and the selector is asked again.
 
+;; Inspection sweep 2026-10-03 S008: a family is a candidate only once the
+;; payload octets its rows hold reach the total ADU length its offset-zero
+;; row declares.  The reassembly sweep walks every position of that declared
+;; total; before this gate it ran after every accepted bundle for every
+;; incomplete family, so the work was the DECLARED total per family per
+;; arrival (a 10 MiB ADU in 4 KiB fragments: about 2.6e10 positions; one-
+;; octet families declaring 2^24: 16M positions each, per arrival).  With
+;; it, a family is swept only when it can be complete, and that sweep walks
+;; no more positions than the octets the family holds.
+(defun fn-bpfj-rows-payload-octets (rows acc)
+  (declare (xargs :guard (natp acc)))
+  (if (consp rows)
+      (fn-bpfj-rows-payload-octets
+       (cdr rows)
+       (+ acc (len (fn-bpb-payload (fn-bpnf-held-bundle (car rows))))))
+    acc))
+
+(defun fn-bpfj-family-coveredp (st anchor)
+  (declare (xargs :guard t))
+  (<= (nfix (fn-bpp-total-adu-length
+             (fn-bpb-bundle-primary (fn-bpnf-held-bundle anchor))))
+      (fn-bpfj-rows-payload-octets (fn-bpnf-active-set st anchor) 0)))
+
 (defun fn-bpfj-candidate (st held observation tried zero)
   (declare (xargs :guard (and (fn-bpn-machine-statep (fn-bpnf-base st))
                               (true-listp tried) (true-listp zero))
@@ -906,7 +929,8 @@
                        (equal (fn-bpnf-arrival-count
                                (fn-bpn-nth 3 h) (fn-bpnf-held-list st)) 1)
                        (fn-bpnf-family-rows-livep
-                        (fn-bpnf-active-set st h) observation))
+                        (fn-bpnf-active-set st h) observation)
+                       (fn-bpfj-family-coveredp st h))
                   (list :ready (fn-bpn-nth 3 h) key)
                 (fn-bpfj-candidate st (cdr held) observation
                                    (cons key tried) zero))))))
