@@ -20,7 +20,7 @@ EARLY = ('books/codec-attach', 'books/records-attach-concrete',
 ATTACH = 'books/history-paged-attach'
 
 
-def generate(source: Path, caches: list[Path], output: Path, limit=25.0):
+def generate(source: Path, caches: list[Path], output: Path, limit=25.0, revision=None):
     source = source.resolve()
     caches = [p.resolve() for p in caches]
     proof_repl.ROOT = source
@@ -95,6 +95,9 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0):
     # early attachment prevents any incidental generic introduction there.
     for name in EARLY[:3]: visit(name)
     visit(ATTACH)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    early = output.with_name(output.stem + '.early.lisp')
+    early.write_text('\n\n'.join(events) + '\n')
     visit('books/image-world')
     events.append('(value-triple (cw "FN_SOURCE_LOGICAL_WORLD_READY~%"))')
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -102,7 +105,7 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0):
     manifest = output.with_suffix('.json')
     manifest.write_text(json.dumps({'kind': 'current logical source admission, not certification',
         'source': str(source),
-        'source_revision': subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip() if (source / '.git').exists() else None,
+        'source_revision': revision or subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip() if revision or (source / '.git').exists() else None,
         'source_sha256': fingerprints,
         'repository_books': sorted(name + '.lisp' for name in loaded),
         'logical_prefix': str(output.resolve()), 'cache_roots': [str(p) for p in caches],
@@ -117,7 +120,8 @@ def main():
     p.add_argument('--cache-root', type=Path, action='append', default=[])
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--limit', type=float, default=25.0)
+    p.add_argument('--source-revision', help='immutable archive source identity')
     a = p.parse_args()
-    print(generate(a.source_root, a.cache_root, a.output, a.limit))
+    print(generate(a.source_root, a.cache_root, a.output, a.limit, a.source_revision))
 
 if __name__ == '__main__': main()
