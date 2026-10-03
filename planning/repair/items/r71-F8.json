@@ -8,12 +8,14 @@
  "id": "r71-F8",
  "line": "5977",
  "locus": "lifecycle",
- "notes": [],
- "owner": "owner-offlock",
+ "notes": [
+  "10-02 23:52 10-03 served-live (OWNER-OFFLOCK wound down; its NEXT item 2): maintenance (cold reap, publish, log reopen, retire) moved to its own worker 'fn owner maintenance' (fnn-owner-start-maintenance); the accept loop enters no gate; cold reap skips the section on an empty head. RED on 45e05c7fd: tests.test_native_accept_maintenance (SIGTERM behind a stalled barrier not consumed in 6 s)."
+ ],
+ "owner": "served-live",
  "severity": "high",
  "slice": "lifecycle",
  "source": "r71",
- "state": "open",
+ "state": "in-progress",
  "title": "fnn-owner-accept (bug)",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:52:23Z"
 }

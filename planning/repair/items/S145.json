@@ -10,14 +10,16 @@
  "id": "S145",
  "line": "23",
  "locus": "peer-services",
- "notes": [],
- "owner": "sweep-ops",
+ "notes": [
+  "10-02 23:52 10-03 served-live: idle worker sleeps on the owner commit signal (fnn-feed-idle-wait), doubling to 1 s after 20 idle rounds, never past a link's next dial; any work returns it to 50 ms. RED on 45e05c7fd: tests.test_native_feed_idle other=506 holds over a 10 s idle run (limit 150)."
+ ],
+ "owner": "served-live",
  "reviewer": "feed-service.lisp:23 sets the cadence to 1/20 s. Every iteration calls fnn-feed-refresh-links, which calls fnn-feed-peer-list and enters fnn-owner-transit-serialized (lines 110-114). For each link it then calls fnn-feed-dial, which runs fnn-feed-dial-plan, also serialized, whenever there is no socket and the backoff is due. For each ready link it calls fnn-feed-tick, serialized as well (lines 254-256), followed by a zero-second recv (line 245-252). Every serialized entry goes through fnn-owner-gated (owner.lisp:1573), with space preobservation, gate enter/leave and the owner mutex. That is about 20 x (1+N) owner quanta per second while idle. This is a real constant background load, but a performance issue rather than a correctness one.",
  "scenario": "With N ready peers and nothing to send, the worker still takes 20 x (1 + N) owner quanta per second, each with gate scheduling, a clock event and journal and log offers (fnn-owner-advance-clock/disk events inside ticks). Every one of them competes with readers and the committer for the single owner mutex. On the 1-CPU, 2 GB friend node this is a constant background load, and it adds to scheduler wait and decision-journal volume.",
  "severity": "low",
  "slice": "services",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "Feed worker enters the owner gate 20 times a second, with no work to do",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:52:23Z"
 }

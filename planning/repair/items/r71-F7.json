@@ -8,12 +8,14 @@
  "id": "r71-F7",
  "line": "4366",
  "locus": "connections",
- "notes": [],
- "owner": "owner-offlock",
+ "notes": [
+  "10-02 23:52 10-03 served-live (OWNER-OFFLOCK NEXT item 3): the mux loop keeps a cold step's issued read on the connection and polls it every 2 ms (fnn-mux-cold-check -> fnn-owner-cold-poll, never blocks); the step re-runs with ACL2's word. REMAINS: settlement is still a :control quantum (waits for a barrier in flight); the worker cannot wake the loop (poll). RED on 45e05c7fd: tests.test_native_cold_off_loop: a second connection on the cold loop waited 4.5 s."
+ ],
+ "owner": "served-live",
  "severity": "high",
  "slice": "mux",
  "source": "r71",
- "state": "open",
+ "state": "in-progress",
  "title": "fnn-owner-cold-await (bug)",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:52:23Z"
 }

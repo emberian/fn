@@ -18,3 +18,6 @@
 4. F4 / S022: release-extents fresh pread and synchronous realizer under *fnn-extent-lock* -> lease, pread off-lock.
 5. Statement barrier (owner.lisp fnn-owner-statement-barrier) + inline commit's job (HOST-LIFECYCLE keeps fnn-owner-commit-queued-locked).
 6. S014 coalescing (feed-journal phase machine write,write,sync).
+
+## Taken by SERVED-LIVE (2026-10-03, lane/served-live)
+- NEXT item 2 (r71-F8) and item 3 (r71-F7) are done as bridges on lane/served-live (ledger owner served-live): the maintenance worker, and the mux cold poll. The settlement's :control class (F7's second half) and the worker->loop wake are not done.
