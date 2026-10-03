@@ -60,18 +60,18 @@ that their recorded state is current at every later revision.
 
 ## Worker consolidation at 08:00 America/New_York
 
-Ember first capped running implementation deputies at ten from 08:00, then
-requested one fewer on 2026-10-03: the current cap is nine, excluding root and
-the convergence lieutenant. The full 10:00 capability mission continues. Handoffs preserve
+Ember's latest request explicitly resumes Sol Tools for fully incremental
+tracing work in the REPL: ten implementation deputies again, excluding root
+and the convergence lieutenant. The full backlog mission continues. Handoffs preserve
 current source, warm-session coordinates, concrete consumers and pending claims.
 The continuing owners are Integration (including source assembly), Runtime
 (including HM), Served (including matcher/catalog availability), Foundations,
 History (including carrier/pages/checkpoint), BP transport (including the completed
 Tools fair-round packet), Access (including Operator and the S011 journal consumer),
-Web, and Groundwork for
-the actual application-consumer/E1–E2 boundary. Root absorbed the continuing
-Tools/tracing/retained-matcher probe area after its concrete handoff; Tools is
-stopped and no replacement is dispatched. Empirical completed its archive
+Tools for continuing incremental tracing-driven implementation, Web, and
+Groundwork for the actual application-consumer/E1–E2 boundary. The prior Tools
+probe handoff is retained; its explicit resumption advances actual connected
+code in retained worlds rather than another finite report packet. Empirical completed its archive
 and watch handoff; Integration owns the pending candidate watch. Helpers complete their current
 coherent packet or transfer it before stopping; a passive assignment does not
 count as active work. No Luna wave resumes. These are ownership transfers, not
