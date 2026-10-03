@@ -102,7 +102,7 @@
 (defstruct (fnn-mux-conn (:constructor %make-fnn-mux-conn))
   socket fd implicit-tls channel ssl cid opened-cid
   ;; Exact ACL2 lifetime identities; response retained across all cursor windows.
-  connection-identity response-identity output-grant
+  connection-identity response-identity output-grant response-capture
   ;; :new :proxy :tls-queued :handshake :hs-wait :serving :draining :done
   (phase :new)
   ;; PRF-986 item 4 (books/tls-proxy.lisp): a trusted proxy's connection
@@ -350,7 +350,8 @@ failed effects remain discoverable while independent physical cleanup runs."
       ;; not yet an output-pool discard receipt for an issued dependency.
       (setf (fnn-mux-conn-out conn) nil (fnn-mux-conn-plan conn) nil
             (fnn-mux-conn-input conn) nil (fnn-mux-conn-greeting conn) nil
-            (fnn-mux-conn-zstash conn) nil)
+            (fnn-mux-conn-zstash conn) nil
+            (fnn-mux-conn-response-capture conn) nil)
       (unwind-protect
            (progn
              (when (fnn-mux-conn-await conn)
@@ -519,7 +520,8 @@ DONEP)."
   (unless (fnn-mux-conn-output-grant conn)
     (setf (fnn-mux-conn-output-grant conn)
           (fnn-owner-output-issue (fnn-mux-service loop)
-                                  (fnn-mux-conn-response-identity conn))))
+                                  (fnn-mux-conn-response-identity conn)
+                                  (fnn-mux-conn-response-capture conn))))
   (let ((*fnn-output-grant* (fnn-mux-conn-output-grant conn)))
     (fnn-owner-render-next-quantum (fnn-mux-service loop) (fnn-mux-conn-cid conn) plan
                                    (fnn-mux-conn-class conn)
@@ -652,9 +654,10 @@ contract, without blocking the loop)."
   (fnn-owner-output-close (fnn-mux-service loop) (fnn-mux-conn-output-grant conn) :drained)
   (setf (fnn-mux-conn-output-grant conn) nil)
   ;; This is response terminal, including the continuation and socket suffix.
-  ;; No resource grant exists yet: future settlement must consume this identity
-  ;; before retirement, after independent dependency/no-publisher evidence.
-  (setf (fnn-mux-conn-response-identity conn) nil)
+  ;; The whole-output receipt above precedes identity retirement; pending
+  ;; physical dependencies retain their own native grant and original capture.
+  (setf (fnn-mux-conn-response-identity conn) nil
+        (fnn-mux-conn-response-capture conn) nil)
   (case after
     (:close (fnn-mux-begin-drain loop conn))
     (:starttls (fnn-mux-request-handshake loop conn))
@@ -728,18 +731,22 @@ the same octets are handed to the next step."
   (let* ((service (fnn-mux-service loop))
          (incoming (fnn-mux-conn-input conn))
          (channel (fnn-mux-conn-channel conn))
+         (capture (%make-fnn-response-capture))
          (results (multiple-value-list
                    ;; PKT-858: a peer connection's read enters as ACL2's
                    ;; class for it (fnn-owner-peer-read-class: :reader while
                    ;; the disk sheds, so IHAVE/CHECK are answered 436/431
                    ;; at once instead of waiting for the barrier).
-                   (let ((peerp (eq (fnn-mux-conn-class conn) :transit)))
+                   (let ((peerp (eq (fnn-mux-conn-class conn) :transit))
+                         (*fnn-response-capture* capture))
                      (fnn-owner-handle-chunk service (fnn-mux-conn-cid conn) incoming
                                              (fnn-mux-conn-socket conn)
                                              (if peerp
                                                  (fnn-owner-peer-read-class service)
                                                (fnn-mux-conn-class conn))
                                              peerp)))))
+    (when (fnn-response-capture-context capture)
+      (setf (fnn-mux-conn-response-capture conn) capture))
     ;; Lane commit-onto-log: the step queued its submission for the
     ;; next commit quantum.  The rest is the submitted step's handling, with
     ;; the plan built when the completion arrives (fnn-mux-await-done).

@@ -1139,7 +1139,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -8396,13 +8396,15 @@
         "Invoke actual native mux renderer with one captured response identity and private output projection.",
         "Retain a cursor across windows, physically finish one child while response remains open, then capture a second child.",
         "Close whole output while second child stays alive; physically join and consume its result, then repeat terminal callback.",
-        "Exercise no-child completion and raw exits from issuance/output receipt."
+        "Exercise no-child completion and raw exits from issuance/output receipt.",
+        "Capture starting semantic context and exact arena/catalog references under O before factory, then resume renderer and finish whole response."
       ],
       "expected": [
         "Exactly one conservative issued draw precedes factory and spans the response; fifth cold result is preserved.",
         "Finishing an early child cannot close future dependency authority; only pending child references remain live.",
         "Output completion alone retains debit; actual terminal child plus consumed result settles once.",
-        "No-child receipt occurs only after authority closes; torn issuance/receipt remains retained and never retries or settles."
+        "No-child receipt occurs only after authority closes; torn issuance/receipt remains retained and never retries or settles.",
+        "Original starting context is passed to grant by identity, renderer never reacquires root, and capture references end only at dual settlement; per-command final pin/auth remain separately authoritative."
       ],
       "implementation": {
         "test": "tests/test_native_output_response_lease_raw.sh"

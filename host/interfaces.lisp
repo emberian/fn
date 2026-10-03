@@ -5223,6 +5223,5 @@
 ; PRF-1272: allocation-generation producer, distinct from history version.
 ; Program global/native installation refinement remains pending.
 (definterface fn-owner-catalog-root-reserve :class :program)
-(definterface fn-owner-catalog-root-current :class :program)
 
 (definterface fn-owner-catalog-capture-context :class :program)

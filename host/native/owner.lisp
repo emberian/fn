@@ -1713,17 +1713,31 @@ This installs only the explicit output projection, not a full allocation gate."
               (unless (eq word :installed)
                 (fnn-fault "output funding refused after headroom grant ~s" word)))))))))
 
+; Bound only by a response consumer before entering the reader section.
+; CONTEXT is a pre-command semantic snapshot; resulting plans may repin.
+(defvar *fnn-response-capture* nil)
+(defstruct (fnn-response-capture (:constructor %make-fnn-response-capture))
+  context arena catalog)
+
+(defun fnn-owner-capture-reader-context (cid)
+  "Owner held: capture the same effective view before any chunk factory."
+  (when *fnn-response-capture*
+    (let ((context (fnn-owner-core 'fn-owner-catalog-capture-context cid)))
+      (setf (fnn-response-capture-context *fnn-response-capture*) context
+            (fnn-response-capture-arena *fnn-response-capture*) (fnn-live-arena)
+            (fnn-response-capture-catalog *fnn-response-capture*) (fnn-live-cat)))))
+
 (defvar *fnn-output-grant* nil)
 (defstruct (fnn-output-dependency (:constructor %make-fnn-output-dependency))
   read token terminal no-actor-created)
 (defstruct (fnn-output-grant (:constructor %make-fnn-output-grant))
-  identity token (stage :issuing) dependencies ever-issued closed output-stage physical-stage render-buffer)
+  identity token (stage :issuing) dependencies ever-issued closed output-stage physical-stage render-buffer capture)
 
-(defun fnn-owner-output-issue (service identity)
+(defun fnn-owner-output-issue (service identity &optional capture)
   "Staged renderer projection. Retain the native envelope before mutation."
   (sb-thread:with-mutex ((fnn-owner-service-output-ledger-lock service))
     (when (fnn-owner-service-output-ledger service)
-      (let ((grant (%make-fnn-output-grant :identity identity)))
+      (let ((grant (%make-fnn-output-grant :identity identity :capture capture)))
         (push grant (fnn-owner-service-output-grants service))
         (destructuring-bind (tag cid cgen opgen) identity
           (declare (ignore tag))
@@ -1801,6 +1815,7 @@ This installs only the explicit output projection, not a full allocation gate."
       (when (eq word :settled)
         (setf (fnn-output-grant-stage grant) :settled
               (fnn-output-grant-dependencies grant) nil
+              (fnn-output-grant-capture grant) nil
               (fnn-owner-service-output-grants service)
               (delete grant (fnn-owner-service-output-grants service) :test #'eq)))
       word)))
@@ -5861,6 +5876,9 @@ EPIPE and the client saw a bare close)."
        ;; step's typed result carries the effects, the plan the caller
        ;; renders off the mutex.
        (fnn-owner-read-buffer-fill service incoming)
+       ;; Shared values and actual stobj references are captured under the
+       ;; same O admission as the factory; rendering never re-reads a root.
+       (fnn-owner-capture-reader-context cid)
        (let ((step (fnn-owner-chunk-span-no-io cid incoming sched)))
          ;; Row A4 (c): the first line needs a page not in memory; its read
          ;; happens off the mutex (fnn-owner-handle-chunk, fnn-owner-cold-line).
