@@ -19198,6 +19198,19 @@
           "name": "fn-bpnb-input-past-read-bound-is-refused"
         }
       ]
+    },
+    {
+      "id": "PRF-1265",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-his-build-row-refines-history-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-his-build-row-bounds-suffix-capacity"
+        }
+      ]
     }
   ]
 }

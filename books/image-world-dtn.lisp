@@ -179,7 +179,7 @@
 (include-book "store-budget")
 (include-book "store-budget-article")
 (include-book "store-maintenance-reserve")
-(include-book "history-image-snapshot")
+(include-book "history-image-builder")
 (include-book "owner-snapshot-request")
 (include-book "store-capacity-vector")
 (include-book "store-carried-folds")

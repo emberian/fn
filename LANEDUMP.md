@@ -1817,3 +1817,35 @@ and image still open.
 S146 harvested hbox run-20261003T102328Z-db3d, manifest
 certify-20261003T102343Z-1448390 PASSED 2/0. Manifest and evidence
 bp-budget-input-2026-10-03.md indexed; source-matched image still owed.
+
+
+# Native history roots — Sol
+
+Base: origin/dev 041fceb1a. Owner: deputy_history. Branch codex/native-history-roots.
+
+Scope: authoritative P3 page history behind installed consumers, snapshot/root ownership, bounded reclaim with honest funding.
+
+Source finding: checkpoint fnn-history-image-build uses fn-his-snapshot -> fn-hrc-load all records -> flush. fn-hrc-flush-step advances lo but leaves old suffix slots retaining every event. fn-his-release resets lo/hi but does not shrink/clear suffix. Existing HEP backing is an independent nested t-row tree with unavailable genuine issuer; connecting it alone would duplicate P3.
+
+First consumer packet: incremental page snapshot construction through append/flush/empty-suffix recycling, used by actual three native publishers. Immutable retained-image verification is Astra S045; synchronized capture funding is Astra S114. Preserve exact image bytes and named refusal. This packet removes proportional suffix retention and one giant suffix load; it does NOT establish bounded reclaim nor authorize lowering fn-orcp-estimate. Fresh logical Store/catalog/history and node lists still allocate proportional copies.
+
+Next: actual fn-hist P3 attachment/open adoption and root publication, joined to private owner carrier (deputy_proof_engineering). fn-host-hist-sync requires exact current history or prefix plus reload marker; authoritative association must carry it.
+
+No claims of completed native/root capability yet. No image build launched. Integration owns convergence runs/dev writes.
+
+Refined quantum scope: fn-his-build-yieldp is ACL2 row-cadence policy, not a work bound. Existing fn-hp-x-append-step encodes whole row and relocates 2*2048*cap(R) words plus O(image) pgs-x-grow-image. Next connected continuation: page-sized readiness/copy/zero/mark before persistent root adoption. No scheduler-blackout elimination claim.
+
+## First packet current result
+
+Private native publisher scratch allocated through registered create-fn-hrecs$c raw zero-arg ABI. Begin resets/shrinks; row append/flush recycles cleared slot; finish ACL2 compares captured source count to actual nimg, and binding uses that returned nimg. Existing IMAGE=(np writes), codec, exact all3publisher readback custody retained.
+
+Warm hbox session history-build-rows: fn-his-build-row guards 246steps; rowrefinement1638; capacitybound9467; begin122135; recycle9219. Literalkeystonepositive+relation/shape removals alladmitted; liveassert suffix(:ok 0 0 nil16 1)PASS. Newvsoldexactcommittedroot/plan/everypagewords for mixednineevents+9kpool andempty historyPASS. Native actualfnn-history-image-build/controlflow fixture513events, privateinstances, completedfrontier, failedrowterminalreturnPASS. These are source/session results, not certificates/imagequalification.
+
+Narrow farm submitted 2jobs for history-image-build-rows/history-image-builder and theirtwoACL2teeth roots; run pending. Actual image test remains Integration convergence. PRF1265 claimed before writing, IDcheckPASS. Existingframe cache run reused; source dependency writerprefix needed discovery while exactcache missed frame-trailer.
+
+Open: perrecordencoding, whole-region relocation and flatpgs-memresize are NOT bounded turns. Astra implements fn-hpr-begin/step/grow-image in history-pages-relocate-step; intermediateafterzero privateonly, cannotserveoldroots. This lane consumes continuation then authoritativefn-hist attachment/openadopt with actualprefix/reload seam, snapshotseparation/readerpins. Store/node/catalog copies remain; reclaimestimateunchanged.
+
+First packet certification: certify-20261003T101722Z-1422001 PASSED, 103 cached +32 certified dependencies/roots, 2 hbox jobs. Manifest indexed/archive; native recording fixture actual source passed; new/old committed page fixture certified. PRF1265 source/certificate certified, saved-image qualification remains pending. Generic history logical split/attachable preparation is separate WIP and deliberately excluded from this packet. Primary assembly should take aggregate first-packet paths relative3cf623c0d; do not cherry-pick original04d55d45b alone (it originally replaced aggregate LANEDUMP before merge restored it).
+
+## Source assembly History builder aggregate (2026-10-03)
+Exact selected cdfa862e6 tree delta relative3cf623c0d flattened (includes04d initial and0f17 merge, no stale generic-column WIP). Material io build seam clean with S045 retainedsnapshot/readback/release and transportleaves; builder privateconstructor replaces live snapshot, ACL2 count authority in binding. Both storage appendsections and currentcumulativeLANE preserved. Existing producer32fresh/103cache cert +513-row nativecontrolflow reused; actual global interface/world report regen and newsource matching nativepublisher remain pending. Sourcepushbeforeprimaryfullreview; step latency/flatresize/eventencoding/reclaim estimate debt explicit.
