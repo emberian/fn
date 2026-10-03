@@ -36,12 +36,12 @@
 ;;; ---- derived stubs: END ----
 (load-deployed-forms "host/native/owner.lisp"
  '((def-section fnn-quantum-mux-finish) (defun fnn-owner-thread-escape)
-   (defun fnn-owner-output-close)))
+   (defun fnn-owner-output-close) (defun fnn-owner-response-window-close)))
 (load-deployed-forms "host/native/mux.lisp"
  '((defstruct (fnn-mux-cleanup-receipt (:constructor %make-fnn-mux-cleanup-receipt)))
    (defun fnn-mux-service) (defun fnn-mux-cleanup-debt)
    (defun fnn-mux-cleanup-attempt) (defun fnn-mux-handshake-release)
-   (defun fnn-mux-finish) (defun fnn-mux-drained-p)))
+   (defun fnn-mux-capture-output-grant) (defun fnn-mux-finish) (defun fnn-mux-drained-p)))
 (defvar *cleanup-calls* nil)
 (defvar *cleanup-mode* nil)
 (defun fnn-owner-gate-check (gate)
@@ -182,7 +182,7 @@
 ;; only revokes publication; it supplies no physical dependency receipt.
 (load-deployed-forms "host/native/owner.lisp"
  '((defstruct (fnn-owner-cold-read (:constructor %make-fnn-owner-cold-read)))
-   (defun fnn-owner-cold-abandon)))
+   (defun fnn-owner-cold-cancel) (defun fnn-owner-cold-abandon)))
 (defvar *cold-cleanup-tokens* nil)
 (defvar *cold-cleanup-fault* nil)
 (defun fnn-extent-cancel-read (token)

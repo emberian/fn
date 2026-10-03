@@ -357,7 +357,8 @@ failed effects remain discoverable while independent physical cleanup runs."
     (let ((service (fnn-mux-service loop))
           (cid (fnn-mux-conn-cid conn))
           (opened-cid (fnn-mux-conn-opened-cid conn))
-          (was (fnn-mux-conn-phase conn)))
+          (was (fnn-mux-conn-phase conn))
+          (capture (fnn-mux-conn-response-capture conn)))
       (setf (fnn-mux-conn-cleanup-phase conn) was
             (fnn-mux-conn-phase conn) :done)
       (fnn-mux-capture-output-grant conn)
@@ -387,6 +388,9 @@ failed effects remain discoverable while independent physical cleanup runs."
                    (setf (fnn-mux-conn-cold conn) nil))))
              ;; Await abandonment completed or retained a terminal cleanup
              ;; debt; no live renderer in this single loop can publish again.
+             (fnn-mux-cleanup-attempt
+              loop conn (list :response-window capture)
+              (lambda () (fnn-owner-response-window-close service capture)) :window-closed nil)
              (fnn-mux-cleanup-attempt
               loop conn :output-discard
               (lambda () (fnn-owner-output-close service (fnn-mux-conn-output-grant conn) :discarded))
@@ -558,7 +562,8 @@ DONEP YIELDP COLD-READ END)."
           (fnn-owner-output-issue (fnn-mux-service loop)
                                   (fnn-mux-conn-response-identity conn)
                                   (fnn-mux-conn-response-capture conn))))
-  (let ((*fnn-output-grant* (fnn-mux-conn-output-grant conn)))
+  (let ((*fnn-output-grant* (fnn-mux-conn-output-grant conn))
+        (*fnn-response-capture* (fnn-mux-conn-response-capture conn)))
     (fnn-owner-measured (:mux-render (fnn-mux-conn-cid conn)
                          (fourth (fnn-mux-conn-response-identity conn))
                          (third (fnn-mux-conn-response-identity conn)))
@@ -709,6 +714,7 @@ contract, without blocking the loop)."
 (defun fnn-mux-after (loop conn after)
   ;; All windows, including a partial socket write's pending suffix, have
   ;; drained.  A replacement catalog is now safe for this connection.
+  (fnn-owner-response-window-close (fnn-mux-service loop) (fnn-mux-conn-response-capture conn))
   (fnn-owner-response-unpin (fnn-mux-service loop) (fnn-mux-conn-cid conn))
   ;; Output progress (Codex r67 F3, Astra c07): a reply whose drain outlasted
   ;; its step -- it waited on the socket or yielded at a cursor -- ends now,

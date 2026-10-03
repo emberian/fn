@@ -54,3 +54,30 @@
 (defun fn-owner-page-decoded-window-price-status (descriptor)
   (declare (xargs :guard t))
   (if (fn-pwz-descriptorp descriptor) :unpriced-decoded-window :other-window))
+
+(include-book "../books/decoded-worker-backing")
+
+; Explicit DEFAULT partial storage projection, never a complete profile price.
+; The legacy publisher cannot write a modern allocation installation/DATA6.
+(defun fn-owner-page-decoded-window-acquire-projected (worker descriptor fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool :guard t :verify-guards nil))
+  (if (not (and (fn-owner-page-window-legacy-writablep fn-page-read-pool)
+                (eq (fn-owner-page-read-direct-mode fn-page-read-pool) :funded-pool)))
+      (mv :unpriced-decoded-window worker nil :unpriced fn-page-read-pool)
+    (mv-let (word token ledger)
+      (fn-pwz-admit (fn-owner-page-read-ledger fn-page-read-pool)
+                    descriptor (fn-dwb-fixed-storage-vector))
+      (if (not (eq word :admitted))
+          (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
+            (mv word worker token (fn-dwb-coverage) fn-page-read-pool))
+        (mv-let (word row ledger)
+          (fn-pwx-acquire ledger worker token)
+          (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
+            (mv word row token (fn-dwb-coverage) fn-page-read-pool)))))))
+(verify-guards fn-owner-page-decoded-window-acquire-projected)
+
+(defun fn-owner-page-window-discovery-kind (descriptor)
+  (declare (xargs :guard t))
+  (cond ((fn-pwz-descriptorp descriptor) :decoded-window)
+        ((fn-crw-supportedp descriptor 0) :raw-window)
+        (t :legacy-entry)))

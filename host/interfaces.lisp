@@ -5428,3 +5428,6 @@
 (definterface fn-pwz-nth :class :common-lisp-compliant :kinds ((index natp)))
 (definterface fn-owner-page-decoded-window-price-status :class :common-lisp-compliant)
 (definterface fn-oct-nth :class :common-lisp-compliant)
+
+(definterface fn-owner-page-decoded-window-acquire-projected :class :common-lisp-compliant)
+(definterface fn-owner-page-window-discovery-kind :class :common-lisp-compliant)
