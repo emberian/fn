@@ -31,7 +31,7 @@ def prefix(text: str, overlays: list[str]) -> str:
     inserted = False
     for form in forms(text):
         lower = form.lower()
-        if lower.startswith('(save-exec '):
+        if lower == ':q' or lower.startswith('(save-exec '):
             break
         if (lower.startswith('(load "host/native/strip-world.lisp"')
                 or lower.startswith('(fnn-save-world-flavor ')):
@@ -59,6 +59,12 @@ def prepare(args) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
     build = world / args.build
     hashes = {str(build): digest(build)}
+    # Verify source inputs at every launch; admitted forms remain embedded in
+    # the bootstrap and have their own hashes in the event coordinates.
+    for pattern in ('books/*.lisp', 'host/**/*.lisp', 'lib/*.so', 'lib/*.dylib'):
+        for path in world.glob(pattern):
+            if path.is_file():
+                hashes[str(path)] = digest(path)
     selected = []
     coordinates = []
     for selector in args.event:
@@ -69,6 +75,7 @@ def prepare(args) -> Path:
         if len(found) != 1:
             raise ValueError(f'{selector}: expected one actual defun')
         selected.append(found[0])
+        hashes[str(path)] = digest(path)
         coordinates.append({'file': str(path), 'symbol': symbol,
                             'form_sha256': hashlib.sha256(found[0].encode()).hexdigest(),
                             'file_sha256': digest(path)})
@@ -79,7 +86,7 @@ def prepare(args) -> Path:
     manifest = out.with_suffix('.json')
     data = {'schema': 'fn-native-source-runner-v1', 'world_root': str(world),
             'world_revision': args.world_revision, 'source_root': str(source),
-            'source_revision': subprocess.check_output(
+            'source_revision': args.source_revision or subprocess.check_output(
                 ['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip(),
             'bootstrap': str(bootstrap), 'sha256': hashes, 'events': coordinates,
             'sbcl': str(Path(args.sbcl).resolve()), 'core': str(Path(args.core).resolve()),
@@ -98,8 +105,14 @@ def run(manifest: Path, argv: list[str]) -> None:
     for name, expected in data['sha256'].items():
         if digest(Path(name)) != expected:
             raise ValueError(f'source runner input changed: {name}')
+    if sys.platform == 'darwin':
+        raise ValueError('source native runner currently requires the governed hbox execution route')
+    if argv[:1] == ['--fn']:
+        argv = argv[1:]
     os.chdir(data['world_root'])
     env = dict(os.environ)
+    env['ACL2_BOOK_HASH_ALISTP'] = 'NIL'
+    env.pop('ACL2_SYSTEM_BOOKS', None)
     env['ACL2_CUSTOMIZATION'] = data['bootstrap']
     env['ACL2_CUSTOMIZATION_QUIET'] = 'ALL'
     env['FN_NATIVE_PROFILE'] = data['profile']
@@ -121,6 +134,7 @@ def main(argv=None):
     p = commands.add_parser('prepare')
     for name in ('world-root', 'world-revision', 'source-root', 'output', 'sbcl', 'core'):
         p.add_argument('--' + name, required=True)
+    p.add_argument('--source-revision', help='explicit immutable source archive revision')
     p.add_argument('--build', default='host/native/build.lisp')
     p.add_argument('--profile', choices=('developer', 'production'), default='developer')
     p.add_argument('--event', action='append', default=[])
