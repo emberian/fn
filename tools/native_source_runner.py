@@ -121,7 +121,7 @@ def run(manifest: Path, argv: list[str]) -> None:
     # entry opens fd1 separately for protocol output. exec preserves stdin and
     # makes the native owner the signalled/killed process, with no relay PID.
     command = [data['sbcl'], '--tls-limit', '65536', '--dynamic-space-size', '12000',
-               '--control-stack-size', '1024KB', '--core', data['core'],
+               '--control-stack-size', '64', '--core', data['core'],
                '--noinform', '--disable-debugger', '--no-userinit',
                '--eval', '(setf *standard-output* *error-output* *trace-output* *error-output*)',
                '--eval', '(acl2::sbcl-restart)', '--end-toplevel-options', '--fn', *argv]
