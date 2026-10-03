@@ -134,3 +134,22 @@ the 2026-09-22 proof-engineering review. Green is not true.
   authorizes them; the live node is protected.
 - Before ending: registries and `current-view.json` accurate; report what
   changed, what ran and what remains open.
+
+## Advisory external model reviews (ember, 2026-10-03)
+
+Ember explicitly authorized every agent to consult the available `kimi`, `grok`
+and ZAI interfaces periodically for adversarial review. Batch substantial shared
+changes and sometimes seek early design critique; this is not an every-change
+ritual. Their models differ in ability. Treat findings skeptically, discuss or
+rebut them, verify concrete source claims with witnesses, and preserve material
+dissent with the resulting engineering reason. Reviews are advisory, never an
+approval gate or a vote. The owner remains responsible for implementation,
+integration and evidence.
+
+Discover the actual CLI help and local invocation guidance. Send only the minimal
+relevant project context, preferably pasted source in an empty review directory,
+and disable editing/tools/subagents/web when supported. Do not transmit personal
+files or secrets, print credential files, or include keys in command arguments or
+logs. `~/.zai-key` is available to a credential-aware client, not a file to display.
+This authorization is for model consultation, not messages to people, deployment
+or publication. Future lane briefs inherit this practice.
