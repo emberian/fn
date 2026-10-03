@@ -453,10 +453,6 @@ class NativeOperatorUncertainOutcomeTests(NativeOperatorVerbFixture):
         self.node.stop()
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 @unittest.skipUnless(executable(IMAGE), "build/fn-host is required")
 class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
     """M5: the Store's transaction budget, reported and enforced by ACL2.
@@ -781,3 +777,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         repeated = self.operator("init", "--max-transactions", "5",
                                  "--max-transactions", "6", "fn.test")
         self.assertEqual(repeated.returncode, EXIT_USAGE, repeated.stderr.decode())
+
+
+if __name__ == "__main__":
+    unittest.main()

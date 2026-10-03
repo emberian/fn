@@ -1,0 +1,12 @@
+{
+ "category": "local",
+ "file": "tools/spec_cite_exemptions.json",
+ "id": "BM08",
+ "notes": [],
+ "owner": "dev-serves",
+ "severity": "low",
+ "source": "dev-serves",
+ "state": "open",
+ "title": "spec_cite: 12 document citations of names the tree no longer (or never) defines after the BM merge, listed as stale under packet BM08 in tools/spec_cite_exemptions.json: the PRF-1171 allocation-turn names (fn-copsc-*, fn-coptc-*, fn-copod-*, fn-icrc-reserve: never on dev, Codex-era), docs/resource-contract.md's cold-line paragraph (fnn-owner-cold-line-direct / fnn-extent-prefetch-direct: the mechanism changed with cold-read-ownership, the paragraph and its Not-bounded line need rewriting), fn-owner-read, fn-store-sco-open, fn-proto-served-columns-okp, fn-bs-view-is-an-admissible-image (an OPEN comment); repair each prose and drop its stale row",
+ "updated": "2026-10-03T03:51:33Z"
+}
