@@ -9120,6 +9120,29 @@
         "tests/native_web_article_stream_raw.lisp"
       ],
       "note": "Raw actual-source consumer passes. PRF-1283 guard/refinement, matching native image and Web allocation/repeated-read tariff remain pending."
+    },
+    {
+      "id": "SCN-1114",
+      "title": "Shared native OVER replay gives exact newest-first HTML with bounded row metadata and source windows",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "WEB-006"
+      ],
+      "steps": [
+        "Scan100-row OVER with1/2/7/4096 source partitions and a10003-byte subject.",
+        "Compare virtual page to existing full-buffer fn-wss-over-rows/fn-wr-group-main/fn-wr-seq.",
+        "Run actual generic native scan/replay/count/cold/partial-writer consumer; force101st row in invalid generated input."
+      ],
+      "expected": [
+        "Exact newest-first overview and older-post link; long subject remains a span rather than copied text.",
+        "IN<=4096, OUT empty, final response pin retained through drain.",
+        "Row101 fails the source invariant; metadata stays at100 and no successful truncation is returned."
+      ],
+      "evidence": [
+        "tests/native_web_over_stream_raw.lisp"
+      ],
+      "note": "Actual raw consumer passes; program refinement, qualified image and Web repeated-read tariff pending."
     }
   ]
 }

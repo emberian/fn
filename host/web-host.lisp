@@ -7,7 +7,7 @@
 (include-book "../books/web-session-keystones")
 (include-book "../books/web-config")
 (include-book "../books/web-page-cursor")
-(include-book "../books/web-article-stream")
+(include-book "../books/web-reply-stream")
 
 (defun fn-web-host-plan (config-octets listener-port tls-port certp)
   (declare (xargs :mode :program :guard (fn-cbor-octet-listp config-octets)))
@@ -189,3 +189,10 @@
 (defun fn-web-host-replay-forward-p (need base end)
   (declare (xargs :mode :program))
   (and (<= (nfix base) (nfix (car need))) (<= (nfix (car need)) (nfix end))))
+
+(defun fn-web-host-stream-p (flow) (declare (xargs :mode :program)) (fn-wrs-p flow))
+(defun fn-web-host-stream-start (flow) (declare (xargs :mode :program)) (fn-wrs-start flow))
+(defun fn-web-host-stream-scan (scan fn-web-in)
+  (declare (xargs :mode :program :stobjs fn-web-in)) (fn-wrs-scan scan fn-web-in))
+(defun fn-web-host-stream-page (config flow scan)
+  (declare (xargs :mode :program)) (fn-wrs-page config flow scan))

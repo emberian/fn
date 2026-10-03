@@ -819,6 +819,16 @@
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
+(defun fn-wr-over-row-segments (group number-segs number-url subject from date rest)
+  (declare (xargs :guard t))
+  (append (list (fn-wm "<tr><td class='num'>")) (fn-wrq-true number-segs)
+          (list (fn-wm "</td><td class='subj'><a class='title' href='/a?g=")
+                (fn-wr-url group) (fn-wm "&amp;n=")) (fn-wrq-true number-url)
+          (list (fn-wm "'>")) (fn-wr-wspan-or subject (fn-wt "(no subject)"))
+          (list (fn-wm "</a></td><td class='from'>")) (fn-wr-wspan from)
+          (list (fn-wm "</td><td class='date'>")) (fn-wr-span date)
+          (list (fn-wm "</td></tr>")) (fn-wrq-true rest)))
+
 (defun fn-wr-over-rows-loop (group rev acc)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp rev)
@@ -882,21 +892,25 @@
                   :use ((:instance fn-wr-over-rows-loop-of-rev-onto (zs nil))))))
 
 
-(defun fn-wr-group-main (group rows older)
+(defun fn-wr-group-main-segments (group row-segs older)
   ; OLDER: the number to page back from, or nil.
   (declare (xargs :guard t))
   (append (list (fn-wm "<h1>") (fn-wr-txt group)
                 (fn-wm "</h1><nav class='keys'>[<a href='/new?g=") (fn-wr-url group)
                 (fn-wm "'>post to this group</a>] [<a href='/'>all groups</a>]</nav>"))
-          (if (consp rows)
+          (if (consp row-segs)
               (append (list (fn-wm "<table class='index'><thead><tr><th class='num'>#</th><th>Subject</th><th class='from'>From</th><th class='date'>Date</th></tr></thead><tbody>"))
-                      (fn-wr-over-rows group rows)
+                      (fn-wrq-true row-segs)
                       (list (fn-wm "</tbody></table>")))
             (list (fn-wm "<p class='dim'>No posts here yet.</p>")))
           (if (consp older)
               (list (fn-wm "<p class='keys'>[<a href='/g?name=") (fn-wr-url group)
                     (fn-wm "&amp;before=") (fn-wr-url older) (fn-wm "'>older posts</a>]</p>"))
             nil)))
+
+(defun fn-wr-group-main (group rows older)
+  (declare (xargs :guard t))
+  (fn-wr-group-main-segments group (fn-wr-over-rows group rows) older))
 
 (defun fn-wr-header-line (label span)
   (declare (xargs :guard t))

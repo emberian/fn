@@ -19,12 +19,14 @@
  '(*fn-wss-shown-fields* *fn-wss-html-fields* fn-wss-field-index fn-wss-put-span fn-wss-slice
    fn-wss-colon fn-wss-content-end fn-wss-skip-ws fn-wss-continued fn-wss-headers fn-wss-prefix-at
    fn-wss-span-has fn-wss-span-slice fn-wss-spanp fn-wss-article-view
-   fn-wss-f-route fn-wss-f-ctx fn-wss-f-data fn-wss-c-session fn-wss-c-request fn-wss-c-theme
+   *fn-wss-window* *fn-wss-msg-unreachable* fn-wss-f-stage fn-wss-f-route fn-wss-f-ctx fn-wss-f-data fn-wss-c-session fn-wss-c-request fn-wss-c-theme
    fn-wss-s-login fn-wss-s-csrf fn-wss-cfg-site fn-wss-bodyp))
 (load-page-forms "books/web-article-stream.lisp")
+(load-page-forms "books/web-reply-stream.lisp")
 (load-page-forms "host/web-host.lisp"
  '(fn-web-host-article-p fn-web-host-article-start fn-web-host-article-scan fn-web-host-article-page
-   fn-web-host-window-page-step fn-web-host-replay-slice fn-web-host-replay-forward-p))
+   fn-web-host-window-page-step fn-web-host-replay-slice fn-web-host-replay-forward-p
+   fn-web-host-stream-p fn-web-host-stream-start fn-web-host-stream-scan fn-web-host-stream-page))
 (defun article-octets (lines)
   (loop for line in lines append (append (fn-wrq-oct line) '(13 10))))
 (defun article-scan-chunks (xs width login)
@@ -45,37 +47,10 @@
             (setf base (car need))
             (fnn-web-fill in (fnn-octets (subseq xs base (cdr need)))))
           (when done (return (values (reverse result) count))))))
-(let* ((login (fn-wrq-oct "wren"))
-       (prefix (article-octets '("211 1 1 1 fn.test" "220 1 <m@fn>")))
-       (header (article-octets '("Subject: =?UTF-8?Q?caf=C3=A9_&?=" "From: Wren <wren@fn>"
-                                  "Date: now" "Newsgroups: fn.test" "Message-ID: <m@fn>"
-                                  "Subject: ignored" "X-Unshown: ignored" "")))
-       (body (append (article-octets '("..first<&" ".not the terminator" "..second'"))
-                     (make-list 13003 :initial-element 38) '(13 10)))
-       (xs (append prefix header body '(46 13 10)))
-       (in (create-fn-octets$c)) (bs (length prefix)) (be (- (length xs) 3))
-       (session (list nil nil login (fn-wrq-oct "csrf")))
-       (ctx (append (list (list :request :get)) (make-list 8) (list session :auto)))
-       (flow (list :article :article ctx (list (fn-wrq-oct "fn.test"))))
-       (config (list :web-config (fn-wrq-oct "fn") nil nil 600 16)))
-  (fnn-web-fill in (fnn-octets xs))
-  (let* ((view (fn-wss-article-view bs be login in))
-         (ref-segs (fn-wr-frame (fn-wrq-oct "fn.test") (fn-wrq-oct "fn") :auto login
-                      (fn-wss-s-csrf session)
-                      (fn-wr-article-main (fn-wrq-oct "fn.test") (first view) (second view)
-                                          (third view) (fourth view))))
-         (reference (fn-wr-seq ref-segs xs)))
-    (dolist (width '(1 2 7 4096))
-      (let* ((scan (article-scan-chunks xs width login)) (action (fn-was-page config flow scan)))
-        (assert (eq (fn-was-get :phase scan) :done))
-        (assert (equal (fn-was-get :fields scan) (first view)))
-        (assert (equal (cons (fn-was-get :body scan) (fn-was-get :be scan)) (second view)))
-        (assert (equal (fn-was-get :own scan) (third view)))
-        (multiple-value-bind (actual count) (virtual-page (sixth action) xs 4096)
-          (assert (equal actual reference)) (assert (= count (length reference))))))
-    ;; Actual native scan/replay/count/write caller. Source plans are immutable
-    ;; vectors; replaying this adapter only advances the returned list cursor.
-    (let* ((conn (fixture-conn 41 :render 88))
+; Actual native scan/replay/count/write consumer, reusable for captured
+; protocol routes. The renderer adapter advances persistent plan tails only.
+(defun native-stream-consumer (xs flow config reference &optional (id 41) (max-replay-rounds 150))
+    (let* ((conn (fixture-conn id :render 88))
            (face (%make-fnn-web-face :service :service :config config :conns (list conn)))
            (plan (loop for at from 0 below (length xs) by 4096
                        collect (fnn-octets (subseq xs at (min (length xs) (+ at 4096))))))
@@ -84,7 +59,7 @@
            (saved-unpin (symbol-function 'fnn-owner-response-unpin))
            (saved-poll (symbol-function 'fnn-owner-cold-poll))
            (pins-released 0) (observed-length nil) (peak-in 0) (replay-rounds 0) (cold-issued nil))
-      (setf (fnn-web-conn-flow conn) flow (fnn-web-conn-article-scan conn) (fn-was-start login)
+      (setf (fnn-web-conn-flow conn) flow (fnn-web-conn-reply-scan conn) (fn-web-host-stream-start flow)
             (fnn-web-conn-captured-plans conn) (list plan) (fnn-web-conn-plan conn) plan
             (fnn-web-conn-leased conn) t)
       (unwind-protect
@@ -94,6 +69,8 @@
               (case name
                 ((fn-web-host-article-p fn-web-host-article-start fn-web-host-article-scan
                   fn-web-host-article-page fn-web-host-replay-slice fn-web-host-replay-forward-p) (apply (symbol-function name) args))
+                ((fn-web-host-stream-p fn-web-host-stream-start fn-web-host-stream-scan fn-web-host-stream-page)
+                 (apply (symbol-function name) args))
                 (fn-web-host-page-cursor (apply #'fn-web-host-page-cursor args))
                 (fn-web-host-head (setf observed-length (third args)) '(72 69 65 68))
                 (otherwise (apply saved-core name args)))))
@@ -127,11 +104,41 @@
             (unless (fnn-web-conn-closedp conn) (assert (zerop pins-released))))
           (assert (fnn-web-conn-closedp conn))
           (assert (= pins-released 1))
-          (assert cold-issued) (assert (< replay-rounds 150))
+          (assert cold-issued) (assert (< replay-rounds max-replay-rounds))
           (assert (= observed-length (length reference)))
-          (assert (equal (wire-for 41) (append '(72 69 65 68) reference))))
+          (assert (equal (wire-for id) (append '(72 69 65 68) reference))))
         (setf (symbol-function 'fnn-core) saved-core (symbol-function 'fnn-call) saved-call
               (symbol-function 'fnn-owner-render-next-quantum) saved-render
               (symbol-function 'fnn-owner-response-unpin) saved-unpin
-              (symbol-function 'fnn-owner-cold-poll) saved-poll)))))
+              (symbol-function 'fnn-owner-cold-poll) saved-poll))))
+
+(let* ((login (fn-wrq-oct "wren"))
+       (prefix (article-octets '("211 1 1 1 fn.test" "220 1 <m@fn>")))
+       (header (article-octets '("Subject: =?UTF-8?Q?caf=C3=A9_&?=" "From: Wren <wren@fn>"
+                                  "Date: now" "Newsgroups: fn.test" "Message-ID: <m@fn>"
+                                  "Subject: ignored" "X-Unshown: ignored" "")))
+       (body (append (article-octets '("..first<&" ".not the terminator" "..second'"))
+                     (make-list 13003 :initial-element 38) '(13 10)))
+       (xs (append prefix header body '(46 13 10)))
+       (in (create-fn-octets$c)) (bs (length prefix)) (be (- (length xs) 3))
+       (session (list nil nil login (fn-wrq-oct "csrf")))
+       (ctx (append (list (list :request :get)) (make-list 8) (list session :auto)))
+       (flow (list :article :article ctx (list (fn-wrq-oct "fn.test"))))
+       (config (list :web-config (fn-wrq-oct "fn") nil nil 600 16)))
+  (fnn-web-fill in (fnn-octets xs))
+  (let* ((view (fn-wss-article-view bs be login in))
+         (ref-segs (fn-wr-frame (fn-wrq-oct "fn.test") (fn-wrq-oct "fn") :auto login
+                      (fn-wss-s-csrf session)
+                      (fn-wr-article-main (fn-wrq-oct "fn.test") (first view) (second view)
+                                          (third view) (fourth view))))
+         (reference (fn-wr-seq ref-segs xs)))
+    (dolist (width '(1 2 7 4096))
+      (let* ((scan (article-scan-chunks xs width login)) (action (fn-was-page config flow scan)))
+        (assert (eq (fn-was-get :phase scan) :done))
+        (assert (equal (fn-was-get :fields scan) (first view)))
+        (assert (equal (cons (fn-was-get :body scan) (fn-was-get :be scan)) (second view)))
+        (assert (equal (fn-was-get :own scan) (third view)))
+        (multiple-value-bind (actual count) (virtual-page (sixth action) xs 4096)
+          (assert (equal actual reference)) (assert (= count (length reference))))))
+    (native-stream-consumer xs flow config reference)))
 (format t "NATIVE WEB ARTICLE STREAM RAW PASS: exact reference; scan/replay/cold/count/partial-write; bounded replay rounds; IN <=4096; pin through drain~%")

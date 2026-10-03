@@ -276,3 +276,15 @@ matching image evidence. LIST/OVER retain their full NNTP collectors. The
 retained plan, renderer/window tails, cursor/decoder working allocation,
 repeated physical reads and mailbox captures still require a qualified Web
 tariff; the native output grant does not cover them implicitly.
+
+
+Web OVER follow-on (PRF-1284 planned, SCN-1114): the actual native shared
+stream/replay provider scans the existing100-number OVER request into at most
+100 rows of four virtual spans. Number/subject/From/date text is read from the
+same capture for count/emit, in the reference's newest-first order. Long fields
+are not copied into the row metadata. A101st generated row fails the invariant
+instead of returning truncated data. Raw exact-reference, generic native
+cold/count/partial-write/IN-bound/final-pin witnesses pass. Source programs still
+await guard/refinement and matching image; repeated backward seeks and physical
+reads require qualified Web funding. LIST ACTIVE remains the full collector to
+remove next; no blanket output grant or complete fairness/warranty claim.
