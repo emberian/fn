@@ -8631,6 +8631,27 @@
         "native": true
       },
       "note": "Raw fixture passed on lane source; native-image scenario pending. No runtime/qualification claim transferred from an earlier image."
+    },
+    {
+      "id": "SCN-1101",
+      "title": "Private history relocation yields by page without changing its completed concrete",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-017",
+        "STO-026"
+      ],
+      "steps": [
+        "Move a nonzero two-page region to four new pages; complete through explicit grow and page ticks and compare all six concrete arrays to existing relocation.",
+        "Check each ordinary tick changes at most 2048 words, successful yields strictly reduce rank, and replacement placement is unavailable before done.",
+        "Cold table and page waits preserve the cursor and every concrete array; verified cache completion retries that exact cursor.",
+        "Insufficient capacity and inconsistent image sizes refuse before mutation."
+      ],
+      "evidence": [
+        "books/history-pages-relocate-step.lisp",
+        "tests/acl2/history-pages-relocate-step-tests.lisp"
+      ],
+      "implementation_note": "Concrete ACL2 stobj schedules. Private snapshot consumer integration and matching certificate follow separately; flat-array growth and event encoding are not bounded by this page-step result."
     }
   ]
 }
