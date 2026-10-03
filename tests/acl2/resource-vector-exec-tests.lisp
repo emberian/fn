@@ -5,7 +5,9 @@
 ; logical bank and compared, ON THESE VALUES, with the logical transitions.
 ; Fresh installation now has fn-rl-install-correspondence; the ground
 ; conjunctive witnesses below check its complete antecedent and conclusion.
-; Draw/settle comparisons remain evaluations, not correspondence theorems.
+; Draw/settle now have general boundary theorems; their witnesses below
+; check complete literal premises/conclusions, refusal refinement, and
+; labelled corrupted-state hypothesis removals.
 (in-package "ACL2")
 (include-book "../../books/resource-vector-exec")
 (include-book "std/testing/assert-bang" :dir :system)
@@ -313,4 +315,237 @@
        (equal (mv-nth 0 result) :slot-exhausted)
        (equal (mv-nth 1 result) 0) (equal (mv-nth 2 result) ledger)
        (equal (fn-rl-gensi 2 (mv-nth 2 result)) *fn-rl-word-max*)))
+ :rule-classes nil)
+
+; Literal boundary teeth; removals are corrupted-state witnesses.
+
+(defthm rxt-draw-correspondence-accepted-witness
+ (let* ((ledger (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger)))) (slot 2) (demand (list 2 0 0 1 1 0 0 0 3))
+        (bank (fn-rl-bank ledger)) (logical (fn-rv-draw bank slot demand))
+        (result (fn-rl-draw slot demand ledger))
+        (word (mv-nth 0 result)) (token (mv-nth 1 result)) (after (mv-nth 2 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (equal word :drawn) (equal token 1)
+       (and
+    (equal word (if (and (equal (car logical) :drawn)
+                        (<= *fn-rl-word-max* (fn-rv-gen slot bank)))
+                    :slot-exhausted (car logical)))
+    (equal token (if (equal word :drawn) (caddr logical) 0))
+    (equal (fn-rl-bank after) (if (equal word :drawn) (cadr logical) bank))
+    (implies (not (equal word :drawn)) (equal after ledger)))))
+ :rule-classes nil)
+
+(defthm rxt-draw-correspondence-busy-witness
+ (let* ((ledger (mv-nth 2 (fn-rl-draw 2 (list 2 0 0 1 1 0 0 0 3) (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger)))))) (slot 2) (demand (list 2 0 0 1 1 0 0 0 3))
+        (bank (fn-rl-bank ledger)) (logical (fn-rv-draw bank slot demand))
+        (result (fn-rl-draw slot demand ledger))
+        (word (mv-nth 0 result)) (token (mv-nth 1 result)) (after (mv-nth 2 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (equal word :slot-busy) (equal token 0)
+       (and
+    (equal word (if (and (equal (car logical) :drawn)
+                        (<= *fn-rl-word-max* (fn-rv-gen slot bank)))
+                    :slot-exhausted (car logical)))
+    (equal token (if (equal word :drawn) (caddr logical) 0))
+    (equal (fn-rl-bank after) (if (equal word :drawn) (cadr logical) bank))
+    (implies (not (equal word :drawn)) (equal after ledger)))))
+ :rule-classes nil)
+
+(defthm rxt-draw-correspondence-unfunded-witness
+ (let* ((ledger (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger)))) (slot 2) (demand (list 11 0 0 0 0 0 0 0 0))
+        (bank (fn-rl-bank ledger)) (logical (fn-rv-draw bank slot demand))
+        (result (fn-rl-draw slot demand ledger))
+        (word (mv-nth 0 result)) (token (mv-nth 1 result)) (after (mv-nth 2 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (equal word :resources-unavailable) (equal token 0)
+       (and
+    (equal word (if (and (equal (car logical) :drawn)
+                        (<= *fn-rl-word-max* (fn-rv-gen slot bank)))
+                    :slot-exhausted (car logical)))
+    (equal token (if (equal word :drawn) (caddr logical) 0))
+    (equal (fn-rl-bank after) (if (equal word :drawn) (cadr logical) bank))
+    (implies (not (equal word :drawn)) (equal after ledger)))))
+ :rule-classes nil)
+
+(defthm rxt-draw-correspondence-noncanonical-witness
+ (let* ((ledger (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger)))) (slot 2) (demand '(2 . 3))
+        (bank (fn-rl-bank ledger)) (logical (fn-rv-draw bank slot demand))
+        (result (fn-rl-draw slot demand ledger))
+        (word (mv-nth 0 result)) (token (mv-nth 1 result)) (after (mv-nth 2 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (equal word :invalid-draw) (not (true-listp '(2 . 3)))
+       (and
+    (equal word (if (and (equal (car logical) :drawn)
+                        (<= *fn-rl-word-max* (fn-rv-gen slot bank)))
+                    :slot-exhausted (car logical)))
+    (equal token (if (equal word :drawn) (caddr logical) 0))
+    (equal (fn-rl-bank after) (if (equal word :drawn) (cadr logical) bank))
+    (implies (not (equal word :drawn)) (equal after ledger)))))
+ :rule-classes nil)
+
+(defthm rxt-draw-correspondence-invalid-slot-witness
+ (let* ((ledger (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger)))) (slot -1) (demand (list 2 0 0 1 1 0 0 0 3))
+        (bank (fn-rl-bank ledger)) (logical (fn-rv-draw bank slot demand))
+        (result (fn-rl-draw slot demand ledger))
+        (word (mv-nth 0 result)) (token (mv-nth 1 result)) (after (mv-nth 2 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (equal word :invalid-draw) (not (natp slot))
+       (and
+    (equal word (if (and (equal (car logical) :drawn)
+                        (<= *fn-rl-word-max* (fn-rv-gen slot bank)))
+                    :slot-exhausted (car logical)))
+    (equal token (if (equal word :drawn) (caddr logical) 0))
+    (equal (fn-rl-bank after) (if (equal word :drawn) (cadr logical) bank))
+    (implies (not (equal word :drawn)) (equal after ledger)))))
+ :rule-classes nil)
+
+(defthm rxt-draw-correspondence-exhausted-witness
+ (let* ((ledger (update-fn-rl-gensi 2 *fn-rl-word-max* (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger))))) (slot 2) (demand (list 2 0 0 1 1 0 0 0 3))
+        (bank (fn-rl-bank ledger)) (logical (fn-rv-draw bank slot demand))
+        (result (fn-rl-draw slot demand ledger))
+        (word (mv-nth 0 result)) (token (mv-nth 1 result)) (after (mv-nth 2 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (equal word :slot-exhausted) (equal (car logical) :drawn) (equal (caddr logical) (+ 1 *fn-rl-word-max*)) (equal token 0) (equal (fn-rl-gensi slot after) *fn-rl-word-max*)
+       (and
+    (equal word (if (and (equal (car logical) :drawn)
+                        (<= *fn-rl-word-max* (fn-rv-gen slot bank)))
+                    :slot-exhausted (car logical)))
+    (equal token (if (equal word :drawn) (caddr logical) 0))
+    (equal (fn-rl-bank after) (if (equal word :drawn) (cadr logical) bank))
+    (implies (not (equal word :drawn)) (equal after ledger)))))
+ :rule-classes nil)
+
+(defthm rxt-settle-correspondence-accepted-witness
+ (let* ((ledger (mv-nth 2 (fn-rl-draw 2 (list 2 0 0 1 1 0 0 0 3) (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger)))))) (slot 2) (gen 1)
+        (logical (fn-rv-settle (fn-rl-bank ledger) slot gen))
+        (result (fn-rl-settle slot gen ledger))
+        (word (mv-nth 0 result)) (after (mv-nth 1 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (equal word :settled)
+       (and (equal word (car logical))
+       (equal (fn-rl-bank after) (cadr logical))
+       (implies (not (equal word :settled)) (equal after ledger)))))
+ :rule-classes nil)
+
+(defthm rxt-settle-correspondence-stale-witness
+ (let* ((ledger (mv-nth 2 (fn-rl-draw 2 (list 2 0 0 1 1 0 0 0 3) (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger)))))) (slot 2) (gen 0)
+        (logical (fn-rv-settle (fn-rl-bank ledger) slot gen))
+        (result (fn-rl-settle slot gen ledger))
+        (word (mv-nth 0 result)) (after (mv-nth 1 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (equal word :stale)
+       (and (equal word (car logical))
+       (equal (fn-rl-bank after) (cadr logical))
+       (implies (not (equal word :settled)) (equal after ledger)))))
+ :rule-classes nil)
+
+(defthm rxt-settle-correspondence-invalid-slot-witness
+ (let* ((ledger (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger)))) (slot 3) (gen 0)
+        (logical (fn-rv-settle (fn-rl-bank ledger) slot gen))
+        (result (fn-rl-settle slot gen ledger))
+        (word (mv-nth 0 result)) (after (mv-nth 1 result)))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (equal word :invalid-slot)
+       (and (equal word (car logical))
+       (equal (fn-rl-bank after) (cadr logical))
+       (implies (not (equal word :settled)) (equal after ledger)))))
+ :rule-classes nil)
+
+(defthm rxt-draw-correspondence-without-type-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-budgeti 0 -1 (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger))))) (slot 2) (demand *fn-rv-zero*)
+        (bank (fn-rl-bank ledger)) (logical (fn-rv-draw bank slot demand))
+        (result (fn-rl-draw slot demand ledger))
+        (word (mv-nth 0 result)) (token (mv-nth 1 result)) (after (mv-nth 2 result)))
+  (and (not (fn-resource-ledgerp ledger)) (fn-rl-wfp ledger)
+       (not (and
+    (equal word (if (and (equal (car logical) :drawn)
+                        (<= *fn-rl-word-max* (fn-rv-gen slot bank)))
+                    :slot-exhausted (car logical)))
+    (equal token (if (equal word :drawn) (caddr logical) 0))
+    (equal (fn-rl-bank after) (if (equal word :drawn) (cadr logical) bank))
+    (implies (not (equal word :drawn)) (equal after ledger))))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d
+   (fn-rl-rows-from fn-rl-demand-list fn-rv-draw fn-rv-charge
+    fn-rv-gen fn-rv-phase fn-rv-slotp fn-rv-settle fn-rv-drawnp fn-rl-release-from)
+   ((:executable-counterpart fn-rl-rows-from)
+    (:executable-counterpart fn-rl-release-from)
+    (:definition nth) (:definition update-nth))))))
+
+(defthm rxt-draw-correspondence-without-shape-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-count 1 (create-fn-resource-ledger))) (slot 0) (demand *fn-rv-zero*)
+        (bank (fn-rl-bank ledger)) (logical (fn-rv-draw bank slot demand))
+        (result (fn-rl-draw slot demand ledger))
+        (word (mv-nth 0 result)) (token (mv-nth 1 result)) (after (mv-nth 2 result)))
+  (and (fn-resource-ledgerp ledger) (not (fn-rl-wfp ledger))
+       (not (and
+    (equal word (if (and (equal (car logical) :drawn)
+                        (<= *fn-rl-word-max* (fn-rv-gen slot bank)))
+                    :slot-exhausted (car logical)))
+    (equal token (if (equal word :drawn) (caddr logical) 0))
+    (equal (fn-rl-bank after) (if (equal word :drawn) (cadr logical) bank))
+    (implies (not (equal word :drawn)) (equal after ledger))))))
+ :rule-classes nil
+ :hints (("Goal" :expand ((fn-rl-rows-from 0 '((0 0 0 0 0 0 0 0 0) (0 0 0 0 0 0 0 0 0) 1 nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil 0 0 0 0 0 0 0 0 0 0)) (fn-rl-rows-from 1 '((0 0 0 0 0 0 0 0 0) (0 0 0 0 0 0 0 0 0) 1 nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil 0 0 0 0 0 0 0 0 0 0))) :in-theory (e/d
+   (fn-rl-rows-from fn-rl-demand-list fn-rv-draw fn-rv-charge
+    fn-rv-gen fn-rv-phase fn-rv-slotp fn-rv-settle fn-rv-drawnp fn-rl-release-from)
+   ((:executable-counterpart fn-rl-rows-from)
+    (:executable-counterpart fn-rl-release-from)
+    (:definition nth) (:definition update-nth))))))
+
+(defthm rxt-settle-correspondence-without-type-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-gensi 2 -1 (mv-nth 2 (fn-rl-draw 2 (list 2 0 0 1 1 0 0 0 3) (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger))))))) (slot 2) (gen -1)
+        (logical (fn-rv-settle (fn-rl-bank ledger) slot gen))
+        (result (fn-rl-settle slot gen ledger))
+        (word (mv-nth 0 result)) (after (mv-nth 1 result)))
+  (and (not (fn-resource-ledgerp ledger)) (fn-rl-wfp ledger)
+       (not (and (equal word (car logical))
+       (equal (fn-rl-bank after) (cadr logical))
+       (implies (not (equal word :settled)) (equal after ledger))))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d
+   (fn-rl-rows-from fn-rl-demand-list fn-rv-draw fn-rv-charge
+    fn-rv-gen fn-rv-phase fn-rv-slotp fn-rv-settle fn-rv-drawnp fn-rl-release-from)
+   ((:executable-counterpart fn-rl-rows-from)
+    (:executable-counterpart fn-rl-release-from)
+    (:definition nth) (:definition update-nth))))))
+
+(defthm rxt-settle-correspondence-without-shape-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-count 1 (update-fn-rl-phasesi 0 1 (create-fn-resource-ledger)))) (slot 0) (gen 0)
+        (logical (fn-rv-settle (fn-rl-bank ledger) slot gen))
+        (result (fn-rl-settle slot gen ledger))
+        (word (mv-nth 0 result)) (after (mv-nth 1 result)))
+  (and (fn-resource-ledgerp ledger) (not (fn-rl-wfp ledger))
+       (not (and (equal word (car logical))
+       (equal (fn-rl-bank after) (cadr logical))
+       (implies (not (equal word :settled)) (equal after ledger))))))
+ :rule-classes nil
+ :hints (("Goal" :expand ((fn-rl-rows-from 0 '((0 0 0 0 0 0 0 0 0) (0 0 0 0 0 0 0 0 0) 1 (1) nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil 0 0 0 0 0 0 0 0 0 0)) (fn-rl-rows-from 1 '((0 0 0 0 0 0 0 0 0) (0 0 0 0 0 0 0 0 0) 1 (1) nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil 0 0 0 0 0 0 0 0 0 0))) :in-theory (e/d
+   (fn-rl-rows-from fn-rl-demand-list fn-rv-draw fn-rv-charge
+    fn-rv-gen fn-rv-phase fn-rv-slotp fn-rv-settle fn-rv-drawnp fn-rl-release-from)
+   ((:executable-counterpart fn-rl-rows-from)
+    (:executable-counterpart fn-rl-release-from)
+    (:definition nth) (:definition update-nth))))))
+
+(defthm rxt-draw-keeps-okp-witness
+ (let* ((ledger (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger)))) (after (mv-nth 2 (fn-rl-draw 2 (list 2 0 0 1 1 0 0 0 3) ledger))))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rv-okp (fn-rl-bank ledger)) (fn-rv-okp (fn-rl-bank after))))
+ :rule-classes nil)
+
+(defthm rxt-settle-keeps-okp-witness
+ (let* ((ledger (mv-nth 2 (fn-rl-draw 2 (list 2 0 0 1 1 0 0 0 3) (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger)))))) (after (mv-nth 1 (fn-rl-settle 2 1 ledger))))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rv-okp (fn-rl-bank ledger)) (fn-rv-okp (fn-rl-bank after))
+       (equal (fn-rl-drawn-list after) (list 0 0 0 0 1 0 0 0 3))
+       (equal (fn-rl-demand-list 2 after) *fn-rv-zero*)))
+ :rule-classes nil)
+
+(defthm rxt-draw-keeps-okp-without-okp-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-drawni 0 11 (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger))))) (after (mv-nth 2 (fn-rl-draw 2 (list 2 0 0 1 1 0 0 0 3) ledger))))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (not (fn-rv-okp (fn-rl-bank ledger))) (not (fn-rv-okp (fn-rl-bank after)))))
+ :rule-classes nil)
+
+(defthm rxt-settle-keeps-okp-without-okp-corrupted-state-witness
+ (let* ((ledger (update-fn-rl-drawni 0 11 (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger))))) (after (mv-nth 1 (fn-rl-settle 2 1 ledger))))
+  (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (not (fn-rv-okp (fn-rl-bank ledger))) (not (fn-rv-okp (fn-rl-bank after)))))
+ :rule-classes nil)
+
+(defthm rxt-draw-refusal-without-refusal-witness
+ (let* ((ledger (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger)))) (result (fn-rl-draw 2 (list 2 0 0 1 1 0 0 0 3) ledger)))
+  (and (equal (mv-nth 0 result) :drawn) (not (equal (mv-nth 2 result) ledger))))
+ :rule-classes nil)
+
+(defthm rxt-settle-refusal-without-refusal-witness
+ (let* ((ledger (mv-nth 2 (fn-rl-draw 2 (list 2 0 0 1 1 0 0 0 3) (mv-nth 1 (fn-rl-install (list 10 0 0 1 1 0 0 0 5) *fn-rv-zero* *fn-rv-zero* 3 (create-fn-resource-ledger)))))) (result (fn-rl-settle 2 1 ledger)))
+  (and (equal (mv-nth 0 result) :settled) (not (equal (mv-nth 1 result) ledger))))
  :rule-classes nil)
