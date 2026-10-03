@@ -157,3 +157,46 @@ pass. Scoped strict theory/book-order and diff checks pass. Evidence archived
 and indexed at planning/evidence/dc03-serializer-clean-20261003/{checks.json,repl.log.gz}.
 No certificate claim here: Integration reuses241passed artifacts and retries
 the exact five failed roots on its next repaired candidate.
+
+
+## Configured NEWNEWS selector consumer, 2026-10-03 GPT-6.1-Sol
+
+SOURCE READY: helper selector14ce3e9ec is consumed by the actual NEWNEWS
+factory and plan. Factory `fn-nntp-newnews-response-stream(session, archive,
+env, args, fn-arena, fn-cat)` retains fixed context/source/scan envelopes,
+parsed patterns and original configured-group/article references. No selected
+list or membership copy. Distinct `:newnews-configured` tag preserves legacy
+total semantics. `:select` holds selector10/current scan6 across one group or
+membership unit; first equal membership decides even if invalid. Output keeps
+string/offset/stuffing state, visits zero candidates, and never renders the
+whole line before budgeting. Existing opaque dependency/context fields stay.
+
+Actual generated NEWNEWS row, hand dispatcher and plan now call this producer.
+Constructor/refinement0.25 ACL2s/56023steps, catalog tail3.69s/787250,
+hand dispatcher4.33s/890073, generated rows+guards1.78s/499732,
+plan1.89s/708065. Actual factory11-group sparse tiny/large drain witness
+252steps; stream phase progress and two hypothesis removals (corrupted capture
+labelled)438steps. Selection progress0.06s/24644. These are source admissions
+in a retained source catalog world, not certificates or matching image.
+Full raw log (including refused probes/prefixes) archived/indexed:
+selector-composition-repl.log.gz90b0e2ad... and checks343d6c30... under
+planning/evidence/served-cursor-20261003. Enabled residual unfolding caused
+three60s proof loops; fixed-size constructor bridge proves0.02s/1020steps and
+closed models keep composition small. No theory escape.
+
+PRF1257 helper claim kept; coordinator next_id check with both lanes passes.
+PRF1256 now cites actual selection-progress, not unreachable legacy normal
+article-tail decrease. Spec/scenario/curated events and Makefile roots wired.
+protocol_emit check34rows304replies passes; debt10 unchanged. Scoped strict
+book order/theory, diffcheck and root registration pass (40known unrelated red).
+
+Separate serializer clean-world repair668bf268b imported as47a9606c3, only
+threeLOCAL accumulator facts, unchanged body/public theorems. Integration
+owns five-root cert retry and global registry/current-view regeneration.
+
+Open: wildcard/name comparisons, composed allocation/collector/mux tariff,
+actual pre-step output draw/custody producer, decided completed discovery view,
+restricted NEWNEWS and cold OVER/HDR/XPAT consumers. Legacy missing-facts
+metadata tombstone fallback still reads cold payload and is not qualified as
+bounded off-owner settlement. Foundations owns output grants and Runtime owns
+physical mux discard/return; logical close/cancel cannot settle physical holds.

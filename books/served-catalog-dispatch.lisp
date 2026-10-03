@@ -8,7 +8,7 @@
 ; The host reaches it through books/served-catalog-chain.lisp fn-scr-command.
 (in-package "ACL2")
 (include-book "served-catalog")
-(include-book "newnews-metadata-cursor")
+(include-book "newnews-stream-cursor")
 
 ;; The rules books/served-catalog.lisp's proofs run under (its header).
 (local (in-theory (enable (:definition fn-nntp-article-idp)
@@ -204,7 +204,7 @@
          v fn-arena fn-cat))
        ;; cg-newnews-hang: the scan reads the tombstone column, no payload.
        ((fn-nntp-keywordp keyword "NEWNEWS")
-        (fn-nntp-newnews-response-cursor session archive env args fn-arena fn-cat))
+        (fn-nntp-newnews-response-stream session archive env args fn-arena fn-cat))
        (t (fn-nntp-archive-command session archive env keyword args fn-arena))))))
 
 ;;; KEYSTONE (the boundary theorem of this increment): under archive = the
@@ -348,8 +348,8 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-nntp-archive-command-cat fn-nntp-archive-command-pinned
                             fn-ovw-expand-result fn-nntp-over-range-ovw-expands-to-over-range-cat
-                            fn-nntp-newnews-response-cursor-expands-to-cat
-                            fn-nntp-newnews-response-cursor-keeps-session
+                            fn-nntp-newnews-response-stream-expands-to-cat
+                            fn-nntp-newnews-response-stream-keeps-session
                             fn-nntp-archive-command fn-nntp-list-command
                             fn-nntp-hdr-response fn-nntp-xhdr-response
                             fn-nntp-over-response fn-nntp-xover-response

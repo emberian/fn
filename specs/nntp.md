@@ -2050,21 +2050,33 @@ is served by the reference walk over its projected pin,
 `fn-scr-auth-delegate`), OVER by Message-ID and with no argument (one row).
 
 The metadata NEWNEWS continuation is the first `def-cursor` consumer
-(PRF-1256, SCN-1084). `fn-nnw-meta-step` accepts separate candidate and
-emitted-byte budgets, retains scan progress independently of an unsent
-output suffix, and preserves the captured archive/environment/arguments
-across both. A sparse miss still consumes one candidate; the final suffix
-keeps the plan live after the article tail ends. The plan's NEWNEWS arm uses
-its scheduling quantum for both budgets and the owner/mux retains the
-existing response reader hold. The catalog tombstone column supplies the
-selection decision for rows with decided facts, avoiding payload-cache retry;
-legacy rows without those facts retain the existing cold dependency.
-Source behavior and REPL residual tests are available; matching composition
-certification and native qualification remain owed. This emitted-byte bound
-does not bound initial selected-group materialization or one-row working
-allocation. The decided completed discovery snapshot, the dedicated output
-custody producer, restricted NEWNEWS, and cold HDR/XPAT consumers remain
-open; the current unrestricted command still captures its pinned archive.
+(PRF-1256, PRF-1257, SCN-1084). The generated NEWNEWS command calls
+`fn-nntp-newnews-response-stream`; its initializer retains parsed wildcard
+patterns, configured groups and article tails by reference in fixed envelopes.
+`fn-nnw-stream-step` accepts separate control-call and emitted-byte budgets.
+A candidate retains `fn-nnw-select-start` state while `fn-nnw-select-one`
+inspects one configured group or membership entry per call. The first equal
+membership decides that group's number, including an invalid first duplicate;
+this preserves the original filtered-group candidate semantics. A sparse miss
+continues through the retained group/member position, and matching installs a
+string reference, offset and stuffing phase rather than a complete line.
+Output phases consume no candidate visits. Prefix plus remaining equals the
+original catalog reply, including its status and final terminator, and the
+captured archive/environment/arguments stay fixed throughout the plan.
+
+The actual plan uses its scheduling quantum for both budgets, and owner/mux
+retains the existing response reader hold. Decided catalog tombstone metadata
+avoids the old payload-cache retry; legacy rows missing those facts retain cold
+dependency debt. Source residual/refinement, guard and tiny/large actual plan
+checks are tracked separately from matching certificates and native images.
+The disabled logical residual and remaining models may walk captured lists;
+the execution initializer and selector do not build a selected-group list or
+copy membership/archive data. This still does not establish a composed heap
+funding bound: group-name comparisons, wildcard DP work/rows, metadata checks,
+outer copying, allocator/collector margin and physical output custody need
+matching tariffs and a producer before materialization. The decided completed
+discovery snapshot, restricted NEWNEWS and cold HDR/XPAT remain open; the
+current unrestricted command captures its pinned archive.
 
 Two events advance a connection's last activity for the idle limit (RFC
 3977 section 3.1): a command received, and the transport accepting a window

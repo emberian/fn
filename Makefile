@@ -1892,6 +1892,16 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-reply-buffer-tests \
 	books/served-plan \
 	tests/acl2/served-plan-tests \
+	books/def-cursor \
+	tests/acl2/def-cursor-tests \
+	books/string-line-cursor \
+	books/newnews-metadata-cursor \
+	tests/acl2/newnews-metadata-cursor-tests \
+	books/newnews-candidate-selector \
+	tests/acl2/newnews-candidate-selector-tests \
+	books/newnews-stream-cursor \
+	tests/acl2/newnews-stream-cursor-tests \
+	tests/acl2/served-plan-newnews-tests \
 	books/served-plan-cursor \
 	tests/acl2/served-plan-cursor-tests \
 	books/owner-scheduler \
