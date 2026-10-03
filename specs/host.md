@@ -890,9 +890,15 @@ state. Long rejected entries keep only their first eight completed fields;
 initial natural fields retain exact arbitrary width. Appends after fstat's
 size are excluded; a shortened prefix is refused. Nofollow/NONBLOCK open,
 regular descriptor checking and unwind close cover the read. PRF-1275 proves
-chunk independence and field-count preservation. Finite full-model equality
-and every-split cases pass; universal report/exit refinement to PRF-322's
-reference remains pending, as do clean certification and matching image.
+chunk independence and field-count preservation. The generalized parser
+continuation proves exact report bytes and exit equality to PRF-322's reference
+for arbitrary input (`fn-otjs-report-refines-journal-report` and
+`fn-otjs-exit-refines-journal-exit`). Complete-entry and segment counts keep
+advancing after a replay failure while its first verdict and replay state stay
+fixed; malformed and torn endings agree with the reference. Literal witnesses
+cover huge natural fields, later segment resets and overlong rejected lines.
+These changed definitions/theorems and teeth pass the warm proof session;
+normal certification of the exact changed book and matching image remain pending.
 What a process death with entries unflushed loses is exactly those entries:
 the replay of decisions that stored nothing. No durable state depends on an
 entry (a disk event keeps the pipeline; a refusal stores nothing), and the

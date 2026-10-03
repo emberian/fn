@@ -1771,3 +1771,17 @@ those changed bytes are not this verdict. Warm root-journal-stream belongs
 to Access; no image/deployment. Current-view generation hits the base's
 missing historic operator.lisp pin, Integration handles after retire
 metadata converges; no historical hash invented.
+
+Access continuing operator owner, GPT-6.1-Sol: generalized journal parser
+continuation refinement now admitted in root-journal-stream. No input
+hypotheses on the public report/exit equivalences: exact report bytes and exit
+match the reference for arbitrary xs, including malformed/torn syntax,
+overlong entries with first8+dummy9, arbitrary natural widths, all completed
+entry/segment counts and earliest replay failure/state. All existing and new
+literal tests pass; new report tooth asserts the complete 6-entry/3-segment
+malformed report with first gap preserved across later restarts. New exit
+tooth asserts torn suffix and retained gap exit1. Scoped theory-check PASS.
+One helper proof hint reduced consumed-state expansion from2.3M steps to157;
+the generalized inductive bridge is4861 steps. Runtime code/signatures are
+unchanged; proof includes exact actual fn-otjs-report/exit subjects.
+Normal fresh two-root certification and matching image remain pending.
