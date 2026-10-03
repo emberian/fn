@@ -229,6 +229,7 @@
  },
  "direct_owner_sites": [
   "fnn-owner-stop-service",
+  "fnn-owner-fault-service",
   "fnn-owner-cold-shutdown",
   "fnn-snapshot-source-root-release",
   "fnn-owner-run"
@@ -258,7 +259,8 @@
   "fnn-with-world-key-printing",
   "fnn-connection-scoped",
   "fnn-log-sealed-effect",
-  "fnn-section-envelope"
+  "fnn-section-envelope",
+  "fnn-with-observed-owner"
  ],
  "gated_macros": {
   "fnn-section-envelope": {

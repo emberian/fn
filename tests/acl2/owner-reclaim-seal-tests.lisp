@@ -85,3 +85,31 @@
     (equal (fn-orcp-intern-rows rows keyring generation fn-arena)
            (mv (fn-orcs-predict-rows rows keyring generation (fn-arena-count fn-arena))
                (fn-orcs-seal (fn-orcs-payloads rows) fn-arena))))))
+
+; PRF-1258: literal full result/effect boundary of actual fn-orcs-predict.
+; The boundary theorem lives in host/owner-host.lisp, where it is loaded;
+; these ground teeth execute its book-level subjects without loading STATE.
+(defthm orcst-actual-predict-seal-positive
+  (and (not (fn-orcs-has-bad *orcst-rows*))
+       (equal (fn-orcp-intern-rows *orcst-rows* nil 0 *orcst-arena*)
+              (mv (car (fn-orcs-predict *orcst-rows* nil 0
+                                      (fn-arena-count *orcst-arena*)))
+                  (fn-orcs-seal
+                   (cadr (fn-orcs-predict *orcst-rows* nil 0
+                                         (fn-arena-count *orcst-arena*)))
+                   *orcst-arena*))))
+  :rule-classes nil)
+
+; Hypothesis removal: a valid record before :bad makes the incremental
+; intern retain a partial arena effect, while prediction refuses atomically.
+(defthm orcst-actual-predict-seal-without-no-bad
+  (let ((rows (list *orcst-w1* :bad)))
+    (and (fn-orcs-has-bad rows)
+         (not (equal (fn-orcp-intern-rows rows nil 0 *orcst-arena*)
+                     (mv (car (fn-orcs-predict rows nil 0
+                                             (fn-arena-count *orcst-arena*)))
+                         (fn-orcs-seal
+                          (cadr (fn-orcs-predict rows nil 0
+                                                (fn-arena-count *orcst-arena*)))
+                          *orcst-arena*))))))
+  :rule-classes nil)

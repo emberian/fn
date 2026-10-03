@@ -177,7 +177,7 @@ tracker):
 | Slice / grouped obligations | Producer -> consumer; assembler | Shared prerequisite | Next discriminating check | Source state / actual blocker |
 |---|---|---|---|---|
 | Frozen first candidate | Captured capabilities and physical actors -> real native service; Integration | Exact declared loaded world and normal/DTN host guards | sol1 host-prefix, then saved images and affected native modules | Immutable `37f501197`: certification234 passed/0 failed,784 matching cached; normal/DTN host LD failed/time-limited, no images/native verdict. Groundwork fixes file/window wrapper hints613/841; Integration reuses unchanged certificates/artifacts for repaired full LD |
-| Direct HM boundary (HM02, PRF-1254, SCN-1082) | Actual direct read entries -> machine and literal realization checker -> empirical trace; Integration assembles, Groundwork/Tools/Empirical own consumers | Same direct dependency bytes and grounded primitive observations; funded pool excluded | Shared-label cancellation/late-return image trace and clean cancel-preservation proof | Machine/literal reader source landed; `fa21382ab` adds actual `:READ`, machine/tests certificate passed. Current 154-form main book admits cleanly (12.18 seconds, 5,465,590 steps) and matching single-root certification passed in certify-20261003T074717Z-46601 (9.774 seconds). Unchanged cancel/pin/capture/drain invariants are established at this source; issue/return/settle and all-schedules proof remain pending. Full replay unavailable until actual locks/pins match |
+| Direct HM boundary (HM02, PRF-1254, SCN-1082) | Actual direct read entries -> machine/literal checker -> actual observation packets; Integration assembles, Groundwork/Runtime/Empirical own consumers | Exact machine and direct dependency bytes; native event order/identity produced at primitive boundary | Actual extent normal/:READ packet with O/E/pins and completion/physical-return order | Main cancel/pin/capture/drain and physical return certified at matching source in074717/080416 manifests. Actual generated actor/shared section O-only packets replay with prefix invariants. Issue/settle/all-schedules, full extent/pin realization and funded pool remain owed |
 | Funded syncer custody (resource exec and PRF-1252) | Actual mux capacity hold -> typed owner ledger -> syncer draw/physical/outcome; Foundations assembles Runtime and resource helper | Validated private creator, opaque token plus independent operation generation; two receipts before refund | Matching-image actual mux POST/stop, held cleanup, timeout and after-release starter failure | Creator repaired; actual start-syncer, typed methods, physical join and fn-oqw completion fixture passes0.26s, supplied local12-thread/1MiB projection. Helper bank/bootstrap guards consumed by Foundations final source59d46c3ff; Runtime342c7f153 READY. Matching combined certificate/image closure follows. Runtime owns production wire/late-fault path |
 | Command rows into switch (DC03 -> DC02) | Seven table rows -> `fn-proto-archive-command-cat` -> actual `fn-scr-command`; Served assembles helper | Stable session/archive/index/verdict/env/view/arena/catalog inputs, pinned-view policy | Actual generated dispatch/chain replay and selected native command cases | DC03 consumed in Served `38f75aaa9`; generated caller installed. Helper continues LIST/NEWGROUPS/DATE, then available for a stable next seam; undeclared hand fallback removal remains Served debt |
 | Metadata cursor and output custody (GEN-CURSOR) | One-candidate metadata step -> plan continuation -> mux drain; Served assembles Foundations projection | Exact wire residual; bounded initialization/working bytes; admitted connection draw precedes materialization | Actual plan drain equality at byte/visit budgets1 and256, then native sparse/cache-churn output | Served `bb0b20203` includes source shell/switch; composition residual and actual plan drain pass warm checks, source repair being committed. Foundations owns pre-materialization funding; reply wire bytes alone do not fund cons/copy heap windows. Capture/completed-view and allocation debt remain |
@@ -457,3 +457,22 @@ Re-read job status and current dev at dispatch.
   BM09/BM10 failures elsewhere prevent a whole-run green claim.
 - Burndown-3 already contains CL08/09, BM08/CL20, CL10, CL12 and CL11 work.
   Read its verification, including the base failure reason, before redispatch.
+
+The lasting post-foundation capability queue is [NSLICESQUEUE.md](../NSLICESQUEUE.md).
+Primary implementation continues alongside the proof sweep: Served owns the
+configured-group selector through actual NEWNEWS factory/plan; Foundations
+owns explicit heap funding and Runtime the retained output drain/discard
+consumer; Groundwork owns history/page-backed reclamation, with the page
+helper answering the existing catalog attachment/creator/smoke question first.
+Tools owns BP send/refusal boundaries; Groundwork owns canonical retention
+reservation and Empirical the undertake/release/reopen delivery scenario.
+Integration owns one exact executable candidate and its selected questions.
+Host all-schedules assurance, later operator-path closure and unstarted
+capabilities remain explicit queue work, not implications of POST smoke.
+
+The first developer old-catalog executable at frozen `1a946582c` has actual
+normal/DTN host-prefix passes and POST/duplicate/readback passes. It does not
+contain every newer source slice. The retention producer repair `7c6d135f3`
+restores ACL2's identity gate before log allocation; the reviewed aggregate
+`56f97b4d3` is handed to Integration. Actual BP undertaking/release/reopen is
+the next discriminating consumer, not another historical-image retry.

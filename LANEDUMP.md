@@ -599,6 +599,115 @@ All17 newlyadded private entries cleared. This diagnostic has error markers
 and is not a greenprefix. Books/certpairs are reused; no duplicateimage build.
 Source reports regenerated atc3:1460declared/1408dispatched/0raw-rule findings;
 stream PRF1256 curatedmap now corrected, subsequent generated refresh owed.
+Transport credential boundary: S107/S108/S109, codex-sol-tools
+and dial, pull profile/worker boundary only; Runtime owns feed actor/idle
+and shared owner fault-service. Profile opens O_NONBLOCK|O_NOFOLLOW and
+admits descriptor fstat before reading, preserving uid/mode/bound authority.
+ACL2 alone decodes and renders credential/drop words. Push reads before TCP
+connect. Only exact known input-overbound and named OS/credential observation
+refuses; read/core/entry faults and unknown subclasses propagate. Pull/catch-up
+use same diagnostic and existing ACL2 refused-profile cursor-hold transition.
+Pull top boundary uses shared exact-class classifier even while stopping.
+
+First discriminating command: python3 -m unittest tests.test_native_feed_credential
+Five actual-source raw schedules pass3.145s (earlier1.350s before fd checks).
+Real kernel FIFO promptly refused, private malformed/missing/nonprivate/
+symlink/directory/overbound profile never connects, valid ACL2 codec permits
+push/pull, exact read/core faults retained, stopping feed/pull reach shared
+fault/fence endpoints, every opened profile descriptor confirmed EBADF after
+return/refusal/fault. Socket effects and owner fault/fence endpoints recorded;
+this is not a saved-image/whole owner-stop claim. Shared classifier is actual
+source. Initial harness missing ACL2 primitive/load path caused explicit infra
+failures; fixed with exact source extraction and ACL2 primitive adapters.
+No raw nonzero exit can count as expected assertion in Python witness.
+
+Prepared consumed native selector for Integration:
+tests.test_native_peer_pull.NativePeerPullTests.test_unreadable_credential_refuses_before_any_connection
+TLS pull profile mode0644, actual public operator setup, recording proxy
+connections0, ACL2 credential line, cursorheld/refusedprofile, ownerlive and
+clean shutdown; extends existing SCN071. Has not run here, historical scenario
+evidence does not cover this case. Books/peer-host and feed-link-backoff plus
+two existing test roots changed; scoped cert/composed image consumer pending
+Integration. No full suite/image launched by this lane.
+
+Three same-harness receipts at source88a116a90 are archived: S107 real FIFO
+blocked-base/prompt-head assertion, S108 invalid-before-connect assertion,
+S109 exact read fault assertion; all designated identities red/base and
+green/head with no infra/skips. File hashes live in each item/index.
+
+S109 follow-through source0c7dc0ea8: preserve the first serious condition
+when descriptor close also fails, so cleanup OS error cannot turn a core
+fault into credential refusal. Sixth actual-source schedule injects core
+fault plus closeEIO after actual close; intended assertion red/base and
+green/head archived S109-d92aa72565cd4483815b2da7f70f3da5.json, sha256
+ef3372181f2fa6ddd54226c89d6142a6d79bb83afedabbf1c28beed5f6a32135.
+Fixture worker fault injection uses explicit hand leaf definitions rather
+than symbol-function replacement, so static inventory does not invent worker
+loop extraction. Only this new credential fixture's derived trap block was
+generated with current nested-reader source; no unrelated fixture rewrite.
+Trap functions remain executable failures for unexpected paths, not coverage
+waivers. Final six schedule command re-run after exact fixture block update.
+
+## Source assembly S081 + credential consumer review — GPT-6.1-Sol
+
+Aggregate over dev90a151a42: Runtime122904439/d529ef773 and Tools88a116a90/1d550edff/0c7dc0ea8/e3b6eee46. Reviewed actual feed dial/pull preflight and owner held/off-owner frames classification. Credential descriptors open nonblocking/no-follow, regular/private/size checks precede bounded read and ACL2 decode, and admission precedes TCP. Unknown/store/core faults propagate; primary faults survive close failure; stopping workers use the shared owner boundary. Frames signal typed outcomes to their existing held or thread boundary; irreversible fault fencing directly acquires owner exclusion. Source merge touches no unrelated owner functions. Only cumulative LANEDUMP conflicted, retaining prior and incoming content. Nine producer source/test paths match, fixture Python compiles, four evidence objects verify, diff check clean. Existing actual-source raw schedules reused; no duplicate proof/build/image run. First runnable selector: tests/test_native_frames_boundary_raw.sh, then tests.test_native_feed_credential.CredentialAdmissionTests.test_exact_read_and_core_faults_propagate_while_stopping. Integration owns pending peer-host/feed-link-backoff certificates, loaded-world/source graph regeneration and matching image.
+
+## Runnable repaired sol1 and source assembly, 2026-10-03 08:35 UTC
+
+Groundwork ff39c1083 landed as 90a151a42. Frozen qualification source
+1a946582cd1645325928ac0e6df0248bbf8da52e contains only repaired host wrappers
+and declarations over unchanged sol1 book artifacts. Actual full normal prefix
+passed in 70 seconds and DTN prefix in 22 seconds; combined load completed
+08:30:16Z. One developer/full/old-catalog image built in 60 seconds, completed
+08:31:16Z. Core SHA256 6f5bf88869a645580548c1b25d87f7b2263ee09ce2888db71100d654335bdfa1.
+Actual served POST, duplicate rejection, GROUP/ARTICLE readback match raw and
+counterpart dispatch for all seven scoped entries: selected native test passed
+3.026 seconds. Logs and coordinates archived/indexed; no deployment or full
+image qualification claim. Later funded syncer, streaming cursor and extent
+observations are absent from this cut. Empirical may run modest mixed/sparse
+scenarios sequentially on this exact image; maintenance refusals remain separate.
+
+Source helper aggregate 433b73dd7 landed as 8fa6b902b, including Runtime S081
+fault-entry/held-frame repair and Tools credential preflight/primary cleanup
+fault preservation. Combined actual held/off-owner frames fixture and exact
+credential core-fault-while-stopping test both passed before push. Aggregate
+READY to dev was about one minute. No duplicate whole semantic review.
+Creator cost-route certification 080742Z-1083756 passed both affected roots
+and is now indexed; typed final producer retry 075454Z-1046521 remains 7/0.
+Remaining source assembly queue: Astra pipeline completion custody, S110
+journal boundaries, bounded observation packet, discovery rows and hint batch.
+Current generated world reports await independent refresh after assembly.
+
+S110 FNPL/FNCU append classification, codex-sol-tools
+before-write selector before attempted publication. Definite prewrite faults
+retain their class. Attempted write/barrier failures remain indeterminate
+even when descriptor cleanup also fails; actual ACL2 journal phase decides
+uncertainty. After the barrier returns, classification/cut faults retain
+their class with durable cursor bytes present. Both pull and catch-up consume
+the same function. Runtime owns the analogous FNFD owner append path.
+
+First command: python3 -m unittest tests.test_native_pull_append
+Six schedules pass1.748s before scoped trap generation; final rerun below.
+Kernel write/fsync/close effects are real. Envelopes are scripted answers,
+not a codec/image claim; actual ACL2 phase step and host append/phase/close
+and selector functions execute. Known assertion marker is the only defect
+failure; reader/import/tool errors remain infrastructure. Only this new raw
+fixture's derived trap block generated, four unexpected-path traps remain.
+Same-harness S110 prewrite assertion evidence follows source commit; no
+full suite, image build or ACL2 closure started by this lane.
+
+Final scoped schedules after trap generation: six pass1.896s. First evidence
+at099d28d94 was truthfully rejected: two intended subtest assertions conflict
+with verifier's single-assertion contract. That receipt remains archived.
+Fixture now stops on first failed protocol variant; successful runs still
+execute both. Semantic verifier contract unchanged.
+
+S110 intended single assertion red at basee3b6eee46 and green at head31c79cb07,
+same designated test/harness, no infra/skips; final six schedules pass1.903s.
+Archived planning/evidence/repair/S110-e20e6254e71e4151b41907b94d897130.json
+sha256f26785cea305d06c3faed1083ac8e47d6b7519ad598dece5fd6894738204fe3e.
+Receipt-only commit does not change source coordinate. S110 remains
+in-progress pending combined consumer boundary; no whole-owner/image claim.
 
 ## Astra source trace — SYNCER-COMPLETION-ESCAPE (2026-10-03)
 
@@ -632,6 +741,48 @@ are unconfirmed leads still being traced. Witness checker retains six preexistin
 actor/script catalog-header findings; new SCN-1087 scripts are cited. No book
 source changed, so no independent certification/full image was launched.
 
+## Source assembly persistence/custody follow-through — GPT-6.1-Sol
+
+Over reviewed433b73dd7: S110099d28d94/31c79cb07/c3585ba3a, Astra53dd02bca/ec2dbfce0, Runtime observationsd4cb69168/b86933fba. Preserved their primary source reviews; inspected actual journal append boundaries and material owner overlap. Prewrite envelope/phase faults retain class; write/fsync attempts remain uncertain across close failure; postbarrier faults stay definite. Pipeline unwind retains the actual-result consumer before completion starts, while torn completion is not retried; outer committer actor escape reaches the failure boundary. Observation hooks use the existing actor reservation and private finite rows, reserve release before unlock and complete after unlock; unavailable records carry no HM verdict. Owner hunks apply cleanly beside irreversible fault/typed frames changes. Six exact producer fixtures match; JSON and Python compile; six new evidence objects verify. Only cumulative LANEDUMP conflict, all content retained. No duplicate raw/proof/image experiments. Combined selectors owed at assembled bytes: tests/test_native_syncer_pipeline_escape_raw.sh, tests/test_native_committer_actor_raw.sh, tests/test_native_observation_raw.sh and tests.test_native_pull_append.PullAppendBoundaryTests (discover actual class in file). Existing raw/HM receipts do not establish whole-image or realization assurance; Integration retains loaded-world/graph and matching-image checks.
+## DC03 discovery continuation (2026-10-03)
+
+Merged Served985be0c14 in isolated tree (767fbf3a7), preserving both lane records
+and Served's NEWNEWS cursor reachability predicate. LIST now declares Xref,
+COUNTS, compatibility, active and other forms; NEWGROUPS declares compatibility
+and other forms. Existing pinned semantics and PRF-1237 completed-view debt remain
+explicit. No new formal, helper export, behavior, or NEWNEWS/OVER/HDR/XPAT edit.
+
+DATE finding agreed with Served: it is already a :dispatch :session declaration
+in protocol-table, whose :arms generate fn-nntp-session-command. The archive
+reference has no DATE arm and falls through to STAT retrieval. A DATE catalog
+form would be unreachable in composition, so none was added. New DATE teeth
+assert the actual session route's entire 111 reply, equality to fn-nntp-date-response
+and the restricted command route, plus syntax/missing-clock refusals.
+
+Narrow live verdict (hbox dc03-discovery): protocol-served #12–51 40/40,
+1.93 ACL2 seconds / 500,442 steps; generated form/row event 1.51 s / 479,519;
+all guards pass. Kept that warm world for teeth: loaded only the exact existing
+fn-scr-command source event and three fn-pix command/retrieval definitions needed
+by the command-layer witness (no source twins or full TLS/span replay);
+fn-scr-command guards 918 steps. Complete teeth #5–68 64/64, 0.12 s / 1,854 steps.
+New discovery positive (188 steps) asserts full boundary hypotheses and conclusion
+with valid configured creation/listing facts, both server contexts and both routes;
+DATE session positive 120 steps. Prefix setup alone was 128.77 s / 36,354,221 steps.
+
+protocol_emit --check passes 34 rows/304 replies with unchanged 10 policy debts;
+docs_check --write passes and regenerates the served spec table. No new IDs.
+No repeat full-report pipeline, certificate, image or deployment claim. Integration
+owns generated registry/ledger assembly and coordinated certification; Served owns
+remaining HDR/XHDR declarations and hand-fallthrough removal. Bounded NEWNEWS
+selector follow-through is a separately assigned next seam, not changed here.
+
+Evidence is archived/indexed under planning/evidence/dc03-discovery-20261003:
+command-repl.log.gz and checks.json, including current subject/consumer file hashes.
+
+## Source assembly DC03 discovery forms — GPT-6.1-Sol
+
+Reviewed d8a0af2f3 LIST five-form and NEWGROUPS two-form table additions consumed by actual fn-scr-command -> fn-proto-archive-command-cat. Ordered xref/counts/compatibility/active/reference fallback mirrors existing dispatcher; helper witnesses assert archive/catalog/index/env invariants, reachable discovery and exact result codes. DATE remains actual generated session route, with literal111/501/503 replies. Prior emitter40forms/guards1.93s500442steps and64-event literalteeth0.12s1854steps reused; two changed source/fixture paths exact producer match, no extra replay. Completed-discovery view and whole-reply allocation debts retained. Only cumulative LANEDUMP conflict; source and spec hunk exact. Integration owns generated command/report world and matching native consumer checks.
+
 Typed follow-through: existing scoped tools/acl2 native_syncer_typed_raw script
 also passed six actual abandonment schedules (done/uncertain/fault, physical
 before/after) over real typed ledger, validated creator and normal semantic
@@ -640,6 +791,117 @@ archived as planning/evidence/astra-syncer-typed-abandon-20261003.log. Script no
 requires the final abandonment sentinel so an earlier producer pass cannot hide
 a later fixture failure. Source SCN-1087 updated to this stronger tested scope.
 
+# Proof census: served
+
+**Lane:** `codex-proof-luna-served` (`codex/proof-luna-served-20261003`). The code checkout is exactly source origin/dev `bffa8b2c3ac0a5a2d98c2a362561082d0063fbf0`. The coordinator's current inventory parser is at `bf2e1328397d4c30f5b9735557b619313bb407e2`; every one of the 482 served book hashes in that inventory matches this checkout. Detailed row status is in `build/proof-sweep/results.json`.
+
+## Census screen
+
+Machine proof-strategy screening covers 482 books and 11,332 inventory events: 6,600 named theorems, 4,008 admission/guard events, and 724 occurrence-indexed `verify-guards` events. All source SHA-256s match the inventory. Among theorems, 5,272 have explicit hint features; their extracted counts are `:in-theory` 5,085, `enable` 1,232, `e/d` 2,358, `enabled_items` 3,587, `:use` 1,517, `:induct` 747, `disable` 603, `:expand` 141, `:cases` 119, `:do-not-induct` 394, and `:nonlinearp` 3. Every book row also records its local include list and exported theory-form count. This is structural screening, not semantic approval of all 11,332 statements.
+
+Results distinguish structurally inspected rows, two manually reviewed no-change helper events, and tactic candidates; per-event outcomes and coverage are recorded in `build/proof-sweep/results.json`. The auth dispatcher ideas remain hypotheses pending event profiling; archived whole-book cost alone did not establish their event cost.
+
+## Owner-log first-word proof packet
+
+The archived baseline is `planning/evidence/manifests/certify-20261003T064110Z-896002.json` (ACL2 8.7, hbox, two jobs). At the pre-edit source digest `7094068af26f47bc6da9430e0c0c7a44c2740b9235d0b73e9f81ae3febd83309`, it measured `fn-olog-transit-line-says-refused-iff-rejected` at 3,730,462 steps / 3.41 s; the complete book took 4,015,745 steps / 4.739 s. All 253 normalized local include-closure source hashes matched that manifest. Candidate digest: `ef63df5b4e8dc601cd3ac5dc777b4c985cd63fdcdda1f353bf22e733db749bb0` (parent source revision `bffa8b2c3ac0a5a2d98c2a362561082d0063fbf0`). The source delta adds one local lemma and changes hints on seven existing theorems; function definitions, theorem statements, hypotheses, rule classes, exports, and executable behavior are unchanged.
+
+The local abstraction proves that for a true-list `first` containing no space and a nonempty `rest`, `fn-olog-line-word` of the joined parts equals `first` (including an empty `first`, because the separator is then the first octet). Each of the seven existing keystones now keeps `fn-olog-join` opaque so this lemma discharges the first-word extraction; the existing class-word and outcome equations remain the semantic decisions.
+
+Warm validation used the one authorized hbox `proof_repl.py` session `luna-served-owner`, ACL2 `/tank/fn/toolchains/w28/acl2-literal-4g-tls64k`. The 15 dependencies missing from that cache were loaded from source inside local encapsulates; all others used matching cached certificates. After loading the source prefix, one resync sent the changed cluster:
+
+```sh
+python3 tools/proof_repl.py resync luna-served-owner books/owner-log.lisp \
+  --from fn-olog-served-post-line-says-accepted-iff-durable \
+  --through fn-olog-control-refusal-line-says-refused-iff-submit-refused \
+  --limit 20 --host hbox \
+  --acl2 /tank/fn/toolchains/w28/acl2-literal-4g-tls64k
+```
+
+Result: 14 forms, 0 refusals; 299,388 total steps / 0.71 s ACL2 time. The helper took 2,251 steps / 0.02 s. The seven unchanged keystones admitted at: served-post 1,706 / 0.01 s; control-post 422 / 0.01 s; transit 284,444 / 0.56 s; feed-reply 7,290 / 0.03 s; BP-app refusal 779 / 0.01 s; served refusal 98 / 0.01 s; control refusal 256 / 0.01 s. These are observed candidate costs, not a new matched speedup claim against the archived run. Other consumers include owner/native log writes and BP application output; ACL2 builds the lines in `host/owner-host.lisp`, `host/native/owner.lisp`, and `host/bp-native-app-host.lisp`. The packet is ready for Integration's source review and consumer certification; this lane did not certify or request closure.
+
+## Source assembly coherent proof patterns — GPT-6.1-Sol
+
+Source packet532f1eda2/a3a07b98e (CBOR),6e443d1af/e788b1c8d (BP),fdb4e3e7a (checkpoint),db2a0071b (owner log), plus774a7c607 evidence index only. Preserved Sol proof deputy primary whole-source AST review and existing warm admission evidence. Inspected pattern scope: explicit bound/preservation facts prevent repeated unfolding, checkpoint codec theory narrows to the local fact needing it, owner first-word proof uses one LOCAL join lemma. Four final book byte sequences exact producer match; original statements/guards/rule classes/executable definitions remain fixed, no source hunk conflict. Cumulative LANEDUMP conflict retains producer receipts and prior content. Existing CBOR archive verified; remaining packet archival/certification pending under Sol deputy/Integration, no fresh per-proof experiments. Scoped changed roots: books/cbor-invariants, books/bp-workflow-invariants, books/store-checkpoint-tables, books/owner-log; actual BP binding-core consumer was source admitted and may be included in combined root packet. No speed claim for checkpoint or neighboring simplification patches; no certificate/image claim.
+
+## Matching next-source certification and reports, 2026-10-03 08:44 UTC
+
+Reviewed source aggregate dcaaba23d landed as715a8778f; actual pipeline
+escape, torn no-retry, committer, observation, and six journal boundary
+checks pass. Discovery aggregate2a81 landed5d2626619. Actual typed
+abandonment extension5d2 landeddbf890a93; six schedules pass through
+registered creator, normal semantic counterparts, real fn-oqw, typed bank.
+Local ARM64 loads farm compiled files incompatibly and falls back to source;
+this is a native source witness, not matching certification on the laptop.
+Hint aggregatea091 landed e1ad0d875 after its primary Sol review, with
+unchanged non-hint forms. NSLICESQUEUE landed321bd7246.
+
+Frozen321 matching farm run20261003T083836Z-34d3 /
+certify20261003T083937Z-1180317 selects19 affected roots covering
+credential transport, four proof simplification books and consumers, and
+served dispatch/cursor consumers. Two jobs under one12GiB swarm scope.
+371 dependency books:125 matching cached,246 uncached. No lane closure or
+second image build. Report regeneration at321 succeeds:1460 declared,
+1408 dispatched,0 raw rule findings.234 prior certified rows become
+uncertified-at-current-digest, predominantly232 rows affected by CBOR
+leaf hint fanout; matching batch is outstanding. Generated projections
+are accurate, not a green source verdict.
+
+S097 BP send observation boundary, codex-sol-tools
+
+base named session refusal; indeterminate/core and unknown subclasses
+escape to the owner boundary without publishing a transport job result.
+The actual transfer index survives clearing the first socket; outer named
+refusal/OS results use ACL2 fn-bpfs-fragment-outcome, so a later failure
+after an accepted fragment remains uncertain. Both socket custody scopes
+use one private generated cleanup envelope preserving the escaping primary
+condition. No retention/allocator/source producer changes (Groundwork owns).
+
+First command: python3 -m unittest tests.test_native_bp_send_boundary
+Eight focused schedules pass1.490s before final scoped inventory rerun.
+Actual send function/macro/structures and ACL2 fragment normalization run;
+transport/session/plan answers recorded, not a real TCPCL/qualified image
+claim. Whole/fragment success, first-connect failed, later-connect uncertain,
+later named refusal uncertain, indeterminate first/later and cleanup faults,
+unknown Store subclass and core fault are distinguished. Known assertion
+marker alone yields defect red; other raw failures remain infrastructure.
+Scoped new fixture inventory has zero stale/unresolved calls. No broad
+qualification or historical BP retry started.
+
+Final eight S097 schedules pass1.571s after scoped fixture inventory. Exact
+Store-class witness red/basec3585ba3a and green/head4b4957525, same harness
+with no infra/skips. Archived S097-df5dcf6e6c3742818b3dac8a07824411.json
+sha256e5995a66db0207837067beab12d98213bfa4a761390fde9c2ab17640d5743973.
+Separate designated later-fragment prefix witness follows; no source change.
+
+Second S097 witness for accepted-prefix uncertainty red/basec3585ba3a,
+green/headd7863d4a1, same harness/no infra/skips. Archived
+S097-23a58fd6279d4748ab51c6e5da07e0a8.json sha256
+b2b6030f5443522a90c35bf96f148d53f5bd90a69e1210e0fe47766f71e33097.
+Final fixture strengthens custody observation to assert every successfully
+opened socket is recorded closed (including later fragments), rather than
+only checking the first when a close event happened.
+
+
+## Sol source assembly — BP identity route and send boundary
+
+READY aggregate source inputs 7c6d135f3 + 4b4957525/d7863d4a1/5022d65bf.
+Actual owner retention event reaches the declared dynamic callback through
+advance-frontier/log-reserve; fn-owner-identity-reservation derives purpose,
+protects release debt and installs the one-shot grant consumed by preparation.
+The gate precedes kernel/reservation/frontier effects; ordinary owner calls
+use NIL and standalone Store retains its successor route. Source fixture
+checks routing/order with recording ACL2 boundaries, not grant realization.
+BP send preserves serious Store/core/unknown faults through both socket
+cleanup boundaries; later failed fragment transfer uses actual ACL2
+fn-bpfs-fragment-outcome with its transfer index after first socket clears.
+Source/test bytes match producers. Python/JSON parse and diff check pass;
+both S097 evidence archive objects verify. Reuse completed narrow producer
+routing and eight focused send schedules; no duplicate experiments/image.
+First selectors: sbcl --script tests/native_retention_identity_route_raw.lisp;
+python3 -m unittest tests.test_native_bp_send_boundary. Matching-image BP
+undertake/release/reopen, ordinary POST and fragment send remain Integration.
+Observer activation 983f199 is a separate staged prerequisite awaiting the
+shared Elock/actual extent consumer and is excluded from this patch commit.
 ## Astra source trace — AWAIT-COMPLETION-LIFETIME (2026-10-03)
 
 Following the syncer reply into both caller consumers exposed two connected
@@ -683,3 +945,176 @@ not establish a syncer outcome downgrade. Cold cancellation updates the issued
 token under extent lock; the child only fills its private slot, and owner
 settlement decides cache publication. No child path reinstalls a mux plan.
 Broader finish cleanup debt remains Runtime-owned; no repair claim here.
+
+## Sol source assembly — logical await lifetime
+
+READY 24b7a84d1 composed without source edits over integrated S081/syncer
+custody and separate BP identity/send packet. Astra/Runtime primary review
+retained; only overlap checked. The existing deliver/mailbox sites and mux
+terminal site remain intact around the added abandonment helper and timeout
+mutex reacquisition. Their other physical custody callbacks are unchanged.
+Exact producer fixture bytes retained; archive 922b8a59da41 verifies, SCN-1088
+claim check passes, source/spec/scenario composition has no code conflict.
+Reuse same-harness timed wait, late result, callback/raw unwind/mux schedules.
+First runnable selector tests/test_native_await_lifetime_raw.sh; matching
+image and wider mux finish cleanup are distinct remaining obligations.
+
+
+## Sol source assembly — matching BP producer/trace fixture
+
+READY independent fixture inputs 3716a9926 -> fa9e9ef19 -> 5afc1e275.
+Same published source checked before mutation; actual native NNTP POST and
+ACL2 stored-source inspection feed subject/ADU/FNWF construction. Literal
+ASCII Message-ID travels through argv rather than Python bytes repr. Native
+exit observations remain distinct in transfer trace. No production code or
+model decision changes. Exact producer bytes and Python/diff checks pass;
+three focused resilience BP control tests pass in assembled source. Historical
+POST240/stored-source evidence stopped at retention refusal, not peer recovery.
+First matching-image selector: python3 -m tools.resilience.adapters.bp_node
+--image DEVELOPER --producer-image MATCHING_DEFAULT --variant lose-completion.
+Replay after actual retention repair remains Integration's source/image task.
+Final source replay uses one encapsulate, dropping locals:30forms,2.14 ACL2 s,
+1,513,918 steps.15 test forms652 steps: sparse misses, actual first successful
+decision, excluded wildcard, first-zero duplicate, overflow number, invalid ID,
+empty settlement and offset-invariant hypothesis removal. Guards verified.
+Strict scoped theory/book-order check and diff check pass. Test-root check
+requires new selector test in Makefile ACL2_BOOKS; inherited cursor/plan tests
+also lack entries at this base. Served owns consumer/controller integration,
+registry/spec/scenario and root wiring with Integration. No certificate/native
+or composed served claim yet. Evidence archived/indexed under
+planning/evidence/dc03-selector-20261003/{checks.json,selector-repl.log.gz}.
+
+## Clean serializer proof repair (2026-10-03)
+
+Integration frozen321 certification refused FN-SL-LOOP-RESIDUAL: the warm
+catalog world had supplied accumulator algebra absent in the clean book.
+Three new LOCAL facts establish append/revappend normalization, accumulator
+length and true-list output. Existing executable functions and public theorem
+statements unchanged. Clean replay also exposed/fixed the next byte-bound gap.
+
+Fresh hbox dc03-serializer-clean loaded nntp-session from matching certificates
+and def-cursor from source inside encapsulate, no catalog events. Replayed the
+entire assembled serializer (7636b9078 book hash c7e9fddc plus this local patch,
+composed hash9a3b2c7d) from fn-sl-make inside one encapsulate:49forms,0.33ACL2s,
+94,114steps; local events dropped. Residual/byte/list/shape/cell proofs and guards
+pass. Scoped strict theory/book-order and diff checks pass. Evidence archived
+and indexed at planning/evidence/dc03-serializer-clean-20261003/{checks.json,repl.log.gz}.
+No certificate claim here: Integration reuses241passed artifacts and retries
+the exact five failed roots on its next repaired candidate.
+
+Source prerequisite 0fa276f82 staged as983f199; shared seam inputs
+8b777bf9f -> e60d9f0d2 -> 09c7e72a3 now composed without code conflicts.
+Single macro/dynamic variable declarations live in io before extent compiles;
+owner collector functions remain runtime-installed before observed startup.
+Inactive early consumer invokes no late owner helper (actual source fixture
+failed before conditional ROW completion and passed after). Physical SBCL
+options/values and acquire-under-lock/release-after-unlock protocol retained.
+Producer exact fixture bytes, JSON and diffcheck pass; reuse completed
+0.14s actual observer fixture and six literal HM producer packets.
+This prerequisite does not supply full PageIO comparison: extent executor
+condition waits implicitly release/reacquire E; Empirical excludes those
+coarse spans and marks full trace unavailable. Actual extent consumer pending.
+First selector tests/test_native_observation_raw.sh, no image claim.
+
+---
+
+# Proof engineering deputy — GPT-6.1-Sol
+
+Source base: `bffa8b2c3ac0a5a2d98c2a362561082d0063fbf0`. No runtime image or deployment claim.
+
+Four GPT-6-Luna/high children own disjoint inventory families: foundations, persistence, served, transport. Inventory is generated by `python3 tools/proof_sweep.py --output build/proof-sweep/inventory.json`. It uses the existing ledger parser and retains all project Lisp source paths, modeled named theorem/logic admission/guard/explicit verification events, source digests, source classes and external/opaque exclusions. Source scanning is not semantic review or admission. Per-event result overlays retain inspected/no-change/candidate/tested/blocked/unvisited separately.
+
+The initial hbox experimental budget is ONE process, granted by Integration; session `luna-cbor-u64-20261003`, configured w28 literal TLS64k ACL2 through proof_repl/swarm-build. Other children inspect source and historical archived costs without starting ACL2. Laptop sessions predate cloud and are untouched. No lane closure or image run.
+
+Active owner boundaries: Groundwork host-model/machine/host-page adapters; Foundations def-cost/resource exec/syncer; Served cursor/protocol declarations; Runtime committer/owner/oqw/failure-scope. Overlapping suggestions go to owners; sweep adds no qualification gate.
+
+First scoped candidates: CBOR u64 roundtrip, BP recovery pending recognizer preservation, NNTP pinned auth dispatcher consistency. Historical costs are leads until exact current closure/toolchain/prefix reproduction. Store-node relation/structural implication was inspected and rejected as a cost lead because its conclusion is literally the first relation conjunct; no change proposed.
+
+Tracker: `planning/repair/items/PROOF-SWEEP-20261003.json`. Real tested batches flow through source assembly and Integration while coverage continues.
+
+
+## Sol source assembly — next admitted proof/tool packet
+
+READY source inputs de16d811c/cd9a56e7c (BP sequence persistence/fidelity),
+ONLY store-checkpoint-buffer from43c180956; arena-writer is excluded because
+its prerequisite source guard fails before the target. Sol proof deputy's
+whole-book AST primary review and necessary warm admissions are retained,
+no repeated proof experiment or speed claim. Exact final three-book bytes
+match producers. Scoped roots are these three books and existing sequence
+persistence/fidelity and checkpoint-buffer ACL2 tests; Integration certifies.
+Census tool/tracker bf2e13283/d2b90825b/b3e2ebc74/e37f34bbd/8c4c266c2
+assembled independently without corpus rerun. Review overlays whitelist
+annotations and bind book-wide tested status to its exact source digest;
+source facts stay immutable. Python/JSON/diffcheck and exact tool bytes pass.
+Existing checkpoint tar, admitted packet tar and CBOR bounds receipt archive
+verify; include only5ca08a7ea evidence index line for prior bounds event.
+Source/admission evidence is separate from scoped certificates and images.
+S112 removed-peer journal custody, codex-sol-tools
+Actual pull worker/catch-up tick prune cached journals only when the existing
+ACL2 fn-pull-plan-for says the peer has no current plan. Cached cursors drop
+with descriptor custody; returning cursor-for goes through its existing
+open/replay path. Both kinds share one private pruning function. A close
+fault attempts every retired descriptor before escaping; cache removal
+precedes close so a nil descriptor cannot be reused by a later round.
+
+Necessary adjacent ACL2 schedule fix: fn-pull-schedule previously only added
+plans and retained removed peer entries indefinitely, so a retired first-due
+peer could block/fault every later round. New tail-recursive live filter
+uses actual plan-for, then existing configure preserves live next/busy state
+and updates interval. Returning peers admit fresh due state. No new operator
+cap, parallel worker, deadline policy or host plan semantics.
+
+First command: python3 -m unittest tests.test_native_pull_journal_registry
+Three fd/cursor schedules pass0.861s after scoped generated trap inventory
+(one unexpected-round trap). Standalone actual ACL2 schedule case added.
+Actual worker/tick/cursor-for, schedule functions and kernel descriptors/close
+run; new-open/replay leaf records invocation, not a codec or saved-image
+claim. Assertion observed during loop BEFORE ordinary worker exit cleanup,
+so old final cleanup cannot falsely make removal look repaired. ACL2 finite
+assertions added to existing peer-pull tests; book/test certification pending
+next combined Integration cut, no standalone cert/image launched here.
+
+Final four S112 schedules pass1.217s; intended descriptor assertion
+red/base5022d65bf and green/head4301f4a08, same harness/no infra/skips.
+Archived S112-dcccaf2ad4374c4cb5132f14ce1de6ba.json sha256
+35473cb941e07a1a91817625ea10f82b9121f16a0c07a5e10e779561aaa52f57.
+Separate actual ACL2 schedule red/green witness follows, no source change.
+
+Separate S112 schedule assertion red/base5022d65bf and green/headcb4ee3b9d,
+same harness/no infra/skips. Archived S112-dba6fbba614c4a038dc7f1a2fdf4b913.json
+sha256861c0aca2de97ce148507637e91346f427e20bd8d9032f7841eda058d0ea8717.
+State remains in-progress for matching combined certification/consumer.
+S054/S067/S106 serial slow-peer starvation remains open; schedule removal
+does not introduce an overall round deadline or a fair round continuation.
+
+
+## Sol source assembly — removed pull peers
+
+READY S112 inputs4301f4a08/cb4ee3b9d/d23582fad, dependency integrated S097
+5022d65bf only (no new owner/mux prerequisite). Actual current ACL2 plan
+lookup selects retired FNPL/FNCU cache entries; drop them/cursors before
+closing every retired descriptor and rethrowing the first close fault.
+Returning peers use existing open/replay; raw witness records that leaf and
+does not establish actual saved-image replay. Changed ACL2 schedule removes
+retired keys before due selection, retaining live next/busy and updating
+interval through existing fn-sched-pull-configure. Background worker owns
+these caches; no interrupted round is settled by the prune.
+Code applies cleanly, only LANEDUMP conflict preserved. Final source/test
+bytes exactly producer, Python/JSON/diff checks pass; both S112 same-harness
+red/green receipt objects verify. Reuse four focused raw schedules1.217s.
+First runnable selector python3 -m unittest tests.test_native_pull_journal_registry.
+Next combined cert needs books/peer-pull.lisp + tests/acl2/peer-pull-tests.lisp;
+current321 verdict cannot transfer. S054/S067/S106 starvation remains open.
+
+
+## Sol source assembly — identity result vocabulary follow-up
+
+Groundwork b55f79ff5 follows integrated BP identity route. Review caught
+active owner NIL still accepted as exhaustion; Groundwork confirmed actual
+producer returns NAT/four named tags and authorized the exact correction.
+Refusal is now only those tags or standalone successor NIL; unknown keywords
+and active callback NIL fault before allocator effects. Added active NIL
+witness and ran actual-source routing fixture PASS because bytes changed.
+Receipt records source base/delta plus exact source/fixture digests, command
+and narrow recording-boundary scope; archive/index supplied. No book or
+semantic decision changed, saved-image undertaking/release/reopen remains.

@@ -2052,13 +2052,15 @@
         "A: store with STARTTLS, `[auth] required = true, protected_only = true`, `principal set-password nodeB`; two articles posted with `operator post`. B: `peer add A a.pull.example.invalid 127.0.0.1 PORT fn.* fn.* source-address 127.0.0.9 PROFILE false false starttls localhost A-CERT`, `peer pull A 2`, PROFILE = FNAUTH1 nodeB and its password; a recording proxy in front of A.",
         "The same with PROFILE naming a login A does not hold.",
         "The same with no security arguments (a clear transport) and the permission false.",
-        "Packet 5's campaign over the TLS transport: FN_PULL_TEST_KILL=CUT:N at before-write, after-write and after-fsync of appends 1 and 2, restart without the fault."
+        "Packet 5's campaign over the TLS transport: FN_PULL_TEST_KILL=CUT:N at before-write, after-write and after-fsync of appends 1 and 2, restart without the fault.",
+        "The TLS pull with its local profile changed to mode 0644 before B starts."
       ],
       "expected": [
         "Both articles stored once at B; B logs `pull peer=A round=done cursor=advanced transport=tls`; the proxy's first plaintext command is STARTTLS and it sees no AUTHINFO, DATE, NEWNEWS or ARTICLE in the clear.",
         "B logs `round=failed cursor=held at=preamble` for every round, stores nothing, and its FNPL journal stays at the first-instant record.",
         "B logs `round=failed cursor=held refused=clear-credential` for every round and the proxy accepts no connection.",
-        "At every cut every article is stored exactly once at B and a later round logs `cursor=advanced transport=tls`."
+        "At every cut every article is stored exactly once at B and a later round logs `cursor=advanced transport=tls`.",
+        "B names the ACL2 credential outcome, holds its cursor with refused=profile, stays live and the recording proxy accepts no connection; native credential case requires matching new source/image evidence."
       ],
       "evidence": [
         "planning/evidence/peering-tls-pull-2026-09-26.md",
@@ -2071,7 +2073,8 @@
           "test_tls_pull_as_its_own_principal",
           "test_wrong_principal_is_refused_by_the_serving_node",
           "test_clear_credential_is_refused_before_any_connection",
-          "test_cursor_publication_cuts_over_tls"
+          "test_cursor_publication_cuts_over_tls",
+          "test_unreadable_credential_refuses_before_any_connection"
         ],
         "native": true,
         "log": "planning/evidence/peering-tls-pull-2026-09-26/native-peer-pull.log",
@@ -8246,7 +8249,8 @@
       "evidence": [
         "books/host-model-machine.lisp",
         "tests/acl2/host-model-tests.lisp",
-        "planning/evidence/manifests/certify-20261003T062320Z-3305.json"
+        "planning/evidence/manifests/certify-20261003T062320Z-3305.json",
+        "planning/evidence/manifests/certify-20261003T080416Z-85944.json"
       ],
       "execution_scope": "ACL2 actual direct host-called subjects within concurrent reference schedules; native bridge and funded-pool extension remain owed."
     },
@@ -8394,6 +8398,32 @@
         "tests/native_await_lifetime_raw.lisp"
       ],
       "execution_scope": "Actual deployed native wait/mailbox/mux-finish bodies with real SBCL threads, mutexes and condition timeout; recording socket/owner cleanup boundaries. Saved-image/runtime qualification remains Integration work."
+    },
+    {
+      "id": "SCN-1086",
+      "title": "Actual reclaim prediction returns intern rows and arena effect only under its no-bad premise",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017"
+      ],
+      "steps": [
+        "Build retained and record rows over a nonempty arena; execute actual prediction and sealing and compare the complete intern result.",
+        "Insert :bad after a valid record; affirm the omitted no-bad premise fails and complete result/effect equality fails."
+      ],
+      "expected": [
+        "The full result agrees on reachable valid rows.",
+        "Partial interning before refusal distinguishes the no-bad omission; an immediate :bad alone is not a counterexample.",
+        "These teeth do not establish native reclamation progress or bounded memory funding."
+      ],
+      "implementation": {
+        "test": "tests/acl2/owner-reclaim-seal-tests.lisp"
+      },
+      "evidence": [
+        "host/owner-host.lisp",
+        "tests/acl2/owner-reclaim-seal-tests.lisp"
+      ],
+      "execution_scope": "Literal ACL2 boundary subjects; host theorem qualified by actual LD, new teeth matching qualification pending."
     }
   ]
 }

@@ -102,7 +102,14 @@ defconst becomes a defparameter and its defun loses its xargs declaration."
 (defun fnn-owner-action (name &rest args) (declare (ignore name args)) nil)
 
 (load-deployed-forms "host/native/owner.lisp"
-                     '((defvar *fnn-owner-measure*)
+                     '((defstruct (fnn-native-observation-row (:constructor %make-fnn-native-observation-row)))
+                       (defstruct (fnn-native-observation (:constructor %make-fnn-native-observation)))
+                       (defvar *fnn-native-observer*) (defvar *fnn-native-actor-identity*)
+                       (defun fnn-native-observation-create) (defun fnn-native-reserve-thread-identity)
+                       (defun fnn-native-observed-thread-thunk) (defun fnn-native-observation-reserve)
+                       (defun fnn-native-observe) (defun fnn-native-observation-complete)
+                       (defun fnn-native-observation-events) (defmacro fnn-with-observed-owner)
+                       (defvar *fnn-owner-measure*)
                        (defvar *fnn-owner-measure-label*)
                        (defmacro fnn-owner-measured)
                        (defvar *fnn-boundary-outcome*)

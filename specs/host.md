@@ -1836,5 +1836,18 @@ worker's terminal cleanup physically ends. The feed's exact-class failure
 boundary scopes a known stopping refusal while an unknown subclass remains a
 fault. A late cleanup fault always reaches ACL2's monotone stop lattice:
 graceful stop can escalate, and an existing uncertain outcome remains dominant.
+The irreversible fault entry takes owner exclusion directly, as the stop entry
+does. An aborted scheduler cannot intercept this fence or its caller's terminal
+cleanup; the first fault text is captured under that same owner exclusion.
 The local thread schedules stub socket effects; next-due scheduling, the wait
 boundary and full served-image correspondence remain open.
+The record-log allocator carries the composed owner's identity reservation
+callback through `fnn-advance-frontier` to `fnn-log-reserve`. The callback is
+dynamically bound before an owner publication; ACL2 derives the reservation
+purpose and protected release debt. A retention publication passes its exact
+ACL2-authored five-field event, producing the one-shot grant consumed by
+`fn-owner-prepare-retention`. Refused or malformed gate results precede log
+kernel, owner reservation and frontier effects. Standalone Store reservations
+retain the existing codec successor route. The source routing fixture
+`tests/native_retention_identity_route_raw.lisp` checks these calls and order;
+a matching native BP undertake/release/reopen scenario remains required.
