@@ -641,6 +641,9 @@ class NativeOwnerTests(unittest.TestCase):
         first, final = writer.post(self.article(message_id))
         self.assertTrue(first.startswith(b"340 "), first)
         self.assertTrue(final.startswith(b"240 "), final)
+        accepted_answer, accepted_bytes = writer.multiline(b"ARTICLE " + message_id)
+        self.assertTrue(accepted_answer.startswith(b"220 "), accepted_answer)
+        self.assertIn(b"\r\n\r\nnative owner body\r\n", accepted_bytes)
         self.assertTrue(writer.command(b"QUIT").startswith(b"205 "))
         self.node.stop(process=process)
         trace = process.stderr.since(0)
@@ -677,6 +680,7 @@ class NativeOwnerTests(unittest.TestCase):
         answer, received = reader.multiline(b"ARTICLE " + message_id)
         self.assertTrue(answer.startswith(b"220 "), answer)
         self.assertIn(b"Message-ID: " + message_id + b"\r\n", received)
+        self.assertEqual(received, accepted_bytes)
         self.assertTrue(reader.command(b"QUIT").startswith(b"205 "))
         self.node.stop(process=restarted)
 
