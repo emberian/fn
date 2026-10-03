@@ -192,7 +192,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **maintenance: compaction and reclaim over the record log.** `operator CONFIG store compact` checkpoints the store with the log rotated and drops the segments the checkpoint covers, and `store reclaim` checkpoints exactly the reclaiming pack's rewrite of the committed history (a held article is never touched), both decided in ACL2 over the one store format, 9.
 
 - Host-called subject: `fn-lgr-decide-stream` at host/checkpoint-host.lisp:214, equated by `fn-lgr-decide-stream-is-lgr-decide` (books/store-log-reclaim.lisp:96).
-- Keystone: `fn-lgr-decide-checkpoints-the-rewrite` (books/store-log-reclaim.lisp:46; PRF-271 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20261003T041156Z-3987839` (earliest archived).
+- Keystone: `fn-lgr-decide-checkpoints-the-rewrite` (books/store-log-reclaim.lisp:46; PRF-271 (certified)); certified at the current source and closure by `certify-20261003T041156Z-3987839` (earliest archived).
 - Tested: lane image of `10674f330` ([log-recovery-2026-09-27](evidence/log-recovery-2026-09-27.md)), profile developer and production lane images (s2c): log_compaction 7/7 (rotation and drop kill cuts, reclaim, refusals), store_export 4/4; not a shared qualification.
 - Deployed: no: node image `a3553e6b`; changed since it: `host/checkpoint-host.lisp`.
 - Latest positive result: log_compaction 7/7 and store_export 4/4 on both lane images; a 40,000-article compact 40-139 s at 4.7 GB, from 2,963 s and 16.4 GB on the per-file layout ([log-recovery](evidence/log-recovery-2026-09-27.md)); the verb's own open streams the log since log-open-stream.
