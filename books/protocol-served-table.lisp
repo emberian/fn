@@ -773,9 +773,75 @@
    :teeth ("XPAT Subject 1-3 *" "XPAT Subject 2 *b*" "XPAT Subject <b@x> *" "XPAT Subject 1-3" "XPAT"))
   ("LIST"
    :view :pinned :view-decided (:completed "PRF-1237") :effect :none
-   :view-rfc "NNT-042 today (ACTIVE and COUNTS: the pinned groups and summaries; NEWSGROUPS, SUBSCRIPTIONS, MOTD and ACTIVE.TIMES: the pinned groups and the pinned configuration); decided 2026-10-02 (build/coordinator/decisions/list-view-2026-10-02.md): LIST, ACTIVE and COUNTS answer the latest completed durable view, the pin unmoved; NEWSGROUPS and ACTIVE.TIMES under consultation c07; RFC 3977 7.6.1, 7.6.3; RFC 6048 2.2.2")
+   :view-rfc "NNT-042 today (ACTIVE and COUNTS: the pinned groups and summaries; NEWSGROUPS, SUBSCRIPTIONS, MOTD and ACTIVE.TIMES: the pinned groups and the pinned configuration); decided 2026-10-02 (build/coordinator/decisions/list-view-2026-10-02.md): LIST, ACTIVE and COUNTS answer the latest completed durable view, the pin unmoved; NEWSGROUPS and ACTIVE.TIMES under consultation c07; RFC 3977 7.6.1, 7.6.3; RFC 6048 2.2.2"
+   :forms (("xref" :test (fn-nntp-xref-reply-cat session archive index env keyword args v fn-arena fn-cat)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
+                 (:instance fn-nntp-xref-reply-col-is-xref-reply)
+                 (:instance fn-proto-statep-article-listp)
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-proto-pin-buckets-are-built)))
+           ("counts" :test (and (fn-gidx-pinp index) (consp args)
+                                (fn-nntp-keyword-tokenp (car args))
+                                (fn-nntp-keywordp (car args) "COUNTS"))
+            :cat (fn-nntp-list-counts-command-cat session archive (fn-nntp-env-closed env)
+                                                 (cdr args) v fn-cat)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
+                 (:instance fn-nntp-xref-reply-col-is-xref-reply)
+                 (:instance fn-proto-statep-article-listp)
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-proto-pin-buckets-are-built)
+                 (:instance fn-nntp-list-counts-command-cat-is-archive
+                            (closed (fn-nntp-env-closed env)) (args (cdr args)))
+                 (:instance fn-scat-gidx-list-counts-is-fold
+                            (buckets (fn-gidx-pin-buckets index))
+                            (closed (fn-nntp-env-closed env)) (args (cdr args)))))
+           ("compatibility" :test (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
+                 (:instance fn-nntp-xref-reply-col-is-xref-reply)
+                 (:instance fn-proto-statep-article-listp)
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-proto-pin-buckets-are-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
+           ("active" :test (fn-scat-list-active-formp args)
+            :cat (fn-nntp-list-active-cat session archive (fn-nntp-env-closed env) args v fn-cat)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
+                 (:instance fn-nntp-xref-reply-col-is-xref-reply)
+                 (:instance fn-proto-statep-article-listp)
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-proto-pin-buckets-are-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)
+                 (:instance fn-nntp-list-active-cat-is-list-command)))
+           ("other" :test t
+            :cat (fn-nntp-archive-command session archive env keyword args fn-arena)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
+                 (:instance fn-nntp-xref-reply-col-is-xref-reply)
+                 (:instance fn-proto-statep-article-listp)
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-proto-pin-buckets-are-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply))))
+   :cost (:unrestricted "ACTIVE and COUNTS use carried group summaries with configured-group walks; compatibility and other variants walk pinned listing/creation facts; whole reply allocated"
+          :restricted "pinned group bucket COUNTS or the reference archive/listing walks; whole reply allocated")
+   :teeth ("LIST" "LIST ACTIVE" "LIST ACTIVE fn.*" "LIST COUNTS" "LIST COUNTS fn.test"
+           "LIST OVERVIEW.FMT" "LIST ACTIVE.TIMES" "LIST SUBSCRIPTIONS" "LIST NEWSGROUPS"
+           "LIST MOTD" "LIST UNKNOWN" "LIST ACTIVE a b"))
   ("NEWGROUPS"
-   :view :pinned :view-decided (:completed "PRF-1237") :effect :none :view-rfc "NNT-042 by silence today (the pinned creation facts filtered to the pinned groups); decided c07 B: the completed discovery snapshot; RFC 3977 7.3")
+   :view :pinned :view-decided (:completed "PRF-1237") :effect :none :view-rfc "NNT-042 by silence today (the pinned creation facts filtered to the pinned groups); decided c07 B: the completed discovery snapshot; RFC 3977 7.3"
+   :forms (("compatibility" :test (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
+            :view :pinned :effect :none
+            :by ((:instance fn-rcompat-reply-cat-is-rcompat-reply)))
+           ("other" :test t
+            :cat (fn-nntp-archive-command session archive env keyword args fn-arena)
+            :view :pinned :effect :none
+            :by ((:instance fn-rcompat-reply-cat-is-rcompat-reply))))
+   :cost (:unrestricted "creation-fact and configured-group walks over the pinned environment and archive; whole reply allocated"
+          :restricted "the same pinned creation-fact and configured-group walks; whole reply allocated")
+   :teeth ("NEWGROUPS 20261001 000000 GMT" "NEWGROUPS 20261001 000000"
+           "NEWGROUPS 261001 000000 GMT" "NEWGROUPS" "NEWGROUPS 20261001 000000 BAD"))
   ("NEWNEWS"
    :view :pinned :view-decided (:completed "PRF-1237") :effect :none :view-rfc "NNT-042 by silence today (the pinned article root retained across one-candidate quanta); decided c07 C: one completed discovery snapshot captured at the first quantum and held across quanta; RFC 3977 7.4"
    :quantum (:cursor fn-nnw-meta-effectp)

@@ -86,3 +86,38 @@ factory proves it. Full string coerce is only disabled logical residual, never
 plan output execution. Physical cell allocation recurrence, shape invariant and
 per-CID tariff remain follow-through with Foundations; init group list and
 wildmat/name/membership work remain unknown. No certificate/native claim.
+
+## DC03 discovery continuation (2026-10-03)
+
+Merged Served985be0c14 in isolated tree (767fbf3a7), preserving both lane records
+and Served's NEWNEWS cursor reachability predicate. LIST now declares Xref,
+COUNTS, compatibility, active and other forms; NEWGROUPS declares compatibility
+and other forms. Existing pinned semantics and PRF-1237 completed-view debt remain
+explicit. No new formal, helper export, behavior, or NEWNEWS/OVER/HDR/XPAT edit.
+
+DATE finding agreed with Served: it is already a :dispatch :session declaration
+in protocol-table, whose :arms generate fn-nntp-session-command. The archive
+reference has no DATE arm and falls through to STAT retrieval. A DATE catalog
+form would be unreachable in composition, so none was added. New DATE teeth
+assert the actual session route's entire 111 reply, equality to fn-nntp-date-response
+and the restricted command route, plus syntax/missing-clock refusals.
+
+Narrow live verdict (hbox dc03-discovery): protocol-served #12–51 40/40,
+1.93 ACL2 seconds / 500,442 steps; generated form/row event 1.51 s / 479,519;
+all guards pass. Kept that warm world for teeth: loaded only the exact existing
+fn-scr-command source event and three fn-pix command/retrieval definitions needed
+by the command-layer witness (no source twins or full TLS/span replay);
+fn-scr-command guards 918 steps. Complete teeth #5–68 64/64, 0.12 s / 1,854 steps.
+New discovery positive (188 steps) asserts full boundary hypotheses and conclusion
+with valid configured creation/listing facts, both server contexts and both routes;
+DATE session positive 120 steps. Prefix setup alone was 128.77 s / 36,354,221 steps.
+
+protocol_emit --check passes 34 rows/304 replies with unchanged 10 policy debts;
+docs_check --write passes and regenerates the served spec table. No new IDs.
+No repeat full-report pipeline, certificate, image or deployment claim. Integration
+owns generated registry/ledger assembly and coordinated certification; Served owns
+remaining HDR/XHDR declarations and hand-fallthrough removal. Bounded NEWNEWS
+selector follow-through is a separately assigned next seam, not changed here.
+
+Evidence is archived/indexed under planning/evidence/dc03-discovery-20261003:
+command-repl.log.gz and checks.json, including current subject/consumer file hashes.
