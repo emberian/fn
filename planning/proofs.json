@@ -23109,16 +23109,24 @@
       "status": "planned",
       "files": [
         "books/peer-flight-reservation.lisp",
-        "tests/acl2/peer-flight-reservation-tests.lisp"
+        "tests/acl2/peer-flight-reservation-tests.lisp",
+        "books/peer-flight-profile.lisp",
+        "books/peer-flight-startup.lisp",
+        "tests/acl2/peer-flight-profile-tests.lisp",
+        "tests/acl2/peer-flight-startup-tests.lisp"
       ],
       "events": [
         "fn-pfr-accepted-launch-fits-machine",
         "fn-pfr-held-startup-fits-capture"
       ],
       "evidence": [
-        "tests/acl2/peer-flight-reservation-tests.lisp"
+        "tests/acl2/peer-flight-reservation-tests.lisp",
+        "books/peer-flight-profile.lisp",
+        "books/peer-flight-startup.lisp",
+        "tests/acl2/peer-flight-profile-tests.lisp",
+        "tests/acl2/peer-flight-startup-tests.lisp"
       ],
-      "progress_note": "Selected source definitions/guards and both numerical keystones pass in retained actual bank/heap world. Literal machine-fit/startup teeth and fresh private local-stobj flight/work exhaustion/settlement fixture pass. Profile codec, protected DEFAULT composition and actual Bounds worker custody are in progress. No certificate/native complete funding claim."
+      "progress_note": "Selected source definitions/guards and both numerical keystones pass in retained actual bank/heap world. Literal machine-fit/startup teeth and fresh private local-stobj flight/work exhaustion/settlement fixture pass. Profile codec, protected DEFAULT composition and actual Bounds worker custody are in progress. No certificate/native complete funding claim. Updated actual source guards pass for signed-off_t quota, real two buffer wrappers/empty backing, inert 52-byte codec and DEFAULT peer protection. Four codec adversarial/boundary witnesses and composed disjoint heap fixture pass. Generic codec round-trip and general DEFAULT partition theorem remain owed; actual native profile capture/worker consumer are being composed."
     }
   ]
 }

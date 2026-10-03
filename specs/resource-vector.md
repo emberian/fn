@@ -723,3 +723,20 @@ still require the concrete consumer representation. The flight lease survives
 peer ACK, local response, timeout and cancellation. Settlement requires actual
 worker return/join, physical socket closure, spool cleanup and no future
 publication or owner-close callback custody. Bounds owns the real spool driver.
+
+The optional `peer-flight-profile` file in the Store root is exactly `FNP1`
+followed by six big-endian u64 fields in policy order, using the existing
+catchup codec. The read bound includes one trailing byte to detect malformed
+extra content. Absence gives no authority; malformed or unsupported fields
+refuse. A spool allowance must be below 2^63, matching actual signed `off_t`
+I/O; a u64 policy that native seeks cannot represent is rejected before install.
+The selected storage inventory also includes both native octet wrappers and
+their discarded empty arrays, without assuming collection has occurred.
+
+`fn-prstartup-default-plan-with-peer` is additive to the existing twelve-input
+DEFAULT API: its final argument is the captured peer policy. It protects the
+peer heap before selecting page-table backing, and `fn-prstartup-peer-grant`
+checks the other bank's actual selected heap allowance before independent
+peer install. The old wrapper remains available for callers without peer
+authority. Generic codec round-trip and complete composed allocation bounds
+remain proof obligations; source fixtures are not physical qualification.
