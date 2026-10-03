@@ -2,11 +2,14 @@
  "category": "local",
  "file": "tools/lock_discipline_baseline.json",
  "id": "BM07",
- "notes": [],
- "owner": "dev-serves",
+ "notes": [
+  "10-02 23:54 ONE-TIME capture of the merge-all lock_discipline findings (coordinator, 2026-10-03); the baseline only goes down from here. Ownership: every R7/R4/R8 row (failure routing, lifecycle) at owner/mux/extent/io section sites -> WRAPPER (agent a94fbc4bd3c2c2707), lowered per conversion; other new rows (R10 closes, R1/R2) -> DEV-SERVES.",
+  "10-03 00:16 dev-serves 2026-10-03: R10/R1/R2 rows are dev-serves' (runner split); none burned down yet"
+ ],
+ "owner": "wrapper",
  "severity": "medium",
  "source": "dev-serves",
  "state": "open",
  "title": "lock_discipline baseline RAISED by the post-merge rebaseline (dev-serves, --initial): weight 1495 -> 1609; rows grown by the BM merge that are not line moves include R2 fnn-owner-stop-service-locked socket-shutdown under O (110), fnn-owner-feed-append-locked probe-file/sleep under O (30), fnn-owner-batch-fence probe-file/sleep under O (12), fnn-mux-* writes/closes under M, R5 unresolved lock objects (mux slot lock, feed journal lock), and ~30 R7 swallow rows in publish-captured/web-serve/cold-settle/mux-finish; each needs a fix or a contracts declaration, then --write-baseline lowers it",
- "updated": "2026-10-03T03:22:35Z"
+ "updated": "2026-10-03T04:16:46Z"
 }

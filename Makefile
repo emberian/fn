@@ -2369,7 +2369,16 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/substrate-committed-row-tests \
     tests/acl2/substrate-commit-codec-gap-tests \
     books/tcpcl-session-carried \
-    books/owner-retain-carried
+    books/owner-retain-carried \
+    tests/acl2/catalog-dense-map-tests \
+    tests/acl2/config-owner-live-authorize-carried-tests \
+    tests/acl2/def-representation-late-world-tests \
+    tests/acl2/def-representation-paged-tests \
+    tests/acl2/native-control-kinds-tests \
+    tests/acl2/newnews-cursor-tests \
+    tests/acl2/owner-prepare-deferred-carried-tests \
+    tests/acl2/owner-prepare-deferred-carried-owner-tests \
+    tests/acl2/withdrawal-index-carried-tests
 
 .PHONY: host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
