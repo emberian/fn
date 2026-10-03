@@ -1056,3 +1056,12 @@ head51c5c4f2e executes the identical designated ID successfully in0.827s,
 no infrastructure/errors/skips. Scope/budget checks pass (1382 changedlines).
 The raw fixture does not execute real protocol codecs or durable barriers;
 certification and prepared actual-node body scenario remain pending.
+
+
+Fixture follow-through632a3533d loads the actual whole pull adapter and
+updates only the scoped S112 fixture's derived unreached dependencies. Four
+round tests PASS1.786s; four registry tests PASS1.799s. Updated same-harness
+receipt `S054-a884a8d71f154c0bbbf8ea440298d9f3.json`, SHA256
+`6e940186a0269c75549aeafe4a2b6891b50a40020dcb8e0ff9c2e4139c338667`,
+again exact intended base assertion versus same designated head pass, with
+no errors/skips/infra. No production semantics changed since51c5c4f2e.

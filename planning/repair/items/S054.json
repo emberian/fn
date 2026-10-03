@@ -47,7 +47,7 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup",
  "title": "One pull worker serves every peer serially with only a per-read timeout, so one slow peer starves all pull and catch-up rounds",
- "updated": "2026-10-03T09:52:16Z",
+ "updated": "2026-10-03T09:56:34Z",
  "verify": {
   "base": "cddce708708291f67828e80e0de54e44d44c0d41",
   "base_observation": {
@@ -74,7 +74,7 @@
    },
    "returncode": 1,
    "revision": "cddce708708291f67828e80e0de54e44d44c0d41",
-   "stderr": "test_trickling_pull_cannot_starve_healthy_pull_and_catchup (tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup) ... FAIL\n\n======================================================================\nFAIL: test_trickling_pull_cannot_starve_healthy_pull_and_catchup (tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-vh4s8351/wt/tests/test_native_peer_round_driver.py\", line 19, in test_trickling_pull_cannot_starve_healthy_pull_and_catchup\n    self.schedule(\"trickle\", \"healthy pull and catch-up must progress while slow pull retains partial state\")\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-vh4s8351/wt/tests/test_native_peer_round_driver.py\", line 13, in schedule\n    self.fail(message)\n    ~~~~~~~~~^^^^^^^^^\nAssertionError: healthy pull and catch-up must progress while slow pull retains partial state\n\n----------------------------------------------------------------------\nRan 1 test in 0.766s\n\nFAILED (failures=1)\n",
+   "stderr": "test_trickling_pull_cannot_starve_healthy_pull_and_catchup (tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup) ... FAIL\n\n======================================================================\nFAIL: test_trickling_pull_cannot_starve_healthy_pull_and_catchup (tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-mcvz49_5/wt/tests/test_native_peer_round_driver.py\", line 19, in test_trickling_pull_cannot_starve_healthy_pull_and_catchup\n    self.schedule(\"trickle\", \"healthy pull and catch-up must progress while slow pull retains partial state\")\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-mcvz49_5/wt/tests/test_native_peer_round_driver.py\", line 13, in schedule\n    self.fail(message)\n    ~~~~~~~~~^^^^^^^^^\nAssertionError: healthy pull and catch-up must progress while slow pull retains partial state\n\n----------------------------------------------------------------------\nRan 1 test in 1.778s\n\nFAILED (failures=1)\n",
    "stdout": ""
   },
   "changed_files": [
@@ -86,6 +86,7 @@
    "host/native/io.lisp",
    "host/native/pull-service.lisp",
    "host/native/tls.lisp",
+   "planning/evidence-index.tsv",
    "planning/proofs.json",
    "planning/repair/items/S054.json",
    "planning/repair/items/S067.json",
@@ -98,11 +99,11 @@
    "tests/test_native_peer_pull.py",
    "tests/test_native_peer_round_driver.py"
   ],
-  "diff_lines": 1382,
+  "diff_lines": 1409,
   "evidence": {
-   "bytes": 4952,
-   "path": "planning/evidence/repair/S054-2c4cd248a09b4542a02348d81dc7f778.json",
-   "sha256": "bda0fe45789751e6cc31e3b18eb81344f8fae195d472458e85be47e0d4011ff3"
+   "bytes": 4985,
+   "path": "planning/evidence/repair/S054-a884a8d71f154c0bbbf8ea440298d9f3.json",
+   "sha256": "6e940186a0269c75549aeafe4a2b6891b50a40020dcb8e0ff9c2e4139c338667"
   },
   "evidence_outcome": "archived",
   "expected_failure": {
@@ -111,10 +112,10 @@
   },
   "green_at_head": true,
   "harness": {
-   "tests/native_peer_round_driver_raw.lisp": "7f0f2faf97b0235548f7cb2d69069525118e4afa23194039443af5e50e630e89",
+   "tests/native_peer_round_driver_raw.lisp": "97506c49c3f9a81c6cce5bb5b44aa473f20acb02290f75bef026dbde2a7c8385",
    "tests/test_native_peer_round_driver.py": "c290f50e44e1315eca1c7b0495377e6711d867fb91065273d6b256b97540b4c3"
   },
-  "head": "51c5c4f2e912f96338685ce3d6b75c65a85eb0a1",
+  "head": "632a3533d705740f974c017e7fc88d82a5deacc8",
   "head_observation": {
    "result": {
     "assertions": [],
@@ -132,8 +133,8 @@
     "unexpected_successes": []
    },
    "returncode": 0,
-   "revision": "51c5c4f2e912f96338685ce3d6b75c65a85eb0a1",
-   "stderr": "test_trickling_pull_cannot_starve_healthy_pull_and_catchup (tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.827s\n\nOK\n",
+   "revision": "632a3533d705740f974c017e7fc88d82a5deacc8",
+   "stderr": "test_trickling_pull_cannot_starve_healthy_pull_and_catchup (tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.828s\n\nOK\n",
    "stdout": ""
   },
   "interpreter": "/opt/homebrew/bin/python3",
