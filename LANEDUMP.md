@@ -3858,3 +3858,13 @@ Repeated stop does not cancel :issuing/:binding-fault/:retiring/:releasing
 quarantine; explicit cancellation/death observation cannot re-enter those
 semantic boundaries. Real joined SBCL thread schedules and actual shutdown
 empty-queue/debt gate PASS; no full current physical endpoint claim.
+
+Foundations resumed peer capture packet: shared peer-u64-codec extracts the three
+unchanged big-endian codec functions from served catchup; operator file parsing
+no longer imports its served machine. fn-pfp-refusal-line, run-only operation
+selection and fn-prstartup-peer-native-capture are guard verified in retained
+solrlocover, 0 steps. Five-field capture carries dynamic/protected/policy/stack/
+thread-runtime to the actual retained service bank installer. Global live ledger
+in this world is installed (Root BP probe); all further tests use local stobjs.
+Open: actual peer worker/driver composition, full native/GC/owned graph tariff,
+DEFAULT recovery workspace partition and live protected-growth consumer.

@@ -63,6 +63,7 @@
 ;   fn-cu-select-makes-progress            NEXT > FROM whenever FROM < END
 ;   fn-cu-select-stays-within-the-quantum  records after the first fit QUANTUM
 (in-package "ACL2")
+(include-book "peer-u64-codec")
 (include-book "nntp-responses")
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "control-served")
@@ -191,26 +192,9 @@
 ; so every rendered line has a fixed width and no value is rendered short.
 (defconst *fn-cu-u64-limit* 18446744073709551616)
 
-(defun fn-cu-u64-octets-aux (k n acc)
-  (declare (xargs :guard (and (natp k) (natp n))))
-  (if (zp k)
-      acc
-    (fn-cu-u64-octets-aux (1- k) (floor n 256) (cons (mod n 256) acc))))
-
-(defun fn-cu-u64-octets (n)
-  ; Eight octets, big-endian, of N below 2^64.
-  (declare (xargs :guard t))
-  (fn-cu-u64-octets-aux 8 (nfix n) nil))
-
 (defun fn-cu-u64-hex (n)
   (declare (xargs :guard t))
   (fn-cu-hex (fn-cu-u64-octets n)))
-
-(defun fn-cu-octets-value (xs acc)
-  (declare (xargs :guard (natp acc)))
-  (if (consp xs)
-      (fn-cu-octets-value (cdr xs) (+ (* 256 acc) (nfix (car xs))))
-    acc))
 
 ; The value of a sixteen-digit hexadecimal token, or nil.
 (defun fn-cu-u64-value (token)

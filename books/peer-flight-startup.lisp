@@ -29,11 +29,23 @@
     (nfix (- (nfix (fn-prstartup-nth 0 (fn-prstartup-nth 1 plan)))
              (* (fn-prstartup-decoded-workers plan)
                 (+ (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*))))))
+(defun fn-pfr-operation-observes-p (action)
+ (declare (xargs :guard t)) (eq action :run))
 (defun fn-pfr-extend-operation-reservation (base action peer core observations)
  (declare (xargs :guard t))
- (if (eq action :run) (fn-pfr-extend-reservation base peer core observations) base))
+ (if (fn-pfr-operation-observes-p action) (fn-pfr-extend-reservation base peer core observations) base))
 (defun fn-prstartup-peer-grant (dynamic profile core nursery output max-connections plan peer)
  (declare (xargs :guard t))
  (if (not (fn-prstartup-planp plan)) (list :refused :default-pool-not-held)
    (fn-pfr-startup-grant dynamic
      (fn-prstartup-peer-protected profile core nursery output max-connections plan) peer)))
+
+; Carry this exact parent capture until the retained service publishes its bank.
+(defun fn-prstartup-peer-native-capture
+ (dynamic profile core nursery output max-connections plan peer)
+ (declare (xargs :guard t))
+ (if (not (eq (fn-pfr-at 0 (fn-prstartup-peer-grant dynamic profile core nursery
+                              output max-connections plan peer)) :hold)) nil
+   (list dynamic
+         (fn-prstartup-peer-protected profile core nursery output max-connections plan)
+         peer (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*)))
