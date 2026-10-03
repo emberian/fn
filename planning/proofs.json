@@ -22990,7 +22990,8 @@
         "tests/acl2/decoded-worker-reuse-execution-tests.lisp",
         "planning/evidence/manifests/certify-20261003T165304Z-2583352.json",
         "planning/evidence/decoded-reuse-20261003/repeated-execution.json",
-        "planning/evidence/manifests/certify-20261003T170022Z-2604612.json"
+        "planning/evidence/manifests/certify-20261003T170022Z-2604612.json",
+        "planning/evidence/decoded-reuse-20261003/repeated-execution-certified.json"
       ],
       "progress_note": "Retirement guards, carry authority revocation/refusal frame, private backing frame and arbitrary-query no-scalar-publication theorem are admitted. Scoped certificate certify-20261003T160405Z-2295638 passed four roots at817ac; certify-20261003T165304Z-2583352 passes changed4d job and existing witnesses (2 roots,35 cached dependencies;18 without cited manifests in this branch). Actual single local private job executes five consecutive cycles: authenticated251-byte decode,1-byte successor, corrupted-source refusal, cancelled returned decode, then2-byte successor. Exact bytes, prior-authority refusal and retirement/release checks pass in the scoped normal ACL2 world. Test helpers are not guard-verified. Runtime/Operator/Foundations provide native consumer and startup integration separately; actual whole-current native endpoint and complete allocator/GC/work pricing remain open. Repeated actual-core execution test certified by certify-20261003T170022Z-2604612 (1 root passed,36 cached dependencies). Native baseline startup and persistent scratch reuse are wired in source. Actual startup/reuse/torn-retirement source schedules pass; retirement precedes physical settlement, and torn retire/release remains quarantined without retry. Full current owner execution remains pending."
     },
