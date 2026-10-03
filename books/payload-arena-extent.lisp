@@ -862,7 +862,16 @@
                   (+ (- (fn-arx-files-get f fs)
                         (if (and (equal old f) (< 0 (fn-arx-files-get f fs))) 1 0))
                      (if (equal new f) 1 0))))
-  :hints (("Goal" :in-theory (enable fn-arx-files-get))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-arx-files-get fn-arx-move-list nfix natp max fix not synp
+              nth-update-nth len-update-nth true-listp-update-nth
+              fn-arx-nth-resize-list-all fn-arx-nth-past-len
+              (:type-prescription len) (:type-prescription update-nth)
+              associativity-of-+ commutativity-of-+ commutativity-2-of-+
+              fold-consts-in-+ unicity-of-0))))))
 
 (defthm fn-arx-files-agree-of-resize
   (implies (and (fn-arx-files-agree ext fs) (<= (len ext) (nfix n)))
