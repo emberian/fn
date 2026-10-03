@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "host/bp-native-app-host.lisp",
+ "id": "PGO-OWED-BP-NATIVE-APP-HOST",
+ "notes": [],
+ "owner": "post-guard-off",
+ "severity": "medium",
+ "slice": "carrier",
+ "source": "post-guard-off",
+ "state": "open",
+ "title": "A-OWNER-INVARIANT-CARRIED owes: 20 state writer(s) defined in host/bp-native-app-host.lisp have no preservation theorem of fn-owner-retain-statep; each is listed in host/owner-served-carried.lisp :incomplete. Prove (def-owner-writer / the carrier move) and move it to :transitions: fn-owner-app-bind-receipt-store fn-owner-app-current-generation fn-owner-app-plan fn-owner-app-record fn-owner-app-refusal-log fn-owner-app-submit fn-owner-app-unbind-receipt-store fn-owner-bp-receipt-gatep fn-owner-bp-receipt-release-detail fn-owner-bp-receipt-release-record fn-owner-bp-receipt-signature-plan fn-owner-bp-release-line fn-owner-bp-request-refusal-line fn-owner-bp-request-trustedp fn-owner-bp-route-table fn-owner-bp-source-decision-line fn-owner-bp-tcpcl-ingress fn-owner-bplc-begin fn-owner-bplc-recover fn-owner-bplc-turn-plan",
+ "updated": "2026-10-03T04:15:32Z"
+}
