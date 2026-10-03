@@ -4412,3 +4412,71 @@ tree rather than treating a component or source packet as the full capability.
 Final status progress receipt includes exact cumulative source segments and all3
 teeth; stale last-output diagnostic was excluded. Owner direct successor receipt
 is checks-successor.json, supplementing unchanged initial proof receipt.
+Remaining storage work: actual current POST/reclaim/reopen; whole Store/catalog
+rewrite and96*history credit estimate; whole-event encoding, flat page-array
+growth and commit; bounded checkpoint open; root/index/cold-read correspondence;
+atomic private owner authority. Checkpoint warm publication rows are canonical
+NIL/0/context and can differ from served arena handles (existing orphan fixture).
+Restart resets arena and canonical prefix may already agree; investigate that
+actual recovery seam instead of assuming every checkpoint adoption needs remap.
+
+History convergence handoff, 2026-10-03, source c3438b633:
+User requested finish/yield; no further proof or native initialization is running.
+The advanced logical world was saved, actually restarted, and probed successfully:
+/tank/fn/scratch/history-current-union-5a3d81/build/current-owner-storage-retained
+(523MiB .core; .execution.json binds admitted input files and launcher/core hashes).
+Original history-current-union-resumed PID2581776/wrapper2581777 exited on successful
+SAVE-EXEC. The separate restart health REPL history-owner-storage-check was stopped
+gracefully. Root inherits the retained files, not a silently running initializer.
+
+Health probe: fn-hist-count0, fn-arena-count3; canonical attachments remain
+FN-HIST->FN-HIST-PAGED and FN-ARENA->FN-ARENA-EXTENT. The arena contains model
+witness entries, not a clean zero arena; future startup must use the actual reset
+lifecycle. FN-OCFG-FAULT and FN-BS-SCAN-STORE are present. FN-DWJ-RESERVE,
+FN-DWJ-RETIRE and FN-OWNER-PAGE-READ-INSTALL-DEFAULT are absent. No Store was
+opened, no normal host/native layer was admitted, and no current POST/reclaim/
+reopen or compressed ARTICLE/Web endpoint is claimed.
+
+Last completed source scope: books/byte-store-scan. Ready exact frozen recipe:
+/tank/fn/scratch/history-current-union-c3438b633/build/
+current-logical-local-scopes94.lisp and .json. The JSON retains repository input
+hashes separately from exported books, including exact scoped LOCAL dependencies.
+Static continuation current-after-byte-store94.lisp starts AFTER that scanner
+scope, preserving following cached includes; 489 source-book scopes remain.
+Do not replay early attachments or start a duplicate full initializer. Resume the
+saved launcher through managed proof_repl, then admit bounded groups from this
+continuation with ordinary retained-world refusal. Full continuation was emitted,
+not executed. Verification receipt beside the recipe:
+current-owner-storage-retained-verification.json binds final recipe/continuation
+hashes, literal health result, partial stage and stopped ownership.
+
+Final optional assurance omission scope is94 named DEFTHMs, recorded in
+current-deferrals94.json. Definitions, guards, abstract correspondence and stobj
+construction are retained. The saved input96 list was followed by actual Served
+read-frame and successor admissions, reducing unresolved omissions to94; this
+does not mean logical EOF or certification. Actual repaired read-frame PASS
+0.01s/6729steps and unchanged successor PASS0.04s/1530steps, source Served2cba89f3d
+consumed book-only as c3438b633. Scanner unchanged nth formula source a4214b846
+PASS0.00s/1041steps; scanner source scope with34 named optional crash assurance
+omissions PASS35.19s/9,890,021steps. Source acd8b29ca declares actual consumed
+private disposal/retirement entries. These are source-admission receipts, not
+matching certificates or a qualified image; registry completion statuses stay open.
+
+Integration owns matching final host emission and explicit additive cohort:
+DEFAULT page-read-startup and six host readiness/installation methods; additive
+DWJ reserve/retire, DWA retire and backing-vector definitions; current decoded
+host acquire body (host not yet loaded); payload runtime-return-step; Root
+PROGRAM history-root abandon-word; latest BP timeout/session/context/parser
+methods. Existing09aa base world must not silently receive changed logical bodies
+under old theorems. Original host emission is historical until bound to this
+exact final94 inventory. TEN page-read-pool fields are actual current source;
+the earlier eleven-field assertion was a miscount of :inline, not an ABI defect.
+
+Full storage ownership remains open: current real POST/reclaim/reopen; whole
+Store/catalog row copies and unchanged96*historyoctets reclaim reservation;
+bounded checkpoint open; whole-event encode, flat-array growth and commit work;
+authoritative root/index/cold-read correspondence and physical tariffs; atomic
+private owner-carrier migration. No credit estimate reduction or bounded whole
+checkpoint latency follows from row/page yielding. Root activation custody,
+Entries staged list-seal and Exits rotation/retirement/close custody repairs must
+be loaded through the coherent latest normal/native source layer before use.
