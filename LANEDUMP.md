@@ -2700,3 +2700,14 @@ trace controls and unrestricted interactive operator shell. SCN1121 actual
 socket/source tests pass (2 tests, ~1.2s); owner mutex and nonblocking transport
 are named fixture adapters. Full native owner + ACL2 LD composed check pending;
 no saved-image gate. Groundwork owns application query/export command surface.
+
+Root dev-REPL followup177b21dfb: actual LD :return produces NIL/:ERROR on
+refusal; only :EOF now succeeds. Controlled refusal sets ERROR without faulting
+owner; earlier admitted events survive. Actual ACL2 channel capture is scoped
+and restored on unwind. Startup records socket identity before chmod/listen.
+Hbox full3test suite PASS0.384s, including real ACL2 worker-thread good/refused/
+subsequent admission and captured proof output, socket/trace/output bounds,
+malformedinput, peerdenial, existingpath and partialstartup cleanup.
+Receipt planning/evidence/repair/dev-repl-177b21dfb.json (archived/indexed).
+Actual complete native owner stop/fence composition remains pending; no image
+or fullphysicaltariff claim. Lieutenant reviewed owner hook/gate/lockorder.
