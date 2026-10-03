@@ -2249,12 +2249,16 @@ into the service log's stop line and its own result line, so `health',
 `status' and the service manager's journal say why the node stopped.")
 
 (defun fnn-owner-fault-service (service cid condition)
-  "Contain an invalid core/store image, distinct from client refusal or EOF."
-  (unless *fnn-owner-last-fault*
-    (setq *fnn-owner-last-fault*
-          (ignore-errors
-           (format nil "owner core/store fault; process stopped: ~a" condition))))
-  (fnn-owner-gated (service :control)
+  "Outside owner exclusion: contain an invalid core/store image. The held
+counterpart is fnn-owner-classify-escape-locked, through the section boundary."
+  ;; An irreversible fault boundary cannot request permission from the
+  ;; scheduler that may have just aborted. The owner mutex still excludes
+  ;; live state, matching STOP-SERVICE's fence/wakeup entry (S081).
+  (sb-thread:with-mutex ((fnn-owner-service-lock service))
+    (unless *fnn-owner-last-fault*
+      (setq *fnn-owner-last-fault*
+            (ignore-errors
+             (format nil "owner core/store fault; process stopped: ~a" condition))))
     (when (and cid (not (fnn-owner-service-stopping service))
                (not (fnn-owner-connection-selected-p service)))
       (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
@@ -3895,8 +3899,14 @@ written inside START did."
                                 (lambda () (fnn-fault "owner named the frames phase ~a" phase))))))
       (case (fnn-core 'fn-oqw-outcome-of-final final)
         (:fenced nil)
-        (:failed (fnn-owner-fence-service service))
-        (t (fnn-owner-fault-service service nil condition))))))
+        ;; This helper also runs inline inside an owner quantum. Signal the
+        ;; typed verdict to its existing boundary instead of reentering the
+        ;; owner mutex: section classification is the held counterpart,
+        ;; committer thread classification is the off-owner counterpart.
+        (:failed (error 'fnn-store-indeterminate
+                        :message (format nil "owner frames outcome uncertain: ~a" condition)))
+        (t (error 'fnn-store-fault
+                  :message (format nil "owner frames job faulted: ~a" condition)))))))
 
 (defun fnn-owner-batch-job (service job)
   "The whole batch JOB, off the owner mutex (the syncer thread's body, or
@@ -7594,9 +7604,6 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                    fault nil :inet nil connection-fault-operation)))
 
 (fnn-register-developer-verb "owner" #'fnn-command-owner)
-
-
-
 
 
 

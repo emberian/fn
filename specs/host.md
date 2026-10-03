@@ -1815,5 +1815,8 @@ worker's terminal cleanup physically ends. The feed's exact-class failure
 boundary scopes a known stopping refusal while an unknown subclass remains a
 fault. A late cleanup fault always reaches ACL2's monotone stop lattice:
 graceful stop can escalate, and an existing uncertain outcome remains dominant.
+The irreversible fault entry takes owner exclusion directly, as the stop entry
+does. An aborted scheduler cannot intercept this fence or its caller's terminal
+cleanup; the first fault text is captured under that same owner exclusion.
 The local thread schedules stub socket effects; next-due scheduling, the wait
 boundary and full served-image correspondence remain open.
