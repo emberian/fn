@@ -1,0 +1,25 @@
+{
+ "budget": 200,
+ "category": "harness-repair",
+ "expect-failure": "tests.test_developer_selectors_harness.DeveloperSelectorsHarnessTests.test_unclassified_handler_guard_removal_is_seen",
+ "failure-message": "False is not true : classifier mutation must fail its named classification check",
+ "file": "tests/native_developer_selectors_raw.lisp",
+ "harness": "tests/test_developer_selectors_harness.py",
+ "id": "NIGHT-SELECTOR-HARNESS",
+ "notes": [
+  "10-03 02:04 claimed: scope=['tests/native_developer_selectors_raw.lisp', 'tests/test_developer_selectors_harness.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_developer_selectors_harness.DeveloperSelectorsHarnessTests.test_unclassified_handler_guard_removal_is_seen"
+ ],
+ "owner": "codex-sol-tools",
+ "scope": [
+  "tests/native_developer_selectors_raw.lisp",
+  "tests/test_developer_selectors_harness.py",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
+ "severity": "medium",
+ "source": "S029",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_developer_selectors_harness.DeveloperSelectorsHarnessTests.test_unclassified_handler_guard_removal_is_seen",
+ "title": "Developer selector fixture supplies an untyped frame after S029 classification",
+ "updated": "2026-10-03T06:04:55Z"
+}
