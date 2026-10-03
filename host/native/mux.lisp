@@ -102,7 +102,7 @@
 (defstruct (fnn-mux-conn (:constructor %make-fnn-mux-conn))
   socket fd implicit-tls channel ssl cid opened-cid
   ;; Exact ACL2 lifetime identities; response retained across all cursor windows.
-  connection-identity response-identity
+  connection-identity response-identity output-grant
   ;; :new :proxy :tls-queued :handshake :hs-wait :serving :draining :done
   (phase :new)
   ;; PRF-986 item 4 (books/tls-proxy.lisp): a trusted proxy's connection
@@ -358,6 +358,12 @@ failed effects remain discoverable while independent physical cleanup runs."
                 loop conn :await-abandon
                 (lambda () (fnn-owner-await-abandon service (or cid opened-cid))) nil nil)
                (setf (fnn-mux-conn-await conn) nil))
+             ;; Await abandonment completed or retained a terminal cleanup
+             ;; debt; no live renderer in this single loop can publish again.
+             (fnn-mux-cleanup-attempt
+              loop conn :output-discard
+              (lambda () (fnn-owner-output-close service (fnn-mux-conn-output-grant conn) :discarded))
+              nil nil)
              (fnn-mux-cleanup-attempt
               loop conn :response-unpin
               (lambda () (fnn-owner-response-unpin service (or cid opened-cid))) nil nil)
@@ -510,9 +516,14 @@ plan remains."
 under the owner mutex, at most one quantum per mutex hold; sparse ranges
 can take several empty quanta before a write): (values OCTETS PLAN-REST
 DONEP)."
-  (fnn-owner-render-next-quantum (fnn-mux-service loop) (fnn-mux-conn-cid conn) plan
-                                 (fnn-mux-conn-class conn)
-                                 (and (fnn-mux-conn-zout conn) t)))
+  (unless (fnn-mux-conn-output-grant conn)
+    (setf (fnn-mux-conn-output-grant conn)
+          (fnn-owner-output-issue (fnn-mux-service loop)
+                                  (fnn-mux-conn-response-identity conn))))
+  (let ((*fnn-output-grant* (fnn-mux-conn-output-grant conn)))
+    (fnn-owner-render-next-quantum (fnn-mux-service loop) (fnn-mux-conn-cid conn) plan
+                                   (fnn-mux-conn-class conn)
+                                   (and (fnn-mux-conn-zout conn) t))))
 
 (defun fnn-mux-plan-yield (loop conn plan after &optional empty-progressp)
   "Retain the cursor's exact continuation and ownership until its
@@ -638,6 +649,8 @@ contract, without blocking the loop)."
     (setf (fnn-mux-conn-drained-late conn) nil)
     (fnn-owner-exposure-progress (fnn-mux-service loop) (fnn-mux-conn-cid conn) :reader))
   (setf (fnn-mux-conn-drained-late conn) nil)
+  (fnn-owner-output-close (fnn-mux-service loop) (fnn-mux-conn-output-grant conn) :drained)
+  (setf (fnn-mux-conn-output-grant conn) nil)
   ;; This is response terminal, including the continuation and socket suffix.
   ;; No resource grant exists yet: future settlement must consume this identity
   ;; before retirement, after independent dependency/no-publisher evidence.

@@ -180,7 +180,7 @@ not armed. Instrumentation has no semantic or admission role."
                      (fnn-owner-connection-fault-cause condition)))))
 
 (defstruct (fnn-owner-cold-read (:constructor %make-fnn-owner-cold-read))
-  token worker prev next queuedp settledp outcome
+  token worker prev next queuedp settledp outcome output-grants
   ;; T: issued by the unfunded cold line (host/native/extent.lisp
   ;; fnn-extent-issue-direct), settled by fn-pio-direct-settle, no ledger.
   directp)
@@ -1712,6 +1712,143 @@ This installs only the explicit output projection, not a full allocation gate."
               (setf (fnn-owner-service-output-ledger service) returned)
               (unless (eq word :installed)
                 (fnn-fault "output funding refused after headroom grant ~s" word)))))))))
+
+(defvar *fnn-output-grant* nil)
+(defstruct (fnn-output-dependency (:constructor %make-fnn-output-dependency))
+  read token terminal no-actor-created)
+(defstruct (fnn-output-grant (:constructor %make-fnn-output-grant))
+  identity token (stage :issuing) dependencies ever-issued closed output-stage physical-stage render-buffer)
+
+(defun fnn-owner-output-issue (service identity)
+  "Staged renderer projection. Retain the native envelope before mutation."
+  (sb-thread:with-mutex ((fnn-owner-service-output-ledger-lock service))
+    (when (fnn-owner-service-output-ledger service)
+      (let ((grant (%make-fnn-output-grant :identity identity)))
+        (push grant (fnn-owner-service-output-grants service))
+        (destructuring-bind (tag cid cgen opgen) identity
+          (declare (ignore tag))
+          (destructuring-bind (word token returned)
+              (fnn-call 'fn-rlo-issue cid cgen opgen :issued
+                        (fnn-owner-service-output-ledger service))
+            (setf (fnn-owner-service-output-ledger service) returned
+                  (fnn-output-grant-token grant) token)
+            (unless (eq word :drawn)
+              ;; Literal refusal completed the step. A raw/condition escape
+              ;; before here keeps the envelope :issuing and never retries.
+              (setf (fnn-output-grant-stage grant) :refused
+                    (fnn-owner-service-output-grants service)
+                    (delete grant (fnn-owner-service-output-grants service) :test #'eq))
+              (fnn-refuse "output lease refused ~s" word))
+            (setf (fnn-output-grant-stage grant) :active)
+            grant))))))
+
+(defun fnn-owner-output-dependency (service grant read)
+  "Owner held before a newly issued cold read escapes its capture quantum."
+  (when grant
+    (sb-thread:with-mutex ((fnn-owner-service-output-ledger-lock service))
+      (when (or (fnn-output-grant-closed grant)
+                (not (eq (fnn-output-grant-stage grant) :active)))
+        (fnn-fault "output dependency issued after terminal authority"))
+      (unless (find read (fnn-output-grant-dependencies grant)
+                    :key #'fnn-output-dependency-read :test #'eq)
+        (let ((no-child (and (null (fnn-owner-cold-read-token read))
+                             (null (fnn-owner-cold-read-worker read)))))
+          ;; Literal NIL capture from the existing warm-hit primitive created
+          ;; no job. A physical dependency is remembered even after recycling.
+          (unless no-child (setf (fnn-output-grant-ever-issued grant) t))
+          (push (%make-fnn-output-dependency :read read :token (fnn-owner-cold-read-token read)
+                                            :terminal no-child :no-actor-created no-child)
+                (fnn-output-grant-dependencies grant)))
+        (push grant (fnn-owner-cold-read-output-grants read)))))
+  read)
+
+(defun fnn-owner-output-observe-returned (service read)
+  "O and E held, before settlement can recycle the actual worker slot."
+  (when (fnn-owner-cold-read-output-grants read)
+    (let* ((worker (fnn-owner-cold-read-worker read))
+           (returned (and worker (fnn-extent-executor-observe-returned worker))))
+      (sb-thread:with-mutex ((fnn-owner-service-output-ledger-lock service))
+        (dolist (grant (fnn-owner-cold-read-output-grants read))
+          (let ((dependency (find read (fnn-output-grant-dependencies grant)
+                                  :key #'fnn-output-dependency-read :test #'eq)))
+            (unless (and dependency
+                         (or returned (fnn-output-dependency-no-actor-created dependency)))
+              (fnn-fault "output dependency lacks affirmative physical return"))
+            (setf (fnn-output-dependency-terminal dependency) t)))))))
+
+(defun fnn-owner-output-receipt-locked (service grant kind receipt)
+  "Private exclusion held. Each semantic receipt is attempted at most once."
+  (let ((stage (ecase kind (:output (fnn-output-grant-output-stage grant))
+                           (:physical (fnn-output-grant-physical-stage grant)))))
+    (when stage
+      (unless (eq stage :returned) (fnn-fault "output receipt has unresolved prior step"))
+      (return-from fnn-owner-output-receipt-locked nil))
+    (ecase kind (:output (setf (fnn-output-grant-output-stage grant) :calling))
+                (:physical (setf (fnn-output-grant-physical-stage grant) :calling)))
+    (destructuring-bind (word returned)
+        (ecase kind
+          (:output (fnn-call 'fn-rlo-output (fnn-output-grant-token grant)
+                             (fourth (fnn-output-grant-identity grant)) receipt
+                             (fnn-owner-service-output-ledger service)))
+          (:physical (fnn-call 'fn-rlo-physical (fnn-output-grant-token grant)
+                               (fourth (fnn-output-grant-identity grant)) receipt
+                               (fnn-owner-service-output-ledger service))))
+      (setf (fnn-owner-service-output-ledger service) returned)
+      (unless (member word '(:pending :settled))
+        (fnn-fault "output custody receipt refused ~s" word))
+      (ecase kind (:output (setf (fnn-output-grant-output-stage grant) :returned))
+                  (:physical (setf (fnn-output-grant-physical-stage grant) :returned)))
+      (when (eq word :settled)
+        (setf (fnn-output-grant-stage grant) :settled
+              (fnn-output-grant-dependencies grant) nil
+              (fnn-owner-service-output-grants service)
+              (delete grant (fnn-owner-service-output-grants service) :test #'eq)))
+      word)))
+
+(defun fnn-owner-output-maybe-physical-locked (service grant)
+  (when (and (fnn-output-grant-closed grant)
+             (eq (fnn-output-grant-stage grant) :active)
+             (eq (fnn-output-grant-output-stage grant) :returned)
+             (null (fnn-output-grant-dependencies grant)))
+    (fnn-owner-output-receipt-locked
+     service grant :physical
+     (if (fnn-output-grant-ever-issued grant) :terminal :no-actor-created))))
+
+(defun fnn-owner-output-close (service grant receipt)
+  "Caller establishes complete response drain/discard and no future factory.
+Slot clearing or one window drained is insufficient to invoke this function."
+  (when grant
+    (sb-thread:with-mutex ((fnn-owner-service-output-ledger-lock service))
+      (unless (member (fnn-output-grant-stage grant) '(:active :settled))
+        (fnn-fault "output closure has unresolved issuance"))
+      (if (fnn-output-grant-closed grant)
+          (unless (eq (fnn-output-grant-output-stage grant) :returned)
+            (fnn-fault "output closure has unresolved prior receipt"))
+        (progn
+          (setf (fnn-output-grant-closed grant) t
+                (fnn-output-grant-render-buffer grant) nil)
+          (fnn-owner-output-receipt-locked service grant :output receipt)))
+      (fnn-owner-output-maybe-physical-locked service grant)))
+  nil)
+
+(defun fnn-owner-output-dependency-consumed (service read)
+  "After E unlock and actual result transfer. Retain only pending children."
+  (sb-thread:with-mutex ((fnn-owner-service-output-ledger-lock service))
+    (dolist (grant (fnn-owner-cold-read-output-grants read))
+      (let ((dependency (find read (fnn-output-grant-dependencies grant)
+                              :key #'fnn-output-dependency-read :test #'eq)))
+        (unless (and dependency (fnn-output-dependency-terminal dependency))
+          (fnn-fault "output consumed child lacks terminal evidence"))
+        (setf (fnn-output-grant-dependencies grant)
+              (delete dependency (fnn-output-grant-dependencies grant) :test #'eq)))
+      (fnn-owner-output-maybe-physical-locked service grant)))
+  (setf (fnn-owner-cold-read-output-grants read) nil))
+
+(defun fnn-owner-output-drained-p (service)
+  (sb-thread:with-mutex ((fnn-owner-service-output-ledger-lock service))
+    (and (null (fnn-owner-service-output-grants service))
+         (or (null (fnn-owner-service-output-ledger service))
+             (fnn-core 'fn-rlo-drainedp (fnn-owner-service-output-ledger service))))))
 
 (defun fnn-owner-syncer-issue (service generation job)
   "Draw from the qualified syncer projection before any child is created."
@@ -5403,9 +5540,11 @@ cold-read-ownership, Codex r31 F1/F2).  A refusal is ACL2's word."
     (multiple-value-bind (token word worker)
         (apply (if directp #'fnn-extent-issue-direct #'fnn-extent-issue-read) cid entry)
       (if (and word (not (eq word :admitted))) word
-        (fnn-owner-cold-enqueue-locked
-         service (%make-fnn-owner-cold-read :token token :worker worker
-                                            :directp (and token directp)))))))
+        (fnn-owner-output-dependency
+         service *fnn-output-grant*
+         (fnn-owner-cold-enqueue-locked
+          service (%make-fnn-owner-cold-read :token token :worker worker
+                                             :directp (and token directp))))))))
 
 (declaim (notinline fnn-owner-cold-transfer-result-locked))
 (defun fnn-owner-cold-transfer-result-locked (read)
@@ -5463,6 +5602,7 @@ before exact settlement releases a charge. Owner->extent serializes it."
   (let ((token (fnn-owner-cold-read-token read))
         (condition nil) (answer :stale) (settled-io nil) (cachedp nil) (evicted nil))
     (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
+      (fnn-owner-output-observe-returned service read)
       (multiple-value-setq (answer settled-io cachedp evicted condition)
         (fnn-owner-cold-transfer-result-locked read))
       ;; The helper's vector-bearing activation is gone. Only a charged
@@ -5474,6 +5614,8 @@ before exact settlement releases a charge. Owner->extent serializes it."
           (fnn-extent-executor-commit (fnn-owner-cold-read-worker read) settled-io token cachedp)))
       (setf (fnn-owner-cold-read-settledp read) t
             (fnn-owner-cold-read-worker read) nil)
+      (when (and (consp answer) (eq (car answer) :fault))
+        (incf (third *fnn-extent-stats*)))
       (fnn-extent-cache-release evicted))
     (when (and (consp answer) (eq (car answer) :fault))
       (unless condition
@@ -5483,9 +5625,10 @@ before exact settlement releases a charge. Owner->extent serializes it."
                                          (:read "arena-extent-read: issued read was short")
                                          (:trailer "arena-extent-trailer: issued read commitment differs")
                                          (:digest "arena-extent-digest: issued read digest differs")
-                                         (t "arena-extent-verdict: issued read failed")))))
-      (incf (third *fnn-extent-stats*)))
+                                         (t "arena-extent-verdict: issued read failed"))))))
     (setf (fnn-owner-cold-read-outcome read) (or condition t))
+    ;; Retain the original outcome before a private receipt may escape.
+    (fnn-owner-output-dependency-consumed service read)
     (fnn-owner-release-pending-extents-locked service)
     (when condition
       (unless *fnn-owner-last-fault*
@@ -7702,6 +7845,8 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                      '("a cold read is outstanding"))
                                    (unless (fnn-owner-syncer-drained-p service)
                                      '("syncer operation or physical custody remains"))
+                                   (unless (fnn-owner-output-drained-p service)
+                                     '("output operation or physical dependency remains"))
                                    (unless (fnn-mux-drained-p service)
                                      '("mux loop or terminal cleanup debt remains"))
                                    (unless (every (lambda (slot)
@@ -7718,6 +7863,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                       (when (and modules-joined
                                  (fnn-mux-drained-p service)
                                  (fnn-owner-syncer-drained-p service)
+                                 (fnn-owner-output-drained-p service)
                                  (null (fnn-with-roster (service)
                                          (fnn-owner-service-workers service)))
                                  (null (fnn-owner-service-cold-head service))
