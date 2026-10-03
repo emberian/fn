@@ -19211,6 +19211,19 @@
           "name": "fn-his-build-row-bounds-suffix-capacity"
         }
       ]
+    },
+    {
+      "id": "PRF-1270",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nir-resume-admits-identical-initial-contract-across-stamps"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nir-resume-refuses-distinct-initial-changes"
+        }
+      ]
     }
   ]
 }

@@ -146,3 +146,42 @@ exact boundary. Success still requires a fresh regular report; an unchanged
 prior report or no report produces uncertainty. Invalid clock/request inputs
 and unknown observations produce a fault with `reason=invalid-observation`;
 they cannot produce a stopped/report decision or a deadline-expiry claim.
+
+### Operator diagnostic outcomes
+
+The heap launcher's operator profile observation may fall back to an absent
+profile only for a condition ACL2's closed failure classifier names as a
+refusal. A failed core call, corrupt durable profile, uncertain outcome or
+unlisted condition propagates before any accepting `heap=` line is printed.
+This applies to the nested store-profile reader as well as the operator plan,
+initializer profile resolution and resource-policy projections. A genuinely
+absent store still has no profile; the command subsequently reports its own
+refusal under the no-store reservation.
+
+The initial-group encoder's named `:bad` result is a refusal. A malformed
+result, or disagreement between the host and core's frame header/trailer
+widths, is a fault. These checks preserve HST-008/HST-009's shared outcome
+classes; they do not manufacture a policy refusal from an image defect.
+
+## Resumable developer init (STO-10005)
+
+`store ROOT init` may resume interrupted initialization. Under its exclusive
+writer lock, it supplies the requested decoded profile, the immutable sealed
+profile and exact generation-one record bytes to ACL2's
+`fn-nir-resume-decision`. The recorded initial change list must match the
+requested initial groups. A new clock stamp and later configuration/limit
+changes do not change that initial intent. Profile or group mismatch is a
+named refusal before resume directory creation, staged publication, genesis
+work or node-secret creation. Initial root/lock acquisition precedes this
+check. Corrupt generation-one evidence faults; missing generation one when
+configuration history exists faults. Absence with no history is the legal
+interrupted-before-publication case.
+
+The keystones prove compatibility across independent clock stamps and named
+refusal of distinct initial changes under exact decode premises; literal
+real-codec witnesses include each premise removal.
+The actual host fixture discriminates prior init's silent success on profile
+mismatch. This does not add a streaming history loader or prove physical init
+syscall order: the existing bounded history observation and init publication
+program retain their separate contracts. Operator init's staged-publication
+verb retains its existing path refusal.
