@@ -146,13 +146,28 @@ exposure admission decides (the id, or NIL when it refused)."
               (fnn-owner-thread-escape (fnn-web-face-service face) condition "web cleanup")
             (serious-condition () nil)))))))
 
+(defun fnn-web-discard-response (conn)
+  "No future job or socket writer can consume these response references."
+  (setf (fnn-web-conn-in conn) nil (fnn-web-conn-out conn) nil
+        (fnn-web-conn-request conn) nil (fnn-web-conn-flow conn) nil
+        (fnn-web-conn-event conn) nil (fnn-web-conn-private-begin conn) nil
+        (fnn-web-conn-post-form conn) nil (fnn-web-conn-post-source conn) nil
+        (fnn-web-conn-post-cursor conn) nil (fnn-web-conn-pending conn) nil
+        (fnn-web-conn-plan conn) nil (fnn-web-conn-completion conn) nil
+        (fnn-web-conn-wire conn) nil (fnn-web-conn-page-segs conn) nil
+        (fnn-web-conn-page-cursor conn) nil (fnn-web-conn-page-response conn) nil
+        (fnn-web-conn-reply-scan conn) nil (fnn-web-conn-captured-plans conn) nil
+        (fnn-web-conn-replay-plans conn) nil (fnn-web-conn-replay-plan conn) nil
+        (fnn-web-conn-replay-return conn) nil (fnn-web-conn-replay-tail conn) nil))
+
 (defun fnn-web-dispose-semantic (face conn)
   ;; Claim the whole disposal, not just each effect. Concurrent shutdown or
   ;; job-return observers cannot manufacture a receipt while its sole
   ;; claimant is still inside a callback.
   (let ((claimed nil))
     (sb-thread:with-mutex ((fnn-web-face-lock face))
-      (when (and (eq (fnn-web-conn-semantic-disposal conn) :idle)
+      (when (and (fnn-web-conn-closedp conn)
+                 (eq (fnn-web-conn-semantic-disposal conn) :idle)
                  (or (null (fnn-web-conn-job conn))
                      (fnn-web-job-returned (fnn-web-conn-job conn))))
         (setf (fnn-web-conn-semantic-disposal conn) :running)
@@ -162,10 +177,18 @@ exposure admission decides (the id, or NIL when it refused)."
   ;; runs. This cleanup is eligible only after that activation has returned.
   (let ((service (fnn-web-face-service face)) (cid (fnn-web-conn-cid conn)))
     (when (fnn-web-conn-await conn)
-      (fnn-web-cleanup face conn :await (lambda () (fnn-owner-await-abandon service cid))))
+      (fnn-web-cleanup face conn :await
+        (lambda () (fnn-owner-await-abandon service cid)
+          (setf (fnn-web-conn-await conn) nil))))
     (when (fnn-web-conn-cold conn)
-      (fnn-web-cleanup face conn :cold
-        (lambda () (fnn-owner-cold-abandon (first (fnn-web-conn-cold conn))))))
+      (let ((read (first (fnn-web-conn-cold conn))))
+        (fnn-web-cleanup face conn (list :cold read)
+          (lambda () (fnn-owner-cold-abandon read)
+            (setf (fnn-web-conn-cold conn) nil)))))
+    ;; CLOSED blocks all submissions; the exact outstanding job returned.
+    ;; Discard the whole response graph before releasing its scalar loan/pin.
+    (sb-thread:with-mutex ((fnn-web-face-lock face))
+      (fnn-web-discard-response conn))
     (let ((capture (fnn-web-conn-response-capture conn)))
       (fnn-web-cleanup face conn (list :response-window capture)
         (lambda ()
@@ -218,7 +241,9 @@ exposure admission decides (the id, or NIL when it refused)."
   ;; One outstanding job per admitted HTTP record: the mailbox cannot grow
   ;; beyond the profile's already captured slot count.
   (sb-thread:with-mutex ((fnn-web-face-lock face))
-    (when (and (not (fnn-web-conn-job conn))
+    (when (and (not (fnn-web-conn-closedp conn))
+               (eq (fnn-web-conn-semantic-disposal conn) :idle)
+               (not (fnn-web-conn-job conn))
                (eq (fn-fs-inbox-admit (fnn-web-face-jobs-closed face)) :admitted))
       (let ((job (%make-fnn-web-job :conn conn :kind kind)))
         (setf (fnn-web-conn-job conn) job

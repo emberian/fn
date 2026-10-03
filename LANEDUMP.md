@@ -3343,3 +3343,14 @@ read/token/dependency. Ordinary refusal unregisters, torn issuer keeps reserved
 worker/read. No full funding/profile/GC claim; current partial86928 scope and
 modern full unpriced refusal unchanged. Current native source fixture passes;
 registry PRF1288 remains planned. Integration sole dev writer.
+
+Runtime Web terminal follow-through: closed HTTP records now refuse new mailbox
+jobs; sole disposal requires CLOSED and exact outstanding-job return. It clears
+POST form/source/cursor, IN/OUT, request/action, plan/captured/replay/page graphs
+before scalar-loan close/unpin. Held-job schedules retain references until return;
+terminal and stale re-submit schedules pass. Cold failure debt key retains actual
+READ. Reactor/page/POST raw composition passes after replacing obsolete terminal
+OUT-length assertion with affirmative discarded-NIL assertion. Historical first
+POST classifier defect is repaired49c933 with16.702s actual browser verdict at
+its preserved old source coordinate; current compressed ARTICLE/Web endpoint and
+full heap funding remain open. History owns canonical current initialization.
