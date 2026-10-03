@@ -319,3 +319,27 @@ receipt/collector bytes were dropped by test_budget and stay unavailable. Future
 matching selection should name a scratch diagnostic directory; no semantic
 classification, source injection or second oracle. Python compile passes; native
 keeper execution remains pending matching source selection.
+
+
+## Actual funded and held-read consumers on ad8, 2026-10-03
+
+Integration resumed existing ad8da41 candidate at image-developer using already
+passed default prefix/artifact; priorDTN-notrun status2 preserved. Continuation
+built one developer image82s, then funded mux POST/stop/fresh ARTICLE passed
+2.732s and normal held-read2.546s,0skips. Verified allSHA256SUMS; image launcher
+811934e974616246449e68fde0de40db4b15fc7a6f089486153869e321a3dc71, core
+14ab00b22830df13f1193f8e9e418f69f34ba693d74463a5269561b99f34c8e2.
+
+Integration-approved original cancellation selector then passed40.981s under
+one24GiB swarm.scope, normal/stale/duplicate subcases. Old assertions affirm
+held descriptor through actual return/settlement, subsequent close and useful
+replacement requests. These assertions do not include later0cf complete-byte
+reopen or24cd JOB-RESULT/shutdown; no fullHM comparison or performance curve
+claim. Passing test_budget drops raw stderr, so receipt/collector event bytes
+stay unavailable; new shared diagnostic keeper closes that future scope.
+
+19 exact result/build/script/input/host objects archived as
+native-ad8da41-funded-read-cancel-2026-10-03; manifest
+2fcce62aacf0f4ef1c53eae94d3a76b974a0a1677820cd98a7ee4edbebe85a09.
+Next image consumers: matching new held-stop/results, paged attachment/navigation
+and canonical BP undertaking/release/reopen20ec; Integration budgets them.
