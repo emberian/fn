@@ -43,8 +43,9 @@ PRODUCER = native_image("FN_NATIVE_HOST")
 @requires(IMAGE, PRODUCER)
 class NativeBpNodeTests(unittest.TestCase):
     def setUp(self):
-        if self._testMethodName == (
-                "test_disconnected_delivery_restarts_and_releases_only_matching_obligation"):
+        if self._testMethodName in (
+                "test_disconnected_delivery_restarts_and_releases_only_matching_obligation",
+                "test_keepalive_peer_does_not_block_second_canonical_request"):
             self.image_source = assert_same_published_source(self, PRODUCER, IMAGE)
         self.tmp = scratch(self, "fn-bp-node-a3-")
         self.relay = ByteRelay()
@@ -165,12 +166,12 @@ class NativeBpNodeTests(unittest.TestCase):
         line = process.announcement(b"BP NODE LISTENING ", timeout=45)
         return process, int(line.rsplit(b" ", 1)[1])
 
-    def send_request(self, port, work, *, lifetime=3600000):
+    def send_request(self, port, work, *, lifetime=3600000, timeout=120):
         return self.invoke(
             "bp-service", "run", "127.0.0.1", port,
             self.request_path, self.sender_journal,
             "dtn://sender/", "dtn://receiver/", work, work + "-attempt", 0,
-            lifetime, 2, 32, 1048576, 0, 0,
+            lifetime, 2, 32, 1048576, 0, 0, timeout=timeout,
         )
 
     def tick_receiver(self):
@@ -238,6 +239,32 @@ class NativeBpNodeTests(unittest.TestCase):
             path = self.tmp / "unrouted-transit.bundle"
             path.write_bytes(acl2_octets(bridge.call(form)))
             return path
+
+    def test_keepalive_peer_does_not_block_second_canonical_request(self):
+        """SCN1110: both peers run the real image's ACL2 TCPCL consumer."""
+        receiver, port = self.start_node(True, once=False)
+        keepalive = start(
+            [IMAGE, "--fn", "tcpcl", "send", "127.0.0.1", str(port), "-",
+             str(self.tmp / "keepalive-spool"), "dtn://sender/", "dtn://receiver/",
+             "1", "65536", "1048576", "1"], cwd=ROOT, env=environment())
+        self.addCleanup(keepalive.stop, 5)
+        self.wait_for_output(keepalive, b":SESSION-UP", timeout=45)
+        self.assertIsNone(keepalive.poll(), keepalive.diagnostics())
+        sent = self.send_request(port, "after-live-keepalive", timeout=30)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        delivered = self.wait_for_output(
+            receiver, b"BP node delivery request-accepted", timeout=45)
+        self.assertIn(b"BP application handoff durable", delivered)
+        self.assertIsNone(keepalive.poll(), keepalive.diagnostics())
+        self.assertIsNone(receiver.poll(), receiver.diagnostics())
+        # Reopen observes exactly the one application delivery; a TCPCL ACK
+        # alone is not the Store/FNRJ/application evidence asserted here.
+        keepalive.stop(grace=5)
+        receiver.stop(grace=5)
+        self.assertEqual(self.receiver_articles(), 1)
+        restarted = self.dispatch_receiver()
+        self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
+        self.assertEqual(self.receiver_articles(), 1)
 
     def test_older_unrouted_transit_does_not_block_younger_local_request(self):
         receiver, port = self.start_node(True, once=False)
