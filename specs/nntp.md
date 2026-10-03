@@ -496,17 +496,15 @@ the owner hands every read its committed view as the live pin
 statement of the same semantics; the retrieval arms read the catalog through
 the view in the next increment (PKT-585).
 
-What a selection costs at the view (PKT-870, PRF-363, 2026-09-28): the
-reader's view is the durable one, so while a batch is in flight a GROUP's
-view is one batch below the catalog's count. The group's count, least and
-greatest number at that view are the catalog's live summary at its count
-(kept by commit and withdrawal) corrected over the numbers of the rows
-appended since the view and of the rows withdrawn at or after it (the
-catalog lists withdrawals per version, `fn-cat-withdrawn-at-is-from`), never a
-pass over the group's numbers (`fn-scv-summary`, equal to the pass by
-`fn-scv-count-is-count-p`, `fn-scv-first-is-first-p`,
-`fn-scv-last-is-last-p` and `fn-scat-group-summary-is-pass`). The answer
-is RFC 3977 section 6.1.1's, unchanged.
+Available selection summaries use the catalog's classified live table,
+corrected over appended and withdrawn rows since the view (`fn-scv-summary`,
+PRF-363). Its count/first/last theorems describe `fn-scv-keptp`, including
+available metadata. Raw retained-identity compatibility readers have a separate
+`fn-scat-raw-keptp` and range pass (PRF-346). Raw summary/low enumerate that
+clamped range; raw next/previous probe through the number gap. Their archive
+refinements do not equate reclaimed identities with available memberships.
+Actual GROUP/LISTGROUP/LIST/NEXT/LAST adapters use the available metadata
+readers under PRF-1262; their source and image status are separate.
 
 Option 2′ (2026-10-03): GROUP, LISTGROUP, LIST ACTIVE/COUNTS and
 NEXT/LAST use available memberships: a retained row with decided overview

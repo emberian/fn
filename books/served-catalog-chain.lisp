@@ -1020,7 +1020,7 @@
   :hints (("Goal" :in-theory (e/d (fn-scr-reselect fn-served-reselect)
                                   (fn-scat-group-low fn-nntp-group-low fn-cat-view-articles
                                    fn-cnx-freshp fn-nntp-set-cursor
-                                   fn-scat-group-low-is-pass fn-scat-group-low-pass)))))
+                                   fn-scat-group-low-by-definition fn-scat-group-low-pass)))))
 
 (defun fn-scr-repin-session (as archive v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)))

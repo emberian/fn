@@ -2340,3 +2340,22 @@ owner admission and plan construction still run to completion under O, and one
 worker can wait on admission; no full semantic-event fairness claim. Root and
 Foundations own funding; Runtime absorbs Web at 08:00. Source assembly owns one
 material review; Integration owns affected roots/interface/image convergence.
+
+
+# Sol convergence
+
+Owner: Codex GPT-6.1-Sol lieutenant. Integration sole dev writer.
+
+Owns precise sol3r served-catalog semantic repair. The raw range was unchanged;
+classification filtering changed live-rowp and fn-scv-keptp, making old raw
+range/table equivalence false. Preserve available table/fn-scv for Served's
+actual availability adapter. Raw compatibility summary/low now use the explicit
+range pass and raw navigation uses its own visibility predicate. Archive
+refinements stay the evidence; by-definition aliases are not cited keystones.
+
+Sparse 34-row writer fixture distinguishes raw (34 identities, next 2) from
+available (1 and 34, next 34). Source ready before verification. Certification
+and image status remain pending; no deployment action.
+
+Groundwork continues application consumer/E1E2. No app transfer. Lieutenant
+exempt from ten-agent cap per Ember's latest 07:14 correction.
