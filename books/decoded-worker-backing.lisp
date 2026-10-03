@@ -1,4 +1,4 @@
-; Fixed backing inventory for decoded-worker-job's actual private constructor.
+; Conservative fixed backing inventory for the private decoded constructor.
 ; Selected fn-crl SBCL layout projection, NOT complete allocation funding.
 (in-package "ACL2")
 (include-book "cold-read-layout")
@@ -15,10 +15,15 @@
   (declare (xargs :guard t))
   (+ (fn-crl-array-octets 16 8) (fn-crl-array-octets 64 8)))
 
+; Actual ACL2 native lowering represents the single-array stobj directly as
+; its 20-register vector. Retain 32 extra projected octets conservatively;
+; this logical one-field parent is not a second native backing object.
 (defun fn-dwb-decoder-register-octets ()
   (declare (xargs :guard t))
   (+ (fn-crl-array-octets 1 8) (fn-crl-array-octets 20 8)))
 
+; Likewise the actual requested-window child is the direct 16384-byte vector.
+; The 32 parent allowance is conservative, not an observed native allocation.
 (defun fn-dwb-requested-window-octets ()
   (declare (xargs :guard t))
   (+ (fn-crl-array-octets 1 8) (fn-crl-array-octets 16384 1)))
