@@ -121,3 +121,30 @@ selector follow-through is a separately assigned next seam, not changed here.
 
 Evidence is archived/indexed under planning/evidence/dc03-discovery-20261003:
 command-repl.log.gz and checks.json, including current subject/consumer file hashes.
+
+## NEWNEWS configured candidate selector (2026-10-03)
+
+PRF-1257 claimed for this helper. New book/tests only: fixed10-cell selector
+retains pattern/configured-group/article/membership references, active group,
+phase, group/member offsets and final boolean receipt. start builds no filtered
+group list. one inspects at most one configured group OR one membership entry;
+first equal membership ends that group's scan even for invalid/zero numbers.
+Wildcard match waits for a positive valid local number and renderable article ID.
+
+Exact start candidate equality, unconditional step-value preservation, decided
+value equality, state preservation and combined offset/entry-charge relation
+admitted. Remaining model strictly decreases under posp alone; zero remaining
+settles to a decision, receipt retains value. Logical len/filter/residual models
+are disabled and never called by start/one. Entry visits assert no byte/matcher
+allocation tariff. Existing wildmat-work facts remain a future matcher bridge.
+
+Final source replay uses one encapsulate, dropping locals:30forms,2.14 ACL2 s,
+1,513,918 steps.15 test forms652 steps: sparse misses, actual first successful
+decision, excluded wildcard, first-zero duplicate, overflow number, invalid ID,
+empty settlement and offset-invariant hypothesis removal. Guards verified.
+Strict scoped theory/book-order check and diff check pass. Test-root check
+requires new selector test in Makefile ACL2_BOOKS; inherited cursor/plan tests
+also lack entries at this base. Served owns consumer/controller integration,
+registry/spec/scenario and root wiring with Integration. No certificate/native
+or composed served claim yet. Evidence archived/indexed under
+planning/evidence/dc03-selector-20261003/{checks.json,selector-repl.log.gz}.
