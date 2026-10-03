@@ -1168,6 +1168,24 @@ Anything but :stale removes the row (the file pin) and idles the worker."
 (defun acl2_*1*_acl2::fn-durable-realize-lz (file eoff elen poff plen trailer n dict)
   (fn-durable-realize-lz file eoff elen poff plen trailer n dict))
 
+;;; The arena scalar export consumes this seam. Window mode may only borrow
+;;; the authenticated returned decoded window; it never falls back to the
+;;; full-payload realizer. The physical decoded worker installs that leaf.
+(defun fn-durable-realize-lz-octet (file eoff elen poff compressed trailer decoded dict i)
+  (if *fnn-extent-window-mode*
+      (if (fboundp 'fnn-extent-decoded-window-realize-octet)
+          (fnn-extent-decoded-window-realize-octet
+           file eoff elen poff compressed trailer decoded dict i)
+        (throw 'fnn-extent-window-refused
+          (values (fnn-core-cold-single 'fn-owner-page-window-decoded-refusal)
+                  nil nil nil)))
+    (fnn-core 'fn-oct-nth i
+      (fn-durable-realize-lz file eoff elen poff compressed trailer decoded dict))))
+
+(defun acl2_*1*_acl2::fn-durable-realize-lz-octet
+    (file eoff elen poff compressed trailer decoded dict i)
+  (fn-durable-realize-lz-octet file eoff elen poff compressed trailer decoded dict i))
+
 ;;; A-ARENA-STORED (books/assumptions-stored.lisp; lane compress-5, NNT-055):
 ;;; handle H's payload AS IT IS STORED, for XFN-ZARTICLE
 ;;; (books/nntp-zarticle.lisp fn-zar-stored).  The live fn-arena is the

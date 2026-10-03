@@ -2452,3 +2452,16 @@ and common response factory; physical owns registered worker acquisition
 and actual last-borrow. Their lower source/guard components and older
 response-pin model are separate scopes. New constructor/holder/frame/GC,
 installed allowance and changed native image qualification remain open.
+
+### Shared compressed article scalar seam (PRF-1288, SCN-1118)
+
+The actual compressed arena scalar arm calls `fn-durable-realize-lz-octet`,
+whose logical byte is the existing A-DURABLE-LZ decoded value at the same
+index. Normal native mode preserves the original whole decoder. A selected
+window mode must borrow the exact authenticated returned decoded window or
+return its named unavailable/cold/refusal outcome; it never silently falls
+back to materializing the full decoded payload. This adds no decode or
+integrity assumption. Same-pool constructor/slot/buffers admission, physical
+worker return and last borrow, and the owner article quantum adapter remain
+open. The optional complete output tariff stays unsupported; this source
+seam is not a physical funding or qualified-image claim.

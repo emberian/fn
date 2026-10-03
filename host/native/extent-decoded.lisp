@@ -60,12 +60,3 @@ its full core-selected cold descriptor while the captured owner is held."
             ((eq word :unavailable) (throw 'fnn-extent-cold descriptor))
             (t (error 'fnn-extent-fault
                       :message "arena-extent-read: decoded window was not an authenticated returned result"))))))
-
-(defun fn-durable-realize-lz-octet (file eoff elen poff compressed trailer decoded dict i)
-  (if *fnn-extent-window-mode*
-      (fnn-extent-decoded-window-realize-octet file eoff elen poff compressed trailer decoded dict i)
-    (fnn-core 'fn-oct-nth i
-      (fn-durable-realize-lz file eoff elen poff compressed trailer decoded dict))))
-
-(defun acl2_*1*_acl2::fn-durable-realize-lz-octet (file eoff elen poff compressed trailer decoded dict i)
-  (fn-durable-realize-lz-octet file eoff elen poff compressed trailer decoded dict i))
