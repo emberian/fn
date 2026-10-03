@@ -212,3 +212,15 @@ the concrete E1 payload grammar with two independent consumers. Key custody
 and succession, private-group confidentiality, cross-silo untrusted receipt
 authority and external-effect execution remain separate decisions. No claim in
 this proposal depends on silently selecting them.
+
+The concrete external client emits `fn-app: e1/2` for new submissions. A single
+ASCII metadata region names the application, operation, kind, optional
+correlation/dependency, payload encoding and exact decoded byte length; a blank
+line separates its canonical base64 payload (76 characters per encoded line).
+`report OP --payload-file FILE` carries arbitrary bytes without permitting them
+to replace metadata. This is an application codec, not a fn Store or transport
+format. Existing immutable v1 artifacts remain readable and are retried exactly,
+without re-signing. Article/profile acceptance remains the native core's decision;
+base64 overhead is included in the submitted article. Local codec and SQLite
+retry checks establish client behavior; matching native report/reply and restart
+execution remains separately required.

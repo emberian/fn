@@ -216,7 +216,9 @@ mean the post failed. It may have been withdrawn, or hidden from your login.
 A program on the node's own machine can use `tools/fn_consumer.py`. It keeps
 its place safely across crashes:
 
-- `fn_consumer.py CONFIG report OPERATION_ID PAYLOAD` posts a signed report.
+- `fn_consumer.py CONFIG report OPERATION_ID PAYLOAD` posts a signed UTF-8 report.
+- `fn_consumer.py CONFIG report OPERATION_ID --payload-file FILE` posts the exact
+  bytes of a file, including multiline or binary content.
 - `fn_consumer.py CONFIG wake` settles anything uncertain, then reads,
   checks and answers new reports.
 - `fn_consumer.py CONFIG summary` prints its database.
@@ -229,10 +231,13 @@ If decoding or projection fails, `wake` leaves that delivery pending and does
 not acknowledge it; the next wake uses the saved bytes. Reports and replies
 keep their original source, signatures and key generation for retry. Reusing
 an operation ID with a different payload is refused.
-The current application envelope takes one ASCII line per field; a line break
-in a payload or operation ID is refused before signing. Duplicate or malformed
-fields in a received application envelope are retained as evidence without an
-application transition.
+New submissions use application envelope `fn-app: e1/2`: unique ASCII metadata,
+a blank line, and a canonical base64 payload with its byte length. Payload bytes
+never become operation or kind fields. Metadata line breaks are refused before
+signing. The client still reads v1 reports and retries saved v1 artifacts exactly;
+it does not convert or re-sign them. Duplicate fields, malformed encoding and
+length mismatches are retained as evidence without an application transition.
+The node’s configured article admission limits still apply to the encoded source.
 
 `report` and `wake` return 1 for refusal, 3 for an unresolved submission or
 acknowledgement, and 4 for a fault. A lost reply can leave a submission
