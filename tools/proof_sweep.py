@@ -122,12 +122,23 @@ def census(root: Path) -> dict:
 def overlay(data: dict, paths: list[Path]) -> None:
     records = {row["book"]: row for row in data["books"]}
     records.update({event["id"]: event for row in data["books"] for event in row["events"]})
+    allowed = {"id", "status", "reason", "evidence", "source_sha256", "review_scope"}
     for path in paths:
         for item in json.loads(path.read_text()):
             key, status = item["id"], item["status"]
             if key not in records or status not in STATES:
                 raise ValueError(f"invalid result in {path}: {key} {status}")
-            records[key].update({k: v for k, v in item.items() if k != "id"})
+            unknown = item.keys() - allowed
+            if unknown:
+                raise ValueError(f"result overwrites source facts in {path}: {sorted(unknown)}")
+            record = records[key]
+            if "book" in record and status == "tested":
+                if item.get("source_sha256") != record["sha256"]:
+                    raise ValueError(f"book-wide tested result needs matching source_sha256: {key}")
+            record.update({k: v for k, v in item.items()
+                           if k in {"status", "reason", "evidence", "review_scope"}})
+            if "source_sha256" in item:
+                record["review_source_sha256"] = item["source_sha256"]
 
 
 def main() -> int:
