@@ -92,6 +92,17 @@ class ReaderTests(unittest.TestCase):
                           '(defthm t1 (equal "a ) b" "a ) b") :hints (("Goal")))',
                           "(local (defthm t2 t))"])
 
+    def test_surplus_close_refuses_the_entire_source_before_sending(self):
+        # A completed theorem followed by ')' previously lost that token,
+        # yielding an admitted prefix for a malformed source file.
+        for source in ("(defthm witness t))", ") (defthm later t)",
+                       "(defthm witness t)\n; balanced prefix\n)"):
+            with self.subTest(source=source):
+                with self.assertRaisesRegex(ValueError, "unmatched closing parenthesis"):
+                    proof_repl.forms(source)
+                with self.assertRaises(ValueError):
+                    proof_repl.commands(source)
+
     def test_head_and_name_sees_through_local_and_names_only_events(self):
         self.assertEqual(proof_repl.head_and_name("(defthm foo t)"), ("defthm", "foo"))
         self.assertEqual(proof_repl.head_and_name("(local (defthm Foo t))"), ("defthm", "foo"))

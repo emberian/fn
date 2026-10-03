@@ -319,6 +319,9 @@ def spans(text: str) -> list[tuple[int, int]]:
         if kind in ("comment", "block"):
             continue
         if depth == 0:
+            if kind == "close":
+                raise ValueError("unmatched closing parenthesis at line "
+                                 + str(text.count("\n", 0, match.start()) + 1))
             if kind == "quote":
                 pending_quote = match.start() if pending_quote is None else pending_quote
                 continue
