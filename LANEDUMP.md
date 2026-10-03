@@ -291,3 +291,13 @@ N-naturalness and carried-profile removal counterexamples. Whole clean newbook
 replay/evidence filing is next; no production matcher/consumer modifications.
 Root owns physical alias/borrowed-root mapping, simultaneous call roots,
 transient/collector/native byte/integer/profile/lease accounting and cold probe.
+
+Final actual trace probe gives(13 86 161 21 T): maximum13frames/86live
+control-row cells across1000actual retained steps, owned bound161, borrowed
+parsed graph21 and reached retained predicate true. Literal overlap fixture
+now asserts those exact maxima (earlier9/61 were lower witnesses). Newbook
+clean encapsulate#3-#91,89forms/33locals dropped,13.75ACL2s/5,656,759steps
+passed; all14test forms973steps passed afterlocalsdrop. Strict scoped
+theory/book-order0warnings. Physical unique-pointer graph interpretation
+requires borrowed-region/alias mapping by Root; theorems claim the named
+logical projection/maximum suffix metric, not Lisp EQ allocation identity.

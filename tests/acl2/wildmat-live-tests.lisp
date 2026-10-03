@@ -39,8 +39,8 @@
        (<= (fn-wml-live-cells next) 158)
        (equal (fn-wmc-result next) (fn-wmc-result *wmlt-row*)))) :rule-classes nil)
 (defthm wmlt-overlap-positive
- (and (>= (wmlt-frames *wmlt-start* 1000) 9)
-      (>= (wmlt-peak *wmlt-start* 1000) 61)
+ (and (equal (wmlt-frames *wmlt-start* 1000) 13)
+      (equal (wmlt-peak *wmlt-start* 1000) 86)
       (<= (wmlt-peak *wmlt-start* 1000) (fn-wml-capacity 3 12 3))) :rule-classes nil)
 (defthm wmlt-utf8-positive
  (let* ((p '((:positive (233)))) (name (coerce (list (code-char 195) (code-char 169)) 'string))
