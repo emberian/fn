@@ -9441,7 +9441,8 @@
       "milestone": "M5",
       "status": "specified",
       "requirements": [
-        "STO-020"
+        "STO-020",
+        "HST-048"
       ],
       "steps": [
         "Execute actual fnn-owner-run with constructor/recovery observations and actual ACL2 service settlement decisions.",
