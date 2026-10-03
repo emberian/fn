@@ -3389,3 +3389,10 @@ will be filed separately. A warm resync encountered expected old-arity refusal
 then helper rewrite-variable refusal; explicit resync and rule-classes NIL
 repaired both. No skip-proofs or redefinition trust used. R/Q witness now records
 its explicit execution bindings in addition to the selected source revision.
+
+Final contact source6095cff1f exact two roots completed:
+run-20261003T152209Z-69e4 / certify-20261003T152229Z-2170515 PASSED2/0,
+archived/indexed. Covers changed four-argument predicate/guards, definition
+helpers and literal assertions, not PRF-1295's proposed composed boundary.
+Previous three-argument certificate2155553 retained/indexed at its own bytes.
+SCN1110/1125/1126 remain unexecuted until current initialized owner exists.
