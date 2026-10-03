@@ -4906,7 +4906,12 @@ before exact settlement releases a charge. Owner->extent serializes it."
       condition)))
 
 (defun fnn-owner-cold-reap (service)
-  "One bounded round-robin quantum; no scan of all live or completed reads."
+  "One bounded round-robin quantum; no scan of all live or completed reads.
+An empty queue enters no section (r71 F8): the head is one slot, read
+without the owner mutex; a stale NIL defers the reap one tick, a stale read
+enters the section, which reads the head again under the mutex."
+  (unless (fnn-owner-service-cold-head service)
+    (return-from fnn-owner-cold-reap nil))
   (handler-case
       (dotimes (i (fnn-core 'fn-pio-reap-work))
         (declare (ignorable i))
@@ -6820,12 +6825,57 @@ thread is a worker, so the stop joins it with the clients."
       (push thread (fnn-owner-service-workers service))
       thread)))
 
+(defun fnn-owner-maintenance-tick (service)
+  "The owner's maintenance between accepts: settle returned cold reads, the
+checkpoint publication, a log reopen a SIGHUP asked for (PKT-101) and a
+retiring node's drain step (row S9, host/native/admin.lisp)."
+  (fnn-owner-cold-reap service)
+  (fnn-owner-maybe-publish service)
+  (fnn-owner-maybe-reopen-log service)
+  (fnn-owner-maybe-retire service))
+
+;;; r71 F8 (lane served-live): the primary accept loop ran the maintenance
+;;; quanta itself, each waiting at the owner's scheduling gate (:control or
+;;; :inspect), so behind a stalled barrier the loop could not return to its
+;;; SIGTERM check or accept: the "consumed within one second" below was
+;;; false for the composed loop.  The maintenance runs on this worker
+;;; instead, once a second, until the stop or a SIGTERM (as the accept loop
+;;; it left); the stop joins it with the other workers.  A fault in it is the
+;;; owner's, named, as an accept worker's is.
+(defun fnn-owner-start-maintenance (service)
+  (fnn-with-roster (service)
+    (let ((thread
+            (sb-thread:make-thread
+             (lambda ()
+               (unwind-protect
+                    (handler-case
+                        (loop
+                          (when (or *fnn-sigterm-requested*
+                                    (fnn-owner-service-stopping service))
+                            (return))
+                          (fnn-owner-maintenance-tick service)
+                          (sleep 1))
+                      (serious-condition (condition)
+                        (unless (or *fnn-sigterm-requested*
+                                    (fnn-owner-service-stopping service))
+                          (fnn-err "owner maintenance: ~a" condition)
+                          (ignore-errors (fnn-owner-fault-service service nil condition)))))
+                 (fnn-with-roster (service)
+                   (setf (fnn-owner-service-workers service)
+                         (delete sb-thread:*current-thread*
+                                 (fnn-owner-service-workers service) :test #'eq)))))
+             :name "fn owner maintenance")))
+      (push thread (fnn-owner-service-workers service))
+      thread)))
+
 (defun fnn-owner-accept (service listener once)
   ;; Darwin does not reliably wake a blocking accept(2) when another context
   ;; calls shutdown(2) on the listener.  Keep accept itself nonblocking and
   ;; let the ordinary owner thread poll readiness so a signal request is
   ;; consumed within one second even when the raw shutdown is only advisory.
   ;; The signal handler still performs no allocation, locking, or core call.
+  ;; No gate is entered here: the maintenance has its own worker (r71 F8).
+  (unless once (fnn-owner-start-maintenance service))
   (loop
     (when (or *fnn-sigterm-requested*
               (fnn-owner-service-stopping service))
@@ -6838,13 +6888,10 @@ thread is a worker, so the stop joins it with the clients."
                   (fnn-mux-serve-once service socket)
                   (return)))
             (fnn-owner-accept-one service listener 1))
-          ;; Before the next accept: the owner's checkpoint publication,
-          ;; and a log reopen a SIGHUP asked for (PKT-101).
-          (fnn-owner-cold-reap service)
-          (fnn-owner-maybe-publish service)
-          (fnn-owner-maybe-reopen-log service)
-          ;; Row S9: a retiring node's drain step (host/native/admin.lisp).
-          (fnn-owner-maybe-retire service))
+          ;; The serving loop's maintenance runs on its own thread
+          ;; (fnn-owner-start-maintenance, r71 F8); a one-connection run
+          ;; keeps it here, between its polls.
+          (when once (fnn-owner-maintenance-tick service)))
       (sb-bsd-sockets:socket-error (condition)
         (unless (or *fnn-sigterm-requested*
                     (fnn-owner-service-stopping service))
