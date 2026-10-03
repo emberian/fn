@@ -34,6 +34,11 @@
 (defun fnn-fsync-dir (&rest args)
   (declare (ignore args)) (when (eq *publication-failure* :cleanup) (error *physical*)))
 (defun fnn-unlink (&rest args) (declare (ignore args)) (push :unlink *publication-calls*))
+(with-open-file (in "host/native/io.lisp")
+  (loop for f = (read in nil :eof) until (eq f :eof) do
+    (when (and (consp f) (member (car f) '(defun defvar))
+               (member (second f) '(*fnn-immutable-close-debts* fnn-immutable-close-observation
+                 fnn-immutable-close-handle fnn-write-staged fnn-write-staged-at))) (eval f))))
 (with-open-file (in "host/native/immutable-publish.lisp")
   (loop for f = (read in nil :eof) until (eq f :eof) do
     (when (and (consp f)
@@ -87,3 +92,22 @@
   (assert (fnn-store-close-debt store))
   (assert (= (caar *fnn-publication-close-debts*) 91)))
 (format t "native publication neighbor Store gate source PASS~%")
+
+(defun fnn-at (&rest args) (declare (ignore args)))
+(dolist (command '(fnn-write-staged fnn-write-staged-at))
+  (dolist (fault '(:close :write-close :body-close nil))
+    (let ((*fnn-immutable-close-debts* nil) (*publication-failure* fault)
+          (*publication-calls* nil) (store (%make-fnn-store)) (caught nil))
+      (handler-case
+          (if (eq command 'fnn-write-staged)
+              (fnn-write-staged "/stage" #(1))
+            (fnn-write-staged-at store "/stage" #(1) :created :written :unlink-on-failure t))
+        (error (condition) (setq caught condition)))
+      (assert (= 1 (count '(:close 55) *publication-calls* :test #'equal)))
+      (if fault (assert caught) (assert (null caught)))
+      (when (eq fault :body-close) (assert (eq caught *body-primary*)))
+      (when fault (assert (eq (fnn-immutable-close-observation) :uncertain)))
+      (when (and (eq command 'fnn-write-staged-at) (member fault '(:write-close :body-close)))
+        (assert (member :unlink *publication-calls*)))
+      (when (and fault (eq command 'fnn-write-staged-at)) (assert (fnn-store-fenced store))))))
+(format t "native shared staging close custody source PASS~%")

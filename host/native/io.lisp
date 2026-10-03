@@ -3974,9 +3974,15 @@ open, a record at a time (`fnn-log-history-each')."
     (fnn-refuse "mutation requires a live exclusive store owner")))
 
 (defun fnn-write-staged (stage contents)
+  (unless (eq (fnn-immutable-close-observation) :closed)
+    (fnn-indeterminate "prior staging descriptor return remains unobserved"))
   (let ((fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl) #o600)))
-    (unwind-protect (progn (fnn-write-all fd contents) (fnn-fsync-file fd))
-      (fnn-close fd))))
+    (fnn-unwind-cleanups ((progn (fnn-write-all fd contents) (fnn-fsync-file fd)))
+      (let ((handle fd))
+        (setq fd nil)
+        (handler-case (fnn-immutable-close-handle handle stage nil :staged-write nil)
+          (serious-condition (condition)
+            (fnn-indeterminate "staging descriptor return unobserved: ~a" condition)))))))
 
 (defun fnn-write-staged-at (store stage contents created written &key unlink-on-failure)
   "fnn-write-staged with the byte programs' two staging cuts between its calls.
@@ -3990,9 +3996,12 @@ the same arm as a failing write; SIGKILL leaves a staging file the
 recovery sweep owns.  UNLINK-ON-FAILURE: a failure after the O_EXCL create
 removes the stage this call created (best effort; never a name it did not
 create: a failing open unlinks nothing)."
+  (unless (eq (fnn-immutable-close-observation) :closed)
+    (setf (fnn-store-fenced store) t)
+    (fnn-indeterminate "prior staging descriptor return remains unobserved"))
   (let ((fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl) #o600))
         (done nil))
-    (unwind-protect (progn (fnn-at store created)
+    (fnn-unwind-cleanups ((progn (fnn-at store created)
                            ;; CONTENTS is a byte vector, or a writer the
                            ;; caller hands in (the owner's checkpoint plan,
                            ;; fnn-plan-write-all: the file's bytes straight
@@ -4003,8 +4012,13 @@ create: a failing open unlinks nothing)."
                              (fnn-write-all fd contents))
                            (fnn-at store written)
                            (fnn-fsync-file fd)
-                           (setq done t))
-      (fnn-close fd)
+                           (setq done t)))
+      (let ((handle fd))
+        (setq fd nil)
+        (handler-case (fnn-immutable-close-handle handle stage nil :staged-write store)
+          (serious-condition (condition)
+            (setf (fnn-store-fenced store) t)
+            (fnn-indeterminate "staging descriptor return unobserved: ~a" condition))))
       (when (and unlink-on-failure (not done))
         (ignore-errors (fnn-unlink stage))))))
 
@@ -5199,6 +5213,20 @@ its name (fnn-archive-entry), never a host fault."
                                profile frontier configs (or request '(:current nil)))
                      count))
         (fnn-close fd)))))
+
+(defvar *fnn-immutable-close-debts* nil
+  "Exact #(FD STAGE FINAL OPERATION PUBLICATION CONDITION) return debts.")
+
+(defun fnn-immutable-close-observation ()
+  (if *fnn-immutable-close-debts* :uncertain :closed))
+
+(defun fnn-immutable-close-handle (fd stage final operation publication)
+  "The caller consumed its owning FD slot; retain ambiguity, never retry."
+  (handler-case (fnn-close fd)
+    (serious-condition (condition)
+      (push (vector fd stage final operation publication condition)
+            *fnn-immutable-close-debts*)
+      (error condition))))
 
 (defun fnn-staged-publication (kind stage root-path files record-count
                                record-filesystem subdirs)

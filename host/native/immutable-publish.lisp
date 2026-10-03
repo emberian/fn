@@ -15,20 +15,6 @@
                 (fnn-developer-selector "FN_APP_JOURNAL_TEST_FAIL") ""))))
     (when (string= chosen point) (fnn-os-fail sb-posix:eio path))))
 
-(defvar *fnn-immutable-close-debts* nil
-  "Exact #(FD STAGE FINAL OPERATION PUBLICATION CONDITION) return debts.")
-
-(defun fnn-immutable-close-observation ()
-  (if *fnn-immutable-close-debts* :uncertain :closed))
-
-(defun fnn-immutable-close-handle (fd stage final operation publication)
-  "The caller consumed its owning FD slot; retain ambiguity, never retry."
-  (handler-case (fnn-close fd)
-    (serious-condition (condition)
-      (push (vector fd stage final operation publication condition)
-            *fnn-immutable-close-debts*)
-      (error condition))))
-
 (defun fnn-immutable-publish-effect
   (publication stage final final-directory octets
                &key cleanup-directory observer operation-label fault-observer registered-step)
