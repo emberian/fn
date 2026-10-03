@@ -970,7 +970,13 @@ It is not a declaration that the complete producer lifecycle is proved.")
 (defun fnn-owner-store-settlement (service settlement)
   "Retain the actual service and Store lock until writer/journal settlement.
 Store close errors are physical uncertainty, never silent authority release."
-  (let ((action
+  (let* ((service (or service
+                      ;; Failed installation can retain its actual Store in
+                      ;; this same service carrier before returning SERVICE.
+                      ;; The startup reservation T owns no Store descriptor.
+                      (and (fnn-owner-service-p *fnn-owner-retained-service*)
+                           *fnn-owner-retained-service*)))
+         (action
           (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
             (fnn-core 'fn-ort-store-close-action settlement
                       (and *fnn-owner-retained-service* t)

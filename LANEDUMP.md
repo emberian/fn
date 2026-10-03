@@ -3391,3 +3391,12 @@ History's retained coherent world is still assembling the remaining Store
 prefix; first real owner open/read/stop runs there after additive source
 composition, without a whole-image gate. Explicit complete profiles stay
 refused, and selected partial storage does not establish a complete tariff.
+
+Operator EX03 companion: fnn-owner-store-settlement now uses the retained actual
+service carrier when installation never returned explicit SERVICE. Startup T
+still means no Store descriptor. Actual settlement source cases close retained
+Store once on success and fence/retain it on a close error. Prior actual9df4
+settlement refutes at CLOSES=0: it mislabeled that retained Store absent.
+SCN1130 now has12cases and immutable v2 source evidence. Horse EX03 owns uncertain
+owner-install rollback retention and persistent physical Store-close receipts;
+that companion source must compose before physical startup-failure qualification.

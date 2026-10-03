@@ -35,6 +35,8 @@
 (defvar *mode* nil)
 (defvar *installed* nil)
 (defvar *workers* nil)
+(defstruct (fnn-owner-service (:constructor %make-fnn-owner-service)) store)
+(defstruct (fnn-store (:constructor %make-fnn-store)) fenced)
 (define-condition fixture-stop (error) ())
 (define-condition fixture-fault (error) ())
 (defun fnn-core (name &rest args) (apply name args))
@@ -89,6 +91,31 @@
  '(:log-start :preflight :pool-installed :executor-join :log-join :journal-close) nil)
 (run-case :join-error
  '(:log-start :preflight :pool-installed :executor-start :store-open :executor-join) t)
+
+;; A failing install can keep its Store in the existing authority carrier
+;; before returning SERVICE. NIL at the caller is then not physical absence.
+(when (third sb-ext:*posix-argv*)
+  (source-forms (third sb-ext:*posix-argv*) '(fnn-owner-store-settlement)))
+(let* ((store (%make-fnn-store))
+       (carrier (%make-fnn-owner-service :store store))
+       (*fnn-owner-retained-service* carrier)
+       (closes 0))
+  (setf (symbol-function 'fnn-store-close)
+        (lambda (actual) (assert (eq actual store)) (incf closes)))
+  (assert (eq (fnn-owner-store-settlement nil :joined) :joined))
+  (assert (= closes 1))
+  (assert (null *fnn-owner-retained-service*)))
+(let* ((store (%make-fnn-store))
+       (carrier (%make-fnn-owner-service :store store))
+       (*fnn-owner-retained-service* carrier)
+       (closes 0))
+  (setf (symbol-function 'fnn-store-close)
+        (lambda (actual) (assert (eq actual store)) (incf closes) (error 'fixture-stop)))
+  (assert (eq (fnn-owner-store-settlement nil :joined) :held))
+  (assert (= closes 1))
+  (assert (fnn-store-fenced store))
+  (assert (eq *fnn-owner-retained-service* carrier)))
+(format t "PASS retained startup Store close observation~%")
 
 ;; The actual startup helper carries raw observations to the model, then
 ;; consumes only admitted capacities. Deliberate core results exercise the

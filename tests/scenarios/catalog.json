@@ -9446,19 +9446,21 @@
       "steps": [
         "Execute actual fnn-owner-run with constructor/recovery observations and actual ACL2 service settlement decisions.",
         "Execute actual fnn-owner-page-read-startup with deliberate admitted/refused/malformed core results and observe exact raw runtime captures and constructor ordering.",
-        "Run the prior owner body against the same startup/recovery fixture."
+        "Run the prior owner body against the same startup/recovery fixture.",
+        "Observe final settlement when installation retained its actual Store carrier but never returned SERVICE."
       ],
       "expected": [
         "Pool installation, fixed table allocation, guard preparation and executor startup precede Store open. Named refusals allocate no tables or workers; malformed model decisions fault.",
         "A failure before service publication joins partial executors before run authority settles; an escaping join preserves that authority and outstanding workers.",
-        "Prior source fails the startup predicate at Store open because no pool or workers were installed."
+        "Prior source fails the startup predicate at Store open because no pool or workers were installed.",
+        "Retained startup Store is closed rather than reported absent; close failure fences it and retains authority. Prior actual settlement performs zero closes."
       ],
       "implementation": {
         "test": "tests/test_native_owner_pool_startup_source.py"
       },
       "evidence": [
         "tests/native_owner_pool_startup_source.lisp",
-        "planning/evidence/operator-pool-startup-source-2026-10-03.json"
+        "planning/evidence/operator-pool-startup-source-2026-10-03-v2.json"
       ],
       "execution_scope": "Actual native function bodies with observed physical constructors and deliberate core startup results; actual service-settlement ACL2 functions. Numerical producer proof, actual allocator/worker composition and matching image are separate coordinates."
     }
