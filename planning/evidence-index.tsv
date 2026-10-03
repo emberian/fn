@@ -12305,7 +12305,11 @@ a6697943ae43d9c77ede2611e901a63b36f73795524102ee9df10973dfa136a3 1130 planning/e
 d505373f000f2eea08af5664ad9486a04e895bcae51203056e350b28bae47944 2105 planning/evidence/w7-product-source-integration-2026-09-30/report.json
 cd0272cdd04ef7e436f9f43cdd78b44ade33197577a4bd34925470a642e35683 4070 planning/evidence/w9-digest-2026-09-20/identity_differential.py
 5a1b4dc1df047e111a19ac32dadec1426ea97cdcf75b6cb0a1b7a731c2aeb26a 19391 planning/evidence/wave-realignment-2026-09-19.md
+fbc88ad7399e8da0741f76683119f319dba8c987baa168cfad01552c3a887445 2132 planning/evidence/web-continuations-2026-10-03-lifetime.md
 e61b95f44ff6f69bb3516e4f643e825a3659d84cb37dd8e1a0b4094b23e334d9 3339 planning/evidence/web-continuations-2026-10-03.md
+982c8fd983ce53401660818db547b9ce1c648d6d81c0489b00ee7ac3f161684b 12450 planning/evidence/web-continuations-2026-10-03/before-record-removal.log
+85d949add4c2494f557440faf64ea5ed3c985e9913358659b973ee9ae3a46060 10302 planning/evidence/web-continuations-2026-10-03/before-second-observer.log
+e589a410807bf2bb9b57ffa4ad1295b4c95b8448cd5875db9cdec4baf60f1204 118 planning/evidence/web-continuations-2026-10-03/raw-after-lifetime.log
 e589a410807bf2bb9b57ffa4ad1295b4c95b8448cd5875db9cdec4baf60f1204 118 planning/evidence/web-continuations-2026-10-03/raw.log
 7ce6746e3160f4b421ac51484f9f36f4484ec567f011621fcfa3dd36bdf8238f 7814 planning/evidence/web-native-2-2026-09-28.md
 e60aeb72156589b8b2a0542c329ae10a3f273153299a9c973d21e3d1f6d7cca6 35210 planning/evidence/web-native-2-2026-09-28/04-group.png

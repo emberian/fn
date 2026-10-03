@@ -11,7 +11,7 @@ import re
 import time
 import unittest
 
-from tests.native_harness import Client, EXIT, requires, scratch
+from tests.native_harness import Client, EXIT, keep_diagnostics, requires, scratch
 from tests import test_native_expiry as expiry  # module access: no second run of its test classes here
 from tests.test_native_expiry import DEVELOPER, ExpiryMixin, msgid
 
@@ -160,8 +160,6 @@ class PageIOTests(unittest.TestCase):
     post_all = ExpiryMixin.post_all
     filled = ExpiryMixin.filled
     owner_lines = ExpiryMixin.owner_lines
-    node = ExpiryMixin.node
-    copy_of = expiry.DeveloperExpiryTests.copy_of
 
     # The unfunded served line (books/page-read-direct.lisp, lane
     # cold-read-ownership): an operator run refuses a [resources] cold pool
@@ -170,7 +168,22 @@ class PageIOTests(unittest.TestCase):
     # one of the fixed persistent workers.
 
     def setUp(self):
+        self.observed_nodes = []
+        # Registered first: retain bounded owner streams after every node's
+        # cleanup, including passing schedules, when the existing keeper is
+        # explicitly selected by the experiment's diagnostic directory.
+        keep_diagnostics(self, self.observed_nodes)
         self.root = scratch(self, "fn-page-io-")
+
+    def node(self, name="node"):
+        node = ExpiryMixin.node(self, name)
+        self.observed_nodes.append(node)
+        return node
+
+    def copy_of(self, base, name):
+        node = expiry.DeveloperExpiryTests.copy_of(self, base, name)
+        self.observed_nodes.append(node)
+        return node
 
     def wait_line(self, owner, pattern, count=1):
         end = time.monotonic() + 120

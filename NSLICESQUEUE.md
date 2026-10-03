@@ -304,9 +304,15 @@ update charges and retained historical context consistently. Anchors:
 
 ### Concurrent web service
 
-**Queued — Runtime owns the direction; dedicated slice to dispatch.** Connect
-the web face to the same actor, submission, output and failure machinery rather
-than inline blocking service. Preserve session cleanup and distinguish store
+**Active — deputy_web (GPT-6.1 Sol), Runtime owns shared interfaces.** The
+source packet 934b416cb and lifetime followups through 8e37db4f2 connect a bounded
+HTTP I/O actor plus one fixed semantic worker to generated actor lifecycle,
+shared commit await/cold consumers and per-CID flow leases. The assembled
+consumer raw fixture passes exact partial windows and cancellation custody,
+including a held whole-disposal receipt. Matching web/POST native-image cases
+are pending Integration. Full NNTP/HTML materialization funding and incremental
+core rendering remain open; bounded socket windows alone do not complete that
+contract (WEB-006, SCN-1099). Preserve session cleanup and distinguish store
 faults, uncertainty, refusal and disappearance.
 
 Done: a slow client does not block every web client; POST composes with a
