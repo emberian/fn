@@ -5289,6 +5289,8 @@
 (definterface fn-prd-resume-at :class :common-lisp-compliant)
 (definterface fn-prd-read-limit :class :common-lisp-compliant)
 (definterface fn-prd-write-end :class :common-lisp-compliant)
+(definterface fn-prd-feed-action :class :common-lisp-compliant)
+(definterface fn-prd-write-quantum-end :class :common-lisp-compliant)
 (definterface fn-prd-idle-ms :class :common-lisp-compliant)
 (definterface fn-prd-loss-class-ok :class :common-lisp-compliant)
 
