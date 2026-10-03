@@ -97,7 +97,7 @@
 (defconst *gat-as-anon* (fn-auth-open-session *gat-state* nil nil nil *gat-acfg* nil))
 (defun gat-logged-in (name principal)
   (fn-auth-make-session (fn-auth-session-base *gat-as-anon*) *gat-acfg*
-                        (fn-nntp-string-octets name) principal nil nil nil nil))
+                        (fn-nntp-string-octets name) principal nil nil nil nil (fn-auth-session-failures *gat-as-anon*)))
 (defconst *gat-as-bob* (gat-logged-in "bob" (make-list 32 :initial-element 8)))
 (defconst *gat-as-alice* (gat-logged-in "alice" (make-list 32 :initial-element 7)))
 (include-book "arena-lift")
@@ -186,7 +186,7 @@
 (defconst *gat-bob-in-private*
   (fn-auth-make-session (fn-auth-session-base *gat-alice-in-private*) *gat-acfg*
                         (fn-nntp-string-octets "bob")
-                        (make-list 32 :initial-element 8) nil nil nil nil))
+                        (make-list 32 :initial-element 8) nil nil nil nil (fn-auth-session-failures *gat-alice-in-private*)))
 (assert-event (gat-prefixp "220 " (in-arena-gat-text *sr-arena* *gat-alice-in-private* "ARTICLE")))
 (assert-event (gat-prefixp "412 " (in-arena-gat-text *sr-arena* *gat-bob-in-private* "ARTICLE")))
 (assert-event (gat-prefixp "412 " (in-arena-gat-text *sr-arena* *gat-bob-in-private* "NEXT")))
