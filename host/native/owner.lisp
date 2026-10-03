@@ -5964,7 +5964,9 @@ enters the section, which reads the head again under the mutex."
       (when (fnn-owner-cold-read-windowp read) (fnn-owner-cold-cancel read))
       (handler-case (fnn-owner-cold-settle-locked service read)
         (serious-condition (condition)
-          (unless (fnn-owner-cold-read-settledp read) (error condition)))))))
+          (unless (fnn-owner-cold-read-settledp read) (error condition))))))
+  (when (fnn-extent-executor-discard-idle)
+    (fnn-fault "cold workers retain terminal cleanup debt")))
 
 (defun fnn-owner-cold-await (service read &optional line-since)
   "Await an already-captured read off owner lock. Return the core dependency

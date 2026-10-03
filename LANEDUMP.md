@@ -3435,3 +3435,13 @@ removed; ready/readyp use it internally. Real startup fixture also checks
 distinct worker scratch identities. Normal and cancelled last-borrow release
 retain persistent backing; separate storage-ready and :reusable diagnostics
 distinguish baseline allocation from operation debit. Actual endpoint pending.
+
+Stop custody repair: physical executor joins no longer erase the only global
+roster reference before owner settlement. Clean idle slots can be discarded;
+issued/torn constructor/reset/settlement/result slots remain discoverable.
+Owner cold shutdown prunes after exact read settlement and refuses Store
+teardown if independent roster debt remains, even with an empty read queue.
+Repeated stop does not cancel :issuing/:binding-fault/:retiring/:releasing
+quarantine; explicit cancellation/death observation cannot re-enter those
+semantic boundaries. Real joined SBCL thread schedules and actual shutdown
+empty-queue/debt gate PASS; no full current physical endpoint claim.

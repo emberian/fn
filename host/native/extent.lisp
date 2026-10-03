@@ -535,6 +535,8 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
 ; borrows its output. Extent mutex serializes revocation with scalar reads.
 (defun fnn-extent-window-cancel (worker token)
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+    (when (member (fnn-cold-worker-phase worker) '(:issuing :binding-fault :retiring :releasing))
+      (fnn-fault "cold semantic escape retains cancellation authority"))
     (destructuring-bind (word row &rest ignored)
         (fnn-core-cold-pool 'fn-owner-page-window-executor-cancel
                                 (fnn-cold-worker-row worker) token)
@@ -676,6 +678,28 @@ Legacy direct startup has no decoded scratch and cannot borrow this grant."
       (fnn-extent-executor-stop)
       (error condition))))
 
+(defun fnn-extent-executor-discard-idle-locked ()
+  "E held. Joining proves physical end, not token/result/reset settlement.
+Retain every unsettled or torn slot as independent terminal-debt custody."
+  (setf *fnn-cold-free* nil
+        *fnn-cold-workers*
+        (remove-if
+         (lambda (worker)
+           (let ((thread (fnn-cold-worker-thread worker))
+                 (storage (fnn-cold-worker-decoded-storage worker)))
+             (and (or (null thread) (not (sb-thread:thread-alive-p thread)))
+                  (member (fnn-cold-worker-phase worker) '(:idle :initializing))
+                  (null (fnn-cold-worker-token worker))
+                  (null (fnn-cold-worker-result worker))
+                  (null (fnn-cold-worker-decoded worker))
+                  (or (null storage)
+                      (eq (fnn-decoded-activation-stage storage) :idle)))))
+         *fnn-cold-workers*)))
+
+(defun fnn-extent-executor-discard-idle ()
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+    (fnn-extent-executor-discard-idle-locked)))
+
 (defun fnn-extent-executor-stop ()
   "Stop clients first. Join every worker before closing any shared file.
 No cancellation, timeout or thread termination releases a job or baseline."
@@ -685,7 +709,8 @@ No cancellation, timeout or thread termination releases a job or baseline."
       ;; Stop revokes future bounded window steps but never manufactures
       ;; physical return or last-borrow settlement. Legacy jobs stay distinct.
       (let ((token (fnn-cold-worker-token worker)))
-        (when (fn-pwx-tokenp token)
+        (when (and (fn-pwx-tokenp token)
+                   (not (member (fnn-cold-worker-phase worker) '(:issuing :binding-fault :retiring :releasing))))
           (destructuring-bind (word row &rest ignored)
               (fnn-core-cold-pool 'fn-owner-page-window-executor-cancel
                                   (fnn-cold-worker-row worker) token)
@@ -705,10 +730,9 @@ No cancellation, timeout or thread termination releases a job or baseline."
         (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
           (fnn-extent-page-observation "executor-join-return token=~s alive=~s"
                                        token (sb-thread:thread-alive-p thread))))))
-  ;; Every worker has actually returned and exited: no slot can be offered
-  ;; again (fnn-extent-direct-start may install a fresh set in a later run).
-  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
-    (setq *fnn-cold-free* nil *fnn-cold-workers* nil)))
+  ;; Physical joins never discard the sole reference to unsettled draws,
+  ;; private results or torn constructor/reset/settlement activations.
+  (fnn-extent-executor-discard-idle))
 
 (defun fnn-extent-executor-enqueue (worker row token &optional retain)
   "Extent lock held; ACL2 already assigned this exact funded physical slot."
@@ -786,7 +810,7 @@ modern complete installations still refuse their unpriced operation."
 (defun fnn-extent-executor-observe-returned (worker)
   "Extent lock held. An unexpected death requires a real join before failure
 settlement; the dead executor is never reused for another admitted job."
-  (when (member (fnn-cold-worker-phase worker) '(:retiring :releasing))
+  (when (member (fnn-cold-worker-phase worker) '(:issuing :binding-fault :retiring :releasing))
     (fnn-fault "cold terminal semantic call was already entered"))
   (unless (eq (fnn-cold-worker-phase worker) :returned)
     (when (eq (fnn-core 'fn-pio-worker-death-step
