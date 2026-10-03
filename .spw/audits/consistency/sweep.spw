@@ -35,3 +35,48 @@
  command: "npm --prefix .spw/_workbench run spw -- query --from .spw/audits/consistency --selector pathRefs --count"
  observed: "28pathRefs across6scanned consumer files; query selectors require --selector, not positional argument; roots require --from, not --dir"
 }
+^"wave2_startup_join"{
+ source_revision: "aa1ad2191; Foundationde170af1d/Runtime194b62b63+9cc0efe31 integrated69a040cb1"
+ @startup: ~"../../../books/page-read-startup.lisp"
+ @pool: ~"../../../host/page-read-host.lisp"
+ @metadata: ~"../../../books/page-read-pool-state.lisp"
+ @revision: ~"../../../books/page-read-binding-revision.lisp"
+ @native_executor: ~"../../../host/native/extent.lisp"
+ @native_owner: ~"../../../host/native/owner.lisp"
+ inspected: "full startup admission/accessors/refusal; native pool-storage/executor-start/enqueue; entire owner startup and cleanup; DATA8 install/reserved/construction/ready/readyp; all DATA writers census"
+ transitions: "plan admitted ->pool installed+retained custody ->fixed tables ->decoded ctor ->thread ->readybit ->free offer ->Store recovery ->startup hooks ->listen; failed ctor/startup joins retained workers before authority release"
+ metadata: "DATA8 indices0..4ledger metadata,5binding revision,6default readiness tag/mask,7worker count. Legacy keeper and revision publishers preserve tail; recovery-prs installer usesDATA6 only with uninitialized mode+nil DATA"
+ trace: "second ready refused already-ready; constructor needs reserved bitclear; repeated draw readyworker zeroresident uses permanentbaseline; physical ctor failure retains discoverable worker before cleanup"
+ live_owner_findings: "Runtime owns executor-stop roster clear despite unsettled/torn custody; Foundation owns protected recovery workspace versus legacy ELEN+32 charge overlap. These are cross-linked obligations, not new independent repairs"
+ scope: "default permanent backing partial-fixed-storage, not complete collector/controller/source tariff"
+}
+^"wave2_retention_reclaim"{
+ @carry: ~"../../../books/post-retain-carried.lisp"
+ @apply: ~"../../../books/identity-retain-carried.lisp"
+ @recovery: ~"../../../books/owner-recovery-retain.lisp"
+ @reclaim: ~"../../../books/owner-reclaim-pass.lisp"
+ inspected: "full carry delta/refresh; identity/retention apply; completion gate and finish; owner retained synced transition; cold extended install; reclaim rebuild/repin/swapped owner/config/admissibility; full native reclaim pass"
+ transitions: "refresh sameledger carry unchanged; release delta ids stay known; shape mismatch rebuild. complete only exact sequence/txid and core+consumer+topic gates; one ledger increment+ready required for durable. reclaim capture ->rewrite ->stage ->predict ->rebuild ->exact capture+idle+reader0+samearena-base ->install+swap+recovery barriers ->release old files"
+ obligations: "config equality and selected-group boundedness gate repin; live connection IDs/nextID maintained; installed but unswapped fences and cleanup clears failed capture mark; uncertain install is contained inside owner serialized boundary before unlock"
+ traces: "new commit since capture defers delta; another reader defers; arena advance defers moved before any seal; nonempty stage refuses identity replay; permanent released obligation IDs remain unavailable for reuse"
+ result: "no new counterexample established in these full bodies; lower retention/replay/record projection leaf graph and native wrapper exception taxonomy remain ongoing"
+}
+^"wave2_retention_leaves"{
+ @ledger: ~"../../../books/retention.lisp"
+ @node: ~"../../../books/node.lisp"
+ @acceptance: ~"../../../books/acceptance.lisp"
+ @replay: ~"../../../books/replay.lisp"
+ @operation: ~"../../../books/resource-operation.lisp"
+ inspected: "full retain known/admissible/admit/matching release/release; node prepare/complete/recover; acceptance prepare/complete/recover; replay advance/apply-retention/apply-identity-neutral/apply-record/loop; resource-operation full install/open/token/draw/admit/timeout/complete/release/close"
+ obligations: "durable publishes staged retention+binding; aborted releases stage only; indeterminate retains stage+fence and exact txid/generation recovery decides. Forwarding release cannot free archive binding. Released ID retains history unit and cannot be reused. Replay strict sequence plus monotonically allocated txids; staged/fenced/pending node cannot advance frontier"
+ physical: "resource-operation timeout retains draw; completion needs terminal receipt, reusable retained<=held with zero spent, exact token generations; closing principal requires no live subordinate draw. Logical reference is not physical runtime receipt proof"
+ outcome: "no new executable transition counterexample established; record field validators and whole bank/tree primitive graph remain separate continuing reads"
+}
+^"decoded_reuse_core_crosslink"{
+ owner: "Root"
+ source_revision: "3bb289698"
+ @tests: ~"../../../tests/acl2/decoded-worker-reuse-execution-tests.lisp"
+ evidence: "planning/evidence/decoded-reuse-20261003/repeated-execution.json"
+ scope: "same with-local-stobj job executes251A,1Z,corruptsource refusal,cancelledX,2BC using exact core assign/begin/one/read/return/byte/retire/release/settle; simulated archive I/O observations; retired scalar getters deny and successor exact bytes pass"
+ residual: "actual host execution remains separate; Runtime executor-stop lost-roster custody repair independent"
+}
