@@ -542,6 +542,22 @@ live buffer passed before state: its value."
 
 (defun fnn-open (path flags &optional (mode #o600))
   (fnn-posix (path) (sb-posix:open path flags mode)))
+(defmacro fnn-unwind-cleanups ((&rest body) &body cleanups)
+  "Attempt every cleanup. Preserve a body escape; otherwise signal the first
+cleanup failure. Normal body multiple values survive successful cleanup."
+  (let ((completed (gensym "COMPLETED")) (failure (gensym "FAILURE"))
+        (condition (gensym "CONDITION")))
+    `(let ((,completed nil) (,failure nil))
+       (unwind-protect
+            (multiple-value-prog1 (progn ,@body) (setq ,completed t))
+         ,@(mapcar (lambda (cleanup)
+                     `(handler-case ,cleanup
+                        (serious-condition (,condition)
+                          (unless ,failure (setq ,failure ,condition))))) cleanups)
+         (when ,failure
+           (if ,completed (error ,failure)
+             (ignore-errors (fnn-err "cleanup during escape failed: ~a" ,failure))))))))
+
 (defun fnn-close (fd)
   (fnn-posix () (sb-posix:close fd)))
 (defun fnn-fstat (fd)
@@ -2111,6 +2127,8 @@ resolves the names against `domain' and the host carries that list verbatim."
   ;; next start's open takes about as long): the limit verb's words read it.
   (open-ms 0)
   (completion-pending nil)
+  ;; Terminal physical close uncertainty is sticky; consumed fds are never retried.
+  (close-debt nil)
   ;; P3: how the last open reached the Store state: (:checkpoint S K) or
   ;; (:full-replay REASON).  `operator status' prints it.
   (open-mode '(:full-replay :absent))
@@ -2620,17 +2638,24 @@ store; anything else is left to the ordinary open."
     (error (e) (fnn-store-close store) (error e))))
 
 (defun fnn-store-close (store)
+  (when (fnn-store-close-debt store)
+    (error (third (fnn-store-close-debt store))))
   (setf (fnn-store-completion-pending store) nil)
-  (let ((log (fnn-store-log store)))
-    (when log
-      (setf (fnn-store-log store) nil)
-      (ignore-errors (fnn-log-discard-spare log))
-      (ignore-errors (fnn-close (fnn-log-fd log)))))
-  (let ((fd (fnn-store-lock-fd store)))
-    (when fd
-      (setf (fnn-store-lock-fd store) nil)
-      (unwind-protect (fnn-flock fd +fnn-lock-un+)
-        (fnn-close fd)))))
+  (let ((log (fnn-store-log store)) (fd (fnn-store-lock-fd store)))
+    ;; Consume each fd slot before its close attempt: no retry after reuse.
+    ;; Keep uncertainty visible to owner-store-settlement rather than claiming
+    ;; authority returned after a suppressed physical failure.
+    (setf (fnn-store-log store) nil (fnn-store-lock-fd store) nil)
+    (handler-case
+        (fnn-unwind-cleanups ()
+          (when log (fnn-log-discard-spare log))
+          (when log (fnn-close (fnn-log-fd log)))
+          (when fd (fnn-flock fd +fnn-lock-un+))
+          (when fd (fnn-close fd)))
+      (serious-condition (condition)
+        (setf (fnn-store-fenced store) t
+              (fnn-store-close-debt store) (list log fd condition))
+        (error condition)))))
 
 (defun fnn-observe (store operation &optional (result :ok))
   "Submit one already-observed filesystem result and keep failure fenced."
@@ -6903,7 +6928,7 @@ with its depth, and the rows under it name the path that called it."
   ;; preallocated and fenced OFF the owner mutex (fnn-log-prepare-spare); the
   ;; rotation under the mutex only renames it into journal/.  SPARE-LOCK
   ;; serializes preparers; it is never taken under the owner mutex.
-  (spare nil) (spare-lock (sb-thread:make-mutex :name "fn log spare"))
+  (spare nil) (spare-close-debt nil) (spare-lock (sb-thread:make-mutex :name "fn log spare"))
   ;; journal/'s path while the rotated-to segment's name is not yet durable:
   ;; the first fence of the new segment (fnn-log-fence) and the checkpoint
   ;; that names it (fnn-owner-publish-captured) fence journal/ first
@@ -7971,13 +7996,20 @@ removes one a death left, and the open's segment listing never sees it
   "Close and unlink a spare that will not be renamed (another index, or the
 store closing).  Removing a staged name is never uncertain for the history:
 the open ignores and sweeps it."
+  (when (fnn-log-spare-close-debt log)
+    (error (second (fnn-log-spare-close-debt log))))
   (let ((spare (fnn-log-spare log)))
     (when spare
       (setf (fnn-log-spare log) nil)
       (destructuring-bind (index path fd) spare
         (declare (ignore index))
-        (ignore-errors (fnn-close fd))
-        (ignore-errors (when (fnn-lstat path) (fnn-unlink path)))))))
+        (handler-case
+            (fnn-unwind-cleanups ()
+              (fnn-close fd)
+              (when (fnn-lstat path) (fnn-unlink path)))
+          (serious-condition (condition)
+            (setf (fnn-log-spare-close-debt log) (list spare condition))
+            (error condition)))))))
 
 (defun fnn-log-prepare-spare (store)
   "P-ROTATE's first half, fn-lgs-spare-program (books/store-log-segments.lisp),
