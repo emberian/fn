@@ -3791,26 +3791,37 @@ them across processes, copies, checkpoint and full replay, and boxes."
       (fnn-store-close store))))
 
 (defun fnn-command-store-journal (root)
-  "`store ROOT journal' (lane time-model-2, HST-028): read the decision
-journal STORE/decisions/decisions.fnj back and print ACL2's one-line replay
-(books/owner-time-journal.lisp fn-otm-journal-report: entries, segments,
-whole/torn/malformed, and agrees or the first gap, divergence or malformed
-entry).  It opens no store (a running owner keeps its journal open for
-append; a torn last line is one the writer had not finished).  Exit 0 when
-the replay agrees, 1 otherwise."
+  "Replay the captured prefix of decisions.fnj through ACL2's incremental
+parser and replay fold. Keep one input window and the unfinished fields,
+never the whole file or prior entries. The owner may continue appending."
   (let ((path (fnn-join (fnn-join root "decisions") "decisions.fnj")))
-    (unless (probe-file path)
+    (unless (fnn-check-regular path)
       (fnn-refuse "no decision journal at ~a" path))
-    (let* ((octets (with-open-file (in path :element-type '(unsigned-byte 8))
-                     (let ((v (make-array (file-length in) :element-type '(unsigned-byte 8))))
-                       (read-sequence v in)
-                       (coerce v 'list))))
-           (report (fnn-core 'fn-otm-journal-report octets)))
-      (fnn-write-report report)
-      (let ((exit (fnn-core 'fn-otm-journal-exit octets)))
-        (unless (member exit '(0 1))
-          (fnn-fault "ACL2 returned a malformed journal verdict"))
-        exit))))
+    ;; NONBLOCK prevents an adversarial regular-file -> FIFO replacement
+    ;; between lstat and open from blocking before fstat can reject it.
+    (let ((fd (fnn-open path (logior sb-posix:o-rdonly sb-posix:o-nonblock
+                                   +fnn-o-nofollow+))))
+      (unwind-protect
+           (let ((info (fnn-fstat fd)) (st (fnn-core 'fn-otjs-init)))
+             (unless (fnn-regular-p info)
+               (fnn-fault "refusing non-regular decision journal: ~a" path))
+             (let ((remaining (sb-posix:stat-size info)))
+               (loop while (plusp remaining) do
+                 (let* ((want (fnn-nat (fnn-core 'fn-otjs-read-count remaining)))
+                        (buffer (fnn-make-octets want))
+                        (got (fnn-read-fd fd buffer)))
+                   (when (zerop got)
+                     (fnn-refuse "decision journal shortened during replay: ~a" path))
+                   (setq st (fnn-core 'fn-otjs-consume
+                                      (fnn-octet-list (if (= got want) buffer
+                                                         (subseq buffer 0 got))) st))
+                   (decf remaining got))))
+             (fnn-write-report (fnn-core 'fn-otjs-report st))
+             (let ((exit (fnn-core 'fn-otjs-exit st)))
+               (unless (member exit '(0 1))
+                 (fnn-fault "ACL2 returned a malformed journal verdict"))
+               exit))
+        (fnn-close fd)))))
 
 (defun fnn-command-state-checkpoint (root)
   "`store checkpoint': open the store as `recover' does (the exclusive writer

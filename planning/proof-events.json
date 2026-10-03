@@ -19305,6 +19305,19 @@
           "name": "fn-auth-view-excludes-unreadable-groups-on-any-connection"
         }
       ]
+    },
+    {
+      "id": "PRF-1275",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otjs-consume-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otjs-consume-fields-bounded"
+        }
+      ]
     }
   ]
 }

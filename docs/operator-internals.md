@@ -2962,3 +2962,11 @@ and exact initial changes are ACL2's comparison; later live limits and clock
 stamps do not count as an init mismatch. A mismatch refuses by name, while
 invalid required initial evidence faults. The operator staged-publication
 `init` verb still refuses an existing destination.
+The developer `store ROOT journal` reads the size captured from its open
+regular descriptor through ACL2's incremental replay, at most64KiB of input
+per step. It reports complete-entry/segment counts, syntax status and earliest
+replay verdict without retaining previous entries. Later appends are excluded;
+a shortened captured prefix is refused. Initial natural fields remain exact
+with arbitrary width, so the field-count limit is not a constant heap bound.
+PRF-1275/SCN-1104 currently have source evidence; general old-report/exit
+refinement, clean certification and matching image remain pending.
