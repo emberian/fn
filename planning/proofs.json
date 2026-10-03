@@ -21743,6 +21743,30 @@
       "assumptions": [],
       "status": "planned",
       "evidence": []
+    },
+    {
+      "id": "PRF-1255",
+      "title": "Private committer pacing requires captured passes before pipeline entry",
+      "statement": "Host-called fn-cmt-step/fn-cmt-init in fnn-owner-committer-loop and fn-cmt-pass-target/pass-ready in native snapshot/progress observations. Immutable private actor state, no STATE/hons/memoize/protected abstract stobj. KEYSTONES fn-cmt-step-state-is-valid, fn-cmt-pipeline-requires-its-captured-passes, fn-cmt-wrong-snapshot-ticket-faults and fn-cmt-stop-observation-never-enters-a-pipeline. Native interpreter captures ticket+immutable targets under commit exclusion and waits there; inner fn-oqw pipeline remains existing serialized driver, now returning operation generation/outcome plus independent physical lifecycle readout and typed custody list. Inner I/O coordination transfer, HM correspondence and qualified image composition remain open; no whole committer conversion claim. Reached and missing-pass/wrong-ticket model teeth in books/committer-actor.lisp; tests/native_committer_actor_raw.lisp exercises deployed model/native pacing consumer with physical threads.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-003",
+        "HST-005"
+      ],
+      "depends_on": [
+        "PRF-1253"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "planning/evidence/manifests/certify-20261003T062425Z-6659.json"
+      ],
+      "events": [
+        "fn-cmt-step-state-is-valid",
+        "fn-cmt-pipeline-requires-its-captured-passes",
+        "fn-cmt-wrong-snapshot-ticket-faults",
+        "fn-cmt-stop-observation-never-enters-a-pipeline"
+      ]
     }
   ]
 }

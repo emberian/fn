@@ -40,6 +40,7 @@
 ; The fn-wide outcome classes and exit codes host/native/io.lisp reads (PRF-143).
 (include-book "books/outcome-class")
 (include-book "books/failure-scope")
+(include-book "books/committer-actor")
 (include-book "books/replay")
 ; The hybrid-store constructors that call the injecting agent; the raw
 ; host/native/signatures.lisp calls one of them (books/hybrid-store-injected).

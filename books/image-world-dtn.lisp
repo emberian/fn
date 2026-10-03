@@ -8,6 +8,7 @@
 (in-package "ACL2")
 (include-book "outcome-class")
 (include-book "failure-scope")
+(include-book "committer-actor")
 (include-book "replay")
 (include-book "hybrid-store-injected")
 (include-book "codec-attach")
