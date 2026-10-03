@@ -305,6 +305,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/reclaim-cuts \
 	books/def-carried-writer \
 	tests/acl2/def-carried-writer-tests \
+	books/owner-carrier \
+	tests/acl2/owner-carrier-tests \
 	books/owner-retain-frame \
 	tests/acl2/owner-retain-frame-tests \
 	books/def-carried-view \
