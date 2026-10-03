@@ -47,8 +47,22 @@
          (t nil))))
      (t nil))))
 
+(defun fn-asto-selection-start (session archive index args)
+  (declare (xargs :verify-guards nil))
+  (let ((group (fn-nntp-session-group session)))
+    (cond
+     ((null args)
+      (let ((number (fn-nntp-session-current session)))
+        (and group (posp number) (<= number *fn-nntp-max-article-number*)
+             (fn-ast-select-state :current group number (fn-state-articles archive)
+                                  nil nil nil 0 :next))))
+     ((and group (consp args) (null (cdr args)) (fn-nntp-number-tokenp (car args)))
+      (fn-ast-select-state :number group (fn-nntp-decimal-value (car args))
+                           (fn-state-articles archive) nil nil nil 0 :next))
+     (t (fn-asto-selection session archive index args)))))
+
 ; Capture = (expected-conn auth-view-peer selection kind server scan
-;            connection-configuration-pin). EXPECTED-CONN includes the installed
+;            connection-configuration-pin withdrawn-articles). EXPECTED-CONN includes the installed
 ; post-command wire but its reader selection is unchanged until preflight.
 (defun fn-asto-payload-preflight (article fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
@@ -88,23 +102,23 @@
              (va (if view (fn-ag-car view) (fn-auth-view-archive as config archive)))
              (vi (if view (fn-ag-cdr view) (fn-auth-view-index as config archive index)))
              (ps (fn-auth-view-session as config))
-             (selection (fn-asto-selection (fn-peer-reader-session ps) va vi (cdr tokens))))
+             (selection (fn-asto-selection-start (fn-peer-reader-session ps) va vi (cdr tokens))))
         (if (not (and selection
                      (equal (fn-nntp-session-openp (fn-peer-reader-session ps)) t)
-                     (fn-nntp-session-projected (fn-peer-reader-session ps))
-                     (not (and (consp (cdr tokens))
-                        (or (fn-nntp-number-withdrawn-p (fn-peer-reader-session ps) va vi (cadr tokens))
-                            (fn-nntp-msgid-withdrawn-p vi (cadr tokens))))))) nil
-          (let* ((article (car selection))
-                 (env (fn-post-command-env
+                     (fn-nntp-session-projected (fn-peer-reader-session ps)))) nil
+          (let* ((env (fn-post-command-env
                         (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
                         (fn-served-conn-observation sc) (fn-served-conn-injection sc) event))
                  (server (and (not (eq kind :body)) (fn-nntp-xref-server env)))
                  (expected (fn-asto-with-wire-session conn (fn-wsp-state w)
                                                      (fn-own-conn-session conn))))
             (list expected ps selection kind server
-                  (fn-asto-payload-preflight article fn-arena)
-                  (fn-ocfg-conn-config oc id))))))))
+                  (and (not (eq (car selection) :article-select))
+                       (fn-asto-payload-preflight (car selection) fn-arena))
+                  (fn-ocfg-conn-config oc id)
+                  (and (eq (car selection) :article-select)
+                       (eq (fn-ast-at 1 selection) :number)
+                       (fn-ctl-pin-withdrawn (fn-gidx-pin-control vi))))))))))
 
 ; One wire event per request: a following NEXT/ARTICLE remains unconsumed
 ; while this retrieval's preflight owns its response. This is a core parser
@@ -123,7 +137,55 @@
 (defun fn-asto-capture-with-scan (capture scan)
   (declare (xargs :guard t))
   (list (fn-ast-at 0 capture) (fn-ast-at 1 capture) (fn-ast-at 2 capture)
-        (fn-ast-at 3 capture) (fn-ast-at 4 capture) scan (fn-ast-at 6 capture)))
+        (fn-ast-at 3 capture) (fn-ast-at 4 capture) scan (fn-ast-at 6 capture)
+        (fn-ast-at 7 capture)))
+
+(defun fn-asto-capture-with-selection (capture selection scan)
+  (declare (xargs :guard t))
+  (list (fn-ast-at 0 capture) (fn-ast-at 1 capture) selection
+        (fn-ast-at 3 capture) (fn-ast-at 4 capture) scan (fn-ast-at 6 capture)
+        (fn-ast-at 7 capture)))
+
+(defun fn-asto-selection-missing (oc capture)
+  (declare (xargs :verify-guards nil))
+  (let* ((expected (fn-ast-at 0 capture)) (id (fn-own-conn-id expected))
+         (current (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
+         (ps (fn-ast-at 1 capture)) (selection (fn-ast-at 2 capture))
+         (session (fn-peer-reader-session ps)))
+    (if (not (and (equal expected current)
+                  (equal (fn-ocfg-conn-config oc id) (fn-ast-at 6 capture))))
+        (mv :stale oc nil)
+      (let* ((as (fn-auth-with-base (fn-own-conn-session expected) ps))
+             (conn (fn-asto-with-wire-session current (fn-own-conn-wire current) as)))
+        (mv :ready (fn-asto-with-conn oc conn)
+            (fn-nntp-result-effects
+             (fn-nntp-single session
+               (cond ((eq (fn-ast-at 1 selection) :current) "420 no current article")
+                     ((and (eq (fn-ast-at 1 selection) :withdrawn)
+                           (eq (fn-ast-at 9 selection) :selected)) "423 withdrawn")
+                     (t "423 no article with that number")))))))))
+
+(defun fn-asto-selection-ready (oc capture fuel fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((next (fn-ast-select-step (fn-ast-at 2 capture) (nfix fuel))))
+    (cond
+     ((and (eq (fn-ast-at 9 next) :selected) (eq (fn-ast-at 1 next) :withdrawn))
+      (fn-asto-selection-missing oc (fn-asto-capture-with-selection capture next nil)))
+     ((eq (fn-ast-at 9 next) :selected)
+      (let* ((article (fn-ast-at 5 next))
+             (selection (list article (fn-ast-at 3 next) t (fn-ast-at 2 next)))
+             (capture2 (fn-asto-capture-with-selection capture selection
+                          (fn-asto-payload-preflight article fn-arena))))
+        (mv :yield oc (list (list :article-preflight capture2)))))
+     ((eq (fn-ast-at 9 next) :missing)
+      (if (and (eq (fn-ast-at 1 next) :number) (consp (fn-ast-at 7 capture)))
+          (mv :yield oc (list (list :article-preflight
+            (fn-asto-capture-with-selection capture
+              (fn-ast-select-state :withdrawn (fn-ast-at 2 next) (fn-ast-at 3 next)
+                                   (fn-ast-at 7 capture) nil nil nil 0 :next) nil))))
+        (fn-asto-selection-missing oc (fn-asto-capture-with-selection capture next nil))))
+     (t (mv :yield oc (list (list :article-preflight
+                          (fn-asto-capture-with-selection capture next nil))))))))
 
 ; Finish decides both the session and READY plan. No host parser, reply line,
 ; or framing verdict participates. The connection/configuration comparison
@@ -163,6 +225,11 @@
   (if (atom rest) (mv :ready oc rest)
     (if (eq (caar rest) :article-preflight)
         (let ((capture (cadar rest)))
+          (if (eq (fn-ast-at 0 (fn-ast-at 2 capture)) :article-select)
+              (if (not (equal id (fn-own-conn-id (fn-ast-at 0 capture))))
+                  (mv :stale oc rest)
+                (mv-let (word oc2 effects) (fn-asto-selection-ready oc capture fuel fn-arena)
+                  (mv word oc2 (append effects (cdr rest)))))
           (mv-let (scan used)
             (fn-ast-scan-step (fn-ast-at 5 capture) (nfix fuel) fn-arena)
             (declare (ignore used))
@@ -172,7 +239,7 @@
                 (if (not (fn-ast-scan-donep scan))
                   (mv :yield oc (cons (list :article-preflight next) (cdr rest)))
                 (mv-let (word oc2 effects) (fn-asto-finish oc next fn-arena)
-                  (mv word oc2 (append effects (cdr rest)))))))))
+                  (mv word oc2 (append effects (cdr rest))))))))))
       (mv-let (word oc2 next) (fn-asto-ready-rest oc id (cdr rest) fuel fn-arena)
         (mv word oc2 (cons (car rest) next))))))
 

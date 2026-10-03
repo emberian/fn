@@ -44,7 +44,7 @@
   '(fn-nntp-printable-tokenp fn-nntp-message-id-tailp fn-nntp-message-id-tokenp
     fn-nntp-string-octets fn-nntp-string-octets-aux fn-nntp-string-octets-aux-loop))
 (source-load-defuns "books/nntp-session.lisp" '(fn-nntp-article-idp))
-(source-load-defuns "books/nntp-projection.lisp" '(fn-nntp-membership-number fn-nntp-article-number))
+(source-load-defuns "books/nntp-projection.lisp" '(fn-nntp-membership-number fn-nntp-article-number fn-nntp-find-group-number fn-nntp-available-article))
 (source-load-defuns "books/article-stream.lisp")
 (defvar *checks* 0)
 (defun source-check (condition)
@@ -136,4 +136,17 @@
           (dolist (window '(1 3 4096))
             (source-check (equal (source-render-window ready window arena)
                                  (source-reference payload kind 7 "<xref@example>" server pairs)))))))))
+(let ((articles (loop for n from 1 to 200 collect
+                  (list (format nil "<select~d@example>" n) 0
+                        (list (cons "fn.other" (+ n 300)) (cons "fn.a" n))))))
+  (dolist (mode '(:number :current))
+    (dolist (number '(1 99 200 201))
+      (dolist (fuel '(1 3 4096))
+        (let ((it (fn-ast-select-state mode "fn.a" number articles nil nil nil 0 :next)))
+          (loop until (fn-ast-select-donep it) do (setf it (fn-ast-select-step it fuel)))
+          (let ((reference (if (eq mode :number)
+                               (fn-nntp-find-group-number "fn.a" number articles)
+                             (fn-nntp-available-article "fn.a" number articles))))
+            (source-check (eq (fn-ast-at 5 it) reference))
+            (source-check (eq (fn-ast-at 9 it) (if reference :selected :missing)))))))))
 (format t "article stream actual-source PASS checks=~d~%" *checks*)

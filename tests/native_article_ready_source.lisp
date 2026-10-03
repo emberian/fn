@@ -100,9 +100,13 @@
   (dolist (kind '(:article :head :body))
     (let* ((*fixture-state* (list oc nil)) (*fixture-installs* 0)
            (*fixture-cold-offset* 4) (*fixture-cold-fired* nil)
-           (article (list "<ready@example>" 0))
-           (capture (list conn ps (list article 9 t "fn.a") kind nil
-                          (fn-asto-payload-preflight article *fixture-arena*) nil))
+           (article (list "<ready@example>" 0 '(("fn.a" . 9))))
+           (capture (list conn ps
+                          (fn-ast-select-state :number "fn.a" 9
+                            (append (loop for n below 8 collect
+                                      (list (format nil "<before~d@example>" n) 0 (list (cons "fn.a" n))))
+                                    (list article)) nil nil nil 0 :next)
+                          kind nil nil nil))
            (raw (cons nil (list (list :article-preflight capture))))
            (plan raw) (ready nil))
       (loop until ready do
@@ -157,4 +161,26 @@
         (source-check (equal (fixture-reader (car *fixture-state*)) reader))
         (source-check (equal (fn-splan-rest plan) (list (list :reply (append (bytes text) '(13 10))))))
         (source-check (not (fn-asto-preflight-planp plan)))))))
+(let* ((reader (fn-nntp-make-session t "fn.a" 1 t))
+       (ps (fn-peer-make-session (fn-post-make-session reader nil) nil nil 0 nil nil nil))
+       (as (fn-auth-make-session ps nil nil nil nil nil nil nil 0))
+       (conn (fn-own-conn-make-group-indexed 7 0 0 nil as nil nil nil nil nil nil nil))
+       (owner (fn-own-make nil nil (list conn) 8 9 nil nil 0 nil nil nil nil nil nil nil))
+       (oc (fn-ocfg-make owner '(2 nil) nil nil)))
+  (dolist (case (list (list :current nil nil "420 no current article")
+                     (list :number nil nil "423 no article with that number")
+                     (list :number nil (list (list "<withdrawn@example>" 0 '(("fn.a" . 9)))) "423 withdrawn")
+                     (list :number nil (list (list "<other@example>" 0 '(("fn.b" . 9)))) "423 no article with that number")))
+    (destructuring-bind (mode articles withdrawn text) case
+      (let* ((*fixture-state* (list oc nil)) (*fixture-installs* 0)
+             (*fixture-cold-offset* nil) (*fixture-cold-fired* nil) (*fixture-arena* nil)
+             (capture (list conn ps (fn-ast-select-state mode "fn.a" 9 articles nil nil nil 0 :next)
+                            :article nil nil nil withdrawn))
+             (plan (cons nil (list (list :article-preflight capture)))) (ready nil))
+        (loop until ready do
+          (multiple-value-bind (next done) (fnn-owner-ready-plan-step nil 7 plan :reader)
+            (setq plan next ready done)))
+        (source-check (equal (fixture-reader (car *fixture-state*)) reader))
+        (source-check (equal (fn-splan-rest plan) (list (list :reply (append (bytes text) '(13 10))))))
+        (source-check (zerop *fixture-installs*))))))
 (format t "article READY/native actual-source PASS checks=~d~%" *checks*)

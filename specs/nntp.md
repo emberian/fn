@@ -2626,3 +2626,11 @@ reader commands receive their actual authorized cache entry (or the existing
 fallback authorization projection), including peer reader commands. Transfer
 and explicit transit arms keep their original priority. This connects the
 source endpoint; it does not close PRF-1287 or make LIST production bounded.
+
+Retained article selection now yields while walking captured numeric/current
+archive rows and per-row memberships; first matching membership determines the
+number as in the original reader. A missing numeric selection searches captured
+withdrawn rows with the same bounded cursor before choosing the existing423
+reply. Xref filtering also retains raw memberships and validates/compares one
+character per transition. Message-ID setup and initial authorization/server
+configuration setup still need their complete bounded implementation/refinement.
