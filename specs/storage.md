@@ -2102,3 +2102,24 @@ include closures. New caller PROGRAM translation/guards, installed costs
 and original input factory, universal parser/consumer inverse, producer
 authority, lifetime/funding and changed native image qualification remain
 open. PRF-1148 stays planned with no completion events.
+
+### Private history relocation continuation (SCN-1101)
+
+`fn-hpr-begin` captures the requested region, capacity and placement without
+mutating the private page store. `fn-hpr-step` checks one resident page, copies
+or zeros one 16 KiB page, writes the thirteen header words, or marks one page.
+A cold table/page verdict preserves both concrete and cursor for verified cache
+completion and retry. Successful yields decrease `fn-hpr-rank`.
+
+`fn-hpr-grow-image` is an explicit prepaid operation outside this bounded tick
+claim: the existing flat arrays still resize in proportion to the image.
+`fn-hpr-placement` returns `(starts np)` only in `:done`. The completion potential
+preserves every concrete array and agrees with existing `fn-hp-x-relocate` on
+its successful domain, including dirty flags and the zeroed old region.
+
+The cursor and scratch store have exclusive publisher custody until done or
+abandonment. In particular, zeroing makes the old placement unreadable before
+the new header is installed; this API does not permit concurrent readers on
+that scratch store. It is intended for History's fresh private image builder.
+It does not bound whole-event encoding, flat backing growth, or commit work,
+and supplies no physical persistence or root-release receipt.

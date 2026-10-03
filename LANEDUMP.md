@@ -1165,3 +1165,21 @@ planning/evidence/astra-checkpoint-stop-2026-10-03.json. Rejected connected lead
 `fn-owner-orcp-swap` already reseeds record-octets from rebuilt field 3; no missing
 cache reset claimed. S039 frontier repair and S040 staged quarantine are already
 present at inspected source; original reports are not new confirmed defects.
+
+## Astra — page relocation continuation (2026-10-03)
+
+New history-pages-relocate-step: fn-hpr-begin/step/grow-image/placement,
+private cursor, one page per readiness/copy/zero/mark tick, 13-word header.
+Explicit prepaid grow remains flat O(image). Clean warm source replay passes
+all definitions/guards, whole-concrete completion preservation, old relocation
+bridge, cursor preservation and decreasing-yield rank. Actual stobj schedules
+SCN-1101 pass full six-array equivalence, cold needs/retry, refusal and tick
+word bound. Scoped two-root hbox certification running, source may integrate
+before evidence follows. History consumes only in fresh private builder;
+old placement is unreadable during zero phase, no live-root/read claim.
+Inspected leaves: history-pages-row readiness, history-pages-relocate copy/
+zero/mark/relocate, history-pages-write-exec append plan/put, pagestore-exec
+flat grow and generic commit. Rejected council lead: generic commit accepts
+arbitrary txid, though snapshot wrapper uses 1. Still unbounded: event encode,
+flat backing resize and commit dirty/digest work; native root attachment is
+History's. No pgs existing leaf or shared fn-hrecs carrier modified.
