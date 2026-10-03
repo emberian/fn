@@ -25,7 +25,7 @@
 ; prepares.  def-carried generates each NAME-FN-carries statement from the
 ; world and proves it from the named theorem.
 ;
-; WHAT IS ASSUMED: A-OWNER-INVARIANT-CARRIED (specs/failures.md).  The carried
+; WHAT IS TEMPORARILY TRUSTED AT NATIVE DISPATCH: A-OWNER-INVARIANT-CARRIED (specs/failures.md).  The carried
 ; state is the whole ACL2 state, so every host-called entry that returns
 ; state is a writer of it, and def-carried's completeness demands a
 ; preservation theorem for each.  The ones not yet proved are the :incomplete
@@ -36,6 +36,8 @@
 ; most of them are :program and can carry no theorem at all; the
 ; carrier move (STAGE-5B, lane/stage-5b-carrier: the owner's state in its
 ; own stobj, so only its writers return it) is the principled replacement.
+; The stable identifier is runtime trust, not a formal logical assumption.
+; No encapsulate or whole-host invariant theorem is introduced for it.
 ; Each owed writer is a ledger item (planning/repair, category proof-owed).
 ;
 ; WHAT USES IT.  The entries host/interfaces.lisp declares

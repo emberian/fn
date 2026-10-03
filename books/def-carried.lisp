@@ -143,7 +143,7 @@
 ; 2026-10-03; ember: "we can just not have that guard").  A stobj row whose
 ; completeness is not yet earned may name the host-called entries that
 ; return ST with no preservation theorem -- the OWED writers -- and the
-; registered assumption A-ID (specs/failures.md) under which the row is
+; registered native dispatch trust marker A-ID (specs/failures.md) under which the row is
 ; nevertheless relied on: that each owed writer keeps R.  The completeness
 ; check then refuses every returning entry that is neither listed nor owed
 ; (a writer added later is refused, by name, until it is proved or owed),
@@ -156,7 +156,7 @@
 ; over such a row only as `:raw-with (:carried NAME :assuming A-ID)', so
 ; the escape is written at every entry that relies on it, and
 ; host/native/io.lisp prints it at image build (FN_RAW_DISPATCH ... assuming).
-; A-ID is a trust row, not an encapsulate: no theorem is stated under it;
+; A-ID is native trust outside formal named assumptions: no encapsulate or theorem;
 ; it is the dispatch-level premise that the owed writers' theorems, once
 ; proved, discharge (each owed name is a ledger item).
 

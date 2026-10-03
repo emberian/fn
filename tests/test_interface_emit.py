@@ -209,6 +209,7 @@ class HostBindingTests(unittest.TestCase):
                       interface_emit.render_raw_declarations(decls))
         registry = interface_emit.render_registry(decls, reading(defined={"fn-r"}))
         self.assertIn('"raw_with_assuming": "A-R-OWED"', registry)
+        self.assertIn('"raw_dispatch_trust": "temporary-native-dispatch"', registry)
         # the DTN build loads no host/r-host.lisp: the entry is listed outside it
         scoped = interface_emit.render_raw_declarations(
             decls, interface_emit.carried_rows(root), {"host/interfaces-raw.lisp"})

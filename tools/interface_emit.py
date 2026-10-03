@@ -554,7 +554,8 @@ def render_registry(decls: list[dict], reading: dict) -> str:
         # (books/definterface.lisp fn-di-raw-with-problem).
         "raw_dispatched": [dict({"name": d["name"], "raw_with": d["raw_with"],
                                  "raw_with_carried": d.get("raw_with_carried")},
-                                **({"raw_with_assuming": d["raw_with_assuming"].upper()}
+                                **({"raw_with_assuming": d["raw_with_assuming"].upper(),
+                                    "raw_dispatch_trust": "temporary-native-dispatch"}
                                    if d.get("raw_with_assuming") else {}))
                            for d in decls if d.get("raw_with")],
         "raw_guarded": [{"name": d["name"], "abi": d["raw_guarded"]}
