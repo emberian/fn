@@ -328,19 +328,31 @@ def scenarios() -> list:
     return [scenario_for(cut) for cut in native_cuts.POST_LOG_CUTS]
 
 
-FAMILIES = {
-    "post": lambda: [scenario_for(c) for c in native_cuts.POST_LOG_CUTS],
-    "recovery": lambda: [recovery_scenario_for(c) for c in recovery_cuts()],
-    "served": lambda: [served_scenario_for(c) for c in native_cuts.POST_LOG_CUTS],
-    "served-recovery": lambda: [served_recovery_scenario_for(c) for c in served_recovery_cuts()],
-    "checkpoint": lambda: [checkpoint_scenario_for(c) for c in native_cuts.STATE_CHECKPOINT_CUTS],
-    "cross-route": lambda: [cross_route_retry_scenario()],
+FAMILY_CUTS = {
+    "post": (lambda: native_cuts.POST_LOG_CUTS, scenario_for),
+    "recovery": (recovery_cuts, recovery_scenario_for),
+    "served": (lambda: native_cuts.POST_LOG_CUTS, served_scenario_for),
+    "served-recovery": (served_recovery_cuts, served_recovery_scenario_for),
+    "checkpoint": (lambda: native_cuts.STATE_CHECKPOINT_CUTS, checkpoint_scenario_for),
 }
+FAMILIES = {name: (lambda cuts=cuts, build=build: [build(c) for c in cuts()])
+            for name, (cuts, build) in FAMILY_CUTS.items()}
+FAMILIES["cross-route"] = lambda: [cross_route_retry_scenario()]
 
 
-def family_scenarios(name: str) -> list:
+def family_scenarios(name: str, cut: str | None = None) -> list:
+    """Select a named cut before expensive scenario/model validation.
+
+    The selected builder still performs its normal source/model checks.
+    This avoids constructing the rest of a family for one executable probe.
+    """
     if name == "all":
-        return [s for f in FAMILIES for s in FAMILIES[f]()]
+        return [s for f in FAMILIES for s in family_scenarios(f, cut)]
+    if cut is not None:
+        if name not in FAMILY_CUTS:
+            return []
+        cuts, build = FAMILY_CUTS[name]
+        return [build(c) for c in cuts() if c.name == cut]
     return FAMILIES[name]()
 
 
@@ -445,6 +457,8 @@ def _served_outcome(first: bytes, final) -> tuple:
         return "accepted", final
     if final == b"":
         return "lost", first
+    if b"uncertain" in final.lower():
+        return "uncertain", final
     if final.startswith(b"441") and b"already stored" in final:
         return "duplicate", final
     return "refused", final
@@ -475,8 +489,10 @@ class Nntp:
         lines = []
         while True:
             line = self.f.readline()
-            if line in (b".\r\n", b""):
+            if line == b".\r\n":
                 return lines
+            if line == b"":
+                raise EOFError("native NNTP multiline reply ended before its dot terminator")
             lines.append(line[1:] if line.startswith(b"..") else line)
 
     def multiline(self, text: str) -> tuple:
@@ -1023,11 +1039,13 @@ def main(argv=None) -> int:
     image = Path(a.image)
     if not (image.is_file() and os.access(image, os.X_OK)):
         print("not an executable image: " + str(image)); return 2
+    selected = family_scenarios(a.family, a.cut)
+    if not selected:
+        print("no executable scenario matches family={} cut={}".format(a.family, a.cut))
+        return 2
     out = Path(a.out) if a.out else Path(tempfile.mkdtemp(prefix="fn-resilience-"))
     worst = 0
-    for s in family_scenarios(a.family):
-        if a.cut and not s.id.endswith("-" + a.cut):
-            continue
+    for s in selected:
         work = out / s.id
         work.mkdir(parents=True, exist_ok=True)
         s.dump(work / "scenario.json")

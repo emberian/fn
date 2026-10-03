@@ -1,4 +1,5 @@
 """Actual host execution failures and cleanup orchestration; no native fn verdict."""
+import io
 import json
 from pathlib import Path
 import subprocess
@@ -6,11 +7,51 @@ import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
-from tools.resilience.adapters.native_cuts import HarnessFailure, Run
+from tools.resilience.adapters.native_cuts import HarnessFailure, Nntp, Run, _served_outcome
+from tools.resilience.adapters import native_cuts
 from tools.resilience.journal import Journal
 from tools.resilience.payload_boundary import scenario
+
+
+class NativeWireBoundaryTests(unittest.TestCase):
+    def test_selected_cut_constructs_only_its_checked_scenario(self):
+        cuts = [SimpleNamespace(name="a"), SimpleNamespace(name="b")]
+        build = Mock(side_effect=lambda cut: "checked-" + cut.name)
+        with patch.dict(native_cuts.FAMILY_CUTS, {"served": (lambda: cuts, build)}):
+            self.assertEqual(native_cuts.family_scenarios("served", "b"), ["checked-b"])
+            build.assert_called_once_with(cuts[1])
+            build.reset_mock()
+            self.assertEqual(native_cuts.family_scenarios("served", "unavailable"), [])
+            build.assert_not_called()
+
+    def test_missing_cut_is_reported_before_a_workload_can_claim_success(self):
+        with patch.object(native_cuts.Path, "is_file", return_value=True), \
+             patch.object(native_cuts.os, "access", return_value=True), \
+             patch.object(native_cuts, "family_scenarios", return_value=[]):
+            self.assertEqual(native_cuts.main(["--image", "unused", "--family", "served", "--cut", "unavailable"]), 2)
+
+    def test_eof_after_partial_multiline_reply_is_not_a_complete_block(self):
+        client = Nntp.__new__(Nntp)
+        client.f = io.BytesIO(b"a retained row\r\n")
+        with self.assertRaisesRegex(EOFError, "dot terminator"):
+            client.block()
+
+    def test_empty_and_dot_stuffed_complete_blocks_remain_complete(self):
+        client = Nntp.__new__(Nntp)
+        client.f = io.BytesIO(b".\r\n")
+        self.assertEqual(client.block(), [])
+        client.f = io.BytesIO(b"..row\r\n.\r\n")
+        self.assertEqual(client.block(), [b".row\r\n"])
+
+    def test_literal_native_uncertainty_is_not_a_441_refusal(self):
+        status = b"441 outcome uncertain; recover before retry\r\n"
+        self.assertEqual(_served_outcome(b"340 send article\r\n", status), ("uncertain", status))
+        self.assertEqual(_served_outcome(b"340 send article\r\n", b"441 article refused\r\n")[0], "refused")
+
+    def test_lost_reply_remains_a_distinct_transport_observation(self):
+        self.assertEqual(_served_outcome(b"340 send article\r\n", b"")[0], "lost")
 
 
 class NativeFailureTests(unittest.TestCase):
