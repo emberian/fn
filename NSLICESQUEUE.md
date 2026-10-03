@@ -747,3 +747,9 @@ CONS tag/NIL offer for the consistency owner's zero START|END/ACK machine repair
 Actual begin raw cases PASS. Latest tcpcl-session source must precede native use;
 no native zero-file verdict is claimed. Full semantic decoder/CRC/publication and
 GC/working tariffs still require connected bounded consumers, beyond this step.
+
+BP served owner startup SCN1134: source connects bp-node serve and bp-app receive
+to independent captured DEFAULT installation before Store recovery, preserves
+constructor/physical/Store-close debt through owner authority and attempts all
+root cleanup. Actual command/helper recorded-seam fixture PASS; complete tariff
+and current source-native worker/Store/multi-peer/RQ composition remain UNDONE.

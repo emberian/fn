@@ -9666,6 +9666,32 @@
         "planning/evidence/operator-startup-custody-composition-2026-10-03.json"
       ],
       "execution_scope": "Actual owner-install, failed-open close helper, Store-close debt, retained authority and terminal settlement bodies; actual ACL2 service settlement decisions. Open provider and physical close/unlock/unlink calls are recorded observations, not live filesystem durability or saved-image qualification."
+    },
+    {
+      "id": "SCN-1134",
+      "title": "BP listeners install independent DEFAULT pool before Store recovery and retain owner custody through teardown",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Execute actual BP served-owner startup/stop/settlement helpers using actual ACL2 service authority decisions and recorded physical constructors.",
+        "Execute actual bp-node serve and bp-app receive entry functions through partial-constructor failure, failed recovery and escaping worker join.",
+        "Observe independent BP root debt and uncertain Store-close before attempting a fresh owner claim."
+      ],
+      "expected": [
+        "Independent run authority and captured DEFAULT pool installation precede Store open; the private BP session bank supplies no decoded worker grant.",
+        "Partial constructors and failed-installation Store carriers remain discoverable until actual worker return; no close or authority settlement follows an escaping join.",
+        "Unresolved BP publication/physical root cleanup holds owner authority even after worker return; Store-close uncertainty fences the Store and blocks a second claim."
+      ],
+      "implementation": {
+        "test": "tests/test_native_bp_owner_startup_source.py"
+      },
+      "evidence": [
+        "tests/native_bp_owner_startup_source.lisp"
+      ],
+      "execution_scope": "Actual production BP entry/helper functions and ACL2 service-settlement decisions with recorded physical seams. Complete DEFAULT/BP tariffs, actual allocator/worker/Store composition and current source-native joins remain open."
     }
   ]
 }

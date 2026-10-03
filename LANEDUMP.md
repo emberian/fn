@@ -3834,3 +3834,14 @@ Access73a0 core+teeth normal cert PASS certify-20261003T165500Z-2590721,
 2selected roots/38matchingcacheddeps. Manifest archived+index committed.
 No owner/physical endpoint claim; underlying historical cache citations have
 uncited provenance debt, not silently upgraded to a whole closure verdict.
+
+BP served startup source followthrough: actual bp-node serve/bp-app receive now
+use shared fnn-bp-served-owner-start/stop/settle over Operator's captured DEFAULT
+installer before Store recovery. Independent owner authority is claimed before
+constructor work; partial constructor/recovery failure, worker join escape,
+root debt and Store close uncertainty preserve exact authority. Private BP bank
+continues to fund only TCPCL/source contexts. SCN1134 actual entry/helper fixture
+passes seven helper outcomes plus both command failure/cleanup paths, with
+recorded physical seams and actual ACL2 service authority functions. Full tariff,
+actual current pool/Store worker composition and native multi-peer/RQ selectors
+remain open. Offline dispatch/checkpoint/route-table paths unchanged.
