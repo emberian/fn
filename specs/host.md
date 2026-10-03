@@ -114,6 +114,18 @@ the host tracks offsets and never reruns a state transition to finish a write.
 Quotas bound per-session staging and pending effects so one peer cannot monopolize
 the state owner merely by refusing to consume output.
 
+The executable direct-read schedule model is `books/host-model-machine.lisp`.
+It calls the current `fn-pio-direct-admit`, `fn-pio-direct-cancel` and
+`fn-pio-direct-settle` entries, including their issued-row and descriptor-holder
+outputs. Cancellation and generation retirement retain the holder until physical
+return and owner settlement. Descriptor close additionally requires the actual
+`fn-pio-direct-quiet-p` lookup and absence of response leases. SCN-1082 exercises
+cancellation, retirement, late success/error, close, descriptor reuse and stale
+token replay against those entries. These finite schedules establish their
+observed behavior; PRF-1254 remains the all-schedule preservation target, and
+native realization requires a matched image run. This direct model does not
+claim to cover the typed funded read pool.
+
 Q10d: each accepted NNTP socket's service-log connection line carries exactly
 one `client-address` field projected by ACL2 from the supplied fixed-width
 family/address observation. This is the kernel transport source on direct

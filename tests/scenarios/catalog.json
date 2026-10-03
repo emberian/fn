@@ -8220,6 +8220,35 @@
         "planning/evidence/payload-window-profile-width-2026-09-30.md"
       ],
       "execution_scope": "Protected source replay only; the codec/runtime/controller/host composition remains open."
+    },
+    {
+      "id": "SCN-1082",
+      "title": "Concurrent direct read retains holder custody through cancellation retirement late return and descriptor reuse",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-002"
+      ],
+      "steps": [
+        "Issue a real direct read on incarnation1/fd9 and assert all admit outputs including issued/holder effects.",
+        "Begin physical read, cancel, retire/release its generation; attempt close, descriptor reuse and premature settle.",
+        "Return physical success or error, settle once with the same token, close, then reuse fd/CID/worker for incarnation2.",
+        "Replay the original completion/token and check every reached prefix satisfies the full concurrent invariant."
+      ],
+      "expected": [
+        "Cancellation and logical generation release preserve physical read custody; close and fd reuse are refused until terminal settlement.",
+        "A physical return still needs owner settlement; late error remains a fault and duplicate/old receipts preserve the later row/hold.",
+        "These finite executable witnesses do not establish the all-schedules theorem or native realization."
+      ],
+      "implementation": {
+        "test": "tests/acl2/host-model-tests.lisp"
+      },
+      "evidence": [
+        "books/host-model-machine.lisp",
+        "tests/acl2/host-model-tests.lisp",
+        "planning/evidence/manifests/certify-20261003T062320Z-3305.json"
+      ],
+      "execution_scope": "ACL2 actual direct host-called subjects within concurrent reference schedules; native bridge and funded-pool extension remain owed."
     }
   ]
 }
