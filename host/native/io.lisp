@@ -4398,21 +4398,14 @@ current one)."
                            (fnn-node-secret-fresh-root)))
            (octets (fnn-node-secret-render next))
            (stage (fnn-join (fnn-staging store) (format nil ".init-node-secret-~d-~a.stage"
-                                        (sb-posix:getpid) (fnn-random-hex 8))))
-           (fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl)
-                         #o600)))
+                                        (sb-posix:getpid) (fnn-random-hex 8)))))
       ;; This owned candidate is in the recovery-swept .init- namespace.
       ;; Ordinary write/fsync/close failures remove it before returning.
-      (let ((written nil) (primary nil))
-        (unwind-protect
-             (handler-case
-                 (progn (fnn-write-all fd octets) (fnn-fsync-file fd)
-                        (setq written t))
-               (error (e) (setq primary e)))
-          (handler-case (fnn-close fd)
-            (error (e) (unless primary (setq primary e))))
-          (when (or primary (not written)) (ignore-errors (fnn-unlink stage))))
-        (when primary (error primary)))
+      (let ((written nil))
+        (fnn-unwind-cleanups
+          ((fnn-write-staged stage octets)
+           (setq written t))
+          (unless written (ignore-errors (fnn-unlink stage)))))
       (handler-case (fnn-replace stage path)
         (fnn-os-error (e)
           (ignore-errors (fnn-unlink stage))
