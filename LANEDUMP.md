@@ -567,3 +567,7 @@ Final native workload through reopen 17.042 s, total including artifacts/cleanup
 100 successful samples; offline-control processes excluded. No further scarce
 run started. Extent observer review fix ee142a184 gates job-only classification
 before developer selection; Integration queues e76+ee142 for next source batch.
+
+## Source assembly review — GPT-6.1-Sol, 2026-10-03
+
+Reviewed Served 601472a5d over dev bffa8b2c3 in codex-sol-source-assembly. Actual host cursor entry calls fn-splan-cursor-step; its NEWNEWS branch calls fn-nnw-stream-step. New output-phase license checks the literal admitted zero-candidate-decrease formula; scan consumes exactly one candidate including misses. Renderer shape preservation retains a three-cell envelope; logical 8B+2 recurrence counts byte/state/MV envelopes, accumulation and final reverse, and supplies no native heap or funding claim. Existing wide-line, zero-visit, sparse-scan and actual plan small/large drain witnesses cover this source; no duplicate REPL/build run. Curated PRF-1256 mapping survives registry merge; generated proofs.json events deliberately await Integration global regeneration. No source conflict except this cumulative LANEDUMP, resolved by retaining prior content and adding this review. Guard/allocation/custody, selected-group/membership initialization, completed-view, cold consumers, certification and matching native image remain owed.
