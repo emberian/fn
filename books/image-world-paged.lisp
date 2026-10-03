@@ -425,3 +425,4 @@
 (include-book "owner-retain-carried")
 (include-book "bp-handoff-report")
 (include-book "tcpcl-delivery-invariants")
+(include-book "def-cost")

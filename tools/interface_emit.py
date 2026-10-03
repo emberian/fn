@@ -92,7 +92,7 @@ REGISTRY = ROOT / "planning" / "interfaces.json"
 ROOTS_SH = ROOT / "tools" / "extract" / "roots.sh"
 RAW_DECLARATIONS = ROOT / "host" / "interfaces-raw.lisp"
 KEYS = {":class", ":kinds", ":exempt", ":keystones", ":root", ":direct", ":delegates",
-        ":raw-with", ":raw-guarded"}
+        ":raw-with", ":raw-guarded", ":operation"}
 
 # The subsystems a declaration is filed under (host/interfaces.lisp's
 # sections; planning/interfaces-gaps.md).  A name prefix decides first, then
@@ -195,6 +195,9 @@ def declarations(root: Path = ROOT) -> list[dict]:
                 # D40 raw dispatch: the named preservation argument
                 "raw_with": [_sym(t) for t in (kv.get(":raw-with") or [])],
                 "raw_guarded": kv.get(":raw-guarded"),
+                **({"operation": {key.lstrip(":"): ledger.source_text(value)
+                                   for key, value in ledger.keyword_plist(kv[":operation"]).items()}}
+                   if kv.get(":operation") is not None else {}),
             })
     rows = None
     for d in found:

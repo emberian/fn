@@ -423,3 +423,4 @@
 (include-book "../../books/owner-retain-carried")
 (include-book "../../books/bp-handoff-report")
 (include-book "../../books/tcpcl-delivery-invariants")
+(include-book "../../books/def-cost")

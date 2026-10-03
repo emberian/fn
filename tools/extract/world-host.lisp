@@ -50,6 +50,7 @@
 (ld "../../host/bp-receive-evidence-host.lisp" :ld-error-action :error)
 (ld "../../host/owner-served-carried.lisp" :ld-error-action :error)
 (ld "../../host/interfaces.lisp" :ld-error-action :error)
+(ld "../../host/cost-host.lisp" :ld-error-action :error)
 (ld "../../host/store-open-host.lisp" :ld-error-action :error)
 (ld "../../host/store-write-host.lisp" :ld-error-action :error)
 (ld "../../host/interfaces-extract.lisp" :ld-error-action :error)

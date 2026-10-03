@@ -104,7 +104,7 @@
 (include-book "def-carried") ; fn-cd-problem: a (:carried NAME) row re-checked
 
 (defconst *fn-di-keys* '(:class :kinds :exempt :keystones :root :direct :delegates
-                         :raw-with :raw-guarded))
+                         :raw-with :raw-guarded :operation))
 
 (defconst *fn-di-classes* '(:common-lisp-compliant :ideal :program))
 
@@ -185,6 +185,38 @@
        (symbol-listp (cadr x)) (equal (len (cadr x)) (car x))
        (consp (caddr x)) (symbol-listp (caddr x))))
 
+; An operation is linked to the entry's own derived cost row by the late
+; DEF-OPERATION-CHECK (def-cost is loaded after interfaces to learn routes).
+; :projection is an implemented custody slice, never full admission credit.
+(defconst *fn-di-operation-keys*
+  '(:stage :funding :tariff :draw :principal :slot :physical :outcome
+    :retention :coverage :unaccounted))
+
+(defun fn-di-operation-unique-keys-p (x)
+  (declare (xargs :mode :program))
+  (if (atom x) t
+    (and (not (assoc-keyword (car x) (cddr x)))
+         (fn-di-operation-unique-keys-p (cddr x)))))
+
+(defun fn-di-operation-formp (x)
+  (declare (xargs :mode :program))
+  (and (keyword-value-listp x)
+       (fn-di-operation-unique-keys-p x)
+       (not (fn-cd-unknown-keys x *fn-di-operation-keys*))
+       (member-eq (fn-di-get :stage x) '(:projection :accounted))
+       (symbolp (fn-di-get :principal x)) (fn-di-get :principal x)
+       (natp (fn-di-get :slot x))
+       (eq (fn-di-get :retention x) :physical-and-operation)
+       (consp (fn-di-get :coverage x))
+       (symbol-listp (fn-di-get :coverage x))
+       (no-duplicatesp-eq (fn-di-get :coverage x))
+       (symbol-listp (fn-di-get :unaccounted x))
+       (symbolp (fn-di-get :funding x)) (fn-di-get :funding x)
+       (symbolp (fn-di-get :tariff x)) (fn-di-get :tariff x)
+       (symbolp (fn-di-get :draw x)) (fn-di-get :draw x)
+       (symbolp (fn-di-get :physical x)) (fn-di-get :physical x)
+       (symbolp (fn-di-get :outcome x)) (fn-di-get :outcome x)))
+
 (defun fn-di-refusal (name kvs)
   (declare (xargs :mode :program))
   ; nil when the form is well-formed; else (REASON . DETAILS)
@@ -220,6 +252,9 @@
     (list :bad-raw-guarded (fn-di-get :raw-guarded kvs)))
    ((and (assoc-keyword :raw-guarded kvs) (assoc-keyword :raw-with kvs))
     (list :dual-raw-routes))
+   ((and (assoc-keyword :operation kvs)
+         (not (fn-di-operation-formp (fn-di-get :operation kvs))))
+    (list :bad-operation (fn-di-get :operation kvs)))
    (t nil)))
 
 ; -----------------------------------------------------------------------------
@@ -713,6 +748,8 @@
     (:bad-delegates (msg ":delegates ~x0 is not a function name." (cadr reason)))
     (:bad-raw-guarded (msg ":raw-guarded ~x0 is not an exact (arity input-slots output-slots) ABI." (cadr reason)))
     (:dual-raw-routes (msg ":raw-with and :raw-guarded are incompatible."))
+    (:bad-operation (msg ":operation ~x0 is not a staged funding/cost/custody contract."
+                         (cadr reason)))
     (:bad-raw-with (msg ":raw-with ~x0 is not a non-empty list of theorem names, ~
                          (:carried NAME) or (:carried NAME :assuming A-ID)."
                         (cadr reason)))
