@@ -319,6 +319,8 @@ not armed. Instrumentation has no semantic or admission role."
   (control-binding nil)
   ;; Private concrete worker ledger; independent of live STATE and actor roster.
   ;; Each returned ledger and native grant is retained before any classification.
+  ;; Independently installed peer lifetime bank; startup retains it before mutation.
+  (peer-flight-bank nil)
   (syncer-ledger nil) (syncer-grants nil)
   (syncer-ledger-lock (sb-thread:make-mutex :name "fn syncer custody"))
   ;; Exact normalized launch descriptors, and private output pool projection.
