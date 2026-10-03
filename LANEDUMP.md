@@ -75,3 +75,20 @@ fence/event negatives. Same-harness base assertion failure and head pass archive
 as `planning/evidence/repair/NIGHT-STATEMENT-ROUTE-6b4f5cd5ab7740cc98e45c29ddcc467b.json`,
 sha256 `e0b932d497810bff79d5a31a9fa4c1c2c161d8f3fd383863f725f2acfe2974a3`.
 This is source route validation, not an image or runtime equivalence claim.
+
+NIGHT-MACRO-READING source `e5292977b`, identity receipt `bfe51086`: macro
+backquote skeleton literal calls join interface/entry inventories. Interpolated
+heads stay opaque, quoted data stays data; nested template levels are not
+evaluated. Spliced calls retain their name with unknown count and arity scans
+report their declined count. Actual Runtime envelope exposes both section
+class/unwind calls. 16 macro/raw-arity and 31 macro/interface tests pass.
+Broader 22-test selection has one pre-existing stale-stub assertion: exact same
+eight findings base/head, no global regeneration. Same-harness red/green witness
+archived `planning/evidence/repair/NIGHT-MACRO-READING-a94b35f1427b4c40ad7605c4510ef1f9.json`,
+sha256 `f1fd2a10e5682c9d2ad36a5bd4ecc354d63535380de51c6f175bd5aaa37c61cc`.
+Initial verification lacking item ID in commit message was refused and indexed.
+
+Integration baseline conflict assist: exact 3bda776c6 Runtime syntax analyzed
+with both historical ordinal and lexical readers; 40 referenced identities
+translate uniquely, all 366 rows/weight1469 preserved. Translation and repro
+script shared as lane build artifacts; no integrator tree mutations.
