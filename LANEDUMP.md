@@ -1632,3 +1632,16 @@ store. No Python reconstruction of injection or article semantics; the baseline
 is the native reply. Clean stop is affirmative EXIT.OK. Python compile passes;
 actual native execution remains pending a matching fixture/image selection.
 Existing ad8da41 sol2g image build is immutable and still watched read-only.
+
+
+Owner carrier capability — GPT-6.1-Sol, 2026-10-03
+- Tree codex-owner-carrier-refusal-20261003, source base 041fceb1a. Luna proof sweep remains user-paused.
+- Actual authority plan agreed with Groundwork/History: configured owner + installed flag + retention carry in ONE private fn-owner-st. No shadow copy; globals remain authoritative until atomic caller threading. History owns installed P3 all-event backing and explicit prefix/reload producer.
+- books/owner-carrier and its construction/effects witness SOURCE-ADMITTED (16 book forms + two witness forms). This is physical construction only, not a served POST/certificate/image claim. Session released after verdict.
+- New safe tools/owner_carrier/thread.py writes only a new output directory, requires source hashes + loaded-world signatures, preserves original state return/effects, rejects unknown syntax/dirty input/duplicate definitions. Nine focused Python tests PASS. Program-only loaded-world closure exporter + direct/transitive/read/write fixture admitted; production closure/migration has NOT run. Old destructive redo.sh/run.py not revived.
+- Exact raw source-admission logs + receipts archived/indexed as planning/evidence/owner-carrier-admission-20261003.tar and owner-carrier-source-20261003-v2.json. Initial v1 provenance preserved.
+- NEXT SOURCE PACKET: actual refusal/known-abort bodies and guards extracted byte-identically into books/owner-post-carried; shared frame theorem bytes preserved. Whole relation preservation, exact model-word/owner/carry effects and nonempty-store teeth proposed; no target admission yet. Cached-only startup refused before ACL2 for 25 actual root misses +227 followers; then imports narrowed to avoid recovery/pilot and callback chains. No broad source load/cache weakening/rebuild. Integration schedules one scoped candidate batch when artifacts allow.
+- fn-owner-finish remains counterpart-dispatched: its history-sync correctness needs prefix-of-store or pending reload, then fn-hist-of-storep. That real producer and completion preservation remain owed; no erased premise/raw completion claim.
+
+## Source assembly carrier component/prepared refusal boundaries (2026-10-03)
+4c2c84590 +d172fec2f material composition clean; stale generated current.md omitted, proposed profile/assumption row and owed writers preserved. Physical carrier/tool support source-admitted with existing16+2forms/nine tests; actual unchanged refusal/abort definitions and four unchanged frame theorems move into scoped books. Proposed two raw-with carried annotations use existing incomplete A-OWNER-INVARIANT-CARRIED, not a host guard/wholewriter/native completion claim. Target admission/guard/certification/loaded-world compatibility pending; Integration source flows before verification. Roots owner-carrier/tests plus owner-post-carried/tests,owner-retain-frame/tests and normal owner-carried/interface image world.

@@ -1794,9 +1794,7 @@
 
 (definterface fn-owner-known-abort
   :class :common-lisp-compliant
-  ;; D40 proposal withheld: model preservation alone does not establish
-  ;; the complete host-called guard. Retain executable-counterpart dispatch.
-)
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 (definterface fn-owner-limit-carried
   :class ::program)
@@ -1933,9 +1931,7 @@
 
 (definterface fn-owner-refuse-reservation
   :class :common-lisp-compliant
-  ;; D40 proposal withheld: model preservation alone does not establish
-  ;; the complete host-called guard. Retain executable-counterpart dispatch.
-)
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 (definterface fn-owner-sco-capture
   :class ::program)
