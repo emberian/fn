@@ -122,4 +122,20 @@
    (lambda () nil)))
  (assert stopped) (assert *second-ran*) (assert (> *first-turns* 0))
  (assert (= (hash-table-count (fnn-bpsb-held bank)) 1)))
+;;; Terminal outcome is consumed once even when a received-source dependency
+;;; retains the context; no repeated result publication or invented return.
+(let* ((bank (test-bank))
+       (grant (test-grant bank 2 :incoming :socket
+                  (make-fnn-tcl-conn :finished t :source-pending t)))
+       (completions 0) (services 0) (*accepted* 2))
+ (setf (fnn-bpsg-turn grant) (lambda () :done)
+       (fnn-bpsg-finish grant) (lambda (job) (declare (ignore job)) (incf completions) nil))
+ (catch 'stop
+  (fnn-bp-session-loop bank nil :listeners (lambda (&rest xs) (declare (ignore xs))) nil
+   (lambda (action) (declare (ignore action))
+    (incf services) (when (= services 12) (throw 'stop t))) (lambda () nil)))
+ (assert (= completions 1))
+ (assert (null (fnn-bpsg-turn grant))) (assert (null (fnn-bpsg-finish grant)))
+ (assert (gethash grant (fnn-bpsb-held bank)))
+ (assert (fnn-tclc-source-pending (fnn-bpsg-conn grant))))
 (format t "PASS actual BP retained bank/loop: close custody, ambiguous return, fragment rearm, live peer fairness.~%")
