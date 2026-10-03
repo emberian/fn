@@ -3097,3 +3097,11 @@ new narrowed queue or a claim that these remaining tasks are complete.
   rather than deleted. No live owned computation remains. Root/shared wrapper
   and execution manifest were never changed. All helper assets remain in
   build/incremental-owner and the unique remote driver's directory.
+
+Live census before10am: be75 source+actual scoped controller/core-leaf receipts
+ready/pushed; full source-loaded SCN1110 not run here yet. Lieutenant confirms
+Groundwork initialized launcher works; exact invocation requested so this owner
+can execute canonical keepalive+second request in private Store paths directly.
+Full ownership remains decoder/CRC/publication/GC cost, concurrent input control,
+registered SAMEPRS issuer, full scheduler/custody crash refinement, canonical
+signed R/Q/reopen and actual ION adapter outcomes. No saved-image gate.

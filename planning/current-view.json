@@ -554,6 +554,36 @@
       "latest": "Canonical rendering/source171+325 and resolverbb089: show+tests normal115041Z-1706527 PASS; paths/show+paths tests normal120245Z-1732642 PASS at75ad7a81a. Complete output-only/combined resource fixtures pass; exact manifests archived and indexed.",
       "obstruction": "No matching saved-image run of the physical operator show/key/reload selector. Full operator includer convergence remains separate; two cached prerequisite manifest coordinates need global reconciliation. Resource rendering does not activate the pending allocator consumer.",
       "next": "Run tests.test_native_operator_cli.NativeOperatorCliTests.test_show_preserves_output_policy_after_relative_path_resolution on the coherent convergence image."
+    },
+    {
+      "id": "bp-source-window",
+      "name": "bounded private TCPCL logical window",
+      "contract": "Actual TCPCL frame and incoming BP source conversion retain exact concrete bytes and build the logical codec list in4096-octet windows, preserving the existing suffix.",
+      "host": {
+        "function": "fn-tcim-turn",
+        "file": "host/native/tcpcl.lisp"
+      },
+      "keystone": "fn-tcim-turn-boundary",
+      "tested": null,
+      "profile": "dtn",
+      "latest": "Actual retained source/control/framing/root-cleanup fixtures PASS on be75fde27; archive planning/evidence/bp-source-continuations/be75-native-components.json. Narrow window guards and unconditional slice boundary passed; final manifest indexing pending.",
+      "obstruction": "Whole semantic decoder/CRC/publication and allocator/GC latency remain unbounded; universal framing-to-codec and full native source/publication composition remain unproved.",
+      "next": "Fresh initialized matching-source SCN1110 canonical second request while first keepalive peer remains live, then same-source immutable signed R/Q delivery/reopen."
+    },
+    {
+      "id": "bp-source-control",
+      "name": "KEEPALIVE while exact received-source ACK remains held",
+      "contract": "The retained TCPCL source controller emits only independent KEEPALIVE output while local work owns received bytes and the final ACK; it preserves reception state and clock.",
+      "host": {
+        "function": "fn-tclsctl-turn",
+        "file": "host/native/tcpcl.lisp"
+      },
+      "keystone": "fn-tclsctl-never-releases-ack",
+      "tested": null,
+      "profile": "dtn",
+      "latest": "Actual native retained turn plus actual ACL2 control function PASS: physical wait retains output/no duplicate, KEEPALIVE alone writes, root/END ACK remain held and bounded source resumes. certify-20261003T134436Z-1978092 PASSED3/0.",
+      "obstruction": "Concurrent incoming control servicing and total source/decoder/GC latency remain open; this is neither reception evidence nor transfer acceptance.",
+      "next": "Same fresh-source canonical multi-peer native execution and slow-source control fixture."
     }
   ],
   "other_deployments": [
