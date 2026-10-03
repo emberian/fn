@@ -229,6 +229,10 @@ If decoding or projection fails, `wake` leaves that delivery pending and does
 not acknowledge it; the next wake uses the saved bytes. Reports and replies
 keep their original source, signatures and key generation for retry. Reusing
 an operation ID with a different payload is refused.
+The current application envelope takes one ASCII line per field; a line break
+in a payload or operation ID is refused before signing. Duplicate or malformed
+fields in a received application envelope are retained as evidence without an
+application transition.
 
 `report` and `wake` return 1 for refusal, 3 for an unresolved submission or
 acknowledgement, and 4 for a fault. A lost reply can leave a submission
