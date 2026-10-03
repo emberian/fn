@@ -8868,7 +8868,8 @@
         "Final response pin is never released before HTTP drain and releases once after terminal cleanup; cold replay resumes the retained plan."
       ],
       "evidence": [
-        "tests/native_web_article_stream_raw.lisp"
+        "tests/native_web_article_stream_raw.lisp",
+        "planning/evidence/web-stream-consumers-2026-10-03.md"
       ],
       "note": "Raw actual-source consumer passes. PRF-1283 guard/refinement, matching native image and Web allocation/repeated-read tariff remain pending."
     },
@@ -8891,7 +8892,8 @@
         "Row101 fails the source invariant; metadata stays at100 and no successful truncation is returned."
       ],
       "evidence": [
-        "tests/native_web_over_stream_raw.lisp"
+        "tests/native_web_over_stream_raw.lisp",
+        "planning/evidence/web-stream-consumers-2026-10-03.md"
       ],
       "note": "Actual raw consumer passes; program refinement, qualified image and Web repeated-read tariff pending."
     },
@@ -8914,7 +8916,8 @@
         "IN<=4096, HTML OUT empty, response pin survives count/replay/write and releases only after terminal drain."
       ],
       "evidence": [
-        "tests/native_web_list_stream_raw.lisp"
+        "tests/native_web_list_stream_raw.lisp",
+        "planning/evidence/web-stream-consumers-2026-10-03.md"
       ],
       "note": "Actual raw source consumer passes. Original NNTP LIST producer still materializes its captured reply; source programs/arithmetic profile/refinement and matching image/funding are pending."
     }

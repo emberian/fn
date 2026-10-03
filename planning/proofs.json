@@ -22206,7 +22206,8 @@
         "host/web-host.lisp",
         "host/native/web-host.lisp",
         "tests/native_web_article_stream_raw.lisp",
-        "books/web-reply-stream.lisp"
+        "books/web-reply-stream.lisp",
+        "planning/evidence/web-stream-consumers-2026-10-03.md"
       ],
       "progress_note": "Connected shared Web stream/replay source and exact raw native consumers pass. Admission/refinement and matching image remain pending. Original NNTP ARTICLE payload/block, LIST complete reply and some OVER NOV/projection replies are still materialized before capture; Web removed its additional full IN/row copies, not those producers. Qualified complete Web/NNTP/repeated-read tariff remains open."
     },
@@ -22229,7 +22230,8 @@
         "books/web-render.lisp",
         "host/web-host.lisp",
         "host/native/web-host.lisp",
-        "tests/native_web_over_stream_raw.lisp"
+        "tests/native_web_over_stream_raw.lisp",
+        "planning/evidence/web-stream-consumers-2026-10-03.md"
       ],
       "progress_note": "Connected shared Web stream/replay source and exact raw native consumers pass. Admission/refinement and matching image remain pending. Original NNTP ARTICLE payload/block, LIST complete reply and some OVER NOV/projection replies are still materialized before capture; Web removed its additional full IN/row copies, not those producers. Qualified complete Web/NNTP/repeated-read tariff remains open."
     },
@@ -22253,7 +22255,8 @@
         "books/web-article-stream.lisp",
         "books/web-render.lisp",
         "host/native/web-host.lisp",
-        "tests/native_web_list_stream_raw.lisp"
+        "tests/native_web_list_stream_raw.lisp",
+        "planning/evidence/web-stream-consumers-2026-10-03.md"
       ],
       "progress_note": "Actual source programs and connected native empty/one/1003-group exact reference, fixed scanner/plan, IN-window and final-pin raw witnesses pass. Guard/refinement/profile arithmetic qualification and matching image pending; original LIST reply is still materialized by NNTP before this consumer."
     }
