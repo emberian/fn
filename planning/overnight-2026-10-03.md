@@ -87,8 +87,10 @@ latest corrections even when the governing files are unchanged.
 
 The first groundwork wave is active: Integration, Runtime coordination, Served
 commands, Generators and accounting, and Tools and harvest have GPT-6.1-Sol
-deputies. Three approved helpers now feed existing consumers: empirical native
-scenarios, typed owner-ledger execution proofs, and command-table rows. A
+deputies. Approved helpers feed existing consumers: empirical native scenarios,
+typed owner-ledger proofs followed by paged catalog closure, command-table rows,
+and a source semantic-review/conflict-staging helper. Integration remains the
+sole dev writer; source review proceeds alongside executable debugging. A
 GPT-6.1-Sol groundwork deputy owns detailed cross-lane coordination, composition
 and representation contracts alongside the strategic coordinator. Corrected:
 these are active workers, not a prepared launch. The wider roster below remains
@@ -101,6 +103,7 @@ first; Astra composition remains a later option rather than an active claim.
 |---|---|---|
 | Coordinator | this session | System design, priorities, shared contracts, overlap resolution and following every workstream through use |
 | Integration | GPT-6.1-Sol | Sole dev writer; harvest running builds, source/evidence reconciliation, review assembly and candidate qualification |
+| Source assembly helper | GPT-6.1-Sol | Concrete READY batch semantic review and isolated conflict staging for Integration; no independent dev push or global audit |
 | Runtime coordination | GPT-6.1-Sol | Section/actor generator, lifecycle, committer and queued work, then mux/cold/service conversion and web concurrency |
 | Composition | GPT-6-Astra | HM actions and capability contracts; real runtime linkage, schedule harness, carried read and crash composition; initial implementation as well as review |
 | Served commands | GPT-6.1-Sol | NEWNEWS/OVER/HDR/XPAT and remaining streaming commands, view policy, reclaim-aware navigation, generated command switch |
