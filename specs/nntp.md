@@ -2007,6 +2007,22 @@ Not yet on the cursor: the read-restricted route (a session with a READ rule
 is served by the reference walk over its projected pin,
 `fn-scr-auth-delegate`), OVER by Message-ID and with no argument (one row).
 
+The metadata NEWNEWS continuation is the first `def-cursor` consumer
+(PRF-1256, SCN-1084). `fn-nnw-meta-step` accepts separate candidate and
+emitted-byte budgets, retains scan progress independently of an unsent
+output suffix, and preserves the captured archive/environment/arguments
+across both. A sparse miss still consumes one candidate; the final suffix
+keeps the plan live after the article tail ends. The plan's NEWNEWS arm uses
+its scheduling quantum for both budgets and the owner/mux retains the
+existing response reader hold. The catalog tombstone column supplies the
+selection decision for represented rows, avoiding payload-cache retry.
+Source behavior and REPL residual tests are available; matching composition
+certification and native qualification remain owed. This emitted-byte bound
+does not bound initial selected-group materialization or one-row working
+allocation. The decided completed discovery snapshot, the dedicated output
+custody producer, restricted NEWNEWS, and cold HDR/XPAT consumers remain
+open; the current unrestricted command still captures its pinned archive.
+
 Two events advance a connection's last activity for the idle limit (RFC
 3977 section 3.1): a command received, and the transport accepting a window
 of a reply whose drain outlasted its step, at the end of that drain

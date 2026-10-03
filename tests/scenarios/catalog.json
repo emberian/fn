@@ -1139,7 +1139,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -8219,6 +8219,33 @@
         "planning/evidence/payload-window-profile-width-2026-09-30.md"
       ],
       "execution_scope": "Protected source replay only; the codec/runtime/controller/host composition remains open."
+    },
+    {
+      "id": "SCN-1084",
+      "title": "NEWNEWS sparse candidate progress and retained final output under independent budgets",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-023"
+      ],
+      "steps": [
+        "Run tests/acl2/def-cursor-tests.lisp: one candidate emits more bytes than its output quantum; drain with zero visits and preserve context; suspend with opaque operation/resource custody.",
+        "Run tests/acl2/newnews-metadata-cursor-tests.lisp: unmatched first article advances with empty output, matching final article retains its output after scan completion; compare emitted prefix plus remaining with original response.",
+        "Run actual native NEWNEWS wildcard workload with more candidates than shared cache slots; compare complete Message-ID reply while a second connection remains responsive."
+      ],
+      "expected": [
+        "Separate candidate calls and emitted bytes obey their declared budgets; sparse misses do not terminate the scan.",
+        "Buffered final output keeps the continuation live until drained; no repeated candidate and no omitted terminator.",
+        "Library tests do not establish initialization/working-allocation bounds, custody producer or completed-view capture; native image matching this source remains owed."
+      ],
+      "proofs": [
+        "PRF-1256"
+      ],
+      "evidence": [
+        "tests/acl2/def-cursor-tests.lisp",
+        "tests/acl2/newnews-metadata-cursor-tests.lisp",
+        "tests/test_native_newnews_wildmat.py"
+      ]
     }
   ]
 }
