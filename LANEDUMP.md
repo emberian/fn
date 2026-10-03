@@ -599,3 +599,35 @@ All17 newlyadded private entries cleared. This diagnostic has error markers
 and is not a greenprefix. Books/certpairs are reused; no duplicateimage build.
 Source reports regenerated atc3:1460declared/1408dispatched/0raw-rule findings;
 stream PRF1256 curatedmap now corrected, subsequent generated refresh owed.
+
+## Astra source trace — SYNCER-COMPLETION-ESCAPE (2026-10-03)
+
+Base d3a80c2c5. Manually traced actual native actor reserve/start/run/join,
+private typed grant install/issue/physical/outcome/abort/drain, syncer job phases,
+whole pipelined committer, raw escapes, and shutdown joins/Store settlement;
+read fn-oqw and typed resource-syncer definitions and native leaves.
+
+Confirmed and repaired two connected paths. A successful child launch followed
+by committer escape previously had no retained operation consumer: physical
+shutdown join left its grant forever. The whole outstanding pipeline now owns
+an unwind continuation over its real result and latest operation ledger; both
+physical orderings consume once. Starting consumption disarms this continuation
+before the potentially torn step, so a torn receipt remains owed and is not
+retried. Separately, raw ACL2 throws bypass the committer loop's condition
+handler: the actual starter now supplies the outer actor's service-failure
+callback instead of merely recording a dead committer on a running service.
+
+Same head harness over baseline owner source fails each exact assertion; repaired
+bytes pass 12 result/physical-order/escape schedules, torn-consumption no-retry,
+and actual committer starter raw-throw stop. Inherited actor/custody/pacing tests
+also pass. Archive: planning/evidence/astra-syncer-completion-escape-20261003.json
+(6fab8f57249a3fac1195d4ff3360b740a4ccab4b3b55d0bdc6214c2f23fc1167).
+SCN-1087 is claimed; HST-046/spec/scenario updated. Host read and diff checks pass.
+These fixtures use actual native bodies and ACL2 control decisions but recording
+funding/I/O boundaries; no typed theorem, saved image or deployment claim.
+
+Remaining: Integration's matching image/shutdown observation; proof/host-model
+composition unchanged; actor setup failures and concurrent callback drain timing
+are unconfirmed leads still being traced. Witness checker retains six preexisting
+actor/script catalog-header findings; new SCN-1087 scripts are cited. No book
+source changed, so no independent certification/full image was launched.

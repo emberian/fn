@@ -1584,6 +1584,21 @@ Arm or take its immutable-ledger completion under private exclusion."
         (setf (fnn-syncer-grant-completion grant) completion)))
     (when now (funcall now))))
 
+(defun fnn-owner-syncer-abandon (service grant ledger members)
+  "Retain the exact operation consumer when its committer unwinds before
+consumption. A physical receipt alone cannot discharge the captured job."
+  (fnn-owner-syncer-abort
+   service grant
+   (lambda ()
+     (destructuring-bind (generation final . condition)
+         (car (fnn-syncer-grant-result grant))
+       (declare (ignore condition))
+       (multiple-value-bind (outcome answer completed-ledger)
+           (fnn-owner-complete-generation ledger generation final members)
+         (declare (ignore answer completed-ledger))
+         (fnn-owner-syncer-outcome service grant generation)
+         (when (eq outcome :failed) (fnn-owner-fence-service service)))))))
+
 (defun fnn-owner-syncer-physical (service grant receipt)
   (fnn-owner-syncer-receipt service grant :physical receipt))
 
@@ -4170,7 +4185,7 @@ leave only in its COMPLETE, after its barrier returned
 (fn-ocp-complete-only-after-the-barrier)."
   (let ((members nil) (uncertain nil) (deferred nil) (action nil) (job nil)
         (next nil) (next-deferred nil) (next-job nil) (frames-only nil) (syncer nil) (result nil) (limits nil)
-        (need nil) (syncer-actor nil) (syncer-grant nil)
+        (need nil) (syncer-actor nil) (syncer-grant nil) (completion-pending nil)
         (return-receipt '(:pipeline-returned nil :none nil nil))
         ;; Lane time-bars (PRF-384): ACL2's ledger of the request in
         ;; flight -- its generation, whether its completion is still owed,
@@ -4206,7 +4221,8 @@ leave only in its COMPLETE, after its barrier returned
     ;; A START that captured no batch: its drain's frames and its refusals'
     ;; replies, off the owner mutex (lane owner-offlock).
     (unless (eq action :sync) (fnn-owner-frames-job service job))
-    (loop while (eq action :sync) do
+    (unwind-protect
+     (loop while (eq action :sync) do
       ;; PRF-359 (PKT-872): the free space at every barrier's issue, before
       ;; its append: the POSTs admitted from here on join the next batch, so
       ;; an observation per barrier keeps fn-otm-space-need's two batches
@@ -4219,26 +4235,9 @@ leave only in its COMPLETE, after its barrier returned
           (fnn-fault "owner refused a barrier's issue: generation ~a is unresolved" gen))
         (setq ledger ledger2)
         (setq syncer-grant (fnn-owner-syncer-issue service gen job))
-        (handler-case
-            (multiple-value-setq (syncer result syncer-actor syncer-grant)
-              (fnn-owner-start-syncer service gen job syncer-grant))
-          (serious-condition (condition)
-            ;; The child may still run after a postcreate failure. Retain
-            ;; the immutable issued operation; consume its fault receipt only
-            ;; after no-child or terminal physical observation, in either order.
-            (let ((issued-ledger ledger) (issued-members members))
-              (fnn-owner-syncer-abort
-               service syncer-grant
-               (lambda ()
-                 (destructuring-bind (rgen final . job-condition)
-                     (car (fnn-syncer-grant-result syncer-grant))
-                   (declare (ignore job-condition))
-                   (multiple-value-bind (outcome answer completed-ledger)
-                       (fnn-owner-complete-generation issued-ledger rgen final issued-members)
-                     (declare (ignore answer completed-ledger))
-                     (fnn-owner-syncer-outcome service syncer-grant rgen)
-                     (when (eq outcome :failed) (fnn-owner-fence-service service)))))))
-            (error condition))))
+        (setq completion-pending t)
+        (multiple-value-setq (syncer result syncer-actor syncer-grant)
+          (fnn-owner-start-syncer service gen job syncer-grant)))
       ;; Lane time-model (PRF-311): the barrier is a request with a
       ;; deadline; its issue is a disk event at this reading.
       (fnn-owner-disk-event service :issue limits)
@@ -4371,6 +4370,9 @@ leave only in its COMPLETE, after its barrier returned
         ;; :failed, as before); :fault, its condition re-signalled below
         ;; under the owner.  Only after this does the batch's buffer go
         ;; (fnn-log-sync-collected below).
+        ;; A started consumption may have torn: never retry it from cleanup.
+        ;; Before this point every exit must retain an actual-result consumer.
+        (setq completion-pending nil)
         (multiple-value-bind (outcome answer ledger2)
             (fnn-owner-complete-generation ledger rgen final members)
           (setq ledger ledger2 members answer
@@ -4466,6 +4468,10 @@ leave only in its COMPLETE, after its barrier returned
                   (setq members next deferred next-deferred job next-job
                         next nil next-deferred nil next-job nil)
                 (setq members nil next nil))))))))
+      ;; Includes post-launch conditions and nonlocal ACL2 throws, not only
+      ;; spawn failures. Physical return may precede or follow this unwind.
+      (when completion-pending
+        (fnn-owner-syncer-abandon service syncer-grant ledger members)))
     return-receipt))
 
 (defun fnn-owner-loops-snapshot (service)
@@ -4561,8 +4567,13 @@ tests/test_native_fence_boundary.py)."
   "Start the committer on a batching service."
   (when (fnn-owner-service-batching service)
     (setf (fnn-owner-service-committer service)
-          (fnn-owner-spawn-committer service nil
-                                     (lambda () (fnn-owner-committer-loop service))))))
+          (fnn-owner-spawn-committer
+           service nil (lambda () (fnn-owner-committer-loop service))
+           ;; Raw ACL2 throws and initialization failures can bypass the
+           ;; loop's condition handler. Its physical actor boundary must
+           ;; still fence the service, not merely record a dead committer.
+           (lambda (condition)
+             (fnn-owner-thread-escape service condition "committer actor"))))))
 
 (defun fnn-owner-bound-commit-word (commit-callback)
   "Classify a custom Store callback into the ordinary post's outcome words.
