@@ -2642,3 +2642,10 @@ The first parsed event bounds consumption so following pipelined commands
 wait for completion. Physical compressed/plain window custody, metadata
 setup bounds and the complete owner/reference refinement remain open; the
 source does not establish a funded operation or a qualified image.
+Recovery and reclaim may complete legacy availability facts from the same captured
+arena. This changes derived facts, while preserving the article identity, payload
+handle, group memberships, stamp, assigned numbers, sequence and withdrawal
+history used by the catalog/view join. The recovery proof uses these preserved
+projections; it does not assert that the complete classified catalog equals the
+older raw loader result. The actual legacy-row fixture exercises both loaders,
+checks the differing facts and preserved metadata, and reads back the exact wire.
