@@ -66,6 +66,8 @@ def generate(source: Path, dependencies: Path, world: Path, output: Path) -> Non
     normal = []
     path = source / 'host/history-root-host.lisp'
     normal.extend(f for f in forms(text(path)) if head_and_name(f)[0] == 'defun')
+    path = source / 'host/owner-host.lisp'
+    normal.extend(f for f in forms(text(path)) if head_and_name(f)[1] == 'fn-owner-orcp-capture')
     path = source / 'books/history-capture-state.lisp'
     normal.extend(f for f in forms(text(path)) if head_and_name(f)[1] in
                   ('fn-history-root-roster-heldp', 'fn-owner-history-reset-status'))
