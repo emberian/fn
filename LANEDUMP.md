@@ -2152,3 +2152,19 @@ Follow-through source closes actual loader classification and byte-fact invarian
 Still pending: owner R/wire establishment hints must be updated for classified fold (not refuted); selected command reader abstraction and effects; complete paging root replay. Integration batch30/0published453690558 matches macro source+toolchain, but supported install_closure still refuses wanted plain closure keys treewalk93ccb45185d0e3419a7b04ac436b839f4f371582717baa06bbf34c40430dabdf and tree72f67ad5323e53baf750c240dd4ac26544eef60bc3b1d5a7263ef9e60d45b91b, apparently descendant world keys/publication. Root/Integration inspect that exact cache issue; no source fallback/duplicate cert. Warm session solcatavailabilityfarm remains live for handoff, all low/foundation/live-link/reader/loader admissions present, no paged root yet.
 
 Source assembly response lease: Runtime851998516 plus root26b84f908 composed on dev3e77c6fed; four actual rlo declarations reactivated. Cold-abandon and output-discard both retained; renderer returns all five values. Independent bank evidence retained, whole tariff/native refinement/image activation pending.
+- Post-commit certified_claims --explain confirms PRF-1266/1268/1269 certified
+  at the exact current keystone source/include closure; auth book e045c330,
+  budget2b7d4bf9. Corrected direct keystone provenance citations to102734Z,
+  alongside final teeth104044Z / group access103156Z. Unrelated inherited
+  provenance listing is a separate global convergence concern.
+- All three Access warm REPLs stopped after proof completion, freeing leases.
+
+- S093 residual native self-signed exclusive-file close failure now runs the
+  same owned-candidate cleanup as write/fsync failure and preserves the primary
+  error. Real descriptors/files: old source RED, current source PASS across
+  write, fsync, close and double failures; S092 typed generator cleanup stays
+  PASS. Build-script suite passes all 13 tests, replacing two spelling checks
+  with actual fault fixtures. Native-program mapping PASS remains source-only.
+  Corrected evidence sol-access-ssc-cleanup-final-2026-10-03.md explicitly
+  retracts the earlier mistaken 17-test PASS line and retains its failed log.
+  Matching saved-image pair/recovery qualification remains Integration-owned.

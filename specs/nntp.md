@@ -1584,6 +1584,13 @@ availability from the successfully loaded context; configured path text alone
 does not establish it. Credentials and the TLS context are startup-pinned;
 live reload/generation switching remains open.
 
+The native self-signed pair writer removes each exclusively created candidate
+if its write, file fence or close fails (S093). It closes the descriptor once
+and preserves the first write/fence error when close also fails. Cleanup is
+best effort and removes only a file this invocation created. The actual-source
+fault fixture covers these ordinary failures; process death and durable
+publication of the pair still require the matching image/recovery scenario.
+
 **Login binding 2026-09-25**: `principal bind LOGIN PRINCIPAL-HEX` and
 `principal unbind LOGIN` write or remove the login's `signing` field through
 the same replacement machine; `policy set posting-policy bound-logins` turns
