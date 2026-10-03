@@ -5524,6 +5524,9 @@ the Store and the served projection judge them like any posted article."
 payloads, close, reopen, and report both timings as JSON on stdout.  With
 ARTICLEP (`probe N article') each payload is a well-formed article of the
 same size (fnn-probe-article), so the served reader can frame it."
+  (unless (fnn-developer-image-p)
+    (error 'fnn-usage-error
+           :message "store probe is available only in the developer image"))
   (let* ((started (get-internal-real-time))
          (store (make-fnn-store root :writable t))
          (payload nil))

@@ -433,7 +433,8 @@ The DTN-only build writes `build/fn-host-dtn` by default and
 Changing that environment variable when a saved image restarts does not change
 its serialized profile. The developer image also honours the developer
 selectors (the environment variables of `+fnn-developer-selectors+` and the
-`store ROOT post` entry and its FAULT argument; [the operator guide](../docs/operator-internals.md#developer-selectors)
+`store ROOT post` entry and its FAULT argument, and the fixture-writing
+`store ROOT probe COUNT [article]` entry; [the operator guide](../docs/operator-internals.md#developer-selectors)
 lists them). A production image refuses to start with any of them: `fnn-main`
 runs `fnn-developer-selector-gate` before dispatch and exits 5 naming the
 selector, before any store or socket is opened. Store diagnostics and the existing BP/TCPCL/application
@@ -461,10 +462,17 @@ or performing any publication. The serialized image profile controls this
 restriction; an environment override at invocation cannot enable it.
 Production posting goes through `operator CONFIG post` or the served NNTP
 submission path, with the normal injection and durable outcome contract.
+The capacity probe (`store ROOT probe COUNT [article]`) also writes fixture
+articles and is developer-only. Production startup, dispatch and direct handler
+calls refuse it with usage exit 5 before constructing a writable store. Its
+COUNT follows the operator decimal-natural grammar; malformed counts are usage
+errors. Developer availability does not make it safe to use on an existing
+valuable store: it deliberately commits fixture data.
 Store inspection and recovery remain available. The host startup gate and a
 direct handler guard implement this restriction; saved-image evidence remains
 required for the combined source. SCN-015 must exercise both
-rejection orders (fresh and existing store), developer raw insertion, and
+rejection orders (fresh and existing store) for both fixture-writing entries,
+developer raw insertion and probe availability, and
 successful ordinary production submission. This changes the required
 production surface; the da5fd8cb image still exposes raw posting.
 

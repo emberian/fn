@@ -11021,6 +11021,7 @@ bf22dab6b06329a13da2abc3362b302d93cc74618ca13aea4b16af551f95c5d0 1451 planning/e
 afa5e611450d0945602ed765fc2fab530cb67ed8fe91d38941cbea92804b71b3 2054 planning/evidence/runtime-recovery-current-closeout-2026-10-01/review-original-regression.log
 f684787b9b148dc44451490d780e463be3f62e6e2b72f19438b408756a81f8f3 3756 planning/evidence/runtime-recovery-current-closeout-2026-10-01/review-review.md
 b510cc5e9b0d4b7a7765487776ed1ec9d35bdc53dab4f63cde54cd896d2ca7c2 630 planning/evidence/runtime-recovery-current-closeout-2026-10-01/scope.json
+d1a9984bb3ca4cb321d008fb33ff22710662939528793ef953939aff4b816a61 4036 planning/evidence/s012-direct-probe-20261003.txt
 eee462ad2c21033c9ba272a1b7778bfc84db28bd90c0c82db79b500f9b4b9fba 15294 planning/evidence/sanding-2026-09-26.md
 4716fecd90dbcd6c6f517f4806c75cb57df782e6fd4b5dfc6db5e9ad6a4a22c3 4774 planning/evidence/sanding-2026-09-26/SHA256SUMS
 53520b512e1b29487f49abae0d4acad12e978eed8c0ba72310073790aab651ca 361 planning/evidence/sanding-2026-09-26/tin-walk/node/fn.toml
