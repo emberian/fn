@@ -6,11 +6,14 @@
  "id": "S093",
  "line": "1064",
  "locus": "operator-verbs",
- "notes": [],
+ "notes": [
+  "10-02 23:08 fixed; source-level test only"
+ ],
  "owner": "sweep-peer",
  "severity": "low",
+ "sha": "77d7d412a",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "Self-signed pair writer leaves partial key or cert files behind, and the next run is refused because the paths exist",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:08:34Z"
 }

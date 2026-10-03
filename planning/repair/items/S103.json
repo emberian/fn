@@ -6,11 +6,14 @@
  "id": "S103",
  "line": "594",
  "locus": "operator-verbs",
- "notes": [],
+ "notes": [
+  "10-02 23:09 partial: stale/non-regular report fixed (inode+mtime differ from pre-request); the UNBOUNDED wait is not: the bound must come from ACL2's drain window/deadline (needs an ACL2 accessor for the retire deadline) -> S151"
+ ],
  "owner": "sweep-ops",
  "severity": "low",
+ "sha": "a385ae8cb",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "`retire` waits with no bound and may print a stale or non-regular report as success",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:09:08Z"
 }

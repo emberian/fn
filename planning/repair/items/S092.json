@@ -6,11 +6,14 @@
  "id": "S092",
  "line": "961",
  "locus": "operator-verbs",
- "notes": [],
+ "notes": [
+  "10-02 23:07 fixed; red->green source test; no live OpenSSL failure run"
+ ],
  "owner": "sweep-peer",
  "severity": "low",
+ "sha": "7e2433bc6",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "fnn-tls-ssc-fail calls FIRST on a string, so every self-signed failure becomes a TYPE-ERROR",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:07:58Z"
 }

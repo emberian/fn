@@ -6,11 +6,13 @@
  "id": "S072",
  "line": "2389",
  "locus": "operator-verbs",
- "notes": [],
+ "notes": [
+  "10-02 23:08 skipped by burndown-1: init resumes an interrupted init by loading the existing config (fnn-load-config) and ignoring the requested profile/groups; refusing a mismatch needs an ACL2 decision (compare requested vs recorded profile+groups) so resume stays legal; not a local fix"
+ ],
  "owner": "sweep-store",
  "severity": "low",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "deferred",
  "title": "`init` over an existing store ignores the requested profile and groups and still prints \"initialized\"",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:08:46Z"
 }
