@@ -28,7 +28,7 @@
 (assert-event (fn-nnw-carryp nil))
 (assert-event (fn-nnw-carryp *nct-c*))
 (defconst *nct-new* (fn-make-article "<new@x>" nil '("g") (list (cons "g" 21)) t 86500))
-(assert-event (mv-nth 0 (fn-cv-walk (cons *nct-new* *nct-arts*) *nct-arts* nil)))
+(assert-event (nth 0 (mv-list 2 (fn-cv-walk (cons *nct-new* *nct-arts*) *nct-arts* nil))))
 (assert-event (equal (fn-cv-walk-steps (cons *nct-new* *nct-arts*) *nct-arts*) 1))
 (assert-event (fn-nnw-carryp (fn-nnw-refresh *nct-c* (cons *nct-new* *nct-arts*))))
 ; Hypothesis removal: a carry that is not exact stays inexact on a delta.

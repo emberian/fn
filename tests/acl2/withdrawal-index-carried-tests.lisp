@@ -25,12 +25,12 @@
 (assert-event (fn-wix-carryp nil))
 (assert-event (fn-wix-carryp *wit-c0*))
 (assert-event (equal (fn-wix-ws *wit-c0*) *wit-ws0*))
-(assert-event (mv-nth 0 (fn-cv-walk *wit-ws1* *wit-ws0* nil)))
+(assert-event (nth 0 (mv-list 2 (fn-cv-walk *wit-ws1* *wit-ws0* nil))))
 (assert-event (equal (fn-cv-walk-steps *wit-ws1* *wit-ws0*) 1))
 (assert-event (fn-wix-carryp *wit-c1*))
 (assert-event (equal (fn-wix-ws *wit-c1*) *wit-ws1*))
 (defconst *wit-ws2* (list (fn-ctl-withdrawal-make "<t9@x>" "<c9@x>" "p" :all 0)))
-(assert-event (not (mv-nth 0 (fn-cv-walk *wit-ws2* *wit-ws1* nil))))
+(assert-event (not (nth 0 (mv-list 2 (fn-cv-walk *wit-ws2* *wit-ws1* nil)))))
 (assert-event (fn-wix-carryp (fn-wix-refresh *wit-c1* *wit-ws2*)))
 ; Hypothesis removal (the only hypothesis): from a carry that is not
 ; complete, the refresh that finds its list as a tail keeps the gap.

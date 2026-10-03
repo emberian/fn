@@ -53,6 +53,10 @@
 ; 1. The index: a string id put in a trie, a non-string ignored; the two
 ; facts a :set index owes.
 
+(defun fn-wix-key (x)
+  (declare (xargs :guard t))
+  (if (stringp x) x nil))
+
 (defun fn-wix-add (x set)
   (declare (xargs :guard t))
   (if (stringp x) (fn-rit-put x 0 set) set))
@@ -66,22 +70,22 @@
   (implies (stringp x) (fn-rit-hasp x 0 (fn-wix-add x set)))
   :hints (("Goal" :in-theory (disable fn-rit-hasp fn-rit-put))))
 
-(in-theory (disable fn-wix-add))
+(in-theory (disable fn-wix-key fn-wix-add))
 
 (def-carried-view fn-wix
   :key ws
   :indexes ((tset :kind :set
-                  :key-fn (lambda (e) (let ((x (fn-ctl-w-target e))) (if (stringp x) x nil)))
+                  :key-fn (lambda (e) (fn-wix-key (fn-ctl-w-target e)))
                   :put (lambda (e idx) (fn-wix-add (fn-ctl-w-target e) idx))
                   :hasp (lambda (k idx) (fn-rit-hasp k 0 idx))
                   :empty nil
-                  :lemmas (fn-wix-hasp-of-put fn-wix-put-has-it))
+                  :lemmas (fn-wix-hasp-of-put fn-wix-put-has-it fn-wix-key))
             (cset :kind :set
-                  :key-fn (lambda (e) (let ((x (fn-ctl-w-cause e))) (if (stringp x) x nil)))
+                  :key-fn (lambda (e) (fn-wix-key (fn-ctl-w-cause e)))
                   :put (lambda (e idx) (fn-wix-add (fn-ctl-w-cause e) idx))
                   :hasp (lambda (k idx) (fn-rit-hasp k 0 idx))
                   :empty nil
-                  :lemmas (fn-wix-hasp-of-put fn-wix-put-has-it))))
+                  :lemmas (fn-wix-hasp-of-put fn-wix-put-has-it fn-wix-key))))
 
 ; -----------------------------------------------------------------------------
 ; 2. The lookups: negative filters over the two indexes.  Each owes one
@@ -93,7 +97,7 @@
                  (stringp msgid)
                  (not (fn-rit-hasp msgid 0 (fn-wix-tset-of idxs))))
             (equal (fn-pidx-targetedp msgid ws) nil))
-   :hints (("Goal" :in-theory (e/d (fn-wix-tset-okp)
+   :hints (("Goal" :in-theory (e/d (fn-wix-tset-okp fn-wix-key)
                                    (fn-rit-hasp fn-ctl-w-target fn-ctl-w-cause))))))
 
 (local
@@ -102,7 +106,7 @@
                  (stringp cause)
                  (not (fn-rit-hasp cause 0 (fn-wix-cset-of idxs))))
             (equal (fn-sca-targets-of cause ws) nil))
-   :hints (("Goal" :in-theory (e/d (fn-wix-cset-okp)
+   :hints (("Goal" :in-theory (e/d (fn-wix-cset-okp fn-wix-key)
                                    (fn-rit-hasp fn-ctl-w-target fn-ctl-w-cause
                                     fn-ctl-withdrawalp))))))
 
