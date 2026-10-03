@@ -19488,6 +19488,20 @@
         }
       ],
       "pending_subject": "Bounds retained spool driver is implementing direct fn-rl-draw/settle consumer; Operator launcher/profile capture extension not yet composed."
+    },
+    {
+      "id": "PRF-1310",
+      "pending_subject": "Literal native adapters call fn-prl-resident-shrink; their boundary refinement and DATA8 preservation remain pending.",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prl-resident-shrink-preserves-custody"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-resident-shrink-keeps-funding"
+        }
+      ]
     }
   ]
 }

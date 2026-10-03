@@ -765,3 +765,14 @@ checks the other bank's actual selected heap allowance before independent
 peer install. The old wrapper remains available for callers without peer
 authority. Generic codec round-trip and complete composed allocation bounds
 remain proof obligations; source fixtures are not physical qualification.
+
+### Protected Store growth (HST-048)
+
+Live profile growth may transfer idle DEFAULT resident authority to the Store,
+without returning installed backing or issued custody. The actual owner/extent
+mutex spans preview, publication and apply; the pool reduction frames every
+charge, identity, binding and ready marker. Refusal keeps the funded profile at
+restart. Lowering a profile does not refund memory without physical retirement.
+Runtime protection uses the captured fixed-process collector trigger rather
+than recomputing the launcher's least-space trigger. Full allocation/collector
+coverage and the native boundary theorem remain open (PRF-1310).

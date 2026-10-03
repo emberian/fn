@@ -23278,6 +23278,33 @@
         "host/native/bp-session.lisp"
       ],
       "progress_note": "New acquire-turn guards and yield/representation/logical-bank correspondence admitted in Foundations retained solrlocover. Actual with-local-stobj sequence exposes old N lifetime connection ceiling and passes with budget repair; installer uniquely renamed in shared loan to avoid redefining existing event. Exact unchanged source certification and native consumer composition pending; BP owns c644dadeb consumer."
+    },
+    {
+      "id": "PRF-1310",
+      "title": "Monotonic DEFAULT pool reduction preserves issued custody and funding",
+      "statement": "fn-prl-resident-shrink transfers only uncharged resident budget to protected Store growth. Outstanding charged vectors, generations, bindings and baseline are unchanged; an initially funded ledger remains funded. Actual host preview/apply must run under the owner-to-extent mutex across publication. Native boundary refinement and whole physical pricing remain separate.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-048"
+      ],
+      "depends_on": [
+        "PRF-1301"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "files": [
+        "books/page-read-budget-growth.lisp",
+        "host/page-read-host.lisp",
+        "tests/acl2/page-read-budget-growth-tests.lisp"
+      ],
+      "events": [
+        "fn-prl-resident-shrink-preserves-custody",
+        "fn-prl-resident-shrink-keeps-funding"
+      ],
+      "evidence": [
+        "tests/acl2/page-read-budget-growth-tests.lisp"
+      ],
+      "progress_note": "Source guards and two logical keystones admitted in retained world. Positive/refusal/corrupted-funding witnesses pass. Host boundary theorem and actual sealed native consumer composition remain pending; no certification claim."
     }
   ]
 }
