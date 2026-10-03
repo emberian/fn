@@ -116,6 +116,25 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-sf-replay-node))))
 
+; Typed as forward-chaining and type-prescription: the counters must be
+; known naturals for the frontier arithmetic below to normalise.
+(defthm fn-snt-record-counters-natural
+  (implies (fn-held-p record)
+           (and (natp (fn-record-txid record))
+                (natp (fn-record-generation record))
+                (natp (fn-record-sequence record))))
+  :rule-classes ((:forward-chaining)
+                 (:type-prescription :corollary
+                  (implies (fn-held-p record) (natp (fn-record-txid record))))
+                 (:type-prescription :corollary
+                  (implies (fn-held-p record) (natp (fn-record-generation record))))
+                 (:type-prescription :corollary
+                  (implies (fn-held-p record) (natp (fn-record-sequence record)))))
+  :hints (("Goal" :in-theory '(fn-held-p fn-held-shapep fn-record-uint64p
+                               fn-held-sequence fn-held-txid fn-held-generation
+                               fn-record-sequence fn-record-txid fn-record-generation
+                               fn-cbor-ag-car fn-cbor-ag-cdr natp))))
+
 (defthm fn-snt-canonical-preparation-outcomes
   (let* ((txid (fn-record-txid record))
          (base (fn-sf-replay-node groups capacity history txid))
@@ -373,25 +392,6 @@
                          fn-node-initial-state  fn-node-acceptance
                            fn-state-fenced
                          fn-replay-advance-txid fn-node-statep fn-statep fn-retain-statep fn-snx-core-definitions))))
-
-; Typed as forward-chaining and type-prescription: the counters must be
-; known naturals for the frontier arithmetic below to normalise.
-(defthm fn-snt-record-counters-natural
-  (implies (fn-held-p record)
-           (and (natp (fn-record-txid record))
-                (natp (fn-record-generation record))
-                (natp (fn-record-sequence record))))
-  :rule-classes ((:forward-chaining)
-                 (:type-prescription :corollary
-                  (implies (fn-held-p record) (natp (fn-record-txid record))))
-                 (:type-prescription :corollary
-                  (implies (fn-held-p record) (natp (fn-record-generation record))))
-                 (:type-prescription :corollary
-                  (implies (fn-held-p record) (natp (fn-record-sequence record)))))
-  :hints (("Goal" :in-theory '(fn-held-p fn-held-shapep fn-record-uint64p
-                               fn-held-sequence fn-held-txid fn-held-generation
-                               fn-record-sequence fn-record-txid fn-record-generation
-                               fn-cbor-ag-car fn-cbor-ag-cdr natp))))
 
 ; `fn-sn-make' is the six-field constructor, which fills the four fields
 ; `6e992351' added to `fn-sn-state' with 0, NIL, NIL and 0.  Rebuilding a

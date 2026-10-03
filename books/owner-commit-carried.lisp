@@ -137,13 +137,14 @@
                              nil))
                        nil))))
    :hints (("Goal" :induct (fn-ccar-seek pair records seq)
-            :in-theory (e/d (fn-ccar-seek) (fn-evc-sequence fn-evc-txid))))))
+            :in-theory (e/d (fn-ccar-seek nth) (fn-evc-sequence fn-evc-txid))))))
 
 (local
  (defthm fn-ccar-nth-of-values-is-an-event
    (implies (and (fn-sf-record-valuesp records) (natp i) (< i (len records)))
             (fn-store-event-p (nth i records)))
-   :hints (("Goal" :in-theory (disable fn-store-event-p)))))
+   :hints (("Goal" :induct (nth i records)
+            :in-theory (e/d (nth) (fn-store-event-p))))))
 
 (defun fn-ccar-seek-at (pair files)
   (declare (xargs :guard (and (fn-sf-shapep files)
