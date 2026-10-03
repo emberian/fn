@@ -1450,9 +1450,10 @@
   :class :common-lisp-compliant
   :keystones (fn-oqw-receipt-outcomes-are-distinct))
 
+;; RECEIPT's distinct-outcomes theorem names RECEIPT, not this projection.
+;; The projection's separate boundary claim remains PRF-393/1255 debt.
 (definterface fn-oqw-outcome-of-final
-  :class :common-lisp-compliant
-  :keystones (fn-oqw-receipt-outcomes-are-distinct))
+  :class :common-lisp-compliant)
 
 
 (definterface fn-own-intent-refusal-word
