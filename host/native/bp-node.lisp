@@ -992,7 +992,13 @@ uncertain, as it does everywhere else."
    (lambda ()
     (let ((conn (fnn-bpsg-conn grant)))
      (if (not conn) :done
-      (let ((*fnn-tcl-deliver*
+      (let ((*fnn-tcl-source-start*
+             (lambda (connection xfer-id chain count)
+              (fnn-bp-session-source-start grant connection xfer-id chain count transfer-mru)))
+            (*fnn-tcl-source-turn*
+             (lambda (connection token)
+              (fnn-bp-session-source-turn grant connection token)))
+            (*fnn-tcl-deliver*
              (lambda (connection xfer-id octets)
               (fnn-bp-deliver-node bp connection counter xfer-id octets owner channel)))
             (*fnn-tcl-progress*

@@ -437,3 +437,10 @@ and actual retained :read/:buffer consumer source ready; PRF1289 local4096-copy
 quantum and codec composition fixtures. Full-frame conversion/decode, initial
 reserve/GC latency and public received-source issuer remain open. No image
 claim transferred from657; matching SCN1110 continues with Integration.
+S068 production followthrough: actual passive node binds a private incoming-grant
+received operation. Chain materialization uses64-action turns and incarnation
+checks; END ACK waits for exactly one existing durable delivery callback. Raw
+actual constructor/callback stale-generation and publication-cut cases pass.
+Public SAMEPRS provider/source issuer remains separate; final semantic decode,
+source-driver guards/refinement and complete GC/work tariff stay open. Fresh
+source-loaded SCN1110 composition requested; saved images are off critical path.

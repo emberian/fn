@@ -366,7 +366,7 @@ and faults without following or deleting anything."
                      (if *fnn-tcl-source-start* 'fn-tcl-host-source-drive 'fn-tcl-host-drive)
                      (fnn-tclc-session conn) octets now)))
         (setf (fnn-tclc-carry conn) (third triple))
-        (fnn-tcl-apply conn triple (if *fnn-tcl-source-start* "source-event" "event"))
+        (fnn-tcl-apply conn triple "event")
         (setf (svref buffer 1) 0 (fnn-tclc-input-cursor conn) nil)))))
 
 (defun fnn-tcl-input-turn (conn incoming now)

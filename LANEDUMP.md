@@ -1831,3 +1831,10 @@ partial suffix and early extension/MRU refusal pass. PRF1289 exact two-root
 farm pending; universal codec refinement/full-frame decode/GC and registered
 received-source issuer still owed. Source-first packet follows657; no old image
 or certificate claim transferred. Runtime owns decoded-window physical leaves.
+S068 second connected source: private operation under actual incoming session
+grant now installs source-start/turn in passive BP consumer. Exact chain/END ACK
+held through64 cursor actions, final generation check and once-only existing
+publication. Raw1000-byte materialization/callback, stale incarnation and
+publication-cut fence/retention PASS. No public SAMEPRS issuer claim; final
+conversion/decode and source-driver guard/refinement remain owed. Framing exact
+2root certify123129-1811904 PASSED2/0, indexed. Source-process integration next.

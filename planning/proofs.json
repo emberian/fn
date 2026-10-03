@@ -22153,9 +22153,33 @@
         "books/tcpcl-frame-cursor.lisp",
         "tests/acl2/tcpcl-frame-cursor-tests.lisp",
         "host/native/tcpcl.lisp",
-        "tests/native_tcpcl_frame_cursor_raw.lisp"
+        "tests/native_tcpcl_frame_cursor_raw.lisp",
+        "planning/evidence/manifests/certify-20261003T123129Z-1811904.json"
       ],
-      "progress_note": "BP-TRANSPORT 2026-10-03 source: actual retained consumer no longer reparses/appends growing list carry. Narrow raw driver and65536 one-byte framing/refusal composition pass; exact two-root farm pending. Initial private buffer reserve and full-frame conversion/semantic decode remain unbounded costs; dormant public registered received-source producer still open."
+      "progress_note": "BP-TRANSPORT 2026-10-03 source: actual retained consumer no longer reparses/appends growing list carry. Narrow raw driver and65536 one-byte framing/refusal composition pass; exact two-root farm pending. Initial private buffer reserve and full-frame conversion/semantic decode remain unbounded costs; dormant public registered received-source producer still open. Exact two-root manifest certify-20261003T123129Z-1811904 PASSED2/0; guards admitted. No universal framing refinement inferred."
+    },
+    {
+      "id": "PRF-1291",
+      "title": "Actual incoming BP grant authorizes a retained private received-transfer operation",
+      "statement": "Native fnn-bp-session-source-start calls fn-bpsrx-start with the actual incoming session grant row, maintained transfer count and configured transfer MRU. fnn-bp-session-source-turn calls fn-bpsrx-turn and fn-bpsrx-authorizedp against the same actual grant generation, retains original segment chain and final END ACK across bounded fn-tsc-turn64 materialization, and calls existing durable delivery once. Changed incarnation or publication escape fences exact source debt without ACK or refund. This private operation does not issue public SAMEPRS providers. Source-step/session refinement, full semantic decode, complete GC/layout tariff and image/source-process composition remain outstanding.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-1276",
+        "PRF-1289"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/bp-session-received-source.lisp",
+        "tests/acl2/bp-session-received-source-tests.lisp",
+        "host/native/bp-session.lisp",
+        "host/native/bp-node.lisp",
+        "tests/native_bp_received_source_raw.lisp"
+      ],
+      "progress_note": "2026-10-03 source-first: actual passive node turn installs private constructor/resume callbacks; generic TCPCL spool remains separate. Raw actual caller1000-byte chain copies at most64 cursor actions per turn then one callback/ACK; stale generation and publication cut retain/fence exact borrow, no retry. Exact constructor guards/fixture farm pending; existing received-source driver guard/refinement certification remains owed."
     }
   ]
 }
