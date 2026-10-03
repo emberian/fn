@@ -4,14 +4,15 @@
  "file": "books/host-model.lisp",
  "id": "HM02",
  "locus": "generators",
- "note": "definitions and 14 of 25 preservation lemmas admitted (hbox REPL hm); rows/workers/pins/close lemmas next, then the run theorem and the keystones; test book stubbed",
+ "note": "Groundwork repairs actual direct-read executable drift: current admit has9 arguments+holder outputs, settle has5 and removes issued row/hold. Machine+finite cancellation/retirement/late success/error/fd reuse schedules certify in certify-20261003T062320Z-3305; dependency resource bytes certified in certify-20261003T062713Z-16191. Legacy main continuation actual scoped certify-20261003T062700Z-15460 fails FN-HMC-DO-CANCEL-KEEPS-INVP. All-schedule invariant, funded-pool transitions and actual native bridge remain owed.",
  "notes": [
-  "2026-10-03 Astra source review: HM all-schedules keystones absent and tests cover initialization only. Realization table lists funded sites under direct-only steps; checker actually consumes seeded JSON. Start with executable cancellation/retirement/late-settlement/fd-reuse schedules and real model-to-host bridge; do not treat table membership as correspondence."
+  "2026-10-03 Astra source review: HM all-schedules keystones absent and tests cover initialization only. Realization table lists funded sites under direct-only steps; checker actually consumes seeded JSON. Start with executable cancellation/retirement/late-settlement/fd-reuse schedules and real model-to-host bridge; do not treat table membership as correspondence.",
+  "2026-10-03 Groundwork: *fn-hmc-realization* direct-only issue/settle rows no longer claim funded fnn-extent-issue-read/complete-read. Native checker currently reads seeded JSON; Tools owns literal model-table consumer. Executable machine split lets real schedules run independently of incomplete theorem continuation; no proof gate removed and main host-model remains a Makefile root."
  ],
- "owner": "composition",
+ "owner": "deputy_groundwork",
  "severity": "high",
  "source": "coordinator",
  "state": "in-progress",
  "title": "HM v1: books/host-model.lisp (fn-hmc-), the concurrent host model; invariant over every schedule; T1(b): issued reads, leases and generation pins never invalidated by retire/release/close/swap, settle once to its own token; *fn-hmc-realization* in LOCK-CHECK's format",
- "updated": "2026-10-03T05:14:09Z"
+ "updated": "2026-10-03T06:32:00Z"
 }

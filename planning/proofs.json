@@ -21711,6 +21711,29 @@
         "fn-fjo-an-intent-moved-past-another-resolution-replays-alike"
       ],
       "progress_note": "Lane owner-offlock (Opus 5.5, 2026-10-03). REPL-admitted on persvati (9.7k steps). Teeth: tests/acl2/feed-journal-order-tests.lisp (prefix fjot-): THE OLD-ORDER REPLAY TEST, two journals built by fn-own-feed-intent-records / fn-own-feed-resolution-records (batch N members 1 2, N+1 members 3 4, an earlier and a later intent) in both orders: both fn-feed-journalp, equal unresolved intents (4) and equal feeds (2 queued); a reached positive of the keystone; one removal per hypothesis (same key: the intent fold differs; I a commit: the feed queue order differs; R an intent: the intent fold differs)."
+    },
+    {
+      "id": "PRF-1254",
+      "title": "Concurrent direct-read machine carries actual host-called holder outputs through cancellation and physical settlement",
+      "statement": "books/host-model-machine.lisp fn-hmc-step/run uses the actual fn-pio-direct-admit (9 arguments, 7 outputs), fn-pio-direct-cancel, fn-pio-direct-settle (5 arguments, 5 outputs) and fn-pio-direct-quiet-p called by host/native/extent.lisp direct read entries. Target: from fn-hmc-init every direct schedule preserves the carried holder/issued relation, closes no unsettled read incarnation, consumes only its own returned token once, and keeps fd reuse distinct. Funded-pool transitions, native realization and all-schedules proof are not discharged by executable fixtures.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-002"
+      ],
+      "depends_on": [
+        "PRF-1209"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/host-model-machine.lisp",
+        "books/host-model.lisp",
+        "tests/acl2/host-model-tests.lisp",
+        "planning/evidence/manifests/certify-20261003T062320Z-3305.json",
+        "planning/evidence/manifests/certify-20261003T062713Z-16191.json",
+        "planning/evidence/manifests/certify-20261003T062700Z-15460.json"
+      ],
+      "progress_note": "Executable machine and finite schedules certified at current bytes in certify-20261003T062320Z-3305; resource dependency certified in certify-20261003T062713Z-16191. Actual main proof continuation fails FN-HMC-DO-CANCEL-KEEPS-INVP in certify-20261003T062700Z-15460. All-schedules proof/native realization/funded pool remain HM02 debt."
     }
   ]
 }

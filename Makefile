@@ -982,6 +982,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/page-read-executor-tests \
 	books/page-read-direct \
 	tests/acl2/page-read-direct-tests \
+	books/host-model-machine \
 	books/host-model \
 	tests/acl2/host-model-tests \
 	host/page-executor-host \
