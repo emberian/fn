@@ -723,6 +723,7 @@ modern complete installations still refuse their unpriced operation."
             (when token
               (setf (fnn-cold-worker-token worker) token (fnn-cold-worker-row worker) row
                     (fnn-cold-worker-scope worker) scope (fnn-cold-worker-phase worker) :binding-fault)
+              (when retain (funcall retain worker token))
               (fnn-fault "window admitted but its exact worker binding failed"))
             (setf (fnn-cold-worker-phase worker) :idle (fnn-cold-worker-scope worker) nil
                   *fnn-cold-free* worker)
