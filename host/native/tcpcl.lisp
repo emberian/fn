@@ -75,7 +75,7 @@
   ;; only released messages enter TX-MESSAGES, in the machine's order.
   (retained nil) (tx-messages nil) (tx-data nil) (tx-offset 0) (tx-deadline nil)
   (input-due t) (pump-pending nil) role bundlep (expect 0) on-ready
-  (ready-called nil) (finished nil)
+  (ready-called nil) session-admit (session-admitted nil) (finished nil)
   ;; Private concrete octet buffer, one incomplete frame only. The incoming
   ;; socket vector survives cursor turns; no list carry is appended/reparsed.
   input-buffer input-cursor input-vector (input-offset 0)
@@ -562,6 +562,20 @@ and faults without following or deleting anything."
   (setf (fnn-tclc-session conn) (first triple))
   (when (second triple)
     (fnn-tcl-log-events conn source (fnn-core 'fn-tcl-host-event-digests (second triple))))
+  ;; Passive BP admission must precede this frame's events and the next
+  ;; buffered frame. Generic outbound on-ready keeps its existing write gate.
+  (when (and (fnn-tclc-session-admit conn) (not (fnn-tclc-session-admitted conn))
+             (eq (fnn-core 'fn-tcl-host-phase (fnn-tclc-session conn)) :established))
+    (setf (fnn-tclc-session-admitted conn) t)
+    (let ((answer (funcall (fnn-tclc-session-admit conn) conn)))
+      (case (first answer)
+        (:admitted nil)
+        (:refused
+         (setf (fnn-tclc-outcome conn) :refused (fnn-tclc-refusal conn) (second answer))
+         (fnn-tcl-drop conn)
+         (fnn-tcl-turn-lost conn)
+         (return-from fnn-tcl-apply triple))
+        (otherwise (fnn-fault "TCPCL session admission answer unavailable")))))
   (fnn-tcl-act conn (second triple))
   triple)
 
@@ -591,13 +605,13 @@ and faults without following or deleting anything."
 ;;; The loop.  One `fn-tcl-drive' per chunk, with the carry prepended; a tick
 ;;; on every wakeup; `fn-tcl-tcp-closed' when the peer goes away.
 
-(defun fnn-tcl-begin (fd role params tag spool &key bundle trace (expect 0) on-ready refuse-inbound retain)
+(defun fnn-tcl-begin (fd role params tag spool &key bundle trace (expect 0) on-ready session-admit refuse-inbound retain)
   "Retain a session. Opening emits messages but performs no socket write."
   (let* ((now (fnn-tcl-now))
          (session (fnn-core 'fn-tcl-host-initial role params now))
          (conn (make-fnn-tcl-conn :fd fd :tag tag :spool spool :session session
                 :trace trace :refuse-inbound refuse-inbound :retained t
-                :role role :bundlep (and bundle t) :expect expect :on-ready on-ready
+                :role role :bundlep (and bundle t) :expect expect :on-ready on-ready :session-admit session-admit
                 :pending (and bundle (cons tag bundle))
                 :contact-deadline (fnn-core 'fn-tcrt-contact-deadline now))))
     (when retain (funcall retain conn))

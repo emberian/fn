@@ -987,6 +987,15 @@ uncertain, as it does everywhere else."
    (fnn-tcl-begin (fnn-socket-fd socket) :passive
     (fnn-tcl-params node-id nil +fnn-tcl-keepalive+ +fnn-tcl-segment-mru+ transfer-mru)
     "bp-node" (fnn-bps-root bp)
+    :session-admit
+    (lambda (conn)
+     (let* ((negotiated (fnn-core 'fn-tcl-session-negotiated (fnn-tclc-session conn)))
+            (announced (fnn-core 'fn-tcl-negotiated-peer-node-id negotiated))
+            (answer (fnn-owner-core 'fn-owner-bp-session-admission channel announced)))
+      (when (eq (first answer) :refused)
+       (fnn-bps-note bp :refused)
+       (fnn-out "BP channel admission refused reason=~(~a~)" (second answer)))
+      answer))
     :retain (lambda (conn) (setf (fnn-bpsg-conn grant) conn))))
   (setf (fnn-bpsg-turn grant)
    (lambda ()

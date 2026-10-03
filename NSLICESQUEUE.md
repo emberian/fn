@@ -697,3 +697,18 @@ and §5.1.1 negotiated idle behavior. Actual raw driver/source-control/custody
 composition PASS; real two-peer durable request + setup expiry + reopen selector
 prepared UNEXECUTED. Early announced-EID/channel admission and concurrent control
 input during held-source work remain next connected work.
+
+Early passive session admission (PRF-1299, SCN-1128): actual fnn-tcl-apply
+invokes an optional BP-only admission callback once, at the decoded established
+transition and before this frame's events or another buffered frame. The live
+owner calls ACL2 fn-bpaj-session-admission on kernel-observed channel and decoded
+announced URI, reusing durable ingress's principal policy. Refusal discards
+unflushed messages and protocol-closes only that connection, records its exact
+policy reason, and cannot install a received-source job or publish a Store/FNBS
+record. The sender observes interruption before any transfer ACK; its pin stays.
+Pre-transfer refusal has no bundle wire to persist as receive evidence. Existing
+per-transfer admission/evidence remains for transfers actually consumed, and
+outbound on-ready keeps its physical-write ordering. Unknown admission results
+remain faults. Actual apply/flush raw matrix PASS; current native SCN1128 and
+updated absent-trust request/receipt selectors remain UNEXECUTED. Full config
+traversal, host correspondence and semantic allocation/GC costs stay open.

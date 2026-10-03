@@ -1534,6 +1534,9 @@
 (definterface fn-owner-bp-source-decision-line
   :class ::program)
 
+(definterface fn-owner-bp-session-admission
+  :class ::program)
+
 (definterface fn-owner-bp-tcpcl-ingress
   :class ::program)
 

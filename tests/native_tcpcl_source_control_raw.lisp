@@ -45,3 +45,40 @@
  (assert (= (fn-tcl-session-last-rx (fnn-tclc-session conn)) 9))
  (assert (zerop *flushes*)) (assert (= (hash-table-count (fnn-bpsb-held bank)) 1)))
 (format t "PASS actual retained source control: independent KEEPALIVE writes, held END ACK/root untouched, no queued duplicate while physical write waits, bounded source resumes.~%")
+
+;;; Exact shipped apply/flush: the passive admission gate runs before any
+;;; event/source installation. Admission answer is recorded here; its actual
+;;; ACL2 producer has separate accepted/channel/EID/malformed literal teeth.
+(with-open-file (stream "host/native/tcpcl.lisp")
+ (loop for form = (read stream nil :eof) until (eq form :eof) do
+  (when (and (consp form) (eq (first form) 'defun)
+             (member (second form) '(fnn-tcl-apply fnn-tcl-flush))) (eval form))))
+(defun fnn-tcl-log-events (&rest args) (declare (ignore args)))
+(defvar *admission-recording-core* (symbol-function 'fnn-core))
+(defun fnn-core (name &rest args)
+ (case name
+  (fn-tcl-host-event-digests nil)
+  (otherwise (apply *admission-recording-core* name args))))
+(dolist (admitted '(nil t))
+ (let* ((calls 0)
+        (session (fn-tcl-make-session :passive :established nil nil nil
+                  (fn-tcl-make-negotiated 1 1000 1000 nil '(100)) nil nil 1 9 0 nil))
+        (conn (make-fnn-tcl-conn :retained t :session :contact :held '(:old-ack)
+               :session-admit (lambda (c) (declare (ignore c)) (incf calls)
+                 (if admitted '(:admitted :peer 7) '(:refused :eid-mismatch)))))
+        (*fnn-tcl-source-start* (lambda (&rest args) (declare (ignore args))
+                               (error "refused channel reached source issuer"))))
+  (fnn-tcl-apply conn
+   (list session
+     (if admitted '((:send (:keepalive)))
+       '((:send (:sess-init)) (:bundle-segments-received 1 (:root) 100))) nil))
+  (assert (= calls 1))
+  (if admitted
+   (progn (assert (not (fnn-tclc-broken conn)))
+          (assert (equal (fnn-tclc-tx-messages conn) '(:old-ack (:keepalive)))))
+   (progn (assert (fnn-tclc-broken conn))
+          (assert (eq (fnn-tclc-outcome conn) :refused))
+          (assert (null (fnn-tclc-source-pending conn)))
+          (assert (null (fnn-tclc-held conn)))
+          (assert (null (fnn-tclc-tx-messages conn)))))))
+(format t "PASS actual passive session admission precedes frame events/source issuer; refusal is connection-local, no ACK/publication released.~%")
