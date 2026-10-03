@@ -6,11 +6,14 @@
  "id": "S095",
  "line": "166",
  "locus": "operator-verbs",
- "notes": [],
+ "notes": [
+  "10-02 23:07 fixed; ran tests/native_anchor_acquisition.lisp under sbcl (passes) + python source test; pre-network width fault removed, ACL2 refuses :arguments"
+ ],
  "owner": "sweep-peer",
  "severity": "low",
+ "sha": "9b9fc35a4",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "Pinned anchor key width is checked against the nonce width",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:07:42Z"
 }

@@ -6,11 +6,14 @@
  "id": "S094",
  "line": "383",
  "locus": "operator-verbs",
- "notes": [],
+ "notes": [
+  "10-02 23:06 fixed (sentinel list 0 -> ACL2 :names-malformed); source-level test only, no live TLS run"
+ ],
  "owner": "sweep-peer",
  "severity": "low",
+ "sha": "a55d6deb4",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "Comment says an oversize subjectAltName is refused by name, but absent is read as 'no names' and accepted",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:06:56Z"
 }

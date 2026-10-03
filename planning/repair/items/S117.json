@@ -6,11 +6,14 @@
  "id": "S117",
  "line": "72",
  "locus": "store-books",
- "notes": [],
+ "notes": [
+  "10-02 23:06 LF sweep removed (test added); checkpoint entries kept: specs/checkpoint.md cites them, comment records it"
+ ],
  "owner": "sweep-store",
  "severity": "low",
+ "sha": "68ff759ef",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "The generation-checkpoint bridge and the LF-joined staging sweep are dead entries whose stated callers no longer exist",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T03:06:27Z"
 }
