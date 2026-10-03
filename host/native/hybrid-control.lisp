@@ -191,7 +191,7 @@
 
 (defun fnn-hybrid-control-handle (service frame)
   (when (typep frame 'fnn-octets)
-    (let* ((octets (fnn-octet-list frame))
+    (let* ((octets (fnn-control-frame-octet-list frame))
            (enroll (fnn-core 'fn-native-hybrid-control-host-enroll-decode octets))
            (author (fnn-core 'fn-native-hybrid-control-host-author-decode octets))
            (revoke (fnn-core 'fn-native-hybrid-control-host-revoke-decode octets))

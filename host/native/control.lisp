@@ -10,6 +10,19 @@
 
 (defvar *fnn-hybrid-control-handler* nil)
 
+;;; (FRAME . OCTET-LIST) for the frame the handler chain is deciding, built
+;;; at most once however many handlers decode it (sweep S029; bound by
+;;; fnn-control-handle-client around the chain).  ACL2 never mutates an
+;;; argument, so the handlers share it.
+(defvar *fnn-control-frame-list* nil)
+
+(defun fnn-control-frame-octet-list (frame)
+  (if (and (consp *fnn-control-frame-list*)
+           (eq (car *fnn-control-frame-list*) frame))
+      (cdr *fnn-control-frame-list*)
+    (cdr (setq *fnn-control-frame-list*
+               (cons frame (fnn-octet-list frame))))))
+
 
 
 
@@ -295,7 +308,12 @@ ACL2 returns."
                       ;; (lane obligations-paged) a paged report's request
                       ;; (FNLS frame kind 4, books/native-live-pages.lisp).
                       (live (and decoded (seventh decoded)))
-                      (pages (and decoded (eighth decoded))))
+                      (pages (and decoded (eighth decoded)))
+                      ;; Sweep S029: whether the handler chain answers this
+                      ;; frame, and whether it writes (:store) or only reads
+                      ;; (:read); nil for every other frame, which the chain
+                      ;; is then never asked about.
+                      (handler (and decoded (ninth decoded))))
                  (cond
                    (live
                     (list :live-status-reply
@@ -305,8 +323,6 @@ ACL2 returns."
                     (list :live-status-reply
                           (fnn-control-live-pages-answer
                            service (fnn-octet-list frame))))
-                   ((and *fnn-hybrid-control-handler*
-                         (funcall *fnn-hybrid-control-handler* service frame)))
                    ((and (consp topic) (eq (first topic) :topic))
                     (multiple-value-bind (owner-p uid)
                         (fnn-control-peer-is-owner-p socket)
@@ -344,9 +360,21 @@ ACL2 returns."
                    ;; waits for the gate that the barrier in flight holds.
                    ((and (or (and (consp request) (eq (car request) :request))
                              (and (consp admin) (eq (car admin) :admin))
-                             (and (consp moderation) (eq (car moderation) :moderation)))
+                             (and (consp moderation) (eq (car moderation) :moderation))
+                             ;; The handler chain's writers too (S029): peer
+                             ;; invite/accept/confirm, keys redecide, the
+                             ;; bindings reload, hybrid enrol/author/revoke.
+                             (eq handler :store))
                          (eq (fnn-owner-disk-admit service) :shed))
                     :busy)
+                   ;; The handler chain (host/native tls-reload,
+                   ;; login-bindings, keys, peer-invite, hybrid-control),
+                   ;; only for a frame ACL2 says one of them answers.  Its
+                   ;; handlers share one octet list of the frame
+                   ;; (fnn-control-frame-octet-list).
+                   ((and handler *fnn-hybrid-control-handler*
+                         (let ((*fnn-control-frame-list* nil))
+                           (funcall *fnn-hybrid-control-handler* service frame))))
                    ((and (consp request) (eq (car request) :request))
                     (let ((msgid (second request))
                          (groups (third request))
@@ -367,8 +395,12 @@ ACL2 returns."
                      (fourth moderation) (fifth moderation)))
                    (t :refused)))
              ;; The owner has already fenced itself on these two (exit 3 and
-             ;; exit 4, `fnn-owner-shared-action-locked'); the reason goes to
-             ;; the owner's log, and the caller gets the status word.
+             ;; exit 4, `fnn-owner-shared-action-locked', which hands on an
+             ;; OS, socket or any other failure inside an owner action as an
+             ;; fnn-store-fault, sweep S028); the reason goes to the owner's
+             ;; log, and the caller gets the status word.  An fnn-os-error or
+             ;; a socket error that reaches the clauses below was raised
+             ;; before any owner work (the frame read, the reply), a refusal.
              (fnn-store-indeterminate (condition)
                (fnn-err "control request uncertain; owner fenced: ~a" condition)
                :uncertain)

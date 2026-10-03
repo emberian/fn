@@ -3391,17 +3391,13 @@
 ;; (books/login-binding-live.lisp fn-lb-ocfg-gate: the policy of the owner's
 ;; LIVE configuration, the login-binding table the submission's connection
 ;; pinned when it opened), called by host/native/owner.lisp
-;; fnn-owner-attempt-served before the transit attempt.  The table is rows of
-;; the configuration (PKT-221), published at start and on `principal bind'
-;; through the live reconfiguration; there is no binding global.  The
-;; verdict's service-log line is left in fn-owner-login-log-line (nil: no
-;; login).
-(defun fn-owner-login-gate (received state)
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
-  (let* ((verdict (fn-lb-ocfg-gate (fn-owner-ocfg state) received))
-         (state (f-put-global 'fn-owner-login-log-line
-                              (fn-lb-verdict-line verdict) state)))
-    (value verdict)))
+;; fnn-owner-attempt-served before the transit attempt, over the article in
+;; the octet buffer: fn-owner-login-gate-buffer below (fn-ars-lb-ocfg-gate,
+;; equal to fn-lb-ocfg-gate by fn-ars-lb-ocfg-gate-is-reference).  The
+;; table is rows of the configuration (PKT-221), published at start and on
+;; `principal bind' through the live reconfiguration; there is no binding
+;; global.  The verdict's service-log line is left in
+;; fn-owner-login-log-line (nil: no login).
 
 (defun fn-owner-peer-carrier-plan (received transitp state)
   (declare (xargs :stobjs state :mode :program))
@@ -3450,12 +3446,6 @@
   (value (fn-obc-commit-gate
           received group-octets
           (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
-
-(defun fn-owner-peer-carrier-form (received state)
-  (declare (xargs :stobjs state :mode :program))
-  ; fn-apc-carrier-form-is-reference (books/owner-parse-carried.lisp).
-  (mv-let (plans state) (fn-owner-plans-for received state)
-    (value (fn-apc-carrier-form received plans (fn-owner-parse-carry state)))))
 
 (defun fn-owner-served-carried-word (word detail state)
   (declare (xargs :stobjs state :guard t))
@@ -3765,35 +3755,55 @@
         (value (if action action :absent))))))
 
 ; The received article in the octet buffer (books/article-buffer.lisp, D27
-; boundary 9): the served POST's login gate and the transit attempt's four
+; boundary 9): the served POST's login gate and the transit attempt's
 ; article calls, each the buffer twin of the list entry above it, equal to
-; it over the buffer's value (fn-ars-lb-ocfg-gate-is-reference,
+; its reference over the buffer's value (fn-ars-lb-ocfg-gate-is-reference,
 ; fn-ars-filing-plan-is-reference, fn-ars-carrier-form-is-reference,
-; fn-ars-current-plan-is-reference), so no list of the article is built for
-; them.  Called by host/native/owner.lisp fnn-owner-attempt-served and
-; fnn-owner-attempt-transit through fnn-core-buffer-state after
-; fnn-octets-fill of the payload.
+; fn-ars-current-plan-is-reference, fn-ars-transit-verdict-is-reference),
+; as the list entry is through the parse carry (books/owner-parse-carried.lisp
+; fn-apc-*-is-reference), so no list of the article is built for them.
+; Called by host/native/owner.lisp fnn-owner-attempt-served (the gate) and
+; fnn-owner-attempt-filled (filing, carrier form, the unsigned arm's
+; verdict) through fnn-core-buffer-state, after the one fnn-octets-fill of
+; the payload.  A present carrier still takes the list entries
+; (fnn-owner-payload-octets, one list, on that arm only): its kind-4 event
+; carries the article as a list (PKT-743); fn-owner-peer-carrier-plan-buffer
+; is the plan's twin for when that event does not.
 (defun fn-owner-login-gate-buffer (fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (declare (xargs :stobjs (fn-octets state)
+                  :guard (boundp-global 'fn-owner state)))
   (let* ((verdict (fn-ars-lb-ocfg-gate (fn-owner-ocfg state) fn-octets))
          (state (f-put-global 'fn-owner-login-log-line
                               (fn-lb-verdict-line verdict) state)))
     (value verdict)))
 
 (defun fn-owner-control-filing-buffer (group-octets fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program
-                  :guard (fn-octet-list-listp group-octets)))
+  (declare (xargs :stobjs (fn-octets state)
+                  :guard (and (boundp-global 'fn-owner state)
+                              (fn-octet-list-listp group-octets))))
   (value (fn-ars-filing-plan
           group-octets
           (fn-state-groups (fn-node-acceptance (fn-owner-node state)))
           fn-octets)))
 
 (defun fn-owner-peer-carrier-form-buffer (fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (declare (xargs :stobjs (fn-octets state)))
   (value (fn-ars-carrier-form fn-octets)))
 
+; The transit verdict the service log records (fn-owner-transit-verdict's
+; twin; fn-ars-transit-verdict-is-reference): on the unsigned arm it reads
+; the buffer only.  Writes nothing.
+(defun fn-owner-transit-verdict-buffer (transitp ed ml fn-octets state)
+  (declare (xargs :stobjs (fn-octets state)
+                  :guard (boundp-global 'fn-owner state)))
+  (value (fn-ars-transit-verdict
+          (fn-sn-keyring-snapshots (fn-owner-store state))
+          (fn-owner-transit-carried-list transitp state)
+          (and transitp t) ed ml fn-octets)))
+
 (defun fn-owner-peer-carrier-plan-buffer (transitp fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program))
+  (declare (xargs :stobjs (fn-octets state)
+                  :guard (boundp-global 'fn-owner state)))
   (value (fn-ars-current-plan
           (fn-sn-keyring-snapshots (fn-owner-store state))
           (fn-owner-transit-carried-list transitp state)

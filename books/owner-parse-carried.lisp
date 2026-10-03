@@ -30,8 +30,9 @@
 ;                                 fn-apc-take-result
 ;   fn-owner-submission-intent    fn-apc-submission-intent
 ;   fn-owner-submission-resolution fn-apc-submission-resolution-publication
-;   fn-owner-control-filing       fn-apc-filing-plan
-;   fn-owner-peer-carrier-form    fn-apc-carrier-form
+;   fn-owner-control-filing       fn-apc-filing-plan (hybrid-control only;
+;                                 the served attempt reads the buffer,
+;                                 books/article-buffer.lisp)
 ;   fn-owner-peer-carrier-plan    fn-apc-current-plan
 ;   fn-owner-transit-verdict      fn-apc-transit-verdict
 ;   fn-owner-transit-refusal-class fn-apc-transit-refusal-detail
@@ -735,8 +736,8 @@
 
 (in-theory (disable fn-apc-hc-received-plan fn-apc-plan fn-apc-plans-extend))
 
-; books/peer-authored-accept.lisp fn-pa-carrier-form
-; (fn-owner-peer-carrier-form).  A present carrier's field is still decoded
+; books/peer-authored-accept.lisp fn-pa-carrier-form (read by the current
+; plan; the host's carrier form is the buffer's, fn-ars-carrier-form).  A present carrier's field is still decoded
 ; by fn-hc-received-plan over the octets (a second parse on that arm only).
 (defun fn-apc-carrier-form (received plans carry)
   (declare (xargs :guard t

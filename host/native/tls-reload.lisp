@@ -105,7 +105,7 @@ the context's lock."
 (defun fnn-tls-control-handle (service frame)
   (let ((verb (and (typep frame 'fnn-octets)
                    (fnn-core 'fn-tlsr-host-request-decode
-                             (fnn-octet-list frame)))))
+                             (fnn-control-frame-octet-list frame)))))
     (case verb
       (:reload (fnn-tls-owner-reload service))
       (:status (fnn-tls-owner-status service))

@@ -63,7 +63,7 @@
 (defun fnn-keys-control-handle (service frame)
   (let ((msgid (and (typep frame 'fnn-octets)
                     (fnn-core 'fn-pinv-host-redecide-request-decode
-                              (fnn-octet-list frame)))))
+                              (fnn-control-frame-octet-list frame)))))
     (cond (msgid (fnn-keys-owner-redecide service msgid))
           (*fnn-keys-next-handler*
            (funcall *fnn-keys-next-handler* service frame))

@@ -149,6 +149,16 @@ class NativeFriendsFeedTests(unittest.TestCase):
                       keys_a / "ed-public.bin", keys_a / "ml-public.pem")
         self.assertEqual(enrol.returncode, EXIT_OK, text(enrol))
         invitation, acceptance = self.base / "invitation", self.base / "acceptance"
+        # Sweep S105: an OUT that exists refuses before the owner records an
+        # invitation (exit 1, not a fault after the row is durable), and is
+        # left as it was.
+        invitation.write_bytes(b"occupied\n")
+        occupied = a.operator("peer", "invite", "f", "local.*", "127.0.0.1", f.port,
+                              "a.example", keys_a, invitation, "127.0.0.1", a.port)
+        self.assertEqual(occupied.returncode, EXIT_REFUSED, text(occupied))
+        self.assertIn("exists", text(occupied))
+        self.assertEqual(invitation.read_bytes(), b"occupied\n")
+        invitation.unlink()
         a.ok("peer", "invite", "f", "local.*", "127.0.0.1", f.port, "a.example",
              keys_a, invitation, "127.0.0.1", a.port)
         f.ok("peer", "accept", invitation, keys_f, "f.example", "-", acceptance)

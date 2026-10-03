@@ -338,11 +338,13 @@ as at 7aad444ce."
 
 ;;; Measurement (adapter-retirement-2; opt-in, FN_OWNER_MEASURE=1 at start):
 ;;; per label, how many times the owner mutex was held, for how long, and
-;;; how many octets SBCL allocated while it was (sb-ext:get-bytes-consed is
-;;; process-wide: a measurement run keeps other threads quiet).  The label
-;;; is the dynamic *fnn-owner-measure-label*: :control inside a control
-;;; request (an operator post), :feed-flush for the flush's own cost (nested
-;;; in a hold), :other otherwise.  Off, it costs one special-variable test
+;;; how many octets SBCL allocated while it was, in all and in the largest
+;;; single hold (sb-ext:get-bytes-consed is process-wide: a measurement run
+;;; keeps other threads quiet).  The label is the dynamic
+;;; *fnn-owner-measure-label*: :control inside a control request (an
+;;; operator post), :feed-flush for the flush's own cost (nested in a hold),
+;;; otherwise the gate class the hold was admitted as (:commit for the
+;;; committer's quanta, which run every served POST's attempt).  Off, it costs one special-variable test
 ;;; per hold.  The totals go to stderr when the owner stops
 ;;; (fnn-owner-measure-report).  It decides nothing and changes no state the
 ;;; owner reads.
@@ -363,11 +365,12 @@ SBCL's SB-UNIX may lack the internal clock symbols."
          (consed (- (sb-ext:get-bytes-consed) bytes))
          (row (or (gethash label *fnn-owner-measure-table*)
                   (setf (gethash label *fnn-owner-measure-table*)
-                        (list 0 0 0 0)))))
+                        (list 0 0 0 0 0)))))
     (incf (first row))
     (incf (second row) held)
     (setf (third row) (max (third row) held))
-    (incf (fourth row) consed)))
+    (incf (fourth row) consed)
+    (setf (fifth row) (max (fifth row) consed))))
 
 (defmacro fnn-owner-measured ((label) &body body)
   (let ((start (gensym "START")) (bytes (gensym "BYTES")))
@@ -382,12 +385,12 @@ SBCL's SB-UNIX may lack the internal clock symbols."
   (when *fnn-owner-measure*
     (maphash
      (lambda (label row)
-       (destructuring-bind (count held most consed) row
+       (destructuring-bind (count held most consed most-consed) row
          (format *error-output*
-                 "~&fn-owner-measure ~(~a~) holds=~d held-us=~d max-us=~d bytes=~d~%"
+                 "~&fn-owner-measure ~(~a~) holds=~d held-us=~d max-us=~d bytes=~d max-bytes=~d~%"
                  label count
                  held most
-                 consed)))
+                 consed most-consed)))
      *fnn-owner-measure-table*)
     (finish-output *error-output*)))
 
@@ -1641,7 +1644,10 @@ nothing.  The caller holds the owner mutex.  Returns the number shed."
                 (handler-case (fnn-owner-gate-check ,g)
                   (serious-condition (,failure)
                     (fnn-owner-gate-fail-locked ,s ,g ,failure)))
-                (fnn-owner-measured (*fnn-owner-measure-label*) ,@body))
+                (fnn-owner-measured ((if (eq *fnn-owner-measure-label* :other)
+                                         ,c
+                                       *fnn-owner-measure-label*))
+                  ,@body))
            ;; Cleanup calls the core too. Fence its failure before releasing
            ;; owner exclusion; gate abort wakes waiters without another pick.
            (handler-case (fnn-owner-gate-leave ,g ,c (fnn-ms-since ,h) ,w)
@@ -1845,11 +1851,17 @@ before the mutex can be released, so no queued client can mutate afterward."
     (fnn-store-error (condition) (error condition))
     ;; An OS or arbitrary failure inside a semantic/persistence action has no
     ;; safe connection-only attribution.  Preserve the shared state by stopping.
+    ;; The owner has stopped as a FAULT (exit 4), so the caller sees a fault:
+    ;; the condition goes on as an fnn-store-fault naming it (sweep S028).
+    ;; Re-raised as itself, an fnn-os-error or a socket error read to the
+    ;; control worker as a refusal raised before any owner work, and the
+    ;; operator was told REFUSED (exit 1: nothing happened) by a stopped node.
     ((or fnn-os-error serious-condition) (condition)
       (when (and cid (not (fnn-owner-connection-selected-p service)))
         (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
       (fnn-owner-stop-service-locked service +fnn-exit-fault+)
-      (error condition))))
+      (error 'fnn-store-fault
+             :message (format nil "owner stopped as a fault: ~a" condition)))))
 
 (defun fnn-owner-serialized (service cid thunk &optional (class :control))
   "Run one semantic action, fencing before its mutex can be released.
@@ -2120,15 +2132,17 @@ follows is justified only by this line."
             (fnn-refuse "unknown or duplicate configured group"))
           (let ((boundary (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
                                           (length payload) (length codes) charge)))
-            ;; Preserve ACL2's named placement refusal before buffer fill,
-            ;; identity allocation or prepare.  The generic condition
+            ;; Preserve ACL2's named placement refusal before identity
+            ;; allocation or prepare.  The generic condition
             ;; handler would otherwise erase it into :refused.
             (when (member boundary '(:mpx-saturated :invalid-binding :canonical-size-unavailable))
               (return-from fnn-owner-attempt boundary))
             (fnn-validate-post-boundary boundary))
           ;; The payload goes to the core in the octet buffer
-          ;; (books/octets-stobj.lisp): filled once here from the byte
-          ;; vector, read in place by the existing-article test and the
+          ;; (books/octets-stobj.lisp): filled once from the byte vector
+          ;; before the attempt (fnn-owner-attempt-served or
+          ;; fnn-owner-attempt-transit), read in place by the gate, the
+          ;; filing, the carrier form, the existing-article test and the
           ;; prepare (host/owner-host.lisp fn-owner-existing-action-buffer,
           ;; fn-owner-prepare-buffer), and the subject identity is digested
           ;; from it in place (fnn-metadata-buffer, fnn-subject-id-buffer;
@@ -2142,7 +2156,6 @@ follows is justified only by this line."
           ;; was refused; the D25 cursor chain stays in its books
           ;; (post-identity-source-cursor*, -captured) and returns with its
           ;; producer.
-          (fnn-octets-fill payload)
           (case (fnn-owner-buffer-arena-action 'fn-owner-existing-action-buffer
                                          (fnn-octet-list msgid) codes)
             (:duplicate (return-from fnn-owner-attempt :duplicate))
@@ -2192,22 +2205,35 @@ follows is justified only by this line."
 ;;; submission with the detail.
 (defvar *fnn-owner-transit-verdict* nil)
 
-;;; (PAYLOAD . OCTET-LIST) for the transit attempt in flight: its payload
-;;; vector converted once (bound by fnn-owner-attempt-transit).  ACL2 never
-;;; mutates an argument, so its calls share the one list; the parse carry
-;;; (books/owner-parse-carried.lisp) compares it with the take's octets.
+;;; (PAYLOAD . OCTET-LIST) for the transit attempt in flight, NIL until a
+;;; present carrier's arm first asks (bound by fnn-owner-attempt-filled).
+;;; D27 (sweep S002): the unsigned arm, every served POST without a
+;;; carrier, reads the octet buffer only and never builds it; a present
+;;; carrier's arm builds it once, since its kind-4 event carries the article
+;;; as a list (PKT-743).  ACL2 never mutates an argument, so its calls share
+;;; the one list; the parse carry (books/owner-parse-carried.lisp) compares
+;;; it with the take's octets.
 (defvar *fnn-owner-payload-list* nil)
 
 (defun fnn-owner-payload-octets (payload)
   (if (and (consp *fnn-owner-payload-list*)
            (eq (car *fnn-owner-payload-list*) payload))
       (cdr *fnn-owner-payload-list*)
-    (fnn-octet-list payload)))
+    (cdr (setq *fnn-owner-payload-list*
+               (cons payload (fnn-octet-list payload))))))
 
 (defun fnn-owner-note-transit-verdict (payload nntp-transit-p ed ml)
   (setq *fnn-owner-transit-verdict*
         (fnn-owner-core 'fn-owner-transit-verdict (fnn-owner-payload-octets payload)
                         (and nntp-transit-p t) ed ml)))
+
+;;; The unsigned arm's verdict, over the buffer the attempt filled
+;;; (host/owner-host.lisp fn-owner-transit-verdict-buffer;
+;;; books/article-buffer.lisp fn-ars-transit-verdict-is-reference).
+(defun fnn-owner-note-transit-verdict-buffer (nntp-transit-p)
+  (setq *fnn-owner-transit-verdict*
+        (fnn-core-buffer-state 'fn-owner-transit-verdict-buffer
+                               (and nntp-transit-p t) nil nil)))
 
 (defun fnn-owner-transit-refused (detail)
   (setq *fnn-owner-transit-detail*
@@ -2233,6 +2259,14 @@ follows is justified only by this line."
 
 (defun fnn-owner-attempt-transit (service msgid payload groups evidence
                                   &optional nntp-transit-p)
+  "Fill the octet buffer with PAYLOAD once and decide the attempt
+(fnn-owner-attempt-filled)."
+  (fnn-octets-fill payload)
+  (fnn-owner-attempt-filled service msgid payload groups evidence
+                            nntp-transit-p))
+
+(defun fnn-owner-attempt-filled (service msgid payload groups evidence
+                                 &optional nntp-transit-p)
   "One ingress decision for both NNTP and BP transit under the caller's
 durable intent. ACL2 distinguishes carrier absence from present-invalid,
 selects the B-local current enrollment, and constructs the exact kind-4
@@ -2245,14 +2279,17 @@ verification.
 First, for every ingress, ACL2's filing step (C1, fn-pa-filing-plan through
 fn-owner-control-filing): a control article's groups become exactly its
 control.<verb> filing group, or the attempt is refused with the plan's
-reason before any Store call.  An ordinary article's groups are unchanged."
-  ;; The payload's octet list, converted once for the ACL2 calls below
-  ;; (fnn-owner-payload-octets): each call used to convert the vector
-  ;; again, 16 bytes a cons per octet.
-  (let ((*fnn-owner-payload-list* (cons payload (fnn-octet-list payload))))
-  (let ((filing (fnn-owner-core 'fn-owner-control-filing
-                                (fnn-owner-payload-octets payload)
-                                (mapcar #'fnn-octet-list groups))))
+reason before any Store call.  An ordinary article's groups are unchanged.
+
+The caller filled the octet buffer with PAYLOAD (fnn-octets-fill); the
+filing, the carrier form and the unsigned arm read it in place
+(host/owner-host.lisp fn-owner-control-filing-buffer,
+fn-owner-peer-carrier-form-buffer, fn-owner-transit-verdict-buffer), each
+equal to its list entry (books/article-buffer.lisp, the -is-reference
+theorems).  Only a present carrier's arm builds the article's list, once."
+  (let ((*fnn-owner-payload-list* nil))
+  (let ((filing (fnn-core-buffer-state 'fn-owner-control-filing-buffer
+                                       (mapcar #'fnn-octet-list groups))))
     (unless (and (consp filing)
                  (member (first filing) '(:file :refused))
                  (consp (rest filing)))
@@ -2264,11 +2301,10 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                  (every #'fnn-octet-list-p (second filing)))
       (fnn-fault "owner returned malformed filed groups"))
     (setq groups (mapcar #'fnn-octets (second filing))))
-  (let ((form (fnn-owner-core 'fn-owner-peer-carrier-form
-                              (fnn-owner-payload-octets payload))))
+  (let ((form (fnn-core-buffer-state 'fn-owner-peer-carrier-form-buffer)))
     (cond
       ((eq form :absent)
-       (fnn-owner-note-transit-verdict payload nntp-transit-p nil nil)
+       (fnn-owner-note-transit-verdict-buffer nntp-transit-p)
        (fnn-owner-attempt service msgid payload groups evidence))
       ((not (and (consp form) (eq (first form) :ok)))
        (fnn-owner-transit-refused
@@ -2544,7 +2580,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
 ;;; unsigned arm, fnn-owner-attempt, with its word unchanged.
 ;;;
 ;;; First, the posting policy's login gate (books/login-binding.lisp
-;;; fn-lb-owner-gate through host/owner-host.lisp fn-owner-login-gate): under
+;;; fn-lb-owner-gate through host/owner-host.lisp fn-owner-login-gate-buffer): under
 ;;; `posting-policy bound-logins' a bound login's article that is unsigned, or
 ;;; signed by another principal, is refused with the gate's reason
 ;;; (:login-unsigned, :login-not-bound) before any Store call; every other
@@ -2553,14 +2589,17 @@ reason before any Store call.  An ordinary article's groups are unchanged."
 (defun fnn-owner-attempt-served (service msgid payload groups evidence)
   (setq *fnn-owner-transit-detail* nil
         *fnn-owner-transit-verdict* nil)
-  (let ((gate (fnn-owner-core 'fn-owner-login-gate (fnn-octet-list payload))))
+  ;; D27 (sweep S002): the buffer is filled once, here, and the gate and the
+  ;; attempt read it (fn-owner-login-gate-buffer, fnn-owner-attempt-filled).
+  (fnn-octets-fill payload)
+  (let ((gate (fnn-core-buffer-state 'fn-owner-login-gate-buffer)))
     (unless (and (consp gate) (member (first gate) '(:pass :refused)))
       (fnn-fault "owner returned malformed login gate ~a" gate))
     (fnn-owner-log 'fn-owner-login-log-line t)
     (let ((word (if (eq (first gate) :refused)
                     (fnn-owner-transit-refused gate)
-                  (fnn-owner-attempt-transit service msgid payload groups
-                                             evidence))))
+                  (fnn-owner-attempt-filled service msgid payload groups
+                                            evidence))))
       (fnn-owner-core 'fn-owner-served-post-word word
                       *fnn-owner-transit-detail*))))
 

@@ -195,3 +195,64 @@
                                         nil (and cur (fn-article-close-field cur))
                                         '(10 13 9 32 58 88) '(13 10))))))
   :rule-classes nil)
+
+; 5. The transit verdict (lane sweep-ops, S002; KEYSTONE
+; fn-ars-transit-verdict-is-reference, host fn-owner-transit-verdict-buffer).
+; An article with a present but undecodable carrier field: "fn-authorship:
+; x" between the two fields of the article above.
+(defconst *arbt-carried*
+  (append (arbt-octets "From: a@b") '(13 10)
+          (arbt-octets "fn-authorship: x") '(13 10)
+          (arbt-octets "Newsgroups: g") '(13 10)
+          '(13 10)
+          (arbt-octets "body line") '(13 10)))
+
+; Positive witnesses, in the live buffer, both arms, on and off transit:
+; the antecedent (the buffer's invariant) holds and the twin answers the
+; reference; the unsigned arm is :unsigned, the present arm is not.
+(assert-event
+ (let* ((fn-octets (fn-octets-clear fn-octets))
+        (fn-octets (fn-octets-append-list *arbt-article* fn-octets))
+        (a (and (fn-octets-p fn-octets)
+                (equal (fn-ars-carrier-form fn-octets) :absent)
+                (equal (fn-ars-transit-verdict nil nil nil nil nil fn-octets)
+                       (fn-pcb-transit-verdict *arbt-article* nil nil nil nil nil))
+                (equal (fn-ars-transit-verdict nil nil t nil nil fn-octets)
+                       (fn-pcb-transit-verdict *arbt-article* nil nil t nil nil))
+                (equal (fn-ars-transit-verdict nil nil t nil nil fn-octets)
+                       :unsigned)))
+        (fn-octets (fn-octets-clear fn-octets))
+        (fn-octets (fn-octets-append-list *arbt-carried* fn-octets))
+        (b (and (fn-octets-p fn-octets)
+                (not (equal (fn-ars-carrier-form fn-octets) :absent))
+                (equal (fn-ars-transit-verdict nil nil nil nil nil fn-octets)
+                       (fn-pcb-transit-verdict *arbt-carried* nil nil nil nil nil))
+                (equal (fn-ars-transit-verdict nil nil t :verified :verified fn-octets)
+                       (fn-pcb-transit-verdict *arbt-carried* nil nil t
+                                               :verified :verified))
+                (not (equal (fn-ars-transit-verdict nil nil nil nil nil fn-octets)
+                            :unsigned)))))
+   (mv (and a b) fn-octets))
+ :stobjs-out '(nil fn-octets))
+
+; fn-pcb-transit-verdict-of-an-absent-carrier: positive (the antecedent
+; holds, the verdict is :unsigned) and hypothesis removal (a present
+; carrier: the antecedent fails and so does the conclusion).
+(defthm arbt-absent-carrier-verdict-witnesses
+  (and (equal (fn-pa-carrier-form *arbt-article*) :absent)
+       (equal (fn-pcb-transit-verdict *arbt-article* nil nil t nil nil) :unsigned)
+       (not (equal (fn-pa-carrier-form *arbt-carried*) :absent))
+       (not (equal (fn-pcb-transit-verdict *arbt-carried* nil nil t nil nil)
+                   :unsigned)))
+  :rule-classes nil)
+
+; fn-ars-transit-verdict-is-reference, hypothesis removal (a corrupted value
+; no live buffer holds): with a non-octet in the body the reference refuses
+; the article (:malformed) while the twin, which sees no carrier, says
+; :unsigned.
+(defthm arbt-transit-verdict-hypothesis-removal-witness
+  (and (not (fn-octets-p *arbt-bad*))
+       (equal (fn-ars-transit-verdict nil nil nil nil nil *arbt-bad*) :unsigned)
+       (not (equal (fn-ars-transit-verdict nil nil nil nil nil *arbt-bad*)
+                   (fn-pcb-transit-verdict *arbt-bad* nil nil nil nil nil))))
+  :rule-classes nil)

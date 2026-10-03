@@ -1626,8 +1626,9 @@
 (definterface fn-owner-login-bindings-plan
   :class :common-lisp-compliant)
 
-(definterface fn-owner-login-gate
-  :class :common-lisp-compliant)
+(definterface fn-owner-login-gate-buffer
+  :class :common-lisp-compliant
+  :keystones ((fn-ars-lb-ocfg-gate-is-reference :via fn-ars-lb-ocfg-gate)))
 
 (definterface fn-owner-moderation-plan
   :class :common-lisp-compliant)
@@ -1658,8 +1659,9 @@
 (definterface fn-owner-peer-carried-relay-event
   :class ::program)
 
-(definterface fn-owner-peer-carrier-form
-  :class ::program)
+(definterface fn-owner-peer-carrier-form-buffer
+  :class :common-lisp-compliant
+  :keystones ((fn-ars-carrier-form-is-reference :via fn-ars-carrier-form)))
 
 (definterface fn-owner-peer-carrier-plan
   :class ::program)
@@ -1816,6 +1818,10 @@
 
 (definterface fn-owner-transit-verdict
   :class ::program)
+
+(definterface fn-owner-transit-verdict-buffer
+  :class :common-lisp-compliant
+  :keystones ((fn-ars-transit-verdict-is-reference :via fn-ars-transit-verdict)))
 
 (definterface fn-owner-workflow-forward-pinnedp
   :class ::program)
@@ -3975,6 +3981,11 @@
 (definterface fn-owner-control-filing
   :class ::program
   :kinds ((group-octets fn-octet-list-listp)))
+
+(definterface fn-owner-control-filing-buffer
+  :class :common-lisp-compliant
+  :kinds ((group-octets fn-octet-list-listp))
+  :keystones ((fn-ars-filing-plan-is-reference :via fn-ars-filing-plan)))
 
 (definterface fn-owner-control-outcome
   :class ::program)

@@ -98,3 +98,79 @@
             (equal (fn-orc-request-status (fn-orc-request-word pass inflight blockedp recordedp))
                    :refused))
    :rule-classes nil))
+
+; Sweep S038: the capture's own admission (fn-orc-capture-slot, KEYSTONE
+; fn-orc-capture-takes-only-a-free-slot).
+; Positive witnesses, every arm: a free slot is taken (a writing pass holds
+; INFLIGHT at its count, a dry run leaves it); a held pass refuses
+; :in-flight and a publication in flight refuses a writing pass :queued,
+; each leaving the slot as it was; a dry run beside a publication is taken.
+(assert-event
+ (and (equal (fn-orc-capture-slot :recorded 7 nil nil) '(:capture :recorded 7))
+      (equal (fn-orc-capture-slot :dry-run 7 nil nil) '(:capture :dry-run nil))
+      (equal (fn-orc-capture-slot :recorded 9 :dry-run nil) '(:in-flight :dry-run nil))
+      (equal (fn-orc-capture-slot :dry-run 9 :recorded 7) '(:in-flight :recorded 7))
+      (equal (fn-orc-capture-slot :recorded 9 nil 5) '(:queued nil 5))
+      (equal (fn-orc-capture-slot :dry-run 9 nil 5) '(:capture :dry-run 5))))
+; The third conjunct, positive: after a taken capture every second capture,
+; of either mode, is refused.
+(assert-event
+ (let ((r (fn-orc-capture-slot :recorded 7 nil nil)))
+   (and (keywordp :recorded) (equal (car r) :capture)
+        (equal (car (fn-orc-capture-slot :recorded 8 (cadr r) (caddr r))) :in-flight)
+        (equal (car (fn-orc-capture-slot :dry-run 8 (cadr r) (caddr r))) :in-flight))))
+; Hypothesis removal for (keywordp mode): a MODE of nil is taken (the
+; antecedent's other half holds), is not a keyword, and leaves the slot
+; free of a pass, so a second capture (a dry run, which no publication
+; count stops) is taken too: the conclusion fails.
+(assert-event
+ (let ((r (fn-orc-capture-slot nil 7 nil nil)))
+   (and (equal (car r) :capture)
+        (not (keywordp nil))
+        (equal (car (fn-orc-capture-slot :dry-run 8 (cadr r) (caddr r))) :capture))))
+; Mutation (labelled): the pre-S038 capture, which wrote the slot without
+; deciding, over a slot a publication holds (case (b) of the finding): it
+; overwrites the publication's count, which the decision above never does.
+(defun ost-pre-s038-capture (mode count pass inflight)
+  (declare (ignore pass))
+  (list :capture mode (if (eq mode :dry-run) inflight count)))
+(assert-event
+ (and (not (equal (cdr (ost-pre-s038-capture :recorded 9 nil 5)) (list nil 5)))
+      (equal (cdr (fn-orc-capture-slot :recorded 9 nil 5)) (list nil 5))))
+
+; KEYSTONE fn-orc-release-by-a-non-holder-changes-nothing.  Positive
+; witnesses, each conjunct with its antecedent: a reclaim release by another
+; mode, and one with no pass, change nothing; a publication release at
+; another count, and one while a writing pass holds the slot, change
+; nothing; a publication release never moves PASS; after a writing
+; capture, a publication release leaves the slot held and the pass's own
+; release frees it.  The holders' own releases free what they hold.
+(assert-event
+ (and (equal (fn-orc-release-slot '(:reclaim :dry-run) :recorded 7) '(:recorded 7))
+      (equal (fn-orc-release-slot '(:reclaim :recorded) nil 7) '(nil 7))
+      (equal (fn-orc-release-slot '(:publication 6) nil 7) '(nil 7))
+      (equal (fn-orc-release-slot '(:publication 7) :recorded 7) '(:recorded 7))
+      (equal (car (fn-orc-release-slot '(:publication 7) :dry-run 7)) :dry-run)
+      (let ((r (fn-orc-capture-slot :recorded 7 nil nil)))
+        (and (equal (fn-orc-release-slot '(:publication 7) (cadr r) (caddr r)) (cdr r))
+             (equal (fn-orc-release-slot '(:reclaim :recorded) (cadr r) (caddr r))
+                    '(nil nil))))
+      (equal (fn-orc-release-slot '(:publication 7) nil 7) '(nil nil))
+      (equal (fn-orc-release-slot '(:reclaim :dry-run) :dry-run 7) '(nil 7))))
+; Hypothesis removal for the fourth conjunct's (not (equal mode :dry-run)):
+; a dry run's capture leaves a publication's count in place, so the
+; publication's release clears it and the slot is not the capture's: the
+; conclusion (the release leaves the slot as captured) fails.
+(assert-event
+ (let ((r (fn-orc-capture-slot :dry-run 9 nil 7)))
+   (and (equal (car r) :capture) (keywordp :dry-run)
+        (not (equal (fn-orc-release-slot '(:publication 7) (cadr r) (caddr r))
+                    (cdr r))))))
+; Mutation (labelled): the pre-S038 releases, unconditional, let a
+; publication's end clear a writing pass's slot (case (b) of the finding).
+(defun ost-pre-s038-publication-done (pass inflight)
+  (declare (ignore inflight))
+  (list pass nil))
+(assert-event
+ (and (equal (ost-pre-s038-publication-done :recorded 7) '(:recorded nil))
+      (equal (fn-orc-release-slot '(:publication 5) :recorded 7) '(:recorded 7))))

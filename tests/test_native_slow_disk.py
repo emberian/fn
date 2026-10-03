@@ -265,6 +265,11 @@ class SlowDiskNativeTests(unittest.TestCase):
             self.multiline(stream)
         return time.monotonic() - started
 
+    def timed_operator_words(self, *words):
+        start = time.monotonic()
+        result = self.operator(*words, timeout=60)
+        return time.monotonic() - start, result
+
     def timed_operator(self, word):
         started = time.monotonic()
         result = self.operator(word, timeout=60)
@@ -466,11 +471,21 @@ class SlowDiskNativeTests(unittest.TestCase):
                     d.flush()
                     refused_command = d.readline()
                     refused_command_at = time.monotonic() - sent
+                    # Sweep S029: a mutating request the handler chain
+                    # answers (here `keys redecide', which commits a key
+                    # change) is shed BUSY at once like an operator post,
+                    # not queued behind the stalled barrier on the gate.
+                    shed_redecide_at, shed_redecide = self.timed_operator_words(
+                        "keys", "redecide", "<warm@example.invalid>")
                 # A has no answer while the device is stalled.
                 self.assertEqual(select.select([a_conn], [], [], 0)[0], [],
                                  "the held POST was answered while its barrier stalled")
                 time.sleep(0.5)
             self.assertIsNotNone(refused, "no POST was sent during the slow window")
+            self.assertEqual(shed_redecide.returncode, 1,
+                             shed_redecide.stdout + shed_redecide.stderr)
+            self.assertLess(shed_redecide_at, 5.0,
+                            "keys redecide waited on the stalled barrier")
             # STAT during the stall: the held article is not visible (reader view).
             stat_held = self.timed_read(reader, b"STAT <held@example.invalid>\r\n", b"430")
 

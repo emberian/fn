@@ -12,6 +12,7 @@
 (include-book "../books/consumer-reason")
 (include-book "../books/topic-history-local-control")
 (include-book "../books/native-live-buffer")
+(include-book "../books/native-control-kinds")
 
 (defun fn-native-control-host-topic-request-encode (operation sequence quota)
   (declare (xargs :mode :program))
@@ -312,7 +313,11 @@
 ;; requests as fn-native-live-status-host-requestp and
 ;; fn-native-live-pages-host-requestp decide them).  Called through fnn-core
 ;; with the live control buffer (io.lisp fnn-octets-ctl-fill of the frame),
-;; under the control buffer lock.
+;; under the control buffer lock.  The ninth element is the handler chain's
+;; word for the frame (books/native-control-kinds.lisp fn-ctlk-frame-handler,
+;; KEYSTONE fn-ctlk-every-handled-frame-is-classified; sweep S029): :store,
+;; :read or nil, read from the header in place.
 (defun fn-native-control-host-decode-frame (fn-octets-ctl)
   (declare (xargs :stobjs fn-octets-ctl :mode :program))
-  (fn-frb-site-decode fn-octets-ctl))
+  (append (fn-frb-site-decode fn-octets-ctl)
+          (list (fn-ctlk-frame-handler fn-octets-ctl))))
