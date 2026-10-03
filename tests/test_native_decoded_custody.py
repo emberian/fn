@@ -10,6 +10,7 @@ import time
 import unittest
 
 from tests.native_harness import Client, EXIT, Node, article, keep_diagnostics, native_image, requires
+from tests.native_image_provenance import source_execution_identity
 from tools.resilience.adapters.native_cuts import served_matches
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
@@ -36,6 +37,9 @@ class NativeDecodedCustodyTests(unittest.TestCase):
     def test_held_decoded_read_allows_post_then_cancel_return_release_and_reopen(self):
         nodes = []
         keep_diagnostics(self, nodes)
+        # Reuse the composed consumer's exact explicit source binding when
+        # running from a warm wrapper. Validation precedes Store materialization.
+        source_execution_identity(IMAGE)
         node = Node(self, IMAGE, name="decoded-custody")
         nodes.append(node)
         node.operator("init", GROUP, timeout=600, expect=EXIT.OK)
