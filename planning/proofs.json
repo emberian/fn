@@ -21858,9 +21858,11 @@
         "tests/acl2/served-available-commands-tests.lisp",
         "books/served-available-read.lisp",
         "tools/available_read_emit.py",
-        "planning/evidence/served-available-consumer-20261003/checks.json"
+        "planning/evidence/served-available-consumer-20261003/checks.json",
+        "tests/acl2/served-available-read-tests.lisp",
+        "planning/evidence/served-available-owner-20261003/checks.json"
       ],
-      "progress_note": "Source helpers guarded in transferred exact availability world: GROUP/LISTGROUP/ACTIVE/COUNTS18forms0.19ACL2s/2567steps, held metadata/NEXT/LAST3forms0.03s. Actual sealed arena intern+generic catalog writer sparse{1,34} and empty fixtures compare six complete command-helper results, assert raw/projected statep and fact/byte completeness, preserve retained number2 and Message-ID row;9forms0.02s pass. Initial inherited classification-only fixture did not seal its synthetic handles; failed full correspondence preserved, corrected through actual fn-cat-intern-list. Generated dispatcher and command-layer consumer are source-written; proper complete book, owner production propagation and selective proof remain pending. LIST still materializes its full reply; no native image, bounded producer or funding claim. Actual owner source caller now consumes fn-av-mca-read-span; PROGRAM route admission/native composition and selective proof remain pending, no raw funding or invariant theorem is transferred."
+      "progress_note": "Proper complete generated command book30forms .26ACL2s/3594steps guards pass; all25 PROGRAM specialized reader functions admit in paid owner world. Twenty actual command/parsed-event cases compare selective available and raw retained subjects. Actual fn-av-mca-read-span GROUP wire endpoint sparse{1,34} and empty fixtures pass exact available reply, consumed input, selected reader, funded ledger before/after (.02ACL2s). These are constructed pin executable witnesses, not selective owner R/refinement or guard/physical funding proof. Initial omitted store groups caused correct finish-read connection discard, preserved and corrected. LIST whole reply producer, captured completeness/frames and native host qualification remain open."
     }
   ]
 }

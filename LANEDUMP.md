@@ -476,3 +476,20 @@ Response pin excludes reclaim swap but does not freeze live summaries. Bounded
 LIST will use captured v/raw groups/high watermark and per-number visibility/
 NOV checks; named non-reclaim preserved-column frame remains owed (Runtime
 identified redecide updates context but preserves payload/numbered keys).
+
+
+## Available owner executable acceptance (2026-10-03)
+
+Complete available command book30forms .26ACL2s/3594steps guards pass in
+paid solheldownerfix. All25 PROGRAM specialized reader functions now admit;
+final6 owner/time/article/credit bodies .01ACL2s. Twenty command/event cases
+pass selective available enumeration vs raw retained retrieval. Actual host
+called fn-av-mca-read-span GROUP wire endpoints sparse{1,34}/empty pass exact
+reply, whole consumed input, selected reader retained and funded ledger
+before/after. Constructed indexed/auth pin fixtures, not complete owner R.
+Original missing helper defs source admitted with eagerness0 then restored2,
+so no new helper guard claim. Initial store shell omitted groups and correctly
+closed selected reader after correct reply; failure preserved and repaired.
+Receipt served-available-owner-20261003 records source hashes/full warm log.
+Selective owner refinement/PROGRAM guards, captured completeness/frames,
+physical tariffs and actual host process remain open. Bounded LIST next.

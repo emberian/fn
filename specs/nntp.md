@@ -2585,3 +2585,16 @@ reader commands receive their actual authorized cache entry (or the existing
 fallback authorization projection), including peer reader commands. Transfer
 and explicit transit arms keep their original priority. This connects the
 source endpoint; it does not close PRF-1287 or make LIST production bounded.
+
+
+### Selective available owner route (PRF-1287, SCN-1117)
+
+The source owner reader calls the generated available command route through
+`fn-av-mca-read-span` (an ARTICLE preflight wrapper may delegate to it).
+GROUP, LISTGROUP, NEXT, LAST and LIST ACTIVE/COUNTS use availability metadata
+from the actual captured catalog; raw retrieval and NEWNEWS retain their
+original archive subject. The adapter takes the raw pin/index and constructs
+no second available index. Complete command guards and source-loaded
+command/event/owner-credit fixtures pass; the selective owner refinement,
+carried snapshot completeness/stability, PROGRAM route guards and physical
+cost coverage remain owed. LIST still constructs its full upstream reply.
