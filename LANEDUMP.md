@@ -28,3 +28,41 @@ Worktree codex-sol-integrate, sole dev push writer this wave. Base 30529279e.
 - Groundwork active plan/nowb1b425870 cherry-pickedcf8343310.
 - Burndown narrow certification run-20261003T060224Z-902c on hbox, certify-20261003T060555Z-796321:7 roots,323 cached/46 missing. No lane --closure. Harvest pending.
 - Runtime first physical actor source/failure envelope pending. Post-guard-off812082a53 reviewed by Foundations/Groundwork; root deciding native-trust versus formal-assumption label; final-world/matched POST still owed.
+NIGHT-SELECTOR-HARNESS source `347fe45b6`: stale S029 frame fixture repaired.
+The real control-buffer mutex macro runs; recording ACL2 decode/fill assert
+one decode with the exact frame. New cases reject an unclassified handler and
+shed a mutating frame before dispatch. `tests.test_developer_selectors_harness`
+passes 3 tests, including actual classifier/admission guard removals. Existing
+NativeOwner structure selector test passes; raw script also passes against
+Runtime's worktree source. Self-verification shows the old fixture lets the
+classifier-guard mutation through (named assertion `0 == 0`), head catches it.
+Evidence `planning/evidence/repair/NIGHT-SELECTOR-HARNESS-463c9f3bc5154b63a4042c987025b516.json`,
+hash `ae334d56e2c2cc0bbb32b7b4cc96ec7a3a3f59cf8778e61956138b4892c7ca65`.
+The first incorrect expected assertion message was refused and its evidence
+remains indexed. No native image or runtime behavior claim. Own derived stubs
+regenerated only for this fixture; unrelated existing stale blocks left intact.
+
+NIGHT-LOCK-IDENTITY source `f24e2be0e`: callback roots have lexical enclosing
+function/lambda IDs, with macro expansion identities tied to lexical caller and
+macro nodes. Distinct same-line callbacks remain distinct. Formatting-only
+changes preserve IDs; inserting a callback may conservatively change ordinals.
+Historical baseline migration uses exact `046aa740f` host/contract source and
+verifies the baseline bytes before translation; ambiguous maps/collisions refuse.
+It preserves all 374 rows and weight1609, without `--initial` or added debt.
+31 checker tests pass; self-witness against `4740c59af` is the exact named
+formatting-stability assertion. Evidence
+`planning/evidence/repair/NIGHT-LOCK-IDENTITY-85a7a139bfbb470982de68399368d24f.json`,
+hash `66a36c653c52036897e15c8f9d967c64c7c2a5c295e2268595fff0cdff49b20c`.
+
+Served host inspection before/after: 412 findings both times; new18->13 and
+stale16->11. Five row pairs were source-line churn; remaining seven weighted
+R1 reclaim-pass site debt and six maintenance/feed/mux findings remain visible.
+These are source inspection results, not image/proof qualification (book work
+was concurrent in Served's tree). A source-only Grok advisory was attempted in
+an empty cwd with tools/web/subagents disallowed and narrow diff, but configured
+MCP startup retried and no review response arrived; own process stopped. No
+advisory approval or dissent was claimed.
+
+
+## Combined lifecycle identity integration
+- Runtime baseline at3bda776c6 translated with exact historical host/contracts and both historical+lexical analyzers.366rows/weight1469 retained;40callback-bearing keys changed, no additions/collisions.39combined lock/selector/publication tests pass. Removed superseded current-tree --rekey-lambdas alias path. Source identity migration is distinct from resolved runtime lock debt.

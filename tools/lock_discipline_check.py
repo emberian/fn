@@ -122,7 +122,7 @@ RULES = ("R1", "R1b", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10")
 class Node(list):
     """A read list that remembers the line it starts on."""
 
-    __slots__ = ("line",)
+    __slots__ = ("line", "identity")
 
 
 class SpanReader(ledger.Reader):
@@ -270,6 +270,29 @@ def lambda_params(lst) -> list[str]:
     return out
 
 
+def identify_nodes(form, owner):
+    """Lexical IDs survive formatting; distinct same-line lambdas stay distinct.
+
+    Inserting/removing a lambda within a function can change its ordinals and is
+    reviewed as a source change. Never alias unrelated callbacks by body text.
+    """
+    nodes = lambdas = 0
+    stack = [form]
+    while stack:
+        item = stack.pop()
+        if not isinstance(item, list):
+            continue
+        nodes += 1
+        if head(item) == "lambda":
+            lambdas += 1
+            identity = f"{owner}#lambda{lambdas}"
+        else:
+            identity = f"{owner}#form{nodes}"
+        if isinstance(item, Node):
+            item.identity = identity
+        stack.extend(reversed(item))
+
+
 def collect_tree(root: Path, files: list[str] | None = None) -> Tree:
     tree = Tree(root=root)
     loaded = loaded_native_files(root)
@@ -345,6 +368,7 @@ def visit_top(tree: Tree, form, line: int, rel: str, lines: list[str]) -> None:
         return
     if h in ("defun", "defmacro") and len(form) >= 3 and isinstance(form[1], Sym):
         name = str(form[1])
+        identify_nodes(form, name)
         if name.startswith("acl2_*1*_acl2::"):
             tree.raw_replaced.add(name.split("::", 1)[1])
             return
@@ -787,6 +811,8 @@ class Analyzer:
                     return Sym("#:opaque")
                 out = Node()
                 out.line = getattr(form, "line", 0)
+                out.identity = (getattr(form, "identity", self.cur.name) + "::" + d.name
+                                + "::" + getattr(t, "identity", "template"))
                 for item in t:
                     if isinstance(item, list) and head(item) == "unquote-splicing" and len(item) == 2:
                         name = sym(item[1])
@@ -806,16 +832,12 @@ class Analyzer:
     # -- walking -----------------------------------------------------------
     def analyze(self) -> None:
         # pass 1: how each function runs the callables its parameters hold
-        self.lambda_ordinals = {}
-        self.rid_alias = {}
         for name, d in self.tree.defs.items():
             self.top_name = name
             self.walk_def(name, d, record=False)
         self.solve_param_ctx()
         self.infos = {}
         self.lambda_count = 0
-        self.lambda_ordinals = {}
-        self.rid_alias = {}
         for name, d in self.tree.defs.items():
             self.top_name = name
             self.walk_def(name, d, record=True)
@@ -1138,7 +1160,7 @@ class Analyzer:
             rid = self.spawn_lambda(fn, line, (creator.name, line, tname), env)
             self.ev("thread", rid, line, ctx, tname)
         elif isinstance(fn, list) and head(fn) == "function" and sym(fn[1]) in self.tree.defs:
-            rid = "thread:" + sym(fn[1]) + "@" + creator.path + ":" + str(line)
+            rid = "thread:" + sym(fn[1]) + "@" + creator.path + ":" + getattr(form, "identity", creator.name)
             if self.recording:
                 lam = Def(rid, creator.path, line, [], [Node([fn[1]])], "lambda", "", creator.loaded)
                 lam.body[0].line = line
@@ -1150,24 +1172,12 @@ class Analyzer:
             self.ev("unresolved", "make-thread of a computed function " + render(fn, 40), line, ctx)
         return EMPTY_SIG
 
-    def lambda_id(self, lam, line) -> str:
-        """A lambda's name: its file, the top-level definition it is written
-        in and its ordinal among that definition's lambdas (by source line).
-        Not its line number: a baseline row keyed by a line moved with every
-        edit above it in the file (lane WRAPPER).  The line-keyed name is
-        kept as an alias for re-keying a baseline (--rekey-lambdas)."""
-        lline = line_of(lam, line)
-        old = "lambda@" + self.cur.path + ":" + str(lline)
-        top = getattr(self, "top_name", None) or self.cur.name
-        lines = self.lambda_ordinals.setdefault((self.cur.path, top), [])
-        if lline not in lines:
-            lines.append(lline)
-        rid = "lambda@" + self.cur.path + ":" + top + "#" + str(lines.index(lline) + 1)
-        self.rid_alias[old] = rid
-        return rid
-
     def spawn_lambda(self, lam, line, thread_of, env):
-        rid = self.lambda_id(lam, line)
+        identity = getattr(lam, "identity", None)
+        if identity is None:
+            raise ValueError(f"lambda lacks a lexical identity at {self.cur.path}:{line_of(lam, line)}")
+        rid = "lambda@" + self.cur.path + ":" + identity
+
         if not self.recording:
             return rid
         d = Def(rid, self.cur.path, line_of(lam, line), lam[1] if len(lam) > 1 else [], list(lam[2:]),
@@ -2666,10 +2676,6 @@ def main(argv=None) -> int:
     ap.add_argument("--initial", action="store_true")
     ap.add_argument("--emit-realization", action="store_true")
     ap.add_argument("--summary", action="store_true")
-    ap.add_argument("--rekey-lambdas", action="store_true",
-                    help="rewrite the baseline's line-keyed lambda names (lambda@FILE:LINE) "
-                         "to the stable ones (lambda@FILE:DEFINITION#N) of THIS tree; run it on "
-                         "the tree the baseline was written for")
     args = ap.parse_args(argv)
     started = time.time()
     root = Path(args.root).resolve()
@@ -2691,26 +2697,6 @@ def main(argv=None) -> int:
         print(f"lock_discipline_check: wrote {REALIZATION}")
         return 0
     enclave = set(checker.c.raw.get("enclave", {}).get("functions", []))
-    if args.rekey_lambdas:
-        path = Path(args.baseline)
-        data = json.loads(path.read_text())
-        pat = re.compile(r"lambda@[^|:]+:[0-9]+(?![0-9#])")
-        missing = []
-
-        def swap(m):
-            new = an.rid_alias.get(m.group(0))
-            if new is None:
-                missing.append(m.group(0))
-                return m.group(0)
-            return new
-        for row in data["findings"]:
-            row["key"] = pat.sub(swap, row["key"])
-        if missing:
-            print("lock_discipline_check: no lambda at " + ", ".join(sorted(set(missing))))
-            return 1
-        path.write_text(json.dumps(data, indent=1) + "\n")
-        print(f"lock_discipline_check: re-keyed {args.baseline}")
-        return 0
     baseline = load_baseline(Path(args.baseline))
     if args.write_baseline:
         grown = write_baseline(Path(args.baseline), findings, baseline, args.initial)
