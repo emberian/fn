@@ -83,3 +83,15 @@ Integration baseline conflict assist: exact 3bda776c6 Runtime syntax analyzed
 with both historical ordinal and lexical readers; 40 referenced identities
 translate uniquely, all 366 rows/weight1469 preserved. Translation and repro
 script shared as lane build artifacts; no integrator tree mutations.
+
+NIGHT-DIRECT-TEMPLATE source `332067287`, stable-interface witness `990838c97`:
+raw_dispatch_rule uses exact definterface :direct declarations for literal
+emitted heads only. Quoted data/function values and neighboring undeclared
+heads retain NAME refusals. 31 full rule tests pass; the added stable-interface
+witness passes. Actual Runtime envelope inspection has zero NAME findings.
+Same-harness intended assertion red/base and green/head archived
+`planning/evidence/repair/NIGHT-DIRECT-TEMPLATE-77b830fbfc204a1fbe6452329a2ab12c.json`,
+sha256 `3fa7f78e8576c5a40cc6e4c97283ff42393a49e0dee7214fc8620145e2d70440`.
+Initial witness used a new scanner argument and was rightly refused as an
+infra TypeError; indexed evidence preserved. Replacement tests the existing
+findings API with actual declaration reader boundary mocked, not missing API.

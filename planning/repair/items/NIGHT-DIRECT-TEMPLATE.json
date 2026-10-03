@@ -22,30 +22,34 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings",
  "title": "Macro template direct calls disagree with explicit interface declarations",
- "updated": "2026-10-03T06:33:10Z",
+ "updated": "2026-10-03T06:33:18Z",
  "verify": {
   "base": "92d6be6acfa607541a010115f076c8abc3e06a7e",
   "base_observation": {
    "result": {
-    "assertions": [],
-    "errors": [
-     "tests.test_raw_dispatch_rule.DirectMacroHeads.test_explicit_direct_entry_permits_only_literal_emitted_call_head"
+    "assertions": [
+     {
+      "message": "False is not true : declared direct macro call must follow its actual interface",
+      "test": "tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings",
+      "type": "AssertionError"
+     }
     ],
+    "errors": [],
     "executed": [
-     "tests.test_raw_dispatch_rule.DirectMacroHeads.test_explicit_direct_entry_permits_only_literal_emitted_call_head"
+     "tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings"
     ],
     "expected_failures": [],
     "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
     "skips": [],
     "sources": {
-     "tests/test_raw_dispatch_rule.py": "6c612c47e88d4af9c93cd5add11ddf9b5c487fd5330acd0d540b992b4abfe587"
+     "tests/test_raw_dispatch_rule.py": "b8f32e467e79bf6c2b6affbfb9616f60744164214b59431e24f6ac8614ab8dec"
     },
     "tests_run": 1,
     "unexpected_successes": []
    },
    "returncode": 1,
    "revision": "92d6be6acfa607541a010115f076c8abc3e06a7e",
-   "stderr": "test_explicit_direct_entry_permits_only_literal_emitted_call_head (tests.test_raw_dispatch_rule.DirectMacroHeads.test_explicit_direct_entry_permits_only_literal_emitted_call_head) ... ERROR\n\n======================================================================\nERROR: test_explicit_direct_entry_permits_only_literal_emitted_call_head (tests.test_raw_dispatch_rule.DirectMacroHeads.test_explicit_direct_entry_permits_only_literal_emitted_call_head)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-bn5br0j3/wt/tests/test_raw_dispatch_rule.py\", line 199, in test_explicit_direct_entry_permits_only_literal_emitted_call_head\n    self.assertTrue(self.observed(\"(defmacro m (x) `(fn-open ,x))\") == [],\n                    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-bn5br0j3/wt/tests/test_raw_dispatch_rule.py\", line 195, in observed\n    result = rule.scan_sources({\"host/native/t.lisp\": forms}, set(BOOK), direct)\nTypeError: scan_sources() takes 2 positional arguments but 3 were given\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (errors=1)\n",
+   "stderr": "test_actual_direct_declaration_is_used_by_findings (tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings) ... FAIL\n\n======================================================================\nFAIL: test_actual_direct_declaration_is_used_by_findings (tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-ce90gro0/wt/tests/test_raw_dispatch_rule.py\", line 225, in test_actual_direct_declaration_is_used_by_findings\n    self.assertTrue(problems == [],\n    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^\n                    \"declared direct macro call must follow its actual interface\")\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: False is not true : declared direct macro call must follow its actual interface\n\n----------------------------------------------------------------------\nRan 1 test in 0.009s\n\nFAILED (failures=1)\n",
    "stdout": ""
   },
   "changed_files": [
@@ -53,53 +57,51 @@
    "tests/test_raw_dispatch_rule.py",
    "tools/raw_dispatch_rule.py"
   ],
-  "diff_lines": 50,
+  "diff_lines": 64,
   "evidence": {
-   "bytes": 4205,
-   "path": "planning/evidence/repair/NIGHT-DIRECT-TEMPLATE-fc29d75666d2400fb9b356a7f5f5c2f1.json",
-   "sha256": "121fcefc85df0e62c608cb93d2cd3bf0b40e9ee7dd8f72b20c57bb90044a7f8a"
+   "bytes": 3952,
+   "path": "planning/evidence/repair/NIGHT-DIRECT-TEMPLATE-77b830fbfc204a1fbe6452329a2ab12c.json",
+   "sha256": "3fa7f78e8576c5a40cc6e4c97283ff42393a49e0dee7214fc8620145e2d70440"
   },
   "evidence_outcome": "archived",
   "expected_failure": {
    "message": "False is not true : declared direct macro call must follow its actual interface",
-   "test": "tests.test_raw_dispatch_rule.DirectMacroHeads.test_explicit_direct_entry_permits_only_literal_emitted_call_head"
+   "test": "tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings"
   },
   "green_at_head": true,
   "harness": {
-   "tests/test_raw_dispatch_rule.py": "6c612c47e88d4af9c93cd5add11ddf9b5c487fd5330acd0d540b992b4abfe587"
+   "tests/test_raw_dispatch_rule.py": "b8f32e467e79bf6c2b6affbfb9616f60744164214b59431e24f6ac8614ab8dec"
   },
-  "head": "332067287a071c633e5b9fa76e8b0398d597c0d0",
+  "head": "990838c97acd5ecb3da2929b0591c33d53b4713e",
   "head_observation": {
    "result": {
     "assertions": [],
     "errors": [],
     "executed": [
-     "tests.test_raw_dispatch_rule.DirectMacroHeads.test_explicit_direct_entry_permits_only_literal_emitted_call_head"
+     "tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings"
     ],
     "expected_failures": [],
     "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
     "skips": [],
     "sources": {
-     "tests/test_raw_dispatch_rule.py": "6c612c47e88d4af9c93cd5add11ddf9b5c487fd5330acd0d540b992b4abfe587"
+     "tests/test_raw_dispatch_rule.py": "b8f32e467e79bf6c2b6affbfb9616f60744164214b59431e24f6ac8614ab8dec"
     },
     "tests_run": 1,
     "unexpected_successes": []
    },
    "returncode": 0,
-   "revision": "332067287a071c633e5b9fa76e8b0398d597c0d0",
-   "stderr": "test_explicit_direct_entry_permits_only_literal_emitted_call_head (tests.test_raw_dispatch_rule.DirectMacroHeads.test_explicit_direct_entry_permits_only_literal_emitted_call_head) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nOK\n",
+   "revision": "990838c97acd5ecb3da2929b0591c33d53b4713e",
+   "stderr": "test_actual_direct_declaration_is_used_by_findings (tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.006s\n\nOK\n",
    "stdout": ""
   },
   "interpreter": "/opt/homebrew/bin/python3",
-  "ok": false,
-  "problems": [
-   "base did not produce exactly the intended assertion failure (errors/skips/timeout are not defect red)"
-  ],
-  "red_at_base": false,
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
   "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
   "same_tests": true,
-  "semantic_ok": false,
-  "test": "python3 -m unittest tests.test_raw_dispatch_rule.DirectMacroHeads.test_explicit_direct_entry_permits_only_literal_emitted_call_head",
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_raw_dispatch_rule.DirectMacroHeads.test_actual_direct_declaration_is_used_by_findings",
   "timeout": 1800.0
  }
 }
