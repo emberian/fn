@@ -3533,16 +3533,29 @@ the publication buffer ST."
 WRITES); with no position, (values POSITION NIL): no binding, no image."
   (if (null position)
       (values position nil)
-      (let ((answer (progn
-                      (setq *fnn-checkpoint-image-custody* (fnn-live-hrecs))
-                      (fnn-call 'fn-his-snapshot records salt *fnn-checkpoint-image-custody*))))
+      (let ((answer
+              (progn
+                (setq *fnn-checkpoint-image-custody* (fnn-core 'create-fn-hrecs$c))
+                (fnn-call 'fn-his-build-begin salt *fnn-checkpoint-image-custody*)
+                (loop for ev in records
+                      for ordinal from 0 do
+                        (when (fnn-core 'fn-his-build-yieldp ordinal)
+                          (sb-thread:thread-yield))
+                        (let ((verdict (first (fnn-call 'fn-his-build-row
+                                                       ev *fnn-checkpoint-image-custody*))))
+                          (unless (eq verdict :ok)
+                            (fnn-refuse-io "history image row refused by name: ~a"
+                                           verdict))))
+                (fnn-call 'fn-his-build-finish
+                          (fnn-core 'fn-his-build-source-count records)
+                          *fnn-checkpoint-image-custody*))))
         (unless (and (consp answer) (>= (length answer) 3))
           (fnn-fault "ACL2 returned a malformed history image"))
-        (destructuring-bind (verdict rec writes &rest ignored) answer
+        (destructuring-bind (verdict rec writes count &rest ignored) answer
           (declare (ignore ignored))
           (unless (eq verdict :ok)
             (fnn-refuse-io "history image refused by name: ~a" verdict))
-          (let ((binding (fnn-core 'fn-his-binding node salt (length records) (second position) rec))
+          (let ((binding (fnn-core 'fn-his-binding node salt count (second position) rec))
                 (np (fnn-core 'fn-his-np writes 0)))
             (unless (and (integerp np) (> np 0))
               (fnn-fault "ACL2 returned a malformed history image page count"))

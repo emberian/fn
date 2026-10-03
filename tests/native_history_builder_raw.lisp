@@ -1,0 +1,76 @@
+;; Installed native builder control flow, with recorded ACL2 semantic seams.
+;; The row/commit semantics themselves are proved/exercised by ACL2 teeth.
+(require :sb-posix)
+(defpackage "ACL2" (:use "CL"))
+(in-package "ACL2")
+(defvar *fnn-checkpoint-image-custody* nil)
+(defvar *fixture-sources* nil)
+(defvar *fixture-rows* nil)
+(defvar *fixture-fail-row* nil)
+(defvar *fixture-yields* nil)
+(defvar *fixture-binding-count* nil)
+(defvar *fixture-release* nil)
+(defun fnn-core (name &rest args)
+  (case name
+    (create-fn-hrecs$c
+     (let ((instance (vector nil))) (push instance *fixture-sources*) instance))
+    (fn-his-build-source-count (length (first args)))
+    (fn-his-build-yieldp (push (first args) *fixture-yields*) (zerop (mod (first args) 256)))
+    (fn-his-binding (setf *fixture-binding-count* (third args)) (list :binding (third args)))
+    (fn-his-np 7)
+    (otherwise (error "unexpected core dispatch ~s" name))))
+(defun fnn-call (name &rest args)
+  (case name
+    (fn-his-build-begin (setf (aref (second args) 0) nil) (list (second args)))
+    (fn-his-build-row
+      (if (equal (first args) *fixture-fail-row*)
+          (list '(:refused :codec) (second args))
+        (progn (push (first args) *fixture-rows*)
+               (push (first args) (aref (second args) 0))
+               (list :ok (second args)))))
+    (fn-his-build-finish
+      (let* ((snapshot (second args)) (count (length (aref snapshot 0))))
+        (unless (= count (first args)) (error "source count mismatch"))
+        (list :ok :root '((1 0 0)) count snapshot)))
+    (fn-his-release (push (first args) *fixture-release*) (list (first args)))
+    (otherwise (error "unexpected call dispatch ~s" name))))
+(defun fnn-refuse-io (format-string &rest args) (error (apply #'format nil format-string args)))
+(defun fnn-fault (format-string &rest args) (error (apply #'format nil format-string args)))
+(defun fixture-load (path names)
+  (with-open-file (in path)
+    (loop for form = (read in nil :eof) until (eq form :eof) do
+      (when (and (consp form) (member (car form) '(defun defmacro))
+                 (member (second form) names))
+        (eval form)
+        (setf names (remove (second form) names))
+        (when (null names) (return))))))
+(fixture-load "host/native/io.lisp"
+ '(fnn-history-image-build fnn-history-image-release fnn-with-history-image))
+(let ((events (loop for i below 513 collect (list :all-event i))))
+  (fnn-with-history-image
+    (multiple-value-bind (position image)
+        (fnn-history-image-build events :node 0 '(4 :trail))
+      (assert (equal (first position) 4))
+      (assert (equal (second position) :trail))
+      (assert (equal (third position) '(:binding 513)))
+      (assert (equal image '(7 ((1 0 0)))))
+      (assert (= *fixture-binding-count* 513))
+      (assert (equal (reverse *fixture-rows*) events))
+      (assert (= (length *fixture-yields*) 513))))
+  (assert (null *fnn-checkpoint-image-custody*))
+  (assert (= (length *fixture-release*) 1))
+  ;; A new publisher receives another private instance; its empty begin can
+  ;; never erase the first snapshot during a yield.
+  (let ((first (first *fixture-sources*)))
+    (fnn-with-history-image (fnn-history-image-build '((:config 1)) :node 0 '(5 :trail2)))
+    (assert (not (eq first (first *fixture-sources*))))
+    (assert (= (length (aref first 0)) 513))))
+;; Failure is terminal for this build and its owned scratch is returned.
+(let ((*fixture-fail-row* :bad) (*fixture-rows* nil) (failed nil))
+  (handler-case
+      (fnn-with-history-image (fnn-history-image-build '(:first :bad :unreached) :node 0 '(6 :trail3)))
+    (error () (setf failed t)))
+  (assert failed)
+  (assert (equal *fixture-rows* '(:first)))
+  (assert (null *fnn-checkpoint-image-custody*)))
+(format t "native_history_builder_raw: private snapshots, complete frontier, failure return PASS~%")

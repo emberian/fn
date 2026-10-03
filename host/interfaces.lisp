@@ -4333,14 +4333,33 @@
   :kinds ((np natp)))
 
 ; host/native/io.lisp dispatches it (lane composed-owner).
-(definterface fn-his-snapshot
-  :class ::common-lisp-compliant
-  :kinds ((records true-listp) (salt natp)))
-
-; host/native/io.lisp dispatches it (lane composed-owner).
 (definterface fn-his-words
   :class ::common-lisp-compliant
   :kinds ((sel natp) (a natp)))
+
+;; books/history-image-builder.lisp, the native publisher's incremental API.
+; The audited registered zero-arg constructor allocates a PRIVATE snapshot,
+; never ACL2's live-stobj counterpart returned by an ordinary creator route.
+(definterface create-fn-hrecs$c :class ::common-lisp-compliant
+  :raw-guarded (0 nil (fn-hrecs$c)))
+
+(definterface fn-his-build-source-count
+  :class ::common-lisp-compliant
+  :kinds ((records true-listp)))
+(definterface fn-his-build-yieldp
+  :class ::common-lisp-compliant
+  :kinds ((ordinal natp)))
+
+(definterface fn-his-build-begin
+  :class ::common-lisp-compliant
+  :kinds ((salt natp)))
+
+(definterface fn-his-build-row
+  :class ::common-lisp-compliant)
+
+(definterface fn-his-build-finish
+  :class ::common-lisp-compliant
+  :kinds ((expected-count natp)))
 
 ;; books/limits-live.lisp
 

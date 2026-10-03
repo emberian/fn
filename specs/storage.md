@@ -2123,3 +2123,20 @@ the new header is installed; this API does not permit concurrent readers on
 that scratch store. It is intended for History's fresh private image builder.
 It does not bound whole-event encoding, flat backing growth, or commit work,
 and supplies no physical persistence or root-release receipt.
+### Incremental checkpoint image construction
+
+The native checkpoint publishers build the existing P3 history image one
+event at a time on a private scratch instance. A drained suffix accepts an
+append, flushes it into pages and clears the consumed slot. The suffix array
+retains at most sixteen pointer slots, regardless of history length; this is
+not a limit on stored events. A pending suffix refuses before another append.
+The completed image count must agree with the captured source count before
+the binding is formed. The immutable snapshot stays owned through staged
+page readback and is returned on every exit (S045).
+
+This is a local implementation guarantee, not an RFC requirement or a claim
+that checkpoint/reclaim is bounded in total resident memory or work per turn.
+Row encoding, page relocation, flat page-array growth, commit plans and fresh
+Store/catalog/node representations still impose proportional work/allocation.
+The reclaim reservation remains the actual full-copy estimate until those
+allocations are removed.

@@ -22042,6 +22042,28 @@
         "planning/evidence/bp-budget-input-2026-10-03.md"
       ],
       "progress_note": "BP-TRANSPORT 2026-10-03: guarded parser and literal tests certified hbox certify-20261003T102343Z-1448390 PASSED 2/0. Actual shipped bounded-file caller + exact parser definitions raw PASS defaults, ASCII rows, duplicate/Unicode/unknown/negative refusal. Whole-file denotation and source-matched image remain open."
+    },
+    {
+      "id": "PRF-1265",
+      "title": "Native incremental history image rows preserve all-event history with a 16-slot consumed suffix envelope",
+      "statement": "The actual native publisher fnn-history-image-build calls fn-his-build-row. Under fn-hrc-wfp and fn-hrs-rel H C, a drained suffix accepts exactly one all-event row and the result represents H appended with that event; a pending suffix refuses without effects. Consumed one-row slots are cleared and recycled. fn-his-build-row-bounds-suffix-capacity proves a suffix capacity at most16 stays at most16 independent of event byte size. This is retained suffix pointer storage only, not whole-image allocation or per-step work: existing row encoding, relocation and flat page-array growth remain proportional. Native publishers own a fresh registered scratch instance through staged readback; finish compares ACL2 captured count to actual nimg before binding.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/history-image-build-rows.lisp",
+        "books/history-image-builder.lisp",
+        "tests/acl2/history-image-build-rows-tests.lisp",
+        "tests/acl2/history-image-builder-tests.lisp",
+        "tests/native_history_builder_raw.lisp",
+        "planning/evidence/manifests/certify-20261003T101722Z-1422001.json",
+        "planning/evidence/native-history-builder-2026-10-03.json"
+      ],
+      "progress_note": "Narrow hbox certification PASSED at exact book bytes (certify-20261003T101722Z-1422001); literal keystone teeth and actual old/new committed image comparison certified. Raw native control-flow fixture passes. Actual saved image qualification remains pending Integration convergence. Scope is retained suffix capacity only; no bounded reclaim or whole-image work claim."
     }
   ]
 }
