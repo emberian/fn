@@ -581,3 +581,13 @@ graphs, borrowed sources, registry slots, constructor transients or GC.
 Same-pool draw precedes construction; this partial projection cannot authorize
 the configured complete-profile issuer. Actual constructor dimension checks
 and the physical allocator boundary remain separate from this arithmetic.
+
+Actual output issue and both settling receipt consumers preserve an exact
+terminating free-chain witness (`fn-rlo-issued-chain-is-tail`,
+`fn-rlo-output-settled-chain`, `fn-rlo-physical-settled-chain`). A successful
+issue consumes its head; settlement pushes the reusable row once or preserves
+the old chain when that generation is exhausted. The proof-only witness checks
+idle phases, reusable natural generations, in-range row identities and exact
+links without adding a served scan. Installation completeness and coverage of
+every reusable idle row remain owed; these boundaries assume the prior chain
+is valid and the actual method reports `:drawn` or `:settled`.

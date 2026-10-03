@@ -620,6 +620,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/output-reservation-tests \
 	books/resource-output \
 	tests/acl2/resource-output-tests \
+	books/resource-output-chain \
+	tests/acl2/resource-output-chain-tests \
 	books/heap-breakdown \
 	tests/acl2/heap-breakdown-tests \
 	books/memory-credits \
