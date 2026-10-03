@@ -47,7 +47,8 @@ class NativeBpNodeTests(unittest.TestCase):
                 "test_disconnected_delivery_restarts_and_releases_only_matching_obligation",
                 "test_keepalive_peer_does_not_block_second_canonical_request",
                 "test_silent_contact_expires_without_stopping_canonical_delivery",
-                "test_stalled_session_init_expires_beside_canonical_delivery"):
+                "test_stalled_session_init_expires_beside_canonical_delivery",
+                "test_forged_session_peer_is_closed_before_canonical_delivery"):
             self.image_source = assert_same_native_source(self, PRODUCER, IMAGE)
         self.tmp = scratch(self, "fn-bp-node-a3-")
         self.relay = ByteRelay()
@@ -311,6 +312,29 @@ class NativeBpNodeTests(unittest.TestCase):
         stalled.settimeout(10)
         self.assertEqual(stalled.recv(1), b"", "expired setup must actually close")
         self.assertIsNone(receiver.poll(), receiver.diagnostics())
+        receiver.stop(grace=5)
+        self.assertEqual(self.receiver_articles(), 1)
+        restarted = self.dispatch_receiver()
+        self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
+        self.assertEqual(self.receiver_articles(), 1)
+
+    def test_forged_session_peer_is_closed_before_canonical_delivery(self):
+        """SCN-1128: untrusted announced EID never installs a source job."""
+        receiver, port = self.start_node(True, once=False)
+        forged = self.invoke(
+            "tcpcl", "send", "127.0.0.1", port, "-",
+            self.tmp / "forged-peer-spool", "dtn://forged/", "dtn://receiver/",
+            1, 65536, 1048576, 1, timeout=30)
+        self.assertEqual(forged.returncode, LOST, forged.stdout + forged.stderr)
+        refused = receiver.output_until(
+            b"BP channel admission refused reason=eid-mismatch", timeout=30)
+        self.assertNotIn(b"BP accepted", refused)
+        self.assertNotIn(b"BP node delivery", refused)
+        self.assertIsNone(receiver.poll(), receiver.diagnostics())
+        sent = self.send_request(port, "after-refused-announced-peer", timeout=30)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        delivered = receiver.output_until(b"BP node delivery request-accepted", timeout=45)
+        self.assertIn(b"BP application handoff durable", delivered)
         receiver.stop(grace=5)
         self.assertEqual(self.receiver_articles(), 1)
         restarted = self.dispatch_receiver()
@@ -1355,10 +1379,12 @@ class NativeBpNodeTests(unittest.TestCase):
         receiver, port = self.start_node(True, trust=False)
         sent = self.send_request(port, "untrusted-request")
         out, err = receiver.communicate(timeout=120)
-        self.assertEqual(sent.returncode, EXIT.REFUSED, sent.stderr)
+        # Session refusal is local. The remote entity observes TCP loss before
+        # any transfer/ACK and cannot infer the receiver's policy verdict.
+        self.assertEqual(sent.returncode, LOST, sent.stderr)
         self.assertEqual(receiver.returncode, EXIT.REFUSED, err)
         self.assertIn(b"BP channel admission refused reason=no-trust-profile", out)
-        self.assertIn(b"BP refused xfer=0 reason=no-trust-profile", out)
+        self.assertNotIn(b"BP refused xfer=", out)
         self.assertNotIn(b"BP accepted", out)
         self.assertNotIn(b"BP node delivery", out)
         self.assertEqual(self.receiver_articles(), 0)
@@ -1393,9 +1419,9 @@ class NativeBpNodeTests(unittest.TestCase):
         sender, port = self.start_node(False, once=False, trust=False)
         self.relay.route(port)
         delivered = self.tick_receiver()
-        self.assertEqual(delivered.returncode, EXIT.REFUSED, delivered.stderr)
+        self.assertEqual(delivered.returncode, LOST, delivered.stderr)
         self.wait_for_output(
-            sender, b"BP refused xfer=0 reason=no-trust-profile", timeout=120)
+            sender, b"BP channel admission refused reason=no-trust-profile", timeout=120)
         sender.stop(grace=5)
         self.assertIn(b"pinned=yes", self.sender_status().stdout)
 

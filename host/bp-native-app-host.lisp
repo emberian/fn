@@ -8,6 +8,10 @@
 (include-book "../books/bp-channel-ingress")
 (include-book "../books/bp-listener-set")
 
+(defun fn-owner-bp-session-admission (channel announced-uri state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bpaj-session-admission (fn-owner-config state) channel announced-uri)))
+
 (defun fn-owner-bp-tcpcl-ingress
     (fnbs-state session-counter xfer-id channel announced-uri state)
   (declare (xargs :stobjs state :mode :program))

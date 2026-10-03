@@ -9516,6 +9516,32 @@
         "books/tcpcl-retained-turn.lisp"
       ],
       "note": "Source/raw composed matrix PASS; native selector test_stalled_session_init_expires_beside_canonical_delivery UNEXECUTED until current initialized source world. Local policy, not an RFC fixed SESS_INIT timeout requirement."
+    },
+    {
+      "id": "SCN-1128",
+      "title": "Forged announced BP peer is refused before any transfer source",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-006"
+      ],
+      "steps": [
+        "A real native TCPCL sender negotiates dtn://forged/ against a receiver configured for the canonical sender.",
+        "Require sender connection interruption and receiver ACL2 eid-mismatch refusal, with no BP source acceptance/publication.",
+        "Deliver a canonical production NNTP article/request through a second peer and observe Store/FNRJ handoff.",
+        "Stop/reopen and dispatch, observing exactly one article."
+      ],
+      "expected": [
+        "Refused session cannot install received-source jobs or release its frame output.",
+        "Peer refusal is connection-local; admitted peer still advances.",
+        "Local refusal and remote interrupted stay distinct, obligations are not released by transport loss."
+      ],
+      "evidence": [
+        "tests/test_bp_node_native.py",
+        "tests/native_tcpcl_source_control_raw.lisp",
+        "books/bp-channel-ingress.lisp"
+      ],
+      "note": "Actual apply/flush raw composition PASS with recorded core admission answer; actual ACL2 producer literals prepared, native current-union UNEXECUTED."
     }
   ]
 }

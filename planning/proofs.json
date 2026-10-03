@@ -22936,7 +22936,32 @@
         "tests/native_tcpcl_retained_turn_raw.lisp",
         "tests/test_bp_node_native.py"
       ],
-      "progress_note": "Actual retained driver and composed source/custody raw fixtures PASS fixed deadline, retained input continuation, no physical-close inference. Native SCN-1127 prepared/unexecuted; matching logical guards/certification pending. Constructor nonrenewal and timeout phase lemmas have literals, not a composed native proof. Warm normal admission/guards and25 literal assertions PASS; nonrenewal80 steps, phase lemma55 with rule-classes NIL after illegal variable rewrite fixed forward. Exact affected roots pending."
+      "progress_note": "Actual retained driver and composed source/custody raw fixtures PASS fixed deadline, retained input continuation, no physical-close inference. Native SCN-1127 prepared/unexecuted; matching logical guards/certification pending. Constructor nonrenewal and timeout phase lemmas have literals, not a composed native proof. Warm normal admission/guards and25 literal assertions PASS; nonrenewal80 steps, phase lemma55 with rule-classes NIL after illegal variable rewrite fixed forward. Exact affected roots pending. Exact retained-turn+teeth certify-20261003T154952Z-2257690 PASSED2/0 archived/indexed; composed native caller boundary remains open."
+    },
+    {
+      "id": "PRF-1299",
+      "title": "Passive BP session admission precedes source installation and message release",
+      "statement": "Proposed composed boundary for actual fnn-tcl-apply passive session-admit hook: fn-bpaj-session-admission uses the same live owner configuration, kernel-observed channel and ACL2 decoded announced URI as durable fn-bpaj-tcpcl-ingress-result. A refused answer causes connection-local protocol closure before this frame events/source issuer/message release, retains durable obligations and cannot fabricate physical socket return. Unknown admission answers are core faults. Existing outbound on-ready physical write gate is unchanged. Full host correspondence/cost remains open.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-128",
+        "PRF-1276"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/bp-channel-ingress.lisp",
+        "tests/acl2/bp-channel-ingress-tests.lisp",
+        "host/bp-native-app-host.lisp",
+        "host/native/tcpcl.lisp",
+        "host/native/bp-node.lisp",
+        "tests/native_tcpcl_source_control_raw.lisp"
+      ],
+      "progress_note": "Actual shipped apply/flush raw accepted/refused matrix PASS: callback exactly once, refused never enters source issuer, drops held messages and remains :refused connection-local. ACL2 accepted/no-trust/malformed/wrong-EID literals added; guards/certification pending. SCN1128 prepared/unexecuted. Remote sees interruption without transfer ACK; receiver keeps exact policy refusal. Full configuration traversal/GC bounds remain explicit. Narrow warm initialization refused before changed book because current history-columns-foundation has no matching certificate and20 dependent books; no parallel wide initialization/certification launched. Shared History current world must admit these additive leaves before use; definition/guard proof pending."
     }
   ]
 }

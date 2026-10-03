@@ -3427,3 +3427,24 @@ certify-20261003T154249Z-2241830 PASSED2/0 archived/indexed. Composed raw
 source/control/custody matrix PASS, proposed PRF1296 host boundary remains open.
 SESS_INIT source guards normally admitted;25 literal assertions PASS; phase
 lemma rule-classes NIL fixes illegal rewrite-variable refusal. No native claim.
+
+Early passive session admission (PRF-1299, SCN-1128): actual fnn-tcl-apply
+invokes an optional BP-only admission callback once, at the decoded established
+transition and before this frame's events or another buffered frame. The live
+owner calls ACL2 fn-bpaj-session-admission on kernel-observed channel and decoded
+announced URI, reusing durable ingress's principal policy. Refusal discards
+unflushed messages and protocol-closes only that connection, records its exact
+policy reason, and cannot install a received-source job or publish a Store/FNBS
+record. The sender observes interruption before any transfer ACK; its pin stays.
+Pre-transfer refusal has no bundle wire to persist as receive evidence. Existing
+per-transfer admission/evidence remains for transfers actually consumed, and
+outbound on-ready keeps its physical-write ordering. Unknown admission results
+remain faults. Actual apply/flush raw matrix PASS; current native SCN1128 and
+updated absent-trust request/receipt selectors remain UNEXECUTED. Full config
+traversal, host correspondence and semantic allocation/GC costs stay open.
+
+SESS_INIT source6a9 exact retained-turn+teeth certify2257690 PASSED2/0,
+archived/indexed. Early-admission narrow warm entry REFUSED on uncached current
+history-columns-foundation plus20 dependents before new definition. No duplicate
+wide bootstrap/certify; shared History source world owns additive logical admission.
+No guards/certification/native claim for new early-admission leaves yet.
