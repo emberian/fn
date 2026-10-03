@@ -9286,6 +9286,34 @@
         "planning/evidence/web-private-source-2026-10-03.md"
       ],
       "note": "Exact ACL2 source equivalences and reached positive/predicate-removal witnesses pass at49dc6fa5e; raw fixed-worker scheduling/classifier adapter passes. Certification and actual composed native/browser execution remain pending. Full preparation/working allocation remains unpriced; no complete fairness claim."
+    },
+    {
+      "id": "SCN-1116",
+      "title": "Shared ARTICLE section preflight and immutable READY replay",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "REP-012"
+      ],
+      "steps": [
+        "Capture one parsed retrieval and immutable selected payload; preserve unread pipelined suffix.",
+        "Scan full framing in bounded quanta before selected-session commit.",
+        "Replay READY at differing quanta, comparing ARTICLE/HEAD/BODY plus synthetic Xref with original reference.",
+        "Exercise actual owner native helper with cold/yield and Web two-pass traversal."
+      ],
+      "expected": [
+        "Malformed framing returns503 without selected cursor movement.",
+        "HEAD retains final header CRLF, BODY excludes separator, initial line and dot terminator occur exactly once.",
+        "READY replay repeats no selected-session/authority commit.",
+        "Cold retains exact RAW/READY continuation and response custody."
+      ],
+      "implementation": {
+        "test": "tests/native_article_stream_source.lisp"
+      },
+      "evidence": [
+        "tests/native_article_stream_source.lisp"
+      ],
+      "execution_scope": "Actual shared core function bodies over the list arena model pass5128 finite checks. Owner/native cold and Web consumer execution remain pending; not physical-window or universal refinement evidence."
     }
   ]
 }

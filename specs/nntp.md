@@ -2629,3 +2629,16 @@ reader commands receive their actual authorized cache entry (or the existing
 fallback authorization projection), including peer reader commands. Transfer
 and explicit transit arms keep their original priority. This connects the
 source endpoint; it does not close PRF-1287 or make LIST production bounded.
+## Retained shared article producer (PRF-1286, source in progress)
+
+ARTICLE, HEAD and BODY share immutable selected-payload preflight and READY
+rendering state. Preflight validates complete CRLF framing and the first
+header/body separator in bounded steps before the selected-session commit;
+malformed framing retains the original503 behavior. READY emits initial
+status, the configured synthetic Xref for ARTICLE/HEAD, the selected section
+with dot-stuffing, and exactly one terminator. READY contains no authority or
+selection effect and can be replayed by Web's count and emission traversals.
+The first parsed event bounds consumption so following pipelined commands
+wait for completion. Physical compressed/plain window custody, metadata
+setup bounds and the complete owner/reference refinement remain open; the
+source does not establish a funded operation or a qualified image.

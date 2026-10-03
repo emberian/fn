@@ -723,6 +723,34 @@ The same lock protects both this call and every other arena pin event."
   (let ((*fnn-owner-measure-label* :over-cursor))
     (fnn-owner-serialized service cid thunk class)))
 
+(defun fnn-owner-ready-plan-step (service cid plan class)
+  "Resolve at most one preflight quantum. Return PLAN READY YIELD COLD.
+No octet is published. Only the RAW-to-READY transition commits selection;
+READY is immutable and can be replayed by Web without authority effects."
+  (unless (fnn-core 'fn-asto-preflight-planp plan)
+    (return-from fnn-owner-ready-plan-step (values plan t nil nil)))
+  (let ((result
+          (fnn-owner-cursor-step-serialized
+           service cid
+           (lambda ()
+             (let ((attempt
+                     (catch 'fnn-extent-cold
+                       (let ((*fnn-extent-no-io* t))
+                         (let ((answer
+                                 (fnn-core-state 'fn-owner-article-ready-plan-step
+                                                 cid plan (fnn-owner-over-window))))
+                           (list :warm answer))))))
+               (if (eq (car attempt) :warm) attempt
+                 (list :cold (fnn-owner-cold-issue-locked service cid attempt)))))
+           class)))
+    (if (eq (car result) :cold)
+        (values plan nil nil (second result))
+      (destructuring-bind (word next) (second result)
+        (case word
+          (:ready (values next t nil nil))
+          (:yield (values next nil t nil))
+          (otherwise (fnn-fault "article preflight context no longer belongs to connection ~d" cid)))))))
+
 (defun fnn-owner-cursor-step (service cid plan class)
   "Attempt one quantum of PLAN under the owner mutex. Return PLAN-REST and
 NIL when warm, or the exact original PLAN and its issued cold READ. The mux
@@ -755,6 +783,32 @@ never awaits a page or replays a quantum in the same I/O event."
   "Render a window, running at most one cursor quantum under the owner
 mutex as CID's CLASS: (values OCTETS PLAN-REST DONEP YIELDP COLD-READ END).
 Empty progress yields; a cold read retains the exact original plan/capture."
+  (multiple-value-bind (ready ready-p yield cold)
+      (fnn-owner-ready-plan-step service cid plan class)
+    (unless ready-p
+      (return-from fnn-owner-render-next-quantum
+        (values (fnn-make-octets 0) ready nil yield cold 0)))
+    (setq plan ready))
+  (when (fnn-core 'fn-asto-plan-articlep plan)
+    (let ((article
+            (fnn-owner-cursor-step-serialized service cid
+             (lambda ()
+               (let ((attempt
+                       (catch 'fnn-extent-cold
+                         (let ((*fnn-extent-no-io* t))
+                           (destructuring-bind (word bytes next done)
+                               (fnn-call 'fn-asto-plan-render-step plan (fnn-owner-over-window)
+                                         (fnn-live-stobj 'fn-arena))
+                             (list :warm word bytes next done))))))
+                 (if (eq (car attempt) :warm) attempt
+                   (list :cold (fnn-owner-cold-issue-locked service cid attempt))))) class)))
+      (when (eq (car article) :cold)
+        (return-from fnn-owner-render-next-quantum
+          (values (fnn-make-octets 0) plan nil nil (second article) 0)))
+      (let ((bytes (fnn-octets (third article))))
+        (return-from fnn-owner-render-next-quantum
+          (values bytes (fourth article) (fifth article)
+                  (and (zerop (length bytes)) (not (fifth article))) nil (length bytes))))))
   (multiple-value-bind (octets rest donep cursorp end)
       (fnn-owner-render-next plan compressedp borrowp)
     (unless cursorp
@@ -8283,8 +8337,6 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                    fault nil :inet nil connection-fault-operation)))
 
 (fnn-register-developer-verb "owner" #'fnn-command-owner)
-
-
 
 
 

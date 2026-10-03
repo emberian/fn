@@ -2773,3 +2773,14 @@ source admission; no certification/composed native browser/funding claim.
 Missing-session POST/remove stays immediate refusal; captured body preparation
 remains one full private worker operation. Integration owns coherent source
 launcher; Web drives actual endpoint once that execution route is available.
+
+
+# Shared bounded ARTICLE capability — continuing Access owner
+
+Branch codex/article-stream-20261003, base origin/dev167bcfbf4. Own new article-stream and article-stream-owner books, actual request factory, ready helper, shared section quantum. Runtime owns scalar compressed getter and physical window/cold custody; Web owns ready worker phase and replay provider; Served owns available captured metadata, a3bd4513f dependency to be composed.
+
+The request factory isolates one ACL2 wire event. A retained ARTICLE preflight installs its wire continuation while keeping reader selection until full framing verdict. READY commits once under owner and contains only replayable immutable output state. Native ready helper API `(service cid plan class) -> PLAN READY YIELD COLD`; renderer retains COLD fifth and optional END sixth. No parser in host.
+
+Core warm: capture/source/scan guards admitted and work bounds admitted. Actual-source5128 checks pass full section output, Xref, dot/CRLF boundaries, arbitrary-width decimal setup and immutable replay at differing quanta. Renderer guards/universal byte and owner completion refinements remain open. Full owner warm dependency start refused44 exact dependencies; coordinating Integration reuse, no broad certification requested.
+
+Next: execute actual retained owner/native source path, consume Served available producer, implement lazy metadata setup and complete all original-dispatch frontiers (including completed-view Message-ID fallback), pair Web ready phase, consume Runtime physical window adapter and fault cases. Existing full-body references remain specifications; no actual retrieved payload should materialize on supported path. Current selected-capture source still has unbounded metadata selection/Xref-pair setup; this is explicit remaining work, not bounded-family completion. Stale configuration/capture currently fences as fault; recoverable policy-context behavior needs semantic decision/tests. No certificate/image/deployment claim.

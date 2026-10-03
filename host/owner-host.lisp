@@ -269,6 +269,7 @@
 (include-book "../books/owner-credits")
 ; Selective available source reader: no legacy raw theorem is transferred.
 (include-book "../books/served-available-read")
+(include-book "../books/article-stream-owner")
 ; lane health-truth-journal (PKT-872, PRF-360): the journal writer never keeps a torn line.
 (include-book "../books/owner-time-journal-writer")
 ; lane time-bars (PRF-384): the committer's ledger of the request in flight
@@ -4423,6 +4424,28 @@
 ; fn-owner-exposure-observe.
 ; Pure current evaluation. SAME owner gate covers evaluation, parser stage,
 ; STATE install and parser finish. No STATE write precedes retaining ACTUAL RC.
+(defun fn-asto-mca-read-span (credits oc views id start end cache sched slots reserve fn-octets fn-arena fn-cat)
+ (declare (xargs :stobjs (fn-octets fn-arena fn-cat) :mode :program))
+ (let* ((readerOC (fn-ocfg-at-reader-view oc views))
+        (w (fn-asto-first-event readerOC id start end fn-octets))
+        (stop (if w (fn-wsp-next w) end))
+        (capture (and w (fn-asto-capture readerOC id w cache fn-arena))))
+  (if (not capture)
+      (fn-av-mca-read-span credits oc views id start stop cache sched slots reserve fn-octets fn-arena fn-cat)
+    (let* ((result (fn-asto-captured-result oc capture (- stop start)))
+           (charge (fn-mcr-resize credits (fn-mca-conn-key id)
+                     (fn-mca-need (fn-own-tls-result-owner result) id reserve))))
+      (if (eq (car charge) :ok) (cons result (cadr charge))
+        (cons (fn-mca-shut-read oc id start stop) credits))))))
+
+(defun fn-owner-article-ready-plan-step (id plan quantum fn-arena state)
+ (declare (xargs :stobjs (fn-arena state) :mode :program))
+ (let ((before (fn-owner-ocfg state)))
+  (mv-let (word after next) (fn-asto-ready-plan-step before id plan quantum fn-arena)
+   (let ((state (if (and (eq word :ready) (not (equal before after)))
+                    (fn-owner-install-ocfg after state) state)))
+    (value (list word next))))))
+
 (defun fn-owner-chunk-span-evaluate (id start end sched fn-octets fn-arena fn-cat state)
  (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
  (let ((owner (fn-owner-core state)))
@@ -4469,7 +4492,7 @@
         ;; the chain equation's fn-gacc-okp.  Memory: one entry per read rule
         ;; text in use (measure at convergence).
          (let* ((cache (fn-scr-prepare-access (fn-owner-access-cache state) owner id))
-                (RC (fn-av-mca-read-span
+                (RC (fn-asto-mca-read-span
                       (fn-owner-credits state)
                       (fn-owner-ocfg state) (fn-owner-reader-views state)
                       id start end cache sched (fn-owner-article-slots state)
