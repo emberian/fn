@@ -121,3 +121,16 @@ when connection cleanup escapes. Root mux drain requires no live thread, no
 connection/arrival/inbox custody, no cleanup debt and no retained wake descriptor.
 These native receipts do not authorize a semantic resource refund. Full native
 interpreter correspondence and complete physical charging remain open.
+
+### Arena return custody and same-process recovery
+
+Logical payload leases and handed-out physical arena returns are independent
+holds. A quiescent runtime phase alone does not permit destructive payload
+reset: startup, recovery, reset and completed retirement require the arena
+return observation to be `:closed`. A release callback that escaped after
+partial mutation retains its exact arena and remaining return cursor. It
+cannot be replayed, overwritten by recovery, or treated as a completed return.
+The native lifecycle adapter supplies that physical observation to
+`fn-pvl-runtime-return-step`; ordinary borrow and drain transitions remain
+available. This covers global arena-return custody; per-log reseat failures
+remain on the Store close carrier and prevent its joined settlement.

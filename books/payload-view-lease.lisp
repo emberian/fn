@@ -139,6 +139,25 @@
 (defthm fn-pvl-runtime-refused-keeps-phase
   (implies (equal (car (fn-pvl-runtime-step phase event owned joined)) :refused)
            (equal (cadr (fn-pvl-runtime-step phase event owned joined)) phase)))
+; Physical arena-return custody is independent of logical reader leases.
+; A quiescent phase cannot authorize overwriting a still-owned arena. Keep
+; borrowing/draining possible; reset, new owner entry, and retirement require
+; the explicit completed physical observation as well as their usual guards.
+(defun fn-pvl-runtime-return-step (phase event owned joined returned)
+  (declare (xargs :guard t))
+  (if (and (member-equal event '(:reset :start :recover :joined))
+           (not (eq returned :closed)))
+      (list :refused phase)
+    (fn-pvl-runtime-step phase event owned joined)))
+(defthm fn-pvl-runtime-unreturned-arena-cannot-replace-or-retire
+  (implies (and (member-equal event '(:reset :start :recover :joined))
+                (not (eq returned :closed)))
+           (equal (fn-pvl-runtime-return-step phase event owned joined returned)
+                  (list :refused phase))))
+(defthm fn-pvl-runtime-returned-arena-preserves-lifecycle
+  (equal (fn-pvl-runtime-return-step phase event owned joined :closed)
+         (fn-pvl-runtime-step phase event owned joined)))
+(in-theory (disable fn-pvl-runtime-return-step))
 (in-theory (disable fn-pvl-runtime-step))
 (in-theory (disable fn-pvl-tokenp fn-pvl-token-matchp fn-pvl-seed
                     fn-pvl-ledgerp fn-pvl-livep fn-pvl-acquire

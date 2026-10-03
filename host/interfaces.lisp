@@ -5255,6 +5255,7 @@
 (definterface fn-owner-payload-view-release :class :program)
 (definterface fn-owner-payload-view-reset :class :program)
 (definterface fn-pvl-runtime-step :class ::common-lisp-compliant)
+(definterface fn-pvl-runtime-return-step :class ::common-lisp-compliant)
 (definterface fn-owner-payload-view-owned-p :class :program)
 
 ; Stage 0 (D46): host/account-adoption-interfaces.lisp is not included; its
