@@ -1157,3 +1157,11 @@ planning/evidence/astra-reclaim-census-2026-10-03.json (84754a72e762de272a4a6dd9
 S114 stays open pending normal loaded host/image followthrough; no book changed,
 no new proof claim. SCN-1096/STO-017/spec updated. Bounded history representation
 work is now deputy_history's; this does not reduce current whole-history copy cost.
+
+S045 shutdown followthrough: existing `fnn-checkpoint-yield` is now observed
+before each readback page/frame. Seven real-file schedules pass; source 6c917f91b
+fails the new stop-after-first-page assertion. Evidence 708ec94603eeb92af13d3857de46f914e0e830ee92e3b217e8a145c4e694fa9b,
+planning/evidence/astra-checkpoint-stop-2026-10-03.json. Rejected connected lead:
+`fn-owner-orcp-swap` already reseeds record-octets from rebuilt field 3; no missing
+cache reset claimed. S039 frontier repair and S040 staged quarantine are already
+present at inspected source; original reports are not new confirmed defects.

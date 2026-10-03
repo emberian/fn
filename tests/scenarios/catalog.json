@@ -8437,7 +8437,8 @@
       "steps": [
         "Write a valid FNSI image and five framed runs through the actual stage/install functions; valid bytes install once.",
         "Corrupt a used page or unwritten zero page after fsync; refuse before rename, retain the old checkpoint and release the private writer snapshot.",
-        "Reject a damaged header; release on raw nonlocal exit and prewrite deferral; successful stage returns snapshot before publication admission can reopen."
+        "Reject a damaged header; release on raw nonlocal exit and prewrite deferral; successful stage returns snapshot before publication admission can reopen.",
+        "A stop fence after the first image page is observed before the next page; refuse before replacement and return snapshot custody."
       ],
       "evidence": [
         "tests/test_native_checkpoint_image_readback.py",
