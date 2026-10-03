@@ -27,6 +27,10 @@
          (ok (fn-article-result-okp parsed)))
     (mv
      (and (fn-lhq-ready-p start fn-arena)
+          (fn-lhq-bounds-p start)
+          (fn-lhq-bounds-p one)
+          (fn-lhq-bounds-p done)
+          (fn-lpc-span-bound-p span 0 '(:captured 23) (len bytes))
           (natp used)
           (<= used (nfix fuel))
           (fn-lhq-ready-p one fn-arena)
@@ -59,3 +63,31 @@
         (wrong (fn-lhq-begin 0 7 :different '(120))))
    (and (equal (fn-lpc-at 2 (fn-lpc-at 0 s)) :original)
         (not (equal (fn-lpc-at 2 (fn-lpc-at 0 wrong)) :original)))))
+
+; Hypothesis-removal witnesses, deliberately corrupted retained cursor state.
+; Each checks the other retained hypothesis and negates the omitted predicate.
+(defun lhqt-hyp-removal-case (fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((bytes '(88 58 32 120 13 10 13 10))
+         (fn-arena (fn-arena-clear fn-arena))
+         (fn-arena (fn-arena-seal-list bytes fn-arena))
+         (header (fn-lpc-put 0 :body (fn-lpc-header-begin)))
+         (bad-bounds
+           (list (fn-lpc-put 4
+                   (fn-lpc-put 8 '((0 40 1 :pin) nil nil nil nil) header)
+                   (fn-lpc-put 3 8 (fn-lpc-begin 0 8 :pin))) nil))
+         (bad-ready
+           (list (fn-lpc-put 4
+                   (fn-lpc-put 8 '((0 0 1 :pin) nil nil nil nil) header)
+                   (fn-lpc-put 3 1 (fn-lpc-begin 0 0 :pin))) nil)))
+    (mv (and (fn-lhq-ready-p bad-bounds fn-arena)
+             (not (fn-lhq-bounds-p bad-bounds))
+             (not (fn-lpc-span-bound-p (fn-lhq-field bad-bounds) 0 :pin 8))
+             (fn-lhq-bounds-p bad-ready)
+             (not (fn-lhq-ready-p bad-ready fn-arena))
+             (not (fn-lpc-span-bound-p (fn-lhq-field bad-ready) 0 :pin 0))) fn-arena)))
+(defun lhqt-hyp-removal-exec ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (answer fn-arena) (lhqt-hyp-removal-case fn-arena) answer)))
+(assert-event (lhqt-hyp-removal-exec))

@@ -2750,6 +2750,13 @@ fold CRLF and scrubs TAB/CR/LF/NUL according to RFC3977 8.3.2; arbitrary field v
 are never flattened by this producer. A cold scalar read leaves the caller's raw
 query/normalizer coordinates unchanged, under the same origin pin.
 
+The logical parser bounds are established by query begin and preserved by each
+tick. Together with the cheap source-ready guard, they establish that a returned
+span retains the captured handle/pin and that start plus length is within the
+captured payload length. The bounds predicate is a proof invariant; query ticks
+do not execute a whole field/archive recognizer. Literal witnesses remove each
+of the two hypotheses independently and demonstrate the failed span conclusion.
+
 The original five-name NOV parser entry keeps its ABI and projection through a
 shared name-parameterized header machine. Component guards, bounded work/source
 preservation and literal/reference source cases pass; Served's actual HDR/XPAT

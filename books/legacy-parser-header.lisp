@@ -111,6 +111,22 @@
            (e/d (fn-lpc-close-fields fn-lpc-header-bounds-p)
                 (fn-lpc-at fn-lpc-span fn-lpc-spans-bound-p fn-lpc-span-bound-p)))))
 
+(defthm fn-lpc-header-byte-names-preserves-bounds
+  (implies (fn-lpc-header-bounds-p s h pin pos)
+           (fn-lpc-header-bounds-p
+            (fn-lpc-header-byte-names s byte pos h pin names) h pin (+ 1 pos)))
+  :hints (("Goal"
+           :use ((:instance fn-lpc-spans-bound-monotone
+                            (spans (fn-lpc-at 8 s)) (a pos) (b (+ 1 pos)))
+                 (:instance fn-lpc-spans-bound-monotone
+                            (spans (fn-lpc-close-fields s h pin))
+                            (a pos) (b (+ 1 pos))))
+           :in-theory
+           (e/d (fn-lpc-header-bounds-p fn-lpc-header-byte-names fn-lpc-value-byte
+                 fn-lpc-header-bad fn-lpc-at)
+                (fn-lpc-put fn-lpc-close-fields fn-lpc-spans-bound-p
+                 fn-lpc-span-bound-p fn-lpc-name-step fn-lpc-name-key)))))
+
 (defthm fn-lpc-header-byte-preserves-bounds
   (implies (fn-lpc-header-bounds-p s h pin pos)
            (fn-lpc-header-bounds-p
@@ -144,13 +160,19 @@
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (enable fn-lpc-header-bounds-p))))
 
+(defthm fn-lpc-byte-names-preserves-bounds
+  (implies (fn-lpc-cursor-bounds-p s)
+           (fn-lpc-cursor-bounds-p (fn-lpc-byte-names s byte names)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-lpc-cursor-bounds-p fn-lpc-byte-names fn-lpc-at)
+                (fn-lpc-header-byte-names fn-lpc-header-bounds-p fn-lpc-body-byte
+                 fn-lpc-split-byte)))))
+
 (defthm fn-lpc-byte-preserves-bounds
   (implies (fn-lpc-cursor-bounds-p s)
            (fn-lpc-cursor-bounds-p (fn-lpc-byte s byte)))
   :hints (("Goal" :in-theory
-           (e/d (fn-lpc-cursor-bounds-p fn-lpc-byte fn-lpc-at)
-                (fn-lpc-header-byte fn-lpc-header-bounds-p fn-lpc-body-byte
-                 fn-lpc-split-byte)))))
+           (e/d (fn-lpc-byte) (fn-lpc-byte-names fn-lpc-cursor-bounds-p)))))
 
 (defthm fn-lpc-tick-preserves-bounds
   (implies (fn-lpc-cursor-bounds-p s)
