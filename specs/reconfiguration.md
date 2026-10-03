@@ -1609,3 +1609,21 @@ maintenance release survives in both transaction and history capacities.
 A change below this reservation is refused as `completion-reserve`, including
 when it is recorded for the next restart. Live and offline adapters derive the
 debt from the same committed history; reconfiguration does not forgive it.
+
+A live applied profile also preserves the cold pool's installed authority.
+The owner holds the extent mutex from the pool's growth preview through
+configuration durability and installation. ACL2 computes the positive growth
+of the Store's protected share using the process's actual collector trigger.
+The pool may surrender only unused resident allowance; permanent backing,
+issued leases, generations and readiness remain owned. When that allowance
+cannot cover the growth, the request is recorded for restart and the funded
+profile remains unchanged. Lowering a profile never refunds pool allowance
+without a physical retirement receipt. A failed post-durability installation
+fences the owner for recovery.
+
+A changed article-size bound is recorded for restart. The current run retains
+its funded profile because connection-held article costs and the memory-credit
+reserve were captured at startup. Replacing those scalars while old bodies or
+queued submissions remain would lose their custody; raising the wire bound
+without replacing them would undercharge new bodies. A custody-preserving
+credit and connection-hold rebase remains required before live A changes.

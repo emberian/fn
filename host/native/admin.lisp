@@ -515,6 +515,9 @@ ordinary live reconfiguration, and on :applied served at once."
     (fnn-owner-serialized
      service nil
      (lambda ()
+      ;; The extent mutex owns pool draws independently of the owner mutex.
+      ;; Keep it through preview, durability and the exact budget reduction.
+      (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
        (let* ((carry (fnn-owner-core 'fn-owner-limit-carried))
               ;; The history's requested profile and what this process
               ;; serves and admits under before D, both carried by the
@@ -524,7 +527,7 @@ ordinary live reconfiguration, and on :applied served at once."
               (values (car carry))
               (funded (cdr carry))
               (use (fnn-owner-core 'fn-owner-limit-use))
-              (d (progn
+              (initial (progn
                    (unless (and (consp carry) values funded)
                      (fnn-fault "owner carries no limit profile"))
                    (fnn-lim-decision store plan values use run-mb core observations
@@ -532,6 +535,16 @@ ordinary live reconfiguration, and on :applied served at once."
                                          history
                                        (fnn-heap-history-observation
                                         (fnn-store-root store) values)))))
+              (growth (fnn-core 'fn-lim-protected-growth
+                                (fnn-core 'fn-lim-apply-row values
+                                          (fnn-lim-plan-field plan) (fnn-lim-plan-n plan))
+                                funded core (fnn-gc-nursery-octets)))
+              (preview (first (fnn-core-page-read-pool
+                               'fn-owner-page-read-protected-growth-preview growth)))
+              (d (fnn-core 'fn-lim-article-decision
+                           (fnn-core 'fn-lim-pool-decision initial preview)
+                           (fnn-core 'fn-lim-apply-row values
+                                     (fnn-lim-plan-field plan) (fnn-lim-plan-n plan)) funded))
               (line (fnn-lim-line plan d store values funded)))
          (fnn-err "LIMIT ~a" line)
          (if (not (eq (fnn-core 'fn-lim-decision-status d) :accepted))
@@ -557,12 +570,17 @@ ordinary live reconfiguration, and on :applied served at once."
                                               (fnn-lim-plan-field plan)
                                               (fnn-lim-plan-n plan) d)))
                   (unless (equal served funded)
+                    (unless (eq (first (fnn-core-page-read-pool
+                                        'fn-owner-page-read-protected-growth growth))
+                                :protected-growth-admitted)
+                      (fnn-indeterminate
+                       "owner lost the protected space of a durably recorded limit"))
                     (unless (eq (fnn-owner-core 'fn-owner-apply-limit-profile served)
                                 :installed)
                       (fnn-indeterminate
                        "owner refused a durably recorded limit's profile"))
                     (setf (fnn-store-config store) served)))
-                (list :reason :accepted (fnn-lim-reason d) line))))))))))
+                (list :reason :accepted (fnn-lim-reason d) line)))))))))))
 
 (defun fnn-admin-execute-limit (store plan)
   "The offline limit change: no process holds a reservation (run-mb 0), so an

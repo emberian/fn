@@ -4398,6 +4398,11 @@
 
 ;; books/limits-live.lisp
 
+; The live limit/profile/pool join in host/native/admin.lisp.
+(definterface fn-lim-apply-row :class :common-lisp-compliant)
+(definterface fn-lim-protected-growth :class :common-lisp-compliant)
+(definterface fn-lim-pool-decision :class :common-lisp-compliant)
+
 ; host/native/admin.lisp dispatches it (lane limits-live).
 (definterface fn-lim-decide
   :class ::common-lisp-compliant)
@@ -5481,3 +5486,5 @@
 (definterface fn-bph-command-plan :class :common-lisp-compliant)
 (definterface fn-bph-refusal-line :class :common-lisp-compliant)
 (definterface fn-log-sink-offer-live :class :common-lisp-compliant)
+
+(definterface fn-lim-article-decision :class :common-lisp-compliant)

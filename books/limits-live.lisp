@@ -201,6 +201,31 @@
   (declare (xargs :guard t))
   (and (consp d) (member-equal (car d) '(:applied :at-restart)) t))
 
+(defun fn-lim-protected-growth (candidate funded core nursery)
+  "Positive growth of the Store's protected share in this running process."
+  (declare (xargs :guard t))
+  (nfix (- (fn-heap-runtime-protected-octets candidate core nursery)
+           (fn-heap-runtime-protected-octets funded core nursery))))
+
+(defun fn-lim-pool-decision (d preview)
+  "A live change needs both process space and unclaimed installed-pool space."
+  (declare (xargs :guard t))
+  (if (and (consp d) (equal (car d) :applied)
+           (not (equal preview :affordable)))
+      (list :at-restart (fn-cfg-ag-car (fn-cfg-ag-cdr d)))
+    d))
+
+; Article size is captured by the run's memory credits and connection holds.
+; Until those consumers have a custody-preserving rebase, a changed A is
+; durable intent for restart, never a newly funded live article allowance.
+(defun fn-lim-article-decision (d candidate funded)
+  (declare (xargs :guard t))
+  (if (and (consp d) (equal (car d) :applied)
+           (not (equal (fn-bs-profile-max-article-octets candidate)
+                       (fn-bs-profile-max-article-octets funded))))
+      (list :at-restart (fn-cfg-ag-car (fn-cfg-ag-cdr d)))
+    d))
+
 ; KEYSTONE (the served state never exceeds the new limit after it takes
 ; effect).  An accepted change leaves an admitted profile, and the store's
 ; committed transactions and history octets at or below the new bound; the

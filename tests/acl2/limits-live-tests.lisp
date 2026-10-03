@@ -391,3 +391,27 @@
 (assert! (equal (fn-lim-decision-line "max-transactions" 100
                  '(:refused :completion-reserve "max-transactions" 1) 0)
                 "refused limit max-transactions=100 completion-reserve: keep space for 1 owed releases and one maintenance release"))
+
+; The running Store's new share cannot overlap an installed pool grant.
+; Busy or unsupported pool backing records the requested profile for restart.
+(assert! (equal (fn-lim-pool-decision '(:applied 257) :at-restart)
+                '(:at-restart 257)))
+(assert! (equal (fn-lim-pool-decision '(:applied 257) :affordable)
+                '(:applied 257)))
+(assert! (equal (fn-lim-pool-decision *lim-t-res* :affordable) *lim-t-res*))
+(assert! (equal (fn-lim-pool-decision *lim-t-later* :affordable) *lim-t-later*))
+(assert! (posp (fn-lim-protected-growth *lim-t-c4096* *lim-t-p*
+                                        *lim-t-core* *lim-t-nursery*)))
+; No allowance is refunded on lowering: no physical retirement receipt exists.
+(assert! (equal (fn-lim-protected-growth *lim-t-no-room* *lim-t-p*
+                                         *lim-t-core* *lim-t-nursery*) 0))
+
+(assert-event
+ (equal (fn-lim-article-decision '(:applied 300)
+          (fn-lim-apply-row *fn-bs-profile-development* "max-article-octets" 2097152)
+          *fn-bs-profile-development*)
+        '(:at-restart 300)))
+(assert-event
+ (equal (fn-lim-article-decision '(:applied 300)
+          *fn-bs-profile-development* *fn-bs-profile-development*)
+        '(:applied 300)))
