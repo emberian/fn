@@ -111,7 +111,7 @@ defconst becomes a defparameter and its defun loses its xargs declaration."
                        (defun fnn-native-observation-events) (defun fnn-native-observation-start)
                        (defun fnn-native-observation-current-identity)
                        (defun fnn-native-observation-report) (defmacro fnn-native-with-observation)
-                       (defmacro fnn-with-observed-owner)
+                       (defmacro fnn-with-observed-mutex) (defmacro fnn-with-observed-owner)
                        (defvar *fnn-owner-measure*)
                        (defvar *fnn-owner-measure-label*)
                        (defmacro fnn-owner-measured)

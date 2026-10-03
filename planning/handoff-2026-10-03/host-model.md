@@ -229,3 +229,11 @@ not classify the service; failed activation reports comparison unavailable.
 Native scope tests preserve startup values and supplied inactive context.
 Actual image/PageIO composition remains pending; unknown plain threads still
 invalidate comparison rather than receiving inferred identities.
+
+The common physical lock seam is now
+`fnn-with-observed-mutex ((MUTEX LITERAL-LABEL &rest SBCL-OPTIONS) ...)`:
+it preserves the original `:wait-p`/other physical options and body values.
+`fnn-with-observed-owner` delegates with literal `:owner`; Empirical owns the
+actual extent consumer with literal `:extent`. A real extent-mutex fixture
+checks held ownership, `:wait-p t`, exact labels and values. This does not
+claim uninstrumented extent/pins sites or PageIO realization.

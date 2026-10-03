@@ -148,20 +148,24 @@ not armed. Instrumentation has no semantic or admission role."
        (unwind-protect (progn ,@body)
          (when ,armed (fnn-native-observation-report *fnn-native-observer*))))))
 
-(defmacro fnn-with-observed-owner ((lock) &body body)
-  "Acquire observed after physical lock. Reserve release under the same
-lock, complete after physical unlock: preemption cannot invert producer order."
-  (let ((mutex (gensym "MUTEX")) (row (gensym "RELEASE")))
-    `(let ((,mutex ,lock) (,row nil))
+(defmacro fnn-with-observed-mutex ((lock label &rest options) &body body)
+  "Literal measured lock label and unchanged SBCL mutex options. Acquire
+observed after physical lock; release reserves under it, completes after unlock."
+  (let ((mutex (gensym "MUTEX")) (name (gensym "LOCK-LABEL"))
+        (row (gensym "RELEASE")))
+    `(let ((,mutex ,lock) (,name ,label) (,row nil))
        (unwind-protect
-            (sb-thread:with-mutex (,mutex)
+            (sb-thread:with-mutex (,mutex ,@options)
               (when *fnn-native-observer*
-                (fnn-native-observe (list :acquire *fnn-native-actor-identity* :owner)))
+                (fnn-native-observe (list :acquire *fnn-native-actor-identity* ,name)))
               (unwind-protect (progn ,@body)
                 (when *fnn-native-observer*
                   (setq ,row (fnn-native-observation-reserve
-                              (list :release *fnn-native-actor-identity* :owner) nil)))))
+                              (list :release *fnn-native-actor-identity* ,name) nil)))))
          (fnn-native-observation-complete ,row)))))
+
+(defmacro fnn-with-observed-owner ((lock) &body body)
+  `(fnn-with-observed-mutex (,lock :owner) ,@body))
 
 (defvar *fnn-owner-start-hooks* nil)
 (defvar *fnn-owner-stop-hooks* nil)

@@ -261,7 +261,8 @@
   "fnn-log-sealed-effect",
   "fnn-section-envelope",
   "fnn-with-observed-owner",
-  "fnn-native-with-observation"
+  "fnn-native-with-observation",
+  "fnn-with-observed-mutex"
  ],
  "gated_macros": {
   "fnn-section-envelope": {
