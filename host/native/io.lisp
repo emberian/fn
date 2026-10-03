@@ -2964,6 +2964,7 @@ a time. ACL2 checks the exact header and page encoding; no image is adopted."
       (setf (gethash (first write) by-addr) (rest write)))
     (fnn-posix () (sb-posix:lseek fd (fnn-core 'fn-his-base-octets) sb-posix:seek-set))
     (dotimes (addr (first image))
+      (fnn-checkpoint-yield "image-readback" addr)
       (let ((page (fnn-read-exact-fd fd 16384)))
         (unless page
           (return-from fnn-history-image-readback (list :refused :truncated)))
@@ -2993,6 +2994,7 @@ fn-sccv-final's (:ok SEQUENCE), or (:refused REASON)."
         (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
     (unwind-protect
          (loop
+           (fnn-checkpoint-yield "readback" total)
            (let ((first (fnn-make-octets 1)))
              (when (zerop (fnn-read-fd fd first))
                (return (fnn-core 'fn-sccv-final v)))

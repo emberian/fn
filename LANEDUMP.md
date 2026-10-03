@@ -1454,3 +1454,13 @@ work is now deputy_history's; this does not reduce current whole-history copy co
 
 - Astra6c917f91b composes after S045e56: actualfn-owner-orcp-capture calls existing fn-owner-record-octets(fn-hist,state) before creditreserve and returns updatedhist/state onboth refusal/capture. Actual native trailing-stobj metadatadispatch supplies newhistoryformal; no hostcensus arithmetic or directtest-only argument shortcut. Primary4source schedules reused; stale/missing/aheadcache and actualincrementalsync/creditresize throughnativeentry, baselineunfundedadmission assertionfails.
 - Source/function fixture exactproducerbytes; claimSCN1096check and indexed84754receipt verified. Normal loadedworld admission/interface regeneration and matching native reclaim followthrough remainowed; no book change/certificate/imageclaim. S045page/frameverifyyield-stop followupAstraownedpending, not masked bycapture fix.
+S045 shutdown followthrough: existing `fnn-checkpoint-yield` is now observed
+before each readback page/frame. Seven real-file schedules pass; source 6c917f91b
+fails the new stop-after-first-page assertion. Evidence 708ec94603eeb92af13d3857de46f914e0e830ee92e3b217e8a145c4e694fa9b,
+planning/evidence/astra-checkpoint-stop-2026-10-03.json. Rejected connected lead:
+`fn-owner-orcp-swap` already reseeds record-octets from rebuilt field 3; no missing
+cache reset claimed. S039 frontier repair and S040 staged quarantine are already
+present at inspected source; original reports are not new confirmed defects.
+
+## Source assembly: checkpoint verification stop fence (2026-10-03)
+Astra ed276b5aa composed above S045 readback and independent S114 capture. Two actual verifier loops call the existing refusal hook before each image page/frame segment; custody scope still releases before outer cleanup and old checkpoint remains authoritative. Existing seven real-file schedules, including red/base first-page-stop witness, reused; archive708ec946 verified. No book delta or new proof/image claim; S045's matching snapshot dependency certification and native publication consumer remain outstanding. Only cumulative LANEDUMP conflicted; production/fixture bytes match producer.
