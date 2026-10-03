@@ -2854,7 +2854,7 @@ for fn-bs-scp-program's five cuts."
                       (t (fnn-fault "invalid FN_NATIVE_STATE_CHECKPOINT_FAULT action: ~a" action)))
                 "developer-only native state-checkpoint fault"))))))
 
-(defun fnn-state-checkpoint-write (store octets sequence)
+(defun fnn-state-checkpoint-write (store octets sequence &optional image)
   "P-STATE-CHECKPOINT, books fn-bs-scp-program: stage, fence, rename onto
 the checkpoint name, fence the root.  Before the rename a failure is known
 (exit 1): the old checkpoint, or none, stays.  At or after it the outcome is
@@ -2864,9 +2864,9 @@ cannot use is refused by name once the segments it covers are dropped
 (fnn-log-drop): there is no full replay to fall back to
 (fnn-recover-log-from-log-checkpoint).  That is why the staged file is
 read back and verified before its rename (fnn-state-checkpoint-stage, S045)."
-  (fnn-state-checkpoint-install store (fnn-state-checkpoint-stage store octets sequence)))
+  (fnn-state-checkpoint-install store (fnn-state-checkpoint-stage store octets sequence image)))
 
-(defun fnn-state-checkpoint-stage (store octets sequence)
+(defun fnn-state-checkpoint-stage (store octets sequence &optional image)
   "fnn-state-checkpoint-write's first half: the staged file written and fenced
 (cuts created, written, staged-durable).  A failure is known: the old
 checkpoint stays, and the stage is removed (or, when its unlink fails, left
@@ -2894,10 +2894,13 @@ happens over it.  Answers the staged path, for fnn-state-checkpoint-install
             (setq written t)
             (fnn-at store :state-checkpoint-staged-durable)
             (fnn-state-checkpoint-test-flip stage)
-            (let ((verdict (fnn-state-checkpoint-verify store stage sequence)))
+            (let ((verdict (fnn-state-checkpoint-verify store stage sequence image)))
               (unless (and (consp verdict) (eq (first verdict) :ok))
                 (fnn-refuse-io "the staged state checkpoint does not read back: ~(~s~)"
                                verdict)))
+            ;; The verified stage no longer reads the writer. Release before
+            ;; install/swap can let another publisher use the shared snapshot.
+            (fnn-history-image-release)
             stage)
         (fnn-os-error (e)
           (when written (ignore-errors (fnn-unlink stage)))
@@ -2924,7 +2927,31 @@ the read-back refuse it (tests.test_native_state_checkpoint)."
                    (fnn-log-pwrite fd offset one)))
             (fnn-close fd)))))))
 
-(defun fnn-state-checkpoint-verify (store path sequence)
+(defvar *fnn-checkpoint-image-custody* nil)
+
+(defun fnn-history-image-readback (fd image header)
+  "Compare the staged image with its retained writer snapshot, one page at
+a time. ACL2 checks the exact header and page encoding; no image is adopted."
+  (unless (and image
+               (fnn-core 'fn-his-readback-header-p header (first image)))
+    (return-from fnn-history-image-readback (list :refused :history-image-header)))
+  (unless *fnn-checkpoint-image-custody*
+    (fnn-fault "history image readback has no retained writer snapshot"))
+  (let ((by-addr (make-hash-table)))
+    (dolist (write (second image))
+      (setf (gethash (first write) by-addr) (rest write)))
+    (fnn-posix () (sb-posix:lseek fd (fnn-core 'fn-his-base-octets) sb-posix:seek-set))
+    (dotimes (addr (first image))
+      (let ((page (fnn-read-exact-fd fd 16384)))
+        (unless page
+          (return-from fnn-history-image-readback (list :refused :truncated)))
+        (let ((verdict (fnn-core 'fn-his-readback-page (gethash addr by-addr)
+                                 (fnn-octet-list page) *fnn-checkpoint-image-custody*)))
+          (unless (eq verdict :ok)
+            (return-from fnn-history-image-readback verdict)))))
+    :ok))
+
+(defun fnn-state-checkpoint-verify (store path sequence &optional image)
   "S045: the staged checkpoint at PATH read back from disk one segment at a
 time and verified by ACL2 (books/store-checkpoint-verify.lisp fn-sccv-step:
 each frame's header, index, count, SEQUENCE and seal over the chain;
@@ -2932,8 +2959,9 @@ fn-sccv-final: five complete runs and nothing after them; KEYSTONE
 fn-sccv-final-ok-is-runs-ok).  Each segment is admitted against the
 profile's segment and file bounds before it is read (fn-store-sco-segment-
 admit, as the open's plan reads), and only its chunk is in the publication
-buffer: work and allocation per step are one segment's.  The history image
-region at the file's start is skipped as the plan skips it.  Answers
+buffer: work and allocation per step are one segment's. The history image
+is read back against its retained writer snapshot, one 16 KiB page at a time,
+before the framed runs. Answers
 fn-sccv-final's (:ok SEQUENCE), or (:refused REASON)."
   (let ((header-octets (fnn-core 'fn-store-sco-segment-header-octets))
         (trailer-octets (fnn-core 'fn-store-sco-trailer-octets))
@@ -2949,12 +2977,15 @@ fn-sccv-final's (:ok SEQUENCE), or (:refused REASON)."
              (let ((rest (fnn-read-exact-fd fd (1- header-octets))))
                (unless rest (return (list :refused :truncated)))
                (let* ((head (concatenate '(vector (unsigned-byte 8)) first rest))
+                      (firstp at-start)
                       (np (and at-start
                                (fnn-core 'fn-his-image-header-np (fnn-octet-list head)))))
                  (setq at-start nil)
+                 (when (and firstp image (not (integerp np)))
+                   (return (list :refused :history-image-header)))
                  (if (integerp np)
-                     (sb-posix:lseek fd (+ header-octets (fnn-core 'fn-his-skip-octets np))
-                                     sb-posix:seek-set)
+                     (let ((verdict (fnn-history-image-readback fd image (fnn-octet-list head))))
+                       (unless (eq verdict :ok) (return verdict)))
                      (let* ((header (fnn-octet-list head))
                             (admission (fnn-core 'fn-store-sco-segment-admit
                                                  header total profile)))
@@ -3453,6 +3484,19 @@ the publication buffer ST."
 
 (defvar *fnn-live-hrecs* nil)
 
+(defun fnn-history-image-release ()
+  "Return this publisher's snapshot before its publication slot can reopen."
+  (when *fnn-checkpoint-image-custody*
+    (let ((snapshot *fnn-checkpoint-image-custody*))
+      (setq *fnn-checkpoint-image-custody* nil)
+      (fnn-call 'fn-his-release snapshot))))
+
+(defmacro fnn-with-history-image (&body body)
+  "One publisher owns its snapshot through staging/readback and every exit."
+  `(let ((*fnn-checkpoint-image-custody* nil))
+     (unwind-protect (progn ,@body)
+       (fnn-history-image-release))))
+
 (defun fnn-live-hrecs ()
   (or *fnn-live-hrecs*
       (setq *fnn-live-hrecs*
@@ -3465,7 +3509,9 @@ the publication buffer ST."
 WRITES); with no position, (values POSITION NIL): no binding, no image."
   (if (null position)
       (values position nil)
-      (let ((answer (fnn-call 'fn-his-snapshot records salt (fnn-live-hrecs))))
+      (let ((answer (progn
+                      (setq *fnn-checkpoint-image-custody* (fnn-live-hrecs))
+                      (fnn-call 'fn-his-snapshot records salt *fnn-checkpoint-image-custody*))))
         (unless (and (consp answer) (>= (length answer) 3))
           (fnn-fault "ACL2 returned a malformed history image"))
         (destructuring-bind (verdict rec writes &rest ignored) answer
@@ -3503,7 +3549,7 @@ take for the image region."
           (let ((w (gethash addr by-addr)))
             (if (null w)
                 (fnn-write-range fd zeros 0 16384)
-                (let ((words (fnn-core 'fn-his-words (first w) (second w) (fnn-live-hrecs))))
+                (let ((words (fnn-core 'fn-his-words (first w) (second w) *fnn-checkpoint-image-custody*)))
                   (unless (and (listp words) (= (length words) 2048))
                     (fnn-fault "ACL2 returned a malformed history image page"))
                   (let ((i 0))
@@ -3512,8 +3558,9 @@ take for the image region."
                         (setf (aref page (+ i b)) (ldb (byte 8 (* 8 b)) x)))
                       (incf i 8)))
                   (fnn-write-range fd page 0 16384)))))
-        ;; the image's words are not kept past the write
-        (fnn-call 'fn-his-release (fnn-live-hrecs))))))
+        ;; The enclosing publication retains the snapshot through the staged
+        ;; readback, then releases it on success, refusal or nonlocal exit.
+        nil))))
 
 (defun fnn-checkpoint-write-steps (fd setup segment sequence profile st arun arena)
   "Write the file's frames to FD step by step: the arena run ARUN first
@@ -3562,6 +3609,7 @@ publication buffer, one step's rows at a time.  On a store the log
 is rotated first (fnn-log-rotate: the checkpoint's F row names the new
 segment and its genesis), and once the checkpoint is installed the segments
 it covers are dropped (fnn-log-drop; T8)."
+  (fnn-with-history-image
   (let* ((profile (fnn-store-config store))
          ;; the writer's segment: ACL2's choice under the record bound
          ;; (fn-ockp-segment-octets: the smaller of R and a quarter of
@@ -3617,7 +3665,7 @@ it covers are dropped (fnn-log-drop; T8)."
                    (fnn-history-image-write fd image)
                    (setq steps (fnn-checkpoint-write-steps fd setup segment sequence
                                                            profile st arun (fnn-live-arena))))
-                 sequence)
+                 sequence image)
              (fnn-octets-pub-release))
            (when position
              (handler-case
@@ -3629,8 +3677,7 @@ it covers are dropped (fnn-log-drop; T8)."
                                       (second verdict))
                    steps (first position) position dropped
                    (fnn-open-report store))))
-        (t (fnn-fault "ACL2 returned a malformed checkpoint verdict"))))))
-
+        (t (fnn-fault "ACL2 returned a malformed checkpoint verdict")))))))
 (defun fnn-command-store-digest (root)
   "`store ROOT digest': open the store read-only as `status' does (the shared
 lock, so a running owner refuses this) and print ACL2's digest of the state

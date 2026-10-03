@@ -1118,3 +1118,26 @@ witness and ran actual-source routing fixture PASS because bytes changed.
 Receipt records source base/delta plus exact source/fixture digests, command
 and narrow recording-boundary scope; archive/index supplied. No book or
 semantic decision changed, saved-image undertaking/release/reopen remains.
+
+## Astra source trace — S045 staged history image readback (2026-10-03)
+
+Base 71b691823, coordinated disjoint from catalog availability and Runtime mux.
+Confirmed residual: common stage verifier skipped FNSI image pages while reopen
+requires them; used/zero-page corruption passed frame verification and replaced
+the old checkpoint. Shared snapshot custody now spans write/readback in all three
+publishers; ACL2 compares exact header/page encoding, one 16 KiB page per read.
+Release occurs before install/swap can reopen the publisher slot; lexical unwind
+also covers deferral and raw escapes before outer publication cleanup.
+
+`python3 -m unittest tests.test_native_checkpoint_image_readback`: six schedules
+PASS; baseline 71b691823 fails intended page/zero-page corruption and deferred
+snapshot-release assertions. Real kernel files and codec; recording snapshot
+storage/framed-run seams. Composed image test added to native state checkpoint
+suite, not yet run. Evidence: planning/evidence/astra-checkpoint-readback-2026-10-03.json
+(archive/index, source hashes and trace map). Existing S045 stays open pending
+matching certification/image consumer; SCN-1094/STO-011/spec updated together.
+Cached-only proof_repl attempts refused before creating session: hbox needs exact
+store-log plus history-image-binding/fold; Integration schedules affected root,
+no broad closure or new image started here. S114 authoritative octets capture is
+next confirmed connected item; whole-history representation redesign stays with
+Groundwork. No new architecture or durable-acceptance semantics claimed.

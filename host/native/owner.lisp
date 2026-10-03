@@ -6336,6 +6336,7 @@ the crash keystone) and serving continues."
   ;; this thread existed: the worker never resolves shared live state.
   ;; (fnn-owner-maybe-publish); it is unpinned below.
   (unwind-protect
+  (fnn-with-history-image
   (destructuring-bind (base configs records record-octets count suffix budget frontier free revision
                         base-payloads ident)
       captured
@@ -6410,7 +6411,7 @@ the crash keystone) and serving continues."
                                    (setq steps (fnn-checkpoint-write-steps
                                                 fd setup segment sequence (fnn-store-config store)
                                                 (fnn-live-octets-pub) arun arena)))
-                                 sequence)
+                                 sequence image)
                              ;; the buffer's array back (PKT-PRS-2)
                              (fnn-octets-pub-release))
                            (setq durablep t)
@@ -6474,7 +6475,7 @@ the crash keystone) and serving continues."
           (when durablep
             (fnn-owner-release-extents service (fnn-owner-service-store service)
                                        *fnn-checkpoint-frames* dropped-paths pin arena)))
-        nil)))
+        nil))))
     (fnn-owner-worker-tail-hold "publisher")
     (when pin (fnn-arena-unpin pin))
     (fnn-owner-service-nursery))
@@ -7043,6 +7044,7 @@ publication).  Answers the reply word."
                         (first (fnn-call 'fn-arena-count (fnn-live-arena)))))
              (setq word (intern (format nil "DEFERRED-~a" (symbol-name reason)) :keyword))))
       (unwind-protect
+           (fnn-with-history-image
            (block pass
              (unless (fnn-log-rotation-ready-p store) (fnn-log-prepare-spare store))
              ;; A live quantum (refused once the owner is stopping; its
@@ -7137,7 +7139,7 @@ publication).  Answers the reply word."
                                          (fnn-checkpoint-write-steps
                                           fd setup segment (length rows) (fnn-store-config store)
                                           (fnn-live-octets-pub) arun arena))
-                                       (length rows)))
+                                       (length rows) image))
                        (fnn-octets-pub-release))))
                  (fnn-reclaim-cut :staged)
                  ;; The tombstones are PREDICTED here (their handles from
@@ -7247,7 +7249,7 @@ publication).  Answers the reply word."
                               count (length (second decision)) dropped (ms)
                               (length seal-payloads) seal-us)
                      (fnn-owner-release-extents service store *fnn-checkpoint-frames* paths pin arena))
-                   (fnn-reclaim-cut :released)))))
+                   (fnn-reclaim-cut :released))))))
         (when pin (fnn-arena-unpin pin))
         ;; Captured and not swapped: the pass is over for the owner (the
         ;; in-flight mark cleared) FIRST, a cleanup quantum admitted after a

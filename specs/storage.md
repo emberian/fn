@@ -789,7 +789,18 @@ STO-026: The state checkpoint is four tables (schema 3), each a run of
 FNSC segments, holding every payload once, written by one resumable
 pipeline in bounded batches through the publication buffer and read back
 as the capture; a file of another schema is refused by name and the
-journal replays.
+journal replays while the covered journal is retained. Once covered segments
+have been dropped, a missing or corrupt checkpoint is refused by name.
+
+Before replacing the checkpoint or dropping any covered segments, all three
+publishers (offline, automatic owner, and reclaim) read the staged file back.
+The history image's exact header and each 16 KiB physical page are compared
+by ACL2 against the writer's retained snapshot, including unwritten zero pages;
+then the five framed runs pass their chain verifier. The snapshot is returned
+before install/swap can admit another publisher and on every earlier exit.
+This detects disagreement between writing and readback; page-cache readback
+is not a guarantee against later media loss. Whole-history snapshot allocation
+remains a separate representation obligation (the bounded-history queue).
 
 - **The tables** (lane checkpoint-pipeline, 2026-09-26; D33, D34;
   books/store-checkpoint-tables.lisp). F: one row `(3 S FRONTIER

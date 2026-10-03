@@ -178,7 +178,7 @@
 
 (defun fn-his-release (fn-hrecs$c)
   ; The concrete emptied (the page store's arrays given back): after the
-  ; publication has written the image, and after the open's check, the
+  ; publication has verified the staged image, and after the open's check, the
   ; words of a whole image are not kept.  Decides nothing.
   (declare (xargs :stobjs fn-hrecs$c))
   (fn-hrc-reset 0 fn-hrecs$c))
@@ -302,3 +302,33 @@
   ; the binding the checkpoint's F row carries for its image
   (declare (xargs :guard t))
   (fn-hib-binding node *fn-hib-codec* count trail rec salt))
+
+; The staged file is checked while the writer still owns its snapshot.
+; Each call compares one physical page, including unwritten zero pages;
+; it does not adopt an image or change the live owner's history.
+(defun fn-his-readback-header-p (header np)
+  (declare (xargs :guard (natp np)))
+  (equal header (fn-his-image-header np)))
+
+(defun fn-his-readback-page (write octets fn-hrecs$c)
+  (declare (xargs :stobjs fn-hrecs$c
+                  :guard (or (null write)
+                             (and (true-listp write) (equal (len write) 2)
+                                  (natp (car write)) (natp (cadr write))))))
+  (let ((words (if write
+                   (fn-his-words (car write) (cadr write) fn-hrecs$c)
+                 (make-list 2048 :initial-element 0))))
+    (if (and (equal (len words) 2048)
+             (equal octets (pgs-words-le-octets words)))
+        :ok
+      (list :refused :history-image-page))))
+
+(defthm fn-his-readback-page-by-definition
+  (equal (equal (fn-his-readback-page write octets fn-hrecs$c) :ok)
+         (let ((words (if write
+                         (fn-his-words (car write) (cadr write) fn-hrecs$c)
+                       (make-list 2048 :initial-element 0))))
+           (and (equal (len words) 2048)
+                (equal octets (pgs-words-le-octets words)))))
+  :hints (("Goal" :in-theory (enable fn-his-readback-page)))
+  :rule-classes nil)
