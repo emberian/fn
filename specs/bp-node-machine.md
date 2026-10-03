@@ -5072,3 +5072,26 @@ or rotating resets those volatile continuations from durable rows. Process
 death loses work already spent, never acknowledged custody. This is the
 reassembly sweep bound; whole-image encode, candidate scan, context funding
 and concurrent listener/forwarding fairness remain explicit obligations.
+
+### Retained TCPCL physical turns (PRF-1273, 2026-10-03)
+
+The native `fnn-tcl-begin` retains a connection without writing its opening
+messages. `fnn-tcl-turn` selects one action through `fn-tcrt-action`: encode
+one released message, attempt one read/write of at most4096 octets, advance
+one received-source continuation, pump one outbound segment, or run the
+local callback boundary. Exact encoded vectors and offsets survive short
+writes and readiness waits. The write deadline denotes connection loss; it
+never supplies a physical close receipt or settles a grant. Only the named
+socket primitive is inside the transport-error handler: a publication error
+in a local callback escapes to the existing persistence fence.
+
+Custody-held messages are distinct from released output. A final ACK can
+enter released output only after the existing delivery planner's durable
+answer; application progress follows its completed physical write. Input
+and outbound pump turns alternate, and source custody excludes new input.
+`fnn-tcl-session`, used by current TCPCL/BP commands, consumes this retained
+API until completion. That compatibility consumer still monopolizes its
+caller until completion: concurrent BP acceptance, forwarding/receipt turns
+and explicit supported-profile session grants remain S025 obligations.
+Legacy logical parsing/carry and whole-message encoding retain their cost
+and refinement scope; S068 is not discharged by a bounded socket attempt.

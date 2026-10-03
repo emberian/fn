@@ -19253,6 +19253,23 @@
           "name": "fn-wmc-cumulative-cons-bound"
         }
       ]
+    },
+    {
+      "id": "PRF-1273",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tcrt-write-range-is-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcrt-source-custody-excludes-input"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcrt-ready-write-precedes-source-and-close"
+        }
+      ]
     }
   ]
 }

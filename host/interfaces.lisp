@@ -5324,3 +5324,11 @@
 
 ; Actual retire CLI projection consumed before observation starts.
 (definterface fn-native-operator-host-result-retire-argv :class :program)
+; Retained TCPCL I/O quanta and custody action precedence.
+(definterface fn-tcrt-read-limit :class :common-lisp-compliant)
+(definterface fn-tcrt-write-end :class :common-lisp-compliant
+  :keystones (fn-tcrt-write-range-is-bounded))
+(definterface fn-tcrt-write-deadline :class :common-lisp-compliant)
+(definterface fn-tcrt-action :class :common-lisp-compliant
+  :keystones (fn-tcrt-source-custody-excludes-input
+              fn-tcrt-ready-write-precedes-source-and-close))
