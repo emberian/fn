@@ -646,3 +646,9 @@ PASS locally; SCN1110 still unexecuted. History owns the current TEN-field
 ordinary pool/earlyP3 bootstrap; Integration will supply exact manifest/launcher.
 BP owner continues actual keepalive/second canonical request and signed R/Q
 Store/FNRJ/reopen join. Oldad8 cache is diagnostic only, not current-union proof.
+
+SCN-1125 prepared BP/application join: signed binary R and immutable Q cross
+actual ACL2-authored request, Store/FNRJ publication, reopened native return
+receipt and matching pin release, then independent consumer source/signature
+verification and correlation. No NNTP inter-node peer route. Compile-only
+source state; native execution remains pending current initialized world.

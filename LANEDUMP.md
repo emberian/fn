@@ -3347,3 +3347,17 @@ Next connected consumers: actual live keepalive plus canonical second request
 through Store/FNRJ/reopen, then immutable application R/Q with exact source and
 both signatures. Full codec/native cursor refinement and whole decoder/GC work
 and resident tariff remain open as recorded above.
+
+SCN-1125 prepared source (BP transport owner): actual immutable signed binary
+R/Q join now uses the same two-node application producer/independent verifier,
+with no NNTP peer routes. It stops production owners before each Store-bound
+undertaking, authors the request through ACL2, runs actual retained BP node
+handoff, asserts pin held after TCPCL success, then reopens and carries the owed
+application receipt through the reciprocal native node before pin release.
+Application after-commit death/restart precedes the exact reply artifact's
+reciprocal BP contact. Final consumer-projected authored source and both
+signatures are checked against SQLite submission and independent verifier at
+both hops. Selector tests.test_native_consumer_exchange_two_nodes.
+NativeTwoNodeConsumerExchangeTests.test_signed_report_reply_cross_bp_and_reopen.
+Python compilation PASS; actual native run UNEXECUTED. Requires current source
+launcher from History/Integration. No new protocol or host semantic decision.

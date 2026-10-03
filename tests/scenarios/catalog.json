@@ -1153,7 +1153,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -8319,7 +8319,7 @@
         "Run tests/acl2/newnews-metadata-cursor-tests.lisp: unmatched first article advances with empty output, matching final article retains its output after scan completion; compare emitted prefix plus remaining with original response.",
         "Run actual native NEWNEWS wildcard workload with more candidates than shared cache slots; compare complete Message-ID reply while a second connection remains responsive.",
         "Run newnews-stream-cursor-tests and actual served-plan-newnews-tests: indexed line wider than byte quantum drains without candidate visits, sparse selection retains final renderer, tiny/large plan outputs equal.",
-        "Run actual configured factory→plan witness with eleven captured configured groups, sparse first article, selector retained through one-call/one-byte quanta, and complete equality to original catalog reply.",
+        "Run actual configured factory\u2192plan witness with eleven captured configured groups, sparse first article, selector retained through one-call/one-byte quanta, and complete equality to original catalog reply.",
         "Run tests.test_cursor_cold_poll against actual extracted native cursor/mux bodies: cold attempt returns unchanged plan+issued read, pending yields to timer, repeated miss retains first clock, returned page resumes plan rather than input, refusal adds no body line. This is mocked-I/O source flow, not matching native image custody.",
         "Retain a wildcard continuation after the first valid equal membership; resume one decoder/DP microstep per controller call, with exact phase demand, zero group/member visits and residual equality. Excluded groups continue to the following selector; an invalid first duplicate never starts the matcher."
       ],
@@ -9205,7 +9205,7 @@
         "Advance fixed captured-view summary one numbered metadata probe at a time; verify eight calls leave26 of34 candidates, then complete sparse/prefix/tail/empty results."
       ],
       "expected": [
-        "Sparse metadata navigation moves1→34 and34→1 while enumerating only1/34; complete responses equal the bytes reference.",
+        "Sparse metadata navigation moves1\u219234 and34\u21921 while enumerating only1/34; complete responses equal the bytes reference.",
         "Empty availability preserves NEXT/LAST cursor on421/422 and produces empty GROUP0,35,34; retained identity lookup remains.",
         "Fixture is source live-stobj command-helper acceptance, not production owner/capture proof or native reclaim qualification. LIST still has a whole-reply producer frontier."
       ],
@@ -9432,6 +9432,35 @@
         "planning/evidence/web-post-action-fix-2026-10-03/execution.json"
       ],
       "note": "Actual source programs admit and exact valid/badCSRF/remove/UTF8/duplicate and long subject tests pass, with concrete fill invariant-risk. Native4096 form turns and partial117 feed pass. Full retained request/subject and refused form path, profile-dependent fixed prefix construction and qualified funding remain open. The original fullbrowser failure is retained. Firsthand stderr traced malformed web action to three emitted POST continuation tags absent from the actual classifier; source49c933f02 accepts those exact tags and refuses unknowns. The same scoped initialized source coordinate plus normally admitted classifier passes the real account/POST/read/remove case in16.702s,1test,0skips; producer/raw regression also passes through the actual classifier. Latest current-union decoded/P3/runtime, TLS/concurrent endpoints and complete funding remain unexecuted or open; status remains specified."
+    },
+    {
+      "id": "SCN-1125",
+      "title": "Immutable signed application report and reply traverse BP custody and reopen",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "CNS-004",
+        "REP-006",
+        "RET-001"
+      ],
+      "steps": [
+        "Start two native production owners with enrolled hybrid authors and independent application keyrings; accept signed binary report R into its author Store without NNTP peer routes.",
+        "Stop both NNTP owners. Export the immutable public R artifact, derive its Store-bound subject through ACL2, durably undertake its workflow obligation, and carry the ACL2 request into a retained native BP node.",
+        "Observe target Store/FNRJ handoff, stop/reopen, and require the sender application pin to survive the successful transport ACK. Replay the owed native receipt through a real second contact and require the matching pin to release after sender restart.",
+        "Restart target application consumer, kill after SQLite commit before ACK, then resume its exact signed reply Q. Stop owners and carry Q through the reciprocal BP Store/FNRJ and receipt/reopen path.",
+        "Restart both application owners and independently verify exact authored source including headers and both signatures at both hops; observe exactly one R transition and one correlated Q transition."
+      ],
+      "expected": [
+        "The NNTP-accepted canonical Store projection is the BP request input; no Python codec or envelope trimming chooses fn semantics.",
+        "A successful TCPCL contact cannot release the application obligation; only the returned application receipt does.",
+        "Both exported source/signature artifacts remain byte-identical through the carrier contacts.",
+        "Two articles at each node, one application transition per R/Q, exact authored-source and signature identities under independent verification after restart."
+      ],
+      "evidence": [
+        "tests/test_native_consumer_exchange_two_nodes.py",
+        "tests/native_image_provenance.py"
+      ],
+      "note": "Prepared actual consumer selector tests.test_native_consumer_exchange_two_nodes.NativeTwoNodeConsumerExchangeTests.test_signed_report_reply_cross_bp_and_reopen. Python compilation passes; native execution UNEXECUTED. Requires one explicitly bound initialized current source execution or the existing published coordinate. No image qualification, native result or full work/GC funding inferred."
     }
   ]
 }
