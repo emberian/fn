@@ -22420,10 +22420,17 @@
         "books/string-line-fill.lisp",
         "books/served-plan-line-buffer.lisp",
         "tests/native_newnews_allocation_raw.lisp",
-        "tests/test_native_newnews_allocation_raw.sh"
+        "tests/test_native_newnews_allocation_raw.sh",
+        "tests/acl2/string-line-fill-tests.lisp",
+        "tests/acl2/served-plan-line-buffer-tests.lisp"
       ],
-      "events": [],
-      "progress_note": "Implementation and all new guards admitted in source-loaded ACL2 worlds. Actual normal native/private stobj cases pass empty/dot/text/4097-character lines at byte quanta1/2/7/256; complete58-byte NEWNEWS agrees with original reference at1/256. Direct line phase skips serialized catalog quantum and per-byte list/cursor allocation. Universal prefix/continuation bridge and literal theorem teeth remain open; no certificate, zero-allocation, physical heap tariff or image qualification claim."
+      "events": [
+        "fn-splan-line-window-preserves-residual",
+        "fn-splan-line-window-keeps-tail",
+        "fn-splan-line-window-keeps-context",
+        "fn-splan-line-window-byte-bound"
+      ],
+      "progress_note": "All four literal host-called boundary events admitted in the current stream warm world: exact first-cursor residual, unchanged later effects, unchanged capture, and bounded filled bytes. Inner scalar buffer bridge proves exact residual and bounds without hypotheses. Literal local-stobj positive, zero quantum, suspended and malformed-state cases pass; native normal counterpart/private buffer full NEWNEWS and borrowed range fixtures pass separately. Scoped normal certificates and matching image remain pending. No complete physical heap tariff, GC or whole-response zero-allocation claim."
     },
     {
       "id": "PRF-1278",

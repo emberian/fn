@@ -1518,6 +1518,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/hostile-reader-archive \
 	tests/acl2/octets-bulk-tests \
 	tests/acl2/string-line-fill-tests \
+	tests/acl2/served-plan-line-buffer-tests \
 	tests/acl2/payload-arena-tests \
 	tests/acl2/payload-arena-paged-tests \
 	tests/acl2/payload-arena-extent-tests \
