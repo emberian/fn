@@ -81,10 +81,25 @@ def globals_of(text):
     return sorted({m.group(1).lower() for m in ACCESSOR.finditer(strip_comments_and_strings(text))})
 
 
+def parked(root=ROOT):
+    """Host files no build loads, parked with their owner (planning/host-
+    parked.json, tools/host_loaded_check.py KNOWN).  Their globals are not
+    the running owner's; when one is wired into a build its KNOWN entry must
+    go (host_loaded_check is red until it does), and it is counted here."""
+    import json
+    path = root / "planning" / "host-parked.json"
+    if not path.exists():
+        return set()
+    return set(json.loads(path.read_text(encoding="utf-8")).get("parked", {}))
+
+
 def scan(root=ROOT):
     found = {}
+    skip = parked(root)
     for d in HOST_DIRS:
         for path in sorted((root / d).rglob("*.lisp")):
+            if str(path.relative_to(root)).replace("\\", "/") in skip:
+                continue
             names = globals_of(path.read_text(encoding="utf-8", errors="replace"))
             if names:
                 found[str(path.relative_to(root)).replace("\\", "/")] = names

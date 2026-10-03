@@ -111,7 +111,7 @@ def test_actual_native_five_mv_lifecycle_transport(tmp_path):
                    '(defun fnn-owner-account-publication-locked ',
                    '(defun fnn-owner-account-configuration-publication-locked '):
         program += named('host/native/account-adoption.lisp', prefix)
-    program += named('host/native/auth.lisp', '(defun fnn-native-auth-adopt-config ')
+    program += named('host/native/auth-adoption-parked.lisp', '(defun fnn-native-auth-adopt-config ')
     program += '''
 (let ((config (list :original-config)) (bindings (list :original-bindings)))
   (assert (eq (fnn-native-auth-adopt-config :service config bindings) :refused))
@@ -303,7 +303,7 @@ def test_real_owner_nil_binding_refuses_before_account_creator(tmp_path):
 (defun fnn-indeterminate (&rest x) (declare (ignore x)) (error "unexpected uncertainty"))
 '''
     program += actual_owner
-    program += named('host/native/auth.lisp', '(defun fnn-native-auth-adopt-config ')
+    program += named('host/native/auth-adoption-parked.lisp', '(defun fnn-native-auth-adopt-config ')
     program += '''
 (let ((service (make-fnn-owner-service :control-binding nil))
       (config (list :original-parsed-config)) (bindings (list :original-bindings)))
@@ -595,3 +595,30 @@ def test_actual_configuration_claim_parks_and_rebinds_without_issue(tmp_path):
                          capture_output=True, text=True, timeout=30)
     assert out.returncode == 0, out.stdout + out.stderr
     assert 'ACCOUNT_C_RETAINED_CLAIM_REBIND_PASS' in out.stdout
+
+
+# The functions above are pytest-shaped; tools/native_source_check.py and the
+# native harness run `python3 -m unittest`, which collected nothing here and
+# exited 5 (check-lane red CL02, 2026-10-03).  Each runs as a unittest case
+# with its own temporary directory.  The host file it reads,
+# host/native/account-adoption.lisp, is parked (planning/host-parked.json, F06):
+# these are image-free source checks of the parked code, kept green until L3
+# deletes or rewires it.  fnn-native-auth-adopt-config moved at stage 0 from
+# host/native/auth.lisp to host/native/auth-adoption-parked.lisp; the two
+# cases that read it read it there.
+import tempfile  # noqa: E402
+import unittest  # noqa: E402
+
+
+class AccountAdoptionTransportTests(unittest.TestCase):
+    pass
+
+
+for _name, _function in list(globals().items()):
+    if _name.startswith("test_") and callable(_function):
+        def _case(self, _function=_function):
+            with tempfile.TemporaryDirectory() as directory:
+                _function(Path(directory))
+        setattr(AccountAdoptionTransportTests, _name, _case)
+        del globals()[_name]  # collected once, as the class's case
+del _name, _function

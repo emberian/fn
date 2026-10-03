@@ -54,6 +54,8 @@
 (defvar *fnn-extent-next-id* nil)
 (defvar *fnn-extent-cache* nil)
 (defvar *fnn-extent-cache-tokens* (make-hash-table :test #'eq))
+;; guarded-by: *fnn-extent-lock* (every reader and writer: fnn-extent-cache-
+;; forget/-store, both "Extent lock held", and the pool install under it).
 ;; Verified vector -> immutable charged token. Capacity is a static pool
 ;; allowance, not a per-entry credit that eviction pretends to reclaim.
 ;; ((file eoff elen trailer . octets) ...), most recent first: the verified

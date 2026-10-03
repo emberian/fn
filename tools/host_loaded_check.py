@@ -25,8 +25,21 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
-# path -> why it may stay unloaded.  Shrink-only.
-KNOWN: dict[str, str] = {}
+# path -> why it may stay unloaded, with its family and owner.  Shrink-only.
+# The parked never-wired families (planning/host-parked.json; 2026-10-03:
+# 85 files the Codex-era joins added and no build loads).  Their owner (L3)
+# deletes them or wires them; each entry goes when its file does.
+PARKED = ROOT / "planning" / "host-parked.json"
+
+
+def load_known() -> dict[str, str]:
+    import json
+    if not PARKED.exists():
+        return {}
+    return dict(json.loads(PARKED.read_text(encoding="utf-8")).get("parked", {}))
+
+
+KNOWN: dict[str, str] = load_known()
 
 
 def host_files(root: pathlib.Path = ROOT) -> list[str]:

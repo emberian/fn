@@ -42,6 +42,35 @@ class HostTablesRuleTests(unittest.TestCase):
             "guarded-by *fx-lock*", ":synchronized t", "guarded-by fx-runtime-lock",
             "guarded-by *fx-lock*", "thread-confined"])
 
+    def test_a_multi_pair_setf_names_each_place_and_inherits_its_declaration(self):
+        """A pool install re-makes several declared tables in one setf under
+        their lock (host/native/extent.lisp fnn-extent-pool-storage-start):
+        each pair's table is its own place, and carries the declaration of
+        the variable it assigns; a declaration in the comment lines right
+        under a defvar counts.  Undeclared, each pair is refused by its own
+        name (it used to be reported under the first pair's)."""
+        import tempfile
+        body = ('(in-package "ACL2")\n'
+                '(defvar *fx-lock* (sb-thread:make-mutex :name "fixture"))\n'
+                '(defvar *fx-a* (make-hash-table)){a}\n'
+                '(defvar *fx-b* (make-hash-table))\n{b}'
+                '(defun fx-reset ()\n'
+                '  (sb-thread:with-mutex (*fx-lock*)\n'
+                '    (setf *fx-a* (make-hash-table :size 4)\n'
+                '          *fx-b* (make-hash-table :size 8))))\n')
+        with tempfile.TemporaryDirectory() as directory:
+            bare = Path(directory) / "bare.lisp"
+            bare.write_text(body.format(a="", b=""))
+            refused, _ = host_check.tables_check([bare])
+            self.assertEqual([r.split(": ", 1)[0].split(" ", 1)[1] for r in refused],
+                             ["*fx-a*", "*fx-b*", "*fx-a*", "*fx-b*"])
+            declared = Path(directory) / "declared.lisp"
+            declared.write_text(body.format(a=" ; guarded-by: *fx-lock*",
+                                            b=";; guarded-by: *fx-lock*. Under the defvar.\n"))
+            refused, accepted = host_check.tables_check([declared])
+            self.assertEqual(refused, [])
+            self.assertEqual(len(accepted), 4)
+
     def test_the_command_exits_one_on_the_fixture(self):
         self.assertEqual(host_check.main(["--tables", str(FIXTURES / "refused.lisp")]), 1)
         self.assertEqual(host_check.main(["--tables", str(FIXTURES / "accepted.lisp")]), 0)

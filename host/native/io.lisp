@@ -1196,6 +1196,9 @@ offered to the writer while the owner runs (PKT-508), else written here."
 ;;; selector and always dispatches raw.  planning/interfaces.json lists the
 ;;; raw-dispatched entries (tools/interface_emit.py).
 
+;; Filled once at image build, before save-exec and before any thread
+;; (fnn-install-raw-dispatch from host/native/build*.lisp); served threads read it.
+;; thread-confined: the image build's loading thread writes; afterwards read-only
 (defvar *fnn-raw-dispatch* (make-hash-table :test 'eq)
   "entry name -> its raw (guard-verified, compiled) function symbol")
 
