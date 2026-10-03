@@ -1,0 +1,37 @@
+#>fn_consistency_sweep
+^"inspected_boundaries"{
+ @owner: ~"../../../books/owner-commit-steps.lisp"
+ @drain: ~"../../../books/owner-stop-drain.lisp"
+ @retire: ~"../../../books/owner-retire-settlement.lisp"
+ @workflow: ~"../../../books/bp-workflow.lisp"
+ @workflow_host: ~"../../../host/native/workflow.lisp"
+ @reader: ~"../../../books/nntp-responses.lisp"
+ @compat: ~"../../../books/nntp-reader-compat.lisp"
+ revision: "9df4a3a4e baseline; suspected defects compared with current Integration before patch"
+ owner: "full owner commit steps/scheduler selection/stop drain/fault; retirement settlement full; retained prepare/finish first half. No new defect proven; retirement APIs subsequently changed by Root817ac/4d557 and require new-source cross-link"
+ workflow: "records/prepares/complete/recover/status/rank/retry/restart/step; native preflight/apply/publish. Durable-publish followed apply failure lead sent Exits horse, no established defect"
+ consumer: "remote terminal hold/update/cancel/terminal and account adoption return proposal; issuer missing explicitly unavailable. CLI bootstrap defect tracked C006"
+ reader: "cursor shape/setter plus full current/number/msgid/next retrieval, of-bytes reply and compatibility cursor fallback. Malformed/reclaimed replies preserve cursor; exact Message-ID retrieval preserves cursor. Concrete access gate reviewed by Access owner; this source read alone does not establish secrecy/reclaim behavior"
+ decoded: "controller and assignment full on old baseline only; Root/Runtime changed retirement and physical scratch. Do not treat old-source inspection as latest completeness"
+}
+^"open_work"{
+ leaves: ["full NNTP auth/post/reader parsing", "BP receiver fragment/checkpoint and raw workflow journal recovery", "current decoded runtime lifecycle", "extent allocator and bank complete leaves", "history/reclaim full graph", "native whole HTTP outcome fixture"]
+ method: "each executable definition read in full where listed; proof-heavy material skipped except keystones needed for changed behavior; thought experiments are hypotheses until source counterexample and checks"
+}
+^"reader_neighbor_crosslink"{
+ owner: "deputy_access"
+ actual_boundary: "fn-asto-capture ->fn-own-tls-served-conn ->fn-scr-cached-view authorized archive/index; fallback fn-auth-view-archive/index"
+ public_source: "6227 access guards per owner; S121 auth-access-text reader commands require READ+moderation hiding even peer, peerrole bypass only transfer-side"
+ distinction: "by-number retained authorized record gives explicit503/423 identifier/framing/tombstone diagnostics without cursor update; NEXT/LAST/current availability excludes unavailable records"
+ confidence: "owner source-backed report plus local full response definitions; capture/access full definitions still owned by Access audit"
+}
+^"workflow_projection_failure_refutation"{
+ owner: "horse_exits"
+ source_symbols: "fnn-app-publish/fnn-app-authorized-publish/fnn-app-apply, fnn-call-with-journal, fnn-main classifier"
+ result: "durable publication then core apply mismatch uses fnn-fault/exit4 and fences journal; this is a faulted projection, not definite publication refusal"
+ residual: "arbitrary callback signaling store-open-refusal could misclassify but production apply paths do not signal it for ordinary mismatch; do not invent blanket uncertainty"
+}
+^"cli_recipe"{
+ command: "npm --prefix .spw/_workbench run spw -- query --from .spw/audits/consistency --selector pathRefs --count"
+ observed: "28pathRefs across6scanned consumer files; query selectors require --selector, not positional argument; roots require --from, not --dir"
+}

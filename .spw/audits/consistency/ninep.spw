@@ -1,0 +1,30 @@
+#>fn_consistency_ninep
+^"machine"{
+ identity: "ninep-session/mount/transport"
+ @session: ~"../../../books/ninep-session.lisp"
+ @transport: ~"../../../books/ninep-transport.lisp"
+ @mount: ~"../../../books/ninep-mount.lisp"
+ state: "session readiness; per-fid selection/borrow counts; per-request issued receipt/running/cancelled; independent mount token/source/intent/phase; owned transport cursor"
+ transitions: "Tversion -> real request/fid quiesce -> actual mount return -> negotiated base; flush suppresses publication without releasing borrow; receipt return decrements borrow once; clunk waits for borrow zero"
+ neighbor_obligation: "Version reset cannot release an issued generation alias. Definite allocator refusal has no debit/pin to return. Runtime transport currently unavailable publicly: internal driver only."
+}
+^"C001"{
+ status: "source repair integrated as48c18731b; scoped ACL2 checks passed; normal certification pending"
+ source_revision: "9df4a3a4e; unchanged relevant bytes at integration 3f39e6df9"
+ producer: "fn-9p-mount-reserve-internal"
+ consumer: "fn-9pt-version-after-quiescence"
+ counterexample: "PRS issue refuses -> mount phase refused, token/source nil -> parsed repeated Tversion -> bounded drain reaches mount-return-ready -> await-mount-return forever, because reset accepts empty/returned and real mount return accepts held only"
+ repair: "Permit definite refused in version reset while retaining mandatory no-token/no-source checks. Issue-intent/reserved/pin-intent/return-intent/fenced remain blocked."
+ checks: "Warm source loaded20forms incl custody theorem; actual host wrappers4forms/337steps;12test forms passed0.03ACL2s/7162steps incl parsed reset909steps and uncertain934steps. Normal certification run-20261003T162243Z-2b21 on persvati pending. Repair commit cde29dc14."
+ limitation: "No public installed 9P runtime family or listener is claimed. Source-backed internal machine defect."
+}
+^"discarded_suspicion"{
+ symptom: "version-at sets draining while quiesce-step expects draining-requests"
+ resolution: "fn-9pt-step handles drain-required by calling fn-9ps-drain-begin before the next drain step; composed path is consistent"
+}
+^"normal_certification"{
+ manifest: "planning/evidence/manifests/certify-20261003T162325Z-2592389.json"
+ source_revision: "cde29dc14; public equivalent48c18731b"
+ verdict: "9roots passed0failed; one9P transport book12.4seconds at2jobs"
+ scope: "normal ACL2 certificate for supplied source snapshot and manifests; no native/image qualification"
+}
