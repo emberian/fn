@@ -293,3 +293,13 @@ logical producers, duplicate keys and attempts to claim `:accounted`.
 This is a source linkage check for an enforced projection; it does not prove
 funding transfer, total allocation, refusal work or native receipt honesty.
 The full operation gate remains owed and cannot be activated by annotation.
+
+Private ledger allocation requires the registered creator's validated
+`:raw-guarded (0 nil (fn-resource-ledger))` route. ACL2's live-stobj
+counterpart refuses this private construction; the actual native fixture
+caught that refusal before install. `fn-di-raw-creatorp` checks the exact
+registered zero-input creator and verified ABI, so ordinary methods cannot
+claim this exception. Startup preserves this narrow allocation route even
+in developer counterpart mode; install, issue and receipt methods remain
+on their normal selected routes. This is a concrete allocation bridge, not
+an accounting theorem or an exemption from funding the created object.

@@ -153,3 +153,23 @@
 ; Duplicate contract keys cannot hide a second producer or tariff.
 (assert-event
  (not (fn-di-operation-formp '(:stage :projection :funding fn-ros-install-syncer :tariff fn-ros-worker-vector :draw fn-rl-draw :principal :owner :slot 2 :physical fn-ros-physical :outcome fn-ros-outcome :retention :physical-and-operation :coverage (:resident :workers) :unaccounted (fn-rl-wfp fn-rl-draw mv-nth) :slot 9))))
+
+; Private allocation uses only the verified registered creator role. The
+; semantic methods cannot acquire the allocation exception by annotation.
+(definterface create-fn-resource-ledger :class :common-lisp-compliant
+  :raw-guarded (0 nil (fn-resource-ledger)))
+(assert-event
+ (fn-di-raw-creatorp 'create-fn-resource-ledger
+                    '(:class :common-lisp-compliant
+                      :raw-guarded (0 nil (fn-resource-ledger))) (w state)))
+(assert-event
+ (not (fn-di-raw-creatorp 'create-fn-resource-ledger
+                         '(:class :common-lisp-compliant) (w state))))
+(assert-event
+ (not (fn-di-raw-creatorp 'fn-ros-issue
+                         '(:class :common-lisp-compliant
+                           :raw-guarded (0 nil (fn-resource-ledger))) (w state))))
+(assert-event
+ (not (fn-di-raw-creatorp 'create-fn-resource-ledger
+                         '(:class :common-lisp-compliant
+                           :raw-guarded (0 nil (state))) (w state))))

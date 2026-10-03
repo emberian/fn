@@ -29,7 +29,8 @@
 ; A private owner syncer ledger is installed only after the parent's real
 ; startup :hold.  This is thread resident/worker custody, not full resource
 ; admission accounting; unresolved costs are explicit in the operation row.
-(definterface create-fn-resource-ledger :class :common-lisp-compliant)
+(definterface create-fn-resource-ledger :class :common-lisp-compliant
+  :raw-guarded (0 nil (fn-resource-ledger)))
 (definterface fn-ros-install-syncer :class :ideal)
 (definterface fn-ros-issue
   :class :ideal
