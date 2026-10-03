@@ -483,3 +483,57 @@
           (actual (fn-sf-record-has-pairp pair records)))
      (and (equal actual nil)
           (equal actual (sft-record-has-pair-ref pair records))))))
+
+; sf-records (X05 interim): the single-dispatch :exec walk of
+; fn-sf-record-listp against an independent reference that reads each record
+; through the fn-store-event- readers, as the :logic definition does.  Each
+; row: a valid log, then one mutation per conjunct of the walk (sequence,
+; lower bound, frontier, generation, a non-event, a non-list tail).
+(local
+ (defun sft-record-list-ref (records sequence lower frontier)
+   (declare (xargs :guard t :verify-guards nil))
+   (if (consp records)
+       (let ((r (car records)))
+         (and (fn-store-event-p r)
+              (equal (fn-store-event-sequence r) sequence)
+              (natp (fn-store-event-txid r))
+              (<= lower (fn-store-event-txid r))
+              (< (fn-store-event-txid r) frontier)
+              (equal (fn-store-event-generation r) (fn-store-event-txid r))
+              (sft-record-list-ref (cdr records) (1+ sequence)
+                                   (1+ (fn-store-event-txid r)) frontier)))
+     (null records))))
+
+(local
+ (defun sft-rel (seq txid gen)
+   (declare (xargs :guard t :verify-guards nil))
+   (fn-store-retention-event-make :release seq txid gen "o" "s" "e" 0)))
+
+(local
+ (defun sft-record-list-agrees (records sequence lower frontier expected)
+   (declare (xargs :guard t :verify-guards nil))
+   (let ((actual (with-guard-checking :all
+                   (fn-sf-record-listp records sequence lower frontier))))
+     (and (equal actual expected)
+          (equal actual (sft-record-list-ref records sequence lower frontier))))))
+
+; Accepted: contiguous sequences, increasing txids with a gap, all below the
+; frontier, generation = txid.
+(assert-event (sft-record-list-agrees
+               (list (sft-rel 0 0 0) (sft-rel 1 3 3) (sft-rel 2 4 4)) 0 0 5 t))
+(assert-event (sft-record-list-agrees nil 0 0 0 t))
+; Refused, one per conjunct: a sequence gap; a txid below the lower bound
+; (not increasing); a txid at the frontier; generation /= txid; a record that
+; is no event; an improper tail.
+(assert-event (sft-record-list-agrees
+               (list (sft-rel 0 0 0) (sft-rel 2 3 3)) 0 0 5 nil))
+(assert-event (sft-record-list-agrees
+               (list (sft-rel 0 2 2) (sft-rel 1 2 2)) 0 0 5 nil))
+(assert-event (sft-record-list-agrees
+               (list (sft-rel 0 0 0) (sft-rel 1 5 5)) 0 0 5 nil))
+(assert-event (sft-record-list-agrees
+               (list (sft-rel 0 0 0) (sft-rel 1 3 4)) 0 0 5 nil))
+(assert-event (sft-record-list-agrees
+               (list (sft-rel 0 0 0) '(:not an event)) 0 0 5 nil))
+(assert-event (sft-record-list-agrees
+               (cons (sft-rel 0 0 0) :tail) 0 0 5 nil))
