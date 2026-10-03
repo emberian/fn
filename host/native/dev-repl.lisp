@@ -4,6 +4,16 @@
 ;;; interface or an ACL2 proof boundary; forms may deliberately change code/state.
 (in-package "ACL2")
 
+;; Earlier loads registered function objects. Remove our old objects before
+;; DEFUN replaces them, then register symbols below so future reloads dedupe
+;; and call the current definitions. Leave every other owner's hook intact.
+(dolist (entry '((fnn-dev-repl-start *fnn-owner-start-hooks*)
+                 (fnn-dev-repl-stop *fnn-owner-stop-hooks*)
+                 (fnn-dev-repl-close *fnn-owner-close-hooks*)))
+ (when (and (fboundp (first entry)) (boundp (second entry)))
+  (setf (symbol-value (second entry))
+        (remove (symbol-function (first entry)) (symbol-value (second entry))))))
+
 (defvar *fnn-dev-repl* nil)
 (defvar *fnn-dev-service* nil)
 (defvar *fnn-dev-admission-failed* nil)
@@ -189,6 +199,6 @@ Lisp execution. NIL explicitly uses the world's ordinary prover allowance."
    (fnn-dev-unlink-owned control))
   (setf *fnn-dev-repl* nil)))
 
-(pushnew #'fnn-dev-repl-start *fnn-owner-start-hooks*)
-(pushnew #'fnn-dev-repl-stop *fnn-owner-stop-hooks*)
-(pushnew #'fnn-dev-repl-close *fnn-owner-close-hooks*)
+(pushnew 'fnn-dev-repl-start *fnn-owner-start-hooks*)
+(pushnew 'fnn-dev-repl-stop *fnn-owner-stop-hooks*)
+(pushnew 'fnn-dev-repl-close *fnn-owner-close-hooks*)
