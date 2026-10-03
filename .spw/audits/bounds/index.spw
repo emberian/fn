@@ -80,9 +80,21 @@
 }
 ^"catchup-spool-shape"{
  state: "Design freeze for Foundations producer; no installed grant or source implementation yet"
- source: "One ephemeral spool per admitted flight; spool records hold exact normalized article bytes and bounded record metadata for second sequential parse. Keep only current header/msgid<=250, line count, offsets and running32byte chain"
+ source: "One ephemeral spool per admitted flight; spool records hold exact normalized article bytes and bounded record metadata for second sequential parse. Header format is269 content/271 wire octets at max250 Message-ID and16hex count; controller window512 shares network buffer. Keep only current header/msgid<=250, line count, offsets and running32byte chain"
  continuation: "At record end, pause network receive and hash its known immutable spool range with pgs-dcb-begin/read-demand/step/result in64byte windows; then fold chain32+digest32+msgid and resume. At batch END compare complete chain before IHAVE; second spool pass emits IHAVE and dot-stuffed body windows. Never retain record index or complete body lines"
  authority: "New operator peer-flight allowance owns resident heap, spool disk, simultaneous flights, independent spool worker count, per-turn work. Launcher subtracts dedicated peer heap once before DEFAULT storage planning. No StoreA/T or output/syncer slack as substitute"
  custody: "Grant before dial/spool open. Hold socket+spool descriptor and actual worker/queue through receive/hash/replay; local replay socket adds simultaneous descriptor. Cancellation revokes publication but retains custody until physical worker completion, join, close observation and spool cleanup; peerACK/local235 does not settle"
  caps: "Spool quota counts headers/metadata as well as body, so zero-line malicious records consume admitted disk. Insufficient grant holds/refuses before next write, cursor unchanged. Wire quantum yields/resumes, no silent truncation. Source octets and physical heap are distinct dimensions"
+}
+
+^"B008-consumer-cursor-width"{
+ @codec: ~"../../../books/consumer-position.lisp"
+ @fields: ~"../../../books/consumer-position-fields.lisp"
+ @projection: ~"../../../books/consumer-poll-projection.lisp"
+ source: "horse-bounds 1f450325a; unchanged cursor definitions from9df4a3a4e6"
+ symbols: "fn-cpj-max-cursor-octets / fn-cp-cursorp / fn-cp-cursor-encode / fn-cp-uintp"
+ classification: "Reviewed format bound; suspected natural-position mismatch refuted"
+ units: "346 wire octets =5-byte magic/version +5 length-prefixed IDs of at most64 octets +4 u32 fields"
+ trace: "fn-cp-uintp uses fn-cbor-max-uint4294967295; cursor recognizer applies it to query version, view, registration epoch and position. Encoder emits each as u32. Decoder preflight512 is a conservative single fixed-record allocation/work guard, not consumer population bound"
+ repair: "None required for current format; any scalar widening must change grammar, projection bound and roundtrip subject together"
 }
