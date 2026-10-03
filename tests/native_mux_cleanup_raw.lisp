@@ -206,3 +206,40 @@
                     (fnn-mux-drained-p service))
                "returned cold revocation clears only connection publication slot")))))
 (format t "native_mux_cleanup_cold_composition: PASS actual current cold helper/slot success+fault~%")
+
+;;; S085: admit consumes queued waiting before native SSL allocation.
+;;; Extract the actual request/start functions and fail at accept-begin;
+;;; existing finish/release callbacks then settle the admitted identity once.
+(load-deployed-forms "host/native/mux.lisp"
+ '((defun fnn-mux-request-handshake) (defun fnn-mux-start-handshake)))
+(defun fnn-mux-handshake-ask (loop conn queuedp)
+  (declare (ignore loop conn))
+  (check queuedp "fault witness enters via queued STARTTLS admission")
+  (values :admit 41 1000 nil))
+(defvar *queued-accept-begin-reached* nil)
+(defun fnn-tls-accept-begin (context fd)
+  (declare (ignore context fd))
+  (setf *queued-accept-begin-reached* t)
+  (error "injected SSL_new failure before handshake phase"))
+(let* ((*cleanup-mode* nil) (*cleanup-calls* nil) (*queued-accept-begin-reached* nil)
+       (service (%make-fnn-owner-service :lock (sb-thread:make-mutex)))
+       (loop (%make-fnn-mux-loop :service service :closed t))
+       (conn (%make-fnn-mux-conn :phase :hs-wait
+                                :socket (make-instance 'sb-bsd-sockets:inet-socket
+                                                       :type :stream :protocol :tcp))))
+  (setf (fnn-owner-service-stopping service) t
+        (fnn-owner-service-mux service) (list loop)
+        (fnn-mux-loop-conns loop) (list conn)
+        (fnn-mux-loop-waiting loop) (list conn))
+  (handler-case (progn (fnn-mux-request-handshake loop conn t)
+                      (error "allocation failure was not reached"))
+    (error () (fnn-mux-finish loop conn)))
+
+  (check (and *queued-accept-begin-reached* (null (fnn-mux-loop-waiting loop))
+              (eq (fnn-mux-conn-phase conn) :done)
+              (null (fnn-mux-conn-hs-id conn))
+              (= 1 (count 'fn-owner-handshake-done *cleanup-calls* :key (lambda (x) (if (consp x) (car x) x))))
+              (= 0 (count 'fn-owner-handshake-leave *cleanup-calls* :key (lambda (x) (if (consp x) (car x) x))))
+              (null (fnn-mux-loop-cleanup-debts loop)))
+         "queued native allocation failure reports admitted done once and no duplicate leave"))
+(format t "native_mux_queued_handshake_failure: PASS~%")

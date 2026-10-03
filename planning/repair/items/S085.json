@@ -10,14 +10,16 @@
  "id": "S085",
  "line": "813",
  "locus": "connections",
- "notes": [],
- "owner": "host-lifecycle",
+ "notes": [
+  "2026-10-03 sol-access: admitted queued STARTTLS clears :hs-wait before native allocation; actual deployed request/start/finish/release fault witness red->green. Source/raw-host evidence planning/evidence/sol-access-s085-2026-10-03.md; immutable image scenario pending."
+ ],
+ "owner": "sol-access",
  "reviewer": "fn-hsb-admit with queuedp already decrements waiting on :admit: left = waiting-1 is stored in the :admit state (books/tls-handshake-decision.lisp:335, 349-351). fnn-mux-request-handshake's :admit branch leaves phase :hs-wait (mux.lisp:813-817). fnn-mux-start-handshake evaluates fnn-tls-accept-begin before setting phase :handshake (mux.lisp:833-836), so a signal from SSL_new/SSL_set_fd reaches fnn-mux-guarded -> fnn-mux-finish with was=:hs-wait. Finish then calls fn-owner-handshake-leave, decrementing waiting a second time (fn-hsb-leave, books/tls-handshake-decision.lisp:370-374). It uses nfix, so this is undercounting, not a fault. It is reachable only when accept-begin fails (resource exhaustion), so low.",
  "scenario": "A STARTTLS upgrade waits (:hs-wait), and a later pass admits it with queuedp=t, which tells ACL2 it left the waiting count. SSL_new or SSL_set_fd then fails in fnn-tls-accept-begin and signals. fnn-mux-guarded calls fnn-mux-finish with phase still :hs-wait, so it reports both fn-owner-handshake-done and fn-owner-handshake-leave. The node's waiting count is decremented for a socket that no longer waits, which weakens the 'refused busy when too many wait' bound, or faults if ACL2 refuses the underflow.",
  "severity": "low",
  "slice": "mux",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "STARTTLS admitted from the wait queue keeps phase :hs-wait, so a failure in fnn-tls-accept-begin double-counts the handshake leave",
  "updated": "2026-10-03T02:30:23Z"
 }

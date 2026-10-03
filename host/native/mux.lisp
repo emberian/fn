@@ -993,7 +993,12 @@ slot (QUEUEDP when it already waited), or it is refused and closed.  Answers
 whether it is still waiting."
   (multiple-value-bind (verdict x ms line) (fnn-mux-handshake-ask loop conn queuedp)
     (ecase verdict
-      (:admit (setf (fnn-mux-conn-hs-id conn) x)
+      (:admit
+              ;; ACL2 already removed a queued admission from WAITING.  Do
+              ;; this before SSL_new/SSL_set_fd can fail: cleanup must release
+              ;; only the admitted identity, never report a second queue leave.
+              (setf (fnn-mux-conn-phase conn) :new
+                    (fnn-mux-conn-hs-id conn) x)
               (when queuedp
                 (setf (fnn-mux-loop-waiting loop)
                       (delete conn (fnn-mux-loop-waiting loop) :test #'eq)))
