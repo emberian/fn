@@ -116,8 +116,8 @@ DEFAULT_SIZES = [1000, 3000, 10000, 30000, 100000]
 GROUPS = ["fn.g%d" % i for i in range(8)]
 OCTETS = 2048
 WITHDRAW_EVERY = 200
-M_POST = 200
-M_READ = 200
+M_POST = 20
+M_READ = 50
 M_WITHDRAW = 5
 EXPONENT_TOL = 0.25
 BYTES_TOL = 0.25
@@ -451,6 +451,8 @@ def cmd_run(a):
     # A SIGTERM (a timeout, systemd) unwinds through every Node.stop: no
     # owner outlives its driver.
     signal.signal(signal.SIGTERM, _terminated)
+    import faulthandler
+    faulthandler.register(signal.SIGUSR1)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     meta = {"image": str(a.image), "sizes": a.sizes, "guards": a.guards,
