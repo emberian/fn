@@ -1,647 +1,647 @@
 # Actual native entry candidates; discovery is not full trace coverage.
-^"coordinate"{ source_revision: "b9bb758662e018f089114bd141e81c9333a64310"
+^"coordinate"{ source_revision: "0985ca9648084075ca415416353ce7f8f8a0b42c"
  tier: "exact source discovery; public-image exposure and downstream reading unestablished" }
 ^"fnn-command-acl2"{
  @source: ~"../../../host/native/acl2-session.lisp"
  line: 21
  source_sha256: "b0b6c3735797f551aada7ff7761ff215d7b2726dc324c97e3d268a449d4e49d3"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-anchor"{
  @source: ~"../../../host/native/anchor.lisp"
  line: 377
  source_sha256: "c623c96e458dead85fc05f76893dd29f7554b19f593afa7b138ae9ccb6b5afdf"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-bp-app-receive"{
  @source: ~"../../../host/native/bp-app.lisp"
  line: 324
  source_sha256: "0ce05ba10bb581b7a8046d4126ca5c911ab9ac53857abe1851a7afce3538960e"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-bp-contact-tick"{
  @source: ~"../../../host/native/bp-contact.lisp"
  line: 26
  source_sha256: "92e39f9735a7d3634d83f55a02a1d2b270095b9a937398a0b0c2178e1ee41b43"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-bp-node-resume"{
  @source: ~"../../../host/native/bp-node.lisp"
  line: 492
  source_sha256: "89781b5ff5edcac3f594535eac24db0b79f27b8d37e9deb35ccbde599259a795"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-bp-node-checkpoint"{
  @source: ~"../../../host/native/bp-node.lisp"
  line: 511
  source_sha256: "89781b5ff5edcac3f594535eac24db0b79f27b8d37e9deb35ccbde599259a795"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-bp-node-profile"{
  @source: ~"../../../host/native/bp-node.lisp"
  line: 623
  source_sha256: "89781b5ff5edcac3f594535eac24db0b79f27b8d37e9deb35ccbde599259a795"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-bp-node"{
  @source: ~"../../../host/native/bp-node.lisp"
  line: 1081
  source_sha256: "89781b5ff5edcac3f594535eac24db0b79f27b8d37e9deb35ccbde599259a795"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-bp-session-profile"{
  @source: ~"../../../host/native/bp-node.lisp"
  line: 1230
  source_sha256: "89781b5ff5edcac3f594535eac24db0b79f27b8d37e9deb35ccbde599259a795"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-bpo-owner-status"{
  @source: ~"../../../host/native/bp-obligation.lisp"
  line: 66
  source_sha256: "b73b8e9ab85cfa1f88ea887cde8f173eae6698adaeaff1d80a213b2c51258640"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-bpo-owner-undertake"{
  @source: ~"../../../host/native/bp-obligation.lisp"
  line: 79
  source_sha256: "b73b8e9ab85cfa1f88ea887cde8f173eae6698adaeaff1d80a213b2c51258640"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-bpo-owner-receipt"{
  @source: ~"../../../host/native/bp-obligation.lisp"
  line: 115
  source_sha256: "b73b8e9ab85cfa1f88ea887cde8f173eae6698adaeaff1d80a213b2c51258640"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-bpo-owner-request"{
  @source: ~"../../../host/native/bp-obligation.lisp"
  line: 193
  source_sha256: "b73b8e9ab85cfa1f88ea887cde8f173eae6698adaeaff1d80a213b2c51258640"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-bpo-owner-recover"{
  @source: ~"../../../host/native/bp-obligation.lisp"
  line: 258
  source_sha256: "b73b8e9ab85cfa1f88ea887cde8f173eae6698adaeaff1d80a213b2c51258640"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-bp-service-run"{
  @source: ~"../../../host/native/bp-service.lisp"
  line: 1509
  source_sha256: "9b75977a699d97d64a12034c2e7d5f52e15d53d2b8404390050f0368c234f482"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-bp-service-resume"{
  @source: ~"../../../host/native/bp-service.lisp"
  line: 1541
  source_sha256: "9b75977a699d97d64a12034c2e7d5f52e15d53d2b8404390050f0368c234f482"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-bp-service-inspect-received"{
  @source: ~"../../../host/native/bp-service.lisp"
  line: 1554
  source_sha256: "9b75977a699d97d64a12034c2e7d5f52e15d53d2b8404390050f0368c234f482"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-bp-send"{
  @source: ~"../../../host/native/bp.lisp"
  line: 646
  source_sha256: "ef0c899d15afe62e5332484304e24ca2c1a0ddc8d3a33977f980abf87e8ff201"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-bp-receive"{
  @source: ~"../../../host/native/bp.lisp"
  line: 728
  source_sha256: "ef0c899d15afe62e5332484304e24ca2c1a0ddc8d3a33977f980abf87e8ff201"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-bp-decode"{
  @source: ~"../../../host/native/bp.lisp"
  line: 810
  source_sha256: "ef0c899d15afe62e5332484304e24ca2c1a0ddc8d3a33977f980abf87e8ff201"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-compact"{
  @source: ~"../../../host/native/checkpoint.lisp"
  line: 53
  source_sha256: "ae14745a3947e5649ff20fe59b5f78c77b930177587bb459f9e212bba5987be7"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-reclaim"{
  @source: ~"../../../host/native/checkpoint.lisp"
  line: 195
  source_sha256: "ae14745a3947e5649ff20fe59b5f78c77b930177587bb459f9e212bba5987be7"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-config-profile"{
  @source: ~"../../../host/native/config.lisp"
  line: 11
  source_sha256: "63d28c572492342f64bc5f4c248f367ab4a20eb96ac3028704d25419bbfd156e"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-consumer-local"{
  @source: ~"../../../host/native/consumer-local.lisp"
  line: 19
  source_sha256: "81b91f565f5d29857c65f5abe88548518fe16711964b37c6e4c2986dd1928d8d"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-consumer-article"{
  @source: ~"../../../host/native/consumer-local.lisp"
  line: 138
  source_sha256: "81b91f565f5d29857c65f5abe88548518fe16711964b37c6e4c2986dd1928d8d"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-remote-receive-installed"{
  @source: ~"../../../host/native/consumer-remote.lisp"
  line: 71
  source_sha256: "a038884eb11ce83d409364abeff5e353bbfaeb836067575da90bc445eb9ce5fd"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-digest-check"{
  @source: ~"../../../host/native/digest.lisp"
  line: 537
  source_sha256: "ef5b4eda2a9c7943ba9878eab353e84a321f087a114bf90ce8478bce260a19bb"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-heap"{
  @source: ~"../../../host/native/heap.lisp"
  line: 358
  source_sha256: "1b81e71aea5f45086d1e581e824b8bee6c60bb5457af47fccb4dc0c3866856e5"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-hybrid-enroll"{
  @source: ~"../../../host/native/hybrid-control.lisp"
  line: 235
  source_sha256: "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-hybrid-author"{
  @source: ~"../../../host/native/hybrid-control.lisp"
  line: 252
  source_sha256: "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-hybrid-revoke"{
  @source: ~"../../../host/native/hybrid-control.lisp"
  line: 278
  source_sha256: "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-hybrid-key-history"{
  @source: ~"../../../host/native/hybrid-control.lisp"
  line: 292
  source_sha256: "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-hybrid-enroll-next"{
  @source: ~"../../../host/native/hybrid-control.lisp"
  line: 317
  source_sha256: "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-hybrid-revoke-next"{
  @source: ~"../../../host/native/hybrid-control.lisp"
  line: 331
  source_sha256: "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-rebind-filesystem"{
  @source: ~"../../../host/native/io.lisp"
  line: 3421
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-store-digest"{
  @source: ~"../../../host/native/io.lisp"
  line: 3813
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-store-journal"{
  @source: ~"../../../host/native/io.lisp"
  line: 3831
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-state-checkpoint"{
  @source: ~"../../../host/native/io.lisp"
  line: 3864
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-node-secret"{
  @source: ~"../../../host/native/io.lisp"
  line: 4328
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-init"{
  @source: ~"../../../host/native/io.lisp"
  line: 4345
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-init-published"{
  @source: ~"../../../host/native/io.lisp"
  line: 4356
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-developer-init"{
  @source: ~"../../../host/native/io.lisp"
  line: 4418
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-store-export"{
  @source: ~"../../../host/native/io.lisp"
  line: 4655
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-store-import"{
  @source: ~"../../../host/native/io.lisp"
  line: 4936
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-store-bless-snapshot"{
  @source: ~"../../../host/native/io.lisp"
  line: 5039
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-post"{
  @source: ~"../../../host/native/io.lisp"
  line: 5331
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-recover"{
  @source: ~"../../../host/native/io.lisp"
  line: 5427
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-live-pages"{
  @source: ~"../../../host/native/io.lisp"
  line: 5498
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-live-report"{
  @source: ~"../../../host/native/io.lisp"
  line: 5513
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-inspect-group-offline"{
  @source: ~"../../../host/native/io.lisp"
  line: 5533
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-stopped-status"{
  @source: ~"../../../host/native/io.lisp"
  line: 5618
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-status"{
  @source: ~"../../../host/native/io.lisp"
  line: 5626
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-retention"{
  @source: ~"../../../host/native/io.lisp"
  line: 5634
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-compression"{
  @source: ~"../../../host/native/io.lisp"
  line: 5645
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-config"{
  @source: ~"../../../host/native/io.lisp"
  line: 5660
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-inspect"{
  @source: ~"../../../host/native/io.lisp"
  line: 5672
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-provenance"{
  @source: ~"../../../host/native/io.lisp"
  line: 5689
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-probe"{
  @source: ~"../../../host/native/io.lisp"
  line: 5732
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-model"{
  @source: ~"../../../host/native/io.lisp"
  line: 6408
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-reader"{
  @source: ~"../../../host/native/io.lisp"
  line: 6428
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-log-scan-store"{
  @source: ~"../../../host/native/io.lisp"
  line: 8889
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-log"{
  @source: ~"../../../host/native/io.lisp"
  line: 8953
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-dispatch"{
  @source: ~"../../../host/native/io.lisp"
  line: 9025
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-redeem"{
  @source: ~"../../../host/native/io.lisp"
  line: 9261
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-main"{
  @source: ~"../../../host/native/io.lisp"
  line: 9371
  source_sha256: "8689d2e4d4bb54afcf17281dd56c8490fb311e7a7258d2e4879bc3630167f179"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-ninep-start"{
  @source: ~"../../../host/native/ninep.lisp"
  line: 68
  source_sha256: "5dbb5cf5654c6bf32c30f9b287212c42460cc33a7281526f69c9a66b781c4fed"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-operator"{
  @source: ~"../../../host/native/operator.lisp"
  line: 1198
  source_sha256: "f66ffa102db532d5ab32d981f6b70e023cc7346de48a87dc3450e3af69e086f9"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-owner-run"{
  @source: ~"../../../host/native/owner.lisp"
  line: 8120
  source_sha256: "ec911c69097a19406606c31aa3237e0cce762ae2a8c0ccab2e83d40e1e751aa1"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-owner"{
  @source: ~"../../../host/native/owner.lisp"
  line: 8444
  source_sha256: "ec911c69097a19406606c31aa3237e0cce762ae2a8c0ccab2e83d40e1e751aa1"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-hybrid-sign"{
  @source: ~"../../../host/native/signature-command.lisp"
  line: 46
  source_sha256: "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-hybrid-sign-carrier"{
  @source: ~"../../../host/native/signature-command.lisp"
  line: 60
  source_sha256: "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-hybrid-verify-carrier"{
  @source: ~"../../../host/native/signature-command.lisp"
  line: 83
  source_sha256: "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-hybrid-verify-source"{
  @source: ~"../../../host/native/signature-command.lisp"
  line: 96
  source_sha256: "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-topic-inspect-carrier"{
  @source: ~"../../../host/native/signature-command.lisp"
  line: 128
  source_sha256: "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-consumer-project"{
  @source: ~"../../../host/native/signature-command.lisp"
  line: 172
  source_sha256: "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-consumer-inspect"{
  @source: ~"../../../host/native/signature-command.lisp"
  line: 217
  source_sha256: "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-statement-sign"{
  @source: ~"../../../host/native/signature-command.lisp"
  line: 252
  source_sha256: "d5f8af4575728a1f7617c9b74e1ff57bdbca0f5476149867b8328c60d3ef24fa"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-tcpcl-listen"{
  @source: ~"../../../host/native/tcpcl.lisp"
  line: 812
  source_sha256: "8461c6ae76eed91841c859ac76804f890cee58787d41bab0217ea3139c488e0a"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-tcpcl-send"{
  @source: ~"../../../host/native/tcpcl.lisp"
  line: 865
  source_sha256: "8461c6ae76eed91841c859ac76804f890cee58787d41bab0217ea3139c488e0a"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-tcpcl-replay"{
  @source: ~"../../../host/native/tcpcl.lisp"
  line: 913
  source_sha256: "8461c6ae76eed91841c859ac76804f890cee58787d41bab0217ea3139c488e0a"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-topic-local"{
  @source: ~"../../../host/native/topic-local.lisp"
  line: 5
  source_sha256: "47bf579bb8bb7d834c4d24dab0c988bc4a734517d91569885d7820360b702910"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-web-start"{
  @source: ~"../../../host/native/web-host.lisp"
  line: 911
  source_sha256: "d3bd78ebb1d170a3b9861f9c6e855f374a729f89e4cc554d79125be6627120a8"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-workflow-init"{
  @source: ~"../../../host/native/workflow.lisp"
  line: 558
  source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-workflow-enqueue"{
  @source: ~"../../../host/native/workflow.lisp"
  line: 566
  source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-workflow-status"{
  @source: ~"../../../host/native/workflow.lisp"
  line: 579
  source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-workflow-undertake"{
  @source: ~"../../../host/native/workflow.lisp"
  line: 587
  source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-workflow-ion-submit"{
  @source: ~"../../../host/native/workflow.lisp"
  line: 596
  source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-workflow-ion-status"{
  @source: ~"../../../host/native/workflow.lisp"
  line: 609
  source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-workflow-receipt"{
  @source: ~"../../../host/native/workflow.lisp"
  line: 632
  source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-receipt-init"{
  @source: ~"../../../host/native/workflow.lisp"
  line: 643
  source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-receipt-complete"{
  @source: ~"../../../host/native/workflow.lisp"
  line: 651
  source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
 ^"fnn-command-receipt-replay"{
  @source: ~"../../../host/native/workflow.lisp"
  line: 667
  source_sha256: "29cb7bb8dfd4491bcb61a8708507372327b81ce4872d7f2aaef7102beee928d1"
  coverage: "entry body read; downstream leaf closure partial, see coverage.md"
- read_coordinate: "b9bb75866 + scoped Web E016 edits"
+ read_coordinate: "0985ca9648084075ca415416353ce7f8f8a0b42c"
 }
