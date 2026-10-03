@@ -425,31 +425,38 @@ acceptance (the owner is stopping or fenced then)."
       (setf (fnn-pull-flight-socket flight) socket))))
 
 (defun fnn-pull-flight-close-local (flight)
+  "Revoke publication and attempt every local release, preserving first failure."
   (let ((cid (fnn-pull-flight-cid flight))
-        (service (fnn-pull-flight-service flight)))
-    (when (fnn-pull-flight-cold flight)
-      (fnn-owner-cold-abandon (first (fnn-pull-flight-cold flight)))
-      (setf (fnn-pull-flight-cold flight) nil))
-    (when cid
-      (let ((await nil))
-        (sb-thread:with-mutex ((fnn-pull-runtime-lock (fnn-pull-flight-runtime flight)))
-          (setq await (fnn-pull-flight-await flight))
-          (setf (fnn-pull-flight-cid flight) nil
-                (fnn-pull-flight-await flight) nil
-                (fnn-pull-flight-completion flight) nil))
-        (when await (fnn-owner-await-abandon service cid)))
-      (fnn-owner-response-unpin service cid)
-      (fnn-owner-transit-serialized
-       service nil (lambda () (fnn-owner-action 'fn-owner-close cid))))
-    (setf (fnn-pull-flight-await flight) nil
-          (fnn-pull-flight-completion flight) nil
+        (cold (fnn-pull-flight-cold flight))
+        (service (fnn-pull-flight-service flight)) (await nil) (failure nil))
+    ;; Invalidate the callback's captured await identity before owner calls.
+    ;; Abandonment revokes publication; it is not a physical-job receipt.
+    (sb-thread:with-mutex ((fnn-pull-runtime-lock (fnn-pull-flight-runtime flight)))
+      (setq await (fnn-pull-flight-await flight))
+      (setf (fnn-pull-flight-cid flight) nil
+            (fnn-pull-flight-await flight) nil
+            (fnn-pull-flight-completion flight) nil))
+    (setf (fnn-pull-flight-cold flight) nil
           (fnn-pull-flight-input flight) nil
-          (fnn-pull-flight-render flight) nil)))
+          (fnn-pull-flight-render flight) nil)
+    (flet ((release (thunk)
+             (handler-case (funcall thunk)
+               (serious-condition (condition) (unless failure (setq failure condition))))))
+      (when cold (release (lambda () (fnn-owner-cold-abandon (first cold)))))
+      (when cid
+        (when await (release (lambda () (fnn-owner-await-abandon service cid))))
+        (release (lambda () (fnn-owner-response-unpin service cid)))
+        (release (lambda ()
+                   (fnn-owner-transit-serialized
+                    service nil (lambda () (fnn-owner-action 'fn-owner-close cid)))))))
+    (when failure (error failure))))
 
 (defun fnn-pull-flight-dispose (flight)
   "Attempt all releases; preserve the first cleanup condition."
-  (unless (fnn-pull-flight-closed flight)
-    (setf (fnn-pull-flight-closed flight) t)
+  (when (sb-thread:with-mutex ((fnn-pull-runtime-lock (fnn-pull-flight-runtime flight)))
+          (unless (fnn-pull-flight-closed flight)
+            (setf (fnn-pull-flight-closed flight) t)
+            t))
     (let ((failure nil))
       (flet ((release (thunk)
                (handler-case (funcall thunk)
@@ -561,7 +568,8 @@ acceptance (the owner is stopping or fenced then)."
            (setf (fnn-pull-flight-completion flight) nil))
          (unless completion (return-from fnn-pull-flight-local-step :wait))
          (destructuring-bind (step redeem) (fnn-pull-flight-await flight)
-           (setf (fnn-pull-flight-await flight) nil)
+           (sb-thread:with-mutex ((fnn-pull-runtime-lock (fnn-pull-flight-runtime flight)))
+             (setf (fnn-pull-flight-await flight) nil))
            (let ((value (car completion)))
              (if (eq value :uncertain)
                  (setf (fnn-pull-flight-closing flight) t)
@@ -612,7 +620,8 @@ acceptance (the owner is stopping or fenced then)."
                     (fnn-pull-flight-closing flight) closing)
               (if await
                   (progn
-                    (setf (fnn-pull-flight-await flight) (list (second results) (third results)))
+                    (sb-thread:with-mutex ((fnn-pull-runtime-lock (fnn-pull-flight-runtime flight)))
+                      (setf (fnn-pull-flight-await flight) (list (second results) (third results))))
                     (let* ((marker (fnn-pull-flight-await flight))
                            (early
                             (fnn-owner-await-register

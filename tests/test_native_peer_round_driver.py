@@ -26,3 +26,6 @@ class PeerRoundDriverTests(unittest.TestCase):
 
     def test_single_attempt_kernel_connect_read_and_write_preserve_custody(self):
         self.schedule("io")
+
+    def test_failed_local_release_attempts_all_custody_cleanup(self):
+        self.schedule("cleanup")

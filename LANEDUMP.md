@@ -1065,3 +1065,14 @@ receipt `S054-a884a8d71f154c0bbbf8ea440298d9f3.json`, SHA256
 `6e940186a0269c75549aeafe4a2b6891b50a40020dcb8e0ff9c2e4139c338667`,
 again exact intended base assertion versus same designated head pass, with
 no errors/skips/infra. No production semantics changed since51c5c4f2e.
+
+
+Assembly caught a real local cleanup gap: failed cold abandonment/unpin
+could skip the remaining local releases. close-local now invalidates the
+captured await under the mutex first, then independently attempts cold
+abandon, await abandon, response unpin and CID close, preserving the first
+condition. Dispose closes its callback publication state under that same
+mutex and still attempts channel/context/socket cleanup. Added actual
+cleanup-caller fixture: first indeterminate cold release plus later unpin
+fault still attempts await/CID and preserves indeterminate. Five scoped
+round tests PASS1.989s before mutex follow-through; final result below.
