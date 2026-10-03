@@ -930,7 +930,7 @@
             :by ((:instance fn-nntp-newnews-response-stream-expands-to-cat)
                  (:instance fn-nntp-newnews-response-stream-keeps-session)
                  (:instance fn-nntp-newnews-response-cat-is-newnews-response))))
-   :cost (:unrestricted "one retained group/member selection unit or indexed output phase per quantum and at most W emitted bytes; fixed reference-only initialization; matcher/comparison and composed heap tariff, physical resource custody, legacy cold metadata fallback and completed-view capture remain GEN-CURSOR debt"
+   :cost (:unrestricted "one retained group/member entry or wildcard matcher microstep or indexed output phase per quantum and at most W emitted bytes; fixed reference-only initialization; matcher/comparison and composed heap tariff, physical resource custody, legacy cold metadata fallback and completed-view capture remain GEN-CURSOR debt"
           :restricted "the reference whole pinned archive walk, including payload tombstone reads")
    :teeth ("NEWNEWS * 20261001 000000 GMT" "NEWNEWS fn.* 20261001 000000 GMT" "NEWNEWS fn.* 20261001 000000" "NEWNEWS"))
   ("DATE"

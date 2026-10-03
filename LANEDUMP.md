@@ -357,3 +357,39 @@ planning/evidence/dc03-wildmat-total-20261003/{checks.json,repl.log.gz},
 checks hashd6c5f72071/raw5666a52844. These are source admissions, not certs.
 Served imported8599 asd95e and consumes actual matching-selector continuation;
 Foundations received phase accounting and remaining retained-graph/native debt.
+
+## Served matcher consumer source (2026-10-03)
+
+Actual NEWNEWS stream now drives fn-nnm-start/one, retaining either the fixed
+original group/member selector or (:match MATCHER FOLLOWING). First valid equal
+membership starts the reference-only matcher. A controller call takes one
+selector entry or one decoder/DP microstep; settled match resumes exact following
+selection or installs the unchanged indexed Message-ID renderer. No complete
+wildcard match executes inside a candidate visit. Total matcher8599d0b97 plus
+receipt530bdd7bc imported; UTF/legacy-decode demand15, core13, done0, accessors
+used rather than literal13. Arbitrary configured names preserve old decoding and
+length refusal. Disabled logical value/remaining models never execute on served
+steps. Existing unconditional stream residual statements are retained.
+
+Adapter complete encapsulated33forms .71ACL2s/211004steps, guards included:
+start exact candidate value, unconditional residual and decided receipt,
+shape preservation, at most one entry/work unit and phase demand, and strict
+lexicographic group/work progress under carried shape. Original selector30forms
+replay was redundant matching source. Total matcher171forms clean source replay
+23.48ACL2s/9940532steps; its proper local book prelude is necessary. Initial
+bare definition-range probe omitted that prelude and refused, then full book
+range passed; no source defect or false certificate claim. Actual adapter sparse,
+exclusion, invalid-first duplicate, matching suspension and empty settlement
+fixtures pass. Consumer stream/plan source replay is running independently,
+with only three uncached catalog source dependencies; no image or closure run.
+
+PRF1257 now names actual adapter keystones; PRF1261 names consumed matcher
+keystones. Curated events, subsystem spec, existing SCN1084 and Makefile roots
+move together. SOURCE is coherent; exact matching certification, native image,
+tight retained graph/native integer/collector tariff and funded output/cold
+custody remain open. Current shell executes one controller call even at W256;
+next generator batch should run <=W bounded calls per scheduler quantum to avoid
+one timer delay per matcher microstep. This is latency follow-through, not hidden
+whole matching or a reason to truncate data. Paired availability command adapter
+is separate, with raw actual formals and logical-only available archive/index;
+no whole second archive/index build under owner.
