@@ -148,3 +148,21 @@ also lack entries at this base. Served owns consumer/controller integration,
 registry/spec/scenario and root wiring with Integration. No certificate/native
 or composed served claim yet. Evidence archived/indexed under
 planning/evidence/dc03-selector-20261003/{checks.json,selector-repl.log.gz}.
+
+## Clean serializer proof repair (2026-10-03)
+
+Integration frozen321 certification refused FN-SL-LOOP-RESIDUAL: the warm
+catalog world had supplied accumulator algebra absent in the clean book.
+Three new LOCAL facts establish append/revappend normalization, accumulator
+length and true-list output. Existing executable functions and public theorem
+statements unchanged. Clean replay also exposed/fixed the next byte-bound gap.
+
+Fresh hbox dc03-serializer-clean loaded nntp-session from matching certificates
+and def-cursor from source inside encapsulate, no catalog events. Replayed the
+entire assembled serializer (7636b9078 book hash c7e9fddc plus this local patch,
+composed hash9a3b2c7d) from fn-sl-make inside one encapsulate:49forms,0.33ACL2s,
+94,114steps; local events dropped. Residual/byte/list/shape/cell proofs and guards
+pass. Scoped strict theory/book-order and diff checks pass. Evidence archived
+and indexed at planning/evidence/dc03-serializer-clean-20261003/{checks.json,repl.log.gz}.
+No certificate claim here: Integration reuses241passed artifacts and retries
+the exact five failed roots on its next repaired candidate.
