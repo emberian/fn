@@ -270,9 +270,7 @@ class ScriptedPeer:
                 elif word == "ARTICLE":
                     mid = text.split(" ", 1)[1] if " " in text else ""
                     if mid in self.articles:
-                        octets = self.articles[mid].replace(b"\r\n.", b"\r\n..")
-                        stream.write("220 0 {}\r\n".format(mid).encode("ascii")
-                                     + octets + b".\r\n")
+                        self.send_article(stream, mid)
                     else:
                         stream.write(b"430 no such article\r\n")
                 elif word == "STARTTLS" and self.tls:
@@ -295,6 +293,10 @@ class ScriptedPeer:
             except OSError:
                 pass
 
+    def send_article(self, stream, mid):
+        octets = self.articles[mid].replace(b"\r\n.", b"\r\n..")
+        stream.write("220 0 {}\r\n".format(mid).encode("ascii") + octets + b".\r\n")
+
     def count(self, prefix):
         with self.lock:
             return sum(1 for c in self.commands if c.startswith(prefix))
@@ -309,6 +311,31 @@ class ScriptedPeer:
 
 
 @unittest.skipUnless(READY, "set FN_NATIVE_HOST to a native launcher")
+class TricklingPeer(ScriptedPeer):
+    """Hold an actual incomplete ARTICLE body, then release the exact suffix."""
+    def __init__(self, mid, payload):
+        self.held = threading.Event()
+        self.release = threading.Event()
+        super().__init__([mid], {mid: payload})
+
+    def send_article(self, stream, mid):
+        octets = self.articles[mid].replace(b"\r\n.", b"\r\n..")
+        response = "220 0 {}\r\n".format(mid).encode("ascii") + octets + b".\r\n"
+        split = response.index(b"\r\n\r\n") + 6
+        stream.write(response[:split])
+        self.held.set()
+        at = split
+        while at < len(response) and not self.closed and not self.release.wait(.03):
+            stream.write(response[at:at + 1])
+            at += 1
+        if not self.closed:
+            stream.write(response[at:])
+
+    def close(self):
+        self.release.set()
+        super().close()
+
+
 class NativePeerPullTests(unittest.TestCase):
     def setUp(self):
         self.base = scratch(self, "fn-native-pull-")
@@ -459,6 +486,47 @@ class NativePeerPullTests(unittest.TestCase):
         return a, b, proxy
 
     # ------------------------------------------------------------ cases
+
+    @unittest.skipUnless(READY, "set FN_NATIVE_HOST to a matching native launcher")
+    def test_trickling_body_retained_while_other_pull_and_catchup_complete(self):
+        # SCN-1090: this uses the actual saved core and local durable IHAVE.
+        a = self.initialize("healthy-source", ["fn.test"], "healthy.round.example.invalid")
+        b = self.initialize("round-consumer", ["fn.test"], "consumer.round.example.invalid")
+        self.start(a)
+        healthy_mid = "<healthy-round@example.invalid>"
+        slow_mid = "<slow-round@example.invalid>"
+        healthy_payload = article(healthy_mid, "healthy round")
+        slow_payload = article(slow_mid, "slow round").split(b"\r\n\r\n", 1)[0] + b"\r\n\r\n" + b"s" * 4000 + b"\r\n"
+        self.post(a, healthy_payload)
+        slow = TricklingPeer(slow_mid, slow_payload)
+        self.addCleanup(slow.close)
+        self.pull_from(b, "slow", "slow.round.example.invalid", slow.port)
+        self.pull_from(b, "healthy", "healthy.round.example.invalid", a.port)
+        b.operator("peer", "catch-up", "healthy", INTERVAL, expect=EXIT_OK)
+        self.start(b)
+        self.assertTrue(slow.held.wait(20), "slow peer never reached incomplete ARTICLE body")
+        self.await_article(b, healthy_mid, timeout=30)
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            if b.log.exists() and "catch-up peer=healthy round=done" in b.log.read_text(errors="replace"):
+                break
+            time.sleep(.1)
+        else:
+            self.fail("catch-up did not complete alongside retained slow pull: " + self.log_tail(b))
+        self.assertFalse(slow.release.is_set())
+        self.assertEqual(self.article_code(b, slow_mid), b"430")
+        slow.release.set()
+        self.await_article(b, slow_mid, timeout=30)
+        with Client(b.port, timeout=30) as client:
+            received = client.article(slow_mid)
+        self.assertIsNotNone(received)
+        self.assertEqual(received.split(b"\r\n\r\n", 1)[1], slow_payload.split(b"\r\n\r\n", 1)[1])
+        self.stop(b)
+        self.stop(a)
+        self.witness("resumable-rounds", {"slow_body_octets": 4002,
+                     "slow_commands": slow.commands, "healthy_mid": healthy_mid,
+                     "catchup_completed_before_release": True,
+                     "retained_body_exact": True}, [a, b])
 
     def test_pull_from_fn_node(self):
         a, b, proxy = self.two_nodes()

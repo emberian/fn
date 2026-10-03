@@ -1012,3 +1012,37 @@ claim. Assertion observed during loop BEFORE ordinary worker exit cleanup,
 so old final cleanup cannot falsely make removal look repaired. ACL2 finite
 assertions added to existing peer-pull tests; book/test certification pending
 next combined Integration cut, no standalone cert/image launched here.
+
+
+## Sol transport: resumable pull/catch-up source (2026-10-03)
+
+S054/S106: the actual single worker retains flights across both families.
+ACL2 sweep/select/action choose one turn and preserve pending continuation
+order. Remote connect/TLS/read/write use one nonblocking attempt; the exact
+unsent range persists on WANT/EAGAIN. Local cold/commit/render/input suffix
+state survives each yield, with callbacks restricted to a guarded captured
+await cell and abandoned before close. The stopping/fault path attempts all
+cleanup and preserves the primary core/store condition. Existing blocking
+round adapter now calls this same continuation; no duplicated protocol loop.
+
+Four raw worker/kernel tests PASS (last 1.946s): trickling pull alongside
+healthy pull and catch-up; retained local cold/commit/render/suffix; primary
+core fault versus failed cleanup; actual TCP connect/refusal and all2000
+bounded-write bytes. Four existing S112 journal tests and TLS client chain/
+hostname verification PASS together with the earlier three tests in3.711s.
+Protocol/journal leaves in the raw fixture are recorded. No saved-image or
+ACL2 certification claim.
+
+PRF-1260 and SCN-1090 are claimed and registered planned/specified. The
+prepared actual-node selector is
+`tests.test_native_peer_pull.NativePeerPullTests.test_trickling_body_retained_while_other_pull_and_catchup_complete`: an incomplete ARTICLE body persists
+while a healthy pull and catch-up complete, then the released body is read
+back exactly. Assembly/Integration own scoped driver/test-root certification,
+world/interface regeneration and this matching-image consumer.
+
+Frontiers: synchronous DNS can still block; each physical attempt returning
+is the stable-sweep theorem's scope. No new arbitrary whole-round expiry,
+rate refusal or truncation. The retained per-peer context/buffer/descriptor
+projection is not funded by NNTP output or syncer grants. S067's push-feed
+fairness remains open. No extra worker threads or shared owner/mux edits.
+Source witness filing follows the coherent source handoff separately.

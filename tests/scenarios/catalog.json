@@ -1139,7 +1139,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -8422,6 +8422,32 @@
         "tests/acl2/owner-reclaim-seal-tests.lisp"
       ],
       "execution_scope": "Literal ACL2 boundary subjects; host theorem qualified by actual LD, new teeth matching qualification pending."
+    },
+    {
+      "id": "SCN-1090",
+      "title": "A retained trickling pull body permits healthy pull and catch-up progress",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "NNT-018",
+        "NNT-053"
+      ],
+      "steps": [
+        "Configure slow and healthy pull peers plus a healthy catch-up on one native worker.",
+        "Hold an actual slow ARTICLE body incomplete while delivering exact body octets gradually.",
+        "Observe healthy article durable acceptance and catch-up completion before releasing the slow body.",
+        "Release the exact suffix and read back the complete slow body."
+      ],
+      "expected": [
+        "A readiness yield retains protocol state, local connection and unwritten/unconsumed bytes.",
+        "Both families progress while the slow session remains incomplete.",
+        "No slow cursor acceptance precedes durable local completion; released body is byte-exact."
+      ],
+      "evidence": [
+        "tests/test_native_peer_round_driver.py",
+        "tests/test_native_peer_pull.py"
+      ],
+      "execution_scope": "Raw worker/kernel schedule passes with recorded session and journal leaves. Actual saved-image selector tests.test_native_peer_pull.NativePeerPullTests.test_trickling_body_retained_while_other_pull_and_catchup_complete is prepared, not executed."
     }
   ]
 }

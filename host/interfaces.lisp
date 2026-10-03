@@ -5231,3 +5231,16 @@
 (definterface fn-tcl-host-source-more-p :class :ideal)
 (definterface fn-tcl-source-result-action :class :common-lisp-compliant)
 (definterface fn-tcl-source-result-token :class :common-lisp-compliant)
+
+; Resumable pull/catch-up scheduling decisions consumed by pull-service.
+(definterface fn-prd-key :class :common-lisp-compliant)
+(definterface fn-prd-select :class :common-lisp-compliant :kinds ((active true-listp)))
+(definterface fn-prd-sweep :class :common-lisp-compliant :kinds ((active true-listp))
+  :keystones (fn-prd-sweep-visits-all-admitted-rounds))
+(definterface fn-prd-action :class :common-lisp-compliant)
+(definterface fn-prd-deadline :class :common-lisp-compliant)
+(definterface fn-prd-resume-at :class :common-lisp-compliant)
+(definterface fn-prd-read-limit :class :common-lisp-compliant)
+(definterface fn-prd-write-end :class :common-lisp-compliant)
+(definterface fn-prd-idle-ms :class :common-lisp-compliant)
+(definterface fn-prd-loss-class-ok :class :common-lisp-compliant)
