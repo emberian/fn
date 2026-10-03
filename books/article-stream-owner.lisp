@@ -61,7 +61,16 @@
      ((and group (consp args) (null (cdr args)) (fn-nntp-number-tokenp (car args)))
       (fn-ast-select-state :number group (fn-nntp-decimal-value (car args))
                            (fn-state-articles archive) nil nil nil 0 :next))
-     (t (fn-asto-selection session archive index args)))))
+     ((and (consp args) (null (cdr args))
+           (fn-nntp-message-id-tokenp (car args)) (fn-octet-listp (car args)))
+      (let ((key (fn-nntp-token-string (car args))))
+        (if (fn-gidx-pinp index)
+            (let ((article (fn-midx-lookup key (fn-gidx-pin-trie index))))
+              (if (consp article) (fn-ast-msgid-local-start group article)
+                (fn-ast-select-state :msgid group key nil nil nil nil 0 :missing)))
+          (fn-ast-select-state :msgid group key (fn-state-articles archive)
+                               nil nil nil 0 :msgid-next))))
+     (t nil))))
 
 ; Capture = (expected-conn auth-view-peer selection kind server scan
 ;            connection-configuration-pin withdrawn-articles). EXPECTED-CONN includes the installed
@@ -117,7 +126,7 @@
                        (fn-asto-payload-preflight (car selection) fn-arena))
                   (fn-ocfg-conn-config oc id)
                   (and (eq (car selection) :article-select)
-                       (eq (fn-ast-at 1 selection) :number)
+                       (member-eq (fn-ast-at 1 selection) '(:number :msgid))
                        (fn-ctl-pin-withdrawn (fn-gidx-pin-control vi))))))))))
 
 ; One wire event per request: a following NEXT/ARTICLE remains unconsumed
@@ -160,7 +169,11 @@
         (mv :ready (fn-asto-with-conn oc conn)
             (fn-nntp-result-effects
              (fn-nntp-single session
-               (cond ((eq (fn-ast-at 1 selection) :current) "420 no current article")
+               (cond ((and (eq (fn-ast-at 1 selection) :withdrawn-msgid)
+                           (eq (fn-ast-at 9 selection) :selected)) "430 withdrawn")
+                     ((member-eq (fn-ast-at 1 selection) '(:msgid :withdrawn-msgid))
+                      "430 no article with that message-id")
+                     ((eq (fn-ast-at 1 selection) :current) "420 no current article")
                      ((and (eq (fn-ast-at 1 selection) :withdrawn)
                            (eq (fn-ast-at 9 selection) :selected)) "423 withdrawn")
                      (t "423 no article with that number")))))))))
@@ -169,20 +182,25 @@
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let ((next (fn-ast-select-step (fn-ast-at 2 capture) (nfix fuel))))
     (cond
-     ((and (eq (fn-ast-at 9 next) :selected) (eq (fn-ast-at 1 next) :withdrawn))
+     ((and (eq (fn-ast-at 9 next) :selected)
+           (member-eq (fn-ast-at 1 next) '(:withdrawn :withdrawn-msgid)))
       (fn-asto-selection-missing oc (fn-asto-capture-with-selection capture next nil)))
      ((eq (fn-ast-at 9 next) :selected)
       (let* ((article (fn-ast-at 5 next))
-             (selection (list article (fn-ast-at 3 next) t (fn-ast-at 2 next)))
+             (msgidp (eq (fn-ast-at 1 next) :msgid))
+             (selection (list article (fn-ast-at 3 next) (not msgidp)
+                               (and (not msgidp) (fn-ast-at 2 next))))
              (capture2 (fn-asto-capture-with-selection capture selection
                           (fn-asto-payload-preflight article fn-arena))))
         (mv :yield oc (list (list :article-preflight capture2)))))
      ((eq (fn-ast-at 9 next) :missing)
-      (if (and (eq (fn-ast-at 1 next) :number) (consp (fn-ast-at 7 capture)))
+      (if (and (member-eq (fn-ast-at 1 next) '(:number :msgid)) (consp (fn-ast-at 7 capture)))
           (mv :yield oc (list (list :article-preflight
             (fn-asto-capture-with-selection capture
-              (fn-ast-select-state :withdrawn (fn-ast-at 2 next) (fn-ast-at 3 next)
-                                   (fn-ast-at 7 capture) nil nil nil 0 :next) nil))))
+              (fn-ast-select-state
+                (if (eq (fn-ast-at 1 next) :msgid) :withdrawn-msgid :withdrawn)
+                (fn-ast-at 2 next) (fn-ast-at 3 next) (fn-ast-at 7 capture) nil nil nil 0
+                (if (eq (fn-ast-at 1 next) :msgid) :msgid-next :next)) nil))))
         (fn-asto-selection-missing oc (fn-asto-capture-with-selection capture next nil))))
      (t (mv :yield oc (list (list :article-preflight
                           (fn-asto-capture-with-selection capture next nil))))))))

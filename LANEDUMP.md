@@ -3801,3 +3801,16 @@ No whole-NNTP or full-family boundedness claim from this output cursor alone.
   whole DWJ state/storage is absent from this historical cache. General live
   readout and trace consumer improvements remain owned. No full qualification
   or decoder allocation tariff follows from these selected leaf observations.
+Access Message-ID setup continuation: pinned lookup now captures article + lazy
+local-number membership cursor; non-pinned archive and captured withdrawn ID
+lookup compare one ID character per transition, no full setup walks. Existing
+430 withdrawn/missing distinction and no selected-reader update preserved.
+Core local/search/select executable guards warm verified (search1440/select7891
+steps); universal fuel split875steps + literal positive/mutation teeth pass.
+Actual source184480 core/187518 owner/native aggregate PASS, first ID/member
+duplicates and5000-character group, invalid/oversized local numbers, all3sections
+cold READY/replay. MsgID recorded owner install remains0 as state is unchanged.
+Full factory/physical join stays Runtime/History; whole termination/reference,
+owner/renderer guards remain open. Next shared header span/extraction backing
+with Served; frozen READY4/render6 remain unchanged and Integration independently
+composes Qplan ordinary fallback.
