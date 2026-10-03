@@ -1,0 +1,19 @@
+{
+ "acceptance": "mux:no-recursion",
+ "category": "check-lane",
+ "detail": "raw_depth_check: fnn-mux-request-handshake (host/native/mux.lisp:807): a non-tail recursion in the raw host code (calls fnn-mux-handshake-refused fnn-mux-start-",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL14",
+ "line": "",
+ "locus": "connections",
+ "notes": [],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "slice": "mux",
+ "source": "check-lane-355a5c843",
+ "state": "open",
+ "title": "check-lane red: raw_depth_check",
+ "updated": "2026-10-03T02:30:23Z"
+}

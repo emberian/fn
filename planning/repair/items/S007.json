@@ -1,0 +1,21 @@
+{
+ "acceptance": "wrapper:connection-scoped",
+ "category": "fail-open",
+ "disposition": "BRIDGE",
+ "exposure": "conditional",
+ "file": "host/native/pull-service.lisp",
+ "id": "S007",
+ "line": "265",
+ "locus": "peer-services",
+ "notes": [
+  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
+ ],
+ "owner": "host-lifecycle",
+ "severity": "high",
+ "sha": "4e409a9d6",
+ "slice": "wrapper",
+ "source": "sweep-2026-10-03",
+ "state": "in-progress",
+ "title": "A refused pull/catch-up transit open (owner at max connections) stops the whole node as a fault",
+ "updated": "2026-10-03T02:32:57Z"
+}

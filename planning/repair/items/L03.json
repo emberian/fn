@@ -1,0 +1,19 @@
+{
+ "acceptance": "actor:no-protect-exports",
+ "category": "claim-gap",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "books/payload-arena-extent.lisp",
+ "id": "L03",
+ "line": "1369",
+ "locus": "generators",
+ "note": "ACL2 other-events.lisp:23993-24015 with-inside-absstobj-update over defg axioms.lisp:29461; our-multiple-value-prog1 not unwind-protect; TCB-SHRINK section 2.3 omits it; rule: no :protect in actor stobjs or a per-thread cell (tcb-shrink-review-1 M1)",
+ "notes": [],
+ "owner": "composition",
+ "severity": "medium",
+ "slice": "committer",
+ "source": "liaison",
+ "state": "open",
+ "title": "*inside-absstobj-update* is one process-wide unsynchronized cell; :protect exports from concurrent actors race on it, and a throw leaves it elevated",
+ "updated": "2026-10-03T02:30:23Z"
+}

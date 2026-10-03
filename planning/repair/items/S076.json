@@ -1,0 +1,16 @@
+{
+ "category": "correctness",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "id": "S076",
+ "line": "8131",
+ "locus": "operator-verbs",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "`log scan-store` streams segment K>=2 from the F row's G (the head's trailer), not the head's predecessor, and skips the lineage check",
+ "updated": "2026-10-03T02:30:23Z"
+}

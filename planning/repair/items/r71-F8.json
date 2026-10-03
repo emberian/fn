@@ -1,0 +1,18 @@
+{
+ "acceptance": "lifecycle:reap-off-section",
+ "category": "bug",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/native/owner.lisp",
+ "id": "r71-F8",
+ "line": "5977",
+ "locus": "lifecycle",
+ "notes": [],
+ "owner": "owner-offlock",
+ "severity": "high",
+ "slice": "lifecycle",
+ "source": "r71",
+ "state": "open",
+ "title": "fnn-owner-accept (bug)",
+ "updated": "2026-10-03T02:30:23Z"
+}

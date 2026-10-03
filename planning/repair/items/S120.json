@@ -1,0 +1,16 @@
+{
+ "category": "correctness",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "books/nntp-auth.lisp",
+ "id": "S120",
+ "line": "1482",
+ "locus": "served-books",
+ "notes": [],
+ "owner": "sweep-ops",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "STARTTLS after successful authentication is answered 382 (and still advertised) instead of 502, silently dropping the authenticated identity",
+ "updated": "2026-10-03T02:30:23Z"
+}

@@ -1,0 +1,21 @@
+{
+ "acceptance": "committer:no-inline-reader",
+ "category": "locking",
+ "disposition": "BRIDGE",
+ "exposure": "conditional",
+ "file": "host/native/owner.lisp",
+ "id": "S003",
+ "line": "4580",
+ "locus": "committer",
+ "notes": [
+  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
+ ],
+ "owner": "host-lifecycle",
+ "severity": "high",
+ "sha": "4e409a9d6",
+ "slice": "committer",
+ "source": "sweep-2026-10-03",
+ "state": "in-progress",
+ "title": "A web-face POST commits inline from a :reader quantum while a pipelined batch is in flight",
+ "updated": "2026-10-03T02:32:57Z"
+}

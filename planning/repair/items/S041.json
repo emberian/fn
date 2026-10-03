@@ -1,0 +1,16 @@
+{
+ "category": "resource-leak",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "host/store-open-host.lisp",
+ "id": "S041",
+ "line": "123",
+ "locus": "store-books",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "medium",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Extracted read-only open leaks a registered fd for every file it reads, one per configuration generation",
+ "updated": "2026-10-03T02:30:23Z"
+}

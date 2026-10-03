@@ -1,0 +1,14 @@
+{
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "books/served-catalog-dispatch.lisp",
+ "id": "SCL4",
+ "locus": "served-books",
+ "notes": [],
+ "owner": "served-catalog-live",
+ "severity": "high",
+ "source": "list-view-2026-10-02",
+ "state": "open",
+ "title": "LIST option A: discovery snapshot (LIST/ACTIVE/COUNTS/NEWGROUPS/ACTIVE.TIMES from the completed view)",
+ "updated": "2026-10-03T02:30:23Z"
+}

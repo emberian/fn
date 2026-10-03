@@ -1,0 +1,16 @@
+{
+ "category": "error-handling",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/feed-service.lisp",
+ "id": "S107",
+ "line": "166",
+ "locus": "peer-services",
+ "notes": [],
+ "owner": "sweep-peer",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Credential profile opened without O_NONBLOCK before the regular-file check: a FIFO hangs the feed worker and the owner close join",
+ "updated": "2026-10-03T02:30:23Z"
+}

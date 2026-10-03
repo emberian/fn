@@ -1,0 +1,16 @@
+{
+ "category": "correctness",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/anchor.lisp",
+ "id": "S095",
+ "line": "166",
+ "locus": "operator-verbs",
+ "notes": [],
+ "owner": "sweep-peer",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Pinned anchor key width is checked against the nonce width",
+ "updated": "2026-10-03T02:30:23Z"
+}

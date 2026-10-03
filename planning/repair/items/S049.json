@@ -1,0 +1,16 @@
+{
+ "category": "resource-leak",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "books/payload-arena-extent.lisp",
+ "id": "S049",
+ "line": "578",
+ "locus": "store-books",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "medium",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "The arena's stage array is indexed by global handle, so the first POST after a large replay allocates 2x(handle count) empty page stobjs that are never shrunk",
+ "updated": "2026-10-03T02:30:23Z"
+}

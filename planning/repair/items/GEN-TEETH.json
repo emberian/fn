@@ -1,0 +1,19 @@
+{
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/defkeystone.lisp",
+ "id": "GEN-TEETH",
+ "locus": "generators",
+ "note": "REPL 61/61 hbox; certify-20261002T231403Z-1883604 + certify-20261002T232922Z-2220863 cited; manifest+base committed; gate run pending on hbox",
+ "notes": [
+  "10-02 22:32 on lane/generators-2 ef9baca4d, sent to the runner for the dev merge (ember's all-onto-dev directive); fix forward after",
+  "10-02 22:33 wind-down 2026-10-03: continuation in lanedumps/generators-2.md (jobs bbivt3cm0 wix:bndu60b71 farm:biro1e0ml,bu5ojuks6 gate:b48v0w73o regen:bu49k925z); head ef9baca4d sent to the runner"
+ ],
+ "owner": "generators",
+ "severity": "high",
+ "sha": "ef9baca4d",
+ "source": "brief-2026-10-03",
+ "state": "in-progress",
+ "title": "Teeth generator: defteeth/defkeystone under TEETH CONTRACT v1 (c04 + c09 must-fixes), ledger/teeth_check mirrors, obligation-manifest gate in keystone_emit",
+ "updated": "2026-10-03T02:33:53Z"
+}

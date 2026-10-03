@@ -1,0 +1,16 @@
+{
+ "category": "bug",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "id": "X09",
+ "line": "",
+ "locus": "log-kernel",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "medium",
+ "source": "coordinator",
+ "state": "open",
+ "title": "fnn-log-parent lacks trailing-slash trim: fsync wrong directory",
+ "updated": "2026-10-03T02:30:23Z"
+}

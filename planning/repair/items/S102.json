@@ -1,0 +1,16 @@
+{
+ "category": "security",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/control.lisp",
+ "id": "S102",
+ "line": "345",
+ "locus": "operator-verbs",
+ "notes": [],
+ "owner": "sweep-ops",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Admin, POST, moderation and peer/keys/tls control frames have no peer-UID check, and the socket is world-connectable between bind and chmod",
+ "updated": "2026-10-03T02:30:23Z"
+}

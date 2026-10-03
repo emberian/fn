@@ -1,0 +1,19 @@
+{
+ "acceptance": "mux:no-recursion",
+ "category": "check-lane",
+ "detail": "FAIL: test_the_tree_is_clean (tests.test_raw_depth_check.RawBaselineTests.test_the_tree_is_clean)",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL15",
+ "line": "",
+ "locus": "connections",
+ "notes": [],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "slice": "mux",
+ "source": "check-lane-355a5c843",
+ "state": "open",
+ "title": "check-lane red: tests.test_raw_depth_check",
+ "updated": "2026-10-03T02:30:23Z"
+}

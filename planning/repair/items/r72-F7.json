@@ -1,0 +1,18 @@
+{
+ "acceptance": "lifecycle:bounded-mailbox",
+ "category": "bug",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "id": "r72-F7",
+ "line": "1115",
+ "locus": "lifecycle",
+ "notes": [],
+ "owner": "sweep-ops",
+ "severity": "high",
+ "slice": "lifecycle",
+ "source": "r72",
+ "state": "open",
+ "title": "fnn-log-swap-fd (bug)",
+ "updated": "2026-10-03T02:30:23Z"
+}

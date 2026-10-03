@@ -1,0 +1,19 @@
+{
+ "category": "correctness",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "tools/image_set.py",
+ "id": "S063",
+ "line": "194",
+ "locus": "gates-tests-packaging",
+ "notes": [
+  "10-02 22:29 merged into next e6b827d21"
+ ],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "sha": "e6b827d21",
+ "source": "sweep-2026-10-03",
+ "state": "ready",
+ "title": "image_set publish labels whatever is in TREE/build as SHA, including images symlinked in from another set or run",
+ "updated": "2026-10-03T02:30:23Z"
+}

@@ -1,0 +1,18 @@
+{
+ "acceptance": "cold-line:lease-per-read",
+ "category": "bug",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/owner.lisp",
+ "id": "r71-F4",
+ "line": "4964",
+ "locus": "reclaim-publication",
+ "notes": [],
+ "owner": "owner-offlock",
+ "severity": "high",
+ "slice": "cold-line",
+ "source": "r71",
+ "state": "open",
+ "title": "fnn-owner-release-extents (bug)",
+ "updated": "2026-10-03T02:30:23Z"
+}

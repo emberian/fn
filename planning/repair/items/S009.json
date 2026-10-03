@@ -1,0 +1,20 @@
+{
+ "category": "fail-open",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "tools/green_check.py",
+ "id": "S009",
+ "line": "552",
+ "locus": "gates-tests-packaging",
+ "notes": [
+  "lane/sweep-gates-prereq b0e1250b6 in BM 3",
+  "10-02 22:29 merged into next e6b827d21"
+ ],
+ "owner": "sweep-gates",
+ "severity": "high",
+ "sha": "e6b827d21",
+ "source": "sweep-2026-10-03",
+ "state": "ready",
+ "title": "Release gate green_check --strict / --profile passes books that are never certified, stale, or green only in a local unarchived manifest",
+ "updated": "2026-10-03T02:30:23Z"
+}

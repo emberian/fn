@@ -34,7 +34,7 @@ qualified image, a deployment) and is true of the function the host actually cal
   coordination (sections, handoffs, lifecycle, failure handling, retries, deadlines) outside the logic.
   ACL2 now owns coordination too; the host shrinks to thin, named primitives (syscalls, sockets, file
   descriptors, threads and mutexes, the clock, crypto and compression FFI), each specified as an oracle step
-  with a named assumption. Plan: `build/coordinator/decisions/tcb-shrink-2026-10-03.md` (coordinator-local).
+  with a named assumption. Plan: `planning/design/tcb-shrink-2026-10-03.md`.
 - **A whole-system theorem.** A host model in ACL2 whose steps are the host's atomic sections, with
   theorems over every interleaving and every crash cut, so the per-call theorems compose.
 - **Generators over hand-written instances.** When a shape is written a second time, write the macro:
@@ -74,7 +74,7 @@ None of this is hidden: each item is in the ledger with its evidence and owner.
   takes workstreams of its own.
 
 ### The repair ledger: the single list of open work
-`build/coordinator/repair/repair.py`, one JSON file per item under `build/coordinator/repair/items/`.
+`planning/repair/repair.py`, one JSON file per item under `planning/repair/items/`.
 Every finding from every source (inspections, reviews, check-lane, measurements) is an item with an owner
 and a state: `open`, `in-progress`, `ready` (merged into `origin/next`), `landed` (on `origin/dev`),
 `refuted`, `duplicate`, `deferred`. `repair.py list --owner LANE --open`; `repair.py report` writes `STATUS.md`.
@@ -94,7 +94,7 @@ A lane: REPL admission, a certify of the books it changed (`tools/farm.py`, cach
 only for modules its host change affects, with a red-before and green-after run for the defect. A reviewer
 reads the diff and the evidence and does not re-run. The runner: fast checks on the train and one native
 and image run per promotion. Evidence (run ids, manifests) is reused when the bytes match.
-(`build/coordinator/PIPELINE-2026-10-03.md`)
+(`planning/landing-pipeline.md`)
 
 ### What makes a claim
 See AGENTS.md "What makes a claim": the subject is the function the host calls; keystones ship with teeth
@@ -102,7 +102,7 @@ See AGENTS.md "What makes a claim": the subject is the function the host calls; 
 realistic state and need a visit bound, not only an output bound.
 
 ### Design decisions
-A design question gets a decision file under `build/coordinator/decisions/` (the rule today, why it came up,
+A design question gets a decision file under `planning/design/` (the rule today, why it came up,
 measurements, options, a lean). The coordinator and Astra settle it between them (at most two rounds);
 ember is asked only when the two disagree, when it is a matter of product intent, or when the step is
 irreversible or outward-facing. Accepted decisions become D-numbers in `planning/decisions.md`.
@@ -122,11 +122,19 @@ archived manifest from a run that requested it.
 hbox (main build and native box; builds under `swarm-build`), persvati (second check box). Never touch the
 live node or its store. Disk in `~/dev/fn` is capped at 30 GB: remove a lane's worktree when it lands.
 
-### Coordinator-local files (not in git)
-`build/coordinator/` holds the coordination state: the repair ledger, decision files, lane notes
-(`lanedumps/`), the runner's announcements (`BC-ANNOUNCE.md`), the roster (`WAVE-STATE-*.md`), the common
-brief for lanes (`BRIEF-COMMON-*.md`), hand-offs. It is untracked by design (the history rewrite of
-2026-10-02 removed such files from history); anything durable graduates into `planning/` or `specs/`.
+### What is tracked, and what stays local
+Tracked, so anyone can take the state forward:
+- `planning/repair/`: the repair ledger (one JSON per item, `repair.py`, the generated `STATUS.md`).
+- `planning/design/`: design decision records, with consultation answers and the decisions taken; accepted ones
+  become D-numbers in `planning/decisions.md`.
+- `planning/landing-pipeline.md` (the merge train; each check runs once) and the current plan
+  (`planning/plan-2026-10-03.md`).
+- `planning/handoff-2026-10-03/`: each workstream's continuation at the end of the October 2026 wave (branch, sha,
+  what is verified and what is not, the next steps).
+
+Local to a coordinator session, under `build/coordinator/` (untracked): the live lane notes, the runner's
+announcements, the roster, the lane briefs. Anything durable in them moves into the ledger, a design record or a
+handoff file.
 
 ## 5. Contributing a change
 

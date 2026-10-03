@@ -1,0 +1,16 @@
+{
+ "category": "security",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "id": "S012",
+ "line": "8290",
+ "locus": "operator-verbs",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "medium",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "`store ROOT probe COUNT` runs on a production image and commits fixture articles into a real store",
+ "updated": "2026-10-03T02:30:23Z"
+}

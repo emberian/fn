@@ -1,0 +1,17 @@
+{
+ "category": "check-lane",
+ "detail": "premise_audit: NEW unestablished premise adt-pg-pokp (established off the host path): assumed by adt-pg-put-tree-is-put-field",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL24",
+ "line": "",
+ "locus": "gates-tests-packaging",
+ "notes": [],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "source": "check-lane-355a5c843",
+ "state": "open",
+ "title": "check-lane red: premise_audit",
+ "updated": "2026-10-03T02:30:23Z"
+}

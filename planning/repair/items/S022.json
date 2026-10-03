@@ -1,0 +1,18 @@
+{
+ "acceptance": "cold-line:lease-per-read",
+ "category": "locking",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/native/extent.lisp",
+ "id": "S022",
+ "line": "1043",
+ "locus": "cold-line",
+ "notes": [],
+ "owner": "owner-offlock",
+ "severity": "medium",
+ "slice": "cold-line",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Offline-mode cache miss preads synchronously while holding the global extent lock (and the owner mutex) on non-span served paths",
+ "updated": "2026-10-03T02:30:23Z"
+}

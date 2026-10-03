@@ -1,0 +1,18 @@
+{
+ "acceptance": "wrapper:fence-step-pure",
+ "category": "correctness",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/owner.lisp",
+ "id": "S081",
+ "line": "1760",
+ "locus": "lifecycle",
+ "notes": [],
+ "owner": "sweep-ops",
+ "severity": "low",
+ "slice": "wrapper",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "*fnn-owner-last-fault* 'first fault' is an unsynchronized check-then-set, and its stderr line is lost when the gate is aborted",
+ "updated": "2026-10-03T02:30:23Z"
+}

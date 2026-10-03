@@ -1,0 +1,18 @@
+{
+ "category": "bug",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "host/native/io.lisp",
+ "id": "r72-F9",
+ "line": "3227",
+ "locus": "reclaim-publication",
+ "notes": [
+  "10-02 22:38 not measured yet: cost_gate.py logs checkpoint_s per N; blocked on the NEWNEWS hang in the window (see cost-gate lanedump)"
+ ],
+ "owner": "cost-gate",
+ "severity": "high",
+ "source": "r72",
+ "state": "open",
+ "title": "fnn-checkpoint-walk (bug)",
+ "updated": "2026-10-03T02:38:17Z"
+}

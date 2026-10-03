@@ -1,0 +1,20 @@
+{
+ "category": "correctness",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/tcpcl.lisp",
+ "id": "S024",
+ "line": "259",
+ "locus": "peer-services",
+ "notes": [
+  "10-02 22:30 fixed 9b7508ccb on lane/sweep-peer; in the next READY batch after S005",
+  "10-02 22:33 sent in 5536e2f08; native test added, not yet run"
+ ],
+ "owner": "sweep-peer",
+ "severity": "medium",
+ "sha": "9b7508ccb",
+ "source": "sweep-2026-10-03",
+ "state": "in-progress",
+ "title": "Inbound transfers on outbound sessions bypass FNBS custody: plain spool files in the journal root, ACKed, overwritten by name",
+ "updated": "2026-10-03T02:33:21Z"
+}

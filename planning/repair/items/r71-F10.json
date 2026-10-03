@@ -1,0 +1,20 @@
+{
+ "acceptance": "wrapper:receipt-join",
+ "category": "bug",
+ "disposition": "BRIDGE",
+ "exposure": "conditional",
+ "file": "host/native/owner.lisp",
+ "id": "r71-F10",
+ "line": "5147",
+ "locus": "reclaim-publication",
+ "notes": [
+  "duplicate of S018"
+ ],
+ "owner": "host-lifecycle",
+ "severity": "high",
+ "slice": "wrapper",
+ "source": "r71",
+ "state": "duplicate",
+ "title": "fnn-owner-publish-captured (bug)",
+ "updated": "2026-10-03T02:30:23Z"
+}

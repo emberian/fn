@@ -1,0 +1,21 @@
+{
+ "acceptance": "wrapper:admit-or-close",
+ "category": "resource-leak",
+ "disposition": "BRIDGE",
+ "exposure": "conditional",
+ "file": "host/native/mux.lisp",
+ "id": "S021",
+ "line": "1333",
+ "locus": "connections",
+ "notes": [
+  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
+ ],
+ "owner": "host-lifecycle",
+ "severity": "medium",
+ "sha": "4e409a9d6",
+ "slice": "wrapper",
+ "source": "sweep-2026-10-03",
+ "state": "in-progress",
+ "title": "After a stop, the wake pipe's closed fd can still be written by an await completion or by a racing adopt, and a conn adopted during the race is never finished",
+ "updated": "2026-10-03T02:32:57Z"
+}

@@ -1,0 +1,20 @@
+{
+ "category": "correctness",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "books/peer-feed.lisp",
+ "id": "S053",
+ "line": "997",
+ "locus": "peer-services",
+ "notes": [
+  "10-02 22:30 fixed 206623f29 on lane/sweep-peer; in the next READY batch after S005",
+  "10-02 22:33 sent in 5536e2f08; REPL-admitted, feed-closure cert in flight"
+ ],
+ "owner": "sweep-peer",
+ "severity": "medium",
+ "sha": "206623f29",
+ "source": "sweep-2026-10-03",
+ "state": "in-progress",
+ "title": "Outbound feed never gives up an entry whose offer drops the connection; it blocks the peer's queue head forever at a fixed (non-growing) delay",
+ "updated": "2026-10-03T02:33:21Z"
+}

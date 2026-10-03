@@ -1,0 +1,16 @@
+{
+ "category": "dead-code",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "host/native/build.lisp",
+ "id": "S141",
+ "line": "365",
+ "locus": "gates-tests-packaging",
+ "notes": [],
+ "owner": "sweep-gates",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "host/page-read-host.lisp is ld'ed twice in both the production and the DTN build scripts",
+ "updated": "2026-10-03T02:30:23Z"
+}

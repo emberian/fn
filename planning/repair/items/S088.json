@@ -1,0 +1,18 @@
+{
+ "acceptance": "mux:phase-machine",
+ "category": "performance",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/mux.lisp",
+ "id": "S088",
+ "line": "1157",
+ "locus": "connections",
+ "notes": [],
+ "owner": "host-lifecycle",
+ "severity": "low",
+ "slice": "mux",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Every loop pass makes an owner-mutex ACL2 call for every :proxy connection, whether or not its deadline is due",
+ "updated": "2026-10-03T02:30:23Z"
+}

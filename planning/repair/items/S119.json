@@ -1,0 +1,16 @@
+{
+ "category": "error-handling",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/store-write-host.lisp",
+ "id": "S119",
+ "line": "1742",
+ "locus": "operator-verbs",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Node-secret staging files with partial key material are left behind when a write or fsync fails",
+ "updated": "2026-10-03T02:30:23Z"
+}

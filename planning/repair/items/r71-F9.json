@@ -1,0 +1,21 @@
+{
+ "acceptance": "wrapper:admit-or-close",
+ "category": "bug",
+ "disposition": "BRIDGE",
+ "exposure": "conditional",
+ "file": "host/native/mux.lisp",
+ "id": "r71-F9",
+ "line": "1393",
+ "locus": "connections",
+ "notes": [
+  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
+ ],
+ "owner": "host-lifecycle",
+ "severity": "high",
+ "sha": "4e409a9d6",
+ "slice": "wrapper",
+ "source": "r71",
+ "state": "in-progress",
+ "title": "fnn-mux-adopt (bug)",
+ "updated": "2026-10-03T02:32:57Z"
+}

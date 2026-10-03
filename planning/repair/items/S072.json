@@ -1,0 +1,16 @@
+{
+ "category": "claim-gap",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "id": "S072",
+ "line": "2389",
+ "locus": "operator-verbs",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "`init` over an existing store ignores the requested profile and groups and still prints \"initialized\"",
+ "updated": "2026-10-03T02:30:23Z"
+}

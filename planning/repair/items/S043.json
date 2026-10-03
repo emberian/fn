@@ -1,0 +1,16 @@
+{
+ "category": "performance",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "books/served-catalog.lisp",
+ "id": "S043",
+ "line": "1572",
+ "locus": "served-books",
+ "notes": [],
+ "owner": "served-catalog-live",
+ "severity": "medium",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "LISTGROUP, HDR/XHDR range and XPAT range are answered whole in one served step (only OVER/XOVER got the windowed cursor)",
+ "updated": "2026-10-03T02:30:23Z"
+}

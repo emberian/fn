@@ -1,0 +1,17 @@
+{
+ "category": "check-lane",
+ "detail": "UNDEFINED fn-bs-view-is-an-admissible-image: specs/recovery-refinement.md:352 (no book, test book or host file defines it)",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL20",
+ "line": "",
+ "locus": "gates-tests-packaging",
+ "notes": [],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "source": "check-lane-355a5c843",
+ "state": "open",
+ "title": "check-lane red: spec_cite_check",
+ "updated": "2026-10-03T02:30:23Z"
+}

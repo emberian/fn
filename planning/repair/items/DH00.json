@@ -1,0 +1,19 @@
+{
+ "category": "generator",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/def-holder.lisp",
+ "id": "DH00",
+ "locus": "generators",
+ "note": "READY lane/def-holder-core sent to main; certified run-20261002T230930Z-4030 (manifest filed); with the runner for the batch after the priority image set",
+ "notes": [
+  "10-02 22:29 merged into next e6b827d21"
+ ],
+ "owner": "def-holder",
+ "severity": "medium",
+ "sha": "e6b827d21",
+ "source": "def-holder",
+ "state": "ready",
+ "title": "def-holder: the generator, its teeth, the host closure (tools/holder_check.py), books/reclaim-cuts.lisp, specs/lifecycle.md row 5",
+ "updated": "2026-10-03T02:30:23Z"
+}

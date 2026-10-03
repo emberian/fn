@@ -1,0 +1,19 @@
+{
+ "category": "correctness",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/operator.lisp",
+ "id": "S104",
+ "line": "452",
+ "locus": "operator-verbs",
+ "notes": [
+  "10-02 22:22 fnn-operator-apply-admin: one liveness dispatch for every mutating admin verb"
+ ],
+ "owner": "sweep-ops",
+ "severity": "low",
+ "sha": "8acfdeba7",
+ "source": "sweep-2026-10-03",
+ "state": "ready",
+ "title": "`account invite` and `peer login` bypass the PKT-344 liveness decision and use bare socket presence",
+ "updated": "2026-10-03T02:30:23Z"
+}

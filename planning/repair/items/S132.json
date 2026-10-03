@@ -1,0 +1,16 @@
+{
+ "category": "claim-gap",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "tests/test_native_bounds_join.py",
+ "id": "S132",
+ "line": "225",
+ "locus": "gates-tests-packaging",
+ "notes": [],
+ "owner": "sweep-gates",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "The 10 MiB operator post is allowed to come back UNCERTAIN, codifying a fixed 10 s control deadline",
+ "updated": "2026-10-03T02:30:23Z"
+}

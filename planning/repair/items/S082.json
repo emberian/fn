@@ -1,0 +1,18 @@
+{
+ "acceptance": "cold-line:lease-per-read",
+ "category": "performance",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/owner.lisp",
+ "id": "S082",
+ "line": "4964",
+ "locus": "reclaim-publication",
+ "notes": [],
+ "owner": "sweep-ops",
+ "severity": "low",
+ "slice": "cold-line",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Checkpoint frames are pread and digested while holding *fnn-extent-lock*, which owner-mutex holders wait on",
+ "updated": "2026-10-03T02:30:23Z"
+}

@@ -1,0 +1,22 @@
+{
+ "acceptance": "services:per-window-deadline",
+ "category": "correctness",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/native/feed-service.lisp",
+ "id": "S035",
+ "line": "242",
+ "locus": "peer-services",
+ "notes": [
+  "10-02 22:30 fixed 32cb8f8a9 on lane/sweep-peer; in the next READY batch after S005",
+  "10-02 22:33 sent in 5536e2f08; raw harness passes"
+ ],
+ "owner": "sweep-peer",
+ "severity": "medium",
+ "sha": "32cb8f8a9",
+ "slice": "services",
+ "source": "sweep-2026-10-03",
+ "state": "in-progress",
+ "title": "Outbound feed sends a whole TAKETHIS/IHAVE article under a fixed 10-second total deadline: large articles livelock the link",
+ "updated": "2026-10-03T02:33:21Z"
+}

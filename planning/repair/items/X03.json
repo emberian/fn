@@ -1,0 +1,16 @@
+{
+ "category": "bug",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "host/native/owner.lisp",
+ "id": "X03",
+ "line": "2123",
+ "locus": "reclaim-publication",
+ "notes": [],
+ "owner": "arena-forget",
+ "severity": "medium",
+ "source": "coordinator",
+ "state": "in-progress",
+ "title": "refused POST prepare after seal leaks a sealed payload",
+ "updated": "2026-10-03T02:31:49Z"
+}

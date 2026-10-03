@@ -1,0 +1,18 @@
+{
+ "acceptance": "mux:phase-machine",
+ "category": "architecture",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/mux.lisp",
+ "id": "S091",
+ "line": "314",
+ "locus": "connections",
+ "notes": [],
+ "owner": "host-lifecycle",
+ "severity": "low",
+ "slice": "mux",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Handshake-queue processing recurses through fnn-mux-finish, so stack depth grows with the number of consecutive refusals",
+ "updated": "2026-10-03T02:30:23Z"
+}

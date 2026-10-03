@@ -1,0 +1,19 @@
+{
+ "category": "error-handling",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/peer-invite.lisp",
+ "id": "S105",
+ "line": "388",
+ "locus": "operator-verbs",
+ "notes": [
+  "10-02 22:22 OUT reserved O_EXCL before the owner records; fsync+dir fsync; friends_feed asserts"
+ ],
+ "owner": "sweep-ops",
+ "severity": "low",
+ "sha": "8acfdeba7",
+ "source": "sweep-2026-10-03",
+ "state": "ready",
+ "title": "`peer invite` records the invitation with the owner before checking that it can write OUT",
+ "updated": "2026-10-03T02:30:23Z"
+}

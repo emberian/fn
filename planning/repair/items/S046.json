@@ -1,0 +1,16 @@
+{
+ "category": "performance",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/checkpoint.lisp",
+ "id": "S046",
+ "line": "153",
+ "locus": "operator-verbs",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "medium",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Offline `store reclaim` keeps the entire rewritten history in memory before replaying it",
+ "updated": "2026-10-03T02:30:23Z"
+}

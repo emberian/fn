@@ -1,0 +1,14 @@
+{
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "books/served-catalog.lisp",
+ "id": "SCL2",
+ "locus": "served-books",
+ "notes": [],
+ "owner": "served-catalog-live",
+ "severity": "high",
+ "source": "over_pins",
+ "state": "open",
+ "title": "GROUP/LISTGROUP/LIST count the AVAILABLE articles after reclaim (option 2'), NEXT/LAST reclaim-aware (with S042)",
+ "updated": "2026-10-03T02:30:23Z"
+}

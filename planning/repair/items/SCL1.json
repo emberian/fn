@@ -1,0 +1,18 @@
+{
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "books/served-catalog.lisp",
+ "id": "SCL1",
+ "locus": "served-books",
+ "notes": [
+  "10-02 22:31 sent to runner for the all-onto-dev merge; scl-a3 natives + f323 pending",
+  "10-02 22:33 sent to runner at 45c9ec0f6; scl-a3 natives + farm run-20261003T020434Z-f323 unharvested (wind-down)"
+ ],
+ "owner": "served-catalog-live",
+ "severity": "high",
+ "sha": "45c9ec0f6",
+ "source": "over_pins",
+ "state": "ready",
+ "title": "OVER/XOVER on the cursor on configured nodes (Xref arm), O(1) quantum guard (r67 F1), drain idle progress (r67 F3/c07), off-lock cold miss in the quantum (r67 F2)",
+ "updated": "2026-10-03T02:33:05Z"
+}

@@ -1,0 +1,19 @@
+{
+ "acceptance": "carrier:program-to-logic",
+ "category": "check-lane",
+ "detail": "depth_check: fn-native-operator-host-self-signed-refused (host/native-operator-host.lisp:389): a :program host-called entry (nothing the host establishes is che",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL13",
+ "line": "",
+ "locus": "gates-tests-packaging",
+ "notes": [],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "slice": "carrier",
+ "source": "check-lane-355a5c843",
+ "state": "open",
+ "title": "check-lane red: depth_check",
+ "updated": "2026-10-03T02:30:23Z"
+}

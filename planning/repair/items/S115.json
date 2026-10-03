@@ -1,0 +1,16 @@
+{
+ "category": "dead-code",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "host/owner-host.lisp",
+ "id": "S115",
+ "line": "3",
+ "locus": "store-books",
+ "notes": [],
+ "owner": "sweep-ops",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Header and comments claim a Python bridge that no longer exists; its entry points are dead and have drifted from the live twins",
+ "updated": "2026-10-03T02:30:23Z"
+}

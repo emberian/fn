@@ -1,0 +1,19 @@
+{
+ "acceptance": "carrier:globals-to-stobj",
+ "category": "check-lane",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "latent",
+ "file": "host/owner-host.lisp",
+ "id": "X16",
+ "locus": "gates-tests-packaging",
+ "notes": [
+  "10-02 22:33 carrier move (lane/stage-5b-carrier) replaces the 2 owner globals by stobj fn-owner-st; baseline to be retired then"
+ ],
+ "owner": "stage-5b",
+ "severity": "medium",
+ "slice": "carrier",
+ "source": "check-lane",
+ "state": "open",
+ "title": "owner_globals_check: host/owner-host.lisp touches 63 owner globals vs baseline 50",
+ "updated": "2026-10-03T02:33:59Z"
+}

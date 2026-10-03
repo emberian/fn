@@ -1,0 +1,18 @@
+{
+ "category": "check-lane",
+ "detail": "alphabet_check: books/config.lisp defines no fn-cfg-kind-code",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL23",
+ "line": "",
+ "locus": "gates-tests-packaging",
+ "notes": [],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "sha": "932678472",
+ "source": "check-lane-355a5c843",
+ "state": "ready",
+ "title": "check-lane red: alphabet_check",
+ "updated": "2026-10-03T02:30:23Z"
+}

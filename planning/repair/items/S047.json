@@ -1,0 +1,18 @@
+{
+ "acceptance": "log-kernel:windowed-zeroing",
+ "category": "performance",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "books/store-log-programs.lisp",
+ "id": "S047",
+ "line": "234",
+ "locus": "log-kernel",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "medium",
+ "slice": "log-kernel",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Recovery zeroes the whole tail [F, extent) with one in-memory buffer of that size, on every writable open",
+ "updated": "2026-10-03T02:30:23Z"
+}

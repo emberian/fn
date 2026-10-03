@@ -1,0 +1,16 @@
+{
+ "category": "performance",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "books/peer-pull.lisp",
+ "id": "S051",
+ "line": "506",
+ "locus": "peer-services",
+ "notes": [],
+ "owner": "sweep-peer",
+ "severity": "medium",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "NEWNEWS listing is unbounded and quadratic: member-equal plus append per listed id, then an assoc per id at close",
+ "updated": "2026-10-03T02:30:23Z"
+}

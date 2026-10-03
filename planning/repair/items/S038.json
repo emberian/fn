@@ -1,0 +1,20 @@
+{
+ "category": "locking",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/owner-host.lisp",
+ "id": "S038",
+ "line": "1018",
+ "locus": "reclaim-publication",
+ "notes": [
+  "book half 196428f6d",
+  "10-02 22:22 book half 196428f6d + release theorem (next commit); host half after RECLAIM-RETENTION 37456df07 lands; driver lines sent to arena-forget via coordinator",
+  "10-02 22:33 book half on lane/sweep-ops cc4ef2db6; host half NEXT in lanedumps/sweep-ops.md"
+ ],
+ "owner": "sweep-ops",
+ "severity": "medium",
+ "source": "sweep-2026-10-03",
+ "state": "in-progress",
+ "title": "Reclaim capture does not re-check the in-flight state it overwrites (check-then-act across separate mutex quanta)",
+ "updated": "2026-10-03T02:33:20Z"
+}

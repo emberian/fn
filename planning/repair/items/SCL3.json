@@ -1,0 +1,14 @@
+{
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "books/served-catalog-chain.lisp",
+ "id": "SCL3",
+ "locus": "served-books",
+ "notes": [],
+ "owner": "served-catalog-live",
+ "severity": "medium",
+ "source": "served-catalog-live",
+ "state": "open",
+ "title": "OVER on the restricted route (READ-rule sessions) still answered whole by the reference walk",
+ "updated": "2026-10-03T02:30:23Z"
+}

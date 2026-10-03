@@ -1,0 +1,16 @@
+{
+ "category": "correctness",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/feed-service.lisp",
+ "id": "S108",
+ "line": "418",
+ "locus": "peer-services",
+ "notes": [],
+ "owner": "sweep-peer",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Outbound feed dials TCP before reading the credential profile, and logs a profile failure as a peer connect failure",
+ "updated": "2026-10-03T02:30:23Z"
+}

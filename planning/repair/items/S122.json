@@ -1,0 +1,16 @@
+{
+ "category": "performance",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "books/served-catalog.lisp",
+ "id": "S122",
+ "line": "2372",
+ "locus": "served-books",
+ "notes": [],
+ "owner": "sweep-ops",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "ARTICLE/HEAD/BODY/STAT by number walks the whole withdrawn list on every miss",
+ "updated": "2026-10-03T02:30:23Z"
+}

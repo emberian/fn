@@ -1,0 +1,18 @@
+{
+ "category": "check-lane",
+ "detail": "list_codec_check: 93 host-called octet-list codec sites in 14 files (baseline 92)",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL16",
+ "line": "",
+ "locus": "gates-tests-packaging",
+ "notes": [],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "sha": "24676b5d4",
+ "source": "check-lane-355a5c843",
+ "state": "ready",
+ "title": "check-lane red: list_codec_check",
+ "updated": "2026-10-03T02:32:09Z"
+}

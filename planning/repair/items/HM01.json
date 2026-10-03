@@ -1,0 +1,15 @@
+{
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/store-log-route-programs.lisp",
+ "id": "HM01",
+ "locus": "generators",
+ "note": "lane/host-model 428db509e: book+teeth REPL-admitted on hbox; test-book cert red on a constrained decoder reached by the witness (fixing); registries regenerating",
+ "notes": [],
+ "owner": "composition",
+ "severity": "medium",
+ "source": "coordinator",
+ "state": "in-progress",
+ "title": "P10: keystone re-pointed at the served open's program (fn-lg-open-program-keeps-the-relation-at-every-cut), bridge fn-lgoc-recover-installs-invariant, PRF-041's per-file family unreachable-in-composition, current.md regenerated",
+ "updated": "2026-10-03T02:30:23Z"
+}

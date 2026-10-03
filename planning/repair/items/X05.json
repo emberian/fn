@@ -1,0 +1,21 @@
+{
+ "acceptance": "carrier:raw-dispatch",
+ "category": "bug",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "books/store-files.lisp",
+ "id": "X05",
+ "line": "630",
+ "locus": "committer",
+ "notes": [
+  "10-02 22:33 interim pushed lane/sf-records 393d9143e (record-listp single-dispatch exec twin; teeth unrun, no cert/measure). Real cure = raw dispatch after carrier move (lane/stage-5b-carrier fa32ac06f WIP). See lanedumps/stage-5b.md"
+ ],
+ "owner": "stage-5b",
+ "severity": "high",
+ "sha": "393d9143e",
+ "slice": "carrier",
+ "source": "coordinator",
+ "state": "in-progress",
+ "title": "fn-owner-io guard revalidates whole store per call: O(store) per POST (raw dispatch / statep idiom)",
+ "updated": "2026-10-03T02:33:59Z"
+}

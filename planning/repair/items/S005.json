@@ -1,0 +1,22 @@
+{
+ "acceptance": "pure:encoder-roundtrip",
+ "category": "correctness",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/native/deflate.lisp",
+ "id": "S005",
+ "line": "261",
+ "locus": "connections",
+ "notes": [
+  "fixed on lane/sweep-peer 07d21aaaf; READY pending",
+  "10-02 22:33 READY sent to runner with lane/sweep-peer 5536e2f08: encoder fix 07d21aaaf + refused-candidate stored uncompressed bf0d882c2; cert passed; natives pending"
+ ],
+ "owner": "sweep-peer",
+ "severity": "high",
+ "sha": "bf0d882c2",
+ "slice": "pure",
+ "source": "sweep-2026-10-03",
+ "state": "in-progress",
+ "title": "Single-symbol Huffman tree is padded with both 0 and 1, so the code is oversubscribed and the encoder emits an invalid DEFLATE stream",
+ "updated": "2026-10-03T02:33:21Z"
+}

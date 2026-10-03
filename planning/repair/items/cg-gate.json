@@ -1,0 +1,14 @@
+{
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "tools/cost_gate.py",
+ "id": "cg-gate",
+ "locus": "gates-tests-packaging",
+ "notes": [],
+ "owner": "cost-gate",
+ "severity": "medium",
+ "source": "coordinator",
+ "state": "open",
+ "title": "cost gate in report mode: committed planning/cost-baseline.json; cost_gate.py check names an entry whose exponent or per-call bytes bend; NOT EXERCISED fails",
+ "updated": "2026-10-03T02:30:23Z"
+}

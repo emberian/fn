@@ -1,0 +1,22 @@
+{
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/def-keyset-check.lisp",
+ "id": "GEN-KEYSET",
+ "locus": "generators",
+ "note": "generator + tests 34/34 hbox; store-files and retention edited (-59/-40 lines), REPL loading; their closures to the farm next",
+ "notes": [
+  "10-02 22:23 both hand uses replaced and admitted on hbox: retention.lisp (96/96, -30 lines) and store-files.lisp (194/194, -25 net); retention-tests and store-files-teeth-tests loading; the two closures to the farm next (store-files is deep: many includers recertify)",
+  "10-02 22:24 retention.lisp 96/96 + retention-tests 91/91 on hbox; store-files.lisp 194/194, its teeth book loading; closures to the farm",
+  "10-02 22:30 both replacements green on hbox: retention.lisp 96/96 + retention-tests 91/91; store-files.lisp 194/194 + store-files-teeth-tests 109/109; closures submitted to the farm (retention+def-keyset-check run, store-files run)",
+  "10-02 22:32 on lane/generators-2 ef9baca4d, sent to the runner for the dev merge (ember's all-onto-dev directive); fix forward after",
+  "10-02 22:33 wind-down 2026-10-03: continuation in lanedumps/generators-2.md (jobs bbivt3cm0 wix:bndu60b71 farm:biro1e0ml,bu5ojuks6 gate:b48v0w73o regen:bu49k925z); head ef9baca4d sent to the runner"
+ ],
+ "owner": "generators",
+ "severity": "medium",
+ "sha": "ef9baca4d",
+ "source": "brief-2026-10-03",
+ "state": "in-progress",
+ "title": "def-keyset-check (the mbe keyset pattern) replacing fn-sf-success-listp and fn-retain-ids-disjointp",
+ "updated": "2026-10-03T02:33:53Z"
+}

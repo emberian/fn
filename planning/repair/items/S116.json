@@ -1,0 +1,16 @@
+{
+ "category": "resource-leak",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "host/store-write-host.lisp",
+ "id": "S116",
+ "line": "823",
+ "locus": "store-books",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "fn-xw-log-recover leaks the read-write segment handle when the tail zeroing or its barrier fails, and reports the half-zeroed segment as a plain OS error",
+ "updated": "2026-10-03T02:30:23Z"
+}

@@ -1,0 +1,20 @@
+{
+ "acceptance": "committer:no-inline-reader",
+ "category": "bug",
+ "disposition": "BRIDGE",
+ "exposure": "conditional",
+ "file": "host/native/owner.lisp",
+ "id": "r71-F5",
+ "line": "4580",
+ "locus": "committer",
+ "notes": [
+  "duplicate of S003"
+ ],
+ "owner": "host-lifecycle",
+ "severity": "high",
+ "slice": "committer",
+ "source": "r71",
+ "state": "duplicate",
+ "title": "fnn-owner-handle-chunk-read (bug)",
+ "updated": "2026-10-03T02:30:23Z"
+}

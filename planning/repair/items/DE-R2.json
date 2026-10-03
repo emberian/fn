@@ -1,0 +1,13 @@
+{
+ "file": "books/def-cost.lisp",
+ "id": "DE-R2",
+ "note": "generator + tests (REPL 49/49, uncertified) + tools/cost_obligations.py + registries landed at 67ee29e37 as WIP; owed: the fn-reader-chunk row in host/cost-host.lisp via the image-world REPL (lanedump NEXT 1), the six-root certify run-2490 cite, contract witnesses, :stamped, allocation",
+ "notes": [],
+ "owner": "def-entry",
+ "severity": "medium",
+ "sha": "67ee29e37",
+ "source": "coordinator",
+ "state": "in-progress",
+ "title": "def-cost round two: derived visit cost; fn-reader-chunk instance owed",
+ "updated": "2026-10-03T02:33:36Z"
+}

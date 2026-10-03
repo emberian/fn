@@ -1,0 +1,21 @@
+{
+ "acceptance": "committer:feed-off-owner",
+ "category": "performance",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/native/owner.lisp",
+ "id": "S014",
+ "line": "2964",
+ "locus": "committer",
+ "notes": [
+  "10-02 22:22 Same READY as r71-F6 moves the FNFD fsyncs off the owner; the per-frame fsync count (2/member/peer) stays: coalescing needs a feed-journal.lisp phase-machine change (write,write,sync), follow-up",
+  "10-02 22:33 Off-owner in d7fe7f5c8 (with r71-F6); coalescing to one fsync/journal/batch remains: lanedumps/owner-offlock.md NEXT 6"
+ ],
+ "owner": "owner-offlock",
+ "severity": "medium",
+ "slice": "committer",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Commit quantum fsyncs each FNFD peer journal twice per member while holding the owner mutex, so the 'fence once' batch claim is false and a slow feed fsync stalls the whole owner",
+ "updated": "2026-10-03T02:33:11Z"
+}

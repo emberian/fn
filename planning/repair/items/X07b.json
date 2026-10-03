@@ -1,0 +1,13 @@
+{
+ "category": "bug",
+ "file": "books/owner-control-read.lisp",
+ "id": "X07b",
+ "note": "recertify certify-20261003T020918Z-2995402 at 0bcd9a338: 59/20. Root failures: owner-control-read FN-OCTL-DISPATCH-ARCHIVE-COMMAND; productive-read-chain FN-PCR-POST-DELEGATES-A-READ-WITHOUT-OFFER-BY-DEFINITION; served-head-bridge FN-SHD-POST-DELEGATES-A-READ-WITHOUT-OFFER-BY-DEFINITION; the other 17 are includers. Same fix as 0bcd9a338: restate over (fn-post-command-env config observation injection wire-event) (identical for non-DATE/NEWGROUPS via fn-post-command-env-ordinary-unfolds); then recertify those roots. Logs: build/lanes/codex-t42-date-current/build/acl2/certify-20261003T020918Z-2995402/",
+ "notes": [],
+ "owner": "liaison",
+ "severity": "high",
+ "source": "liaison",
+ "state": "open",
+ "title": "t42 fallout: three theorems still state the post step under fn-post-reader-env (17 includers red)",
+ "updated": "2026-10-03T02:37:03Z"
+}

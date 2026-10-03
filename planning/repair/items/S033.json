@@ -1,0 +1,20 @@
+{
+ "category": "claim-gap",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "host/native/admin.lisp",
+ "id": "S033",
+ "line": "258",
+ "locus": "operator-verbs",
+ "notes": [
+  "sub-lane sweep-ops-cfg",
+  "10-02 22:32 WIP pushed per ember's dev directive: book REPL-admitted, uncertified; world/interfaces regen pending; before-native running, after-native not run"
+ ],
+ "owner": "sweep-ops-cfg",
+ "severity": "medium",
+ "sha": "ab3834272",
+ "source": "sweep-2026-10-03",
+ "state": "ready",
+ "title": "Live reconfiguration reads the whole configuration history from disk under the owner mutex, contradicting its comment",
+ "updated": "2026-10-03T02:32:03Z"
+}

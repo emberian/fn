@@ -1,0 +1,16 @@
+{
+ "category": "dead-code",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "host/native/io.lisp",
+ "id": "S078",
+ "line": "4567",
+ "locus": "store-books",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Duplicated store-exists check in import, dead fnn-accept-any-loop, and a docstring that says five recovery barriers where the code has three",
+ "updated": "2026-10-03T02:30:23Z"
+}

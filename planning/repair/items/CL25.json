@@ -1,0 +1,17 @@
+{
+ "category": "check-lane",
+ "detail": "hot_path_check: 185 traversals of retained state on paths from 146 host entries (167 unexpected, 11 cold, 3 resumable, 0 output-proportional, 0 unresolved, 4 un",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL25",
+ "line": "",
+ "locus": "gates-tests-packaging",
+ "notes": [],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "source": "check-lane-355a5c843",
+ "state": "open",
+ "title": "check-lane red: hot_path_check",
+ "updated": "2026-10-03T02:30:23Z"
+}

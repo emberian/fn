@@ -1,0 +1,19 @@
+{
+ "category": "policy",
+ "detail": "owner for LIST option A is served-catalog-live; NEWGROUPS/NEWNEWS/by-id unassigned; DEF-COMMAND owns the declaration shape and the debt ratchet",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/protocol-served-table.lisp",
+ "id": "DC05",
+ "locus": "served-books",
+ "notes": [
+  "10-02 22:22 tracked with SCL4",
+  "10-02 22:33 WIND DOWN: declaration shape + debt ratchet are landed (DC01); the two-context boundary and the arms are the policy owners' (served-catalog-live for LIST; NEWGROUPS/NEWNEWS/by-id unassigned). PRF-1237/1238 carry the completion criteria."
+ ],
+ "owner": "served-catalog-live",
+ "severity": "high",
+ "source": "coordinator",
+ "state": "open",
+ "title": "View-policy debt (c07 rulings, decided not landed): PRF-1237 one completed discovery snapshot for LIST/ACTIVE/COUNTS, NEWGROUPS, ACTIVE.TIMES, NEWNEWS and the config-backed LIST variants; PRF-1238 by-Message-ID pin first then the completed snapshot; the two-context boundary REPLACES fn-nntp-archive-command-cat-is-pinned; tools/view_policy_debt.json shrinks to 0",
+ "updated": "2026-10-03T02:33:43Z"
+}

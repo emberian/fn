@@ -1,0 +1,21 @@
+{
+ "acceptance": "mux:inbox-bound",
+ "category": "claim-gap",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/native/mux.lisp",
+ "id": "r71-F13",
+ "line": "1389",
+ "locus": "connections",
+ "notes": [
+  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
+ ],
+ "owner": "host-lifecycle",
+ "severity": "medium",
+ "sha": "4e409a9d6",
+ "slice": "mux",
+ "source": "r71",
+ "state": "in-progress",
+ "title": "fnn-mux-adopt (claim-gap)",
+ "updated": "2026-10-03T02:32:57Z"
+}

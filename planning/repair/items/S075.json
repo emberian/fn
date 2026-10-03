@@ -1,0 +1,18 @@
+{
+ "acceptance": "primitives:close-row",
+ "category": "resource-leak",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "id": "S075",
+ "line": "2630",
+ "locus": "log-kernel",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "low",
+ "slice": "primitives",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "A refused checkpoint history image still registers a file id whose read-only descriptor stays open for the process's life",
+ "updated": "2026-10-03T02:30:23Z"
+}

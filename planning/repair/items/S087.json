@@ -1,0 +1,18 @@
+{
+ "acceptance": "primitives:rename-word",
+ "category": "error-handling",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/checkpoint.lisp",
+ "id": "S087",
+ "line": "467",
+ "locus": "operator-verbs",
+ "notes": [],
+ "owner": "host-lifecycle",
+ "severity": "low",
+ "slice": "primitives",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Definite renameat2 failures (EINVAL/ENOSYS/EXDEV) are reported as an indeterminate publication",
+ "updated": "2026-10-03T02:30:23Z"
+}

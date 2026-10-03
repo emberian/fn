@@ -1,0 +1,16 @@
+{
+ "category": "claim-gap",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/anchor.lisp",
+ "id": "S096",
+ "line": "63",
+ "locus": "operator-verbs",
+ "notes": [],
+ "owner": "sweep-peer",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "'One bounded acquisition' is not bounded: the DNS lookup has no timeout, there are two full-timeout waits, and the store writer lock is held throughout",
+ "updated": "2026-10-03T02:30:23Z"
+}

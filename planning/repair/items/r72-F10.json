@@ -1,0 +1,20 @@
+{
+ "acceptance": "verbs:windowed-read",
+ "category": "claim-gap",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "id": "r72-F10",
+ "line": "4685",
+ "locus": "operator-verbs",
+ "notes": [
+  "duplicate of S013"
+ ],
+ "owner": "sweep-store",
+ "severity": "medium",
+ "slice": "verbs",
+ "source": "r72",
+ "state": "duplicate",
+ "title": "fnn-import-pass (claim-gap)",
+ "updated": "2026-10-03T02:30:23Z"
+}

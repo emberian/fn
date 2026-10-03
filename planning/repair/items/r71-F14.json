@@ -1,0 +1,20 @@
+{
+ "acceptance": "cold-line:visit-bound",
+ "category": "claim-gap",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/owner.lisp",
+ "id": "r71-F14",
+ "line": "4300",
+ "locus": "cold-line",
+ "notes": [
+  "10-02 22:38 stalled response-pin reader is in the fixture build (cost_gate.py stalled_reader); no curve yet"
+ ],
+ "owner": "cost-gate",
+ "severity": "medium",
+ "slice": "cold-line",
+ "source": "r71",
+ "state": "open",
+ "title": "fnn-owner-cold-result-locked (claim-gap)",
+ "updated": "2026-10-03T02:38:17Z"
+}

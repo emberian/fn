@@ -1,0 +1,20 @@
+{
+ "acceptance": "wrapper:accept-outcome-table",
+ "category": "error-handling",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/native/io.lisp",
+ "id": "S001",
+ "line": "5714",
+ "locus": "lifecycle",
+ "notes": [
+  "10-02 22:22 one fix with S004: io.lisp fnn-accept-attempt (lane/host-lifecycle 36670bccc+375bc9b57); native green pending (green8)"
+ ],
+ "owner": "host-lifecycle",
+ "severity": "high",
+ "slice": "wrapper",
+ "source": "sweep-2026-10-03",
+ "state": "in-progress",
+ "title": "fnn-accept-observe can return NIL or a transient accept error that ends the owner's accept loop",
+ "updated": "2026-10-03T02:30:23Z"
+}

@@ -1,0 +1,20 @@
+{
+ "category": "nit",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "host/native/owner.lisp",
+ "id": "r71-F16",
+ "line": "4862",
+ "locus": "reclaim-publication",
+ "notes": [
+  "10-02 22:21 removed on lane/generators-2 (no caller: the -locked worker is called at owner.lisp:4300, :4995 and recovery-payload-view.lisp:63); lands with GEN-TEETH's READY; host bytes change, no module affected, no natives",
+  "10-02 22:32 on lane/generators-2 ef9baca4d, sent to the runner for the dev merge (ember's all-onto-dev directive); fix forward after"
+ ],
+ "owner": "generators",
+ "severity": "low",
+ "sha": "ef9baca4d",
+ "source": "r71",
+ "state": "in-progress",
+ "title": "fnn-owner-release-pending-extents (nit)",
+ "updated": "2026-10-03T02:32:57Z"
+}

@@ -1,0 +1,22 @@
+{
+ "acceptance": "mux:no-cold-await",
+ "category": "fail-open",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/native/mux.lisp",
+ "id": "S010",
+ "line": "638",
+ "locus": "connections",
+ "notes": [
+  "HOST-LIFECYCLE item 3 cherry-picked into batch BM 3",
+  "10-02 22:29 merged into next e6b827d21"
+ ],
+ "owner": "host-lifecycle",
+ "severity": "high",
+ "sha": "e6b827d21",
+ "slice": "mux",
+ "source": "sweep-2026-10-03",
+ "state": "ready",
+ "title": "A TLS client that pipelines lines can stop the whole node when a later line needs an uncached page",
+ "updated": "2026-10-03T02:30:23Z"
+}

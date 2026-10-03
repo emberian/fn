@@ -1,0 +1,17 @@
+{
+ "category": "check-lane",
+ "detail": "tests/acl2/feed-connection-teeth-tests.lisp:269: fct-refused-login -> PRF-051 fn-fc-refused-login-closes-without-an-offer; subject fn-fc-step (host/owner-host.l",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "",
+ "id": "CL21",
+ "line": "",
+ "locus": "gates-tests-packaging",
+ "notes": [],
+ "owner": "sweep-gates",
+ "severity": "medium",
+ "source": "check-lane-355a5c843",
+ "state": "open",
+ "title": "check-lane red: keystone_emit",
+ "updated": "2026-10-03T02:30:23Z"
+}

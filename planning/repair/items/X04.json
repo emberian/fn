@@ -1,0 +1,18 @@
+{
+ "category": "bug",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "books/payload-arena.lisp",
+ "id": "X04",
+ "line": "",
+ "locus": "reclaim-publication",
+ "notes": [
+  "10-02 22:33 wound down; continuation build/coordinator/lanedumps/arena-forget.md"
+ ],
+ "owner": "arena-forget",
+ "severity": "high",
+ "source": "coordinator",
+ "state": "in-progress",
+ "title": "online reclaim never returns disk/memory (ARENA-FORGET, wiring after 8 proof requirements)",
+ "updated": "2026-10-03T02:33:18Z"
+}

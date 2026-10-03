@@ -1,0 +1,22 @@
+{
+ "acceptance": "committer:seal-off-owner",
+ "category": "bug",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/native/io.lisp",
+ "id": "r72-F4",
+ "line": "8027",
+ "locus": "committer",
+ "notes": [
+  "10-02 22:22 READY 1: seal capture under owner, extension+append+fence are job phases off the owner (lane/owner-offlock cc97926c1)",
+  "10-02 22:31 pushed for merge; natives pending"
+ ],
+ "owner": "owner-offlock",
+ "severity": "high",
+ "sha": "d7fe7f5c8",
+ "slice": "committer",
+ "source": "r72",
+ "state": "ready",
+ "title": "fnn-log-seal-open-batch (bug)",
+ "updated": "2026-10-03T02:31:49Z"
+}

@@ -1,0 +1,18 @@
+{
+ "acceptance": "wrapper:class-plus-step",
+ "category": "error-handling",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/pull-service.lisp",
+ "id": "S110",
+ "line": "247",
+ "locus": "peer-services",
+ "notes": [],
+ "owner": "sweep-peer",
+ "severity": "low",
+ "slice": "wrapper",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "FNPL/FNCU append reports a pre-write envelope refusal or fault as indeterminate (exit 3)",
+ "updated": "2026-10-03T02:30:23Z"
+}

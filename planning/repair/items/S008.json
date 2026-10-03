@@ -1,0 +1,21 @@
+{
+ "acceptance": "bp:step-bound",
+ "category": "performance",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/bp-service.lisp",
+ "id": "S008",
+ "line": "1054",
+ "locus": "peer-services",
+ "notes": [
+  "10-02 22:33 WIP unverified: coverage gate on candidates; REPL not finished; S026 not started"
+ ],
+ "owner": "sweep-peer",
+ "severity": "high",
+ "sha": "5536e2f08",
+ "slice": "bp",
+ "source": "sweep-2026-10-03",
+ "state": "in-progress",
+ "title": "Fragment reassembly re-sweeps every incomplete family's whole declared canvas after every accepted bundle, and the host ignores the quantum",
+ "updated": "2026-10-03T02:33:21Z"
+}

@@ -1,0 +1,16 @@
+{
+ "category": "bug",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "",
+ "id": "X13",
+ "line": "",
+ "locus": "gates-tests-packaging",
+ "notes": [],
+ "owner": "runner",
+ "severity": "high",
+ "source": "coordinator",
+ "state": "open",
+ "title": "122 books red at their digest; 1368 stale; whole-tree requested certify owed",
+ "updated": "2026-10-03T02:30:23Z"
+}

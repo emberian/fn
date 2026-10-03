@@ -1,0 +1,19 @@
+{
+ "acceptance": "carrier:raw-dispatch",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/owner-host.lisp",
+ "id": "cg-owner-io-guard",
+ "line": "1551",
+ "locus": "committer",
+ "notes": [
+  "10-02 22:33 same as X05; guard narrowing infeasible (mbe statep idiom in fn-sf step family); see lanedumps/stage-5b.md"
+ ],
+ "owner": "stage-5b",
+ "severity": "high",
+ "slice": "carrier",
+ "source": "cost-gate",
+ "state": "in-progress",
+ "title": "fn-owner-io guard fn-sn-statep is O(store records) per call: 92 ms / 11.8 MB per call at N=1000 since open (k=1.0), 2 calls per POST; fn-sf-record-listp 3 fn-held-p per record + success keyset; image 45e05c7fd; raw dispatch / narrowed guard",
+ "updated": "2026-10-03T02:33:59Z"
+}

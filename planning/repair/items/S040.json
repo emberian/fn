@@ -1,0 +1,16 @@
+{
+ "category": "error-handling",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/store-write-host.lisp",
+ "id": "S040",
+ "line": "794",
+ "locus": "store-books",
+ "notes": [],
+ "owner": "sweep-store",
+ "severity": "medium",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "Confirmed log repair wedges permanently after an interrupted quarantine (deterministic name, O_EXCL, no cleanup)",
+ "updated": "2026-10-03T02:30:23Z"
+}

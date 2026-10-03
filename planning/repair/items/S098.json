@@ -1,0 +1,16 @@
+{
+ "category": "correctness",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/bp-app.lisp",
+ "id": "S098",
+ "line": "237",
+ "locus": "peer-services",
+ "notes": [],
+ "owner": "sweep-peer",
+ "severity": "low",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "bp-app records an :accepted receive verdict before the application decides, then refuses or reports uncertain",
+ "updated": "2026-10-03T02:30:23Z"
+}

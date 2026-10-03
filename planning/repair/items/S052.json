@@ -1,0 +1,20 @@
+{
+ "category": "correctness",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "books/owner.lisp",
+ "id": "S052",
+ "line": "1674",
+ "locus": "peer-services",
+ "notes": [
+  "10-02 22:30 fixed 9b7508ccb on lane/sweep-peer; in the next READY batch after S005",
+  "10-02 22:33 sent in 5536e2f08; books certified"
+ ],
+ "owner": "sweep-peer",
+ "severity": "medium",
+ "sha": "9b7508ccb",
+ "source": "sweep-2026-10-03",
+ "state": "in-progress",
+ "title": "BP-carried transit collapses transient deferrals and an unusable clock into a permanent refusal (TCPCL XFER_REFUSE Not Acceptable)",
+ "updated": "2026-10-03T02:33:21Z"
+}

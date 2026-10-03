@@ -1,0 +1,22 @@
+{
+ "acceptance": "wrapper:fence-before-unlock",
+ "category": "error-handling",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/owner.lisp",
+ "id": "S020",
+ "line": "5234",
+ "locus": "reclaim-publication",
+ "notes": [
+  "10-02 22:21 t45 lane/codex-fence-boundary: one READY covers r71-F1/F2 S015-S020 S023 X08 r72-F6",
+  "10-02 22:33 t45 lane/codex-fence-boundary 8e8041218: structure tests 15/15 local, program check PASS; natives NOT green yet (the 6ea819b75 run aborted at interfaces-check before the regen commit; relaunch at 8e8041218); farm run-20261003T022549Z-f421 certified the books before the last comment-only change"
+ ],
+ "owner": "failure-scope",
+ "severity": "medium",
+ "sha": "8e8041218",
+ "slice": "wrapper",
+ "source": "sweep-2026-10-03",
+ "state": "ready",
+ "title": "Publication capture rotates the log in a bare fnn-owner-gated quantum: a rotation fault or indeterminate escapes without fencing the owner",
+ "updated": "2026-10-03T02:33:24Z"
+}

@@ -1,0 +1,20 @@
+{
+ "acceptance": "log-kernel:windowed-zeroing",
+ "category": "bug",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "id": "r72-F8",
+ "line": "6717",
+ "locus": "log-kernel",
+ "notes": [
+  "duplicate of S047"
+ ],
+ "owner": "sweep-store",
+ "severity": "high",
+ "slice": "log-kernel",
+ "source": "r72",
+ "state": "duplicate",
+ "title": "fnn-log-recover (bug)",
+ "updated": "2026-10-03T02:30:23Z"
+}

@@ -1,0 +1,18 @@
+{
+ "acceptance": "wrapper:closed-classification",
+ "category": "error-handling",
+ "disposition": "DISSOLVES-IN",
+ "exposure": "conditional",
+ "file": "host/native/bp-service.lisp",
+ "id": "S097",
+ "line": "610",
+ "locus": "peer-services",
+ "notes": [],
+ "owner": "sweep-peer",
+ "severity": "low",
+ "slice": "wrapper",
+ "source": "sweep-2026-10-03",
+ "state": "open",
+ "title": "bp-service send path reports an indeterminate publication as transport :uncertain/:failed, and reports :failed after fragments were sent",
+ "updated": "2026-10-03T02:30:23Z"
+}

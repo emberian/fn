@@ -1,0 +1,20 @@
+{
+ "acceptance": "wrapper:accept-outcome-table",
+ "category": "error-handling",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/native/owner.lisp",
+ "id": "S004",
+ "line": "5982",
+ "locus": "lifecycle",
+ "notes": [
+  "10-02 22:22 of S001 (same fix: fnn-accept-attempt; READY together)"
+ ],
+ "owner": "host-lifecycle",
+ "severity": "high",
+ "slice": "wrapper",
+ "source": "sweep-2026-10-03",
+ "state": "duplicate",
+ "title": "An accept(2) socket error from a client abort stops the node (main listener) or kills an extra or TLS listener for good",
+ "updated": "2026-10-03T02:30:23Z"
+}
