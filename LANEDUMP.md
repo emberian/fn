@@ -1224,3 +1224,17 @@ physical mux discard/return; logical close/cancel cannot settle physical holds.
 ## Sol source assembly: exact cached-only REPL (2026-10-03)
 
 - c4449490b composed clean; tools/tests bytes exact producer. Tools primary semantic review accepted; 31 focused cached/remote/source-refusal regressions already PASS, reused without duplicate test or ACL2 session. Flag rejects contradictory modes before host/direct entry and suppresses ancestry-only source fallback; exact cache/alist checks and real misses remain refusal. No certificate/data/evidence cache changes. Ordinary tool integration; no proof certification gate.
+## Sol source assembly — independent serializer observation fixture
+
+Optional e232767c5 fixture/archive packet composed with tracker-only2d8dbf840.
+Probe checks loaded serializer guard class and declaration, invokes actual
+fnn-call normal counterpart, warms metadata before sampling, retains EQ input
+and checks exact bounded X output across two text sizes and four quanta.
+Raw trusted observation is isolated and supplies no proof or whole-plan heap
+bound. Existing archive source is5f8601927/SBCL2.6.8, not this assembled head;
+no new allocation run or image claim. Fixtures exact, shell syntax/diffcheck
+and two archive objects verify. First optional scheduled selector
+tests/test_native_string_line_allocation_raw.sh ACTUAL_SOURCE_ROOT.
+Sol tracker now names exact first4-root certificate scope/digest, retaining
+five cursor failures,44 installed uncited dependencies and general CBOR tests
+installed cached-only. It does not transfer that certificate to newer packet.
