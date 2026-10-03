@@ -1375,6 +1375,10 @@
                                user ctx config fn-web-in fn-web-out))
     (:protect (fn-wss-redeem-page 403 *fn-wss-msg-protect* user ctx config fn-web-in fn-web-out))
     (:busy (fn-wss-redeem-page 429 *fn-wss-msg-busy* user ctx config fn-web-in fn-web-out))
+    (:uncertain
+     (fn-wss-redeem-page 503
+       (fn-wrq-oct "We couldn't tell whether your account was made. Try signing in with the name and password you chose before redeeming the invitation again.")
+       user ctx config fn-web-in fn-web-out))
     (otherwise (fn-wss-redeem-page 503 *fn-wss-msg-unreachable* user ctx config fn-web-in fn-web-out))))
 
 (defun fn-wss-k-redeem (sessions flow event config fn-web-in fn-web-out)
@@ -1406,9 +1410,9 @@
                                           (cond ((equal c2 281) :bound)
                                                 ((or (equal c1 483) (equal c2 483)) :protect)
                                                 ((or (equal c1 482) (equal c2 482)) :code)
-                                                (t :other)))))
+                                                (t :uncertain)))))
                  sessions fn-web-out)
-           (mv-let (a fn-web-out) (fn-wss-redeem-refused :other user ctx config fn-web-in fn-web-out)
+           (mv-let (a fn-web-out) (fn-wss-redeem-refused :uncertain user ctx config fn-web-in fn-web-out)
              (mv a sessions fn-web-out)))))
       (:redeemed
        (if (equal (fn-wrq-nth 3 data) :bound)
