@@ -172,7 +172,7 @@
            (config-octets "read by fnn-operator-read-config, bounded; NIL when absent")))
 
 (definterface fn-owner-control-submit
-  :class :program
+  :class :common-lisp-compliant
   :kinds ((msgid-octets fn-cbor-octet-listp) (group-octets fn-octet-list-listp))
   :exempt ((payload "the received article's buffer (host/native/hybrid-control.lisp)")))
 
@@ -1425,7 +1425,7 @@
   :class :common-lisp-compliant)
 
 (definterface fn-owner-close
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-compress-min-octets
   :class :common-lisp-compliant)
@@ -1511,7 +1511,7 @@
   :class ::program)
 
 (definterface fn-owner-fault
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-feed-auth-policy
   :class ::program
@@ -1604,7 +1604,7 @@
   :class ::program)
 
 (definterface fn-owner-install-node-secret
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-install-profile
   :class ::program)
@@ -1684,10 +1684,10 @@
   :class :common-lisp-compliant)
 
 (definterface fn-owner-open
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (definterface fn-owner-open-peer
-  :class ::program
+  :class :common-lisp-compliant
   :kinds ((peer-octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-operator-refusal-reason
@@ -1733,7 +1733,7 @@
   :class :common-lisp-compliant)
 
 (definterface fn-owner-prepare-retention
-  :class ::program
+  :class :common-lisp-compliant
   :kinds ((id-octets fn-cbor-octet-listp) (subject-octets fn-cbor-octet-listp) (evidence-octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-prepare-topic
@@ -4510,7 +4510,7 @@
 
 ; host/native/admin.lisp dispatches it (lane limits-live).
 (definterface fn-owner-apply-limit-profile
-  :class ::program)
+  :class :common-lisp-compliant)
 
 ; host/native/owner.lisp dispatches it (lane compress-8).
 (definterface fn-owner-compress-owed
