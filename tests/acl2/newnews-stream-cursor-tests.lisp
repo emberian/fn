@@ -133,3 +133,34 @@
                               (fn-nnm-group-remaining (fn-cur-at 1 progress)))
                        (< (fn-nnm-work-remaining (fn-cur-at 1 next))
                           (fn-nnm-work-remaining (fn-cur-at 1 progress)))))))))
+
+; The actual control batch consumes its complete finite visit grant rather
+; than paying one scheduler delay for every matcher microstep. It buffers no
+; intermediate reply output, and the exact immutable context is retained.
+(defthm nnsct-batch-bounds-and-exact-residual
+  (let* ((cur (fn-cur-make (fn-cur-context *nnmt-cur*) *nnsct-select-progress* nil nil))
+         (one (fn-nnw-stream-step cur 16 2 nil nil))
+         (batch (fn-nnw-stream-batch cur 16 2 nil nil)))
+    (and (equal (mv-nth 2 one) 1)
+         (equal (mv-nth 2 batch) 16)
+         (equal (mv-nth 3 batch) :yield)
+         (not (car batch))
+         (<= (len (car batch)) 2)
+         (equal (fn-cur-context (mv-nth 1 batch)) (fn-cur-context cur))
+         (true-listp (fn-cur-pending (mv-nth 1 batch)))
+         (equal (append (car batch)
+                        (fn-nnw-stream-remaining (mv-nth 1 batch) nil nil))
+                (fn-nnw-stream-remaining cur nil nil)))))
+
+(defthm nnsct-batch-stops-at-output-and-dependency
+  (let* ((cur (fn-cur-make (fn-cur-context *nnmt-cur*)
+                          (fn-nnw-stream-render (fn-sl-start "<a@x>") nil) nil nil))
+         (batch (fn-nnw-stream-batch cur 16 2 nil nil))
+         (held (fn-cur-make (fn-cur-context cur) *nnsct-select-progress* nil '(:resource held)))
+         (wait (fn-nnw-stream-batch held 16 2 nil nil))
+         (zero (fn-nnw-stream-batch cur 16 0 nil nil)))
+    (and (equal (car batch) '(60 97))
+         (equal (mv-nth 2 batch) 0)
+         (equal (mv-nth 3 batch) :output)
+         (equal wait (list nil held 0 :suspended))
+         (equal zero (list nil cur 0 :yield)))))

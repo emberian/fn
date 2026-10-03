@@ -2113,6 +2113,10 @@ The metadata NEWNEWS continuation is the first `def-cursor` consumer
 `fn-nntp-newnews-response-stream`; its initializer retains parsed wildcard
 patterns, configured groups and article tails by reference in fixed envelopes.
 `fn-nnw-stream-step` accepts separate control-call and emitted-byte budgets.
+The actual plan calls generated `fn-nnw-stream-batch`, which takes at most its
+visit grant of empty control transitions in one quantum and stops at the first
+output, dependency or exhausted grant. It accumulates no intermediate output;
+its unconditional prefix/residual and byte/call bounds compose the step contracts.
 A candidate retains `fn-nnm-start` state while `fn-nnm-one`
 inspects one configured group/member entry or takes one wildcard matcher
 microstep per call. The matcher retains its decoder offset, DP row and

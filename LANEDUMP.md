@@ -2500,3 +2500,20 @@ Root owns NEWNEWS tariff; Tools final fair push93e/8df/879 and COLD pullb138/deb
 receipts remain inherited intact, native SCN1106 execution delegated to the same
 convergence image. Important pending BP source borrow is conservatively held at
 terminal; no producer cancellation/refund is manufactured.
+
+## Actual bounded control batch (2026-10-03)
+
+Actual fn-splan-rest-cursor-step now calls fn-nnw-stream-batch. New
+world-checked def-cursor/batch composes literal byte/call/residual step contracts;
+at most V empty :candidate control transitions run, with no output accumulator.
+First output/dependency/yield stops; output can drain at zero remaining visits.
+All statements unconditional, byte bound B and calls bound V independent.
+Guard-verified batch plus natural call receipt: .28ACL2s/27319steps. Actual
+pending/output-list/suffix/terminal composition lemmas .14s/11903steps; literal
+W16 matcher progress and output/dependency/zero-byte teeth172steps pass.
+Plan source wiring uses batch residual/pending lemmas, matching full plan
+root replay still pending (existing over/catalog source prefix unavailable in
+this warm stream world). No certificate/image or whole-plan heap coverage.
+Batch creates one recursion/MV envelope per accepted control transition;
+Foundations retains physical allocation/collector tariff ownership. This source
+ships independently of raw catalog/availability proof repair owned Convergence.
