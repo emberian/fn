@@ -373,19 +373,276 @@
           :restricted "the reference fold over the projected pinned archive (fn-nntp-group-result)")
    :teeth ("GROUP fn.test" "GROUP fn.other" "GROUP fn.none" "GROUP" "GROUP a b"))
   ("LISTGROUP"
-   :view :select :effect :select :view-rfc "NNT-042; RFC 3977 6.1.2")
+   :view :select :effect :select :view-rfc "NNT-042; RFC 3977 6.1.2"
+   :forms (("indexed" :test (fn-gidx-pinp index)
+            :cat (fn-nntp-listgroup-command-cat session archive args v fn-cat)
+            :view :select :effect :select
+            :by ((:instance fn-nntp-listgroup-command-cat-is-archive)
+                 (:instance fn-scat-built-listgroup-is-fold)
+                 (:instance fn-proto-pin-buckets-are-built)))
+           ("other" :test t :cat (fn-nntp-archive-command session archive env keyword args fn-arena)
+            :view :select :effect :select))
+   :cost (:unrestricted "carried group summary and number-table range probes (fn-nntp-listgroup-command-cat)"
+          :restricted "the pinned group bucket command, refined to the reference archive fold")
+   :teeth ("LISTGROUP fn.test" "LISTGROUP" "LISTGROUP fn.test 2-3" "LISTGROUP fn.none" "LISTGROUP a b c"))
   ("LAST"
-   :view :pinned :effect :current :view-rfc "NNT-042 (other reads); RFC 3977 6.1.3")
+   :view :pinned :effect :current :view-rfc "NNT-042 (other reads); RFC 3977 6.1.3"
+   :forms (("current" :test (null args)
+            :cat (fn-nntp-next-or-last-cat session archive :last v fn-arena fn-cat)
+            :view :pinned :effect :current
+            :by ((:instance fn-nntp-next-or-last-cat-is-next-or-last (direction :last))))
+           ("syntax" :test t :cat (fn-nntp-archive-command session archive env keyword args fn-arena)
+            :view :none :effect :none))
+   :cost (:unrestricted "number-table probes from the current article to the next visible number, plus one catalog lookup"
+          :restricted "the reference fold over the projected pinned archive (fn-nntp-next-or-last)")
+   :teeth ("LAST" "LAST 1"))
   ("NEXT"
-   :view :pinned :effect :current :view-rfc "NNT-042 (other reads); RFC 3977 6.1.4")
+   :view :pinned :effect :current :view-rfc "NNT-042 (other reads); RFC 3977 6.1.4"
+   :forms (("current" :test (null args)
+            :cat (fn-nntp-next-or-last-cat session archive :next v fn-arena fn-cat)
+            :view :pinned :effect :current
+            :by ((:instance fn-nntp-next-or-last-cat-is-next-or-last (direction :next))))
+           ("syntax" :test t :cat (fn-nntp-archive-command session archive env keyword args fn-arena)
+            :view :none :effect :none))
+   :cost (:unrestricted "number-table probes from the current article to the next visible number, plus one catalog lookup"
+          :restricted "the reference fold over the projected pinned archive (fn-nntp-next-or-last)")
+   :teeth ("NEXT" "NEXT 1"))
   ("ARTICLE"
-   :view :pinned :view-decided (:pin-or-completed "PRF-1238") :effect :current :view-rfc "NNT-042 (pinned retrieval; a cancel after the pin leaves the article visible); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot, number fields 0 on fallback; RFC 3977 6.2.1")
+   :view :pinned :view-decided (:pin-or-completed "PRF-1238") :effect :current :view-rfc "NNT-042 (pinned retrieval; a cancel after the pin leaves the article visible); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot, number fields 0 on fallback; RFC 3977 6.2.1"
+   :forms (("number-withdrawn" :test (and (consp args) (null (cdr args))
+                                         (fn-nntp-number-withdrawn-p-cat session index (car args) v fn-arena fn-cat))
+            :cat (fn-nntp-withdrawn-reply session nil)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))))
+           ("msgid-withdrawn" :test (and (consp args) (null (cdr args))
+                                        (fn-nntp-message-id-tokenp (car args))
+                                        (fn-nntp-msgid-withdrawn-p-cat index (car args) v fn-arena fn-cat))
+            :cat (fn-nntp-withdrawn-reply session t)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
+           ("compatibility" :test (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
+            :view :pinned :effect :current
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
+           ("msgid" :test (and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args)))
+            :cat (fn-nntp-msgid-retrieval-cat session v :article (car args) fn-arena fn-cat)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)
+                 (:instance fn-nntp-msgid-retrieval-cat-is-scan (kind :article) (token (car args)))
+                 (:instance fn-nntp-msgid-retrieval-indexed-refines-scan
+                            (index (fn-gidx-pin-trie index)) (kind :article) (token (car args)))))
+           ("number" :test (and (consp args) (null (cdr args)) (fn-nntp-number-tokenp (car args)))
+            :cat (fn-nntp-number-retrieval-cat session v :article (car args) fn-arena fn-cat)
+            :view :pinned :effect :current
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)
+                 (:instance fn-nntp-number-retrieval-cat-is-walk (kind :article) (token (car args)))
+                 (:instance fn-scat-pinned-number-line-is-number-retrieval)))
+           ("current" :test (null args)
+            :cat (fn-nntp-current-retrieval-cat session :article v fn-arena fn-cat)
+            :view :pinned :effect :current
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)
+                 (:instance fn-nntp-current-retrieval-cat-is-current-retrieval (kind :article)))
+            :open (fn-nntp-retrieval))
+           ("syntax" :test t :cat (fn-nntp-archive-command session archive env keyword args fn-arena)
+            :view :none :effect :none
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply))))
+   :cost (:unrestricted "number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article"
+          :restricted "pinned Message-ID trie lookup or the reference number/current archive walk")
+   :teeth ("ARTICLE 2" "ARTICLE" "ARTICLE <b@x>" "ARTICLE 9" "ARTICLE <missing@x>" "ARTICLE 1 2"))
   ("HEAD"
-   :view :pinned :view-decided (:pin-or-completed "PRF-1238") :effect :current :view-rfc "NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.2")
+   :view :pinned :view-decided (:pin-or-completed "PRF-1238") :effect :current :view-rfc "NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.2"
+   :forms (("number-withdrawn" :test (and (consp args) (null (cdr args))
+                                         (fn-nntp-number-withdrawn-p-cat session index (car args) v fn-arena fn-cat))
+            :cat (fn-nntp-withdrawn-reply session nil)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))))
+           ("msgid-withdrawn" :test (and (consp args) (null (cdr args))
+                                        (fn-nntp-message-id-tokenp (car args))
+                                        (fn-nntp-msgid-withdrawn-p-cat index (car args) v fn-arena fn-cat))
+            :cat (fn-nntp-withdrawn-reply session t)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
+           ("compatibility" :test (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
+            :view :pinned :effect :current
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
+           ("msgid" :test (and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args)))
+            :cat (fn-nntp-msgid-retrieval-cat session v :head (car args) fn-arena fn-cat)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)
+                 (:instance fn-nntp-msgid-retrieval-cat-is-scan (kind :head) (token (car args)))
+                 (:instance fn-nntp-msgid-retrieval-indexed-refines-scan
+                            (index (fn-gidx-pin-trie index)) (kind :head) (token (car args)))))
+           ("number" :test (and (consp args) (null (cdr args)) (fn-nntp-number-tokenp (car args)))
+            :cat (fn-nntp-number-retrieval-cat session v :head (car args) fn-arena fn-cat)
+            :view :pinned :effect :current
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)
+                 (:instance fn-nntp-number-retrieval-cat-is-walk (kind :head) (token (car args)))
+                 (:instance fn-scat-pinned-number-line-is-number-retrieval)))
+           ("current" :test (null args)
+            :cat (fn-nntp-current-retrieval-cat session :head v fn-arena fn-cat)
+            :view :pinned :effect :current
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)
+                 (:instance fn-nntp-current-retrieval-cat-is-current-retrieval (kind :head)))
+            :open (fn-nntp-retrieval))
+           ("syntax" :test t :cat (fn-nntp-archive-command session archive env keyword args fn-arena)
+            :view :none :effect :none
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply))))
+   :cost (:unrestricted "number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article"
+          :restricted "pinned Message-ID trie lookup or the reference number/current archive walk")
+   :teeth ("HEAD 2" "HEAD" "HEAD <b@x>" "HEAD 9" "HEAD <missing@x>" "HEAD 1 2"))
   ("BODY"
-   :view :pinned :view-decided (:pin-or-completed "PRF-1238") :effect :current :view-rfc "NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.3")
+   :view :pinned :view-decided (:pin-or-completed "PRF-1238") :effect :current :view-rfc "NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.3"
+   :forms (("number-withdrawn" :test (and (consp args) (null (cdr args))
+                                         (fn-nntp-number-withdrawn-p-cat session index (car args) v fn-arena fn-cat))
+            :cat (fn-nntp-withdrawn-reply session nil)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))))
+           ("msgid-withdrawn" :test (and (consp args) (null (cdr args))
+                                        (fn-nntp-message-id-tokenp (car args))
+                                        (fn-nntp-msgid-withdrawn-p-cat index (car args) v fn-arena fn-cat))
+            :cat (fn-nntp-withdrawn-reply session t)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
+           ("compatibility" :test (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
+            :view :pinned :effect :current
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
+           ("msgid" :test (and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args)))
+            :cat (fn-nntp-msgid-retrieval-cat session v :body (car args) fn-arena fn-cat)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)
+                 (:instance fn-nntp-msgid-retrieval-cat-is-scan (kind :body) (token (car args)))
+                 (:instance fn-nntp-msgid-retrieval-indexed-refines-scan
+                            (index (fn-gidx-pin-trie index)) (kind :body) (token (car args)))))
+           ("number" :test (and (consp args) (null (cdr args)) (fn-nntp-number-tokenp (car args)))
+            :cat (fn-nntp-number-retrieval-cat session v :body (car args) fn-arena fn-cat)
+            :view :pinned :effect :current
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)
+                 (:instance fn-nntp-number-retrieval-cat-is-walk (kind :body) (token (car args)))
+                 (:instance fn-scat-pinned-number-line-is-number-retrieval)))
+           ("current" :test (null args)
+            :cat (fn-nntp-current-retrieval-cat session :body v fn-arena fn-cat)
+            :view :pinned :effect :current
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)
+                 (:instance fn-nntp-current-retrieval-cat-is-current-retrieval (kind :body)))
+            :open (fn-nntp-retrieval))
+           ("syntax" :test t :cat (fn-nntp-archive-command session archive env keyword args fn-arena)
+            :view :none :effect :none
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply))))
+   :cost (:unrestricted "number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article"
+          :restricted "pinned Message-ID trie lookup or the reference number/current archive walk")
+   :teeth ("BODY 2" "BODY" "BODY <b@x>" "BODY 9" "BODY <missing@x>" "BODY 1 2"))
   ("STAT"
-   :view :pinned :view-decided (:pin-or-completed "PRF-1238") :effect :current :view-rfc "NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.4")
+   :view :pinned :view-decided (:pin-or-completed "PRF-1238") :effect :current :view-rfc "NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.4"
+   :forms (("number-withdrawn" :test (and (consp args) (null (cdr args))
+                                         (fn-nntp-number-withdrawn-p-cat session index (car args) v fn-arena fn-cat))
+            :cat (fn-nntp-withdrawn-reply session nil)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))))
+           ("msgid-withdrawn" :test (and (consp args) (null (cdr args))
+                                        (fn-nntp-message-id-tokenp (car args))
+                                        (fn-nntp-msgid-withdrawn-p-cat index (car args) v fn-arena fn-cat))
+            :cat (fn-nntp-withdrawn-reply session t)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
+           ("compatibility" :test (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
+            :view :pinned :effect :current
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
+           ("msgid" :test (and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args)))
+            :cat (fn-nntp-msgid-retrieval-cat session v :stat (car args) fn-arena fn-cat)
+            :view :pinned :effect :none
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)
+                 (:instance fn-nntp-msgid-retrieval-cat-is-scan (kind :stat) (token (car args)))
+                 (:instance fn-nntp-msgid-retrieval-indexed-refines-scan
+                            (index (fn-gidx-pin-trie index)) (kind :stat) (token (car args)))))
+           ("number" :test (and (consp args) (null (cdr args)) (fn-nntp-number-tokenp (car args)))
+            :cat (fn-nntp-number-retrieval-cat session v :stat (car args) fn-arena fn-cat)
+            :view :pinned :effect :current
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)
+                 (:instance fn-nntp-number-retrieval-cat-is-walk (kind :stat) (token (car args)))
+                 (:instance fn-scat-pinned-number-line-is-number-retrieval)))
+           ("current" :test (null args)
+            :cat (fn-nntp-current-retrieval-cat session :stat v fn-arena fn-cat)
+            :view :pinned :effect :current
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply)
+                 (:instance fn-nntp-current-retrieval-cat-is-current-retrieval (kind :stat)))
+            :open (fn-nntp-retrieval))
+           ("syntax" :test t :cat (fn-nntp-archive-command session archive env keyword args fn-arena)
+            :view :none :effect :none
+            :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-proto-pin-trie-is-built)
+                 (:instance fn-rcompat-reply-cat-is-rcompat-reply))))
+   :cost (:unrestricted "number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article"
+          :restricted "pinned Message-ID trie lookup or the reference number/current archive walk")
+   :teeth ("STAT 2" "STAT" "STAT <b@x>" "STAT 9" "STAT <missing@x>" "STAT 1 2"))
   ("OVER"
    :view :pinned :effect :none :view-rfc "NNT-042 (other reads); RFC 3977 8.3"
    :quantum (:cursor fn-ovw-cursor-effectp)

@@ -1,30 +1,39 @@
-# Integration deputy — GPT-6.1-Sol, 2026-10-03
+# Command-row helper — GPT-6.1-Sol
 
-Worktree codex-sol-integrate, sole dev push writer this wave. Base 30529279e.
+Base dev4479f2acf plus Served225174016, exact HEADeeede8ff0. Own DC03 NEXT/LAST/LISTGROUP and ARTICLE/HEAD/BODY/STAT current/number rows in books/protocol-served-table.lisp and corresponding tests. Export only three existing local dispatch lemmas in served-catalog-dispatch.lisp, confirm names with Served. Served owns NEWNEWS/OVER/HDR/XPAT and completed-view design; no overlap with its newnews-metadata-cursor move.
 
-## Integrated source
-- 8cf37a368 merges burndown-3 2f7f5bda2 (CL08/09, BM08/CL20, CL10, CL12 and partial CL11).
-- witness_check, spec_cite_check --strict, harness_check acl2-arity, payload_kind_check, must_fail_check pass; 21 relevant unittest tests pass.
-- Independently reproduced base 86f94aee0: uncited payload-lifecycle raw witness, 11 wrong-arity fixture sites, 12 undeclared payload consumers, 12 stale spec citations. BM08 original verify base was a new-at-head missing unittest, so that red reason is not accepted as semantic evidence.
-- CL12 source declarations integrated; affected roots still need certification. CL11 unchecked macro refusal teeth need actual target-root certification, remains in-progress.
+Stable formals SESSION ARCHIVE INDEX VERDICTS ENV KEYWORD ARGS V ARENA CAT. Consumer fn-proto-archive-command-cat, then Served DC02 switch. Preserve current pinned-view policy/debt, no invented formal completeness. Ship proofs and teeth for literal table/dispatch properties, source and narrow checks to Served/Groundwork/Integration. Served assembles and follows through dev consumer wiring/removal.
 
-## Harvested (archived/indexed; no image verdict)
-- ov1 at 4671ace0ff1b5922fd83ab7cda137e02c444ce92 ended 05:22:46Z status 1. certify-20261003T043548Z-620519 passed 32/0, acquire/validate/host-forward pass. Both host prefixes timeout 600s at fn-owner-page-executor-acquire-refines-pxe-by-definition. Exact normal/DTN logs archived under planning/evidence/overnight-ov1-2026-10-03/. No image or native module ran.
-- served-live sl3 at b7ef4410c: certify-20261003T041248Z-3998343 558 passed/9 failed, old feed-totality/BP guard blockers and dependents. Logs archived planning/evidence/served-live-sl3-2026-10-03/.
-- wrapper run-20261003T041004Z-fe23: certify-20261003T041156Z-3987839 561 passed/11 failed. Manifest archived/indexed; failure-scope passed at matching bytes, old feed/BP blockers prevent whole-run green.
-- Manifests have git_revision null; source coordinate is native run.log/source digest, not inferred from successful status.
+Read AGENTS and guides/overnight plan plus protocol/table specification. IDs claimed before writing. Integration budgets expensive checks; no extra images or --closure. External advisory reviews authorized selectively, minimal project context/no secrets; no approval gates or proof substitution. No live nodes/deployment.
 
-## Next integrated batch
-- Coordinator owns page-executor host theorem proof-cost fix; next frozen candidate gets one warmed normal/DTN host-prefix validation before replacement images.
-- Runtime owns wrapper/section changes; Served owns served-live repairs. Do not duplicate fixes or image runs.
-- Post-guard-off 812082a53 needs final-world inventory and matched raw/counterpart POST measurement; broken carrier fa32ac06f stays out.
-- hbox observed 05:51Z: ARC 24 GiB at cap, memory_available ~49 GiB; no fn build, Lean ~3.5 GiB. Foundations may run two-job narrow def-cost certification; revisit inventory before batch image.
+## DC03 source and live proof result
 
-## Continuing wave
-- dev819af5d54 includes page-executor proof-cost repair4207030f4 and harvested current-view regeneration. Exact host prefix still pending.
-- Served3436966b0 source merged79850a877: metadata NEWNEWS, cold line deadline/mux polling/feed idle, protected publication ARENA capture.2 capture tests/read/protocol pass; native paths remain owed. hbox regen/lock check in progress.
-- Tools verifierd6fd41a8c merged1bdc62a1f,19 tests pass; typed selector harness4740c59af merged,3 actual classifier/admission mutation tests pass.
-- Foundations ee7c686c0 def-cost application/transitive unknown repairs merged; both roots certified in certify-20261003T055532Z-754160; indexed manifest verified.
-- Groundwork active plan/nowb1b425870 cherry-pickedcf8343310.
-- Burndown narrow certification run-20261003T060224Z-902c on hbox, certify-20261003T060555Z-796321:7 roots,323 cached/46 missing. No lane --closure. Harvest pending.
-- Runtime first physical actor source/failure envelope pending. Post-guard-off812082a53 reviewed by Foundations/Groundwork; root deciding native-trust versus formal-assumption label; final-world/matched POST still owed.
+Seven declarations now generate the complete existing served behavior: NEXT,
+LAST, LISTGROUP and ARTICLE/HEAD/BODY/STAT. Retrieval rows preserve withdrawal,
+compatibility and Message-ID preludes before number/current arms; row-level
+PRF-1238 policy debt remains unchanged. No formal or completed-view policy changed.
+Existing dispatch lemmas for pinned number lines, LISTGROUP and LIST COUNTS are
+exported without changing their statements/proofs. The generated dispatcher is
+fn-proto-archive-command-cat; Served owns its installation in fn-scr-command.
+
+Hbox REPL dc03 admitted protocol-served events #12–51: 40/40, 1.55 ACL2 seconds,
+451,252 prover steps (generated form/row event #35: 1.21 s, 433,387 steps), including
+fn-proto-archive-command-cat's guards. Dependencies loaded from source where
+matching current-base certificates were absent; this is admission, not certification.
+Hbox REPL dc03-teeth loaded the complete existing teeth book plus the new
+pst-dc03-reachable-positive (navigation, selection and retrieval successes) and
+pst-dc03-withdrawn-positive (number and Message-ID withdrawals). Both assert the
+literal boundary's full antecedent and session/effect conclusion, with composed
+unrestricted/restricted route reachability. Positive withdrawal setup withdraws
+before the third commit; the catalog's count stamps visibility, BY records provenance.
+
+Raw REPL transcripts, including failed probes and corrected witnesses, are archived
+and indexed under planning/evidence/dc03-command-rows-20261003/*.log.gz.
+protocol_emit --check: 34 protocol rows/304 replies, unchanged 10 policy debts;
+docs_check --write regenerated specs/nntp.md and passed. next_id check: 0 new IDs,
+0 collisions, 0 unclaimed. Existing PRF-1236 refinement is extended, not replaced.
+
+Certification remains coordinated by Integration over the changed dispatch,
+served table, protocol-served and its teeth roots (and actual includers). No native
+image or runtime change was made; the generated switch and native observations
+remain Served/Integration work. Do not label this source READY as DONE or certified.
