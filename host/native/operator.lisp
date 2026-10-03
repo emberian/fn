@@ -576,8 +576,23 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
 ;;; window, books/owner-retire.lisp fn-oret-drain-step-ends-by-the-window,
 ;;; and its stop by the deadline, PRF-357), then prints the report the owner
 ;;; fenced before it stopped.  No report is uncertain, never success.
+(defun fnn-retire-report-path (root)
+  (fnn-join root (fnn-octets-string
+                  (fnn-octets (fnn-core 'fn-nret-report-file-name)))))
+
+(defun fnn-retire-report-identity (path)
+  "(INODE MTIME) of the regular file at PATH, or NIL when it is absent or not a
+regular file (a symlink, a directory)."
+  (let ((st (fnn-lstat path)))
+    (and st (fnn-regular-p st) (not (fnn-symlink-p st))
+         (list (sb-posix:stat-ino st) (sb-posix:stat-mtime st)))))
+
 (defun fnn-operator-execute-retire (result root)
-  (let ((code (fnn-operator-execute-owner-request
+  ;; A report left by an earlier retire is not this drain's report (S103):
+  ;; only a regular file that differs from the one present before the request
+  ;; is printed.
+  (let* ((before (fnn-retire-report-identity (fnn-retire-report-path root)))
+         (code (fnn-operator-execute-owner-request
                result root
                (lambda ()
                  (fnn-out "~a" (fnn-octets-string (fnn-octets (fnn-core 'fn-nret-not-running-line))))
@@ -592,9 +607,9 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
         (loop while (member (funcall (fnn-olo-admin-observe live) root path-list nil)
                             '(:live :held))
               do (sleep 1))
-        (let ((report (fnn-join root (fnn-octets-string
-                                      (fnn-octets (fnn-core 'fn-nret-report-file-name))))))
-          (if (probe-file report)
+        (let* ((report (fnn-retire-report-path root))
+               (after (fnn-retire-report-identity report)))
+          (if (and after (not (equal after before)))
               (with-open-file (in report :element-type '(unsigned-byte 8))
                 (let ((buffer (make-array (file-length in) :element-type '(unsigned-byte 8))))
                   (read-sequence buffer in)

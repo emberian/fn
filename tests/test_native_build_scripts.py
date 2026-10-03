@@ -109,5 +109,16 @@ class SelfSignedPartialFiles(unittest.TestCase):
         self.assertIn("(unless written (ignore-errors (sb-posix:unlink path)))", m.group(0))
 
 
+class RetireReport(unittest.TestCase):
+    def test_retire_prints_only_a_fresh_regular_report(self):
+        # S103: a stale or non-regular report is not success.
+        text = (ROOT / "host/native/operator.lisp").read_text()
+        m = re.search(r"\(defun fnn-operator-execute-retire .*?\n\n", text, re.S)
+        body = m.group(0)
+        self.assertNotIn("(probe-file report)", body)
+        self.assertIn("(not (equal after before))", body)
+        self.assertIn("fnn-regular-p", text)
+
+
 if __name__ == "__main__":
     unittest.main()
