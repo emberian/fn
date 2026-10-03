@@ -2605,3 +2605,11 @@ one numbered availability entry; exhaustion yields while retaining these
 scalars. The disabled remaining-range model has unconditional one-step
 residual preservation and equals the summary at settlement. This component
 does not establish the full LIST producer, snapshot frames or heap tariff.
+
+The source-only `list-metadata-cursor` component retains group/next/config
+references and advances total wildmat matching, watermark lookup, numbered
+summary probes and status entries in separate controller calls. Its guarded
+step bounds emitted bytes and controller calls; one row still constructs its
+complete group/decimal fields. The available dispatcher and render plan have
+not yet consumed this tag, and full response residual/finite progress, captured
+column frames, composed witnesses and physical funding remain open.
