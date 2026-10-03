@@ -22250,6 +22250,31 @@
         "fn-otjs-consume-fields-bounded"
       ],
       "progress_note": "Matching source warm resync19forms/.57ACL2s/319168steps;19of19 named events match. Full-model finite15cases/every split plus literal bound/chunk/guard checks pass. Normal clean certification and matching image remain owed; active general report/exit refinement is separate. Arbitrary initial natural widths remain exact; this is not a constant whole-parser heap bound."
+    },
+    {
+      "id": "PRF-1274",
+      "title": "Translated executable logical cons allocation for the emitted string cursor",
+      "statement": "The same def-cost translated-body engine derives logical cons constructors independently of visits and propagates each dimension's unresolved leaves. Actual fn-sl-loop/fn-sl-step constructors are bounded by the existing source recurrence; fn-sl-step <=8*nfix(bytes)+2. Host fnn-owner-render-next calls fn-splan-window which consumes this renderer. No physical bytes, retained graph, native integer/vector allocation or collector guarantee follows.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-047"
+      ],
+      "depends_on": [
+        "PRF-1259"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-sl-step-derived-conses-within-source-count",
+        "fn-sl-step-derived-conses-bound"
+      ],
+      "evidence": [
+        "books/def-cost.lisp",
+        "books/string-line-cursor-cost.lisp",
+        "tests/acl2/def-cost-tests.lisp",
+        "tests/acl2/string-line-cursor-cost-tests.lisp"
+      ],
+      "progress_note": "Fresh laptop proper-local def-cost source load53forms admits0.36ACL2s/500steps; existing+new generator regressions110forms pass0.37s/1150steps. Exact selected actual renderer definitions9forms admit0.03s/11332steps, followed by final proof-local consumer package0.07s/7190steps and five literal unconditional bound/bridge positives plus labeled mutation witness. Full included consumer-book certification and final image-world check pending; selected source replay is not a certificate. CHAR/LENGTH/MV-NTH visit costs remain unknown independently of the closed logical cons dimension."
     }
   ]
 }
