@@ -16,7 +16,10 @@ its physical backing and credit then remain in custody for fenced recovery."
             (fnn-fault "history candidate custody changed before abandonment: ~a" generation)))
         (when candidate (fnn-call 'fn-hist$p-dispose candidate))
         (remhash generation *fnn-history-roots*)
-        (fnn-owner-core 'fn-owner-hroot-abandon generation)))))
+        (let ((released (fnn-owner-core 'fn-owner-hroot-abandon generation)))
+          (unless (eq released :released)
+            (fnn-fault "history candidate credit return refused after disposal: ~a" released))
+          released)))))
 
 (defun fnn-history-root-retire-held (generation)
   "INTERNAL: owner gate held; a retired generation cannot acquire readers."
