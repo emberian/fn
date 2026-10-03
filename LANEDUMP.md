@@ -3625,3 +3625,12 @@ CONS tag/NIL offer for the consistency owner's zero START|END/ACK machine repair
 Actual begin raw cases PASS. Latest tcpcl-session source must precede native use;
 no native zero-file verdict is claimed. Full semantic decoder/CRC/publication and
 GC/working tariffs still require connected bounded consumers, beyond this step.
+Access selector guard continuation: fn-ast-select-one total guardT and step natural-fuel
+guard warm verified (3979/260steps). Reached positive fn-statep fixture now uses
+actual payload handles and aligned group/membership schema; exact numeric/current
+reference, fuel partition and absent-number cases pass. Separate malformed-state
+totality witness passes. Actual recorded source184344/185908 aggregate unchanged.
+Normal3root certificate at39d72 is certify-20261003T161139Z-2311907 (174matching
+cached deps/3PASS), archived index; current selector changes have different core
+bytes so no verdict transfer. Unchanged server/helper teeth match. Next owned
+code is Message-ID selection/local membership setup; no native custody edits.

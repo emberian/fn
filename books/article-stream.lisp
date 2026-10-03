@@ -61,14 +61,18 @@
   (member-eq (fn-ast-at 9 it) '(:selected :missing)))
 
 (defun fn-ast-select-one (it)
-  (declare (xargs :verify-guards nil))
+  (declare (xargs :guard t))
   (let* ((mode (fn-ast-at 1 it)) (group (fn-ast-at 2 it)) (number (fn-ast-at 3 it))
          (remaining (fn-ast-at 4 it)) (article (fn-ast-at 5 it))
          (members (fn-ast-at 6 it)) (row (fn-ast-at 7 it))
+         (row-group (fn-cbor-ag-car row))
          (at (nfix (fn-ast-at 8 it))) (phase (fn-ast-at 9 it))
-         (next (fn-ast-select-state mode group number (cdr remaining) nil nil nil 0 :next)))
+         (next (fn-ast-select-state mode group number (fn-cbor-ag-cdr remaining)
+                                    nil nil nil 0 :next)))
     (cond
      ((fn-ast-select-donep it) it)
+     ((not (stringp group))
+      (fn-ast-select-state mode group number nil nil nil nil 0 :missing))
      ((eq phase :next)
       (if (atom remaining)
           (fn-ast-select-state mode group number nil nil nil nil 0 :missing)
@@ -81,18 +85,21 @@
                    (equal (length group) (length (car candidate))))
               (fn-ast-select-state mode group number remaining article members candidate 0 :compare)
             (fn-ast-select-state mode group number remaining article (cdr members) nil 0 :members)))))
+     ((not (and (eq phase :compare) (consp row) (stringp row-group)
+                (equal (length row-group) (length group)))) next)
      (t
       (if (>= at (length group))
           (if (and (equal number (cdr row))
                    (or (not (eq mode :current)) (fn-nntp-article-idp article)))
               (fn-ast-select-state mode group number remaining article members row at :selected)
             next)
-        (if (equal (char group at) (char (car row) at))
+        (if (equal (char group at) (char row-group at))
             (fn-ast-select-state mode group number remaining article members row (+ 1 at) :compare)
-          (fn-ast-select-state mode group number remaining article (cdr members) nil 0 :members)))))))
+          (fn-ast-select-state mode group number remaining article
+                               (fn-cbor-ag-cdr members) nil 0 :members)))))))
 
 (defun fn-ast-select-step (it fuel)
-  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (declare (xargs :guard (natp fuel) :measure (nfix fuel)))
   (if (or (zp fuel) (fn-ast-select-donep it)) it
     (fn-ast-select-step (fn-ast-select-one it) (- fuel 1))))
 
