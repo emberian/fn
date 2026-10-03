@@ -2563,3 +2563,11 @@ and common response factory; physical owns registered worker acquisition
 and actual last-borrow. Their lower source/guard components and older
 response-pin model are separate scopes. New constructor/holder/frame/GC,
 installed allowance and changed native image qualification remain open.
+
+Recovery and reclaim may complete legacy availability facts from the same captured
+arena. This changes derived facts, while preserving the article identity, payload
+handle, group memberships, stamp, assigned numbers, sequence and withdrawal
+history used by the catalog/view join. The recovery proof uses these preserved
+projections; it does not assert that the complete classified catalog equals the
+older raw loader result. The actual legacy-row fixture exercises both loaders,
+checks the differing facts and preserved metadata, and reads back the exact wire.
