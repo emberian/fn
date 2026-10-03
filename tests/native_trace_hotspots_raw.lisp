@@ -1,0 +1,37 @@
+;;; Reload this fixture in the same running developer owner after trace.lisp.
+;;; No native hook overwrite, Store mutation, or new ACL2 world is required.
+(in-package "ACL2")
+
+(defun fnth-run ()
+  (let ((*fnn-trace-state* nil) (*fnn-trace-parent* nil)
+        (*fnn-trace-operation* nil) (*fnn-trace-connection-generation* nil))
+    (fnn-trace-start :capacity 12 :allocation :process)
+    (dotimes (i 8) (fnn-trace-span (:early-small) i))
+    (fnn-trace-span (:late-allocator)
+      (let ((vectors (loop repeat 256 collect
+                       (make-array 4096 :element-type '(unsigned-byte 8)))))
+        (assert (= (length vectors) 256))))
+    ;; Actual macro's failed observer interval leaves an incomplete row but
+    ;; still executes the body. Lexical hook avoids changing a global function.
+    (flet ((fnn-trace-now () (error "diagnostic clock unavailable")))
+      (assert (eq (fnn-trace-span (:incomplete) :body-ran) :body-ran)))
+    ;; Equal phases with different counter scopes remain separate groups.
+    (setf (fnn-trace-state-allocation *fnn-trace-state*) nil)
+    (fnn-trace-span (:late-allocator) nil)
+    (dotimes (i 20) (fnn-trace-span (:beyond-capacity) i))
+    (let ((before (fnn-trace-state-next *fnn-trace-state*))
+          (text (with-output-to-string (out) (fnn-trace-hotspots out 1))))
+      (assert (search "groups=4 showing=1" text))
+      (assert (search "dropped=19 incomplete=1" text))
+      (assert (search "late-allocator process 1" text))
+      (assert (not (search "early-small process" text)))
+      (assert (= before (fnn-trace-state-next *fnn-trace-state*)))
+      (assert (search "not unique allocation, retained heap or GC volume" text))
+      (princ text))
+    (let ((text (with-output-to-string (out) (fnn-trace-hotspots out 10))))
+      (assert (search "late-allocator disabled 1" text))
+      (assert (search "late-allocator process 1" text)))
+    (assert (handler-case (fnn-trace-hotspots (make-broadcast-stream) 0)
+              (error () t)))
+    (format t "NATIVE_TRACE_HOTSPOTS_PASS~%")
+    :passed))

@@ -135,3 +135,58 @@ No condition strings, objects, thread names, peer addresses or payloads."
                 (fnn-trace-state-sample-every state)
                 internal-time-units-per-second))
       (finish-output stream))))
+
+(defun fnn-trace-hotspots (&optional (stream *error-output*) (limit 10))
+  "Rank the existing bounded sink without dumping every chronological row.
+Totals are inclusive process/nested observations, never unique allocation or
+retained heap. Snapshot aggregation holds only the private trace leaf mutex;
+sorting and output happen after release. The sink remains available."
+  (unless (and (integerp limit) (plusp limit))
+    (error "trace hotspot limit must be a positive integer"))
+  (let ((state *fnn-trace-state*) (groups (make-hash-table :test 'equal))
+        (attempts 0) (recorded 0) (dropped 0) (incomplete 0) (sample-every 1))
+    (when state
+      (sb-thread:with-mutex ((fnn-trace-state-lock state))
+        (setf attempts (fnn-trace-state-attempts state)
+              recorded (fnn-trace-state-next state)
+              dropped (fnn-trace-state-dropped state)
+              sample-every (fnn-trace-state-sample-every state))
+        (dotimes (i recorded)
+          (let ((row (aref (fnn-trace-state-rows state) i)))
+            (if (eq (fnn-trace-row-outcome row) :active)
+                (incf incomplete)
+              (let* ((key (list (fnn-trace-row-phase row) (fnn-trace-row-allocation-scope row)))
+                     ;; samples, duration, allocation samples, bytes, max bytes.
+                     (stats (or (gethash key groups)
+                                (setf (gethash key groups) (vector 0 0 0 0 0)))))
+                (incf (aref stats 0))
+                (incf (aref stats 1) (fnn-trace-row-duration row))
+                (when (fnn-trace-row-bytes row)
+                  (incf (aref stats 2))
+                  (incf (aref stats 3) (fnn-trace-row-bytes row))
+                  (setf (aref stats 4) (max (aref stats 4) (fnn-trace-row-bytes row)))))))))
+      (let ((rows (loop for key being the hash-keys of groups using (hash-value stats)
+                        collect (cons key stats))))
+        ;; Allocation-enabled groups rank by mean allocated bytes. Clock-only
+        ;; groups rank separately by mean duration; units never share a score.
+        (setf rows
+              (stable-sort rows
+               (lambda (a b)
+                 (let ((x (cdr a)) (y (cdr b)))
+                   (cond ((and (plusp (aref x 2)) (zerop (aref y 2))) t)
+                         ((and (zerop (aref x 2)) (plusp (aref y 2))) nil)
+                         ((plusp (aref x 2))
+                          (> (/ (aref x 3) (aref x 2)) (/ (aref y 3) (aref y 2))))
+                         (t (> (/ (aref x 1) (aref x 0)) (/ (aref y 1) (aref y 0)))))))))
+        (format stream "~&FN_TRACE_HOTSPOTS groups=~d showing=~d attempts=~d recorded=~d dropped=~d incomplete=~d every=~d~%"
+                (length rows) (min limit (length rows)) attempts recorded dropped incomplete sample-every)
+        (format stream "Inclusive samples; process/nested deltas are not unique allocation, retained heap or GC volume.~%")
+        (format stream "phase scope samples mean-us mean-allocated max-allocated~%")
+        (loop for (key . stats) in rows for i below limit do
+          (format stream "~(~a~) ~(~a~) ~d ~,1f ~a ~d~%"
+                  (first key) (or (second key) :disabled) (aref stats 0)
+                  (/ (aref stats 1) (aref stats 0))
+                  (if (plusp (aref stats 2))
+                      (format nil "~,1f" (/ (aref stats 3) (aref stats 2))) "disabled")
+                  (aref stats 4)))
+        (finish-output stream)))))
