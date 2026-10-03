@@ -680,3 +680,326 @@ class NativeOwnerTests(unittest.TestCase):
         self.assertTrue(reader.command(b"QUIT").startswith(b"205 "))
         self.node.stop(process=restarted)
 
+    # The owner entries raw-dispatched over host/owner-served-carried.lisp's
+    # row, under A-OWNER-INVARIANT-CARRIED (lane post-guard-off): their
+    # whole-Store guard is not evaluated per call in a production run.
+    RAW_OWNER_ENTRIES = 7
+
+    def test_raw_owner_entries_answer_as_the_counterpart(self):
+        # The served POST, its duplicate and the read back are the same with
+        # the owner's entries raw-dispatched and with the developer selector
+        # that evaluates their whole guard (the counterpart path); the
+        # selector reports exactly the declared raw entries.
+        raw, raw_stderr = self.served_post_transcript(None)
+        counterpart, counterpart_stderr = self.served_post_transcript(
+            {"FN_NATIVE_DISPATCH_COUNTERPART": "1"})
+        self.assertTrue(raw[0].startswith(b"340 "), raw[0])
+        self.assertTrue(raw[1].startswith(b"240 "), raw[1])
+        self.assertFalse(raw[3].startswith(b"240 "), raw[3])
+        self.assertTrue(raw[5].startswith(b"220 "), raw[5])
+        self.assertIn(b"dispatch both ways\r\n", raw[6])
+        self.assertEqual(raw, counterpart)
+        self.assertNotIn(b"fn-dispatch: counterpart", raw_stderr)
+        match = re.search(rb"fn-dispatch: counterpart for (\d+) raw-dispatched entries",
+                          counterpart_stderr)
+        self.assertIsNotNone(match, counterpart_stderr[-2000:])
+        self.assertEqual(int(match.group(1)), self.RAW_OWNER_ENTRIES, counterpart_stderr[-2000:])
+
+    def test_client_disconnect_is_not_a_global_owner_fault(self):
+        process, port = self.node.start_store_owner(once=False)
+        with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
+            self.assertTrue(client.makefile("rb", buffering=0).readline().startswith(b"200 "))
+        with Client(port, timeout=30, greeting=(b"200",)) as client:
+            self.assertTrue(client.command(b"QUIT").startswith(b"205 "))
+        self.assertIsNone(process.poll(), "owner stopped after an ordinary disconnect")
+
+    def test_reset_peer_does_not_stop_concurrent_writer_or_reader(self):
+        process, port = self.node.start_store_owner(once=False)
+        resetter = self.connect_owner(port)
+        reader = self.connect_owner(port)
+        writer = self.connect_owner(port)
+        # Force an attributable transport reset.  The peer owns this
+        # socket and no shared owner transition is in progress.
+        resetter.sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
+        resetter.close(quit=False)
+        time.sleep(0.1)
+        self.assert_live_writer_and_reader(
+            port, writer, reader, b"<after-native-reset@example.invalid>")
+        self.assertIsNone(process.poll(), "peer reset stopped the owner")
+
+    def test_local_handler_fault_uses_core_fault_and_preserves_other_clients(self):
+        process, port = self.node.start_store_owner(once=False, fault="connectionhandler")
+        faulted = self.connect_owner(port)
+        reader = self.connect_owner(port)
+        writer = self.connect_owner(port)
+        self.assertEqual(
+            faulted.command(b"CAPABILITIES"),
+            b"403 internal fault; this connection is closed and the server continues\r\n")
+        # SCN-026: the 403 line and nothing else, then the server closes it
+        # (an orderly EOF or a reset: the owner aborts the faulted socket).
+        self.assertEqual(faulted.pending, b"")
+        faulted.sock.settimeout(30)
+        try:
+            after = faulted.sock.recv(4096)
+        except ConnectionResetError:
+            after = b""
+        self.assertEqual(after, b"")
+        self.assert_live_writer_and_reader(
+            port, writer, reader, b"<after-native-handler-fault@example.invalid>")
+        self.assertIsNone(process.poll(), "local handler fault stopped the owner")
+
+    def test_invalid_complete_feed_evidence_is_process_fault(self):
+        feed = self.store / "feed"
+        feed.mkdir()
+        (feed / "bad.fnfd").write_bytes(b"not-a-valid-complete-feed-frame")
+        result = self.node.invoke("owner", "run", self.store, "0", "1", "8",
+                                  expect=EXIT.FAULT)
+        self.assertIn(b"invalid complete FNFD evidence", result.stderr)
+
+    def test_empty_v1_feed_namespace_is_preserved_as_conflicting_evidence(self):
+        (self.store / "feed" / "v1").mkdir(parents=True)
+        result = self.node.invoke("owner", "run", self.store, "0", "1", "8",
+                                  expect=EXIT.FAULT)
+        self.assertIn(b"empty FNFD v1 namespace", result.stderr)
+        self.assertTrue((self.store / "feed" / "v1").is_dir())
+
+    def test_configured_source_address_opens_native_transit_session(self):
+        configured = native_peer_add(
+            IMAGE, self.store, ["source", "source.invalid", "127.0.0.1", "9", "fn.*", "-",
+                                "127.0.0.1", "true"], environment(), ROOT)
+        self.assertEqual(configured.returncode, 0, configured.stderr.decode())
+
+        process, port = self.node.start_store_owner()
+        with Client(port, timeout=30, greeting=(b"200",)) as client:
+            status, capabilities = client.multiline(b"CAPABILITIES")
+            self.assertTrue(status.startswith(b"101 "))
+            self.assertIn(b"IHAVE\r\n", capabilities.splitlines(keepends=True))
+            self.assertTrue(client.command(b"IHAVE <native-transit@example.invalid>")
+                            .startswith(b"335 "))
+            # EOF, not QUIT: the once-owner finishes on the closed connection.
+            client.close(quit=False)
+        self.node.exited(EXIT.OK, process=process)
+
+    def test_once_sigterm_closes_client_with_incomplete_post(self):
+        process, port = self.node.start_store_owner()
+        with Client(port, timeout=30, greeting=(b"200",)) as client:
+            self.assertTrue(client.command(b"POST").startswith(b"340 "))
+            client.send(b"From: incomplete")
+            # Keep the client's descriptor open: this is SIGTERM,
+            # not the easier ordinary-EOF shutdown path.
+            process.terminate()
+            _out, err = process.communicate(timeout=15)
+            self.assertEqual(process.returncode, EXIT.OK, err.decode())
+
+    def test_two_client_uncertainty_fences_before_later_mutation(self):
+        process, port = self.node.start_store_owner(once=False, fault="postpublish")
+        one = self.connect_owner(port)
+        two = self.connect_owner(port)
+        first, final = one.post(self.article(b"<uncertain-native-owner@example.invalid>"))
+        self.assertTrue(first.startswith(b"340 "))
+        # The poster is told, before the fence closes its connection
+        # (campaign W1, 2026-09-24: it read a bare close).
+        self.assertEqual(
+            final, b"441 posting failed; the outcome is uncertain, do not repost\r\n")
+        try:
+            two.send(b"POST\r\n")
+        except OSError:
+            pass
+        self.node.exited(EXIT.UNCERTAIN, process=process)
+        # The already-open second session was shut down by the fence; it
+        # cannot enter fn-owner-chunk after the ambiguous publication.
+        try:
+            later = two.line()
+        except (OSError, EOFError):
+            later = b""
+        self.assertFalse(later.startswith(b"340 "), later)
+
+        committed = self.inspect("<uncertain-native-owner@example.invalid>")
+        self.assertEqual(committed.returncode, EXIT.OK, committed.stderr.decode())
+        self.assertNotEqual(self.inspect("<later-native-owner@example.invalid>").returncode,
+                            EXIT.OK)
+
+    def test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart(self):
+        configured = native_peer_add(
+            IMAGE, self.store, ["sink", "sink.example.invalid", "127.0.0.1", "9", "-", "fn.*",
+                                "127.0.0.2", "true"], environment(), ROOT)
+        self.assertEqual(configured.returncode, 0, configured.stderr.decode())
+
+        msgid = b"<native-owner-feed-recovery@example.invalid>"
+        article = self.article(msgid)
+        process, port = self.node.start_store_owner(once=False, fault="postpublish")
+        with Client(port, timeout=30, greeting=(b"200",)) as client:
+            self.assertTrue(client.command(b"POST").startswith(b"340 "))
+            client.send(dot_stuff(article) + b".\r\n")
+            client.close(quit=False)
+        self.node.exited(EXIT.UNCERTAIN, process=process)
+
+        journal = self.store / "feed" / "sink.fnfd"
+        self.assertTrue(journal.is_file())
+        intent_size = journal.stat().st_size
+        self.assertGreater(intent_size, 0)
+
+        # Opening the same native owner resolves the retained intent against
+        # the physically committed Store record before it serves a client.
+        restarted, port = self.node.start_store_owner()
+        with Client(port, timeout=30, greeting=(b"200",)) as client:
+            self.assertTrue(client.command(b"QUIT").startswith(b"205 "))
+            client.close(quit=False)
+        self.node.exited(EXIT.OK, process=restarted)
+        self.assertGreater(journal.stat().st_size, intent_size)
+
+        inspected = self.inspect(msgid.decode("ascii"))
+        self.assertEqual(inspected.returncode, EXIT.OK, inspected.stderr.decode())
+        self.assertTrue(inspected.stdout.endswith(article), inspected.stdout[-80:])
+
+    def test_post_is_committed_and_readable_after_owner_exit(self):
+        process, port = self.node.start_store_owner()
+        article = self.article(
+            b"<native-owner@example.invalid>",
+            (b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\r\n"
+             * 145))
+        self.assertGreater(len(article), 8192)
+        self.assertLessEqual(len(article), 32768)
+        with Client(port, timeout=30, greeting=(b"200",)) as client:
+            first, final = client.post(article)
+            self.assertTrue(first.startswith(b"340 "))
+            self.assertTrue(final.startswith(b"240 "))
+            self.assertTrue(client.command(b"QUIT").startswith(b"205 "))
+            client.close(quit=False)
+        self.node.exited(EXIT.OK, process=process)
+        inspected = self.inspect("<native-owner@example.invalid>")
+        self.assertEqual(inspected.returncode, EXIT.OK, inspected.stderr.decode())
+        # The injection transition prepends the ACL2-produced Path field.  The
+        # accepted source article, including the 9 KiB body, remains exact.
+        self.assertTrue(inspected.stdout.startswith(
+            b"Path: fn.example.invalid!not-for-mail\r\n"), inspected.stdout[:80])
+        self.assertTrue(inspected.stdout.endswith(article), inspected.stdout[-80:])
+
+    def test_article_over_the_body_limit_is_refused_and_the_owner_survives(self):
+        # The 915 node's first defect.  An article whose CRLF-canonical size
+        # passes fn-own-body-limit (books/owner.lisp; *fn-record-max-payload*
+        # is 32768) closes the wire mid-article -- books/wire.lisp
+        # fn-wire-after-line answers (fn-wire-close ... :body-overlimit) -- so
+        # the served step consumes a PREFIX of the socket read and leaves the
+        # rest.  The host used to fault on that suffix and stop the process,
+        # taking the listener with it.  The answer is the model's and was read
+        # out of the certified books/served-tls-prefix on 2026-09-22: over one
+        # chunk carrying POST and an article past the limit,
+        # fn-served-step-counted consumes 61 of 130 octets and emits
+        # (:reply :begin-article :reply :close) whose second reply is the line
+        # below (books/nntp-post.lisp fn-nntp-post-step, on the :reject event
+        # fn-wire-close raised).  That run is in
+        # planning/evidence/owner-defects-2026-09-22.md.
+        process, port = self.node.start_store_owner(once=False)
+        oversize = self.article(b"<native-owner-oversize@example.invalid>",
+                                b"z" * 70 + b"\r\n")
+        oversize += b"y" * 70 + b"\r\n"
+        while len(oversize) < 40960:
+            oversize += b"y" * 70 + b"\r\n"
+        self.assertGreater(len(oversize), 32768)
+        client = self.connect_owner(port)
+        self.assertTrue(client.command(b"POST").startswith(b"340 "))
+        try:
+            client.send(dot_stuff(oversize) + b".\r\n")
+        except OSError:
+            # The node refused and closed while the body was still going
+            # out.  That is the refusal arriving early, not a failure.
+            pass
+        try:
+            answer = client.line()
+        except (OSError, EOFError):
+            answer = b""
+        self.assertEqual(
+            answer,
+            b"441 posting failed; the article exceeds the configured size\r\n",
+            "an oversize article got {!r}".format(answer))
+        client.close(quit=False)
+
+        # The listener is still there and still serves, which is the whole
+        # point: one long article is not a reason to stop the node.
+        with Client(port, timeout=30, greeting=(b"200",)) as later:
+            self.assertTrue(later.command(b"QUIT").startswith(b"205 "))
+        self.assertIsNone(process.poll(), "an oversize article stopped the owner")
+
+        # Nothing durable came of a refused article.
+        self.assertNotEqual(self.inspect("<native-owner-oversize@example.invalid>").returncode,
+                            EXIT.OK)
+
+    def date_reading(self, port):
+        with Client(port, timeout=30, greeting=(b"200",)) as client:
+            line = client.command(b"DATE")
+        self.assertTrue(line.startswith(b"111 "), line)
+        return line.split()[1]
+
+    def post_article(self, port, message_id, dated=True):
+        # An article that supplies Date and Message-ID gets no Injection-Date
+        # (RFC 5537 section 3.5 item 11), so a test of the injection clock
+        # posts without a Date.
+        article = self.article(message_id)
+        if not dated:
+            article = article.replace(b"Date: Mon, 21 Sep 2026 08:00:00 +0000\r\n", b"")
+        with Client(port, timeout=30, greeting=(b"200",)) as client:
+            first, final = client.post(article)
+            self.assertTrue(first.startswith(b"340 "))
+            self.assertTrue(final.startswith(b"240 "))
+
+    def injection_date(self, message_id):
+        inspected = self.inspect(message_id.decode("ascii"))
+        self.assertEqual(inspected.returncode, EXIT.OK, inspected.stderr.decode())
+        found = re.search(br"^Injection-Date: (.*)\r$", inspected.stdout,
+                          re.MULTILINE)
+        self.assertIsNotNone(found, inspected.stdout[:400])
+        return found.group(1)
+
+    def test_date_on_connection_older_than_a_minute_is_current(self):
+        process, port = self.node.start_store_owner(once=False)
+        with Client(port, timeout=30, greeting=(b"200",)) as client:
+            first = client.command(b"DATE")
+            self.assertTrue(first.startswith(b"111 "), first)
+            opened = time.monotonic()
+            # Keep this same connection active so idle policy cannot turn
+            # the clock regression into a reconnect test.
+            while time.monotonic() - opened <= 61:
+                time.sleep(5)
+                self.assertTrue(client.command(b"DATE").startswith(b"111 "))
+            before = time.time()
+            answer = client.command(b"DATE")
+            after = time.time()
+            self.assertTrue(answer.startswith(b"111 "), answer)
+            current = datetime.datetime.strptime(
+                answer.split()[1].decode("ascii"), "%Y%m%d%H%M%S"
+            ).replace(tzinfo=datetime.timezone.utc).timestamp()
+            self.assertNotEqual(first, answer)
+            self.assertGreaterEqual(current, before - 3, answer)
+            self.assertLessEqual(current, after + 3, answer)
+        self.assertIsNone(process.poll(), "the owner stopped mid-run")
+
+    def test_each_submission_and_each_connection_take_a_fresh_reading(self):
+        # The 915 node's second defect.  Every article of a run carried one
+        # Date and one Injection-Date and DATE answered one value for the life
+        # of the process, because the native host took a clock reading at
+        # startup and never again.  books/owner.lisp fn-own-open pins a
+        # reading as the connection's READER environment and fn-own-read takes
+        # the owner's CURRENT reading per read, so each submission is injected
+        # at its own time (RFC 5537 section 3.4): supplying them is the host's
+        # job, and tools/run_owner.py already did it at both points.
+        process, port = self.node.start_store_owner(once=False)
+        first = self.date_reading(port)
+        self.post_article(port, b"<native-owner-clock-one@example.invalid>", dated=False)
+        # Past the one-second resolution of the rendered value, so a fresh
+        # reading cannot be mistaken for the pinned one.
+        time.sleep(1.2)
+        second = self.date_reading(port)
+        self.post_article(port, b"<native-owner-clock-two@example.invalid>", dated=False)
+        self.assertLess(first, second, "DATE answered {!r} twice".format(first))
+        self.assertIsNone(process.poll(), "the owner stopped mid-run")
+        self.node.stop(expect=None, process=process)
+
+        one = self.injection_date(b"<native-owner-clock-one@example.invalid>")
+        two = self.injection_date(b"<native-owner-clock-two@example.invalid>")
+        self.assertNotEqual(one, two,
+                            "both articles were injected at {!r}".format(one))
+
+
+if __name__ == "__main__":
+    unittest.main()
