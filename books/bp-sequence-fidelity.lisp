@@ -101,6 +101,39 @@
        (true-listp (fn-bpn-sf-returned s))
        (booleanp (fn-bpn-sf-fencedp s)) (booleanp (fn-bpn-sf-stagedp s))))
 
+; The state recognizer is a twelve-field shape check.  Keep that whole shape
+; on the outside of transition proofs: extract its fields once, then recheck
+; only the fields supplied to the constructor each transition returns.
+(local
+ (defthm fn-bpn-sf-statep-components
+   (implies (fn-bpn-sf-statep s)
+            (and (booleanp (fn-bpn-sf-rootp s))
+                 (booleanp (fn-bpn-sf-sequencep s))
+                 (booleanp (fn-bpn-sf-freshp s))
+                 (fn-bpn-sf-observationp (fn-bpn-sf-observed s))
+                 (booleanp (fn-bpn-sf-readyp s))
+                 (fn-bpn-sequence-frontierp (fn-bpn-sf-frontier s))
+                 (fn-bpn-sequence-frontierp (fn-bpn-sf-confirmed s))
+                 (or (null (fn-bpn-sf-pending s))
+                     (fn-bpn-sequence-frontierp (fn-bpn-sf-pending s)))
+                 (true-listp (fn-bpn-sf-returned s))
+                 (booleanp (fn-bpn-sf-fencedp s))
+                 (booleanp (fn-bpn-sf-stagedp s))))
+   :rule-classes nil))
+
+(local
+ (defthm fn-bpn-sf-statep-of-state
+   (equal (fn-bpn-sf-statep
+           (fn-bpn-sf-state root sequence fresh observed ready frontier
+                            confirmed pending returned fenced staged))
+          (and (booleanp root) (booleanp sequence) (booleanp fresh)
+               (fn-bpn-sf-observationp observed) (booleanp ready)
+               (fn-bpn-sequence-frontierp frontier)
+               (fn-bpn-sequence-frontierp confirmed)
+               (or (null pending) (fn-bpn-sequence-frontierp pending))
+               (true-listp returned) (booleanp fenced) (booleanp staged)))
+   :hints (("Goal" :in-theory (enable fn-bpn-sf-statep fn-bpn-sf-state)))))
+
 (defun fn-bpn-sf-initial ()
   (declare (xargs :guard t))
   (fn-bpn-sf-state nil nil nil :absent nil 0 0 nil nil nil nil))
@@ -333,12 +366,19 @@
 (defthm fn-bpn-sf-step-preserves-statep
   (implies (fn-bpn-sf-statep s)
            (fn-bpn-sf-statep (fn-bpn-sf-step s event)))
-  :hints (("Goal" :in-theory (enable fn-bpn-sf-step fn-bpn-sf-statep
-                                      fn-bpn-sf-crash
-                                      fn-bpn-sf-recover-observation
-                                      fn-bpn-sf-host-reserve
-                                      fn-bpn-sequence-recovery-readyp
-                                      fn-bpn-sequence-reservationp))))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-sf-statep-components)
+                 (:instance fn-bpn-sf-host-reserve-result
+                            (frontier (fn-bpn-sf-frontier s))))
+           :in-theory
+           (e/d (fn-bpn-sf-step fn-bpn-sf-crash
+                                fn-bpn-sf-recover-observation
+                                fn-bpn-sf-host-reserve
+                                fn-bpn-sequence-recovery-readyp
+                                fn-bpn-sequence-recovery-frontier
+                                fn-bpn-sf-validp
+                                fn-bpn-sf-observed-frontier)
+                (fn-bpn-sf-state fn-bpn-sf-statep)))))
 
 ; From here the twelve-field recognizer and the observation recognizer stay
 ; closed.  Each nonreuse arm below needs only that the state is a true list

@@ -142,6 +142,28 @@ fn-lgdm-repair-text: a torn tail dropped, a confirmed repair), newest first;
 (defun fnn-os-fail (errno &optional path)
   (error 'fnn-os-error :errno errno :path path))
 
+;;; Shared observation-only primitive declaration precedes extent compilation.
+;;; Its collector/runtime functions are installed by owner before workers run.
+(defvar *fnn-native-observer* nil)
+(defvar *fnn-native-actor-identity* nil)
+
+(defmacro fnn-with-observed-mutex ((lock label &rest options) &body body)
+  "Literal measured lock label and unchanged SBCL mutex options. Acquire
+observed after physical lock; release reserves under it, completes after unlock."
+  (let ((mutex (gensym "MUTEX")) (name (gensym "LOCK-LABEL"))
+        (row (gensym "RELEASE")))
+    `(let ((,mutex ,lock) (,name ,label) (,row nil))
+       (unwind-protect
+            (sb-thread:with-mutex (,mutex ,@options)
+              (when *fnn-native-observer*
+                (fnn-native-observe (list :acquire *fnn-native-actor-identity* ,name)))
+              (unwind-protect (progn ,@body)
+                (when *fnn-native-observer*
+                  (setq ,row (fnn-native-observation-reserve
+                              (list :release *fnn-native-actor-identity* ,name) nil)))))
+         (when ,row (fnn-native-observation-complete ,row))))))
+
+
 (defvar *fnn-section-step* nil
   "The publication the boundary this thread is inside has landed and not yet
 fenced: :replaced or :linked once a rename or link returned success
@@ -1871,6 +1893,10 @@ the payload to seal as (:seal OCTETS); the host seals exactly those octets
 ;; completion subject a second time.
 (defvar *fnn-observe-callback* #'fnn-bridge-io)
 (defvar *fnn-finish-callback* #'fnn-bridge-finish)
+;; A composed owner supplies ACL2's release-debt-aware identity gate.  The
+;; standalone Store has no workflow continuation and uses its codec successor.
+;; Declare this special: owner bindings must reach the nested log allocator.
+(defvar *fnn-identity-reservation-callback* nil)
 ; Developer fault cut, dynamically scoped to one canonical Store publication.
 ; NIL in normal operation.  The cut runs after the final link and before its
 ; directory barrier, so an injected EIO is an uncertain publication.
@@ -3733,12 +3759,12 @@ create: a failing open unlinks nothing)."
       (when (and unlink-on-failure (not done))
         (ignore-errors (fnn-unlink stage))))))
 
-(defun fnn-advance-frontier (store current-txid)
+(defun fnn-advance-frontier (store current-txid &optional operation)
   "The allocator's reservation: the record log's (fnn-log-reserve; the
 frontier is derived from the log, design 2026-09-27 section 3.3)."
   (unless (fnn-store-logp store)
     (fnn-fault "a store that is not on the record log opened"))
-  (fnn-log-reserve store current-txid))
+  (fnn-log-reserve store current-txid operation))
 
 (defun fnn-publish (store sequence record)
   "The record's publication: the record log's P-BATCH (fnn-log-publish)."
@@ -8201,7 +8227,7 @@ does, and records how the log holds the history (fnn-store-log-history) for
     (setf (fnn-store-fenced store) nil)
     count))
 
-(defun fnn-log-reserve (store current-txid)
+(defun fnn-log-reserve (store current-txid &optional operation)
   "The member's reservation on the log route (fn-olr-ocfg-reserve through
 the observe callback): the frontier is the log's derived one."
   (fnn-require-writer store)
@@ -8209,10 +8235,17 @@ the observe callback): the frontier is the log's derived one."
   (unless (eql current-txid (fnn-store-frontier store))
     (setf (fnn-store-fenced store) t)
     (fnn-fault "ACL2 allocator and the log's frontier disagree"))
-  (let ((next (fnn-metadata-frontier-next current-txid))
+  (let ((next (if *fnn-identity-reservation-callback*
+                  (funcall *fnn-identity-reservation-callback* operation)
+                (fnn-metadata-frontier-next current-txid)))
         (log (fnn-store-log store)))
-    (when (null next)
-      (fnn-refuse "finite transaction-ID domain exhausted"))
+    ;; The gate runs before any kernel, owner reservation or frontier effect.
+    ;; Its purpose and protected release debt are decided in ACL2, including
+    ;; the exact retention event capability later consumed by preparation.
+    (when (or (null next) (keywordp next))
+      (fnn-refuse "Store transaction identity reservation refused (~a)" next))
+    (unless (and (integerp next) (>= next 0))
+      (fnn-fault "ACL2 returned malformed transaction identity reservation"))
     (fnn-log-with-kernel (log)
       (setf (fnn-log-kernel log)
             (fnn-core 'fn-lgc-consume-to (fnn-log-kernel log) current-txid)

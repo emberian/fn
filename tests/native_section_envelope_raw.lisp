@@ -45,12 +45,22 @@ defconst becomes a defparameter and its defun loses its xargs declaration."
                        (define-condition fnn-store-indeterminate)
                        (define-condition fnn-usage-error)
                        (define-condition fnn-os-error)
+                       (defvar *fnn-native-observer*) (defvar *fnn-native-actor-identity*)
+                       (defmacro fnn-with-observed-mutex)
                        (defvar *fnn-section-step*)
                        (defun fnn-condition-class)
                        (defun fnn-refuse)
                        (defun fnn-fault)
                        (defun fnn-indeterminate)
                        (defun fnn-os-fail)))
+
+;; Actual io-only consumer before owner installs collector runtime functions.
+;; Inactive instrumentation must not resolve a late-loaded callback.
+(let ((mutex (sb-thread:make-mutex :name "early extent declaration")))
+  (unless (equal (multiple-value-list
+                  (fnn-with-observed-mutex (mutex :extent :wait-p t) (values :early :inactive)))
+                 '(:early :inactive))
+    (error "inactive early physical mutex changed its values")))
 
 (load-deployed-forms "books/failure-scope.lisp"
                      '((defconst *fn-fs-indeterminate-classes*)
@@ -102,7 +112,16 @@ defconst becomes a defparameter and its defun loses its xargs declaration."
 (defun fnn-owner-action (name &rest args) (declare (ignore name args)) nil)
 
 (load-deployed-forms "host/native/owner.lisp"
-                     '((defvar *fnn-owner-measure*)
+                     '((defstruct (fnn-native-observation-row (:constructor %make-fnn-native-observation-row)))
+                       (defstruct (fnn-native-observation (:constructor %make-fnn-native-observation)))
+                       (defun fnn-native-observation-create) (defun fnn-native-reserve-thread-identity)
+                       (defun fnn-native-observed-thread-thunk) (defun fnn-native-observation-reserve)
+                       (defun fnn-native-observe) (defun fnn-native-observation-complete)
+                       (defun fnn-native-observation-events) (defun fnn-native-observation-start)
+                       (defun fnn-native-observation-current-identity)
+                       (defun fnn-native-observation-report) (defmacro fnn-native-with-observation)
+                       (defmacro fnn-with-observed-owner)
+                       (defvar *fnn-owner-measure*)
                        (defvar *fnn-owner-measure-label*)
                        (defmacro fnn-owner-measured)
                        (defvar *fnn-boundary-outcome*)

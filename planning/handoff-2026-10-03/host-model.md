@@ -171,3 +171,88 @@ regenerated on a box. Half a day plus a certify of the two books' closure.
   Never admitted as a whole, never certified. Next: admit it in a REPL, apply host-model-review-1.md's must-fixes
   (M1 lease labels, M2 -by-definition names, M3 the *fn-hmc-realization* defconst in LOCK-CHECK's format, M4 the
   P10 cut coordinates) if not already in, write the teeth, certify, then the carried read theorem (P2/M6/P8).
+
+## Runtime primitive observation consumer, 2026-10-03
+
+The actual generated actor reserves its existing physical gensym before the
+thread maker. `fnn-native-observed-thread-thunk` carries its exact symbol-name
+string into the child; observation-only executor startup can use the same
+reservation primitive once before its maker. This is a native trace identity,
+not a semantic actor identity, resource generation or accounting claim.
+
+The current shared site is `fnn-section-envelope` through
+`fnn-with-observed-owner`, rather than the historical `fnn-owner-gated`
+realization-table row. Acquire is recorded after physical owner acquisition.
+Release gets its producer position while O is held and is marked complete
+only after physical unlock. An observer reader exposes only the completed
+prefix in that reservation order. It never sorts timestamps or reconstructs
+thread aliases. The only nested observer lock is O -> private observer mutex;
+there is no callback, I/O, ACL2 evaluation or acquisition of O under that
+private mutex. Direct stop/fault O entries and other locks remain outside
+this first producer slice.
+
+`fnn-native-observe(EVENT)` accepts an already measured literal label when
+`*fnn-native-observer*` is dynamically present. The explicit developer capacity
+preallocates record rows before children start. NIL identity, overflow or an
+observer condition makes comparison unavailable; no fn fault or admission
+decision follows from instrumentation.
+
+`tests/test_native_observation_raw.sh` runs actual generated actor/section
+code and forces a first actor to pause after unlock before release completion
+while a second actor enters and leaves O. The reader reports the first
+acquire as a pending prefix, then the completed reservation order
+acquire1/release1/acquire2/release2. It also checks actual observation-only
+child startup, failed maker, invalidation and preservation of section values.
+It writes literal `assert-event` forms to
+`build/runtime-tests/native-observation-hm.lsp` for the loaded HM machine:
+exact held/released answers and `fn-hmc-invp` at every observed prefix.
+Finite replay is not an all-schedules proof or an image qualification.
+Empirical owns the next actual extent-label consumer on this frozen seam.
+
+Groundwork replayed all four exact producer-emitted assertion packets in the
+clean protected `hmc-direct-read` world: PASS, <0.01 seconds and zero proof
+steps. Startup reused ten exact cached dependencies (0.87 seconds / 532,452
+steps). The source producer is d4cb69168; the native log, literal replay-input
+transcript and machine/packet hashes are filed under
+`planning/evidence/runtime-observation-2026-10-03/`. This first packet checks
+finite O-only behavior. It does not qualify the image or missing PageIO/pins
+primitive sites, and leaves PRF-1254 planned.
+
+The next actual-image consumer activation is in `fnn-owner-run` before
+`fnn-owner-install`, gated by the existing developer-only
+`FN_NATIVE_PAGE_IO_HOLD` selector. It creates an explicit 4096-row observation
+profile and binds a physical reservation in the current main thread. Actual
+mux startup captures a fresh identity through the shared observed child thunk.
+After owner unwind the bounded stderr readout is
+`NATIVE-HM (STATUS REASON EVENTS)`. Activation allocation/readout failures do
+not classify the service; failed activation reports comparison unavailable.
+Native scope tests preserve startup values and supplied inactive context.
+Actual image/PageIO composition remains pending; unknown plain threads still
+invalidate comparison rather than receiving inferred identities.
+
+The common physical lock seam is now
+`fnn-with-observed-mutex ((MUTEX LITERAL-LABEL &rest SBCL-OPTIONS) ...)`:
+it preserves the original `:wait-p`/other physical options and body values.
+`fnn-with-observed-owner` delegates with literal `:owner`; Empirical owns the
+actual extent consumer with literal `:extent`. A real extent-mutex fixture
+checks held ownership, `:wait-p t`, exact labels and values. This does not
+claim uninstrumented extent/pins sites or PageIO realization.
+
+The shared mutex macro and its two dynamic observation variables have one
+early declaration site in `host/native/io.lisp`, which loads before extent.
+Collector structures/runtime functions remain in owner and are available
+before workers run. Extent can compile against the actual macro without an
+early duplicate declaration or build-order change. The fixture extracts that
+actual io macro/variable ownership.
+
+An actual inactive io-only mutex invocation before owner loading refuted the
+unconditional completion callback (undefined owner function). The shared macro
+now resolves that callback only when a release row was reserved; disabled
+instrumentation has no dependency on the late collector. Baseline fails at
+that exact early consumer; repaired source passes all active schedules.
+
+Extent condition waits internally release/reacquire E, including timed waits
+that return without ownership. Empirical wraps only exact non-wait critical
+sections. Missing wait-edge/P/other O producers make full comparison
+unavailable; a coarse wrapper around a hidden wait cannot realize its
+physical lock interval. No scheduling rewrite is part of this observer slice.

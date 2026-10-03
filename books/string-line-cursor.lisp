@@ -227,6 +227,64 @@
            (fn-sl-okp (mv-nth 1 (fn-sl-step cur bytes))))
   :hints (("Goal" :in-theory (e/d (fn-sl-step) (fn-sl-loop fn-sl-okp)))))
 
+; Fixed constructor shape bounds the retained envelope without traversing
+; or copying the string it references. It is carried, not revalidated by I/O.
+(defun fn-sl-shapedp (cur)
+  (declare (xargs :guard t))
+  (or (not cur)
+      (and (true-listp cur) (equal (len cur) 3)
+           (natp (fn-cur-at 1 cur))
+           (member-eq (fn-cur-at 2 cur) '(:stuff :text :cr :lf)))))
+
+(defthm fn-sl-start-has-fixed-shape
+  (fn-sl-shapedp (fn-sl-start text))
+  :hints (("Goal" :in-theory (enable fn-sl-start fn-sl-shapedp fn-sl-make))))
+
+(defthm fn-sl-one-keeps-fixed-shape
+  (implies (fn-sl-shapedp cur)
+           (fn-sl-shapedp (mv-nth 1 (fn-sl-one cur))))
+  :hints (("Goal" :in-theory (enable fn-sl-one fn-sl-shapedp fn-sl-make))))
+
+(defthm fn-sl-loop-keeps-fixed-shape
+  (implies (fn-sl-shapedp cur)
+           (fn-sl-shapedp (mv-nth 1 (fn-sl-loop cur bytes acc))))
+  :hints (("Goal" :induct (fn-sl-loop cur bytes acc)
+           :in-theory (e/d (fn-sl-loop) (fn-sl-one fn-sl-shapedp)))))
+
+(defthm fn-sl-step-keeps-fixed-shape
+  (implies (fn-sl-shapedp cur)
+           (fn-sl-shapedp (mv-nth 1 (fn-sl-step cur bytes))))
+  :hints (("Goal" :in-theory (e/d (fn-sl-step) (fn-sl-loop fn-sl-shapedp)))))
+
+; Conservative logical cons accounting for the actual renderer calls:
+; each FN-SL-ONE has at most byte-list1 + state-list3 + MV2 cells;
+; LOOP adds an accumulator cell and reverses it at the final return.
+; Integers, collector margin and the native vector conversion are separate
+; representation/resource obligations; this is not a host heap guarantee.
+(defun fn-sl-loop-cons-cells (cur bytes acc-size)
+  (declare (xargs :guard (and (natp bytes) (natp acc-size)) :measure (nfix bytes)))
+  (if (or (not cur) (zp bytes))
+      (+ (nfix acc-size) 2)
+    (mv-let (one next) (fn-sl-one cur)
+      (let ((added (if (consp one) 1 0)))
+        (+ 6 added
+           (fn-sl-loop-cons-cells next (1- bytes) (+ (nfix acc-size) added)))))))
+
+(defthm fn-sl-loop-cons-cells-bound
+  (<= (fn-sl-loop-cons-cells cur bytes acc-size)
+      (+ (* 8 (nfix bytes)) (nfix acc-size) 2))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-sl-loop-cons-cells cur bytes acc-size)
+           :in-theory (e/d (fn-sl-loop-cons-cells) (fn-sl-one)))))
+
+(defun fn-sl-step-cons-cells (cur bytes)
+  (declare (xargs :guard (natp bytes)))
+  (fn-sl-loop-cons-cells cur bytes 0))
+
+(defthm fn-sl-step-cons-cells-bound
+  (<= (fn-sl-step-cons-cells cur bytes) (+ (* 8 (nfix bytes)) 2))
+  :rule-classes :linear)
+
 (local
  (defthm fn-sl-positive-length-of-cons
    (implies (consp xs) (< 0 (len xs)))

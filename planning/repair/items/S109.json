@@ -1,23 +1,121 @@
 {
  "acceptance": "wrapper:closed-classification",
+ "budget": 180,
  "category": "error-handling",
  "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
  "evidence": "pull-service.lisp:308-314: (handler-case (multiple-value-bind (user pass) (fnn-feed-auth-profile (list :authinfo path nil)) (list user pass)) (error () (fnn-err \"pull: the credential profile of peer ~a is unreadable\" ...) nil))",
+ "expect-failure": "tests.test_native_feed_credential.CredentialAdmissionTests.test_cleanup_os_error_preserves_primary_core_fault",
  "exposure": "conditional",
+ "failure-message": "cleanup OS error must preserve primary store fault",
  "file": "host/native/pull-service.lisp",
  "fix": "Catch only fnn-feed-auth-error and fnn-os-error here, and let fnn-store-fault and its subclasses propagate to the worker guard.",
+ "harness": "tests/test_native_feed_credential.py,tests/native_feed_credential_raw.lisp",
  "id": "S109",
  "line": "311",
  "locus": "peer-services",
- "notes": [],
- "owner": "sweep-peer",
+ "notes": [
+  "10-03 04:01 claimed: scope=['host/native/feed-service.lisp', 'host/native/pull-service.lisp', 'books/peer-host.lisp', 'books/feed-link-backoff.lisp', 'specs/peering.md', 'tests/acl2/peer-host-tests.lisp', 'tests/acl2/feed-link-backoff-tests.lisp', 'tests/native_feed_credential_raw.lisp', 'tests/test_native_feed_credential.py', 'tests/test_native_peer_pull.py', 'tests/scenarios/catalog.json', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_exact_read_and_core_faults_propagate_while_stopping",
+  "10-03 04:06 claimed: scope=['host/native/feed-service.lisp', 'tests/native_feed_credential_raw.lisp', 'tests/test_native_feed_credential.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_cleanup_os_error_preserves_primary_core_fault"
+ ],
+ "owner": "codex-sol-tools",
  "reviewer": "pull-service.lisp:308-316 wraps fnn-feed-auth-profile in (handler-case ... (error () ... nil)). fnn-store-fault and fnn-entry-guard-fault (io.lisp:77, 89) are subclasses of error, so an ACL2 fault from fn-owner-feed-profile-max-octets or fn-owner-feed-profile-decode becomes an 'unreadable profile' log line and a refused begin. The push feed's own caller does not do this: it catches only fnn-feed-auth-error and OS errors (feed-service.lisp:428-429). It is reachable only through a host/ACL2 contract break, so the severity is low.",
  "scenario": "fnn-feed-auth-profile calls (fnn-core 'fn-owner-feed-profile-decode ...) and (fnn-core 'fn-owner-feed-profile-max-octets). A guard violation or core fault there (fnn-entry-guard-fault or fnn-store-fault, both subclasses of error) is caught and reported as an unreadable profile, and the round goes on as a refused begin. A host/ACL2 contract break, which should stop the owner as exit 4, becomes a routine per-round log line that repeats every interval.",
+ "scope": [
+  "host/native/feed-service.lisp",
+  "tests/native_feed_credential_raw.lisp",
+  "tests/test_native_feed_credential.py",
+  "LANEDUMP.md",
+  "planning/evidence-index.tsv"
+ ],
  "severity": "low",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_cleanup_os_error_preserves_primary_core_fault",
  "title": "fnn-pull-profile swallows every error, including ACL2 faults, as an unreadable credential",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T08:06:33Z",
+ "verify": {
+  "base": "1d550edffe1aad326f802058d8d99a55d2878bb2",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "cleanup OS error must preserve primary store fault",
+      "test": "tests.test_native_feed_credential.CredentialAdmissionTests.test_cleanup_os_error_preserves_primary_core_fault",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_native_feed_credential.CredentialAdmissionTests.test_cleanup_os_error_preserves_primary_core_fault"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_feed_credential.py": "cc4c6d9a82da7a34d4ea1e9690668b21bd1f374190e41e63be8e865ee32ecfce"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "1d550edffe1aad326f802058d8d99a55d2878bb2",
+   "stderr": "test_cleanup_os_error_preserves_primary_core_fault (tests.test_native_feed_credential.CredentialAdmissionTests.test_cleanup_os_error_preserves_primary_core_fault) ... FAIL\n\n======================================================================\nFAIL: test_cleanup_os_error_preserves_primary_core_fault (tests.test_native_feed_credential.CredentialAdmissionTests.test_cleanup_os_error_preserves_primary_core_fault)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-zkq0rql6/wt/tests/test_native_feed_credential.py\", line 77, in test_cleanup_os_error_preserves_primary_core_fault\n    self.run_schedule(\"cleanup-fault\", self.profile(Path(directory)),\n    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                      \"cleanup OS error must preserve primary store fault\")\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-zkq0rql6/wt/tests/test_native_feed_credential.py\", line 27, in run_schedule\n    self.fail(intended)\n    ~~~~~~~~~^^^^^^^^^^\nAssertionError: cleanup OS error must preserve primary store fault\n\n----------------------------------------------------------------------\nRan 1 test in 0.163s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "host/native/feed-service.lisp",
+   "planning/repair/items/S109.json",
+   "tests/native_feed_credential_raw.lisp",
+   "tests/test_native_feed_credential.py"
+  ],
+  "diff_lines": 71,
+  "evidence": {
+   "bytes": 4397,
+   "path": "planning/evidence/repair/S109-d92aa72565cd4483815b2da7f70f3da5.json",
+   "sha256": "ef3372181f2fa6ddd54226c89d6142a6d79bb83afedabbf1c28beed5f6a32135"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "cleanup OS error must preserve primary store fault",
+   "test": "tests.test_native_feed_credential.CredentialAdmissionTests.test_cleanup_os_error_preserves_primary_core_fault"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/native_feed_credential_raw.lisp": "6efb50a874af128725d44ce699d36737d1ff0767ea9e8f85088138e68aa484a1",
+   "tests/test_native_feed_credential.py": "cc4c6d9a82da7a34d4ea1e9690668b21bd1f374190e41e63be8e865ee32ecfce"
+  },
+  "head": "0c7dc0ea8c25c5605276cd97886ca2fa0473b374",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_native_feed_credential.CredentialAdmissionTests.test_cleanup_os_error_preserves_primary_core_fault"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_feed_credential.py": "cc4c6d9a82da7a34d4ea1e9690668b21bd1f374190e41e63be8e865ee32ecfce"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "0c7dc0ea8c25c5605276cd97886ca2fa0473b374",
+   "stderr": "test_cleanup_os_error_preserves_primary_core_fault (tests.test_native_feed_credential.CredentialAdmissionTests.test_cleanup_os_error_preserves_primary_core_fault) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.170s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_cleanup_os_error_preserves_primary_core_fault",
+  "timeout": 1800.0
+ }
 }

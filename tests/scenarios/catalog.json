@@ -2052,13 +2052,15 @@
         "A: store with STARTTLS, `[auth] required = true, protected_only = true`, `principal set-password nodeB`; two articles posted with `operator post`. B: `peer add A a.pull.example.invalid 127.0.0.1 PORT fn.* fn.* source-address 127.0.0.9 PROFILE false false starttls localhost A-CERT`, `peer pull A 2`, PROFILE = FNAUTH1 nodeB and its password; a recording proxy in front of A.",
         "The same with PROFILE naming a login A does not hold.",
         "The same with no security arguments (a clear transport) and the permission false.",
-        "Packet 5's campaign over the TLS transport: FN_PULL_TEST_KILL=CUT:N at before-write, after-write and after-fsync of appends 1 and 2, restart without the fault."
+        "Packet 5's campaign over the TLS transport: FN_PULL_TEST_KILL=CUT:N at before-write, after-write and after-fsync of appends 1 and 2, restart without the fault.",
+        "The TLS pull with its local profile changed to mode 0644 before B starts."
       ],
       "expected": [
         "Both articles stored once at B; B logs `pull peer=A round=done cursor=advanced transport=tls`; the proxy's first plaintext command is STARTTLS and it sees no AUTHINFO, DATE, NEWNEWS or ARTICLE in the clear.",
         "B logs `round=failed cursor=held at=preamble` for every round, stores nothing, and its FNPL journal stays at the first-instant record.",
         "B logs `round=failed cursor=held refused=clear-credential` for every round and the proxy accepts no connection.",
-        "At every cut every article is stored exactly once at B and a later round logs `cursor=advanced transport=tls`."
+        "At every cut every article is stored exactly once at B and a later round logs `cursor=advanced transport=tls`.",
+        "B names the ACL2 credential outcome, holds its cursor with refused=profile, stays live and the recording proxy accepts no connection; native credential case requires matching new source/image evidence."
       ],
       "evidence": [
         "planning/evidence/peering-tls-pull-2026-09-26.md",
@@ -2071,7 +2073,8 @@
           "test_tls_pull_as_its_own_principal",
           "test_wrong_principal_is_refused_by_the_serving_node",
           "test_clear_credential_is_refused_before_any_connection",
-          "test_cursor_publication_cuts_over_tls"
+          "test_cursor_publication_cuts_over_tls",
+          "test_unreadable_credential_refuses_before_any_connection"
         ],
         "native": true,
         "log": "planning/evidence/peering-tls-pull-2026-09-26/native-peer-pull.log",
@@ -8338,6 +8341,60 @@
         "planning/evidence/native-sparse-newnews-45e05c7f-2026-10-03/report.md"
       ],
       "execution_scope": "Historical image 45e05c7f finite command correctness passed: 10 exact blocks of four remaining matches across 24 seed rows including two actual tombstones, eight competing ARTICLEs and four POSTs, 26 retained articles and two tombstones correct on reopen. Live reclaim credit-refused; payload-I/O attribution, new bounded cursor and current-image qualification remain open."
+    },
+    {
+      "id": "SCN-1087",
+      "title": "Committer escape preserves actual syncer outcome and independently settles physical custody",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-046",
+        "HST-033"
+      ],
+      "steps": [
+        "Launch the actual pipeline syncer, then escape its parent observation through a condition or raw throw; exercise done, uncertain and fault results with physical return before or after unwind.",
+        "Observe physical termination and consume the retained actual fn-oqw outcome once; inject a torn normal consumption and forbid retry.",
+        "Run the actual committer starter/loop with a raw ACL2 pipeline throw."
+      ],
+      "expected": [
+        "A live child retains its grant; both receipts remove the grant and uncertainty alone invokes its recovery fence.",
+        "A torn outcome keeps custody visible despite physical termination, and is attempted once.",
+        "The committer actor records fault and stops service; it does not leave active service without a committer."
+      ],
+      "evidence": [
+        "tests/test_native_syncer_pipeline_escape_raw.sh",
+        "tests/native_syncer_pipeline_escape_raw.lisp",
+        "tests/test_native_committer_actor_raw.sh",
+        "tests/native_committer_actor_raw.lisp",
+        "tests/test_native_syncer_typed_raw.sh",
+        "tests/native_syncer_typed_raw.lisp"
+      ],
+      "execution_scope": "Deployed native bodies and actual fn-oqw/actor decisions under SBCL, plus six actual typed-ledger abandonment schedules through validated creator allocation and semantic counterparts in scoped ACL2. I/O/fence are recording boundaries. No new theorem or saved-image/shutdown qualification."
+    },
+    {
+      "id": "SCN-1088",
+      "title": "Logical timed waits and abandoned reply routes preserve completion lifetime",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-031",
+        "HST-046"
+      ],
+      "steps": [
+        "Run the actual logical await with a producer delayed past its first one-second SBCL condition wait.",
+        "Expire another caller before delivery, then deliver its real eventual completion; preserve the independent physical grant.",
+        "Exercise an already-selected callback, a raw nonlocal wait exit, and the actual mux terminal close consumer."
+      ],
+      "expected": [
+        "Each predicate and subsequent wait owns its mutex; timed wake does not become service fault.",
+        "Abandoned delivery consumes its marker instead of accumulating an unreachable DONE result or retaining the caller callback.",
+        "An already-selected callback creates no orphan marker; mux close discards its eventual reply route. No path reports physical termination or settles the operation merely because the caller left."
+      ],
+      "evidence": [
+        "tests/test_native_await_lifetime_raw.sh",
+        "tests/native_await_lifetime_raw.lisp"
+      ],
+      "execution_scope": "Actual deployed native wait/mailbox/mux-finish bodies with real SBCL threads, mutexes and condition timeout; recording socket/owner cleanup boundaries. Saved-image/runtime qualification remains Integration work."
     }
   ]
 }

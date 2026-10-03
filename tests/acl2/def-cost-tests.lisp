@@ -264,3 +264,30 @@
 (must-fail-checked (def-cost-check fn-cst-uses-walk)
                    :unchecked "the callee's later row changes the derivation; the stale row refuses")
 (must-fail-checked (def-cost-check fn-cst-uses-walk-2) :unchecked "no cost row")
+
+; A guarded raw declaration is the actual native allocation/callback route,
+; including private stobj creators. Changing the route invalidates its row
+; even when the two routes happen to have equal scalar costs.
+(defun fn-cst-raw-probe (x) (declare (xargs :guard t)) x)
+(definterface fn-cst-raw-probe :class :common-lisp-compliant)
+(assert-event (eq (fn-cost-route 'fn-cst-raw-probe (w state)) :served))
+(def-cost fn-cst-raw-probe :visits 0 :unaccounted nil)
+(definterface fn-cst-raw-probe :class :common-lisp-compliant
+  :raw-guarded (1 (nil) (nil)))
+(assert-event (eq (fn-cost-route 'fn-cst-raw-probe (w state)) :raw))
+(must-fail-checked (def-cost-check fn-cst-raw-probe)
+  :unchecked "changed guarded raw route invalidates the previous served row")
+(defun fn-cst-raw-fresh (x) (declare (xargs :guard t)) x)
+(definterface fn-cst-raw-fresh :class :common-lisp-compliant
+  :raw-guarded (1 (nil) (nil)))
+(def-cost fn-cst-raw-fresh :visits 0 :unaccounted nil)
+(def-cost-check fn-cst-raw-fresh)
+(assert-event (equal (fn-cst-raw-fresh-route-visits '(a b c)) 0))
+
+(defstobj fn-cst-private-ledger (fn-cst-private-word :type (unsigned-byte 64) :initially 0))
+(definterface create-fn-cst-private-ledger :class :common-lisp-compliant
+  :raw-guarded (0 nil (fn-cst-private-ledger)))
+(assert-event
+ (and (fn-di-raw-creatorp 'create-fn-cst-private-ledger
+        '(:class :common-lisp-compliant :raw-guarded (0 nil (fn-cst-private-ledger))) (w state))
+      (eq (fn-cost-route 'create-fn-cst-private-ledger (w state)) :raw)))

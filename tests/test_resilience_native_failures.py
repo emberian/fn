@@ -48,6 +48,7 @@ class NativeWireBoundaryTests(unittest.TestCase):
     def test_literal_native_uncertainty_is_not_a_441_refusal(self):
         status = b"441 outcome uncertain; recover before retry\r\n"
         self.assertEqual(_served_outcome(b"340 send article\r\n", status), ("uncertain", status))
+        self.assertEqual(_served_outcome(status, None), ("uncertain", status))
         self.assertEqual(_served_outcome(b"340 send article\r\n", b"441 article refused\r\n")[0], "refused")
 
     def test_lost_reply_remains_a_distinct_transport_observation(self):

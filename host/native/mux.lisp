@@ -300,6 +300,9 @@ the TLS session, then the socket.  Idempotent."
           (opened-cid (fnn-mux-conn-opened-cid conn))
           (was (fnn-mux-conn-phase conn)))
       (setf (fnn-mux-conn-phase conn) :done)
+      (when (fnn-mux-conn-await conn)
+        (fnn-owner-await-abandon service (or cid opened-cid))
+        (setf (fnn-mux-conn-await conn) nil))
       ;; r71 F7: a page still owed is no longer this connection's to publish.
       (when (fnn-mux-conn-cold conn)
         (ignore-errors (fnn-owner-cold-abandon (first (fnn-mux-conn-cold conn))))
@@ -1471,8 +1474,9 @@ the stop spared, fnn-owner-stop-service-locked), then end every connection."
                                                   :wake-read r :wake-write w)))))
         (setf (fnn-owner-service-mux service) loops)
         (dolist (loop loops)
-          (let ((thread (sb-thread:make-thread (lambda () (fnn-mux-run loop))
-                                               :name "fn owner io")))
+          (let ((thread (sb-thread:make-thread
+                         (fnn-native-observed-thread-thunk (lambda () (fnn-mux-run loop)))
+                         :name "fn owner io")))
             (setf (fnn-mux-loop-thread loop) thread)
             (push thread (fnn-owner-service-workers service))))))))
 

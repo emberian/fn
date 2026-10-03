@@ -1530,8 +1530,9 @@
 
 ; host/native/owner.lisp asks it before the POST's seal (lane arena-forget).
 (definterface fn-owner-cat-may-seal
-  :class :common-lisp-compliant
-  :keystones (fn-cat-may-seal-is-the-prepare-gate))
+  :class :common-lisp-compliant)
+; Its named host wrapper equality is -by-definition. The old Boolean gate
+; restatement is not a prepare-transition keystone; that relation remains owed.
 
 (definterface fn-owner-catchup-plans
   :class :common-lisp-compliant)
@@ -4758,7 +4759,7 @@
 (definterface fn-orcs-predict
   :class ::common-lisp-compliant
   :kinds ((generation natp) (h natp))
-  :keystones (fn-orcs-seal-is-the-intern))
+  :keystones (fn-orcs-predict-seal-refines-intern))
 
 (definterface fn-orcs-seal
   :class ::common-lisp-compliant
