@@ -2319,14 +2319,25 @@ kernel may have issued the namespace operation even when it reports failure."
   (let* ((stage (fnn-join (fnn-staging store)
                           (format nil ".init-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
          (fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl) #o600)))
-    (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "created")))
-    (unwind-protect (progn (fnn-write-all fd contents)
-                           (when initializer-prefix
-                             (fnn-init-cut store (fnn-concat initializer-prefix "written")))
-                           (fnn-fsync-file fd)
-                           (when initializer-prefix
-                             (fnn-init-cut store (fnn-concat initializer-prefix "file-fenced"))))
-      (fnn-close fd))
+    ;; Cover the write phase as well as the later link phase.  A failed
+    ;; write/fsync (or close) never leaves this owned candidate behind.
+    (let ((written nil) (primary nil))
+      (unwind-protect
+           (handler-case (progn
+             (when initializer-prefix
+               (fnn-init-cut store (fnn-concat initializer-prefix "created")))
+             (fnn-write-all fd contents)
+             (when initializer-prefix
+               (fnn-init-cut store (fnn-concat initializer-prefix "written")))
+             (fnn-fsync-file fd)
+             (when initializer-prefix
+               (fnn-init-cut store (fnn-concat initializer-prefix "file-fenced")))
+             (setq written t))
+             (error (e) (setq primary e)))
+        (handler-case (fnn-close fd)
+          (error (e) (unless primary (setq primary e))))
+        (when (or primary (not written)) (ignore-errors (fnn-unlink stage))))
+      (when primary (error primary)))
     (unwind-protect
          ;; Catch EEXIST only from link(2).  Directory fencing and the test
          ;; seam below retain their own error/cut origin.
@@ -4242,17 +4253,22 @@ current one)."
     (let* ((next (fnn-core 'fn-ns-rotate-entry current (fnn-node-secret-identity identity)
                            (fnn-node-secret-fresh-root)))
            (octets (fnn-node-secret-render next))
-           (stage (fnn-join dir (format nil ".node-secret-~d-~a.stage"
+           (stage (fnn-join (fnn-staging store) (format nil ".init-node-secret-~d-~a.stage"
                                         (sb-posix:getpid) (fnn-random-hex 8))))
            (fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl)
                          #o600)))
-      ;; A failed write or fsync leaves partial key material in keys/, which
-      ;; nothing sweeps (S073): remove the stage before the error leaves.
-      (let ((written nil))
-        (unwind-protect (progn (fnn-write-all fd octets) (fnn-fsync-file fd)
-                               (setq written t))
-          (fnn-close fd)
-          (unless written (ignore-errors (fnn-unlink stage)))))
+      ;; This owned candidate is in the recovery-swept .init- namespace.
+      ;; Ordinary write/fsync/close failures remove it before returning.
+      (let ((written nil) (primary nil))
+        (unwind-protect
+             (handler-case
+                 (progn (fnn-write-all fd octets) (fnn-fsync-file fd)
+                        (setq written t))
+               (error (e) (setq primary e)))
+          (handler-case (fnn-close fd)
+            (error (e) (unless primary (setq primary e))))
+          (when (or primary (not written)) (ignore-errors (fnn-unlink stage))))
+        (when primary (error primary)))
       (handler-case (fnn-replace stage path)
         (fnn-os-error (e)
           (ignore-errors (fnn-unlink stage))

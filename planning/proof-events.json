@@ -19229,6 +19229,41 @@
           "name": "fn-wmc-cumulative-cons-bound"
         }
       ]
+    },
+    {
+      "id": "PRF-1266",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-auth-starttls-after-authentication-is-refused-without-reset"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-starttls-is-not-advertised-once-authenticated-on-any-connection"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1268",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-live-held-charges-current-and-active"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-live-held-releases-only-unneeded-slots"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1269",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-auth-view-excludes-unreadable-groups-on-any-connection"
+        }
+      ]
     }
   ]
 }

@@ -472,6 +472,51 @@
       "latest": "Actual source fixture passes nine compatibility/fault/fresh/interrupted branches; prior initializer fails the expected refusal assertion. Exact-codec teeth and final keystone source-admitted over14cached hbox dependencies (planning/evidence/operator-init-resume-2026-10-03-v2.json).",
       "obstruction": "Normal native-init-resume/teeth certification and matching developer-image execution remain pending. Existing bounded history load scope remains unchanged; physical init program refinement is separate.",
       "next": "Integration batch certifies books/native-init-resume and tests/acl2/native-init-resume-tests, then runs tests.test_native_init_resume.NativeInitResumeTests in the matching developer image."
+    },
+    {
+      "id": "PRF-1266",
+      "name": "STARTTLS after authentication",
+      "contract": "An authenticated connection advertises no STARTTLS and a valid clear-channel STARTTLS answers 502 with the full authenticated session unchanged.",
+      "host": {
+        "function": "fn-mca-read-span",
+        "file": "host/owner-host.lisp"
+      },
+      "keystone": "fn-auth-starttls-after-authentication-is-refused-without-reset",
+      "profile": "default",
+      "latest": "Auth source and role books plus auth/SASL teeth certified at exact source digests in certify-20261003T102734Z-1462490 and certify-20261003T104044Z-1503690; actual saved-image selected-session scenario added.",
+      "obstruction": "Inherited cached dependency manifests need assembled-tree evidence reconciliation; no immutable saved-image result or deployment is claimed.",
+      "next": "Integrate source and reconcile exact existing manifests, then run the selected actual native protocol/fault packet on the convergence image.",
+      "tested": null
+    },
+    {
+      "id": "PRF-1269",
+      "name": "peer reader access",
+      "contract": "A peer-role reader command uses its login or anonymous pinned READ/POST rule; a projected nonempty rule excludes unreadable groups and article memberships, and queue privacy covers source peers.",
+      "host": {
+        "function": "fn-mca-read-span",
+        "file": "host/owner-host.lisp"
+      },
+      "keystone": "fn-auth-view-excludes-unreadable-groups-on-any-connection",
+      "profile": "default",
+      "latest": "Auth and source-peer queue tests certified in certify-20261003T102734Z-1462490; actual USER/PASS principal promotion and reader/transit composition certified in certify-20261003T103156Z-1476136; saved-image source-peer scenario added.",
+      "obstruction": "Inherited cached dependency manifests need assembled-tree evidence reconciliation; no immutable saved-image result or deployment is claimed.",
+      "next": "Integrate source and reconcile exact existing manifests, then run the selected actual native protocol/fault packet on the convergence image.",
+      "tested": null
+    },
+    {
+      "id": "PRF-1268",
+      "name": "published handshake charges",
+      "contract": "Durable publication and settled handshake exits charge max(published TLS limit,still-owned admissions); refused proposals do not change the held charge.",
+      "host": {
+        "function": "fn-owner-connection-held-refresh",
+        "file": "host/owner-host.lisp"
+      },
+      "keystone": "fn-cbud-live-held-charges-current-and-active",
+      "profile": "default",
+      "latest": "Connection-budget and exact teeth certified in certify-20261003T104044Z-1503690; actual host adapter outcome-injection fixture PASS, archived sol-access-native-faults-2026-10-03.",
+      "obstruction": "Inherited cached dependency manifests need assembled-tree evidence reconciliation; no immutable saved-image result or deployment is claimed.",
+      "next": "Integrate source and reconcile exact existing manifests, then run the selected actual native protocol/fault packet on the convergence image.",
+      "tested": null
     }
   ],
   "other_deployments": [

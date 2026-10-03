@@ -932,22 +932,14 @@
                             (args (cdr (fn-nntp-tokenize line))))
                  (:instance fn-auth-pass-line-arguments-are-in-bounds)))))
 
-; KEYSTONE.  The way out: STARTTLS clears a principal-derived role.
+; KEYSTONE.  A newly entered TLS handshake has no principal-derived role.
 ;
-; For ANY session and ANY wire event: if the step entered the TLS handshake
-; (the session was not handshaking and is now), the new session carries no
-; subject, no cached name and no principal-derived role, and its peer role
-; is the old one exactly when that role was NOT principal-derived.  So a
-; peer the operator configured by source address (fn-own-open-peer) keeps
-; its role across the handshake, and a role a login bound -- principal-
-; derived by the first keystone -- is gone before the first octet of the
-; handshake, as RFC 4642 section 2.2.2's reset of the protocol state
-; requires.  The (:tls-established) re-entry keeps the base session
-; (fn-auth-tls-established), so the connection comes out of the handshake
-; a reader, and only a fresh AUTHINFO over TLS can bind again.
-;
-; Two hypotheses, each with a violating value in
-; tests/acl2/nntp-auth-teeth-tests.lisp.
+; RFC 4642 section 2.2.1 prohibits STARTTLS after successful authentication.
+; A reachable handshake therefore starts unauthenticated; a configured source
+; peer retains its independent role.  This public theorem retains its statement
+; for consumers, while its positive witness now exercises that reachable path.
+; The counterfactual principal-clearing arm also covers arbitrary model states,
+; and is not an authenticated served STARTTLS transition.
 (defthm fn-auth-step-starttls-clears-a-principal-role
   ; PRF-164: the session also holds while the owner publishes an XREDEEM
   ; (fn-auth-redeem-waitp); that hold is the other theorem below

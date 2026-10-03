@@ -1985,3 +1985,66 @@ Current source submitted promptly per user push-before-verify direction; owner h
 Follow-through source closes actual loader classification and byte-fact invariants: fn-sca-load-held-rows-establishes-availability-decidedp under held-row domain+producer readiness; commit/withdraw/redecide/clear preservation. Proof-only predicates are disabled, never runtime command guards. Classification package admits0.16s/9,933steps, preservation0.10s/2,588steps; positive+omitted-readiness corrupted-state teeth0.02s/139steps. New books/catalog-availability-refinement.lisp shares fn-scol-history-okp (moved from owner) and proves fn-sca-load-held-rows-establishes-byte-facts with ORIGINAL arena+history premises, no strengthened recognizer premise; 0.07s/4,685steps. Owner old F theorem is a compatibility corollary using the new actual boundary. Positive+stale-decided-byte-fact removal corrupted-state teeth pass; they show loader does not silently repair stale decided facts. Full typed/availability semantics are not inferred from these premises alone.
 
 Still pending: owner R/wire establishment hints must be updated for classified fold (not refuted); selected command reader abstraction and effects; complete paging root replay. Integration batch30/0published453690558 matches macro source+toolchain, but supported install_closure still refuses wanted plain closure keys treewalk93ccb45185d0e3419a7b04ac436b839f4f371582717baa06bbf34c40430dabdf and tree72f67ad5323e53baf750c240dd4ac26544eef60bc3b1d5a7263ef9e60d45b91b, apparently descendant world keys/publication. Root/Integration inspect that exact cache issue; no source fallback/duplicate cert. Warm session solcatavailabilityfarm remains live for handoff, all low/foundation/live-link/reader/loader admissions present, no paged root yet.
+
+---
+
+# sol-access — authentication/TLS/access/reconfiguration
+
+Continuing owner deputy_access (GPT6.1Sol), own worktree origin/dev 041fceb1a.
+S085 queued STARTTLS allocation failure repaired, aee13b337, actual deployed
+request/start/finish/release raw-host discriminator red->green, archived
+planning/evidence/sol-access-s085-2026-10-03.md. Image scenario pending.
+
+S120 source + existing contracts/teeth updated. PRF-1266 and PKT-896 claimed.
+Scoped nntp-auth warm hbox REPL initially refused absent frame-invariants
+certificate and 5 dependants; loading that exact source dependency now.
+No full image per change; Integration will run selected packet at convergence.
+
+S113 current owner-host confirms pre-stage ratchet. Candidate must charge
+only durable configuration and actual admitted in-flight slots; old limits
+remain charged until their allocations are gone, not for process lifetime.
+S121 existing SEC-007 scope conflates transit feeds and reader commands.
+Reader commands should retain account/anonymous read and moderation policy
+independent of peer role, while transit continues on feed-policy inputs.
+Tracing pinned/carried/catalog routes before choosing implementation.
+S044/S092/S119 historical repairs are leads, residual fault tests and crash
+cleanup require current source tracing. No family completion claim.
+
+
+sol-access continuing owned queue, GPT-6.1-Sol, 2026-10-03 10:49 UTC:
+- S120 authored source27c705e91 plus harness correctionbfabe3b3a; auth roots,
+  roles, auth/SASL tests pass exact cert102734Z-1462490; final full auth teeth
+  pass cert104044Z-1503690. Authenticated STARTTLS is unreachable as a successful
+  handshake; role theorem statement kept, contrary role/subject tooth labeled
+  corrupted state. Saved-image selection/login preservation scenario pending.
+- D48/S121 shared access-text exemption removed, no cache/delegate signatures;
+  generic READ exclusion theorem + strengthened queue privacy source-certified.
+  Principal promotion/reader restriction/transit CHECK teeth pass cert103156Z;
+  source-peer queue teeth pass cert102734Z. Source-peer native test added.
+- S113 live pre-staging ratchet removed; durable publication/done refresh exact
+  max(published limit,active admissions). New guards/invariants+teeth pass
+  cert104044Z. Actual adapter refuse/lower/settle/increase raw packet PASS.
+- S119 initial/rotation write/fsync/close cleanup + primary error preservation;
+  native/extracted NEW rotation stage in existing recovery-swept .init namespace.
+  Raw actual syscall-fault packet PASS. Historical keys stages unchanged.
+- S092 historical source retained, real OpenSSL context/injected keygen failure
+  typed condition and exactly-once context free PASS. S044 historical source
+  retained; selected native pipelined-failure budget fixture remains required.
+- Native fault outputs and exact source hashes archived in
+  planning/evidence/sol-access-native-faults-2026-10-03.md and evidence index.
+- Standalone host/store-write-host certify fails fn-hx-stub: it is an extractor
+  LD fragment, never an image-loaded book. Native-program mapping check PASS;
+  actual extractor loader/admission and whole differential remain separate debt.
+- Farm copied current cached dependencies; 102 inherited installed books lack
+  cited manifests in this lane. Integration must reconcile matching existing
+  archive coordinates, not reprove the whole closure. No global green or image
+  claim. Integration owns dev writes and immutable convergence image.
+- Continuing ownership absorbs Operator S072/S151 and journal-stream handoff
+  before08amNY, keeping this queue and worktree alive. No source WIP discarded.
+
+- Post-commit certified_claims --explain confirms PRF-1266/1268/1269 certified
+  at the exact current keystone source/include closure; auth book e045c330,
+  budget2b7d4bf9. Corrected direct keystone provenance citations to102734Z,
+  alongside final teeth104044Z / group access103156Z. Unrelated inherited
+  provenance listing is a separate global convergence concern.
+- All three Access warm REPLs stopped after proof completion, freeing leases.

@@ -321,7 +321,7 @@
         (sa-block "101 capability list follows"
                   (append *sa-reader-lines-posting*
                           ; COMPRESS (RFC 8054) is offered once authenticated.
-                          '("STARTTLS" "SASL SCRAM-SHA-256" "COMPRESS DEFLATE"
+                          '("SASL SCRAM-SHA-256" "COMPRESS DEFLATE"
                             "XFN-DICT 845aa5e18680ef219a9b0f0d0b959cd8886d5eabc12236aae19f301aed9de75e")))))
 (assert-event
  (equal (fn-post-result-effects (sa-send (fn-post-result-session *sa-r2*)
