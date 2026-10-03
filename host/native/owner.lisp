@@ -496,6 +496,9 @@ as at 7aad444ce."
       (fnn-refuse "owner startup hook refused")))
   :accepted)
 
+;;; Shared opt-in diagnostic span macro, also used by native adapters.
+(load "host/native/trace.lisp")
+
 ;;; Measurement (adapter-retirement-2; opt-in, FN_OWNER_MEASURE=1 at start):
 ;;; per label, how many times the owner mutex was held, for how long, and
 ;;; how many octets SBCL allocated while it was, in all and in the largest
@@ -514,11 +517,8 @@ as at 7aad444ce."
   (make-hash-table :test 'eq :synchronized t))
 
 (defun fnn-owner-measure-now ()
-  "Microseconds from gettimeofday (get-internal-real-time advanced in whole
-milliseconds on hbox). Exported SB-EXT, not an SB-UNIX internal: a raw
-SBCL's SB-UNIX may lack the internal clock symbols."
-  (multiple-value-bind (seconds microseconds) (sb-ext:get-time-of-day)
-    (+ (* seconds 1000000) microseconds)))
+  "Monotonic microseconds; clock resolution is runtime ticks."
+  (fnn-trace-now))
 
 (defun fnn-owner-measure-note (label start bytes)
   (let* ((held (- (fnn-owner-measure-now) start))
@@ -532,13 +532,16 @@ SBCL's SB-UNIX may lack the internal clock symbols."
     (incf (fourth row) consed)
     (setf (fifth row) (max (fifth row) consed))))
 
-(defmacro fnn-owner-measured ((label) &body body)
-  (let ((start (gensym "START")) (bytes (gensym "BYTES")))
+(defmacro fnn-owner-measured ((label &optional cid operation connection-generation) &body body)
+  (let ((start (gensym "START")) (bytes (gensym "BYTES")) (phase (gensym "PHASE")))
     `(if *fnn-owner-measure*
-         (let ((,start (fnn-owner-measure-now))
-               (,bytes (sb-ext:get-bytes-consed)))
-           (unwind-protect (progn ,@body)
-             (fnn-owner-measure-note ,label ,start ,bytes)))
+         (let ((,phase ,label))
+           (fnn-trace-span (,phase :cid ,cid :operation ,operation
+                           :connection-generation ,connection-generation)
+             (let ((,start (fnn-owner-measure-now))
+                   (,bytes (sb-ext:get-bytes-consed)))
+               (unwind-protect (progn ,@body)
+                 (fnn-owner-measure-note ,phase ,start ,bytes)))))
        (progn ,@body))))
 
 (defun fnn-owner-measure-report ()
@@ -2355,7 +2358,7 @@ fnn-section-run and fnn-section-run-cleanup."
                        ,admission
                        (fnn-owner-measured ((if (eq *fnn-owner-measure-label* :other)
                                                  ,c
-                                               *fnn-owner-measure-label*))
+                                               *fnn-owner-measure-label*) ,cid)
                           ,@body))
                    (setq *fnn-boundary-outcome* :completed))))
            ;; An unwind no condition explains (a throw, a thread termination):
@@ -7885,8 +7888,9 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
   ;; Explicit developer trace profile; exhaustion invalidates comparison.
   (fnn-native-with-observation ((fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD") 4096)
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
+  (fnn-trace-configure)
   (setq *fnn-owner-measure*
-        (equal (sb-ext:posix-getenv "FN_OWNER_MEASURE") "1"))
+        (or *fnn-trace-state* (equal (sb-ext:posix-getenv "FN_OWNER_MEASURE") "1")))
   (let ((service nil) (listener nil) (tls-listener nil) (more-listeners nil)
         (log-close-action nil) (run-authority-claimed nil)
         (old-active *fnn-sigterm-owner-active*)
@@ -8049,6 +8053,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                       (when (or (null worker) (not (sb-thread:thread-alive-p worker)))
                         (fnn-owner-wait-workers service)))
                     (fnn-owner-measure-report)
+                    (fnn-trace-report)
                     ;; Keep the captured listener fd live while the focused
                     ;; test delivers a repeated SIGTERM during cleanup.
                     (when (string= (or (fnn-developer-selector
