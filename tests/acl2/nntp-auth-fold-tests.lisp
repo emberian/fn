@@ -164,7 +164,7 @@
             (fn-auth-session-pending as)
             (fn-auth-session-subject as)
             (fn-auth-session-tlsp as)
-            (fn-auth-session-handshakingp as) nil nil)))
+            (fn-auth-session-handshakingp as) nil nil (fn-auth-session-failures as))))
      (fn-served-make-conn-indexed
       (fn-served-conn-wire offered) no-post-as
       (fn-served-conn-archive offered)

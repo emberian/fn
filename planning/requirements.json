@@ -6517,6 +6517,26 @@
       ],
       "implementation_note": "The warranty (planning/design-store-representation-2026-10-01.md section 2, stage 6): a fixed-arity resource vector (resident, disk, descriptors, workers, the finite identity spaces, work) and a bank with a carried drawn vector and direct-index slots; U + C + R <= B(P) with R the maintenance reserve opened before any user's slot; dW+ charged by growing the reserve before acceptance; refusal returns the bank itself.",
       "note": "Logical foundation and typed representation only (lane resource-ledger, 2026-10-01); no served entry draws on a bank until definterface :operation lands (MODE 2026-10-01 section 3)."
+    },
+    {
+      "id": "NNT-1002",
+      "title": "One connection gets at most three failed authentications; the third is answered 481, then 400, and the connection closes, whatever the read still holds",
+      "specification": "specs/nntp.md#authentication-failures-nnt-1002",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1249"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/nntp-auth.lisp",
+        "tests/acl2/nntp-auth-failure-budget-tests.lisp",
+        "tests/test_native_auth.py"
+      ],
+      "implementation_note": "RFC 4643 section 6 (MAY drop after failed attempts, SHOULD NOT before three) and section 2.3.1 (AUTHINFO MUST NOT be pipelined) are the RFC requirements; three per connection is the fn guarantee; the per-address exposure-auth-failures budget (NNT-031) is a separate local policy. Sweep S044 (2026-10-03). Open: the stored verifier is one fast salted digest per guess (offline guessing of a leaked verifier); an iterated or memory-hard verifier is not part of this requirement."
     }
   ]
 }

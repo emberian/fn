@@ -182,7 +182,7 @@
 (defconst *gacct-bob*
   (fn-auth-make-session (fn-auth-session-base *gacct-anon*) *gacct-acfg*
                         (fn-nntp-string-octets "bob") (make-list 32 :initial-element 8)
-                        nil nil nil nil))
+                        nil nil nil nil (fn-auth-session-failures *gacct-anon*)))
 (assert-event (equal (fn-auth-access-read *gacct-bob* *gacct-config*) *gacct-text*))
 (assert-event (fn-scr-cached-view *gacct-bob* *gacct-config* *gacct-state* *gacct-pin* *gacct-c1*))
 (assert-event (null (fn-scr-cached-view *gacct-bob* *gacct-config* *gacct-state* *gacct-pin* nil)))

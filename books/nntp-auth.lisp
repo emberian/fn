@@ -329,10 +329,17 @@
 ;                (:sasl-context SEED BINDING) wire event, at open and again
 ;                after every TLS handshake; cleared by 382, because nothing of
 ;                the connection before the handshake is carried across it.
+;   failures     how many authentications this connection has failed (a 481
+;                to AUTHINFO PASS or to a SASL exchange; sweep S044).  Read
+;                through nfix, so it needs no recognizer conjunct.  Carried
+;                by every transition, across STARTTLS too: a handshake does
+;                not buy a client fresh guesses.  At *fn-auth-failure-limit*
+;                the 481 is followed by the 400 and the connection closes
+;                (fn-auth-failed below).
 
 (defun fn-auth-session-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 8)))
+  (and (true-listp x) (equal (len x) 9)))
 (defun fn-auth-session-base (x)
   (declare (xargs :guard t))
   (fn-inj-nth 0 x))
@@ -357,45 +364,52 @@
 (defun fn-auth-session-ctx (x)
   (declare (xargs :guard t))
   (fn-inj-nth 7 x))
-(defun fn-auth-make-session (base config pending subject tlsp handshaking compress ctx)
+(defun fn-auth-session-failures (x)
   (declare (xargs :guard t))
-  (list base config pending subject tlsp handshaking compress ctx))
+  (fn-inj-nth 8 x))
+(defun fn-auth-make-session (base config pending subject tlsp handshaking compress ctx failures)
+  (declare (xargs :guard t))
+  (list base config pending subject tlsp handshaking compress ctx failures))
 
 (defthm fn-auth-session-shapep-of-fn-auth-make-session
   (fn-auth-session-shapep
-   (fn-auth-make-session base config pending subject tlsp handshaking compress ctx)))
+   (fn-auth-make-session base config pending subject tlsp handshaking compress ctx failures)))
 (defthm fn-auth-session-base-of-fn-auth-make-session
   (equal (fn-auth-session-base
-          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx failures))
          base))
 (defthm fn-auth-session-config-of-fn-auth-make-session
   (equal (fn-auth-session-config
-          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx failures))
          config))
 (defthm fn-auth-session-pending-of-fn-auth-make-session
   (equal (fn-auth-session-pending
-          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx failures))
          pending))
 (defthm fn-auth-session-subject-of-fn-auth-make-session
   (equal (fn-auth-session-subject
-          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx failures))
          subject))
 (defthm fn-auth-session-tlsp-of-fn-auth-make-session
   (equal (fn-auth-session-tlsp
-          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx failures))
          tlsp))
 (defthm fn-auth-session-handshakingp-of-fn-auth-make-session
   (equal (fn-auth-session-handshakingp
-          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx failures))
          handshaking))
 (defthm fn-auth-session-compress-of-fn-auth-make-session
   (equal (fn-auth-session-compress
-          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx failures))
          compress))
 (defthm fn-auth-session-ctx-of-fn-auth-make-session
   (equal (fn-auth-session-ctx
-          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx failures))
          ctx))
+(defthm fn-auth-session-failures-of-fn-auth-make-session
+  (equal (fn-auth-session-failures
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx failures))
+         failures))
 (defthm fn-auth-session-shapep-forward-shape
   (implies (fn-auth-session-shapep x) (and (consp x) (true-listp x)))
   :rule-classes :forward-chaining)
@@ -406,7 +420,8 @@
                     (:d fn-auth-session-tlsp)
                     (:d fn-auth-session-handshakingp)
                     (:d fn-auth-session-compress)
-                    (:d fn-auth-session-ctx)))
+                    (:d fn-auth-session-ctx)
+                    (:d fn-auth-session-failures)))
 
 ; The two deeper reaches out of an auth session, named ONCE, for the same
 ; reason and in the same way as `fn-peer-reader-session'
@@ -510,7 +525,7 @@
 ; keep proving with the recognizer as they did.
 (local (defthm fn-auth-sessionp-of-make-session
   (equal (fn-auth-sessionp
-          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx failures))
          (and (fn-peer-sessionp base)
               (fn-auth-configp config)
               (fn-auth-pendingp pending)
@@ -569,7 +584,7 @@
   (declare (xargs :guard t :verify-guards nil))
   (fn-auth-make-session (fn-peer-open-session archive peer node cfg)
                         (if (fn-auth-configp acfg) acfg (fn-auth-open-config))
-                        nil nil (and tlsp t) nil nil nil))
+                        nil nil (and tlsp t) nil nil nil 0))
 
 (defthm fn-auth-open-session-is-consistent
   (fn-auth-session-consistentp (fn-auth-open-session archive peer node cfg
@@ -590,7 +605,8 @@
                         (fn-auth-session-tlsp as)
                         (fn-auth-session-handshakingp as)
                         (fn-auth-session-compress as)
-                        (fn-auth-session-ctx as)))
+                        (fn-auth-session-ctx as)
+                        (fn-auth-session-failures as)))
 
 ; Executes by a loop (lane depth-debt, PRF-919): it walks the configuration's peer rows, operator
 ; data with no fixed cap (D27), and the recursion took one control-stack frame
@@ -662,7 +678,7 @@
 
 (defthm fn-auth-session-peer-of-fn-auth-make-session
   (equal (fn-auth-session-peer
-          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx))
+          (fn-auth-make-session base config pending subject tlsp handshaking compress ctx failures))
          (fn-peer-session-peer base)))
 
 (defthm fn-auth-session-peer-of-fn-auth-with-base
@@ -752,6 +768,58 @@
   (declare (xargs :guard t))
   (fn-nntp-result-effects
    (fn-nntp-single (fn-auth-reader-session as) text)))
+
+; -----------------------------------------------------------------------------
+; The per-connection failure budget (sweep S044; specs/nntp.md
+; "Authentication failures").  RFC 4643 section 6: a server MAY drop the
+; connection after a number of failed authentication attempts and SHOULD
+; NOT before at least three have failed.  This node drops it at the third.
+; The per-ADDRESS budget across connections is books/public-exposure.lisp's
+; exposure-auth-failures, observed after each served step; this one bounds
+; the guesses inside one step, where a read of pipelined USER/PASS pairs was
+; answered pair after pair (RFC 4643 section 2.3.1: AUTHINFO MUST NOT be
+; pipelined, so no conforming client loses a command to the close).
+(defconst *fn-auth-failure-limit* 3)
+
+; The session with its reader session closed, exactly as QUIT leaves it
+; (books/nntp.lisp: openp nil, the cursor and the projection kept), so the
+; served fold halts on it (books/served.lisp fn-served-quitp).
+(defun fn-auth-close-reader (as)
+  (declare (xargs :guard t))
+  (let* ((ps (fn-auth-session-base as))
+         (post (fn-peer-session-base ps))
+         (rs (fn-post-session-base post)))
+    (fn-auth-with-base
+     as (fn-peer-with-base
+         ps (fn-post-make-session
+             (fn-nntp-make-session nil (fn-nntp-session-group rs)
+                                   (fn-nntp-session-current rs)
+                                   (fn-nntp-session-projected rs))
+             (fn-post-session-awaiting post))))))
+
+; One failed authentication: the cached name and any exchange dropped, the
+; count up by one, and the 481.  At the limit the 481 is followed by the
+; 400 "(connection)" :auth-failures line and the close.
+(defun fn-auth-failed (as)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (enable fn-nntp-single
+                                                     fn-nntp-result-effects)))))
+  (let* ((n (+ 1 (nfix (fn-auth-session-failures as))))
+         (failed (fn-auth-make-session (fn-auth-session-base as)
+                                       (fn-auth-session-config as)
+                                       nil nil (fn-auth-session-tlsp as)
+                                       (fn-auth-session-handshakingp as)
+                                       (fn-auth-session-compress as)
+                                       (fn-auth-session-ctx as) n))
+         (reply (fn-auth-single as (fn-proto-text "AUTHINFO" :failed))))
+    (if (< n *fn-auth-failure-limit*)
+        (fn-post-make-result failed reply nil)
+      (fn-post-make-result
+       (fn-auth-close-reader failed)
+       (append reply
+               (fn-auth-single as (fn-proto-text "(connection)" :auth-failures))
+               (list (fn-nntp-close-effect)))
+       nil))))
 
 ; The one new effect.  The host has already written the 382 line when it acts
 ; on this; the handshake begins with the first octet after that reply's CRLF
@@ -1164,7 +1232,7 @@
    (fn-auth-make-session (fn-auth-session-base as) (fn-auth-session-config as)
                          nil nil (fn-auth-session-tlsp as)
                          (fn-auth-session-handshakingp as)
-                         (fn-auth-session-compress as) (fn-auth-session-ctx as))
+                         (fn-auth-session-compress as) (fn-auth-session-ctx as) (fn-auth-session-failures as))
    (fn-auth-single as text)
    nil))
 
@@ -1194,7 +1262,7 @@
                                     (fn-auth-cred-principal cred)
                                     (fn-auth-session-tlsp as)
                                     (fn-auth-session-handshakingp as)
-                                    (fn-auth-session-compress as) ctx))
+                                    (fn-auth-session-compress as) ctx (fn-auth-session-failures as)))
              (bound (fn-auth-bind-principal-peer
                      authenticated (fn-auth-cred-principal cred))))
         (fn-post-make-result
@@ -1209,10 +1277,10 @@
        (fn-auth-make-session (fn-auth-session-base as) acfg
                              (fn-scram-nth 2 o) nil
                              (fn-auth-session-tlsp as)
-                             (fn-auth-session-handshakingp as) (fn-auth-session-compress as) ctx)
+                             (fn-auth-session-handshakingp as) (fn-auth-session-compress as) ctx (fn-auth-session-failures as))
        (fn-auth-sasl-effects "383" payload)
        nil))
-     (t (fn-auth-sasl-refuse as (fn-proto-text "AUTHINFO" :failed))))))
+     (t (fn-auth-failed as)))))
 
 (defun fn-auth-sasl-command (as margs)
   ; AUTHINFO SASL MECH [INITIAL].  fn-auth-authinfo has already answered
@@ -1240,7 +1308,7 @@
        (fn-auth-make-session (fn-auth-session-base as)
                              (fn-auth-session-config as)
                              (fn-sasl-initial-state mech) nil tlsp
-                             (fn-auth-session-handshakingp as) (fn-auth-session-compress as) ctx)
+                             (fn-auth-session-handshakingp as) (fn-auth-session-compress as) ctx (fn-auth-session-failures as))
        (fn-auth-sasl-effects "383" nil)
        nil))
      (t
@@ -1292,7 +1360,7 @@
 (defthm fn-auth-sasl-waitingp-of-make-session
   (equal (fn-auth-sasl-waitingp
           (fn-auth-make-session base config pending subject tlsp handshaking
-                                compress ctx))
+                                compress ctx failures))
          (fn-sasl-statep pending)))
 
 (defthm fn-auth-context-eventp-of-a-command
@@ -1315,7 +1383,7 @@
                            (fn-auth-session-subject as)
                            (fn-auth-session-tlsp as)
                            (fn-auth-session-handshakingp as)
-                           (fn-auth-session-compress as) ctx)
+                           (fn-auth-session-compress as) ctx (fn-auth-session-failures as))
      nil nil)))
 
 ; AUTHINFO (RFC 4643 section 2.3).
@@ -1343,7 +1411,7 @@
                                (car (cdr args)) nil
                                (fn-auth-session-tlsp as)
                                (fn-auth-session-handshakingp as)
-                               (fn-auth-session-compress as) (fn-auth-session-ctx as))
+                               (fn-auth-session-compress as) (fn-auth-session-ctx as) (fn-auth-session-failures as))
          (fn-auth-single as (fn-proto-text "AUTHINFO" :password))
          nil)))
      ((and (consp args) (fn-nntp-keywordp (car args) "PASS"))
@@ -1364,7 +1432,7 @@
                                                (fn-auth-cred-principal cred)
                                                (fn-auth-session-tlsp as)
                                                (fn-auth-session-handshakingp as)
-                                               (fn-auth-session-compress as) (fn-auth-session-ctx as)))
+                                               (fn-auth-session-compress as) (fn-auth-session-ctx as) (fn-auth-session-failures as)))
                        (bound (fn-auth-bind-principal-peer
                                authenticated (fn-auth-cred-principal cred))))
                 (fn-post-make-result
@@ -1372,14 +1440,9 @@
                  (fn-auth-single as (fn-proto-text "AUTHINFO" :accepted))
                  nil))
               ; The cached name is cleared on failure, so a failed PASS
-              ; cannot be retried without a fresh USER.
-              (fn-post-make-result
-               (fn-auth-make-session (fn-auth-session-base as) acfg nil nil
-                                     (fn-auth-session-tlsp as)
-                                     (fn-auth-session-handshakingp as)
-                                     (fn-auth-session-compress as) (fn-auth-session-ctx as))
-               (fn-auth-single as (fn-proto-text "AUTHINFO" :failed))
-               nil))))))
+              ; cannot be retried without a fresh USER; it counts against
+              ; the connection's budget (fn-auth-failed).
+              (fn-auth-failed as))))))
      ; SASL (section 2.4): books/sasl.lisp's exchanges, above.
      ((and (consp args) (fn-nntp-keywordp (car args) "SASL"))
       (fn-auth-sasl-command as (cdr args)))
@@ -1429,7 +1492,7 @@
                                (list :xredeem-wait (cadr pending)
                                      (caddr pending) (car (cdr args)))
                                nil (fn-auth-session-tlsp as) t
-                               (fn-auth-session-compress as) (fn-auth-session-ctx as))
+                               (fn-auth-session-compress as) (fn-auth-session-ctx as) (fn-auth-session-failures as))
          nil nil))))
      ((and (consp args)
            (fn-auth-wire-tokenp (car args))
@@ -1439,7 +1502,7 @@
                              (list :xredeem (car args) (car (cdr args)))
                              nil (fn-auth-session-tlsp as)
                              (fn-auth-session-handshakingp as)
-                             (fn-auth-session-compress as) (fn-auth-session-ctx as))
+                             (fn-auth-session-compress as) (fn-auth-session-ctx as) (fn-auth-session-failures as))
        (fn-auth-single as (fn-proto-text "XREDEEM" :password))
        nil))
      (t (fn-post-make-result as (fn-auth-single as (fn-proto-text * :syntax)) nil)))))
@@ -1470,7 +1533,7 @@
        (fn-auth-make-session (fn-auth-session-base as)
                              (fn-auth-session-config as)
                              nil nil (fn-auth-session-tlsp as) nil
-                             (fn-auth-session-compress as) (fn-auth-session-ctx as))
+                             (fn-auth-session-compress as) (fn-auth-session-ctx as) (fn-auth-session-failures as))
        (if (equal (cadr wire-event) :bound)
            (fn-auth-single
             as (fn-proto-text "XREDEEM" :bound))
@@ -1515,7 +1578,7 @@
     (fn-post-make-result
      (fn-auth-make-session (fn-auth-session-base cleared)
                            (fn-auth-session-config as) nil nil nil t
-                           (fn-auth-session-compress as) nil)
+                           (fn-auth-session-compress as) nil (fn-auth-session-failures cleared))
      (append (fn-auth-single as (fn-proto-text "STARTTLS" :continue))
              (list (fn-auth-starttls-effect)))
      nil)))))
@@ -1538,12 +1601,12 @@
                              (fn-auth-session-pending as) (fn-auth-session-subject as)
                              (fn-auth-session-tlsp as) nil
                              (fn-zc-established (fn-auth-session-compress as))
-                             (fn-auth-session-ctx as))
+                             (fn-auth-session-ctx as) (fn-auth-session-failures as))
        nil nil)
     (fn-post-make-result
      (fn-auth-make-session (fn-auth-session-base as) (fn-auth-session-config as)
                            nil nil t nil (fn-auth-session-compress as)
-                           (fn-auth-session-ctx as))
+                           (fn-auth-session-ctx as) (fn-auth-session-failures as))
      nil nil)))
 
 (defun fn-auth-tls-eventp (wire-event)
@@ -1591,7 +1654,7 @@
         (fn-auth-make-session (fn-auth-session-base as) (fn-auth-session-config as)
                               (fn-auth-session-pending as) (fn-auth-session-subject as)
                               (fn-auth-session-tlsp as) t
-                              (fn-zc-owed (cadr d)) (fn-auth-session-ctx as))
+                              (fn-zc-owed (cadr d)) (fn-auth-session-ctx as) (fn-auth-session-failures as))
         (fn-auth-single as (fn-proto-text "COMPRESS" :started))
         nil)))))
 
@@ -2316,6 +2379,86 @@
            :in-theory (e/d (fn-auth-sasl-refuse fn-auth-session-consistentp)
                            (fn-peer-sessionp fn-peer-session-consistentp
                             fn-auth-configp fn-auth-single fn-auth-ctxp fn-auth-sessionp fn-auth-pendingp fn-zc-statep))))))
+
+; The failure budget's transition (fn-auth-failed): the closed reader
+; session is QUIT's, consistent as it is.
+(local (defthm fn-auth-close-reader-preserves-consistentp
+  (implies (fn-auth-session-consistentp as archive)
+           (fn-auth-session-consistentp (fn-auth-close-reader as) archive))
+  :hints (("Goal"
+           :in-theory (e/d (fn-auth-close-reader fn-auth-with-base fn-peer-with-base
+                            fn-auth-session-consistentp fn-peer-session-consistentp
+                            fn-post-session-consistentp fn-nntp-session-consistentp
+                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp
+                            fn-nntp-sessionp)
+                           (fn-auth-configp fn-auth-ctxp fn-auth-pendingp fn-zc-statep
+                            fn-prin-idp fn-nntp-printable-tokenp fn-node-statep fn-cfgp
+                            fn-peer-transferp fn-nntp-projectionp fn-nntp-cursor-validp
+                            fn-nntp-group-nonemptyp))))))
+
+(local (defthm fn-auth-failed-preserves-consistentp
+  (implies (fn-auth-session-consistentp as archive)
+           (fn-auth-session-consistentp
+            (fn-post-result-session (fn-auth-failed as)) archive))
+  :hints (("Goal"
+           :in-theory (e/d (fn-auth-failed fn-auth-session-consistentp)
+                           (fn-peer-sessionp fn-peer-session-consistentp
+                            fn-auth-close-reader
+                            fn-auth-configp fn-auth-single fn-auth-ctxp fn-auth-sessionp fn-auth-pendingp fn-zc-statep))
+           :use ((:instance fn-auth-close-reader-preserves-consistentp
+                  (as (fn-auth-make-session (fn-auth-session-base as)
+                                       (fn-auth-session-config as)
+                                       nil nil (fn-auth-session-tlsp as)
+                                       (fn-auth-session-handshakingp as)
+                                       (fn-auth-session-compress as)
+                                       (fn-auth-session-ctx as)
+                                       (+ 1 (nfix (fn-auth-session-failures as)))))))))))
+
+(in-theory (disable fn-auth-failed fn-auth-close-reader))
+
+; What a failure keeps: every field but the cached name, the subject and the
+; count, which it reads; the closed reader session only at the limit.
+(defthm fn-auth-failed-keeps-the-fields
+  (let ((s (fn-post-result-session (fn-auth-failed as))))
+    (and (equal (fn-auth-session-config s) (fn-auth-session-config as))
+         (equal (fn-auth-session-tlsp s) (fn-auth-session-tlsp as))
+         (equal (fn-auth-session-handshakingp s) (fn-auth-session-handshakingp as))
+         (equal (fn-auth-session-compress s) (fn-auth-session-compress as))
+         (equal (fn-auth-session-ctx s) (fn-auth-session-ctx as))
+         (equal (fn-auth-session-peer s) (fn-auth-session-peer as))
+         (equal (fn-auth-session-pending s) nil)
+         (equal (fn-auth-session-subject s) nil)
+         (equal (fn-auth-session-failures s)
+                (+ 1 (nfix (fn-auth-session-failures as))))))
+  :hints (("Goal" :in-theory (enable fn-auth-failed fn-auth-close-reader
+                                     fn-auth-with-base fn-peer-with-base
+                                     fn-auth-session-peer))))
+
+; The layers under the auth session: a failure moves nothing in them but
+; the reader session's open bit, and that only at the limit.
+(defthm fn-auth-failed-keeps-the-layers
+  (let ((ps (fn-auth-session-base (fn-post-result-session (fn-auth-failed as))))
+        (ps0 (fn-auth-session-base as)))
+    (and (equal (fn-peer-session-peer ps) (fn-peer-session-peer ps0))
+         (equal (fn-peer-session-transfer ps) (fn-peer-session-transfer ps0))
+         (equal (fn-peer-session-inflight ps) (fn-peer-session-inflight ps0))
+         (equal (fn-peer-session-node ps) (fn-peer-session-node ps0))
+         (equal (fn-peer-session-cfg ps) (fn-peer-session-cfg ps0))
+         (equal (fn-peer-session-refused ps) (fn-peer-session-refused ps0))
+         (equal (fn-post-session-awaiting (fn-peer-session-base ps))
+                (fn-post-session-awaiting (fn-peer-session-base ps0)))
+         (equal (fn-nntp-session-group (fn-peer-reader-session ps))
+                (fn-nntp-session-group (fn-peer-reader-session ps0)))
+         (equal (fn-nntp-session-current (fn-peer-reader-session ps))
+                (fn-nntp-session-current (fn-peer-reader-session ps0)))
+         (equal (fn-nntp-session-projected (fn-peer-reader-session ps))
+                (fn-nntp-session-projected (fn-peer-reader-session ps0)))))
+  :hints (("Goal" :in-theory (enable fn-auth-failed fn-auth-close-reader
+                                     fn-auth-with-base fn-peer-with-base))))
+
+(defthm fn-auth-failed-submits-nothing
+  (equal (fn-post-result-submission (fn-auth-failed as)) nil)
+  :hints (("Goal" :in-theory (enable fn-auth-failed))))
 
 (local (defthm fn-auth-find-cred-name-is-a-token
   (implies (and (fn-auth-cred-listp creds)
@@ -3437,12 +3580,85 @@
                 (null (fn-auth-session-pending
                        (fn-post-result-session
                         (fn-auth-authinfo as (list keyword secret)))))
-                (equal (fn-post-result-effects
-                        (fn-auth-authinfo as (list keyword secret)))
-                       (fn-auth-single as "481 authentication failed"))))
+                (equal (fn-auth-session-failures
+                        (fn-post-result-session
+                         (fn-auth-authinfo as (list keyword secret))))
+                       (+ 1 (nfix (fn-auth-session-failures as))))))
   :hints (("Goal"
            :do-not-induct t
            :in-theory (e/d (fn-auth-authinfo)
+                           (fn-auth-single fn-auth-find-cred fn-auth-checkp
+                            fn-auth-token-argp fn-auth-sessionp
+                            fn-nntp-keywordp fn-nntp-single))))
+  :rule-classes nil)
+
+; KEYSTONE (sweep S044, the per-connection failure budget; host:
+; host/native/owner.lisp fnn-owner-handle-chunk runs it through the served
+; step).  Below the limit a failed PASS answers exactly the 481 line and the
+; connection stays open; the failure that reaches *fn-auth-failure-limit*
+; answers the 481, then the 400 "(connection)" :auth-failures line, then
+; closes, and leaves the reader session closed (so the served fold answers
+; nothing after it, fn-served-quitp).
+(defthm fn-auth-failed-pass-below-the-limit-is-481-and-keeps-the-connection
+  (implies (and (not (fn-auth-session-subject as))
+                (not (and (fn-auth-config-protected-onlyp
+                           (fn-auth-session-config as))
+                          (not (fn-auth-session-tlsp as))))
+                (fn-auth-token-argp (list secret))
+                (fn-nntp-keywordp keyword "PASS")
+                (fn-auth-session-pending as)
+                (not (fn-auth-checkp
+                      (fn-auth-find-cred (fn-auth-session-pending as)
+                                         (fn-auth-config-creds
+                                          (fn-auth-session-config as)))
+                      secret))
+                (< (+ 1 (nfix (fn-auth-session-failures as)))
+                   *fn-auth-failure-limit*))
+           (and (equal (fn-post-result-effects
+                        (fn-auth-authinfo as (list keyword secret)))
+                       (fn-auth-single as "481 authentication failed"))
+                (equal (fn-auth-session-base
+                        (fn-post-result-session
+                         (fn-auth-authinfo as (list keyword secret))))
+                       (fn-auth-session-base as))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-authinfo fn-auth-failed)
+                           (fn-auth-single fn-auth-find-cred fn-auth-checkp
+                            fn-auth-token-argp fn-auth-sessionp
+                            fn-nntp-keywordp fn-nntp-single))))
+  :rule-classes nil)
+
+(defthm fn-auth-failed-pass-at-the-limit-is-481-400-and-closes
+  (implies (and (not (fn-auth-session-subject as))
+                (not (and (fn-auth-config-protected-onlyp
+                           (fn-auth-session-config as))
+                          (not (fn-auth-session-tlsp as))))
+                (fn-auth-token-argp (list secret))
+                (fn-nntp-keywordp keyword "PASS")
+                (fn-auth-session-pending as)
+                (not (fn-auth-checkp
+                      (fn-auth-find-cred (fn-auth-session-pending as)
+                                         (fn-auth-config-creds
+                                          (fn-auth-session-config as)))
+                      secret))
+                (<= *fn-auth-failure-limit*
+                    (+ 1 (nfix (fn-auth-session-failures as)))))
+           (and (equal (fn-post-result-effects
+                        (fn-auth-authinfo as (list keyword secret)))
+                       (append
+                        (fn-auth-single as "481 authentication failed")
+                        (fn-auth-single
+                         as "400 too many authentication failures; closing connection")
+                        (list (fn-nntp-close-effect))))
+                (not (fn-nntp-session-openp
+                      (fn-auth-reader-session
+                       (fn-post-result-session
+                        (fn-auth-authinfo as (list keyword secret))))))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-authinfo fn-auth-failed fn-auth-close-reader
+                            fn-auth-with-base fn-peer-with-base)
                            (fn-auth-single fn-auth-find-cred fn-auth-checkp
                             fn-auth-token-argp fn-auth-sessionp
                             fn-nntp-keywordp fn-nntp-single))))
@@ -4287,7 +4503,7 @@
                                                nil nil
                                                (fn-auth-session-tlsp as)
                                                nil
-                                               (fn-auth-session-compress as) (fn-auth-session-ctx as))))))
+                                               (fn-auth-session-compress as) (fn-auth-session-ctx as) (fn-auth-session-failures as))))))
   :hints (("Goal"
            :do-not-induct t
            :in-theory (e/d (fn-auth-step-pinned fn-auth-tls-eventp
