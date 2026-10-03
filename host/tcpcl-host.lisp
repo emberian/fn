@@ -196,6 +196,11 @@
 
 ; Concrete framing defers the existing codec until a complete frame or its
 ; extension prefix. These observations select no alternate protocol policy.
-(defun fn-tcl-host-segment-mru (s) (fn-tcl-segment-mru s))
+(defun fn-tcl-host-segment-mru (s)
+ (declare (xargs :guard t)) (fn-tcl-segment-mru s))
+(verify-guards fn-tcl-host-segment-mru)
 (defun fn-tcl-host-input-probe (s buf)
+ (declare (xargs :guard (and (fn-tcl-session-cheapp s)
+                             (fn-cbor-octet-listp buf))))
  (fn-tcl-parse-needp (fn-tcl-decode-for s buf)))
+(verify-guards fn-tcl-host-input-probe)

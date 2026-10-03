@@ -1453,8 +1453,11 @@ signals with SERVICE still holding its locks; its owner releases them."
                             *fnn-owner-retained-service*))))
         (if actual (fnn-owner-cold-shutdown actual)
           (fnn-extent-executor-stop))))
-    ;; Only a normal physical return records termination. Timeout/escape
-    ;; cannot turn this bit on or relinquish the retained service carrier.
+    ;; Prior arena callback debt can survive before any Store carrier exists.
+    ;; This observes it; it neither resets nor retries the failed callback.
+    (unless (eq (fnn-arena-return-observation nil) :closed)
+      (fnn-indeterminate "BP served owner arena physical return remains unobserved"))
+    ;; Only normal physical return of both executor and arena records terminal.
     (setf (fnn-bp-served-owner-custody-stopped custody) t)))
 
 (defun fnn-bp-served-owner-settle (custody service roots-ready)

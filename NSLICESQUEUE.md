@@ -773,3 +773,15 @@ value. Producer guards/grammar literals and recorded actual consumer PASS;
 Operator DEFAULT extension composition/certificate/current native remain open.
 Received-source alpha tracked at distinct claimed PRF1305, preserving PRF1292
 owner readout; current union receiver/refinement certificate refresh pending.
+
+BP consumed interface/cleanup followthrough: actual scheduler, grant, source,
+framing and deadline leaves declared with their genuine guarded logical class
+and scalar kinds. Host input probe and segment-MRU wrappers now explicitly
+guard-verified (normal warm ACL2 admission), not relabeled PROGRAM. IF-arm
+restatements removed from curated retained-turn citations. Global arena return
+must be :closed after executor join before BP served ownership can settle;
+constructor-without-Store debt retains authority too. Actual startup source
+fixture passes nine helper outcomes plus command failures. Depends on shared
+fnn-arena-return-observation physical seam; current native joins remain pending.
+Exact four-root2674541 certificate refresh certifies PRF1305 receiver boundary;
+PRF1306 full launcher reservation correspondence remains planned.

@@ -4083,3 +4083,20 @@ corrected: withdrawal stamps count and visibility uses <=, context redecision
 keeps availability facts; no new MVCC needed for that alleged drift. Actual
 completed discovery/pinned authority correspondence remains PRF1237.
 Untracked list-query-reference remains disabled model WIP outside this packet.
+Exact PRF1303 control parser certificate certify-20261003T171341Z-2643459
+PASSED2/0, archived/indexed. This certifies the actual one-frame source driver
+complete result/session equality and inbound/reception/remainder/status with
+reachable partial-transfer and closed-phase teeth. Full framed-stream/native
+private source alias/END ACK/publication correspondence remains open.
+
+BP consumed interface/cleanup followthrough: actual scheduler, grant, source,
+framing and deadline leaves declared with their genuine guarded logical class
+and scalar kinds. Host input probe and segment-MRU wrappers now explicitly
+guard-verified (normal warm ACL2 admission), not relabeled PROGRAM. IF-arm
+restatements removed from curated retained-turn citations. Global arena return
+must be :closed after executor join before BP served ownership can settle;
+constructor-without-Store debt retains authority too. Actual startup source
+fixture passes nine helper outcomes plus command failures. Depends on shared
+fnn-arena-return-observation physical seam; current native joins remain pending.
+Exact four-root2674541 certificate refresh certifies PRF1305 receiver boundary;
+PRF1306 full launcher reservation correspondence remains planned.
