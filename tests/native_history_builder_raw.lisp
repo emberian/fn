@@ -4,6 +4,7 @@
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 (defvar *fnn-checkpoint-image-custody* nil)
+(defvar *fnn-checkpoint-stop-test* nil)
 (defvar *fixture-sources* nil)
 (defvar *fixture-rows* nil)
 (defvar *fixture-fail-row* nil)
@@ -45,7 +46,7 @@
         (setf names (remove (second form) names))
         (when (null names) (return))))))
 (fixture-load "host/native/io.lisp"
- '(fnn-history-image-build fnn-history-image-release fnn-with-history-image))
+ '(fnn-checkpoint-yield fnn-history-image-build fnn-history-image-release fnn-with-history-image))
 (let ((events (loop for i below 513 collect (list :all-event i))))
   (fnn-with-history-image
     (multiple-value-bind (position image)
@@ -73,4 +74,20 @@
   (assert failed)
   (assert (equal *fixture-rows* '(:first)))
   (assert (null *fnn-checkpoint-image-custody*)))
-(format t "native_history_builder_raw: private snapshots, complete frontier, failure return PASS~%")
+;; The owner's existing stop fence is observed before the first row and at
+;; the next ACL2 scheduling cadence. Neither cut reaches finish/binding;
+;; unwind returns its private scratch just as any pre-stage refusal does.
+(dolist (cut '(0 256))
+  (let* ((*fixture-rows* nil) (*fixture-binding-count* nil)
+         (*fnn-checkpoint-stop-test* (lambda () (>= (length *fixture-rows*) cut)))
+         (failed nil) (released-before (length *fixture-release*)))
+    (handler-case
+        (fnn-with-history-image
+          (fnn-history-image-build (loop for i below 513 collect i) :node 0 '(7 :trail4)))
+      (error () (setf failed t)))
+    (assert failed)
+    (assert (= (length *fixture-rows*) cut))
+    (assert (null *fixture-binding-count*))
+    (assert (= (length *fixture-release*) (1+ released-before)))
+    (assert (null *fnn-checkpoint-image-custody*))))
+(format t "native_history_builder_raw: private snapshots, complete frontier, failure and stop return PASS~%")
