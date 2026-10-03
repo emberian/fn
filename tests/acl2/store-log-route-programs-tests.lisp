@@ -105,7 +105,7 @@
 
 (defun slrp-open-conclusion (bs genesis)
   (declare (xargs :guard t :verify-guards nil))
-  (let* ((ks (fn-lg-recovered-kernel bs 0 genesis (slk-max) 1))
+  (let* ((ks (fn-lg-recovered-kernel bs 0 genesis (slk-max) 0))
          (recover (fn-lg-run bs ks (fn-lg-recover-program) nil 0))
          (recovered (car (last recover)))
          (run (fn-lg-run bs ks (fn-lg-open-program) nil 0)))
@@ -122,7 +122,7 @@
  (let ((bs (slk-store (slk-content) nil)))
    (and (equal (slrp-open-hyps bs (slk-genesis)) '(t t t t t t t))
         (slrp-open-conclusion bs (slk-genesis))
-        (equal (len (fn-lg-run bs (fn-lg-recovered-kernel bs 0 (slk-genesis) (slk-max) 1)
+        (equal (len (fn-lg-run bs (fn-lg-recovered-kernel bs 0 (slk-genesis) (slk-max) 0)
                                (fn-lg-open-program) nil 0))
                11))))
 
