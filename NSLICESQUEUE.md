@@ -507,6 +507,14 @@ rather than a different logging recipe per lane. The next usable consumer is a
 real owner/mux scenario whose trace and analysis expose phase cost and allocation.
 Metrics do not supply an allocation tariff or prove physical funding.
 
+The landed EWP read-effect sharing change (8c3cc856e) is certified at current
+source by certify-20261003T184902Z-2921703: plan and existing semantic test roots
+pass, with one cited matching cached dependency. This does not execute the DWJ
+allocation comparison. The broader immutable-list/capture and EWZ/EWS prototypes
+remain unsent in `build/lanes/codex-sol-matcher-graph/build/dwj-trace/events.lisp`.
+Their handoff's formerly healthy `root-decoded-execution` session is stopped;
+resume requires a matching current world, not sending to that old handle.
+
 ### Proof simplification, tooling and historical implementations
 
 **Broad sweep paused — four Luna helpers stopped; validated packets retained,

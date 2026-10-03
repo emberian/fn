@@ -44,9 +44,11 @@ remain WIP. Current compressed ARTICLE/Web/restart/cancel and BP multi-peer,
 signed R/Q, fairness and reopen selectors are prepared but unexecuted. Nonempty
 bounded storage/reclaim, whole-state carrier migration, complete allocation/GC/
 work tariffs, renderer/query reference and guard proofs, and current native
-qualification remain open. Tools' last pure read-effect sharing source is landed
-with its staged guard/equality and actual DWJ comparison still unrun; changed
-live-limit completion-reserve admission and full-book proof checks remain open.
+qualification remain open. Tools' landed EWP read-effect sharing change now has
+matching normal guard/semantic certification: certify-20261003T184902Z-2921703,
+two affected roots passed with one cited cached dependency. Broader staged
+allocation prototypes and actual DWJ comparison remain unrun; changed live-limit
+completion-reserve admission and full-book proof checks remain open.
 
 Historical scoped native wins include Web account/POST/read/remove, four signed
 application scenarios, ten MiB NNTP/operator acceptance/readback, moderation
