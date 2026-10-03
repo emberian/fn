@@ -702,3 +702,9 @@ cleanup; startup without a returned service keeps its existing held marker
 until that roster is empty. A complete served close also requires this
 observation before log, journal and Store settlement. SCN-1130 distinguishes
 ordinary stop return from physical custody settlement using the actual helper.
+
+Global arena callback debt can exist before any Store carrier is returned.
+Startup observes `fnn-arena-return-observation(nil)` before replacement
+constructors; an uncertain observation invokes the custody callback and
+reports uncertainty. Orphan cleanup clears the startup marker only after
+both the executor roster and global arena return observation settle.
