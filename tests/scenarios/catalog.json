@@ -8769,6 +8769,34 @@
         "tests/native_response_identity_raw.lisp"
       ],
       "execution_scope": "Actual pure producer, native helpers and queue-plan with recording owner admission and factory boundaries. Source guards/theorems and 12 ACL2 assertions admitted; no matching certificate/image/full output lifetime gate claim."
+    },
+    {
+      "id": "SCN-1092",
+      "title": "Sparse carried availability agrees across GROUP, LISTGROUP and navigation after reclaim",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-042"
+      ],
+      "steps": [
+        "Build ordinary classified rows and reclaimed tombstone rows through the actual catalog writer/recovery loader.",
+        "Select sparse survivors 1 and 34, prefix survivors 33 and 34, tail survivor 1, and an empty available group; cancel an already unavailable row.",
+        "Compare GROUP tuple, LISTGROUP numbers, NEXT/LAST cursor effects and failed-navigation state; verify retained numeric/Message-ID lookup and no number reuse across reopen."
+      ],
+      "expected": [
+        "Sparse answer is count2, low1, high34; allocated next35 remains independent. Empty GROUP tuple is 0,35,34.",
+        "Unavailable numeric positions are skipped by enumeration/navigation; raw reclaimed retrieval retains diagnostics and duplicate identity.",
+        "Cancel after reclaim does not decrement twice; failed selection/navigation preserves cursor and pin."
+      ],
+      "implementation": {
+        "test": "tests/acl2/catalog-available-readers-tests.lisp"
+      },
+      "evidence": [
+        "tests/acl2/catalog-availability-tests.lisp",
+        "tests/acl2/catalog-available-readers-tests.lisp",
+        "tests/acl2/catalog-availability-owner-load-tests.lisp"
+      ],
+      "execution_scope": "First actual foundation writer classification fixtures pass in warm REPL; generated complete command antecedents/conclusions, recovery loader, paged attachment and native reclaim/reopen remain pending. Tombstone-shaped byte fixture is classification evidence, not execution of a native reclaim pass. Actual generic catalog available summary/range/navigation complete tuple cases now pass with guard-verified exports, including empty (0,35,34) and preserved raw#2 lookup. Protocol/session effect teeth and native reclaim remain pending. Actual recovery loader with legacy missing NOV now passes the same sparse/prefix/tail/empty/cancel tuples from sealed arena payloads; invalid-handle classification remains unavailable. This is live-stobj execution in a warm source world, not native reclaim qualification."
     }
   ]
 }
