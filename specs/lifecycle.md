@@ -104,3 +104,20 @@ tombstone's answer on the served read must be "reclaimed", distinct from
 11, the retry after reclaim, is the theorem lane reclaim-equivalence owes
 and the one that makes compaction a semantic transition rather than an
 optimization.
+
+### Mux actor and wake descriptor custody
+
+Each mux loop is retained by the service before wake-pipe creation and uses the
+shared registered actor starter. Setup captures both pipe descriptors before
+nonblocking setup or actor launch. Maker failure closes unstarted loops; a
+post-create failure recovers the actual child from actor custody and keeps its
+descriptors while that child is alive. The thread stays registered through its
+terminal cleanup and independent physical join.
+
+Wake descriptors each have a once-only receipt. A literal successful close
+clears that descriptor; a close condition retains the descriptor and receipt
+as terminal debt without retry. Both closes are attempted independently even
+when connection cleanup escapes. Root mux drain requires no live thread, no
+connection/arrival/inbox custody, no cleanup debt and no retained wake descriptor.
+These native receipts do not authorize a semantic resource refund. Full native
+interpreter correspondence and complete physical charging remain open.

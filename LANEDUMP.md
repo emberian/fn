@@ -3959,3 +3959,14 @@ extension composition next; no blanket tariff/native claim. Runtime startup
 now normalizes its captured root identically. Distinct PRF1305 restores existing
 received-source alpha registry and corrects PRF1300 dependency without overwriting
 owner-operation PRF1292; current certificate refresh pending.
+Mux lifecycle continuation: loop objects published before pipe setup, starters
+now generated def-actor, worker roster retained until physical join. Failed
+setup closes unstarted loops; post-create failure recovers the actual actor
+thread before deciding whether pipe cleanup is safe. Once-only read/write wake
+close receipts retain ambiguous failures, close siblings independently and
+block root drain until descriptors/debts are gone. Real SBCL threads/pipe
+syscalls/setup+maker/latch/no-op terminator/raw throw/close failure schedules
+PASS (~0.25s). Existing mux connection cleanup PASS; await fixture selected
+actual capture/output-close helpers to repair its prior stale extraction.
+Full current source owner still awaiting History initializer; no physical
+endpoint or complete funding/HM claim transferred from these schedules.
