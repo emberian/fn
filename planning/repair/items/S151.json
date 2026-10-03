@@ -6,12 +6,13 @@
  "id": "S151",
  "locus": "operator-verbs",
  "notes": [
-  "10-02 23:24 escalate: proof-owed, needs an ACL2-named drain/stop deadline in books/native-retire + owner-retire before the host loop can poll it; no host-only fix"
+  "10-02 23:24 escalate: proof-owed, needs an ACL2-named drain/stop deadline in books/native-retire + owner-retire before the host loop can poll it; no host-only fix",
+  "2026-10-03 codex-operator-retire: host connected to ACL2 requested-drain+60s observation policy. Live/held expiry is uncertain and changes no owner/custody state; malformed observations fault distinctly. One-second polling retained. Exact source SBCL positive and prior-source timeout archived; warm hbox function guards/theorems/all16teeth admitted. Native-retire/test normal certification and matching image remain Integration work, not a physical stop claim. PKT-895 PRF-1263 SCN-1095."
  ],
- "owner": "burndown-1",
+ "owner": "codex-operator-retire",
  "severity": "low",
  "source": "burndown-1",
- "state": "open",
+ "state": "in-progress",
  "title": "retire waits with no bound in the host loop; ACL2 should name the deadline (drain window + stop deadline) and the host poll against it",
- "updated": "2026-10-03T03:24:31Z"
+ "updated": "2026-10-03T09:52:50.178046+00:00"
 }

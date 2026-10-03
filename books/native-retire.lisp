@@ -179,5 +179,67 @@
   (fn-record-string-octets
    "retire uncertain reason=no-report (the node stopped without writing retire-report.txt; see its log)"))
 
+; PKT-895: bounded operator observation, not a bound on physical owner stop.
+; The live owner's barrier policy can change independently of this command's
+; config, and a physical final fence may never return.  Wait for the requested
+; feed window plus this explicit operator allowance, then leave the owner and
+; every custody obligation untouched and report uncertainty.  The clock inputs
+; are monotonic host ticks and their positive ticks/second rate (A-HOST).
+(defconst *fn-nret-observation-allowance-seconds* 60)
+(defconst *fn-nret-observation-poll-seconds* 1)
+
+(defun fn-nret-observation-budget-ticks (argv rate)
+  (declare (xargs :guard t))
+  (* (+ (nfix (cadr (fn-nret-request argv)))
+        *fn-nret-observation-allowance-seconds*)
+     (nfix rate)))
+
+; :report means the lock/socket observations say stopped, not that a fresh
+; report exists.  The host still checks that report before claiming success.
+; Unknown observations and invalid clock/request inputs never mean stopped.
+(defun fn-nret-observation-step (argv start now rate liveness)
+  (declare (xargs :guard t))
+  (cond ((not (and (fn-nret-request argv) (natp start) (natp now)
+                  (posp rate) (<= start now)))
+         :fault)
+        ((member-equal liveness '(:offline :stale)) :report)
+        ((not (member-equal liveness '(:live :held))) :fault)
+        ((<= (fn-nret-observation-budget-ticks argv rate) (- now start))
+         :uncertain)
+        (t :wait)))
+
+; KEYSTONE PRF-1263: this is the decision fnn-operator-execute-retire calls.
+; At or past the observation deadline a still-live/held owner cannot extend
+; the wait or manufacture a stopped/report outcome, whatever its own budget.
+(defthm fn-nret-observation-expiry-is-uncertain
+  (implies (and (fn-nret-request argv) (natp start) (natp now)
+                (posp rate)
+                (member-equal liveness '(:live :held))
+                (<= (fn-nret-observation-budget-ticks argv rate)
+                    (- now start)))
+           (equal (fn-nret-observation-step argv start now rate liveness)
+                  :uncertain))
+  :hints (("Goal" :in-theory (disable fn-nret-observation-budget-ticks
+                                     fn-nret-request))))
+
+(defthm fn-nret-observation-report-requires-stopped
+  (implies (equal (fn-nret-observation-step argv start now rate liveness)
+                  :report)
+           (member-equal liveness '(:offline :stale))))
+
+(defun fn-nret-observation-poll-seconds ()
+  (declare (xargs :guard t))
+  *fn-nret-observation-poll-seconds*)
+
+(defun fn-nret-observation-expired-line ()
+  (declare (xargs :guard t))
+  (fn-record-string-octets
+   "retire uncertain reason=observation-deadline (owner stop unconfirmed; retirement and custody continue; inspect status and log)"))
+
+(defun fn-nret-observation-fault-line ()
+  (declare (xargs :guard t))
+  (fn-record-string-octets
+   "retire fault reason=invalid-observation (invalid request, monotonic clock or owner liveness observation)"))
+
 (in-theory (disable fn-nret-plan fn-nret-request fn-nret-request-argv
                     fn-nret-u32-octets fn-nret-u32-value fn-nret-begin-answer))
