@@ -2957,3 +2957,8 @@ keystones and progress/shape-premise removal. Runtime traces preserved columns
 for this exact point subject; no pin-implies-mutable-table snapshot claim.
 Receipt group-summary-cursor-20261003, full failed probes preserved. LIST
 controller/row renderer/plan wiring continues; no physical tariff claim.
+
+Root actualdevREPL nativeownerPASS: scopedGWad8 initializedsource+gate336+cde
++exact177module/trace overlays, tests/dev_repl_native.py exercisesrealowner,
+ACL2admission/refusalcontinuation, SIGTERMexit0cleanup, rawerrorfenceexit4cleanup.
+ExecutionJSON+log+assertions archivedseparately; notcurrentwholedevqualification.
