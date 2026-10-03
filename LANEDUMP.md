@@ -170,3 +170,24 @@ arguments passed to fn-pio-direct-admit. Existing native handoff fixture
 requires the complete literal tuple; it cannot reconstruct missing inputs
 from the token. Seven image-free transport checks pass. Native execution
 requires an image including this source; no certified replay claim yet.
+
+## Peer preflight source and refusal, 2026-10-03
+
+3716a9926 reuses existing same-source native NNTP producer for BP fixture;
+fa9e9ef19 separates native exit classes instead of every nonzero becoming
+lost; 5afc1e275 corrects shared bp_producer bytes MID CLI transport. Three
+focused control/transport tests pass. Final historical production+DTN45e
+fixture accepted POST240 and generated stored source/ADU through ACL2, then
+actual bp-obligation undertake rc1 canonical Store refused retention event.
+No peer nodes or fault reached; no custody/recovery result. Historical retries
+stopped.26objects archived native-bp-preflight-45e05c7f-2026-10-03. Groundwork
+owns retention producer follow-through, Tools command consumer; no user gate.
+
+First current image1a946 source/core6f5bf888 now available and Integration's
+raw/counterpart POST+duplicate+readback passed. One approved baseline mixed
+completed correctness, all48acknowledged content/numbers reopen,24mixedposts
+accepted and36reads; quiet reclaim credit-refused remainsincomplete. Sparse
+current schedule executing sequentially under approved24Gscope; nohook/funding
+claim because image excludes these later sources. Evidence filing follows.
+Runtime d4/0fa observer activation/source ready; generic E seam requested
+before extent collection/executorwrapping. FullPageIO remains unavailable.

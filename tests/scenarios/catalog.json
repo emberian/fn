@@ -36,9 +36,10 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-bp-workflow.md",
-        "tests/evidence/2026-09-18-bp-exchange.md"
+        "tests/evidence/2026-09-18-bp-exchange.md",
+        "planning/evidence/native-bp-preflight-45e05c7f-2026-10-03/report.md"
       ],
-      "execution_scope": "Partial: actual two-node fn/BPv7 letter and return-receipt exchange, outage/restart, lost receipt and distinct-BID duplicate with one article/pin per node. Native signatures, two relays and carried-media composition remain open."
+      "execution_scope": "Partial: actual two-node fn/BPv7 letter and return-receipt exchange, outage/restart, lost receipt and distinct-BID duplicate with one article/pin per node. Native signatures, two relays and carried-media composition remain open. Empirical 2026-10-03: selected historical45e05 receipt-held death schedule stops at actual canonical Store retention refusal during undertake, before peer nodes/faults. Native POST240 and ACL2 stored-source/request bytes are archived; no peer resilience result. Shared fixture CLI bytes-ID transport corrected5afc1e275, but final refusal persists; current retention producer follow-through is open."
     },
     {
       "id": "SCN-002",
