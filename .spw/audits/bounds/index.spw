@@ -79,7 +79,7 @@
  repair: "Current whole Store96xH sizing remains justified by real allocation; safe reduction must preserve immutable prefix capture while switching replay. Two-pass lazy rewrite now avoids no-op/refused retention. Actual source fixture verifies one decision scan with zero rewrites for :none/:refused/:dry-run, and second ordered rewrite pass before instant/clear for :reclaim/:recorded. Actual reclaim whole retention remains; no immutable prefix capture or streaming replay claim"
 }
 ^"catchup-spool-shape"{
- state: "Design freeze for Foundations producer; no installed grant or source implementation yet"
+ state: "Source worker/bank ea6bcb1b4; independent Foundation producer eb2e/7637/063c. Operator installs captured bank; actual catchup flight/controller activation remains unmerged. Partial fixed storage only"
  source: "One ephemeral spool per admitted flight; spool records hold exact normalized article bytes and bounded record metadata for second sequential parse. Header format is269 content/271 wire octets at max250 Message-ID and16hex count; controller window512 shares network buffer. Keep only current header/msgid<=250, line count, offsets and running32byte chain"
  continuation: "At record end, pause network receive and hash its known immutable spool range with pgs-dcb-begin/read-demand/step/result in64byte windows; then fold chain32+digest32+msgid and resume. At batch END compare complete chain before IHAVE; second spool pass emits IHAVE and dot-stuffed body windows. Never retain record index or complete body lines"
  authority: "New operator peer-flight allowance owns resident heap, spool disk, simultaneous flights, independent spool worker count, per-turn work. Launcher subtracts dedicated peer heap once before DEFAULT storage planning. No StoreA/T or output/syncer slack as substitute"
@@ -97,4 +97,20 @@
  units: "346 wire octets =5-byte magic/version +5 length-prefixed IDs of at most64 octets +4 u32 fields"
  trace: "fn-cp-uintp uses fn-cbor-max-uint4294967295; cursor recognizer applies it to query version, view, registration epoch and position. Encoder emits each as u32. Decoder preflight512 is a conservative single fixed-record allocation/work guard, not consumer population bound"
  repair: "None required for current format; any scalar widening must change grammar, projection bound and roundtrip subject together"
+}
+
+^"B009-catchup-spool-source"{
+ source: "horse-bounds source packet ea6bcb1b4 and convergence draft controller/framer/hash, October3"
+ symbols: "fn-csp-step / fn-csp-framer-window / fn-csp-hash-action/read/tick / fnn-csp-worker-start / fnn-peer-flight-bank-install/draw/work/settle"
+ tests: "Framer10 and controller8 ACL2 source assertions pass; hash cursor agrees with actual BLAKE3 at0,1,63,64,65,1023,1024,1025,16385. Program fixture guard warnings are not guard proof. Host worker real file/thread/source fixture passes fixed windows, EEXIST ownership, retained constructor escape and cancellation custody; resources candidate/idle guards admitted in Foundation retained world"
+ limits: "512 receive/write/replay and64 hash bytes are resumable windows; signed off_t spool quota is operator policy. Grant must precede constructor, read mutation and spool writes. No record index or complete body retention in draft controller"
+ stopping: "Worker stop revokes submissions; physical settlement waits for dead-thread join and close observation. Serious cleanup condition retains debt. Constructor requires callback before make-thread; exact live leases remain bank-held until physical+semantic+socket receipts"
+ open: "Actual pull-flight begin/advance/effect/read/local-window/tick/retirement consumer is not wired; legacy materialized catchup remains. No complete physical cell/frame graph/GC/TLS tariff, controller invariant/refinement keystone, codec composition proof or certified image. Independent grant installation does not authorize legacy retained bodies"
+}
+^"B010-import-directory-retention"{
+ source: "Entry horse full leaf read; candidate remains unpatched"
+ symbols: "fnn-import-pass / fnn-archive-read-dir / fnn-list-directory"
+ classification: "Unbounded external archive-name list before chunk consumption"
+ trace: "read-dir sorts a copy of complete records directory names, then complete configs names. One-chunk article parsing does not bound retained filename population"
+ repair: "Open: streaming authenticated MANIFEST-name iterator with ACL2 per-line admission; no arbitrary archive ceiling or silent truncation"
 }
