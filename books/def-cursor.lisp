@@ -59,7 +59,7 @@
             (value '(value-triple :cursor-visit-proof-matches))
           (er soft 'def-cursor "~x0 does not prove this consumer's literal one-candidate metric: ~x1" name statement))))))
 
-(defmacro def-cursor (name formals &key call stobjs visit-proof visit-metric)
+(defmacro def-cursor/output (name formals &key call stobjs visit-proof visit-metric output-phase)
   (let ((step (intern-in-package-of-symbol
                (concatenate 'string (symbol-name name) "-STEP") name))
         (byte-bound (intern-in-package-of-symbol
@@ -92,11 +92,13 @@
                (mv-let (front rest) (fn-cur-split pending bytes)
                  (mv front (fn-cur-make context progress rest nil) 0 :output)))
               ((not progress) (mv nil cur 0 :done))
-              ((zp visits) (mv nil cur 0 :yield))
+              ((and (zp visits) (not ,output-phase)) (mv nil cur 0 :yield))
               (t
                (mv-let (octets next) ,call
                  (mv-let (front rest) (fn-cur-split octets bytes)
-                   (mv front (fn-cur-make context next rest nil) 1 :candidate)))))))
+                   (mv front (fn-cur-make context next rest nil)
+                       (if ,output-phase 0 1)
+                       (if ,output-phase :output :candidate))))))))
          (defthm ,byte-bound
            (<= (len (mv-nth 0 (,step cur visits bytes ,@formals))) (nfix bytes))
            :rule-classes :linear
@@ -107,6 +109,11 @@
            :hints (("Goal" :in-theory (e/d (,step) (fn-cur-split)))))
          (table fn-cursor ',name
                 '(:step ,step :call ,call :visit-proof ,visit-proof :visit-metric ,visit-metric
+                  :output-phase ,output-phase
                   :context-preserved t :output-residual fn-cur-split-residual
                   :byte-bound fn-cur-split-byte-bound
                   :working-bound :consumer-owed :dependency-settlement :operation-owned))))))
+
+(defmacro def-cursor (name formals &key call stobjs visit-proof visit-metric)
+  `(def-cursor/output ,name ,formals :call ,call :stobjs ,stobjs
+     :visit-proof ,visit-proof :visit-metric ,visit-metric))

@@ -99,6 +99,7 @@
 (in-package "ACL2")
 (include-book "served-plan")
 (include-book "over-window")
+(include-book "newnews-stream-cursor")
 
 (local (in-theory (disable (tau-system))))
 
@@ -148,7 +149,7 @@
           (let ((cur (car (cdr (car rest)))))
             (if (fn-nnw-meta-effectp (car rest))
                 (mv-let (octets next calls state)
-                  (fn-nnw-meta-step cur w w fn-arena fn-cat)
+                  (fn-nnw-stream-step cur w w fn-arena fn-cat)
                   (declare (ignore calls state))
                   (mv :ok (cons (fn-nntp-reply-effect octets)
                                 (if (fn-nnw-meta-livep next)
@@ -191,7 +192,7 @@
   (if (consp rest)
       (append (if (fn-splan-cursor-effectp (car rest))
                   (if (fn-nnw-meta-effectp (car rest))
-                      (fn-nnw-meta-remaining (car (cdr (car rest))) fn-arena fn-cat)
+                      (fn-nnw-stream-remaining (car (cdr (car rest))) fn-arena fn-cat)
                     (fn-ovw-run (car (cdr (car rest))) wl fn-arena fn-cat))
                 (fn-srb-effect-octets (car rest)))
               (fn-splan-cw-octets (cdr rest) wl fn-arena fn-cat))
@@ -327,7 +328,9 @@
   (if (consp effects)
       (and (or (not (fn-splan-cursor-effectp (car effects)))
                (if (fn-nnw-meta-effectp (car effects))
-                   (fn-nnw-meta-initialp (car (cdr (car effects))))
+                   (and (fn-nnw-meta-initialp (car (cdr (car effects))))
+                        (not (fn-nnw-stream-outputp
+                              (fn-cur-progress (car (cdr (car effects)))))))
                  (fn-splan-fresh-cursorp (car (cdr (car effects))))))
            (fn-splan-fresh-effectsp (cdr effects)))
     t))
@@ -411,7 +414,8 @@
    (cdr (fn-nntp-newnews-response-cursor session archive env args fn-arena fn-cat)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-nntp-newnews-response-cursor fn-nnw-meta-effect
-                             fn-nnw-meta-effectp fn-nnw-meta-initialp
+                             fn-nnw-meta-effectp fn-nnw-meta-initialp fn-nnw-stream-outputp
+                             fn-nnw-stream-renderp fn-nnw-cursor
                              fn-nntp-make-result fn-nntp-reply-effect fn-nntp-single)
                             (fn-nntp-newgroups-date-parse fn-nntp-newgroups-time-parse
                              fn-wildmat-parse fn-nntp-civil-dtn-ms

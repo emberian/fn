@@ -8231,7 +8231,8 @@
       "steps": [
         "Run tests/acl2/def-cursor-tests.lisp: one candidate emits more bytes than its output quantum; drain with zero visits and preserve context; suspend with opaque operation/resource custody.",
         "Run tests/acl2/newnews-metadata-cursor-tests.lisp: unmatched first article advances with empty output, matching final article retains its output after scan completion; compare emitted prefix plus remaining with original response.",
-        "Run actual native NEWNEWS wildcard workload with more candidates than shared cache slots; compare complete Message-ID reply while a second connection remains responsive."
+        "Run actual native NEWNEWS wildcard workload with more candidates than shared cache slots; compare complete Message-ID reply while a second connection remains responsive.",
+        "Run newnews-stream-cursor-tests and actual served-plan-newnews-tests: indexed line wider than byte quantum drains without candidate visits, sparse selection retains final renderer, tiny/large plan outputs equal."
       ],
       "expected": [
         "Separate candidate calls and emitted bytes obey their declared budgets; sparse misses do not terminate the scan.",
@@ -8245,7 +8246,8 @@
         "tests/acl2/def-cursor-tests.lisp",
         "tests/acl2/newnews-metadata-cursor-tests.lisp",
         "tests/test_native_newnews_wildmat.py",
-        "tests/acl2/served-plan-newnews-tests.lisp"
+        "tests/acl2/served-plan-newnews-tests.lisp",
+        "tests/acl2/newnews-stream-cursor-tests.lisp"
       ]
     }
   ]
