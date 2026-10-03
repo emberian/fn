@@ -9530,7 +9530,8 @@
         "tests/acl2/legacy-header-query-tests.lisp",
         "tests/native_header_query_source.lisp",
         "planning/evidence/header-query-source-20261003.log",
-        "planning/evidence/header-query-warm-20261003.log"
+        "planning/evidence/header-query-warm-20261003.log",
+        "planning/evidence/header-query-warm-final-20261003.log"
       ],
       "execution_scope": "Actual shared parser/query/normalizer functions236658 recorded list-arena/cold checks; guard and literal work/source/ready/reference arena teeth warm pass. Actual Served dispatch/owner/physical compressed execution and universal arbitrary-name span/parser/refinement remain pending."
     }

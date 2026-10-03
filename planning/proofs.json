@@ -22948,7 +22948,8 @@
         "tests/acl2/legacy-header-query-tests.lisp",
         "tests/native_header_query_source.lisp",
         "planning/evidence/header-query-source-20261003.log",
-        "planning/evidence/header-query-warm-20261003.log"
+        "planning/evidence/header-query-warm-20261003.log",
+        "planning/evidence/header-query-warm-final-20261003.log"
       ],
       "progress_note": "41 shared legacy parser events admitted after generic-name refactor with existing guards/statements unchanged. All14 query events/guards admitted (tick guard1547steps, work1004/source9312/ready18087). Literal actual arena positive/fold/firstmatch/absent/invalid-header work/source/ready/reference teeth and pin mutation pass. Source236658 query checks compare actual old fn-nntp-hdr-content across W1/3/4096,10000-octet folded value, repeated names, malformed later field,999-octet line, bodyNUL/CRLF, mixed-case target, and recorded cold scalar reads in parser/normalizer. Captured span contains original fold bytes, normalization removes only first unfoldedSP/CRLF and scrubsTAB as before. Recorded list-arena/cold seams, no actual full owner/physical funding claim. Complete Served consumer and arbitrary-name universal reference proof remain open."
     }
