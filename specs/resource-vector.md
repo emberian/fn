@@ -468,8 +468,11 @@ projection, `fn-dwb-fixed-storage-vector`: `(86928 0 0 1 1)` in the existing
 five-component page-read ledger, with `fn-dwb-coverage` explicitly returning
 `:partial-fixed-storage`. The selected `fn-crl-array-octets` model counts the
 eight-field job, twelve-field carry, sixteen-field digest plus sixty-four
-frame pointers, one-field decoder plus twenty registers, one-field requested
-window plus 16384 octets, and four two-field octet wrappers. It includes their
+frame pointers, twenty decoder registers, 16384 requested-window octets, and
+four two-field octet wrappers. Native constructor observation shows the two
+single-array stobjs are direct vectors; the projection conservatively retains
+two 32-octet logical parent allowances that native lowering elides. Its selected
+backing model before those allowances is 86864 octets. It includes their
 four original empty arrays and exact reserved buffers of 64, 65536, 3494 and
 64 octets. It does not price pointed-to integers/conses, controller and token
 graphs, borrowed sources, registry slots, constructor transients or GC.
