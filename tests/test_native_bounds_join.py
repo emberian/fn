@@ -172,9 +172,15 @@ class LargeReplyTests(JoinFixture):
 
 MIB10 = 10 * 1024 * 1024
 # PKT-693 (lane thread-stacks): a 16 MiB article field, few transactions so
-# the launcher's figure stays inside the module's --mem.
+# the launcher's figure stays inside the module's --mem.  Since heap-pool
+# (B9, 2026-09-28) the history gate charges an article its record figure
+# plus its header charge at its worst, every payload octet a header octet at
+# *fn-sbud-header-weight* 8 (books/store-budget-article.lisp
+# fn-sbud-article-gate-figure): about 9 x 10 MiB for the 10 MiB article, so
+# H = 64 MiB refused both POSTs `unaffordable'.  The committed row carries
+# its own (small) header charge, so 128 MiB admits the second article too.
 INIT_PROFILE_16M = ("--profile", "development", "--max-transactions", "64",
-                    "--max-history-octets", str(64 << 20),
+                    "--max-history-octets", str(128 << 20),
                     "--max-record-octets", str((16 << 20) + 65536),
                     "--max-article-octets", str(16 << 20),
                     "--max-groups-per-article", "16")

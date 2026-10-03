@@ -709,6 +709,36 @@ class WaitTests(unittest.TestCase):
                 else:
                     self.assertEqual(MIRRORS, [])
 
+    def test_the_mirror_is_skipped_on_request_and_never_fails_the_wait(self):
+        """FN_NO_MIRROR=1 leaves the other box untouched; a mirror that raises
+        (the other box unreachable or full) is a warning, and the wait's
+        verdict is the run's."""
+        def broken(host, since, entries=None):
+            raise OSError(28, "No space left on device")
+        for env, mirror, calls, said in (
+                ({"FN_NO_MIRROR": "1"}, None, [], "FN_NO_MIRROR set"),
+                ({"FN_NO_MIRROR": ""}, broken, None, "OSError")):
+            fake = Fake(["0"], log=self.LOG)
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                (root / "books").mkdir()
+                with driving(fake, root / "cache"):
+                    identifier = farm.submit("hbox", root, [], jobs=2,
+                                             timeout_seconds=60, affected_by=[],
+                                             remote=Path("/tank/fn/tree"))
+                del MIRRORS[:]
+                patched = (mock.patch.object(farm, "MIRROR", mirror) if mirror
+                           else contextlib.nullcontext())
+                with mock.patch.dict(os.environ, env), patched, \
+                        driving(fake, root / "cache"), \
+                        contextlib.redirect_stdout(io.StringIO()) as out, \
+                        contextlib.redirect_stderr(io.StringIO()) as err:
+                    code = farm.wait("hbox", identifier, root, poll=1, timeout_seconds=60)
+                self.assertEqual(code, 0)
+                self.assertIn(said, out.getvalue() + err.getvalue())
+                if calls is not None:
+                    self.assertEqual(MIRRORS, calls)
+
     def test_fetch_mirrors_only_coordinates_verified_by_its_fetched_manifest(self):
         fake = Fake(["0"], log=self.LOG)
         with tempfile.TemporaryDirectory() as directory:
@@ -1413,8 +1443,11 @@ class FrictionTests(unittest.TestCase):
             (root / "host" / "op-host.lisp").write_text("(in-package \"ACL2\")\n")
             farm.refuse_bad_book_names(root, ["books/alpha"], [],
                                        ["host/op-host", "books/beta"])
+            # Stage 0 (cf53f68d9): certify_books takes a host book as a root
+            # (hbox_native's certify step names the image's own host roots).
+            farm.refuse_bad_book_names(root, ["host/op-host"], [])
             with self.assertRaises(farm.FarmError):
-                farm.refuse_bad_book_names(root, ["host/op-host"], [])
+                farm.refuse_bad_book_names(root, ["host/native/op"], [])
             with self.assertRaises(farm.FarmError):
                 farm.refuse_bad_book_names(root, ["books/alpha"], [], ["../x"])
             with self.assertRaises(farm.FarmError):
