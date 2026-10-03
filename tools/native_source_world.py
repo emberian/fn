@@ -20,8 +20,49 @@ EARLY = ('books/codec-attach', 'books/records-attach-concrete',
 ATTACH = 'books/history-paged-attach'
 
 
-def generate(source: Path, caches: list[Path], output: Path, limit=25.0, revision=None):
+def selected_defthms(text, deferred, removed):
+    result = []
+    for form in forms(text):
+        head, name = head_and_name(form)
+        if head == 'defthm' and name in deferred:
+            if any(part in name for part in ('{', 'guard-thm', 'correspondence')):
+                raise ValueError('required guard/abstract obligation cannot be deferred: ' + name)
+            removed.add(name)
+            continue
+        if head in {'local', 'encapsulate', 'progn'}:
+            inner = form.strip()[1:-1]
+            spans = proof_repl.spans(inner)
+            start = 2 if head == 'encapsulate' else 1
+            changes = []
+            for begin, end in spans[start:]:
+                replacement = selected_defthms(inner[begin:end], deferred, removed)
+                if replacement != inner[begin:end]: changes.append((begin, end, replacement))
+            for begin, end, replacement in reversed(changes):
+                inner = inner[:begin] + replacement + inner[end:]
+            if head == 'local' and len(spans) == 2 and not forms(inner[spans[1][0]:]):
+                continue
+            form = '(' + inner + ')'
+        result.append(form)
+    return '\n'.join(result)
+
+
+def bounded_body(body, steps):
+    if not body or not steps: return body
+    inner = body.strip()[1:-1]
+    spans = proof_repl.spans(inner)
+    prefix = inner[:spans[1][1]]
+    events = [inner[begin:end] for begin, end in spans[2:]]
+    # Ordinary with-prover-step-limit is an embedded event; the ! form is not.
+    return '(' + prefix + '\n' + '\n'.join(
+        '(with-prover-step-limit ' + str(steps) + ' ' + event + ')' 
+        for event in events) + '\n)'
+
+
+def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
+             revision=None, deferred=None, steps=200000):
     source = source.resolve()
+    deferred = deferred or {}
+    removed = {}
     caches = [p.resolve() for p in caches]
     proof_repl.ROOT = source
     graph = certs.include_graph(source, ['books/image-world', *EARLY, ATTACH])
@@ -65,6 +106,7 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0, revisio
         selected = next((cache for cache in caches
                          if (cache / (name + '.cert')).is_file()
                          and (cache / (name + '.port')).is_file()
+                         and not any(deferred.get(child) for child in certs.closure(source, name))
                          and matches(cache, name)), None)
         if selected is not None:
             # ACL2 still checks the certificate; matching source does not waive
@@ -83,7 +125,14 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0, revisio
             visit(child)
         path = source / (name + '.lisp')
         remember(path)
-        hoisted, body = encapsulated(path.read_text(), path.parent, set(graph), limit or None)
+        original = path.read_text()
+        omitted = set()
+        body_text = selected_defthms(original, deferred.get(name, set()), omitted) if deferred.get(name) else original
+        if omitted != deferred.get(name, set()):
+            raise ValueError('named DEFTHM not found: ' + name)
+        if omitted: removed[name] = sorted(omitted)
+        hoisted, body = encapsulated(body_text, path.parent, set(graph), limit or None)
+        body = bounded_body(body, steps)
         # All local fn include events were resolved above. Only system books
         # or package declarations may remain hoisted.
         events.extend(hoisted)
@@ -112,7 +161,8 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0, revisio
         'repository_books': sorted(name + '.lisp' for name in loaded),
         'logical_prefix': str(output.resolve()), 'cache_roots': [str(p) for p in caches],
         'inputs_sha256': inputs, 'output_sha256': hashlib.sha256(output.read_bytes()).hexdigest(),
-        'books': coordinate, 'per_event_prover_seconds': limit}, indent=2) + '\n')
+        'books': coordinate, 'deferred_defthms': removed,
+        'per_event_prover_steps': steps, 'per_event_prover_seconds': limit}, indent=2) + '\n')
     return manifest
 
 
@@ -123,7 +173,15 @@ def main():
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--limit', type=float, default=25.0)
     p.add_argument('--source-revision', help='immutable archive source identity')
+    p.add_argument('--step-limit', type=int, default=200000)
+    p.add_argument('--defer-defthm', action='append', default=[], metavar='BOOK:NAME',
+                   help='explicitly omit an unrelated theorem, never a definition or guard/correspondence obligation')
     a = p.parse_args()
-    print(generate(a.source_root, a.cache_root, a.output, a.limit, a.source_revision))
+    deferred = {}
+    for selection in a.defer_defthm:
+        book, name = selection.rsplit(':', 1)
+        deferred.setdefault(book.removesuffix('.lisp'), set()).add(name.lower())
+    print(generate(a.source_root, a.cache_root, a.output, a.limit, a.source_revision,
+                   deferred, a.step_limit))
 
 if __name__ == '__main__': main()
