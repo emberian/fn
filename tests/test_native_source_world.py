@@ -38,6 +38,20 @@ class CurrentSourceWorldTests(unittest.TestCase):
             self.assertEqual(set(data['repository_books']), set(data['repository_sha256']))
             self.assertTrue(output.with_name('prefix.early.lisp').is_file())
 
+    def test_dtn_umbrella_adds_transport_without_losing_early_attachment(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = self.tree(d)
+            (root / 'books/transport.lisp').write_text('(defun actual-transport (x) x)')
+            (root / 'books/image-world-dtn.lisp').write_text(
+                '(include-book "image-world")\n(include-book "transport")')
+            out = root / 'dtn.lisp'
+            data = json.loads(generate(root, [], out, world_book='books/image-world-dtn').read_text())
+            self.assertEqual(data['world_book'], 'books/image-world-dtn')
+            self.assertIn('books/transport.lisp', data['repository_books'])
+            text = out.read_text()
+            self.assertIn('(defun actual-transport', text)
+            self.assertLess(text.index('(attach-stobj fn-hist fn-hist-paged)'), text.index('(defun generic'))
+
     def test_changed_child_refuses_cached_parent(self):
         with tempfile.TemporaryDirectory() as d:
             root = self.tree(Path(d) / 'source')

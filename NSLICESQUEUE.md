@@ -61,7 +61,8 @@ that their recorded state is current at every later revision.
 ## Current four-owner resumption — 2026-10-03
 
 Ember resumed only Integration, History, Runtime and BP transport; root
-coordinates. Integration owns public source assembly, shared execution and
+coordinates and takes resource accounting/funding. This is substantial full-domain
+engineering, not finite end-tidying. Integration owns public source assembly, shared execution and
 planning upkeep. History owns current storage/P3/owner bootstrap and reclaim.
 Runtime owns current ARTICLE/Web physical decoder, window lifetime and ABI
 joins. BP owns actual multi-peer transport and immutable application R/Q joins.
@@ -82,7 +83,7 @@ current decoded methods and early P3 attachment remain actual assembly work.
 | Slice | Current position | Coordination / implementation | Next useful result |
 | --- | --- | --- | --- |
 | [Safe completion and actor rollout](#safe-completion-and-actor-rollout) | Active | Runtime; completed source-tracer packets retained | Escapes preserve actual outcomes, fence the service when required, and settle custody through the real consumer |
-| [Output allocation and funding](#output-allocation-and-funding) | Partial producer integrated; wider accounting paused | Runtime consumes; Foundations/Served obligations retained | Actual bounded serializer/selector allocation is funded before creation |
+| [Output allocation and funding](#output-allocation-and-funding) | Active partial producer and wider accounting | Root + Runtime; Foundations/Served obligations retained | Actual bounded serializer/selector allocation is funded before creation |
 | [Paged catalog in the service](#paged-catalog-in-the-service) | Active shared execution dependency | History + Runtime; Served adapter source retained | Existing paged attachment serves POST/read/navigation/withdrawal/reopen |
 | [Reclaim and physical release](#reclaim-and-physical-release) | Active bounded builder and publication work | History; completed Astra relocation packet retained | Remove observed whole-history-copy credit obstruction and release resources safely |
 | [Fair feed and pull rounds](#fair-feed-and-pull-rounds) | Active repairs; broader continuation next | BP transport + Runtime | Credential fixes and phase outcomes compose with bounded rounds and queue progress |
