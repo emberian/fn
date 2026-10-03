@@ -114,5 +114,6 @@
  inspected: "full replacement start/recover/action/step/outcome and actual native acquisition/parse/primitive observation/recovery/load/publication/decision/CLI; bridge full definitions; accept/verified/window/pinned/newer/observed advance+restore decisions"
  obligations: "exclusive writer spans held load/acquire/decision/publication; stage durable before replace-issued; every failure after issued becomes uncertain; directory barrier alone creates durable; restart file+directory barriers before decoding held final; host signature/one-nonce observations distinct, ACL2 decides window/pin/nonoverlap"
  outcome: "no new publication/acceptance inconsistency established. Finite fd waits share deadline but blocking DNS may precede waits; Bounds notified exact source, no total-deadline claim"
- residual: "wire parser full leaves, record codec full leaves, incarnation restore native caller composition remain continuing reads"
+ parser: "full anchor-wire executable definitions through split/read offsets/read tags/increasing order/build fields/parse nested DELE CERT SREP/top/compose/response/single leaf; full record anchor/okp/encode/decode and server selection. Count/length checked before descent, strict tags forbid duplicates, monotone offsets consume exact body; canonical signed subjects and exact nonce bind response; batched tree remains explicit uncertainty"
+ residual: "shared frame codec leaves and incarnation restore nonnative consumer composition remain separate continuing reads; no native restore caller found"
 }
