@@ -3793,3 +3793,9 @@ and served terminal conditions. Actual E-locked helper + owner-run source
 fixture passes joined-with-debt; previous f2b8 cleanup fails by releasing
 authority after join. Horse Exits independently owns log-close debt and
 execute-run tail; no overlapping io/operator-live changes here.
+
+STATUS/HEALTH source now reads generic accepted configuration policies,
+using existing guarded native-config getters and same native extension
+helper as launcher. Actual STATUS/HEALTH +config projections +output
+arithmetic PASS4 cases; old actual STATUS prints257MB instead of273MB
+after dropping configured output. No new logical price or host arithmetic.

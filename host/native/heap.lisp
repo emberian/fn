@@ -135,8 +135,8 @@ there or ACL2 names a refusal. Corruption and internal faults propagate."
              (progn (fnn-load-config store) (fnn-store-config store))))
     (fnn-store-error (condition) (fnn-heap-profile-refusal condition))))
 
-(defun fnn-heap-print-store-line (root)
-  "The next DEFAULT run's reservation, including its selected fixed backing.
+(defun fnn-heap-print-store-line (root &optional cold-resources output-resources)
+  "The next configured run's reservation, including selected fixed backing.
 CORE and MACHINE are each captured once for both ACL2 reservation steps."
   (when (stringp root)
     (let* ((absolute-root (fnn-absolute root))
@@ -148,10 +148,9 @@ CORE and MACHINE are each captured once for both ACL2 reservation steps."
                            (and profile
                                 (fnn-heap-history-observation absolute-root profile)))))
       (fnn-out "~a" (fnn-core 'fn-heap-reserve-report-line
-                              (fnn-core 'fn-prstartup-extend-default-reservation
-                                        base nil absolute-root
-                                        (fnn-core 'fn-pio-direct-workers)
-                                        (fnn-extent-cache-limit) core machine))))))
+                              (fnn-heap-extend-reservation base :run cold-resources
+                                                          output-resources absolute-root
+                                                          core machine))))))
 
 (defun fnn-lim-print-values (root)
   "With no process running, `status' prints each live limit's three values
@@ -353,17 +352,21 @@ normalized store root for the pre-open DEFAULT backing reservation."
 ;; native storage to this same observed machine decision. DEFAULT adds the
 ;; selected fixed backing only for a served run, before output allocation;
 ;; ACL2 chooses both the scope and the reservation.
+(defun fnn-heap-extend-reservation (base action cold-resources output-resources root core machine)
+  "The same policy extensions for the launch probe and next-run diagnostics."
+  (fnn-core 'fn-orv-extend-reservation
+            (fnn-core 'fn-prstartup-extend-operation-reservation
+                      (fnn-core 'fn-crv-extend-reservation base cold-resources core machine)
+                      action cold-resources root (fnn-core 'fn-pio-direct-workers)
+                      (fnn-extent-cache-limit) core machine)
+            output-resources core machine))
+
 (defun fnn-heap-reservation (profile connections &optional action observed cold-resources output-resources root)
   (let* ((core (fnn-heap-image-observation))
          (machine (fnn-heap-observations))
          (base (fnn-core 'fn-heap-reserve-operation-decide action profile core
                          +fnn-gc-nursery-octets+ machine connections observed)))
-    (fnn-core 'fn-orv-extend-reservation
-              (fnn-core 'fn-prstartup-extend-operation-reservation
-                        (fnn-core 'fn-crv-extend-reservation base cold-resources core machine)
-                        action cold-resources root (fnn-core 'fn-pio-direct-workers)
-                        (fnn-extent-cache-limit) core machine)
-              output-resources core machine)))
+    (fnn-heap-extend-reservation base action cold-resources output-resources root core machine)))
 
 (defun fnn-command-heap (marker argv)
   (unless (string= marker "--")

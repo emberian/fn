@@ -8,6 +8,7 @@
 (defun nfix (x) (if (natp x) x 0))
 (defun zp (x) (not (posp x)))
 (defun len (x) (length x))
+(defun true-listp (x) (if (consp x) (true-listp (cdr x)) (null x)))
 (defun member-eq (x xs) (member x xs :test #'eq))
 (defun assoc-eq (x xs) (assoc x xs :test #'eq))
 (load "books/profile-limits.lisp")
@@ -27,6 +28,10 @@
    fn-cgb-prewarm-conses fn-cgb-baseline-octets))
 (selected-source "books/heap-figure.lisp"
  '(*fn-heap-mib* fn-heap-mb-of fn-heap-machine-octets))
+(selected-source "books/native-config.lisp"
+ '(fn-ncfg-nth *fn-ncfg-max-u64* fn-native-config-output-resources-wfp))
+(selected-source "books/cold-read-reservation.lisp" '(fn-crv-nth))
+(selected-source "books/output-reservation.lisp" '(fn-orv-policy-p fn-orv-extend-reservation))
 (selected-source "books/heap-store-figure.lisp" '(fn-heap-core-file))
 (selected-source "books/heap-reservation.lisp"
  '(*fn-heap-thread-runtime-octets* fn-heap-reservation-octets))
@@ -34,6 +39,8 @@
  '(fn-prstartup-nth fn-prstartup-fd-bookkeeping fn-prstartup-baseline-heap
    fn-prstartup-required-heap fn-prstartup-extend-default-reservation
    fn-prstartup-extend-operation-reservation))
+(source-forms (or (third sb-ext:*posix-argv*) "host/native/heap.lisp")
+ '(fnn-heap-extend-reservation))
 (source-forms (or (fifth sb-ext:*posix-argv*) (third sb-ext:*posix-argv*) "host/native/heap.lisp")
  '(fnn-heap-reservation fnn-heap-print-store-line))
 (source-forms "host/native/extent.lisp" '(fnn-extent-cache-limit))
@@ -64,7 +71,7 @@
     ((fn-prstartup-extend-operation-reservation fn-prstartup-extend-default-reservation)
      (push (cons :default args) *calls*) (apply (symbol-function entry) args))
     (fn-orv-extend-reservation
-     (push (cons :output args) *calls*) (first args))
+     (push (cons :output args) *calls*) (apply (symbol-function entry) args))
     (fn-heap-reserve-report-line (format nil "~s" (first args)))
     (fn-heap-decision-exit-code (if (eq (caar args) :heap) 0 1))
     (otherwise (apply *original-core* entry args))))
@@ -104,5 +111,5 @@
   (fnn-heap-print-store-line "/fixture")
   (assert (equal (get-output-stream-string *fnn-stdout*) "(:HEAP 257 :SMALL 8192 1024 16)"))
   (assert (= *captured-core* *captured-machine* 1))
-  (assert (equal (third (cdar *calls*)) "/absolute/fixture")))
+  (assert (equal (fourth (cdr (assoc :default *calls*))) "/absolute/fixture")))
 (format t "SOURCE DEFAULT HEAP PASSED~%")

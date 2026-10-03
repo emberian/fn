@@ -18,6 +18,13 @@ class DefaultHeapSourceTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("SOURCE DEFAULT HEAP PASSED", result.stdout)
 
+    def test_status_and_health_preserve_configured_resource_policies(self):
+        result = subprocess.run(
+            [SBCL, "--script", str(ROOT / "tests/native_heap_diagnostic_policy_source.lisp")],
+            cwd=ROOT, text=True, capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("SOURCE NEXT-RUN POLICY DIAGNOSTICS PASSED", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -5476,3 +5476,8 @@
 ; DEFAULT launcher backing; actual host consumers share captured observations.
 (definterface fn-prstartup-extend-default-reservation :class :common-lisp-compliant)
 (definterface fn-prstartup-extend-operation-reservation :class :common-lisp-compliant)
+
+; STATUS/HEALTH project the accepted configuration, never run-only NIL fields.
+(definterface fn-native-operator-host-result-config :class :program)
+(definterface fn-native-config-cold-resources :class :common-lisp-compliant)
+(definterface fn-native-config-output-resources :class :common-lisp-compliant)
