@@ -1384,3 +1384,9 @@ sol-access continuing owned queue, GPT-6.1-Sol, 2026-10-03 10:49 UTC:
   public round-trip and loader-renderable statements preserved; warm65of65
   forms pass. New output-only + combined-policy full-antecedent/conclusion
   fixtures and refusal checks prepared. Normal exact-root cert remains owed.
+
+- S121 existing source-peer native selector now composes actual live READ
+  revocation/restoration with warm old and fresh reader sockets, selected
+  group/list view and Message-ID availability; independent transit CHECK
+  remains admitted throughout. No cache/delegate code edits. Syntax passes;
+  matching-image result remains open.

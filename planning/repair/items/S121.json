@@ -11,7 +11,8 @@
  "locus": "served-books",
  "notes": [
   "10-02 23:24 escalate: needs a design choice (502 for peer reader commands vs feed-pattern restricted view) in books/nntp-auth.lisp + peer-inbound and re-proof of the hiding keystone",
-  "D48 engineering decision resolves former escalation: preserve reader capability on peers under login/anonymous rules; transit keeps configured feed record. Removed shared access-text exemption and peer-null queue privacy hypothesis; generic view-exclusion invariant added with actual principal promotion and source-peer teeth. Scoped certification and native scenario pending."
+  "D48 engineering decision resolves former escalation: preserve reader capability on peers under login/anonymous rules; transit keeps configured feed record. Removed shared access-text exemption and peer-null queue privacy hypothesis; generic view-exclusion invariant added with actual principal promotion and source-peer teeth. Scoped certification and native scenario pending.",
+  "Strengthened prepared source-peer native consumer: old socket captures LIST/GROUP before live anonymous READ revocation; old and fresh sockets both hide LIST/GROUP/STAT while transit CHECK remains238. Live READ restoration must refresh both existing access views and admit again. No delegate/cache signature changes; matching production/developer image execution pending."
  ],
  "owner": "GPT-6.1-Sol / sol-access",
  "reviewer": "fn-auth-access-text (books/nntp-auth.lisp:3637-3648) returns nil whenever fn-auth-session-peer is set, so fn-auth-access-read is nil and both the served catalog chain (served-catalog-chain.lisp:694-741, 2593-2626) and fn-auth-view-* serve the unrestricted view, including the moderation queues that fn-mod-hidden-queues would hide. fn-peer-step-pinned (books/peer-inbound.lisp:1987-2003) delegates every non-transit command to the reader machine, and projected is an archive-wide verdict (books/nntp-session.lisp:93-95), not a reader-only one, so peer reader commands are served. fn-auth-bind-principal-peer (:716-734) promotes a matching AUTHINFO principal. The comment at :3618-3627 states this as intended ('A peer connection has no rule'), but its rationale (the feed patterns) does not cover the reader path. Severity is low because the bypass needs an operator-configured peer row or principal binding.",
@@ -20,5 +21,5 @@
  "source": "sweep-2026-10-03",
  "state": "in-progress",
  "title": "A peer-role connection bypasses the reader access rule and the moderation-queue hiding, and is served the unrestricted archive for reader commands",
- "updated": "2026-10-03T10:35:00Z"
+ "updated": "2026-10-03T12:01:00Z"
 }
