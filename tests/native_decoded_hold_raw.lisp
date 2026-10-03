@@ -44,7 +44,13 @@
         (assert (= (svref input 1) 8))
         (assert (equalp bytes (subseq (svref input 0) 0 8)))
         (assert (some (lambda (row) (search "DECODED-WINDOW read-return token=(:DECODED 17 7) status=:OK" row))
-                      *decoded-hold-events*)))
+                      *decoded-hold-events*))
+        ;; Inactive developer observation performs the same physical read
+        ;; without a hold, emitted event or dependency on a release file.
+        (setq *decoded-hold-path* nil)
+        (let ((before (length *decoded-hold-events*)))
+          (assert (eq :ok (fnn-extent-decoded-window-pread fd input '(:decoded 18 7) '(:read 7 47 0 0 8))))
+          (assert (= before (length *decoded-hold-events*)))))
     ;; Always release our child before descriptor/scratch cleanup on failure.
     (when (and child (sb-thread:thread-alive-p child))
       (with-open-file (out hold :direction :output :if-exists :supersede) (write-line "cleanup" out))

@@ -9520,9 +9520,10 @@
       },
       "evidence": [
         "tests/native_decoded_hold_raw.lisp",
-        "tests/test_native_decoded_custody.py"
+        "tests/test_native_decoded_custody.py",
+        "planning/evidence/native-decoded-custody-seam-2026-10-03/manifest.json"
       ],
-      "execution_scope": "Actual developer hold seam and physical pread/thread fixture pass. Connected native selector is prepared, not executed: current initialized host entry and real default funded-pool producer remain required. Fixed-storage scope is partial; no allocator/GC/full funding, full HM replay or proof claim."
+      "execution_scope": "Actual developer hold seam and physical pread/thread active+inactive fixture pass in0.224s; existing retained controller recording fixture0.166s and17 source-coordinate/history tests pass. Four objects archived with manifest63c5579c686181eb95fb0f45647dcba0caed157b074f6db66fa6b841fb4c2ce2. Connected native selector is prepared, not executed: current initialized host entry and real default funded-pool producer remain required. Fixed-storage scope is partial; no allocator/GC/full funding, full HM replay or proof claim."
     }
   ]
 }

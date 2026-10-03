@@ -3501,3 +3501,9 @@ coordinates separatelyfromsavedimageidentity. Itcannot labeloldbootstrap as
 currentimage. Newdecodedselector consumes samehelper.17focusedprovenance+
 acceptedhistorychecksPASS0.026s; no newnode/bootstrap/nativeexecution. Helper
 andrunnerconsumer shiptogether; connectedselectedsource run stillpending.
+
+Empirical decoded seam evidence followthrough: actual active/inactive physical
+hook0.224s, retainedcontrollerrecording0.166s,17source/historychecksPASS.
+4publicobjects archived native-decoded-custody-seam-2026-10-03/manifest.json
+hash63c5579c686181eb95fb0f45647dcba0caed157b074f6db66fa6b841fb4c2ce2.
+Native connectedcase stillpending, no warm world/image/typedgrantclaim.
