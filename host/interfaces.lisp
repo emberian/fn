@@ -4820,10 +4820,6 @@
   :class ::program)
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
-(definterface fn-owner-orcp-load-columns
-  :class ::program)
-
-; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orcp-rebuild
   :class :ideal
   :keystones (fn-owner-orcp-rebuild-establishes-retain-carry))
@@ -5313,3 +5309,7 @@
 (definterface fn-owner-hroot-read-plan :class :program)
 (definterface fn-owner-hroot-read-owned :class :program)
 (definterface fn-owner-hroot-read-fund :class :program)
+
+(definterface fn-hist$p-candidate-word :class ::common-lisp-compliant :kinds ((expected-count natp))
+ :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-count-natp))
+(definterface fn-owner-orcp-load-catalog :class :program)

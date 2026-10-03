@@ -24,6 +24,11 @@ history-row-step and fresh history-paged-canonical worlds remain live.
 PRF-1280 records the current scope. Full adoption/index correspondence and tariff
 bounds remain open; no complete root proof or qualified image claim. Canonical
 Store/rebuild remains whole logical lists, so orcp estimate is unchanged.
+Reclaim now prepares and installs its replacement P3 generation directly,
+without an all-tail history load or a second post-swap page build. Fresh catalog
+load uses fn-owner-orcp-load-catalog; prepared candidate abandonment and held
+old-generation reads pass the native control fixture. Normal full owner source
+execution is the immediate feedback target; Integration supplies native_source_runner.
 Carrier handoff f69a4c846/25186bd8b remains source-ready, no atomic migration.
 
 Previous lane material inherited from the integrated tree follows unchanged.

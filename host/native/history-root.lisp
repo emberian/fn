@@ -34,6 +34,25 @@
               (fnn-core 'fn-hroot-grow-demand (second cursor) ordinal stage)))
           (setq answer (fnn-call (if grow 'fn-his-row-grow 'fn-his-row-step) cursor stage)))))))
 
+(defun fnn-owner-history-root-adopt (service generation stage candidate)
+  (fnn-owner-history-root-fund service generation (fnn-core 'fn-hroot-retain-demand stage))
+  (destructuring-bind (empty root &rest ignored)
+      (fnn-call 'fn-hist$p-adopt-stage generation stage candidate)
+    (declare (ignore ignored))
+    (setq stage empty candidate root))
+  (loop for index from 0 do
+    (fnn-checkpoint-yield "live-history-index" index)
+    (destructuring-bind (verdict amount &rest ignored)
+        (fnn-call 'fn-hroot-index-demand index candidate)
+      (declare (ignore ignored))
+      (unless (eq verdict :ok) (fnn-refuse-io "history index demand refused: ~a" verdict))
+      (fnn-owner-history-root-fund service generation amount))
+    (let ((word (first (fnn-call 'fn-hist$p-root-index-next index candidate))))
+      (when (eq word :done) (return))
+      (unless (eq word :yield) (fnn-refuse-io "live history index refused: ~a" word))))
+  (fnn-owner-history-root-fund service generation (fnn-core 'fn-hroot-root-retain-demand candidate))
+  (values stage candidate))
+
 (defun fnn-owner-history-root-refresh (service)
   "Build from exact installed events, never checkpoint-canonical handles.
 Refusal leaves the installed history intact. A same-count rewrite changes
@@ -64,22 +83,8 @@ ACL2's source incarnation and refuses the candidate before installation."
                         (incf ordinal))
                 (:done (return))
                 (otherwise (fnn-refuse-io "live history source refused: ~a" row)))))
-          (fnn-owner-history-root-fund service generation (fnn-core 'fn-hroot-retain-demand stage))
-          (destructuring-bind (empty root &rest ignored)
-              (fnn-call 'fn-hist$p-adopt-stage generation stage candidate)
-            (declare (ignore ignored))
-            (setq stage empty candidate root))
-          (loop for index from 0 do
-            (fnn-checkpoint-yield "live-history-index" index)
-            (destructuring-bind (verdict amount &rest ignored)
-                (fnn-call 'fn-hroot-index-demand index candidate)
-              (declare (ignore ignored))
-              (unless (eq verdict :ok) (fnn-refuse-io "history index demand refused: ~a" verdict))
-              (fnn-owner-history-root-fund service generation amount))
-            (let ((word (first (fnn-call 'fn-hist$p-root-index-next index candidate))))
-              (when (eq word :done) (return))
-              (unless (eq word :yield) (fnn-refuse-io "live history index refused: ~a" word))))
-          (fnn-owner-history-root-fund service generation (fnn-core 'fn-hroot-root-retain-demand candidate))
+          (multiple-value-setq (stage candidate)
+            (fnn-owner-history-root-adopt service generation stage candidate))
           ;; An append during construction becomes this root's ordinary tail.
           ;; Done + frontier decision + pointer install share one owner quantum.
           (loop
@@ -171,3 +176,55 @@ ACL2's source incarnation and refuses the candidate before installation."
   (let ((word (fnn-owner-gated (service :control)
                 (fnn-owner-core 'fn-owner-hroot-read-fund (first pin) 0))))
     (unless (eq word :funded) (fnn-fault "history chunk credit return refused: ~a" word))))
+
+
+(defun fnn-owner-history-root-prepare-rows (service rows salt)
+  "Private rewritten-row candidate; returned credit follows it into swap."
+  (let ((generation nil) (stage nil) (candidate nil) (returned nil)
+        (count (fnn-core 'fn-his-build-source-count rows)) (ordinal 0))
+    (unwind-protect
+        (progn
+          (let ((word (fnn-owner-gated (service :control)
+                        (fnn-owner-core 'fn-owner-hroot-begin))))
+            (unless (and (consp word) (eq (first word) :building))
+              (fnn-refuse-io "reclaim history root refused: ~a" word))
+            (setq generation (second word)))
+          (setq stage (fnn-core 'create-fn-hrecs$s)
+                candidate (fnn-core 'create-fn-hist$p))
+          (fnn-call 'fn-his-build-begin salt stage)
+          (dolist (row rows)
+            (fnn-owner-history-root-row service generation row ordinal stage)
+            (incf ordinal))
+          (multiple-value-setq (stage candidate)
+            (fnn-owner-history-root-adopt service generation stage candidate))
+          (unless (eq (fnn-core 'fn-hist$p-candidate-word count candidate) :ready)
+            (fnn-refuse-io "reclaim history candidate count refused"))
+          (setq returned t)
+          (list generation candidate count))
+      (when stage (fnn-call 'fn-his-release stage))
+      (when (and generation (not returned))
+        (fnn-owner-gated (service :control)
+          (fnn-owner-core 'fn-owner-hroot-abandon generation))))))
+
+(defun fnn-owner-history-root-abandon-candidate (service prepared)
+  ;; The enclosing failed pass has left its private histogram scope.
+  (let ((generation (first prepared)))
+    (setf (second prepared) nil)
+    (fnn-owner-gated (service :control)
+      (fnn-owner-core 'fn-owner-hroot-abandon generation))))
+
+(defun fnn-owner-history-root-install-held (prepared)
+  "Reclaim's durable install and owner swap hold the existing owner gate."
+  (destructuring-bind (generation candidate count) prepared
+    (let ((detached (fnn-owner-core 'fn-owner-hroot-detach)))
+      (unless (and (consp detached) (eq (first detached) :detached))
+        (fnn-fault "reclaim history incarnation refused"))
+      (let ((word (fnn-owner-core 'fn-owner-hroot-activate generation count
+                                 (fnn-owner-core 'fn-owner-hroot-frontier-value))))
+        (unless (and (consp word) (eq (first word) :installed))
+          (fnn-fault "reclaim history activation refused: ~a" word))
+        (setf (gethash generation *fnn-history-roots*) candidate)
+        (fnn-install-history-root candidate)
+        (when (second detached)
+          (when (eq (fnn-owner-core 'fn-owner-hroot-retire (second detached)) :released)
+            (remhash (second detached) *fnn-history-roots*)))))))
