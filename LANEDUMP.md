@@ -92,3 +92,10 @@ Integration baseline conflict assist: exact 3bda776c6 Runtime syntax analyzed
 with both historical ordinal and lexical readers; 40 referenced identities
 translate uniquely, all 366 rows/weight1469 preserved. Translation and repro
 script shared as lane build artifacts; no integrator tree mutations.
+
+## First frozen convergence (06:35Z)
+- dev f7f9f60cd pushed: physical actor custody/join, private ACL2 committer pacing, protected export/reclaim capture, HELP/cursor proof repair, temporary native dispatch trust (338 global writers owed), lexical lock identity, statement/macro reader fixes.
+- Candidate additional source:7a39f5979 nonblocking compensation (raw noop-termination schedule PASS),a19eed480 declared direct template recognition (31 rule tests48.9s),7c100d6cc curated PRF-1255 event mapping.
+- Scoped checks:39combined tests5.58s; publication3tests3.63s;86harness/interface tests50.2s with85passing and oneexisting derived-stub assertion (10sites; Runtime owns2newblocks). Host-forward0/book-world0; raw actual actor/inbox/post-create/committer schedules PASS.
+- Final required interface regeneration at7c100d6cc started06:34:32Z. Freeze after its rows; one sol1 pipeline with developer/production/DTN-developer,2cert jobs/2module jobs,40G scopes. Ledger/current/lock regenerate beside pipeline; unrelated laterREADYs are nextwave.
+- No new native image or final loaded-world/POST matched verdict yet. Historical empirical image45e05:48articles exact hashes/local numbers survive mixed workload/checkpoint/restart; quiet reclaim deferred-credit, so reclamation incomplete.
