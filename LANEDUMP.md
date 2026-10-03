@@ -127,3 +127,20 @@ image result's exact executed input hash.
 Checks: 13 image-free PageIO/history tests pass; host shape check reports zero
 findings (raw native files excluded); extent's 111 top-level forms balance
 under the source tokenizer. Narrow actual-image run pending Integration.
+
+## Sparse command result slice, 2026-10-03 07:15 UTC
+
+SCN-1085 claimed; `tools/native_sparse_newnews.py` executes actual native
+24-row sparse discovery, two offline expiry tombstones, four concurrent
+nonmatching posts, eight retained reads, eight competing NEWNEWS requests,
+and complete reopen. Historical image 45e05c7f: all 10 discovery blocks exact,
+all 28 posts accepted, 26 retained exact source comparisons and two persistent
+tombstones on reopen. Live reclaim refused credit (estimate 8,098,624), while
+offline expiry accepted exactly two. Per-command payload-I/O attribution
+unavailable; new Served cursor/current image still owed. Report and 79-event
+sealed journal archived under native-sparse-newnews-45e05c7f-2026-10-03.
+Final native workload through reopen 17.042 s, total including artifacts/cleanup
+35.425 s, last edit to complete verdict 38.327 s. Three sampled owner PIDs,
+100 successful samples; offline-control processes excluded. No further scarce
+run started. Extent observer review fix ee142a184 gates job-only classification
+before developer selection; Integration queues e76+ee142 for next source batch.
