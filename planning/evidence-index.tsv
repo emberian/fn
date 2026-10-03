@@ -2326,6 +2326,8 @@ bd847d64593a26a9950e32ccde4a5b37a3804d43bf2289c038c013e0532f2ba8 3380 planning/e
 2fdd8cba54c06d0e2f6327a4705fc1516925973dd1e01fc0f2249193799c8160 4337 planning/evidence/decoded-window-stored-trajectory-source-2026-09-30/stopped-state.json
 8a2870747a8da9f4540cd04bed2ff91827fb83ac343b918e6e1487c9c1c149a3 908186 planning/evidence/decoded-window-stored-trajectory-source-2026-09-30/working-log.gz
 c91843d651647b46882b971b3fde0fb28cb3e16190f0b956b41f0af318b58781 6752 planning/evidence/decoded-window-stored-trajectory-source-2026-09-30/working-state.json
+21eea4b5853690fc0fcfe95717663c4dd54e978e0bdb11469c2765c3626f1f89 1395 planning/evidence/decoded-worker-backing-20261003.json
+8d4b757a268cdd479821e2335b6a7a26c3059103f5745f8370866a040581aaea 4463 planning/evidence/decoded-worker-backing-20261003.log.gz
 687c43e2388532bf674916c3955abad7c0d88e025f68f38662e2863980318c74 8732 planning/evidence/decoder-full-source-integration-2026-09-30/PRF-1145.json
 b12234711be02eccfe368f0612c8a6de7fd6a908446d85cbbd0586144a745b68 825 planning/evidence/decoder-full-source-integration-2026-09-30/finite-operations.json
 054600e19587e268acd4ed60d4f5f4231404170e7d51e5f672806f8dd9e21c9c 3788 planning/evidence/decoder-full-source-integration-2026-09-30/manifest.json
