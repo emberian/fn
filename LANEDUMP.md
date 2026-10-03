@@ -386,3 +386,22 @@ world-checkstatus1 at10:55:45Z: twoDTNworldgeneratedfiles stale, before
 certification/image/allthreecases. Exact8run/script/status/log/manifestobjects
 archived native-sol3-4c03dedc-world-refusal-2026-10-03; no ownbuild/retry/source
 mutation. Integration notified immediately and owns repaired cut.
+
+
+## Sol3r proof failure and corrected early watch, 2026-10-03
+
+83a371a42 sol3r terminated certify1 at11:12:37Z beforeimage/nativecases.
+Primary served-catalog FN-SCAT-RANGE-KEEP-AUX-IS-LIVE-LIST proof failed
+5.75s/876304steps; manifest390passed/43failed total, including42downstream
+failures.14exactrun/cert/log/driver/sourceobjects archived as
+native-sol3r-83a371a42-catalog-cert-failure-2026-10-03; manifest
+7993bfb7a180785917a8c9f4c1ee802fa9502c2fb80d991e4a6f2f22c0e5009a.
+Lieutenant nowowns precise repair; no identicalrerun or unrelatedsourcefreeze.
+
+Watchgap: zeroexit active records masked realprimaryerror from11:05 until
+terminal11:12. New tools/native_cert_watch.py calls existing certifier
+book_result directly on completed plain records with actualdrivernonce/log/cert;
+no secondverdict rule. Samehost archived-run replay matches390passed/43failed,
+firstprimaryserved-catalog, process0 but missingfreshmarker/cert+ACL2error.
+Running/multiwave/missingmetadata remains pending. No ACL2 run/candidatechange.
+Nextwatch uses this exact existingpredicate beforefinalmanifest to route sooner.
