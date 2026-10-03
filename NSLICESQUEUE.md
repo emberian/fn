@@ -255,8 +255,12 @@ where interfaces are independent. Anchors: [STORE-PAGES](planning/repair/items/S
 The private builder continuation now separates page readiness/copy/zero/header/mark
 ticks from explicit flat-array growth (`history-pages-relocate-step`, SCN-1101).
 Completed concrete equality and finite progress are component obligations;
-flat-array resize, whole-event encoding, commit work and native root attachment
-remain open and must not be described as bounded by a row yield.
+flat-array resize, whole-event encoding and commit work remain proportional.
+Canonical P3 attachment and pinned-generation reclaim consumers are integrated
+source; their full current owner POST/reclaim/reopen execution and complete
+adoption/index correspondence remain open. Current source admission preserves
+early attachment and stops with a retained world on required proof refusals;
+none of these source steps establishes supported-profile effective reclaim.
 
 ### Reclaim and physical release
 
