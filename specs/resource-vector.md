@@ -456,3 +456,10 @@ first command's tariff. Unknown families refuse in accounted mode. Absence
 of output accounting policy keeps the existing explicitly partial path.
 The logical admission theorem does not prove physical footprint, collector
 behavior, refusal workspace funding or native issue/settlement authenticity.
+
+The pre-factory caller reads `fn-rlo-capacity` from its installed private
+ledger (ready instance: the captured `FILE-LIMIT`; otherwise zero). It does
+not reread a mutable service policy to decide an existing lease's capacity.
+Until an actual command footprint producer exists, `fn-ocap-unpriced-tariff`
+produces an explicit `(:unpriced FAMILY)` and accounted admission refuses
+before the command factory; this is not a priced NEWNEWS descriptor.

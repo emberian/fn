@@ -2,6 +2,8 @@
 (in-package "ACL2")
 (include-book "../../books/resource-output")
 
+(assert-event (equal (fn-rlo-capacity fn-resource-ledger) 0))
+
 (make-event
  (mv-let (word fn-resource-ledger)
    (fn-rlo-install 1073741824 536870912 nil nil 4 fn-resource-ledger)
@@ -12,7 +14,7 @@
 (make-event
  (mv-let (word fn-resource-ledger)
    (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 fn-resource-ledger)
-   (if (and (eq word :installed) (fn-rlo-drainedp fn-resource-ledger) (equal (fn-rl-next fn-resource-ledger) 2) (equal (fn-rl-idsi 2 fn-resource-ledger) 3) (equal (fn-rl-idsi 3 fn-resource-ledger) 0))
+   (if (and (eq word :installed) (equal (fn-rlo-capacity fn-resource-ledger) 1048576) (fn-rlo-drainedp fn-resource-ledger) (equal (fn-rl-next fn-resource-ledger) 2) (equal (fn-rl-idsi 2 fn-resource-ledger) 3) (equal (fn-rl-idsi 3 fn-resource-ledger) 0))
        (mv nil '(value-triple :explicit-pool-startup) state fn-resource-ledger)
      (mv t nil state fn-resource-ledger))))
 

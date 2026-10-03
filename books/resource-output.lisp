@@ -56,6 +56,18 @@
        (posp (fn-rl-file-limit fn-resource-ledger))
        (<= 3 (fn-rl-count fn-resource-ledger))))
 
+; Read the installed private ledger rather than mutable service configuration.
+; Zero means this instance cannot authorize a response lease.
+(defun fn-rlo-capacity (fn-resource-ledger)
+  (declare (xargs :stobjs fn-resource-ledger :guard t))
+  (if (fn-rlo-ready-p fn-resource-ledger)
+      (fn-rl-file-limit fn-resource-ledger)
+    0))
+
+(defthm fn-rlo-capacity-unfolds
+  (equal (fn-rlo-capacity ledger)
+         (if (fn-rlo-ready-p ledger) (fn-rl-file-limit ledger) 0)))
+
 (defun fn-rlo-token (cid connection-gen slot draw-gen)
   (declare (xargs :guard t))
   (list :resource (list :connection cid connection-gen) slot draw-gen))
