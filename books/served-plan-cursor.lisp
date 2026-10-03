@@ -132,6 +132,11 @@
   1)
 
 ; -----------------------------------------------------------------------------
+(local
+ (defthm fn-splan-newnews-over-tags-disjoint
+   (not (fn-nnw-meta-effectp (fn-ovw-cursor-effect cur)))
+   :hints (("Goal" :in-theory (enable fn-nnw-meta-effectp fn-ovw-cursor-effect)))))
+
 ; The step: the first cursor of REST, stepped once
 
 (defun fn-splan-rest-cursor-step (rest w fn-arena fn-cat)
@@ -268,7 +273,7 @@
                                       wl fn-arena fn-cat)
                   (fn-splan-cw-octets rest wl fn-arena fn-cat)))
   :hints (("Goal" :induct (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)
-           :in-theory (disable fn-ovw-step fn-ovw-cursorp fn-ovw-run)
+           :in-theory (disable fn-ovw-step fn-ovw-cursorp fn-ovw-run fn-nnw-meta-livep)
            :expand ((fn-ovw-run (car (cdr (car rest))) wl fn-arena fn-cat)))))
 
 (defthm fn-splan-cursor-step-keeps-cw-remaining
@@ -401,6 +406,17 @@
                                    fn-ovw-cursor-effect fn-nntp-make-result fn-nntp-reply-effect)
                                   (fn-nntp-parse-range fn-cat-group-next fn-ovw-status)))))
 
+(defthm fn-nntp-newnews-response-cursor-emits-a-fresh-cursor
+  (fn-splan-fresh-effectsp
+   (cdr (fn-nntp-newnews-response-cursor session archive env args fn-arena fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-newnews-response-cursor fn-nnw-meta-effect
+                             fn-nnw-meta-effectp fn-nnw-meta-initialp
+                             fn-nntp-make-result fn-nntp-reply-effect fn-nntp-single)
+                            (fn-nntp-newgroups-date-parse fn-nntp-newgroups-time-parse
+                             fn-wildmat-parse fn-nntp-civil-dtn-ms
+                             fn-nntp-filter-groups-by-wildmat)))))
+
 (local
  (defthm fn-splan-cw-reply-octets-of-one-listp
    (implies (true-listp x)
@@ -504,7 +520,7 @@
            (and (equal (mv-nth 0 (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)) :ok)
                 (fn-splan-cw-rest-okp (mv-nth 1 (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)))))
   :hints (("Goal" :induct (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)
-           :in-theory (disable fn-ovw-step fn-ovw-cursorp))))
+           :in-theory (disable fn-ovw-step fn-ovw-cursorp fn-cur-pending))))
 
 (defthm fn-splan-cursor-step-of-okp-is-ok
   (implies (fn-splan-cw-okp p)

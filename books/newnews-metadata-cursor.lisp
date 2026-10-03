@@ -266,6 +266,16 @@
                                 fn-arena fn-cat))
                             (c suffix))))))
 
+(defthm fn-nnw-meta-step-residual-append
+  (equal (append (car (fn-nnw-meta-step cur visits bytes fn-arena fn-cat))
+                 (fn-nnw-meta-remaining
+                  (mv-nth 1 (fn-nnw-meta-step cur visits bytes fn-arena fn-cat)) fn-arena fn-cat)
+                 suffix)
+         (append (fn-nnw-meta-remaining cur fn-arena fn-cat) suffix))
+  :hints (("Goal" :in-theory (disable fn-nnw-meta-step fn-nnw-meta-remaining
+                                     fn-nnw-meta-step-residual-onto)
+           :use fn-nnw-meta-step-residual-onto)))
+
 (verify-guards fn-nnw-meta-one)
 (verify-guards fn-nnw-meta-step)
 
@@ -376,6 +386,15 @@
   (implies (not (fn-nnw-meta-livep cur))
            (equal (fn-nnw-meta-remaining cur fn-arena fn-cat) nil))
   :hints (("Goal" :in-theory (enable fn-nnw-meta-livep fn-nnw-meta-remaining fn-nnw-meta-owes))))
+
+(defthm fn-nnw-meta-step-terminal-residual
+  (implies (not (fn-nnw-meta-livep
+                 (mv-nth 1 (fn-nnw-meta-step cur visits bytes fn-arena fn-cat))))
+           (equal (append (car (fn-nnw-meta-step cur visits bytes fn-arena fn-cat)) suffix)
+                  (append (fn-nnw-meta-remaining cur fn-arena fn-cat) suffix)))
+  :hints (("Goal" :in-theory (disable fn-nnw-meta-step fn-nnw-meta-remaining
+                                     fn-nnw-meta-livep fn-nnw-meta-step-residual-append)
+           :use fn-nnw-meta-step-residual-append)))
 
 (defun fn-nnw-meta-initialp (cur)
   (declare (xargs :guard t))

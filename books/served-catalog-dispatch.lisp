@@ -20,6 +20,47 @@
                            fn-nntp-find-group-number-of-fresh-member)))
 (local (in-theory (disable (tau-system))))
 
+(defthm fn-scat-newnews-reference-keeps-session
+   (equal (car (fn-nntp-newnews-response session archive env args fn-arena))
+          session)
+   :hints (("Goal" :in-theory (enable fn-nntp-newnews-response
+                                      fn-nntp-single fn-nntp-multi
+                                      fn-nntp-make-result))))
+
+(defthm fn-scat-newnews-reference-has-no-cursor
+   (equal (fn-ovw-expand
+           (cdr (fn-nntp-newnews-response session archive env args fn-arena))
+           fn-arena fn-cat)
+          (cdr (fn-nntp-newnews-response session archive env args fn-arena)))
+   :hints (("Goal" :in-theory (enable fn-ovw-expand fn-ovw-cursor-effectp fn-nnw-meta-effectp
+                                      fn-nntp-newnews-response fn-nntp-single
+                                      fn-nntp-multi fn-nntp-make-result
+                                      fn-nntp-reply-effect))))
+
+(local
+ (defthm fn-scat-over-reference-one-reply
+   (equal (list (fn-nntp-reply-effect
+                 (fn-served-reply-octets
+                  (cdr (fn-nntp-over-range session archive token fn-arena)))))
+          (cdr (fn-nntp-over-range session archive token fn-arena)))
+   :hints (("Goal" :in-theory (e/d (fn-nntp-over-range fn-nntp-single
+                                      fn-nntp-multi fn-nntp-make-result
+                                      fn-nntp-reply-effect fn-served-reply-octets)
+                                     (fn-nntp-parse-range fn-nntp-group-range-numbers
+                                      fn-nov-lines-for-numbers))))))
+
+(local
+ (defthm fn-scat-xover-reference-one-reply
+   (equal (list (fn-nntp-reply-effect
+                 (fn-served-reply-octets
+                  (cdr (fn-nntp-xover-range session archive token fn-arena)))))
+          (cdr (fn-nntp-xover-range session archive token fn-arena)))
+   :hints (("Goal" :in-theory (e/d (fn-nntp-xover-range fn-nntp-single
+                                      fn-nntp-multi fn-nntp-make-result
+                                      fn-nntp-reply-effect fn-served-reply-octets)
+                                     (fn-nntp-parse-range fn-nntp-group-range-numbers
+                                      fn-nov-lines-for-numbers))))))
+
 ;; Group names: books/served-catalog.lisp's local lemmas, restated.
 (local
  (defthm fn-scat-string-list-has-no-nil
@@ -402,4 +443,3 @@
 ; Guards: every arm is guard-verified in books/served-catalog.lisp.
 (verify-guards fn-nntp-archive-command-cat
   :hints (("Goal" :in-theory (enable (tau-system)))))
-
