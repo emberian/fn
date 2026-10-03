@@ -1,26 +1,25 @@
 # Now — 2026-10-03
 
-The active plan is [the development workstreams](overnight-2026-10-03.md), revised
-after deeper source/design reading and ember's correction: Sol for implementation,
-Astra for composition, continuing subsystem ownership through integration and use.
-After compaction or takeover, follow the plan’s [reorientation routine](overnight-2026-10-03.md#reorientation-after-compaction-or-takeover), including actual user and assistant exchanges, revision-aware reading of complete needed files, and retained reading conclusions.
-Read it with [the repair ledger](repair/STATUS.md) and [the contributor guide](../CONTRIBUTORS.md).
-The [next implementation slices](../NSLICESQUEUE.md) preserve the remaining
-capability work, dependencies, ownership gaps and concrete completion criteria.
-The capability wave is active: subsystem deputies, empirical execution, a
-source assembler and consumed representation/command helpers. The former proof
-Sol now owns the owner carrier; the four Luna sweep helpers are stopped.
-Astra owns checkpoint publication/read-back, the page helper carried catalog
-availability. History owns native history/root and effective reclaim; Operator owns retire/diagnostic/init consumers, with S012 source integrated. Access, Web and BP transport now have continuing Sol owners.
-The plan names the current sessions without treating a paused or completed
-session as running. Composition and representation
-contracts remain with the groundwork deputy while the wider roster is a target. New lanes wait for a
-useful independent need and coordinator agreement. The initial orientation
-snapshot is recorded in the plan; `8d17b09dd` integrated that planning/ledger
-reconciliation onto dev. Runtime qualification and deployment remain separate
-from source integration. Integrate directly onto dev during
-stabilization. Build/load and selected dynamic checks answer concrete changed-consumer questions; full qualification is for a scoped operational claim or convergence. Reuse matching artifacts while development continues.
+Four Sol owners resumed by ember after the usage-limit stop: Integration owns
+source assembly and shared execution, History owns storage and the early P3
+bootstrap, Runtime owns reader/Web/decoded execution, and BP owns transport and
+application joins. Root coordinates; no other deputies or automation resumed.
+The continuing domains and open acceptance criteria are in
+[NSLICESQUEUE](../NSLICESQUEUE.md), [the repair ledger](repair/STATUS.md), and the
+[development workstreams](overnight-2026-10-03.md). Contributor setup is in
+[CONTRIBUTING](../CONTRIBUTING.md); source integration, ordinary admission,
+certification, qualified packaging and deployment remain separate.
 
+The immediate shared dependency is one coherent current source-loaded owner
+world with early arena/P3 attachment before generic history and current
+reader/decoded/native interfaces. There is no retained current-union process;
+History's last bootstrap refusal has a source repair but has not been replayed
+through owner entry. The earlier alleged eleven-versus-ten-field read-pool
+incompatibility was a counting mistake: `:inline` is an option, and the current
+pool has ten fields. Current decoded-job/controller/window methods and P3
+semantics still require deliberate assembly; old cached execution does not
+establish those joins. History owns one fresh initialization, with Integration
+supporting the shared runner and the other owners continuing their consumers.
 
 ## Usage-limit stop — 2026-10-03 10:18 America/New_York
 
@@ -38,8 +37,10 @@ repairs with current application source; it is not the current whole kernel.
 Root’s actual live-owner developer REPL admission/refusal/stop/fence checks
 passed on that coordinate. The current Store/P3/reader/decoded/Web/BP union
 still needs one coherent execution world: early arena/P3 attachment order and
-the current eleven-field pool must be retained; an old ten-field pool cannot
-be silently substituted. Root owns that bootstrap frontier. No image run is
+current source interfaces must be retained. The earlier claimed eleven-versus-
+ten-field pool difference was false (`:inline` was counted as a field); current
+and cached declarations each have ten fields. Missing decoded methods and
+attachment semantics remain real assembly gaps. Root owns that bootstrap frontier. No image run is
 required before source execution.
 
 The finite closeout repaired Web’s actual POST action-classifier mismatch: the

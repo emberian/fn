@@ -44,10 +44,10 @@ logical-only history dependency world; guarded P3 definitions/abstract exports;
 attach-stobj BEFORE generic fn-hist; actual root-host normal APIs before native
 tag; raw io/owner/history-root in the declared load order. Old diagnostic world
 was ad8 /tank/fn/scratch/codex-sol-integrate/native-sol2g-funded-observer/tree;
-compatible page cert dependencies9d were diagnostics only. CURRENT Runtime
-fn-page-read-pool has11 fields; old ad8 cache has10. There is no flag or price:
-construct11 fresh before any pool consumer. Never redefine the old stobj or
-late-swap attachment. Supply current-compatible dependency/world roots to the
+compatible page cert dependencies9d were diagnostics only. CORRECTION on resumed source reading: fn-page-read-pool has10 fields in both
+current source and old cache; :inline was wrongly counted as11. No pool layout
+incompatibility is established. Current decoded methods and early P3 attachment
+still require coherent loading; do not late-swap attachment. Supply current-compatible dependency/world roots to the
 generator; do not transfer ad8 endpoint semantics to the current union.
 
 Fresh native experiment ended on normal source refusal, not live: shell2006265 /
@@ -3071,9 +3071,10 @@ sent to Integration. The shared checkout and other agents' files are untouched.
   distinguish event refusal from timeout/unknown outcome, and test subsequent
   owner progress before claiming the bounded-admission feature. Tools owns
   termination of its private scratch owner; root does not kill it or shared worlds.
-- Coherent current execution still requires fresh current 11-field page-read
-  pool and early canonical P3 attachment before generic history. The reusable
-  app cache has the old 10-field pool. History repaired FN-HIST-NTH-PAST-LEN
+- Coherent current execution still requires current decoded methods and early
+  canonical P3 attachment before generic history. CORRECTION: current pool and
+  app cache each have10 fields; the former11-field claim counted :inline as a
+  field and is withdrawn. History repaired FN-HIST-NTH-PAST-LEN
   (679bc5222,3dcf4b06f), with complete generic force-replay passing; full native
   current-union owner entry and POST/reclaim/reopen remain unexecuted.
 
@@ -3169,7 +3170,7 @@ Only this lane's warm ARTICLE/journal sessions are stopped at this checkpoint.
 
 Runtime winddown 2026-10-03 (latest user usage-limit request): source packets READY8f218c9f2 (partial same-pool draw+owner/mux/Web scalar lifetime), b417383b3 (finite source fixtures), d34189def+c91bceb9d (ordinary additive source admission tool). Scoped clean reconstructed hbox world admitted projected issuer/discovery guards and actual native constructor test; digest frame64; reserves64/65536/3494/64; fixed draw86928 overcommit/refund/full-profile refusal. Native layout uses direct zin20/EW16384 arrays; Foundationfc74eb2f4 corrects two conservative parent allowances, stable86928. Evidence runtime-decoded-20261003 manifest0f5e9fff545c3cc2abcfd5b387eeb10e23903ec1037fece01acbf2a923e2728a. Initial unsafe raw MV experiment aborted; process discarded, clean world rebuilt before positive verdict. Owned runtime-decoded-job session stopped gracefully; no others stopped.
 
-Resume domain obligations (PRF1288 stays planned): source-loaded complete physical decoder/controller+compressed ARTICLE/Web endpoint still unexecuted. Access owns current union ordinary ARTICLE admission/socket run; Root/Lieutenant own shared canonical fullsource bootstrap. Exact cache ad8 pool10 versus current source pool11: do not redefine existing stobj/attachments; additive tool only creates new fn-decoded-job. It requires ordinary includes of matching cached decoded-worker-controller/decoded-window-lease/decoded-window-read under /tank/fn/gates/codex-sol-runtime-repl before new methods and actual raw extent/extent-decoded/owner adapters. New runtime methods/creator dispatch must install against post-LD declarations. Enqueue signal failure can escape after typed job exists before owner read/dependency attachment; capture-before-wake callback remains concrete unclosed obligation (worker/token is retained, but response dependency attachment must precede possible child activation). Web193111788 POST and retained replay/page refs need explicit terminal discard before future full working settlement; current scalar close alone is not heap receipt. Complete allocator/GC/borrowed-root tariffs, typed representation/guard correspondence, async publication/remaining actor families/shared waits/P/otherO HM realization, carrier/real committer authority and all broad HOST-COORDINATION obligations remain open. No full decoded funding, complete physical layout or normal dispatcher/fullowner endpoint claim.
+Resume domain obligations (PRF1288 stays planned): source-loaded complete physical decoder/controller+compressed ARTICLE/Web endpoint still unexecuted. Access owns current union ordinary ARTICLE admission/socket run; Root/Lieutenant own shared canonical fullsource bootstrap. CORRECTION: ad8 and current source pool each have10 fields; the earlier11 count included :inline. Missing decoded methods remain an assembly gap; do not redefine existing stobj/attachments; additive tool only creates new fn-decoded-job. It requires ordinary includes of matching cached decoded-worker-controller/decoded-window-lease/decoded-window-read under /tank/fn/gates/codex-sol-runtime-repl before new methods and actual raw extent/extent-decoded/owner adapters. New runtime methods/creator dispatch must install against post-LD declarations. Enqueue signal failure can escape after typed job exists before owner read/dependency attachment; capture-before-wake callback remains concrete unclosed obligation (worker/token is retained, but response dependency attachment must precede possible child activation). Web193111788 POST and retained replay/page refs need explicit terminal discard before future full working settlement; current scalar close alone is not heap receipt. Complete allocator/GC/borrowed-root tariffs, typed representation/guard correspondence, async publication/remaining actor families/shared waits/P/otherO HM realization, carrier/real committer authority and all broad HOST-COORDINATION obligations remain open. No full decoded funding, complete physical layout or normal dispatcher/fullowner endpoint claim.
 
 ## Usage-limit winddown: LIST controller and continuing Served ownership
 
@@ -3320,6 +3321,6 @@ codex-sol-web-live tree, FN_NATIVE_DEVELOPER_HOST=post-action-fix/app-native
 SWARM_MEM_MAX=24G swarm-build python3 -m unittest
 tests.test_native_web.NativeWebFaceTests.test_1_a_friend_makes_an_account_reads_posts_and_removes
 (use absolute wrapper path or resolve relative to that tree). Scope remains
-ad8+gate336+cde+99Web/2Access+native9022; latest11field/P3/decoded/runtime union
+ad8+gate336+cde+99Web/2Access+native9022; latest P3/decoded/runtime union
 is not established. WEB006/SCN1122 remain open for their full obligations.
 Contributor guides integrated9c944de6e; no certificate/image/deployment claim.
