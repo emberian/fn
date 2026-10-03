@@ -58,21 +58,21 @@ that their recorded state is current at every later revision.
   place. Split a slice when it has independently useful consumers. The list is
   an initial coverage map, not a claim that all remaining defects are enumerated.
 
-## Current four-owner resumption — 2026-10-03
+## Current ten-owner engineering wave — 2026-10-03
 
-Ember resumed only Integration, History, Runtime and BP transport; root
-coordinates and takes resource accounting/funding. This is substantial full-domain
-engineering, not finite end-tidying. Integration owns public source assembly, shared execution and
-planning upkeep. History owns current storage/P3/owner bootstrap and reclaim.
-Runtime owns current ARTICLE/Web physical decoder, window lifetime and ABI
-joins. BP owns actual multi-peer transport and immutable application R/Q joins.
-No lieutenant, helper or other deputy resumed. Foundations, Served, Access,
-Web, Tools and Groundwork retain their documented domain obligations as paused
-owners; these are not completion claims. The four active owners consume their
-committed interfaces and coordinate changes across those boundaries.
+Ember authorized Integration, History, Runtime, BP, Foundations, Served, Access,
+Tools, Operator and Empirical. Root coordinates and supplies the actual DEFAULT
+pool startup producer; no lieutenant or Luna resumed. Integration owns public
+assembly, current execution and planning; History storage/P3/reclaim; Runtime
+ARTICLE/Web/decoded lifecycle; BP transport and signed application joins;
+Foundations accounting/banks/tariffs; Served query/serializer families; Access
+ARTICLE/header representation; Tools developer/tracing/allocation; Operator
+policy/control/journal; Empirical system scenarios and defect discovery.
+These are full-domain implementation/invariant/assurance obligations, not
+finite end-tidying. Groundwork and other former helpers remain stopped.
 
-The earlier ten-worker roster described the pre-usage-limit wave. All those
-agents wound down; a retained warm handle does not imply an active owner or a
+The earlier ten-worker roster described the pre-usage-limit wave. That earlier wave
+wound down before the explicit resumptions above; a retained warm handle does not imply an active owner or a
 working current-union native process. History now owns one fresh current
 source-world initialization. The alleged11-versus10 read-pool field difference
 was false: :inline is an option, and both declarations have10 fields. Missing
@@ -83,8 +83,8 @@ current decoded methods and early P3 attachment remain actual assembly work.
 | Slice | Current position | Coordination / implementation | Next useful result |
 | --- | --- | --- | --- |
 | [Safe completion and actor rollout](#safe-completion-and-actor-rollout) | Active | Runtime; completed source-tracer packets retained | Escapes preserve actual outcomes, fence the service when required, and settle custody through the real consumer |
-| [Output allocation and funding](#output-allocation-and-funding) | Active partial producer and wider accounting | Root + Runtime; Foundations/Served obligations retained | Actual bounded serializer/selector allocation is funded before creation |
-| [Paged catalog in the service](#paged-catalog-in-the-service) | Active shared execution dependency | History + Runtime; Served adapter source retained | Existing paged attachment serves POST/read/navigation/withdrawal/reopen |
+| [Output allocation and funding](#output-allocation-and-funding) | Active partial producer and wider accounting | Foundations + Root + Runtime; Served serializers | Actual bounded serializer/selector allocation is funded before creation |
+| [Paged catalog in the service](#paged-catalog-in-the-service) | Active shared execution dependency | History + Served + Runtime | Existing paged attachment serves POST/read/navigation/withdrawal/reopen |
 | [Reclaim and physical release](#reclaim-and-physical-release) | Active bounded builder and publication work | History; completed Astra relocation packet retained | Remove observed whole-history-copy credit obstruction and release resources safely |
 | [Fair feed and pull rounds](#fair-feed-and-pull-rounds) | Active repairs; broader continuation next | BP transport + Runtime | Credential fixes and phase outcomes compose with bounded rounds and queue progress |
 | [Runtime/model correspondence](#runtimemodel-correspondence) | Active | Runtime + consumer owners; Integration schedules evidence | Real ordered lock/pin/I/O labels drive the same model transitions |

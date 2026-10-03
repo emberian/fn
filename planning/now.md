@@ -1,13 +1,14 @@
 # Now — 2026-10-03
 
-Ember authorized substantial remaining engineering across four continuing Sol
-owners after the usage-limit stop: Integration owns
-source assembly and shared execution, History owns storage and the early P3
-bootstrap, Runtime owns reader/Web/decoded execution, and BP owns transport and
-application joins. Root coordinates; no other deputies or automation resumed.
-Root also takes resource accounting/funding. These owners continue missing
-behavior, defects, integration, invariants/guards/proofs and assurance across
-their full domains, rather than stopping at one scenario or a tidying batch.
+Ember authorized ten continuing Sol owners for substantial remaining engineering:
+Integration (assembly/execution/planning), History (storage/P3/reclaim), Runtime
+(reader/Web/decoded lifecycle), BP (transport/application joins), Foundations
+(accounting/banks/tariffs), Served (queries/serializers), Access (ARTICLE/header
+representation), Tools (developer/tracing/allocation), Operator (policy/control/
+journal), and Empirical (system scenarios/defect discovery). Root coordinates
+and implements the actual DEFAULT read-pool startup producer. No lieutenant,
+Luna or automation resumed. Owners continue missing behavior, defects,
+integration, invariants/guards/proofs and assurance across their full domains.
 The continuing domains and open acceptance criteria are in
 [NSLICESQUEUE](../NSLICESQUEUE.md), [the repair ledger](repair/STATUS.md), and the
 [development workstreams](overnight-2026-10-03.md). Contributor setup is in
@@ -27,6 +28,10 @@ pool has ten fields. Current decoded-job/controller/window methods and P3
 semantics still require deliberate assembly; old cached execution does not
 establish those joins. History owns one fresh initialization, with Integration
 supporting the shared runner and the other owners continuing their consumers.
+A concrete activation gap is now identified: fresh owner startup has no caller
+of page-read-install-baseline/pool-storage-start, leaving the read pool offline.
+Root owns its real reservation-backed installer; compressed endpoint activity
+is not established by the constructor or recording fixtures.
 
 ## Usage-limit stop — 2026-10-03 10:18 America/New_York
 
