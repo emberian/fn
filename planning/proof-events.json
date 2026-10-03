@@ -19002,6 +19002,15 @@
           "name": "fn-fjo-an-intent-moved-past-another-resolution-replays-alike"
         }
       ]
+    },
+    {
+      "id": "PRF-1258",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orcs-predict-seal-refines-intern"
+        }
+      ]
     }
   ]
 }
