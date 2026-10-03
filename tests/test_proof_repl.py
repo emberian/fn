@@ -2953,3 +2953,77 @@ class AttachmentOrderTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SourcePrefixTests(unittest.TestCase):
+    def args(self, **over):
+        args = dict(name="warm", keep_source_prefix=True, ld_local=True, certify_missing=False)
+        args.update(over)
+        return argparse.Namespace(**args)
+
+    def state(self, **over):
+        state = dict(name="warm", book="books/target", keep_source_prefix=True,
+                     ready=True, ld_local=True, failed_dependency="books/dep",
+                     dependency_error="ACL2 refusal", ld_loaded={"books/base": "encapsulated"})
+        state.update(over)
+        return state
+
+    def test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status(self):
+        with mock.patch.object(proof_repl, "_start", return_value=proof_repl.SOURCE_DEPS_FAILED), \
+                mock.patch.object(proof_repl, "read_state", return_value=self.state()), \
+                mock.patch.object(proof_repl, "stop") as stop, \
+                contextlib.redirect_stdout(io.StringIO()):
+            code = proof_repl.start(self.args())
+        self.assertTrue(not stop.called, "live encapsulated dependency prefix must remain available")
+        self.assertEqual(code, proof_repl.SOURCE_DEPS_FAILED)
+        line, partial = proof_repl.load_verdict(self.state())
+        self.assertTrue(partial)
+        self.assertIn("LIVE PARTIAL DEPENDENCY", line)
+        self.assertIn("none of books/target's forms", line)
+        self.assertIn("exit 75", line)
+
+    def test_dead_timed_out_or_leaked_states_are_not_retained(self):
+        for changed in ({"ready": False}, {"load_timed_out": True}, {"ld_local": False},
+                        {"keep_source_prefix": False}):
+            with self.subTest(changed=changed), \
+                    mock.patch.object(proof_repl, "_start", return_value=proof_repl.SOURCE_DEPS_FAILED), \
+                    mock.patch.object(proof_repl, "read_state", return_value=self.state(**changed)), \
+                    mock.patch.object(proof_repl, "stop") as stop, \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(proof_repl.start(self.args()), proof_repl.SOURCE_DEPS_FAILED)
+                stop.assert_called_once()
+
+    def test_leak_or_certification_retry_request_refuses_before_launch(self):
+        for changed in ({"ld_local": False}, {"certify_missing": True}):
+            with self.subTest(changed=changed), mock.patch.object(proof_repl, "_start") as launch, \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(proof_repl.start(self.args(**changed)), 2)
+                launch.assert_not_called()
+
+    def test_start_forwards_prefix_option_to_locked_server_and_retains_status75(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sessions = pathlib.Path(directory)
+            (sessions / "warm").mkdir()
+            commands = []
+            def server(command, **kwargs):
+                commands.append((command, kwargs))
+                (sessions / "warm/state.json").write_text(json.dumps(self.state()))
+                (sessions / "warm/sock").write_text("")
+            args = self.args(book="books/target", upto=None, through=None, limit=60.0,
+                             load_timeout=5.0, lane=None, idle_seconds=60, ld=["books/dep"],
+                             ld_missing=False, source_deps=None, certify_jobs=4, load_limit=None)
+            with mock.patch.object(proof_repl, "SESSIONS", sessions), \
+                    mock.patch.object(proof_repl, "session_dir", lambda n: sessions / n), \
+                    mock.patch.object(proof_repl, "open_session_lock", lambda *a: os.open(os.devnull, os.O_RDONLY)), \
+                    mock.patch.object(proof_repl, "install_closure", return_value=(True, "prefix", ["books/base", "books/dep"])), \
+                    mock.patch.object(proof_repl.subprocess, "Popen", side_effect=server), \
+                    mock.patch.object(proof_repl, "status", return_value=0), \
+                    mock.patch.object(proof_repl, "stop") as stop, \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(proof_repl.start(args), proof_repl.SOURCE_DEPS_FAILED)
+                stop.assert_not_called()
+            command, kwargs = commands[0]
+            self.assertIn("--keep-source-prefix", command)
+            self.assertIn("--ld-local", command)
+            self.assertIn("--lock-fd", command)
+            self.assertTrue(kwargs["pass_fds"])
