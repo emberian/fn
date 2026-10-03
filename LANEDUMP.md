@@ -2197,3 +2197,23 @@ then requires exact healthy article bytes before the original handshake
 deadline. Source setup/code compile/claim checks pass; no image execution.
 Source receipt planning/evidence/repair/S067-fair-push-source-8df99c90a.json
 records the11-test scoped verdict and exact subject/harness byte hashes.
+
+
+## Web page cursor — codex-sol-web-pages (GPT-6.1 Sol), 2026-10-03
+
+Source READY 0d04c4a59 from origin/dev e132f5082; no Runtime owner/mux edits.
+Actual host-enabled fn-wss-page retains :respond with :page-plan segments;
+fn-web-host-page-step counts/streams outside O through the existing fixed
+semantic worker. Native writer retains offsets and never materializes full
+HTML OUT. tests/test_native_web_page_cursor_raw.sh passes mixed segment exact
+reference/count fuel partitions 1/2/7/4096, 137-byte partial writes, HEAD and
+cancelled queued page custody. Archived source/raw receipt:
+planning/evidence/web-page-cursor-2026-10-03.md; raw log alongside it.
+
+PRF-1277 planned/program boundary: guards/refinement and matched image pending.
+Full NNTP IN backing, segment spine/text construction, bounded decoder/working
+allocation and fixed mailbox/job capture funding remain open. Session/event
+owner admission and plan construction still run to completion under O, and one
+worker can wait on admission; no full semantic-event fairness claim. Root and
+Foundations own funding; Runtime absorbs Web at 08:00. Source assembly owns one
+material review; Integration owns affected roots/interface/image convergence.
