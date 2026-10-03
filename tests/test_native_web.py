@@ -19,6 +19,7 @@ import http.client
 import re
 import socket
 import ssl
+import time
 import unittest
 from urllib.parse import urlencode
 
@@ -135,6 +136,30 @@ class FaceCases:
         status, _, _, headers, _ = b.request("POST", "/health", {})
         self.assertEqual(status, 405)
         self.assertEqual(headers["Allow"], "GET, HEAD")
+
+    def test_stalled_socket_does_not_block_health_reader_or_account_post(self):
+        # The old inline accept worker waits its complete request/handshake
+        # deadline before it can serve any of these healthy connections.
+        slow = socket.create_connection(("127.0.0.1", self.web_port), timeout=10)
+        try:
+            if not self.TLS:
+                slow.sendall(b"GET /heal")
+            time.sleep(0.1)
+            started = time.monotonic()
+            b = self.browser()
+            status, _, body, _, _ = b.request("GET", "/health")
+            self.assertEqual((status, body), (200, "ready\n"))
+            status, _, page, _, _ = b.request("GET", "/signin")
+            self.assertEqual(status, 200)
+            self.assertIn("Make your account", page)
+            status, where, page, _, _ = self.make_account(
+                b, "parallel_tls" if self.TLS else "parallel_plain")
+            self.assertEqual((status, where), (303, "/"), page)
+            self.assertLess(time.monotonic() - started, 8,
+                            "stalled socket held the HTTP actor")
+            self.assertIsNone(self.node.process.poll())
+        finally:
+            slow.close()
 
     def test_1_a_friend_makes_an_account_reads_posts_and_removes(self):
         b = self.browser()

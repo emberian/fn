@@ -160,7 +160,7 @@ observations back.  Nil when there is nothing to observe."
   (let ((obs (fnn-bpnode-receipt-observations view)))
     (fnn-bpnode-release-line view obs)
     (unless (eq (fnn-owner-core 'fn-owner-bp-receipt-gatep view obs) t)
-      (return-from receipt
+      (return-from fnn-bpnode-receipt-result
         (values :receipt-refused (fnn-bpnode-receipt-detail view obs))))
     (fnn-quantum-bp
      owner nil
@@ -222,27 +222,17 @@ observations back.  Nil when there is nothing to observe."
 (defvar *fnn-bpnode-budgets* nil)
 
 (defun fnn-bpnode-read-budgets (journal-root)
-  (let* ((path (concatenate 'string journal-root "/bp-node-budgets"))
-         (backoff nil) (retries nil))
-    (when (probe-file path)
-      (let ((text (fnn-octets-string (fnn-read-regular-bounded path 256))))
-        (dolist (line (loop with start = 0
-                            for end = (position #\Newline text :start start)
-                            collect (subseq text start (or end (length text)))
-                            while end do (setq start (1+ end))))
-          (let* ((space (position #\Space line))
-                 (key (and space (subseq line 0 space)))
-                 (value (and space (subseq line (1+ space)))))
-            (cond ((zerop (length line)))
-                  ((not (and key (<= 1 (length value) 20)
-                             (every #'digit-char-p value)))
-                   (fnn-refuse "bp-node: malformed budget row"))
-                  ((string= key "owner-backoff")
-                   (setq backoff (parse-integer value)))
-                  ((string= key "retry-budget")
-                   (setq retries (parse-integer value)))
-                  (t (fnn-refuse "bp-node: unknown budget row")))))))
-    (let ((budgets (fnn-core 'fn-bpnp-configured-budgets backoff retries)))
+  (let* ((path (fnn-join journal-root "bp-node-budgets"))
+         (present (fnn-check-regular path))
+         ;; Bounded octets go directly to the core; no Lisp reader, UTF-8
+         ;; decoder, key selection, decimal conversion or duplicate policy.
+         (rows (fnn-core 'fn-bpnb-read
+                         (and present
+                              (fnn-octet-list
+                               (fnn-read-regular-bounded path 256))))))
+    (unless rows (fnn-refuse "bp-node: ACL2 refused the budget file grammar"))
+    (let ((budgets (fnn-core 'fn-bpnp-configured-budgets
+                             (second rows) (third rows))))
       (unless budgets (fnn-refuse "bp-node: ACL2 refused the budget rows"))
       (fnn-out "BP node budgets owner-backoff=~d retry-budget=~d"
                (second budgets) (third budgets))
@@ -944,6 +934,142 @@ uncertain, as it does everywhere else."
                    transfer peer-id))))
     bp))
 
+;;; Retained forwarding uses the same durable kind-8/9 and routed session
+;;; events as the compatibility sender; transport waits retain one grant.
+(defun fnn-bpnode-forward-start (bank bp node-id transfer-mru wall wall-error entry table)
+ (let ((reservation (fnn-bp-session-acquire bank :outgoing)))
+  (unless reservation (return-from fnn-bpnode-forward-start nil))
+ (let* ((peer (first entry)) (hop (second entry)) (hop-eid (third entry)) (port (fourth entry))
+        (sent nil) (opened nil)
+        (session-id (cons (fnn-core 'fn-bpnf-epoch (fnn-bps-state bp))
+                          (incf (fnn-bps-next-session bp)))))
+  (let ((grant
+   (fnn-bp-session-start bank "127.0.0.1" port
+    (fnn-tcl-params node-id hop-eid +fnn-tcl-keepalive+ +fnn-tcl-segment-mru+ transfer-mru)
+    "bp-node-forward" (fnn-bps-root bp)
+    (lambda (connection)
+     (let* ((negotiated (fnn-core 'fn-tcl-session-negotiated (fnn-tclc-session connection)))
+            (mru (fnn-core 'fn-tcl-negotiated-transfer-mtu negotiated))
+            (announced (fnn-core 'fn-tcl-negotiated-peer-node-id negotiated))
+            (*fnn-bps-forward-send*
+             (lambda (effect)
+              (unless (and (null sent) (= (length effect) 7)
+                           (equal (second effect) peer) (equal (third effect) session-id))
+               (fnn-indeterminate "BP retained forwarding effect mismatches session"))
+              (setq sent effect))))
+      (fnn-bps-drive-effects bp (fnn-bps-foundation-step bp
+       (fnn-bpnode-budgeted (list :session peer session-id t mru
+        (fnn-bp-observation wall wall-error) (list :via hop announced table)))))
+      (setq opened t)
+      (when sent
+       (setf (fnn-tclc-pending connection) (cons "bp-node-forward" (seventh sent)))
+       (fnn-out "BP forwarding attempt durable key=~s" (sixth sent)))))
+    (lambda (job outcome)
+     (let ((conn (fnn-bpsg-conn job)))
+      (when conn (fnn-tcl-summary conn))
+      (when sent
+       (fnn-bpnode-pause-at-durable-cut "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_EIGHT_SENT" "BP NODE KIND8 SENT")
+       (fnn-bpnode-forward-result bp sent session-id
+        (fnn-core 'fn-bpnp-tcpcl-outcome outcome (and conn (fnn-tclc-refusal conn))) wall wall-error))
+      (when opened
+       (setq opened nil)
+       (fnn-bps-drive-effects bp (fnn-bps-foundation-step bp
+        (list :session peer session-id nil 1 (fnn-bp-observation wall wall-error)))))))
+    reservation)))
+   (when grant (setf (fnn-bpsg-peer grant) peer)) grant))))
+
+(defun fnn-bpnode-passive-begin
+ (bp grant socket owner receipt-root workflow-root destination policy issuer node-id peer-id transfer-mru wall wall-error finish)
+ (let ((counter (incf (fnn-bps-next-session bp))) (channel nil))
+  (fnn-connection-scoped
+   ("bp-node" (lambda (word) (setf (fnn-bpsg-result grant) word)))
+   (setq channel (fnn-bpnode-observed-channel socket))
+   (fnn-tcl-begin (fnn-socket-fd socket) :passive
+    (fnn-tcl-params node-id nil +fnn-tcl-keepalive+ +fnn-tcl-segment-mru+ transfer-mru)
+    "bp-node" (fnn-bps-root bp)
+    :retain (lambda (conn) (setf (fnn-bpsg-conn grant) conn))))
+  (setf (fnn-bpsg-turn grant)
+   (lambda ()
+    (let ((conn (fnn-bpsg-conn grant)))
+     (if (not conn) :done
+      (let ((*fnn-tcl-source-start*
+             (lambda (connection xfer-id chain count)
+              (fnn-bp-session-source-start grant connection xfer-id chain count transfer-mru)))
+            (*fnn-tcl-source-turn*
+             (lambda (connection token)
+              (fnn-bp-session-source-turn grant connection token)))
+            (*fnn-tcl-deliver*
+             (lambda (connection xfer-id octets)
+              (fnn-bp-deliver-node bp connection counter xfer-id octets owner channel)))
+            (*fnn-tcl-progress*
+             (lambda (connection)
+              (when (eq (fnn-bps-outcome bp) :fenced)
+               (fnn-indeterminate "BP node custody publication uncertain; recovery required"))
+              (when (fnn-tclc-progress connection)
+               (fnn-bpnode-pause-at-durable-cut "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_FIVE" "BP NODE KIND5 DURABLE"))
+              (fnn-bpc-advance-clock bp (fnn-bp-observation wall wall-error))
+              (fnn-bps-fragment-progress bp)
+              (fnn-bpnode-dispatch-one bp owner receipt-root workflow-root destination policy issuer node-id peer-id))))
+       (fnn-tcl-turn conn)))))
+   (fnn-bpsg-finish grant)
+   (lambda (job)
+    (let ((conn (fnn-bpsg-conn job)))
+     (when conn (fnn-tcl-summary conn))
+     (funcall finish (if conn (fnn-bp-session-word conn)
+                         (fnn-core 'fn-bprc-session-evidence (fnn-bpsg-result job) nil))))))))
+
+(defun fnn-bpnode-expire-turn (bp reports-enabled)
+ (let* ((tally (fnn-bps-tally bp))
+        (effects (fnn-bps-foundation-step bp
+          (list :expire-held (fnn-bp-observation (fnn-bp-tally-wall tally)
+                                               (fnn-bp-tally-wall-error tally))
+                (if reports-enabled t nil)))))
+  (when effects
+   (fnn-bps-drive-effects bp effects)
+   (when (eq (fnn-bps-outcome bp) :accepted)
+    (fnn-bpnode-pause-at-durable-cut "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_TEN" "BP NODE KIND10 DURABLE")))))
+
+(defstruct fnn-bp-receipt-cursor cursor offered started done)
+
+(defun fnn-bpnode-receipt-turn (bank bp peer-id contact once)
+ ;; Reserve before the durable attempt constructs its wire/send continuation.
+ (when (and once (fnn-bp-receipt-cursor-done contact))
+  (return-from fnn-bpnode-receipt-turn nil))
+ (when (and (not once) (fnn-bp-receipt-cursor-done contact))
+  (setf (fnn-bp-receipt-cursor-started contact) nil
+        (fnn-bp-receipt-cursor-offered contact) nil
+        (fnn-bp-receipt-cursor-done contact) nil))
+ (let ((grant (fnn-bp-session-acquire bank :outgoing)))
+  (when grant
+   (fnn-bpnode-route-by-owner bp)
+   (let* ((peer (fnn-bp-eid peer-id))
+          (result (fnn-core 'fn-bpnjc-contact-next (fnn-bps-state bp) peer
+                    (fnn-bps-routing bp) (fnn-bp-receipt-cursor-offered contact)
+                    (if (fnn-bp-receipt-cursor-started contact)
+                        (fnn-bp-receipt-cursor-cursor contact)
+                        (fnn-core 'fn-bpnjc-contact-cursor (fnn-bps-cursors bp) peer))))
+          (answer (car result)) (started nil)
+          (*fnn-bps-retained-send*
+           (lambda (service effect)
+            (when started (fnn-fault "BP receipt turn issued multiple send effects"))
+            (setq started t)
+            (fnn-bp-session-send-effect bank service effect grant (fourth answer)))))
+    (setf (fnn-bp-receipt-cursor-started contact) t
+          (fnn-bp-receipt-cursor-cursor contact) (cdr result))
+    (when (eq (first answer) :offer)
+     (setf (fnn-bp-receipt-cursor-offered contact) (third answer))
+     (setf (fnn-bps-expected bp) (fourth answer))
+     (unwind-protect
+       (fnn-bps-drive-effects bp (fnn-bps-foundation-step bp (second answer)))
+      (setf (fnn-bps-expected bp) nil)))
+    (unless (eq (first answer) :offer)
+     (setf (fnn-bp-receipt-cursor-done contact) t))
+    (setf (fnn-bps-cursors bp)
+     (fnn-core 'fn-bpnjc-contact-close (fnn-bps-cursors bp) (fnn-bps-state bp) peer (cdr result)))
+    (unless started
+     (fnn-bp-session-observe bank grant :no-context)
+     (fnn-bp-session-close bank grant))))))
+
 (defun fnn-command-bp-node
     (listen-port once journal-root store-root receipt-root workflow-root
      node-id peer-id destination policy issuer contact-host contact-port
@@ -957,14 +1083,21 @@ uncertain, as it does everywhere else."
          ;; sequence operation.  There is exactly one BP lifecycle owner.
          (bp (fnn-bps-open-node journal-root config wall wall-error))
          (owner nil)
+         (bank nil)
+         (*fnn-bp-session-bank* nil)
          (control nil)
          (*fnn-bpnode-control-pump* nil)
          (listener nil)
-         (session-word nil))
+         (session-word nil)
+         (primary-condition nil))
     (setq *fnn-bpnode-budgets* (fnn-bpnode-read-budgets journal-root))
     (unwind-protect
+         (handler-bind ((serious-condition (lambda (condition)
+                           (unless primary-condition (setq primary-condition condition)))))
          (progn
            (setq owner (fnn-owner-install store-root 1))
+           (when listen-port
+             (setq bank (fnn-bp-session-install bp owner transfer-mru +fnn-tcl-segment-mru+)))
            (when control-config
              (setq control (fnn-bpnc-start control-config store-root owner)
                    *fnn-bpnode-control-pump* (lambda () (fnn-bpnc-pump control))))
@@ -974,6 +1107,7 @@ uncertain, as it does everywhere else."
            (fnn-bpnode-dispatch-pending
             bp owner receipt-root workflow-root destination policy issuer
             node-id peer-id)
+           (unless listen-port
            (fnn-bpnode-forward-contact
             bp node-id peer-id transfer-mru wall wall-error)
            (fnn-bpnode-queue-outboxes
@@ -982,7 +1116,7 @@ uncertain, as it does everywhere else."
            (fnn-bpnode-send-receipts bp peer-id)
            (fnn-bpnode-queue-reports
             bp peer-id node-id contact-host contact-port transfer-mru
-            wall wall-error)
+            wall wall-error))
            (when listen-port
              ;; A refused reception publishes its exact wire and verdict as
              ;; receive evidence (fnn-bp-deliver-node); recover that ACL2
@@ -993,130 +1127,125 @@ uncertain, as it does everywhere else."
              ;; configuration that admits a session
              ;; (fn-bpaj-listener-session-is-admitted-under-its-row), and
              ;; no other; a numeric PORT is the one-row case.  The loop
-             ;; stays serialized: poll(2) picks the next ready listener and
-             ;; that session runs to its end before the next (spec 9.1).
+             ;; rotates one funded listener attempt and one retained context
+             ;; per turn; a live peer cannot monopolize the lifecycle owner.
              (setq listener (fnn-bplc-start listen-port))
              (when control (setf (fnn-bpnc-listeners control) listener))
-             (fnn-bpnc-accept-loop
-              control listener
-              (lambda (socket &aux (profile-started (get-internal-real-time)))
-                ;; Sweep S006: a peer that resets its TCP connection (or is
-                ;; gone before its channel is observed) and a refused session
-                ;; end only this connection, ACL2's :uncertain or :refused
-                ;; session word (io.lisp fnn-connection-scoped); a Store
-                ;; fault or an uncertain publication is still the node's.
-                (unwind-protect
-                 (fnn-connection-scoped
-                     ("bp-node" (lambda (word)
-                                  (setq session-word
-                                        (fnn-core 'fn-bprc-session-evidence word nil))))
-                (let* ((session-counter
-                         (incf (fnn-bps-next-session bp)))
-                       (observed-channel
-                         (fnn-bpnode-observed-channel socket))
-                       (session-fd (fnn-socket-fd socket))
-                       (parent-waiter *fnn-fd-waiter*)
-                       (*fnn-fd-waiter*
-                         (if control
-                             (lambda (fd direction seconds)
-                               (if (and (= fd session-fd) (eq direction :input))
-                                   (fnn-bpnc-wait-input control fd seconds)
-                                 (funcall parent-waiter fd direction seconds)))
-                           parent-waiter))
-                       (*fnn-tcl-deliver*
-                         (lambda (conn xfer-id octets)
-                           (fnn-bp-deliver-node
-                            bp conn session-counter xfer-id octets owner
-                            observed-channel)))
-                       ;; PKT-873: the custody a turn acknowledged is
-                       ;; delivered in that turn, not when the session
-                       ;; ends (a keepalive session need never end).  The
-                       ;; forwarding, outbox and receipt sends, which open
-                       ;; sessions of their own, still run between sessions.
-                       (*fnn-tcl-progress*
-                         (lambda (conn)
-                           (declare (ignore conn))
-                           (when *fnn-bpnode-control-pump*
-                             (funcall *fnn-bpnode-control-pump*))
-                           (when (eq (fnn-bps-outcome bp) :fenced)
-                             (fnn-indeterminate
-                              "BP node custody publication uncertain; recovery required"))
-                           (fnn-bpnode-pause-at-durable-cut
-                            "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_FIVE"
-                            "BP NODE KIND5 DURABLE")
-                           (fnn-bpc-advance-clock
-                            bp (fnn-bp-observation wall wall-error))
-                           (fnn-bpnode-dispatch-pending
-                            bp owner receipt-root workflow-root destination policy
-                            issuer node-id peer-id))))
-                       (let ((conn
-                               (fnn-tcl-session
-                                (fnn-socket-fd socket) :passive
-                                ;; No expected TCPCL peer: the neighbour is
-                                ;; whichever node the enrolled boundary names,
-                                ;; decided by ACL2's fn-bpaj-session-principal
-                                ;; from the announced EID and the observed
-                                ;; channel (fnn-bp-deliver-node).  PEER-ID is
-                                ;; the application peer (receipt routes), and
-                                ;; through a relay it is not the neighbour.
-                                (fnn-tcl-params
-                                 node-id nil +fnn-tcl-keepalive+
-                                 +fnn-tcl-segment-mru+ transfer-mru)
-                                "bp-node" (fnn-bps-root bp))))
-                         (fnn-tcl-summary conn)
-                         (setq session-word (fnn-bp-session-word conn)))))
-                 (fnn-socket-shut socket))
-                ;; This is after the TCPCL transfer disposition.  The final
-                ;; XFER_ACK speaks only for durable kind-5 custody; application
-                ;; Store/FNRJ/FNWF commitment follows in a separate cut.
+             (let ((outbox-after nil) (report-after nil) (observe-after nil) (forward-tried nil)
+                   (receipt-contact (make-fnn-bp-receipt-cursor)))
+              (fnn-bp-session-loop
+               bank control listener
+               (lambda (grant socket)
+                (fnn-bpnode-passive-begin bp grant socket owner receipt-root workflow-root
+                 destination policy issuer node-id peer-id transfer-mru wall wall-error
+                 (lambda (word) (setq session-word word))))
+               once
+               (lambda (action)
                 (when (eq (fnn-bps-outcome bp) :fenced)
-                  (fnn-indeterminate
-                   "BP node custody publication uncertain; recovery required"))
-                (fnn-bpnode-pause-at-durable-cut
-                 "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_FIVE"
-                 "BP NODE KIND5 DURABLE")
-                ;; Between sessions: rotate the journal when its generation
-                ;; reached the threshold (fn-bpnrd-serve-rotation-due-p),
-                ;; before this session's deliveries and forwarding run over
-                ;; the (reopened) state.
-                (fnn-bps-serve-rotate-when-due
-                 bp journal-root config wall wall-error)
-                (fnn-bpc-advance-clock
-                 bp (fnn-bp-observation wall wall-error))
-                (fnn-bpnode-delete-expired bp reports-enabled)
-                (fnn-bpnode-observe-reports bp node-id)
-                (fnn-bpnode-dispatch-pending
-                 bp owner receipt-root workflow-root destination policy issuer
-                 node-id peer-id)
-                (fnn-bpnode-forward-contact
-                 bp node-id peer-id transfer-mru wall wall-error)
-                (fnn-bpnode-queue-outboxes
-                 bp owner receipt-root destination policy issuer node-id peer-id
-                 contact-host contact-port transfer-mru wall wall-error)
-                (fnn-bpnode-send-receipts bp peer-id)
-                (fnn-bpnode-queue-reports
-                 bp peer-id node-id contact-host contact-port transfer-mru
-                 wall wall-error)
-                (fnn-bp-profile-session bp profile-started))
-              once))
+                 (fnn-indeterminate "BP node custody uncertain; recovery required"))
+                (case action
+                 (:fragment
+                  (fnn-bpc-advance-clock bp (fnn-bp-observation wall wall-error))
+                  (fnn-bps-fragment-progress bp))
+                 (:dispatch
+                  (fnn-bpnode-dispatch-one bp owner receipt-root workflow-root
+                   destination policy issuer node-id peer-id))
+                 (:expiry (fnn-bpnode-expire-turn bp reports-enabled))
+                 (:outbox
+                  (fnn-bpnode-route-by-owner bp)
+                  (let ((view (fnn-core 'fn-bpah-outbox-view-after (fnn-bps-state bp) outbox-after)))
+                   (setq outbox-after (and view (third view)))
+                   (when view
+                    (when (eq (fnn-bpnode-queue-outbox bp owner receipt-root destination policy issuer
+                     node-id peer-id view contact-host contact-port transfer-mru wall wall-error) :queued)
+                     (setf (fnn-bp-receipt-cursor-done receipt-contact) nil)))))
+                 (:forward
+                  (let* ((table (fnn-owner-core 'fn-owner-bp-route-table))
+                         (busy (append (and once forward-tried)
+                                (loop for job across (fnn-bpsb-slots bank)
+                                     when (and job (fnn-bpsg-peer job)) collect (fnn-bpsg-peer job))))
+                         (entry (fnn-core 'fn-bpsched-forward-entry
+                          (fnn-core 'fn-bpnp-forward-plan
+                           (fnn-core 'fn-bpnf-held-list (fnn-bps-state bp)) table) busy)))
+                   (when entry
+                    (let ((job (fnn-bpnode-forward-start bank bp node-id transfer-mru wall wall-error entry table)))
+                     (when (and once job) (push (first entry) forward-tried))))))
+                 (:receipt (fnn-bpnode-receipt-turn bank bp peer-id receipt-contact once))
+                 (:report
+                  (fnn-bpnode-route-by-owner bp)
+                  (let ((view (fnn-core 'fn-bpn-report-outbox-next (fnn-bps-state bp) report-after)))
+                   (setq report-after (and view (second view)))
+                   (when view
+                    (when (eq (fnn-bpnode-queue-report bp peer-id node-id view contact-host contact-port transfer-mru
+                     wall wall-error) :queued)
+                     (setf (fnn-bp-receipt-cursor-done receipt-contact) nil))))
+                  (let ((observation (fnn-core 'fn-bpn-report-observe-next (fnn-bps-state bp)
+                                     (fnn-bp-eid node-id) observe-after)))
+                   (setq observe-after (and observation (second observation)))
+                   (when observation (fnn-out "BP status report observation ~s" observation))))
+                 (:rotation
+                  ;; No retained operation crosses an owner reopen.
+                  (when (zerop (hash-table-count (fnn-bpsb-held bank)))
+                   (fnn-bps-serve-rotate-when-due bp journal-root config wall wall-error)))))
+               (lambda () (or outbox-after report-after
+                               (not (fnn-bp-receipt-cursor-done receipt-contact))
+                               (fnn-bps-fragment-work-p bp))))))
            ;; ACL2's code for the node's evidence with the last session's
            ;; (fn-bprc-run-exit-code; specs/host.md "BP run classes").
            (fnn-core 'fn-bprc-run-exit-code
                      (fnn-core 'fn-bprc-note
                                (fnn-bp-run-evidence (fnn-bps-tally bp))
-                               session-word)))
-      (unwind-protect
-           (when control (fnn-bpnc-retire control))
-        (unwind-protect
-             (when listener (fnn-bplc-close-all listener))
-          (unwind-protect
-               (when owner
-                 (ignore-errors (fnn-owner-action 'fn-owner-app-unbind-receipt-store))
-                 (fnn-owner-feed-close-all owner)
-                 (fnn-store-close (fnn-owner-service-store owner)))
-            (fnn-bps-release bp)))))))
+                               session-word))))
+      (let* ((cleanup-condition (and bank (fnn-bp-session-abort-all bank nil)))
+             (held (and bank (hash-table-count (fnn-bpsb-held bank))))
+             (release-roots (or (not bank) (fnn-core 'fn-bpsp-root-release-ready held))))
+       (unless release-roots
+        ;; Preserve the authority through process termination; neither Store
+        ;; nor the FNBS lifecycle lock can be reclaimed under live debt.
+        (push (list bank owner bp) *fnn-bp-session-stranded-roots*))
+       (flet ((cleanup (operation)
+                (handler-case (funcall operation)
+                 (serious-condition (condition)
+                  (unless cleanup-condition (setq cleanup-condition condition))))))
+        (when control (cleanup (lambda () (fnn-bpnc-retire control))))
+        (when listener (cleanup (lambda () (fnn-bplc-close-all listener))))
+        (when (and release-roots owner)
+         (cleanup (lambda () (fnn-owner-action 'fn-owner-app-unbind-receipt-store)))
+         (cleanup (lambda () (fnn-owner-feed-close-all owner)))
+         (cleanup (lambda () (fnn-store-close (fnn-owner-service-store owner)))))
+        (when release-roots (cleanup (lambda () (fnn-bps-release bp)))))
+       (unless primary-condition
+        (cond (cleanup-condition (error cleanup-condition))
+              ((not release-roots)
+               (fnn-indeterminate "BP session custody remains held; root release refused"))))))))
+
+(defun fnn-command-bp-session-profile (journal-root node-id incoming outgoing resident outbound-ms)
+ (let* ((config (fnn-bp-config node-id +fnn-bp-lifetime+ +fnn-bp-crc-type+
+                              +fnn-bp-hop-limit+ +fnn-tcl-transfer-mru+))
+        (bp (fnn-bps-open journal-root config nil 0)))
+  (unwind-protect
+   (let* ((root (fnn-bps-root bp))
+          (frame (fnn-core 'fn-bpsp-write incoming outgoing resident outbound-ms))
+          (final (fnn-join root (fnn-core 'fn-bpsp-file-name)))
+          (stage (fnn-join root (format nil ".bp-session-profile-~d-~a" (sb-posix:getpid) (fnn-random-hex 12)))))
+    (unless frame (fnn-refuse "BP session profile is unrepresentable"))
+    (fnn-write-staged stage (fnn-octets frame))
+    (fnn-replace stage final)
+    (handler-case (fnn-fsync-dir root)
+     (fnn-os-error (e) (fnn-indeterminate "BP session profile directory barrier failed: ~a" e)))
+    (fnn-out "BP session profile installed inbound=~d outbound=~d outbound-ms=~d" incoming outgoing outbound-ms)
+    +fnn-exit-ok+)
+   (fnn-bps-release bp))))
 
 (defun fnn-dispatch-bp-node (command args)
+  (when (string= command "session-profile")
+    (unless (<= 4 (length args) 6)
+      (error 'fnn-usage-error :message "bp-node session-profile: JOURNAL NODE-ID INBOUND OUTBOUND [RESIDENT|- [OUTBOUND-MS]]"))
+    (return-from fnn-dispatch-bp-node
+      (fnn-command-bp-session-profile (first args) (second args)
+        (parse-integer (third args)) (parse-integer (fourth args))
+        (and (fifth args) (not (string= (fifth args) "-")) (parse-integer (fifth args)))
+        (if (sixth args) (parse-integer (sixth args)) 30000))))
   (when (string= command "resume")
     ;; JOURNAL NODE-ID ARRIVAL [WALL WALL-ERROR]
     (when (< (length args) 3)
@@ -1151,7 +1280,7 @@ uncertain, as it does everywhere else."
        (and (third args) (parse-integer (third args)))
        (if (fourth args) (parse-integer (fourth args)) 0))))
   (unless (member command '("serve" "dispatch") :test #'string=)
-    (error 'fnn-usage-error :message "bp-node: expected serve, dispatch, resume, checkpoint or profile"))
+    (error 'fnn-usage-error :message "bp-node: expected serve, dispatch, resume, checkpoint profile or session-profile"))
   (let ((control-config nil))
   (let ((where (position "--control-config" args :test #'string=)))
     (when where

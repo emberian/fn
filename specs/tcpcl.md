@@ -364,3 +364,75 @@ transiently beyond it.
 - C1's hypotheses have no separating witness (see §4) and could be
   dropped by proving the composition over the `mbe` no-op cases too.
 - Transfer pipelining, reception interruption, TLS.
+
+### Production retained input cursor (S068, PRF-1289)
+
+`fnn-tcl-input-turn` retains one private concrete `fn-octets$c` frame buffer,
+its ACL2 `fn-tcf` cursor, and the original unread socket vector. Header fields
+advance byte by byte; payload, node and extension spans copy at most4096
+bytes per framing action. A partial payload does not invoke the complete
+codec again. One exact complete frame reaches the existing codec; a completed
+segment extension prefix reaches it early to preserve extension-item refusal
+before waiting for the data length. Over-MRU lengths likewise reach the codec
+at the length field. These are RFC9174 framing observations, not new bounds.
+
+The initial reserve uses `fn-tcl-max-message` under the configured segment MRU;
+its allocator/collector latency remains unbounded. `fnn-tcl-input-materialize-turn`
+calls guard-verified `fn-tcim-turn` to construct the logical frame in4096-octet
+windows. Its unconditional boundary equates the actual window to the octet
+slice and existing suffix. Semantic decode/publication still run once in a turn. Universal
+cursor/codec refinement, guard coverage of that representation boundary and
+the public registered received-source operation producer remain outstanding.
+The existing BP resident projection prepays context storage, but it is not a
+complete allocator, decoder or GC tariff. SCN1110 requires matching fresh source-loaded native processes;
+raw actual-consumer fixtures establish only their recorded boundary scope.
+
+The passive BP node installs a private received-transfer continuation
+(PRF-1291), using its actual admitted incoming session row and generation.
+`fn-bpsrx-start` constructs the operation only while that row is live and its
+maintained transfer count fits the configured MRU. `fn-bpsrx-turn` resumes the
+exact reversed segment chain in64 cursor actions; the original root and final
+END ACK remain held. Before publishing, the same grant generation is checked
+again. One terminal publication calls the existing durable BP delivery callback;
+throwing/uncertain outcomes fence the connection and retain source/token debt.
+This operation is private to the session; it does not manufacture a public
+SAMEPRS provider or authorize another operation family. Its complete buffer
+allocation retains its unbounded time cost. Logical conversion now uses the
+same4096-octet window before the existing whole BP semantic decode. Each copy,
+conversion and publication turn checks the actual session generation. Source
+driver guards and receiver-boundary certification are tracked independently
+of full source-step/native composition.
+
+`fn-bpsched-work-credit` gives actual bounded source, input-buffer and output
+progress one slot sweep without an artificial sleep at each empty slot. Idle
+reads and local polling retain the existing wait. This preserves one slot and
+one local service per loop; it neither settles custody nor establishes a total
+latency bound. The actual raw16384-byte source fixture runs all eight services
+with zero artificial sleeps, and an idle node still waits.
+
+The now-live received-source driver has guard closure. Its receiver boundary
+`fn-tcl-source-recv-segment-boundary` requires only proper decoded data and
+relates the retained chain event, session and outputs to the original receiver
+under concatenation abstraction. Source-step/native materialization composition
+and the concrete framing cursor's universal codec refinement remain separate
+proof obligations. Matching certificates, not warm admissions, establish proof
+coordinates.
+
+The single writer disables a grant's continuation before operator teardown.
+`fn-bpsrx-abort-plan` permits retirement only for an authorized private source
+in `:copy`, `:convert` or `:publish` (before publication entry). Native teardown
+drops its root, buffer, held ACK and future-output aliases before the logical
+context receipt. `:publishing`, a foreign provider or changed generation retains
+source and Store authority. Physical close is attempted independently; an
+unobserved close keeps the grant held even after logical retirement. This is
+pre-publication cancellation, not rollback of durable or uncertain acceptance.
+
+`fn-tclsctl-turn` (PRF-1294) releases an independent KEEPALIVE while local source
+work holds its final transfer ACK and input. A representable clock and negotiated
+interval decide when; an already released output suppresses another queue entry.
+The ordinary retained encoder/write continuation performs the physical output.
+The control preserves inbound state and reception clock and cannot emit a transfer
+ACK; source work resumes afterwards. RFC9174 §5.1.1 permits independent KEEPALIVE;
+this local scheduling change does not certify peer reception or acceptance. Normal
+input/tick observations resume after the local operation. Concurrent input control
+servicing and whole semantic decode latency remain open.

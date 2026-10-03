@@ -134,13 +134,21 @@
    (fn-ncfg-show-entry "log_max_bytes" (list :nat (fn-native-config-ops-log-max-bytes c)))
    (fn-ncfg-show-entry "log_keep" (list :nat (fn-native-config-ops-log-keep c)))
    (fn-ncfg-show-entry "memory_max" (fn-ncfg-opt-string (fn-native-config-ops-memory-max c)))
-   (if (fn-native-config-cold-resources c)
-       (append (list (fn-ncfg-show-header "resources"))
-               (fn-ncfg-show-entry "cold_heap_octets" (list :nat (fn-ncfg-nth 0 (fn-native-config-cold-resources c))))
-               (fn-ncfg-show-entry "cold_workers" (list :nat (fn-ncfg-nth 1 (fn-native-config-cold-resources c))))
-               (fn-ncfg-show-entry "cold_descriptors" (list :nat (fn-ncfg-nth 2 (fn-native-config-cold-resources c))))
-               (fn-ncfg-show-entry "cold_read_ids" (list :nat (fn-ncfg-nth 3 (fn-native-config-cold-resources c))))
-               (fn-ncfg-show-entry "cold_file_ids" (list :nat (fn-ncfg-nth 4 (fn-native-config-cold-resources c))))) nil)))
+   (if (or (fn-native-config-cold-resources c)
+           (fn-native-config-output-resources c))
+       (append
+        (list (fn-ncfg-show-header "resources"))
+        (if (fn-native-config-cold-resources c)
+            (append
+             (fn-ncfg-show-entry "cold_heap_octets" (list :nat (fn-ncfg-nth 0 (fn-native-config-cold-resources c))))
+             (fn-ncfg-show-entry "cold_workers" (list :nat (fn-ncfg-nth 1 (fn-native-config-cold-resources c))))
+             (fn-ncfg-show-entry "cold_descriptors" (list :nat (fn-ncfg-nth 2 (fn-native-config-cold-resources c))))
+             (fn-ncfg-show-entry "cold_read_ids" (list :nat (fn-ncfg-nth 3 (fn-native-config-cold-resources c))))
+             (fn-ncfg-show-entry "cold_file_ids" (list :nat (fn-ncfg-nth 4 (fn-native-config-cold-resources c))))) nil)
+        (if (fn-native-config-output-resources c)
+            (append
+             (fn-ncfg-show-entry "output_heap_octets" (list :nat (fn-ncfg-nth 0 (fn-native-config-output-resources c))))
+             (fn-ncfg-show-entry "output_quantum_heap_octets" (list :nat (fn-ncfg-nth 1 (fn-native-config-output-resources c))))) nil)) nil)))
 
 (defun fn-ncfg-list-fix (x)
   (declare (xargs :guard t))
@@ -176,7 +184,8 @@
 (defun fn-ncfg-show-shapep (c)
   "C is the list `fn-native-config-make' builds from its own fields."
   (declare (xargs :guard t))
-  (equal c (update-nth 29 (fn-native-config-cold-resources c) (fn-native-config-make
+  (equal c (update-nth 30 (fn-native-config-output-resources c)
+            (update-nth 29 (fn-native-config-cold-resources c) (fn-native-config-make
             (fn-native-config-store c) (fn-native-config-listener-host c)
             (fn-native-config-listener-port c) (fn-native-config-tls-cert c)
             (fn-native-config-tls-key c) (fn-native-config-auth-requiredp c)
@@ -192,13 +201,14 @@
             (fn-native-config-ops-scope c) (fn-native-config-ops-keep-releases c)
             (fn-native-config-ops-log-max-bytes c) (fn-native-config-ops-log-keep c)
             (fn-native-config-ops-memory-max c)
-            (fn-native-config-listener-tls-port c)))))
+            (fn-native-config-listener-tls-port c))))))
 
 (defun fn-native-config-show-wfp (c)
   "Every field of C is one the grammar admits, with the relations normalization checks."
   (declare (xargs :guard t))
   (and (fn-ncfg-show-shapep c)
        (fn-native-config-cold-resources-wfp (fn-native-config-cold-resources c))
+       (fn-native-config-output-resources-wfp (fn-native-config-output-resources c))
        (fn-ncfg-show-textp (fn-native-config-store c) *fn-ncfg-max-path*)
        (fn-ncfg-show-textp (fn-native-config-listener-host c) *fn-ncfg-max-text*)
        (fn-native-config-listener-hostp (fn-native-config-listener-host c))
@@ -621,6 +631,12 @@
 (defun fn-ncfg-show-pairs (c)
   "The pairs `fn-ncfg-parse-lines' collects from the lines of C, newest first."
   (declare (xargs :guard t))
+  (fn-ncfg-opt-pair "resources" "output_quantum_heap_octets"
+    (if (fn-native-config-output-resources c)
+        (list :nat (fn-ncfg-nth 1 (fn-native-config-output-resources c))) nil)
+   (fn-ncfg-opt-pair "resources" "output_heap_octets"
+    (if (fn-native-config-output-resources c)
+        (list :nat (fn-ncfg-nth 0 (fn-native-config-output-resources c))) nil)
   (fn-ncfg-opt-pair "resources" "cold_file_ids"
     (if (fn-native-config-cold-resources c)
         (list :nat (fn-ncfg-nth 4 (fn-native-config-cold-resources c))) nil)
@@ -663,7 +679,7 @@
     (fn-ncfg-opt-pair "listener" "port" (list :nat (fn-native-config-listener-port c))
     (fn-ncfg-opt-pair "listener" "host" (list :string (fn-native-config-listener-host c))
     (fn-ncfg-opt-pair "store" "path" (list :string (fn-native-config-store c))
-    nil)))))))))))))))))))))))))))))))))
+    nil)))))))))))))))))))))))))))))))))))
 
 ; -----------------------------------------------------------------------------
 ; Normalization gives the fields back.
@@ -782,7 +798,8 @@
 
    (defthm fn-ncfg-show-shapep-make
      (implies (fn-ncfg-show-shapep c)
-              (equal (update-nth 29 (fn-native-config-cold-resources c) (fn-native-config-make
+              (equal (update-nth 30 (fn-native-config-output-resources c)
+                     (update-nth 29 (fn-native-config-cold-resources c) (fn-native-config-make
                       (fn-native-config-store c) (fn-native-config-listener-host c)
                       (fn-native-config-listener-port c) (fn-native-config-tls-cert c)
                       (fn-native-config-tls-key c) (fn-native-config-auth-requiredp c)
@@ -798,7 +815,7 @@
                       (fn-native-config-ops-scope c) (fn-native-config-ops-keep-releases c)
                       (fn-native-config-ops-log-max-bytes c) (fn-native-config-ops-log-keep c)
                       (fn-native-config-ops-memory-max c)
-                      (fn-native-config-listener-tls-port c)))
+                      (fn-native-config-listener-tls-port c))))
                      c)))))
 
 (local
@@ -830,13 +847,22 @@
    :hints (("Goal" :in-theory (enable fn-ncfg-show-natp)))))
 
 (local
+ (defthm fn-ncfg-output-resource-show-nats
+   (implies (and (fn-native-config-output-resources-wfp x) x)
+            (and (fn-ncfg-show-natp (fn-ncfg-nth 0 x) *fn-ncfg-max-u64*)
+                 (fn-ncfg-show-natp (fn-ncfg-nth 1 x) *fn-ncfg-max-u64*)))
+   :hints (("Goal" :in-theory (enable fn-ncfg-show-natp)))))
+
+(local
  (defthm fn-ncfg-show-lines-parse
    (implies (fn-native-config-show-wfp c)
             (equal (fn-ncfg-parse-lines (append (fn-native-config-show-lines c) (list nil))
                                         nil nil nil)
                    (fn-ncfg-show-pairs c)))
-   :hints (("Goal" :use ((:instance fn-ncfg-cold-resource-show-nats (x (fn-native-config-cold-resources c)))) :in-theory (e/d (fn-native-config-show-wfp)
-                                   (fn-native-config-cold-resources-wfp fn-native-config-cold-resources fn-ncfg-show-entry fn-ncfg-show-header
+   :hints (("Goal" :use ((:instance fn-ncfg-cold-resource-show-nats (x (fn-native-config-cold-resources c)))
+                         (:instance fn-ncfg-output-resource-show-nats (x (fn-native-config-output-resources c)))) :in-theory (e/d (fn-native-config-show-wfp)
+                                   (fn-native-config-cold-resources-wfp fn-native-config-cold-resources
+                                    fn-native-config-output-resources-wfp fn-native-config-output-resources fn-ncfg-show-entry fn-ncfg-show-header
                                     fn-ncfg-opt-string fn-ncfg-opt-nat fn-ncfg-opt-pair
                                     fn-ncfg-show-textp fn-ncfg-show-opt-textp
                                     fn-ncfg-show-natp fn-ncfg-show-opt-natp
@@ -882,6 +908,16 @@
                        (true-listp (cdddr x)) (true-listp (cddddr x))))))))
 
 (local
+ (encapsulate ()
+   (local (include-book "arithmetic-5/top" :dir :system))
+   (defthm fn-ncfg-output-resource-rebuild
+     (implies (and (fn-native-config-output-resources-wfp x) x)
+              (equal (list (fn-ncfg-nth 0 x) (fn-ncfg-nth 1 x)) x))
+     :hints (("Goal" :in-theory (enable fn-native-config-output-resources-wfp fn-ncfg-nth)
+              :expand ((len x) (len (cdr x)) (len (cddr x))
+                       (true-listp x) (true-listp (cdr x)) (true-listp (cddr x))))))))
+
+(local
  (defthm fn-ncfg-cold-value-nat
    (implies (and (posp n) (<= n *fn-ncfg-max-u64*))
             (equal (fn-ncfg-nat-value (list :nat n) :bad *fn-ncfg-max-u64*) n))
@@ -892,7 +928,8 @@
    (implies (fn-native-config-show-wfp c)
             (equal (fn-ncfg-normalize (fn-ncfg-show-pairs c)) c))
    :hints (("Goal" :use (fn-ncfg-show-shapep-make
-                  (:instance fn-ncfg-cold-resource-rebuild (x (fn-native-config-cold-resources c)))) :in-theory (e/d (fn-native-config-show-wfp)
+                  (:instance fn-ncfg-cold-resource-rebuild (x (fn-native-config-cold-resources c)))
+                  (:instance fn-ncfg-output-resource-rebuild (x (fn-native-config-output-resources c)))) :in-theory (e/d (fn-native-config-show-wfp)
                                    (fn-ncfg-opt-string fn-ncfg-opt-nat fn-ncfg-opt-pair
                                     fn-ncfg-string-value fn-ncfg-bool-value
                                     fn-ncfg-nat-value fn-ncfg-show-textp
@@ -928,8 +965,10 @@
                  (true-listp (fn-native-config-show-lines c))
                  (<= (len (fn-native-config-show-lines c)) 127)
                  (<= (len (fn-native-config-show-octets c)) *fn-ncfg-max-octets*)))
-   :hints (("Goal" :use ((:instance fn-ncfg-cold-resource-show-nats (x (fn-native-config-cold-resources c)))) :in-theory (e/d (fn-native-config-show-wfp)
-                                   (fn-native-config-cold-resources-wfp fn-native-config-cold-resources fn-ncfg-show-entry fn-ncfg-show-header
+   :hints (("Goal" :use ((:instance fn-ncfg-cold-resource-show-nats (x (fn-native-config-cold-resources c)))
+                         (:instance fn-ncfg-output-resource-show-nats (x (fn-native-config-output-resources c)))) :in-theory (e/d (fn-native-config-show-wfp)
+                                   (fn-native-config-cold-resources-wfp fn-native-config-cold-resources
+                                    fn-native-config-output-resources-wfp fn-native-config-output-resources fn-ncfg-show-entry fn-ncfg-show-header
                                     fn-ncfg-opt-string fn-ncfg-opt-nat
                                     fn-ncfg-show-textp fn-ncfg-show-opt-textp
                                     fn-ncfg-show-natp fn-ncfg-show-opt-natp
@@ -1182,7 +1221,8 @@
                                fn-ncfg-under-store fn-ncfg-parsed-valuep))))))
 
   (defthm fn-ncfg-show-wfp-of-make
-    (implies (and (fn-native-config-cold-resources-wfp cold-resources) (fn-ncfg-show-textp store *fn-ncfg-max-path*)
+    (implies (and (fn-native-config-cold-resources-wfp cold-resources)
+                  (fn-native-config-output-resources-wfp output-resources) (fn-ncfg-show-textp store *fn-ncfg-max-path*)
                   (fn-ncfg-show-textp host *fn-ncfg-max-text*)
                   (fn-native-config-listener-hostp host)
                   (fn-ncfg-show-natp port 65535)
@@ -1219,12 +1259,13 @@
                   (fn-ncfg-show-opt-natp tls-port 65535)
                   (fn-ncfg-tls-port-okp tls-port port tls-cert))
              (fn-native-config-show-wfp
-              (update-nth 29 cold-resources (fn-native-config-make store host port tls-cert tls-key auth-required
+              (update-nth 30 output-resources
+               (update-nth 29 cold-resources (fn-native-config-make store host port tls-cert tls-key auth-required
                                      auth-protected auth-path posting-enabled
                                      agent anchor log control acl2-path acl2-slots
                                      alert-command headroom refusal-rate cooldown
                                      mission unit scope keep-releases log-max-bytes
-                                     log-keep memory-max tls-port))))
+                                     log-keep memory-max tls-port)))))
     :hints (("Goal" :in-theory (e/d (fn-native-config-show-wfp fn-ncfg-show-shapep)
                                     (fn-ncfg-show-textp fn-ncfg-show-natp fn-ncfg-show-opt-textp
                                      fn-ncfg-show-opt-natp fn-native-config-listener-hostp
@@ -1237,7 +1278,8 @@
                    (not (equal (fn-ncfg-normalize pairs) :bad)))
               (fn-native-config-show-wfp (fn-ncfg-normalize pairs)))
      :hints (("Goal" :in-theory (e/d (fn-ncfg-normalize)
-                                     (fn-ncfg-cold-resources fn-native-config-cold-resources-wfp fn-native-config-show-wfp fn-native-config-make
+                                     (fn-ncfg-cold-resources fn-native-config-cold-resources-wfp
+                                      fn-ncfg-output-resources fn-native-config-output-resources-wfp fn-native-config-show-wfp fn-native-config-make
                                       fn-ncfg-string-value fn-ncfg-bool-value fn-ncfg-nat-value
                                       fn-ncfg-show-textp fn-ncfg-show-natp fn-ncfg-show-opt-textp
                                       fn-ncfg-show-opt-natp fn-ncfg-parsed-valuep

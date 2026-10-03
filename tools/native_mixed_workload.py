@@ -27,6 +27,7 @@ from datetime import datetime, timezone
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tests.native_harness import Client, EXIT, Node, article, runtime_sbcl
+from tests.test_native_owner import assert_funded_syncer_custody
 from tools.native_env import image_identity
 from tools.resilience.adapters.native_cuts import served_matches
 from tools.resilience.adapters.page_io import file_hash
@@ -39,7 +40,7 @@ PROFILE = ["--max-transactions", "8192", "--max-history-octets", "33554432",
            "--max-groups-per-article", "16", "--max-open-suffix", "8192"]
 
 
-def plan(seed=19, initial=24, writers=3, posts=8, reads=12):
+def plan(seed=19, initial=24, writers=3, posts=8, reads=12, maintenance=True, funded_trace=False):
     rng = random.Random(seed)
     prior = [f"seed-{i}" for i in range(initial)]
     return dict(schema=1, seed=seed, profile=PROFILE, initial=prior,
@@ -47,7 +48,9 @@ def plan(seed=19, initial=24, writers=3, posts=8, reads=12):
                          for i in range(writers)},
                 readers={kind: [rng.choice(prior) for _ in range(reads)]
                          for kind in ("warm", "cold", "slow")},
-                maintenance=["checkpoint", "reclaim"],
+                maintenance=["checkpoint", "reclaim"] if maintenance else [],
+                owner_env=({"FN_NATIVE_DISPATCH_COUNTERPART": "1",
+                            "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE": "1"} if funded_trace else {}),
                 barriers=["seed-durable", "actors-ready", "mixed-finished", "reopened"])
 
 
@@ -269,7 +272,7 @@ def run_case(image, image_source, work, recipe, mode, deadline=120):
         if initialized.returncode != EXIT.OK:
             raise AssertionError("profile init refused/faulted; see trace")
         boot_begun = time.monotonic()
-        node.start(timeout=600)
+        node.start(timeout=600, env=recipe.get("owner_env", {}))
         rec.event("environment", "owner-ready", pid=node.process.pid,
                   boot_s=time.monotonic() - boot_begun, opening="initial")
         resources = Resources(node)
@@ -312,20 +315,22 @@ def run_case(image, image_source, work, recipe, mode, deadline=120):
                           served_sha256=durable_hashes[tag])
         if len(set(accepted.values())) != len(accepted):
             raise AssertionError("local article numbers reused")
-        previous = len(re.findall(rb"CHECKPOINT auto sequence=", node.process.stderr.since(0)))
-        node.operator("store", "checkpoint", timeout=deadline, expect=EXIT.OK)
-        sequence = wait_checkpoint(node.process, previous, deadline)
-        rec.event("internal", "checkpoint-published", sequence=sequence)
-        # Preserve a named resource refusal while still checking all promises.
-        quiet = node.operator("store", "reclaim", timeout=deadline)
-        rec.event("client", "quiet-reclaim", returncode=quiet.returncode,
-                  outcome={EXIT.OK: "accepted", EXIT.REFUSED: "refused",
-                           EXIT.UNCERTAIN: "uncertain", EXIT.FAULT: "fault"}.get(quiet.returncode, "other"),
-                  stdout=quiet.stdout.decode("utf-8", "replace"), stderr=quiet.stderr.decode("utf-8", "replace"))
-        if quiet.returncode == EXIT.REFUSED:
-            coverage_gaps.append("quiet-reclaim-refused:" + quiet.stdout.decode("utf-8", "replace").strip())
-        elif quiet.returncode != EXIT.OK:
-            raise AssertionError(f"quiet reclaim uncertain/fault: {quiet.returncode}")
+        if "checkpoint" in recipe["maintenance"]:
+            previous = len(re.findall(rb"CHECKPOINT auto sequence=", node.process.stderr.since(0)))
+            node.operator("store", "checkpoint", timeout=deadline, expect=EXIT.OK)
+            sequence = wait_checkpoint(node.process, previous, deadline)
+            rec.event("internal", "checkpoint-published", sequence=sequence)
+        if "reclaim" in recipe["maintenance"]:
+            # Preserve a named resource refusal while still checking all promises.
+            quiet = node.operator("store", "reclaim", timeout=deadline)
+            rec.event("client", "quiet-reclaim", returncode=quiet.returncode,
+                      outcome={EXIT.OK: "accepted", EXIT.REFUSED: "refused",
+                               EXIT.UNCERTAIN: "uncertain", EXIT.FAULT: "fault"}.get(quiet.returncode, "other"),
+                      stdout=quiet.stdout.decode("utf-8", "replace"), stderr=quiet.stderr.decode("utf-8", "replace"))
+            if quiet.returncode == EXIT.REFUSED:
+                coverage_gaps.append("quiet-reclaim-refused:" + quiet.stdout.decode("utf-8", "replace").strip())
+            elif quiet.returncode != EXIT.OK:
+                raise AssertionError(f"quiet reclaim uncertain/fault: {quiet.returncode}")
         resources.phase = "shutdown"
         shutdown_begun = time.monotonic()
         node.stop(grace=deadline)
@@ -333,7 +338,7 @@ def run_case(image, image_source, work, recipe, mode, deadline=120):
         rec.event("environment", "shutdown-duration", duration_s=time.monotonic() - shutdown_begun)
         resources.phase = "recovery-and-verification"
         boot_begun = time.monotonic()
-        node.start(timeout=600)
+        node.start(timeout=600, env=recipe.get("owner_env", {}))
         rec.event("environment", "owner-ready", pid=node.process.pid,
                   boot_s=time.monotonic() - boot_begun, opening="recovery")
         with Client(node.port, timeout=deadline) as client:
@@ -365,6 +370,16 @@ def run_case(image, image_source, work, recipe, mode, deadline=120):
             (work / f"owner-{i}.stdout").write_bytes(process.stdout.since(0))
             if process.stderr.dropped or process.stdout.dropped:
                 cleanup_errors.append(f"owner-{i} diagnostic stream truncated")
+            if recipe.get("owner_env", {}) and process.returncode != EXIT.OK:
+                cleanup_errors.append(f"owner-{i} non-clean exit: {process.returncode}")
+            if i == 0 and recipe.get("owner_env", {}).get("FN_NATIVE_OWNER_TEST_PIPELINE_TRACE"):
+                try:
+                    # The original native fixture owns these exact receipt
+                    # assertions; this workload supplies actual retained bytes.
+                    assert_funded_syncer_custody(case, process.stderr.since(0))
+                    rec.event("internal", "funded-custody-checked", owner=i, result="match")
+                except AssertionError as error:
+                    cleanup_errors.append(f"owner-{i} funded custody: {error}")
     rec.journal.write(work / "journal.jsonl")
     (work / "plan.json").write_text(json.dumps(recipe, indent=2) + "\n")
     rows = [r for r in rec.journal.records if r.get("phase") == "mixed"]
@@ -373,7 +388,8 @@ def run_case(image, image_source, work, recipe, mode, deadline=120):
         events = [r for r in rows if r["actor"] == actor]
         latencies = [r["latency_s"] for r in events]
         finished = [r["elapsed_s"] for r in events]
-        actors[actor] = dict(completed=len(events), p50_ms=1000 * percentile(latencies, .5),
+        actors[actor] = dict(completed=len(events), first_completion_s=min(finished),
+                            last_completion_s=max(finished), p50_ms=1000 * percentile(latencies, .5),
                             p95_ms=1000 * percentile(latencies, .95), p99_ms=1000 * percentile(latencies, .99),
                             max_ms=1000 * max(latencies),
                             max_completion_gap_s=max((b - a for a, b in zip(finished, finished[1:])), default=0))
@@ -399,11 +415,12 @@ def run_case(image, image_source, work, recipe, mode, deadline=120):
         tool_source = revision.stdout.strip() if revision.returncode == 0 else None
     manifest = dict(image=str(image), image_identity=image_identity(Path(image), source=image_source),
                     host=platform.uname()._asdict(), python=sys.version, profile=recipe["profile"],
-                    seed=recipe["seed"], mode=mode, tool_revision=tool_source,
+                    seed=recipe["seed"], mode=mode, owner_env=recipe.get("owner_env", {}),
+                    maintenance=recipe["maintenance"], tool_revision=tool_source,
                     started_utc=started_utc, finished_utc=datetime.now(timezone.utc).isoformat(),
                     runtime=runtime[0] if runtime else None,
                     inputs={p: file_hash(ROOT / p) for p in (
-                        "tools/native_mixed_workload.py", "tests/native_harness.py",
+                        "tools/native_mixed_workload.py", "tests/native_harness.py", "tests/test_native_owner.py",
                         "tools/native_env.py", "tools/resilience/journal.py",
                         "tools/resilience/adapters/native_cuts.py", "tests/campaign/native_operator_campaign.py")})
     (work / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
@@ -420,6 +437,10 @@ def main():
     parser.add_argument("--mode", choices=("baseline", "slow", "paired"), default="paired")
     parser.add_argument("--seed", type=int, default=19)
     parser.add_argument("--initial", type=int, default=24)
+    parser.add_argument("--without-maintenance", action="store_true",
+                        help="isolate mixed posting/reading and reopen from checkpoint/reclaim")
+    parser.add_argument("--funded-trace", action="store_true",
+                        help="select actual developer counterpart/custody tracing on both owners")
     args = parser.parse_args()
     if args.check_run:
         recipe = json.loads((args.check_run / "plan.json").read_text())
@@ -432,7 +453,9 @@ def main():
         return 0
     if not args.image or not args.image_source or not args.out:
         parser.error("native execution requires --image, --image-source and --out")
-    recipe = json.loads(args.plan.read_text()) if args.plan else plan(args.seed, args.initial)
+    recipe = json.loads(args.plan.read_text()) if args.plan else plan(
+        args.seed, args.initial, maintenance=not args.without_maintenance,
+        funded_trace=args.funded_trace)
     if not recipe["initial"] or recipe["profile"] != PROFILE:
         parser.error("requires nonempty initial articles and the supported matched profile")
     results = {mode: run_case(Path(args.image).resolve(), args.image_source, args.out / mode, recipe, mode)

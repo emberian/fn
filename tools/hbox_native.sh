@@ -22,6 +22,12 @@
 # tests.test_native_owner or
 # tests.test_native_owner.SomeTests.
 #
+# Static preflights reuse successful receipts under BASE/.native-preflight-cache
+# only for identical source and Python inputs. To precheck a candidate on the
+# box, run tools/native_preflight.py --cache BASE/.native-preflight-cache
+# --gate world-check (also interfaces-check and host-books). --force rechecks.
+# Receipts do not replace proof, host loading, image or runtime checks.
+#
 # On the box, under BASE/NAME/native-LABEL/ (NAME is the lane: the
 # basename of this worktree, or --name), it
 #   1. installs the default profile's closure from /tank/fn/certcache and
@@ -488,11 +494,20 @@ BOX
 # them with the ACL2 ones): a stale umbrella or interface registry used to
 # surface only after the certify step, in acquire or the image build
 # (limits-live-5, decision-keystones-3; obstructions-5 item 34).
-step world-check python3 tools/extract/world.py --check
-step interfaces-check python3 tools/interface_emit.py --check
+static_gate() {
+    gate=\$1; shift
+    if [ -f tools/native_preflight.py ]; then
+        python3 tools/native_preflight.py --cache "$BASE/.native-preflight-cache" --gate "\$gate"
+    else
+        # The selected historical revision may predate the receipt tool.
+        python3 "\$@"
+    fi
+}
+step world-check static_gate world-check tools/extract/world.py --check
+step interfaces-check static_gate interfaces-check tools/interface_emit.py --check
 # A repository declaration is not evidence its book is in this image.
 # Reject a missing native entry before spending time on certification.
-step host-books python3 tools/host_check.py --books
+step host-books static_gate host-books tools/host_check.py --books
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
 step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
 step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
@@ -503,13 +518,17 @@ step validate python3 tools/proof_artifacts.py validate --profile default --acl2
 # world (tools/host_check.py's default).  limits-live-4 and online-reclaim-4
 # each lost an image build to a forward reference in host/owner-host.lisp.
 step host-forward python3 tools/host_check.py --forward
-step host-ld env FN_ACL2="${IMAGE_ACL2:-\$ACL2}" python3 tools/host_check.py
+# Check the requested image prefixes explicitly. host_check.py without a mode
+# also demands the DTN prefix, whose certificates a default-only run does not
+# acquire. The same translator underlies that aggregate check.
+step host-ld env FN_ACL2="${IMAGE_ACL2:-\$ACL2}" python3 tools/host_translate_check.py --build host/native/build.lisp --log \$L/host-translate-default.log
 BOX
         if [ $DTN -eq 1 ]; then
             # hbox-image-build.sh's dtn acquire/validate, before a DTN image.
             cat <<BOX
 step acquire-dtn python3 tools/proof_artifacts.py acquire --profile dtn --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
 step validate-dtn python3 tools/proof_artifacts.py validate --profile dtn --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
+step host-ld-dtn env FN_ACL2="${IMAGE_ACL2:-\$ACL2}" python3 tools/host_translate_check.py --build host/native/build-dtn.lisp --log \$L/host-translate-dtn.log
 BOX
         fi
         for image in $(echo "$IMAGES" | tr ',' ' '); do

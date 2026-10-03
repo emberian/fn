@@ -21,10 +21,9 @@
   (declare (xargs :stobjs (fn-arena fn-cat)
                   :guard (and (fn-sca-held-rowsp rows)
                               (fn-mpxt-keyp key)
-                              (equal (len key) *fn-mpxt-key-octets*)))
-           (ignorable fn-arena))
+                              (equal (len key) *fn-mpxt-key-octets*))))
   (let ((fn-cat (fn-cat-clear-keyed key fn-cat)))
-    (fn-sca-load-held-rows-from rows view-index fn-cat)))
+    (fn-sca-load-held-available-from rows view-index fn-arena fn-cat)))
 
 ; The host's open is the modelled open: the key changes what the executable
 ; table tags with, never the rows the catalog holds.

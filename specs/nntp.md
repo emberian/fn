@@ -496,17 +496,30 @@ the owner hands every read its committed view as the live pin
 statement of the same semantics; the retrieval arms read the catalog through
 the view in the next increment (PKT-585).
 
-What a selection costs at the view (PKT-870, PRF-363, 2026-09-28): the
-reader's view is the durable one, so while a batch is in flight a GROUP's
-view is one batch below the catalog's count. The group's count, least and
-greatest number at that view are the catalog's live summary at its count
-(kept by commit and withdrawal) corrected over the numbers of the rows
-appended since the view and of the rows withdrawn at or after it (the
-catalog lists withdrawals per version, `fn-cat-withdrawn-at-is-from`), never a
-pass over the group's numbers (`fn-scv-summary`, equal to the pass by
-`fn-scv-count-is-count-p`, `fn-scv-first-is-first-p`,
-`fn-scv-last-is-last-p` and `fn-scat-group-summary-is-pass`). The answer
-is RFC 3977 section 6.1.1's, unchanged.
+Available selection summaries use the catalog's classified live table,
+corrected over appended and withdrawn rows since the view (`fn-scv-summary`,
+PRF-363). Its count/first/last theorems describe `fn-scv-keptp`, including
+available metadata. Raw retained-identity compatibility readers have a separate
+`fn-scat-raw-keptp` and range pass (PRF-346). Raw summary/low enumerate that
+clamped range; raw next/previous probe through the number gap. Their archive
+refinements do not equate reclaimed identities with available memberships.
+Actual GROUP/LISTGROUP/LIST/NEXT/LAST adapters use the available metadata
+readers under PRF-1262; their source and image status are separate.
+
+Option 2′ (2026-10-03): GROUP, LISTGROUP, LIST ACTIVE/COUNTS and
+NEXT/LAST use available memberships: a retained row with decided overview
+facts whose tombstone bit is clear, and visible at the selected completed
+view. Reclaimed rows retain their raw Message-ID and local-number identity
+for retrieval diagnostics and duplicate suppression. The allocation watermark
+never decreases or reuses a number; it is separate from the greatest available
+number. Sparse survivors 1 and 34 report `211 2 1 34`. With no available
+members, the tuple is `(0 watermark+1 watermark)` (RFC 3977 6.1.1.2).
+Recovery/reclaim reconstruction completes missing legacy classification once
+from the captured arena; GROUP reads carried summaries without arena scans.
+A reclaim swap is a refresh boundary and re-pins every connection. Availability
+and raw identity share one coherent root; a count-based version alone cannot
+identify a rewritten root. Implementation/proof target PRF-1262 remains in
+progress; this decision is not a native execution or certification claim.
 
 NNT-007: the session also carries the archive-configuration verdict computed
 when the connection opens. No command recomputes a whole-archive recognizer:
@@ -1358,7 +1371,13 @@ the node identity's length (2 octets) and octets, the root
 `fn-ns-file-parse-of-render`). `store ROOT node-secret create [IDENTITY]` (and
 `init`) writes epoch 1 once and refuses by name when a secret exists; `store
 ROOT node-secret rotate [IDENTITY]` keeps the current file as
-`node-secret-E.key` and writes epoch E+1. A start reads the current file and
+`node-secret-E.key` and writes epoch E+1. New candidates are 0600 files in
+`staging/.init-node-secret-*`, within the existing recovery-swept namespace.
+Write, file-fence and close failures unlink the owned candidate and preserve
+the first write/fence error; a process-death candidate is collected on recovery.
+The current and retained epoch files remain the only authority. Historical
+`.node-secret-*.stage` files in `keys/` predate this namespace and are not
+collected by this change. A start reads the current file and
 every kept older epoch and hands ACL2 the ring (current first, epochs
 strictly decreasing, `fn-ns-ringp`); it refuses by name when a file is
 missing, accessible to group or others, or does not parse, and it never
@@ -1495,8 +1514,12 @@ implementation dependency, not a TLS correctness theorem.
 What is proved is the protocol state machine around the upgrade: the
 capability label appears only where RFC 4642 §2.1 allows, 382 is emitted only
 from the branch that also records that a handshake is owed, a second STARTTLS
-is 502, and the cached username and authenticated subject are discarded
-across the handshake. The clause-by-clause split is the RFC 4642 matrix in
+is 502. Successful authentication also makes STARTTLS unavailable (502)
+and removes its capability label (RFC 4642 sections 2.1 and 2.2.1 note [1]);
+the refused command preserves the complete authenticated session. A permitted
+handshake starts unauthenticated and discards the cached username.
+PRF-1266 adds the literal refusal and capability keystones; their certification
+and matching native image evidence remain pending. The clause-by-clause split is the RFC 4642 matrix in
 [the audit](nntp-audit.md).
 
 AUTHINFO USER/PASS is likewise a **cleartext mechanism on the wire**, and no
@@ -1568,6 +1591,13 @@ when such a pair is configured. The authentication profile receives TLS
 availability from the successfully loaded context; configured path text alone
 does not establish it. Credentials and the TLS context are startup-pinned;
 live reload/generation switching remains open.
+
+The native self-signed pair writer removes each exclusively created candidate
+if its write, file fence or close fails (S093). It closes the descriptor once
+and preserves the first write/fence error when close also fails. Cleanup is
+best effort and removes only a file this invocation created. The actual-source
+fault fixture covers these ordinary failures; process death and durable
+publication of the pair still require the matching image/recovery scenario.
 
 **Login binding 2026-09-25**: `principal bind LOGIN PRINCIPAL-HEX` and
 `principal unbind LOGIN` write or remove the login's `signing` field through
@@ -1897,7 +1927,7 @@ gives them.
 
 NNT-046: A login's access rule restricts its connections to the groups its read wildmat admits, as if the other groups were absent, and its posts to the groups its post wildmat admits
 
-SEC-007: Group access is this node's reader view: it hides groups from a login's NNTP connections, never from the operator, from peers the feed patterns name, or from the node's own consumer; confidentiality beyond that is the posters' own encryption
+SEC-007: Group access is this node's reader view: it hides groups from a login's NNTP connections, never from the operator, from authorized peer transit governed by feed patterns, or from the node's own local consumer; confidentiality beyond that is the posters' own encryption
 
 fn's reference is INN's readers.conf access groups (a `read` and a `post`
 wildmat per authenticated identity); RFC 3977 section 4.2 is the wildmat, and
@@ -1942,8 +1972,10 @@ this is a local policy with one stronger fn guarantee: no existence oracle.
   may neither read nor post to leave its served list, so a POST naming one
   answers the unknown-group 441 of a group the node does not carry. A group
   it may post to but not read is a drop box.
-- **Scope.** A peer connection has no rule: peering is unchanged, and what a
-  peer is fed is its feed patterns' decision. The consumer poll is the
+- **Scope (D48).** A transport peer role leaves reader access tied to the
+  authenticated login or anonymous rule, including moderation-queue hiding.
+  Transit offers and received bodies remain governed by the pinned peer record
+  and feed patterns, independent of the reader archive/index/posting view. The consumer poll is the
   owner's local socket (one owner principal, mode 0600) and reads
   everything, as the operator does. Not guarantees: the Newsgroups header
   of a cross-posted article names every group it was posted to (its own
@@ -2054,6 +2086,18 @@ Web and pull worker threads yield after empty progress too. This bounds
 cursor chaining per I/O event; it preserves the existing complete-residual
 contract and introduces no new bytes into a response.
 
+A cursor's cold miss returns its exact uncommitted plan and issued read from
+`fnn-owner-render-next-quantum` as a fifth value. The mux retains both and
+polls `fnn-owner-cold-poll` through its timer; it does not await the page on
+the shared I/O loop. A returned read resumes the retained plan without
+stepping incoming input. A dependency deadline or resource refusal terminates
+the incomplete body without adding a reply line or final dot. The first miss
+clock persists across repeated misses of this plan. Cancellation revokes
+publication; the existing actor return/settlement still owns physical cleanup.
+This scheduling repair does not prove cache-independent consumption: a retry
+may still lose a shared cached extent before resumption, and multi-entry
+quantum progress needs retained consumption custody or smaller semantic state.
+
 The cursor carries the node's Xref server name when the environment has
 one (`fn-nntp-xref-server`), and its rows are then the served rows (the Xref
 field, the overview column): `fn-nntp-over-range-ovw-expands-to-over-range-
@@ -2069,8 +2113,14 @@ The metadata NEWNEWS continuation is the first `def-cursor` consumer
 `fn-nntp-newnews-response-stream`; its initializer retains parsed wildcard
 patterns, configured groups and article tails by reference in fixed envelopes.
 `fn-nnw-stream-step` accepts separate control-call and emitted-byte budgets.
-A candidate retains `fn-nnw-select-start` state while `fn-nnw-select-one`
-inspects one configured group or membership entry per call. The first equal
+The actual plan calls generated `fn-nnw-stream-batch`, which takes at most its
+visit grant of empty control transitions in one quantum and stops at the first
+output, dependency or exhausted grant. It accumulates no intermediate output;
+its unconditional prefix/residual and byte/call bounds compose the step contracts.
+A candidate retains `fn-nnm-start` state while `fn-nnm-one`
+inspects one configured group/member entry or takes one wildcard matcher
+microstep per call. The matcher retains its decoder offset, DP row and
+continuation frames; a scheduling call cannot drain the whole match. The first equal
 membership decides that group's number, including an invalid first duplicate;
 this preserves the original filtered-group candidate semantics. A sparse miss
 continues through the retained group/member position, and matching installs a
@@ -2087,7 +2137,7 @@ checks are tracked separately from matching certificates and native images.
 The disabled logical residual and remaining models may walk captured lists;
 the execution initializer and selector do not build a selected-group list or
 copy membership/archive data. This still does not establish a composed heap
-funding bound: group-name comparisons, wildcard DP work/rows, metadata checks,
+funding bound: group-name comparisons, matcher retained graph/native byte tariff, metadata checks,
 outer copying, allocator/collector margin and physical output custody need
 matching tariffs and a producer before materialization. The decided completed
 discovery snapshot, restricted NEWNEWS and cold HDR/XPAT remain open; the
@@ -2538,3 +2588,123 @@ and common response factory; physical owns registered worker acquisition
 and actual last-borrow. Their lower source/guard components and older
 response-pin model are separate scopes. New constructor/holder/frame/GC,
 installed allowance and changed native image qualification remain open.
+
+
+The selective availability adapter is a separate boundary (PRF-1287, SCN-1117).
+Its generated forms use available metadata readers for GROUP, LISTGROUP,
+NEXT/LAST and LIST ACTIVE/COUNTS. The executable entry retains raw archive/index
+formals; it does not build another complete archive or index under the owner.
+Raw ARTICLE/HEAD/BODY/STAT identity diagnostics, HDR/XPAT ranges, OVER and NEWNEWS
+chronology remain retained-history semantics. Successful metadata NEXT/LAST
+formats its STAT line from the held identifier without reading payload bytes.
+The disabled logical reference uses the available projection only for those
+selected commands. Its intended composition requires decided facts that match
+the same captured arena/root; existing raw-pinned equality does not establish it.
+Command-helper source fixtures pass through actual arena intern and generic
+catalog commit. Production owner routing, selective boundary proof and captured
+completeness establishment remain open. LIST ACTIVE/COUNTS still build a complete
+NNTP reply; a bounded group/row cursor is continuing work, and removing a Web
+copy does not bound this producer.
+### Shared compressed article scalar seam (PRF-1288, SCN-1118)
+
+The actual compressed arena scalar arm calls `fn-durable-realize-lz-octet`,
+whose logical byte is the existing A-DURABLE-LZ decoded value at the same
+index. Normal native mode preserves the original whole decoder. A selected
+window mode must borrow the exact authenticated returned decoded window or
+return its named unavailable/cold/refusal outcome; it never silently falls
+back to materializing the full decoded payload. This adds no decode or
+integrity assumption. Same-pool constructor/slot/buffers admission, physical
+worker return and last borrow, and the owner article quantum adapter remain
+open. The optional complete output tariff stays unsupported; this source
+seam is not a physical funding or qualified-image claim.
+
+
+The actual owner read now calls `fn-av-mca-read-span`, generated by
+`available_read_emit.py` from the existing command, authentication, scanner,
+reader-view, disk admission, article-slot and connection-credit recipes.
+This source route is PROGRAM mode while its selective reference, guards,
+carried catalog completeness and credit correspondence are proved; the existing
+raw logical route and its theorems retain their original subjects. Restricted
+reader commands receive their actual authorized cache entry (or the existing
+fallback authorization projection), including peer reader commands. Transfer
+and explicit transit arms keep their original priority. This connects the
+source endpoint; it does not close PRF-1287 or make LIST production bounded.
+## Retained shared article producer (PRF-1286, source in progress)
+
+ARTICLE, HEAD and BODY share immutable selected-payload preflight and READY
+rendering state. Preflight validates complete CRLF framing and the first
+header/body separator in bounded steps before the selected-session commit;
+malformed framing retains the original503 behavior. READY emits initial
+status, the configured synthetic Xref for ARTICLE/HEAD, the selected section
+with dot-stuffing, and exactly one terminator. READY contains no authority or
+selection effect and can be replayed by Web's count and emission traversals.
+The first parsed event bounds consumption so following pipelined commands
+wait for completion. Physical compressed/plain window custody, metadata
+setup bounds and the complete owner/reference refinement remain open; the
+source does not establish a funded operation or a qualified image.
+Recovery and reclaim may complete legacy availability facts from the same captured
+arena. This changes derived facts, while preserving the article identity, payload
+handle, group memberships, stamp, assigned numbers, sequence and withdrawal
+history used by the catalog/view join. The recovery proof uses these preserved
+projections; it does not assert that the complete classified catalog equals the
+older raw loader result. The actual legacy-row fixture exercises both loaders,
+checks the differing facts and preserved metadata, and reads back the exact wire.
+
+
+### Selective available owner route (PRF-1287, SCN-1117)
+
+The source owner reader calls the generated available command route through
+`fn-av-mca-read-span` (an ARTICLE preflight wrapper may delegate to it).
+GROUP, LISTGROUP, NEXT, LAST and LIST ACTIVE/COUNTS use availability metadata
+from the actual captured catalog; raw retrieval and NEWNEWS retain their
+original archive subject. The adapter takes the raw pin/index and constructs
+no second available index. Complete command guards and source-loaded
+command/event/owner-credit fixtures pass; the selective owner refinement,
+carried snapshot completeness/stability, PROGRAM route guards and physical
+cost coverage remain owed. LIST still constructs its full upstream reply.
+
+### Composite local withdrawal outcomes (S083)
+
+Local moderation withdrawal publishes an authorization row and submits the
+cause article as separate owner actions. The configuration row authorizes that
+cause to withdraw the target; the row alone does not withdraw it. Once
+publication succeeds (or the plan finds that authorization already present),
+a cause refusal cannot imply that the entire request had no effect.
+`fn-mwo-after-authorization` composes the second outcome: accepted/duplicate
+retain success; a fault remains fault; incomplete causes use the existing
+uncertain status with an explicit `withdrawal-authorized-cause-*` reason.
+For example, `UNCERTAIN withdrawal-authorized-cause-refused` names the persisted
+authorization and the refused cause without claiming the target was withdrawn.
+It requests reconciliation, not rollback or blind retry. No new wire status is
+introduced.
+
+These actions are not atomic. Current-authority and configuration-generation
+changes between planning and execution remain a separate review obligation;
+the initial plan is not a lease. SCN-1124 executes the actual native dispatcher
+with recorded publication/submission adapters and checks success, refusal,
+uncertain, fault, malformed results and refusal before publication. Full native
+disk/transport composition remains a separate scenario.
+
+The pending bounded LIST producer uses `fn-gsc-one` over a fixed captured
+group high/next/version and scalar count/low/last. One accepted step probes
+one numbered availability entry; exhaustion yields while retaining these
+scalars. The disabled remaining-range model has unconditional one-step
+residual preservation and equals the summary at settlement. This component
+does not establish the full LIST producer, snapshot frames or heap tariff.
+
+
+Retained article selection now yields while walking captured numeric/current
+archive rows and per-row memberships; first matching membership determines the
+number as in the original reader. A missing numeric selection searches captured
+withdrawn rows with the same bounded cursor before choosing the existing423
+reply. Xref filtering also retains raw memberships and validates/compares one
+character per transition. Message-ID setup and initial authorization/server
+configuration setup still need their complete bounded implementation/refinement.
+
+The source-only `list-metadata-cursor` component retains group/next/config
+references and advances total wildmat matching, watermark lookup, numbered
+summary probes and status entries in separate controller calls. Its guarded
+step bounds emitted bytes and controller calls; one row still constructs its
+complete group/decimal fields. The available dispatcher and render plan have
+not yet consumed this tag, and full response residual/finite progress, captured
+column frames, composed witnesses and physical funding remain open.

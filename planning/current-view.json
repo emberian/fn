@@ -76,21 +76,27 @@
       "host_sha256": {
         "host/bp-native-app-host.lisp": "ec5f8a19934fff5da14979340cc80e685ff8b50e1da9fb2414035922a130ce4e",
         "host/checkpoint-host.lisp": "fe7c5bd15cde4bc9a5e60124b3bc520d90c4b6813c78f447acc865072e1af7bc",
+        "host/native-operator-host.lisp": "07dbb215049cdeea012d374d0bfbfac4183f0cccfe65f5cc3f4d04fdeb14e688",
         "host/native/bp-service.lisp": "5c2c0e2beeb980cd7d619ebd6229b5cd28d53c56bd9120544f2e41a01682b081",
+        "host/native/io.lisp": "4cc56cda4c453d536d01e8b38dacfc89cb6c25256506433998d5587a1a209e26",
+        "host/native/operator.lisp": "c3dc90c05ecc459f0b9caa9c8ee20bb0e900024ced4fcb2696aaecbad8f1f9b0",
+        "host/native/tcpcl.lisp": "8e55af6b4546b79347d38c9bc3ab4d772e802d38b7212c8af13c3fd0d05b9fa6",
         "host/owner-host.lisp": "82ff9785924672e57a1aa3009cde25a0789f2ef58ee1fe0cd10ff15521194bd0"
       },
       "book_sha256": {
         "books/bp-node-forward-retry.lisp": "d8ac98b789d4c5e7d6d7cb4ac6786268489009a71224aaf584c44e5255a885c6",
         "books/bp-node-job-offer.lisp": "e5aa4ab48e12702780e1010c270436d874fc87c371cb052b31d3d4b8f09ee644",
         "books/bp-transit-join.lisp": "69130d3184083186e9301bd1ebcb2a4e9a3b2b9d70de39a0bc815dbf2bae00bd",
-        "books/byte-store-k0-recovery.lisp": "890ba98e7b22b2bb03764400fcb131d743392288757d2abacb65e01c6772ac53",
         "books/config-owner-carried.lisp": "16d19afdfb23e9d0f8d980c7994c437a91910fca369575fdba8dc66547b60900",
         "books/config-owner-publish.lisp": "935975930d3c12512667f151386006bb8fb0c99fa200dde35b3913a483ef76ef",
+        "books/connection-budget.lisp": "9b3c5b87488ddbaf9ff869c8d4ce87f4f679a03eff186d12af05453957e6d7d3",
         "books/nntp-auth-invariants.lisp": "be238aac84aa00ff0e5d4b9eb2f28b4de11e5ffc1aedb92d285a671694d1608b",
+        "books/nntp-auth.lisp": "7b7ee7503fba9d8d4abe1a1c1b9994f2e2c2228732dfafb04aee8c5862953d8a",
         "books/nntp-pinned-msgid.lisp": "623d9b4f7d99fa9a565e08cb79a7121b0cd27b015368198a6ed93c0ca9643392",
         "books/owner-feed-subject.lisp": "deb165aa130ef597c8c5653f94aa10b80e82d8094e30f4bc8d3bf40144696006",
         "books/owner-invariants-served.lisp": "310186d671106c2a0f75d26105143451d6877cac27c642ddc3887dc5d0f2f73e",
         "books/owner-list-counts-read.lisp": "c698a1367060237e75730a8b73d901e8877c18f8b2be18dd898b2a4b4097db86",
+        "books/owner-log-ocl.lisp": "98e3dd0676e9875b0843ef6bcb9be52b6a11e369a95b29274c3fcdc6ebcda8f2",
         "books/owner-parse-carried.lisp": "70db3b7431c141dd0bc084cd4255a052904d2a1aa66f10909d3e2f63b66a2957",
         "books/owner-prepare-outcome.lisp": "05423388d7e9866b28500f076362efc5c9ba81e761af811f36e8149d845375d8",
         "books/owner-served-carried.lisp": "557dff89f3965cbc76d8e80ff1ba56a380ce8019d0b959facec0fa902a0bbf33",
@@ -101,7 +107,8 @@
         "books/poster-bytes-invariants.lisp": "4fc4e0c087aef5e7d8b3cbf234b06a6850cd07b260539d16666bf52a7572a067",
         "books/served-carried.lisp": "40c402cc92a6dd89e72b2d390022c5b6b7103857f749652086da1aded7f7675e",
         "books/store-intern.lisp": "9bafe3384f6e920a2c12b13c246cdc1a5036f34e5cd04587ea649e9342682777",
-        "books/store-log-reclaim.lisp": "a9fa795fbf725fc33ced121ac72c0ceabfbd7518d08a502d7f16274530ff99ce"
+        "books/store-log-reclaim.lisp": "a9fa795fbf725fc33ced121ac72c0ceabfbd7518d08a502d7f16274530ff99ce",
+        "books/store-log-route-programs.lisp": "9b78cc50c6ea978444d2c7cbf0265589f0bc530a19d3694bed2d988904b7b536"
       }
     }
   },
@@ -161,7 +168,7 @@
       "name": "protected channel",
       "contract": "A gated command before login is answered 480 and changes nothing, AUTHINFO on a clear connection under `protected_only` is 483, and POST needs the principal's posting flag.",
       "host": {
-        "function": "fn-mca-read-span",
+        "function": "fn-asto-mca-read-span",
         "file": "host/owner-host.lisp"
       },
       "bridge": "fn-scar-auth-step-pinned-is-auth-step-pinned",
@@ -173,7 +180,8 @@
       "profile": "default",
       "latest": "matrix AUTH-GATED-A/B 480 before login, AUTH-LOGIN 281, AUTH-WRONG 481, every TLS/AUTHINFO transit row; auth 4/4, starttls 2/2, protected_peering 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
       "obstruction": "the 483 clause is not observed in the matrix (its nodes run `[auth] required` over clear loopback, not `protected_only`).",
-      "next": "a matrix row against a `protected_only` node answering AUTHINFO on the clear connection 483."
+      "next": "a matrix row against a `protected_only` node answering AUTHINFO on the clear connection 483.",
+      "pending_bridge": "Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved."
     },
     {
       "id": "P2",
@@ -199,7 +207,7 @@
       "name": "reading resumes",
       "contract": "A reader's pinned view answers the same across other connections' posts, and a local number naming an article is never reassigned.",
       "host": {
-        "function": "fn-mca-read-span",
+        "function": "fn-asto-mca-read-span",
         "file": "host/owner-host.lisp"
       },
       "bridge": "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
@@ -211,7 +219,8 @@
       "profile": "default",
       "latest": "reader_index 4/4, served_differential 7/7, the matrix reader rows with 0 disagreed ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
       "obstruction": "the NEWNEWS and stamp migration cases skip for want of a frozen pre-T2 image.",
-      "next": "the web reader's resume path qualified against the deployed image (review, human and agent use)."
+      "next": "the web reader's resume path qualified against the deployed image (review, human and agent use).",
+      "pending_bridge": "Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved."
     },
     {
       "id": "P4",
@@ -230,7 +239,7 @@
       },
       "profile": "default",
       "latest": "a resend at a later second is answered duplicate where the image before D25 answered conflict ([d25-dup-conflict](evidence/d25-dup-conflict-2026-09-24.md)).",
-      "obstruction": "no two-node matrix or operator campaign on an image with D25; a poster Date equal to fn's rendering of the injection second is outside the invariance theorems; D25's provenance question (review \u00a7D25) is open.",
+      "obstruction": "no two-node matrix or operator campaign on an image with D25; a poster Date equal to fn's rendering of the injection second is outside the invariance theorems; D25's provenance question (review §D25) is open.",
       "next": "the shared qualification of an image carrying D25, with the transit duplicate rows and K1's died-present resubmissions answered duplicate."
     },
     {
@@ -295,7 +304,7 @@
       "name": "signature verdict visible",
       "contract": "A reader's `HDR :fn-verified` reports the verdict the completion recorded for the article, and a carried article reads `carried`, never `verified`.",
       "host": {
-        "function": "fn-mca-read-span",
+        "function": "fn-asto-mca-read-span",
         "file": "host/owner-host.lisp"
       },
       "bridge": "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
@@ -307,7 +316,8 @@
       "profile": "default",
       "latest": "hybrid_author 6/6 including a signed POST over NNTP getting the transit classification; consumer_e2 signed poll 1/1 with a dated source ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
       "obstruction": "the published completion record is not proved to be the event ACL2 built; library trust is not a named assumption; `fn_verify.py` is not on the image; consumer_e2 fails with an undated source.",
-      "next": "a signed article posted to the deployed node read back `verified` by `tools/fn_verify.py` from another machine."
+      "next": "a signed article posted to the deployed node read back `verified` by `tools/fn_verify.py` from another machine.",
+      "pending_bridge": "Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved."
     },
     {
       "id": "P9",
@@ -409,7 +419,7 @@
       "name": "the human client",
       "contract": "LIST COUNTS answers each group's high, low and count from the connection's pinned view, and a numbered Message-ID lookup retrieves the same article, which the web reader renders.",
       "host": {
-        "function": "fn-mca-read-span",
+        "function": "fn-asto-mca-read-span",
         "file": "host/owner-host.lisp"
       },
       "bridge": "fn-own-read-is-served-step-on-pinned-prefix",
@@ -422,14 +432,15 @@
       "profile": "default",
       "latest": "reader_index 5/5 with LIST COUNTS and the numbered lookup; `test_fn_web_native` 4/4 ([m6-list-counts](evidence/m6-list-counts-2026-09-24.md)).",
       "obstruction": "never run against the deployed node or with real credentials; no `verified` badge observed on an image (the client does not sign).",
-      "next": "ember, yue and tulip reading and posting through the node's own web face (WEB-005; tools/fn_web.py was retired 2026-09-28) against the deployed node on the current image."
+      "next": "ember, yue and tulip reading and posting through the node's own web face (WEB-005; tools/fn_web.py was retired 2026-09-28) against the deployed node on the current image.",
+      "pending_bridge": "Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved."
     },
     {
       "id": "T17",
       "name": "the Message-ID index on the served path",
       "contract": "A reader's Message-ID retrieval is answered from the connection's pinned trie and equals the archive scan, with no whole-store check per command.",
       "host": {
-        "function": "fn-mca-read-span",
+        "function": "fn-asto-mca-read-span",
         "file": "host/owner-host.lisp"
       },
       "bridge": "fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix",
@@ -441,7 +452,145 @@
       "profile": "default",
       "latest": "reader_index 4/4, served_differential 7/7, the peering duplicate rows ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
       "obstruction": "the per-event `fn-peer-sessionp` evaluation, not the history scan, is the served cost at the N the CLI reaches (ember's decision); the fast path's reuse after refresh is not a theorem.",
-      "next": "the measured cost sentence for the indexed read and the IHAVE/CHECK path at the scale profile, with its exponent and distance from the bound."
+      "next": "the measured cost sentence for the indexed read and the IHAVE/CHECK path at the scale profile, with its exponent and distance from the bound.",
+      "pending_bridge": "Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved."
+    },
+    {
+      "id": "operator-retire-observation",
+      "name": "bounded retire operator observation",
+      "contract": "The retire command stops waiting at its ACL2 observation deadline with uncertainty while leaving the live owner and custody untouched; report inspection requires a stopped observation.",
+      "host": {
+        "function": "fn-nret-observation-step",
+        "file": "host/native/operator.lisp"
+      },
+      "keystone": "fn-nret-observation-expiry-is-uncertain",
+      "tested": null,
+      "profile": "default",
+      "latest": "Actual-source SBCL fixture passes exact60s/70s live/held expiry, offline refusal, fresh/stale reports and malformed observation fault; prior actual source times out (planning/evidence/operator-retire-observation-2026-10-03-v2.json). Warm hbox admission is not certification.",
+      "obstruction": "Normal native-retire/teeth certification and matching saved-image consumer validation are pending; no physical final-fence bound is claimed.",
+      "next": "Integration batch certifies exact native-retire plus native-retire-observation-tests roots and consumes the matching saved-image fixture at convergence."
+    },
+    {
+      "id": "operator-init-resume",
+      "name": "resumable developer init compatibility",
+      "contract": "A resumed init keeps the sealed profile and generation-one group changes; mismatched requested intent is refused before resume publication, while invalid initial evidence faults.",
+      "host": {
+        "function": "fn-nir-resume-decision",
+        "file": "host/native/io.lisp"
+      },
+      "keystone": "fn-nir-resume-admits-identical-initial-contract-across-stamps",
+      "tested": null,
+      "profile": "development",
+      "latest": "Actual source fixture passes nine compatibility/fault/fresh/interrupted branches; prior initializer fails the expected refusal assertion. Exact-codec teeth and final keystone source-admitted over14cached hbox dependencies (planning/evidence/operator-init-resume-2026-10-03-v2.json).",
+      "obstruction": "Normal native-init-resume/teeth certification and matching developer-image execution remain pending. Existing bounded history load scope remains unchanged; physical init program refinement is separate.",
+      "next": "Integration batch certifies books/native-init-resume and tests/acl2/native-init-resume-tests, then runs tests.test_native_init_resume.NativeInitResumeTests in the matching developer image."
+    },
+    {
+      "id": "PRF-1266",
+      "name": "STARTTLS after authentication",
+      "contract": "An authenticated connection advertises no STARTTLS and a valid clear-channel STARTTLS answers 502 with the full authenticated session unchanged.",
+      "host": {
+        "function": "fn-asto-mca-read-span",
+        "file": "host/owner-host.lisp"
+      },
+      "keystone": "fn-auth-starttls-after-authentication-is-refused-without-reset",
+      "profile": "default",
+      "latest": "Auth source and role books plus auth/SASL teeth certified at exact source digests in certify-20261003T102734Z-1462490 and certify-20261003T104044Z-1503690; actual saved-image selected-session scenario added.",
+      "obstruction": "Inherited cached dependency manifests need assembled-tree evidence reconciliation; no immutable saved-image result or deployment is claimed.",
+      "next": "Integrate source and reconcile exact existing manifests, then run the selected actual native protocol/fault packet on the convergence image.",
+      "tested": null,
+      "pending_bridge": "Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved."
+    },
+    {
+      "id": "PRF-1269",
+      "name": "peer reader access",
+      "contract": "A peer-role reader command uses its login or anonymous pinned READ/POST rule; a projected nonempty rule excludes unreadable groups and article memberships, and queue privacy covers source peers.",
+      "host": {
+        "function": "fn-asto-mca-read-span",
+        "file": "host/owner-host.lisp"
+      },
+      "keystone": "fn-auth-view-excludes-unreadable-groups-on-any-connection",
+      "profile": "default",
+      "latest": "Auth and source-peer queue tests certified in certify-20261003T102734Z-1462490; actual USER/PASS principal promotion and reader/transit composition certified in certify-20261003T103156Z-1476136; saved-image source-peer scenario added.",
+      "obstruction": "Inherited cached dependency manifests need assembled-tree evidence reconciliation; no immutable saved-image result or deployment is claimed.",
+      "next": "Integrate source and reconcile exact existing manifests, then run the selected actual native protocol/fault packet on the convergence image.",
+      "tested": null,
+      "pending_bridge": "Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved."
+    },
+    {
+      "id": "PRF-1268",
+      "name": "published handshake charges",
+      "contract": "Durable publication and settled handshake exits charge max(published TLS limit,still-owned admissions); refused proposals do not change the held charge.",
+      "host": {
+        "function": "fn-owner-connection-held-refresh",
+        "file": "host/owner-host.lisp"
+      },
+      "keystone": "fn-cbud-live-held-charges-current-and-active",
+      "profile": "default",
+      "latest": "Connection-budget and exact teeth certified in certify-20261003T104044Z-1503690; actual host adapter outcome-injection fixture PASS, archived sol-access-native-faults-2026-10-03.",
+      "obstruction": "Inherited cached dependency manifests need assembled-tree evidence reconciliation; no immutable saved-image result or deployment is claimed.",
+      "next": "Integrate source and reconcile exact existing manifests, then run the selected actual native protocol/fault packet on the convergence image.",
+      "tested": null
+    },
+    {
+      "id": "operator-journal-stream",
+      "name": "incremental decision journal replay",
+      "contract": "The journal command reads a captured regular-file prefix in ACL2 windows of at most64KiB and folds complete entries without retaining them; arbitrary input yields exactly the reference report and exit verdict, independent of chunk boundaries.",
+      "host": {
+        "function": "fn-otjs-report",
+        "file": "host/native/io.lisp"
+      },
+      "keystone": "fn-otjs-report-refines-journal-report",
+      "tested": null,
+      "profile": "development",
+      "latest": "General arbitrary-input report/exit equivalence and exact literal teeth normal-certified at c91ac446b under certify-20261003T112822Z-1637229. Existing actual-source2.24MB/35window/partial/append/error-close packet remains unchanged; fifth physical mixed verdict/count test prepared.",
+      "obstruction": "Matching developer-image consumer tests remain pending. Initial natural widths stay exact; field count is not a constant heap bound.",
+      "next": "Integration consumes tests.test_native_journal_stream.NativeJournalStreamTests on its immutable convergence image and reuses the exact logical manifest."
+    },
+    {
+      "id": "PRF-1021",
+      "name": "operator configuration preserves resource policy",
+      "contract": "The operator loads relative paths resolved under its config directory while retaining both explicit cold/output resource policies; canonical show reloads the complete normalized configuration.",
+      "host": {
+        "function": "fn-native-operator-host-run-at",
+        "file": "host/native/operator.lisp"
+      },
+      "keystone": "fn-ncpath-config-octets-load-the-resolved-configuration",
+      "tested": null,
+      "profile": "default",
+      "latest": "Canonical rendering/source171+325 and resolverbb089: show+tests normal115041Z-1706527 PASS; paths/show+paths tests normal120245Z-1732642 PASS at75ad7a81a. Complete output-only/combined resource fixtures pass; exact manifests archived and indexed.",
+      "obstruction": "No matching saved-image run of the physical operator show/key/reload selector. Full operator includer convergence remains separate; two cached prerequisite manifest coordinates need global reconciliation. Resource rendering does not activate the pending allocator consumer.",
+      "next": "Run tests.test_native_operator_cli.NativeOperatorCliTests.test_show_preserves_output_policy_after_relative_path_resolution on the coherent convergence image."
+    },
+    {
+      "id": "bp-source-window",
+      "name": "bounded private TCPCL logical window",
+      "contract": "Actual TCPCL frame and incoming BP source conversion retain exact concrete bytes and build the logical codec list in4096-octet windows, preserving the existing suffix.",
+      "host": {
+        "function": "fn-tcim-turn",
+        "file": "host/native/tcpcl.lisp"
+      },
+      "keystone": "fn-tcim-turn-boundary",
+      "tested": null,
+      "profile": "dtn",
+      "latest": "Actual retained source/control/framing/root-cleanup fixtures PASS on be75fde27; archive planning/evidence/bp-source-continuations/be75-native-components.json. Narrow window guards and unconditional slice boundary passed; final manifest indexing pending.",
+      "obstruction": "Whole semantic decoder/CRC/publication and allocator/GC latency remain unbounded; universal framing-to-codec and full native source/publication composition remain unproved.",
+      "next": "Fresh initialized matching-source SCN1110 canonical second request while first keepalive peer remains live, then same-source immutable signed R/Q delivery/reopen."
+    },
+    {
+      "id": "bp-source-control",
+      "name": "KEEPALIVE while exact received-source ACK remains held",
+      "contract": "The retained TCPCL source controller emits only independent KEEPALIVE output while local work owns received bytes and the final ACK; it preserves reception state and clock.",
+      "host": {
+        "function": "fn-tclsctl-turn",
+        "file": "host/native/tcpcl.lisp"
+      },
+      "keystone": "fn-tclsctl-never-releases-ack",
+      "tested": null,
+      "profile": "dtn",
+      "latest": "Actual native retained turn plus actual ACL2 control function PASS: physical wait retains output/no duplicate, KEEPALIVE alone writes, root/END ACK remain held and bounded source resumes. certify-20261003T134436Z-1978092 PASSED3/0.",
+      "obstruction": "Concurrent incoming control servicing and total source/decoder/GC latency remain open; this is neither reception evidence nor transfer acceptance.",
+      "next": "Same fresh-source canonical multi-peer native execution and slow-source control fixture."
     }
   ],
   "other_deployments": [

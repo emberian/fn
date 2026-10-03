@@ -10,9 +10,10 @@
  "line": "961",
  "locus": "operator-verbs",
  "notes": [
-  "10-02 23:07 fixed; red->green source test; no live OpenSSL failure run"
+  "10-02 23:07 fixed; red->green source test; no live OpenSSL failure run",
+  "Historical source correction retained; actual raw generator injected EVP_PKEY_keygen_init failure over real allocated OpenSSL context. Original diagnostic preserved as fnn-tls-unavailable and context freed exactly once. Raw test PASS, immutable image qualification pending."
  ],
- "owner": "sweep-peer",
+ "owner": "GPT-6.1-Sol / sol-access",
  "reviewer": "fnn-tls-error-stack (tls.lisp:282-289) always returns a string. fnn-tls-ssc-fail (tls.lisp:959-961) calls (first <string>), which signals TYPE-ERROR in SBCL, so fnn-tls-unavailable is never built. The only caller path is operator.lisp:156 through fnn-operator-execute-tls-self-signed (operator.lisp:161-173). That handler catches every error and maps it with fnn-exit-code-for, so this is not an unhandled crash. The real effect is that the exit and status are classified from a TYPE-ERROR rather than as tls-unavailable, and the OpenSSL reason is lost. This only happens when OpenSSL fails during self-signed generation.",
  "scenario": "Any failure while generating the self-signed key or certificate (EVP_PKEY_keygen, RAND_bytes, EVP_DigestSignFinal, i2d_*; 12 call sites) evaluates (first \"...\"), which signals TYPE-ERROR before fnn-tls-unavailable is constructed. The operator gets \"The value ... is not of type LIST\" instead of the OpenSSL reason. A caller that handles fnn-tls-error or fnn-tls-unavailable to report a refused generation misses the condition, so a library failure becomes an unclassified host crash.",
  "severity": "low",
@@ -20,5 +21,5 @@
  "source": "sweep-2026-10-03",
  "state": "in-progress",
  "title": "fnn-tls-ssc-fail calls FIRST on a string, so every self-signed failure becomes a TYPE-ERROR",
- "updated": "2026-10-03T03:07:58Z"
+ "updated": "2026-10-03T10:43:00Z"
 }

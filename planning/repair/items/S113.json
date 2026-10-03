@@ -10,14 +10,15 @@
  "line": "1315",
  "locus": "store-books",
  "notes": [
-  "10-02 23:22 escalate: fix lives in host/owner-host.lisp (forbidden zone)"
+  "10-02 23:22 escalate: fix lives in host/owner-host.lisp (forbidden zone)",
+  "Removed pre-staging global charge write. Preflight remains conservative across concurrent old-generation admissions. Durable publication and actual handshake done refresh max(published limit,active model flight); refusal/recovery verdict does not refresh. Both new invariants warm PASS and actual host adapter outcome-injection fixture PASS; cert and image pending."
  ],
- "owner": "sweep-ops",
+ "owner": "GPT-6.1-Sol / sol-access",
  "reviewer": "The ratchet is real. fn-owner-reconfigure-deltas (owner-host.lisp:1313-1318) writes held before fn-owner-reconfigure-deltas-admitted, which can still refuse at 1270-1273 (fn-cca-preflight). fn-owner-reconfigure-unstage (1523-1528) never restores held. fn-cbud-deltas-slots takes the max (books/connection-budget.lisp:757). This is a documented, deliberate choice: connection-budget.lisp:787-789 says \"Taken at the check, before the staging's durable write: a staging that then fails leaves a charge at most larger than needed, never smaller.\" It fails safe, refusing too much rather than admitting too much. The effect is spurious :connections-exceed-memory refusals until restart after a refused large handshake setting. That is an availability nuisance, not a soundness hole.",
  "scenario": "An operator runs `policy set tls-handshakes-in-flight 4096`. The memory check passes, so held becomes 4096 slots. The staging step then refuses (preflight refusal on a node with a consumer position), or the live request is unstaged after authorization fails. The configuration still says the old value, but fn-owner-connection-held keeps the 4096-slot scratch for the rest of the run. Lowering the row later cannot reduce it, because the slots are a max. Every later reconfiguration that raises max-connections is refused :connections-exceed-memory, against handshake scratch that no live configuration can use, until the process restarts.",
  "severity": "low",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "Connection memory charge is ratcheted before the reconfiguration is admitted, and never released",
- "updated": "2026-10-03T03:22:28Z"
+ "updated": "2026-10-03T10:43:00Z"
 }

@@ -226,21 +226,27 @@ missing or undecodable reply leaves the outcome to the transport stage
 Answers (values FRAME STAGE): FRAME the reply octets or NIL, STAGE the
 transport stage reached (fn-native-control-transport-outcome's input).
 MAXIMUM and SECONDS are the reply's bound and deadline (ACL2's command-frame
-bound and the control I/O deadline when omitted)."
+bound and ACL2's submission-sized observation policy when omitted).
+This is only a client wait budget; expiry after submission remains uncertain."
   (let ((socket nil) (stage :before-submission))
     (unwind-protect
          (handler-case
              (progn
                (setq socket (fnn-control-connect path))
-               (let ((fd (fnn-socket-fd socket)))
+               (let* ((fd (fnn-socket-fd socket))
+                      (request (fnn-octets request-list))
+                      (reply-seconds
+                        (or seconds
+                            (fnn-core 'fn-native-control-host-reply-seconds
+                                      (length request)))))
                  ;; Any failure from here may follow a partial write.
                  (setq stage :after-submission)
-                 (fnn-control-send-request socket fd (fnn-octets request-list))
+                 (fnn-control-send-request socket fd request)
                  (let ((frame (fnn-control-read-frame
                                socket
                                (or maximum
                                    (fnn-core 'fn-native-control-host-max-frame))
-                               (or seconds +fnn-control-io-seconds+))))
+                               reply-seconds)))
                    (values (and (typep frame 'fnn-octets) frame) stage))))
            (error () (values nil stage)))
       (when socket (fnn-socket-shut socket)))))

@@ -535,6 +535,30 @@ class PublishTests(unittest.TestCase):
                 self.assertTrue(certs.valid_looking(cert), good[:8])
 
 
+    def test_valid_looking_reads_only_the_header(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cert = Path(directory) / "large.cert"
+            cert.write_bytes(SERIALIZED + b"x" * 8192)
+            original_open = Path.open
+            reads = []
+
+            class HeaderReader:
+                def __enter__(self):
+                    self.stream = original_open(cert, "rb")
+                    return self
+
+                def read(self, size=-1):
+                    reads.append(size)
+                    return self.stream.read(size)
+
+                def __exit__(self, *args):
+                    self.stream.close()
+
+            with mock.patch.object(Path, "open", return_value=HeaderReader()):
+                self.assertTrue(certs.valid_looking(cert))
+            self.assertEqual(reads, [4096])
+
+
 class InstallTests(unittest.TestCase):
     # These publish with a farm origin -- a path that does not exist on this
     # machine -- because that is the case where a pair may be installed into
@@ -1477,6 +1501,47 @@ class PartialInstallTests(unittest.TestCase):
             *args, acl2=Path("/fixture/acl2"),
             pair_checker=lambda paths, pairs, acl2, root:
                 {pair: (True, True) for pair in pairs})
+
+    def test_ineligible_payloads_are_not_hashed_but_matching_corruption_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = worktree(directory + "/source", certified=["books/base"])
+            target = worktree(directory + "/target")
+            cache = Path(directory) / "cache"
+            self.publish(source, cache, ["books/base"], "/farm/good")
+            self.publish(source, cache, ["books/base"], "/farm/wrong-toolchain")
+            self.publish(source, cache, ["books/base"], str(source))
+            good = entry(cache, target, "books/base", Path("/farm/good"))
+            wrong = entry(cache, target, "books/base", Path("/farm/wrong-toolchain"))
+            live = entry(cache, target, "books/base", source)
+            for path, changes in ((wrong, {"toolchain_identity": "other"}),
+                                  (live, {"origin_kind": certs.LIVE_ORIGIN})):
+                meta = certs.read_meta(path)
+                meta.update(changes)
+                (path / "meta.json").write_text(json.dumps(meta))
+            checker = certs.entry_matches_meta
+            visited = []
+
+            def checked(path, meta):
+                visited.append(path)
+                return checker(path, meta)
+
+            with mock.patch.object(certs, "entry_matches_meta", side_effect=checked):
+                report = self.install(target, cache, ["books/base"], self.TOOLCHAIN)
+            self.assertEqual(report.installed_from, {"books/base": "/farm/good"})
+            self.assertIn(good, visited)
+            self.assertNotIn(wrong, visited)
+            self.assertNotIn(live, visited)
+            visited.clear()
+            with mock.patch.object(certs, "entry_matches_meta", side_effect=checked):
+                candidates = certs.artifact_sets(target, cache, ["books/base"],
+                                                 self.TOOLCHAIN)
+            self.assertTrue(candidates)
+            self.assertNotIn(wrong, visited)
+            self.assertNotIn(live, visited)
+            (good / "book.cert").write_bytes(b"corrupt")
+            report = self.install(target, cache, ["books/base"], self.TOOLCHAIN)
+            self.assertEqual(report.uncached, ["books/base"])
+            self.assertEqual(report.installed_from, {})
 
     def test_a_cached_bottom_installs_and_the_uncached_top_is_named(self):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as destination:

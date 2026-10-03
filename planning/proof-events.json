@@ -19042,6 +19042,10 @@
       "events": [
         {
           "kind": "theorem",
+          "name": "fn-nnw-stream-batch-residual"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-nnw-stream-step-residual"
         },
         {
@@ -19067,27 +19071,27 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-nnw-select-start-value"
+          "name": "fn-nnm-start-value"
         },
         {
           "kind": "theorem",
-          "name": "fn-nnw-select-one-preserves-value"
+          "name": "fn-nnm-one-preserves-value"
         },
         {
           "kind": "theorem",
-          "name": "fn-nnw-select-one-decided-value"
+          "name": "fn-nnm-one-decided-value"
         },
         {
           "kind": "theorem",
-          "name": "fn-nnw-select-one-progress"
+          "name": "fn-nnm-one-progress"
         },
         {
           "kind": "theorem",
-          "name": "fn-nnw-select-one-entry-charge"
+          "name": "fn-nnm-entry-visits-at-most-one"
         },
         {
           "kind": "theorem",
-          "name": "fn-nnw-select-zero-remaining-settles"
+          "name": "fn-nnm-engine-cons-at-most-demand"
         }
       ]
     },
@@ -19105,6 +19109,312 @@
         {
           "kind": "theorem",
           "name": "fn-orv-startup-hold-protects-owner-and-one-quantum"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-install-keeps-representation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-issue-keeps-representation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-output-keeps-representation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-physical-keeps-representation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-install-bank-correspondence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-issue-drawn-bank-correspondence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-output-bank-correspondence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-physical-bank-correspondence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-issued-token-is-live"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-output-settled-token-is-not-live"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-physical-settled-token-is-not-live"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-exhausted-settlement-keeps-free-head"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-issued-chain-is-tail"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-output-settled-chain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-physical-settled-chain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rlo-install-establishes-free-chain"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1258",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orcs-predict-seal-refines-intern"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1260",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prd-sweep-visits-all-admitted-rounds"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1254",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hmc-do-return-preserves-invp",
+          "note": "Partial concurrent-reference invariant: physical return alone preserves the full invariant; issue/settle/all-schedules and native realization remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hmc-do-job-result-keeps-invp",
+          "note": "Partial concurrent-reference invariant: an independently classified literal worker result preserves the full invariant, including classification after physical return. This is not the all-schedules or native realization theorem."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1267",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpit-helper-seconds-preserves-lifetime"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1263",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nret-observation-expiry-is-uncertain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nret-observation-report-requires-stopped"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1271",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnb-installed-backoff-refuses-another-backoff"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnb-installed-retries-refuses-another-retries"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnb-input-past-read-bound-is-refused"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1270",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nir-resume-admits-identical-initial-contract-across-stamps"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nir-resume-refuses-distinct-initial-changes"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1261",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-wmc-start-value-is-group-match"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wmc-one-preserves-result"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wmc-step-preserves-value"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wmc-funded-step-progress"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wmc-accepted-cons-cells-covered"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wmc-cumulative-cons-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wml-start-retainedp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wml-one-retainedp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wml-step-retainedp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wml-retained-owned-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wml-borrowed-pattern-cells"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1273",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tcrt-write-range-is-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcrt-source-custody-excludes-input"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcrt-ready-write-precedes-source-and-close"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1266",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-auth-starttls-after-authentication-is-refused-without-reset"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-starttls-is-not-advertised-once-authenticated-on-any-connection"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1268",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-live-held-charges-current-and-active"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-live-held-releases-only-unneeded-slots"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1269",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-auth-view-excludes-unreadable-groups-on-any-connection"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1275",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-otjs-consume-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otjs-consume-fields-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otjs-report-refines-journal-report"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otjs-exit-refines-journal-exit"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1274",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sl-step-derived-conses-within-source-count"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sl-step-derived-conses-bound"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1278",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocap-held-prefix-has-matching-funded-tariff"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocap-preview-keeps-input-prefix-bounds"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1288",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-durable-realize-lz-octet-is-decoded-nth"
         }
       ]
     }

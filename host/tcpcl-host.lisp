@@ -19,6 +19,12 @@
 (include-book "../books/tcpcl-received-count")
 (include-book "../books/tcpcl-received-source")
 (include-book "../books/tcpcl-source-continuation")
+(include-book "../books/tcpcl-retained-turn")
+(include-book "../books/tcpcl-frame-cursor")
+(include-book "../books/tcpcl-input-materialize")
+(include-book "../books/tcpcl-source-control")
+(include-book "../books/bp-session-received-source")
+(include-book "../books/octets-stobj")
 (include-book "../books/tcpcl-spool")
 
 ; Directory names and lstat kinds in; a complete recovery plan out.  The raw
@@ -118,6 +124,10 @@
                (len (fn-tcl-encode (car (cdr e))))))
         ((equal (car e) :bundle-received)
          (list :bundle-received (car (cdr e)) (len (car (cdr (cdr e))))))
+        ((equal (car e) :bundle-segments-received)
+         ;; Same semantic trace digest as concatenated completion, using the
+         ;; machine-maintained count. Never print/walk the retained chain.
+         (list :bundle-received (car (cdr e)) (car (cdr (cdr (cdr e))))))
         ((equal (car e) :session-up)
          (let ((n (car (cdr e))))
            (list :session-up (fn-tcl-negotiated-keepalive n)
@@ -183,3 +193,9 @@
         (list (fn-tcl-session-phase (car out))
               (fn-tcl-host-event-digests (car (cdr out)))
               (len (car (cdr (cdr out)))))))))
+
+; Concrete framing defers the existing codec until a complete frame or its
+; extension prefix. These observations select no alternate protocol policy.
+(defun fn-tcl-host-segment-mru (s) (fn-tcl-segment-mru s))
+(defun fn-tcl-host-input-probe (s buf)
+ (fn-tcl-parse-needp (fn-tcl-decode-for s buf)))

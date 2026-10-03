@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 @unittest.skipUnless(shutil.which(os.environ.get("FN_SBCL", "sbcl")), "SBCL required")
 class CheckpointImageReadback(unittest.TestCase):
     def test_stage_custody_and_readback(self):
-        for mode in ("good", "page", "zero-page", "header", "raw-exit", "deferred"):
+        for mode in ("good", "page", "zero-page", "header", "raw-exit", "deferred", "stop"):
             with self.subTest(mode=mode), tempfile.TemporaryDirectory(prefix="fn-image-readback-") as directory:
                 result = subprocess.run(
                     [os.environ.get("FN_SBCL", "sbcl"), "--noinform", "--script",

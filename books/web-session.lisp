@@ -913,10 +913,13 @@
                             main))
          (fn-web-out (fn-octets-clear fn-web-out)))
     (if (and (fn-wr-segsp segs) (fn-wr-segs-within segs (fn-octets-len fn-web-in)))
-        (let ((fn-web-out (fn-wr-emit segs fn-web-in fn-web-out)))
-          (mv (list :respond code (append (fn-wrq-true fields) *fn-wss-html-fields*)
-                    (fn-wss-bodyp ctx))
-              fn-web-out))
+        (if (equal (fn-wrq-nth 6 config) :page-plan)
+            (mv (list :respond code (append (fn-wrq-true fields) *fn-wss-html-fields*)
+                      (fn-wss-bodyp ctx) :page-plan segs) fn-web-out)
+          (let ((fn-web-out (fn-wr-emit segs fn-web-in fn-web-out)))
+            (mv (list :respond code (append (fn-wrq-true fields) *fn-wss-html-fields*)
+                      (fn-wss-bodyp ctx))
+                fn-web-out)))
       (let ((fn-web-out (fn-octets-append-list (fn-wrq-oct "<!doctype html><title>error</title><p>The page could not be made.</p>") fn-web-out)))
         (mv (list :respond 500 *fn-wss-html-fields* (fn-wss-bodyp ctx)) fn-web-out)))))
 
@@ -1845,6 +1848,11 @@
                     (fn-wrq-oct "There's nothing here.")
                     ctx config sessions fn-web-in fn-web-out)))
 
+(defun fn-web-private-begin-row-p (row)
+  (declare (xargs :guard t))
+  (and (member-equal row *fn-web-routes*)
+       (member (fn-web-row-name row) '(:post :remove)) t))
+
 (defun fn-wss-begin (config sessions event fn-web-in fn-web-out)
   (declare (xargs :stobjs (fn-web-in fn-web-out) :guard t))
   (let* ((request (fn-wrq-nth 1 event))
@@ -1865,7 +1873,10 @@
                               session (fn-wss-theme-of request) config))
              (route (fn-web-route (fn-web-req-method request) (fn-web-req-path request))))
         (if (equal (car route) :route)
-            (fn-wss-gate (cadr route) session sessions ctx config fn-web-in fn-web-out)
+            (if (and session (equal (fn-wrq-nth 7 config) :private-begin)
+                     (fn-web-private-begin-row-p (cadr route)))
+                (mv (list :private-begin (cadr route) session ctx) sessions fn-web-out)
+              (fn-wss-gate (cadr route) session sessions ctx config fn-web-in fn-web-out))
           (fn-wss-route-refusal route ctx config sessions fn-web-in fn-web-out))))))
 
 ; THE HOST-CALLED STEP (host/web-host.lisp fn-web-host-step, called by
@@ -1919,3 +1930,38 @@
      (t (fn-wss-trouble 500 (fn-wrq-oct "Error") (fn-wrq-oct "Something went wrong here.")
                         ctx config sessions fn-web-in fn-web-out)))))
 
+
+
+; Reply handlers for the already captured read/post flow do not consult the
+; live session table. The core selects this private worker boundary; BEGIN,
+; authentication, expiry and disappearance remain the stateful boundary.
+(defun fn-web-private-reply-p (flow event)
+  (declare (xargs :guard t))
+  (and (equal event '(:reply))
+       (member (fn-wss-f-route flow) '(:groups :group :article :post :remove)) t))
+
+(defun fn-web-private-reply-step (config flow event fn-web-in fn-web-out)
+  (declare (xargs :stobjs (fn-web-in fn-web-out) :guard t))
+  (if (fn-web-private-reply-p flow event)
+      (mv-let (action sessions fn-web-out)
+        (fn-web-step config nil flow event fn-web-in fn-web-out)
+        (declare (ignore sessions))
+        (mv action fn-web-out))
+    (mv nil fn-web-out)))
+
+
+; Only these captured gate/start handlers preserve the session table.
+; Session lookup/touch/expiry happened in BEGIN under the owner section.
+(defun fn-web-private-begin-p (action)
+  (declare (xargs :guard t))
+  (and (equal (fn-wss-car action) :private-begin)
+       (fn-web-private-begin-row-p (fn-wrq-nth 1 action)) t))
+(defun fn-web-private-begin-step (config action fn-web-in fn-web-out)
+  (declare (xargs :stobjs (fn-web-in fn-web-out) :guard t))
+  (if (fn-web-private-begin-p action)
+      (mv-let (next sessions fn-web-out)
+        (fn-wss-gate (fn-wrq-nth 1 action) (fn-wrq-nth 2 action) nil
+                     (fn-wrq-nth 3 action) config fn-web-in fn-web-out)
+        (declare (ignore sessions))
+        (mv next fn-web-out))
+    (mv nil fn-web-out)))

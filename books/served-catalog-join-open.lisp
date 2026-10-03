@@ -12,7 +12,7 @@
 
 (in-package "ACL2")
 
-(include-book "served-catalog-join-number")
+(include-book "served-catalog-load-identity")
 
 (local (in-theory (disable fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp
                            fn-scat-msgid-idp fn-nntp-index-msgid-okp-stringp
@@ -400,10 +400,8 @@
 ;; -----------------------------------------------------------------------------
 ; E at the host entries, and the row equation.
 
-(defthm fn-scj-load-held-rows-is-from-empty
-  (equal (fn-sca-load-held-rows rows idx fn-arena fn-cat)
-         (fn-sca-load-held-rows-from rows idx nil))
-  :hints (("Goal" :in-theory (enable fn-sca-load-held-rows fn-cat-clear create-fn-cat))))
+; Availability completion preserves join metadata, not complete raw rows.
+; The consumed projection bridges are in served-catalog-load-identity.
 
 ; KEYSTONE (E, the row relation at every entry).  The catalog the host
 ; loads (fn-sca-load-held-rows, under any view index) from the rows of an

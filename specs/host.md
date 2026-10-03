@@ -126,6 +126,17 @@ observed behavior; PRF-1254 remains the all-schedule preservation target, and
 native realization requires a matched image run. This direct model does not
 claim to cover the typed funded read pool.
 
+The direct worker's physical `:return` is independent of result classification.
+An actual stored literal or the owner's later condition classification emits
+`(:job-result TID TOKEN VERDICT)` while that actor holds the extent mutex;
+the worker is found by its issued token, independently of the classifying
+actor's identity. A cache hit or a pre-read launch failure need not have an
+I/O request. This result event retains custody, and settlement still requires
+both actual worker return and the literal result. `:io-complete` remains the
+device-request event. A condition is never converted into a model verdict by
+the observer or replay harness. These additional ordering witnesses extend
+SCN-1082; they do not establish complete native trace coverage.
+
 Q10d: each accepted NNTP socket's service-log connection line carries exactly
 one `client-address` field projected by ACL2 from the supplied fixed-width
 family/address observation. This is the kernel transport source on direct
@@ -871,8 +882,24 @@ any run of the host's calls reads back whole and replays from the run's
 start (a start entry, SEQ 0, per run) to agreement at the run's disk and
 clock, and every decision the host asks of the value reads only those.
 The operator's replay is `fn store ROOT journal`: ACL2 reads the file back
-and replays it (`fn-otm-journal-report`, `fn-otm-journal-exit`: exit 0 when
-it agrees, 1 at a gap, divergence or malformed entry).
+and replays its captured regular-file prefix through incremental
+`fn-otjs-consume`, `fn-otjs-report` and `fn-otjs-exit`: exit 0 when it agrees,
+1 at a gap, divergence or malformed entry. The input window is at most64KiB;
+complete prior entries are folded into counts, earliest verdict and replay
+state. Long rejected entries keep only their first eight completed fields;
+initial natural fields retain exact arbitrary width. Appends after fstat's
+size are excluded; a shortened prefix is refused. Nofollow/NONBLOCK open,
+regular descriptor checking and unwind close cover the read. PRF-1275 proves
+chunk independence and field-count preservation. The generalized parser
+continuation proves exact report bytes and exit equality to PRF-322's reference
+for arbitrary input (`fn-otjs-report-refines-journal-report` and
+`fn-otjs-exit-refines-journal-exit`). Complete-entry and segment counts keep
+advancing after a replay failure while its first verdict and replay state stay
+fixed; malformed and torn endings agree with the reference. Literal witnesses
+cover huge natural fields, later segment resets and overlong rejected lines.
+These changed definitions/theorems and teeth pass normal exact two-root
+certification at c91ac446b (`certify-20261003T112822Z-1637229`, archived in the
+evidence index). Matching-image qualification remains pending.
 What a process death with entries unflushed loses is exactly those entries:
 the replay of decisions that stored nothing. No durable state depends on an
 entry (a disk event keeps the pipeline; a refusal stores nothing), and the
@@ -1883,3 +1910,71 @@ SCN-1091 checks these actual native boundaries with real exclusion and physical
 threads/socket close, recording semantic primitives and a raw callback cut.
 Full native refinement, output custody composition and matching-image shutdown
 remain open under HOST-COORDINATION and PRF-1255/PRF-1259.
+
+Catalog availability capture uses an allocation incarnation distinct from the
+retained history version. The actual native catalog installer reserves an
+ACL2 `(:catalog-root N)` before binding the replacement stobj. A failed binding
+spends that reservation. The counter is natural and never wraps; corrupt state
+refuses instead of resetting. The token is private to one owner/image lifetime,
+not durable identity. Both counter and current root must move together through
+owner-carrier migration. Paired authorization/capture connection and the
+program-global/native installation refinement remain PRF-1272 obligations.
+
+`fn-owner-catalog-capture-context` produces the opaque allocation/root, immutable
+logical view, connection archive/index, config and authorization read rule at the
+actual reader section before plan creation. Runtime must retain that same result
+with the actual arena/catalog custody and plan; reacquiring it at renderer entry
+would capture a different root. The fixed constructor shares existing values.
+It neither constructs an available archive/index nor acquires a physical pin.
+
+The mux captures the catalog incarnation and exact effective reader view at
+the admitted pre-chunk reader section through
+`fn-owner-catalog-capture-context`, alongside the actual arena/catalog objects.
+It carries that starting context through await, cursor windows and the output
+lease; rendering never reacquires a current root. The six shared context fields
+describe the pre-command pin/configuration/authorization: a span may process
+multiple commands or repin, so the resulting ACL2 plan and response pin remain
+the authority for command outcomes. This capture is not an authorization cache
+or a physical root-affinity refinement. Pending dependencies retain the native
+grant's captured references until dual settlement; connection references end at
+whole response drain/discard. SCN-1107 exercises the actual native helper and
+renderer retention with recording semantic capture; the program constructor's
+held-versus-working view and native root-affinity realization remain owed.
+
+### Opt-in native operation spans
+
+`FN_TRACE=1` enables the shared `fnn-trace-span` macro. The first consumers
+are existing owner section measurements and mux input/render phases. A span
+records monotonic start/duration, its diagnostic span/parent identifiers,
+CID and available ACL2 connection/response generations, phase and exit kind.
+Missing semantic identity is null; a span identifier is not durable acceptance.
+The macro preserves multiple values, conditions and nonlocal exits. Disabled
+owner/mux hooks take two cheap diagnostic flag tests without evaluating
+trace identities or reading counters. Legacy `FN_OWNER_MEASURE` output remains
+available, with a monotonic clock replacing its wall clock.
+
+The sink retains at most `FN_TRACE_CAPACITY` spans (default4096), samples every
+`FN_TRACE_SAMPLE_EVERY` attempts (default1), and emits `FN_TRACE` JSON lines to
+stderr after owner workers join. Overflow is counted; incomplete or sampled
+traces cannot establish complete operation coverage. Phase labels are source
+keywords, identities are numeric; no payloads, credentials, addresses,
+condition strings or arbitrary objects are serialized. Diagnostic storage is
+opt-in overhead, not a proved production resource projection.
+
+Allocation sampling is separately opt-in: `FN_TRACE_ALLOC=process` uses SBCL's
+process-wide cumulative `get-bytes-consed` counter. `isolated-process` marks a
+probe caller's explicit isolation assertion, never an inference from CID or
+thread identity. Installed SBCL exposes allocator histogram counters, but this
+implementation has no verified portable always-on per-thread counter across
+served toolchains. Concurrent threads and nested spans overlap in each sampled
+process delta; allocation-region granularity and observer overhead apply. The
+counter is neither retained heap, live residency nor bytes reclaimed by GC.
+Zero sampled allocation is not a zero-allocation proof.
+
+`python3 tools/native_trace.py LOG [--compare BASELINE] [--json]` ranks phases
+by mean sampled allocation and duration, reports overflow/sampling, and keeps
+counter scopes separate. Comparison requires matched workload, profile, runtime
+and measurement mode; phase totals are explicitly inclusive, never unique
+process allocation. The actual native allocation probes can wrap their matched
+renderer loops in the same span macro; no separate per-subsystem tracing recipe
+is required.

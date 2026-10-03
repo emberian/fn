@@ -33,6 +33,10 @@
 ; layout projection (two copies of 8-byte cells plus fixed setup storage),
 ; not a proved SBCL allocator/collector bound. It must be refined before an
 ; operation can declare its complete allocation tariff.
+(defun fn-orv-startup-slots (max-connections)
+  (declare (xargs :guard t))
+  (+ 2 (nfix max-connections)))
+
 (defun fn-orv-bookkeeping-octets (slots)
   (declare (xargs :guard t))
   (+ 8192 (* 272 (nfix slots))))

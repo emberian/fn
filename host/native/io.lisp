@@ -417,9 +417,16 @@ return the index the bytes begin at."
             (or (cdr (assoc 'fn-hist (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the history stobj is not in this image")))))
 
+(defun fnn-live-owner-st ()
+  ;; Resolve the authoritative live binding, never an independently cached
+  ;; owner copy. Until the caller-threading migration installs this stobj,
+  ;; an entry requiring it refuses rather than borrowing the old globals.
+  (or (cdr (assoc 'fn-owner-st (user-stobj-alist *the-live-state*)))
+      (fnn-fault "the owner carrier stobj is not in this image")))
+
 (defun fnn-trailing-kind (name)
   "The names of NAME's live stobjs just before its trailing state, in order:
-the longest run of fn-arena, fn-cat and fn-hist there (NIL for none)."
+the longest run of fn-arena, fn-cat, fn-hist and fn-owner-st there (NIL for none)."
   (multiple-value-bind (known found) (gethash name *fnn-trailing-stobjs*)
     (if found
         known
@@ -428,7 +435,7 @@ the longest run of fn-arena, fn-cat and fn-hist there (NIL for none)."
                   (run nil))
               (when (eq (car ins) 'state)
                 (loop for sym in (cdr ins)
-                      while (member sym '(fn-arena fn-cat fn-hist))
+                      while (member sym '(fn-arena fn-cat fn-hist fn-owner-st))
                       do (push sym run)))
               run)))))
 
@@ -436,7 +443,8 @@ the longest run of fn-arena, fn-cat and fn-hist there (NIL for none)."
   (ecase sym
     (fn-arena (fnn-live-arena))
     (fn-cat (fnn-live-cat))
-    (fn-hist (fnn-live-hist))))
+    (fn-hist (fnn-live-hist))
+    (fn-owner-st (fnn-live-owner-st))))
 
 (defun fnn-arena-then-state (name)
   "The trailing stobj arguments of the state-returning entry NAME."
@@ -1939,8 +1947,10 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
                            (mapcar (lambda (n) (fnn-octet-list (fnn-string-octets n))) names)
                            (fnn-monotonic-ms)
                            wall has-wall))))
-    (when (or (keywordp value) (not (fnn-octet-list-p value)))
+    (when (eq value :bad)
       (fnn-refuse "refused initial group table"))
+    (unless (fnn-octet-list-p value)
+      (fnn-fault "ACL2 returned a malformed initial group table"))
     (fnn-octets value)))
 
 (defun fnn-bridge-lookup-found-p (msgid)
@@ -1964,9 +1974,9 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
           ;; The two slice constants the store host still holds, checked
           ;; against the ACL2 grammar at session open as frame_bridge does.
           (unless (= (cdr (assoc :trailer table)) 32)
-            (fnn-refuse "host store trailer is 32 but the model says ~d" (cdr (assoc :trailer table))))
+            (fnn-fault "host store trailer is 32 but the model says ~d" (cdr (assoc :trailer table))))
           (unless (= (cdr (assoc :header table)) 10)
-            (fnn-refuse "host store header is 10 but the model says ~d" (cdr (assoc :header table))))
+            (fnn-fault "host store header is 10 but the model says ~d" (cdr (assoc :header table))))
           (setq *fnn-constants* table)))))
 
 (defun fnn-constant (name) (cdr (assoc name (fnn-constants))))
@@ -2309,14 +2319,25 @@ kernel may have issued the namespace operation even when it reports failure."
   (let* ((stage (fnn-join (fnn-staging store)
                           (format nil ".init-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
          (fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl) #o600)))
-    (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "created")))
-    (unwind-protect (progn (fnn-write-all fd contents)
-                           (when initializer-prefix
-                             (fnn-init-cut store (fnn-concat initializer-prefix "written")))
-                           (fnn-fsync-file fd)
-                           (when initializer-prefix
-                             (fnn-init-cut store (fnn-concat initializer-prefix "file-fenced"))))
-      (fnn-close fd))
+    ;; Cover the write phase as well as the later link phase.  A failed
+    ;; write/fsync (or close) never leaves this owned candidate behind.
+    (let ((written nil) (primary nil))
+      (unwind-protect
+           (handler-case (progn
+             (when initializer-prefix
+               (fnn-init-cut store (fnn-concat initializer-prefix "created")))
+             (fnn-write-all fd contents)
+             (when initializer-prefix
+               (fnn-init-cut store (fnn-concat initializer-prefix "written")))
+             (fnn-fsync-file fd)
+             (when initializer-prefix
+               (fnn-init-cut store (fnn-concat initializer-prefix "file-fenced")))
+             (setq written t))
+             (error (e) (setq primary e)))
+        (handler-case (fnn-close fd)
+          (error (e) (unless primary (setq primary e))))
+        (when (or primary (not written)) (ignore-errors (fnn-unlink stage))))
+      (when primary (error primary)))
     (unwind-protect
          ;; Catch EEXIST only from link(2).  Directory fencing and the test
          ;; seam below retain their own error/cut origin.
@@ -2450,13 +2471,31 @@ store; anything else is left to the ordinary open."
                   (fnn-core 'fn-store-lim-effective sealed
                             (mapcar #'fnn-octet-list (mapcar #'cdr observation))))))))))
 
+(defun fnn-initialize-resume-check (store groups requested-profile &optional history)
+  "ACL2 compares requested init with the sealed profile and exact generation one."
+  (let* ((path (fnn-config-record-path store 1))
+         (present (fnn-lstat path))
+         (record (when present
+                   (fnn-check-regular path)
+                   (fnn-octet-list (fnn-read-regular-bounded path +fnn-config-record-bytes+))))
+         (decision (fnn-core 'fn-nir-resume-decision
+                              requested-profile (fnn-store-sealed-config store)
+                              (fnn-octet-list (fnn-bridge-config-initial groups)) record history)))
+    (cond ((equal decision '(:accepted :resume)) t)
+          ((and (consp decision) (eq (first decision) :refused))
+           (fnn-refuse "~a" (fnn-core 'fn-nir-resume-line decision)))
+          ((and (consp decision) (eq (first decision) :fault))
+           (fnn-fault "~a" (fnn-core 'fn-nir-resume-line decision)))
+          (t (fnn-fault "ACL2 returned a malformed init resume decision")))))
+
 (defun fnn-initialize (store &optional (groups +fnn-default-groups+) (profile :development))
   ;; One durable configuration record at generation 1, built and admitted by
   ;; the core from the operator's group names.  The program is ACL2's:
   ;; books/byte-store-log-initializer.lisp fn-bsi-log-init-program (journal/
   ;; and the segment; every profile is on the record log, fn-store-profile-logp).
-  (let ((logp (fnn-core 'fn-store-profile-logp
-                        (fnn-metadata-config-decode (fnn-metadata-config-frame profile)))))
+  (let* ((requested-profile (fnn-metadata-config-decode (fnn-metadata-config-frame profile)))
+         (logp (fnn-core 'fn-store-profile-logp requested-profile))
+         (existing-profile nil))
     (unless logp
       (fnn-fault "the init profile is not a record-log profile"))
     (fnn-safe-directory (fnn-store-root store) t store
@@ -2466,6 +2505,16 @@ store; anything else is left to the ordinary open."
       (unwind-protect
            (progn
              (fnn-init-cut store "init-lock-created")
+             ;; Inspect an existing store before any staged publication or
+             ;; missing subdirectory is created. Compatible interrupted init
+             ;; remains legal; an incompatible request never reaches resume.
+             (setf existing-profile (fnn-lstat (fnn-config-path store)))
+             (when existing-profile
+               (fnn-load-config store)
+               (fnn-initialize-resume-check
+                store groups requested-profile
+                (when (fnn-lstat (fnn-config-dir store))
+                  (fnn-config-record-names store nil t))))
              (fnn-safe-directory (fnn-staging store) t store
                                  "init-staging-mkdir" "init-staging-parent-fenced")
              (fnn-safe-directory (fnn-config-dir store) t store
@@ -2473,11 +2522,18 @@ store; anything else is left to the ordinary open."
              (fnn-safe-directory (fnn-journal-dir store) t store
                                  "init-journal-mkdir" "init-journal-parent-fenced")
              (let ((config (fnn-metadata-config-frame profile)))
-               (if (eq (fnn-publish-initial-file store (fnn-config-path store) config "init-config-")
+               (unless existing-profile
+                (if (eq (fnn-publish-initial-file store (fnn-config-path store) config "init-config-")
                        :published)
-                   (setf (fnn-store-config store) (fnn-metadata-config-decode config))
-                   (fnn-load-config store)))
-             (when (null (fnn-config-record-names store :init-config-records-first-enumerate t))
+                   (setf (fnn-store-config store) requested-profile
+                         (fnn-store-sealed-config store) requested-profile)
+                   (progn
+                     (fnn-load-config store)
+                     (fnn-initialize-resume-check store groups requested-profile)))))
+             (let ((history (fnn-config-record-names store :init-config-records-first-enumerate t)))
+              (if history
+                 (fnn-initialize-resume-check store groups requested-profile history)
+               (progn
                (when (eq (fnn-publish-initial-file store (fnn-config-record-path store 1)
                                                 (fnn-bridge-config-initial groups) "init-history-")
                          :existing)
@@ -2486,7 +2542,7 @@ store; anything else is left to the ordinary open."
                  ;; recovery instead of silently accepting a racing history.
                  (fnn-indeterminate "configuration history appeared during initialization"))
                (fnn-fsync-dir (fnn-config-dir store))
-               (fnn-init-cut store "init-config-history-fenced"))
+               (fnn-init-cut store "init-config-history-fenced"))))
              ;; Format 10: the genesis at position 0 (books/store-genesis.lisp),
              ;; then fn-bsi-log-segment-steps.
              (fnn-log-init-genesis store)
@@ -2964,6 +3020,7 @@ a time. ACL2 checks the exact header and page encoding; no image is adopted."
       (setf (gethash (first write) by-addr) (rest write)))
     (fnn-posix () (sb-posix:lseek fd (fnn-core 'fn-his-base-octets) sb-posix:seek-set))
     (dotimes (addr (first image))
+      (fnn-checkpoint-yield "image-readback" addr)
       (let ((page (fnn-read-exact-fd fd 16384)))
         (unless page
           (return-from fnn-history-image-readback (list :refused :truncated)))
@@ -2993,6 +3050,7 @@ fn-sccv-final's (:ok SEQUENCE), or (:refused REASON)."
         (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
     (unwind-protect
          (loop
+           (fnn-checkpoint-yield "readback" total)
            (let ((first (fnn-make-octets 1)))
              (when (zerop (fnn-read-fd fd first))
                (return (fnn-core 'fn-sccv-final v)))
@@ -3745,26 +3803,37 @@ them across processes, copies, checkpoint and full replay, and boxes."
       (fnn-store-close store))))
 
 (defun fnn-command-store-journal (root)
-  "`store ROOT journal' (lane time-model-2, HST-028): read the decision
-journal STORE/decisions/decisions.fnj back and print ACL2's one-line replay
-(books/owner-time-journal.lisp fn-otm-journal-report: entries, segments,
-whole/torn/malformed, and agrees or the first gap, divergence or malformed
-entry).  It opens no store (a running owner keeps its journal open for
-append; a torn last line is one the writer had not finished).  Exit 0 when
-the replay agrees, 1 otherwise."
+  "Replay the captured prefix of decisions.fnj through ACL2's incremental
+parser and replay fold. Keep one input window and the unfinished fields,
+never the whole file or prior entries. The owner may continue appending."
   (let ((path (fnn-join (fnn-join root "decisions") "decisions.fnj")))
-    (unless (probe-file path)
+    (unless (fnn-check-regular path)
       (fnn-refuse "no decision journal at ~a" path))
-    (let* ((octets (with-open-file (in path :element-type '(unsigned-byte 8))
-                     (let ((v (make-array (file-length in) :element-type '(unsigned-byte 8))))
-                       (read-sequence v in)
-                       (coerce v 'list))))
-           (report (fnn-core 'fn-otm-journal-report octets)))
-      (fnn-write-report report)
-      (let ((exit (fnn-core 'fn-otm-journal-exit octets)))
-        (unless (member exit '(0 1))
-          (fnn-fault "ACL2 returned a malformed journal verdict"))
-        exit))))
+    ;; NONBLOCK prevents an adversarial regular-file -> FIFO replacement
+    ;; between lstat and open from blocking before fstat can reject it.
+    (let ((fd (fnn-open path (logior sb-posix:o-rdonly sb-posix:o-nonblock
+                                   +fnn-o-nofollow+))))
+      (unwind-protect
+           (let ((info (fnn-fstat fd)) (st (fnn-core 'fn-otjs-init)))
+             (unless (fnn-regular-p info)
+               (fnn-fault "refusing non-regular decision journal: ~a" path))
+             (let ((remaining (sb-posix:stat-size info)))
+               (loop while (plusp remaining) do
+                 (let* ((want (fnn-nat (fnn-core 'fn-otjs-read-count remaining)))
+                        (buffer (fnn-make-octets want))
+                        (got (fnn-read-fd fd buffer)))
+                   (when (zerop got)
+                     (fnn-refuse "decision journal shortened during replay: ~a" path))
+                   (setq st (fnn-core 'fn-otjs-consume
+                                      (fnn-octet-list (if (= got want) buffer
+                                                         (subseq buffer 0 got))) st))
+                   (decf remaining got))))
+             (fnn-write-report (fnn-core 'fn-otjs-report st))
+             (let ((exit (fnn-core 'fn-otjs-exit st)))
+               (unless (member exit '(0 1))
+                 (fnn-fault "ACL2 returned a malformed journal verdict"))
+               exit))
+        (fnn-close fd)))))
 
 (defun fnn-command-state-checkpoint (root)
   "`store checkpoint': open the store as `recover' does (the exclusive writer
@@ -4207,17 +4276,22 @@ current one)."
     (let* ((next (fnn-core 'fn-ns-rotate-entry current (fnn-node-secret-identity identity)
                            (fnn-node-secret-fresh-root)))
            (octets (fnn-node-secret-render next))
-           (stage (fnn-join dir (format nil ".node-secret-~d-~a.stage"
+           (stage (fnn-join (fnn-staging store) (format nil ".init-node-secret-~d-~a.stage"
                                         (sb-posix:getpid) (fnn-random-hex 8))))
            (fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl)
                          #o600)))
-      ;; A failed write or fsync leaves partial key material in keys/, which
-      ;; nothing sweeps (S073): remove the stage before the error leaves.
-      (let ((written nil))
-        (unwind-protect (progn (fnn-write-all fd octets) (fnn-fsync-file fd)
-                               (setq written t))
-          (fnn-close fd)
-          (unless written (ignore-errors (fnn-unlink stage)))))
+      ;; This owned candidate is in the recovery-swept .init- namespace.
+      ;; Ordinary write/fsync/close failures remove it before returning.
+      (let ((written nil) (primary nil))
+        (unwind-protect
+             (handler-case
+                 (progn (fnn-write-all fd octets) (fnn-fsync-file fd)
+                        (setq written t))
+               (error (e) (setq primary e)))
+          (handler-case (fnn-close fd)
+            (error (e) (unless primary (setq primary e))))
+          (when (or primary (not written)) (ignore-errors (fnn-unlink stage))))
+        (when primary (error primary)))
       (handler-case (fnn-replace stage path)
         (fnn-os-error (e)
           (ignore-errors (fnn-unlink stage))
@@ -5774,6 +5848,17 @@ call performs one zero-time poll; it never spins after an EAGAIN race."
                  nil)
                 (t (return (subseq buffer 0 count)))))))))
 
+(defun fnn-transport-write-now (fd channel data offset &optional (end (length data)))
+  "One nonblocking transport attempt over the valid retained range."
+  (unless (and (integerp offset) (integerp end) (<= 0 offset end (length data)))
+    (fnn-fault "invalid transport write range"))
+  (if channel (fnn-tls-write-now-range channel data offset end)
+    (let* ((remaining (- end offset))
+           (progress (fnn-write-progress
+                      (lambda () (funcall *fnn-write-syscall* fd data offset remaining))
+                      remaining "socket" nil t)))
+      (if (eq progress :would-block) :output progress))))
+
 (defun fnn-send-all (fd octets seconds)
   "Write OCTETS with one deadline for readiness waits and EINTR retries.
 
@@ -5974,6 +6059,69 @@ intentionally not timed by this function."
                     port :timeout timeout))
       (:refused (error 'fnn-peer-dial-error :outcome :host-syntax))
       (otherwise (fnn-fault "ACL2 returned a malformed peer dial target")))))
+
+;;; Retained outbound driver custody: one syscall/readiness attempt, no
+;;; private wait loop. A pending socket remains owned by its round context.
+(defun fnn-connect-start (address port &key (family :inet))
+  (let ((socket (make-instance (fnn-socket-class family) :type :stream :protocol :tcp))
+        (retained nil))
+    (unwind-protect
+         (progn
+           (fnn-socket-fd socket)
+           (let ((word (handler-case (funcall *fnn-connect-attempt* socket address port)
+                         (sb-bsd-sockets:socket-error (condition)
+                           (fnn-os-fail (sb-bsd-sockets::socket-error-errno condition))))))
+             (unless (member word '(:connected :pending))
+               (fnn-fault "connect boundary returned an invalid status"))
+             (setq retained t)
+             (values socket word)))
+      (unless retained (fnn-socket-shut socket)))))
+
+(defun fnn-connect-poll (socket)
+  (if (not (funcall *fnn-fd-waiter* (fnn-socket-fd socket) :output 0))
+      :wait
+    (let ((errno (funcall *fnn-socket-pending-error* socket)))
+      (cond ((zerop errno) :connected)
+            ((or (= errno sb-posix:einprogress) (= errno sb-posix:ealready)) :wait)
+            (t (fnn-os-fail errno))))))
+
+(defun fnn-peer-connect-start (host port)
+  "ACL2's literal/resolve/refuse target; pending TCP retains its socket.
+Synchronous DNS remains a named availability frontier outside TCP polling."
+  (let* ((octets (if (stringp host) (map 'list #'char-code host) (fnn-octet-list host)))
+         (target (fnn-core 'fn-peer-dial-target octets)))
+    (case (and (consp target) (first target))
+      (:address
+       (fnn-connect-start (coerce (second target) '(simple-array (unsigned-byte 8) (*))) port))
+      (:resolve
+       (fnn-connect-start (fnn-peer-resolve-ipv4 (map 'string #'code-char (second target))) port))
+      (:refused (error 'fnn-peer-dial-error :outcome :host-syntax))
+      (otherwise (fnn-fault "ACL2 returned a malformed peer dial target")))))
+
+(defun fnn-socket-read-now (fd limit)
+  "One nonblocking read attempt: octets/EOF or :wait on EINTR/EAGAIN."
+  (unless (and (integerp limit) (<= 1 limit +fnn-max-read+))
+    (fnn-fault "invalid socket read quantum"))
+  (let ((buffer (fnn-make-octets limit)))
+    (multiple-value-bind (count errno) (funcall *fnn-read-syscall* fd buffer)
+      (cond ((and (null count) (or (fnn-eintr-p errno) (fnn-would-block-p errno))) :wait)
+            ((null count) (fnn-os-fail errno))
+            ((not (and (integerp count) (<= 0 count limit)))
+             (fnn-fault "socket read made invalid progress"))
+            (t (subseq buffer 0 count))))))
+
+(defun fnn-socket-write-now (fd data offset end)
+  "One nonblocking write attempt; the caller retains every unwritten octet."
+  (unless (and (integerp offset) (integerp end) (<= 0 offset) (< offset end)
+               (<= end (length data)))
+    (fnn-fault "invalid socket write quantum"))
+  (multiple-value-bind (count errno)
+      (funcall *fnn-write-syscall* fd data offset (- end offset))
+    (cond ((and (null count) (or (fnn-eintr-p errno) (fnn-would-block-p errno))) :wait)
+          ((null count) (fnn-os-fail errno))
+          ((not (and (integerp count) (< 0 count) (<= count (- end offset))))
+           (fnn-fault "socket write made invalid progress"))
+          (t count))))
 
 (defun fnn-peer-dial-outcome (condition)
   "The host's classification of a failed peer dial: an observation for ACL2's line."
@@ -6361,7 +6509,7 @@ tree root), or stop the build."
 ;;; and no refusal can arrive in the middle of a request as an outcome it is
 ;;; not (review of the dabebb84 campaign, F4 to F6).
 (defparameter +fnn-developer-selectors+
-  '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
+  '("FN_NATIVE_DEV_REPL" "FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
     ;; lane join-f2-13: the OVER/XOVER cursor quantum (numbers per hold of
     ;; the owner mutex) for the natives; ACL2's fn-splan-cursor-window
     ;; decides the value (books/served-plan-cursor.lisp).

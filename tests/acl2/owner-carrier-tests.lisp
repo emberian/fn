@@ -1,0 +1,36 @@
+; Physical private-carrier construction and independent field effects.
+; This does not establish the configured-owner semantic invariant and does
+; not claim that native POST already consumes this carrier.
+(in-package "ACL2")
+(include-book "../../books/owner-carrier")
+
+(defun fn-ost-construction-witness ()
+  (declare (xargs :guard t))
+  (with-local-stobj fn-owner-st
+    (mv-let (ok fn-owner-st)
+      (let* ((initial (and (fn-owner-stp fn-owner-st)
+                           (not (fn-ost-boundp fn-owner-st))
+                           (equal (fn-ost-owner fn-owner-st) nil)
+                           (equal (fn-ost-retention fn-owner-st) nil)))
+             (owner '(:owner :nonempty-history))
+             (carry '(:ledger :nonempty-index))
+             (fn-owner-st (fn-ost-install-owner owner fn-owner-st))
+             (owner-effects (and (fn-owner-stp fn-owner-st)
+                                 (fn-ost-boundp fn-owner-st)
+                                 (equal (fn-ost-owner fn-owner-st) owner)
+                                 (equal (fn-ost-retention fn-owner-st) nil)))
+             (fn-owner-st (fn-ost-install-retention carry fn-owner-st))
+             (carry-effects (and (fn-owner-stp fn-owner-st)
+                                 (fn-ost-boundp fn-owner-st)
+                                 (equal (fn-ost-owner fn-owner-st) owner)
+                                 (equal (fn-ost-retention fn-owner-st) carry)))
+             (fn-owner-st (fn-ost-install-owner :replacement fn-owner-st))
+             (replacement-effects (and (fn-owner-stp fn-owner-st)
+                                       (fn-ost-boundp fn-owner-st)
+                                       (equal (fn-ost-owner fn-owner-st) :replacement)
+                                       (equal (fn-ost-retention fn-owner-st) carry))))
+        (mv (and initial owner-effects carry-effects replacement-effects)
+            fn-owner-st))
+      ok)))
+
+(assert-event (fn-ost-construction-witness))

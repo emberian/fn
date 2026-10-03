@@ -292,5 +292,256 @@
    "reason": "one catalog row read",
    "witness": null
   }
- ]
+ ],
+ "conses": {
+  "scope": "logical cons constructors; not bytes or retained heap",
+  "contracts": [
+   {
+    "primitive": "cons",
+    "template": "1",
+    "reason": "one fresh logical cons",
+    "witness": null
+   },
+   {
+    "primitive": "car",
+    "template": "0",
+    "reason": "borrowed cell read",
+    "witness": null
+   },
+   {
+    "primitive": "cdr",
+    "template": "0",
+    "reason": "borrowed cell read",
+    "witness": null
+   },
+   {
+    "primitive": "consp",
+    "template": "0",
+    "reason": "test",
+    "witness": null
+   },
+   {
+    "primitive": "atom",
+    "template": "0",
+    "reason": "test",
+    "witness": null
+   },
+   {
+    "primitive": "null",
+    "template": "0",
+    "reason": "test",
+    "witness": null
+   },
+   {
+    "primitive": "not",
+    "template": "0",
+    "reason": "test",
+    "witness": null
+   },
+   {
+    "primitive": "eq",
+    "template": "0",
+    "reason": "comparison",
+    "witness": null
+   },
+   {
+    "primitive": "eql",
+    "template": "0",
+    "reason": "comparison",
+    "witness": null
+   },
+   {
+    "primitive": "equal",
+    "template": "0",
+    "reason": "comparison",
+    "witness": null
+   },
+   {
+    "primitive": "zp",
+    "template": "0",
+    "reason": "test",
+    "witness": null
+   },
+   {
+    "primitive": "natp",
+    "template": "0",
+    "reason": "test",
+    "witness": null
+   },
+   {
+    "primitive": "integerp",
+    "template": "0",
+    "reason": "test",
+    "witness": null
+   },
+   {
+    "primitive": "symbolp",
+    "template": "0",
+    "reason": "test",
+    "witness": null
+   },
+   {
+    "primitive": "stringp",
+    "template": "0",
+    "reason": "test",
+    "witness": null
+   },
+   {
+    "primitive": "keywordp",
+    "template": "0",
+    "reason": "test",
+    "witness": null
+   },
+   {
+    "primitive": "booleanp",
+    "template": "0",
+    "reason": "test",
+    "witness": null
+   },
+   {
+    "primitive": "characterp",
+    "template": "0",
+    "reason": "test",
+    "witness": null
+   },
+   {
+    "primitive": "true-listp",
+    "template": "0",
+    "reason": "read-only walk",
+    "witness": null
+   },
+   {
+    "primitive": "len",
+    "template": "0",
+    "reason": "read-only walk",
+    "witness": null
+   },
+   {
+    "primitive": "length",
+    "template": "0",
+    "reason": "read-only length",
+    "witness": null
+   },
+   {
+    "primitive": "binary-+",
+    "template": "0",
+    "reason": "non-cons arithmetic",
+    "witness": null
+   },
+   {
+    "primitive": "binary-*",
+    "template": "0",
+    "reason": "non-cons arithmetic",
+    "witness": null
+   },
+   {
+    "primitive": "unary--",
+    "template": "0",
+    "reason": "non-cons arithmetic",
+    "witness": null
+   },
+   {
+    "primitive": "<",
+    "template": "0",
+    "reason": "comparison",
+    "witness": null
+   },
+   {
+    "primitive": "floor",
+    "template": "0",
+    "reason": "non-cons arithmetic",
+    "witness": null
+   },
+   {
+    "primitive": "mod",
+    "template": "0",
+    "reason": "non-cons arithmetic",
+    "witness": null
+   },
+   {
+    "primitive": "nfix",
+    "template": "0",
+    "reason": "test",
+    "witness": null
+   },
+   {
+    "primitive": "ifix",
+    "template": "0",
+    "reason": "test",
+    "witness": null
+   },
+   {
+    "primitive": "nth",
+    "template": "0",
+    "reason": "borrowed cell read",
+    "witness": null
+   },
+   {
+    "primitive": "nthcdr",
+    "template": "0",
+    "reason": "borrowed tail",
+    "witness": null
+   },
+   {
+    "primitive": "mv-nth",
+    "template": "0",
+    "reason": "borrowed multiple-value component",
+    "witness": null
+   },
+   {
+    "primitive": "member-equal",
+    "template": "0",
+    "reason": "borrowed tail",
+    "witness": null
+   },
+   {
+    "primitive": "assoc-equal",
+    "template": "0",
+    "reason": "borrowed pair",
+    "witness": null
+   },
+   {
+    "primitive": "take",
+    "template": "(nfix a1)",
+    "reason": "one fresh cell per requested position",
+    "witness": null
+   },
+   {
+    "primitive": "append",
+    "template": "(len a1)",
+    "reason": "copies the first spine",
+    "witness": null
+   },
+   {
+    "primitive": "binary-append",
+    "template": "(len a1)",
+    "reason": "copies the first spine",
+    "witness": null
+   },
+   {
+    "primitive": "revappend",
+    "template": "(len a1)",
+    "reason": "copies the first spine",
+    "witness": null
+   },
+   {
+    "primitive": "char",
+    "template": "0",
+    "reason": "indexed character read; no list conversion executes",
+    "witness": null
+   },
+   {
+    "primitive": "code-char",
+    "template": "0",
+    "reason": "character lookup",
+    "witness": null
+   },
+   {
+    "primitive": "char-code",
+    "template": "0",
+    "reason": "character lookup",
+    "witness": null
+   }
+  ]
+ }
 }

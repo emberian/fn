@@ -541,16 +541,12 @@ them).  Nothing else opens a client context."
           ((member result '(62 64)) (values :name-mismatch result))
           (t (values :certificate result)))))
 
-(defun fnn-tls-connect (context fd server-name seconds &key (sni t))
-  "Complete an authenticated client handshake with chain and hostname checks.
-
-SERVER-NAME is always the SSL_set1_host name; it is sent as SNI only when SNI
-is true (ACL2 decides: a DNS name, never an address literal, RFC 6066 s3)."
+(defun fnn-tls-client-begin (context fd server-name &key (sni t))
+  "Retain one authenticated client handshake; no handshake I/O or wait here."
   (unless (and (stringp server-name) (> (length server-name) 0)
                (null (position (code-char 0) server-name)))
     (error 'fnn-tls-config-error :detail "a TLS server name is required"))
   (let ((ssl (fnn-%ssl-new (fnn-tls-context-pointer context)))
-        (deadline (fnn-tls-deadline seconds))
         (sni-octets (fnn-octets (append (map 'list #'char-code server-name) '(0)))))
     (when (fnn-tls-null-pointer-p ssl)
       (error 'fnn-tls-handshake-error :detail "SSL_new failed"))
@@ -565,26 +561,45 @@ is true (ACL2 decides: a DNS name, never an address literal, RFC 6066 s3)."
                                                (sb-alien:cast (fnn-tls-pointer sni-octets) (* t)))
                                 1))))
             (error 'fnn-tls-handshake-error :detail "client TLS parameters failed"))
-          (loop
-            (let ((result (fnn-%ssl-connect ssl)))
-              (when (= result 1)
-                (multiple-value-bind (outcome code) (fnn-tls-verify-failure ssl)
-                  (when outcome
-                    (error 'fnn-tls-verify-error :outcome outcome
-                           :detail (format nil "certificate verification failed for ~a (~a, ~d)"
-                                           server-name outcome code))))
-                (return (fnn-tls-channel-make :pointer ssl :fd fd)))
-              (let ((disposition (fnn-tls-retry-direction ssl result)))
-                (if (member disposition '(:input :output))
-                    (fnn-tls-wait fd disposition deadline 'fnn-tls-handshake-error)
-                  (multiple-value-bind (outcome code) (fnn-tls-verify-failure ssl)
-                    (if outcome
-                        (error 'fnn-tls-verify-error :outcome outcome
-                               :detail (format nil "certificate refused for ~a (~a, ~d)"
-                                               server-name outcome code))
-                      (fnn-tls-operation-error 'fnn-tls-handshake-error "client handshake"
-                                               disposition))))))))
-      (error (condition) (fnn-%ssl-free ssl) (error condition)))))
+          ;; Same partial-write/moving-buffer modes as the server I/O loop.
+          (fnn-%ssl-ctrl ssl 33 (logior 1 2 16)
+                         (sb-alien:sap-alien (sb-sys:int-sap 0) (* t)))
+          (fnn-tls-channel-make :pointer ssl :fd fd))
+      (serious-condition (condition) (fnn-%ssl-free ssl) (error condition)))))
+
+(defun fnn-tls-client-step (channel server-name)
+  "One SSL_connect attempt: :connected or the required readiness direction."
+  (let* ((ssl (fnn-tls-channel-pointer channel))
+         (result (fnn-%ssl-connect ssl)))
+    (if (= result 1)
+        (multiple-value-bind (outcome code) (fnn-tls-verify-failure ssl)
+          (when outcome
+            (error 'fnn-tls-verify-error :outcome outcome
+                   :detail (format nil "certificate verification failed for ~a (~a, ~d)"
+                                   server-name outcome code)))
+          :connected)
+      (let ((disposition (fnn-tls-retry-direction ssl result)))
+        (if (member disposition '(:input :output))
+            disposition
+          (multiple-value-bind (outcome code) (fnn-tls-verify-failure ssl)
+            (if outcome
+                (error 'fnn-tls-verify-error :outcome outcome
+                       :detail (format nil "certificate refused for ~a (~a, ~d)"
+                                       server-name outcome code))
+              (fnn-tls-operation-error 'fnn-tls-handshake-error "client handshake"
+                                       disposition))))))))
+
+(defun fnn-tls-connect (context fd server-name seconds &key (sni t))
+  "Authenticated blocking adapter over the same one-attempt continuation."
+  (let ((channel (fnn-tls-client-begin context fd server-name :sni sni))
+        (deadline (fnn-tls-deadline seconds)))
+    (handler-case
+        (loop for disposition = (fnn-tls-client-step channel server-name) do
+          (when (eq disposition :connected) (return channel))
+          (fnn-tls-wait fd disposition deadline 'fnn-tls-handshake-error))
+      (serious-condition (condition)
+        (fnn-tls-close-channel channel)
+        (error condition)))))
 
 (defun fnn-tls-close-context (context)
   (when context
@@ -841,11 +856,11 @@ wait."
                   (t (fnn-tls-operation-error 'fnn-tls-io-error "read"
                                               disposition)))))))))
 
-(defun fnn-tls-write-now (channel data offset)
-  "One SSL_write attempt of DATA from OFFSET: the octets written, or
-:input/:output when the session must wait."
-  (let ((ssl (fnn-tls-channel-pointer channel))
-        (count (- (length data) offset)))
+(defun fnn-tls-write-now-range (channel data offset end)
+  "One SSL_write of a retained bounded range; retry the same range on WANT."
+  (unless (<= 0 offset end (length data))
+    (fnn-fault "invalid TLS write range"))
+  (let ((ssl (fnn-tls-channel-pointer channel)) (count (- end offset)))
     (sb-sys:with-pinned-objects (data)
       (fnn-%err-clear-error)
       (let ((result (fnn-%ssl-write ssl (fnn-tls-pointer data offset) count)))
@@ -855,6 +870,9 @@ wait."
             (if (member disposition '(:input :output))
                 disposition
               (fnn-tls-operation-error 'fnn-tls-io-error "write" disposition))))))))
+
+(defun fnn-tls-write-now (channel data offset)
+  (fnn-tls-write-now-range channel data offset (length data)))
 
 (defun fnn-tls-close-channel (channel)
   "Fast shutdown is intentional: NNTP has already ended and the underlying
@@ -1036,13 +1054,18 @@ OCTETS and fsync."
     ;; The file this call created is removed when its write or fsync fails:
     ;; a partial key or certificate would make the next run refuse the paths
     ;; as existing (S093).
-    (let ((written nil))
+    (let ((written nil) (primary nil))
       (unwind-protect
-           (progn (fnn-write-all fd (fnn-octets octets))
-                  (fnn-fsync-file fd)
-                  (setq written t))
-        (fnn-close fd)
-        (unless written (ignore-errors (sb-posix:unlink path)))))))
+           (handler-case
+               (progn (fnn-write-all fd (fnn-octets octets))
+                      (fnn-fsync-file fd)
+                      (setq written t))
+             (error (e) (setq primary e)))
+        (handler-case (fnn-close fd)
+          (error (e) (unless primary (setq primary e))))
+        (when (or primary (not written)) (ignore-errors (fnn-unlink path))))
+      (when primary (error primary)))))
+
 
 (defun fnn-tls-self-signed-write (names days cert-path key-path)
   "Make the pair ACL2 decides for NAMES and DAYS and write it at CERT-PATH

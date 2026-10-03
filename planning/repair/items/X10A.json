@@ -1,15 +1,17 @@
 {
- "disposition": "LOCAL",
- "evidence": "hbox native-ion-x10, image set 77b7d258d developer, lane/sweep-gates 41c942bf8",
- "exposure": "conditional",
- "file": "host/native/workflow.lisp",
- "id": "X10A",
- "locus": "operator-verbs",
- "notes": [],
- "owner": "reclaim-retention",
- "severity": "medium",
- "source": "sweep-gates-X10",
- "state": "open",
- "title": "ION workflow: an explicit-route submit is refused before send on dev's image (exit 1, 'ION helper refused before send'); test_observation_binds_explicit_route_and_survives_reopen",
- "updated": "2026-10-03T02:30:23Z"
+  "disposition": "LOCAL",
+  "evidence": "hbox native-ion-x10, image set 77b7d258d developer, lane/sweep-gates 41c942bf8",
+  "exposure": "conditional",
+  "file": "host/native/workflow.lisp",
+  "id": "X10A",
+  "locus": "operator-verbs",
+  "notes": [
+    "2026-10-03 BP-TRANSPORT: ACL2 exact helper-seconds before any attempt publication; canonical pin fixture updated. Shipped raw caller passed; scoped cert/image pending."
+  ],
+  "owner": "bp-transport",
+  "severity": "medium",
+  "source": "sweep-gates-X10",
+  "state": "in-progress",
+  "title": "ION workflow: an explicit-route submit is refused before send on dev's image (exit 1, 'ION helper refused before send'); test_observation_binds_explicit_route_and_survives_reopen",
+  "updated": "2026-10-03T02:30:23Z"
 }

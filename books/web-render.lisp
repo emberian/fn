@@ -750,19 +750,20 @@
 ; A group row: (NAME COUNT READ-ONLY-P), NAME and COUNT octets.
 ; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
 ; operator data (D27: no fixed cap), one control-stack frame per element.
+(defun fn-wr-group-row-segments (name-text name-url count readonly rest)
+  (declare (xargs :guard t))
+  (append (list (fn-wm "<tr><td class='num'>") (fn-wr-txt count)
+                (fn-wm "</td><td><a class='title' href='/g?name="))
+          (fn-wrq-true name-url) (list (fn-wm "'>")) (fn-wrq-true name-text)
+          (list (fn-wm "</a>"))
+          (if readonly (list (fn-wm " <span class='dim'>(read only)</span>")) nil)
+          (list (fn-wm "</td></tr>")) rest))
+
 (defun fn-wr-group-rows-step (x rest)
   (declare (xargs :guard t))
-  (let ((row x))
-    (append (list (fn-wm "<tr><td class='num'>")
-                  (fn-wr-txt (fn-wrq-nth 1 row))
-                  (fn-wm "</td><td><a class='title' href='/g?name=")
-                  (fn-wr-url (fn-wrq-nth 0 row))
-                  (fn-wm "'>")
-                  (fn-wr-txt (fn-wrq-nth 0 row))
-                  (fn-wm "</a>"))
-            (if (fn-wrq-nth 2 row) (list (fn-wm " <span class='dim'>(read only)</span>")) nil)
-            (list (fn-wm "</td></tr>"))
-            rest)))
+  (fn-wr-group-row-segments (list (fn-wr-txt (fn-wrq-nth 0 x)))
+                            (list (fn-wr-url (fn-wrq-nth 0 x)))
+                            (fn-wrq-nth 1 x) (fn-wrq-nth 2 x) rest))
 
 (defun fn-wr-group-rows-loop (rev acc)
   (declare (xargs :guard t))
@@ -793,8 +794,8 @@
          (fn-wr-group-rows-loop zs (fn-wr-group-rows rows)))
   :hints (("Goal" :induct (fn-ag-rev-onto rows zs)
                   :in-theory (union-theories
-                              '(fn-wr-group-rows-loop fn-wr-group-rows fn-wr-group-rows-step fn-ag-rev-onto
-                                car-cons cdr-cons)
+                              '(fn-wr-group-rows-loop fn-wr-group-rows fn-wr-group-rows-step fn-wr-group-row-segments fn-wrq-true fn-ag-rev-onto
+                                binary-append car-cons cdr-cons)
                               (union-theories (theory 'minimal-theory)
                                               (executable-counterpart-theory :here))))))
 
@@ -805,13 +806,17 @@
                               (union-theories (theory 'minimal-theory)
                                               (executable-counterpart-theory :here))))))
 
-(defun fn-wr-groups-main (rows)
+(defun fn-wr-groups-main-segments (row-segs)
   (declare (xargs :guard t))
-  (if (consp rows)
+  (if (consp row-segs)
       (append (list (fn-wm "<h1>Groups</h1><table class='index'><thead><tr><th class='num'>Arts</th><th>Group</th></tr></thead><tbody>"))
-              (fn-wr-group-rows rows)
+              (fn-wrq-true row-segs)
               (list (fn-wm "</tbody></table>")))
     (list (fn-wm "<h1>Groups</h1><p class='dim'>There are no groups you can read here yet.</p>"))))
+
+(defun fn-wr-groups-main (rows)
+  (declare (xargs :guard t))
+  (fn-wr-groups-main-segments (fn-wr-group-rows rows)))
 
 ; An overview row: (NUMBER SUBJECT FROM DATE), NUMBER octets, the others
 ; spans of fn-web-in (the OVER reply, books/web-session.lisp).
@@ -819,27 +824,24 @@
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
+(defun fn-wr-over-row-segments (group number-segs number-url subject from date rest)
+  (declare (xargs :guard t))
+  (append (list (fn-wm "<tr><td class='num'>")) (fn-wrq-true number-segs)
+          (list (fn-wm "</td><td class='subj'><a class='title' href='/a?g=")
+                (fn-wr-url group) (fn-wm "&amp;n=")) (fn-wrq-true number-url)
+          (list (fn-wm "'>")) (fn-wr-wspan-or subject (fn-wt "(no subject)"))
+          (list (fn-wm "</a></td><td class='from'>")) (fn-wr-wspan from)
+          (list (fn-wm "</td><td class='date'>")) (fn-wr-span date)
+          (list (fn-wm "</td></tr>")) rest))
+
 (defun fn-wr-over-rows-loop (group rev acc)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp rev)
-      (fn-wr-over-rows-loop group
-                            (cdr rev)
-                            (let ((row (car rev)))
-                              (append (list (fn-wm "<tr><td class='num'>")
-                                            (fn-wr-txt (fn-wrq-nth 0 row))
-                                            (fn-wm "</td><td class='subj'><a class='title' href='/a?g=")
-                                            (fn-wr-url group)
-                                            (fn-wm "&amp;n=")
-                                            (fn-wr-url (fn-wrq-nth 0 row))
-                                            (fn-wm "'>"))
-                                      (fn-wr-wspan-or (fn-wrq-nth 1 row)
-                                                      (fn-wt "(no subject)"))
-                                      (list (fn-wm "</a></td><td class='from'>"))
-                                      (fn-wr-wspan (fn-wrq-nth 2 row))
-                                      (list (fn-wm "</td><td class='date'>"))
-                                      (fn-wr-span (fn-wrq-nth 3 row))
-                                      (list (fn-wm "</td></tr>"))
-                                      acc)))
+      (let ((row (car rev)))
+        (fn-wr-over-rows-loop group (cdr rev)
+          (fn-wr-over-row-segments group
+            (list (fn-wr-txt (fn-wrq-nth 0 row))) (list (fn-wr-url (fn-wrq-nth 0 row)))
+            (fn-wrq-nth 1 row) (fn-wrq-nth 2 row) (fn-wrq-nth 3 row) acc)))
     acc))
 
 (defun fn-wr-over-rows (group rows)
@@ -869,8 +871,8 @@
    (equal (fn-wr-over-rows-loop group (fn-ag-rev-onto rows zs) nil)
           (fn-wr-over-rows-loop group zs (fn-wr-over-rows group rows)))
    :hints (("Goal" :induct (fn-ag-rev-onto rows zs)
-                   :in-theory (union-theories '(fn-wr-over-rows-loop fn-wr-over-rows fn-ag-rev-onto
-                                                car-cons cdr-cons)
+                   :in-theory (union-theories '(fn-wr-over-rows-loop fn-wr-over-rows fn-wr-over-row-segments fn-wrq-true fn-ag-rev-onto
+                                                binary-append car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
 
 (verify-guards fn-wr-over-rows-loop)
@@ -882,21 +884,25 @@
                   :use ((:instance fn-wr-over-rows-loop-of-rev-onto (zs nil))))))
 
 
-(defun fn-wr-group-main (group rows older)
+(defun fn-wr-group-main-segments (group row-segs older)
   ; OLDER: the number to page back from, or nil.
   (declare (xargs :guard t))
   (append (list (fn-wm "<h1>") (fn-wr-txt group)
                 (fn-wm "</h1><nav class='keys'>[<a href='/new?g=") (fn-wr-url group)
                 (fn-wm "'>post to this group</a>] [<a href='/'>all groups</a>]</nav>"))
-          (if (consp rows)
+          (if (consp row-segs)
               (append (list (fn-wm "<table class='index'><thead><tr><th class='num'>#</th><th>Subject</th><th class='from'>From</th><th class='date'>Date</th></tr></thead><tbody>"))
-                      (fn-wr-over-rows group rows)
+                      (fn-wrq-true row-segs)
                       (list (fn-wm "</tbody></table>")))
             (list (fn-wm "<p class='dim'>No posts here yet.</p>")))
           (if (consp older)
               (list (fn-wm "<p class='keys'>[<a href='/g?name=") (fn-wr-url group)
                     (fn-wm "&amp;before=") (fn-wr-url older) (fn-wm "'>older posts</a>]</p>"))
             nil)))
+
+(defun fn-wr-group-main (group rows older)
+  (declare (xargs :guard t))
+  (fn-wr-group-main-segments group (fn-wr-over-rows group rows) older))
 
 (defun fn-wr-header-line (label span)
   (declare (xargs :guard t))
@@ -920,7 +926,7 @@
 ; FIELDS: (SUBJECT FROM DATE NEWSGROUPS MESSAGE-ID) spans; BODY a span of
 ; the dot-stuffed body; OWN whether the page offers "Remove my post" (the
 ; node decides whether the removal withdraws anything); MSGID octets.
-(defun fn-wr-article-main (group fields body own msgid)
+(defun fn-wr-article-main-segments (group fields body own msgid-segs)
   (declare (xargs :guard t))
   (append (list (fn-wm "<p class='keys'>[<a href='/g?name=") (fn-wr-url group) (fn-wm "'>")
                 (fn-wr-txt group) (fn-wm "</a>]</p><h1>"))
@@ -936,11 +942,15 @@
             nil)
           (list (fn-wm "</pre><nav class='keys'>"))
           (if own
-              (list (fn-wm "[<a href='/remove?g=") (fn-wr-url group) (fn-wm "&amp;id=")
-                    (fn-wr-url msgid) (fn-wm "'>Remove my post</a>] "))
+              (append (list (fn-wm "[<a href='/remove?g=") (fn-wr-url group) (fn-wm "&amp;id="))
+                      (fn-wrq-true msgid-segs) (list (fn-wm "'>Remove my post</a>] ")))
             nil)
           (list (fn-wm "[<a href='/new?g=") (fn-wr-url group)
                 (fn-wm "'>post to this group</a>]</nav>"))))
+
+(defun fn-wr-article-main (group fields body own msgid)
+  (declare (xargs :guard t))
+  (fn-wr-article-main-segments group fields body own (list (fn-wr-url msgid))))
 
 (defun fn-wr-compose-main (group csrf message subject body)
   (declare (xargs :guard t))
@@ -970,17 +980,21 @@
 
 ; An outcome: KIND :ok, :maybe or :no; TITLE and MESSAGE text, DETAIL the
 ; node's own line (or nil); BACK the group to return to (or nil: the groups).
-(defun fn-wr-outcome-main (kind title message detail back)
+(defun fn-wr-outcome-main-segments (kind title message detail-segs back)
   (declare (xargs :guard t))
   (append (list (fn-wm "<h1>") (fn-wr-txt title) (fn-wm "</h1>"))
           (fn-wr-note kind message)
-          (if (consp detail)
-              (list (fn-wm "<p class='said dim'>") (fn-wr-txt detail) (fn-wm "</p>"))
+          (if (consp detail-segs)
+              (append (list (fn-wm "<p class='said dim'>")) (fn-wrq-true detail-segs) (list (fn-wm "</p>")))
             nil)
           (if (consp back)
               (list (fn-wm "<p class='keys'>[<a href='/g?name=") (fn-wr-url back)
                     (fn-wm "'>back to the group</a>] [<a href='/'>groups</a>]</p>"))
             (list (fn-wm "<p class='keys'>[<a href='/'>groups</a>]</p>")))))
+
+(defun fn-wr-outcome-main (kind title message detail back)
+  (declare (xargs :guard t))
+  (fn-wr-outcome-main-segments kind title message (and (consp detail) (list (fn-wr-txt detail))) back))
 
 ; -----------------------------------------------------------------------------
 ; Every page's segments are accepted (fn-wr-page-segs-ok): the markup is the

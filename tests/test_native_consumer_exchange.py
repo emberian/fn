@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import re
 import signal
+import sqlite3
 import sys
 import unittest
 
@@ -176,6 +177,102 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 3, (stdout + stderr).decode("utf-8", "replace"))
         self.owner = self.start_owner()
         return json.loads(stdout)
+
+    def test_saved_delivery_survives_projection_fault_and_owner_restart(self):
+        self.start_node()
+        a = self.agent("agent-a", 0xA1, 1)
+        b = self.agent("agent-b", 0xB2, 2)
+        for label in ("agent-a", "agent-b"):
+            self.register(label)
+        for config in (a, b):
+            self.trust(config, ("agent-a", "agent-b"),
+                       (("r", "agent-a"), ("reply-", "agent-b")))
+        payload = b"saved-delivery\r\nkind: reply\r\noperation-id: another\x00\xff"
+        payload_file = self.root / "report.payload"
+        payload_file.write_bytes(payload)
+        self.consumer(a, "report", "r1", "--payload-file", str(payload_file))
+        self.consumer(b, "wake", cut="after-poll", expected=97)
+        data = json.loads(b.read_text())
+        with sqlite3.connect(data["db"]) as db:
+            saved = db.execute("SELECT cursor, report, state FROM deliveries").fetchone()
+        self.assertTrue(saved[1])
+        self.assertEqual(saved[2], "pending")
+        self.assertEqual(self.status("agent-b")[0], 0)
+
+        # Fail only the client-side projection process. All owner, decoder,
+        # signing and publication calls still cross the actual saved image.
+        wrapper = self.root / "projection-fault"
+        wrapper.write_text(
+            "#!/usr/bin/env python3\nimport os,sys\n"
+            "if sys.argv[1:3] == ['--fn','consumer-project']: sys.exit(4)\n"
+            "real = " + repr(str(IMAGE)) + "\n"
+            "os.execv(real, [real, *sys.argv[1:]])\n")
+        wrapper.chmod(0o755)
+        data["image"] = str(wrapper)
+        b.write_text(json.dumps(data))
+        self.consumer(b, "wake", expected=4)
+        self.assertEqual(self.status("agent-b")[0], 0)
+        self.assertEqual(self.summary(b)["transitions"], [])
+        with sqlite3.connect(data["db"]) as db:
+            self.assertEqual(db.execute(
+                "SELECT cursor, report, state FROM deliveries").fetchone(), saved)
+
+        self.stop_owner(self.owner)
+        self.owner = self.start_owner()
+        data["image"] = str(IMAGE)
+        b.write_text(json.dumps(data))
+        self.consumer(b, "wake")
+        final = self.summary(b)
+        self.assertEqual(final["transitions"], [[APP, "r1"]])
+        self.assertEqual(len(final["outbox"]), 1)
+        self.assertEqual(final["outbox"][0]["state"], "stored")
+        self.assertEqual(final["pending_delivery"], 0)
+        self.assertGreater(self.status("agent-b")[0], 0)
+        with sqlite3.connect(data["db"]) as db:
+            self.assertEqual(db.execute(
+                "SELECT cursor, report, state FROM deliveries ORDER BY id LIMIT 1"
+            ).fetchone(), (*saved[:2], "handled"))
+        self.consumer(a, "wake")
+        self.assertEqual(self.summary(a)["state"]["replies"], "1")
+        # Application codec assertions accompany the native acceptance and
+        # independent signature checks; payload metadata-like bytes stay data.
+        from tools.fn_consumer import Consumer
+        for config, expected_payload in ((a, payload), (b, b"received " + payload)):
+            with sqlite3.connect(json.loads(config.read_text())["db"]) as db:
+                authored = db.execute("SELECT source FROM submissions").fetchone()[0]
+            fields = Consumer.envelope(authored)
+            self.assertEqual(fields["payload"], expected_payload)
+            self.assertEqual(fields["operation-id"], "r1" if config == a else "reply-r1")
+            exported = self.root / (config.parent.name + ".payload")
+            self.consumer(config, "payload", fields["operation-id"], str(exported))
+            self.assertEqual(exported.read_bytes(), expected_payload)
+        received_payload = self.root / "received-report.payload"
+        self.consumer(b, "payload", "r1", str(received_payload))
+        self.assertEqual(received_payload.read_bytes(), payload)
+        inspected = json.loads(self.consumer(b, "inspect", "r1", "--bytes").stdout)
+        self.assertEqual(inspected["operations"]["rows"][0]["result"], "replied")
+        self.assertEqual(inspected["related_artifacts"]["rows"][0]["operation_id"], "reply-r1")
+        exported_snapshot = self.root / "receiver-state.json"
+        self.consumer(b, "export", str(exported_snapshot))
+        self.assertEqual(json.loads(exported_snapshot.read_text())["tables"]["operations"]["rows"][0]["operation_id"], "reply-r1")
+        evidence = os.environ.get("FN_CONSUMER_EXCHANGE_EVIDENCE")
+        if evidence:
+            # Preserve only consumer-owned/public source artifacts; no key
+            # files or wholesale scratch tree. SQLite contains public signed
+            # artifacts and application state, not private signing keys.
+            prefix = Path(evidence)
+            prefix.parent.mkdir(parents=True, exist_ok=True)
+            prefix.with_suffix(".delivery.fncu").write_bytes(saved[0])
+            prefix.with_suffix(".delivery.report").write_bytes(saved[1])
+            for label, config in (("agent-a", a), ("agent-b", b)):
+                cfg = json.loads(config.read_text())
+                with sqlite3.connect(cfg["db"]) as source:
+                    with sqlite3.connect(prefix.with_suffix("." + label + ".db")) as target:
+                        source.backup(target)
+            self.write_evidence("saved-delivery-restart", {
+                "image": str(IMAGE), "a": self.summary(a), "b": self.summary(b),
+                "b_position": self.status("agent-b")[0],
+                "saved_cursor_hex": saved[0].hex()})
 
     def test_two_sleeping_agents_exchange_across_every_ownership_cut(self):
         self.start_node()
@@ -476,6 +573,42 @@ class NativeConsumerExchangeTests(unittest.TestCase):
             payload = dict(payload, log=self.log)
             path.write_text(json.dumps(payload, indent=1, sort_keys=True, default=str),
                             encoding="utf-8")
+
+    def test_saved_submission_retries_after_restart_without_signing_keys(self):
+        """An unanswered post retains its whole artifact across both owners.
+
+        Removed signing inputs cannot force a replacement artifact. A changed
+        payload under the same application operation is explicitly refused.
+        """
+        self.start_node(log=False, bootstrap=False)
+        a = self.agent("agent-a", 0xA1, 1)
+        payload_file = self.root / "immutable.payload"
+        payload_file.write_bytes(b"immutable\x00\xff\r\nkind: reply\nretry")
+        self.consumer(a, "report", "r1", "--payload-file", str(payload_file), cut="after-post",
+                      expected=97)
+        cfg = json.loads(a.read_text())
+        artifact_query = ("SELECT source,ed_sig,ml_sig,principal,ed_public,"
+                          "ml_public_pem,keyring_generation,context FROM submissions")
+        with sqlite3.connect(cfg["db"]) as db:
+            saved = db.execute(artifact_query).fetchone()
+            self.assertEqual(db.execute("SELECT state FROM attempts").fetchall(),
+                             [("in-flight",)])
+        self.stop_owner(self.owner)
+        self.owner = self.start_owner()
+        for key_path in cfg["keys"].values():
+            Path(key_path).unlink()
+        self.consumer(a, "report", "r1", "--payload-file", str(payload_file))
+        settled = self.summary(a)
+        self.assertEqual(settled["outbox"][0]["state"], "stored")
+        self.assertEqual(settled["outbox"][0]["attempts"], 2)
+        with sqlite3.connect(cfg["db"]) as db:
+            self.assertEqual(db.execute(artifact_query).fetchone(), saved)
+            self.assertEqual(db.execute("SELECT state,exit FROM attempts ORDER BY id").fetchall(),
+                             [("unanswered", None), ("answered", 0)])
+        self.consumer(a, "report", "r1", "changed-payload", expected=1)
+        with sqlite3.connect(cfg["db"]) as db:
+            self.assertEqual(db.execute(artifact_query).fetchone(), saved)
+            self.assertEqual(db.execute("SELECT count(*) FROM attempts").fetchone(), (2,))
 
     def test_identical_signed_resend_answers_duplicate(self):
         """D25 on the local control route: a byte-identical resend of an

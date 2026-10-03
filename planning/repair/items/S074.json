@@ -10,14 +10,16 @@
  "id": "S074",
  "line": "1883",
  "locus": "operator-verbs",
- "notes": [],
- "owner": "sweep-store",
+ "notes": [
+  "2026-10-03 codex-operator-retire: source repair connected to actual CLI/heap consumer and actual ACL2 closed failure classifier. SCN-1098 discriminates old actual heap (fault\u2192acceptance) and old group encoder boundary (malformed\u2192refusal). Known refusal preserved; generic/unlisted faults and uncertainty propagate with no accepting heap line. Source evidence archived operator-diagnostics-classification-2026-10-03.json; matching image remains Integration work. S090 also repaired nested store-profile blanket catch."
+ ],
+ "owner": "codex-operator-retire",
  "reviewer": "io.lisp:1883-1886 uses fnn-refuse (fnn-store-error, io.lisp:132-133) for a host/model frame-constant mismatch, which is a build defect and should be fnn-fault. io.lisp:1859-1860 handles a malformed non-keyword, non-octet-list return from fn-cfg-host-initial-octets-at the same way as a keyword refusal. Both blur refused and fault, against AGENTS.md. The first is reachable only from a broken image, since the frame grammar fixes the header at 10 and the SHA-256 trailer at 32.",
  "scenario": "An image is built with a frame grammar whose trailer or header width differs from the host's hard-coded 32 and 10. Every store open then exits 1, \"refused\", which callers and tests read as a legitimate policy refusal of the input, when it is a build defect that should exit 4 (fault). In the same way, a malformed return from fn-cfg-host-initial-octets-at is shown to the operator as a refused group table. AGENTS.md requires uncertain, refused, accepted and fault to stay distinct at every boundary.",
  "severity": "low",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
  "title": "A model/host disagreement or malformed ACL2 result is reported as a refusal (exit 1), not a fault",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-03T10:05:59.121209+00:00"
 }

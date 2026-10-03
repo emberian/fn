@@ -1,12 +1,13 @@
 ; NEWNEWS retains a string renderer instead of materializing a Message-ID
 ; line. The factory retains configured groups and each candidate selects one
-; group or membership per step. Matcher and heap tariffs remain separately owed.
+; group/member or matcher microstep per call. Physical heap tariffs remain owed.
 (in-package "ACL2")
 (include-book "newnews-metadata-cursor")
 (include-book "string-line-cursor")
-(include-book "newnews-candidate-selector")
+(include-book "newnews-matching-selector")
+(include-book "def-cursor-batch")
 
-(local (in-theory (disable fn-nnw-select-one fn-nnw-select-start)))
+(local (in-theory (disable fn-nnm-one fn-nnm-start)))
 
 (defun fn-nnw-stream-renderp (progress)
   (declare (xargs :guard t))
@@ -104,7 +105,7 @@
    ((equal progress '(:terminator)) (mv '(46 13 10) nil))
    ((fn-nnw-stream-selectp progress)
     (mv-let (decided matched selector)
-      (fn-nnw-select-one (fn-cur-at 1 progress))
+      (fn-nnm-one (fn-cur-at 1 progress))
       (if decided
           (fn-nnw-stream-selected (fn-cur-at 2 progress) matched fn-arena fn-cat)
         (mv nil (fn-nnw-stream-select selector (fn-cur-at 2 progress))))))
@@ -113,7 +114,7 @@
     (if (fn-nnw-stream-eligiblep progress fn-arena fn-cat)
         (mv nil
             (fn-nnw-stream-select
-             (fn-nnw-select-start
+             (fn-nnm-start
               (fn-cur-at 1 (fn-nnw-groups progress))
               (fn-cur-at 2 (fn-nnw-groups progress))
               (fn-ag-car (fn-nnw-tail progress))) progress))
@@ -161,23 +162,30 @@
                                      fn-nnw-stream-render fn-nnw-tail fn-nnw-cursor
                                      fn-nnw-at))))
 
-; Within a configured candidate, a positive selector remainder shrinks or
-; selection ends. Article-tail length is intentionally unchanged meanwhile.
+; Selection uses a lexicographic remainder: one group/member visit reduces
+; the outer remainder, while one matcher microstep reduces the inner one.
+; Both are proof-only projections; no scheduler computes their list lengths.
 (defthm fn-nnw-stream-select-progresses
   (implies (and (fn-nnw-stream-selectp progress)
-                (posp (fn-nnw-select-remaining (fn-cur-at 1 progress))))
-           (< (let ((next (mv-nth 1 (fn-nnw-stream-one progress bytes fn-arena fn-cat))))
-                (if (fn-nnw-stream-selectp next)
-                    (fn-nnw-select-remaining (fn-cur-at 1 next)) 0))
-              (fn-nnw-select-remaining (fn-cur-at 1 progress))))
+                (fn-nnm-statep (fn-cur-at 1 progress))
+                (or (posp (fn-nnm-group-remaining (fn-cur-at 1 progress)))
+                    (posp (fn-nnm-work-remaining (fn-cur-at 1 progress)))))
+           (let ((next (mv-nth 1 (fn-nnw-stream-one progress bytes fn-arena fn-cat))))
+             (or (not (fn-nnw-stream-selectp next))
+                 (< (fn-nnm-group-remaining (fn-cur-at 1 next))
+                    (fn-nnm-group-remaining (fn-cur-at 1 progress)))
+                 (and (equal (fn-nnm-group-remaining (fn-cur-at 1 next))
+                             (fn-nnm-group-remaining (fn-cur-at 1 progress)))
+                      (< (fn-nnm-work-remaining (fn-cur-at 1 next))
+                         (fn-nnm-work-remaining (fn-cur-at 1 progress)))))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-nnw-select-one-progress (s (fn-cur-at 1 progress))))
+           :use ((:instance fn-nnm-one-progress (s (fn-cur-at 1 progress))))
            :in-theory (e/d (fn-nnw-stream-one fn-nnw-stream-selectp fn-nnw-stream-select
                              fn-nnw-stream-outputp fn-nnw-stream-renderp fn-nnw-stream-render
                              fn-nnw-stream-selected fn-nnw-stream-following
                              fn-nnw-stream-scan-cursor fn-cur-at)
-                            (fn-nnw-select-one fn-nnw-select-remaining
+                            (fn-nnm-one fn-nnm-group-remaining fn-nnm-work-remaining
                              fn-nnw-stream-eligiblep fn-sl-step)))))
 
 (def-cursor/output fn-nnw-stream (fn-arena fn-cat)
@@ -212,7 +220,7 @@
     (let* ((current (fn-cur-at 2 progress))
            (following (fn-nnw-stream-following current)))
       (append
-       (if (and (fn-nnw-select-value (fn-cur-at 1 progress))
+       (if (and (fn-nnm-value (fn-cur-at 1 progress))
                 (fn-nnw-stream-eligiblep current fn-arena fn-cat))
            (fn-sl-remaining (fn-sl-start (fn-article-msgid (fn-ag-car (fn-nnw-tail current)))))
          nil)
@@ -232,7 +240,7 @@
          (and (fn-sl-okp (fn-cur-at 1 progress))
               (fn-nnw-stream-progress-okp (fn-cur-at 2 progress))))
         ((fn-nnw-stream-selectp progress)
-         (and (fn-nnw-select-statep (fn-cur-at 1 progress))
+         (and (fn-nnm-statep (fn-cur-at 1 progress))
               (or (fn-nnw-cursorp (fn-cur-at 2 progress))
                   (fn-nnw-configured-cursorp (fn-cur-at 2 progress)))))
         (t (or (not progress) (equal progress '(:terminator))
@@ -330,7 +338,7 @@
                             fn-nnw-cursor
                             fn-nnw-at fn-nnw-tail fn-nnw-threshold fn-nnw-horizon)
                            (fn-sl-step fn-sl-start fn-sl-remaining fn-sl-okp
-                            fn-nnw-select-one fn-nnw-select-value fn-nnw-select-start
+                            fn-nnm-one fn-nnm-value fn-nnm-start
                             fn-nnw-stream-normal-owes fn-nnw-stream-following fn-nnw-stream-eligiblep
                             fn-nntp-newnews-candidatep fn-nntp-newnews-newp
                             fn-scol-tombstonep fn-nntp-string-octets fn-article-msgid
@@ -521,3 +529,62 @@
                                      fn-nntp-make-result fn-nntp-single))))
 
 (in-theory (disable fn-nnw-group-source-effective fn-nntp-newnews-response-stream))
+
+; Use the available control budget for empty group/member/DP steps. No output
+; accumulator is built: the first actual output window ends the batch.
+(def-cursor/batch fn-nnw-stream (fn-arena fn-cat)
+  :step fn-nnw-stream-step :stobjs (fn-arena fn-cat)
+  :byte-proof fn-nnw-stream-step-byte-bound
+  :call-proof fn-nnw-stream-step-call-bound
+  :remaining (fn-nnw-stream-remaining cur fn-arena fn-cat)
+  :residual-proof fn-nnw-stream-step-residual)
+
+(local (defthm fn-nnw-stream-split-output-list
+  (true-listp (car (fn-cur-split xs n)))
+  :hints (("Goal" :induct (fn-cur-split xs n)
+           :in-theory (enable fn-cur-split)))))
+
+(defthm fn-nnw-stream-step-output-true-listp
+  (true-listp (car (fn-nnw-stream-step cur visits bytes fn-arena fn-cat)))
+  :hints (("Goal" :in-theory (e/d (fn-nnw-stream-step)
+                                  (fn-nnw-stream-one fn-cur-split)))))
+
+(defthm fn-nnw-stream-batch-output-true-listp
+  (true-listp (car (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat)))
+  :hints (("Goal" :induct (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat)
+           :in-theory (e/d (fn-nnw-stream-batch) (fn-nnw-stream-step)))))
+
+(defthm fn-nnw-stream-batch-keeps-pending-true-listp
+  (implies (true-listp (fn-cur-pending cur))
+           (true-listp (fn-cur-pending
+                        (mv-nth 1 (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat)))))
+  :hints (("Goal" :induct (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat)
+           :in-theory (e/d (fn-nnw-stream-batch)
+                           (fn-nnw-stream-step fn-cur-pending)))))
+
+(local (defthm fn-nnw-stream-batch-assoc
+  (equal (append (append a b) c) (append a b c))))
+
+(defthm fn-nnw-stream-batch-residual-append
+  (equal (append (car (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat))
+                 (fn-nnw-stream-remaining
+                  (mv-nth 1 (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat)) fn-arena fn-cat)
+                 suffix)
+         (append (fn-nnw-stream-remaining cur fn-arena fn-cat) suffix))
+  :hints (("Goal" :in-theory (disable fn-nnw-stream-batch fn-nnw-stream-remaining
+                                     fn-nnw-stream-batch-assoc)
+           :use (fn-nnw-stream-batch-residual
+                 (:instance fn-nnw-stream-batch-assoc
+                            (a (car (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat)))
+                            (b (fn-nnw-stream-remaining
+                                (mv-nth 1 (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat))
+                                fn-arena fn-cat)) (c suffix))))))
+
+(defthm fn-nnw-stream-batch-terminal-residual
+  (implies (not (fn-nnw-meta-livep
+                 (mv-nth 1 (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat))))
+           (equal (append (car (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat)) suffix)
+                  (append (fn-nnw-stream-remaining cur fn-arena fn-cat) suffix)))
+  :hints (("Goal" :in-theory (disable fn-nnw-stream-batch fn-nnw-stream-remaining
+                                     fn-nnw-meta-livep fn-nnw-stream-batch-residual-append)
+           :use fn-nnw-stream-batch-residual-append)))

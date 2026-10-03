@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import subprocess
 import struct
 import threading
 import time
@@ -150,6 +151,20 @@ class ScriptedTransitPeer:
                     return self.articles[message_id]
             time.sleep(0.1)
         return None
+
+
+class SilentHandshakePeer(ScriptedTransitPeer):
+    """Accept a real TCP connection and hold its TLS response until release."""
+    def __init__(self):
+        self.pending = threading.Event()
+        self.release = threading.Event()
+        super().__init__("", accept_gate=self.release)
+
+    def session(self, client, number):
+        del number
+        with client:
+            self.pending.set()
+            self.release.wait(30)
 
 
 @unittest.skipUnless(
@@ -1002,6 +1017,45 @@ class NativePeeringTests(unittest.TestCase):
             "article_sha256": hashlib.sha256(numbered).hexdigest(),
             "old_pin_absent_423": True, "explicit_group_advance": True,
             "identity": self.verify_process_identity(source),
+        }, sort_keys=True))
+
+    def test_pending_tls_feed_does_not_starve_new_healthy_peer(self):
+        """SCN-1106: the actual sole feed worker retains a stalled TLS link."""
+        slow = SilentHandshakePeer()
+        healthy = ScriptedTransitPeer("203 streaming permitted")
+        self.addCleanup(slow.close)
+        self.addCleanup(healthy.close)
+        source = self.initialize("fair-push-source")
+        anchor = source.root / "fair-push-anchor.pem"
+        key = source.root / "fair-push-key.pem"
+        certificate = subprocess.run(
+            ["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-sha256",
+             "-days", "1", "-subj", "/CN=localhost", "-keyout", str(key), "-out", str(anchor)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=60)
+        self.assertEqual(certificate.returncode, 0, certificate.stderr.decode())
+        self.configure_peer(source, types.SimpleNamespace(name="slow-tls", port=slow.port))
+        source.operator("peer", "set", "slow-tls", "--tls", "implicit",
+                        "--server-name", "localhost", "--anchor", str(anchor), expect=EXIT_OK)
+        self.start(source)
+        self.post(source, "<fair-push-initial@example.invalid>", "start-slow-link")
+        self.assertTrue(slow.pending.wait(5), "actual slow TCP capture was never observed")
+        started = time.monotonic()
+        # Add the healthy peer only after the first handshake is pending,
+        # avoiding a false witness from favorable initial configuration order.
+        self.configure_peer(source, types.SimpleNamespace(name="healthy", port=healthy.port))
+        message_id = "<fair-push-healthy@example.invalid>"
+        self.post(source, message_id, "healthy-during-pending-tls")
+        self.assertLess(time.monotonic() - started, 3,
+                        "setup exceeded the precondition before the ten-second TLS deadline")
+        got = healthy.await_article(message_id, timeout=4)
+        self.assertIsNotNone(got, "healthy feed must progress before pending TLS deadline")
+        self.assertFalse(slow.release.is_set())
+        self.assertEqual(got[1], self.await_article(source, message_id))
+        self.assertIsNone(source.process.poll())
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "healthy-push-during-pending-tls", "slow_tcp_captured": True,
+            "slow_response_unreleased": True, "elapsed": time.monotonic() - started,
+            "healthy_article_identical": True, "identity": self.verify_process_identity(source),
         }, sort_keys=True))
 
     def test_feed_to_a_peer_without_streaming_falls_back_to_ihave(self):

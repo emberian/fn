@@ -560,10 +560,10 @@ def attachment_source_refusal(graph: dict[str, list[str]], order: list[str]) -> 
 
 # --- a book's local include graph ------------------------------------------------
 
-def include_graph(root: Path, book: str) -> dict[str, list[str]]:
-    """Each book of BOOK's local closure -> the books it includes directly."""
+def include_graph(root: Path, book: str, include_books=()) -> dict[str, list[str]]:
+    """The union of the named local closures -> their direct includes."""
     graph: dict[str, list[str]] = {}
-    pending = [book]
+    pending = [book, *include_books]
     base = root.resolve()
     while pending:
         name = pending.pop()
@@ -1667,7 +1667,7 @@ def fixes(missing: list[str], jobs: int) -> list[str]:
 
 
 def runner_closure(book: str, graph: dict[str, list[str]], include_self: bool,
-                   cache: Path, identity: str, acl2: Path):
+                   cache: Path, identity: str, acl2: Path, include_books=()):
     """The certify runner's own install of BOOK's dependencies, or None if short.
 
     `start --certify-missing` ran `certify_books.py --incremental`, whose
@@ -1677,7 +1677,7 @@ def runner_closure(book: str, graph: dict[str, list[str]], include_self: bool,
     installed is the one it certifies against, so when install-partial covers
     every dependency, compiled, the session takes it.
     """
-    roots = [book] if include_self else sorted(graph.get(book, ()))
+    roots = ([book] if include_self else sorted(graph.get(book, ()))) + list(include_books)
     if not roots:
         return None
     with acl2_slots.slot(f"proof-repl cache {book}"):
@@ -1687,7 +1687,7 @@ def runner_closure(book: str, graph: dict[str, list[str]], include_self: bool,
 
 def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
                     log: Path | None = None,
-                    include_self: bool = False) -> tuple[bool, str, list[str]]:
+                    include_self: bool = False, include_books=()) -> tuple[bool, str, list[str]]:
     """Acquire the dependencies under the same ACL2 used by the REPL child.
 
     Answers (acquired, what to print, the books to load from source in
@@ -1699,10 +1699,13 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
     to do with what is still missing: "ld" loads it from source, "certify"
     certifies it with `certify_books.py --incremental` and tries again, and
     None refuses with the diagnosis.  INCLUDE_SELF acquires BOOK's own
-    certificate too (a book a live session is about to include).
+    certificate too (a book a live session is about to include). INCLUDE_BOOKS
+    adds other literal includes to the same compatible acquisition; those
+    roots and their dependencies require certificates as well.
     """
+    include_books = tuple(include_books)
     try:
-        graph = include_graph(ROOT, book)
+        graph = include_graph(ROOT, book, include_books)
     except (OSError, certs.UnreadableBook, ValueError) as error:
         return False, f"proof-repl: cannot read {book}'s closure: {error}", []
     wanted = [normalize_book(name) for name in ld]
@@ -1739,7 +1742,7 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
         # The alist probe starts ACL2 directly. Hold the same machine-wide
         # slot that the subsequent interactive wrapper will take.
         with acl2_slots.slot(f"proof-repl cache {book}"):
-            if from_source:
+            if from_source or include_books:
                 # What stays is closed under includes: a book that includes a
                 # from-source book is itself from source.
                 return certs.install_artifact_set(
@@ -1775,7 +1778,7 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
             if (report is not None and report.artifact_set is None
                     and done.returncode == 0 and not from_source):
                 per_book = runner_closure(book, graph, include_self, cache,
-                                          fingerprint.identity, acl2)
+                                          fingerprint.identity, acl2, include_books)
                 if per_book is not None:
                     printed.append(
                         "proof-repl: install-set found no one compatible set after the "
@@ -2541,32 +2544,36 @@ def prepare_includes(name: str, several: list[str], acquire=None) -> tuple[list[
     """The forms to send, each repository include made relative to the
     session's directory, and whether every included book is certified.
 
-    A sent include of a book with no certificate here (a tests/acl2 book is
-    rarely in a books/ session's closure) is acquired from matching cached
-    evidence first. A miss is refused, never implicitly certified; choose
-    certification explicitly or send the intended source forms instead.
+    All repository includes acquire one exact compatible cached artifact
+    set for their union first. A certificate prefix alone does not establish
+    matching source or dependency alists. A miss is refused, never implicitly certified;
+    choose certification explicitly or send the intended source forms instead.
     """
     directory = session_directory(name)
     if directory is None:
         return several, True
-    acquire = acquire or (lambda book: install_closure(
-        book, (), None, 4, SESSIONS / f"{name}.include.log", include_self=True))
     prepared = []
+    targets = []
     for one in several:
         rewritten, target = rooted_include(one, directory)
         if rewritten != one:
             print(f"proof-repl: include path made relative to the session's directory "
                   f"{directory.relative_to(ROOT).as_posix() if directory.is_relative_to(ROOT) else directory}/: "
                   f"{rewritten.strip()}")
-        if (target is not None and (ROOT / f"{target}.lisp").is_file()
-                and not certs.valid_looking(ROOT / f"{target}.cert")):
-            acquired, detail, _ = acquire(target)
-            print(detail)
-            if not acquired:
-                print(f"proof-repl: not sending the include of {target}: no certificate "
-                      "could be acquired for it")
-                return several, False
+        if (target is not None and target not in targets
+                and (ROOT / f"{target}.lisp").is_file()):
+            targets.append(target)
         prepared.append(rewritten)
+    if targets:
+        acquire = acquire or (lambda books: install_closure(
+            books[0], (), None, 4, SESSIONS / f"{name}.include.log",
+            include_self=True, include_books=books[1:]))
+        acquired, detail, _ = acquire(targets)
+        print(detail)
+        if not acquired:
+            print("proof-repl: not sending the includes: no compatible certificate "
+                  "set could be acquired for " + ", ".join(targets))
+            return several, False
     return prepared, True
 
 

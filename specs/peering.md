@@ -3200,3 +3200,58 @@ observer after recording its own assertion. That default-off callback
 returns no owner/admission authority and its result never changes the lab
 assertion. Missing execution creates no corpus receipt; retained scripted
 fixtures establish the observer interface only.
+
+
+### Resumable native pull and catch-up rounds (PRF-1260, SCN-1090)
+
+The pull-service worker retains one session continuation per admitted
+(kind, peer). ACL2's `fn-prd-sweep` and `fn-prd-select` select one quantum
+from each captured sweep across both pull and catch-up. A readiness wait
+keeps the existing protocol state, queued effects, partial write range,
+local input suffix, cold dependency, commit completion, and render plan.
+`fn-prd-action` orders a pending continuation before later effects and events.
+The read/write quantum is the existing ACL2 feed wire chunk bound; exhausting
+it yields with the remaining octets, never truncates them. TCP connect,
+authenticated TLS handshake, and outgoing command deadlines are projected
+by ACL2 from its existing feed connect policy. A slow incoming body retains
+its round and cursor while the other admitted peers continue; there is no
+new arbitrary whole-round expiry or minimum-rate refusal. Existing session
+close effects alone determine the persisted FNPL/FNCU cursor.
+
+`fn-prd-sweep-visits-all-admitted-rounds` states the complete stable-sweep
+property under a true-list and admitted-subset hypothesis. The worker calls
+that subject directly. It assumes each physical attempt returns; it does
+not prove DNS availability, disk latency, or overall network completion.
+Synchronous DNS, push-feed fairness, and the proved resource tariff/admission
+for retained per-peer contexts remain separate frontiers. The NNTP output
+lease and fixed syncer grant do not fund these contexts. The new native
+scenario requires an actual incomplete slow ARTICLE body to remain pending
+while a healthy pull and catch-up complete, then reads the released body back
+exactly. Source/raw scheduling evidence does not qualify a saved image.
+
+The stable-sweep visit property does not establish a whole-turn work or allocation bound. The current worker rebuilds the active key list and filters the remaining suffix for each selection; scheduling work therefore grows with the admitted peer set and may be quadratic over a sweep. A retained scheduler cursor/cost boundary and funded continuation tariff remain open. The feed chunk bound applies to each read/write attempt.
+
+Push-feed retained turns (S067, implementation in progress): the actual
+feed worker now captures TCP completion and authenticated TLS state, holds
+one journal-authorized output with its unwritten suffix, and consumes one
+ACL2-framed reply event per peer turn. The shared peer-round driver chooses
+connect/handshake/write/reply/offer/read order. A physical write attempts
+at most its ACL2 512-octet range, retaining the same range on TLS WANT. The
+existing feed 65536-octet/10-second progress deadline spans smaller yields;
+a short successful prefix does not reset that deadline. EOF remains held
+until the ACL2 framer reports need-input, preserving complete coalesced
+replies. Journal publication still precedes copied output. Socket/TLS
+readiness yields; it neither accepts delivery nor discards pending state.
+
+Synchronous DNS, credential/trust filesystem access, owner/journal storage
+latency and full-command copying remain availability/work frontiers. The
+complete command may contain a whole article; its retained representation
+has no newly proved allocation tariff or grant. No existing syncer/output
+lease is claimed to cover it. Source tests and matching native qualification
+are separate from proof of bounded complete scheduler cost.
+
+SCN-1106's native selector first captures a real pending implicit-TLS peer,
+then adds a healthy peer and compares its complete article with locally
+served bytes before the original handshake deadline. It is prepared for a
+matching image, not an executed qualification. Its ordering excludes an
+initial healthy-first configuration from masquerading as concurrent progress.

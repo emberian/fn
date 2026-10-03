@@ -25,6 +25,7 @@
 (include-book "../books/bp-handoff-report")
 (include-book "../books/tcpcl-delivery-invariants")
 (include-book "../books/resource-syncer")
+(include-book "../books/response-identity")
 
 ; A private owner syncer ledger is installed only after the parent's real
 ; startup :hold.  This is thread resident/worker custody, not full resource
@@ -45,13 +46,19 @@
 (definterface fn-ros-outcome :class :common-lisp-compliant)
 (definterface fn-ros-drainedp :class :common-lisp-compliant)
 
-; Partial resident/output custody seam. Install/issue mutation guards and the
-; complete allocation tariff remain PRF-1259; this is not an operation gate.
-(definterface fn-rlo-install :class :ideal)
-(definterface fn-rlo-issue :class :ideal)
+(definterface fn-rid-connection :class :common-lisp-compliant)
+(definterface fn-rid-response :class :common-lisp-compliant)
+
+; Guarded private output methods preserve typed representation. Complete
+; free-chain/bank correspondence and allocation tariff remain PRF-1259; no gate.
+(definterface fn-rlo-install :class :common-lisp-compliant)
+(definterface fn-rlo-issue :class :common-lisp-compliant)
 (definterface fn-rlo-output :class :common-lisp-compliant)
 (definterface fn-rlo-physical :class :common-lisp-compliant)
 (definterface fn-rlo-drainedp :class :common-lisp-compliant)
+(definterface fn-heap-figure-octets :class :common-lisp-compliant)
+(definterface fn-orv-startup-slots :class :common-lisp-compliant)
+(definterface fn-orv-startup-grant :class :common-lisp-compliant)
 
 ; -----------------------------------------------------------------------------
 ; The extraction roots: the functions the extracted served program's driver
@@ -804,14 +811,17 @@
 (definterface fn-otm-init
   :class ::common-lisp-compliant)
 
-(definterface fn-otm-journal-exit
+(definterface fn-otjs-init
+  :class ::common-lisp-compliant)
+(definterface fn-otjs-consume
   :class ::common-lisp-compliant
-  :kinds ((octets fn-cbor-octet-listp)))
-
-(definterface fn-otm-journal-report
-  :class ::common-lisp-compliant
-  :kinds ((octets fn-cbor-octet-listp))
-  :keystones (fn-otm-journal-report-of-a-run))
+  :keystones (fn-otjs-consume-of-append fn-otjs-consume-fields-bounded))
+(definterface fn-otjs-read-count
+  :class ::common-lisp-compliant)
+(definterface fn-otjs-report
+  :class ::common-lisp-compliant)
+(definterface fn-otjs-exit
+  :class ::common-lisp-compliant)
 
 (definterface fn-otm-jw-after
   :class ::common-lisp-compliant)
@@ -1794,9 +1804,7 @@
 
 (definterface fn-owner-known-abort
   :class :common-lisp-compliant
-  ;; D40 proposal withheld: model preservation alone does not establish
-  ;; the complete host-called guard. Retain executable-counterpart dispatch.
-)
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 (definterface fn-owner-limit-carried
   :class ::program)
@@ -1933,9 +1941,7 @@
 
 (definterface fn-owner-refuse-reservation
   :class :common-lisp-compliant
-  ;; D40 proposal withheld: model preservation alone does not establish
-  ;; the complete host-called guard. Retain executable-counterpart dispatch.
-)
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
 (definterface fn-owner-sco-capture
   :class ::program)
@@ -2067,6 +2073,15 @@
   :class ::common-lisp-compliant
   :kinds ((w natp))
   :keystones (fn-splan-window-is-a-prefix-of-the-reply))
+
+; PRF-1281 direct immutable-line renderer; exact buffer/continuation bridge
+; remains a planned proof until its named theorem is admitted.
+(definterface fn-splan-line-ready-p
+  :class ::common-lisp-compliant)
+
+(definterface fn-splan-line-window
+  :class ::common-lisp-compliant
+  :kinds ((bytes natp)))
 
 (definterface fn-splan-at-cursorp
   :class ::common-lisp-compliant
@@ -2991,6 +3006,12 @@
               fn-bpnjc-contact-next-is-the-head-scan
               fn-bpnjc-ask-position-bounds))
 
+(definterface fn-bpnb-read
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnb-installed-backoff-refuses-another-backoff
+              fn-bpnb-installed-retries-refuses-another-retries
+              fn-bpnb-input-past-read-bound-is-refused))
+
 (definterface fn-bpnp-configured-budgets
   :class ::common-lisp-compliant
   :keystones (fn-bpnp-configured-budgets-admits-exactly-the-frame-bounded-positive-budgets))
@@ -3404,8 +3425,6 @@
   :class ::program
   :keystones ((fn-web-health-step-preserves-sessions-and-bounds-body :via fn-web-step)))
 
-(definterface fn-web-req-clen
-  :class ::common-lisp-compliant)
 
 ; -----------------------------------------------------------------------------
 ; admin/operator (175 entries)
@@ -3937,6 +3956,9 @@
   :class ::program)
 
 (definterface fn-workflow-fencedp
+  :class ::program)
+
+(definterface fn-workflow-ion-helper-seconds
   :class ::program)
 
 (definterface fn-workflow-ion-attempt-plan
@@ -5041,6 +5063,13 @@
 (definterface fn-nret-no-report-line
   :class :common-lisp-compliant)
 
+(definterface fn-nir-resume-decision
+  :class :common-lisp-compliant
+  :keystones (fn-nir-resume-admits-identical-initial-contract-across-stamps
+              fn-nir-resume-refuses-distinct-initial-changes))
+(definterface fn-nir-resume-line
+  :class :common-lisp-compliant)
+
 (definterface fn-nret-not-running-line
   :class :common-lisp-compliant)
 
@@ -5274,6 +5303,78 @@
 (definterface fn-tcl-source-result-action :class :common-lisp-compliant)
 (definterface fn-tcl-source-result-token :class :common-lisp-compliant)
 
+; Resumable pull/catch-up scheduling decisions consumed by pull-service.
+(definterface fn-prd-key :class :common-lisp-compliant)
+(definterface fn-prd-select :class :common-lisp-compliant :kinds ((active true-listp)))
+(definterface fn-prd-sweep :class :common-lisp-compliant :kinds ((active true-listp))
+  :keystones (fn-prd-sweep-visits-all-admitted-rounds))
+(definterface fn-prd-action :class :common-lisp-compliant)
+(definterface fn-prd-deadline :class :common-lisp-compliant)
+(definterface fn-prd-resume-at :class :common-lisp-compliant)
+(definterface fn-prd-read-limit :class :common-lisp-compliant)
+(definterface fn-prd-write-end :class :common-lisp-compliant)
+(definterface fn-prd-feed-action :class :common-lisp-compliant)
+(definterface fn-prd-write-quantum-end :class :common-lisp-compliant)
+(definterface fn-prd-idle-ms :class :common-lisp-compliant)
+(definterface fn-prd-loss-class-ok :class :common-lisp-compliant)
+
+; ACL2 bounds operator observation without terminating owner custody.
+(definterface fn-nret-observation-step :class :common-lisp-compliant
+  :keystones (fn-nret-observation-expiry-is-uncertain
+              fn-nret-observation-report-requires-stopped))
+(definterface fn-nret-observation-poll-seconds :class :common-lisp-compliant)
+(definterface fn-nret-observation-expired-line :class :common-lisp-compliant)
+(definterface fn-nret-observation-fault-line :class :common-lisp-compliant)
+
+; HTTP reactor uses these actual ACL2 scheduling and lease projections.
+(definterface fn-web-host-connection-limit :class ::program)
+(definterface fn-web-host-request-end :class ::program)
+(definterface fn-web-host-window-end :class ::program)
+(definterface fn-web-host-read-size :class ::program)
+(definterface fn-web-host-event-cid :class ::program)
+(definterface fn-web-host-reserve-size :class ::program)
+
+; PRF-1272: allocation-generation producer, distinct from history version.
+; Program global/native installation refinement remains pending.
+(definterface fn-owner-catalog-root-reserve :class :program)
+;; Actual pre-chunk reader consumer; starting context is not per-command auth/pin.
+(definterface fn-owner-catalog-capture-context :class :program)
+
+; Actual retire CLI projection consumed before observation starts.
+(definterface fn-native-operator-host-result-retire-argv :class :program)
+; Retained TCPCL I/O quanta and custody action precedence.
+(definterface fn-tcrt-read-limit :class :common-lisp-compliant)
+(definterface fn-tcrt-write-end :class :common-lisp-compliant
+  :keystones (fn-tcrt-write-range-is-bounded))
+(definterface fn-tcrt-write-deadline :class :common-lisp-compliant)
+(definterface fn-tcrt-action :class :common-lisp-compliant
+  :keystones (fn-tcrt-source-custody-excludes-input
+              fn-tcrt-ready-write-precedes-source-and-close))
+
+(definterface fn-web-host-page-cursor :class ::program)
+(definterface fn-web-host-page-step :class ::program)
+
+(definterface fn-web-host-private-reply-p :class ::program)
+(definterface fn-web-host-private-reply-step :class ::program)
+; Actual admitted pre-factory output consumer. Incomplete tariffs refuse.
+(definterface fn-owner-output-preview :class :program)
+(definterface fn-owner-output-tariff-preview :class :program)
+(definterface fn-ocap-admit-preview :class :common-lisp-compliant)
+(definterface fn-ocap-at :class :common-lisp-compliant)
+(definterface fn-rlo-capacity :class :common-lisp-compliant)
+
+(definterface fn-web-host-article-p :class ::program)
+(definterface fn-web-host-article-start :class ::program)
+(definterface fn-web-host-article-scan :class ::program)
+(definterface fn-web-host-article-page :class ::program)
+(definterface fn-web-host-window-page-step :class ::program)
+(definterface fn-web-host-replay-slice :class ::program)
+(definterface fn-web-host-replay-forward-p :class ::program)
+(definterface fn-web-host-stream-p :class ::program)
+(definterface fn-web-host-stream-start :class ::program)
+(definterface fn-web-host-stream-scan :class ::program)
+(definterface fn-web-host-stream-page :class ::program)
+(definterface fn-web-host-private-begin-step :class ::program)
 ; Live P3 history authority and actual native generation-pinned consumer.
 (definterface create-fn-hrecs$s :class ::common-lisp-compliant
  :raw-guarded (0 nil (fn-hrecs$s)))
@@ -5313,3 +5414,26 @@
 (definterface fn-hist$p-candidate-word :class ::common-lisp-compliant :kinds ((expected-count natp))
  :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-count-natp))
 (definterface fn-owner-orcp-load-catalog :class :program)
+; PRF-1288: actual private decoded activation and SAME-pool scalar borrow.
+; Complete decoded constructor/GC tariff remains explicitly unpriced.
+(definterface create-fn-decoded-job :class :common-lisp-compliant
+  :raw-guarded (0 nil (fn-decoded-job)))
+(definterface fn-dwj-begin :class :common-lisp-compliant)
+(definterface fn-dwj-one :class :common-lisp-compliant)
+(definterface fn-dwj-read-observation :class :common-lisp-compliant)
+(definterface fn-owner-page-decoded-job-assign :class :common-lisp-compliant)
+(definterface fn-owner-page-decoded-job-outcome :class :common-lisp-compliant)
+(definterface fn-owner-page-decoded-job-byte-at :class :common-lisp-compliant)
+(definterface fn-pwz-cold-descriptor :class :common-lisp-compliant)
+(definterface fn-pwz-nth :class :common-lisp-compliant :kinds ((index natp)))
+(definterface fn-owner-page-decoded-window-price-status :class :common-lisp-compliant)
+(definterface fn-oct-nth :class :common-lisp-compliant)
+
+(definterface fn-owner-page-decoded-window-acquire-projected :class :common-lisp-compliant)
+(definterface fn-owner-page-window-discovery-kind :class :common-lisp-compliant)
+
+
+(definterface fn-web-host-post-window :class ::program)
+(definterface fn-web-host-post-reply-step :class ::program)
+
+(definterface fn-web-host-post-form-step :class ::program)
