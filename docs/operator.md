@@ -1355,3 +1355,11 @@ submitted frame: ten seconds plus one second per 64 KiB (rounded up). If the
 owner still has not replied when that budget expires, the result is uncertain;
 it does not mean the submission failed. Check the durable result before
 resubmitting. Explicit consumer wait intervals keep their existing semantics.
+
+
+A withdrawal can take effect even if its subsequent cause article cannot be
+posted. `UNCERTAIN withdrawn-cause-refused` reports that partial result: the
+withdrawal is in force, and the cause was refused. Related `withdrawn-cause-*`
+reasons distinguish clock, profile, conflict, uncertainty and fault outcomes.
+Inspect the target and cause before retrying; this result does not undo the
+withdrawal.

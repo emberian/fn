@@ -2662,3 +2662,24 @@ no second available index. Complete command guards and source-loaded
 command/event/owner-credit fixtures pass; the selective owner refinement,
 carried snapshot completeness/stability, PROGRAM route guards and physical
 cost coverage remain owed. LIST still constructs its full upstream reply.
+
+### Composite local withdrawal outcomes (S083)
+
+The local moderation withdrawal performs configuration publication and cause
+article submission as separate owner actions. Once publication has succeeded
+(or the plan establishes withdrawal already in force), a refusal of the cause
+cannot be reported as if the entire request had no effect. ACL2's
+`fn-mwo-after-withdraw` composes that second outcome: accepted/duplicate retain
+success; a fault remains fault; other incomplete causes use the existing
+uncertain status with an explicit `withdrawn-cause-*` reason. For example,
+`UNCERTAIN withdrawn-cause-refused` states that withdrawal is in force but its
+cause article was refused. This requests reconciliation rather than implying
+rollback or permitting a blind retry. No new wire status is introduced.
+
+The combined result does not make these actions atomic. Current-authority and
+configuration-generation changes between planning and execution remain a
+separate review obligation; it does not claim the initial plan is a lease.
+SCN-1124 executes the actual native moderation dispatcher with recorded
+publication/submission adapters and checks success, refusal, uncertain, fault,
+malformed results and a refusal before publication. Full native disk/transport
+composition remains a separate scenario.

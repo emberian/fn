@@ -5307,7 +5307,7 @@ exactly one submission is affected even if the owner survives it."
 ACL2 decides it over the owner and the configuration it carries, after one
 fresh clock reading (books/moderation-verbs.lisp fn-mvb-plan, through
 host/owner-host.lisp fn-owner-moderation-plan), and names the steps; this
-function runs them in order and answers the first that does not accept.  A
+function runs them in order and preserves a completed withdrawal in its reply. A
 refusal carries ACL2's reason, as (:reason :refused REASON).  :submit hands
 ACL2's article to the operator submission; :withdraw first publishes ACL2's
 configuration vector through the live administration (the operator's
@@ -5335,7 +5335,8 @@ again under the owner mutex; nothing here computes a value."
                          :accepted))
                 (word (if (consp admin) (second admin) admin)))
            (if (eq word :accepted)
-               (submit (third plan) (fourth plan) (fifth plan))
+               (fnn-core 'fn-native-control-host-withdraw-result
+                         (submit (third plan) (fourth plan) (fifth plan)))
              admin)))
         (t (fnn-fault "ACL2 returned a malformed moderation plan"))))))
 
