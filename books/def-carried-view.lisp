@@ -668,15 +668,22 @@
                    (cons (cons stamp ws) (fn-cv-cdr carry))
                  (let ((r (,refresh (cons (,ws-of carry) (fn-cv-cdr carry)) ws)))
                    (cons (cons stamp ws) (fn-cv-cdr r)))))
+             ; the list refresh keeps its key (the list layout's fact)
+             (defthm ,(fn-cv-name name '-key-of-refresh)
+               (equal (fn-cv-car (,refresh carry ws)) ws)
+               :hints (("Goal" :in-theory (union-theories '(,refresh fn-cv-car car-cons)
+                                                          (theory 'minimal-theory)))))
              (defthm ,(fn-cv-name carryp '-of-refresh-stamped)
                (implies (and (,carryp carry) (,stampedp carry) ,stamped-s-ws)
                         (,carryp (,refresh-s carry stamp ws)))
                :hints (("Goal"
                         :use ((:instance ,determines (s stamp) (a ws) (b (,ws-of carry)))
                               (:instance ,(fn-cv-name lcarryp '-of-refresh)
+                                         (carry (cons (,ws-of carry) (fn-cv-cdr carry))))
+                              (:instance ,(fn-cv-name name '-key-of-refresh)
                                          (carry (cons (,ws-of carry) (fn-cv-cdr carry)))))
                         :in-theory (union-theories
-                                    '(,refresh-s ,stampedp ,stamp-of ,ws-of ,carryp ,fresh
+                                    '(,refresh-s ,stampedp ,stamp-of ,ws-of ,carryp ,lcarryp ,fresh
                                       fn-cv-car fn-cv-cdr car-cons cdr-cons)
                                     (theory 'minimal-theory)))))
              (defthm ,(fn-cv-name stampedp '-of-refresh-stamped)

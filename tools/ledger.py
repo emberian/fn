@@ -1769,6 +1769,8 @@ def def_carried_view_expansion(form: list) -> list:
              [Sym("let"), [[Sym("r"), [refresh, [Sym("cons"), [ws_of, carry], [Sym("fn-cv-cdr"), carry]], ws]]],
               [Sym("cons"), [Sym("cons"), st, ws], [Sym("fn-cv-cdr"), Sym("r")]]]]))
         hyps = [[carryp, carry], [stampedp, carry], fresh]
+        events.append([Sym("defthm"), _gen_sym(name, "-key-of-refresh"),
+                       [Sym("equal"), [Sym("fn-cv-car"), [refresh, carry, ws]], ws]])
         events.append([Sym("defthm"), _gen_sym(carryp, "-of-refresh-stamped"),
                        [Sym("implies"), [Sym("and")] + hyps, [carryp, [refresh_s, carry, st, ws]]]])
         events.append([Sym("defthm"), _gen_sym(stampedp, "-of-refresh-stamped"),
@@ -2010,7 +2012,10 @@ def record(book: Book, form: object, line: int, *, local: bool,
             # bare general claim (`teeth_form`).
             names = defkeystone_names(parts)
             book.paired_must_fails |= set(names["without"] + names["mutant"])
-            book.teeth_declared[str(parts["name"])] = parts
+            # the teeth cover the REGISTRY keystone: the restated theorem when
+            # the form restates one (the formulas are checked equal), else NAME
+            registry = parts["restates"] if parts["restates"] is not None else parts["name"]
+            book.teeth_declared[str(registry)] = parts
     if name == "defteeth":
         parts = defteeth_parts(form)
         if parts is not None and not suppressed:
