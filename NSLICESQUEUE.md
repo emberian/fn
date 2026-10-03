@@ -58,11 +58,14 @@ that their recorded state is current at every later revision.
   place. Split a slice when it has independently useful consumers. The list is
   an initial coverage map, not a claim that all remaining defects are enumerated.
 
-## Current ten-owner engineering wave — 2026-10-03
+## Current engineering and source-tracing wave — 2026-10-03
 
 Ember authorized Integration, History, Runtime, BP, Foundations, Served, Access,
-Tools, Operator and Empirical. Root coordinates and supplies the actual DEFAULT
-pool startup producer; no lieutenant or Luna resumed. Integration owns public
+Tools, Operator and Empirical, plus horse_entries, horse_exits,
+horse_consistency and horse_bounds for complete source-path tracing and the
+shared consumer .spw corpus. Root coordinates and supplies the reusable decoded
+core; Operator, Foundations and Runtime compose the actual DEFAULT pool startup
+producer. No lieutenant or Luna resumed. Integration owns public
 assembly, current execution and planning; History storage/P3/reclaim; Runtime
 ARTICLE/Web/decoded lifecycle; BP transport and signed application joins;
 Foundations accounting/banks/tariffs; Served query/serializer families; Access

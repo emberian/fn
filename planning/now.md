@@ -5,8 +5,10 @@ Integration (assembly/execution/planning), History (storage/P3/reclaim), Runtime
 (reader/Web/decoded lifecycle), BP (transport/application joins), Foundations
 (accounting/banks/tariffs), Served (queries/serializers), Access (ARTICLE/header
 representation), Tools (developer/tracing/allocation), Operator (policy/control/
-journal), and Empirical (system scenarios/defect discovery). Root coordinates
-and implements the actual DEFAULT read-pool startup producer. No lieutenant,
+journal), and Empirical (system scenarios/defect discovery). Root coordinates and supplies the reusable decoded core. Operator, Foundations
+and Runtime compose the actual DEFAULT read-pool startup producer. Four
+additional source-tracing owners (horse_entries, horse_exits, horse_consistency
+and horse_bounds) trace complete paths and maintain the shared consumer .spw corpus. No lieutenant,
 Luna or automation resumed. Owners continue missing behavior, defects,
 integration, invariants/guards/proofs and assurance across their full domains.
 The continuing domains and open acceptance criteria are in
@@ -18,8 +20,10 @@ certification, qualified packaging and deployment remain separate.
 The immediate shared dependency is one coherent current source-loaded owner
 world with early arena/P3 attachment before generic history and current
 reader/decoded/native interfaces. History is admitting the generated current logical input in the retained
-canonical P3 world; owner entry has not yet been reached. Required payload
-arena framing/representation facts are the current replay obstruction. The
+canonical P3 world; owner entry has not yet been reached. The required payload arena scope now passes ordinary admission. The retained
+continuation has passed the Store trace scope with 40 explicitly deferred
+semantic theorems and two dependent proof-catalog references recorded; it has
+not reached the full normal host or native entry. The
 shared source generator can explicitly defer named unrelated DEFTHMs while
 retaining definitions and required guard/correspondence obligations, recording
 those books as unproved. No such deferral has yet established owner execution. The earlier alleged eleven-versus-ten-field read-pool
@@ -30,7 +34,8 @@ establish those joins. History owns one fresh initialization, with Integration
 supporting the shared runner and the other owners continuing their consumers.
 A concrete activation gap is now identified: fresh owner startup has no caller
 of page-read-install-baseline/pool-storage-start, leaving the read pool offline.
-Root owns its real reservation-backed installer; compressed endpoint activity
+Operator owns the native pre-open consumer, Foundations the numerical plan and
+installer, and Runtime the persistent executor/storage lifecycle; compressed endpoint activity
 is not established by the constructor or recording fixtures.
 
 ## Usage-limit stop — 2026-10-03 10:18 America/New_York
