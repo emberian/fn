@@ -150,18 +150,19 @@
                   (equal trace (fn-oqw-phases :batch)))))
   :hints (("Goal" :in-theory (disable fn-oqw-trace fn-oqw-final))))
 
-; A failed effect ends the job: after a phase answered anything but :ok,
-; no phase runs, and the job ends :uncertain (an uncertain word) or :fault.
+; A failed effect ends the job: the step after a phase that answered
+; anything but :ok is a terminal -- :uncertain for an uncertain word, :fault
+; otherwise -- and a terminal never steps again, so no phase runs after it.
+; The subject is fn-oqw-step, host-called in host/native/owner.lisp
+; fnn-owner-run-job.
 (defthm fn-oqw-a-failed-effect-ends-the-job
   (implies (and (not (fn-oqw-terminalp phase))
-                (consp words)
-                (not (equal (car words) :ok)))
-           (and (equal (fn-oqw-trace kind phase words) (list phase))
-                (equal (fn-oqw-final kind phase words)
-                       (if (equal (car words) :uncertain) :uncertain :fault))))
-  :hints (("Goal" :expand ((fn-oqw-trace kind phase words)
-                           (fn-oqw-final kind phase words))
-           :in-theory (disable fn-oqw-trace fn-oqw-final))))
+                (not (equal word :ok)))
+           (and (equal (fn-oqw-step kind phase word)
+                       (if (equal word :uncertain) :uncertain :fault))
+                (fn-oqw-terminalp (fn-oqw-step kind phase word))
+                (equal (fn-oqw-step kind (fn-oqw-step kind phase word) word2)
+                       (fn-oqw-step kind phase word)))))
 
 ; -----------------------------------------------------------------------------
 ; 2. The receipt.  L the time-bars ledger, GEN the generation the job was

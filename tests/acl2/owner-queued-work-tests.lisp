@@ -60,12 +60,16 @@
   (fn-oqw-after phase '(:append :intents :extend :fence :resolutions)))
 (assert-event (equal (oqwt-mutant-after :append) :intents))
 
-; --- fn-oqw-a-failed-effect-ends-the-job: positive (both words), and the
-; removal of "not :ok" (an :ok continues).
-(assert-event (equal (fn-oqw-trace :batch :fence '(:uncertain :ok)) '(:fence)))
-(assert-event (equal (fn-oqw-final :batch :fence '(:uncertain :ok)) :uncertain))
-(assert-event (equal (fn-oqw-final :batch :append '(:eio)) :fault))
-(assert-event (equal (fn-oqw-trace :batch :fence '(:ok :ok)) '(:fence :resolutions)))
+; --- fn-oqw-a-failed-effect-ends-the-job: positive (an uncertain fence
+; and a faulted append, then a later :ok does not move them); removal of
+; "not :ok" (an :ok continues to the next phase); removal of "not
+; terminal" (a terminal answers itself, not :fault).
+(assert-event (equal (fn-oqw-step :batch :fence :uncertain) :uncertain))
+(assert-event (equal (fn-oqw-step :batch :uncertain :ok) :uncertain))
+(assert-event (equal (fn-oqw-step :batch :append :eio) :fault))
+(assert-event (equal (fn-oqw-step :batch :fault :ok) :fault))
+(assert-event (equal (fn-oqw-step :batch :fence :ok) :resolutions))
+(assert-event (equal (fn-oqw-step :batch :done :eio) :done))
 
 ; --- The receipt, reached: the ledger issued generation 1 for the job.
 (defconst *oqwt-l* (caddr (fn-otb-issue (fn-otb-ledger-init))))
