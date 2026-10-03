@@ -713,3 +713,9 @@ claim. Assertion observed during loop BEFORE ordinary worker exit cleanup,
 so old final cleanup cannot falsely make removal look repaired. ACL2 finite
 assertions added to existing peer-pull tests; book/test certification pending
 next combined Integration cut, no standalone cert/image launched here.
+
+Final four S112 schedules pass1.217s; intended descriptor assertion
+red/base5022d65bf and green/head4301f4a08, same harness/no infra/skips.
+Archived S112-dcccaf2ad4374c4cb5132f14ce1de6ba.json sha256
+35473cb941e07a1a91817625ea10f82b9121f16a0c07a5e10e779561aaa52f57.
+Separate actual ACL2 schedule red/green witness follows, no source change.
