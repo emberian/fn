@@ -189,6 +189,24 @@
 (defthm fn-bpr-result-state
   (equal (fn-bpa-nth 1 (list tag st)) st))
 
+; Both receipt-acceptance routes finish through the same context binding
+; transition.  Establish its state-preservation obligation once at the
+; constructor boundary so each wrapper only proves that its own admission
+; path supplies a context of the configured shape.
+(local
+ (defthm fn-bpr-bind-context-preserves-statep-local
+   (implies (and (fn-bpr-statep st)
+                 (fn-bpr-contextp (fn-bpr-state-config st) context))
+            (fn-bpr-statep
+             (fn-bpa-nth 1 (fn-bpr-bind-context st context))))
+   :hints (("Goal"
+            :use ((:instance fn-bpr-statep-components))
+            :in-theory
+            (union-theories
+             (theory 'minimal-theory)
+             '(fn-bpr-bind-context fn-bpa-nth fn-bpr-statep-of-constructor
+               fn-bpr-result-state fn-bpr-context-list-cons))))))
+
 (defthm fn-bpr-accept-request-preserves-statep
   (implies
    (fn-bpr-statep st)
@@ -199,15 +217,14 @@
   :hints (("Goal"
            :use ((:instance fn-bpr-statep-components)
                  (:instance fn-bpr-acceptable-contextp
-                            (config (fn-bpr-state-config st))))
+                            (config (fn-bpr-state-config st)))
+                 (:instance fn-bpr-bind-context-preserves-statep-local
+                            (context (fn-bpr-context-from-request record request))))
            :in-theory
            (union-theories
             (theory 'minimal-theory)
             '(fn-bpr-accept-request fn-bpr-bind-request-context
-              fn-bpr-bind-context
-              fn-bpa-nth fn-bpa-car fn-bpa-cdr
-              fn-bpr-context-listp fn-bpr-statep-of-constructor
-              fn-bpr-result-state fn-bpr-context-list-cons)))))
+              fn-bpa-nth)))))
 
 (defthm fn-bpr-context-from-ref-contextp
   (implies
@@ -251,15 +268,13 @@
   :hints (("Goal"
            :use ((:instance fn-bpr-statep-components)
                  (:instance fn-bpr-projected-acceptable-contextp
-                            (config (fn-bpr-state-config st))))
+                            (config (fn-bpr-state-config st)))
+                 (:instance fn-bpr-bind-context-preserves-statep-local
+                            (context (fn-bpr-context-from-ref record ref))))
            :in-theory
            (union-theories
             (theory 'minimal-theory)
-            '(fn-bpr-accept-projected-ref
-              fn-bpr-bind-context
-              fn-bpa-nth fn-bpa-car fn-bpa-cdr
-              fn-bpr-context-listp fn-bpr-statep-of-constructor
-              fn-bpr-result-state fn-bpr-context-list-cons)))))
+            '(fn-bpr-accept-projected-ref fn-bpa-nth)))))
 
 (defthm fn-bpr-found-context-typed
   (implies (and (fn-bpr-context-listp config contexts)
