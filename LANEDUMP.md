@@ -594,3 +594,7 @@ python3 tools/proof_repl.py resync luna-served-owner books/owner-log.lisp \
 ```
 
 Result: 14 forms, 0 refusals; 299,388 total steps / 0.71 s ACL2 time. The helper took 2,251 steps / 0.02 s. The seven unchanged keystones admitted at: served-post 1,706 / 0.01 s; control-post 422 / 0.01 s; transit 284,444 / 0.56 s; feed-reply 7,290 / 0.03 s; BP-app refusal 779 / 0.01 s; served refusal 98 / 0.01 s; control refusal 256 / 0.01 s. These are observed candidate costs, not a new matched speedup claim against the archived run. Other consumers include owner/native log writes and BP application output; ACL2 builds the lines in `host/owner-host.lisp`, `host/native/owner.lisp`, and `host/bp-native-app-host.lisp`. The packet is ready for Integration's source review and consumer certification; this lane did not certify or request closure.
+
+## Follow-up candidate (source-only)
+
+`books/owner-feed-reconfigure-counted.lisp` carries two synchronized facts through the same retire/reconfigure transitions: scalar pending equals the table aggregate, and each feed satisfies `fn-ofct-table-relationp`. Candidate abstraction is a local combined transition contract for `fn-ofrc-retire-one`, `fn-ofrc-retire`, and `fn-own-feed-reconfigure-counted`, leaving their theorem statements and hypotheses intact. Existing exact-original-table and pending-delta bridges make this source-justified, but it is untested and no proof-cost claim is made; promote only if one warmed admission simplifies the existing cluster. Host consumer: `host/owner-host.lisp` at `fn-own-feed-reconfigure-counted`.
