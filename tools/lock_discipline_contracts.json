@@ -259,7 +259,8 @@
   "fnn-with-world-key-printing",
   "fnn-connection-scoped",
   "fnn-log-sealed-effect",
-  "fnn-section-envelope"
+  "fnn-section-envelope",
+  "fnn-with-observed-owner"
  ],
  "gated_macros": {
   "fnn-section-envelope": {

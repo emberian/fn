@@ -113,3 +113,25 @@
          "missing pass observation preserves capture")
   (check (fn-cmt-pass-ready 1 t 2) "polling preceding pass is the declared readiness"))
 (format t "PASS actual private committer snapshot/wait/pipeline/stop schedules~%")
+
+;; The actual starter must provide the outer actor boundary's service escape
+;; hook. A raw ACL2 throw bypasses the loop's condition handler, so recording
+;; only the actor's terminal fault leaves a serving node with no committer.
+(load-deployed-forms "host/native/owner.lisp"
+ '((defun fnn-owner-thread-escape) (defun fnn-owner-start-committer)))
+(let ((original (symbol-function 'fnn-owner-commit-pipeline))
+      (s (%make-fnn-owner-service :batching t :queued 1)) (calls 0))
+  (unwind-protect
+       (progn
+         (setf (symbol-function 'fnn-owner-commit-pipeline)
+               (lambda (service) (declare (ignore service))
+                 (incf calls) (throw 'raw-ev-fncall :torn-pipeline)))
+         (fnn-owner-start-committer s)
+         (let ((worker (fnn-owner-service-committer s)))
+           (multiple-value-bind (ended receipt) (fnn-owner-actor-join s worker)
+             (check (and ended (eq (third receipt) :fault) (= calls 1))
+                    "raw committer escape is a single terminal fault")
+             (check (fnn-owner-service-stopping s)
+                    "raw committer escape stops service instead of silently losing committer"))))
+    (setf (symbol-function 'fnn-owner-commit-pipeline) original)))
+(format t "PASS actual committer starter raw-escape service boundary~%")

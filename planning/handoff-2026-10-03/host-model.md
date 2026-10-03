@@ -171,3 +171,49 @@ regenerated on a box. Half a day plus a certify of the two books' closure.
   Never admitted as a whole, never certified. Next: admit it in a REPL, apply host-model-review-1.md's must-fixes
   (M1 lease labels, M2 -by-definition names, M3 the *fn-hmc-realization* defconst in LOCK-CHECK's format, M4 the
   P10 cut coordinates) if not already in, write the teeth, certify, then the carried read theorem (P2/M6/P8).
+
+## Runtime primitive observation consumer, 2026-10-03
+
+The actual generated actor reserves its existing physical gensym before the
+thread maker. `fnn-native-observed-thread-thunk` carries its exact symbol-name
+string into the child; observation-only executor startup can use the same
+reservation primitive once before its maker. This is a native trace identity,
+not a semantic actor identity, resource generation or accounting claim.
+
+The current shared site is `fnn-section-envelope` through
+`fnn-with-observed-owner`, rather than the historical `fnn-owner-gated`
+realization-table row. Acquire is recorded after physical owner acquisition.
+Release gets its producer position while O is held and is marked complete
+only after physical unlock. An observer reader exposes only the completed
+prefix in that reservation order. It never sorts timestamps or reconstructs
+thread aliases. The only nested observer lock is O -> private observer mutex;
+there is no callback, I/O, ACL2 evaluation or acquisition of O under that
+private mutex. Direct stop/fault O entries and other locks remain outside
+this first producer slice.
+
+`fnn-native-observe(EVENT)` accepts an already measured literal label when
+`*fnn-native-observer*` is dynamically present. The explicit developer capacity
+preallocates record rows before children start. NIL identity, overflow or an
+observer condition makes comparison unavailable; no fn fault or admission
+decision follows from instrumentation.
+
+`tests/test_native_observation_raw.sh` runs actual generated actor/section
+code and forces a first actor to pause after unlock before release completion
+while a second actor enters and leaves O. The reader reports the first
+acquire as a pending prefix, then the completed reservation order
+acquire1/release1/acquire2/release2. It also checks actual observation-only
+child startup, failed maker, invalidation and preservation of section values.
+It writes literal `assert-event` forms to
+`build/runtime-tests/native-observation-hm.lsp` for the loaded HM machine:
+exact held/released answers and `fn-hmc-invp` at every observed prefix.
+Finite replay is not an all-schedules proof or an image qualification.
+Empirical owns the next actual extent-label consumer on this frozen seam.
+
+Groundwork replayed all four exact producer-emitted assertion packets in the
+clean protected `hmc-direct-read` world: PASS, <0.01 seconds and zero proof
+steps. Startup reused ten exact cached dependencies (0.87 seconds / 532,452
+steps). The source producer is d4cb69168; the native log, literal replay-input
+transcript and machine/packet hashes are filed under
+`planning/evidence/runtime-observation-2026-10-03/`. This first packet checks
+finite O-only behavior. It does not qualify the image or missing PageIO/pins
+primitive sites, and leaves PRF-1254 planned.

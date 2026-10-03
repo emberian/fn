@@ -600,8 +600,7 @@ and is not a greenprefix. Books/certpairs are reused; no duplicateimage build.
 Source reports regenerated atc3:1460declared/1408dispatched/0raw-rule findings;
 stream PRF1256 curatedmap now corrected, subsequent generated refresh owed.
 Transport credential boundary: S107/S108/S109, codex-sol-tools
-================================================================
-Isolated transport tree from origin/dev c73372af6. Owned feed auth-profile
+=========================================================Isolated transport tree from origin/dev c73372af6. Owned feed auth-profile
 and dial, pull profile/worker boundary only; Runtime owns feed actor/idle
 and shared owner fault-service. Profile opens O_NONBLOCK|O_NOFOLLOW and
 admits descriptor fstat before reading, preserving uid/mode/bound authority.
@@ -679,3 +678,72 @@ and is now indexed; typed final producer retry 075454Z-1046521 remains 7/0.
 Remaining source assembly queue: Astra pipeline completion custody, S110
 journal boundaries, bounded observation packet, discovery rows and hint batch.
 Current generated world reports await independent refresh after assembly.
+
+S110 FNPL/FNCU append classification, codex-sol-tools
+====================================================
+Actual fnn-pull-journal-append now seals/validates/converts and runs the
+before-write selector before attempted publication. Definite prewrite faults
+retain their class. Attempted write/barrier failures remain indeterminate
+even when descriptor cleanup also fails; actual ACL2 journal phase decides
+uncertainty. After the barrier returns, classification/cut faults retain
+their class with durable cursor bytes present. Both pull and catch-up consume
+the same function. Runtime owns the analogous FNFD owner append path.
+
+First command: python3 -m unittest tests.test_native_pull_append
+Six schedules pass1.748s before scoped trap generation; final rerun below.
+Kernel write/fsync/close effects are real. Envelopes are scripted answers,
+not a codec/image claim; actual ACL2 phase step and host append/phase/close
+and selector functions execute. Known assertion marker is the only defect
+failure; reader/import/tool errors remain infrastructure. Only this new raw
+fixture's derived trap block generated, four unexpected-path traps remain.
+Same-harness S110 prewrite assertion evidence follows source commit; no
+full suite, image build or ACL2 closure started by this lane.
+
+Final scoped schedules after trap generation: six pass1.896s. First evidence
+at099d28d94 was truthfully rejected: two intended subtest assertions conflict
+with verifier's single-assertion contract. That receipt remains archived.
+Fixture now stops on first failed protocol variant; successful runs still
+execute both. Semantic verifier contract unchanged.
+
+S110 intended single assertion red at basee3b6eee46 and green at head31c79cb07,
+same designated test/harness, no infra/skips; final six schedules pass1.903s.
+Archived planning/evidence/repair/S110-e20e6254e71e4151b41907b94d897130.json
+sha256f26785cea305d06c3faed1083ac8e47d6b7519ad598dece5fd6894738204fe3e.
+Receipt-only commit does not change source coordinate. S110 remains
+in-progress pending combined consumer boundary; no whole-owner/image claim.
+
+## Astra source trace — SYNCER-COMPLETION-ESCAPE (2026-10-03)
+
+Base d3a80c2c5. Manually traced actual native actor reserve/start/run/join,
+private typed grant install/issue/physical/outcome/abort/drain, syncer job phases,
+whole pipelined committer, raw escapes, and shutdown joins/Store settlement;
+read fn-oqw and typed resource-syncer definitions and native leaves.
+
+Confirmed and repaired two connected paths. A successful child launch followed
+by committer escape previously had no retained operation consumer: physical
+shutdown join left its grant forever. The whole outstanding pipeline now owns
+an unwind continuation over its real result and latest operation ledger; both
+physical orderings consume once. Starting consumption disarms this continuation
+before the potentially torn step, so a torn receipt remains owed and is not
+retried. Separately, raw ACL2 throws bypass the committer loop's condition
+handler: the actual starter now supplies the outer actor's service-failure
+callback instead of merely recording a dead committer on a running service.
+
+Same head harness over baseline owner source fails each exact assertion; repaired
+bytes pass 12 result/physical-order/escape schedules, torn-consumption no-retry,
+and actual committer starter raw-throw stop. Inherited actor/custody/pacing tests
+also pass. Archive: planning/evidence/astra-syncer-completion-escape-20261003.json
+(6fab8f57249a3fac1195d4ff3360b740a4ccab4b3b55d0bdc6214c2f23fc1167).
+SCN-1087 is claimed; HST-046/spec/scenario updated. Host read and diff checks pass.
+These fixtures use actual native bodies and ACL2 control decisions but recording
+funding/I/O boundaries; no typed theorem, saved image or deployment claim.
+
+Remaining: Integration's matching image/shutdown observation; proof/host-model
+composition unchanged; actor setup failures and concurrent callback drain timing
+are unconfirmed leads still being traced. Witness checker retains six preexisting
+actor/script catalog-header findings; new SCN-1087 scripts are cited. No book
+source changed, so no independent certification/full image was launched.
+
+## Source assembly persistence/custody follow-through — GPT-6.1-Sol
+
+Over reviewed433b73dd7: S110099d28d94/31c79cb07/c3585ba3a, Astra53dd02bca/ec2dbfce0, Runtime observationsd4cb69168/b86933fba. Preserved their primary source reviews; inspected actual journal append boundaries and material owner overlap. Prewrite envelope/phase faults retain class; write/fsync attempts remain uncertain across close failure; postbarrier faults stay definite. Pipeline unwind retains the actual-result consumer before completion starts, while torn completion is not retried; outer committer actor escape reaches the failure boundary. Observation hooks use the existing actor reservation and private finite rows, reserve release before unlock and complete after unlock; unavailable records carry no HM verdict. Owner hunks apply cleanly beside irreversible fault/typed frames changes. Six exact producer fixtures match; JSON and Python compile; six new evidence objects verify. Only cumulative LANEDUMP conflict, all content retained. No duplicate raw/proof/image experiments. Combined selectors owed at assembled bytes: tests/test_native_syncer_pipeline_escape_raw.sh, tests/test_native_committer_actor_raw.sh, tests/test_native_observation_raw.sh and tests.test_native_pull_append.PullAppendBoundaryTests (discover actual class in file). Existing raw/HM receipts do not establish whole-image or realization assurance; Integration retains loaded-world/graph and matching-image checks.
