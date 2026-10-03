@@ -1539,7 +1539,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-entries-tests \
 	tests/acl2/catalog-refresh-tests \
 	tests/acl2/served-catalog-tests \
-	tests/acl2/served-catalog-raw-availability-tests \
+	tests/acl2/served-catalog-raw-availability-tests tests/acl2/served-catalog-load-identity-tests \
 	tests/acl2/served-incremental-tests \
 	tests/acl2/over-window-tests \
 	tests/acl2/served-catalog-view-tests \
