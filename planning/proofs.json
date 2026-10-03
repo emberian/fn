@@ -22681,9 +22681,10 @@
       "evidence": [
         "books/owner-operation-report.lisp",
         "host/native-live-status-host.lisp",
-        "tests/test_owner_operation_report.py"
+        "tests/test_owner_operation_report.py",
+        "tests/acl2/owner-operation-report-tests.lisp"
       ],
-      "progress_note": "Twelve literal dependency/consumer definitions admitted normally; both actual consumer guards and universal fn-oor-report-within-budget admitted in0.03ACL2s/10801steps. Ordinary-Lisp actual host reply/cache/CLI path tests pass with named STATE/frame adapters. No certificate, image, full socket or physical funding claim."
+      "progress_note": "Twelve literal dependency/consumer definitions admitted normally; both actual consumer guards and universal fn-oor-report-within-budget admitted in0.03ACL2s/10801steps. Ordinary-Lisp actual host reply/cache/CLI path tests pass with named STATE/frame adapters. No certificate, image, full socket or physical funding claim. Six logical boundary assertions now pass in the same normal world: exact budget, one-byte-short refusal, zero budget, borrowed-graph independence and corrupt-row masking. Initial executable fixture used MV-NTH on a multiple-value call; repaired with an ordinary MV-LET adapter."
     }
   ]
 }
