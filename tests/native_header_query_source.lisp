@@ -29,6 +29,9 @@
 (source-load-defuns "books/legacy-parser-cursor.lisp")
 (source-load-defuns "books/legacy-parser-header.lisp")
 (source-load-defuns "books/legacy-header-query.lisp")
+(source-load-defuns "books/legacy-parser-validity.lisp"
+                   '(fn-nlv-run fn-nlv-control fn-nlv-phase fn-nlv-value
+                     fn-nlv-control-byte fn-nlv-control-run fn-nlv-generic-run))
 (source-load-defuns "books/nov-span-window.lisp")
 (source-load-defuns "books/nntp-responses.lisp" '(fn-nntp-hdr-metadata-tokenp fn-nntp-hdr-content))
 (defvar *header-cold-at* nil)
@@ -44,6 +47,11 @@
   (let* ((arena (list payload)) (cursor (fn-lhq-begin 0 (length payload) :captured-pin field))
          (*header-cold-at* 4) (*header-cold-fired* nil))
     (let ((*header-cold-at* nil))
+      (let* ((start (fn-lpc-header-begin))
+             (old (fn-nlv-run payload start 0 0 :captured-pin))
+             (generic (fn-nlv-generic-run payload start 0 0 :captured-pin (second cursor))))
+        (header-check (equal (fn-nlv-control generic) (fn-nlv-control old)))
+        (header-check (eq (fn-lpc-at 0 generic) (fn-lpc-at 0 old))))
       (let* ((a (multiple-value-list (fn-lhq-tick cursor 1 arena)))
              (b (multiple-value-list (fn-lhq-tick (first a) fuel arena)))
              (whole (multiple-value-list (fn-lhq-tick cursor (+ 1 fuel) arena)))

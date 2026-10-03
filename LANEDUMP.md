@@ -4244,3 +4244,26 @@ All owned ACL2 sessions stopped, including hash hbox session horse-bounds-spool-
 * Current owned scope remains tools/developer/tracing/runtime allocation. Full
   DWJ/native physical/GC tariff and live socket composition are explicit pending
   consumer assurances, not discharged by leaf process-counter observations.
+
+Convergence/yield packet: c443 Xref core+teeth normal2root PASS
+certify-20261003T175907Z-2776907 (38matching dependencies/21explicituncited cache
+provenance debt), archived/indexed. Generic-name grammar bridge now establishes
+exact actual header-byte control765151steps, generic full-run control284steps,
+same original grammar phase231steps, with no hypotheses. Old control-byte
+statement preserved23steps; small projection lemma replaces initial7.7Mstep
+expansion. All81 current validity events +62 literal testforms warm PASS, and
+actual source237330 query checks/184483 ARTICLE checks PASS. This remains a
+header transition/run component, not a full fn-lhq old-value/owner/physical
+endpoint theorem. Current normal validity+teeth selected check next, no closure.
+
+Remaining Access engineering at yield: generic header query->old arbitrary field
+value bridge, selector termination/reference, renderer/owner executable guards
+and full reply/session-effect refinement. Renderer FnAstoPlanRenderWindow is
+truthfully :ideal; dispatch declarations b302 do not upgrade its class. Shared
+FnNpwOne has a strong pieces recognizer; complete bounded compiled entry must
+carry/prove its state or introduce a total bounded primitive with a genuine
+reference bridge, never whole pieces/payload revalidation or false PROGRAM/class
+relabeling. Actual compressed endpoint/factory/custody join stays Runtime +
+History's initializer; Served owns HDR/XPAT consumer, Operator owns non-ARTICLE
+operator items. No endpoint available and no waiting/image claim. All selected
+source/logs remain under this tree and named evidence archive; no files deleted.
