@@ -372,6 +372,7 @@
 (include-book "owner-queued-work")
 (include-book "owner-cold-line")
 (include-book "owner-resource-line")
+(include-book "output-command-admission")
 (include-book "arena-reader-pins")
 (include-book "owner-reader-read")
 (include-book "peer-carriage")
@@ -440,3 +441,4 @@
 (include-book "resource-syncer")
 (include-book "response-identity")
 (include-book "def-cost")
+(include-book "string-line-cursor-cost")
