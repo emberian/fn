@@ -22915,6 +22915,38 @@
         "tests/native_bp_session_bank_raw.lisp"
       ],
       "progress_note": "2026-10-03 actual controller/core-leaf raw matrix PASS for ordinary versus fenced context and observed versus unobserved physical close. Source/control composition and exact affected-root certification pending; full host no-future-publication/custody refinement remains proposed."
+    },
+    {
+      "id": "PRF-1298",
+      "title": "Returned decoded scratch can be reused without retaining prior publication authority",
+      "statement": "fn-dwa-retire requires the matching current returned or cancelled-returned SAME-pool token, stable owned carry, and no pending read. It clears prior source/root/controller/token authority; fn-dwj-retire preserves private backing and its retired job cannot publish a scalar byte. Actual native return and last-borrow observation, permanent startup backing funding and repeated native decoder operation are separate consumer obligations.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-047",
+        "NNT-055"
+      ],
+      "depends_on": [
+        "PRF-1288"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "files": [
+        "books/decoded-worker-assignment.lisp",
+        "books/decoded-worker-job.lisp",
+        "books/decoded-worker-backing.lisp",
+        "host/page-decoded-window-host.lisp",
+        "tests/acl2/decoded-worker-reuse-tests.lisp"
+      ],
+      "events": [
+        "fn-dwj-retired-job-refuses-scalar-publication",
+        "fn-dwj-retirement-preserves-private-backing",
+        "fn-dwa-retirement-revokes-prior-authority",
+        "fn-dwa-refused-retirement-preserves-carry"
+      ],
+      "evidence": [
+        "tests/acl2/decoded-worker-reuse-tests.lisp"
+      ],
+      "progress_note": "Normal incremental hbox ACL2 admission: retirement guards, carry revocation and refusal frame, job backing frame, eager reserve, and no-scalar-publication theorem pass. Five literal acquisition/return/cancellation/corruption/reassignment witnesses pass. Native persistent scratch consumer and actual startup baseline are in flight with Runtime/Operator/Foundations; no matching certification or complete allocator/GC/work claim."
     }
   ]
 }
