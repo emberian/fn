@@ -3538,6 +3538,7 @@ WRITES); with no position, (values POSITION NIL): no binding, no image."
                 (loop for ev in records
                       for ordinal from 0 do
                         (when (fnn-core 'fn-his-build-yieldp ordinal)
+                          (fnn-checkpoint-yield "history" ordinal)
                           (sb-thread:thread-yield))
                         (let ((verdict (first (fnn-call 'fn-his-build-row
                                                        ev *fnn-checkpoint-image-custody*))))
