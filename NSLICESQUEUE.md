@@ -413,7 +413,14 @@ close the correct scope. Anchors: [S003](planning/repair/items/S003.json),
 
 ### Operator commands and trustworthy diagnostics
 
-**Paused operator domain — Access/Operator retain bounded retire/drain, diagnostic classification and ACL2 initialization compatibility. Root supplied the bounded developer proof allowance. S012 direct probe/selector source is integrated; its saved-image boundary remains a selected check.** Finish
+**Active — Operator owns pre-open DEFAULT partial pool startup and startup-failure custody; Foundations owns its numerical producer and Runtime its persistent executor. Access retains the earlier retire, diagnostic, init and journal continuation.**
+The new native startup consumer installs an admitted plan before Store open,
+and joins orphan workers before releasing run authority. SCN-1130's actual
+source ordering, refusal/fault and escaping-join cases pass; coherent physical
+owner open/read/stop remains the next consumer in History's retained world.
+Complete cold profiles stay refused and full allocation refinement stays open.
+S012 direct probe/selector source is integrated; its saved-image boundary
+remains a selected check. Finish
 bounded retire/drain, accurate heap/profile/startup diagnostics, safe fixture
 separation, command outcome classes and interrupted administrative operations.
 Explain retained resources and pending obligations using real state.
