@@ -918,7 +918,7 @@ GLOBAL_DEFINERS = frozenset({"defvar", "defparameter", "defglobal",
 ASSIGNERS = frozenset({"setq", "setf", "psetq", "psetf"})
 SYNCHRONIZED = re.compile(r":synchronized\s+t(?![\w*+-])", re.IGNORECASE)
 CONFINED = re.compile(r";+\s*thread-confined:\s*\S", re.IGNORECASE)
-GUARDED = re.compile(r";+\s*guarded-by:\s*([^\s()]+)", re.IGNORECASE)
+GUARDED = re.compile(r";+\s*guarded-by:\s*([^\s().,;]+)", re.IGNORECASE)
 TOKEN = re.compile(r"[^\s()'`\",;]+")
 
 
@@ -968,9 +968,14 @@ def table_sites(text: str) -> list[tuple[int, str, bool, str]]:
                 elif heads[0] == "defstruct":
                     slot = stack[1][1] if len(stack) > 1 else "?"
                     name = f"{stack[0][2]} slot {slot}"
-                elif (parent and _bare(parent[1]) in ASSIGNERS
-                      and parent[2].startswith("*") and parent[2].endswith("*")):
-                    name = parent[2]
+                elif parent and _bare(parent[1]) in ASSIGNERS:
+                    # The place this table is assigned to is the token just
+                    # before it (a multi-pair setf names each pair's own
+                    # place; the first pair's was taken for every one).
+                    before = re.search(r"([^\s()'`\",;]+)\s*$", text[parent[0]:i])
+                    place = before.group(1) if before else parent[2]
+                    if place.startswith("*") and place.endswith("*"):
+                        name = place
                 elif not any(h in LOCAL_HEADS for h in heads):
                     name = f"<top-level {heads[0]}>"
                 if name is not None:
@@ -1000,12 +1005,32 @@ def tables_check(files: list[Path], root: Path = ROOT) -> tuple[list[str], list[
             rel = path.resolve().relative_to(root).as_posix()
         except ValueError:
             rel = path.as_posix()
-        for line, name, synchronized, _ in table_sites(text):
+        sites = table_sites(text)
+
+        def declaration(line: int) -> str:
+            """The site's line, the line before, and the comment lines that
+            follow it (a defvar's `;; guarded-by:' often sits under it)."""
+            near = [lines[line - 1]] + ([lines[line - 2]] if line >= 2 else [])
+            for following in lines[line:line + 3]:
+                if not following.lstrip().startswith(";"):
+                    break
+                near.append(following)
+            return "\n".join(near)
+
+        # A re-assignment of a declared global (a setf that re-makes the
+        # table, e.g. under its own lock at a pool install) carries the
+        # declaration of the variable it assigns.
+        declared = {name: declaration(line) for line, name, _, _ in sites
+                    if name.startswith("*") and (GUARDED.search(declaration(line))
+                                                 or CONFINED.search(declaration(line)))}
+        for line, name, synchronized, _ in sites:
             where = f"{rel}:{line} {name}"
             if synchronized:
                 accepted.append(f"{where}: :synchronized t")
                 continue
-            near = lines[line - 1] + "\n" + (lines[line - 2] if line >= 2 else "")
+            near = declaration(line)
+            if not (GUARDED.search(near) or CONFINED.search(near)) and name in declared:
+                near = declared[name]
             guarded = GUARDED.search(near)
             if CONFINED.search(near):
                 accepted.append(f"{where}: thread-confined")
