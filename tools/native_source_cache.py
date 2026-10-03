@@ -41,7 +41,7 @@ def prepare(manifest, output):
     return target
 
 
-def seal(manifest):
+def seal(manifest, raw_overlays=()):
     data = json.loads(manifest.read_text())
     output = Path(data['cache_output'])
     core = Path(str(output) + '.core')
@@ -56,6 +56,19 @@ def seal(manifest):
         path = Path(data[field]).resolve()
         data['sha256'][str(path)] = runner.digest(path)
     data['execution_core'] = str(core)
+    data['raw_overlays'] = [str(path.resolve()) for path in raw_overlays]
+    # The initialized core contains these compiled sources. Rehash the actual
+    # execution inputs on restart, rather than rereading unused source files.
+    execution = {str(core): data['sha256'][str(core)],
+                 str(output): data['sha256'][str(output)],
+                 str(Path(data['sbcl']).resolve()): runner.digest(Path(data['sbcl']))}
+    for path in raw_overlays:
+        execution[str(path.resolve())] = runner.digest(path)
+    for name in ('FN_MLDSA_LIBRARY', 'FN_DEFLATE_LIBRARY', 'FN_BLAKE3_LIBRARY'):
+        if os.environ.get(name):
+            path = Path(os.environ[name]).resolve()
+            execution[str(path)] = runner.digest(path)
+    data['execution_sha256'] = execution
     target = output.with_suffix('.execution.json')
     target.write_text(json.dumps(data, indent=2) + '\n')
     return target
@@ -63,7 +76,7 @@ def seal(manifest):
 
 def execute(manifest, argv):
     data = json.loads(manifest.read_text())
-    for path, expected in data['sha256'].items():
+    for path, expected in data['execution_sha256'].items():
         if runner.digest(Path(path)) != expected:
             raise ValueError('initialized source input changed: ' + path)
     if sys.platform == 'darwin':
@@ -77,6 +90,8 @@ def execute(manifest, argv):
     command = [data['sbcl'], '--tls-limit', '65536', '--dynamic-space-size', '12000',
                '--control-stack-size', '64', '--core', data['execution_core'],
                '--noinform', '--disable-debugger', '--no-userinit',
+               *[word for path in data.get('raw_overlays', ())
+                 for word in ('--eval', '(load ' + runner.literal(path) + ')')],
                '--eval', '(acl2::sbcl-restart)', '--end-toplevel-options', '--fn', *argv]
     os.execve(command[0], command, env)
 
@@ -105,13 +120,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
     p = sub.add_parser('prepare'); p.add_argument('manifest', type=Path); p.add_argument('output', type=Path)
-    p = sub.add_parser('seal'); p.add_argument('manifest', type=Path)
+    p = sub.add_parser('seal'); p.add_argument('manifest', type=Path); p.add_argument('--raw-overlay', action='append', type=Path, default=[])
     p = sub.add_parser('initialize'); p.add_argument('manifest', type=Path)
     p = sub.add_parser('run'); p.add_argument('manifest', type=Path); p.add_argument('argv', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     try:
         if args.command == 'prepare': print(prepare(args.manifest, args.output))
-        elif args.command == 'seal': print(seal(args.manifest))
+        elif args.command == 'seal': print(seal(args.manifest, args.raw_overlay))
         elif args.command == 'initialize': initialize(args.manifest)
         else: execute(args.manifest, args.argv[1:] if args.argv[:1] == ['--'] else args.argv)
     except (OSError, ValueError) as error:
