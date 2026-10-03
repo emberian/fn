@@ -1,37 +1,30 @@
-# codex-sol-tools — GPT-6.1-Sol
+# Integration deputy — GPT-6.1-Sol, 2026-10-03
 
-NIGHT-VERIFY source `9d17e3356`: repair verification now requires the named
-assertion at base, an identical head regression transplanted into tests/ on both
-revisions, identical executed test IDs/source hashes, and a clean head without
-skips/errors/expected failures. Complete observations are archived before ok;
-archive unavailability preserves semantic_ok separately. Explicit prose-only
-claims retain scope/forbidden/budget checks. Exact field filters exclude untagged
-items. Existing test claims need harness/expected assertion fields before rerun.
+Worktree codex-sol-integrate, sole dev push writer this wave. Base 30529279e.
 
-Validation: `python3 -m unittest tests.test_repair_verify`: 19 passed. Self
-verification against `30529279e`: exact intended assertion (`True is not false`)
-fails on old missing-module red classification and passes on the new verifier.
-Evidence: `planning/evidence/repair/NIGHT-VERIFY-f596713e338f4e709b90452bac5c0eca.json`,
-sha256 `1b5470639501e5f97826475ffa773026f10ec26974886a948508c26a93c29ad9`.
-No ACL2 books, host behavior, native images or deployments changed. Registries
-and current-view require no capability edits. Integrator reviews/merges source.
+## Integrated source
+- 8cf37a368 merges burndown-3 2f7f5bda2 (CL08/09, BM08/CL20, CL10, CL12 and partial CL11).
+- witness_check, spec_cite_check --strict, harness_check acl2-arity, payload_kind_check, must_fail_check pass; 21 relevant unittest tests pass.
+- Independently reproduced base 86f94aee0: uncited payload-lifecycle raw witness, 11 wrong-arity fixture sites, 12 undeclared payload consumers, 12 stale spec citations. BM08 original verify base was a new-at-head missing unittest, so that red reason is not accepted as semantic evidence.
+- CL12 source declarations integrated; affected roots still need certification. CL11 unchecked macro refusal teeth need actual target-root certification, remains in-progress.
 
-Next per groundwork: fix the stale developer-selectors HANDLE harness after the
-wrapper's control section conversion, coordinating Runtime's real API; then
-stabilize lock finding identities under line shifts without baseline inflation.
-S141 duplicate-load gate and useful historical harvest remain after these
-consumer blockers. No subagents spawned. No source obstruction on NIGHT-VERIFY.
+## Harvested (archived/indexed; no image verdict)
+- ov1 at 4671ace0ff1b5922fd83ab7cda137e02c444ce92 ended 05:22:46Z status 1. certify-20261003T043548Z-620519 passed 32/0, acquire/validate/host-forward pass. Both host prefixes timeout 600s at fn-owner-page-executor-acquire-refines-pxe-by-definition. Exact normal/DTN logs archived under planning/evidence/overnight-ov1-2026-10-03/. No image or native module ran.
+- served-live sl3 at b7ef4410c: certify-20261003T041248Z-3998343 558 passed/9 failed, old feed-totality/BP guard blockers and dependents. Logs archived planning/evidence/served-live-sl3-2026-10-03/.
+- wrapper run-20261003T041004Z-fe23: certify-20261003T041156Z-3987839 561 passed/11 failed. Manifest archived/indexed; failure-scope passed at matching bytes, old feed/BP blockers prevent whole-run green.
+- Manifests have git_revision null; source coordinate is native run.log/source digest, not inferred from successful status.
 
-NIGHT-SELECTOR-HARNESS source `347fe45b6`: stale S029 frame fixture repaired.
-The real control-buffer mutex macro runs; recording ACL2 decode/fill assert
-one decode with the exact frame. New cases reject an unclassified handler and
-shed a mutating frame before dispatch. `tests.test_developer_selectors_harness`
-passes 3 tests, including actual classifier/admission guard removals. Existing
-NativeOwner structure selector test passes; raw script also passes against
-Runtime's worktree source. Self-verification shows the old fixture lets the
-classifier-guard mutation through (named assertion `0 == 0`), head catches it.
-Evidence `planning/evidence/repair/NIGHT-SELECTOR-HARNESS-463c9f3bc5154b63a4042c987025b516.json`,
-hash `ae334d56e2c2cc0bbb32b7b4cc96ec7a3a3f59cf8778e61956138b4892c7ca65`.
-The first incorrect expected assertion message was refused and its evidence
-remains indexed. No native image or runtime behavior claim. Own derived stubs
-regenerated only for this fixture; unrelated existing stale blocks left intact.
+## Next integrated batch
+- Coordinator owns page-executor host theorem proof-cost fix; next frozen candidate gets one warmed normal/DTN host-prefix validation before replacement images.
+- Runtime owns wrapper/section changes; Served owns served-live repairs. Do not duplicate fixes or image runs.
+- Post-guard-off 812082a53 needs final-world inventory and matched raw/counterpart POST measurement; broken carrier fa32ac06f stays out.
+- hbox observed 05:51Z: ARC 24 GiB at cap, memory_available ~49 GiB; no fn build, Lean ~3.5 GiB. Foundations may run two-job narrow def-cost certification; revisit inventory before batch image.
+
+## Continuing wave
+- dev819af5d54 includes page-executor proof-cost repair4207030f4 and harvested current-view regeneration. Exact host prefix still pending.
+- Served3436966b0 source merged79850a877: metadata NEWNEWS, cold line deadline/mux polling/feed idle, protected publication ARENA capture.2 capture tests/read/protocol pass; native paths remain owed. hbox regen/lock check in progress.
+- Tools verifierd6fd41a8c merged1bdc62a1f,19 tests pass; typed selector harness4740c59af merged,3 actual classifier/admission mutation tests pass.
+- Foundations ee7c686c0 def-cost application/transitive unknown repairs merged; both roots certified in certify-20261003T055532Z-754160; indexed manifest verified.
+- Groundwork active plan/nowb1b425870 cherry-pickedcf8343310.
+- Burndown narrow certification run-20261003T060224Z-902c on hbox, certify-20261003T060555Z-796321:7 roots,323 cached/46 missing. No lane --closure. Harvest pending.
+- Runtime first physical actor source/failure envelope pending. Post-guard-off812082a53 reviewed by Foundations/Groundwork; root deciding native-trust versus formal-assumption label; final-world/matched POST still owed.

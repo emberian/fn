@@ -9,7 +9,8 @@
  "notes": [
   "10-03 02:04 claimed: scope=['tests/native_developer_selectors_raw.lisp', 'tests/test_developer_selectors_harness.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_developer_selectors_harness.DeveloperSelectorsHarnessTests.test_unclassified_handler_guard_removal_is_seen",
   "10-03 02:05 First claimed message was wrong: base fixture becomes green when classifier guard is removed, demonstrating missing classification coverage. Verifier correctly refused that mismatched expected message (archived hash 174dc2914a9e479f0727b9b23e9098bf2a253b1e67dcc2250a7b017aa6a57d22). Correct witness is named test assertNotEqual(code,0), actual AssertionError 0 == 0.",
-  "10-03 02:06 codex-sol-tools: source347fe45b6 fixes stale S029 control classification inputs; recording ACL2 boundary requires real frame vector, exact filled-frame identity, buffer mutex, one decode; unclassified-chain and mutating-shed negatives exercised. Existing targeted NativeOwnerHandlerStructure test passes. Raw fixture passes against own source and runtime worktree source. Three mutation harness tests pass. Self-verify base d6fd41a8c mutation slips through old fixture (AssertionError 0 == 0), new fixture catches it. Evidence planning/evidence/repair/NIGHT-SELECTOR-HARNESS-463c9f3bc5154b63a4042c987025b516.json hash ae334d56e2c2cc0bbb32b7b4cc96ec7a3a3f59cf8778e61956138b4892c7ca65. No runtime behavior change or image verdict."
+  "10-03 02:06 codex-sol-tools: source347fe45b6 fixes stale S029 control classification inputs; recording ACL2 boundary requires real frame vector, exact filled-frame identity, buffer mutex, one decode; unclassified-chain and mutating-shed negatives exercised. Existing targeted NativeOwnerHandlerStructure test passes. Raw fixture passes against own source and runtime worktree source. Three mutation harness tests pass. Self-verify base d6fd41a8c mutation slips through old fixture (AssertionError 0 == 0), new fixture catches it. Evidence planning/evidence/repair/NIGHT-SELECTOR-HARNESS-463c9f3bc5154b63a4042c987025b516.json hash ae334d56e2c2cc0bbb32b7b4cc96ec7a3a3f59cf8778e61956138b4892c7ca65. No runtime behavior change or image verdict.",
+  "Codex integration: reviewed source merged 2026-10-03; matching narrow evidence retained. Image qualification/deployment not implied."
  ],
  "owner": "codex-sol-tools",
  "scope": [
@@ -20,10 +21,10 @@
  ],
  "severity": "medium",
  "source": "S029",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_developer_selectors_harness.DeveloperSelectorsHarnessTests.test_unclassified_handler_guard_removal_is_seen",
  "title": "Developer selector fixture supplies an untyped frame after S029 classification",
- "updated": "2026-10-03T06:06:26Z",
+ "updated": "2026-10-03T06:07:50Z",
  "verify": {
   "base": "d6fd41a8c28374b8c877dc04b18e3914faa3660c",
   "base_observation": {

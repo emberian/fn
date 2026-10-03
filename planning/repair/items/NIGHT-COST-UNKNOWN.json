@@ -9,12 +9,13 @@
  "locus": "generators",
  "notes": [
   "10-03 01:56 GPT-6.1-Sol: existing callee row propagates its :unaccounted leaves transitively; three-level fixture rejects omitted unknowns; fully accounted callee clears set. solcost REPL admitted all 68 forms; narrow certification in flight.",
-  "10-03 01:59 GPT-6.1-Sol: narrow cost/test roots PASSED certify-20261003T055532Z-754160. Unknown leaf propagated through declared callee/caller/grandcaller; omitted unknown refused; fully accounted counterpart clears unknowns. Partial callers without supplied bound remain derived with explicit unknown debt; no complete bound invented."
+  "10-03 01:59 GPT-6.1-Sol: narrow cost/test roots PASSED certify-20261003T055532Z-754160. Unknown leaf propagated through declared callee/caller/grandcaller; omitted unknown refused; fully accounted counterpart clears unknowns. Partial callers without supplied bound remain derived with explicit unknown debt; no complete bound invented.",
+  "Codex integration: reviewed source merged 2026-10-03; matching narrow evidence retained. Image qualification/deployment not implied."
  ],
  "owner": "codex-sol-foundations",
  "severity": "medium",
  "source": "planning/overnight-2026-10-03.md",
- "state": "ready",
+ "state": "landed",
  "title": "Derived callee cost drops transitive unresolved dependencies",
- "updated": "2026-10-03T05:59:13Z"
+ "updated": "2026-10-03T06:07:50Z"
 }

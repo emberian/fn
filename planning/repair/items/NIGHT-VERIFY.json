@@ -14,7 +14,8 @@
  "notes": [
   "10-03 01:52 claimed: scope=['planning/repair/repair.py', 'planning/repair/README.md', 'tools/repair_unittest.py', 'tests/test_repair_verify.py', 'planning/evidence-index.tsv', 'LANEDUMP.md'] test=python3 -m unittest tests.test_repair_verify",
   "10-03 01:59 claimed: scope=['planning/repair/repair.py', 'planning/repair/README.md', 'tools/repair_unittest.py', 'tests/test_repair_verify.py', 'planning/evidence-index.tsv', 'LANEDUMP.md'] test=python3 -m unittest tests.test_repair_verify.RepairVerifyTests.test_missing_selected_module_cannot_use_an_unrelated_harness",
-  "10-03 02:00 codex-sol-tools: source 9d17e3356; 19 disposable-history verifier tests pass; self-witness at base 30529279e gives the named AssertionError True is not false, same harness passes at head. Archived planning/evidence/repair/NIGHT-VERIFY-f596713e338f4e709b90452bac5c0eca.json sha256 1b5470639501e5f97826475ffa773026f10ec26974886a948508c26a93c29ad9. No image or ACL2 change."
+  "10-03 02:00 codex-sol-tools: source 9d17e3356; 19 disposable-history verifier tests pass; self-witness at base 30529279e gives the named AssertionError True is not false, same harness passes at head. Archived planning/evidence/repair/NIGHT-VERIFY-f596713e338f4e709b90452bac5c0eca.json sha256 1b5470639501e5f97826475ffa773026f10ec26974886a948508c26a93c29ad9. No image or ACL2 change.",
+  "Codex integration: reviewed source merged 2026-10-03; matching narrow evidence retained. Image qualification/deployment not implied."
  ],
  "owner": "codex-sol-tools",
  "scope": [
@@ -27,10 +28,10 @@
  ],
  "severity": "medium",
  "source": "planning/overnight-2026-10-03.md",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_repair_verify.RepairVerifyTests.test_missing_selected_module_cannot_use_an_unrelated_harness",
  "title": "Repair verifier accepts missing tests/infrastructure failures as defect witnesses",
- "updated": "2026-10-03T06:00:16Z",
+ "updated": "2026-10-03T06:07:50Z",
  "verify": {
   "base": "30529279e70f9985df3d555a6a49189739482c6b",
   "base_observation": {
