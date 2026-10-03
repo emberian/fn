@@ -2287,3 +2287,28 @@ metadata converges; no historical hash invented.
 Paged obstruction resolved by root’s exact dependency comparison: own frame-invariants and store-checkpoint-buffer were stale. Merge currentdev37ef1c817 retains owned later source and takes matching canonical form hashes b1384e7999026744281ee68c5ea107b78f070cff7bb85a442e8e72004f7d8f18 / a93cfc30c2c17a013e549bb307a38c2b6804ae096037e7e689801c6075f4fd59. Supported acquisition succeeds126/0/fasl126 artifact-set f30255b6b2bd1367127db6ca44ca1f40fca6bab58920a6ee1a3d82de2b7e75ce. Six cached includes admit0.46s; Python exact-set acquisition took several minutes before ACL2. Full changed catalog-paged358forms admits24.72s/5,549,771steps, guards+representation included. Existing paged teeth32forms pass0.04s after ordinary cpt rows gain actual NOV facts; new direct paged-export sparse/prefix/tail/empty/cancel cases pass0.01s and preserve raw#2/msgidseq1 while no liveness/link at unavailable number2. Attachment smoke ordinary rows likewise classified. Warm generic fn-cat remains its foundation, so these direct paged tests do not claim new generic attachment/native execution. Existing85-era attachment proof cannot transfer to changed bytes without fresh matching use.
 
 Handoff exact remaining boundary questions: books/served-catalog-owner fn-sca-load-held-rows-establishes-relation still uses raw fn-sca-load-held-rows-from-keeps-relation; prove classified fold keeps R using prepare-keeps-wire/read-identity. Old served-catalog group-summary/view-list/next/previous theorems targeted raw archive, now need the distinct available logical model under freshness+classification/byte-fact join, while retrieval/HDR/XPAT raw ranges stay intact. Served owns adapter consumer and Groundwork root/capture context; actual root freshness must name allocation incarnation, not count. No secondary whole archive/index allocation under owner mutex; logical available archive/index disabled on executed command path.
+Integration selected immutable4c03dedc sol3-web-cursor for webstalledoutput,
+coldquantumoffO and initprofilemismatch nativecases. Existingwatch found
+world-checkstatus1 at10:55:45Z: twoDTNworldgeneratedfiles stale, before
+certification/image/allthreecases. Exact8run/script/status/log/manifestobjects
+archived native-sol3-4c03dedc-world-refusal-2026-10-03; no ownbuild/retry/source
+mutation. Integration notified immediately and owns repaired cut.
+
+
+## Sol3r proof failure and corrected early watch, 2026-10-03
+
+83a371a42 sol3r terminated certify1 at11:12:37Z beforeimage/nativecases.
+Primary served-catalog FN-SCAT-RANGE-KEEP-AUX-IS-LIVE-LIST proof failed
+5.75s/876304steps; manifest390passed/43failed total, including42downstream
+failures.14exactrun/cert/log/driver/sourceobjects archived as
+native-sol3r-83a371a42-catalog-cert-failure-2026-10-03; manifest
+7993bfb7a180785917a8c9f4c1ee802fa9502c2fb80d991e4a6f2f22c0e5009a.
+Lieutenant nowowns precise repair; no identicalrerun or unrelatedsourcefreeze.
+
+Watchgap: zeroexit active records masked realprimaryerror from11:05 until
+terminal11:12. New tools/native_cert_watch.py calls existing certifier
+book_result directly on completed plain records with actualdrivernonce/log/cert;
+no secondverdict rule. Samehost archived-run replay matches390passed/43failed,
+firstprimaryserved-catalog, process0 but missingfreshmarker/cert+ACL2error.
+Running/multiwave/missingmetadata remains pending. No ACL2 run/candidatechange.
+Nextwatch uses this exact existingpredicate beforefinalmanifest to route sooner.
