@@ -95,8 +95,7 @@ sole dev writer; source review proceeds alongside executable debugging. A
 GPT-6.1-Sol groundwork deputy owns detailed cross-lane coordination, composition
 and representation contracts alongside the strategic coordinator. Corrected:
 these are active workers, not a prepared launch. The wider roster below remains
-a target; composition, storage, representation and transport owners have not
-been launched separately. Start additional lanes only for useful independent
+a target. Native history/root, operator, access, web and BP transport now have continuing Sol owners; Groundwork retains shared composition design. Start additional lanes only for useful independent
 work after agreement with the coordinator. Sol lays the integrated foundation
 first. The active Astra source tracer now fixes connected native/logical
 completion and cleanup families; the wider composition responsibility below
@@ -120,8 +119,9 @@ remains broader than that current assignment.
 Existing sessions are `deputy_integration`, `deputy_runtime`,
 `deputy_served`, `deputy_foundations`, `deputy_tools`, `deputy_groundwork`,
 `deputy_empirical`, `helper_resource_exec`, `helper_command_rows`,
-`helper_source_assembly` and `deputy_proof_engineering` (Sol), plus the four
-Luna proof helpers and `astra_source_trace` (Astra). Session existence does not
+`helper_source_assembly`, `deputy_proof_engineering` (now carrier), `deputy_history`,
+`deputy_operator`, `deputy_access`, `deputy_web` and `deputy_bp_transport` (Sol),
+plus `astra_source_trace` (Astra). The four Luna proof helpers are stopped. Session existence does not
 mean every helper is running: explicitly resume completed helpers for a concrete
 next consumer. The resource helper completed the cached paged attachment and
 creator probe and now owns carried catalog availability through reclaim to
@@ -132,7 +132,7 @@ runs. The broad Luna sweep is stopped at ember's request; validated changes are
 retained, unfinished experiments parked. The former proof Sol now implements
 the owner carrier on the actual refused/aborted POST path. Astra owns bounded
 checkpoint image read-back/publication/reopen and authoritative reclaim capture;
-Groundwork retains history/root representation design. Primary capability
+History implements actual native history/root and bounded reclaim; Groundwork retains shared representation design. Operator owns retire/diagnostic/init, Access auth/TLS/reconfiguration, Web concurrent service, and BP transport TCPCL/ION continuation. Primary capability
 implementation stays ahead of supporting proof work.
 The groundwork deputy routes routine findings and READY source directly to peers
 and Integration; only consequential decisions and user outcomes reach the
@@ -495,3 +495,8 @@ contain every newer source slice. The retention producer repair `7c6d135f3`
 restores ACL2's identity gate before log allocation; the reviewed aggregate
 `56f97b4d3` is handed to Integration. Actual BP undertaking/release/reopen is
 the next discriminating consumer, not another historical-image retry.
+
+The resumed mission is to maximize complete integrated consumer capabilities before
+10am America/New_York on 2026-10-03. Existing workers continue; the broad Luna
+wave remains paused. Source receipts do not substitute for matching executable
+consumer checks, and reports do not delay coherent source integration.
