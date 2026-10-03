@@ -646,3 +646,122 @@
 (nio-config-enumeration-is-bounded-and-core-ordered)
 (format t "native-config-observation: ok~%")
 (format t "native-io-progress witness: PASS~%")
+
+;;; S119: initial publication owns its stage even when write/fsync/close
+;;; fails before the namespace publication envelope is reached.
+(dolist (operation '(fnn-write-all fnn-fsync-file fnn-close))
+  (let ((links 0) (removed nil) (reached nil))
+    (nio-with-initial-publish-stubs
+     (lambda () (incf links)) (lambda () nil)
+     (lambda ()
+       (setf (symbol-function operation)
+             (lambda (&rest ignored) (declare (ignore ignored))
+               (setq reached t) (fnn-os-fail sb-posix:eio))
+             (symbol-function 'fnn-unlink)
+             (lambda (path) (push path removed)))
+       (let ((condition (handler-case
+                            (progn (fnn-publish-initial-file
+                                    (%make-fnn-store :root "/native-initial-publish")
+                                    "/native-initial-publish/config.json" (fnn-octets '(1))) nil)
+                          (error (e) e))))
+         (nio-check (and reached (typep condition 'fnn-os-error)
+                         (= (fnn-os-errno condition) sb-posix:eio)
+                         (= links 0) (and (= (length removed) 1)
+                              (search "/native-initial-publish/staging/.init-" (first removed))))
+                    "owned initial stage cleanup failed at ~a: ~s" operation removed))))))
+(format t "native_initial_publish_write_failure_cleanup: PASS~%")
+
+;;; Actual rotation, with only secret sources/core return values and syscall
+;;; boundaries substituted. No key bytes are emitted by this witness.
+(defun nio-secret-rotation-error-cleanup ()
+  (let* ((names '(fnn-core fnn-node-secret-ensure-directory fnn-node-secret-read-entry
+                   fnn-node-secret-identity fnn-node-secret-fresh-root fnn-node-secret-render
+                   fnn-lstat fnn-replace))
+         (saved (mapcar (lambda (name) (cons name (symbol-function name))) names)))
+    (unwind-protect
+         (nio-with-initial-publish-stubs
+          (lambda () nil) (lambda () nil)
+          (lambda ()
+            (setf (symbol-function 'fnn-core)
+                  (lambda (entry &rest args)
+                    (declare (ignore args))
+                    (case entry (fn-ns-entry-epoch 1) (fn-ns-rotate-entry :next)
+                      (otherwise (error "unexpected rotation core call ~a" entry))))
+                  (symbol-function 'fnn-node-secret-ensure-directory)
+                  (lambda (store) (declare (ignore store)) "/native-rotation/keys")
+                  (symbol-function 'fnn-node-secret-read-entry)
+                  (lambda (&rest ignored) (declare (ignore ignored)) :current)
+                  (symbol-function 'fnn-node-secret-identity) #'identity
+                  (symbol-function 'fnn-node-secret-fresh-root) (lambda () nil)
+                  (symbol-function 'fnn-node-secret-render)
+                  (lambda (entry) (declare (ignore entry)) (fnn-octets '(1)))
+                  (symbol-function 'fnn-lstat) (lambda (&rest ignored) (declare (ignore ignored)) nil))
+            (dolist (operation '(fnn-write-all fnn-fsync-file fnn-close))
+              (let ((removed nil) (replaced nil) (stage nil))
+                (setf (symbol-function 'fnn-open)
+                      (lambda (path &rest args) (declare (ignore args)) (setq stage path) 7)
+                      (symbol-function 'fnn-write-all) (lambda (&rest args) (declare (ignore args)) nil)
+                      (symbol-function 'fnn-fsync-file) (lambda (&rest args) (declare (ignore args)) nil)
+                      (symbol-function 'fnn-close) (lambda (&rest args) (declare (ignore args)) nil)
+                      (symbol-function 'fnn-unlink) (lambda (path) (push path removed))
+                      (symbol-function 'fnn-replace) (lambda (&rest args) (declare (ignore args)) (setq replaced t))
+                      (symbol-function operation)
+                      (lambda (&rest args) (declare (ignore args)) (fnn-os-fail sb-posix:eio)))
+                (let ((condition (handler-case
+                                     (progn (fnn-node-secret-rotate (%make-fnn-store :root "/native-rotation")) nil)
+                                   (error (e) e))))
+                  (nio-check (and (typep condition 'fnn-os-error)
+                                  (= (fnn-os-errno condition) sb-posix:eio)
+                                  (equal removed (list stage)) (not replaced)
+                                  (search "/staging/.init-node-secret-" stage))
+                             "rotation failed to clean its owned stage at ~a" operation))))))
+      (dolist (pair saved) (setf (symbol-function (car pair)) (cdr pair))))))
+(nio-secret-rotation-error-cleanup)
+(format t "native_secret_rotation_write_failure_cleanup: PASS~%")
+;; Close and unlink failures are cleanup diagnostics; the write error stays
+;; the primary operation failure when both syscalls fail.
+(nio-with-initial-publish-stubs
+ (lambda () (error "publication after failed write")) (lambda () nil)
+ (lambda ()
+   (let ((unlinks 0))
+     (setf (symbol-function 'fnn-write-all)
+           (lambda (&rest args) (declare (ignore args)) (fnn-os-fail sb-posix:eio))
+           (symbol-function 'fnn-close)
+           (lambda (&rest args) (declare (ignore args)) (fnn-os-fail sb-posix:enospc))
+           (symbol-function 'fnn-unlink)
+           (lambda (path) (declare (ignore path)) (incf unlinks) (fnn-os-fail sb-posix:eacces)))
+     (let ((condition (handler-case
+                         (progn (fnn-publish-initial-file (%make-fnn-store :root "/native-primary")
+                                                         "/native-primary/config.json" (fnn-octets '(1))) nil)
+                       (error (e) e))))
+       (nio-check (and (typep condition 'fnn-os-error)
+                       (= (fnn-os-errno condition) sb-posix:eio) (= unlinks 1))
+                  "cleanup error replaced the primary write failure")))))
+(format t "native_initial_publish_preserves_primary_write_failure: PASS~%")
+;;; The extracted writable fragment's actual write-new function must match
+;;; native ownership and primary-error semantics, including close failure.
+(defvar *nio-xw-fail* nil)
+(defvar *nio-xw-unlinks* nil)
+(defun fn-hx-create-excl (path nofollow) (declare (ignore path nofollow)) '(:ok 7))
+(defun fn-hx-write-all (fd octets)
+  (declare (ignore fd octets))
+  (if (member :write *nio-xw-fail*) '(:error 5 "primary write") :ok))
+(defun fn-hx-fsync (fd) (declare (ignore fd))
+  (if (member :fsync *nio-xw-fail*) '(:error 5 "primary fsync") :ok))
+(defun fn-hx-close (fd) (declare (ignore fd))
+  (if (member :close *nio-xw-fail*) '(:error 28 "cleanup close") :ok))
+(defun fn-hx-unlink (path) (push path *nio-xw-unlinks*) '(:error 13 "cleanup unlink"))
+(book-defuns "host/store-write-host.lisp"
+             '(fn-xw-okp fn-xw-os fn-xw-errp fn-xw-sys fn-xw-write-new))
+(dolist (*nio-xw-fail* '((:write) (:fsync) (:close) (:write :close) (:fsync :close) nil))
+  (let* ((*nio-xw-unlinks* nil)
+         (result (fn-xw-write-new "/owned-candidate" '(1) nil)))
+    (nio-check (equal *nio-xw-unlinks* (if *nio-xw-fail* '("/owned-candidate") nil))
+               "extracted write-new did not clean exactly its candidate")
+    (nio-check (equal result
+                     (cond ((member :write *nio-xw-fail*) '(:os "primary write" 5))
+                           ((member :fsync *nio-xw-fail*) '(:os "primary fsync" 5))
+                           ((member :close *nio-xw-fail*) '(:os "cleanup close" 28))
+                           (t '(:ok))))
+               "extracted write-new changed primary syscall failure")))
+(format t "extracted_write_new_cleanup_and_primary_failure: PASS~%")

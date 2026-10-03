@@ -781,10 +781,55 @@
            :handshakes-exceed-memory)
           (t :connections-exceed-memory))))
 
+; PRF-1268: after publication or a handshake's settled exit, charge the
+; published limit together with every handshake allocation still owned.
+; Reconfiguration preflight still uses the larger old/candidate limits:
+; old admissions may run while the proposed record is being persisted.
+; A proposal, ordinary refusal, or unstage never installs a candidate charge.
+(defun fn-cbud-live-held (v active held)
+  (declare (xargs :guard t))
+  (if (consp held)
+      (fn-cbud-run-held (fn-cbud-held-at 0 held) (fn-cbud-held-at 1 held)
+                        (fn-cbud-held-at 2 held) (fn-cbud-held-at 3 held)
+                        (fn-cbud-held-at 4 held) (fn-cbud-held-at 5 held)
+                        (fn-cbud-held-at 6 held) (fn-cbud-held-at 7 held)
+                        (max (nfix active)
+                             (fn-cbud-config-handshake-slots v (fn-cbud-held-at 7 held))))
+    held))
+
+(defthm fn-cbud-live-held-charges-current-and-active
+  (implies (consp held)
+           (and (equal (fn-cbud-held-at 8 (fn-cbud-live-held v active held))
+                       (max (nfix active)
+                            (fn-cbud-config-handshake-slots v (fn-cbud-held-at 7 held))))
+                (equal
+                 (list (fn-cbud-held-at 0 (fn-cbud-live-held v active held))
+                       (fn-cbud-held-at 1 (fn-cbud-live-held v active held))
+                       (fn-cbud-held-at 2 (fn-cbud-live-held v active held))
+                       (fn-cbud-held-at 3 (fn-cbud-live-held v active held))
+                       (fn-cbud-held-at 4 (fn-cbud-live-held v active held))
+                       (fn-cbud-held-at 5 (fn-cbud-live-held v active held))
+                       (fn-cbud-held-at 6 (fn-cbud-live-held v active held))
+                       (fn-cbud-held-at 7 (fn-cbud-live-held v active held)))
+                 (list (fn-cbud-held-at 0 held) (fn-cbud-held-at 1 held) (fn-cbud-held-at 2 held) (fn-cbud-held-at 3 held) (fn-cbud-held-at 4 held) (fn-cbud-held-at 5 held) (fn-cbud-held-at 6 held) (fn-cbud-held-at 7 held)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-cbud-live-held fn-cbud-run-held
+                                     fn-cbud-held-at))))
+
+(defthm fn-cbud-live-held-releases-only-unneeded-slots
+  (implies (and (<= (nfix active) (nfix (fn-cbud-held-at 8 held)))
+                (<= (fn-cbud-config-handshake-slots v (fn-cbud-held-at 7 held))
+                    (nfix (fn-cbud-held-at 8 held))))
+           (<= (fn-cbud-held-at 8 (fn-cbud-live-held v active held))
+               (nfix (fn-cbud-held-at 8 held))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-cbud-live-held fn-cbud-run-held
+                                     fn-cbud-held-at))))
+
 ; What the owner holds after a delta list it did not refuse: the slots the
-; new configuration was decided with.  (Taken at the check, before the
-; staging's durable write: a staging that then fails leaves a charge at
-; most larger than needed, never smaller.)
+; new configuration was decided with.  This is the preflight candidate; the
+; host leaves the live charge untouched until durable publication, then
+; fn-cbud-live-held retains the published limit and actual active allocations.
 (defun fn-cbud-deltas-held (v gen stamp deltas held)
   (declare (xargs :guard t))
   (if (consp held)

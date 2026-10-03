@@ -1339,6 +1339,19 @@
   (and (boundp-global 'fn-owner-connection-held state)
        (f-get-global 'fn-owner-connection-held state)))
 
+; PRF-1268: the handshake model carries the exact still-owned admissions.
+; The charge is rebased only after durable publication or settled release.
+(defun fn-owner-connection-held-refresh (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((held (fn-owner-connection-held state))
+         (handshakes (if (boundp-global 'fn-owner-handshakes state)
+                         (f-get-global 'fn-owner-handshakes state)
+                       (fn-hsb-initial)))
+         (current (fn-cbud-live-held (fn-cfg-value (fn-owner-config state))
+                                     (len (fn-hsb-flight handshakes)) held))
+         (state (f-put-global 'fn-owner-connection-held current state)))
+    state))
+
 (defun fn-owner-reconfigure-deltas (id deltas fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((oc (fn-owner-ocfg state))
@@ -1352,10 +1365,9 @@
     ;; which every live caller's recognizer accepts.
     (if memory
         (value (fn-ores-config-refused memory))
-      (let ((state (f-put-global 'fn-owner-connection-held
-                                 (fn-cbud-deltas-held v gen stamp deltas held)
-                                 state)))
-        (fn-owner-reconfigure-deltas-admitted id deltas fn-arena state)))))
+      ;; A candidate is not a live generation.  Admission/staging can still
+      ;; refuse, and no connection may allocate under the candidate yet.
+      (fn-owner-reconfigure-deltas-admitted id deltas fn-arena state))))
 
 ; PKT-643: the restricted views prepared for read-restricted sessions
 ; (books/group-access-cache.lisp), nil before the first read.
@@ -1537,7 +1549,10 @@
     (mv-let (verdict next)
       (fn-oclc-publish (fn-owner-ocfg state) generation
                        (fn-owner-served-post-bound state))
-      (let ((state (fn-owner-install-ocfg next state)))
+      (let* ((state (fn-owner-install-ocfg next state))
+             (state (if (equal verdict :durable)
+                        (fn-owner-connection-held-refresh state)
+                      state)))
         (value verdict)))))
 
 
@@ -4219,7 +4234,8 @@
   (let ((state (f-put-global 'fn-owner-handshakes
                              (fn-hsb-done (fn-owner-handshake-state state) id)
                              state)))
-    (value :ok)))
+    (let ((state (fn-owner-connection-held-refresh state)))
+      (value :ok))))
 
 ;; A socket that waited for a slot left without a decision (its deadline,
 ;; its peer's close, the service's stop).

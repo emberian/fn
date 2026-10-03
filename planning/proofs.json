@@ -379,7 +379,7 @@
         "PRF-016"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-wire-unstuff-stuff-line",
         "fn-wire-feed-proper-append",
@@ -1592,7 +1592,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "note": "Decision D10-a, lane w11/clock-seam. Keystones fn-own-observe-refusal-names-a-contradiction (books/owner-invariants.lisp) and fn-post-without-a-clock-refuses-with-the-clock-line (books/nntp-post.lisp), with fn-own-observe-outcome-is-one-of-three and fn-own-observe-outcome-decides-the-clock-by-definition named for what they are and cited by :use. Teeth are evaluated in tests/acl2/owner-tests.lisp (the served-path second post on one connection, the same-reading collision, the clock 441 with an empty queue, DATE 503, and one-event recovery) and tests/acl2/nntp-post-tests.lisp (one must-fail per hypothesis). OPEN under this target: two submissions inside one millisecond still share a generated Message-ID, because fn-clock-later-observationp is non-strict; separating them needs the owner to remember the reading it last minted under and is not done here. t42 (current DATE): the served post dispatchers and unrestricted catalog dispatcher select the current owner-supplied injection observation for DATE and NEWGROUPS year parsing. The prior DATE-503 witness did not establish this on an already-open connection. See books/served-date-current.lisp and tests/acl2/served-date-current-tests.lisp for the served-step clock-independence witness scope; native same-connection >61-second regression is tests/test_native_owner.py::NativeOwnerTests::test_date_on_connection_older_than_a_minute_is_current. Certification and native execution of these changed bytes are pending liaison validation. NEWNEWS two-digit-year parsing still shares its pinned horizon input and remains open; no no-miss claim is added.",
       "events": [
         "fn-own-observe-refusal-names-a-contradiction",
@@ -1786,7 +1786,7 @@
         "PRF-031"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "note": "Lane w11/auth-live, decided by measurement and not by inspection. fn-served-open-peer pinned the literal (fn-auth-open-config) while fn-served-open pinned the operator's, and the owner resolves a connection to a peer by SOURCE ADDRESS alone, so on a box where a configured peer is reachable on loopback every client was opened without the operator's policy: AUTHINFO PASS answered 481 with the secret just written, CAPABILITIES carried no AUTHINFO line and POST was never gated. Both theorems are FALSE of that definition. The live before/after is planning/evidence/auth-live-2026-09-21.md and the boundary test is tests/test_auth.py ServedCredentialTests, which starts the node with `bin/fn run` over an fn.toml and writes the peer record, because no test that starts tools/run_owner.py directly can reach this. The greeting half is a second defect the same measurement found: fn-served-greeting read the injection configuration alone, so a connection under [auth] required = true greeted 200 and then answered POST 480, where section 5.1.2's MUST is 201. It takes the opened session now. Lane t7/auth-teeth, 2026-09-22: teeth in tests/acl2/nntp-auth-teeth-tests.lisp. Neither greeting theorem nor either pinning theorem has a hypothesis, so the teeth are the values that separate the two sides together with a must-fail on the statement the definition satisfied BEFORE the 2026-09-21 measurement: that the greeting is 200 exactly when the injection configuration allows posting, and that the peer open pins (fn-auth-open-config). fn-served-open-greeting-agrees-with-the-post-label stays uncited: the statement above names it a corollary and a local unfold, so its evidence is the witnesses on both sides of its iff, not a registry event. fn-auth-step-preserves-the-config is new in this lane and was asked for by name in the header of books/nntp-auth-invariants.lisp as the first of the three facts OB-AUTH-FOLD waits on.",
       "evidence": [
         "planning/evidence/native-auth-runtime-2026-09-21/README.md",
@@ -2346,7 +2346,7 @@
         "PRF-039"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/nntp-auth.lisp",
         "books/owner-config.lisp",
@@ -2508,7 +2508,7 @@
         "PRF-015"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "note": "At this source, green_check finds books/nntp-newnews green at its exact include closure in certify-20260923T232942Z-484654, its test book green in certify-20260924T005919Z-653679, books/nntp-invariants green in certify-20260923T232820Z-480447, and books/nntp-effects green in certify-20260923T232942Z-484654; none has moved dependencies. These are archived certification records, not a current native image qualification. The earlier T2b affected-closure run is certify-20260923T170842Z-2026382; native served-reader validation remains separate.",
       "evidence": [
         "books/nntp-newnews.lisp",
@@ -2675,7 +2675,7 @@
         "PRF-006"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-agent.lisp",
         "books/injection-invariants.lisp",
@@ -2924,7 +2924,7 @@
         "PRF-063"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-th-selected-root-matches-verified-context",
         "fn-th-selected-report-author-is-verified-context",
@@ -3172,7 +3172,7 @@
         "PRF-015"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner.lisp",
         "books/owner-invariants.lisp",
@@ -3496,7 +3496,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/control-classify.lisp",
         "books/peer-authored-accept.lisp",
@@ -4413,7 +4413,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/cbor-invariants.lisp",
         "books/records-canonicality.lisp",
@@ -5576,7 +5576,7 @@
         "PRF-087"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-sct-renc-is-program",
         "fn-ockp-encode-batch-is-rows-program",
@@ -6963,7 +6963,7 @@
         "PRF-087"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-ockp-estimate-is-len-file-octets",
         "fn-ockp-len-acc-is-len-program",
@@ -7266,7 +7266,7 @@
         "PRF-171"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/node-config.lisp",
         "books/config-physical-replay.lisp",
@@ -7743,7 +7743,7 @@
         "PRF-161"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/public-exposure.lisp",
         "books/public-exposure-rows.lisp",
@@ -7862,7 +7862,7 @@
         "PRF-183"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-ockp-decide-defers-by-the-estimate"
       ],
@@ -8187,7 +8187,7 @@
         "PRF-207"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/served-tls-prefix.lisp",
         "books/served-carried.lisp",
@@ -8476,7 +8476,7 @@
         "PRF-097"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "planning/evidence/manifests/certify-20260928T163441Z-33654.json",
         "books/peer-host.lisp",
@@ -11420,7 +11420,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/served.lisp",
         "books/served-tls-prefix.lisp",
@@ -13069,7 +13069,7 @@
         "PRF-346"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/catalog.lisp",
         "books/served-catalog-view.lisp",
@@ -13626,7 +13626,7 @@
         "PRF-362"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-admin-peer-budget.lisp",
         "books/config.lisp",
@@ -13685,7 +13685,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/feed-pause.lisp",
         "tests/acl2/feed-pause-tests.lisp",
@@ -13804,7 +13804,7 @@
         "PRF-378"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config.lisp",
         "tests/acl2/config-field-max-tests.lisp",
@@ -14437,7 +14437,7 @@
         "PRF-380"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/packed-submission.lisp",
         "books/owner.lisp",
@@ -15207,7 +15207,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/msgid-pages.lisp",
         "tests/acl2/msgid-pages-tests.lisp",
@@ -15268,7 +15268,7 @@
         "PRF-957"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/msgid-pages-exec.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
@@ -15300,7 +15300,7 @@
         "PRF-969"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/catalog.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
@@ -15721,7 +15721,7 @@
         "PRF-910"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/nntp-compress.lisp",
         "books/nntp-auth.lisp",
@@ -15953,7 +15953,7 @@
         "PRF-969"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/msgid-pages-exec.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
@@ -16305,7 +16305,7 @@
         "PRF-991"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/msgid-pages-exec.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
@@ -16342,7 +16342,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-set.lisp",
         "books/native-admin-peer.lisp",
@@ -16732,7 +16732,7 @@
         "PRF-049"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/nntp-auth.lisp",
         "books/nntp-auth-roles.lisp",
@@ -17280,7 +17280,7 @@
         "PRF-023"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/stx-index.lisp",
         "tests/acl2/stx-transit-tests.lisp"
@@ -17515,7 +17515,7 @@
         "PRF-1018"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/catalog.lisp",
         "books/msgid-pages-exec.lisp",
@@ -18041,7 +18041,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config-invariants.lisp",
         "tests/acl2/group-authority-tests.lisp",
@@ -21930,7 +21930,7 @@
         "PRF-1252"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/output-reservation.lisp",
         "books/resource-output.lisp",
@@ -21958,13 +21958,64 @@
         "PRF-031"
       ],
       "assumptions": [],
-      "status": "specified",
+      "status": "certified",
       "events": [
         "fn-auth-starttls-after-authentication-is-refused-without-reset",
         "fn-auth-starttls-is-not-advertised-once-authenticated-on-any-connection"
       ],
-      "evidence": [],
-      "note": "Source implementation and teeth present. Certification and immutable native-image transcript pending; no completed conformance, image or deployment claim."
+      "evidence": [
+        "planning/evidence/manifests/certify-20261003T104044Z-1503690.json",
+        "planning/evidence/sol-access-native-faults-2026-10-03.md"
+      ],
+      "note": "Exact changed root and teeth certification passed in the cited per-book entries; global run contains a separately identified failed harness/unsupported standalone host root. Inherited dependency manifest reconciliation and immutable saved-image protocol observation remain pending. No completed image or deployment claim."
+    },
+    {
+      "id": "PRF-1269",
+      "title": "Every peer-role reader command retains its login access projection",
+      "statement": "books/nntp-auth.lisp fn-auth-view-excludes-unreadable-groups-on-any-connection: on a projected session with a nonempty READ rule, a group unreadable under the pinned rule is absent from both view groups and article memberships, without any restriction on peer role. Actual consumers fn-auth-delegate-pinned, fn-scar-auth-delegate-pinned and captured catalog preparation use fn-auth-access-text. D48 keeps configured transit decisions in fn-peer-command and transfer in fn-peer-step independent of this reader projection. The existing queue-hiding keystone now has only queue-hiddenp and projected hypotheses, covering source peers and authenticated principal peers. Teeth exercise actual USER/PASS promotion, GROUP411/ARTICLE430/LIST omission and independently accepted CHECK238; source-peer queue privacy; affirmative removal of each generic-exclusion hypothesis.",
+      "milestone": "M4",
+      "requirements": [
+        "NNT-046",
+        "SEC-007"
+      ],
+      "depends_on": [
+        "PRF-222",
+        "PRF-228"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "events": [
+        "fn-auth-view-excludes-unreadable-groups-on-any-connection"
+      ],
+      "evidence": [
+        "planning/evidence/manifests/certify-20261003T103156Z-1476136.json",
+        "planning/evidence/sol-access-native-faults-2026-10-03.md"
+      ],
+      "note": "Exact changed root and teeth certification passed in the cited per-book entries; global run contains a separately identified failed harness/unsupported standalone host root. Inherited dependency manifest reconciliation and immutable saved-image protocol observation remain pending. No completed image or deployment claim."
+    },
+    {
+      "id": "PRF-1268",
+      "title": "Live connection charge follows the published TLS limit and still-owned handshakes",
+      "statement": "books/connection-budget.lisp fn-cbud-live-held, called by host/owner-host.lisp fn-owner-connection-held-refresh at durable fn-owner-reconfigure-complete and fn-owner-handshake-done. For a present held record, fn-cbud-live-held-charges-current-and-active charges exactly max(actual active count, published configuration handshake limit) and preserves each of the eight machine/profile observations. fn-cbud-live-held-releases-only-unneeded-slots: when actual active and published limit both fit the previous slots, refreshing never increases those slots. Preflight still uses max(previous charge,candidate limit), protecting concurrent old-generation admissions while the candidate persists; the live charge is not installed by proposal/staging/refusal/unstage. Teeth affirm every hypothesis and conclusion and isolate each omitted hypothesis. Actual host raw fixture injects staging/publication outcomes and exercises unchanged refusal charge, durable lowering with twelve still-active slots, settled reduction to four, duplicate done and upward publication.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-024"
+      ],
+      "depends_on": [
+        "PRF-223",
+        "PRF-986"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "events": [
+        "fn-cbud-live-held-charges-current-and-active",
+        "fn-cbud-live-held-releases-only-unneeded-slots"
+      ],
+      "evidence": [
+        "planning/evidence/manifests/certify-20261003T104044Z-1503690.json",
+        "planning/evidence/sol-access-native-faults-2026-10-03.md"
+      ],
+      "note": "Exact changed root and teeth certification passed in the cited per-book entries; global run contains a separately identified failed harness/unsupported standalone host root. Inherited dependency manifest reconciliation and immutable saved-image protocol observation remain pending. No completed image or deployment claim."
     }
   ]
 }

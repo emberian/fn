@@ -2106,7 +2106,7 @@
 ; The established unauthenticated reader may authenticate over TLS.
 (defmacro aut-after-tls ()
   '(fn-post-result-session
-    (in-arena-fn-auth-step *aut-arena* (in-arena-aut-role-after *aut-arena* *aut-s-req* "STARTTLS") *aut-node-archive*
+    (in-arena-fn-auth-step *aut-arena* (in-arena-aut-role-after *aut-arena* *aut-r-one* "STARTTLS") *aut-node-archive*
                   *aut-config* *aut-obs* *aut-obs* (list :tls-established))))
 (assert-event (equal (fn-auth-session-tlsp (aut-after-tls)) t))
 (assert-event (null (fn-auth-session-peer (aut-after-tls))))
@@ -2226,16 +2226,20 @@
         (equal (fn-auth-session-subject s) *aut-principal*))))
 (local (must-fail-checked (aut-k10b aut-k10b-without-r2 (r1 r3 r4))))
 
-; R3 dropped (reachable): the TLS handshake is the other hold.  The bound
-; connection's STARTTLS is handshaking, not a redemption hold, owes no
-; layer, and its principal-derived role is gone ("principal-peer" -> nil).
+ ; R3 dropped (corrupted state): a principal-derived peer role with its
+; subject removed. This pairing is not reached by an authenticated served
+; STARTTLS command after S120. The session recognizer alone permits it:
+; STARTTLS clears its principal role, unlike a redemption hold.
+(defmacro aut-principal-without-subject ()
+  '(aut-mk (fn-auth-session-base (aut-bound)) *aut-role-policy* nil nil nil nil))
 (assert-event
- (let ((s (in-arena-aut-role-after *aut-arena* (aut-bound) "STARTTLS")))
-   (and (not (fn-auth-session-handshakingp (aut-bound)))
+ (let ((s (in-arena-aut-role-after *aut-arena* (aut-principal-without-subject) "STARTTLS")))
+   (and (fn-auth-sessionp (aut-principal-without-subject))
+        (not (fn-auth-session-handshakingp (aut-principal-without-subject)))
         (fn-auth-session-handshakingp s)
         (not (fn-auth-redeem-waitp s))
         (not (fn-zc-owedp (fn-auth-session-compress s)))
-        (equal (fn-auth-session-peer (aut-bound)) "principal-peer")
+        (equal (fn-auth-session-peer (aut-principal-without-subject)) "principal-peer")
         (null (fn-auth-session-peer s)))))
 (local (must-fail-checked (aut-k10b aut-k10b-without-r3 (r1 r2 r4))))
 

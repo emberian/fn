@@ -1782,9 +1782,9 @@
       (let* ((w (fn-xw-sys (fn-hx-write-all (cadr o) octets)))
              (w (if (fn-xw-okp w) (fn-xw-sys (fn-hx-fsync (cadr o))) w))
              (c (fn-xw-sys (fn-hx-close (cadr o))))
-             ; A failed write or fsync leaves partial key material at PATH
-             ; and nothing sweeps it (S119): remove it before the error leaves.
-             (u (if (fn-xw-okp w) nil (fn-hx-unlink path))))
+             ; The create owns PATH: remove it on write/fsync/close error,
+             ; preserving the primary write or fence result.
+             (u (if (and (fn-xw-okp w) (fn-xw-okp c)) nil (fn-hx-unlink path))))
         (declare (ignore u))
         (if (fn-xw-okp w) c w)))))
 
@@ -1881,7 +1881,7 @@
                   (let* ((next (fn-ns-rotate-entry (cadr current) (and identity (fn-xo-octets identity)) (cadr root)))
                          (octets (fn-xw-render next)))
                     (if (not (fn-xw-okp octets)) octets
-                      (let* ((stage (fn-xw-join (cadr dir) (fn-xw-cat (list ".node-secret-" (fn-xw-dec (fn-hx-getpid)) "-"
+                      (let* ((stage (fn-xw-join (fn-xw-store-path store "staging") (fn-xw-cat (list ".init-node-secret-" (fn-xw-dec (fn-hx-getpid)) "-"
                                                                             (fn-hx-random-hex 8) ".stage"))))
                              (w (fn-xw-write-new stage (cadr octets) nil)))
                         (if (not (fn-xw-okp w)) w

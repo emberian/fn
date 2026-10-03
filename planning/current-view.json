@@ -230,7 +230,7 @@
       },
       "profile": "default",
       "latest": "a resend at a later second is answered duplicate where the image before D25 answered conflict ([d25-dup-conflict](evidence/d25-dup-conflict-2026-09-24.md)).",
-      "obstruction": "no two-node matrix or operator campaign on an image with D25; a poster Date equal to fn's rendering of the injection second is outside the invariance theorems; D25's provenance question (review \u00a7D25) is open.",
+      "obstruction": "no two-node matrix or operator campaign on an image with D25; a poster Date equal to fn's rendering of the injection second is outside the invariance theorems; D25's provenance question (review §D25) is open.",
       "next": "the shared qualification of an image carrying D25, with the transit duplicate rows and K1's died-present resubmissions answered duplicate."
     },
     {
@@ -442,6 +442,51 @@
       "latest": "reader_index 4/4, served_differential 7/7, the peering duplicate rows ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
       "obstruction": "the per-event `fn-peer-sessionp` evaluation, not the history scan, is the served cost at the N the CLI reaches (ember's decision); the fast path's reuse after refresh is not a theorem.",
       "next": "the measured cost sentence for the indexed read and the IHAVE/CHECK path at the scale profile, with its exponent and distance from the bound."
+    },
+    {
+      "id": "PRF-1266",
+      "name": "STARTTLS after authentication",
+      "contract": "An authenticated connection advertises no STARTTLS and a valid clear-channel STARTTLS answers 502 with the full authenticated session unchanged.",
+      "host": {
+        "function": "fn-mca-read-span",
+        "file": "host/owner-host.lisp"
+      },
+      "keystone": "fn-auth-starttls-after-authentication-is-refused-without-reset",
+      "profile": "default",
+      "latest": "Auth source and role books plus auth/SASL teeth certified at exact source digests in certify-20261003T102734Z-1462490 and certify-20261003T104044Z-1503690; actual saved-image selected-session scenario added.",
+      "obstruction": "Inherited cached dependency manifests need assembled-tree evidence reconciliation; no immutable saved-image result or deployment is claimed.",
+      "next": "Integrate source and reconcile exact existing manifests, then run the selected actual native protocol/fault packet on the convergence image.",
+      "tested": null
+    },
+    {
+      "id": "PRF-1269",
+      "name": "peer reader access",
+      "contract": "A peer-role reader command uses its login or anonymous pinned READ/POST rule; a projected nonempty rule excludes unreadable groups and article memberships, and queue privacy covers source peers.",
+      "host": {
+        "function": "fn-mca-read-span",
+        "file": "host/owner-host.lisp"
+      },
+      "keystone": "fn-auth-view-excludes-unreadable-groups-on-any-connection",
+      "profile": "default",
+      "latest": "Auth and source-peer queue tests certified in certify-20261003T102734Z-1462490; actual USER/PASS principal promotion and reader/transit composition certified in certify-20261003T103156Z-1476136; saved-image source-peer scenario added.",
+      "obstruction": "Inherited cached dependency manifests need assembled-tree evidence reconciliation; no immutable saved-image result or deployment is claimed.",
+      "next": "Integrate source and reconcile exact existing manifests, then run the selected actual native protocol/fault packet on the convergence image.",
+      "tested": null
+    },
+    {
+      "id": "PRF-1268",
+      "name": "published handshake charges",
+      "contract": "Durable publication and settled handshake exits charge max(published TLS limit,still-owned admissions); refused proposals do not change the held charge.",
+      "host": {
+        "function": "fn-owner-connection-held-refresh",
+        "file": "host/owner-host.lisp"
+      },
+      "keystone": "fn-cbud-live-held-charges-current-and-active",
+      "profile": "default",
+      "latest": "Connection-budget and exact teeth certified in certify-20261003T104044Z-1503690; actual host adapter outcome-injection fixture PASS, archived sol-access-native-faults-2026-10-03.",
+      "obstruction": "Inherited cached dependency manifests need assembled-tree evidence reconciliation; no immutable saved-image result or deployment is claimed.",
+      "next": "Integrate source and reconcile exact existing manifests, then run the selected actual native protocol/fault packet on the convergence image.",
+      "tested": null
     }
   ],
   "other_deployments": [

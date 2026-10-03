@@ -1727,3 +1727,22 @@ Completion (forward, MODE 2026-10-01 rule 2b: a revert that relieves a red is no
 goal: Keep W9's obligation view (`fn-rov`, `books/retention-obligation-view.lisp`) parked: lane figure-and-contract removed its maintenance at owner install/open and reclaim rebuild, and removed its 546,341,504-octet small-profile figure term because no served reader used the view. The remaining empty global plumbing does not constitute an active view. See docs/resource-contract.md M11.
 Status: DECIDED (coordinator, 2026-10-01; lane figure-and-contract).
 Completion: W9 re-adds the obligation view, its served reader and its resource-figure term together, with the behavior and its invariants. Parking the unused view does not complete W9's bounded pilot.
+
+### 2026-10-03: D48 — reader access survives a configured peer role
+
+Engineering resolution by sol-access of S121 under ember's delegated backlog
+analysis. An NNTP connection may carry a transport peer role and an authenticated
+reader identity at once. Its reader commands and POST retain the account's read
+and post patterns and moderation-queue hiding. A source peer without a reader
+login uses the anonymous rule. Peer identity supplies no reader permission.
+
+Transit offers and received bodies continue to use the pinned peer node, peer
+record and feed patterns. `fn-peer-command` reads these from its peer session,
+independently of the archive/index/posting-view arguments. Its carried and
+catalog counterparts use the live Message-ID trie and the same feed record.
+Consequently the existing authentication projection and per-pin cache apply to
+reader commands on peers, with no second per-command projection or new delegate.
+This narrows SEC-007's old blanket peer exemption to transit governed by feed
+policy. Encryption remains the posters' boundary for confidentiality from an
+operator or an authorized transport recipient. PRF-1269 covers the reader view;
+matching native evidence remains pending.

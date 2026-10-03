@@ -3864,9 +3864,11 @@
 ;; connection pinned (books/owner-agent.lisp `fn-oag-listing'): the login is
 ;; the AUTHINFO USER name once the connection authenticated (the pending
 ;; slot keeps it, as books/login-binding.lisp reads it), and the rule of a
-;; connection that has not authenticated is the row keyed on "".  A peer
-;; connection has no rule: what a peer is fed is its feed patterns', not
-;; this node's reader view.  The READ text restricts only a projected
+;; connection that has not authenticated is the row keyed on "".  Peer
+;; roles authorize transit through their pinned peer record; their reader
+;; commands retain this same account/anonymous view (D48).  Transit decisions
+;; read their node and feed configuration from the peer session, independently
+;; of the archive and posting-view inputs below.  READ restricts a projected
 ;; session (an unprojected one answers 503 to every archive command).
 
 (defun fn-auth-access-login (as)
@@ -3879,8 +3881,7 @@
 ;; entries); an unrestricted login's rule is then "*" with the queues hidden.
 (defun fn-auth-access-text (as config field)
   (declare (xargs :guard t))
-  (and (null (fn-auth-session-peer as))
-       (let ((base (fn-gac-pattern
+  (let ((base (fn-gac-pattern
                     (fn-gac-listing-table (fn-inj-config-listing config))
                     (fn-auth-access-login as) field))
              (hidden (and (equal field 1)
@@ -3888,7 +3889,7 @@
                                                 (fn-auth-access-login as)))))
          (if (consp hidden)
              (list* :hide (or base "*") hidden)
-           base))))
+           base)))
 
 (defun fn-auth-access-read (as config)
   (declare (xargs :guard t))
@@ -4025,7 +4026,6 @@
   (implies (and (fn-mod-queue-hiddenp (fn-gac-text-octets g)
                                       (fn-inj-config-closed config)
                                       (fn-auth-access-login as))
-                (null (fn-auth-session-peer as))
                 (fn-nntp-session-projected (fn-auth-reader-session as)))
            (and (not (member-equal g (fn-state-groups
                                       (fn-auth-view-archive as config archive))))
@@ -4046,6 +4046,24 @@
                             (text (fn-auth-access-text as config 1))
                             (s archive))
 ))))
+
+ ;; PRF-1269: all reader roles use this same captured projection.
+(defthm fn-auth-view-excludes-unreadable-groups-on-any-connection
+  (implies (and (fn-nntp-session-projected (fn-auth-reader-session as))
+                (fn-auth-access-text as config 1)
+                (not (fn-gac-readablep (fn-auth-access-text as config 1) g)))
+           (and (not (member-equal g (fn-state-groups
+                                      (fn-auth-view-archive as config archive))))
+                (not (fn-auth-arts-name-groupp
+                      g (fn-state-articles (fn-auth-view-archive as config archive))))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-view-archive fn-auth-access-read)
+                           (fn-auth-access-text fn-gac-readablep fn-gac-restrict-state
+                            fn-gac-restrict-state-groups-are-readable fn-auth-restrict-articles-exclude))
+           :use ((:instance fn-gac-restrict-state-groups-are-readable
+                            (text (fn-auth-access-text as config 1)) (s archive))
+                 (:instance fn-auth-restrict-articles-exclude
+                            (text (fn-auth-access-text as config 1))
+                            (arts (fn-state-articles archive)))))))
 
 (in-theory (disable fn-auth-access-login fn-auth-access-text fn-auth-access-read
                     fn-auth-access-post fn-auth-access-restrictedp

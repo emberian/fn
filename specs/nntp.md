@@ -1343,7 +1343,13 @@ the node identity's length (2 octets) and octets, the root
 `fn-ns-file-parse-of-render`). `store ROOT node-secret create [IDENTITY]` (and
 `init`) writes epoch 1 once and refuses by name when a secret exists; `store
 ROOT node-secret rotate [IDENTITY]` keeps the current file as
-`node-secret-E.key` and writes epoch E+1. A start reads the current file and
+`node-secret-E.key` and writes epoch E+1. New candidates are 0600 files in
+`staging/.init-node-secret-*`, within the existing recovery-swept namespace.
+Write, file-fence and close failures unlink the owned candidate and preserve
+the first write/fence error; a process-death candidate is collected on recovery.
+The current and retained epoch files remain the only authority. Historical
+`.node-secret-*.stage` files in `keys/` predate this namespace and are not
+collected by this change. A start reads the current file and
 every kept older epoch and hands ACL2 the ring (current first, epochs
 strictly decreasing, `fn-ns-ringp`); it refuses by name when a file is
 missing, accessible to group or others, or does not parse, and it never
@@ -1886,7 +1892,7 @@ gives them.
 
 NNT-046: A login's access rule restricts its connections to the groups its read wildmat admits, as if the other groups were absent, and its posts to the groups its post wildmat admits
 
-SEC-007: Group access is this node's reader view: it hides groups from a login's NNTP connections, never from the operator, from peers the feed patterns name, or from the node's own consumer; confidentiality beyond that is the posters' own encryption
+SEC-007: Group access is this node's reader view: it hides groups from a login's NNTP connections, never from the operator, from authorized peer transit governed by feed patterns, or from the node's own local consumer; confidentiality beyond that is the posters' own encryption
 
 fn's reference is INN's readers.conf access groups (a `read` and a `post`
 wildmat per authenticated identity); RFC 3977 section 4.2 is the wildmat, and
@@ -1931,8 +1937,10 @@ this is a local policy with one stronger fn guarantee: no existence oracle.
   may neither read nor post to leave its served list, so a POST naming one
   answers the unknown-group 441 of a group the node does not carry. A group
   it may post to but not read is a drop box.
-- **Scope.** A peer connection has no rule: peering is unchanged, and what a
-  peer is fed is its feed patterns' decision. The consumer poll is the
+- **Scope (D48).** A transport peer role leaves reader access tied to the
+  authenticated login or anonymous rule, including moderation-queue hiding.
+  Transit offers and received bodies remain governed by the pinned peer record
+  and feed patterns, independent of the reader archive/index/posting view. The consumer poll is the
   owner's local socket (one owner principal, mode 0600) and reads
   everything, as the operator does. Not guarantees: the Newsgroups header
   of a cross-posted article names every group it was posted to (its own

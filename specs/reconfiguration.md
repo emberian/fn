@@ -1584,3 +1584,18 @@ principal and does not enroll keys or manufacture a verified statement.
 Native qualification of this source is pending the runner's new immutable
 image; the legacy statement key index and hybrid snapshot bridge is the next
 finite slice before a productive `:admitted` authority claim.
+
+### Published TLS handshake charges (PRF-1268, S113)
+
+A configuration proposal is checked against the larger of the current held
+TLS slot charge and the candidate limit. The current generation can continue
+admitting handshakes while the proposal is persisted. Staging, refusal and
+unstage leave the live charge unchanged. Only a durable published generation
+rebases it, to the larger of that generation's limit and the number of still
+owned handshake admissions. A settled handshake release rebases it again, so
+lowering a limit releases excess scratch as those handshakes leave. A refused
+or recovery-required completion retains the charge and its existing recovery
+semantics. This is admission accounting; native allocator fidelity remains
+within the host assumptions. Source guards/invariants and the actual host
+outcome-injection fixture are present; exact certification and image evidence
+are recorded separately in the proof and repair registries.
