@@ -106,6 +106,35 @@
            :in-theory (enable ninep-transport-run fn-oct-word-at fn-octets-p fn-octets-len fn-octets-list
                                     fn-octets-get fn-octets-get-word))))
 
+; The allocator's definite refusal has no issued token or retained source.
+; The complete parsed Tversion still executes the real bounded drain.
+(defthm ninep-transport-refused-mount-version-resets
+ (let* ((buffer (fn-octets-from-list *ninep-transport-version-wire* (create-fn-octets)))
+        (base (update-fn-9ps-phase :base (create-fn-ninep-session)))
+        (base (update-fn-9ps-msize 64 base))
+        (base (update-fn-9ps-mount-phase :refused base))
+        (result (ninep-transport-run 48 (ninep-transport-fixture) buffer base))
+        (next (caddr result)))
+  (and (equal (car result) (list :send *ninep-transport-version-reply*))
+       (equal (fn-9ps-phase next) :base)
+       (equal (fn-9ps-mount-phase next) :empty)
+       (equal (fn-9ps-mount-token next) nil)
+       (equal (fn-9ps-mount-source next) nil)
+       (equal (fn-9ps-mount-intent next) nil)
+       (equal (fn-9ps-pending-version next) nil)))
+ :rule-classes nil
+ :hints (("Goal" :expand ((:free (fuel transport buffer session)
+                                      (ninep-transport-run fuel transport buffer session)))
+           :in-theory (enable ninep-transport-run fn-oct-word-at fn-octets-p fn-octets-len fn-octets-list
+                                    fn-octets-get fn-octets-get-word))))
+
+(defthm ninep-transport-uncertain-mount-cannot-reset
+ (implies (member-eq (fn-9ps-mount-phase session)
+                    '(:issue-intent :reserved :pin-intent :return-intent :fenced))
+  (equal (fn-9pt-version-after-quiescence session)
+         (list :await-mount-return nil session)))
+ :rule-classes nil)
+
 ; Mutation witness: treating header observation as body observation accepts
 ; this absent body. Every real subject guard/state antecedent still holds.
 (defthm ninep-transport-header-is-not-body-mutation-refuted
