@@ -37,6 +37,20 @@
 (defun fnn-core (name &rest args)
   (case name
     (fn-peer-tls-verification '(:verify "example.invalid" nil :system-roots))
+    ;; Grammar is covered by the native-redeem-input suite. This fixture
+    ;; supplies exact admitted line projections at the command seam.
+    (fn-rip-command
+     (let ((text (case (first args)
+                   (:code (unless (equal (rest args) '("code" "login"))
+                            (error "unexpected code projection input"))
+                          "XREDEEM code login")
+                   (:password (unless (equal (second args) '(112 97 115 115))
+                                (error "unexpected password projection input"))
+                              "XREDEEM PASS pass")
+                   (:starttls "STARTTLS")
+                   (:quit "QUIT")
+                   (otherwise (error "unexpected command kind")))))
+       (append (map 'list #'char-code text) '(13 10))))
     (fn-redeem-step (apply #'fn-redeem-step args))
     (fn-redeem-lost (apply #'fn-redeem-lost args))
     (fn-redeem-outcome-class (apply #'fn-redeem-outcome-class args))
@@ -47,7 +61,7 @@
 (defun fnn-make-octets (n) (make-array n :element-type '(unsigned-byte 8)))
 (defun fnn-string-octets (s) (map 'fnn-octets #'char-code s))
 (defun fnn-concat (&rest strings) (apply #'concatenate 'string strings))
-(defun fnn-octets (x) x)
+(defun fnn-octets (x) (if (typep x 'fnn-octets) x (coerce x 'fnn-octets)))
 (defun fnn-octets-string (x) (map 'string #'code-char x))
 (defun fnn-connect (&rest args)
   (declare (ignore args))
