@@ -12,9 +12,12 @@ certification, qualified packaging and deployment remain separate.
 
 The immediate shared dependency is one coherent current source-loaded owner
 world with early arena/P3 attachment before generic history and current
-reader/decoded/native interfaces. There is no retained current-union process;
-History's last bootstrap refusal has a source repair but has not been replayed
-through owner entry. The earlier alleged eleven-versus-ten-field read-pool
+reader/decoded/native interfaces. History is admitting the generated current logical input in the retained
+canonical P3 world; owner entry has not yet been reached. Required payload
+arena framing/representation facts are the current replay obstruction. The
+shared source generator can explicitly defer named unrelated DEFTHMs while
+retaining definitions and required guard/correspondence obligations, recording
+those books as unproved. No such deferral has yet established owner execution. The earlier alleged eleven-versus-ten-field read-pool
 incompatibility was a counting mistake: `:inline` is an option, and the current
 pool has ten fields. Current decoded-job/controller/window methods and P3
 semantics still require deliberate assembly; old cached execution does not
@@ -46,11 +49,19 @@ required before source execution.
 The finite closeout repaired Web’s actual POST action-classifier mismatch: the
 same scoped socket case now passes account/POST/read/remove (16.702s, one test,
 zero skips), with the original red retained. Its current whole-world execution
-and concurrent/TLS coverage remain open. Runtime enqueue can signal
-after typed assignment but before read/dependency attachment (capture before
-wake is owed); ARTICLE normal/native renderer arities still differ in the
+and concurrent/TLS coverage remain open. Runtime now attaches owner read, reservation, exact token and dependency
+before physical wake, including failed binding; actual waiter/error schedules
+pass. Complete physical ARTICLE execution still remains open. ARTICLE
+normal/native renderer arities still differ in the
 old-cache prototype; BP multi-peer SCN1110 and current P3 live reclaim remain
-unexecuted. Complete tariffs, original-response refinements, guards, proofs
+unexecuted. The shared host/raw source emitter validates exact logical book identities
+and retains current load order. Fresh entry now requires strict nested LD
+:RETURN and a successful EOF verdict before native entry; actual good/invalid
+minimal-prefix checks pass, with later markers absent on refusal. This control
+check does not establish full current-world admission. S132 strict ten MiB
+NNTP/operator acceptance and readback pass on the named initialized-source
+cache under the supported 128 MiB history profile; current-union qualification
+remains separate. Complete tariffs, original-response refinements, guards, proofs
 and all remaining domain work continue from their owner records.
 
 Generated ledger regeneration exposed unresolved curated-event mappings,
