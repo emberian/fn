@@ -1,0 +1,9 @@
+# Entry audit
+^"entries"{
+ source_revision: "3f39e6df98b3d87881e43200bba9334e47e1af4b"
+ workbench_revision: "651b535b5171"
+ @map: ~"../../machines.spw"
+ @tooling: ~"./tooling.md"
+ @findings: ~"./findings.md"
+ @coverage: ~"./coverage.md"
+}
