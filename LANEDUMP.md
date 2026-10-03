@@ -987,3 +987,60 @@ source facts stay immutable. Python/JSON/diffcheck and exact tool bytes pass.
 Existing checkpoint tar, admitted packet tar and CBOR bounds receipt archive
 verify; include only5ca08a7ea evidence index line for prior bounds event.
 Source/admission evidence is separate from scoped certificates and images.
+S112 removed-peer journal custody, codex-sol-tools
+================================================
+Actual pull worker/catch-up tick prune cached journals only when the existing
+ACL2 fn-pull-plan-for says the peer has no current plan. Cached cursors drop
+with descriptor custody; returning cursor-for goes through its existing
+open/replay path. Both kinds share one private pruning function. A close
+fault attempts every retired descriptor before escaping; cache removal
+precedes close so a nil descriptor cannot be reused by a later round.
+
+Necessary adjacent ACL2 schedule fix: fn-pull-schedule previously only added
+plans and retained removed peer entries indefinitely, so a retired first-due
+peer could block/fault every later round. New tail-recursive live filter
+uses actual plan-for, then existing configure preserves live next/busy state
+and updates interval. Returning peers admit fresh due state. No new operator
+cap, parallel worker, deadline policy or host plan semantics.
+
+First command: python3 -m unittest tests.test_native_pull_journal_registry
+Three fd/cursor schedules pass0.861s after scoped generated trap inventory
+(one unexpected-round trap). Standalone actual ACL2 schedule case added.
+Actual worker/tick/cursor-for, schedule functions and kernel descriptors/close
+run; new-open/replay leaf records invocation, not a codec or saved-image
+claim. Assertion observed during loop BEFORE ordinary worker exit cleanup,
+so old final cleanup cannot falsely make removal look repaired. ACL2 finite
+assertions added to existing peer-pull tests; book/test certification pending
+next combined Integration cut, no standalone cert/image launched here.
+
+Final four S112 schedules pass1.217s; intended descriptor assertion
+red/base5022d65bf and green/head4301f4a08, same harness/no infra/skips.
+Archived S112-dcccaf2ad4374c4cb5132f14ce1de6ba.json sha256
+35473cb941e07a1a91817625ea10f82b9121f16a0c07a5e10e779561aaa52f57.
+Separate actual ACL2 schedule red/green witness follows, no source change.
+
+Separate S112 schedule assertion red/base5022d65bf and green/headcb4ee3b9d,
+same harness/no infra/skips. Archived S112-dba6fbba614c4a038dc7f1a2fdf4b913.json
+sha256861c0aca2de97ce148507637e91346f427e20bd8d9032f7841eda058d0ea8717.
+State remains in-progress for matching combined certification/consumer.
+S054/S067/S106 serial slow-peer starvation remains open; schedule removal
+does not introduce an overall round deadline or a fair round continuation.
+
+
+## Sol source assembly — removed pull peers
+
+READY S112 inputs4301f4a08/cb4ee3b9d/d23582fad, dependency integrated S097
+5022d65bf only (no new owner/mux prerequisite). Actual current ACL2 plan
+lookup selects retired FNPL/FNCU cache entries; drop them/cursors before
+closing every retired descriptor and rethrowing the first close fault.
+Returning peers use existing open/replay; raw witness records that leaf and
+does not establish actual saved-image replay. Changed ACL2 schedule removes
+retired keys before due selection, retaining live next/busy and updating
+interval through existing fn-sched-pull-configure. Background worker owns
+these caches; no interrupted round is settled by the prune.
+Code applies cleanly, only LANEDUMP conflict preserved. Final source/test
+bytes exactly producer, Python/JSON/diff checks pass; both S112 same-harness
+red/green receipt objects verify. Reuse four focused raw schedules1.217s.
+First runnable selector python3 -m unittest tests.test_native_pull_journal_registry.
+Next combined cert needs books/peer-pull.lisp + tests/acl2/peer-pull-tests.lisp;
+current321 verdict cannot transfer. S054/S067/S106 starvation remains open.
