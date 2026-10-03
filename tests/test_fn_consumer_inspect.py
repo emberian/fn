@@ -62,5 +62,21 @@ class Inspection(unittest.TestCase):
         self.assertFalse(Path(config["db"]).exists())
         self.assertFalse(Path(config["work"]).exists())
 
+    def test_artifact_is_exact_public_custody_without_signing_or_recovery(self):
+        self.assertEqual(self.run_consumer("report", "r1", "opaque", cut="after-post").returncode, 97)
+        target = self.root / "artifact"
+        result = self.run_consumer("artifact", "r1", str(target))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        cfg = json.loads(self.config.read_text())
+        with sqlite3.connect(cfg["db"]) as db:
+            row = db.execute("SELECT source,ed_sig,ml_sig,ed_public,ml_public_pem FROM submissions").fetchone()
+            self.assertEqual(db.execute("SELECT state FROM attempts").fetchone(), ("in-flight",))
+        for name, data in zip(("source.eml", "ed.sig", "ml.sig", "ed.public", "ml.public.pem"), row):
+            self.assertEqual((target/name).read_bytes(), data)
+        self.assertEqual(json.loads((target/'manifest.json').read_text()), json.loads(result.stdout))
+        self.assertEqual(len(self.seen()), 1)
+        self.assertEqual(self.run_consumer("artifact", "r1", str(target)).returncode, 1)
+        self.assertEqual(self.run_consumer("artifact", "unknown", str(self.root/'missing')).returncode, 1)
+
 if __name__ == "__main__":
     unittest.main()
