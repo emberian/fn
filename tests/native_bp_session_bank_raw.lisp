@@ -10,7 +10,7 @@
 (with-open-file (stream "books/bp-session-profile.lisp")
  (loop for form = (read stream nil :eof) until (eq form :eof) do
   (when (and (consp form) (eq (first form) 'defun)
-             (member (second form) '(fn-bpsg-row fn-bpsg-step fn-bpsg-release-ready fn-bpsg-slots fn-bpsg-key fn-bpsp-root-release-ready)))
+             (member (second form) '(fn-bpsg-row fn-bpsg-step fn-bpsg-release-ready fn-bpsg-slots fn-bpsg-key fn-bpsp-root-release-ready fn-bpsg-context-abort-plan)))
    (eval (cons 'defun (cons (second form) (cons (third form)
     (remove-if (lambda (x) (and (consp x) (eq (car x) 'declare))) (cdddr form)))))))))
 (with-open-file (stream "books/bp-session-scheduler.lisp")
@@ -36,7 +36,7 @@
   (otherwise (error "unexpected call ~s" name))))
 (defun fnn-core (name &rest args)
  (case name
-  ((fn-bpsg-step fn-bpsg-release-ready fn-bpsg-key fn-bpsched-service fn-bpsched-next
+  ((fn-bpsg-context-abort-plan fn-bpsg-step fn-bpsg-release-ready fn-bpsg-key fn-bpsched-service fn-bpsched-next
      fn-bpsched-next-slot fn-bpsched-listener-index fn-bpsched-deadline fn-bpsched-timeout-p
      fn-bpsched-work-credit fn-bpsched-idle-p)
    (apply name args))
@@ -140,3 +140,26 @@
  (assert (gethash grant (fnn-bpsb-held bank)))
  (assert (fnn-tclc-source-pending (fnn-bpsg-conn grant))))
 (format t "PASS actual BP retained bank/loop: close custody, ambiguous return, fragment rearm, live peer fairness.~%")
+
+;;; Abort ordinary live contexts only after future callbacks are disabled.
+;;; Neither logical termination nor timeout invents a physical close receipt.
+(dolist (fenced '(nil t))
+ (dolist (physical '(:closed :unobserved))
+  (let* ((bank (test-bank))
+         (conn (make-fnn-tcl-conn :retained t :session :established
+                :held '(:unreleased-ack) :input-vector #(1 2 3) :input-octets '(1 2 3)))
+         (grant (test-grant bank 2 :incoming :socket conn))
+         (*close-receipt* physical))
+   (setf (fnn-tclc-fenced conn) fenced
+         (fnn-bpsg-turn grant) (lambda () (error "aborted turn invoked"))
+         (fnn-bpsg-finish grant) (lambda (&rest xs) (declare (ignore xs)) (error "aborted finish invoked")))
+   (fnn-bp-session-abort-all bank nil)
+   (assert (null (fnn-bpsg-turn grant))) (assert (null (fnn-bpsg-finish grant)))
+   (if fenced
+    (progn (assert (gethash grant (fnn-bpsb-held bank)))
+           (assert (equal (fnn-tclc-held conn) '(:unreleased-ack))))
+    (progn (assert (fnn-tclc-finished conn)) (assert (null (fnn-tclc-held conn)))
+           (assert (null (fnn-tclc-input-vector conn))) (assert (null (fnn-tclc-input-octets conn)))
+           (assert (null (fnn-bpsg-conn grant)))
+           (assert (eq (not (null (gethash grant (fnn-bpsb-held bank)))) (eq physical :unobserved))))))))
+(format t "PASS ordinary live abort retires volatile aliases without ACK; publication fence and unobserved physical return remain held.~%")

@@ -133,3 +133,14 @@
 
 (defun fn-bpsp-root-release-ready (held)
  (declare (xargs :guard t)) (and (natp held) (equal held 0)))
+
+; The single writer has disabled TURN/FINISH before consuming this plan.
+; Ordinary input/output aliases can be retired without a new publication.
+; Source operations and ambiguous publication remain their own recovery debt.
+(defun fn-bpsg-context-abort-plan (source-pending root token source-held fenced)
+ (declare (xargs :guard t))
+ (if (or source-pending root token source-held fenced) :retain-context :retire-context))
+(defthm fn-bpsg-context-abort-retains-every-publication-debt-by-definition
+ (implies (or source-pending root token source-held fenced)
+  (equal (fn-bpsg-context-abort-plan source-pending root token source-held fenced) :retain-context))
+ :rule-classes nil)

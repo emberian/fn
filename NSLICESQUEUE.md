@@ -661,3 +661,16 @@ proposed composed boundary remains planned; direct definition helpers not cited.
 SCN-1126 real-time silent-contact/canonical request/reopen prepared, unexecuted.
 SESS_INIT stalls/full admission, whole decode/GC and physical-cut refinement
 remain owned open work. Exact two-root certification pending.
+
+Ordinary live-session abort followthrough (PRF-1296): the single writer first
+removes every future TURN/FINISH invocation. ACL2 permits retirement of an
+ordinary context only without pending source/root/token/source-held/fence. The
+host discards held ACK before TCP-closed and drops volatile input/output aliases;
+durable Store/FNBS/FNRJ facts remain. Context release and observed physical close
+are independent receipts. Fenced or unknown publishing debt stays discoverable,
+and an unobserved close still holds the bank/root Store. Actual raw four-way
+ordinary/fenced × observed/unobserved-close matrix PASS; no native or composed
+refinement claim. This fixes normal shutdown of a live accepted peer, which
+otherwise stranded the bank despite its disabled continuation. SCN1110/1125/1126
+remain actual source-process consumers to execute on the current initialized
+world. Matching profile/teeth certification pending.

@@ -8738,7 +8738,8 @@
           "NativeBpNodeTests.test_keepalive_peer_does_not_block_second_canonical_request"
         ],
         "native": true
-      }
+      },
+      "notes": " Ordinary live peer teardown now consumes ACL2 context-abort plan before physical close; fenced source and unobserved closure remain held (PRF-1296). Actual native execution remains pending."
     },
     {
       "id": "SCN-1101",
@@ -9460,7 +9461,8 @@
         "tests/test_native_consumer_exchange_two_nodes.py",
         "tests/native_image_provenance.py"
       ],
-      "note": "Prepared actual consumer selector tests.test_native_consumer_exchange_two_nodes.NativeTwoNodeConsumerExchangeTests.test_signed_report_reply_cross_bp_and_reopen. Python compilation passes; native execution UNEXECUTED. Requires one explicitly bound initialized current source execution or the existing published coordinate. No image qualification, native result or full work/GC funding inferred."
+      "note": "Prepared actual consumer selector tests.test_native_consumer_exchange_two_nodes.NativeTwoNodeConsumerExchangeTests.test_signed_report_reply_cross_bp_and_reopen. Python compilation passes; native execution UNEXECUTED. Requires one explicitly bound initialized current source execution or the existing published coordinate. No image qualification, native result or full work/GC funding inferred.",
+      "notes": " Ordinary live peer teardown now consumes ACL2 context-abort plan before physical close; fenced source and unobserved closure remain held (PRF-1296). Actual native execution remains pending."
     },
     {
       "id": "SCN-1126",
@@ -9486,7 +9488,8 @@
         "tests/native_tcpcl_retained_turn_raw.lisp",
         "books/tcpcl-retained-turn.lisp"
       ],
-      "note": "Actual retained-controller raw fixture PASS; real-time native selector test_silent_contact_expires_without_stopping_canonical_delivery prepared but UNEXECUTED. Stalled SESS_INIT and complete handshake/session admission scheduling remain open."
+      "note": "Actual retained-controller raw fixture PASS; real-time native selector test_silent_contact_expires_without_stopping_canonical_delivery prepared but UNEXECUTED. Stalled SESS_INIT and complete handshake/session admission scheduling remain open.",
+      "notes": " Ordinary live peer teardown now consumes ACL2 context-abort plan before physical close; fenced source and unobserved closure remain held (PRF-1296). Actual native execution remains pending."
     }
   ]
 }
