@@ -3378,3 +3378,14 @@ ARTICLE/Web/reopen selector remains pending History's single current-source
 wrapper; complete output/decoded heap funding and global HM coverage remain open.
 Earlier PRF1288 'planned' prose is superseded by its canonical registry status
 uncertified-at-current-digest; no proof or endpoint completion claim.
+
+Runtime wait source: actual shared condition-wait producer now covers the two
+extent wait regions. Release reserved under E; wait return confirms release,
+actual mutex ownership permits reacquire, timeout avoids duplicate release.
+Contender/timeout/pre-release primitive escape/inactive load-order schedules
+pass; earlier actor/section, decoded issuer and response-window composition
+still passes. Full O/P/global HM realization remains open; no oracle replay
+transferred to this new packet. Root discovered no actual default funded pool
+installer caller: fresh normal owner remains offline today, so compressed
+endpoint still needs Root's real pre-open partial baseline producer in addition
+to History initialization. No wrapper/test synthetic pool installation.

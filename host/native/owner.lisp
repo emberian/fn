@@ -100,6 +100,13 @@ record mutex; it never calls a hook, I/O, ACL2, or another owner lock."
         (setf (fnn-native-observation-valid *fnn-native-observer*) nil
               (fnn-native-observation-reason *fnn-native-observer*) :observer-fault)))))
 
+(defun fnn-native-observation-unavailable (reason)
+  "Observation failure cannot classify a service fault. Preserve no replay."
+  (when *fnn-native-observer*
+    (setf (fnn-native-observation-valid *fnn-native-observer*) nil
+          (fnn-native-observation-reason *fnn-native-observer*) reason))
+  nil)
+
 (defun fnn-native-observation-events (observer)
   "Completed prefix in reserved producer order; never sort by clock or ID.
 Return status, events, reason. An incomplete release stops the prefix."

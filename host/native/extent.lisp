@@ -609,12 +609,12 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
 
 (defun fnn-extent-executor-loop (worker)
   (loop
-    ;; CONDITION-WAIT physically releases/reacquires E. Until those edges
-    ;; have an actual producer, omit this region from the finite projection.
-    (sb-thread:with-mutex (*fnn-extent-lock*)
+    ;; The shared wait producer records actual release/reacquire without
+    ;; pretending a sleeping executor continuously holds E.
+    (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
       (loop until (eq (fnn-cold-worker-phase worker) :queued) do
         (when *fnn-cold-stopping* (return-from fnn-extent-executor-loop nil))
-        (sb-thread:condition-wait (fnn-cold-worker-ready worker) *fnn-extent-lock*))
+        (fnn-observed-condition-wait (fnn-cold-worker-ready worker) *fnn-extent-lock* :extent))
       (setf (fnn-cold-worker-phase worker) :working))
     ;; This call has returned before RETURNED is made observable. No worker
     ;; activation still consumes the token/fd/vector when owner takes it.
@@ -768,10 +768,11 @@ settlement; the dead executor is never reused for another admitted job."
     (fnn-extent-executor-observe-returned worker)))
 
 (defun fnn-extent-executor-wait (worker seconds)
-  ;; The implicit wait edges are unobserved: full PageIO replay unavailable.
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  ;; A timed-out wait may return unlocked; the shared wrapper records that
+  ;; actual release and does not synthesize a final unlock.
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (unless (eq (fnn-cold-worker-phase worker) :returned)
-      (sb-thread:condition-wait (fnn-cold-worker-ready worker) *fnn-extent-lock* :timeout seconds))))
+      (fnn-observed-condition-wait (fnn-cold-worker-ready worker) *fnn-extent-lock* :extent :timeout seconds))))
 
 (defun fnn-extent-executor-commit (worker io token cachedp)
   "Extent lock held, worker relinquished and cache transfer already done."

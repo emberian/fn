@@ -609,3 +609,12 @@ retains a discoverable read/token even if the physical child runs. Ordinary
 no-token refusal removes the reservation; an escaped draw or binding preserves
 it and is never retried as a fresh issue. This is native custody ordering,
 not a proof of a complete decoded tariff or interpreter realization.
+
+The shared native condition-wait observation reserves the release record while
+E is owned and completes it only after the actual primitive returns. It emits
+reacquisition only when the returning thread owns the mutex. A timeout returning
+unlocked has no fabricated reacquisition or second release; an escaping wait or
+unobserved unlock invalidates comparison. The executor loop and timed executor
+wait consume this seam. Finite actual SBCL contention/timeout schedules check
+producer order; remaining O/P coverage, packet/model replay and global schedule
+preservation remain open, independently of decoded storage funding.
