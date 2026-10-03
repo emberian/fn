@@ -553,7 +553,7 @@
       "contract": "The operator loads relative paths resolved under its config directory while retaining both explicit cold/output resource policies; canonical show reloads the complete normalized configuration.",
       "host": {
         "function": "fn-native-operator-host-run-at",
-        "file": "host/native-operator-host.lisp"
+        "file": "host/native/operator.lisp"
       },
       "keystone": "fn-ncpath-config-octets-load-the-resolved-configuration",
       "tested": null,
