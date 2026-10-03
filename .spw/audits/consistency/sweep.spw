@@ -88,11 +88,20 @@
  counterexample: "anonymous real GROUP selects fn.letters/current; STARTTLS hold then successful fn-auth-tls-established retained both; STAT used pre-TLS cursor. RFC4642 section2.2.2 requires discarding group/article while preserving MODE READER effects"
  repair: "fn-auth-tls-reader-base resets nested reader group/current and POST awaiting; successful TLS receipt uses helper; compression owed receipt preserves base unchanged"
  checks: "actual extracted executable definitions raw SBCL fixture PASS reset/preserved MODE+peer and compression cursor; renamed helper admitted and guard verified in Tools private historical ad8 warm world. Reachable GROUP/STARTTLS/receipt/STAT412 ACL2 scenario added, admission pending"
- residual: "local helper consistency lemma and changed receipt consistency/root certification open; three bounded200k proof attempts exceeded budget; minimal-theory followup not yet executed. No TLS socket or full-current claim"
+ residual: "local helper consistency lemma and changed receipt consistency/root certification open; three bounded200k proof attempts exceeded budget; minimal-theory generated temporary module reader error stopped private ad8 owner (Tools confirms zombie PID2260356/socket removed); corrected local source fixture passes, Tools owns evaluator-boundary repair, no cold restart. No TLS socket or full-current claim"
 }
 ^"redeem_outcome_refutation"{
  @source: ~"../../../books/nntp-auth.lisp"
  @native: ~"../../../host/native/owner.lisp"
  inspected: "full SASL/authinfo/xredeem/starttls/auth-step and native owner-account-redeem/reconfigure publication"
  outcome: "abstract redeem reply maps every non-bound to482, but actual owner injects only accepted/refused durable outcomes; indeterminate reconfigure fences and escapes. No reachable uncertain→482 defect established"
+}
+
+^"reference_bank_tree_sweep"{
+ source_revision: "aa1ad2191"
+ @bank: ~"../../../books/resource-vector.lisp"
+ @tree: ~"../../../books/resource-vector-tree.lisp"
+ inspected: "full executable bank row/recognizers/charge/draw/open/settle/refund/grow/destroy/step/run/install; full tree fresh/sub-after/root-step/sub-step/step/run/install and invariant"
+ obligations: "idle→draw/subbank increments generation, settle/refund exactphase+generation, refund only reusable held, destroy uses actual subordinate spent rather than caller claim; tree substeps only draw/settle/refund, stale parent generation denies successor access"
+ scope: "logical reference no served path; naked bank destroy caller-supplied spent is deliberately trusted accounting input, tree reads it from owned substate. No concrete new invariant violation found; typed ledger physical custody remains a separate subject"
 }
