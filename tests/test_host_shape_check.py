@@ -20,6 +20,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from tools import commit_map
+
 from tools import host_shape_check  # noqa: E402
 
 FIXTURE = "host/zz-shape-fixture.lisp"
@@ -62,7 +64,7 @@ def findings_for(text: str) -> list[dict]:
 class TheDefect(unittest.TestCase):
     def test_9c344d1d_owner_host_has_exactly_the_one_finding(self):
         historical = subprocess.run(
-            ["git", "-C", str(ROOT), "show", "9c344d1d:host/owner-host.lisp"],
+            ["git", "-C", str(ROOT), "show", commit_map.resolve("9c344d1d") + ":host/owner-host.lisp"],
             capture_output=True, text=True, check=True).stdout
         report = host_shape_check.analyze({"host/owner-host.lisp": historical})
         self.assertEqual(

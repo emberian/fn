@@ -9,6 +9,9 @@ import json
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from commit_map import resolve
+
 ROOT = Path(__file__).resolve().parents[1]
 DEPENDENCIES = [
     ("6b2fbf3f09bdf4976c1e1edeeab7acbd71d3e161", "books/bp-wire-primary-cursor.lisp", "6b072d05c727deb65902238f7213b19470f8d6b774e910052cdf37379a3433e3"),
@@ -24,7 +27,7 @@ def main():
     destination.mkdir(parents=True, exist_ok=True)
     manifest = []
     for revision, path, digest in DEPENDENCIES:
-        source = subprocess.check_output(["git", "show", f"{revision}:{path}"], cwd=ROOT)
+        source = subprocess.check_output(["git", "show", f"{resolve(revision, ROOT)}:{path}"], cwd=ROOT)
         if hashlib.sha256(source).hexdigest() != digest:
             raise SystemExit(f"dependency hash mismatch: {path}")
         (destination / Path(path).name).write_bytes(source)

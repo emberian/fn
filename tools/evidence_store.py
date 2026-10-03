@@ -97,6 +97,10 @@ class EvidenceRefused(EvidenceError):
     """Bytes are there and do not hash to the name they claim: refused (exit 4)."""
 
 
+class EvidenceConflict(EvidenceRefused):
+    """An existing logical name cannot be assigned different bytes implicitly."""
+
+
 class EvidenceMismatch(EvidenceRefused):
     """A working-tree file differs from the bytes its index line names."""
 
@@ -262,7 +266,8 @@ def index_lock(root: Path):
             fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
-def add_to_index(root: Path, new: dict[str, tuple[str, int]]) -> None:
+def add_to_index(root: Path, new: dict[str, tuple[str, int]], *,
+                 replace: bool = False) -> None:
     """Merge rows into the index under the lock, reading it fresh inside it."""
     with index_lock(root):
         path = root / INDEX_REL
@@ -271,6 +276,10 @@ def add_to_index(root: Path, new: dict[str, tuple[str, int]]) -> None:
         except FileNotFoundError:
             text = ""
         entries = parse_index(text)
+        if not replace:
+            for name, entry in new.items():
+                if name in entries and entries[name] != entry:
+                    raise EvidenceConflict(f"{name}: already indexed with different bytes")
         entries.update(new)
         write_index(root, entries)
 
@@ -494,6 +503,26 @@ def read_text(root: Path, rel: str | Path) -> str:
     return read_bytes(root, rel).decode("utf-8")
 
 
+def read_input_text(root: Path, path: str | Path) -> str:
+    """CLI input: logical evidence names use the store, ordinary files stay local."""
+    path = Path(path)
+    # Normalize spelling lexically: resolving a local symlink could hide the
+    # indexed name behind a shadow outside the tree.
+    absolute = Path(os.path.abspath(path))
+    name = os.path.normpath(path.as_posix())
+    for base in (root.absolute(), root.resolve()):
+        try:
+            name = absolute.relative_to(base).as_posix()
+            break
+        except ValueError:
+            pass
+    if name.startswith(EVIDENCE_REL + "/"):
+        name = os.path.normpath(name)
+        if name.startswith(EVIDENCE_REL + "/"):
+            return read_text(root, name)
+    return path.read_text(encoding="utf-8")
+
+
 def glob(root: Path, pattern: str) -> list[str]:
     """Logical paths matching `pattern` (fnmatch, `*` crosses no `/`)."""
     def matches(path: str) -> bool:
@@ -675,7 +704,7 @@ def archive_objects(root: Path, objects: dict[str, bytes]) -> None:
     push(root, list(objects))
 
 
-def put(root: Path, rels: list[str], publish: bool = True) -> dict[str, tuple[str, int]]:
+def put(root: Path, rels: list[str], publish: bool = True, *, replace: bool = False) -> dict[str, tuple[str, int]]:
     """Archive working-tree files, then record them in the index.
 
     The index line is written (locked, fsync'd) only after the
@@ -694,12 +723,17 @@ def put(root: Path, rels: list[str], publish: bool = True) -> dict[str, tuple[st
         sha = sha256_bytes(data)
         objects[sha] = data
         entries[name] = (sha, len(data))
+    if not replace:
+        current = read_index(root)
+        for name, entry in entries.items():
+            if name in current and current[name] != entry:
+                raise EvidenceConflict(f"{name}: already indexed with different bytes")
     if publish:
         archive_objects(root, objects)
     else:
         for sha, data in objects.items():
             store_object(cache_dir(root), data, sha)
-    add_to_index(root, entries)
+    add_to_index(root, entries, replace=replace)
     return entries
 
 
@@ -941,7 +975,7 @@ def cmd_index_tree(args) -> int:
             objects = {sha256_bytes(data): data
                        for _, data in cat_blobs(ROOT, {p: blobs[p] for p in batch})}
             archive_objects(ROOT, objects)
-            add_to_index(ROOT, {p: tree[p] for p in batch})
+            add_to_index(ROOT, {p: tree[p] for p in batch}, replace=True)
         print(f"wrote {INDEX_REL}: {len(tree)} tracked files "
               f"(+{len(missing)} new, {len(differ)} changed, each archived first; "
               f"{len(extra)} index-only kept)")

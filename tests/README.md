@@ -346,10 +346,10 @@ So the two halves of a run are treated differently.
 Two tools write the archive, at the two points a manifest reaches this
 laptop: `tools/certify_books.py` when a local run finishes (every exit,
 including a refusal before ACL2 starts), and `tools/farm.py wait` when a farm
-run's evidence is fetched. The directory is ignored by default and a manifest is
-tracked with `git add -f`, which `python3 tools/evidence_manifests.py sync
---add` does for exactly the runs a tracked file cites. Committing a manifest
-and citing its run are therefore the same act.
+run's evidence is fetched. The directory holds ignored local drafts.
+`python3 tools/evidence_manifests.py add RUN-ID` archives the bytes by SHA-256
+and stages their logical name in `planning/evidence-index.tsv`; `sync --add`
+does this for the runs a tracked file cites. Commit that index line with the claim.
 
 **To re-run a claim from its manifest**: take `git_revision` and check it
 out; `source_digests_sha256` says which book sources that revision must

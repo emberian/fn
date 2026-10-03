@@ -2548,7 +2548,8 @@ check:
 # box that ran it, and a worktree removal, a farm root or a gate reaper
 # deletes it.  At dev 5698648, 314 run ids were cited in tracked files and
 # none resolved, so a reader could not check a single one.  The manifest is
-# the claim and is committed under planning/evidence/manifests/; this fails
+# the claim: its bytes are archived by hash and its logical name under
+# planning/evidence/manifests/ is committed in evidence-index.tsv; this fails
 # on a NEWLY cited run with no committed manifest and tolerates the 177 the
 # lane could not recover, which are named in that directory's LOST.txt.
 # `--strict` fails on those too, once their owners re-run or retract them.

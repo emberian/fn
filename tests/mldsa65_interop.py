@@ -31,6 +31,7 @@ import base64
 import ctypes
 import json
 import os
+from pathlib import Path
 import re
 import subprocess
 import sys
@@ -38,6 +39,7 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
+import evidence_store
 import fn_verify  # noqa: E402
 
 PK, SIG, SK, SEED = 1952, 3309, 4032, 32
@@ -235,6 +237,44 @@ def transcript_articles(data):
     return articles
 
 
+def corpus_bytes(rel, root=None):
+    root = Path(ROOT if root is None else root)
+    try:
+        return evidence_store.read_bytes(root, rel)
+    except evidence_store.EvidenceError as error:
+        raise type(error)(f"{rel}: {error}") from error
+
+
+def corpus(root=None):
+    """Union of tracked and indexed keys/carriers; no unreadable candidates omitted.
+
+    Counts partition carrier files by origin; 'both' is counted only once.
+    Scan one file at a time, including indexed containers and transcripts.
+    """
+    root = Path(ROOT if root is None else root)
+    tracked = set(subprocess.check_output(
+        ['git', '-C', str(root), 'ls-files', '-z', '--', 'tests', 'planning']
+    ).decode().rstrip('\0').split('\0')) - {''}
+    indexed = {p for p in evidence_store.read_index(root)
+               if p.startswith(('tests/', 'planning/'))}
+    keys, carriers = [], []
+    counts = dict(tracked=0, indexed=0, both=0)
+    for rel in sorted(tracked | indexed):
+        key = rel.endswith(('.pem', '.raw'))
+        candidate = not rel.endswith(('.py', '.lisp', '.md'))
+        if not key and not candidate:
+            continue
+        content = corpus_bytes(rel, root)
+        if key:
+            keys.append(rel)
+        if candidate and re.search(rb'(?i)fn-authorship:', content):
+            carriers.append(rel)
+            source = 'both' if rel in tracked and rel in indexed else (
+                'indexed' if rel in indexed else 'tracked')
+            counts[source] += 1
+    return keys, carriers, counts
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("library")
@@ -244,8 +284,16 @@ def main(argv=None):
                     help="also every file under this directory holding a carrier "
                          "(a fixture store); absolute or relative paths")
     args = ap.parse_args(argv)
+    try:
+        pem_files, files, corpus_counts = corpus()
+    except (evidence_store.EvidenceError, OSError, ValueError) as error:
+        print(f"mldsa65_interop: {type(error).__name__}: {error}", file=sys.stderr)
+        return (evidence_store.exit_code(error)
+                if isinstance(error, evidence_store.EvidenceError) else 1)
     seam = Seam(args.library)
-    findings, report = [], {"implementation": seam.implementation()}
+    findings, report = [], {"implementation": seam.implementation(),
+                            "carrier-file-sources": corpus_counts}
+    print("carrier file sources:", json.dumps(corpus_counts, sort_keys=True))
 
     def finding(text):
         findings.append(text)
@@ -319,12 +367,9 @@ def main(argv=None):
         report["signature-round-trips"] = sig_checks
 
         # committed keys
-        pem_files = [f for f in git_files(["ls-files", "tests", "planning"])
-                     if f.endswith(".pem") or f.endswith(".raw")]
         keys = []
         for rel in pem_files:
-            with open(os.path.join(ROOT, rel), "rb") as fh:
-                content = fh.read()
+            content = corpus_bytes(rel)
             if rel.endswith(".raw"):
                 ok = len(content) == PK
                 keys.append((rel, "raw", ok))
@@ -343,9 +388,6 @@ def main(argv=None):
         report["committed-keys"] = keys
 
         # committed signed carriers
-        files = [f for f in git_files(["grep", "-l", "-i", "-a", "fn-authorship:", "--",
-                                       "tests", "planning"])
-                 if not f.endswith((".py", ".lisp", ".md"))]
         for extra in args.extra:
             for base, _, names in os.walk(extra):
                 for name in sorted(names):
@@ -357,8 +399,7 @@ def main(argv=None):
         files.sort(key=lambda f: (not f.endswith((".eml", ".txt", ".log")), f))
         seen, per_file, unextracted, copies, verified_articles = set(), [], [], [], set()
         for rel in files:
-            with open(os.path.join(ROOT, rel), "rb") as fh:
-                data = fh.read()
+            data = corpus_bytes(rel)
             if rel.endswith(".log"):
                 occurrences = [o for article in transcript_articles(data)
                                for o in carrier_candidates(article)]
@@ -412,4 +453,8 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except evidence_store.EvidenceError as error:
+        print(f"mldsa65_interop: {type(error).__name__}: {error}", file=sys.stderr)
+        sys.exit(evidence_store.exit_code(error))

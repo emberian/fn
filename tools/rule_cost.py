@@ -72,6 +72,7 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import certs  # noqa: E402
+import evidence_store
 import farm  # noqa: E402
 import ledger  # noqa: E402
 
@@ -506,7 +507,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(rune, " ".join(restore(rune)))
             return 0
         if args.action == "withdraw":
-            result = json.loads(args.ranking.read_text(encoding="utf-8"))
+            result = json.loads(evidence_store.read_input_text(ROOT, args.ranking))
             rows = select(result, max_useful_books=args.max_useful_books,
                           min_useless=args.min_useless,
                           min_useful_books=args.min_useful_books,
@@ -519,7 +520,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.enable_in == "failed":
                 if not args.manifest:
                     parser.error("--enable-in failed needs --manifest")
-                results = json.loads(args.manifest.read_text())["book_results"]
+                results = json.loads(evidence_store.read_input_text(ROOT, args.manifest))["book_results"]
                 passed = {book for book, verdict in results.items() if verdict == "passed"}
             if args.enable_in != "none":
                 for row in rows:
@@ -565,6 +566,9 @@ def main(argv: list[str] | None = None) -> int:
                              "books where the rule contributed at all.")
             args.json.write_text(json.dumps(kept, indent=1) + "\n", encoding="utf-8")
         return 0
+    except evidence_store.EvidenceError as error:
+        print(f"rule_cost: {type(error).__name__}: {error}", file=sys.stderr)
+        return evidence_store.exit_code(error)
     except (RuleCostError, subprocess.CalledProcessError, OSError) as error:
         print(f"rule_cost: {error}", file=sys.stderr)
         return 2

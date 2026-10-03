@@ -59,6 +59,7 @@ from __future__ import annotations
 import argparse
 import collections
 import json
+import os
 from pathlib import Path
 import re
 import sys
@@ -100,14 +101,22 @@ def _post_of(mid: str, posts: list):
 
 
 def records(path=EVIDENCE) -> list:
-    """The rig's records; the committed default is read from the evidence
-    archive by hash when the working tree does not carry it."""
+    """Read indexed logical names as verified evidence, including local shadows."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    import evidence_store  # noqa: PLC0415
     path = Path(path)
-    if path == EVIDENCE and not path.is_file():
-        sys.path.insert(0, str(ROOT / "tools"))
-        import evidence_store  # noqa: PLC0415
-        path = evidence_store.materialize(ROOT, EVIDENCE.relative_to(ROOT).as_posix())
-    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    absolute = Path(os.path.abspath(path))
+    logical = None
+    for base in (ROOT.absolute(), ROOT.resolve()):
+        try:
+            logical = absolute.relative_to(base).as_posix()
+            break
+        except ValueError:
+            pass
+    text = (evidence_store.read_text(ROOT, logical)
+            if logical is not None and evidence_store.indexed(ROOT, logical)
+            else path.read_text())
+    return [json.loads(line) for line in text.splitlines() if line.strip()]
 
 
 def attempted(rec: dict) -> int:

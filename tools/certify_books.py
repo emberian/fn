@@ -831,7 +831,9 @@ def record(run_dir: Path, manifest: dict[str, Any]) -> None:
     `build/` is ignored, so the run directory this returns to the caller is
     the one a lane cites and the one a worktree removal or a gate reaper
     deletes.  The manifest is the claim and is 4 kB to 200 kB; it goes to
-    `planning/evidence/manifests/<run-id>.json`, which is committable.  The
+    `planning/evidence/manifests/<run-id>.json` as an ignored draft. Filing
+    with `evidence_manifests.py add RUN-ID` archives its bytes and stages
+    planning/evidence-index.tsv for the claim's commit. The
     log stays here, and the archived copy records where here was.
     """
     write_json(run_dir / "manifest.json", manifest)

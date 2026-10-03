@@ -63,6 +63,7 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import evidence_store
 import farm  # noqa: E402
 import ledger  # noqa: E402
 import rule_cost  # noqa: E402
@@ -525,12 +526,15 @@ def main(argv: list[str] | None = None) -> int:
             files = []
             for item in args.logs:
                 files += sorted(item.glob("*.log")) if item.is_dir() else [item]
-            ranking = json.loads(args.ranking.read_text(encoding="utf-8"))
+            ranking = json.loads(evidence_store.read_input_text(ROOT, args.ranking))
             print("\n".join(repair(rank(files, 0.5), ranking)))
             return 0
-        result = json.loads(args.ranking.read_text(encoding="utf-8"))
+        result = json.loads(evidence_store.read_input_text(ROOT, args.ranking))
         print("\n".join(apply(result, args.min_seconds, args.min_fraction)))
         return 0
+    except evidence_store.EvidenceError as error:
+        print(f"tau_cost: {type(error).__name__}: {error}", file=sys.stderr)
+        return evidence_store.exit_code(error)
     except (TauCostError, rule_cost.RuleCostError, OSError) as error:
         print(f"tau_cost: {error}", file=sys.stderr)
         return 2

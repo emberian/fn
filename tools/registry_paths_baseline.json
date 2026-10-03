@@ -1,0 +1,5 @@
+{
+  "maximum_dangling": 134,
+  "source_revision": "4aa332295c85f03f5a97d7b0ac2228f9b95ab1e9",
+  "scope": "Distinct unresolved exact path values in planning/requirements.json and planning/proofs.json; shrink only. No individual path is waived."
+}
