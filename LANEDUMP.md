@@ -1307,3 +1307,5 @@ Owner carrier capability — GPT-6.1-Sol, 2026-10-03
 - fn-owner-finish remains counterpart-dispatched: its history-sync correctness needs prefix-of-store or pending reload, then fn-hist-of-storep. That real producer and completion preservation remain owed; no erased premise/raw completion claim.
 
 - Carrier snapshot adapter now consumes the actual program dump plus its recorded admission/image source binding (no after-the-fact current-tree binding); eleven combined snapshot/thread tests pass. History agrees root+frontier/prefix-reload ownership is the stronger eventual seam, retaining independent fn-hist signatures until its attachment contract lands.
+
+- Native carrier ABI support is dormant until atomic threading: actual wrappers accept fn-owner-st in declared trailing order and read only its live user-stobj binding. One hbox recording-world raw dispatch test PASS (2.292s), including missing/replaced/removed binding and legacy ABI. Indexed receipt owner-carrier-native-dispatch-20261003.json; no semantic or image claim. Runtime confirmed io dispatch seam disjoint.
