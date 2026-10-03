@@ -160,6 +160,41 @@
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-ast-render-step-aux cur fuel nil fn-arena))
 
+; A window retains an emitted fragment separately from the immutable cursor.
+; Reading a leading dot may produce two octets even for a one-octet window.
+; Neither byte is lost: publication drains the fragment one byte per unit.
+(defun fn-ast-window-cur (window)
+  (declare (xargs :guard t))
+  (if (eq (fn-ast-at 0 window) :window) (fn-ast-at 2 window) window))
+
+(defun fn-ast-window-pending (window)
+  (declare (xargs :guard t))
+  (and (eq (fn-ast-at 0 window) :window) (fn-ast-at 1 window)))
+
+(defun fn-ast-window-donep (window)
+  (declare (xargs :guard t))
+  (and (not (consp (fn-ast-window-pending window)))
+       (eq (fn-ast-at 0 (fn-ast-window-cur window)) :done)))
+
+(defun fn-ast-render-window-aux (cur pending fuel left acc fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil :measure (nfix fuel)))
+  (cond
+   ((or (zp fuel) (zp left)
+        (and (not (consp pending)) (eq (fn-ast-at 0 cur) :done)))
+    (mv (revappend acc nil) (list :window pending cur)))
+   ((consp pending)
+    (fn-ast-render-window-aux cur (cdr pending) (- fuel 1) (- left 1)
+                              (cons (car pending) acc) fn-arena))
+   (t
+    (mv-let (out next) (fn-ast-render-one cur fn-arena)
+      (fn-ast-render-window-aux next out (- fuel 1) left acc fn-arena)))))
+
+(defun fn-ast-render-window (window fuel octets fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-ast-render-window-aux (fn-ast-window-cur window)
+                            (fn-ast-window-pending window)
+                            (nfix fuel) (nfix octets) nil fn-arena))
+
 (defthm fn-ast-scan-work-bounded
   (<= (mv-nth 1 (fn-ast-scan-step scan fuel fn-arena)) (nfix fuel))
   :rule-classes :linear

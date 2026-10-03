@@ -797,7 +797,7 @@ Empty progress yields; a cold read retains the exact original plan/capture."
                        (catch 'fnn-extent-cold
                          (let ((*fnn-extent-no-io* t))
                            (destructuring-bind (word bytes next done)
-                               (fnn-call 'fn-asto-plan-render-step plan (fnn-owner-over-window)
+                               (fnn-call 'fn-asto-plan-render-window plan (fnn-owner-over-window)
                                          (fnn-live-stobj 'fn-arena))
                              (list :warm word bytes next done))))))
                  (if (eq (car attempt) :warm) attempt
@@ -8349,7 +8349,6 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                    fault nil :inet nil connection-fault-operation)))
 
 (fnn-register-developer-verb "owner" #'fnn-command-owner)
-
 
 
 

@@ -2800,3 +2800,11 @@ Final certs underway. ACL2 bounded work credit removes manufactured1ms sleeps
 between empty slots during real source/buffer/output work; actual16384-byte
 source/all8-service raw fixture has0 sleeps, idle9/10turns still waits. Whole
 semantic decode, long-source keepalive/input and full GC/work cost remain open.
+
+ARTICLE byte-window composition repair: actual native renderer calls
+fn-asto-plan-render-window, separate W work/output budgets. The immutable
+window retains a dot fragment across a one-byte boundary; W=1 progresses.
+Dense 5,000-dot-line BODY exact reference/replay checks pass W=1/2/3/4096;
+all actual-source core checks69488. Owner/native full composition and
+universal byte-bound/guard/refinement remain pending. Served a3 available
+reader fallback is preserved inside fn-asto-mca-read-span.
