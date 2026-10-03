@@ -329,3 +329,14 @@ Intended nested-real assertion red/base and green/head archived
 sha256 `eb1a775488022fb4d8621f959d23ae076f59c3af17c082486be2634ea97304ea`.
 Initial local selection named nonexistent TestStubsTests; corrected existing
 DerivedStubTests fixtures passed. No blanket stub regeneration.
+
+## Sol1 immutable result, 2026-10-03 07:25Z
+Candidate37f501197 finished49m09s status1. Its234 affected books certified
+with zero failures (manifest064110Z-896002 now archived/indexed). Actual normal
+and DTN host prefixes both failed at unchanged page-file-unpin wrapper equality;
+600s timeout each,131 steps, almost all time outside prover. No image or native
+module ran. Failed complete logs/run coordinate archived/indexed. Executor
+adapter392-step fix passed actual prefix. Scoped file lease repair61386cdb2
+landed0f2c4e25e; repaired actual loaded-world prefix still owed. Existing exact
+book pairs reusable. Literal HM snapshot refreshed after fa21382ab source;
+site-check/refinement proof not implied by snapshot generation.
