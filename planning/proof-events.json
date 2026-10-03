@@ -19181,6 +19181,23 @@
           "name": "fn-nret-observation-report-requires-stopped"
         }
       ]
+    },
+    {
+      "id": "PRF-1271",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnb-installed-backoff-refuses-another-backoff"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnb-installed-retries-refuses-another-retries"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnb-input-past-read-bound-is-refused"
+        }
+      ]
     }
   ]
 }

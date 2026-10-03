@@ -380,6 +380,7 @@
 (include-book "../../books/tcpcl-received-count")
 (include-book "../../books/tcpcl-received-source")
 (include-book "../../books/tcpcl-source-continuation")
+(include-book "../../books/bp-node-budget-input")
 (include-book "../../books/bp-run-class")
 (include-book "../../books/bp-node-profile")
 (include-book "../../books/bp-node-profile-admission")

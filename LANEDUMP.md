@@ -1807,3 +1807,13 @@ Relocation component certificate: certify-20261003T102524Z-1455069, two roots
 PASS, 110 cache dependencies. Archive/index retained. This certifies d2a424486's
 component bytes; History requested the finite runner composition theorem next,
 which is a follow-on proof/API packet and requires its own matching evidence.
+S146 source: books/bp-node-budget-input actual fn-bpnb-read parser; native
+reads bounded regularfile octets and delegates all grammar/keys/ASCIIdecimal/
+duplicates. Existing configured-budgets owns numeric/default policy. Protected
+REPL guards+22teeth PASS968steps (all literal positive/removal premises), raw
+actual parser+boundedfile caller PASS. Farm2roots in launch, wholefile denotation
+and image still open.
+
+S146 harvested hbox run-20261003T102328Z-db3d, manifest
+certify-20261003T102343Z-1448390 PASSED 2/0. Manifest and evidence
+bp-budget-input-2026-10-03.md indexed; source-matched image still owed.
