@@ -30,6 +30,7 @@
 (include-book "records-seam")
 (include-book "snoc-list")
 (include-book "store-records-field")
+(include-book "def-keyset-check")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
@@ -504,45 +505,37 @@
          nil)
        :exec (and (consp pair) (fn-sf-record-has-pair-walkp pair records))))
 
-; The keyset of the records' pairs (one pair per record, built once per
-; evaluation into a local hash table, books/acceptance-alloc.lisp's
-; fn-keyset: safe from any thread), then one lookup per success.
-(defun fn-sf-ks-fill-pairs (records fn-keyset)
-  (declare (xargs :stobjs fn-keyset :guard t :verify-guards nil))
+; The records' pairs, one per record; a success is a pair among them.
+(defun fn-sf-record-pairs (records)
+  (declare (xargs :guard t :verify-guards nil))
   (if (consp records)
-      (let ((fn-keyset (fn-keyset-tab-put (fn-sf-record-pair (car records)) t
-                                          fn-keyset)))
-        (fn-sf-ks-fill-pairs (cdr records) fn-keyset))
-    fn-keyset))
+      (cons (fn-sf-record-pair (car records)) (fn-sf-record-pairs (cdr records)))
+    nil))
 
-(defun fn-sf-ks-successes-boundp (successes fn-keyset)
-  (declare (xargs :stobjs fn-keyset :guard t :verify-guards nil))
-  (if (consp successes)
-      (and (fn-sf-pairp (car successes))
-           (fn-keyset-tab-boundp (car successes) fn-keyset)
-           (fn-sf-ks-successes-boundp (cdr successes) fn-keyset))
-    (null successes)))
+(defthm fn-sf-record-has-pairp-is-member
+  (equal (fn-sf-record-has-pairp pair records)
+         (if (member-equal pair (fn-sf-record-pairs records)) t nil))
+  :hints (("Goal" :in-theory (enable fn-sf-record-has-pairp))))
 
-(defun fn-sf-ks-success-listp (successes records)
-  (declare (xargs :guard t :verify-guards nil))
-  (with-local-stobj fn-keyset
-    (mv-let (ok fn-keyset)
-      (let ((fn-keyset (fn-sf-ks-fill-pairs records fn-keyset)))
-        (mv (fn-sf-ks-successes-boundp successes fn-keyset) fn-keyset))
-      ok)))
+; Every success is a pair bound among the records' pairs: quadratic in
+; :logic, one local keyset in :exec (books/def-keyset-check.lisp; the
+; executables' guards are verified in the kernel's block below).  A reopen
+; has no successes: no keyset is allocated or filled (:policy :nonempty).
+(def-keyset-check fn-sf-success-listp (successes records)
+  :sense :present
+  :ys-key (lambda (r) (fn-sf-record-pair r))
+  :each (lambda (x) (fn-sf-pairp x))
+  :base (null xs)
+  :keys fn-sf-record-pairs
+  :logic-member (lambda (x ys) (fn-sf-record-has-pairp x ys))
+  :member-is fn-sf-record-has-pairp-is-member
+  :policy :nonempty
+  :verify-guards nil)
 
-(defun fn-sf-success-listp (successes records)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp successes)
-           (and (fn-sf-pairp (car successes))
-                (fn-sf-record-has-pairp (car successes) records)
-                (fn-sf-success-listp (cdr successes) records))
-         (null successes))
-       ; Reopen has no successes: do not allocate or fill a local keyset.
-       :exec (if (consp successes)
-                 (fn-sf-ks-success-listp successes records)
-               (null successes))))
+; The correspondence served its purpose inside the declaration's bridges; as
+; a rewrite rule it would rewrite every has-pairp the kernel's own proofs
+; induct on.
+(in-theory (disable fn-sf-record-has-pairp-is-member))
 
 (defun fn-sf-frontier-phasep (phase)
   (declare (xargs :guard t :verify-guards nil))
@@ -1173,28 +1166,15 @@
 (verify-guards fn-sf-record-has-pair-walkp)
 (verify-guards fn-sf-record-has-pairp
   :hints (("Goal" :in-theory (enable fn-sf-record-pair))))
-(local
- (defthm fn-sf-ks-bound-after-fill-pairs
-   (iff (consp (hons-assoc-equal k (nth 0 (fn-sf-ks-fill-pairs records fn-keyset))))
-        (or (fn-sf-record-has-pairp k records)
-            (consp (hons-assoc-equal k (nth 0 fn-keyset)))))
-   :hints (("Goal" :induct (fn-sf-ks-fill-pairs records fn-keyset)
-            :in-theory (disable fn-keyset-tab-put nth)))))
-(local
- (defthm fn-sf-ks-successes-boundp-after-fill
-   (implies (not (consp (nth 0 fn-keyset)))
-            (equal (fn-sf-ks-successes-boundp successes
-                                              (fn-sf-ks-fill-pairs records fn-keyset))
-                   (fn-sf-success-listp successes records)))
-   :hints (("Goal" :induct (fn-sf-success-listp successes records)
-            :in-theory (disable fn-sf-ks-fill-pairs nth)))))
-(defthm fn-sf-ks-success-listp-is-success-listp
-  (equal (fn-sf-ks-success-listp successes records)
-         (fn-sf-success-listp successes records)))
-(verify-guards fn-sf-ks-fill-pairs)
-(verify-guards fn-sf-ks-successes-boundp)
-(verify-guards fn-sf-ks-success-listp)
-(verify-guards fn-sf-success-listp)
+(verify-guards fn-sf-record-pairs)
+(verify-guards fn-sf-success-listp-fill)
+(verify-guards fn-sf-success-listp-scan)
+(verify-guards fn-sf-success-listp-ks)
+(verify-guards fn-sf-success-listp-walk)
+(verify-guards fn-sf-success-listp
+  :hints (("Goal" :use (fn-sf-success-listp-ks-is-logic fn-sf-success-listp-walk-is-logic)
+           :in-theory (union-theories '(fn-sf-success-listp fn-ks-longp)
+                                      (theory 'minimal-theory)))))
 (verify-guards fn-sf-frontier-phasep)
 (verify-guards fn-sf-record-phasep)
 (verify-guards fn-sf-completion-phasep)
