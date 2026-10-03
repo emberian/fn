@@ -217,3 +217,16 @@
     (assert (eq current *fnn-hist*))
     (setq *fx-refuse* nil)))
 (format t "PASS actual rewritten-root preparation/install; held old generation survives; refused preparation preserves authority~%")
+
+; Corrupted-state witness: metadata readiness cannot replace missing physical
+; custody. Refuse before disposal or ledger return, retaining the actual root.
+(let* ((generation *fx-current*) (physical *fnn-hist*))
+  (push generation *fx-retired*)
+  (setq *fx-current* nil *fx-trace* nil)
+  (remhash generation *fnn-history-roots*)
+  (assert (handler-case (progn (fnn-history-root-retire-held generation) nil)
+            (error () t)))
+  (assert (aref physical 0))
+  (assert (not (member 'fn-hist$p-dispose *fx-trace*)))
+  (assert (not (member 'fn-owner-hroot-retire *fx-trace*))))
+(format t "PASS corrupted retired root without physical custody refuses before disposal/refund~%")

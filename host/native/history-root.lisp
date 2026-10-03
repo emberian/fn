@@ -11,7 +11,9 @@
     (let ((physical (gethash generation *fnn-history-roots*)))
       ;; Clear page/suffix backing before the owner returns the retained
       ;; grant. Removing the hash entry alone leaves arrays live until GC.
-      (when physical (fnn-call 'fn-hist$p-dispose physical))
+      (unless physical
+        (fnn-fault "retired history generation has no physical custody: ~a" generation))
+      (fnn-call 'fn-hist$p-dispose physical)
       (remhash generation *fnn-history-roots*)
       (let ((word (fnn-owner-core 'fn-owner-hroot-retire generation)))
         (unless (eq word :released)
