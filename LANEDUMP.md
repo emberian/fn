@@ -1801,3 +1801,13 @@ complete decode/GC/work/actor tariff, S068 representation, whole scheduling and
 physical-cut refinement remain open. Assembly primary review reused, Empirical
 owns matching DTN image consumer execution. Tools fair pull/push packet inherited
 (no duplicate transport primitive edits); its existing exact source receipts reused.
+
+
+BP final packet: source75f9a78c7 + cleanup5c9ac2aab. Exact final4roots
+certify-20261003T114543Z-1687865 PASSED4/0 indexed; raw actual-root-cleanup
+passes primary-condition preservation and held-source Store/FNBS refusal.
+All own live proof REPLs stopped. Integration/Assembly receive source + receipt;
+Empirical owns matching DTN SCN1110 and canonical application receipt/reopen.
+No new image claim, no complete funding/refinement claim. Profile default2in/1out,
+explicit resident or derived staged projection,30s outbound; full memory/GC/work
+and other actor physical tariff, S068 concrete frame carry/borrow remain owed.
