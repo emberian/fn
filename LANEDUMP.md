@@ -1195,3 +1195,10 @@ fuel refusal; completion is conditional on actual :done and existing relocation
 :ok (resident non-failure remains History's obligation). Clean warm replay of
 25 forms passes in3.66s; real stobj full-run positive and short-run missing-done
 counterexample pass. The original step book remains byte-identical to d2a424486.
+
+Finite runner certificate PASS: certify-20261003T103557Z-1487810, runner and
+expanded concrete fixture,111 cached dependencies. Indexed manifest archived.
+Native consumption remains with History; no image/deployment or resident-open
+claim transferred. pgs-x-grow-image's new verified table flags represent the
+private commit-to-be-built state, not persisted table entries available for
+an uncommitted new-page eviction; History notified for its residency invariant.
