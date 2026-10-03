@@ -36,5 +36,5 @@ def post_articles(case, image, store, articles, *, observer=None):
             producer.stop()
     # ARTICLE includes the serving node's Xref. Ask the core for the stored
     # record used by FNWF identity derivation instead of trimming it in Python.
-    return {message_id: producer.store("inspect", message_id, expect=EXIT.OK).stdout
+    return {message_id: producer.store("inspect", message_id.decode("ascii"), expect=EXIT.OK).stdout
             for message_id in message_ids}

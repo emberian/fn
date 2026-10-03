@@ -173,8 +173,6 @@ class BpRun:
         # Reuse the real injection fixture already used by native BP tests.
         # FNWF derives its identity from ACL2's stored source, after native
         # NNTP injection. A raw store-post fixture is not that publication.
-        # Some historical production profiles omit stored-source inspect;
-        # their matching default developer image supplies this observation.
         try:
             source = assert_same_published_source(self.producer_case, self.producer_image, self.image)
         except AssertionError as error:
