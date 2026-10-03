@@ -9,12 +9,13 @@
   "locus": "lifecycle",
   "notes": [
     "Runtime GPT-6.1-Sol source3bda776c6: reservation-before-spawn/start latch; failed join preserves registration, custody and no receipt; child exit separate from physical join; actual syncer/committer starters and pipeline/shutdown joins connected. Post-create latch and failed compensation retain parked child for later physical join. Scoped final failure-scope certificate certify-20261003T060135Z-58068 archived/indexed (0.30s220208steps); deployed-body raw SBCL actor/inbox/postcreate schedules pass. Full image/native matrix is Integration candidate work, no qualification transfer. Funded owner worker producer follows with Foundations; this receipt does not claim user-bank funding or complete committer conversion.",
-    "Runtime Kimi advisory candidate verified with real parked child/no-op terminator: compensation now observes join nonblocking (:timeout0), retains reservation/custody and returns fault; later independent shutdown join ends child. Physical object monotone reference published before fallible roster/state/latch work while child remains latched. Raw lifecycle and committer schedules pass; no general atomic make-thread/interruption theorem claimed."
+    "Runtime Kimi advisory candidate verified with real parked child/no-op terminator: compensation now observes join nonblocking (:timeout0), retains reservation/custody and returns fault; later independent shutdown join ends child. Physical object monotone reference published before fallible roster/state/latch work while child remains latched. Raw lifecycle and committer schedules pass; no general atomic make-thread/interruption theorem claimed.",
+    "Integration source receipt at 3bd2dbf92: actual actor/await/syncer consumers and scoped physical schedules are integrated. Current whole-owner execution, complete funding and image qualification remain separate open work; this is source landing."
   ],
   "owner": "codex-sol-runtime",
   "severity": "high",
   "source": "planning/overnight-2026-10-03.md",
-  "state": "ready",
+  "state": "landed",
   "title": "Prototype actor join failure discharges a potentially live worker registration",
-  "updated": "2026-10-03T06:10:18.862704+00:00"
+  "updated": "2026-10-03"
 }

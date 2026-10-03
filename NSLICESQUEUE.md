@@ -58,39 +58,37 @@ that their recorded state is current at every later revision.
   place. Split a slice when it has independently useful consumers. The list is
   an initial coverage map, not a claim that all remaining defects are enumerated.
 
-## Current engineering and source-tracing wave — 2026-10-03
+## Converged source wave — 2026-10-03
 
-Ember authorized Integration, History, Runtime, BP, Foundations, Served, Access,
-Tools, Operator and Empirical, plus horse_entries, horse_exits,
-horse_consistency and horse_bounds for complete source-path tracing and the
-shared consumer .spw corpus. Root coordinates and supplies the reusable decoded
-core; Operator, Foundations and Runtime compose the actual DEFAULT pool startup
-producer. No lieutenant or Luna resumed. Integration owns public
-assembly, current execution and planning; History storage/P3/reclaim; Runtime
-ARTICLE/Web/decoded lifecycle; BP transport and signed application joins;
-Foundations accounting/banks/tariffs; Served query/serializer families; Access
-ARTICLE/header representation; Tools developer/tracing/allocation; Operator
-policy/control/journal; Empirical system scenarios and defect discovery.
-These are full-domain implementation/invariant/assurance obligations, not
-finite end-tidying. Groundwork and other former helpers remain stopped.
+All thirteen implementation/source-tracing lanes have yielded; Integration
+finishes the final merge and metadata. Stable domain ownership remains
+Integration (assembly/planning), History (storage/P3/reclaim), Runtime
+(ARTICLE/Web/decoded/lifecycle), BP (transport/application joins), Foundations
+(accounting/banks/tariffs), Served (queries/serializers), Access (ARTICLE/header),
+Tools (developer/tracing), Operator (policies/control), Empirical (system cases),
+and entries/exits/consistency/bounds (shared .spw source tracing). These labels
+identify continuation owners, not running agents or automatic resumption.
 
-The earlier ten-worker roster described the pre-usage-limit wave. That earlier wave
-wound down before the explicit resumptions above; a retained warm handle does not imply an active owner or a
-working current-union native process. History now owns one fresh current
-source-world initialization. The alleged11-versus10 read-pool field difference
-was false: :inline is an option, and both declarations have10 fields. Missing
-current decoded methods and early P3 attachment remain actual assembly work.
+History's final tested saved checkpoint stops after the byte-store scanner:
+logical EOF/native entry false, 94 named assurance omissions, 489 scopes remain;
+no initializer is live. See [now](planning/now.md) for exact recipe, checkpoint,
+missing additive method cohort and model-state reset required on resume. The
+current pool has ten fields; the earlier eleven-field claim counted :inline.
+Source startup is connected for owner-run, but whole-current execution remains
+open. Standalone BP must consume the second funding capture and peer-bank/
+snapshot drain gates. The retained catchup driver is still unwired; its draft
+controller strand0373a76c1 remains unmerged. Source landing is not activation.
 
 ## Dispatch next
 
 | Slice | Current position | Coordination / implementation | Next useful result |
 | --- | --- | --- | --- |
-| [Safe completion and actor rollout](#safe-completion-and-actor-rollout) | Active | Runtime; completed source-tracer packets retained | Escapes preserve actual outcomes, fence the service when required, and settle custody through the real consumer |
-| [Output allocation and funding](#output-allocation-and-funding) | Active partial producer and wider accounting | Foundations + Root + Runtime; Served serializers | Actual bounded serializer/selector allocation is funded before creation |
-| [Paged catalog in the service](#paged-catalog-in-the-service) | Active shared execution dependency | History + Served + Runtime | Existing paged attachment serves POST/read/navigation/withdrawal/reopen |
-| [Reclaim and physical release](#reclaim-and-physical-release) | Active bounded builder and publication work | History; completed Astra relocation packet retained | Remove observed whole-history-copy credit obstruction and release resources safely |
-| [Fair feed and pull rounds](#fair-feed-and-pull-rounds) | Active repairs; broader continuation next | BP transport + Runtime | Credential fixes and phase outcomes compose with bounded rounds and queue progress |
-| [Runtime/model correspondence](#runtimemodel-correspondence) | Active | Runtime + consumer owners; Integration schedules evidence | Real ordered lock/pin/I/O labels drive the same model transitions |
+| [Safe completion and actor rollout](#safe-completion-and-actor-rollout) | Next after source convergence | Runtime; completed source-tracer packets retained | Escapes preserve actual outcomes, fence the service when required, and settle custody through the real consumer |
+| [Output allocation and funding](#output-allocation-and-funding) | Next after source convergence partial producer and wider accounting | Foundations + Root + Runtime; Served serializers | Actual bounded serializer/selector allocation is funded before creation |
+| [Paged catalog in the service](#paged-catalog-in-the-service) | Next after source convergence shared execution dependency | History + Served + Runtime | Existing paged attachment serves POST/read/navigation/withdrawal/reopen |
+| [Reclaim and physical release](#reclaim-and-physical-release) | Next after source convergence bounded builder and publication work | History; completed Astra relocation packet retained | Remove observed whole-history-copy credit obstruction and release resources safely |
+| [Fair feed and pull rounds](#fair-feed-and-pull-rounds) | Next after source convergence repairs; broader continuation next | BP transport + Runtime | Credential fixes and phase outcomes compose with bounded rounds and queue progress |
+| [Runtime/model correspondence](#runtimemodel-correspondence) | Next after source convergence | Runtime + consumer owners; Integration schedules evidence | Real ordered lock/pin/I/O labels drive the same model transitions |
 
 The repaired candidate `1a946582c` produced a developer image on 2026-10-03,
 and its actual raw/counterpart POST, duplicate and readback check passed.
@@ -102,7 +100,7 @@ runtime checks. Image construction itself is no longer the first open result.
 
 ### Safe completion and actor rollout
 
-**Active — Runtime; completed source-tracer packets retained.** Finish
+**Next after source convergence — Runtime; completed source-tracer packets retained.** Finish
 post-launch completion custody, committer escape fencing and shutdown; then
 carry the generated lifecycle through publisher, reclaim, feed, cold-I/O,
 mux and web families. Physical return and consumed operation outcome remain
@@ -118,7 +116,7 @@ its fixture. Anchors: [HOST-COORDINATION](planning/repair/items/HOST-COORDINATIO
 
 ### Output allocation and funding
 
-**Active accounting/selector owners — Foundations + Served; Runtime consumes the current producer.** Connect indexed serialization, incremental
+**Next after source convergence — Foundations + Served; Runtime consumes the current producer.** Connect indexed serialization, incremental
 selection and output custody to a real connection/operation funding producer.
 The first actual producer/serializer probe charges a per-CID generational draw
 before serialization and retains worker output until both output completion and
@@ -158,7 +156,7 @@ Anchors: [RESOURCE-OPERATIONS](planning/repair/items/RESOURCE-OPERATIONS.json),
 
 ### Owner carrier and removal of whole-state revalidation
 
-**Active continuation — History owns the carrier and native authority consumer.
+**Next after source convergence — History owns the carrier and native authority consumer.
 The completed proof packet is retained; the stopped export helper handed its
 source and warm world back to History.**
 Resume the existing carrier transformation safely, using current signatures and
@@ -179,7 +177,7 @@ old destructive replay script as the migration procedure. Anchors:
 
 ### Complete bounded discovery and view policy
 
-**Paused — Served; command-helper source retained.** Finish the incremental group/membership
+**Next after source convergence — Served; command-helper source retained.** Finish the incremental group/membership
 selector and matcher funding in the actual NEWNEWS factory/plan. Connect the
 decided completed discovery snapshot to LIST variants, NEWGROUPS and NEWNEWS;
 preserve the by-Message-ID pin followed by completed-view boundary.
@@ -233,7 +231,7 @@ sessions use the same bounded implementation. Anchors:
 
 ### Paged catalog in the service
 
-**Active shared execution — History/Runtime consume the committed Served command adapter; Integration owns assembly.
+**Next after source convergence — History/Runtime consume the committed Served command adapter; Integration owns assembly.
 The paged-store helper has completed its source handoff.**
 Use the existing paged catalog attachment and image route. Resolve the actual
 creator/attachment question and run the prepared generic service scenario;
@@ -249,7 +247,7 @@ page-backed state. Anchors: [STORE-PAGES](planning/repair/items/STORE-PAGES.json
 
 ### Dense groups, overview and reclaim-aware navigation
 
-**Paused availability implementation — Served owns the adapter and carried relation;
+**Next after source convergence — Served owns the adapter and carried relation;
 the paged-store helper source is complete.** Connect dense group-number and overview
 representations to actual GROUP/LISTGROUP/LIST/OVER and navigation consumers.
 Complete available-article counts and movement past reclaimed articles.
@@ -263,7 +261,7 @@ Anchors: [STORE-PAGES](planning/repair/items/STORE-PAGES.json),
 
 ### Page-backed history and node roots
 
-**Active — History owns native authority, roots and builder; Astra completed the
+**Next after source convergence — History owns native authority, roots and builder; Astra completed the
 page relocation continuation and handed its packet to History.** Extend
 the existing page representation to history and node roots, with actual open,
 tail replay, checkpoint and retained-view consumers. The first connected packet replaces the three publication callers’ whole suffix construction with a bounded append/flush builder; it does not yet establish effective reclaim. Keep progress and
@@ -283,7 +281,7 @@ remain open and must not be described as bounded by a row yield.
 
 ### Reclaim and physical release
 
-**Active — History owns native authority, bounded history/root, publication and
+**Next after source convergence — History owns native authority, bounded history/root, publication and
 reclaim consumers; Runtime owns physical custody. Completed Astra packets remain inputs.**
 Replace the observed whole-history-copy allocation with a bounded captured
 page/history path, using real funding. Compose retention roots, holder/name
@@ -300,7 +298,7 @@ Anchors: [X04](planning/repair/items/X04.json), [S038](planning/repair/items/S03
 
 ### Checkpoint, recovery and bounded store utilities
 
-**Active — History owns staged history-image readback and storage continuation;
+**Next after source convergence — History owns staged history-image readback and storage continuation;
 Access owns the operator journal. Astra is complete and is not an active owner.**
 Group the existing repairs by actual log/checkpoint/import/journal path:
 publication/read-back before dropping covered data, interrupted repair recovery,
@@ -319,7 +317,7 @@ have accurate outcomes and bounded allocation. Anchors:
 
 ### Fair feed and pull rounds
 
-**Active continuation — BP transport + Runtime.** Credential, durable journal
+**Next after source convergence — BP transport + Runtime.** Credential, durable journal
 phase, fragment uncertainty and removed-peer cache/schedule source batches are
 consumed. Tools handed the resumable pull/catch-up round context and ACL2
 selection to BP transport; Runtime retains feed actor/idle ownership. Finish queue-head
@@ -336,7 +334,7 @@ fault remain distinct. Anchors: [S035](planning/repair/items/S035.json),
 
 ### BP custody, retained work and restart
 
-**Active — BP transport owns the canonical producer and transport boundaries;
+**Next after source convergence — BP transport owns the canonical producer and transport boundaries;
 Groundwork owns application composition; Integration schedules the prepared real scenario.** Current source tracing found
 that the record-log route never invoked the identity-grant producer required by
 retention preparation. Source `7c6d135f3` and reviewed outcome validation restore
@@ -355,7 +353,7 @@ tombstones are never transported as payload. Anchors:
 
 ### Bounded BP/TCPCL scheduling and reassembly
 
-**Active — BP transport owns continuing TCPCL sessions/reassembly and the
+**Next after source convergence — BP transport owns continuing TCPCL sessions/reassembly and the
 completed Tools fair pull/catch-up packet.**
 
 Source now connects funded incoming/outgoing retained node sessions, asynchronous
@@ -375,7 +373,7 @@ Anchors: [S006](planning/repair/items/S006.json), [S025](planning/repair/items/S
 
 ### ION and external transport outcomes
 
-**Active — BP transport owns actual ION route/lifetime/outcome continuation;
+**Next after source convergence — BP transport owns actual ION route/lifetime/outcome continuation;
 Integration schedules the prepared native receipt consumers.**
 Finish explicit-route submission, representable lifetime validation and durable
 observation binding using the existing ION integration. Preserve refusal before
@@ -389,7 +387,7 @@ durability. Anchors: [X10A](planning/repair/items/X10A.json),
 
 ### Authentication, TLS, access and reconfiguration
 
-**Paused — Access owns authentication/TLS/access/reconfiguration; Runtime consumes the shared lifecycle.** Complete authentication throttling,
+**Next after source convergence — Access owns authentication/TLS/access/reconfiguration; Runtime consumes the shared lifecycle.** Complete authentication throttling,
 TLS identity transitions, credential/secret publication cleanup, reader access
 for peer roles, and resource charges around accepted/refused reconfiguration.
 
@@ -403,7 +401,7 @@ update charges and retained historical context consistently. Anchors:
 
 ### Concurrent web service
 
-**Active execution — Runtime consumes Web source and owns shared interfaces; the Web deputy is paused.** The
+**Next after source convergence — Runtime consumes Web source and owns shared interfaces; the Web deputy is paused.** The
 source packet 934b416cb and lifetime followups through 8e37db4f2 connect a bounded
 HTTP I/O actor plus one fixed semantic worker to generated actor lifecycle,
 shared commit await/cold consumers and per-CID flow leases. The assembled
@@ -458,7 +456,7 @@ do not manufacture success. Anchors: [S012](planning/repair/items/S012.json),
 
 ### Runtime/model correspondence
 
-**Active — Runtime + consumer owners; Integration schedules evidence.** Connect actual ordered section,
+**Next after source convergence — Runtime + consumer owners; Integration schedules evidence.** Connect actual ordered section,
 pin, I/O, physical-return and settlement observations to the executable host
 model. Cancel, pin/capture/drain and physical-return preservation have matching
 certificates. Complete issue/settle preservation and the all-schedules argument;
@@ -487,7 +485,7 @@ old per-file branches stop serving as evidence. Anchors:
 
 ### Finish shared generators through their consumers
 
-**Paused generator owner — Foundations; active consumer owners integrate committed interfaces.** Finish carried-view/keyset,
+**Next after source convergence — Foundations; active consumer owners integrate committed interfaces.** Finish carried-view/keyset,
 cost/entry/operation and teeth machinery by replacing actual repeated recipes.
 Batch related consumer migrations; library existence is not completion.
 
@@ -500,7 +498,7 @@ remaining consumers stay visible. Anchors:
 
 ### Shared structured tracing and allocation feedback
 
-**Paused — Tools owns the shared mechanism; Runtime connects actual consumer phases.**
+**Next after source convergence — Tools owns the shared mechanism; Runtime connects actual consumer phases.**
 Use one span macro for parent/scope identity, lifetime, timing, outcome, unwind
 cleanup and multiple values. Disabled tracing stays cheap; allocation tracing is
 opt-in and states its measured scope. Reuse existing actor/operation machinery
@@ -529,7 +527,7 @@ and archived coverage checkpoint are in the proof deputy's integration batch.
 
 ### Combined empirical behavior and operational convergence
 
-**Active and recurring — Integration, with actual consumer owners. Empirical
+**Next after source convergence — Integration, with actual consumer owners. Empirical
 completed the failed-candidate archive and handed off the watch; explicitly resume
 a focused empirical task when a matching executable is ready.** Run
 selected matching-image workloads for funded POST/stop, cold/slow readers,
@@ -546,7 +544,7 @@ Anchors: [empirical matrix](planning/empirical-workloads.md),
 
 ### Sleeping-agent exchange
 
-**Paused — Groundwork owns the existing native/CLI consumer and durable client
+**Next after source convergence — Groundwork owns the existing native/CLI consumer and durable client
 inbox/outbox; Integration schedules the matching executable.** Implement the chosen consumer-owned durable
 inbox/outbox exchange between separately administered stores: report while the
 peer sleeps, verify exact source after delivery, commit processing and reply,
@@ -833,7 +831,8 @@ native endpoint and whole semantic decode/publication remain unexecuted/open.
 
 Operator convergence: independent inert peer authority capture and retained
 service-bank startup/cleanup are source-wired; snapshot/peer debt prevents
-terminal Store success. Current physical command checks await History's
-same-process native endpoint and Integration composition. Selected source
+terminal Store success. Current physical command checks remain unexecuted; the saved logical checkpoint
+has no native entry. Standalone BP still needs the second funding capture and
+peer-bank/snapshot terminal gates. Selected source
 fixtures are distinct from normal certification/image and full catchup flight
 activation. No Operator proof/build/live-owner process is left for takeover.

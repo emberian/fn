@@ -1,49 +1,59 @@
-# Now — 2026-10-03
+# Now — 2026-10-03 convergence
 
-Ember authorized ten continuing Sol owners for substantial remaining engineering:
-Integration (assembly/execution/planning), History (storage/P3/reclaim), Runtime
-(reader/Web/decoded lifecycle), BP (transport/application joins), Foundations
-(accounting/banks/tariffs), Served (queries/serializers), Access (ARTICLE/header
-representation), Tools (developer/tracing/allocation), Operator (policy/control/
-journal), and Empirical (system scenarios/defect discovery). Root coordinates and supplies the reusable decoded core. Operator, Foundations
-and Runtime compose the actual DEFAULT read-pool startup producer. Four
-additional source-tracing owners (horse_entries, horse_exits, horse_consistency
-and horse_bounds) trace complete paths and maintain the shared consumer .spw corpus. No lieutenant,
-Luna or automation resumed. Owners continue missing behavior, defects,
-integration, invariants/guards/proofs and assurance across their full domains.
-The continuing domains and open acceptance criteria are in
-[NSLICESQUEUE](../NSLICESQUEUE.md), [the repair ledger](repair/STATUS.md), and the
-[development workstreams](overnight-2026-10-03.md). Contributor setup is in
-[CONTRIBUTING](../CONTRIBUTING.md); source integration, ordinary admission,
-certification, qualified packaging and deployment remain separate.
+The implementation and source-tracing wave has ended. All domain owners yielded;
+Integration is finishing the source merge and generated metadata. No current
+initializer, proof REPL or native owner process remains running. The complete
+remaining work stays in [NSLICESQUEUE](../NSLICESQUEUE.md),
+[the repair ledger](repair/STATUS.md), and the requirements/proof registries.
+Contributor setup is [CONTRIBUTING](../CONTRIBUTING.md). Source, ordinary
+admission, certificates, qualified packaging and deployment remain separate.
 
-The immediate shared dependency is one coherent current source-loaded owner
-world with early arena/P3 attachment before generic history and current
-reader/decoded/native interfaces. History is admitting the generated current logical input in the retained
-canonical P3 world; owner entry has not yet been reached. The required payload arena scope now passes ordinary admission. The earlier continuation passed the Store trace scope with 40 explicitly
-deferred semantic theorems and two dependent proof-catalog references recorded,
-then lost its process to an aggregate load timeout. That timeout now uses the
-configured source-load allowance. A fresh early arena/P3 world has been
-checkpointed and restored with both actual attachments intact; required Store
-guards and later logical scopes still precede the full normal host/native entry. The
-shared source generator can explicitly defer named unrelated DEFTHMs while
-retaining definitions and required guard/correspondence obligations, recording
-those books as unproved. No such deferral has yet established owner execution. The earlier alleged eleven-versus-ten-field read-pool
-incompatibility was a counting mistake: `:inline` is an option, and the current
-pool has ten fields. Current decoded-job/controller/window methods and P3
-semantics still require deliberate assembly; old cached execution does not
-establish those joins. History owns one fresh initialization, with Integration
-supporting the shared runner and the other owners continuing their consumers.
-Operator and Empirical have completed their current source batches and await
-the connected endpoint; their domains and remaining criteria stay assigned.
-The formerly absent DEFAULT read-pool startup caller is now wired in source:
-Operator owns the native pre-open consumer, Foundations the numerical plan and
-installer, and Runtime the persistent executor/storage lifecycle. Composed
-startup, refusal, cancellation and retirement source fixtures pass. Required
-wrapper/acquire guards and actual full-world endpoint execution remain open;
-constructor or recording fixtures do not establish compressed endpoint activity.
+The current source includes DEFAULT pre-open pool installation, reusable decoded
+scratch, actor/response/physical-return custody, incremental ARTICLE/LIST/header
+components, BP single-candidate allocation and bounded control ingress, and
+primary-preserving cleanup with explicit retained physical debt. Selected source
+fixtures pass. Owner-run now captures independent peer policy, retains its bank
+before constructors, and requires snapshot jobs and peer bank to drain before
+terminal Store settlement. Standalone BP startup still ignores the helper's
+second funding capture and lacks that peer-bank/snapshot terminal conjunction;
+its earlier startup fixture does not close this new consumer gap.
 
-## Usage-limit stop — 2026-10-03 10:18 America/New_York
+**There is no current whole-system native endpoint.** History's tested saved
+checkpoint is `/tank/fn/scratch/history-current-union-5a3d81/build/current-owner-storage-retained`
+(with `.core` and `.execution.json`). It stops after `books/byte-store-scan`;
+logical EOF and native entry are false. The exact final recipe is
+`/tank/fn/scratch/history-current-union-c3438b633/build/current-logical-local-scopes94.json`
+and matching `.lisp`, with 94 named assurance theorem omissions and 489 remaining
+source scopes. Definitions, guards and abstract correspondence obligations were
+not omitted. Both early attachments are retained: FN-HIST→FN-HIST-PAGED and
+FN-ARENA→FN-ARENA-EXTENT. The checkpoint has three arena model-witness entries;
+resume must verify and reset test stobjs under the proper no-lease/custody checks
+before owner use. It has no `fn-dwj-reserve`; DEFAULT/DWJ/PVL/BP additive methods,
+current normal host admission and native loading still precede execution.
+The earlier alleged eleven-versus-ten-field pool mismatch was a counting error;
+the current declaration has ten fields. Emitted host files are not execution.
+
+The retained catchup worker/bank is source-preserved but the actual catchup
+consumer remains **unwired**; materialized catchup is still defective. Bounds'
+draft controller/framer/hash strand `0373a76c1` remains unmerged and unadmitted.
+Served's untracked `books/list-query-reference.lisp` and row-reference models
+remain WIP. Current compressed ARTICLE/Web/restart/cancel and BP multi-peer,
+signed R/Q, fairness and reopen selectors are prepared but unexecuted. Nonempty
+bounded storage/reclaim, whole-state carrier migration, complete allocation/GC/
+work tariffs, renderer/query reference and guard proofs, and current native
+qualification remain open. Tools' last pure read-effect sharing source is landed
+with its staged guard/equality and actual DWJ comparison still unrun; changed
+live-limit completion-reserve admission and full-book proof checks remain open.
+
+Historical scoped native wins include Web account/POST/read/remove, four signed
+application scenarios, ten MiB NNTP/operator acceptance/readback, moderation
+partial-publication/restart/retry and developer proof-limit recovery. They name
+their older cache plus selected-source coordinates and do not establish this
+current union. New source certificates likewise cover only matching roots.
+No deployment changed in this wave. Generated check failures remain visible
+where a theorem, guard or interface contract is actually missing.
+
+## Historical usage-limit stop — 2026-10-03 10:18 America/New_York
 
 Source intake is preserved on public dev; Integration’s writer is
 `build/lanes/codex-sol-integrate`. All continuing ownership remains in

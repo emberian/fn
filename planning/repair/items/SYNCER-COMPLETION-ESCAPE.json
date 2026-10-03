@@ -1,20 +1,21 @@
 {
- "acceptance": "Actual pipeline post-launch escape across done/uncertain/fault, physical return before/after parent unwind, condition and raw throw; both receipts required; uncertainty preserved; torn consumption never retried. Actual committer starter raw throw stops service once.",
- "category": "runtime-correctness",
- "detail": "At d3a80c2c5, pipeline arms actual-result completion only on start-syncer conditions. Later condition/nonlocal exit before receipt consumption leaves terminal worker grant permanently pending and shutdown Store settlement held. Independently a raw ACL2 throw bypasses committer-loop condition handling and actor starter has no service escape callback, leaving service active with dead committer.",
- "disposition": "LOCAL",
- "exposure": "conditional",
- "file": "host/native/owner.lisp",
- "id": "SYNCER-COMPLETION-ESCAPE",
- "note": "Manual full source trace and same-source executable fixture: 12 post-launch schedules now pass with repair; first fails on baseline at escaped pipeline consumes actual operation after physical return. Actual committer starter fixture independently fails baseline at raw committer escape stops service and passes repair. Narrow regression/metadata/evidence assembly in progress; no image claim.",
- "notes": [
-  "10-03 04:29 Batch ready: host read/diff checks and same-head harness baseline/candidate exact assertion transitions pass. SCN-1087 claimed; HST-046/spec/scenario updated. Archived evidence planning/evidence/astra-syncer-completion-escape-20261003.json sha256 6fab8f57249a3fac1195d4ff3360b740a4ccab4b3b55d0bdc6214c2f23fc1167. No books changed; full matching image/shutdown composition remains Integration.",
-  "10-03 04:34 Actual typed follow-through passed using existing scoped tools/acl2 script: six abandonment schedules over real typed ledger, registered creator and semantic fn-oqw/resource counterparts (0.21s raw form). Evidence planning/evidence/astra-syncer-typed-abandon-20261003.log archived/indexed. New final sentinel required. No image or proof claim."
- ],
- "owner": "codex-astra-source-trace",
- "severity": "high",
- "source": "planning/overnight-2026-10-03.md",
- "state": "ready",
- "title": "Post-launch committer escape strands syncer operation custody and raw throws can silently kill committer",
- "updated": "2026-10-03T08:34:15Z"
+  "acceptance": "Actual pipeline post-launch escape across done/uncertain/fault, physical return before/after parent unwind, condition and raw throw; both receipts required; uncertainty preserved; torn consumption never retried. Actual committer starter raw throw stops service once.",
+  "category": "runtime-correctness",
+  "detail": "At d3a80c2c5, pipeline arms actual-result completion only on start-syncer conditions. Later condition/nonlocal exit before receipt consumption leaves terminal worker grant permanently pending and shutdown Store settlement held. Independently a raw ACL2 throw bypasses committer-loop condition handling and actor starter has no service escape callback, leaving service active with dead committer.",
+  "disposition": "LOCAL",
+  "exposure": "conditional",
+  "file": "host/native/owner.lisp",
+  "id": "SYNCER-COMPLETION-ESCAPE",
+  "note": "Manual full source trace and same-source executable fixture: 12 post-launch schedules now pass with repair; first fails on baseline at escaped pipeline consumes actual operation after physical return. Actual committer starter fixture independently fails baseline at raw committer escape stops service and passes repair. Narrow regression/metadata/evidence assembly in progress; no image claim.",
+  "notes": [
+    "10-03 04:29 Batch ready: host read/diff checks and same-head harness baseline/candidate exact assertion transitions pass. SCN-1087 claimed; HST-046/spec/scenario updated. Archived evidence planning/evidence/astra-syncer-completion-escape-20261003.json sha256 6fab8f57249a3fac1195d4ff3360b740a4ccab4b3b55d0bdc6214c2f23fc1167. No books changed; full matching image/shutdown composition remains Integration.",
+    "10-03 04:34 Actual typed follow-through passed using existing scoped tools/acl2 script: six abandonment schedules over real typed ledger, registered creator and semantic fn-oqw/resource counterparts (0.21s raw form). Evidence planning/evidence/astra-syncer-typed-abandon-20261003.log archived/indexed. New final sentinel required. No image or proof claim.",
+    "Integration source receipt at 3bd2dbf92: actual actor/await/syncer consumers and scoped physical schedules are integrated. Current whole-owner execution, complete funding and image qualification remain separate open work; this is source landing."
+  ],
+  "owner": "codex-astra-source-trace",
+  "severity": "high",
+  "source": "planning/overnight-2026-10-03.md",
+  "state": "landed",
+  "title": "Post-launch committer escape strands syncer operation custody and raw throws can silently kill committer",
+  "updated": "2026-10-03"
 }

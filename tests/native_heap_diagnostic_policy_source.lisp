@@ -45,8 +45,11 @@
    (assert (equal (third cold-call) cold))
    (assert (equal (third output-call) output)))
   (assert (= *captured-core* *captured-machine* 1))))
+; Final trigger-growth pricing: the 16 MiB output backing also enlarges
+; collector nursery protection. DEFAULT257/explicit256 become276/275,
+; respectively; the old273/272 figures omitted that growth.
 (dolist (command '("status" "health"))
- (policy-case command nil '(16777216 1048576) "(:HEAP 273 :SMALL 8192 1024 16)")
+ (policy-case command nil '(16777216 1048576) "(:HEAP 276 :SMALL 8192 1024 16)")
  (policy-case command '(67108864 4 256 256 256) '(16777216 1048576)
-              "(:HEAP 272 :SMALL 8192 1024 16)"))
+              "(:HEAP 275 :SMALL 8192 1024 16)"))
 (format t "SOURCE NEXT-RUN POLICY DIAGNOSTICS PASSED~%")
