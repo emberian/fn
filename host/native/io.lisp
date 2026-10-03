@@ -5182,9 +5182,12 @@ its name (fnn-archive-entry), never a host fault."
                                          +fnn-config-record-bytes+))))
                           config-names))
          (manifest-path (fnn-join dir "MANIFEST")))
-    (let ((fd (fnn-open manifest-path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
+    (let ((fd (fnn-open manifest-path (logior sb-posix:o-rdonly sb-posix:o-nonblock
+                                               +fnn-o-nofollow+)))
           (count 0))
-      (unwind-protect
+      (fnn-unwind-cleanups
+          ((unless (fnn-regular-p (fnn-fstat fd))
+             (fnn-refuse "import refused reason=archive-incomplete entry=MANIFEST"))
            (let* ((head (fnn-core 'fn-sxi-head profile frontier configs))
                   (lines (cdr head))
                   (st (fnn-core 'fn-sxi-start (car head) lines
@@ -5224,7 +5227,7 @@ its name (fnn-archive-entry), never a host fault."
                                ;; most one octet (the MANIFEST must end).
                                (fnn-octet-list (fnn-read-up-to fd 1))
                                profile frontier configs (or request '(:current nil)))
-                     count))
+                     count)))
         (fnn-close fd)))))
 
 (defun fnn-staged-publication (kind stage root-path files record-count

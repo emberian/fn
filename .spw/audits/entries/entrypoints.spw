@@ -1,12 +1,12 @@
 # Actual native entry candidates; discovery is not full trace coverage.
-^"coordinate"{ source_revision: "c7637e1a7eb615cbcc028c2461e214420c24f490"
+^"coordinate"{ source_revision: "471922ffb37ff09cea372a83972552b9cdbf8e64"
  tier: "exact source discovery; public-image exposure and downstream reading unestablished" }
 ^"fnn-command-acl2"{
  @source: ~"../../../host/native/acl2-session.lisp"
  line: 21
  source_sha256: "b0b6c3735797f551aada7ff7761ff215d7b2726dc324c97e3d268a449d4e49d3"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "17088f4b00783cca3645ce13849077bddb12ce3d"
 }
 ^"fnn-command-anchor"{
  @source: ~"../../../host/native/anchor.lisp"
@@ -187,273 +187,273 @@
  @source: ~"../../../host/native/digest.lisp"
  line: 537
  source_sha256: "ef5b4eda2a9c7943ba9878eab353e84a321f087a114bf90ce8478bce260a19bb"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "17088f4b00783cca3645ce13849077bddb12ce3d"
 }
 ^"fnn-command-heap"{
  @source: ~"../../../host/native/heap.lisp"
  line: 358
  source_sha256: "1b81e71aea5f45086d1e581e824b8bee6c60bb5457af47fccb4dc0c3866856e5"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "17088f4b00783cca3645ce13849077bddb12ce3d"
 }
 ^"fnn-command-hybrid-enroll"{
  @source: ~"../../../host/native/hybrid-control.lisp"
  line: 235
  source_sha256: "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "17088f4b00783cca3645ce13849077bddb12ce3d"
 }
 ^"fnn-command-hybrid-author"{
  @source: ~"../../../host/native/hybrid-control.lisp"
  line: 252
  source_sha256: "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "17088f4b00783cca3645ce13849077bddb12ce3d"
 }
 ^"fnn-command-hybrid-revoke"{
  @source: ~"../../../host/native/hybrid-control.lisp"
  line: 278
  source_sha256: "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "17088f4b00783cca3645ce13849077bddb12ce3d"
 }
 ^"fnn-command-hybrid-key-history"{
  @source: ~"../../../host/native/hybrid-control.lisp"
  line: 292
  source_sha256: "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "17088f4b00783cca3645ce13849077bddb12ce3d"
 }
 ^"fnn-command-hybrid-enroll-next"{
  @source: ~"../../../host/native/hybrid-control.lisp"
  line: 317
  source_sha256: "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "17088f4b00783cca3645ce13849077bddb12ce3d"
 }
 ^"fnn-command-hybrid-revoke-next"{
  @source: ~"../../../host/native/hybrid-control.lisp"
  line: 331
  source_sha256: "2a59c842eb964a1a78f7913c7dbbeec1b23c88e4e1f67968f69fc369fc43463a"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "17088f4b00783cca3645ce13849077bddb12ce3d"
 }
 ^"fnn-command-rebind-filesystem"{
  @source: ~"../../../host/native/io.lisp"
  line: 3421
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+ coverage: "earlier source body read; source file changed; revisit exact definition"
+ read_coordinate: "17088f4b00783cca3645ce13849077bddb12ce3d"
 }
 ^"fnn-command-store-digest"{
  @source: ~"../../../host/native/io.lisp"
  line: 3813
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+ coverage: "earlier source body read; source file changed; revisit exact definition"
+ read_coordinate: "17088f4b00783cca3645ce13849077bddb12ce3d"
 }
 ^"fnn-command-store-journal"{
  @source: ~"../../../host/native/io.lisp"
  line: 3831
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+ coverage: "earlier source body read; source file changed; revisit exact definition"
+ read_coordinate: "17088f4b00783cca3645ce13849077bddb12ce3d"
 }
 ^"fnn-command-state-checkpoint"{
  @source: ~"../../../host/native/io.lisp"
  line: 3864
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+ coverage: "earlier source body read; source file changed; revisit exact definition"
+ read_coordinate: "17088f4b00783cca3645ce13849077bddb12ce3d"
 }
 ^"fnn-command-node-secret"{
  @source: ~"../../../host/native/io.lisp"
  line: 4328
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
  coverage: "catalogued; entry body untouched by entries horse"
  read_coordinate: "unread"
 }
 ^"fnn-command-init"{
  @source: ~"../../../host/native/io.lisp"
  line: 4345
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
- coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+ coverage: "earlier source body read; source file changed; revisit exact definition"
  read_coordinate: "c80d05424648553ea495b6c4fe3a51dd138798ed"
 }
 ^"fnn-command-init-published"{
  @source: ~"../../../host/native/io.lisp"
  line: 4356
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
- coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+ coverage: "earlier source body read; source file changed; revisit exact definition"
  read_coordinate: "c80d05424648553ea495b6c4fe3a51dd138798ed"
 }
 ^"fnn-command-developer-init"{
  @source: ~"../../../host/native/io.lisp"
  line: 4418
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
- coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+ coverage: "earlier source body read; source file changed; revisit exact definition"
  read_coordinate: "c80d05424648553ea495b6c4fe3a51dd138798ed"
 }
 ^"fnn-command-store-export"{
  @source: ~"../../../host/native/io.lisp"
  line: 4655
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "471922ffb + scoped E013 edits"
 }
 ^"fnn-command-store-import"{
  @source: ~"../../../host/native/io.lisp"
- line: 4906
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ line: 4936
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "471922ffb + scoped E013 edits"
 }
 ^"fnn-command-store-bless-snapshot"{
  @source: ~"../../../host/native/io.lisp"
- line: 5007
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
- coverage: "catalogued; entry body untouched by entries horse"
- read_coordinate: "unread"
+ line: 5037
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+ coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ read_coordinate: "471922ffb + scoped E013 edits"
 }
 ^"fnn-command-post"{
  @source: ~"../../../host/native/io.lisp"
- line: 5296
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
- coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ line: 5329
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+ coverage: "earlier source body read; source file changed; revisit exact definition"
  read_coordinate: "c80d05424648553ea495b6c4fe3a51dd138798ed"
 }
 ^"fnn-command-recover"{
  @source: ~"../../../host/native/io.lisp"
- line: 5392
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
- coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ line: 5425
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+ coverage: "earlier source body read; source file changed; revisit exact definition"
  read_coordinate: "c80d05424648553ea495b6c4fe3a51dd138798ed"
 }
 ^"fnn-command-live-pages"{
  @source: ~"../../../host/native/io.lisp"
- line: 5463
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+ line: 5496
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
  coverage: "catalogued; entry body untouched by entries horse"
  read_coordinate: "unread"
 }
 ^"fnn-command-live-report"{
  @source: ~"../../../host/native/io.lisp"
- line: 5478
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+ line: 5511
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
  coverage: "catalogued; entry body untouched by entries horse"
  read_coordinate: "unread"
 }
 ^"fnn-command-inspect-group-offline"{
  @source: ~"../../../host/native/io.lisp"
- line: 5498
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+ line: 5531
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
  coverage: "catalogued; entry body untouched by entries horse"
  read_coordinate: "unread"
 }
 ^"fnn-command-stopped-status"{
  @source: ~"../../../host/native/io.lisp"
- line: 5581
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+ line: 5614
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
  coverage: "catalogued; entry body untouched by entries horse"
  read_coordinate: "unread"
 }
 ^"fnn-command-status"{
  @source: ~"../../../host/native/io.lisp"
- line: 5589
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+ line: 5622
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
  coverage: "catalogued; entry body untouched by entries horse"
  read_coordinate: "unread"
 }
 ^"fnn-command-retention"{
  @source: ~"../../../host/native/io.lisp"
- line: 5597
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+ line: 5630
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
  coverage: "catalogued; entry body untouched by entries horse"
  read_coordinate: "unread"
 }
 ^"fnn-command-compression"{
  @source: ~"../../../host/native/io.lisp"
- line: 5608
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+ line: 5641
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
  coverage: "catalogued; entry body untouched by entries horse"
  read_coordinate: "unread"
 }
 ^"fnn-command-config"{
  @source: ~"../../../host/native/io.lisp"
- line: 5623
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+ line: 5656
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
  coverage: "catalogued; entry body untouched by entries horse"
  read_coordinate: "unread"
 }
 ^"fnn-command-inspect"{
  @source: ~"../../../host/native/io.lisp"
- line: 5635
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+ line: 5668
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
  coverage: "catalogued; entry body untouched by entries horse"
  read_coordinate: "unread"
 }
 ^"fnn-command-provenance"{
  @source: ~"../../../host/native/io.lisp"
- line: 5652
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+ line: 5685
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
  coverage: "catalogued; entry body untouched by entries horse"
  read_coordinate: "unread"
 }
 ^"fnn-command-probe"{
  @source: ~"../../../host/native/io.lisp"
- line: 5695
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+ line: 5728
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
  coverage: "catalogued; entry body untouched by entries horse"
  read_coordinate: "unread"
 }
 ^"fnn-command-model"{
  @source: ~"../../../host/native/io.lisp"
- line: 6371
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+ line: 6404
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
  coverage: "catalogued; entry body untouched by entries horse"
  read_coordinate: "unread"
 }
 ^"fnn-command-reader"{
  @source: ~"../../../host/native/io.lisp"
- line: 6391
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+ line: 6424
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
  coverage: "catalogued; entry body untouched by entries horse"
  read_coordinate: "unread"
 }
 ^"fnn-command-log-scan-store"{
  @source: ~"../../../host/native/io.lisp"
- line: 8852
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+ line: 8885
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
  coverage: "catalogued; entry body untouched by entries horse"
  read_coordinate: "unread"
 }
 ^"fnn-command-log"{
  @source: ~"../../../host/native/io.lisp"
- line: 8916
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
+ line: 8949
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
  coverage: "catalogued; entry body untouched by entries horse"
  read_coordinate: "unread"
 }
 ^"fnn-dispatch"{
  @source: ~"../../../host/native/io.lisp"
- line: 8988
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
- coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ line: 9021
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+ coverage: "earlier source body read; source file changed; revisit exact definition"
  read_coordinate: "c80d05424648553ea495b6c4fe3a51dd138798ed"
 }
 ^"fnn-command-redeem"{
  @source: ~"../../../host/native/io.lisp"
- line: 9224
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
- coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ line: 9257
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+ coverage: "earlier source body read; source file changed; revisit exact definition"
  read_coordinate: "c80d05424648553ea495b6c4fe3a51dd138798ed"
 }
 ^"fnn-main"{
  @source: ~"../../../host/native/io.lisp"
- line: 9334
- source_sha256: "b4633f6db47568ac6c81db8cc7e95068e2614fcdc7e58e4e9c4340b78fa43a03"
- coverage: "entry body read; downstream leaf closure partial, see coverage.md"
+ line: 9367
+ source_sha256: "b4c66d4f51aedb0608c2d8aa400b401981f0d8a182d352eb80497ded77c5378b"
+ coverage: "earlier source body read; source file changed; revisit exact definition"
  read_coordinate: "c80d05424648553ea495b6c4fe3a51dd138798ed"
 }
 ^"fnn-ninep-start"{
