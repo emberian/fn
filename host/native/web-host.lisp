@@ -457,9 +457,9 @@ exposure admission decides (the id, or NIL when it refused)."
   (let ((service (fnn-web-face-service face)) (cid (fnn-web-conn-cid conn))
         (plan (fnn-web-conn-plan conn)))
     (if plan
-        (multiple-value-bind (part rest donep yieldedp read)
+        (multiple-value-bind (part rest donep yieldedp issued-read)
             (fnn-owner-render-next-quantum service cid plan :reader)
-          (cond (read (fnn-web-cold-start conn read :render))
+          (cond (issued-read (fnn-web-cold-start conn issued-read :render))
                 (t (fnn-web-append (fnn-web-conn-in conn) part)
                    (setf (fnn-web-conn-plan conn) (if donep nil rest))
                    (when (and (not donep) yieldedp)

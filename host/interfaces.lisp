@@ -52,13 +52,9 @@
 ; Guarded private output methods preserve typed representation. Complete
 ; free-chain/bank correspondence and allocation tariff remain PRF-1259; no gate.
 (definterface fn-rlo-install :class :common-lisp-compliant)
-(definterface fn-rlo-issue :class :common-lisp-compliant)
 (definterface fn-heap-figure-octets :class :common-lisp-compliant)
 (definterface fn-orv-startup-slots :class :common-lisp-compliant)
 (definterface fn-orv-startup-grant :class :common-lisp-compliant)
-(definterface fn-rlo-output :class :common-lisp-compliant)
-(definterface fn-rlo-physical :class :common-lisp-compliant)
-(definterface fn-rlo-drainedp :class :common-lisp-compliant)
 
 ; -----------------------------------------------------------------------------
 ; The extraction roots: the functions the extracted served program's driver
@@ -3413,8 +3409,6 @@
   :class ::program
   :keystones ((fn-web-health-step-preserves-sessions-and-bounds-body :via fn-web-step)))
 
-(definterface fn-web-req-clen
-  :class ::common-lisp-compliant)
 
 ; -----------------------------------------------------------------------------
 ; admin/operator (175 entries)
@@ -5327,4 +5321,6 @@
 ; PRF-1272: allocation-generation producer, distinct from history version.
 ; Program global/native installation refinement remains pending.
 (definterface fn-owner-catalog-root-reserve :class :program)
-(definterface fn-owner-catalog-root-current :class :program)
+
+; Actual retire CLI projection consumed before observation starts.
+(definterface fn-native-operator-host-result-retire-argv :class :program)
