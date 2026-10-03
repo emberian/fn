@@ -70,6 +70,49 @@ class CurrentSourceWorldTests(unittest.TestCase):
             rows = {r['book']: r for r in json.loads(manifest.read_text())['books']}
             self.assertEqual(rows['books/parent']['kind'], 'source-admission')
 
+    def test_cached_local_dependency_is_not_exported_and_guard_scope_keeps_it(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = self.tree(Path(d) / 'source')
+            cache = self.tree(Path(d) / 'cache')
+            for tree in (root, cache):
+                (tree / 'books/private.lisp').write_text(
+                    '(in-package "ACL2")\n(defthm private-fact (equal x x))')
+                (tree / 'books/parent.lisp').write_text(
+                    '(in-package "ACL2")\n(local (include-book "private"))\n(defun actual (x) x)')
+            for name in ('parent', 'private'):
+                for suffix in ('.cert', '.port'):
+                    (cache / 'books' / (name + suffix)).write_text('test inventory only')
+            (root / 'books/guard-user.lisp').write_text(
+                '(in-package "ACL2")\n(local (include-book "private"))\n'
+                '(defun consumer (x) x)\n(verify-guards consumer :hints (("Goal" :use private-fact)))')
+            with (root / 'books/image-world.lisp').open('a') as stream:
+                stream.write('\n(include-book "guard-user")')
+            out = root / 'prefix.lisp'
+            data = json.loads(generate(root, [cache], out).read_text())
+            text = out.read_text()
+            self.assertIn('books/private.lisp', data['repository_books'])
+            self.assertNotIn('books/private.lisp', data['exported_books'])
+            self.assertIn('(local\n(include-book ' + json.dumps(str(cache.resolve() / 'books/private')) + ')', text)
+            self.assertLess(text.index('(local\n(include-book '), text.index('(verify-guards consumer'))
+            self.assertNotIn('(defthm private-fact', text)
+
+    def test_uncached_local_book_replays_in_scope_without_global_export(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = self.tree(d)
+            (root / 'books/private.lisp').write_text(
+                '(in-package "ACL2")\n(local (defthm child-local (equal x x)))\n'
+                '(defthm private-fact (equal x x))')
+            (root / 'books/parent.lisp').write_text(
+                '(in-package "ACL2")\n(local (include-book "private"))\n(defun actual (x) x)')
+            out = root / 'prefix.lisp'
+            data = json.loads(generate(root, [], out).read_text())
+            text = out.read_text()
+            self.assertNotIn('books/private.lisp', data['exported_books'])
+            self.assertIn('books/private.lisp', data['repository_books'])
+            self.assertIn('(local\n(progn\n(encapsulate ()', text)
+            self.assertIn('(defthm private-fact', text)
+            self.assertIn('(local\n(defthm child-local', text)
+
     def test_explicit_deferral_removes_only_named_theorem(self):
         removed = set()
         text = selected_defthms('(local (defthm optional (equal x x)))\n(defun actual (x) x)', {'optional'}, removed)

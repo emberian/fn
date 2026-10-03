@@ -22,6 +22,32 @@ ATTACH = 'books/history-paged-attach'
 ARENA_ATTACH = 'books/payload-arena-attach'
 
 
+def event_head(form):
+    # head_and_name intentionally unwraps LOCAL for event selection, which is
+    # inappropriate for deciding whether proof inputs escape their scope.
+    match = re.match(r'\(\s*([^\s()]+)', form.strip())
+    return match.group(1).lower() if match else ''
+
+
+def exported_includes(text, directory):
+    """Literal nonlocal dependencies; LOCAL proof inputs are not exports."""
+    found = []
+    def event(form):
+        head = event_head(form)
+        target = proof_repl.include_target(form, directory) if head == 'include-book' else None
+        if target is not None:
+            found.append(target)
+            return
+        if head == 'local':
+            return
+        if head in {'encapsulate', 'progn', 'progn!', 'with-prover-step-limit', 'with-prover-time-limit'}:
+            children = forms(form.strip()[1:-1])
+            start = 2 if head in {'encapsulate', 'with-prover-step-limit', 'with-prover-time-limit'} else 1
+            for child in children[start:]: event(child)
+    for form in forms(text): event(form)
+    return found
+
+
 def selected_defthms(text, deferred, removed, theory_deferred=None, pruned=None):
     theory_deferred = theory_deferred or set()
     pruned = pruned if pruned is not None else {}
@@ -89,6 +115,9 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
     graph = certs.include_graph(source, [world_book, *EARLY, ATTACH])
     fingerprints = {name: certs.book_facts(source / (name + '.lisp'))[0]
                     for name in graph}
+    exports = {name: exported_includes((source / (name + '.lisp')).read_text(),
+                                      (source / (name + '.lisp')).parent)
+               for name in graph}
     match_memo = {}
     def matches(cache, name):
         key = (str(cache), name)
@@ -106,6 +135,62 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
     def remember(path):
         if str(path) not in inputs:
             inputs[str(path)] = hashlib.sha256(path.read_bytes()).hexdigest()
+    def cache_for(name):
+        return next((cache for cache in caches
+                     if (cache / (name + '.cert')).is_file()
+                     and (cache / (name + '.port')).is_file()
+                     and not any(deferred.get(child) for child in certs.closure(source, name))
+                     and matches(cache, name)), None)
+    def exported_closure(name):
+        result = {name}
+        for child in exports[name]: result.update(exported_closure(child))
+        return result
+    def cache_inputs(cache, name):
+        for child in certs.closure(source, name):
+            remember(cache / (child + '.lisp'))
+            for suffix in ('.cert', '.port', '.fasl'):
+                path = cache / (child + suffix)
+                if path.is_file(): remember(path)
+    def scoped_book(name, available):
+        """An absent local dependency stays in its enclosing proof scope."""
+        if name in available: return ''
+        cache = cache_for(name)
+        if cache is not None:
+            cache_inputs(cache, name)
+            available.update(exported_closure(name))
+            return '(include-book ' + json.dumps(str(cache / name)) + ')'
+        path = source / (name + '.lisp')
+        remember(path)
+        # Replaying dependencies inside LOCAL exports them only to that LOCAL
+        # scope. Child-local rules still disappear at each child encapsulate.
+        omitted, pruned = set(), {}
+        text = selected_defthms(path.read_text(), deferred.get(name, set()),
+                                omitted, all_deferred, pruned) if all_deferred else path.read_text()
+        if omitted != deferred.get(name, set()):
+            raise ValueError('named DEFTHM not found: ' + name)
+        if omitted: removed[name] = sorted(omitted)
+        if pruned: theory_pruned[name] = pruned
+        transformed = scoped_events(text, path.parent, available)
+        hoisted, body = encapsulated(transformed, path.parent, set(), limit or None)
+        available.update(exported_closure(name))
+        parts = [*hoisted, bounded_body(body, steps)]
+        return '(progn\n' + '\n'.join(p for p in parts if p) + '\n)' if any(parts) else ''
+    def scoped_events(text, directory, available):
+        result = []
+        for form in forms(text):
+            head = event_head(form)
+            target = proof_repl.include_target(form, directory) if head == 'include-book' else None
+            if target is not None:
+                form = scoped_book(target, available)
+            else:
+                if head in {'local', 'encapsulate', 'progn', 'progn!', 'with-prover-step-limit', 'with-prover-time-limit'}:
+                    children = forms(form.strip()[1:-1])
+                    start = 2 if head in {'encapsulate', 'with-prover-step-limit', 'with-prover-time-limit'} else 1
+                    scope = set(available) if head == 'local' else available
+                    body = scoped_events('\n'.join(children[start:]), directory, scope)
+                    form = '(' + '\n'.join(children[:start]) + '\n' + body + ')' if body else ''
+            if form: result.append(form)
+        return '\n'.join(result)
     def visit(name):
         if name in loaded:
             return
@@ -139,33 +224,24 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
             events.append(actual[2])
             visit('books/payload-arena')
             visit('books/catalog-record')
-            hoisted, body = encapsulated('\n'.join([actual[0], *actual[5:]]),
-                                        path.parent, set(graph), limit or None)
+            text = scoped_events('\n'.join([actual[0], *actual[5:]]), path.parent, set(loaded))
+            hoisted, body = encapsulated(text, path.parent, set(loaded), limit or None)
             events.extend(hoisted)
             events.append('(value-triple (cw "FN_SOURCE_BOOK ' + name + '~%"))')
             if body: events.append(bounded_body(body, steps))
             loaded.add(name)
             coordinate.append({'book': name, 'kind': 'ordered-attachment'})
             return
-        selected = next((cache for cache in caches
-                         if (cache / (name + '.cert')).is_file()
-                         and (cache / (name + '.port')).is_file()
-                         and not any(deferred.get(child) for child in certs.closure(source, name))
-                         and matches(cache, name)), None)
+        selected = cache_for(name)
         if selected is not None:
             # ACL2 still checks the certificate; matching source does not waive
             # compatibility or toolchain checks during the actual include.
             events.append('(include-book ' + json.dumps(str(selected / name)) + ')')
-            closure = certs.closure(source, name)
-            loaded.update(closure)
-            for child in closure:
-                remember(selected / (child + '.lisp'))
-                for suffix in ('.cert', '.port', '.fasl'):
-                    path = selected / (child + suffix)
-                    if path.is_file(): remember(path)
+            loaded.update(exported_closure(name))
+            cache_inputs(selected, name)
             coordinate.append({'book': name, 'kind': 'certificate-input', 'root': str(selected)})
             return
-        for child in graph[name]:
+        for child in exports[name]:
             visit(child)
         path = source / (name + '.lisp')
         remember(path)
@@ -178,7 +254,8 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
         if omitted != deferred.get(name, set()):
             raise ValueError('named DEFTHM not found: ' + name)
         if omitted: removed[name] = sorted(omitted)
-        hoisted, body = encapsulated(body_text, path.parent, set(graph), limit or None)
+        body_text = scoped_events(body_text, path.parent, set(loaded))
+        hoisted, body = encapsulated(body_text, path.parent, set(loaded), limit or None)
         body = bounded_body(body, steps)
         # All local fn include events were resolved above. Only system books
         # or package declarations may remain hoisted.
@@ -204,8 +281,9 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
         'source': str(source), 'world_book': world_book,
         'source_revision': revision or subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip() if revision or (source / '.git').exists() else None,
         'source_sha256': fingerprints,
-        'repository_sha256': {name + '.lisp': fingerprints[name] for name in sorted(loaded)},
-        'repository_books': sorted(name + '.lisp' for name in loaded),
+        'repository_sha256': {name + '.lisp': fingerprints[name] for name in sorted(graph)},
+        'repository_books': sorted(name + '.lisp' for name in graph),
+        'exported_books': sorted(name + '.lisp' for name in loaded),
         'logical_prefix': str(output.resolve()), 'cache_roots': [str(p) for p in caches],
         'inputs_sha256': inputs, 'output_sha256': hashlib.sha256(output.read_bytes()).hexdigest(),
         'books': coordinate, 'deferred_defthms': removed,
