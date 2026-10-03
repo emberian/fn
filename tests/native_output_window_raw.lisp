@@ -33,7 +33,7 @@
 (defun fnn-owner-connection-call (service op thunk)
   (declare (ignore service op)) (funcall thunk))
 (defun fnn-core (subject plan)
-  (declare (ignore plan)) (assert (eq subject 'fn-splan-at-cursorp)) nil)
+  (declare (ignore plan)) (assert (eq subject 'fn-asto-plan-cursorp)) nil)
 (defun fnn-mux-ticks (seconds) seconds)
 (defun fnn-mux-after (loop conn after)
   (declare (ignore loop conn)) (setf *range-after* after))
