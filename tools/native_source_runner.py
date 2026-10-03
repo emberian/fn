@@ -19,7 +19,11 @@ from proof_repl import forms
 
 
 def digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    value = hashlib.sha256()
+    with path.open('rb') as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b''):
+            value.update(block)
+    return value.hexdigest()
 
 
 def literal(value: str) -> str:
@@ -65,6 +69,9 @@ def prepare(args) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
     build = world / args.build
     hashes = {str(build): digest(build)}
+    for name in (args.sbcl, args.core):
+        path = Path(name).resolve()
+        hashes[str(path)] = digest(path)
     # Verify source inputs at every launch; admitted forms remain embedded in
     # the bootstrap and have their own hashes in the event coordinates.
     for pattern in ('books/*.lisp', 'host/**/*.lisp', 'lib/*.so', 'lib/*.dylib'):
