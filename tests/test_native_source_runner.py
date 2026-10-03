@@ -93,7 +93,8 @@ class SourceRunnerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)/'manifest.json'
             path.write_text(json.dumps({'sha256':{}, 'world_root':directory,
-                'bootstrap':'/bootstrap', 'profile':'developer',
+                'bootstrap':'/bootstrap', 'entry_driver':'/strict-driver',
+                'after_acl2_loop':runner.entry_after_loop(), 'profile':'developer',
                 'sbcl':'/sbcl', 'core':'/core'}))
             with patch.object(runner.sys, 'platform', 'linux'), patch.object(runner.os, 'chdir'), patch.object(runner.os, 'execve') as execute:
                 runner.run(path, ['--fn','tcpcl','-','once'])
@@ -101,6 +102,9 @@ class SourceRunnerTests(unittest.TestCase):
             self.assertEqual(argv[-4:], ['--fn','tcpcl','-','once'])
             self.assertEqual(argv.count('--fn'), 1)
             self.assertEqual(execute.call_args.args[2]['ACL2_BOOK_HASH_ALISTP'], 'NIL')
+            self.assertEqual(execute.call_args.args[2]['ACL2_CUSTOMIZATION'], 'NONE')
+            self.assertIn(runner.entry_after_loop(), argv)
+            self.assertTrue(any('with-open-file' in arg and '/strict-driver' in arg for arg in argv))
 
     def test_local_execution_refuses_pool_bypass(self):
         import json
@@ -109,4 +113,31 @@ class SourceRunnerTests(unittest.TestCase):
             path.write_text(json.dumps({'sha256':{}}))
             with patch.object(runner.sys,'platform','darwin'):
                 with self.assertRaisesRegex(ValueError,'governed hbox'):
+                    runner.run(path, [])
+
+    def test_direct_and_checkpoint_driver_share_strict_verdict(self):
+        import json
+        import native_source_cache as cache
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            original = root / 'original.lisp'
+            original.write_text('(defun bad (x) (undefined-call x))\n' + cache.ENTRY)
+            manifest = root / 'original.json'
+            manifest.write_text(json.dumps({'sha256': {}, 'bootstrap': str(original)}))
+            prepared = json.loads(cache.prepare(manifest, root / 'cache').read_text())
+            driver = Path(prepared['bootstrap']).read_text()
+            self.assertEqual(driver, runner.strict_driver(Path(prepared['checkpoint_events'])))
+            self.assertIn(':ld-error-action :return', driver)
+            self.assertIn('(and (not erp) (eq reason :eof))', driver)
+            self.assertTrue(driver.rstrip().endswith(':q'))
+            self.assertIn('native entry refused', runner.entry_after_loop())
+
+    def test_legacy_unguarded_direct_entry_refuses(self):
+        import json
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'manifest.json'
+            path.write_text(json.dumps({'sha256': {}, 'world_root': directory,
+                'bootstrap':'/bootstrap', 'profile':'developer'}))
+            with patch.object(runner.sys, 'platform', 'linux'), patch.object(runner.os, 'chdir'):
+                with self.assertRaisesRegex(ValueError, 'strict source admission driver'):
                     runner.run(path, [])

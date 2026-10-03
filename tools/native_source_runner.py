@@ -62,6 +62,16 @@ def prefix(text: str, overlays: list[str], before_world: list[str] | None = None
     return '\n\n'.join(result) + '\n'
 
 
+
+def strict_driver(events: Path) -> str:
+    """Gate an outside-LP action on the actual nested LD verdict."""
+    return '(in-package "ACL2")\n' +         '(mv-let (erp reason state)\n' +         '    (ld ' + literal(str(events)) + ' :ld-error-action :return :ld-prompt nil)\n' +         "  (pprogn (f-put-global 'fn-source-bootstrap-ready\n" +         '                       (and (not erp) (eq reason :eof)) state)\n' +         '          (value :source-bootstrap-returned)))\n:q\n'
+
+
+def entry_after_loop() -> str:
+    return "(progn (unless (acl2::f-get-global 'acl2::fn-source-bootstrap-ready acl2::*the-live-state*) (error \"Source bootstrap did not complete; native entry refused\")) (acl2::fn-native-entry acl2::*the-live-state*))"
+
+
 def prepare(args) -> Path:
     world = Path(args.world_root).resolve()
     source = Path(args.source_root).resolve()
@@ -121,12 +131,26 @@ def prepare(args) -> Path:
     bootstrap.write_text('(in-package "ACL2")\n(set-cbd ' + literal(str(world) + '/')
                          + ')\n' + prefix(build.read_text(), selected, before, raw_after))
     hashes[str(bootstrap)] = digest(bootstrap)
+    # Keep the ordered prefix for checkpoint preparation, and use the same
+    # strict nested-LD seam for direct entry. An outer LP :continue may report
+    # EOF after a failed event; only this nested :return verdict admits entry.
+    terminal = '(progn! (set-raw-mode t) (fn-native-entry state))'
+    ordered = bootstrap.read_text()
+    if not ordered.rstrip().endswith(terminal):
+        raise ValueError('ordered bootstrap lacks the terminal native entry')
+    entry_events = out.with_suffix('.entry.events.lisp')
+    entry_events.write_text(ordered[:ordered.rfind(terminal)])
+    entry_driver = out.with_suffix('.entry.lisp')
+    entry_driver.write_text(strict_driver(entry_events))
+    hashes[str(entry_events)] = digest(entry_events)
+    hashes[str(entry_driver)] = digest(entry_driver)
     manifest = out.with_suffix('.json')
     data = {'schema': 'fn-native-source-runner-v1', 'world_root': str(world),
             'world_revision': args.world_revision, 'source_root': str(source),
             'source_revision': args.source_revision or subprocess.check_output(
                 ['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip(),
-            'bootstrap': str(bootstrap), 'sha256': hashes, 'events': coordinates,
+            'bootstrap': str(bootstrap), 'entry_driver': str(entry_driver),
+            'after_acl2_loop': entry_after_loop(), 'sha256': hashes, 'events': coordinates,
             'before_world': args.before_world, 'events_file': args.events_file,
             'raw_after': raw_after,
             'sbcl': str(Path(args.sbcl).resolve()), 'core': str(Path(args.core).resolve()),
@@ -153,7 +177,9 @@ def run(manifest: Path, argv: list[str]) -> None:
     env = dict(os.environ)
     env['ACL2_BOOK_HASH_ALISTP'] = 'NIL'
     env.pop('ACL2_SYSTEM_BOOKS', None)
-    env['ACL2_CUSTOMIZATION'] = data['bootstrap']
+    if not data.get('entry_driver') or not data.get('after_acl2_loop'):
+        raise ValueError('direct entry requires a strict source admission driver; prepare a new manifest')
+    env['ACL2_CUSTOMIZATION'] = 'NONE'
     env.pop('ACL2_CUSTOMIZATION_QUIET', None)
     env['FN_NATIVE_PROFILE'] = data['profile']
     env['FN_NATIVE_WORLD'] = 'full'
@@ -164,7 +190,9 @@ def run(manifest: Path, argv: list[str]) -> None:
                '--control-stack-size', '64', '--core', data['core'],
                '--noinform', '--disable-debugger', '--no-userinit',
                '--eval', '(setf *standard-output* *error-output* *trace-output* *error-output*)',
-               '--eval', '(acl2::sbcl-restart)', '--end-toplevel-options', '--fn', *argv]
+               '--eval', '(with-open-file (input ' + literal(data['entry_driver'])
+               + ') (let ((*standard-input* input) (*terminal-io* (make-two-way-stream input *error-output*))) (acl2::sbcl-restart)))',
+               '--eval', data['after_acl2_loop'], '--end-toplevel-options', '--fn', *argv]
     os.execve(command[0], command, env)
 
 
