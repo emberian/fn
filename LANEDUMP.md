@@ -2584,4 +2584,13 @@ S072 init4/S151 retire/S090 diagnostics/S074 classifier and S011 journal physica
 consumer checks (journal universal bridge is certified); current-source proof
 index and generated view convergence. S132 full-native supported-profile funding
 and170s observation remains open, with Root attempts recorded in existing item.
-Only this lane's warm ARTICLE/journal sessions are stopped at this checkpoint.
+This lane's ARTICLE warm session is stopped; journal warm session was already absent.
+
+Runtime final physical debt (source PRF1288/LANEDUMP): an enqueue signal after
+typed job creation but before owner read/dependency attachment still needs
+capture-before-wake. Worker/token currently retained, response dependency is
+not captured in that failure. Keep this in the actual producer/decoder join;
+no cleanup/refund success claim. Runtime source8f/b417/d341/c91/364 is pushed,
+matching controller world stopped, three cached dependency certificates remain
+at /tank/fn/gates/codex-sol-runtime-repl/books. Preserve newer Access READY/
+render bodies when wrapping window activation. All owned worktrees are clean.
