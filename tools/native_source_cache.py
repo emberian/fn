@@ -106,7 +106,7 @@ def initialize(manifest):
     if sys.platform == 'darwin':
         raise ValueError('source execution cache requires the governed hbox route')
     os.chdir(data['world_root'])
-    env = dict(os.environ, ACL2_CUSTOMIZATION=data['bootstrap'], ACL2_BOOK_HASH_ALISTP='NIL',
+    env = dict(os.environ, ACL2_CUSTOMIZATION='NONE', ACL2_BOOK_HASH_ALISTP='NIL',
                FN_NATIVE_PROFILE=data['profile'], FN_NATIVE_WORLD='full')
     env.pop('ACL2_CUSTOMIZATION_QUIET', None)
     env.pop('ACL2_SYSTEM_BOOKS', None)
@@ -114,7 +114,9 @@ def initialize(manifest):
                '--control-stack-size', '64', '--core', data['core'], '--noinform',
                '--disable-debugger', '--no-userinit',
                '--eval', '(setf *standard-output* *error-output* *trace-output* *error-output*)',
-               '--eval', '(acl2::sbcl-restart)', '--eval', data['after_acl2_loop']]
+               '--eval', '(with-open-file (input ' + runner.literal(data['bootstrap'])
+               + ') (let ((*standard-input* input) (*terminal-io* (make-two-way-stream input *error-output*))) (acl2::sbcl-restart)))',
+               '--eval', data['after_acl2_loop']]
     os.execve(command[0], command, env)
 
 
