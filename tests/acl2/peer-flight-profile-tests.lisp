@@ -1,0 +1,15 @@
+(in-package "ACL2")
+(include-book "../../books/peer-flight-profile")
+(assert-event (and (equal (fn-pfp-file-name) "peer-flight-profile")
+                  (equal (fn-pfp-read-bound) 53)
+                  (not (fn-pfp-read nil nil))))
+(assert-event
+ (let* ((policy '(32768 65536 2 1 32768 20)) (wire (fn-pfp-write policy)))
+  (and (equal (len wire) 52) (equal (fn-pfp-read t wire) policy)
+       (equal (fn-pfp-read t (cons 0 wire)) :bad)
+       (equal (fn-pfp-read t (cdr wire)) :bad)
+       (equal (fn-pfp-read t (update-nth 0 0 wire)) :bad))))
+(assert-event (not (fn-pfp-write '(32768 18446744073709551615 2 1 9223372036854775808 20))))
+(assert-event
+ (let ((policy '(18446744073709551615 18446744073709551615 2 1 9223372036854775807 18446744073709551615)))
+  (and (fn-pfr-policy-p policy) (equal (fn-pfp-read t (fn-pfp-write policy)) policy))))
