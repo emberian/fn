@@ -115,6 +115,7 @@
 (include-book "../../books/heap-open-nursery")
 (include-book "../../books/heap-reservation")
 (include-book "../../books/cold-read-reservation")
+(include-book "../../books/allocation-turn-slots")
 (include-book "../../books/store-intern")
 (include-book "../../books/open-frontier-wire")
 (include-book "../../books/store-recover-stream")

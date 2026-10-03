@@ -5970,7 +5970,7 @@ reads run as a :control quantum; the thread's registration is the roster's."
                 ;; worker broke the stop's join.
                 (when thread
                   (setf (fnn-owner-service-publisher service) thread)
-                  (push thread (fnn-owner-service-workers service))))))))))))
+                  (push thread (fnn-owner-service-workers service)))))))))))))
 
 ;;; Row S3b (lane operability-7): `store export DIR' on the running owner
 ;;; (books/owner-export-request.lisp fn-oex-; SCN-210, PRF-988).  The export
