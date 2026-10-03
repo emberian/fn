@@ -2584,6 +2584,7 @@ a4b2812adfa0941555ee495e70100c244c53de67f1a44e42e5d6c1d73840ff2a 3597 planning/e
 3d040dd8e296b1b923a3cce9d71a405c9dcc31891aabf5c03cc1b3bb93b46f04 3598 planning/evidence/format10-import-2026-09-28/native-t2-format_9_migration.log
 5049f5412d8e77a678c07d067ee6803be91219782e1bed7198072a25cddd68fc 4585 planning/evidence/four-profile-image-24a5df6b-2026-09-23.md
 36f92befc8a422a8b287e410b9163a036f8c8142d82e2fc24fb8ec643915c9e5 6294 planning/evidence/four-profile-image-f0b8b166-2026-09-23.md
+cc5a385742261f4e7a48dfee8511c78cbf8b6bd0df7dbd935a9bd2e7d726bc55 37184 planning/evidence/frame-cbor-bounds-cached-20261003-v2.json
 aba83d6edcf69c26266768976d39ab1bc5b947fc355c7f86e5e4609882605466 4284 planning/evidence/frame-fixture-2026-09-29/README.md
 14e7820ab227b7c34c64b2bf3c8964e8de30b559c197b83e6c38f2de1704dbc9 8775 planning/evidence/frame-fixture-2026-09-29/clean-added.log
 6d59cdc20159272b9324a71b5baec6e207cb2f508492ee58c467fedc29ebe065 1484 planning/evidence/frame-fixture-2026-09-29/clean.log
@@ -11612,6 +11613,8 @@ e869fb2e3d934462f39b99ca80d3d1b1fe0e54e0a6da5b4d5d12b55341200bf7 469 planning/ev
 b5816e7e7e258a8a539fafcea52d624d9263af0aea47d84fa5c9aaf3b96a3aa9 2254 planning/evidence/snapshot-summary-source-integration-2026-09-30/cache-availability.json
 9e0d468b37425c9f279a7916551998c196c6ccf83de3e1f07710fde918dbcf40 18296 planning/evidence/snapshot-summary-source-integration-2026-09-30/inventory.json
 8626fc8795a67a9f61405c6a1badf72b705cdef4d42866b349139b8e7537986a 841 planning/evidence/sol-assembly-retention-vocabulary-20261003.json
+9d751796d037c482a7dcd469776e6472c34f4e8d9ddb68f2386a26b12143efbb 2718 planning/evidence/sol-mux-cleanup-composition-20261003-v2.json
+0b6d4ac13200365fb73297ae410eaa4f5dc67926719fa0c43614a919d212451e 2385 planning/evidence/sol-mux-cleanup-composition-20261003.json
 4516b735989a55270b4215a510afafa07e1cb9ee8df4aba5eb6433c98bfa7d18 1751 planning/evidence/source-convergence-2026-09-30/README.md
 58d223af3cac2298636e053cd5311ef775b96a31cbf1dc159f998dfde5dbbd08 1967 planning/evidence/source-convergence-2026-09-30/account-dispatch-source.json
 1a6711e432565e488fd0f0d64da4306add9c7e13efc0e2805b8a9881d7b0c6db 1320 planning/evidence/source-convergence-2026-09-30/account-lineage-candidate-source.json
@@ -12530,4 +12533,3 @@ a875bf6c1f7b93af59fe601cb07b1fa8d342573523905a2ae2cba1a586b619c8 8267 planning/t
 c620de3f9e1266b928536469e27af88589bbc188153fd38eefc54fe80bd9a642 3792 planning/takeover-2026-09-29/queue/MODE-2026-09-29.txt
 f5d91af088fc17ff96a9010dbba92e21cd15d3395b58b4b411c4878ae0a7a7f3 236 planning/workstream-review-2026-09-24.md
 26c2c33c0c3bd6ce7bc2658bb7995b82616f80d83da1b86b246cf2ad784f8056 3286 planning/worktree-recovery-2026-09-24.md
-cc5a385742261f4e7a48dfee8511c78cbf8b6bd0df7dbd935a9bd2e7d726bc55 37184 planning/evidence/frame-cbor-bounds-cached-20261003-v2.json

@@ -5761,8 +5761,11 @@ close a descriptor that another worker has cached and the kernel may reuse."
   nil)
 
 (defun fnn-socket-shut (socket)
-  (ignore-errors (sb-bsd-sockets:socket-close socket))
-  nil)
+  "Preserve the existing NIL primary result; expose the actual close receipt
+and condition separately. A swallowed close error is not physical closure."
+  (handler-case
+      (progn (sb-bsd-sockets:socket-close socket) (values nil :closed nil))
+    (serious-condition (condition) (values nil :unobserved condition))))
 
 (defun fnn-socket-class (family)
   (if (eq family :inet6) 'sb-bsd-sockets:inet6-socket 'sb-bsd-sockets:inet-socket))
