@@ -589,3 +589,12 @@ No preflight/selection scan is replayed during count or emit. The consumer pairs
 with Access source e7624ab8a/e41b22c21 and Served a3bd4513f; its raw adversarial
 owner adapter checks cold/yield/READY capture custody, not producer semantics.
 Actual composed source execution and complete Web tariff remain pending.
+
+
+Shared ARTICLE producer/native Web composition: Access2a0f46790 byte-window
+entry now supplies exact-W parts, with immutable pending dot fragments. The
+actual shared producer bodies plus native Web scan/replay/count/write consumer
+pass5,000 dot-leading lines, cold replay, partial drain and exact HTML/count/pin
+receipt. The old work-only producer fails this same fixture with5,408 output
+bytes for W4,096. Recording arena/owner/cold/I/O seams remain; full native
+source-loaded browser execution and qualified Web funding are not established.

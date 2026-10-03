@@ -50,11 +50,13 @@
           (when done (return (values (reverse result) count))))))
 ; Actual native scan/replay/count/write consumer, reusable for captured
 ; protocol routes. The renderer adapter advances persistent plan tails only.
-(defun native-stream-consumer (xs flow config reference &optional (id 41) (max-replay-rounds 150))
+(defun native-stream-consumer (xs flow config reference &optional (id 41) (max-replay-rounds 150)
+                              provider initial-plan)
     (let* ((conn (fixture-conn id :render 88))
            (face (%make-fnn-web-face :service :service :config config :conns (list conn)))
-           (plan (loop for at from 0 below (length xs) by 4096
-                       collect (fnn-octets (subseq xs at (min (length xs) (+ at 4096))))))
+           (plan (or initial-plan
+                     (loop for at from 0 below (length xs) by 4096
+                           collect (fnn-octets (subseq xs at (min (length xs) (+ at 4096)))))))
            (saved-core (symbol-function 'fnn-core)) (saved-call (symbol-function 'fnn-call))
            (saved-render (symbol-function 'fnn-owner-render-next-quantum))
            (saved-unpin (symbol-function 'fnn-owner-response-unpin))
@@ -84,7 +86,8 @@
                 (lambda (service cid p class) (declare (ignore service cid class))
                   (if (and (eq (fnn-web-conn-phase conn) :replay) (not cold-issued))
                       (progn (setf cold-issued t) (values nil p nil nil :article-read))
-                    (values (car p) (cdr p) (null (cdr p)) nil nil))))
+                    (if provider (funcall provider p)
+                      (values (car p) (cdr p) (null (cdr p)) nil nil)))))
           (setf (symbol-function 'fnn-owner-cold-poll)
                 (lambda (service read first issued) (declare (ignore service first issued))
                   (assert (eq read :article-read)) (values :serve 0 0 0)))
