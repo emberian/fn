@@ -1745,6 +1745,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/feed-journal \
 	tests/acl2/feed-journal-tests \
 	tests/acl2/peer-feed-tests \
+	tests/acl2/peer-feed-red-defer-tests \
+	tests/acl2/peer-feed-red-capacity-tests \
+	tests/acl2/peer-feed-red-msgid-tests \
 	tests/acl2/feed-correspondence-tests \
 	tests/acl2/feed-port-replay-tests \
 	books/owner-feed \
