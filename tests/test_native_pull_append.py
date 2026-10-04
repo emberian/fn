@@ -13,7 +13,7 @@ class PullAppendBoundaryTests(unittest.TestCase):
         for kind in ("pull", "catch-up"):
             with tempfile.TemporaryDirectory() as directory:
                 args = [shutil.which("sbcl") or "sbcl", "--noinform", "--script",
-                        "tests/native_pull_append_raw.lisp", str(Path(directory) / "journal"), mode, kind]
+                        "tests/native_pull_append_raw-mock.lisp", str(Path(directory) / "journal"), mode, kind]
                 result = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=5)
                 if intended and "APPEND_ASSERTION:" + intended in result.stdout:
                     self.fail(intended)
