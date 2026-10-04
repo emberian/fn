@@ -33,7 +33,8 @@
 ;;; ---- derived stubs: END ----
 (defun len (x) (length x))
 (defun nfix (x) (if (and (integerp x) (>= x 0)) x 0))
-(load-deployed-forms "books/peer-round-driver.lisp" '((defun fn-prd-deadline)))
+(load-deployed-forms "books/peer-round-driver.lisp"
+ '((defun fn-prd-deadline) (defun fn-prd-round-seconds) (defun fn-prd-round-deadline)))
 (defun posp (x) (and (integerp x) (> x 0)))
 (defun assoc-equal (key alist) (assoc key alist :test #'equal))
 (defvar *fnn-feed-active* nil)
@@ -116,6 +117,7 @@
     (fn-owner-feed-profile-max-octets *fn-fap-max-octets*)
     (fn-owner-feed-profile-decode (fn-fap-decode (first args)))
     (fn-prd-deadline (apply #'fn-prd-deadline args))
+    (fn-prd-round-deadline (apply #'fn-prd-round-deadline args))
     (fn-peer-dial-log-line (apply #'fn-peer-dial-log-line args))
     (fn-pull-plan-profile-path *path*)
     (fn-pull-plan-peer '(112))
@@ -162,7 +164,7 @@
      (credential-check (member :connect *calls*) "admitted profile permits dial")
      (credential-check (null (find :core-open *calls* :key (lambda (call) (and (consp call) (car call)))))
                        "core open waits for later TCP completion turn")
-     (fnn-feed-connected-step runtime link)
+     (fnn-feed-connected-step runtime link 0)
      (credential-check (equal (last (cdr (assoc :core-open *calls*)) 3) '((110) (112) t))
                        "admitted credentials survive retained TCP completion")
      (credential-check (equal (fnn-pull-profile :plan) '((110) (112))) "ACL2 decoded credential passed to pull")
