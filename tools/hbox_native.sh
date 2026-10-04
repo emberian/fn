@@ -239,7 +239,12 @@ while [ $# -gt 0 ]; do
             case $2 in *[!0-9a-f]*|'') echo "hbox_native: --image-set takes a commit sha" >&2; exit 2 ;; esac
             IMAGE_SET=$2; BUILD=0; shift 2 ;;
         --box)
-            case $2 in hbox|persvati|auto) BOX=$2 ;; *) echo "hbox_native: --box takes hbox, persvati or auto" >&2; exit 2 ;; esac
+            case $2 in
+                hbox|persvati|auto) BOX=$2 ;;
+                *) python3 "$HERE/tools/box_table.py" names | grep -qx -- "$2" || {
+                       echo "hbox_native: --box takes hbox, persvati, auto or a live box in ~/.config/fn/boxes.json" >&2; exit 2; }
+                   BOX=$2 ;;
+            esac
             shift 2 ;;
         --reuse-image)
             case $2 in /*) REUSE=$2 ;; */native-*) REUSE=__BASE__/$2 ;;
