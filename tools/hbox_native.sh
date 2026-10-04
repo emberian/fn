@@ -480,6 +480,41 @@ step() {
         finish \$rc
     fi
 }
+# Steps that may run at once (the image saves: each its own ACL2 session
+# over the same certified books, writing only its own build/fn-host* files;
+# the foreign libraries are built first, once).  pstep starts one in the
+# background; pwait waits for all of them and stops the run at the first that
+# failed, in the order they were started.  Batch 6: six serial saves were
+# 10m44s of a 36-minute run, the longest single one 2m06s.
+# At most one save per 6 GiB available (a save holds the world, about 4-5 GiB;
+# cloud2's 22 GiB takes three at once, lat1 all six).
+PSTEPS=
+PPIDS=
+PMAX=\$(awk '/MemAvailable/{n=int(\$2/6291456); print (n<1)?1:n}' /proc/meminfo)
+pstep() {
+    name=\$1; shift
+    n=0; first=
+    for p in \$PPIDS; do n=\$((n + 1)); [ -n "\$first" ] || first=\$p; done
+    if [ \$n -ge \$PMAX ]; then wait \$first; PPIDS=\${PPIDS#* \$first}; fi
+    echo "== \$name \$(date -u +%H:%M:%SZ) (parallel, at most \$PMAX)"
+    ( "\$@" > \$L/\$name.log 2>&1; echo \$? > \$L/\$name.rc ) &
+    PPIDS="\$PPIDS \$!"
+    PSTEPS="\$PSTEPS \$name"
+}
+pwait() {
+    wait
+    prc=0
+    for name in \$PSTEPS; do
+        rc=\$(cat \$L/\$name.rc 2>/dev/null || echo 3)
+        echo "   \$name exit \$rc \$(date -u -r \$L/\$name.rc +%H:%M:%SZ 2>/dev/null) (\$L/\$name.log)"
+        if [ \$rc -ne 0 ] && [ \$prc -eq 0 ]; then
+            tail -n 15 \$L/\$name.log | sed 's/^/   | /'
+            prc=\$rc
+        fi
+    done
+    PSTEPS=
+    [ \$prc -eq 0 ] || finish \$prc
+}
 # A module reads an image variable: the image must be in the tree.
 need() {
     [ -x "\$3" ] || { echo "hbox_native: \$1 reads \$2: \$3 is not in the tree (build it with --images)"; finish 2; }
@@ -563,6 +598,17 @@ step validate-dtn python3 tools/proof_artifacts.py validate --profile dtn --acl2
 step host-ld-dtn env FN_ACL2="${IMAGE_ACL2:-\$ACL2}" python3 tools/host_translate_check.py --build host/native/build-dtn.lisp --log \$L/host-translate-dtn.log
 BOX
         fi
+        # More than one image: build the foreign libraries once, then every
+        # save at once (pstep/pwait); one image keeps the plain step.
+        NIMG=$(echo "$IMAGES" | tr ',' '\n' | grep -vc '^prof$')
+        if [ "$NIMG" -gt 1 ] && [ "${FN_NATIVE_SERIAL_IMAGES:-}" != 1 ]; then
+            ISTEP=pstep
+            cat <<BOX
+step image-libs sh -c 'sh tools/build_mldsa65.sh build/lib && sh tools/build_deflate.sh build/lib && sh tools/build_blake3.sh build/lib'
+BOX
+        else
+            ISTEP=step
+        fi
         for image in $(echo "$IMAGES" | tr ',' ' '); do
             # The (profile, session script, image) triple per image, as
             # tools/runbooks/hbox-image-build.sh's four build lines.
@@ -588,9 +634,10 @@ BOX
             catalog_env=FN_NATIVE_CATALOG=old
             if [ "$CATALOG" = paged ]; then case $image in developer|production|reference|developer-stripped) catalog_env=FN_NATIVE_CATALOG=paged out=$out-paged ;; esac; fi
             cat <<BOX
-step image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} $catalog_env FN_NATIVE_PROFILE=$profile FN_NATIVE_WORLD=$world FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log $WRAP sh tools/build_native_host.sh
+$ISTEP image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} $catalog_env FN_NATIVE_PROFILE=$profile FN_NATIVE_WORLD=$world FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log $WRAP sh tools/build_native_host.sh
 BOX
         done
+        [ "$ISTEP" != pstep ] || echo pwait
     fi
     if [ -n "$REUSE" ]; then
         cat <<BOX

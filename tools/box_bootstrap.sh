@@ -123,6 +123,16 @@ apt-get install -y -q docker.io >/dev/null
 systemctl enable --now docker >/dev/null 2>&1 || true
 id fn >/dev/null 2>&1 || useradd -m -s /bin/bash fn
 usermod -aG docker fn
+# The group alone is not enough: a systemd user manager that started before
+# the usermod (linger, or a re-run on a live box) keeps its old groups, and
+# every swarm-build scope under it was refused the socket ("permission denied
+# ... docker.sock": reader_clients 30F on lat1, 2026-10-04).  fn gets the socket
+# by ACL, re-applied whenever docker starts.
+apt-get install -y -q acl docker-buildx >/dev/null 2>&1 || apt-get install -y -q acl >/dev/null
+mkdir -p /etc/systemd/system/docker.service.d
+printf '[Service]\nExecStartPost=/usr/bin/setfacl -m u:fn:rw /run/docker.sock\n' > /etc/systemd/system/docker.service.d/fn-acl.conf
+systemctl daemon-reload
+setfacl -m u:fn:rw /run/docker.sock 2>/dev/null || true
 # dilithium-py: tools/fn_verify.py (the consumer independent verifier) has no ML-DSA-65
 # implementation without it and answers undecided, so tests.test_native_consumer_exchange
 # fails 7 of 11 (lat1, 2026-10-04).  Pure Python, pinned to the version hbox runs.
@@ -190,7 +200,10 @@ $SSH "$FN" 'set -e; for s in /tank/fn/images/*/; do (cd "$s" && sha256sum -c --q
 echo "   images: $(ls /tank/fn/images | wc -l) set(s) verified, binaries resolve"
 out=$(echo "(+ 20 22) (good-bye)" | timeout 180 swarm-build /tank/fn/toolchains/w28/acl2-literal-4g-tls64k 2>&1) || true
 echo "$out" | grep -q "ACL2 Version 8.7" || { echo "ACL2 did not start: $(echo "$out" | tail -3)"; exit 1; }
-echo "   ACL2 8.7 starts under swarm-build"' || die "verify failed on $NAME"
+echo "   ACL2 8.7 starts under swarm-build"
+systemd-run --user --scope --quiet docker info >/dev/null 2>&1 || { echo "docker is refused inside a user scope (reader_clients needs it)"; exit 1; }
+python3 -c "import dilithium_py" 2>/dev/null || { echo "dilithium-py missing for fn (consumer_exchange needs it)"; exit 1; }
+echo "   docker usable in a swarm-build scope; dilithium-py present"' || die "verify failed on $NAME"
 
 step register
 CONF=$HOME/.ssh/fn-boxes.conf
