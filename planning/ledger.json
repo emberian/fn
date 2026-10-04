@@ -2493,11 +2493,11 @@
     "tests/acl2/withdrawal-index-carried-tests"
   ],
   "totals": {
-    "books": 2977,
+    "books": 2978,
     "books_in_root_closure": 2805,
     "roots": 2489,
-    "theorems": 38941,
-    "functions": 25234,
+    "theorems": 38946,
+    "functions": 25237,
     "assert_events": 26847,
     "must_fails": 2661,
     "prover_refusals": 0,
@@ -2505,14 +2505,14 @@
     "guards": {
       "verified": 4034,
       "declared-off": 3203,
-      "default-guarded": 13918,
+      "default-guarded": 13921,
       "default-unguarded": 4079
     },
     "suspect_theorems": 1421,
     "export_hygiene_warnings": 415,
     "enabled_projection_warnings": 80,
     "teeth_form_warnings": 292,
-    "include_hygiene_warnings": 3940,
+    "include_hygiene_warnings": 3941,
     "host_names_warnings": 3430,
     "hand_written_record_warnings": 19
   },
@@ -32924,6 +32924,32 @@
       "read_error": null
     },
     {
+      "book": "books/output-tariff-article.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 4,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "output-command-admission"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/over-window.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -35161,7 +35187,7 @@
       "book": "books/owner-operation-report.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 2,
+      "theorems": 3,
       "functions": 2,
       "guards": {
         "verified": 2,
@@ -91570,7 +91596,7 @@
     {
       "theorem": "fn-ncr-cli-plan-without-the-flag-by-definition",
       "book": "books/consumer-reason.lisp",
-      "line": 184,
+      "line": 187,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-ncr-cli-plan and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-ncr-cli-plan and the conclusion is that branch's value"
@@ -92483,7 +92509,7 @@
     {
       "theorem": "fn-oor-fields-budget",
       "book": "books/owner-operation-report.lisp",
-      "line": 50,
+      "line": 56,
       "reasons": [
         "instance-corollary: the statement is fn-od-fields-within-budget instantiated, discharging nothing"
       ]
@@ -100368,7 +100394,7 @@
       {
         "theorem": "fn-auth-step-capability-block-unfolds-to-the-peer-aware-lines",
         "book": "books/nntp-auth.lisp",
-        "line": 3306,
+        "line": 3326,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -115852,6 +115878,13 @@
         "line": 4,
         "include": "acceptance-alloc",
         "included": "books/acceptance-alloc.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/output-tariff-article.lisp",
+        "line": 29,
+        "include": "output-command-admission",
+        "included": "books/output-command-admission.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
