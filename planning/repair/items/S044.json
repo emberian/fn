@@ -12,7 +12,8 @@
  "notes": [
   "sub-lane sweep-ops-auth",
   "10-02 22:33 sub-lane lane/sweep-ops-auth; sent to runner for merge-all",
-  "10-02 22:33 lane/sweep-ops-auth a9e9a9c46: per-connection failure budget (3, RFC 4643 s6) in books/nntp-auth.lisp, keystones PRF-1249/NNT-1002, teeth tests/acl2/nntp-auth-failure-budget-tests.lisp REPL-green on hbox, native test added to tests/test_native_auth.py. NOT yet: certify (farm run-20261003T021813Z-8184 on hbox, 707 books, unwaited), fast checks (remote_check unfinished), native s044 (unfinished). KDF verifier half open."
+  "10-02 22:33 lane/sweep-ops-auth a9e9a9c46: per-connection failure budget (3, RFC 4643 s6) in books/nntp-auth.lisp, keystones PRF-1249/NNT-1002, teeth tests/acl2/nntp-auth-failure-budget-tests.lisp REPL-green on hbox, native test added to tests/test_native_auth.py. NOT yet: certify (farm run-20261003T021813Z-8184 on hbox, 707 books, unwaited), fast checks (remote_check unfinished), native s044 (unfinished). KDF verifier half open.",
+  "10-04 02:28 ledger-close 2026-10-04: left in-progress: per-connection failure budget is in the tree (a9e9a9c46: books/nntp-auth.lisp fn-auth-failed, specs/nntp.md NNT-1002, tests/acl2/nntp-auth-failure-budget-tests.lisp, tests/test_native_auth.py) but the item's second half (iterated-KDF verifier format) is open per its own note and the certify/native s044 runs were never recorded; smallest fix: split the KDF half to its own item and land this one after tests.test_native_auth + a laptop REPL load of the teeth book"
  ],
  "owner": "sweep-ops",
  "reviewer": "A failed PASS (books/nntp-auth.lisp:1376-1383) resets the session with no failure count, close effect or delay, and pipelined pairs are folded within one served read. fn-authsec-checkp (books/auth-secret.lisp:285-292) compares one fn-digest-tagged of salt||secret. The book admits this at auth-secret.lisp:46-48: 'one fast tagged ... computation per guess, with no tunable work factor', and at :29-37, PBKDF2 is kept off the served mutex. The weakness is real and reachable on any listener that offers USER/PASS. It is documented, but no throttle exists.",
@@ -22,5 +23,5 @@
  "source": "sweep-2026-10-03",
  "state": "in-progress",
  "title": "Unthrottled online password guessing: AUTHINFO USER/PASS can be pipelined without limit and each guess costs one fast salted hash",
- "updated": "2026-10-03T02:33:45Z"
+ "updated": "2026-10-04T06:28:59Z"
 }

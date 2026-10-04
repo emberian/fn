@@ -12,7 +12,8 @@
  "locus": "connections",
  "notes": [
   "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification",
-  "10-03 06:36 2026-10-03 source consumes shared render windows linearly in geometrically reserved private input, sends retained HTTP body in ACL2-decided4KiB windows with exact partial offsets under absolute15s request deadline. Full NNTP reply/HTML materialization is still open preallocation funding/incremental renderer debt; raw exactbytes passed, matching native image pending."
+  "10-03 06:36 2026-10-03 source consumes shared render windows linearly in geometrically reserved private input, sends retained HTTP body in ACL2-decided4KiB windows with exact partial offsets under absolute15s request deadline. Full NNTP reply/HTML materialization is still open preallocation funding/incremental renderer debt; raw exactbytes passed, matching native image pending.",
+  "10-04 02:31 ledger-close 2026-10-04: left in-progress: windows (4KiB, absolute 15s deadline, linear geometric buffer) are in, but the full NNTP reply/HTML is still materialized whole (preallocation funding / incremental renderer debt, per the item notes); smallest fix is the incremental renderer so the reply is never held whole, plus the matching native image run"
  ],
  "owner": "codex-sol-web",
  "reviewer": "web-host.lisp:120 concatenates the whole accumulated reply once per render quantum, which is O(N*Q) copying, and the full reply is held in memory before fnn-web-fill. The :defer loop (112-113) and the yield sleeps (124-125) have no deadline; the deadline built at 209 goes only to fnn-web-read-request. The accept loop (web-host.lisp:318-323) serves one connection at a time in the single 'fn web face' thread, so one slow or repeatedly deferred request blocks every other browser.",
@@ -23,5 +24,5 @@
  "source": "sweep-2026-10-03",
  "state": "in-progress",
  "title": "Web reply is buffered whole with quadratic concatenation, and the feed has no deadline despite the per-request time claim",
- "updated": "2026-10-03T10:36:03Z"
+ "updated": "2026-10-04T06:31:39Z"
 }

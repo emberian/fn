@@ -10,7 +10,8 @@
  "line": "72",
  "locus": "store-books",
  "notes": [
-  "10-02 23:06 LF sweep removed (test added); checkpoint entries kept: specs/checkpoint.md cites them, comment records it"
+  "10-02 23:06 LF sweep removed (test added); checkpoint entries kept: specs/checkpoint.md cites them, comment records it",
+  "10-04 02:28 ledger-close 2026-10-04: left in-progress: LF sweep (fn-store-sn-sweep-staging/-join-octet-names) is gone from origin/next (68ff759ef, test_lf_joined_staging_sweep_removed PASS), but the generation-checkpoint wrappers (host/checkpoint-host.lisp fn-store-checkpoint-decode/-restore/-differential) and fn-store-txn-observation-octets (host/store-node-host.lisp) are still in the tree; smallest fix: retire them with their specs/checkpoint.md claims and interface/coverage rows (same shape as open S150)"
  ],
  "owner": "sweep-store",
  "reviewer": "git grep finds no caller in host/native, tools or tests (including quoted 'fnn-core symbol forms) for fn-store-checkpoint-decode, -restore, -differential, -protected, -namespace-plan or -next-generation (host/checkpoint-host.lisp), fn-store-sn-sweep-staging (store-node-host.lisp:1695), or fn-store-txn-observation-octets/-selected (store-node-host.lisp:1319, store-host.lisp:114). They are still ld'ed by host/native/build.lisp:346. Their comments name callers that no longer exist (Python, run_store.py, frame_bridge.py). fn-store-checkpoint-decode (checkpoint-host.lisp:252-263) does leave 'fn-store-checkpoint stale after a failed decode, and -restore (269) reads it, but this only matters if a caller is revived. I could not confirm the claim that the registries credit them: these names do not appear in planning/*.json or tools; tools/coverage.py computes coverage dynamically. So this is dead code with misleading comments and no reachable defect.",
@@ -20,5 +21,5 @@
  "source": "sweep-2026-10-03",
  "state": "in-progress",
  "title": "The generation-checkpoint bridge and the LF-joined staging sweep are dead entries whose stated callers no longer exist",
- "updated": "2026-10-03T03:06:27Z"
+ "updated": "2026-10-04T06:28:59Z"
 }

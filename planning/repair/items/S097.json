@@ -16,7 +16,8 @@
  "locus": "peer-services",
  "notes": [
   "10-03 04:33 claimed: scope=['host/native/bp-service.lisp', 'specs/bp-node-machine.md', 'tests/native_bp_send_boundary_raw-mock.lisp', 'tests/test_native_bp_send_boundary.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class",
-  "First exact-class witness archived planning/evidence/repair/S097-df5dcf6e6c3742818b3dac8a07824411.json sha256 e5995a66db0207837067beab12d98213bfa4a761390fde9c2ab17640d5743973"
+  "First exact-class witness archived planning/evidence/repair/S097-df5dcf6e6c3742818b3dac8a07824411.json sha256 e5995a66db0207837067beab12d98213bfa4a761390fde9c2ab17640d5743973",
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit 5113378d0, host/native/bp-service.lisp); local test python3.12 -m unittest tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_later_fragment_named_refusal_retains_uncertain_prefix PASS at HEAD and whole tests.test_native_bp_send_boundary PASS; native pending: acceptance wrapper:closed-classification image scenario (not run)"
  ],
  "owner": "codex-sol-tools",
  "reviewer": "bp-service.lisp:610-615: fnn-store-fault is re-signalled, but fnn-store-indeterminate (a subtype of fnn-store-error, io.lisp:92) is caught by the transport branch and becomes :uncertain/:failed. The only realistic indeterminate source inside this session is finding 2's stray inbound staging (tcpcl.lisp:273), so (a) needs a misbehaving peer plus EIO, and it fences a file nothing reads. (b) is real: socket is set to nil at line 582 before the fragment loop. The inner handler (606-607) catches only os and socket errors, so a store-error in fragment session 2 or later reaches the outer handler. That handler sets :failed and skips fn-bpfs-fragment-outcome, the function that turns a later fragment's :failed into :uncertain (books/bp-fragment-send.lisp:1308-1310). The trigger for (b) is narrow, because params are unchanged across fragment sessions.",
@@ -32,10 +33,10 @@
  "severity": "low",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_later_fragment_named_refusal_retains_uncertain_prefix",
  "title": "bp-service send path reports an indeterminate publication as transport :uncertain/:failed, and reports :failed after fragments were sent",
- "updated": "2026-10-03T08:40:07Z",
+ "updated": "2026-10-04T06:28:44Z",
  "verify": {
   "base": "c3585ba3a36cfd394e3b7f98f423af70b625bfdf",
   "base_observation": {

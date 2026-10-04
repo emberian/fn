@@ -9,14 +9,15 @@
  "line": "1389",
  "locus": "connections",
  "notes": [
-  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
+  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification",
+  "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix 1cb0ec0e0; current site host/native/mux.lisp fnn-mux-reserve/fnn-mux-slot-free-p: a reserved slot per loop, accepted sockets bounded by the loops, fnn-owner-accept-one reserves before accept(2)); local test none; native pending: tests.test_native_host_lifecycle.PendingAcceptBoundTests.test_accepted_sockets_stay_bounded_while_the_loops_are_held"
  ],
  "owner": "host-lifecycle",
  "severity": "medium",
  "sha": "4e409a9d6",
  "slice": "mux",
  "source": "r71",
- "state": "in-progress",
+ "state": "landed",
  "title": "fnn-mux-adopt (claim-gap)",
- "updated": "2026-10-03T02:32:57Z"
+ "updated": "2026-10-04T06:31:39Z"
 }

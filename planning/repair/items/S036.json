@@ -12,7 +12,8 @@
  "locus": "peer-services",
  "notes": [
   "10-02 22:30 fixed 32cb8f8a9 on lane/sweep-peer; in the next READY batch after S005",
-  "10-02 22:33 sent in 5536e2f08; raw harness passes"
+  "10-02 22:33 sent in 5536e2f08; raw harness passes",
+  "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix 32cb8f8a9; current site host/native/feed-service.lisp fnn-feed-loss-backoff asks fn-owner-feed-backoff-ms only, absent peer drops the link with backoff 0); local test tests/native_feed_service_raw-mock.lisp PASS; native pending: none selected"
  ],
  "owner": "sweep-peer",
  "reviewer": "fnn-feed-worker-loop (543-556) refreshes links once, then dials and pumps each link serially, and earlier links can block for up to 10 s sends or dial timeouts. books/owner-feed.lisp:567-573 and 639-644 (fn-own-feed-reconfigure after :remove-peer) forget an idle removed peer's entry. fn-owner-feed-record then returns nil, and fn-owner-feed-port (owner-host.lisp:4652-4659) answers 0. fnn-feed-dial-plan faults on port 0 (feed-service.lisp:145-146) before it checks queued. That happens on the next dial of that link (fnn-feed-dial 410-412, unconditionally for a link with no socket whose next-dial has passed) and on every error or drop path (468-471, 476-480, 507-511, 525-527). fnn-store-fault then reaches the feed worker's guard and fault-stops the owner. The race window is narrow (one iteration), but it is reachable through live reconfiguration.",
@@ -21,7 +22,7 @@
  "sha": "32cb8f8a9",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "in-progress",
+ "state": "landed",
  "title": "Feed error paths re-read the live peer record for backoff; a peer removed mid-iteration faults the whole node (port 0)",
- "updated": "2026-10-03T02:33:21Z"
+ "updated": "2026-10-04T06:31:39Z"
 }
