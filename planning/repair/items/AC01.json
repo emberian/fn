@@ -7,12 +7,13 @@
  "id": "AC01",
  "notes": [
   "10-03 23:43 10-04 fixed on lane/actors (the arm deleted; the section envelope classifies); repair.py verify not run (wind-down)",
-  "10-04 02:32 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (ba15dff48: the parent-class error arm of fnn-owner-refresh-config-cache is gone, the section envelope classifies; host/native/admin.lisp); local python3.12 -m unittest tests.test_native_admin.AdminSectionStructureTests.test_the_cache_refresh_leaves_its_failure_to_the_section PASS; native pending: tests.test_native_admin AdminSectionBoundaryTests (image)"
+  "10-04 02:32 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (ba15dff48: the parent-class error arm of fnn-owner-refresh-config-cache is gone, the section envelope classifies; host/native/admin.lisp); local python3.12 -m unittest tests.test_native_admin.AdminSectionStructureTests.test_the_cache_refresh_leaves_its_failure_to_the_section PASS; native pending: tests.test_native_admin AdminSectionBoundaryTests (image)",
+  "10-04 10:41 native green: tests.test_native_admin 17/17 (AdminSectionBoundaryTests and AdminSectionStructureTests included) OK, hbox run2-d5b0b9100 (images /tank/fn/images/d5b0b9100, dev d5b0b9100)"
  ],
  "owner": "actors",
  "severity": "medium",
  "source": "ACTORS",
  "state": "landed",
  "title": "fnn-owner-refresh-config-cache recast every failure after a durable configuration publication, a fault included, as an uncertain outcome (exit 3, store fenced) by a parent-class error arm; the record is durable and the next open replays it, so ACL2's closed classification at the section boundary (a fault, exit 4) is the honest word",
- "updated": "2026-10-04T06:32:55Z"
+ "updated": "2026-10-04T14:41:56Z"
 }

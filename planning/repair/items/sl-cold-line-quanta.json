@@ -8,13 +8,14 @@
  "notes": [
   "GPT-6.1-Sol: deadline containment imported; bounded continuation implementation remains open. No native or whole-command termination claim.",
   "10-04 00:18 cold-line: HDR/XHDR/XPAT ranges (incl. the compatibility HDR Xref) answer with the OVER cursor carrying a header source; a payload-reading source's quantum is at most fn-clq-payload-quantum = 4 numbers (books/over-window.lisp fn-ovw-step-payloads-fit), the line takes ceiling(N/4) quanta (fn-ovw-hdr-quanta-is-ceiling), and books/cold-line-quanta.lisp proves such quanta finish under the no-I/O rerun loop (fn-clq-resume-finishes, teeth fn-clq-nine-reads-never-finish). Dispatcher keystone unchanged. Owed: CL-OWED-HDR-CURSOR-FRAME, CL-OWED-NEWNEWS-DEMAND; native red cl-red-45e on 45e05c7fd, green-after pending an image of this branch.",
-  "10-04 02:32 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (cold-line d4e0b2201 merged: 653c7f24b..ef470d5e3; books/cold-line-quanta.lisp fn-clq-resume-finishes + teeth fn-clq-nine-reads-never-finish, books/over-window.lisp fn-ovw-step-payloads-fit and fn-ovw-hdr-quanta-is-ceiling; HDR/XHDR/XPAT ranges answer through the OVER cursor in <=4-read quanta); local test none (ACL2 certified on persvati per evidence 17981458e); native pending: tests.test_native_cold_line_deadline on an image of this branch (cl-red-45e red recorded, green-after owed); owed items tracked separately: CL-OWED-HDR-CURSOR-FRAME, CL-OWED-NEWNEWS-DEMAND"
+  "10-04 02:32 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (cold-line d4e0b2201 merged: 653c7f24b..ef470d5e3; books/cold-line-quanta.lisp fn-clq-resume-finishes + teeth fn-clq-nine-reads-never-finish, books/over-window.lisp fn-ovw-step-payloads-fit and fn-ovw-hdr-quanta-is-ceiling; HDR/XHDR/XPAT ranges answer through the OVER cursor in <=4-read quanta); local test none (ACL2 certified on persvati per evidence 17981458e); native pending: tests.test_native_cold_line_deadline on an image of this branch (cl-red-45e red recorded, green-after owed); owed items tracked separately: CL-OWED-HDR-CURSOR-FRAME, CL-OWED-NEWNEWS-DEMAND",
+  "10-04 10:41 REOPENED (integrator2 ledger rule): native red tests.test_native_cold_line_deadline and _quanta (EOF: the node closed the connection) on hbox run2-d5b0b9100 (images /tank/fn/images/d5b0b9100, dev d5b0b9100)"
  ],
  "owner": "cold-line",
  "severity": "high",
  "slice": "cold-line",
  "source": "served-live",
- "state": "landed",
+ "state": "open",
  "title": "Real fix for sl-cold-line-deadline: HDR/XHDR/XPAT of a non-overview header over a range (and any other served line whose payload reads are unbounded) must run in cursor quanta whose payload reads fit the realizer cache with margin (as OVER's fn-splan-cursor-step does), or answer from carried facts; until then the per-line deadline answers them 403 after read-dependency-ms. Also state the contract in ACL2: every served step's distinct payload reads are bounded below fn-arx-read-cache-entries",
- "updated": "2026-10-04T06:32:56Z"
+ "updated": "2026-10-04T14:41:55Z"
 }

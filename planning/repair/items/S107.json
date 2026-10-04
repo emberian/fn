@@ -15,7 +15,8 @@
  "locus": "peer-services",
  "notes": [
   "10-03 04:00 claimed: scope=['host/native/feed-service.lisp', 'host/native/pull-service.lisp', 'books/peer-host.lisp', 'books/feed-link-backoff.lisp', 'specs/peering.md', 'tests/acl2/peer-host-tests.lisp', 'tests/acl2/feed-link-backoff-tests.lisp', 'tests/native_feed_credential_raw-mock.lisp', 'tests/test_native_feed_credential.py', 'tests/test_native_peer_pull.py', 'tests/scenarios/catalog.json', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_fifo_refuses_without_blocking",
-  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit 8fa6b902b credential preflight, host/native/feed-service.lisp); local test python3.12 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_fifo_refuses_without_blocking PASS at HEAD and whole tests.test_native_feed_credential PASS (raw SBCL harness); native pending: scenario-catalog credential image scenario (not run)"
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit 8fa6b902b credential preflight, host/native/feed-service.lisp); local test python3.12 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_fifo_refuses_without_blocking PASS at HEAD and whole tests.test_native_feed_credential PASS (raw SBCL harness); native pending: scenario-catalog credential image scenario (not run)",
+  "10-04 10:41 native green: tests.test_native_feed_credential 6/6 OK, hbox run2-d5b0b9100 (images /tank/fn/images/d5b0b9100, dev d5b0b9100)"
  ],
  "owner": "codex-sol-tools",
  "reviewer": "feed-service.lisp:166 opens with O_RDONLY|O_NOFOLLOW and no O_NONBLOCK. fnn-open (io.lisp:454-455) is a plain sb-posix:open, so a FIFO blocks there before fnn-regular-p (169). In fnn-feed-dial the socket is connected (418) but not yet published, so fnn-feed-service-wake (600-613) cannot shut it down, and fnn-feed-service-close's join-thread (621) waits forever. pull-service.lisp:311 reuses the same function. It is only reachable when the operator-configured private profile path is a FIFO, which needs the operator or someone with write access to that directory, so the severity is low.",
@@ -40,7 +41,7 @@
  "state": "landed",
  "test": "python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_fifo_refuses_without_blocking",
  "title": "Credential profile opened without O_NONBLOCK before the regular-file check: a FIFO hangs the feed worker and the owner close join",
- "updated": "2026-10-04T06:28:44Z",
+ "updated": "2026-10-04T14:41:57Z",
  "verify": {
   "base": "c73372af6f5fd383090399c7c89e8c2951a05add",
   "base_observation": {

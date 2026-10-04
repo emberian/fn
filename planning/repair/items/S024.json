@@ -12,7 +12,8 @@
  "notes": [
   "10-02 22:30 fixed 9b7508ccb on lane/sweep-peer; in the next READY batch after S005",
   "10-02 22:33 sent in 5536e2f08; native test added, not yet run",
-  "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix 9b7508ccb; current site host/native/tcpcl.lisp refuse-inbound (:refused :outbound-session) passed by bp-service.lisp:599/646, bp-node.lisp:411, bp-session.lisp:252; books/tcpcl-delivery.lisp reason table); local test none (tests/acl2/tcpcl-delivery-tests not loadable cached-only on laptop: deps uncertified in cache); native pending: tests.test_bp_service_native.NativeBpServiceTests.test_inbound_offer_on_the_outbound_session_is_refused_not_spooled"
+  "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix 9b7508ccb; current site host/native/tcpcl.lisp refuse-inbound (:refused :outbound-session) passed by bp-service.lisp:599/646, bp-node.lisp:411, bp-session.lisp:252; books/tcpcl-delivery.lisp reason table); local test none (tests/acl2/tcpcl-delivery-tests not loadable cached-only on laptop: deps uncertified in cache); native pending: tests.test_bp_service_native.NativeBpServiceTests.test_inbound_offer_on_the_outbound_session_is_refused_not_spooled",
+  "10-04 10:41 REOPENED (integrator2 ledger rule): native red tests.test_bp_service_native.NativeBpServiceTests.test_inbound_offer_on_the_outbound_session_is_refused_not_spooled FAIL on hbox run2-d5b0b9100 (images /tank/fn/images/d5b0b9100, dev d5b0b9100)"
  ],
  "owner": "sweep-peer",
  "reviewer": "fnn-tcl-deliver-transfer (tcpcl.lisp:154-162) falls back to fnn-tcl-stage when no deliver callback is bound. fnn-tcl-stage writes <tag>-<xfer>.bundle with fnn-replace (rename-over) and returns :accepted, which releases the ACK. The ACL2 machine does not restrict inbound transfers by role: fn-tcl-complete (books/tcpcl-session.lisp:635-643) emits the XFER_ACK and :bundle-received for either role. In bp-node serve, *fnn-tcl-deliver* is bound only in the per-session let* (bp-node.lisp:1003-1046). The between-session passes open active sessions with the FNBS root as spool and no deliver binding: the forward session (bp-node.lisp:384-404, tag bp-node-forward) and the bp-service send and fragment sessions (bp-service.lisp:554-556 and 599-602). Only bp.lisp:690 and 769 and bp-app:355 bind it. An inbound transfer that arrives before the active close is ACKed as plain custody, never admitted or recorded, and overwritten by name on the next session's xfer 1. The peer must pass the SESS_INIT node-ID check, which is a claimed ID, not crypto.",
@@ -20,7 +21,7 @@
  "severity": "medium",
  "sha": "9b7508ccb",
  "source": "sweep-2026-10-03",
- "state": "landed",
+ "state": "open",
  "title": "Inbound transfers on outbound sessions bypass FNBS custody: plain spool files in the journal root, ACKed, overwritten by name",
- "updated": "2026-10-04T06:31:38Z"
+ "updated": "2026-10-04T14:41:55Z"
 }
