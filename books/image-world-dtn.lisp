@@ -130,6 +130,7 @@
 (include-book "served-plan-line-buffer")
 (include-book "resource-syncer")
 (include-book "response-identity")
+(include-book "store-log-durable")
 (include-book "allocation-turn-slots")
 (include-book "store-intern")
 (include-book "open-frontier-wire")

@@ -26,6 +26,10 @@
 (include-book "../books/tcpcl-delivery-invariants")
 (include-book "../books/resource-syncer")
 (include-book "../books/response-identity")
+; Lane m1-durable: the log kernel's acknowledgement (fn-lgc-finish-one) and
+; its keystone, that every acknowledged record is recovered at every cut of
+; the host's run of the active segment.
+(include-book "../books/store-log-durable")
 
 ; A private owner syncer ledger is installed only after the parent's real
 ; startup :hold.  This is thread resident/worker custody, not full resource
@@ -511,7 +515,9 @@
 
 (definterface fn-lgc-finish-one
   :class :common-lisp-compliant
-  :kinds ((c true-listp)))
+  :kinds ((c true-listp))
+  :keystones (fn-lgu-acknowledged-records-are-recovered-at-every-cut
+              fn-lgu-host-kernel-acknowledges-only-recoverable-records))
 
 (definterface fn-lgc-frontier
   :class :common-lisp-compliant

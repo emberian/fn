@@ -473,5 +473,6 @@
 (include-book "tcpcl-delivery-invariants")
 (include-book "resource-syncer")
 (include-book "response-identity")
+(include-book "store-log-durable")
 (include-book "def-cost")
 (include-book "string-line-cursor-cost")

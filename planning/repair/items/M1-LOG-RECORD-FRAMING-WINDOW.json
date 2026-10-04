@@ -1,0 +1,12 @@
+{
+ "category": "claim-gap",
+ "file": "host/native/io.lisp:fnn-log-publish",
+ "id": "M1-LOG-RECORD-FRAMING-WINDOW",
+ "notes": [],
+ "owner": "m1-durable",
+ "severity": "medium",
+ "source": "lane-m1-durable",
+ "state": "open",
+ "title": "The log takes records its scan cannot read back: fnn-log-publish admits a record of at most R octets (fn-store-publication-admissibility: length <= the profile's max_record_octets R), fn-olr-take checks no framing bound, and the scan opens a one-record entry with payload bound R (fn-lg-open-bound), whose payload is the 32-octet chain then the record; a record of R-31..R octets is appended, fenced and acknowledged, and the next open stops at its entry and zeroes it and every later record (P-LOG-RECOVER). PRF-936's keystone carries fn-lgu-host-records-p (fn-lg-recordp at R) for exactly this and no host theorem discharges it; the teeth witness (tests/acl2/store-log-durable-tests.lisp, 4070 octets at R=4096) shows the loss. Unreachable in the shipped presets (R far above A plus the header limit), reachable only for a profile whose R is within 32 octets of its largest record. Fix: ACL2 decides the take's framing bound (fn-lg-recordp of the record the log takes at fnn-store-log-max, a named refusal before the store is fenced; fnn-log-write-history's import too), with a theorem that discharges fn-lgu-host-records-p on the host path",
+ "updated": "2026-10-04T16:15:44Z"
+}
