@@ -1844,6 +1844,10 @@
               profile
               (nfix (fn-bs-profile-max-history-octets profile))
               (nfix (fn-bs-profile-max-transactions profile)))
+             (fn-heap-reclaim-excess-octets
+              profile
+              (nfix (fn-bs-profile-max-history-octets profile))
+              (nfix (fn-bs-profile-max-transactions profile)))
              (fn-heap-store-inflight-octets profile)
              (fn-heap-articles-octets profile))
           nursery))

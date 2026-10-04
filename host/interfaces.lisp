@@ -3647,6 +3647,9 @@
 (definterface fn-heap-operation-observes-p
   :class :common-lisp-compliant)
 
+(definterface fn-heap-reclaim-chunk-rows
+  :class :common-lisp-compliant)
+
 (definterface fn-heap-reserve-init-connections
   :class :common-lisp-compliant)
 

@@ -30,9 +30,14 @@
 (defmacro mv (&rest xs) `(values ,@xs))
 (defmacro mv-let (vars value &body body) `(multiple-value-bind ,vars ,value ,@body))
 (defmacro value (x) `(values nil ,x state))
-(load-deployed-forms "books/heap-figure.lisp"
- '((defconst *fn-heap-octets-per-list-octet*) (defconst *fn-heap-compaction-history-copies*)
-   (defconst *fn-heap-serve-history-copies*)))
+(load-deployed-forms "books/reclaim-tombstone.lisp" '((defconst *fn-rcl-tombstone-fixed*)))
+(load-deployed-forms "books/heap-store-figure.lisp"
+ '((defconst *fn-heap-list-octets-per-octet*) (defconst *fn-heap-handle-octets*)
+   (defconst *fn-heap-record-fixed-octets*) (defconst *fn-heap-record-msgid-index-octets*)
+   (defconst *fn-heap-record-octets*) (defconst *fn-heap-charge-heap-octets*)
+   (defconst *fn-heap-open-record-octets*) (defconst *fn-heap-reclaim-chunk-rows*)
+   (defconst *fn-heap-reclaim-record-octets*) (defconst *fn-heap-reclaim-tombstone-octets*)
+   (defconst *fn-heap-reclaim-agent-octets-per-charge*) (defun fn-heap-reclaim-demand-octets)))
 (load-deployed-forms "books/memory-credits.lisp"
  '((defun fn-mcr-op-owned) (defun fn-mcr-op-reserved) (defun fn-mcr-ops-credit-onto)
    (defun fn-mcr-ops-credit) (defun fn-mcr-make) (defun fn-mcr-budget)
@@ -40,9 +45,10 @@
    (defun fn-mcr-runtime) (defun fn-mcr-drawn) (defun fn-mcr-ops)
    (defun fn-mcr-total) (defun fn-mcr-with) (defun fn-mcr-drop-loop)
    (defun fn-mcr-drop) (defun fn-mcr-put) (defun fn-mcr-credit-of)
-   (defun fn-mcr-set) (defun fn-mcr-resize)))
+   (defun fn-mcr-set) (defun fn-mcr-resize) (defun fn-mcr-borrow)))
+(load-deployed-forms "books/owner-credits.lisp" '((defconst *fn-mca-reclaim*)))
 (load-deployed-forms "books/owner-reclaim-pass.lisp"
- '((defconst *fn-orcp-credit-key*) (defun fn-orcp-estimate) (defun fn-orcp-reserve)))
+ '((defconst *fn-orcp-credit-key*) (defun fn-orcp-reserve)))
 (load-deployed-forms "books/history-columns-relation.lisp"
  '((defun fn-hist-sync-aux) (defun fn-hist-sync)))
 (load-deployed-forms "books/history-columns-store.lisp"
@@ -50,7 +56,8 @@
 (load-deployed-forms "books/owner-reclaim.lisp" '((defun fn-orc-capture-word)))
 (load-deployed-forms "books/owner-state-accessors.lisp" '((defun fn-owner-sco-global)))
 (load-deployed-forms "host/owner-host.lisp"
- '((defun fn-owner-record-octets) (defun fn-owner-orc-pass) (defun fn-owner-orcp-capture)))
+ '((defun fn-owner-record-octets) (defun fn-owner-sco-count) (defun fn-owner-orc-pass)
+   (defun fn-owner-orcp-capture)))
 (load-deployed-forms "host/native/io.lisp"
  '((defun fnn-trailing-kind) (defun fnn-live-stobj) (defun fnn-arena-then-state)
    (defun fnn-core-state)))
@@ -77,6 +84,7 @@
 (defun f-get-global (key state) (gethash key state))
 (defun f-put-global (key val state) (setf (gethash key state) val) state)
 (defun fn-owner-store (state) (gethash :records state))
+(defun fn-own-store (owner) (declare (ignore owner)) (gethash :records *the-live-state*))
 (defun fn-sn-files (store) store)
 (defun fn-sf-records-count (files) (length files))
 (defun fn-sf-records-nth (k files) (nth k files))
@@ -95,26 +103,31 @@
  (incf *capture-count*) (values nil :actual-capture state))
 (defun census-check (ok label)
  (unless ok (format t "RECLAIM_CENSUS_ASSERTION:~a~%" label) (error "~a" label)))
-(dolist (case '((10000 :stale) (20000 :stale) (20000 :missing) (20000 :ahead)))
- (let* ((budget (first case)) (cache-mode (second case)) (*the-live-state* (make-hash-table)) (*hist* (vector '(100)))
+;; The pass borrows its demand over the 2 committed records charging 300
+;; octets (fn-heap-reclaim-demand-octets 2 300 = 54,544) from the completion
+;; reserve (lane reclaim-funding): 10,000 of reserve refuses, 60,000 admits.
+(dolist (case '((10000 :stale) (60000 :stale) (60000 :missing) (60000 :ahead)))
+ (let* ((reserve (first case)) (cache-mode (second case)) (*the-live-state* (make-hash-table)) (*hist* (vector '(100)))
         (*capture-count* 0) (*rows-read* nil)
-        (credits (fn-mcr-make budget 0 0 0 0 0 '((:other . (0 . 10))))))
+        (credits (fn-mcr-make (+ reserve 20) 0 0 reserve 0 0 '((:other . (0 . 10))))))
   (setf (gethash :records *the-live-state*) '(100 200)
         (gethash :credits *the-live-state*) credits)
   (unless (eq cache-mode :missing)
    (setf (gethash 'fn-owner-record-octets *the-live-state*)
          (if (eq cache-mode :ahead) '(9 . 900) '(1 . 100))))
   (let ((answer (fnn-owner-core 'fn-owner-orcp-capture :recorded :clock nil 99999 :revision)))
-   (if (= budget 10000)
+   (if (= reserve 10000)
     (progn
-     (census-check (equal answer (list :deferred :credit (fn-orcp-estimate 300)))
+     (census-check (equal answer (list :deferred :credit (fn-heap-reclaim-demand-octets 2 300)))
                    "stale census must not admit unfunded reclaim")
      (census-check (and (zerop *capture-count*) (equal credits (fn-owner-credits *the-live-state*)))
                    "refusal must not capture or mutate credits"))
     (progn
      (census-check (equal answer '(:captured :actual-capture 10)) "funded capture remains admitted")
      (census-check (= (fn-mcr-credit-of :reclaim (fn-mcr-ops (fn-owner-credits *the-live-state*)))
-                     (fn-orcp-estimate 300)) "reservation pays current committed history")
+                     (fn-heap-reclaim-demand-octets 2 300)) "reservation pays current committed history")
+     (census-check (= (fn-mcr-total (fn-owner-credits *the-live-state*)) (fn-mcr-total credits))
+                   "the borrow leaves the articles' room")
      (census-check (= *capture-count* 1) "capture once")))
    (census-check (equal (gethash 'fn-owner-record-octets *the-live-state*) '(2 . 300))
                  "cache count and sum advance together")

@@ -5433,12 +5433,13 @@ existing port only after fn-fc has made this connection ready."
 ; (fn-orc-capture-word over the pass and the publication in flight as they
 ; are now): a pass or a publication that holds it is refused by name before any
 ; credit is reserved or anything written, (:deferred WORD NIL).  Then the pass's
-; credit reserved under :reclaim (fn-orcp-reserve, at fn-orcp-estimate of the
-; committed record octets the owner carries, fn-owner-record-octets); refused
-; by name, nothing is captured or in flight.  Admitted, fn-owner-orc-capture's
-; values (the pass and the publication in flight at COUNT) and the owner's
-; connection bound.  Answers (:deferred WORD NIL), (:deferred :credit ESTIMATE)
-; or (:captured CAPTURE MAX-CONNS).
+; credit reserved under :reclaim (fn-orcp-reserve: the second generation's
+; demand over the committed records N and the history octets C the owner
+; carries, fn-owner-record-octets, borrowed from the owner's work reserve; lane
+; reclaim-funding); refused by name, nothing is captured or in flight.
+; Admitted, fn-owner-orc-capture's values (the pass and the publication in
+; flight at COUNT) and the owner's connection bound.  Answers (:deferred WORD
+; NIL), (:deferred :credit DEMAND) or (:captured CAPTURE MAX-CONNS).
 (defun fn-owner-orcp-capture (mode clock override free revision fn-hist state)
   (declare (xargs :stobjs (fn-hist state) :mode :program))
   (let ((word (fn-orc-capture-word (fn-owner-orc-pass state)
@@ -5449,9 +5450,11 @@ existing port only after fn-fc has made this connection ready."
       ;; Synchronize the committed history and its carried byte count before
       ;; reserving. The raw (K . SUM) cache may lag the last committed batch.
       (mv-let (octets fn-hist state) (fn-owner-record-octets fn-hist state)
-        (let ((r (fn-orcp-reserve (fn-owner-credits state) octets)))
+        (let* ((n (fn-owner-sco-count state))
+               (r (fn-orcp-reserve (fn-owner-credits state) n octets)))
           (if (not (eq (car r) :ok))
-              (mv nil (list :deferred :credit (fn-orcp-estimate octets)) fn-hist state)
+              (mv nil (list :deferred :credit (fn-heap-reclaim-demand-octets n octets))
+                  fn-hist state)
             (let ((state (fn-owner-put-credits (cadr r) state)))
               (mv-let (erp captured state)
                 (fn-owner-orc-capture mode clock override free revision state)

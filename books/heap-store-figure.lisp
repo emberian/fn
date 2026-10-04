@@ -821,8 +821,120 @@
        (equal (fn-heap-open-records-bound profile nil)
               (nfix (fn-bs-profile-max-transactions profile)))))
 
+; -----------------------------------------------------------------------------
+; THE LIVE RECLAIM's SECOND GENERATION (lane reclaim-funding, 2026-10-04;
+; planning/design/reclaim-funding-2026-10-04.md; S152).  A live `store
+; reclaim' (host/native/owner.lisp fnn-owner-reclaim-pass) walks the pinned
+; history in chunks (books/reclaim-chunked-walk.lisp) and builds, beside the
+; served state, a whole second one: the rewritten rows decoded from the
+; history pages, the rebuilt Store from them (the full open over them:
+; books/owner-reclaim-pass.lisp fn-orcp-rebuild-is-the-full-open), a fresh
+; catalog and history columns.  Only the payload arena is shared.  So its
+; demand over a store of N records whose history budget charges C octets
+; (books/store-budget.lisp fn-sbud-record-octets: the payloads, the header
+; charges and 320 a membership) is, in this figure's own terms:
+;   the state less the arena: 48 N of handles, 2 x 4,160 N of records and 8
+;     heap octets a charged octet (the header term, 8 USED + 640 M <= 8 C);
+;   the open's per-record build, 2 x 1,024 N, which the rebuild makes and
+;     which covers the reclaim context the pass frees before it;
+;   one walk chunk of decoded rows beside them, at the same per-record
+;     terms: *fn-heap-reclaim-chunk-rows* (the host's walk quantum,
+;     fnn-owner-reclaim-walk, reads it from here);
+;   the reclaimed rows' tombstones (books/reclaim-tombstone.lisp: 145 octets
+;     and the Path agent), held as octet lists from the rewrite until the
+;     swap quantum seals them (books/owner-reclaim-seal.lisp fn-orcs-payloads,
+;     the checkpoint walk's sources): sixteen octets a list octet, twice for
+;     the collector -- 4,640 a record, and 32 a Path-agent octet, which is a
+;     header octet the history budget charges at least 8
+;     (fn-sbud-held-heap-charge), so at most 4 a charged octet.  (D27: a byte
+;     vector would cost one octet an octet; the term falls with that change.)
+; The pass's checkpoint capture and history image are the publication's
+; (the pass is the publication in flight), not this term's.
+(defconst *fn-heap-reclaim-chunk-rows* 1024)
+
+; The walk's quantum as the host reads it (host/native/owner.lisp
+; fnn-owner-reclaim-walk): the chunk this term holds is the chunk it walks.
+(defun fn-heap-reclaim-chunk-rows ()
+  (declare (xargs :guard t))
+  *fn-heap-reclaim-chunk-rows*)
+
+(defconst *fn-heap-reclaim-record-octets*
+  (+ *fn-heap-handle-octets* (* 2 *fn-heap-record-octets*) (* 2 *fn-heap-open-record-octets*)))
+
+(defconst *fn-heap-reclaim-tombstone-octets*
+  (* 2 *fn-heap-list-octets-per-octet* *fn-rcl-tombstone-fixed*))
+(defconst *fn-heap-reclaim-agent-octets-per-charge* 4)
+
+(defun fn-heap-reclaim-demand-octets (n c)
+  (declare (xargs :guard t))
+  (+ (* *fn-heap-reclaim-record-octets*
+        (+ (nfix n) (min (nfix n) *fn-heap-reclaim-chunk-rows*)))
+     (* *fn-heap-reclaim-tombstone-octets* (nfix n))
+     (* (+ *fn-heap-charge-heap-octets* *fn-heap-reclaim-agent-octets-per-charge*) (nfix c))))
+
+(defthm fn-heap-reclaim-demand-octets-natp
+  (natp (fn-heap-reclaim-demand-octets n c))
+  :rule-classes :type-prescription)
+
+; The demand grows with the store.
+(defthm fn-heap-reclaim-demand-octets-monotone
+  (implies (and (<= (nfix n1) (nfix n2)) (<= (nfix c1) (nfix c2)))
+           (<= (fn-heap-reclaim-demand-octets n1 c1) (fn-heap-reclaim-demand-octets n2 c2)))
+  :rule-classes nil)
+
+; The demand at the profile's bounds: T records charging H.
+(defun fn-heap-reclaim-octets (profile)
+  (declare (xargs :guard t))
+  (fn-heap-reclaim-demand-octets (fn-bs-profile-max-transactions profile)
+                                 (fn-bs-profile-max-history-octets profile)))
+
+; THE OWNER's WORK RESERVE.  The open's transient and a live pass never
+; coexist in a run (the open precedes the run's ledger; a recovery event
+; stops the service and the open runs in the next process), so one reserve
+; holds whichever is larger: the open's terms and the excess of the pass's
+; demand at the bounds over them.
+(defun fn-heap-reclaim-excess-octets (profile ou on)
+  (declare (xargs :guard t))
+  (nfix (- (fn-heap-reclaim-octets profile) (fn-heap-store-open-octets profile ou on))))
+
+(defthm fn-heap-reclaim-excess-octets-natp
+  (natp (fn-heap-reclaim-excess-octets profile ou on))
+  :rule-classes :type-prescription)
+
+(defthm fn-heap-open-and-excess-hold-the-reclaim
+  (<= (fn-heap-reclaim-octets profile)
+      (+ (fn-heap-store-open-octets profile ou on) (fn-heap-reclaim-excess-octets profile ou on)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-heap-store-open-octets fn-heap-reclaim-octets))))
+
+(defthm fn-heap-open-and-excess-is-the-larger
+  (equal (+ (fn-heap-store-open-octets profile ou on) (fn-heap-reclaim-excess-octets profile ou on))
+         (max (fn-heap-store-open-octets profile ou on) (fn-heap-reclaim-octets profile)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-heap-store-open-octets fn-heap-reclaim-octets))))
+
+(defthm fn-heap-reclaim-octets-grows-with-the-profile
+  (implies (and (<= (nfix (fn-bs-profile-max-transactions p1))
+                    (nfix (fn-bs-profile-max-transactions p2)))
+                (<= (nfix (fn-bs-profile-max-history-octets p1))
+                    (nfix (fn-bs-profile-max-history-octets p2))))
+           (<= (fn-heap-reclaim-octets p1) (fn-heap-reclaim-octets p2)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-heap-reclaim-demand-octets
+                                      fn-bs-profile-max-transactions
+                                      fn-bs-profile-max-history-octets)
+           :use ((:instance fn-heap-reclaim-demand-octets-monotone
+                            (n1 (fn-bs-profile-max-transactions p1))
+                            (n2 (fn-bs-profile-max-transactions p2))
+                            (c1 (fn-bs-profile-max-history-octets p1))
+                            (c2 (fn-bs-profile-max-history-octets p2)))))))
+
+(in-theory (disable fn-heap-reclaim-demand-octets fn-heap-reclaim-octets
+                    fn-heap-reclaim-excess-octets))
+
 ; Everything but the collector's room: the state at the profile's bounds,
-; the open's transient at the input's bound.
+; the owner's work reserve (the open's transient at the input's bound and
+; the reclaim's excess over it), the request in flight and the articles.
 (defun fn-heap-store-base-octets (profile core observed)
   (declare (xargs :guard t))
   (+ (fn-heap-core-dynamic core)
@@ -830,6 +942,9 @@
      (fn-heap-store-open-octets profile
                                 (fn-heap-open-octets-bound profile observed)
                                 (fn-heap-open-records-bound profile observed))
+     (fn-heap-reclaim-excess-octets profile
+                                    (fn-heap-open-octets-bound profile observed)
+                                    (fn-heap-open-records-bound profile observed))
      (fn-heap-store-inflight-octets profile)
      (fn-heap-articles-octets profile)))
 
@@ -974,6 +1089,71 @@
                  (:instance fn-heap-with-nursery-holds-the-trigger
                             (base (fn-heap-store-base-octets profile core observed)))))))
 
+; What a process needs while it serves a store of USED payload octets in N
+; records with M memberships and a live reclaim pass runs over it: the
+; image, the state, the pass's demand over the store's shape (N records
+; charging USED + 320 M), the request in flight, the articles and the
+; collector's room at TRIGGER.  The open's transient is not live: the open
+; ended before the run's ledger was installed.
+(defun fn-heap-store-reclaim-need (profile core used n m trigger)
+  (declare (xargs :guard t))
+  (+ (fn-heap-core-dynamic core)
+     (fn-heap-store-state-octets profile used n m)
+     (fn-heap-reclaim-demand-octets n (+ (nfix used) (* *fn-sbud-membership-octets* (nfix m))))
+     (fn-heap-store-inflight-octets profile)
+     (fn-heap-articles-octets profile)
+     (* 2 (nfix trigger))))
+
+(local
+ (defthm fn-heap-store-reclaim-need-within-the-base
+   (implies (and (<= (+ (nfix used) (* *fn-sbud-membership-octets* (nfix m)))
+                     (nfix (fn-bs-profile-max-history-octets profile)))
+                 (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile))))
+            (<= (fn-heap-store-reclaim-need profile core used n m trigger)
+                (+ (fn-heap-store-base-octets profile core observed) (* 2 (nfix trigger)))))
+   :hints (("Goal" :in-theory (e/d (fn-heap-store-reclaim-need fn-heap-store-base-octets
+                                    fn-heap-reclaim-octets)
+                                   (fn-heap-store-state-octets fn-heap-store-open-octets
+                                    fn-heap-store-state-bound fn-heap-reclaim-demand-octets
+                                    fn-heap-store-inflight-octets fn-heap-core-dynamic
+                                    fn-heap-open-octets-bound fn-heap-open-records-bound
+                                    fn-bs-profile-max-history-octets
+                                    fn-bs-profile-max-transactions))
+            :use ((:instance fn-heap-store-state-within-the-bound)
+                  (:instance fn-heap-open-and-excess-hold-the-reclaim
+                             (ou (fn-heap-open-octets-bound profile observed))
+                             (on (fn-heap-open-records-bound profile observed)))
+                  (:instance fn-heap-reclaim-demand-octets-monotone
+                             (n1 n) (c1 (+ (nfix used) (* *fn-sbud-membership-octets* (nfix m))))
+                             (n2 (fn-bs-profile-max-transactions profile))
+                             (c2 (fn-bs-profile-max-history-octets profile))))))))
+
+; KEYSTONE (K4).  In a dynamic space of D octets, D at least the figure at
+; ANY observation, every store the profile admits -- USED payload octets and
+; M memberships charged together within H, N records within T -- fits with a
+; live reclaim pass over it, the request in flight, the articles, the
+; image's dynamic content and the collector's room at the trigger the host
+; sets in D.  The launcher reserves the figure for `run' at the observed
+; store (books/heap-figure.lisp fn-heap-operation-figure-octets): this holds
+; whatever the store was when the node started and whatever it grew to.
+(defthm fn-heap-store-figure-holds-every-store-and-its-reclaim
+  (implies (and (natp d)
+                (<= (fn-heap-store-figure-octets profile core nursery observed) d)
+                (<= (+ (nfix used) (* *fn-sbud-membership-octets* (nfix m)))
+                    (nfix (fn-bs-profile-max-history-octets profile)))
+                (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile))))
+           (<= (fn-heap-store-reclaim-need profile core used n m
+                                           (fn-heap-nursery-trigger d nursery))
+               d))
+  :hints (("Goal" :in-theory (union-theories
+                               '(fn-heap-store-figure-octets fn-heap-store-base-octets-natp
+                                 fn-heap-nfix-of-nursery-trigger)
+                               (theory 'minimal-theory))
+           :use ((:instance fn-heap-store-reclaim-need-within-the-base
+                            (trigger (fn-heap-nursery-trigger d nursery)))
+                 (:instance fn-heap-with-nursery-holds-the-trigger
+                            (base (fn-heap-store-base-octets profile core observed)))))))
+
 ; The observation only lowers the figure.
 (defthm fn-heap-with-nursery-monotone
   (implies (<= (nfix b1) (nfix b2))
@@ -1006,7 +1186,13 @@
                             (ou (fn-heap-open-octets-bound profile observed))
                             (on (fn-heap-open-records-bound profile observed))
                             (h (fn-heap-open-octets-bound profile nil))
-                            (tt (fn-heap-open-records-bound profile nil)))))))
+                            (tt (fn-heap-open-records-bound profile nil)))
+                 (:instance fn-heap-open-and-excess-is-the-larger
+                            (ou (fn-heap-open-octets-bound profile observed))
+                            (on (fn-heap-open-records-bound profile observed)))
+                 (:instance fn-heap-open-and-excess-is-the-larger
+                            (ou (fn-heap-open-octets-bound profile nil))
+                            (on (fn-heap-open-records-bound profile nil)))))))
 
 (defthm fn-heap-store-figure-observed-is-at-most-unobserved
   (<= (fn-heap-store-figure-octets profile core nursery observed)
@@ -1053,12 +1239,20 @@
                                    fn-bs-profile-field))
            :use ((:instance fn-heap-open-bounds-of-nil (profile p1))
                  (:instance fn-heap-open-bounds-of-nil (profile p2))
+                 (:instance fn-heap-reclaim-octets-grows-with-the-profile)
+                 (:instance fn-heap-open-and-excess-is-the-larger (profile p1)
+                            (ou (fn-bs-profile-max-history-octets p1))
+                            (on (fn-bs-profile-max-transactions p1)))
+                 (:instance fn-heap-open-and-excess-is-the-larger (profile p2)
+                            (ou (fn-bs-profile-max-history-octets p2))
+                            (on (fn-bs-profile-max-transactions p2)))
                  (:instance fn-heap-articles-octets-monotone)
                  (:instance fn-heap-open-chunk-bound-monotone
                             (ou1 (fn-bs-profile-max-history-octets p1))
                             (ou2 (fn-bs-profile-max-history-octets p2))))
            :nonlinearp t)))
 
-(in-theory (disable fn-heap-store-need fn-heap-store-base-octets fn-heap-membership-bound
+(in-theory (disable fn-heap-store-need fn-heap-store-reclaim-need fn-heap-store-base-octets
+                    fn-heap-membership-bound
                     fn-heap-store-figure-octets fn-heap-core-dynamic fn-heap-core-file
                     fn-heap-open-octets-bound fn-heap-open-records-bound))
