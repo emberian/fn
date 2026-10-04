@@ -1,0 +1,12 @@
+{
+ "category": "proof-owed",
+ "file": "books/heap-reservation.lisp",
+ "id": "PEER-OWED-INIT-RESERVES-LAUNCH-EXTRA",
+ "notes": [],
+ "owner": "peer-default",
+ "severity": "high",
+ "source": "lanedumps/catchup2.md",
+ "state": "open",
+ "title": "Catch-up out of the box, step 2b (lane peer-default): init now publishes the default peer flight profile, so every launch takes the peer extension (fn-pfr-extend-reservation). books/peer-flight-default.lisp proves the sufficient condition (fn-pfd-default-launches-where-its-extra-fits: base run reservation + fn-pfd-launch-extra within the machine => admitted), but init's acceptance (books/heap-reservation.lisp fn-heap-reserve-acceptsp / fn-heap-reserve-init-choose) still judges the base run alone. Owed: make init's acceptance require base + fn-pfd-launch-extra, and restate fn-heap-init-accepted-store-always-reopens to conclude the extended launch is :heap. Until then a store init sizes to the edge of its machine can refuse to start (machine-cannot-hold-threads). Tighten fn-pfd-launch-extra (its nursery term is ~128 MiB of slack) before doing so.",
+ "updated": "2026-10-04T15:52:39Z"
+}

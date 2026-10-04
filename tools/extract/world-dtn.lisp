@@ -15,6 +15,7 @@
 (include-book "../../books/payload-arena-attach")
 (include-book "../../books/history-paged-attach")
 (include-book "../../books/peer-flight-profile")
+(include-book "../../books/peer-flight-default")
 (include-book "../../books/peer-flight-startup")
 (include-book "../../books/peer-catchup-spool-resources")
 (include-book "../../books/peer-catchup-spool")

@@ -12,6 +12,7 @@
 (include-book "records-attach-concrete")
 (include-book "payload-arena-attach")
 (include-book "history-paged-attach")
+(include-book "peer-flight-default")
 (include-book "store-config")
 (include-book "identity")
 (include-book "article-fields")

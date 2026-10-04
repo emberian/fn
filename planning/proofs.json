@@ -23466,14 +23466,18 @@
       "status": "uncertified-at-current-digest",
       "files": [
         "books/peer-flight-default.lisp",
-        "tests/acl2/peer-flight-default-tests.lisp"
+        "tests/acl2/peer-flight-default-tests.lisp",
+        "books/store-init-log-publication.lisp",
+        "tests/acl2/store-init-log-publication-tests.lisp",
+        "host/native/io.lisp"
       ],
       "events": [
         "fn-pfd-default-is-a-policy",
         "fn-pfp-read-of-write",
         "fn-pfd-default-decodes-to-itself",
         "fn-pfd-default-spools-one-batch",
-        "fn-pfd-default-launches-where-its-extra-fits"
+        "fn-pfd-default-launches-where-its-extra-fits",
+        "fn-bs-init-log-complete-store-carries-the-peer-flight-profile"
       ],
       "evidence": [
         "tests/acl2/peer-flight-default-tests.lisp"
