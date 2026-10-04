@@ -1232,7 +1232,7 @@ the live node, native results with log SHAs. The deliverable is an
 integrated system running on hbox with a demo, and the list of what `dev`
 must prove to own it.
 
-### 2026-09-25: D29, D30, D31 — the three open decisions, on gpt-6's advice (~08:40 UTC)
+### 2026-09-25: D29, D30, D31 — the three open decisions, on gpt-6's advice (~08:40 UTC; coordinator rulings on gpt-6's advice, forwarded by ember; no ember text decides them — relabelled 2026-10-04)
 
 Source: `planning/review-2026-09-25-gpt6-decisions.md`, forwarded by ember.
 
@@ -1277,11 +1277,11 @@ verbatim as part of the poster's source under D25 (a changed Path is a
 changed source). The refusal stays for a Path that is not syntactically a
 path. A supplied Xref is still refused (it is the server's).
 
-### 2026-09-26: D33 — Consolidation (~16:50 UTC; CONFIRMED by ember ~18:40 UTC)
+### 2026-09-26: D33 — Consolidation (~16:50 UTC; SUPERSEDED 2026-10-04 by D41's design of record (2026-10-01) and tcb-shrink; historical. The 09-26 confirmation was "feeling good about the other decisions though", not this row)
 goal: Wave 5's lanes own architectural boundaries with a deletion map each, in gpt-6's order: (1) one resumable checkpoint pipeline with a resource decision before allocation and the storage schema; (2) the committed catalog and byte owner as one vertical slice (the arena behind an explicit abstraction, parsed byte facts, event references, PreparedCommit tokens, view deltas); (3) adapter retirement (typed results, no mailboxes, no history-search completion, no refresh-by-rediscovery), then BP and configuration/consumer paths. A prototype of `attach-stobj` precedes the catalog slice.
 Status: DECIDED. Adopted by the coordinator from planning/review-2026-09-26-gpt6-consolidation.md ("Coordinator's plan", gpt-6's consolidation review); confirmed by ember 2026-09-26 ("feeling good about the other decisions"; Let's Encrypt for the public node's certificate; no OpenSSL 3.5 in the release: the system libssl per lane crypto-deps; the disk by measurement: lane node-disk, PKT-579). The consolidation design is planning/design-2026-09-26-consolidation.md (lane consolidation-design, Fable): attach-stobj works in ACL2 8.7 and a consumer book certified against the generic catalog was included unchanged under the arena attachment with a byte-identical certificate, so dependents are not recertified.
 
-### 2026-09-26: D34 — Fresh deploys, no migrations (~16:50 UTC; CONFIRMED by ember ~18:40 UTC)
+### 2026-09-26: D34 — Fresh deploys, no migrations (~16:50 UTC; CONFIRMED by ember: "there are no such thing as future migrations :) … we'll be redeploying all our nodes" (2026-09-28), and "take em down, bring em up" (2026-10-03 night))
 goal: Every deploy is torn down and reinstalled from the release; the format-7 translation, `upgrade-profile`'s upgrade relation, `rollback-check`, the versioned release directories and the rollback sentences go; the store format is one format until v1 ships, with a `store export/import` for data that must survive a reinstall.
 Status: DECIDED. Adopted by the coordinator from planning/review-2026-09-26-gpt6-consolidation.md ("Coordinator's plan", gpt-6's consolidation review); confirmed by ember 2026-09-26 ("feeling good about the other decisions"; Let's Encrypt for the public node's certificate; no OpenSSL 3.5 in the release: the system libssl per lane crypto-deps; the disk by measurement: lane node-disk, PKT-579). The consolidation design is planning/design-2026-09-26-consolidation.md (lane consolidation-design, Fable): attach-stobj works in ACL2 8.7 and a consumer book certified against the generic catalog was included unchanged under the arena attachment with a byte-identical certificate, so dependents are not recertified.
 
@@ -1289,7 +1289,7 @@ Status: DECIDED. Adopted by the coordinator from planning/review-2026-09-26-gpt6
 goal: One tarball per platform with its runtime, linked against the system libssl (OpenSSL 3.0+ or LibreSSL 3+) with libsodium and the vendored PQClean ML-DSA-65 bundled (planning/evidence/crypto-deps-2026-09-26.md: only ML-DSA-65 needed OpenSSL 3.5, and it is now PQClean's); Linux x86-64 and OpenBSD amd64 (SBCL W^X, rc.d, LibreSSL as the system libssl); a check that no Python is in the runpath of a deployed node; docs a stranger installs from. MEMORY TARGET (ember, 2026-09-26 ~21:50 UTC): a deployed node runs deeply under 256 MB, reservation and use (the gate: under 256 MB reserved and under 128 MB in use after 1,000 posts), with tens of MB the eventual goal; lane image-floor strips the stored logical world from the saved image except what the *1* wrappers, guard checking, attachments and error reporting read, shrinks the GC nursery and takes the heap from the profile (runtime-image's packet 1, reversed by the coordinator on this target). IMAGE ANATOMY (lane image-anatomy, 2026-09-26): fn's own code is 14.5 MiB of a 368 MiB image; the rest is ACL2's world (153 MiB), build leftovers (91 MiB: 85,001 closed file-channel symbols, doc text, hons/memoize tables), ACL2's system (77 MiB) and SBCL (30 MiB); a running node touches 51 MiB at start and 62 MiB after 1,000 posts, reading 63 world entries; stripping step by step took the load requirement from 271 to 74 MiB with the qualifying modules unchanged, and a re-save alone cuts RSS at start from 68 to 45 MiB. The coordinator's four decisions, image-floor's recipe: keep the 63 world entries and 12 properties, drop the leftovers, keep a small hons table; add the re-save build step; thread stacks sized by measurement with an OpenBSD refusal; no tree-shaking and no direct calls (the *1* wrappers stay). 'Export to plain SBCL' is RETIRED as a plan: 395 of 400 books load into a bare SBCL with a few-hundred-line shim, but it gives up guard checking for nothing.
 Status: DECIDED. Adopted by the coordinator from planning/review-2026-09-26-gpt6-consolidation.md ("Coordinator's plan", gpt-6's consolidation review); confirmed by ember 2026-09-26 ("feeling good about the other decisions"; Let's Encrypt for the public node's certificate; no OpenSSL 3.5 in the release: the system libssl per lane crypto-deps; the disk by measurement: lane node-disk, PKT-579). The consolidation design is planning/design-2026-09-26-consolidation.md (lane consolidation-design, Fable): attach-stobj works in ACL2 8.7 and a consumer book certified against the generic catalog was included unchanged under the arena attachment with a byte-identical certificate, so dependents are not recertified.
 
-### 2026-09-26: D36 — A public node (~16:50 UTC; CONFIRMED by ember ~18:40 UTC)
+### 2026-09-26: D36 — A public node (~16:50 UTC; AMENDED 2026-10-04: the public node stands (done 2026-09-27); the named peers spwashi and pug are not ember's — ember: "we're gonna be peering with SOMEONE eventually but not immediately :) (it will be the openbsd node tho probably)" (2026-09-28); peers open)
 goal: fn.fg-goose.online peered with spwashi and pug; the public-exposure limits on; the certificate and the storage tier from ember.
 Status: DECIDED. Adopted by the coordinator from planning/review-2026-09-26-gpt6-consolidation.md ("Coordinator's plan", gpt-6's consolidation review); confirmed by ember 2026-09-26 ("feeling good about the other decisions"; Let's Encrypt for the public node's certificate; no OpenSSL 3.5 in the release: the system libssl per lane crypto-deps; the disk by measurement: lane node-disk, PKT-579). The consolidation design is planning/design-2026-09-26-consolidation.md (lane consolidation-design, Fable): attach-stobj works in ACL2 8.7 and a consumer book certified against the generic catalog was included unchanged under the arena attachment with a byte-identical certificate, so dependents are not recertified.
 
@@ -1749,7 +1749,7 @@ goal: Keep W9's obligation view (`fn-rov`, `books/retention-obligation-view.lisp
 Status: DECIDED (coordinator, 2026-10-01; lane figure-and-contract).
 Completion: W9 re-adds the obligation view, its served reader and its resource-figure term together, with the behavior and its invariants. Parking the unused view does not complete W9's bounded pilot.
 
-### 2026-10-03: D48 — reader access survives a configured peer role
+### 2026-10-03: D48 — reader access survives a configured peer role (coordinator ruling; no ember text — relabelled 2026-10-04)
 
 Engineering resolution by sol-access of S121 under ember's delegated backlog
 analysis. An NNTP connection may carry a transport peer role and an authenticated
@@ -1767,3 +1767,7 @@ This narrows SEC-007's old blanket peer exemption to transit governed by feed
 policy. Encryption remains the posters' boundary for confidentiality from an
 operator or an authorized transport recipient. PRF-1269 covers the reader view;
 matching native evidence remains pending.
+
+### 2026-10-04: D49 — 6.6.0 is the foundational-component release; a zmq-shaped surface may be in it (ember)
+goal: ember, verbatim (2026-10-04): "6.6.0 is *for* being good enough to start treating as a foundational component for the rest of the distributed OS / mini." and "zmq-shaped surface can be in 6.6.0 if we like."
+Status: DECIDED (ember). Consequences: the 6.6.0 bar includes the remote consumer (built together with its producer). It permits a zmq-pattern surface (pub/sub, req/rep, push/pull, pair) over groups, the consumer cursor and signed exact-byte articles, generated and not hand-written. The minidregg-facing contract — what an application can rely on — is part of the cut and is recorded in `specs/applications.md`. This narrows the swarm plan's 2026-10-03 placement of the "redis of it all" extensions at 6.6.1: the zmq-pattern surface may land in 6.6.0; the rest stays 6.6.1.
