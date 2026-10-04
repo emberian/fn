@@ -248,3 +248,50 @@
          (not (equal (fn-ovw-step cur 7 *ovwt-a4* (fn-cat-commit *ovwt-h3* *ovwt-c*))
                      (fn-ovw-step cur 7 *ovwt-a4* *ovwt-c*)))))
   :rule-classes nil)
+
+;;; The header cursor (lane cold-line).  A payload-reading source's window is
+;;; fn-clq-payload-quantum numbers whatever W; an overview field's is W; the
+;;; compatibility arm's Xref reads payloads.
+(defthm ovwt-hdr-quantum-by-source
+  (and (equal (fn-ovw-hdr-quantum (fn-ovw-hdr-source :hdr (fn-record-string-octets "Newsgroups") :all nil) 256) 4)
+       (equal (fn-ovw-hdr-quantum (fn-ovw-hdr-source :xpat (fn-record-string-octets "Path") '(:pattern) nil) 256) 4)
+       (equal (fn-ovw-hdr-quantum (fn-ovw-hdr-source :hdr (fn-record-string-octets "Subject") :all nil) 256) 256)
+       (equal (fn-ovw-hdr-quantum (fn-ovw-hdr-source :xhdr (fn-record-string-octets "Xref") :all (cons :xref "srv")) 256) 4)
+       (equal (fn-ovw-hdr-quantum (fn-ovw-hdr-source :hdr (fn-record-string-octets "Newsgroups") :all nil) 2) 2))
+  :rule-classes nil)
+
+;; POSITIVE: HDR Newsgroups 1-10 answers with a header cursor; its run is the
+;; same reply at W = 1 (three quanta) and W = 256, the reply the cursor effect
+;; stands for, a 225 with three lines; the first W = 1 quantum leaves a live
+;; cursor at 2 (MUTATION: it is not the reply).  The quantum at W = 256 reads
+;; the three payloads, within the bound.
+(defthm ovwt-hdr-cursor-witness
+  (let* ((s (ovwt-session "fn.test"))
+         (r (fn-nntp-hdr-command-cat s (list (fn-record-string-octets "Newsgroups") *ovwt-range*) 3 nil *ovwt-a* *ovwt-c*))
+         (cur (cadr (cadr r))))
+    (and (equal (car r) s)
+         (fn-ovw-cursor-effectp (cadr r))
+         (equal cur (fn-ovw-hdr-cursor "fn.test" 1 3 3 t
+                                       (fn-ovw-hdr-source :hdr (fn-record-string-octets "Newsgroups") :all nil)))
+         (equal (fn-ovw-run cur 1 *ovwt-a* *ovwt-c*) (fn-ovw-cursor-octets cur *ovwt-a* *ovwt-c*))
+         (equal (fn-ovw-run cur 256 *ovwt-a* *ovwt-c*) (fn-ovw-cursor-octets cur *ovwt-a* *ovwt-c*))
+         (equal (fn-ovw-quanta cur 1 *ovwt-a* *ovwt-c*) 3)
+         (equal (fn-ovw-quanta cur 256 *ovwt-a* *ovwt-c*) 1)
+         (equal (take 3 (fn-ovw-cursor-octets cur *ovwt-a* *ovwt-c*)) '(50 50 53))
+         (equal (len (fn-ovw-hdr-lines "fn.test" 1 3 (fn-ovw-hdr-source :hdr (fn-record-string-octets "Newsgroups") :all nil)
+                                       3 *ovwt-a* *ovwt-c*))
+                3)
+         (mv-nth 1 (fn-ovw-step cur 1 *ovwt-a* *ovwt-c*))
+         (not (equal (mv-nth 0 (fn-ovw-step cur 1 *ovwt-a* *ovwt-c*))
+                     (fn-ovw-cursor-octets cur *ovwt-a* *ovwt-c*)))
+         (equal (fn-ovw-hdr-step-reads cur 256 *ovwt-a* *ovwt-c*) '(0 1 2))))
+  :rule-classes nil)
+
+;; An empty header range: HDR 423, XHDR 420, XPAT the empty 221 block.
+(defthm ovwt-hdr-empty-replies
+  (let* ((s (ovwt-session "fn.test"))
+         (h (cadr (cadr (fn-nntp-hdr-command-cat s (list (fn-record-string-octets "Newsgroups") *ovwt-past*) 3 nil *ovwt-a* *ovwt-c*))))
+         (x (cadr (cadr (fn-nntp-hdr-command-cat s (list (fn-record-string-octets "Newsgroups") *ovwt-past*) 3 t *ovwt-a* *ovwt-c*)))))
+    (and (equal (take 3 (fn-ovw-run h 256 *ovwt-a* *ovwt-c*)) '(52 50 51))
+         (equal (take 3 (fn-ovw-run x 256 *ovwt-a* *ovwt-c*)) '(52 50 48))))
+  :rule-classes nil)

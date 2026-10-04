@@ -1531,6 +1531,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-join-host-columns-open \
 	books/served-catalog-join-host-views \
 	books/catalog-number-window \
+	books/cold-line-quanta \
+	tests/acl2/cold-line-quanta-tests \
 	books/over-window \
 	books/served-chunk-live-free \
 	books/poster-bytes-buffer \
