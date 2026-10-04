@@ -1,17 +1,35 @@
 {
+ "budget": 140,
  "category": "bug",
  "evidence": "books/peer-round-driver.lisp fn-prd-feed-action checked DEADLINE only while PHASE or OUTPUTP; host/native/feed-service.lisp fnn-feed-write-step set deadline nil when a command drained and fnn-feed-connected-step set it nil before the greeting. The :read/:offer arms then had no bound.",
+ "expect-failure": "tests.test_native_feed_fair_round.FeedFairRoundTests.test_peer_that_never_answers_is_dropped_at_the_reply_deadline",
  "exposure": "live",
+ "failure-message": "a peer that never answers must be dropped at the reply deadline",
  "file": "host/native/feed-service.lisp",
  "fix": "fn-prd-feed-action: past DEADLINE with no retained input the action is :timeout. The host arms the wait with fn-prd-round-deadline when a command drains, after TCP completion (greeting) and after an implicit-TLS handshake; a complete reply clears it (a partial line does not). The timeout is a :read loss, so fn-feed-lost requeues the entry (K5: the reconnect re-offers by CHECK/IHAVE).",
+ "harness": "tests/test_native_feed_fair_round.py,tests/native_feed_fair_round_raw.lisp",
  "id": "rp-feed-reply-deadline",
  "locus": "peer-services",
- "notes": [],
+ "notes": [
+  "10-04 11:26 claimed: scope=['books/peer-round-driver.lisp', 'host/native/feed-service.lisp', 'tests/acl2/peer-round-driver-tests.lisp', 'tests/native_feed_credential_raw-mock.lisp', 'tests/native_feed_fair_round_raw.lisp', 'tests/test_native_feed_fair_round.py', 'planning/repair/items/rp-feed-reply-deadline.json'] test=python3 -m unittest tests.test_native_feed_fair_round tests.test_native_feed_credential",
+  "10-04 11:26 claimed: scope=['books/peer-round-driver.lisp', 'host/native/feed-service.lisp', 'tests/acl2/peer-round-driver-tests.lisp', 'tests/native_feed_credential_raw-mock.lisp', 'tests/native_feed_fair_round_raw.lisp', 'tests/test_native_feed_fair_round.py', 'planning/repair/items/rp-feed-reply-deadline.json'] test=python3 -m unittest tests.test_native_feed_fair_round"
+ ],
  "owner": "read-peer",
  "scenario": "Peer accepts TCP, takes CHECK <a> (or the TAKETHIS article) and never answers (a hung innd, a paused server, a NAT path that dropped state after the ACK). The link reads :wait forever; the in-flight entry stays :offered/:sent; every later article for that peer queues behind it until the node restarts. Same for a peer that never sends its greeting.",
+ "scope": [
+  "books/peer-round-driver.lisp",
+  "host/native/feed-service.lisp",
+  "tests/acl2/peer-round-driver-tests.lisp",
+  "tests/native_feed_credential_raw-mock.lisp",
+  "tests/native_feed_fair_round_raw.lisp",
+  "tests/test_native_feed_fair_round.py",
+  "planning/repair/items/rp-feed-reply-deadline.json"
+ ],
  "severity": "high",
  "source": "read-peer-2026-10-04",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_native_feed_fair_round",
+ "timeout": "300",
  "title": "Outbound feed waits for a peer's reply (and greeting) with no deadline: a hung or half-open peer holds its link and in-flight entry until restart",
- "updated": "2026-10-04T15:26:01Z"
+ "updated": "2026-10-04T15:26:39Z"
 }
