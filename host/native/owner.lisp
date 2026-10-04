@@ -6466,10 +6466,15 @@ EPIPE and the client saw a bare close)."
              (when (eq admit :shed)
                (fnn-owner-shed-queued-locked service))
              (fnn-owner-note-queued service)
+             ;; The exposure's failed-login close (PRF-161) is this step's as
+             ;; on the inline path below: the plan ends in its 400
+             ;; (fn-splan-step-plan), and the connection closes after it.
              (return-from step
                (values :await step
                        (and (fnn-owner-core 'fn-acct-host-owner-redeem-waitingp cid) t)
-                       closing starttls consumed)))
+                       (or closing
+                           (and (fnn-core 'fn-splan-step-exposure-close step) t))
+                       starttls consumed)))
            (when submitted
              (multiple-value-bind (reply-cid done stop)
                  (multiple-value-prog1 (fnn-owner-drain-one service)
