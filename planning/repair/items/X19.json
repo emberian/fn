@@ -3,11 +3,13 @@
  "file": "books/productive-transfer.lisp",
  "id": "X19",
  "line": "30",
- "notes": [],
+ "notes": [
+  "10-04 15:10 already fixed by a14e261a6: clock_unit_check shows 12 sites, none in productive-transfer.lisp. FAIRY-3 prep 2026-10-04."
+ ],
  "owner": "sweep-gates",
  "severity": "low",
  "source": "check-lane",
- "state": "open",
+ "state": "refuted",
  "title": "clock_unit: productive-transfer.lisp:30 raw clock compare; route through the clock-unit function",
- "updated": "2026-10-03T02:30:26Z"
+ "updated": "2026-10-04T19:10:31Z"
 }

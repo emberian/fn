@@ -68,8 +68,7 @@
 ; open(PATH, O_WRONLY|O_CREAT|O_EXCL[|O_NOFOLLOW], 0600): (:ok H) | (:error ...)
 (defun fn-hx-create-excl (path nofollow)
   (declare (xargs :mode :program) (ignore path nofollow)) (fn-hx-stub fn-hx-create-excl))
-; close(2) of a read-write handle: :ok | (:error ...)
-(defun fn-hx-close (h) (declare (xargs :mode :program) (ignore h)) (fn-hx-stub fn-hx-close))
+; (fn-hx-close, close(2) of a handle, is declared in host/store-open-host.lisp)
 ; lseek(OFF) and write(2) of OCTETS to completion: :ok | (:error ...)
 (defun fn-hx-pwrite (h off octets) (declare (xargs :mode :program) (ignore h off octets)) (fn-hx-stub fn-hx-pwrite))
 ; the same with N zero octets

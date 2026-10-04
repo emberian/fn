@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Red on set bdd4f40c4 (hbox:/tank/fn/scratch/fill-wt/native-fill-e2e) and set 55ff708a6 (lat1:/tank/fn/scratch/fill-wt/native-fill-e2e-lat1-55; scenario_suite run e2e); logs/test-tests.test_native_group_access.log. An access-control leak, not a timing red: it fails identically in both images and on both sets. Read the two assertions first to settle whether the product or the test fixture's grants are wrong.",
+ "file": "tests/test_native_group_access.py",
+ "id": "FILL-GROUP-ACCESS-PRIVATE-LEAK",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "high",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "tests.test_native_group_access (4F, both production and developer): a private group leaks across accounts: test_source_peer_reader_access_preserves_transit finds 'fn.private.x' in a list that must not show it for the reader ['fn.public', 'fn.private.x']; test_two_accounts_one_private_group gets '223 0 <secret@example.invalid> retrieved' where the other account must get '430 no article with that message-id'",
+ "updated": "2026-10-04T19:41:18Z"
+}

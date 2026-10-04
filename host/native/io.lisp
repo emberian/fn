@@ -2870,9 +2870,12 @@ in *fnn-checkpoint-load-io-error*."
         (fnn-os-error (e)
           (setq *fnn-checkpoint-load-io-error* e)
           (values :refused :io)))
+    ;; A refusal gives the buffer back: the plan reserved and filled a
+    ;; file-sized array in it, and only the :ok arena path hands it on (S071).
     (case status
       (:absent (fnn-core-state 'fn-store-sco-clear) (values :absent 0))
       (:refused (fnn-core-state 'fn-store-sco-clear)
+       (fnn-octets-release)
        (values (case value (:exceeds-bound :exceeds-bound) (:schema :schema) (t :refused)) 0))
       (t (let ((answer (fnn-core-buffer-state 'fn-store-sco-decode value)))
            (if (and (consp answer) (eq (first answer) :arena) (= (length answer) 4)
@@ -2885,7 +2888,8 @@ in *fnn-checkpoint-load-io-error*."
                      (values st s)))
                ;; A file without the arena run (tables-only, written before
                ;; the flip) is refused by name: reason=checkpoint-arena.
-               (values (if (equal answer '(:refused :arena)) :arena :refused) 0)))))))
+               (progn (fnn-octets-release)
+                      (values (if (equal answer '(:refused :arena)) :arena :refused) 0))))))))
 
 (defun fnn-state-checkpoint-adopt-image (store s)
   "The checkpoint's history image adopted (host/store-node-host.lisp
@@ -3611,10 +3615,12 @@ and source (books/store-checkpoint-arena-writer.lisp fn-scka-srcs-n), a
 bounded number of rows per call (+fnn-checkpoint-batch-rows+; the calls are
 one walk: fn-scka-srcs-n-compose).  READS the arena.  The last state,
 (ROWS' LACC SACC), ROWS' empty."
-  (let ((walk (list records nil nil)))
+  (let ((walk (list records nil nil))
+        (batch 0))
     (loop
       (when (atom (first walk)) (return walk))
-      (fnn-checkpoint-yield "walk" (length (second walk)))
+      (fnn-checkpoint-yield "walk" batch)
+      (incf batch)
       (setq walk (fnn-core 'fn-scka-srcs-n (first walk) +fnn-checkpoint-batch-rows+
                            (second walk) (third walk) arena))
       (unless (and (consp walk) (= (length walk) 3))

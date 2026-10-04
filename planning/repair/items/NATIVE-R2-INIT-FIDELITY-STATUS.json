@@ -1,0 +1,18 @@
+{
+ "category": "test-stale",
+ "detail": "hbox:/tank/fn/scratch/integrate-20261004/native-set-bdd4f40c4-r2/logs/test-tests.test_native_initializer_fidelity.log: FAIL test_committed_segment_at_a_misaligned_length_is_refused_untouched, 0 != EXIT_REFUSED for ('status', ...). Product: host/native/io.lisp fnn-dispatch 'status' -> fn-omr-store-status-word: :header (fnn-command-stopped-status, checkpoint header only, never opens the log) / :replay (fnn-command-live-report, opens the log, refuses by name at io.lisp fnn-log-open-segment-extent segment-misaligned). Introduced by 18a4d87c2. Fix (test): loop over (recover) and (status --replay) with run([IMAGE,--fn,store,root,status,--replay]); the refusal and the byte-identical assertion stay. Not a product bug unless status --replay on that store also returns 0: confirm on the box with the one test.",
+ "disposition": "LOCAL",
+ "exposure": "none",
+ "file": "tests/test_native_initializer_fidelity.py",
+ "fix": "tests/test_native_initializer_fidelity.py: the misaligned case's command loop uses status --replay; keep both assertions. Native: tests.test_native_initializer_fidelity on lat1/cloud2 via hbox_native.sh overlay.",
+ "id": "NATIVE-R2-INIT-FIDELITY-STATUS",
+ "locus": "init-fidelity",
+ "notes": [],
+ "owner": "unassigned",
+ "scenario": "One stray trailing zero octet appended to a committed segment: recover refuses (segment-misaligned) but bare status answers from the checkpoint header and exits 0.",
+ "severity": "medium",
+ "source": "native-set-bdd4f40c4-r2",
+ "state": "open",
+ "title": "tests.test_native_initializer_fidelity misaligned-segment case expects `store ROOT status` to refuse, but status is header-only since Row S3 (--replay replays the log); the test asks the wrong verb",
+ "updated": "2026-10-04T19:04:15Z"
+}
