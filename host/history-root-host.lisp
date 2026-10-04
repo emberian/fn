@@ -2,7 +2,7 @@
 ; Internal publishers supply only results of the guarded concrete producers.
 ; Logical Store/view authority remains the canonical owner installer.
 (in-package "ACL2")
-(include-book "owner-host")
+(ld "owner-host.lisp" :ld-error-action :error)
 (include-book "../books/history-root-credit")
 (include-book "../books/history-paged-adopt")
 
@@ -22,7 +22,8 @@
   (declare (xargs :stobjs state :mode :program))
   (let ((r (fn-mcr-resize (fn-owner-credits state) (fn-hroot-credit-key generation) amount)))
     (if (eq (car r) :ok)
-        (mv :funded (fn-owner-put-credits (cadr r) state))
+        (let ((state (fn-owner-put-credits (cadr r) state)))
+          (mv :funded state))
       (mv r state))))
 (defun fn-owner-hroot-release-credit (generation state)
   (declare (xargs :stobjs state :mode :program))

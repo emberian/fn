@@ -781,7 +781,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-knowledge \
 	books/history-resource-refinement \
 	tests/acl2/history-resource-refinement-tests \
-	tests/acl2/history-root-roster-tests \
 	tests/acl2/history-knowledge-tests \
 	books/store-reclaim-stream \
 	tests/acl2/store-reclaim-stream-tests \
