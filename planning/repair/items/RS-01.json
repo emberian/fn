@@ -8,12 +8,15 @@
  "id": "RS-01",
  "line": "3226",
  "locus": "connections",
- "notes": [],
- "owner": "unassigned",
+ "notes": [
+  "10-04 11:57 READY 2ef809d63: gate refusal -> fnn-refuse -> :refused (441), store open; raw-mock harness red->green; native test_native_post_seal_gate owed"
+ ],
+ "owner": "read-serve",
  "scenario": "Any POST while the index writer holds an unfinished ticket or a prepared catalog commit is pending (books/catalog-may-seal.lisp: the conditions the gate exists for), or the developer image under FN_NATIVE_TEST_CAT_SEAL_REFUSE=1 (tests/test_native_post_seal_gate.py): the first POST is answered by no reply and the owner exits 4 with the store fenced, though nothing was sealed and the reservation was consumed as a refusal. test_native_post_seal_gate expects TWO 'POST seal-gate refused' lines and a serving node; by this reading it sees one (the second client's connect error is swallowed by its except) and fails.",
  "severity": "high",
+ "sha": "2ef809d63",
  "source": "read-serve-2026-10-04",
- "state": "open",
+ "state": "ready",
  "title": "A POST the catalog's seal gate refuses stops the node: fnn-owner-prepare-refusal-word has no arm for :recovery-required, so the clean refusal becomes a fenced-store fault (exit 4)",
- "updated": "2026-10-04T15:44:44Z"
+ "updated": "2026-10-04T15:57:02Z"
 }
