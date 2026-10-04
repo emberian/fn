@@ -1183,12 +1183,15 @@ over N rows takes ceiling(N/64) turns and resumes where it yielded.")
                  (:forward
                   ;; One bounded step of the forward round (PRF-1311,
                   ;; books/bp-forward-cursor): at most
-                  ;; +fnn-bpnode-forward-quantum+ held rows examined, one
-                  ;; route decision each (fn-bpfc-turn-advances-at-most-quantum);
+                  ;; +fnn-bpnode-forward-quantum+ route decisions
+                  ;; (fn-bpfc-turn-advances-at-most-quantum); the oldest-first
+                  ;; order is still rebuilt each turn, an O(held) walk;
                   ;; resuming a yield is the larger turn
                   ;; (fn-bpfc-turn-after-a-yield-is-the-larger-turn), and a
                   ;; sweep from the head chooses what fn-bpnp-forward-plan +
-                  ;; fn-bpsched-forward-entry choose (fn-bpfc-run-is-the-plan-choice).
+                  ;; fn-bpsched-forward-entry choose (fn-bpfc-run-is-the-plan-choice);
+                  ;; all three over one held list, table and busy set, which
+                  ;; this arm re-reads each turn (specs/bp-path.md).
                   ;; An entry whose start yielded for an occupied outgoing slot
                   ;; keeps the old cursor, so it is offered again; any other
                   ;; answer (started, or no outgoing class at all) advances.

@@ -317,21 +317,30 @@ the scheduler's busy filter (`fn-bpsched-forward-entry`).
 
 - One turn examines at most QUANTUM rows
   (`fn-bpfc-turn-advances-at-most-quantum`). The quantum is scheduling work,
-  not a limit on held transit (D27): a sweep over n rows takes at most
-  ⌈n / 64⌉ scanning turns plus one turn per started session.
+  not a limit on held transit (D27): over an unchanged held list, a sweep
+  over n rows takes at most ⌈n / 64⌉ scanning turns plus one turn per
+  started session. Rows that arrive during the sweep extend it.
 - Resuming a yield is the larger turn
   (`fn-bpfc-turn-after-a-yield-is-the-larger-turn`): no row is skipped or
   examined twice within a sweep over an unchanged held list.
 - A sweep run to completion from the head chooses exactly what the plan and
   the busy filter choose (`fn-bpfc-run-is-the-plan-choice`); the plan stays
   the logical model, and `bp-contact tick` still drains by it.
-- A peer started in a sweep is passed for the rest of that sweep, so two
-  peers with pending rows get sessions on consecutive `:forward` turns while
-  outgoing slots allow. An entry whose start yields for an occupied slot
-  keeps the old cursor and is offered again.
-- The cursor is a position into the oldest-first order. Arrivals append to
-  that order, so they do not move it; a removal before the position would
-  make that sweep pass one row, which the next sweep examines.
+- A peer started in a sweep, or found busy, is passed for the rest of that
+  sweep, even if its session ends meanwhile; it is offered again on the next
+  sweep. (The old arm reconsidered it on the very next turn.) An entry whose
+  start yields for an occupied outgoing slot keeps the old cursor, so the
+  sweep waits on that entry until a slot frees: with one outgoing slot, a
+  stalled session to one peer holds every other peer's forward round for up
+  to `outbound-ms`. No keystone states which entry a sweep's second turn
+  chooses.
+- The cursor is a position into the oldest-first order, with no generation.
+  K1–K3 are stated over one fixed held list, table and busy set; the host
+  re-reads all three each turn. Arrivals append to the oldest-first order,
+  so they do not move a position. In the state transitions read, rows are
+  replaced in place and the list is rebuilt only at open, before any
+  cursor exists. A removal before the position would make that sweep pass
+  one row, and the next sweep would examine it.
 
 What this does not bound: fairness is not bounded. Nothing here promises
 that a peer's backlog drains, or anything about wall time (PRF-018's
