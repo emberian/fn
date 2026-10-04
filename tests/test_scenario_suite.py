@@ -117,6 +117,31 @@ class AffectedTests(unittest.TestCase):
         self.assertEqual(set(harness), set(got))
         self.assertIn("unclassified", got["tests.test_native_web"])
 
+    def test_a_helper_change_selects_the_modules_that_mention_what_changed(self):
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(tmp)
+            helper = root / "tests" / "native_harness.py"
+            helper.write_text("import os\n\ndef a():\n    return 1\n\n"
+                              "def b():\n    return a()\n\nclass Node:\n"
+                              "    def start(self):\n        return 2\n")
+            git = ["git", "-C", str(root), "-c", "user.email=t@t", "-c", "user.name=t"]
+            subprocess.run(git + ["init", "-q"], check=True)
+            subprocess.run(git + ["add", "-A"], check=True)
+            subprocess.run(git + ["commit", "-qm", "base"], check=True)
+            (root / "tests" / "test_native_web.py").write_text("from tests.native_harness import b\nb()\n")
+            (root / "tests" / "test_native_peer.py").write_text("node.start()\n")
+            helper.write_text(helper.read_text().replace("return 1", "return 3")
+                              .replace("import os", "import os\nimport re"))
+            names = scenario_suite.helper_names("tests/native_harness.py", "HEAD", root)
+            got = scenario_suite.affected(["tests/native_harness.py"], root, since="HEAD")
+            # a changed, b calls a: both; Node.start untouched; the import is not a change.
+            self.assertEqual(names, {"a", "b"})
+            self.assertEqual(list(got), ["tests.test_native_x", "tests.test_native_web"])
+            # A module-level statement changes: the file's rule (ALL) again.
+            helper.write_text(helper.read_text() + "LIMIT = 5\n")
+            self.assertIsNone(scenario_suite.helper_names("tests/native_harness.py", "HEAD", root))
+
     def test_a_bad_code_is_named(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = self.tree(tmp)
