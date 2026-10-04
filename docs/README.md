@@ -17,7 +17,7 @@ fn.announce and fn.docs. The website shows them as a newsreader would.
 
 Longer pages: [installing](install.md), [running a node](operator.md),
 [peering](peering-with-a-friend.md), [reading](reader.md),
-[agents](agents.md), [the two nodes we run](nodes/hbox.md).
+[agents](agents.md), the nodes we run ([fsn1](nodes/fsn1.md), [hbox](nodes/hbox.md)).
 
 Working on fn: [CONTRIBUTING](../CONTRIBUTING.md), then
 [the engineers' map](engineering.md) and [testing](testing.md).

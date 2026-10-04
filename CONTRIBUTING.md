@@ -51,9 +51,10 @@ does not run the server or certify books.
 
 - New code replaces old code in place, in the same commit; nothing is
   reverted to make a check pass. If the replacement loses a theorem the
-  old code had, add a ledger item naming the theorem still owed
-  (`python3 planning/repair/repair.py add`, see
-  `planning/repair/README.md`) and make no claim that needs it.
+  old code had, add a ledger item with `"category": "proof-owed"`
+  naming the theorem still owed (copy the shape of
+  `planning/repair/items/PGO-OWED-*.json`) and make no claim that needs
+  it.
 - A test fixture that fakes the function under test, or a physical seam
   (`fnn-core`, `fnn-fault`, `fnn-store-close`, `fnn-heap-*`,
   `fnn-extent-*`), has `-mock` in its filename and backs no claim.
