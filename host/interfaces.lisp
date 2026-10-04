@@ -5125,13 +5125,11 @@
 
 (definterface fn-owner-retire-step
   :class ::program
-  ;; The host step is fn-ort-drain-step-counted since 1bf2ddcaf (carried
-  ;; counts and both producer fences), so its keystones are the counted
-  ;; drain's: the window ends it, and before the window it waits unless the
-  ;; fenced count is zero.
-  :keystones ((fn-ort-deadline-is-independent-of-the-fences :via fn-ort-drain-step-counted)
-              (fn-ort-counted-drain-waits-before-window-without-fenced-zero
-               :via fn-ort-drain-step-counted)))
+  ;; The host step is fn-ort-retire-step: the counted drain over the carried
+  ;; feed count, intake fenced, and the owner's queue as the producer fence.
+  :keystones ((fn-ort-retire-step-ends-by-the-window :via fn-ort-retire-step)
+              (fn-ort-retire-step-drains-a-settled-zero :via fn-ort-retire-step)
+              (fn-ort-retire-step-waits-while-anything-drains :via fn-ort-retire-step)))
 
 (definterface fn-tls-self-signed-host-certificate-pem
   :class :program
@@ -5319,10 +5317,13 @@
 (definterface fn-log-sink-pending-lines :class :common-lisp-compliant)
 (definterface fn-log-sink-pending-octets :class :common-lisp-compliant)
 (definterface fn-ort-fenced-input-consumed :class :common-lisp-compliant)
+(definterface fn-ort-final-checkpoint-action :class :common-lisp-compliant
+  :keystones ((fn-ort-final-checkpoint-only-when-drained :via fn-ort-final-checkpoint-action)))
 (definterface fn-ort-intake-action :class :common-lisp-compliant)
 (definterface fn-ort-log-close-action :class :common-lisp-compliant)
 (definterface fn-ort-log-close-exit :class :common-lisp-compliant
-  :kinds ((prior integerp) (uncertain integerp)))
+  :kinds ((prior integerp) (uncertain integerp))
+  :keystones ((fn-ort-clean-stop-keeps-its-exit :via fn-ort-log-close-exit)))
 (definterface fn-ort-report-close-action :class :common-lisp-compliant)
 (definterface fn-ort-service-claim-action :class :common-lisp-compliant)
 (definterface fn-ort-service-settlement-action :class :common-lisp-compliant)
