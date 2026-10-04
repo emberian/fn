@@ -9,7 +9,8 @@
   (list *fn-cfg-default-record*
         (fn-cfg-record-make 1 7 2 (list (fn-cfg-set-capacity 1)) *fn-cfg-default-stamp*)))
 (defconst *orc-carry-rebuilt*
-  (fn-owner-orcp-rebuild *orc-carry-events* *orc-carry-configs* 8 4))
+  (fn-owner-orcp-rebuild (fn-sco-capture *orc-carry-configs* *orc-carry-events*)
+                         *orc-carry-configs* 8 4))
 ; Complete unconditional conclusion, plus reachability/nonempty evidence.
 (assert-event (not (equal (nth 1 *orc-carry-rebuilt*) :fault)))
 (assert-event (fn-prc-carryp (nth 2 *orc-carry-rebuilt*)))

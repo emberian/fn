@@ -7436,31 +7436,38 @@ the stop's refusal at a chunk boundary is `owner-stopping'."
   "Rows rewritten and folded per ACL2 call while a reclaim pass walks the
 captured history (a work quantum per call, never a bound on the store).")
 
-(defun fnn-owner-reclaim-walk (records ctx rewrite arena &optional service history-source)
-  "The pass over the captured RECORDS in chunks of +fnn-reclaim-chunk-rows+
-(fn-owner-orc-chunk: fn-orc-chunk, whose rewrite is the offline rewrite and
-whose fold is the offline fold, fn-orc-rewrite-rows-of-append and
-fn-orc-fold-of-append joining the chunks).  Answers (values ACC REWRITTEN),
-REWRITTEN the rewritten rows in order when REWRITE, else nil."
-  (let ((acc (fnn-core 'fn-owner-orc-init)) (out nil) (rest records) (ordinal 0))
-    (loop while (if history-source (< ordinal (fourth (first history-source))) rest) do
+(defun fnn-owner-reclaim-walk (records ctx arena service history-source &optional consumer)
+  "One pass over the captured history in chunks of +fnn-reclaim-chunk-rows+:
+from the pinned P3 root HISTORY-SOURCE when there is one (each row's decode
+funded before it is read, the chunk's grant returned once the chunk is
+consumed), else the captured RECORDS.  Without CONSUMER the pass folds the
+decision's accumulator (fn-owner-orc-fold-chunk: fn-orc-fold, joined across
+chunks by fn-orc-fold-of-append) and answers it.  With CONSUMER each chunk is
+rewritten (fn-owner-orc-rewrite-chunk: fn-orc-rewrite-rows, the offline
+rewrite, joined by fn-orc-rewrite-rows-of-append) and handed to CONSUMER;
+no rewritten row outlives its chunk here (lane reclaim, PRF-1315: the pass
+keeps no whole rewritten-row list) and the answer is nil."
+  (let ((acc (and (null consumer) (fnn-core 'fn-owner-orc-init)))
+        (rest records) (ordinal 0)
+        (total (and history-source (fourth (first history-source)))))
+    (loop while (if history-source (< ordinal total) rest) do
       (let ((chunk
               (if history-source
                   (loop repeat +fnn-reclaim-chunk-rows+
-                        while (< ordinal (fourth (first history-source)))
+                        while (< ordinal total)
                         collect (prog1 (fnn-owner-history-root-at service history-source ordinal)
                                   (incf ordinal)))
                 (loop repeat +fnn-reclaim-chunk-rows+ while rest collect (pop rest)))))
-        (let ((r (fnn-core 'fn-owner-orc-chunk chunk ctx acc arena)))
-          (unless (and (consp r) (= (length r) 2) (listp (first r))
-                       (= (length (first r)) (length chunk)))
-            (fnn-fault "owner returned a malformed reclaim chunk"))
-          (setq acc (second r))
-          (when rewrite (push (first r) out))
-          (setq chunk nil)
-          (when history-source (fnn-owner-history-root-chunk-return service history-source)))))
-    (values acc (and rewrite (let ((all nil))
-                               (dolist (c out all) (setq all (nconc c all))))))))
+        (if consumer
+            (let ((rewritten (fnn-core 'fn-owner-orc-rewrite-chunk chunk ctx arena)))
+              (unless (and (listp rewritten) (= (length rewritten) (length chunk)))
+                (fnn-fault "owner returned a malformed reclaim chunk"))
+              (setq chunk nil)
+              (funcall consumer rewritten))
+          (setq acc (fnn-core 'fn-owner-orc-fold-chunk chunk ctx acc arena)
+                chunk nil))
+        (when history-source (fnn-owner-history-root-chunk-return service history-source))))
+    acc))
 
 (defun fnn-owner-reclaim-dry-run (service free)
   "The dry run on the running owner: under the owner mutex the capture
@@ -7511,7 +7518,7 @@ the reply word: :dry-run, or ACL2's refusal."
                ;; the context's hash tables freed whatever the walk does
                (unwind-protect
                     (setq classes (fnn-core 'fn-owner-orc-classes ctx arena)
-                          acc (fnn-owner-reclaim-walk records ctx nil arena service history-source))
+                          acc (fnn-owner-reclaim-walk records ctx arena service history-source))
                  (fnn-core 'fn-owner-orc-ctx-free ctx)
                  (when history-source
                    (fnn-owner-history-root-unpin service history-source)
@@ -7665,7 +7672,10 @@ pointer and the live state's binding)."
   "`store reclaim --recorded' on the running owner: the capture under the
 mutex (the pass's credit reserved, refused by name; the log rotated as a
 publication's capture rotates it; the pass the publication in flight), then
-off it the walk with the rewrite, the decision, the reclaimed checkpoint
+off it three walks of the pinned history a chunk at a time and no whole
+rewritten-row list (lane reclaim, PRF-1315: the fold, then the rewrite into
+the checkpoint's capture, then the rewrite predicted into the rebuilt
+capture), the decision, the reclaimed checkpoint
 staged (the rewritten rows' tombstoned records are the writer's sources),
 the tombstones interned in owner quanta, the rebuild (the open's recovery
 over the rewritten rows) and the fresh catalog and history columns; then ONE
@@ -7681,7 +7691,7 @@ publication).  Answers the reply word."
          (answer nil) (captured nil) (pin nil) (history-source nil) (history-candidate nil) (position nil) (stage nil) (ident nil)
          (installed nil) (swapped nil) (word :failed) (*fnn-checkpoint-frames* nil)
          (base nil) (seal-payloads nil) (seal-us 0) (arena nil) (column-key nil) (column-salt nil)
-         (image nil)
+         (image nil) (ctx-held nil)
          (started (get-internal-real-time)))
     (flet ((ms () (round (* 1000 (- (get-internal-real-time) started))
                          internal-time-units-per-second))
@@ -7735,17 +7745,20 @@ publication).  Answers the reply word."
                                   now record-octets feeds)
                  captured
                (declare (ignore now))
-               (let* ((ctx (fnn-core 'fn-owner-orc-ctx :recorded v s nil feeds arena))
-                      (acc nil) (rows nil) (decision nil))
-                 ;; the context freed right after the walk (orc-decide does
-                 ;; not read it), also when the walk faults
-                 (unwind-protect
-                      (multiple-value-setq (acc rows) (fnn-owner-reclaim-walk records ctx t arena service history-source))
-                   (fnn-core 'fn-owner-orc-ctx-free ctx)
-                 (when history-source
-                   (fnn-owner-history-root-unpin service history-source)
-                   (setq history-source nil)))
-                 (setq decision (fnn-core 'fn-owner-orc-decide :recorded profile v s nil acc
+               ;; Lane reclaim (PRF-1315): three passes over the pinned
+               ;; history, each a chunk at a time, and no whole rewritten-row
+               ;; list: pass 1 folds the decision; pass 2 rewrites into the
+               ;; checkpoint's capture and writer walk; pass 3 rewrites into
+               ;; the predicted rows' capture (the rebuild's input) and the
+               ;; seal payloads.  CTX and the root pin live across the three
+               ;; and go before the swap; the pass's cleanup frees them on
+               ;; any exit.
+               (let* ((ctx (setq ctx-held (fnn-core 'fn-owner-orc-ctx :recorded v s nil feeds
+                                                    arena)))
+                      (decision nil) (e nil))
+                 (setq decision (fnn-core 'fn-owner-orc-decide :recorded profile v s nil
+                                          (fnn-owner-reclaim-walk records ctx arena service
+                                                                  history-source)
                                           arena))
                  (fnn-reclaim-cut :rewritten)
                  (case (and (consp decision) (first decision))
@@ -7758,14 +7771,40 @@ publication).  Answers the reply word."
                    (t (fnn-fault "ACL2 returned no reclaim decision")))
                  ;; the reclaimed checkpoint, staged off the mutex
                  (let ((segment (fnn-core 'fn-ockp-segment-octets record-octets
-                                          +fnn-checkpoint-batch-octets+)))
+                                          +fnn-checkpoint-batch-octets+))
+                       (acc2 (fnn-core 'fn-rcw-acc-init configs)) (h2 0)
+                       (lacc nil) (sacc nil) (nrows 0) (bad nil))
+                   ;; pass 2: each rewritten chunk's canonical rows from the
+                   ;; carried handle into the capture (KEYSTONE
+                   ;; fn-rcw-canon-acc-steps-is-the-checkpoint-capture) and
+                   ;; its payloads' lengths and sources into the writer walk
+                   ;; (KEYSTONE fn-rcw-srcs-steps-is-the-walk)
+                   (fnn-owner-reclaim-walk
+                    records ctx arena service history-source
+                    (lambda (chunk)
+                      (fnn-checkpoint-yield "reclaim-walk" nrows)
+                      (unless bad
+                        (let ((r (fnn-core 'fn-rcw-canon-acc-step acc2 configs chunk h2 arena)))
+                          (if (eq r :bad)
+                              (setq bad t)
+                            (setq acc2 (first r) h2 (second r)))))
+                      (unless bad
+                        (let ((st (fnn-core 'fn-scka-srcs-n chunk (length chunk) lacc sacc arena)))
+                          (unless (and (consp st) (= (length st) 3) (null (first st)))
+                            (fnn-fault "ACL2 returned a malformed checkpoint walk"))
+                          (setq lacc (second st) sacc (third st))))
+                      (incf nrows (length chunk))))
+                   (when bad (deferred :unencodable) (return-from pass))
+                   (unless (= nrows count)
+                     (fnn-fault "the rewritten history is not the captured history's length"))
                    ;; as a publication stages it (fnn-owner-publish-captured):
                    ;; NEXT, the history image of NEXT's records with its
                    ;; binding into the F row's position, then the setup
                    (destructuring-bind (setup next n arun)
-                       (let ((prepared (fnn-core 'fn-owner-sco-next nil nil configs rows
-                                                 (fnn-checkpoint-walk rows arena) segment
-                                                 arena)))
+                       (let ((prepared (fnn-core 'fn-owner-sco-next-of
+                                                 (fnn-core 'fn-rcw-acc-finish acc2)
+                                                 (list nil lacc sacc) segment)))
+                         (setq acc2 nil lacc nil sacc nil)
                          (multiple-value-bind (position2 image2)
                              (if prepared
                                  (fnn-history-image-build
@@ -7790,37 +7829,75 @@ publication).  Answers the reply word."
                                        (lambda (fd)
                                          (fnn-history-image-write fd image)
                                          (fnn-checkpoint-write-steps
-                                          fd setup segment (length rows) (fnn-store-config store)
+                                          fd setup segment count (fnn-store-config store)
                                           (fnn-live-octets-pub) arun arena))
-                                       (length rows) image))
+                                       count image))
                        (fnn-octets-pub-release))))
                  (fnn-reclaim-cut :staged)
                  ;; The tombstones are PREDICTED here (their handles from
                  ;; BASE, the live arena's count now) and sealed only in the
                  ;; swap quantum, after the seal word answers :swap: a
                  ;; deferred pass seals nothing (books/owner-reclaim-seal.lisp,
-                 ;; KEYSTONE fn-orcs-seal-is-the-intern).
+                 ;; KEYSTONE fn-orcs-seal-is-the-intern).  Pass 3: each
+                 ;; rewritten chunk predicted from the carried handle into the
+                 ;; rebuilt capture (KEYSTONES fn-rcw-predict-acc-steps-is-
+                 ;; predict, fn-rcw-rebuild-of-the-chunked-capture-is-the-
+                 ;; full-open); the chunks' seal payloads, in order.
                  (destructuring-bind (keyring generation)
                      (fnn-core 'fn-owner-orcp-keyring s)
                    (setq base (fnn-owner-gated (service :control)
                                 (first (fnn-call 'fn-arena-count arena))))
-                   (destructuring-bind (predicted payloads)
-                       (fnn-core 'fn-orcs-predict rows keyring generation base)
-                     (setq rows predicted seal-payloads payloads)))
-                 (when (eq rows :bad) (deferred :unencodable) (return-from pass))
+                   (let ((acc3 (fnn-core 'fn-rcw-acc-init configs)) (h3 base) (bad nil)
+                         (payload-chunks nil) (nrows 0))
+                     (fnn-owner-reclaim-walk
+                      records ctx arena service history-source
+                      (lambda (chunk)
+                        (fnn-checkpoint-yield "reclaim-walk" nrows)
+                        (unless bad
+                          (let ((r (fnn-core 'fn-rcw-predict-acc-step acc3 configs chunk
+                                             keyring generation h3)))
+                            (if (eq r :bad)
+                                (setq bad t)
+                              (progn (setq acc3 (first r) h3 (second r))
+                                     (when (third r) (push (third r) payload-chunks))))))
+                        (incf nrows (length chunk))))
+                     (when bad (deferred :unencodable) (return-from pass))
+                     (unless (= nrows count)
+                       (fnn-fault "the rewritten history is not the captured history's length"))
+                     (setq seal-payloads (let ((all nil))
+                                           (dolist (c payload-chunks all)
+                                             (setq all (append c all))))
+                           e (fnn-core 'fn-rcw-acc-finish acc3)
+                           acc3 nil)))
+                 ;; the walks are done: the context freed and the root pin
+                 ;; returned before the swap is attempted
+                 (fnn-core 'fn-owner-orc-ctx-free ctx)
+                 (setq ctx-held nil)
+                 (when history-source
+                   (fnn-owner-history-root-unpin service history-source)
+                   (setq history-source nil))
                  (fnn-reclaim-cut :interned)
-                 (let* ((rebuilt (fnn-core 'fn-owner-orcp-rebuild rows configs frontier
+                 (let* ((rebuilt (fnn-core 'fn-owner-orcp-rebuild e configs frontier
                                            (third answer)))
                         (cat (fnn-fresh-stobj 'fn-cat)))
                    (when (eq (second rebuilt) :fault)
                      (deferred :rebuild) (return-from pass))
-                   (setq history-candidate
-                     (fnn-owner-history-root-prepare-rows service rows column-salt))
-                   (fnn-call 'fn-owner-orcp-load-catalog
-                             column-key
-                             rows
-                             (fnn-core 'fn-owner-orcp-view-index (second rebuilt))
-                             arena cat)
+                   ;; the history candidate and the fresh catalog over the
+                   ;; rebuilt capture's own records (no copy), the catalog a
+                   ;; chunk per call after the keyed clear (KEYSTONE
+                   ;; fn-rcw-load-chunks-keyed-is-keyed-load)
+                   (let ((rows (fnn-core 'fn-sco-records e)))
+                     (setq history-candidate
+                       (fnn-owner-history-root-prepare-rows service rows column-salt))
+                     (fnn-call 'fn-owner-orcp-load-catalog-begin column-key cat)
+                     (let ((view-index (fnn-core 'fn-owner-orcp-view-index (second rebuilt)))
+                           (rest rows))
+                       (loop while rest do
+                         (fnn-call 'fn-owner-orcp-load-catalog-chunk
+                                   (loop repeat +fnn-reclaim-chunk-rows+ while rest
+                                         collect (pop rest))
+                                   view-index arena cat))))
+                   (setq e nil)
                    (fnn-reclaim-cut :rebuilt)
                    (dotimes (round +fnn-reclaim-swap-rounds+)
                      ;; ONE live quantum (refused once the owner is stopping:
@@ -7904,6 +7981,7 @@ publication).  Answers the reply word."
                               (length seal-payloads) seal-us)
                      (fnn-owner-release-extents service store *fnn-checkpoint-frames* paths pin arena))
                    (fnn-reclaim-cut :released))))))
+        (when ctx-held (fnn-core 'fn-owner-orc-ctx-free ctx-held))
         (when history-candidate
           (fnn-owner-history-root-abandon-candidate service history-candidate))
         (when history-source (fnn-owner-history-root-unpin service history-source))

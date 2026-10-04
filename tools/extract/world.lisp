@@ -326,6 +326,7 @@
 (include-book "../../books/owner-reclaim-ready")
 (include-book "../../books/owner-reclaim-carry")
 (include-book "../../books/owner-reclaim-seal")
+(include-book "../../books/reclaim-chunked-seal")
 (include-book "../../books/owner-recovery-retain")
 (include-book "../../books/owner-cursor-domain")
 (include-book "../../books/owner-retire")

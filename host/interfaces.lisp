@@ -921,7 +921,8 @@
   :class :common-lisp-compliant
   :kinds ((n natp))
   :keystones (fn-scka-srcs-n-compose
-              fn-scka-srcs-n-complete))
+              fn-scka-srcs-n-complete
+              fn-rcw-srcs-steps-is-the-walk))
 
 (definterface fn-scka-write-donep
   :class :common-lisp-compliant)
@@ -4809,9 +4810,31 @@
 (definterface fn-owner-orc-capture
   :class ::program)
 
-; host/native/owner.lisp dispatches it (lane online-reclaim).
-(definterface fn-owner-orc-chunk
+; host/native/owner.lisp dispatches them (lane online-reclaim; split into
+; the fold and the rewrite by lane reclaim, PRF-1315).
+(definterface fn-owner-orc-fold-chunk
   :class ::program)
+
+(definterface fn-owner-orc-rewrite-chunk
+  :class ::program)
+
+; host/native/owner.lisp dispatches them (lane reclaim, PRF-1315): the
+; reclaim pass over the pinned history in chunks.
+(definterface fn-rcw-acc-init
+  :class :ideal)
+
+(definterface fn-rcw-acc-finish
+  :class :common-lisp-compliant
+  :keystones (fn-rcw-acc-steps-is-capture))
+
+(definterface fn-rcw-canon-acc-step
+  :class :ideal
+  :keystones (fn-rcw-canon-acc-steps-is-the-checkpoint-capture))
+
+(definterface fn-rcw-predict-acc-step
+  :class :ideal
+  :keystones (fn-rcw-predict-acc-steps-is-predict
+              fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open))
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orc-classes
@@ -4911,6 +4934,10 @@
 
 ; host/native/owner.lisp dispatches it (lane composed-owner).
 (definterface fn-owner-sco-next
+  :class ::program)
+
+; host/native/owner.lisp dispatches it (lane reclaim, PRF-1315).
+(definterface fn-owner-sco-next-of
   :class ::program)
 
 ; host/native/owner.lisp dispatches it (lane composed-owner).
@@ -5454,7 +5481,9 @@
 
 (definterface fn-hist$p-candidate-word :class :common-lisp-compliant :kinds ((expected-count natp))
  :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-count-natp))
-(definterface fn-owner-orcp-load-catalog :class :program)
+(definterface fn-owner-orcp-load-catalog-begin :class :program)
+(definterface fn-owner-orcp-load-catalog-chunk :class :program
+  :keystones (fn-rcw-load-chunks-keyed-is-keyed-load))
 ; PRF-1288: actual private decoded activation and SAME-pool scalar borrow.
 ; Complete decoded constructor/GC tariff remains explicitly unpriced.
 (definterface create-fn-decoded-job :class :common-lisp-compliant

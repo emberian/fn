@@ -86,6 +86,8 @@
 (include-book "../books/owner-reclaim-conns")
 ;; online-reclaim-5: the swapped owner is :ready after the open's barriers.
 (include-book "../books/owner-reclaim-ready")
+;; lane reclaim (PRF-1315): the pass over the pinned history in chunks.
+(include-book "../books/reclaim-chunked-seal")
 (include-book "../books/owner-reclaim-carry")
 (include-book "../books/owner-reclaim-seal")
 (include-book "../books/owner-recovery-retain")
@@ -947,6 +949,18 @@
                  (fn-sn-config-history st)
                  (fn-sf-frontier files)))))
 
+; The first half's answer from NEXT and WALKED computed elsewhere: the
+; reclaim pass builds NEXT chunk by chunk (books/reclaim-chunked-walk.lisp
+; KEYSTONE fn-rcw-canon-acc-steps-is-the-checkpoint-capture: the capture of
+; the canonical rows from 0, as above with no base) and WALKED by
+; fn-scka-srcs-n per chunk (books/reclaim-chunked-seal.lisp KEYSTONE
+; fn-rcw-srcs-steps-is-the-walk).
+(defun fn-owner-sco-next-of (next walked seg)
+  (declare (xargs :mode :program))
+  (if (or (equal next :bad) (not (and (consp walked) (atom (nth 0 walked)))))
+      nil
+    (list next (fn-scka-lens-setup (reverse (nth 1 walked)) seg) walked)))
+
 ; Off the mutex, over the values captured above and the live arena, READ
 ; only (host/native/owner.lisp fnn-owner-publish-captured): NEXT, the capture
 ; of the captured rows' canonical rows (books/store-checkpoint-arena-writer.lisp
@@ -978,9 +992,8 @@
                    (let ((canon (fn-scka-canon-rows records fn-arena 0)))
                      (if (equal canon :bad) :bad (fn-sco-capture configs canon)))
                  next0)))
-    (if (or (equal next :bad) (not (and (consp walked) (atom (nth 0 walked)))))
-        nil
-      (list next (fn-scka-lens-setup (reverse (nth 1 walked)) seg) walked))))
+    (fn-owner-sco-next-of next walked seg)))
+
 
 (defun fn-owner-sco-setup-of (prepared frontier revision log seg budget free)
   ; The second half: (list SETUP NEXT N ARUN) as fn-owner-sco-prepare answers.
@@ -1142,9 +1155,19 @@
   (declare (xargs :guard t))
   (fn-rclp-ctx-free ctx))
 
-(defun fn-owner-orc-chunk (rows ctx acc fn-arena)
+; One chunk of the reclaim walk (books/owner-reclaim.lisp fn-orc-chunk's two
+; halves, fn-orc-fold-of-append and fn-orc-rewrite-rows-of-append joining
+; the chunks).  Pass 1 folds (the decision's accumulator, no rewrite);
+; passes 2 and 3 rewrite (the chunk handed to books/reclaim-chunked-walk.lisp
+; and books/reclaim-chunked-seal.lisp's steps, no fold): the rewrite reads
+; CTX and the arena only, never the fold, so each pass's chunk is the same.
+(defun fn-owner-orc-fold-chunk (rows ctx acc fn-arena)
   (declare (xargs :stobjs fn-arena :mode :program))
-  (fn-orc-chunk rows ctx acc fn-arena))
+  (fn-orc-fold rows ctx acc fn-arena))
+
+(defun fn-owner-orc-rewrite-chunk (rows ctx fn-arena)
+  (declare (xargs :stobjs fn-arena :mode :program))
+  (fn-orc-rewrite-rows rows ctx fn-arena))
 
 (defun fn-owner-orc-init ()
   (declare (xargs :guard t))

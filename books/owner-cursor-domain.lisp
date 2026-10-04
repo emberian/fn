@@ -357,13 +357,13 @@
               mv-nth nth zp car-cons cdr-cons)))))
 
 (defthm fn-owner-rebuilt-swap-establishes-cursor
-  (let ((rebuilt (fn-owner-orcp-rebuild rows configs frontier max-conns)))
-    (implies (not (equal (nth 1 rebuilt) :fault))
+  (let ((rebuilt (fn-owner-orcp-rebuild (fn-sco-capture configs rows) configs frontier max-conns)))
+    (implies (and (true-listp rows) (not (equal (nth 1 rebuilt) :fault)))
              (fn-sn-identity-sequencep
               (fn-owner-store (mv-nth 2 (fn-owner-orcp-swap rebuilt state))))))
   :hints (("Goal" :in-theory
            (union-theories (theory 'minimal-theory)
-            '(fn-owner-orcp-swap-store-effect-by-definition fn-owner-orcp-rebuild
-              fn-orcp-rebuild-is-the-full-open
+            '(fn-owner-orcp-swap-store-effect-by-definition
+              fn-owner-orcp-rebuild-of-capture-is-the-full-open
               fn-owner-cursor-recovered-full-has-retained-fields
               fn-owner-cursor-retained-implies-sequence nth zp car-cons cdr-cons)))))

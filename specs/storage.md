@@ -2155,3 +2155,34 @@ Row encoding, page relocation, flat page-array growth, commit plans and fresh
 Store/catalog/node representations still impose proportional work/allocation.
 The reclaim reservation remains the actual full-copy estimate until those
 allocations are removed.
+
+### Reclaim's walk in chunks (PRF-1315)
+
+The live reclaim pass (`fnn-owner-reclaim-pass`) no longer keeps a list of
+every rewritten row. It reads the generation-pinned history root three times,
+a chunk of rows at a time, each row's decode funded before it is read and each
+chunk's grant returned once the chunk is consumed:
+
+1. the decision's fold (`fn-orc-fold`), no rewrite;
+2. the rewrite, canonicalized from a carried handle into the checkpoint's
+   capture and the writer's walk (`fn-rcw-canon-acc-step`, `fn-scka-srcs-n`;
+   `fn-rcw-canon-acc-steps-is-the-checkpoint-capture`,
+   `fn-rcw-srcs-steps-is-the-walk`);
+3. the rewrite, predicted from the arena's count into held rows and extended
+   into the rebuilt capture (`fn-rcw-predict-acc-step`;
+   `fn-rcw-predict-acc-steps-is-predict`), whose rebuild is the full open of
+   the predicted history (`fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open`).
+
+A capture grows by a chunk at the cost of the chunk (`fn-rcw-acc-step`: the
+records reversed with their count carried; `fn-rcw-acc-steps-is-capture` over
+any chunking). The history candidate and the fresh catalog read the rebuilt
+capture's own records; the catalog loads a chunk per call after the keyed
+clear (`fn-rcw-load-chunks-keyed-is-keyed-load`), with availability from each
+predicted row's decided facts and no arena read. The context and the root pin
+live across the three walks and are released before the swap is attempted.
+
+Scope: this removes the host's whole rewritten-row list and the second whole
+list the prediction made. The rebuilt capture, the checkpoint's capture, the
+fresh catalog and the history candidate are still whole representations of
+the history, and the pass decodes the history three times. The reclaim
+reservation is unchanged until the walk's resident set is measured.

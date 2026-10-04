@@ -221,7 +221,17 @@
 
 ; Reclaim has already prepared its page-backed history candidate. Loading
 ; its fresh catalog must not also allocate an all-tail duplicate of history.
-(defun fn-owner-orcp-load-catalog (key rows view-index fn-arena fn-cat)
+; The load is chunked (lane reclaim, PRF-1315): the keyed clear, then the
+; rebuilt capture's own records a chunk per call; together they are the
+; keyed open over the whole list (books/reclaim-chunked-seal.lisp KEYSTONE
+; fn-rcw-load-chunks-keyed-is-keyed-load).  Availability is each predicted
+; row's decided facts (fn-orcs-held-of), never an arena read.
+(defun fn-owner-orcp-load-catalog-begin (key fn-cat)
+  (declare (xargs :stobjs fn-cat :mode :program))
+  (let ((fn-cat (fn-cat-clear-keyed key fn-cat)))
+    (mv :cleared fn-cat)))
+
+(defun fn-owner-orcp-load-catalog-chunk (rows view-index fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :mode :program))
-  (let ((fn-cat (fn-sca-load-held-rows-keyed key rows view-index fn-arena fn-cat)))
+  (let ((fn-cat (fn-sca-load-held-available-from rows view-index fn-arena fn-cat)))
     (mv :loaded fn-cat)))

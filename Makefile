@@ -840,6 +840,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/arena-forget-columns \
 	books/owner-reclaim-seal \
 	books/reclaim-chunked-walk \
+	books/reclaim-chunked-seal \
 	books/catalog-may-seal \
 	books/catalog-root-incarnation \
 	tests/acl2/catalog-root-incarnation-tests \
@@ -2091,6 +2092,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-reclaim-conns-tests \
 	tests/acl2/owner-reclaim-pass-tests \
 	tests/acl2/reclaim-chunked-walk-tests \
+	tests/acl2/reclaim-chunked-seal-tests \
 	tests/acl2/owner-reclaim-carry-tests \
 	tests/acl2/owner-retain-state-tests \
 	tests/acl2/owner-reclaim-ready-tests \
