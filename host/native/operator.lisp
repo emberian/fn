@@ -907,6 +907,11 @@ Run-only accessors intentionally return NIL for these commands."
               (unless (and (integerp code) (<= 0 code 99))
                 (fnn-fault "ACL2 health report carries no exit code"))
               (fnn-write-report report)
+              ;; PRF-1327: a running owner's key-exchange line.
+              (let ((live *fnn-operator-live-owner*))
+                (when (and control-path live
+                           (funcall (fnn-olo-socket-present live) control-path))
+                  (funcall (fnn-olo-status-tail live) control-path :health)))
               (fnn-operator-print-next-run-heap result)
               (fnn-operator-emit-status :accepted "health")
               code)))

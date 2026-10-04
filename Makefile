@@ -2086,6 +2086,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/feed-journal-order-tests \
 	tests/acl2/tls-handshake-budget-tests \
 	tests/acl2/tls-proxy-tests \
+	books/tls-key-exchange \
+	tests/acl2/tls-key-exchange-tests \
 	tests/acl2/owner-cold-line-tests \
 	books/owner-resource-line \
 	tests/acl2/owner-resource-line-tests \
