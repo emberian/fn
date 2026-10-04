@@ -4607,5 +4607,93 @@ Raw witnesses green on laptop: tests/test_native_web_{page_cursor,post_stream,st
 
 ## docs lane (lane/docs) — 2026-10-04
 
+Brief: scratchpad fn-briefs/COMMON.md + plan FN-SWARMPLAN-20261004 §3, §4 wave 0, §6.
+Owns: docs_check reds; docs/README.md, docs/engineering.md, CONTRIBUTING.md,
+CONTRIBUTORS.md; docs/articles/*.txt (fn.docs); docs/nodes/*.md and
+tools/runbooks/public-node/. Not: AGENTS.md, planning/how-we-work.md,
+planning/now.md (integrator's — proposals by message). No ACL2, no builds,
+nothing executed on any node.
+
+| # | deliverable | sha | docs_check | state |
+|---|---|---|---|---|
+| D1 | docs_check reds (specs/nntp.md table; tests/acl2/docs-operator-grammar-tests.lisp) | d77d4f433 | 0 failures | in the integrator's wave-0 batch; test book certifies there |
+| D2 | guides: CONTRIBUTING 843→450, CONTRIBUTORS 761→341, docs/README 142→101, docs/engineering 1291→493 words | 56043bab6 | 0 failures | READY |
+| D4 | docs/nodes/hbox.md rewritten, docs/nodes/fsn1.md new; tools/runbooks/public-node/ hbox-hosted plan removed, peering.md + exposure.policy corrected | e23781bec | 0 failures | READY; nothing executed on any node |
+| D3 | docs/articles/ (fn.docs): bodies 3,403→2,452 words; hand prose 2,284→1,333; whole files 3,992→3,041 (09-27 pre-site baseline 13,789); Subject lines unchanged; new Message-IDs dated 20261004 | be3c6f4d9 | 0 failures | READY; grammar test book regenerated, needs certifying; NOT posted to fn.docs (post_docs.py is a node action) |
+
+Remaining toward ember's quarter: the two generated regions (fn-faq-2's
+command list 499 words, fn-faq-6's codes and refusals 620) are now 46% of
+the article bodies; cutting them means changing tools/docs_check.py /
+tools/protocol_emit.py's output (or moving them to a reference page) —
+a decision for ember/integrator, not taken here.
+Known pre-existing in a fresh worktree: tests.test_docs_check's
+test_every_python_invocation... errors on missing bin/fn (untracked build
+product), unrelated to this lane.
+
+Continuation point: none owed; lane exits after D3 READY.
+
+Notes for the integrator: comments still naming removed files (no behaviour):
+books/store-mount-identity.lisp:660 (tools/runbooks/public-node, dir still
+exists), tests/test_native_tls_reload.py:97 (fn-cert-install.sh). Lane notes
+live here only (build/coordinator/lanedumps/docs.md untracked, per integrator).
+
+## python-diet-4 (2026-10-04) — tools/ diet
+Full entry: build/coordinator/lanedumps/python-diet.md. lane/python-diet@fd4335285 on
+integrate/20261004@ec2c1b3da: inventory TSV, 11 tools deleted, host_defun_check folded into
+harness_check, runtime_floor merged, T5 brief stub. tools/*.py 111,718 -> 109,862 (-1.7%);
+the quarter target needs the decision list in the full entry.
+
+
+## Lane tariff — 2026-10-04 (Fable, wound down; Opus continues)
+
+The full lanedump is `build/coordinator/lanedumps/tariff.md` (same commit). Design packet:
+`planning/design/tariff-2026-10-04.md` (DECISION block written; two lines escalated to ember).
+First slice: `books/output-tariff-article.lisp` admitted on the laptop (10 forms, 2,770 steps),
+uncertified, unwired; the exact continuation is the numbered list in the coordinator lanedump
+(steps 1-7). Nothing certified, no image, no native run. The only owner-host.lisp region this lane
+touches is `fn-owner-output-tariff-preview` (:5512-5518), untouched so far.
+
 Entry: build/coordinator/lanedumps/docs.md (deliverables, shas, word counts,
 continuation point).
+
+## Apps lane (lane/apps) — 2026-10-04
+
+Own tree /Users/ember/dev/fn/build/lanes/apps, branch lane/apps, base
+origin/integrate/20261004 @ec2c1b3da (assembler af2c7accc6871ee99).
+Owns the application boundary: E1/E2 consumer scenarios on an image of
+current source, the local cursor poll/wait/ack end to end, specs/applications.md,
+wiring gap 8 (FNCR remote receive).
+
+Slice 1 (source; no host or book change):
+- tools/fn_consumer.py `wake --wait SECONDS`: the first page is fn's
+  `consumer wait`/`bound-wait --timeout S` (client deadline S+60), later pages
+  poll. Unit: tests/test_fn_consumer_delivery.py
+  test_wait_sleeps_in_fn_for_the_first_page_only (10/10 OK, py3.12).
+- tests/test_native_consumer_exchange.py
+  test_sleeping_consumer_waits_for_the_report_then_acks: B blocked in wait
+  (still running after 5 s, ack 0), A reports r1, B's wait answers within
+  120 s, inbox r1 applied, committed ack advanced, reply stored; A's wait
+  returns reply-r1 applied; a further wait over nothing sleeps to its deadline.
+- specs/applications.md: rely-on-today (signed exact bytes, D25 resend, the
+  local cursor, two nodes) vs not-yet (remote consumer, view change/rebase,
+  retention, non-NNTP inter-node, zmq patterns), with the five selectors.
+- docs/agents.md one line for `wake --wait`.
+
+Gap 8: un-parked by ember 10-04 ("gates-with-producers"): the remote
+consumer (route, interim-funded TLS listener, client verb, two-node native) is
+lane/apps@25dd82d5a, which waits for the assembler's native-config batch after
+the image-set freeze (it adds a [remote_consumer] table to books/native-config).
+This branch (lane/apps-wait) carries only the Python/test/spec slice.
+
+history-auth-reader harvest stub: wave 3's (ST5 / snapshot producer is its
+consumer), not this strand's.
+
+Native: the five scenarios run from the frozen next tree on the integrator's set on the
+integrator's set: modules tests.test_native_consumer_exchange (selectors
+in applications.md) + tests.test_native_consumer_exchange_two_nodes,
+env FN_RUN_CONSUMER_EXCHANGE=1. Pending: image sha, run ids.
+
+Continuation point: when an image set of current source with this branch
+exists, run `tools/hbox_native.sh --image-set <sha> --env
+FN_RUN_CONSUMER_EXCHANGE=1 <rev> <the five selectors>`, file evidence, update
+the coordinate table, READY to assembler + integrator.

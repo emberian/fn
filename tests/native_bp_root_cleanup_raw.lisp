@@ -1,5 +1,5 @@
 ;;; Actual command unwind: body fault survives every independent cleanup fault.
-(load "tests/native_bp_session_bank_raw.lisp")
+(load "tests/native_bp_session_bank_raw-mock.lisp")
 (in-package "ACL2")
 
 ;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----

@@ -212,7 +212,7 @@ So the answer to the question asked is:
   verdict is the recorded verdict", S6-1) is `planned` with **zero events**.
 - The composition is exercised only by ground witnesses through `fn-own-step`
   (`tests/acl2/owner-verdict-tests.lisp`: 14 assertions, 0 must-fail), a native
-  raw test (`tests/native_peer_authored_accept_raw.lisp`, with ACL2 values
+  raw test (`tests/native_peer_authored_accept_raw-mock.lisp`, with ACL2 values
   stubbed), and the join on `1a9dd747`.
 
 ### Checkable without trusting fn
