@@ -65,8 +65,23 @@
 (assert-event (equal (apt-cli *apt-sub* (append *apt-sub-argv* (list (fn-ak-text "--count"))))
                      '(:usage :option)))
 (assert-event (equal (apt-cli (fn-ak-text "push") *apt-sub-argv*) '(:usage :role)))
-(assert-event (equal (fn-pat-cli-plan (fn-ak-text "pair") *apt-sub* *apt-sub-argv*)
+(assert-event (equal (fn-pat-cli-plan (fn-ak-text "nosuch") *apt-sub* *apt-sub-argv*)
                      '(:usage :pattern)))
+
+; pair: four roles from the same two verbs, the groups crossed.
+(defconst *apt-pair* (fn-ak-text "pair"))
+(assert-event
+ (equal (nth 4 (fn-pat-cli-plan *apt-pair* (fn-ak-text "left-send") *apt-pub-argv*))
+        '(((:encode :opaque-1) (:sign) (:author)) nil)))
+(assert-event
+ (equal (nth 4 (fn-pat-cli-plan *apt-pair* (fn-ak-text "right-recv") *apt-sub-argv*))
+        '(((:register)) ((:wait) (:project) (:decode :opaque-1) (:deliver) (:ack)))))
+(assert-event
+ (equal (fn-pat-role-usage *apt-pair* (fn-pat-find (fn-ak-text "left-send")
+                                                   (fn-pat-row-roles (fn-pat-find *apt-pair* *fn-pat-patterns*))))
+        (append (fn-ak-text "  fn pattern pair left-send CONTROL GENERATION KEYS FORWARD FROM MSGID PAYLOAD SPOOL")
+                '(10))))
+(assert-event (equal (fn-pat-cli-plan *apt-pair* *apt-pub* *apt-pub-argv*) '(:usage :role)))
 (assert-event (equal (car (fn-pat-cli-plan (fn-ak-text "help") nil nil)) :help))
 
 ; The usage text is the plans'.
@@ -119,3 +134,30 @@
  :unchecked "def-pattern refuses a second declaration of a name")
 ; ... and admits a well-formed one (the refusals above are not a refusal of all).
 (def-pattern ok-pattern :kind :opaque-1 :roles ((p :posts g) (s :reads g)) :guarantee nil)
+
+; pipeline: the partitioned pull role needs INDEX < WORKERS <= 1024.
+(defconst *apt-pipeline* (fn-ak-text "pipeline"))
+(defconst *apt-pull-argv*
+  (list (fn-ak-text "/s/control") (fn-ak-text "w-1") (fn-ak-text "1") (fn-ak-text "3")
+        (fn-ak-text "jobs") (fn-ak-text "/out")))
+(assert-event (apt-covers (fn-pat-cli-plan *apt-pipeline* (fn-ak-text "pull") *apt-pull-argv*)))
+(assert-event
+ (equal (nth 4 (fn-pat-cli-plan *apt-pipeline* (fn-ak-text "pull") *apt-pull-argv*))
+        '(((:register)) ((:wait) (:project) (:decode :opaque-1) (:select) (:deliver) (:ack)))))
+(assert-event
+ (equal (fn-pat-cli-plan *apt-pipeline* (fn-ak-text "pull")
+                         (update-nth 2 (fn-ak-text "3") *apt-pull-argv*))
+        '(:usage :partition)))
+(assert-event
+ (equal (fn-pat-cli-plan *apt-pipeline* (fn-ak-text "pull")
+                         (update-nth 3 (fn-ak-text "x") *apt-pull-argv*))
+        '(:usage :partition)))
+(assert-event
+ (equal (fn-pat-cli-plan *apt-pipeline* (fn-ak-text "pull")
+                         (update-nth 3 (fn-ak-text "1025") *apt-pull-argv*))
+        '(:usage :partition)))
+(assert-event (apt-covers (fn-pat-cli-plan *apt-pipeline* (fn-ak-text "push") *apt-pub-argv*)))
+; A group pushed to and read only by a partitioned role is admitted.
+(must-fail-checked
+ (def-pattern bad-partition :kind :opaque-1 :roles ((p :posts g) (s :reads-partition h)) :guarantee (:partitioned))
+ :unchecked "def-pattern refuses a partitioned reader of a group nobody posts to")

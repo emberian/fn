@@ -96,6 +96,36 @@
           (list :foreign (fn-pat-at 1 d) (fn-pat-at 2 projected))))
     projected))
 
+; The partition of a Message-ID among N workers: FNV-1a (32 bits) of its
+; octets, mod N.  A fixed function of the octets, so every worker computes
+; the same partition for a message without any coordination.
+(defun fn-pat-fnv1a (xs h)
+  (declare (xargs :guard (natp h)))
+  (if (consp xs)
+      (fn-pat-fnv1a (cdr xs)
+                    (mod (* (logxor h (nfix (car xs))) 16777619) 4294967296))
+    h))
+
+(defun fn-pat-partition (msgid n)
+  (declare (xargs :guard t))
+  (if (posp n) (mod (fn-pat-fnv1a msgid 2166136261) n) 0))
+
+; (:select): a delivery or a withdrawal outside worker INDEX's partition of
+; WORKERS becomes (:skip MSGID); everything else passes.  INDEX and WORKERS
+; are the command's decimal words (fn-pat-partition-argsp checked them).
+(defun fn-pat-select (decision index workers)
+  (declare (xargs :guard t))
+  (let ((i (fn-pat-parse-nat index))
+        (n (fn-pat-parse-nat workers))
+        (msgid (case (fn-pat-at 0 decision)
+                 (:deliver (fn-pat-at 2 decision))
+                 (:withdrawn (fn-pat-at 1 decision))
+                 (otherwise nil))))
+    (if (and (member-equal (fn-pat-at 0 decision) '(:deliver :withdrawn))
+             (not (equal i (fn-pat-partition msgid n))))
+        (list :skip msgid)
+      decision)))
+
 ; The payload file of a delivery: SEQUENCE in twenty digits, ".payload".
 (defun fn-pat-delivery-name (sequence)
   (declare (xargs :guard t))
@@ -126,3 +156,26 @@
                   :use ((:instance fn-pat-values-check-is-the-kind)
                         (:instance fn-ak-decode-of-encode
                                    (vals (fn-pat-values name-word from seconds group msgid)))))))
+
+(local (include-book "arithmetic-5/top" :dir :system))
+
+(defthm fn-pat-fnv1a-natp
+  (implies (natp h) (natp (fn-pat-fnv1a xs h)))
+  :rule-classes :type-prescription)
+
+(defthm fn-pat-partition-is-a-worker
+  (implies (posp n)
+           (and (natp (fn-pat-partition msgid n))
+                (< (fn-pat-partition msgid n) n)))
+  :hints (("Goal" :in-theory (disable fn-pat-fnv1a))))
+
+; KEYSTONE: for a fixed worker set of N, each delivered message is delivered
+; by exactly one worker index -- the one its Message-ID's partition names --
+; and every other worker skips it (and acks past it).
+(defthm fn-pat-select-is-one-worker
+  (implies (and (posp (fn-pat-parse-nat workers))
+                (equal (fn-pat-at 0 decision) :deliver))
+           (iff (equal (fn-pat-at 0 (fn-pat-select decision index workers)) :deliver)
+                (equal (fn-pat-parse-nat index)
+                       (fn-pat-partition (fn-pat-at 2 decision)
+                                         (fn-pat-parse-nat workers))))))

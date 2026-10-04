@@ -23573,6 +23573,30 @@
       "events": [
         "fn-pat-reader-delivers-what-the-writer-encoded"
       ]
+    },
+    {
+      "id": "PRF-1329",
+      "title": "push/pull with a fixed worker set: each delivered message is delivered by exactly one worker, the one its Message-ID's partition names",
+      "statement": "books/app-pattern-delivery.lisp. fn-pat-partition MSGID N = FNV-1a (32-bit) of MSGID's octets mod N (0 for N not positive); fn-pat-partition-is-a-worker: for posp N it is a natural below N. fn-pat-select-is-one-worker: for WORKERS a decimal word naming a positive N and DECISION a delivery (:deliver SEQ MSGID PAYLOAD), (fn-pat-select DECISION INDEX WORKERS) is still a delivery iff INDEX names the partition of MSGID among N; otherwise it is (:skip MSGID), which the host acks past without delivering. So of workers 0..N-1 exactly one delivers each message. books/app-pattern.lisp: the verb :reads-partition and the declaration `pipeline` (push :posts queue, pull :reads-partition queue); fn-pat-cli-plan refuses :partition unless INDEX < WORKERS <= 1024. Scope: a fixed worker set; a stopped worker's partition waits for it (no stealing; competing consumers with leases are outside 6.6.0). Host: host/native/pattern.lisp (:select).",
+      "milestone": "M6",
+      "requirements": [],
+      "depends_on": [
+        "PRF-1325",
+        "PRF-1326"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/app-pattern-delivery.lisp",
+        "books/app-pattern.lisp",
+        "tests/acl2/app-pattern-delivery-tests.lisp (exactly one of 3 and of 7 workers delivers; the others skip by Message-ID; withdrawals partitioned the same way; empty passes; one worker delivers everything; four Message-IDs spread over 4 partitions)",
+        "tests/acl2/app-pattern-tests.lisp (pull accepted and covered; index = workers, a non-decimal and 1025 workers refused :partition; a partitioned reader of an unposted group refused at admission)"
+      ],
+      "progress_note": "Lane zmq-2 2026-10-04. D50.",
+      "events": [
+        "fn-pat-select-is-one-worker",
+        "fn-pat-partition-is-a-worker"
+      ]
     }
   ]
 }

@@ -19681,6 +19681,19 @@
           "name": "fn-pat-reader-delivers-what-the-writer-encoded"
         }
       ]
+    },
+    {
+      "id": "PRF-1329",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pat-select-is-one-worker"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pat-partition-is-a-worker"
+        }
+      ]
     }
   ]
 }

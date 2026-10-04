@@ -13,6 +13,9 @@ for another payload is refused by name.
 
 Red before: the image has no `pattern' verb.
 
+The pipeline case (push/pull with a fixed worker set): six pushes, three
+pull workers; each message delivered by exactly the worker of its partition.
+
 Opt-in: FN_RUN_HYBRID_E2E=1 (the hybrid-signature saved-image gate this
 rides on; hbox_native.sh sets it) and FN_NATIVE_HOST naming a
 source-matched image; OpenSSL 3.5 for ML-DSA-65 (FN_TEST_OPENSSL).
@@ -124,6 +127,57 @@ class NativePatternPubSubTest(unittest.TestCase):
                           FROM, "<p2.pattern@example.invalid>", other, self.root / "spool-2")
         self.assertEqual(refused.returncode, 1, (refused.stdout + refused.stderr).decode())
         self.assertIn(b"pattern pub sign refused spool-conflict", refused.stdout)
+        self.node.stop(process=owner)
+
+
+    def test_pipeline_three_workers_partition_six_messages(self):
+        """push/pull with a fixed worker set: six pushes, three pull workers;
+        each message is delivered by exactly one worker, the one whose index
+        is the FNV-1a of its Message-ID mod 3 (computed here independently),
+        and every worker reads the whole queue (the others' messages as
+        skips) to its end."""
+        owner = self.node.start()
+        enrolled = self.fn("hybrid-enroll", self.control, "1", self.keys / "principal",
+                           self.keys / "ed-public", self.keys / "ml-public.pem")
+        self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
+        msgids = [b"<j%d.pipeline@example.invalid>" % i for i in range(6)]
+        for i, msgid in enumerate(msgids):
+            payload = self.root / ("job-%d" % i)
+            payload.write_bytes(b"job %d" % i)
+            pushed = self.fn("pattern", "pipeline", "push", self.control, "1", self.keys,
+                             GROUP, FROM, msgid.decode(), payload,
+                             self.root / ("job-spool-%d" % i))
+            self.assertEqual(pushed.returncode, 0, (pushed.stdout + pushed.stderr).decode())
+
+        def fnv1a(octets):
+            h = 2166136261
+            for o in octets:
+                h = ((h ^ o) * 16777619) % 4294967296
+            return h
+
+        seen = {}
+        for index in range(3):
+            out = self.root / ("worker-%d" % index)
+            out.mkdir()
+            got = self.fn("pattern", "pipeline", "pull", self.control, "worker-%d" % index,
+                          str(index), "3", GROUP, out, "--timeout", "2")
+            self.assertEqual(got.returncode, 0, (got.stdout + got.stderr).decode())
+            delivered = re.findall(rb"pattern pull message \d+ ([0-9a-f]+) \d+ (\S+)", got.stdout)
+            skipped = re.findall(rb"pattern pull skip ([0-9a-f]+)", got.stdout)
+            self.assertEqual(len(delivered) + len(skipped), 6, got.stdout)
+            for msgid_hex, path in delivered:
+                msgid = bytes.fromhex(msgid_hex.decode())
+                self.assertEqual(fnv1a(msgid) % 3, index)
+                self.assertNotIn(msgid, seen)
+                seen[msgid] = index
+                self.assertEqual(Path(path.decode()).read_bytes(),
+                                 b"job %d" % msgids.index(msgid))
+        self.assertEqual(sorted(seen), sorted(msgids))
+        # A worker index outside its set is refused by the argv grammar.
+        bad = self.fn("pattern", "pipeline", "pull", self.control, "worker-x", "3", "3",
+                      GROUP, self.root)
+        self.assertEqual(bad.returncode, 5, (bad.stdout + bad.stderr).decode())
+        self.assertIn(b"partition", bad.stderr)
         self.node.stop(process=owner)
 
 

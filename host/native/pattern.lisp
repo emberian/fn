@@ -3,7 +3,8 @@
 ;;; (books/app-pattern.lisp fn-pat-cli-plan, KEYSTONE
 ;;; fn-pat-cli-run-binds-every-step); this file is ONE loop over the closed
 ;;; step vocabulary, each step an existing control request (hybrid-author,
-;;; consumer register / wait / ack) or an ACL2 function
+;;; consumer register / wait / ack) or an ACL2 function, (:select) the
+;;; partition of a fixed worker set (fn-pat-select-is-one-worker)
 ;;; (books/app-pattern-delivery.lisp).  A new pattern is a `def-pattern'
 ;;; declaration and adds nothing here.
 ;;;
@@ -149,9 +150,18 @@ the same octets."
       (:decode
        (setf (getf st :decision) (fnn-core 'fn-pat-decode (second step) (getf st :projected)))
        st)
+      (:select
+       (setf (getf st :decision)
+             (fnn-core 'fn-pat-select (getf st :decision)
+                       (funcall octets :index) (funcall octets :workers)))
+       st)
       (:deliver
        (let ((decision (getf st :decision)))
          (case (first decision)
+           (:skip
+            ;; Another worker's partition: acknowledged past, never delivered.
+            (fnn-pattern-say role-word "skip ~a" (fnn-hex (second decision)))
+            st)
            (:deliver
             (destructuring-bind (sequence msgid payload) (rest decision)
               (let ((path (fnn-pattern-path (funcall arg :out)

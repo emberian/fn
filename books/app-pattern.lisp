@@ -47,14 +47,17 @@
 
 ; :posts G  -- the role sends one message of the kind to group G.
 ; :reads G  -- the role is a consumer of group G and delivers its messages.
-(defconst *fn-pat-verbs* '(:posts :reads))
+; :reads-partition G -- the role is worker INDEX of WORKERS over group G: a
+;     consumer of G that delivers the messages of its partition
+;     (fn-pat-partition of the Message-ID) and acks the rest unread.
+(defconst *fn-pat-verbs* '(:posts :reads :reads-partition))
 
 ; The guarantee words (design section 3).  A word is a property the pattern
 ; RELIES ON, carried to the usage text and the export row; each word's
 ; owner is named in *fn-pat-guarantee-owners*.
 (defconst *fn-pat-guarantees*
   '(:retention-receipt :at-least-once :history-order :reclaim-gap
-    :withdrawal-event :no-drop))
+    :withdrawal-event :no-drop :partitioned))
 
 (defconst *fn-pat-guarantee-owners*
   '((:retention-receipt . "hybrid-author exit 0 = stored byte for byte (D25, D01)")
@@ -62,11 +65,12 @@
     (:history-order . "the consumer cursor reads one group in Store commit order")
     (:reclaim-gap . "reclaimed content is an explicit unavailable gap (specs/consumer-progress.md)")
     (:withdrawal-event . "a withdrawn message arrives as a withdrawal report (PKT-710)")
-    (:no-drop . "registration starts at position 0 and no reader is dropped")))
+    (:no-drop . "registration starts at position 0 and no reader is dropped")
+    (:partitioned . "a fixed worker set: each message is delivered by exactly the worker of its partition (fn-pat-select-is-one-worker); a stopped worker's partition waits for it, nothing is stolen")))
 
 ; The step vocabulary.  A step is (OP) or (OP KIND).
 (defconst *fn-pat-step-ops*
-  '(:encode :sign :author :register :wait :project :decode :deliver :ack))
+  '(:encode :sign :author :register :wait :project :decode :select :deliver :ack))
 
 ; What each step needs from the command line.  :group is the role's group
 ; variable (its word is the group variable's name, e.g. TOPIC).
@@ -78,12 +82,14 @@
     (:wait :control :consumer :out)
     (:project)
     (:decode)
+    (:select :index :workers)
     (:deliver :out)
     (:ack :control)))
 
 ; The one order the arguments of every role appear in.
 (defconst *fn-pat-arg-order*
-  '(:control :generation :consumer :keys :group :from :msgid :payload :spool :out))
+  '(:control :generation :consumer :index :workers :keys :group :from :msgid
+    :payload :spool :out))
 
 ; -----------------------------------------------------------------------------
 ; 2. Words: octets of lowercase names, decimals.
@@ -225,6 +231,10 @@
     (:reads (list (list (list :register))
                   (list (list :wait) (list :project) (list :decode kind)
                         (list :deliver) (list :ack))))
+    (:reads-partition
+     (list (list (list :register))
+           (list (list :wait) (list :project) (list :decode kind) (list :select)
+                 (list :deliver) (list :ack))))
     (otherwise (list nil nil))))
 
 (defun fn-pat-steps-needs (steps)
@@ -285,13 +295,16 @@
           (fn-pat-has-rolep verb group (cdr roles)))
     nil))
 
-; Every group a role posts to is read by some role, and every group a role
-; reads is posted to by some role: a pattern carries messages somewhere.
+; Every group a role posts to is read by some role (:reads or
+; :reads-partition), and every group a role reads is posted to by some role:
+; a pattern carries messages somewhere.
 (defun fn-pat-roles-pairedp (roles all)
   (declare (xargs :guard (and (fn-pat-role-listp roles) (fn-pat-role-listp all))))
   (if (consp roles)
-      (and (fn-pat-has-rolep (if (eq (cadr (car roles)) :posts) :reads :posts)
-                             (caddr (car roles)) all)
+      (and (if (eq (cadr (car roles)) :posts)
+               (or (fn-pat-has-rolep :reads (caddr (car roles)) all)
+                   (fn-pat-has-rolep :reads-partition (caddr (car roles)) all))
+             (fn-pat-has-rolep :posts (caddr (car roles)) all))
            (fn-pat-roles-pairedp (cdr roles) all))
     t))
 
@@ -358,6 +371,29 @@
   :kind :opaque-1
   :roles ((pub :posts topic)
           (sub :reads topic))
+  :guarantee (:retention-receipt :at-least-once :history-order :reclaim-gap
+              :withdrawal-event :no-drop))
+
+;; pair: two endpoints, each posting to the group the other reads.  The
+;; exclusivity zmq's PAIR socket gives is the accounts' post/read patterns
+;; here (fn operator account access), not a property of the declaration.
+;; push/pull with a fixed worker set: WORKERS pull roles over one queue
+;; group, worker INDEX delivering exactly its partition.  Competing
+;; consumers with leases (work stealing) need owner state (D46) and are not
+;; in 6.6.0.
+(def-pattern pipeline
+  :kind :opaque-1
+  :roles ((push :posts queue)
+          (pull :reads-partition queue))
+  :guarantee (:retention-receipt :at-least-once :history-order :reclaim-gap
+              :withdrawal-event :no-drop :partitioned))
+
+(def-pattern pair
+  :kind :opaque-1
+  :roles ((left-send :posts forward)
+          (left-recv :reads back)
+          (right-send :posts back)
+          (right-recv :reads forward))
   :guarantee (:retention-receipt :at-least-once :history-order :reclaim-gap
               :withdrawal-event :no-drop))
 
@@ -468,9 +504,36 @@
   (declare (xargs :guard t))
   (if (consp xs) (and (fn-pat-wordp (car xs)) (fn-pat-words-p (cdr xs))) (null xs)))
 
+; The word bound to ARG (the host reads its arguments with this).
+(defun fn-pat-lookup (arg bindings)
+  (declare (xargs :guard t))
+  (cond ((atom bindings) nil)
+        ((and (consp (car bindings)) (equal (caar bindings) arg)) (cdar bindings))
+        (t (fn-pat-lookup arg (cdr bindings)))))
+
+; The most workers a partitioned role names.
+(defconst *fn-pat-max-workers* 1024)
+
+; A plan with a (:select) step binds INDEX < WORKERS <= the maximum, both
+; decimal words; any other plan passes.
+(defun fn-pat-select-stepp (steps)
+  (declare (xargs :guard t))
+  (if (consp steps)
+      (or (and (consp (car steps)) (equal (caar steps) :select))
+          (fn-pat-select-stepp (cdr steps)))
+    nil))
+
+(defun fn-pat-partition-argsp (plan bindings)
+  (declare (xargs :guard t))
+  (or (not (fn-pat-select-stepp (fn-pat-at 1 plan)))
+      (let ((i (fn-pat-parse-nat (fn-pat-lookup :index bindings)))
+            (n (fn-pat-parse-nat (fn-pat-lookup :workers bindings))))
+        (and (natp i) (natp n) (< i n) (<= n *fn-pat-max-workers*)))))
+
 ; The plan of `fn pattern NAME ROLE ARGV...':
 ;   (:help TEXT)
-;   (:usage REASON)  REASON :pattern, :role, :argc, :word or :option
+;   (:usage REASON)  REASON :pattern, :role, :argc, :word, :option or
+;                    :partition
 ;   (:run NAME ROLE KIND PLAN BINDINGS TIMEOUT COUNT)
 (defun fn-pat-cli-plan (name role argv)
   (declare (xargs :guard t))
@@ -491,11 +554,13 @@
                           (list :usage :word))
                          (t (let ((opts (fn-pat-options (nthcdr n argv)
                                                         *fn-pat-default-timeout* 0)))
-                              (if (not (equal (car opts) :ok))
-                                  opts
-                                (list :run (fn-pat-at 1 row) (fn-pat-at 1 role-row) (fn-pat-at 2 row)
+                              (cond ((not (equal (car opts) :ok)) opts)
+                                    ((not (fn-pat-partition-argsp
+                                           plan (fn-pat-bind args argv)))
+                                     (list :usage :partition))
+                                    (t (list :run (fn-pat-at 1 row) (fn-pat-at 1 role-row) (fn-pat-at 2 row)
                                       plan (fn-pat-bind args argv)
-                                      (fn-pat-at 1 opts) (fn-pat-at 2 opts)))))))))))))
+                                      (fn-pat-at 1 opts) (fn-pat-at 2 opts))))))))))))))
 
 ; -----------------------------------------------------------------------------
 ; 8. The posting role's values: the kind's eight, from the command line's
@@ -524,13 +589,6 @@
 
 ; -----------------------------------------------------------------------------
 ; 9. Keystones.
-
-; The word bound to ARG (the host reads its arguments with this).
-(defun fn-pat-lookup (arg bindings)
-  (declare (xargs :guard t))
-  (cond ((atom bindings) nil)
-        ((and (consp (car bindings)) (equal (caar bindings) arg)) (cdar bindings))
-        (t (fn-pat-lookup arg (cdr bindings)))))
 
 ; Every binding an accepted command line makes covers the plan's needs.
 (defun fn-pat-bindings-coverp (needs bindings)

@@ -4141,6 +4141,9 @@
   :keystones (fn-pat-reader-delivers-what-the-writer-encoded))
 (definterface fn-pat-delivery-name
   :class :common-lisp-compliant)
+(definterface fn-pat-select
+  :class :common-lisp-compliant
+  :keystones (fn-pat-select-is-one-worker))
 
 (definterface fn-hl-host-enroll-event
   :class ::program)

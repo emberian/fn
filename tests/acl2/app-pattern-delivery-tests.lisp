@@ -117,3 +117,37 @@
 (assert-event (equal (fn-pat-spool-check '(1 2 3) 1 *apd-name* *apd-from* *apd-group*
                                          *apd-msgid* *apd-payload*)
                      :spool-request))
+
+; push/pull (pipeline): each delivery goes to exactly one worker of N.
+(defun apd-delivering-workers (decision i n)
+  (declare (xargs :measure (nfix (- n i)) :verify-guards nil))
+  (if (and (natp i) (natp n) (< i n))
+      (if (equal (car (fn-pat-select decision (fn-pat-decimal i) (fn-pat-decimal n))) :deliver)
+          (cons i (apd-delivering-workers decision (1+ i) n))
+        (apd-delivering-workers decision (1+ i) n))
+    nil))
+(defconst *apd-delivery* (list :deliver 2 *apd-msgid* *apd-payload*))
+(assert-event (equal (len (apd-delivering-workers *apd-delivery* 0 3)) 1))
+(assert-event (equal (apd-delivering-workers *apd-delivery* 0 3)
+                     (list (fn-pat-partition *apd-msgid* 3))))
+(assert-event (equal (len (apd-delivering-workers *apd-delivery* 0 7)) 1))
+; The others skip it by its Message-ID; a withdrawal is partitioned the same
+; way; empty reports and foreign articles pass to every worker.
+(assert-event
+ (let ((other (mod (1+ (fn-pat-partition *apd-msgid* 3)) 3)))
+   (equal (fn-pat-select *apd-delivery* (fn-pat-decimal other) (fn-pat-decimal 3))
+          (list :skip *apd-msgid*))))
+(assert-event
+ (equal (len (remove-equal nil
+                           (list (equal (car (fn-pat-select (list :withdrawn *apd-msgid*) (fn-pat-decimal 0) (fn-pat-decimal 3))) :withdrawn)
+                                 (equal (car (fn-pat-select (list :withdrawn *apd-msgid*) (fn-pat-decimal 1) (fn-pat-decimal 3))) :withdrawn)
+                                 (equal (car (fn-pat-select (list :withdrawn *apd-msgid*) (fn-pat-decimal 2) (fn-pat-decimal 3))) :withdrawn))))
+        1))
+(assert-event (equal (fn-pat-select '(:empty) (fn-pat-decimal 1) (fn-pat-decimal 3)) '(:empty)))
+; One worker delivers everything.
+(assert-event (equal (fn-pat-select *apd-delivery* (fn-pat-decimal 0) (fn-pat-decimal 1)) *apd-delivery*))
+; Messages spread: three Message-IDs do not all land in one partition of 4.
+(assert-event
+ (not (equal (list (fn-pat-partition (fn-ak-text "<a@x>") 4) (fn-pat-partition (fn-ak-text "<b@x>") 4)
+                   (fn-pat-partition (fn-ak-text "<c@x>") 4) (fn-pat-partition (fn-ak-text "<d@x>") 4))
+             (make-list 4 :initial-element (fn-pat-partition (fn-ak-text "<a@x>") 4)))))
