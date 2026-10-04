@@ -5662,6 +5662,11 @@
               fn-pfd-default-launches-where-its-extra-fits
               fn-bs-init-log-complete-store-carries-the-peer-flight-profile))
 (definterface fn-pfp-refusal-line :class :common-lisp-compliant)
+(definterface fn-pfp-catch-up-observes-p :class :common-lisp-compliant)
+(definterface fn-pfp-catch-up-admission :class :common-lisp-compliant
+  :keystones (fn-pfp-catch-up-verb-accepted-only-funded
+              fn-pfp-catch-up-admission-is-identity-elsewhere))
+(definterface fn-pfp-catch-up-refusal-line :class :common-lisp-compliant)
 (definterface fn-pfr-policy-p :class :common-lisp-compliant)
 (definterface fn-pfr-extend-operation-reservation :class :common-lisp-compliant)
 (definterface fn-pfr-operation-observes-p :class :common-lisp-compliant)

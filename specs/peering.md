@@ -356,6 +356,13 @@ batches instead of one NEWNEWS listing and one ARTICLE per Message-ID. The
 row `(name "catch-up-interval" "" SECONDS)` of the peer's group, set by
 `fn operator CONFIG peer catch-up NAME SECONDS` (0 stops), makes the owner
 run a catch-up round every SECONDS against the peer's NNTP transport. The
+verb with SECONDS > 0 is admitted only on a funded node: the operator reads
+the Store's `peer-flight-profile` and ACL2 admits the plan only when it is a
+policy (books/peer-flight-default.lisp `fn-pfp-catch-up-admission`,
+`fn-pfp-catch-up-verb-accepted-only-funded`, PRF-1323); otherwise the verb
+is refused by name (`peer catch-up refused: no peer flight profile`, reason
+`:catch-up-unfunded`) and no row is written. `init` writes a default
+profile, so a fresh node is funded out of the box. The
 plan is the pull plan of the same rows with that interval
 (`fn-cu-plans`, books/peer-catchup.lisp): the transport, the credential
 policy and the preamble (STARTTLS, the verified handshake, AUTHINFO) are
@@ -440,7 +447,9 @@ pull worker):
 - **Funding.** A catch-up round draws a lease from the independent peer
   flight bank (`peer-flight-profile`, specs/resource-vector.md) before it
   dials; without one (no profile, or every flight slot held) it fails
-  `peer-flight-unfunded` and never dials. Every controller step and spool
+  `peer-flight-unfunded` and never dials. The verb's admission covers a
+  profile absent when catch-up is configured; this reason remains for one
+  removed afterwards, or absent when the owner started. Every controller step and spool
   operation draws its metered work from the bank (a spent coordinate);
   a refusal fails the round `peer-work-exhausted`. The lease settles only
   after the worker thread is joined, the socket is shut and the local

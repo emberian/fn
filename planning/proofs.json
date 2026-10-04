@@ -23482,6 +23482,33 @@
       "evidence": [
         "tests/acl2/peer-flight-default-tests.lisp"
       ]
+    },
+    {
+      "id": "PRF-1323",
+      "title": "peer catch-up NAME SECONDS with SECONDS > 0 is accepted exactly on a node whose observed peer flight profile is a policy, else refused by name",
+      "statement": "books/peer-flight-default.lisp. fn-pfp-catch-up-observes-p (an accepted :extend-peer plan with a nonzero catch-up-interval row) and fn-pfp-catch-up-admission (PLAN OBSERVED: the refusal :catch-up-unfunded when PLAN is observed and OBSERVED is not fn-pfr-policy-p, else PLAN). KEYSTONES: fn-pfp-catch-up-verb-accepted-only-funded (for every argv whose words are peer catch-up NAME SECONDS with SECONDS > 0 and whose fn-native-admin-plan is accepted: the admission is accepted iff OBSERVED is a policy, and refused :catch-up-unfunded otherwise; through fn-pfp-catch-up-verb-is-observed, the grammar's arm is an observed plan); fn-pfp-catch-up-admission-is-identity-elsewhere (an unobserved plan, including peer catch-up NAME 0, or any plan on a funded node, is returned unchanged). Host: host/native/operator.lisp fnn-operator-catch-up-admitted reads ROOT/peer-flight-profile (fnn-peer-flight-profile) only for an observed plan, before the live or offline executor, and refuses with fn-pfp-catch-up-refusal-line. Scope: the observation is the operator's read of the file; a live owner started without one keeps failing rounds peer-flight-unfunded until restart (the round-time reason stays). Teeth: tests/acl2/peer-flight-default-tests.lisp (defteeth on both).",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-053"
+      ],
+      "depends_on": [
+        "PRF-1319",
+        "PRF-325"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "files": [
+        "books/peer-flight-default.lisp",
+        "tests/acl2/peer-flight-default-tests.lisp",
+        "host/native/operator.lisp"
+      ],
+      "events": [
+        "fn-pfp-catch-up-verb-accepted-only-funded",
+        "fn-pfp-catch-up-admission-is-identity-elsewhere"
+      ],
+      "evidence": [
+        "tests/acl2/peer-flight-default-tests.lisp"
+      ]
     }
   ]
 }

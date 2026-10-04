@@ -5227,7 +5227,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-325",
-        "PRF-1314"
+        "PRF-1314",
+        "PRF-1323"
       ],
       "verification": [
         "proof",

@@ -19,12 +19,18 @@
 ;            the per-operation unit) -- a lifetime figure, renewal is open
 ; Every figure is clamped so the default is a policy for EVERY input; the
 ; clamps bind only at bounds beyond any admitted profile (2^61 octets).
+;
+; The other half (step 3, at the end): `peer catch-up NAME SECONDS' with
+; SECONDS > 0 is admitted only on a node whose profile is a policy
+; (fn-pfp-catch-up-admission); otherwise the verb refuses by name rather than
+; configure rounds that each fail reason=peer-flight-unfunded.
 (in-package "ACL2")
 (include-book "peer-flight-profile")
 (include-book "byte-store-frame")
 (include-book "peer-catchup")
 (include-book "heap-store-figure")
 (include-book "heap-reservation")
+(include-book "native-admin")
 (local (include-book "arithmetic-5/top" :dir :system))
 
 (defconst *fn-pfd-flights* 2)
@@ -324,3 +330,122 @@
                                 (* *fn-heap-mib* (nfix (fn-pfr-at 1 base)))
                                 (fn-pfd-heap)
                                 (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib)))))))))
+
+; =============================================================================
+; Step 3: the catch-up verb refuses an unfunded node by name.  Without a peer
+; flight profile every catch-up round draws no lease and fails
+; reason=peer-flight-unfunded (books/peer-catchup-spool.lisp fn-csp-begin),
+; round after round, while the verb itself was accepted.  The plan
+; (books/native-admin-peer.lisp, the "catch-up" arm) stays pure over the
+; words; the host observes the store's profile (host/native/heap.lisp
+; fnn-peer-flight-profile: nil when absent, a refusal by name when
+; malformed) only for a plan ACL2 says needs it, and this decides.  The
+; round-time reason stays: a profile removed after configuration.
+
+; Some row sets a nonzero catch-up interval (0 stops catch-up: no funding).
+(defun fn-pfp-catch-up-rowsp (rows)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (or (and (equal (fn-cfg-row-b (car rows)) *fn-pcb-catch-up-interval-slot*)
+               (posp (fn-cfg-row-n (car rows))))
+          (fn-pfp-catch-up-rowsp (cdr rows)))
+    nil))
+
+; The plans the admission observes: an accepted peer extension whose rows
+; start (or re-time) catch-up.  The host reads the profile for these only, so
+; a malformed profile refuses no other verb.
+(defun fn-pfp-catch-up-observes-p (plan)
+  (declare (xargs :guard t))
+  (and (equal (fn-native-admin-result-status plan) :accepted)
+       (equal (fn-native-admin-result-kind plan) :extend-peer)
+       (fn-pfp-catch-up-rowsp (fn-native-admin-result-value plan))))
+
+; OBSERVED is fnn-peer-flight-profile's value: the policy, or nil.
+(defun fn-pfp-catch-up-admission (plan observed)
+  (declare (xargs :guard t))
+  (if (and (fn-pfp-catch-up-observes-p plan) (not (fn-pfr-policy-p observed)))
+      (fn-native-admin-result :refused :catch-up-unfunded nil nil 0 nil nil)
+    plan))
+
+(defun fn-pfp-catch-up-refusal-line ()
+  (declare (xargs :guard t))
+  "peer catch-up refused: no peer flight profile")
+
+;; An observed plan is admitted exactly on a funded node; unfunded, by name.
+(defthm fn-pfp-catch-up-observed-accepted-only-funded
+  (implies (fn-pfp-catch-up-observes-p plan)
+           (and (iff (equal (fn-native-admin-result-status
+                             (fn-pfp-catch-up-admission plan observed))
+                            :accepted)
+                     (fn-pfr-policy-p observed))
+                (implies (not (fn-pfr-policy-p observed))
+                         (equal (fn-native-admin-result-reason
+                                 (fn-pfp-catch-up-admission plan observed))
+                                :catch-up-unfunded))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-pfr-policy-p fn-pfp-catch-up-rowsp))))
+
+;; The operator grammar's `peer catch-up NAME SECONDS' with SECONDS > 0 is an
+;; observed plan (books/native-admin-peer.lisp, the "catch-up" arm).
+(local (defthm pfd-catch-up-plan-is-the-extend-arm
+  (implies (and (equal (car (fn-native-admin-words argv)) "peer")
+                (equal (cadr (fn-native-admin-words argv)) "catch-up")
+                (equal (len (fn-native-admin-words argv)) 4)
+                (fn-native-admin-argvp argv))
+           (equal (fn-native-admin-plan argv)
+                  (fn-native-admin-peer-extend-plan (fn-native-admin-words argv))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn-native-admin-plan argv))
+           :in-theory (union-theories '(member-equal (:e member-equal) (:e equal) (:e len)
+                                        fn-native-admin-complaints-wordsp)
+                                      (theory 'minimal-theory))))))
+
+(defthm fn-pfp-catch-up-verb-is-observed
+  (implies (and (equal (car (fn-native-admin-words argv)) "peer")
+                (equal (cadr (fn-native-admin-words argv)) "catch-up")
+                (equal (len (fn-native-admin-words argv)) 4)
+                (equal (fn-native-admin-result-status (fn-native-admin-plan argv)) :accepted)
+                (posp (fn-native-admin-decimal-value
+                       (coerce (cadddr (fn-native-admin-words argv)) 'list))))
+           (fn-pfp-catch-up-observes-p (fn-native-admin-plan argv)))
+  :rule-classes nil
+  :hints (("Goal" :use (pfd-catch-up-plan-is-the-extend-arm)
+           :expand ((fn-native-admin-plan argv))
+           :in-theory (e/d (fn-native-admin-peer-extend-plan fn-pfp-catch-up-observes-p
+                            fn-pfp-catch-up-rowsp)
+                           (fn-native-admin-plan fn-native-admin-decimalp
+                            fn-native-admin-decimal-value fn-native-admin-words
+                            fn-cfg-labelp)))))
+
+; KEYSTONE: `peer catch-up NAME SECONDS' that would start rounds (SECONDS >
+; 0) is accepted exactly on a node whose observed peer flight profile is a
+; policy; on any other node it is refused by name, :catch-up-unfunded.
+(defthm fn-pfp-catch-up-verb-accepted-only-funded
+  (implies (and (and (equal (car (fn-native-admin-words argv)) "peer")
+                     (equal (cadr (fn-native-admin-words argv)) "catch-up")
+                     (equal (len (fn-native-admin-words argv)) 4))
+                (equal (fn-native-admin-result-status (fn-native-admin-plan argv)) :accepted)
+                (posp (fn-native-admin-decimal-value
+                       (coerce (cadddr (fn-native-admin-words argv)) 'list))))
+           (and (iff (equal (fn-native-admin-result-status
+                             (fn-pfp-catch-up-admission (fn-native-admin-plan argv) observed))
+                            :accepted)
+                     (fn-pfr-policy-p observed))
+                (implies (not (fn-pfr-policy-p observed))
+                         (equal (fn-native-admin-result-reason
+                                 (fn-pfp-catch-up-admission (fn-native-admin-plan argv) observed))
+                                :catch-up-unfunded))))
+  :hints (("Goal" :use (fn-pfp-catch-up-verb-is-observed
+                        (:instance fn-pfp-catch-up-observed-accepted-only-funded
+                                   (plan (fn-native-admin-plan argv))))
+           :in-theory (disable fn-native-admin-plan fn-native-admin-words fn-pfr-policy-p
+                               fn-pfp-catch-up-admission fn-pfp-catch-up-observes-p
+                               fn-native-admin-decimal-value))))
+
+; KEYSTONE: the admission takes nothing else -- every plan that does not
+; start catch-up (a refusal, another verb, `peer catch-up NAME 0'), and every
+; plan on a funded node, is returned unchanged.
+(defthm fn-pfp-catch-up-admission-is-identity-elsewhere
+  (implies (or (not (fn-pfp-catch-up-observes-p plan)) (fn-pfr-policy-p observed))
+           (equal (fn-pfp-catch-up-admission plan observed) plan))
+  :hints (("Goal" :in-theory (disable fn-pfr-policy-p fn-pfp-catch-up-observes-p))))

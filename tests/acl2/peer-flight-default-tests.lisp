@@ -1,8 +1,10 @@
 ; Witnesses and generated teeth for books/peer-flight-default.lisp: the
-; default peer flight profile `init' writes (catch-up out of the box).
+; default peer flight profile `init' writes, and the catch-up verb's
+; admission on a node without one (catch-up out of the box).
 (in-package "ACL2")
 (include-book "../../books/peer-flight-default")
 (include-book "../../books/defkeystone")
+(include-book "../../books/native-admin")
 
 (defconst *pfdt-dev* *fn-bs-profile-development*)
 (defconst *pfdt-scale* *fn-bs-profile-scale*)
@@ -87,3 +89,70 @@
                ((base *pfdt-base*) (core *pfdt-core*) (observations *pfdt-base-only*)
                 (values *pfdt-dev*))
                :fault "an init that reserves the store's run alone, without the default's launch extra")))
+
+; -----------------------------------------------------------------------------
+; Step 3: the catch-up verb's admission, over the operator grammar's own plans.
+(defun pfdt-argv (words)
+  (if (consp words)
+      (cons (fn-record-string-octets (car words)) (pfdt-argv (cdr words)))
+    nil))
+(defconst *pfdt-catch-up* (fn-native-admin-plan (pfdt-argv '("peer" "catch-up" "A" "2"))))
+(defconst *pfdt-catch-up-stop* (fn-native-admin-plan (pfdt-argv '("peer" "catch-up" "A" "0"))))
+(defconst *pfdt-pull* (fn-native-admin-plan (pfdt-argv '("peer" "pull" "A" "20"))))
+(defconst *pfdt-funded* (fn-pfp-default-policy *pfdt-dev*))
+(defconst *pfdt-refusal* (fn-native-admin-result :refused :catch-up-unfunded nil nil 0 nil nil))
+; Each grammar plan is accepted; only the starting catch-up is observed.
+(assert-event
+ (and (equal (fn-native-admin-result-status *pfdt-catch-up*) :accepted)
+      (equal (fn-native-admin-result-status *pfdt-catch-up-stop*) :accepted)
+      (equal (fn-native-admin-result-status *pfdt-pull*) :accepted)
+      (fn-pfp-catch-up-observes-p *pfdt-catch-up*)
+      (not (fn-pfp-catch-up-observes-p *pfdt-catch-up-stop*))
+      (not (fn-pfp-catch-up-observes-p *pfdt-pull*))))
+; Unfunded (no file, or anything that is not a policy): refused by name.
+; Funded: the plan itself.  `peer catch-up A 0' stops on any node.
+(assert-event
+ (and (equal (fn-pfp-catch-up-admission *pfdt-catch-up* nil) *pfdt-refusal*)
+      (equal (fn-pfp-catch-up-admission *pfdt-catch-up* :bad) *pfdt-refusal*)
+      (equal (fn-pfp-catch-up-admission *pfdt-catch-up* *pfdt-funded*) *pfdt-catch-up*)
+      (equal (fn-pfp-catch-up-admission *pfdt-catch-up-stop* nil) *pfdt-catch-up-stop*)
+      (equal (fn-pfp-catch-up-admission *pfdt-pull* nil) *pfdt-pull*)))
+
+(defconst *pfdt-catch-up-argv* (pfdt-argv '("peer" "catch-up" "A" "2")))
+(defteeth fn-pfp-catch-up-verb-accepted-only-funded
+  :claim (((request (and (equal (car (fn-native-admin-words argv)) "peer")
+                         (equal (cadr (fn-native-admin-words argv)) "catch-up")
+                         (equal (len (fn-native-admin-words argv)) 4)))
+           (accepted (equal (fn-native-admin-result-status (fn-native-admin-plan argv)) :accepted))
+           (starts (posp (fn-native-admin-decimal-value
+                          (coerce (cadddr (fn-native-admin-words argv)) 'list)))))
+          (and (iff (equal (fn-native-admin-result-status
+                            (fn-pfp-catch-up-admission (fn-native-admin-plan argv) observed))
+                           :accepted)
+                    (fn-pfr-policy-p observed))
+               (implies (not (fn-pfr-policy-p observed))
+                        (equal (fn-native-admin-result-reason
+                                (fn-pfp-catch-up-admission (fn-native-admin-plan argv) observed))
+                               :catch-up-unfunded))))
+  :subject fn-pfp-catch-up-admission
+  :witness ((argv *pfdt-catch-up-argv*) (observed nil))
+  :breaks ((request ((argv (pfdt-argv '("peer" "pull" "A" "20"))) (observed nil)))
+           (accepted ((argv (pfdt-argv '("peer" "catch-up" "" "2"))) (observed *pfdt-funded*)))
+           (starts ((argv (pfdt-argv '("peer" "catch-up" "A" "0"))) (observed nil))))
+  :mutations ((unfunded-accepted
+               (:conclusion (equal (fn-native-admin-result-status
+                                    (fn-pfp-catch-up-admission (fn-native-admin-plan argv) observed))
+                                   :accepted))
+               ((argv *pfdt-catch-up-argv*) (observed nil))
+               :fault "the verb before step 3: catch-up accepted with no profile, every round then failing peer-flight-unfunded")))
+
+(defteeth fn-pfp-catch-up-admission-is-identity-elsewhere
+  :claim (((elsewhere (or (not (fn-pfp-catch-up-observes-p plan)) (fn-pfr-policy-p observed))))
+          (equal (fn-pfp-catch-up-admission plan observed) plan))
+  :subject fn-pfp-catch-up-admission
+  :witness ((plan *pfdt-catch-up-stop*) (observed nil))
+  :breaks ((elsewhere ((plan *pfdt-catch-up*) (observed nil))))
+  :mutations ((observation-ignored
+               (:conclusion (equal (fn-pfp-catch-up-admission plan nil) plan))
+               ((plan *pfdt-catch-up*) (observed *pfdt-funded*))
+               :fault "an admission that refuses catch-up whatever profile the host observed")))
