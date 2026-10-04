@@ -194,6 +194,21 @@ certificates it cannot find says NOT RUN and counts as failed.  `make check-lane
 is the same in a scratch directory; `tools/remote_check.sh auto` runs it on a
 build box.
 
+**The red set and one iteration.**  `python3 tools/reds.py collect` writes
+`build/reds.json`: every known red (a red check step from the last
+`execute`, a `FAIL`/`ERROR` case from native module logs named with
+`--native`, a `real` red of a certify run named with `--certify`) with an
+impact selector, the paths whose change could flip it (the step's traced
+inputs, the module and the paths it names, the book's include closure).
+`reds.py affected --since REV` prints the reds a diff reaches with why and
+the narrowest command for each; `reds.py delta OLD NEW` the reds that
+appeared and the ones fixed.  `python3 tools/iterate.py --since REV [--fast]`
+is the lane loop: the scoped check-lane (unreached verdicts replayed from
+the store), then the collection, the delta against the previous red set and
+the reds of other kinds the diff reaches, each with its command, printed and
+never started (overlays run on a build box through the integrator, certifies
+through the farm).  Neither is a gate; `FORCE=1` and a READY stay live runs.
+
 **Scoped and baselined runs.**  `make check-lane CHECK_CHANGED_SINCE=<rev>` (or
 `tools/remote_check.sh BOX --changed-since <rev>`) runs only the steps the diff
 from `<rev>` (committed, uncommitted and untracked files) can reach: the steps

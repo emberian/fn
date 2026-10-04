@@ -2594,6 +2594,7 @@ check-lane:
 # an image build).
 check-fast:
 	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
+	@$(CHECK_STEP_WARM) $(PYTHON) tools/evidence_store.py fetch --all
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --read
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --books
 	@$(CHECK_STEP) $(PYTHON) tools/merge_registry.py --reciprocate --check
@@ -2650,6 +2651,13 @@ CHECK_EXECUTE = $(PYTHON) tools/check_steps.py execute $(CHECK_STEPS_DIR) \
 
 check:
 	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
+# The committed evidence objects (tools/evidence_store.py: ledger --check and
+# current_view --check read them) are fetched once here, in parallel with
+# every step that does not read them, so no step spawns the rsync itself: a
+# step that does is untraceable and never cached (lane iter-arch, 2026-10-04:
+# 46 + 28 s on every check-fast of a fresh tree).  Objects are content-named,
+# so the cache is a shared cache to check_steps, not an input.
+	@$(CHECK_STEP_WARM) $(PYTHON) tools/evidence_store.py fetch --all
 # The analysed tree (tools/ledger.py load_tree, persisted by its inputs'
 # digest under build/cache/ledger-tree) that check_scaffold, certified_claims,
 # current_view, depth_check, harness_check, interface_emit and spec_cite_check
