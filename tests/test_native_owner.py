@@ -169,7 +169,15 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
         paths = list(self._ancestors(envelope, "fnn-owner-measured"))
         self.assertEqual(len(paths), 1)
         self.assertIn("fnn-owner-shared-action-locked", [head(p) for p in paths[0]])
-        self.assertIn("with-mutex", [head(p)[-10:] for p in paths[0]])
+        # The owner mutex, taken through the observed form
+        # (fnn-with-observed-owner -> fnn-with-observed-mutex, io.lisp:
+        # sb-thread:with-mutex plus its hold observation).
+        self.assertIn("fnn-with-observed-owner", [head(p) for p in paths[0]])
+        observed = owner[owner.index("(defmacro fnn-with-observed-owner"):]
+        self.assertIn("`(fnn-with-observed-mutex (,lock :owner)", observed[:200])
+        io = (ROOT / "host/native/io.lisp").read_text(encoding="utf-8")
+        mutex = io[io.index("(defmacro fnn-with-observed-mutex"):]
+        self.assertIn("(sb-thread:with-mutex (,mutex ,@options)", mutex[:mutex.index("\n(def")])
         admission = list(self._ancestors(envelope, "admission"))
         self.assertTrue(admission and all("fnn-owner-shared-action-locked" in [head(p) for p in a]
                                           for a in admission))

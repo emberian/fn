@@ -1,6 +1,8 @@
-;;; Reload this fixture in the same running developer owner after trace.lisp.
-;;; No native hook overwrite, Store mutation, or new ACL2 world is required.
+;;; host/native/trace.lisp, loaded into a plain SBCL: the collector is
+;;; host-only code (no ACL2 definition), so no ACL2 world is needed.
+(defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
+(load "host/native/trace.lisp")
 
 (defun fnth-run ()
   (let ((*fnn-trace-state* nil) (*fnn-trace-parent* nil)
@@ -35,3 +37,4 @@
               (error () t)))
     (format t "NATIVE_TRACE_HOTSPOTS_PASS~%")
     :passed))
+(fnth-run)

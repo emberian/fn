@@ -49,7 +49,7 @@
   "tests/test_native_feed_fair_round.py",
   "tests/native_feed_service_raw.lisp",
   "tests/native_feed_credential_raw.lisp",
-  "tests/native_feed_peer_octets.lisp",
+  "tests/native_feed_peer_octets_raw.lisp",
   "tests/test_native_peering.py",
   "tests/scenarios/catalog.json"
  ],

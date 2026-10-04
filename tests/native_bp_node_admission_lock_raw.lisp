@@ -122,6 +122,8 @@
 (load-shipped "host/native/owner.lisp" '(defun) '(fnn-section-declare))
 (load-shipped "host/native/owner.lisp" '(defmacro) '(def-section))
 (load-shipped "host/native/owner.lisp" '(def-section) '(fnn-quantum-bp))
+;; The receipt result's journal cleanup is the shipped unwind macro.
+(load-shipped "host/native/io.lisp" '(defmacro) '(fnn-unwind-cleanups))
 ;; fnn-bpnode-request-result is the deployed wrapper; since mission-signed-2
 ;; the decision is fnn-bpnode-request-result-1 and a refusal prints ACL2's
 ;; line through fnn-bpnode-refusal-line: all three are the shipped bodies.
