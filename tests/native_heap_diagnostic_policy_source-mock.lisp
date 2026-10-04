@@ -23,6 +23,10 @@
   (fn-native-operator-host-result-status-kind :fixture)
   (fn-native-operator-host-result-health-min-percent 10)
   (fn-native-health-host-exit 0)
+  ;; tariff2 (075343bea): the accounting line follows the heap line; its text
+  ;; is books/output-admission-line.lisp's, so the fixture only checks that
+  ;; the configured output policy reaches it.
+  (fn-oadl-accounting-line (push (list :accounting (first args)) *calls*) "|accounting")
   (otherwise (apply *before-diagnostic-core* entry args))))
 (defun fnn-filesystem-durability-warn (&rest args) (declare (ignore args)) nil)
 (defun fnn-operator-status-once (&rest args) (declare (ignore args)) 0)
@@ -43,13 +47,14 @@
   (assert (equal (get-output-stream-string *fnn-stdout*) expected))
   (let ((cold-call (assoc :cold *calls*)) (output-call (assoc :output *calls*)))
    (assert (equal (third cold-call) cold))
-   (assert (equal (third output-call) output)))
+   (assert (equal (third output-call) output))
+   (assert (equal (assoc :accounting *calls*) (list :accounting output))))
   (assert (= *captured-core* *captured-machine* 1))))
 ; Final trigger-growth pricing: the 16 MiB output backing also enlarges
 ; collector nursery protection. DEFAULT257/explicit256 become276/275,
 ; respectively; the old273/272 figures omitted that growth.
 (dolist (command '("status" "health"))
- (policy-case command nil '(16777216 1048576) "(:HEAP 276 :SMALL 8192 1024 16)")
+ (policy-case command nil '(16777216 1048576) "(:HEAP 276 :SMALL 8192 1024 16)|accounting")
  (policy-case command '(67108864 4 256 256 256) '(16777216 1048576)
-              "(:HEAP 275 :SMALL 8192 1024 16)"))
+              "(:HEAP 275 :SMALL 8192 1024 16)|accounting"))
 (format t "SOURCE NEXT-RUN POLICY DIAGNOSTICS PASSED~%")

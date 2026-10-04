@@ -37,12 +37,12 @@ port = 8920
 host = "127.0.0.1"
 proxied = true
 site = "Friends news"
-domain = "news.example.org"
 ```
 
-Change `site` to the name your friends see at the top of every page, and
-`domain` to your web name: a post made on the page is from
-`NAME <NAME@DOMAIN>`. Then restart the node:
+Change `site` to the name your friends see at the top of every page. A
+post made on the page is from `NAME <NAME@DOMAIN>`, where `DOMAIN` is your
+node's own name (the one you set with `policy set path-identity`); add
+`domain = "news.example.org"` only to use another. Then restart the node:
 
 ```sh
 systemctl restart fn     # OpenBSD: rcctl restart fn

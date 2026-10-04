@@ -3057,8 +3057,8 @@
 
 (definterface fn-bpnb-read
   :class :common-lisp-compliant
-  :keystones (fn-bpnb-installed-backoff-refuses-another-backoff
-              fn-bpnb-installed-retries-refuses-another-retries
+  :keystones ((fn-bpnb-installed-backoff-refuses-another-backoff :via fn-bpnb-install-row)
+              (fn-bpnb-installed-retries-refuses-another-retries :via fn-bpnb-install-row)
               fn-bpnb-input-past-read-bound-is-refused))
 
 (definterface fn-bpnp-configured-budgets
@@ -3419,6 +3419,9 @@
   :class ::program)
 
 (definterface fn-web-host-frame
+  :class ::program)
+
+(definterface fn-web-host-identity
   :class ::program)
 
 (definterface fn-web-host-head
@@ -4877,12 +4880,14 @@
 
 (definterface fn-rcw-canon-acc-step
   :class :ideal
-  :keystones (fn-rcw-canon-acc-steps-is-the-checkpoint-capture))
+  :keystones ((fn-rcw-canon-acc-steps-is-the-checkpoint-capture
+               :step-of fn-rcw-canon-acc-steps)))
 
 (definterface fn-rcw-predict-acc-step
   :class :ideal
-  :keystones (fn-rcw-predict-acc-steps-is-predict
-              fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open))
+  :keystones ((fn-rcw-predict-acc-steps-is-predict :step-of fn-rcw-predict-acc-steps)
+              (fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open
+               :step-of fn-rcw-predict-acc-steps)))
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orc-classes
@@ -5478,8 +5483,8 @@
 (definterface fn-owner-output-preview :class :program)
 (definterface fn-owner-output-tariff-preview
   :class :program
-  :keystones ((fn-tariff-article-prices-the-served-row :via fn-tariff-article-preview)
-              (fn-tariff-article-prices-the-served-msgid :via fn-tariff-article-preview)
+  :keystones ((fn-tariff-article-prices-the-served-row :via fn-tariff-article-number-charge)
+              (fn-tariff-article-prices-the-served-msgid :via fn-tariff-article-msgid-charge)
               (fn-tariff-article-admits-exactly-within-capacity :via fn-tariff-article-descriptor)))
 (definterface fn-owner-output-refusal-line-at
   :class :program
@@ -5542,7 +5547,8 @@
  :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-count-natp))
 (definterface fn-owner-orcp-load-catalog-begin :class :program)
 (definterface fn-owner-orcp-load-catalog-chunk :class :program
-  :keystones (fn-rcw-load-chunks-keyed-is-keyed-load))
+  :keystones ((fn-rcw-load-chunks-keyed-is-keyed-load
+               :step-of fn-rcw-load-chunks fn-sca-load-held-available-from)))
 ; PRF-1288: actual private decoded activation and SAME-pool scalar borrow.
 ; Complete decoded constructor/GC tariff remains explicitly unpriced.
 (definterface create-fn-decoded-job :class :common-lisp-compliant
@@ -5596,7 +5602,7 @@
   :kinds ((held true-listp) (busy true-listp) (quantum posp))
   :keystones (fn-bpfc-turn-advances-at-most-quantum
               fn-bpfc-turn-after-a-yield-is-the-larger-turn
-              fn-bpfc-run-is-the-plan-choice))
+              (fn-bpfc-run-is-the-plan-choice :step-of fn-bpfc-run)))
 (definterface fn-bpsched-idle-p :class :common-lisp-compliant)
 (definterface fn-bpsched-listener-index :class :common-lisp-compliant)
 (definterface fn-bpsched-listener-step :class :common-lisp-compliant)
@@ -5664,7 +5670,7 @@
 
 ; Host-called entries the raw host dispatches and no declaration named
 ; (integrator wave 0, 2026-10-04): :class and :kinds as tools/interface_kinds.py
-; derives them from the source, the defining file after each.  Twenty-four of
+; derives them from the source, the defining file after each.  Some of
 ; them are dispatched as `(fnn-call (if C 'A 'B) ...)', which the host-binding
 ; check now reads (pull/catchup sessions, workflow, the log writer's step).
 (definterface fn-csp-bank-idle-p :class :common-lisp-compliant) ; books/peer-catchup-spool-resources.lisp:26

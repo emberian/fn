@@ -4,31 +4,28 @@
 ; rows, and the view policy's executable sites pinned to the :view column
 ; (lane def-command, 2026-10-03; consultation c07's shape).
 ;
-; books/served-catalog-dispatch.lisp hand-writes fn-nntp-archive-command-cat,
-; one cond over every command's arms, and proves it equal to the pinned
-; reference fn-nntp-archive-command-pinned by one theorem whose hints name
-; every arm (fn-nntp-archive-command-cat-is-pinned).  books/served.lisp
-; hand-writes which keywords move the pin (fn-served-advance-eventp) and
-; books/nntp.lisp which read the archive (fn-nntp-archive-keywordp);
-; books/nntp-help.lisp hand-keeps the table HELP prints.  Each of those is
-; one column of books/protocol-table.lisp now, and this book is where the
-; column meets the code:
+; The served dispatcher was one hand-written cond over every command's arms
+; (fn-nntp-archive-command-cat, books/served-catalog-dispatch.lisp), proved
+; equal to the pinned reference fn-nntp-archive-command-pinned by one theorem
+; whose hints named every arm.  It is gone (DC02): fn-scr-command
+; (books/served-catalog-chain.lisp) calls the dispatcher generated here.
+; books/served.lisp hand-writes which keywords move the pin
+; (fn-served-advance-eventp) and books/nntp.lisp which read the archive
+; (fn-nntp-archive-keywordp); books/nntp-help.lisp hand-keeps the table HELP
+; prints.  Each of those is one column of books/protocol-table.lisp, and this
+; book is where the column meets the code:
 ;
 ;   fn-proto-archive-command-cat    one flat cond, a clause per row with :forms
 ;                                   in table order (the forms' arms in order),
 ;                                   every archive row declared; other keywords
 ;                                   use the original pinned reference directly;
-;   fn-proto-cat-row-NAME-is-cat    per row: under that keyword the generated
-;                                   dispatcher IS the hand one (the row's text
-;                                   says what the dispatcher does; local);
 ;   fn-proto-form-NAME-FORM-is-pinned  per FORM: the form's view CONTRACT
 ;                                   (today every declared form is :pinned,
 ;                                   :select or :none): under the keystone's
 ;                                   hypotheses, the form's test and NO EARLIER
 ;                                   form's (first match), the result equals
 ;                                   the pinned reference's; proved from the
-;                                   form's :by with the hand keystone CLOSED
-;                                   (local);
+;                                   form's :by (local);
 ;   fn-proto-cat-row-NAME-is-pinned per row: the forms' cases (local);
 ;   fn-proto-archive-command-cat-is-pinned  KEYSTONE: the generated dispatcher
 ;                                   is the pinned reference (the case split);
@@ -57,6 +54,7 @@
 (include-book "served")       ; fn-served-advance-eventp
 (include-book "nntp-help")    ; *fn-nntp-served-command-table*
 (include-book "protocol-served-table")
+(include-book "defkeystone")  ; defteeth: the teeth of the keystones below ship here
 
 (local (in-theory (disable (tau-system))))
 
@@ -64,8 +62,8 @@
 (defconst *fn-proto-cat-formals*
   '(session archive index verdicts env keyword args v fn-arena fn-cat))
 
-;; The boundary theorem's labelled hypotheses (fn-nntp-archive-command-cat-is-
-;; pinned's), the teeth contract's :claim shape.
+;; The boundary theorem's labelled hypotheses, the teeth contract's :claim
+;; shape.
 (defconst *fn-proto-cat-claim-hyps*
   '((view-articles (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
     (statep (fn-statep archive))
@@ -183,7 +181,7 @@
 
 ;; Closed in every generated proof: the token recognizers (an arm for another
 ;; command falls away by exclusivity, never by computing) and every arm, on
-;; both sides (the hand keystone's list, books/served-catalog-dispatch.lisp).
+;; both sides.
 (defconst *fn-proto-cat-closed*
   '(fn-nntp-keywordp fn-nntp-keyword-tokenp fn-nntp-upcase-keyword
     fn-nntp-parse-range fn-nntp-range-okp fn-nntp-xref-server fn-gidx-pinp
@@ -251,30 +249,10 @@
     nil))
 
 ; -----------------------------------------------------------------------------
-; Per row: the generated dispatcher is the hand one under the row's keyword.
-
-(defun fn-proto-cat-row-is-cat-events (names)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp names)
-      (cons `(local
-              (defthm ,(fn-proto-cat-thm-name (car names) "-IS-CAT")
-                (implies (fn-nntp-keywordp keyword ,(car names))
-                         (equal (fn-proto-archive-command-cat ,@*fn-proto-cat-formals*)
-                                (fn-nntp-archive-command-cat ,@*fn-proto-cat-formals*)))
-                :hints (("Goal" :do-not-induct t
-                         :in-theory (e/d (fn-proto-archive-command-cat fn-nntp-archive-command-cat)
-                                         ,*fn-proto-cat-closed*)))))
-            (fn-proto-cat-row-is-cat-events (cdr names)))
-    nil))
-
-(make-event (cons 'progn (fn-proto-cat-row-is-cat-events *fn-proto-cat-rows*)))
-
-; -----------------------------------------------------------------------------
 ; Per FORM: its view contract, from its :by.  The form applies when its test
 ; holds and no earlier form's does (first match: the premises below), so a
-; form's test may overlap a later form's.  The hand keystone and the row's
-; -is-cat lemma stay closed: the case is proved from the declaration, as it
-; will be once the hand dispatcher is gone.
+; form's test may overlap a later form's.  The case is proved from the
+; declaration alone.
 
 (defun fn-proto-form-test (form)
   (declare (xargs :guard t))
@@ -311,12 +289,9 @@
                                             fn-nntp-archive-command-pinned fn-nntp-archive-command
                                             fn-nntp-result-session fn-nntp-result-effects
                                             ,@(fn-proto-form-get :open form))
-                                           ,(append
-                                             (list 'fn-nntp-archive-command-cat-is-pinned
-                                                   (fn-proto-cat-thm-name row "-IS-CAT"))
-                                             (set-difference-equal
-                                              *fn-proto-cat-closed*
-                                              (fn-proto-form-get :open form))))
+                                           ,(set-difference-equal
+                                             *fn-proto-cat-closed*
+                                             (fn-proto-form-get :open form)))
                            :use ,(fn-proto-form-get :by form)))))
               (fn-proto-form-events row (cdr forms)
                                     (append prior (list (fn-proto-form-test form))))))
@@ -364,8 +339,9 @@
 ; -----------------------------------------------------------------------------
 ; The case split: a declared archive row by its generated form contracts.
 ; Other keywords use the original pinned reference directly. The generated
-; executable has no hand catalog-dispatch fallback. The hand catalog body
-; remains a migration reference for the local per-row equality checks.
+; executable has no hand catalog-dispatch fallback: the hand dispatcher is
+; deleted (DC02), every archive row declares its forms (the coverage
+; assertion at the end of this book).
 
 (defun fn-proto-cat-not-any (names term)
   (declare (xargs :guard t))
@@ -404,10 +380,10 @@
 ; KEYSTONE.  The dispatcher generated from the table's served columns is the
 ; pinned reference: the results' sessions are equal and their effects are
 ; equal once expanded (fn-ovw-expand; the OVER/XOVER range arm answers a
-; cursor), under the hand keystone's hypotheses.  The subject is
-; fn-nntp-archive-command-cat's role (host/owner-host.lisp fn-owner-chunk-span
-; -> books/served-catalog-chain.lisp fn-scr-command), which this dispatcher
-; takes at the switch.  One context: see the header.
+; cursor), under the hypotheses of the labelled list above.  The subject is
+; the served dispatcher the host calls (host/owner-host.lisp fn-owner-chunk-span
+; -> books/served-catalog-chain.lisp fn-scr-command).  One context: see the
+; header.
 (defthm fn-proto-archive-command-cat-is-pinned
   (implies (and (equal (fn-state-articles archive)
                        (fn-cat-view-articles v fn-arena fn-cat))
@@ -487,6 +463,21 @@
          :claim (() (equal (fn-proto-advance-eventp event) (fn-served-advance-eventp event)))
          :subject fn-served-advance-eventp))
 
+; The teeth ship with the keystone: every world that includes this book carries
+; them (defteeth-check in any test book that includes it holds the row met).
+(defteeth fn-proto-advance-eventp-is-served-advance-eventp
+  :claim (() (equal (fn-proto-advance-eventp event) (fn-served-advance-eventp event)))
+  :subject fn-served-advance-eventp
+  :witness ((event (list :command (fn-nntp-string-octets "LISTGROUP fn.test"))))
+  :breaks ()
+  :mutations ((select-rows-are-group-alone
+               (:conclusion
+                (equal (fn-proto-advance-eventp event)
+                       (fn-proto-keyword-in-listp
+                        (car (fn-nntp-tokenize (car (cdr event)))) '("GROUP"))))
+               ((event (list :command (fn-nntp-string-octets "LISTGROUP fn.test"))))
+               :fault "a table whose only :view :select row is GROUP, on a LISTGROUP line")))
+
 ;; The keywords that read the archive: the :dispatch :archive rows.
 (defun fn-proto-archive-keywordp (keyword)
   (declare (xargs :guard t))
@@ -506,6 +497,18 @@
        '(:by defprotocol
          :claim (() (equal (fn-proto-archive-keywordp keyword) (fn-nntp-archive-keywordp keyword)))
          :subject fn-nntp-archive-keywordp))
+
+(defteeth fn-proto-archive-keywordp-is-nntp-archive-keywordp
+  :claim (() (equal (fn-proto-archive-keywordp keyword) (fn-nntp-archive-keywordp keyword)))
+  :subject fn-nntp-archive-keywordp
+  :witness ((keyword (fn-nntp-string-octets "OVER")))
+  :breaks ()
+  :mutations ((retrieval-rows-only
+               (:conclusion
+                (equal (fn-proto-archive-keywordp keyword)
+                       (fn-proto-keyword-in-listp keyword '("ARTICLE" "HEAD" "BODY" "STAT"))))
+               ((keyword (fn-nntp-string-octets "OVER")))
+               :fault "a table whose :dispatch :archive rows are the single-article retrievals alone, on OVER")))
 
 ; -----------------------------------------------------------------------------
 ; HELP's table is the table's served names: a keyword the served step answers

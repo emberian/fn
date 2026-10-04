@@ -587,15 +587,6 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; is (:ok S) or (:refused REASON), REASON :layout, :header, :sequence,
 ; :segment, :truncated, :f-row, :close, :ref, :tree or :trailing.
 
-; Whether ROWS hold an arena handle: host/checkpoint-host.lisp refuses a
-; protected-prefix capture that does (:arena; the generation frames do not
-; carry the arena).  The state checkpoint below carries it.
-(defun fn-store-rows-hold-handles-p (rows)
-  (declare (xargs :mode :program))
-  (and (consp rows)
-       (or (fn-held-p (car rows)) (fn-hstxa-p (car rows))
-           (fn-store-rows-hold-handles-p (cdr rows)))))
-
 ; THE STATE CHECKPOINT UNDER THE RECORDS FLIP (lane checkpoint-arena,
 ; books/store-checkpoint-arena*.lisp): the file opens with the ARENA run A
 ; (the tag, the payload count, then the canonical payloads in batches),
@@ -1293,13 +1284,6 @@ reopen predicate, writer-lock observation and observed final namespace."
         (fn-store-cfg-peer-delta-record (list (fn-cfg-remove-peer-delta name))
                                         stamp state)))))
 
-(defun fn-store-txn-pairs-octets (pairs)
-  (declare (xargs :mode :program))
-  (if (consp pairs)
-      (cons (list (car (car pairs)) (fn-record-string-octets (nth 1 (car pairs))))
-            (fn-store-txn-pairs-octets (cdr pairs)))
-    nil))
-
 ; The operator's `peer list' report, rendered by books/native-admin-peer's
 ; `fn-native-admin-peer-report' over the replayed configuration: the one the
 ; native `peer list' prints (host/native-admin-host.lisp).  Python writes the
@@ -1315,17 +1299,6 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :mode :program))
   (let ((name (fn-native-admin-config-name generation)))
     (if (stringp name) (fn-record-string-octets name) nil)))
-
-; One bounded observation of the final transaction namespace, as the native
-; host asks it (`fn-store-txn-observation-selected', lower bound 0): :invalid,
-; or each (sequence name-octets) pair in order.  The grammar, the bound and
-; the gap policy are `fn-profile-txn-observation''s.
-(defun fn-store-txn-observation-octets (observed maximum)
-  (declare (xargs :mode :program))
-  (let ((value (fn-store-txn-observation-selected observed maximum 0)))
-    (if (and (consp value) (equal (car value) :ok))
-        (fn-store-txn-pairs-octets (nth 2 value))
-      :invalid)))
 
 (defun fn-store-cfg-last-octets (state)
   (declare (xargs :stobjs state :mode :program))

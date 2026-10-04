@@ -10,7 +10,9 @@
  "line": "594",
  "locus": "operator-verbs",
  "notes": [
-  "10-02 23:09 partial: stale/non-regular report fixed (inode+mtime differ from pre-request); the UNBOUNDED wait is not: the bound must come from ACL2's drain window/deadline (needs an ACL2 accessor for the retire deadline) -> S151"
+  "10-02 23:09 partial: stale/non-regular report fixed (inode+mtime differ from pre-request); the UNBOUNDED wait is not: the bound must come from ACL2's drain window/deadline (needs an ACL2 accessor for the retire deadline) -> S151",
+  "10-04 02:28 ledger-close 2026-10-04: left in-progress: stale/non-regular report half landed (a385ae8cb, host/native/operator.lisp, test_retire_prints_only_a_fresh_regular_report PASS) but the unbounded wait half is not; pending S151 (ACL2 drain-window+stop deadline) verdict; smallest fix: poll the ACL2 retire-deadline observation in the host loop",
+  "10-04 02:30 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9: stale/non-regular report half a385ae8cb (test_retire_prints_only_a_fresh_regular_report PASS) plus the unbounded-wait half now closed by S151 (209bd2195, retire polls fn-nret-observation-step with an expiry); native pending: SCN-1095"
  ],
  "owner": "sweep-ops",
  "reviewer": "operator.lisp:594-596 loops with (sleep 1) for as long as admin-observe answers :live or :held, with no bound. A hung owner holding the lock (:held), or a supervisor that restarts the node within a second, means retire never returns. The owner's report unlink (owner.lisp:4731-4732) swallows every syscall-error, not only ENOENT. probe-file and with-open-file (operator.lisp:599-602) follow symlinks and allocate file-length bytes with no bound, unlike fnn-read-regular-bounded. The stale-report case needs an unlink failure other than ENOENT in the owner's own root followed by a crash, which is unlikely. The unbounded wait is the most realistic problem.",
@@ -18,7 +20,7 @@
  "severity": "low",
  "sha": "a385ae8cb",
  "source": "sweep-2026-10-03",
- "state": "in-progress",
+ "state": "landed",
  "title": "`retire` waits with no bound and may print a stale or non-regular report as success",
- "updated": "2026-10-03T03:09:08Z"
+ "updated": "2026-10-04T06:30:51Z"
 }

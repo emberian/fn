@@ -3,8 +3,8 @@
  "source": {
   "file": "books/host-model-machine.lisp",
   "constant": "*fn-hmc-realization*",
-  "line": 852,
-  "sha256": "8e13be3e75c695ad6a2524b45354d47086847d40697082045992f8d7c840fd7c"
+  "line": 880,
+  "sha256": "2325826b7982ec4f4837db634da1cf73fe392ecc9b22be2a4fbca7759697faa9"
  },
  "rows": [
   {
@@ -16,13 +16,20 @@
    ],
    "sites": [
     {
-     "function": "fnn-owner-gated",
+     "function": "fnn-section-run",
      "file": "host/native/owner.lisp",
-     "primitive": "sb-thread:with-mutex",
+     "primitive": "fnn-owner-gate-enter",
      "core": null,
-     "locks_held": [
-      "G"
-     ],
+     "locks_held": [],
+     "requires_before": [],
+     "capability": null
+    },
+    {
+     "function": "fnn-section-run-cleanup",
+     "file": "host/native/owner.lisp",
+     "primitive": "fnn-owner-gate-enter",
+     "core": null,
+     "locks_held": [],
      "requires_before": [],
      "capability": null
     }
@@ -37,9 +44,20 @@
    ],
    "sites": [
     {
-     "function": "fnn-owner-gated",
+     "function": "fnn-section-run",
      "file": "host/native/owner.lisp",
-     "primitive": "sb-thread:with-mutex",
+     "primitive": "fnn-owner-gate-leave",
+     "core": null,
+     "locks_held": [
+      "O"
+     ],
+     "requires_before": [],
+     "capability": null
+    },
+    {
+     "function": "fnn-section-run-cleanup",
+     "file": "host/native/owner.lisp",
+     "primitive": "fnn-owner-gate-leave",
      "core": null,
      "locks_held": [
       "O"
@@ -62,9 +80,7 @@
      "file": "host/native/extent.lisp",
      "primitive": "fnn-open",
      "core": "fn-owner-page-file-issue",
-     "locks_held": [
-      "E"
-     ],
+     "locks_held": [],
      "requires_before": [
       "fn-owner-page-file-issue"
      ],
@@ -286,7 +302,22 @@
      "function": "fnn-extent-issue-window",
      "file": "host/native/extent.lisp",
      "primitive": null,
-     "core": "fn-owner-page-window-admit",
+     "core": "fn-owner-page-window-executor-acquire-funded",
+     "locks_held": [
+      "E"
+     ],
+     "requires_before": [],
+     "capability": {
+      "kind": "window-lease",
+      "acquire": "fnn-extent-issue-window",
+      "release_site": "fnn-extent-window-release"
+     }
+    },
+    {
+     "function": "fnn-extent-issue-window",
+     "file": "host/native/extent.lisp",
+     "primitive": null,
+     "core": "fn-owner-page-decoded-window-acquire-projected",
      "locks_held": [
       "E"
      ],
@@ -310,7 +341,7 @@
      "function": "fnn-extent-window-release",
      "file": "host/native/extent.lisp",
      "primitive": null,
-     "core": "fn-owner-page-window-release",
+     "core": "fn-owner-page-window-executor-release",
      "locks_held": [
       "E"
      ],
@@ -491,6 +522,29 @@
      "primitive": null,
      "core": "fn-arpn-step",
      "locks_held": [
+      "A"
+     ],
+     "requires_before": [],
+     "capability": null
+    },
+    {
+     "function": "fnn-owner-commit-complete-locked",
+     "file": "host/native/owner.lisp",
+     "primitive": null,
+     "core": "fn-arpn-step",
+     "locks_held": [
+      "O",
+      "A"
+     ],
+     "requires_before": [],
+     "capability": null
+    },
+    {
+     "function": "fnn-owner-attempt",
+     "file": "host/native/owner.lisp",
+     "primitive": null,
+     "core": "fn-arpn-step",
+     "locks_held": [
       "O",
       "A"
      ],
@@ -533,8 +587,7 @@
      "primitive": null,
      "core": "fn-owner-orcp-swap-word",
      "locks_held": [
-      "O",
-      "A"
+      "O"
      ],
      "requires_before": [
       "fn-owner-orcp-swap-word"

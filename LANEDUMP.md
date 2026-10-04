@@ -4950,3 +4950,19 @@ does not admit). Entry: build/coordinator/lanedumps/catchup2.md.
 Packet `planning/design/reclaim-2026-10-04.md` (DRAFT, 4 OPEN marks, no DECISION block); slice 1
 `books/arena-reader-bound.lisp` (PRF-1312) REPL-admitted 10/12, not certified. Full state and the exact
 continuation: `build/coordinator/lanedumps/reclaim-design.md`. Absorbed by the RECLAIM lane; no successor.
+
+# harness-reds lane — Sonnet (2026-10-04)
+
+Tree `build/lanes/harness-reds`, branch `lane/harness-reds`, from origin/integrate/20261004 + ledger-open-b + teeth-roots + origin/tail/20261004 (f4ab7cd01).
+
+| item | cause | fix |
+|---|---|---|
+| test_native_raw_scripts limit_pool | admin.lisp moved to fnn-quantum-control + fnn-admin-test-fault (ba15dff48); fixture stubbed the old wrapper | the tail's f4ab7cd01 (same fix, taken) |
+| test_native_raw_scripts live_config_cache | same two stubs; its last case asserted the AC01-deleted hand arm (uncertain + fenced) | fixture stubs the section, extracts the real fnn-admin-test-fault, asserts the fault is left un-recast, old triple intact, no feed refresh; fencing is the section boundary's, not claimed here |
+| protocol-served-tests pst-header-literal-forms-positive | the TEST was false: HDR/XHDR ranges answer a cursor since cold-line (table :quantum cursor), not 225/221 | range conjuncts -> pst-cursorp; reply-code teeth kept on the Message-ID forms |
+| test_docs_check | bin/fn deleted by T5b (f717b5286) in every tree; not a worktree matter | `fn --config` kind is a named failure; load_tool/source_text stop reading bin/fn |
+| InstallUmbrellasTests | text search for the old install line | asserts the digest-skip contract |
+| test_host_check_modes | --load did ~3 min of source analysis before saying NOT RUN (no ACL2) | ACL2 lookup first; test 0.5 s |
+
+Verified: test_native_raw_scripts 78 OK; test_docs_check 9 OK + docs_check --check 0 failures; test_certs.InstallUmbrellasTests OK; test_host_check_modes OK; test_host_check_load.RealLoadTests + test_host_check_forward 10 OK (1191 s, the heavy ones); tests/acl2/protocol-served-tests certified (run certify-20261004T094235Z-45148, laptop).
+Not mine, left: native_application_cleanup_source.lisp (unrun); harness_check entry-guards 23 / waivers 2 findings.

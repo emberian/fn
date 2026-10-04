@@ -24,10 +24,12 @@ article's sections are its label lines (`*The details:*`).
    when the committed book is not what the docs say now, so the ACL2
    verdict certified is the verdict for these docs.
 
-2. Python tools.  Every `bin/fn`/`fn --config`, `fn_client.py` and
-   `fn_consumer.py` invocation (or its release launcher's,
-   `clients/bin/fn-client`, `fn-consumer`) is parsed by
-   that tool's own argparse parser (`build_parser()`), without running it.
+2. Python tools.  Every `fn_client.py` and `fn_consumer.py` invocation (or
+   its release launcher's, `clients/bin/fn-client`, `fn-consumer`) is parsed
+   by that tool's own argparse parser (`build_parser()`), without running it.
+   A `fn --config ...` line is a failure by name: the Python host and its
+   `bin/fn` parser were retired (T5b, f717b5286); the operator's command is
+   `fn operator CONFIG VERB` (check 1).
 
 3. Reply lines.  Every line a doc presents as fn's output in a code block
    (`accepted ...`, `refused ...`, `usage ...`, `uncertain ...`, `fault ...`,
@@ -417,7 +419,7 @@ def argv_file(found):
 # 2. the Python tools' own parsers
 
 def load_tool(name):
-    path = ROOT / ("bin/fn" if name == "bin/fn" else "tools/%s.py" % name)
+    path = ROOT / ("tools/%s.py" % name)
     sys.path.insert(0, str(ROOT / "tools"))
     loader = importlib.machinery.SourceFileLoader("docs_check_" + name.replace("/", "_"), str(path))
     spec = importlib.util.spec_from_loader(loader.name, loader)
@@ -430,7 +432,12 @@ def parse_python(found):
     failures = []
     parsers = {}
     for kind, rel, number, line, argv, why in found:
-        if kind not in ("bin/fn", "fn_client", "fn_consumer") or argv is None:
+        if kind == "bin/fn":
+            failures.append("%s:%d: %s: `fn --config` was the retired Python host's "
+                            "grammar (T5b); the command is `fn operator CONFIG VERB`"
+                            % (rel, number, line))
+            continue
+        if kind not in ("fn_client", "fn_consumer") or argv is None:
             continue
         if kind not in parsers:
             parsers[kind] = load_tool(kind).build_parser()
@@ -457,7 +464,7 @@ def source_text():
     if SOURCES is None:
         parts = []
         for pattern in ("books/*.lisp", "host/*.lisp", "host/native/*.lisp",
-                        "tools/*.py", "bin/fn"):
+                        "tools/*.py"):
             for path in sorted(ROOT.glob(pattern)):
                 if path.name != "docs_check.py":
                     parts.append(path.read_text(encoding="utf-8", errors="replace"))
@@ -706,6 +713,7 @@ def served_region():
         "live-index": "the live Message-ID index (peer offers)",
     }
     views["pin-or-completed"] = "the pinned article if retrievable there, else the completed snapshot"
+    owed = set(protocol_emit.forms_owed(table))
     lines = [SERVED_BEGIN, "",
              "The EXECUTED rule per command and form; a ruling recorded but not landed is DEBT, "
              "shown beside it with the registry row that carries it (tools/view_policy_debt.json, "
@@ -723,7 +731,8 @@ def served_region():
             continue
         cost = row["cost"]
         cost_text = ("%s / %s" % (cost["unrestricted"], cost["restricted"])
-                     if cost else "hand arms, forms not yet declared" if row["view"] in ("pinned", "select")
+                     if cost else "pinned reference, forms not yet declared" if row["name"] in owed
+                     else "pinned peer arm, no forms" if row["dispatch"] == "pinned"
                      else "")
         quantum = ("cursor %s" % row["quantum"][1]) if row["quantum"] else ""
         lines.append("| %s | %s | %s | %s | %s | %s | %s |" % (

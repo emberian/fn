@@ -3,22 +3,6 @@
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 
-;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
-(define-condition harness-stub-reached (serious-condition)
-  ((name :initarg :name :reader harness-stub-reached-name)
-   (source :initarg :source :reader harness-stub-reached-source))
-  (:report (lambda (c s)
-             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
-                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
-(defun harness-stub-reached (name source)
-  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
-          name source)
-  (finish-output *error-output*)
-  (error 'harness-stub-reached :name name :source source))
-(defun fnn-indeterminate (control &rest args)
-  (declare (ignorable control args))
-  (harness-stub-reached 'fnn-indeterminate "host/native/io.lisp"))
-;;; ---- derived stubs: END ----
 (defvar *fnn-store-failed-open-custody* nil)
 (defstruct fnn-store completion-pending log lock-fd fenced close-debt application-close-debts)
 (defstruct fnn-log fd spare spare-close-debt active-close-debt reseat-custody)
@@ -39,6 +23,14 @@
     (when (and (consp form) (member (car form) '(defun defmacro))
                (member (second form) '(fnn-arena-return-observation fnn-unwind-cleanups fnn-store-close fnn-log-discard-spare fnn-store-failed-open-close fnn-log-close-active)))
       (eval form))))
+;; The escape arm of fnn-unwind-cleanups (cleanup-escalate, review M3d): the
+;; deployed fnn-escape-cleanup-failed and the ACL2 decisions it calls.  A
+;; cleanup that outranks its escape is signalled through fnn-fault; this file's
+;; consumers redefine fnn-fault after loading it.
+(define-condition escape-escalated (error) ())
+(defun fnn-fault (&rest ignored) (declare (ignore ignored)) (error 'escape-escalated))
+(load "tests/unwind_cleanups_prelude.lisp")
+(in-package "ACL2")
 (dolist (failure '(:spare :unlink :log :unlock :lock))
   (let* ((*calls* nil) (*failures* (list failure))
          (log (make-fnn-log :fd :log :spare '(0 "/unused" :spare)))
@@ -55,7 +47,17 @@
       (assert (null *calls*)))))
 ;; Normal values, handled body condition, and nonlocal exit remain distinct.
 (assert (equal (multiple-value-list (fnn-unwind-cleanups ((values 1 2)) nil)) '(1 2)))
-(let ((*calls* nil) (*failures* '(:a)))
+;; A nonlocal exit (a throw is no condition) whose cleanup fails: every
+;; cleanup still runs, and the failure is no longer swallowed -- it is
+;; recorded and outranks the throw (fnn-escape-cleanup-failed).
+(let ((*calls* nil) (*failures* '(:a)) (*fnn-escape-cleanup-debts* (list nil)) (caught nil))
+  (handler-case (catch 'escape (fnn-unwind-cleanups ((throw 'escape :body))
+                                (record-call :a) (record-call :b)))
+    (escape-escalated (e) (setq caught e)))
+  (assert caught)
+  (assert (equal (reverse *calls*) '(:a :b)))
+  (assert (= (length (car *fnn-escape-cleanup-debts*)) 1)))
+(let ((*calls* nil) (*failures* nil))
   (assert (eq (catch 'escape (fnn-unwind-cleanups ((throw 'escape :body))
                               (record-call :a) (record-call :b))) :body))
   (assert (equal (reverse *calls*) '(:a :b))))

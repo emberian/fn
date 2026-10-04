@@ -90,9 +90,9 @@
           :in-theory (e/d (fn-hist$p-read)
                            (fn-hist$pcorr fn-hist$p-wfp fn-hist$p-at fn-hist$p-count)))))
 (defthm fn-hist$p-append-keeps-wfp
- (implies (and (fn-hist$pp p) (fn-hist$p-wfp p))
-          (fn-hist$p-wfp (fn-hist$p-append ev p)))
- :hints (("Goal" :use ((:instance fn-hrc-append-wfp (fn-hrecs$c (fn-hist$p-root p))))
+ (implies (and (fn-hist$pp fn-hist$p) (fn-hist$p-wfp fn-hist$p))
+          (fn-hist$p-wfp (fn-hist$p-append ev fn-hist$p)))
+ :hints (("Goal" :use ((:instance fn-hrc-append-wfp (fn-hrecs$c (fn-hist$p-root fn-hist$p))))
           :in-theory (union-theories
              '(fn-hist$p-append fn-hist$p-wfp fn-hist$p-root fn-hist$p-mids-put
                update-fn-hist$p-root fn-hist$pp fn-hist$p-rootp fn-hist$p-saltp
@@ -102,8 +102,8 @@
              (theory 'minimal-theory)))))
 
 (defthm fn-hist$p-index-next-keeps-wfp
- (implies (and (fn-hist$pp p) (fn-hist$p-wfp p) (natp ordinal))
-          (fn-hist$p-wfp (mv-nth 2 (fn-hist$p-root-index-next ordinal p))))
+ (implies (and (fn-hist$pp fn-hist$p) (fn-hist$p-wfp fn-hist$p) (natp ordinal))
+          (fn-hist$p-wfp (mv-nth 2 (fn-hist$p-root-index-next ordinal fn-hist$p))))
  :hints (("Goal" :in-theory (union-theories
   '(fn-hist$p-root-index-next fn-hist$p-index-root-row fn-hist$p-wfp
     fn-hist$p-root fn-hist$p-mids-put update-fn-hist$p-bound

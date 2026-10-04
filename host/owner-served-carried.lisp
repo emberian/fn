@@ -207,6 +207,7 @@
                 fn-owner-orcp-capture fn-owner-orcp-finish fn-owner-orcp-key
                 fn-owner-orcp-salt fn-owner-orcp-swap fn-owner-orcp-swap-word
                 fn-owner-outcome fn-owner-output-preview
+                fn-owner-output-refusal-line-at
                 fn-owner-output-tariff-preview fn-owner-payload-view-acquire
                 fn-owner-payload-view-live-p fn-owner-payload-view-owned-p
                 fn-owner-payload-view-release fn-owner-payload-view-reset

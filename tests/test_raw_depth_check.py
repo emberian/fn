@@ -44,6 +44,14 @@ class RawTailTests(unittest.TestCase):
     def test_a_new_threads_function_runs_on_its_own_stack(self):
         self.assertEqual(rows_of("(defun f (s) (sb-thread:make-thread (lambda () (f s))) s)"), {})
 
+    def test_a_def_actor_starters_thunk_runs_on_the_workers_stack(self):
+        spawn = "(def-actor spawn :kind :x :thread-name \"t\" :roster t :join j :failure :job)\n"
+        self.assertEqual(rows_of(spawn + "(defun f (s) (spawn s nil (lambda () (f s)) (lambda (c) (f c))) s)"), {})
+        # the physical callback and before-start run on this thread's stack
+        self.assertIn("f", rows_of(spawn + "(defun f (s) (spawn s nil nil nil (lambda (r) (f r))) s)"))
+        # an undeclared name's lambda is still read as called here
+        self.assertIn("f", rows_of("(defun f (s) (spawn s nil (lambda () (f s))) s)"))
+
     def test_a_lambda_argument_runs_on_this_stack(self):
         self.assertIn("f", rows_of("(defun f (s) (call-with s (lambda () (f s))) s)"))
 

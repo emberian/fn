@@ -438,6 +438,7 @@
 (include-book "web-page-cursor")
 (include-book "web-reply-stream")
 (include-book "web-post-stream")
+(include-book "owner-config-state")
 (include-book "topic-history-authorship")
 (include-book "bp-workflow-constructors")
 (include-book "bp-ion-lifetime")

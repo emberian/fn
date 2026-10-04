@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/bp-forward-cursor.lisp",
+ "id": "DI-OWED-STEP-OF-BPFC-RUN",
+ "notes": [],
+ "owner": "generators",
+ "severity": "high",
+ "slice": "integrator2",
+ "source": "integrator2",
+ "state": "open",
+ "title": "Host loop = fold correspondence owed for fn-bpfc-turn (host/interfaces.lisp :step-of fn-bpfc-run). The keystone fn-bpfc-run-is-the-plan-choice is about the run (turns resumed until a non-yield, at most (len held) resumptions); the host resumes the cursor one turn per scheduler visit, and no theorem equates the host's resumptions with fn-bpfc-run. Owed (generators: def-loop/def-cursor driver): the host drives the turn through a generated cursor loop whose equation with fn-bpfc-run is proved; the per-turn keystones (advances-at-most-quantum, after-a-yield) remain the entry's own.",
+ "updated": "2026-10-04T10:40:05Z"
+}

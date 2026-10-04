@@ -436,6 +436,7 @@
 (include-book "../../books/web-page-cursor")
 (include-book "../../books/web-reply-stream")
 (include-book "../../books/web-post-stream")
+(include-book "../../books/owner-config-state")
 (include-book "../../books/topic-history-authorship")
 (include-book "../../books/bp-workflow-constructors")
 (include-book "../../books/bp-ion-lifetime")

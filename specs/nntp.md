@@ -588,8 +588,8 @@ form lands). All sixteen archive keywords now declare their forms, including
 HDR's compatibility, ordinary and fn metadata fields and XHDR's compatibility
 and ordinary fields. The actual unrestricted command layer calls this generated
 dispatcher. Other keywords go directly to the pinned reference; the executable
-has no hand catalog-dispatch fallback. The retained hand catalog dispatcher is
-only the migration reference for per-row equality proofs. This switch preserves
+has no hand catalog-dispatch fallback; the hand catalog dispatcher and its
+keystone are deleted. This switch preserves
 current reply and view semantics; completed discovery, pin-first Message-ID
 fallback and bounded cold field reads remain explicit work. DATE follows its
 separate generated session route. The restricted route (a session with a group-access rule,
@@ -686,7 +686,7 @@ The EXECUTED rule per command and form; a ruling recorded but not landed is DEBT
 | NEWGROUPS / other | the connection's pinned view | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
 | NEWNEWS | the connection's pinned view | none | the latest completed durable view; pin unmoved (PRF-1237) | cursor fn-nnw-meta-effectp | one retained group/member entry or wildcard matcher microstep or indexed output phase per quantum and at most W emitted bytes; fixed reference-only initialization; matcher/comparison and composed heap tariff, physical resource custody, legacy cold metadata fallback and completed-view capture remain GEN-CURSOR debt / the reference whole pinned archive walk, including payload tombstone reads | NNT-042 by silence today (the pinned article root retained across one-candidate quanta); decided c07 C: one completed discovery snapshot captured at the first quantum and held across quanta; RFC 3977 7.4 |
 | NEWNEWS / any | the connection's pinned view | none |  |  | generated: (fn-nntp-newnews-response-stream session archive env args fn-arena fn-cat) |  |
-| DATE | none (no archive) | none |  |  |  | RFC 3977 7.1; no article view. DEFECT (c07): answers the clock observation pinned at accept (fn-nntp-env-observation; books/served.lisp fn-served-conn-observation), not the current reading; fixed separately |
+| DATE | none (no archive) | none |  |  |  | RFC 3977 7.1; no article view. Answers the CURRENT clock reading, the served connection's injection field, not the reading pinned at accept (books/served-date-current.lisp fn-served-step-date-uses-current-reading) |
 | POST | none (no archive) | offer |  |  |  | RFC 3977 6.3.1 (no archive) |
 | IHAVE | the live Message-ID index (peer offers) | none |  |  |  | a reader connection: 502; a peer connection decides the offer on the LIVE Message-ID index (books/served-catalog-chain.lisp fn-scr-history-hasp); RFC 3977 6.3.2 |
 | CHECK | the live Message-ID index (peer offers) | none |  |  |  | as IHAVE; RFC 4644 2.3 |
@@ -695,8 +695,8 @@ The EXECUTED rule per command and form; a ruling recorded but not landed is DEBT
 | STARTTLS | none (no archive) | none |  |  |  | RFC 4642 (no archive) |
 | COMPRESS | none (no archive) | none |  |  |  | RFC 8054 (no archive) |
 | XREDEEM | none (no archive) | none |  |  |  | PRF-164 (no archive) |
-| XFNCATCHUP | the connection's pinned view | none |  |  | hand arms, forms not yet declared | NNT-053: the pinned view and the log position the peer names |
-| XFN-ZARTICLE | the connection's pinned view | none |  |  | hand arms, forms not yet declared | NNT-055: the pinned Message-ID index |
+| XFNCATCHUP | the connection's pinned view | none |  |  | pinned peer arm, no forms | NNT-053: the pinned view and the log position the peer names |
+| XFN-ZARTICLE | the connection's pinned view | none |  |  | pinned peer arm, no forms | NNT-055: the pinned Message-ID index |
 
 [end of generated text]
 

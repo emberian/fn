@@ -1,6 +1,9 @@
 ; Terminal root publication metadata contains only retained generations.
+; Not a book: host/history-root-host.lisp is ld-only (it sits on host/owner-host.lisp).
+; Run by tests/test_history_root_roster_host.py through
+; tests/owner_feed_connection_host_check.py, which loads host/owner-host.lisp first.
 (in-package "ACL2")
-(include-book "../../host/history-root-host")
+(ld "../host/history-root-host.lisp" :ld-error-action :error)
 (assert-event
  (let* ((state (fn-owner-hroot-put 81 '(:retired nil nil) state))
         (present (fn-owner-hroot-get 81 state))

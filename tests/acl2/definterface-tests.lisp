@@ -12,6 +12,10 @@
 ;      function.
 ;   3. One refusal per malformed form (fn-di-refusal).
 ;   4. :raw-with (D40): the accepted raw dispatch and one refusal per check.
+;   5. :step-of: a keystone about the fold the host drives a step at a time,
+;      accepted for a logic entry and for a :program entry's named step, and
+;      refused when the fold never runs the step or the step is not the
+;      entry's.
 
 (in-package "ACL2")
 (include-book "../../books/definterface")
@@ -291,6 +295,26 @@
 ; the fail-loud primitive stays exempt
 (assert-event (equal *fn-di-fail-loud-primitives* '(boundp-global boundp-global1)))
 
+; A reader: its guard constrains a stobj it does not return, so it is no
+; transition of that stobj and owes no preservation theorem; the bridge must
+; still conclude the skipped conjunct.  Accepted with the bridge alone.
+(defun fn-dit-read (n fn-dit-st)
+  (declare (xargs :stobjs fn-dit-st
+                  :guard (and (natp n) (fn-dit-positivep fn-dit-st))))
+  (+ n (fn-dit-fld fn-dit-st)))
+(assert-event (null (fn-di-problem 'fn-dit-read
+                                   '(:class :common-lisp-compliant :kinds ((n natp))
+                                     :raw-with (fn-dit-relation-positive))
+                                   (w state))))
+; ... but a writer with the bridge alone is still refused: it returns the
+; stobj, so the preservation lint applies.
+(assert-event
+ (search "no named positive preservation theorem"
+         (car (fn-di-problem 'fn-dit-r
+                             '(:class :common-lisp-compliant :kinds ((n natp))
+                               :raw-with (fn-dit-relation-positive))
+                             (w state)))))
+
 ; A negative conclusion mentions the predicate but establishes its failure.
 (defthm fn-dit-zero-is-not-positive
   (implies (equal (fn-dit-fld fn-dit-st) 0)
@@ -413,3 +437,60 @@
 (assert-event (equal (car (fn-di-refusal 'fn-dit-r '(:class :common-lisp-compliant
                                                      :raw-with fn-dit-relation-positive)))
                      :bad-raw-with))
+
+; ---------------------------------------------------------------------------
+; 5. :step-of -- a keystone about the iteration the host drives one step at a
+;    time.  Accepted when the fold runs the step (default the entry; for a
+;    :program entry, a function it runs); refused when the fold never runs
+;    the step, or when the named step is not the entry's.
+
+(defun fn-dit-s (x)
+  (declare (xargs :guard t))
+  (list x))
+
+(defun fn-dit-fold (xs)
+  (if (consp xs)
+      (append (fn-dit-s (car xs)) (fn-dit-fold (cdr xs)))
+    nil))
+
+(defthm fn-dit-fold-is-list-fix
+  (equal (fn-dit-fold xs) (true-list-fix xs)))
+
+(defun fn-dit-sp (x)
+  (declare (xargs :mode :program))
+  (fn-dit-s x))
+
+(definterface fn-dit-s
+  :class :common-lisp-compliant
+  :keystones ((fn-dit-fold-is-list-fix :step-of fn-dit-fold)))
+
+(definterface fn-dit-sp
+  :class :program
+  :keystones ((fn-dit-fold-is-list-fix :step-of fn-dit-fold fn-dit-s)))
+
+(assert-event
+ (equal (cdr (assoc-eq 'fn-dit-sp (table-alist 'fn-interfaces (w state))))
+        '(:class :program
+          :keystones ((fn-dit-fold-is-list-fix :step-of fn-dit-fold fn-dit-s)))))
+
+; Refused: fn-dit-f never runs fn-dit-s, so a theorem about fn-dit-f is no
+; theorem about an iteration of fn-dit-s.
+(assert-event (fn-di-problem 'fn-dit-s '(:class :common-lisp-compliant
+                     :keystones ((fn-dit-f-keeps-n :step-of fn-dit-f))) (w state)))
+(must-fail-checked (definterface fn-dit-s :class :common-lisp-compliant
+                     :keystones ((fn-dit-f-keeps-n :step-of fn-dit-f)))
+                   :unchecked "definterface's refusal is its claim; the assert-event above names the world check")
+
+; Refused: the named step fn-dit-f is not fn-dit-sp's (fn-dit-sp runs
+; fn-dit-s only), whatever the fold runs.
+(assert-event (fn-di-problem 'fn-dit-sp '(:class :program
+                     :keystones ((fn-dit-fold-is-list-fix :step-of fn-dit-fold fn-dit-f))) (w state)))
+(must-fail-checked (definterface fn-dit-sp :class :program
+                     :keystones ((fn-dit-fold-is-list-fix :step-of fn-dit-fold fn-dit-f)))
+                   :unchecked "definterface's refusal is its claim; the assert-event above names the world check")
+
+; Malformed: :step-of takes a fold and at most one step.
+(assert-event (equal (car (fn-di-refusal 'fn-dit-s
+                            '(:class :common-lisp-compliant
+                              :keystones ((fn-dit-fold-is-list-fix :step-of fn-dit-fold fn-dit-s extra)))))
+                     :bad-keystones))

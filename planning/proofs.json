@@ -2080,7 +2080,7 @@
         "fn-bs-txn-name-impl-injective",
         "fn-bsi-current-init-program-establishes-current-image"
       ],
-      "native_namespace_scope": "The actual native transaction observer now calls fn-store-txn-observation/fn-bs-txn-observation-pairs instead of parsing decimal filenames itself, after bounded directory enumeration. A developer-only native Store image exercised malformed names and filename/decoded-record mismatch. This does not complete K0, full production integration or configuration-history namespace correspondence."
+      "native_namespace_scope": "No host calls the transaction-namespace observation (fn-profile-txn-observation, fn-bs-txn-observation-pairs): a format-9 store has no transactions/ directory, and the native transaction observer and the host wrappers around it were deleted (S117). The naming and namespace theorems remain book facts about the retired per-file layout; they are not a claim about any native path. This does not complete K0, full production integration or configuration-history namespace correspondence."
     },
     {
       "id": "PRF-043",
@@ -4311,7 +4311,8 @@
         "fn-pcb-budget-after-extension",
         "fn-pcb-present-carrier-not-accepted-has-a-class",
         "fn-pcb-refused-carrier-is-never-signature-failed",
-        "fn-pcb-absent-carrier-has-no-class"
+        "fn-pcb-absent-carrier-has-no-class",
+        "fn-pcb-carried-event-keeps-budget-schedule-admitted"
       ]
     },
     {
@@ -7297,7 +7298,7 @@
         "PRF-118"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "create-fn-cat{correspondence}",
         "fn-cat-commit{correspondence}",
@@ -7372,7 +7373,7 @@
         "PRF-201"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/catalog-slice-2026-09-26.md",
         "books/served.lisp",
@@ -7434,7 +7435,7 @@
         "fn-scat-number-article-is-find-group-number",
         "fn-nntp-msgid-retrieval-cat-is-scan",
         "fn-nntp-number-retrieval-cat-is-walk",
-        "fn-nntp-archive-command-cat-is-pinned",
+        "fn-proto-archive-command-cat-is-pinned",
         "fn-scr-ocfg-read-span-is-reference-under-ocl-relation",
         "fn-cat-relation-of-complete-hidden",
         "fn-sca-load-held-rows-establishes-relation",
@@ -10845,7 +10846,7 @@
         "PRF-164"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-reader-read.lisp",
         "tests/acl2/owner-reader-read-tests.lisp",
@@ -11895,7 +11896,7 @@
         "PRF-288"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-admission.lisp",
         "books/peer-inbound-invariants.lisp",
@@ -12084,7 +12085,7 @@
         "PRF-1307"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "certified",
       "files": [
         "books/peer-catchup-spool.lisp",
         "books/peer-catchup-spool-framer.lisp",
@@ -12115,7 +12116,7 @@
         "PRF-125"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "certified",
       "evidence": [
         "books/peer-pull-auth.lisp",
         "books/peer-pull.lisp",
@@ -12431,13 +12432,13 @@
         "PRF-302"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-rcompat-reply-cat-is-rcompat-reply",
         "fn-rcompat-retrieval-cat-is-retrieval",
         "fn-rcompat-hdr-cat-is-hdr",
         "fn-nntp-number-withdrawn-p-cat-is-archive",
-        "fn-nntp-archive-command-cat-is-pinned",
+        "fn-proto-archive-command-cat-is-pinned",
         "fn-scat-group-summary-is-archive",
         "fn-scat-group-low-is-archive",
         "fn-scr-repin-is-served-repin",
@@ -12538,7 +12539,7 @@
         "PRF-292"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/nov-fields.lisp",
         "books/held-record.lisp",
@@ -12699,7 +12700,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/web-config.lisp",
         "host/web-host.lisp",
@@ -13819,7 +13820,7 @@
         "PRF-377"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/memory-credits.lisp",
         "books/owner-credits.lisp",
@@ -14213,7 +14214,7 @@
         "PRF-222"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/group-access-cache.lisp",
         "books/group-access.lisp",
@@ -15062,7 +15063,7 @@
         "PRF-380"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-reclaim-pass.lisp",
         "tests/acl2/owner-reclaim-conns-tests.lisp",
@@ -15108,7 +15109,7 @@
         "PRF-939"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-reclaim-ready.lisp",
         "tests/acl2/owner-reclaim-ready-tests.lisp",
@@ -16494,7 +16495,7 @@
         "PRF-383"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/rev-onto.lisp",
         "books/config.lisp",
@@ -16883,7 +16884,7 @@
         "PRF-384"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "title": "A served read's cold line past the dependency deadline is answered 403 with the session unchanged; pipelined lines are answered in order (row A4, option (c))",
       "statement": "Subject (books/owner-cold-line.lisp): fn-ocln-unavailable-span, which host/owner-host.lisp fn-owner-unavailable-line-at calls from host/native/owner.lisp fnn-owner-unavailable-line once fn-otb-dependency-step answers :unavailable for the cold first line of a span aborted in the realizer's no-I/O mode (fnn-owner-chunk-span-no-io, fnn-owner-cold-line). KEYSTONE fn-ocln-a-cold-line-is-answered-unavailable: for a connection in command mode and I within the buffer, the result consumes exactly the octets up to and including the line's LF (fn-oct-line-end; at least one when any remain), carries one reply, fn-otb-unavailable-line (code 403), and its owner is OC with only that connection's wire reset to the start of a line in command mode with its limits kept. fn-ocln-unavailable-span-outside-command-mode-by-definition: otherwise nil (the host faults).",
       "evidence": [
@@ -17766,7 +17767,7 @@
         "PRF-284"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/post-admission-keyed.lisp",
         "books/served-catalog-owner-keyed.lisp",
@@ -17935,7 +17936,7 @@
         "HST-001"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-reclaim-carry.lisp",
         "tests/acl2/owner-reclaim-carry-tests.lisp"
@@ -18628,7 +18629,7 @@
         "PRF-1065"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-orln-a-refused-cold-line-is-answered-unavailable"
       ],
@@ -21215,7 +21216,7 @@
       "id": "PRF-1209",
       "title": "The resource vector and the bank: funded preserved by every transition, settle once, refusal keeps the slack, destroy returns exactly the unsettled draws",
       "statement": "books/resource-vector.lisp: the resource vector (a fixed-arity list of naturals, one coordinate a class of *fn-rv-coordinates*: resident, disk, descriptors, workers, read-ids, txids, config-gens, conn-ids, work; the first five Codex's fn-prs vector) with coordinate-wise plus, the order fn-rv-below and the truncated difference, split by the reusable mask into reusable and spent coordinates; the bank (BUDGET DRAWN SLOTS) with the drawn vector carried in state and direct-index rows (PHASE GEN . DEMAND), phase 0 idle, 1 drawn, 2 a sub-bank whose demand is its whole budget (sub-banks partition their parent), GEN the slot's generation raised by every charge and answered as the draw's completion token, which every later step on the slot names (:stale otherwise); the transitions draw, open, settle, refund, grow, destroy and the root fn-rv-install (slot 0 the owner's baseline, slot 1 the maintenance reserve as a sub-bank, before any user's slot). KEYSTONE fn-rv-step-keeps-okp: from an okp bank (funded; the reusable part of drawn exactly the reusable part of the outstanding rows; the spent part of the rows within the spent part of drawn) every transition's result is okp, admitted or refused; fn-rv-run-keeps-okp over sequences. KEYSTONE fn-rv-step-refused-keeps-the-bank: a refused step returns the bank itself, so fn-rv-refusal-keeps-slack and fn-rv-refused-run-keeps-the-bank. KEYSTONE fn-rv-draw-admits-exactly-within-the-budget (the check precedes every effect; fn-rv-draw-charges-exactly-the-demand). KEYSTONE fn-rv-settle-once. KEYSTONE fn-rv-replayed-completion-is-stale (Codex review r06 F2: the first draw's token, any run, a second admitted draw of the slot; the replayed token is :stale and leaves the bank; fn-rv-run-never-lowers-a-gen, fn-rv-charge-raises-the-gen). KEYSTONE fn-rv-step-keeps-the-other-slots and fn-rv-user-steps-keep-the-reserve (the reserve is never drawn by a user's step). KEYSTONE fn-rv-install-reserves-the-owner-first. KEYSTONE fn-rv-destroy-returns-exactly-the-unsettled-draws: destroying a sub-bank returns exactly its budget less what it spent, which covers the reusable part of every draw it still held. books/resource-vector-tree.lisp, a node's accounting as ONE state (ROOT SUBS), the sub-bank living in its parent's slot: KEYSTONE fn-rt-step-keeps-okp (and fn-rt-run-keeps-okp, fn-rt-step-refused-keeps-the-tree); KEYSTONE fn-rt-sub-bank-steps-keep-the-root (the partition); KEYSTONE fn-rt-destroy-revokes-the-sub-bank (r06 F2: after an admitted destroy, any run, and whatever the slot holds then, every step addressed to the destroyed sub-bank's token is :stale and leaves the tree; fn-rv-token-retiredp inductive over steps). Not claimed: which operation may draw which coordinate, any tariff, any served path (definterface :operation, specs/resource-vector.md); the refusal path's own transient allocation (the operation layer's, specs/resource-vector.md item 4).",
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "milestone": "M5",
       "requirements": [
         "HST-045"
@@ -21234,7 +21235,13 @@
         "fn-rv-step-keeps-the-other-slots",
         "fn-rv-user-steps-keep-the-reserve",
         "fn-rv-install-reserves-the-owner-first",
-        "fn-rv-destroy-returns-exactly-the-unsettled-draws"
+        "fn-rv-destroy-returns-exactly-the-unsettled-draws",
+        "fn-rv-replayed-completion-is-stale",
+        "fn-rt-step-keeps-okp",
+        "fn-rt-run-keeps-okp",
+        "fn-rt-step-refused-keeps-the-tree",
+        "fn-rt-sub-bank-steps-keep-the-root",
+        "fn-rt-destroy-revokes-the-sub-bank"
       ],
       "evidence": [
         "books/resource-vector.lisp",
@@ -21556,7 +21563,7 @@
         "PRF-346"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/protocol-table.lisp",
         "books/protocol-served.lisp",
@@ -21855,7 +21862,7 @@
         "PRF-1209"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/host-model-machine.lisp",
         "books/host-model.lisp",
@@ -21960,7 +21967,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "host/owner-host.lisp",
         "host/interfaces.lisp",
@@ -22177,7 +22184,7 @@
     {
       "id": "PRF-1265",
       "title": "Native incremental history image rows preserve all-event history with a 16-slot consumed suffix envelope",
-      "statement": "The actual native publisher fnn-history-image-build calls fn-his-build-row. Under fn-hrc-wfp and fn-hrs-rel H C, a drained suffix accepts exactly one all-event row and the result represents H appended with that event; a pending suffix refuses without effects. Consumed one-row slots are cleared and recycled. fn-his-build-row-bounds-suffix-capacity proves a suffix capacity at most16 stays at most16 independent of event byte size. This is retained suffix pointer storage only, not whole-image allocation or per-step work: existing row encoding, relocation and flat page-array growth remain proportional. Native publishers own a fresh registered scratch instance through staged readback; finish compares ACL2 captured count to actual nimg before binding.",
+      "statement": "fn-his-build-row, the row builder this row's two events are about, is superseded: the native publisher fnn-history-image-build now runs fn-his-row-begin/step/grow through fnn-history-image-row-run (books/history-image-row-step.lisp), and no host line calls fn-his-build-row, so the events are unreachable-in-composition (reach_check baseline; function and theorems owed for deletion). Of fn-his-build-row: Under fn-hrc-wfp and fn-hrs-rel H C, a drained suffix accepts exactly one all-event row and the result represents H appended with that event; a pending suffix refuses without effects. Consumed one-row slots are cleared and recycled. fn-his-build-row-bounds-suffix-capacity proves a suffix capacity at most16 stays at most16 independent of event byte size. This is retained suffix pointer storage only, not whole-image allocation or per-step work: existing row encoding, relocation and flat page-array growth remain proportional. Native publishers own a fresh registered scratch instance through staged readback; finish compares ACL2 captured count to actual nimg before binding.",
       "milestone": "M5",
       "requirements": [
         "REP-010"
@@ -22464,7 +22471,7 @@
         "PRF-1259"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-sl-step-derived-conses-within-source-count",
         "fn-sl-step-derived-conses-bound"
@@ -23378,7 +23385,7 @@
         "PRF-1229"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-qplan-cw-drain-is-a-prefix",
         "fn-lst-active-command-is-av-list-active",
@@ -23407,7 +23414,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/reclaim-chunked-walk.lisp",
         "tests/acl2/reclaim-chunked-walk-tests.lisp (the owner fixture store rewritten under the expiring context: two chunkings, one with an empty chunk, finish to the whole capture; teeth: chunks reordered or one dropped is not the capture; pass 2 with the handle not carried into the second chunk is not the checkpoint capture; the final handle is the sealed-payload count, positive)",
@@ -23440,7 +23447,7 @@
         "PRF-942"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "certified",
       "evidence": [
         "books/store-init-log-publication.lisp",
         "tests/acl2/store-init-log-publication-tests.lisp",
