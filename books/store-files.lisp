@@ -675,6 +675,15 @@
        (<= (fn-sf-barriers s) *fn-sf-recovery-barrier-count*)
        (fn-sf-phase-shapep s)))
 
+;; The io step family's guard (lane carrier S1, planning/design/owner-carrier-
+;; 2026-10-04.md): the two counters the steps do arithmetic on are naturals.
+;; O(1).  Every accessor and constructor a step uses has guard t, so this is
+;; the whole of what the bodies need; fn-sf-statep is the invariant the
+;; preservation theorems assume, never a guard the host pays per call.
+(defun fn-sf-countersp (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (natp (fn-sf-frontier s)) (natp (fn-sf-barriers s))))
+
 (defun fn-sf-initial-state ()
   (declare (xargs :guard t :verify-guards nil))
   (fn-sf-make :ready 0 nil nil nil nil nil
@@ -684,8 +693,8 @@
 ; Durable allocator replacement.
 
 (defun fn-sf-start-frontier (s)
-  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
-  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :ready)
+  (declare (xargs :guard (fn-sf-countersp s) :verify-guards nil))
+  (if (and (equal (fn-sf-phase s) :ready)
            (< (fn-sf-frontier s) *fn-sf-max-uint*))
       (fn-sf-remake :frontier-staged (fn-sf-frontier s) (1+ (fn-sf-frontier s)) nil nil (fn-sf-barriers s) s)
     s))
@@ -693,8 +702,8 @@
 ; :known-fail is reported by the host for a staging failure before any
 ; replacement attempt (tools/run_store.py advance_frontier, OSError branch).
 (defun fn-sf-frontier-file-result (s result)
-  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
-  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :frontier-staged))
+  (declare (xargs :guard (fn-sf-countersp s) :verify-guards nil))
+  (if (and (equal (fn-sf-phase s) :frontier-staged))
       (cond
        ((equal result :ok)
         (fn-sf-remake :frontier-data-durable (fn-sf-frontier s) (fn-sf-frontier-candidate s) nil nil (fn-sf-barriers s) s))
@@ -704,9 +713,8 @@
     s))
 
 (defun fn-sf-frontier-replace-result (s result)
-  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
-  (if (and (mbe :logic (fn-sf-statep s) :exec t)
-           (equal (fn-sf-phase s) :frontier-data-durable))
+  (declare (xargs :guard (fn-sf-countersp s) :verify-guards nil))
+  (if (and (equal (fn-sf-phase s) :frontier-data-durable))
       (cond
        ((equal result :ok)
         (fn-sf-remake :frontier-attempted (fn-sf-frontier s) (fn-sf-frontier-candidate s) nil nil (fn-sf-barriers s) s))
@@ -716,8 +724,8 @@
     s))
 
 (defun fn-sf-frontier-dir-result (s result)
-  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
-  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :frontier-attempted))
+  (declare (xargs :guard (fn-sf-countersp s) :verify-guards nil))
+  (if (and (equal (fn-sf-phase s) :frontier-attempted))
       (cond
        ((equal result :ok)
         (fn-sf-remake :reserved (fn-sf-frontier-candidate s) nil nil nil (fn-sf-barriers s) s))
@@ -769,8 +777,8 @@
 ; (store-node-resolution.lisp); the host reports a staging failure by calling
 ; that composed operation, never as a bare file observation.
 (defun fn-sf-record-file-result (s result)
-  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
-  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :record-staged))
+  (declare (xargs :guard (fn-sf-countersp s) :verify-guards nil))
+  (if (and (equal (fn-sf-phase s) :record-staged))
       (cond
        ((equal result :ok)
         (fn-sf-remake :record-data-durable (fn-sf-frontier s) nil (fn-sf-record-candidate s) nil (fn-sf-barriers s) s))
@@ -801,9 +809,8 @@
     s))
 
 (defun fn-sf-record-link-result (s result)
-  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
-  (if (and (mbe :logic (fn-sf-statep s) :exec t)
-           (equal (fn-sf-phase s) :record-data-durable))
+  (declare (xargs :guard (fn-sf-countersp s) :verify-guards nil))
+  (if (and (equal (fn-sf-phase s) :record-data-durable))
       (cond
        ((equal result :ok)
         (fn-sf-remake :record-attempted (fn-sf-frontier s) nil (fn-sf-record-candidate s) nil (fn-sf-barriers s) s))
@@ -813,8 +820,8 @@
     s))
 
 (defun fn-sf-record-dir-result (s result)
-  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
-  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :record-attempted))
+  (declare (xargs :guard (fn-sf-countersp s) :verify-guards nil))
+  (if (and (equal (fn-sf-phase s) :record-attempted))
       (cond
        ((equal result :ok)
         (let ((record (fn-sf-record-candidate s)))
@@ -1133,8 +1140,8 @@
     s))
 
 (defun fn-sf-recovery-barrier (s result)
-  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
-  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :recovering))
+  (declare (xargs :guard (fn-sf-countersp s) :verify-guards nil))
+  (if (and (equal (fn-sf-phase s) :recovering))
       (cond
        ((equal result :ok)
         (let ((next (1+ (fn-sf-barriers s))))
@@ -1263,6 +1270,10 @@
 (defthm fn-sf-statep-implies-shapep
   (implies (fn-sf-statep x) (fn-sf-shapep x))
   :hints (("Goal" :in-theory (enable fn-sf-statep))))
+(verify-guards fn-sf-countersp)
+(defthm fn-sf-statep-implies-countersp
+  (implies (fn-sf-statep s) (fn-sf-countersp s))
+  :hints (("Goal" :in-theory (enable fn-sf-statep fn-sf-countersp))))
 (verify-guards fn-sf-initial-state)
 (verify-guards fn-sf-start-frontier)
 (verify-guards fn-sf-frontier-file-result)

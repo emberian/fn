@@ -4575,3 +4575,41 @@ Notes for the integrator: comments still naming removed files (no behaviour):
 books/store-mount-identity.lisp:660 (tools/runbooks/public-node, dir still
 exists), tests/test_native_tls_reload.py:97 (fn-cert-install.sh). Lane notes
 live here only (build/coordinator/lanedumps/docs.md untracked, per integrator).
+
+## carrier (Fable, wave 3 packet 4) -- wound down 2026-10-04 at ember's ask, Opus continues
+
+Branch lane/carrier (worktree build/lanes/carrier), base origin/next 2dec2cb8b (= origin/dev d4e53323c + 33).
+Packet: planning/design/owner-carrier-2026-10-04.md -- LEAN RECORDED, not AGREED (advisory review timed out;
+section 9 holds the unvetted trace points; the DECISION block says what the continuation does).
+
+What landed on the branch (NOT admitted, NOT certified; new code in, fix forward):
+- books/store-files.lisp: `fn-sf-countersp` (O(1): frontier and barriers natp), `fn-sf-statep-implies-countersp`,
+  and the eight io steps (`fn-sf-start-frontier`, `-frontier-file/-replace/-dir-result`, `-record-file/-link/-dir-result`,
+  `-recovery-barrier`) with the `(mbe :logic (fn-sf-statep s) :exec t)` conjunct DELETED and `:guard (fn-sf-countersp s)`.
+  The seven non-io mbe sites in the book are untouched (S2/S3).
+- tests/acl2/store-files-counters-tests.lisp: the teeth (T1 the step steps off the invariant; T2 guards read from
+  the world mention no whole-log predicate; T3 countersp satisfiable and strictly weaker). Never run.
+- The REPL (laptop) could not start: the laptop cache holds no certificates for this ACL2 toolchain (bf681d75) for 105
+  books of store-files' closure; `--certify-missing` queued behind the six held slots and was stopped. No slot was
+  taken on persvati.
+
+Continuation, exactly:
+1. Re-run the advisory review (scratchpad/carrier-review/prompt.txt + reviewer.md; or Codex after 10-08); paste; answer; mark AGREED or escalate.
+2. REPL: `python3 tools/proof_repl.py start carrier books/store-files --upto fn-sf-start-frontier --host laptop --certify-missing`
+   (or `--host persvati` after telling the assembler); send-range through `fn-sf-recovery-barrier`, then the verify-guards
+   block (#162+) and `fn-sf-start-frontier-preserves-state` (#193+). Expect: guard obligations now `natp` arithmetic only.
+3. Then the chain, in order, each in its book's session: books/store-node.lisp `fn-sn-file-step` (:guard (fn-sf-countersp files)),
+   `fn-sn-io` (mbe deleted, :guard (fn-sf-countersp (fn-sn-files s))), re-prove `fn-sn-io-preserves-state` (store-node-invariants-base:87);
+   books/records-concrete.lisp `fn-rcon-sf-record-dir-result` (:359, mbe deleted, guard countersp), `fn-rcon-sn-file-step` (:380),
+   `fn-rcon-sn-io` (:404, mbe deleted; drop the `:guard-theorem fn-sn-io` hint if it no longer matches); twins unchanged;
+   books/records-concrete-owner.lisp `fn-rcon-own-store-io`/`fn-rcon-ocfg-io` guards -> `(fn-sf-countersp (fn-sn-files (fn-own-store ...)))`;
+   books/owner-log-route.lisp `fn-olr-ocfg-reserve`/`-order` guards likewise (keep the guard-hints disabling the twin);
+   host/owner-host.lisp:1680 `fn-owner-io` guard -> `(and (boundp-global 'fn-owner state) (fn-sf-countersp (fn-sn-files (fn-sbud-oc-store (fn-owner-ocfg state)))))`;
+   host/owner-served-carried.lisp `:concludes` += `(fn-sf-countersp fn-owner-retain-statep-implies-io-guard)` with that bridge theorem in
+   host/owner-retain-host.lisp (from fn-owner-retain-statep-implies-entry-guard, fn-sn-statep, fn-sf-statep-implies-countersp);
+   `python3 tools/harness_check.py --write-stubs` after the host edit (integrator's rule).
+4. Measure: a store-node-invariants session; `send-file` scratchpad/carrier-measure/fixture.lisp (cm-store N; assert fn-sn-statep);
+   `time$` of `(fn-sn-statep s)` vs `(fn-sf-countersp (fn-sn-files s))` x10 at N=1000, 10000. Native POST after: the batch image.
+5. Gate: `tools/farm.py submit hbox --affected-by books/store-files` (one run; the assembler holds S1 for batch R after compose's world);
+   `green_check --strict`; `remote_check.sh auto --target check-lane`; proof-owed items for anything that does not go through.
+6. READY #2 to the assembler af2c7accc6871ee99 (integrator copied) as `| sha | world receipt | manifest | image | native run |`.
