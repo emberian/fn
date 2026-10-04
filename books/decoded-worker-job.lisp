@@ -111,6 +111,48 @@
          (equal (fn-dwj-window next) (fn-dwj-window job))))
   :hints (("Goal" :in-theory (disable fn-dwa-retire))))
 
+;; The verified-window cache (lane w-window): the returned job's window buffer
+;; leaves the persistent worker for the realizer's cache instead of being freed.
+;; ONE step, ACL2's: the job's controller is read from its own carry
+;; (fn-pwz-cache: only a :ready outcome is cached, the ledger row becomes the
+;; :cached row KEEP), and the carry's authority is retired against the
+;; PRE-cache ledger (fn-dwa-retire needs the :returned row the lease replaces),
+;; so a cached job is a retired job: it refuses every scalar borrow.  Refused
+;; unchanged (word :uncached or :stale-*) it is released as before; the host
+;; moves the window buffer only on :cached.
+(defun fn-dwj-cache (ledger worker token keep fn-decoded-job)
+  (declare (xargs :stobjs fn-decoded-job :guard t :verify-guards nil))
+  (stobj-let ((fn-pww-carry (fn-dwj-carry fn-decoded-job)))
+    (word worker1 ledger1 fn-pww-carry)
+    (let ((z (fn-dwa-controller fn-pww-carry)))
+      (if (and (true-listp z) (true-listp (nth 1 z)))
+          (mv-let (cword worker2 ledger2) (fn-pwz-cache ledger worker token z keep)
+            (if (not (equal cword :cached))
+                (mv cword worker ledger fn-pww-carry)
+              (mv-let (rword fn-pww-carry) (fn-dwa-retire ledger worker token fn-pww-carry)
+                (if (equal rword :reusable)
+                    (mv :cached worker2 ledger2 fn-pww-carry)
+                  (mv :uncached worker ledger fn-pww-carry)))))
+        (mv :stale-decoded-worker worker ledger fn-pww-carry)))
+    (mv word worker1 ledger1 fn-decoded-job)))
+(verify-guards fn-dwj-cache)
+
+; KEYSTONE (only a published job is cached).  :cached is answered only for a
+; job whose own outcome is :ready, and then the ledger and worker are the
+; cache's (fn-pwz-cache over the job's controller).
+(defthm fn-dwj-cache-only-a-ready-job
+  (implies (equal (mv-nth 0 (fn-dwj-cache ledger worker token keep job)) :cached)
+           (and (equal (fn-dwj-outcome ledger worker token job) :ready)
+                (equal (mv-nth 1 (fn-dwj-cache ledger worker token keep job))
+                       (mv-nth 1 (fn-pwz-cache ledger worker token (fn-dwa-controller (fn-dwj-carry job)) keep)))
+                (equal (mv-nth 2 (fn-dwj-cache ledger worker token keep job))
+                       (mv-nth 2 (fn-pwz-cache ledger worker token (fn-dwa-controller (fn-dwj-carry job)) keep)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-dwj-cache fn-dwj-outcome fn-dwa-controller)
+                                  (fn-dwa-retire fn-pwz-cache fn-pwz-outcome))
+           :use ((:instance fn-pwz-cache-only-a-published-window
+                            (w worker) (z (fn-dwa-controller (fn-dwj-carry job))))))))
+
 ; Run under the startup baseline before any executor thread or job. Reserve
 ; changes capacity only; all logical bytes/authority remain exactly unchanged.
 (defun fn-dwj-reserve (fn-decoded-job)
@@ -137,5 +179,23 @@
   :hints (("Goal" :in-theory (e/d (fn-dwj-retire fn-dwj-byte-at fn-dwa-controller
                                            fn-pwz-byte-at fn-pwz-outcome fn-pwz-plan-matches-token fn-ewz-publication)
                                   (fn-dwa-retire fn-pwx-boundp))
+           :use ((:instance fn-dwa-retirement-revokes-prior-authority
+                            (carry (fn-dwj-carry job)))))))
+
+; KEYSTONE (a cached job is a retired job).  After :cached the job's carry is
+; retired (its authority revoked), so no scalar borrow of the persistent
+; worker's backing is answered: the window the cache now owns is not also
+; readable through the worker that is about to be reused.
+(defthm fn-dwj-cached-job-refuses-scalar-publication
+  (implies (equal (mv-nth 0 (fn-dwj-cache ledger worker token keep job)) :cached)
+    (not (equal (mv-nth 0
+             (fn-dwj-byte-at query-ledger query-worker query-token file eoff elen poff compressed
+                             trailer decoded dict-id i
+                             (mv-nth 3 (fn-dwj-cache ledger worker token keep job))))
+           :byte)))
+  :hints (("Goal" :in-theory (e/d (fn-dwj-cache fn-dwj-byte-at fn-dwa-controller
+                                           fn-pwz-byte-at fn-pwz-outcome fn-pwz-plan-matches-token
+                                           fn-ewz-publication)
+                                  (fn-dwa-retire fn-pwx-boundp fn-pwz-cache))
            :use ((:instance fn-dwa-retirement-revokes-prior-authority
                             (carry (fn-dwj-carry job)))))))

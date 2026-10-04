@@ -18,7 +18,12 @@ its full core-selected cold descriptor while the captured owner is held."
       (cond ((eq word :byte) byte)
             ((member word '(:cancelled :stale-job))
              (throw 'fnn-extent-window-refused (values word nil nil nil)))
-            ((eq word :unavailable) (throw 'fnn-extent-cold descriptor))
+            ((eq word :unavailable)
+             ;; Not in the borrowed window: a verified cached window, else the
+             ;; core's complete cold descriptor.
+             (or (fnn-extent-decoded-window-cache-byte
+                  file eoff elen poff compressed trailer decoded dict-id i)
+                 (throw 'fnn-extent-cold descriptor)))
             (t (error 'fnn-extent-fault
                       :message "arena-extent-read: decoded window was not an authenticated returned result"))))))
 
@@ -83,6 +88,76 @@ keep baseline backing charged through idle, and quarantine every torn reset."
           (fnn-fault "decoded scratch still retains operation authority"))
         (fnn-err "DECODED-WINDOW backing token=~s word=~s scope=:persistent-partial-fixed-storage"
                  token word)))))
+
+;;; THE VERIFIED-WINDOW CACHE FOR A DECODED WINDOW (lane w-window; the raw
+;;; window's is fnn-extent-window-release's CACHEP arm and books/page-window-read.lisp
+;;; fn-pwc-*).  A returned decoded job is, at its last borrow's release, retired
+;;; and cached in ONE ACL2 step (fn-owner-page-decoded-job-cache: its outcome is
+;;; :ready, KEEP is funded, its authority is retired).  The host then MOVES the
+;;; job's window buffer into the cache and gives the persistent worker a fresh
+;;; one: the buffer was charged to the pool as the worker's persistent backing,
+;;; the new one replaces it under that same charge, and the cache's buffer is
+;;; the new KEEP charge (the ledger row ACL2 just made).  The entry is
+;;; (TOKEN NIL WINDOW), the raw window cache's shape with no plan: a published
+;;; decoded window's extent is a function of its token
+;;; (books/decoded-window-read.lisp fn-pwz-token-window-length).
+(defconstant +fnn-decoded-job-window-slot+ 7
+  "The fn-dwj-window child of the fn-decoded-job stobj object (books/decoded-worker-job.lisp:
+carry 0, input 1, hash 2, zin 3, win 4, tab 5, out 6, window 7; the input is (svref job 1) above).")
+
+(defun fnn-extent-decoded-window-movable-p (job)
+  (let ((window (and (simple-vector-p job) (> (length job) +fnn-decoded-job-window-slot+)
+                     (svref job +fnn-decoded-job-window-slot+))))
+    (and (simple-vector-p window) (= (length window) 1)
+         (typep (svref window 0) '(simple-array (unsigned-byte 8) (16384))))))
+
+(defun fnn-extent-decoded-window-cache-attempt (worker token)
+  "Extent lock held, the returned job's last borrow released.  NIL, or (:cached
+ROW EVICTED): the job retired and its window moved into the cache; ROW is the
+worker's row ACL2 answered, EVICTED the tokens of the entries the insertion
+pushed out (the caller releases their rows)."
+  (let ((activation (fnn-cold-worker-decoded worker)))
+    (when (and activation
+               (eq activation (fnn-cold-worker-decoded-storage worker))
+               (fnn-extent-decoded-window-movable-p (fnn-decoded-activation-job activation)))
+      (destructuring-bind (word row job &rest ignored)
+          (fnn-decoded-semantic (activation)
+            (fnn-call 'fn-owner-page-decoded-job-cache
+              (fnn-cold-worker-row worker) token
+              (fnn-decoded-activation-job activation) (fnn-live-page-read-pool)))
+        (declare (ignore ignored))
+        (setf (fnn-decoded-activation-job activation) job)
+        (when (eq word :cached)
+          (let ((window (svref job +fnn-decoded-job-window-slot+)))
+            (setf (svref job +fnn-decoded-job-window-slot+) (create-fn-ew-buffer))
+            (fnn-err "DECODED-WINDOW backing token=~s word=:REUSABLE scope=:persistent-partial-fixed-storage"
+                     token)
+            (list :cached row (fnn-extent-window-cache-insert token nil window))))))))
+
+(defun fnn-extent-decoded-window-cache-byte (file eoff elen poff compressed trailer decoded dict-id i)
+  "A cached decoded window's byte I of this exact descriptor, or NIL.  The host
+only selects candidates by the token's own descriptor and requested offset;
+ACL2 decides the hit (fn-owner-page-decoded-window-cache-byte-at)."
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+    (dolist (entry *fnn-extent-window-cache* nil)
+      (destructuring-bind (token plan window) entry
+        (declare (ignore plan))
+        (when (and (eq (first token) :decoded-window)
+                   (eql (third token) file) (eql (fourth token) eoff)
+                   (eql (fifth token) elen) (eql (sixth token) poff)
+                   (eql (seventh token) compressed) (eql (ninth token) trailer)
+                   (eql (tenth token) decoded) (eql (nth 10 token) dict-id)
+                   (integerp (eighth token)) (<= (eighth token) i))
+          (destructuring-bind (word byte)
+              (fnn-core-page-read-pool 'fn-owner-page-decoded-window-cache-byte-at
+                                       token file eoff elen poff compressed trailer decoded
+                                       dict-id i window)
+            (when (eq word :byte)
+              (incf (first *fnn-extent-stats*))
+              (unless (eq entry (first *fnn-extent-window-cache*))
+                (setq *fnn-extent-window-cache*
+                      (cons entry (delete entry *fnn-extent-window-cache* :test #'eq))))
+              (return byte))))))))
 
 (defun fnn-extent-decoded-window-run (worker token)
   "Same worker/token/pool; actual retained ACL2 controller selects each step.

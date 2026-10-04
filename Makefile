@@ -161,6 +161,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/decoded-window-yield-trajectory-tests \
 	tests/acl2/decoded-worker-controller-trajectory-tests \
 	tests/acl2/decoded-worker-reuse-execution-tests \
+	tests/acl2/decoded-window-cache-tests \
 	tests/acl2/decoded-worker-reuse-tests \
 	tests/acl2/extent-window-buffer-tests \
 	tests/acl2/extent-window-capture-tests \
