@@ -1717,8 +1717,8 @@ running node at once.
 
 ### Renew the certificate without a restart: `tls reload`
 
-The owner reads `tls_cert` and `tls_key` at `run`. When a renewal (the
-Let's Encrypt hook, `tools/runbooks/public-node/acme/fn-cert-install.sh`)
+The owner reads `tls_cert` and `tls_key` at `run`. When a renewal (on the
+public node, dregg-infra's `fn-cert-sync`; `docs/nodes/fsn1.md`)
 has replaced the two files, ask the running node to take them:
 
 ```
