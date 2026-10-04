@@ -75,7 +75,9 @@ decide: an unknown macro that hides a primitive, a callback value, an
 unknown lock object), EXCEPTION (a declared, justified scoped exception).
 
 SCOPES: the ENCLAVE (contracts "enclave": functions whose discipline is
-migrated) is strict: any violation or unresolved site there fails.  Outside
+migrated, and "files": host files every function of which is migrated -- a
+file whose owner sections are all declared def-sections, lane ACTORS) is
+strict: any violation or unresolved site there fails.  Outside
 it the baseline tools/lock_discipline_baseline.json only shrinks: a finding
 not in it is new; a baseline row no longer found must be removed
 (--write-baseline, which refuses to add rows unless --initial).
@@ -2722,9 +2724,25 @@ def weights(findings: list[Finding]) -> collections.Counter:
     return out
 
 
-def judge(findings: list[Finding], baseline: dict, enclave: set) -> dict:
+def in_enclave(function: str, path: str, enclave: set, enclave_files: set,
+               excepted: dict | None = None) -> bool:
+    """A finding is strict when its function is declared migrated or when its
+    whole file is (a lambda or thread root of that file included), unless the
+    file's declaration excepts that function by name with its why
+    (contracts enclave "files_except": {FILE: {FUNCTION: why}})."""
+    if function in enclave:
+        return True
+    if path in enclave_files:
+        return function not in (excepted or {}).get(path, {})
+    return False
+
+
+def judge(findings: list[Finding], baseline: dict, enclave: set,
+          enclave_files: set = frozenset(), excepted: dict | None = None) -> dict:
     """New: a key absent from the baseline, or over its count; every
-    finding inside the enclave.  Stale: a baseline count above today's."""
+    finding inside the enclave (a function, or any function of an enclave
+    file).  Stale: a baseline count above today's.  A baseline row inside
+    the enclave is refused: strictness admits no baselined finding."""
     counted = weights(findings)
     base_counts = {k: row.get("count", 1) for k, row in baseline.items()}
     new = []
@@ -2732,13 +2750,15 @@ def judge(findings: list[Finding], baseline: dict, enclave: set) -> dict:
         if f.category == "exception":
             continue
         k = f.baseline_key()
-        if f.function in enclave:
+        if in_enclave(f.function, f.path, enclave, enclave_files, excepted):
             new.append(("enclave", f))
             continue
         if k not in base_counts or counted[k] > base_counts[k]:
             new.append(("new", f))
     stale = [k for k, n in base_counts.items() if counted.get(k, 0) < n]
-    enclave_rows = [k for k in base_counts if k.split("|")[1] in enclave]
+    enclave_rows = [k for k, row in baseline.items()
+                    if in_enclave(k.split("|")[1], str(row.get("where", "")).rsplit(":", 1)[0],
+                                  enclave, enclave_files, excepted)]
     return {"new": new, "stale": stale, "enclave_baselined": enclave_rows}
 
 
@@ -2818,6 +2838,20 @@ def main(argv=None) -> int:
         print(f"lock_discipline_check: wrote {REALIZATION}")
         return 0
     enclave = set(checker.c.raw.get("enclave", {}).get("functions", []))
+    enclave_files = set(checker.c.raw.get("enclave", {}).get("files", []))
+    excepted = checker.c.raw.get("enclave", {}).get("files_except", {})
+    missing_files = sorted(f for f in enclave_files if f not in an.tree.files)
+    stray = sorted(f"{path}:{fn}" for path, fns in excepted.items()
+                   for fn in fns if path not in enclave_files or fn not in an.infos
+                   or an.infos[fn].path != path)
+    if stray:
+        print("lock_discipline_check: enclave files_except names a function its file does not define, "
+              "or a file that is no enclave: " + ", ".join(stray))
+        return 1
+    if missing_files:
+        print("lock_discipline_check: enclave names a host file the tree does not read: "
+              + ", ".join(missing_files))
+        return 1
     baseline = load_baseline(Path(args.baseline))
     if args.write_baseline:
         grown = write_baseline(Path(args.baseline), findings, baseline, args.initial)
@@ -2828,7 +2862,7 @@ def main(argv=None) -> int:
             return 1
         print(f"lock_discipline_check: wrote {args.baseline}")
         return 0
-    verdict = judge(findings, baseline, enclave)
+    verdict = judge(findings, baseline, enclave, enclave_files, excepted)
     if args.rule or args.function:
         verdict["stale"] = []  # a filtered run cannot judge the whole baseline
     realization_drift = None
@@ -2869,7 +2903,8 @@ def main(argv=None) -> int:
             print("  " + realization_drift)
         print(f"  total {len(findings)}; baselined {len(baseline)} rows (weight "
               f"{sum(r.get('count', 1) for r in baseline.values())}); "
-              f"new {nb}; stale baseline rows {len(verdict['stale'])}; enclave {len(enclave)} functions")
+              f"new {nb}; stale baseline rows {len(verdict['stale'])}; enclave {len(enclave)} functions"
+              f" + {len(enclave_files)} files ({sum(len(v) for v in excepted.values())} excepted)")
     if args.check:
         bad = verdict["new"] or verdict["stale"] or verdict["enclave_baselined"] or realization_drift
         if bad:

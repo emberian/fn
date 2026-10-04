@@ -2690,14 +2690,6 @@
    "reason": "handler clause serious-condition consumes ['fault', 'indet'] without routing it to the fence"
   },
   {
-   "key": "R7|fnn-owner-refresh-config-cache|swallow:error:fault",
-   "count": 1,
-   "rule": "R7",
-   "category": "violation",
-   "where": "host/native/admin.lisp:185",
-   "reason": "handler clause error consumes ['fault'] without routing it to the fence"
-  },
-  {
    "key": "R7|fnn-owner-release-extents|swallow:serious-condition:fault,indet",
    "count": 1,
    "rule": "R7",

@@ -168,10 +168,16 @@
     "(fnn-owner-service-output-ledger-lock)"
    ],
    "why": "Private typed output projection. Startup O precedes this leaf; semantic methods operate only private ledger, no live STATE/arena and no callback to O while held."
+  },
+  "XOBS": {
+   "match": [
+    "(fnn-native-observation-lock)"
+   ],
+   "why": "lane ACTORS: the native observer's private record mutex (host/native/owner.lisp fnn-native-observation-reserve/-complete/-events): a leaf taken for a row update by fnn-with-observed-owner/-mutex and fnn-observed-condition-wait under whatever lock they observe; it calls no hook, I/O, ACL2 or other lock"
   }
  },
  "lock_order": {
-  "comment": "the declared partial order (deputy section 1c + Astra 3.3 + Astra D7's added edges O->M, E->Q, A->Q); transitively closed by the check",
+  "comment": "the declared partial order (deputy section 1c + Astra 3.3 + Astra D7's added edges O->M, E->Q, A->Q); transitively closed by the check Lane ACTORS: XOBS (the observer's record mutex) nests under every observed lock; E -> XCRYPTO (host/native/admin.lisp fnn-owner-limit-serialized publishes the limit record under the extent mutex: the stage name's random hex takes *fnn-random-state-lock*, a leaf).",
   "O": [
    "G",
    "R",
@@ -191,37 +197,45 @@
    "XTLSRELOAD",
    "XTLSCTX",
    "XSYNCER",
-   "XOUTPUT"
+   "XOUTPUT",
+   "XOBS"
   ],
   "C": [
    "G",
    "Q",
-   "J"
+   "J",
+   "XOBS"
   ],
   "G": [
    "Q",
-   "J"
+   "J",
+   "XOBS"
   ],
   "R": [
    "A",
    "M",
    "Q",
-   "J"
+   "J",
+   "XOBS"
   ],
   "K": [
    "E",
    "Q",
-   "J"
+   "J",
+   "XOBS"
   ],
   "E": [
    "XOUTPUT",
    "Q",
    "XPZD",
-   "J"
+   "J",
+   "XOBS",
+   "XCRYPTO"
   ],
   "A": [
    "Q",
-   "J"
+   "J",
+   "XOBS"
   ],
   "XCTLBUF": [
    "O"
@@ -240,6 +254,9 @@
    "Q",
    "J",
    "XTLSINIT"
+  ],
+  "M": [
+   "XOBS"
   ]
  },
  "direct_owner_sites": [
@@ -719,7 +736,17 @@
    "fnn-extent-issue-direct",
    "fnn-snapshot-source-read-page",
    "fnn-snapshot-source-root-acquire"
-  ]
+  ],
+  "files": [
+   "host/native/admin.lisp"
+  ],
+  "files_why": "lane ACTORS (rebuild step 0, the admin pilot): every owner section of host/native/admin.lisp is a declared def-section (fnn-quantum-control) and no function in it classifies a condition; strict by file, so a later hand wrapper or an undeclared quantum there fails --check with no baseline escape",
+  "files_except": {
+   "host/native/admin.lisp": {
+    "fnn-admin-query": "offline command executor (no owner section; the command scope fnn-failure-scope :command is the generator's next piece): fnn-unwind-cleanups hides a handler-case the check does not expand (io.lisp d8c94940b, 23 sites tree-wide)",
+    "fnn-admin-execute": "offline command executor, as fnn-admin-query"
+   }
+  }
  },
  "realization": [
   {
