@@ -14030,6 +14030,10 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-lgu-acknowledge-acknowledges-only-recoverable-records"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-lgu-complete-acknowledges-the-fenced-batch"
         },
         {

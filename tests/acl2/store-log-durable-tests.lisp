@@ -1,5 +1,7 @@
 ; Teeth for books/store-log-durable (lane m1-durable, 2026-10-04): the
-; keystone fn-lgu-acknowledged-records-are-recovered-at-every-cut, its open
+; lemma fn-lgu-acknowledged-records-are-recovered-at-every-cut (the
+; host-entry keystone fn-lgu-acknowledge-acknowledges-only-recoverable-records
+; states it over the function the host calls), its open
 ; corollary, the count the host holds and the COMPLETE's acknowledgements,
 ; on a ground log: two records recovered at the open, a third taken, sealed
 ; (the segment extended first), fenced and acknowledged; every cut under

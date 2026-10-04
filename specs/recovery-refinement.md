@@ -92,7 +92,10 @@ log's served programs, which is a state satisfying the log relation R
    records, and a composed open that succeeded holds it. Over the host's
    run itself (no owner layer: ACKED is the kernel's own count, advanced
    by `fn-lgc-finish-one` in the COMPLETE), the first ACKED records are
-   recovered at every cut (`fn-lgu-acknowledged-records-are-recovered-at-every-cut`,
+   recovered at every cut, and the count the host holds after
+   `fnn-log-finish` is that ACKED (the host-entry keystone
+   `fn-lgu-acknowledge-acknowledges-only-recoverable-records`, from the lemma
+   `fn-lgu-acknowledged-records-are-recovered-at-every-cut`,
    `books/store-log-durable.lisp`, PRF-936). ACKED is the kernel's
    count, not the client's: every record whose acceptance a client
    observed is among the first ACKED (the COMPLETE advances ACKED before
@@ -152,7 +155,7 @@ the equation of `fn-rrs-open` to the host-called opens land.
 | premise | form in the theorem | kind | discharged by |
 | --- | --- | --- | --- |
 | R, the log relation at the crash point | `fn-lgk-relp bs ks ino genesis max` | fn obligation, proved per program | `fn-lg-append-program-keeps-the-relation`, `fn-lg-fence-program-keeps-the-relation` (`books/store-log-programs.lisp`); `fn-lg-reserve-program-keeps-the-relation`, `fn-lg-order-program-keeps-the-relation`, `fn-lg-open-suffix-keeps-the-relation` (`books/store-log-route-programs.lisp`); `fn-lg-extend-program-keeps-the-relation` (`books/store-log-extend.lisp`); `fn-lg-recover-program-establishes-the-relation`; over the host's whole run, R or a faulted kernel over a store nothing pending writes below the frontier, the failed fence's landed selection included (`fn-lgu-host-run-is-safe`, `books/store-log-durable.lisp`) |
-| ACKED is the host's acknowledgement | not in the generic theorem: ACKED is the kernel's own field | fn obligation over the host's run | `fn-lgu-acknowledged-records-are-recovered-at-every-cut`, `fn-lgu-host-kernel-acknowledges-only-recoverable-records` (`books/store-log-durable.lisp`): the count `fn-lgc-finish-one` advances, R or a faulted safe store kept by every host operation (`fn-lgu-invp`) |
+| ACKED is the host's acknowledgement | not in the generic theorem: ACKED is the kernel's own field | fn obligation over the host's run | `fn-lgu-acknowledge-acknowledges-only-recoverable-records` (the host-entry keystone), `fn-lgu-acknowledged-records-are-recovered-at-every-cut`, `fn-lgu-host-kernel-acknowledges-only-recoverable-records` (`books/store-log-durable.lisp`): the count `fn-lgc-finish-one` advances, R or a faulted safe store kept by every host operation (`fn-lgu-invp`) |
 | external synchrony (STO-003) | ACKED <= len COMMITTED inside R; a member joins `fn-owb-acked` only after the batch's fence | fn obligation | `fn-owb-fence`, `fn-owb-finish-member` (`books/owner-batch.lisp`); the native ack path `host/native/io.lisp` fnn-finish after fnn-log-publish's barrier (`tests/campaign/native_cuts.py` POST_CUTS) |
 | the platform's crash | `fn-bs-crash-imagep bs image` | model (A-CRASH-IMAGE, crash model v2 §1.5) | per-unit tears, zero-fill, garble, dropped entry operations; the model is the premise, the platform rows below are what makes it true of a box |
 | A-DURABILITY, A-WRITE-ISOLATION | `fn-bs-crash-keeps-fenced-content` (a fenced inode's durable content survives every image) | named assumptions, `books/assumptions.lisp` | used in the quiet case (nothing in flight) and in the medium's half |
