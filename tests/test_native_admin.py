@@ -6,12 +6,14 @@ plumbing here; it neither parses fn.toml nor builds configuration records.
 """
 
 import hashlib
+import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import unittest
 
-from tests.native_harness import EXIT_UNCERTAIN, ROOT, Node, native_image
+from tests.native_harness import EXIT_FAULT, EXIT_UNCERTAIN, ROOT, Node, native_image
 
 
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
@@ -203,3 +205,109 @@ class NativeAdminTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AdminSectionStructureTests(unittest.TestCase):
+    """Lane ACTORS (rebuild step 0, the admin pilot): every owner quantum in
+    host/native/admin.lisp is a declared section (def-section
+    fnn-quantum-control) and no function of the file classifies a condition
+    itself; ACL2 decides at the one envelope (books/failure-scope.lisp)."""
+
+    SOURCE = ROOT / "host/native/admin.lisp"
+    OWNER = ROOT / "host/native/owner.lisp"
+    SECTIONS = ("compaction", "inspect", "export", "reclaim", "reclaim-instant",
+                "limit-carry", "limit", "admin")
+    # The offline command executors: no owner section; the command scope is
+    # the generator's next piece (planning/handoff-2026-10-03/failure-scope.md).
+    OFFLINE = ("fnn-admin-verify-under-lock",)
+
+    def functions(self, text):
+        from tests.campaign.native_cuts import host_function
+        import re as _re
+        return {name: host_function(text, name)
+                for name in _re.findall(r"^\(defun ([a-z0-9-]+)", text, _re.M)}
+
+    def test_every_owner_section_site_is_the_declared_control_section(self):
+        text = self.SOURCE.read_text(encoding="utf-8")
+        owner = self.OWNER.read_text(encoding="utf-8")
+        self.assertIn("(def-section fnn-quantum-control", owner)
+        decl = owner[owner.index("(def-section fnn-quantum-control"):]
+        decl = decl[:decl.index(":doc")]
+        self.assertIn(":actors (:control :command)", decl)
+        self.assertIn(":admits :live", decl)
+        body = re.sub(r";[^\n]*", "", text)
+        for transitional in ("(fnn-owner-serialized ", "(fnn-owner-gated ",
+                             "(fnn-owner-transit-serialized ", "(fnn-section-run "):
+            self.assertNotIn(transitional, body, transitional)
+        self.assertEqual(body.count("(fnn-quantum-control"), len(self.SECTIONS))
+        for section in self.SECTIONS:
+            self.assertIn('(fnn-admin-test-fault "{}")'.format(section), body, section)
+
+    def test_no_function_of_the_file_classifies_a_condition_by_a_parent_class(self):
+        text = self.SOURCE.read_text(encoding="utf-8")
+        for name, source in self.functions(text).items():
+            if name in self.OFFLINE:
+                continue
+            arms = re.findall(r"\(\s*(error|serious-condition|fnn-store-error)\s+\(", source)
+            if name == "fnn-owner-live-reconfigure-locked":
+                # Its one arm re-signals (ACL2's refusal un-stages, the
+                # condition goes on as itself): a cleanup, not a decision.
+                self.assertEqual(arms, ["fnn-store-error"], name)
+                self.assertIn("(error e)", source)
+                continue
+            if arms:
+                self.fail("{} decides the kind of a failure by a parent-class arm {}".format(
+                    name, arms))
+
+    def test_the_cache_refresh_leaves_its_failure_to_the_section(self):
+        from tests.campaign.native_cuts import host_function
+        text = self.SOURCE.read_text(encoding="utf-8")
+        refresh = host_function(text, "fnn-owner-refresh-config-cache")
+        if "handler-case" in refresh:
+            self.fail("fnn-owner-refresh-config-cache recasts every failure after the publication as uncertain")
+        self.assertNotIn("fnn-store-fenced", refresh)
+
+    def test_admin_is_a_strict_lock_check_enclave(self):
+        contracts = json.loads((ROOT / "tools/lock_discipline_contracts.json").read_text())
+        enclave = contracts["enclave"]
+        self.assertIn("host/native/admin.lisp", enclave["files"])
+        excepted = enclave.get("files_except", {}).get("host/native/admin.lisp", {})
+        self.assertEqual(sorted(excepted), ["fnn-admin-execute", "fnn-admin-query"])
+
+
+@unittest.skipUnless(DEVELOPER is not None and DEVELOPER.is_file(),
+                     "FN_NATIVE_DEVELOPER_HOST names the developer image")
+class AdminSectionBoundaryTests(unittest.TestCase):
+    """FN_NATIVE_ADMIN_FAULT=SECTION:fault|uncertain raises inside the named
+    owner section of host/native/admin.lisp; the declared envelope classifies
+    it and the owner stops (exit 4) or fences (exit 3) before the mutex is
+    released.  Never run at the lane's wind-down (2026-10-04): the first run
+    is the successor's, on an image of this source."""
+
+    def setUp(self):
+        self.node = Node(self, DEVELOPER)
+        self.node.init("fn.test")
+
+    def injected(self, section, kind, words, exit_code, line):
+        owner = self.node.start(env={"FN_NATIVE_ADMIN_FAULT": "{}:{}".format(section, kind)})
+        request = self.node.operator(*words, expect=None)
+        self.assertNotEqual(request.returncode, 0, request.stdout + request.stderr)
+        self.node.exited(exit_code, timeout=180, process=owner)
+        log = owner.stderr.since(0)
+        self.assertIn(line, log, log.decode("utf-8", "replace"))
+
+    def test_a_fault_in_the_inspect_section_stops_the_owner_as_a_fault(self):
+        self.injected("inspect", "fault", ("store", "inspect", "<absent@example.invalid>"),
+                      EXIT_FAULT, b"owner quantum fault; process stopped")
+
+    def test_an_uncertain_outcome_in_the_inspect_section_fences_the_owner(self):
+        self.injected("inspect", "uncertain", ("store", "inspect", "<absent@example.invalid>"),
+                      EXIT_UNCERTAIN, b"owner quantum uncertain; owner fenced")
+
+    def test_a_fault_in_the_compaction_section_stops_the_owner_as_a_fault(self):
+        self.injected("compaction", "fault", ("store", "compact"),
+                      EXIT_FAULT, b"owner quantum fault; process stopped")
+
+    def test_a_fault_in_the_admin_section_stops_the_owner_as_a_fault(self):
+        self.injected("admin", "fault", ("group", "create", "fn.injected"),
+                      EXIT_FAULT, b"owner quantum fault; process stopped")
