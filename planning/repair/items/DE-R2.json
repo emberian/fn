@@ -5,7 +5,8 @@
  "notes": [
   "10-03 02:13 GPT-6.1-Sol: cost defects certified ee7c686c0; real fn-reader-chunk image-world derivation found BOTH fn-served-step and fn-reader-install-result unaccounted (installer not inlinable), route served/kind1+len. Partial bound/row now being admitted from that actual world; syncer typed custody producer/real actor consumer underway.",
   "10-03 GPT-6.1-Sol: actual image-world fn-reader-chunk row admitted with explicit fn-served-step and fn-reader-install-result unknowns; served route/kind cost 1+len pinned. Minimal bound hint reduced replay from 53.13s/5.58M steps to 0.06s/446 steps. Bound teeth and allocation remain owed. Actual syncer issue row now derived/checked against operation fixed slot/tariff; projection cannot enable full tariff accounting. New lambda unused-cost-binding regression admitted; certification pending helper assembly.",
-  "10-04 02:32 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (67ee29e37 + 5f8337b4f + d129d4187: books/def-cost.lisp, tests/acl2/def-cost-tests.lisp, tools/cost_obligations.py, host/cost-host.lisp fn-reader-chunk row with explicit unaccounted fn-served-step fn-reader-install-result); local test none; proof pending: certify; residual owed per notes (bound teeth, allocation, :stamped, contract witnesses); NOTE python3 tools/cost_obligations.py --check is red at HEAD (planning/cost-obligations.json stale: run --write; 17 stale cost-baseline entries: run --baseline) - integrator regenerates"
+  "10-04 02:32 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (67ee29e37 + 5f8337b4f + d129d4187: books/def-cost.lisp, tests/acl2/def-cost-tests.lisp, tools/cost_obligations.py, host/cost-host.lisp fn-reader-chunk row with explicit unaccounted fn-served-step fn-reader-install-result); local test none; proof pending: certify; residual owed per notes (bound teeth, allocation, :stamped, contract witnesses); NOTE python3 tools/cost_obligations.py --check is red at HEAD (planning/cost-obligations.json stale: run --write; 17 stale cost-baseline entries: run --baseline) - integrator regenerates",
+  "10-04 04:22 ledger-open-a 13c7a13a9: cost_obligations --write run; --check 0 findings. --baseline refuses (about 250 undeclared names not in the baseline file; base copy has them), so the 17 stale names were subtracted by hand; nothing added. Remaining DE-R2 debt is as the row says (fn-reader-chunk row, bound teeth, allocation); row stays in-progress."
  ],
  "owner": "codex-sol-foundations",
  "severity": "medium",
@@ -13,5 +14,5 @@
  "source": "coordinator",
  "state": "landed",
  "title": "def-cost round two: derived visit cost; fn-reader-chunk instance owed",
- "updated": "2026-10-04T06:32:56Z"
+ "updated": "2026-10-04T08:22:05Z"
 }

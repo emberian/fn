@@ -259,8 +259,13 @@ finds the transit principal in that ingress."
                     (values result nil class)))))))
          (case class
            ((nil))
-           ((:refused :deferred)
+           (:refused
             (incf (fnn-bp-tally-refused tally))
+            (return-from fnn-bpapp-deliver (list :refused app-result)))
+           ;; Still XFER_REFUSE on the wire (the delivery plan maps the
+           ;; transient word to No Resources), but not counted as refused.
+           (:deferred
+            (incf (fnn-bp-tally-deferred tally))
             (return-from fnn-bpapp-deliver (list :refused app-result)))
            (otherwise
             (incf (fnn-bp-tally-uncertain tally))
