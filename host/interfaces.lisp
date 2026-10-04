@@ -4092,6 +4092,31 @@
 (definterface fn-cpj-project
   :class :common-lisp-compliant)
 
+; `fn pattern' (D50; host/native/pattern.lisp, books/app-pattern*.lisp).
+(definterface fn-pat-cli-plan
+  :class :common-lisp-compliant
+  :keystones (fn-pat-cli-run-binds-every-step))
+(definterface fn-pat-usage-text
+  :class :common-lisp-compliant)
+(definterface fn-pat-values-check
+  :class :common-lisp-compliant
+  :keystones (fn-pat-values-check-is-the-kind))
+(definterface fn-pat-encode
+  :class :common-lisp-compliant
+  :keystones (fn-pat-reader-delivers-what-the-writer-encoded))
+(definterface fn-pat-key-names
+  :class :common-lisp-compliant)
+(definterface fn-pat-spool-check
+  :class :common-lisp-compliant)
+(definterface fn-pat-project
+  :class :common-lisp-compliant
+  :keystones (fn-pat-reader-delivers-what-the-writer-encoded))
+(definterface fn-pat-decode
+  :class :common-lisp-compliant
+  :keystones (fn-pat-reader-delivers-what-the-writer-encoded))
+(definterface fn-pat-delivery-name
+  :class :common-lisp-compliant)
+
 (definterface fn-hl-host-enroll-event
   :class ::program)
 

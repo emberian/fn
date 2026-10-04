@@ -116,6 +116,7 @@
 (include-book "native-control-reason")
 (include-book "control-evidence")
 (include-book "native-hybrid-control")
+(include-book "app-pattern-delivery")
 (include-book "peer-invite")
 (include-book "bp-receipt-records")
 (include-book "bp-native-app-fast")
