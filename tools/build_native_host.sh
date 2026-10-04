@@ -51,8 +51,8 @@ if [ "$WORLD" != "$DEFAULT_WORLD" ] && [ "$BUILD" = host/native/build.lisp ]; th
 fi
 # FN_NATIVE_CATALOG=paged (lane paged-catalog-3): the default build script
 # with its umbrella replaced by books/image-world-paged (tools/extract/world.py:
-# the same books with books/catalog-paged-attach right after the arena's
-# attachment), so the catalog's rows live on typed columns and a byte pool.
+# the same books with books/catalog-paged-attach right after the history's
+# attachment, itself after the arena's), so the catalog's rows live on typed columns and a byte pool.
 # The script itself is unchanged; the variant is written beside the log and
 # the image is named -paged.  Default: the old implementation (old).
 CATALOG="${FN_NATIVE_CATALOG:-old}"
