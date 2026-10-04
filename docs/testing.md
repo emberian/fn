@@ -214,7 +214,7 @@ through the farm).  Neither is a gate; `FORCE=1` and a READY stay live runs.
 from `<rev>` (committed, uncommitted and untracked files) can reach: the steps
 whose last traced run, passing or failing, read, stat'ed or listed a changed
 path, ran a git command the change can move, or could not be traced (ACL2, a
-shell child).  The rest print `skipped`; a docs-only diff skips host_check,
+shell child).  The rest print `skipped`, with the store's last verdict beside it when that was red (`last verdict exit 1: ...`; the row's own exit stays 0); a docs-only diff skips host_check,
 reach_check and green_check.  A step this tree has never run is not skipped, so
 the first run in a fresh worktree is a full one.  `CHECK_BASELINE=<table>`
 (`--baseline`) reads a step table such as
