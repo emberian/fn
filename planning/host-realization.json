@@ -3,8 +3,8 @@
  "source": {
   "file": "books/host-model-machine.lisp",
   "constant": "*fn-hmc-realization*",
-  "line": 827,
-  "sha256": "fbeb8eddbe73fca2bbd51fb39c9a6f868643107c1d2e8eeca26ceda8525f9753"
+  "line": 852,
+  "sha256": "8e13be3e75c695ad6a2524b45354d47086847d40697082045992f8d7c840fd7c"
  },
  "rows": [
   {
@@ -143,6 +143,38 @@
      "primitive": null,
      "core": null,
      "locks_held": [
+      "E"
+     ],
+     "requires_before": [],
+     "capability": null
+    }
+   ]
+  },
+  {
+   "label": ":job-result",
+   "layer": "C",
+   "enabled": [
+    "fn-hmc-do-job-result"
+   ],
+   "sites": [
+    {
+     "function": "fnn-extent-executor-job",
+     "file": "host/native/extent.lisp",
+     "primitive": null,
+     "core": null,
+     "locks_held": [
+      "E"
+     ],
+     "requires_before": [],
+     "capability": null
+    },
+    {
+     "function": "fnn-owner-cold-transfer-result-locked",
+     "file": "host/native/owner.lisp",
+     "primitive": null,
+     "core": "fn-pio-direct-settle",
+     "locks_held": [
+      "O",
       "E"
      ],
      "requires_before": [],
