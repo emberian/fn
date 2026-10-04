@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/reclaim-chunked-seal.lisp",
+ "id": "DI-OWED-STEP-OF-LOAD-CHUNKS",
+ "notes": [],
+ "owner": "generators",
+ "severity": "high",
+ "slice": "integrator2",
+ "source": "integrator2",
+ "state": "open",
+ "title": "Host loop = fold correspondence owed for fn-owner-orcp-load-catalog-chunk (host/interfaces.lisp :step-of fn-rcw-load-chunks fn-sca-load-held-available-from). The keystone fn-rcw-load-chunks-keyed-is-keyed-load is about the fold after the keyed clear; host/native/owner.lisp's reclaim pass calls the :program chunk entry in a Lisp loop over +fnn-reclaim-chunk-rows+ slices, and no theorem equates that loop (with fn-owner-orcp-load-catalog-begin first) to fn-rcw-load-chunks of the chunking. Owed (generators: def-loop/def-cursor driver): a generated loop whose equation is proved; until then the keystone is not the entry's proof.",
+ "updated": "2026-10-04T10:40:05Z"
+}

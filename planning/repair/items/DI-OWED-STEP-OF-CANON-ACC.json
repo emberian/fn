@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/reclaim-chunked-walk.lisp",
+ "id": "DI-OWED-STEP-OF-CANON-ACC",
+ "notes": [],
+ "owner": "generators",
+ "severity": "high",
+ "slice": "integrator2",
+ "source": "integrator2",
+ "state": "open",
+ "title": "Host loop = fold correspondence owed for fn-rcw-canon-acc-step (host/interfaces.lisp :step-of fn-rcw-canon-acc-steps). The keystone fn-rcw-canon-acc-steps-is-the-checkpoint-capture is about the fold; host/native/owner.lisp calls the step once per chunk and drives the iteration itself, and no theorem equates that loop with fn-rcw-canon-acc-steps. Owed (generators: def-loop/def-cursor driver): the host drives the step through a generated loop whose equation with the fold is proved; until then the keystone is not the entry's proof (planning/interfaces.json status 'keystone via fold; host-loop correspondence owed').",
+ "updated": "2026-10-04T10:40:05Z"
+}

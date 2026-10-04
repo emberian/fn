@@ -5,7 +5,8 @@
     "declared": 1740,
     "declared_and_dispatched": 1689,
     "guard_verified": 1007,
-    "with_keystone": 247,
+    "with_keystone": 244,
+    "with_fold_keystone_only": 3,
     "raw_dispatched": 20
   },
   "raw_dispatched": [
@@ -18013,10 +18014,12 @@
       "exempt": {},
       "keystones": [
         {
-          "theorem": "fn-bpnb-installed-backoff-refuses-another-backoff"
+          "theorem": "fn-bpnb-installed-backoff-refuses-another-backoff",
+          "via": "fn-bpnb-install-row"
         },
         {
-          "theorem": "fn-bpnb-installed-retries-refuses-another-retries"
+          "theorem": "fn-bpnb-installed-retries-refuses-another-retries",
+          "via": "fn-bpnb-install-row"
         },
         {
           "theorem": "fn-bpnb-input-past-read-bound-is-refused"
@@ -28283,7 +28286,9 @@
       "exempt": {},
       "keystones": [
         {
-          "theorem": "fn-rcw-canon-acc-steps-is-the-checkpoint-capture"
+          "theorem": "fn-rcw-canon-acc-steps-is-the-checkpoint-capture",
+          "step_of": "fn-rcw-canon-acc-steps",
+          "status": "keystone via fold; host-loop correspondence owed"
         }
       ],
       "extraction": null,
@@ -28306,10 +28311,14 @@
       "exempt": {},
       "keystones": [
         {
-          "theorem": "fn-rcw-predict-acc-steps-is-predict"
+          "theorem": "fn-rcw-predict-acc-steps-is-predict",
+          "step_of": "fn-rcw-predict-acc-steps",
+          "status": "keystone via fold; host-loop correspondence owed"
         },
         {
-          "theorem": "fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open"
+          "theorem": "fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open",
+          "step_of": "fn-rcw-predict-acc-steps",
+          "status": "keystone via fold; host-loop correspondence owed"
         }
       ],
       "extraction": null,
@@ -32983,11 +32992,11 @@
       "keystones": [
         {
           "theorem": "fn-tariff-article-prices-the-served-row",
-          "via": "fn-tariff-article-preview"
+          "via": "fn-tariff-article-number-charge"
         },
         {
           "theorem": "fn-tariff-article-prices-the-served-msgid",
-          "via": "fn-tariff-article-preview"
+          "via": "fn-tariff-article-msgid-charge"
         },
         {
           "theorem": "fn-tariff-article-admits-exactly-within-capacity",
@@ -33998,7 +34007,10 @@
       "exempt": {},
       "keystones": [
         {
-          "theorem": "fn-rcw-load-chunks-keyed-is-keyed-load"
+          "theorem": "fn-rcw-load-chunks-keyed-is-keyed-load",
+          "step_of": "fn-rcw-load-chunks",
+          "status": "keystone via fold; host-loop correspondence owed",
+          "step": "fn-sca-load-held-available-from"
         }
       ],
       "extraction": null,
@@ -34671,7 +34683,9 @@
           "theorem": "fn-bpfc-turn-after-a-yield-is-the-larger-turn"
         },
         {
-          "theorem": "fn-bpfc-run-is-the-plan-choice"
+          "theorem": "fn-bpfc-run-is-the-plan-choice",
+          "step_of": "fn-bpfc-run",
+          "status": "keystone via fold; host-loop correspondence owed"
         }
       ],
       "extraction": null,
