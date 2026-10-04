@@ -33,6 +33,9 @@
 (defun fnn-bps-release (service)
   (assert (eq service :service)) (incf *released*)
   (when (eq *mode* :budget-and-close-fault) (error "close-fault")))
+;; The escape path of the macro below: the deployed helper and ACL2 decisions it calls.
+(load "tests/unwind_cleanups_prelude.lisp")
+(in-package "ACL2")
 (eval (source-definition (or (sb-ext:posix-getenv "FN_CLEANUP_HOST_SOURCE") "host/native/io.lisp")
                          "defmacro" "fnn-unwind-cleanups"))
 (eval (source-definition (or (sb-ext:posix-getenv "FN_BP_NODE_HOST_SOURCE") "host/native/bp-node.lisp")

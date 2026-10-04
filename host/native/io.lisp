@@ -542,21 +542,65 @@ live buffer passed before state: its value."
 
 (defun fnn-open (path flags &optional (mode #o600))
   (fnn-posix (path) (sb-posix:open path flags mode)))
+(defvar *fnn-escape-cleanup-debts* nil
+  "Every cleanup that failed while its body was escaping, newest first:
+(PRIMARY FAILURE OUTCOME-CODE).  PRIMARY is the condition the body was
+leaving by, or nil when it left by something that is no condition (a throw, a
+return, a thread termination).  Retained physical debt: the cleanup is never
+retried, and the record outlives the escape that raised it.")
+
+(defun fnn-escape-cleanup-failed (primary failures)
+  "The cleanups of a body that is escaping have all been attempted and
+FAILURES (oldest first, never empty) failed.  An ambiguous persistence failure
+is a recovery event, so none is dropped: it is recorded in
+*fnn-escape-cleanup-debts* and its outcome code is ACL2's (fnn-exit-code-for:
+the concrete class and the last durable step) floored at a fault -- a cleanup
+that could not run is never a refusal.  The code escalates through ACL2's
+lattice (books/failure-scope.lisp fn-fs-stop-exit-escalate: a fence dominates,
+then a fault, the first outcome at equal rank), the escape's own code being
+the start of it.  When the escape's code stands, it returns and the primary
+escape goes on as itself; when a cleanup outranks it (a refusal, or an exit
+that is no condition, under a cleanup that fenced or faulted) the escape is
+replaced by that outcome, naming the primary.  It runs while unwinding, so
+it calls the guard-t ACL2 functions directly, never fnn-core."
+  (let* ((primary-code (if primary (fnn-exit-code-for primary) +fnn-exit-ok+))
+         (code primary-code))
+    (dolist (failure failures)
+      (let ((failure-code (fn-fs-stop-exit-escalate +fnn-exit-fault+
+                                                    (fnn-exit-code-for failure))))
+        (sb-ext:atomic-push (list primary failure failure-code)
+                            (symbol-value '*fnn-escape-cleanup-debts*))
+        (setq code (fn-fs-stop-exit-escalate code failure-code))))
+    (if (eql code primary-code)
+        (fnn-err "cleanup during escape failed after the primary outcome (exit ~d): ~{~a~^; ~}"
+                 primary-code failures)
+      (let ((text (format nil "cleanup during escape failed (exit ~d): ~{~a~^; ~}; the escape was ~a"
+                          code failures (or primary "not a condition"))))
+        (if (eql code +fnn-exit-uncertain+)
+            (fnn-indeterminate "~a" text)
+          (fnn-fault "~a" text))))))
+
 (defmacro fnn-unwind-cleanups ((&rest body) &body cleanups)
-  "Attempt every cleanup. Preserve a body escape; otherwise signal the first
-cleanup failure. Normal body multiple values survive successful cleanup."
-  (let ((completed (gensym "COMPLETED")) (failure (gensym "FAILURE"))
-        (condition (gensym "CONDITION")))
-    `(let ((,completed nil) (,failure nil))
+  "Attempt every cleanup. Normal body multiple values survive successful
+cleanup; the first cleanup failure after a normal return is signalled. A
+failure while the body is escaping escalates through the failure scope
+(fnn-escape-cleanup-failed): recorded, classified by ACL2, and the primary
+escape preserved unless a cleanup outranks it."
+  (let ((completed (gensym "COMPLETED")) (failures (gensym "FAILURES"))
+        (primary (gensym "PRIMARY")) (condition (gensym "CONDITION")))
+    `(let ((,completed nil) (,failures nil) (,primary nil))
        (unwind-protect
-            (multiple-value-prog1 (progn ,@body) (setq ,completed t))
+            ;; The last serious condition that passed every handler of the
+            ;; body: what an escape that is a condition is leaving by.
+            (handler-bind ((serious-condition (lambda (,condition) (setq ,primary ,condition))))
+              (multiple-value-prog1 (progn ,@body) (setq ,completed t)))
          ,@(mapcar (lambda (cleanup)
                      `(handler-case ,cleanup
-                        (serious-condition (,condition)
-                          (unless ,failure (setq ,failure ,condition))))) cleanups)
-         (when ,failure
-           (if ,completed (error ,failure)
-             (ignore-errors (fnn-err "cleanup during escape failed: ~a" ,failure))))))))
+                        (serious-condition (,condition) (push ,condition ,failures))))
+                   cleanups)
+         (when ,failures
+           (if ,completed (error (car (last ,failures)))
+             (fnn-escape-cleanup-failed ,primary (reverse ,failures))))))))
 
 (defun fnn-close (fd)
   (fnn-posix () (sb-posix:close fd)))
