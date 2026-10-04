@@ -1,0 +1,18 @@
+{
+ "category": "defect",
+ "disposition": "LOCAL",
+ "evidence": "hbox /tank/fn/scratch/integrate-20261004/native-ctl-55ff708a6/logs/test-tests.test_native_auth.log: AssertionError Lists differ [b'381', b'481', b'400'] != [b'381', b'481', b'381', b'281', b'340', b'240', b'400'] at tests/test_native_auth.py:134 (policy exposure-auth-failures 1; one read of USER/PASS wrong, USER/PASS right, POST+article). Sibling test_ten_pipelined_wrong_passwords_get_three_481s_then_400_and_eof (green) shows the same cut: after the limit-reaching 481 ACL2's 400 follows at once and the rest of the pipelined read is not served. 8a5ebe2ee's commit message records 'red at the parent by a timeout after the 400' from mental execution; its input (limit reached at the FIRST command of the read) cannot put a POST in the same step, so the test never reaches fnn-owner-handle-chunk-read's :await return (owner.lisp:6566-6571, now (or closing (fnn-core 'fn-splan-step-exposure-close step))).",
+ "exposure": "live",
+ "file": "host/native/owner.lisp",
+ "fix": "Decide from the ACL2 plan (books/served-plan.lisp fn-splan-step-plan, fn-exp-observe-facts) which holds. If the cut is right (matches RFC-style close-at-limit and the ten-pipelined test): rewrite the witness so a POST is submitted BEFORE the limit-reaching failure in the same read, e.g. exposure-auth-failures 2, a prior failed login from the same address on another connection, then one read: AUTHINFO right, POST+article, AUTHINFO wrong -> expect 281 340 240 481 400 then EOF (or a fn-splan-step-plan REPL/raw witness with a step carrying completion and exposure-close); the :await close stays. If whole-read serving is intended, the plan must stop truncating at the limit (design). Do not weaken the assertion to the observed list without that decision.",
+ "id": "NAT-AUTH-ADDRESS-LIMIT-WITNESS",
+ "locus": "served-books",
+ "notes": [],
+ "owner": "read-serve",
+ "scenario": "The test asserts a behavior the plan does not produce: commands after the limit-reaching failure are dropped, so the POST is never submitted and the :await path is not exercised. The fix at owner.lisp:6566 is unwitnessed; either the test premise is wrong or the plan should serve the whole read and close after it (a design call: what a pipelined read after the limit does, cf. PRF-161 and fn-splan-step-plan).",
+ "severity": "medium",
+ "source": "native-batch3",
+ "state": "open",
+ "title": "tests.test_native_auth.test_the_address_limit_closes_a_read_that_also_posts is red on hbox and lat1: replies are 381 481 400, not 381 481 381 281 340 240 400 -- the read is cut at the limit-reaching 481, so the input never reaches the :await close path 8a5ebe2ee fixed",
+ "updated": "2026-10-04T19:02:49Z"
+}

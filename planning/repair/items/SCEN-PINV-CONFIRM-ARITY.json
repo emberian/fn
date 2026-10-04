@@ -11,7 +11,8 @@
   "10-04 11:33 claimed: scope=['host/native/peer-invite.lisp', 'tests/native_peer_invite_dispatch_raw-mock.lisp'] test=python3 -m unittest tests.test_native_raw_scripts.RawHarnessTests.test_peer_invite_dispatch_raw_mock",
   "10-04 11:34 budget 110: the fix is 2 argument lines; spelling out the file's five apply dispatches (so raw-arity checks them) is the rest",
   "10-04 11:35 READY 5520a0645 (verify ok, red at 3403e5ac2, green at head); natives pending: tests.test_native_peer_invite, tests.test_native_friends_feed on the next image set",
-  "10-04 15:51 10-04 20:10 integrator3 CLOSE: peer confirm cases green natively on set-6107ceb56 (lat1) and set-55ff708a6 (lat1), 6 of 7 OK; the one red, test_current_inviter_accept_resumes_after_configuration_cut, is a harness/environment red (composed native image source: tree/build/MANIFEST.json absent), not the confirm arity."
+  "10-04 15:51 10-04 20:10 integrator3 CLOSE: peer confirm cases green natively on set-6107ceb56 (lat1) and set-55ff708a6 (lat1), 6 of 7 OK; the one red, test_current_inviter_accept_resumes_after_configuration_cut, is a harness/environment red (composed native image source: tree/build/MANIFEST.json absent), not the confirm arity.",
+  "10-04 15:37 FILL 10-04: native evidence on set 55ff708a6 (hbox:/tank/fn/scratch/fill-wt/native-fill-peer-55): tests.test_native_peer_invite OK (7 ran) and tests.test_native_friends_feed OK (2 ran); the same modules were 7F/1F on set bdd4f40c4 (native-fill-peer2)"
  ],
  "owner": "scenarios",
  "scope": [

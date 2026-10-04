@@ -2,11 +2,13 @@
  "category": "implementation",
  "file": "host/native/admin.lisp",
  "id": "SCEN-GROUP-CREATE-UNCERTAIN",
- "notes": [],
+ "notes": [
+  "10-04 15:42 ASSEMBLER-2 batch 1 close (coordinator): green on later runs: tests.test_native_reader_clients OK 10/10 in native-ctl-55ff708a6 and native-set-bdd4f40c4-r2 (developer rows show local.later created and in ACTIVE.TIMES); the single red at peer-d5b0b9100 has no host source but the developer-only FN_NATIVE_ADMIN_FAULT=SECTION:uncertain hook (admin.lisp:33-41); prep lanedumps/w-misc.md section 4"
+ ],
  "owner": "unowned",
  "severity": "medium",
  "source": "scenarios",
- "state": "open",
+ "state": "refuted",
  "title": "reader_clients test_newgroups_lists_the_groups_created_since_the_instant (developer image): 'operator group create local.later' exits 3 (uncertain) on a running owner; run peer-d5b0b9100 (the production-image case passes).",
- "updated": "2026-10-04T15:13:42Z"
+ "updated": "2026-10-04T19:42:43Z"
 }

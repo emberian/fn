@@ -12,7 +12,8 @@
   "GPT-6.1-Sol: deadline containment imported; bounded continuation implementation remains open. No native or whole-command termination claim.",
   "10-04 02:32 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (6c5f00e60/397a3d96e: ACL2 per-line deadline books/owner-time-bars.lisp:333 fn-otb-line-dependency-step, consumed by host/native/owner.lisp fnn-owner-cold-line; the bounded continuation is the real fix, sl-cold-line-quanta); local tests.test_native_cold_line_deadline SKIPPED (needs FN_NATIVE_DEVELOPER_HOST image); native pending: python3 -m unittest tests.test_native_cold_line_deadline",
   "10-04 10:41 REOPENED (integrator2 ledger rule): native red tests.test_native_cold_line_deadline (EOF: the node closed the connection) on hbox run2-d5b0b9100 (images /tank/fn/images/d5b0b9100, dev d5b0b9100)",
-  "10-04 15:51 10-04 20:10 integrator3 CLOSE: tests.test_native_cold_line_deadline OK on hbox set-bdd4f40c4-r2, lat1 set-55ff708a6, lat1 set-6107ceb56."
+  "10-04 15:51 10-04 20:10 integrator3 CLOSE: tests.test_native_cold_line_deadline OK on hbox set-bdd4f40c4-r2, lat1 set-55ff708a6, lat1 set-6107ceb56.",
+  "10-04 15:04 10-04 fairy3 PREP: tests.test_native_cold_line_deadline OK (Ran 1) and tests.test_native_cold_line_quanta OK in native-set-bdd4f40c4-r2 (hbox logs/test-tests.test_native_cold_line_*.log); the run2 EOF red is cured. Integrator may record landed."
  ],
  "owner": "codex-sol-served",
  "severity": "high",
