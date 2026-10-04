@@ -92,6 +92,26 @@
                   nil))
         (if donep nil (fn-ovw-hdr-cursor group (+ 1 hi) top v owed2 src)))))
 
+(defthm fn-ovw-hdr-step-progresses
+  (let ((next (mv-nth 1 (fn-ovw-hdr-step cur w fn-arena fn-cat))))
+    (implies next
+             (and (consp next)
+                  (< (fn-ovw-remaining next) (fn-ovw-remaining cur)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-ovw-hdr-lines fn-nntp-stuff-lines fn-ovw-status
+                                      fn-ovw-hdr-status fn-ovw-hdr-empty fn-ovw-hdr-quantum))))
+
+(defthm fn-ovw-hdr-step-keeps-cursorp
+  (implies (and (fn-ovw-cursorp cur)
+                (mv-nth 1 (fn-ovw-hdr-step cur w fn-arena fn-cat)))
+           (fn-ovw-cursorp (mv-nth 1 (fn-ovw-hdr-step cur w fn-arena fn-cat))))
+  :hints (("Goal" :in-theory (disable fn-ovw-hdr-lines fn-nntp-stuff-lines fn-ovw-status
+                                      fn-ovw-hdr-status fn-ovw-hdr-empty fn-ovw-hdr-quantum))))
+
+(verify-guards fn-ovw-hdr-step
+  :hints (("Goal" :in-theory (disable fn-ovw-hdr-lines fn-nntp-stuff-lines fn-ovw-status
+                                      fn-ovw-hdr-status fn-ovw-hdr-empty fn-ovw-hdr-quantum))))
+
 ; One quantum: the window K..HI (at most W numbers).
 (defun fn-ovw-step (cur w fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
@@ -124,16 +144,17 @@
              (and (consp next)
                   (< (fn-ovw-remaining next) (fn-ovw-remaining cur)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (disable fn-ovw-lines fn-nntp-stuff-lines fn-ovw-status))))
+  :hints (("Goal" :in-theory (disable fn-ovw-lines fn-nntp-stuff-lines fn-ovw-status fn-ovw-hdr-step)
+           :use fn-ovw-hdr-step-progresses)))
 
 (defthm fn-ovw-step-keeps-cursorp
   (implies (and (fn-ovw-cursorp cur)
                 (mv-nth 1 (fn-ovw-step cur w fn-arena fn-cat)))
            (fn-ovw-cursorp (mv-nth 1 (fn-ovw-step cur w fn-arena fn-cat))))
-  :hints (("Goal" :in-theory (disable fn-ovw-lines fn-nntp-stuff-lines fn-ovw-status))))
+  :hints (("Goal" :in-theory (disable fn-ovw-lines fn-nntp-stuff-lines fn-ovw-status fn-ovw-hdr-step))))
 
 (verify-guards fn-ovw-step
-  :hints (("Goal" :in-theory (disable fn-ovw-lines fn-nntp-stuff-lines fn-ovw-status))))
+  :hints (("Goal" :in-theory (disable fn-ovw-lines fn-nntp-stuff-lines fn-ovw-status fn-ovw-hdr-step))))
 
 ; -----------------------------------------------------------------------------
 ; The list model: the start, then steps until the cursor is NIL.
@@ -527,3 +548,174 @@
                             (group (nth 0 cur)) (k (nfix (nth 1 cur)))
                             (hi (fn-ovw-hi (nfix (nth 1 cur)) (nfix (nth 2 cur)) w))
                             (server (nth 6 cur)) (v (nth 3 cur)))))))
+
+; -----------------------------------------------------------------------------
+; The header cursor (lane cold-line): its windows are the range, and every
+; quantum of a payload-reading source fits the realizer's cache.
+
+(defthm fn-ovw-hdr-lines-for-numbers-of-append
+  (equal (fn-ovw-hdr-lines-for-numbers group (append a b) src v fn-arena fn-cat)
+         (append (fn-ovw-hdr-lines-for-numbers group a src v fn-arena fn-cat)
+                 (fn-ovw-hdr-lines-for-numbers group b src v fn-arena fn-cat)))
+  :hints (("Goal" :induct (fn-ovw-hdr-lines-for-numbers group a src v fn-arena fn-cat)
+           :in-theory (e/d (fn-ovw-hdr-lines-for-numbers)
+                           (fn-scat-available-article fn-ovw-hdr-content fn-ovw-hdr-keepp
+                            fn-nntp-hdr-line fn-nntp-hdr-octets fn-nntp-decimal-field)))))
+
+(defthm fn-ovw-hdr-lines-split
+  (implies (and (natp k) (natp hi) (natp top) (<= k hi) (< hi top))
+           (equal (fn-ovw-hdr-lines group k top src v fn-arena fn-cat)
+                  (append (fn-ovw-hdr-lines group k hi src v fn-arena fn-cat)
+                          (fn-ovw-hdr-lines group (+ 1 hi) top src v fn-arena fn-cat))))
+  :hints (("Goal" :in-theory (e/d (fn-ovw-hdr-lines) (fn-cnx-range-aux fn-scat-range-keep
+                                                      fn-ovw-hdr-lines-for-numbers))
+           :use ((:instance fn-cnxw-range-is-windows (b (+ 1 hi)))))))
+
+(local
+ (defun fn-ovw-hdr-ind (group k top v owedp src w fn-arena fn-cat)
+   (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil
+                   :measure (nfix (- (+ 1 (nfix top)) (nfix k)))
+                   :hints (("Goal" :in-theory (union-theories '(fn-ovw-hi nfix natp posp o-p o-finp o< min
+                                                                (:type-prescription fn-ovw-hdr-quantum-posp))
+                                                              (theory 'minimal-theory))))))
+   (let ((hi (fn-ovw-hi k top (fn-ovw-hdr-quantum src w))))
+     (if (and (natp k) (natp top) (<= k top) (< hi top))
+         (fn-ovw-hdr-ind group (+ 1 hi) top v
+                         (and owedp (not (consp (fn-ovw-hdr-lines group k hi src v fn-arena fn-cat))))
+                         src w fn-arena fn-cat)
+       (list group k top v owedp src w)))))
+
+(local
+ (defthm fn-ovw-hdr-lines-empty-above
+   (implies (and (natp k) (natp top) (< top k))
+            (equal (fn-ovw-hdr-lines group k top src v fn-arena fn-cat) nil))
+   :hints (("Goal" :in-theory (enable fn-ovw-hdr-lines)))))
+
+(local
+ (defthm fn-ovw-hdr-cursor-consp
+   (consp (fn-ovw-hdr-cursor group k top v owedp src))))
+
+; KEYSTONE (no truncation): a header cursor with a source runs, for every
+; W, to exactly the reply its lines K..TOP stand for.
+(defthm fn-ovw-run-is-hdr-reply
+  (implies (and (natp k) (natp top) src)
+           (equal (fn-ovw-run (fn-ovw-hdr-cursor group k top v owedp src) w fn-arena fn-cat)
+                  (fn-ovw-hdr-reply (fn-ovw-hdr-lines group k top src v fn-arena fn-cat) src owedp)))
+  :hints (("Goal" :induct (fn-ovw-hdr-ind group k top v owedp src w fn-arena fn-cat)
+           :in-theory (e/d (fn-ovw-step fn-ovw-hdr-step fn-ovw-hdr-reply)
+                           (fn-ovw-run fn-ovw-hdr-lines fn-nntp-stuff-lines fn-ovw-status
+                            fn-ovw-hdr-status fn-ovw-hdr-empty fn-ovw-hdr-quantum fn-ovw-hi
+                            fn-ovw-hdr-lines-split fn-ovw-hdr-cursor))
+           :expand ((:free (owedp) (fn-ovw-run (fn-ovw-hdr-cursor group k top v owedp src) w fn-arena fn-cat))))
+          ("Subgoal *1/1" :expand ((:free (owedp) (fn-ovw-run (fn-ovw-hdr-cursor group k top v owedp src) w fn-arena fn-cat)))
+                          :use ((:instance fn-ovw-hdr-lines-split
+                                 (hi (fn-ovw-hi k top (fn-ovw-hdr-quantum src w))))))))
+
+; The cursor the header arms emit (status line owed) runs to exactly what its
+; effect stands for (fn-ovw-cursor-octets), for every W.
+(defthm fn-ovw-run-of-hdr-start-is-cursor-octets
+  (implies (and (mv-nth 1 (fn-ovw-hdr-start session v token src fn-cat)) src)
+           (equal (fn-ovw-run (mv-nth 1 (fn-ovw-hdr-start session v token src fn-cat)) w fn-arena fn-cat)
+                  (fn-ovw-cursor-octets (mv-nth 1 (fn-ovw-hdr-start session v token src fn-cat))
+                                        fn-arena fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ovw-hdr-start fn-ovw-cursor-octets fn-ovw-run-is-hdr-reply)
+                           (fn-ovw-run fn-ovw-hdr-lines fn-ovw-hdr-reply fn-nntp-parse-range
+                            fn-cat-group-next fn-ovw-hdr-cursor)))))
+
+; The payload handles a header window reads: one per available article of
+; its numbers (fn-ovw-hdr-content reads the article it is given and no other).
+(defun fn-ovw-hdr-reads (group numbers v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (natp v) :verify-guards nil))
+  (if (consp numbers)
+      (let ((article (fn-scat-available-article group (car numbers) v fn-arena fn-cat)))
+        (if (consp article)
+            (cons (fn-article-payload article)
+                  (fn-ovw-hdr-reads group (cdr numbers) v fn-arena fn-cat))
+          (fn-ovw-hdr-reads group (cdr numbers) v fn-arena fn-cat)))
+    nil))
+
+(defun fn-ovw-hdr-step-reads (cur w fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (let* ((k (nfix (nth 1 cur))) (top (nfix (nth 2 cur)))
+         (hi (fn-ovw-hi k top (fn-ovw-hdr-quantum (nth 7 cur) w))))
+    (if (fn-ovw-hdr-free-sourcep (nth 7 cur))
+        nil
+      (fn-ovw-hdr-reads (nth 0 cur)
+                        (fn-scat-range-keep (nth 0 cur) (fn-cnx-range-aux (nth 0 cur) k hi (nth 3 cur) fn-cat)
+                                            fn-cat)
+                        (nth 3 cur) fn-arena fn-cat))))
+
+(local
+ (defthm fn-ovw-len-hdr-reads
+   (<= (len (fn-ovw-hdr-reads group numbers v fn-arena fn-cat)) (len numbers))
+   :rule-classes :linear))
+
+(local
+ (defthm fn-ovw-len-hdr-window-reads
+   (<= (len (fn-ovw-hdr-reads group (fn-scat-range-keep group (fn-cnx-range-aux group k hi v fn-cat) fn-cat)
+                              v fn-arena fn-cat))
+       (nfix (- (+ 1 (nfix hi)) (nfix k))))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (disable fn-ovw-hdr-reads fn-scat-range-keep fn-cnx-range-aux
+                                       fn-ovw-len-hdr-reads fn-ovw-len-range-keep fn-ovw-len-range-aux)
+            :use ((:instance fn-ovw-len-hdr-reads
+                             (numbers (fn-scat-range-keep group (fn-cnx-range-aux group k hi v fn-cat) fn-cat)))
+                  (:instance fn-ovw-len-range-keep (seqs (fn-cnx-range-aux group k hi v fn-cat)))
+                  (:instance fn-ovw-len-range-aux (top hi)))))))
+
+(local
+ (defthm fn-ovw-hdr-window-at-most-q
+   (implies (not (fn-ovw-hdr-free-sourcep src))
+            (<= (nfix (- (+ 1 (nfix (fn-ovw-hi k top (fn-ovw-hdr-quantum src w)))) (nfix k)))
+                (fn-clq-payload-quantum)))
+   :hints (("Goal" :in-theory (enable fn-ovw-hi)))))
+
+; KEYSTONE (the per-quantum read bound): a quantum of a header cursor whose
+; source reads payloads reads at most fn-clq-payload-quantum payloads -- half
+; the realizer's cache (books/cold-line-quanta.lisp), so its no-I/O reruns
+; finish (fn-clq-resume-finishes) -- whatever W the host passes.
+(defthm fn-ovw-step-payloads-fit
+  (<= (len (fn-ovw-hdr-step-reads cur w fn-arena fn-cat)) (fn-clq-payload-quantum))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (e/d (fn-ovw-hdr-step-reads)
+                                  (fn-ovw-hdr-reads fn-scat-range-keep fn-cnx-range-aux fn-ovw-hi
+                                   fn-ovw-hdr-quantum fn-ovw-hdr-free-sourcep (fn-clq-payload-quantum)
+                                   fn-ovw-len-hdr-window-reads fn-ovw-hdr-window-at-most-q))
+           :use ((:instance fn-ovw-len-hdr-window-reads
+                            (group (nth 0 cur)) (v (nth 3 cur)) (k (nfix (nth 1 cur)))
+                            (hi (fn-ovw-hi (nfix (nth 1 cur)) (nfix (nth 2 cur))
+                                           (fn-ovw-hdr-quantum (nth 7 cur) w))))
+                 (:instance fn-ovw-hdr-window-at-most-q
+                            (src (nth 7 cur)) (k (nfix (nth 1 cur))) (top (nfix (nth 2 cur))))))))
+
+; The steps of a cursor until it is NIL.
+(defun fn-ovw-quanta (cur w fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil
+                  :measure (fn-ovw-remaining cur)
+                  :hints (("Goal" :use ((:instance fn-ovw-step-progresses))
+                           :in-theory (disable fn-ovw-step fn-ovw-remaining)))))
+  (if (consp cur)
+      (mv-let (octets next) (fn-ovw-step cur w fn-arena fn-cat)
+        (declare (ignore octets))
+        (if next (+ 1 (fn-ovw-quanta next w fn-arena fn-cat)) 1))
+    0))
+
+; LINE: a header range of N numbers whose source reads payloads takes
+; ceiling(N/Q') quanta, Q' = min(W, fn-clq-payload-quantum) -- each of at
+; most Q' reads (fn-ovw-step-payloads-fit), which is
+; books/cold-line-quanta.lisp fn-clq-quantized-line-finishes's premise.
+(defthm fn-ovw-hdr-quanta-is-ceiling
+  (implies (and (natp k) (natp top) (<= k top) src)
+           (equal (fn-ovw-quanta (fn-ovw-hdr-cursor group k top v owedp src) w fn-arena fn-cat)
+                  (fn-clq-ceil (+ 1 (- top k)) (fn-ovw-hdr-quantum src w))))
+  :hints (("Goal" :induct (fn-ovw-hdr-ind group k top v owedp src w fn-arena fn-cat)
+           :in-theory (e/d (fn-ovw-step fn-ovw-hdr-step fn-ovw-hi)
+                           (fn-ovw-hdr-lines fn-nntp-stuff-lines fn-ovw-status ceiling fn-clq-ceil-is-ceiling
+                            fn-ovw-hdr-status fn-ovw-hdr-empty fn-ovw-hdr-quantum fn-ovw-hdr-cursor
+                            fn-clq-ceil))
+           :expand ((fn-ovw-quanta (fn-ovw-hdr-cursor group k top v owedp src) w fn-arena fn-cat)))
+          ("Subgoal *1/2" :in-theory (e/d (fn-ovw-step fn-ovw-hdr-step fn-ovw-hi)
+                           (fn-ovw-hdr-lines fn-nntp-stuff-lines fn-ovw-status ceiling fn-clq-ceil-is-ceiling
+                            fn-ovw-hdr-status fn-ovw-hdr-empty fn-ovw-hdr-quantum fn-ovw-hdr-cursor
+                            fn-clq-ceil)))))

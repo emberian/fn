@@ -82,6 +82,11 @@
   (declare (xargs :guard t))
   (floor *fn-clq-cache-entries* 2))
 
+(defthm fn-clq-payload-quantum-fits
+  (and (posp (fn-clq-payload-quantum))
+       (< (fn-clq-payload-quantum) *fn-clq-cache-entries*))
+  :rule-classes nil)
+
 ; -----------------------------------------------------------------------------
 ; Membership facts of the two cache moves
 
@@ -469,6 +474,14 @@
   (declare (xargs :guard (and (natp n) (posp q)) :measure (nfix n)))
   (if (or (zp n) (zp q)) 0
     (if (<= n q) 1 (+ 1 (fn-clq-ceil (- n q) q)))))
+
+(defthm fn-clq-ceil-one
+  (implies (and (posp n) (posp q) (<= n q))
+           (equal (fn-clq-ceil n q) 1)))
+
+(defthm fn-clq-ceil-step
+  (implies (and (natp n) (posp q) (< q n))
+           (equal (fn-clq-ceil n q) (+ 1 (fn-clq-ceil (- n q) q)))))
 
 (defthm fn-clq-ceil-is-ceiling
   (implies (and (natp n) (posp q))
