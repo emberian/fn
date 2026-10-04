@@ -10,8 +10,9 @@
   :visits (+ 1 request-octets)
   :sizes ((request-octets (len octets)))
   :unaccounted (fn-served-step fn-reader-install-result)
-  ;; The bound adds (+ 1 (len octets)) to the route's unaccounted leaves, so
-  ;; the proof needs both to be naturals: minimal-theory carries neither.
+  ;; len and the unaccounted leaves as naturals, which minimal-theory lacks:
+  ;; the bound then holds whatever the derived route charges below it (with
+  ;; host/interfaces.lisp unloaded the route derives :internal, 0).
   :hints (("Goal" :in-theory
            (union-theories '(fn-reader-chunk-visits fn-reader-chunk-route-visits
                              (:type-prescription len)
