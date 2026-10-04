@@ -3421,6 +3421,9 @@
 (definterface fn-web-host-frame
   :class ::program)
 
+(definterface fn-web-host-identity
+  :class ::program)
+
 (definterface fn-web-host-head
   :class ::program)
 
@@ -4922,13 +4925,6 @@
 (definterface fn-owner-orcp-finish
   :class ::program)
 
-; host/native/owner.lisp dispatches it (lane arena-forget: the deferred
-; reclaim seals nothing).
-(definterface fn-orcs-predict
-  :class :common-lisp-compliant
-  :kinds ((generation natp) (h natp))
-  :keystones (fn-orcs-predict-seal-refines-intern))
-
 (definterface fn-orcs-seal
   :class :common-lisp-compliant
   :keystones (fn-orcs-seal-is-the-intern))
@@ -5668,16 +5664,12 @@
 
 ; Host-called entries the raw host dispatches and no declaration named
 ; (integrator wave 0, 2026-10-04): :class and :kinds as tools/interface_kinds.py
-; derives them from the source, the defining file after each.  Twenty-four of
+; derives them from the source, the defining file after each.  Some of
 ; them are dispatched as `(fnn-call (if C 'A 'B) ...)', which the host-binding
 ; check now reads (pull/catchup sessions, workflow, the log writer's step).
 (definterface fn-csp-bank-idle-p :class :common-lisp-compliant) ; books/peer-catchup-spool-resources.lisp:26
 (definterface fn-csp-candidate :class :common-lisp-compliant) ; books/peer-catchup-spool-resources.lisp:6
 (definterface fn-cu-cursor-envelope :class :common-lisp-compliant) ; books/peer-catchup.lisp:1024
-(definterface fn-cu-session-close :class :common-lisp-compliant) ; books/peer-catchup.lisp:755
-(definterface fn-cu-session-close-effects :class :common-lisp-compliant) ; books/peer-catchup.lisp:759
-(definterface fn-cu-session-done-p :class :common-lisp-compliant) ; books/peer-catchup.lisp:751
-(definterface fn-cu-session-read-limit :class :common-lisp-compliant) ; books/peer-catchup.lisp:765
 (definterface fn-lgw-step-buf :class :common-lisp-compliant :kinds ((st true-listp))) ; books/store-log-buffer.lisp:539
 (definterface fn-lgw-step-buf-nf :class :common-lisp-compliant :kinds ((st true-listp))) ; books/store-log-walk-once.lisp:48
 (definterface fn-native-control-host-reply-seconds :class :program :kinds ((request-octets natp))) ; host/native-control-host.lisp:19

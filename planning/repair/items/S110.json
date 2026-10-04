@@ -15,7 +15,8 @@
  "line": "247",
  "locus": "peer-services",
  "notes": [
-  "10-03 04:21 claimed: scope=['host/native/pull-service.lisp', 'specs/peering.md', 'tests/native_pull_append_raw-mock.lisp', 'tests/test_native_pull_append.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class"
+  "10-03 04:21 claimed: scope=['host/native/pull-service.lisp', 'specs/peering.md', 'tests/native_pull_append_raw-mock.lisp', 'tests/test_native_pull_append.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class",
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit 715a8778f, host/native/pull-service.lisp); local test python3.12 -m unittest tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class PASS at HEAD; native pending: acceptance wrapper:class-plus-step (not run)"
  ],
  "owner": "codex-sol-tools",
  "reviewer": "pull-service.lisp:229-252: the (error (e) ...) arm wraps the non-octet-envelope fnn-fault (237-238) and everything before fnn-write-all, and turns all of them into fnn-indeterminate. fnn-pull-worker-guarded (552-554) then fences the node (exit 3) where a pre-write failure is a definite fault (exit 4). This misclassifies the outcome, but it is conservative, and it is reachable only through an ACL2 contract break or the developer cut selector.",
@@ -31,10 +32,10 @@
  "severity": "low",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class",
  "title": "FNPL/FNCU append reports a pre-write envelope refusal or fault as indeterminate (exit 3)",
- "updated": "2026-10-03T08:29:46Z",
+ "updated": "2026-10-04T06:28:44Z",
  "verify": {
   "base": "e3b6eee46a5598889ad2813c6c9e2aa42ba0fdeb",
   "base_observation": {

@@ -38,24 +38,24 @@
                (state (fn-owner-install-ocfg original-owner state))
                (state (fn-owner-retain-carry-put original-carry state))
                (state (f-put-global 'fn-owner-cat-pending original-pending state)))
-          (mv ok fn-arena state))))))
+          (mv ok state))))))
 
 ; Positive literal theorem antecedent/conclusion, accepted resolution words,
 ; and reachable :fault arms: no reservation or no staged record.
 (make-event
- (mv-let (ok fn-arena state)
+ (mv-let (ok state)
    (opct-live-witness *lgt-reserved* nil :refused fn-arena state)
    (value (list 'assert-event ok))))
 (make-event
- (mv-let (ok fn-arena state)
+ (mv-let (ok state)
    (opct-live-witness *lgt-prepared* t :aborted fn-arena state)
    (value (list 'assert-event ok))))
 (make-event
- (mv-let (ok fn-arena state)
+ (mv-let (ok state)
    (opct-live-witness *lgt-oc0* nil :fault fn-arena state)
    (value (list 'assert-event ok))))
 (make-event
- (mv-let (ok fn-arena state)
+ (mv-let (ok state)
    (opct-live-witness *lgt-reserved* t :fault fn-arena state)
    (value (list 'assert-event ok))))
 

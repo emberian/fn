@@ -151,46 +151,29 @@ reason)`, `(:missing name)`.
 
 ## 4. Host adoption
 
-### Python experiment (`tools/checkpoint.py`, `tools/run_store.py`)
+### Python experiment (retired)
 
-`publish` asks ACL2 for the protected prefix of the capture of the durable
-records at the durable frontier (`fn-store-checkpoint-protected`), seals it
-with BLAKE3 (A-CRYPTO), and issues the three publication steps; `select`
-issues the three marker steps. The six `faults.at("checkpoint:<name>")`
-sites are the cuts in `tests/campaign/cuts.py`. `Store.recover` replays the
-journal as before (the journal remains the authority), then decodes the
-selected generation through `fn-store-checkpoint-decode` at the observed
-frontier and count, slices the suffix by the sequence ACL2 returned,
-restores through `fn-store-checkpoint-restore` (the proved subject) and asks
-`fn-store-checkpoint-differential` whether the restored node equals the node
-full replay produced. The outcome (`none`, `ok`, `corrupt`) is printed by
-`recover` and `checkpoint.py status`; `corrupt` exits 4.
+The Python host (`tools/checkpoint.py`, `tools/run_store.py`,
+`tools/frame_bridge.py`) published, selected and recovered generations
+through ACL2 entries in `host/checkpoint-host.lisp` (capture of the
+protected prefix, decode, restore, the two differentials and the
+directory-observation wrappers).  The tools and those entries are gone (S117; the native host never called them).
+What survives is the books' own statements, over ACL2 values: the
+representation checks of Sections 1-3, including the generation vocabulary,
+the observation bound and the capacity rule
+(`fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity`).  No host
+reaches them; a claim that a host publishes or recovers a generation is not
+made.
 
-Both hosts obtain `selected.fncp`, canonical `generation-N.fncp` rendering,
-the inverse filename decoder, the exact 47-octet selection-frame read bound,
-and the checkpoint-directory observation plan from
-`books/checkpoint-publish.lisp`.  The plan sorts decoded generations and
-rejects every other entry.  Hosts call the ACL2-owned observation bound
-before retaining directory names: the opened profile's retained-generation
-capacity, max-transactions + 1 (`fn-cpp-generation-capacity`), plus the
-selection marker.  Generation allocation refuses exactly at that capacity
-(`fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity`), and a
-generation number runs to the uint32 width of its name and selection codec
-(STO-023, PRF-171; until then a store had 4,096 publications in its
-lifetime).
-
-What the host still asserts, outside the proofs:
+What a host would still have to assert, outside the proofs, if one were
+revived:
 
 - BLAKE3 is a fixed function of the bytes (the digest the host supplies at
   recovery is the one it supplied at publication when the bytes are
   unchanged); ACL2 only compares it.
 - `os.link` publishes the whole data-durable file or nothing, `os.replace`
   leaves the old or the new marker, and `fsync` orders them: the store's
-  A-DURABILITY and A-WRITE-ISOLATION premises, exercised by process-death
-  tests with the OS cache retained, not by power-loss qualification.
-- Production recovery remains full replay, but differential inequality is
-  always a corrupt-checkpoint outcome and exit 4.  The mismatch cannot alter
-  live state, and an operator flag cannot turn it into `ok`.
+  A-DURABILITY and A-WRITE-ISOLATION premises.
 - Rollback of a valid older generation together with a truncated journal
   still needs an external freshness anchor (C2-12); a detected invalid
   checkpoint is a diagnostic failure, never permission to discard history.
@@ -203,8 +186,8 @@ frames above, and the open ran a diagnostic restore of the selected
 generation after the full replay.  Since the records flip the node
 `fn-checkpoint-capture` returns holds arena handles its frame does not
 resolve, so the capture of any store holding an article was refused
-(`store: ACL2 refused checkpoint capture`, `(:error :arena)` in
-`host/checkpoint-host.lisp` `fn-store-checkpoint-protected`).  The three
+(`store: ACL2 refused checkpoint capture`, `(:error :arena)` from the
+retired capture entry).  The three
 verbs now refuse by name and the open runs no generation restore; the
 recover line has no `checkpoint=` field.  Format 9's checkpoint is the
 state checkpoint (`fn-bs-scp-program`, the arena run then the tables; the

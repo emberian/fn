@@ -11,7 +11,8 @@
  "line": "23",
  "locus": "peer-services",
  "notes": [
-  "GPT-6.1-Sol: imported feed idle condition wait and native regression; no matching native verdict yet."
+  "GPT-6.1-Sol: imported feed idle condition wait and native regression; no matching native verdict yet.",
+  "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (current site host/native/feed-service.lisp fnn-feed-idle-wait/fnn-feed-idle-seconds: idle worker sleeps on the commit signal, growing to 1s, never past the next dial); local test none; native pending: tests.test_native_feed_idle"
  ],
  "owner": "sweep-ops",
  "reviewer": "feed-service.lisp:23 sets the cadence to 1/20 s. Every iteration calls fnn-feed-refresh-links, which calls fnn-feed-peer-list and enters fnn-owner-transit-serialized (lines 110-114). For each link it then calls fnn-feed-dial, which runs fnn-feed-dial-plan, also serialized, whenever there is no socket and the backoff is due. For each ready link it calls fnn-feed-tick, serialized as well (lines 254-256), followed by a zero-second recv (line 245-252). Every serialized entry goes through fnn-owner-gated (owner.lisp:1573), with space preobservation, gate enter/leave and the owner mutex. That is about 20 x (1+N) owner quanta per second while idle. This is a real constant background load, but a performance issue rather than a correctness one.",
@@ -19,7 +20,7 @@
  "severity": "low",
  "slice": "services",
  "source": "sweep-2026-10-03",
- "state": "in-progress",
+ "state": "landed",
  "title": "Feed worker enters the owner gate 20 times a second, with no work to do",
- "updated": "2026-10-03T06:00:00Z"
+ "updated": "2026-10-04T06:31:39Z"
 }

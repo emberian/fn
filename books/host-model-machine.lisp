@@ -849,18 +849,52 @@
 ; roster, C commit, K log kernel, ...); "requires_before" the ACL2 subjects
 ; that must dominate the primitive on every straight-line path; "capability"
 ; the typed borrow the site holds across its off-lock work.
+;
+; Where a row is weaker than the label's enabling lock set, the host's
+; reason is here (each is a refinement argument LOCK-CHECK does not prove):
+;  :acquire / :release  the owner lock's entry is the one section envelope
+;     (fnn-section-envelope, expanded in fnn-section-run and
+;     fnn-section-run-cleanup; fnn-owner-gated is a template over the latter):
+;     the scheduler gate admits the thread (fnn-owner-gate-enter) BEFORE the
+;     owner mutex, and leaves (fnn-owner-gate-leave) inside it.
+;  :fd-open  the host opens OFF the extent lock (extent.lisp fnn-extent-
+;     register: the incarnation is reserved under E, the blocking open runs
+;     unlocked, the fd is installed under E).  The machine's :fd-open has no
+;     lock precondition; :close, which does need E, is the label that unbinds.
+;  :window-acquire / :window-release  the executor's funded acquire and
+;     release (fn-owner-page-window-executor-*, the decoded projection for a
+;     decoded window); fn-owner-page-window-admit / -release are the lease
+;     book's own, called by no host code.
+;  :retire  the live retire sites hold O and A: the commit's completion
+;     (fnn-owner-commit-complete-locked -> fnn-log-batch-finish) and a single
+;     commit (fnn-owner-attempt -> fnn-owner-publish-prepared -> fnn-finish),
+;     both into fnn-log-reseat-fenced -> fnn-arena-retire.  The offline
+;     callers (the post/probe/store-import commands, the owner's install and
+;     recovery) run before any thread reads the arena, so no reader's pin
+;     can be at issue; fnn-log-reseat-fenced alone is checked for A.
+;  :swap  the host reads the reader count (fnn-arena-reader-count: A taken
+;     and dropped) and evaluates the swap word under O alone.  Every pin of
+;     the arena is taken under O (fnn-arena-pin's callers) and an unpin only
+;     lowers the count, so the count read under O is an upper bound of the
+;     count at the swap and the machine's <= 1 test holds at the swap.
 (defconst *fn-hmc-realization*
   '((:label :acquire :layer "P" :assumption "A-PRIM-MUTEX" :enabled "fn-hmc-lock-free-p"
-     :sites ((:function "fnn-owner-gated" :file "host/native/owner.lisp"
-              :primitive "sb-thread:with-mutex" :core nil :locks_held ("G") :requires_before nil
+     :sites ((:function "fnn-section-run" :file "host/native/owner.lisp"
+              :primitive "fnn-owner-gate-enter" :core nil :locks_held () :requires_before nil
+              :capability nil)
+             (:function "fnn-section-run-cleanup" :file "host/native/owner.lisp"
+              :primitive "fnn-owner-gate-enter" :core nil :locks_held () :requires_before nil
               :capability nil)))
     (:label :release :layer "P" :assumption "A-PRIM-MUTEX" :enabled "fn-hmc-holds-p"
-     :sites ((:function "fnn-owner-gated" :file "host/native/owner.lisp"
-              :primitive "sb-thread:with-mutex" :core nil :locks_held ("O") :requires_before nil
+     :sites ((:function "fnn-section-run" :file "host/native/owner.lisp"
+              :primitive "fnn-owner-gate-leave" :core nil :locks_held ("O") :requires_before nil
+              :capability nil)
+             (:function "fnn-section-run-cleanup" :file "host/native/owner.lisp"
+              :primitive "fnn-owner-gate-leave" :core nil :locks_held ("O") :requires_before nil
               :capability nil)))
     (:label :fd-open :layer "P" :assumption "A-PRIM-FD" :enabled "fn-hmc-boundp"
      :sites ((:function "fnn-extent-register" :file "host/native/extent.lisp"
-              :primitive "fnn-open" :core "fn-owner-page-file-issue" :locks_held ("E")
+              :primitive "fnn-open" :core "fn-owner-page-file-issue" :locks_held ()
               :requires_before ("fn-owner-page-file-issue") :capability nil)))
     (:label :io-begin :layer "P" :assumption "A-PRIM-PREAD" :enabled "fn-hmc-key-inc"
      :sites ((:function "fnn-extent-prefetch" :file "host/native/extent.lisp"
@@ -910,13 +944,18 @@
 ))
     (:label :window-acquire :layer "C" :enabled "fn-hmc-boundp"
      :sites ((:function "fnn-extent-issue-window" :file "host/native/extent.lisp"
-              :primitive nil :core "fn-owner-page-window-admit" :locks_held ("E")
+              :primitive nil :core "fn-owner-page-window-executor-acquire-funded" :locks_held ("E")
               :requires_before nil
+              :capability (:kind "window-lease" :acquire "fnn-extent-issue-window"
+                           :release_site "fnn-extent-window-release"))
+             (:function "fnn-extent-issue-window" :file "host/native/extent.lisp"
+              :primitive nil :core "fn-owner-page-decoded-window-acquire-projected"
+              :locks_held ("E") :requires_before nil
               :capability (:kind "window-lease" :acquire "fnn-extent-issue-window"
                            :release_site "fnn-extent-window-release"))))
     (:label :window-release :layer "C" :enabled "fn-hmc-memberp"
      :sites ((:function "fnn-extent-window-release" :file "host/native/extent.lisp"
-              :primitive nil :core "fn-owner-page-window-release" :locks_held ("E")
+              :primitive nil :core "fn-owner-page-window-executor-release" :locks_held ("E")
               :requires_before nil :capability nil)))
     (:label :discovery-acquire :layer "C" :enabled "fn-hmc-boundp"
      :sites ((:function "fnn-extent-entry-fresh" :file "host/native/extent.lisp"
@@ -953,6 +992,12 @@
               :capability nil)))
     (:label :retire :layer "C" :enabled "fn-arpn-step"
      :sites ((:function "fnn-log-reseat-fenced" :file "host/native/io.lisp"
+              :primitive nil :core "fn-arpn-step" :locks_held ("A") :requires_before nil
+              :capability nil)
+             (:function "fnn-owner-commit-complete-locked" :file "host/native/owner.lisp"
+              :primitive nil :core "fn-arpn-step" :locks_held ("O" "A") :requires_before nil
+              :capability nil)
+             (:function "fnn-owner-attempt" :file "host/native/owner.lisp"
               :primitive nil :core "fn-arpn-step" :locks_held ("O" "A") :requires_before nil
               :capability nil)))
     (:label :release-retired :layer "C" :enabled "fn-arpn-step"
@@ -961,7 +1006,7 @@
               :capability nil)))
     (:label :swap :layer "C" :enabled "fn-arpn-count"
      :sites ((:function "fnn-owner-reclaim-pass" :file "host/native/owner.lisp"
-              :primitive nil :core "fn-owner-orcp-swap-word" :locks_held ("O" "A")
+              :primitive nil :core "fn-owner-orcp-swap-word" :locks_held ("O")
               :requires_before ("fn-owner-orcp-swap-word") :capability nil)))
     (:label :close :layer "C" :enabled "fn-pio-direct-quiet-p"
      :sites ((:function "fnn-extent-close" :file "host/native/extent.lisp"

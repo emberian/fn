@@ -39,7 +39,7 @@ class NativeServedCostTests(unittest.TestCase):
         # Since composed-owner (Row A4 (c)) the read goes through
         # fnn-owner-chunk-span-no-io: the same span call with the extent
         # reader's disk I/O refused (a cold page is read off the mutex).
-        self.assertIn("(fnn-owner-chunk-span-no-io\n                    cid incoming sched", handoff)
+        self.assertIn("(fnn-owner-chunk-span-no-io cid incoming sched prefix)", handoff)
         self.assertIn("(fnn-core-buffer-state 'fn-owner-chunk-span cid",
                       definition(native, "fnn-owner-chunk-span-no-io"))
         self.assertNotIn("fnn-octet-list incoming", handoff)

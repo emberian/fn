@@ -25,7 +25,6 @@
 (defvar *closes* 0)
 (defvar *unlocks* 0)
 (defvar *close-failure* nil)
-(defun fnn-concat (&rest args) (apply #'concatenate 'string args))
 (defun fnn-err (&rest args) (declare (ignore args)))
 (defun fnn-fault (&rest args) (error "fault ~a" args))
 (defun fnn-refuse (&rest args) (declare (ignore args)) (error 'refused))
@@ -56,6 +55,9 @@
 ;; The escape path of the macro below: the deployed helper and ACL2 decisions it calls.
 (load "tests/unwind_cleanups_prelude.lisp")
 (in-package "ACL2")
+;; After the prelude: its derived stub block traps fnn-concat, which the lock path
+;; calls to name the lock file.
+(defun fnn-concat (&rest args) (apply #'concatenate 'string args))
 (eval (source-definition (or (sb-ext:posix-getenv "FN_CLEANUP_HOST_SOURCE") "host/native/io.lisp")
                          "defmacro" "fnn-unwind-cleanups"))
 (dolist (name '("fnn-publication-lock" "fnn-publication-unlock"))

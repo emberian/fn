@@ -7,7 +7,8 @@
  "harness": "tests/test_native_program_check.py",
  "id": "NIGHT-STATEMENT-ROUTE",
  "notes": [
-  "10-03 02:17 claimed: scope=['tests/campaign/native_cuts.py', 'tests/test_native_program_check.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_program_check.StatementRouteTests.test_named_filled_helper_route_keeps_every_kind_four_commit_fenced"
+  "10-03 02:17 claimed: scope=['tests/campaign/native_cuts.py', 'tests/test_native_program_check.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_program_check.StatementRouteTests.test_named_filled_helper_route_keeps_every_kind_four_commit_fenced",
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit 0200b0f4a, ancestor; tests/campaign/native_cuts.py); local test python3.12 -m unittest tests.test_native_program_check.StatementRouteTests.test_named_filled_helper_route_keeps_every_kind_four_commit_fenced PASS at HEAD; native pending: none (tooling)"
  ],
  "owner": "codex-sol-tools",
  "scope": [
@@ -18,10 +19,10 @@
  ],
  "severity": "medium",
  "source": "runtime-convergence",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_native_program_check.StatementRouteTests.test_named_filled_helper_route_keeps_every_kind_four_commit_fenced",
  "title": "Statement cut checker ignores the filled-buffer implementation called by transit",
- "updated": "2026-10-03T06:17:47Z",
+ "updated": "2026-10-04T06:28:43Z",
  "verify": {
   "base": "449088ab234c59d7d316f3322d96b51ce531f77c",
   "base_observation": {

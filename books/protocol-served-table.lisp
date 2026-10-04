@@ -938,7 +938,7 @@
           :restricted "the reference whole pinned archive walk, including payload tombstone reads")
    :teeth ("NEWNEWS * 20261001 000000 GMT" "NEWNEWS fn.* 20261001 000000 GMT" "NEWNEWS fn.* 20261001 000000" "NEWNEWS"))
   ("DATE"
-   :view :none :effect :none :view-rfc "RFC 3977 7.1; no article view. DEFECT (c07): answers the clock observation pinned at accept (fn-nntp-env-observation; books/served.lisp fn-served-conn-observation), not the current reading; fixed separately")
+   :view :none :effect :none :view-rfc "RFC 3977 7.1; no article view. Answers the CURRENT clock reading, the served connection's injection field, not the reading pinned at accept (books/served-date-current.lisp fn-served-step-date-uses-current-reading)")
   ("POST"
    :view :none :effect :offer :view-rfc "RFC 3977 6.3.1 (no archive)")
   ("IHAVE"

@@ -8,12 +8,13 @@
  "notes": [
   "10-02 23:24 escalate: proof-owed, needs an ACL2-named drain/stop deadline in books/native-retire + owner-retire before the host loop can poll it; no host-only fix",
   "2026-10-03 codex-operator-retire: host connected to ACL2 requested-drain+60s observation policy. Live/held expiry is uncertain and changes no owner/custody state; malformed observations fault distinctly. One-second polling retained. Exact source SBCL positive and prior-source timeout archived; warm hbox function guards/theorems/all16teeth admitted. Native-retire/test normal certification and matching image remain Integration work, not a physical stop claim. PKT-895 PRF-1263 SCN-1095.",
-  "Operator ownership resumed from Access on2026-10-03; existing source/proof records retained. Matching current native command execution remains distinct; no duplicate source repair or transferred image qualification."
+  "Operator ownership resumed from Access on2026-10-03; existing source/proof records retained. Matching current native command execution remains distinct; no duplicate source repair or transferred image qualification.",
+  "10-04 02:30 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (209bd2195, host/native/operator.lisp fnn-operator-execute-retire polls via fn-nret-observation-step, expiry answers fn-nret-observation-expired-line; books/native-retire.lisp PRF-1263 certified per planning/current.md); local test tests.test_native_retire_observation_source PASS; native pending: SCN-1095 matching image"
  ],
  "owner": "codex-operator-heap-default",
  "severity": "low",
  "source": "burndown-1",
- "state": "in-progress",
+ "state": "landed",
  "title": "retire waits with no bound in the host loop; ACL2 should name the deadline (drain window + stop deadline) and the host poll against it",
- "updated": "2026-10-03T09:52:50.178046+00:00"
+ "updated": "2026-10-04T06:30:35Z"
 }

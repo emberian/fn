@@ -43,6 +43,14 @@
 (defun fnn-quantum-control (service cid thunk &optional class)
   (declare (ignore service cid class))
   (sb-thread:with-mutex (*fixture-owner-lock*) (funcall thunk)))
+;; admin.lisp's owner sections run in the declared section (ACTORS step 0,
+;; ba15dff48: def-section fnn-quantum-control, host/native/owner.lisp); the
+;; fixture's section is the same serialized call.
+(defun fnn-quantum-control (service cid thunk &optional class)
+  (declare (ignore service cid class))
+  (sb-thread:with-mutex (*fixture-owner-lock*) (funcall thunk)))
+;; No developer fault armed (FN_NATIVE_ADMIN_FAULT unset): the hook is a no-op.
+(defun fnn-admin-test-fault (section) (declare (ignore section)) nil)
 (defun fnn-owner-core (name &rest args)
   (case name
     (fn-owner-limit-carried (cons 'requested 'funded))

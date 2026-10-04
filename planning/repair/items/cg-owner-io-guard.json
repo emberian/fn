@@ -7,7 +7,8 @@
  "line": "1551",
  "locus": "committer",
  "notes": [
-  "10-02 22:33 same as X05; guard narrowing infeasible (mbe statep idiom in fn-sf step family); see lanedumps/stage-5b.md"
+  "10-02 22:33 same as X05; guard narrowing infeasible (mbe statep idiom in fn-sf step family); see lanedumps/stage-5b.md",
+  "10-04 02:33 ledger-close 2026-10-04: left in-progress: same cure as X05 (raw dispatch after the carrier move, fa32ac06f not an ancestor); fn-sn-statep still in the guards of host/owner-host.lisp (1361,1701,2213,2442,2603,2631); smallest fix: as X05, then re-measure the 92 ms / 11.8 MB per call at N=1000"
  ],
  "owner": "stage-5b",
  "severity": "high",
@@ -15,5 +16,5 @@
  "source": "cost-gate",
  "state": "in-progress",
  "title": "fn-owner-io guard fn-sn-statep is O(store records) per call: 92 ms / 11.8 MB per call at N=1000 since open (k=1.0), 2 calls per POST; fn-sf-record-listp 3 fn-held-p per record + success keyset; image 45e05c7fd; raw dispatch / narrowed guard",
- "updated": "2026-10-03T02:33:59Z"
+ "updated": "2026-10-04T06:33:11Z"
 }
