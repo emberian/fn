@@ -310,7 +310,6 @@ class ScriptedPeer:
         self.listener.close()
 
 
-@unittest.skipUnless(READY, "set FN_NATIVE_HOST to a native launcher")
 class TricklingPeer(ScriptedPeer):
     """Hold an actual incomplete ARTICLE body, then release the exact suffix."""
     def __init__(self, mid, payload):
@@ -336,6 +335,7 @@ class TricklingPeer(ScriptedPeer):
         super().close()
 
 
+@unittest.skipUnless(READY, "set FN_NATIVE_HOST to a native launcher")
 class NativePeerPullTests(unittest.TestCase):
     def setUp(self):
         self.base = scratch(self, "fn-native-pull-")

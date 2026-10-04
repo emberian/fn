@@ -2445,7 +2445,7 @@
         "tests/test_native_hybrid_author.py",
         "tests/acl2/store-identity-traces-tests.lisp",
         "tests/acl2/store-identity-sequence-invariants-tests.lisp",
-        "tests/native_owner_publication.lisp",
+        "tests/native_owner_publication_raw.lisp",
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
       ],
       "pending_subject": "The carried journal sequence is preserved by initial, prepare, I/O, refusal, abort, finish and recovery transitions, but its invariant has not been joined to every actual owner publication path or the physical publication/recovery cuts. Prove the kind-4 snapshot/article/verdict binding over the host-called completion and recovery paths. The raw witness establishes condition routing and reservation cleanup only; it does not prove filesystem durability or cryptographic primitive correctness.",
@@ -21804,7 +21804,6 @@
         "planning/evidence/manifests/certify-20261003T062700Z-15460.json",
         "tests/native_observation_raw.lisp",
         "tests/native_extent_observer_raw.lisp",
-        "tests/test_native_observation_raw.sh",
         "planning/evidence/runtime-observation-2026-10-03/coordinate.json",
         "planning/evidence/runtime-observation-2026-10-03/native.log",
         "planning/evidence/runtime-observation-2026-10-03/observed-hm.lsp",
@@ -21887,8 +21886,7 @@
       "evidence": [
         "books/resource-syncer.lisp",
         "tests/acl2/resource-syncer-tests.lisp",
-        "books/resource-operation.lisp",
-        "tests/acl2/resource-operation-tests.lisp"
+        "books/resource-operation.lisp"
       ],
       "progress_note": "Actual owner syncer producer and independent operation/physical receipt protocol source-admitted. Real issue, physical, outcome, live and drained guards and typed/shape preservation have nine complete positive/type-removal/shape-removal witnesses. Bootstrap install/install-syncer guards and typed/shape preservation now source-admit using guarded typed bank install; six complete literal producer teeth include positive accepted branches and corrupted-state refusal removals. Declaration class follows that exact world. Runtime native fixture refuted ordinary private stobj creation, then passed the exact registered raw-guarded creator plus normal semantic counterpart route with real worker timeout/operation/physical join. Matching final-source certification/native fixture is pending assembly. Full tariff/cost/principal coverage and the environmental physical receipt boundary remain open; exact partial entry cost rows stay partial. Actual host receipt diagnostics and SCN-1089 matching-image mux hold/POST/stop/restart selector are prepared. Diagnostic failures are locally refuted as custody-changing paths. No saved-image verdict follows before Integration runs the selector."
     },

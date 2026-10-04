@@ -710,11 +710,19 @@
                 (let ((condition (handler-case
                                      (progn (fnn-node-secret-rotate (%make-fnn-store :root "/native-rotation")) nil)
                                    (error (e) e))))
-                  (nio-check (and (typep condition 'fnn-os-error)
-                                  (= (fnn-os-errno condition) sb-posix:eio)
+                  ;; A write or fsync EIO is the OS error itself; a close
+                  ;; that fails leaves the descriptor's return unobserved,
+                  ;; which fnn-write-staged reports as indeterminate (the
+                  ;; immutable close handle).  Either way the stage it
+                  ;; created is removed and nothing is published.
+                  (nio-check (and (if (eq operation 'fnn-close)
+                                      (typep condition 'fnn-store-indeterminate)
+                                    (and (typep condition 'fnn-os-error)
+                                         (= (fnn-os-errno condition) sb-posix:eio)))
                                   (equal removed (list stage)) (not replaced)
                                   (search "/staging/.init-node-secret-" stage))
-                             "rotation failed to clean its owned stage at ~a" operation))))))
+                             "rotation failed to clean its owned stage at ~a: ~a"
+                             operation condition))))))
       (dolist (pair saved) (setf (symbol-function (car pair)) (cdr pair))))))
 (nio-secret-rotation-error-cleanup)
 (format t "native_secret_rotation_write_failure_cleanup: PASS~%")

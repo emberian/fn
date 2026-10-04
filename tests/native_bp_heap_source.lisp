@@ -39,14 +39,20 @@
 (defun fnn-heap-store-profile (root)
  (push (list :profile root) *events*) (list :profile root))
 (defun fnn-refuse (&rest args) (declare (ignore args)) (error 'fixture-refused))
-(source-functions "host/native/heap.lisp" '(fnn-heap-command-profile))
+(source-functions "books/peer-flight-startup.lisp" '(fn-pfr-operation-observes-p))
+;; A served run observes its peer authority file (fnn-peer-flight-profile,
+;; host/native/heap.lisp): recorded here, the store root it is read under.
+(defun fnn-peer-flight-profile (root)
+ (push (list :peer root) *events*) (list :peer root))
+(source-functions "host/native/heap.lisp" '(fnn-heap-command-profile-base fnn-heap-command-profile))
 (dolist (entry
  '((("bp-node" "serve" "0" "journal" "store" "receipts" "workflow" "node" "peer" "dest" "policy" "issuer" "host" "4556") 1)
    (("bp-app" "receive" "0" "spool" "store" "receipts" "node" "peer" "dest" "policy" "issuer" "1" "02") 2)))
  (let ((*events* nil))
   (assert (equal (multiple-value-list (fnn-heap-command-profile (first entry)))
-                 (list '(:profile "/captured/store") (second entry) :run nil nil nil "/captured/store")))
-  (assert (equal *events* '((:profile "/captured/store"))))))
+                 (list '(:profile "/captured/store") (second entry) :run nil nil nil "/captured/store"
+                       '(:peer "/captured/store"))))
+  (assert (equal *events* '((:peer "/captured/store") (:profile "/captured/store"))))))
 (dolist (argv
  '(("bp-node" "serve")
    ("bp-node" "serve" "0" "journal" "store")
@@ -58,6 +64,6 @@
 (let ((*events* nil))
  (assert (equal (multiple-value-list
                  (fnn-heap-command-profile '("bp-node" "dispatch" "journal" "store")))
-                '(nil 0 nil nil)))
+                '(nil 0 nil nil nil nil nil nil)))
  (assert (null *events*)))
 (format t "PASS actual BP heap source root and connection propagation~%")
