@@ -13,8 +13,12 @@ octets); the arm is books/byte-store-frame.lisp `fn-bs-profile-invalid-reason`
 The witnesses, on the developer image:
 
 * `init` one octet past the ceiling (H raised with it) is refused by that
-  name, exit 1, and writes no config.json; at the ceiling it is written and
-  the store serves: the owner starts and takes a POST.
+  name, exit 1, and writes no config.json; at the ceiling it is written.
+  An installed node on a test machine then refuses to run it by name
+  (`machine-cannot-hold-profile`: the ceiling store's heap figure is
+  hundreds of GB).  This case used to "serve" it by starting the image at
+  its saved 32000 MB, which no installed launcher does (the decided-launch
+  ruling, 2026-10-04; tests/native_harness.py Node.launch).
 
 The live-status (FNLS) row's named refusal
 (`fn-nls-page-refuses-exactly-past-the-total-width`) needs a report of 2^32
@@ -60,14 +64,6 @@ class ControlReplyFitFixture(ProfileUpgradeFixture):
         path = self.store / "config.json"
         return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
 
-    def serves(self, tag):
-        self.node.start(image=self.image)
-        try:
-            self.assertEqual(self.post_many(["<fit-{}@example.invalid>".format(tag)]),
-                             ["240 article received OK"])
-        finally:
-            self.node.stop()
-
 
 class ControlReplyFitTests(ControlReplyFitFixture):
     def test_init_refuses_r_past_the_poll_reply_by_name_and_admits_the_ceiling(self):
@@ -88,7 +84,10 @@ class ControlReplyFitTests(ControlReplyFitFixture):
                           "--max-history-octets", str(CEILING), "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         self.assertEqual(self.profile_line()["max-record-octets"], CEILING)
-        self.serves("init")
+        process, stderr = self.node.try_start(image=self.image)
+        self.assertIsNotNone(stderr, "an installed node started the ceiling store here")
+        self.assertEqual(process.returncode, EXIT_REFUSED, stderr)
+        self.assertIn("machine-cannot-hold-profile", stderr)
 
 
 if __name__ == "__main__":

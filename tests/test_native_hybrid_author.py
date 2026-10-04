@@ -283,7 +283,10 @@ class NativeHybridAuthorTest(unittest.TestCase):
         The read bound is books/native-hybrid-control.lisp KEYSTONE
         fn-native-hybrid-control-author-request-within-read-bound."""
         store = self.root / "store-v2"
-        made = self.invoke("store", str(store), "init", "--profile", "default",
+        # The development base with the same flags: under D27's defaults
+        # (4,096 groups per article) the installed launcher cannot start this
+        # store on a test machine (the decided-launch ruling, 2026-10-04).
+        made = self.invoke("store", str(store), "init", "--profile", "development",
                            "--max-article-octets", "400000",
                            "--max-record-octets", "18874368", "fn.test",
                            timeout=180)

@@ -6,6 +6,7 @@
     python3 tools/scenario_suite.py run TIER --image-set SHA [--rev REV]
         [--label LABEL] [--jobs 4] [--dry-run] [-- HBOX_NATIVE_OPTION ...]
     python3 tools/scenario_suite.py check
+    python3 tools/scenario_suite.py heap-optouts
 
 The tiers are data, tests/scenarios/tiers.tsv: peer (can a stranger's
 server peer with us safely and usefully: transit both ways, catch-up,
@@ -17,7 +18,7 @@ planning/scenarios-2026-10-04.md is the coverage map they were cut from:
 which question each entry answers and the gaps no entry answers.
 
 `run` hands the tier's modules and opt-in variables to tools/hbox_native.sh
-with `--box hbox --image-set SHA` and the four published images, so nothing
+with `--box BOX --image-set SHA` and the four published images, so nothing
 is certified or built: the modules run against the images the integrator
 published for dev commit SHA (hbox:/tank/fn/images/SHA).  The tests come from
 REV (default SHA itself, so the tests match the image; `.` runs this
@@ -87,6 +88,25 @@ def image_reads(root: pathlib.Path, module: str, text: str) -> list[str]:
     return re.findall(r'"(FN_[A-Z0-9_]+)"', text)
 
 
+HEAP_OPTOUT = re.compile(r"image_heap=|[\"']SBCL_USER_ARGS[\"']|[\"']FN_TEST_HEAP_MB[\"']")
+
+
+def heap_optouts(root: pathlib.Path = ROOT) -> list[str]:
+    """Native test lines that run an owner at a heap of their own choosing
+    instead of the installed launcher's decided figure (tests/native_harness.py
+    Node.launch): Node(image_heap=REASON), or SBCL_USER_ARGS / FN_TEST_HEAP_MB
+    set by the test.  The decided-launch ruling (2026-10-04) has them counted."""
+    out = []
+    for path in sorted((root / "tests").glob("test_*.py")):
+        if "native" not in path.name and not path.name.startswith("test_bp_"):
+            continue
+        for number, line in enumerate(path.read_text(encoding="utf-8", errors="replace")
+                                      .splitlines(), 1):
+            if HEAP_OPTOUT.search(line) and not line.lstrip().startswith("#"):
+                out.append(f"{path.relative_to(root)}:{number}: {line.strip()[:120]}")
+    return out
+
+
 def findings(root: pathlib.Path = ROOT) -> list[str]:
     out: list[str] = []
     seen: dict[tuple[str, str], int] = {}
@@ -146,7 +166,7 @@ def run(args: argparse.Namespace) -> int:
                          capture_output=True, text=True).stdout.strip() or args.image_set
     rev = args.rev or sha
     label = args.label or f"{args.tier}-{sha[:9]}"
-    argv = ["sh", str(ROOT / "tools/hbox_native.sh"), "--box", "hbox", "--image-set", sha,
+    argv = ["sh", str(ROOT / "tools/hbox_native.sh"), "--box", args.box, "--image-set", sha,
             "--images", IMAGES, "--jobs", str(args.jobs), "--label", label]
     for env in got["env"]:
         argv += ["--env", env]
@@ -169,12 +189,17 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("modules")
     p.add_argument("tier", choices=TIERS)
     sub.add_parser("check")
+    sub.add_parser("heap-optouts")
     p = sub.add_parser("run")
     p.add_argument("tier", choices=TIERS)
     p.add_argument("--image-set", required=True, help="the dev commit whose published images to use")
     p.add_argument("--rev", help="the tests' revision (default: the image set's; `.` = this worktree)")
     p.add_argument("--label")
     p.add_argument("--jobs", type=int, default=4)
+    p.add_argument("--box", default="hbox",
+                   help="hbox (default: the INN tree, docker and the fixtures live there) or a "
+                        "rented box from ~/.config/fn/boxes.json (lat1, cloud1, cloud2: they "
+                        "mirror the published image sets)")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("extra", nargs="*", help="further tools/hbox_native.sh options, after --")
     args = parser.parse_args(argv)
@@ -184,8 +209,15 @@ def main(argv: list[str] | None = None) -> int:
             print("scenario_suite: " + line)
         if not found:
             counts = ", ".join(f"{t} {len(tier(t)['module'])}" for t in TIERS)
-            print(f"scenario_suite: {TIERS_FILE} well formed ({counts} modules)")
+            print(f"scenario_suite: {TIERS_FILE} well formed ({counts} modules); "
+                  f"{len(heap_optouts())} native test lines choose their own heap "
+                  "(heap-optouts lists them)")
         return 1 if found else 0
+    if args.command == "heap-optouts":
+        found = heap_optouts()
+        print("\n".join(found))
+        print(f"scenario_suite: {len(found)} native test lines choose their own heap")
+        return 0
     if args.command == "modules":
         print("\n".join(tier(args.tier)["module"]))
         return 0

@@ -63,7 +63,10 @@ class NativePeerRowsGrowthTests(unittest.TestCase):
         # The small preset's record, article and group bounds (tools/fixtures.py
         # SYNTH_SMALL_BOUNDS): with the defaults, init's reservation for this
         # profile is 11.5 TB and the budget check refuses it (batch AZ).
-        self.ok("init", "--budget", HARNESS_INIT_BUDGET_MB, "--profile", "default",
+        # The development base with the same flags (decided-launch ruling,
+        # 2026-10-04): D27's base sizes this request at about 18 TB, which
+        # `init --budget' admits but no installed launcher starts.
+        self.ok("init", "--budget", HARNESS_INIT_BUDGET_MB, "--profile", "development",
                 "--max-transactions", room,
                 "--max-config-generations", room,
                 "--max-record-octets", "196608", "--max-article-octets", "32768",
