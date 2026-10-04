@@ -8886,6 +8886,16 @@ the observe callback): the frontier is the log's derived one."
     (fnn-at store :frontier-reserved)
     next))
 
+(defun fnn-log-take-verdict (store record)
+  "ACL2's verdict on whether the log can hold RECORD at the store's record
+bound (fn-lgu-take-verdict): refuses by name when it cannot."
+  (let ((verdict (fnn-core 'fn-lgu-take-verdict (fnn-octet-list record) (fnn-store-log-max store))))
+    (case verdict
+      (:admissible :admissible)
+      (:record-exceeds-log-frame
+       (fnn-refuse "prepared Store transaction refused reason=record-exceeds-log-frame (its log entry would pass the profile's max_record_octets)"))
+      (t (fnn-fault "ACL2 returned an invalid take verdict ~a" verdict)))))
+
 (defun fnn-log-take (store record)
   "RECORD into the open batch (fn-lgc-take; fn-lgc-take-refines: fn-olr-take's
 verdict, kernel and entry length).  :full commits the open batch
@@ -9043,7 +9053,10 @@ ROOT.import-XXXX, never a store at ROOT (fn-bs-imp-classify)."
              ;; that admits the stage derives the frontier from the records
              ;; (fn-store-log-next-txid).
              (setf (fnn-log-reserved log) (fnn-core 'fn-lgc-next-txid (fnn-log-kernel log)))
-             (fnn-log-take store (fnn-log-compress store (cdr record)))
+             (let ((octets (fnn-log-compress store (cdr record))))
+               ;; An archived record the log cannot frame refuses the import.
+               (fnn-log-take-verdict store octets)
+               (fnn-log-take store octets))
              (fnn-log-batch-finish store)))
            (fnn-log-commit-open-batch store)
            (fnn-log-batch-finish store))
@@ -9062,6 +9075,11 @@ ROOT.import-XXXX, never a store at ROOT (fn-bs-imp-classify)."
   ;; compresses and ACL2 frames it (fnn-log-compress), else itself.  Before
   ;; the fence: a refused candidate takes nothing.
   (setq record (fnn-log-compress store record))
+  ;; The log holds a record only when its frame, the 32-octet chain and the
+  ;; record, is within the profile's record bound (fn-lgu-take-verdict,
+  ;; books/store-log-durable.lisp): refused by name before the fence, a
+  ;; known pre-publication refusal (repair M1-LOG-RECORD-FRAMING-WINDOW).
+  (fnn-log-take-verdict store record)
   (setf (fnn-store-fenced store) t)
   (fnn-log-take store record)
   (unless *fnn-log-batch*

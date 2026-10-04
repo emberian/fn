@@ -775,14 +775,16 @@ class and quotes what has been measured with its scope.
   head of `fn-lgl-head-len` octets per checkpoint before any record
   (`fn-lgl-open-of-rotated-segment`; lane store-lineage, PRF-979).
 - Bounded: the record log, per article and at every crash point. An
-  accepted article's record is in the bytes on disk: the kernel recovered
-  from every admissible crash image of every cut of the host's append, of
-  its fence (the barrier `:ok`, or failed after landing the environment's
-  selection), of the segment's extension and of recovery holds the
-  acknowledged record, with no trailer assumption
-  (`fn-lgu-acknowledged-article-is-recoverable-at-every-crash-point` and
-  its recovery half; the tear keeps the prefix below the frontier and the
-  scan reads a complete prefix's entries first). The log grows per batch by
+  acknowledged article's record is in the bytes on disk: at every cut of
+  the host's run of the active segment (the open, then any sequence of the
+  host's log operations: take, the seal's capture, extension and write, the
+  barrier `:ok` or failed after landing the environment's selection, the
+  acknowledgements), the first records the log kernel acknowledged are the
+  first records the open recovers from every admissible crash image, with
+  no trailer assumption (`fn-lgu-acknowledged-records-are-recovered-at-every-cut`,
+  `fn-lgu-open-run-acknowledges-only-recoverable-records`; every pending
+  write is at or above the frontier and the scan reads a complete prefix's
+  entries first). One segment, no rotation. The log grows per batch by
   its entries, each a whole number of write units
   (`fn-lg-entry-len-is-units`; the frontier advances by the batch's log
   length at the fence, `fn-lgk-fence`), and the segment file grows only to
@@ -1002,7 +1004,7 @@ not on this tree yet; its citations are checked once they land.
 | D1 | `books/store-capacity-vector`: `fn-cvec-roomp-is-within-the-profile`, `fn-cvec-held-row-within-its-figure`; `books/store-reclaim-pack`: `fn-rclp-events-keep-the-length`; `books/bp-carry-waiver`: `fn-bpcw-waiver-releases-exactly-once` | PRF-138, PRF-119, PRF-950 | none |  |
 | D2 | `books/owner-time-model`: `fn-otm-admit-keeps-the-space-need`; `books/owner-time-journal-writer`: `fn-otm-jw-file-reads-agrees-or-gap` | PRF-359, PRF-360 | none |  |
 | D3 | `books/owner-checkpoint-writer`: `fn-ockp-decide-defers-by-the-estimate`; `books/store-maintenance-reserve`: `fn-smr-roomp-is-within-the-bound` | PRF-200, PRF-129 | none |  |
-| D4 | `books/store-log-durable`: `fn-lgu-acknowledged-article-is-recoverable-at-every-crash-point`, `fn-lgu-acknowledged-article-is-recoverable-at-every-cut-of-recovery`; `books/store-log-crash`: `fn-lg-entry-len-is-units`; `books/store-log-extend`: `fn-olr-extension-target-is-an-extent`; `books/store-log`: `fn-lg-rotation-entry-len`; `books/store-log-lineage`: `fn-lgl-open-of-rotated-segment` | PRF-936, PRF-244, PRF-268, PRF-979 | `planning/evidence/byte-model-2026-09-29.md` |  |
+| D4 | `books/store-log-durable`: `fn-lgu-acknowledged-records-are-recovered-at-every-cut`, `fn-lgu-open-run-acknowledges-only-recoverable-records`; `books/store-log-crash`: `fn-lg-entry-len-is-units`; `books/store-log-extend`: `fn-olr-extension-target-is-an-extent`; `books/store-log`: `fn-lg-rotation-entry-len`; `books/store-log-lineage`: `fn-lgl-open-of-rotated-segment` | PRF-936, PRF-244, PRF-268, PRF-979 | `planning/evidence/byte-model-2026-09-29.md` |  |
 | D5 | `books/expiry-verdict`: `fn-xpy-releasablep-is-rule-or-expired-and-unheld`, `fn-xpy-held-article-is-not-expired` | PRF-918 | `planning/evidence/expiry-q11-2026-09-28.md` |  |
 | X1 | `books/refusal-effect`: `fn-rfx-unserved-prepare-is-unchanged-by-definition`, `fn-rfx-unaffordable-prepare-is-unchanged-by-definition`, `fn-rfx-refused-reconfigure-is-unchanged-by-definition`, `fn-rfx-refused-post-keeps-records`, `fn-rfx-refused-post-keeps-configuration`, `fn-rfx-refused-post-consumes-one-txid`, `fn-rfx-config-record-txid-is-the-node-next-by-definition` | none | `planning/evidence/closure-theorems-2026-09-29.md` |  |
 | X2 | none (measured or open) | none | `planning/evidence/closure-theorems-2026-09-29.md` |  |
