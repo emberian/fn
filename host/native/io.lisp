@@ -2512,7 +2512,10 @@ store; anything else is left to the ordinary open."
           (error 'fnn-store-profile-refusal
                  :message (fnn-core 'fn-store-metadata-config-refusal-text verdict)))))))
 
-(defun fnn-load-config (store)
+(defun fnn-load-sealed-config (store)
+  "Read and decode STORE's sealed profile (config.json) into both the sealed
+and the effective configuration; return it.  No configuration history is
+observed."
   (fnn-check-regular (fnn-config-path store))
   (let ((raw (handler-case
                  (fnn-read-regular-bounded (fnn-config-path store) 16384)
@@ -2520,16 +2523,22 @@ store; anything else is left to the ordinary open."
     (let ((sealed (fnn-metadata-config-decode raw)))
       (setf (fnn-store-sealed-config store) sealed
             (fnn-store-config store) sealed)
-      ;; The live limits (row S1): the configuration history's :set-limit
-      ;; rows over the sealed profile, read before any bound of the log
-      ;; applies (the history's own readdir bound is a sealed field).
-      (when (let ((st (fnn-lstat (fnn-config-dir store))))
-              (and st (fnn-directory-p st) (not (fnn-symlink-p st))))
-        (let ((observation (fnn-config-record-observation store)))
-          (when observation
-            (setf (fnn-store-config store)
-                  (fnn-core 'fn-store-lim-effective sealed
-                            (mapcar #'fnn-octet-list (mapcar #'cdr observation))))))))))
+      sealed)))
+
+(defun fnn-load-config-overlay (store sealed)
+  "The live limits (row S1): the configuration history's :set-limit rows over
+the SEALED profile, read before any bound of the log applies (the history's
+own readdir bound is a sealed field)."
+  (when (let ((st (fnn-lstat (fnn-config-dir store))))
+          (and st (fnn-directory-p st) (not (fnn-symlink-p st))))
+    (let ((observation (fnn-config-record-observation store)))
+      (when observation
+        (setf (fnn-store-config store)
+              (fnn-core 'fn-store-lim-effective sealed
+                        (mapcar #'fnn-octet-list (mapcar #'cdr observation))))))))
+
+(defun fnn-load-config (store)
+  (fnn-load-config-overlay store (fnn-load-sealed-config store)))
 
 (defun fnn-initialize-resume-check (store groups requested-profile &optional history)
   "ACL2 compares requested init with the sealed profile and exact generation one."
@@ -2547,6 +2556,15 @@ store; anything else is left to the ordinary open."
           ((and (consp decision) (eq (first decision) :fault))
            (fnn-fault "~a" (fnn-core 'fn-nir-resume-line decision)))
           (t (fnn-fault "ACL2 returned a malformed init resume decision")))))
+
+(defun fnn-initialize-resume-history (store)
+  "The configuration history fn-nir-resume-decision consults: only when the
+generation-one record is absent (its :missing-initial-record arm); a present
+generation one is decided from its own octets, so a corrupt record is never
+first met by the whole-history observation."
+  (when (and (not (fnn-lstat (fnn-config-record-path store 1)))
+             (fnn-lstat (fnn-config-dir store)))
+    (fnn-config-record-names store nil t)))
 
 (defun fnn-initialize (store &optional (groups +fnn-default-groups+) (profile :development))
   ;; One durable configuration record at generation 1, built and admitted by
@@ -2569,12 +2587,16 @@ store; anything else is left to the ordinary open."
              ;; missing subdirectory is created. Compatible interrupted init
              ;; remains legal; an incompatible request never reaches resume.
              (setf existing-profile (fnn-lstat (fnn-config-path store)))
+             ;; ACL2's resume decision (fn-nir-resume-decision) comes
+             ;; BEFORE the live-limits overlay observes the whole history:
+             ;; a corrupt generation-one record is its named fault
+             ;; (recorded-initial-record-invalid), not the namespace
+             ;; observation's generic one.
              (when existing-profile
-               (fnn-load-config store)
-               (fnn-initialize-resume-check
-                store groups requested-profile
-                (when (fnn-lstat (fnn-config-dir store))
-                  (fnn-config-record-names store nil t))))
+               (let ((sealed (fnn-load-sealed-config store)))
+                 (fnn-initialize-resume-check
+                  store groups requested-profile (fnn-initialize-resume-history store))
+                 (fnn-load-config-overlay store sealed)))
              (fnn-safe-directory (fnn-staging store) t store
                                  "init-staging-mkdir" "init-staging-parent-fenced")
              (fnn-safe-directory (fnn-config-dir store) t store
@@ -2587,9 +2609,10 @@ store; anything else is left to the ordinary open."
                        :published)
                    (setf (fnn-store-config store) requested-profile
                          (fnn-store-sealed-config store) requested-profile)
-                   (progn
-                     (fnn-load-config store)
-                     (fnn-initialize-resume-check store groups requested-profile)))))
+                   (let ((sealed (fnn-load-sealed-config store)))
+                     (fnn-initialize-resume-check
+                      store groups requested-profile (fnn-initialize-resume-history store))
+                     (fnn-load-config-overlay store sealed)))))
              (let ((history (fnn-config-record-names store :init-config-records-first-enumerate t)))
               (if history
                  (fnn-initialize-resume-check store groups requested-profile history)
@@ -5919,6 +5942,7 @@ same size (fnn-probe-article), so the served reader can frame it."
     (fnn-record-filesystem-at-init store :development)
     (fnn-acquire store)
     (fnn-bridge-reset)
+    (fnn-extent-pool-open-context)
     (fnn-recover store)
     (setq payload (make-array (fnn-config-max-payload store)
                               :element-type '(unsigned-byte 8)
@@ -6336,9 +6360,18 @@ Synchronous DNS remains a named availability frontier outside TCP polling."
       (:refused (error 'fnn-peer-dial-error :outcome :host-syntax))
       (otherwise (fnn-fault "ACL2 returned a malformed peer dial target")))))
 
+(defconstant +fnn-socket-read-attempt-max+ 65536
+  "The most octets one nonblocking read attempt allocates.  An allocation
+ceiling for a malformed answer, not a protocol quantum: each caller's quantum
+is ACL2's: TCPCL fn-tcrt-read-limit, 4096; pull fn-prd-read-limit, at most
+*fn-feed-wire-input-max-chunk-octets* (512) by its definition; feed
+fn-owner-feed-read-limit, checked against +fnn-max-read+ in
+fnn-feed-read-limit.  It was +fnn-max-read+ (512, the reader's line buffer) until
+2026-10-04, which refused every TCPCL read: run2-d5b0b9100's BP family.")
+
 (defun fnn-socket-read-now (fd limit)
   "One nonblocking read attempt: octets/EOF or :wait on EINTR/EAGAIN."
-  (unless (and (integerp limit) (<= 1 limit +fnn-max-read+))
+  (unless (and (integerp limit) (<= 1 limit +fnn-socket-read-attempt-max+))
     (fnn-fault "invalid socket read quantum"))
   (let ((buffer (fnn-make-octets limit)))
     (multiple-value-bind (count errno) (funcall *fnn-read-syscall* fd buffer)
@@ -6574,7 +6607,12 @@ served POST path here is refused rather than silently unowned."
     (when store-root
       (setq store (make-fnn-store store-root :writable nil))
       (handler-case
-          (progn (fnn-acquire store) (fnn-bridge-reset) (fnn-recover store))
+          (progn (fnn-acquire store) (fnn-bridge-reset)
+                 ;; The page pool's unfunded context before the replay's
+                 ;; first extent registration, as fnn-open-live-store enters
+                 ;; it: this reader serves no funded cold line.
+                 (fnn-extent-pool-open-context)
+                 (fnn-recover store))
         (error (e) (fnn-store-close store) (error e))))
     (handler-case (fnn-reader-select (not (null store-root)))
       (error (e) (when store (fnn-store-close store)) (error e)))

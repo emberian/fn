@@ -1,0 +1,12 @@
+{
+ "category": "implementation",
+ "file": "host/native/feed-service.lisp",
+ "id": "SCEN-FEED-RESUME",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "scenarios",
+ "state": "open",
+ "title": "feed_tls_read test_a_paused_feed_is_not_dialled_until_resumed: after 'peer feed NAME resume' the article posted while paused is not delivered within 30 s (tests/test_native_feed_tls_read.py:237). Run peer-d5b0b9100 with the TicketingTlsPeer harness fix (4edb8509a); the other 3 cases now pass.",
+ "updated": "2026-10-04T15:13:42Z"
+}

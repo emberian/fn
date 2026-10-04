@@ -209,6 +209,10 @@ class OperatorWalkTests(unittest.TestCase):
         except FileNotFoundError:
             return 0
 
+    def stat(self, node, message_id):
+        with node.session() as client:
+            return client.command("STAT {}".format(message_id).encode())
+
     def post(self, node, tag, expect=EXIT.OK, body=None):
         result = node.post("<walk-{}@example.invalid>".format(tag), article(tag, body),
                            group="local.test", expect=expect)
@@ -268,6 +272,10 @@ class OperatorWalkTests(unittest.TestCase):
         self.mark("posted")
         until(lambda: self.log_count(b, "accepted peer"), 15, "b's log names the accepted peer a")
         until(lambda: self.log_count(a, " feed "), 15, "a's log names its feed to b")
+        # The log lines say a feed ran; the article being served at b says it
+        # carried the post (the logs alone passed with nothing delivered).
+        until(lambda: self.stat(b, "<walk-1@example.invalid>").startswith(b"223"), 15,
+              "b serves the post a was fed")
         self.mark("fed")
         b.operator("status", expect=EXIT.OK)
         a.operator("health", expect=HEALTH_CLEAR)
@@ -481,6 +489,8 @@ class OperatorWalkTests(unittest.TestCase):
         self.mark("listening again")
         a.operator("health", expect=HEALTH_CLEAR)
         a.operator("status", expect=EXIT.OK)
+        # The post answered before the kill is still served after recovery.
+        self.assertTrue(self.stat(a, "<walk-1@example.invalid>").startswith(b"223"))
         self.mark("health and status")
 
 

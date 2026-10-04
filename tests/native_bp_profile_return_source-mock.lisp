@@ -35,13 +35,18 @@
  '(fnn-bpnode-replace-profile fnn-command-bp-node-profile fnn-command-bp-session-profile))
 (dolist (command '(fnn-command-bp-node-profile fnn-command-bp-session-profile))
   (dolist (fault '(:replace :barrier :close :stage nil))
-    (let ((*profile-error* fault) (*installed* nil) (*output* nil) (caught nil))
+    (let ((*profile-error* fault) (*installed* nil) (*output* nil) (caught nil)
+          (*fnn-escape-cleanup-debts* (list nil)))
       (handler-case
           (assert (= (apply command (if (eq command 'fnn-command-bp-node-profile)
                                         '("/root" "id" 1 2) '("/root" "id" 1 2 3 4))) 0))
         (error (condition) (setq caught condition)))
       (if fault (assert caught) (assert (null caught)))
-      (when (eq fault :stage) (assert (eq caught *primary*)))
+      ;; A staging fault whose root release then fails uncertainly: the fence
+      ;; dominates, and the staging fault is retained as its primary.
+      (when (eq fault :stage)
+        (assert (typep caught 'fnn-store-indeterminate))
+        (assert (primary-retained-p)))
       (when (member fault '(:replace :barrier :close))
         (assert (typep caught 'fnn-store-indeterminate)))
       (when (member fault '(:replace :barrier))

@@ -73,10 +73,10 @@ OPTIONAL forms may be absent (a red run's origin/next has no helper)."
    (defconst *fn-fs-usage-classes*) (defconst *fn-fs-refusal-classes*)
    (defconst *fn-fs-os-classes*) (defun fn-fs-classify) (defun fn-fs-exit-code)
    (defun fn-fs-stop-exit-rank) (defun fn-fs-stop-exit-escalate)))
-(defvar +fnn-exit-ok+ (fn-outcome-code :accepted))
-(defvar +fnn-exit-refused+ (fn-outcome-code :refused))
-(defvar +fnn-exit-uncertain+ (fn-outcome-code :fenced))
-(defvar +fnn-exit-fault+ (fn-outcome-code :fault))
+(unless (boundp '+fnn-exit-ok+) (defvar +fnn-exit-ok+ (fn-outcome-code :accepted)))
+(unless (boundp '+fnn-exit-refused+) (defvar +fnn-exit-refused+ (fn-outcome-code :refused)))
+(unless (boundp '+fnn-exit-uncertain+) (defvar +fnn-exit-uncertain+ (fn-outcome-code :fenced)))
+(unless (boundp '+fnn-exit-fault+) (defvar +fnn-exit-fault+ (fn-outcome-code :fault)))
 (defvar *unwind-prelude-io-source*
   (or (sb-ext:posix-getenv "FN_CLEANUP_HOST_SOURCE") "host/native/io.lisp"))
 (unwind-prelude-load-forms

@@ -1,0 +1,201 @@
+# The scenario tiers: which native modules and kits answer which question,
+# grouped by how long a run takes.  tools/scenario_suite.py reads this file;
+# docs/testing.md "Scenario tiers" says how to run a tier against an image set,
+# and planning/scenarios-2026-10-04.md is the coverage map it was cut from.
+#
+# One entry per line, TAB-separated:
+#   TIER  module  tests.MODULE[.Class]  QUESTIONS  why it is in this tier
+#   TIER  env     NAME=VALUE            QUESTIONS  what the opt-in turns on
+#   TIER  tool    COMMAND               QUESTIONS  a kit hbox_native.sh cannot launch
+# QUESTIONS are the coverage map's codes: DUR durability across crash cuts,
+# ARU accepted/refused/uncertain distinct, IDEM idempotent resend, BND bounded
+# work per step, MEM (F1/F8), LAT (F4), FSYNC (F3), OPEN (F6), PEER, BP, WEB,
+# AUTH, CUR consumer cursor, RCON remote consumer, IDN store identity, RDR
+# reader conformance, CKPT checkpoint/reclaim, OPS operator/control, INTEROP
+# real external software on the other side (INN, stock reader clients).
+# A tool COMMAND runs on hbox from a tree of the image's revision ($T) with
+# $IMAGES = /tank/fn/images/SHA and $OUT a fresh scratch directory; under
+# swarm-build, one at a time, on a quiet box when it measures.
+# Only modules that drive an image belong here: a source-reading or -mock
+# module answers none of these questions (the coverage map lists them apart).
+#
+# peer: "can a stranger's server peer with us safely and usefully" (ember,
+# 2026-10-04: the first external collaborator peers with the next redeploy).
+# Push and pull both ways, catch-up after a gap, IHAVE/CHECK/TAKETHIS, NEWNEWS
+# with wildmats and HDR/XPAT past the cache, a misbehaving peer never pinning
+# the owner, peer credentials, and real INN on the other side of the wire.
+peer	module	tests.test_native_peering	PEER,IDEM,BND	two production nodes: IHAVE/CHECK/TAKETHIS verdicts 235/435/437/238/431/438/439, kill mid-IHAVE, feed requeue after death, queue bound 436
+peer	module	tests.test_native_protected_peering	PEER,AUTH,DUR	reciprocal feeds over STARTTLS+AUTHINFO, restart, peer set/login, acked feed not re-offered, sent-cut requeue
+peer	module	tests.test_native_peer_pull	PEER,DUR,AUTH,INTEROP	NEWNEWS pull: cursor advance, kill mid-round re-asks, cursor cuts store once, TLS principal; pull from a real INN (FN_INN_SRC)
+peer	module	tests.test_native_peer_catchup	PEER,DUR,IDEM	catch-up of 1000 articles after a gap: bytes equal but Path/Xref, digest chain, kill mid-round resumes
+peer	module	tests.test_native_peer_invite	PEER,AUTH,DUR	peer genesis/invite/accept/confirm; tamper and replay refused; crash cuts enrol once
+peer	module	tests.test_native_peer_by_name	PEER,AUTH	the feed dials a DNS name under system roots; name mismatch refused and retried
+peer	module	tests.test_native_feed_tls_read	PEER,AUTH	outbound feed over TLS 1.3 with tickets; each drop named, backoff 1/2/4/8 s; pause/resume
+peer	module	tests.test_native_feed_tls_ready	PEER,AUTH	STARTTLS and implicit-TLS feed: exactly STARTTLS+IHAVE, one handshake
+peer	module	tests.test_native_feed_temporary	PEER,BND	a peer answering MODE STREAM 400: backoff, then TAKETHIS
+peer	module	tests.test_native_feed_idle	PEER,BND,LAT	an idle outbound feed holds the owner under 150 times in 10 s; a post after idle delivered in 3 s
+peer	module	tests.test_native_header_limits	PEER,ARU	header limits on POST/IHAVE/TAKETHIS: exact 441/437/439 at the boundary
+peer	module	tests.test_native_header_lines	PEER,RDR,ARU	998/999-octet lines on POST, IHAVE, TAKETHIS; long folded headers served whole by OVER/HDR
+peer	module	tests.test_native_article_subject	PEER	IHAVE variants differing in Path/Xref are one article subject
+peer	module	tests.test_native_injection_info	PEER,AUTH	Injection-Info per login; a relayed line kept octet-exact
+peer	module	tests.test_native_reader_freshness	PEER,RDR	a long-lived reader sees an article a peer just transferred after GROUP
+peer	module	tests.test_native_friends_feed	PEER,AUTH,OPS	two nodes: keygen, invite/accept/confirm, live peer add, a signed cancel withdraws at the friend
+peer	module	tests.test_native_control_filing	PEER,ARU,DUR	control articles over IHAVE 437 control-not-filed; two-node withdrawal with a kill
+peer	module	tests.test_native_own_cancel	PEER,IDEM,AUTH	RFC 8315 cancel across accounts and IHAVE relays
+peer	module	tests.test_native_source_corpus	PEER,IDEM,DUR	a corpus A to B by transit: B's bytes are A's plus the Path splice; SIGKILL reopen
+peer	module	tests.test_native_conformance	PEER,ARU,IDEM	IHAVE duplicate loop and streaming rows of the v0 matrix
+peer	module	tests.test_native_newnews_wildmat	BND,RDR,PEER	NEWNEWS fn.* over 1000 articles lists every id once while another reader is served
+peer	module	tests.test_native_cold_line_quanta	BND,LAT,RDR	HDR/XHDR/XPAT/NEWNEWS past the cache answer completely within the bound (the old node's hang)
+peer	module	tests.test_native_cold_line_deadline	BND,LAT,RDR	the same lines within 30 s while a concurrent reader is served
+peer	module	tests.test_native_cold_off_loop	BND,LAT	a stalled cold read leaves eight other connections answered
+peer	module	tests.test_native_peer_misbehaving	BND,PEER,LAT	a configured peer trickling inside IHAVE, resetting half-way through TAKETHIS, sending garbage, never reading CHECK replies: reader and a good transfer still served, id not spoiled
+peer	module	tests.test_native_public_exposure	BND,AUTH,LAT	a stranger flood: per-address and total caps, slowloris, lockout; the legitimate reader keeps being served
+peer	module	tests.test_native_tls_handshake_budget	BND,AUTH	per-source TLS handshake budget against a slow-loris handshake
+peer	module	tests.test_native_host_lifecycle	BND,LAT	client and peer events (EMFILE, resets, adoption race) never stop the owner
+peer	module	tests.test_native_reader_clients	RDR,INTEROP	stock slrn and pan (docker) against a TLS owner
+peer	env	FN_INN_SRC=/tank/fn/inn/2.7.4	INTEROP	tests.test_native_peer_pull's INN cases: hbox's installed INN 2.7.4
+peer	env	FN_RUN_HYBRID_E2E=1	AUTH	the signed control cases of tests.test_native_control_filing
+peer	tool	python3 tools/inn_lab.py SHA --host hbox --native-image $IMAGES/fn-host	PEER,INTEROP,IDEM	real INN both ways: fn feeds innd, innfeed feeds fn, duplicates 435, loop refused, both killed and recovered
+peer	tool	python3 tools/hostile_campaign.py --image $IMAGES/fn-host-developer --families transit,pipelining,tls,connection --evidence $OUT --report $OUT/report.json	BND,PEER,AUTH	a misbehaving peer: garbage, resets, slowloris, IHAVE/TAKETHIS abuse; the node stays sound
+#
+# smoke: one short module per question, minutes at --jobs 4.
+smoke	module	tests.test_native_log	DUR	developer log append/recover; SIGKILL at every log cut keeps a prefix (9 s)
+smoke	module	tests.test_native_crash_model	DUR,ARU	store CLI killed at POST_LOG and recovery cuts; injected EIO stays uncertain (40 s)
+smoke	module	tests.test_native_commit_log	DUR,FSYNC,IDEM	served POSTs batch through the record log; kill at every POST_LOG cut keeps every 240 (M1; 45 s)
+smoke	module	tests.test_native_visibility_join	IDEM,ARU	lost NNTP POST reply after a durable commit is exit 3; the resend is already-stored, nothing added (M3; 10 s)
+smoke	module	tests.test_native_conformance	ARU,IDEM,RDR	v0 rows: three outcomes distinct, operator and NNTP duplicate vs conflict, IHAVE/CHECK/TAKETHIS duplicates (M3; 20 s)
+smoke	module	tests.test_native_outcome_algebra	ARU	one exit-code table across operator/store/control/bp (15 s)
+smoke	module	tests.test_native_mux	BND,MEM	300 held connections add no thread, under 64 KiB each; busy 400 at the bound (15 s)
+smoke	module	tests.test_native_served_differential	RDR	served reply bytes equal the in-image fn-served-run model (5 s)
+smoke	module	tests.test_native_starttls	AUTH	STARTTLS refusals before listen, TLS floor, SNI (5 s)
+smoke	module	tests.test_native_agent_wait	CUR	bound consumer wait wakes on its group; acked not redelivered, unacked redelivered after restart
+smoke	module	tests.test_native_web	WEB,BND	web face: health, stalled socket, out-of-order answers, article across restart
+smoke	module	tests.test_native_feed_tls_read	PEER,AUTH	outbound feed over TLS 1.3 delivers; drops back off 1/2/4/8 s (30 s)
+smoke	module	tests.test_bp_receive_integrity_native	BP,ARU,DUR	bp receive: refusal without END ack, uncertain publication fences, restart numbering (5 s)
+smoke	module	tests.test_native_replay_determinism	IDN,CKPT	store digest equal across processes/copies; damaged or swapped genesis refused (25 s)
+#
+# core: the integrator's twelve, the release image bar (FN-SWARMPLAN section 2 item 3).
+core	module	tests.test_native_init_publication	DUR,ARU	init publication cuts leave no store or a complete empty one
+core	module	tests.test_native_log	DUR	log cuts
+core	module	tests.test_native_recovery	DUR,ARU,CKPT	recover sweeps staging orphans; EIO uncertain; SIGKILL mid-sweep
+core	module	tests.test_native_owner	ARU,DUR,BND	owner fault isolation, fence, uncertain 441
+core	module	tests.test_native_crash_model	DUR,ARU	store CLI cuts
+core	module	tests.test_native_reader_clients	RDR,AUTH	stock slrn and pan (docker) against a TLS owner
+core	module	tests.test_native_auth	AUTH,RDR	AUTHINFO gating and lockout
+core	module	tests.test_native_mux	BND,MEM	connection multiplexing
+core	module	tests.test_native_state_checkpoint	CKPT,DUR,ARU	checkpoint equals replay; every cut
+core	module	tests.test_native_over_pins	BND,CKPT,RDR	held OVER cursor defers reclaim
+core	module	tests.test_native_page_io	BND,DUR,LAT	cold pread hold, cancel, retire
+core	module	tests.test_native_slow_disk	LAT,ARU,BND	stalled barrier/pread/full disk: 440/441 try-later, uncertain at H
+#
+# e2e: one whole module per user-visible surface (tens of minutes at --jobs 4).
+e2e	module	tests.test_native_conformance	ARU,IDEM,RDR	v0 protocol rows on one node
+e2e	module	tests.test_native_source_corpus	IDEM,DUR,RDR	a corpus through POST, retry, changed byte, operator post, signed routes, A-to-B transit, SIGKILL reopen (M3 every path)
+e2e	module	tests.test_native_visibility_join	IDEM,ARU,DUR	lost reply, reconcile resend
+e2e	module	tests.test_native_outcome_algebra	ARU,IDEM	exit-code table
+e2e	module	tests.test_native_control	ARU,OPS,IDEM	operator post over the control socket: lost reply uncertain, duplicate resend, refusal reasons
+e2e	module	tests.test_native_operator_verbs	OPS,IDEM,ARU	served POST duplicate vs conflict with no transaction; budget refusal by name
+e2e	module	tests.test_native_commit_log	DUR,FSYNC,IDEM	served commit durable after ack at every POST_LOG cut (M1)
+e2e	module	tests.test_native_owner_scheduler	BND,LAT,DUR	control under readers/posts; every 240 body exact after SIGKILL
+e2e	module	tests.test_native_hybrid_author	IDEM,AUTH,PEER	signed authoring: DUPLICATE vs conflict on the control path (M3)
+e2e	module	tests.test_native_own_cancel	IDEM,AUTH,PEER	RFC 8315 cancel; identical resend vs changed lock (exact 441 texts)
+e2e	module	tests.test_native_peering	PEER,IDEM,BND	two production nodes: IHAVE/streaming verdicts, kill mid-IHAVE, requeue, queue bound
+e2e	module	tests.test_native_protected_peering	PEER,AUTH,DUR	STARTTLS+AUTHINFO reciprocal feeds, acked feed not re-offered
+e2e	module	tests.test_native_peer_catchup	PEER,DUR,IDEM	catch-up of 1000 articles, digest chain, kill mid-round
+e2e	module	tests.test_native_peer_pull	PEER,DUR,AUTH	NEWNEWS pull with cursor cuts
+e2e	module	tests.test_native_friends_feed	PEER,AUTH,OPS	two nodes: invite/accept/confirm, signed cancel withdraws at the friend
+e2e	module	tests.test_native_control_filing	ARU,PEER,DUR	control articles filed by verb; two-node withdrawal with a kill
+e2e	module	tests.test_native_reader_clients	RDR,AUTH	stock reader clients
+e2e	module	tests.test_native_outside_in	WEB,RDR,AUTH	curl/openssl/nc drive web and NNTP through accounts, post/read, COMPRESS, restart
+e2e	module	tests.test_native_web	WEB,AUTH,BND	the web face
+e2e	module	tests.test_native_group_access	AUTH,RDR	hidden group indistinguishable from absent, across restart
+e2e	module	tests.test_native_sasl	AUTH	SASL PLAIN and SCRAM(-PLUS)
+e2e	module	tests.test_native_tls_reload	AUTH,OPS	live certificate reload
+e2e	module	tests.test_native_consumer_identity	CUR,AUTH	account-bound consumers; cursors across restart
+e2e	module	tests.test_native_agent_wait	CUR,LAT,DUR	bound wait, waiter cap, redelivery after restart
+e2e	module	tests.test_native_consumer_e2	CUR,ARU,DUR	register/position/ack/poll; lost reply exit 3 resolved on reopen
+e2e	module	tests.test_native_consumer_inspect	CUR,IDN	.fncu cursor decoded exactly (history and incarnation); malformed refused by word
+e2e	module	tests.test_native_consumer_project_bounds	CUR,BND	cursor/event one octet past the image's bound refused
+e2e	module	tests.test_native_consumer_exchange	CUR,ARU,IDEM	fn_consumer agents through six ownership cuts
+e2e	module	tests.test_native_consumer_exchange_two_nodes	CUR,IDEM,PEER	consumers exchanging over NNTP and BP with crash cuts
+e2e	module	tests.test_native_store_export	DUR,ARU,OPS	export/import byte-identical; cuts publish nothing
+e2e	module	tests.test_native_install	OPS,DUR	install.sh upgrade/rollback
+e2e	module	tests.test_native_maintenance_live	OPS,CKPT	recover/inspect/export answered by a running owner
+e2e	module	tests.test_native_moderation	OPS,AUTH,ARU	moderated groups
+e2e	module	tests.test_native_injection_info	AUTH,PEER	Injection-Info account hash
+e2e	module	tests.test_native_replay_determinism	IDN,CKPT	store digest determinism; genesis teeth
+e2e	module	tests.test_bp_app_native	BP,DUR,ARU	BP request to receiver Store to receipt; kill after durable decision
+e2e	module	tests.test_bp_service_native	BP,ARU,DUR	bp-service against an outage peer
+e2e	module	tests.test_bp_obligation_native	BP,ARU,DUR	undertake/request/recover
+e2e	module	tests.test_bp_node_native	BP,DUR,ARU	bp-node TCPCL contacts, journal cuts, receipts
+e2e	env	FN_RUN_CONSUMER_E2E=1	CUR	tests.test_native_consumer_e2 runs (else wholly skipped)
+e2e	env	FN_RUN_CONSUMER_POLL_E2E=1	CUR	the signed-poll case of tests.test_native_consumer_e2
+e2e	env	FN_RUN_CONSUMER_INSPECT=1	CUR	tests.test_native_consumer_inspect runs
+e2e	env	FN_RUN_CONSUMER_PROJECT_BOUNDS=1	CUR	tests.test_native_consumer_project_bounds runs
+e2e	env	FN_RUN_CONSUMER_EXCHANGE=1	CUR	the consumer exchange modules run
+e2e	env	FN_RUN_HYBRID_E2E=1	IDEM,AUTH	hybrid-signature cases run
+#
+# resilience: crash-cut, fault-injection and hostile-input campaigns.
+resilience	module	tests.test_native_resilience_cuts	DUR,ARU,IDEM	post/recovery/served/checkpoint cuts judged by the whole-history checker
+resilience	module	tests.test_native_served_crash_model	DUR	served owner killed at each POST_LOG and recovery-barrier cut
+resilience	module	tests.test_native_crash_model	DUR,ARU	store CLI cuts
+resilience	module	tests.test_native_nntp_post_probe	DUR,ARU	every served-POST cut, wire-observed
+resilience	module	tests.test_native_init_publication	DUR,ARU	init cuts
+resilience	module	tests.test_native_import_publication	DUR,ARU	import cuts
+resilience	module	tests.test_native_initializer_fidelity	DUR,ARU	fresh init kill/EIO/EACCES cuts
+resilience	module	tests.test_native_checkpoint_auto	CKPT,DUR,ARU	auto checkpoint; kills at batch/rotation cuts
+resilience	module	tests.test_native_state_checkpoint	CKPT,DUR,ARU	checkpoint cuts
+resilience	module	tests.test_native_log_compaction	CKPT,DUR	kill at 7 rotation/drop cuts
+resilience	module	tests.test_native_log_damage	DUR,OPS	bit flips refused at the exact stop; torn tail
+resilience	module	tests.test_native_journal_torn	DUR,OPS	decision journal torn tail
+resilience	module	tests.test_native_fence_boundary	ARU,DUR,CKPT	injected committer/checkpoint/reclaim faults: exit 3 vs 4, fence before reply
+resilience	module	tests.test_native_capacity_vector	CKPT,DUR,BP	compact/reclaim killed at every log cut
+resilience	module	tests.test_native_extent_identity	DUR,ARU	substituted log entries refused by name
+resilience	module	tests.test_native_known_abort	ARU,DUR	prepublish refusal leaves history unchanged
+resilience	module	tests.test_native_store_lineage	CKPT,DUR	foreign-lineage checkpoint refused
+resilience	module	tests.test_native_storage_codec	DUR,ARU,OPS	config faults; publication cut uncertain
+resilience	module	tests.test_native_slow_disk	LAT,ARU,BND	stalled disk
+resilience	module	tests.test_native_page_io	BND,DUR,LAT	held reads
+resilience	module	tests.test_native_decoded_custody	BND,DUR,LAT	held decoded read; competing POST answered
+resilience	module	tests.test_native_host_lifecycle	BND,LAT,WEB	client/peer events never stop the owner
+resilience	module	tests.test_native_owner_offlock	BND,LAT,FSYNC	stalled fsync holds no owner quantum
+resilience	module	tests.test_native_cold_off_loop	LAT,BND	stalled cold pread: other connections answered
+resilience	module	tests.test_native_cold_line_deadline	BND,LAT,RDR	HDR/XPAT/NEWNEWS within 30 s, concurrent reader served
+resilience	module	tests.test_native_cold_line_quanta	LAT,BND,RDR	lines past the cache answer completely
+resilience	module	tests.test_native_public_exposure	BND,AUTH,LAT	stranger flood campaign
+resilience	module	tests.test_native_public_limits	BND,OPS	connection caps
+resilience	module	tests.test_native_tls_handshake_budget	BND,AUTH,LAT	per-source handshake budget
+resilience	module	tests.test_native_tls_proxy	AUTH,BND,LAT	PROXY v1/v2
+resilience	module	tests.test_native_fuzz_nntp	RDR,BND,DUR	minimized fuzz reproducers
+resilience	module	tests.test_native_article_slots	MEM,BND,PEER	article slots and 440 by name
+resilience	module	tests.test_native_credits	MEM,BND	memory credit across a hang-up
+resilience	module	tests.test_native_bounds_join	BND,MEM,RDR	large articles post and reread
+resilience	module	tests.test_native_bounds_blob	BND,ARU	64 MiB over the bound refused, not uncertain
+resilience	module	tests.test_bp_fragment_node_native	BP,DUR,ARU	fragment families across receiver SIGKILL
+resilience	module	tests.test_bp_contact_relay_native	BP,DUR	byte-cutting relay, receiver restart
+resilience	module	tests.test_native_fitness	DUR,ARU,OPS	soak with maintenance and restart (7 min)
+resilience	tool	python3 tools/hostile_campaign.py --image $IMAGES/fn-host-developer --evidence $OUT --report $OUT/report.json	BND,MEM,AUTH,PEER	every hostile family; exit 0 = no defect (cut gate 11)
+resilience	tool	python3 -m tests.campaign.native_production_kill run --image $IMAGES/fn-host --work $OUT/work --out $OUT/records --kills 80 --concurrent 12	DUR,IDEM	SIGKILL of the production owner under concurrent POSTs; every 240 reread exact (M1)
+resilience	tool	python3 tools/power_loss.py rig-up $OUT/rig, then workload/index/cuts with --image $IMAGES/fn-host-developer (planning/release-v6.6.0.md gate 14)	DUR,ARU,FSYNC	block-level power cuts with planted control cuts; needs sudo -n and /dev/shm
+#
+# scale: measurements and fixture-sized stores (quiet box; an hour or more).
+scale	module	tests.test_native_open_depth	OPEN,BND,RDR	100k-article fixture opened by replay and checkpoint
+scale	module	tests.test_native_status_scale	OPS,BND	status and obligations over 100k/1M fixtures
+scale	module	tests.test_native_over_window	BND,RDR	whole-range OVER under a small quantum equals one hold
+scale	module	tests.test_native_over_cursor_cost	BND,LAT	OVER cost per hold (measurement)
+scale	module	tests.test_native_status_live_posts	LAT,BND,OPS	status after 60,000 POSTs within 2 s of baseline
+scale	module	tests.test_native_newnews_wildmat	BND,RDR	NEWNEWS over 1000 articles while another reader is served
+scale	module	tests.test_native_heap_from_profile	MEM,OPS	heap from profile; VmHWM under the limit
+scale	module	tests.test_native_image_floor	MEM,OPS	stripped image floors
+scale	module	tests.test_native_served_line_stack	BND,RDR,DUR	2M-line and 4 MiB-line articles at a 1 MiB stack
+scale	module	tests.test_native_reader_index	RDR,DUR	pinned-view index over 10k similar ids (two hours)
+scale	module	tests.test_native_reclaim_walk	CKPT,RDR,MEM	live reclaim walk; RSS with the opt-in
+scale	env	FN_OPEN_DEPTH_FIXTURES=/tank/fn/scratch/fixtures	OPEN	the open-depth and OVER fixture stores on hbox
+scale	env	FN_OVER_COST_FIXTURES=n1k-2k:n10k-2k:syn100k-2k	BND	which fixtures the OVER cost measurement opens
+scale	env	FN_STATUS_SCALE_FIXTURES=/tank/fn/scratch/fixtures	OPS	status-scale fixtures
+scale	env	FN_RUN_NATIVE_READER_INDEX=1	RDR	the reader-index gate runs
+scale	env	FN_RUN_RECLAIM_RSS=1	MEM	the reclaim walk's resident-set measurement
+scale	tool	python3 tools/fundamentals.py run --tree $T --revision SHA --write	MEM,LAT,FSYNC,OPEN	F1-F8 judged against planning/release-v6.6.0.md section 2 (quiet hbox, 70 min; needs a tree whose build/ holds the four images)
+scale	tool	python3 tools/scale_curve.py run --image $IMAGES/fn-host-developer --tree $T	OPEN,MEM,LAT,CKPT	1k-100k curves (records only; fit flags never fail)
+scale	tool	python3 tools/throughput_gate.py run --image $IMAGES/fn-host-developer --revision SHA --label scen --wait-quiet 1800	LAT,MEM	throughput rows (cut gate 10)
+scale	tool	python3 tools/native_mixed_workload.py --image $IMAGES/fn-host-developer --image-source SHA --out $OUT --mode paired	DUR,RDR,CKPT	mixed POST/read/checkpoint with exact bytes across a graceful restart

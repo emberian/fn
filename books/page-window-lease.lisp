@@ -97,4 +97,100 @@
   (equal (fn-prl-nth 1 (mv-nth 1 (fn-prw-return ledger token))) (fn-prl-nth 1 ledger))
   :hints (("Goal" :in-theory (enable fn-prw-return fn-prl-nth fn-prl-build))))
 
-(in-theory (disable fn-prw-descriptorp fn-prw-admit fn-prw-phase fn-prw-return fn-prw-release))
+;; ---------------------------------------------------------------------------
+;; The verified-window cache's lease (lane window-read, 2026-10-04;
+;; specs/extent-window-read.md "native window-specific admission/cache/borrow
+;; wiring").  A returned window whose publication was read keeps its
+;; private window buffer in the realizer's window cache instead of freeing
+;; it: the job's row becomes a :cached row charged KEEP -- the buffer's own
+;; resident octets, no worker slot, no descriptor, no identity -- and the
+;; rest of its demand is released.  The :cached row is the legacy cache's
+;; shape (fn-prl-settle with CACHEDP), so fn-prl-evict releases KEEP on
+;; actual eviction and fn-prl-file-heldp keeps the file incarnation open
+;; until then.
+
+(defun fn-prw-keep-okp (keep demand)
+  (declare (xargs :guard t))
+  (and (fn-prs-vectorp keep) (fn-prs-vectorp demand)
+       (fn-prs-below keep demand)
+       (equal (fn-prl-nth 1 keep) 0) (equal (fn-prl-nth 2 keep) 0)
+       (equal (fn-prl-nth 3 keep) 0) (equal (fn-prl-nth 4 keep) 0)))
+
+(local
+ (defthm fn-prw-nats-are-a-true-list
+   (implies (fn-prs-nats-p x) (true-listp x))
+   :hints (("Goal" :in-theory (enable fn-prs-nats-p)))))
+
+(defun fn-prw-cache (ledger token keep)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (enable fn-prw-keep-okp fn-prs-vectorp)))))
+  (let* ((row (cdr (fn-prl-binding token (fn-prl-nth 3 ledger))))
+         (charged (fn-prl-nth 1 ledger)) (demand (fn-prl-nth 0 row)))
+    (if (not (and (equal (fn-prw-phase ledger token) :returned)
+                  (true-listp charged) (fn-prw-keep-okp keep demand)))
+        (mv :stale ledger)
+      (mv :cached
+          (fn-prl-build (fn-prl-nth 0 ledger)
+                        (fn-prs-release-reusable charged (fn-prs-release-reusable demand keep))
+                        (fn-prl-nth 2 ledger)
+                        (cons (cons token (list keep :cached nil))
+                              (fn-prl-remove token (fn-prl-nth 3 ledger)))
+                        (fn-prl-nth 4 ledger))))))
+
+; KEYSTONE (the cache's lease).  Only a returned window is cached; its row
+; becomes exactly (KEEP :cached nil), charged no worker slot; the charge
+; released is its demand less KEEP; the identity counter is untouched.
+(defthm fn-prw-cache-keeps-only-the-buffer
+  (implies (equal (mv-nth 0 (fn-prw-cache ledger token keep)) :cached)
+           (let* ((ledger1 (mv-nth 1 (fn-prw-cache ledger token keep)))
+                  (demand (fn-prl-nth 0 (cdr (fn-prl-binding token (fn-prl-nth 3 ledger))))))
+             (and (equal (fn-prw-phase ledger token) :returned)
+                  (fn-prw-keep-okp keep demand)
+                  (equal (cdr (fn-prl-binding token (fn-prl-nth 3 ledger1)))
+                         (list keep :cached nil))
+                  (equal (fn-prl-nth 3 keep) 0)
+                  (equal (fn-prl-nth 1 ledger1)
+                         (fn-prs-release-reusable (fn-prl-nth 1 ledger)
+                                                  (fn-prs-release-reusable demand keep)))
+                  (equal (fn-prl-nth 2 ledger1) (fn-prl-nth 2 ledger)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-prw-cache fn-prl-build fn-prl-nth fn-prl-binding))))
+
+; A window that is not returned is not cached, and the ledger is unchanged.
+(defthm fn-prw-unreturned-window-cannot-cache
+  (implies (not (equal (fn-prw-phase ledger token) :returned))
+           (equal (mv-list 2 (fn-prw-cache ledger token keep)) (list :stale ledger)))
+  :rule-classes nil)
+
+; Caching happens once: the cached row is no longer :returned.
+(defthm fn-prw-cache-happens-once
+  (implies (equal (mv-nth 0 (fn-prw-cache ledger token keep)) :cached)
+           (equal (mv-nth 0 (fn-prw-cache (mv-nth 1 (fn-prw-cache ledger token keep)) token keep2))
+                  :stale))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-prw-cache fn-prw-phase fn-prl-build fn-prl-nth fn-prl-binding))))
+
+; A cached window holds its file incarnation until eviction: retirement
+; evicts first (host/native/extent.lisp fnn-extent-close).
+(defthm fn-prw-cached-window-holds-file
+  (implies (and (equal (mv-nth 0 (fn-prw-cache ledger token keep)) :cached)
+                (consp token) (consp (cdr token)) (consp (cddr token)))
+           (equal (fn-prl-close-preview (mv-nth 1 (fn-prw-cache ledger token keep))
+                                        (fn-prl-nth 2 token)) :read-file-held))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-prw-cache fn-prl-build fn-prl-nth
+                                    fn-prl-close-preview fn-prl-file-heldp))))
+
+; Eviction releases exactly KEEP and removes the row.
+(defthm fn-prw-cached-window-evicts-its-keep
+  (implies (equal (mv-nth 0 (fn-prw-cache ledger token keep)) :cached)
+           (let ((ledger1 (mv-nth 1 (fn-prw-cache ledger token keep))))
+             (and (equal (mv-nth 0 (fn-prl-evict ledger1 token)) :evicted)
+                  (equal (fn-prl-nth 1 (mv-nth 1 (fn-prl-evict ledger1 token)))
+                         (fn-prs-release-reusable (fn-prl-nth 1 ledger1) keep)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-prw-cache fn-prl-evict fn-prl-build fn-prl-nth
+                                    fn-prl-binding fn-prw-keep-okp fn-prs-vectorp))))
+
+(in-theory (disable fn-prw-descriptorp fn-prw-admit fn-prw-phase fn-prw-return fn-prw-release
+                    fn-prw-cache fn-prw-keep-okp))

@@ -1049,9 +1049,12 @@ class StrangerTests(NodeCase):
                                          "different text", "wren <wren@friends.invalid>"))
         after = talk.command("GROUP local.general", "211").split()[1]
         self.assertEqual(before, after, "a repeated Message-ID made a new article")
-        for reply in (same, other):
-            self.assertTrue(reply.startswith("4") or "already" in reply.lower(), reply)
-            self.assertGreater(len(reply), 4, "no reason after the code: " + reply)
+        # D25 (books/nntp-post.lisp): the same bytes are the duplicate answer,
+        # changed bytes under the held id the conflict answer.  Any 4xx used to
+        # pass here, so a conflict answered to the identical resend went unseen.
+        self.assertEqual(same, "441 posting failed; this article is already stored here")
+        self.assertEqual(
+            other, "441 posting failed; a different article with this Message-ID is stored here")
         talk.quit()
         talk.record()
         self.saw("the same article again -> %s; another article under the same id -> %s; "

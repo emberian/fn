@@ -1941,6 +1941,21 @@ This installs only the explicit output projection, not a full allocation gate."
 (defstruct (fnn-response-capture (:constructor %make-fnn-response-capture))
   context arena catalog connection identity grant window-read)
 
+(defun fnn-owner-await-response-identity-locked (service)
+  "Owner held, in the step that queued a socket connection's submission:
+reserve the response identity of the reply its completion will carry, into
+the bound response capture (the I/O loop copies it to the connection,
+fnn-mux-capture-output-grant).  That reply is materialized when the
+completion arrives, which may be in a stop's drain (fnn-mux-stop-loop): after
+the fence, where the :live section fnn-owner-response-identity is refused, so
+the uncertain reply met a bare close (test_native_owner's two-client case,
+since 21d932152).  Reserved here, it needs no section after the step."
+  (let ((capture *fnn-response-capture*))
+    (when (and capture (null (fnn-response-capture-identity capture)))
+      (setf (fnn-response-capture-identity capture)
+            (fnn-owner-response-identity-locked
+             service (fnn-response-capture-connection capture))))))
+
 (defun fnn-owner-capture-reader-context (cid)
   "Owner held: capture the same effective view before any chunk factory."
   (when (and *fnn-response-capture*
@@ -5883,8 +5898,9 @@ cold-read-ownership, Codex r31 F1/F2).  A refusal is ACL2's word."
           (return-from fnn-owner-cold-issue-locked old))
         ;; The failed scalar activation has unwound. No alias from it can
         ;; outlive this last-borrow release, which precedes the next draw.
+        ;; A borrowed window has returned verified: it is released as
+        ;; published (its borrower read it), never cancelled.
         (setf (fnn-owner-cold-read-abandonedp old) t)
-        (fnn-extent-window-cancel (fnn-owner-cold-read-worker old) (fnn-owner-cold-read-token old))
         (fnn-owner-cold-window-result-locked service old)
         (setf (fnn-response-capture-window-read capture) nil)))
     (let ((directp (and (not windowp) (not (fnn-extent-pool-funded-p)))))
@@ -5967,34 +5983,85 @@ alias; the caller may refund only AFTER this activation has returned."
     (when worker (setf (fnn-cold-worker-result worker) nil))
     (values answer settled-io cachedp evicted condition)))
 
+(defun fnn-owner-cold-window-fault (word)
+  "The condition a window that ended in a fault stops the owner with: the
+job's own condition, or the core's verdict (fn-pwr-outcome) named as the
+whole-extent realizer names it."
+  (if (typep word 'condition) word
+    (make-condition 'fnn-extent-fault
+                    :message (case (and (consp word) (second word))
+                               (:read "arena-extent-read: issued read was short")
+                               (:commitment "arena-extent-trailer: issued read commitment differs")
+                               (:digest "arena-extent-digest: issued read digest differs")
+                               (t (format nil "arena-extent-verdict: issued window ended ~s" word))))))
+
 (defun fnn-owner-cold-window-result-locked (service read)
-  "Owner held. READY grants a scalar borrow; it does not refund the window."
+  "Owner held. READY grants a scalar borrow; it does not refund the window.
+Every other returned outcome settles the window once: a publication after
+its last borrow, a cancellation, or a fault -- the core's (a short or failed
+read, a damaged extent, cancelled or not: specs/storage.md PRF-1057, SCN-216)
+or a condition the job retained -- which is settled and then stops the
+owner, as a late store fault does on the whole-extent line."
   (when (fnn-owner-cold-read-settledp read)
     (return-from fnn-owner-cold-window-result-locked (fnn-owner-cold-read-outcome read)))
-  (let ((worker (fnn-owner-cold-read-worker read)) (token (fnn-owner-cold-read-token read)))
+  (let ((worker (fnn-owner-cold-read-worker read)) (token (fnn-owner-cold-read-token read))
+        (hold (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD"))
+        (mode (fnn-developer-selector "FN_NATIVE_PAGE_IO_RESULT"))
+        (condition nil))
     (unless (fnn-extent-executor-returned-p worker)
       (return-from fnn-owner-cold-window-result-locked nil))
     (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
       (fnn-owner-output-observe-returned service read))
     (let ((word (fnn-extent-window-outcome worker token)))
-      (cond ((eq word :ready)
-             (unless (fnn-owner-cold-read-abandonedp read)
-               (setf (fnn-owner-cold-read-borrowedp read) t)
-               (return-from fnn-owner-cold-window-result-locked t))
-             (unless (eq (fnn-extent-window-release worker token) :released)
-               (fnn-fault "window last-borrow release lacked its receipt")))
-            ((eq word :cancelled)
-             (unless (eq (fnn-extent-window-settle-cancelled worker token) :released)
-               (fnn-fault "cancelled window release lacked its receipt")))
-            ((eq word :pending) (return-from fnn-owner-cold-window-result-locked nil))
-            (t (fnn-fault "decoded/raw window ended without authenticated publication: ~s" word))))
+      (when (eq word :pending)
+        (return-from fnn-owner-cold-window-result-locked nil))
+      (when (and (eq word :ready) (not (fnn-owner-cold-read-abandonedp read)))
+        (setf (fnn-owner-cold-read-borrowedp read) t)
+        (return-from fnn-owner-cold-window-result-locked t))
+      ;; Developer seam: a settlement attempt naming no job is stale.
+      (when (and hold (equal mode "stale"))
+        (let ((*print-pretty* nil))
+          (fnn-err "WINDOW-IO stale answer=~s" (fnn-extent-window-settle-cancelled worker nil))))
+      (let* ((answer (cond ((eq word :ready) :publish)
+                           ((eq word :cancelled) :cancelled)
+                           ((typep word 'condition) '(:fault :error))
+                           (t word)))
+             (released
+               ;; A published raw window's buffer moves into the verified-
+               ;; window cache when ACL2 admits it (fn-pwc-cache).
+               (cond ((eq word :ready) (fnn-extent-window-release worker token t))
+                     ((eq word :cancelled) (fnn-extent-window-settle-cancelled worker token))
+                     (t (setq condition (fnn-owner-cold-window-fault word))
+                        (fnn-extent-window-settle-fault worker token)))))
+        (when hold
+          (let ((*print-pretty* nil))
+            (fnn-err "WINDOW-IO settled token=~s answer=~s" token answer)))
+        (fnn-extent-window-observation "window-settle token=~s word=~s answer=~s"
+                                       token released answer)
+        (fnn-extent-native-observe :settle t token)
+        (when (and hold (equal mode "duplicate"))
+          (let ((*print-pretty* nil))
+            (fnn-err "WINDOW-IO duplicate answer=~s"
+                     (fnn-extent-window-settle-cancelled worker token))))
+        (unless (eq released :released)
+          (fnn-fault (cond ((eq word :ready) "window last-borrow release lacked its receipt")
+                           ((eq word :cancelled) "cancelled window release lacked its receipt")
+                           (t "faulted window release lacked its receipt"))))))
     (setf (fnn-owner-cold-read-borrowedp read) nil
           (fnn-owner-cold-read-settledp read) t
           (fnn-owner-cold-read-worker read) nil
-          (fnn-owner-cold-read-outcome read) t)
+          (fnn-owner-cold-read-outcome read) (or condition t))
     (fnn-owner-cold-remove-locked service read)
     (fnn-owner-output-dependency-consumed service read)
     (fnn-owner-release-pending-extents-locked service)
+    (when condition
+      (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+        (incf (third *fnn-extent-stats*)))
+      (unless *fnn-owner-last-fault*
+        (setq *fnn-owner-last-fault*
+              (format nil "owner core/store fault; process stopped: ~a" condition)))
+      (fnn-err "owner core/store fault; process stopped: ~a" condition)
+      (error condition))
     t))
 
 (defun fnn-owner-response-window-close (service capture)
@@ -6006,7 +6073,10 @@ Cancel now; release only after independent physical return."
         (when read
           (setf (fnn-owner-cold-read-abandonedp read) t)
           (unless (fnn-owner-cold-read-settledp read)
-            (fnn-extent-window-cancel (fnn-owner-cold-read-worker read) (fnn-owner-cold-read-token read))
+            ;; A borrowed window returned verified and was read: it is
+            ;; released as published.  Any other is cancelled first.
+            (unless (fnn-owner-cold-read-borrowedp read)
+              (fnn-extent-window-cancel (fnn-owner-cold-read-worker read) (fnn-owner-cold-read-token read)))
             (fnn-owner-cold-window-result-locked service read))
           (setf (fnn-response-capture-window-read capture) nil)))))
   :window-closed)
@@ -6069,11 +6139,17 @@ before exact settlement releases a charge. Owner->extent serializes it."
     (when (or (null (fnn-owner-cold-read-token read)) (fnn-owner-cold-ready-p read))
       (fnn-owner-cold-result-locked service read))))
 
-(defun fnn-owner-cold-settle (service read)
-  "A returned job, not a timeout, can transfer its result and release credit."
+(defun fnn-owner-cold-settle (service read &optional (class :control))
+  "A returned job, not a timeout, can transfer its result and release credit.
+CLASS: the gate class of the read this page belongs to.  A served read's
+settlement is that read's own work, admitted as its class (a reader's
+:reader), so a barrier in flight does not hold it: only :inspect, :commit and
+:reader quanta run while one is pending (books/owner-commit-steps.lisp
+fn-ocs-next), and F4-R asks every served read answered within D_R under an
+injected disk stall.  The reaper's settlement is maintenance (:control)."
   (handler-case
       (fnn-owner-serialized service nil
-                            (lambda () (fnn-owner-cold-settle-locked service read)) :control)
+                            (lambda () (fnn-owner-cold-settle-locked service read)) class)
     (serious-condition (condition)
       (ignore-errors (fnn-owner-fault-service service nil condition))
       condition)))
@@ -6122,7 +6198,7 @@ enters the section, which reads the head again under the mutex."
   (when (fnn-extent-executor-discard-idle)
     (fnn-fault "cold workers retain terminal cleanup debt")))
 
-(defun fnn-owner-cold-await (service read &optional line-since)
+(defun fnn-owner-cold-await (service read &optional line-since (class :control))
   "Await an already-captured read off owner lock. Return the core dependency
 word and its clock observations; the caller retains its logical cursor/pin.
 A refusal or timeout never authorizes releasing the physical I/O lease.
@@ -6134,7 +6210,7 @@ LINE-SINCE; ACL2's line deadline (fn-otb-line-dependency-step) answers
          (token (fnn-owner-cold-read-token read))
          (worker (fnn-owner-cold-read-worker read)))
     (unless token
-      (fnn-owner-cold-settle service read)
+      (fnn-owner-cold-settle service read class)
       (when (and line-since
                  (eq (fnn-core 'fn-otb-line-dependency-step line-since since limit) :unavailable))
         (return-from fnn-owner-cold-await (values :unavailable line-since since limit)))
@@ -6150,7 +6226,7 @@ LINE-SINCE; ACL2's line deadline (fn-otb-line-dependency-step) answers
                                 :line-unavailable
                               (fnn-core 'fn-otb-dependency-step since now limit done))))
              (cond ((eq decision :serve)
-                    (let ((got (fnn-owner-cold-settle service read)))
+                    (let ((got (fnn-owner-cold-settle service read class)))
                       (when (typep got 'serious-condition) (error got)))
                     (return (values :serve since now limit)))
                    ((eq decision :unavailable)
@@ -6181,7 +6257,7 @@ LINE-SINCE; ACL2's line deadline (fn-otb-line-dependency-step) answers
 (defun fnn-owner-cold-line (service cid incoming socket class peerp entry read
                             &optional cold-since)
   (declare (ignore entry))
-  (multiple-value-bind (word since now limit) (fnn-owner-cold-await service read cold-since)
+  (multiple-value-bind (word since now limit) (fnn-owner-cold-await service read cold-since class)
     (case word
       (:serve (fnn-owner-chunk-results
                service cid incoming socket class peerp
@@ -6223,10 +6299,11 @@ refusal keyword.  LINE-SINCE: the instant of the line's first miss."
              (fnn-owner-chunk-results service cid incoming socket class peerp
                                       results line-since))))))
 
-(defun fnn-owner-cold-poll (service read line-since since)
+(defun fnn-owner-cold-poll (service read line-since since &optional (class :control))
   "Never waits for the page.  (values WORD SINCE NOW LIMIT): :serve (the page
-came and READ is settled), :unavailable (ACL2's deadline passed, the read's
-publication revoked), (:wait MS), or READ itself when it is a refusal word."
+came and READ is settled, as CLASS: fnn-owner-cold-settle), :unavailable
+(ACL2's deadline passed, the read's publication revoked), (:wait MS), or READ
+itself when it is a refusal word."
   (when (keywordp read) (return-from fnn-owner-cold-poll (values read since since nil)))
   (let* ((now (fnn-owner-monotonic-ms)) (limit nil)
          (token (fnn-owner-cold-read-token read))
@@ -6240,7 +6317,7 @@ publication revoked), (:wait MS), or READ itself when it is a refusal word."
                        :line-unavailable
                      (fnn-core 'fn-otb-dependency-step since now limit done))))
     (cond ((eq decision :serve)
-           (let ((got (fnn-owner-cold-settle service read)))
+           (let ((got (fnn-owner-cold-settle service read class)))
              (when (typep got 'serious-condition) (error got)))
            (unless (fnn-owner-cold-read-windowp read) (fnn-owner-cold-cancel read))
            (values :serve since now limit))
@@ -6466,6 +6543,10 @@ EPIPE and the client saw a bare close)."
              (when (eq admit :shed)
                (fnn-owner-shed-queued-locked service))
              (fnn-owner-note-queued service)
+             ;; A socket connection's reply to this submission is rendered
+             ;; by its I/O loop when the completion arrives, possibly in the
+             ;; stop's drain; its identity is reserved now, under the owner.
+             (when socket (fnn-owner-await-response-identity-locked service))
              (return-from step
                (values :await step
                        (and (fnn-owner-core 'fn-acct-host-owner-redeem-waitingp cid) t)
@@ -7538,6 +7619,9 @@ the stop's refusal at a chunk boundary is `owner-stopping'."
         (setf (fnn-owner-service-exporter service) nil
               (fnn-owner-service-export-outcome service)
               (or outcome (cons :failed :archive-write))))
+      ;; r71 F10: the outcome is published and the pin still held; the
+      ;; actor leaves the roster only after this unwind (def-actor).
+      (fnn-owner-worker-tail-hold "exporter")
       (fnn-owner-snapshot-pin-release service pin))))
 
 ;;; Q16 (lane online-reclaim): `store reclaim --dry-run' on the running

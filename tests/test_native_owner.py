@@ -1,5 +1,6 @@
 """Developer-image owner diagnostic: writable NNTP POST with no Python peer."""
 import datetime
+import json
 import os
 import re
 import socket
@@ -696,10 +697,20 @@ class NativeOwnerTests(unittest.TestCase):
         self.assertTrue(reader.command(b"QUIT").startswith(b"205 "))
         self.node.stop(process=restarted)
 
-    # The owner entries raw-dispatched over host/owner-served-carried.lisp's
-    # row, under A-OWNER-INVARIANT-CARRIED (lane post-guard-off): their
-    # whole-Store guard is not evaluated per call in a production run.
-    RAW_OWNER_ENTRIES = 7
+    @staticmethod
+    def declared_raw_entries():
+        """The raw-dispatched entries the definterface forms declare, as
+        planning/interfaces.json lists them: the :raw-with rows (the owner's
+        under fn-owner-served-carried and A-OWNER-INVARIANT-CARRIED, whose
+        whole-Store guard is not evaluated per call in a production run, and
+        the paged history's) and the :raw-guarded creators.  The image's
+        dispatch table is filled from the same forms
+        (fnn-install-raw-dispatch), and interface_emit.py --check, an image
+        preflight, refuses a registry that disagrees with them."""
+        registry = json.loads((ROOT / "planning" / "interfaces.json").read_text())
+        names = [row["name"] for row in registry["raw_dispatched"] + registry["raw_guarded"]]
+        assert len(names) == len(set(names)), names
+        return len(names)
 
     def test_raw_owner_entries_answer_as_the_counterpart(self):
         # The served POST, its duplicate and the read back are the same with
@@ -719,7 +730,8 @@ class NativeOwnerTests(unittest.TestCase):
         match = re.search(rb"fn-dispatch: counterpart for (\d+) raw-dispatched entries",
                           counterpart_stderr)
         self.assertIsNotNone(match, counterpart_stderr[-2000:])
-        self.assertEqual(int(match.group(1)), self.RAW_OWNER_ENTRIES, counterpart_stderr[-2000:])
+        self.assertEqual(int(match.group(1)), self.declared_raw_entries(),
+                         counterpart_stderr[-2000:])
 
     def test_client_disconnect_is_not_a_global_owner_fault(self):
         process, port = self.node.start_store_owner(once=False)
