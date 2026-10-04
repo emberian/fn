@@ -46,7 +46,6 @@
   "host/native/admission-preallocation.lisp": "F10 admission census / authority preparation (PARK). owner: L3 PARK-THE-CODEX-PILES (build/coordinator/COMPLETE-BEFORE-6.6.0.md, row PARK)",
   "host/native/auth-adoption-parked.lisp": "F06 account adoption, off the served start since stage 0 (D46: no gate before its producer, the account-adoption continuation); L3 parks the logical core and deletes the stubs. owner: L3 PARK-THE-CODEX-PILES (build/coordinator/COMPLETE-BEFORE-6.6.0.md, row PARK)",
   "host/native/bpsec-crypto.lisp": "F08 BPSec crypto (PARK). owner: L3 PARK-THE-CODEX-PILES (build/coordinator/COMPLETE-BEFORE-6.6.0.md, row PARK)",
-  "host/native/extent-decoded.lisp": "F02 decoded window (L3: DELETE). owner: L3 PARK-THE-CODEX-PILES (build/coordinator/COMPLETE-BEFORE-6.6.0.md, row PARK)",
   "host/native/index-writer-turn.lisp": "F03 index group (L3: delete the ledger superstructure, park the seed). owner: L3 PARK-THE-CODEX-PILES (build/coordinator/COMPLETE-BEFORE-6.6.0.md, row PARK)",
   "host/native/ninep.lisp": "F07 9P (PARK out of the Makefile). owner: L3 PARK-THE-CODEX-PILES (build/coordinator/COMPLETE-BEFORE-6.6.0.md, row PARK)",
   "host/native/post-captured-parked.lisp": "F01 post-identity (PARK the source-cursor chain). owner: L3 PARK-THE-CODEX-PILES (build/coordinator/COMPLETE-BEFORE-6.6.0.md, row PARK)",

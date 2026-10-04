@@ -14,6 +14,7 @@
 ; reclaimable where the counts answer reclaimed (the conclusion fails), and
 ; the keystones without F must fail.
 (in-package "ACL2")
+(include-book "must-fail-checked")
 (include-book "../../books/native-status-columns")
 (include-book "store-reclaim-holders-tests")
 

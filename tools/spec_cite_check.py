@@ -177,6 +177,17 @@ def defined_names() -> set:
         # `(fn-arena-seal-buffer :logic ... :exec ...)' inside `defabsstobj'.
         names |= set(re.findall(r"\(deftheory\s+([a-z][^\s()]*)", text, re.I))
         names |= set(re.findall(r"\((fn[^\s()]*)\s+:logic\s", text, re.I))
+        # A cursor's generated step (books/def-cursor.lisp: def-cursor and
+        # def-cursor/output intern NAME-STEP), `(def-cursor/output fn-nnw-stream ...)'.
+        names |= {name + "-step" for name in re.findall(
+            r"^\s*\(def-cursor(?:/output)?\s+([^\s()]+)", text, re.M | re.I)}
+    # Named rows and sections a definer macro introduces by its first
+    # argument: a carried relation, `(def-carried fn-owner-served-carried ...)'
+    # (books/def-carried.lisp), and a raw host section,
+    # `(def-section fnn-quantum-mux-finish ...)' (host/native/owner.lisp).
+    for path in sorted((ROOT / "books").glob("*.lisp")) + sorted((ROOT / "host").rglob("*.lisp")):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        names |= set(re.findall(r"^\s*\(def-(?:carried|section)\s+([^\s()]+)", text, re.M | re.I))
     return {name.lower() for name in names}
 
 
