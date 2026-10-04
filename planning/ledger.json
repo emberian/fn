@@ -1996,6 +1996,7 @@
     "books/served-availability",
     "books/served-available-commands",
     "books/served-available-read",
+    "books/served-available-access",
     "books/article-stream",
     "tests/acl2/article-stream-tests",
     "books/article-stream-server",
@@ -2010,6 +2011,7 @@
     "tests/acl2/catalog-available-readers-tests",
     "tests/acl2/served-available-commands-tests",
     "tests/acl2/served-available-read-tests",
+    "tests/acl2/served-available-access-tests",
     "books/def-cursor-batch",
     "books/newnews-stream-cursor",
     "tests/acl2/newnews-stream-cursor-tests",
@@ -2535,26 +2537,26 @@
     "tests/acl2/withdrawal-index-carried-tests"
   ],
   "totals": {
-    "books": 3025,
-    "books_in_root_closure": 2849,
-    "roots": 2531,
-    "theorems": 39970,
-    "functions": 25699,
-    "assert_events": 27320,
+    "books": 3027,
+    "books_in_root_closure": 2851,
+    "roots": 2533,
+    "theorems": 39997,
+    "functions": 25714,
+    "assert_events": 27322,
     "must_fails": 2686,
     "prover_refusals": 0,
     "encapsulates": 255,
     "guards": {
       "verified": 4052,
-      "declared-off": 3339,
+      "declared-off": 3350,
       "default-guarded": 14192,
-      "default-unguarded": 4116
+      "default-unguarded": 4120
     },
-    "suspect_theorems": 1459,
+    "suspect_theorems": 1461,
     "export_hygiene_warnings": 425,
     "enabled_projection_warnings": 78,
     "teeth_form_warnings": 294,
-    "include_hygiene_warnings": 4009,
+    "include_hygiene_warnings": 4011,
     "host_names_warnings": 3504,
     "hand_written_record_warnings": 19
   },
@@ -46161,6 +46163,35 @@
       "read_error": null
     },
     {
+      "book": "books/served-available-access.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 19,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 7,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "served-available-read"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-avac-peer-session-base-of-with-base",
+        "fn-avac-projected-of-set-cursor"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/served-available-commands.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -82829,6 +82860,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/served-available-access-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 8,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 2,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 16,
+      "defmacros": 17,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/served-available-access"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/served-available-commands-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -89507,6 +89564,22 @@
       "line": 110,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-token-argp"
+      ]
+    },
+    {
+      "theorem": "fn-avac-peer-session-base-of-with-base",
+      "book": "books/served-available-access.lisp",
+      "line": 42,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-avac-projected-of-set-cursor",
+      "book": "books/served-available-access.lisp",
+      "line": 46,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
     },
     {
@@ -120064,6 +120137,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/served-available-access.lisp",
+        "line": 36,
+        "include": "served-available-read",
+        "included": "books/served-available-read.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/served-available-commands.lisp",
         "line": 4,
         "include": "protocol-served",
@@ -132318,6 +132398,13 @@
         "line": 4,
         "include": "accounts-wire-tests",
         "included": "tests/acl2/accounts-wire-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-available-access-tests.lisp",
+        "line": 21,
+        "include": "../../books/served-available-access",
+        "included": "books/served-available-access.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

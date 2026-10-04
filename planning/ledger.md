@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 3025 |
-| Certification roots in the Makefile | 2531 |
-| Books inside the root closure | 2849 |
-| `defthm` and `defthmd` events | 39970 |
-| `defun` events | 25699 |
+| Books read | 3027 |
+| Certification roots in the Makefile | 2533 |
+| Books inside the root closure | 2851 |
+| `defthm` and `defthmd` events | 39997 |
+| `defun` events | 25714 |
 | Functions with verified guards | 4052 |
-| Functions declared `:verify-guards nil` and never verified | 3339 |
+| Functions declared `:verify-guards nil` and never verified | 3350 |
 | Functions left at the default with an explicit guard | 14192 |
-| Functions left at the default with no guard | 4116 |
-| `assert-event` checks | 27320 |
+| Functions left at the default with no guard | 4120 |
+| `assert-event` checks | 27322 |
 | `must-fail` checks | 2686 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 255 |
-| Theorems flagged SUSPECT by shape | 1459 |
+| Theorems flagged SUSPECT by shape | 1461 |
 | Export-hygiene warnings | 425 |
 | Enabled-projection warnings | 78 |
 | Teeth-form warnings | 294 |
-| Include-hygiene warnings | 4009 |
+| Include-hygiene warnings | 4011 |
 | Host-names warnings | 3504 |
 | Hand-written-record warnings | 19 |
 
@@ -1569,6 +1569,7 @@ that `make certify` requests.
 | `books/scram.lisp` | root | 34 | 53 | 0/0/53/0 | 0 | 0 | 0 |
 | `books/served-auth-wire-bridge.lisp` | root | 15 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/served-availability.lisp` | root | 14 | 8 | 1/0/5/2 | 0 | 0 | 1 |
+| `books/served-available-access.lisp` | root | 19 | 7 | 0/7/0/0 | 0 | 0 | 2 |
 | `books/served-available-commands.lisp` | root | 2 | 17 | 6/0/10/1 | 0 | 0 | 0 |
 | `books/served-available-read.lisp` | root | 4 | 25 | 0/25/0/0 | 0 | 0 | 0 |
 | `books/served-carried.lisp` | root | 18 | 13 | 1/0/12/0 | 0 | 0 | 0 |
@@ -2883,6 +2884,7 @@ that `make certify` requests.
 | `tests/acl2/scram-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 0 | 0 |
 | `tests/acl2/serve-depth-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 36 | 0 | 0 |
 | `tests/acl2/served-auth-wire-bridge-tests.lisp` | root | 8 | 0 | 0/0/0/0 | 1 | 0 | 0 |
+| `tests/acl2/served-available-access-tests.lisp` | root | 8 | 8 | 0/4/0/4 | 2 | 0 | 0 |
 | `tests/acl2/served-available-commands-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 2 | 0 | 0 |
 | `tests/acl2/served-available-read-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 4 | 0 | 0 |
 | `tests/acl2/served-catalog-chain-tests.lisp` | root | 7 | 5 | 0/2/0/3 | 4 | 7 | 0 |
@@ -3168,6 +3170,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-auth-session-peer-folds` | `books/nntp-auth-roles.lisp` | 511 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-auth-session-peer |
 | `fn-auth-single-is-the-line` | `books/nntp-auth-invariants.lisp` | 577 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-auth-token-argp-forward` | `books/nntp-auth-roles.lisp` | 110 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-token-argp |
+| `fn-avac-peer-session-base-of-with-base` | `books/served-available-access.lisp` | 42 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-avac-projected-of-set-cursor` | `books/served-available-access.lisp` | 46 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-aw-c-r` | `books/article-work-primitives.lisp` | 18 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-aw-charge-cost` | `books/article-public-work.lisp` | 60 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-aw-charge-value` | `books/article-public-work.lisp` | 59 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
