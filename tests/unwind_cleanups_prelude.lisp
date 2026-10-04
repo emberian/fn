@@ -10,6 +10,32 @@
 (require :sb-bsd-sockets)
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
+
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-concat (&rest strings)
+  (declare (ignorable strings))
+  (harness-stub-reached 'fnn-concat "host/native/io.lisp"))
+(defun fnn-emit (stream text)
+  (declare (ignorable stream text))
+  (harness-stub-reached 'fnn-emit "host/native/io.lisp"))
+(defun fnn-log-offer (destination octets)
+  (declare (ignorable destination octets))
+  (harness-stub-reached 'fnn-log-offer "host/native/io.lisp"))
+(defun fnn-string-octets (string)
+  (declare (ignorable string))
+  (harness-stub-reached 'fnn-string-octets "host/native/io.lisp"))
+;;; ---- derived stubs: END ----
 (declaim (declaration xargs))
 (unless (fboundp 'member-equal) (defun member-equal (x l) (member x l :test #'equal)))
 (unless (fboundp 'assoc-equal) (defun assoc-equal (x l) (assoc x l :test #'equal)))
