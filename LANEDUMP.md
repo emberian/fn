@@ -4591,3 +4591,13 @@ First slice: `books/output-tariff-article.lisp` admitted on the laptop (10 forms
 uncertified, unwired; the exact continuation is the numbered list in the coordinator lanedump
 (steps 1-7). Nothing certified, no image, no native run. The only owner-host.lisp region this lane
 touches is `fn-owner-output-tariff-preview` (:5512-5518), untouched so far.
+
+## Lane tariff2: 2026-10-04 (Opus; exited on ramp-down)
+
+The full lanedump is build/coordinator/lanedumps/tariff2.md. ARTICLE is priced from its row
+(books/output-tariff-article-row.lisp) and wired. In accounted mode an unpriced family is
+answered 403 with the connection kept, and an over-quantum reply 400 and close
+(books/output-admission-line.lisp). Status and health show the accounting mode.
+Certified narrowly on persvati: certify-20261004T044137Z-1141752 and certify-20261004T051020Z-1493764.
+The pass-through stays until the last served family is priced (root ruling; specs/resource-vector.md).
+The opt-in (native-config) is on lane/tariff2-optin for batch R. PRF-1316 is proof-owed.
