@@ -210,7 +210,10 @@
            :use ((:instance fn-owner-retain-statep-implies-lgoc (state state))))))
 
 ; fn-owner-io: an unsafe observation is refused in the body (state
-; unchanged); each safe arm is a configured-owner keystone.
+; unchanged); each safe arm is a configured-owner keystone.  The safe set is
+; the served one (fn-psrv-io-safep: any staged record may publish), so the
+; :log-order and file arms use the psrv keystones, which need no staged-article
+; premise.
 (defthm fn-owner-io-preserves-retain-state
   (implies (fn-owner-retain-statep state)
            (fn-owner-retain-statep (mv-nth 2 (fn-owner-io operation result state))))
@@ -221,9 +224,9 @@
            :use ((:instance fn-owner-retain-statep-implies-lgoc (state state))
                  (:instance fn-lgoc-log-reserve-preserves-invariant
                             (oc (fn-owner-ocfg state)))
-                 (:instance fn-lgoc-log-order-preserves-invariant
+                 (:instance fn-psrv-log-order-preserves-invariant
                             (oc (fn-owner-ocfg state)))
-                 (:instance fn-lgoc-rcon-io-preserves-invariant
+                 (:instance fn-psrv-rcon-io-preserves-invariant
                             (oc (fn-owner-ocfg state)))))))
 
 ; The refusal arm (teeth): an unsafe observation answers :unsafe-observation
