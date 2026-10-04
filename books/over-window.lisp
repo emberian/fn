@@ -63,7 +63,7 @@
 
 (defun fn-ovw-hdr-free-sourcep (src)
   (declare (xargs :guard t))
-  (and (not (nth 4 src)) (fn-scol-field-index (nth 2 src)) t))
+  (and (not (consp (fn-cur-at 4 src))) (fn-scol-field-index (fn-cur-at 2 src)) t))
 
 (defun fn-ovw-hdr-quantum (src w)
   (declare (xargs :guard t))

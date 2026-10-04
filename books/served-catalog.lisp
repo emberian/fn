@@ -931,17 +931,17 @@
 
 (defun fn-ovw-hdr-content (src article fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :guard t :verify-guards nil))
-  (if (nth 4 src)
-      (fn-rcompat-xref-content (cdr (nth 4 src)) article fn-arena)
+  (if (consp (fn-cur-at 4 src))
+      (fn-rcompat-xref-content (cdr (fn-cur-at 4 src)) article fn-arena)
     (if (consp article)
-        (fn-scol-hdr-content (nth 2 src) article fn-arena fn-cat)
+        (fn-scol-hdr-content (fn-cur-at 2 src) article fn-arena fn-cat)
       (list :error))))
 
 (defun fn-ovw-hdr-keepp (src content)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-nntp-hdr-okp content)
-       (or (not (eq (nth 1 src) :xpat))
-           (fn-nntp-xpat-matchesp (nth 3 src) (fn-nntp-hdr-octets content)))))
+       (or (not (eq (fn-cur-at 1 src) :xpat))
+           (fn-nntp-xpat-matchesp (fn-cur-at 3 src) (fn-nntp-hdr-octets content)))))
 
 ; The lines of NUMBERS: the -cat readers' rows (fn-nntp-hdr-lines-for-
 ; numbers-cat, fn-nntp-xpat-lines-for-numbers-cat, fn-rcompat-hdr-lines-cat;
@@ -970,14 +970,14 @@
 ; The arm's status line (fn-nntp-hdr-initial: HDR's 225, XHDR's and XPAT's 221).
 (defun fn-ovw-hdr-status (src)
   (declare (xargs :guard t))
-  (fn-ovw-status (if (eq (nth 1 src) :hdr)
+  (fn-ovw-status (if (eq (fn-cur-at 1 src) :hdr)
                      (fn-proto-text "HDR" :headers)
                    (fn-proto-text * :header))))
 
 ; The arm's reply when the range holds no line.
 (defun fn-ovw-hdr-empty (src)
   (declare (xargs :guard t))
-  (case (nth 1 src)
+  (case (fn-cur-at 1 src)
     (:xpat (append (fn-ovw-hdr-status src) '(46 13 10)))
     (:xhdr (fn-ovw-status (fn-proto-text * :none-selected)))
     (otherwise (fn-ovw-status (fn-proto-text * :empty-range)))))
@@ -992,6 +992,14 @@
 
 ; (GROUP K TOP V NIL OWEDP NIL SRC): the OVER cursor's slots, its LEGACYP and
 ; SERVER unused, SRC the header source.
+; The header cursor's window readers run under the owner mutex as the OVER
+; window's do: guards verified (books/over-window.lisp fn-ovw-step).
+(verify-guards fn-ovw-hdr-content)
+(verify-guards fn-ovw-hdr-keepp)
+(verify-guards fn-ovw-hdr-lines-for-numbers)
+(verify-guards fn-ovw-hdr-lines)
+(verify-guards fn-ovw-hdr-reply)
+
 (defun fn-ovw-hdr-cursor (group k top v owedp src)
   (declare (xargs :guard t))
   (list group k top v nil owedp nil src))
@@ -1243,12 +1251,25 @@
                               fn-nntp-reply-effect))))
 
 (local
+ (defthm fn-ovw-hdr-reply-status-first
+   (let ((octets (fn-ovw-hdr-reply lines src t)))
+     (not (and (consp octets) (equal (car octets) 50)
+               (consp (cdr octets)) (equal (car (cdr octets)) 49))))
+   :hints (("Goal" :in-theory (e/d (fn-ovw-hdr-reply fn-ovw-hdr-status fn-ovw-hdr-empty fn-ovw-status)
+                                   (fn-nntp-stuff-lines))))))
+
+(local
  (defthm fn-ovw-cursor-octets-status-first
    (let ((octets (fn-ovw-cursor-octets cur fn-arena fn-cat)))
      (not (and (consp octets) (equal (car octets) 50)
                (consp (cdr octets)) (equal (car (cdr octets)) 49))))
    :hints (("Goal" :in-theory (e/d (fn-ovw-cursor-octets fn-ovw-reply fn-ovw-empty-text fn-ovw-status)
-                                   (fn-ovw-lines fn-nntp-stuff-lines))))))
+                                   (fn-ovw-lines fn-nntp-stuff-lines fn-ovw-hdr-lines fn-ovw-hdr-reply
+                                    fn-ovw-hdr-reply-status-first))
+            :use ((:instance fn-ovw-hdr-reply-status-first
+                             (lines (fn-ovw-hdr-lines (nth 0 cur) (nfix (nth 1 cur)) (nfix (nth 2 cur))
+                                                      (nth 7 cur) (nth 3 cur) fn-arena fn-cat))
+                             (src (nth 7 cur))))))))
 
 (defthm fn-ovw-selectedp-of-expand
   (equal (fn-served-selectedp (fn-ovw-expand effects fn-arena fn-cat))
@@ -1979,10 +2000,167 @@
                     (fn-nntp-single session (fn-proto-text * :syntax)))))
             (fn-nntp-single session (fn-proto-text * :syntax)))))))
 
-(defthm fn-nntp-hdr-command-cat-is-archive
+;;; The header range arms on the cursor, expanded (lane cold-line).  Each arm
+;;; is equated with the arm it replaced (its whole-range body, kept below as
+;;; a local -OLD function with its original proof against the archive), and
+;;; through it with the archive reader: fn-nntp-hdr-command-cat-is-archive,
+;;; fn-nntp-xpat-response-cat-is-archive and fn-rcompat-hdr-cat-is-hdr now
+;;; hold modulo fn-ovw-expand, as OVER's arm does.
+
+(defthm fn-ovw-hdr-lines-of-start
+  (equal (fn-ovw-hdr-lines group (nfix low)
+                           (min (nfix high) (nfix (- (fn-cat-group-next group fn-cat) 1)))
+                           src v fn-arena fn-cat)
+         (fn-ovw-hdr-lines-for-numbers group (fn-scat-range-numbers group (nfix low) (nfix high) v fn-cat)
+                                       src v fn-arena fn-cat))
+  :hints (("Goal" :in-theory (e/d (fn-ovw-hdr-lines fn-scat-range-numbers fn-cnx-view-range)
+                                  (fn-cnx-range-aux fn-scat-range-keep fn-ovw-hdr-lines-for-numbers
+                                   fn-cat-group-next)))))
+
+(defthm fn-nntp-hdr-range-ovw-expands
+  (and (equal (car (fn-nntp-hdr-range-ovw session v token (fn-ovw-hdr-source form field patterns xref) fn-cat))
+              session)
+       (equal (fn-ovw-expand (cdr (fn-nntp-hdr-range-ovw session v token
+                                                         (fn-ovw-hdr-source form field patterns xref) fn-cat))
+                             fn-arena fn-cat)
+              (list (fn-nntp-reply-effect
+                     (if (fn-nntp-session-group session)
+                         (fn-ovw-hdr-reply
+                          (fn-ovw-hdr-lines-for-numbers
+                           (fn-nntp-session-group session)
+                           (fn-scat-range-numbers (fn-nntp-session-group session)
+                                                  (nfix (fn-nntp-range-low (fn-nntp-parse-range token)))
+                                                  (nfix (fn-nntp-range-high (fn-nntp-parse-range token)))
+                                                  v fn-cat)
+                           (fn-ovw-hdr-source form field patterns xref) v fn-arena fn-cat)
+                          (fn-ovw-hdr-source form field patterns xref) t)
+                       (fn-ovw-status (fn-proto-text * :no-group-selected)))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-hdr-range-ovw fn-ovw-hdr-start fn-ovw-cursor-effect
+                            fn-ovw-cursor-effectp fn-ovw-cursor-octets fn-ovw-expand
+                            fn-nntp-make-result fn-nntp-reply-effect fn-ovw-hdr-cursor)
+                           (fn-ovw-hdr-lines fn-ovw-hdr-reply fn-ovw-status fn-nntp-parse-range
+                            fn-cat-group-next fn-ovw-hdr-lines-for-numbers fn-scat-range-numbers
+                            fn-ovw-hdr-source))
+           :use ((:instance fn-ovw-hdr-lines-of-start
+                            (group (fn-nntp-session-group session))
+                            (low (fn-nntp-range-low (fn-nntp-parse-range token)))
+                            (high (fn-nntp-range-high (fn-nntp-parse-range token)))
+                            (src (fn-ovw-hdr-source form field patterns xref)))))))
+
+(defthm fn-ovw-hdr-lines-for-numbers-is-hdr-cat
+  (implies (not (equal form :xpat))
+           (equal (fn-ovw-hdr-lines-for-numbers group numbers (fn-ovw-hdr-source form field patterns nil)
+                                                v fn-arena fn-cat)
+                  (fn-nntp-hdr-lines-for-numbers-cat field group numbers v fn-arena fn-cat)))
+  :hints (("Goal" :induct (fn-nntp-hdr-lines-for-numbers-cat field group numbers v fn-arena fn-cat)
+           :in-theory (e/d (fn-ovw-hdr-content fn-ovw-hdr-keepp fn-ovw-hdr-source)
+                           (fn-scat-available-article fn-scol-hdr-content fn-nntp-hdr-okp
+                            fn-nntp-hdr-line fn-nntp-hdr-octets fn-nntp-decimal-field)))))
+
+(defthm fn-ovw-hdr-reply-is-hdr-multi
+  (implies (not (equal form :xpat))
+           (equal (list (fn-nntp-reply-effect
+                         (fn-ovw-hdr-reply lines (fn-ovw-hdr-source form field patterns xref) t)))
+                  (cdr (if (consp lines)
+                           (fn-nntp-multi session (fn-nntp-hdr-initial (not (equal form :hdr))) lines)
+                         (if (equal form :xhdr)
+                             (fn-nntp-single session (fn-proto-text * :none-selected))
+                           (fn-nntp-single session (fn-proto-text * :empty-range)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ovw-hdr-reply fn-ovw-hdr-status fn-ovw-hdr-empty fn-ovw-status
+                                   fn-ovw-hdr-source fn-nntp-multi fn-nntp-single fn-nntp-make-result
+                                   fn-nntp-hdr-initial)
+                                  (fn-nntp-stuff-lines fn-ovw-status-is-crlf)))))
+
+(defthm fn-ovw-hdr-reply-is-xpat-multi
+  (equal (list (fn-nntp-reply-effect
+                (fn-ovw-hdr-reply lines (fn-ovw-hdr-source :xpat field patterns xref) t)))
+         (cdr (fn-nntp-multi session (fn-nntp-hdr-initial t) lines)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ovw-hdr-reply fn-ovw-hdr-status fn-ovw-hdr-empty fn-ovw-status
+                                   fn-ovw-hdr-source fn-nntp-multi fn-nntp-make-result
+                                   fn-nntp-hdr-initial)
+                                  (fn-nntp-stuff-lines fn-ovw-status-is-crlf))
+           :cases ((consp lines)))
+          ("Subgoal 2" :expand ((fn-nntp-stuff-lines lines)))))
+
+;; The reply of one status line.
+(local
+ (defthm fn-scat-single-is-status
+   (equal (cdr (fn-nntp-single session text))
+          (list (fn-nntp-reply-effect (fn-ovw-status text))))
+   :hints (("Goal" :in-theory (e/d (fn-nntp-single fn-nntp-make-result fn-ovw-status) (fn-ovw-status-is-crlf))))))
+
+(local
+ (defthm fn-scat-expand-of-one-reply
+   (equal (fn-ovw-expand (list (list :reply x)) fn-arena fn-cat)
+          (list (list :reply x)))
+   :hints (("Goal" :in-theory (enable fn-ovw-expand fn-ovw-cursor-effectp fn-nnw-meta-effectp)))))
+
+;; The arm it replaced (whole range in one step), as a proof device.
+(local
+ (defun fn-scat-hdr-command-old (session args v legacyp fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard) :verify-guards nil))
+  (if (not (and (consp args) (fn-nntp-hdr-fieldp (car args))))
+        (fn-nntp-single session (fn-proto-text * :syntax))
+      (let ((field (car args)) (rest (cdr args))
+            (group (fn-nntp-session-group session)))
+        (if (null rest)
+            (let ((current (fn-nntp-session-current session)))
+              (if (null group)
+                  (fn-nntp-single session (fn-proto-text * :no-group-selected))
+                (if (null current)
+                    (fn-nntp-single session (fn-proto-text * :no-current))
+                  (let ((article (fn-scat-available-article group current v fn-arena fn-cat)))
+                    (if (not (consp article))
+                        (fn-nntp-single session (fn-proto-text * :no-current))
+                      (let ((content (fn-scol-hdr-content field article fn-arena fn-cat)))
+                        (if (fn-nntp-hdr-okp content)
+                            (fn-nntp-multi
+                             session (fn-nntp-hdr-initial legacyp)
+                             (list (fn-nntp-hdr-line (fn-nntp-decimal-field current)
+                                                     (fn-nntp-hdr-octets content))))
+                          (fn-nntp-single
+                           session (fn-proto-text * :no-framing)))))))))
+          (if (and (consp rest) (null (cdr rest)))
+              (let ((token (car rest)))
+                (if (fn-nntp-range-okp (fn-nntp-parse-range token))
+                    (if (null group)
+                        (fn-nntp-single session (fn-proto-text * :no-group-selected))
+                      (let* ((range (fn-nntp-parse-range token))
+                             (numbers (fn-scat-range-numbers
+                                       group (nfix (fn-nntp-range-low range))
+                                       (nfix (fn-nntp-range-high range)) v fn-cat))
+                             (lines (fn-nntp-hdr-lines-for-numbers-cat
+                                     field group numbers v fn-arena fn-cat)))
+                        (if (consp lines)
+                            (fn-nntp-multi session (fn-nntp-hdr-initial legacyp) lines)
+                          (if legacyp
+                              (fn-nntp-single session (fn-proto-text * :none-selected))
+                            (fn-nntp-single session (fn-proto-text * :empty-range))))))
+                  (if (fn-nntp-message-id-tokenp token)
+                      (let ((article (fn-scat-msgid-article (fn-nntp-token-string token)
+                                                            v fn-arena fn-cat)))
+                        (if (not (consp article))
+                            (fn-nntp-single session (fn-proto-text * :no-msgid))
+                          (let ((content (fn-scol-hdr-content field article fn-arena fn-cat)))
+                            (if (fn-nntp-hdr-okp content)
+                                (fn-nntp-multi
+                                 session (fn-nntp-hdr-initial legacyp)
+                                 (list (fn-nntp-hdr-line (if legacyp
+                                                             (fn-nov-scrub token)
+                                                           (fn-nntp-decimal-field 0))
+                                                         (fn-nntp-hdr-octets content))))
+                              (fn-nntp-single session (fn-proto-text * :no-framing))))))
+                    (fn-nntp-single session (fn-proto-text * :syntax)))))
+            (fn-nntp-single session (fn-proto-text * :syntax))))))))
+
+(local
+ (defthm fn-scat-hdr-command-old-is-archive
   (implies (and (fn-cnx-freshp fn-cat) (fn-scol-okp fn-arena fn-cat)
                 (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
-           (equal (fn-nntp-hdr-command-cat session args v legacyp fn-arena fn-cat)
+           (equal (fn-scat-hdr-command-old session args v legacyp fn-arena fn-cat)
                   (fn-nntp-hdr-command session archive args legacyp fn-arena)))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-nntp-parse-range-ok-has-natural-bounds (token (cadr args))))
@@ -1996,7 +2174,47 @@
                             fn-nntp-hdr-content fn-nntp-hdr-okp fn-nntp-hdr-line
                             fn-nntp-hdr-octets fn-nntp-multi fn-nntp-single
                             fn-nntp-hdr-fieldp fn-nntp-message-id-tokenp
-                            fn-nntp-range-okp fn-nntp-parse-range-ok-has-natural-bounds)))))
+                            fn-nntp-range-okp fn-nntp-parse-range-ok-has-natural-bounds))))))
+
+(local
+ (defthm fn-scat-hdr-command-cat-is-old
+   (and (equal (car (fn-nntp-hdr-command-cat session args v legacyp fn-arena fn-cat))
+               (car (fn-scat-hdr-command-old session args v legacyp fn-arena fn-cat)))
+        (equal (fn-ovw-expand (cdr (fn-nntp-hdr-command-cat session args v legacyp fn-arena fn-cat))
+                              fn-arena fn-cat)
+               (cdr (fn-scat-hdr-command-old session args v legacyp fn-arena fn-cat))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-nntp-hdr-command-cat fn-scat-hdr-command-old fn-nntp-hdr-initial)
+                            (fn-nntp-hdr-range-ovw fn-ovw-hdr-source fn-ovw-hdr-reply
+                             fn-ovw-hdr-lines-for-numbers fn-scat-range-numbers
+                             fn-nntp-hdr-lines-for-numbers-cat fn-scat-available-article
+                             fn-scat-msgid-article fn-scol-hdr-content fn-nntp-multi fn-nntp-single
+                             fn-nntp-parse-range fn-nntp-range-okp fn-nntp-hdr-fieldp
+                             fn-nntp-message-id-tokenp fn-ovw-status))
+            :use ((:instance fn-ovw-hdr-reply-is-hdr-multi
+                             (form (if legacyp :xhdr :hdr)) (field (car args)) (patterns :all) (xref nil)
+                             (lines (fn-nntp-hdr-lines-for-numbers-cat
+                                     (car args) (fn-nntp-session-group session)
+                                     (fn-scat-range-numbers
+                                      (fn-nntp-session-group session)
+                                      (nfix (fn-nntp-range-low (fn-nntp-parse-range (cadr args))))
+                                      (nfix (fn-nntp-range-high (fn-nntp-parse-range (cadr args))))
+                                      v fn-cat)
+                                     v fn-arena fn-cat))))))))
+
+; Modulo the cursor: the arm, expanded, is the archive reader's reply.
+(defthm fn-nntp-hdr-command-cat-is-archive
+  (implies (and (fn-cnx-freshp fn-cat) (fn-scol-okp fn-arena fn-cat)
+                (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
+           (and (equal (car (fn-nntp-hdr-command-cat session args v legacyp fn-arena fn-cat))
+                       (car (fn-nntp-hdr-command session archive args legacyp fn-arena)))
+                (equal (fn-ovw-expand (cdr (fn-nntp-hdr-command-cat session args v legacyp fn-arena fn-cat))
+                                      fn-arena fn-cat)
+                       (cdr (fn-nntp-hdr-command session archive args legacyp fn-arena)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-nntp-hdr-command-cat fn-scat-hdr-command-old fn-nntp-hdr-command
+                               fn-scat-hdr-command-cat-is-old fn-scat-hdr-command-old-is-archive)
+           :use (fn-scat-hdr-command-cat-is-old fn-scat-hdr-command-old-is-archive))))
 
 ;;; XPAT (RFC 2980 section 2.9).
 
@@ -2096,8 +2314,7 @@
            (parsed (fn-wildmat-parse-text joined)))
       (if (not (fn-wildmat-result-okp parsed))
           (fn-nntp-single session (fn-proto-text * :syntax))
-        (let ((patterns (fn-wildmat-result-value parsed))
-              (group (fn-nntp-session-group session)))
+        (let ((patterns (fn-wildmat-result-value parsed)))
           (if (fn-nntp-range-okp (fn-nntp-parse-range token))
               (fn-nntp-hdr-range-ovw
                session v token (fn-ovw-hdr-source :xpat field patterns nil) fn-cat)
@@ -2113,10 +2330,59 @@
                                                                article fn-arena)))))
               (fn-nntp-single session (fn-proto-text * :syntax)))))))))
 
-(defthm fn-nntp-xpat-response-cat-is-archive
+(defthm fn-ovw-hdr-lines-for-numbers-is-xpat-cat
+  (equal (fn-ovw-hdr-lines-for-numbers group numbers (fn-ovw-hdr-source :xpat field patterns nil)
+                                       v fn-arena fn-cat)
+         (fn-nntp-xpat-lines-for-numbers-cat field patterns group numbers v fn-arena fn-cat))
+  :hints (("Goal" :induct (fn-nntp-xpat-lines-for-numbers-cat field patterns group numbers v fn-arena fn-cat)
+           :in-theory (e/d (fn-ovw-hdr-content fn-ovw-hdr-keepp fn-ovw-hdr-source)
+                           (fn-scat-available-article fn-scol-hdr-content fn-nntp-hdr-okp
+                            fn-nntp-xpat-matchesp
+                            fn-nntp-hdr-line fn-nntp-hdr-octets fn-nntp-decimal-field)))))
+
+(local
+ (defun fn-scat-xpat-response-old (session args v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard) :verify-guards nil))
+  (if (not (and (consp args) (fn-nntp-hdr-fieldp (car args))
+                (consp (cdr args))
+                (consp (cdr (cdr args)))))
+      (fn-nntp-single session (fn-proto-text * :syntax))
+    (let* ((field (car args))
+           (token (car (cdr args)))
+           (joined (fn-nntp-xpat-join (cdr (cdr args))))
+           (parsed (fn-wildmat-parse-text joined)))
+      (if (not (fn-wildmat-result-okp parsed))
+          (fn-nntp-single session (fn-proto-text * :syntax))
+        (let ((patterns (fn-wildmat-result-value parsed))
+              (group (fn-nntp-session-group session)))
+          (if (fn-nntp-range-okp (fn-nntp-parse-range token))
+              (if (null group)
+                  (fn-nntp-single session (fn-proto-text * :no-group-selected))
+                (fn-nntp-multi
+                 session (fn-nntp-hdr-initial t)
+                 (fn-nntp-xpat-lines-for-numbers-cat
+                  field patterns group
+                  (fn-scat-range-numbers
+                   group (nfix (fn-nntp-range-low (fn-nntp-parse-range token)))
+                   (nfix (fn-nntp-range-high (fn-nntp-parse-range token))) v fn-cat)
+                  v fn-arena fn-cat)))
+            (if (fn-nntp-message-id-tokenp token)
+                (let ((article (fn-scat-msgid-article (fn-nntp-token-string token)
+                                                      v fn-arena fn-cat)))
+                  (if (not (consp article))
+                      (fn-nntp-single session (fn-proto-text * :no-msgid))
+                    (if (not (fn-nntp-hdr-okp (fn-scol-hdr-content field article fn-arena fn-cat)))
+                        (fn-nntp-single session (fn-proto-text * :no-framing))
+                      (fn-nntp-multi session (fn-nntp-hdr-initial t)
+                                     (fn-nntp-xpat-msgid-lines field patterns token
+                                                               article fn-arena)))))
+              (fn-nntp-single session (fn-proto-text * :syntax))))))))))
+
+(local
+ (defthm fn-scat-xpat-response-old-is-archive
   (implies (and (fn-cnx-freshp fn-cat) (fn-scol-okp fn-arena fn-cat)
                 (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
-           (equal (fn-nntp-xpat-response-cat session args v fn-arena fn-cat)
+           (equal (fn-scat-xpat-response-old session args v fn-arena fn-cat)
                   (fn-nntp-xpat-response session archive args fn-arena)))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-nntp-parse-range-ok-has-natural-bounds (token (cadr args))))
@@ -2130,7 +2396,54 @@
                             fn-nntp-hdr-fieldp fn-nntp-message-id-tokenp fn-nntp-xpat-join
                             fn-wildmat-parse-text fn-nntp-range-okp
                             fn-nntp-parse-range-ok-has-natural-bounds
-                            fn-nntp-xpat-with-a-total-filter-is-the-hdr-block)))))
+                            fn-nntp-xpat-with-a-total-filter-is-the-hdr-block))))))
+
+(local
+ (defthm fn-scat-xpat-response-cat-is-old
+   (and (equal (car (fn-nntp-xpat-response-cat session args v fn-arena fn-cat))
+               (car (fn-scat-xpat-response-old session args v fn-arena fn-cat)))
+        (equal (fn-ovw-expand (cdr (fn-nntp-xpat-response-cat session args v fn-arena fn-cat))
+                              fn-arena fn-cat)
+               (cdr (fn-scat-xpat-response-old session args v fn-arena fn-cat))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-nntp-xpat-response-cat fn-scat-xpat-response-old fn-nntp-hdr-initial)
+                            (fn-nntp-hdr-range-ovw fn-ovw-hdr-source fn-ovw-hdr-reply
+                             fn-ovw-hdr-lines-for-numbers fn-scat-range-numbers
+                             fn-nntp-xpat-lines-for-numbers-cat fn-scat-available-article
+                             fn-scat-msgid-article fn-scol-hdr-content fn-nntp-multi fn-nntp-single
+                             fn-nntp-parse-range fn-nntp-range-okp fn-nntp-hdr-fieldp
+                             fn-nntp-message-id-tokenp fn-ovw-status fn-nntp-xpat-msgid-lines
+                             fn-wildmat-parse-text fn-nntp-xpat-join))
+            :use ((:instance fn-ovw-hdr-reply-is-xpat-multi
+                             (field (car args))
+                             (patterns (fn-wildmat-result-value
+                                        (fn-wildmat-parse-text (fn-nntp-xpat-join (cddr args)))))
+                             (xref nil)
+                             (lines (fn-nntp-xpat-lines-for-numbers-cat
+                                     (car args)
+                                     (fn-wildmat-result-value
+                                      (fn-wildmat-parse-text (fn-nntp-xpat-join (cddr args))))
+                                     (fn-nntp-session-group session)
+                                     (fn-scat-range-numbers
+                                      (fn-nntp-session-group session)
+                                      (nfix (fn-nntp-range-low (fn-nntp-parse-range (cadr args))))
+                                      (nfix (fn-nntp-range-high (fn-nntp-parse-range (cadr args))))
+                                      v fn-cat)
+                                     v fn-arena fn-cat))))))))
+
+; Modulo the cursor: the arm, expanded, is the archive reader's reply.
+(defthm fn-nntp-xpat-response-cat-is-archive
+  (implies (and (fn-cnx-freshp fn-cat) (fn-scol-okp fn-arena fn-cat)
+                (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
+           (and (equal (car (fn-nntp-xpat-response-cat session args v fn-arena fn-cat))
+                       (car (fn-nntp-xpat-response session archive args fn-arena)))
+                (equal (fn-ovw-expand (cdr (fn-nntp-xpat-response-cat session args v fn-arena fn-cat))
+                                      fn-arena fn-cat)
+                       (cdr (fn-nntp-xpat-response session archive args fn-arena)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-nntp-xpat-response-cat fn-scat-xpat-response-old fn-nntp-xpat-response
+                               fn-scat-xpat-response-cat-is-old fn-scat-xpat-response-old-is-archive)
+           :use (fn-scat-xpat-response-cat-is-old fn-scat-xpat-response-old-is-archive))))
 
 (in-theory (disable fn-scat-group-low-is-car fn-scat-group-high-is-last))
 
@@ -2353,15 +2666,89 @@
                               (fn-nntp-hdr-octets content))))
                     (fn-nntp-single session (fn-proto-text * :reclaimed-msgid))))))))))))
 
-(defthm fn-rcompat-hdr-cat-is-hdr
+(defthm fn-ovw-hdr-lines-for-numbers-is-rcompat-cat
+  (implies (not (equal form :xpat))
+           (equal (fn-ovw-hdr-lines-for-numbers group numbers
+                                                (fn-ovw-hdr-source form field patterns (cons :xref server))
+                                                v fn-arena fn-cat)
+                  (fn-rcompat-hdr-lines-cat group numbers server v fn-arena fn-cat)))
+  :hints (("Goal" :induct (fn-rcompat-hdr-lines-cat group numbers server v fn-arena fn-cat)
+           :in-theory (e/d (fn-ovw-hdr-content fn-ovw-hdr-keepp fn-ovw-hdr-source)
+                           (fn-scat-available-article fn-rcompat-xref-content fn-nntp-hdr-okp
+                            fn-nntp-hdr-line fn-nntp-hdr-octets fn-nntp-decimal-field)))))
+
+(local
+ (defun fn-scat-rcompat-hdr-old (session archive trie args legacyp server v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (natp v)
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil)
+           (ignorable archive trie))
+  (let ((rest (and (consp args) (cdr args))))
+    (if (null rest)
+        (let ((group (fn-nntp-session-group session))
+              (current (fn-nntp-session-current session)))
+          (if (null group)
+              (fn-nntp-single session (fn-proto-text * :no-group-selected))
+            (if (null current)
+                (fn-nntp-single session (fn-proto-text * :no-current))
+              (let ((article (fn-scat-available-article group current v fn-arena fn-cat)))
+                (if (not (consp article))
+                    (fn-nntp-single session (fn-proto-text * :no-current))
+                  (let ((content (fn-rcompat-xref-content server article fn-arena)))
+                    (if (fn-nntp-hdr-okp content)
+                        (fn-nntp-multi
+                         session (fn-nntp-hdr-initial legacyp)
+                         (list (fn-nntp-hdr-line
+                                (fn-nntp-decimal-field current)
+                                (fn-nntp-hdr-octets content))))
+                      (fn-nntp-single session (fn-proto-text * :reclaimed)))))))))
+      (if (not (and (consp rest) (null (cdr rest))))
+          (fn-nntp-single session (fn-proto-text * :syntax))
+        (let ((token (car rest)))
+          (if (fn-nntp-range-okp (fn-nntp-parse-range token))
+              (let ((group (fn-nntp-session-group session))
+                    (range (fn-nntp-parse-range token)))
+                (if (null group)
+                    (fn-nntp-single session (fn-proto-text * :no-group-selected))
+                  (let ((lines (fn-rcompat-hdr-lines-cat
+                                group
+                                (fn-scat-range-numbers
+                                 group (nfix (fn-nntp-range-low range))
+                                 (nfix (fn-nntp-range-high range)) v fn-cat)
+                                server v fn-arena fn-cat)))
+                    (if (consp lines)
+                        (fn-nntp-multi session (fn-nntp-hdr-initial legacyp)
+                                       lines)
+                      (fn-nntp-single session
+                                      (if legacyp (fn-proto-text * :none-selected)
+                                        (fn-proto-text * :empty-range)))))))
+            (if (not (and (fn-nntp-message-id-tokenp token)
+                          (fn-octet-listp token)))
+                (fn-nntp-single session (fn-proto-text * :syntax))
+              (let* ((article (fn-scat-msgid-article (fn-nntp-token-string token) v fn-arena fn-cat))
+                     (content (fn-rcompat-xref-content server article fn-arena)))
+                (if (not (consp article))
+                    (fn-nntp-single session (fn-proto-text * :no-msgid))
+                  (if (fn-nntp-hdr-okp content)
+                      (fn-nntp-multi
+                       session (fn-nntp-hdr-initial legacyp)
+                       (list (fn-nntp-hdr-line
+                              (if legacyp (fn-nov-scrub token)
+                                (fn-nntp-decimal-field 0))
+                              (fn-nntp-hdr-octets content))))
+                    (fn-nntp-single session (fn-proto-text * :reclaimed-msgid)))))))))))))
+
+(local
+ (defthm fn-scat-rcompat-hdr-old-is-hdr
   (implies (and (equal (fn-state-articles archive)
                        (fn-cat-view-articles v fn-arena fn-cat))
                 (fn-midx-correspondencep trie (fn-state-articles archive))
                 (fn-cnx-freshp fn-cat))
-           (equal (fn-rcompat-hdr-cat session archive trie args legacyp server v fn-arena fn-cat)
+           (equal (fn-scat-rcompat-hdr-old session archive trie args legacyp server v fn-arena fn-cat)
                   (fn-rcompat-hdr session archive trie args legacyp server fn-arena)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-rcompat-hdr-cat fn-rcompat-hdr fn-midx-correspondencep
+           :in-theory (e/d (fn-scat-rcompat-hdr-old fn-rcompat-hdr fn-midx-correspondencep
                             fn-scat-msgid-article-is-find-article
                             fn-midx-lookup-of-build-is-find-article-for-nonempty
                             fn-scat-msgid-token-key)
@@ -2377,7 +2764,51 @@
                             fn-cat-view-articles fn-cnx-freshp fn-nntp-session-group
                             fn-nntp-session-current))
            :use ((:instance fn-nntp-parse-range-ok-has-natural-bounds
-                            (token (car (cdr args))))))))
+                            (token (car (cdr args)))))))))
+
+(local
+ (defthm fn-scat-rcompat-hdr-cat-is-old
+   (and (equal (car (fn-rcompat-hdr-cat session archive trie args legacyp server v fn-arena fn-cat))
+               (car (fn-scat-rcompat-hdr-old session archive trie args legacyp server v fn-arena fn-cat)))
+        (equal (fn-ovw-expand (cdr (fn-rcompat-hdr-cat session archive trie args legacyp server v fn-arena fn-cat))
+                              fn-arena fn-cat)
+               (cdr (fn-scat-rcompat-hdr-old session archive trie args legacyp server v fn-arena fn-cat))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-rcompat-hdr-cat fn-scat-rcompat-hdr-old fn-nntp-hdr-initial)
+                            (fn-nntp-hdr-range-ovw fn-ovw-hdr-source fn-ovw-hdr-reply
+                             fn-ovw-hdr-lines-for-numbers fn-scat-range-numbers
+                             fn-rcompat-hdr-lines-cat fn-scat-available-article fn-rcompat-xref-content
+                             fn-scat-msgid-article fn-nntp-multi fn-nntp-single
+                             fn-nntp-parse-range fn-nntp-range-okp fn-nov-scrub
+                             fn-nntp-message-id-tokenp fn-ovw-status))
+            :use ((:instance fn-ovw-hdr-reply-is-hdr-multi
+                             (form (if legacyp :xhdr :hdr)) (field (car args)) (patterns :all)
+                             (xref (cons :xref server))
+                             (lines (fn-rcompat-hdr-lines-cat
+                                     (fn-nntp-session-group session)
+                                     (fn-scat-range-numbers
+                                      (fn-nntp-session-group session)
+                                      (nfix (fn-nntp-range-low (fn-nntp-parse-range (cadr args))))
+                                      (nfix (fn-nntp-range-high (fn-nntp-parse-range (cadr args))))
+                                      v fn-cat)
+                                     server v fn-arena fn-cat))))))))
+
+; Modulo the cursor: the compatibility arm, expanded, is the reference's.
+(defthm fn-rcompat-hdr-cat-is-hdr
+  (implies (and (equal (fn-state-articles archive)
+                       (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-midx-correspondencep trie (fn-state-articles archive))
+                (fn-cnx-freshp fn-cat))
+           (and (equal (car (fn-rcompat-hdr-cat session archive trie args legacyp server v fn-arena fn-cat))
+                       (car (fn-rcompat-hdr session archive trie args legacyp server fn-arena)))
+                (equal (fn-ovw-expand (cdr (fn-rcompat-hdr-cat session archive trie args legacyp server
+                                                               v fn-arena fn-cat))
+                                      fn-arena fn-cat)
+                       (cdr (fn-rcompat-hdr session archive trie args legacyp server fn-arena)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-rcompat-hdr-cat fn-scat-rcompat-hdr-old fn-rcompat-hdr
+                               fn-scat-rcompat-hdr-cat-is-old fn-scat-rcompat-hdr-old-is-hdr)
+           :use (fn-scat-rcompat-hdr-cat-is-old fn-scat-rcompat-hdr-old-is-hdr))))
 
 (defun fn-rcompat-reply-cat (session archive index env keyword args v fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
@@ -2403,13 +2834,31 @@
                               (fn-nntp-keywordp keyword "XHDR") server v fn-arena fn-cat)
         (fn-rcompat-reply session archive index env keyword args fn-arena)))))
 
+(local
+ (defthm fn-scat-rcompat-hdr-has-no-cursor
+   (equal (fn-ovw-expand (cdr (fn-rcompat-hdr session archive trie args legacyp server fn-arena))
+                         fn-arena fn-cat)
+          (cdr (fn-rcompat-hdr session archive trie args legacyp server fn-arena)))
+   :hints (("Goal" :in-theory (e/d (fn-rcompat-hdr)
+                                   (fn-nntp-single fn-nntp-multi fn-rcompat-hdr-lines
+                                    fn-nntp-available-article fn-find-article fn-midx-lookup
+                                    fn-rcompat-xref-content fn-nntp-parse-range))))))
+
+; Modulo the cursor (the HDR Xref range arm answers with one, lane
+; cold-line): the sessions are equal and so are the expanded effects.
 (defthm fn-rcompat-reply-cat-is-rcompat-reply
   (implies (and (equal (fn-state-articles archive)
                        (fn-cat-view-articles v fn-arena fn-cat))
                 (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles archive))
                 (fn-cnx-freshp fn-cat))
-           (equal (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
-                  (fn-rcompat-reply session archive index env keyword args fn-arena)))
+           (and (equal (car (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat))
+                       (car (fn-rcompat-reply session archive index env keyword args fn-arena)))
+                (equal (fn-ovw-expand
+                        (cdr (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat))
+                        fn-arena fn-cat)
+                       (fn-ovw-expand
+                        (cdr (fn-rcompat-reply session archive index env keyword args fn-arena))
+                        fn-arena fn-cat))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-rcompat-reply-cat fn-rcompat-reply)
                            (fn-rcompat-retrieval-cat fn-rcompat-retrieval
