@@ -933,8 +933,10 @@
                     fn-heap-reclaim-excess-octets))
 
 ; Everything but the collector's room: the state at the profile's bounds,
-; the owner's work reserve (the open's transient at the input's bound and
-; the reclaim's excess over it), the request in flight and the articles.
+; the open's transient at the input's bound, the request in flight and the
+; articles.  A live reclaim's reserve is NOT here: it is the operator's
+; opt-in (`fn-heap-store-reclaim-base-octets' below, books/reclaim-
+; reservation.lisp).
 (defun fn-heap-store-base-octets (profile core observed)
   (declare (xargs :guard t))
   (+ (fn-heap-core-dynamic core)
@@ -942,9 +944,6 @@
      (fn-heap-store-open-octets profile
                                 (fn-heap-open-octets-bound profile observed)
                                 (fn-heap-open-records-bound profile observed))
-     (fn-heap-reclaim-excess-octets profile
-                                    (fn-heap-open-octets-bound profile observed)
-                                    (fn-heap-open-records-bound profile observed))
      (fn-heap-store-inflight-octets profile)
      (fn-heap-articles-octets profile)))
 
@@ -1089,6 +1088,38 @@
                  (:instance fn-heap-with-nursery-holds-the-trigger
                             (base (fn-heap-store-base-octets profile core observed)))))))
 
+; THE OPT-IN's FIGURE.  An operator who asks for live reclaim
+; (`[resources] reclaim_live = true') reserves, beyond the store figure, the
+; owner's work reserve: the open's transient at the input's bound and the
+; reclaim's excess over it, the larger of the two (fn-heap-open-and-excess-is-
+; the-larger).  Without the key no such term exists and a live reclaim is
+; refused by name (books/owner-reclaim-pass.lisp fn-orcp-reserve).
+(defun fn-heap-store-reclaim-base-octets (profile core observed)
+  (declare (xargs :guard t))
+  (+ (fn-heap-store-base-octets profile core observed)
+     (fn-heap-reclaim-excess-octets profile
+                                    (fn-heap-open-octets-bound profile observed)
+                                    (fn-heap-open-records-bound profile observed))))
+
+(defthm fn-heap-store-reclaim-base-octets-natp
+  (natp (fn-heap-store-reclaim-base-octets profile core observed))
+  :rule-classes (:type-prescription :rewrite))
+
+(defthm fn-heap-store-reclaim-base-is-at-least-the-base
+  (<= (fn-heap-store-base-octets profile core observed)
+      (fn-heap-store-reclaim-base-octets profile core observed))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable fn-heap-store-reclaim-base-octets))))
+
+; The store figure with the opt-in's reserve, in octets.
+(defun fn-heap-store-live-figure-octets (profile core nursery observed)
+  (declare (xargs :guard t))
+  (fn-heap-with-nursery (fn-heap-store-reclaim-base-octets profile core observed) nursery))
+
+(defthm fn-heap-store-live-figure-octets-natp
+  (natp (fn-heap-store-live-figure-octets profile core nursery observed))
+  :rule-classes :type-prescription)
+
 ; What a process needs while it serves a store of USED payload octets in N
 ; records with M memberships and a live reclaim pass runs over it: the
 ; image, the state, the pass's demand over the store's shape (N records
@@ -1110,8 +1141,10 @@
                      (nfix (fn-bs-profile-max-history-octets profile)))
                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile))))
             (<= (fn-heap-store-reclaim-need profile core used n m trigger)
-                (+ (fn-heap-store-base-octets profile core observed) (* 2 (nfix trigger)))))
+                (+ (fn-heap-store-reclaim-base-octets profile core observed)
+                   (* 2 (nfix trigger)))))
    :hints (("Goal" :in-theory (e/d (fn-heap-store-reclaim-need fn-heap-store-base-octets
+                                    fn-heap-store-reclaim-base-octets
                                     fn-heap-reclaim-octets)
                                    (fn-heap-store-state-octets fn-heap-store-open-octets
                                     fn-heap-store-state-bound fn-heap-reclaim-demand-octets
@@ -1128,7 +1161,8 @@
                              (n2 (fn-bs-profile-max-transactions profile))
                              (c2 (fn-bs-profile-max-history-octets profile))))))))
 
-; KEYSTONE (K4).  In a dynamic space of D octets, D at least the figure at
+; KEYSTONE (K4), CONDITIONED ON THE OPT-IN.  In a dynamic space of D octets,
+; D at least the LIVE figure (the store figure with the opt-in's reserve) at
 ; ANY observation, every store the profile admits -- USED payload octets and
 ; M memberships charged together within H, N records within T -- fits with a
 ; live reclaim pass over it, the request in flight, the articles, the
@@ -1136,9 +1170,9 @@
 ; sets in D.  The launcher reserves the figure for `run' at the observed
 ; store (books/heap-figure.lisp fn-heap-operation-figure-octets): this holds
 ; whatever the store was when the node started and whatever it grew to.
-(defthm fn-heap-store-figure-holds-every-store-and-its-reclaim
+(defthm fn-heap-store-live-figure-holds-every-store-and-its-reclaim
   (implies (and (natp d)
-                (<= (fn-heap-store-figure-octets profile core nursery observed) d)
+                (<= (fn-heap-store-live-figure-octets profile core nursery observed) d)
                 (<= (+ (nfix used) (* *fn-sbud-membership-octets* (nfix m)))
                     (nfix (fn-bs-profile-max-history-octets profile)))
                 (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile))))
@@ -1146,13 +1180,14 @@
                                            (fn-heap-nursery-trigger d nursery))
                d))
   :hints (("Goal" :in-theory (union-theories
-                               '(fn-heap-store-figure-octets fn-heap-store-base-octets-natp
+                               '(fn-heap-store-live-figure-octets
+                                 fn-heap-store-reclaim-base-octets-natp
                                  fn-heap-nfix-of-nursery-trigger)
                                (theory 'minimal-theory))
            :use ((:instance fn-heap-store-reclaim-need-within-the-base
                             (trigger (fn-heap-nursery-trigger d nursery)))
                  (:instance fn-heap-with-nursery-holds-the-trigger
-                            (base (fn-heap-store-base-octets profile core observed)))))))
+                            (base (fn-heap-store-reclaim-base-octets profile core observed)))))))
 
 ; The observation only lowers the figure.
 (defthm fn-heap-with-nursery-monotone
@@ -1186,13 +1221,7 @@
                             (ou (fn-heap-open-octets-bound profile observed))
                             (on (fn-heap-open-records-bound profile observed))
                             (h (fn-heap-open-octets-bound profile nil))
-                            (tt (fn-heap-open-records-bound profile nil)))
-                 (:instance fn-heap-open-and-excess-is-the-larger
-                            (ou (fn-heap-open-octets-bound profile observed))
-                            (on (fn-heap-open-records-bound profile observed)))
-                 (:instance fn-heap-open-and-excess-is-the-larger
-                            (ou (fn-heap-open-octets-bound profile nil))
-                            (on (fn-heap-open-records-bound profile nil)))))))
+                            (tt (fn-heap-open-records-bound profile nil)))))))
 
 (defthm fn-heap-store-figure-observed-is-at-most-unobserved
   (<= (fn-heap-store-figure-octets profile core nursery observed)
@@ -1239,13 +1268,6 @@
                                    fn-bs-profile-field))
            :use ((:instance fn-heap-open-bounds-of-nil (profile p1))
                  (:instance fn-heap-open-bounds-of-nil (profile p2))
-                 (:instance fn-heap-reclaim-octets-grows-with-the-profile)
-                 (:instance fn-heap-open-and-excess-is-the-larger (profile p1)
-                            (ou (fn-bs-profile-max-history-octets p1))
-                            (on (fn-bs-profile-max-transactions p1)))
-                 (:instance fn-heap-open-and-excess-is-the-larger (profile p2)
-                            (ou (fn-bs-profile-max-history-octets p2))
-                            (on (fn-bs-profile-max-transactions p2)))
                  (:instance fn-heap-articles-octets-monotone)
                  (:instance fn-heap-open-chunk-bound-monotone
                             (ou1 (fn-bs-profile-max-history-octets p1))

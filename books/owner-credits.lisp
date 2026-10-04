@@ -10,16 +10,19 @@
 ; ledger for the run (host/owner-host.lisp, global fn-owner-credits):
 ;
 ;   THE BUDGET is the reservation the launcher sized the dynamic space
-;   from, fn-heap-figure-octets (`fn-mca-initial'): its base less the
+;   from, fn-heap-figure-octets (`fn-mca-initial'; with the opt-in's
+;   reserve, fn-heap-store-live-figure-octets): its base less the
 ;   owner's work reserve and the articles' pool is M_base (the image, the
 ;   state at the profile's bounds, the request in flight, the octet
 ;   buffers); the owner's work reserve is E_completion -- the open's terms
-;   and a live reclaim's excess over them (books/heap-store-figure.lisp
-;   fn-heap-reclaim-excess-octets), which the open uses before this ledger
-;   exists and the live reclaim pass BORROWS while it runs
-;   (books/owner-reclaim-pass.lisp fn-orcp-reserve, fn-mcr-borrow): no
-;   user's operation is admitted against it (lane reclaim-funding,
-;   planning/design/reclaim-funding-2026-10-04.md); the collector's room is
+;   and, only when the operator asked for live reclaim (`[resources]
+;   reclaim_live', LIVE), a live reclaim's excess over them
+;   (books/heap-store-figure.lisp fn-heap-reclaim-excess-octets), which the
+;   open uses before this ledger exists and the live reclaim pass BORROWS
+;   while it runs (books/owner-reclaim-pass.lisp fn-orcp-reserve,
+;   fn-mcr-borrow): no user's operation is admitted against it (lane
+;   reclaim-funding, planning/design/reclaim-funding-2026-10-04.md; the
+;   opt-in, section 11); the collector's room is
 ;   E_runtime, and what is left, exactly fn-heap-articles-octets, is the
 ;   pool the operations draw on (KEYSTONE fn-mca-initial-funds-exactly-the-
 ;   articles).  No cache is charged: a committed article's octets live in
@@ -282,23 +285,45 @@
 ; The budget.  The reservation the launcher sized the dynamic space from
 ; (host/owner-host.lisp fn-owner-connection-budget's figure).
 
-; The owner's work reserve at the profile's bounds: the open's transient
-; and the live reclaim's excess over it (the larger of the two:
-; fn-heap-open-and-excess-is-the-larger).
-(defun fn-mca-owner-octets (profile)
+;
+; The owner's work reserve at the profile's bounds: the open's transient,
+; and -- only when the operator asked for live reclaim (`[resources]
+; reclaim_live', LIVE below) -- the live reclaim's excess over it (the larger
+; of the two: fn-heap-open-and-excess-is-the-larger).  Without the opt-in the
+; reserve is the open's transient alone and no pass can borrow
+; (books/owner-reclaim-pass.lisp fn-orcp-reserve).
+(defun fn-mca-reclaim-reserve-octets (profile live)
+  (declare (xargs :guard t))
+  (if live
+      (fn-heap-reclaim-excess-octets profile
+                                     (fn-heap-open-octets-bound profile nil)
+                                     (fn-heap-open-records-bound profile nil))
+    0))
+
+(defun fn-mca-owner-octets (profile live)
   (declare (xargs :guard t))
   (+ (fn-heap-store-open-octets profile
                                 (fn-heap-open-octets-bound profile nil)
                                 (fn-heap-open-records-bound profile nil))
-     (fn-heap-reclaim-excess-octets profile
-                                    (fn-heap-open-octets-bound profile nil)
-                                    (fn-heap-open-records-bound profile nil))))
+     (fn-mca-reclaim-reserve-octets profile live)))
 
-(defun fn-mca-initial (profile core nursery)
+; The base the budget is solved from: the store figure's, with the opt-in's
+; reserve when LIVE (books/heap-store-figure.lisp fn-heap-store-reclaim-base-octets).
+(defun fn-mca-base-octets (profile core live)
   (declare (xargs :guard t))
-  (let* ((fig (fn-heap-figure-octets profile core nursery))
-         (base (fn-heap-store-base-octets profile core nil))
-         (open (fn-mca-owner-octets profile)))
+  (if live
+      (fn-heap-store-reclaim-base-octets profile core nil)
+    (fn-heap-store-base-octets profile core nil)))
+
+(defun fn-mca-figure-octets (profile core nursery live)
+  (declare (xargs :guard t))
+  (fn-heap-with-nursery (fn-mca-base-octets profile core live) nursery))
+
+(defun fn-mca-initial (profile core nursery live)
+  (declare (xargs :guard t))
+  (let* ((fig (fn-mca-figure-octets profile core nursery live))
+         (base (fn-mca-base-octets profile core live))
+         (open (fn-mca-owner-octets profile live)))
     (fn-mcr-make fig (- base (+ (fn-heap-articles-octets profile) open)) 0 open
                  (- fig base) 0 nil)))
 
@@ -544,11 +569,14 @@
 
 (local
  (defthm fn-mca-base-splits
-   (equal (fn-heap-store-base-octets profile core nil)
+   (equal (fn-mca-base-octets profile core live)
           (+ (fn-heap-core-dynamic core) (fn-heap-store-state-bound profile)
-             (fn-mca-owner-octets profile) (fn-heap-store-inflight-octets profile)
+             (fn-mca-owner-octets profile live) (fn-heap-store-inflight-octets profile)
              (fn-heap-articles-octets profile)))
-   :hints (("Goal" :in-theory (union-theories '(fn-heap-store-base-octets fn-mca-owner-octets
+   :hints (("Goal" :in-theory (union-theories '(fn-mca-base-octets fn-mca-owner-octets
+                                                fn-mca-reclaim-reserve-octets
+                                                fn-heap-store-base-octets
+                                                fn-heap-store-reclaim-base-octets
                                                 associativity-of-+)
                                               (theory 'minimal-theory))))))
 
@@ -556,11 +584,11 @@
  (defthm fn-mca-parts-natp
    (and (natp (fn-heap-core-dynamic core))
         (natp (fn-heap-store-state-bound profile))
-        (natp (fn-mca-owner-octets profile))
+        (natp (fn-mca-owner-octets profile live))
         (natp (fn-heap-store-inflight-octets profile))
         (natp (fn-heap-articles-octets profile)))
    :rule-classes nil
-   :hints (("Goal" :in-theory (enable fn-mca-owner-octets)))))
+   :hints (("Goal" :in-theory (enable fn-mca-owner-octets fn-mca-reclaim-reserve-octets)))))
 
 (local
  (defthm fn-heap-articles-octets-natp
@@ -585,26 +613,53 @@
 ;; terms and the live reclaim's excess) is the completion reserve, funded,
 ;; borrowed only by the live reclaim pass.
 (defthm fn-mca-initial-funds-exactly-the-articles
-  (let ((l (fn-mca-initial profile core nursery)))
+  (let ((l (fn-mca-initial profile core nursery live)))
     (and (fn-mcr-fundedp l)
          (equal (- (fn-mcr-budget l) (fn-mcr-total l)) (fn-heap-articles-octets profile))
-         (equal (fn-mcr-budget l) (fn-heap-figure-octets profile core nursery))
-         (equal (fn-mcr-completion l) (fn-mca-owner-octets profile))))
-  :hints (("Goal" :in-theory (union-theories '(fn-mca-initial fn-heap-figure-octets
-                                               fn-heap-store-figure-octets fn-mca-base-splits
+         (equal (fn-mcr-budget l) (fn-mca-figure-octets profile core nursery live))
+         (equal (fn-mcr-completion l) (fn-mca-owner-octets profile live))))
+  :hints (("Goal" :in-theory (union-theories '(fn-mca-initial fn-mca-figure-octets
+                                               fn-mca-base-splits
                                                nfix natp-compound-recognizer)
                                              (theory 'minimal-theory))
            :use ((:instance fn-mca-initial-shape
                             (d (fn-heap-core-dynamic core)) (st (fn-heap-store-state-bound profile))
-                            (o (fn-mca-owner-octets profile)) (i (fn-heap-store-inflight-octets profile))
+                            (o (fn-mca-owner-octets profile live)) (i (fn-heap-store-inflight-octets profile))
                             (a (fn-heap-articles-octets profile))
-                            (fig (fn-heap-with-nursery (fn-heap-store-base-octets profile core nil)
+                            (fig (fn-heap-with-nursery (fn-mca-base-octets profile core live)
                                                        nursery)))
                  (:instance fn-mca-parts-natp)
                  (:instance fn-heap-with-nursery-covers-base
-                            (base (fn-heap-store-base-octets profile core nil)))
+                            (base (fn-mca-base-octets profile core live)))
                  (:instance fn-heap-with-nursery-natp
-                            (base (fn-heap-store-base-octets profile core nil)))))))
+                            (base (fn-mca-base-octets profile core live)))))))
+
+;; The two settings are the two figures: without the opt-in the budget is the
+;; store figure, as before the opt-in existed; with it, the figure that
+;; holds the reclaim (books/heap-store-figure.lisp K4).
+(defthm fn-mca-figure-off-is-the-store-figure
+  (equal (fn-mca-figure-octets profile core nursery nil)
+         (fn-heap-figure-octets profile core nursery))
+  :hints (("Goal" :in-theory (union-theories '(fn-mca-figure-octets fn-mca-base-octets
+                                               fn-heap-figure-octets fn-heap-store-figure-octets
+                                               (:executable-counterpart if))
+                                             (theory 'minimal-theory)))))
+
+(defthm fn-mca-figure-on-is-the-live-figure
+  (equal (fn-mca-figure-octets profile core nursery t)
+         (fn-heap-store-live-figure-octets profile core nursery nil))
+  :hints (("Goal" :in-theory (union-theories '(fn-mca-figure-octets fn-mca-base-octets
+                                               fn-heap-store-live-figure-octets
+                                               (:executable-counterpart if))
+                                             (theory 'minimal-theory)))))
+
+;; The opt-in is the whole difference: no reserve without it.
+(defthm fn-mca-no-reserve-without-the-opt-in
+  (equal (fn-mca-owner-octets profile nil)
+         (fn-heap-store-open-octets profile
+                                    (fn-heap-open-octets-bound profile nil)
+                                    (fn-heap-open-records-bound profile nil)))
+  :hints (("Goal" :in-theory (enable fn-mca-owner-octets fn-mca-reclaim-reserve-octets))))
 
 ;; -----------------------------------------------------------------------------
 ;; THE OWNER's RESERVE IS NOT THE USERS' (lane reclaim-funding, 2026-10-04,
@@ -616,21 +671,21 @@
 ;; The run's ledger is pass-free, and every transition the served path makes
 ;; keeps it so: they resize and move the articles' keys only, which leave the
 ;; completion reserve, what is drawn of it and every other key as they were.
-(defun fn-mca-pass-free-p (credits profile)
+(defun fn-mca-pass-free-p (credits profile live)
   (declare (xargs :guard t))
-  (and (<= (+ (fn-mcr-drawn credits) (fn-mca-owner-octets profile)) (fn-mcr-completion credits))
+  (and (<= (+ (fn-mcr-drawn credits) (fn-mca-owner-octets profile live)) (fn-mcr-completion credits))
        (not (hons-assoc-equal *fn-mca-reclaim* (fn-mcr-ops credits)))))
 
 (local
  (defthm fn-mca-initial-draws-nothing-and-holds-nothing
-   (and (equal (fn-mcr-drawn (fn-mca-initial profile core nursery)) 0)
-        (equal (fn-mcr-ops (fn-mca-initial profile core nursery)) nil))
+   (and (equal (fn-mcr-drawn (fn-mca-initial profile core nursery live)) 0)
+        (equal (fn-mcr-ops (fn-mca-initial profile core nursery live)) nil))
    :hints (("Goal" :in-theory (e/d (fn-mca-initial)
-                                   (fn-mcr-make fn-mca-owner-octets fn-heap-figure-octets
-                                    fn-heap-store-base-octets fn-heap-articles-octets))))))
+                                   (fn-mcr-make fn-mca-owner-octets fn-mca-figure-octets
+                                    fn-mca-base-octets fn-heap-articles-octets))))))
 
 (defthm fn-mca-initial-is-pass-free
-  (fn-mca-pass-free-p (fn-mca-initial profile core nursery) profile)
+  (fn-mca-pass-free-p (fn-mca-initial profile core nursery live) profile live)
   :hints (("Goal" :in-theory (e/d (fn-mca-pass-free-p)
                                   (fn-mca-initial fn-mca-owner-octets
                                    fn-mca-initial-funds-exactly-the-articles))
@@ -638,10 +693,10 @@
 
 (local
  (defthm fn-mca-pass-free-after-resize
-   (implies (and (fn-mca-pass-free-p l profile)
+   (implies (and (fn-mca-pass-free-p l profile live)
                  (not (equal k *fn-mca-reclaim*))
                  (equal (car (fn-mcr-resize l k n)) :ok))
-            (fn-mca-pass-free-p (cadr (fn-mcr-resize l k n)) profile))
+            (fn-mca-pass-free-p (cadr (fn-mcr-resize l k n)) profile live))
    :hints (("Goal" :in-theory (e/d (fn-mcr-same-funding)
                                    (fn-mca-owner-octets fn-mcr-resize-and-move-keep-the-rest))
             :use (fn-mcr-resize-and-move-keep-the-rest))
@@ -649,11 +704,11 @@
 
 (local
  (defthm fn-mca-pass-free-after-move
-   (implies (and (fn-mca-pass-free-p l profile)
+   (implies (and (fn-mca-pass-free-p l profile live)
                  (not (equal a *fn-mca-reclaim*))
                  (not (equal b *fn-mca-reclaim*))
                  (equal (car (fn-mcr-move l a b x)) :ok))
-            (fn-mca-pass-free-p (cadr (fn-mcr-move l a b x)) profile))
+            (fn-mca-pass-free-p (cadr (fn-mcr-move l a b x)) profile live))
    :hints (("Goal" :in-theory (e/d (fn-mcr-same-funding)
                                    (fn-mca-owner-octets fn-mcr-resize-and-move-keep-the-rest))
             :use ((:instance fn-mcr-resize-and-move-keep-the-rest (from a) (to b))))
@@ -661,17 +716,17 @@
 
 (local
  (defthm fn-mca-pass-free-after-ok-or-resize
-   (implies (and (fn-mca-pass-free-p l profile)
+   (implies (and (fn-mca-pass-free-p l profile live)
                  (not (equal k *fn-mca-reclaim*)))
-            (fn-mca-pass-free-p (fn-mca-ok-or (fn-mcr-resize l k n) l) profile))
+            (fn-mca-pass-free-p (fn-mca-ok-or (fn-mcr-resize l k n) l) profile live))
    :hints (("Goal" :in-theory (e/d (fn-mca-ok-or) (fn-mca-pass-free-p fn-mcr-resize))))))
 
 (local
  (defthm fn-mca-pass-free-after-ok-or-move
-   (implies (and (fn-mca-pass-free-p l profile)
+   (implies (and (fn-mca-pass-free-p l profile live)
                  (not (equal a *fn-mca-reclaim*))
                  (not (equal b *fn-mca-reclaim*)))
-            (fn-mca-pass-free-p (fn-mca-ok-or (fn-mcr-move l a b x) l) profile))
+            (fn-mca-pass-free-p (fn-mca-ok-or (fn-mcr-move l a b x) l) profile live))
    :hints (("Goal" :in-theory (e/d (fn-mca-ok-or) (fn-mca-pass-free-p fn-mcr-move))))))
 
 (local
@@ -682,18 +737,18 @@
 ;; pass-free ledger pass-free: no user's read, take, seal, COMPLETE, settle,
 ;; stop or close touches the owner's work reserve.
 (defthm fn-mca-served-steps-keep-pass-free
-  (implies (fn-mca-pass-free-p credits profile)
+  (implies (fn-mca-pass-free-p credits profile live)
            (and (fn-mca-pass-free-p
                  (cdr (fn-mca-read-span credits oc views id i end cache s slots reserve
                                         fn-octets fn-arena fn-cat))
-                 profile)
-                (fn-mca-pass-free-p (fn-mca-take credits id reserve) profile)
-                (fn-mca-pass-free-p (fn-mca-untake credits reserve) profile)
-                (fn-mca-pass-free-p (fn-mca-seal credits) profile)
-                (fn-mca-pass-free-p (fn-mca-batch-done credits) profile)
-                (fn-mca-pass-free-p (fn-mca-settle credits) profile)
-                (fn-mca-pass-free-p (fn-mca-stop credits) profile)
-                (fn-mca-pass-free-p (fn-mca-close credits id) profile)))
+                 profile live)
+                (fn-mca-pass-free-p (fn-mca-take credits id reserve) profile live)
+                (fn-mca-pass-free-p (fn-mca-untake credits reserve) profile live)
+                (fn-mca-pass-free-p (fn-mca-seal credits) profile live)
+                (fn-mca-pass-free-p (fn-mca-batch-done credits) profile live)
+                (fn-mca-pass-free-p (fn-mca-settle credits) profile live)
+                (fn-mca-pass-free-p (fn-mca-stop credits) profile live)
+                (fn-mca-pass-free-p (fn-mca-close credits id) profile live)))
   :hints (("Goal" :in-theory (e/d (fn-mca-read-span fn-mca-take fn-mca-untake fn-mca-seal
                                    fn-mca-batch-done fn-mca-settle fn-mca-stop fn-mca-close)
                                   (fn-mca-pass-free-p fn-mcr-resize fn-mcr-move fn-mca-ok-or

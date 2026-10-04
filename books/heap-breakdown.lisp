@@ -44,10 +44,6 @@
                                      (fn-heap-open-chunk-bound profile ou)))
           (cons :open-suffix-vectors (* 2 ou))
           (cons :open-per-record (* 2 *fn-heap-open-record-octets* on))
-          ;; the owner's work reserve beyond the open's terms: a live
-          ;; reclaim pass's second generation at the bounds, less the open's
-          ;; transient it never coexists with (lane reclaim-funding)
-          (cons :reclaim-reserve (fn-heap-reclaim-excess-octets profile ou on))
           (cons :inflight-lists (* 2 *fn-heap-list-octets-per-octet*
                                    (+ r (* *fn-heap-inflight-header-copies* hdr))))
           ;; the submission the committer took, unpacked (lane chunked-body-2)

@@ -1954,15 +1954,20 @@ the run's (exit 1), named on stderr and in the service log."
                               threads stack
                               +fnn-gc-nursery-octets+
                               (fnn-store-config store)
-                              (and tls-context t))))
+                              (and tls-context t)
+                              ;; the operator's opt-in (`[resources]
+                              ;; reclaim_live'): the owner's work reserve
+                              ;; beyond the open's exists only with it
+                              (fnn-owner-service-reclaim-live service))))
                 (when (eq word :hold)
                   (fnn-owner-syncer-install service threads stack)
                   ;; Store figure is captured before both allowance extensions.
                   ;; ACL2 validates dynamic >= store + exact cold + output pool.
                   (fnn-owner-output-install
                    service (sb-ext:dynamic-space-size)
-                   (fnn-core 'fn-heap-figure-octets (fnn-store-config store)
-                             (fnn-heap-core-octets) +fnn-gc-nursery-octets+)))
+                   (fnn-core 'fn-mca-figure-octets (fnn-store-config store)
+                             (fnn-heap-core-octets) +fnn-gc-nursery-octets+
+                             (fnn-owner-service-reclaim-live service))))
                 word))))
          (line (fnn-global 'fn-owner-connection-budget-line)))
     (unless (and (member decision '(:hold :refused)) (fnn-octet-list-p line))

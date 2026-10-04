@@ -51,17 +51,34 @@
 
 (defconst *fn-orcp-credit-key* *fn-mca-reclaim*)
 
+; THE OPT-IN (lane reclaim-funding, section 11, ember's ruling 2026-10-04):
+; live reclaim is the operator's choice, `[resources] reclaim_live = true'.
+; LIVE is that key.  Without it no owner's work reserve beyond the open's
+; exists (books/owner-credits.lisp fn-mca-owner-octets) and a live pass that
+; installs (`store reclaim', `--recorded') is refused by name, :offline-only,
+; before anything is recorded or reserved; the offline verbs are as ever and
+; the dry run, which holds no second generation, is unchanged.
+(defun fn-orcp-request-word (mode live word)
+  (declare (xargs :guard t))
+  (if (and (member-eq mode '(:recorded :reclaim)) (not live))
+      :offline-only
+    word))
+
 ; The reservation over the captured store, N records charging C history
 ; octets: (:ok CREDITS') with the demand borrowed under :reclaim, or a
-; refusal by name with CREDITS kept.
-(defun fn-orcp-reserve (credits n c)
+; refusal by name with CREDITS kept.  Without the opt-in: (:refused
+; :offline-only) -- the request already refused it; this is the capture's
+; own check.
+(defun fn-orcp-reserve (credits n c live)
   (declare (xargs :guard t))
-  (fn-mcr-borrow credits *fn-orcp-credit-key* (fn-heap-reclaim-demand-octets n c)))
+  (if live
+      (fn-mcr-borrow credits *fn-orcp-credit-key* (fn-heap-reclaim-demand-octets n c))
+    (list :refused :offline-only)))
 
 ; The ledger after the reservation: the reserved one, or CREDITS unchanged.
-(defun fn-orcp-reserved-credits (credits n c)
+(defun fn-orcp-reserved-credits (credits n c live)
   (declare (xargs :guard t))
-  (fn-mca-ok-or (fn-orcp-reserve credits n c) credits))
+  (fn-mca-ok-or (fn-orcp-reserve credits n c live) credits))
 
 ; The pass ended (installed, deferred, abandoned or failed): its credit back
 ; to the completion reserve.
@@ -88,7 +105,7 @@
 ; credit is what it was.
 (defthm fn-orcp-reserve-keeps-funded
   (implies (fn-mcr-fundedp credits)
-           (fn-mcr-fundedp (fn-orcp-reserved-credits credits n c)))
+           (fn-mcr-fundedp (fn-orcp-reserved-credits credits n c live)))
   :hints (("Goal" :use ((:instance fn-mcr-borrow-and-return-keep-funded
                                    (l credits) (id *fn-orcp-credit-key*)
                                    (x (fn-heap-reclaim-demand-octets n c))))
@@ -97,13 +114,13 @@
                                    fn-mcr-borrow-and-return-keep-funded)))))
 
 (defthm fn-orcp-reserve-holds-the-estimate
-  (implies (equal (car (fn-orcp-reserve credits n c)) :ok)
+  (implies (equal (car (fn-orcp-reserve credits n c live)) :ok)
            (and (equal (fn-mcr-credit-of *fn-orcp-credit-key*
-                                         (fn-mcr-ops (fn-orcp-reserved-credits credits n c)))
+                                         (fn-mcr-ops (fn-orcp-reserved-credits credits n c live)))
                        (fn-heap-reclaim-demand-octets n c))
                 (implies (not (equal k *fn-orcp-credit-key*))
                          (equal (fn-mcr-credit-of k (fn-mcr-ops (fn-orcp-reserved-credits
-                                                                 credits n c)))
+                                                                 credits n c live)))
                                 (fn-mcr-credit-of k (fn-mcr-ops credits))))))
   :hints (("Goal" :use ((:instance fn-mcr-borrow-sets-the-credit
                                    (l credits) (id *fn-orcp-credit-key*) (a k)
@@ -114,11 +131,12 @@
 
 ; A refusal is by name and leaves the ledger as it was.
 (defthm fn-orcp-reserve-refused-by-name
-  (implies (not (equal (car (fn-orcp-reserve credits n c)) :ok))
-           (and (member-equal (fn-orcp-reserve credits n c)
+  (implies (not (equal (car (fn-orcp-reserve credits n c live)) :ok))
+           (and (member-equal (fn-orcp-reserve credits n c live)
                               '((:refused :operation-already-admitted)
-                                (:refused :completion-reserve-exhausted)))
-                (equal (fn-orcp-reserved-credits credits n c) credits)))
+                                (:refused :completion-reserve-exhausted)
+                                (:refused :offline-only)))
+                (equal (fn-orcp-reserved-credits credits n c live) credits)))
   :hints (("Goal" :use ((:instance fn-mcr-borrow-refused-by-name
                                    (l credits) (id *fn-orcp-credit-key*)
                                    (x (fn-heap-reclaim-demand-octets n c))))
@@ -133,10 +151,10 @@
 ; completion reserve) the two are disjoint.
 (defthm fn-orcp-reserve-keeps-the-articles-room
   (implies (and (fn-mcr-opsp (fn-mcr-ops credits))
-                (equal (car (fn-orcp-reserve credits n c)) :ok))
-           (and (equal (fn-mcr-total (fn-orcp-reserved-credits credits n c))
+                (equal (car (fn-orcp-reserve credits n c live)) :ok))
+           (and (equal (fn-mcr-total (fn-orcp-reserved-credits credits n c live))
                        (fn-mcr-total credits))
-                (equal (fn-mcr-budget (fn-orcp-reserved-credits credits n c))
+                (equal (fn-mcr-budget (fn-orcp-reserved-credits credits n c live))
                        (fn-mcr-budget credits))))
   :hints (("Goal" :use ((:instance fn-mcr-borrow-keeps-the-total
                                    (l credits) (id *fn-orcp-credit-key*)
@@ -148,13 +166,37 @@
                                   (fn-mcr-borrow fn-heap-reclaim-demand-octets fn-mcr-total
                                    fn-mcr-borrow-keeps-the-total fn-mcr-borrow-sets-the-credit)))))
 
+; THE OPT-IN, off: no reservation, whatever the ledger, the store or the
+; demand -- refused by name, the ledger unchanged.  (The request is refused
+; before this, fn-orcp-request-word; this is the capture's own check.)
+(defthm fn-orcp-reserve-refused-without-the-opt-in
+  (and (equal (fn-orcp-reserve credits n c nil) '(:refused :offline-only))
+       (equal (fn-orcp-reserved-credits credits n c nil) credits))
+  :hints (("Goal" :in-theory (e/d (fn-orcp-reserve fn-orcp-reserved-credits fn-mca-ok-or)
+                                  (fn-mcr-borrow)))))
+
+; The request: the passes that install are refused by name without the
+; opt-in, before anything is recorded or reserved; with it, and for the dry
+; run always, the request's own answer stands.
+(defthm fn-orcp-request-word-refuses-an-installing-pass-without-the-opt-in
+  (implies (member-equal mode '(:recorded :reclaim))
+           (equal (fn-orcp-request-word mode nil word) :offline-only))
+  :hints (("Goal" :in-theory (enable fn-orcp-request-word))))
+
+(defthm fn-orcp-request-word-keeps-the-answer-with-the-opt-in-or-for-a-dry-run
+  (and (equal (fn-orcp-request-word mode t word) word)
+       (equal (fn-orcp-request-word :dry-run live word) word))
+  :hints (("Goal" :in-theory (enable fn-orcp-request-word))))
+
 (local
  (defthm fn-orcp-demand-within-the-owner-reserve
-   (implies (and (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+   (implies (and live
+                 (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
                  (<= (nfix c) (nfix (fn-bs-profile-max-history-octets profile))))
-            (<= (fn-heap-reclaim-demand-octets n c) (fn-mca-owner-octets profile)))
+            (<= (fn-heap-reclaim-demand-octets n c) (fn-mca-owner-octets profile live)))
    :rule-classes :linear
-   :hints (("Goal" :in-theory (e/d (fn-mca-owner-octets fn-heap-reclaim-octets)
+   :hints (("Goal" :in-theory (e/d (fn-mca-owner-octets fn-mca-reclaim-reserve-octets
+                                    fn-heap-reclaim-octets)
                                    (fn-heap-reclaim-demand-octets fn-heap-store-open-octets
                                     fn-heap-reclaim-excess-octets
                                     fn-bs-profile-max-transactions fn-bs-profile-max-history-octets))
@@ -166,17 +208,19 @@
                              (ou (fn-heap-open-octets-bound profile nil))
                              (on (fn-heap-open-records-bound profile nil))))))))
 
-; KEYSTONE (K1).  A live reclaim over any store the profile admits -- N
+; KEYSTONE (K1), CONDITIONED ON THE OPT-IN.  A live reclaim over any store the profile admits -- N
 ; records within T, charging C history octets within H, as the history gate
 ; keeps every store (fn-cvec-roomp-is-within-the-profile) -- is funded on a
-; pass-free ledger: the reservation is admitted.  (With
-; fn-heap-store-figure-holds-every-store-and-its-reclaim: the dynamic space
-; the launcher reserved holds what it is admitted to build.)
+; pass-free ledger of a run that asked for it (LIVE): the reservation is
+; admitted.  (With fn-heap-store-live-figure-holds-every-store-and-its-
+; reclaim: the dynamic space the launcher reserved for it holds what it is
+; admitted to build.)
 (defthm fn-orcp-profile-admitted-reclaim-is-funded
-  (implies (and (fn-mca-pass-free-p credits profile)
+  (implies (and live
+                (fn-mca-pass-free-p credits profile live)
                 (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
                 (<= (nfix c) (nfix (fn-bs-profile-max-history-octets profile))))
-           (equal (car (fn-orcp-reserve credits n c)) :ok))
+           (equal (car (fn-orcp-reserve credits n c live)) :ok))
   :hints (("Goal" :in-theory (e/d (fn-orcp-reserve fn-mca-pass-free-p)
                                   (fn-mcr-borrow fn-heap-reclaim-demand-octets fn-mca-owner-octets
                                    fn-bs-profile-max-transactions fn-bs-profile-max-history-octets
@@ -203,11 +247,11 @@
 ; reservation leaves a pass-free ledger pass-free again, with the completion
 ; reserve and every operation as they were.
 (defthm fn-orcp-release-of-reserve-is-pass-free
-  (implies (and (fn-mca-pass-free-p credits profile)
+  (implies (and (fn-mca-pass-free-p credits profile live)
                 (fn-mcr-opsp (fn-mcr-ops credits))
-                (equal (car (fn-orcp-reserve credits n c)) :ok))
-           (let ((l2 (fn-orcp-release (fn-orcp-reserved-credits credits n c))))
-             (and (fn-mca-pass-free-p l2 profile)
+                (equal (car (fn-orcp-reserve credits n c live)) :ok))
+           (let ((l2 (fn-orcp-release (fn-orcp-reserved-credits credits n c live))))
+             (and (fn-mca-pass-free-p l2 profile live)
                   (equal (fn-mcr-completion l2) (fn-mcr-completion credits))
                   (equal (fn-mcr-ops l2) (fn-mcr-ops credits)))))
   :hints (("Goal" :use ((:instance fn-mcr-return-of-borrow

@@ -111,6 +111,7 @@
 (include-book "bp-heap-command")
 (include-book "cold-read-reservation")
 (include-book "output-reservation")
+(include-book "reclaim-reservation")
 (include-book "resource-output")
 (include-book "native-control")
 (include-book "native-control-reason")
