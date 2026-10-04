@@ -3,6 +3,23 @@
 (unless (find-package "ACL2") (make-package "ACL2" :use '("COMMON-LISP")))
 (in-package "ACL2")
 
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-set-nonblocking (fd)
+  (declare (ignorable fd))
+  (harness-stub-reached 'fnn-set-nonblocking "host/native/io.lisp"))
+;;; ---- derived stubs: END ----
+
 (deftype fnn-octets () '(simple-array (unsigned-byte 8) (*)))
 (defconstant +fnn-max-read+ 65536)
 (defun fnn-make-octets (n) (make-array n :element-type '(unsigned-byte 8) :initial-element 0))

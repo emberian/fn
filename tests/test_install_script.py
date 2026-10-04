@@ -119,7 +119,7 @@ class UpgradeAskTests(unittest.TestCase):
     def test_a_fence_or_any_other_answer_switches_nothing(self):
         self.assert_refused(3, "fenced: recover before further mutation", "uncertain (status exit 3")
         self.assert_refused(5, "usage", "usage (status exit 5)")
-        self.assert_refused(9, "", "status exit 9")
+        self.assert_refused(9, "", "fault (status code 9 is no fn outcome")
 
 
 class HealthClassTests(unittest.TestCase):

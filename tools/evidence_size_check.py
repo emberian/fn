@@ -7,7 +7,10 @@ summary + the tail + where the full log lives on the box."
 
 Check tracked raw logs under planning/ (`git ls-files`; without .git, a
 walk). Manifests and records (.json), Markdown, compressed logs, images and
-Lisp sources are data, not raw logs. Existing oversized logs are grandfathered
+Lisp sources are data, not raw logs; so is the 2026-10-02 rewrite's commit
+map (planning/commit-map-*.txt: one `OLD NEW` pair per line, the table
+tools/commit_map.py resolves pre-rewrite shas through -- a summary of it
+would break every historical lookup). Existing oversized logs are grandfathered
 in tools/evidence_size_baseline.txt. Generate it once with --write-baseline;
 later writes only drop entries, never grandfather new logs. No log is changed.
 Positional FILE arguments restrict checking, including stale baseline entries;
@@ -30,6 +33,9 @@ ROOT = Path(__file__).resolve().parents[1]
 LIMIT = 1000
 RAW_LOG_SUFFIXES = (".log", ".txt", ".out", ".stderr", ".stdout", ".jsonl", ".times")
 BASELINE = Path("tools/evidence_size_baseline.txt")
+# tools/commit_map.py's table (planning/commit-map-20261002.txt): data, read
+# whole by the resolver, not a log.
+COMMIT_MAP_PREFIX = "planning/commit-map-"
 BASELINE_HEADER = (
     "# Grandfathered oversized planning raw logs (MODE §5).\n"
     "# This baseline only shrinks; commit a summary + the tail + the full log location.\n"
@@ -50,6 +56,7 @@ def in_scope(name: str) -> bool:
     # (.gitignore), filed by hash through tools/evidence_store.py, and dropped
     # from history by the 2026-10-02 rewrite, so nothing there is committed.
     return (name.startswith("planning/") and not name.startswith("planning/evidence/")
+            and not name.startswith(COMMIT_MAP_PREFIX)
             and name.endswith(RAW_LOG_SUFFIXES))
 
 

@@ -11,6 +11,8 @@ calls. Every answer is accepted, refused or uncertain.
 - An account on the public node: [docs/public-node.md](docs/public-node.md).
 - Engineers: [docs/README.md](docs/README.md), [AGENTS.md](AGENTS.md).
 
-A first check needs Python 3.11: `make check`.
+A first check needs Python 3.11 or newer: `make check`. The optional
+`tests/interop_nntplib.py` probe needs Python 3.12 or older (`nntplib` left
+the standard library in 3.13).
 
 AGPL-3.0. [CONTRIBUTING.md](CONTRIBUTING.md).

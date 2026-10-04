@@ -196,10 +196,6 @@ class CertifiedClaimsTests(unittest.TestCase):
                     certified_claims.explain("PRF-NONE", root)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class ScopedInstalledEvidenceTests(unittest.TestCase):
     def test_uncited_query_normalizes_only_installed_complete_closures(self):
         rows = {"books/a": ("a", ["books/a.lisp:a", "books/dep.lisp:d"])}
@@ -217,3 +213,7 @@ class ScopedInstalledEvidenceTests(unittest.TestCase):
                 mock.patch.object(certified_claims.evidence_manifests, "tracked_manifests", return_value=set()), \
                 mock.patch.object(certified_claims.evidence_manifests, "load_all_archived", side_effect=manifests):
             self.assertEqual(certified_claims.uncited_books(Path("."), ["books/a"]), ["books/a"])
+
+
+if __name__ == "__main__":
+    unittest.main()

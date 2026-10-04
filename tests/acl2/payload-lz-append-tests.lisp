@@ -8,6 +8,7 @@
 ; span, *plz-block* the block alone, *plz-dict-block* the block against the
 ; 2,749-octet dictionary *plz-dict*, *plr-z0* the seal with *plz-block*).
 (in-package "ACL2")
+(include-book "must-fail-checked")
 (include-book "../../books/payload-lz-append")
 (include-book "payload-lz-record-tests")
 

@@ -460,7 +460,8 @@ class Executor:
     def perform(self, step: dict, alone: bool = False) -> None:
         index, name, command = step["index"], step["name"], step["command"]
         header = f"== {name}: {shlex.join(command)}\n"
-        log = self.directory / "logs" / f"{index:02d}-{re.sub(r'[^\w.-]', '_', name)[:60]}.log"
+        slug = re.sub(r"[^\w.-]", "_", name)[:60]
+        log = self.directory / "logs" / f"{index:02d}-{slug}.log"
         entry = self.cached(step)
         if entry is not None:
             note = f"cached (inputs unchanged since {entry['head']})"
