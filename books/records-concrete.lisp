@@ -357,10 +357,8 @@
 (in-theory (disable fn-rcon-store-event-encode fn-rcon-sbud-pending-sequence))
 
 (defun fn-rcon-sf-record-dir-result (s result)
-  (declare (xargs :guard (fn-sf-statep s)
-                  :guard-hints (("Goal" :use fn-sf-statep-implies-shapep
-                                 :in-theory (disable fn-sf-statep)))))
-  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :record-attempted))
+  (declare (xargs :guard (fn-sf-countersp s)))
+  (if (equal (fn-sf-phase s) :record-attempted)
       (cond
        ((equal result :ok)
         ; The commit appends the record in O(1) to the history's field
@@ -384,7 +382,7 @@
                                 fn-rcon-sf-record-pair-is-sf-record-pair)
                               (theory 'minimal-theory)))))
 (defun fn-rcon-sn-file-step (files operation result)
-  (declare (xargs :guard (fn-sf-statep files)))
+  (declare (xargs :guard (fn-sf-countersp files)))
   (case operation
     (:start-frontier (fn-sf-start-frontier files))
     (:frontier-file (fn-sf-frontier-file-result files result))
@@ -402,21 +400,16 @@
                                 fn-rcon-sf-record-dir-result-is-sf-record-dir-result)
                               (theory 'minimal-theory)))))
 (defun fn-rcon-sn-io (s operation result)
-  (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
-  (if (mbe :logic (fn-sn-statep s) :exec t)
-      (fn-sn-update s (fn-rcon-sn-file-step (fn-sn-files s) operation result)
-                    (fn-sn-node s))
-    s))
+  (declare (xargs :guard (fn-sf-countersp (fn-sn-files s)) :verify-guards nil))
+  (fn-sn-update s (fn-rcon-sn-file-step (fn-sn-files s) operation result)
+                (fn-sn-node s)))
 (defthm fn-rcon-sn-io-is-sn-io
   (equal (fn-rcon-sn-io s operation result) (fn-sn-io s operation result))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-rcon-sn-io fn-sn-io
                                 fn-rcon-sn-file-step-is-sn-file-step)
                               (theory 'minimal-theory)))))
-(verify-guards fn-rcon-sn-io
-  :hints (("Goal" :use ((:guard-theorem fn-sn-io))
-                  :in-theory (e/d (fn-rcon-sn-file-step-is-sn-file-step)
-                                  (fn-sn-statep fn-sf-statep fn-node-statep)))))
+(verify-guards fn-rcon-sn-io)
 
 (in-theory (disable fn-rcon-sf-record-dir-result fn-rcon-sn-file-step fn-rcon-sn-io))
 

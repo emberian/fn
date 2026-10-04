@@ -542,6 +542,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-files-traces-tests \
 	tests/acl2/store-files-exploration-tests \
 	tests/acl2/store-files-teeth-tests \
+	tests/acl2/store-files-counters-tests \
 	books/store-node \
 	books/store-node-existing-invariants \
 	books/poster-bytes-source \

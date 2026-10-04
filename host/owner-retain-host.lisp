@@ -209,6 +209,22 @@
                               (theory 'minimal-theory))
            :use ((:instance fn-owner-retain-statep-implies-lgoc (state state))))))
 
+; fn-owner-io's guard is the io family's O(1) one (lane carrier S1); the
+; carried relation concludes it through the whole store state.
+(defthm fn-owner-retain-statep-implies-io-guard
+  (implies (fn-owner-retain-statep state)
+           (fn-sf-countersp (fn-sn-files (fn-sbud-oc-store (fn-owner-ocfg state)))))
+  :hints (("Goal" :in-theory '(fn-sn-statep-implies-files-countersp)
+           :use fn-owner-retain-statep-implies-entry-guard)))
+
+; Teeth: the host entry's guard, read from the world, walks no whole log.
+(make-event
+ (if (intersectp-eq (all-fnnames (guard 'fn-owner-io nil (w state)))
+                    '(fn-sf-statep fn-sn-statep fn-sf-record-listp fn-sf-success-listp
+                      fn-sf-shapep fn-sn-shapep fn-node-statep fn-lgoc-invariantp))
+     (er soft 'fn-owner-io-guard "whole-log predicate in the guard of fn-owner-io")
+   (value '(value-triple :fn-owner-io-guard-o1))))
+
 ; fn-owner-io: an unsafe observation is refused in the body (state
 ; unchanged); each safe arm is a configured-owner keystone.
 (defthm fn-owner-io-preserves-retain-state

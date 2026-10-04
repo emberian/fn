@@ -1677,9 +1677,14 @@
     (:log-order t)
     (t (fn-psrv-io-safep operation))))
 
+;; The guard is the io family's O(1) one (lane carrier S1,
+;; planning/design/owner-carrier-2026-10-04.md): the two counters of the
+;; store's file state.  The whole store state is the carried invariant
+;; (fn-owner-retain-statep, fn-owner-io-preserves-retain-state), never a
+;; per-call check.
 (defun fn-owner-io (operation result state)
   (declare (xargs :stobjs state :guard (and (boundp-global 'fn-owner state)
-                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state))))
+                              (fn-sf-countersp (fn-sn-files (fn-sbud-oc-store (fn-owner-ocfg state)))))
                   :guard-hints (("Goal" :in-theory (enable fn-sbud-oc-store)))))
   (let ((oc (fn-owner-ocfg state)))
     (if (not (fn-owner-io-safep (fn-sbud-oc-store oc) operation result))

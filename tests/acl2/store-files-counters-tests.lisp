@@ -10,14 +10,17 @@
 ;
 ; T1  the identity off the invariant is GONE and observable: a state that is
 ;     countersp but not statep, in phase :ready, is stepped to :frontier-staged;
-; T2  world facts: the guards of the io steps, fn-sn-file-step, fn-sn-io and
-;     fn-rcon-sn-io mention no whole-log predicate;
+; T2  world facts: the guards of the io steps, fn-sn-file-step, fn-sn-io,
+;     their concrete twins and the owner layers up to fn-olr-ocfg-reserve and
+;     -order mention no whole-log predicate (fn-owner-io's own guard is
+;     checked the same way where it is defined, host/owner-retain-host.lisp);
 ; T3  countersp is satisfiable (the initial state) and strictly weaker than
 ;     statep (T1's witness), so the preservation theorems' hypothesis is not
 ;     vacuous and the guard is not a disguised statep.
 
 (in-package "ACL2")
 (include-book "../../books/records-concrete")
+(include-book "../../books/owner-log-route") ; the owner layers of the chain
 (include-book "../../books/codec-attach")
 
 ; T3 / T1's witness: the initial state with one barrier too many
@@ -57,11 +60,28 @@
                               fn-sf-record-file-result fn-sf-record-link-result
                               fn-sf-record-dir-result fn-sf-recovery-barrier
                               fn-sn-file-step fn-sn-io
-                              fn-rcon-sf-record-dir-result fn-rcon-sn-file-step fn-rcon-sn-io)
+                              fn-rcon-sf-record-dir-result fn-rcon-sn-file-step fn-rcon-sn-io
+                              fn-rcon-own-store-io fn-rcon-ocfg-io
+                              fn-olr-ocfg-reserve fn-olr-ocfg-order)
                             state)))
    (if bad
        (er soft 'sfc-t2 "whole-log predicate in the guard of ~x0" bad)
      (value '(value-triple :sfc-t2-ok)))))
+; T2 names the guard's head; the head itself must be O(1): fn-sf-countersp's
+; body calls nothing but natp and the two O(1) accessors.
+(make-event
+ (if (subsetp-eq (all-fnnames (body 'fn-sf-countersp nil (w state)))
+                 '(if natp fn-sf-frontier fn-sf-barriers))
+     (value '(value-triple :sfc-countersp-o1))
+   (er soft 'sfc-countersp "fn-sf-countersp calls ~x0"
+       (all-fnnames (body 'fn-sf-countersp nil (w state))))))
+; T2's own teeth: the check names a step S1 left on the whole-log guard (the
+; finish chain, S3), so an empty answer above is not a blind check.
+(make-event
+ (if (equal (sfc-bad-guards '(fn-sf-core-completion fn-sf-start-frontier) state)
+            '(fn-sf-core-completion))
+     (value '(value-triple :sfc-t2-teeth-ok))
+   (er soft 'sfc-t2-teeth "the guard check does not see fn-sf-core-completion's fn-sf-statep")))
 
 ; The twins are still unconditional (the abstract and concrete side share the
 ; kernel steps and lost the mbe together); evaluated at the junk witness too.

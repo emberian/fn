@@ -24,14 +24,14 @@
 ; of (:store (:io operation result)) is fn-ocfg-pass, fn-own-step's :store
 ; arm, fn-snrt-step's and fn-snt-step's :io arm, which is fn-sn-io.
 (defun fn-rcon-own-store-io (o operation result)
-  (declare (xargs :guard (fn-sn-statep (fn-own-store o))))
+  (declare (xargs :guard (fn-sf-countersp (fn-sn-files (fn-own-store o)))))
   (fn-own-refresh
    (fn-own-make (fn-rcon-sn-io (fn-own-store o) operation result) (fn-own-view o)
                 (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                 (fn-own-pending o) (fn-own-ledger-field o) (fn-own-clock o)
                 (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 (defun fn-rcon-ocfg-io (oc operation result)
-  (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))))
+  (declare (xargs :guard (fn-sf-countersp (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))
   (fn-ocfg-with-owner oc (fn-rcon-own-store-io (fn-ocfg-owner oc) operation result)))
 (defthm fn-rcon-ocfg-io-is-ocfg-step
   (equal (fn-rcon-ocfg-io oc operation result)

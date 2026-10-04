@@ -1314,6 +1314,21 @@
  :hints (("Goal" :use fn-sfg-state-records-have-guard-domain)))
 (verify-guards fn-sf-recover)
 (verify-guards fn-sf-recovery-barrier)
+;; The io family keeps its own guard: every step but the frontier directory
+;; result leaves the frontier and steps the barrier count by one natural, so
+;; a composite of the first three reservation steps (owner-log-route.lisp
+;; fn-olr-ocfg-reserve) and of the three record steps (fn-olr-ocfg-order)
+;; meets each callee's guard.  The directory result installs the candidate as
+;; the frontier; the next call's guard checks it.
+(defthm fn-sf-io-steps-keep-countersp
+  (implies (fn-sf-countersp s)
+           (and (fn-sf-countersp (fn-sf-start-frontier s))
+                (fn-sf-countersp (fn-sf-frontier-file-result s result))
+                (fn-sf-countersp (fn-sf-frontier-replace-result s result))
+                (fn-sf-countersp (fn-sf-record-file-result s result))
+                (fn-sf-countersp (fn-sf-record-link-result s result))
+                (fn-sf-countersp (fn-sf-record-dir-result s result))
+                (fn-sf-countersp (fn-sf-recovery-barrier s result)))))
 
 ; -----------------------------------------------------------------------------
 ; Initial general facts for the kernel.
@@ -1373,7 +1388,7 @@
 ; fn-sf-next-lower), the small phase predicates and the theorems above.
 ; Withdrawn: the recognizers, the initial state, replay admission and every
 ; transition; books/store-files-invariants.lisp opens them locally.
-(in-theory (disable fn-sf-statep fn-sf-phase-shapep fn-sf-initial-state
+(in-theory (disable fn-sf-statep fn-sf-countersp fn-sf-phase-shapep fn-sf-initial-state
                     fn-sf-start-frontier fn-sf-frontier-file-result
                     fn-sf-frontier-replace-result fn-sf-frontier-dir-result
                     fn-sf-replay-node fn-sf-history-recoverablep

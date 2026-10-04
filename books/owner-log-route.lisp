@@ -41,8 +41,10 @@
 ; arms): the same sequences as owner events.
 
 ; The routes below chain concrete io steps on the owner's store: each step
-; wants (and keeps) the store a store-node state, which is what the host
-; carries for the owner (fn-rcon-ocfg-io's guard).
+; wants the O(1) io guard (fn-sf-countersp of the store's files) and every
+; step but the frontier directory result keeps it; the store-node state the
+; host carries for the owner implies it (fn-sn-statep-implies-files-countersp)
+; and each step keeps that state too (the preservation theorems below).
 (local (defthm fn-olr-store-of-refresh
   (equal (fn-own-store (fn-own-refresh o)) (fn-own-store o))
   :hints (("Goal" :in-theory (enable fn-own-refresh)))))
@@ -57,9 +59,20 @@
   :hints (("Goal" :in-theory (e/d (fn-rcon-ocfg-io fn-rcon-own-store-io fn-ocfg-with-owner)
                                   (fn-rcon-ocfg-io-is-ocfg-step)))))
 
+;; The io guard (store-node.lisp fn-sn-io-keeps-countersp) through the
+;; same concrete chain.
+(defthm fn-rcon-ocfg-io-keeps-the-store-counters
+  (implies (and (fn-sf-countersp (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                (not (equal operation :frontier-directory)))
+           (fn-sf-countersp
+            (fn-sn-files (fn-own-store (fn-ocfg-owner (fn-rcon-ocfg-io oc operation result))))))
+  :hints (("Goal" :in-theory (e/d (fn-rcon-ocfg-io fn-rcon-own-store-io fn-ocfg-with-owner)
+                                  (fn-rcon-ocfg-io-is-ocfg-step)))))
+
 (defun fn-olr-ocfg-reserve (oc)
-  (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
-                  ; the same reading held back: each step keeps the store a state
+  (declare (xargs :guard (fn-sf-countersp (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                  ; the same reading held back: each step but the frontier
+                  ; directory result keeps the io guard
                   :guard-hints (("Goal" :in-theory (disable fn-rcon-ocfg-io-is-ocfg-step)))))
   (fn-rcon-ocfg-io
    (fn-rcon-ocfg-io
@@ -68,8 +81,9 @@
    :frontier-directory :ok))
 
 (defun fn-olr-ocfg-order (oc)
-  (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
-                  ; the same reading held back: each step keeps the store a state
+  (declare (xargs :guard (fn-sf-countersp (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                  ; the same reading held back: each step but the frontier
+                  ; directory result keeps the io guard
                   :guard-hints (("Goal" :in-theory (disable fn-rcon-ocfg-io-is-ocfg-step)))))
   (fn-rcon-ocfg-io
    (fn-rcon-ocfg-io (fn-rcon-ocfg-io oc :record-file :ok) :record-link :ok)

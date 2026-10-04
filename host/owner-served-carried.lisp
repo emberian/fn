@@ -90,7 +90,8 @@
                 (fn-owner-install-node-secret fn-owner-install-node-secret-preserves-retain-state)
                 (fn-owner-apply-limit-profile fn-owner-apply-limit-profile-preserves-retain-state))
   :concludes ((fn-sn-statep fn-owner-retain-statep-implies-entry-guard)
-              (fn-prc-carryp fn-owner-retain-statep-implies-entry-guard))
+              (fn-prc-carryp fn-owner-retain-statep-implies-entry-guard)
+              (fn-sf-countersp fn-owner-retain-statep-implies-io-guard))
   :incomplete (A-OWNER-INVARIANT-CARRIED
                ; every other state-returning host writer, by name: the
                ; fn-interfaces entries, and the owner entries the raw host

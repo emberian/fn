@@ -1290,7 +1290,7 @@
 ; fn-sf-core-completion is reachable only inside fn-sn-finish above, so a host
 ; word claiming completion is a no-op (fn-sn-io-cannot-acknowledge).
 (defun fn-sn-file-step (files operation result)
-  (declare (xargs :guard (fn-sf-statep files) :verify-guards nil))
+  (declare (xargs :guard (fn-sf-countersp files) :verify-guards nil))
   (case operation
     (:start-frontier (fn-sf-start-frontier files))
     (:frontier-file (fn-sf-frontier-file-result files result))
@@ -1303,19 +1303,36 @@
     (otherwise files)))
 
 (verify-guards fn-sn-file-step)
+; The io step is unconditional under the O(1) guard its body needs (lane
+; carrier S1, planning/design/owner-carrier-2026-10-04.md): fn-sn-statep is
+; the invariant fn-sn-io-preserves-state assumes, never a guard the host pays
+; per call (COST-GATE: the old guard walked the whole record log).
 (defun fn-sn-io (s operation result)
-  (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
-  (if (mbe :logic (fn-sn-statep s) :exec t)
-      ; The record-directory append no longer extends a store-node event
-      ; index: field 13 is retired (lane history-columns-3).  The history's
-      ; readers read the history stobj fn-hist (books/history-columns.lisp)
-      ; under R (books/history-columns-relation.lisp).
-      (fn-sn-update s (fn-sn-file-step (fn-sn-files s) operation result)
-                    (fn-sn-node s))
-    s))
+  (declare (xargs :guard (fn-sf-countersp (fn-sn-files s)) :verify-guards nil))
+  ; The record-directory append no longer extends a store-node event
+  ; index: field 13 is retired (lane history-columns-3).  The history's
+  ; readers read the history stobj fn-hist (books/history-columns.lisp)
+  ; under R (books/history-columns-relation.lisp).
+  (fn-sn-update s (fn-sn-file-step (fn-sn-files s) operation result)
+                (fn-sn-node s)))
 
-(verify-guards fn-sn-io
-  :hints (("Goal" :in-theory (e/d (fn-sn-statep) (fn-sf-statep fn-node-statep)))))
+(verify-guards fn-sn-io)
+
+; Every caller whose guard is the whole store state meets the io guard.
+(defthm fn-sn-statep-implies-files-countersp
+  (implies (fn-sn-statep s) (fn-sf-countersp (fn-sn-files s)))
+  :hints (("Goal" :in-theory (enable fn-sn-statep))))
+
+; The file step keeps the io guard on every operation but the frontier
+; directory result (fn-sf-io-steps-keep-countersp).
+(defthm fn-sn-file-step-keeps-countersp
+  (implies (and (fn-sf-countersp files)
+                (not (equal operation :frontier-directory)))
+           (fn-sf-countersp (fn-sn-file-step files operation result))))
+(defthm fn-sn-io-keeps-countersp
+  (implies (and (fn-sf-countersp (fn-sn-files s))
+                (not (equal operation :frontier-directory)))
+           (fn-sf-countersp (fn-sn-files (fn-sn-io s operation result)))))
 
 ; A crash discards the live process view.  Recovery reconstructs a new node
 ; through the existing replay interpreter, whose individual records call the
