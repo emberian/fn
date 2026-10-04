@@ -18,13 +18,21 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
-(defun fnn-core (name &rest args)
-  (declare (ignorable name args))
-  (harness-stub-reached 'fnn-core "host/native/io.lisp"))
 (defun fnn-owner-attempt-served (service msgid payload groups evidence)
   (declare (ignorable service msgid payload groups evidence))
   (harness-stub-reached 'fnn-owner-attempt-served "host/native/owner.lisp"))
 ;;; ---- derived stubs: END ----
+
+;; Retirement's intake fence (books/owner-retire-counted.lisp, the real
+;; definition): this owner is not retiring, so intake is admitted.
+(with-open-file (stream "books/owner-retire-counted.lisp")
+  (loop for form = (read stream nil :eof) until (eq form :eof)
+        when (and (consp form) (eq (car form) 'defun) (eq (cadr form) 'fn-ort-intake-action))
+          do (eval (list* 'defun (cadr form) (caddr form) (cddddr form))) (return)))
+(defun fnn-owner-service-retire (service) (declare (ignore service)) nil)
+(defun fnn-core (name &rest args)
+  (unless (eq name 'fn-ort-intake-action) (error "unexpected core ~s" name))
+  (apply #'fn-ort-intake-action args))
 
 ;; The deployed forms this boundary runs, loaded by name so a rename fails
 ;; here rather than leaving a stale stub in its place: the Store condition

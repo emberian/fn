@@ -82,8 +82,12 @@ class ExtentIdentitySourceTests(unittest.TestCase):
         # refusal is by name.
         verdict = native_cuts.host_function(host, "fnn-extent-entry-verdict")
         self.assertIn("'fn-arx-entry-verdict-buffer trailer", verdict)
+        # Every miss is read and verified in fnn-extent-read-verified (the
+        # offline read and the funded pool's both go through it).
+        verified = native_cuts.host_function(host, "fnn-extent-read-verified")
+        self.assertIn("(fnn-extent-entry-verdict octets elen trailer)", verified)
         for name in ("arena-extent-trailer", "arena-extent-digest", "arena-extent-verdict"):
-            self.assertIn(name, entry)
+            self.assertIn(name, verified)
         # The file id names a durable incarnation.
         register = native_cuts.host_function(host, "fnn-extent-register")
         self.assertIn("sb-posix:stat-ino", register)

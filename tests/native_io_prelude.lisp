@@ -4,7 +4,7 @@
 ;;; PRF-143) and +fnn-gc-nursery-octets+ reads fn-profile-limit
 ;;; (books/profile-limits.lisp).  Each table is the book's own quoted
 ;;; constant, read from the book; each function is the book's body without
-;;; its xargs (as tests/native_developer_selectors_raw.lisp does); io.lisp's
+;;; its xargs (as tests/native_developer_selectors_raw-mock.lisp does); io.lisp's
 ;;; exit map calls fn-outcome-host-condition-exit-code.  Five witnesses went
 ;;; red on this unseen (tooling-truth-2, 2026-09-29).
 (in-package "ACL2")

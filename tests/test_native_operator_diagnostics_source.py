@@ -13,7 +13,7 @@ SBCL = os.environ.get("FN_SBCL") or shutil.which("sbcl")
 class OperatorDiagnosticsSourceTests(unittest.TestCase):
     def test_faults_never_print_accepting_heap_or_refused_model_result(self):
         result = subprocess.run(
-            [SBCL, "--script", str(ROOT / "tests/native_operator_diagnostics_source.lisp")],
+            [SBCL, "--script", str(ROOT / "tests/native_operator_diagnostics_source-mock.lisp")],
             cwd=ROOT, text=True, capture_output=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("SOURCE OPERATOR DIAGNOSTICS PASSED", result.stdout)

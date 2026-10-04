@@ -1,48 +1,30 @@
 From: fn <docs@fn.fg-goose.online>
 Newsgroups: fn.docs
 Subject: fn FAQ, part 11: the web page
-Date: Mon, 28 Sep 2026 12:02:00 +0000
-Message-ID: <fn-faq-11-20260928@fn.fg-goose.online>
+Date: Sun, 04 Oct 2026 12:02:00 +0000
+Message-ID: <fn-faq-11-20261004@fn.fg-goose.online>
 Archive-name: fn-faq/part11
 Posting-Frequency: when fn changes
-Last-modified: 2026-09-28
+Last-modified: 2026-10-04
 Summary: The node's own web page: turning it on, inviting friends, and
  what it does and does not do.
 
-The node serves a web page for reading and posting. Friends need
-only a browser. No Python, no second program.
+A node can serve its own web page, so a friend needs only a browser.
 
-*For a friend:* Open the address you were given. Press "Make your
+*For a friend:* Open the address you were given, press "Make your
 account", type the invitation code, choose a name and a password.
-The same name and password work in tin.
+The same name and password work in tin. Light, dark or automatic
+colours. Phones work.
 
-*What you see:* groups, the newest posts, one post at a time, a
-form to post, and "Remove my post" on your own posts. Light, dark
-or automatic colours. Phones work.
+*After you post:* "Posted!" means saved. "The server said no" means
+nothing was published, and why. "We couldn't tell" means look at the
+group before sending again.
 
-*After you post:*
-- "Posted!": the server took it.
-- "The server said no": nothing was published; the reason is shown.
-- "We couldn't tell": the answer was lost. Look at the group before
-  sending it again.
-
-*For the operator:* after mission wrote fn.toml, as root:
+*For the operator:* turn it on as root, then invite:
 
     sh /opt/fn/install.sh --reader
-
-It adds a [web] table to fn.toml: port 8920 on 127.0.0.1, behind
-Caddy (proxied = true). Edit site and domain, restart the node,
-and look for LISTENING-WEB 8920. Put share/fn/caddy/fn-web.caddy in
-the Caddyfile with your web name. Then invite:
-
     fn operator /var/lib/fn/fn.toml account invite
 
-*Why trust it:* it is the node. A sign-in is the node's AUTHINFO,
-an account its XREDEEM, a post its POST. A friend sees what their
-newsreader would. ACL2 builds every page; article text is escaped;
-no page runs a script. No password is written down.
+docs/web.md covers the proxy and the settings.
 
-*Not yet:* threads, search, read marks, moderation, and checking a
-signature yourself (fn-verify does that).
-
-*Go deeper:* docs/web.md.
+*Not yet:* threads, search, read marks.
