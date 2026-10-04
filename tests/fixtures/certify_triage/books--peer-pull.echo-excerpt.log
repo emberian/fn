@@ -1,0 +1,12 @@
+Form:  ( DEFUN FN-PULL-BEGIN-EFFECTS ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+FN-PULL-BEGIN-EFFECTS
+
+
+ACL2 !>>>(DEFUN FN-PULL-FAIL (R)
+           (DECLARE (XARGS :GUARD T))
+           (MV (FN-PULL-WITH R :PHASE :FAILED :BUF NIL)
+               (LIST (LIST :CLOSE))))
+
+FN_CERTIFY_SUCCESS 87ea554206c090f970931b5a0db399ab 4427a2cdf5e1

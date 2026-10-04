@@ -254,7 +254,7 @@
         "tests/evidence/2026-09-18-articles.json",
         "tests/evidence/2026-09-18-bp-workflow.md",
         "tests/evidence/2026-09-18-bp-exchange.md",
-        "tests/test_native_owner_bound_commit_raw.sh"
+        "tests/native_owner_bound_commit_raw.lisp"
       ],
       "execution_scope": "Partial: ledger and node retention proofs, real adapter bounds/maximum-profile replay, and BP receiver capacity refusal preserving prior article/archive pin. No durable deletion/compaction or physical disk-reservation proof."
     },
@@ -486,7 +486,7 @@
         "planning/evidence/wave-realignment-2026-09-19.md",
         "books/nntp-newnews.lisp",
         "tests/acl2/nntp-newnews-tests.lisp",
-        "tests/test_native_owner_group_codes_raw.sh"
+        "tests/native_owner_group_codes_raw.lisp"
       ],
       "execution_scope": "Implemented reader session/cursor and effect shape have general proofs; exact ACL2 bridge input partitions and real reconnects have targeted tests. Full READER/POST and complete RFC byte-response conformance remain open. Framing and cursor coverage moved from the host to books/served, which states chunk-partition independence of the function the host calls. The capabilities leg is REFUTED as it stands: the deploy gate found POST answered with 340 while CAPABILITIES omits POST (RFC 3977 section 5.2.2)."
     },
@@ -557,8 +557,8 @@
         "planning/lanes/HANDOFF-w22-native-control.md",
         "planning/evidence/native-control-accept-shutdown-2026-09-21.md",
         "planning/evidence/native-raw-integration-w35-2026-09-21/README.md",
-        "tests/test_native_io_progress.sh",
-        "tests/test_native_owner_shared_action_raw.sh"
+        "tests/native_io_progress_raw.lisp",
+        "tests/native_owner_shared_action_raw.lisp"
       ],
       "execution_scope": "Partial: frozen03 default/DTN builds and scoped native suites passed, including public operator startup and concurrent uncertainty fencing. Later logical traces and targeted native tests cover stated subcontracts. The standalone store and shared-owner prepare projections are certified equal to their replaying specification/previous owner event under maintained relations, with nonempty-history witnesses and stale-node counterexamples when the premises are removed. A production image at 8cbeda9 passed all six targeted native-owner tests, including durable POST/reopen and uncertainty fencing. The frozen cdbd6b2 Python service matrix retains its recorded authentication and BP-crash disagreements. Full native service parity, deployment dependency evidence, concurrent backpressure/stale-completion composition and complete physical adapter correspondence remain open; the targeted owner image is not the whole deployment gate. The integrated control packet has ACL2 closure and exact-raw Darwin lifecycle/posting evidence; its saved-image build returned nonzero due to unrelated certificate origins, so it is not a clean native build gate. The later control resource packet passed scoped native slow-drip and active-client ceiling cases; it adds linear accumulation by source inspection, with the combined image gate still separate."
     },
@@ -748,7 +748,7 @@
         "A stopped service releases the writer lock, and the store reopens without recovery."
       ],
       "evidence": [
-        "tests/test_native_live_config_cache_raw.sh"
+        "tests/native_live_config_cache_raw.lisp"
       ],
       "execution_scope": "Specified. The v0 rows (planning/v0-matrix.json, last run b6759850) are owned by tests/test_native_conformance.py on one node and by tests/test_native_peering.py and tests/test_native_protected_peering.py between two nodes on one host over loopback (planning/evidence/python-diet-2-2026-09-28/v0-row-owners.md). Nothing here exercises two machines, a real network, or an operator's own configuration."
     },
@@ -849,9 +849,9 @@
         "planning/evidence/feed-journal-w12-host.json",
         "planning/lanes/HANDOFF-w12-feed-durability.md",
         "tests/test_native_peering.py",
-        "tests/test_native_feed_peer_octets.sh",
-        "tests/test_native_feed_service_raw.sh",
-        "tests/test_native_fnfd_budget.sh",
+        "tests/native_feed_peer_octets_raw.lisp",
+        "tests/native_feed_service_raw.lisp",
+        "tests/native_fnfd_budget_raw.lisp",
         "tests/test_owner_feed_connection_host.sh"
       ],
       "execution_scope": "The owner drives outbound feeds; the former standalone tools/run_feed.py is retired. A source-matched production image ran the combined public operator, owner, feed and inbound NNTP path over private loopback. It transferred one article byte-identically in each direction, suppressed both duplicates, and requeued a durable FNFD obligation after the source process was killed and restarted. W12 separately covers bounded journal replay and cuts. Article-commit/feed-intent atomicity and general K5 correspondence remain active work, so the whole scenario is not marked validated."
@@ -951,10 +951,10 @@
       ],
       "evidence": [
         "tests/acl2/store-identity-traces-tests.lisp",
-        "tests/native_owner_publication.lisp"
+        "tests/native_owner_publication_raw.lisp"
       ],
       "execution_scope": "The existing ACL2 source trace executes fn-sn transitions and reopen, and the raw SBCL witness executes the shared publication helper with controlled observations. The new schema-1 codec, constructor and substitution witnesses certify separately; the modified native hybrid-author/restart witness still needs a combined saved image. These results do not establish filesystem durability, cryptographic primitive correctness or arbitrary-trace preservation; PRF-050 remains in progress. The negative missing-enrollment composed trace evaluates from ACL2 sources, with no native corrupted-store startup claim.",
-      "note": "assurance-triage 2026-09-26: returned to specified: no recorded run of the SBCL witness (tests/native_owner_publication.lisp) or any native run; only the ACL2 book tests/acl2/store-identity-traces-tests is certified."
+      "note": "assurance-triage 2026-09-26: returned to specified: no recorded run of the SBCL witness (tests/native_owner_publication_raw.lisp) or any native run; only the ACL2 book tests/acl2/store-identity-traces-tests is certified."
     },
     {
       "id": "SCN-028",
@@ -1085,10 +1085,10 @@
       ],
       "note": "The ACL2 Store model is witnessed by tests/acl2/consumer-store-invariants-tests.lisp and its scoped manifest. Native image 1d26e01f passed signed local-owner poll, read-only repeat, advancing ACK with killed reply/reopen and fenced clone cursor recovery, as recorded in planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md. The local consumer-status command is an experimental v1 diagnostic and has no v0 gate. The Mini consumer-owned transaction/ACK/reply join and complete two-store E2-01.. trace set remain unqualified; component passes do not establish the whole scenario.",
       "evidence": [
-        "tests/test_native_owner_consumer_raw.sh",
-        "tests/test_native_owner_consumer_local_raw.sh",
-        "tests/test_native_consumer_poll_cli_raw.sh",
-        "tests/test_native_consumer_peer_raw.sh"
+        "tests/native_owner_consumer_raw.lisp",
+        "tests/native_owner_consumer_local_raw.lisp",
+        "tests/native_consumer_poll_cli_raw.lisp",
+        "tests/native_consumer_peer_raw.lisp"
       ]
     },
     {
@@ -1385,7 +1385,7 @@
         "Enrol two boundaries with contact rows and a route from the transit destination to the second boundary; hold a transit bundle for that destination and open the outbound session.",
         "Remove the route and open the session again.",
         "Add the route back and open the session again.",
-        "tests/test_native_bp_forward_session_raw.sh (raw SBCL, the shipped fnn-bpnode-forward-session over recording stubs): a hop that resets after SESS_INIT with nothing to send; the normal path; a reset after a durable attempt; the socket shut failing after the close; the connect failing."
+        "tests/native_bp_forward_session_raw.lisp (raw SBCL, the shipped fnn-bpnode-forward-session over recording stubs): a hop that resets after SESS_INIT with nothing to send; the normal path; a reset after a durable attempt; the socket shut failing after the close; the connect failing."
       ],
       "expected": [
         "The bundle is offered on the routed session to the second boundary and settles status=sent; a session to any other boundary offers nothing.",
@@ -1397,7 +1397,7 @@
         "tests/test_bp_node_native.py",
         "tests/acl2/bp-route-tests.lisp",
         "planning/evidence/bp-routing-2026-09-25.md",
-        "tests/test_native_bp_forward_session_raw.sh"
+        "tests/native_bp_forward_session_raw.lisp"
       ],
       "implementation": {
         "test": "tests.test_bp_node_native",
@@ -2348,7 +2348,7 @@
       ],
       "evidence": [
         "tests/acl2/payload-arena-tests.lisp",
-        "tests/test_native_payload_lifecycle_raw.sh",
+        "tests/native_payload_lifecycle_raw.lisp",
         "planning/evidence/rep-wave-d-2026-09-25.md"
       ]
     },
@@ -4277,7 +4277,7 @@
       ],
       "evidence": [
         "planning/evidence/config-consumer-catalog-2026-09-26.md",
-        "tests/test_native_admin_authorize_boundary.sh"
+        "tests/native_admin_authorize_boundary_raw.lisp"
       ],
       "implementation": {
         "test": "tests.test_native_peer_rows_growth",
@@ -6049,12 +6049,12 @@
       "steps": [
         "tests/test_native_compress.py on the production image: before and after AUTHINFO, COMPRESS DEFLATE, then CAPABILITIES, GROUP, ARTICLE, POST and QUIT through the stream; COMPRESS/STARTTLS/AUTHINFO after 206; COMPRESS with an unknown and a malformed algorithm; compressed octets pipelined behind the COMPRESS line; a 1 MiB run of zeros; a malformed stream.",
         "tests/test_native_compression.py on the developer image: two twin stores given the same articles, one with `policy set compress-min-octets'; `store ROOT compression'; every article served from both; recover twice; a torn last entry. Then XFN-DICT in CAPABILITIES; XFN-ZARTICLE naming the shipped baseline's digest, and naming another digest; XFN-ZARTICLE with a malformed digest.",
-        "tests/test_native_deflater_raw.sh (raw SBCL, no image): the encoder's code lengths for 0 or 1 used symbols over the 19-, 30- and 286-symbol alphabets, and 30 payloads whose matches use one distance code (0, 1, 9, 10, 11, 29) or none, each stream inflated by Python's zlib."
+        "tests/native_deflater_raw.lisp (raw SBCL, no image): the encoder's code lengths for 0 or 1 used symbols over the 19-, 30- and 286-symbol alphabets, and 30 payloads whose matches use one distance code (0, 1, 9, 10, 11, 29) or none, each stream inflated by Python's zlib."
       ],
       "expected": [
         "480 before a login, 206 after; the label withdrawn once active; 502 for a second COMPRESS, STARTTLS and AUTHINFO; 503 unknown, 501 malformed; pipelined octets are the stream's first; the bomb refused (compress-bomb) and the malformed stream (compress-malformed), each closing the connection.",
         "The compressed store reports every article record compressed and `dictionaries=' the shipped baseline's DICT-ID 2220533217, holds fewer octets, and serves every article octet for octet as its uncompressed twin, after both recovers and the torn tail. XFN-DICT lists the shipped digests; a peer naming the baseline's digest gets 229 with the stored block, escaped in lines of at most 128 octets, which unescaped has the stated stored length and inflates against the baseline dictionary to ARTICLE's octets; a peer naming another digest gets ARTICLE's 220 reply octet for octet; a malformed digest gets 501.",
-        "Every stream the stored-payload encoder writes is a valid RFC 1951 stream: a block whose matches use one distance code (or none) gets a complete two-code tree, and the streams inflate octet for octet under Python's zlib (tests/test_native_deflater_raw.sh); ACL2's decoder frames such a stream and refuses the oversubscribed one the encoder wrote before (tests/acl2/payload-lz-append-tests.lisp)."
+        "Every stream the stored-payload encoder writes is a valid RFC 1951 stream: a block whose matches use one distance code (or none) gets a complete two-code tree, and the streams inflate octet for octet under Python's zlib (tests/native_deflater_raw.lisp); ACL2's decoder frames such a stream and refuses the oversubscribed one the encoder wrote before (tests/acl2/payload-lz-append-tests.lisp)."
       ]
     },
     {
@@ -8396,9 +8396,7 @@
         "The committer actor records fault and stops service; it does not leave active service without a committer."
       ],
       "evidence": [
-        "tests/test_native_syncer_pipeline_escape_raw.sh",
         "tests/native_syncer_pipeline_escape_raw.lisp",
-        "tests/test_native_committer_actor_raw.sh",
         "tests/native_committer_actor_raw.lisp",
         "tests/test_native_syncer_typed_raw.sh",
         "tests/native_syncer_typed_raw.lisp"
@@ -8425,7 +8423,6 @@
         "An already-selected callback creates no orphan marker; mux close discards its eventual reply route. No path reports physical termination or settles the operation merely because the caller left."
       ],
       "evidence": [
-        "tests/test_native_await_lifetime_raw.sh",
         "tests/native_await_lifetime_raw.lisp"
       ],
       "execution_scope": "Actual deployed native wait/mailbox/mux-finish bodies with real SBCL threads, mutexes and condition timeout; recording socket/owner cleanup boundaries. Saved-image/runtime qualification remains Integration work."
@@ -8503,7 +8500,7 @@
         "Actual socket helper retains NIL primary result and separately returns :closed or original unobserved condition. Logical DONE does not substitute for physical thread return."
       ],
       "implementation": {
-        "test": "tests/test_native_mux_cleanup_raw.sh"
+        "test": "tests/native_mux_cleanup_raw.lisp"
       },
       "evidence": [
         "tests/native_mux_cleanup_raw.lisp",
@@ -8579,7 +8576,6 @@
         "A sufficient budget reserves the current estimate and captures once; missing and out-of-range caches recompute from authoritative state."
       ],
       "evidence": [
-        "tests/test_native_reclaim_capture_raw.sh",
         "tests/native_reclaim_capture_raw.lisp"
       ],
       "implementation_note": "Actual host capture/census, history sync/byte-advance, credit-resize and native trailing-stobj dispatch with recorded Store/array/row-byte-cost/capture boundaries. Source fixture; normal loaded host and image followthrough pending."
@@ -8629,7 +8625,7 @@
         "Startup rows come from ACL2, without clamping; explicit output policy remains staged and full response custody/tariff remains open."
       ],
       "implementation": {
-        "test": "tests/test_native_output_startup_raw.sh"
+        "test": "tests/native_output_startup_raw.lisp"
       },
       "evidence": [
         "tests/native_output_startup_raw.lisp",
@@ -8767,7 +8763,7 @@
         "Exhaustion retains the final serial and refuses before materialization; no wrap."
       ],
       "implementation": {
-        "test": "tests/test_native_response_identity_raw.sh"
+        "test": "tests/native_response_identity_raw.lisp"
       },
       "evidence": [
         "books/response-identity.lisp",
@@ -8884,7 +8880,6 @@
       ],
       "evidence": [
         "tests/native_web_page_cursor_raw.lisp",
-        "tests/test_native_web_page_cursor_raw.sh",
         "planning/evidence/web-page-cursor-2026-10-03.md"
       ],
       "note": "Actual source/raw witness only; program-mode cursor guard/refinement and matching image remain open (PRF-1277)."
@@ -8912,12 +8907,15 @@
         "Original starting context is passed to grant by identity, renderer never reacquires root, and capture references end only at dual settlement; per-command final pin/auth remain separately authoritative."
       ],
       "implementation": {
-        "test": "tests/test_native_output_response_lease_raw.sh"
+        "test": "tests/native_output_response_lease_raw.lisp"
       },
       "evidence": [
         "tests/native_output_response_lease_raw.lisp",
         "host/native/owner.lisp",
-        "host/native/mux.lisp"
+        "host/native/mux.lisp",
+        "tests/native_output_custody_raw.lisp",
+        "tests/native_output_response_lease_counterpart.lisp",
+        "tests/native_output_retirement_raw.lisp"
       ],
       "execution_scope": "Actual native capture/factory/lease/receipt functions with recording typed method boundaries and actual held SBCL children. Typed output/bank correspondence has separate producer evidence. Optional policy stays unsupported; no complete allocation tariff or matching image claim."
     },
@@ -9027,7 +9025,8 @@
         "tests/native_newnews_allocation_raw.lisp",
         "books/string-line-fill.lisp",
         "books/served-plan-line-buffer.lisp",
-        "host/native/owner.lisp"
+        "host/native/owner.lisp",
+        "tests/native_string_line_allocation_raw.lisp"
       ],
       "execution_scope": "Actual normal counterparts/private stobj on explicitly frozen dependency sources with source-loaded new renderer; no generic model, matching certificate/image or whole-response heap bound claim."
     },
@@ -9052,7 +9051,7 @@
         "Absent output accounting follows the explicitly partial existing path."
       ],
       "implementation": {
-        "test": "tests/test_native_output_preflight_raw.sh"
+        "test": "tests/native_output_preflight_raw.lisp"
       },
       "evidence": [
         "tests/native_output_preflight_raw.lisp",
@@ -9252,7 +9251,7 @@
         "No whole-decode fallback occurs under window mode."
       ],
       "implementation": {
-        "test": "tests/test_native_lz_scalar_raw.sh"
+        "test": "tests/native_lz_scalar_raw.lisp"
       },
       "evidence": [
         "tests/native_lz_scalar_raw.lisp",

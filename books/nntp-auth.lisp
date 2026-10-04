@@ -2594,30 +2594,50 @@
 (local
  (defthm fn-auth-tls-reader-base-preserves-consistentp
    (implies (fn-auth-session-consistentp as archive)
-            (fn-peer-session-consistentp (fn-auth-tls-reader-base as) archive))
+            (and (fn-peer-sessionp (fn-auth-tls-reader-base as))
+                 (fn-peer-session-consistentp (fn-auth-tls-reader-base as)
+                                              archive)))
+   ; Both conjuncts are exported: the rebuilt session's `fn-auth-sessionp'
+   ; (fn-auth-sessionp-of-make-session) asks for the peer recognizer by
+   ; itself, and a rewritten conclusion is not a hypothesis the forward rule
+   ; fn-peer-session-consistentp-forward could split.
+   ; The cleared cursor is the four-element NNTP session itself: with
+   ; `fn-nntp-set-cursor' and `fn-nntp-make-session' open, the session is a
+   ; literal list, so its recognizer and accessors have to be open too (the
+   ; closed `fn-nntp-set-cursor-sessionp' no longer matches; hbox
+   ; certify-20261004T022302Z-3294774).  Everything else stays minimal.
    :hints (("Goal" :in-theory
             (union-theories (theory 'minimal-theory)
              '(fn-auth-tls-reader-base fn-auth-session-consistentp
                fn-peer-session-consistentp fn-post-session-consistentp
                fn-post-sessionp fn-nntp-session-consistentp
+               fn-nntp-sessionp fn-nntp-session-openp fn-nntp-session-projected
                fn-nntp-set-cursor fn-nntp-make-session
                fn-nntp-session-group fn-nntp-session-current
+               true-listp len booleanp posp
                fn-peer-session-base-of-fn-peer-with-base
                fn-peer-sessionp-of-fn-peer-with-base
                fn-post-session-shapep-of-fn-post-make-session
                fn-post-session-base-of-fn-post-make-session
-               fn-post-session-awaiting-of-fn-post-make-session
-               fn-nntp-set-cursor-sessionp
-               fn-nntp-set-cursor-keeps-projection))))))
+               fn-post-session-awaiting-of-fn-post-make-session))))))
 
 (local (defthm fn-auth-tls-established-preserves-consistentp
   (implies (fn-auth-session-consistentp as archive)
            (fn-auth-session-consistentp
             (fn-post-result-session (fn-auth-tls-established as)) archive))
+  ; `fn-auth-tls-reader-base' stays closed so that the lemma above carries
+  ; the cleared cursor's consistency; opened, the rebuilt peer session's
+  ; fields spill into the goal and nothing names them.  The lemma is :use'd
+  ; rather than left to rewrite: with the session recognizers open, the
+  ; clause no longer holds `fn-peer-sessionp' of the base (forward chaining
+  ; absorbed it), so the rule's own hypothesis cannot be relieved.
   :hints (("Goal"
+           :use fn-auth-tls-reader-base-preserves-consistentp
            :in-theory (e/d (fn-auth-tls-established
                             fn-auth-session-consistentp fn-auth-sessionp)
-                           (fn-peer-sessionp fn-peer-session-consistentp
+                           (fn-auth-tls-reader-base
+                            fn-auth-tls-reader-base-preserves-consistentp
+                            fn-peer-sessionp fn-peer-session-consistentp
                             fn-auth-configp fn-nntp-printable-tokenp
                             fn-prin-idp fn-auth-pendingp fn-auth-ctxp))))))
 

@@ -4604,3 +4604,8 @@ Raw witnesses green on laptop: tests/test_native_web_{page_cursor,post_stream,st
 ### Not done / handed on
 - harvest gift web-domain-default (wave 3 operator UX): not started.
 - S037/S065 ledger notes: to be set READY with the green run ids.
+
+## docs lane (lane/docs) — 2026-10-04
+
+Entry: build/coordinator/lanedumps/docs.md (deliverables, shas, word counts,
+continuation point).

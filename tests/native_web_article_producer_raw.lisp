@@ -2,6 +2,8 @@
 ;;; Arena access and owner/cold/I/O are recording seams, not runtime proofs.
 (load "tests/native_web_article_stream_raw.lisp")
 (in-package "ACL2")
+;; ACL2's primitive, which the real article-stream renderer calls.
+(unless (fboundp 'member-eq) (defun member-eq (x xs) (member x xs :test #'eq)))
 
 ;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
 (define-condition harness-stub-reached (serious-condition)

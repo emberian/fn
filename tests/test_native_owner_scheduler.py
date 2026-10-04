@@ -53,7 +53,9 @@ class SchedulerSourceTests(unittest.TestCase):
     def test_every_owner_entry_is_gated_and_the_reply_leaves_the_mutex(self):
         owner = (ROOT / "host" / "native" / "owner.lisp").read_text()
         serialized = owner[owner.index("(defun fnn-owner-serialized "):owner.index("(defun fnn-owner-consume-connection-fault")]
-        self.assertIn("(fnn-owner-gated (service class)", serialized)
+        # Through the one section envelope (lane WRAPPER), :live: the gate
+        # admits it as CLASS before the owner mutex is taken.
+        self.assertIn("(fnn-section-run service class cid :live nil 'fnn-owner-serialized thunk)", serialized)
         # books/owner-time-model.lisp (lane time-model: fn-otm-next-is-ocp-next)
         # over books/owner-commit-pipeline.lisp (lane log-2) over
         # books/owner-commit-steps.lisp (PKT-688 (4) slice 2): the gate's pick
@@ -70,14 +72,14 @@ class SchedulerSourceTests(unittest.TestCase):
         self.assertIn("'fn-otm-commit-event", owner)
         self.assertIn("'fn-otm-committer-wake", owner)
         self.assertLess(batch.index("(fnn-owner-commit-start-locked service)"),
-                        batch.index("(fnn-owner-start-syncer service gen job)"))
-        self.assertLess(batch.index("(fnn-owner-start-syncer service gen job)"),
+                        batch.index("(fnn-owner-start-syncer service gen job syncer-grant)"))
+        self.assertLess(batch.index("(fnn-owner-start-syncer service gen job syncer-grant)"),
                         batch.index("(fnn-owner-commit-start-locked service :seal nil)"))
-        self.assertLess(batch.index("(sb-thread:join-thread syncer"),
+        self.assertLess(batch.index("(fnn-owner-actor-join service syncer)"),
                         batch.index("service :complete members deferred)"))
         self.assertLess(batch.index("service :complete members deferred)"),
                         batch.index("(fnn-log-seal-capture store)"))
-        self.assertEqual(batch.count("(fnn-owner-start-syncer service gen job)"), 1)
+        self.assertEqual(batch.count("(fnn-owner-start-syncer service gen job syncer-grant)"), 1)
         # Lane owner-offlock: the syncer runs the batch JOB (its phases are
         # ACL2's, books/owner-queued-work.lisp); the barrier is its :fence.
         syncer = owner[owner.index("(defun fnn-owner-batch-fence "):owner.index("(defun fnn-owner-batch-effect ")]
@@ -104,7 +106,11 @@ class SchedulerSourceTests(unittest.TestCase):
         commit_class = (ROOT / "books" / "owner-commit-class.lisp").read_text()
         self.assertIn("(fn-osch-next (fn-ocm-sched s) w)", commit_class)
         self.assertIn("(fn-osch-observe (fn-ocm-sched s) class hold-ms wait-ms)", commit_class)
-        self.assertIn("'fn-splan-window", owner)
+        # The render is ACL2's window into the private buffer
+        # (fnn-owner-render-next: a line plan's, a query plan's).
+        render = owner[owner.index("(defun fnn-owner-render-next "):owner.index("(defun fnn-owner-render-next-quantum ")]
+        self.assertIn("(fnn-call 'fn-splan-line-window plan size", render)
+        self.assertIn("(fnn-call 'fn-qplan-window plan size", render)
         self.assertNotIn("fnn-owner-reply-from-buffer", owner)
         self.assertNotIn("(defun fnn-owner-exposure-wait", owner)
         chunk = owner[owner.index("(defun fnn-owner-handle-chunk "):owner.index("(defun fnn-owner-exposure-idle")]

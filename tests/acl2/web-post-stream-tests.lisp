@@ -1,6 +1,8 @@
 (in-package "ACL2")
 (include-book "web-private-begin-tests")
 (include-book "../../books/web-post-stream")
+; wpft-prepare drives the host-called form step (fn-web-host-post-form-step).
+(include-book "../../host/web-host")
 (defun wpst-drain (fuel width cursor acc fn-web-in)
   (declare (xargs :mode :program :stobjs fn-web-in))
   (if (zp fuel) (mv nil nil)

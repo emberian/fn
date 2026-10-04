@@ -2909,7 +2909,7 @@
         "tests/test_native_log_compaction.py",
         "books/reclaim-instant.lisp",
         "tests/test_native_replay_determinism.py",
-        "tests/test_native_reclaim_capture_raw.sh",
+        "tests/native_reclaim_capture_raw.lisp",
         "books/history-pages-relocate-step.lisp",
         "tests/acl2/history-pages-relocate-step-tests.lisp"
       ],
@@ -6596,7 +6596,6 @@
         "books/resource-syncer.lisp",
         "tests/acl2/resource-syncer-tests.lisp",
         "books/resource-operation.lisp",
-        "tests/acl2/resource-operation-tests.lisp",
         "tests/native_syncer_pipeline_escape_raw.lisp",
         "tests/native_committer_actor_raw.lisp",
         "tests/native_syncer_typed_raw.lisp",

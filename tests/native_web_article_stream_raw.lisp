@@ -103,11 +103,14 @@
                   (multiple-value-list (apply #'fn-web-host-window-page-step args))
                 (apply saved-call name args))))
           (setf (symbol-function 'fnn-owner-render-next-quantum)
-                (lambda (service cid p class) (declare (ignore service cid class))
+                ;; (values OCTETS PLAN-REST DONEP YIELDP COLD-READ END), as the
+                ;; host's: END is the window's used length.
+                (lambda (service cid p class &optional compressedp borrowp)
+                  (declare (ignore service cid class compressedp borrowp))
                   (if (and (eq (fnn-web-conn-phase conn) :replay) (not cold-issued))
-                      (progn (setf cold-issued t) (values nil p nil nil :article-read))
+                      (progn (setf cold-issued t) (values nil p nil nil :article-read 0))
                     (if provider (funcall provider p)
-                      (values (car p) (cdr p) (null (cdr p)) nil nil)))))
+                      (values (car p) (cdr p) (null (cdr p)) nil nil (length (car p)))))))
           (setf (symbol-function 'fnn-owner-cold-poll)
                 (lambda (service read first issued) (declare (ignore service first issued))
                   (assert (eq read :article-read)) (values :serve 0 0 0)))
@@ -122,13 +125,14 @@
               ((:page-count :page-emit) (fnn-web-page-step face conn))
               (:write (fnn-web-write-ready face conn))
               (otherwise (error "unexpected phase ~s" (fnn-web-conn-phase conn))))
-            ;; A finished record has discarded its response graph (in/out
-            ;; are NIL after terminal custody, 33bb7b377): measure live ones.
+            ;; A closed connection's buffers are discarded
+            ;; (fnn-web-discard-response): measured while it is open.
             (unless (fnn-web-conn-closedp conn)
               (setf peak-in (max peak-in (fnn-web-len (fnn-web-conn-in conn))))
               (assert (<= peak-in 4096))
               (assert (zerop (fnn-web-len (fnn-web-conn-out conn))))
               (assert (zerop pins-released))))
+          (assert (and (null (fnn-web-conn-in conn)) (null (fnn-web-conn-out conn))))
           (assert (fnn-web-conn-closedp conn))
           (assert (= pins-released 1))
           (when (> replay-rounds 0) (assert cold-issued)) (assert (< replay-rounds max-replay-rounds))
