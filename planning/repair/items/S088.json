@@ -1,7 +1,7 @@
 {
  "acceptance": "mux:phase-machine",
  "allow_forbidden": true,
- "budget": 120,
+ "budget": "60",
  "category": "performance",
  "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
@@ -18,7 +18,8 @@
  "native": "mux",
  "notes": [
   "allow_forbidden granted by integrator-3 2026-10-04, scope: host/native/mux.lisp fnn-mux-timers :proxy branch only",
-  "10-04 15:54 claimed: scope=['host/native/mux.lisp', 'tests/native_mux_cleanup_raw.lisp', 'tests/test_native_mux_proxy_timer.py'] test=python3 -m unittest tests.test_native_mux_proxy_timer"
+  "10-04 15:54 claimed: scope=['host/native/mux.lisp', 'tests/native_mux_cleanup_raw.lisp', 'tests/test_native_mux_proxy_timer.py'] test=python3 -m unittest tests.test_native_mux_proxy_timer",
+  "10-04 15:59 READY 120119ae9: raw witness (sbcl --script tests/native_mux_cleanup_raw.lisp via tests.test_native_mux_proxy_timer) rc1 at base 26573d8d4, rc0 at head; overlay native over 6107ceb56 on lat1 native-120119ae99d9: test_native_mux OK 4, reader_clients OK 10, public_limits OK 2"
  ],
  "owner": "host-lifecycle",
  "reviewer": "mux.lisp:1157-1158 calls fnn-mux-proxy-expired for every :proxy conn on every timer pass with no due test, and that function is an fnn-owner-serialized ACL2 call (mux.lisp:964-977). fnn-mux-proxy-readable calls it again before every read (mux.lisp:981). Only trusted-proxy connections that have not finished their PROXY header are in :proxy, and those already hold admitted handshake slots, so K is bounded by the in-flight handshake limit. This is a performance and contention cost, not a correctness bug.",
@@ -34,7 +35,7 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_native_mux_proxy_timer",
  "title": "Every loop pass makes an owner-mutex ACL2 call for every :proxy connection, whether or not its deadline is due",
- "updated": "2026-10-04T19:54:42Z",
+ "updated": "2026-10-04T20:00:02Z",
  "verify": {
   "base": "26573d8d40f8c7b39a5b144dca8e767bc59f99d3",
   "base_observation": {

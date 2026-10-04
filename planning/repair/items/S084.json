@@ -1,7 +1,7 @@
 {
  "acceptance": "wrapper:receipt-join",
  "allow_forbidden": true,
- "budget": 120,
+ "budget": "60",
  "category": "locking",
  "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
@@ -35,7 +35,7 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_native_mux_roster_order",
  "title": "fnn-mux-finish closes the socket before removing it from the clients roster, breaking the stop hook's no-fd-reuse invariant",
- "updated": "2026-10-04T19:55:04Z",
+ "updated": "2026-10-04T20:00:02Z",
  "verify": {
   "base": "3026c5fe79e6d1659504a6b6d653b86d843fb734",
   "base_observation": {
