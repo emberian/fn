@@ -60,6 +60,15 @@ class Rules(unittest.TestCase):
         self.assertEqual(secrets_check.findings_in(text), [])
         self.assertTrue(secrets_check.findings_in("the credentials\n" + CODE + "\n"))
 
+    def test_an_evidence_path_component_is_not_a_secret(self):
+        # planning/repair/repair.py names its archives <item>-<uuid4 hex>.json
+        # under planning/evidence/repair/, next to the item's title words.
+        path = "planning/evidence/repair/S107-" + CODE + ".json"
+        self.assertEqual(secrets_check.findings_in('"credentials",\n"path": "' + path + '"'), [])
+        # The same token outside the path, on the same line, is still refused.
+        self.assertTrue(secrets_check.findings_in("credentials " + CODE + " " + path))
+        self.assertTrue(secrets_check.findings_in("credentials docs/x-" + CODE + ".json"))
+
     def test_the_marker_passes_its_own_line_only(self):
         self.assertEqual(secrets_check.findings_in("invite " + CODE + "  FAKE-SECRET"), [])
         self.assertTrue(secrets_check.findings_in("invite FAKE-SECRET\n" + CODE))

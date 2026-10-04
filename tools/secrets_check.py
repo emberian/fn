@@ -41,6 +41,11 @@ here and applied mechanically:
              starts with `<`, `$`, `{`, `%`, `*`, `...`/`…`, or is one of
              `x`-runs, `REDACTED`, `redacted`, `changeme`, `example`,
              `secret`, `password` (the word itself), or empty.
+  evidence   a 32-hex token inside a path under `planning/evidence/`
+             (`planning/evidence/repair/S107-<uuid4 hex>.json`: the repair
+             tool's archive names, which sit beside a ledger item's title
+             and so beside its words); a credential is a value, never a
+             component of a filed evidence path.
 
 A real secret found here is REDACTED in the source and ROTATED (a redacted
 invitation must still be revoked: the history keeps the old bytes).  The
@@ -76,6 +81,9 @@ PASSWORD = re.compile(r"(?i)\b(?:password|passwd|secret)\s*=\s*\\?[\"']?([^\s\"'
                       r"|\b(?:password|passwd|secret)[\"']?\s*:\s*[\"']([^\"']*)[\"']")
 BEARER = re.compile(r"(?i)\bbearer\s+([A-Za-z0-9._~+/-]{16,}=*)")
 AUTHORIZATION = re.compile(r"(?i)\bauthorization\s*:\s*([^\s\"',;)]+(?:\s+[^\s\"',;)]+)?)")
+# The evidence rule: a path under planning/evidence/, up to the first
+# character no path component carries (whitespace, a quote, a bracket).
+EVIDENCE_PATH = re.compile(r"planning/evidence/[^\s\"'`()<>\[\]{},;]*")
 MARKER = "FAKE-SECRET"
 PLACEHOLDER_WORDS = {"redacted", "changeme", "example", "secret", "password", "none",
                      "null", "nil", "true", "false"}
@@ -123,7 +131,10 @@ def findings_in(text: str, window: int = WINDOW) -> list[tuple[int, str]]:
     for number, line in enumerate(lines):
         if not near[number] or MARKER in line:
             continue
+        evidence = [span.span() for span in EVIDENCE_PATH.finditer(line)]
         for match in HEX32.finditer(line):
+            if any(start <= match.start() and match.end() <= end for start, end in evidence):
+                continue
             if not synthetic_hex(match.group(1)):
                 found.append((number + 1, "a 32-hex token " + redact(match.group(1))))
         for pattern, kind in ((PASSWORD, "a password/secret value"),
