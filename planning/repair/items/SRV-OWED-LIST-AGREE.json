@@ -1,0 +1,12 @@
+{
+ "category": "proof-owed",
+ "file": "books/list-available-reference.lisp",
+ "id": "SRV-OWED-LIST-AGREE",
+ "notes": [],
+ "owner": "served",
+ "severity": "medium",
+ "source": "served",
+ "state": "open",
+ "title": "fn-lst-summaries-agreep is a premise of fn-lst-active-command-is-av-list-active / fn-lst-counts-command-is-av-list-counts (PRF-1313): prove it from the catalog relation at every view a served session pins (fn-cat-group-high vs the archive's next number below the view; the top-view branch of fn-scat-available-summary reads carried live counts, fn-cat-group-live-count{correspondence})",
+ "updated": "2026-10-04T04:01:59Z"
+}

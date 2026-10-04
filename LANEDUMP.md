@@ -4706,3 +4706,17 @@ splice; escalate M3d in io.lisp), def-actor failure half, history-root/control c
 # proofs2 (Opus) — 2026-10-04 (exit)
 
 See build/coordinator/lanedumps/proofs2.md. READY lane/proofs2@883c28b5a: PRF-1287 / may-seal / ssr=srs / PRF-1242 (composed: fn-hmc-run-keeps-invp) certified (certify-20261004T043850Z-1112347, certify-20261004T043618Z-98000); interfaces.lisp may-seal row re-cited. S150 at lane/proofs2-s150@82abba272 owes check-lane. Continuation: S150 READY, S151 narrow recertify, PGO-* (PGO-REFUSE-ABORT first).
+
+Entry: build/coordinator/lanedumps/docs.md (deliverables, shas, word counts,
+continuation point).
+
+## served lane (wave 2) — 2026-10-04
+
+Coordinator copy: build/coordinator/lanedumps/served.md (authoritative, updated at each step).
+- LIST residual model, plan drain and finite potential wired to the host-called fn-qplan-cursor-step (PRF-1313):
+  fn-lst-step-keeps-remaining, fn-qplan-cw-drain-is-a-prefix, fn-lst-active-command-is-av-list-active /
+  -counts-, fn-lst-one-finite-progress, fn-lsr-one-finite-progress. Owed: SRV-OWED-LIST-AGREE.
+- NOV full decimals (harvest 50cb50075). Natives: nov-red RED on 45e05c7f as expected.
+- SCL2 natives tightened (over_pins exact 211 2 1 34 + NEXT/LAST across tombstones; expiry exact 211 3 3 5);
+  over_pins RED on 45e05c7f (211 34 1 34). Catalog-hole navigation native wired (green on 45e05c7f: guard).
+- SCL4 / PRF-1237/1238 discovery snapshot: not landed; continuation in the coordinator lanedump.

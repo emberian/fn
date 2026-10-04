@@ -1,0 +1,14 @@
+{
+ "category": "proof-owed",
+ "file": "books/list-metadata-cursor.lisp",
+ "id": "SRV-OWED-LIST-POTENTIAL",
+ "notes": [
+  "10-04 00:24 fn-lst-one-finite-progress on lane/served; laptop REPL 83/83, certification pending"
+ ],
+ "owner": "served",
+ "severity": "medium",
+ "source": "served",
+ "state": "ready",
+ "title": "Composed finite potential for fn-lst-one (PRF-1313): the row renderer (fn-lsr-one-finite-progress), status lookup (fn-lss-one-progress), group summary (fn-gsc-one-progress) and wildmat (fn-wmc-one-progress) each decrease their own measure; a LIST-wide measure that every non-terminal fn-lst-one call strictly decreases, under a carried shape invariant (wmc-shapedp in :match, lsr-statep in :render), is not yet stated",
+ "updated": "2026-10-04T04:24:17Z"
+}

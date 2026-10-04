@@ -2177,6 +2177,19 @@ cursor implementation. Integration, legacy rows without a decided NOV,
 the maintained codec bound on numeric setup and matched runtime cost
 measurement remain open; no complete long-row scheduling claim is made.
 
+NOV `:bytes` and `:lines` metadata render their complete decimal natural
+values in `fn-nov-line`, including values above ten digits (RFC 3977
+§8.3.2 and D27). The initial NNTP status-line number renderer keeps its
+separate width rule. `fn-npw-column-pieces` captures five cached strings
+and resumable numeric references with a fixed number of pieces; under
+cached field shape and natural metadata its complete abstraction equals
+the existing cached-row renderer, including arbitrary-width counts.
+`nov-metadata-tests` checks exact wide and ordinary rows and semantic block
+framing; `nov-column-pieces-tests` checks continuation and literal premise
+removals. `tests.test_native_nov_metadata` distinguishes a real saved-image
+scalar renderer fixture from a socket fixture over an actual retained
+article. Its matching-image result remains a separate qualification step.
+
 The decimal setup component `fn-nbw-decimal-tick` retains an unrendered
 natural and a reverse-produced character suffix. Each division spends fuel;
 exhaustion retains the exact decimal residual and resumes. Under the
