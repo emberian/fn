@@ -110,7 +110,7 @@ Value JSON: octets are lower-case hex; numbers are JSON integers (Lean's
 
 ### 3. The export: `specs/wire-grammar.json`, written by ACL2
 
-`books/wire-grammar-export.lisp` holds the family table and a renderer that
+`books/wire-export.lisp` holds the family table and a renderer that
 builds the JSON text **in ACL2** (the bytes of the file are an ACL2 value).
 `python3 tools/protocol_emit.py --wire --write` runs ACL2 (through
 `tools/acl2`) over that book and writes the text; `--wire --check` compares

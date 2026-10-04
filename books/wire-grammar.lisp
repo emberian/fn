@@ -4,7 +4,7 @@
 ; the decision is planning/design/wire-grammar-2026-10-04.md).
 ;
 ; A grammar is DATA: a tree of the nodes below.  A family's grammar is a
-; `defconst'; `books/wire-grammar-export.lisp' renders the family table as
+; `defconst'; `books/wire-export.lisp' renders the family table as
 ; the JSON text of specs/wire-grammar.json, and the other side (Mini, in
 ; Lean) runs its own interpreter of the same language over that file.
 ;
