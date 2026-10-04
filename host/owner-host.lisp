@@ -5523,7 +5523,9 @@ existing port only after fn-fc has made this connection ready."
   (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
   (let* ((owner (fn-owner-core state))
          (conn (fn-own-find-conn id (fn-own-conns owner))))
-    (value (if (and conn (eq (fn-ocap-at 2 preview) :article))
+    ; The priced families: tools/cost_obligations.py reads this list for the
+    ; ratchet (priced / served families) in planning/cost-obligations.json.
+    (value (if (and conn (member-eq (fn-ocap-at 2 preview) '(:article)))
                (fn-tariff-article-preview preview (fn-own-conn-live-session owner conn)
                                           (fn-own-conn-config conn) fn-arena fn-cat)
              (fn-ocap-unpriced-tariff preview)))))
