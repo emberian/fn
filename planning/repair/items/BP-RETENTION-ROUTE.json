@@ -1,13 +1,16 @@
 {
  "category": "repair",
- "id": "BP-RETENTION-ROUTE",
- "title": "Canonical BP retention event must reach the actual log identity gate before reservation",
- "state": "in-progress",
- "owner": "deputy_groundwork",
- "source": "actual current source and historical native preflight",
- "severity": "high",
  "exposure": "live",
  "file": "host/native/owner.lisp",
+ "id": "BP-RETENTION-ROUTE",
  "note": "Current log route binds no effective identity callback and never invokes the one-shot grant producer; retention preparation therefore refuses. Source7c6d135f3 restores dynamic callback and canonical operation transport through advance-frontier/log-reserve. Reviewed aggregate56f97b4d3 is with Integration. Extracted source routing fixture passes, logical grant predicate remains existing authority; matching native undertaking/release/reopen plus ordinary POST pending. Historical45 preflight reporta3b59cff9 remains a historical refusal, not a current execution claim.",
- "updated": "2026-10-03T08:40:00Z"
+ "notes": [
+  "10-04 04:17 ledger-open-a STOP, no code change: the retention commit route already passes the event (owner.lisp fnn-owner-retention-commit, fnn-advance-frontier store txid event). The ordinary POST/identity/consumer/topic routes pass NO operation by design: fn-idr-purpose (books/store-identity-reserve.lisp) answers :ordinary for a null operation and :invalid for a non-retention event, and host/owner-host.lisp fn-owner-identity-reservation says OPERATION is the retention publication or NIL for ordinary work. Adding an event to POST would be wrong. What remains is the native run (retention undertaking/release/reopen plus ordinary POST on one image), which only the integrator image set can do."
+ ],
+ "owner": "deputy_groundwork",
+ "severity": "high",
+ "source": "actual current source and historical native preflight",
+ "state": "in-progress",
+ "title": "Canonical BP retention event must reach the actual log identity gate before reservation",
+ "updated": "2026-10-04T08:17:06Z"
 }
