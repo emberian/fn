@@ -2,17 +2,112 @@
  "category": "test-bug",
  "detail": "hbox native-set-bdd4f40c4-r2 logs test-tests.test_native_owner_offlock.log: ERROR test_a_stalled_feed_journal_holds_no_owner_quantum at tests/test_native_owner_offlock.py:122 (line = early or s1.readline()), OSError cannot read from timed out object. Cause: the case does c1.settimeout(0.5); try: early = s1.readline() except timeout; then c1.settimeout(120); s1.readline(). s1 = conn.makefile('rwb') (connect()); after a timeout socket.SocketIO._timeout_occurred is set and never cleared. Fix: probe with select.select([c1],[],[],0.5) and only then s1.readline() (no timeout on the stream), keep settimeout(120) for the post-release read. The OWNER-OFFLOCK-STALL-WITNESS assertions (max reads <1.0 s, health <3.0 s, early == b'', 240) are unchanged. The other two cases in the module pass.",
  "disposition": "LOCAL",
+ "expect-failure": "tests.test_native_offlock_probe.ProbeTests.test_the_stalled_feed_case_sets_no_timeout_on_its_stream",
  "exposure": "none",
+ "failure-message": "True is not false : the stalled-feed case must probe with select, not a timeout on a makefile stream",
  "file": "tests/test_native_owner_offlock.py",
  "fix": "tests/test_native_owner_offlock.py: replace the try/settimeout/readline probe by select.select; no product change.",
+ "harness": "tests/test_native_offlock_probe.py,tests/native_harness.py",
  "id": "NATIVE-R2-OFFLOCK-STALL-TEST",
  "locus": "owner-offlock",
- "notes": [],
+ "native": "tests.test_native_owner_offlock",
+ "notes": [
+  "10-04 15:53 claimed: scope=['tests/test_native_owner_offlock.py', 'tests/native_harness.py', 'tests/test_native_offlock_probe.py'] test=python3 -m unittest tests.test_native_offlock_probe.ProbeTests.test_the_stalled_feed_case_sets_no_timeout_on_its_stream",
+  "10-04 15:54 READY 9ce6d98ce6d2580e43f1ef5eeab77265cdb403ba"
+ ],
  "owner": "unassigned",
  "scenario": "Any run: the 0.5 s early-reply probe times out as designed (the POST is held), then the follow-up read on the same stream raises.",
+ "scope": [
+  "tests/test_native_owner_offlock.py",
+  "tests/native_harness.py",
+  "tests/test_native_offlock_probe.py"
+ ],
  "severity": "medium",
  "source": "native-set-bdd4f40c4-r2",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_native_offlock_probe.ProbeTests.test_the_stalled_feed_case_sets_no_timeout_on_its_stream",
  "title": "tests.test_native_owner_offlock stalled-feed case reuses a socket makefile() stream after a read timeout; Python's SocketIO raises OSError 'cannot read from timed out object' on every later read, so the test errors regardless of the node",
- "updated": "2026-10-04T19:04:15Z"
+ "updated": "2026-10-04T19:54:07Z",
+ "verify": {
+  "base": "9d08b98139a3821cc6075e8ecb576107bf3ee2cd",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "True is not false : the stalled-feed case must probe with select, not a timeout on a makefile stream",
+      "test": "tests.test_native_offlock_probe.ProbeTests.test_the_stalled_feed_case_sets_no_timeout_on_its_stream",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_native_offlock_probe.ProbeTests.test_the_stalled_feed_case_sets_no_timeout_on_its_stream"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_offlock_probe.py": "35961d514ce89cf33605c75b390ef03d6395cac9781c10ae9c1d89126285c0eb"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "9d08b98139a3821cc6075e8ecb576107bf3ee2cd",
+   "stderr": "test_the_stalled_feed_case_sets_no_timeout_on_its_stream (tests.test_native_offlock_probe.ProbeTests.test_the_stalled_feed_case_sets_no_timeout_on_its_stream) ... FAIL\n\n======================================================================\nFAIL: test_the_stalled_feed_case_sets_no_timeout_on_its_stream (tests.test_native_offlock_probe.ProbeTests.test_the_stalled_feed_case_sets_no_timeout_on_its_stream)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-ppr9w61x/wt/tests/test_native_offlock_probe.py\", line 9, in test_the_stalled_feed_case_sets_no_timeout_on_its_stream\n    self.assertFalse(\"except (socket.timeout, TimeoutError)\" in source,\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                     \"the stalled-feed case must probe with select, not a timeout on a makefile stream\")\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: True is not false : the stalled-feed case must probe with select, not a timeout on a makefile stream\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "tests/native_harness.py",
+   "tests/test_native_offlock_probe.py",
+   "tests/test_native_owner_offlock.py"
+  ],
+  "diff_lines": 35,
+  "evidence": {
+   "bytes": 4274,
+   "path": "planning/evidence/repair/NATIVE-R2-OFFLOCK-STALL-TEST-c0032353908c45988ec06ea62ed9c3a0.json",
+   "sha256": "e5c93a9e7f1e49897c28b28e27f965d2e5b17eeb5a912019f90eb78aa51bea36"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "True is not false : the stalled-feed case must probe with select, not a timeout on a makefile stream",
+   "test": "tests.test_native_offlock_probe.ProbeTests.test_the_stalled_feed_case_sets_no_timeout_on_its_stream"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/native_harness.py": "1f35955d7c7c2d1e90c35d48c24f98eaf8afa92c5e0042a797a8c1e1b790bd1e",
+   "tests/test_native_offlock_probe.py": "35961d514ce89cf33605c75b390ef03d6395cac9781c10ae9c1d89126285c0eb"
+  },
+  "head": "9ce6d98ce6d2580e43f1ef5eeab77265cdb403ba",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_native_offlock_probe.ProbeTests.test_the_stalled_feed_case_sets_no_timeout_on_its_stream"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_offlock_probe.py": "35961d514ce89cf33605c75b390ef03d6395cac9781c10ae9c1d89126285c0eb"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "9ce6d98ce6d2580e43f1ef5eeab77265cdb403ba",
+   "stderr": "test_the_stalled_feed_case_sets_no_timeout_on_its_stream (tests.test_native_offlock_probe.ProbeTests.test_the_stalled_feed_case_sets_no_timeout_on_its_stream) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_native_offlock_probe.ProbeTests.test_the_stalled_feed_case_sets_no_timeout_on_its_stream",
+  "timeout": 1800.0
+ }
 }
