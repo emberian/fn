@@ -1,0 +1,17 @@
+{
+ "category": "bug",
+ "evidence": "books/peer-round-driver.lisp fn-prd-feed-action checked DEADLINE only while PHASE or OUTPUTP; host/native/feed-service.lisp fnn-feed-write-step set deadline nil when a command drained and fnn-feed-connected-step set it nil before the greeting. The :read/:offer arms then had no bound.",
+ "exposure": "live",
+ "file": "host/native/feed-service.lisp",
+ "fix": "fn-prd-feed-action: past DEADLINE with no retained input the action is :timeout. The host arms the wait with fn-prd-round-deadline when a command drains, after TCP completion (greeting) and after an implicit-TLS handshake; a complete reply clears it (a partial line does not). The timeout is a :read loss, so fn-feed-lost requeues the entry (K5: the reconnect re-offers by CHECK/IHAVE).",
+ "id": "rp-feed-reply-deadline",
+ "locus": "peer-services",
+ "notes": [],
+ "owner": "read-peer",
+ "scenario": "Peer accepts TCP, takes CHECK <a> (or the TAKETHIS article) and never answers (a hung innd, a paused server, a NAT path that dropped state after the ACK). The link reads :wait forever; the in-flight entry stays :offered/:sent; every later article for that peer queues behind it until the node restarts. Same for a peer that never sends its greeting.",
+ "severity": "high",
+ "source": "read-peer-2026-10-04",
+ "state": "open",
+ "title": "Outbound feed waits for a peer's reply (and greeting) with no deadline: a hung or half-open peer holds its link and in-flight entry until restart",
+ "updated": "2026-10-04T15:26:01Z"
+}

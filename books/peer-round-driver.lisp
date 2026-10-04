@@ -120,15 +120,24 @@
 
 ; Push links retain one output and the ACL2 framer's suffix. This action
 ; selection orders physical work without copying the feed reply machine.
+; DEADLINE is the link's one retained wait: a connect, handshake or output
+; progress window while PHASE or OUTPUTP holds, and otherwise the wait for
+; the peer's next reply (the greeting, or the answer to a command that has
+; left; the host arms it with fn-prd-round-deadline and clears it at the
+; next complete reply).  Retained input is drained first: a reply already
+; read is never discarded by its own deadline.  Past the deadline the link
+; is lost, so a peer that never answers (a hung server, a path gone
+; half-open after the write) cannot hold its link and its in-flight entry
+; until a restart (read-peer 2026-10-04).
 (defun fn-prd-feed-action (phase outputp drainp offerp now deadline)
   (declare (xargs :guard t))
-  (cond ((or phase outputp)
-         (if (and (natp deadline) (<= deadline (nfix now)))
-             :timeout
-           (cond (phase phase) (t :write))))
-        (drainp :reply)
-        (offerp :offer)
-        (t :read)))
+  (let ((expired (and (natp deadline) (<= deadline (nfix now)))))
+    (cond ((or phase outputp)
+           (if expired :timeout (cond (phase phase) (t :write))))
+          (drainp :reply)
+          (expired :timeout)
+          (offerp :offer)
+          (t :read))))
 
 ; Preserve the feed's existing per-quantum deadline while smaller physical
 ; write attempts yield to other peers. Successful prefixes never reset it.
