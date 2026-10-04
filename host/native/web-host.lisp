@@ -653,7 +653,8 @@ exposure admission decides (the id, or NIL when it refused)."
 (defun fnn-web-cold-step (face conn)
   (destructuring-bind (read mode issued) (fnn-web-conn-cold conn)
     (multiple-value-bind (word since now limit)
-        (fnn-owner-cold-poll (fnn-web-face-service face) read (fnn-web-conn-line-since conn) issued)
+        (fnn-owner-cold-poll (fnn-web-face-service face) read (fnn-web-conn-line-since conn) issued
+                             :reader)
       (cond ((and (consp word) (eq (first word) :wait))
              (setf (fnn-web-conn-resume-at conn) (fnn-mux-ms-ticks (min (second word) 2))))
             ((and (member mode '(:ready :render :replay)) (not (eq word :serve)))

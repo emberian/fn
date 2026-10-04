@@ -37,16 +37,29 @@
 
 (in-theory (disable fn-pwr-plan-matches-token fn-pwr-byte))
 
+; The terminal failure phases of an actual plan: a short or failed read
+; (:read), a damaged prefix or trailer, a broken plan.
+(defun fn-pwr-fault-phasep (s)
+  (declare (xargs :guard (true-listp s)))
+  (and (member-eq (nth 0 s) '(:bounds :commitment :digest :state :read)) t))
+
 ; An authenticated terminal success, a failed read and stale ownership are
 ; separate core answers. A failed integrity check never asks for a rescan.
+; Cancellation revokes publication only: a cancelled job whose own returned
+; plan ended in a failure answers that fault (specs/storage.md PRF-1057,
+; SCN-216: "A late store fault stops the owner even after its original
+; request returned 403"); any other cancelled job, including a verified one
+; and one stopped before its first read, is :cancelled.
 (defun fn-pwr-outcome (ledger worker token s)
   (declare (xargs :guard (true-listp s)))
-  (cond ((fn-pwx-boundp ledger worker token :cancelled-returned) :cancelled)
+  (cond ((fn-pwx-boundp ledger worker token :cancelled-returned)
+         (if (and (fn-pwr-plan-matches-token s token) (fn-pwr-fault-phasep s))
+             (list :fault (nth 0 s))
+           :cancelled))
         ((not (fn-pwx-boundp ledger worker token :returned)) :stale-job)
         ((not (fn-pwr-plan-matches-token s token)) '(:fault :state))
         ((fn-ewp-publication s) :ready)
-        ((member-eq (nth 0 s) '(:bounds :commitment :digest :state :read))
-         (list :fault (nth 0 s)))
+        ((fn-pwr-fault-phasep s) (list :fault (nth 0 s)))
         (t '(:fault :state))))
 
 (defthm fn-pwr-ready-requires-exact-publication-by-definition
@@ -55,7 +68,28 @@
                 (fn-pwr-plan-matches-token s token) (fn-ewp-publication s)))
   :rule-classes nil)
 
-(in-theory (disable fn-pwr-outcome))
+; KEYSTONE (PRF-1057 / SCN-216, the window arm).  A returned job whose
+; plan is its token's and ended in a failure answers that failure, whether
+; or not its request was cancelled first: a late short read, read error or
+; damaged extent is a named fault, never swallowed by the cancellation.
+(defthm fn-pwr-a-late-fault-is-a-fault-cancelled-or-not
+  (implies (and (or (fn-pwx-boundp ledger worker token :returned)
+                    (fn-pwx-boundp ledger worker token :cancelled-returned))
+                (fn-pwr-plan-matches-token s token)
+                (fn-pwr-fault-phasep s))
+           (equal (fn-pwr-outcome ledger worker token s)
+                  (list :fault (nth 0 s))))
+  :hints (("Goal" :in-theory (enable fn-ewp-publication fn-pwr-fault-phasep))))
+
+; KEYSTONE.  A cancelled job never publishes: its outcome is :cancelled or
+; its own fault, never :ready.
+(defthm fn-pwr-a-cancelled-job-never-publishes
+  (implies (fn-pwx-boundp ledger worker token :cancelled-returned)
+           (member-equal (fn-pwr-outcome ledger worker token s)
+                         (list :cancelled (list :fault (nth 0 s)))))
+  :rule-classes nil)
+
+(in-theory (disable fn-pwr-outcome fn-pwr-fault-phasep))
 
 ; The arena passes payload-relative I. The core alone chooses the relative
 ; window index, after checking the unchanged physical/payload descriptor.

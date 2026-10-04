@@ -4690,6 +4690,12 @@
 ; replay consumes the immutable render plan without repeating authority.
 ; PROGRAM owner installation and complete guard/refinement bridge are open.
 (definterface fn-owner-article-ready-plan-step :class :program)
+;; A preflight whose payload read did not come is answered 403 in its place.
+(definterface fn-owner-article-preflight-unavailable
+  :class :common-lisp-compliant
+  :keystones ((fn-asto-an-unavailable-preflight-is-answered-in-its-place
+               :via fn-asto-plan-unavailable)
+              (fn-orln-preflight-line-is-a-403 :via fn-orln-preflight-line)))
 (definterface fn-owner-unavailable-line-at :class :program)
 (definterface fn-store-sco-decode :class :program)
 (definterface fn-store-sco-decode-finish :class :program)

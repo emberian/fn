@@ -131,3 +131,80 @@
 (defthm pwrtest-cancelled-publication-witness
   (pwrtest-cancelled-positive)
   :rule-classes nil)
+
+; Teeth of fn-pwr-a-late-fault-is-a-fault-cancelled-or-not and
+; fn-pwr-a-cancelled-job-never-publishes (PRF-1057 / SCN-216, window arm).
+; The request is cancelled WHILE RUNNING (its deadline passed, the 403 was
+; answered), then the actual job returns: the worker is :cancelled-returned.
+(defun-nx pwrtest-cancelled-then-returned (r)
+  (let* ((token (nth 0 r)) (acquire (nth 1 r))
+         (cancel (fn-pwx-cancel (nth 2 acquire) (nth 1 acquire) token))
+         (returned (fn-pwx-return (nth 2 cancel) (nth 1 cancel) token)))
+    (list token cancel returned (nth 1 (nth 3 r)))))
+
+; REACHABLE POSITIVE, complete antecedent and conclusion: a short read and a
+; damaged prefix, each returned after the cancellation, answer their faults.
+(defun-nx pwrtest-late-fault-positive ()
+  (let* ((digest (fn-blake3 '(1 2 3)))
+         (short (pwrtest-cancelled-then-returned
+                 (pwrtest-request 0 (fn-bch-pack digest) '(1 2))))
+         (damaged (pwrtest-cancelled-then-returned
+                   (pwrtest-request 0 (fn-bch-pack digest) (append '(1 2 4) digest)))))
+    (and (equal (nth 0 (nth 1 short)) :cancelled)
+         (equal (nth 0 (nth 2 short)) :returned)
+         (fn-pwx-boundp (nth 2 (nth 2 short)) (nth 1 (nth 2 short)) (nth 0 short)
+                        :cancelled-returned)
+         (fn-pwr-plan-matches-token (nth 3 short) (nth 0 short))
+         (fn-pwr-fault-phasep (nth 3 short))
+         (equal (fn-pwr-outcome (nth 2 (nth 2 short)) (nth 1 (nth 2 short))
+                                (nth 0 short) (nth 3 short))
+                '(:fault :read))
+         (fn-pwx-boundp (nth 2 (nth 2 damaged)) (nth 1 (nth 2 damaged)) (nth 0 damaged)
+                        :cancelled-returned)
+         (fn-pwr-plan-matches-token (nth 3 damaged) (nth 0 damaged))
+         (fn-pwr-fault-phasep (nth 3 damaged))
+         (equal (fn-pwr-outcome (nth 2 (nth 2 damaged)) (nth 1 (nth 2 damaged))
+                                (nth 0 damaged) (nth 3 damaged))
+                '(:fault :digest)))))
+(defthm pwrtest-late-fault-positive-witness (pwrtest-late-fault-positive)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-pwr-outcome fn-pwr-fault-phasep
+                                     fn-pwr-plan-matches-token))))
+
+; The verified job cancelled while running and then returned is :cancelled
+; (never :ready, no byte): the second keystone's other disjunct.
+(defun-nx pwrtest-cancelled-verified-positive ()
+  (let* ((c (pwrtest-cancelled-then-returned (pwrtest-ready)))
+         (ledger (nth 2 (nth 2 c))) (worker (nth 1 (nth 2 c))) (token (nth 0 c)))
+    (and (fn-pwx-boundp ledger worker token :cancelled-returned)
+         (not (fn-pwr-fault-phasep (nth 3 c)))
+         (equal (fn-pwr-outcome ledger worker token (nth 3 c)) :cancelled))))
+(defthm pwrtest-cancelled-verified-positive-witness (pwrtest-cancelled-verified-positive)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-pwr-outcome fn-pwr-fault-phasep
+                                     fn-pwr-plan-matches-token))))
+
+; HYPOTHESIS REMOVALS of the first keystone, each over the same short-read
+; trajectory with ONE hypothesis false, and its conclusion then false too:
+; (a) the plan is not the token's (a worker stopped before its first read
+;     returns no plan: NIL) -- :cancelled;
+; (b) the job has not returned (cancelled, still running) -- :stale-job.
+(defun-nx pwrtest-late-fault-removals ()
+  (let* ((digest (fn-blake3 '(1 2 3)))
+         (r (pwrtest-request 0 (fn-bch-pack digest) '(1 2)))
+         (c (pwrtest-cancelled-then-returned r))
+         (token (nth 0 c))
+         (running (nth 1 c)))
+    (and (fn-pwx-boundp (nth 2 (nth 2 c)) (nth 1 (nth 2 c)) token :cancelled-returned)
+         (not (fn-pwr-plan-matches-token nil token))
+         (not (equal (fn-pwr-outcome (nth 2 (nth 2 c)) (nth 1 (nth 2 c)) token nil)
+                     (list :fault (nth 0 nil))))
+         (equal (fn-pwr-outcome (nth 2 (nth 2 c)) (nth 1 (nth 2 c)) token nil) :cancelled)
+         (not (fn-pwx-boundp (nth 2 running) (nth 1 running) token :returned))
+         (not (fn-pwx-boundp (nth 2 running) (nth 1 running) token :cancelled-returned))
+         (fn-pwr-fault-phasep (nth 3 c))
+         (equal (fn-pwr-outcome (nth 2 running) (nth 1 running) token (nth 3 c)) :stale-job))))
+(defthm pwrtest-late-fault-removals-witness (pwrtest-late-fault-removals)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-pwr-outcome fn-pwr-fault-phasep
+                                     fn-pwr-plan-matches-token))))
