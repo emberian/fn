@@ -47,3 +47,4 @@
 (assert-event (equal (fn-prd-action nil '((:remote 1)) nil :write 8 10 9) '(:io :write)))
 (assert-event (equal (fn-prd-action nil nil nil nil 9 nil nil) '(:read)))
 (assert-event (equal (fn-prd-round-deadline 5) 600005))
+(assert-event (equal (fn-prd-flight-quantum) 256))

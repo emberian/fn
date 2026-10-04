@@ -5396,6 +5396,7 @@
 (definterface fn-prd-action :class :common-lisp-compliant
   :keystones (fn-prd-round-past-deadline-is-lost))
 (definterface fn-prd-round-deadline :class :common-lisp-compliant)
+(definterface fn-prd-flight-quantum :class :common-lisp-compliant)
 (definterface fn-prd-deadline :class :common-lisp-compliant)
 (definterface fn-prd-resume-at :class :common-lisp-compliant)
 (definterface fn-prd-read-limit :class :common-lisp-compliant)

@@ -96,6 +96,13 @@
   (declare (xargs :guard t))
   (min (nfix total) (+ (nfix offset) *fn-feed-wire-input-max-chunk-octets*)))
 
+; The most driver actions one selected round takes before the sweep moves on,
+; while they progress (a wait ends its selection at once). A scheduling
+; quantum, not a data cap: an unfinished round resumes at its next selection.
+(defun fn-prd-flight-quantum ()
+  (declare (xargs :guard t))
+  256)
+
 (defun fn-prd-idle-ms ()
   (declare (xargs :guard t))
   10)
