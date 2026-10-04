@@ -1063,7 +1063,7 @@ The outcome classes and their codes (`*fn-outcome-codes*`, books/outcome-class.l
 
 Counts.
 
-- Depth lint baseline (tools/depth_baseline.json): 2 debt entries (data-sized recursion on a host-called path with no bound), 195 bounded.
+- Depth lint baseline (tools/depth_baseline.json): 2 debt entries (data-sized recursion on a host-called path with no bound), 199 bounded.
 - Named assumptions: 25 `A-*` rows in specs/failures.md, 12 encapsulates in books/assumptions.lisp.
 - The throughput gate's tolerance (tools/throughput_gate.py, planning/throughput-baseline.json): 25% over the baseline per operation, plaintext.
 
