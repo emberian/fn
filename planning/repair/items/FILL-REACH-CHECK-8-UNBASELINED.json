@@ -1,0 +1,13 @@
+{
+ "category": "check-lane",
+ "detail": "375 unreachable total, 8 unbaselined. Run: cloud1:/tank/fn/scratch/fill-wt-check.log (remote_check cloud1 --target check, dev 55ff708a6, started 2026-10-04T19:03Z; local copy build/remote-check/cloud1-check.log)",
+ "file": "books/resource-vector-tree.lisp",
+ "id": "FILL-REACH-CHECK-8-UNBASELINED",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "reach_check --strict: 8 NEW unreachable subjects (no host line reaches the function the event is about): PRF-171 checkpoint-publish fn-cpp-next-generation; PRF-1182 connection-receiver-source-invariants (fn-ich-rx-bind, fn-ich-rx-origin, fn-ich-row); PRF-1209 resource-vector-tree (fn-rt-step, fn-rt-run, fn-rt-root)",
+ "updated": "2026-10-04T19:12:27Z"
+}

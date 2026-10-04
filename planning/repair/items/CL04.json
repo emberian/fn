@@ -7,11 +7,13 @@
  "id": "CL04",
  "line": "",
  "locus": "gates-tests-packaging",
- "notes": [],
+ "notes": [
+  "10-04 15:12 FILL 10-04: reproduced on cloud1 make check at 55ff708a6: tools/check_scaffold.py dies 'File name too long' because reclaim-chunked-walk-tests.lisp scaffold row's description text is parsed as a path ('tests/acl2/reclaim-chunked-walk-tests.lisp (the owner fixture store rewritten ...)'); log cloud1:/tank/fn/scratch/fill-wt-check.log"
+ ],
  "owner": "sweep-gates",
  "severity": "medium",
  "source": "check-lane-355a5c843",
  "state": "open",
  "title": "check-lane red: check_scaffold",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-04T19:12:27Z"
 }
