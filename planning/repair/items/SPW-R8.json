@@ -1,0 +1,16 @@
+{
+ "category": "claim-gap",
+ "detail": "planning/spw-recheck-2026-10-04.md",
+ "evidence": "books/owner-credits.lisp:282 fn-mca-initial and host/owner-host.lisp:1526 fn-owner-connection-budget are computed once per run; books/limits-live.lisp:221-227 turns any A change into at-restart. Not a reachable inconsistency (documented behaviour, specs/reconfiguration.md); a missing capability from the S-POOL residual (efcb40089). Also unverified: the Foundation DEFAULT actual-nursery producer migration and launcher trigger the finding names.",
+ "exposure": "conditional",
+ "file": "host/owner-host.lisp",
+ "fix": "Design item: rebase credit/held allowances without losing old bodies, component peaks or OPS/cache/drawn; no reset or refund on lowering.",
+ "id": "SPW-R8",
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "low",
+ "source": "spw-recheck-2026-10-04",
+ "state": "open",
+ "title": "No live rebase of the article-size credit and connection-held allowance: every change of max-article-octets is deferred to restart (fn-lim-article-decision), because fn-mca-initial and fn-owner-connection-budget are startup-only",
+ "updated": "2026-10-04T14:47:40Z"
+}

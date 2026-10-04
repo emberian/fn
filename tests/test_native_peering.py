@@ -1318,9 +1318,10 @@ class NativePeeringTests(unittest.TestCase):
         replies = self.inject(node, ids)
         self.assertEqual({r[:3] for r in replies}, {b"239"}, replies)
         over = node.operator("retire", "--drain", "86401", expect=EXIT_REFUSED)
-        # Refused by name: the operator's argument refusal prints the book's
-        # reason keyword, (RETIRE DRAIN-SECONDS-OVER-BOUND), in its case.
-        self.assertIn(b"DRAIN-SECONDS-OVER-BOUND", (over.stdout + over.stderr).upper())
+        # The refusal names ACL2's reason, books/native-retire.lisp fn-nret-plan's
+        # :drain-seconds-over-bound, printed as the keyword prints
+        # (lanedumps/retire.md: "uppercase DRAIN-SECONDS-OVER-BOUND text").
+        self.assertIn(b"(RETIRE DRAIN-SECONDS-OVER-BOUND)", over.stdout + over.stderr)
         self.assertIsNone(node.process.poll())
         node.operator("retire", "--drain", "soon", expect=EXIT_REFUSED)
         node.operator("retire", "now", expect=EXIT_USAGE)
