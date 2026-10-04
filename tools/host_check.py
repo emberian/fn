@@ -1727,6 +1727,19 @@ def main(argv: list[str] | None = None) -> int:
         return 1 if interface_step() else 0
     if args.world:
         return world_main(args.files)
+    acl2 = executable()
+    if args.load:
+        # NOT RUN is decided before the analyses below (minutes of source
+        # reading that no verdict can follow from).
+        if acl2 is None:
+            found = shutil.which("acl2")
+            acl2 = Path(found).resolve() if found else None
+        if acl2 is None:
+            print("host_check --load: NOT RUN -- no ACL2 (FN_ACL2 unset and no acl2 on "
+                  "PATH).  Set FN_ACL2 to the ACL2 executable (on hbox and persvati "
+                  "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k); make check "
+                  "counts this as a failed step", file=sys.stderr)
+            return 2
     if args.forward or args.load:
         forward = []
         for build in ([args.build] if args.build else WORLD_BUILDS):
@@ -1744,17 +1757,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.forward:
             return 1 if forward else 0
     stale = world_stale() if args.load else []
-    acl2 = executable()
     if args.load:
-        if acl2 is None:
-            found = shutil.which("acl2")
-            acl2 = Path(found).resolve() if found else None
-        if acl2 is None:
-            print("host_check --load: NOT RUN -- no ACL2 (FN_ACL2 unset and no acl2 on "
-                  "PATH).  Set FN_ACL2 to the ACL2 executable (on hbox and persvati "
-                  "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k); make check "
-                  "counts this as a failed step", file=sys.stderr)
-            return 2
         order = raw_load_order(args.build or BUILD_SCRIPT)
         unknown = [name for name in args.files if name not in order]
         if unknown:
