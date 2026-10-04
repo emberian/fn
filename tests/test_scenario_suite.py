@@ -57,13 +57,27 @@ class ScenarioSuiteTests(unittest.TestCase):
         import io
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            code = scenario_suite.main(["run", "smoke", "--image-set", "a" * 40, "--dry-run"])
+            code = scenario_suite.main(["run", "smoke", "--image-set", "a" * 40, "--box", "hbox",
+                                        "--dry-run"])
         self.assertEqual(code, 0)
         line = out.getvalue().splitlines()[0]
         self.assertIn("--box hbox --image-set " + "a" * 40, line)
         self.assertIn("--images developer,production,dtn,dtn-developer", line)
         self.assertIn(" " + "a" * 40 + " tests.", line)
 
+
+    def test_run_without_a_box_is_a_boxq_job(self):
+        import contextlib
+        import io
+        if not (scenario_suite.ROOT / "tools/boxq.py").is_file():
+            self.skipTest("tools/boxq.py (lane cloud) is not in this tree")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = scenario_suite.main(["run", "peer", "--image-set", "a" * 40, "--dry-run"])
+        self.assertEqual(code, 0)
+        line = out.getvalue().splitlines()[0]
+        self.assertIn("tools/boxq.py submit --kind native --priority lane --image-set " + "a" * 40, line)
+        self.assertIn(" -- --allow-skips --env ", line)
 
 AFFECTS = ("tests/native_harness.py\tALL\tharness\n"
            "tests/test_*.py\tSELF\tself\n"
