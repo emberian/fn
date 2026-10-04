@@ -43,7 +43,7 @@
                 (fn-nls-text (fn-own-feed-entry-name e))
               (fn-nls-text "?"))
             (fn-nls-field "undelivered" (len queue))
-            (fn-nls-field "dropped" (fn-nh-dropped-count queue))
+            (fn-nls-field "dropped" (fn-nh-dropped-count (fn-own-feed-entry-feed e)))
             *fn-nls-lf*)))
 
 (defun fn-oret-peer-lines (tbl)

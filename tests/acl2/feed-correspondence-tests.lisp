@@ -61,11 +61,17 @@
                                                (fn-clock-observation 5000 0 0 nil))))
         (fn-feed-durable-projection
          (fn-feed-lost *fn-feed-ct-reoffered* (fn-clock-observation 5000 0 0 nil)))))
+; The give-up retires <a> in the same step (rp-feed-dropped-holds-capacity):
+; no entry is left behind to hold the peer's queue slot.
 (assert-event
- (fn-feed-droppedp
-  (fn-feed-state-of *fn-feed-ct-a*
-                    (fn-feed-queue (fn-feed-lost *fn-feed-ct-reoffered*
-                                                 (fn-clock-observation 5000 0 0 nil))))))
+ (not (consp
+       (fn-feed-find *fn-feed-ct-a*
+                     (fn-feed-queue (fn-feed-lost *fn-feed-ct-reoffered*
+                                                  (fn-clock-observation 5000 0 0 nil)))))))
+(assert-event
+ (equal (fn-feed-undelivered (fn-feed-lost *fn-feed-ct-reoffered*
+                                           (fn-clock-observation 5000 0 0 nil)))
+        0))
 ; Teeth: the :feed-lost record alone (no drop record) does not replay to the
 ; live loss once the bound is reached.
 (assert-event
@@ -104,10 +110,15 @@
   (list :restart)
   (list :connect 8)
   (list :tick (fn-clock-observation 7000 0 0 nil))
-  (list :reply (fn-feed-response 238 *fn-feed-ct-b*) '(66 13 10)
+  (list :reply (fn-feed-response 238 *fn-feed-ct-a*) '(65 13 10)
         (fn-clock-observation 7001 0 0 nil))
+  (list :reply (fn-feed-response 239 *fn-feed-ct-a*) nil
+        (fn-clock-observation 7002 0 0 nil))
+  (list :tick (fn-clock-observation 7003 0 0 nil))
+  (list :reply (fn-feed-response 238 *fn-feed-ct-b*) '(66 13 10)
+        (fn-clock-observation 7004 0 0 nil))
   (list :reply (fn-feed-response 239 *fn-feed-ct-b*) nil
-        (fn-clock-observation 7002 0 0 nil))))
+        (fn-clock-observation 7005 0 0 nil))))
 (defconst *fn-feed-ct-history*
  (fn-feed-live-history *fn-feed-ct-open* *fn-feed-ct-events*))
 (defconst *fn-feed-ct-final* (fn-feed-live-run *fn-feed-ct-open* *fn-feed-ct-events*))
@@ -115,13 +126,71 @@
 (assert-event (fn-feed-drivenp *fn-feed-ct-open* *fn-feed-ct-history*))
 (assert-event (equal (fn-feed-durable-projection *fn-feed-ct-final*)
  (fn-feed-durable-projection (fn-feed-replay *fn-feed-ct-open* *fn-feed-ct-history*))))
-(assert-event (equal (fn-feed-state-of *fn-feed-ct-a* (fn-feed-queue *fn-feed-ct-final*))
-                     (fn-feed-dropped :retry-bound)))
+; Two 431s at a retry bound of two, then a loss: <a> is still delivered
+; (rp-feed-defer-drop; before 2026-10-04 the second 431 dropped it), and
+; then <b>.
+(assert-event (not (consp (fn-feed-find *fn-feed-ct-a* (fn-feed-queue *fn-feed-ct-final*)))))
 (assert-event (not (consp (fn-feed-find *fn-feed-ct-b* (fn-feed-queue *fn-feed-ct-final*)))))
+(assert-event (equal (fn-feed-retry-dropped *fn-feed-ct-final*) 0))
+(assert-event (equal (fn-feed-count-accepted *fn-feed-ct-peer* *fn-feed-ct-a*
+                                             *fn-feed-ct-history*)
+                     1))
+(assert-event (not (fn-feed-has-drop-recordp *fn-feed-ct-peer* *fn-feed-ct-a*
+                                             *fn-feed-ct-history*)))
 ; The loss at 5001 set the deadline to 6001 in the first run's clock; the
 ; :restart forgets it (lane time-bars, PRF-385: a new process's clock), and
 ; nothing after it backed off.
 (assert-event (equal (fn-feed-backoff-until *fn-feed-ct-final*) 0))
-(assert-event (equal (fn-feed-next-attempt *fn-feed-ct-final*) 5))
-(assert-event (equal (fn-feed-entry-attempts
-  (fn-feed-find *fn-feed-ct-a* (fn-feed-queue *fn-feed-ct-final*))) 2))
+(assert-event (equal (fn-feed-next-attempt *fn-feed-ct-final*) 6))
+
+; rp-feed-defer-drop: a deferral's records are its :feed-retry alone, at any
+; attempt count -- never a :feed-drop.
+(defconst *fn-feed-ct-tight-offered*
+  (fn-feed-live-next
+   (fn-feed-enqueue (fn-feed-open *fn-feed-ct-peer* (fn-feed-limits 4 1000 1 t)
+                                  (fn-sched-contact "inn" 0 1000000) 7)
+                    *fn-feed-ct-a* 1)
+   (list :tick *fn-feed-ct-obs*)))
+(assert-event
+ (equal (fn-feed-observe-records *fn-feed-ct-tight-offered*
+                                 (fn-feed-response 436 *fn-feed-ct-a*) *fn-feed-ct-obs*)
+        (list (fn-feed-journal-entry
+               :feed-retry (list *fn-feed-ct-peer* *fn-feed-ct-a* 1 436 10)))))
+
+; rp-feed-reply-msgid: a reply naming an entry not in flight writes the
+; loss's records and replays to the live loss; it writes no outcome.  Here
+; `239 <b>' arrives while <a> is in flight at a bound of one, so the loss
+; gives <a> up -- with its :feed-drop, never an accepted outcome for either.
+(defconst *fn-feed-ct-two-offered*
+  (fn-feed-live-next
+   (fn-feed-enqueue (fn-feed-enqueue (fn-feed-open *fn-feed-ct-peer* (fn-feed-limits 4 1000 1 t)
+                                                   (fn-sched-contact "inn" 0 1000000) 7)
+                                     *fn-feed-ct-a* 1)
+                    *fn-feed-ct-b* 2)
+   (list :tick *fn-feed-ct-obs*)))
+(assert-event (equal (fn-feed-reply-class *fn-feed-ct-two-offered*
+                                          (fn-feed-response 239 *fn-feed-ct-b*))
+                     :lost))
+(assert-event
+ (equal (fn-feed-observe-records *fn-feed-ct-two-offered*
+                                 (fn-feed-response 239 *fn-feed-ct-b*) *fn-feed-ct-obs*)
+        (list (fn-feed-journal-entry :feed-lost (list *fn-feed-ct-peer* 10))
+              (fn-feed-journal-entry :feed-drop
+                                     (list *fn-feed-ct-peer* *fn-feed-ct-a* :retry-bound)))))
+(assert-event
+ (equal (fn-feed-durable-projection
+         (fn-feed-replay *fn-feed-ct-two-offered*
+                         (fn-feed-observe-records *fn-feed-ct-two-offered*
+                                                  (fn-feed-response 239 *fn-feed-ct-b*)
+                                                  *fn-feed-ct-obs*)))
+        (fn-feed-durable-projection
+         (fn-feed-live-next *fn-feed-ct-two-offered*
+                            (list :reply (fn-feed-response 239 *fn-feed-ct-b*) nil
+                                  *fn-feed-ct-obs*)))))
+; <b> is still owed: the stray answer accepted nothing.
+(assert-event
+ (consp (fn-feed-find *fn-feed-ct-b*
+                      (fn-feed-queue
+                       (fn-feed-live-next *fn-feed-ct-two-offered*
+                                          (list :reply (fn-feed-response 239 *fn-feed-ct-b*)
+                                                nil *fn-feed-ct-obs*))))))

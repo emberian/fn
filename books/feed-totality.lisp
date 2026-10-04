@@ -9,9 +9,8 @@
 ; the vocabulary they need in their hints.
 (local (in-theory (enable fn-feed-invariants-vocabulary)))
 
-; The new timed retry record carries precisely the observation consumed by the
-; live back-off transition.  This bridge is what makes the following drop
-; record admissible after its preceding retry, rather than merely well formed.
+; The timed retry record carries precisely the observation consumed by the
+; live back-off transition, so its replay is the live back-off.
 (defthm fn-feed-apply-live-retry-is-back-off
   (implies (fn-feedp f)
            (equal
@@ -43,13 +42,14 @@
     (fn-feed-observe-records fn-feed-drivenp fn-feed-record-drivenp fn-feed-journalp
      fn-feed-journal-entry fn-feed-journal-kind fn-feed-journal-values
      fn-feed-record-peer fn-feed-record-msgid fn-feed-record-nat fn-frame-item
-     fn-feed-back-off fn-feed-give-up fn-feed-retry-exhaustedp)
+     fn-feed-back-off fn-feed-reply-class)
     (fn-feedp fn-feed-journal-entryp fn-feed-apply-record fn-feed-state-of
-     fn-feed-state-inflightp fn-feed-offeredp fn-feed-droppedp
+     fn-feed-state-inflightp fn-feed-offeredp
      fn-feed-state-attempt fn-feed-find fn-feed-with-queue fn-feed-with-backoff
      fn-feed-queue-requeue fn-feed-backoff-delay fn-feed-lost-records))
            ;; the lost arm (a loss at the retry bound also writes its
-           ;; :feed-drop, SWEEP-PEER S053) is feed-correspondence's lemma
+           ;; :feed-drop, SWEEP-PEER S053; a reply naming an entry not in
+           ;; flight, rp-feed-reply-msgid) is feed-correspondence's lemma
            :use ((:instance fn-feed-apply-live-retry-is-back-off
                             (msgid (fn-feed-response-msgid response))
                             (code (fn-feed-response-code response)))

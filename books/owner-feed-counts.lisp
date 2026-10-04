@@ -12,25 +12,17 @@
     t))
 
 (local
- (defthm fn-ofct-queue-tallies-partition
-   (equal (+ (fn-fct-retry-drops-model q) (fn-orc-queue-pending-model q))
-          (len q))
+ (defthm fn-ofct-queue-pending-is-its-length
+   (equal (fn-orc-queue-pending-model q) (len q))
    :hints (("Goal" :induct (len q)
-                   :in-theory (enable fn-fct-retry-drops-model
-                                      fn-fct-retry-drop-bit
-                                      fn-orc-queue-pending-model)))))
+                   :in-theory (enable fn-orc-queue-pending-model)))))
 
 (defthm fn-ofct-feed-count-is-the-reference-pending
   (implies (fn-feed-count-relationp f)
            (equal (fn-own-feed-pending-of f)
                   (fn-orc-queue-pending-model (fn-feed-queue f))))
-  :hints (("Goal" :use ((:instance fn-ofct-queue-tallies-partition
-                                   (q (fn-feed-queue f))))
-                  :in-theory (e/d (fn-own-feed-pending-of
-                                   fn-feed-count-relationp)
-                                  (fn-orc-queue-pending-model
-                                   fn-fct-retry-drops-model
-                                   fn-ofct-queue-tallies-partition)))))
+  :hints (("Goal" :in-theory (enable fn-own-feed-pending-of
+                                     fn-feed-count-relationp))))
 
 (defthm fn-ofct-table-count-is-the-reference-pending
   (implies (fn-ofct-table-relationp tbl)

@@ -197,7 +197,7 @@
                         fn-feed-port-step-status fn-feed-port-step-feed
                         fn-feed-port-step-records fn-feed-port-step-effects
                         fn-feed-live-port-step fn-feed-live-next fn-feed-live-records
-                        fn-feed-live-effects fn-feed-observe fn-feed-observe-records
+                        fn-feed-live-effects fn-feed-observe fn-feed-observe-records fn-feed-reply-class
                         fn-feed-send fn-feed-with-queue fn-feed-state-of-of-set-state-same
                         fn-pct-feed-requires-entry)
                        (fn-own-feed-entry-of fn-own-feed-put fn-feedp fn-feed-state-of

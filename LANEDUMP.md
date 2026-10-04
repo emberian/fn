@@ -1,47 +1,35 @@
-# Lifecycle reader (read-life) — Opus (2026-10-04)
+# Read-peer lane, Opus (2026-10-04), handoff file. lane/read-peer HEAD c62d653c2, merges clean on origin/dev 65389a90e
 
-Tree `build/lanes/read-life`, branch `lane/read-life` (origin), from `origin/dev` 65389a90e. Running findings: `build/coordinator/lanedumps/read-life.md`.
+Trees: `build/lanes/read-peer` (branch `lane/read-peer`) and `build/lanes/read-peer-mem` (branch `lane/read-peer-mem`, item 2, which merges lane/read-peer). Base `origin/dev` 65389a90e. Ledger owner `read-peer`. The quest from the coordinator, in its order: (1) rp-takethis-bad-msgid-desync, (2) rp-refused-memory-poison under the coordinator's ruling, (3) the two peer-feed.lisp HIGHs.
 
-## Landed on this branch (host only, no books)
-- 4069968a7 + bb3d052fc: `fnn-log-make-durable` (io.lisp). A failed rotate-durable barrier is now serialized, never retried, fences the kernel and answers uncertain. The batch fence handles it as its own failure. Before: in the publication thread it was a job failure, and the next batch fence retried the fsync and acknowledged. Witness `tests/native_log_rotation_durable_raw.lisp`: red at 65389a90e, PASS after.
-- 8d70026de: an EIO reading an intact checkpoint after a compaction is a fault naming the read, no longer the refusal `reason=checkpoint-damaged`. `fnn-log-open-plan-check` is shared by `fnn-recover-log` and `log scan-store`. Witness `tests/native_checkpoint_read_error_raw.lisp`: red at 19469e6b1, PASS after.
-- 19469e6b1: ledger RL-01 (design: a failed log barrier's batch is recovered from the page cache and never rewritten; the same holds for the FNFD journal and the S045 read-back) and RL-02 (a publication that ends before NEXT leaves `fn-owner-sco-inflight` set for the run).
+## Landed on lane/read-peer (READY to INTEGRATOR-2 a485127fb4465f6f7)
+| sha | item | witness |
+|---|---|---|
+| 1e683fe6f | rp-feed-reply-deadline: the outbound feed waited forever for a reply or greeting | repair verify ok, red at 65389a90e |
+| c516bb761 | rp-feed-stop-outlives-remedy: the MODE STREAM stop is keyed by peer record | ACL2 certify-20261004T154532Z-86811; native operator_walk test owed on an image |
+| 55bf4771d + transit-forms follow-up (in 90497c146) | rp-takethis-bad-msgid-desync: any TAKETHIS takes its article; 439 echo; never submitted | ACL2 red certify-20261004T160325Z-71813, then green certify-20261004T160744Z-92862; carried copies certify-20261004T161018Z-7482 and -161816Z-36705; native: scenarios case 7 owed |
 
-## Handed
-- retire (a6c56dc9790ceb96c): the retire's final checkpoint is started async and then abandoned by the stop it triggers. Filed as RET-RETIRE-CHECKPOINT-ABANDONED; lane/retire@911c51cad now asserts the CHECKPOINT line.
+## Item 2: rp-refused-memory-poison, LANDED on lane/read-peer at 11d067e03 (READY sent)
+- Every remembered reason depends on one peer's octets, so the memory is keyed (peer . Message-ID) with the capacity per peer (`fn-peer-refused-key`, `fn-peer-refused-of` / `-others` def-loops, and `fn-peer-refused-record` now takes PEER; books/owner.lisp passes the submission's peer). The history stays the global answer.
+- KEYSTONES fn-peer-refused-record-keeps-every-other-key and fn-peer-refused-record-never-changes-another-peers-offer. fn-prof-run-is-sound and fn-prof-offer-answer-is-the-reparse are restated with the witness transfer by the key's peer.
+- RED certify-20261004T162820Z-82302 at 90497c146 (innB's CHECK is 438). GREEN certify-20261004T162151Z-53020 + certify-20261004T162240Z-56523 (57 books incl. owner and the carried/served copies). All filed.
+- Owed: native red/green, the scenarios case 3 on the integrator's image. The worktree build/lanes/read-peer-mem is spent (its branch is fast-forwarded into lane/read-peer); remove it with `git worktree remove` when convenient.
 
-## Gates
-- Raw harnesses as above. `native_program_check` and `tests.test_native_cut_map` are green. `check-fast-lane` has 3 reds, all present at base and none touching this diff (merge_registry HST-003, reach_check NEW in other books, lock R1b rows in mux/owner/pull). Native red/green on an image is owed: test_native_log_compaction, test_native_checkpoint_auto, test_native_image_differential.
+## Item 3: not started (budget). Exact plan for a successor (books/peer-feed.lisp; whole-tree fan-out)
+- rp-feed-defer-drop. In `fn-feed-observe`, `(431 436)` calls `fn-feed-back-off` and then gives up at `fn-feed-retry-exhaustedp`. Change it to back off only, with no give-up.
+  - Attempts still grow, so a deferral then a loss would give up early (`fn-feed-lost` uses the same attempt count). Separate the two: either a :feed-retry does not count toward the S053 loss bound, or give each entry a loss count.
+  - The backoff is already capped at *fn-feed-max-backoff* (1 h).
+  - The journal :feed-retry/:feed-drop replay (books/feed-events.lisp, feed-correspondence.lisp, feed-live-carried.lisp `fn-fcv-raw-give-up-is-reference`) must replay the same.
+  - Statement first: "431/436 never drop an entry" over `fn-own-feed-port-peer-carried`, the host-called port.
+  - Native witness: the scenarios case 2 (431 x4 then 238 must deliver).
+- rp-feed-dropped-holds-capacity. A `:dropped` entry stays in the queue, and `fn-own-feed-target-capacityp` and `fn-feed-enqueue` count it against max-queue.
+  - Fix: retire it at the give-up (the outcome stays in its :feed-drop record and the drop count `fn-feed-retry-dropped`), or count `fn-feed-undelivered`.
+  - Keystone: capacity is refused only by entries still owed delivery.
+  - peer-feed-counts.lisp (`fn-fct-*`) already carries pending = len − retry drops; prefer using that.
+- Owners: peer-feed is no lane's file today. Ask the coordinator before starting; it fans out to owner-feed*, feed-live-carried, served.
 
-## Continuation
-1. Native run of the three selectors on the integrator's next image.
-2. Not yet read in depth: import/init staged publication (init lane), extent/window release (window-read lane), the inline commit paths' I/O under the owner mutex (noted, not filed).
-3. RL-01 and RL-02 need owners. RL-02's fix needs a deferral for a named refusal, so it is not a release alone.
-
-# Read-peer lane — Opus reader (2026-10-04)
-
-Tree `build/lanes/read-peer`, branch `lane/read-peer` (origin), from `origin/dev` 65389a90e. Pathway: a stranger's news server peering with us: ingress IHAVE/CHECK/TAKETHIS, the outbound feed, pull/catch-up, MODE STREAM, invitations, TCPCL. Findings list: `build/coordinator/lanedumps/read-peer.md`.
-
-## Landed on this branch
-| sha | defect | input that broke it | test before -> after |
-|---|---|---|---|
-| 1e683fe6f (+ c502c5301, 869bf4f34, 5e2910dda ledger/verify) | rp-feed-reply-deadline: the outbound feed waited for a reply or a greeting with no deadline (fn-prd-feed-action read DEADLINE only with PHASE/OUTPUT; the host cleared it at drain and after TCP up) | the peer takes `CHECK <a>`, or the dial, and never answers; the socket stays open | tests.test_native_feed_fair_round...test_peer_that_never_answers_is_dropped_at_the_reply_deadline: `repair.py verify` red at 65389a90e, green at head (evidence planning/evidence/repair/rp-feed-reply-deadline-7524cc45...json) |
-| c516bb761 | rp-feed-stop-outlives-remedy: a MODE STREAM stop was keyed by peer name and never cleared, so `peer set --streaming false` (the remedy the log line names), a new login or a new address did nothing until a restart | 502/480 to MODE STREAM, then `peer set NAME --streaming false` | ACL2: tests/acl2/feed-connection-tests (same record stopped, changed record dials). Native: tests.test_native_operator_walk...test_a_stopped_peer_is_fed_with_ihave_once_its_record_says_streaming_false, red-before/green-after OWED on an image |
-
-Certification (laptop, narrow `--recertify`): certify-20261004T153140Z-15375 (books/peer-round-driver, tests/acl2/peer-round-driver-tests); certify-20261004T154532Z-86811 (books/feed-connection, tests/acl2/feed-connection-tests). Both filed (evidence_manifests add). Not certified: the ~790 books above feed-connection (host/owner-host includes them), which is the integrator's umbrella run. host/owner-host.lisp loads with the fixture: tests/owner_feed_connection_host_check.py passes. host_check --read/--books/--interfaces green. Raw: test_native_feed_fair_round 6/6, feed_credential, peer_round_driver; feed service/actor/peer-octets raw scripts PASS.
-Shared files: host/owner-host.lisp, feed region only (fn-owner-feed-has-queued, fn-owner-feed-reply-chunk-synced, plus the new fn-owner-feed-stop-key).
-
-## Filed, not fixed (ledger, owner read-peer)
-- rp-feed-defer-drop (HIGH): three 431/436 answers drop an article for good (*fn-own-feed-retry-bound* 3; at the default 1000 ms backoff base that is 7 s of "not now").
-- rp-feed-dropped-holds-capacity (HIGH): :dropped entries stay in the queue and count against max-queue (default 1024). Once it is full, every POST (441) and transfer (436) for the groups fed to that peer is refused for good, across restarts.
-- rp-takethis-bad-msgid-desync (HIGH): TAKETHIS with an argument that fails fn's grammar gets 501 and no article mode, so the article's lines run as commands on the peer session. An inner `TAKETHIS <x>` line stores a forged article. Two copies must change together: fn-peer-command (peer-inbound) and fn-pgc-peer-command (peer-guard-carried).
-- rp-refused-memory-poison (MEDIUM, decision): the refused-offer memory is owner-wide and keyed by the OFFERED id, including :message-id-syntax. One peer's mismatched or garbage transfer makes every other peer's CHECK of that id draw 438 (final). Also reachable through pull.
-- rp-feed-reply-msgid (LOW): CHECK/TAKETHIS replies are not matched to the echoed Message-ID, so a stray reply retires the wrong entry.
-
-## Continuation
-1. Integrator: on the image of a batch carrying lane/read-peer, run tests.test_native_operator_walk (the new stop-remedy test plus the 502/501 neighbours) and tests.test_native_feed_temporary/feed_idle/friends_feed as the feed regression guard. File the run ids here.
-2. The three HIGH items need a peering/proofs slice. rp-feed-defer-drop and rp-feed-dropped-holds-capacity change books/peer-feed.lisp (fn-feed-observe, fn-feed-give-up), and peer-feed's fan-out is the whole tree. Do them together, statement-first.
-3. The scenarios lane (a84b445cf2df926af) has native modules for cases 1-7 in tests/test_native_peer_hostile_feed.py and test_native_peer_misbehaving.py on lane/scenarios. Cases 2/3/4/7 are expected red until the items above land.
+## Still filed, not fixed
+- rp-feed-reply-msgid (LOW): CHECK/TAKETHIS replies are not matched to the echoed Message-ID.
 
 # Cold-line lane — Opus (2026-10-04)
 

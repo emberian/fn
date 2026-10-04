@@ -4,13 +4,27 @@
 ; and an offer state; no article bytes live here (the article is rendered from
 ; the store when it is offered).  It holds UNDELIVERED obligations only: a
 ; final answer from the peer (235/239 accepted, 435/438 it has it, 437/439 it
-; refused it) RETIRES the entry (`fn-feed-done', `fn-feed-queue-retire'), so
-; the queue's length is what is still owed to the peer, never history
-; (PRF-335, `fn-feed-queue-length-is-undelivered' in peer-feed-invariants).
-; The outcome record in the journal is what keeps the answer.  Before
-; PRF-335 a delivered entry stayed as `:done' and counted against the
-; peer's max-queue, so after 1,024 articles every local post was refused
-; (the openbsd-rehearsal record of 2026-09-27, stop 1).  Every decision the feed takes is journaled
+; refused it) RETIRES the entry (`fn-feed-done', `fn-feed-queue-retire'), and
+; so does a give-up at the loss bound (`fn-feed-give-up'), so every entry in
+; the queue is still owed to the peer and the queue's length is that count,
+; never history (PRF-335, `fn-feed-queue-length-is-undelivered' in
+; peer-feed-invariants).  The outcome or drop record in the journal is what
+; keeps the answer.  Before PRF-335 a delivered entry stayed as `:done' and
+; counted against the peer's max-queue, so after 1,024 articles every local
+; post was refused (the openbsd-rehearsal record of 2026-09-27, stop 1); the
+; given-up entry did the same as `(:dropped reason)' until
+; rp-feed-dropped-holds-capacity (2026-10-04).
+;
+; A peer's "not now" and a lost connection are counted apart
+; (rp-feed-defer-drop, 2026-10-04).  A 431/436 is the peer keeping the
+; article for later (RFC 4644 sec. 2.4, RFC 3977 sec. 6.3.2; fn's own transit
+; answers it with "the sender keeps the article", `fn-peer-transit-code'):
+; the entry backs off on the capped exponential schedule and is never given
+; up for it.  Only a connection lost with the entry in flight counts toward
+; the retry bound (S053: an offer that keeps dropping the connection), and an
+; entry is given up only there.  A reply that names a Message-ID other than
+; the one in flight is a protocol loss (rp-feed-reply-msgid,
+; `fn-feed-reply-class').  Every decision the feed takes is journaled
 ; in the FNFD record family below BEFORE the effect it authorizes, and
 ; `fn-feed-replay' folds those records back into a feed state.  That fold and
 ; the restart it feeds are what make the offer exactly-once per peer: the
@@ -96,8 +110,9 @@
 ; -----------------------------------------------------------------------------
 ; The offer state of a queue entry
 ;
-; :queued | (:offered n) | (:sent n) | (:dropped reason).  There is no
-; delivered state: a delivered entry leaves the queue (`fn-feed-done').
+; :queued | (:offered n) | (:sent n).  There is no delivered and no dropped
+; state: a finished or given-up entry leaves the queue (`fn-feed-done',
+; `fn-feed-give-up'), so every state an entry can hold is owed delivery.
 ; These glue predicates are the only place a state's spelling is opened;
 ; every rule above them is stated in this vocabulary (docs/proof-style.md
 ; sec. 8: glue predicates in accessor vocabulary may leave the book enabled).
@@ -112,19 +127,9 @@
   (and (consp s) (equal (car s) :sent) (natp (fn-bp-nth 1 s))
        (true-listp s) (equal (len s) 2)))
 
-(defun fn-feed-droppedp (s)
-  (declare (xargs :guard t))
-  (and (consp s) (equal (car s) :dropped)
-       (member-equal (fn-bp-nth 1 s) *fn-feed-drop-reasons*)
-       (true-listp s) (equal (len s) 2)))
-
 (defun fn-feed-state-attempt (s)
   (declare (xargs :guard t))
   (nfix (fn-bp-nth 1 s)))
-
-(defun fn-feed-state-reason (s)
-  (declare (xargs :guard t))
-  (fn-bp-nth 1 s))
 
 (defun fn-feed-state-inflightp (s)
   (declare (xargs :guard t))
@@ -134,8 +139,7 @@
   (declare (xargs :guard t))
   (or (equal s :queued)
       (fn-feed-offeredp s)
-      (fn-feed-sentp s)
-      (fn-feed-droppedp s)))
+      (fn-feed-sentp s)))
 
 (defun fn-feed-offered (attempt)
   (declare (xargs :guard t))
@@ -145,22 +149,22 @@
   (declare (xargs :guard t))
   (list :sent (nfix attempt)))
 
-(defun fn-feed-dropped (reason)
-  (declare (xargs :guard t))
-  (list :dropped (if (member-equal reason *fn-feed-drop-reasons*)
-                     reason
-                     :operator)))
-
 ; -----------------------------------------------------------------------------
 ; The queue entry, an opaque record (docs/proof-style.md sec. 1)
+;
+; ATTEMPTS counts every return to :queued without a final answer, a 431/436
+; deferral or a loss; it is the exponent of the next back-off.  LOSSES counts
+; only the connections lost with the entry in flight; it is what the retry
+; bound tests (`fn-feed-retry-exhaustedp').  TICK is the monotonic reading of
+; the last requeue.
 
 (defun fn-feed-entry-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 4)))
+  (and (true-listp x) (equal (len x) 5)))
 
-(defun fn-feed-entry (msgid st attempts tick)
+(defun fn-feed-entry (msgid st attempts tick losses)
   (declare (xargs :guard t))
-  (list msgid st attempts tick))
+  (list msgid st attempts tick losses))
 
 (defun fn-feed-entry-msgid (x)
   (declare (xargs :guard t))
@@ -174,21 +178,27 @@
 (defun fn-feed-entry-tick (x)
   (declare (xargs :guard t))
   (fn-bp-nth 3 x))
+(defun fn-feed-entry-losses (x)
+  (declare (xargs :guard t))
+  (fn-bp-nth 4 x))
 
 (defthm fn-feed-entry-shapep-of-fn-feed-entry
-  (fn-feed-entry-shapep (fn-feed-entry msgid st attempts tick)))
+  (fn-feed-entry-shapep (fn-feed-entry msgid st attempts tick losses)))
 (defthm fn-feed-entry-msgid-of-fn-feed-entry
-  (equal (fn-feed-entry-msgid (fn-feed-entry msgid st attempts tick))
+  (equal (fn-feed-entry-msgid (fn-feed-entry msgid st attempts tick losses))
          msgid))
 (defthm fn-feed-entry-state-of-fn-feed-entry
-  (equal (fn-feed-entry-state (fn-feed-entry msgid st attempts tick))
+  (equal (fn-feed-entry-state (fn-feed-entry msgid st attempts tick losses))
          st))
 (defthm fn-feed-entry-attempts-of-fn-feed-entry
-  (equal (fn-feed-entry-attempts (fn-feed-entry msgid st attempts tick))
+  (equal (fn-feed-entry-attempts (fn-feed-entry msgid st attempts tick losses))
          attempts))
 (defthm fn-feed-entry-tick-of-fn-feed-entry
-  (equal (fn-feed-entry-tick (fn-feed-entry msgid st attempts tick))
+  (equal (fn-feed-entry-tick (fn-feed-entry msgid st attempts tick losses))
          tick))
+(defthm fn-feed-entry-losses-of-fn-feed-entry
+  (equal (fn-feed-entry-losses (fn-feed-entry msgid st attempts tick losses))
+         losses))
 (defthm fn-feed-entry-shapep-forward-shape
   (implies (fn-feed-entry-shapep x) (and (consp x) (true-listp x)))
   :rule-classes :forward-chaining)
@@ -196,7 +206,8 @@
   (and (implies (fn-feed-entry-msgid x) (consp x))
        (implies (fn-feed-entry-state x) (consp x))
        (implies (fn-feed-entry-attempts x) (consp x))
-       (implies (fn-feed-entry-tick x) (consp x)))
+       (implies (fn-feed-entry-tick x) (consp x))
+       (implies (fn-feed-entry-losses x) (consp x)))
   :rule-classes ((:forward-chaining
                   :corollary (implies (fn-feed-entry-msgid x) (consp x))
                   :trigger-terms ((fn-feed-entry-msgid x)))
@@ -208,11 +219,15 @@
                   :trigger-terms ((fn-feed-entry-attempts x)))
                  (:forward-chaining
                   :corollary (implies (fn-feed-entry-tick x) (consp x))
-                  :trigger-terms ((fn-feed-entry-tick x)))))
+                  :trigger-terms ((fn-feed-entry-tick x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-feed-entry-losses x) (consp x))
+                  :trigger-terms ((fn-feed-entry-losses x)))))
 
 (in-theory (disable (:d fn-feed-entry-shapep) (:d fn-feed-entry)
                     (:d fn-feed-entry-msgid) (:d fn-feed-entry-state)
-                    (:d fn-feed-entry-attempts) (:d fn-feed-entry-tick)))
+                    (:d fn-feed-entry-attempts) (:d fn-feed-entry-tick)
+                    (:d fn-feed-entry-losses)))
 
 (defun fn-feed-entryp (x)
   (declare (xargs :guard t))
@@ -220,7 +235,8 @@
        (fn-feed-namep (fn-feed-entry-msgid x))
        (fn-feed-state-okp (fn-feed-entry-state x))
        (natp (fn-feed-entry-attempts x))
-       (natp (fn-feed-entry-tick x))))
+       (natp (fn-feed-entry-tick x))
+       (natp (fn-feed-entry-losses x))))
 
 (defthm fn-feed-entryp-forward-shape
   (implies (fn-feed-entryp x) (and (consp x) (true-listp x)))
@@ -371,12 +387,15 @@
   :stop (equal (fn-feed-entry-msgid (car xs)) msgid)
   :stop-value (cons (fn-feed-entry (fn-feed-entry-msgid (car xs)) st
                                     (fn-feed-entry-attempts (car xs))
-                                    (fn-feed-entry-tick (car xs)))
+                                    (fn-feed-entry-tick (car xs))
+                                    (fn-feed-entry-losses (car xs)))
                     (cdr xs)))
 
 
-; Requeue after a 431/436 or a connection loss: back to :queued, one more
-; attempt counted, the tick remembered.
+; Requeue after a 431/436 deferral: back to :queued, one more attempt counted
+; (the back-off exponent), the tick remembered, the losses unchanged: a
+; deferral is the peer keeping the article for later, never a step toward
+; giving it up.
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
@@ -385,12 +404,14 @@
   :stop (equal (fn-feed-entry-msgid (car xs)) msgid)
   :stop-value (cons (fn-feed-entry (fn-feed-entry-msgid (car xs)) :queued
                                     (+ 1 (nfix (fn-feed-entry-attempts (car xs))))
-                                    (nfix tick))
+                                    (nfix tick)
+                                    (nfix (fn-feed-entry-losses (car xs))))
                     (cdr xs)))
 
 
-; Every in-flight entry back to :queued with one more attempt: the 400 / lost
-; connection case.  Nothing is dropped.
+; Every in-flight entry back to :queued with one more attempt and one more
+; loss: the 400 / lost connection case.  Nothing is dropped here; the retry
+; bound is `fn-feed-lost''s.
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
@@ -399,7 +420,8 @@
   :body (if (fn-feed-state-inflightp (fn-feed-entry-state (car xs)))
             (fn-feed-entry (fn-feed-entry-msgid (car xs)) :queued
                            (+ 1 (nfix (fn-feed-entry-attempts (car xs))))
-                           (nfix tick))
+                           (nfix tick)
+                           (+ 1 (nfix (fn-feed-entry-losses (car xs)))))
           (car xs)))
 
 
@@ -415,7 +437,8 @@
   :body (if (fn-feed-state-inflightp (fn-feed-entry-state (car xs)))
             (fn-feed-entry (fn-feed-entry-msgid (car xs)) :queued
                            (fn-feed-entry-attempts (car xs))
-                           (fn-feed-entry-tick (car xs)))
+                           (fn-feed-entry-tick (car xs))
+                           (fn-feed-entry-losses (car xs)))
           (car xs)))
 
 
@@ -577,21 +600,16 @@
 ; -----------------------------------------------------------------------------
 ; The feed, an opaque record
 
-; S9 derived counts. These folds are reference/cold vocabulary only.
-(defun fn-fct-retry-drop-bit (st)
+; S9 carried counts.  UNDELIVERED is the queue's length, carried so that a
+; capacity test never walks the queue; every entry is owed delivery, so it is
+; also the peer's pending work.  RETRY-DROPPED is a tally, not a fold of the
+; queue: the entries given up at the retry bound since the feed was opened
+; (its replay included).  A given-up entry has left the queue
+; (`fn-feed-give-up'), so the tally is the only place the count lives; the
+; journal's :feed-drop records name each one.
+(defun fn-fct-retry-drop-bit (reason)
   (declare (xargs :guard t))
-  (if (equal st '(:dropped :retry-bound)) 1 0))
-
-(defun fn-fct-retry-drops-model (queue)
-  (declare (xargs :guard t))
-  (if (consp queue)
-      (+ (fn-fct-retry-drop-bit (fn-feed-entry-state (car queue)))
-         (fn-fct-retry-drops-model (cdr queue)))
-    0))
-
-(defun fn-fct-pending-model (queue)
-  (declare (xargs :guard t))
-  (- (len queue) (fn-fct-retry-drops-model queue)))
+  (if (equal reason :retry-bound) 1 0))
 
 (defun fn-feed-shapep (x)
   (declare (xargs :guard t))
@@ -603,12 +621,13 @@
   (list peer limits queue contact backoff-until conn next-attempt
         undelivered retry-dropped))
 
-; Detached logical/reference constructor. Served transitions below never
-; call this fold: they carry counts or apply an actual transition delta.
+; Detached logical/reference constructor, with a fresh drop tally.  Served
+; transitions below never call it: they carry counts or apply an actual
+; transition delta.
 (defun fn-feed-make (peer limits queue contact backoff-until conn next-attempt)
   (declare (xargs :guard t))
   (fn-feed-make-counted peer limits queue contact backoff-until conn next-attempt
-                        (len queue) (fn-fct-retry-drops-model queue)))
+                        (len queue) 0))
 
 (defun fn-feed-peer (x)
   (declare (xargs :guard t))
@@ -642,8 +661,7 @@
 (defun fn-feed-count-relationp (f)
   (declare (xargs :guard t))
   (and (equal (fn-feed-undelivered f) (len (fn-feed-queue f)))
-       (equal (fn-feed-retry-dropped f)
-              (fn-fct-retry-drops-model (fn-feed-queue f)))))
+       (natp (fn-feed-retry-dropped f))))
 
 (defthm fn-feed-shapep-of-counted-make
   (fn-feed-shapep (fn-feed-make-counted p l q c b n a u d)))
@@ -720,8 +738,7 @@
 
 (in-theory (disable fn-feed-make-counted fn-feed-undelivered
                     fn-feed-retry-dropped fn-feed-count-relationp
-                    fn-fct-retry-drop-bit fn-fct-retry-drops-model
-                    fn-fct-pending-model))
+                    fn-fct-retry-drop-bit))
 
 (in-theory (disable (:d fn-feed-shapep) (:d fn-feed-make)
                     (:d fn-feed-peer) (:d fn-feed-limits-of)
@@ -844,7 +861,7 @@
       f
       (fn-feed-with-queue-counted
        f (append (fn-feed-queue f)
-                 (list (fn-feed-entry msgid :queued 0 (nfix tick))))
+                 (list (fn-feed-entry msgid :queued 0 (nfix tick) 0)))
        (+ 1 (nfix (fn-feed-undelivered f))) (fn-feed-retry-dropped f))))
 
 ; The backoff has elapsed at a monotonic reading.  The reading arrives as a
@@ -1026,36 +1043,38 @@
           nil)
          (+ now delay)))))
 
-; Give up: at the retry bound the entry is dropped WITH ITS REASON.  A dropped
-; entry is never re-offered automatically; the CLI reports it as refused and an
-; operator can re-feed.
+; Give up: the entry LEAVES the queue in the same step, and its queue slot
+; with it (rp-feed-dropped-holds-capacity): an entry that will never be sent
+; never counts against the peer's max-queue.  The reason is in the :feed-drop
+; record the step journals, and a :retry-bound give-up is counted in the
+; tally.  A given-up entry is never re-offered automatically; an operator can
+; re-feed it, which is a new enqueue.
 (defun fn-feed-give-up (f msgid reason)
   (declare (xargs :guard t))
   (if (or (not (fn-feedp f))
-          (not (consp (fn-feed-find msgid (fn-feed-queue f))))
-          (fn-feed-droppedp (fn-feed-state-of msgid (fn-feed-queue f))))
+          (not (consp (fn-feed-find msgid (fn-feed-queue f)))))
       f
       (fn-feed-with-queue-counted
-       f (fn-feed-queue-set-state (fn-feed-queue f) msgid
-                                  (fn-feed-dropped reason))
-       (fn-feed-undelivered f)
+       f (fn-feed-queue-retire (fn-feed-queue f) msgid)
+       (nfix (- (nfix (fn-feed-undelivered f)) 1))
        (+ (nfix (fn-feed-retry-dropped f))
-          (fn-fct-retry-drop-bit (fn-feed-dropped reason))))))
+          (fn-fct-retry-drop-bit reason)))))
 
+; The retry bound counts LOSSES only (rp-feed-defer-drop): the connections
+; lost with this entry in flight.  A 431/436 never moves it.
 (defun fn-feed-retry-exhaustedp (f msgid)
   (declare (xargs :guard t))
   (and (consp (fn-feed-find msgid (fn-feed-queue f)))
        (<= (nfix (fn-feed-retry-bound (fn-feed-limits-of f)))
-           (nfix (fn-feed-entry-attempts
+           (nfix (fn-feed-entry-losses
                   (fn-feed-find msgid (fn-feed-queue f)))))))
 
-; A loss: the requeue above, and then the retry bound, the same bound a
-; 431/436 retry meets (inspection sweep 2026-10-03 S053).  An entry whose
-; offer keeps dropping the connection (a peer-side limit, a malformed or huge
-; article, a peer bug) is given up with :retry-bound once its attempts reach
-; it, so it no longer heads the peer's FIFO forever.  Its journal is the
-; :feed-lost record (the requeue) and then a :feed-drop record
-; (books/feed-events.lisp fn-feed-lost-records).
+; A loss: the requeue above, and then the retry bound (inspection sweep
+; 2026-10-03 S053).  An entry whose offer keeps dropping the connection (a
+; peer-side limit, a malformed or huge article, a peer bug) is given up with
+; :retry-bound once its losses reach it, so it no longer heads the peer's
+; FIFO forever.  Its journal is the :feed-lost record (the requeue) and then
+; a :feed-drop record (books/feed-events.lisp fn-feed-lost-records).
 (defun fn-feed-lost (f obs)
   (declare (xargs :guard t))
   (let ((entry (and (fn-feedp f) (fn-feed-inflight-entry (fn-feed-queue f))))
@@ -1088,29 +1107,41 @@
 ; 435 duplicate, 436 transient, 437 rejected permanently (a Path already
 ; naming the peer yields 437); CHECK 238/431/438; TAKETHIS 239/439;
 ; MODE STREAM 203.  So 435/437/438/439 are FINAL here -- `fn-feed-done', never
-; re-offered -- 431/436 back off, and 400, 480, 503 and every unknown code
+; re-offered -- 431/436 back off and keep the entry (`fn-feed-back-off'; never
+; a give-up: rp-feed-defer-drop), and 400, 480, 503 and every unknown code
 ; fall through to `fn-feed-lost', which requeues the in-flight entry so the
 ; reconnect resolves it by CHECK.
 ;
-; The response the peer sent names a Message-ID for CHECK/TAKETHIS; for IHAVE
-; the reply has no Message-ID and the host supplies the in-flight one, which
-; is unambiguous because at most one entry is in flight.
+; The response names a Message-ID.  For CHECK/TAKETHIS it is the one the
+; peer echoed (`fn-own-feed-parse-response'); for IHAVE the reply has none and
+; the host supplies the in-flight one, which is unambiguous because at most
+; one entry is in flight.  A reply naming any entry that is NOT in flight --
+; a duplicated or stray reply line, a peer answering out of order -- is a
+; protocol loss (rp-feed-reply-msgid): it never retires, sends or defers an
+; entry it does not name, and the reconnect resolves the in-flight one by an
+; offer, as innfeed does on a reply for an article it is not waiting on.
+(defun fn-feed-reply-class (f response)
+  (declare (xargs :guard t))
+  (let ((code (fn-feed-response-code response))
+        (msgid (fn-feed-response-msgid response)))
+    (cond ((not (fn-feed-state-inflightp
+                 (fn-feed-state-of msgid (fn-feed-queue f))))
+           :lost)
+          ((member-equal code '(335 238)) :send)
+          ((member-equal code '(235 239 435 438 437 439)) :final)
+          ((member-equal code '(431 436)) :defer)
+          (t :lost))))
+
 (defun fn-feed-observe (f response article obs)
   (declare (xargs :guard t))
   (if (not (fn-feedp f))
       (mv f nil)
-      (let ((code (fn-feed-response-code response))
-            (msgid (fn-feed-response-msgid response)))
-        (cond ((member-equal code '(335 238)) (fn-feed-send f msgid article))
-              ((member-equal code '(235 239 435 438 437 439))
-               (mv (fn-feed-done f msgid) nil))
-              ((member-equal code '(431 436))
-               (let ((g (fn-feed-back-off f msgid obs)))
-                 (mv (if (fn-feed-retry-exhaustedp g msgid)
-                         (fn-feed-give-up g msgid :retry-bound)
-                         g)
-                     nil)))
-              (t (mv (fn-feed-lost f obs) nil))))))
+      (let ((msgid (fn-feed-response-msgid response)))
+        (case (fn-feed-reply-class f response)
+          (:send (fn-feed-send f msgid article))
+          (:final (mv (fn-feed-done f msgid) nil))
+          (:defer (mv (fn-feed-back-off f msgid obs) nil))
+          (otherwise (mv (fn-feed-lost f obs) nil))))))
 
 ; The feed with no back-off deadline.
 (defun fn-feed-without-backoff (f)
@@ -1498,9 +1529,7 @@
                        (fn-feed-record-nat 2 values))))
           ((equal kind :feed-lost) t)
           ((equal kind :feed-drop)
-           (and (consp (fn-feed-find msgid (fn-feed-queue f)))
-                (not (fn-feed-droppedp
-                      (fn-feed-state-of msgid (fn-feed-queue f))))))
+           (consp (fn-feed-find msgid (fn-feed-queue f))))
           ((equal kind :feed-restart) t)
           (t nil)))))
 
@@ -1575,7 +1604,7 @@
     (:d fn-feed-enqueue) (:d fn-feed-selection) (:d fn-feed-offer)
     (:d fn-feed-send) (:d fn-feed-done) (:d fn-feed-back-off)
     (:d fn-feed-lost) (:d fn-feed-give-up) (:d fn-feed-retry-exhaustedp)
-    (:d fn-feed-observe) (:d fn-feed-restart) (:d fn-feed-settle)
+    (:d fn-feed-reply-class) (:d fn-feed-observe) (:d fn-feed-restart) (:d fn-feed-settle)
     (:d fn-feed-tick-step) (:d fn-feed-responsep)
     (:d fn-feed-line)
     (:d fn-feed-record-okp) (:d fn-feed-encode) (:d fn-feed-decode)

@@ -8,8 +8,9 @@
 ; The four claims, each a theorem below:
 ;
 ;   0. The queue holds undelivered obligations, never history (PRF-335): its
-;      length is the enqueues minus the final answers, and a final answer
-;      retires the entry for good.  `fn-feed-queue-length-is-undelivered',
+;      length is the enqueues minus the final answers and the give-ups, and
+;      a final answer retires the entry for good.
+;      `fn-feed-queue-length-is-undelivered',
 ;      `fn-feed-final-outcome-retires-for-good'.
 ;   1. In a journal a feed machine could have written, the accepted
 ;      outcomes for one (peer, Message-ID) are at most the times it was
@@ -26,8 +27,15 @@
 ;   4. Backoff is monotone in the attempt count and a deadline is never
 ;      lowered.  `fn-feed-backoff-delay-is-monotone',
 ;      `fn-feed-back-off-does-not-lower-the-deadline'.
-;   5. Nothing leaves the queue without a drop record naming a reason.
-;      `fn-feed-drop-needs-a-drop-record'.
+;   5. Nothing leaves the queue without a final answer or a drop record
+;      naming a reason.  `fn-feed-leaving-needs-an-answer-or-a-drop-record'.
+;   6. Every entry the queue holds is owed delivery, so the carried count is
+;      the owed count and the peer's max-queue is never held by an entry that
+;      will not be sent (rp-feed-dropped-holds-capacity), and a 431/436 for
+;      the entry in flight keeps every entry (rp-feed-defer-drop).
+;      `fn-feed-undelivered-is-the-owed-count',
+;      `fn-feed-enqueue-refuses-only-for-owed-work',
+;      `fn-feed-deferral-keeps-every-entry'.
 
 (in-package "ACL2")
 (include-book "peer-feed")
@@ -247,63 +255,6 @@
   (fn-feed-state-okp (fn-feed-offered a)))
 (defthm fn-feed-state-okp-of-sent
   (fn-feed-state-okp (fn-feed-sent a)))
-(defthm fn-feed-state-okp-of-dropped
-  (fn-feed-state-okp (fn-feed-dropped r)))
-
-(defthm fn-feed-droppedp-of-the-offer-states
-  (and (not (fn-feed-droppedp (fn-feed-offered a)))
-       (not (fn-feed-droppedp (fn-feed-sent a)))
-       (fn-feed-droppedp (fn-feed-dropped r))))
-
-; `fn-feed-droppedp' propagation.  Every queue operation a journal record can
-; perform either leaves an entry alone or writes `:queued', `:done' or an
-; offer state over it, so an entry that is not dropped stays not dropped --
-; WITHOUT any disequality between the entry read and the entry written.  That
-; is the point of stating them this way: the dispatcher's arms then need no
-; case split on whether the record names this entry, which is what the
-; `Subgoal 142.104.78''' of the previous lane's measurement was.
-; Each is proved with `fn-feed-droppedp' CLOSED: the statements use it only
-; as a predicate, and opened (a member test over the drop reasons and a
-; length) it turned each induction step into a 60 to 75-way split, 7.7 s
-; for the set-state lemma and 6.2 s for the append lemma.  The in-flight
-; lemmas below keep `fn-feed-state-inflightp' closed for the same reason.
-(defthm fn-feed-droppedp-of-state-of-set-state
-  (implies (and (not (fn-feed-droppedp st))
-                (not (fn-feed-droppedp (fn-feed-state-of msgid xs))))
-           (not (fn-feed-droppedp
-                 (fn-feed-state-of msgid
-                                   (fn-feed-queue-set-state xs other st)))))
-  :hints (("Goal" :in-theory (disable fn-feed-droppedp))))
-
-(defthm fn-feed-droppedp-of-state-of-requeue
-  (implies (not (fn-feed-droppedp (fn-feed-state-of msgid xs)))
-           (not (fn-feed-droppedp
-                 (fn-feed-state-of msgid
-                                   (fn-feed-queue-requeue xs other tick)))))
-  :hints (("Goal" :in-theory (disable fn-feed-droppedp))))
-
-(defthm fn-feed-droppedp-of-state-of-requeue-inflight
-  (implies (not (fn-feed-droppedp (fn-feed-state-of msgid xs)))
-           (not (fn-feed-droppedp
-                 (fn-feed-state-of
-                  msgid (fn-feed-queue-requeue-inflight xs tick)))))
-  :hints (("Goal" :in-theory (disable fn-feed-droppedp
-                                      fn-feed-state-inflightp))))
-
-(defthm fn-feed-droppedp-of-state-of-settle
-  (implies (not (fn-feed-droppedp (fn-feed-state-of msgid xs)))
-           (not (fn-feed-droppedp
-                 (fn-feed-state-of msgid (fn-feed-queue-settle xs)))))
-  :hints (("Goal" :in-theory (disable fn-feed-droppedp))))
-
-(defthm fn-feed-droppedp-of-state-of-append-one
-  (implies (and (fn-feed-entry-listp xs)
-                (not (fn-feed-droppedp (fn-feed-state-of msgid xs)))
-                (not (fn-feed-droppedp (fn-feed-entry-state e))))
-           (not (fn-feed-droppedp
-                 (fn-feed-state-of msgid (append xs (list e))))))
-  :hints (("Goal" :in-theory (disable fn-feed-droppedp))))
-
 ; Predicate-and-accessor-of-constructor facts for the offer states, and the
 ; consp shape facts forward reasoning needs once the state predicates are
 ; closed (docs/proof-style.md sec. 1).  A proof that closes the state
@@ -313,8 +264,6 @@
   (fn-feed-state-inflightp (fn-feed-offered a)))
 (defthm fn-feed-state-inflightp-of-sent
   (fn-feed-state-inflightp (fn-feed-sent a)))
-(defthm fn-feed-state-inflightp-of-dropped
-  (not (fn-feed-state-inflightp (fn-feed-dropped r))))
 (defthm fn-feed-state-attempt-of-offered
   (equal (fn-feed-state-attempt (fn-feed-offered a)) (nfix a)))
 (defthm fn-feed-state-attempt-of-sent
@@ -489,15 +438,6 @@
                   nil))
   :hints (("Goal" :use fn-feed-find-of-retire-same
            :in-theory (e/d (fn-feed-entry-state) (fn-feed-find-of-retire-same)))))
-
-; `fn-feed-droppedp' across a removal, stated with no disequality between the
-; entry read and the entry removed, like the set-state form above.
-(defthm fn-feed-droppedp-of-state-of-retire
-  (implies (and (fn-feed-entry-listp xs) (fn-feed-distinctp xs)
-                (not (fn-feed-droppedp (fn-feed-state-of x xs))))
-           (not (fn-feed-droppedp (fn-feed-state-of x (fn-feed-queue-retire xs msgid)))))
-  :hints (("Goal" :cases ((equal x msgid))
-           :in-theory (disable fn-feed-droppedp fn-feed-state-of))))
 
 ; An absent Message-ID stays absent under a removal.
 (defthm fn-feed-find-of-retire-when-absent
@@ -785,8 +725,7 @@
   :hints (("Goal" :in-theory (disable fn-feedp fn-feed-with-queue fn-feed-with-backoff
                                       fn-feed-with-conn fn-feed-backoff-delay
                                       fn-feed-state-inflightp fn-feed-state-of
-                                      fn-feed-find
-                                      fn-feed-droppedp fn-feed-dropped))))
+                                      fn-feed-find))))
 
 (defthm fn-feed-lost-preserves-feedp
   (implies (fn-feedp f) (fn-feedp (fn-feed-lost f obs)))
@@ -852,10 +791,9 @@
                             (:d fn-feed-restart)
                             (:d fn-feed-retry-exhaustedp)
                             (:d fn-feed-state-of) (:d fn-feed-offeredp)
-                            (:d fn-feed-sentp) (:d fn-feed-droppedp)
+                            (:d fn-feed-sentp)
                             (:d fn-feed-state-inflightp)
                             (:d fn-feed-offered) (:d fn-feed-sent)
-                            (:d fn-feed-dropped)
                             mv-nth)
            :use ((:instance fn-feed-attempts-belowp-of-an-offered-state-closed
                             (xs (fn-feed-queue f))
@@ -1021,8 +959,8 @@
 ;
 ; `fn-feed-tick-step' is the function the host calls once per scheduler tick.
 ; Its only effect is one `:command' offering the selection, and the selection
-; is a `:queued' entry, so an entry that is `:done' or `(:dropped r)' is never
-; the subject of a command.
+; is a `:queued' entry, so an entry that has left the queue (finished or
+; given up) is never the subject of a command.
 
 ; `(:d fn-feed-state-of)' is closed for the reason the whole cluster keeps
 ; relearning: `fn-feed-head-queued-is-queued' is keyed on
@@ -1159,6 +1097,16 @@
              1 0)
          (fn-feed-count-enqueues peer (cdr es)))))
 
+(defun fn-feed-count-drops (peer es)
+  (declare (xargs :guard t))
+  (if (atom es)
+      0
+      (+ (if (and (equal (fn-feed-journal-kind (car es)) :feed-drop)
+                  (equal (fn-feed-record-peer (fn-feed-journal-values (car es)))
+                         peer))
+             1 0)
+         (fn-feed-count-drops peer (cdr es)))))
+
 (defun fn-feed-count-finals (peer es)
   (declare (xargs :guard t))
   (if (atom es)
@@ -1211,16 +1159,16 @@
            (equal (len (fn-feed-queue (fn-feed-apply-record f kind values)))
                   (+ (len (fn-feed-queue f))
                      (if (fn-feed-enqueue-kindp kind) 1 0)
-                     (if (fn-feed-final-recordp kind values) -1 0))))
+                     (if (fn-feed-final-recordp kind values) -1 0)
+                     (if (equal kind :feed-drop) -1 0))))
   :hints (("Goal"
            :in-theory (disable (:d fn-feedp) fn-feed-with-backoff
                                fn-feed-with-conn fn-feed-backoff-delay
                                fn-feed-find
                                (:d fn-feed-state-of) (:d fn-feed-offeredp)
-                               (:d fn-feed-sentp) (:d fn-feed-droppedp)
+                               (:d fn-feed-sentp)
                                (:d fn-feed-state-inflightp)
-                               (:d fn-feed-offered) (:d fn-feed-sent)
-                               (:d fn-feed-dropped)))))
+                               (:d fn-feed-offered) (:d fn-feed-sent)))))
 
 (defthm fn-feed-absent-survives-a-driven-record
   (implies (and (fn-feedp f)
@@ -1234,10 +1182,9 @@
                                fn-feed-with-conn fn-feed-backoff-delay
                                fn-feed-find
                                (:d fn-feed-state-of) (:d fn-feed-offeredp)
-                               (:d fn-feed-sentp) (:d fn-feed-droppedp)
+                               (:d fn-feed-sentp)
                                (:d fn-feed-state-inflightp)
-                               (:d fn-feed-offered) (:d fn-feed-sent)
-                               (:d fn-feed-dropped)))))
+                               (:d fn-feed-offered) (:d fn-feed-sent)))))
 
 ; Over the journal ENTRY, not a loose `(kind values)' pair: the fold's
 ; induction step carries `(car es)'.
@@ -1256,10 +1203,9 @@
                                fn-feed-with-conn fn-feed-backoff-delay
                                fn-feed-find
                                (:d fn-feed-state-of) (:d fn-feed-offeredp)
-                               (:d fn-feed-sentp) (:d fn-feed-droppedp)
+                               (:d fn-feed-sentp)
                                (:d fn-feed-state-inflightp)
-                               (:d fn-feed-offered) (:d fn-feed-sent)
-                               (:d fn-feed-dropped)))))
+                               (:d fn-feed-offered) (:d fn-feed-sent)))))
 
 (defthm fn-feed-enqueue-record-needs-absent
   (implies (and (fn-feed-record-drivenp f (fn-feed-journal-kind e)
@@ -1294,7 +1240,8 @@
            (equal (len (fn-feed-queue (fn-feed-replay f es)))
                   (- (+ (len (fn-feed-queue f))
                         (fn-feed-count-enqueues (fn-feed-peer f) es))
-                     (fn-feed-count-finals (fn-feed-peer f) es))))
+                     (+ (fn-feed-count-finals (fn-feed-peer f) es)
+                        (fn-feed-count-drops (fn-feed-peer f) es)))))
   :hints (("Goal" :induct (fn-feed-drivenp f es)
            :in-theory (disable (:d fn-feed-apply-record)
                                (:d fn-feed-record-drivenp) (:d fn-feedp)
@@ -1474,43 +1421,190 @@
                                fn-feed-journal-entryp))))
 
 ; -----------------------------------------------------------------------------
-; KEYSTONE: nothing is dropped without a drop record naming the reason
+; KEYSTONE: nothing leaves the queue without a final answer or a drop record
+;
+; A given-up entry leaves the queue in the step that gives it up
+; (rp-feed-dropped-holds-capacity), so the statement is about presence: a
+; Message-ID present before a journal and absent after it was answered
+; finally or given up, by a record that names it and this peer.
 
-(defthm fn-feed-not-dropped-survives-a-non-drop-record
-  (implies (and (fn-feedp f)
-                (not (fn-feed-droppedp (fn-feed-state-of msgid
-                                                         (fn-feed-queue f))))
-                (not (and (equal kind :feed-drop)
-                          (equal (fn-feed-record-peer values) (fn-feed-peer f))
-                          (equal (fn-feed-record-msgid values) msgid))))
-           (not (fn-feed-droppedp
-                 (fn-feed-state-of
-                  msgid
-                  (fn-feed-queue (fn-feed-apply-record f kind values))))))
-  :hints (("Goal" :in-theory (disable (:d fn-feedp) fn-feed-with-queue
-                               fn-feed-with-backoff fn-feed-with-conn
-                               fn-feed-backoff-delay fn-feed-find
-                               (:d fn-feed-state-of) (:d fn-feed-offeredp)
-                               (:d fn-feed-sentp) (:d fn-feed-droppedp)
-                               (:d fn-feed-state-inflightp)
-                               (:d fn-feed-offered) (:d fn-feed-sent)
-                               (:d fn-feed-dropped)))))
+(defun fn-feed-leave-recordp (peer msgid e)
+  (declare (xargs :guard t))
+  (or (fn-feed-final-of-recordp peer msgid e)
+      (and (equal (fn-feed-journal-kind e) :feed-drop)
+           (equal (fn-feed-record-peer (fn-feed-journal-values e)) peer)
+           (equal (fn-feed-record-msgid (fn-feed-journal-values e)) msgid)
+           t)))
 
-(defthm fn-feed-drop-needs-a-drop-record
+(defun fn-feed-has-leave-recordp (peer msgid es)
+  (declare (xargs :guard t))
+  (if (atom es)
+      nil
+      (or (fn-feed-leave-recordp peer msgid (car es))
+          (fn-feed-has-leave-recordp peer msgid (cdr es)))))
+
+; Presence across the queue operations and the transitions that keep an
+; entry, stated over `fn-feed-find' so that the dispatcher's arms below meet
+; them with every transition closed.
+(defthm fn-feed-find-consp-of-set-state
+  (implies (fn-feed-entry-listp xs)
+           (iff (consp (fn-feed-find m (fn-feed-queue-set-state xs id st)))
+                (consp (fn-feed-find m xs)))))
+(defthm fn-feed-find-consp-of-requeue
+  (implies (fn-feed-entry-listp xs)
+           (iff (consp (fn-feed-find m (fn-feed-queue-requeue xs id tick)))
+                (consp (fn-feed-find m xs)))))
+(defthm fn-feed-find-consp-of-requeue-inflight
+  (implies (fn-feed-entry-listp xs)
+           (iff (consp (fn-feed-find m (fn-feed-queue-requeue-inflight xs tick)))
+                (consp (fn-feed-find m xs))))
+  :hints (("Goal" :in-theory (disable fn-feed-state-inflightp))))
+(defthm fn-feed-find-consp-of-settle
+  (implies (fn-feed-entry-listp xs)
+           (iff (consp (fn-feed-find m (fn-feed-queue-settle xs)))
+                (consp (fn-feed-find m xs))))
+  :hints (("Goal" :in-theory (disable fn-feed-state-inflightp))))
+(defthm fn-feed-find-consp-of-enqueue
+  (implies (consp (fn-feed-find m (fn-feed-queue f)))
+           (consp (fn-feed-find m (fn-feed-queue (fn-feed-enqueue f id tick)))))
+  :hints (("Goal" :in-theory (disable fn-feedp))))
+(defthm fn-feed-find-consp-of-done-other
+  (implies (and (fn-feedp f) (consp (fn-feed-find m (fn-feed-queue f))) (not (equal m id)))
+           (consp (fn-feed-find m (fn-feed-queue (fn-feed-done f id)))))
+  :hints (("Goal" :in-theory (disable fn-feedp fn-feed-state-inflightp))))
+(defthm fn-feed-find-consp-of-give-up-other
+  (implies (and (fn-feedp f) (consp (fn-feed-find m (fn-feed-queue f))) (not (equal m id)))
+           (consp (fn-feed-find m (fn-feed-queue (fn-feed-give-up f id reason)))))
+  :hints (("Goal" :in-theory (disable fn-feedp))))
+(defthm fn-feed-find-consp-of-back-off
+  (implies (and (fn-feedp f) (consp (fn-feed-find m (fn-feed-queue f))))
+           (consp (fn-feed-find m (fn-feed-queue (fn-feed-back-off f id obs)))))
+  :hints (("Goal" :in-theory (disable fn-feedp fn-feed-state-inflightp
+                                      fn-feed-backoff-delay))))
+(defthm fn-feed-find-consp-of-lost-requeue
+  (implies (and (fn-feedp f) (consp (fn-feed-find m (fn-feed-queue f))))
+           (consp (fn-feed-find m (fn-feed-queue (fn-feed-lost-requeue f obs)))))
+  :hints (("Goal" :in-theory (disable fn-feedp fn-feed-state-inflightp
+                                      fn-feed-backoff-delay fn-feed-inflight-entry))))
+(defthm fn-feed-find-consp-of-restart
+  (implies (and (fn-feedp f) (consp (fn-feed-find m (fn-feed-queue f))))
+           (consp (fn-feed-find m (fn-feed-queue (fn-feed-restart f)))))
+  :hints (("Goal" :in-theory (disable fn-feedp fn-feed-state-inflightp))))
+(defthm fn-feed-find-consp-when-inflight
+  (implies (fn-feed-state-inflightp (fn-feed-entry-state (fn-feed-find id xs)))
+           (consp (fn-feed-find id xs)))
+  :rule-classes :forward-chaining)
+
+(defthm fn-feed-present-survives-a-non-leave-entry
   (implies (and (fn-feedp f)
-                (not (fn-feed-droppedp (fn-feed-state-of msgid
-                                                         (fn-feed-queue f))))
-                (fn-feed-droppedp
-                 (fn-feed-state-of msgid
-                                   (fn-feed-queue (fn-feed-replay f es)))))
-           (fn-feed-has-drop-recordp (fn-feed-peer f) msgid es))
+                (fn-feed-presentp msgid f)
+                (not (fn-feed-leave-recordp (fn-feed-peer f) msgid e)))
+           (fn-feed-presentp
+            msgid (fn-feed-apply-record f (fn-feed-journal-kind e)
+                                        (fn-feed-journal-values e))))
+  :hints (("Goal" :in-theory (disable (:d fn-feedp)
+                                      fn-feed-enqueue fn-feed-done fn-feed-give-up
+                                      fn-feed-back-off fn-feed-lost-requeue
+                                      fn-feed-restart
+                                      (:d fn-feed-state-of) (:d fn-feed-offeredp)
+                                      (:d fn-feed-sentp)
+                                      (:d fn-feed-state-inflightp)
+                                      (:d fn-feed-offered) (:d fn-feed-sent)))))
+
+(defthm fn-feed-leaving-needs-an-answer-or-a-drop-record
+  (implies (and (fn-feedp f)
+                (fn-feed-presentp msgid f)
+                (not (fn-feed-presentp msgid (fn-feed-replay f es))))
+           (fn-feed-has-leave-recordp (fn-feed-peer f) msgid es))
   :hints (("Goal" :induct (fn-feed-replay f es)
            :in-theory (disable (:d fn-feed-apply-record) (:d fn-feedp)
-                               (:d fn-feed-state-of) (:d fn-feed-offeredp)
-                               (:d fn-feed-sentp) (:d fn-feed-droppedp)
-                               (:d fn-feed-state-inflightp)
-                               (:d fn-feed-offered) (:d fn-feed-sent)
-                               (:d fn-feed-dropped)))))
+                               fn-feed-presentp fn-feed-leave-recordp
+                               fn-feed-present-survives-a-non-leave-entry))
+          ("Subgoal *1/2" :use ((:instance fn-feed-present-survives-a-non-leave-entry
+                                           (e (car es)))))))
+
+; -----------------------------------------------------------------------------
+; KEYSTONES (rp-feed-dropped-holds-capacity, rp-feed-defer-drop): every entry
+; the queue holds is owed delivery
+;
+; An entry is OWED while it is :queued or in flight: it will be offered, or
+; its offer is waiting on an answer.  Before 2026-10-04 a given-up entry
+; stayed as `(:dropped :retry-bound)', which is neither: it counted in the
+; carried UNDELIVERED and against max-queue, so a peer whose queue filled
+; with them refused every local POST (441) and every transfer (436) for the
+; groups it was fed, for good.
+
+(defun fn-feed-owedp (e)
+  (declare (xargs :guard t))
+  (let ((s (fn-feed-entry-state e)))
+    (and (or (equal s :queued) (fn-feed-state-inflightp s)) t)))
+
+(defun fn-feed-owed-count (xs)
+  (declare (xargs :guard t))
+  (if (atom xs)
+      0
+      (+ (if (fn-feed-owedp (car xs)) 1 0)
+         (fn-feed-owed-count (cdr xs)))))
+
+(defthm fn-feed-owed-count-of-an-entry-list
+  (implies (fn-feed-entry-listp xs)
+           (equal (fn-feed-owed-count xs) (len xs))))
+
+; The carried count is the owed count: what the capacity tests read
+; (`fn-feed-enqueue''s carried twin `fn-fcv-raw-enqueue' reads UNDELIVERED)
+; is exactly the entries still owed delivery.
+(defthm fn-feed-undelivered-is-the-owed-count
+  (implies (and (fn-feedp f) (fn-feed-count-relationp f))
+           (equal (fn-feed-undelivered f)
+                  (fn-feed-owed-count (fn-feed-queue f))))
+  :hints (("Goal" :in-theory (e/d (fn-feed-count-relationp)
+                                  (fn-feed-owedp)))))
+
+; A refusal for capacity is owed work: when an absent, well-formed
+; Message-ID is refused, the entries owed delivery already fill the peer's
+; max-queue.
+(defthm fn-feed-enqueue-refuses-only-for-owed-work
+  (implies (and (fn-feedp f)
+                (fn-feed-namep msgid)
+                (not (fn-feed-presentp msgid f))
+                (equal (fn-feed-enqueue f msgid tick) f))
+           (<= (fn-feed-max-queue (fn-feed-limits-of f))
+               (fn-feed-owed-count (fn-feed-queue f))))
+  :hints (("Goal" :in-theory (disable fn-feed-owedp))))
+
+; The deferred entry as the requeue leaves it.
+(defthm fn-feed-find-of-requeue-same-entry
+  (implies (and (fn-feed-entry-listp xs) (consp (fn-feed-find id xs)))
+           (equal (fn-feed-find id (fn-feed-queue-requeue xs id tick))
+                  (fn-feed-entry id :queued
+                                 (+ 1 (nfix (fn-feed-entry-attempts (fn-feed-find id xs))))
+                                 (nfix tick)
+                                 (nfix (fn-feed-entry-losses (fn-feed-find id xs)))))))
+
+; A 431/436 for the entry in flight SUSPENDS that attempt and never
+; discharges a delivery obligation: every entry stays, every one still owed,
+; the count of owed entries is unchanged, and the deferred entry is queued
+; again with its loss count unchanged -- it is offered again once the
+; back-off elapses, and no number of deferrals gives it up.
+(defthm fn-feed-deferral-keeps-every-entry
+  (implies (and (fn-feedp f)
+                (member-equal (fn-feed-response-code response) '(431 436))
+                (fn-feed-inflightp (fn-feed-response-msgid response) f)
+                (fn-feed-presentp m f))
+           (let ((g (mv-nth 0 (fn-feed-observe f response article obs)))
+                 (id (fn-feed-response-msgid response)))
+             (and (fn-feed-presentp m g)
+                  (equal (fn-feed-owed-count (fn-feed-queue g))
+                         (len (fn-feed-queue g)))
+                  (equal (fn-feed-undelivered g) (fn-feed-undelivered f))
+                  (equal (fn-feed-state-of id (fn-feed-queue g)) :queued)
+                  (equal (fn-feed-entry-losses (fn-feed-find id (fn-feed-queue g)))
+                         (nfix (fn-feed-entry-losses
+                                (fn-feed-find id (fn-feed-queue f))))))))
+  :hints (("Goal" :in-theory (disable fn-feed-owedp fn-feedp fn-feed-backoff-delay
+                                      fn-feed-state-inflightp fn-feed-owed-count)
+                  :use ((:instance fn-feed-back-off-preserves-feedp
+                                   (msgid (fn-feed-response-msgid response)))))))
 
 ; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md sec. 2)
@@ -1523,12 +1617,6 @@
     fn-feed-state-of-of-requeue-same
     fn-feed-state-of-of-requeue-inflight-when-inflight
     fn-feed-state-of-of-settle-when-inflight
-    fn-feed-droppedp-of-the-offer-states
-    fn-feed-droppedp-of-state-of-set-state
-    fn-feed-droppedp-of-state-of-requeue
-    fn-feed-droppedp-of-state-of-requeue-inflight
-    fn-feed-droppedp-of-state-of-settle
-    fn-feed-droppedp-of-state-of-append-one
     fn-feed-peer-of-with-queue fn-feed-peer-of-with-conn
     fn-feed-peer-of-with-contact fn-feed-peer-of-with-backoff
     fn-feed-enqueue-preserves-peer fn-feed-offer-preserves-peer
@@ -1550,9 +1638,8 @@
     fn-feed-msgids-of-set-state fn-feed-msgids-of-requeue
     fn-feed-msgids-of-requeue-inflight fn-feed-msgids-of-settle
     fn-feed-state-okp-of-offered fn-feed-state-okp-of-sent
-    fn-feed-state-okp-of-dropped fn-feed-inflight-count-of-set-state-exact
+    fn-feed-inflight-count-of-set-state-exact
     fn-feed-state-inflightp-of-offered fn-feed-state-inflightp-of-sent
-    fn-feed-state-inflightp-of-dropped
     fn-feed-state-attempt-of-offered fn-feed-state-attempt-of-sent
     fn-feed-offer-states-forward-consp fn-feed-offer-states-forward-natp
     fn-feed-attempts-belowp-of-set-state-open-inflight
@@ -1574,17 +1661,24 @@
     fn-feed-attempts-belowp-of-requeue
     fn-feed-attempts-belowp-of-set-state-not-inflight
     fn-feed-inflight-count-zero-means-not-inflight
-    fn-feed-not-dropped-survives-a-non-drop-record
     ; PRF-335: the removal vocabulary and the one-record steps.
     fn-feed-entry-listp-of-retire fn-feed-msgids-of-retire-not-member
     fn-feed-distinctp-of-retire fn-feed-len-of-retire
     fn-feed-inflight-count-of-retire fn-feed-attempts-belowp-of-retire
     fn-feed-find-of-retire-other fn-feed-state-of-of-retire-other
     fn-feed-find-of-retire-same fn-feed-state-of-of-retire-same
-    fn-feed-droppedp-of-state-of-retire fn-feed-find-of-retire-when-absent
+    fn-feed-find-of-retire-when-absent
     fn-feed-apply-record-len fn-feed-absent-survives-a-driven-record
     fn-feed-final-outcome-retires-it fn-feed-enqueue-record-needs-absent
     fn-feed-record-drivenp-names-the-peer fn-feed-record-drivenp-implies-feedp
-    fn-feed-absent-survives-a-driven-entry))
+    fn-feed-absent-survives-a-driven-entry
+    ; rp-feed-dropped-holds-capacity: presence across the queue operations.
+    fn-feed-find-consp-of-set-state fn-feed-find-consp-of-requeue
+    fn-feed-find-consp-of-requeue-inflight fn-feed-find-consp-of-settle
+    fn-feed-find-consp-of-enqueue fn-feed-find-consp-of-done-other
+    fn-feed-find-consp-of-give-up-other fn-feed-find-consp-of-back-off
+    fn-feed-find-consp-of-lost-requeue fn-feed-find-consp-of-restart
+    fn-feed-find-consp-when-inflight fn-feed-present-survives-a-non-leave-entry
+    fn-feed-find-of-requeue-same-entry))
 
 (in-theory (disable fn-feed-invariants-vocabulary))

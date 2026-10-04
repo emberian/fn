@@ -1745,12 +1745,16 @@ ACL2_BOOKS ?= books/defrecord \
 	books/feed-journal \
 	tests/acl2/feed-journal-tests \
 	tests/acl2/peer-feed-tests \
+	tests/acl2/peer-feed-red-defer-tests \
+	tests/acl2/peer-feed-red-capacity-tests \
+	tests/acl2/peer-feed-red-msgid-tests \
 	tests/acl2/feed-correspondence-tests \
 	tests/acl2/feed-port-replay-tests \
 	books/owner-feed \
 	books/owner-feed-port \
 	tests/acl2/owner-feed-port-tests \
 	tests/acl2/owner-feed-tests \
+	tests/acl2/owner-feed-live-carried-tests \
 	books/owner \
 	books/transit-header-limits \
 	tests/acl2/transit-header-limits-tests \

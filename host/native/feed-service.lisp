@@ -364,7 +364,7 @@ ACL2 decodes its bounded bytes; only named input/OS refusal is credential loss."
                                                     (fnn-octet-list octets) now))
             (word (fnn-feed-checked-word
                   (fnn-owner-feed-word publication)
-                  '(:starttls :tls :auth-user :auth-pass :mode :ready :send :quiet :refused :unsendable :connection-refused :streaming-refused :need-input :closed :invalid :fault)
+                  '(:starttls :tls :auth-user :auth-pass :mode :ready :send :quiet :lost :refused :unsendable :connection-refused :streaming-refused :need-input :closed :invalid :fault)
                   'fn-owner-feed-reply-chunk)))
        (when (eq word :fault)
          (fnn-fault "feed reply framer state is malformed"))
@@ -375,7 +375,10 @@ ACL2 decodes its bounded bytes; only named input/OS refusal is credential loss."
        ;; port moved and its records are flushed like a :send's; the line
        ;; names ACL2's reason and fnn-feed-consume drops the link, so
        ;; fn-feed-lost requeues the offer.  Never an owner stop.
-       (when (member word '(:send :quiet :refused :unsendable))
+       ;; :lost (books/owner-feed.lisp fn-own-feed-reply-word): ACL2 took the
+       ;; reply as a loss and moved the port; its records are flushed like a
+       ;; :quiet's and fnn-feed-consume drops the link.
+       (when (member word '(:send :quiet :lost :refused :unsendable))
          (fnn-owner-feed-flush service publication)
          ;; A reply outcome (not a 335/238 prompt) has one ACL2-rendered
          ;; line: a peer's refusal or deferral is never silent.
@@ -544,7 +547,7 @@ The greeting is then awaited under the reply wait (fn-prd-feed-action)."
          (when (fnn-feed-link-eof link)
            (fnn-feed-drop-link runtime link now
                                (fnn-feed-loss-backoff service (fnn-feed-link-peer-octets link)) :eof)))
-        ((:closed :invalid :connection-refused :streaming-refused :unsendable)
+        ((:closed :invalid :connection-refused :streaming-refused :unsendable :lost)
          (setf (fnn-feed-link-drain link) nil)
          (fnn-feed-drop-link runtime link now
                              (fnn-feed-loss-backoff service (fnn-feed-link-peer-octets link))

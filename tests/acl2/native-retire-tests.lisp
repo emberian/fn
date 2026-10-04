@@ -68,20 +68,22 @@
 (defconst *nrt-pending*
   (list (fn-own-feed-entry "silent" nil
                            (fn-feed-make '(115) *nrt-limits*
-                                         (list (fn-feed-entry '(60 97 62) :queued 1 0))
+                                         (list (fn-feed-entry '(60 97 62) :queued 1 0 0))
                                          nil 0 nil 0))
         (fn-own-feed-entry "gave-up" nil
-                           (fn-feed-make '(103) *nrt-limits*
-                                         (list (fn-feed-entry '(60 98 62) '(:dropped :retry-bound) 3 0))
-                                         nil 0 7 0))))
+                           ;; Given up: the entry left the queue, the
+                           ;; tally counts it (rp-feed-dropped-holds-capacity).
+                           (fn-feed-make-counted '(103) *nrt-limits* nil
+                                                 nil 0 7 0 0 1))))
 (defconst *nrt-drained*
   (list (fn-own-feed-entry "gave-up" nil
-                           (fn-feed-make '(103) *nrt-limits*
-                                         (list (fn-feed-entry '(60 98 62) '(:dropped :retry-bound) 3 0))
-                                         nil 0 7 0))))
+                           ;; Given up: the entry left the queue, the
+                           ;; tally counts it (rp-feed-dropped-holds-capacity).
+                           (fn-feed-make-counted '(103) *nrt-limits* nil
+                                                 nil 0 7 0 0 1))))
 
 (assert-event (equal (fn-osd-elapsed *nrt-s0* (nrt-at 59999)) 59999))
-(assert-event (equal (fn-oret-undelivered-total *nrt-pending*) 2))
+(assert-event (equal (fn-oret-undelivered-total *nrt-pending*) 1))
 
 ; ---------------------------------------------------------------------------
 ; The counted drain (fn-ort-drain-step-counted, books/owner-retire-counted)
@@ -260,7 +262,7 @@
 (assert-event (equal (fn-oret-peer-lines *nrt-pending*)
                      (fn-record-string-octets
                       "retire peer=silent undelivered=1 dropped=0
-retire peer=gave-up undelivered=1 dropped=1
+retire peer=gave-up undelivered=0 dropped=1
 ")))
 
 ; A configured owner with the constructed feed table and a store with no
@@ -276,9 +278,9 @@ retire peer=gave-up undelivered=1 dropped=1
  (equal (fn-oret-report :deadline *nrt-oc*)
         (fn-record-string-octets
          "retire peer=silent undelivered=1 dropped=0
-retire peer=gave-up undelivered=1 dropped=1
+retire peer=gave-up undelivered=0 dropped=1
 obligations=0 reserved=0
-retired state=deadline undelivered=2 obligations=0
+retired state=deadline undelivered=1 obligations=0
 retire release: what stays is released only by `carry drop WORK --abandon REASON' on the stopped store
 ")))
 ; The ledger part (fn-oret-report-carries-the-obligations-report equates

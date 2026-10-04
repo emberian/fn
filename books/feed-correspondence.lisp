@@ -117,7 +117,7 @@
     (fn-feedp fn-feed-durable-projection fn-feed-lost
      fn-feed-lost-records fn-feed-retry-exhaustedp fn-feed-queue-set-state
      fn-feed-with-queue fn-feed-state-of fn-feed-state-inflightp
-     fn-feed-offeredp fn-feed-droppedp fn-feed-state-attempt fn-feed-find
+     fn-feed-offeredp fn-feed-state-attempt fn-feed-find
      fn-feed-sent fn-feed-response-code fn-feed-response-msgid
      ; The retry arm reaches the same `fn-feed-with-backoff' of the same
      ; requeue and delay on both sides; opened, their `nfix' tests split
@@ -189,7 +189,7 @@
      fn-feed-give-up fn-feed-restart fn-feed-with-queue fn-feed-with-backoff)
     (fn-feedp fn-feed-queue-set-state fn-feed-queue-requeue
      fn-feed-queue-requeue-inflight fn-feed-queue-settle fn-feed-find
-     fn-feed-state-of fn-feed-state-inflightp fn-feed-offeredp fn-feed-droppedp
+     fn-feed-state-of fn-feed-state-inflightp fn-feed-offeredp
      fn-feed-state-attempt fn-feed-backoff-delay))
            :use ((:instance fn-feedp-of-durable-projection)))))
 
@@ -232,7 +232,7 @@
      fn-feed-give-up fn-feed-restart fn-feed-with-queue fn-feed-with-backoff)
     (fn-feedp fn-feed-queue-set-state fn-feed-queue-requeue
      fn-feed-queue-requeue-inflight fn-feed-queue-settle fn-feed-find
-     fn-feed-state-of fn-feed-state-inflightp fn-feed-offeredp fn-feed-droppedp
+     fn-feed-state-of fn-feed-state-inflightp fn-feed-offeredp
      fn-feed-state-attempt fn-feed-backoff-delay))
            :use ((:instance fn-feed-projection-equal-implies-persistent-fields)
                  (:instance fn-feed-projection-equal-implies-counts)))))
@@ -353,7 +353,7 @@
      fn-feed-record-peer fn-feed-record-msgid fn-frame-item fn-feed-apply-record
      fn-feed-retry-exhaustedp)
     (fn-feedp fn-feed-journal-entryp fn-feed-lost-requeue fn-feed-give-up
-     fn-feed-inflight-entry fn-feed-find fn-feed-state-of fn-feed-droppedp
+     fn-feed-inflight-entry fn-feed-find fn-feed-state-of
      fn-feed-lost-requeue-uses-only-monotonic-observation)))))
 
 (defthm fn-feed-restart-records-are-driven
