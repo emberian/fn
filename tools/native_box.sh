@@ -19,7 +19,10 @@ HOMEDIR=${3:-}
 case $BOX in
     hbox) BASE=/tank/fn/scratch IMAGES_BASE=/tank/fn/images OPENSSL=bundled ;;
     persvati) BASE='~/fn-gates' IMAGES_BASE= OPENSSL=system ;;
-    *) echo "native_box: no row for box $BOX (hbox, persvati)" >&2; exit 2 ;;
+    *)  # a rented box: its row in ~/.config/fn/boxes.json (tools/box_table.py)
+        EXTRA=$(python3 "$TREE/tools/box_table.py" row "$BOX") || {
+            echo "native_box: no row for box $BOX (hbox, persvati, or a live box in ~/.config/fn/boxes.json)" >&2; exit 2; }
+        eval "$EXTRA" ;;
 esac
 ROW=$(python3 - "$TREE" "$BOX" <<'PY'
 import sys
