@@ -356,14 +356,19 @@
               fn-owner-cursor-swapped-store
               mv-nth nth zp car-cons cdr-cons)))))
 
+(local (defthm fn-owner-nth-1-is-cadr (equal (nth 1 x) (cadr x))))
+
+; Over the capture of ROWS (the chunked reclaim pass's input,
+; books/reclaim-chunked-seal.lisp) the rebuilt owner is the full open of ROWS
+; (fn-owner-orcp-rebuild-of-capture-is-the-full-open).
 (defthm fn-owner-rebuilt-swap-establishes-cursor
   (let ((rebuilt (fn-owner-orcp-rebuild (fn-sco-capture configs rows) configs frontier max-conns)))
     (implies (and (true-listp rows) (not (equal (nth 1 rebuilt) :fault)))
              (fn-sn-identity-sequencep
               (fn-owner-store (mv-nth 2 (fn-owner-orcp-swap rebuilt state))))))
-  :hints (("Goal" :in-theory
+  :hints (("Goal" :use ((:instance fn-owner-orcp-rebuild-of-capture-is-the-full-open))
+           :in-theory
            (union-theories (theory 'minimal-theory)
-            '(fn-owner-orcp-swap-store-effect-by-definition
-              fn-owner-orcp-rebuild-of-capture-is-the-full-open
+            '(fn-owner-orcp-swap-store-effect-by-definition fn-owner-nth-1-is-cadr
               fn-owner-cursor-recovered-full-has-retained-fields
-              fn-owner-cursor-retained-implies-sequence nth zp car-cons cdr-cons)))))
+              fn-owner-cursor-retained-implies-sequence)))))

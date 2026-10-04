@@ -4591,3 +4591,16 @@ First slice: `books/output-tariff-article.lisp` admitted on the laptop (10 forms
 uncertified, unwired; the exact continuation is the numbered list in the coordinator lanedump
 (steps 1-7). Nothing certified, no image, no native run. The only owner-host.lisp region this lane
 touches is `fn-owner-output-tariff-preview` (:5512-5518), untouched so far.
+
+## RECLAIM lane (lane/reclaim) — 2026-10-04
+
+Full entry: build/coordinator/lanedumps/reclaim.md. Landed: slice 1 (arena-writer rule scope,
+stub fixture renamed tests/native_history_root_raw-mock.lisp) in next e0a8516e9. On the
+branch: PRF-1315, the live reclaim pass walks the generation-pinned history in chunks with no
+whole rewritten-row list (books/reclaim-chunked-walk, books/reclaim-chunked-seal;
+fn-owner-orcp-rebuild takes the capture); the real native fixture
+tests/test_native_reclaim_walk.py (SCN-1140); S152 (the live pass's credit estimate refuses
+a 2,100-article reclaim: `deferred-credit estimate=452968896`, so the fixture cannot go
+green until it is measured and replaced); arena-reader-bound 12/12 REPL-admitted (PRF-1312,
+no teeth file yet). Held: PKT-855 on lane/reclaim-note@19b1b2211 (touches config.lisp).
+Continuation: the lanedump's numbered list.
