@@ -3283,6 +3283,14 @@
         {
           "kind": "theorem",
           "name": "fn-scka-restore-base-of-strip-of-capture"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-read-ranges-is-the-range"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-read-ranges-read-the-whole-file"
         }
       ]
     },
@@ -14006,67 +14014,35 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-lgu-acknowledged-article-is-recoverable-at-every-crash-point"
+          "name": "fn-lgu-acknowledged-records-are-recovered-at-every-cut"
         },
         {
           "kind": "theorem",
-          "name": "fn-lgu-acknowledged-article-is-recoverable-at-every-cut-of-recovery"
+          "name": "fn-lgu-open-run-acknowledges-only-recoverable-records"
         },
         {
           "kind": "theorem",
-          "name": "fn-lgu-committed-record-is-read-from-every-crash-image"
+          "name": "fn-lgu-host-kernel-acknowledges-only-recoverable-records"
         },
         {
           "kind": "theorem",
-          "name": "fn-lgu-scan-of-a-complete-prefix-reads-its-records"
+          "name": "fn-lgu-complete-acknowledges-the-fenced-batch"
         },
         {
           "kind": "theorem",
-          "name": "fn-lgu-committed-record-survives-every-cut-of-the-append"
+          "name": "fn-lgu-safe-image-recovers-the-acknowledged-records"
         },
         {
           "kind": "theorem",
-          "name": "fn-lgu-committed-record-survives-every-cut-of-the-fence"
+          "name": "fn-lgu-safe-image-scans-the-committed-records-first"
         },
         {
           "kind": "theorem",
-          "name": "fn-lgu-committed-record-survives-every-cut-of-a-failed-fence"
+          "name": "fn-lgu-crash-keeps-the-prefix"
         },
         {
           "kind": "theorem",
-          "name": "fn-lgu-committed-record-survives-every-cut-of-the-extension"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgu-record-read-at-open-survives-every-cut-of-recovery"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgu-acknowledged-record-is-committed"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-owb-uncertain-batch-recovers-to-a-prefix"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-crash-of-aligned-append"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lg-extend-program-keeps-the-relation"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-read-ranges-is-the-range"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-read-ranges-read-the-whole-file"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgs-open-plan-scan-ignores-covered"
+          "name": "fn-lgu-recover-program-establishes-the-relation"
         }
       ]
     },
