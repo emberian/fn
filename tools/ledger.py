@@ -130,7 +130,15 @@ class Reader:
                 return
 
     def top_level(self) -> list[tuple[object, int]]:
-        """Every top-level form, paired with the line it starts on."""
+        """Every top-level form, paired with the line it starts on.
+
+        A whole text read from its start is answered from the per-text cache
+        (`_cached_top_level`): the same bytes always read the same."""
+        if self.pos == 0 and type(self) is Reader and len(self.source) >= _FORMS_CACHE_MIN:
+            return _cached_top_level(self)
+        return self._top_level()
+
+    def _top_level(self) -> list[tuple[object, int]]:
         forms: list[tuple[object, int]] = []
         while True:
             self.skip_space()
@@ -336,6 +344,87 @@ def number(text: str) -> object:
         return float(text)
     except ValueError:  # pragma: no cover - NUMBER admits nothing else
         return text
+
+
+# The per-text read cache (lane loops, 2026-10-04).  One certify_books
+# --lane run read the same ~1,300 books 19,163 times (local_closure from
+# scratch per book in lane_edges: 426 of its 544 profiled seconds), and
+# host_check --load 13,137 times (288 s); proof_repl start 3 times a book.
+# A text's forms are a function of its bytes and this reader, so an entry
+# is named by the digest of both and is valid exactly when its name
+# matches.  Each hit unpickles a fresh copy, so no caller sees another's
+# objects.  In-process first, then build/cache/ledger-forms/ (one file per
+# text; a reader change starts a new format directory and removes the old
+# ones).  FN_LEDGER_FORMS_CACHE=0 turns the disk half off; a path moves it.
+_FORMS_CACHE_MIN = 2048
+_FORMS_MEMO: dict[bytes, bytes] = {}
+_FORMS_FORMAT: "str | None" = None
+
+
+def _forms_format() -> str:
+    global _FORMS_FORMAT
+    if _FORMS_FORMAT is None:
+        _FORMS_FORMAT = hashlib.sha256(b"fn-ledger-forms-1\0" + Path(__file__).resolve()
+                                       .read_bytes()).hexdigest()[:24]
+    return _FORMS_FORMAT
+
+
+def _forms_cache_dir() -> "Path | None":
+    setting = os.environ.get("FN_LEDGER_FORMS_CACHE", "")
+    if setting == "0":
+        return None
+    base = Path(setting) if setting else Path(__file__).resolve().parents[1] / "build" / "cache" / "ledger-forms"
+    return base / _forms_format()
+
+
+def _cached_top_level(reader: "Reader") -> list[tuple[object, int]]:
+    import pickle
+    key = hashlib.sha256(reader.source.encode("utf-8", "surrogatepass")).digest()
+    data = _FORMS_MEMO.get(key)
+    directory = None
+    if data is None:
+        directory = _forms_cache_dir()
+        if directory is not None:
+            try:
+                data = (directory / key.hex()[:2] / (key.hex() + ".pickle")).read_bytes()
+            except OSError:
+                data = None
+    if data is not None:
+        try:
+            forms = pickle.loads(data)
+        except Exception:
+            forms = None
+        if isinstance(forms, list):
+            _FORMS_MEMO[key] = data
+            reader.pos = len(reader.source)
+            return forms
+    forms = reader._top_level()
+    data = pickle.dumps(forms, protocol=pickle.HIGHEST_PROTOCOL)
+    _FORMS_MEMO[key] = data
+    if directory is not None:
+        _forms_cache_write(directory, key.hex(), data)
+    return pickle.loads(data)
+
+
+def _forms_cache_write(directory: Path, name: str, data: bytes) -> None:
+    try:
+        if not directory.is_dir():
+            directory.mkdir(parents=True, exist_ok=True)
+            # Another reader's format (an older ledger.py) goes once nothing
+            # has created it for a day: a shared directory (a box's runs, by
+            # FN_LEDGER_FORMS_CACHE) may hold two versions' readers at once.
+            for other in directory.parent.iterdir():
+                if (other.is_dir() and other != directory
+                        and time.time() - other.stat().st_mtime > 86400):
+                    import shutil
+                    shutil.rmtree(other, ignore_errors=True)
+        sub = directory / name[:2]
+        sub.mkdir(exist_ok=True)
+        temporary = sub / ".{}.{}.tmp".format(name, os.getpid())
+        temporary.write_bytes(data)
+        os.replace(temporary, sub / (name + ".pickle"))
+    except OSError:
+        pass  # a cache that cannot be written is a slower run, never a wrong one
 
 
 def read_forms(source: str) -> list:
