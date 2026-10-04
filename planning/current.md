@@ -57,7 +57,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **protected channel.** A gated command before login is answered 480 and changes nothing, AUTHINFO on a clear connection under `protected_only` is 483, and POST needs the principal's posting flag.
 
-- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4543, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-scar-auth-step-pinned-is-auth-step-pinned` (books/served-carried.lisp:192).
+- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4555, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-scar-auth-step-pinned-is-auth-step-pinned` (books/served-carried.lisp:192).
 - Keystone: `fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing` (books/nntp-auth-invariants.lisp:612; PRF-031 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260929T022113Z-1604071` passed this source of `books/nntp-auth-invariants.lisp`, and since then `books/article-header-census.lisp`, `books/article-line-bound.lisp`, `books/article-properties.lisp` and 87 more changed.
 - Tested: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Deployed: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
@@ -81,7 +81,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **reading resumes.** A reader's pinned view answers the same across other connections' posts, and a local number naming an article is never reassigned.
 
-- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4543, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation` (books/owner-served-carried.lisp:230).
+- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4555, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation` (books/owner-served-carried.lisp:230).
 - Keystone: `fn-own-pinned-view-survives-other-post` (books/owner-served-invariants.lisp:441; PRF-002 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20261004T075727Z-2319259` (earliest archived).
 - Tested: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Deployed: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
@@ -105,7 +105,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **a connection-local fault costs one connection.** A connection-local fault closes that connection and keeps every other, and an open at `max-conns` answers nothing and leaves the owner unchanged; a fault in a shared owner action fail-stops.
 
-- Host-called subject: `fn-owner-callback-fault` at host/owner-host.lisp:4818, equated by `fn-owner-callback-fault-complete-effects` (books/owner-connection-callback-refinement.lisp:99).
+- Host-called subject: `fn-owner-callback-fault` at host/owner-host.lisp:4830, equated by `fn-owner-callback-fault-complete-effects` (books/owner-connection-callback-refinement.lisp:99).
 - Keystone: `fn-ocfg-fault-keeps-every-other-connection` (books/owner-served-invariants.lisp:502; PRF-040 (certified)); certified at the current source and closure by `certify-20261004T075727Z-2319259` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile native modules, image's own tests (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); absent from it: `books/owner-connection-callback-refinement.lisp`.
 - Deployed: no: node image `a3553e6b`; absent from it: `books/owner-connection-callback-refinement.lisp`.
@@ -141,7 +141,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **signature verdict visible.** A reader's `HDR :fn-verified` reports the verdict the completion recorded for the article, and a carried article reads `carried`, never `verified`.
 
-- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4543, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation` (books/owner-served-carried.lisp:230).
+- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4555, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation` (books/owner-served-carried.lisp:230).
 - Keystone: `fn-own-read-hdr-fn-verified-is-the-pinned-verdict` (books/owner-verdict-read.lisp:416; PRF-026 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260929T022113Z-1604071` passed this source of `books/owner-verdict-read.lisp`, and since then `books/article-header-census.lisp`, `books/article-line-bound.lisp`, `books/article-properties.lisp` and 130 more changed.
 - Tested: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Deployed: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
@@ -213,7 +213,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **the human client.** LIST COUNTS answers each group's high, low and count from the connection's pinned view, and a numbered Message-ID lookup retrieves the same article, which the web reader renders.
 
-- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4543, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-own-read-is-served-step-on-pinned-prefix` (books/owner-invariants-served.lisp:175).
+- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4555, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-own-read-is-served-step-on-pinned-prefix` (books/owner-invariants-served.lisp:175).
 - Keystone: `fn-served-step-list-counts-is-the-archive-counts` (books/owner-list-counts-read.lisp:186; PRF-074 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260929T112625Z-2745888` passed this source of `books/owner-list-counts-read.lisp`, and since then `books/article.lisp`, `books/assumptions-pgs-host-io.lisp`, `books/assumptions.lisp` and 99 more changed.
 - Tested: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Deployed: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
@@ -225,7 +225,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **the Message-ID index on the served path.** A reader's Message-ID retrieval is answered from the connection's pinned trie and equals the archive scan, with no whole-store check per command.
 
-- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4543, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix` (books/owner-tls-prefix.lisp:77).
+- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4555, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix` (books/owner-tls-prefix.lisp:77).
 - Keystone: `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` (books/nntp-pinned-msgid.lisp:36; PRF-067 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260928T124849Z-2149901` passed this source of `books/nntp-pinned-msgid.lisp`, and since then `books/article-fields.lisp`, `books/article.lisp`, `books/assumptions-durable.lisp` and 71 more changed.
 - Tested: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Deployed: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
@@ -261,7 +261,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **STARTTLS after authentication.** An authenticated connection advertises no STARTTLS and a valid clear-channel STARTTLS answers 502 with the full authenticated session unchanged.
 
-- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4543, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
+- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4555, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Keystone: `fn-auth-starttls-after-authentication-is-refused-without-reset` (books/nntp-auth.lisp:3496; PRF-1266 (certified)); certified at the current source and closure by `certify-20261004T063510Z-2314965` (earliest archived).
 - Tested: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Deployed: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
@@ -273,7 +273,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **peer reader access.** A peer-role reader command uses its login or anonymous pinned READ/POST rule; a projected nonempty rule excludes unreadable groups and article memberships, and queue privacy covers source peers.
 
-- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4543, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
+- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4555, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Keystone: `fn-auth-view-excludes-unreadable-groups-on-any-connection` (books/nntp-auth.lisp:4101; PRF-1269 (certified)); certified at the current source and closure by `certify-20261004T063510Z-2314965` (earliest archived).
 - Tested: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Deployed: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
