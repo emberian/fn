@@ -471,5 +471,6 @@
 (include-book "../../books/tcpcl-delivery-invariants")
 (include-book "../../books/resource-syncer")
 (include-book "../../books/response-identity")
+(include-book "../../books/store-log-durable")
 (include-book "../../books/def-cost")
 (include-book "../../books/string-line-cursor-cost")

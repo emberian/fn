@@ -3033,9 +3033,11 @@
   (if (and (equal kind :refuse)
            (member-equal reason *fn-peer-intrinsic-reasons*))
       (let ((submission (fn-own-sub-decision sub)))
+        ; Under the offering peer's own key (rp-refused-memory-poison).
         (fn-peer-refused-record
          (fn-own-refused o)
          (fn-peer-session-cfg (fn-auth-session-base (fn-own-conn-session conn)))
+         (fn-peer-submission-peer submission)
          (fn-peer-submission-msgid submission)
          (fn-peer-submission-octets submission)))
     (fn-own-refused o)))

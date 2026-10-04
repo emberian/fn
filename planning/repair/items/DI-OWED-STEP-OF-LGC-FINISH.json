@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/store-log-durable.lisp",
+ "id": "DI-OWED-STEP-OF-LGC-FINISH",
+ "notes": [],
+ "owner": "m1-durable",
+ "severity": "high",
+ "slice": "integrator3",
+ "source": "integrator3",
+ "state": "open",
+ "title": "Host loop = fold correspondence owed for fn-lgc-finish-one (host/interfaces.lisp :step-of fn-lgc-host-run). The keystone fn-lgu-host-kernel-acknowledges-only-recoverable-records is about fn-lgc-host-run over fn-lgu-host-kernel-ops; host/native/io.lisp fnn-log-finish calls fn-lgc-finish-one COUNT times in a Lisp loop inside the host's own operation order, and no theorem equates that loop to the fold. fn-lgu-acknowledged-records-are-recovered-at-every-cut calls neither fn-lgc-finish-one nor fn-lgc-host-run (it is about fn-lgu-host-run) and is not cited by any entry; set-ceeb3362d/set-ae089bdeb host-ld refused both plain citations. Owed (m1-durable): a generated loop whose equation is proved, or the at-every-cut keystone stated over the host's entry.",
+ "updated": "2026-10-04T18:50:00Z"
+}
