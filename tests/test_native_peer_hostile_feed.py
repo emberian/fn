@@ -25,10 +25,12 @@ Inbound (fn receives from two configured peers, X on 127.0.0.1 and Y on
   438, and a TAKETHIS of other bytes under <s> gets 439.  The stored <s>
   is unchanged.
 
-The node is the production image (FN_NATIVE_HOST).  The silent-peer case
-(no reply at all, held until fn-prd-round-deadline, 600 s) is lane
-read-peer's raw witness tests.test_native_feed_fair_round; its native form
-waits on a shortened round deadline.
+Also: a peer that swallows CHECK or never greets is dropped at the round
+deadline (600 s) and redialled (slow: ten minutes), and a TAKETHIS whose id
+fails the grammar is consumed and refused without running its body as
+commands (rp-takethis-bad-msgid-desync).
+
+The node is the production image (FN_NATIVE_HOST).
 """
 
 import os
@@ -67,8 +69,9 @@ class StreamingPeer:
     check(id, n) gives the reply line to the n-th CHECK of id;
     takethis(id) gives the reply lines to a TAKETHIS of id."""
 
-    def __init__(self, check, takethis):
+    def __init__(self, check, takethis, mute_first=False):
         self.check, self.takethis = check, takethis
+        self.mute_first = mute_first
         self.listener = socket.socket()
         self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.listener.bind(("127.0.0.1", 0))
@@ -76,6 +79,7 @@ class StreamingPeer:
         self.port = self.listener.getsockname()[1]
         self.lock = threading.Lock()
         self.commands, self.articles, self.checks = [], {}, {}
+        self.connections = 0
         self.closed = False
         threading.Thread(target=self.serve, daemon=True).start()
 
@@ -89,10 +93,18 @@ class StreamingPeer:
                 client, _ = self.listener.accept()
             except OSError:
                 return
-            threading.Thread(target=self.session, args=(client,), daemon=True).start()
+            with self.lock:
+                self.connections += 1
+                number = self.connections
+            threading.Thread(target=self.session, args=(client, number), daemon=True).start()
 
-    def session(self, client):
+    def session(self, client, number):
         with client:
+            if self.mute_first and number == 1:
+                # Accepts the dial and never greets: the socket stays open.
+                while client.recv(4096):
+                    pass
+                return
             stream = whole_stream(client)
             stream.write(b"200 scripted streaming peer\r\n")
             while True:
@@ -108,7 +120,9 @@ class StreamingPeer:
                 elif verb == "CHECK":
                     with self.lock:
                         n = self.checks[words[1]] = self.checks.get(words[1], 0) + 1
-                    stream.write(self.check(words[1], n).encode("ascii") + b"\r\n")
+                    reply = self.check(words[1], n)
+                    if reply is not None:  # None: swallowed, the socket stays open
+                        stream.write(reply.encode("ascii") + b"\r\n")
                 elif verb == "TAKETHIS":
                     body = bytearray()
                     while True:
@@ -196,7 +210,63 @@ class HostileFeedTests(unittest.TestCase):
                              .format(first, second, commands[-12:]))
         self.assertIsNone(source.process.poll())
 
+    def test_a_silent_peer_is_dropped_at_the_round_deadline_and_redialled(self):
+        """read-peer case 1, native and slow: one peer swallows the first CHECK
+        (no reply, socket open), another accepts the dial and never greets.
+        Each link is dropped at fn-prd-round-deadline (600 s,
+        books/peer-round-driver.lisp) and redialled, and the article is
+        delivered on the redial.  The fast witness is
+        tests.test_native_feed_fair_round's reply-deadline case."""
+        silent = StreamingPeer(lambda mid, n: None if n == 1 else "238 " + mid,
+                               lambda mid: ["239 " + mid])
+        mute = StreamingPeer(lambda mid, n: "238 " + mid, lambda mid: ["239 " + mid],
+                             mute_first=True)
+        for peer in (silent, mute):
+            self.addCleanup(peer.close)
+        source = self.node("source")
+        for name, peer in (("silent", silent), ("mute", mute)):
+            source.operator("peer", "add", name, "{}.example.invalid".format(name), "127.0.0.1",
+                            str(peer.port), "-", "fn.*", "127.0.0.1", "true", expect=EXIT_OK)
+        source.start()
+        wanted = "<silent@example.invalid>"
+        self.post(source, wanted, "silent")
+        got = {name: peer.await_article(wanted, 720) for name, peer in
+               (("silent", silent), ("mute", mute))}
+        print("PEER-HOSTILE-FEED silent connections={} mute connections={}".format(
+            silent.connections, mute.connections), flush=True)
+        self.assertIsNotNone(got["silent"], "a peer that swallowed CHECK held the link and "
+                                            "the article past the round deadline")
+        self.assertIsNotNone(got["mute"], "a peer that never greeted held the link past "
+                                          "the round deadline")
+        self.assertGreaterEqual(silent.connections, 2)
+        self.assertGreaterEqual(mute.connections, 2)
+        self.assertIsNone(source.process.poll())
+
     # -- inbound --------------------------------------------------------------
+
+    def test_a_takethis_with_an_ungrammatical_id_never_desynchronises_the_stream(self):
+        """read-peer case 7 (rp-takethis-bad-msgid-desync): TAKETHIS's argument
+        fails the Message-ID grammar (here 260 octets), and its article's body
+        holds a line `TAKETHIS <inner@...>` with a forged header block.  The
+        article is consumed whole and refused 439 (RFC 4644 section 2.5:
+        TAKETHIS is always followed by the article); nothing in its body is
+        run as a command, and the stream stays in step."""
+        target = self.receiving()
+        x = self.streaming(target, "127.0.0.1")
+        bad = "<" + "a" * 260 + "@x.example.invalid>"
+        inner = "<inner@x.example.invalid>"
+        smuggled = (b"TAKETHIS " + inner.encode("ascii") + b"\r\n" + article(inner, "forged"))
+        payload = article("<outer@x.example.invalid>", "outer") + smuggled
+        first = self.takethis(x, bad, payload)
+        self.assertTrue(first.startswith(b"439"), first)
+        fresh = "<fresh@x.example.invalid>"
+        after = x.command(b"CHECK " + fresh.encode("ascii"))
+        self.assertTrue(after.startswith(b"238 " + fresh.encode("ascii")),
+                        "the stream is out of step after the refused TAKETHIS: {!r}".format(after))
+        with Client(target.port, timeout=30, greeting=(b"200", b"201")) as reader:
+            self.assertTrue(reader.command(b"STAT " + inner.encode("ascii")).startswith(b"430"),
+                            "the smuggled inner article was stored")
+        self.assertIsNone(target.process.poll())
 
     def receiving(self):
         target = self.node("target")
