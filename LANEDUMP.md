@@ -4543,3 +4543,8 @@ S074/S090/S138/S151 and journal physical prepared fixtures remain source/proof
 versus current-image obligations, not completion claims. No live deployment.
 Protected recovery partition, expanded init/reopen and complete tariff remain
 open. Bounds catchup controller draft is preserved but activation unwired.
+
+
+# proofs (Fable) — 2026-10-04 wind-down
+
+See build/coordinator/lanedumps/proofs.md (the full entry). State: four statements drafted and committed at lane/proofs@1c5e987b2, none admitted (laptop cache is box-toolchain-keyed; slot pool held). Continuation: take a REPL where the toolchain matches (persvati, ask the assembler) or after carrier's laptop certify finishes; admit books/served-available-read (PRF-1287), books/catalog-may-seal, books/statement-recover-stream in that order; then cite the may-seal keystones in host/interfaces.lisp:1553 and run keystone_emit --check; PRF-1242 needs issue/settle/close preservation first (finding recorded).
