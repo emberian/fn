@@ -7125,7 +7125,11 @@ with its depth, and the rows under it name the path that called it."
   ;; the first fence of the new segment (fnn-log-fence) and the checkpoint
   ;; that names it (fnn-owner-publish-captured) fence journal/ first
   ;; (fnn-log-make-durable, cut rotate-durable).  NIL when durable.
-  (dir-pending nil))
+  ;; DURABLE-LOCK serializes those two callers; DURABLE-FAILED is the first
+  ;; failed barrier of a pending name, never retried (fnn-log-make-durable).
+  (dir-pending nil)
+  (durable-lock (sb-thread:make-mutex :name "fn log rotate-durable"))
+  (durable-failed nil))
 
 (defmacro fnn-log-with-kernel ((log) &body body)
   "BODY under the log's kernel lock (recursive: a kernel step may call another)."
@@ -8382,13 +8386,37 @@ rotate-durable) while the segment's name is pending.  Called off the owner
 mutex by the new segment's first fence (fnn-log-fence: no member there is
 acknowledged before its name is durable) and by the publication before its
 checkpoint names the segment, so an F row never names an unheaded segment.
-Two callers may both fence; that is harmless."
-  (let ((dir (fnn-log-dir-pending log)))
-    (when dir
-      (fnn-fsync-file (fnn-log-fd log))
-      (fnn-fsync-dir dir)
-      (fnn-log-at :rotate-durable)
-      (setf (fnn-log-dir-pending log) nil))))
+The two callers are serialized (DURABLE-LOCK); the second finds the name
+durable and does nothing.
+
+A failed barrier is never asked again (fsync after a failed fsync can answer
+success with nothing durable: the error is reported once).  The first
+failure fences the log kernel (fn-lgc-fence-failed: no member is fenced or
+acknowledged after it, and the store needs recovery) and is the log's
+uncertainty, signalled as such: the publication's thread boundary
+classifies a bare OS error with no step of its own as a job failure and
+serving went on, so the batch fence that called next believed a retried
+barrier and acknowledged members in a segment whose name may not survive.
+Every later call answers the same uncertainty without touching the disk."
+  (sb-thread:with-mutex ((fnn-log-durable-lock log))
+    (let ((failed (fnn-log-durable-failed log)))
+      (when failed
+        (fnn-indeterminate "the rotated log segment's barrier failed earlier; the store needs recovery: ~a"
+                           failed)))
+    (let ((dir (fnn-log-dir-pending log)))
+      (when dir
+        (handler-case
+            (progn
+              (fnn-fsync-file (fnn-log-fd log))
+              (fnn-fsync-dir dir))
+          (fnn-os-error (e)
+            (setf (fnn-log-durable-failed log) e)
+            (fnn-log-with-kernel (log)
+              (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence-failed (fnn-log-kernel log))))
+            (fnn-indeterminate "the rotated log segment's barrier failed; the store needs recovery: ~a"
+                               e)))
+        (fnn-log-at :rotate-durable)
+        (setf (fnn-log-dir-pending log) nil)))))
 
 (defun fnn-log-rotate-now (store)
   "The whole P-ROTATE in one thread, for a store no owner serves (`store
