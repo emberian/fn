@@ -4596,3 +4596,8 @@ First slice: `books/output-tariff-article.lisp` admitted on the laptop (10 forms
 uncertified, unwired; the exact continuation is the numbered list in the coordinator lanedump
 (steps 1-7). Nothing certified, no image, no native run. The only owner-host.lisp region this lane
 touches is `fn-owner-output-tariff-preview` (:5512-5518), untouched so far.
+
+
+# proofs2 (Opus) — 2026-10-04
+
+See build/coordinator/lanedumps/proofs2.md. State: PRF-1287 / may-seal / ssr=srs / PRF-1242 (composed: fn-hmc-run-keeps-invp) REPL-admitted at lane/proofs2@0a1e06ad2; hbox certify queued (assembler #5). interfaces.lisp may-seal row re-cited.
