@@ -86,6 +86,12 @@ BOX_ROOTS = {
     "persvati": ("$HOME/fn-lanes", "$HOME/fn-gates", "$HOME/fn-live", "$HOME/fn-deploy"),
     "hbox": ("/tank/fn/lanes", "/tank/fn/gates", "/tank/fn/scale"),
 }
+# A rented box (tools/box_table.py) keeps them where its `like` box does,
+# plus its scratch base; harvest it before the box is torn down.
+import box_table  # noqa: E402
+for _name, _row in box_table.extra_boxes().items():
+    BOX_ROOTS[_name] = tuple(dict.fromkeys(
+        BOX_ROOTS[_row["like"]] + (_row["scratch"].replace("~/", "$HOME/", 1),)))
 
 
 def remote_path(name: str) -> str:

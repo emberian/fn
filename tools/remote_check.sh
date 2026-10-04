@@ -174,7 +174,11 @@ fi
 case $BOX in
     hbox) BASE=/tank/fn/scratch; WRAP=swarm-build; CHECK_JOBS_DEFAULT=6 ;;
     persvati) BASE='$HOME/fn-gates'; WRAP=; CHECK_JOBS_DEFAULT= ;;
-    *) echo "remote_check: unknown box '$BOX' (hbox, persvati)" >&2; exit 2 ;;
+    *)  # a rented box: its row in ~/.config/fn/boxes.json (tools/box_table.py)
+        EXTRA=$(python3 "$(dirname "$0")/box_table.py" row "$BOX") || {
+            echo "remote_check: unknown box '$BOX' (hbox, persvati, or a live box in ~/.config/fn/boxes.json)" >&2; exit 2; }
+        eval "$EXTRA"; CHECK_JOBS_DEFAULT=$CHECK_JOBS
+        case $BASE in '~/'*) BASE='$HOME/'${BASE#'~/'} ;; esac ;;
 esac
 # A box reserved for a measurement (tools/boxes.sh reserve): auto already
 # picked the other box; a named box waits for the lease, printing its holder.

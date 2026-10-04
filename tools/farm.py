@@ -131,6 +131,10 @@ HOSTS = {
         "wrap": "swarm-build",
     },
 }
+# Rented boxes (the fn-burst cloud boxes): rows from ~/.config/fn/boxes.json,
+# each a byte-identical copy of hbox's toolchain (tools/box_table.py).
+import box_table
+HOSTS.update(box_table.farm_rows(HOSTS))
 EXCLUDES = ("build/", ".git/", "__pycache__/", ".venv/", "*.pyc")
 POLL_SECONDS = 30
 DEFAULT_WAIT_SECONDS = 6 * 60 * 60
@@ -1924,7 +1928,7 @@ def recertify_list(paths: list[str]) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("action", choices=("submit", "wait", "status", "cancel"))
-    parser.add_argument("host", help="hbox or persvati; submit: 'auto' (or no box at "
+    parser.add_argument("host", help="hbox, persvati or a box in ~/.config/fn/boxes.json; submit: 'auto' (or no box at "
                                      "all) picks the one with the lowest load per core")
     parser.add_argument("rest", nargs="*",
                         help="submit: book roots; wait, cancel: the run id (farm.py wait BOX RUN)")

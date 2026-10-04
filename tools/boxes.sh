@@ -60,6 +60,14 @@ echo "$n $l $m $a $f $d"
 
 SSH=${FN_BOXES_SSH:-ssh}
 
+# Rented boxes (tools/box_table.py, ~/.config/fn/boxes.json): listed, picked
+# and leased like hbox and persvati while their row is live.
+BOX_TABLE=$(dirname "$0")/box_table.py
+[ -f "$BOX_TABLE" ] || BOX_TABLE=${FN_HBOX_NATIVE_HERE:-.}/tools/box_table.py
+EXTRA_BOXES=$(python3 "$BOX_TABLE" names 2>/dev/null | tr '\n' ' ')
+EXTRA_PICK=$(python3 "$BOX_TABLE" pick 2>/dev/null | tr '\n' ' ')
+is_box() { case " hbox persvati $EXTRA_BOXES " in *" $1 "*) return 0 ;; esac; return 1; }
+
 probe() {  # HOST ("" = here) -> "cores load memGiB arcGiB diskGiB dir" [+ an "R ..." lease line] or nothing
     if [ -z "$1" ]; then sh -c "$PROBE"
     else $SSH -o ConnectTimeout=10 -o BatchMode=yes "$1" "$PROBE" 2>/dev/null; fi
@@ -114,7 +122,7 @@ esac'
 
 lease_op() {  # BOX-OR-TOKEN OP MINUTES WHY FORCE
     lhost=$1; suffix=
-    case $1 in hbox|persvati) ;; *) lhost=${FN_BOX_TOKEN_HOST:-hbox}; suffix=-token-$1 ;; esac
+    is_box "$1" || { lhost=${FN_BOX_TOKEN_HOST:-hbox}; suffix=-token-$1; }
     $SSH -o ConnectTimeout=10 -o BatchMode=yes "$lhost" \
         "sh -c $(sq "$LEASE_OP") lease $(sq "$2") $(sq "$(me)") $(sq "$3") $(sq "$4") $(sq "$5") $(sq "$suffix")"
 }
@@ -140,7 +148,7 @@ esac
 case $cmd in
     '')
         tokens=
-        for box in laptop hbox persvati; do
+        for box in laptop hbox persvati $EXTRA_BOXES; do
             host=$box; [ $box = laptop ] && host=
             out=$(probe "$host")
             line "$box" "$(first "$out")"
@@ -156,7 +164,7 @@ case $cmd in
         waited=0
         while :; do
             best=; bestload=; soonest=
-            for box in hbox persvati; do
+            for box in hbox persvati $EXTRA_PICK; do
                 out=$(probe "$box")
                 load=$(per_core "$(first "$out")")
                 echo "boxes: $box ${load:-unreachable} load per core" >&2
@@ -173,7 +181,7 @@ case $cmd in
                 fi
             done
             if [ -n "$best" ]; then echo "boxes: picked $best" >&2; echo "$best"; exit 0; fi
-            [ -n "$soonest" ] || { echo "boxes: neither hbox nor persvati answered" >&2; exit 3; }
+            [ -n "$soonest" ] || { echo "boxes: no build box answered" >&2; exit 3; }
             if [ "${FN_BOX_RESERVATION:-}" = ignore ] || [ $waited -ge $((MAX * 60)) ]; then
                 echo "boxes: every box is reserved" >&2; exit 3
             fi
@@ -196,10 +204,8 @@ case $cmd in
     check|wait)
         waited=0
         while :; do
-            case $BOX in
-                hbox|persvati) l=$(lease "$(probe "$BOX")") ;;
-                *) l=$(lease "$(lease_op "$BOX" show 0 "" 0 2>/dev/null)") ;;
-            esac
+            if is_box "$BOX"; then l=$(lease "$(probe "$BOX")")
+            else l=$(lease "$(lease_op "$BOX" show 0 "" 0 2>/dev/null)"); fi
             if ! held_by_other "$l" || [ "${FN_BOX_RESERVATION:-}" = ignore ]; then
                 if [ $cmd = check ]; then
                     if [ -n "$l" ]; then echo "boxes: $(describe "$BOX" "$l")"

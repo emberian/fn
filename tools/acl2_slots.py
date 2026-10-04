@@ -188,7 +188,11 @@ def farm_hosts() -> dict:
     for node in tree.body:
         if (isinstance(node, ast.Assign) and len(node.targets) == 1
                 and getattr(node.targets[0], "id", None) == "HOSTS"):
-            return ast.literal_eval(node.value)
+            hosts = ast.literal_eval(node.value)
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            import box_table  # noqa: E402
+            hosts.update(box_table.farm_rows(hosts))
+            return hosts
     raise SystemExit("fn: tools/farm.py has no HOSTS table")
 
 

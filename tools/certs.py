@@ -163,6 +163,8 @@ BOOK_DIRECTORIES = ("books", "tests/acl2")
 DEFAULT_CACHE = "~/.cache/fn-certs"
 # Where a farm box keeps its copy.  `--remote host:path` overrides.
 REMOTE_CACHES = {"hbox": "/tank/fn/certcache", "persvati": "~/fn-certcache"}
+import box_table  # noqa: E402  (rented boxes: ~/.config/fn/boxes.json)
+REMOTE_CACHES.update({name: row["cache"] for name, row in box_table.extra_boxes().items()})
 MANIFEST_GLOB = "build/acl2/certify-*/manifest.json"
 # What the origin tree is, which decides where its pairs may be installed.
 # `worktree` is live: someone certifies in it, and a pair whose sub-book paths
