@@ -31,6 +31,8 @@
 (defun fn-arena-get (h at arena) (aref (nth h arena) at))
 (defun fn-article-payload (article) (second article))
 (defun fn-article-msgid (article) (first article))
+;; ACL2 primitive the shared article source now calls (books/article-stream.lisp).
+(defun member-eq (x l) (member x l :test (function eq)))
 (defun fn-nntp-article-bytes (article arena)
   (coerce (nth (fn-article-payload article) arena) 'list))
 (defparameter *article-source-root* (or (sb-ext:posix-getenv "FN_WEB_ARTICLE_SOURCE_ROOT") "."))

@@ -367,7 +367,8 @@
 ;;; listener closure, and cannot retry an ambiguous physical close.
 (let* ((conn (fixture-conn 83 :done))
        (face (%make-fnn-web-face :service *fixture-service* :listener 84
-                                :jobs-closed t :wake-closed t :conns (list conn)))
+                                :jobs-closed t :wake-closed t :wake-read-close :returned
+                                :wake-write-close :returned :conns (list conn)))
        (*fnn-web-face* face))
   (setf (fnn-web-conn-closedp conn) t)
   (assert (handler-case (progn (fnn-web-close-face *fixture-service*) nil) (error () t)))
@@ -398,7 +399,8 @@
 (let* ((hold (sb-thread:make-semaphore))
        (thread (sb-thread:make-thread (lambda () (sb-thread:wait-on-semaphore hold))))
        (face (%make-fnn-web-face :service *fixture-service* :listener 86
-                                :jobs-closed t :wake-closed t :semantic-thread thread))
+                                :jobs-closed t :wake-closed t :wake-read-close :returned
+                                :wake-write-close :returned :semantic-thread thread))
        (*fnn-web-face* face))
   (unwind-protect
        (progn

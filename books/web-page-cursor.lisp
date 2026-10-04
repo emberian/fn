@@ -8,11 +8,11 @@
 ; List sources and segment tails share the retained plan. Pending is at most
 ; one escaped source octet (or one percent-encoded source octet).
 (defun fn-wpc-cursor (segs)
-  (declare (xargs :mode :program))
+  (declare (xargs :verify-guards nil))
   (list segs nil nil 0 0 t nil))
 
 (defun fn-wpc-next (cursor fn-web-in)
-  (declare (xargs :mode :program :stobjs fn-web-in))
+  (declare (xargs :verify-guards nil :stobjs fn-web-in))
   (let* ((segs (fn-wrq-nth 0 cursor)) (kind (fn-wrq-nth 1 cursor))
          (xs (fn-wrq-nth 2 cursor)) (s (nfix (fn-wrq-nth 3 cursor)))
          (e (nfix (fn-wrq-nth 4 cursor))) (bol (fn-wrq-nth 5 cursor))
@@ -51,7 +51,7 @@
      (t (mv nil nil cursor t)))))
 
 (defun fn-wpc-drive (fuel cursor count emitp rev fn-web-in)
-  (declare (xargs :mode :program :stobjs fn-web-in))
+  (declare (xargs :verify-guards nil :stobjs fn-web-in))
   (if (zp fuel)
       (mv (reverse rev) cursor (nfix count) nil)
     (mv-let (present octet next done) (fn-wpc-next cursor fn-web-in)
@@ -61,7 +61,21 @@
                       emitp (if (and present emitp) (cons octet rev) rev) fn-web-in)))))
 
 (defun fn-wpc-step (cursor count emitp fn-web-in)
-  (declare (xargs :mode :program :stobjs fn-web-in))
+  (declare (xargs :verify-guards nil :stobjs fn-web-in))
   ; Fixed scheduling quantum, not a response length ceiling. The bounded
   ; RFC2047 decoder may additionally inspect at most *fn-w47-max* bytes.
   (fn-wpc-drive 4096 cursor count emitp nil fn-web-in))
+
+; A step is a bounded scheduling quantum: one call emits at most FUEL octets
+; (4096 from the host's fn-wpc-step) beyond what it was handed.  The byte
+; refinement to fn-wr-seq (driving the cursor to done emits exactly
+; fn-wr-seq of the segments over fn-web-in's octets) is proof-owed; the raw
+; consumer tests compare those bytes.
+(defthm fn-wpc-len-revappend
+  (equal (len (revappend a b)) (+ (len a) (len b))))
+
+(defthm fn-wpc-drive-emits-at-most-fuel
+  (<= (len (mv-nth 0 (fn-wpc-drive fuel cursor count emitp rev fn-web-in)))
+      (+ (len rev) (nfix fuel)))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (disable fn-wpc-next))))

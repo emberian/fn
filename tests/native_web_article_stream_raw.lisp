@@ -122,10 +122,13 @@
               ((:page-count :page-emit) (fnn-web-page-step face conn))
               (:write (fnn-web-write-ready face conn))
               (otherwise (error "unexpected phase ~s" (fnn-web-conn-phase conn))))
-            (setf peak-in (max peak-in (fnn-web-len (fnn-web-conn-in conn))))
-            (assert (<= peak-in 4096))
-            (assert (zerop (fnn-web-len (fnn-web-conn-out conn))))
-            (unless (fnn-web-conn-closedp conn) (assert (zerop pins-released))))
+            ;; A finished record has discarded its response graph (in/out
+            ;; are NIL after terminal custody, 33bb7b377): measure live ones.
+            (unless (fnn-web-conn-closedp conn)
+              (setf peak-in (max peak-in (fnn-web-len (fnn-web-conn-in conn))))
+              (assert (<= peak-in 4096))
+              (assert (zerop (fnn-web-len (fnn-web-conn-out conn))))
+              (assert (zerop pins-released))))
           (assert (fnn-web-conn-closedp conn))
           (assert (= pins-released 1))
           (when (> replay-rounds 0) (assert cold-issued)) (assert (< replay-rounds max-replay-rounds))
