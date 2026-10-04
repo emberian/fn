@@ -1994,6 +1994,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-availability \
 	books/served-available-commands \
 	books/served-available-read \
+	books/served-available-access \
 	books/article-stream \
 	tests/acl2/article-stream-tests \
 	books/article-stream-server \
@@ -2008,6 +2009,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-available-readers-tests \
 	tests/acl2/served-available-commands-tests \
 	tests/acl2/served-available-read-tests \
+	tests/acl2/served-available-access-tests \
 	books/def-cursor-batch \
 	books/newnews-stream-cursor \
 	tests/acl2/newnews-stream-cursor-tests \

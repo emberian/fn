@@ -23509,6 +23509,31 @@
         "fn-ak-carrier-parses",
         "fn-ak-carrier-parses-under"
       ]
+    },
+    {
+      "id": "PRF-1328",
+      "title": "A read-restricted session is served the reference walk on the read the host calls",
+      "statement": "books/served-available-access.lisp. Per event: fn-av-scr-auth-delegate-restricted-is-reference and fn-av-scr-dispatch-core-restricted-is-reference: under (fn-gacc-okp cache) and (fn-auth-access-read session config) (a group-access READ rule or moderation-queue hiding, PRF-222/PRF-228/D48), the generated delegate and dispatch core the host's read calls EQUAL fn-scar-auth-delegate-pinned and fn-scar-dispatch-core, whose right sides take neither fn-cat nor the catalog version (fn-scar-dispatch-core-is-served-dispatch-core carries them to books/served.lisp). Per read: fn-av-mca-read-span-restricted-is-legacy: under (fn-av-read-restrictedp ...) (every event the legacy fold dispatches, as configured and posting-off, goes to a restricted session) fn-av-mca-read-span EQUALS the legacy fn-mca-read-span, whose equations reach fn-scr-ocfg-read-span-is-reference-under-ocl-relation. Teeth (tests/acl2/served-available-access-tests.lisp): the removed generator template answers STAT 223 for an excluded article and differs from the reference on STAT/OVER/HDR/XHDR/XPAT/ARTICLE/HEAD/BODY by Message-ID and names the excluded group in a readable article's Xref (OVER/HDR/ARTICLE by number); the host-called step is the reference with an empty and a prepared cache, 430 exactly as an absent article, 223 for a readable one; removal of the rule (OVER range differs) and of fn-gacc-okp (a corrupt cache serves 223) each falsify the conclusion; a served connection's STAT+LIST ACTIVE span inhabits fn-av-span-restrictedp and its unrestricted twin does not.",
+      "milestone": "M4",
+      "requirements": [
+        "NNT-046",
+        "SEC-007"
+      ],
+      "depends_on": [
+        "PRF-222",
+        "PRF-228",
+        "PRF-1269",
+        "PRF-1287"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-av-scr-auth-delegate-restricted-is-reference",
+        "fn-av-scr-dispatch-core-restricted-is-reference",
+        "fn-av-mca-read-span-restricted-is-legacy"
+      ],
+      "evidence": [],
+      "note": "Closes FILL-GROUP-ACCESS-PRIVATE-LEAK and FILL-MODERATION-ENVELOPE-READABLE (lane access-check). Discharges, for read-restricted sessions only, the 'selective owner refinement owed' of the generated av route (6a5427e9e); the unrestricted available projection's selective reference and the av route's guards remain owed (PRF-1287). The read-level hypothesis is per event: AUTHINFO may change the rule between events of one read. Native: developer-image overlay over set 6107ceb56; production at the next image batch."
     }
   ]
 }
