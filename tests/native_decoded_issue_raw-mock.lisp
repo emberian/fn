@@ -1,6 +1,6 @@
 ;;; Actual native reservation/enqueue function; typed admission is a recording
 ;;; boundary. Actual same-pool projection/overcommit lives in source probe.
-(load "tests/native_decoded_worker_raw.lisp")
+(load "tests/native_decoded_worker_raw-mock.lisp")
 (in-package "ACL2")
 
 ;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----

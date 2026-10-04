@@ -4,27 +4,6 @@
 (load "tests/native_section_envelope_raw.lisp")
 (in-package "ACL2")
 
-;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
-(define-condition harness-stub-reached (serious-condition)
-  ((name :initarg :name :reader harness-stub-reached-name)
-   (source :initarg :source :reader harness-stub-reached-source))
-  (:report (lambda (c s)
-             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
-                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
-(defun harness-stub-reached (name source)
-  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
-          name source)
-  (finish-output *error-output*)
-  (error 'harness-stub-reached :name name :source source))
-(defun fnn-history-image-row-run (ev ordinal)
-  (declare (ignorable ev ordinal))
-  (harness-stub-reached 'fnn-history-image-row-run "host/native/io.lisp"))
-(defun fnn-immutable-close-handle (fd stage final operation publication)
-  (declare (ignorable fd stage final operation publication))
-  (harness-stub-reached 'fnn-immutable-close-handle "host/native/io.lisp"))
-(defun fnn-immutable-close-observation ()
-  (harness-stub-reached 'fnn-immutable-close-observation "host/native/io.lisp"))
-;;; ---- derived stubs: END ----
 
 (defun natp (x) (and (integerp x) (<= 0 x)))
 (defun zp (x) (not (and (integerp x) (> x 0))))

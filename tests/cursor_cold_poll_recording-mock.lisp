@@ -11,9 +11,14 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
+(defun fnn-core-state (name &rest args)
+  (declare (ignorable name args))
+  (harness-stub-reached 'fnn-core-state "host/native/io.lisp"))
 (defun fnn-err (control &rest args)
   (declare (ignorable control args))
   (harness-stub-reached 'fnn-err "host/native/io.lisp"))
+(defun fnn-extent-pool-funded-p ()
+  (harness-stub-reached 'fnn-extent-pool-funded-p "host/native/extent.lisp"))
 (defun fnn-mux-output-window (conn octets end)
   (declare (ignorable conn octets end))
   (harness-stub-reached 'fnn-mux-output-window "host/native/mux.lisp"))
@@ -26,18 +31,6 @@
 (defun fnn-owner-connection-call (service operation thunk)
   (declare (ignorable service operation thunk))
   (harness-stub-reached 'fnn-owner-connection-call "host/native/owner.lisp"))
-(defun fnn-owner-output-issue (service identity &optional capture)
-  (declare (ignorable service identity capture))
-  (harness-stub-reached 'fnn-owner-output-issue "host/native/owner.lisp"))
-(defun fnn-owner-ready-plan-step (service cid plan class)
-  (declare (ignorable service cid plan class))
-  (harness-stub-reached 'fnn-owner-ready-plan-step "host/native/owner.lisp"))
-(defun fnn-owner-response-identity (service connection class)
-  (declare (ignorable service connection class))
-  (harness-stub-reached 'fnn-owner-response-identity "host/native/owner.lisp"))
-(defun fnn-owner-window-activation (thunk)
-  (declare (ignorable thunk))
-  (harness-stub-reached 'fnn-owner-window-activation "host/native/owner.lisp"))
 ;;; ---- derived stubs: END ----
 ;;; Actual native cursor/mux functions with mocked I/O and ACL2 dispatch.
 ;;; This discriminates poll/control flow, not ACL2 semantics or image custody.
@@ -77,7 +70,7 @@
   (let ((*held* t)) (funcall thunk)))
 (defun fnn-owner-over-window () 1)
 (defun fnn-live-stobj (name) (assert *held*) name)
-(defun fnn-call (name plan window arena cat)
+(defun fnn-call (name plan window arena &optional cat)
   (declare (ignore name plan window arena cat))
   (assert *held*) (assert *fnn-extent-no-io*) (incf *calls*)
   (when *cold* (throw 'fnn-extent-cold '(3 100 4096 77)))
@@ -93,10 +86,11 @@
   (declare (ignore args))
   (assert *private-logical*) (incf *private-unpins*))
 (defun fnn-make-octets (size) (make-array size :element-type '(unsigned-byte 8)))
-(defun fnn-owner-render-next (plan &optional compressedp)
-  (declare (ignore compressedp)) (incf *render-calls*)
-  (if (eq plan :original) (values #() plan nil t)
-    (values #(65 13 10) nil t nil)))
+(defun fnn-owner-render-next (plan &optional compressedp borrowp)
+  ;; (values OCTETS PLAN-REST DONEP CURSORP END), as the host's.
+  (declare (ignore compressedp borrowp)) (incf *render-calls*)
+  (if (eq plan :original) (values #() plan nil t 0)
+    (values #(65 13 10) nil t nil 3)))
 (defun fnn-developer-selector (name) (declare (ignore name)) nil)
 (defun fnn-owner-monotonic-ms () *clock*)
 (defun fnn-now () 1000)
@@ -104,15 +98,18 @@
   (declare (ignore service))
   (setf *poll-args* (list read first-miss since))
   (values *poll-word* since *clock* nil))
-(defun fnn-mux-queue (loop conn octets op after)
-  (declare (ignore loop conn)) (push (list octets op after) *queued*))
+(defun fnn-mux-queue (loop conn octets op after &optional end)
+  (declare (ignore loop conn end)) (push (list octets op after) *queued*))
 (defun fnn-mux-after (loop conn after)
   (declare (ignore loop conn after)) (setf *after-called* t))
 (defun fnn-mux-work (loop conn)
   (declare (ignore loop conn)) (setf *worked* t))
 (defun fnn-core (name &rest args)
   (declare (ignore args))
+  ;; The plans here are the cursor's own (:original, :advanced), never an
+  ;; ARTICLE preflight or article plan.
   (case name (fn-splan-cursor-resume-ms 1) (fn-splan-at-cursorp nil)
+    ((fn-asto-preflight-planp fn-asto-plan-articlep fn-asto-plan-cursorp) nil)
     (otherwise (error "Unexpected core call ~s" name))))
 (defun fnn-mux-plan-yield (&rest args)
   (declare (ignore args)) (error "Cold read is distinct from empty progress"))
@@ -124,8 +121,35 @@
 (defun fnn-owner-handle-chunk (&rest args)
   (declare (ignore args)) (values :original nil nil 1))
 (defun fnn-owner-join-octets (parts) (apply #'concatenate 'vector parts))
+;; No output ledger is installed on this service (the host's
+;; fnn-owner-output-issue answers NIL then): no output grant.
+(defun fnn-owner-output-issue (service identity &optional capture)
+  (declare (ignore service identity capture))
+  nil)
+;; The response's identity (the owner's fn-rid-response reservation): one
+;; response of this connection; nothing here reads it.
+(defun fnn-owner-response-identity (service connection class)
+  (declare (ignore service connection class))
+  '(:response 7 1 1))
+;; The render's measurement envelope (fnn-owner-measured); measurement and
+;; the trace collector are off here, so it runs its body.
+(defvar *fnn-owner-measure* nil)
+(defvar *fnn-trace-state* nil)
+(defvar *fnn-trace-operation* nil)
+(defvar *fnn-trace-connection-generation* nil)
+(with-open-file (stream "host/native/owner.lisp")
+  (loop for form = (read stream nil :eof) until (eq form :eof)
+        when (and (consp form) (eq (car form) 'defmacro) (eq (cadr form) 'fnn-owner-measured))
+          do (eval form) (return)))
+;; The scalar window activation the cursor step runs under (no response
+;; capture here, so no window is retained: it calls its thunk).
+(defvar *fnn-response-capture* nil)
+(defvar *fnn-extent-window-mode* nil)
+(defvar *fnn-extent-window-worker* nil)
+(defvar *fnn-extent-window-token* nil)
 (load-selected "host/native/owner.lisp"
-               '(fnn-owner-cursor-step fnn-owner-render-next-quantum fnn-owner-feed-logical))
+               '(fnn-owner-window-activation fnn-owner-ready-plan-step fnn-owner-cursor-step
+                 fnn-owner-render-next-quantum fnn-owner-feed-logical))
 (load-selected "host/native/mux.lisp"
                '(fnn-mux-loop fnn-mux-conn +fnn-mux-cold-poll-ms+ fnn-mux-service
                  fnn-mux-render-next fnn-mux-plan-cold fnn-mux-queue-plan

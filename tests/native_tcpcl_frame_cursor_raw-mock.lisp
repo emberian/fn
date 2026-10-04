@@ -1,6 +1,6 @@
 ;;; Actual native retained input consumer and ACL2 cursor; codec/publication
 ;;; observations are recorded, never acceptance or protocol oracle claims.
-(load "tests/native_tcpcl_retained_turn_raw.lisp")
+(load "tests/native_tcpcl_retained_turn_raw-mock.lisp")
 (in-package "ACL2")
 
 ;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----

@@ -1,7 +1,7 @@
 ;;; Execute the actual pipeline through successful actor launch, then escape
 ;;; before normal receipt consumption. Recording funding dispatch is inherited;
 ;;; operation outcome decisions below are the deployed ACL2 definitions.
-(load "tests/native_syncer_custody_raw.lisp")
+(load "tests/native_syncer_custody_raw-mock.lisp")
 (in-package "ACL2")
 
 ;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----

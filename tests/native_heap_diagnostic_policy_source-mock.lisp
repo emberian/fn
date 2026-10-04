@@ -1,6 +1,6 @@
 ; SCN-1136 continuation: actual STATUS/HEALTH consumers retain normalized
 ; configuration policies; the actual ACL2 output extension contributes MB.
-(load "tests/native_heap_default_source.lisp")
+(load "tests/native_heap_default_source-mock.lisp")
 (require :sb-bsd-sockets)
 (in-package "ACL2")
 (selected-source "books/native-config.lisp"

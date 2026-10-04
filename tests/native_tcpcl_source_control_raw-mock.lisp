@@ -1,5 +1,5 @@
 ;;; Actual retained driver + ACL2 control function; recording socket/encoder.
-(load "tests/native_bp_received_source_raw.lisp")
+(load "tests/native_bp_received_source_raw-mock.lisp")
 (in-package "ACL2")
 
 ;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----

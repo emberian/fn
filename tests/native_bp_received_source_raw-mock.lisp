@@ -1,6 +1,6 @@
 ;;; Actual private operation constructor, source continuation and TCPCL ACK
 ;;; consumer. Typed grant/I/O/durable callback are recorded; no image claim.
-(load "tests/native_bp_session_bank_raw.lisp")
+(load "tests/native_bp_session_bank_raw-mock.lisp")
 (in-package "ACL2")
 
 ;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----

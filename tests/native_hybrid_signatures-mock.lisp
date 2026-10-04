@@ -2,7 +2,7 @@
 ;;;
 ;;;   FN_MLDSA_LIBRARY=build/lib/libfn-mldsa65.so \
 ;;;   FN_TEST_ML_DSA_PRIVATE=... FN_TEST_ML_DSA_PUBLIC=... (and _B) \
-;;;     sbcl --script tests/native_hybrid_signatures.lisp
+;;;     sbcl --script tests/native_hybrid_signatures-mock.lisp
 ;;;
 ;;; The ML-DSA-65 keys are made by an independent implementation (OpenSSL
 ;;; 3.5's genpkey); signing and verification are the node's PQClean library

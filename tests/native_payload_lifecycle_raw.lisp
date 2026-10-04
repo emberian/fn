@@ -7,22 +7,6 @@
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 
-;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
-(define-condition harness-stub-reached (serious-condition)
-  ((name :initarg :name :reader harness-stub-reached-name)
-   (source :initarg :source :reader harness-stub-reached-source))
-  (:report (lambda (c s)
-             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
-                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
-(defun harness-stub-reached (name source)
-  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
-          name source)
-  (finish-output *error-output*)
-  (error 'harness-stub-reached :name name :source source))
-(defun fnn-arena-return-observation (log)
-  (declare (ignorable log))
-  (harness-stub-reached 'fnn-arena-return-observation "host/native/io.lisp"))
-;;; ---- derived stubs: END ----
 (defun member-equal (x xs) (member x xs :test #'equal))
 (defun fixture-load-definitions (file names &optional core)
   (with-open-file (stream file)
@@ -152,7 +136,7 @@
 ; Reuse the current typed-adapter/actor fixture rather than a stale partial
 ; service structure or a fake syncer issuer. Its funding responses remain
 ; explicitly recording boundaries; real typed methods have their own suite.
-(load "tests/native_syncer_custody_raw.lisp")
+(load "tests/native_syncer_custody_raw-mock.lisp")
 (in-package "ACL2")
 (load-deployed-forms "host/native/owner.lisp" '((defun fnn-owner-wait-workers)))
 (defvar *fixture-sync-entered* nil)

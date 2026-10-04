@@ -1,6 +1,6 @@
 ;;; Actual startup roster/thread and terminal scratch consumer. Typed methods
 ;;; are recording boundaries; this is not a pool accounting proof.
-(load "tests/native_decoded_worker_raw.lisp")
+(load "tests/native_decoded_worker_raw-mock.lisp")
 (in-package "ACL2")
 
 ;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----

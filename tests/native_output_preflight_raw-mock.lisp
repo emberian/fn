@@ -2,7 +2,7 @@
 ;;; limited span retry. Wire preview/typed bank are recording boundaries.
 ;;; Positive tariff is injected ONLY to discriminate prefix consumption;
 ;;; the actual current tariff producer always refuses incomplete coverage.
-(load "tests/native_output_response_lease_raw.lisp")
+(load "tests/native_output_response_lease_raw-mock.lisp")
 (in-package "ACL2")
 
 ;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----

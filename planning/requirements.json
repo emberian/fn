@@ -278,8 +278,7 @@
       ],
       "evidence": [
         "books/hybrid-signature.lisp",
-        "tests/acl2/hybrid-signature-tests.lisp",
-        "tests/native_hybrid_signatures.lisp"
+        "tests/acl2/hybrid-signature-tests.lisp"
       ],
       "implementation_note": "The version-1 hybrid preimage is domain separated and length delimits exact authored source after fixed-width principal and ordered algorithm-tagged enrolled keys. Both standard pure signatures cover these bytes directly.",
       "note": "This is the native authored-source signature context; other formats retain separately scoped preimages."
@@ -2003,7 +2002,6 @@
         "host/native/owner.lisp",
         "host/native/control.lisp",
         "host/native/consumer-local.lisp",
-        "tests/native_owner_consumer_local_raw.lisp",
         "tests/test_native_consumer_e2.py",
         "planning/evidence/manifests/certify-20260923T213301Z-209515.json",
         "planning/experiments/e1-e2-v1-traces.json",
@@ -2121,7 +2119,6 @@
         "tests/acl2/control-tests.lisp",
         "host/owner-host.lisp",
         "host/native/owner.lisp",
-        "tests/native_peer_authored_accept_raw.lisp",
         "planning/evidence/control-c1-2026-09-25.md"
       ],
       "implementation_note": "RFC requirement (RFC 5537 section 5): any article with a Control header field is a control message, and a Subject starting \"cmsg \", a \".ctl\" group name or an Also-Control field MUST NOT make one; fn does not take the MAY to reject the cmsg form. RFC 5537 section 3.7's SHOULD (control messages are not stored in the groups their Newsgroups field lists, but in the \"control\" hierarchy) is kept as a requirement: fn-pa-filing-plan, the first step of host/native/owner.lisp fnn-owner-attempt-transit for served POST, bound submission, NNTP transit and BP transit, and host/native/hybrid-control.lisp fnn-hybrid-control-author calls fn-owner-control-filing itself for the local signed-author path, files a control article only in control.<verb> (cancel, newgroup, rmgroup, checkgroups, ihave, sendme) or control (obsolete and unknown verbs; verb compared in ASCII lower case, a local policy), and only if the operator created that group; otherwise it is refused :control-not-filed, and two Control fields, Control beside Supersedes (RFC 5536 section 3.2.3's MUST NOT) or a command outside the grammar are refused :control-malformed. Each refusal is its own 441 line on POST and a named service-log reason on transit. Stored bytes are unchanged. Nothing is executed (packets C2 to C4 are proposals). A control article carrying an FN-Authorship carrier is filed the same way: its signed Store record lists the filing group (books/hybrid-store.lisp fn-hsig-source-filed-groups, lane control-c3). SCN-1033 source harness carries actual unsigned checkgroups over INN innfeed and checks native numbered filing/no proposed-group creation; exact article subject and source-to-feed bytes are required. Real INN/native evidence remains open."
@@ -2238,8 +2235,7 @@
         "books/byte-store-state-checkpoint-program.lisp",
         "tests/test_native_state_checkpoint.py",
         "planning/evidence/bounds-p3-2026-09-25.md",
-        "tests/test_native_checkpoint_image_readback.py",
-        "tests/native_checkpoint_image_readback_raw.lisp"
+        "tests/test_native_checkpoint_image_readback.py"
       ],
       "implementation_note": "The checkpoint holds the record list and every replay fold's accumulator (exact state, removes nothing, so D13 is not a precondition). fn-sco-select serves it only when its segment chain verifies, it covers no more records than are committed, and the suffix is at most the profile's max-open-suffix K; otherwise open=full-replay with the reason (absent, corrupt, ahead-of-history, suffix-exceeds-k). The owner's serve path (fnn-owner-install) still replays in full."
     },
@@ -3197,7 +3193,6 @@
         "planning/evidence/manifests/certify-20260926T074028Z-855253.json",
         "planning/evidence/manifests/certify-20260926T075324Z-901451.json",
         "planning/evidence/public-exposure-2026-09-26-report.json",
-        "tests/native_owner_chunk_loop_raw.lisp",
         "tests/test_native_owner.py",
         "docs/operator.md",
         "books/public-exposure-reply.lisp",
@@ -3723,7 +3718,6 @@
         "packaging/freeze-native-image.sh",
         "packaging/install-native.sh",
         "tests/mldsa65_interop.py",
-        "tests/native_hybrid_signatures.lisp",
         "tests/test_native_hybrid_author.py",
         "planning/evidence/crypto-deps-2026-09-26.md",
         "tests/test_native_starttls.py",
@@ -4824,8 +4818,6 @@
         "planning/evidence/adapter-retirement-2026-09-26.md",
         "tests/acl2/owner-results-tests.lisp",
         "tests/native_bp_transit_identity_raw.lisp",
-        "tests/native_feed_service_raw.lisp",
-        "tests/native_live_config_cache_raw.lisp",
         "tests/native_owner_bound_commit_raw.lisp"
       ],
       "implementation_note": "Lane adapter-retirement: FeedPublication and ConfigResult typed; fnn-owner-name-list and fnn-owner-config-names deleted; the feed flush consumes one sealed frame plan. Lane adapter-retirement-2: the submission path's publication admits the owner's two submission ids (the batch AM fault: the operator post's :control), with keystones for every outcome; the take returns a SubmissionTaken (six fn-owner-submit-* mailboxes retired; the transit decision's memberships are its own fn-owner-transit-groups); Capture takes checkpoint-pipeline-5's field names. ServedStep is fenced to lane owner-scheduler (its render plan replaces the served step's return)."
@@ -5000,7 +4992,6 @@
         "books/owner-prepare-served-ocl.lisp",
         "planning/evidence/prepare-served-2026-09-27.md",
         "tests/test_cursor_cold_poll.py",
-        "tests/cursor_cold_poll_recording.lisp",
         "planning/evidence/cursor-cold-poll-20261003/checks-final.json"
       ],
       "implementation_note": "Four service classes (control, reader, poster, transit) in the cyclic order control first; the class of a quantum is the socket it arrived on (a host observation), the pick and the bound are ACL2's (fn-osch-next). A quantum is one bounded semantic step, unchanged: the served read with its drain, one control request, one transit step; the journal writes stay inside. The render window is 65,536 octets; the live octet buffer fn-octets is input-only under the mutex; each connection renders into its own fn-octets$c object. The exposure charge (PRF-161) is decided in the same critical section as the step it admits (one gate pass per read). Slice 2 (PKT-688 (4), PRF-267, books/owner-commit-steps.lisp): on a log-route store the committer's batch is three steps, START and COMPLETE as :commit quanta and the log barrier between them with the owner released; while a batch is in flight only :commit and :inspect (the live status and health pages) are admitted, and a waiting :inspect runs within one quantum in either regime. Cursor cold dependencies now suspend to the existing mux timer and resume the retained plan, with first-miss deadline retained; shared-loop cold-await removed. Actual native-body I/O doubles discriminate suspension/continuation/refusal. Matching image and cache-independent progress remain open."
@@ -6596,7 +6587,6 @@
         "books/resource-syncer.lisp",
         "tests/acl2/resource-syncer-tests.lisp",
         "books/resource-operation.lisp",
-        "tests/native_syncer_pipeline_escape_raw.lisp",
         "tests/native_committer_actor_raw.lisp",
         "tests/native_syncer_typed_raw.lisp",
         "tests/test_native_owner.py"
@@ -6678,7 +6668,6 @@
       "evidence": [
         "host/native/web-host.lisp",
         "host/web-host.lisp",
-        "tests/native_web_reactor_raw.lisp",
         "tests/test_native_web.py",
         "tests/test_native_host_lifecycle.py",
         "planning/evidence/web-continuations-2026-10-03.md",
@@ -6744,8 +6733,6 @@
         "tests/acl2/page-read-startup-tests.lisp",
         "tests/acl2/page-read-startup-host-tests.lisp",
         "tests/test_native_heap_default_source.py",
-        "tests/native_heap_default_source.lisp",
-        "tests/native_bp_owner_startup_source.lisp",
         "planning/evidence/bp-startup-peer-join-20261003/result.json"
       ],
       "implementation_note": "Actual runtime captures derive a partial DEFAULT fixed-storage allowance. Five table constructors, guard cache, selected reusable decoder backing and native worker reservation precede Store open. Captured headroom and OS descriptor allowance bound registration capacity without imposing a stored-data ceiling. DATA8 preserves existing revision and tracks reserved worker count/readiness; native constructor and eager reserve must finish before readiness/free-roster publication. SCN-1130 owns actual native ordering and orphan cleanup. Complete collector/controller/source-graph, recovery transient and work coverage remains open; explicit complete cold policies refuse. Selected actual source guards pass for composed heap wrappers and decoded acquire. The launcher prepays the exact minimum DEFAULT backing before run, with whole-machine validation; offline and explicit cold-policy reservations stay unchanged. Base init-to-run affordability does not yet include this added DEFAULT requirement. Protected recovery workspace partition and nonempty Store composition remain open. SCN-1136 connects the actual heap probe and next-run diagnostic to this ACL2 DEFAULT contribution with normalized root, worker and cache captures. Expanded initialization-budget/reopen refinement remains open. STATUS/HEALTH now project actual accepted configuration cold/output descriptors through the shared launcher extension chain; actual output arithmetic and both diagnostic callers execute in SCN-1136. Independent peer file capture is propagated through launcher/next-run diagnostics and pre-open plan/native grant. The retained service owns its private bank before ledger construction; constructor escape retains calling custody. Snapshot and peer bank drained observations gate owner-run terminal close. Standalone BP now consumes the second capture and retains its bank through constructor escapes; snapshot/peer/executor drain observations gate settlement. SCN-1134 selected source cases pass. Current nonempty Store execution and complete funding remain open."

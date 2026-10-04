@@ -25,7 +25,7 @@
   (harness-stub-reached 'fnn-send-all "host/native/io.lisp"))
 ;;; ---- derived stubs: END ----
 ;;; Retained TCPCL physical-turn packet plus actual once drain consumer.
-(load "tests/native_tcpcl_retained_turn_raw.lisp")
+(load "tests/native_tcpcl_retained_turn_raw-mock.lisp")
 ;;; Diagnostic once waits for retained local jobs after EOF. The ordinary
 ;;; listener loop also runs its service turn independently of any new input.
 (defvar *pending* 0)

@@ -1,7 +1,7 @@
 ; SCN-1136: actual heap consumers with actual ACL2 DEFAULT arithmetic.
 ; Machine/config/base/output observations are explicit seams. This is neither
 ; complete allocation coverage nor execution of a saved image/Store recovery.
-(load "tests/native_operator_diagnostics_source.lisp")
+(load "tests/native_operator_diagnostics_source-mock.lisp")
 (in-package "ACL2")
 (defun natp (x) (and (integerp x) (<= 0 x)))
 (defun posp (x) (and (integerp x) (< 0 x)))

@@ -1,5 +1,5 @@
 ;;; Actual retained BP host consumer, with recording typed-bank boundary.
-(load "tests/native_tcpcl_retained_turn_raw.lisp")
+(load "tests/native_tcpcl_retained_turn_raw-mock.lisp")
 (in-package "ACL2")
 (defconstant +fnn-gc-nursery-octets+ 1)
 (defun len (x) (length x))
