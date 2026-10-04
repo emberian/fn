@@ -850,6 +850,32 @@ class Analyzer:
                 opaque_symbols[key] = Sym("#:opaque:" + expansion_id + ":" + str(len(opaque_symbols)))
             return opaque_symbols[key]
 
+        def mapcar_template(expr):
+            """`,@(mapcar (lambda (VAR) `TEMPLATE) PARAM)' with PARAM a macro
+            &body/&rest parameter: one TEMPLATE per argument, VAR bound to that
+            argument (fnn-unwind-cleanups' cleanup forms).  Anything else the
+            splice computes stays unexpanded, exactly as before."""
+            if not (isinstance(expr, list) and head(expr) == "mapcar" and len(expr) == 3):
+                return None
+            fn, seq = expr[1], expr[2]
+            if not (isinstance(fn, list) and head(fn) == "lambda" and len(fn) == 3
+                    and isinstance(fn[1], list) and len(fn[1]) == 1 and isinstance(fn[1][0], Sym)
+                    and isinstance(fn[2], list) and head(fn[2]) == "quasiquote" and len(fn[2]) == 2):
+                return None
+            var, items = str(fn[1][0]), binding.get(sym(seq))
+            if items is None or items[0] != "many":
+                return None
+            saved = binding.get(var)
+            expanded = []
+            for arg in items[1]:
+                binding[var] = ("one", arg)
+                expanded.append(sub(fn[2][1]))
+            if saved is None:
+                binding.pop(var, None)
+            else:
+                binding[var] = saved
+            return expanded
+
         def sub(t):
             if isinstance(t, list):
                 h = head(t)
@@ -863,6 +889,10 @@ class Analyzer:
                                 + "::" + getattr(t, "identity", "template"))
                 for item in t:
                     if isinstance(item, list) and head(item) == "unquote-splicing" and len(item) == 2:
+                        spliced = mapcar_template(item[1])
+                        if spliced is not None:
+                            out.extend(spliced)
+                            continue
                         name = sym(item[1])
                         if name in binding and binding[name][0] == "many":
                             if d.name in self.c.raw.get("gated_macros", {}) and name == "body":

@@ -71,6 +71,9 @@
 (defun fnn-tcl-spool-release (spool)
   (assert (eq spool :spool)) (incf *spool-releases*)
   (when (eq *mode* :spool-close-fault) (error "spool-close-fault")))
+;; The escape path of the macro below: the deployed helper and ACL2 decisions it calls.
+(load "tests/unwind_cleanups_prelude.lisp")
+(in-package "ACL2")
 (eval (source-definition (or (sb-ext:posix-getenv "FN_CLEANUP_HOST_SOURCE") "host/native/io.lisp") "defmacro" "fnn-unwind-cleanups"))
 (defvar *fnn-bps-release-debts* nil)
 (defun fnn-tcl-spool-close-observation () :closed)
