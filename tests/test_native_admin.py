@@ -203,9 +203,6 @@ class NativeAdminTests(unittest.TestCase):
         self.assertNotIn(b"generation differs", first_stderr + second_stderr)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class AdminSectionStructureTests(unittest.TestCase):
     """Lane ACTORS (rebuild step 0, the admin pilot): every owner quantum in
@@ -311,3 +308,7 @@ class AdminSectionBoundaryTests(unittest.TestCase):
     def test_a_fault_in_the_admin_section_stops_the_owner_as_a_fault(self):
         self.injected("admin", "fault", ("group", "create", "fn.injected"),
                       EXIT_FAULT, b"owner quantum fault; process stopped")
+
+
+if __name__ == "__main__":
+    unittest.main()
