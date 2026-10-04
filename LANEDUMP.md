@@ -4543,3 +4543,24 @@ S074/S090/S138/S151 and journal physical prepared fixtures remain source/proof
 versus current-image obligations, not completion claims. No live deployment.
 Protected recovery partition, expanded init/reopen and complete tariff remain
 open. Bounds catchup controller draft is preserved but activation unwired.
+
+## docs lane (lane/docs) — 2026-10-04
+
+Brief: scratchpad fn-briefs/COMMON.md + plan FN-SWARMPLAN-20261004 §3, §4 wave 0, §6.
+Owns: docs_check reds; docs/README.md, docs/engineering.md, CONTRIBUTING.md,
+CONTRIBUTORS.md; docs/articles/*.txt (fn.docs); docs/nodes/*.md and
+tools/runbooks/public-node/. Not: AGENTS.md, planning/how-we-work.md,
+planning/now.md (integrator's — proposals by message). No ACL2, no builds,
+nothing executed on any node.
+
+| # | deliverable | sha | docs_check | state |
+|---|---|---|---|---|
+| D1 | docs_check reds (specs/nntp.md table; tests/acl2/docs-operator-grammar-tests.lisp) | d77d4f433 | 0 failures | in the integrator's wave-0 batch; test book certifies there |
+| D2 | guides: CONTRIBUTING 843→450, CONTRIBUTORS 761→341, docs/README 142→101, docs/engineering 1291→493 words | 56043bab6 | 0 failures | READY |
+| D4 | docs/nodes/hbox.md rewritten, docs/nodes/fsn1.md new; tools/runbooks/public-node/ hbox-hosted plan removed, peering.md + exposure.policy corrected | e23781bec | 0 failures | READY; nothing executed on any node |
+| D3 | docs/articles/ (fn.docs) cut toward a quarter | — | — | in progress |
+
+Notes for the integrator: comments still naming removed files (no behaviour):
+books/store-mount-identity.lisp:660 (tools/runbooks/public-node, dir still
+exists), tests/test_native_tls_reload.py:97 (fn-cert-install.sh). Lane notes
+live here only (build/coordinator/lanedumps/docs.md untracked, per integrator).
