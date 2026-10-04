@@ -576,12 +576,18 @@
                                fn-replay-composite-record
                                fn-sn-identity-context fn-replay-identity-step))))
 
-; -by-definition: the otherwise branch of fn-sn-file-step.
+; -by-definition: the otherwise branch of fn-sn-file-step.  On a store state:
+; fn-sn-io is unconditional since lane carrier S1 (it rebuilds the store from
+; its fields, which is the store itself when the store is a state,
+; fn-snt-state-reconstruction); off the state it was the identity only by the
+; deleted (mbe :logic (fn-sn-statep s) :exec t) arm, which a host that keeps
+; A-HOST never reaches (specs/node-functionality.md).
 (defthm fn-snt-unknown-io-is-no-op
-  (implies (not (member-equal operation
+  (implies (and (fn-sn-statep s)
+                (not (member-equal operation
                   '(:start-frontier :frontier-file :frontier-replace
                     :frontier-directory :record-file :record-link
-                    :record-directory :recovery-barrier)))
+                    :record-directory :recovery-barrier))))
            (equal (fn-sn-io s operation result) s))
   :rule-classes nil
   :hints (("Goal" :use (fn-snt-state-reconstruction)
@@ -596,7 +602,7 @@
             (equal operation :record-file) (equal operation :record-link)
             (equal operation :record-directory) (equal operation :recovery-barrier))
     :use fn-snt-unknown-io-is-no-op
-    :in-theory (disable fn-snt-relation fn-sn-io))))
+    :in-theory (disable fn-snt-relation fn-sn-io fn-sn-statep))))
 
 ; Events are already-decoded logical data, never a raw external reader format.
 ; This dispatcher simply selects the actual wrapper operations.  It does not
@@ -803,13 +809,9 @@
 (local
  (defthm fn-snt-files-of-io
    (equal (fn-sn-files (fn-sn-io s operation result))
-          (if (fn-sn-statep s)
-              (fn-sn-file-step (fn-sn-files s) operation result)
-            (fn-sn-files s)))
+          (fn-sn-file-step (fn-sn-files s) operation result))
    :hints (("Goal"
-            :in-theory '(fn-sn-io
-                         fn-sn-files-of-fn-sn-update
-                         fn-sn-files-of-fn-sn-with-event-index)))))
+            :in-theory '(fn-sn-io fn-sn-files-of-fn-sn-update)))))
 
 (defthm fn-snt-io-records-prefix
   (implies (fn-sn-statep s)

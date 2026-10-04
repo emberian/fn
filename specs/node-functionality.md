@@ -895,7 +895,8 @@ comment.
 (`books/nntp.lisp:1368`) is unreachable today, because the reader never
 enters `:article` mode, and wrong once POST lands, because an `:article`
 event is then a body, not a syntax error. Mark `unreachable-in-composition`
-now and route the event in C1-06. `fn-snt-unknown-io-is-no-op` and
+now and route the event in C1-06. `fn-snt-unknown-io-is-no-op` (stated
+under `fn-sn-statep` since lane carrier S1 made `fn-sn-io` unconditional) and
 `fn-node-malformed-step-is-no-op` are reachable only from a host that
 violates A-HOST; keep them, since F_node must be total on those inputs
 (section 3.1), but they are robustness lemmas, not semantics.

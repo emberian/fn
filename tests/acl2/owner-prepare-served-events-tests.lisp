@@ -267,6 +267,8 @@
            :use (fn-psrv-rcon-io-preserves-invariant
                  g12b-rcon-ocfg-io-is-owner-with-store
                  (:instance fn-snt-unknown-io-is-no-op (s (fn-own-store (fn-ocfg-owner oc))))
+                 ; its store-state hypothesis (lane carrier S1)
+                 fn-lgoc-invariant-statep
                  (:instance fn-psrv-owner-with-store-preserves-invariant
                             (st (fn-own-store (fn-ocfg-owner oc))))
                  fn-lgoc-ocl-relation-cst)
