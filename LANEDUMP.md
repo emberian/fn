@@ -5045,3 +5045,23 @@ Regenerate interfaces.json (interface_emit --write: stale against declarations),
 - Each row needs its reply-octets bound over the factory as a theorem, or a proof-owed item in the PRF-1316 style; prefer the theorem (the factories return fn-nntp-single lines).
 - Witness style: tests/acl2/output-tariff-family-tests.lisp (ground defthms over the *tfm-* catalog fixture, *tfm-as* session selecting fn.test current 3); the producer's stobj formals rule out defteeth witnesses there.
 - Gate: certify_books.py --recertify books/output-tariff-families (+ tests), host_check --load, cost_obligations.py count.
+
+## access-check (2026-10-04)
+
+Verdict: FILL-GROUP-ACCESS-PRIVATE-LEAK and FILL-MODERATION-ENVELOPE-READABLE are ONE REAL LEAK (HIGH).
+Cause: 6a5427e9e (10-03) switched the host read to fn-av-mca-read-span; the generator's hand AUTH template
+sent read-restricted sessions to the catalog arms, which read fn-cat, not the projected view.
+Every Message-ID retrieval form (STAT/OVER/HDR/XHDR/XPAT/ARTICLE/HEAD/BODY) answered excluded articles; by number,
+a readable article's Xref named excluded groups. Deployed 09-28 sources (902de4882, 6702ff8b2 in hbox archive)
+have no served-available-read; their restricted route is the reference. Blocks any redeploy from dev until landed.
+
+Landed on lane/access-check (pushed):
+- 85cf107fa generator fix (tools/available_read_emit.py; books/served-available-read.lisp regenerated) + native test changes
+- e803f40f8 PRF-1328 keystone book books/served-available-access.lisp + teeth tests/acl2/served-available-access-tests.lisp
+- certify-20261004T203233Z-197345 (cloud2 run-20261004T203128Z-b5d1): 7 passed, 0 failed
+- native cloud2 over set 6107ceb56: red acc-red (both images, 2 modules FAILED) -> green acc-green (developer overlay, both OK).
+  production image cannot be overlaid (ACL2 events change): next image batch. Evidence planning/evidence/access-check-2026-10-04/.
+
+Continuation (not started; context cap): ACCESS-REVOKE-PINNED (repair item, design notes there): access tightening
+applies at once to open connections (coordinator ruling). Red->green = test_source_peer_reader_access_preserves_transit
+old-socket assertions; amend specs/reconfiguration.md 2.3.

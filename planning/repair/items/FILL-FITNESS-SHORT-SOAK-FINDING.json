@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Red on set 55ff708a6: cloud2:/tank/fn/scratch/fill-wt/native-fill-resil-cloud2-55 (scenario_suite run resilience, --allow-skips, jobs 3; logs/test-tests.test_native_fitness.log). Soak timing on a shared-vCPU box can raise a finding: confirm on hbox before filing as a regression.",
+ "file": "tests/test_native_fitness.py",
+ "id": "FILL-FITNESS-SHORT-SOAK-FINDING",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "tests.test_native_fitness test_a_short_soak_has_no_finding_and_the_journal_replays: the soak reports findings (a health finding 18 ... 'observed (the store was ...') where none are expected",
+ "updated": "2026-10-04T20:01:42Z"
+}
