@@ -763,6 +763,71 @@
       "class": "unexpected",
       "packet": "PKT-504 (b)",
       "note": "E7 union fc12333a actual fnn-bpnode-forward-contact reach exposes the loop implementation of the already tracked forward scan. PKT-808 retains the per-session scan and 1,000-bundle drain evidence; no completion claim."
+    },
+    "fn-bpfc-ordered reverse F": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "check-sweep 2026-10-04: first reported at books/bp-forward-cursor.lisp:61 (walk of the retained-state dimension F), reached via fnn-command-bp-node -> fn-bpfc-turn -> fn-bpfc-ordered; owning book books/bp-forward-cursor.lisp, last changed ab8e639dd. No carried invariant or measured bound is cited and no packet owns it yet; the owner files one or removes the traversal."
+    },
+    "fn-bpfc-scan recursion F": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "check-sweep 2026-10-04: first reported at books/bp-forward-cursor.lisp:37,43 (walk of the retained-state dimension F), reached via fnn-command-bp-node -> fn-bpfc-turn -> fn-bpfc-scan; owning book books/bp-forward-cursor.lisp, last changed ab8e639dd. No carried invariant or measured bound is cited and no packet owns it yet; the owner files one or removes the traversal."
+    },
+    "fn-bpfc-turn nthcdr F": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "check-sweep 2026-10-04: first reported at books/bp-forward-cursor.lisp:71 (walk of the retained-state dimension F), reached via fnn-command-bp-node -> fn-bpfc-turn; owning book books/bp-forward-cursor.lisp, last changed ab8e639dd. No carried invariant or measured bound is cited and no packet owns it yet; the owner files one or removes the traversal."
+    },
+    "fn-bpfc-turn#guard true-listp F": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "check-sweep 2026-10-04: first reported at books/bp-forward-cursor.lisp:69 (walk of the retained-state dimension F), reached via fnn-command-bp-node -> fn-bpfc-turn#guard; owning book books/bp-forward-cursor.lisp, last changed ab8e639dd. No carried invariant or measured bound is cited and no packet owns it yet; the owner files one or removes the traversal."
+    },
+    "fn-bpnf-find-arrival recursion F": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "check-sweep 2026-10-04: first reported at books/bp-node-fragment-replacement.lisp:37 (walk of the retained-state dimension F), reached via fnn-bps-fragment-effects -> fn-bpnf-find-arrival; owning book books/bp-node-fragment-replacement.lisp, last changed ebb1b1707. No carried invariant or measured bound is cited and no packet owns it yet; the owner files one or removes the traversal."
+    },
+    "fn-cnode-config-jrecs-loop recursion N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "check-sweep 2026-10-04: first reported at books/node-config.lisp:847 (walk of the retained-state dimension N), reached via fn-owner-cfg-native-admin-authorize-carried -> fn-olau-authorize-carried -> fn-olau-authorize -> fn-olau-publication-authorize -> fn-cnode-config-replay -> fn-cnode-config-jrecs -> fn-cnode-config-jrecs-loop; owning book books/node-config.lisp, last changed 609473ad4. No carried invariant or measured bound is cited and no packet owns it yet; the owner files one or removes the traversal."
+    },
+    "fn-nls-store-seen len N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "check-sweep 2026-10-04: first reported at books/native-live-status.lisp:516 (walk of the retained-state dimension N), reached via fn-native-live-status-host-offline -> fn-nls-offline-report -> fn-nls-store-seen; owning book books/native-live-status.lisp, last changed 3dee57263. No carried invariant or measured bound is cited and no packet owns it yet; the owner files one or removes the traversal."
+    },
+    "fn-olau-candidatep len N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "check-sweep 2026-10-04: first reported at books/config-owner-live-authorize.lisp:57 (walk of the retained-state dimension N), reached via fn-owner-cfg-native-admin-authorize-carried -> fn-olau-authorize-carried -> fn-olau-authorize -> fn-olau-publication-authorize -> fn-olau-candidatep; owning book books/config-owner-live-authorize.lisp, last changed b7c11a9a0. No carried invariant or measured bound is cited and no packet owns it yet; the owner files one or removes the traversal."
+    },
+    "fn-oret-obligation-words len N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "check-sweep 2026-10-04: first reported at books/owner-retire.lisp:60 (walk of the retained-state dimension N), reached via fn-owner-retire-report -> fn-oret-report -> fn-oret-obligation-words; owning book books/owner-retire.lisp, last changed de20312ba. No carried invariant or measured bound is cited and no packet owns it yet; the owner files one or removes the traversal."
+    },
+    "fn-oret-report len N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "check-sweep 2026-10-04: first reported at books/owner-retire.lisp:76 (walk of the retained-state dimension N), reached via fn-owner-retire-report -> fn-oret-report; owning book books/owner-retire.lisp, last changed de20312ba. No carried invariant or measured bound is cited and no packet owns it yet; the owner files one or removes the traversal."
+    },
+    "fn-own-take-rev recursion N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "check-sweep 2026-10-04: first reported at books/owner.lisp:1034 (walk of the retained-state dimension N), reached via fn-owner-recover-from-store-open -> fn-ock-install -> fn-own-start -> fn-own-prefix-archive -> fn-own-take -> fn-own-take-rev; owning book books/owner.lisp, last changed 9b7508ccb. No carried invariant or measured bound is cited and no packet owns it yet; the owner files one or removes the traversal."
+    },
+    "fn-rcl-bp-index recursion N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "check-sweep 2026-10-04: first reported at books/store-reclaim-holders.lisp:124 (walk of the retained-state dimension N), reached via fn-store-reclaim-context -> fn-xpy-ctx -> fn-rclp-ctx-expiring -> fn-rcl-store-holders -> fn-rcl-bp-holders -> fn-rcl-bp-index; owning book books/store-reclaim-holders.lisp, last changed ce8cf421d. No carried invariant or measured bound is cited and no packet owns it yet; the owner files one or removes the traversal."
+    },
+    "fn-rcl-forward-subjects recursion N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "check-sweep 2026-10-04: first reported at books/store-reclaim-holders.lisp:112 (walk of the retained-state dimension N), reached via fn-store-reclaim-context -> fn-xpy-ctx -> fn-rclp-ctx-expiring -> fn-rcl-store-holders -> fn-rcl-bp-holders -> fn-rcl-forward-subjects; owning book books/store-reclaim-holders.lisp, last changed ce8cf421d. No carried invariant or measured bound is cited and no packet owns it yet; the owner files one or removes the traversal."
     }
   },
   "note": "Every traversal of retained state that tools/hot_path_check.py finds on a path from a host entry, keyed 'function primitive dimension', with the packet that owns it (planning/backlog-2026-09-25.md; PKT-448's lettered items are the finds no earlier packet owned). This is a list, not a baseline: every entry here is a find the report prints, whatever its class. --strict fails on an unexpected find not listed here (NEW) and on a listed key that no longer occurs (STALE): remove an entry by removing the walk, in the same commit. 'confirmed' names the scaling row (planning/evidence/hot-path-checker-2026-09-26.md) that measured it; absent means static only."
