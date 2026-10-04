@@ -145,16 +145,21 @@
            (or (equal (fn-sn-file-step files operation result) files)
                (and (equal (fn-sf-phase files) :record-attempted)
                     (equal operation :record-directory)
-                    (equal result :ok)
-                    (fn-sf-statep files))))
+                    (equal result :ok))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-sn-file-step fn-sf-start-frontier fn-sf-frontier-file-result
                                    fn-sf-frontier-replace-result fn-sf-frontier-dir-result
                                    fn-sf-record-file-result fn-sf-record-link-result fn-sf-record-dir-result
                                    fn-sf-recovery-barrier)
                                   (fn-sf-statep)))))
+; The record-directory step completes a record; the completion record is the
+; candidate only on a store state (fn-cstp-completion-record-after-dir: off
+; the state the history may hold an earlier record with the same pair, and
+; fn-sn-io has no identity arm since lane carrier S1).  Every other io step
+; keeps the bound unconditionally.
 (defthm fn-onb-inflight-fitp-of-io
-  (implies (fn-onb-inflight-fitp s)
+  (implies (and (fn-onb-inflight-fitp s)
+                (or (fn-sn-statep s) (not (equal operation :record-directory))))
            (fn-onb-inflight-fitp (fn-sn-io s operation result)))
   :hints (("Goal" :in-theory (e/d (fn-sn-io fn-onb-inflight-fitp)
                                   (fn-sn-file-step fn-sn-statep fn-snb-record-fitp fn-held-p
@@ -200,7 +205,8 @@
            :use ((:instance fn-onb-inflight-fitp-of-prepare)))))
 
 (defthm fn-onb-store-boundp-of-io
-  (implies (fn-onb-store-boundp s)
+  (implies (and (fn-onb-store-boundp s)
+                (or (fn-sn-statep s) (not (equal operation :record-directory))))
            (fn-onb-store-boundp (fn-sn-io s operation result)))
   :hints (("Goal" :in-theory (e/d (fn-sn-io fn-onb-store-boundp)
                                   (fn-onb-node-boundp fn-sn-file-step fn-sn-statep))
