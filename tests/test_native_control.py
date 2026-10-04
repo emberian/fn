@@ -90,7 +90,7 @@ class NativeControlCutGateTests(unittest.TestCase):
     was gated inside the owner's serialized action and answered 3 with nothing
     written (F5); four other selectors had no gate (F6).  These need no image.
     The deployed functions (fnn-main, the readers, the control reply, the
-    stop) are run against stubs by tests/native_developer_selectors_raw.lisp,
+    stop) are run against stubs by tests/native_developer_selectors_raw-mock.lisp,
     through tests/test_native_owner.py.
     """
 

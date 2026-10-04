@@ -1,6 +1,6 @@
 ;;; Actual owner loan/close functions over recording physical and typed leaves.
 ;;; This checks native ordering; it is not typed/controller equivalence evidence.
-(load "tests/native_output_response_lease_raw.lisp")
+(load "tests/native_output_response_lease_raw-mock.lisp")
 (in-package "ACL2")
 
 ;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
