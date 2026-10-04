@@ -1,3 +1,23 @@
+# Lifecycle reader (read-life) — Opus (2026-10-04)
+
+Tree `build/lanes/read-life`, branch `lane/read-life` (origin), from `origin/dev` 65389a90e. Running findings: `build/coordinator/lanedumps/read-life.md`.
+
+## Landed on this branch (host only, no books)
+- 4069968a7 + bb3d052fc: `fnn-log-make-durable` (io.lisp). A failed rotate-durable barrier is now serialized, never retried, fences the kernel and answers uncertain. The batch fence handles it as its own failure. Before: in the publication thread it was a job failure, and the next batch fence retried the fsync and acknowledged. Witness `tests/native_log_rotation_durable_raw.lisp`: red at 65389a90e, PASS after.
+- 8d70026de: an EIO reading an intact checkpoint after a compaction is a fault naming the read, no longer the refusal `reason=checkpoint-damaged`. `fnn-log-open-plan-check` is shared by `fnn-recover-log` and `log scan-store`. Witness `tests/native_checkpoint_read_error_raw.lisp`: red at 19469e6b1, PASS after.
+- 19469e6b1: ledger RL-01 (design: a failed log barrier's batch is recovered from the page cache and never rewritten; the same holds for the FNFD journal and the S045 read-back) and RL-02 (a publication that ends before NEXT leaves `fn-owner-sco-inflight` set for the run).
+
+## Handed
+- retire (a6c56dc9790ceb96c): the retire's final checkpoint is started async and then abandoned by the stop it triggers. Filed as RET-RETIRE-CHECKPOINT-ABANDONED; lane/retire@911c51cad now asserts the CHECKPOINT line.
+
+## Gates
+- Raw harnesses as above. `native_program_check` and `tests.test_native_cut_map` are green. `check-fast-lane` has 3 reds, all present at base and none touching this diff (merge_registry HST-003, reach_check NEW in other books, lock R1b rows in mux/owner/pull). Native red/green on an image is owed: test_native_log_compaction, test_native_checkpoint_auto, test_native_image_differential.
+
+## Continuation
+1. Native run of the three selectors on the integrator's next image.
+2. Not yet read in depth: import/init staged publication (init lane), extent/window release (window-read lane), the inline commit paths' I/O under the owner mutex (noted, not filed).
+3. RL-01 and RL-02 need owners. RL-02's fix needs a deferral for a named refusal, so it is not a release alone.
+
 # Cold-line lane — Opus (2026-10-04)
 
 Tree `build/lanes/cold-line`, branch `lane/cold-line` (origin), from `origin/dev` d4e53323c, merged `origin/next` 898969368 (nntp-auth fix). Ledger: `sl-cold-line-quanta` (owner cold-line), proof-owed `CL-OWED-HDR-CURSOR-FRAME`, `CL-OWED-NEWNEWS-DEMAND`, `CL-PRE-PRODUCTIVE-READ-NEWNEWS`.
