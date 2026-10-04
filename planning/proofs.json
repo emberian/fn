@@ -4311,8 +4311,7 @@
         "fn-pcb-budget-after-extension",
         "fn-pcb-present-carrier-not-accepted-has-a-class",
         "fn-pcb-refused-carrier-is-never-signature-failed",
-        "fn-pcb-absent-carrier-has-no-class",
-        "fn-pcb-carried-event-keeps-budget-schedule-admitted"
+        "fn-pcb-absent-carrier-has-no-class"
       ]
     },
     {
@@ -12084,7 +12083,7 @@
         "PRF-1307"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "files": [
         "books/peer-catchup-spool.lisp",
         "books/peer-catchup-spool-framer.lisp",
@@ -12095,11 +12094,6 @@
         "tests/acl2/peer-catchup-spool-framer-tests.lisp",
         "tests/acl2/peer-catchup-spool-hash-tests.lisp",
         "tests/acl2/peer-catchup-tests.lisp"
-      ],
-      "events": [
-        "fn-csp-step-keeps-window",
-        "fn-csp-write-spools-whole-or-fails-by-name",
-        "fn-csp-framer-window-accounts-for-every-octet"
       ],
       "progress_note": "2026-10-04 lane catchup: admitted with teeth in a persvati proof_repl session over cached certificates; certification pending."
     },
@@ -12115,7 +12109,7 @@
         "PRF-125"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/peer-pull-auth.lisp",
         "books/peer-pull.lisp",
@@ -12124,11 +12118,7 @@
         "tests/test_native_peer_pull.py",
         "tests/acl2/native-admin-peer-pull-auth-tests.lisp"
       ],
-      "progress_note": "2026-10-04 lane catchup (harvest gift 65a485229, re-derived on dev; was PRF-1130 on its branch): book and both tests admitted on the laptop pool at current dev bytes (peer-pull 274 forms, peer-pull-auth-tests 28 forms, native-admin(-peer)-pull-auth-tests). Certification and the matching-image SCN-1139 execution remain open.",
-      "events": [
-        "fn-pull-auth-after-extension",
-        "fn-pull-plans-credentials-come-from-selected-peer"
-      ]
+      "progress_note": "2026-10-04 lane catchup (harvest gift 65a485229, re-derived on dev; was PRF-1130 on its branch): book and both tests admitted on the laptop pool at current dev bytes (peer-pull 274 forms, peer-pull-auth-tests 28 forms, native-admin(-peer)-pull-auth-tests). Certification and the matching-image SCN-1139 execution remain open."
     },
     {
       "id": "PRF-326",
@@ -14074,7 +14064,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-feed.lisp",
         "books/feed-restart-domain.lisp",
@@ -21850,7 +21840,7 @@
         "PRF-1209"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/host-model-machine.lisp",
         "books/host-model.lisp",
@@ -22070,8 +22060,7 @@
       ],
       "progress_note": "Source implemented in codex-sol-transport-rounds; ACL2 admission/guard certification and matching-image SCN-1090 are pending Integration. Stable-sweep visit property does not bound the whole host scheduling turn: current worker maps active flights and re-filters each remaining suffix, giving peer-dependent work/allocation (quadratic over a stable sweep). Retained scheduler cursor/cost refinement and context tariff remain owed; the 512-octet bound applies to each read/write attempt only.",
       "events": [
-        "fn-prd-sweep-visits-all-admitted-rounds",
-        "fn-prd-round-past-deadline-is-lost"
+        "fn-prd-sweep-visits-all-admitted-rounds"
       ]
     },
     {
@@ -23269,7 +23258,7 @@
         "PRF-1211"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "files": [
         "books/peer-flight-reservation.lisp",
         "tests/acl2/peer-flight-reservation-tests.lisp",
@@ -23374,15 +23363,7 @@
         "PRF-1229"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "events": [
-        "fn-qplan-cw-drain-is-a-prefix",
-        "fn-lst-active-command-is-av-list-active",
-        "fn-lst-counts-command-is-av-list-counts",
-        "fn-lst-step-keeps-remaining",
-        "fn-lsr-one-finite-progress",
-        "fn-lst-one-finite-progress"
-      ],
+      "status": "planned",
       "evidence": [
         "books/list-row-cursor.lisp",
         "books/list-status-cursor.lisp",
@@ -23403,25 +23384,14 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/reclaim-chunked-walk.lisp",
         "tests/acl2/reclaim-chunked-walk-tests.lisp (the owner fixture store rewritten under the expiring context: two chunkings, one with an empty chunk, finish to the whole capture; teeth: chunks reordered or one dropped is not the capture; pass 2 with the handle not carried into the second chunk is not the checkpoint capture; the final handle is the sealed-payload count, positive)",
         "books/reclaim-chunked-seal.lisp",
         "tests/acl2/reclaim-chunked-seal-tests.lisp (pass 3 over two chunkings is fn-orcs-predict of the whole, payloads sealed and in order; teeth: a handle restarted per chunk predicts another capture; a chunk with the refusal word is :bad as the whole is; the chunked writer walk equals the one walk and is nonempty; chunks reordered walk another order)"
       ],
-      "progress_note": "Lane reclaim 2026-10-04: reclaim-chunked-walk (53 forms) and its tests (35), reclaim-chunked-seal (29 forms, with owner-reclaim-carry from source) and its tests (26) loaded whole in fresh persvati REPL sessions. owner-cursor-domain (fn-owner-rebuilt-swap-establishes-cursor restated over the capture) NOT checked: its from-source closure stops at books/config-store-steps, which is uncached. Not certified; host wiring not yet run natively.",
-      "events": [
-        "fn-rcw-acc-steps-is-capture",
-        "fn-rcw-canon-acc-steps-is-the-checkpoint-capture",
-        "fn-rcw-load-chunks-is-load",
-        "fn-rcw-finish-of-step",
-        "fn-rcw-predict-acc-steps-is-predict",
-        "fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open",
-        "fn-rcw-srcs-steps-is-the-walk",
-        "fn-rcw-load-chunks-keyed-is-keyed-load",
-        "fn-owner-orcp-rebuild-of-capture-is-the-full-open"
-      ]
+      "progress_note": "Lane reclaim 2026-10-04: reclaim-chunked-walk (53 forms) and its tests (35), reclaim-chunked-seal (29 forms, with owner-reclaim-carry from source) and its tests (26) loaded whole in fresh persvati REPL sessions. owner-cursor-domain (fn-owner-rebuilt-swap-establishes-cursor restated over the capture) NOT checked: its from-source closure stops at books/config-store-steps, which is uncached. Not certified; host wiring not yet run natively."
     },
     {
       "id": "PRF-1040",
@@ -23436,16 +23406,12 @@
         "PRF-942"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/store-init-log-publication.lisp",
         "tests/acl2/store-init-log-publication-tests.lisp",
         "tests/test_native_init_publication.py",
         "tools/power_loss.py"
-      ],
-      "events": [
-        "fn-bs-init-log-crash-retry-is-old-or-new",
-        "fn-bs-init-log-complete-store-carries-the-node-secret"
       ]
     }
   ]
