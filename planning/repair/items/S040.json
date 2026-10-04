@@ -9,13 +9,15 @@
  "id": "S040",
  "line": "794",
  "locus": "store-books",
- "notes": [],
+ "notes": [
+  "10-04 13:57 already fixed by 866590229: stage+rename quarantine in fn-xw-quarantine-copy and native fnn-log-quarantine; existing NAME kept as complete copy"
+ ],
  "owner": "sweep-store",
  "reviewer": "host/store-write-host.lisp:782-800: the target is quarantine/<segment>.damaged-at-<offset> (books/store-log-damage.lisp:267-271), which depends only on the segment and the damage offset. It is opened with fn-hx-create-excl, and a partial file is never unlinked. In fn-xw-log-recover (803-826) the quarantine finishes before the tail is zeroed at 819-822. If the process dies, or the copy or fsync fails, after the target exists but before the zeroed tail is durable, the segment is still damaged at the same offset. Every retry then computes the same name and fails with EEXIST through fn-xw-os. The native fnn-log-quarantine (io.lisp:6666-6687) does the same thing: O_EXCL, unwind-protect closes but never unlinks, and it has no handling for an existing file. The operator has to delete the file by hand, and nothing records whether it is a complete copy.",
  "scenario": "An operator runs `store ROOT recover --repair truncate 000001.log:N`. Either the copy fails partway (EIO or ENOSPC), or the process dies after quarantine/000001.log.damaged-at-N is created but before the tail is zeroed and fdatasync'd (the log-truncated or log-recovered cut). The segment is still damaged at N, so every retry computes the same name, the O_EXCL create fails with EEXIST, and recover reports an OS error every time. The store cannot be repaired until someone finds and deletes a partial quarantine file by hand, and nothing says whether that file is complete.",
  "severity": "medium",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "refuted",
  "title": "Confirmed log repair wedges permanently after an interrupted quarantine (deterministic name, O_EXCL, no cleanup)",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-04T17:57:08Z"
 }
