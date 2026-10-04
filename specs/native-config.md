@@ -127,7 +127,9 @@ grounded funding; this grammar does not establish them.
 An absent cold policy selects DEFAULT's partial native startup for the
 NNTP/HTTP service through `fnn-owner-run`. Before Store
 recovery registers its first file, ACL2 derives a pool plan from the observed
-dynamic-space reservation and occupancy, protected Store/output allowance,
+dynamic-space reservation and occupancy, protected Store/output allowance
+(the Store's at its on-disk observation, the one the launcher's figure was
+sized by),
 selected worker backing, cache capacity and the OS descriptor limit. Native
 startup installs that plan, prepares fixed tables and guards, then starts its
 persistent executor. This covers the selected fixed storage inventory; it

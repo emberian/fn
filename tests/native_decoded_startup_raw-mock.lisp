@@ -86,15 +86,24 @@
  (declare (ignore args))
  (push subject *startup-events*)
  (case subject
+  ((fn-owner-page-read-default-worker-constructionp fn-owner-page-read-default-worker-ready)
+   ;; Startup slot checks are not cold dispatches (cold-start, 10-04: off
+   ;; the roster, they faulted every owner start of d5b0b9100).
+   (error "startup slot check ~s dispatched cold" subject))
+  ((fn-owner-page-window-executor-release fn-owner-page-window-executor-settle-cancelled)
+   (when *release-cut* (error "torn settlement"))
+   (list :released :idle-row :same-pool))
+  (otherwise (error "unexpected startup cold ~s" subject))))
+(defun fnn-core-page-read-pool (subject &rest args)
+ (declare (ignore args))
+ (push subject *startup-events*)
+ (case subject
   (fn-owner-page-read-default-worker-constructionp (list (not (member *startup-cut* '(:reservation :already-ready)))))
   (fn-owner-page-read-default-worker-ready
    (assert (fnn-cold-worker-thread (first *fnn-cold-workers*)))
    (assert (not (eq *fnn-cold-free* (first *fnn-cold-workers*))))
    (list *startup-word* :same-pool))
-  ((fn-owner-page-window-executor-release fn-owner-page-window-executor-settle-cancelled)
-   (when *release-cut* (error "torn settlement"))
-   (list :released :idle-row :same-pool))
-  (otherwise (error "unexpected startup cold ~s" subject))))
+  (otherwise (error "unexpected startup pool ~s" subject))))
 ;; The free stack is populated only after constructed/reserved scratch and
 ;; the actual private thread both exist. Failed readiness still joins it.
 (let ((*decoded-job* (vector :scratch)) (*startup-events* nil))

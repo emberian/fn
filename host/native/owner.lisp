@@ -8520,6 +8520,10 @@ the caller joins any partial executor before relinquishing run authority."
   (let* ((profile (fnn-heap-store-profile root))
          (core (fnn-heap-image-observation))
          (peer (fnn-peer-flight-profile root))
+         ;; The store on disk, observed as the launcher's probe observed it
+         ;; (host/native/heap.lisp fnn-heap-operator-profile): its figure
+         ;; sized the open by it, so the protected allowance is the same.
+         (observed (and profile (fnn-heap-history-observation root profile)))
          (plan (fnn-core 'fn-prstartup-default-plan-with-peer
                          (sb-ext:dynamic-space-size) (cdr core) profile core
                          (fnn-gc-nursery-octets) cold-resources output-resources
@@ -8527,12 +8531,13 @@ the caller joins any partial executor before relinquishing run authority."
                          (fnn-extent-cache-limit)
                          ;; OS observation, not a profile/data ceiling. Linux
                          ;; numbers NOFILE7; Darwin and the BSDs number it8.
-                         (fnn-heap-rlimit #+linux 7 #-linux 8) peer))
+                         (fnn-heap-rlimit #+linux 7 #-linux 8) peer observed))
          (peer-grant
            (when peer
              (fnn-core 'fn-prstartup-peer-native-grant
                        (sb-ext:dynamic-space-size) profile core (fnn-gc-nursery-octets)
-                       output-resources max-connections plan peer (fnn-heap-observations)))))
+                       output-resources max-connections plan peer (fnn-heap-observations)
+                       observed))))
     (case (fnn-core 'fn-prstartup-status plan)
       (:admitted
        (unless (fnn-core 'fn-prstartup-planp plan)
