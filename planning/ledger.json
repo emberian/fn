@@ -1921,6 +1921,12 @@
     "tests/acl2/peer-invite-administrator-tests",
     "books/tls-reload",
     "tests/acl2/tls-reload-tests",
+    "books/wire-grammar",
+    "tests/acl2/wire-grammar-tests",
+    "books/wire-family-fncu",
+    "tests/acl2/wire-family-fncu-tests",
+    "books/wire-family-identity",
+    "books/wire-export",
     "books/control-visible",
     "tests/acl2/control-visible-tests",
     "books/control-visible-indexed",
@@ -2529,26 +2535,26 @@
     "tests/acl2/withdrawal-index-carried-tests"
   ],
   "totals": {
-    "books": 3019,
-    "books_in_root_closure": 2843,
-    "roots": 2525,
-    "theorems": 39740,
-    "functions": 25605,
-    "assert_events": 27308,
+    "books": 3025,
+    "books_in_root_closure": 2849,
+    "roots": 2531,
+    "theorems": 39970,
+    "functions": 25699,
+    "assert_events": 27320,
     "must_fails": 2686,
     "prover_refusals": 0,
-    "encapsulates": 252,
+    "encapsulates": 255,
     "guards": {
-      "verified": 4048,
-      "declared-off": 3324,
-      "default-guarded": 14117,
+      "verified": 4052,
+      "declared-off": 3339,
+      "default-guarded": 14192,
       "default-unguarded": 4116
     },
-    "suspect_theorems": 1447,
-    "export_hygiene_warnings": 422,
+    "suspect_theorems": 1459,
+    "export_hygiene_warnings": 425,
     "enabled_projection_warnings": 78,
     "teeth_form_warnings": 294,
-    "include_hygiene_warnings": 4005,
+    "include_hygiene_warnings": 4009,
     "host_names_warnings": 3504,
     "hand_written_record_warnings": 19
   },
@@ -55647,6 +55653,134 @@
       "read_error": null
     },
     {
+      "book": "books/wire-export.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 44,
+      "guards": {
+        "verified": 0,
+        "declared-off": 12,
+        "default-guarded": 32,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 19,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "outcome-class",
+        "wire-family-fncu",
+        "wire-family-identity",
+        "wire-grammar"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/wire-family-fncu.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 31,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "consumer-position",
+        "wire-grammar"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/wire-family-identity.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "wire-grammar"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/wire-grammar.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 196,
+      "functions": 48,
+      "guards": {
+        "verified": 4,
+        "declared-off": 3,
+        "default-guarded": 41,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 4,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 2,
+      "includes": [
+        "frame-octets",
+        "octet-text",
+        "utf8"
+      ],
+      "system_includes": [
+        "arithmetic-5/top",
+        "arithmetic-5/top"
+      ],
+      "suspects": [
+        "fn-wg-encode-opener-base64-lines",
+        "fn-wg-encode-opener-bytes",
+        "fn-wg-encode-opener-const",
+        "fn-wg-encode-opener-enum",
+        "fn-wg-encode-opener-frame",
+        "fn-wg-encode-opener-line",
+        "fn-wg-encode-opener-rest",
+        "fn-wg-encode-opener-uint",
+        "fn-wg-encode-opener-where",
+        "fn-wg-nonemptyp-opener-const",
+        "fn-wg-valuep-opener-const",
+        "fn-wg-valuep-opener-uint"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/wire-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -88822,6 +88956,58 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/wire-family-fncu-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 3,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/wire-family-fncu"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/wire-grammar-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 9,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/wire-grammar"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/wire-outbound-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -100127,6 +100313,102 @@
       ]
     },
     {
+      "theorem": "fn-wg-encode-opener-base64-lines",
+      "book": "books/wire-grammar.lisp",
+      "line": 1077,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-wg-encode-opener-bytes",
+      "book": "books/wire-grammar.lisp",
+      "line": 1059,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-wg-encode-opener-const",
+      "book": "books/wire-grammar.lisp",
+      "line": 1047,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-wg-encode-opener-enum",
+      "book": "books/wire-grammar.lisp",
+      "line": 1083,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-wg-encode-opener-frame",
+      "book": "books/wire-grammar.lisp",
+      "line": 1124,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-wg-encode-opener-line",
+      "book": "books/wire-grammar.lisp",
+      "line": 1071,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-wg-encode-opener-rest",
+      "book": "books/wire-grammar.lisp",
+      "line": 1065,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-wg-encode-opener-uint",
+      "book": "books/wire-grammar.lisp",
+      "line": 1053,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-wg-encode-opener-where",
+      "book": "books/wire-grammar.lisp",
+      "line": 1118,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-wg-nonemptyp-opener-const",
+      "book": "books/wire-grammar.lisp",
+      "line": 1285,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-nonemptyp and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-wg-valuep-opener-const",
+      "book": "books/wire-grammar.lisp",
+      "line": 1132,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-valuep and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-wg-valuep-opener-uint",
+      "book": "books/wire-grammar.lisp",
+      "line": 1138,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-valuep and the conclusion is that arm's value"
+      ]
+    },
+    {
       "theorem": "fn-wire-drive-closed-is-noop",
       "book": "books/wire-invariants.lisp",
       "line": 719,
@@ -103274,6 +103556,24 @@
         "book": "books/wildmat-work.lisp",
         "line": 369,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-wg-rev-of-rev",
+        "book": "books/wire-grammar.lisp",
+        "line": 149,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-wg-consp-of-drop",
+        "book": "books/wire-grammar.lisp",
+        "line": 783,
+        "reason": "len-backchaining: an enabled consp conclusion backchained to a len hypothesis"
+      },
+      {
+        "theorem": "fn-wg-consp-when-len-positive",
+        "book": "books/wire-grammar.lisp",
+        "line": 785,
+        "reason": "len-backchaining: an enabled consp conclusion backchained to a len hypothesis"
       },
       {
         "theorem": "fn-wire-line-contentp-is-plain-octetsp",
@@ -121150,6 +121450,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/wire-export.lisp",
+        "line": 32,
+        "include": "wire-family-fncu",
+        "included": "books/wire-family-fncu.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/wire-export.lisp",
+        "line": 33,
+        "include": "wire-family-identity",
+        "included": "books/wire-family-identity.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/wire-export.lisp",
+        "line": 34,
+        "include": "outcome-class",
+        "included": "books/outcome-class.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/wire.lisp",
         "line": 19,
         "include": "rev-onto",
@@ -134755,6 +135076,13 @@
         "line": 12,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/wire-family-fncu-tests.lisp",
+        "line": 12,
+        "include": "../../books/wire-family-fncu",
+        "included": "books/wire-family-fncu.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 3019 |
-| Certification roots in the Makefile | 2525 |
-| Books inside the root closure | 2843 |
-| `defthm` and `defthmd` events | 39740 |
-| `defun` events | 25605 |
-| Functions with verified guards | 4048 |
-| Functions declared `:verify-guards nil` and never verified | 3324 |
-| Functions left at the default with an explicit guard | 14117 |
+| Books read | 3025 |
+| Certification roots in the Makefile | 2531 |
+| Books inside the root closure | 2849 |
+| `defthm` and `defthmd` events | 39970 |
+| `defun` events | 25699 |
+| Functions with verified guards | 4052 |
+| Functions declared `:verify-guards nil` and never verified | 3339 |
+| Functions left at the default with an explicit guard | 14192 |
 | Functions left at the default with no guard | 4116 |
-| `assert-event` checks | 27308 |
+| `assert-event` checks | 27320 |
 | `must-fail` checks | 2686 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 252 |
-| Theorems flagged SUSPECT by shape | 1447 |
-| Export-hygiene warnings | 422 |
+| `encapsulate` events | 255 |
+| Theorems flagged SUSPECT by shape | 1459 |
+| Export-hygiene warnings | 425 |
 | Enabled-projection warnings | 78 |
 | Teeth-form warnings | 294 |
-| Include-hygiene warnings | 4005 |
+| Include-hygiene warnings | 4009 |
 | Host-names warnings | 3504 |
 | Hand-written-record warnings | 19 |
 
@@ -1892,6 +1892,10 @@ that `make certify` requests.
 | `books/wildmat-utf8-invariants.lisp` | root | 31 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/wildmat-work.lisp` | root | 52 | 17 | 0/0/0/17 | 0 | 0 | 4 |
 | `books/wildmat.lisp` | root | 20 | 44 | 44/0/0/0 | 0 | 0 | 0 |
+| `books/wire-export.lisp` | root | 2 | 44 | 0/12/32/0 | 0 | 0 | 0 |
+| `books/wire-family-fncu.lisp` | root | 31 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/wire-family-identity.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/wire-grammar.lisp` | root | 196 | 48 | 4/3/41/0 | 0 | 0 | 12 |
 | `books/wire-invariants.lisp` | root | 51 | 5 | 1/1/1/2 | 0 | 0 | 7 |
 | `books/wire-outbound-invariants.lisp` | root | 68 | 5 | 0/2/3/0 | 0 | 0 | 1 |
 | `books/wire-scan.lisp` | root | 38 | 9 | 1/1/7/0 | 0 | 0 | 1 |
@@ -3101,6 +3105,8 @@ that `make certify` requests.
 | `tests/acl2/wildmat-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 5 | 0 |
 | `tests/acl2/wildmat-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 61 | 0 | 0 |
 | `tests/acl2/wire-bounds-tests.lisp` | root | 0 | 3 | 0/0/1/2 | 52 | 0 | 0 |
+| `tests/acl2/wire-family-fncu-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
+| `tests/acl2/wire-grammar-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 0 | 0 |
 | `tests/acl2/wire-outbound-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 12 | 0 |
 | `tests/acl2/wire-span-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 6 | 0 | 0 |
 | `tests/acl2/wire-tests.lisp` | root | 4 | 0 | 0/0/0/0 | 75 | 0 | 0 |
@@ -4481,6 +4487,18 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-vcu-done-meaning-by-definition` | `books/view-delta-cursor-refinement.lisp` | 152 | arm-of-definition: the hypotheses select one IF/COND arm of fn-vcu-meaning and the conclusion is that arm's value |
 | `fn-vdc-put-nonstring-key-is-unchanged` | `books/view-delta-concrete.lisp` | 133 | arm-of-definition: the hypotheses select one IF/COND arm of fn-vdc-put and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-vdc-put and the conclusion is that branch's value |
 | `fn-web-client-address-without-proxy-unfolds` | `books/web-request.lisp` | 1370 | arm-of-definition: the hypotheses select one IF/COND arm of fn-web-client-address and the conclusion is that arm's value |
+| `fn-wg-encode-opener-base64-lines` | `books/wire-grammar.lisp` | 1077 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value |
+| `fn-wg-encode-opener-bytes` | `books/wire-grammar.lisp` | 1059 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value |
+| `fn-wg-encode-opener-const` | `books/wire-grammar.lisp` | 1047 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value |
+| `fn-wg-encode-opener-enum` | `books/wire-grammar.lisp` | 1083 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value |
+| `fn-wg-encode-opener-frame` | `books/wire-grammar.lisp` | 1124 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value |
+| `fn-wg-encode-opener-line` | `books/wire-grammar.lisp` | 1071 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value |
+| `fn-wg-encode-opener-rest` | `books/wire-grammar.lisp` | 1065 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value |
+| `fn-wg-encode-opener-uint` | `books/wire-grammar.lisp` | 1053 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value |
+| `fn-wg-encode-opener-where` | `books/wire-grammar.lisp` | 1118 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value |
+| `fn-wg-nonemptyp-opener-const` | `books/wire-grammar.lisp` | 1285 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-nonemptyp and the conclusion is that arm's value |
+| `fn-wg-valuep-opener-const` | `books/wire-grammar.lisp` | 1132 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-valuep and the conclusion is that arm's value |
+| `fn-wg-valuep-opener-uint` | `books/wire-grammar.lisp` | 1138 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-valuep and the conclusion is that arm's value |
 | `fn-wire-drive-closed-is-noop` | `books/wire-invariants.lisp` | 719 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wire-drive and the conclusion is that arm's value |
 | `fn-wire-drive-of-empty-chunk` | `books/wire-invariants.lisp` | 713 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wire-drive and the conclusion is that arm's value |
 | `fn-wire-feed-closed-noop` | `books/wire.lisp` | 1321 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wire-feed and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-wire-feed and the conclusion is that branch's value |
