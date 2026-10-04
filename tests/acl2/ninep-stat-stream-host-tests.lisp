@@ -1,3 +1,4 @@
+; UNHOOKED small-reds (2026-10-04): F07 9P is parked out of the Makefile (H-5, decisions-20261004); its host books are no longer roots, so this test of them is not either; a root again when the 9P family returns (KW-b)
 (in-package "ACL2")
 (include-book "../../host/ninep-stat-stream-host")
 

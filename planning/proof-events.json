@@ -18668,6 +18668,30 @@
         {
           "kind": "theorem",
           "name": "fn-rv-destroy-returns-exactly-the-unsettled-draws"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rv-replayed-completion-is-stale"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rt-step-keeps-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rt-run-keeps-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rt-step-refused-keeps-the-tree"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rt-sub-bank-steps-keep-the-root"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rt-destroy-revokes-the-sub-bank"
         }
       ]
     },
@@ -19492,6 +19516,19 @@
         {
           "kind": "theorem",
           "name": "fn-prl-resident-shrink-keeps-funding"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1040",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-log-crash-retry-is-old-or-new"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-log-complete-store-carries-the-node-secret"
         }
       ]
     }
