@@ -1094,11 +1094,9 @@ raw owner binds exactly these octets and never resolves a name."
         ; Staged P12 grammar: do not silently ignore an explicit resource
         ; policy before its supported allocator/launcher consumer lands.
         ((fn-native-config-cold-resources config) "cold_resources")
-        ; An explicit output policy is the operator's opt-in to accounted
-        ; output (the consumer: host/native/owner.lisp
-        ; fnn-owner-output-prefix-locked over books/output-command-admission;
-        ; ARTICLE priced, every other family answered 403 by name; root
-        ; ruling 2026-10-04).  Its absence keeps the unaccounted path.
+        ; Keep explicit policy refused until its actual funded consumer is
+        ; installed; accepting grammar never silently activates accounting.
+        ((fn-native-config-output-resources config) "output_resources")
         (t nil)))
 
 (defun fn-native-config-operator-availablep (config)
