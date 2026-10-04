@@ -176,30 +176,50 @@ def build(root: Path = ROOT) -> dict:
 
 
 FAMILY_TABLE = ("books", "output-command-admission.lisp")
-PRODUCER = ("host", "owner-host.lisp")
+PRICED_ROWS = ("books", "output-tariff-families.lisp")
+PREVIEW_KINDS = ("extension", "protocol-error", "article-input", "partial-input", "closed")
+
+
+def priced_rows(text: str) -> list[str]:
+    """The families the (def-family-tariffs ... :rows ((FAMILY OCTETS) ...))
+    form names, by the ledger's non-evaluating reader."""
+    for form, _line in ledger.Reader(text).top_level():
+        if ledger.head(form) == "def-family-tariffs":
+            options = ledger.keyword_plist(list(form[1:]))
+            rows = options.get(":rows")
+            if not isinstance(rows, list):
+                break
+            return [str(row[0]).lstrip(":").lower() for row in rows]
+    raise ValueError("books/output-tariff-families.lisp has no (def-family-tariffs ... :rows ...)")
 
 
 def families(root: Path = ROOT) -> dict:
     """The tariff ratchet: the command families the admission gate classifies
     (books/output-command-admission.lisp *fn-ocap-command-families*, every one
-    served by a stock node) and those the producer prices (the quoted family
-    list in host/owner-host.lisp fn-owner-output-tariff-preview).  The
-    pass-through for a node without [resources] goes when unpriced is empty
-    (specs/resource-vector.md, the open precondition of 2026-10-04).  A tree
-    without the admission table (a test fixture's) has no ratchet: None."""
-    if not (root.joinpath(*FAMILY_TABLE).is_file() and root.joinpath(*PRODUCER).is_file()):
+    served by a stock node, and the non-command previews PREVIEW_KINDS) and
+    those priced (the rows of def-family-tariffs
+    in books/output-tariff-families.lisp, from which the producer the host
+    calls is generated).  The pass-through for a node without [resources]
+    goes when unpriced is empty (specs/resource-vector.md, the open
+    precondition of 2026-10-04).  A tree without the admission table (a test
+    fixture's) has no ratchet: None."""
+    if not (root.joinpath(*FAMILY_TABLE).is_file() and root.joinpath(*PRICED_ROWS).is_file()):
         return None
     text = root.joinpath(*FAMILY_TABLE).read_text(encoding="utf-8")
     start = text.index("(defconst *fn-ocap-command-families*")
     table = text[start:text.index("\n\n", start)]
     served = sorted(set(re.findall(r"\. :([a-z-]+)\)", table)))
-    host = root.joinpath(*PRODUCER).read_text(encoding="utf-8")
-    at = host.index("(defun fn-owner-output-tariff-preview ")
-    body = host[at:host.index("\n(defun ", at + 1)]
-    found = re.search(r"\(member-eq \(fn-ocap-at 2 preview\) '\(([^)]*)\)\)", body)
-    if not found:
-        raise ValueError("fn-owner-output-tariff-preview names no priced family list")
-    priced = sorted(set(re.findall(r":([a-z-]+)", found.group(1))))
+    # The gate previews these too and refuses each as unpriced in accounted
+    # mode (fn-ocap-tokens-family, fn-ocap-preview): they count, so 0 left
+    # means every first event the gate can see is priced.
+    for kind in PREVIEW_KINDS:
+        if ":" + kind not in text[text.index("(defun fn-ocap-tokens-family"):]:
+            raise ValueError("the admission book no longer previews :{}".format(kind))
+    served = sorted(set(served) | set(PREVIEW_KINDS))
+    named = priced_rows(root.joinpath(*PRICED_ROWS).read_text(encoding="utf-8"))
+    priced = sorted(set(named))
+    if len(priced) != len(named):
+        raise ValueError("a family is priced by two rows")
     unknown = sorted(set(priced) - set(served))
     if unknown:
         raise ValueError("priced families not in the admission table: {}".format(", ".join(unknown)))
