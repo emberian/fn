@@ -2,7 +2,7 @@
 ; Internal publishers supply only results of the guarded concrete producers.
 ; Logical Store/view authority remains the canonical owner installer.
 (in-package "ACL2")
-(include-book "owner-host")
+(ld "owner-host.lisp" :ld-error-action :error)
 (include-book "../books/history-root-credit")
 (include-book "../books/history-paged-adopt")
 
