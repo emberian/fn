@@ -1,4 +1,4 @@
-(load "tests/native_rotation_cleanup_source.lisp")
+(load "tests/native_rotation_cleanup_source-mock.lisp")
 (in-package "ACL2")
 
 ;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----

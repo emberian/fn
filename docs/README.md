@@ -1,28 +1,23 @@
 # The fn guides
 
-The guides are Usenet articles, posted to fn.announce and fn.docs and
-kept in [articles/](articles/). The website renders them as a newsreader.
+The guides are Usenet articles in [articles/](articles/), posted to
+fn.announce and fn.docs. The website shows them as a newsreader would.
 
-- [Welcome](articles/fn-welcome.txt) and [the public node](articles/fn-public-node.txt)
-  ([getting an account there, step by step](public-node.md))
-- [1: words and answers](articles/fn-faq-1.txt) ·
-  [2: reading and posting](articles/fn-faq-2.txt) ·
-  [3: installing a node](articles/fn-faq-3.txt) ([OpenBSD](articles/fn-faq-3-openbsd.txt)) ·
-  [4: running a node](articles/fn-faq-4.txt) ·
-  [5: when things go wrong](articles/fn-faq-5.txt) ·
-  [6: health codes and refusals](articles/fn-faq-6.txt) ·
-  [7: peering](articles/fn-faq-7.txt) · [8: agents](articles/fn-faq-8.txt) ·
-  [9: the proofs](articles/fn-faq-9.txt) · [10: contributing](articles/fn-faq-10.txt) ·
-  [11: the web page](articles/fn-faq-11.txt)
+- [Welcome](articles/fn-welcome.txt) · [the public node](articles/fn-public-node.txt)
+  ([an account there, step by step](public-node.md))
+- FAQ: [1 words](articles/fn-faq-1.txt) ·
+  [2 reading and posting](articles/fn-faq-2.txt) ·
+  [3 installing](articles/fn-faq-3.txt) ([OpenBSD](articles/fn-faq-3-openbsd.txt)) ·
+  [4 running](articles/fn-faq-4.txt) ·
+  [5 trouble](articles/fn-faq-5.txt) ·
+  [6 codes and refusals](articles/fn-faq-6.txt) ·
+  [7 peering](articles/fn-faq-7.txt) · [8 agents](articles/fn-faq-8.txt) ·
+  [9 proofs](articles/fn-faq-9.txt) · [10 contributing](articles/fn-faq-10.txt) ·
+  [11 the web page](articles/fn-faq-11.txt)
 
-The same guides as pages: [installing](install.md), [running your node](operator.md),
-[peering with a friend](peering-with-a-friend.md), [the friends' reader](reader.md)
-and [agents](agents.md).
+Longer pages: [installing](install.md), [running a node](operator.md),
+[peering](peering-with-a-friend.md), [reading](reader.md),
+[agents](agents.md), the nodes we run ([fsn1](nodes/fsn1.md), [hbox](nodes/hbox.md)).
 
-For engineers: [architecture](architecture.md), [terminology](glossary.md),
-[proof strategy](proofs.md), the references for [the operator](operator-internals.md)
-and [the clients](client-internals.md), [engineering](engineering.md),
-[the resource contract](resource-contract.md) (what is bounded, by which
-theorem or measurement, and what is not),
-[the specifications](../specs/lifecycle.md), [decisions](../planning/decisions.md)
-and [now](../planning/now.md).
+Working on fn: [CONTRIBUTING](../CONTRIBUTING.md), then
+[the engineers' map](engineering.md) and [testing](testing.md).
