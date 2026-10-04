@@ -57,7 +57,9 @@
       (let* ((port (fn-ncfg-nat-value (fn-ncfg-value pairs "web" "port") nil 65535))
              (host (fn-web-config-string pairs "host" *fn-web-default-host*))
              (site (fn-web-config-string pairs "site" *fn-web-default-site*))
-             (domain (fn-web-config-string pairs "domain" *fn-web-default-domain*))
+             ; No domain named: nil here; fn-web-plan-config takes the node's own
+             ; name for it at the start (lane operability-review, 2026-09-29).
+             (domain (fn-web-config-string pairs "domain" nil))
              (proxied (fn-ncfg-bool-value (fn-ncfg-value pairs "web" "proxied") nil))
              (tls (fn-ncfg-bool-value (fn-ncfg-value pairs "web" "tls") nil))
              (idle (fn-ncfg-nat-value (fn-ncfg-value pairs "web" "idle_seconds") 43200 *fn-web-max-idle*))
@@ -76,7 +78,8 @@
               ((or (equal idle :bad) (equal idle 0) (equal max :bad) (equal max 0))
                (list :refused :bounds))
               (t (list :web port (fn-ncfg-first address) (fn-ncfg-second address)
-                       (fn-record-string-octets site) (fn-record-string-octets domain)
+                       (fn-record-string-octets site)
+                       (and (stringp domain) (fn-record-string-octets domain))
                        (and proxied t) (and tls t) idle max)))))))
 
 (defun fn-web-plan-port (plan) (declare (xargs :guard t)) (fn-wrq-nth 1 plan))
@@ -84,11 +87,26 @@
 (defun fn-web-plan-address (plan) (declare (xargs :guard t)) (fn-wrq-nth 3 plan))
 (defun fn-web-plan-tls (plan) (declare (xargs :guard t)) (fn-wrq-nth 7 plan))
 
-; What fn-web-step reads.
-(defun fn-web-plan-config (plan)
+; What fn-web-step reads.  IDENTITY is the node's own name (the
+; `path-identity' policy, the name its Path and Injection-Info carry; octets,
+; or nil while none is set): the domain of a post's From, `LOGIN <LOGIN@DOMAIN>',
+; when the [web] table names no domain, so a friend's post says where it
+; was made rather than the machine's host name; "localhost" when neither.
+; The order is the decision: a named domain, else the node's name; its
+; witness and teeth are in tests/acl2/web-config-tests.lisp.
+(defun fn-web-plan-domain (plan identity)
   (declare (xargs :guard t))
-  (fn-web-config (fn-wrq-nth 4 plan) (fn-wrq-nth 5 plan) (fn-wrq-nth 6 plan)
+  (let ((named (fn-wrq-nth 5 plan)))
+    (cond ((consp named) named)
+          ((consp identity) identity)
+          (t (fn-record-string-octets *fn-web-default-domain*)))))
+
+(defun fn-web-plan-config (plan identity)
+  (declare (xargs :guard t))
+  (fn-web-config (fn-wrq-nth 4 plan) (fn-web-plan-domain plan identity) (fn-wrq-nth 6 plan)
                  (fn-wrq-nth 8 plan) (fn-wrq-nth 9 plan)))
+
+
 
 ; The request limits: the profile's head default and the body a form
 ; carrying the owner's article limit needs (books/web-request.lisp).
