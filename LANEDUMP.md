@@ -4613,3 +4613,18 @@ Continuation, exactly:
 5. Gate: `tools/farm.py submit hbox --affected-by books/store-files` (one run; the assembler holds S1 for batch R after compose's world);
    `green_check --strict`; `remote_check.sh auto --target check-lane`; proof-owed items for anything that does not go through.
 6. READY #2 to the assembler af2c7accc6871ee99 (integrator copied) as `| sha | world receipt | manifest | image | native run |`.
+## python-diet-4 (2026-10-04) — tools/ diet
+Full entry: build/coordinator/lanedumps/python-diet.md. lane/python-diet@fd4335285 on
+integrate/20261004@ec2c1b3da: inventory TSV, 11 tools deleted, host_defun_check folded into
+harness_check, runtime_floor merged, T5 brief stub. tools/*.py 111,718 -> 109,862 (-1.7%);
+the quarter target needs the decision list in the full entry.
+
+
+## Lane tariff — 2026-10-04 (Fable, wound down; Opus continues)
+
+The full lanedump is `build/coordinator/lanedumps/tariff.md` (same commit). Design packet:
+`planning/design/tariff-2026-10-04.md` (DECISION block written; two lines escalated to ember).
+First slice: `books/output-tariff-article.lisp` admitted on the laptop (10 forms, 2,770 steps),
+uncertified, unwired; the exact continuation is the numbered list in the coordinator lanedump
+(steps 1-7). Nothing certified, no image, no native run. The only owner-host.lisp region this lane
+touches is `fn-owner-output-tariff-preview` (:5512-5518), untouched so far.

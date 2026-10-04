@@ -37,10 +37,10 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [P10](#p10) every cut is a model crash point | `fn-lg-open-program-keeps-the-relation-at-every-cut` | yes | no: source uncertified | no: source changed since 69046a76 | no: dev source not on the node |
 | [P11](#p11) bundles across an outage | `fn-bpnp-step-session-offer-is-the-scan-choice` | yes | no: closure moved | no: source changed since 69046a76 | no: profile not deployed |
 | [M4](#m4) disconnected exchange | `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` | yes | no: closure moved | no: source changed since 69046a76 | no: profile not deployed |
-| [M5](#m5) maintenance: compaction and reclaim over the record log | `fn-lgr-decide-checkpoints-the-rewrite` | yes | no: closure moved | lab only: `10674f330` | no: dev source not on the node |
+| [M5](#m5) maintenance: compaction and reclaim over the record log | `fn-lgr-decide-checkpoints-the-rewrite` | yes | yes: `certify-20261004T021712Z-3895962` | lab only: `10674f330` | no: dev source not on the node |
 | [M6](#m6) the human client | `fn-served-step-list-counts-is-the-archive-counts` | yes | no: caller bridge pending | no: caller bridge pending | no: caller bridge pending |
 | [T17](#t17) the Message-ID index on the served path | `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` | yes | no: caller bridge pending | no: caller bridge pending | no: caller bridge pending |
-| [operator-retire-observation](#operator-retire-observation) bounded retire operator observation | `fn-nret-observation-expiry-is-uncertain` | yes | no: source uncertified | no: no matching image evidence | no: dev source not on the node |
+| [operator-retire-observation](#operator-retire-observation) bounded retire operator observation | `fn-nret-observation-expiry-is-uncertain` | yes | yes: `certify-20261004T021712Z-3895962` | no: no matching image evidence | no: dev source not on the node |
 | [operator-init-resume](#operator-init-resume) resumable developer init compatibility | `fn-nir-resume-admits-identical-initial-contract-across-stamps` | yes | no: source uncertified | no: no matching image evidence | no: profile not deployed |
 | [PRF-1266](#prf-1266) STARTTLS after authentication | `fn-auth-starttls-after-authentication-is-refused-without-reset` | yes | no: caller bridge pending | no: caller bridge pending | no: caller bridge pending |
 | [PRF-1269](#prf-1269) peer reader access | `fn-auth-view-excludes-unreadable-groups-on-any-connection` | yes | no: caller bridge pending | no: caller bridge pending | no: caller bridge pending |
@@ -202,7 +202,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **maintenance: compaction and reclaim over the record log.** `operator CONFIG store compact` checkpoints the store with the log rotated and drops the segments the checkpoint covers, and `store reclaim` checkpoints exactly the reclaiming pack's rewrite of the committed history (a held article is never touched), both decided in ACL2 over the one store format, 9.
 
 - Host-called subject: `fn-lgr-decide-stream` at host/checkpoint-host.lisp:214, equated by `fn-lgr-decide-stream-is-lgr-decide` (books/store-log-reclaim.lisp:96).
-- Keystone: `fn-lgr-decide-checkpoints-the-rewrite` (books/store-log-reclaim.lisp:46; PRF-271 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260927T204325Z-1333706` passed this source of `books/store-log-reclaim.lisp`, and since then `books/acceptance-alloc.lisp`, `books/acceptance.lisp`, `books/article-fields.lisp` and 149 more changed.
+- Keystone: `fn-lgr-decide-checkpoints-the-rewrite` (books/store-log-reclaim.lisp:46; PRF-271 (certified)); certified at the current source and closure by `certify-20261004T021712Z-3895962` (earliest archived).
 - Tested: lane image of `10674f330` ([log-recovery-2026-09-27](evidence/log-recovery-2026-09-27.md)), profile developer and production lane images (s2c): log_compaction 7/7 (rotation and drop kill cuts, reclaim, refusals), store_export 4/4; not a shared qualification.
 - Deployed: no: node image `a3553e6b`; changed since it: `host/checkpoint-host.lisp`.
 - Latest positive result: log_compaction 7/7 and store_export 4/4 on both lane images; a 40,000-article compact 40-139 s at 4.7 GB, from 2,963 s and 16.4 GB on the per-file layout ([log-recovery](evidence/log-recovery-2026-09-27.md)); the verb's own open streams the log since log-open-stream.
@@ -238,7 +238,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **bounded retire operator observation.** The retire command stops waiting at its ACL2 observation deadline with uncertainty while leaving the live owner and custody untouched; report inspection requires a stopped observation.
 
 - Host-called subject: `fn-nret-observation-step` at host/native/operator.lisp:615.
-- Keystone: `fn-nret-observation-expiry-is-uncertain` (books/native-retire.lisp:214; PRF-1263 (uncertified-at-current-digest)); no archived manifest records `books/native-retire.lisp` passed at its current source.
+- Keystone: `fn-nret-observation-expiry-is-uncertain` (books/native-retire.lisp:214; PRF-1263 (certified)); certified at the current source and closure by `certify-20261004T021712Z-3895962` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; absent from it: `books/native-retire.lisp`.
 - Latest positive result: Actual-source SBCL fixture passes exact60s/70s live/held expiry, offline refusal, fresh/stale reports and malformed observation fault; prior actual source times out (planning/evidence/operator-retire-observation-2026-10-03-v2.json). Warm hbox admission is not certification.
@@ -286,7 +286,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **published handshake charges.** Durable publication and settled handshake exits charge max(published TLS limit,still-owned admissions); refused proposals do not change the held charge.
 
 - Host-called subject: `fn-owner-connection-held-refresh` at host/owner-host.lisp:1616.
-- Keystone: `fn-cbud-live-held-charges-current-and-active` (books/connection-budget.lisp:800; PRF-1268 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20261003T104044Z-1503690` passed this source of `books/connection-budget.lisp`, and since then `books/byte-store-scan.lisp`, `books/heap-store-figure.lisp`, `books/history-columns-foundation.lisp` and 6 more changed.
+- Keystone: `fn-cbud-live-held-charges-current-and-active` (books/connection-budget.lisp:800; PRF-1268 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20261003T104044Z-1503690` passed this source of `books/connection-budget.lisp`, and since then `books/byte-store-scan.lisp`, `books/heap-store-figure.lisp`, `books/history-columns-foundation.lisp` and 8 more changed.
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; changed since it: `books/connection-budget.lisp`, `host/owner-host.lisp`.
 - Latest positive result: Connection-budget and exact teeth certified in certify-20261003T104044Z-1503690; actual host adapter outcome-injection fixture PASS, archived sol-access-native-faults-2026-10-03.
