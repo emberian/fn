@@ -5695,10 +5695,7 @@
 (definterface fn-pfp-read-bound :class :common-lisp-compliant)
 (definterface fn-pfp-read :class :common-lisp-compliant)
 (definterface fn-pfp-default-octets :class :common-lisp-compliant
-  :keystones (fn-pfd-default-is-a-policy fn-pfd-default-decodes-to-itself
-              fn-pfd-default-spools-one-batch
-              fn-pfd-default-launches-where-its-extra-fits
-              fn-bs-init-log-complete-store-carries-the-peer-flight-profile))
+  :keystones (fn-pfd-default-decodes-to-itself))
 (definterface fn-pfp-refusal-line :class :common-lisp-compliant)
 (definterface fn-pfp-catch-up-observes-p :class :common-lisp-compliant)
 (definterface fn-pfp-catch-up-admission :class :common-lisp-compliant
