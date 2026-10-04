@@ -4,27 +4,6 @@
 (load "tests/native_section_envelope_raw.lisp")
 (in-package "ACL2")
 
-;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
-(define-condition harness-stub-reached (serious-condition)
-  ((name :initarg :name :reader harness-stub-reached-name)
-   (source :initarg :source :reader harness-stub-reached-source))
-  (:report (lambda (c s)
-             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
-                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
-(defun harness-stub-reached (name source)
-  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
-          name source)
-  (finish-output *error-output*)
-  (error 'harness-stub-reached :name name :source source))
-(defun fnn-history-image-row-run (ev ordinal)
-  (declare (ignorable ev ordinal))
-  (harness-stub-reached 'fnn-history-image-row-run "host/native/io.lisp"))
-(defun fnn-immutable-close-handle (fd stage final operation publication)
-  (declare (ignorable fd stage final operation publication))
-  (harness-stub-reached 'fnn-immutable-close-handle "host/native/io.lisp"))
-(defun fnn-immutable-close-observation ()
-  (harness-stub-reached 'fnn-immutable-close-observation "host/native/io.lisp"))
-;;; ---- derived stubs: END ----
 
 (defun natp (x) (and (integerp x) (<= 0 x)))
 (defun zp (x) (not (and (integerp x) (> x 0))))
@@ -57,9 +36,12 @@
 (load-deployed-forms "host/native/io.lisp"
  '((define-condition fnn-store-io-refusal) (defun fnn-refuse-io)
    (defstruct (fnn-store (:constructor %make-fnn-store)))
+   (defmacro fnn-unwind-cleanups)
    (deftype fnn-octets) (defun fnn-make-octets) (defun fnn-octets)
    (defun fnn-octet-list) (defmacro fnn-posix) (defun fnn-open)
-   (defun fnn-close) (defun fnn-unlink) (defun fnn-durable-step) (defun fnn-replace)
+   (defun fnn-close) (defvar *fnn-immutable-close-debts*)
+   (defun fnn-immutable-close-observation) (defun fnn-immutable-close-handle)
+   (defun fnn-unlink) (defun fnn-durable-step) (defun fnn-replace)
    (defun fnn-read-exact-fd) (defun fnn-write-staged-at) (defun fnn-checkpoint-yield)
    (defun fnn-history-image-build) (defun fnn-history-image-write)
    (defun fnn-state-checkpoint-write) (defun fnn-state-checkpoint-stage)
@@ -80,10 +62,18 @@
 (defun fn-his-words (sel at st)
  (check (and (eq st :private-snapshot) *snapshot* (= sel 0) (= at 0)) "retained snapshot read")
  *snapshot*)
+;; The publisher's private history image (host/native/io.lisp
+;; fnn-history-image-build): one stobj it creates, builds row by row and
+;; releases on every exit.  Recorded here: the rows build nothing, the
+;; finished image is one page of 42s at address 0.
+(defun fnn-history-image-row-run (ev ordinal) (declare (ignore ev ordinal)) t)
 (defun fnn-call (subject &rest args)
  (case subject
-  (fn-his-snapshot (setq *snapshot* (make-list 2048 :initial-element 42))
-                   (list :ok :record '((1 0 0))))
+  (fn-his-build-begin (check (eq (second args) :private-snapshot) "build into the private image")
+                      (list :ok))
+  (fn-his-build-finish (check (eq (second args) :private-snapshot) "finish the private image")
+                       (setq *snapshot* (make-list 2048 :initial-element 42))
+                       (list :ok :record '((1 0 0)) (first args)))
   (fn-his-release (incf *releases*) (setq *snapshot* nil) nil)
   (otherwise (list (apply #'fnn-core subject args)))))
 (defun fnn-core (subject &rest args)
@@ -91,6 +81,9 @@
   ((fn-his-image-header fn-his-image-header-np fn-his-skip-octets fn-his-base-octets
     fn-his-np fn-his-words fn-his-readback-header-p fn-his-readback-page)
    (apply (symbol-function subject) args))
+  (create-fn-hrecs$c :private-snapshot)
+  (fn-his-build-yieldp nil)
+  (fn-his-build-source-count (length (first args)))
   (fn-his-binding :binding)
   (fn-store-sco-segment-header-octets 37)
   (fn-store-sco-trailer-octets 1)

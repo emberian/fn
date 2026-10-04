@@ -73,9 +73,30 @@
   (declare (ignore service cid)) (funcall thunk))
 (defun fnn-owner-service-store (service)
   (declare (ignore service)) *store*)
+;; The retire request (books/native-retire.lisp fn-nret-request, row S9) is
+;; the real ACL2 definition: a reconfiguration argv is not one.
+(unless (macro-function 'mbe)
+  (defmacro mbe (&key logic exec) (declare (ignore logic)) exec))
+(unless (fboundp 'natp) (defun natp (x) (and (integerp x) (<= 0 x))))
+(unless (fboundp 'len) (defun len (x) (length x)))
+(unless (fboundp 'true-listp) (defun true-listp (x) (and (listp x) (null (cdr (last x))))))
+(dolist (spec '(("books/records-shape.lisp" fn-record-string-octets-rev fn-record-string-octets-aux
+                 fn-record-string-octets)
+                ("books/native-retire.lisp" *fn-nret-max-drain-seconds* fn-nret-u32-value
+                 fn-nret-request)))
+  (with-open-file (stream (first spec))
+    (loop for form = (read stream nil :eof) until (eq form :eof)
+          when (and (consp form) (member (car form) '(defun defconst))
+                    (member (cadr form) (rest spec)))
+            do (eval (if (eq (car form) 'defconst)
+                         (cons 'defparameter (cdr form))
+                       (list* 'defun (cadr form) (caddr form)
+                              (remove-if (lambda (x) (and (consp x) (eq (car x) 'declare)))
+                                         (cdddr form))))))))
 (defun fnn-core (name &rest args)
   (push (cons name args) *calls*)
   (case name
+    (fn-nret-request (apply #'fn-nret-request args))
     (fn-native-admin-host-plan :plan)
     ;; A configuration mutation, not an owner request (compaction or
     ;; reclaim: ACL2's fn-native-admin-result-owner-requestp).
@@ -117,8 +138,8 @@
   (declare (ignore observation)) nil)
 (defun fnn-durable-records (store) (declare (ignore store)) nil)
 ;; The authorization over the state the owner carries (PKT-837).
-(defun fnn-admin-authorize-owner (store config-records record observed-names)
-  (declare (ignore store config-records record observed-names))
+(defun fnn-admin-authorize-owner (store record)
+  (declare (ignore store record))
   :authorization)
 (defun fnn-admin-publish (&rest args)
   (declare (ignore args)) (push '(publish) *calls*) (values 2 "generation-2"))

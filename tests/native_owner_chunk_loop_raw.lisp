@@ -80,7 +80,12 @@
     "host/native/deflate.lisp"
     ;; Likewise the cold line's structures (fnn-cold-worker); its functions
     ;; are declared unreached below.
-    "host/native/extent.lisp"))
+    "host/native/extent.lisp"
+    ;; The trace collector the served step's spans run through (host-only).
+    "host/native/trace.lisp"
+    ;; Only the decoded window's activation record; its functions are
+    ;; declared unreached below.
+    "host/native/extent-decoded.lisp"))
 
 (defvar *host* (make-hash-table :test 'eq))   ; name -> list of (kind file form)
 (defvar *ordinal* (make-hash-table :test 'eq)) ; form -> its position in the host
@@ -272,7 +277,6 @@ unbounded (&rest or &key)."
 ;; the scenario's plan; each call the time model cares about is recorded on
 ;; *timeline* in the order the owner made it.
 (defun fnn-owner-core (name &rest args)
-  (declare (ignore args))
   (ecase name
     (fn-owner-peer-for-socket-address nil)
     ;; PRF-161: the accept is admitted and opened by one ACL2 call, and every
@@ -284,7 +288,10 @@ unbounded (&rest or &key)."
     ;; PRF-164: no XREDEEM in these scenarios, so no connection waits.
     (fn-acct-host-owner-redeem-waitingp nil)
     ;; RFC 8054: no scenario sends COMPRESS DEFLATE, so no layer is owed.
-    (fn-owner-compress-owed nil)))
+    (fn-owner-compress-owed nil)
+    ;; The reader context a response captures before its first window
+    ;; (fnn-owner-capture-reader-context): opaque to the host, retained.
+    (fn-owner-catalog-capture-context (list :captured-context (first args)))))
 
 (defun fnn-owner-action (name &rest args)
   (ecase name
@@ -328,10 +335,30 @@ unbounded (&rest or &key)."
          (error "a read was handed the scheduler value ~s; the gate here holds :sched" sched))
        (take-step (subseq *buffer* start end))))))
 
+;; Connection and response identities are the real ACL2 definitions
+;; (books/response-identity.lisp, HST-047), read from the book and evaluated
+;; with ACL2's multiple values as the list fnn-call answers: the host retains
+;; what they return, so a made-up identity would test nothing.
+(unless (fboundp 'true-listp)
+  (defun true-listp (x) (and (listp x) (null (cdr (last x))))))
+(unless (fboundp 'len) (defun len (x) (length x)))
+(defmacro rid-mv (&rest xs) `(list ,@xs))
+(defmacro rid-mv-let (vars form &body body) `(destructuring-bind ,vars ,form ,@body))
+(with-open-file (stream "books/response-identity.lisp")
+  (let ((*read-eval* nil))
+    (loop for form = (read stream nil :eof) until (eq form :eof)
+          when (and (consp form) (eq (car form) 'defun))
+            do (eval (sublis '((mv . rid-mv) (mv-let . rid-mv-let))
+                             (append (subseq form 0 3)
+                                     (remove-if (lambda (x) (and (consp x) (eq (car x) 'declare)))
+                                                (cdddr form))))))))
+
 ;; The disk's clock and admission (books/owner-time-model.lisp): the event is
 ;; recorded with its reading; the admission reads the recorded time.
 (defun fnn-call (name &rest args)
   (ecase name
+    (fn-rid-connection (apply #'fn-rid-connection args))
+    (fn-rid-response (apply #'fn-rid-response args))
     (fn-otm-disk-event
      (destructuring-bind (sched kind now deadline) args
        (declare (ignore deadline))
@@ -402,17 +429,31 @@ unbounded (&rest or &key)."
     (fn-otm-peer-read-proceeds-p t)
     (fn-otm-log-line nil)
     ;; books/sasl.lisp *fn-sasl-seed-octets*.
-    (fn-owner-sasl-seed-octets 32)))
+    (fn-owner-sasl-seed-octets 32)
+    ;; A scenario's plan is its list of ready windows: never an ARTICLE
+    ;; preflight plan (books/article-stream-...: fn-asto-preflight-planp).
+    (fn-asto-preflight-planp nil)
+    (fn-asto-plan-articlep nil)))
+
+;; The live arena and catalog stobjs (host/native/io.lisp, read from ACL2's
+;; state): a response's capture retains them; nothing here reads through them.
+(defun fnn-live-arena () :live-arena)
+(defun fnn-live-cat () :live-catalog)
+
+;; Stage 0's page pool is offline (host/native/extent.lisp): no funded pool
+;; serves these reads.
+(defun fnn-extent-pool-funded-p () nil)
 
 ;; The OS CSPRNG (host/native/io.lisp): the connection's SASL seed.
 (defun fnn-csprng-octets (width what)
   (declare (ignore what))
   (make-list width :initial-element 0))
-(defun fnn-owner-render-next (plan &optional compressedp)
-  (declare (ignore compressedp))
-  (if plan
-      (values (first plan) (rest plan) (null (rest plan)))
-    (values (fnn-make-octets 0) nil t)))
+(defun fnn-owner-render-next (plan &optional compressedp borrowp)
+  ;; (values OCTETS PLAN-REST DONEP CURSORP END), as the host's: a window is
+  ;; never a cursor here, and END is the whole window (fresh octets).
+  (declare (ignore compressedp borrowp))
+  (let ((octets (if plan (first plan) (fnn-make-octets 0))))
+    (values octets (rest plan) (null (rest plan)) nil (length octets))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; The declarations.
@@ -447,7 +488,10 @@ unbounded (&rest or &key)."
     fnn-extent-cancel-read fnn-extent-close fnn-extent-complete-read
     fnn-extent-executor-commit fnn-extent-executor-observe-returned
     fnn-extent-executor-returned-p fnn-extent-executor-wait
-    fnn-extent-issue-read fnn-extent-pool-funded-p
+    fnn-extent-issue-read
+    ;; The decoded (stored-compressed) window line: no stored article here is
+    ;; compressed (host/native/extent-decoded.lisp).
+    fnn-extent-decoded-storage-retire fnn-extent-decoded-window-outcome
     ;; COMPRESS (RFC 8054): no scenario negotiates the DEFLATE layer.
     fnn-zin-new fnn-zin-inflate fnn-zout-new fnn-zout-sync fnn-zout-free))
 
@@ -587,6 +631,7 @@ unbounded (&rest or &key)."
         *sent* nil *faults* nil *graceful* 0 *observations* nil *timeline* nil
         *completion* (fnn-ascii-octet-list "240 article received"))
   (let* ((service (%make-fnn-owner-service :batching batching
+                                           :lock (sb-thread:make-mutex :name "fixture owner")
                                            :gate (%make-fnn-owner-gate :sched :sched)))
          (loop (%make-fnn-mux-loop :service service))
          (conn (%make-fnn-mux-conn :socket :socket)))
