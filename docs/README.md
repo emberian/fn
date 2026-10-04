@@ -22,6 +22,7 @@ and [agents](agents.md).
 For engineers: [architecture](architecture.md), [terminology](glossary.md),
 [proof strategy](proofs.md), the references for [the operator](operator-internals.md)
 and [the clients](client-internals.md), [engineering](engineering.md),
+[testing](testing.md) (how to run each kind of test, and what a pass shows),
 [the resource contract](resource-contract.md) (what is bounded, by which
 theorem or measurement, and what is not),
 [the specifications](../specs/lifecycle.md), [decisions](../planning/decisions.md)
