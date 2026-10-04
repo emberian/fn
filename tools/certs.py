@@ -423,6 +423,38 @@ def book_facts(source: Path) -> tuple[str, list[str]]:
     return remembered
 
 
+# One selection's closures (lane loops, 2026-10-04): an install-set of the
+# image world asked for 6,550 closures of ~1,300 books, each walk stat'ing
+# every book again (3.6 million stats, 45 of 154 s).  Inside `closure_scope`
+# (artifact_sets, install_artifact_set, install_partial) a book's closure is
+# walked once; the sources are taken as they were when first read, as one
+# selection already takes them.
+import threading as _threading
+_CLOSURE_SCOPE = _threading.local()
+
+
+@contextmanager
+def closure_scope():
+    outer = getattr(_CLOSURE_SCOPE, "memo", None)
+    if outer is None:
+        _CLOSURE_SCOPE.memo = {}
+    try:
+        yield
+    finally:
+        if outer is None:
+            _CLOSURE_SCOPE.memo = None
+
+
+def scoped_closures(function):
+    import functools
+
+    @functools.wraps(function)
+    def wrapper(*args, **kwargs):
+        with closure_scope():
+            return function(*args, **kwargs)
+    return wrapper
+
+
 def closure(root: Path, name: str) -> dict[str, str]:
     """The book and every book it locally includes, each with its content hash.
 
@@ -431,6 +463,17 @@ def closure(root: Path, name: str) -> dict[str, str]:
     selects a system book outside this worktree and is not part of the key:
     the ACL2 installation is a trusted input, named in the run manifest.
     """
+    memo = getattr(_CLOSURE_SCOPE, "memo", None)
+    if memo is None:
+        return _closure(root, name)
+    key = (str(root), name)
+    found = memo.get(key)
+    if found is None:
+        found = memo[key] = _closure(root, name)
+    return dict(found)
+
+
+def _closure(root: Path, name: str) -> dict[str, str]:
     pending = [name]
     found: dict[str, str] = {}
     base = root.resolve()
@@ -1139,6 +1182,7 @@ def usable_origin(meta: dict, target: str) -> bool:
     return meta.get("origin_kind", LIVE_ORIGIN) != LIVE_ORIGIN
 
 
+@scoped_closures
 def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
                   toolchain_identity: str | None = None,
                   dependencies_only: bool = False,
@@ -1278,6 +1322,7 @@ def why_no_entry(root: Path, cache: Path, name: str,
     return f"{len(entries)} cache entr{'y' if len(entries) == 1 else 'ies'}: " + ", ".join(parts)
 
 
+@scoped_closures
 def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
                          toolchain_identity: str | None = None,
                          reject: Iterable[str] = (),
@@ -1410,28 +1455,78 @@ def compatible_partial_choices(
                          pairs, acl2, root)
     if set(facts) != set(pairs):
         raise ValueError("ACL2 certificate-alist probe omitted a candidate pair")
+    # The searches below ask, tens of thousands of times, how many conflicts
+    # a set has that differs from the current one in ONE book (lane loops,
+    # 2026-10-04: 43,370 whole-set recounts, each re-sorting every book's
+    # dependencies, were 595 of a 680 s install-set of the image world).  A
+    # conflict is a (parent, child) pair, so the count changes only by the
+    # pairs that book is in: `involving`.  `conflicts` keeps its order.
+    order = sorted(options)
+    deps_sorted = {name: sorted(dependencies[name]) for name in options}
+    parents_of: dict[str, list[str]] = {name: [] for name in options}
+    for parent in order:
+        for child in deps_sorted[parent]:
+            if child in parents_of:
+                parents_of[child].append(parent)
+
+    def disagree(parent_id: int, child_id: int) -> bool:
+        fact = facts[(parent_id, child_id)]
+        if fact == (False, False):
+            raise ValueError("ACL2 could not read a cached certificate alist")
+        return fact == (True, False)
+
     def conflicts(chosen: dict[str, int]) -> list[tuple[str, str]]:
         bad = []
-        for parent in sorted(chosen):
-            for child in sorted(dependencies[parent]):
-                if child not in chosen:
+        for parent in order:
+            if parent not in chosen:
+                continue
+            mine = chosen[parent]
+            for child in deps_sorted[parent]:
+                if child not in chosen or disagree(mine, chosen[child]):
                     bad.append((parent, child))
-                elif facts[(chosen[parent], chosen[child])] == (True, False):
-                    bad.append((parent, child))
-                elif facts[(chosen[parent], chosen[child])] == (False, False):
-                    raise ValueError("ACL2 could not read a cached certificate alist")
         return bad
 
+    def involving(chosen: dict[str, int], name: str) -> int:
+        """The conflicts of CHOSEN that are pairs NAME is in."""
+        count = 0
+        if name in chosen:
+            mine = chosen[name]
+            for child in deps_sorted[name]:
+                if child not in chosen or disagree(mine, chosen[child]):
+                    count += 1
+        for parent in parents_of[name]:
+            if parent in chosen and (name not in chosen
+                                     or disagree(chosen[parent], chosen[name])):
+                count += 1
+        return count
+
+    def involving_pairs(chosen: dict[str, int], name: str) -> list[tuple[str, str]]:
+        found = []
+        if name in chosen:
+            mine = chosen[name]
+            for child in deps_sorted[name]:
+                if child not in chosen or disagree(mine, chosen[child]):
+                    found.append((name, child))
+        for parent in parents_of[name]:
+            if parent in chosen and (name not in chosen
+                                     or disagree(chosen[parent], chosen[name])):
+                found.append((parent, name))
+        return found
+
     def search(selected: dict[str, int]) -> dict[str, int]:
+        # `bad` is conflicts(selected) as a set, kept across one-book moves
+        # (its sorted order is conflicts' order: parents, then children, by
+        # name), recounted only when a move drops several books.
         seen: set[tuple[tuple[str, int], ...]] = set()
         steps = 0
+        bad = set(conflicts(selected))
         while True:
-            bad = conflicts(selected)
             if not bad:
                 break
             seen.add(tuple(sorted(selected.items())))
-            parent, child = bad[0]
+            parent, child = min(bad)
             best: dict[str, int] | None = None
+            best_name = None
             best_count = len(bad) + 1
             if steps < 8 * len(indexed) + 32:
                 for name in (child, parent):
@@ -1442,21 +1537,34 @@ def compatible_partial_choices(
                         trial[name] = candidate
                         if tuple(sorted(trial.items())) in seen:
                             continue
-                        count = len(conflicts(trial))
+                        count = (len(bad) - involving(selected, name)
+                                 + involving(trial, name))
                         if count < best_count:
-                            best, best_count = trial, count
+                            best, best_name, best_count = trial, name, count
             if best is not None:
+                bad = {pair for pair in bad if best_name not in pair}
+                bad.update(involving_pairs(best, best_name))
                 selected = best
                 steps += 1
                 continue
             # No cached pair can satisfy this parent.  Its cached ancestors must
             # also be authored afresh; their stored hash for it may differ.
-            selected = {name: candidate for name, candidate in selected.items()
-                        if name != parent and parent not in dependencies[name]}
+            kept = {name: candidate for name, candidate in selected.items()
+                    if name != parent and parent not in dependencies[name]}
+            # Dropping books removes their pairs and makes each kept parent
+            # of a dropped child miss it; no other pair changes.
+            dropped = set(selected) - set(kept)
+            bad = {pair for pair in bad if pair[0] not in dropped and pair[1] not in dropped}
+            bad.update((one, name) for name in dropped for one in parents_of[name]
+                       if one in kept)
+            selected = kept
             steps += 1
         return selected
 
     def complete(selected: dict[str, int]) -> dict[str, int]:
+        # SELECTED is conflict-free (search's answer) and stays so: adding a
+        # book keeps it so exactly when no pair that book is in conflicts.
+        clean = not conflicts(selected)
         changed = True
         while changed:
             changed = False
@@ -1466,7 +1574,7 @@ def compatible_partial_choices(
                 for candidate in ids[name]:
                     trial = dict(selected)
                     trial[name] = candidate
-                    if not conflicts(trial):
+                    if (not involving(trial, name)) if clean else not conflicts(trial):
                         selected, changed = trial, True
                         break
         return selected
@@ -1537,6 +1645,7 @@ def install_umbrellas(root: Path, cache: Path, acl2: Path,
                         "umbrella may fail on a certificate here)"]
 
 
+@scoped_closures
 def install_partial(root: Path, cache: Path, roots: Iterable[str],
                     toolchain_identity: str, acl2: Path | None = None,
                     pair_checker=None,
