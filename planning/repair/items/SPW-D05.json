@@ -1,0 +1,16 @@
+{
+ "category": "architecture",
+ "detail": "planning/spw-recheck-2026-10-04.md",
+ "evidence": "records-shape.lisp:51 *fn-record-max-group-name* 256 (comment :44-50: raising needs the config label *fn-cfg-max-label* config.lisp:53 raised too); nntp-syntax.lisp:114 is the RFC 460.",
+ "exposure": "conditional",
+ "file": "books/records-shape.lisp",
+ "fix": "Design 1.2 row: raise with the config label under packet P1.",
+ "id": "SPW-D05",
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "low",
+ "source": "spw-recheck-2026-10-04",
+ "state": "open",
+ "title": "D27: group-name length capped at 256, below the RFC 3977 wire limit of 460; the profile field can only reach this constant",
+ "updated": "2026-10-04T14:47:40Z"
+}
