@@ -40,7 +40,12 @@ and [the current view](current.md). Release scope is
    rest certify. Never `--closure` for lane work. Wait with one background
    command and do other work. A run that says ALL FROM THE CACHE certified
    nothing of yours; a KILLED run (exit 143, earlyoom) has no verdict, it
-   did not fail.
+   did not fail. **Never count reds with `grep -l "FAILED\|ACL2 Error"`**: it
+   matches echoed source (`:FAILED`) and every certificate cascade, and said
+   297 where the run had 3 real reds. `python3 tools/certify_triage.py
+   RUN_DIR` (a run's `build/acl2/certify-*` directory, fetched or on the box)
+   prints real / cascade / must-fail / limit / killed / other with each real
+   red's first error and key checkpoint; `--tsv` writes the per-log table.
    **Claim an id before you write it**: `python3 tools/next_id.py claim
    PRF --lane NAME --note '...'` (any kind: D, PRF, SCN, PKT, a
    requirement prefix) takes the next number no branch, worktree, LANEDUMP
