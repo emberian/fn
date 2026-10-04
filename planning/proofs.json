@@ -23511,6 +23511,94 @@
       ]
     },
     {
+      "id": "PRF-1324",
+      "title": "The codec of article kind opaque v1 is the wire-grammar interpreter at its grammar: every value round-trips, an accepted source is the encoding of its value, and the interpreter's octets are the layout's",
+      "statement": "books/article-kind-codec.lisp. fn-ak-encode VALS PAYLOAD = fn-wg-encode *fn-ak-grammar* of the grammar value (nil outside the kind or above the article ceiling); fn-ak-decode SOURCE = fn-wg-decode at *fn-ak-grammar*, then the kind refinement (fn-ak-rows-check), refusals named (:from, :groups, :msgid, :kind-version, :kind, :malformed). fn-ak-decode-of-encode: for fn-ak-rows-valuesp VALS and fn-ak-payloadp PAYLOAD, (fn-ak-decode (fn-ak-encode VALS PAYLOAD)) = (:ok VALS PAYLOAD). fn-ak-encode-of-decode (canonicity): (fn-ak-decode SOURCE) :ok implies fn-ak-encode of its values is SOURCE. fn-ak-grammar-encode-is-the-layout: for fn-ak-payloadp PAYLOAD, fn-ak-encode = fn-ak-layout, so PRF-1320..1322 (stated of fn-ak-layout) hold of the codec's output. Over fn-wg-decode-of-encode and fn-wg-encode-of-decode (books/wire-grammar.lisp, lane mini-contract). Host: host/native/pattern.lisp through fn-pat-encode / fn-pat-decode.",
+      "milestone": "M6",
+      "requirements": [],
+      "depends_on": [
+        "PRF-1320",
+        "PRF-1321",
+        "PRF-1322"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/article-kind-codec.lisp",
+        "tests/acl2/article-kind-codec-tests.lisp (round trip and encode = layout at the example values and four payloads; the kind hypothesis needed: a grammar value with a From outside the kind decodes to :from; canonicity: unpadded base64, a bare LF, a trailing octet and a folded header refused; :kind-version and :kind named; the bridge's ceiling needed, proved: above it the codec is nil and the layout octets)"
+      ],
+      "progress_note": "Lane zmq-2 2026-10-04. D50.",
+      "events": [
+        "fn-ak-decode-of-encode",
+        "fn-ak-encode-of-decode",
+        "fn-ak-grammar-encode-is-the-layout"
+      ]
+    },
+    {
+      "id": "PRF-1325",
+      "title": "def-pattern: an accepted `fn pattern` command line binds every argument of its plan, and the posting role's check is exactly the kind",
+      "statement": "books/app-pattern.lisp. fn-pat-cli-run-binds-every-step: for any NAME ROLE ARGV, when fn-pat-cli-plan answers (:run NAME ROLE KIND PLAN BINDINGS TIMEOUT COUNT), every argument every step of PLAN needs (fn-pat-plan-needs: once and per message) is bound in BINDINGS to a nonempty octet word without NUL (fn-pat-bindings-coverp). fn-pat-values-check-is-the-kind: fn-pat-values-check NAME FROM SECONDS GROUP MSGID is nil exactly when the eight values fn-pat-values are a value of kind opaque v1 (fn-ak-rows-valuesp *fn-ak-v1-rows*). Host: host/native/pattern.lisp calls both.",
+      "milestone": "M6",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/app-pattern.lisp",
+        "tests/acl2/app-pattern-tests.lisp (pub and sub command lines accepted and covered; one word short, an extra word on a role that does not loop, an empty or NUL word, a bad option, an unknown pattern or role each refused by name; the values check names :from, :groups, :msgid; six malformed def-pattern declarations refused, a well-formed one admitted)"
+      ],
+      "progress_note": "Lane zmq-2 2026-10-04. D50.",
+      "events": [
+        "fn-pat-cli-run-binds-every-step",
+        "fn-pat-values-check-is-the-kind"
+      ]
+    },
+    {
+      "id": "PRF-1326",
+      "title": "pub/sub delivery: the reader delivers exactly the payload the writer encoded, when the poll pair projects the writer's source",
+      "statement": "books/app-pattern-delivery.lisp. fn-pat-reader-delivers-what-the-writer-encoded: for CURSOR EVENT with (fn-cpj-project CURSOR EVENT) = P :ok, values that pass fn-pat-values-check, fn-ak-payloadp PAYLOAD, and the projected authored source (nth 6 P) = fn-pat-encode NAME FROM SECONDS GROUP MSGID PAYLOAD: (fn-pat-decode :opaque-1 (fn-pat-project CURSOR EVENT)) = (:deliver (nth 2 P) (nth 5 P) PAYLOAD) -- the event's sequence, the record's Message-ID, the payload. Scope: that the projected source is the one the writer posted is the Store's retention and the cursor's, cited, not proved here. Host: host/native/pattern.lisp (:project, :decode, :deliver).",
+      "milestone": "M6",
+      "requirements": [],
+      "depends_on": [
+        "PRF-1324",
+        "PRF-1325"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/app-pattern-delivery.lisp",
+        "tests/acl2/app-pattern-delivery-tests.lisp (inhabited by a real Store event built by fn-hsig-authorized-injected-carried-submission-event around the pubsub writer's source: delivered payload equal; each hypothesis needed: a projecting event with another source is :foreign, a cursor of another position :binding, a grammar source outside the kind :from; empty and withdrawn reports pass through; the spool check refuses another payload, generation, a non-request)"
+      ],
+      "progress_note": "Lane zmq-2 2026-10-04. D50.",
+      "events": [
+        "fn-pat-reader-delivers-what-the-writer-encoded"
+      ]
+    },
+    {
+      "id": "PRF-1329",
+      "title": "push/pull with a fixed worker set: each delivered message is delivered by exactly one worker, the one its Message-ID's partition names",
+      "statement": "books/app-pattern-delivery.lisp. fn-pat-partition MSGID N = FNV-1a (32-bit) of MSGID's octets mod N (0 for N not positive); fn-pat-partition-is-a-worker: for posp N it is a natural below N. fn-pat-select-is-one-worker: for WORKERS a decimal word naming a positive N and DECISION a delivery (:deliver SEQ MSGID PAYLOAD), (fn-pat-select DECISION INDEX WORKERS) is still a delivery iff INDEX names the partition of MSGID among N; otherwise it is (:skip MSGID), which the host acks past without delivering. So of workers 0..N-1 exactly one delivers each message. books/app-pattern.lisp: the verb :reads-partition and the declaration `pipeline` (push :posts queue, pull :reads-partition queue); fn-pat-cli-plan refuses :partition unless INDEX < WORKERS <= 1024. Scope: a fixed worker set; a stopped worker's partition waits for it (no stealing; competing consumers with leases are outside 6.6.0). Host: host/native/pattern.lisp (:select).",
+      "milestone": "M6",
+      "requirements": [],
+      "depends_on": [
+        "PRF-1325",
+        "PRF-1326"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/app-pattern-delivery.lisp",
+        "books/app-pattern.lisp",
+        "tests/acl2/app-pattern-delivery-tests.lisp (exactly one of 3 and of 7 workers delivers; the others skip by Message-ID; withdrawals partitioned the same way; empty passes; one worker delivers everything; four Message-IDs spread over 4 partitions)",
+        "tests/acl2/app-pattern-tests.lisp (pull accepted and covered; index = workers, a non-decimal and 1025 workers refused :partition; a partitioned reader of an unposted group refused at admission)"
+      ],
+      "progress_note": "Lane zmq-2 2026-10-04. D50.",
+      "events": [
+        "fn-pat-select-is-one-worker",
+        "fn-pat-partition-is-a-worker"
+      ]
+    },
+    {
       "id": "PRF-1319",
       "title": "The default peer flight profile init writes is a valid policy, decodes to itself, spools one whole batch, and init reserves its launch",
       "statement": "books/peer-flight-default.lisp. fn-pfp-default-policy (the store profile VALUES -> six naturals: the least heap for 2 flights' bookkeeping and the fixed backing, 2 spools, 2 flights, 1 worker, a spool of the profile's record bound plus *fn-cu-request-quantum*, lifetime work 4 x the profile's history bound; every figure clamped). KEYSTONES: fn-pfd-default-is-a-policy (fn-pfr-policy-p for every VALUES); fn-pfp-read-of-write (the reader inverts the writer for every policy) and fn-pfd-default-decodes-to-itself; fn-pfd-default-spools-one-batch (spool >= record bound + quantum, for every VALUES: a valid profile's record bound is below the codec ceiling); fn-pfd-default-launches-where-its-extra-fits (a :heap base reservation plus (fn-pfd-launch-extra STACK) within the machine => fn-pfr-extend-reservation admits the default). The launch extra is 22 MiB at a 1 MiB stack (pfd-grow-tight bounds the nursery re-solve). fn-pfd-init-reserves-the-default-launch: an init held within this machine's budget through fn-pfd-init-decide (fn-heap-init-decide over LIMITS plus the machine less fn-pfd-launch-reserve) writes a store whose run reservation, extended by the default profile, is :heap on the same machine for any OBSERVED and K. Scope: the cold-read, page-read startup and output extensions the launcher also applies are not counted by init (as before); a --budget store for another machine is not covered. host/native/heap.lisp fnn-heap-init-decision calls fn-pfd-init-decide. Teeth: tests/acl2/peer-flight-default-tests.lisp (defteeth on every keystone).",
