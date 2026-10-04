@@ -268,10 +268,22 @@
                 (fn-nntp-group-result s arch "fn.test"))
          (equal (fn-nntp-list-counts-command-cat s arch nil nil 3 *sct-c*)
                 (fn-nntp-list-counts-command s arch nil nil))
-         (equal (fn-nntp-hdr-command-cat s '("Subject" "1-10") 3 nil *sct-a* *sct-c*)
-                (fn-nntp-hdr-command s arch '("Subject" "1-10") nil *sct-a*))
-         (equal (fn-nntp-xpat-response-cat s '("Subject" "1-10" "*b*") 3 *sct-a* *sct-c*)
-                (fn-nntp-xpat-response s arch '("Subject" "1-10" "*b*") *sct-a*))))
+         ;; HDR/XPAT ranges answer with a header cursor (lane cold-line):
+         ;; the arm's effect is a cursor, and expanded it is the reference.
+         (fn-ovw-cursor-effectp
+          (cadr (fn-nntp-hdr-command-cat s '("Subject" "1-10") 3 nil *sct-a* *sct-c*)))
+         (equal (fn-ovw-expand (cdr (fn-nntp-hdr-command-cat s '("Subject" "1-10") 3 nil *sct-a* *sct-c*))
+                               *sct-a* *sct-c*)
+                (cdr (fn-nntp-hdr-command s arch '("Subject" "1-10") nil *sct-a*)))
+         (equal (fn-ovw-expand (cdr (fn-nntp-hdr-command-cat s '("Newsgroups" "1-10") 3 t *sct-a* *sct-c*))
+                               *sct-a* *sct-c*)
+                (cdr (fn-nntp-hdr-command s arch '("Newsgroups" "1-10") t *sct-a*)))
+         (equal (fn-ovw-expand (cdr (fn-nntp-xpat-response-cat s '("Subject" "1-10" "*b*") 3 *sct-a* *sct-c*))
+                               *sct-a* *sct-c*)
+                (cdr (fn-nntp-xpat-response s arch '("Subject" "1-10" "*b*") *sct-a*)))
+         (equal (fn-ovw-expand (cdr (fn-nntp-xpat-response-cat s '("Subject" "1-10" "*zz*") 3 *sct-a* *sct-c*))
+                               *sct-a* *sct-c*)
+                (cdr (fn-nntp-xpat-response s arch '("Subject" "1-10" "*zz*") *sct-a*)))))
   :rule-classes nil)
 
 ;;; Teeth for KEYSTONE N (fn-scat-range-numbers-is-group-range-numbers).
