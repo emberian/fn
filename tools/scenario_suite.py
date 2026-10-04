@@ -6,6 +6,7 @@
     python3 tools/scenario_suite.py run TIER --image-set SHA [--rev REV]
         [--label LABEL] [--jobs 4] [--dry-run] [-- HBOX_NATIVE_OPTION ...]
     python3 tools/scenario_suite.py check
+    python3 tools/scenario_suite.py heap-optouts
 
 The tiers are data, tests/scenarios/tiers.tsv: peer (can a stranger's
 server peer with us safely and usefully: transit both ways, catch-up,
@@ -85,6 +86,25 @@ def image_reads(root: pathlib.Path, module: str, text: str) -> list[str]:
         import native_env  # noqa: E402
         return native_env.reads("tests." + module)
     return re.findall(r'"(FN_[A-Z0-9_]+)"', text)
+
+
+HEAP_OPTOUT = re.compile(r"image_heap=|[\"']SBCL_USER_ARGS[\"']|[\"']FN_TEST_HEAP_MB[\"']")
+
+
+def heap_optouts(root: pathlib.Path = ROOT) -> list[str]:
+    """Native test lines that run an owner at a heap of their own choosing
+    instead of the installed launcher's decided figure (tests/native_harness.py
+    Node.launch): Node(image_heap=REASON), or SBCL_USER_ARGS / FN_TEST_HEAP_MB
+    set by the test.  The decided-launch ruling (2026-10-04) has them counted."""
+    out = []
+    for path in sorted((root / "tests").glob("test_*.py")):
+        if "native" not in path.name and not path.name.startswith("test_bp_"):
+            continue
+        for number, line in enumerate(path.read_text(encoding="utf-8", errors="replace")
+                                      .splitlines(), 1):
+            if HEAP_OPTOUT.search(line) and not line.lstrip().startswith("#"):
+                out.append(f"{path.relative_to(root)}:{number}: {line.strip()[:120]}")
+    return out
 
 
 def findings(root: pathlib.Path = ROOT) -> list[str]:
@@ -169,6 +189,7 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("modules")
     p.add_argument("tier", choices=TIERS)
     sub.add_parser("check")
+    sub.add_parser("heap-optouts")
     p = sub.add_parser("run")
     p.add_argument("tier", choices=TIERS)
     p.add_argument("--image-set", required=True, help="the dev commit whose published images to use")
@@ -184,8 +205,15 @@ def main(argv: list[str] | None = None) -> int:
             print("scenario_suite: " + line)
         if not found:
             counts = ", ".join(f"{t} {len(tier(t)['module'])}" for t in TIERS)
-            print(f"scenario_suite: {TIERS_FILE} well formed ({counts} modules)")
+            print(f"scenario_suite: {TIERS_FILE} well formed ({counts} modules); "
+                  f"{len(heap_optouts())} native test lines choose their own heap "
+                  "(heap-optouts lists them)")
         return 1 if found else 0
+    if args.command == "heap-optouts":
+        found = heap_optouts()
+        print("\n".join(found))
+        print(f"scenario_suite: {len(found)} native test lines choose their own heap")
+        return 0
     if args.command == "modules":
         print("\n".join(tier(args.tier)["module"]))
         return 0

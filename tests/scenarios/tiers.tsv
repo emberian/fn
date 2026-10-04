@@ -62,6 +62,7 @@ peer	tool	python3 tools/inn_lab.py SHA --host hbox --native-image $IMAGES/fn-hos
 peer	tool	python3 tools/hostile_campaign.py --image $IMAGES/fn-host-developer --families transit,pipelining,tls,connection --evidence $OUT --report $OUT/report.json	BND,PEER,AUTH	a misbehaving peer: garbage, resets, slowloris, IHAVE/TAKETHIS abuse; the node stays sound
 #
 # smoke: one short module per question, minutes at --jobs 4.
+smoke	module	tests.test_native_installed_start	OPS,DUR	a fresh store started exactly as an installed node starts (packaging/fn installed layout, the decided heap): GROUP 211, POST 240, ARTICLE, clean stop
 smoke	module	tests.test_native_log	DUR	developer log append/recover; SIGKILL at every log cut keeps a prefix (9 s)
 smoke	module	tests.test_native_crash_model	DUR,ARU	store CLI killed at POST_LOG and recovery cuts; injected EIO stays uncertain (40 s)
 smoke	module	tests.test_native_commit_log	DUR,FSYNC,IDEM	served POSTs batch through the record log; kill at every POST_LOG cut keeps every 240 (M1; 45 s)
