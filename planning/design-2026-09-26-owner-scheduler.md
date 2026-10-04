@@ -252,7 +252,7 @@ recorded in build/lanes/owner-scheduler/LANEDUMP.md.
   renders each next window when the socket took the last, off the mutex; the
   record holds `plan` (the continuation) and `class`. The mux's host-list
   edits (clients, workers) moved from the raw owner mutex to the roster
-  mutex. tests/native_owner_chunk_loop_raw.lisp drives the shipped loop and
+  mutex. tests/native_owner_chunk_loop_raw-mock.lisp drives the shipped loop and
   step against stubs (three clock readings for an open and two chunks now:
   the charge no longer costs a reading of its own).
 - host/native/pull-service.lisp `fnn-pull-local-send` renders the plan into

@@ -387,11 +387,11 @@ class Consumer:
         return manifest
 
     # -- native calls --------------------------------------------------------
-    def native(self, *words):
+    def native(self, *words, timeout=300):
         try:
             result = subprocess.run([self.image, "--fn", *map(str, words)],
                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                    timeout=300, check=False)
+                                    timeout=timeout, check=False)
         except subprocess.TimeoutExpired:
             # In particular a timed-out ACK or POST might have committed.
             # Its existing durable client record is settled on the next wake.
@@ -425,18 +425,30 @@ class Consumer:
             code, out, err = self.native("consumer", "ack", self.control, path)
         return code
 
-    def poll(self):
+    def poll(self, wait=None):
+        """One page from fn: `poll`, or with WAIT seconds fn's `wait`, which
+        answers the poll the owner makes when the first event the consumer can
+        read is committed, or the empty page when WAIT passes
+        (specs/consumer-progress.md, Waiting).  The files are the poll's
+        either way; the consumer never sleeps on a timer of its own."""
         cursor_path, report_path = self.scratch("cursor"), self.scratch("report")
+        verb = "poll" if wait is None else "wait"
+        tail = () if wait is None else ("--timeout", wait)
+        # A wait holds its control connection for up to its timeout; the
+        # native client allows the timeout plus its ten seconds for the reply.
+        timeout = {} if wait is None else {"timeout": wait + 60}
         if self.secret_file:
-            code, out, err = self.native("consumer", "bound-poll", self.control,
+            code, out, err = self.native("consumer", "bound-" + verb, self.control,
                                          self.name, self.secret_file,
-                                         cursor_path, report_path)
+                                         cursor_path, report_path, *tail,
+                                         **timeout)
         else:
-            code, out, err = self.native("consumer", "poll", self.control,
-                                         self.name, cursor_path, report_path)
+            code, out, err = self.native("consumer", verb, self.control,
+                                         self.name, cursor_path, report_path, *tail,
+                                         **timeout)
         if code != 0:
             raise Stop(code if code in (1, 3) else 4,
-                       "poll: %s %s" % (out.decode(), err.decode()))
+                       "%s: %s %s" % (verb, out.decode(), err.decode()))
         return cursor_path, cursor_path.read_bytes(), report_path
 
     def inspect(self, cursor_path):
@@ -884,13 +896,13 @@ class Consumer:
         self.db.execute("UPDATE deliveries SET state='handled' "
                         "WHERE state='pending' AND cursor=?", (cursor,))
 
-    def delivery(self):
+    def delivery(self, wait=None):
         """Retain exact native output before interpreting or acknowledging it."""
         row = self.db.execute("SELECT before_cursor, cursor, report FROM deliveries "
                               "WHERE state='pending'").fetchone()
         if row is None:
             before = self.position()
-            _, cursor, report_path = self.poll()
+            _, cursor, report_path = self.poll(wait)
             report = report_path.read_bytes()
             self.db.execute("BEGIN IMMEDIATE")
             try:
@@ -998,11 +1010,16 @@ class Consumer:
             if code not in (0, 1):
                 raise Stop(4, "hybrid-author answered %d: %s" % (code, err.decode()))
 
-    def wake(self, max_pages=256):
+    def wake(self, max_pages=256, wait=None):
+        """Settle, then read and answer every page fn has.  With WAIT seconds
+        the first page is fn's `wait`: a consumer with nothing to read sleeps
+        in the owner until a commit gives it one (or WAIT passes), and later
+        pages are ordinary polls over what that commit made readable."""
         self.settle_ack()
         self.drive_outbox()
-        for _ in range(max_pages):
-            before, cursor_path, cursor, report_path = self.delivery()
+        for page in range(max_pages):
+            before, cursor_path, cursor, report_path = self.delivery(
+                wait if page == 0 else None)
             report = report_path.read_bytes()
             if not report:
                 if cursor == before:
@@ -1107,7 +1124,10 @@ def build_parser():
     report.add_argument("operation_id")
     report.add_argument("payload", nargs="?")
     report.add_argument("--payload-file", type=Path, help="read the exact payload bytes from a file")
-    sub.add_parser("wake")
+    wake = sub.add_parser("wake")
+    wake.add_argument("--wait", type=int, metavar="SECONDS",
+                      help="sleep in fn's consumer wait (0 to 3600 seconds) until "
+                           "there is an event to read, instead of one poll")
     sub.add_parser("summary")
     payload = sub.add_parser("payload", help="export a recorded operation's exact payload")
     payload.add_argument("operation_id")
@@ -1152,7 +1172,9 @@ def main(argv=None):
             consumer.originate(args.operation_id, payload)
             consumer.drive_outbox()
         elif args.command == "wake":
-            consumer.wake()
+            if args.wait is not None and not 0 <= args.wait <= 3600:
+                raise Stop(1, "wait is 0 to 3600 seconds")
+            consumer.wake(wait=args.wait)
         elif args.command in ("status", "inspect", "query", "export"):
             if args.command == "status":
                 result = consumer.inspection_status()

@@ -474,14 +474,6 @@
    "reason": "fnn-cold-worker-token: unlocked-read; writes under [('E',), ('E', 'O')], 8 access site(s), no common lock"
   },
   {
-   "key": "R1b|fnn-install-raw-dispatch|*fnn-raw-dispatch*:unlocked-write",
-   "count": 1,
-   "rule": "R1b",
-   "category": "violation",
-   "where": "host/native/io.lisp:1287",
-   "reason": "*fnn-raw-dispatch* written with no lock at host/native/io.lisp:1241 (fnn-install-raw-dispatch); 1 write site(s), 5 access site(s) across 18 actor(s), no common "
-  },
-  {
    "key": "R1b|fnn-journal-write|*fnn-journal-w*:unlocked-write",
    "count": 1,
    "rule": "R1b",
@@ -1056,110 +1048,6 @@
    "category": "violation",
    "where": "host/native/owner.lisp:6922",
    "reason": "serving root reaches O-protected fnn-global in fnn-owner-log:316 without holding O"
-  },
-  {
-   "key": "R1|lambda@host/native/bp-app.lisp:fnn-command-bp-app-receive#lambda3|O:fnn-bps-tcpcl-admission:fnn-owner-core",
-   "count": 1,
-   "rule": "R1",
-   "category": "unresolved",
-   "where": "host/native/bp-app.lisp:363",
-   "reason": "async root reaches O-protected fnn-owner-core in fnn-bps-tcpcl-admission:1143 without holding O (a stored callback: its calling context is unknown)"
-  },
-  {
-   "key": "R1|lambda@host/native/bp-node.lisp:fnn-command-bp-node#lambda1|O:fnn-bpnc-handle:fnn-owner-core",
-   "count": 1,
-   "rule": "R1",
-   "category": "unresolved",
-   "where": "host/native/bp-node.lisp:970",
-   "reason": "async root reaches O-protected fnn-owner-core in fnn-bpnc-handle:126 without holding O (a stored callback: its calling context is unknown)"
-  },
-  {
-   "key": "R1|lambda@host/native/bp-node.lisp:fnn-command-bp-node#lambda4|O:fnn-bpnc-handle:fnn-owner-core",
-   "count": 1,
-   "rule": "R1",
-   "category": "unresolved",
-   "where": "host/native/bp-node.lisp:1023",
-   "reason": "async root reaches O-protected fnn-owner-core in fnn-bpnc-handle:126 without holding O (a stored callback: its calling context is unknown)"
-  },
-  {
-   "key": "R1|lambda@host/native/bp-node.lisp:fnn-command-bp-node#lambda5|O:fnn-bps-tcpcl-admission:fnn-owner-core",
-   "count": 1,
-   "rule": "R1",
-   "category": "unresolved",
-   "where": "host/native/bp-node.lisp:1028",
-   "reason": "async root reaches O-protected fnn-owner-core in fnn-bps-tcpcl-admission:1143 without holding O (a stored callback: its calling context is unknown)"
-  },
-  {
-   "key": "R1|lambda@host/native/bp-node.lisp:fnn-command-bp-node#lambda6|O:fnn-bpnode-dispatch-one:fnn-owner-core",
-   "count": 1,
-   "rule": "R1",
-   "category": "unresolved",
-   "where": "host/native/bp-node.lisp:1049",
-   "reason": "async root reaches O-protected fnn-owner-core in fnn-bpnode-dispatch-one:274 without holding O (a stored callback: its calling context is unknown)"
-  },
-  {
-   "key": "R1|lambda@host/native/bp-node.lisp:fnn-command-bp-node#lambda6|O:fnn-bpnode-receipt-detail:fnn-owner-core",
-   "count": 1,
-   "rule": "R1",
-   "category": "unresolved",
-   "where": "host/native/bp-node.lisp:1049",
-   "reason": "async root reaches O-protected fnn-owner-core in fnn-bpnode-receipt-detail:144 without holding O (a stored callback: its calling context is unknown)"
-  },
-  {
-   "key": "R1|lambda@host/native/bp-node.lisp:fnn-command-bp-node#lambda6|O:fnn-bpnode-receipt-observations:fnn-owner-core",
-   "count": 1,
-   "rule": "R1",
-   "category": "unresolved",
-   "where": "host/native/bp-node.lisp:1049",
-   "reason": "async root reaches O-protected fnn-owner-core in fnn-bpnode-receipt-observations:126 without holding O (a stored callback: its calling context is unknown)"
-  },
-  {
-   "key": "R1|lambda@host/native/bp-node.lisp:fnn-command-bp-node#lambda6|O:fnn-bpnode-receipt-result:fnn-owner-core",
-   "count": 1,
-   "rule": "R1",
-   "category": "unresolved",
-   "where": "host/native/bp-node.lisp:1049",
-   "reason": "async root reaches O-protected fnn-owner-core in fnn-bpnode-receipt-result:162 without holding O (a stored callback: its calling context is unknown)"
-  },
-  {
-   "key": "R1|lambda@host/native/bp-node.lisp:fnn-command-bp-node#lambda6|O:fnn-bpnode-refusal-line:fnn-owner-core",
-   "count": 1,
-   "rule": "R1",
-   "category": "unresolved",
-   "where": "host/native/bp-node.lisp:1049",
-   "reason": "async root reaches O-protected fnn-owner-core in fnn-bpnode-refusal-line:49 without holding O (a stored callback: its calling context is unknown)"
-  },
-  {
-   "key": "R1|lambda@host/native/bp-node.lisp:fnn-command-bp-node#lambda6|O:fnn-bpnode-release-line:fnn-owner-core",
-   "count": 1,
-   "rule": "R1",
-   "category": "unresolved",
-   "where": "host/native/bp-node.lisp:1049",
-   "reason": "async root reaches O-protected fnn-owner-core in fnn-bpnode-release-line:138 without holding O (a stored callback: its calling context is unknown)"
-  },
-  {
-   "key": "R1|lambda@host/native/bp-node.lisp:fnn-command-bp-node#lambda6|O:fnn-bpnode-request-result-1:fnn-core-state",
-   "count": 1,
-   "rule": "R1",
-   "category": "unresolved",
-   "where": "host/native/bp-node.lisp:1049",
-   "reason": "async root reaches O-protected fnn-core-state in fnn-bpnode-request-result-1:107 without holding O (a stored callback: its calling context is unknown)"
-  },
-  {
-   "key": "R1|lambda@host/native/bp-node.lisp:fnn-command-bp-node#lambda6|O:fnn-bpnode-request-result-1:fnn-owner-core",
-   "count": 1,
-   "rule": "R1",
-   "category": "unresolved",
-   "where": "host/native/bp-node.lisp:1049",
-   "reason": "async root reaches O-protected fnn-owner-core in fnn-bpnode-request-result-1:71 without holding O (a stored callback: its calling context is unknown)"
-  },
-  {
-   "key": "R1|lambda@host/native/bp-node.lisp:fnn-command-bp-node#lambda6|O:fnn-bpnode-source-decision:fnn-owner-core",
-   "count": 1,
-   "rule": "R1",
-   "category": "unresolved",
-   "where": "host/native/bp-node.lisp:1049",
-   "reason": "async root reaches O-protected fnn-owner-core in fnn-bpnode-source-decision:31 without holding O (a stored callback: its calling context is unknown)"
   },
   {
    "key": "R1|lambda@host/native/bp.lisp:fnn-command-bp-receive#lambda3|O:fnn-bps-tcpcl-admission:fnn-owner-core",
@@ -2688,14 +2576,6 @@
    "category": "violation",
    "where": "host/native/owner.lisp:5826",
    "reason": "handler clause serious-condition consumes ['fault', 'indet'] without routing it to the fence"
-  },
-  {
-   "key": "R7|fnn-owner-refresh-config-cache|swallow:error:fault",
-   "count": 1,
-   "rule": "R7",
-   "category": "violation",
-   "where": "host/native/admin.lisp:185",
-   "reason": "handler clause error consumes ['fault'] without routing it to the fence"
   },
   {
    "key": "R7|fnn-owner-release-extents|swallow:serious-condition:fault,indet",

@@ -316,6 +316,10 @@
   :class :common-lisp-compliant
   :keystones (fn-fs-section-declp-refuses-an-unlisted-cleanup-purpose)
   :direct "runs at load in fnn-section-declare, before fnn-call's dispatcher serves")
+(definterface fn-fs-actor-declp
+  :class :common-lisp-compliant
+  :keystones (fn-fs-actor-declp-refuses-an-unknown-kind-or-policy)
+  :direct "runs at load in fnn-actor-declare (every def-actor), before fnn-call's dispatcher serves")
 (definterface fn-fs-section-class-ok
   :class :common-lisp-compliant
   :keystones (fn-fs-section-class-ok-only-for-a-declared-class)
@@ -428,7 +432,8 @@
 
 (definterface fn-bs-init-pub-admission
   :class :common-lisp-compliant
-  :keystones (fn-bs-init-pub-admission-proceeds-only-on-nothing
+  :keystones (fn-bs-init-log-crash-retry-is-old-or-new
+              fn-bs-init-pub-admission-proceeds-only-on-nothing
               fn-bs-init-pub-admission-decides-by-what-is-present))
 
 (definterface fn-clock-observation
@@ -921,7 +926,8 @@
   :class :common-lisp-compliant
   :kinds ((n natp))
   :keystones (fn-scka-srcs-n-compose
-              fn-scka-srcs-n-complete))
+              fn-scka-srcs-n-complete
+              fn-rcw-srcs-steps-is-the-walk))
 
 (definterface fn-scka-write-donep
   :class :common-lisp-compliant)
@@ -1005,7 +1011,8 @@
 
 (definterface fn-store-charge
   :class :common-lisp-compliant
-  :keystones (fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge))
+  :keystones (fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge
+              fn-store-charge-of-profile-article-is-representable))
 
 (definterface fn-store-checkpoint-clone-fence-name
   :class ::program)
@@ -1547,9 +1554,11 @@
 
 ; host/native/owner.lisp asks it before the POST's seal (lane arena-forget).
 (definterface fn-owner-cat-may-seal
-  :class :common-lisp-compliant)
-; Its named host wrapper equality is -by-definition. The old Boolean gate
-; restatement is not a prepare-transition keystone; that relation remains owed.
+  :class :common-lisp-compliant
+  :keystones ((fn-cat-may-seal-is-the-prepare-transition-gate :via fn-cat-may-seal)
+              (fn-cat-may-seal-admits-the-prepare-after-the-seal :via fn-cat-may-seal)))
+; Its named host wrapper equality is -by-definition; the keystones relate the
+; word to T1 (books/catalog-may-seal.lisp, lane proofs2 2026-10-04).
 
 (definterface fn-owner-catchup-plans
   :class :common-lisp-compliant)
@@ -3492,10 +3501,28 @@
   :class ::ideal)
 
 (definterface fn-aj-host-authorize
-  :class ::ideal)
+  :class ::ideal
+  :keystones ((fn-aj-reserved-resolution-fits :via fn-aj-authorize)))
 
 (definterface fn-aj-host-initial
+  :class ::ideal
+  :keystones ((fn-aj-statep-of-initial :via fn-aj-initial)
+              (fn-aj-valid-profile-admits-first-work :via fn-aj-initial)))
+
+(definterface fn-aj-host-profile-file-name
   :class ::ideal)
+
+(definterface fn-aj-host-profile-read-bound
+  :class ::ideal)
+
+(definterface fn-aj-host-profile-read
+  :class ::ideal
+  :keystones ((fn-ajpf-read-of-octets :via fn-ajpf-read)
+              (fn-ajpf-read-is-a-profile :via fn-ajpf-read)))
+
+(definterface fn-aj-host-profile-write-octets
+  :class ::ideal
+  :keystones ((fn-ajpf-write-keeps-the-journal :via fn-ajpf-write-octets)))
 
 (definterface fn-aj-host-max-record-length
   :class ::ideal)
@@ -3519,7 +3546,8 @@
   :class ::ideal)
 
 (definterface fn-aj-host-recover
-  :class ::ideal)
+  :class ::ideal
+  :keystones ((fn-aj-recover-past-profile-is-named :via fn-aj-recover-record)))
 
 (definterface fn-bs-profile-resolve
   :class :common-lisp-compliant
@@ -4827,9 +4855,31 @@
 (definterface fn-owner-orc-capture
   :class ::program)
 
-; host/native/owner.lisp dispatches it (lane online-reclaim).
-(definterface fn-owner-orc-chunk
+; host/native/owner.lisp dispatches them (lane online-reclaim; split into
+; the fold and the rewrite by lane reclaim, PRF-1315).
+(definterface fn-owner-orc-fold-chunk
   :class ::program)
+
+(definterface fn-owner-orc-rewrite-chunk
+  :class ::program)
+
+; host/native/owner.lisp dispatches them (lane reclaim, PRF-1315): the
+; reclaim pass over the pinned history in chunks.
+(definterface fn-rcw-acc-init
+  :class :ideal)
+
+(definterface fn-rcw-acc-finish
+  :class :common-lisp-compliant
+  :keystones (fn-rcw-acc-steps-is-capture))
+
+(definterface fn-rcw-canon-acc-step
+  :class :ideal
+  :keystones (fn-rcw-canon-acc-steps-is-the-checkpoint-capture))
+
+(definterface fn-rcw-predict-acc-step
+  :class :ideal
+  :keystones (fn-rcw-predict-acc-steps-is-predict
+              fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open))
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orc-classes
@@ -4929,6 +4979,10 @@
 
 ; host/native/owner.lisp dispatches it (lane composed-owner).
 (definterface fn-owner-sco-next
+  :class ::program)
+
+; host/native/owner.lisp dispatches it (lane reclaim, PRF-1315).
+(definterface fn-owner-sco-next-of
   :class ::program)
 
 ; host/native/owner.lisp dispatches it (lane composed-owner).
@@ -5143,13 +5197,11 @@
 
 (definterface fn-owner-retire-step
   :class ::program
-  ;; The host step is fn-ort-drain-step-counted since 1bf2ddcaf (carried
-  ;; counts and both producer fences), so its keystones are the counted
-  ;; drain's: the window ends it, and before the window it waits unless the
-  ;; fenced count is zero.
-  :keystones ((fn-ort-deadline-is-independent-of-the-fences :via fn-ort-drain-step-counted)
-              (fn-ort-counted-drain-waits-before-window-without-fenced-zero
-               :via fn-ort-drain-step-counted)))
+  ;; The host step is fn-ort-retire-step: the counted drain over the carried
+  ;; feed count, intake fenced, and the owner's queue as the producer fence.
+  :keystones ((fn-ort-retire-step-ends-by-the-window :via fn-ort-retire-step)
+              (fn-ort-retire-step-drains-a-settled-zero :via fn-ort-retire-step)
+              (fn-ort-retire-step-waits-while-anything-drains :via fn-ort-retire-step)))
 
 (definterface fn-tls-self-signed-host-certificate-pem
   :class :program
@@ -5337,10 +5389,13 @@
 (definterface fn-log-sink-pending-lines :class :common-lisp-compliant)
 (definterface fn-log-sink-pending-octets :class :common-lisp-compliant)
 (definterface fn-ort-fenced-input-consumed :class :common-lisp-compliant)
+(definterface fn-ort-final-checkpoint-action :class :common-lisp-compliant
+  :keystones ((fn-ort-final-checkpoint-only-when-drained :via fn-ort-final-checkpoint-action)))
 (definterface fn-ort-intake-action :class :common-lisp-compliant)
 (definterface fn-ort-log-close-action :class :common-lisp-compliant)
 (definterface fn-ort-log-close-exit :class :common-lisp-compliant
-  :kinds ((prior integerp) (uncertain integerp)))
+  :kinds ((prior integerp) (uncertain integerp))
+  :keystones ((fn-ort-clean-stop-keeps-its-exit :via fn-ort-log-close-exit)))
 (definterface fn-ort-report-close-action :class :common-lisp-compliant)
 (definterface fn-ort-service-claim-action :class :common-lisp-compliant)
 (definterface fn-ort-service-settlement-action :class :common-lisp-compliant)
@@ -5419,11 +5474,25 @@
 
 (definterface fn-web-host-private-reply-p :class ::program)
 (definterface fn-web-host-private-reply-step :class ::program)
-; Actual admitted pre-factory output consumer. Incomplete tariffs refuse.
+; Actual admitted pre-factory output consumer. ARTICLE is priced from the
+; row its factory serves (books/output-tariff-article-row.lisp); every other
+; family is (:unpriced F) and answered 403 by name in accounted mode.  The
+; reply-within-tariff bound over the exec arm is not yet a theorem (see
+; planning/design/tariff-2026-10-04.md, the first slice).
 (definterface fn-owner-output-preview :class :program)
-(definterface fn-owner-output-tariff-preview :class :program)
+(definterface fn-owner-output-tariff-preview
+  :class :program
+  :keystones ((fn-tariff-article-prices-the-served-row :via fn-tariff-article-preview)
+              (fn-tariff-article-prices-the-served-msgid :via fn-tariff-article-preview)
+              (fn-tariff-article-admits-exactly-within-capacity :via fn-tariff-article-descriptor)))
+(definterface fn-owner-output-refusal-line-at
+  :class :program
+  :keystones ((fn-oadl-refusal-is-one-line :via fn-oadl-refusal-span)))
+(definterface fn-oadl-wordp :class :common-lisp-compliant)
+(definterface fn-oadl-log-line :class :common-lisp-compliant)
+(definterface fn-oadl-accounting-line :class :common-lisp-compliant)
 (definterface fn-ocap-admit-preview :class :common-lisp-compliant)
-(definterface fn-ocap-at :class :common-lisp-compliant)
+(definterface fn-ocap-at :class :common-lisp-compliant :kinds ((n natp)))
 (definterface fn-rlo-capacity :class :common-lisp-compliant)
 
 (definterface fn-web-host-window-page-step :class ::program)
@@ -5475,7 +5544,9 @@
 
 (definterface fn-hist$p-candidate-word :class :common-lisp-compliant :kinds ((expected-count natp))
  :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-count-natp))
-(definterface fn-owner-orcp-load-catalog :class :program)
+(definterface fn-owner-orcp-load-catalog-begin :class :program)
+(definterface fn-owner-orcp-load-catalog-chunk :class :program
+  :keystones (fn-rcw-load-chunks-keyed-is-keyed-load))
 ; PRF-1288: actual private decoded activation and SAME-pool scalar borrow.
 ; Complete decoded constructor/GC tariff remains explicitly unpriced.
 (definterface create-fn-decoded-job :class :common-lisp-compliant
@@ -5523,7 +5594,13 @@
 ; logical execution, not whole-turn funding, allocation or native qualification.
 (definterface fn-bpsched-accept-plan :class :common-lisp-compliant)
 (definterface fn-bpsched-deadline :class :common-lisp-compliant :kinds ((grant true-listp)))
-(definterface fn-bpsched-forward-entry :class :common-lisp-compliant :kinds ((busy true-listp)))
+(definterface fn-bpfc-initial :class :common-lisp-compliant)
+(definterface fn-bpfc-turn
+  :class :common-lisp-compliant
+  :kinds ((held true-listp) (busy true-listp) (quantum posp))
+  :keystones (fn-bpfc-turn-advances-at-most-quantum
+              fn-bpfc-turn-after-a-yield-is-the-larger-turn
+              fn-bpfc-run-is-the-plan-choice))
 (definterface fn-bpsched-idle-p :class :common-lisp-compliant)
 (definterface fn-bpsched-listener-index :class :common-lisp-compliant)
 (definterface fn-bpsched-listener-step :class :common-lisp-compliant)

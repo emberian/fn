@@ -1,123 +1,78 @@
 # Contributing to fn
 
-fn is an executable ACL2 news core and persistent store, served over NNTP and
-carried over BP for disconnected operation. Contributions are licensed under
-[AGPL-3.0](LICENSE). Questions and proposed changes can go in repository issues.
+fn is a news server whose decisions are made by ACL2 code with theorems
+about it. Contributions are AGPL-3.0 ([LICENSE](LICENSE)); questions go in
+repository issues.
 
-## Find the contract and the current work
+Using an AI assistant is expected. Every file named below is a path you
+can hand it.
 
-Start with the [engineering map](docs/engineering.md),
-[architecture](docs/architecture.md) and [decision register](planning/decisions.md).
-Read the affected specification before changing behavior. The
-[contributors' guide](CONTRIBUTORS.md) explains the code boundaries and evidence;
-[AGENTS.md](AGENTS.md) contains the repository working instructions.
+## Get a tree
 
-Use [now](planning/now.md) for the current development state,
-[NSLICESQUEUE](NSLICESQUEUE.md) for connected capability work, and the
-[repair ledger](planning/repair/STATUS.md) for individual findings. The
-[requirements](planning/requirements.json), [proof targets](planning/proofs.json)
-and [scenarios](tests/scenarios/catalog.json) retain their stable IDs. Update the
-relevant contract, registry and scenario together when behavior changes. Dated
-plans and old evidence describe their recorded revision, not today's completion.
-
-## Work in an isolated tree
-
-Start from current `origin/dev`, and keep the shared checkout intact:
+You need git and Python 3.11 or newer (3.12 or older for the optional
+`tests/interop_nntplib.py` probe: `nntplib` left Python in 3.13). Work in
+your own worktree from `origin/dev`, never in someone else's checkout:
 
 ```sh
 git fetch origin
-git worktree add -b codex/my-change build/lanes/my-change origin/dev
+git worktree add -b lane/my-change build/lanes/my-change origin/dev
 cd build/lanes/my-change
 ```
 
-Use a distinct branch and directory name. Coordinate shared interfaces and file
-changes with their current owner. Do not stash or reset someone else's checkout,
-or delete another contributor's files or caches. The repository tools use Python
-3.11 or newer; ACL2 and native dependencies have separate setup instructions in
-[the proof guide](docs/proofs.md) and [installation guide](docs/install.md).
+Never `git stash`, never `git add -A`: commit the files you changed by name.
 
-## Iterate on the actual caller
+## Read before changing
 
-Run the smallest check that can refute your change. For a Python tool, select its
-unit-test module or method with `python3 -m unittest`. For native Lisp syntax,
-`python3 tools/host_check.py --read FILE` is a static check; it does not execute
-that file or establish its behavior.
+1. `README.md` — what fn is, in ten lines.
+2. `docs/engineering.md` — the reading order and where each kind of truth
+   lives.
+3. `AGENTS.md` — the working rules; `planning/how-we-work.md` — the loop
+   and what counts as done.
+4. The spec for what you are changing, under `specs/`.
 
-Use a warm proof session for ACL2 work. This example loads `peer-pull` up to its
-schedule function, then sends the remaining source forms and its test file:
+`planning/now.md` is the current state, as coordinates.
 
-```sh
-python3 tools/proof_repl.py forms books/peer-pull
-python3 tools/proof_repl.py start my-change books/peer-pull --host hbox --cached-only --upto fn-pull-schedule
-python3 tools/proof_repl.py send-range my-change books/peer-pull --from fn-pull-schedule
-python3 tools/proof_repl.py send-file my-change tests/acl2/peer-pull-tests.lisp
-python3 tools/proof_repl.py status my-change
-python3 tools/proof_repl.py stop my-change
-```
+## Check your change
 
-Adapt the book, event and tests to your change. A partial session is useful for
-individual forms; loading the complete target is necessary before sending tests
-that depend on later definitions. `--cached-only` refuses missing or mismatched
-dependency certificates. Choose an explicit source-dependency or certification
-route when needed; inspect `start --help` first. Keep unchanged dependencies
-loaded and retry the failing event, instead of starting a whole closure again.
-An admitted event is not a certificate. Leaked LOCAL rules (`--ld-leak`) are for
-discovery; final admission must reproduce without them.
+Run the narrowest check that could prove you wrong, not the whole suite.
+`docs/testing.md` lists one command per kind of test (ACL2 test books, raw
+SBCL harnesses, native modules, tooling tests). For docs:
+`python3 tools/docs_check.py` and `python3 site/build_site.py --check`.
 
-Prefer the cached build host for substantial proof work. On hbox, builds run
-under `swarm-build`; farm submissions apply that wrapper. Coordinate available
-memory and builds, and inspect RSS and ARC rather than relying on `free` alone.
-On the laptop, launch ACL2 only through `tools/acl2` or `tools/proof_repl.py`, which
-use the resource pool. Do not bypass it with a bare ACL2 process. See the
-[proof guide](docs/proofs.md) and [runbooks](tools/runbooks/README.md) for host setup.
+ACL2 runs only through `tools/acl2` or `tools/proof_repl.py` (a warm
+session; `planning/how-we-work.md` "The loop"). Certification goes to a
+build box: `python3 tools/farm.py submit auto tests/acl2/NAME-tests`. On
+hbox, every build runs under `swarm-build`.
 
-## Exercise a running source process
+`make check` is the whole consistency suite (tens of minutes). It
+does not run the server or certify books.
 
-Saved-image production is not a prerequisite for development feedback.
-[`native_source_runner.py`](tools/native_source_runner.py) prepares and runs a
-fresh native source process; [`native_source_cache.py`](tools/native_source_cache.py)
-can reuse an initialized world before a Store or owner exists. Both expose their
-subcommands through `--help`. Preserve attachment order, exact source/runtime
-identities and fresh state on restart; an old stobj layout cannot stand in for a
-changed one. Source execution, logical admission and packaging qualification are
-separate results.
+## The rules that bite
 
-For an operator prompt, use `python3 tools/fn_dev.py shell --executable
-/path/to/fn --config fn.toml`. A developer owner started with
-`FN_NATIVE_DEV_REPL=/absolute/private/directory/fn-dev.sock` also supports:
+- New code replaces old code in place, in the same commit; nothing is
+  reverted to make a check pass. If the replacement loses a theorem the
+  old code had, add a ledger item with `"category": "proof-owed"`
+  naming the theorem still owed (copy the shape of
+  `planning/repair/items/PGO-OWED-*.json`) and make no claim that needs
+  it.
+- A test fixture that fakes the function under test, or a physical seam
+  (`fnn-core`, `fnn-fault`, `fnn-store-close`, `fnn-heap-*`,
+  `fnn-extent-*`), has `-mock` in its filename and backs no claim.
+- Generated files (`planning/current.md`, `planning/current-view.json`,
+  `planning/repair/STATUS.md`, the `interfaces*`, `coverage.json`,
+  `cost-*.json`, `proof-events.json`) are regenerated by the integrator.
+  Do not hand-edit them.
+- Evidence is filed, not committed: `python3 tools/evidence_store.py put
+  PATH`; the line in `planning/evidence-index.tsv` is the record.
+- New ids are claimed first: `python3 tools/next_id.py --help`.
+- `origin` is public. Run `python3 tools/secrets_check.py` before you
+  push.
 
-```sh
-python3 tools/fn_dev.py repl --socket /absolute/private/directory/fn-dev.sock
-```
+## Land it
 
-This attaches to the live owner's actual world. It can change code and state;
-long forms hold the owner, and disconnecting does not cancel them. Use isolated
-test Stores, not the live node. The [developer attachment reference](docs/operator.md#interactive-development-and-live-inspection)
-describes admission, inspection, tracing and the production refusal boundary.
+Push your branch and tell the integrator: the commit, the files, and the
+checks you ran with their results. The integrator alone writes `dev`.
+`planning/landing-pipeline.md` says what it runs and when.
 
-## Integrate source and record scoped results
-
-Send coherent source promptly to the integrator for public `dev`; proof checks,
-selected runtime checks and evidence filing can follow asynchronously. Include
-the commit, affected contracts and actual consumer, results already obtained,
-and outstanding work. Composition conflicts may need resolution before push;
-source integration does not require a whole certification or image run.
-
-For certification, select changed books and relevant test roots, for example
-`python3 tools/farm.py submit hbox books/peer-pull tests/acl2/peer-pull-tests`.
-Choose affected consumers when the interface changes, reuse matching artifacts,
-and coordinate expensive runs. `make check` is a broader consistency suite;
-it is not proof of runtime behavior and need not run for every local edit.
-See [validation](tests/README.md) and [proofs](docs/proofs.md) for check selection.
-
-Archive evidence with `python3 tools/evidence_store.py put PATH` and commit the
-resulting `planning/evidence-index.tsv` entry; evidence bytes belong in the
-archive, not Git. Name the source revision, admitted/certified scope and executed
-consumer. Missing, failed and unrun checks remain explicit. Build/load a new
-executable only when a concrete consumer question needs it; full qualification
-answers a separate release or operational claim.
-
-Known gaps and scope limits live in [now](planning/now.md), the
-[current capability view](planning/current.md), [resource contract](docs/resource-contract.md)
-and [remaining capability queue](NSLICESQUEUE.md). A passing test or landed
-implementation does not close its remaining resource, proof or integration work.
+`CONTRIBUTORS.md` explains the design boundaries and what a result does
+and does not establish.

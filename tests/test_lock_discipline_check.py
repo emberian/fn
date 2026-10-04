@@ -221,6 +221,51 @@ class R1State(unittest.TestCase):
         self.assertTrue(any(f.function.startswith("lambda@") and "fnn-live-arena" in f.key for f in found))
 
 
+class CallbackContexts(unittest.TestCase):
+    """contracts `callback_contexts': a stored callback declared to run in a
+    command's own extent gets that command's context, and nothing else does."""
+    SRC = """
+(defstruct fnn-cbx-grant turn)
+(defun fnn-cbx-loop (grant) (funcall (fnn-cbx-grant-turn grant)))
+(defun fnn-cbx-begin (grant) (setf (fnn-cbx-grant-turn grant) (lambda () (fnn-live-arena))))
+(defun fnn-command-cbx (grant) (fnn-cbx-begin grant) (fnn-cbx-loop grant))
+(defun fnn-cbx-spawn (grant) (sb-thread:make-thread (lambda () (fnn-cbx-loop grant)) :name "t"))
+"""
+    LAMBDA = "lambda@host/native/fixture.lisp:fnn-cbx-begin#lambda1"
+
+    def run_with(self, rows, src=SRC):
+        raw = dict(CONTRACTS.raw, callback_contexts=rows)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + src)
+            an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+            return [f for f in checker.run({"R1"}) if f.rule == "R1"]
+
+    def test_undeclared_stored_callback_is_unresolved(self):
+        found = self.run_with({})
+        self.assertTrue(any(f.function == self.LAMBDA and f.category == "unresolved" for f in found))
+
+    def test_declared_callback_runs_in_its_command(self):
+        src = self.SRC.replace('(defun fnn-cbx-spawn (grant) (sb-thread:make-thread (lambda () (fnn-cbx-loop grant)) :name "t"))', "")
+        found = self.run_with({self.LAMBDA: {"runs_in": "fnn-command-cbx", "why": "w"}}, src)
+        self.assertFalse(any(f.function == self.LAMBDA for f in found))
+
+    def test_a_renumbered_declaration_is_refused(self):
+        with self.assertRaises(ValueError):
+            self.run_with({self.LAMBDA.replace("lambda1", "lambda2"): {"runs_in": "fnn-command-cbx", "why": "w"}})
+
+    def test_an_entry_a_thread_reaches_is_refused(self):
+        src = self.SRC + "(defun fnn-cbx-threaded (grant) (sb-thread:make-thread (lambda () (fnn-command-cbx grant)) :name \"u\"))\n"
+        with self.assertRaises(ValueError):
+            self.run_with({self.LAMBDA: {"runs_in": "fnn-command-cbx", "why": "w"}}, src)
+
+    def test_an_entry_that_does_not_create_the_callback_is_refused(self):
+        src = self.SRC + "(defun fnn-command-other (grant) (fnn-cbx-loop grant))\n"
+        with self.assertRaises(ValueError):
+            self.run_with({self.LAMBDA: {"runs_in": "fnn-command-other", "why": "w"}}, src)
+
+
 class R7Failure(unittest.TestCase):
     COMMITTER = """
 (defun fnn-pipeline (service) (fnn-core 'fn-otb-issue service))
@@ -262,13 +307,72 @@ class R4Threads(unittest.TestCase):
 
     def test_a_nil_registered_worker(self):
         src = """
-(defun fnn-owner-maybe-publish-quantum (service ok)
-  (sb-thread:with-mutex ((fnn-owner-service-roster service))
+(defun fnn-control-launch-client (state ok)
+  (sb-thread:with-mutex ((fnn-control-state-lock state))
     (let ((thread (and ok (sb-thread:make-thread (lambda () (handler-case 1 (serious-condition () 2))) :name "p"))))
-      (push thread (fnn-owner-service-workers service)))))
+      (push thread (fnn-control-state-workers state)))))
 """
         found = run(src, ["R4"])
         self.assertTrue(any(f.key.startswith("nil-registered") for f in found))
+
+    # Lanes ACTORS / GENERATORS-2: a def-actor is the thread's declaration.
+    # A starter call is walked as a make-thread of its thunk under the
+    # declared name; R4 holds the declared join site and every starter call
+    # to the declared failure policy, with no hand `threads' row.
+    ACTORS = """
+(defun fnn-owner-thread-escape (service condition label &optional jobp)
+  (declare (ignore service condition label jobp)) nil)
+(defun fnn-owner-actor-join (service worker) (declare (ignore service worker)) t)
+(defun fnn-x-join (service w) (fnn-owner-actor-join service w))
+(defun fnn-x-body (service) service)
+(def-actor fnn-x-spawn-svc :kind :maintenance :thread-name "fn x svc" :roster t
+  :join fnn-x-join :failure :service)
+(def-actor fnn-x-spawn-job :kind :publisher :thread-name "fn x job" :roster t
+  :join fnn-x-join :failure :job)
+(def-actor fnn-x-spawn-res :kind :syncer :thread-name "fn x res" :roster t
+  :join fnn-x-join :failure :result)
+"""
+
+    def test_a_def_actor_starter_is_a_thread_of_its_declaration(self):
+        an = analyzed(self.ACTORS + """
+(defun fnn-x-start (service)
+  (fnn-x-spawn-svc service nil (lambda () (fnn-x-body service))
+    (lambda (c) (fnn-owner-thread-escape service c "x"))))
+""")
+        self.assertEqual(an.tree.actors["fnn-x-spawn-svc"][2:],
+                         (":maintenance", "fn x svc", "t", "fnn-x-join", ":service"))
+        self.assertEqual([e.extra for e in an.infos["fnn-x-start"].events if e.kind == "thread"],
+                         ["fn x svc"])
+
+    def test_starters_that_keep_their_declared_policies(self):
+        found = run(self.ACTORS + """
+(defun fnn-x-start (service)
+  (fnn-x-spawn-svc service nil (lambda () (fnn-x-body service))
+    (lambda (c) (fnn-owner-thread-escape service c "x")))
+  (fnn-x-spawn-job service nil (lambda () (fnn-x-body service))
+    (lambda (c) (fnn-owner-thread-escape service c "x" t)))
+  (fnn-x-spawn-res service nil
+    (lambda () (handler-case (fnn-x-body service) (serious-condition (e) e)))))
+""", ["R4"])
+        self.assertEqual([f for f in found if "actor" in f.key], [])
+
+    def test_a_starter_against_its_declared_policy(self):
+        found = run(self.ACTORS + """
+(defun fnn-x-start (service)
+  (fnn-x-spawn-svc service nil (lambda () (fnn-x-body service))
+    (lambda (c) (fnn-owner-thread-escape service c "x" t)))
+  (fnn-x-spawn-job service nil (lambda () (fnn-x-body service)))
+  (fnn-x-spawn-res service nil (lambda () (fnn-x-body service))
+    (lambda (c) (fnn-owner-thread-escape service c "x"))))
+""", ["R4"])
+        self.assertEqual(sorted(f.key for f in found if "actor" in f.key),
+                         ["actor-failure:fnn-x-spawn-job", "actor-failure:fnn-x-spawn-res",
+                          "actor-failure:fnn-x-spawn-svc"])
+
+    def test_a_declared_join_site_that_does_not_join(self):
+        found = run(self.ACTORS.replace(":join fnn-x-join :failure :job", ":join fnn-x-body :failure :job"),
+                    ["R4"])
+        self.assertEqual([f.key for f in found if "actor" in f.key], ["actor-no-join:fnn-x-spawn-job"])
 
 
 class R5R6R8R10(unittest.TestCase):

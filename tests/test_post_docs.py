@@ -18,10 +18,12 @@ class ArticlesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "fn-faq-1.txt"
             text = (docs_articles.ARTICLES / "fn-faq-1.txt").read_text()
-            path.write_text(text.replace("Last-modified: 2026-09-27", "Last-modified: 2026-09-28")
+            modified = docs_articles.parse(docs_articles.ARTICLES / "fn-faq-1.txt").get("Last-modified")
+            stale = "2026-09-28" if modified != "2026-09-28" else "2026-09-29"
+            path.write_text(text.replace("Last-modified: " + modified, "Last-modified: " + stale)
                             + "x" * 73 + "\n")
             errors = docs_articles.check([docs_articles.parse(path)])
-        self.assertTrue(any("should be <fn-faq-1-20260928@" in e for e in errors), errors)
+        self.assertTrue(any("should be <fn-faq-1-%s@" % stale.replace("-", "") in e for e in errors), errors)
         self.assertTrue(any("73 columns" in e for e in errors), errors)
 
     def test_wire_is_crlf_and_dot_stuffed(self):

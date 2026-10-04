@@ -136,7 +136,7 @@
 ; Reuse the current typed-adapter/actor fixture rather than a stale partial
 ; service structure or a fake syncer issuer. Its funding responses remain
 ; explicitly recording boundaries; real typed methods have their own suite.
-(load "tests/native_syncer_custody_raw.lisp")
+(load "tests/native_syncer_custody_raw-mock.lisp")
 (in-package "ACL2")
 (load-deployed-forms "host/native/owner.lisp" '((defun fnn-owner-wait-workers)))
 (defvar *fixture-sync-entered* nil)

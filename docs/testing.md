@@ -24,6 +24,10 @@ book that cannot be a root yet names why in a `; UNHOOKED <who> (<date>):
 `tools/farm.py submit auto tests/acl2/NAME-tests` installs what the box's
 cache holds at current bytes and certifies the rest; `--affected-by
 books/X.lisp` adds every root whose closure contains a changed book.
+A lane's READY gate is a narrow `--recertify` of the books it touched, on
+the laptop (with `FN_CERT_ORIGIN_KIND=run`, so other worktrees may install
+the pairs: a `worktree`-origin pair is refused elsewhere as foreign-local)
+or on persvati; the closure certify is the integrator's, once per batch.
 
 A pass shows: each event holds in ACL2's logic, executed by ACL2's evaluator,
 over the definitions at these bytes.  It does not show that the host calls
@@ -56,7 +60,13 @@ asserts for the inputs and seam answers it supplies.  It does not show the
 image (a different build, other definitions loaded, the real seams), guard
 conformance, or real I/O.  Where the harness answers `fnn-core` -- the host's
 call into ACL2 -- with values it made up instead of the real ACL2 function,
-it tests host plumbing only.
+it tests host plumbing only: its file name ends in `-mock.lisp`
+(`tests/native_*_raw-mock.lisp`, `*_source-mock.lisp`) and no proof or
+requirement in `planning/` cites it as evidence; a scenario row may still
+name it for the host step it drives.  To make one real, read the `defun`
+from its book and route `fnn-core` to it (`tests/native_web_reactor_raw-mock.lisp`
+does this for `fn-web-host-action-kind`, `native_live_config_cache_raw-mock.lisp`
+for `fn-nret-request`); when no fabricated answer is left, drop `-mock`.
 
 ## Native modules
 

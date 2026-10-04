@@ -18,7 +18,7 @@ class CursorColdPollTests(unittest.TestCase):
     def test_actual_native_bodies_suspend_poll_resume_and_refuse(self):
         result = subprocess.run(
             [SBCL, "--noinform", "--dynamic-space-size", "256", "--script",
-             "tests/cursor_cold_poll_recording.lisp"],
+             "tests/cursor_cold_poll_recording-mock.lisp"],
             cwd=ROOT, capture_output=True, text=True, timeout=30,
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

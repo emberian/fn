@@ -1127,7 +1127,8 @@ progress; answer :finished, :progress or :wait (the last action's)."
       ;; Stopping does not erase a late store fault or uncertain outcome.
       (fnn-owner-thread-escape (fnn-pull-runtime-service runtime) e "pull feed"))))
 
-(def-actor fnn-pull-spawn :thread-name "fn pull feed" :roster t)
+(def-actor fnn-pull-spawn :kind :pull :thread-name "fn pull feed" :roster t
+  :join fnn-pull-service-close :failure :service)
 
 (defun fnn-pull-service-start (service)
   ;; Publish the runtime before spawn; only one start owns its reservation.

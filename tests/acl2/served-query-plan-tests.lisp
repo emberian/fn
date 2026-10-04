@@ -2,6 +2,7 @@
 ; Fuel belongs only to this finite fixture and explicitly reports :limit.
 (in-package "ACL2")
 (include-book "../../books/served-query-plan")
+(include-book "../../books/list-available-reference")
 (include-book "served-available-commands-tests")
 
 (defun qpt-drain (plan w fuel fn-octets fn-arena fn-cat)
@@ -64,10 +65,21 @@
             (mv-let (b fn-octets) (qpt-command "LIST ACTIVE fn.available" archive index env w fn-octets fn-arena fn-cat)
               (mv-let (c fn-octets) (qpt-command "LIST COUNTS fn.*,!fn.empty*" archive index env w fn-octets fn-arena fn-cat)
                 (mv-let (d fn-octets) (qpt-command "LIST ACTIVE no.match.*" archive index env w fn-octets fn-arena fn-cat)
-                  (mv (and a b c d (null empty) (equal calls 1) (fn-lst-livep next)
-                           (eq (fn-cur-at 1 (fn-cur-progress next)) :next)
-                           (equal (fn-cur-at 2 (fn-cur-progress next)) (cdr groups)))
-                      fn-octets fn-arena fn-cat))))))))))
+                  ;; Teeth for fn-lst-active-command-is-av-list-active: its
+                  ;; premise holds of this actual intern/commit fixture, and a
+                  ;; watermark mutation falsifies both premise and conclusion.
+                  (let* ((agree (fn-lst-summaries-agreep archive groups 34 fn-cat))
+                         (stale (fn-make-state groups '(("fn.available" . 2))
+                                               (fn-state-articles archive) 0 nil nil))
+                         (stale-agree (fn-lst-summaries-agreep stale groups 34 fn-cat)))
+                    (mv-let (stale-ok fn-octets)
+                      (qpt-command "LIST ACTIVE fn.available" stale index env w fn-octets fn-arena fn-cat)
+                      (mv (and a b c d (null empty) (equal calls 1) (fn-lst-livep next)
+                               (eq (fn-cur-at 1 (fn-cur-progress next)) :next)
+                               (equal (fn-cur-at 2 (fn-cur-progress next)) (cdr groups))
+                               agree
+                               (or (null survivors) (and (not stale-agree) (not stale-ok))))
+                          fn-octets fn-arena fn-cat))))))))))))
 
 (defun qpt-local (survivors w)
   (declare (xargs :mode :program))

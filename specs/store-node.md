@@ -295,8 +295,9 @@ captured prefix in chunks, funds decoding before page reads, releases each
 chunk's decode grant after dropping its decoded rows, and returns the root pin
 before attempting its own swap. Credit refusal preserves the installed root.
 
-`tests/native_history_root_raw.lisp` runs the actual native installer and reclaim
-walk against recorded ACL2 producer seams: same-count replacement, catch-up
+`tests/native_history_root_raw-mock.lisp` (a mock: every ACL2 producer call is a
+recorded double, so it supports no claim) runs the native installer and reclaim
+walk control flow against those doubles: same-count replacement, catch-up
 append, held old-generation reads, poisoned fallback records, and decode-before-
 allocation ordering. These fixtures test host composition; the page codec and
 abstract exports have separate ACL2 obligations (PRF-1280). Initial root building,

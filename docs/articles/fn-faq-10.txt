@@ -1,37 +1,27 @@
 From: fn <docs@fn.fg-goose.online>
 Newsgroups: fn.docs
 Subject: fn FAQ, part 10: contributing
-Date: Sun, 27 Sep 2026 12:02:00 +0000
-Message-ID: <fn-faq-10-20260927@fn.fg-goose.online>
+Date: Sun, 04 Oct 2026 12:02:00 +0000
+Message-ID: <fn-faq-10-20261004@fn.fg-goose.online>
 Archive-name: fn-faq/part10
 Posting-Frequency: when fn changes
-Last-modified: 2026-09-27
+Last-modified: 2026-10-04
 Summary: How to help, the rules that do not bend, and how fn is built.
 
-Use it, build on it, or work inside it.
+Use fn, build on it, or work inside it. Clients, gateways and guides
+need no ACL2. Newcomers are welcome to bring an AI assistant: every
+guide names its files, so you can hand it the paths.
 
-*Why it matters:* Clients, gateways, packages and guides need no
-ACL2.
-
-*First check:* Python 3.11. It checks links, registries and the
-docs' commands.
+*Start:* CONTRIBUTING.md, then docs/engineering.md. Python 3.11 or
+newer.
 
     git clone https://github.com/emberian/fn
     cd fn
     make check
 
-*Inside:* SBCL and ACL2 8.7 (FN_ACL2). Certify what you changed:
+*The rules that do not bend:* ACL2 makes every decision; a theorem
+is about the function the server calls; accepted, refused and
+uncertain stay distinct.
 
-    python3 tools/certify_books.py --affected-by books/THE-BOOK.lisp
-
-*The rules:*
-- ACL2 makes every decision. Host code does I/O.
-- A theorem is about the function the server calls.
-- No skip-proofs, defaxiom or trust tags.
-- Accepted, refused and uncertain stay distinct.
-- Bound work, never stored data.
-
-*How it is built:* AI agents in parallel lanes, directed by ember.
-Lessons: swarmguide/.
-
-*Go deeper:* AGENTS.md. Pull requests against dev. AGPL-3.0.
+*How it is built:* AI agents in parallel, directed by ember
+(AGENTS.md, swarmguide/). AGPL-3.0.

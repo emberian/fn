@@ -1969,15 +1969,23 @@ export, not a node backup (docs/operator.md).
 
 `operator init` publishes the empty store by the same program (P-INIT-PUB,
 books/store-init-log-publication.lisp `fn-bs-init-log-program`: init's plan --
-the three subdirectories `staging/`, `config/` and `journal/`, `config.json`,
-the generation-1 configuration record and the empty log segment
-`journal/000001.log` -- staged in `ROOT.init-XXXX`, init's cut names from
+the four subdirectories `staging/`, `config/`, `journal/` and `keys/`,
+`config.json`, the generation-1 configuration record, the empty log segment
+`journal/000001.log` and the node secret `keys/node-secret.key` (epoch 1,
+PKT-894) -- staged in `ROOT.init-XXXX`, init's cut names from
 books/store-init-publication.lisp). A crash leaves no store at ROOT or the
 complete empty store, whose segment is the empty log (PRF-268,
 `fn-bs-init-log-program-crash-is-no-store-or-the-complete-empty-log`).
-Before writing, ACL2's admission (`fn-bs-init-pub-admission`) refuses a
-leftover staged directory by name (`interrupted-init`: remove it and init
-again; `publication-uncertain`) and an existing ROOT without the store's
+Init is old-or-new at every cut (PRF-1040,
+`fn-bs-init-log-crash-retry-is-old-or-new`): after a crash, init's retry
+runs while ROOT is absent, and a present ROOT is the complete store, secret
+included, which `recover` opens; no repair verb is involved. Every init
+holds an exclusive flock on its own stage from its mkdir to its end.
+Before writing, ACL2's admission (`fn-bs-init-pub-admission`) discards a
+leftover staged directory no live init holds beside an absent ROOT (the
+host removes it and asks again), refuses one a live init holds
+(`init-in-progress`), refuses a stage beside ROOT (`publication-uncertain`)
+and an existing ROOT without the store's
 entries (`store-path-exists`). On OpenBSD, which has no renameat2, import
 and init hold an exclusive flock on `ROOT.lock` for the whole program and
 re-check ROOT's absence under it immediately before rename(2); the residual
@@ -2155,3 +2163,34 @@ Row encoding, page relocation, flat page-array growth, commit plans and fresh
 Store/catalog/node representations still impose proportional work/allocation.
 The reclaim reservation remains the actual full-copy estimate until those
 allocations are removed.
+
+### Reclaim's walk in chunks (PRF-1315)
+
+The live reclaim pass (`fnn-owner-reclaim-pass`) no longer keeps a list of
+every rewritten row. It reads the generation-pinned history root three times,
+a chunk of rows at a time, each row's decode funded before it is read and each
+chunk's grant returned once the chunk is consumed:
+
+1. the decision's fold (`fn-orc-fold`), no rewrite;
+2. the rewrite, canonicalized from a carried handle into the checkpoint's
+   capture and the writer's walk (`fn-rcw-canon-acc-step`, `fn-scka-srcs-n`;
+   `fn-rcw-canon-acc-steps-is-the-checkpoint-capture`,
+   `fn-rcw-srcs-steps-is-the-walk`);
+3. the rewrite, predicted from the arena's count into held rows and extended
+   into the rebuilt capture (`fn-rcw-predict-acc-step`;
+   `fn-rcw-predict-acc-steps-is-predict`), whose rebuild is the full open of
+   the predicted history (`fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open`).
+
+A capture grows by a chunk at the cost of the chunk (`fn-rcw-acc-step`: the
+records reversed with their count carried; `fn-rcw-acc-steps-is-capture` over
+any chunking). The history candidate and the fresh catalog read the rebuilt
+capture's own records; the catalog loads a chunk per call after the keyed
+clear (`fn-rcw-load-chunks-keyed-is-keyed-load`), with availability from each
+predicted row's decided facts and no arena read. The context and the root pin
+live across the three walks and are released before the swap is attempted.
+
+Scope: this removes the host's whole rewritten-row list and the second whole
+list the prediction made. The rebuilt capture, the checkpoint's capture, the
+fresh catalog and the history candidate are still whole representations of
+the history, and the pass decodes the history three times. The reclaim
+reservation is unchanged until the walk's resident set is measured.

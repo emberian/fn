@@ -4,7 +4,7 @@
 ;;; PRF-143) and +fnn-gc-nursery-octets+ reads fn-profile-limit
 ;;; (books/profile-limits.lisp).  Each table is the book's own quoted
 ;;; constant, read from the book; each function is the book's body without
-;;; its xargs (as tests/native_developer_selectors_raw.lisp does); io.lisp's
+;;; its xargs (as tests/native_developer_selectors_raw-mock.lisp does); io.lisp's
 ;;; exit map calls fn-outcome-host-condition-exit-code.  Five witnesses went
 ;;; red on this unseen (tooling-truth-2, 2026-09-29).
 (in-package "ACL2")
@@ -66,8 +66,11 @@ compiled here: the book's own body, never a restatement."
   (book-defconst-value "books/failure-scope.lisp" '*fn-fs-gate-classes*))
 (defparameter *fn-fs-cleanup-purposes*
   (book-defconst-value "books/failure-scope.lisp" '*fn-fs-cleanup-purposes*))
+(defparameter *fn-fs-actor-failures*
+  (book-defconst-value "books/failure-scope.lisp" '*fn-fs-actor-failures*))
 (book-defuns "books/failure-scope.lisp"
-             '(fn-fs-keyword-subsetp fn-fs-admissionp fn-fs-section-declp))
+             '(fn-fs-keyword-subsetp fn-fs-admissionp fn-fs-section-declp
+               fn-fs-actor-declp))
 
 ;; The native exit adapter now calls the actual failure-scope classifier.
 ;; Keep raw I/O witnesses on that same closed table and function body.

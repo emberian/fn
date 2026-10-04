@@ -10,12 +10,12 @@
  "failure-message": "pre-write envelope fault must retain its class",
  "file": "host/native/pull-service.lisp",
  "fix": "Narrow the handler to the region from fnn-owner-feed-phase :append through the fsync. Let failures before the write keep their own class.",
- "harness": "tests/test_native_pull_append.py,tests/native_pull_append_raw.lisp",
+ "harness": "tests/test_native_pull_append.py,tests/native_pull_append_raw-mock.lisp",
  "id": "S110",
  "line": "247",
  "locus": "peer-services",
  "notes": [
-  "10-03 04:21 claimed: scope=['host/native/pull-service.lisp', 'specs/peering.md', 'tests/native_pull_append_raw.lisp', 'tests/test_native_pull_append.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class"
+  "10-03 04:21 claimed: scope=['host/native/pull-service.lisp', 'specs/peering.md', 'tests/native_pull_append_raw-mock.lisp', 'tests/test_native_pull_append.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class"
  ],
  "owner": "codex-sol-tools",
  "reviewer": "pull-service.lisp:229-252: the (error (e) ...) arm wraps the non-octet-envelope fnn-fault (237-238) and everything before fnn-write-all, and turns all of them into fnn-indeterminate. fnn-pull-worker-guarded (552-554) then fences the node (exit 3) where a pre-write failure is a definite fault (exit 4). This misclassifies the outcome, but it is conservative, and it is reachable only through an ACL2 contract break or the developer cut selector.",
@@ -23,7 +23,7 @@
  "scope": [
   "host/native/pull-service.lisp",
   "specs/peering.md",
-  "tests/native_pull_append_raw.lisp",
+  "tests/native_pull_append_raw-mock.lisp",
   "tests/test_native_pull_append.py",
   "LANEDUMP.md",
   "planning/evidence-index.tsv"
@@ -69,7 +69,7 @@
    "host/native/pull-service.lisp",
    "planning/repair/items/S110.json",
    "specs/peering.md",
-   "tests/native_pull_append_raw.lisp",
+   "tests/native_pull_append_raw-mock.lisp",
    "tests/test_native_pull_append.py"
   ],
   "diff_lines": 243,
@@ -85,7 +85,7 @@
   },
   "green_at_head": true,
   "harness": {
-   "tests/native_pull_append_raw.lisp": "8263c848b361994a32a114349121a7c0f5658ab17ff31193d09be7e4b0c7b544",
+   "tests/native_pull_append_raw-mock.lisp": "8263c848b361994a32a114349121a7c0f5658ab17ff31193d09be7e4b0c7b544",
    "tests/test_native_pull_append.py": "bae91f0d92262ba7a5503a5a496889195837534667a4953796d0d576168c324e"
   },
   "head": "31c79cb07c8d37f521f7dde239315e24a38a1140",

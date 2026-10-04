@@ -39,7 +39,13 @@
 #      (obstructions-5 item 38);
 #   5. first installs the box cache's certificates for the tree's bytes
 #      (tools/certs.py install; its summary heads the log; --no-install-certs
-#      skips it), then the image umbrellas as ONE set (certs.py
+#      skips it; so does an unchanged tree: build/.certs-installed holds the
+#      digest of `git ls-tree` of books/ host/ tests/acl2/ Makefile, FN_ACL2
+#      and the cache directory's mtime and entry count, which move whenever
+#      an entry lands, and the last install's summary is repeated -- the
+#      install re-verified ~1,100 books for 15-30 minutes on every run,
+#      2026-10-04; on hbox CHECK_JOBS defaults to 6, as two 12-job checks
+#      took the box to load 36 beside the Mini swarm), then the image umbrellas as ONE set (certs.py
 #      install-umbrellas: per-book pairs from different origins did not
 #      compose under include-book books/image-world on either box;
 #      obstructions-7 item 64): without them make check's host_check prints NOT RUN for both
@@ -139,8 +145,8 @@ if [ "$BOX" = auto ]; then
     BOX=$(sh "$(dirname "$0")/boxes.sh" --pick) || exit 3
 fi
 case $BOX in
-    hbox) BASE=/tank/fn/scratch; WRAP=swarm-build ;;
-    persvati) BASE='$HOME/fn-gates'; WRAP= ;;
+    hbox) BASE=/tank/fn/scratch; WRAP=swarm-build; CHECK_JOBS_DEFAULT=6 ;;
+    persvati) BASE='$HOME/fn-gates'; WRAP=; CHECK_JOBS_DEFAULT= ;;
     *) echo "remote_check: unknown box '$BOX' (hbox, persvati)" >&2; exit 2 ;;
 esac
 # A box reserved for a measurement (tools/boxes.sh reserve): auto already
@@ -282,7 +288,7 @@ echo "remote_check: $RUN in $BOX:$TREE (log $BOX:$LOG)"
 # reported as make's status while make kept running (scale-latency,
 # 2026-09-28).  A poll that cannot reach the box is retried.
 remote "cat > $LOG.run.sh" <<RUNSCRIPT || { echo "remote_check: cannot write the run script on $BOX" >&2; exit 3; }
-cd $TREE && $ENVS; eval "\$(python3 tools/native_env.py sbcl --export 2>/dev/null)"; export FN_CERTIFY_JOBS=${FN_CERTIFY_JOBS:-auto}; [ -n "\${FN_ACL2:-}" ] || { echo 'remote_check: no FN_ACL2 for $BOX (tools/farm.py HOSTS)'; exit 3; }; { echo "== remote_check $HEAD_SHA \$(date -u +%FT%TZ) load: \$(uptime)"; if [ -f tools/native_env.py ] && ! python3 tools/native_env.py sbcl-check; then echo "== make exit 3"; exit 3; fi; if [ $INSTALL = 1 ] && [ -f tools/certs.py ]; then echo "== certs install: \$(python3 tools/certs.py install 2>&1 | grep -E '^ *installed' | tail -n 1)"; echo "== certs install-umbrellas: \$(python3 tools/certs.py install-umbrellas 2>&1 | tail -n 1)"; fi; $WRAP $RUN 2>&1; echo "== make exit \$?"; } > $LOG 2>&1
+cd $TREE && $ENVS; eval "\$(python3 tools/native_env.py sbcl --export 2>/dev/null)"; export FN_CERTIFY_JOBS=${FN_CERTIFY_JOBS:-auto}; export CHECK_JOBS=\${CHECK_JOBS:-$CHECK_JOBS_DEFAULT}; [ -n "\${FN_ACL2:-}" ] || { echo 'remote_check: no FN_ACL2 for $BOX (tools/farm.py HOSTS)'; exit 3; }; { echo "== remote_check $HEAD_SHA \$(date -u +%FT%TZ) load: \$(uptime)"; if [ -f tools/native_env.py ] && ! python3 tools/native_env.py sbcl-check; then echo "== make exit 3"; exit 3; fi; if [ $INSTALL = 1 ] && [ -f tools/certs.py ]; then DG=\$( { git ls-tree -r HEAD -- books host tests/acl2 Makefile; echo "\$FN_ACL2"; stat -c %Y:%h "\$FN_CERT_CACHE" 2>/dev/null || stat -f %m:%l "\$FN_CERT_CACHE"; } | { sha256sum 2>/dev/null || shasum -a 256; } | cut -c1-16); if [ "\$(cat build/.certs-installed 2>/dev/null)" = "\$DG" ]; then echo "== certs install: skipped, source and cache digest \$DG unchanged since this tree's last install, which said: \$(grep -E '^ *installed' build/.certs-install.log | tail -n 1)"; echo "== certs install-umbrellas: (as last time) \$(tail -n 1 build/.certs-umbrellas.log)"; else mkdir -p build; rm -f build/.certs-installed; python3 tools/certs.py install > build/.certs-install.log 2>&1; echo "== certs install: \$(grep -E '^ *installed' build/.certs-install.log | tail -n 1)"; python3 tools/certs.py install-umbrellas > build/.certs-umbrellas.log 2>&1; echo "== certs install-umbrellas: \$(tail -n 1 build/.certs-umbrellas.log)"; echo "\$DG" > build/.certs-installed; fi; fi; $WRAP $RUN 2>&1; echo "== make exit \$?"; } > $LOG 2>&1
 RUNSCRIPT
 # The local record attach reads when this side dies (item 77).
 RECORDED=$ROOT/build/remote-check/$BOX.run

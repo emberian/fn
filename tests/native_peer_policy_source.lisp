@@ -1,6 +1,6 @@
 ; Actual inert codec + native file capture, with real POSIX files.
 ; Source execution only: no active owner/image/full peer tariff claim.
-(load "tests/native_heap_default_source.lisp")
+(load "tests/native_heap_default_source-mock.lisp")
 (in-package "ACL2")
 
 ;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----

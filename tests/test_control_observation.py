@@ -18,7 +18,7 @@ class ControlObservation(unittest.TestCase):
             diag.selected(ROOT/'host/native-control-host.lisp', ['fn-native-control-host-reply-seconds']),
             diag.selected(ROOT/'host/native/control-transport.lisp', ['fnn-control-exchange', 'fnn-control-read-frame', 'fnn-control-join-chunks']),
         ])
-        fixture = (ROOT/'tests/fixtures/control_observation.lisp').read_text()
+        fixture = (ROOT/'tests/fixtures/control_observation-mock.lisp').read_text()
         with tempfile.TemporaryDirectory() as directory:
             d = Path(directory)
             (d/'source.lisp').write_text(source)

@@ -10,12 +10,12 @@
  "failure-message": "accepted fragment prefix cannot become definitely failed",
  "file": "host/native/bp-service.lisp",
  "fix": "Add an explicit `(fnn-store-indeterminate (e) (error e))` arm before the fnn-store-error arm. Track \"any octet sent\" with its own flag set before the fragment loop, rather than reusing `socket`.",
- "harness": "tests/test_native_bp_send_boundary.py,tests/native_bp_send_boundary_raw.lisp",
+ "harness": "tests/test_native_bp_send_boundary.py,tests/native_bp_send_boundary_raw-mock.lisp",
  "id": "S097",
  "line": "610",
  "locus": "peer-services",
  "notes": [
-  "10-03 04:33 claimed: scope=['host/native/bp-service.lisp', 'specs/bp-node-machine.md', 'tests/native_bp_send_boundary_raw.lisp', 'tests/test_native_bp_send_boundary.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class",
+  "10-03 04:33 claimed: scope=['host/native/bp-service.lisp', 'specs/bp-node-machine.md', 'tests/native_bp_send_boundary_raw-mock.lisp', 'tests/test_native_bp_send_boundary.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class",
   "First exact-class witness archived planning/evidence/repair/S097-df5dcf6e6c3742818b3dac8a07824411.json sha256 e5995a66db0207837067beab12d98213bfa4a761390fde9c2ab17640d5743973"
  ],
  "owner": "codex-sol-tools",
@@ -24,7 +24,7 @@
  "scope": [
   "host/native/bp-service.lisp",
   "specs/bp-node-machine.md",
-  "tests/native_bp_send_boundary_raw.lisp",
+  "tests/native_bp_send_boundary_raw-mock.lisp",
   "tests/test_native_bp_send_boundary.py",
   "LANEDUMP.md",
   "planning/evidence-index.tsv"
@@ -71,7 +71,7 @@
    "planning/evidence-index.tsv",
    "planning/repair/items/S097.json",
    "specs/bp-node-machine.md",
-   "tests/native_bp_send_boundary_raw.lisp",
+   "tests/native_bp_send_boundary_raw-mock.lisp",
    "tests/test_native_bp_send_boundary.py"
   ],
   "diff_lines": 232,
@@ -87,7 +87,7 @@
   },
   "green_at_head": true,
   "harness": {
-   "tests/native_bp_send_boundary_raw.lisp": "58a07a1cb618caf5038e570b069ada2b15c0773e790dd132504c66158fab41f4",
+   "tests/native_bp_send_boundary_raw-mock.lisp": "58a07a1cb618caf5038e570b069ada2b15c0773e790dd132504c66158fab41f4",
    "tests/test_native_bp_send_boundary.py": "fd8c592c79103ef0ac1dfab67591b793fdca6c495903bdb49fa424d2f852493e"
   },
   "head": "d7863d4a1beb8898417cff9dcae8f006d8878413",

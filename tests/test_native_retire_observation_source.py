@@ -17,7 +17,7 @@ class RetireObservationSourceTests(unittest.TestCase):
             report = Path(directory) / "retire-report.txt"
             report.write_text("fixture-retire-report\n")
             result = subprocess.run(
-                [SBCL, "--script", str(ROOT / "tests/native_retire_observation_source.lisp"), str(report)],
+                [SBCL, "--script", str(ROOT / "tests/native_retire_observation_source-mock.lisp"), str(report)],
                 cwd=ROOT, text=True, capture_output=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("live-expiry elapsed=60", result.stdout)

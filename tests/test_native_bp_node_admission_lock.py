@@ -15,7 +15,7 @@ class NativeBpNodeAdmissionLockTests(unittest.TestCase):
             raise unittest.SkipTest("sbcl is not on PATH")
         result = subprocess.run(
             [sbcl, "--noinform", "--script",
-             "tests/native_bp_node_admission_lock_raw.lisp"],
+             "tests/native_bp_node_admission_lock_raw-mock.lisp"],
             cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             timeout=30, check=False)
         output = result.stdout.decode("utf-8", "replace")

@@ -1,37 +1,26 @@
 From: fn <docs@fn.fg-goose.online>
 Newsgroups: fn.docs
 Subject: fn FAQ, part 2: reading and posting
-Date: Mon, 28 Sep 2026 12:02:00 +0000
-Message-ID: <fn-faq-2-20260928@fn.fg-goose.online>
+Date: Sun, 04 Oct 2026 12:02:00 +0000
+Message-ID: <fn-faq-2-20261004@fn.fg-goose.online>
 Archive-name: fn-faq/part2
 Posting-Frequency: when fn changes
-Last-modified: 2026-09-28
+Last-modified: 2026-10-04
 Summary: Newsreaders, the web reader, and cancelling your own post.
 
-Any newsreader with TLS works.
+Any newsreader with TLS works, and so does a browser (part 11). A
+login before TLS is refused.
 
-*What you need:* The node's name, a login, and the node's
-certificate if it made its own. A login before TLS is refused.
-
-*A login:* Redeem the operator's invitation code once:
+*A login:* Redeem the invitation code your operator gave you, once:
 
     fn redeem news.example.org CODE carol --cafile cert.pem
 
-*tin:* tin 2.6 needs TLS from the first byte, on port 563. Build it
-with --with-nntps=openssl. Put "HOST PASSWORD LOGIN" in ~/.newsauth,
-mode 0600. Then:
+*tin:* Use port 563. Put "HOST PASSWORD LOGIN" in ~/.newsauth, mode
+0600, then:
 
     tin -T -r -A -p 563 -g fn.fg-goose.online
 
-- A self-made certificate goes in ~/.tin/tinrc: tls_ca_cert_file.
-- Never use -k: it skips the check.
-
-*slrn:* 1.0.3 never checks the certificate.
-
-*Cancel:* Your reader's cancel withdraws your own post everywhere.
-
-*The web page:* the node serves one itself, if its operator turned
-it on. Open the address they gave you in any browser. Part 11.
+*Cancel:* Your reader's cancel takes back your own post everywhere.
 
 [generated from books/protocol-table.lisp; do not edit]
 

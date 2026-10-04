@@ -5,12 +5,12 @@
 (include-book "web-session")
 
 (defun fn-wgl-start (at)
-  (declare (xargs :mode :program))
+  (declare (xargs :verify-guards nil))
   ; field, field-start, name-span, high, high-valid, high-seen,
   ; low, low-valid, low-seen, status-count, status-n, pending, pending-at
   (list 0 at nil 0 t nil 0 t nil 0 t nil at))
 (defun fn-wgl-char (o at x)
-  (declare (xargs :mode :program))
+  (declare (xargs :verify-guards nil))
   (let ((field (fn-wrq-nth 0 x)) (fs (fn-wrq-nth 1 x)) (name (fn-wrq-nth 2 x))
         (hi (fn-wrq-nth 3 x)) (hip (fn-wrq-nth 4 x)) (his (fn-wrq-nth 5 x))
         (lo (fn-wrq-nth 6 x)) (lop (fn-wrq-nth 7 x)) (los (fn-wrq-nth 8 x))
@@ -28,7 +28,7 @@
             (if (equal field 3) (1+ sc) sc)
             (if (equal field 3) (and sn (equal o 110)) sn) nil at))))
 (defun fn-wgl-row (x ce)
-  (declare (xargs :mode :program))
+  (declare (xargs :verify-guards nil))
   (let* ((name (or (fn-wrq-nth 2 x) (cons (fn-wrq-nth 1 x) ce)))
          (hi (and (fn-wrq-nth 4 x) (fn-wrq-nth 5 x) (fn-wrq-nth 3 x)))
          (lo (and (fn-wrq-nth 7 x) (fn-wrq-nth 8 x) (fn-wrq-nth 6 x)))
@@ -36,7 +36,7 @@
     (list name (fn-ot-decimal-octets count)
           (and (equal (fn-wrq-nth 9 x) 1) (fn-wrq-nth 10 x)))))
 (defun fn-wgl-feed (o at x)
-  (declare (xargs :mode :program))
+  (declare (xargs :verify-guards nil))
   ; One pending octet excludes a closing CR LF without buffering the line.
   (let ((pending (fn-wrq-nth 11 x)) (pa (fn-wrq-nth 12 x)))
     (if (and (equal o 10) (equal pending 13))
@@ -44,7 +44,7 @@
       (let ((next (if pending (fn-wgl-char pending pa x) x)))
         (mv nil (append (take 11 next) (list o at)))))))
 (defun fn-wgl-segs (row)
-  (declare (xargs :mode :program))
+  (declare (xargs :verify-guards nil))
   (let ((name (car row)))
     (fn-wr-group-row-segments (list (cons :s name)) (list (cons :v-u name))
                               (cadr row) (caddr row) nil)))

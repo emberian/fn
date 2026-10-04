@@ -1,0 +1,15 @@
+;;; micro-benchmarks of exported functions (lane runtime-floor), portable
+(in-package "ACL2")
+(defun rb-time (label thunk n)
+  (let ((t0 (get-internal-real-time)))
+    (dotimes (i n) (funcall thunk))
+    (format t "~&RB ~a ~,1f us/call~%" label
+            (/ (* 1000000.0 (- (get-internal-real-time) t0)) internal-time-units-per-second n))))
+(defvar *rb-msg* (loop for i below 4096 collect (mod (* i 7) 256)))
+(defvar *rb-shs* (cdr (assoc 'fn-shs *rf-user-stobj-alist*)))
+(rb-time "fn-sha256 (list model) 4 KiB" (lambda () (fn-sha256 *rb-msg*)) 20)
+(rb-time "fn-shs-digest-list (stobj) 4 KiB" (lambda () (fn-shs-digest-list *rb-msg* *rb-shs*)) 200)
+(rb-time "fn-shs-digest-str 4 KiB" (let ((s (map 'string #'code-char *rb-msg*))) (lambda () (fn-shs-digest-str s *rb-shs*))) 200)
+(rb-time "reverse 4096 list" (lambda () (reverse *rb-msg*)) 2000)
+(rb-time "len 4096" (lambda () (len *rb-msg*)) 2000)
+(rb-time "take 2000" (lambda () (take 2000 *rb-msg*)) 2000)

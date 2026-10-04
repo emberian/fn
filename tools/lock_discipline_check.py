@@ -75,7 +75,9 @@ decide: an unknown macro that hides a primitive, a callback value, an
 unknown lock object), EXCEPTION (a declared, justified scoped exception).
 
 SCOPES: the ENCLAVE (contracts "enclave": functions whose discipline is
-migrated) is strict: any violation or unresolved site there fails.  Outside
+migrated, and "files": host files every function of which is migrated -- a
+file whose owner sections are all declared def-sections, lane ACTORS) is
+strict: any violation or unresolved site there fails.  Outside
 it the baseline tools/lock_discipline_baseline.json only shrinks: a finding
 not in it is new; a baseline row no longer found must be removed
 (--write-baseline, which refuses to add rows unless --initial).
@@ -244,6 +246,7 @@ class Tree:
     files: dict = field(default_factory=dict)         # path -> loaded?
     unreadable: dict = field(default_factory=dict)
     sections: dict = field(default_factory=dict)      # def-section name -> (path, line, actors, classes, admits)
+    actors: dict = field(default_factory=dict)        # def-actor name -> (path, line, kind, thread-name, roster, join, failure)
 
 
 GUARDED = re.compile(r"guarded-by:\s*([^(;]+?)\s*(?:\(|\.\s|\.$|$)")
@@ -352,9 +355,39 @@ def section_definition(form, line: int):
     return defun, decl
 
 
+# def-actor (host/native/owner.lisp, lanes ACTORS / GENERATORS-2): a declared
+# actor.  Its starter (NAME SERVICE CUSTODY THUNK [ESCAPE ...]) spawns a
+# thread that runs THUNK (fnn-owner-actor-start -> fnn-owner-actor-run), so a
+# call to it is walked as a make-thread of THUNK under the declared thread
+# name, and rule R4 takes that thread's row from the declaration (its join
+# site and failure policy) instead of a hand-written `threads' contract.
+def actor_declaration(form):
+    """(kind, thread-name, roster, join, failure) of a (def-actor NAME :kind K
+    :thread-name S :roster R :join J :failure F), or None without a thread
+    name (ACL2 refuses an incomplete declaration at load)."""
+    name = sym(form[1]) if len(form) > 1 else None
+    keys = {}
+    rest = list(form[2:])
+    for k in range(0, len(rest) - 1, 2):
+        if isinstance(rest[k], Sym):
+            keys[str(rest[k])] = rest[k + 1]
+    thread = keys.get(":thread-name")
+    if not name or not isinstance(thread, str) or isinstance(thread, Sym):
+        return None
+    return (render(keys.get(":kind", Sym("nil")), 200), thread,
+            render(keys.get(":roster", Sym("nil")), 200),
+            render(keys.get(":join", Sym("nil")), 200),
+            render(keys.get(":failure", Sym("nil")), 200))
+
+
 def visit_top(tree: Tree, form, line: int, rel: str, lines: list[str]) -> None:
     h = head(form)
     if h is None:
+        return
+    if h == "def-actor":
+        decl = actor_declaration(form)
+        if decl is not None:
+            tree.actors[str(form[1])] = (rel, line) + decl
         return
     if h == "def-section":
         defun, decl = section_definition(form, line)
@@ -598,6 +631,7 @@ class FnInfo:
     sig: object = None                             # SigX of the whole body
     thread_of: tuple | None = None                 # (creator, line, name) for a thread root
     params: list = field(default_factory=list)
+    actor_starts: list = field(default_factory=list)  # (actor, line, args) per declared starter call
 
 
 # SigX: a small expression for the conditions a form can signal.
@@ -992,6 +1026,12 @@ class Analyzer:
             return self.walk_with_lock(form, ctx, env, line)
         if h == "sb-thread:make-thread":
             return self.walk_make_thread(form, ctx, env, line)
+        if h in self.tree.actors:
+            return self.walk_actor_start(form, h, form[1:], ctx, env, line)
+        if h == "funcall" and len(form) > 1 and self.funcalled_actors(form[1]):
+            parts = [self.walk_actor_start(form, a, form[2:], ctx, env, line)
+                     for a in self.funcalled_actors(form[1])]
+            return sig_union(parts + [self.walk(form[1], ctx, env, line)])
         if h == "sb-thread:condition-wait":
             lock = self.lock_of(form[2], env) if len(form) > 2 else "?"
             self.ev("leaf", "sb-thread:condition-wait", line, ctx, ("await", lock))
@@ -1185,6 +1225,32 @@ class Analyzer:
         else:
             self.ev("unresolved", "make-thread of a computed function " + render(fn, 40), line, ctx)
         return EMPTY_SIG
+
+    def funcalled_actors(self, fn) -> list:
+        """The declared actors a funcall's function form names: #'A, or each
+        arm of an (if C #'A #'B)."""
+        if head(fn) == "function" and len(fn) > 1 and sym(fn[1]) in self.tree.actors:
+            return [sym(fn[1])]
+        if head(fn) == "if" and len(fn) == 4:
+            arms = [self.funcalled_actors(x) for x in fn[2:]]
+            if all(len(a) == 1 for a in arms):
+                return [a[0] for a in arms]
+        return []
+
+    def walk_actor_start(self, form, actor, args, ctx, env, line):
+        """A declared actor's starter: THUNK (the third argument) runs as the
+        actor's thread; the other arguments are walked as values (the escape
+        and the physical callbacks run later, on that thread or its joiner)."""
+        tname = self.tree.actors[actor][3]
+        parts = [self.walk(a, ctx, env, line) for k, a in enumerate(args) if k != 2]
+        if len(args) > 2:
+            spawn = Node([Sym("sb-thread:make-thread"), args[2], Sym(":name"), tname])
+            spawn.line = line_of(form, line)
+            spawn.identity = getattr(form, "identity", None) or getattr(args[2], "identity", None)
+            parts.append(self.walk_make_thread(spawn, ctx, env, line))
+        if self.recording:
+            self.cur.actor_starts.append((actor, line_of(form, line), list(args)))
+        return sig_union(parts)
 
     def spawn_lambda(self, lam, line, thread_of, env):
         identity = getattr(lam, "identity", None)
@@ -1440,7 +1506,9 @@ class Model:
             for e in info.events:
                 if e.kind == "call" and e.name in self.infos:
                     self.callers[e.name].append((name, e))
+        self.declare_callback_contexts()
         self.roots = self.find_roots()
+        self.check_callback_entries()
         self.entry_requirements = 0
         self.compute_blocking()
         self.compute_acquires()
@@ -1448,6 +1516,67 @@ class Model:
         self.compute_requirements()
         self.compute_actors()
         self.compute_mustheld()
+
+    def declare_callback_contexts(self) -> None:
+        """contracts `callback_contexts': {LAMBDA-ID: {"runs_in": ENTRY, "why"}}.
+
+        A stored callback (a lambda kept in a struct slot, a special binding or
+        a callee's state, and called later) is an async root because the walk
+        cannot name its caller.  The declaration names it: the callback runs
+        only on ENTRY's thread, inside ENTRY's dynamic extent, holding no lock
+        (a command's single serialized loop, specs/bp-node-machine.md 9.1).
+        It becomes a lock-free call edge ENTRY -> LAMBDA, so its requirements
+        are ENTRY's, as if ENTRY called it.  Checked here, refused otherwise:
+        the lambda exists at that lexical identity (an edit that renumbers it
+        re-declares it), ENTRY is reached only from startup or entry roots
+        (check_callback_entries), and the lambda's
+        lexical owner is reached from ENTRY by host calls (the callback is
+        created inside ENTRY's call tree).  It closes the analysis gap only:
+        that ENTRY never hands the callback to another thread is the declared
+        contract, not something this check proves."""
+        self.declared_callbacks: dict[str, str] = {}
+        analyzed = {info.path for info in self.infos.values()}
+        for lam, row in self.c.raw.get("callback_contexts", {}).items():
+            entry = row.get("runs_in")
+            if not row.get("why"):
+                raise ValueError(f"callback_contexts {lam}: no why")
+            if lam.removeprefix("lambda@").split(":", 1)[0] not in analyzed:
+                continue  # a run over other files (a fixture) does not see it
+            if lam not in self.infos:
+                raise ValueError(f"callback_contexts names {lam}, which the host does not have "
+                                 "(renumbered or removed: re-declare it from the current findings)")
+            if entry not in self.infos or entry.startswith("lambda@"):
+                raise ValueError(f"callback_contexts {lam}: runs_in {entry} is not a named host function")
+            owner = lam.split(":", 1)[1].split("#", 1)[0]
+            seen, todo = {entry}, [entry]
+            while todo:
+                for e in self.infos[todo.pop()].events:
+                    if e.kind in ("call", "async") and e.name in self.infos and e.name not in seen:
+                        seen.add(e.name)
+                        todo.append(e.name)
+            if owner not in seen:
+                raise ValueError(f"callback_contexts {lam}: its owner {owner} is not reached from {entry}")
+            edge = Event("call", lam, self.infos[lam].line, Ctx(), "declared-callback")
+            self.infos[entry].events.append(edge)
+            self.callers[lam].append((entry, edge))
+            self.declared_callbacks[lam] = entry
+
+    def check_callback_entries(self) -> None:
+        """A declared callback's ENTRY is reached only from startup or entry
+        roots (a command's own thread), never from a thread, serving or async
+        root, where "inside ENTRY's extent" would not be one thread."""
+        for lam, entry in self.declared_callbacks.items():
+            seen, todo = {entry}, [entry]
+            while todo:
+                name = todo.pop()
+                kind = self.roots.get(name)
+                if kind in ("thread", "serving", "async"):
+                    raise ValueError(f"callback_contexts {lam}: runs_in {entry} is reached from "
+                                     f"the {kind} root {name}")
+                for caller, _ in self.callers.get(name, []):
+                    if caller not in seen:
+                        seen.add(caller)
+                        todo.append(caller)
 
     # roots ---------------------------------------------------------------
     def find_roots(self) -> dict:
@@ -1459,7 +1588,7 @@ class Model:
                 roots[name] = "thread"
             elif name in serving:
                 roots[name] = "serving"
-            elif name.startswith("lambda@"):
+            elif name.startswith("lambda@") and name not in self.declared_callbacks:
                 roots[name] = "async"
             elif not self.callers.get(name):
                 roots[name] = "startup" if name in startup else "entry"
@@ -2102,10 +2231,14 @@ class Checker:
     # R4 ----------------------------------------------------------------------
     def rule_R4(self):
         declared = self.c.raw.get("threads", {})
+        actor_threads = {decl[3]: actor for actor, decl in self.an.tree.actors.items()}
+        self.check_actor_declarations()
         for name, info in self.infos.items():
             for e in info.events:
                 if e.kind != "thread":
                     continue
+                if e.extra in actor_threads:
+                    continue  # a declared actor: its row is the declaration (check_actor_*)
                 key = f"{name}"
                 row = declared.get(key)
                 if row is None:
@@ -2118,6 +2251,76 @@ class Checker:
         # deregistration before terminal shared cleanup
         for name, info in self.infos.items():
             self.check_deregistration(info)
+
+    # The failure policies a def-actor declares (books/failure-scope.lisp
+    # *fn-fs-actor-failures*) and what each asks of a starter call: the
+    # actor's escape is decided by the service's boundary (:service,
+    # fnn-owner-thread-escape), by a private job's (:job, the same with its
+    # JOBP argument t), or the body hands its outcome to its joiner (:result:
+    # no escape, the thunk handles serious-condition itself).
+    ACTOR_ESCAPE = "fnn-owner-thread-escape"
+    ACTOR_JOIN = "fnn-owner-actor-join"
+
+    def escape_calls(self, form, depth=1) -> list:
+        """The (fnn-owner-thread-escape ...) forms in FORM, following named
+        calls DEPTH levels into their definitions."""
+        found, stack, seen = [], [form], set()
+        while stack:
+            x = stack.pop()
+            if not isinstance(x, list):
+                continue
+            h = head(x)
+            if h == self.ACTOR_ESCAPE:
+                found.append(x)
+            elif depth and h in self.an.tree.defs and h not in seen:
+                seen.add(h)
+                found.extend(self.escape_calls(self.an.tree.defs[h].body, depth - 1))
+            stack.extend(x)
+        return found
+
+    @staticmethod
+    def jobp(call) -> bool:
+        return len(call) > 4 and not (isinstance(call[4], Sym) and str(call[4]) == "nil")
+
+    @staticmethod
+    def handles_serious(form) -> bool:
+        stack = [form]
+        while stack:
+            x = stack.pop()
+            if isinstance(x, list):
+                if head(x) == "handler-case" and any(
+                        isinstance(c, list) and c and sym(c[0]) in ("serious-condition", "condition", "t")
+                        for c in x[2:]):
+                    return True
+                stack.extend(x)
+        return False
+
+    def check_actor_declarations(self):
+        for actor, (path, line, kind, tname, roster, join, failure) in sorted(self.an.tree.actors.items()):
+            jinfo = self.infos.get(join)
+            if jinfo is None or not any(x.kind == "call" and x.name == self.ACTOR_JOIN for x in jinfo.events):
+                self.add("R4", self.infos.get(actor) or FnInfo(actor, path, line, True), line,
+                         f"def-actor {actor}: declared join site {join} does not call {self.ACTOR_JOIN}",
+                         "actor-no-join:" + actor)
+        for name, info in self.infos.items():
+            for actor, line, args in info.actor_starts:
+                failure = self.an.tree.actors[actor][6]
+                thunk = args[2] if len(args) > 2 else None
+                escape = args[3] if len(args) > 3 else None
+                no_escape = escape is None or (isinstance(escape, Sym) and str(escape) == "nil")
+                if failure == ":result":
+                    ok = no_escape and thunk is not None and self.handles_serious(thunk)
+                    why = "a :result actor has no escape and its thunk handles serious-condition"
+                elif failure in (":service", ":job"):
+                    calls = self.escape_calls(escape if not no_escape else thunk)
+                    ok = bool(calls) and all(self.jobp(c) == (failure == ":job") for c in calls)
+                    why = (f"a {failure} actor's escape (or, with none, its thunk) reaches "
+                           f"{self.ACTOR_ESCAPE}" + (" with JOBP t" if failure == ":job" else " without JOBP"))
+                else:
+                    ok, why = False, f"failure policy {failure} is not :service, :job or :result"
+                if not ok:
+                    self.add("R4", info, line, f"starts def-actor {actor} against its declared failure "
+                             f"policy {failure}: {why}", "actor-failure:" + actor)
 
     def check_registration(self, info, e, row):
         d = self.an.tree.defs.get(info.name)
@@ -2722,9 +2925,25 @@ def weights(findings: list[Finding]) -> collections.Counter:
     return out
 
 
-def judge(findings: list[Finding], baseline: dict, enclave: set) -> dict:
+def in_enclave(function: str, path: str, enclave: set, enclave_files: set,
+               excepted: dict | None = None) -> bool:
+    """A finding is strict when its function is declared migrated or when its
+    whole file is (a lambda or thread root of that file included), unless the
+    file's declaration excepts that function by name with its why
+    (contracts enclave "files_except": {FILE: {FUNCTION: why}})."""
+    if function in enclave:
+        return True
+    if path in enclave_files:
+        return function not in (excepted or {}).get(path, {})
+    return False
+
+
+def judge(findings: list[Finding], baseline: dict, enclave: set,
+          enclave_files: set = frozenset(), excepted: dict | None = None) -> dict:
     """New: a key absent from the baseline, or over its count; every
-    finding inside the enclave.  Stale: a baseline count above today's."""
+    finding inside the enclave (a function, or any function of an enclave
+    file).  Stale: a baseline count above today's.  A baseline row inside
+    the enclave is refused: strictness admits no baselined finding."""
     counted = weights(findings)
     base_counts = {k: row.get("count", 1) for k, row in baseline.items()}
     new = []
@@ -2732,13 +2951,15 @@ def judge(findings: list[Finding], baseline: dict, enclave: set) -> dict:
         if f.category == "exception":
             continue
         k = f.baseline_key()
-        if f.function in enclave:
+        if in_enclave(f.function, f.path, enclave, enclave_files, excepted):
             new.append(("enclave", f))
             continue
         if k not in base_counts or counted[k] > base_counts[k]:
             new.append(("new", f))
     stale = [k for k, n in base_counts.items() if counted.get(k, 0) < n]
-    enclave_rows = [k for k in base_counts if k.split("|")[1] in enclave]
+    enclave_rows = [k for k, row in baseline.items()
+                    if in_enclave(k.split("|")[1], str(row.get("where", "")).rsplit(":", 1)[0],
+                                  enclave, enclave_files, excepted)]
     return {"new": new, "stale": stale, "enclave_baselined": enclave_rows}
 
 
@@ -2818,6 +3039,20 @@ def main(argv=None) -> int:
         print(f"lock_discipline_check: wrote {REALIZATION}")
         return 0
     enclave = set(checker.c.raw.get("enclave", {}).get("functions", []))
+    enclave_files = set(checker.c.raw.get("enclave", {}).get("files", []))
+    excepted = checker.c.raw.get("enclave", {}).get("files_except", {})
+    missing_files = sorted(f for f in enclave_files if f not in an.tree.files)
+    stray = sorted(f"{path}:{fn}" for path, fns in excepted.items()
+                   for fn in fns if path not in enclave_files or fn not in an.infos
+                   or an.infos[fn].path != path)
+    if stray:
+        print("lock_discipline_check: enclave files_except names a function its file does not define, "
+              "or a file that is no enclave: " + ", ".join(stray))
+        return 1
+    if missing_files:
+        print("lock_discipline_check: enclave names a host file the tree does not read: "
+              + ", ".join(missing_files))
+        return 1
     baseline = load_baseline(Path(args.baseline))
     if args.write_baseline:
         grown = write_baseline(Path(args.baseline), findings, baseline, args.initial)
@@ -2828,7 +3063,7 @@ def main(argv=None) -> int:
             return 1
         print(f"lock_discipline_check: wrote {args.baseline}")
         return 0
-    verdict = judge(findings, baseline, enclave)
+    verdict = judge(findings, baseline, enclave, enclave_files, excepted)
     if args.rule or args.function:
         verdict["stale"] = []  # a filtered run cannot judge the whole baseline
     realization_drift = None
@@ -2869,7 +3104,8 @@ def main(argv=None) -> int:
             print("  " + realization_drift)
         print(f"  total {len(findings)}; baselined {len(baseline)} rows (weight "
               f"{sum(r.get('count', 1) for r in baseline.values())}); "
-              f"new {nb}; stale baseline rows {len(verdict['stale'])}; enclave {len(enclave)} functions")
+              f"new {nb}; stale baseline rows {len(verdict['stale'])}; enclave {len(enclave)} functions"
+              f" + {len(enclave_files)} files ({sum(len(v) for v in excepted.values())} excepted)")
     if args.check:
         bad = verdict["new"] or verdict["stale"] or verdict["enclave_baselined"] or realization_drift
         if bad:

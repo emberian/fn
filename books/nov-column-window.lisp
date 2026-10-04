@@ -1,14 +1,14 @@
 ; Cached NOV row references for byte quanta (Q5c/J1, PRF-1066).
 ; The runtime constructor copies only a fixed number of references.  It
 ; never converts a cached header string or concatenates a complete row.
-; Numeric setup is still the existing decimal-field entry: a runtime cost
-; claim additionally needs its maintained selected-codec/profile bound.
+; This older constructor still materializes numerical fields. The mixed
+; piece constructor replaces that setup with resumable decimal phases.
 (in-package "ACL2")
 (include-book "nov-byte-window")
 (include-book "served-columns")
 (include-book "nntp-effects")
 
-(local (in-theory (disable fn-nntp-decimal-field fn-record-string-octets)))
+(local (in-theory (disable fn-nntp-decimal-field fn-nntp-decimal fn-record-string-octets)))
 
 (defun fn-nbw-column-pieces (number facts octets)
   (declare (xargs :guard t))
@@ -19,8 +19,8 @@
           (fn-hnov-date nov) '(9)
           (fn-hnov-msgid nov) '(9)
           (fn-hnov-references nov) '(9)
-          (fn-nntp-decimal-field octets) '(9)
-          (fn-nntp-decimal-field (fn-hf-body-lines facts)) '(13 10))))
+          (fn-nntp-decimal octets) '(9)
+          (fn-nntp-decimal (fn-hf-body-lines facts)) '(13 10))))
 
 (local
  (defthm fn-nbw-octet-listp-is-cbor
@@ -50,7 +50,7 @@
                  fn-nov-line fn-nntp-append-pieces fn-nov-subject fn-nov-from
                  fn-nov-date fn-nov-msgid fn-nov-references fn-nov-bytes fn-nov-lines
                  fn-hnov-p fn-hnov-internals)
-                (fn-nntp-article-length fn-nntp-decimal-field
+                (fn-nntp-article-length fn-nntp-decimal fn-nntp-decimal-field
                  fn-record-string-octets)))))
 
 (local

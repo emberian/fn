@@ -10,7 +10,7 @@
  "line": "166",
  "locus": "operator-verbs",
  "notes": [
-  "10-02 23:07 fixed; ran tests/native_anchor_acquisition.lisp under sbcl (passes) + python source test; pre-network width fault removed, ACL2 refuses :arguments"
+  "10-02 23:07 fixed; ran tests/native_anchor_acquisition-mock.lisp under sbcl (passes) + python source test; pre-network width fault removed, ACL2 refuses :arguments"
  ],
  "owner": "sweep-peer",
  "reviewer": "anchor.lisp:166-169 checks the pinned key's length against nonce-octets (the profile's sixth element). The ACL2 key width is the separate *fn-anchor-key-octets* (books/anchor.lisp:86); both it and *fn-anchor-nonce-octets* (line 87) are 32 today, so nothing fails now. This is a latent coupling bug: the host derives a key-width rule from an unrelated constant, and changing the nonce width would break every acquisition with (:fault :pinned-key).",

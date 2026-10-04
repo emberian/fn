@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-HARNESS = ROOT / "tests/native_developer_selectors_raw.lisp"
+HARNESS = ROOT / "tests/native_developer_selectors_raw-mock.lisp"
 
 
 class DeveloperSelectorsHarnessTests(unittest.TestCase):

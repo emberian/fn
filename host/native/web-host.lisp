@@ -905,8 +905,10 @@ A failed physical return retains its fd and condition as face cleanup debt."
       (sb-thread:condition-broadcast (fnn-web-face-job-ready face))
       (fnn-web-close-wakes-locked face))))
 
-(def-actor fnn-web-spawn :thread-name "fn web face" :roster t)
-(def-actor fnn-web-spawn-semantic :thread-name "fn web semantic" :roster t)
+(def-actor fnn-web-spawn :kind :web :thread-name "fn web face" :roster t
+  :join fnn-owner-wait-workers :failure :service)
+(def-actor fnn-web-spawn-semantic :kind :web :thread-name "fn web semantic" :roster t
+  :join fnn-owner-wait-workers :failure :service)
 
 (defun fnn-web-start (service plan tls-context)
   (let* ((port (fnn-core 'fn-web-host-plan-port plan))

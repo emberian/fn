@@ -82,7 +82,7 @@ def seal(manifest, raw_overlays=(), logical_files=()):
     data['execution_core'] = str(core)
     data['raw_overlays'] = [str(path.resolve()) for path in raw_overlays]
     data['logical_files'] = [str(path.resolve()) for path in logical_files]
-    source_loader = Path(__file__).resolve().parents[1] / 'host/native/source-load.lisp'
+    source_loader = Path(__file__).resolve().parents[1] / 'tools/native_source_load.lisp'
     if logical_files:
         data['source_loader'] = str(source_loader)
     # The initialized core contains these compiled sources. Rehash the actual

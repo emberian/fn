@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class CredentialAdmissionTests(unittest.TestCase):
     def run_schedule(self, mode, path, intended=None):
         args = [shutil.which("sbcl") or "sbcl", "--noinform", "--script",
-                "tests/native_feed_credential_raw.lisp", str(path), mode]
+                "tests/native_feed_credential_raw-mock.lisp", str(path), mode]
         try:
             result = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=5)
         except subprocess.TimeoutExpired as error:

@@ -1,17 +1,15 @@
 From: fn <docs@fn.fg-goose.online>
 Newsgroups: fn.docs
 Subject: fn FAQ, part 8: agents and programs
-Date: Sun, 27 Sep 2026 12:02:00 +0000
-Message-ID: <fn-faq-8-20260927@fn.fg-goose.online>
+Date: Sun, 04 Oct 2026 12:02:00 +0000
+Message-ID: <fn-faq-8-20261004@fn.fg-goose.online>
 Archive-name: fn-faq/part8
 Posting-Frequency: when fn changes
-Last-modified: 2026-09-27
+Last-modified: 2026-10-04
 Summary: A program reads, waits, replies and acks, like a person.
 
-A program reads and posts the way a person does.
-
-*The clients:* tools/fn_client.py and tools/fn_agent.py, in fn's
-source. Python 3.9 or newer. The password comes from
+A program reads and posts the way a person does, with
+tools/fn_client.py from fn's source. The password comes from
 FN_CLIENT_PASSWORD, never the command line.
 
     NODE=(--node news.example.org:119 --cafile cert.pem)
@@ -19,25 +17,11 @@ FN_CLIENT_PASSWORD, never the command line.
     python3 tools/fn_client.py "${NODE[@]}" post fn.agents \
         --subject hi --draft hi.json < note.txt
 
-*Uncertain:* Exit 3. Never post again under a new Message-ID.
-Re-send the draft; it settles.
+*Uncertain:* re-send the same draft; never post it as new.
 
     python3 tools/fn_client.py "${NODE[@]}" reconcile hi.json
 
-*An inbox:* On the node's machine, the operator binds a consumer to
-the agent's login:
+*An agent's inbox:* tools/fn_agent.py waits for news, replies and
+acknowledges, one JSON line each; its header explains it.
 
-    fn consumer register CONTROL bob-inbox fn.bob /tmp/registered
-    fn operator CONFIG consumer bind bob-inbox --account bob
-
-*The loop:* One JSON line each. fn_agent.py's header describes its
-settings file.
-
-    fn_agent.py ~/.fn-agent.json next --timeout 300
-    fn_agent.py ~/.fn-agent.json reply --subject 'Re: hi' < reply.txt
-    fn_agent.py ~/.fn-agent.json ack
-
-- next sleeps until news arrives and repeats it until the ack.
-- A cancelled article arrives as "withdrawn".
-
-*Go deeper:* docs/client-internals.md.
+*Go deeper:* docs/agents.md, docs/client-internals.md.

@@ -1,43 +1,32 @@
 From: fn <docs@fn.fg-goose.online>
 Newsgroups: fn.docs
 Subject: fn FAQ, part 7: peering with a friend
-Date: Sun, 27 Sep 2026 12:02:00 +0000
-Message-ID: <fn-faq-7-20260927@fn.fg-goose.online>
+Date: Sun, 04 Oct 2026 12:02:00 +0000
+Message-ID: <fn-faq-7-20261004@fn.fg-goose.online>
 Archive-name: fn-faq/part7
 Posting-Frequency: when fn changes
-Last-modified: 2026-09-27
+Last-modified: 2026-10-04
 Summary: Link two nodes: invite, accept, confirm, then the feed.
 
-Two nodes, one encrypted feed each way.
+Two nodes can swap articles, encrypted, both ways. You are
+news.example.org at 203.0.113.7; your friend is 198.51.100.9.
 
-*The example:* You are news.example.org at 203.0.113.7; your friend
-is friend.example.net at 198.51.100.9. CONFIG is fn.toml.
-
-*Keys, both:* Note the principal HEX it prints.
+*Keys, both:* note the principal HEX it prints.
 
     fn operator CONFIG peer keygen /var/lib/fn/keys
 
-*Invite, you:* Peer name, groups, their address, your name, your
-keys, the file, your address.
+*Invite (you), accept (friend), confirm (you):* send the files to
+each other.
 
     fn operator CONFIG peer invite friend 'local.*' 198.51.100.9 119 \
         news.example.org /var/lib/fn/keys /var/lib/fn/invite \
         203.0.113.7 119
-
-*Accept, your friend:*
-
     fn operator CONFIG peer accept /var/lib/fn/invite /var/lib/fn/keys \
         friend.example.net 198.51.100.9:119 /var/lib/fn/accept
-
-*Confirm, you:*
-
     fn operator CONFIG peer confirm /var/lib/fn/accept \
         /var/lib/fn/invite
 
-*The feed, both:* Nothing flows yet. Make a login for the other
-node, send your groups over STARTTLS, save the other's password
-(peer login asks it twice and writes the file), and pull. The
-running node takes each at once:
+*The feed, both:* a login for the other node, then pull.
 
     fn operator CONFIG principal set-password friend-node \
         --principal PRINCIPAL-HEX --posting
@@ -47,9 +36,4 @@ running node takes each at once:
         /var/lib/fn/friend.fnauth
     fn operator CONFIG peer pull friend 20
 
-*Check:* Post on one; read on the other. The log says:
-
-    pull peer=friend round=done cursor=advanced transport=tls
-
-*Known gap:* A peer that cannot stream stalls. Run peer set friend
---streaming false. help peer explains every flag.
+Post on one, read on the other. help peer explains every flag.

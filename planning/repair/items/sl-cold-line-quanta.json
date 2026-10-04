@@ -6,13 +6,14 @@
  "id": "sl-cold-line-quanta",
  "locus": "cold-line",
  "notes": [
-  "GPT-6.1-Sol: deadline containment imported; bounded continuation implementation remains open. No native or whole-command termination claim."
+  "GPT-6.1-Sol: deadline containment imported; bounded continuation implementation remains open. No native or whole-command termination claim.",
+  "10-04 00:18 cold-line: HDR/XHDR/XPAT ranges (incl. the compatibility HDR Xref) answer with the OVER cursor carrying a header source; a payload-reading source's quantum is at most fn-clq-payload-quantum = 4 numbers (books/over-window.lisp fn-ovw-step-payloads-fit), the line takes ceiling(N/4) quanta (fn-ovw-hdr-quanta-is-ceiling), and books/cold-line-quanta.lisp proves such quanta finish under the no-I/O rerun loop (fn-clq-resume-finishes, teeth fn-clq-nine-reads-never-finish). Dispatcher keystone unchanged. Owed: CL-OWED-HDR-CURSOR-FRAME, CL-OWED-NEWNEWS-DEMAND; native red cl-red-45e on 45e05c7fd, green-after pending an image of this branch."
  ],
- "owner": "codex-sol-served",
+ "owner": "cold-line",
  "severity": "high",
  "slice": "cold-line",
  "source": "served-live",
  "state": "in-progress",
  "title": "Real fix for sl-cold-line-deadline: HDR/XHDR/XPAT of a non-overview header over a range (and any other served line whose payload reads are unbounded) must run in cursor quanta whose payload reads fit the realizer cache with margin (as OVER's fn-splan-cursor-step does), or answer from carried facts; until then the per-line deadline answers them 403 after read-dependency-ms. Also state the contract in ACL2: every served step's distinct payload reads are bounded below fn-arx-read-cache-entries",
- "updated": "2026-10-03T06:00:00Z"
+ "updated": "2026-10-04T04:18:52Z"
 }

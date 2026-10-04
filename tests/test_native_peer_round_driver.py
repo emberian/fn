@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class PeerRoundDriverTests(unittest.TestCase):
     def schedule(self, mode, message=None):
         args = [shutil.which("sbcl") or "sbcl", "--noinform", "--script",
-                "tests/native_peer_round_driver_raw.lisp", mode]
+                "tests/native_peer_round_driver_raw-mock.lisp", mode]
         result = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=5)
         if message and "ROUND_DRIVER_ASSERTION:" + message in result.stdout:
             self.fail(message)

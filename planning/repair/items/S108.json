@@ -9,12 +9,12 @@
  "failure-message": "credential admitted before any TCP connect",
  "file": "host/native/feed-service.lisp",
  "fix": "Read and decode the profile before connecting, as fnn-pull-profile does before the pull dial, and give the failure its own outcome (for example :credential) in ACL2's dial line rather than :connect.",
- "harness": "tests/test_native_feed_credential.py,tests/native_feed_credential_raw.lisp",
+ "harness": "tests/test_native_feed_credential.py,tests/native_feed_credential_raw-mock.lisp",
  "id": "S108",
  "line": "418",
  "locus": "peer-services",
  "notes": [
-  "10-03 04:01 claimed: scope=['host/native/feed-service.lisp', 'host/native/pull-service.lisp', 'books/peer-host.lisp', 'books/feed-link-backoff.lisp', 'specs/peering.md', 'tests/acl2/peer-host-tests.lisp', 'tests/acl2/feed-link-backoff-tests.lisp', 'tests/native_feed_credential_raw.lisp', 'tests/test_native_feed_credential.py', 'tests/test_native_peer_pull.py', 'tests/scenarios/catalog.json', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_invalid_profile_refuses_before_any_connect"
+  "10-03 04:01 claimed: scope=['host/native/feed-service.lisp', 'host/native/pull-service.lisp', 'books/peer-host.lisp', 'books/feed-link-backoff.lisp', 'specs/peering.md', 'tests/acl2/peer-host-tests.lisp', 'tests/acl2/feed-link-backoff-tests.lisp', 'tests/native_feed_credential_raw-mock.lisp', 'tests/test_native_feed_credential.py', 'tests/test_native_peer_pull.py', 'tests/scenarios/catalog.json', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_invalid_profile_refuses_before_any_connect"
  ],
  "owner": "codex-sol-tools",
  "reviewer": "feed-service.lisp:418-421 connects first and reads fnn-feed-auth-profile second. The handler (424-434) catches fnn-feed-auth-error together with the dial errors, calls fnn-peer-dial-report, and drops with cause :dial. fnn-peer-dial-outcome (io.lisp:5689-5699) maps fnn-feed-auth-error (feed-service.lisp:25, a plain error) to :connect. The result is a misleading diagnosis plus one wasted peer connection per backoff interval; there is no correctness loss.",
@@ -27,7 +27,7 @@
   "specs/peering.md",
   "tests/acl2/peer-host-tests.lisp",
   "tests/acl2/feed-link-backoff-tests.lisp",
-  "tests/native_feed_credential_raw.lisp",
+  "tests/native_feed_credential_raw-mock.lisp",
   "tests/test_native_feed_credential.py",
   "tests/test_native_peer_pull.py",
   "tests/scenarios/catalog.json",
@@ -81,7 +81,7 @@
    "specs/peering.md",
    "tests/acl2/feed-link-backoff-tests.lisp",
    "tests/acl2/peer-host-tests.lisp",
-   "tests/native_feed_credential_raw.lisp",
+   "tests/native_feed_credential_raw-mock.lisp",
    "tests/scenarios/catalog.json",
    "tests/test_native_feed_credential.py",
    "tests/test_native_peer_pull.py"
@@ -99,7 +99,7 @@
   },
   "green_at_head": true,
   "harness": {
-   "tests/native_feed_credential_raw.lisp": "ca5591093fe76eb119fb77cfaa48bbab19943b502a67e2e5e3ef91aed7f8dd44",
+   "tests/native_feed_credential_raw-mock.lisp": "ca5591093fe76eb119fb77cfaa48bbab19943b502a67e2e5e3ef91aed7f8dd44",
    "tests/test_native_feed_credential.py": "caa8a6478b4a1c7c1361577d918153f8c4c2d5aa00ca76a882dfc0ede4f3779a"
   },
   "head": "88a116a909d9e297991a9d967b81c2f05e9312b2",
