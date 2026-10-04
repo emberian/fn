@@ -378,3 +378,41 @@
           (fn-tariff-family-price '(:preview 9 :tls-transition ((83 84 65 82 84 84 76 83)))
                                   *tfm-as* nil *tfm-a* *tfm-c*))
    :rule-classes nil))
+
+; ---------------------------------------------------------------------------
+; POST and the peer transit commands (lane tariff4, batch 2).
+;
+; RED BEFORE: (:unpriced :post) and the three transit families.  GREEN: POST
+; is the session line bound, 16 * (10 * 64 + 32) = 10752; IHAVE, CHECK and
+; TAKETHIS the peer reply bound 400, 16 * (10 * 400 + 32) = 64512.
+(assert! (equal (fn-tariff-line-octets *fn-tariff-peer-reply-octets*) 64512))
+
+(defthm tfm-producer-prices-the-post-and-peer-rows
+  (and (equal (fn-tariff-family-preview '(:preview 9 :post ((80 79 83 84))) *tfm-as* nil
+                                        *tfm-a* *tfm-c*)
+              '(:tariff :post 10752))
+       (equal (fn-tariff-family-preview '(:preview 9 :ihave ((73 72 65 86 69) (60 97 62))) *tfm-as* nil
+                                        *tfm-a* *tfm-c*)
+              '(:tariff :ihave 64512))
+       (equal (fn-tariff-family-preview '(:preview 9 :check ((67 72 69 67 75) (60 97 62))) *tfm-as* nil
+                                        *tfm-a* *tfm-c*)
+              '(:tariff :check 64512))
+       (equal (fn-tariff-family-preview '(:preview 9 :takethis ((84 65 75 69) (60 97 62))) *tfm-as* nil
+                                        *tfm-a* *tfm-c*)
+              '(:tariff :takethis 64512)))
+  :rule-classes nil)
+
+; POST's reply at a ground session: the 340 offer line, within the bound.
+(defthm tfm-post-reply-witness
+  (<= (fn-tariff-effects-octets
+       (fn-nntp-result-effects
+        (fn-nntp-session-command *tfm-session* nil (fn-record-string-octets "POST") nil)))
+      *fn-tariff-session-line-octets*)
+  :rule-classes nil)
+
+(must-fail-checked
+ (defthm tfm-teeth-post-is-not-ihave
+   (equal (fn-tariff-family-price '(:preview 9 :post ((80 79 83 84))) *tfm-as* nil *tfm-a* *tfm-c*)
+          (fn-tariff-family-price '(:preview 9 :ihave ((73 72 65 86 69) (60 97 62))) *tfm-as* nil
+                                  *tfm-a* *tfm-c*))
+   :rule-classes nil))
