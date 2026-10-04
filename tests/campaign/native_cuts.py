@@ -561,13 +561,29 @@ def verify_init_publication_cut_map() -> None:
     if tuple(c.candidate for c in INIT_PUB_CUTS) != tuple(c.candidate for c in IMPORT_CUTS):
         raise AssertionError("init candidates differ from the import program's")
     source = (ROOT / "host/native/io.lisp").read_text()
+    # The admission (PKT-894): fnn-init-admit observes the leftover stage,
+    # its classification and whether a live init holds it before it asks
+    # ACL2, and discards only on ACL2's :discard-stage.
+    admit = host_function(source, "fnn-init-admit")
+    steps = [admit.index('(fnn-import-leftover-stage root-path "init")'),
+             admit.index("(fnn-import-classify leftover root-path)"),
+             admit.index("(fnn-init-stage-lock leftover)"),
+             admit.index("(fnn-core 'fn-bs-init-pub-admission"),
+             admit.index("((eq admission :discard-stage)"),
+             admit.index("(fnn-init-discard-tree leftover 1)")]
+    if steps != sorted(steps):
+        raise AssertionError("fnn-init-admit acts before ACL2 admits")
     body = host_function(source, "fnn-command-init-published")
-    order = [body.index('(fnn-import-leftover-stage root-path "init")'),
-             body.index("(fnn-import-classify leftover root-path)"),
-             body.index("(fnn-core 'fn-bs-init-pub-admission"),
+    order = [body.index("(fnn-init-admit root-path)"),
              body.index('(fnn-staged-publication\n       "init"')]
     if order != sorted(order):
         raise AssertionError("fnn-command-init-published publishes before ACL2 admits")
+    # The stage is held from its mkdir to the end (HOLD-STAGE), and the node
+    # secret is the plan's last file.
+    if not " ".join(body.split()).endswith("(fnn-core 'fn-bs-init-log-subdir-names) t) (fnn-out \"initialized ~a\" root-path) +fnn-exit-ok+)))"):
+        raise AssertionError("init's staged publication does not hold its stage")
+    if "(cons (fnn-node-secret-path stage) secret))" not in body:
+        raise AssertionError("init's plan does not carry the node secret last")
     operator = (ROOT / "host/native/operator.lisp").read_text()
     # The call, whitespace collapsed: the root, the groups, the profile and
     # (since batch AS's merge of store-mount-identity) the mission's

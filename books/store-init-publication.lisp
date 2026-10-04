@@ -11,8 +11,9 @@
 ; `operator init' calls (host/native/operator.lisp fnn-operator-execute-init).
 ;
 ; What the host publishes is books/store-init-log-publication.lisp's plan
-; (the record log's: staging/, config/, journal/; config.json, the
-; generation-1 configuration record and journal/000001.log), under that
+; (the record log's: staging/, config/, journal/, keys/; config.json, the
+; generation-1 configuration record, journal/000001.log and
+; keys/node-secret.key), under that
 ; book's keystone `fn-bs-init-log-program-crash-is-no-store-or-the-complete-
 ; empty-log' (PRF-268).  This book keeps what that plan reuses: init's cut
 ; names and their renaming, and the admission the host asks before it writes
