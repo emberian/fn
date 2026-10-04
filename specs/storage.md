@@ -1228,7 +1228,9 @@ under a stated workload and retention/release policy, with explicit refusal
 when a promise cannot be funded. It does not promise unbounded distinct
 content on finite storage. Under D03's indefinite retention with no release,
 every class above grows monotonically until admission refuses by name
-(`fn-sbud-prepare`, `:unaffordable`).
+(`fn-sbud-prepare`): `:unaffordable` when the transactions T are spent,
+`:history-exhausted` (or `:memberships`, when the article alone would fit)
+when the history octets H are (`fn-cvec-article-refusal-word`).
 
 ### The committed-history boundary
 

@@ -2014,7 +2014,10 @@
                               ; that the membership charge alone caused is
                               ; :memberships (books/store-capacity-vector.lisp
                               ; KEYSTONE fn-cvec-article-refusal-word-names-
-                              ; the-memberships), over the same count, octets,
+                              ; the-memberships), and one the history budget
+                              ; caused :history-exhausted (lane m1-durable-2,
+                              ; KEYSTONE fn-cvec-article-refusal-word-names-
+                              ; the-history), over the same count, octets,
                               ; record and debt the budget was decided from.
                               (cons (fn-cvec-article-refusal-word
                                      word (fn-owner-store-profile state)
@@ -2202,7 +2205,10 @@
                               ; that the membership charge alone caused is
                               ; :memberships (books/store-capacity-vector.lisp
                               ; KEYSTONE fn-cvec-article-refusal-word-names-
-                              ; the-memberships), over the same count, octets,
+                              ; the-memberships), and one the history budget
+                              ; caused :history-exhausted (lane m1-durable-2,
+                              ; KEYSTONE fn-cvec-article-refusal-word-names-
+                              ; the-history), over the same count, octets,
                               ; record and debt the budget was decided from.
                               (cons (fn-cvec-article-refusal-word
                                      word (fn-owner-store-profile state)

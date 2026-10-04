@@ -547,7 +547,9 @@
 ; alpha);
 ; :malformed is fn-owner-prepare's :invalid; :unaffordable is a refusal of
 ; the persisted profile (fn-store-publication-admissibility) or of the
-; transaction capacity; :storage-failed is a Store write that failed before
+; transaction capacity T; :history-exhausted and :memberships are the
+; history budget H's (books/store-capacity-vector.lisp
+; fn-cvec-article-refusal-word); :storage-failed is a Store write that failed before
 ; publication and whose reservation ACL2 consumed as a known abort, so
 ; nothing was stored.  :refused remains the kind for a refusal the Store did
 ; not name.  RFC 3977 section 6.3.1 allows 441 for all of them; the
@@ -563,6 +565,12 @@
                        ;; fn-cvec-article-refusal-word; lane membership-budget):
                        ;; "441 posting failed; the store cannot pay for this article's groups: ..."
                        :memberships
+                       ;; The history budget H refuses the article: the
+                       ;; history gate or the capacity vector's octet
+                       ;; reservation, the transactions admitting it
+                       ;; (books/store-capacity-vector.lisp
+                       ;; fn-cvec-article-refusal-word; lane m1-durable-2).
+                       :history-exhausted
                        ;; RFC 3977 section 6: a group's next article number
                        ;; would pass 2,147,483,647 (the admission's number
                        ;; test, books/owner-prepare-served.lisp
@@ -611,6 +619,8 @@
     "the store is full: no capacity for this article (unaffordable); the node's operator can raise it")
    ((equal kind :memberships)
     "the store cannot pay for this article's groups: each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups (memberships)")
+   ((equal kind :history-exhausted)
+    "the store's history budget is exhausted (history-exhausted); the node's operator can raise max-history-octets or reclaim")
    ((equal kind :article-numbers-exhausted)
     "a group this article is posted to has no article number left (RFC 3977 section 6 ends at 2147483647), nothing was stored (article-numbers-exhausted)")
    ((equal kind :mpx-saturated)

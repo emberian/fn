@@ -455,12 +455,13 @@
 (assert-event (equal (fn-cvec-article-refusal-word :unaffordable *cvt-p* 1 *cvt-mb*
                                                    *cvt-record-10* 0)
                      :memberships))
-; Its record too large even without memberships: :unaffordable, the store full.
+; Its record too large even without memberships: the history is exhausted
+; (lane m1-durable-2; :unaffordable before, the word T and the vector use).
 (assert-event (equal (fn-cvec-article-budget-for *cvt-p* 1 *cvt-mb* *cvt-big-10* 0) 0))
 (assert-event (not (fn-cvec-article-memberships-refusedp *cvt-p* 1 *cvt-mb* 10000 10 0)))
 (assert-event (equal (fn-cvec-article-refusal-word :unaffordable *cvt-p* 1 *cvt-mb*
                                                    *cvt-big-10* 0)
-                     :unaffordable))
+                     :history-exhausted))
 ; The count gate refusing (8 committed of T = 8): :unaffordable, not the
 ; memberships.
 (assert-event (equal (fn-cvec-article-refusal-word :unaffordable *cvt-p* 8 *cvt-mb*
@@ -473,6 +474,90 @@
 (assert-event (equal (fn-cvec-article-refusal-word :refused *cvt-p* 1 *cvt-mb*
                                                    *cvt-record-10* 0)
                      :refused))
+
+; -----------------------------------------------------------------------------
+; Lane m1-durable-2 (2026-10-04).  KEYSTONES fn-cvec-article-refusal-word-
+; names-the-history, -keeps-unaffordable-for-the-transactions, -under-the-
+; budget-names-the-resource and fn-cvec-article-verdict-word-names-the-
+; resource.  A small H: *cvt-p* with H = 200 000, the least H above its
+; record ceiling R = 196 608 that leaves room for a few articles.
+(defconst *cvt-th* (fn-bs-profile-set-fields *cvt-p* '((2 . 200000))))
+(assert-event (and (fn-bs-profile-admittedp *cvt-th*)
+                   (equal (fn-bs-profile-max-history-octets *cvt-th*) 200000)
+                   (equal (fn-sbud-budget *cvt-th* :article) 8)
+                   (equal (fn-sbud-budget *cvt-th* :release) 8)))
+; Three words at one edge (180 000 committed octets): the ten-group 1 000-
+; octet article's record fits without its memberships (:memberships), the
+; ten-group 10 000-octet one's does not (:history-exhausted), and with T
+; spent (8 of 8) the same article is :unaffordable.  The one-group article
+; is admitted there (positive witness: the budget admits one more).
+(defconst *cvt-tb* 180000)
+(assert-event (fn-sbud-admitp (fn-cvec-article-budget-for *cvt-th* 1 *cvt-tb* *cvt-record* 0) 1))
+(assert-event (equal (fn-cvec-article-refusal-word :unaffordable *cvt-th* 1 *cvt-tb*
+                                                   *cvt-record-10* 0)
+                     :memberships))
+(assert-event (equal (fn-cvec-article-refusal-word :unaffordable *cvt-th* 1 *cvt-tb*
+                                                   *cvt-big-10* 0)
+                     :history-exhausted))
+(assert-event (equal (fn-cvec-article-refusal-word :unaffordable *cvt-th* 8 *cvt-tb*
+                                                   *cvt-big-10* 0)
+                     :unaffordable))
+; THE BAND (teeth for counting the vector's octet reservation as history).
+; At B the history gate alone admits the one-group article, the vector's
+; octet reservation (one release ceiling past it) does not, and the record
+; without its membership charge does not fit either: the history refuses,
+; and the word is :history-exhausted.  A precedence that called every
+; vector refusal :unaffordable would name this H refusal T.
+(defconst *cvt-band* (+ 321 (- (- 200000 *cvt-gate*) *cvt-r*)))
+(assert-event (and (fn-bs-history-admissiblep *cvt-th* *cvt-band* *cvt-gate*)
+                   (not (fn-cvec-roomp *cvt-th* 2 (+ *cvt-band* *cvt-gate*) 0))
+                   (fn-cvec-article-transactions-admitp *cvt-th* 1 0)
+                   (not (fn-cvec-article-history-admitp *cvt-th* *cvt-band* *cvt-gate* 0))
+                   (not (fn-cvec-article-memberships-refusedp *cvt-th* 1 *cvt-band* 1000 1 0))
+                   (not (fn-sbud-admitp (fn-cvec-article-budget-for
+                                         *cvt-th* 1 *cvt-band* *cvt-record* 0)
+                                        1))
+                   (equal (fn-cvec-article-refusal-word :unaffordable *cvt-th* 1
+                                                        *cvt-band* *cvt-record* 0)
+                          :history-exhausted)))
+; One octet lower the record without its membership fits: :memberships wins
+; (the precedence), and is not :history-exhausted.
+(assert-event (fn-cvec-article-memberships-refusedp *cvt-th* 1 (- *cvt-band* 1) 1000 1 0))
+(assert-event (equal (fn-cvec-article-refusal-word :unaffordable *cvt-th* 1
+                                                   (- *cvt-band* 1) *cvt-record* 0)
+                     :memberships))
+; The vector's TRANSACTION reservation refusing is T, not H, whatever the
+; octets: six open undertakings after one record leave no release for the
+; seventh (1 + 1 + 6 = T), and at the band the word is :unaffordable.
+(assert-event (and (not (fn-cvec-article-transactions-admitp *cvt-th* 1 6))
+                   (fn-cvec-article-transactions-admitp *cvt-th* 1 5)))
+(assert-event (equal (fn-cvec-article-refusal-word :unaffordable *cvt-th* 1 *cvt-band*
+                                                   *cvt-record* 6)
+                     :unaffordable))
+; Hypothesis-removal witness for -under-the-budget-names-the-resource: with
+; the budget admitting (nothing refused), the word left for :unaffordable is
+; :unaffordable although the transactions admit; only the budget's refusal
+; makes :unaffordable mean T.
+(assert-event (and (fn-sbud-admitp (fn-cvec-article-budget-for *cvt-th* 1 0 *cvt-record* 0) 1)
+                   (fn-cvec-article-transactions-admitp *cvt-th* 1 0)
+                   (equal (fn-cvec-article-refusal-word :unaffordable *cvt-th* 1 0
+                                                        *cvt-record* 0)
+                          :unaffordable)))
+; Another word passes through, :history-exhausted included.
+(assert-event (equal (fn-cvec-article-refusal-word :history-exhausted *cvt-th* 8 *cvt-tb*
+                                                   *cvt-big-10* 0)
+                     :history-exhausted))
+; The developer `store post''s word over the same points.
+(assert-event (equal (fn-cvec-article-verdict-word *cvt-th* 1 *cvt-tb* 1000 1 0) :admissible))
+(assert-event (equal (fn-cvec-article-verdict-word *cvt-th* 1 *cvt-tb* 1000 10 0) :memberships))
+(assert-event (equal (fn-cvec-article-verdict-word *cvt-th* 1 *cvt-tb* 10000 10 0)
+                     :history-exhausted))
+(assert-event (equal (fn-cvec-article-verdict-word *cvt-th* 8 *cvt-tb* 10000 10 0)
+                     :unaffordable))
+(assert-event (equal (fn-cvec-article-verdict-word *cvt-th* 1 *cvt-band* 1000 1 0)
+                     :history-exhausted))
+(assert-event (equal (fn-cvec-article-verdict-word *cvt-th* 1 *cvt-band* 1000 1 6)
+                     :unaffordable))
 
 ; -----------------------------------------------------------------------------
 ; The accepted-statement figure (lane bp-retention-leftovers, membership-
@@ -564,13 +649,13 @@
 ; The developer `store post''s word (fn-cvec-article-verdict-word): the
 ; ten-group article at *cvt-mb* is refused for its memberships, the
 ; one-group one admitted, the ten-group article past its record figure
-; refused as the store's budget, and the count gate refusing is not the
-; memberships.
+; refused as the history (lane m1-durable-2), and the count gate refusing
+; is not the memberships.
 (assert-event (equal (fn-cvec-article-verdict-word *cvt-p* 1 *cvt-mb* 1000 10 0)
                      :memberships))
 (assert-event (equal (fn-cvec-article-verdict-word *cvt-p* 1 *cvt-mb* 1000 1 0)
                      :admissible))
 (assert-event (equal (fn-cvec-article-verdict-word *cvt-p* 1 *cvt-mb* 10000 10 0)
-                     :unaffordable))
+                     :history-exhausted))
 (assert-event (equal (fn-cvec-article-verdict-word *cvt-p* 8 *cvt-mb* 1000 10 0)
                      :unaffordable))

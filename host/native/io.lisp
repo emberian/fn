@@ -5533,16 +5533,20 @@ error for the same reason."
              ;; ACL2's article verdict: the count gate, the history gate and
              ;; the vector at this article's own figure, and its word
              ;; (fn-cvec-article-verdict-word): :memberships when the
-             ;; membership charge alone refused it, named as the served
-             ;; POST names it (books/nntp-post.lisp).
+             ;; membership charge alone refused it, :history-exhausted
+             ;; when the history budget did, :unaffordable when the
+             ;; transactions did, named as the served POST names them
+             ;; (books/nntp-post.lisp).
              (case (fnn-core-state 'fn-store-sn-article-verdict-word
                                    (fnn-store-config store) (length payload)
                                    (length codes))
                (:admissible nil)
                (:memberships
                 (fnn-refuse "store budget refuses the article's groups (memberships): each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups"))
+               (:history-exhausted
+                (fnn-refuse "store history budget is exhausted (history-exhausted): raise max-history-octets or reclaim"))
                (:unaffordable
-                (fnn-refuse "store budget refuses the article (transaction count or history bound)"))
+                (fnn-refuse "store budget refuses the article (transaction count)"))
                (otherwise
                 (fnn-fault "ACL2 returned an invalid article verdict word")))
              (fnn-advance-frontier store (fnn-bridge-next-txid))
