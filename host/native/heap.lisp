@@ -172,14 +172,13 @@ CORE and MACHINE are each captured once for both ACL2 reservation steps."
            (profile (fnn-heap-store-profile absolute-root))
            (core (fnn-heap-image-observation))
            (machine (fnn-heap-observations))
+           (observed (and profile (fnn-heap-history-observation absolute-root profile)))
            (base (fnn-core 'fn-heap-status-decide profile core
-                           +fnn-gc-nursery-octets+ machine
-                           (and profile
-                                (fnn-heap-history-observation absolute-root profile)))))
+                           +fnn-gc-nursery-octets+ machine observed)))
       (fnn-out "~a" (fnn-core 'fn-heap-reserve-report-line
                               (fnn-heap-extend-reservation base :run cold-resources
                                                           output-resources absolute-root
-                                                          core machine
+                                                          core machine profile observed
                                                           (fnn-peer-flight-profile absolute-root)))))))
 
 (defun fnn-lim-print-values (root)
@@ -401,14 +400,18 @@ share this boundary, including standalone BP owners."
 ;; native storage to this same observed machine decision. DEFAULT adds the
 ;; selected fixed backing only for a served run, before output allocation;
 ;; ACL2 chooses both the scope and the reservation.
-(defun fnn-heap-extend-reservation (base action cold-resources output-resources root core machine &optional peer)
-  "The same policy extensions for the launch probe and next-run diagnostics."
+(defun fnn-heap-extend-reservation (base action cold-resources output-resources root core machine
+                                    profile observed &optional peer)
+  "The same policy extensions for the launch probe and next-run diagnostics.
+PROFILE and OBSERVED are the base decision's: the served run's figure holds
+the owner's protected runtime for that observed store (books/page-read-startup.lisp
+fn-prstartup-launch-admits-owner-protected)."
   (fnn-core 'fn-orv-extend-reservation
             (fnn-core 'fn-pfr-extend-operation-reservation
                       (fnn-core 'fn-prstartup-extend-operation-reservation
                                 (fnn-core 'fn-crv-extend-reservation base cold-resources core machine)
                                 action cold-resources root (fnn-core 'fn-pio-direct-workers)
-                                (fnn-extent-cache-limit) core machine)
+                                (fnn-extent-cache-limit) core machine profile observed)
                       action peer core machine)
             output-resources core machine))
 
@@ -417,7 +420,8 @@ share this boundary, including standalone BP owners."
          (machine (fnn-heap-observations))
          (base (fnn-core 'fn-heap-reserve-operation-decide action profile core
                          +fnn-gc-nursery-octets+ machine connections observed)))
-    (fnn-heap-extend-reservation base action cold-resources output-resources root core machine peer)))
+    (fnn-heap-extend-reservation base action cold-resources output-resources root core machine
+                                 profile observed peer)))
 
 (defun fnn-command-heap (marker argv)
   (unless (string= marker "--")
