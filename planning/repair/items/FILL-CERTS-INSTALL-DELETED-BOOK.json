@@ -1,0 +1,13 @@
+{
+ "category": "tooling",
+ "detail": "Traceback: tools/certs.py:2205 install -> book_entries:608 -> cert_images.worlds:280 -> applicable:242 -> nonlocal_closure -> ledger.analyze_book:759 read_text of the missing book; log cloud1:/tank/fn/scratch/fill-wt-check/build/.certs-install.log. The including book is parked (books/post-identity-captured.lisp comment says so). Fix: the closure walker should name a missing include as a finding (or the parked book leave the root list), never abort the install. Consequence seen: host_check 'NOT RUN -- 193 of the books host/native/build.lisp includes have no certificate here' and 'umbrellas: NOT installed as one set'. Run: cloud1:/tank/fn/scratch/fill-wt-check.log (remote_check cloud1 --target check, dev 55ff708a6, started 2026-10-04T19:03Z; local copy build/remote-check/cloud1-check.log)",
+ "file": "tools/certs.py",
+ "id": "FILL-CERTS-INSTALL-DELETED-BOOK",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "high",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "certs.py install (all roots) crashes FileNotFoundError on books/held-record-shape.lisp, which books/acceptance-binding-held-gate.lisp still includes (D43 deleted the book); the install step of remote_check/make check aborts with a traceback, so no certificate is installed and host_check prints NOT RUN for both images (193 / 126 books uncertified) on every box that has not already got them",
+ "updated": "2026-10-04T19:12:26Z"
+}

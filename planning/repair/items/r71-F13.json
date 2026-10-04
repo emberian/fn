@@ -11,7 +11,8 @@
  "notes": [
   "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification",
   "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix 1cb0ec0e0; current site host/native/mux.lisp fnn-mux-reserve/fnn-mux-slot-free-p: a reserved slot per loop, accepted sockets bounded by the loops, fnn-owner-accept-one reserves before accept(2)); local test none; native pending: tests.test_native_host_lifecycle.PendingAcceptBoundTests.test_accepted_sockets_stay_bounded_while_the_loops_are_held",
-  "10-04 10:41 REOPENED (integrator2 ledger rule): native red tests.test_native_host_lifecycle.PendingAcceptBoundTests (29 sockets accepted while loops held, bound 4) on hbox run2-d5b0b9100 (images /tank/fn/images/d5b0b9100, dev d5b0b9100)"
+  "10-04 10:41 REOPENED (integrator2 ledger rule): native red tests.test_native_host_lifecycle.PendingAcceptBoundTests (29 sockets accepted while loops held, bound 4) on hbox run2-d5b0b9100 (images /tank/fn/images/d5b0b9100, dev d5b0b9100)",
+  "10-04 15:12 FILL 10-04: PendingAcceptBoundTests still red on set bdd4f40c4: 29 sockets accepted while loops held, bound 4 (hbox:/tank/fn/scratch/fill-wt/native-fill-peer2, tests.test_native_host_lifecycle)"
  ],
  "owner": "host-lifecycle",
  "severity": "medium",
@@ -20,5 +21,5 @@
  "source": "r71",
  "state": "open",
  "title": "fnn-mux-adopt (claim-gap)",
- "updated": "2026-10-04T14:41:56Z"
+ "updated": "2026-10-04T19:12:27Z"
 }

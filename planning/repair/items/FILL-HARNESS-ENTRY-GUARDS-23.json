@@ -1,0 +1,13 @@
+{
+ "category": "check-lane",
+ "detail": "Full list in the log after '== harness_check'. Run: cloud1:/tank/fn/scratch/fill-wt-check.log (remote_check cloud1 --target check, dev 55ff708a6, started 2026-10-04T19:03Z; local copy build/remote-check/cloud1-check.log)",
+ "file": "books/payload-kinds.lisp",
+ "id": "FILL-HARNESS-ENTRY-GUARDS-23",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "harness_check entry-guards: 23 findings (CL10 landed): formal octets/config-octets carries bytes but the entry guard names no kind (books/payload-kinds.lisp *fn-entry-guard-kinds*), e.g. fn-aj-host-profile-write-octets, fn-bpnb-read, fn-bpnc-startup",
+ "updated": "2026-10-04T19:12:27Z"
+}
