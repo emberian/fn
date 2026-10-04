@@ -1,12 +1,107 @@
 {
+ "budget": 120,
  "category": "implementation",
+ "expect-failure": "tests.test_exposure_campaign_shape.CampaignShape.test_guessing_campaign_reconnects",
+ "failure-message": "SCEN-EXPOSURE-LOCKOUT: the guessing campaign does not reconnect",
  "file": "host/native/mux.lisp",
+ "harness": "tests/test_exposure_campaign_shape.py",
  "id": "SCEN-EXPOSURE-LOCKOUT",
- "notes": [],
+ "native": "public_exposure",
+ "notes": [
+  "10-04 15:37 claimed: scope=['tests/test_native_public_exposure.py', 'tests/test_exposure_campaign_shape.py'] test=python3 -m unittest tests.test_exposure_campaign_shape",
+  "10-04 15:38 claimed: scope=['tests/test_native_public_exposure.py', 'tests/test_exposure_campaign_shape.py'] test=python3 -m unittest tests.test_exposure_campaign_shape",
+  "10-04 15:39 READY c8efb5800 (overlay native tests.test_native_public_exposure OK on lat1 native-wt-20261004T175901Z; base red in hbox fill-peer2)"
+ ],
  "owner": "unowned",
+ "scope": [
+  "tests/test_native_public_exposure.py",
+  "tests/test_exposure_campaign_shape.py"
+ ],
  "severity": "medium",
  "source": "scenarios",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_exposure_campaign_shape",
  "title": "public_exposure test_flood_campaign: credential guessing from 127.0.0.7 is closed after 3 x 481 with '400 too many authentication failures', but the next connection from the same address is greeted 201 instead of '400 too many authentication failures from this address' (tests/test_native_public_exposure.py:397). Green on 45c9ec0f6 (10-03); red on peer-d5b0b9100.",
- "updated": "2026-10-04T15:13:41Z"
+ "updated": "2026-10-04T19:39:02Z",
+ "verify": {
+  "base": "154c71f594126a6ca01d1c58506a0f5dd197da7f",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "SCEN-EXPOSURE-LOCKOUT: the guessing campaign does not reconnect",
+      "test": "tests.test_exposure_campaign_shape.CampaignShape.test_guessing_campaign_reconnects",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_exposure_campaign_shape.CampaignShape.test_guessing_campaign_reconnects"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_exposure_campaign_shape.py": "59c6cc1a346fcf9d2810c012b52edc9f4ac7d7368220057d7230ec9b05f33411"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "154c71f594126a6ca01d1c58506a0f5dd197da7f",
+   "stderr": "test_guessing_campaign_reconnects (tests.test_exposure_campaign_shape.CampaignShape.test_guessing_campaign_reconnects) ... FAIL\n\n======================================================================\nFAIL: test_guessing_campaign_reconnects (tests.test_exposure_campaign_shape.CampaignShape.test_guessing_campaign_reconnects)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-7htrnzrq/wt/tests/test_exposure_campaign_shape.py\", line 29, in test_guessing_campaign_reconnects\n    self.fail(\"SCEN-EXPOSURE-LOCKOUT: the guessing campaign does not reconnect\")\n    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: SCEN-EXPOSURE-LOCKOUT: the guessing campaign does not reconnect\n\n----------------------------------------------------------------------\nRan 1 test in 0.008s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "planning/repair/items/SCEN-EXPOSURE-LOCKOUT.json",
+   "tests/test_exposure_campaign_shape.py",
+   "tests/test_native_public_exposure.py"
+  ],
+  "diff_lines": 92,
+  "evidence": {
+   "bytes": 3637,
+   "path": "planning/evidence/repair/SCEN-EXPOSURE-LOCKOUT-1bc8faf6f11a416fb266de73b24f6dc6.json",
+   "sha256": "f5b896042415f8d44fd50af54f074972cdff9960d9a1c38f93383c5ae508e21d"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "SCEN-EXPOSURE-LOCKOUT: the guessing campaign does not reconnect",
+   "test": "tests.test_exposure_campaign_shape.CampaignShape.test_guessing_campaign_reconnects"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/test_exposure_campaign_shape.py": "59c6cc1a346fcf9d2810c012b52edc9f4ac7d7368220057d7230ec9b05f33411"
+  },
+  "head": "c8efb5800e11c51f1f4ec708d706a8a8da710e5b",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_exposure_campaign_shape.CampaignShape.test_guessing_campaign_reconnects"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_exposure_campaign_shape.py": "59c6cc1a346fcf9d2810c012b52edc9f4ac7d7368220057d7230ec9b05f33411"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "c8efb5800e11c51f1f4ec708d706a8a8da710e5b",
+   "stderr": "test_guessing_campaign_reconnects (tests.test_exposure_campaign_shape.CampaignShape.test_guessing_campaign_reconnects) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.005s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_exposure_campaign_shape",
+  "timeout": 1800.0
+ }
 }
