@@ -1,12 +1,17 @@
 {
  "acceptance": "services:round-deadline",
+ "allow_forbidden": true,
+ "budget": 2400,
  "category": "performance",
  "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "BRIDGE",
  "evidence": "pull-service.lisp:438-448: (loop until (or (fnn-core ... 'fn-pull-session-done-p session) (fnn-pull-stoppingp runtime)) do ... (let ((incoming (receive))) ...)). receive is (fnn-recv fd +fnn-pull-read-seconds+ limit) with (defconstant +fnn-pull-read-seconds+ 60) at line 40. fnn-pull-worker (521-545) runs pull rounds, then fnn-catchup-tick, serially on one thread.",
+ "expect-failure": "tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup",
  "exposure": "live",
+ "failure-message": "healthy pull and catch-up must progress while slow pull retains partial state",
  "file": "host/native/pull-service.lisp",
  "fix": "Have ACL2 own a round budget (wall-clock or a minimum progress rate) and make its expiry a (:lost :timeout) event. Have ACL2 project the read, dial and send deadlines as the feed does for connect. Consider one worker per peer, or interleaving rounds by quantum, so one peer cannot starve the others.",
+ "harness": "tests/test_native_peer_round_driver.py,tests/native_peer_round_driver_raw-mock.lisp",
  "id": "S106",
  "line": "438",
  "locus": "peer-services",
@@ -14,17 +19,12 @@
   "2026-10-03 Groundwork explicitly authorized shared ACL2/native resumable transport capability; Runtime confirmed IO/owner API disjoint. S067 push-feed fairness and DNS availability remain separate frontiers unless actually consumed. No host wall cap or reused output/cold funding.",
   "Implemented one-attempt TCP/TLS and retained pull/catch-up worker state; raw kernel/worker tests pass. PRF-1260 source/guard certification and actual saved-image SCN-1090 remain pending. No DNS deadline, push fairness, whole-round expiry or context-funding claim.",
   "The shared S054/S106 same-harness worker witness is S054-2c4cd248a09b4542a02348d81dc7f778.json SHA256 bda0fe45789751e6cc31e3b18eb81344f8fae195d472458e85be47e0d4011ff3: exact intended AssertionError at cddce7087 in0.766s, same designated test green51c5c4f2e in0.827s; zero infra/skips. Not rerun for duplicate predicate. Certification/native-body consumer/funding/DNS remain open.",
-  "Follow-through identical harness loads the actual whole pull adapter, avoiding implicit missing definitions/derived overrides: S054-a884a8d71f154c0bbbf8ea440298d9f3.json SHA2566e940186a0269c75549aeafe4a2b6891b50a40020dcb8e0ff9c2e4139c338667, cddce7087 exact assertion red,632a3533d sameID green, no errors/skips/infra. Earlier receipt retained."
+  "Follow-through identical harness loads the actual whole pull adapter, avoiding implicit missing definitions/derived overrides: S054-a884a8d71f154c0bbbf8ea440298d9f3.json SHA2566e940186a0269c75549aeafe4a2b6891b50a40020dcb8e0ff9c2e4139c338667, cddce7087 exact assertion red,632a3533d sameID green, no errors/skips/infra. Earlier receipt retained.",
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit f2ccbff38, same harness as S054); local test python3.12 -m unittest tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup PASS at HEAD; ACL2 whole-round expiry/DNS deadline not claimed (item notes); native pending: SCN-1090"
  ],
  "owner": "codex-sol-transport-rounds",
  "reviewer": "pull-service.lisp:40 sets +fnn-pull-read-seconds+ to 60. receive (425-434) is a per-recv deadline. The loop (438-448) ends only on session-done or stopping, and the pull and catch-up session steps take no clock, so nothing bounds the whole round. The :dial arm uses :timeout 10 (351), not fn-owner-feed-connect-timeout as the push feed does (feed-service.lisp:157-158). fnn-pull-worker (521-545) runs pull and catch-up serially on one thread. The impact is limited to pull and catch-up liveness, and the peer must be configured, so the severity is low.",
  "scenario": "A configured (or compromised) pull peer answers NEWNEWS or XFNCATCHUP slowly, sending one byte every 59 s. Each fnn-recv returns data before its 60 s deadline, so the round never times out. Until the peer stops, no other peer is pulled and no catch-up round runs. The 60 s read and 10 s dial and send timeouts (line 351 uses :timeout 10, not ACL2's fn-owner-feed-connect-timeout the push feed uses) are host-chosen constants, not ACL2-owned bounds.",
- "severity": "low",
- "slice": "services",
- "source": "sweep-2026-10-03",
- "state": "in-progress",
- "title": "Pull and catch-up rounds have no overall time bound; one slow peer holds the only pull worker indefinitely",
- "updated": "2026-10-03T02:30:23Z",
  "scope": [
   "books/peer-round-driver.lisp",
   "host/native/pull-service.lisp",
@@ -44,10 +44,11 @@
   "planning/evidence-index.tsv",
   "tests/native_pull_journal_registry_raw.lisp"
  ],
- "budget": 2400,
- "allow_forbidden": true,
+ "severity": "low",
+ "slice": "services",
+ "source": "sweep-2026-10-03",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup",
- "harness": "tests/test_native_peer_round_driver.py,tests/native_peer_round_driver_raw-mock.lisp",
- "expect-failure": "tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup",
- "failure-message": "healthy pull and catch-up must progress while slow pull retains partial state"
+ "title": "Pull and catch-up rounds have no overall time bound; one slow peer holds the only pull worker indefinitely",
+ "updated": "2026-10-04T06:28:44Z"
 }

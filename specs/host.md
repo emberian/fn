@@ -398,10 +398,9 @@ two-node exchange still require the saved-image gate.
 The per-file layout's transaction namespace observer: a format-9 store has
 no transactions/ directory, and the native open reads none; the record
 log's segments are named and ordered by ACL2 (`fn-lgs-open-plan`,
-books/store-log-segments.lisp). The one caller of the namespace decision
-left is the Python store (tools/run_store.py through tools/frame_bridge.py,
-`fn-store-txn-observation-octets` over `fn-store-txn-observation-selected`),
-which still reads the per-file layout.
+books/store-log-segments.lisp). The namespace decision
+(`fn-profile-txn-observation`) has no host caller since the Python store was
+retired (S117).
 
 `build/fn-host` is one saved SBCL image: ACL2 8.7, the certified books the
 hosts drive, the `:program` wrappers in `host/*-host.lisp`, and the raw-Lisp

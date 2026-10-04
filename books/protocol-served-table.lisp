@@ -66,9 +66,10 @@
 ;              dispatcher's clause, one lemma per form (its view CONTRACT:
 ;              under the form's test and no earlier form's, the result equals
 ;              the reference on the pinned view), the row's case and the
-;              keystone.  A row without :forms is served by the hand arms
-;              (books/served-catalog-dispatch.lisp) under its row-level
-;              :view, until declared.
+;              keystone.  A row without :forms is answered by the generated
+;              dispatcher's last clause, the pinned reference
+;              (fn-nntp-archive-command-pinned), under its row-level :view,
+;              until declared.
 ;   :cost      what the command costs on each route, (:unrestricted TEXT
 ;              :restricted TEXT); required with :forms.  The restricted
 ;              route is the reference walk over the projected pin, so a -cat
@@ -937,7 +938,7 @@
           :restricted "the reference whole pinned archive walk, including payload tombstone reads")
    :teeth ("NEWNEWS * 20261001 000000 GMT" "NEWNEWS fn.* 20261001 000000 GMT" "NEWNEWS fn.* 20261001 000000" "NEWNEWS"))
   ("DATE"
-   :view :none :effect :none :view-rfc "RFC 3977 7.1; no article view. DEFECT (c07): answers the clock observation pinned at accept (fn-nntp-env-observation; books/served.lisp fn-served-conn-observation), not the current reading; fixed separately")
+   :view :none :effect :none :view-rfc "RFC 3977 7.1; no article view. Answers the CURRENT clock reading, the served connection's injection field, not the reading pinned at accept (books/served-date-current.lisp fn-served-step-date-uses-current-reading)")
   ("POST"
    :view :none :effect :offer :view-rfc "RFC 3977 6.3.1 (no archive)")
   ("IHAVE"

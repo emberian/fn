@@ -392,10 +392,8 @@
 ; gap-free namespace the next generation exists exactly while fewer than
 ; CAPACITY names are retained, and it is the next number; CAPACITY is the
 ; profile's max-transactions plus one (`fn-cpp-generation-capacity'), at
-; most the uint32 width.  Host: host/native/checkpoint.lisp
-; `fnn-checkpoint-publish' through host/checkpoint-host.lisp
-; `fn-store-checkpoint-next-generation' and
-; `fn-store-checkpoint-publication-initial', with the opened profile.
+; most the uint32 width.  No host calls it since the record log retired the
+; generation verbs (S117); the book stands as the representation check.
 (defthm fn-cpp-next-generation-refuses-exactly-at-the-profile-capacity
   (implies (and (not (equal (fn-cpp-next-generation names capacity) :bad))
                 (<= (nfix capacity) (+ 1 *fn-cbor-max-uint*)))

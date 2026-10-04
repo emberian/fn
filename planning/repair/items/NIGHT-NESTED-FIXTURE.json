@@ -7,7 +7,8 @@
  "harness": "tests/test_harness_check.py",
  "id": "NIGHT-NESTED-FIXTURE",
  "notes": [
-  "10-03 03:13 claimed: scope=['tools/harness_check.py', 'tests/test_harness_check.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_harness_check.NestedFixtureTests.test_existing_scan_api_preserves_real_nested_extraction"
+  "10-03 03:13 claimed: scope=['tools/harness_check.py', 'tests/test_harness_check.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_harness_check.NestedFixtureTests.test_existing_scan_api_preserves_real_nested_extraction",
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit 76acfb91e, tools/harness_check.py); local test python3.12 -m unittest tests.test_harness_check.NestedFixtureTests.test_existing_scan_api_preserves_real_nested_extraction PASS at HEAD; native pending: none (tooling)"
  ],
  "owner": "codex-sol-tools",
  "scope": [
@@ -18,10 +19,10 @@
  ],
  "severity": "medium",
  "source": "integration-3ded-stub-overwrite",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_harness_check.NestedFixtureTests.test_existing_scan_api_preserves_real_nested_extraction",
  "title": "Derived stub generator ignores literal nested fixture extraction",
- "updated": "2026-10-03T07:13:31Z",
+ "updated": "2026-10-04T06:28:43Z",
  "verify": {
   "base": "396a71ff849b632e7e43e79b653556048d196d91",
   "base_observation": {

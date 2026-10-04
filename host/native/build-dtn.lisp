@@ -40,11 +40,6 @@
 ; The fn-wide outcome classes and exit codes host/native/io.lisp reads (PRF-143).
 (include-book "books/outcome-class")
 (include-book "books/failure-scope")
-(include-book "books/peer-flight-profile")
-(include-book "books/peer-flight-startup")
-(include-book "books/peer-catchup-spool-resources")
-(include-book "books/peer-catchup-spool")
-(include-book "books/peer-catchup-spool-hash")
 (include-book "books/committer-actor")
 (include-book "books/replay")
 ; The hybrid-store constructors that call the injecting agent; the raw
@@ -65,6 +60,13 @@
 ;; comes right after the codec and record attachments, before any of them.
 (include-book "books/payload-arena-attach")
 (include-book "books/history-paged-attach")
+;; The peer flight books reach `fn-arena' (heap-store-figure includes
+;; owner-checkpoint-pipeline), so they follow the arena attachment.
+(include-book "books/peer-flight-profile")
+(include-book "books/peer-flight-startup")
+(include-book "books/peer-catchup-spool-resources")
+(include-book "books/peer-catchup-spool")
+(include-book "books/peer-catchup-spool-hash")
 (include-book "books/store-config")
 (include-book "books/identity")
 (include-book "books/article-fields")

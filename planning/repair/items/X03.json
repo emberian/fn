@@ -6,11 +6,13 @@
  "id": "X03",
  "line": "2123",
  "locus": "reclaim-publication",
- "notes": [],
+ "notes": [
+  "10-04 02:30 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (3dfb7ba69, host/native/owner.lisp fnn-owner-attempt asks fn-owner-cat-may-seal before fnn-seal-live-buffer; books/catalog-may-seal.lisp fn-cat-may-seal-is-the-prepare-transition-gate); local test none; native pending: tests.test_native_post_seal_gate (labelled mutation FN_NATIVE_TEST_CAT_SEAL_REFUSE)"
+ ],
  "owner": "arena-forget",
  "severity": "medium",
  "source": "coordinator",
- "state": "in-progress",
+ "state": "landed",
  "title": "refused POST prepare after seal leaks a sealed payload",
- "updated": "2026-10-03T02:31:49Z"
+ "updated": "2026-10-04T06:30:35Z"
 }
