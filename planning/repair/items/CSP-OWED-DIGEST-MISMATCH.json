@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/peer-catchup-spool.lisp",
+ "id": "CSP-OWED-DIGEST-MISMATCH",
+ "notes": [],
+ "owner": "catchup",
+ "severity": "high",
+ "slice": "peer-services",
+ "source": "catchup",
+ "state": "open",
+ "title": "Catch-up spool controller owes the digest refusal keystone that replaced fn-cu-on-end-refuses-a-digest-mismatch: when a batch's spooled chain differs from the claim, fn-csp-step fails the round :digest-mismatch with only (:close), no :local or :journal effect, and the committed cursor unmoved. Witnessed by *cut-bad* in tests/acl2/peer-catchup-tests.lisp, not proved.",
+ "updated": "2026-10-04T04:01:41Z"
+}

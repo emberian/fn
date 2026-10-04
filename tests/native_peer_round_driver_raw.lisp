@@ -104,19 +104,28 @@
       (when slow (setq *partial* new-count)
         (when (plusp new-count) (setq *slow-observed* t)))
       (list (list peer new-count done) nil nil))))
+(defun fnn-owner-service-peer-flight-bank (service)
+  ;; No independent peer bank in this harness: the recorded catch-up leaves
+  ;; below stand in for the spool controller, so no lease is drawn.
+  (declare (ignore service)) nil)
 (defun fnn-core (subject &rest args)
   (case subject
-    ((fn-pull-session-begin-pair fn-cu-session-begin-pair) (session-begin (first args)))
-    ((fn-pull-session-step-triple fn-cu-session-step-pair)
-     (let ((triple (apply #'session-step args)))
-       (if (eq subject 'fn-cu-session-step-pair) (subseq triple 0 2) triple)))
-    ((fn-pull-session-done-p fn-cu-session-done-p) (third (first args)))
-    ((fn-pull-session-read-limit fn-cu-session-read-limit) 512)
-    ((fn-pull-session-close-effects fn-cu-session-close-effects)
+    (fn-pull-session-begin-pair (session-begin (first args)))
+    (fn-csp-begin (session-begin (first args)))
+    (fn-pull-session-step-triple (apply #'session-step args))
+    (fn-csp-step
+     ;; A recorded catch-up round journals its cursor in-step when it ends.
+     (let* ((triple (apply #'session-step args)) (next (first triple)))
+       (list next (when (and (third next) (not (equal (first next) '(65))))
+                    (list (cons :journal :complete))))))
+    ((fn-pull-session-done-p fn-csp-done-p) (third (first args)))
+    ((fn-pull-session-read-limit fn-csp-read-limit) 512)
+    (fn-csp-tick-p nil)
+    (fn-pull-session-close-effects
      (when (and (third (first args)) (not (equal (first (first args)) '(65))))
        (list (cons :journal :complete))))
-    ((fn-pull-session-close fn-cu-session-close) :closed)
-    ((fn-pull-session-log-line-why fn-cu-session-log-line) nil)
+    ((fn-pull-session-close fn-csp-close) :closed)
+    ((fn-pull-session-log-line-why fn-csp-log-line) nil)
     (fn-owner-feed-connect-timeout 10)
     (fn-splan-step-plan (list :recorded-plan))
     (otherwise

@@ -3,21 +3,25 @@
 ;
 ; A node that is new, or has been away, fetches a peer's articles as the
 ; batches of XFNCATCHUP (books/peer-catchup-serve.lisp) instead of one
-; NEWNEWS listing and one ARTICLE per Message-ID.  Each batch is received
-; whole, its digest chain recomputed and compared with the peer's claim, and
-; only then are its records offered, one at a time and oldest first, to THIS
-; node by IHAVE on the logical transit connection of that peer: the node's
-; own prepare and verdict path decides each one, exactly as for a push from
-; that peer.  Catch-up imports articles and their provenance (the Path the
-; local acceptance extends); it never carries the peer's article numbers,
-; never installs anything itself, and a peer's cancel arrives as an offered
-; article that the local verdict decides like any other.
+; NEWNEWS listing and one ARTICLE per Message-ID.  This book holds the
+; session (the pull's preamble), the cursor and its FNCU journal; the round
+; itself is the bounded spool controller (books/peer-catchup-spool.lisp):
+; each batch is streamed through 512-octet windows into a private spool, its
+; digest chain recomputed record by record and compared with the peer's
+; claim, and only then are its records replayed from the spool and offered,
+; one at a time and oldest first, to THIS node by IHAVE on the logical
+; transit connection of that peer: the node's own prepare and verdict path
+; decides each one, exactly as for a push from that peer.  Catch-up imports
+; articles and their provenance (the Path the local acceptance extends); it
+; never carries the peer's article numbers, never installs anything itself,
+; and a peer's cancel arrives as an offered article that the local verdict
+; decides like any other.
 ;
 ; The session is the pull's (books/peer-pull-session.lisp): the feed's
 ; protected preamble (STARTTLS, the verified handshake, AUTHINFO from the
 ; outbound credential profile) decided by `fn-pull-plan-verdict', then this
 ; round in place of the NEWNEWS round.  The host drives both with the same
-; effect vocabulary (host/native/pull-service.lisp `fnn-pull-round'):
+; effect vocabulary (host/native/pull-service.lisp, through `fn-csp-step'):
 ; (:journal . cursor), (:dial), (:tls NAME ANCHOR), (:remote . octets),
 ; (:open-local), (:local . octets), (:close).
 ;
@@ -30,21 +34,9 @@
 ; (duplicate suppression, specs/peering.md K4): nothing is skipped and
 ; nothing is installed twice.
 ;
-; What is proved (the host calls `fn-cu-session-step-pair',
-; `fn-cu-session-begin-pair', `fn-cu-session-close', `fn-cu-cursor-envelope',
-; `fn-cu-journal-scan' and `fn-cu-records-replay'):
-;   fn-cu-step-keeps-offers-verified   while a round offers a batch, the batch
-;       chains from the committed chain to the peer's claim (the invariant
-;       `fn-cu-verifiedp', established by `fn-cu-begin'): no record reaches
-;       the local node from a batch whose recomputed chain differs
-;   fn-cu-on-end-refuses-a-digest-mismatch   a mismatch ends the round
-;       :failed with the refusal :digest-mismatch, only (:close) sent, the
-;       cursor unmoved
-;   fn-cu-step-installs-only-through-the-verdict   every octet sent to the
-;       local node is the IHAVE of the record the round then waits on, or
-;       that record's body right after the local node answered 335; every
-;       journal record is the round's committed cursor with nothing of its
-;       batch left to offer
+; What is proved here (the host calls `fn-cu-cursor-envelope',
+; `fn-cu-journal-scan' and `fn-cu-records-replay'; the round's keystones are
+; in books/peer-catchup-spool.lisp and its framer):
 ;   fn-cu-records-replay-is-the-last-cursor   the open recovers the last
 ;       journaled cursor (a torn tail is truncated to it)
 ;   fn-cu-resume-asks-from-the-journaled-cursor   a round begun from the
@@ -58,13 +50,9 @@
 ; Policy
 
 ; The quantum a requester asks for (octets of article per batch beyond the
-; first record): local policy, a bound on one batch's buffering.
+; first record): local policy. A batch is spooled whole before any record is
+; offered, so it bounds the spool one round needs (the peer flight allowance).
 (defconst *fn-cu-request-quantum* 262144)
-
-; The longest line a batch may carry (an article line; RFC 5536 section 3.1
-; bounds a line at 998 octets, a stored article's framing does not): a line
-; longer than this fails the round by name rather than growing the buffer.
-(defconst *fn-cu-max-line* 1048576)
 
 ; -----------------------------------------------------------------------------
 ; The cursor
@@ -211,28 +199,6 @@
 
 (defun fn-cu-quit () (declare (xargs :guard t)) (fn-pull-quit))
 
-(defun fn-cu-split-aux (buf acc budget)
-  (declare (xargs :guard (and (true-listp acc) (natp budget))
-                  :measure (nfix budget)))
-  (cond ((zp budget) (mv :long nil nil))
-        ((atom buf) (mv :need nil nil))
-        ((and (equal (car buf) 13) (consp (cdr buf)) (equal (cadr buf) 10))
-         (mv :line (revappend acc nil) (cddr buf)))
-        (t (fn-cu-split-aux (cdr buf) (cons (car buf) acc) (1- budget)))))
-
-(defun fn-cu-split (buf)
-  (declare (xargs :guard t))
-  (fn-cu-split-aux buf nil *fn-cu-max-line*))
-
-(defthm fn-cu-split-aux-rest-shorter
-  (implies (equal (mv-nth 0 (fn-cu-split-aux buf acc budget)) :line)
-           (< (len (mv-nth 2 (fn-cu-split-aux buf acc budget))) (len buf)))
-  :rule-classes :linear)
-
-(defthm fn-cu-split-aux-line-true-listp
-  (implies (true-listp acc)
-           (true-listp (mv-nth 1 (fn-cu-split-aux buf acc budget)))))
-
 ; The words of a line split at single spaces.
 (defun fn-cu-words-aux (line word acc)
   (declare (xargs :guard (and (true-listp word) (true-listp acc))))
@@ -279,67 +245,7 @@
         (cons (nth 1 words) (fn-cu-u64-value (nth 2 words)))
       nil)))
 
-; RFC 3977 section 3.1.1: a line of the block that begins with "." had one
-; prepended; remove it.
-(defun fn-cu-unstuff (line)
-  (declare (xargs :guard t))
-  (if (and (consp line) (equal (car line) 46)) (cdr line) line))
-
-; The article a record's lines denote: each line then CRLF.
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
-; same step.
-(defun fn-cu-join-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp rev)
-      (fn-cu-join-loop (cdr rev) (append (fn-cu-list (car rev)) (list 13 10) acc))
-    acc))
-
-(defun fn-cu-join (lines)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp lines)
-           (append (fn-cu-list (car lines)) (list 13 10) (fn-cu-join (cdr lines)))
-         nil)
-       :exec (fn-cu-join-loop (fn-ag-rev-onto lines nil) nil)))
-
-(local
- (defthm fn-cu-join-loop-of-rev-onto
-   (equal (fn-cu-join-loop (fn-ag-rev-onto lines zs) nil)
-          (fn-cu-join-loop zs (fn-cu-join lines)))
-   :hints (("Goal" :induct (fn-ag-rev-onto lines zs)
-                   :in-theory (union-theories '(fn-cu-join-loop fn-cu-join fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-cu-join-loop)
-
-(verify-guards fn-cu-join
-  :hints (("Goal" :in-theory (union-theories '(fn-cu-join fn-cu-join-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-cu-join-loop-of-rev-onto (zs nil))))))
-
-
-; The IHAVE body of a record: its lines dot-stuffed, then ".".
-(defun fn-cu-body (lines)
-  (declare (xargs :guard t))
-  (append (fn-nntp-stuff-lines (fn-cu-list lines)) (list 46 13 10)))
-
 (defun fn-cu-record-msgid (rec) (declare (xargs :guard t)) (if (consp rec) (car rec) nil))
-(defun fn-cu-record-lines (rec) (declare (xargs :guard t)) (if (consp rec) (cdr rec) nil))
-
-; The chain over RECORDS (oldest first) from CHAIN: the requester's
-; recomputation of the peer's `fn-cu-chain-over'.
-(defun fn-cu-records-chain (chain records)
-  (declare (xargs :guard t))
-  (if (consp records)
-      (fn-cu-records-chain
-       (fn-cu-chain-step chain (fn-cu-record-msgid (car records))
-                         (fn-cu-join (fn-cu-record-lines (car records))))
-       (cdr records))
-    (fn-cu-list chain)))
 
 ; -----------------------------------------------------------------------------
 ; Transitions
@@ -379,213 +285,6 @@
                 (append journal (list (cons :remote (fn-cu-request r2)))))
           (mv (fn-cu-with r2 :phase :done)
               (append journal (list (cons :remote (fn-cu-quit)) (list :close)))))))))
-
-; The batch's block ended: verify it, then offer its records.
-(defun fn-cu-on-end (r)
-  (declare (xargs :guard t))
-  (let* ((b (fn-cu-r-batch r))
-         (next (fn-cu-batch-next b))
-         (end (fn-cu-batch-end b))
-         (position (nfix (fn-cu-r-position r)))
-         (records (revappend (fn-cu-list (fn-cu-r-records r)) nil)))
-    (cond ((consp (fn-cu-r-buf r)) (fn-cu-fail r :malformed))
-          ((consp (fn-cu-r-cur r)) (fn-cu-fail r :malformed))
-          ((not (and (natp next) (natp end) (<= next end)
-                     (equal (fn-cu-batch-morep b) (< next end))))
-           (fn-cu-fail r :malformed))
-          ; A batch below the peer's end moves forward, or the round would
-          ; ask the same batch forever.
-          ((not (or (< position next) (and (equal position next) (equal next end))))
-           (fn-cu-fail r :no-progress))
-          ((not (equal (fn-cu-records-chain (fn-cu-r-chain r) records)
-                       (fn-cu-batch-claim b)))
-           (fn-cu-fail r :digest-mismatch))
-          ; Verified: RECORDS (oldest first) is the batch the round now
-          ; offers, and it stays in the round until the batch closes.
-          ((and (consp records) (not (fn-cu-r-localp r)))
-           (mv (fn-cu-with r :phase :local-greeting :records records
-                           :todo records :end end :localp t)
-               (list (list :open-local))))
-          (t (fn-cu-next (fn-cu-with r :phase :offer :records records
-                                     :todo records :end end))))))
-
-; One framed line of the batch: (mv round effects continuep).
-(defun fn-cu-on-line (r line)
-  (declare (xargs :guard (true-listp line)))
-  (let ((b (fn-cu-r-batch r))
-        (cur (fn-cu-r-cur r)))
-    (cond
-     ((not (consp b))
-      (let ((status (fn-cu-parse-status line)))
-        (if status
-            (mv (fn-cu-with r :batch status :records nil :cur nil) nil t)
-          (mv-let (f e)
-            (fn-cu-fail r (let ((code (fn-pull-code line)))
-                            (cond ((equal code 423) :position-past-end)
-                                  ((equal code 480) :authentication-required)
-                                  ((equal code 501) :peer-refused-syntax)
-                                  ((equal code 500) :peer-lacks-catch-up)
-                                  (t :peer-refused))))
-            (mv f e nil)))))
-     ((consp cur)
-      ; Inside a record: CUR is (msgid remaining lines-rev).
-      (if (equal line '(46))
-          (mv-let (f e) (fn-cu-fail r :malformed) (mv f e nil))
-        (let* ((remaining (nfix (fn-pull-at 1 cur)))
-               (lines (cons (fn-cu-unstuff line) (fn-cu-list (fn-pull-at 2 cur)))))
-          (if (<= remaining 1)
-              (let ((rec (cons (car cur) (revappend lines nil))))
-                (mv (fn-cu-with r :cur nil
-                                :records (cons rec (fn-cu-list (fn-cu-r-records r))))
-                    nil t))
-            (mv (fn-cu-with r :cur (list (car cur) (- remaining 1) lines)) nil t)))))
-     ((equal line '(46))
-      (mv-let (r2 e) (fn-cu-on-end r) (mv r2 e nil)))
-     (t
-      (let ((header (fn-cu-parse-header line)))
-        (cond ((not header) (mv-let (f e) (fn-cu-fail r :malformed) (mv f e nil)))
-              ((zp (cdr header))
-               (mv (fn-cu-with r :records (cons (cons (car header) nil)
-                                                (fn-cu-list (fn-cu-r-records r))))
-                   nil t))
-              (t (mv (fn-cu-with r :cur (list (car header) (cdr header) nil))
-                     nil t))))))))
-
-(defthm fn-cu-split-line-true-listp
-  (true-listp (mv-nth 1 (fn-cu-split buf))))
-
-(in-theory (disable fn-cu-split))
-
-(defthm fn-cu-on-end-effects-true-listp
-  (true-listp (mv-nth 1 (fn-cu-on-end r)))
-  :hints (("Goal" :in-theory (disable fn-cu-records-chain fn-cu-request
-                                      fn-cu-ihave fn-cu-quit))))
-
-(defthm fn-cu-on-line-effects-true-listp
-  (true-listp (mv-nth 1 (fn-cu-on-line r line)))
-  :hints (("Goal" :in-theory (disable fn-cu-on-end fn-cu-parse-status
-                                      fn-cu-parse-header fn-pull-code fn-cu-unstuff
-                                      fn-cu-list fn-pull-at revappend-removal))))
-
-; Frame and handle every complete line in the buffer, at most FUEL of them.
-; Executes by a loop (lane depth-debt, PRF-919): FUEL is one more than the
-; peer's buffered input octets, and the recursion took a frame per reply line
-; of it.  The loop threads R the same way and carries the effects reversed.
-(defun fn-cu-drain-loop (r fuel acc)
-  (declare (xargs :guard (natp fuel) :measure (nfix fuel) :verify-guards nil))
-  (if (or (zp fuel) (not (equal (fn-cu-r-phase r) :reply)))
-      (mv r (fn-ag-rev-onto acc nil))
-    (mv-let (status line rest) (fn-cu-split (fn-cu-r-buf r))
-      (cond ((equal status :need) (mv r (fn-ag-rev-onto acc nil)))
-            ((equal status :long)
-             (mv-let (r2 effects) (fn-cu-fail r :line-too-long)
-               (mv r2 (fn-ag-rev-onto acc effects))))
-            (t (mv-let (r2 effects continuep)
-                 (fn-cu-on-line (fn-cu-with r :buf rest) line)
-                 (if continuep
-                     (fn-cu-drain-loop r2 (1- fuel) (fn-ag-rev-onto effects acc))
-                   (mv r2 (fn-ag-rev-onto acc effects)))))))))
-
-(defun fn-cu-drain (r fuel)
-  (declare (xargs :guard (natp fuel) :measure (nfix fuel) :verify-guards nil
-                  :guard-hints (("Goal" :in-theory (disable fn-cu-on-line)))))
-  (mbe :logic
-       (if (or (zp fuel) (not (equal (fn-cu-r-phase r) :reply)))
-           (mv r nil)
-         (mv-let (status line rest) (fn-cu-split (fn-cu-r-buf r))
-           (cond ((equal status :need) (mv r nil))
-                 ((equal status :long) (fn-cu-fail r :line-too-long))
-                 (t (mv-let (r2 effects continuep)
-                      (fn-cu-on-line (fn-cu-with r :buf rest) line)
-                      (if continuep
-                          (mv-let (r3 more) (fn-cu-drain r2 (1- fuel))
-                            (mv r3 (append effects more)))
-                        (mv r2 effects)))))))
-       :exec (mv-let (r2 effects) (fn-cu-drain-loop r fuel nil) (mv r2 effects))))
-
-(encapsulate ()
-  (local (defthm fn-cu-rev-onto-of-rev-onto
-    (equal (fn-ag-rev-onto (fn-ag-rev-onto a acc) b)
-           (fn-ag-rev-onto acc (append a b)))))
-  (defthm fn-cu-drain-loop-is-rev-onto
-    (equal (fn-cu-drain-loop r fuel acc)
-           (list (mv-nth 0 (fn-cu-drain r fuel))
-                 (fn-ag-rev-onto acc (mv-nth 1 (fn-cu-drain r fuel)))))
-    :hints (("Goal" :induct (fn-cu-drain-loop r fuel acc)
-                    :in-theory (disable fn-cu-on-line fn-cu-split)))))
-
-(verify-guards fn-cu-drain-loop
-  :hints (("Goal" :in-theory (disable fn-cu-on-line))))
-(defthm fn-cu-drain-shape
-  (equal (list (mv-nth 0 (fn-cu-drain r fuel)) (mv-nth 1 (fn-cu-drain r fuel)))
-         (fn-cu-drain r fuel))
-  :hints (("Goal" :induct (fn-cu-drain r fuel)
-                  :in-theory (disable fn-cu-on-line fn-cu-split))))
-
-(verify-guards fn-cu-drain
-  :hints (("Goal" :in-theory (disable fn-cu-on-line fn-cu-split fn-cu-drain-loop
-                                      fn-cu-drain-loop-is-rev-onto)
-                  :use ((:instance fn-cu-drain-loop-is-rev-onto (acc nil))))))
-
-(defun fn-cu-event-octets (event)
-  (declare (xargs :guard t))
-  (fn-pull-event-octets event))
-
-; KEYSTONE SUBJECT.  One event of the round (host/native/pull-service.lisp
-; `fnn-pull-round' through `fn-cu-session-step-pair'):
-;   (:remote . octets)   octets read from the peer
-;   (:local . octets)    the local node's reply on the transit connection
-;   (:lost)              either connection failed or closed
-(defun fn-cu-step (r event)
-  (declare (xargs :guard t))
-  (let ((kind (if (consp event) (car event) nil))
-        (octets (fn-cu-event-octets event))
-        (phase (fn-cu-r-phase r)))
-    (cond
-     ((member-equal phase '(:done :failed)) (mv r nil))
-     ((equal kind :lost) (fn-cu-fail r :lost))
-     ((equal kind :remote)
-      (if (equal phase :reply)
-          (let ((buf (append (fn-cu-list (fn-cu-r-buf r)) octets)))
-            (fn-cu-drain (fn-cu-with r :buf buf) (+ 1 (len buf))))
-        ; Octets from the peer while no command is outstanding there.
-        (fn-cu-fail r :malformed)))
-     ((equal kind :local)
-      (let ((code (fn-pull-local-code octets))
-            (todo (fn-cu-r-todo r)))
-        (cond
-         ((equal phase :local-greeting)
-          (if (member-equal code '(200 201))
-              (fn-cu-next r)
-            (fn-cu-fail r :local-refused)))
-         ((and (equal phase :offer) (consp todo))
-          (cond ((equal code 335)
-                 (mv (fn-cu-with r :phase :forward)
-                     (list (cons :local (fn-cu-body (fn-cu-record-lines (car todo)))))))
-                ((equal code 435)
-                 (fn-cu-next (fn-cu-with r :todo (cdr todo)
-                                         :counts (fn-cu-count (fn-cu-r-counts r) 1))))
-                ((equal code 436) (fn-cu-fail r :local-deferred))
-                (t (fn-cu-fail r :local-refused))))
-         ((and (equal phase :forward) (consp todo))
-          (cond ((equal code 235)
-                 (fn-cu-next (fn-cu-with r :todo (cdr todo)
-                                         :counts (fn-cu-count (fn-cu-r-counts r) 0))))
-                ((equal code 437)
-                 (fn-cu-next (fn-cu-with r :todo (cdr todo)
-                                         :counts (fn-cu-count (fn-cu-r-counts r) 2))))
-                ((equal code 436) (fn-cu-fail r :local-deferred))
-                (t (fn-cu-fail r :local-refused))))
-         (t (fn-cu-fail r :local-refused)))))
-     (t (mv r nil)))))
-
-(defun fn-cu-run (r events)
-  (declare (xargs :guard t))
-  (if (consp events)
-      (mv-let (r2 effects) (fn-cu-step r (car events))
-        (mv-let (r3 more) (fn-cu-run r2 (cdr events))
-          (mv r3 (append (fn-pull-list effects) more))))
-    (mv r nil)))
 
 ; A round at CURSOR: waiting for the reply to the request the session sends
 ; when its preamble is ready.
@@ -698,7 +397,6 @@
            :use
            ((:instance fn-cu-obs-effects-loop-is-revappend (acc nil))))))
 
-
 (defun fn-cu-session-readyp (s)
   (declare (xargs :guard t))
   (equal (fn-fc-phase (fn-cu-s-fc s)) :ready))
@@ -713,16 +411,16 @@
              (fn-pull-pre-events fc octets (+ 1 (len octets)))))
           (t nil))))
 
-; KEYSTONE SUBJECT.  One event of a catch-up session.
+; One event of a catch-up session's preamble (books/peer-catchup-spool.lisp
+; `fn-csp-step' sends it only these, until the session is ready).  Once ready
+; the round belongs to the spool controller: an event here changes nothing.
 (defun fn-cu-session-step (s event)
   (declare (xargs :guard t))
   (let ((fc (fn-cu-s-fc s))
         (round (fn-cu-s-round s))
         (security (fn-cu-s-security s)))
     (cond ((fn-cu-done-p round) (mv s nil))
-          ((fn-cu-session-readyp s)
-           (mv-let (r2 effects) (fn-cu-step round event)
-             (mv (fn-cu-session fc r2 (fn-cu-s-refusal s) security) effects)))
+          ((fn-cu-session-readyp s) (mv s nil))
           ((or (equal event '(:tls-up))
                (and (consp event) (equal (car event) :remote)))
            (let* ((evs (fn-cu-session-fc-events s event))
@@ -759,12 +457,6 @@
 (defun fn-cu-session-close-effects (s)
   (declare (ignore s) (xargs :guard t))
   nil)
-
-; A read bounded like the pull's during the preamble; a batch's lines are
-; bounded by `fn-cu-split''s line budget and the peer's quantum.
-(defun fn-cu-session-read-limit (s)
-  (declare (xargs :guard t))
-  (if (fn-cu-session-readyp s) nil *fn-feed-wire-input-max-chunk-octets*))
 
 (defun fn-cu-refusal-name (refusal)
   (declare (xargs :guard t))
@@ -1126,211 +818,3 @@
                                         (fn-cu-cursor-chain
                                          (fn-cu-last-cursor c cursors))))))
   :hints (("Goal" :in-theory (e/d (fn-cu-begin fn-cu-request) (fn-cu-command-line)))))
-
-; -----------------------------------------------------------------------------
-; The round's invariant: an offered batch is a verified batch
-
-(defun fn-cu-offeringp (phase)
-  (declare (xargs :guard t))
-  (and (member-equal phase '(:local-greeting :offer :forward)) t))
-
-(defun fn-cu-suffixp (x y)
-  (declare (xargs :guard t))
-  (if (equal x y)
-      t
-    (if (consp y) (fn-cu-suffixp x (cdr y)) nil)))
-
-; While the round offers a batch, the batch it holds chains from the
-; committed chain to the peer's claim, and what remains to offer is a suffix
-; of it; while it waits for a batch, nothing remains to offer.
-(defun fn-cu-verifiedp (r)
-  (declare (xargs :guard t))
-  (cond ((fn-cu-offeringp (fn-cu-r-phase r))
-         (and (equal (fn-cu-records-chain (fn-cu-r-chain r) (fn-cu-r-records r))
-                     (fn-cu-batch-claim (fn-cu-r-batch r)))
-              (fn-cu-suffixp (fn-cu-r-todo r) (fn-cu-r-records r))))
-        ((equal (fn-cu-r-phase r) :reply) (not (consp (fn-cu-r-todo r))))
-        (t t)))
-
-(defthm fn-cu-verifiedp-of-begin
-  (fn-cu-verifiedp (fn-cu-begin cursor wildmat))
-  :hints (("Goal" :in-theory (enable fn-cu-begin))))
-
-(local
- (defthm fn-cu-suffixp-cdr
-   (implies (and (fn-cu-suffixp x y) (consp x))
-            (fn-cu-suffixp (cdr x) y))))
-
-(local
- (defthm fn-cu-verifiedp-of-fail
-   (fn-cu-verifiedp (car (fn-cu-fail r reason)))))
-
-(local
- (defthm fn-cu-verifiedp-of-next
-   (implies (and (equal (fn-cu-records-chain (fn-cu-r-chain r) (fn-cu-r-records r))
-                        (fn-cu-batch-claim (fn-cu-r-batch r)))
-                 (fn-cu-suffixp (fn-cu-r-todo r) (fn-cu-r-records r)))
-            (fn-cu-verifiedp (car (fn-cu-next r))))
-   :hints (("Goal" :in-theory (disable fn-cu-records-chain fn-cu-request
-                                       fn-cu-ihave fn-cu-round-cursor)))))
-
-(local
- (defthm fn-cu-verifiedp-of-on-end
-   (fn-cu-verifiedp (car (fn-cu-on-end r)))
-   :hints (("Goal" :in-theory (disable fn-cu-records-chain fn-cu-next fn-cu-fail)))))
-
-(local
- (defthm fn-cu-on-line-continues-in-reply
-   (implies (and (equal (fn-cu-r-phase r) :reply)
-                 (mv-nth 2 (fn-cu-on-line r line)))
-            (and (equal (fn-cu-r-phase (car (fn-cu-on-line r line))) :reply)
-                 (equal (fn-cu-r-todo (car (fn-cu-on-line r line)))
-                        (fn-cu-r-todo r))
-                 (equal (mv-nth 1 (fn-cu-on-line r line)) nil)))
-   :hints (("Goal" :in-theory (disable fn-cu-on-end fn-cu-fail fn-cu-parse-status
-                                       fn-cu-parse-header fn-pull-code fn-cu-unstuff
-                                       fn-cu-list fn-pull-at revappend-removal
-                                       fn-cu-records-chain fn-cu-suffixp)))))
-
-(local
- (defthm fn-cu-verifiedp-of-on-line
-   (implies (and (equal (fn-cu-r-phase r) :reply)
-                 (not (consp (fn-cu-r-todo r))))
-            (fn-cu-verifiedp (car (fn-cu-on-line r line))))
-   :hints (("Goal" :in-theory (disable fn-cu-on-end fn-cu-fail fn-cu-parse-status
-                                       fn-cu-parse-header fn-pull-code fn-cu-unstuff
-                                       fn-cu-list fn-pull-at revappend-removal
-                                       fn-cu-records-chain fn-cu-suffixp)))))
-
-(local
- (defthm fn-cu-verifiedp-of-drain
-   (implies (and (equal (fn-cu-r-phase r) :reply)
-                 (not (consp (fn-cu-r-todo r))))
-            (fn-cu-verifiedp (car (fn-cu-drain r fuel))))
-   :hints (("Goal" :in-theory (disable fn-cu-on-line fn-cu-fail fn-cu-split
-                                       fn-cu-verifiedp)
-            :induct (fn-cu-drain r fuel)
-            :expand ((fn-cu-drain r fuel)
-                     (:free (x) (fn-cu-verifiedp x)))))))
-
-; KEYSTONE (an offered batch is a verified batch).  The host's step keeps the
-; invariant: no record reaches the local node from a batch whose digest
-; chain, recomputed over what arrived, differs from the peer's claim.
-(defthm fn-cu-step-keeps-offers-verified
-  (implies (fn-cu-verifiedp r)
-           (fn-cu-verifiedp (car (fn-cu-step r event))))
-  :hints (("Goal" :in-theory (disable fn-cu-drain fn-cu-next fn-cu-fail
-                                      fn-pull-local-code fn-cu-records-chain
-                                      fn-cu-body fn-cu-verifiedp)
-           :expand ((fn-cu-verifiedp r)
-                    (:free (phase peer wildmat position chain buf batch records
-                                  cur running todo counts refusal localp end)
-                           (fn-cu-verifiedp
-                            (fn-cu-round phase peer wildmat position chain buf
-                                         batch records cur running todo counts
-                                         refusal localp end)))))))
-
-; KEYSTONE (a digest mismatch is refused by name).  A batch whose records do
-; not chain to the peer's claim ends the round :failed with the refusal
-; :digest-mismatch; nothing is offered, nothing journaled, the cursor stays.
-(defthm fn-cu-on-end-refuses-a-digest-mismatch
-  (implies (not (equal (fn-cu-records-chain
-                        (fn-cu-r-chain r)
-                        (revappend (fn-cu-list (fn-cu-r-records r)) nil))
-                       (fn-cu-batch-claim (fn-cu-r-batch r))))
-           (let ((out (fn-cu-on-end r)))
-             (and (equal (fn-cu-r-phase (mv-nth 0 out)) :failed)
-                  (equal (mv-nth 1 out) (list (list :close)))
-                  (equal (fn-cu-round-cursor (mv-nth 0 out)) (fn-cu-round-cursor r)))))
-  :hints (("Goal" :in-theory (disable fn-cu-records-chain fn-cu-next fn-cu-list
-                                      revappend-removal fn-pull-at))))
-
-; -----------------------------------------------------------------------------
-; What a step sends: offers only through the local verdict, journals only a
-; closed batch
-
-; Every effect in EFFECTS that reaches the local node is the IHAVE of the
-; record the round R2 then waits on, and every journal record is R2's cursor
-; with nothing of its batch left to offer.
-(defun fn-cu-out-okp (effects r2)
-  (declare (xargs :guard t))
-  (if (consp effects)
-      (and (let ((e (car effects)))
-             (cond ((and (consp e) (equal (car e) :local))
-                    (and (equal (fn-cu-r-phase r2) :offer)
-                         (consp (fn-cu-r-todo r2))
-                         (equal (cdr e) (fn-cu-ihave (car (fn-cu-r-todo r2))))))
-                   ((and (consp e) (equal (car e) :journal))
-                    (and (equal (cdr e) (fn-cu-round-cursor r2))
-                         (not (consp (fn-cu-r-todo r2)))))
-                   (t t)))
-           (fn-cu-out-okp (cdr effects) r2))
-    t))
-
-(local
- (defthm fn-cu-out-okp-of-plain
-   (and (fn-cu-out-okp nil r2)
-        (fn-cu-out-okp '((:close)) r2)
-        (fn-cu-out-okp '((:open-local)) r2))))
-
-(local
- (defthm fn-cu-out-okp-of-fail
-   (fn-cu-out-okp (mv-nth 1 (fn-cu-fail r reason)) (car (fn-cu-fail r reason)))))
-
-(local
- (defthm fn-cu-out-okp-of-next
-   (fn-cu-out-okp (mv-nth 1 (fn-cu-next r)) (car (fn-cu-next r)))
-   :hints (("Goal" :in-theory (disable fn-cu-ihave fn-cu-request fn-cu-quit)))))
-
-(local
- (defthm fn-cu-out-okp-of-on-end
-   (fn-cu-out-okp (mv-nth 1 (fn-cu-on-end r)) (car (fn-cu-on-end r)))
-   :hints (("Goal" :in-theory (disable fn-cu-next fn-cu-fail fn-cu-records-chain
-                                       fn-cu-out-okp)))))
-
-(local
- (defthm fn-cu-out-okp-of-on-line
-   (fn-cu-out-okp (mv-nth 1 (fn-cu-on-line r line)) (car (fn-cu-on-line r line)))
-   :hints (("Goal" :in-theory (disable fn-cu-on-end fn-cu-fail fn-cu-parse-status
-                                       fn-cu-parse-header fn-pull-code fn-cu-out-okp
-                                       fn-cu-unstuff fn-cu-list fn-pull-at
-                                       revappend-removal)))))
-
-(local
- (defthm fn-cu-on-line-continuing-sends-nothing
-   (implies (mv-nth 2 (fn-cu-on-line r line))
-            (equal (mv-nth 1 (fn-cu-on-line r line)) nil))
-   :hints (("Goal" :in-theory (disable fn-cu-on-end fn-cu-fail fn-cu-parse-status
-                                       fn-cu-parse-header fn-pull-code fn-cu-unstuff
-                                       fn-cu-list fn-pull-at revappend-removal
-                                       fn-cu-records-chain fn-cu-suffixp)))))
-
-(local
- (defthm fn-cu-out-okp-of-drain
-   (fn-cu-out-okp (mv-nth 1 (fn-cu-drain r fuel)) (car (fn-cu-drain r fuel)))
-   :hints (("Goal" :in-theory (disable fn-cu-on-line fn-cu-fail fn-cu-split
-                                       fn-cu-out-okp)
-            :induct (fn-cu-drain r fuel)
-            :expand ((fn-cu-drain r fuel))))))
-
-; KEYSTONE (catch-up installs only through the local verdict).  Every effect
-; of the host's step that reaches the local node is either the IHAVE of the
-; record the round then waits on, or -- only on the local node's 335 to that
-; IHAVE, in phase :offer -- that record's body; and every journal record is
-; the round's committed cursor with nothing of its batch left to offer.
-; Catch-up never installs a record itself: an article is stored only by the
-; local node's acceptance of an IHAVE, under its own verdict.
-(defthm fn-cu-step-installs-only-through-the-verdict
-  (let* ((out (fn-cu-step r event)))
-    (or (fn-cu-out-okp (mv-nth 1 out) (car out))
-        (and (equal (fn-cu-r-phase r) :offer)
-             (consp (fn-cu-r-todo r))
-             (consp event)
-             (equal (car event) :local)
-             (equal (fn-pull-local-code (fn-cu-event-octets event)) 335)
-             (equal (mv-nth 1 out)
-                    (list (cons :local (fn-cu-body (fn-cu-record-lines
-                                                    (car (fn-cu-r-todo r)))))))
-             (equal (fn-cu-r-phase (car out)) :forward))))
-  :hints (("Goal" :in-theory (disable fn-cu-drain fn-cu-next fn-cu-fail
-                                      fn-pull-local-code fn-cu-body fn-cu-out-okp))))

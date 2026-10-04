@@ -104,6 +104,16 @@
                                (nfix (- (nfix (fn-csp-offset s))
                                         (nfix (fn-csp-start s))))))))
 
+; A status line that is not a batch: why the peer refused, by name.
+(defun fn-csp-status-refusal (line)
+  (declare (xargs :guard t))
+  (let ((code (fn-pull-code line)))
+    (cond ((equal code 423) :position-past-end)
+          ((equal code 480) :authentication-required)
+          ((equal code 501) :peer-refused-syntax)
+          ((equal code 500) :peer-lacks-catch-up)
+          (t :peer-refused))))
+
 (defun fn-csp-after-header (s line rest used)
   (declare (xargs :guard (natp used)))
   (let* ((mode (fn-csp-mode s))
@@ -113,7 +123,7 @@
     (cond
      ((eq mode :status)
       (let ((batch (fn-cu-parse-status line)))
-        (if (not batch) (fn-csp-fail s :peer-refused)
+        (if (not batch) (fn-csp-fail s (fn-csp-status-refusal line))
           (let* ((round (fn-cu-s-round (fn-csp-session s)))
                  (s (fn-csp-session-with-round s (fn-cu-with round :batch batch :end (fn-cu-batch-end batch)))))
             (list (fn-csp-with s :mode :header :batch batch :offset 0
@@ -248,7 +258,11 @@
   (let ((kind (car (fn-pull-list event))) (mode (fn-csp-mode s)))
     (cond
      ((member-eq mode '(:failed :done)) (list s nil))
-     ((eq kind :lost) (fn-csp-fail s :lost))
+     ((eq kind :lost)
+      (fn-csp-fail s (if (eq (cadr (fn-pull-list event)) :round-deadline) :round-deadline :lost)))
+     ; The bank refused this quantum's metered work (a spent coordinate): the
+     ; round ends by name, its cursor at the last journaled batch.
+     ((eq kind :work-refused) (fn-csp-fail s :peer-work-exhausted))
      ((not (fn-cu-session-readyp (fn-csp-session s)))
       (let ((pair (fn-cu-session-step-pair (fn-csp-session s) event)))
         (list (fn-csp-with s :session (car pair)) (cadr pair))))
@@ -284,11 +298,36 @@
      ((eq kind :tick) (fn-csp-next s))
      (t (fn-csp-fail s :malformed)))))
 
+; KEYSTONE SUBJECT (host/native/pull-service.lisp `fnn-pull-flight-begin').
+; LIMIT is the spool allowance of the flight's bank lease, or nil when no
+; lease was drawn: without one the round never dials and fails by name.
 (defun fn-csp-begin (plan cursor credential limit)
   (declare (xargs :guard t))
-  (let ((pair (fn-cu-session-begin-pair plan cursor credential)))
-    (list (list :status (car pair) nil nil nil 0 0 nil (fn-cu-cursor-chain cursor)
-                nil nil 0 limit 0 nil nil nil) (cadr pair))))
+  (let* ((pair (fn-cu-session-begin-pair plan cursor credential))
+         (s (list :status (car pair) nil nil nil 0 0 nil (fn-cu-cursor-chain cursor)
+                  nil nil 0 limit 0 nil nil nil)))
+    (if (posp limit)
+        (list s (cadr pair))
+      (fn-csp-fail s :peer-flight-unfunded))))
+
+; The host's other entry points (one value each).
+(defun fn-csp-done-p (s)
+  (declare (xargs :guard t))
+  (and (member-eq (fn-csp-mode s) '(:done :failed)) t))
+
+(defun fn-csp-close (s)
+  ; The cursor a closed round leaves: always the committed one.
+  (declare (xargs :guard t))
+  (fn-cu-session-close (fn-csp-session s)))
+
+(defun fn-csp-log-line (s)
+  (declare (xargs :guard t))
+  (fn-cu-session-log-line (fn-csp-session s)))
+
+(defun fn-csp-read-limit (s)
+  ; One peer window: the step refuses a larger chunk or one while pending.
+  (declare (ignore s) (xargs :guard t))
+  512)
 
 (defun fn-csp-tick-p (s)
   (declare (xargs :guard t))

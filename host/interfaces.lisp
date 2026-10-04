@@ -2263,14 +2263,32 @@
   :keystones (fn-cu-resume-asks-from-the-journaled-cursor
               fn-cu-records-replay-is-the-last-cursor))
 
-(definterface fn-cu-session-begin-pair
+; The catch-up round: the bounded spool controller (books/peer-catchup-spool,
+; its framer and digest cursor) that host/native/pull-service.lisp drives.
+(definterface fn-csp-begin
   :class :common-lisp-compliant)
 
-(definterface fn-cu-session-log-line
-  :class :common-lisp-compliant)
+(definterface fn-csp-step
+  :class :common-lisp-compliant
+  :keystones (fn-csp-step-keeps-window
+              (fn-csp-write-spools-whole-or-fails-by-name :via fn-csp-write)
+              (fn-csp-framer-window-accounts-for-every-octet :via fn-csp-framer-window)))
 
-(definterface fn-cu-session-step-pair
-  :class :common-lisp-compliant)
+(definterface fn-csp-done-p :class :common-lisp-compliant)
+(definterface fn-csp-close :class :common-lisp-compliant)
+(definterface fn-csp-log-line :class :common-lisp-compliant)
+(definterface fn-csp-read-limit :class :common-lisp-compliant)
+(definterface fn-csp-tick-p :class :common-lisp-compliant)
+(definterface fn-csp-work-units :class :common-lisp-compliant)
+(definterface fn-csp-io-work-units :class :common-lisp-compliant)
+(definterface fn-csp-hash-begin :class :common-lisp-compliant :kinds ((total natp)))
+(definterface fn-csp-hash-action :class :common-lisp-compliant
+  :kinds ((total natp) (base natp))
+  :keystones (fn-csp-hash-action-read-bounded))
+(definterface fn-csp-hash-read :class :common-lisp-compliant :kinds ((total natp) (count natp)))
+(definterface fn-csp-hash-tick :class :common-lisp-compliant :kinds ((total natp)))
+(definterface fn-csp-hash-lease :class :common-lisp-compliant)
+(definterface fn-csp-flight-spool :class :common-lisp-compliant)
 
 (definterface fn-feed-filename-host-component
   :class ::program)
@@ -5375,7 +5393,9 @@
 (definterface fn-prd-select :class :common-lisp-compliant :kinds ((active true-listp)))
 (definterface fn-prd-sweep :class :common-lisp-compliant :kinds ((active true-listp))
   :keystones (fn-prd-sweep-visits-all-admitted-rounds))
-(definterface fn-prd-action :class :common-lisp-compliant)
+(definterface fn-prd-action :class :common-lisp-compliant
+  :keystones (fn-prd-round-past-deadline-is-lost))
+(definterface fn-prd-round-deadline :class :common-lisp-compliant)
 (definterface fn-prd-deadline :class :common-lisp-compliant)
 (definterface fn-prd-resume-at :class :common-lisp-compliant)
 (definterface fn-prd-read-limit :class :common-lisp-compliant)

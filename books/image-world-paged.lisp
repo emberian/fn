@@ -11,6 +11,8 @@
 (include-book "peer-flight-profile")
 (include-book "peer-flight-startup")
 (include-book "peer-catchup-spool-resources")
+(include-book "peer-catchup-spool")
+(include-book "peer-catchup-spool-hash")
 (include-book "committer-actor")
 (include-book "replay")
 (include-book "codec-attach")

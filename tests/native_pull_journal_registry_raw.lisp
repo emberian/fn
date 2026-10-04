@@ -15,6 +15,12 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
+(defun fnn-csp-worker-join-now (worker)
+  (declare (ignorable worker))
+  (harness-stub-reached 'fnn-csp-worker-join-now "host/native/catchup-spool.lisp"))
+(defun fnn-peer-flight-settle (lease)
+  (declare (ignorable lease))
+  (harness-stub-reached 'fnn-peer-flight-settle "host/native/catchup-spool.lisp"))
 (defun fnn-pull-flight-advance (flight event)
   (declare (ignorable flight event))
   (harness-stub-reached 'fnn-pull-flight-advance "host/native/pull-service.lisp"))
@@ -27,6 +33,9 @@
 (defun fnn-pull-flight-finish (flight)
   (declare (ignorable flight))
   (harness-stub-reached 'fnn-pull-flight-finish "host/native/pull-service.lisp"))
+(defun fnn-pull-flight-release-lease (flight)
+  (declare (ignorable flight))
+  (harness-stub-reached 'fnn-pull-flight-release-lease "host/native/pull-service.lisp"))
 (defun fnn-pull-flight-step (flight)
   (declare (ignorable flight))
   (harness-stub-reached 'fnn-pull-flight-step "host/native/pull-service.lisp"))
@@ -43,7 +52,7 @@
 (load-deployed-forms "host/native/pull-service.lisp"
  '((defstruct (fnn-pull-runtime (:constructor %make-fnn-pull-runtime)))
    (defun fnn-pull-peer-string) (defun fnn-pull-cursor-for) (defun fnn-catchup-cursor-for)
-   (defun fnn-catchup-tick) (defun fnn-pull-worker)))
+   (defun fnn-catchup-tick) (defun fnn-pull-worker) (defun fnn-pull-settle-leases)))
 ;; New private pruning helper is optional on the old defect base, whose
 ;; worker/tick never invokes it. Load only the trusted source's literal form.
 (with-open-file (stream "host/native/pull-service.lisp")
