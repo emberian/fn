@@ -4895,3 +4895,8 @@ a 2,100-article reclaim: `deferred-credit estimate=452968896`, so the fixture ca
 green until it is measured and replaced); arena-reader-bound 12/12 REPL-admitted (PRF-1312,
 no teeth file yet). Held: PKT-855 on lane/reclaim-note@19b1b2211 (touches config.lisp).
 Continuation: the lanedump's numbered list.
+
+## init (atomic init PKT-894/PRF-1040; catalog-root install order) -- 2026-10-04
+
+See build/coordinator/lanedumps/init.md (full). lane/init@612fdc33d. Atomic init re-derived (secret in the staged plan; retry discards an unheld unpublished stage; keystone fn-bs-init-log-crash-retry-is-old-or-new admitted in REPL, certification pending). Install order: fnn-owner-recover-core reserves the catalog root before the in-place catalog load (mock red/green; proof-owed INIT-OWED-CATALOG-ROOT-INSTALL). Native red-before init-red on 45e05c7f: init_publication 21F/1E. Green-after waits on the integrator image set; certify waits on the hbox slot (f728 cancelled on request). Continuation: lanedumps/init.md NEXT.
+Update 10-04: READY at 849a69643, natives pending; 6 changed books certified green (certify-20261004T043931Z-1117313, certify-20261004T051946Z-1594493); defteeth on both keystones; PRF-1040 proof-events regen owed to the integrator. Continuation: lanedumps/init.md "Resume".

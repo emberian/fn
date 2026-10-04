@@ -4854,7 +4854,7 @@
         "Before the rename: exit 1 (EIO) or death, ROOT absent, the next import refuses reason=interrupted-import naming the staged directory; after its removal the import succeeds.",
         "At and after the rename: ROOT, when present, opens to the exported history article for article; a staged directory beside a present ROOT is refused reason=publication-uncertain, never treated as no store.",
         "An existing unrelated ROOT is never replaced (reason=store-exists).",
-        "init: before the rename ROOT is absent and the next init refuses reason=interrupted-init naming the staged directory, after whose removal init succeeds; at and after the rename a present ROOT is the empty store (status transactions=0) and init refuses STORE-EXISTS; an existing empty ROOT is refused reason=store-path-exists."
+        "init: before the rename ROOT is absent and the next init removes the unheld staged directory (init removed STAGE) and publishes (PKT-894); at and after the rename a present ROOT is the empty store (status transactions=0) carrying keys/node-secret.key and init refuses STORE-EXISTS; an existing empty ROOT is refused reason=store-path-exists."
       ]
     },
     {

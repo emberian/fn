@@ -46,7 +46,7 @@
 (assert-event (equal (fn-native-operator-result-native-action *fn-nsst-recover-staged*)
                      :none))
 (assert-event (equal (fn-nsst-result-hint *fn-nsst-recover-staged*)
-                     "no store at the configured [store] path: an init was interrupted before it published the store; its stage /srv/fn.init-77b60431a1de remains. Remove it and run: fn operator CONFIG init GROUP..."))
+                     "no store at the configured [store] path: an init was interrupted before it published the store; its stage /srv/fn.init-77b60431a1de remains; it holds nothing any command acknowledged. Run: fn operator CONFIG init GROUP... (init removes the stage)"))
 (assert-event (equal (fn-native-operator-result-reason
                       (fn-nsst-store-outcome *fn-nsst-run* nil *fn-nsst-init-stage* nil))
                      :interrupted-init))

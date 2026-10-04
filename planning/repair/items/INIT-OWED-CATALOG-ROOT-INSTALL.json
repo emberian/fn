@@ -1,0 +1,12 @@
+{
+ "category": "proof-owed",
+ "file": "host/native/owner.lisp",
+ "id": "INIT-OWED-CATALOG-ROOT-INSTALL",
+ "notes": [],
+ "owner": "init",
+ "severity": "medium",
+ "source": "harvest-2026-10-04/catalog-root-install-order",
+ "state": "open",
+ "title": "Catalog-root install order (lane init): host/native/owner.lisp fnn-owner-recover-core now reserves a catalog-root incarnation (fn-owner-catalog-root-reserve) before fn-owner-recover-from-store-open loads the live fn-cat in place, as fnn-install-stobj reserves before it binds. Owed: a theorem that an owner install leaves fn-owner-catalog-root-current a token never current before it in this STATE (move the reserve into fn-owner-recover-from-store-open and state it over fn-cri-reserve plus the install), and a native that installs two owners in one process (fnn-bpo-call-with-owner-journal) and observes two tokens. Today only the -mock harness tests/native_catalog_root_install_raw-mock.lisp (red at origin/dev, green at lane/init) checks the order; no claim is made on it.",
+ "updated": "2026-10-04T03:24:08Z"
+}
