@@ -1862,6 +1862,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/article-kind-acceptance \
 	books/article-kind-hybrid \
 	tests/acl2/article-kind-tests \
+	books/app-pattern \
+	tests/acl2/app-pattern-tests \
 	books/hybrid-store-injected \
 	books/hybrid-store-invariants \
 	books/control-classify \

@@ -158,6 +158,21 @@
            (fn-ak-rows-valuesp (cdr rows) (cdr vals)))
     (null vals)))
 
+; The first row whose value is outside the kind, named by its field kind
+; (:from, :groups, :msgid, :text, :version, :fixed), :arity when VALS is not
+; one value per row, or nil: the refusal word of a value outside the kind.
+(defun fn-ak-rows-check (rows vals)
+  (declare (xargs :guard t))
+  (cond ((atom rows) (if (null vals) nil :arity))
+        ((atom vals) :arity)
+        ((not (fn-ak-row-valuep (car rows) (car vals)))
+         (or (fn-ak-row-kind (car rows)) :row))
+        (t (fn-ak-rows-check (cdr rows) (cdr vals)))))
+
+(defthm fn-ak-rows-check-is-the-kind
+  (iff (fn-ak-rows-check rows vals)
+       (not (fn-ak-rows-valuesp rows vals))))
+
 ; -----------------------------------------------------------------------------
 ; The header rows
 
@@ -239,18 +254,18 @@
   (if (consp rows)
       (let ((row (car rows)))
         (if (member-eq (fn-ak-row-kind row) '(:version :fixed))
-            (cons (cons :const (append (fn-ak-row-prefix row)
+            (cons (list :const (append (fn-ak-row-prefix row)
                                        (true-list-fix (fn-ak-row-arg row))
                                        '(13 10)))
                   (fn-ak-grammar-rows (cdr rows)))
-          (list* (cons :const (fn-ak-row-prefix row))
+          (list* (list :const (fn-ak-row-prefix row))
                  (list :line 1 (fn-ak-row-fuel row) :header)
                  (fn-ak-grammar-rows (cdr rows)))))
     nil))
 
 (defconst *fn-ak-grammar*
   (cons :seq (append (fn-ak-grammar-rows *fn-ak-v1-rows*)
-                     (list (list :const 13 10)
+                     (list (list :const '(13 10))
                            (list :base64-lines *fn-ak-body-line-octets*
                                  0 *fn-article-max-octets*)))))
 
