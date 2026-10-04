@@ -4548,3 +4548,14 @@ open. Bounds catchup controller draft is preserved but activation unwired.
 
 Entry: build/coordinator/lanedumps/docs.md (deliverables, shas, word counts,
 continuation point).
+
+## served lane (wave 2) — 2026-10-04
+
+Coordinator copy: build/coordinator/lanedumps/served.md (authoritative, updated at each step).
+- LIST residual model, plan drain and finite potential wired to the host-called fn-qplan-cursor-step (PRF-1313):
+  fn-lst-step-keeps-remaining, fn-qplan-cw-drain-is-a-prefix, fn-lst-active-command-is-av-list-active /
+  -counts-, fn-lst-one-finite-progress, fn-lsr-one-finite-progress. Owed: SRV-OWED-LIST-AGREE.
+- NOV full decimals (harvest 50cb50075). Natives: nov-red RED on 45e05c7f as expected.
+- SCL2 natives tightened (over_pins exact 211 2 1 34 + NEXT/LAST across tombstones; expiry exact 211 3 3 5);
+  over_pins RED on 45e05c7f (211 34 1 34). Catalog-hole navigation native wired (green on 45e05c7f: guard).
+- SCL4 / PRF-1237/1238 discovery snapshot: not landed; continuation in the coordinator lanedump.
