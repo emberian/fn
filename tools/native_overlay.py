@@ -789,13 +789,16 @@ def cmd_build(args) -> int:
             if home:
                 env["SBCL_HOME"] = home.group(1)
             # save-exec writes its own launcher at OUT; the base's replaces it below
-            argv = [sbcl, *runtime, "--core", base_core, "--end-runtime-options", "--no-userinit",
-                    *toplevel, "--disable-debugger", "--end-toplevel-options"]
+            session = [sbcl, *runtime, "--core", base_core, "--end-runtime-options", "--no-userinit",
+                       *toplevel, "--disable-debugger", "--end-toplevel-options"]
             log = plan_dir / f"session-{image}.log"
+            # An ACL2 process: the machine's slot pool, from the tree's own tools.
+            sys.path.insert(0, str(Path(args.tree).resolve() / "tools"))
+            import acl2_slots
             with open(log, "w") as handle:
-                proc = subprocess.run(argv, input=script,
+                proc = acl2_slots.run(session, f"native overlay {image}", env=env, input=script,
                                       stdout=handle, stderr=subprocess.STDOUT, text=True,
-                                      env=env, cwd=args.tree, timeout=args.timeout)
+                                      cwd=args.tree, timeout=args.timeout)
             output = log.read_text(errors="replace")
             marks = [m for m in ERROR_MARKS if m in output]
             if proc.returncode or marks or "FN_OVERLAY_READY" not in output or not out_core.is_file():
