@@ -17,7 +17,8 @@
  "native": "mux",
  "notes": [
   "allow_forbidden granted by integrator-3 2026-10-04, scope: host/native/mux.lisp fnn-mux-start-waiting-handshake only (the fix adds one fnn-mux-loop slot, draining, outside it; flagged to integrator-3)",
-  "10-04 15:59 claimed: scope=['host/native/mux.lisp', 'tests/native_mux_cleanup_raw.lisp', 'tests/test_native_mux_start_waiting.py'] test=python3 -m unittest tests.test_native_mux_start_waiting"
+  "10-04 15:59 claimed: scope=['host/native/mux.lisp', 'tests/native_mux_cleanup_raw.lisp', 'tests/test_native_mux_start_waiting.py'] test=python3 -m unittest tests.test_native_mux_start_waiting",
+  "10-04 16:00 ESCALATE budget: fix verified red/green by raw witness but diff is 112 lines (mux.lisp 59 incl. re-indent of the drain loop under unwind-protect; harness 27; wrapper 26) vs budget 60; needs the assembler's call"
  ],
  "owner": "host-lifecycle",
  "reviewer": "The recursion is real. fnn-mux-finish ends with fnn-mux-start-waiting-handshake (mux.lisp:314). In its queued-socket loop, a :refuse pops the queue and calls fnn-mux-handshake-refused -> fnn-mux-finish -> start-waiting-handshake again, inside a fresh fnn-mux-guarded handler-case (mux.lisp:841-868). Consecutive refusals therefore nest. fn-hsb-admit checks the per-source budget before the slot check (books/tls-handshake-decision.lisp:336-345), so once a source's bucket is drained, all of its queued sockets are refused in one chain. The depth is bounded by the waiting cap, 32 x the in-flight limit (fn-hsb-lim-queue, tls-handshake-decision.lisp:153-155; *fn-hsb-queue-factor* = 32). That is thousands of levels at most, and whether this overflows the loop's reserved control stack depends on the profile's stack size, which I did not establish. An overflow would hit guarded's serious-condition clause and stop the service.",
@@ -33,5 +34,27 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_native_mux_start_waiting",
  "title": "Handshake-queue processing recurses through fnn-mux-finish, so stack depth grows with the number of consecutive refusals",
- "updated": "2026-10-04T19:59:27Z"
+ "updated": "2026-10-04T20:00:02Z",
+ "verify": {
+  "base": "d54cdcd944ffa982e34bbf67aa2118906a672784",
+  "changed_files": [
+   "host/native/mux.lisp",
+   "planning/repair/items/S091.json",
+   "tests/native_mux_cleanup_raw.lisp",
+   "tests/test_native_mux_start_waiting.py"
+  ],
+  "diff_lines": 112,
+  "evidence": {
+   "bytes": 426,
+   "path": "planning/evidence/repair/S091-9c1f76239527413b8e0ebc5d804907cd.json",
+   "sha256": "c4985773a15a65cbfe3382bacde30642b817cee9126503b398e640a0e9ea5240"
+  },
+  "evidence_outcome": "archived",
+  "head": "c5671748d2f41b5c08a530e1d0a166d2f4c11396",
+  "ok": false,
+  "problems": [
+   "diff is 112 changed lines, over the budget of 60: escalate the item"
+  ],
+  "semantic_ok": false
+ }
 }
