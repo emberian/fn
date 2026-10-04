@@ -32,7 +32,9 @@ A grammar is ACL2 **data**: a tree of the nodes below. `books/wire-grammar.lisp`
 - `fn-wg-grammarp G`: the tree is well formed (the static rules below);
 - `fn-wg-valuep G V`: V is a value of G;
 - `fn-wg-encode G V`: octets;
-- `fn-wg-decode G OCTETS`: `(:ok V REST)` or `:bad`;
+- `fn-wg-decode G OCTETS`: `(:ok V REST)` or `(:refused REASON)`, REASON `:trailer`
+  (a frame whose trailer is not the digest of its protected prefix) or
+  `:malformed` (every other refusal);
 
 and proves, once, for every well-formed grammar:
 
@@ -43,6 +45,17 @@ and proves, once, for every well-formed grammar:
 
 So for a whole message (decoded with nothing left over) `dec∘enc = id` on
 values and `enc∘dec = id` on accepted octets.
+
+**Canonicity is part of well-formedness, and `fn-wg-encode-of-decode` is
+its theorem** (Mini's point 1): every octet string a well-formed grammar
+accepts is the encoding of the value it decodes to, so each value has
+exactly one accepted encoding. The language has no optional whitespace, no
+line-ending variants (`:line` and `:base64-lines` end lines in CR LF only),
+fixed-width big-endian integers with no leading-zero variants (the width is
+the grammar's), base64 that is padded and canonical (the pad bits are zero:
+`fn-ot-b64-accepted-is-canonical`, `books/octet-text.lisp`, the one base64
+in the tree), and a tail-only node (`:rest`, `:maybe`, `:base64-lines`) only
+in last position.
 
 A family's grammar is a `defconst`. A **new** codec (the store identity, M4;
 the application article kind, M6) uses the interpreter as its codec — there
@@ -61,12 +74,12 @@ ACL2 form / JSON form / value / encoding:
 
 | node | JSON | value | octets |
 |---|---|---|---|
-| `(:const O...)` | `["const","HEX"]` | `nil` / `null` | exactly those octets |
+| `(:const OCTETS)` | `["const","HEX"]` | `nil` / `null` | exactly those octets |
 | `(:uint W LO HI)` | `["uint",W,LO,HI]` | natural LO..HI / number | W octets big-endian, W ∈ {1,2,4,8} |
 | `(:bytes W LO HI CLASS)` | `["bytes",W,LO,HI,"CLASS"]` | octet list / hex string | W-octet big-endian length L, LO ≤ L ≤ HI, then L octets of CLASS |
 | `(:rest LO HI CLASS)` | `["rest",LO,HI,"CLASS"]` | octets / hex | every remaining octet (tail only) |
 | `(:line LO HI CLASS)` | `["line",LO,HI,"CLASS"]` | octets / hex | L octets of CLASS (LO ≤ L ≤ HI) then CR LF; CLASS excludes CR |
-| `(:base64-lines WIDTH LO HI)` | `["base64-lines",WIDTH,LO,HI]` | octets / hex | RFC 4648 padded base64 of the value, cut into lines of WIDTH characters (the last 1..WIDTH), each followed by CR LF; the empty value is no lines (tail only) |
+| `(:base64-lines WIDTH LO HI)` | `["base64-lines",WIDTH,LO,HI]` | octets / hex | `fn-ot-b64-encode` (RFC 4648, padded) of the value, cut into lines of WIDTH characters (the last 1..WIDTH), each followed by CR LF; the empty value is no lines (tail only); decoding accepts exactly that layout |
 | `(:enum W BASE (NAME...))` | `["enum",W,BASE,["name",...]]` | a name / string | W octets big-endian: BASE + the name's 0-based position |
 | `(:seq G...)` | `["seq",[G,...]]` | list, one per element / array | the elements in order |
 | `(:tag W (CODE NAME G)...)` | `["tag",W,[[CODE,"name",G],...]]` | `(NAME V)` / `["name",V]` | W-octet code, then the arm |
@@ -74,9 +87,11 @@ ACL2 form / JSON form / value / encoding:
 | `(:where G CHECK...)` | `["where",G,[CHECK,...]]` | G's value / same | G's, accepted only when every check holds on the `:seq` value |
 | `(:frame MAGIC VERSION KIND MAX G)` | `["frame","HEX",VERSION,KIND,MAX,G]` | G's value / same | MAGIC(4) VERSION(1) KIND(1) LENGTH(u32 BE, ≤ MAX) PAYLOAD TRAILER(32); PAYLOAD is G's octets, all of them; TRAILER = BLAKE3-256 of everything before it (`fn-frame-digest`) |
 
-CHECKs over a `:seq` value's elements (0-based indices): `(:le I J)` /
-`["le",I,J]` (element I ≤ element J), `(:diff K J I)` / `["diff",K,J,I]`
-(element K = element J − element I).
+CHECKs over a `:seq` value's elements (0-based indices; each element named
+must be a natural, else the check fails): `(:le I J)` / `["le",I,J]`
+(element I ≤ element J), `(:eq I J)` / `["eq",I,J]`, `(:diff K J I)` /
+`["diff",K,J,I]` (element K = element J − element I, J ≥ I). Both
+interpreters evaluate them over values already decoded (Mini's point 2).
 
 CLASSes: `"any"` (every octet), `"utf8"` (RFC 3629, the `utf8` book's
 decoder, as `:text` frame fields), `"header"` (HTAB, SP, `!`..`~`: RFC 5322
@@ -117,6 +132,24 @@ fast checks. Shape:
 
 `vectors` are `fn-wg-encode` evaluated in ACL2 on values the table names
 (including the boundary values: empty and widest fields, every tag arm).
+Each vector carries its family name and the file's language version
+(Mini's point 4). Every family whose grammar is a frame also carries
+refusal vectors: the first accepted vector with one trailer bit flipped,
+answered `{"refused":"trailer"}`, and a truncated one, answered
+`{"refused":"malformed"}` (Mini's point 3: a wrong trailer is a named
+refusal, distinct from a decode failure). For each request family,
+`exchanges` lists every reply family it can receive — the refusal and
+uncertain answers (`fnct.reasoned-reply`, `fnct.line-reply`, the plain
+reply's `refused`/`uncertain`/`fault` arms) included — and those families
+carry vectors for each status word (Mini's point 5: Reply / Refused /
+Unknown checked against bytes).
+
+**The file's digest.** `fn-wg-export-digest` is BLAKE3-256 of the file's
+octets, computed in ACL2 from the same value the emitter writes. The
+running image reports it in the M4 identity reply (`grammar-digest`), so
+one command pins format word, node identity, schema digest, history,
+incarnation, both revisions and the grammar file; Mini computes BLAKE3 of
+the file it loaded at its pinned revision and compares.
 The file's `version` is the language version; an unknown version is refused
 by name on both sides. Family names carry their own version where the bytes
 do (`fncu` version 1, FNCT version 1 are in the grammar's constants).
@@ -161,7 +194,7 @@ language, added when it lands on dev).
 
 `format` (text), `node` (32 octets), `schema` (32), `profile` (32),
 `history` (1..64), `incarnation` (1..64), `created-revision` (text),
-`running-revision` (text)
+`running-revision` (text), `grammar-digest` (32)
 
 — the genesis record the open read (`fn-store-genesis`, the verdict of
 `fn-gen-open`), the consumer state's history id and incarnation, and the
