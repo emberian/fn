@@ -4548,3 +4548,13 @@ open. Bounds catchup controller draft is preserved but activation unwired.
 
 Entry: build/coordinator/lanedumps/docs.md (deliverables, shas, word counts,
 continuation point).
+
+## catchup lane (lane/catchup) — 2026-10-04
+
+Wave 2 strand 7: the ACL2 catch-up spool controller (mined from
+codex/horse-bounds@0373a76c1) drives every catch-up round on the pull worker,
+through the lease's spool worker and the peer flight bank, under an ACL2 round
+deadline; the in-memory requester round is deleted (replacement), its three
+keystones are proof-owed (CSP-OWED-*). Plus the pull-credential (65a485229)
+and carriage-budget (5e2f8e957) gifts, re-derived. Entry with coordinates,
+natives, deploy note and continuation: build/coordinator/lanedumps/catchup.md.
