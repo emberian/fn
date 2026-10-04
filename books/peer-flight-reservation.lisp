@@ -5,6 +5,7 @@
 (include-book "resource-vector-exec")
 (include-book "cold-read-layout")
 (include-book "heap-store-figure")
+(include-book "heap-reservation")
 
 (defun fn-pfr-at (n xs)
  (declare (xargs :guard (natp n)))
