@@ -5751,3 +5751,13 @@
 (definterface fn-workflow-install-replay :class :program) ; host/workflow-host.lisp:19
 (definterface fn-workflow-preflight-record :class :program) ; host/workflow-host.lisp:114
 (definterface fn-workflow-reset :class :program) ; host/workflow-host.lisp:45
+
+;; host/store-identity-host.lisp (Mini M4, `fn identity CONTROL')
+(definterface fn-stid-host-request :class ::program)
+(definterface fn-stid-host-request-p :class ::program)
+(definterface fn-stid-host-reply :class ::program)
+(definterface fn-stid-host-cli-plan :class ::program)
+(definterface fn-stid-host-usage :class ::program)
+(definterface fn-stid-host-reply-read :class ::program)
+(definterface fn-stid-host-line :class ::program)
+(definterface fn-stid-host-exit-code :class ::program)
