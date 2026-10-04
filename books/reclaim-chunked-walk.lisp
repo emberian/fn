@@ -1,6 +1,6 @@
 ; fn: the reclaim pass over the generation-pinned history in chunks, with no
 ; whole rewritten-row list (lane reclaim, 2026-10-04; storage-served reader's
-; note §reclaim; FN-SWARMPLAN wave 3 row 2).
+; note, section reclaim; FN-SWARMPLAN wave 3 row 2).
 ;
 ; Before this book the live pass (host/native/owner.lisp
 ; fnn-owner-reclaim-pass) walked the pinned history root in chunks but
