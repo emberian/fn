@@ -792,6 +792,12 @@ Runtime protection uses the captured fixed-process collector trigger rather
 than recomputing the launcher's least-space trigger. Full allocation/collector
 coverage and the native boundary theorem remain open (PRF-1310).
 
+`init` writes a default `peer-flight-profile` derived from the store profile
+(books/peer-flight-default.lisp, PRF-1319) and judges the store against the
+machine less that profile's launch reserve (`fn-pfd-launch-reserve`, 22 MiB at
+the 1 MiB stack): the launch probe's peer extension of the run reservation
+then fits the same machine (`fn-pfd-init-reserves-the-default-launch`).
+
 The optional root `peer-flight-profile` is independent authority. Its inert
 52-byte FNP1 frame contains six unsigned64 resource allowances; absence grants
 nothing. Native capture uses nofollow, nonblocking open and a regular-file

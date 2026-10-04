@@ -3592,6 +3592,10 @@
               fn-heap-init-decide-conservative-holds-the-floor
               fn-heap-init-budget-note-names-the-budget-init-sized-for))
 
+(definterface fn-pfd-init-decide
+  :class :common-lisp-compliant
+  :keystones (fn-pfd-init-reserves-the-default-launch))
+
 (definterface fn-heap-init-decision-request
   :class :common-lisp-compliant
   :keystones (fn-heap-init-decide-largest-takes-scale-when-it-fits

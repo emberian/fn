@@ -23453,8 +23453,8 @@
     },
     {
       "id": "PRF-1319",
-      "title": "The default peer flight profile init writes is a valid policy, decodes to itself, spools one whole batch, and launches on a machine that holds the store's run and its stated extra",
-      "statement": "books/peer-flight-default.lisp. fn-pfp-default-policy (the store profile VALUES -> six naturals: the least heap for 2 flights' bookkeeping and the fixed backing, 2 spools, 2 flights, 1 worker, a spool of the profile's record bound plus *fn-cu-request-quantum*, lifetime work 4 x the profile's history bound; every figure clamped). KEYSTONES: fn-pfd-default-is-a-policy (fn-pfr-policy-p for every VALUES); fn-pfp-read-of-write (the reader inverts the writer for every policy) and fn-pfd-default-decodes-to-itself; fn-pfd-default-spools-one-batch (spool >= record bound + quantum, for every VALUES: a valid profile's record bound is below the codec ceiling); fn-pfd-default-launches-where-its-extra-fits (a :heap base reservation plus (fn-pfd-launch-extra STACK) within the machine => fn-pfr-extend-reservation admits the default). Scope: the launch extra is a loose bound (twice the nursery cap, ~134 MiB at a 1 MiB stack); init's acceptance reserving it, the host writing the file and the verb refusal are steps 2-3 (lanedumps/catchup2.md). Teeth: tests/acl2/peer-flight-default-tests.lisp (defteeth on all four).",
+      "title": "The default peer flight profile init writes is a valid policy, decodes to itself, spools one whole batch, and init reserves its launch",
+      "statement": "books/peer-flight-default.lisp. fn-pfp-default-policy (the store profile VALUES -> six naturals: the least heap for 2 flights' bookkeeping and the fixed backing, 2 spools, 2 flights, 1 worker, a spool of the profile's record bound plus *fn-cu-request-quantum*, lifetime work 4 x the profile's history bound; every figure clamped). KEYSTONES: fn-pfd-default-is-a-policy (fn-pfr-policy-p for every VALUES); fn-pfp-read-of-write (the reader inverts the writer for every policy) and fn-pfd-default-decodes-to-itself; fn-pfd-default-spools-one-batch (spool >= record bound + quantum, for every VALUES: a valid profile's record bound is below the codec ceiling); fn-pfd-default-launches-where-its-extra-fits (a :heap base reservation plus (fn-pfd-launch-extra STACK) within the machine => fn-pfr-extend-reservation admits the default). The launch extra is 22 MiB at a 1 MiB stack (pfd-grow-tight bounds the nursery re-solve). fn-pfd-init-reserves-the-default-launch: an init held within this machine's budget through fn-pfd-init-decide (fn-heap-init-decide over LIMITS plus the machine less fn-pfd-launch-reserve) writes a store whose run reservation, extended by the default profile, is :heap on the same machine for any OBSERVED and K. Scope: the cold-read, page-read startup and output extensions the launcher also applies are not counted by init (as before); a --budget store for another machine is not covered. host/native/heap.lisp fnn-heap-init-decision calls fn-pfd-init-decide. Teeth: tests/acl2/peer-flight-default-tests.lisp (defteeth on every keystone).",
       "milestone": "M5",
       "requirements": [
         "HST-049"
@@ -23469,7 +23469,8 @@
         "tests/acl2/peer-flight-default-tests.lisp",
         "books/store-init-log-publication.lisp",
         "tests/acl2/store-init-log-publication-tests.lisp",
-        "host/native/io.lisp"
+        "host/native/io.lisp",
+        "host/native/heap.lisp"
       ],
       "events": [
         "fn-pfd-default-is-a-policy",
@@ -23477,7 +23478,8 @@
         "fn-pfd-default-decodes-to-itself",
         "fn-pfd-default-spools-one-batch",
         "fn-pfd-default-launches-where-its-extra-fits",
-        "fn-bs-init-log-complete-store-carries-the-peer-flight-profile"
+        "fn-bs-init-log-complete-store-carries-the-peer-flight-profile",
+        "fn-pfd-init-reserves-the-default-launch"
       ],
       "evidence": [
         "tests/acl2/peer-flight-default-tests.lisp"

@@ -170,3 +170,89 @@
                (:conclusion (equal (fn-pfp-catch-up-admission plan nil) plan))
                ((plan *pfdt-catch-up*) (observed *pfdt-funded*))
                :fault "an admission that refuses catch-up whatever profile the host observed")))
+
+; -----------------------------------------------------------------------------
+; Step 2b.2: init reserves the default's launch.  Figures from
+; tests/acl2/heap-reservation-tests.lisp: fn-host.core, the 64 MiB nursery,
+; hbox's 123 GiB, a development request that names its capacities.
+(defconst *pfdt-hcore* 192152584)
+(defconst *pfdt-nursery* (* 64 1024 1024))
+(defconst *pfdt-hbox* (* 123 1024 1024 1024))
+(defconst *pfdt-top* '(:development ((1 . 131072) (2 . 67108864) (3 . 196608)
+                                     (5 . 16) (7 . 128))))
+(defconst *pfdt-top-octets*
+  (fn-heap-init-reservation-octets (fn-bs-profile-resolve *pfdt-top* nil)
+                                   *pfdt-hcore* *pfdt-nursery*))
+(defconst *pfdt-edge* (list *pfdt-top-octets*))
+(assert-event (equal (fn-pfd-launch-reserve) 23082078))
+; hbox: the bare request's budget is 23 MiB below init's own (94464 MB).
+(assert-event
+ (equal (fn-pfd-init-decide '(:default nil) *pfdt-hcore* *pfdt-nursery* *pfdt-hbox* nil nil nil)
+        (list :init *pfdt-top* "custom" 3209 94441 :conservative t)))
+; The edge machine: a limit of exactly the request's whole reservation.
+; Init alone wrote it; its launch with the default profile is refused there
+; (the gap this step closes); now init refuses it, and a limit the reserve
+; larger is written.
+(assert-event
+ (let* ((old (fn-heap-init-decide *pfdt-top* *pfdt-hcore* *pfdt-nursery* *pfdt-hbox*
+                                  *pfdt-edge* nil nil))
+        (p (fn-bs-profile-resolve (fn-heap-init-decision-request old) nil))
+        (machine (cons *pfdt-hbox* *pfdt-edge*)))
+   (and (equal (car old) :init) (nth 6 old)
+        (equal (car (fn-pfr-extend-reservation
+                     (fn-heap-reserve-operation-decide :run p *pfdt-hcore* *pfdt-nursery*
+                                                       machine 32 nil)
+                     (fn-pfp-default-policy *pfdt-dev*) *pfdt-hcore* machine))
+               :refused)
+        (equal (car (fn-pfd-init-decide *pfdt-top* *pfdt-hcore* *pfdt-nursery* *pfdt-hbox*
+                                        *pfdt-edge* nil nil))
+               :refused)
+        (equal (car (fn-pfd-init-decide *pfdt-top* *pfdt-hcore* *pfdt-nursery* *pfdt-hbox*
+                                        (list (+ *pfdt-top-octets* (fn-pfd-launch-reserve)))
+                                        nil nil))
+               :init))))
+
+(defteeth fn-pfd-init-reserves-the-default-launch
+  :claim (((held (and (equal (car (fn-pfd-init-decide request core nursery physical limits
+                                                      budget-mb sizing-word))
+                             :init)
+                      (nth 6 (fn-pfd-init-decide request core nursery physical limits
+                                                 budget-mb sizing-word))))
+           (observed-machine (posp (fn-heap-machine-octets (cons physical limits)))))
+          (equal (fn-pfr-at 0 (fn-pfr-extend-reservation
+                               (fn-heap-reserve-operation-decide
+                                :run (fn-bs-profile-resolve
+                                      (fn-heap-init-decision-request
+                                       (fn-pfd-init-decide request core nursery physical limits
+                                                           budget-mb sizing-word))
+                                      nil)
+                                core nursery (cons physical limits) k observed)
+                               (fn-pfp-default-policy values) core (cons physical limits)))
+                 :heap))
+  :subject fn-pfd-init-decide
+  :witness ((request '(:default nil)) (core *pfdt-hcore*) (nursery *pfdt-nursery*)
+            (physical *pfdt-hbox*) (limits nil) (budget-mb nil) (sizing-word nil)
+            (k 32) (observed nil) (values *pfdt-dev*))
+  :breaks ((held ((request '(:default nil)) (core *pfdt-hcore*) (nursery *pfdt-nursery*)
+                  (physical 16) (limits nil) (budget-mb nil) (sizing-word nil)
+                  (k 32) (observed nil) (values *pfdt-dev*)))
+           (observed-machine ((request '(:default nil)) (core *pfdt-hcore*)
+                              (nursery *pfdt-nursery*) (physical nil) (limits nil)
+                              (budget-mb 4096) (sizing-word nil)
+                              (k 32) (observed nil) (values *pfdt-dev*))))
+  :mutations ((init-alone
+               (:conclusion
+                (equal (fn-pfr-at 0 (fn-pfr-extend-reservation
+                                     (fn-heap-reserve-operation-decide
+                                      :run (fn-bs-profile-resolve
+                                            (fn-heap-init-decision-request
+                                             (fn-heap-init-decide request core nursery physical
+                                                                  limits budget-mb sizing-word))
+                                            nil)
+                                      core nursery (cons physical limits) k observed)
+                                     (fn-pfp-default-policy values) core (cons physical limits)))
+                       :heap))
+               ((request '(:default nil)) (core *pfdt-hcore*) (nursery *pfdt-nursery*)
+                (physical *pfdt-hbox*) (limits *pfdt-edge*) (budget-mb nil) (sizing-word nil)
+                (k 32) (observed nil) (values *pfdt-dev*))
+               :fault "init choosing against the whole machine, as before 2b.2: at a limit of exactly the 64 MiB rung's reservation it writes that rung, whose launch with the default is refused")))

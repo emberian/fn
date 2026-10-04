@@ -531,3 +531,159 @@
                                 (* *fn-heap-mib* (nfix (fn-pfr-at 1 base)))
                                 (fn-pfd-heap)
                                 (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib)))))))))
+
+; =============================================================================
+; Step 2b.2: init reserves the default's launch.  Every store init publishes
+; carries the default profile (step 2), so every launch takes the peer
+; extension; init now judges the store against the machine LESS the
+; default's launch extra.  The thread stack is one figure for every profile
+; (fn-heap-stack-octets ignores it), so the extra is one number,
+; fn-pfd-launch-reserve (22 MiB).  The reservation is one more observation in
+; init's LIMITS -- the machine init would judge, less the reserve -- so
+; books/heap-reservation.lisp's init decision is called unchanged and its
+; budget, choice and refusals all see the smaller machine.
+(defun fn-pfd-launch-reserve ()
+  (declare (xargs :guard t))
+  (fn-pfd-launch-extra (fn-heap-stack-kib nil)))
+
+(defun fn-pfd-init-limits (physical limits budget-mb)
+  (declare (xargs :guard t))
+  (let ((m (fn-heap-machine-octets
+            (fn-heap-init-observations physical limits
+                                       (fn-heap-init-explicit-budget budget-mb)))))
+    (if (zp m)
+        limits
+      (cons (max 1 (- m (fn-pfd-launch-reserve))) limits))))
+
+; The decision the host calls for `init' (host/native/heap.lisp
+; fnn-heap-init-decision), in fn-heap-init-decide's shape.
+(defun fn-pfd-init-decide (request core nursery physical limits budget-mb sizing-word)
+  (declare (xargs :guard t))
+  (fn-heap-init-decide request core nursery physical
+                       (fn-pfd-init-limits physical limits budget-mb)
+                       budget-mb sizing-word))
+
+(local (defthm pfd-run-figure-at-most-full
+  (<= (fn-heap-operation-figure-octets :run p core nursery observed)
+      (fn-heap-operation-figure-octets :run p core nursery nil))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-heap-operation-figure-octets fn-heap-operation-observation)))))
+(local (defthm pfd-mb-of-monotone
+  (implies (<= (nfix a) (nfix b)) (<= (fn-heap-mb-of a) (fn-heap-mb-of b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-heap-mb-of)))))
+(local (defthm pfd-run-base-within-init
+  (let ((b (fn-heap-reserve-operation-decide :run p core nursery obs k observed)))
+    (implies (and (fn-bs-profile-admittedp p) (equal (car b) :heap))
+             (and (<= (fn-pfd-base-octets b core) (fn-heap-init-reservation-octets p core nursery))
+                  (equal (fn-pfr-at 4 b) (fn-heap-stack-kib nil)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-heap-reserve-operation-decide fn-heap-reserve-of
+                                   fn-heap-operation-decide fn-pfd-base-octets
+                                   fn-heap-init-reservation-octets fn-heap-reservation-octets
+                                   fn-heap-thread-count fn-heap-stack-kib fn-heap-stack-octets
+                                   fn-heap-decision-mb)
+                                  (fn-heap-operation-figure-octets fn-heap-mb-of
+                                   fn-bs-profile-admittedp fn-heap-machine-octets
+                                   fn-heap-profile-word))
+           :use ((:instance pfd-run-figure-at-most-full)
+                 (:instance pfd-mb-of-monotone
+                            (a (fn-heap-operation-figure-octets :run p core nursery observed))
+                            (b (fn-heap-operation-figure-octets :run p core nursery nil))))))))
+(local (defthm pfd-init-res-above-one
+  (< 1 (fn-heap-init-reservation-octets p core nursery))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-heap-init-reservation-octets fn-heap-reservation-octets)
+                                  (fn-heap-mb-of fn-heap-operation-figure-octets))))))
+(local (defthm pfd-init-limits-budget
+  (let ((m (fn-heap-machine-octets
+            (fn-heap-init-observations physical limits (fn-heap-init-explicit-budget budget-mb)))))
+    (<= (fn-heap-machine-octets
+         (fn-heap-init-observations physical (fn-pfd-init-limits physical limits budget-mb)
+                                    (fn-heap-init-explicit-budget budget-mb)))
+        (if (zp m) 0 (max 1 (- m (fn-pfd-launch-reserve))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-pfd-init-limits fn-heap-init-observations)
+                                  (fn-heap-machine-octets fn-pfd-launch-reserve
+                                   fn-heap-available-physical-octets fn-heap-init-explicit-budget))
+           :cases ((zp (fn-heap-machine-octets
+                        (fn-heap-init-observations physical limits
+                                                   (fn-heap-init-explicit-budget budget-mb))))))
+          ("Subgoal 2" :use ((:instance fn-heap-machine-octets-is-at-most-each-observation
+                              (x (max 1 (- (fn-heap-machine-octets
+                                            (fn-heap-init-observations physical limits
+                                                                       (fn-heap-init-explicit-budget budget-mb)))
+                                           (fn-pfd-launch-reserve))))
+                              (observations (fn-heap-init-observations
+                                             physical (fn-pfd-init-limits physical limits budget-mb)
+                                             (fn-heap-init-explicit-budget budget-mb)))))))))
+(local (defthm pfd-machine-of-one-more
+  (implies (posp (fn-heap-machine-octets (cons x rest)))
+           (<= (fn-heap-machine-octets (cons x (cons y rest)))
+               (fn-heap-machine-octets (cons x rest))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-heap-machine-octets-of-cons)))))
+(local (defthm pfd-init-limits-machine
+  (implies (and (posp (fn-heap-machine-octets
+                       (fn-heap-init-observations physical limits (fn-heap-init-explicit-budget budget-mb))))
+                (posp (fn-heap-machine-octets (cons physical limits))))
+           (and (posp (fn-heap-machine-octets (cons physical (fn-pfd-init-limits physical limits budget-mb))))
+                (<= (fn-heap-machine-octets (cons physical (fn-pfd-init-limits physical limits budget-mb)))
+                    (fn-heap-machine-octets (cons physical limits)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-pfd-init-limits) (fn-heap-machine-octets fn-pfd-launch-reserve
+                                                        fn-heap-init-observations))
+           :use ((:instance pfd-machine-of-one-more (x physical) (rest limits)
+                            (y (max 1 (- (fn-heap-machine-octets
+                                          (fn-heap-init-observations physical limits
+                                                                     (fn-heap-init-explicit-budget budget-mb)))
+                                         (fn-pfd-launch-reserve)))))
+                 (:instance fn-heap-machine-octets-posp-with-a-posp-member
+                            (x (max 1 (- (fn-heap-machine-octets
+                                          (fn-heap-init-observations physical limits
+                                                                     (fn-heap-init-explicit-budget budget-mb)))
+                                         (fn-pfd-launch-reserve))))
+                            (obs (cons physical (fn-pfd-init-limits physical limits budget-mb)))))))))
+
+; KEYSTONE: a store init writes within this machine's budget (HELDP) is one
+; whose launch with the default peer flight profile is admitted on the same
+; machine (the physical memory and the same limits), whatever the store then
+; holds (OBSERVED) and at any owner bound (K): the launcher's probe extends
+; the run's reservation by the default and it still fits.  Scope: the
+; cold-read, page-read startup and output extensions the launcher also
+; applies are not counted by init (they were not before this step either);
+; a `--budget' store made for another machine (HELDP nil) is not covered.
+(defthm fn-pfd-init-reserves-the-default-launch
+  (implies (and (and (equal (car (fn-pfd-init-decide request core nursery physical limits
+                                                     budget-mb sizing-word))
+                            :init)
+                     (nth 6 (fn-pfd-init-decide request core nursery physical limits
+                                                budget-mb sizing-word)))
+                (posp (fn-heap-machine-octets (cons physical limits))))
+           (equal (fn-pfr-at 0 (fn-pfr-extend-reservation
+                                (fn-heap-reserve-operation-decide
+                                 :run (fn-bs-profile-resolve
+                                       (fn-heap-init-decision-request
+                                        (fn-pfd-init-decide request core nursery physical limits
+                                                            budget-mb sizing-word))
+                                       nil)
+                                 core nursery (cons physical limits) k observed)
+                                (fn-pfp-default-policy values) core (cons physical limits)))
+                  :heap))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-pfd-init-decide fn-pfd-launch-reserve posp natp zp max pfd-at-is-nth nth (:e zp))
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-heap-init-decide-fits-the-budget-and-the-machine (limits (fn-pfd-init-limits physical limits budget-mb)))
+                 (:instance pfd-init-limits-budget)
+                 (:instance pfd-init-res-above-one (p (fn-bs-profile-resolve (fn-heap-init-decision-request (fn-heap-init-decide request core nursery physical (fn-pfd-init-limits physical limits budget-mb) budget-mb sizing-word)) nil)))
+                 (:instance fn-heap-init-budget-is-under-the-machine (explicit (fn-heap-init-explicit-budget budget-mb)))
+                 (:instance pfd-init-limits-machine)
+                 (:instance fn-heap-reserve-full-store-accepts-on-a-larger-machine
+                            (p (fn-bs-profile-resolve (fn-heap-init-decision-request (fn-heap-init-decide request core nursery physical (fn-pfd-init-limits physical limits budget-mb) budget-mb sizing-word)) nil)) (k (fn-heap-reserve-init-connections))
+                            (obs1 (cons physical (fn-pfd-init-limits physical limits budget-mb))) (obs2 (cons physical limits)))
+                 (:instance fn-heap-init-accepted-store-always-reopens
+                            (p (fn-bs-profile-resolve (fn-heap-init-decision-request (fn-heap-init-decide request core nursery physical (fn-pfd-init-limits physical limits budget-mb) budget-mb sizing-word)) nil)) (obs (cons physical limits))
+                            (k (fn-heap-reserve-init-connections)) (k2 k))
+                 (:instance pfd-run-base-within-init (p (fn-bs-profile-resolve (fn-heap-init-decision-request (fn-heap-init-decide request core nursery physical (fn-pfd-init-limits physical limits budget-mb) budget-mb sizing-word)) nil)) (obs (cons physical limits)))
+                 (:instance fn-pfd-default-launches-where-its-extra-fits
+                            (base (fn-heap-reserve-operation-decide :run (fn-bs-profile-resolve (fn-heap-init-decision-request (fn-heap-init-decide request core nursery physical (fn-pfd-init-limits physical limits budget-mb) budget-mb sizing-word)) nil) core nursery (cons physical limits) k observed)) (observations (cons physical limits)))))))
