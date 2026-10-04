@@ -1921,6 +1921,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-invite-administrator-tests \
 	books/tls-reload \
 	tests/acl2/tls-reload-tests \
+	books/wire-grammar \
+	tests/acl2/wire-grammar-tests \
+	books/wire-family-fncu \
+	tests/acl2/wire-family-fncu-tests \
+	books/wire-family-identity \
+	books/wire-export \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
 	books/control-visible-indexed \
@@ -2524,7 +2530,7 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/owner-prepare-deferred-carried-owner-tests \
     tests/acl2/withdrawal-index-carried-tests
 
-.PHONY: host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
+.PHONY: wire-grammar wire-grammar-check host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
@@ -2653,6 +2659,11 @@ check:
 # not what the docs say now; the Python tools' invocations by their own
 # argparse parsers; quoted reply lines against the source that prints them.
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
+# The exported wire grammars (Mini M5): specs/wire-grammar.json is the value
+# ACL2 renders (books/wire-export.lisp fn-wgx-file), and a second interpreter
+# written from the language's description reads every vector in it.
+	@$(CHECK_STEP) $(PYTHON) tools/protocol_emit.py --wire --check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_wire_grammar
 # The shape-books table in docs/proof-style.md (books by certification
 # fan-in, the farm's graph).  A WARNING when stale, never a failure: the
 # counts move with every include (lane lane-tools-2, for served-columns).
@@ -3095,3 +3106,11 @@ test-modules:
 	$(PYTHON) tools/test_budget.py $(MODULES) --logs build/test-budget
 
 # Current captured and RX component roots; proof/native scope stays explicit.
+
+# The exported wire grammars (Mini M5): write specs/wire-grammar.json from
+# ACL2's fn-wgx-file; `make wire-grammar-check' compares.
+wire-grammar:
+	$(PYTHON) tools/protocol_emit.py --wire --write
+
+wire-grammar-check:
+	$(PYTHON) tools/protocol_emit.py --wire --check

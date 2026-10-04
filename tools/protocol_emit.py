@@ -24,6 +24,14 @@ differential of a book converted to table lookups is
 the macro (books/protocol-table.lisp fn-proto-text-of, fn-proto-shared-text)
 for that comparison only; the books admit what ACL2's macro expands.
 
+`--wire --write` writes specs/wire-grammar.json, the exported wire grammars
+(Mini M5; planning/design/wire-grammar-2026-10-04.md), and `--wire --check`
+refuses when the committed file differs.  Unlike the protocol table, that file
+is an ACL2 VALUE: this evaluates `fn-wgx-file-hex' (books/wire-export.lisp)
+in one ACL2 through tools/acl2 (the slot pool) with the book's certified
+closure installed from the cache, and only turns the printed hex into bytes.
+No byte of it is decided here.
+
 `--check` refuses a row whose :parser/:model/:cat/:xref names a function no
 book defines (a stale name after a rename), and a :fuzz production the
 fuzzer's interpreter does not know.  ACL2 checks the rest of the row shape
@@ -412,14 +420,69 @@ def check_keyword_literals(table: dict) -> list[str]:
     return failures
 
 
+
+# -----------------------------------------------------------------------------
+# The exported wire grammars (`--wire`): an ACL2 value, written or compared.
+
+WIRE_BOOK = "books/wire-export"
+WIRE_FILE = ROOT / "specs" / "wire-grammar.json"
+WIRE_MARK = "FNWGX"
+
+
+def wire_octets(timeout: int = 900) -> bytes:
+    """The octets of `fn-wgx-file', evaluated by ACL2 over the certified book."""
+    import subprocess
+    sys.path.insert(0, str(ROOT / "tools"))
+    import certs  # noqa: E402
+    names = list(certs.closure(ROOT, WIRE_BOOK))
+    subprocess.run([sys.executable, str(ROOT / "tools" / "certs.py"), "install", *names],
+                   capture_output=True, text=True, cwd=ROOT)
+    driver = "\n".join([
+        '(include-book "%s")' % WIRE_BOOK,
+        '(progn$ (cw "~%%%sBEGIN~%%") (cw "~s0" (fn-wgx-file-hex)) (cw "~%%%sEND~%%"))'
+        % (WIRE_MARK, WIRE_MARK),
+    ]) + "\n"
+    run = subprocess.run([str(ROOT / "tools" / "acl2"), "--timeout", str(timeout)],
+                         input=driver, capture_output=True, text=True, cwd=ROOT)
+    out = run.stdout
+    begin, end = out.find(WIRE_MARK + "BEGIN\n"), out.rfind(WIRE_MARK + "END")
+    if begin < 0 or end < 0:
+        raise SystemExit("protocol_emit --wire: ACL2 printed no file (exit %d)\n%s"
+                         % (run.returncode, out[-2000:] + run.stderr[-2000:]))
+    text = out[begin + len(WIRE_MARK) + len("BEGIN\n"):end]
+    # The printer folds a long string with a backslash at the margin.
+    return bytes.fromhex("".join(text.replace("\\", "").split()))
+
+
+def wire(write: bool) -> int:
+    octets = wire_octets()
+    json.loads(octets)  # a file Mini's JSON reader cannot read is no export
+    if write:
+        WIRE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        WIRE_FILE.write_bytes(octets)
+        print("protocol_emit --wire: wrote %s (%d octets)" % (WIRE_FILE.relative_to(ROOT), len(octets)))
+        return 0
+    current = WIRE_FILE.read_bytes() if WIRE_FILE.exists() else b""
+    if current != octets:
+        print("FAIL %s differs from fn-wgx-file (books/wire-export.lisp); "
+              "run python3 tools/protocol_emit.py --wire --write" % WIRE_FILE.relative_to(ROOT))
+        return 1
+    print("protocol_emit --wire: %s is fn-wgx-file (%d octets)" % (WIRE_FILE.relative_to(ROOT), len(octets)))
+    return 0
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--text", nargs=2, metavar=("COMMAND", "KEY"))
     ap.add_argument("--expand", metavar="BOOK")
+    ap.add_argument("--wire", action="store_true",
+                    help="specs/wire-grammar.json: with --check compare, with --write write")
+    ap.add_argument("--write", action="store_true")
     ap.add_argument("--write-debt", action="store_true",
                     help="record the current decided-policy debt (only to shrink it)")
     args = ap.parse_args(argv)
+    if args.wire:
+        return wire(args.write)
     table = load()
     if args.write_debt:
         debt = view_debt(table)
