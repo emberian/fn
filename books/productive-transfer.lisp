@@ -27,7 +27,7 @@
        (fn-clock-observationp obs)
        (fn-sched-contact-holdsp (fn-feed-contact f) obs)
        (natp (fn-feed-conn f))
-       (<= (nfix (fn-feed-backoff-until f)) (nfix (fn-clock-monotonic obs)))
+       (fn-feed-backoff-elapsedp f (fn-clock-monotonic obs))
        (equal (fn-feed-inflight-count (fn-feed-queue f)) 0)
        (if (fn-feed-head-queued (fn-feed-queue f)) t nil)))
 
