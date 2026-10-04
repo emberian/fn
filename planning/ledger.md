@@ -10,14 +10,14 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2977 |
+| Books read | 2978 |
 | Certification roots in the Makefile | 2489 |
 | Books inside the root closure | 2805 |
-| `defthm` and `defthmd` events | 38941 |
-| `defun` events | 25234 |
+| `defthm` and `defthmd` events | 38946 |
+| `defun` events | 25237 |
 | Functions with verified guards | 4034 |
 | Functions declared `:verify-guards nil` and never verified | 3203 |
-| Functions left at the default with an explicit guard | 13918 |
+| Functions left at the default with an explicit guard | 13921 |
 | Functions left at the default with no guard | 4079 |
 | `assert-event` checks | 26847 |
 | `must-fail` checks | 2661 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 415 |
 | Enabled-projection warnings | 80 |
 | Teeth-form warnings | 292 |
-| Include-hygiene warnings | 3940 |
+| Include-hygiene warnings | 3941 |
 | Host-names warnings | 3430 |
 | Hand-written-record warnings | 19 |
 
@@ -1111,6 +1111,7 @@ that `make certify` requests.
 | `books/outgoing-operation-source.lisp` | - | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/output-command-admission.lisp` | root | 3 | 8 | 1/0/7/0 | 0 | 0 | 0 |
 | `books/output-reservation.lisp` | root | 4 | 5 | 0/0/5/0 | 0 | 0 | 0 |
+| `books/output-tariff-article.lisp` | - | 4 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/over-window.lisp` | root | 33 | 7 | 1/4/2/0 | 0 | 0 | 0 |
 | `books/owner-ack-after-barrier.lisp` | root | 34 | 27 | 0/1/26/0 | 0 | 0 | 3 |
 | `books/owner-advance-carried.lisp` | root | 33 | 7 | 0/2/5/0 | 0 | 0 | 0 |
@@ -1187,7 +1188,7 @@ that `make certify` requests.
 | `books/owner-obligation-state.lisp` | closure | 11 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/owner-offer-indexed.lisp` | root | 56 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/owner-open-carried.lisp` | root | 14 | 7 | 0/0/7/0 | 0 | 0 | 0 |
-| `books/owner-operation-report.lisp` | closure | 2 | 2 | 2/0/0/0 | 0 | 0 | 1 |
+| `books/owner-operation-report.lisp` | closure | 3 | 2 | 2/0/0/0 | 0 | 0 | 1 |
 | `books/owner-outcome-counted.lisp` | closure | 19 | 7 | 5/0/2/0 | 0 | 0 | 1 |
 | `books/owner-outcome-pinned.lisp` | root | 5 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/owner-parse-carried.lisp` | root | 48 | 41 | 1/0/40/0 | 0 | 0 | 1 |
@@ -3548,7 +3549,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-ncfg-opt-pair-of-nil` | `books/native-config-show.lisp` | 821 | arm-of-definition: constant arguments select one IF/COND arm of fn-ncfg-opt-pair and the conclusion is that arm's value |
 | `fn-ncfg-trim-left-noop` | `books/native-config-show.lisp` | 389 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ncfg-trim-left and the conclusion is that arm's value |
 | `fn-ncfg-trim-right-rev-noop` | `books/native-config-show.lisp` | 389 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ncfg-trim-right-rev and the conclusion is that arm's value |
-| `fn-ncr-cli-plan-without-the-flag-by-definition` | `books/consumer-reason.lisp` | 184 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ncr-cli-plan and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-ncr-cli-plan and the conclusion is that branch's value |
+| `fn-ncr-cli-plan-without-the-flag-by-definition` | `books/consumer-reason.lisp` | 187 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ncr-cli-plan and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-ncr-cli-plan and the conclusion is that branch's value |
 | `fn-ndh-cnode-of-non-cnode` | `books/number-durability-handles.lisp` | 476 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ndh-cnode and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-ndh-cnode and the conclusion is that branch's value |
 | `fn-ndh-event-held` | `books/number-durability-handles.lisp` | 385 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ndh-event and the conclusion is that arm's value |
 | `fn-ndh-event-other` | `books/number-durability-handles.lisp` | 381 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ndh-event and the conclusion is that arm's value |
@@ -3659,7 +3660,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-onbj-boundp-at-owner-outcome` | `books/owner-number-bound-join.lisp` | 216 | closed-theory-corollary: proved only by fn-apc-own-outcome-is-acar-own-outcome, fn-onbj-arm-acar-outcome |
 | `fn-onbj-boundp-at-owner-unstage` | `books/owner-number-bound-join.lisp` | 195 | closed-theory-corollary: proved only by fn-sjh-okp-at-owner-unstage |
 | `fn-onbj-boundp-of-ocfg-io` | `books/owner-number-bound-join.lisp` | 275 | closed-theory-corollary: proved only by fn-onbj-boundp-of-own-store-io, fn-sjh-ocfg-store-step-owner |
-| `fn-oor-fields-budget` | `books/owner-operation-report.lisp` | 50 | instance-corollary: the statement is fn-od-fields-within-budget instantiated, discharging nothing |
+| `fn-oor-fields-budget` | `books/owner-operation-report.lisp` | 56 | instance-corollary: the statement is fn-od-fields-within-budget instantiated, discharging nothing |
 | `fn-opc-conn-id-of-conn-make` | `books/owner-prepare-correspondence.lisp` | 211 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-opc-prepare-keeps-configured-owner-context` | `books/owner-prepare-correspondence.lisp` | 371 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-orc-one-pass-in-flight-by-definition` | `books/owner-reclaim.lisp` | 282 | arm-of-definition: the hypotheses select one IF/COND arm of fn-orc-request-word and the conclusion is that arm's value |
