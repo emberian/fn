@@ -5416,7 +5416,7 @@
 (definterface fn-oadl-log-line :class :common-lisp-compliant)
 (definterface fn-orv-accounting-line :class :common-lisp-compliant)
 (definterface fn-ocap-admit-preview :class :common-lisp-compliant)
-(definterface fn-ocap-at :class :common-lisp-compliant)
+(definterface fn-ocap-at :class :common-lisp-compliant :kinds ((n natp)))
 (definterface fn-rlo-capacity :class :common-lisp-compliant)
 
 (definterface fn-web-host-window-page-step :class ::program)
