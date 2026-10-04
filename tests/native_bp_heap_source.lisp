@@ -2,6 +2,26 @@
 (require :sb-posix)
 (defpackage "ACL2" (:use "COMMON-LISP"))
 (in-package "ACL2")
+
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-heap-command-profile-base (argv)
+  (declare (ignorable argv))
+  (harness-stub-reached 'fnn-heap-command-profile-base "host/native/heap.lisp"))
+(defun fnn-peer-flight-profile (root)
+  (declare (ignorable root))
+  (harness-stub-reached 'fnn-peer-flight-profile "host/native/heap.lisp"))
+;;; ---- derived stubs: END ----
 (declaim (declaration xargs))
 (defun posp (x) (and (integerp x) (< 0 x)))
 (defun source-functions (path names)

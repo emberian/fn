@@ -211,6 +211,17 @@ class Acl2ArityWalkTests(unittest.TestCase):
         self.assertEqual(found.get("fn-p"), 1)
         self.assertEqual(found.get("fn-q"), 2)
 
+    def test_keyword_spec_declarations_list_names_not_applications(self):
+        # host/cost-host.lisp, host/owner-served-carried.lisp, host/interfaces.lisp
+        found = self.applications(
+            "(def-cost fn-ros-physical :unaccounted (fn-ros-livep member-eq-exec))\n"
+            "(def-carried fn-c :invariant fn-i :transitions ((fn-w fn-w-thm)))\n"
+            "(definterface fn-ros-issue :operation (:unaccounted (fn-rl-wfp fn-rl-draw)))\n"
+            "(defun f (x) (fn-ros-livep x 1))")
+        self.assertEqual(found.get("fn-ros-livep"), 2)   # the real call still counts
+        for name in ("fn-w", "fn-rl-wfp", "member-eq-exec"):
+            self.assertNotIn(name, found)
+
     def test_a_quoted_list_is_not_walked(self):
         found = self.applications("(defun f (x) (member x '(fn-g fn-h)))")
         self.assertNotIn("fn-g", found)
@@ -458,6 +469,11 @@ class BindTests(unittest.TestCase):
                       " ".join(signature.bind(1, [])))
 
 
+def ledger_sym(text):
+    from tools import ledger
+    return ledger.Sym(text)
+
+
 class RawArityTests(unittest.TestCase):
     """`raw-arity`: calls of the native host's raw Common Lisp `defun`s."""
 
@@ -485,6 +501,19 @@ class RawArityTests(unittest.TestCase):
                 service journal inbound-id (fnn-octets adu) node-id
                 (fnn-octets identity) source destination)))))
         """
+
+    def test_a_reader_conditional_argument_is_one_argument(self):
+        # host/native/owner.lisp: (fnn-heap-rlimit #+linux 7 #-linux 8)
+        source = """
+            (defun fnn-heap-rlimit (resource) resource)
+            (defun f () (fnn-heap-rlimit #+linux 7 #-linux 8))
+            (defun g () (fnn-heap-rlimit #+linux 7 #-linux 8 9))
+            """
+        found = self.scan(source)
+        self.assertEqual([row["where"] for row in found], ["host/native/x.lisp:4"])
+        self.assertIn("called with 2 arguments", found[0]["problem"])
+        self.assertEqual(harness_check.feature_arities(
+            [ledger_sym("#+"), [ledger_sym("or"), ledger_sym("a")], 1, 2]), {1, 2})
 
     def test_the_eight_of_nine_call_is_caught(self):
         found = self.scan(self.DROPPED_INGRESS)

@@ -1,6 +1,23 @@
 ;;; Actual list/buffer seal adapters: calls use a concrete mutable byte buffer.
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
+
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-make-octets (n)
+  (declare (ignorable n))
+  (harness-stub-reached 'fnn-make-octets "host/native/io.lisp"))
+;;; ---- derived stubs: END ----
 (deftype fnn-octets () '(simple-array (unsigned-byte 8) (*)))
 (defun source-function (path name)
   (with-open-file (stream path)

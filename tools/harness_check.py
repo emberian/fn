@@ -483,6 +483,15 @@ def signature_findings(root: Path) -> tuple[list[dict], dict]:
 # explicitly below: guessing at a binder's shape is how an arity lint invents
 # a call out of a variable in a binding list.
 OPAQUE = {"quote", "declare", "xargs", "ignore", "ignorable", "type"}
+# Declarations whose arguments are keyword specs, not terms: `:unaccounted
+# (fn-a fn-b)', `:transitions ((fn-w theorem) ...)', `:operation (:draw fn-d
+# ...)' list NAMES, and an arity read of them invents calls (10 false
+# findings at d4e53323c, host/cost-host.lisp, owner-served-carried.lisp,
+# interfaces.lisp).  The terms these specs do carry (`:visits', `:ok',
+# `:hyps', `:witness') are translated by ACL2 itself when the macro's
+# make-event runs, so a wrong arity there refuses the ld; nothing is lost.
+KEYWORD_SPECS = {"def-cost", "def-cost-check", "def-carried", "def-carried-check",
+                 "definterface"}
 DEFINERS = {"defun", "defund", "defun-nx", "defund-nx", "defmacro", "define"}
 NAMED = {"defthm", "defthmd", "defrule", "defruled", "defconst", "deftheory",
          "in-theory", "verify-guards", "defstobj", "table"}
@@ -501,7 +510,7 @@ def acl2_applications(form, found: list) -> None:
         return
     head = form[0]
     name = head if isinstance(head, str) else None
-    if name in OPAQUE:
+    if name in OPAQUE or name in KEYWORD_SPECS:
         return
     if name in ("let", "let*"):
         # (let <bindings> <declare>* <body>); a binding is (var val).
@@ -824,6 +833,45 @@ def raw_lambda_range(formals) -> tuple[int, int | None] | None:
     return required, (None if unbounded else required + optional)
 
 
+def feature_arities(items: list) -> set[int]:
+    """The argument counts ITEMS reads as, over every truth assignment to the
+    feature expressions of its `#+F x' / `#-F x' reader conditionals.
+
+    The reader keeps the form after `#+F' only when F holds and after `#-F'
+    only when it fails, so `(fnn-heap-rlimit #+linux 7 #-linux 8)' is one
+    argument on every platform.  `#+linux' reads as one symbol; `#+(or a b)'
+    as the symbol `#+' and then the expression.  Each distinct expression is
+    one variable (exclusive features such as linux/openbsd are not modelled,
+    so a call whose count differs between assignments is left undecided).
+    """
+    plain = 0
+    conditionals: list[tuple[str, bool]] = []
+    index = 0
+    while index < len(items):
+        item = items[index]
+        text = str(item) if isinstance(item, str) else ""
+        if text[:2] in ("#+", "#-") and index + 1 < len(items):
+            if text in ("#+", "#-"):
+                expression, index = repr(items[index + 1]), index + 2
+            else:
+                expression, index = text[2:], index + 1
+            if index < len(items):
+                conditionals.append((expression, text[1] == "+"))
+                index += 1
+            continue
+        plain += 1
+        index += 1
+    variables = sorted({expression for expression, _ in conditionals})
+    if len(variables) > 8:
+        return set()  # too many to enumerate: undecided
+    counts = set()
+    for bits in range(1 << len(variables)):
+        holds = {name: bool(bits >> position & 1) for position, name in enumerate(variables)}
+        counts.add(plain + sum(1 for expression, positive in conditionals
+                               if holds[expression] == positive))
+    return counts
+
+
 def raw_applications(form, found: list, shadowed: frozenset = frozenset(),
                      *, _macro=False, _template=False) -> None:
     """Raw evaluated calls and literal calls emitted by macro backquotes.
@@ -838,6 +886,12 @@ def raw_applications(form, found: list, shadowed: frozenset = frozenset(),
     name = str(head_) if isinstance(head_, Sym if _template else str) else None
     splice = Sym("#fn-template-splice")
     count = None if _template and splice in form[1:] else len(form) - 1
+    if count is not None and any(isinstance(item, str) and str(item)[:2] in ("#+", "#-")
+                                 for item in form[1:]):
+        # A reader conditional: decided when every feature assignment reads
+        # the same count, else undecided (None, like a template splice).
+        arities = feature_arities(form[1:])
+        count = arities.pop() if len(arities) == 1 else None
 
     def walk(items, local=shadowed, macro=_macro):
         for item in items:
