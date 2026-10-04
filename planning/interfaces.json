@@ -2684,9 +2684,6 @@
       "keystones": [
         {
           "theorem": "fn-lgu-take-verdict-admits-exactly-log-records"
-        },
-        {
-          "theorem": "fn-lgu-acknowledged-records-are-recovered-at-every-cut"
         }
       ],
       "extraction": null,

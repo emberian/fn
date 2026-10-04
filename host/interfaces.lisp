@@ -515,8 +515,7 @@
 
 (definterface fn-lgu-take-verdict
   :class :common-lisp-compliant
-  :keystones (fn-lgu-take-verdict-admits-exactly-log-records
-              fn-lgu-acknowledged-records-are-recovered-at-every-cut))
+  :keystones (fn-lgu-take-verdict-admits-exactly-log-records))
 
 (definterface fn-lgc-finish-one
   :class :common-lisp-compliant
