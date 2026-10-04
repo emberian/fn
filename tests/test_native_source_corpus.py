@@ -487,33 +487,100 @@ class NativeSourceCorpusTests(unittest.TestCase):
         t1, c1 = "<sc-t1@example.invalid>", "<sc-c1@example.invalid>"
         t2, c2 = "<sc-t2@example.invalid>", "<sc-c2@example.invalid>"
         t3, s3 = "<sc-t3@example.invalid>", "<sc-s3@example.invalid>"
+        p0, p1 = "<sc-p0@example.invalid>", "<sc-p1@example.invalid>"
         codes = {}
         empty = self.served(a)
+        # Socket POSTs bracket a withdrawn local number.  Later NEXT/LAST
+        # must cross the hole, using the same generic catalog as signed rows.
+        posts = {p0: self.post(a, source(p0, b"p0")).decode()}
+        self.assertTrue(posts[p0].startswith("240"), posts)
         # Target then cancel, with a reader pinned before the cancel.
         codes["t1"] = self.author(a, keys, "t1", source(t1, b"t1"))
+        target_numbers = {t1: self.served(a)[t1][0]}
         with self.connect(a) as pinned:
             pinned_before = self.ask(pinned, b"ARTICLE " + t1.encode() + b"\r\n")[0]
             codes["c1"] = self.author(a, keys, "c1", source(
                 c1, b"cancel t1", b"Control: cancel " + t1.encode() + b"\r\n"))
             fresh_after = self.article(a, t1)[0]
             pinned_after = self.ask(pinned, b"ARTICLE " + t1.encode() + b"\r\n")[0]
+        posts[p1] = self.post(a, source(p1, b"p1")).decode()
+        self.assertTrue(posts[p1].startswith("240"), posts)
         # Cancel then target.
         codes["c2"] = self.author(a, keys, "c2", source(
             c2, b"cancel t2", b"Control: cancel " + t2.encode() + b"\r\n"))
         codes["t2"] = self.author(a, keys, "t2", source(t2, b"t2"))
         # Supersedes: S3 withdraws T3 under the cancel's rules and stays visible.
         codes["t3"] = self.author(a, keys, "t3", source(t3, b"t3"))
+        target_numbers[t3] = self.served(a)[t3][0]
         codes["s3"] = self.author(a, keys, "s3", source(
             s3, b"s3", b"Supersedes: " + t3.encode() + b"\r\n"))
+
+        def reader_snapshot():
+            visible = self.served(a)
+            self.assertEqual(set(visible), {p0, p1, s3}, visible)
+            numbers = {m: visible[m][0] for m in (p0, p1, s3)}
+            reads = {}
+            with self.connect(a) as reader:
+                group = reader.command(b"GROUP fn.test").split()
+                self.assertEqual(group[:4],
+                                 [b"211", b"3", str(numbers[p0]).encode(),
+                                  str(numbers[s3]).encode()], group)
+
+                def stat(message_id):
+                    return ("223 %d %s retrieved\r\n" %
+                            (numbers[message_id], message_id)).encode()
+
+                self.assertEqual(reader.command(b"STAT"), stat(p0))
+                self.assertEqual(reader.command(b"LAST")[:3], b"422")
+                self.assertEqual(reader.command(b"STAT"), stat(p0))
+                self.assertEqual(reader.command(b"NEXT"), stat(p1))
+                self.assertEqual(reader.command(b"NEXT"), stat(s3))
+                self.assertEqual(reader.command(b"NEXT")[:3], b"421")
+                self.assertEqual(reader.command(b"STAT"), stat(s3))
+                self.assertEqual(reader.command(b"LAST"), stat(p1))
+                self.assertEqual(reader.command(b"LAST"), stat(p0))
+                # Refusals distinguish a withdrawn number from Message-ID;
+                # neither a failed retrieval nor a Message-ID read moves it.
+                for message_id, number in target_numbers.items():
+                    for verb in (b"STAT", b"ARTICLE", b"HEAD", b"BODY"):
+                        self.assertEqual(reader.command(verb + b" " + str(number).encode())[:3],
+                                         b"423", (verb, number))
+                        self.assertEqual(reader.command(verb + b" " + message_id.encode())[:3],
+                                         b"430", (verb, message_id))
+                        self.assertEqual(reader.command(b"STAT"), stat(p0))
+                for message_id in (p0, p1, s3):
+                    reads[message_id] = {}
+                    for verb, code in ((b"ARTICLE", b"220"), (b"HEAD", b"221"),
+                                       (b"BODY", b"222")):
+                        by_id = reader.multiline(verb + b" " + message_id.encode())
+                        self.assertEqual(by_id[0][:3], code, by_id[0])
+                        self.assertEqual(reader.command(b"STAT"), stat(p0))
+                        by_number = reader.multiline(verb + b" " +
+                                                     str(numbers[message_id]).encode())
+                        self.assertEqual(by_number, by_id)
+                        reads[message_id][verb.decode()] = by_id[1]
+                        self.assertEqual(reader.command(b"STAT " +
+                                                        str(numbers[p0]).encode()), stat(p0))
+                    self.assertEqual(reads[message_id]["ARTICLE"], visible[message_id][1])
+                status, newnews = reader.multiline(b"NEWNEWS fn.test 19700101 000000 GMT")
+                self.assertEqual(status[:3], b"230", status)
+                self.assertEqual(set(newnews.split()), {m.encode() for m in visible})
+            return visible, reads
+
+        live_rows, live_reads = reader_snapshot()
         live = {m: self.article(a, m)[0].decode() for m in (t1, t2, t3, s3)}
-        live_view = sorted(self.served(a))
+        live_view = sorted(live_rows)
         # Replay: SIGKILL and reopen.
         self.stop(a, kill=True)
         self.start(a)
+        replayed_rows, replayed_reads = reader_snapshot()
         replayed = {m: self.article(a, m)[0].decode() for m in (t1, t2, t3, s3)}
-        replayed_view = sorted(self.served(a))
+        replayed_view = sorted(replayed_rows)
         self.stop(a)
-        witness = {"codes": codes, "pinned_before": pinned_before.decode(),
+        witness = {"codes": codes, "posts": posts, "target_numbers": target_numbers,
+                   "rows": {m: {"number": n, "sha256": sha(octets)}
+                            for m, (n, octets) in live_rows.items()},
+                   "pinned_before": pinned_before.decode(),
                    "pinned_after": pinned_after.decode(), "fresh_after": fresh_after.decode(),
                    "live": live, "replayed": replayed, "live_view": live_view,
                    "replayed_view": replayed_view, "empty": sorted(empty)}
@@ -529,8 +596,10 @@ class NativeSourceCorpusTests(unittest.TestCase):
             self.assertTrue(view[t2].startswith("430"), witness)
             self.assertTrue(view[t3].startswith("430"), witness)
             self.assertTrue(view[s3].startswith("220"), witness)
-        self.assertEqual(live_view, [s3], witness)
+        self.assertEqual(live_view, sorted((p0, p1, s3)), witness)
         self.assertEqual(replayed_view, live_view, witness)
+        self.assertEqual(replayed_rows, live_rows, witness)
+        self.assertEqual(replayed_reads, live_reads, witness)
 
 
 if __name__ == "__main__":

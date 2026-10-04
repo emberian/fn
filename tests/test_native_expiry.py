@@ -137,8 +137,9 @@ class ExpiryMixin:
         for r in replies[2:5]:
             self.assertTrue(r.startswith(b"223"), replies)
         self.assertTrue(replies[5].startswith(b"430 no article"), replies)
-        self.assertTrue(replies[6].startswith(b"211 "), replies)
-        self.assertEqual(replies[6].split()[3], b"5", replies)       # high water kept
+        # Option 2' (group-count-after-reclaim DECISION): the exact available
+        # count and true first/last; 1 and 2 are reclaimed tombstones.
+        self.assertEqual(replies[6], b"211 3 3 5 fn.test\r\n", replies)
         self.assertTrue(replies[7].startswith(b"423 article reclaimed"), replies)
         self.assertTrue(replies[8].startswith(b"423 no article"), replies)
         # The re-offer of an expired article is refused (never resurrected),

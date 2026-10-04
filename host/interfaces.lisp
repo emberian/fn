@@ -316,6 +316,10 @@
   :class :common-lisp-compliant
   :keystones (fn-fs-section-declp-refuses-an-unlisted-cleanup-purpose)
   :direct "runs at load in fnn-section-declare, before fnn-call's dispatcher serves")
+(definterface fn-fs-actor-declp
+  :class :common-lisp-compliant
+  :keystones (fn-fs-actor-declp-refuses-an-unknown-kind-or-policy)
+  :direct "runs at load in fnn-actor-declare (every def-actor), before fnn-call's dispatcher serves")
 (definterface fn-fs-section-class-ok
   :class :common-lisp-compliant
   :keystones (fn-fs-section-class-ok-only-for-a-declared-class)
@@ -1005,7 +1009,8 @@
 
 (definterface fn-store-charge
   :class :common-lisp-compliant
-  :keystones (fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge))
+  :keystones (fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge
+              fn-store-charge-of-profile-article-is-representable))
 
 (definterface fn-store-checkpoint-clone-fence-name
   :class ::program)
@@ -1547,9 +1552,11 @@
 
 ; host/native/owner.lisp asks it before the POST's seal (lane arena-forget).
 (definterface fn-owner-cat-may-seal
-  :class :common-lisp-compliant)
-; Its named host wrapper equality is -by-definition. The old Boolean gate
-; restatement is not a prepare-transition keystone; that relation remains owed.
+  :class :common-lisp-compliant
+  :keystones ((fn-cat-may-seal-is-the-prepare-transition-gate :via fn-cat-may-seal)
+              (fn-cat-may-seal-admits-the-prepare-after-the-seal :via fn-cat-may-seal)))
+; Its named host wrapper equality is -by-definition; the keystones relate the
+; word to T1 (books/catalog-may-seal.lisp, lane proofs2 2026-10-04).
 
 (definterface fn-owner-catchup-plans
   :class :common-lisp-compliant)
@@ -3474,10 +3481,28 @@
   :class ::ideal)
 
 (definterface fn-aj-host-authorize
-  :class ::ideal)
+  :class ::ideal
+  :keystones ((fn-aj-reserved-resolution-fits :via fn-aj-authorize)))
 
 (definterface fn-aj-host-initial
+  :class ::ideal
+  :keystones ((fn-aj-statep-of-initial :via fn-aj-initial)
+              (fn-aj-valid-profile-admits-first-work :via fn-aj-initial)))
+
+(definterface fn-aj-host-profile-file-name
   :class ::ideal)
+
+(definterface fn-aj-host-profile-read-bound
+  :class ::ideal)
+
+(definterface fn-aj-host-profile-read
+  :class ::ideal
+  :keystones ((fn-ajpf-read-of-octets :via fn-ajpf-read)
+              (fn-ajpf-read-is-a-profile :via fn-ajpf-read)))
+
+(definterface fn-aj-host-profile-write-octets
+  :class ::ideal
+  :keystones ((fn-ajpf-write-keeps-the-journal :via fn-ajpf-write-octets)))
 
 (definterface fn-aj-host-max-record-length
   :class ::ideal)
@@ -3501,7 +3526,8 @@
   :class ::ideal)
 
 (definterface fn-aj-host-recover
-  :class ::ideal)
+  :class ::ideal
+  :keystones ((fn-aj-recover-past-profile-is-named :via fn-aj-recover-record)))
 
 (definterface fn-bs-profile-resolve
   :class :common-lisp-compliant
@@ -5125,13 +5151,11 @@
 
 (definterface fn-owner-retire-step
   :class ::program
-  ;; The host step is fn-ort-drain-step-counted since 1bf2ddcaf (carried
-  ;; counts and both producer fences), so its keystones are the counted
-  ;; drain's: the window ends it, and before the window it waits unless the
-  ;; fenced count is zero.
-  :keystones ((fn-ort-deadline-is-independent-of-the-fences :via fn-ort-drain-step-counted)
-              (fn-ort-counted-drain-waits-before-window-without-fenced-zero
-               :via fn-ort-drain-step-counted)))
+  ;; The host step is fn-ort-retire-step: the counted drain over the carried
+  ;; feed count, intake fenced, and the owner's queue as the producer fence.
+  :keystones ((fn-ort-retire-step-ends-by-the-window :via fn-ort-retire-step)
+              (fn-ort-retire-step-drains-a-settled-zero :via fn-ort-retire-step)
+              (fn-ort-retire-step-waits-while-anything-drains :via fn-ort-retire-step)))
 
 (definterface fn-tls-self-signed-host-certificate-pem
   :class :program
@@ -5319,10 +5343,13 @@
 (definterface fn-log-sink-pending-lines :class :common-lisp-compliant)
 (definterface fn-log-sink-pending-octets :class :common-lisp-compliant)
 (definterface fn-ort-fenced-input-consumed :class :common-lisp-compliant)
+(definterface fn-ort-final-checkpoint-action :class :common-lisp-compliant
+  :keystones ((fn-ort-final-checkpoint-only-when-drained :via fn-ort-final-checkpoint-action)))
 (definterface fn-ort-intake-action :class :common-lisp-compliant)
 (definterface fn-ort-log-close-action :class :common-lisp-compliant)
 (definterface fn-ort-log-close-exit :class :common-lisp-compliant
-  :kinds ((prior integerp) (uncertain integerp)))
+  :kinds ((prior integerp) (uncertain integerp))
+  :keystones ((fn-ort-clean-stop-keeps-its-exit :via fn-ort-log-close-exit)))
 (definterface fn-ort-report-close-action :class :common-lisp-compliant)
 (definterface fn-ort-service-claim-action :class :common-lisp-compliant)
 (definterface fn-ort-service-settlement-action :class :common-lisp-compliant)

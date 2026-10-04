@@ -97,3 +97,34 @@
 (assert-event (fn-feed-journal-test-crash-cuts :closed
   '(:opened :end :content-durable :directory-durable :parent-durable)))
 (assert-event (fn-feed-journal-test-crash-cuts :ready '(:append :written :append-durable)))
+
+; PKT-825a: fn-feed-journal-batch-is-durable-only-at-its-one-barrier.
+; Positive witness, K = 3: the complete antecedent (posp 3) and both conjuncts.
+(assert-event (posp 3))
+(assert-event (equal (fn-feed-journal-batch-writes 3)
+                     '(:append :written :append :written :append :written)))
+(assert-event (equal (fn-feed-journal-phase-run :ready (fn-feed-journal-batch-writes 3))
+                     :sync))
+(assert-event (equal (fn-feed-journal-phase-run
+                      :ready (append (fn-feed-journal-batch-writes 3) '(:append-durable)))
+                     :ready))
+; Hypothesis removal (posp k): K = 0 fails the hypothesis and the first
+; conjunct (no write, still :ready, not :sync).
+(assert-event (not (posp 0)))
+(must-fail-checked
+ (assert-event (equal (fn-feed-journal-phase-run :ready (fn-feed-journal-batch-writes 0))
+                      :sync)))
+; The conclusion can fail: without its barrier the batch is not durable, and
+; a failed write inside the batch fences the journal even after a barrier.
+(assert-event (not (equal (fn-feed-journal-phase-run :ready (fn-feed-journal-batch-writes 3))
+                          :ready)))
+(assert-event (equal (fn-feed-journal-phase-run :ready
+                      '(:append :written :append :failed :append-durable))
+                     :uncertain))
+; A barrier is still owed while :sync: a :sync journal is never :ready by
+; any event but its barrier.
+(must-fail-checked
+ (assert-event (equal (fn-feed-journal-phase-step :sync :written) :ready)))
+; Every cut inside a batch is a crash point: a crash there fences the journal.
+(assert-event (fn-feed-journal-test-crash-cuts :ready
+  (append (fn-feed-journal-batch-writes 3) '(:append-durable))))

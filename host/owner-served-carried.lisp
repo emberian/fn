@@ -96,8 +96,16 @@
                ; fn-interfaces entries, and the owner entries the raw host
                ; reaches through fnn-owner-result and its wrappers, which
                ; the host reading does not list (tools/raw_dispatch_rule.py's
-               ; undeclared names); regenerate from the refusal, which
-               ; names every unlisted and every stale entry
+               ; undeclared names, all declared since b1d185d55);
+               ; regenerate from the refusal, which names every unlisted
+               ; and every stale entry.  2026-10-04 (lane raw-dispatch):
+               ; the 336 of 10-03 plus the 22 state-returning entries
+               ; declared since (host/history-root-host.lisp's fn-owner-
+               ; hroot-*, the catalog root reserve and capture context,
+               ; the output previews, the article-ready plan step, the BP
+               ; session admission, the workflow helper seconds), read off
+               ; their sources; the loaded world's refusal at image build
+               ; (fnn-install-raw-dispatch) stays the judge
                (
                 fn-acct-host-owner-redeem-log-line
                 fn-acct-host-owner-redeem-stage
@@ -119,17 +127,19 @@
                 fn-owner-app-current-generation fn-owner-app-plan
                 fn-owner-app-record fn-owner-app-refusal-log
                 fn-owner-app-submit fn-owner-app-unbind-receipt-store
-                fn-owner-barrier-limits fn-owner-bound-commit-gate
-                fn-owner-bp-receipt-gatep fn-owner-bp-receipt-release-detail
+                fn-owner-article-ready-plan-step fn-owner-barrier-limits
+                fn-owner-bound-commit-gate fn-owner-bp-receipt-gatep
+                fn-owner-bp-receipt-release-detail
                 fn-owner-bp-receipt-release-record
                 fn-owner-bp-receipt-signature-plan fn-owner-bp-release-line
                 fn-owner-bp-request-refusal-line fn-owner-bp-request-trustedp
-                fn-owner-bp-route-table fn-owner-bp-source-decision-line
-                fn-owner-bp-tcpcl-ingress fn-owner-bp-transit-outcome
-                fn-owner-bp-transit-raw fn-owner-bplc-begin
-                fn-owner-bplc-recover fn-owner-bplc-turn-plan
-                fn-owner-cat-may-seal fn-owner-cat-prepare-sealed
-                fn-owner-catchup-plans
+                fn-owner-bp-route-table fn-owner-bp-session-admission
+                fn-owner-bp-source-decision-line fn-owner-bp-tcpcl-ingress
+                fn-owner-bp-transit-outcome fn-owner-bp-transit-raw
+                fn-owner-bplc-begin fn-owner-bplc-recover
+                fn-owner-bplc-turn-plan fn-owner-cat-may-seal
+                fn-owner-cat-prepare-sealed fn-owner-catalog-capture-context
+                fn-owner-catalog-root-reserve fn-owner-catchup-plans
                 fn-owner-cfg-native-admin-authorize-carried
                 fn-owner-cfg-next-name fn-owner-checkpoint-clone-phase
                 fn-owner-chunk-span fn-owner-clock-observation
@@ -167,7 +177,15 @@
                 fn-owner-finish-identity fn-owner-finish-submission
                 fn-owner-group-codes fn-owner-handshake-admit
                 fn-owner-handshake-done fn-owner-handshake-leave
-                fn-owner-hybrid-current-enrollment fn-owner-hybrid-snapshots
+                fn-owner-hroot-abandon fn-owner-hroot-abandon-word
+                fn-owner-hroot-activate fn-owner-hroot-begin
+                fn-owner-hroot-detach fn-owner-hroot-frontier-value
+                fn-owner-hroot-pin-funded fn-owner-hroot-read-fund
+                fn-owner-hroot-read-owned fn-owner-hroot-read-plan
+                fn-owner-hroot-resize fn-owner-hroot-retire
+                fn-owner-hroot-retire-word fn-owner-hroot-return
+                fn-owner-hroot-row fn-owner-hybrid-current-enrollment
+                fn-owner-hybrid-snapshots
                 fn-owner-identity-publication-verdict
                 fn-owner-identity-reservation fn-owner-install-profile
                 fn-owner-key-statement-event fn-owner-key-statement-log-line
@@ -176,23 +194,23 @@
                 fn-owner-key-statement-redecide-find
                 fn-owner-key-statement-redecide-log-line
                 fn-owner-key-statement-redecide-plan
-                fn-owner-key-statement-request
-                fn-owner-limit-carried fn-owner-limit-decided
-                fn-owner-limit-use fn-owner-live-post-config
-                fn-owner-log-bounds fn-owner-log-reopen
-                fn-owner-login-bindings-plan fn-owner-login-gate-buffer
-                fn-owner-moderation-plan fn-owner-next-store-coordinates
-                fn-owner-next-txid fn-owner-observe fn-owner-oex-capture
-                fn-owner-open fn-owner-operator-refusal-reason
-                fn-owner-operator-submit fn-owner-orc-capture
-                fn-owner-orc-finish fn-owner-orc-instant-stage
-                fn-owner-orc-request fn-owner-orcp-capture
-                fn-owner-orcp-finish fn-owner-orcp-key fn-owner-orcp-salt
-                fn-owner-orcp-swap fn-owner-orcp-swap-word fn-owner-outcome
-                fn-owner-payload-view-acquire fn-owner-payload-view-live-p
-                fn-owner-payload-view-owned-p fn-owner-payload-view-release
-                fn-owner-payload-view-reset fn-owner-peer-carried-event
-                fn-owner-peer-carried-relay-event
+                fn-owner-key-statement-request fn-owner-limit-carried
+                fn-owner-limit-decided fn-owner-limit-use
+                fn-owner-live-post-config fn-owner-log-bounds
+                fn-owner-log-reopen fn-owner-login-bindings-plan
+                fn-owner-login-gate-buffer fn-owner-moderation-plan
+                fn-owner-next-store-coordinates fn-owner-next-txid
+                fn-owner-observe fn-owner-oex-capture fn-owner-open
+                fn-owner-operator-refusal-reason fn-owner-operator-submit
+                fn-owner-orc-capture fn-owner-orc-finish
+                fn-owner-orc-instant-stage fn-owner-orc-request
+                fn-owner-orcp-capture fn-owner-orcp-finish fn-owner-orcp-key
+                fn-owner-orcp-salt fn-owner-orcp-swap fn-owner-orcp-swap-word
+                fn-owner-outcome fn-owner-output-preview
+                fn-owner-output-tariff-preview fn-owner-payload-view-acquire
+                fn-owner-payload-view-live-p fn-owner-payload-view-owned-p
+                fn-owner-payload-view-release fn-owner-payload-view-reset
+                fn-owner-peer-carried-event fn-owner-peer-carried-relay-event
                 fn-owner-peer-carrier-form-buffer fn-owner-peer-carrier-plan
                 fn-owner-peer-for-socket-address fn-owner-peer-revoked-event
                 fn-owner-pending-octets fn-owner-pending-sequence
@@ -205,8 +223,7 @@
                 fn-owner-reader-views-capture fn-owner-reconfigure-authorizedp
                 fn-owner-reconfigure-complete fn-owner-reconfigure-deltas
                 fn-owner-reconfigure-unstage fn-owner-recover-from-store-open
-                 fn-owner-remote-ingress
-                fn-owner-remote-operation-preflight
+                fn-owner-remote-ingress fn-owner-remote-operation-preflight
                 fn-owner-resource-unavailable-line-at
                 fn-owner-retire-intake-refused fn-owner-retire-report
                 fn-owner-retire-step
@@ -277,7 +294,7 @@
                 fn-workflow-carry-preflight fn-workflow-carry-record
                 fn-workflow-carry-report fn-workflow-enqueue-record
                 fn-workflow-fencedp fn-workflow-install-replay
-                fn-workflow-ion-attempt-plan
+                fn-workflow-ion-attempt-plan fn-workflow-ion-helper-seconds
                 fn-workflow-ion-observation-record fn-workflow-ion-request-adu
                 fn-workflow-ion-route-record fn-workflow-ion-status
                 fn-workflow-preflight-record fn-workflow-receipt-record

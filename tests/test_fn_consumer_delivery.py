@@ -75,6 +75,28 @@ class DeliveryRecovery(unittest.TestCase):
                 self.assertFalse(any(c[:2] == ("consumer", "ack") for c in self.calls))
                 self.assertEqual(self.client.summary()["unattributed"], 0)
 
+    def test_wait_sleeps_in_fn_for_the_first_page_only(self):
+        """`wake --wait S`: the first page is fn's `consumer wait ... --timeout
+        S` with the poll's files, under a client deadline past S; the pages
+        after it are ordinary polls."""
+        waits = []
+
+        def native(*words, **options):
+            if words[:2] == ("consumer", "wait"):
+                waits.append((words, options))
+                Path(words[-4]).write_bytes(b"old-cursor")
+                Path(words[-3]).write_bytes(b"")
+                return 0, b"", b""
+            return self.native(*words)
+        self.client.native = native
+        self.client.wake(max_pages=2, wait=7)
+        self.assertEqual(len(waits), 1)
+        words, options = waits[0]
+        self.assertEqual(words[2:4], ("unused", "worker"))
+        self.assertEqual(words[-2:], ("--timeout", 7))
+        self.assertGreater(options["timeout"], 7)
+        self.assertFalse(any(c[:2] == ("consumer", "poll") for c in self.calls))
+
     def test_restart_reuses_exact_delivery_without_polling_then_handles_withdrawal(self):
         with self.assertRaises(fn_consumer.Stop):
             self.client.wake(max_pages=1)

@@ -13,6 +13,19 @@ import proof_repl
 
 
 class CallbackWorldTests(unittest.TestCase):
+    # The pinned extraction (tests/fixtures/evidence/extracted-callback-world-
+    # 2026-09-30) predates host/native/io.lisp's fnn-install-raw-dispatch
+    # creator check (fn-di-raw-creatorp, *fnn-startup-creators*), so its
+    # first assertion compares against a definition the host no longer has.
+    # Re-extracting needs a certified image world (tools/extract/build.sh),
+    # which the default closure is not at 39a0db8cf, and the extraction
+    # backend itself is the open D35 decision (swarm plan 2026-10-04 §6:
+    # plain-SBCL core vs Chicken/Chez). Re-pin from a fresh extraction once
+    # D35 is settled and the closure certifies; until then it is skipped,
+    # not deleted (root ruling, 2026-10-04).
+    @unittest.skip("pinned 2026-09-30 extraction predates fn-di-raw-creatorp; "
+                   "re-extraction waits on D35 (extraction backend) and a "
+                   "certified image world")
     @unittest.skipUnless(shutil.which('sbcl'), 'SBCL required')
     def test_actual_metadata_installer_and_refusers(self):
         names = {'fnn-install-raw-dispatch', 'fnn-fixed-raw-callback'}

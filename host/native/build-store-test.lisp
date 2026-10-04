@@ -107,18 +107,25 @@
   (prog2$ (cw "fn-native-store-test: raw entry not installed~%")
           (value :missing)))
 (progn! (set-raw-mode t)
+        ;; D40: the dispatch table and its traps (host/native/raw-trap.lisp),
+        ;; installed from the fn-interfaces table of this world before any
+        ;; other raw host file loads, so no load-time form captures a
+        ;; raw-dispatched function object (an unknown or unverified target
+        ;; stops the build).
+        (load "host/native/raw-trap.lisp")
+        (fnn-install-raw-dispatch)
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
-        ;; D40: the raw-dispatched entries, from the fn-interfaces table of
-        ;; this world (an unknown or unverified target stops the build).
-        (fnn-install-raw-dispatch)
         ; The stored payloads' DEFLATE encoder and ACL2's payload decoder's
         ; buffers (the SBCL encoder; untrusted: ACL2 checks every candidate).
         (load "host/native/deflate.lisp")
         ; A developer image by definition (the header): its `store' selectors
         ; are developer-image selectors, refused by a production profile.
         (fnn-select-image-profile "developer")
+        ;; D40: close the table; only a developer image may run ACL2's
+        ;; loop in a dispatcher extent (`fn acl2 session').
+        (fnn-raw-trap-seal :developer (fnn-developer-image-p))
         (fnn-select-release-version)
         (defun fn-native-entry (st)
           (declare (ignore st))
@@ -126,6 +133,9 @@
           (fnn-deflate-reset)
           (fnn-main)
           (values nil :exited *the-live-state*))
+        ;; D40: every raw-dispatched target is still its trap after every
+        ;; raw host file loaded (fnn-main checks again at every start).
+        (fnn-raw-dispatch-traps-intact)
         (setq *print-startup-banner* nil))
 (defttag nil)
 (value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))
