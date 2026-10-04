@@ -528,13 +528,30 @@ theorems are the argument that the guard's carried conjuncts (the owner's
 every transition) hold at the call. `books/definterface.lisp` checks declaration
 shape against the loaded world, including a positive predicate conclusion.
 That lint does not prove that theorem premises hold or that its arguments
-name the entry's actual state and effects. The five proposed owner annotations
-are withheld until that host-subject argument exists; they still use their
-executable counterparts. The entry guard's arity and kind checks run before
+name the entry's actual state and effects. The owner's served entries are
+declared `:raw-with (:carried fn-owner-served-carried :assuming
+A-OWNER-INVARIANT-CARRIED)` (host/owner-served-carried.lisp): the row's
+proved writers are checked as above, and its completeness over every other
+state-returning writer is the named native trust marker, each owed writer a
+proof-owed item. The entry guard's arity and kind checks run before
 either dispatch, and
 `planning/interfaces.json` (`raw_dispatched`) lists every such entry. The
 developer image keeps the counterpart path behind
 `FN_NATIVE_DISPATCH_COUNTERPART=1` so a native can compare both.
+
+The image keeps raw dispatch the only way in (host/native/raw-trap.lisp,
+loaded and installed before every other raw host file). Each raw-dispatched
+function object is captured and its symbol's binding replaced by a trap that
+runs the captured object only inside a dispatcher extent and otherwise
+faults with `fnn-raw-dispatch-trap` (exit 4, an unlisted condition class).
+The extent is a per-thread slot: a special variable whose symbol is
+uninterned and held only by raw-trap.lisp's closures, bound by the dispatcher
+(`fnn-call`, a fixed callback, the developer `acl2 session`) for the call's
+dynamic extent. A same-named symbol, a closure kept past the call and a
+thread started inside the extent are all outside it; no lock or allocation
+is added per call. The table is sealed at the end of the image build, and
+`fnn-raw-dispatch-traps-intact` refuses a redefined target at the build's end
+and at every start. `fn acl2 raw-traps` (developer images) probes every entry.
 
 The live carry state boundary is `fn-owner-retain-carry` with
 `fn-owner-retain-carry-put` (books/owner-retain-state.lisp). Reading after

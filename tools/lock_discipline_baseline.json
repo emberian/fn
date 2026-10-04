@@ -474,14 +474,6 @@
    "reason": "fnn-cold-worker-token: unlocked-read; writes under [('E',), ('E', 'O')], 8 access site(s), no common lock"
   },
   {
-   "key": "R1b|fnn-install-raw-dispatch|*fnn-raw-dispatch*:unlocked-write",
-   "count": 1,
-   "rule": "R1b",
-   "category": "violation",
-   "where": "host/native/io.lisp:1287",
-   "reason": "*fnn-raw-dispatch* written with no lock at host/native/io.lisp:1241 (fnn-install-raw-dispatch); 1 write site(s), 5 access site(s) across 18 actor(s), no common "
-  },
-  {
    "key": "R1b|fnn-journal-write|*fnn-journal-w*:unlocked-write",
    "count": 1,
    "rule": "R1b",

@@ -19,12 +19,12 @@
 (fnalloc-load-host-forms "host/native/io.lisp"
  '((define-condition fnn-store-error) (define-condition fnn-store-fault)
    (define-condition fnn-entry-guard-fault) (defun fnn-fault)
-   (defun fnn-counterpart) (defun fnn-dispatch-function)
+   (defun fnn-counterpart)
    (defun fnn-guard-conjuncts) (defun fnn-entry-guard-spec)
    (defun fnn-entry-guard-describe) (defun fnn-entry-guard) (defun fnn-call)))
-(defvar *fnn-dispatch-counterpart* t)
-(defvar *fnn-raw-dispatch* (make-hash-table :test 'eq))
-(defvar *fnn-startup-creators* (make-hash-table :test 'eq))
+;; The dispatcher, its table and traps (D40): host/native/raw-trap.lisp.
+(load "host/native/raw-trap.lisp")
+(setq *fnn-dispatch-counterpart* t)
 (defvar *fnn-entry-guard-specs* (make-hash-table :test 'eq))
 (defvar *fn-entry-guard-kinds* nil)
 
@@ -53,7 +53,7 @@
       (let* ((repetitions (max 32 (floor 32768 bytes)))
              (warm (fnn-call 'fn-sl-step cur bytes)))
         (fnalloc-check-result warm text bytes)
-        (unless (eq (fnn-dispatch-function 'fn-sl-step) (fnn-counterpart 'fn-sl-step))
+        (unless (eq (fnn-dispatch-symbol 'fn-sl-step) (fnn-counterpart 'fn-sl-step))
           (error "allocation probe did not use actual normal counterpart route"))
         (sb-ext:gc :full t)
         (let ((before (sb-ext:get-bytes-consed))

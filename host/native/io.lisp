@@ -1334,88 +1334,20 @@ offered to the writer while the owner runs (PKT-508), else written here."
 ;;; dispatch, exactly as before; what raw dispatch skips is the carried
 ;;; conjuncts alone.
 ;;;
-;;; The table is derived from the loaded world at image build
-;;; (fnn-install-raw-dispatch, called by host/native/build.lisp after this
-;;; file loads): each `:raw-with' entry of the `fn-interfaces' table, refused
-;;; unless its raw symbol is bound and its symbol-class is
+;;; The table, the trap and the dispatcher live in host/native/raw-trap.lisp,
+;;; which every build script loads before this file and installs from the
+;;; loaded world (fnn-install-raw-dispatch) before any other raw host file
+;;; loads: each `:raw-with' / `:raw-guarded' entry of the `fn-interfaces'
+;;; table, refused unless its raw symbol is bound and its symbol-class is
 ;;; :common-lisp-compliant, so an unknown dispatch target stops the build.
+;;; Each raw-dispatched symbol's binding is a trap that faults outside a
+;;; dispatcher call's per-thread extent; fnn-call below is the dispatcher.
 ;;; The developer selector FN_NATIVE_DISPATCH_COUNTERPART=1 keeps the
-;;; counterpart path for every entry (tests.test_native_owner runs the served
-;;; POST both ways and requires identical replies); a production image has no
-;;; selector and always dispatches raw.  planning/interfaces.json lists the
-;;; raw-dispatched entries (tools/interface_emit.py).
-
-;; Filled once at image build, before save-exec and before any thread
-;; (fnn-install-raw-dispatch from host/native/build*.lisp); served threads read it.
-;; thread-confined: the image build's loading thread writes; afterwards read-only
-(defvar *fnn-raw-dispatch* (make-hash-table :test 'eq)
-  "entry name -> its raw (guard-verified, compiled) function symbol")
-
-(defvar *fnn-startup-creators* (make-hash-table :test 'eq)
-  "Validated registered zero-input stobj creators; allocation has no executable
-counterpart. The image installer fills this once before any worker exists.")
-
-(defvar *fnn-dispatch-counterpart* nil
-  "T when the developer selector keeps the executable-counterpart path.")
-
-(defun fnn-install-raw-dispatch (&key (report t))
-  "Fill *fnn-raw-dispatch* from the fn-interfaces table of the loaded world:
-the :raw-with and :raw-guarded entries, checked against the world; the count."
-  (let ((wrld (w *the-live-state*)))
-    (clrhash *fnn-raw-dispatch*)
-    (clrhash *fnn-startup-creators*)
-    (dolist (entry (table-alist 'fn-interfaces wrld))
-      (let ((name (car entry))
-            (theorems (cadr (assoc-keyword :raw-with (cdr entry))))
-            (guarded (assoc-keyword :raw-guarded (cdr entry))))
-        (when (or theorems guarded)
-          (when guarded
-            (let ((problem (fn-di-raw-guarded-problem name (cdr entry) wrld)))
-              (when problem
-                (error "fnn-install-raw-dispatch: ~a has a refused guarded declaration: ~s"
-                       name problem))))
-          ;; Recheck the loaded table at the dispatch installation boundary,
-          ;; rather than assuming every table entry came from definterface.
-          (let ((problem (and theorems (fn-di-raw-with-problem name (cdr entry) wrld))))
-            (when problem
-              (error "fnn-install-raw-dispatch: ~a has a refused declaration: ~s"
-                     name problem)))
-          (multiple-value-bind (target-problem target)
-              (if guarded (fn-di-raw-guarded-target name (cdr entry) wrld)
-                (values nil name))
-            (when target-problem
-              (error "fnn-install-raw-dispatch: refused creator target for ~a: ~s" name target-problem))
-            (let ((raw target))
-            (when (and raw (macro-function raw))
-              (error "fnn-install-raw-dispatch: ~a resolved to a macro, not a raw function" name))
-            (unless (and raw (fboundp raw))
-              (error "fnn-install-raw-dispatch: ~a has a raw declaration but no raw definition" name))
-            (unless (eq (symbol-class name wrld) :common-lisp-compliant)
-              (error "fnn-install-raw-dispatch: ~a has a raw declaration but is ~a, not guard-verified"
-                     name (symbol-class name wrld)))
-            (when (and guarded (not (compiled-function-p (symbol-function raw))))
-              (error "fnn-install-raw-dispatch: ~a has no compiled guarded callback" name))
-            (setf (gethash name *fnn-raw-dispatch*) raw)
-            ;; ACL2's loaded-world predicate limits this to the exact creator
-            ;; role and validated compiled target, never semantic methods.
-            (when (fn-di-raw-creatorp name (cdr entry) wrld)
-              (setf (gethash name *fnn-startup-creators*) raw))
-            (when report
-              (format t "~&FN_RAW_DISPATCH ~(~a~) ~(~a~) invariant-risk=~a with=~(~a~)~%"
-                      name (symbol-class name wrld)
-                      (if (getpropc name 'invariant-risk nil wrld) "t" "nil")
-                      (if guarded (cadr guarded) theorems))))))))
-    (hash-table-count *fnn-raw-dispatch*)))
-
-(defun fnn-dispatch-function (name)
-  "The function fnn-call applies for NAME: its raw definition when NAME is
-raw-dispatched and the counterpart selector is off, else its executable
-counterpart. Registered startup creators retain validated allocation routes;
-ACL2 refuses their counterparts, independent of semantic method selection."
-  (or (gethash name *fnn-startup-creators*)
-      (and (not *fnn-dispatch-counterpart*)
-           (gethash name *fnn-raw-dispatch*))
-      (fnn-counterpart name)))
+;;; counterpart path for every entry but the startup creators
+;;; (tests.test_native_owner runs the served POST both ways and requires
+;;; identical replies); a production image has no selector and always
+;;; dispatches raw.  planning/interfaces.json lists the raw-dispatched
+;;; entries (tools/interface_emit.py).
 
 ;;; The entry guard (lane entry-guards, 2026-09-27).  Every call into the
 ;;; core passes through fnn-call; before the counterpart runs, the host checks
@@ -1533,7 +1465,10 @@ kind); :unknown when the world has no formals for NAME (a raw primitive)."
                                       (fnn-entry-guard-describe value))))))))))
 
 (defun fnn-call (name &rest args)
-  "Apply NAME's executable counterpart to ARGS, after the entry guard.
+  "The dispatcher: after the entry guard (outside the handler below, so its
+fault keeps its class), apply NAME's raw definition (a :raw-with entry) or
+its executable counterpart to ARGS in a dispatcher extent
+(host/native/raw-trap.lisp fnn-raw-dispatch-apply).
 
 An explicit core result such as :REFUSED remains a semantic result for its
 wrapper to handle.  A thrown condition or escaped raw evaluation is an
@@ -1543,7 +1478,7 @@ execution-boundary fault, never a claim that the core refused an input."
     (setq values
           (catch 'raw-ev-fncall
             (handler-case
-                (prog1 (multiple-value-list (apply (fnn-dispatch-function name) args))
+                (prog1 (multiple-value-list (fnn-raw-dispatch-apply name args))
                   (setq outcome :ok))
               (serious-condition (c)
                 (setq outcome (princ-to-string c))
@@ -1558,18 +1493,15 @@ execution-boundary fault, never a claim that the core refused an input."
 ; bodies check scalar inputs before work; :raw-with carries their stobj guards.
 ; This bridge establishes no carry and never substitutes a logical callback.
 (defun fnn-fixed-raw-callback (name)
-  "Return the selected compiled raw entry; refuse an unprepared hot callback."
+  "Return the selected compiled raw entry's callback, which enters a
+dispatcher extent itself (host/native/raw-trap.lisp); refuse an unprepared
+hot callback."
   (when *fnn-dispatch-counterpart*
     (fnn-fault "fixed callback ~(~a~) requires raw dispatch" name))
-  (let ((raw (gethash name *fnn-raw-dispatch*)))
-    (unless (and raw (fboundp raw))
-      (fnn-fault "fixed callback ~(~a~) is missing verified raw dispatch" name))
-    (when (macro-function raw)
-      (fnn-fault "fixed callback ~(~a~) names a macro, not a callable function" name))
-    (let ((function (symbol-function raw)))
-      (unless (compiled-function-p function)
-        (fnn-fault "fixed callback ~(~a~) is not compiled" name))
-      function)))
+  (unless (fnn-raw-dispatch-target name)
+    (fnn-fault "fixed callback ~(~a~) is missing verified raw dispatch" name))
+  (or (fnn-raw-dispatch-callback name)
+      (fnn-fault "fixed callback ~(~a~) is not compiled" name)))
 
 (defmacro fnn-core-mv (name call)
   "Preserve fixed CALL's scalar MVs without an argument or result container.
@@ -6723,7 +6655,7 @@ tree root), or stop the build."
     ;; host/native/digest.lisp: the matched measurement's reference arm.
     "FN_NATIVE_DIGEST_TEST_OFF"
     ;; D40: the executable-counterpart path for every :raw-with entry, so a
-    ;; native compares the served path both ways (fnn-dispatch-function).
+    ;; native compares the served path both ways (fnn-raw-dispatch-apply).
     "FN_NATIVE_DISPATCH_COUNTERPART"
     "FN_NATIVE_IMPORT_COMPRESS_MIN_TEST"
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
@@ -9602,6 +9534,8 @@ of standard input; ACL2 admits each octet within the XREDEEM PASS wire bound."
            (handler-case
                (progn
                  (fnn-developer-selector-gate argv)
+                 ;; D40: every raw-dispatched target is still its trap.
+                 (fnn-raw-dispatch-traps-intact)
                  (unless (eq (fnn-global 'guard-checking-on) t)
                    (fnn-fault "guard-checking-on is not t in the saved image"))
                  ;; D40: a developer image may keep the counterpart path.
@@ -9609,7 +9543,7 @@ of standard input; ACL2 admits each octet within the XREDEEM PASS wire bound."
                        (equal (fnn-developer-selector "FN_NATIVE_DISPATCH_COUNTERPART") "1"))
                  (when *fnn-dispatch-counterpart*
                    (fnn-err "fn-dispatch: counterpart for ~d raw-dispatched entries (FN_NATIVE_DISPATCH_COUNTERPART)"
-                            (hash-table-count *fnn-raw-dispatch*)))
+                            (fnn-raw-dispatch-count)))
                  (fnn-dispatch argv))
              (fnn-usage-error (e)
                (fnn-err "fn-host: error: ~a" e)

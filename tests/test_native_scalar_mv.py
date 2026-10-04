@@ -16,26 +16,35 @@ class ScalarMVTests(unittest.TestCase):
     def test_actual_bridge_preserves_scalar_values_and_fails_closed(self):
         selected = []
         for form in proof_repl.forms((ROOT / "host/native/io.lisp").read_text()):
-            if proof_repl.head_and_name(form)[1] in {"fnn-fixed-raw-callback", "fnn-core-mv"}:
+            if proof_repl.head_and_name(form)[1] in {"fnn-fixed-raw-callback", "fnn-core-mv",
+                                                          "fnn-fixed-callback-fault",
+                                                          "fnn-fixed-callback-fail"}:
                 selected.append(form)
-        self.assertEqual(len(selected), 2)
+        self.assertEqual(len(selected), 4)
         driver = '''(defpackage "ACL2" (:use "COMMON-LISP"))
 (in-package "ACL2")
 (define-condition fnn-store-fault (error) ((message :initarg :message)))
 (defun fnn-fault (control &rest args)
   (error 'fnn-store-fault :message (apply #'format nil control args)))
-(defvar *fnn-raw-dispatch* (make-hash-table :test 'eq))
-(defvar *fnn-dispatch-counterpart* nil)
+(defvar *the-live-state* nil)
+(defun w (state) state)
+(defun getpropc (name key default wrld)
+  (declare (ignore wrld))
+  (if (and (eq key 'formals) (eq name 'raw-input-next)) '(token controller pool) default))
+(load "''' + str(ROOT / "host/native/raw-trap.lisp") + '''")
 ''' + "\n\n".join(selected) + '''
 (defun expect-fault (function)
   (assert (handler-case (progn (funcall function) nil) (fnn-store-fault () t))))
 (expect-fault (lambda () (fnn-fixed-raw-callback 'missing)))
-(setf (gethash 'missing-function *fnn-raw-dispatch*) 'no-function)
-(expect-fault (lambda () (fnn-fixed-raw-callback 'missing-function)))
 (setf (symbol-function 'raw-input-next)
       (compile nil '(lambda (token controller pool)
         (values :range 3 5 8 controller pool token))))
-(setf (gethash 'input-next *fnn-raw-dispatch*) 'raw-input-next)
+(fnn-raw-trap-install 'input-next 'raw-input-next)
+(setf (symbol-function 'not-compiled)
+      (let ((sb-ext:*evaluator-mode* :interpret)) (eval '(lambda () :unprepared))))
+(assert (not (compiled-function-p (symbol-function 'not-compiled))))
+(fnn-raw-trap-install 'not-compiled 'not-compiled)
+(fnn-raw-trap-seal)
 (let ((callback (fnn-fixed-raw-callback 'input-next))
       (controller (vector 0)) (pool (vector nil :uninitialized nil)))
   (multiple-value-bind (word start count end new-controller new-pool token)
@@ -44,10 +53,6 @@ class ScalarMVTests(unittest.TestCase):
                  (eq new-controller controller) (eq new-pool pool) (= token 17)))))
 (let ((*fnn-dispatch-counterpart* t))
   (expect-fault (lambda () (fnn-fixed-raw-callback 'input-next))))
-(setf (symbol-function 'not-compiled)
-      (let ((sb-ext:*evaluator-mode* :interpret)) (eval '(lambda () :unprepared))))
-(setf (gethash 'not-compiled *fnn-raw-dispatch*) 'not-compiled)
-(assert (not (compiled-function-p (symbol-function 'not-compiled))))
 (expect-fault (lambda () (fnn-fixed-raw-callback 'not-compiled)))
 (assert (zerop (length (multiple-value-list (fnn-core-mv 'zero (values))))))
 (assert (eq (fnn-core-mv 'one (values :refused)) :refused))
