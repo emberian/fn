@@ -13,7 +13,9 @@ BUILD = '''(include-book "books/w")
 (ld "host/a-host.lisp" :ld-error-action :error)
 (progn! (set-raw-mode t)
         (load "host/native/x.lisp")
-        (fnn-boot-check))
+        (fnn-boot-check)
+        (defun fn-native-entry (st) (declare (ignore st)) (fnn-g 1)))
+(save-exec "x" "y" :return-from-lp '(fn-native-entry state))
 '''
 RAW = '''(in-package "ACL2")
 (declaim (inline fnn-fast))
@@ -23,6 +25,8 @@ RAW = '''(in-package "ACL2")
 (defun fnn-tabled () (make-hash-table))
 (defparameter *fnn-table* (fnn-tabled))
 (defparameter +fnn-limit+ 4)
+(defparameter *fnn-read-pairs* '((fnn-h . formals) (fn-native-entry . guard)))
+(fnn-register "late" (lambda () (fnn-h 2)))
 (defmacro fnn-with (x) x)
 (defstruct (fnn-state) a b)
 (pushnew 'fnn-g *fnn-hooks*)
@@ -102,6 +106,9 @@ class OverlayPlanTests(unittest.TestCase):
         # the build script's raw block called fnn-boot-check
         self.assertRefused(plan({"host/native/x.lisp": ("(defun fnn-boot-check () t)", "(defun fnn-boot-check () nil)")}),
                            "host/native/build.lisp", "fnn-boot-check")
+        # what evaluation does not run is not a build-time call: a quoted
+        # list, a lambda handed to a registration, a defun in the build's
+        # raw block, the save-exec's quoted return form
         # a hook stored by symbol reaches the new body; fnn-g is reached from fnn-h
         self.assertEqual(plan({"host/native/x.lisp": ("(defun fnn-h (x) (list x))", "(defun fnn-h (x) x)")}).refusals, [])
         # #'fnn-verb captured the old function object
