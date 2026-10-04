@@ -18,7 +18,7 @@ planning/scenarios-2026-10-04.md is the coverage map they were cut from:
 which question each entry answers and the gaps no entry answers.
 
 `run` hands the tier's modules and opt-in variables to tools/hbox_native.sh
-with `--box hbox --image-set SHA` and the four published images, so nothing
+with `--box BOX --image-set SHA` and the four published images, so nothing
 is certified or built: the modules run against the images the integrator
 published for dev commit SHA (hbox:/tank/fn/images/SHA).  The tests come from
 REV (default SHA itself, so the tests match the image; `.` runs this
@@ -166,7 +166,7 @@ def run(args: argparse.Namespace) -> int:
                          capture_output=True, text=True).stdout.strip() or args.image_set
     rev = args.rev or sha
     label = args.label or f"{args.tier}-{sha[:9]}"
-    argv = ["sh", str(ROOT / "tools/hbox_native.sh"), "--box", "hbox", "--image-set", sha,
+    argv = ["sh", str(ROOT / "tools/hbox_native.sh"), "--box", args.box, "--image-set", sha,
             "--images", IMAGES, "--jobs", str(args.jobs), "--label", label]
     for env in got["env"]:
         argv += ["--env", env]
@@ -196,6 +196,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--rev", help="the tests' revision (default: the image set's; `.` = this worktree)")
     p.add_argument("--label")
     p.add_argument("--jobs", type=int, default=4)
+    p.add_argument("--box", default="hbox",
+                   help="hbox (default: the INN tree, docker and the fixtures live there) or a "
+                        "rented box from ~/.config/fn/boxes.json (lat1, cloud1, cloud2: they "
+                        "mirror the published image sets)")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("extra", nargs="*", help="further tools/hbox_native.sh options, after --")
     args = parser.parse_args(argv)
