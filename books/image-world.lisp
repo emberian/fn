@@ -432,6 +432,7 @@
 (include-book "native-statement-material")
 (include-book "peer-invite-retry")
 (include-book "tls-reload")
+(include-book "tls-key-exchange")
 (include-book "web-session-keystones")
 (include-book "web-config")
 (include-book "web-page-cursor")
