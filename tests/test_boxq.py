@@ -44,16 +44,18 @@ class BoxqTests(unittest.TestCase):
         self.dir = base / "boxq"
         table = base / "boxes.json"
         table.write_text(json.dumps({"boxes": {
-            "big": {"like": "hbox", "cores": 32, "until": "2999-01-01T00:00:00Z"},
-            "small": {"like": "hbox", "cores": 8, "until": "2999-01-01T00:00:00Z"},
-            "gone": {"like": "hbox", "cores": 8, "until": "2000-01-01T00:00:00Z"}}}))
+            "big": {"like": "hbox", "cores": 32, "until": "2999-01-01T00:00:00Z", "qualified": {"ok": True}},
+            "small": {"like": "hbox", "cores": 8, "until": "2999-01-01T00:00:00Z", "qualified": {"ok": True}},
+            "unq": {"like": "hbox", "cores": 64, "until": "2999-01-01T00:00:00Z", "qualified": {"ok": False}},
+            "gone": {"like": "hbox", "cores": 8, "until": "2000-01-01T00:00:00Z", "qualified": {"ok": True}}}}))
         self.env = {"FN_BOXES_FILE": str(table), "FN_BOXQ_DIR": str(self.dir)}
         self.saved = {k: os.environ.get(k) for k in self.env}
         os.environ.update(self.env)
         self.probe = {"big": {"cores": 32, "load": 0.5, "mem": 120, "sets": [SET]},
                       "small": {"cores": 8, "load": 0.2, "mem": 28, "sets": [SET]},
                       "hbox": {"cores": 24, "load": 3.0, "mem": 80, "sets": [SET]},
-                      "persvati": {"cores": 24, "load": 1.0, "mem": 60, "sets": []}}
+                      "persvati": {"cores": 24, "load": 1.0, "mem": 60, "sets": []},
+                      "unq": {"cores": 64, "load": 0.0, "mem": 500, "sets": [SET]}}
         self.saved_probe = boxq.PROBE, boxq.PROBE_TTL
         boxq.PROBE = lambda box: self.probe.get(box)
         boxq.PROBE_TTL = 0          # every pump sees the probe as it is now
@@ -87,6 +89,7 @@ class BoxqTests(unittest.TestCase):
         boxq.pump(self.dir, self.launch)
         self.assertEqual(self.launched[-1][:2], (second, "small"))
         self.assertNotIn("gone", [b for _, b, _ in self.launched])
+        self.assertNotIn("unq", [b for _, b, _ in self.launched])   # unqualified: never placed
 
     def test_a_box_is_never_given_more_cores_than_it_has_free(self):
         self.probe["big"] = None                    # unreachable
@@ -174,6 +177,20 @@ class BoxqTests(unittest.TestCase):
         for kid in (st[k] for k in st[job]["shards"]):
             cores = {"big": 32, "small": 8}[kid["box"]]
             self.assertLessEqual(kid["slots"] * boxq.SHAPE["native"][0], cores * (1 - boxq.FILL_RESERVE) + 1, kid)
+
+    def test_fill_takes_a_chunk_at_a_time_and_queues_the_rest(self):
+        timings = {"tests": {f"tests.test_long.T.test_{i}": 300.0 for i in range(200)}, "modules": {}}
+        self.dir.mkdir(parents=True, exist_ok=True)
+        (self.dir / "timings.json").write_text(json.dumps(timings))
+        job = self.submit(kind="native", priority="fill", image_set=SET, tests=["tests.test_long"])
+        boxq.pump(self.dir, self.launch)
+        st = self.state()
+        self.assertEqual(st[job]["state"], "queued")
+        placed = [t for k in st[job]["shards"] for t in st[k]["tests"]]
+        self.assertEqual(len(placed) + len(st[job]["tests"]), 200)
+        for k in st[job]["shards"]:
+            kid = st[k]
+            self.assertLessEqual(len(kid["tests"]) * 300.0, max(kid["slots"], 1) * boxq.FILL_CHUNK_SECONDS * 3)
 
     def test_pack_is_longest_first(self):
         plan = boxq.pack([("a", 9), ("b", 5), ("c", 4), ("d", 3)], {"x": 1, "y": 1})

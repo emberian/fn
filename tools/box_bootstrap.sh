@@ -44,6 +44,9 @@
 # Removing a box: delete its row (or let `until` pass) and its Host block;
 # nothing in the repository names it.
 set -eu
+# The one package list: the system step installs it and tools/box_qualify.sh
+# checks it (libssl3 is libssl3t64 on Ubuntu 24.04; both accept either).
+FN_BOX_PACKAGES="rsync git python3 python3-venv python3-pip libssl3 libsodium23 zlib1g build-essential pigz zstd openssl docker.io acl"
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 usage() { sed -n '2,/^set -eu/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' >&2; exit 2; }
 [ $# -ge 2 ] || usage
@@ -109,12 +112,12 @@ SEED_PUB=$($SSH "$SEED" 'test -f ~/.ssh/id_ed25519 || ssh-keygen -q -t ed25519 -
 HBOX_PUB=$(ssh -o BatchMode=yes -o ConnectTimeout=15 hbox 'cat ~/.ssh/id_ed25519.pub' 2>/dev/null) || HBOX_PUB=
 [ -n "$HBOX_PUB" ] || echo "   (hbox did not answer: its key is not authorized; add it before the mirror or teardown runs)"
 SEED_PUB=$(printf '%s\n%s' "$SEED_PUB" "$HBOX_PUB")
-$SSH "$TARGET" 'S=; [ "$(id -u)" = 0 ] || S="sudo -n"; exec $S env NAME='"$NAME"' SEED_PUB="'"$SEED_PUB"'" FARM_MIRROR='"$FARM_MIRROR"' bash -s' <<'SYS'
+$SSH "$TARGET" 'S=; [ "$(id -u)" = 0 ] || S="sudo -n"; exec $S env NAME='"$NAME"' PKGS="'"$FN_BOX_PACKAGES"'" SEED_PUB="'"$SEED_PUB"'" FARM_MIRROR='"$FARM_MIRROR"' bash -s' <<'SYS'
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q >/dev/null
 ssl=libssl3; apt-cache show libssl3t64 >/dev/null 2>&1 && ssl=libssl3t64
-apt-get install -y -q rsync git python3 python3-venv "$ssl" libsodium23 zlib1g build-essential pigz zstd openssl >/dev/null
+apt-get install -y -q $(echo "$PKGS" | sed "s/libssl3/$ssl/") >/dev/null
 # docker: tests.test_native_reader_clients builds the slrn/pan container
 # (tools/reader_clients/Dockerfile) and skips on a box without it (lat1,
 # 2026-10-04); fn must be in the docker group (reset any ssh ControlMaster so
@@ -240,4 +243,6 @@ for box in $(python3 "$HERE/tools/box_table.py" names); do
     scp -q -o BatchMode=yes "${FN_BOXES_FILE:-$HOME/.config/fn/boxes.json}" "$box:.config/fn/boxes.json" || echo "   (could not update $box's copy)"
 done
 ssh -o BatchMode=yes "$NAME" true || die "alias $NAME does not answer"
+step qualify
+sh "$HERE/tools/box_qualify.sh" "$NAME" || die "$NAME is registered but NOT qualified (above); boxq will not place work on it"
 echo "box_bootstrap: $NAME ready: --box $NAME / farm.py submit $NAME / proof_repl --host $NAME (until $UNTIL)"

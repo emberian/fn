@@ -20,6 +20,9 @@ of the tree boxq.py lives in:
                    REV TESTS  (--image-set required: the box must hold the set)
     overlay        the same with --overlay: REV's host change over the published set
     check-lane     tools/remote_check.sh BOX --target check-lane EXTRA, run in LANE
+    image-build    tools/hbox_native.sh --build-only --publish --images I REV on a
+                   rented box: certify, acquire, host-ld, the saves in parallel, and
+                   REV's set published there (tools/batch.py fans it out)
     image-set      EXTRA is the command (run in LANE, $BOXQ_BOX set); hbox only by
                    rule, under hbox's one-certify slot
     cmd            EXTRA is the command, as image-set, on any box (fill kits, probes)
@@ -66,23 +69,28 @@ TOOLS_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import box_table  # noqa: E402
 
-KINDS = ("certify-lane", "native", "overlay", "check-lane", "image-set", "cmd")
+KINDS = ("certify-lane", "native", "overlay", "check-lane", "image-build", "image-set", "cmd")
 PRIORITIES = {"integrator": 0, "lane": 1, "fill": 2}
-CERTIFY_KINDS = ("certify-lane", "check-lane", "image-set")
+CERTIFY_KINDS = ("certify-lane", "check-lane", "image-set", "image-build")
 HBOX_LOAD_CAP = 16.0
 HBOX_JOBS = 8
 FILL_RESERVE = 0.25        # a fill job leaves this share of a box's cores free
 RAMP_SECONDS = 90          # a job younger than this is not yet in the box's load
 PROBE_TTL = 45
 MIN_SHARD_SECONDS = 120    # a native job predicted under this is not split
+FILL_CHUNK_SECONDS = 600   # a fill shard takes about this much work per slot, so
+                           # fill frees its boxes every ~10 min for queued work
+CHUNK_SECONDS = 420        # any other native shard: the rest of the job stays queued
+                           # and goes, chunk by chunk, to whichever box frees first
 UNKNOWN_MODULE_SECONDS = 60.0
 # Per-kind defaults: (cores per slot, GiB per slot, default slots)
 SHAPE = {
     "certify-lane": (1.0, 4.0, 8),
     "check-lane": (1.0, 2.5, 6),
-    "native": (1.5, 5.0, 4),
-    "overlay": (1.5, 5.0, 4),
+    "native": (1.5, 3.0, 4),
+    "overlay": (1.5, 3.0, 4),
     "image-set": (1.0, 5.0, 8),
+    "image-build": (1.0, 4.0, 12),
     "cmd": (1.0, 2.0, 2),
 }
 
@@ -163,6 +171,9 @@ def known_boxes(environ=None) -> dict:
     boxes = {"hbox": {"cores": 24, "pick": False, "rented": False},
              "persvati": {"cores": 24, "pick": False, "rented": False}}
     for name, row in box_table.extra_boxes(environ=environ).items():
+        # Only a box tools/box_qualify.sh qualified takes work (by placement or --box).
+        if not (row.get("qualified") or {}).get("ok"):
+            continue
         boxes[name] = {"cores": row.get("cores"), "pick": bool(row.get("pick", True)), "rented": True}
     return boxes
 
@@ -276,6 +287,23 @@ def pack(units: list[tuple[str, float]], slots: dict[str, int]) -> dict[str, lis
     return out
 
 
+def chunk(plan: dict[str, list[str]], room: dict[str, int], timings: dict,
+          seconds: float = FILL_CHUNK_SECONDS) -> tuple[dict, list[str]]:
+    """Keep about SECONDS of work per slot on each box; the rest waits for room."""
+    kept, rest = {}, []
+    for box, tests in plan.items():
+        budget = room[box] * seconds
+        used = 0.0
+        for t in tests:
+            secs = predicted(t, timings)
+            if used == 0.0 or used + secs <= budget:
+                kept.setdefault(box, []).append(t)
+                used += secs
+            else:
+                rest.append(t)
+    return kept, rest
+
+
 def shard(job: dict, caps: dict, timings: dict) -> tuple[dict[str, list[str]], dict[str, int]] | None:
     """({box: tests}, {box: jobs}) for an unpinned native job over the boxes
     that can take a slot now; a fill job leaves each box its reserve."""
@@ -344,8 +372,11 @@ def pump(directory: Path, launch=None) -> list[str]:
                     job["why"] = "; ".join(fits(dict(job, slots=1), n, c, jobs)[1] for n, c in caps.items())
                     continue
                 plan, room = planned
-                job["state"] = "split"
-                job["shards"] = []
+                plan, rest = chunk(plan, room, timings,
+                                   FILL_CHUNK_SECONDS if job["priority"] == "fill" else CHUNK_SECONDS)
+                job["shards"] = job.get("shards") or []
+                job["tests"] = rest
+                job["state"] = "queued" if rest else "split"
                 for box, tests in plan.items():
                     child_id = new_id(state)
                     child = dict(job, id=child_id, label=child_id, parent=job["id"], box=box, tests=tests,
@@ -359,7 +390,7 @@ def pump(directory: Path, launch=None) -> list[str]:
             ranked = []
             for name in names:
                 cap = caps[name]
-                if job["kind"] in ("certify-lane", "check-lane", "image-set", "cmd") and not job.get("slots_fixed"):
+                if job["kind"] in ("certify-lane", "check-lane", "image-set", "image-build", "cmd") and not job.get("slots_fixed"):
                     per = SHAPE[job["kind"]][0]
                     room = int((cap["free"] - (cap["cores"] * FILL_RESERVE if job["priority"] == "fill" else 0)) / per)
                     want = HBOX_JOBS if name == "hbox" else job["slots_wanted"]
@@ -473,6 +504,12 @@ def command(job: dict) -> tuple[list[str], str]:
         if job.get("mem"):
             argv += ["--mem", job["mem"]]
         return argv + extra + [job["rev"], *job["tests"]], tools
+    if job["kind"] == "image-build":
+        return ["sh", f"{tools}/tools/hbox_native.sh", "--box", box, "--name", job["lane"],
+                "--label", job["label"], "--wait", "--build-only", "--publish",
+                "--certify-jobs", str(job["slots"]),
+                "--images", job.get("images") or "developer,production,dtn,dtn-developer",
+                *extra, job["rev"]], tools
     if job["kind"] == "check-lane":
         return ["sh", f"{tools}/tools/remote_check.sh", box, *(extra or ["--target", "check-lane"])], lane
     return ["sh", "-c", " ".join(extra)], lane
@@ -504,14 +541,18 @@ def run_job(job_id: str, directory: Path) -> int:
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             sys.stdout.write(waited.stdout)
             code = waited.returncode
-    elif job["kind"] in ("native", "overlay"):
+    elif job["kind"] in ("native", "overlay", "image-build"):
         run_id = f"{job['box']}:/tank/fn/scratch/{job['lane']}/native-{job['label']}"
     elif job["kind"] == "check-lane":
         run_id = f"{job['box']}:{job['lane']}-check (log build/remote-check/ in {job['lane_root']})"
     reds = sorted(reds_of(done.stdout))
     if job["kind"] in ("native", "overlay"):
         learn(directory, job, done.stdout)
-    verdict = "OK" if code == 0 else ("RED" if code in (1, 2, 4) or reds else "ERROR")
+    # What a red is, per tool: hbox_native 1 (a module failed) or 4 (all
+    # skipped); farm.py wait 1 (a book failed); make 2.  Anything else (a
+    # refusal before running, an unreachable box) is ERROR, never RED.
+    red_codes = {"native": (1, 4), "overlay": (1, 4), "certify-lane": (1,), "check-lane": (1, 2)}.get(job["kind"], (1,))
+    verdict = "OK" if code == 0 else ("RED" if code in red_codes else "ERROR")
     with locked_state(directory) as state:
         j = state["jobs"][job_id]
         j.update(state="done", exit=code, verdict=verdict, run_id=run_id, reds=reds, finished=now())
@@ -631,6 +672,11 @@ def submit(args, directory: Path) -> str:
         image_set = git(lane_root, "rev-parse", "--verify", f"{args.image_set}^{{commit}}") or args.image_set
         job.update(rev=full, image_set=image_set, tests=args.tests, images=args.images, mem=args.mem,
                    max_jobs=args.slots)
+    elif args.kind == "image-build":
+        full = git(lane_root, "rev-parse", "--verify", f"{args.rev or 'HEAD'}^{{commit}}")
+        if not full:
+            raise SystemExit(f"boxq: no commit {args.rev or 'HEAD'} in {lane_root}")
+        job.update(rev=full, images=args.images)
     elif args.tests:
         job["extra"] = list(args.tests) + list(args.extra)
     if args.kind in ("image-set", "cmd") and not job["extra"]:

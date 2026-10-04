@@ -175,6 +175,8 @@ DEADLINE=5400
 ENVS=
 IMAGES_GIVEN=0
 POSITIONAL=
+BUILD_ONLY=
+PUBLISH=
 IMAGE_SET=
 REUSE=
 OVERLAY=
@@ -235,6 +237,12 @@ while [ $# -gt 0 ]; do
             MODULE_JOBS=$2; shift 2 ;;
         --certify-jobs) JOBS=$2; shift 2 ;;
         --no-build) BUILD=0; shift ;;
+        # --build-only: certify, acquire, host-ld and the --images saves, no
+        # modules (they run afterwards, sharded, through tools/boxq.py against
+        # the published set).  --publish: on success, tools/image_set.py
+        # publish the tree's images as REV's set on this box (REV a commit).
+        --build-only) BUILD_ONLY=1; shift ;;
+        --publish) PUBLISH=1; shift ;;
         --image-set)
             case $2 in *[!0-9a-f]*|'') echo "hbox_native: --image-set takes a commit sha" >&2; exit 2 ;; esac
             IMAGE_SET=$2; BUILD=0; shift 2 ;;
@@ -289,7 +297,12 @@ while [ $# -gt 0 ]; do
 done
 # shellcheck disable=SC2086
 set -- $POSITIONAL
-[ $# -ge 2 ] || usage
+if [ -n "$BUILD_ONLY" ]; then [ $# -eq 1 ] || { echo "hbox_native: --build-only takes REV and no modules" >&2; exit 2; }
+else [ $# -ge 2 ] || usage; fi
+if [ -n "$PUBLISH" ]; then
+    [ "$BUILD" = 1 ] && [ -z "$OVERLAY" ] || { echo "hbox_native: --publish publishes images this run builds (not --image-set, --overlay, --reuse-image or --no-build)" >&2; exit 2; }
+    case $1 in .) echo "hbox_native: --publish needs REV to be a commit, not ." >&2; exit 2 ;; esac
+fi
 REV=$1; shift
 for module in "$@"; do
     case $module in
@@ -365,7 +378,8 @@ if [ "$CATALOG" = paged ]; then
     done
 fi
 for assignment in $ENVS; do ENVARGS="$ENVARGS --env $assignment"; done
-PLAN=$(python3 "$HERE/tools/native_env.py" plan --images "$IMAGES" $ENVARGS $ALLOW_SKIPS "$@") || exit 2
+if [ -n "$BUILD_ONLY" ]; then PLAN=
+else PLAN=$(python3 "$HERE/tools/native_env.py" plan --images "$IMAGES" $ENVARGS $ALLOW_SKIPS "$@") || exit 2; fi
 if [ "$REV" = . ]; then
     # The image's declared source: HEAD, marked +dirty for uncommitted edits
     # (before 2026-09-27 FN_NATIVE_IMAGE_SOURCE_SHA was the literal ".").
@@ -638,6 +652,15 @@ $ISTEP image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} $catalog_env FN_NATIVE_PRO
 BOX
         done
         [ "$ISTEP" != pstep ] || echo pwait
+        if [ -n "$PUBLISH" ]; then
+            cat <<BOX
+step publish python3 tools/image_set.py publish \$T $SOURCE_ID --base ${IMAGES_BASE:-/tank/fn/images}
+BOX
+        fi
+    fi
+    if [ -n "$BUILD_ONLY" ]; then
+        echo 'echo "== build only: no modules"'
+        echo 'finish 0'
     fi
     if [ -n "$REUSE" ]; then
         cat <<BOX
