@@ -153,7 +153,9 @@ def run(args: argparse.Namespace) -> int:
     argv += list(args.extra) + [rev] + got["module"]
     print("scenario_suite: " + " ".join(argv), flush=True)
     for tool in got["tool"]:
-        print(f"scenario_suite: by hand on hbox (IMAGES={IMAGE_BASE}/{sha}): {tool}", flush=True)
+        words = [f"{IMAGE_BASE}/{sha}" + w[len("$IMAGES"):] if w.startswith("$IMAGES")
+                 else sha if w == "SHA" else w for w in tool.split(" ")]
+        print("scenario_suite: by hand on hbox: " + " ".join(words), flush=True)
     if args.dry_run:
         return 0
     return subprocess.call(argv, cwd=ROOT)
