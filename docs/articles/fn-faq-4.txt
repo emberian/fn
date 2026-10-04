@@ -1,50 +1,34 @@
 From: fn <docs@fn.fg-goose.online>
 Newsgroups: fn.docs
 Subject: fn FAQ, part 4: running a node
-Date: Sun, 27 Sep 2026 12:02:00 +0000
-Message-ID: <fn-faq-4-20260927@fn.fg-goose.online>
+Date: Sun, 04 Oct 2026 12:02:00 +0000
+Message-ID: <fn-faq-4-20261004@fn.fg-goose.online>
 Archive-name: fn-faq/part4
 Posting-Frequency: when fn changes
-Last-modified: 2026-09-27
+Last-modified: 2026-10-04
 Summary: Disks, groups, logins, certificates and the open internet.
 
-Below, CONFIG is /var/lib/fn/fn.toml. Run commands as fn.
+CONFIG is /var/lib/fn/fn.toml. Run commands as fn.
 
-*The disk:* fn says yes only after the disk confirms. Use ext4 with
-barriers or ZFS with sync=standard, never tmpfs. Give the store its
-own volume; fn will not open it unmounted. After a deliberate move:
+*The disk:* fn says yes only after the disk confirms. Use ext4 or
+ZFS, never tmpfs, and give the store its own volume.
 
-    fn operator CONFIG store rebind-filesystem
-
-*Watching:* status says how many posts fit. health prints a line per
-problem: clear or held (part 6).
+*Watching:* status says how full it is; health prints one line per
+problem (part 6).
 
     fn operator CONFIG status
     fn operator CONFIG health
 
-*Groups:* A moderated group holds posts lacking Approved: in its
-queue group.
+*Groups and logins:* An invitation code is shown once.
 
     fn operator CONFIG group create fn.announce
-    fn operator CONFIG group create fn.announce.moderation
-    fn operator CONFIG group moderate fn.announce --moderators alice
-
-*Logins:* An invitation code is shown once. The person redeems it
-(part 2). An access rule limits a login; ! excludes. Peers ignore
-rules: keep private groups out of peer lists.
-
     fn operator CONFIG account invite --expires 86400
-    fn operator CONFIG account access bob --read 'fn.*,!fn.private.*' \
-        --post 'fn.*,!fn.private.*'
 
 *Certificates:* After a renewal, no restart:
 
     fn operator CONFIG tls reload
 
-*The open internet:* Limits are on by default and change live.
-Never put fn behind a TCP proxy.
-
-    fn operator CONFIG policy set exposure-connections 200
-    fn operator CONFIG policy set anonymous none
+*The open internet:* Limits are on by default. Never put fn behind
+a TCP proxy.
 
 *Go deeper:* part 5, when things go wrong.
