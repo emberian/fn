@@ -4543,3 +4543,64 @@ S074/S090/S138/S151 and journal physical prepared fixtures remain source/proof
 versus current-image obligations, not completion claims. No live deployment.
 Protected recovery partition, expanded init/reopen and complete tariff remain
 open. Bounds catchup controller draft is preserved but activation unwired.
+
+## web lane (wave 2, 2026-10-04) — concurrent web face, logic-mode stream books
+
+Branch `lane/web` on origin, base `integrate/20261004@ec2c1b3da`.
+
+### Strand: the web face serves one connection at a time (S037/S065, §2 criterion 4)
+
+Finding: the fix is already on dev. The concurrent reactor (one I/O actor
+multiplexing bounded HTTP records + one fixed semantic actor; `:defer` and
+cursor resume are timers, not sleeps) landed 42403c929..6de37169e
+(host/native/web-host.lisp). It has never run in an image: the last
+published set 45e05c7f predates it. So this lane's job is: tests that
+classify the red, then the native green on the next image set. No host or
+mux change needed; nothing sent to ACTORS.
+
+| commit | what |
+|---|---|
+| a6143d5f1 | tests/test_native_web.py: stalled-socket case measures /signin first (<4 s); new `test_two_requests_in_flight_are_answered_out_of_arrival_order` (B answered while A's head is incomplete); per-case owner stderr kept when FN_NATIVE_TEST_DIAGNOSTIC_DIR is set |
+| a7d08c2da | five web stream books :program -> :logic, keystones proved, 4 proof-owed items, twin fn-wps-private-begin deleted, raw witnesses caught up with the reactor's terminal custody |
+
+### Red-before (published set 45e05c7f, tests at a6143d5f1)
+hbox run `/tank/fn/scratch/web/native-red3-45e05c7f` (status 1, 4/4 FAILED, classified):
+- plain stalled: `14.92 not less than 4 : stalled socket held the HTTP actor before the first page` (request deadline 15 s)
+- TLS stalled: `9.92 not less than 4` (handshake deadline 10 s)
+- plain two-in-flight: B `TimeoutError` (6 s) behind A
+- TLS two-in-flight: B `The handshake operation timed out`
+Note: on 45e05c7f GET /health alone kills the "fn web face" thread
+(`ACL2 returned a malformed web action`, run native-red-45e05c7f-diag) —
+that is why /signin is measured first.
+
+### Green-after: PENDING
+Waiting on the integrator's image set from integrate/20261004 (>= 6d8fdea88,
+ETA ~2 h from 03:30Z). Continuation: when the sha arrives,
+`tools/hbox_native.sh --box hbox --name web --label green-<sha> --image-set <sha> --images developer --env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/web/diag-green <lane sha> tests.test_native_web.NativeWebFaceTests.test_stalled_socket_does_not_block_health_reader_or_account_post tests.test_native_web.NativeWebFaceTests.test_two_requests_in_flight_are_answered_out_of_arrival_order tests.test_native_web.NativeWebFaceTlsTests.test_stalled_socket_does_not_block_health_reader_or_account_post tests.test_native_web.NativeWebFaceTlsTests.test_two_requests_in_flight_are_answered_out_of_arrival_order`
+plus TLS coverage: `tests.test_native_web.NativeWebFaceTlsTests` (whole class: health, stalled, two-in-flight, test_1 friend flow, refusals, code-once, compressed article).
+If red: read diag stderr, fix in host/native/web-host.lisp.
+
+### Program-mode books -> logic
+web-page-cursor, web-list-stream, web-article-stream, web-reply-stream,
+web-post-stream: :logic, :verify-guards nil. Proved (laptop REPL, all forms
+of tests/test_web_private_source.sh admitted):
+- fn-was/wov/wls/wrs-scan-refused-stays, fn-wrs-page-accepted-only-when-done,
+  fn-wrs-page-invalid-exactly, fn-wrs-refused-reply-is-never-accepted
+- fn-wpf-finish-accepts-to-its-session, fn-wpf-finish-refusal-is-the-existing-gate,
+  fn-wpf-private-begin-refusal-is-the-existing-gate, fn-wps-private-reply-streams-only-after-340
+- fn-wpc-drive-, fn-wpc-window-drive-, fn-wps-window-emits-at-most-fuel (4096-octet quantum)
+Witnesses: tests/acl2/web-post-stream-tests.lisp wpft (accepted post widths
+1/2/7/4096, bad-csrf refused = old gate, remove); raw article stream asserts
+:done/200 = reference. No "uncertain" outcome exists in these books (the
+reactor maps an :uncertain await completion to finish, host side).
+Proof-owed (planning/repair/items): WEB-OWED-STREAM-GUARDS,
+WEB-OWED-WPC-REFINES-SEQ, WEB-OWED-SCAN-REFINES-HEADERS, WEB-OWED-POST-WINDOW-REFINES.
+
+Certify: NOT YET. Farm run cancelled on the assembler's hold; queued for the
+hbox slot. On "go": `tools/farm.py submit hbox --jobs 8 --images off books/web-reply-stream books/web-post-stream tests/acl2/web-post-stream-tests --affected-by books/web-page-cursor --affected-by books/web-post-stream --affected-by books/web-reply-stream` (dry run: 5 roots, 320 to certify).
+
+Raw witnesses green on laptop: tests/test_native_web_{page_cursor,post_stream,stream,private_begin,reactor,article_producer}_raw.sh.
+
+### Not done / handed on
+- harvest gift web-domain-default (wave 3 operator UX): not started.
+- S037/S065 ledger notes: to be set READY with the green run ids.
