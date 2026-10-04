@@ -716,6 +716,31 @@ class DuplicateDefunTests(unittest.TestCase):
         self.assertGreater(counts["definitions"], 1000)
 
 
+class LoadedHostProvidesTests(unittest.TestCase):
+    """A fixture's loaded host file defines its names: they are never stubbed
+    (tests/native_bp_received_source_raw.lisp via native_bp_session_bank_raw)."""
+
+    def scan(self, fixtures):
+        from tools import ledger
+        host = ledger.Reader("(defun fnn-a (x) (fnn-b x))\n(defun fnn-b (x) x)\n").top_level()
+        rawdefs, _ = harness_check.raw_definitions({"host/native/x.lisp": host[:1],
+                                                    "host/native/y.lisp": host[1:]})
+        bodies = {"fnn-a": host[0][0], "fnn-b": host[1][0]}
+        origins = {"fnn-a": (host[0][0][2], "host/native/x.lisp"),
+                   "fnn-b": (host[1][0][2], "host/native/y.lisp")}
+        text = fixtures["tests/h_raw.lisp"]
+        return harness_check.harness_scan("tests/h_raw.lisp", text, rawdefs, bodies,
+                                          origins, fixtures)
+
+    def test_a_name_defined_by_a_nested_load_is_not_stubbed(self):
+        alone = self.scan({"tests/h_raw.lisp": "(fnn-a 1)"})
+        self.assertIn("fnn-b", alone["unresolved"])
+        nested = self.scan({"tests/h_raw.lisp": '(load "tests/bank_raw.lisp")\n(fnn-a 1)',
+                            "tests/bank_raw.lisp": '(load "host/native/y.lisp")'})
+        self.assertNotIn("fnn-b", nested["unresolved"])
+        self.assertIsNone(nested["expected"])
+
+
 class DerivedStubTests(unittest.TestCase):
     """test-stubs / test-harness-reach (entry-guards-2): a call an extracted
     host function makes is stubbed by hand, extracted, or covered by a

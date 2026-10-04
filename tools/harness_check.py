@@ -1853,7 +1853,16 @@ def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
     stubs, _ = raw_definitions(forms)
     mentioned = {m.lower() for source in sources.values()
                  for m in re.findall(r"\b(fnn-[A-Za-z0-9*+%-]+)", source)}
-    extracted = {name for name in mentioned if name in bodies and name not in stubs}
+    # A fixture this harness loads may itself load a whole host file
+    # (tests/native_bp_session_bank_raw.lisp loads host/native/bp-session.lisp):
+    # what that file defines is the real definition, provided, never stubbed
+    # (a derived stub after the load redefined fnn-bp-session-observe to
+    # signal and turned two harnesses red, facef3839).
+    loaded_hosts = {target for source in sources.values()
+                    for target in re.findall(r'\(load\s+"(host/[^"]+)"', source)}
+    provided = {name for name, (_formals, origin) in origins.items() if origin in loaded_hosts}
+    extracted = {name for name in mentioned
+                 if name in bodies and name not in stubs and name not in provided}
     if not extracted:
         return None
     stale: list[dict] = []
@@ -1881,7 +1890,7 @@ def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
                                    "argument(s); the stub takes {}".format(
                                        name, count, low if high == low else
                                        "{} to {}".format(low, "any" if high is None else high))})
-            elif callee not in extracted and callee in origins:
+            elif callee not in extracted and callee not in provided and callee in origins:
                 unresolved[callee] = origins[callee]
                 callers.setdefault(callee, set()).add(name)
     expected = derived_stub_block(unresolved) if unresolved else None
