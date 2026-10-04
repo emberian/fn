@@ -32573,6 +32573,7 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [
+        "host/native/feed-service.lisp",
         "host/native/pull-service.lisp"
       ],
       "applied_directly_in": []

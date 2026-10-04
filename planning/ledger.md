@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 3006 |
 | Certification roots in the Makefile | 2513 |
 | Books inside the root closure | 2831 |
-| `defthm` and `defthmd` events | 39511 |
-| `defun` events | 25481 |
+| `defthm` and `defthmd` events | 39512 |
+| `defun` events | 25482 |
 | Functions with verified guards | 4046 |
 | Functions declared `:verify-guards nil` and never verified | 3288 |
-| Functions left at the default with an explicit guard | 14041 |
+| Functions left at the default with an explicit guard | 14042 |
 | Functions left at the default with no guard | 4106 |
-| `assert-event` checks | 27141 |
+| `assert-event` checks | 27148 |
 | `must-fail` checks | 2684 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 253 |
@@ -719,7 +719,7 @@ that `make certify` requests.
 | `books/failure-scope.lisp` | closure | 55 | 26 | 0/0/26/0 | 0 | 0 | 8 |
 | `books/feed-auth-profile.lisp` | root | 4 | 8 | 8/0/0/0 | 0 | 0 | 0 |
 | `books/feed-connection-invariants.lisp` | root | 48 | 22 | 2/0/20/0 | 0 | 0 | 1 |
-| `books/feed-connection.lisp` | root | 11 | 50 | 49/0/1/0 | 0 | 0 | 1 |
+| `books/feed-connection.lisp` | root | 12 | 51 | 49/0/2/0 | 0 | 0 | 1 |
 | `books/feed-correspondence.lisp` | root | 28 | 1 | 0/0/0/1 | 0 | 0 | 1 |
 | `books/feed-events.lisp` | root | 0 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/feed-filename.lisp` | root | 2 | 21 | 0/0/21/0 | 0 | 0 | 0 |
@@ -2331,7 +2331,7 @@ that `make certify` requests.
 | `tests/acl2/feed-auth-profile-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
 | `tests/acl2/feed-connection-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 7 | 0 |
 | `tests/acl2/feed-connection-teeth-tests.lisp` | root | 6 | 0 | 0/0/0/0 | 87 | 0 | 0 |
-| `tests/acl2/feed-connection-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 65 | 1 | 0 |
+| `tests/acl2/feed-connection-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 67 | 1 | 0 |
 | `tests/acl2/feed-correspondence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 2 | 0 |
 | `tests/acl2/feed-filename-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 0 | 0 |
 | `tests/acl2/feed-journal-order-tests.lisp` | root | 0 | 4 | 0/3/1/0 | 14 | 0 | 0 |
@@ -2739,7 +2739,7 @@ that `make certify` requests.
 | `tests/acl2/peer-pull-auth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 23 | 1 | 0 |
 | `tests/acl2/peer-pull-session-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 63 | 11 | 0 |
 | `tests/acl2/peer-pull-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 87 | 20 | 0 |
-| `tests/acl2/peer-round-driver-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 51 | 0 | 0 |
+| `tests/acl2/peer-round-driver-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 56 | 0 | 0 |
 | `tests/acl2/peer-set-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 43 | 0 | 0 |
 | `tests/acl2/peer-transit-forms-tests.lisp` | root | 0 | 9 | 0/2/0/7 | 34 | 5 | 0 |
 | `tests/acl2/peer-transit-indexed-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 11 | 0 | 0 |
