@@ -4966,3 +4966,37 @@ Tree `build/lanes/harness-reds`, branch `lane/harness-reds`, from origin/integra
 
 Verified: test_native_raw_scripts 78 OK; test_docs_check 9 OK + docs_check --check 0 failures; test_certs.InstallUmbrellasTests OK; test_host_check_modes OK; test_host_check_load.RealLoadTests + test_host_check_forward 10 OK (1191 s, the heavy ones); tests/acl2/protocol-served-tests certified (run certify-20261004T094235Z-45148, laptop).
 Not mine, left: native_application_cleanup_source.lisp (unrun); harness_check entry-guards 23 / waivers 2 findings.
+
+# tariff3 lane — Opus trailblazer (2026-10-04)
+
+Worktree build/lanes/tariff3, branch lane/tariff3 (origin), based on origin/dev 65389a90e.
+
+| sha | world receipt | manifest id | image sha | native run id |
+|---|---|---|---|---|
+| 88a7deabb (step 0) | laptop narrow certify, 5 passed | certify-20261004T153007Z-21520 | none | none (registry/teeth only) |
+| e71a47552 (step 1) | laptop narrow certify --recertify, 6 passed; host_check --load 56/56 raw files, 0 findings (BARE: laptop has no certified umbrella, definterface/def-cost rows NOT evaluated) | certify-20261004T161727Z-32503 | none | none: needs the [resources] opt-in image (lane/tariff2-optin, batch R, not on dev); producer red/green is ACL2 (tfm-producer-prices-the-retrieval-row) |
+
+Exit line: tariff3 exit: families priced 4/25 (ratchet computed by tools/cost_obligations.py at e71a47552; cost-obligations.json is the integrator's --write); pass-through remains: families left authentication, capabilities, check, close, compression-transition, date, group, group-range, header-pattern, header-range, help, ihave, list, mode, neighbour, newgroups, newnews, overview, post, takethis, tls-transition (21); keystone_emit refusals 19 → 0.
+
+## Step 0 (88a7deabb): the 19 keystone_emit --write refusals
+16 defkeystone forms in tests/acl2/resource-vector{,-tree,-relations}-tests.lisp named subjects no host line reaches (fn-rv-step/run/settle/destroy, fn-rt-step/run, fn-rv-of-prs): the node runs the typed ledger (resource-vector-exec), never the logical bank or tree. They became defteeth over the same theorems (every witness/removal/mutation kept, claim checked against the stored theorem); they re-enter as keystones when the exec tree gains a host line (tariff packet Q1). Hosted ones stay keystones (fn-rv-draw x2, fn-rv-install: PRF-1209); rvrt-plus/funded-root got :id PRF-1210. keystone_subjects for PRF-1209/1210 written by keystone_emit --write (proofs.json). `keystone_emit --write` now writes.
+Still open (teeth gate, not --write blockers): new :deferred mutations on fn-rt-step-keeps-okp, fn-rt-run-keeps-okp, fn-rt-step-refused-keeps-the-tree, fn-rt-destroy-revokes-the-sub-bank, fn-rv-replayed-completion-is-stale; fn-ocap-held-prefix-has-matching-funded-tariff and fn-ocap-preview-keeps-input-prefix-bounds have no generated teeth.
+
+## Step 1 (e71a47552): the generator and HEAD/BODY/STAT
+- books/output-tariff-family.lisp: fn-tariff-descriptor + keystones (admits-exactly-within-capacity, unrepresentable-is-refused, is-a-tariff); def-family-tariffs emits *fn-tariff-priced-families*, fn-tariff-family-octets/-price/-preview, KEYSTONE fn-tariff-family-preview-charges-before-effect and a generated fn-tariff-F-charges-before-effect per row.
+- books/output-tariff-families.lisp: rows :article :head :body :stat over fn-tariff-article-row-charge (same finders for the four kinds). STAT = fn-tariff-stat-octets (2*16*L0 + ELEN: its exec realizes the octets for the tombstone test).
+- Replaced: fn-tariff-article-descriptor/-preview + theorems, the quoted family list in fn-owner-output-tariff-preview, tests/acl2/output-tariff-article-tests.lisp, orphan tests/owner_output_preview_fixture.lisp. image-world* and extract worlds regenerated (owner-host includes output-tariff-families). Ratchet reads the rows (tools/cost_obligations.py; tests/test_cost_obligations.py 9 OK).
+- Proof-owed: PGO-TARIFF-ARTICLE-REPLY-WITHIN-TARIFF (PRF-1316) note extended to HEAD/BODY/STAT.
+- specs/resource-vector.md: generator; DENOMINATOR GAP (finding): the gate also previews :extension (XREDEEM/XFNCATCHUP/XFN-ZARTICLE), :article-input (POST/IHAVE body; fnn-owner-output-prefix-locked runs on every read chunk), :protocol-error, :partial-input, all refused as unpriced in accounted mode. "unpriced_families empty" is NOT a sufficient condition for deleting the pass-through; these need a price or a rule first.
+
+## Deviation from the brief, for root
+The brief said `definterface :operation` as the generator. I built the family-table generator the packet's Q3 names (a producer per family row, the :unpriced count as ratchet) instead, because (a) the admission gate draws a fixed output lease, not the entry's tariff on a ledger slot, so def-operation-check's `(D 'N (... T ...))` shape does not fit a family; (b) changing books/definterface.lisp recertifies the entire host world (integrator-only). The generated producer is what a later `:operation :tariff` would name.
+
+## For the integrator at merge
+Regenerate interfaces.json (interface_emit --write: stale against declarations), cost-obligations.json (expect families priced 4 of 25), ledger.json/md, proof-events.json, teeth manifest. Certified-world host load (definterface :keystones row for fn-owner-output-tariff-preview now cites fn-tariff-family-preview-charges-before-effect :via fn-tariff-family-preview; def-cost rows fn-tariff-stat-octets, fn-tariff-descriptor replace fn-tariff-article-descriptor) not evaluated on the laptop. Image native: tests/test_native_output_tariff.py not written (needs batch R opt-in image): [resources] set, HEAD 1 → 221, STAT 1 → 223, NEWNEWS → 403; red at dev: HEAD → 403.
+
+## Continuation (exact, in packet order)
+1. GROUP/NEXT/LAST (constant-bounded lines; LISTGROUP needs a cursor quantum): add rows; each needs a reply-octets bound over its factory (fn-nntp-group-result-cat, fn-nntp-next-or-last-cat).
+2. CAPABILITIES/DATE/HELP/MODE/QUIT: def-cost :conses rows. Tried fn-nntp-help (laptop REPL): derivation leaves fn-nntp-string-octets and fn-nntp-multi unaccounted; they need their own :conses rows first (shared with PRF-1316's list).
+3. The denominator gap above, before any pass-through deletion.
+4. The 5 deferred-mutation teeth findings and the 2 fn-ocap teeth (step 0 list).
