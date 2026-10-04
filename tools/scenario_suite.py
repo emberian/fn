@@ -6,6 +6,7 @@
     python3 tools/scenario_suite.py run TIER --image-set SHA [--rev REV]
         [--label LABEL] [--jobs 4] [--dry-run] [-- HBOX_NATIVE_OPTION ...]
     python3 tools/scenario_suite.py check
+    python3 tools/scenario_suite.py affected [--since REV] [--explain] [FILE ...]
 
 The tiers are data, tests/scenarios/tiers.tsv: peer (can a stranger's
 server peer with us safely and usefully: transit both ways, catch-up,
@@ -33,6 +34,15 @@ the images from FN_NATIVE_DEVELOPER_HOST and the other image variables, as
 every native module does, e.g.
 `python3 tools/test_budget.py $(python3 tools/scenario_suite.py modules smoke)`.
 
+`affected` answers which native modules a change can affect: the files
+named, or those changed since REV (`git diff --name-only REV`), through
+tests/scenarios/affects.tsv (path rules to the coverage map's question
+codes) and planning/scenarios-2026-10-04-modules.tsv (each module's codes).
+It prints the smoke tier's modules first (they always run: the
+batch gate's floor), then every image-driving module the change selects, one
+per line; `--explain` adds the rule that selected each.  An unclassified file
+under host/, books/, packaging/ or tests/ selects every native.
+
 `check` (make check) holds the file to its shape: every module exists (and
 its class, when one is named), every question code is known, every opt-in
 variable is one a module reads, no module appears twice in a tier, every
@@ -56,6 +66,13 @@ QUESTIONS = {"DUR", "ARU", "IDEM", "BND", "MEM", "LAT", "FSYNC", "OPEN", "PEER",
              "WEB", "AUTH", "CUR", "RCON", "IDN", "RDR", "CKPT", "OPS", "INTEROP"}
 IMAGES = "developer,production,dtn,dtn-developer"
 IMAGE_BASE = "/tank/fn/images"
+AFFECTS_FILE = "tests/scenarios/affects.tsv"
+MODULE_MAP = "planning/scenarios-2026-10-04-modules.tsv"
+# The module map's qualities whose modules drive an image (MOCK and SRC
+# modules run under make check, not as natives).
+IMAGE_QUALITIES = {"REAL", "OPTIN", "PINNED", "WEAK"}
+FLOOR_TIERS = ("smoke",)
+ESCAPES = ("host/", "books/", "packaging/", "tests/")
 
 
 def entries(root: pathlib.Path = ROOT) -> list[tuple[int, str, str, str, str, str]]:
@@ -133,6 +150,87 @@ def findings(root: pathlib.Path = ROOT) -> list[str]:
     return out
 
 
+def affect_rules(root: pathlib.Path = ROOT) -> list[tuple[int, str, str, str]]:
+    """(line number, glob, codes, why) for each rule, in file order."""
+    out = []
+    for number, line in enumerate((root / AFFECTS_FILE).read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip() or line.startswith("#"):
+            continue
+        fields = line.split("\t") + ["", ""]
+        out.append((number, fields[0], fields[1], fields[2]))
+    return out
+
+
+def module_codes(root: pathlib.Path = ROOT) -> dict[str, set[str]]:
+    """tests.MODULE -> its question codes, for the image-driving modules: a
+    REAL/OPTIN/PINNED/WEAK row, or a mixed SRC row that a tier lists (its
+    image half is why the tier names it)."""
+    tiered = {".".join(e.split(".")[:2]) for _, _, kind, e, _, _ in entries(root) if kind == "module"}
+    out: dict[str, set[str]] = {}
+    for line in (root / MODULE_MAP).read_text(encoding="utf-8").splitlines()[1:]:
+        fields = line.split("\t")
+        if not (root / "tests" / (fields[0] + ".py")).is_file():
+            continue
+        if len(fields) >= 3 and (fields[1] in IMAGE_QUALITIES or "tests." + fields[0] in tiered):
+            out["tests." + fields[0]] = {c for c in fields[2].split(",") if c in QUESTIONS}
+    return out
+
+
+def affect_findings(root: pathlib.Path = ROOT) -> list[str]:
+    out = []
+    for number, glob, codes, why in affect_rules(root):
+        where = f"{AFFECTS_FILE}:{number}"
+        if not glob or not why.strip():
+            out.append(f"{where}: a rule needs GLOB, CODES and a reason")
+        words = codes.split(",")
+        if codes not in ("ALL", "NONE", "SELF") and not all(w in QUESTIONS for w in words):
+            out.append(f"{where}: unknown code(s) in {codes!r}")
+    known = set(module_codes(root))
+    for _, _, kind, entry, _, _ in entries(root):
+        name = ".".join(entry.split(".")[:2])
+        if kind == "module" and name not in known:
+            out.append(f"{MODULE_MAP}: {name} (a tier module) has no image-driving row")
+    return out
+
+
+def affected(paths: list[str], root: pathlib.Path = ROOT) -> dict[str, str]:
+    """tests.MODULE -> why, for every native module PATHS can affect,
+    the floor tiers (smoke, core) first."""
+    import fnmatch
+    codes = module_codes(root)
+    chosen: dict[str, str] = {}
+    for t in FLOOR_TIERS:
+        for entry in tier(t, root)["module"]:
+            chosen.setdefault(".".join(entry.split(".")[:2]), f"tier {t} (always)")
+    rules = affect_rules(root)
+    for path in paths:
+        rule = next(((n, g, c) for n, g, c, _ in rules if fnmatch.fnmatchcase(path, g)), None)
+        if rule is None:
+            if not path.startswith(ESCAPES):
+                continue
+            rule = (0, "(unclassified)", "ALL")
+        number, glob, word = rule
+        why = f"{path} ({AFFECTS_FILE}:{number} {glob} {word})" if number else f"{path} unclassified: ALL"
+        if word == "NONE":
+            continue
+        if word == "SELF":
+            name = "tests." + pathlib.PurePath(path).stem
+            if name in codes:
+                chosen.setdefault(name, why)
+            continue
+        wanted = None if word == "ALL" else set(word.split(","))
+        for name, have in sorted(codes.items()):
+            if wanted is None or have & wanted:
+                chosen.setdefault(name, why)
+    return chosen
+
+
+def changed_since(rev: str, root: pathlib.Path = ROOT) -> list[str]:
+    result = subprocess.run(["git", "-C", str(root), "diff", "--name-only", rev],
+                            capture_output=True, text=True, check=True)
+    return [line for line in result.stdout.splitlines() if line]
+
+
 def run(args: argparse.Namespace) -> int:
     got = tier(args.tier)
     if not got["module"]:
@@ -169,6 +267,10 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("modules")
     p.add_argument("tier", choices=TIERS)
     sub.add_parser("check")
+    p = sub.add_parser("affected")
+    p.add_argument("--since", help="every file changed since REV (git diff --name-only REV)")
+    p.add_argument("--explain", action="store_true", help="name the rule that selected each module")
+    p.add_argument("files", nargs="*")
     p = sub.add_parser("run")
     p.add_argument("tier", choices=TIERS)
     p.add_argument("--image-set", required=True, help="the dev commit whose published images to use")
@@ -179,13 +281,18 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("extra", nargs="*", help="further tools/hbox_native.sh options, after --")
     args = parser.parse_args(argv)
     if args.command == "check":
-        found = findings()
+        found = findings() + affect_findings()
         for line in found:
             print("scenario_suite: " + line)
         if not found:
             counts = ", ".join(f"{t} {len(tier(t)['module'])}" for t in TIERS)
             print(f"scenario_suite: {TIERS_FILE} well formed ({counts} modules)")
         return 1 if found else 0
+    if args.command == "affected":
+        paths = list(args.files) + (changed_since(args.since) if args.since else [])
+        for name, why in affected(paths).items():
+            print(f"{name}\t{why}" if args.explain else name)
+        return 0
     if args.command == "modules":
         print("\n".join(tier(args.tier)["module"]))
         return 0

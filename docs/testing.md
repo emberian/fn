@@ -180,6 +180,15 @@ A tier's result is the run's `run.log` (OK / FAILED / SKIPPED per module,
 with the image set named); a red is classified (implementation, harness,
 environment) with the run id, never re-expected.
 
+Which natives a change can affect: `python3 tools/scenario_suite.py
+affected --since REV` (or `affected FILE...`; `--explain` names the rule).
+It prints the smoke tier, which always runs, and then every image-driving
+module that `tests/scenarios/affects.tsv` selects. Each rule maps a path
+glob to the coverage map's question codes, and the module map
+(`planning/scenarios-2026-10-04-modules.tsv`) gives each module's codes.
+A file under host/, books/, packaging/ or tests/ that no rule names selects
+every native. The batch gate runs host-ld, then this list.
+
 ## What `make check` is
 
 `make check` plans ~90 steps and `tools/check_steps.py` runs them in parallel,

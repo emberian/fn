@@ -65,5 +65,64 @@ class ScenarioSuiteTests(unittest.TestCase):
         self.assertIn(" " + "a" * 40 + " tests.", line)
 
 
+AFFECTS = ("tests/native_harness.py\tALL\tharness\n"
+           "tests/test_*.py\tSELF\tself\n"
+           "host/native/feed-service.lisp\tPEER\tfeed\n"
+           "host/native/*.lisp\tDUR\tthe rest of the host (first match wins)\n"
+           "docs/*\tNONE\tprose\n")
+MAP = ("module\tquality\tquestions\n"
+       "test_native_x\tREAL\tDUR\n"
+       "test_native_peer\tREAL\tPEER,AUTH\n"
+       "test_native_web\tREAL\tWEB\n"
+       "test_native_mock\tMOCK\tPEER\n")
+
+
+class AffectedTests(unittest.TestCase):
+    def tree(self, tmp):
+        root = tree(tmp)
+        (root / scenario_suite.AFFECTS_FILE).write_text("# rules\n" + AFFECTS)
+        (root / "planning").mkdir()
+        (root / scenario_suite.MODULE_MAP).write_text(MAP + "test_native_gone\tREAL\tDUR\n")
+        for name in ("test_native_peer", "test_native_web", "test_native_mock"):
+            (root / "tests" / (name + ".py")).write_text("")
+        return root
+
+    def test_the_tree_rules_are_well_formed(self):
+        self.assertEqual(scenario_suite.affect_findings(), [])
+
+    def test_a_rule_selects_by_question_code_after_the_smoke_floor(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(tmp)
+            got = scenario_suite.affected(["host/native/feed-service.lisp"], root)
+        # tests.test_native_x is the smoke tier (the floor); the first
+        # matching rule (PEER) wins over host/native/*.lisp (DUR).
+        self.assertEqual(list(got), ["tests.test_native_x", "tests.test_native_peer"])
+        self.assertIn("always", got["tests.test_native_x"])
+
+    def test_mock_modules_none_rules_and_self(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(tmp)
+            self.assertEqual(list(scenario_suite.affected(["docs/a.md"], root)), ["tests.test_native_x"])
+            self.assertEqual(list(scenario_suite.affected(["tests/test_native_web.py"], root)),
+                             ["tests.test_native_x", "tests.test_native_web"])
+            self.assertEqual(list(scenario_suite.affected(["tests/test_native_mock.py"], root)),
+                             ["tests.test_native_x"])
+
+    def test_an_unclassified_host_file_selects_every_native(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(tmp)
+            got = scenario_suite.affected(["host/new-thing-host.lisp"], root)
+            harness = scenario_suite.affected(["tests/native_harness.py"], root)
+        self.assertEqual(set(got), {"tests.test_native_x", "tests.test_native_peer", "tests.test_native_web"})
+        self.assertEqual(set(harness), set(got))
+        self.assertIn("unclassified", got["tests.test_native_web"])
+
+    def test_a_bad_code_is_named(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(tmp)
+            (root / scenario_suite.AFFECTS_FILE).write_text("host/*\tNOPE\twhy\n")
+            self.assertIn("unknown code", "\n".join(scenario_suite.affect_findings(root)))
+
+
 if __name__ == "__main__":
     unittest.main()
