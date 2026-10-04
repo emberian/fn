@@ -203,6 +203,53 @@
                                                          genesis (fn-bs-unit bs) max))
                                         floor)))))))
 
+;; RL-01 (lane m1-durable-2, 2026-10-04; planning/repair/items/RL-01.json on
+;; lane/read-life): the open reads the segment through read(2), and after a
+;; failed barrier Linux keeps the failed pages clean in its cache, so the
+;; read O need not be the durable content (books/byte-store.lisp leaves the
+;; view after a failed fsync unspecified).  The theorem above is over the
+;; durable content's kernel; the host's kernel is O's
+;; (fn-lg-open-kernel-is-the-recovered-kernel).  What recovery must reach,
+;; whatever program reaches it: the durable segment holds O's validated
+;; prefix [0, F) and zeros after it, with nothing pending.  Then R holds
+;; between the store and O's kernel, against the DURABLE content, with no
+;; hypothesis relating O to the content before the open.  Each candidate
+;; fix (rewrite in place, a fresh segment, O_DIRECT) discharges the
+;; antecedent with its own program; the program-level keystone
+;; fn-lg-recover-makes-the-read-prefix-durable waits on ember's choice.
+(defthm fn-lg-acked-of-recover
+  (equal (fn-lgk-acked (fn-lgk-recover c genesis unit max next-txid))
+         (len (car (fn-lg-scan c genesis unit max))))
+  :hints (("Goal" :in-theory (e/d (fn-lgk-recover) (fn-lg-scan fn-lg-scan-last)))))
+
+(defthm fn-lg-durable-read-prefix-establishes-the-relation
+  (let* ((unit (fn-bs-unit bs))
+         (ks (fn-lgt-recover o genesis unit max floor))
+         (f (fn-lgk-frontier ks))
+         (c (fn-bs-durable-content bs ino)))
+    (implies (and (posp unit) ino (assoc-equal ino (fn-bs-inodes bs))
+                  (true-listp o) (equal (mod (len o) unit) 0)
+                  (fn-frame-digestp genesis)
+                  (true-listp c) (equal (mod (len c) unit) 0)
+                  (<= f (len c))
+                  (equal (fn-bs-take f c) (fn-bs-take f o))
+                  (fn-lg-zerosp (nthcdr f c))
+                  (null (fn-bs-pending bs)))
+             (fn-lgk-relp bs ks ino genesis max)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgk-relp fn-lgk-content-okp fn-lgt-recover)
+                           (fn-lg-scan fn-lg-scan-last fn-bs-take fn-lg-zerosp
+                            fn-lgk-recover fn-lgt-next-after fn-bs-durable-content
+                            fn-lgk-committed fn-lgk-last fn-lgk-frontier fn-lgk-inflight
+                            fn-lgk-batch fn-lgk-acked fn-lgk-phase))
+           :expand ((fn-lg-recordsp nil max)
+                    (fn-lg-log nil (fn-lg-scan-last o genesis (fn-bs-unit bs) max) (fn-bs-unit bs)))
+           :use ((:instance fn-lg-recovered-frontier-is-the-last-complete-record
+                            (c o) (unit (fn-bs-unit bs)))
+                 (:instance fn-lg-scan-last-digestp (x o) (prev genesis) (unit (fn-bs-unit bs)))
+                 (:instance fn-lgc-scan-records-true-listp (octets o) (prev genesis)
+                            (unit (fn-bs-unit bs)))))))
+
 ; -----------------------------------------------------------------------------
 ; The host's other entries (host/native/io.lisp).  Every offset, count and
 ; kernel the host uses comes from one of these.
