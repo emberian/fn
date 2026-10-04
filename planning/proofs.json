@@ -14751,13 +14751,10 @@
         "fn-lgu-open-run-acknowledges-only-recoverable-records",
         "fn-lgu-host-kernel-acknowledges-only-recoverable-records",
         "fn-lgu-complete-acknowledges-the-fenced-batch",
-        "fn-lgu-host-run-is-safe",
         "fn-lgu-safe-image-recovers-the-acknowledged-records",
         "fn-lgu-safe-image-scans-the-committed-records-first",
         "fn-lgu-crash-keeps-the-prefix",
-        "fn-lgu-related-state-is-safe",
-        "fn-lgu-recover-program-establishes-the-relation",
-        "fn-lgu-host-kops-run-to-the-final-kernel"
+        "fn-lgu-recover-program-establishes-the-relation"
       ]
     },
     {
