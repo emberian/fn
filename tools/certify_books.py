@@ -537,6 +537,52 @@ def affected_selection(named: list[str], makefile_roots: list[str],
     return list(dict.fromkeys(list(named) + affected))
 
 
+def lane_selection(named: list[str], targets: list[str],
+                   edges: dict[str, list[str]], umbrellas: set[str],
+                   exists, order: list[str] = ()) -> list[str]:
+    """The roots `--lane` certifies: the named books, the `--affected-by`
+    books, the books that include one of those directly, and each target's
+    `tests/acl2/<name>-tests`.  Never an image-world umbrella, and never
+    anything above a direct includer.
+
+    `--affected-by` follows includes to the top, which for a book under the
+    served image is every umbrella; a lane's verdict is its own books and
+    the next layer that exercises them, and the umbrella certify belongs to
+    the integrator (landing-pipeline: once per batch on `next`).  EDGES maps
+    each book to the books it includes (`local_closure`); EXISTS says
+    whether a book name is a book here; ORDER (Makefile order) sorts the
+    includers it names ahead of the rest.
+    """
+    wanted = set(targets)
+    rank = {book: index for index, book in enumerate(order)}
+    includers = sorted(
+        (book for book, included in edges.items()
+         if wanted & set(included) and book not in wanted
+         and book not in umbrellas),
+        key=lambda book: (rank.get(book, len(rank)), book))
+    companions = [f"tests/acl2/{Path(target).name}-tests" for target in targets]
+    return list(dict.fromkeys(
+        list(named) + targets + includers
+        + [book for book in companions if exists(book) and book not in umbrellas]))
+
+
+def lane_edges(makefile_roots: list[str]) -> dict[str, list[str]]:
+    """Every book's direct local includes: the Makefile roots and what they
+    reach (a failure there is the run's failure, as for any plan), then every
+    other book under books/ and tests/acl2/ that reads.  A book outside the
+    roots whose include does not resolve is left out: nothing certifies it,
+    so it is no includer a lane verdict could need."""
+    edges = local_closure(list(makefile_roots))
+    for source in certs.book_sources(ROOT):
+        book = certs.book_name(ROOT, source)
+        if book not in edges:
+            try:
+                edges.update(local_closure([book]))
+            except ValueError:
+                continue
+    return edges
+
+
 def install_from_cache(roots: list[str], toolchain_identity: str,
                        acl2: Path, recertify: list[str] = ()) -> certs.Report:
     """Install what the cache holds of the roots' closure (`--incremental`).
@@ -913,6 +959,17 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--lane",
+        action="store_true",
+        help=(
+            "with --affected-by: stop at the named books, the --affected-by "
+            "books, the books that include one of them directly and "
+            "tests/acl2/<name>-tests for each, never the image-world "
+            "umbrellas (the lane verdict; the umbrella certify is the "
+            "integrator's, once per batch)"
+        ),
+    )
+    parser.add_argument(
         "--closure",
         action="store_true",
         help=(
@@ -1076,10 +1133,19 @@ def main() -> int:
     if args.incremental and args.closure:
         parser.error("--incremental and --closure are two plans; choose one")
     requested_before_filter = list(args.books)
+    if args.lane and not args.affected_by:
+        parser.error("--lane narrows --affected-by: name the books with --affected-by")
     if args.affected_by:
         try:
-            args.books = affected_selection(named_books, makefile_roots,
-                                            args.affected_by)
+            if args.lane:
+                args.books = lane_selection(
+                    named_books, [normalize_book(book) for book in args.affected_by],
+                    lane_edges(makefile_roots),
+                    set(certs.umbrella_roots(ROOT)),
+                    lambda book: (ROOT / f"{book}.lisp").is_file(), makefile_roots)
+            else:
+                args.books = affected_selection(named_books, makefile_roots,
+                                                args.affected_by)
         except ValueError as error:
             parser.error(str(error))
     roots = list(args.books)
