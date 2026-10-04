@@ -9,7 +9,8 @@
  "line": "4366",
  "locus": "connections",
  "notes": [
-  "GPT-6.1-Sol: imported mux cold polling continuation and native regression test. Matching native verdict pending integrator batch; physical cancellation/return custody remains runtime/resource composition debt."
+  "GPT-6.1-Sol: imported mux cold polling continuation and native regression test. Matching native verdict pending integrator batch; physical cancellation/return custody remains runtime/resource composition debt.",
+  "10-04 04:30 ledger-open-b 2026-10-04 STOP, design: fnn-owner-cold-poll cannot settle without entering the owner gate. The settlement (fnn-owner-cold-settle -> fnn-owner-serialized :control -> fnn-owner-gate-enter) waits for the gate's pick, which ACL2 decides (fn-otm-next over the waiting counts, host/native/owner.lisp fnn-owner-gate-pick); a try-enter that returns (:wait ms) on a busy gate is a host scheduling decision and, under sustained load, starves the settlement until ACL2's line deadline answers 403 for a page that came. Needs: either an ACL2 scheduler word for a settle-if-idle entry (a class or a no-wait admission in books/owner-scheduler, with the starvation bound stated) or the ruling that a cold settle may wait one barrier batch (today's behaviour, the page no longer waited for). Smallest next step: state the no-wait admission as a book function over the gate's value (fn-otm-try-admit: admitted iff idle with no waiter, else (:wait ms), no scheduler-state change on refusal) with its keystone, then call it from the poll."
  ],
  "owner": "owner-offlock",
  "severity": "high",
@@ -17,5 +18,5 @@
  "source": "r71",
  "state": "in-progress",
  "title": "fnn-owner-cold-await (bug)",
- "updated": "2026-10-03T06:00:00Z"
+ "updated": "2026-10-04T08:30:55Z"
 }
