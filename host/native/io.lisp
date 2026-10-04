@@ -542,9 +542,10 @@ live buffer passed before state: its value."
 
 (defun fnn-open (path flags &optional (mode #o600))
   (fnn-posix (path) (sb-posix:open path flags mode)))
-(defvar *fnn-escape-cleanup-debts* nil
-  "Every cleanup that failed while its body was escaping, newest first:
-(PRIMARY FAILURE OUTCOME-CODE).  PRIMARY is the condition the body was
+(defvar *fnn-escape-cleanup-debts* (list nil)
+  "A one-cell holder whose car is every cleanup that failed while its body was
+escaping, newest first, pushed atomically (the holder's car, not a symbol-value
+read: tools/raw_dispatch_rule.py WORLD): (PRIMARY FAILURE OUTCOME-CODE).  PRIMARY is the condition the body was
 leaving by, or nil when it left by something that is no condition (a throw, a
 return, a thread termination).  Retained physical debt: the cleanup is never
 retried, and the record outlives the escape that raised it.")
@@ -569,7 +570,7 @@ it calls the guard-t ACL2 functions directly, never fnn-core."
       (let ((failure-code (fn-fs-stop-exit-escalate +fnn-exit-fault+
                                                     (fnn-exit-code-for failure))))
         (sb-ext:atomic-push (list primary failure failure-code)
-                            (symbol-value '*fnn-escape-cleanup-debts*))
+                            (car *fnn-escape-cleanup-debts*))
         (setq code (fn-fs-stop-exit-escalate code failure-code))))
     (if (eql code primary-code)
         (fnn-err "cleanup during escape failed after the primary outcome (exit ~d): ~{~a~^; ~}"

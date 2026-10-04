@@ -18,7 +18,7 @@
 
 (defvar *err* nil)
 (defun fnn-err (control &rest args) (push (apply #'format nil control args) *err*))
-(unless (boundp '*fnn-escape-cleanup-debts*) (defvar *fnn-escape-cleanup-debts* nil))
+(unless (boundp '*fnn-escape-cleanup-debts*) (defvar *fnn-escape-cleanup-debts* (list nil)))
 
 (defun check (ok what) (unless ok (error "FAILED: ~a" what)))
 (defun escape-of (thunk)
@@ -26,7 +26,7 @@
   (handler-case (values (multiple-value-list (funcall thunk)) nil)
     (serious-condition (c) (values nil c))))
 (defmacro with-fresh (&body body)
-  `(let ((*err* nil) (*fnn-escape-cleanup-debts* nil) (*fnn-section-step* nil)) ,@body))
+  `(let ((*err* nil) (*fnn-escape-cleanup-debts* (list nil)) (*fnn-section-step* nil)) ,@body))
 (defun failing-os () (fnn-os-fail 5 "/staged"))
 
 ;; 1. A known refusal escapes while one of three cleanups fails with an OS
@@ -45,7 +45,7 @@
       (let ((text (princ-to-string c)))
         (check (search "Errno 5" text) "case 1 names the cleanup failure")
         (check (search "body refused" text) "case 1 names the primary"))
-      (check (= (length *fnn-escape-cleanup-debts*) 1) "case 1 recorded"))))
+      (check (= (length (car *fnn-escape-cleanup-debts*)) 1) "case 1 recorded"))))
 
 ;; 2. The primary is a fence and a cleanup faults: the fence is never masked;
 ;; the primary object itself propagates and the failure is recorded.
@@ -56,8 +56,8 @@
                      (fnn-unwind-cleanups ((error primary)) (failing-os))))
       (check (null values) "case 2 escaped")
       (check (eq c primary) "case 2 the primary propagates as itself")
-      (check (= (length *fnn-escape-cleanup-debts*) 1) "case 2 recorded")
-      (check (eq (first (first *fnn-escape-cleanup-debts*)) primary) "case 2 debt names the primary")
+      (check (= (length (car *fnn-escape-cleanup-debts*)) 1) "case 2 recorded")
+      (check (eq (first (first (car *fnn-escape-cleanup-debts*))) primary) "case 2 debt names the primary")
       (check (= (length *err*) 1) "case 2 the dominated outcome is logged too"))))
 
 ;; 3. The primary is a fault and a cleanup refuses: the first outcome of equal
@@ -68,7 +68,7 @@
         (escape-of (lambda ()
                      (fnn-unwind-cleanups ((error primary)) (fnn-refuse "cleanup refused"))))
       (check (and (null values) (eq c primary)) "case 3 the primary fault propagates")
-      (check (= (length *fnn-escape-cleanup-debts*) 1) "case 3 recorded"))))
+      (check (= (length (car *fnn-escape-cleanup-debts*)) 1) "case 3 recorded"))))
 
 ;; 4. An exit that is no condition (a throw) with a cleanup that fails after a
 ;; durable step: the cleanup failure is the fence (M2), no longer swallowed.
@@ -81,7 +81,7 @@
                        :not-reached)))
       (check (null values) "case 4 escaped")
       (check (typep c 'fnn-store-indeterminate) "case 4 the cleanup failure fences")
-      (check (= (length *fnn-escape-cleanup-debts*) 1) "case 4 recorded"))))
+      (check (= (length (car *fnn-escape-cleanup-debts*)) 1) "case 4 recorded"))))
 
 ;; 5. Several cleanup failures under one escape: all recorded, the worst
 ;; outcome escalates once.
@@ -92,7 +92,7 @@
                      (fnn-refuse "first cleanup") (failing-os))))
     (declare (ignore values))
     (check (typep c 'fnn-store-fault) "case 5 escalated")
-    (check (= (length *fnn-escape-cleanup-debts*) 2) "case 5 both recorded")))
+    (check (= (length (car *fnn-escape-cleanup-debts*)) 2) "case 5 both recorded")))
 
 ;; 6. No cleanup failure: the escape is untouched and nothing is recorded.
 (with-fresh
@@ -100,7 +100,7 @@
     (multiple-value-bind (values c)
         (escape-of (lambda () (fnn-unwind-cleanups ((error primary)) nil)))
       (check (and (null values) (eq c primary)) "case 6 the primary propagates")
-      (check (and (null *fnn-escape-cleanup-debts*) (null *err*)) "case 6 nothing recorded"))))
+      (check (and (null (car *fnn-escape-cleanup-debts*)) (null *err*)) "case 6 nothing recorded"))))
 
 ;; 7. A condition the body handled itself is no escape: normal completion keeps
 ;; the body's values and signals the first cleanup failure as itself, as before.
@@ -117,6 +117,6 @@
     (declare (ignore values))
     (check (and (typep c 'fnn-store-error) (search "first" (princ-to-string c)))
            "case 7 the first cleanup failure is signalled")
-    (check (null *fnn-escape-cleanup-debts*) "case 7 a completed body records no escape debt")))
+    (check (null (car *fnn-escape-cleanup-debts*)) "case 7 a completed body records no escape debt")))
 
 (format t "Unwind cleanup escalation passed (7 cases)~%")
