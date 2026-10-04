@@ -304,9 +304,6 @@ class StableStatusLinesTests(unittest.TestCase):
                             stable_status_lines(report.replace("articles=7", "articles=6")))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 FAKE_IMAGE = """#!/bin/sh
 # A stand-in image: the heap probe answers a figure, a run prints what it got.
@@ -354,3 +351,7 @@ class InstalledLaunchTests(unittest.TestCase):
         out = plain.invoke("operator", plain.config, "status").stdout.decode()
         self.assertNotIn("--dynamic-space-size 777", out)
         self.assertIn("args=--fn operator {} status".format(plain.config), out)
+
+
+if __name__ == "__main__":
+    unittest.main()
