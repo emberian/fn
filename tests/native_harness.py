@@ -1275,6 +1275,32 @@ class Node:
         process.finish()
         return process, process.stderr.since(0).decode("utf-8", "replace")
 
+    def snapshot(self, label):
+        """Keep a copy of this node's stopped store under LABEL (ROOT/snapshots/
+        LABEL), so later cases restore it instead of building it again: a
+        store is files under one directory, and a byte copy at the same path
+        is the store (tests/test_native_operator_walk.py moves a node by
+        copying its directory).  Replaces an earlier snapshot of LABEL."""
+        import shutil
+        kept = self.root / "snapshots" / label
+        shutil.rmtree(kept, ignore_errors=True)
+        kept.parent.mkdir(exist_ok=True)
+        shutil.copytree(self.store_path, kept, symlinks=True)
+        return kept
+
+    def restore(self, label):
+        """Replace the store by the snapshot LABEL (`snapshot'); no process
+        of this node may be running."""
+        import shutil
+        kept = self.root / "snapshots" / label
+        if not kept.is_dir():
+            raise AssertionError("no snapshot {!r} of {}".format(label, self.name))
+        running = [p for p in self.processes if p.process.poll() is None]
+        if running:
+            raise AssertionError("{}: restore with a process running".format(self.name))
+        shutil.rmtree(self.store_path, ignore_errors=True)
+        shutil.copytree(kept, self.store_path, symlinks=True)
+
     def stop(self, expect=EXIT.OK, process=None, grace=60):
         """SIGTERM the owner and assert it exited EXPECT (None: any)."""
         process = process or self.process
