@@ -2663,7 +2663,7 @@ check:
 # ACL2 renders (books/wire-export.lisp fn-wgx-file), and a second interpreter
 # written from the language's description reads every vector in it.
 	@$(CHECK_STEP) $(PYTHON) tools/protocol_emit.py --wire --check
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_wire_grammar
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_wire_grammar tests.test_protocol_emit_wire
 # The shape-books table in docs/proof-style.md (books by certification
 # fan-in, the farm's graph).  A WARNING when stale, never a failure: the
 # counts move with every include (lane lane-tools-2, for served-columns).

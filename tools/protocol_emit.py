@@ -437,8 +437,11 @@ def wire_octets(timeout: int = 900) -> bytes:
     names = list(certs.closure(ROOT, WIRE_BOOK))
     subprocess.run([sys.executable, str(ROOT / "tools" / "certs.py"), "install", *names],
                    capture_output=True, text=True, cwd=ROOT)
+    # The file is the value of the CERTIFIED book at these bytes: an
+    # uncertified include would render a world whose fn-wgx-vectors-decode
+    # was never proved, so the include must be certified (:uncertified-okp nil).
     driver = "\n".join([
-        '(include-book "%s")' % WIRE_BOOK,
+        '(include-book "%s" :uncertified-okp nil)' % WIRE_BOOK,
         '(progn$ (cw "~%%%sBEGIN~%%") (cw "~s0" (fn-wgx-file-hex)) (cw "~%%%sEND~%%"))'
         % (WIRE_MARK, WIRE_MARK),
     ]) + "\n"
