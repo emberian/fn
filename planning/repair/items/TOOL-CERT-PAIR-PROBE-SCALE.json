@@ -1,0 +1,13 @@
+{
+ "category": "defect",
+ "file": "tools/cert_alists.py",
+ "id": "TOOL-CERT-PAIR-PROBE-SCALE",
+ "notes": [],
+ "owner": "tooling",
+ "severity": "medium",
+ "slice": "integrator2",
+ "source": "integrator2",
+ "state": "open",
+ "title": "tools/cert_alists.py acl2_certificate_pairs runs ONE ACL2 over every candidate certificate path (fn-ca-read-many reads all of them, though only the paths of the asked pairs are needed) and looks each pair up with two assoc-equal over the whole list (O(pairs x paths)), under a fixed 120 s timeout. After a batch that changes a widely included book (definterface, e63b7d1ff) most pairs are fresh, and the probe sits at the timeout edge: set-039fe2da5's acquire died at 120 s (TimeoutExpired, hbox load 9.7), and the same acquire rerun alone passed in 6m05s. Fix: read only the asked pairs' paths, look them up in a fast alist (hons-get) or by position, and size the timeout from the work (paths read + pairs), or chunk the asks; not a raised constant.",
+ "updated": "2026-10-04T11:23:27Z"
+}
