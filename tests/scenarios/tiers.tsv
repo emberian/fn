@@ -49,6 +49,7 @@ peer	module	tests.test_native_cold_line_quanta	BND,LAT,RDR	HDR/XHDR/XPAT/NEWNEWS
 peer	module	tests.test_native_cold_line_deadline	BND,LAT,RDR	the same lines within 30 s while a concurrent reader is served
 peer	module	tests.test_native_cold_off_loop	BND,LAT	a stalled cold read leaves eight other connections answered
 peer	module	tests.test_native_peer_misbehaving	BND,PEER,LAT	a configured peer trickling inside IHAVE, resetting half-way through TAKETHIS, sending garbage, never reading CHECK replies: reader and a good transfer still served, id not spoiled
+peer	module	tests.test_native_peer_hostile_feed	PEER,IDEM,ARU	replies a stranger gives fn's feed (431 four times, a stray 239) and offers that must not poison another peer (forged Message-ID; changed bytes after acceptance); lane read-peer's cases
 peer	module	tests.test_native_public_exposure	BND,AUTH,LAT	a stranger flood: per-address and total caps, slowloris, lockout; the legitimate reader keeps being served
 peer	module	tests.test_native_tls_handshake_budget	BND,AUTH	per-source TLS handshake budget against a slow-loris handshake
 peer	module	tests.test_native_host_lifecycle	BND,LAT	client and peer events (EMFILE, resets, adoption race) never stop the owner
