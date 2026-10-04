@@ -104,5 +104,22 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-orv-startup-grant) (fn-crv-nth fn-orv-policy-p fn-orv-bookkeeping-octets)))))
 
+;; The status/health line naming the output-accounting mode, so the mode is
+;; never silent (root ruling 2026-10-04): with no [resources] output policy
+;; the node runs unaccounted output; with one, every first command passes
+;; the admission gate (books/output-command-admission.lisp).
+(defun fn-orv-accounting-line (policy)
+  (declare (xargs :guard t))
+  (if (fn-orv-policy-p policy)
+      (coerce (append (coerce "output accounting: on output_heap_octets=" 'list)
+                      (explode-nonnegative-integer (nfix (fn-crv-nth 0 policy)) 10 nil)
+                      (coerce " output_quantum_heap_octets=" 'list)
+                      (explode-nonnegative-integer (nfix (fn-crv-nth 1 policy)) 10 nil))
+              'string)
+    "output accounting: off (no [resources])"))
+
+(defthm fn-orv-accounting-line-off-without-policy
+  (equal (fn-orv-accounting-line nil) "output accounting: off (no [resources])"))
+
 (in-theory (disable fn-orv-policy-p fn-orv-extend-reservation
                     fn-orv-bookkeeping-octets fn-orv-startup-grant))

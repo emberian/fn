@@ -5398,9 +5398,23 @@
 
 (definterface fn-web-host-private-reply-p :class ::program)
 (definterface fn-web-host-private-reply-step :class ::program)
-; Actual admitted pre-factory output consumer. Incomplete tariffs refuse.
+; Actual admitted pre-factory output consumer. ARTICLE is priced from the
+; row its factory serves (books/output-tariff-article-row.lisp); every other
+; family is (:unpriced F) and answered 403 by name in accounted mode.  The
+; reply-within-tariff bound over the exec arm is not yet a theorem (see
+; planning/design/tariff-2026-10-04.md, the first slice).
 (definterface fn-owner-output-preview :class :program)
-(definterface fn-owner-output-tariff-preview :class :program)
+(definterface fn-owner-output-tariff-preview
+  :class :program
+  :keystones ((fn-tariff-article-prices-the-served-row :via fn-tariff-article-preview)
+              (fn-tariff-article-prices-the-served-msgid :via fn-tariff-article-preview)
+              (fn-tariff-article-admits-exactly-within-capacity :via fn-tariff-article-descriptor)))
+(definterface fn-owner-output-refusal-line-at
+  :class :program
+  :keystones ((fn-oadl-refusal-is-one-line :via fn-oadl-refusal-span)))
+(definterface fn-oadl-wordp :class :common-lisp-compliant)
+(definterface fn-oadl-log-line :class :common-lisp-compliant)
+(definterface fn-orv-accounting-line :class :common-lisp-compliant)
 (definterface fn-ocap-admit-preview :class :common-lisp-compliant)
 (definterface fn-ocap-at :class :common-lisp-compliant)
 (definterface fn-rlo-capacity :class :common-lisp-compliant)

@@ -1928,7 +1928,11 @@ This installs only the explicit output projection, not a full allocation gate."
               *fnn-response-capture*)))))
 
 (defun fnn-owner-output-prefix-locked (service cid incoming)
-  "ACL2's funded first event prefix; absent policy is explicitly partial."
+  "ACL2's funded first event prefix, or ACL2's refusal word when the gate
+answers it on the wire (books/output-admission-line.lisp: an unpriced family
+or an unaffordable reply).  Absent policy passes the buffer: the pass-through
+goes in the commit that prices the last family a stock node serves
+(specs/resource-vector.md, the dated open precondition)."
   (if (null (fnn-owner-service-output-ledger service)) (length incoming)
     (let* ((preview (fnn-core-buffer-state 'fn-owner-output-preview cid 0 (length incoming)))
            (tariff (fnn-owner-core 'fn-owner-output-tariff-preview cid preview))
@@ -1936,9 +1940,30 @@ This installs only the explicit output projection, not a full allocation gate."
             (sb-thread:with-mutex ((fnn-owner-service-output-ledger-lock service))
               (fnn-core 'fn-rlo-capacity (fnn-owner-service-output-ledger service))))
            (admission (fnn-core 'fn-ocap-admit-preview preview tariff capacity)))
-      (unless (eq (fnn-core 'fn-ocap-at 0 admission) :hold)
-        (fnn-refuse "accounted output command refused ~s" admission))
-      (fnn-core 'fn-ocap-at 1 admission))))
+      (cond ((eq (fnn-core 'fn-ocap-at 0 admission) :hold)
+             (fnn-core 'fn-ocap-at 1 admission))
+            ((fnn-core 'fn-oadl-wordp admission)
+             (fnn-log-line (fnn-core 'fn-oadl-log-line admission cid))
+             admission)
+            (t (fnn-refuse "accounted output command refused ~s" admission))))))
+
+(defun fnn-owner-output-refusal-locked (service cid incoming admission)
+  "Owner held, inside the read's quantum: ACL2's refusal line over the refused
+command's line, in fnn-owner-handle-chunk-read's values."
+  (fnn-owner-read-buffer-fill service incoming)
+  (let ((step (fnn-core-buffer-state 'fn-owner-output-refusal-line-at cid 0 admission)))
+    (when (eq step :unknown) (fnn-refuse "owner no longer knows connection ~d" cid))
+    (unless (fnn-core 'fn-splan-step-p step)
+      (fnn-fault "owner returned a malformed output refusal step ~a" step))
+    (fnn-owner-refresh-read-octets service)
+    (let ((consumed (fnn-core 'fn-splan-step-consumed step)))
+      (unless (and (integerp consumed) (< 0 consumed) (<= consumed (length incoming)))
+        (fnn-fault "owner returned a malformed output refusal count"))
+      (values (fnn-core 'fn-splan-step-plan step nil nil)
+              (or (fnn-core 'fn-splan-step-closep step)
+                  (fnn-core 'fn-splan-step-exposure-close step))
+              (fnn-core 'fn-splan-step-handshake-owed step)
+              consumed nil nil))))
 
 (defun fnn-owner-output-dependency (service grant read)
   "Owner held before a newly issued cold read escapes its capture quantum."
@@ -6295,8 +6320,11 @@ EPIPE and the client saw a bare close)."
        ;; Shared values and actual stobj references are captured under the
        ;; same O admission as the factory; rendering never re-reads a root.
        (fnn-owner-capture-reader-context cid)
-       (let ((step (fnn-owner-chunk-span-no-io
-                    cid incoming sched (fnn-owner-output-prefix-locked service cid incoming))))
+       (let* ((prefix (fnn-owner-output-prefix-locked service cid incoming))
+              (step (if (consp prefix)
+                        (return-from step
+                          (fnn-owner-output-refusal-locked service cid incoming prefix))
+                      (fnn-owner-chunk-span-no-io cid incoming sched prefix))))
          ;; Row A4 (c): the first line needs a page not in memory; its read
          ;; happens off the mutex (fnn-owner-handle-chunk, fnn-owner-cold-line).
          (when (and (consp step) (eq (car step) :fnn-extent-cold))

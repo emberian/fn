@@ -351,9 +351,24 @@ The output pool is an explicit heap allowance beyond the composed store,
 thread and cold-resource launch reservation. `resources.output_heap_octets`
 and `resources.output_quantum_heap_octets` form an optional normalized pair;
 the quantum is allocation heap octets, not wire octets or a maximum reply.
-Absent policy remains a partial resource frontier. Explicit policy stays
-unsupported by operator run until the actual consumer and its allocation
-coverage are installed; recognizing grammar does not activate a gate.
+An explicit policy is the operator's opt-in to accounted output: every
+first command passes `fn-ocap-admit-preview` before any factory. ARTICLE is
+priced from the row its factory serves (`books/output-tariff-article-row.lisp`,
+PRF-1316). Every other family is unpriced and is answered
+`403 command unavailable; its output is not priced on this server` with the
+connection kept. A reply over the quantum is answered `400` and the connection
+is closed (`books/output-admission-line.lisp`). `fn operator status` and
+`health` print `output accounting: on ...` or
+`output accounting: off (no [resources])`.
+
+Open precondition (2026-10-04, root ruling): with no `[resources]` section the
+node runs unaccounted output (the pass-through in
+`fnn-owner-output-prefix-locked`). That pass-through is deleted, and the
+supported profile gains a default policy (its quantum the maximum of the
+families' tariffs at the profile's article bound), in the commit that prices
+the last family a stock node serves, i.e. when the count of unpriced served
+families reaches zero. Until then the unaccounted path is the default, not a
+mode.
 
 `fn-orv-extend-reservation` extends the existing composed launch decision
 exactly once and checks the whole observed machine reservation. Startup

@@ -137,9 +137,9 @@
         (equal resolved (update-nth 30 *ncpt-output* *ncpt-resolved*))
         (equal (fn-native-config-output-resources (cadr (fn-native-config-load handed)))
                *ncpt-output*)
-        (equal (fn-native-config-unsupported-key (cadr (fn-native-config-load handed)))
-               "output_resources")
-        (not (fn-native-config-operator-availablep (cadr (fn-native-config-load handed)))))))
+        ; An explicit output policy is an operator opt-in, not a refusal.
+        (equal (fn-native-config-unsupported-key (cadr (fn-native-config-load handed))) nil)
+        (fn-native-config-operator-availablep (cadr (fn-native-config-load handed))))))
 (assert-event
  (and (not (fn-ncpath-basep nil))
       (fn-ncfg-show-shapep *ncpt-both-config*)

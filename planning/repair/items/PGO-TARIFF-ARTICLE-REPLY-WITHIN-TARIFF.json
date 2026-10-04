@@ -1,0 +1,12 @@
+{
+ "category": "proof-owed",
+ "file": "books/output-tariff-article.lisp",
+ "id": "PGO-TARIFF-ARTICLE-REPLY-WITHIN-TARIFF",
+ "notes": [],
+ "owner": "tariff2",
+ "severity": "medium",
+ "source": "tariff2",
+ "state": "open",
+ "title": "PRF-1316: fn-tariff-article-reply-within-tariff is owed. The theorem: the derived :conses twin of fn-nntp-article-response-of-bytes (the EXEC arm, as def-cost costs mbe) is at most 2*(L0 + 2*ELEN + 3) + k cells, where L0 = *fn-tariff-article-initial-octets*. With it, the cells fn-tariff-article-octets charges are a bound over the arm that runs. The same goes for fn-rcompat-article-reply-exec's two renders, at the folded length (fn-tariff-article-octets-of-two-renders). Status: def-cost derivation over nntp-responses (laptop REPL 2026-10-04) leaves fn-nntp-article-idp, fn-rcl-tombstonep, fn-nntp-response-block-rev, fn-nntp-single, fn-nntp-retrieval-initial and fn-nntp-crlf unaccounted. Each needs its own :conses row first. fn-nntp-block-rev (the per-octet recursion) and fn-nntp-retrieval-initial (fn-nntp-decimal-field, fn-nntp-string-octets, fn-nntp-append-pieces) are the substantive ones. Until then the ARTICLE tariff is a stated figure over the representation, not a proved bound on the reply's allocation; the native discriminates admission by name.",
+ "updated": "2026-10-04T04:06:37Z"
+}
