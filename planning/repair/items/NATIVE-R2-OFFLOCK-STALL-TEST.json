@@ -1,0 +1,18 @@
+{
+ "category": "test-bug",
+ "detail": "hbox native-set-bdd4f40c4-r2 logs test-tests.test_native_owner_offlock.log: ERROR test_a_stalled_feed_journal_holds_no_owner_quantum at tests/test_native_owner_offlock.py:122 (line = early or s1.readline()), OSError cannot read from timed out object. Cause: the case does c1.settimeout(0.5); try: early = s1.readline() except timeout; then c1.settimeout(120); s1.readline(). s1 = conn.makefile('rwb') (connect()); after a timeout socket.SocketIO._timeout_occurred is set and never cleared. Fix: probe with select.select([c1],[],[],0.5) and only then s1.readline() (no timeout on the stream), keep settimeout(120) for the post-release read. The OWNER-OFFLOCK-STALL-WITNESS assertions (max reads <1.0 s, health <3.0 s, early == b'', 240) are unchanged. The other two cases in the module pass.",
+ "disposition": "LOCAL",
+ "exposure": "none",
+ "file": "tests/test_native_owner_offlock.py",
+ "fix": "tests/test_native_owner_offlock.py: replace the try/settimeout/readline probe by select.select; no product change.",
+ "id": "NATIVE-R2-OFFLOCK-STALL-TEST",
+ "locus": "owner-offlock",
+ "notes": [],
+ "owner": "unassigned",
+ "scenario": "Any run: the 0.5 s early-reply probe times out as designed (the POST is held), then the follow-up read on the same stream raises.",
+ "severity": "medium",
+ "source": "native-set-bdd4f40c4-r2",
+ "state": "open",
+ "title": "tests.test_native_owner_offlock stalled-feed case reuses a socket makefile() stream after a read timeout; Python's SocketIO raises OSError 'cannot read from timed out object' on every later read, so the test errors regardless of the node",
+ "updated": "2026-10-04T19:04:15Z"
+}

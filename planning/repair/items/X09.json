@@ -6,11 +6,13 @@
  "id": "X09",
  "line": "",
  "locus": "log-kernel",
- "notes": [],
+ "notes": [
+  "10-04 15:10 fnn-log-parent (io.lisp:7244) is (fnn-parent path); fnn-parent (io.lisp:923) does string-right-trim of / first; tests/test_log_parent.py covers a/journal/ -> a (landed 4c46b5e61). Refuted by FAIRY-3 prep 2026-10-04."
+ ],
  "owner": "sweep-store",
  "severity": "medium",
  "source": "coordinator",
- "state": "open",
+ "state": "refuted",
  "title": "fnn-log-parent lacks trailing-slash trim: fsync wrong directory",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-04T19:10:31Z"
 }

@@ -9,13 +9,15 @@
  "id": "S048",
  "line": "157",
  "locus": "log-kernel",
- "notes": [],
+ "notes": [
+  "10-04 15:10 fixed by 239f2e5b4: books/store-log-entry-bound.lisp fn-lgw-entry-len-bounded / fn-lgdm-entry-len-bounded bound the declared length by fn-lg-open-bound before the read; host calls them at io.lisp:7440 (probe) and 7500 (stream). Refuted by FAIRY-3 prep 2026-10-04."
+ ],
  "owner": "sweep-store",
  "reviewer": "fn-lg-declared-len (store-log.lisp:369-376) checks only the 'FNLG' magic and then returns overhead plus the u32 length. fn-lgdm-entry-len (store-log-damage.lisp:157-160) and fn-lgw-entry-len (store-log-stream.lisp:103-106) cap that only by the remaining extent. The host preads that many octets: io.lisp:6618 in the walk, and io.lisp:6560 in the probe, which also listifies them. A bit flip in the length field of a real header therefore reads up to min(4 GiB, the rest of the extent). The tighter bound fn-lg-open-bound (store-log.lisp:394-398) is applied only after the read. Payload octets that contain FNLG headers at probe strides do make the probe do this repeatedly, but only after a tear or other damage.",
  "scenario": "Case 1: one bit flips in the u32 length field of an entry header at the stop (or a torn batch leaves an 'FNLG' header with a garbage length). The open then preads up to the rest of the segment, possibly GiBs, into one array. In the probe that array is then turned into an ACL2 octet list at about 16 bytes per octet. Case 2: a client article whose body carries 'FNLG' headers at 4096-octet strides is part of a batch that tears in a crash. Every such stride makes the probe read and listify up to extent-q octets. The open can exhaust the heap instead of returning the named :damaged/:torn verdict.",
  "severity": "medium",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "refuted",
  "title": "Log stream and damage probe read whatever length an unvalidated header declares, up to the remaining extent, before checking it against the record bound",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-04T19:10:31Z"
 }
