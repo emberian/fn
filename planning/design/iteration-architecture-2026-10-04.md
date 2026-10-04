@@ -368,6 +368,21 @@ CHECK_CHANGED_SINCE` 186-313 s; after, the steps the file reaches only (the
 scoped run already skips the unreached; the gain is the reds it no longer
 re-runs: expected 60-70 % of the scoped wall, measured when built).
 
+Slice 2 as built (`tools/reds.py`, `tools/iterate.py`, `tests/test_reds.py`):
+`reds.py collect` reads the last `execute`'s red rows with their scope
+records, native module logs' `FAIL`/`ERROR` case lines and `certify_triage`'s
+`real` rows into `build/reds.json`, each with a selector (traced inputs; the
+module, the harness and the repository paths the module names; the book's
+include closure); `affected --since REV` names the reached reds and the
+narrowest command; `delta` the appeared and fixed.  `iterate.py --since REV`
+runs the scoped check-lane, collects, prints the delta and the other-kind
+reds the diff reaches with their commands (never started here).  The
+evidence fetch (`evidence_store.py fetch --all`) is now a warm-up step of
+`make check` and `check-fast`, and the evidence cache a shared cache to
+check_steps, so `ledger --check` and `current_view --check` are cacheable
+(they spawned the rsync themselves and were untraceable).  FORCE=1 is
+untouched: iterate.py calls `make check-lane` and never passes it.
+
 ### Slice 3 (two lane-days): native and test-case verdicts in the store
 
 `tools/test_budget.py --one` writes a `test-case` verdict per test with the
