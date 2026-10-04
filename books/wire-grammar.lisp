@@ -45,7 +45,11 @@
 ; tail-only node stands only last.
 ;
 ; Refusals: (:refused :trailer) for a frame whose trailer is not the digest
-; of its protected prefix, (:refused :malformed) for every other refusal.
+; of its protected prefix, (:refused :where) for octets a :where node's
+; grammar accepts and its checks refuse (the fields are well formed and
+; inconsistent with each other), (:refused :malformed) for every other
+; refusal.  The decoder is sequential, so the first refusal met is the
+; answer: a frame's trailer is checked before its payload is decoded.
 ;
 ; This book owns the prefix `fn-wg-' (docs/prefixes.md).
 
@@ -598,6 +602,10 @@
 (defun fn-wg-rest (r) (declare (xargs :guard t)) (if (and (consp r) (consp (cdr r)) (consp (cddr r))) (caddr r) nil))
 (defun fn-wg-malformed () (declare (xargs :guard t)) (fn-wg-refused :malformed))
 
+; Every refusal the decoder answers, in the order a reader meets them in the
+; description (`fn-wg-decode-answers').
+(defconst *fn-wg-refusals* '(:trailer :where :malformed))
+
 (defun fn-wg-decode (g xs)
   (declare (xargs :guard t :measure (acl2-count g) :verify-guards nil))
   (let ((op (fn-wg-op g)))
@@ -615,16 +623,19 @@
             (fn-wg-ok n (fn-wg-drop w xs))
           (fn-wg-malformed))))
      ((equal op :bytes)
+      ; The declared length N is checked against the grammar's HI and the
+      ; octets present BEFORE anything is taken by it.
       (let* ((w (nfix (fn-wg-arg 1 g)))
              (n (fn-wg-be-value (fn-wg-take w xs)))
-             (body (fn-wg-drop w xs))
-             (v (fn-wg-take n body)))
+             (body (fn-wg-drop w xs)))
         (if (and (<= w (len xs))
                  (fn-cbor-octet-listp (fn-wg-take w xs))
                  (<= (nfix (fn-wg-arg 2 g)) n) (<= n (nfix (fn-wg-arg 3 g)))
-                 (<= n (len body))
-                 (fn-wg-class-okp (fn-wg-arg 4 g) v))
-            (fn-wg-ok v (fn-wg-drop n body))
+                 (<= n (len body)))
+            (let ((v (fn-wg-take n body)))
+              (if (fn-wg-class-okp (fn-wg-arg 4 g) v)
+                  (fn-wg-ok v (fn-wg-drop n body))
+                (fn-wg-malformed)))
           (fn-wg-malformed))))
      ((equal op :rest)
       (if (and (fn-wg-class-okp (fn-wg-arg 3 g) xs)
@@ -697,10 +708,12 @@
      ((equal op :where)
       (let ((r (fn-wg-decode (fn-wg-arg 1 g) xs)))
         (if (and (fn-wg-okp r) (not (fn-wg-checks-okp (fn-wg-where-checks g) (fn-wg-value r))))
-            (fn-wg-malformed)
+            (fn-wg-refused :where)
           r)))
      ((equal op :frame)
       ; Split in order: MAGIC(4) VERSION KIND LENGTH(4) PAYLOAD TRAILER(32).
+      ; The declared LENGTH is checked against MAX and the octets present
+      ; BEFORE the payload is taken by it.
       (let* ((m (fn-wg-take 4 xs))
              (x1 (fn-wg-drop 4 xs))
              (version (if (consp x1) (car x1) nil))
@@ -708,10 +721,7 @@
              (x2 (if (and (consp x1) (consp (cdr x1))) (cddr x1) nil))
              (lenb (fn-wg-take 4 x2))
              (x3 (fn-wg-drop 4 x2))
-             (n (fn-wg-be-value lenb))
-             (payload (fn-wg-take n x3))
-             (x4 (fn-wg-drop n x3))
-             (trailer (fn-wg-take 32 x4)))
+             (n (fn-wg-be-value lenb)))
         (if (not (and (<= 4 (len xs))
                       (equal m (fn-wg-arg 1 g))
                       (consp x1) (consp (cdr x1))
@@ -720,17 +730,22 @@
                       (<= 4 (len x2))
                       (fn-cbor-octet-listp lenb)
                       (<= n (nfix (fn-wg-arg 4 g)))
-                      (<= (+ n 32) (len x3))
-                      (fn-cbor-octet-listp payload)
-                      (fn-cbor-octet-listp trailer)))
+                      (<= (+ n 32) (len x3))))
             (fn-wg-malformed)
-          (if (not (equal trailer
-                          (fn-frame-digest (fn-wg-frame-protected m version kind payload))))
-              (fn-wg-refused :trailer)
-            (let ((r (fn-wg-decode (fn-wg-arg 5 g) payload)))
-              (cond ((not (fn-wg-okp r)) r)
-                    ((consp (fn-wg-rest r)) (fn-wg-malformed))
-                    (t (fn-wg-ok (fn-wg-value r) (fn-wg-drop 32 x4)))))))))
+          (let* ((payload (fn-wg-take n x3))
+                 (x4 (fn-wg-drop n x3))
+                 (trailer (fn-wg-take 32 x4)))
+            (if (not (and (fn-cbor-octet-listp payload)
+                          (fn-cbor-octet-listp trailer)))
+                (fn-wg-malformed)
+              (if (not (equal trailer
+                              (fn-frame-digest
+                               (fn-wg-frame-protected m version kind payload))))
+                  (fn-wg-refused :trailer)
+                (let ((r (fn-wg-decode (fn-wg-arg 5 g) payload)))
+                  (cond ((not (fn-wg-okp r)) r)
+                        ((consp (fn-wg-rest r)) (fn-wg-malformed))
+                        (t (fn-wg-ok (fn-wg-value r) (fn-wg-drop 32 x4)))))))))))
      (t (fn-wg-malformed)))))
 
 ; -----------------------------------------------------------------------------
@@ -875,14 +890,15 @@
            (equal (fn-wg-decode g xs)
                   (let* ((w (nfix (fn-wg-arg 1 g)))
              (n (fn-wg-be-value (fn-wg-take w xs)))
-             (body (fn-wg-drop w xs))
-             (v (fn-wg-take n body)))
+             (body (fn-wg-drop w xs)))
         (if (and (<= w (len xs))
                  (fn-cbor-octet-listp (fn-wg-take w xs))
                  (<= (nfix (fn-wg-arg 2 g)) n) (<= n (nfix (fn-wg-arg 3 g)))
-                 (<= n (len body))
-                 (fn-wg-class-okp (fn-wg-arg 4 g) v))
-            (fn-wg-ok v (fn-wg-drop n body))
+                 (<= n (len body)))
+            (let ((v (fn-wg-take n body)))
+              (if (fn-wg-class-okp (fn-wg-arg 4 g) v)
+                  (fn-wg-ok v (fn-wg-drop n body))
+                (fn-wg-malformed)))
           (fn-wg-malformed)))))
   :hints (("Goal" :expand ((fn-wg-decode g xs)))))
 
@@ -987,7 +1003,7 @@
            (equal (fn-wg-decode g xs)
                   (let ((r (fn-wg-decode (fn-wg-arg 1 g) xs)))
         (if (and (fn-wg-okp r) (not (fn-wg-checks-okp (fn-wg-where-checks g) (fn-wg-value r))))
-            (fn-wg-malformed)
+            (fn-wg-refused :where)
           r))))
   :hints (("Goal" :expand ((fn-wg-decode g xs)))))
 
@@ -1001,10 +1017,7 @@
              (x2 (if (and (consp x1) (consp (cdr x1))) (cddr x1) nil))
              (lenb (fn-wg-take 4 x2))
              (x3 (fn-wg-drop 4 x2))
-             (n (fn-wg-be-value lenb))
-             (payload (fn-wg-take n x3))
-             (x4 (fn-wg-drop n x3))
-             (trailer (fn-wg-take 32 x4)))
+             (n (fn-wg-be-value lenb)))
         (if (not (and (<= 4 (len xs))
                       (equal m (fn-wg-arg 1 g))
                       (consp x1) (consp (cdr x1))
@@ -1013,17 +1026,22 @@
                       (<= 4 (len x2))
                       (fn-cbor-octet-listp lenb)
                       (<= n (nfix (fn-wg-arg 4 g)))
-                      (<= (+ n 32) (len x3))
-                      (fn-cbor-octet-listp payload)
-                      (fn-cbor-octet-listp trailer)))
+                      (<= (+ n 32) (len x3))))
             (fn-wg-malformed)
-          (if (not (equal trailer
-                          (fn-frame-digest (fn-wg-frame-protected m version kind payload))))
-              (fn-wg-refused :trailer)
-            (let ((r (fn-wg-decode (fn-wg-arg 5 g) payload)))
-              (cond ((not (fn-wg-okp r)) r)
-                    ((consp (fn-wg-rest r)) (fn-wg-malformed))
-                    (t (fn-wg-ok (fn-wg-value r) (fn-wg-drop 32 x4))))))))))
+          (let* ((payload (fn-wg-take n x3))
+                 (x4 (fn-wg-drop n x3))
+                 (trailer (fn-wg-take 32 x4)))
+            (if (not (and (fn-cbor-octet-listp payload)
+                          (fn-cbor-octet-listp trailer)))
+                (fn-wg-malformed)
+              (if (not (equal trailer
+                              (fn-frame-digest
+                               (fn-wg-frame-protected m version kind payload))))
+                  (fn-wg-refused :trailer)
+                (let ((r (fn-wg-decode (fn-wg-arg 5 g) payload)))
+                  (cond ((not (fn-wg-okp r)) r)
+                        ((consp (fn-wg-rest r)) (fn-wg-malformed))
+                        (t (fn-wg-ok (fn-wg-value r) (fn-wg-drop 32 x4))))))))))))
   :hints (("Goal" :expand ((fn-wg-decode g xs)))))
 
 (defthm fn-wg-encode-opener-const
@@ -1771,6 +1789,13 @@
                (equal (access clause-id id :primes) 0)
                '(:use (fn-wg-shape-facts fn-wg-grammarp-op fn-wg-grammarp-seq-tag-shape fn-wg-decode-of-encode-const fn-wg-decode-of-encode-uint fn-wg-decode-of-encode-bytes fn-wg-decode-of-encode-rest fn-wg-decode-of-encode-line fn-wg-decode-of-encode-base64-lines fn-wg-decode-of-encode-enum fn-wg-decode-of-encode-seq fn-wg-decode-of-encode-tag-hit fn-wg-decode-of-encode-tag-miss fn-wg-decode-of-encode-maybe fn-wg-decode-of-encode-where fn-wg-decode-of-encode-frame)))))
 
+; A whole message: the encoding of a value decodes, with nothing left, to it.
+(defthm fn-wg-decode-of-encode-whole
+  (implies (and (fn-wg-grammarp g) (fn-wg-valuep g v))
+           (equal (fn-wg-decode g (fn-wg-encode g v)) (fn-wg-ok v nil)))
+  :hints (("Goal" :use ((:instance fn-wg-decode-of-encode (r nil)) fn-wg-encode-octets)
+           :in-theory (disable fn-wg-decode-of-encode fn-wg-encode-octets))))
+
 ; -----------------------------------------------------------------------------
 ; Encode of decode
 
@@ -2070,3 +2095,17 @@
 (verify-guards fn-wg-encode)
 (verify-guards fn-wg-valuep)
 (verify-guards fn-wg-decode)
+
+; -----------------------------------------------------------------------------
+; The decoder's answers: accepted, or refused by one of *fn-wg-refusals*.
+; (The exported file lists those words; a reader that meets another refuses
+; the file.)
+
+(defthm fn-wg-decode-answers
+  (let ((r (fn-wg-decode g xs)))
+    (or (equal r (fn-wg-ok (fn-wg-value r) (fn-wg-rest r)))
+        (and (equal r (fn-wg-refused (fn-wg-arg 1 r)))
+             (member-equal (fn-wg-arg 1 r) *fn-wg-refusals*))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-wg-decode g xs)
+                  :in-theory (enable fn-wg-decode))))

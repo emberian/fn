@@ -437,20 +437,53 @@
   (declare (xargs :guard t))
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))
 
+; rp-refused-memory-poison (read-peer 2026-10-04; the coordinator's ruling).
+; Every remembered reason (*fn-peer-intrinsic-reasons*) is decided by the
+; octets ONE peer offered, so the memory is scoped to that peer: an entry is
+; keyed (PEER . Message-ID string) and only offers on PEER's own sessions
+; read it.  Before, the key was the Message-ID alone and every peer read it,
+; so one peer's mismatched or garbage transfer of <v> made every other
+; peer's offer of <v> draw 438 -- final for the sender -- and the real <v>
+; was never taken (pull offers on the pulled peer's own session, so the same
+; rule holds there).  What is a property of the Message-ID itself is global
+; already: the history (a durably held article, fn-peer-history-hasp), asked
+; first.  No remembered reason is independent of the offered octets.
+(defun fn-peer-refused-key (peer msgid)
+  (declare (xargs :guard t))
+  (cons peer (fn-record-octets-string msgid)))
+
+; The session's peer is its second field (fn-peer-session-peer, below).
 (defun fn-peer-remembered-reason (msgid session)
   (declare (xargs :guard t))
-  (let ((r (fn-rof-lookup (fn-record-octets-string msgid)
+  (let ((r (fn-rof-lookup (fn-peer-refused-key (fn-ag-car (fn-ag-cdr session)) msgid)
                           (fn-peer-session-refused session))))
     (if (member-equal r *fn-peer-intrinsic-reasons*) r nil)))
 
-; What the owner remembers after a transfer: the intrinsic refusal of the
-; octets, under the operator's capacity (books/relay-checks.lisp).
-(defun fn-peer-refused-record (mem cfg msgid octets)
+; The memory's entries of PEER's own offers, and every other entry (other
+; peers', and a shed read's posture entry), each in its order.
+(defun fn-peer-refused-ownp (peer e)
   (declare (xargs :guard t))
-  (if (fn-af-message-idp msgid)
-      (fn-rof-record mem (fn-rck-refused-capacity cfg)
-                     (fn-record-octets-string msgid)
-                     (fn-peer-intrinsic-refusal msgid octets))
+  (and (consp e) (consp (car e)) (equal (car (car e)) peer)))
+
+(def-loop fn-peer-refused-of (mem peer) :shape :concat :over mem
+  :body (if (fn-peer-refused-ownp peer (car mem)) (list (car mem)) nil))
+
+(def-loop fn-peer-refused-others (mem peer) :shape :concat :over mem
+  :body (if (fn-peer-refused-ownp peer (car mem)) nil (list (car mem))))
+
+; What the owner remembers after PEER's transfer: the intrinsic refusal of
+; the octets, among PEER's own entries, under the operator's capacity per
+; peer (books/relay-checks.lisp; the whole memory is at most the capacity
+; times the configured peers, D27).  The others' entries are untouched.
+(defun fn-peer-refused-record (mem cfg peer msgid octets)
+  (declare (xargs :guard t))
+  (if (and (fn-af-message-idp msgid)
+           (fn-peer-intrinsic-refusal msgid octets))
+      (append (fn-rof-record (fn-peer-refused-of mem peer)
+                             (fn-rck-refused-capacity cfg)
+                             (fn-peer-refused-key peer msgid)
+                             (fn-peer-intrinsic-refusal msgid octets))
+              (fn-peer-refused-others mem peer))
     mem))
 
 ; RFC 5537 section 3.6 step 4 ("SHOULD reject any article that does not
@@ -882,14 +915,42 @@
 (defmacro fn-peer-reader-session (ps)
   `(fn-post-session-base (fn-peer-session-base ,ps)))
 
-; nil | (:ihave msgid) | (:takethis msgid)
+; rp-takethis-bad-msgid-desync (read-peer 2026-10-04).  RFC 4644 section
+; 2.5.2: the article follows a TAKETHIS line at once, whatever its argument,
+; and the answer is 239 or 439.  A TAKETHIS whose argument is no Message-ID
+; used to draw 501 and no article mode, so the article's own lines ran as
+; commands on the peer session (a body line `TAKETHIS <x>' opened a transfer
+; whose article was the rest of the body).  It now takes its article as the
+; transfer (:takethis-refused ECHO): consumed whole, answered 439 ECHO, never
+; submitted.  ECHO is the argument when it is one non-empty printable token
+; of at most 250 octets (so the 439 is a status line, as a Message-ID echo
+; is), else "-".
+(defun fn-peer-echo-tokenp (x)
+  (declare (xargs :guard t))
+  (and (consp x) (true-listp x) (fn-nntp-printable-tokenp x)
+       (fn-cbor-at-mostp x 250)))
+
+(defun fn-peer-takethis-echo (args)
+  (declare (xargs :guard t))
+  (if (and (consp args) (null (cdr args)) (fn-peer-echo-tokenp (car args)))
+      (car args)
+    '(45)))
+
+(defthm fn-peer-echo-tokenp-of-takethis-echo
+  (fn-peer-echo-tokenp (fn-peer-takethis-echo args)))
+(in-theory (disable fn-peer-takethis-echo))
+
+; nil | (:ihave msgid) | (:takethis msgid) | (:takethis-refused echo)
 (defun fn-peer-transferp (x)
   (declare (xargs :guard t))
   (or (null x)
       (and (true-listp x) (equal (len x) 2)
            (or (equal (car x) :ihave) (equal (car x) :takethis))
            (fn-nntp-printable-tokenp (car (cdr x)))
-           (fn-af-message-idp (car (cdr x))))))
+           (fn-af-message-idp (car (cdr x))))
+      (and (true-listp x) (equal (len x) 2)
+           (equal (car x) :takethis-refused)
+           (fn-peer-echo-tokenp (car (cdr x))))))
 
 (defun fn-peer-sessionp (x)
   (declare (xargs :guard t :verify-guards nil))
@@ -1233,8 +1294,15 @@
      ((fn-nntp-keywordp keyword "TAKETHIS")
       ; The article always follows (RFC 4644 section 2.5.2); no decision
       ; until it has arrived.  Each TAKETHIS retires one outstanding 238.
+      ; Whatever the argument: one that is no Message-ID still takes its
+      ; article, refused 439 when it arrives (fn-peer-takethis-echo), so the
+      ; article's lines are never read as commands.
       (if (not (fn-peer-msgid-argp args))
-          (fn-post-make-result ps (fn-peer-single ps (fn-proto-text * :syntax)) nil)
+          (fn-post-make-result
+           (fn-peer-with-transfer ps (list :takethis-refused (fn-peer-takethis-echo args))
+                                  inflight)
+           (list (fn-nntp-begin-article-effect))
+           nil)
         (fn-post-make-result
          (fn-peer-with-transfer ps (list :takethis (car args))
                                 (nfix (- (nfix inflight) 1)))
@@ -1279,12 +1347,19 @@
                (equal (car wire-event) :article)
                (consp (cdr wire-event))
                (null (cdr (cdr wire-event))))
-          (fn-post-make-result
-           (fn-peer-with-transfer ps nil (fn-peer-session-inflight ps))
-           nil
-           (fn-peer-make-submission (fn-peer-session-peer ps)
-                                    (car transfer) (car (cdr transfer))
-                                    (fn-post-body-octets (car (cdr wire-event)))))
+          (if (equal (car transfer) :takethis-refused)
+              ; A TAKETHIS whose argument is no Message-ID: its article is
+              ; answered 439 and goes nowhere.
+              (fn-post-make-result
+               (fn-peer-with-transfer ps nil (fn-peer-session-inflight ps))
+               (fn-peer-echo-reply "439 " (car (cdr transfer)))
+               nil)
+            (fn-post-make-result
+             (fn-peer-with-transfer ps nil (fn-peer-session-inflight ps))
+             nil
+             (fn-peer-make-submission (fn-peer-session-peer ps)
+                                      (car transfer) (car (cdr transfer))
+                                      (fn-post-body-octets (car (cdr wire-event))))))
         (fn-post-make-result
          (fn-peer-with-transfer ps nil (fn-peer-session-inflight ps))
          (fn-peer-transfer-unreceived-effects ps transfer wire-event)
@@ -1385,6 +1460,48 @@
                             (line (append (fn-nntp-string-octets code-text) msgid)))
                  fn-peer-echo-line-is-response-text
                  fn-peer-echo-line-is-a-status-line))))
+
+; The refused TAKETHIS's 439 echoes a token fn-peer-echo-tokenp admits: the
+; same typed-effect fact, the 250-octet bound from the token's own preflight
+; rather than the Message-ID grammar.
+(local (defthm fn-peer-echo-tokenp-facts
+  (implies (fn-peer-echo-tokenp x)
+           (and (fn-nntp-printable-tokenp x) (true-listp x)
+                (<= (len x) 250)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-peer-echo-tokenp)
+           :use ((:instance fn-peer-cbor-at-mostp-len (xs x) (bound 250)))))))
+
+(local (defthm fn-peer-echo-token-line-is-a-status-line
+  (implies (and (fn-peer-echo-tokenp tok)
+                (member-equal code-text
+                              '("238 " "431 " "438 " "239 " "436 " "439 ")))
+           (and (fn-nntp-initial-status-linep
+                 (append (fn-nntp-string-octets code-text) tok))
+                (<= (+ (len (append (fn-nntp-string-octets code-text) tok)) 2)
+                    *fn-nntp-max-response-octets*)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-nntp-initial-status-linep
+                                   fn-nntp-decimal-digitp)
+                                  ((:d fn-peer-echo-tokenp)))))))
+
+(defthm fn-peer-echo-token-reply-effects-well-formed
+  (implies (and (fn-peer-echo-tokenp tok)
+                (member-equal code-text '("238 " "431 " "438 " "239 " "436 " "439 ")))
+           (fn-nntp-effectsp (fn-peer-echo-reply code-text tok)))
+  :hints (("Goal" :in-theory (e/d (fn-peer-echo-reply fn-nntp-effectsp
+                                   fn-nntp-effectp fn-nntp-reply-effect)
+                                  ((:d fn-nntp-replyp) (:d fn-nntp-crlf)
+                                   (:d fn-nntp-initial-status-linep)
+                                   (:d fn-nntp-response-textp)
+                                   (:d fn-peer-echo-tokenp)
+                                   (:d fn-nntp-printable-tokenp)
+                                   (:d binary-append)
+                                   (:d fn-nntp-string-octets)))
+           :use ((:instance fn-nntp-replyp-of-single-line
+                            (line (append (fn-nntp-string-octets code-text) tok)))
+                 (:instance fn-peer-echo-line-is-response-text (msgid tok))
+                 fn-peer-echo-token-line-is-a-status-line))))
 
 (defthm fn-peer-single-effects-well-formed
   (implies (and (fn-nntp-response-textp (fn-nntp-string-octets text))
@@ -1487,6 +1604,12 @@
                                                       (fn-cfg-peers (fn-cfg-value (fn-peer-session-cfg ps))))
                                     nil)))))))
 
+; A refused TAKETHIS's transfer carries an echo token (fn-peer-transferp).
+(defthm fn-peer-transferp-refused-echo
+  (implies (and (fn-peer-transferp x) (equal (car x) :takethis-refused))
+           (fn-peer-echo-tokenp (car (cdr x))))
+  :hints (("Goal" :in-theory (e/d (fn-peer-transferp) (fn-peer-echo-tokenp)))))
+
 (defthm fn-peer-step-effects-well-formed
   (implies (fn-peer-session-consistentp ps archive)
            (fn-nntp-effectsp
@@ -1495,6 +1618,7 @@
   :hints (("Goal" :in-theory (e/d (fn-peer-step fn-peer-delegate
                                    fn-peer-session-consistentp)
                                   (fn-peer-command fn-nntp-post-step
+                                   fn-peer-echo-reply fn-peer-echo-tokenp
                                    fn-peer-sessionp fn-nntp-effectsp
                                    fn-peer-single fn-nntp-response-textp
                                    fn-nntp-initial-status-linep
@@ -1927,6 +2051,35 @@
 (verify-guards fn-peer-delegate)
 (verify-guards fn-peer-command)
 (verify-guards fn-peer-step)
+
+;; KEYSTONE (rp-takethis-bad-msgid-desync).  A TAKETHIS line on a peer session
+;; always takes its article (RFC 4644 section 2.5.2), whatever its argument:
+;; the one effect begins article mode, a transfer is held for the article,
+;; and nothing is submitted.  So no line of that article is read as a command.
+(defthm fn-peer-takethis-always-takes-its-article
+  (implies (fn-nntp-keywordp keyword "TAKETHIS")
+           (let ((r (fn-peer-command ps keyword args)))
+             (and (equal (fn-post-result-effects r)
+                         (list (fn-nntp-begin-article-effect)))
+                  (fn-peer-session-transfer (fn-post-result-session r))
+                  (null (fn-post-result-submission r)))))
+  :hints (("Goal" :in-theory (e/d (fn-peer-command fn-peer-with-transfer)
+                                  (fn-peer-msgid-argp fn-peer-takethis-echo
+                                   fn-nntp-begin-article-effect)))))
+
+;; KEYSTONE (rp-takethis-bad-msgid-desync).  The article a TAKETHIS with no
+;; Message-ID took never reaches the owner: on an open peer session the step
+;; submits nothing for it, whatever the wire delivers.
+(defthm fn-peer-refused-takethis-submits-nothing
+  (implies (and (fn-peer-session-peer ps)
+                (equal (fn-nntp-session-openp (fn-peer-reader-session ps)) t)
+                (equal (car (fn-peer-session-transfer ps)) :takethis-refused))
+           (null (fn-post-result-submission
+                  (fn-peer-step ps archive config observation injection
+                                wire-event fn-arena))))
+  :hints (("Goal" :in-theory (e/d (fn-peer-step)
+                                  (fn-peer-delegate fn-peer-command
+                                   fn-peer-transfer-unreceived-effects)))))
 
 ; -----------------------------------------------------------------------------
 ; Export theory

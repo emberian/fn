@@ -18,7 +18,9 @@
 ;     grammarp                 a :tag with a repeated name decodes two codes
 ;                              to one value, which re-encodes to one of them.
 ; and the named refusals: a frame with one trailer bit flipped answers
-; (:refused :trailer); a truncated frame answers (:refused :malformed).
+; (:refused :trailer); a truncated frame answers (:refused :malformed); a
+; :where whose fields decode and whose checks fail answers (:refused :where),
+; and one whose fields do not decode answers (:refused :malformed).
 (in-package "ACL2")
 (include-book "../../books/wire-grammar")
 
@@ -69,12 +71,26 @@
         (equal (fn-wg-decode g (fn-wg-encode g '(:refused nil)))
                (fn-wg-ok '(:refused nil) nil)))))
 
-; The :where checks refuse a status whose distance is not frontier - ack.
+; The :where checks refuse a status whose distance is not frontier - ack,
+; and one whose ack is past its frontier, by name.
 (assert-event
  (let* ((g *wgt-status-reply*))
    (and (not (fn-wg-valuep g '(:accepted (3 10 6))))
         (equal (fn-wg-decode g (fn-wg-encode g '(:accepted (3 10 6))))
-               '(:refused :malformed)))))
+               '(:refused :where))
+        (not (fn-wg-valuep g '(:accepted (11 10 0))))
+        (equal (fn-wg-decode g (fn-wg-encode g '(:accepted (11 10 0))))
+               '(:refused :where)))))
+
+; A :where whose fields do not decode is malformed, not a where refusal: the
+; checks run only on a decoded value.
+(assert-event
+ (let ((g '(:where (:seq (:uint 1 0 9) (:uint 1 0 9)) (:le 0 1))))
+   (and (fn-wg-grammarp g)
+        (equal (fn-wg-decode g '(5 10)) '(:refused :malformed))
+        (equal (fn-wg-decode g '(5)) '(:refused :malformed))
+        (equal (fn-wg-decode g '(5 4)) '(:refused :where))
+        (equal (fn-wg-decode g '(4 5 6)) (fn-wg-ok '(4 5) '(6))))))
 
 ; Hypothesis witness (decode-of-encode): delimited-or-empty-rest.
 (assert-event

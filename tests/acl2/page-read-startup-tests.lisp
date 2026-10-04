@@ -77,3 +77,30 @@
   (and (< naive (+ backing extra (* 2 (fn-heap-nursery-trigger naive cap))))
        (<= (+ backing extra (* 2 (fn-heap-nursery-trigger next cap))) next)
        (<= (+ old extra) next))))
+
+; Launcher and startup agree (cold-start, 2026-10-04).  The launcher sizes a
+; run by the store on disk (books/heap-figure.lisp, lane
+; reservation-after-flip); the startup's protected allowance takes the same
+; observation.  A development store, freshly made, at exactly its launcher's
+; DEFAULT-extended figure is admitted; with the unobserved bound (what every
+; launched node of d5b0b9100 carried) the same heap is refused, by name.
+(defconst *prst-run-core* '(615110568 . 517243296))
+(defconst *prst-fresh* '(0 . 0))
+(defconst *prst-run-machine* (list (* 24 1073741824)))
+(defconst *prst-run*
+ (fn-prstartup-extend-operation-reservation
+  (fn-heap-reserve-operation-decide :run *fn-bs-profile-development* *prst-run-core*
+                                    (* 64 1048576) *prst-run-machine* 32 *prst-fresh*)
+  :run nil "/tmp/store" 4 8 *prst-run-core* *prst-run-machine*))
+(assert-event
+ (let ((dyn (* 1048576 (fn-prstartup-nth 1 *prst-run*))))
+  (and (equal (fn-prstartup-nth 0 *prst-run*) :heap)
+       (fn-prstartup-planp
+        (fn-prstartup-default-plan dyn (cdr *prst-run-core*) *fn-bs-profile-development*
+                                   *prst-run-core* (* 64 1048576) nil nil 32 "/tmp/store" 4 8 1024
+                                   *prst-fresh*))
+       (equal (fn-prstartup-default-plan dyn (cdr *prst-run-core*) *fn-bs-profile-development*
+                                         *prst-run-core* (* 64 1048576) nil nil 32 "/tmp/store" 4 8 1024
+                                         nil)
+              '(:refused :default-pool-heap-not-held))
+       (stringp (fn-prstartup-refusal-line '(:refused :default-pool-heap-not-held))))))

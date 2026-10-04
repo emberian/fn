@@ -119,6 +119,11 @@
 
 ;; -----------------------------------------------------------------------------
 ;; The keystones with their teeth.
+;; A theorem about the logical bank the host does not run is a defteeth,
+;; not a registry keystone: the node runs the typed ledger
+;; (books/resource-vector-exec.lisp), tied to this model by
+;; fn-rl-{install,draw,settle}-correspondence.  Each becomes a keystone when
+;; its function gains a host line (planning/design/tariff-2026-10-04.md Q1).
 
 ;; Trees no step builds: a sub-bank row with no sub-bank behind it; a
 ;; sub-bank that spent past its budget.
@@ -129,65 +134,31 @@
                           (fn-rt-subs *rtt-t1*))))
 (assert! (and (not (fn-rt-okp *rtt-corrupt-missing*)) (not (fn-rt-okp *rtt-corrupt-overspent*))))
 
-(defkeystone rtt-step-keeps-okp
-  (implies (fn-rt-okp tree)
-           (fn-rt-okp (cadr (fn-rt-step tree op))))
-  :id "PRF-1209"
-  :subject fn-rt-step
-  :mutations (:deferred "no false neighbour named yet")
-  :restates fn-rt-step-keeps-okp
-  :hyps (okp)
+(defteeth fn-rt-step-keeps-okp
+  :claim (((okp (fn-rt-okp tree))) (fn-rt-okp (cadr (fn-rt-step tree op))))
   :witness ((tree *rtt-t1*) (op (list (cons 2 1) :draw 0 *rtt-read*)))
-  :breaks ((okp ((tree *rtt-corrupt-missing*) (op (list :root :settle 0 1)))
-                :logical "a sub-bank row with no sub-bank behind it; no step builds it"))
-  :hints (("Goal" :by fn-rt-step-keeps-okp)))
+  :breaks ((okp ((tree *rtt-corrupt-missing*) (op (list :root :settle 0 1))) :logical "a sub-bank row with no sub-bank behind it; no step builds it"))
+  :mutations (:deferred "no false neighbour named yet"))
 
-(defkeystone rtt-run-keeps-okp
-  (implies (fn-rt-okp tree)
-           (fn-rt-okp (cadr (fn-rt-run tree ops))))
-  :id "PRF-1209"
-  :subject fn-rt-run
-  :mutations (:deferred "no false neighbour named yet")
-  :restates fn-rt-run-keeps-okp
-  :hyps (okp)
+(defteeth fn-rt-run-keeps-okp
+  :claim (((okp (fn-rt-okp tree))) (fn-rt-okp (cadr (fn-rt-run tree ops))))
   :witness ((tree *rtt-t7*) (ops *rtt-admitted-run*))
-  :breaks ((okp ((tree *rtt-corrupt-missing*) (ops (list (list :root :settle 0 1))))
-                :logical "a sub-bank row with no sub-bank behind it; no step builds it"))
-  :hints (("Goal" :by fn-rt-run-keeps-okp)))
+  :breaks ((okp ((tree *rtt-corrupt-missing*) (ops (list (list :root :settle 0 1)))) :logical "a sub-bank row with no sub-bank behind it; no step builds it"))
+  :mutations (:deferred "no false neighbour named yet"))
 
-(defkeystone rtt-step-refused-keeps-the-tree (implies (not (fn-rv-admittedp (car (fn-rt-step tree op)))) (equal (cadr (fn-rt-step tree op)) tree))
-  :id "PRF-1209"
-  :subject fn-rt-step
-  :mutations (:deferred "no false neighbour named yet")
-  :restates fn-rt-step-refused-keeps-the-tree
-  :hyps (refused)
+(defteeth fn-rt-step-refused-keeps-the-tree
+  :claim (((refused (not (fn-rv-admittedp (car (fn-rt-step tree op)))))) (equal (cadr (fn-rt-step tree op)) tree))
   :witness ((tree *rtt-t6*) (op (list (cons 2 1) :settle 1 1)))
   :breaks ((refused ((tree *rtt-t6*) (op (list :root :open 2 *rtt-conn-budget* 4))) :logical "pre-contract witness, evaluated logically"))
-  :hints (("Goal" :by fn-rt-step-refused-keeps-the-tree)))
+  :mutations (:deferred "no false neighbour named yet"))
 
-(defkeystone rtt-sub-bank-steps-keep-the-root (equal (fn-rt-root (cadr (fn-rt-step tree (cons (cons slot gen) step)))) (fn-rt-root tree))
-  :id "PRF-1209"
-  :subject fn-rt-step
-  :restates fn-rt-sub-bank-steps-keep-the-root
+(defteeth fn-rt-sub-bank-steps-keep-the-root
+  :claim (() (equal (fn-rt-root (cadr (fn-rt-step tree (cons (cons slot gen) step)))) (fn-rt-root tree)))
   :witness ((tree *rtt-t1*) (slot 2) (gen 1) (step (list :draw 0 *rtt-read*)))
-  :mutations ((a-root-step-keeps-the-root (:conclusion (equal (fn-rt-root (cadr (fn-rt-step tree (cons :root step)))) (fn-rt-root tree))) ((tree *rtt-t1*) (slot 2) (gen 1) (step (list :open 3 *rtt-conn-budget* 2))) :fault "a root step claimed to keep the root" :logical "pre-contract witness, evaluated logically"))
-  :hints (("Goal" :by fn-rt-sub-bank-steps-keep-the-root)))
+  :mutations ((a-root-step-keeps-the-root (:conclusion (equal (fn-rt-root (cadr (fn-rt-step tree (cons :root step)))) (fn-rt-root tree))) ((tree *rtt-t1*) (slot 2) (gen 1) (step (list :open 3 *rtt-conn-budget* 2))) :fault "a root step claimed to keep the root" :logical "pre-contract witness, evaluated logically")))
 
-(defkeystone rtt-destroy-revokes-the-sub-bank
-  (implies (equal (car (fn-rt-step tree (list :root :destroy slot gen))) :destroyed)
-           (let ((later (cadr (fn-rt-run (cadr (fn-rt-step tree (list :root :destroy slot gen)))
-                                         ops))))
-             (and (equal (car (fn-rt-step later (cons (cons slot gen) step))) :stale)
-                  (equal (cadr (fn-rt-step later (cons (cons slot gen) step))) later))))
-  :id "PRF-1209"
-  :subject fn-rt-step
-  :mutations (:deferred "no false neighbour named yet")
-  :restates fn-rt-destroy-revokes-the-sub-bank
-  :hyps (destroyed)
-  :witness ((tree *rtt-t5*) (slot 2) (gen 1)
-            (ops (list (list :root :open 2 *rtt-conn-budget* 4) (list (cons 2 2) :draw 0 *rtt-read*)))
-            (step (list :settle 1 1)))
-  :breaks ((destroyed ((tree *rtt-corrupt-overspent*) (slot 2) (gen 1) (ops nil)
-                       (step (list :draw 1 *rtt-read*)))
-                      :logical "a sub-bank that spent past its budget refuses its destroy (:sub-bank-overspent) and stays addressable; no step builds it"))
-  :hints (("Goal" :by fn-rt-destroy-revokes-the-sub-bank)))
+(defteeth fn-rt-destroy-revokes-the-sub-bank
+  :claim (((destroyed (equal (car (fn-rt-step tree (list :root :destroy slot gen))) :destroyed))) (let ((later (cadr (fn-rt-run (cadr (fn-rt-step tree (list :root :destroy slot gen))) ops)))) (and (equal (car (fn-rt-step later (cons (cons slot gen) step))) :stale) (equal (cadr (fn-rt-step later (cons (cons slot gen) step))) later))))
+  :witness ((tree *rtt-t5*) (slot 2) (gen 1) (ops (list (list :root :open 2 *rtt-conn-budget* 4) (list (cons 2 2) :draw 0 *rtt-read*))) (step (list :settle 1 1)))
+  :breaks ((destroyed ((tree *rtt-corrupt-overspent*) (slot 2) (gen 1) (ops nil) (step (list :draw 1 *rtt-read*))) :logical "a sub-bank that spent past its budget refuses its destroy (:sub-bank-overspent) and stays addressable; no step builds it"))
+  :mutations (:deferred "no false neighbour named yet"))
