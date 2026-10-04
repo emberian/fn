@@ -3,11 +3,13 @@
  "file": "books/heap-store-figure.lisp",
  "id": "SCEN-INSTALLED-HEAP-NOT-HELD",
  "native": "tests.test_native_installed_start",
- "notes": [],
- "owner": "unassigned",
+ "notes": [
+  "10-04 16:01 10-04 coordinator: owned by cold-start (aed0dae7e31ddda50, wrote 95d8fd0f0); red->green with the decided-launch harness (tests.test_native_installed_start); batch 6 peer_catchup 1F, peer_pull 1F and operator_walk 7F are this same refusal (they start at the heap probe's figure)"
+ ],
+ "owner": "cold-start",
  "severity": "high",
  "source": "scenarios-2",
  "state": "open",
  "title": "Every installed node is refused at startup on dev 6107ceb56: packaging/fn's heap probe decides heap=2416..2433 MB for a fresh 'operator init' store, and the owner started at exactly that figure refuses 'cold startup refused: the process heap does not hold the store's protected runtime' (books/page-read-startup.lisp :default-pool-heap-not-held, protected > dynamic). The figure (books/heap-store-figure.lisp fn-heap-store-figure-octets) and the owner's protected allowance (fn-heap-runtime-protected-octets, via fn-prstartup-protected) both include fn-heap-core-dynamic = the CALLING process's sb-kernel:dynamic-usage (host/native/heap.lisp fnn-heap-image-observation): the probe process's usage sizes the figure, the owner's own (larger, by ~17 MB) is checked against it, with no slack between them. Observed on hbox, published set 6107ceb56, production image, 24G scope: the same store's probe printed 2433 once and 2416 the next; launcher starts refused 6 of 6; the image started directly at 2433..16000 MB listens. Red: smoke-6107ceb56 (hbox:/tank/fn/scratch/scenarios-2/native-smoke-6107ceb56), 23 refused starts in 10 of 15 modules under the decided-launch harness (lane/scenarios e14259ca3, not yet on dev). Batch 6 natives did not see it: they start at the image's saved 32000 MB. Successor of cold-start's 'invalid runtime capture' (95d8fd0f0 threaded the store observation, not the core usage).",
- "updated": "2026-10-04T20:00:41Z"
+ "updated": "2026-10-04T20:01:51Z"
 }

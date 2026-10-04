@@ -170,3 +170,33 @@ Codes are those of `tests/scenarios/tiers.tsv`.
 | peer-d5b0b9100 | d5b0b9100 | 4edb8509a | 13/28 OK: peer_by_name, feed_tls_ready, feed_temporary, header_lines, injection_info, reader_freshness, own_cancel, control_filing, source_corpus (3/3), newnews_wildmat, conformance, cold_off_loop, tls_handshake_budget. Red, already owned: peer_catchup 3/4 and peering's startup refusal (cold-start; catchup2@8d5210ee3), feed_idle 2,474 transit holds vs 150 and peer_pull's catch-up beside a slow pull (catchup2@8d5210ee3), cold_line_quanta and cold_line_deadline (node closed the connection; cold-line items S-reopened by run2), host_lifecycle 3 (run2's). Red, new and filed: **SCEN-PINV-CONFIRM-ARITY** (high: every `peer confirm` stops the owner on a host-entry guard, 10 arguments for 8; peer_invite 7/7, friends_feed), SCEN-EXPOSURE-LOCKOUT (address lockout not held for the next connection), SCEN-FEED-RESUME (a resumed feed does not deliver within 30 s), SCEN-HEADER-LIMITS-RAISED (node closes on a 900-field article), SCEN-GROUP-CREATE-UNCERTAIN (reader_clients' developer case: `group create` exit 3). Red, harness, fixed after the run: article_subject (its fixture had no Date; transit hygiene PRF-236 refuses 437 before the subject is reached), peering's retire case (expected the refusal keyword in lower case), peering's productive-reader case (`operator post` to a stopped node is refused `no-owner` since 99de13e07; it now posts to a running owner and restarts). Environment: protected_peering 1/6 (EADDRINUSE: a port race between concurrent modules) |
 | smoke-d5b0b9100 | d5b0b9100 | d5b0b9100 | 8/14 OK (log, visibility_join, crash_model, outcome_algebra, served_differential, starttls, mux, conformance). Red: web, bp_receive_integrity (BP family), commit_log (READ-RESOURCES-UNAVAILABLE), agent_wait (consumer bootstrap), replay_determinism (G15 fixture), feed_tls_read (harness, fixed) |
 | smoke-6107ceb56 (scenarios-2) | 6107ceb56 | abd783618 (decided launch, e14259ca3+) | 5/15 OK (log, served_differential, visibility_join, bp_receive_integrity, crash_model). The other 10 (installed_start, conformance 10F1E, outcome_algebra, starttls, mux, feed_tls_read, replay_determinism, web, agent_wait, commit_log): all 23 failing starts are ONE refusal, `cold startup refused: the process heap does not hold the store's protected runtime`, filed **SCEN-INSTALLED-HEAP-NOT-HELD** (high, redeploy blocker: every installed node). The launcher's heap figure and the owner's protected allowance each count the calling process's own dynamic usage, so they disagree with no slack between them. Probes on hbox: the same fresh store's figure was 2433 MB once and 2416 MB the next time; 6 of 6 launcher starts were refused; the image started directly at 2433 to 16000 MB listens. The peer tier is held: under decided launch every owner start hits the same refusal |
+
+### Batch 6 (set-6107ceb56, lat1, tests at 6107ceb56): the 23 red modules, by cause and owner
+
+The run is lat1:/tank/fn/scratch/integrate-20261004/native-set-6107ceb56, which reported 20 OK and 23 FAILED. Below, "heap" means SCEN-INSTALLED-HEAP-NOT-HELD: a test that starts at the heap probe's figure meets the installed refusal. That covers peer-flight stores (7d27f56ca) and the installed bin/fn walk.
+
+| module | b6 | cause | owner |
+|---|---|---|---|
+| peer_catchup | 1F 2E | 1F heap. The 2E (EOF: "the node closed the connection") get re-checked after the heap fix | cold-start (heap), then peer-default |
+| peer_pull | 2F | test_unreadable_credential: heap. test_trickling_body: the owner exited 4 after "DECODED-WINDOW storage-ready" | cold-start (heap); peer-default (trickling, catch-up beside a slow pull) |
+| operator_walk | 9F | 7 heap. 1 config text (expects `tls_port = N`, the writer now emits `tls_port=N`). 1 expected USAGE (5), got FAULT (4) | cold-start (heap); peer-feed (the two others) |
+| peer_invite | 1F | test_current_inviter_accept_resumes_after_configuration_cut: "composed native image source unavailable: build/MANIFEST.json" (the run tree has no MANIFEST.json) | environment (box layer: cloud) |
+| consumer_exchange_two_nodes | 1F | the same missing build/MANIFEST.json | environment (cloud) |
+| peering | 1E | test_transit_hygiene_refused_offer_memory_and_relay_checks: socket timed out (17 s) | w-peer |
+| host_lifecycle | 1F | PendingAcceptBound: 29 sockets accepted while the loops were held, the bound is 4 (r71-F13) | host-lifecycle (r71-F13) |
+| feed_fair_round | 1F | the silent fixture lacked +fnn-socket-read-attempt-max+; fixed by w-peer dbb2ced00 (batch 7) | w-peer (fixed, batch 7) |
+| auth | 1F | test_the_address_limit_closes_a_read_that_also_posts: [381 481 400], expected [381 481 381 281 340 240 400]. It closes on the second AUTHINFO, not at the post | design question for the root (read-serve 8a5ebe2ee) |
+| bp_node_native | 16F 2E | the BP family. In batch 7 (66076ce8d) it is 14F 2E; test_deletion_report_intent costs 124 s | w-bp |
+| bp_service_native | 1F | S024: status=forwarded is the contract word. Green in batch 7 | w-bp (fixed) |
+| recovery | 1F | record-exceeds-log-frame (571b3cdbc) | m1-durable-2 |
+| log_compaction | 2F | record-exceeds-log-frame (571b3cdbc) | m1-durable-2 |
+| log_damage | 13F | `status` exits 0 on a damaged log (SCEN-STATUS-ACCEPTS-DAMAGE, red since b3) | unassigned (store open, m1/w-store) |
+| initializer_fidelity | 1F | `status` exits 0 on a misaligned segment (SCEN-STATUS-ACCEPTS-DAMAGE) | unassigned |
+| image_differential | 1F | `status` accepts a store whose checkpoint was deleted after compaction (SCEN-STATUS-ACCEPTS-DAMAGE) | unassigned |
+| page_io | 3F | test_cancel_retire_and_reuse: it waits for a PAGE-IO line, but the window path emits DECODED-WINDOW. The test vocabulary predates the window executor (cold-start red 5). It costs its whole 382 s deadline | window-read lane (test contract) |
+| slow_disk | 1F 1E | 1F is a source assertion: `(fnn-owner-peer-read-class service)` is no longer in mux.lisp, so the test reads stale source. 1E: a graceful stop past the deadline (98 s) | window-read lane; w-serve (mux text) |
+| over_pins | 1E | test_a_large_article_drained_slowly: the socket read timed out at 300 s (fixture limits: cold-start red 3) | served-catalog-live (SCL2) |
+| owner_offlock | 1E | test_a_stalled_feed_journal_holds_no_owner_quantum: the socket read timed out | w-owner |
+| reclaim_walk | 1F | a pass longer than two chunks is refused (S152, deferred-credit) | s152 |
+| web | 2F | 403 "a page it needs was not read within 5000 ms" on a compressed article (plain and TLS) | codex-sol-web (S032) / window-read |
+| reader_clients | 30F | lat1 has no docker, so every reply is None. OK on hbox at b4 | environment (lat1) |
