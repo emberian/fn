@@ -9,7 +9,8 @@
  "line": "7553",
  "locus": "log-recover",
  "notes": [
-  "10-04 11:32 filed by read-life 2026-10-04"
+  "10-04 11:32 filed by read-life 2026-10-04",
+  "10-04 11:47 same class: an FNFD feed journal after a failed fsync (fnn-owner-feed-append-locked fences; the restart's fnn-owner-feed-open scans frames from cache and its fsync covers only dirty pages)"
  ],
  "owner": "read-life",
  "reviewer": "read-life (Opus reader), mental execution 2026-10-04; Linux writeback-error semantics (fsyncgate), not reproduced on hbox",
@@ -18,5 +19,5 @@
  "source": "read-life",
  "state": "open",
  "title": "recovery after a failed log barrier reads the batch from the page cache and re-fences nothing",
- "updated": "2026-10-04T15:32:48Z"
+ "updated": "2026-10-04T15:47:42Z"
 }
