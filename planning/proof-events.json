@@ -19648,6 +19648,26 @@
           "pending_subject": "The subjects are fn-article-parse and fn-inj-decide, which the host calls; their input is fn-ak-layout, the proof-side layout of the kind. The host-called encoder of the kind will be fn-wg-encode at *fn-ak-grammar* (books/wire-grammar.lisp, lane mini-contract); the bridge fn-ak-grammar-encode-is-the-layout is owed (D50)."
         }
       ]
+    },
+    {
+      "id": "PRF-1322",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ak-layout-is-a-hybrid-injection",
+          "pending_subject": "The subject is fn-hsig-injected-carrier-plan, which the host calls (through fn-hsig-injected-carrier-octets and fn-hsig-authorized-injected-carried-submission-event); its source input is fn-ak-layout, whose host-called encoder will be fn-wg-encode at *fn-ak-grammar* (bridge fn-ak-grammar-encode-is-the-layout owed, D50)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ak-carrier-parses",
+          "pending_subject": "The subject is fn-hsig-injected-carrier-plan, which the host calls (through fn-hsig-injected-carrier-octets and fn-hsig-authorized-injected-carried-submission-event); its source input is fn-ak-layout, whose host-called encoder will be fn-wg-encode at *fn-ak-grammar* (bridge fn-ak-grammar-encode-is-the-layout owed, D50)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ak-carrier-parses-under",
+          "pending_subject": "The subject is fn-hsig-injected-carrier-plan, which the host calls (through fn-hsig-injected-carrier-octets and fn-hsig-authorized-injected-carried-submission-event); its source input is fn-ak-layout, whose host-called encoder will be fn-wg-encode at *fn-ak-grammar* (bridge fn-ak-grammar-encode-is-the-layout owed, D50)."
+        }
+      ]
     }
   ]
 }

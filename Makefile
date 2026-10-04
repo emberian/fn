@@ -1860,6 +1860,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/hybrid-carrier-tests \
 	books/article-kind \
 	books/article-kind-acceptance \
+	books/article-kind-hybrid \
 	tests/acl2/article-kind-tests \
 	books/hybrid-store-injected \
 	books/hybrid-store-invariants \

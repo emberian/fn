@@ -1,6 +1,6 @@
 ; fn: teeth for books/article-kind.lisp and books/article-kind-acceptance.lisp.
 ;
-; fn-ak-layout-is-injected: a ground positive witness on which every
+; fn-ak-layout-is-injected and fn-ak-layout-is-a-hybrid-injection: a ground positive witness on which every
 ; hypothesis and the conclusion hold, and for each hypothesis a witness on
 ; which every other hypothesis holds, that one fails, and the conclusion
 ; fails (the decision is not the injection).  fn-ak-layout-parses gets the
@@ -10,6 +10,8 @@
 
 (in-package "ACL2")
 (include-book "../../books/article-kind-acceptance")
+(include-book "../../books/article-kind-hybrid")
+(include-book "../../books/codec-attach")
 
 (defconst *akt-from* (fn-ak-text "Mini <mini@example.invalid>"))
 (defconst *akt-date* (fn-ak-text "Sun, 04 Oct 2026 12:00:00 +0000"))
@@ -183,3 +185,90 @@
 (assert-event
  (and (fn-ak-rows-valuesp *fn-ak-v1-rows* (fn-ak-example-values))
       (equal (len (fn-ak-example-payloads)) 4)))
+
+; -----------------------------------------------------------------------------
+; fn-ak-layout-is-a-hybrid-injection: the hybrid-author route.
+
+(defconst *akt-keys* (list (cons :ed25519 (make-list 32 :initial-element 17))
+                           (cons :ml-dsa-65 (make-list 1952 :initial-element 34))))
+(defconst *akt-sigs* (list (cons :ed25519 (make-list 64 :initial-element 51))
+                           (cons :ml-dsa-65 (make-list 3309 :initial-element 68))))
+(defconst *akt-principal* (make-list 32 :initial-element 85))
+
+(defun akt-hyb-hyps (from payload principal keys sigs config obs)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((vals (fn-ak-values from *akt-date* *akt-groups* *akt-subject* *akt-msgid* *akt-media*))
+         (source (fn-ak-layout vals payload))
+         (field (fn-hc-field-encode-at (fn-hsig-source-version source) principal keys sigs))
+         (carrier (append (fn-hc-field-lines field) source))
+         (names (cadr (fn-af-newsgroup-list-parse *akt-groups*)))
+         (octets (fn-inj-append (fn-inj-prefix nil *akt-msgid* (fn-inj-config-agent config)
+                                               nil nil)
+                                carrier)))
+    (list (fn-ak-valuesp from *akt-date* *akt-groups* *akt-subject* *akt-msgid* *akt-media*)
+          (fn-cbor-octet-listp payload)
+          (and field t)
+          (fn-inj-configp config)
+          (fn-inj-config-allow config)
+          (fn-clock-observationp obs)
+          (fn-clock-has-wall obs)
+          (and (fn-clock-wall obs) (acl2-numberp (fn-clock-wall obs))
+               (< (floor (fn-clock-wall obs) *fn-inj-ms-per-day*) *fn-inj-cycle-days*))
+          (<= 9 (fn-article-limit-fields (fn-inj-config-header-limits config)))
+          (<= (+ 9 (fn-akh-fold-count (fn-hc-drop 72 field)))
+              (fn-article-limit-lines (fn-inj-config-header-limits config)))
+          (<= (+ (len (fn-hc-field-lines field))
+                 (len (fn-ak-render-rows *fn-ak-v1-rows* vals)))
+              (fn-article-limit-octets (fn-inj-config-header-limits config)))
+          (fn-inj-groups-admissiblep names (fn-inj-config-groups config))
+          (<= (len octets) (fn-inj-config-max-octets config)))))
+
+(defun akt-hyb-conclusion (from payload principal keys sigs config obs)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((vals (fn-ak-values from *akt-date* *akt-groups* *akt-subject* *akt-msgid* *akt-media*))
+         (source (fn-ak-layout vals payload))
+         (field (fn-hc-field-encode-at (fn-hsig-source-version source) principal keys sigs))
+         (carrier (append (fn-hc-field-lines field) source))
+         (names (cadr (fn-af-newsgroup-list-parse *akt-groups*)))
+         (octets (fn-inj-append (fn-inj-prefix nil *akt-msgid* (fn-inj-config-agent config)
+                                               nil nil)
+                                carrier)))
+    (equal (fn-hsig-injected-carrier-plan source principal keys sigs config obs)
+           (fn-inj-make-decision :injected nil *akt-msgid* names octets))))
+
+(defmacro akt-hyb-tooth (k &key (from '*akt-from*) (payload '*akt-payload*)
+                            (principal '*akt-principal*) (keys '*akt-keys*)
+                            (sigs '*akt-sigs*) (config '*akt-config*)
+                            (obs '*akt-observation*))
+  `(assert-event
+    (and (akt-all-but ,k (akt-hyb-hyps ,from ,payload ,principal ,keys ,sigs ,config ,obs))
+         (not (akt-hyb-conclusion ,from ,payload ,principal ,keys ,sigs ,config ,obs)))))
+
+; POSITIVE, ground: the carrier of 7208 field octets in 101 lines.
+(assert-event
+ (and (akt-all (akt-hyb-hyps *akt-from* *akt-payload* *akt-principal* *akt-keys*
+                             *akt-sigs* *akt-config* *akt-observation*))
+      (akt-hyb-conclusion *akt-from* *akt-payload* *akt-principal* *akt-keys*
+                          *akt-sigs* *akt-config* *akt-observation*)))
+
+; HYPOTHESIS REMOVAL, one per hypothesis.
+(akt-hyb-tooth 0 :from (fn-ak-text "yue"))
+(akt-hyb-tooth 1 :payload '(1 2 256))
+(akt-hyb-tooth 2 :principal (make-list 31 :initial-element 85))   ; no carrier field
+(akt-hyb-tooth 3 :config (akt-config t (fn-ak-text "no de") (list *akt-groups*)
+                                     100000 *akt-limits*))
+(akt-hyb-tooth 4 :config (akt-config nil *akt-agent* (list *akt-groups*)
+                                     100000 *akt-limits*))
+(akt-hyb-tooth 5 :obs (list :fn-clock-observation 1 1790000000000 -1 t))
+(akt-hyb-tooth 6 :obs (fn-clock-observation 1 1790000000000 0 nil))
+(akt-hyb-tooth 7 :obs (fn-clock-observation 1 (* 146097 86400000) 0 t))
+(akt-hyb-tooth 8 :config (akt-config t *akt-agent* (list *akt-groups*) 100000
+                                     '(8 256 16384)))                ; the carrier is a ninth field
+(akt-hyb-tooth 9 :config (akt-config t *akt-agent* (list *akt-groups*) 100000
+                                     '(64 100 16384)))               ; 101 carrier lines + 8 rows
+(akt-hyb-tooth 10 :config (akt-config t *akt-agent* (list *akt-groups*) 100000
+                                      '(64 256 7000)))               ; header octets
+(akt-hyb-tooth 11 :config (akt-config t *akt-agent* (list (fn-ak-text "other.group"))
+                                      100000 *akt-limits*))
+(akt-hyb-tooth 12 :config (akt-config t *akt-agent* (list *akt-groups*)
+                                      7000 *akt-limits*))             ; article bound

@@ -91,10 +91,16 @@ Keystones (PRF-1320, PRF-1321; `books/article-kind-acceptance.lisp`):
   depend on the clock). Host callers: the POST and operator-post routes
   (`fn-inj-decide`), and through the hybrid route below.
 
-Owed for M6 (named, not claimed): the hybrid route's own keystone
-(`fn-hsig-injected-carrier-plan` of the kind with well-formed keys and
-signatures is `:injected`: the carrier's FN-Authorship fold lines parse in
-front of the rows), and e1/2 (`tools/fn_consumer.py`) re-expressed on the
+- `fn-ak-layout-is-a-hybrid-injection` (PRF-1322;
+  `books/article-kind-hybrid.lisp`): the route Mini posts by. For carrier
+  material whose field encodes, under the same premises with the header
+  limits holding the carrier's ninth field and its fold lines,
+  `fn-hsig-injected-carrier-plan` answers `:injected` with the octets
+  Path + Injection-Info + FN-Authorship carrier + the source unchanged.
+  `fn-ak-carrier-parses`: the carrier parses with FN-Authorship first and
+  the eight fields after it.
+
+Owed for M6 (named, not claimed): e1/2 (`tools/fn_consumer.py`) re-expressed on the
 kind or deleted (the derived-path law on fn's side; the consumers lane holds
 that file).
 
@@ -167,7 +173,7 @@ only author of plans, instances and rows.
    native scenario: publish three payloads (empty, short, two full lines)
    from one principal, a subscriber waits, decodes, acks; owner restart in
    between; the subscriber receives exactly the three payloads in order.
-4. The hybrid-route acceptance keystone.
+4. The hybrid-route acceptance keystone (done, PRF-1322).
 5. pair, then push/pull (partitioned) as instances; `opaque-reply` and
    req/rep after.
 
