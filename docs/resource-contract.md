@@ -266,7 +266,15 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
   a retained credit moves to the cache and is returned only by what is
   actually evicted; an overdraw draws only from the separately funded
   completion reserve. The initial ledger's free credit is exactly the
-  article pool and its budget is exactly the figure.
+  article pool and its budget is exactly the figure. The completion reserve
+  is the owner's work reserve -- the open's transient and a live reclaim
+  pass's second generation at the profile's bounds, whichever is larger --
+  and only the live reclaim pass draws it (`fn-mcr-borrow`, returned at the
+  pass's end): a pass over any store the profile admits is admitted
+  (`fn-orcp-profile-admitted-reclaim-is-funded`), and no user's operation is
+  admitted against the reserve (`fn-mca-served-steps-keep-pass-free`,
+  `fn-orcp-reserve-keeps-the-articles-room`; lane reclaim-funding,
+  planning/design/reclaim-funding-2026-10-04.md).
 - Mechanism: the review's model (planning/review-2026-09-28-gpt6.md,
   "Memory and zero-copy calls"). Host subjects: `fn-mca-read-span`,
   `fn-mca-take`, `fn-mca-close`, `fn-mca-initial` (`host/owner-host.lisp`),

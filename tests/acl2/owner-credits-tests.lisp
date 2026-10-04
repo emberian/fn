@@ -196,7 +196,7 @@
 (assert-event (equal (fn-mcr-budget *mcat-small*)
                      (fn-heap-figure-octets *fn-heap-small-profile* *mcat-core* nil)))
 (assert-event (equal (- (fn-mcr-budget *mcat-small*) (fn-mcr-total *mcat-small*)) 3441664))
-(assert-event (equal (fn-mcr-completion *mcat-small*) (fn-mca-open-octets *fn-heap-small-profile*)))
+(assert-event (equal (fn-mcr-completion *mcat-small*) (fn-mca-owner-octets *fn-heap-small-profile*)))
 (defun mcat-admit-n (l n r)
   (declare (xargs :mode :program))
   (if (zp n) l
@@ -209,6 +209,33 @@
 ; A = 4 MiB: seven (one before lane chunked-body-2's packed reserve).
 (assert-event (fn-mcr-fundedp (mcat-admit-n *mcat-a4* 7 *mcat-a4-r*)))
 (assert-event (equal (mcat-admit-n *mcat-a4* 8 *mcat-a4-r*) :refused))
+; The owner's work reserve (lane reclaim-funding): at the small preset the
+; live reclaim's demand at the bounds, 358,006,784, exceeds the open's
+; transient, 130,023,424, so the reserve is the demand.
+(assert-event (equal (fn-mca-owner-octets *fn-heap-small-profile*) 358006784))
+(assert-event (equal (fn-heap-store-open-octets *fn-heap-small-profile* 8388608 16384) 130023424))
+
+; KEYSTONE fn-mca-served-steps-keep-pass-free (K2), with
+; fn-mca-initial-is-pass-free: the run's ledger is pass-free, and 32 articles
+; admitted, one taken, sealed and completed, and a close keep it so.
+(assert-event (fn-mca-pass-free-p *mcat-small* *fn-heap-small-profile*))
+(defconst *mcat-small-busy*
+  (fn-mca-close (fn-mca-batch-done (fn-mca-seal (fn-mca-take (mcat-admit-n *mcat-small* 32 *mcat-r*)
+                                                             5 *mcat-r*)))
+                9))
+(assert-event (fn-mca-pass-free-p *mcat-small-busy* *fn-heap-small-profile*))
+(assert-event (equal (fn-mcr-completion *mcat-small-busy*) (fn-mcr-completion *mcat-small*)))
+; Corrupted state (labelled): a ledger whose completion reserve was overdrawn
+; is not pass-free, nor one where :reclaim already holds an entry.
+(assert-event (equal (car (fn-mcr-overdraw (mcat-admit-n *mcat-small* 32 *mcat-r*)
+                                           (fn-mca-conn-key 1) 1))
+                     :ok))
+(assert-event (not (fn-mca-pass-free-p (cadr (fn-mcr-overdraw (mcat-admit-n *mcat-small* 32 *mcat-r*)
+                                                              (fn-mca-conn-key 1) 1))
+                                       *fn-heap-small-profile*)))
+(assert-event (equal (car (fn-mcr-borrow *mcat-small* :reclaim 1)) :ok))
+(assert-event (not (fn-mca-pass-free-p (cadr (fn-mcr-borrow *mcat-small* :reclaim 1))
+                                       *fn-heap-small-profile*)))
 
 ; PKT-887 (lane credits-stall): a poster whose short article is queued
 ; behind a barrier holds that article's charge, not a whole reserve, so its
