@@ -3615,10 +3615,12 @@ and source (books/store-checkpoint-arena-writer.lisp fn-scka-srcs-n), a
 bounded number of rows per call (+fnn-checkpoint-batch-rows+; the calls are
 one walk: fn-scka-srcs-n-compose).  READS the arena.  The last state,
 (ROWS' LACC SACC), ROWS' empty."
-  (let ((walk (list records nil nil)))
+  (let ((walk (list records nil nil))
+        (batch 0))
     (loop
       (when (atom (first walk)) (return walk))
-      (fnn-checkpoint-yield "walk" (length (second walk)))
+      (fnn-checkpoint-yield "walk" batch)
+      (incf batch)
       (setq walk (fnn-core 'fn-scka-srcs-n (first walk) +fnn-checkpoint-batch-rows+
                            (second walk) (third walk) arena))
       (unless (and (consp walk) (= (length walk) 3))
