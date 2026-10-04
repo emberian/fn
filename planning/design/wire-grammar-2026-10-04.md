@@ -97,13 +97,84 @@ CLASSes: `"any"` (every octet), `"utf8"` (RFC 3629, the `utf8` book's
 decoder, as `:text` frame fields), `"header"` (HTAB, SP, `!`..`~`: RFC 5322
 field-body octets; excludes CR, so `:line` is self-delimiting).
 
-Static rules (`fn-wg-grammarp`): a tail-only node (`:rest`, `:maybe`,
-`:base64-lines`, and a `:seq` ending in one) appears only last in a `:seq`,
-as a `:tag` arm, or as a frame's payload; `:tag` codes and names are
-distinct and codes fit W; `:enum` names are distinct and BASE+count fits W;
-`:maybe`'s G never encodes to nothing; a `:where` wraps a `:seq` and its
-indices name `:uint` elements; a frame's MAX ≤ 2^32−1. Names are symbols
-in ACL2 and their lower-case print names (no colon) in JSON.
+**This section is normative** (the text Mini's interpreter is written from;
+`books/wire-grammar.lisp` is its ACL2 definition and
+`tests/test_wire_grammar.py` an independent reading of it).
+
+Well-formedness (`fn-wg-grammarp`), exactly:
+- `const`: OCTETS is a list of octets (possibly empty).
+- `uint`: W ∈ {1,2,4,8}; 0 ≤ LO ≤ HI < 256^W.
+- `bytes`: W ∈ {1,2,4,8}; 0 ≤ LO ≤ HI < 256^W; CLASS ∈ {any, utf8, header}.
+- `rest`: 0 ≤ LO ≤ HI; CLASS ∈ {any, utf8, header}.
+- `line`: 0 ≤ LO ≤ HI; CLASS is `header` (the only class without CR).
+- `base64-lines`: WIDTH ≥ 1; 0 ≤ LO ≤ HI.
+- `enum`: W ∈ {1,2,4,8}; BASE ≥ 0; NAMES non-empty, distinct;
+  BASE + count(NAMES) ≤ 256^W.
+- `seq`: every element well formed; every element but the last delimited.
+- `tag`: W ∈ {1,2,4,8}; each arm `[CODE, NAME, G]` with 0 ≤ CODE < 256^W and
+  G well formed; codes distinct; names distinct. (A `tag` with no arms is
+  well formed and accepts nothing.)
+- `maybe`: G well formed and non-empty (no value of G encodes to nothing).
+- `where`: G a well-formed `seq`; each check `["le",i,j]`, `["eq",i,j]` or
+  `["diff",k,j,i]` with natural indices. A check holds only when every
+  element it names is a natural number (an index past the end, or a
+  non-number element, fails the check).
+- `frame`: MAGIC 4 octets; VERSION and KIND octets; 0 ≤ MAX < 2^32; G well
+  formed (G need not be delimited: the frame's length delimits it).
+
+Delimited (`fn-wg-delimitedp`): `const`, `uint`, `bytes`, `line`, `enum`,
+`frame` are; `rest`, `maybe`, `base64-lines` are not; a `seq` is when all its
+elements are (the empty `seq` is); a `tag` when all its arms' grammars are;
+a `where` when its `seq` is. Non-empty (`fn-wg-nonemptyp`): `const` with
+octets, `uint`, `bytes`, `line`, `enum`, `frame`, `tag`; `rest` and
+`base64-lines` with LO ≥ 1; a `seq` with a non-empty element; a `where` whose
+`seq` is; never `maybe`.
+
+Decoding (`fn-wg-decode G XS` → `(:ok V REST)` or `(:refused R)`), per node,
+on the octets XS, in this order:
+- `const`: XS starts with OCTETS → value null, rest after them.
+- `uint`: at least W octets and LO ≤ n ≤ HI for n their big-endian value.
+- `bytes`: at least W octets; n = their value; LO ≤ n ≤ HI; at least n more
+  octets; those n are of CLASS → value those n octets.
+- `rest`: LO ≤ |XS| ≤ HI and XS of CLASS → value XS, rest empty.
+- `line`: v = the octets before the first CR (all of XS if none); XS
+  continues with CR LF after v; v of CLASS; LO ≤ |v| ≤ HI → value v, rest
+  after the CR LF.
+- `base64-lines`: text = unlines(WIDTH, XS), where unlines takes the whole
+  remainder: while octets remain, if at most WIDTH+2 remain the line is all
+  but the last two, else the first WIDTH and skip WIDTH+2; XS must equal
+  lines(WIDTH, text) (text cut into WIDTH-octet lines, the last 1..WIDTH, each
+  followed by CR LF; empty text is no lines); text must be canonical padded
+  RFC 4648 base64 (length a multiple of 4, alphabet `A-Za-z0-9+/`, `=` only
+  as the last one or two, zero pad bits) of v; LO ≤ |v| ≤ HI → value v, rest
+  empty.
+- `enum`: at least W octets; BASE ≤ n < BASE+count → value NAMES[n−BASE].
+- `seq`: each element in turn on what the previous one left; value the list
+  of their values (a `const` contributes null).
+- `tag`: at least W octets; n their value; the arm whose CODE is n decodes
+  what follows → value [NAME, V]; no such arm → refused.
+- `maybe`: XS empty → value [] (rest empty); otherwise G → value [V].
+- `where`: G, then every check on its value.
+- `frame`: at least 4 octets and the first 4 are MAGIC; then at least 2 more,
+  VERSION and KIND; then at least 4 more, n their value; n ≤ MAX; at least
+  n+32 octets after the length; the 32 after the n payload octets equal
+  BLAKE3-256 of everything before them (magic through payload) — else
+  refused **`trailer`**; then G on exactly the n payload octets must succeed
+  with nothing left (a refusal inside G is the frame's refusal) → value G's
+  value, rest after the trailer.
+Every other failure is refused **`malformed`**. A MESSAGE is accepted when
+the decoder answers ok with nothing left.
+
+Encoding is the inverse, node by node: `const` its octets; `uint` W-octet
+big-endian; `bytes` W-octet length then the octets; `rest` the octets;
+`line` the octets then CR LF; `base64-lines` lines(WIDTH, base64(v));
+`enum` W-octet BASE+position; `seq` concatenation; `tag` the arm's W-octet
+CODE then its encoding; `maybe` nothing or G's; `where` G's; `frame` MAGIC,
+VERSION, KIND, 4-octet length of the payload, the payload, then BLAKE3-256 of
+all of that.
+
+Names are symbols in ACL2 and their lower-case print names (no colon) in
+JSON.
 
 Value JSON: octets are lower-case hex; numbers are JSON integers (Lean's
 `Lean.Json` reads them exactly, beyond 2^53).
