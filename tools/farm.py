@@ -335,11 +335,13 @@ def parse_installed_counts(output: str) -> dict[str, object]:
 
 
 def selection_words(books: list[str], affected_by: list[str],
-                    closure: bool) -> list[str]:
+                    closure: bool, lane: bool = False) -> list[str]:
     """The runner arguments that select its exact requested book list."""
     words = ["python3", "tools/certify_books.py", "--dry-run"]
     for path in affected_by:
         words.extend(["--affected-by", path])
+    if lane:
+        words.append("--lane")
     if closure:
         words.append("--closure")
     words.extend(books)
@@ -360,7 +362,9 @@ def cache_preflight_script(host: str, remote: Path, books: list[str],
                            cache: str | None = None,
                            acl2: str | None = None,
                            require_origin: str | None = None,
-                           recertify: list[str] = ()) -> str:
+                           recertify: list[str] = (),
+                           lane: bool = False,
+                           roots: list[str] | None = None) -> str:
     """Install from the box's cache before ACL2 starts, by the run's plan.
 
     The default, incremental plan (``certs.py install-partial``) installs
@@ -376,10 +380,19 @@ def cache_preflight_script(host: str, remote: Path, books: list[str],
     recertification plan and keeps the single-origin rule: it purges the
     closure on a miss and certifies it under ``remote``.  ``recertify``
     books (incremental plan only) install nothing, as in the runner.
+
+    The root list is the runner's own ``--dry-run`` selection, which costs
+    seconds of ledger parsing on a box that may be loaded.  ``roots`` (from
+    ``submit --roots-from``, checked against this tree's selection) is that
+    list computed here, passed in as words, so the box only installs.
     """
     settings = host_settings(host, cache, acl2)
     select = " ".join(shlex.quote(word) for word in
-                      selection_words(books, affected_by, closure))
+                      selection_words(books, affected_by, closure, lane))
+    if roots is None:
+        roots_step = f"roots=$({select}) || exit 13; "
+    else:
+        roots_step = "roots=" + shlex.quote(" ".join(roots)) + "; "
     if closure:
         mode = (f"--require-origin {remote_quote(remote)} --purge-on-miss "
                 "install-set")
@@ -391,7 +404,7 @@ def cache_preflight_script(host: str, remote: Path, books: list[str],
         mode += 'install-partial'
     return (
         f"cd {remote_quote(remote)} || exit 9; "
-        f"roots=$({select}) || exit 13; "
+        + roots_step +
         f"if [ -z \"$roots\" ]; then "
         "echo 'artifact-set EMPTY origin NONE source NONE toolchain NONE; "
         "installed 0, kept 0, missing 0, removed 0'; exit 0; fi; "
@@ -497,16 +510,24 @@ def refuse_bad_book_names(root: Path, books: list[str], affected_by: list[str],
 
 
 def refuse_unselectable(root: Path, books: list[str], affected_by: list[str],
-                        closure: bool) -> None:
+                        closure: bool, lane: bool = False,
+                        roots: list[str] | None = None) -> None:
     """Refuse, before any rsync, a selection the box's runner would refuse.
+
+    With ``roots`` (``--roots-from``) the selection printed here must equal
+    that list, which the box's preflight will then take as given: a stale or
+    hand-edited file is refused rather than installed against.
 
     The box runs exactly `selection_words` as its preflight (exit 13), but
     only after the whole mirror: shared-books lost a sync to a book in no
     Makefile root's closure.  The same command here, in this tree, refuses
     first.
     """
-    words = selection_words(books, affected_by, closure)
+    words = selection_words(books, affected_by, closure, lane)
     if not (root / words[1]).is_file():
+        if roots is not None:
+            raise FarmError("no farm run started: --roots-from needs this tree's "
+                            f"{words[1]} to check the list against")
         return  # no runner in this tree: the box's preflight says so (exit 10)
     done = subprocess.run([sys.executable, *words[1:]], cwd=root, capture_output=True,
                           text=True, check=False)
@@ -514,6 +535,15 @@ def refuse_unselectable(root: Path, books: list[str], affected_by: list[str],
         raise FarmError("no farm run started: the runner refuses this selection here, "
                         "before any sync: "
                         + (done.stderr.strip() or done.stdout.strip())[-600:])
+    if roots is not None and done.stdout.split() != list(roots):
+        here = done.stdout.split()
+        raise FarmError(
+            f"no farm run started: --roots-from lists {len(roots)} root(s) but "
+            f"this tree's selection is {len(here)}"
+            + (f" (first difference: {next((a, b) for a, b in zip(roots, here) if a != b)})"
+               if any(a != b for a, b in zip(roots, here)) else "")
+            + "; regenerate it with `python3 tools/certify_books.py --dry-run` "
+              "and the same --affected-by/--lane/--closure words")
 
 
 def refuse_unbalanced_sources(root: Path) -> None:
@@ -543,7 +573,8 @@ def install_from_cache(host: str, remote: Path, books: list[str],
                        cache: str | None = None,
                        acl2: str | None = None,
                        require_origin: str | None = None,
-                       recertify: list[str] = ()) -> dict[str, object]:
+                       recertify: list[str] = (), lane: bool = False,
+                       roots: list[str] | None = None) -> dict[str, object]:
     """Install what the run's plan takes from the cache, or say why not.
 
     An incremental install refuses only when it did not run (no count line
@@ -551,7 +582,7 @@ def install_from_cache(host: str, remote: Path, books: list[str],
     """
     answer = RUN(["ssh", "-n", host, cache_preflight_script(
         host, remote, books, affected_by, closure, cache, acl2,
-        require_origin, recertify)], check=False, stdout=subprocess.PIPE,
+        require_origin, recertify, lane, roots)], check=False, stdout=subprocess.PIPE,
         stderr=subprocess.PIPE, text=True)
     counts = parse_installed(answer.stdout)
     if counts and answer.returncode == 0:
@@ -842,7 +873,8 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
                   acl2: str | None = None, no_publish: bool = False,
                   pcert: bool = False, budget_seconds: int | None = None,
                   require_origin: str | None = None,
-                  recertify: list[str] = (), images: str | None = None) -> str:
+                  recertify: list[str] = (), images: str | None = None,
+                  lane: bool = False) -> str:
     """The submit script: every step that can fail exits with its own code.
 
     `cd X && ... &` backgrounds the whole list, so ssh returned 0 whatever
@@ -859,6 +891,8 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
     runner = ["python3", "tools/certify_books.py", "--jobs", str(jobs)]
     for path in affected_by:
         runner.extend(["--affected-by", path])
+    if lane:
+        runner.append("--lane")
     if closure:
         runner.append("--closure")
     elif incremental(closure, require_origin):
@@ -920,7 +954,8 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
            prepare: Callable[[str, Path], None] | None = None,
            pcert: bool = False, budget_seconds: int | None = None,
            require_origin: str | None = None,
-           recertify: list[str] = (), images: str | None = None) -> str:
+           recertify: list[str] = (), images: str | None = None,
+           lane: bool = False, roots: list[str] | None = None) -> str:
     """Mirror, install from the box's cache, and start the detached runner.
 
     `prepare(host, remote)` runs between the mirror and ACL2, on the box's
@@ -938,7 +973,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
                         "install; --closure and --require-origin do not make one")
     refuse_unmerged_source(root)
     refuse_bad_book_names(root, books, affected_by, list(recertify))
-    refuse_unselectable(root, books, affected_by, closure)
+    refuse_unselectable(root, books, affected_by, closure, lane, roots)
     refuse_unbalanced_sources(root)
     identifier = run_id()
     remote = expand_remote(host, remote) if remote else root
@@ -948,7 +983,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
         prepare(host, remote)
     cached = install_from_cache(
         host, remote, books, affected_by, closure, cache, acl2, require_origin,
-        recertify)
+        recertify, lane, roots)
     print(f"{identifier}: from {host}'s cache, "
           + ", ".join(f"{name} {len(value)}" if name == "origins"
                       else f"{name} {value}" for name, value in cached.items()),
@@ -965,7 +1000,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
     script = remote_script(host, remote, identifier, books, jobs,
                            timeout_seconds, affected_by, closure, cache, acl2,
                            no_publish, pcert, budget_seconds, require_origin,
-                           recertify, images)
+                           recertify, images, lane)
     if no_publish and publishes(script):
         raise FarmError(
             f"{host}: {identifier} was asked not to publish and its runner "
@@ -992,6 +1027,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
         "box_log": f"{remote}/build/farm/{identifier}.log",
         "books": books,
         "affected_by": affected_by,
+        "lane": lane,
         "closure": closure,
         "incremental": incremental(closure, require_origin),
         "require_origin": require_origin,
@@ -1901,6 +1937,19 @@ def main(argv: list[str] | None = None) -> int:
                              "contains this book (repeatable).  With books named, "
                              "the run certifies the UNION: the named books and "
                              "every affected Makefile root (umbrellas included)")
+    parser.add_argument("--lane", action="store_true",
+                        help="submit, with --affected-by: stop at the named books, "
+                             "the books that include one directly and their "
+                             "tests/acl2/*-tests, never the image-world umbrellas "
+                             "(the lane verdict; certify_books.py --lane)")
+    parser.add_argument("--roots-from", default=None, metavar="FILE",
+                        help="submit: the root list the box's cache preflight "
+                             "installs for, computed here with `python3 "
+                             "tools/certify_books.py --dry-run ...` (same "
+                             "--affected-by/--lane/--closure words; `-' reads "
+                             "standard input), so the preflight does not parse "
+                             "the ledger on a loaded box.  Refused when it is not "
+                             "this tree's own selection")
     parser.add_argument("--closure", action="store_true",
                         help="also certify what those roots include, in "
                              "dependency order: the box then needs no "
@@ -2002,6 +2051,16 @@ def main(argv: list[str] | None = None) -> int:
     elif arguments.host == "auto":
         parser.error(f"{arguments.action} needs the box the run is on (its submit "
                      "printed it); auto picks a box only for submit")
+    if (arguments.lane or arguments.roots_from) and arguments.action != "submit":
+        parser.error("--lane and --roots-from belong to submit")
+    if arguments.lane and not arguments.affected_by:
+        parser.error("--lane narrows --affected-by: name the books with --affected-by")
+    roots_listed = None
+    if arguments.roots_from:
+        try:
+            roots_listed = recertify_list([arguments.roots_from])
+        except OSError as error:
+            parser.error(f"--roots-from: {error}")
     if arguments.action == "submit":
         try:
             chain_schedule.parse_jobs(arguments.jobs)
@@ -2030,7 +2089,8 @@ def main(argv: list[str] | None = None) -> int:
                                 require_origin=arguments.require_origin,
                                 recertify=list(arguments.recertify),
                                 images=arguments.images
-                                or os.environ.get("FN_CERT_IMAGES") or None)
+                                or os.environ.get("FN_CERT_IMAGES") or None,
+                                lane=arguments.lane, roots=roots_listed)
             print(identifier)
             print(f"{identifier}: on {arguments.host}; wait with `farm.py wait "
                   f"{arguments.host} {identifier}`", file=sys.stderr)

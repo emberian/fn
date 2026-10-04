@@ -36,7 +36,9 @@ and [the current view](current.md). Release scope is
    `tools/host_check.py --load` (errors, arity, macro order, undefined
    names), before any image build.
 3. **Certify incrementally.** `farm.py submit <box> --affected-by <book>` (or
-   the changed books and tests as plain roots): cached books install, the
+   the changed books and tests as plain roots; add `--lane` for a lane verdict,
+   which stops at the books' direct includers and their tests, never the image-world
+   umbrellas): cached books install, the
    rest certify. Never `--closure` for lane work. On the laptop or persvati, certify
    with `FN_CERT_ORIGIN_KIND=run` (or `certify_books.py --origin-kind run`) so every other
    worktree's `proof_repl start --cached-only` may install your pairs; the
