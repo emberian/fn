@@ -1206,6 +1206,36 @@ class CachePublishTests(unittest.TestCase):
             self.assertEqual(meta["certification_provenance"]["runner_sha256"],
                              "b" * 64)
 
+    def kinds(self, repository) -> set[str]:
+        return {json.loads(path.read_text())["origin_kind"]
+                for path in repository.cache.rglob("meta.json")}
+
+    def test_the_origin_kind_reaches_every_entry_the_run_publishes(self):
+        """`--origin-kind run` and FN_CERT_ORIGIN_KIND=run are the same thing:
+        run-origin entries install from any other worktree on the machine, and
+        the default (a live worktree) does not."""
+        order, layered = ParallelScheduleTests.ORDER, ParallelScheduleTests.LAYERED
+        for label, extra, overrides, wanted in (
+                ("default", [], None, {"worktree"}),
+                ("flag", ["--origin-kind", "run"], None, {"run"}),
+                ("environment", [], {"FN_CERT_ORIGIN_KIND": "run"}, {"run"}),
+                ("flag wins", ["--origin-kind", "gate"],
+                 {"FN_CERT_ORIGIN_KIND": "run"}, {"gate"})):
+            with self.subTest(label), tempfile.TemporaryDirectory() as directory:
+                repository = FakeRepository(directory, layered)
+                _, manifest = repository.certify(
+                    order, jobs=1, extra=extra, environment_overrides=overrides)
+                self.assertEqual(self.kinds(repository), wanted)
+                self.assertEqual(manifest["cert_cache"]["origin_kind"], next(iter(wanted)))
+
+    def test_a_rerun_without_the_variable_keeps_the_run_label(self):
+        order, layered = ParallelScheduleTests.ORDER, ParallelScheduleTests.LAYERED
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, layered)
+            repository.certify(order, jobs=1, extra=["--origin-kind", "run"])
+            repository.certify(order, jobs=1)
+            self.assertEqual(self.kinds(repository), {"run"})
+
     def test_no_publish_leaves_the_cache_untouched(self):
         with tempfile.TemporaryDirectory() as directory:
             repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)

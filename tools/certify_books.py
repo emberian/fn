@@ -265,7 +265,8 @@ def publish_pair(book: str, verdict: str, run_dir: Path, nonce: str,
                  recorded_sources: dict[str, str], output: str,
                  exit_code: int | str,
                  toolchain_manifest: dict[str, Any],
-                 world: str = "plain") -> dict[str, Any]:
+                 world: str = "plain",
+                 origin_kind: str | None = None) -> dict[str, Any]:
     """Cache this book's pair the moment it certifies, not at the end of the run.
 
     Why here and not once at the end: a wide run on this tree exits non-zero
@@ -317,7 +318,7 @@ def publish_pair(book: str, verdict: str, run_dir: Path, nonce: str,
     }
     try:
         report = certs.publish(ROOT, certs.cache_directory(), [partial], [book],
-                               origin=str(ROOT.resolve()))
+                               origin=str(ROOT.resolve()), origin_kind=origin_kind)
     except OSError as error:
         return event | {"published": False, "why": f"cache write failed: {error}"}
     event["published"] = bool(report.published)
@@ -960,6 +961,17 @@ def main() -> int:
         help="print the books this invocation would certify and exit",
     )
     parser.add_argument(
+        "--origin-kind",
+        choices=certs.ORIGIN_KINDS,
+        default=None,
+        help=(
+            "what this tree is, for the cache entries this run publishes: "
+            "`run` (or `gate`) makes them installable from any other worktree "
+            "on the machine, where the default `worktree` entries are refused "
+            "as foreign-local (default: FN_CERT_ORIGIN_KIND, else worktree)"
+        ),
+    )
+    parser.add_argument(
         "--no-publish",
         action="store_true",
         help="do not publish the resulting certificates to the local cache",
@@ -1380,7 +1392,7 @@ def main() -> int:
             cache_events.append(publish_pair(
                 book, verdict, run_dir, nonce, source_digests, output, code,
                 manifest, images.used.get(book, "plain") if images is not None
-                else "plain"))
+                else "plain", args.origin_kind))
 
     # Under `--pcert` a book's evidence is three ACL2 runs, and what the run
     # records for it is their concatenation, each behind a wave line.  The
@@ -1467,7 +1479,8 @@ def main() -> int:
         with publish_lock:
             cache_events.append(publish_pair(book, verdict, run_dir, nonce,
                                              source_digests, output,
-                                             exit_codes[book], manifest))
+                                             exit_codes[book], manifest,
+                                             origin_kind=args.origin_kind))
 
     # One job keeps requested order exactly; more than one starts the longest
     # remaining chain first, by each book's predicted quiet wall
@@ -1631,9 +1644,10 @@ def main() -> int:
                 # These certificates name their sub-books by absolute path
                 # inside *this* worktree, so that is where they may be
                 # installed; another live worktree must not take them.
-                origin=str(ROOT.resolve()))
+                origin=str(ROOT.resolve()), origin_kind=args.origin_kind)
             manifest["cert_cache"] = {
                 "directory": published.cache,
+                "origin_kind": args.origin_kind or certs.default_origin_kind(),
                 "published": published.published,
                 "already_cached": published.already,
                 "not_published": sorted(published.uncached + published.unverified
