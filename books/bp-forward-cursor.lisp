@@ -1,4 +1,3 @@
-; UNHOOKED bp (2026-10-04): statements only, not yet admitted (no REPL slot at wind-down); certify before adding to the Makefile.
 ; The forward round as a bounded, resumable cursor over held transit
 ; (planning/design/bp-2026-10-04.md section 2.7; PRF-1311).
 ;
@@ -86,18 +85,39 @@
         (fn-bpfc-run (second answer) held table busy quantum (1- fuel))
       answer)))
 
+;; The route condition, the destination and the row slots are opaque to every
+;; proof below, as they are to bp-node-forward-plan's.
 ; ---------------------------------------------------------------------------
-; K1: one turn examines at most QUANTUM rows.
+; K1: one turn examines at most QUANTUM rows.  Each examined row is one
+; fn-bprt-outbound-choice, so the position advance is the decision count.
 
 (defthm fn-bpfc-scan-advances-at-most-quantum
-  (<= (third (fn-bpfc-scan rows table seen busy quantum pos))
-      (+ (nfix pos) (nfix quantum)))
-  :rule-classes :linear)
+  (implies (natp pos)
+           (<= (third (fn-bpfc-scan rows table seen busy quantum pos))
+               (+ pos (nfix quantum))))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (disable fn-bprt-outbound-choice fn-bpnp-held-dest
+                                      fn-bpn-nth fn-bpp-eidp fn-bprt-nth))))
 
 (defthm fn-bpfc-scan-advances-from-pos
   (implies (natp pos)
            (<= pos (third (fn-bpfc-scan rows table seen busy quantum pos))))
-  :rule-classes :linear)
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (disable fn-bprt-outbound-choice fn-bpnp-held-dest
+                                      fn-bpn-nth fn-bpp-eidp fn-bprt-nth))))
+
+(defthm fn-bpfc-scan-position-is-natp
+  (implies (natp pos)
+           (natp (third (fn-bpfc-scan rows table seen busy quantum pos))))
+  :rule-classes (:rewrite :type-prescription)
+  :hints (("Goal" :in-theory (disable fn-bprt-outbound-choice fn-bpnp-held-dest
+                                      fn-bpn-nth fn-bpp-eidp fn-bprt-nth))))
+
+(defthm fn-bpfc-scan-seen-is-true-listp
+  (implies (true-listp seen)
+           (true-listp (fourth (fn-bpfc-scan rows table seen busy quantum pos))))
+  :hints (("Goal" :in-theory (disable fn-bprt-outbound-choice fn-bpnp-held-dest
+                                      fn-bpn-nth fn-bpp-eidp fn-bprt-nth))))
 
 (defthm fn-bpfc-turn-advances-at-most-quantum
   (implies (member-equal (car (fn-bpfc-turn cursor held table busy quantum))
@@ -106,10 +126,19 @@
                            (third (fn-bpfc-turn cursor held table busy quantum))
                          (second (fn-bpfc-turn cursor held table busy quantum)))))
              (and (<= (fn-bpfc-pos cursor) (fn-bpfc-pos next))
-                  (<= (fn-bpfc-pos next) (+ (fn-bpfc-pos cursor) (nfix quantum)))))))
+                  (<= (fn-bpfc-pos next) (+ (fn-bpfc-pos cursor) (nfix quantum))))))
+  :hints (("Goal" :in-theory (disable fn-bpfc-scan fn-bpfc-ordered))))
 
 ; ---------------------------------------------------------------------------
 ; K3: resuming after a yield is the same as never having yielded.
+
+(defthm fn-bpfc-scan-of-nfix-quantum
+  (equal (fn-bpfc-scan rows table seen busy (nfix quantum) pos)
+         (fn-bpfc-scan rows table seen busy quantum pos))
+  :hints (("Goal" :expand ((fn-bpfc-scan rows table seen busy (nfix quantum) pos)
+                           (fn-bpfc-scan rows table seen busy quantum pos))
+                  :in-theory (disable fn-bprt-outbound-choice fn-bpnp-held-dest
+                                      fn-bpn-nth fn-bpp-eidp fn-bprt-nth))))
 
 (defthm fn-bpfc-scan-resumes-after-a-yield
   (implies (equal (car (fn-bpfc-scan rows table seen busy q1 pos)) :yield)
@@ -117,29 +146,75 @@
                                 (fourth (fn-bpfc-scan rows table seen busy q1 pos))
                                 busy q2
                                 (third (fn-bpfc-scan rows table seen busy q1 pos)))
-                  (fn-bpfc-scan rows table seen busy (+ (nfix q1) (nfix q2)) pos))))
+                  (fn-bpfc-scan rows table seen busy (+ (nfix q1) (nfix q2)) pos)))
+  :hints (("Goal" :induct (fn-bpfc-scan rows table seen busy q1 pos)
+                  :in-theory (disable fn-bprt-outbound-choice fn-bpnp-held-dest
+                                      fn-bpn-nth fn-bpp-eidp fn-bprt-nth))))
+
+; A yield is exactly QUANTUM rows past POS.
+(defthm fn-bpfc-scan-yield-position
+  (implies (and (natp pos)
+                (equal (car (fn-bpfc-scan rows table seen busy quantum pos)) :yield))
+           (equal (third (fn-bpfc-scan rows table seen busy quantum pos))
+                  (+ pos (nfix quantum))))
+  :hints (("Goal" :in-theory (disable fn-bprt-outbound-choice fn-bpnp-held-dest
+                                      fn-bpn-nth fn-bpp-eidp fn-bprt-nth))))
+
+(local (defthm fn-bpfc-nthcdr-of-nthcdr
+  (implies (and (natp a) (natp b))
+           (equal (nthcdr a (nthcdr b x)) (nthcdr (+ a b) x)))))
 
 (defthm fn-bpfc-turn-after-a-yield-is-the-larger-turn
   (implies (and (natp q1) (natp q2)
                 (equal (car (fn-bpfc-turn cursor held table busy q1)) :yield))
            (equal (fn-bpfc-turn (second (fn-bpfc-turn cursor held table busy q1))
                                 held table busy q2)
-                  (fn-bpfc-turn cursor held table busy (+ q1 q2)))))
+                  (fn-bpfc-turn cursor held table busy (+ q1 q2))))
+  :hints (("Goal" :in-theory (disable fn-bpfc-scan fn-bpfc-ordered
+                                      fn-bpfc-scan-resumes-after-a-yield)
+                  :use ((:instance fn-bpfc-scan-resumes-after-a-yield
+                         (rows (nthcdr (fn-bpfc-pos cursor) (fn-bpfc-ordered held)))
+                         (seen (fn-bpfc-seen cursor))
+                         (pos (fn-bpfc-pos cursor)))))))
 
 ; ---------------------------------------------------------------------------
 ; K2: a sweep run to completion from the head is the plan's choice.
+
+; Two quanta stepped down together, for the larger-quantum lemma.
+(local (defun fn-bpfc-scan-2q-ind (rows table seen busy q1 q2 pos)
+  (declare (xargs :measure (acl2-count rows)))
+  (cond ((atom rows) (list table seen busy q1 q2 pos))
+        ((or (zp q1) (zp q2)) nil)
+        (t (let* ((h (car rows))
+                  (peer (fn-bpn-nth 11 h))
+                  (choice (fn-bprt-outbound-choice (fn-bpnp-held-dest h) table)))
+             (if (and (equal (fn-bpn-nth 12 h) '(:forward-pending))
+                      (null (fn-bpn-nth 14 h))
+                      (fn-bpp-eidp peer)
+                      (not (member-equal peer (fix-true-list seen)))
+                      (equal (fn-bprt-nth 0 choice) :hop))
+                 (if (member-equal peer busy)
+                     (fn-bpfc-scan-2q-ind (cdr rows) table (cons peer (fix-true-list seen))
+                                          busy (1- q1) (1- q2) (1+ pos))
+                   nil)
+               (fn-bpfc-scan-2q-ind (cdr rows) table seen busy (1- q1) (1- q2) (1+ pos))))))))
 
 ; A scan that does not yield is the same under any larger quantum.
 (defthm fn-bpfc-scan-with-more-quantum-agrees
   (implies (and (not (equal (car (fn-bpfc-scan rows table seen busy q1 pos)) :yield))
                 (<= (nfix q1) (nfix q2)))
            (equal (fn-bpfc-scan rows table seen busy q2 pos)
-                  (fn-bpfc-scan rows table seen busy q1 pos))))
+                  (fn-bpfc-scan rows table seen busy q1 pos)))
+  :hints (("Goal" :induct (fn-bpfc-scan-2q-ind rows table seen busy q1 q2 pos)
+                  :in-theory (disable fn-bprt-outbound-choice fn-bpnp-held-dest
+                                      fn-bpn-nth fn-bpp-eidp fn-bprt-nth))))
 
 ; A scan whose quantum covers the suffix never yields.
 (defthm fn-bpfc-scan-covering-never-yields
   (implies (<= (len rows) (nfix quantum))
-           (not (equal (car (fn-bpfc-scan rows table seen busy quantum pos)) :yield))))
+           (not (equal (car (fn-bpfc-scan rows table seen busy quantum pos)) :yield)))
+  :hints (("Goal" :in-theory (disable fn-bprt-outbound-choice fn-bpnp-held-dest
+                                      fn-bpn-nth fn-bpp-eidp fn-bprt-nth))))
 
 ; A covering scan selects what the plan and the scheduler's busy filter select.
 (defthm fn-bpfc-scan-covering-is-the-plan-choice
@@ -147,17 +222,51 @@
            (let ((e (fn-bpsched-forward-entry (fn-bpnp-forward-plan-rows rows table seen) busy)))
              (and (equal (car (fn-bpfc-scan rows table seen busy quantum pos))
                          (if e :entry :drained))
-                  (equal (second (fn-bpfc-scan rows table seen busy quantum pos)) e)))))
+                  (equal (second (fn-bpfc-scan rows table seen busy quantum pos)) e))))
+  :hints (("Goal" :induct (fn-bpfc-scan rows table seen busy quantum pos)
+                  :in-theory (disable fn-bprt-outbound-choice fn-bpnp-held-dest
+                                      fn-bpn-nth fn-bpp-eidp fn-bprt-nth))))
+
+(defthm fn-bpfc-turn-with-more-quantum-agrees
+  (implies (and (not (equal (car (fn-bpfc-turn cursor held table busy q1)) :yield))
+                (natp q1) (natp q2) (<= q1 q2))
+           (equal (fn-bpfc-turn cursor held table busy q2)
+                  (fn-bpfc-turn cursor held table busy q1)))
+  :hints (("Goal" :in-theory (disable fn-bpfc-scan fn-bpfc-ordered
+                                      fn-bpfc-scan-with-more-quantum-agrees)
+                  :use ((:instance fn-bpfc-scan-with-more-quantum-agrees
+                         (rows (nthcdr (fn-bpfc-pos cursor) (fn-bpfc-ordered held)))
+                         (seen (fn-bpfc-seen cursor))
+                         (pos (fn-bpfc-pos cursor)))))))
 
 ; FUEL resumptions of quantum Q are one turn of quantum Q * (FUEL + 1).
 (defthm fn-bpfc-run-is-one-large-turn
   (implies (and (posp quantum) (natp fuel))
            (equal (fn-bpfc-run cursor held table busy quantum fuel)
-                  (fn-bpfc-turn cursor held table busy (* quantum (+ 1 fuel))))))
+                  (fn-bpfc-turn cursor held table busy (* quantum (+ 1 fuel)))))
+  :hints (("Goal" :induct (fn-bpfc-run cursor held table busy quantum fuel)
+                  :in-theory (disable fn-bpfc-turn fn-bpfc-turn-with-more-quantum-agrees
+                                      fn-bpfc-turn-after-a-yield-is-the-larger-turn))
+          ("Subgoal *1/1" :use ((:instance fn-bpfc-turn-after-a-yield-is-the-larger-turn
+                                 (q1 quantum) (q2 (* quantum fuel)))))
+          ("Subgoal *1/2" :use ((:instance fn-bpfc-turn-with-more-quantum-agrees
+                                 (q1 quantum) (q2 (* quantum (+ 1 fuel))))))))
+
+(local (defthm fn-bpfc-covering-quantum
+  (implies (and (posp q) (natp n))
+           (<= n (+ q (* q n))))
+  :hints (("Goal" :nonlinearp t))
+  :rule-classes :linear))
 
 (defthm fn-bpfc-run-is-the-plan-choice
   (implies (and (true-listp held) (posp quantum))
            (let ((run (fn-bpfc-run (fn-bpfc-initial) held table busy quantum (len held)))
                  (e (fn-bpsched-forward-entry (fn-bpnp-forward-plan held table) busy)))
              (and (equal (car run) (if e :entry :drained))
-                  (implies e (equal (second run) e))))))
+                  (implies e (equal (second run) e)))))
+  :hints (("Goal" :do-not-induct t
+                  :in-theory (disable fn-bpfc-scan fn-bpsched-forward-entry fn-bpnp-forward-plan-rows
+                                      fn-bpfc-scan-covering-is-the-plan-choice)
+                  :use ((:instance fn-bpfc-scan-covering-is-the-plan-choice
+                         (rows (fn-bpfc-ordered held)) (seen nil) (pos 0)
+                         (quantum (* quantum (+ 1 (len held)))))))))

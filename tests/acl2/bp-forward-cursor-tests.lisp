@@ -1,4 +1,3 @@
-; UNHOOKED bp (2026-10-04): statements only, not yet admitted (no REPL slot at wind-down); certify before adding to the Makefile.
 ; Teeth of books/bp-forward-cursor.lisp (PRF-1311): five held rows in the
 ; shape the forward plan reads (slots 11, 12, 14 and the primary's
 ; destination), two routed hops, one deleted row, one unroutable row.
@@ -71,10 +70,15 @@
 (assert-event (and (equal (car *fc-y2*) :yield) (equal (fn-bpfc-pos (second *fc-y2*)) 4)))
 (assert-event (equal (fn-bpfc-turn (second *fc-y2*) *fc-held* *fc-table* *fc-busy2* 2) '(:drained)))
 ;; Hypothesis removal: a turn that did not yield has no resumption cursor.
+;; From position 2 with no peer busy, quantum 3 drains; what stands in the
+;; cursor slot of (:drained) reads as the head, and quantum 2 from the head
+;; is the relay entry, not the drained turn of quantum 5 from position 2.
+(defconst *fc-d3* (fn-bpfc-turn (second *fc-y1*) *fc-held* *fc-table* nil 3))
+(assert-event (equal *fc-d3* '(:drained)))
+(assert-event (equal (fn-bpfc-turn (second *fc-y1*) *fc-held* *fc-table* nil 5) '(:drained)))
 (must-fail-checked
- (assert-event (and (not (equal (car *fc-t1*) :yield))
-                    (equal (fn-bpfc-turn (second *fc-t1*) *fc-held* *fc-table* nil 2)
-                           (fn-bpfc-turn (fn-bpfc-initial) *fc-held* *fc-table* nil 4)))))
+ (assert-event (equal (fn-bpfc-turn (second *fc-d3*) *fc-held* *fc-table* nil 2)
+                      (fn-bpfc-turn (second *fc-y1*) *fc-held* *fc-table* nil 5))))
 
 ;; K2 fn-bpfc-run-is-the-plan-choice: with quantum 1 (five resumptions at
 ;; most) the run makes the plan's choice under each busy set.
@@ -94,12 +98,25 @@
        (e (fn-bpsched-forward-entry (fn-bpnp-forward-plan *fc-held* *fc-table*) *fc-busy2*)))
    (and (equal (car run) (if e :entry :drained)) (not e) (equal run '(:drained)))))
 ;; Hypothesis removal, posp quantum: quantum 0 never advances, so the run
-;; ends in a yield and is not the plan's choice.
+;; ends in a yield and is not the plan's choice.  Quantum 0 is outside
+;; fn-bpfc-run's guard, so the witness evaluates the logic without guard
+;; checking (a guard violation would make the must-fail pass vacuously).
+(assert-event (equal (car (with-guard-checking :none
+                           (fn-bpfc-run (fn-bpfc-initial) *fc-held* *fc-table* nil 0 (len *fc-held*))))
+                     :yield))
 (must-fail-checked
- (assert-event (let ((run (fn-bpfc-run (fn-bpfc-initial) *fc-held* *fc-table* nil 0 (len *fc-held*))))
-                 (and (not (posp 0)) (equal (car run) :entry)))))
-;; Mutation witness: a row forwarded (status no longer pending) drops out of
-;; both the plan and the cursor's choice.
+ (assert-event (let ((run (with-guard-checking :none
+                           (fn-bpfc-run (fn-bpfc-initial) *fc-held* *fc-table* nil 0 (len *fc-held*))))
+                     (e (fn-bpsched-forward-entry (fn-bpnp-forward-plan *fc-held* *fc-table*) nil)))
+                 (equal (car run) (if e :entry :drained)))))
+;; Hypothesis removal, fuel: with quantum 1 and one resumption the run has
+;; examined two rows; under both peers busy it has not reached the end.
+(must-fail-checked
+ (assert-event (let ((run (fn-bpfc-run (fn-bpfc-initial) *fc-held* *fc-table* *fc-busy2* 1 1))
+                     (e (fn-bpsched-forward-entry (fn-bpnp-forward-plan *fc-held* *fc-table*) *fc-busy2*)))
+                 (equal (car run) (if e :entry :drained)))))
+;; Mutation witness: the oldest row deleted (slot 14) drops out of both the
+;; plan and the cursor's choice; the younger relay-b row is chosen.
 (defconst *fc-held-forwarded*
   (list *fc-r5* *fc-r4* *fc-r3* *fc-r2* (fc-row 1 *fc-dest* *fc-relay* t)))
 (assert-event (equal (second (fn-bpfc-run (fn-bpfc-initial) *fc-held-forwarded* *fc-table* nil 2 5))
