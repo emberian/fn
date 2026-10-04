@@ -47,6 +47,17 @@
                ((values *pfdt-dev*))
                :fault "a default whose heap does not hold its flights' bookkeeping")))
 
+(defteeth fn-pfp-read-of-write
+  :claim (((policy (fn-pfr-policy-p policy)))
+          (equal (fn-pfp-read t (fn-pfp-write policy)) policy))
+  :subject fn-pfp-read
+  :witness ((policy (fn-pfp-default-policy *pfdt-scale*)))
+  :breaks ((policy ((policy (list 0 0 0 0 0 0)))))
+  :mutations ((absent-read-as-written
+               (:conclusion (equal (fn-pfp-read nil (fn-pfp-write policy)) policy))
+               ((policy (fn-pfp-default-policy *pfdt-scale*)))
+               :fault "a reader that grants the policy when the file is absent")))
+
 (defteeth fn-pfd-default-decodes-to-itself
   :claim (() (equal (fn-pfp-read t (fn-pfp-default-octets values))
                     (fn-pfp-default-policy values)))
