@@ -521,15 +521,16 @@
 ; admission trace at the CURRENT budget, even when the earlier records
 ; were admitted under larger or smaller budgets.  A refusal adds no usage.
 (defthm fn-pcb-carried-event-keeps-budget-schedule-admitted
-  (let ((e (fn-pcb-carried-event
-            sequence txid generation msgid received groups obligation-id
-            content-subject release-evidence charge snapshots carried
-            clock-observation budget (fn-pcb-usage records release-evidence))))
-    (implies (fn-pcb-scheduled-from records (cons 0 0) budgets
-                                   release-evidence)
-             (fn-pcb-scheduled-from (append records (list e)) (cons 0 0)
-                                    (append budgets (list budget))
-                                    release-evidence)))
+  (implies (fn-pcb-scheduled-from records (cons 0 0) budgets
+                                 release-evidence)
+           (fn-pcb-scheduled-from
+            (append records
+                    (list (fn-pcb-carried-event
+                           sequence txid generation msgid received groups obligation-id
+                           content-subject release-evidence charge snapshots carried
+                           clock-observation budget
+                           (fn-pcb-usage records release-evidence))))
+            (cons 0 0) (append budgets (list budget)) release-evidence))
   :hints (("Goal" :in-theory (disable fn-pa-carried-event fn-pcb-event-carriage
                                       fn-pcb-carried-event
                                       fn-hsig-article-event-carried-bindsp)

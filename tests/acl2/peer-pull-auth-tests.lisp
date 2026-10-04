@@ -1,6 +1,7 @@
 ; PRF-1130: literal witnesses for the selected credential and actual plans.
 (in-package "ACL2")
 (include-book "../../books/peer-pull")
+(include-book "../../books/defkeystone")
 (include-book "must-fail-checked")
 
 (defconst *ppat-base*
@@ -86,3 +87,40 @@
 (assert-event
  (not (equal (fn-pull-plan-auth *ppat-plan*)
              (fn-pull-auth-of-rows *ppat-base*))))
+
+; The keystone's declared teeth (TEETH CONTRACT v1), from the witnesses above.
+(defteeth fn-pull-plans-credentials-come-from-selected-peer
+  :claim (((planned (member-equal plan (fn-pull-plans peers))))
+          (fn-pull-plan-credential-sourcep plan (fn-cfg-peer-names peers) peers))
+  :subject fn-pull-plans
+  :witness ((plan *ppat-plan*) (peers *ppat-dedicated*))
+  :breaks ((planned ((plan *ppat-forged*) (peers *ppat-dedicated*))))
+  :mutations ((shared-outbound
+               (:conclusion
+                (equal (fn-pull-plan-auth plan)
+                       (let ((oa (fn-cfg-peer-slot
+                                  (fn-cfg-rows-with-key peers (car (fn-cfg-peer-names peers)))
+                                  "outbound-auth-profile")))
+                         (if (and oa (stringp (fn-cfg-row-c oa)))
+                             (list :authinfo (fn-cfg-row-c oa) (equal (fn-cfg-row-n oa) 1))
+                           nil))))
+               ((plan *ppat-plan*) (peers *ppat-dedicated*))
+               :fault "the pull carries the peer's shared outbound feed credential (the selector before PRF-1317), not its dedicated pull credential")))
+
+
+(defteeth fn-pull-auth-after-extension
+  :claim (()
+          (equal (fn-pull-auth-of-rows
+                  (fn-pcb-extend-rows rows (list (fn-pull-auth-row name profile allow-clear))))
+                 (if (equal profile "") nil
+                   (list :authinfo profile (if allow-clear t nil)))))
+  :subject fn-pull-auth-of-rows
+  :witness ((rows *ppat-base*) (name "reader") (profile "reader.fnauth") (allow-clear nil))
+  :breaks ()
+  :mutations ((outbound-wins
+               (:conclusion
+                (equal (fn-pull-auth-of-rows
+                        (fn-pcb-extend-rows rows (list (fn-pull-auth-row name profile allow-clear))))
+                       (fn-pull-auth-of-rows rows)))
+               ((rows *ppat-base*) (name "reader") (profile "reader.fnauth") (allow-clear nil))
+               :fault "the peer's existing outbound feed credential outranking the dedicated pull row")))

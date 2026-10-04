@@ -5226,7 +5226,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-325"
+        "PRF-325",
+        "PRF-1314"
       ],
       "verification": [
         "proof",

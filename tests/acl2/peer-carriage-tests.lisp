@@ -3,6 +3,7 @@
 ; hypothesis showing the conclusion fails without it.
 (in-package "ACL2")
 (include-book "../../books/peer-carriage")
+(include-book "../../books/defkeystone")
 (include-book "peer-authored-accept-tests")
 (include-book "must-fail-checked")
 
@@ -713,3 +714,49 @@
                                               :verified :verified)
                       (fn-pcb-admission-verdict *pat-relayed* *pat-after-revocation* nil
                                                 :verified :verified))))
+
+; The keystone's declared teeth (TEETH CONTRACT v1), from the PKT-211
+; schedule above: lower below retained usage and the next decision is
+; refused, yet the trace stays admitted at each record's own budget.
+(defteeth fn-pcb-carried-event-keeps-budget-schedule-admitted
+  :claim (((scheduled (fn-pcb-scheduled-from records (cons 0 0) budgets
+                                             release-evidence)))
+          (fn-pcb-scheduled-from
+           (append records
+                   (list (fn-pcb-carried-event
+                          sequence txid generation msgid received groups obligation-id
+                          content-subject release-evidence charge snapshots carried
+                          clock-observation budget
+                          (fn-pcb-usage records release-evidence))))
+           (cons 0 0) (append budgets (list budget)) release-evidence))
+  :subject fn-pcb-carried-event
+  :witness ((sequence 2) (txid 3) (generation 4) (msgid "<topic-binding@example.invalid>")
+            (received *pat-relayed*) (groups '("fn.test")) (obligation-id *pat-obligation*)
+            (content-subject *pat-subject*) (release-evidence *pcb-evidence*)
+            (charge *pcb-charge*) (snapshots nil) (carried *pat-carries*)
+            (clock-observation (fn-clock-observation 1 841000000000 0 t))
+            (budget *pcb-schedule-low*) (records *pcb-h1*) (budgets *pcb-schedule-one*))
+  :breaks ((scheduled ((sequence 2) (txid 3) (generation 4) (msgid "<topic-binding@example.invalid>")
+            (received *pat-relayed*) (groups '("fn.test")) (obligation-id *pat-obligation*)
+            (content-subject *pat-subject*) (release-evidence *pcb-evidence*)
+            (charge *pcb-charge*) (snapshots nil) (carried *pat-carries*)
+            (clock-observation (fn-clock-observation 1 841000000000 0 t))
+            (budget *pcb-schedule-low*) (records *pcb-h1*) (budgets *pcb-schedule-bad*))))
+  :mutations ((retroactive-budget
+               (:conclusion
+                (fn-pcb-scheduled-from
+                 (append records
+                         (list (fn-pcb-carried-event
+                                sequence txid generation msgid received groups obligation-id
+                                content-subject release-evidence charge snapshots carried
+                                clock-observation budget
+                                (fn-pcb-usage records release-evidence))))
+                 (cons 0 0) (make-list (+ 1 (len budgets)) :initial-element budget)
+                 release-evidence))
+               ((sequence 2) (txid 3) (generation 4) (msgid "<topic-binding@example.invalid>")
+            (received *pat-relayed*) (groups '("fn.test")) (obligation-id *pat-obligation*)
+            (content-subject *pat-subject*) (release-evidence *pcb-evidence*)
+            (charge *pcb-charge*) (snapshots nil) (carried *pat-carries*)
+            (clock-observation (fn-clock-observation 1 841000000000 0 t))
+            (budget *pcb-schedule-low*) (records *pcb-h1*) (budgets *pcb-schedule-one*))
+               :fault "a lowered budget applied retroactively to records admitted under the earlier one (PKT-211)")))

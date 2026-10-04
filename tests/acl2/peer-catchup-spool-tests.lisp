@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/peer-catchup-spool")
+(include-book "../../books/defkeystone")
 
 (defun csp-test-state (limit)
   (let* ((cursor (fn-cu-fresh-cursor (fn-record-string-octets "remote")))
@@ -119,3 +120,76 @@
         (r (fn-csp-write s '(1 2 3) :body)))
    (and (eq (fn-csp-mode (car r)) :failed) (equal (cadr r) '((:close)))
         (equal (fn-cu-r-refusal (fn-cu-s-round (fn-csp-session (car r)))) :spool-quota))))
+
+; The keystones' declared teeth (TEETH CONTRACT v1), from the witnesses above.
+(defconst *csp-teeth-s* (csp-test-state 4096))
+(defconst *csp-teeth-window* (cons :remote (make-list 512 :initial-element 120)))
+(defconst *csp-teeth-wide*
+  (fn-csp-with (csp-test-state 4096) :mode :write :count 0
+               :resume :body :pending (make-list 600 :initial-element 120)))
+(defconst *csp-teeth-over* (fn-csp-with (csp-test-state 4) :offset 2))
+
+(defteeth fn-csp-step-keeps-window
+  :claim (((windowed (fn-csp-windowp s)))
+          (fn-csp-windowp (car (fn-csp-step s event))))
+  :subject fn-csp-step
+  :witness ((s *csp-teeth-s*) (event *csp-teeth-window*))
+  :breaks ((windowed ((s *csp-teeth-wide*) (event '(:spool-written :ok 0)))))
+  :mutations ((short-window
+               (:conclusion (< (len (fn-csp-pending (car (fn-csp-step s event)))) 512))
+               ((s *csp-teeth-s*) (event *csp-teeth-window*))
+               :fault "a window bound one octet below the 512-octet quantum the host reads")))
+
+(defteeth fn-csp-write-spools-whole-or-fails-by-name
+  :claim (()
+          (let* ((r (fn-csp-write s emission resume))
+                 (s2 (car r)) (effects (cadr r))
+                 (bytes (fn-pull-list emission)))
+            (or (and (equal (fn-csp-mode s2) :failed)
+                     (equal (fn-cu-r-refusal (fn-cu-s-round (fn-csp-session s2))) :spool-quota)
+                     (equal effects '((:close))))
+                (and (atom bytes) (equal effects nil)
+                     (equal (fn-csp-offset s2) (fn-csp-offset s)))
+                (and (equal effects (list (list :spool-write (fn-csp-offset s) bytes)))
+                     (equal (fn-csp-offset s2) (+ (fn-csp-offset s) (len bytes)))
+                     (<= (fn-csp-offset s2) (fn-csp-limit s))
+                     (equal (fn-csp-count s2) (len bytes))
+                     (equal (fn-csp-mode s2) :write)
+                     (equal (fn-csp-resume s2) resume)))))
+  :subject fn-csp-write
+  :witness ((s *csp-teeth-s*) (emission '(1 2 3)) (resume :body))
+  :breaks ()
+  :mutations ((never-refused
+               (:conclusion
+                (let* ((r (fn-csp-write s emission resume))
+                       (s2 (car r)) (effects (cadr r))
+                       (bytes (fn-pull-list emission)))
+                  (or (and (atom bytes) (equal effects nil)
+                           (equal (fn-csp-offset s2) (fn-csp-offset s)))
+                      (and (equal effects (list (list :spool-write (fn-csp-offset s) bytes)))
+                           (equal (fn-csp-offset s2) (+ (fn-csp-offset s) (len bytes)))
+                           (<= (fn-csp-offset s2) (fn-csp-limit s))
+                           (equal (fn-csp-count s2) (len bytes))
+                           (equal (fn-csp-mode s2) :write)
+                           (equal (fn-csp-resume s2) resume)))))
+               ((s *csp-teeth-over*) (emission '(1 2 3)) (resume :body))
+               :fault "an emission over the funded spool limit that is spooled (or cut) instead of failing the round by name")
+              (offset-kept
+               (:conclusion
+                (let* ((r (fn-csp-write s emission resume))
+                       (s2 (car r)) (effects (cadr r))
+                       (bytes (fn-pull-list emission)))
+                  (or (and (equal (fn-csp-mode s2) :failed)
+                           (equal (fn-cu-r-refusal (fn-cu-s-round (fn-csp-session s2))) :spool-quota)
+                           (equal effects '((:close))))
+                      (and (atom bytes) (equal effects nil)
+                           (equal (fn-csp-offset s2) (fn-csp-offset s)))
+                      (and (equal effects (list (list :spool-write (fn-csp-offset s) bytes)))
+                           (equal (fn-csp-offset s2) (fn-csp-offset s))
+                           (<= (fn-csp-offset s2) (fn-csp-limit s))
+                           (equal (fn-csp-count s2) (len bytes))
+                           (equal (fn-csp-mode s2) :write)
+                           (equal (fn-csp-resume s2) resume)))))
+               ((s *csp-teeth-s*) (emission '(1 2 3)) (resume :body))
+               :fault "a spool write that leaves the offset in place, so the next emission overwrites it")))
+

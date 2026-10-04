@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/peer-catchup-spool-framer")
+(include-book "../../books/defkeystone")
 
 (assert-event
  (equal (fn-csp-framer-window (fn-csp-framer 1 t) '(46 46 120 13 10))
@@ -52,3 +53,32 @@
         (b (fn-csp-framer-window (nth 1 a) '(10))))
    (equal (append (nth 2 a) (nth 2 b))
           (fn-csp-framer-emit f '(46 46 120 13 10)))))
+
+; The keystone's declared teeth (TEETH CONTRACT v1): a window that yields
+; mid-record, one octet left over.
+(defconst *cspf-teeth-input* (cons 46 (make-list 511 :initial-element 120)))
+
+(defteeth fn-csp-framer-window-accounts-for-every-octet
+  :claim (()
+          (let* ((w (fn-csp-framer-window f input))
+                 (used (nth 4 w)))
+            (and (natp used)
+                 (<= used (len input))
+                 (equal (nth 3 w) (nthcdr used input))
+                 (equal (nth 2 w) (fn-csp-framer-emit f (take used input)))
+                 (equal (nth 1 w) (fn-csp-framer-after f (take used input))))))
+  :subject fn-csp-framer-window
+  :witness ((f (fn-csp-framer 1 nil)) (input *cspf-teeth-input*))
+  :breaks ()
+  :mutations ((drops-next-octet
+               (:conclusion
+                (let* ((w (fn-csp-framer-window f input))
+                       (used (nth 4 w)))
+                  (and (natp used)
+                       (<= used (len input))
+                       (equal (nth 3 w) (nthcdr (+ 1 used) input))
+                       (equal (nth 2 w) (fn-csp-framer-emit f (take used input)))
+                       (equal (nth 1 w) (fn-csp-framer-after f (take used input))))))
+               ((f (fn-csp-framer 1 nil)) (input *cspf-teeth-input*))
+               :fault "a window whose rest skips the octet after what it consumed (a silent one-octet truncation between windows)")))
+
