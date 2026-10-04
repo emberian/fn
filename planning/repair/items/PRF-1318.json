@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/owner-number-bound-join.lisp",
+ "id": "PRF-1318",
+ "notes": [],
+ "owner": "carrier2",
+ "severity": "high",
+ "slice": "carrier",
+ "source": "carrier2",
+ "state": "open",
+ "title": "carrier S1: books/owner-number-bound-join is unadmitted. Its io lemmas are restated under the record-directory premise: fn-onbj-boundp-of-own-store-io, -of-ocfg-io and -of-ocfg-io-run take (or (fn-sn-statep store) (not (equal operation :record-directory))) or the run premise fn-onbj-io-run-premisesp; new fn-onbj-statep-of-ocfg-io and fn-onbj-io-run-premisesp-of-reserve/-order. KEYSTONE fn-onbj-boundp-at-owner-log-order gains the hypothesis (fn-sn-statep (fn-own-store (fn-ocfg-owner oc))): after S1 the record-directory step completes the candidate only on a store state (fn-sn-find-record finds the first record with the pair). The reserve keystone is unchanged. Admission is blocked below by reds S1 did not cause: served-catalog-join-pinned fn-scj-seqs-sortedp-of-load (red since the 10-03 loader change 3958cce3f), and served-catalog-join-frame-store fn-scjs-transit-outcome-keeps-invp / fn-scjs-acar-own-outcome-keeps-invp. Admit the join book once those are green, and prove the four new lemmas. The order keystone's statement change needs the owner's judgment.",
+ "updated": "2026-10-04T05:02:35Z"
+}

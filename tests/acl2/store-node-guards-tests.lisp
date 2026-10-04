@@ -160,4 +160,10 @@
 (assert-event (with-guard-checking :none (equal (fn-sn-observed-rebarrier 7 'count) 7)))
 (assert-event (with-guard-checking :none (equal (fn-sn-observed-rebarrier 7 #c(1 2)) 7)))
 (assert-event (with-guard-checking :none (equal (fn-sn-observed-rebarrier 7 -1) 7)))
-(assert-event (with-guard-checking :none (equal (fn-sn-observed-rebarrier 7 5) 7)))
+; The rebarrier is fn-sn-io's recovery-barrier step COUNT times; total off the
+; state, and (no identity arm since lane carrier S1) each step is the file
+; step of the files.
+(assert-event (with-guard-checking :none (equal (fn-sn-observed-rebarrier 7 0) 7)))
+(assert-event (with-guard-checking :none
+               (equal (fn-sn-files (fn-sn-observed-rebarrier 7 1))
+                      (fn-sn-file-step (fn-sn-files 7) :recovery-barrier :ok))))

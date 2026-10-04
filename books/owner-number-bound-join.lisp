@@ -264,30 +264,66 @@
   (implies (fn-onb-boundp o) (fn-onb-store-boundp (fn-own-store o)))
   :hints (("Goal" :in-theory (enable fn-onb-boundp))))
 
+; The record-directory step keeps the bound on a store state only
+; (owner-number-bound.lisp fn-onb-inflight-fitp-of-io; lane carrier S1): a
+; step's premise is that disjunction, and a run's premise is each step's.
 (defthm fn-onbj-boundp-of-own-store-io
-  (implies (fn-onb-boundp o)
+  (implies (and (fn-onb-boundp o)
+                (or (fn-sn-statep (fn-own-store o)) (not (equal operation :record-directory))))
            (fn-onb-boundp (fn-own-store-step o (list :io operation result))))
   :hints (("Goal" :in-theory (e/d (fn-own-store-step fn-snrt-step fn-snt-step)
-                                  (fn-own-refresh fn-sn-io))
+                                  (fn-own-refresh fn-sn-io fn-sn-statep))
            :use ((:instance fn-onb-store-boundp-of-io (s (fn-own-store o)))
                  (:instance fn-onbj-boundp-of-refresh-with-store (s (fn-sn-io (fn-own-store o) operation result)))))))
 
 (defthm fn-onbj-boundp-of-ocfg-io
-  (implies (fn-onb-boundp (fn-ocfg-owner oc))
+  (implies (and (fn-onb-boundp (fn-ocfg-owner oc))
+                (or (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+                    (not (equal operation :record-directory))))
            (fn-onb-boundp (fn-ocfg-owner (fn-ocfg-step oc (list :store (list :io operation result)) fn-arena))))
   :hints (("Goal" :in-theory '(fn-sjh-ocfg-store-step-owner fn-onbj-boundp-of-own-store-io))))
 
+; The store's io step keeps the store a state (fn-sn-io-preserves-state).
+(defthm fn-onbj-statep-of-ocfg-io
+  (implies (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+           (fn-sn-statep (fn-own-store (fn-ocfg-owner
+                                        (fn-ocfg-step oc (list :store (list :io operation result)) fn-arena)))))
+  :hints (("Goal" :in-theory (e/d (fn-sjh-ocfg-store-step-owner fn-own-store-step fn-snrt-step fn-snt-step)
+                                  (fn-sn-io fn-sn-statep fn-ocfg-step)))))
+
+(defun-nx fn-onbj-io-run-premisesp (oc events fn-arena)
+  (declare (xargs :measure (len events)))
+  (if (consp events)
+      (and (or (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+               (not (equal (cadr (cadr (car events))) :record-directory)))
+           (fn-onbj-io-run-premisesp (fn-ocfg-step oc (car events) fn-arena) (cdr events) fn-arena))
+    t))
+
 (defthm fn-onbj-boundp-of-ocfg-io-run
   (implies (and (fn-sjh-io-eventsp events)
+                (fn-onbj-io-run-premisesp oc events fn-arena)
                 (fn-onb-boundp (fn-ocfg-owner oc)))
            (fn-onb-boundp (fn-ocfg-owner (fn-ocfg-run oc events fn-arena))))
   :hints (("Goal" :induct (fn-ocfg-run oc events fn-arena)
-           :in-theory (e/d (fn-ocfg-run fn-sjh-io-eventsp)
-                           (fn-ocfg-step fn-sjh-io-eventp)))
+           :in-theory (e/d (fn-ocfg-run fn-sjh-io-eventsp fn-onbj-io-run-premisesp)
+                           (fn-ocfg-step fn-sjh-io-eventp fn-sn-statep)))
           ("Subgoal *1/1" :use ((:instance fn-sjh-io-eventp-shape (e (car events)))
                                 (:instance fn-onbj-boundp-of-ocfg-io
                                            (operation (cadr (cadr (car events))))
                                            (result (caddr (cadr (car events)))))))))
+
+; The reservation run names no record-directory step: its premise is free.
+(defthm fn-onbj-io-run-premisesp-of-reserve
+  (fn-onbj-io-run-premisesp oc *fn-sjh-log-reserve-events* fn-arena)
+  :hints (("Goal" :expand ((:free (oc events) (fn-onbj-io-run-premisesp oc events fn-arena))))))
+
+; The order run's record-directory step comes after two io steps, each of
+; which keeps the store a state.
+(defthm fn-onbj-io-run-premisesp-of-order
+  (implies (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+           (fn-onbj-io-run-premisesp oc *fn-sjh-log-order-events* fn-arena))
+  :hints (("Goal" :expand ((:free (oc events) (fn-onbj-io-run-premisesp oc events fn-arena)))
+           :in-theory (disable fn-ocfg-step fn-sn-statep))))
 
 ; KEYSTONE (fn-owner-io :log-reserve).
 (defthm fn-onbj-boundp-at-owner-log-reserve
@@ -297,17 +333,22 @@
                                                fn-ocfg-run car-cons cdr-cons (:e fn-sjh-io-eventsp)
                                                (:e consp) (:e car) (:e cdr))
                                              (theory 'minimal-theory))
-           :use ((:instance fn-onbj-boundp-of-ocfg-io-run (events *fn-sjh-log-reserve-events*))))))
+           :use ((:instance fn-onbj-boundp-of-ocfg-io-run (events *fn-sjh-log-reserve-events*))
+                 (:instance fn-onbj-io-run-premisesp-of-reserve (fn-arena fn-arena))))))
 
-; KEYSTONE (fn-owner-io :log-order).
+; KEYSTONE (fn-owner-io :log-order), on the store state the owner carries
+; (fn-owner-retain-statep implies it; lane carrier S1: the record-directory
+; step completes the candidate only on a store state).
 (defthm fn-onbj-boundp-at-owner-log-order
-  (implies (fn-onb-boundp (fn-ocfg-owner oc))
+  (implies (and (fn-onb-boundp (fn-ocfg-owner oc))
+                (fn-sn-statep (fn-own-store (fn-ocfg-owner oc))))
            (fn-onb-boundp (fn-ocfg-owner (fn-olr-ocfg-order oc))))
   :hints (("Goal" :in-theory (union-theories '(fn-olr-ocfg-order-is-the-file-route-by-definition
                                                fn-ocfg-run car-cons cdr-cons (:e fn-sjh-io-eventsp)
                                                (:e consp) (:e car) (:e cdr))
                                              (theory 'minimal-theory))
-           :use ((:instance fn-onbj-boundp-of-ocfg-io-run (events *fn-sjh-log-order-events*))))))
+           :use ((:instance fn-onbj-boundp-of-ocfg-io-run (events *fn-sjh-log-order-events*))
+                 (:instance fn-onbj-io-run-premisesp-of-order (fn-arena fn-arena))))))
 ; KEYSTONE (fn-owner-open, no capture): fn-ocar-ocfg-open at the working view
 ; keeps the store and the view (fn-sjh-op-ocar-ocfg-open-facts2).
 (defthm fn-onbj-boundp-at-owner-open
