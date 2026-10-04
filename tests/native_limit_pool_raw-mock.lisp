@@ -4,22 +4,6 @@
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 
-;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
-(define-condition harness-stub-reached (serious-condition)
-  ((name :initarg :name :reader harness-stub-reached-name)
-   (source :initarg :source :reader harness-stub-reached-source))
-  (:report (lambda (c s)
-             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
-                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
-(defun harness-stub-reached (name source)
-  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
-          name source)
-  (finish-output *error-output*)
-  (error 'harness-stub-reached :name name :source source))
-(defun fnn-admin-test-fault (section)
-  (declare (ignorable section))
-  (harness-stub-reached 'fnn-admin-test-fault "host/native/admin.lisp"))
-;;; ---- derived stubs: END ----
 (defun nfix (x) (if (and (integerp x) (<= 0 x)) x 0))
 (defun fn-cfg-ag-car (x) (if (consp x) (car x) nil))
 (defun fn-cfg-ag-cdr (x) (if (consp x) (cdr x) nil))
@@ -51,8 +35,13 @@
 (defun fnn-heap-history-observation (store values) (declare (ignore store values)) 'history)
 (defun fnn-store-root (s) s)
 (defun fnn-gc-nursery-octets () 64)
-(defun fnn-owner-serialized (service cid thunk)
-  (declare (ignore service cid))
+;; No developer selector is set: the production answer, so the admin fault
+;; injection (fnn-admin-test-fault, extracted below) never fires here, so the
+;; section list it checks a selector against is not consulted.
+(defparameter +fnn-admin-sections+ nil)
+(defun fnn-developer-selector (name) (declare (ignore name)) nil)
+(defun fnn-quantum-control (service cid thunk &optional class)
+  (declare (ignore service cid class))
   (sb-thread:with-mutex (*fixture-owner-lock*) (funcall thunk)))
 (defun fnn-owner-core (name &rest args)
   (case name
@@ -113,7 +102,7 @@
     (sb-thread:join-thread *issuer*)
     (assert *issuer-acquired*)
     (assert (equal (reverse *events*) expected))))
-(load-limit-source "host/native/admin.lisp" '(fnn-owner-limit-serialized))
+(load-limit-source "host/native/admin.lisp" '(fnn-admin-test-fault fnn-owner-limit-serialized))
 (limit-pool-fixture :affordable :accepted '(:preview :publish :carry :pool :profile))
 (limit-pool-fixture :at-restart :accepted '(:preview :publish :carry))
 (limit-pool-fixture :affordable :refused '(:preview :publish))
