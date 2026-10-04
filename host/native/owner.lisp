@@ -1941,6 +1941,21 @@ This installs only the explicit output projection, not a full allocation gate."
 (defstruct (fnn-response-capture (:constructor %make-fnn-response-capture))
   context arena catalog connection identity grant window-read)
 
+(defun fnn-owner-await-response-identity-locked (service)
+  "Owner held, in the step that queued a socket connection's submission:
+reserve the response identity of the reply its completion will carry, into
+the bound response capture (the I/O loop copies it to the connection,
+fnn-mux-capture-output-grant).  That reply is materialized when the
+completion arrives, which may be in a stop's drain (fnn-mux-stop-loop): after
+the fence, where the :live section fnn-owner-response-identity is refused, so
+the uncertain reply met a bare close (test_native_owner's two-client case,
+since 21d932152).  Reserved here, it needs no section after the step."
+  (let ((capture *fnn-response-capture*))
+    (when (and capture (null (fnn-response-capture-identity capture)))
+      (setf (fnn-response-capture-identity capture)
+            (fnn-owner-response-identity-locked
+             service (fnn-response-capture-connection capture))))))
+
 (defun fnn-owner-capture-reader-context (cid)
   "Owner held: capture the same effective view before any chunk factory."
   (when (and *fnn-response-capture*
@@ -6466,6 +6481,10 @@ EPIPE and the client saw a bare close)."
              (when (eq admit :shed)
                (fnn-owner-shed-queued-locked service))
              (fnn-owner-note-queued service)
+             ;; A socket connection's reply to this submission is rendered
+             ;; by its I/O loop when the completion arrives, possibly in the
+             ;; stop's drain; its identity is reserved now, under the owner.
+             (when socket (fnn-owner-await-response-identity-locked service))
              (return-from step
                (values :await step
                        (and (fnn-owner-core 'fn-acct-host-owner-redeem-waitingp cid) t)

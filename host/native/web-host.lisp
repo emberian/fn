@@ -456,8 +456,12 @@ exposure admission decides (the id, or NIL when it refused)."
        (fnn-owner-space-preobserve service t)
        (setf (fnn-web-conn-flow conn) (second action)
              (fnn-web-conn-event conn) (list :health-observation
+               ;; fn-web-host-health-observe READS state and returns its one
+               ;; observation, not (mv erp val state): fnn-core with the live
+               ;; state, as fnn-command-live-pages calls its offline start.
                (fnn-owner-serialized service nil (lambda ()
-                 (fnn-owner-core 'fn-web-host-health-observe (fnn-owner-sched-snapshot service))) :reader))))
+                 (fnn-core 'fn-web-host-health-observe (fnn-owner-sched-snapshot service)
+                           *the-live-state*)) :reader))))
       (:open (destructuring-bind (family address protected next) (rest action)
                (let ((cid (fnn-web-open service family address protected)))
                  (when cid (push cid (fnn-web-conn-opened conn)))

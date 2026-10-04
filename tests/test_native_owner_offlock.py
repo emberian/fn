@@ -37,7 +37,8 @@ import unittest
 from tests.native_harness import EXIT_OK, Node, native_image, node_log_on_failure, refused_port, requires
 
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
-MEASURE = re.compile(rb"^fn-owner-measure (\S+) holds=(\d+) held-us=(\d+) max-us=(\d+) bytes=(\d+)$", re.M)
+MEASURE = re.compile(rb"^fn-owner-measure (\S+) holds=(\d+) held-us=(\d+) max-us=(\d+) bytes=(\d+)"
+                     rb" max-bytes=(\d+)$", re.M)
 
 
 def measured(log):

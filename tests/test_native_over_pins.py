@@ -239,9 +239,17 @@ class NativeOverPinsTests(unittest.TestCase):
         open through the drain and the idle check after it."""
         size = 12 << 20
         node = Node(self, self.image, root=self.root / "idle-article")
+        # The record ceiling covers the article in every group the profile
+        # admits (books/records-shape.lisp fn-record-encoded-octets-ceiling:
+        # about 260 octets a group); at the development profile's 65535
+        # groups a 12 MiB article needs a 28 MiB record and init refuses
+        # MAX-RECORD-OCTETS-BELOW-THE-ARTICLE-RECORD, correctly.  This
+        # article names one group: a 16-group profile keeps the record at
+        # the article plus 1 MiB.
         node.operator("init", "--profile", "development", "--max-transactions", "1024",
                       "--max-history-octets", str(64 << 20),
                       "--max-record-octets", str(size + (1 << 20)),
+                      "--max-groups-per-article", "16",
                       "--max-article-octets", str(size), GROUP, timeout=600, expect=EXIT.OK)
         secret = node.store("node-secret", "create", timeout=600)
         self.assertIn(secret.returncode, (EXIT.OK, EXIT.REFUSED), secret.stderr[-600:])

@@ -249,7 +249,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **resumable developer init compatibility.** A resumed init keeps the sealed profile and generation-one group changes; mismatched requested intent is refused before resume publication, while invalid initial evidence faults.
 
-- Host-called subject: `fn-nir-resume-decision` at host/native/io.lisp:2538.
+- Host-called subject: `fn-nir-resume-decision` at host/native/io.lisp:2550.
 - Keystone: `fn-nir-resume-admits-identical-initial-contract-across-stamps` (books/native-init-resume.lisp:42; PRF-1270 (certified)); certified at the current source and closure by `certify-20261004T022302Z-3294774` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: the node runs default, this needs development.
@@ -297,7 +297,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **incremental decision journal replay.** The journal command reads a captured regular-file prefix in ACL2 windows of at most64KiB and folds complete entries without retaining them; arbitrary input yields exactly the reference report and exit verdict, independent of chunk boundaries.
 
-- Host-called subject: `fn-otjs-report` at host/native/io.lisp:3915.
+- Host-called subject: `fn-otjs-report` at host/native/io.lisp:3941.
 - Keystone: `fn-otjs-report-refines-journal-report` (books/owner-time-journal-stream.lisp:522; PRF-1275 (certified)); certified at the current source and closure by `certify-20261003T112822Z-1637229` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: the node runs default, this needs development.
