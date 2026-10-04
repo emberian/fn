@@ -4636,3 +4636,7 @@ Continuation point: when an image set of current source with this branch
 exists, run `tools/hbox_native.sh --image-set <sha> --env
 FN_RUN_CONSUMER_EXCHANGE=1 <rev> <the five selectors>`, file evidence, update
 the coordinate table, READY to assembler + integrator.
+
+## retire lane (lane/retire) — 2026-10-04
+
+Entry: build/coordinator/lanedumps/retire.md (S9 fence READY at 947235f76, natives pending; fs-observe held on lane/fs-observe; continuation point).

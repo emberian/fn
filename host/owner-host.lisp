@@ -1821,8 +1821,9 @@
 ;; (`policy set barrier-deadline-ms|barrier-stall-ms|clock-event-ms N'); the
 ;; barrier's :issue event normalizes them (fn-otm-limits: defaults for
 ;; absent rows, H at least D).
-;; Row S9 (retire, books/owner-retire.lisp): the drain's step over the
-;; owner's feed table, and the report the owner writes when the drain ends.
+;; Row S9 (retire): the drain's step over the carried feed count and the
+;; owner's queue (books/owner-retire-counted.lisp), and the report the owner
+;; writes when the drain ends (books/owner-retire.lisp).
 (defun fn-owner-feed-pending (state)
   (declare (xargs :stobjs state :mode :program))
   ; Cold installation establishes this scalar; no served fallback census.
@@ -1830,10 +1831,11 @@
 
 (defun fn-owner-retire-step (s0 s seconds state)
   (declare (xargs :stobjs state :mode :program))
-  ;; The native accepted-producer/barrier settlement observation is still
-  ;; OPEN. Until its lifecycle relation lands, zero cannot authorize drained.
-  (value (fn-ort-drain-step-counted
-          s0 s seconds (fn-owner-feed-pending state) t nil)))
+  ;; Under the owner mutex: the carried feed count and the owner's queue,
+  ;; the producers left once intake is fenced (books/owner-retire-counted.lisp
+  ;; fn-ort-retire-step, fn-ort-producers-settled).
+  (value (fn-ort-retire-step s0 s seconds (fn-owner-feed-pending state)
+                             (fn-own-queue (fn-owner-core state)))))
 
 (defun fn-owner-retire-report (step state)
   (declare (xargs :stobjs state :mode :program))
