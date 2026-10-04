@@ -4636,3 +4636,48 @@ First slice: `books/output-tariff-article.lisp` admitted on the laptop (10 forms
 uncertified, unwired; the exact continuation is the numbered list in the coordinator lanedump
 (steps 1-7). Nothing certified, no image, no native run. The only owner-host.lisp region this lane
 touches is `fn-owner-output-tariff-preview` (:5512-5518), untouched so far.
+
+Entry: build/coordinator/lanedumps/docs.md (deliverables, shas, word counts,
+continuation point).
+
+## Apps lane (lane/apps) — 2026-10-04
+
+Own tree /Users/ember/dev/fn/build/lanes/apps, branch lane/apps, base
+origin/integrate/20261004 @ec2c1b3da (assembler af2c7accc6871ee99).
+Owns the application boundary: E1/E2 consumer scenarios on an image of
+current source, the local cursor poll/wait/ack end to end, specs/applications.md,
+wiring gap 8 (FNCR remote receive).
+
+Slice 1 (source; no host or book change):
+- tools/fn_consumer.py `wake --wait SECONDS`: the first page is fn's
+  `consumer wait`/`bound-wait --timeout S` (client deadline S+60), later pages
+  poll. Unit: tests/test_fn_consumer_delivery.py
+  test_wait_sleeps_in_fn_for_the_first_page_only (10/10 OK, py3.12).
+- tests/test_native_consumer_exchange.py
+  test_sleeping_consumer_waits_for_the_report_then_acks: B blocked in wait
+  (still running after 5 s, ack 0), A reports r1, B's wait answers within
+  120 s, inbox r1 applied, committed ack advanced, reply stored; A's wait
+  returns reply-r1 applied; a further wait over nothing sleeps to its deadline.
+- specs/applications.md: rely-on-today (signed exact bytes, D25 resend, the
+  local cursor, two nodes) vs not-yet (remote consumer, view change/rebase,
+  retention, non-NNTP inter-node, zmq patterns), with the five selectors.
+- docs/agents.md one line for `wake --wait`.
+
+Gap 8: un-parked by ember 10-04 ("gates-with-producers"): the remote
+consumer (route, interim-funded TLS listener, client verb, two-node native) is
+lane/apps@25dd82d5a, which waits for the assembler's native-config batch after
+the image-set freeze (it adds a [remote_consumer] table to books/native-config).
+This branch (lane/apps-wait) carries only the Python/test/spec slice.
+
+history-auth-reader harvest stub: wave 3's (ST5 / snapshot producer is its
+consumer), not this strand's.
+
+Native: the five scenarios run from the frozen next tree on the integrator's set on the
+integrator's set: modules tests.test_native_consumer_exchange (selectors
+in applications.md) + tests.test_native_consumer_exchange_two_nodes,
+env FN_RUN_CONSUMER_EXCHANGE=1. Pending: image sha, run ids.
+
+Continuation point: when an image set of current source with this branch
+exists, run `tools/hbox_native.sh --image-set <sha> --env
+FN_RUN_CONSUMER_EXCHANGE=1 <rev> <the five selectors>`, file evidence, update
+the coordinate table, READY to assembler + integrator.
