@@ -1,12 +1,24 @@
 {
  "category": "implementation",
+ "expect-failure": "tests.test_native_raw_scripts.RawHarnessTests.test_peer_invite_dispatch_raw_mock",
+ "failure-message": "1 != 0 : native_peer_invite_dispatch_raw-mock.lisp exited 1:\nissue: fn-pinv-host-observation-subject/1 fn-pinv-host-issue-plan/6\naccept: fn-pinv-host-observation-subject/1 fn-par-host-accept-record-plan/8 fn-pinv-host-accept-step/8\nRED confirm: host-entry-guard: fn-pinv-host-confirm-record-plan takes 8 arguments (stobjs and state included); the host passed 10\n\n",
  "file": "host/native/peer-invite.lisp",
+ "harness": "tests/test_native_raw_scripts.py,tests/native_peer_invite_dispatch_raw-mock.lisp,tests/native_harness.py",
  "id": "SCEN-PINV-CONFIRM-ARITY",
- "notes": [],
- "owner": "unowned",
+ "native": "tests.test_native_peer_invite,tests.test_native_friends_feed",
+ "notes": [
+  "10-04 11:33 claimed: scope=['host/native/peer-invite.lisp', 'tests/native_peer_invite_dispatch_raw-mock.lisp'] test=python3 -m unittest tests.test_native_raw_scripts.RawHarnessTests.test_peer_invite_dispatch_raw_mock"
+ ],
+ "owner": "scenarios",
+ "scope": [
+  "host/native/peer-invite.lisp",
+  "tests/native_peer_invite_dispatch_raw-mock.lisp"
+ ],
  "severity": "high",
  "source": "scenarios",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_native_raw_scripts.RawHarnessTests.test_peer_invite_dispatch_raw_mock",
+ "timeout": "300",
  "title": "peer confirm stops the owner: host/native/peer-invite.lisp:241 applies fn-pinv-host-confirm-record-plan to 10 arguments (bbfc3b915 appended fn-store-genesis-ident and fn-owner-config-generation, as it did for accept's new fn-par-host-accept-record-plan) but host/peer-invite-host.lisp:86 and books/peer-invite.lisp:1360 take 8; every confirm is 'owner quantum fault; process stopped: host-entry-guard ... takes 8 arguments ... the host passed 10'. Red: peer_invite 7/7, friends_feed 1/2 on run peer-d5b0b9100 (hbox:/tank/fn/scratch/scenarios/native-peer-d5b0b9100). The invite/confirm flow is how a friend's server peers.",
- "updated": "2026-10-04T15:13:41Z"
+ "updated": "2026-10-04T15:33:43Z"
 }
