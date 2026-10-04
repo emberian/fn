@@ -8,12 +8,14 @@
  "id": "CL13",
  "line": "",
  "locus": "gates-tests-packaging",
- "notes": [],
+ "notes": [
+  "10-04 15:12 FILL 10-04: still red at 55ff708a6 on cloud1 make check: depth_check lists non-tail recursions incl. adt-tree-ndig, adt-tree-okp, fn-arx-attach-trailers(-buffer), fn-ast-scan-step, fn-asto-ready-rest, fn-auth-mechanism-words, fn-av-scr-dispatch-events, fn-rof-first; log cloud1:/tank/fn/scratch/fill-wt-check.log"
+ ],
  "owner": "sweep-gates",
  "severity": "medium",
  "slice": "carrier",
  "source": "check-lane-355a5c843",
  "state": "open",
  "title": "check-lane red: depth_check",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-04T19:12:27Z"
 }

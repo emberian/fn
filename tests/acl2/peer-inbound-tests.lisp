@@ -1044,6 +1044,9 @@
 ; store's :unaffordable was TAKETHIS's drop code 439.
 (assert-event (equal (fn-peer-transit-code :takethis '(:want nil) :unaffordable) 436))
 (assert-event (equal (fn-peer-transit-code :ihave '(:want nil) :unaffordable) 436))
+; Lane m1-durable-2: the store full in H is the same retry class.
+(assert-event (equal (fn-peer-transit-code :takethis '(:want nil) :history-exhausted) 436))
+(assert-event (equal (fn-peer-transit-code :ihave '(:want nil) :history-exhausted) 436))
 ; Another Store refusal keeps the drop code: the retry class is capacity's.
 (assert-event (equal (fn-peer-transit-code :takethis '(:want nil) :conflict) 439))
 

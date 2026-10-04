@@ -479,6 +479,10 @@ class PageIOTests(unittest.TestCase):
         try:
             asked = base.operator("store", "compact", timeout=1200, expect=None)
             self.assertEqual(asked.returncode, EXIT.OK, asked.stdout + asked.stderr)
+            # The verb only requests the compaction ("compaction requested");
+            # a stop before its publication ends it ("the owner is stopping")
+            # and leaves a store with no image to adopt.
+            self.wait_line(owner, rb"CHECKPOINT auto sequence=\d+ ")
         finally:
             base.stop(expect=None, grace=300)
         node = self.copy_of(base, "image")

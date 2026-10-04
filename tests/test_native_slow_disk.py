@@ -118,7 +118,7 @@ class SlowDiskSourceTests(unittest.TestCase):
         self.assertIn("'fn-owner-chunk-span cid 0 end sched)", no_io)
         self.assertIn("(fnn-core 'fn-otm-peer-read-proceeds-p class sched)", chunk)
         mux = (ROOT / "host" / "native" / "mux.lisp").read_text()
-        self.assertIn("(fnn-owner-peer-read-class service)", mux)
+        self.assertIn("(fnn-owner-peer-read-class (fnn-mux-service loop))", mux)
         peer_class = owner[owner.index("(defun fnn-owner-peer-read-class "):owner.index("(defun fnn-owner-disk-stalled-p")]
         self.assertIn("'fn-otm-peer-read-class", peer_class)
         admit = owner[owner.index("(defun fnn-owner-disk-admission "):owner.index("(defun fnn-owner-disk-stalled-p")]

@@ -623,10 +623,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-flight-reservation \
 	books/peer-u64-codec \
 	books/peer-flight-profile \
+	books/peer-flight-default \
 	books/peer-flight-startup \
 	tests/acl2/page-read-startup-tests \
 	tests/acl2/peer-flight-reservation-tests \
 	tests/acl2/peer-flight-profile-tests \
+	tests/acl2/peer-flight-default-tests \
 	tests/acl2/peer-flight-startup-tests \
 	tests/acl2/page-read-startup-host-tests \
 	books/output-reservation \
@@ -1745,12 +1747,16 @@ ACL2_BOOKS ?= books/defrecord \
 	books/feed-journal \
 	tests/acl2/feed-journal-tests \
 	tests/acl2/peer-feed-tests \
+	tests/acl2/peer-feed-red-defer-tests \
+	tests/acl2/peer-feed-red-capacity-tests \
+	tests/acl2/peer-feed-red-msgid-tests \
 	tests/acl2/feed-correspondence-tests \
 	tests/acl2/feed-port-replay-tests \
 	books/owner-feed \
 	books/owner-feed-port \
 	tests/acl2/owner-feed-port-tests \
 	tests/acl2/owner-feed-tests \
+	tests/acl2/owner-feed-live-carried-tests \
 	books/owner \
 	books/transit-header-limits \
 	tests/acl2/transit-header-limits-tests \
@@ -2006,6 +2012,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-availability \
 	books/served-available-commands \
 	books/served-available-read \
+	books/served-available-access \
 	books/article-stream \
 	tests/acl2/article-stream-tests \
 	books/article-stream-server \
@@ -2020,6 +2027,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-available-readers-tests \
 	tests/acl2/served-available-commands-tests \
 	tests/acl2/served-available-read-tests \
+	tests/acl2/served-available-access-tests \
 	books/def-cursor-batch \
 	books/newnews-stream-cursor \
 	tests/acl2/newnews-stream-cursor-tests \
@@ -2606,6 +2614,7 @@ check-lane:
 # an image build).
 check-fast:
 	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
+	@$(CHECK_STEP_WARM) $(PYTHON) tools/evidence_store.py fetch --all
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --read
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --books
 	@$(CHECK_STEP) $(PYTHON) tools/merge_registry.py --reciprocate --check
@@ -2634,9 +2643,14 @@ check-fast-lane:
 #     step's output printed whole and kept in build/check-steps/logs/;
 #   - skipping a step whose traced inputs (the files it opened, the
 #     directories it listed, the paths it stat'ed, its git commands' output)
-#     are unchanged since its last PASS: "cached (inputs unchanged since
-#     <sha>)", from build/check-cache/ (never committed).  A step that starts
-#     ACL2 or another untraceable process always runs.
+#     are unchanged since its last VERDICT (a pass, or a red with exit 1; a
+#     NOT RUN, a signal or 127 is never cached): "cached (inputs unchanged
+#     since <sha>)", a red replayed red with the run that produced it named,
+#     from build/check-cache/ (never committed; FN_VERDICT_STORE=DIR names a
+#     store shared by every worktree on the box, since tree files are keyed
+#     by relative path).  A step that starts ACL2 or another untraceable
+#     process always runs.  A cached verdict satisfies no READY and no batch
+#     gate: those are live runs.
 # `make check-lane CHECK_CHANGED_SINCE=REV` runs only the steps the diff from
 # REV can reach (their last traced inputs; a docs-only diff skips host_check,
 # reach_check, green_check; a step never traced in this tree runs): the rest
@@ -2657,6 +2671,13 @@ CHECK_EXECUTE = $(PYTHON) tools/check_steps.py execute $(CHECK_STEPS_DIR) \
 
 check:
 	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
+# The committed evidence objects (tools/evidence_store.py: ledger --check and
+# current_view --check read them) are fetched once here, in parallel with
+# every step that does not read them, so no step spawns the rsync itself: a
+# step that does is untraceable and never cached (lane iter-arch, 2026-10-04:
+# 46 + 28 s on every check-fast of a fresh tree).  Objects are content-named,
+# so the cache is a shared cache to check_steps, not an input.
+	@$(CHECK_STEP_WARM) $(PYTHON) tools/evidence_store.py fetch --all
 # The analysed tree (tools/ledger.py load_tree, persisted by its inputs'
 # digest under build/cache/ledger-tree) that check_scaffold, certified_claims,
 # current_view, depth_check, harness_check, interface_emit and spec_cite_check

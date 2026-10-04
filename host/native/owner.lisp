@@ -3231,12 +3231,13 @@ here: its budget is part of its prepare (fn-owner-prepare)."
 ;; answers :invalid for inputs outside its domain; its other non-prepared
 ;; answers are D25's :duplicate / :conflict (books/store-intern.lisp fn-store-existing-action,
 ;; keyed on the poster's source through the injection inverse, D25), :clock-unusable,
-;; :unaffordable (the Store's transaction budget, fn-sbud-refusal-kind), or
-;; :refused.
+;; :unaffordable (the Store's transaction budget, fn-sbud-refusal-kind), its
+;; history budget's :memberships or :history-exhausted
+;; (fn-cvec-article-refusal-word), or :refused.
 (defun fnn-owner-prepare-refusal-word (prepared)
   (case prepared
     ((:duplicate :conflict :clock-unusable :refused :unaffordable :memberships
-      :article-numbers-exhausted :canonical-size-unavailable :invalid-binding)
+      :history-exhausted :article-numbers-exhausted :canonical-size-unavailable :invalid-binding)
      prepared)
     (:invalid :malformed)
     (t (fnn-fault "owner prepare returned ~a" prepared))))
@@ -4869,7 +4870,7 @@ flight).  While any batch is in flight or open ACL2's pick admits only
 :inspect and :commit (fn-ocp-next-open-only-in-flight); a batch's replies
 leave only in its COMPLETE, after its barrier returned
 (fn-ocp-complete-only-after-the-barrier)."
-  (let ((members nil) (uncertain nil) (deferred nil) (action nil) (job nil)
+  (let ((members nil) (uncertain nil) (deferred nil) (action nil) (job nil) (abandoned nil)
         (next nil) (next-deferred nil) (next-job nil) (frames-only nil) (syncer nil) (result nil) (limits nil)
         (need nil) (syncer-actor nil) (syncer-grant nil) (completion-pending nil)
         (return-receipt '(:pipeline-returned nil :none nil nil))
@@ -5098,6 +5099,9 @@ leave only in its COMPLETE, after its barrier returned
                              ;; answered (uncertain to its client).
                              (fnn-owner-reader-capture :drop)
                              (fnn-owner-action 'fn-owner-credits-stop)
+                             ;; The next batch's members are told uncertain
+                             ;; just below: it is abandoned, never synced.
+                             (setq abandoned t)
                              (multiple-value-bind (tell ledger2)
                                  (fnn-owner-answer-early ledger next)
                                (setq ledger ledger2)
@@ -5147,9 +5151,14 @@ leave only in its COMPLETE, after its barrier returned
                              (setq next nil))
                             (t (fnn-fault "owner named ~a after a barrier" step)))
                       (setq done t))))
-              (setq action (fnn-owner-commit-event service :completed))
+              ;; A COMPLETE that found the owner stopping abandoned the next
+              ;; batch (its members were told uncertain): ACL2 leaves no batch
+              ;; in flight (fn-ocp-a-stopping-completion-leaves-no-batch), so
+              ;; the gate admits every class again and the stop's joins of the
+              ;; workers waiting at it return.
+              (setq action (fnn-owner-commit-event
+                            service (if abandoned :completed-stopping :completed)))
               (unless done (setq action :none))
-              (when (fnn-owner-service-stopping service) (setq action :none))
               (if (and next (eq action :sync))
                   (setq members next deferred next-deferred job next-job
                         next nil next-deferred nil next-job nil)
@@ -5275,7 +5284,7 @@ owner's recovery fence."
                 (fnn-store-fault (condition) (error condition))
                 (fnn-store-error () :refused))))
     (unless (member word '(:durable :duplicate :conflict :malformed :unaffordable
-                           :memberships :article-numbers-exhausted
+                           :memberships :history-exhausted :article-numbers-exhausted
                            :storage-failed :refused :clock-unusable :uncertain))
       (fnn-fault "owner bound commit returned ~a" word))
     word))

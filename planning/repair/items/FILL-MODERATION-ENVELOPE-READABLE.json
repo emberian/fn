@@ -1,0 +1,15 @@
+{
+ "category": "implementation",
+ "detail": "Red on set bdd4f40c4 (hbox:/tank/fn/scratch/fill-wt/native-fill-e2e) and set 55ff708a6 (lat1:/tank/fn/scratch/fill-wt/native-fill-e2e-lat1-55; scenario_suite run e2e); logs/test-tests.test_native_moderation.log; assertion at tests/test_native_moderation.py:228. Possibly the same cause as FILL-GROUP-ACCESS-PRIVATE-LEAK (an article visible outside its group's grant).",
+ "file": "tests/test_native_moderation.py",
+ "id": "FILL-MODERATION-ENVELOPE-READABLE",
+ "notes": [
+  "10-04 16:35 10-04 20:45 access-check READY: REAL leak (both items, one cause). 6a5427e9e sent read-restricted sessions through the generated av catalog arms (fn-cat, not the projected view). Fix e803f40f8 lineage: tools/available_read_emit.py drops its AUTH template, restricted branch is the reference walk; keystone PRF-1328 books/served-available-access.lisp (fn-av-mca-read-span-restricted-is-legacy, fn-av-scr-dispatch-core-restricted-is-reference), certify-20261004T203233Z-197345 passed. Native cloud2 over set 6107ceb56: red acc-red (both images: STAT 223 on fresh source-peer reader, bob STAT <secret> 223, carol envelope STAT) -> green acc-green (developer overlay; production not overlayable, next image batch). Deployed 09-28 sources 902de4882/6702ff8b2 do not contain served-available-read (restricted -> reference there)."
+ ],
+ "owner": "access-check",
+ "severity": "high",
+ "source": "fill-20261004",
+ "state": "ready",
+ "title": "tests.test_native_moderation test_moderated_group_holds_approves_and_refuses (production and developer): PKT-658 asserts a non-moderator's STAT <fn-moderate.held1@...> is 430 (the held envelope is not hers to read); the node answers something else",
+ "updated": "2026-10-04T20:35:49Z"
+}

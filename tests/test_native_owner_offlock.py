@@ -34,7 +34,7 @@ import threading
 import time
 import unittest
 
-from tests.native_harness import EXIT_OK, Node, native_image, node_log_on_failure, refused_port, requires
+from tests.native_harness import EXIT_OK, Node, native_image, node_log_on_failure, read_line_within, refused_port, requires
 
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 MEASURE = re.compile(rb"^fn-owner-measure (\S+) holds=(\d+) held-us=(\d+) max-us=(\d+) bytes=(\d+)"
@@ -110,12 +110,7 @@ class OwnerOfflockNativeTests(unittest.TestCase):
                 self.assertEqual(health.returncode, 26, text + health.stderr.decode())
                 self.assertIn("\nunavailable-peer held", text)
                 time.sleep(0.5)
-            c1.settimeout(0.5)
-            try:
-                early = s1.readline()
-            except (socket.timeout, TimeoutError):
-                early = b""
-            c1.settimeout(120)
+            early = read_line_within(c1, s1, 0.5)
             stalled_for = 1.0 + sum(reads) + sum(healths) + 2.0
             self.stall.unlink()
             started = time.monotonic()
@@ -134,6 +129,10 @@ class OwnerOfflockNativeTests(unittest.TestCase):
             # Neither quantum waited for the stalled device.
             self.assertLess(max(reads), 1.0, reads)
             self.assertLess(max(healths), 3.0, healths)
+            # A reader's view advances at GROUP, never within a command (D33,
+            # books/served.lisp): s2 pinned before the commit, so it re-pins
+            # at GROUP and then sees the article the released batch committed.
+            self.timed(s2, b"GROUP fn.test\r\n", b"211")
             self.timed(s2, b"STAT <stalled@example.invalid>\r\n", b"223")
 
     def test_the_owner_hold_per_commit_excludes_the_feed_fsync(self):

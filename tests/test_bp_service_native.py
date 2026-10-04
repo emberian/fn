@@ -409,7 +409,7 @@ class NativeBpServiceTests(unittest.TestCase):
         self.assertTrue(peer.got_bundle, "fn's own transfer reached the hop: " + text)
         self.assertEqual(sorted(p.name for p in self.journal.glob("*.bundle")), [], text)
         self.assertNotIn("status=refused", text)
-        self.assertIn("status=sent", text)
+        self.assertIn("status=forwarded", text)
 
 
 class OfferingTcpclPeer:

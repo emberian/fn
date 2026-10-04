@@ -929,6 +929,22 @@ no clear answer. It may be saved; it may not. fn will not guess.
 4. **Keep the three answers apart** in any script: 0 accepted, 1 refused,
    3 uncertain.
 
+When the running node itself stops with exit 3 (`health` shows
+`last-stop exit=3`), systemd does not start it again on its own
+(`RestartPreventExitStatus=3` in the unit). That is deliberate
+containment, not the fix: after the disk refused to save, the
+operating system can still show the unsaved bytes to the next start
+as if they were stored. Check the disk first (`dmesg`, SMART). If the
+machine has restarted since the stop, the next start reads what the disk
+really holds. Otherwise, the safest choice is to restart the machine
+before `systemctl start fn`. Under launchd (macOS) and rc.d (OpenBSD) the
+same rule is yours to follow. rc.d does not restart a stopped daemon.
+launchd does: the shipped `KeepAlive` (`SuccessfulExit` false) restarts on
+every failing exit, and launchd has no way to except one exit status, so
+on macOS a fenced node is restarted after its throttle interval. On a
+macOS node, after `last-stop exit=3`, unload the job
+(`launchctl bootout`) until the disk is checked.
+
 ### After a crash
 
 No action is needed. fn checks and reopens its store at the next start.
@@ -1119,6 +1135,11 @@ groups at once is allowed, but paid for. When the post would fit but its
 groups would not, it is refused with
 `441 posting failed; the store cannot pay for this article's groups: each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups (memberships)`.
 A feeding node is told "try later" (`436`) for this too.
+
+When the store still has transactions left but its history octets are
+spent, posts are refused with
+`441 posting failed; the store's history budget is exhausted (history-exhausted); the node's operator can raise max-history-octets or reclaim`.
+A feeding node is told "try later" (`436`), as for a full store.
 
 To raise the store's size limits, set them in place:
 `fn operator CONFIG policy set max-transactions N` (or `max-history-octets`,

@@ -5,14 +5,14 @@
   "proved": 2,
   "partial": 1,
   "derived": 6,
-  "none": 1690
+  "none": 1695
  },
  "by_class": {
   "common-lisp-compliant": {
    "proved": 2,
    "partial": 1,
    "derived": 6,
-   "none": 958
+   "none": 963
   },
   "ideal": {
    "proved": 0,
@@ -4168,16 +4168,6 @@
    "declared_in": null
   },
   {
-   "name": "fn-heap-init-decide",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
    "name": "fn-heap-init-decision-request",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -5068,16 +5058,6 @@
    "declared_in": null
   },
   {
-   "name": "fn-lgc-finish-one",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
    "name": "fn-lgc-frontier",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -5409,6 +5389,26 @@
   },
   {
    "name": "fn-lgs-segment-name",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-lgu-acknowledge",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-lgu-log-max",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -12451,6 +12451,56 @@
   },
   {
    "name": "fn-peer-tls-verification",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-pfd-init-decide",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-pfp-catch-up-admission",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-pfp-catch-up-observes-p",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-pfp-catch-up-refusal-line",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-pfp-default-octets",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,

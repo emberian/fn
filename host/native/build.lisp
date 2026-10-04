@@ -50,6 +50,7 @@
 ;; The peer flight books reach `fn-arena' (heap-store-figure includes
 ;; owner-checkpoint-pipeline), so they follow the arena attachment.
 (include-book "books/peer-flight-profile")
+(include-book "books/peer-flight-default")
 (include-book "books/peer-flight-startup")
 (include-book "books/peer-catchup-spool-resources")
 (include-book "books/peer-catchup-spool")

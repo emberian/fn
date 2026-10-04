@@ -1100,6 +1100,9 @@
           ((equal completion :clock-unusable) 436)
           ((equal completion :unaffordable) 436)
           ((equal completion :memberships) 436)
+          ;; H exhausted is "not now" as a full T is: reclaim or a raised
+          ;; H frees it, and the sender keeps the article.
+          ((equal completion :history-exhausted) 436)
           ;; PRF-335: a full outbound feed queue is "not now" too: the peer
           ;; it waits on drains, and the sender keeps the article.
           ((equal completion :feed-queue-full) 436)
@@ -1133,7 +1136,8 @@
                        (list (fn-nntp-close-effect))))
               ((equal completion :clock-unusable)
                (fn-peer-single ps (fn-proto-text "IHAVE" :retry-no-clock)))
-              ((member-equal completion '(:unaffordable :memberships :feed-queue-full))
+              ((member-equal completion '(:unaffordable :memberships
+                                          :history-exhausted :feed-queue-full))
                (fn-peer-single ps (string-append "436 retry later; "
                                                  (fn-post-store-refusal-text completion))))
               ((fn-post-store-refusalp completion)
@@ -1204,10 +1208,14 @@
 
 ;; KEYSTONE (PKT-711).  A full Store answers a transfer, IHAVE or TAKETHIS,
 ;; with 436: the retry class, never a drop code; and IHAVE's line names the
-;; reason.
+;; reason.  Full in T (:unaffordable) or in H (:history-exhausted, lane
+;; m1-durable-2) alike.
 (defthm fn-peer-full-store-is-a-retry-code
   (and (equal (fn-peer-transit-code kind d :unaffordable) 436)
        (not (member-equal (fn-peer-transit-code kind d :unaffordable)
+                          '(437 439)))
+       (equal (fn-peer-transit-code kind d :history-exhausted) 436)
+       (not (member-equal (fn-peer-transit-code kind d :history-exhausted)
                           '(437 439)))))
 
 ;; PRF-335, by definition.  A transfer the owner refused because a peer's

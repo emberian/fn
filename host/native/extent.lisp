@@ -1700,7 +1700,13 @@ actual eviction, descriptor credits only after successful OS close."
                          (if fd
                              (fnn-indeterminate "extent close ~d: recovery required: ~a" id e)
                            (error e))))))
-                  (:read-file-held (push id keep))
+                  (:read-file-held
+                   ;; The funded window route's holds are the ledger's: a
+                   ;; worker that still owns the descriptor is observed the
+                   ;; way the direct arm's table observed it.
+                   (push id keep)
+                   (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
+                     (fnn-err "PAGE-IO close-held file=~d" id)))
                   (otherwise (fnn-fault "invalid incarnation close preview ~a" word)))))
           (progn
             (push id keep)
