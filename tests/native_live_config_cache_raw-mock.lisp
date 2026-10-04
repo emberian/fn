@@ -19,9 +19,6 @@
 (defun fnn-admin-plan-reason (plan)
   (declare (ignorable plan))
   (harness-stub-reached 'fnn-admin-plan-reason "host/native/admin.lisp"))
-(defun fnn-admin-test-fault (section)
-  (declare (ignorable section))
-  (harness-stub-reached 'fnn-admin-test-fault "host/native/admin.lisp"))
 (defun fnn-owner-compaction-request (service)
   (declare (ignorable service))
   (harness-stub-reached 'fnn-owner-compaction-request "host/native/admin.lisp"))
@@ -72,8 +69,13 @@
   (and (listp x) (every (lambda (b) (and (integerp b) (<= 0 b 255))) x)))
 (defun fnn-octets (x) x)
 (defun fnn-octets-string (x) (map 'string #'code-char x))
-(defun fnn-owner-serialized (service cid thunk)
-  (declare (ignore service cid)) (funcall thunk))
+;; No developer selector is set: the production answer, so the admin fault
+;; injection (fnn-admin-test-fault, extracted below) never fires here, so the
+;; section list it checks a selector against is not consulted.
+(defparameter +fnn-admin-sections+ nil)
+(defun fnn-developer-selector (name) (declare (ignore name)) nil)
+(defun fnn-quantum-control (service cid thunk &optional class)
+  (declare (ignore service cid class)) (funcall thunk))
 (defun fnn-owner-service-store (service)
   (declare (ignore service)) *store*)
 ;; The retire request (books/native-retire.lisp fn-nret-request, row S9) is
@@ -150,6 +152,7 @@
   (declare (ignore service)) (push '(feed-refresh) *calls*))
 
 (dolist (spec '(("host/native/io.lisp" fnn-decode-joined-names)
+                ("host/native/admin.lisp" fnn-admin-test-fault)
                 ("host/native/admin.lisp" fnn-owner-refresh-config-cache)
                 ("host/native/admin.lisp" fnn-lim-plan-p)
                 ;; peer-invite (e8a7606f) moved the stage-publish-complete
@@ -186,13 +189,25 @@
 (setq *store* (make-test-store :config-generation 1 :config-served '("fn.test")
                                :config-domain '("fn.test"))
       *bad-domain* t *calls* nil)
-(handler-case
-    (progn (fnn-owner-live-admin-serialized :service '(1))
-           (error "malformed owner domain was accepted"))
-  (test-indeterminate () nil))
-(unless (and (test-store-fenced *store*)
+;; A malformed owner projection after the durable publication leaves the body
+;; as the fault it is (lane ACTORS AC01: the hand `error' arm that recast it as
+;; uncertain and fenced the store is deleted).  Classifying it and stopping the
+;; service is the declared section's boundary (fnn-quantum-control), which this
+;; harness replaces with a bare funcall and does not claim; here: the fault is
+;; not recast, the old triple is untouched (the decode precedes the first
+;; write) and nothing downstream (the feed refresh) ran.
+(let ((outcome (handler-case
+                   (progn (fnn-owner-live-admin-serialized :service '(1)) :returned)
+                 (test-indeterminate () :recast-as-uncertain)
+                 (error (e) (if (search "non-octet list" (format nil "~a" e))
+                                :fault
+                              (error e))))))
+  (unless (eq outcome :fault)
+    (error "malformed owner domain was not left as the fault it is: ~s" outcome)))
+(unless (and (not (test-store-fenced *store*))
              (= (test-store-config-generation *store*) 1)
+             (equal (test-store-config-served *store*) '("fn.test"))
              (equal (test-store-config-domain *store*) '("fn.test"))
              (not (member 'feed-refresh *calls* :key #'car)))
-  (error "failed post-commit projection neither fenced nor preserved old triple"))
+  (error "failed post-commit projection wrote part of the new triple or ran the feed refresh"))
 (format t "native live config cache boundary passed~%")

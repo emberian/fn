@@ -105765,13 +105765,13 @@
       {
         "check": "fn-proto-archive-command-cat-is-pinned-without-view-articles",
         "book": "tests/acl2/protocol-served-tests.lisp",
-        "line": 543,
+        "line": 548,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "fn-proto-archive-command-cat-is-pinned-without-pin-correspondence",
         "book": "tests/acl2/protocol-served-tests.lisp",
-        "line": 584,
+        "line": 589,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {

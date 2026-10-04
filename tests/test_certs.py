@@ -1940,8 +1940,19 @@ class InstallUmbrellasTests(unittest.TestCase):
 
     def test_remote_check_runs_it_after_the_per_book_install(self):
         text = (TOOLS / "remote_check.sh").read_text()
-        self.assertLess(text.index("tools/certs.py install 2>&1"),
-                        text.index("tools/certs.py install-umbrellas"))
+        # The install runs only when the tree's digest changed: the skip
+        # branch repeats the last umbrella summary and runs neither; the
+        # digest is recorded after BOTH installs, so an interrupted run
+        # (the marker was removed first) reinstalls the set.
+        per_book = text.index("tools/certs.py install > build/.certs-install.log")
+        umbrellas = text.index("tools/certs.py install-umbrellas > build/.certs-umbrellas.log")
+        self.assertLess(per_book, umbrellas)
+        self.assertEqual(text.count("tools/certs.py install-umbrellas"), 1,
+                         "only the install branch runs the umbrellas")
+        skipped = text.index("tail -n 1 build/.certs-umbrellas.log")
+        self.assertLess(skipped, per_book, "the skip branch precedes the install branch")
+        self.assertLess(text.index("rm -f build/.certs-installed"), per_book)
+        self.assertLess(umbrellas, text.index('> build/.certs-installed; fi'))
 
 
 class SimpleReport:
