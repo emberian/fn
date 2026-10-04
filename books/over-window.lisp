@@ -36,6 +36,7 @@
 (include-book "served-catalog")
 (include-book "catalog-number-window")
 (include-book "catalog-refresh")
+(include-book "cold-line-quanta")
 
 (local (in-theory (disable (tau-system))))
 
@@ -52,6 +53,45 @@
   (declare (xargs :guard t))
   (min (nfix top) (+ (nfix k) (if (posp w) w 1) -1)))
 
+; -----------------------------------------------------------------------------
+; The header cursor's quantum (lane cold-line; books/served-catalog.lisp
+; fn-ovw-hdr-cursor).  A source whose field is in the overview column (and
+; is not the compatibility arm's Xref) reads no payload on a row whose column
+; is decided; any other source reads the article's payload for each number,
+; so its window is at most fn-clq-payload-quantum numbers: one quantum's
+; reads fit the realizer's cache with margin.
+
+(defun fn-ovw-hdr-free-sourcep (src)
+  (declare (xargs :guard t))
+  (and (not (nth 4 src)) (fn-scol-field-index (nth 2 src)) t))
+
+(defun fn-ovw-hdr-quantum (src w)
+  (declare (xargs :guard t))
+  (if (fn-ovw-hdr-free-sourcep src)
+      (if (posp w) w 1)
+    (min (if (posp w) w 1) (fn-clq-payload-quantum))))
+
+(defthm fn-ovw-hdr-quantum-posp
+  (posp (fn-ovw-hdr-quantum src w))
+  :rule-classes :type-prescription)
+
+(defun fn-ovw-hdr-step (cur w fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (fn-ovw-cursorp cur)
+                  :verify-guards nil))
+  (let* ((group (nth 0 cur)) (k (nfix (nth 1 cur))) (top (nfix (nth 2 cur)))
+         (v (nth 3 cur)) (owedp (nth 5 cur)) (src (nth 7 cur))
+         (hi (fn-ovw-hi k top (fn-ovw-hdr-quantum src w)))
+         (lines (fn-ovw-hdr-lines group k hi src v fn-arena fn-cat))
+         (owed2 (and owedp (not (consp lines))))
+         (donep (<= top hi)))
+    (mv (append (if (and owedp (consp lines)) (fn-ovw-hdr-status src) nil)
+                (fn-nntp-stuff-lines lines)
+                (if donep
+                    (if owed2 (fn-ovw-hdr-empty src) '(46 13 10))
+                  nil))
+        (if donep nil (fn-ovw-hdr-cursor group (+ 1 hi) top v owed2 src)))))
+
 ; One quantum: the window K..HI (at most W numbers).
 (defun fn-ovw-step (cur w fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
@@ -61,20 +101,22 @@
                   ;; call evaluates per quantum is O(1), not a walk of N rows.
                   :guard (fn-ovw-cursorp cur)
                   :verify-guards nil))
-  (let* ((group (nth 0 cur)) (k (nfix (nth 1 cur))) (top (nfix (nth 2 cur)))
-         (v (nth 3 cur)) (legacyp (nth 4 cur)) (owedp (nth 5 cur)) (server (nth 6 cur))
-         (hi (fn-ovw-hi k top w))
-         (lines (fn-ovw-lines group k hi server v fn-arena fn-cat))
-         (owed2 (and owedp (not (consp lines))))
-         (donep (<= top hi)))
-    (mv (append (if (and owedp (consp lines))
-                    (fn-ovw-status (fn-proto-text * :overview))
-                  nil)
-                (fn-nntp-stuff-lines lines)
-                (if donep
-                    (if owed2 (fn-ovw-status (fn-ovw-empty-text legacyp)) '(46 13 10))
-                  nil))
-        (if donep nil (fn-ovw-cursor group (+ 1 hi) top v legacyp owed2 server)))))
+  (if (nth 7 cur)
+      (fn-ovw-hdr-step cur w fn-arena fn-cat)
+    (let* ((group (nth 0 cur)) (k (nfix (nth 1 cur))) (top (nfix (nth 2 cur)))
+           (v (nth 3 cur)) (legacyp (nth 4 cur)) (owedp (nth 5 cur)) (server (nth 6 cur))
+           (hi (fn-ovw-hi k top w))
+           (lines (fn-ovw-lines group k hi server v fn-arena fn-cat))
+           (owed2 (and owedp (not (consp lines))))
+           (donep (<= top hi)))
+      (mv (append (if (and owedp (consp lines))
+                      (fn-ovw-status (fn-proto-text * :overview))
+                    nil)
+                  (fn-nntp-stuff-lines lines)
+                  (if donep
+                      (if owed2 (fn-ovw-status (fn-ovw-empty-text legacyp)) '(46 13 10))
+                    nil))
+          (if donep nil (fn-ovw-cursor group (+ 1 hi) top v legacyp owed2 server))))))
 
 (defthm fn-ovw-step-progresses
   (let ((next (mv-nth 1 (fn-ovw-step cur w fn-arena fn-cat))))
@@ -453,7 +495,7 @@
 ; A quantum after a commit or a later withdrawal answers what it would have
 ; answered before it, for a cursor pinned at or below the catalog's count.
 (defthm fn-ovw-step-of-commit-pinned
-  (implies (and (fn-cnx-freshp fn-cat) (nth 0 cur)
+  (implies (and (fn-cnx-freshp fn-cat) (nth 0 cur) (not (nth 7 cur))
                 (natp (nth 3 cur)) (<= (nth 3 cur) (fn-cat-count fn-cat))
                 (fn-ovw-served-okp (nth 6 cur) configured (nth 3 cur) fn-arena fn-cat)
                 (implies (nth 6 cur) (fn-scol-row-okp h fn-arena)))
@@ -470,7 +512,7 @@
                             (server (nth 6 cur)) (v (nth 3 cur)))))))
 
 (defthm fn-ovw-step-of-withdraw-pinned
-  (implies (and (fn-cnx-freshp fn-cat) (nth 0 cur)
+  (implies (and (fn-cnx-freshp fn-cat) (nth 0 cur) (not (nth 7 cur))
                 (natp (nth 3 cur)) (<= (nth 3 cur) (fn-cat-count fn-cat))
                 (natp target) (< target (fn-cat-count fn-cat))
                 (fn-ovw-served-okp (nth 6 cur) configured (nth 3 cur) fn-arena fn-cat))
