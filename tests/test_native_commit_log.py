@@ -60,6 +60,14 @@ def read_article(client: Client, i: int):
     return client.multiline("ARTICLE %s" % msgid(i))
 
 
+def assert_served_body(case, served: bytes, i: int, pad: int = 0, note=None):
+    """The body ARTICLE served for I is exactly the body POSTed: the owner
+    adds header lines (Path, Injection-Info) but never touches the body."""
+    case.assertIn(b"\r\n\r\n", served, note)
+    case.assertEqual(served.split(b"\r\n\r\n", 1)[1],
+                     article(i, pad).split(b"\r\n\r\n", 1)[1], note)
+
+
 def init(node: Node, profile=()):
     node.operator("init", *profile, GROUP, timeout=600, expect=EXIT.OK)
     secret = node.store("node-secret", "create", timeout=600)
@@ -219,7 +227,7 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
                     if cut.candidate == "absent":
                         self.assertTrue(head.startswith(b"430"), (cut.name, head))
                     if head.startswith(b"220"):
-                        self.assertIn(b"body of 1", body)
+                        assert_served_body(self, body, 1, note=cut.name)
                     else:
                         self.assertTrue(head.startswith(b"430"), (cut.name, head))
                     again = post(c, 1)
@@ -281,7 +289,7 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
                     for i in acked:
                         head, body = read_article(c, i)
                         self.assertTrue(head.startswith(b"220"), (cut, i, head))
-                        self.assertIn(b"body of %d" % i, body)
+                        assert_served_body(self, body, i, pad, (cut, i))
                     c.close()
                     more, errors = post_concurrently(node.port, range(1000, 1012), 4, pad)
                     self.assertEqual(errors, [])

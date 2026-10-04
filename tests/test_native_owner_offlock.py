@@ -176,7 +176,10 @@ class OwnerOfflockNativeTests(unittest.TestCase):
             print("OWNER-OFFLOCK-REFUSAL-WITNESS " + json.dumps({
                 "reply": line.decode("ascii", "replace").strip(),
                 "s": round(time.monotonic() - started, 3)}), flush=True)
-            self.assertTrue(line.startswith(b"441"), line)
+            # Changed bytes under the held id: the conflict answer, by its text
+            # (any 441 passed here, which a duplicate or an uncertain 441 also is).
+            self.assertEqual(line.rstrip(b"\r\n"), b"441 posting failed; a different article "
+                             b"with this Message-ID is stored here")
             self.timed(stream, b"DATE\r\n", b"111")
 
 
