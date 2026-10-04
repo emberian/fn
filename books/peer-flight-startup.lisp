@@ -111,11 +111,10 @@
 
 ; The peer extension reads the DEFAULT figure through fn-pfr-at, the DEFAULT
 ; lemmas speak fn-prstartup-nth: the same accessor.
-(local
- (defthm fn-pfr-at-is-fn-prstartup-nth
-  (equal (fn-pfr-at n x) (fn-prstartup-nth n x))
-  :hints (("Goal" :in-theory (enable fn-pfr-at fn-prstartup-nth) :induct (fn-pfr-at n x))))
-)
+; Disabled; the keystone enables it.
+(defthmd fn-pfr-at-is-fn-prstartup-nth
+ (equal (fn-pfr-at n x) (fn-prstartup-nth n x))
+ :hints (("Goal" :in-theory (enable fn-pfr-at fn-prstartup-nth) :induct (fn-pfr-at n x))))
 
 (defthm fn-prstartup-extended-figure-natp
  (implies (equal (fn-prstartup-nth 0 (fn-prstartup-extend-default-reservation
@@ -171,7 +170,8 @@
                dyn)))
  :rule-classes nil
  :hints (("Goal"
-          :in-theory (e/d (fn-prstartup-protected-with-peer fn-prstartup-protected
+          :in-theory (e/d (fn-pfr-at-is-fn-prstartup-nth
+                           fn-prstartup-protected-with-peer fn-prstartup-protected
                            fn-heap-runtime-protected-octets)
                           (fn-pfr-extend-reservation fn-prstartup-extend-default-reservation
                            fn-heap-with-nursery fn-heap-grow-runtime-dynamic
