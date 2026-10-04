@@ -105,6 +105,14 @@
       (when slow (setq *partial* new-count)
         (when (plusp new-count) (setq *slow-observed* t)))
       (list (list peer new-count done) nil nil))))
+;; The owner's commit signal the worker's idle pause sleeps on
+;; (fnn-pull-idle-wait): no commit ever arrives here, so each pause sleeps
+;; ACL2's whole fn-prd-pause-ms.
+(defvar *harness-wait-lock* (sb-thread:make-mutex :name "harness commit"))
+(defvar *harness-wait-queue* (sb-thread:make-waitqueue :name "harness commit"))
+(defun fnn-owner-service-wait-lock (service) (declare (ignore service)) *harness-wait-lock*)
+(defun fnn-owner-service-wait-queue (service) (declare (ignore service)) *harness-wait-queue*)
+(defun fnn-owner-service-commits (service) (declare (ignore service)) 0)
 (defun fnn-owner-service-peer-flight-bank (service)
   ;; No independent peer bank in this harness: the recorded catch-up leaves
   ;; below stand in for the spool controller, so no lease is drawn.
