@@ -418,3 +418,187 @@
 (in-theory (disable fn-lst-row-status fn-lst-row-reference fn-lst-next-summary
                     fn-lst-group-reference fn-lst-groups-reference
                     fn-lst-progress-reference fn-lst-remaining))
+
+; -----------------------------------------------------------------------------
+; Finite potential of the whole LIST controller. Logical only: never
+; computed by the served path. Each phase's cost bounds the calls left for
+; the current group; F bounds every later group's from its :group phase.
+(defun-nx fn-lst-row-cost (env group summary status)
+  (+ 1 (fn-lsr-remaining-work (fn-lsr-start group summary (fn-cur-at 3 env) status))))
+
+(defun-nx fn-lst-status-cost (env group summary)
+  (if (or (fn-cur-at 2 env) (fn-cur-at 3 env))
+      (+ 1 (fn-lss-remaining-work (fn-lss-start group (fn-cur-at 1 env)))
+         (fn-lst-row-cost env group summary
+                          (fn-nntp-closed-status (fn-nntp-string-octets group) (fn-cur-at 1 env))))
+    (fn-lst-row-cost env group summary "y")))
+
+(defun-nx fn-lst-summary-cost (env group next fn-cat)
+  (let ((next (nfix next)))
+    (+ 1 (fn-gsc-remaining (fn-gsc-start group (if (posp next) (- next 1) 0) next
+                                         (nfix (fn-cur-at 6 env))))
+       (fn-lst-status-cost env group (fn-lst-next-summary env group next fn-cat)))))
+
+(defun-nx fn-lst-next-cost (env group detail fn-cat)
+  (+ 1 (len detail) (fn-lst-summary-cost env group (fn-next-number group detail) fn-cat)))
+
+(defun-nx fn-lst-group-cost (env group fn-cat)
+  (let ((after (fn-lst-next-cost env group (fn-state-nexts (fn-cur-at 0 env)) fn-cat)))
+    (if (fn-cur-at 5 env)
+        (+ 2 (fn-wmc-remaining (fn-wmc-start (fn-cur-at 4 env) group)) after)
+      (+ 1 after))))
+
+(defun-nx fn-lst-groups-cost (env groups fn-cat)
+  (if (consp groups)
+      (+ (fn-lst-group-cost env (car groups) fn-cat)
+         (fn-lst-groups-cost env (cdr groups) fn-cat))
+    0))
+
+(defun-nx fn-lst-phase-cost (progress fn-cat)
+  (let* ((env (fn-cur-at 0 progress))
+         (phase (fn-cur-at 1 progress))
+         (group (fn-cur-at 3 progress))
+         (detail (fn-cur-at 4 progress))
+         (summary (fn-cur-at 5 progress)))
+    (cond
+     ((eq phase :match)
+      (+ 1 (fn-wmc-remaining detail)
+         (fn-lst-next-cost env group (fn-state-nexts (fn-cur-at 0 env)) fn-cat)))
+     ((eq phase :next) (fn-lst-next-cost env group detail fn-cat))
+     ((eq phase :summary)
+      (+ 1 (fn-gsc-remaining detail)
+         (fn-lst-status-cost env group (fn-gsc-reference detail fn-cat))))
+     ((eq phase :status)
+      (+ 1 (fn-lss-remaining-work detail)
+         (fn-lst-row-cost env group summary (fn-lss-reference detail))))
+     ((eq phase :row) (fn-lst-row-cost env group summary detail))
+     ((eq phase :render) (fn-lsr-remaining-work detail))
+     (t 0))))
+
+(defun-nx fn-lst-potential (progress fn-cat)
+  (if progress
+      (+ 1 (fn-lst-phase-cost progress fn-cat)
+         (fn-lst-groups-cost (fn-cur-at 0 progress) (fn-cur-at 2 progress) fn-cat))
+    0))
+
+; Carried shape: the wildmat state in :match and a live row state in :render.
+(defun-nx fn-lst-progress-okp (progress)
+  (let ((phase (fn-cur-at 1 progress)) (detail (fn-cur-at 4 progress)))
+    (cond ((eq phase :match) (fn-wmc-shapedp detail))
+          ((eq phase :render) (and detail (fn-lsr-statep detail)))
+          (t t))))
+
+(local
+ (defthm fn-lst-wmc-remaining-natp
+   (natp (fn-wmc-remaining s))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (e/d (fn-wmc-remaining) (fn-wmc-utf8-count fn-wildmat-decode-aux
+                                                      fn-wmc-core-remaining))))))
+
+(local
+ (defthm fn-lst-wmc-step-is-one
+   (implies (not (fn-wmc-decidedp d))
+            (equal (fn-wmc-step d 1 (fn-wmc-demand d)) (fn-wmc-one d)))
+   :hints (("Goal" :in-theory (enable fn-wmc-step fn-wmc-acceptedp)))))
+
+(local
+ (defthm fn-lst-lss-live-work
+   (implies (not (fn-lss-donep c)) (< 0 (fn-lss-remaining-work c)))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-lss-donep fn-lss-remaining-work)))))
+
+(local
+ (defthm fn-lst-gsc-remaining-natp
+   (natp (fn-gsc-remaining c))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-gsc-remaining)))))
+
+(local
+ (defthm fn-lst-lsr-start-live
+   (fn-lsr-start group summary countsp status)
+   :hints (("Goal" :in-theory (enable fn-lsr-start fn-lsr-make)))))
+
+(local
+ (defthm fn-lst-groups-cost-unfold
+   (equal (fn-lst-groups-cost env groups fn-cat)
+          (if (consp groups)
+              (+ (fn-lst-group-cost env (car groups) fn-cat)
+                 (fn-lst-groups-cost env (cdr groups) fn-cat))
+            0))
+   :rule-classes ((:definition :controller-alist ((fn-lst-groups-cost nil t nil))))
+   :hints (("Goal" :in-theory (enable fn-lst-groups-cost)))))
+
+(local
+ (defthm fn-lst-groups-cost-natp
+   (natp (fn-lst-groups-cost env groups fn-cat))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-lst-groups-cost fn-lst-group-cost fn-lst-next-cost
+                                      fn-lst-summary-cost fn-lst-status-cost fn-lst-row-cost)))))
+
+
+(local
+ (defthm fn-lst-lsr-cadr-forms
+   (and (implies (fn-lsr-statep c) (fn-lsr-statep (cadr (fn-lsr-one c))))
+        (implies (and c (fn-lsr-statep c))
+                 (< (fn-lsr-remaining-work (cadr (fn-lsr-one c)))
+                    (fn-lsr-remaining-work c))))
+   :rule-classes ((:rewrite :corollary (implies (fn-lsr-statep c) (fn-lsr-statep (cadr (fn-lsr-one c)))))
+                  (:linear :corollary (implies (and c (fn-lsr-statep c))
+                                               (< (fn-lsr-remaining-work (cadr (fn-lsr-one c)))
+                                                  (fn-lsr-remaining-work c)))))
+   :hints (("Goal" :use ((:instance fn-lsr-one-keeps-statep (cur c))
+                         (:instance fn-lsr-one-finite-progress (cur c)))
+            :in-theory (e/d (mv-nth) (fn-lsr-one-keeps-statep fn-lsr-one-finite-progress fn-lsr-one
+                                      fn-lsr-statep fn-lsr-remaining-work))))))
+
+(defthm fn-lst-one-keeps-okp
+  (implies (fn-lst-progress-okp progress)
+           (fn-lst-progress-okp (mv-nth 1 (fn-lst-one progress fn-cat))))
+  :hints (("Goal" :in-theory (e/d (fn-lst-one fn-lst-progress-okp)
+                                  (fn-lst-progress fn-cur-at fn-wmc-start fn-wmc-step fn-wmc-shapedp
+                                   fn-lsr-start fn-lsr-one fn-lsr-statep fn-wmc-one)))))
+
+
+(local
+ (defthm fn-lst-lss-live-progress
+   (implies (not (fn-lss-donep c))
+            (< (fn-lss-remaining-work (fn-lss-one c)) (fn-lss-remaining-work c)))
+   :rule-classes :linear
+   :hints (("Goal" :use ((:instance fn-lss-one-progress (cur c)))
+            :in-theory (disable fn-lss-one-progress fn-lss-one fn-lss-remaining-work)))))
+
+(local (defthm fn-lst-nfix-twice (equal (nfix (nfix x)) (nfix x))))
+(local (defthm fn-lst-lsr-live-work
+         (implies c (< 0 (fn-lsr-remaining-work c)))
+         :rule-classes :linear
+         :hints (("Goal" :in-theory (enable fn-lsr-remaining-work)))))
+(defthm fn-lst-one-finite-progress
+  (implies (and progress (fn-lst-progress-okp progress))
+           (< (fn-lst-potential (mv-nth 1 (fn-lst-one progress fn-cat)) fn-cat)
+              (fn-lst-potential progress fn-cat)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-lst-one fn-lst-potential fn-lst-phase-cost fn-lst-progress-okp
+                 fn-lst-group-cost fn-lst-next-cost fn-lst-summary-cost fn-lst-status-cost
+                 fn-lst-next-summary fn-lst-row-cost)
+                (fn-lst-progress fn-cur-at fn-gsc-start fn-gsc-one fn-lss-start fn-lss-one
+                 fn-lsr-start fn-lsr-one fn-wmc-start fn-wmc-step fn-wmc-one fn-wmc-shapedp
+                 fn-lsr-statep fn-next-number nfix fn-nntp-closed-status
+                 fn-lst-groups-cost fn-wmc-remaining fn-lsr-remaining-work
+                 fn-lss-remaining-work fn-gsc-remaining fn-gsc-reference)))))
+
+(defthm fn-lst-potential-natp
+  (natp (fn-lst-potential progress fn-cat))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (e/d (fn-lst-potential fn-lst-phase-cost fn-lst-next-cost
+                                   fn-lst-summary-cost fn-lst-status-cost fn-lst-row-cost)
+                                  (fn-lst-groups-cost fn-wmc-remaining fn-lsr-remaining-work
+                                   fn-lss-remaining-work fn-gsc-remaining)))))
+
+(defthm fn-lst-start-okp
+  (fn-lst-progress-okp (fn-cur-progress (fn-lst-start archive closed statusp countsp patterns filteredp v)))
+  :hints (("Goal" :in-theory (enable fn-lst-progress-okp fn-lst-start fn-lst-progress fn-cur-make
+                                     fn-cur-progress fn-cur-at))))
+
+(in-theory (disable fn-lst-row-cost fn-lst-status-cost fn-lst-summary-cost fn-lst-next-cost
+                    fn-lst-group-cost fn-lst-groups-cost fn-lst-phase-cost fn-lst-potential
+                    fn-lst-progress-okp))
