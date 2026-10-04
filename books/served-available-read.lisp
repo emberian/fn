@@ -116,19 +116,33 @@
 (defun fn-av-scr-auth-delegate
     (as live trie lver arts cache archive index verdicts config observation injection wire-event
         v fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
-  (let* ((restricted (fn-auth-access-read as config))
-         (view (and restricted (fn-scr-cached-view as config archive index cache)))
-         (a (if restricted (if view (fn-ag-car view)
-                             (fn-auth-view-archive as config archive)) archive))
-         (ix (if restricted (if view (fn-ag-cdr view)
-                              (fn-auth-view-index as config archive index)) index))
-         (r (fn-av-scr-peer-step
-             (fn-auth-view-session as config) live trie lver arts a ix verdicts
-             (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
-             observation injection wire-event v fn-arena fn-cat)))
-    (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
-                         (fn-post-result-effects r) (fn-post-result-submission r))))
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (natp v)
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil))
+  (if (fn-auth-access-read as config)
+      ;; PRF-222: the rule's view of the archive, by the reference walks;
+      ;; PKT-643: the view the host prepared at this pin, when it has one, so
+      ;; no command of the session builds it.
+      (let ((view (fn-scr-cached-view as config archive index cache)))
+        (if view
+            (let ((r (fn-scar-peer-step-pinned
+                      (fn-auth-view-session as config) live trie arts
+                      (fn-ag-car view) (fn-ag-cdr view) verdicts
+                      (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
+                      observation injection wire-event fn-arena)))
+              (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
+                                   (fn-post-result-effects r)
+                                   (fn-post-result-submission r)))
+          (fn-scar-auth-delegate-pinned as live trie arts archive index verdicts config
+                                        observation injection wire-event fn-arena)))
+    (let ((r (fn-av-scr-peer-step
+              (fn-auth-view-session as config) live trie lver arts archive index verdicts
+              (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
+              observation injection wire-event v fn-arena fn-cat)))
+      (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
+                           (fn-post-result-effects r)
+                           (fn-post-result-submission r)))))
 
 (defun fn-av-scr-auth-step
     (as live trie lver arts cache archive index verdicts config observation injection wire-event

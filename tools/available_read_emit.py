@@ -33,24 +33,6 @@ def renamed(form, mapping):
                    for m in TOKEN.finditer(form))
 
 
-AUTH = '''(defun fn-av-scr-auth-delegate
-    (as live trie lver arts cache archive index verdicts config observation injection wire-event
-        v fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
-  (let* ((restricted (fn-auth-access-read as config))
-         (view (and restricted (fn-scr-cached-view as config archive index cache)))
-         (a (if restricted (if view (fn-ag-car view)
-                             (fn-auth-view-archive as config archive)) archive))
-         (ix (if restricted (if view (fn-ag-cdr view)
-                              (fn-auth-view-index as config archive index)) index))
-         (r (fn-av-scr-peer-step
-             (fn-auth-view-session as config) live trie lver arts a ix verdicts
-             (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
-             observation injection wire-event v fn-arena fn-cat)))
-    (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
-                         (fn-post-result-effects r) (fn-post-result-submission r))))'''
-
-
 def logic_mode(form):
     """The form in :logic mode with its guard owed, never a :program twin."""
     if ':verify-guards' in form:
@@ -78,9 +60,6 @@ def render():
     needed = {'fn-mca-read-span'}
     while True:
         new = set().union(*(symbols(by_name[name]) & affected for name in needed))
-        # Auth's restricted fallback is now the same peer route as the unrestricted one.
-        if 'fn-scr-auth-delegate' in needed:
-            new.add('fn-scr-peer-step')
         if new <= needed:
             break
         needed |= new
@@ -94,9 +73,6 @@ def render():
     result = []
     for name, form in inventory:
         if name not in needed or name == 'fn-scr-command':
-            continue
-        if name == 'fn-scr-auth-delegate':
-            result.append(AUTH)
             continue
         if name == 'fn-scr-peer-arm':
             form = form.replace('wire-event fn-arena fn-cat)', 'wire-event v fn-arena fn-cat)', 1)
