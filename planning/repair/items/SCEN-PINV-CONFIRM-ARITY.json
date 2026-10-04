@@ -1,0 +1,110 @@
+{
+ "budget": "110",
+ "category": "implementation",
+ "expect-failure": "tests.test_native_raw_scripts.RawHarnessTests.test_peer_invite_dispatch_raw_mock",
+ "failure-message": "1 != 0 : native_peer_invite_dispatch_raw-mock.lisp exited 1:\nissue: fn-pinv-host-observation-subject/1 fn-pinv-host-issue-plan/6\naccept: fn-pinv-host-observation-subject/1 fn-par-host-accept-record-plan/8 fn-pinv-host-accept-step/8\nRED confirm: host-entry-guard: fn-pinv-host-confirm-record-plan takes 8 arguments (stobjs and state included); the host passed 10\n\n",
+ "file": "host/native/peer-invite.lisp",
+ "harness": "tests/test_native_raw_scripts.py,tests/native_peer_invite_dispatch_raw-mock.lisp,tests/native_harness.py",
+ "id": "SCEN-PINV-CONFIRM-ARITY",
+ "native": "tests.test_native_peer_invite,tests.test_native_friends_feed",
+ "notes": [
+  "10-04 11:33 claimed: scope=['host/native/peer-invite.lisp', 'tests/native_peer_invite_dispatch_raw-mock.lisp'] test=python3 -m unittest tests.test_native_raw_scripts.RawHarnessTests.test_peer_invite_dispatch_raw_mock",
+  "10-04 11:34 budget 110: the fix is 2 argument lines; spelling out the file's five apply dispatches (so raw-arity checks them) is the rest",
+  "10-04 11:35 READY 5520a0645 (verify ok, red at 3403e5ac2, green at head); natives pending: tests.test_native_peer_invite, tests.test_native_friends_feed on the next image set"
+ ],
+ "owner": "scenarios",
+ "scope": [
+  "host/native/peer-invite.lisp",
+  "tests/native_peer_invite_dispatch_raw-mock.lisp"
+ ],
+ "severity": "high",
+ "source": "scenarios",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_native_raw_scripts.RawHarnessTests.test_peer_invite_dispatch_raw_mock",
+ "timeout": "300",
+ "title": "peer confirm stops the owner: host/native/peer-invite.lisp:241 applies fn-pinv-host-confirm-record-plan to 10 arguments (bbfc3b915 appended fn-store-genesis-ident and fn-owner-config-generation, as it did for accept's new fn-par-host-accept-record-plan) but host/peer-invite-host.lisp:86 and books/peer-invite.lisp:1360 take 8; every confirm is 'owner quantum fault; process stopped: host-entry-guard ... takes 8 arguments ... the host passed 10'. Red: peer_invite 7/7, friends_feed 1/2 on run peer-d5b0b9100 (hbox:/tank/fn/scratch/scenarios/native-peer-d5b0b9100). The invite/confirm flow is how a friend's server peers.",
+ "updated": "2026-10-04T15:35:08Z",
+ "verify": {
+  "base": "3403e5ac20d253d0098f8da5d8d7b214bcf3e51c",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "1 != 0 : native_peer_invite_dispatch_raw-mock.lisp exited 1:\nissue: fn-pinv-host-observation-subject/1 fn-pinv-host-issue-plan/6\naccept: fn-pinv-host-observation-subject/1 fn-par-host-accept-record-plan/8 fn-pinv-host-accept-step/8\nRED confirm: host-entry-guard: fn-pinv-host-confirm-record-plan takes 8 arguments (stobjs and state included); the host passed 10\n\n",
+      "test": "tests.test_native_raw_scripts.RawHarnessTests.test_peer_invite_dispatch_raw_mock",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_native_raw_scripts.RawHarnessTests.test_peer_invite_dispatch_raw_mock"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_raw_scripts.py": "df494de73b7834d3b530c54b4d9d8cc880ac345ace56caacd6f084680cec9cc5"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "3403e5ac20d253d0098f8da5d8d7b214bcf3e51c",
+   "stderr": "test_peer_invite_dispatch_raw_mock (tests.test_native_raw_scripts.RawHarnessTests.test_peer_invite_dispatch_raw_mock) ... FAIL\n\n======================================================================\nFAIL: test_peer_invite_dispatch_raw_mock (tests.test_native_raw_scripts.RawHarnessTests.test_peer_invite_dispatch_raw_mock)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-_szkbcuy/wt/tests/test_native_raw_scripts.py\", line 112, in case\n    self.run_harness(harness)\n    ~~~~~~~~~~~~~~~~^^^^^^^^^\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-_szkbcuy/wt/tests/test_native_raw_scripts.py\", line 102, in run_harness\n    self.assertEqual(result.returncode, 0,\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\n                     f\"{harness.name} exited {result.returncode}:\\n{tail}\")\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: 1 != 0 : native_peer_invite_dispatch_raw-mock.lisp exited 1:\nissue: fn-pinv-host-observation-subject/1 fn-pinv-host-issue-plan/6\naccept: fn-pinv-host-observation-subject/1 fn-par-host-accept-record-plan/8 fn-pinv-host-accept-step/8\nRED confirm: host-entry-guard: fn-pinv-host-confirm-record-plan takes 8 arguments (stobjs and state included); the host passed 10\n\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.072s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "host/native/peer-invite.lisp",
+   "planning/repair/items/SCEN-PINV-CONFIRM-ARITY.json",
+   "tests/native_peer_invite_dispatch_raw-mock.lisp"
+  ],
+  "diff_lines": 86,
+  "evidence": {
+   "bytes": 5055,
+   "path": "planning/evidence/repair/SCEN-PINV-CONFIRM-ARITY-ed7130c6958e49509c5c1414b83bb723.json",
+   "sha256": "feda3f728c4bcbaca555875d4b91ba8205c6546a99536a12dd997749136e77af"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "1 != 0 : native_peer_invite_dispatch_raw-mock.lisp exited 1:\nissue: fn-pinv-host-observation-subject/1 fn-pinv-host-issue-plan/6\naccept: fn-pinv-host-observation-subject/1 fn-par-host-accept-record-plan/8 fn-pinv-host-accept-step/8\nRED confirm: host-entry-guard: fn-pinv-host-confirm-record-plan takes 8 arguments (stobjs and state included); the host passed 10\n\n",
+   "test": "tests.test_native_raw_scripts.RawHarnessTests.test_peer_invite_dispatch_raw_mock"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/native_harness.py": "cafbd7c8c6b2514bf4d3c55283b681a577f44c7269bd03fff1ca61802fc1cc21",
+   "tests/native_peer_invite_dispatch_raw-mock.lisp": "c98d49c0664611251d37324d4fb879ef6f267ee0281cbd3cebd3326d848f7fe3",
+   "tests/test_native_raw_scripts.py": "df494de73b7834d3b530c54b4d9d8cc880ac345ace56caacd6f084680cec9cc5"
+  },
+  "head": "5520a0645358a2983ee75faffd5e725353e8c5bc",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_native_raw_scripts.RawHarnessTests.test_peer_invite_dispatch_raw_mock"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_raw_scripts.py": "df494de73b7834d3b530c54b4d9d8cc880ac345ace56caacd6f084680cec9cc5"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "5520a0645358a2983ee75faffd5e725353e8c5bc",
+   "stderr": "test_peer_invite_dispatch_raw_mock (tests.test_native_raw_scripts.RawHarnessTests.test_peer_invite_dispatch_raw_mock) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.095s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_native_raw_scripts.RawHarnessTests.test_peer_invite_dispatch_raw_mock",
+  "timeout": 300.0
+ }
+}

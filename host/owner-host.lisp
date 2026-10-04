@@ -4500,6 +4500,18 @@
                     (fn-owner-install-ocfg after state) state)))
     (value (list word next))))))
 
+;; C3 / PRF-933 for a retrieval's preflight (books/article-stream-owner.lisp
+;; fn-asto-plan-unavailable; the line is books/owner-resource-line.lisp
+;; fn-orln-preflight-line): PLAN with its first preflight answered by the 403
+;; the dependency WORD names -- :unavailable past the deadline (SINCE NOW
+;; LIMIT, time-bars' clock), or a named pool refusal -- or NIL when PLAN has
+;; no preflight or WORD no line.  No owner state moves: the preflight never
+;; committed the reader's selection (fn-asto-finish never ran).
+(defun fn-owner-article-preflight-unavailable (plan word since now limit)
+  (declare (xargs :guard t))
+  (let ((line (fn-orln-preflight-line word since now limit)))
+    (and line (fn-asto-plan-unavailable plan line))))
+
 (defun fn-owner-chunk-span-evaluate (id start end sched fn-octets fn-arena fn-cat state)
  (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
  (let ((owner (fn-owner-core state)))
@@ -5005,6 +5017,13 @@
       (f-get-global 'fn-owner-feed-stopped state)
     nil))
 
+; The stop table's key for PEER (books/feed-connection.lisp fn-fc-stop-key):
+; the name and the peer record the owner's feed table holds for it now.
+(defun fn-owner-feed-stop-key (peer state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-fc-stop-key peer (fn-own-feed-entry-record
+                        (fn-own-feed-entry-of peer (fn-own-feeds (fn-owner-core state))))))
+
 (defun fn-owner-feed-has-queued (peer-octets state)
   (declare (xargs :stobjs state :mode :program
                   :guard (fn-cbor-octet-listp peer-octets)))
@@ -5012,13 +5031,14 @@
     (if (equal peer :bad)
         (value nil)
       ;; A peer the owner stopped (it refused MODE STREAM, books/
-      ;; feed-connection.lisp) is not dialled, whatever it has queued.
+      ;; feed-connection.lisp) is not dialled, whatever it has queued, until
+      ;; its peer record changes (fn-fc-stop-lifts-on-a-changed-record).
       (value (fn-fc-dial-allowedp
               (fn-feed-head-queued
                (fn-feed-queue
                 (fn-own-feed-find peer (fn-own-feeds
                                         (fn-owner-core state)))))
-              peer
+              (fn-owner-feed-stop-key peer state)
               (fn-owner-feed-stopped state))))))
 
 (defun fn-owner-feed-queue-length (peer-octets state)
@@ -5244,7 +5264,8 @@ existing port only after fn-fc has made this connection ready."
                  (stop (fn-fc-streaming-refusal-p input step))
                  (kind (if stop :streaming-refused
                          (fn-owner-feed-connection-result-kind step)))
-                 (stopped (fn-fc-stopped-put peer *fn-fc-stop-mode-stream-refused*
+                 (stopped (fn-fc-stopped-put (fn-owner-feed-stop-key peer state)
+                                             *fn-fc-stop-mode-stream-refused*
                                              (fn-owner-feed-stopped state)))
                  (state (if stop
                             (f-put-global 'fn-owner-feed-stopped stopped state)

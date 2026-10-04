@@ -312,3 +312,105 @@
                 (cons nil (if done (cdr rest) (cons (list :article-cursor next) (cdr rest))))
                 (and done (fn-splan-rest-donep (cdr rest))))))
       (mv :ordinary nil plan nil))))
+
+; -----------------------------------------------------------------------------
+; A retrieval whose preflight did not get its payload in time (C3: the
+; dependency deadline passed, `read-dependency-ms'; or the cold pool refused
+; the read by name, P12) is answered with ONE reply LINE in the preflight's
+; place: the 403 of books/owner-cold-line.lisp and books/owner-resource-line.lisp
+; (RFC 3977 section 3.2.1: temporarily unavailable, never 430 or 423).  The
+; preflight comes before every octet of its plan (fn-asto-ready-rest resolves
+; it before the host renders a window), and fn-asto-finish -- the only step
+; that commits the reader's selection -- never ran, so nothing of the
+; response was published and the connection's session is the one the capture
+; installed: the article is not selected and the current number is unchanged.
+; The effects before and after the preflight are the plan's own, untouched.
+; A plan with no preflight is not this function's (NIL): a render that went
+; cold after its first window was written has no reply to replace.
+
+(defun fn-asto-preflight-entryp (e)
+  (declare (xargs :guard t))
+  (eq (fn-cbor-ag-car e) :article-preflight))
+
+(in-theory (disable fn-asto-preflight-entryp))
+
+(defun fn-asto-unavailable-rest (rest line)
+  (declare (xargs :guard t))
+  (if (atom rest) rest
+    (if (fn-asto-preflight-entryp (car rest))
+        (cons (fn-nntp-reply-effect line) (cdr rest))
+      (cons (car rest) (fn-asto-unavailable-rest (cdr rest) line)))))
+
+(defun fn-asto-plan-unavailable (plan line)
+  (declare (xargs :guard t))
+  (if (fn-asto-preflight-planp plan)
+      (cons (fn-splan-cur plan) (fn-asto-unavailable-rest (fn-splan-rest plan) line))
+    nil))
+
+; The split of a rest at its first preflight: the entries before it, the
+; entry, the entries after it.
+(defun fn-asto-preflight-prefix (rest)
+  (declare (xargs :guard t))
+  (if (or (atom rest) (fn-asto-preflight-entryp (car rest))) nil
+    (cons (car rest) (fn-asto-preflight-prefix (cdr rest)))))
+
+(defun fn-asto-preflight-entry (rest)
+  (declare (xargs :guard t))
+  (if (atom rest) nil
+    (if (fn-asto-preflight-entryp (car rest)) (car rest)
+      (fn-asto-preflight-entry (cdr rest)))))
+
+(defun fn-asto-preflight-suffix (rest)
+  (declare (xargs :guard t))
+  (if (atom rest) nil
+    (if (fn-asto-preflight-entryp (car rest)) (cdr rest)
+      (fn-asto-preflight-suffix (cdr rest)))))
+
+(local
+ (defthm fn-asto-preflight-split-of-a-preflight-rest
+   (implies (fn-asto-preflight-restp rest)
+            (and (equal (append (fn-asto-preflight-prefix rest)
+                                (cons (fn-asto-preflight-entry rest)
+                                      (fn-asto-preflight-suffix rest)))
+                        rest)
+                 (equal (fn-asto-unavailable-rest rest line)
+                        (append (fn-asto-preflight-prefix rest)
+                                (cons (fn-nntp-reply-effect line)
+                                      (fn-asto-preflight-suffix rest))))
+                 (fn-asto-preflight-entryp (fn-asto-preflight-entry rest))
+                 (not (fn-asto-preflight-restp (fn-asto-preflight-prefix rest)))))
+   :hints (("Goal" :induct (fn-asto-preflight-prefix rest)
+            :in-theory (enable fn-asto-preflight-entryp fn-asto-preflight-restp)))))
+
+; KEYSTONE (C3 / PRF-933 for a retrieval's preflight).  For a plan whose
+; rest holds a preflight, the unavailable plan keeps the plan's current
+; window, every entry before the first preflight and every entry after it,
+; and puts exactly one reply of LINE in that preflight's place; the
+; preflight it replaced is the first one (none precedes it).
+(defthm fn-asto-an-unavailable-preflight-is-answered-in-its-place
+  (implies (fn-asto-preflight-planp plan)
+           (let ((p (fn-asto-plan-unavailable plan line))
+                 (rest (fn-splan-rest plan)))
+             (and (consp p)
+                  (equal (fn-splan-cur p) (fn-splan-cur plan))
+                  (equal rest (append (fn-asto-preflight-prefix rest)
+                                      (cons (fn-asto-preflight-entry rest)
+                                            (fn-asto-preflight-suffix rest))))
+                  (fn-asto-preflight-entryp (fn-asto-preflight-entry rest))
+                  (not (fn-asto-preflight-restp (fn-asto-preflight-prefix rest)))
+                  (equal (fn-splan-rest p)
+                         (append (fn-asto-preflight-prefix rest)
+                                 (cons (fn-nntp-reply-effect line)
+                                       (fn-asto-preflight-suffix rest)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-asto-plan-unavailable fn-asto-preflight-planp
+                                     fn-splan-cur fn-splan-rest))))
+
+; Only a plan with a preflight is answered so; every other plan is NIL.
+(defthm fn-asto-plan-unavailable-without-a-preflight-by-definition
+  (implies (not (fn-asto-preflight-planp plan))
+           (equal (fn-asto-plan-unavailable plan line) nil)))
+
+(in-theory (disable fn-asto-plan-unavailable fn-asto-unavailable-rest
+                    fn-asto-preflight-prefix fn-asto-preflight-entry
+                    fn-asto-preflight-suffix))

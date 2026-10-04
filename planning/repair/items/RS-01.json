@@ -1,0 +1,22 @@
+{
+ "category": "correctness",
+ "disposition": "LOCAL",
+ "evidence": "host/native/owner.lisp fnn-owner-attempt: when fn-owner-cat-may-seal answers nil (or FN_NATIVE_TEST_CAT_SEAL_REFUSE), PREPARED := :recovery-required; the refusal branch consumes the reservation (fn-owner-refuse-reservation :refused), unfences the store, then returns (fnn-owner-prepare-refusal-word :recovery-required). That case has arms for :duplicate :conflict :clock-unusable :refused :unaffordable :memberships :article-numbers-exhausted :canonical-size-unavailable :invalid-binding :invalid only; otherwise (fnn-fault ...) = fnn-store-fault, which fnn-owner-attempt-handlers re-signals after setting (fnn-store-fenced store) t. It escapes fnn-owner-drain-one and fnn-owner-commit-start-locked (whose handler-case names only fnn-store-indeterminate), so the committer (or the inline drain) faults the service.",
+ "exposure": "conditional",
+ "file": "host/native/owner.lisp",
+ "fix": "Give the gate's refusal its own ACL2-named outcome word (the try-later refusal the client can retry), decided by ACL2 per r71-F15's design (:outcomes in the entry's result) rather than a new host arm; until then do not route a refused-before-seal prepare through the fault arm. Then run tests.test_native_post_seal_gate on an image and extend it to assert the node still answers ARTICLE after both refusals.",
+ "id": "RS-01",
+ "line": "3226",
+ "locus": "connections",
+ "notes": [
+  "10-04 11:57 READY 2ef809d63: gate refusal -> fnn-refuse -> :refused (441), store open; raw-mock harness red->green; native test_native_post_seal_gate owed"
+ ],
+ "owner": "read-serve",
+ "scenario": "Any POST while the index writer holds an unfinished ticket or a prepared catalog commit is pending (books/catalog-may-seal.lisp: the conditions the gate exists for), or the developer image under FN_NATIVE_TEST_CAT_SEAL_REFUSE=1 (tests/test_native_post_seal_gate.py): the first POST is answered by no reply and the owner exits 4 with the store fenced, though nothing was sealed and the reservation was consumed as a refusal. test_native_post_seal_gate expects TWO 'POST seal-gate refused' lines and a serving node; by this reading it sees one (the second client's connect error is swallowed by its except) and fails.",
+ "severity": "high",
+ "sha": "2ef809d63",
+ "source": "read-serve-2026-10-04",
+ "state": "ready",
+ "title": "A POST the catalog's seal gate refuses stops the node: fnn-owner-prepare-refusal-word has no arm for :recovery-required, so the clean refusal becomes a fenced-store fault (exit 4)",
+ "updated": "2026-10-04T15:57:02Z"
+}

@@ -44,8 +44,8 @@ _ACL2_DEFINITIONS = r'''
  (if (endp pairs) nil
   (let* ((p (caar pairs))
          (c (cadar pairs))
-         (parent (cdr (assoc-equal p data)))
-         (child (cdr (assoc-equal c data)))
+         (parent (cdr (hons-get p data)))
+         (child (cdr (hons-get c data)))
          (entry (and parent child
                      (assoc-familiar-name
                       (caddr (car child))
@@ -80,27 +80,54 @@ def _driver(paths: list[Path], pairs: list[tuple[int, int]],
     return (definitions
             + f"(make-event (mv-let (data state) (fn-ca-read-many '{path_form} 0 state) "
               f"(value (prog2$ (fn-ca-show-unreadable data) "
-              f"(prog2$ (fn-ca-show-pairs '{pair_form} data) "
+              f"(prog2$ (fn-ca-show-pairs '{pair_form} (make-fast-alist data)) "
               f"(prog2$ (cw \"@@DONE ~x0~%\" {len(pairs)}) "
               "'(value-triple :ok)))))))\n"
             + "(quit)\n")
 
 
+# Packages a certificate's serialization named that this process has
+# declared before: each later probe declares them up front instead of
+# restarting ACL2 once per missing package (each restart re-read every
+# certificate).
+_KNOWN_PACKAGES: list[str] = []
+
+
+def probe_timeout(paths: int, pairs: int) -> int:
+    """The probe's bound, sized from its work, never a constant: 60 s to
+    start ACL2 and read nothing, a quarter second per certificate read and a
+    millisecond per pair (TOOL-CERT-PAIR-PROBE-SCALE: a fixed 120 s killed
+    set-039fe2da5's acquire at hbox load 9.7; the rerun alone took 6 min)."""
+    return 60 + paths // 4 + pairs // 1000
+
+
 def acl2_certificate_pairs(paths: list[Path], pairs: list[tuple[int, int]],
                            acl2: Path, root: Path,
-                           timeout_seconds: int = 120
+                           timeout_seconds: int | None = None
                            ) -> dict[tuple[int, int], tuple[bool, bool]]:
     """Return `(required, equal)` for every parent/child candidate pair.
 
     Fail closed if ACL2 cannot read any certificate or does not report every
-    requested pair.  No local certificate or cache entry is modified.
+    requested pair.  No local certificate or cache entry is modified.  Only
+    the certificates the pairs name are read (TOOL-CERT-PAIR-PROBE-SCALE:
+    every candidate path was), and each is looked up in a fast alist.
     """
     if not pairs:
         return {}
     if any(p < 0 or c < 0 or p >= len(paths) or c >= len(paths)
            for p, c in pairs):
         raise ValueError("certificate comparison index out of range")
-    packages: list[str] = []
+    used = sorted({index for pair in pairs for index in pair})
+    local = {index: position for position, index in enumerate(used)}
+    found = _probe([paths[index] for index in used],
+                   [(local[p], local[c]) for p, c in pairs], acl2, root,
+                   timeout_seconds or probe_timeout(len(used), len(pairs)))
+    return {(used[p], used[c]): verdict for (p, c), verdict in found.items()}
+
+
+def _probe(paths: list[Path], pairs: list[tuple[int, int]], acl2: Path, root: Path,
+           timeout_seconds: int) -> dict[tuple[int, int], tuple[bool, bool]]:
+    packages: list[str] = list(_KNOWN_PACKAGES)
     for _ in range(25):
         # The machine's ACL2 pool and heap cap (PKT-162).
         result = acl2_slots.run([str(acl2)], "cert_alists pairs", cwd=root,
@@ -114,6 +141,8 @@ def acl2_certificate_pairs(paths: list[Path], pairs: list[tuple[int, int]],
             if name in packages:
                 raise ValueError("ACL2 repeatedly refused certificate package " + name)
             packages.append(name)
+            if name not in _KNOWN_PACKAGES:
+                _KNOWN_PACKAGES.append(name)
             continue
         done = _DONE.findall(output)
         if _UNREADABLE.search(output):

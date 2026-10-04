@@ -1468,7 +1468,10 @@ def run(argv=None):
             try:
                 rows, worst = families[name]()
             except Exception as error:  # a family bug must not lose the run
-                rows, worst = {"harness-error": repr(error)}, None
+                # ... nor pass it: a family that never ran found nothing, and the
+                # liveness oracle alone would have read that as no defect.
+                rows, worst = {"harness-error": repr(error),
+                               "_defects": [("harness", repr(error))]}, None
             # A family may surface its own assessed defects through rows["_defects"];
             # they join the generic oracle verdict (liveness/memory/fault/slow).
             family_defects = rows.pop("_defects", []) if isinstance(rows, dict) else []
