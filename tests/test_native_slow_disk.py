@@ -111,7 +111,7 @@ class SlowDiskSourceTests(unittest.TestCase):
         # fn-owner-chunk-span over the same scheduler value, first with a
         # cold payload thrown out of the mutex (the line is then read off
         # it), else the whole read as before when the cache is off.
-        self.assertIn("(fnn-owner-chunk-span-no-io\n                    cid incoming sched", chunk)
+        self.assertIn("(fnn-owner-chunk-span-no-io cid incoming sched prefix)", chunk)
         no_io = owner[owner.index("(defun fnn-owner-chunk-span-no-io "):
                       owner.index("(defun fnn-owner-cold-line ")]
         self.assertIn("(cid incoming sched &optional (end (length incoming)))", no_io)
