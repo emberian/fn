@@ -2388,11 +2388,20 @@
   :keystones (fn-peer-tls-verification-sni-is-never-a-literal
               fn-peer-tls-verification-selects-one-check))
 
+(definterface fn-pinv-host-accept-step
+  :class ::program)
+
+(definterface fn-pinv-host-acceptance-source
+  :class ::program)
+
 (definterface fn-pinv-host-bindings-request-decode
   :class ::program
   :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-pinv-host-bindings-request-encode
+  :class ::program)
+
+(definterface fn-pinv-host-confirm-record-plan
   :class ::program)
 
 (definterface fn-pinv-host-confirm-request-decode
@@ -2402,10 +2411,16 @@
 (definterface fn-pinv-host-confirm-request-encode
   :class ::program)
 
+(definterface fn-pinv-host-confirm-step
+  :class ::program)
+
 (definterface fn-pinv-host-genesis-principal
   :class ::program)
 
 (definterface fn-pinv-host-invitation-source
+  :class ::program)
+
+(definterface fn-pinv-host-issue-plan
   :class ::program)
 
 (definterface fn-pinv-host-kind
