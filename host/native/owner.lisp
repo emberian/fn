@@ -1446,6 +1446,14 @@ fn-owner-recover-from-checkpoint-equals-full-recover says both paths install
 the full open's owner, and nothing is replayed a second time.  Returns the
 checkpoint's S, or NIL."
   (declare (ignore records))
+  ;; The install loads the catalog INTO the live fn-cat
+  ;; (fn-owner-install-extended's fn-sca-load-held-rows-keyed): a binding of
+  ;; a replacement catalog, so its allocation identity is reserved first, as
+  ;; fnn-install-stobj reserves before it binds (books/catalog-root-
+  ;; incarnation.lisp).  Without it an owner installed a second time in one
+  ;; process kept the previous owner's root token over the reloaded catalog;
+  ;; a refused or faulted install spends the reservation.
+  (fnn-owner-core 'fn-owner-catalog-root-reserve)
   (let* ((mode (fnn-store-open-mode store))
          (s (and (eq (first mode) :checkpoint) (second mode)))
          ;; THE SWITCH (PRF-1037): ENTRY is the node secret's current entry
