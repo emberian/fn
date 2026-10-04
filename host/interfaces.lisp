@@ -5502,7 +5502,13 @@
 ; logical execution, not whole-turn funding, allocation or native qualification.
 (definterface fn-bpsched-accept-plan :class :common-lisp-compliant)
 (definterface fn-bpsched-deadline :class :common-lisp-compliant :kinds ((grant true-listp)))
-(definterface fn-bpsched-forward-entry :class :common-lisp-compliant :kinds ((busy true-listp)))
+(definterface fn-bpfc-initial :class :common-lisp-compliant)
+(definterface fn-bpfc-turn
+  :class :common-lisp-compliant
+  :kinds ((held true-listp) (busy true-listp) (quantum posp))
+  :keystones (fn-bpfc-turn-advances-at-most-quantum
+              fn-bpfc-turn-after-a-yield-is-the-larger-turn
+              fn-bpfc-run-is-the-plan-choice))
 (definterface fn-bpsched-idle-p :class :common-lisp-compliant)
 (definterface fn-bpsched-listener-index :class :common-lisp-compliant)
 (definterface fn-bpsched-listener-step :class :common-lisp-compliant)

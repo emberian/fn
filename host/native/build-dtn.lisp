@@ -142,6 +142,9 @@
 ;; PKT-261: per-destination dispatch and the forward plan
 ;; (fnn-bpnode-dispatch-one, fnn-bpnode-forward-contact).
 (include-book "books/bp-node-forward-plan")
+;; PRF-1311: the retained loop's :forward turn is the bounded cursor over
+;; that plan (fnn-bpnode-serve, fn-bpfc-turn).
+(include-book "books/bp-forward-cursor")
 ;; N16: the generation selection, recovery from a checkpoint and the
 ;; publication driver fnn-bps-open and `bp-node checkpoint' call.
 (include-book "books/bp-node-rotation")

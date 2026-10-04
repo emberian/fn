@@ -301,3 +301,42 @@ bank is full. Incoming and outgoing searches retain separate positions and
 wrap within their configured ranges. Native retry and once-mode drain must
 keep owed outgoing work pending across search yields. No socket or retained
 context is constructed before the exact generation-bearing draw succeeds.
+
+### The forward round
+
+Held transit with `(:forward-pending)` is offered to its next hops by the
+retained loop's `:forward` service class one bounded step at a time, not by
+a whole plan per turn. The step is `fn-bpfc-turn cursor held table busy
+quantum` (`books/bp-forward-cursor.lisp`, PRF-1311): it walks the held rows
+oldest first from the cursor's position, at most QUANTUM rows (host
+`+fnn-bpnode-forward-quantum+`, 64), one route decision
+(`fn-bprt-outbound-choice`) per row, and answers the first startable peer
+(`:entry`), a resumable cursor (`:yield`), or `:drained` at the end of the
+sweep. A row is startable under `fn-bpnp-forward-plan`'s own condition plus
+the scheduler's busy filter (`fn-bpsched-forward-entry`).
+
+- One turn examines at most QUANTUM rows
+  (`fn-bpfc-turn-advances-at-most-quantum`). The quantum is scheduling work,
+  not a limit on held transit (D27): a sweep over n rows takes at most
+  ⌈n / 64⌉ scanning turns plus one turn per started session.
+- Resuming a yield is the larger turn
+  (`fn-bpfc-turn-after-a-yield-is-the-larger-turn`): no row is skipped or
+  examined twice within a sweep over an unchanged held list.
+- A sweep run to completion from the head chooses exactly what the plan and
+  the busy filter choose (`fn-bpfc-run-is-the-plan-choice`); the plan stays
+  the logical model, and `bp-contact tick` still drains by it.
+- A peer started in a sweep is passed for the rest of that sweep, so two
+  peers with pending rows get sessions on consecutive `:forward` turns while
+  outgoing slots allow. An entry whose start yields for an occupied slot
+  keeps the old cursor and is offered again.
+- The cursor is a position into the oldest-first order. Arrivals append to
+  that order, so they do not move it; a removal before the position would
+  make that sweep pass one row, which the next sweep examines.
+
+What this does not bound: fairness is not bounded. Nothing here promises
+that a peer's backlog drains, or anything about wall time (PRF-018's
+hypotheses stay planned). The skip to the cursor's position is a list walk
+(`nthcdr` over the reversed held list, one reversal per turn), so the
+per-turn bound is on route decisions, not on pointer-chasing. Making that
+skip O(1) needs the held set as an indexed representation, which is still
+owed.
