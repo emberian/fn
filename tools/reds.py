@@ -76,28 +76,55 @@ def rel(path: str | Path) -> str:
 
 # ------------------------------------------------------------------ collect
 
-def check_step_reds(steps_dir: Path, cache: Path) -> list[dict]:
-    """One record per red row of the last `execute`, with its scope record."""
-    found = []
-    for row in check_steps.read_results(steps_dir):
-        if row.get("exit", 0) == 0 or row.get("skipped"):
+def scope_records(cache: Path) -> dict[str, dict]:
+    """The last traced inputs per command (shlex-joined), newest record first
+    when several keys hold one command (the step key varies with FN_* such as
+    make check-lane's FN_LANE_CHECK, this tool runs outside it)."""
+    found: dict[str, tuple[float, dict]] = {}
+    for path in (cache / "scope").glob("*.json"):
+        record = check_steps.load_json(path, None)
+        if not record or not record.get("command"):
             continue
-        command = shlex.split(row["command"])
-        key = check_steps.step_key(command)
-        scope = check_steps.load_json(cache / "scope" / f"{key}.json", None)
+        command = shlex.join(record["command"])
+        try:
+            when = path.stat().st_mtime
+        except OSError:
+            continue
+        if command not in found or found[command][0] < when:
+            found[command] = (when, record)
+    return {command: record for command, (_, record) in found.items()}
+
+
+def check_step_reds(steps_dir: Path, cache: Path) -> list[dict]:
+    """One record per red row of the last `execute`, with its scope record; a
+    row a scoped run skipped carries the store's last verdict (`last`), and a
+    red one is a red here (it was not re-judged, so its source is that run)."""
+    found = []
+    records = scope_records(cache)
+    for row in check_steps.read_results(steps_dir):
+        last = row.get("last")
+        if row.get("skipped"):
+            if not last or not last.get("exit"):
+                continue
+            exit_code, finding = last["exit"], last.get("finding", "")
+            source = {"box": last.get("box", ""), "when": last.get("when", ""),
+                      "log": last.get("log", "")}
+        elif row.get("exit", 0) == 0:
+            continue
+        else:
+            exit_code, finding = row["exit"], row.get("finding", "")
+            source = {"log": "", "when": "", "box": ""}
+            match = re.search(r"run on (\S+) (\S+), log (\S+)", row.get("cached", ""))
+            if match:
+                source = {"box": match.group(1), "when": match.group(2), "log": match.group(3)}
+        scope = records.get(row["command"])
         selector = {"paths": [], "listed": [], "git": [], "untraced": True, "why": "never traced here"}
-        if scope and scope.get("command") == command:
+        if scope:
             selector = {"paths": sorted(scope.get("r", [])), "listed": sorted(scope.get("l", [])),
                         "git": scope.get("g", []), "untraced": bool(scope.get("x")),
                         "why": scope.get("x", "")}
-        source = {"log": "", "when": "", "box": ""}
-        cached = row.get("cached", "")
-        match = re.search(r"run on (\S+) (\S+), log (\S+)", cached)
-        if match:
-            source = {"box": match.group(1), "when": match.group(2), "log": match.group(3)}
         found.append({"kind": "check-step", "subject": row["step"], "command": row["command"],
-                      "exit": row["exit"], "finding": row.get("finding", ""),
-                      "source": source, "selector": selector})
+                      "exit": exit_code, "finding": finding, "source": source, "selector": selector})
     return found
 
 

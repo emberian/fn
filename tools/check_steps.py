@@ -861,9 +861,21 @@ class Executor:
                 continue
             note = (f"skipped (unaffected by the {len(self.changed.paths)} path(s) "
                     f"changed since {self.since})")
-            self.record({"index": step["index"], "step": step["name"],
-                         "command": shlex.join(step["command"]), "exit": 0, "seconds": 0.0,
-                         "finding": "", "skipped": note})
+            row = {"index": step["index"], "step": step["name"],
+                   "command": shlex.join(step["command"]), "exit": 0, "seconds": 0.0,
+                   "finding": "", "skipped": note}
+            # The store's verdict for the untouched step, carried beside the
+            # row so a scoped table still shows a known red (tools/reds.py
+            # reads it); the row's own exit stays 0: a scoped run judges the
+            # change, and its gate is `--baseline`.
+            entry = self.cached(step)
+            if entry is not None and entry.get("exit", 0):
+                row["last"] = {"exit": entry["exit"], "head": entry["head"],
+                               "finding": first_finding(entry["output"].splitlines()),
+                               "box": entry.get("box", ""), "when": entry.get("when", ""),
+                               "log": entry.get("log", "")}
+                row["skipped"] += f"; last verdict exit {entry['exit']}: {row['last']['finding']}"
+            self.record(row)
         return kept
 
     def emit(self, text: str) -> None:

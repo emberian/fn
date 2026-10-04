@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import pathlib
 import shlex
 import sys
@@ -107,6 +108,28 @@ class CollectAndAffectTests(unittest.TestCase):
         untraced = dict(collected["reds"][0], selector={"paths": [], "listed": [], "git": [],
                                                         "untraced": True, "why": "child process acl2"})
         self.assertTrue(reds.reached(untraced, check_steps.Changes({"books/x.lisp": "M"})))
+
+    def test_a_scoped_run_carries_the_stored_red_and_the_record_is_found_by_command(self):
+        """`make check-lane CHECK_CHANGED_SINCE` skips an untouched step; the
+        store's red is carried on the row (`last`) and collected as a red,
+        and the scope record is found by command even when the step key
+        differs (FN_* set by make, unset here)."""
+        changed = check_steps.Changes({"docs/x.md": "M"})
+        with redirect_stdout(io.StringIO()):
+            check_steps.execute(self.steps, 2, True, self.cache, since="HEAD", changed=changed)
+        rows = check_steps.read_results(self.steps)
+        self.assertTrue(rows[0]["skipped"] and rows[0]["exit"] == 0)
+        self.assertEqual(rows[0]["last"]["exit"], 1)
+        self.assertIn("last verdict exit 1: FAIL: 1 findings", rows[0]["skipped"])
+        self.assertNotIn("last", rows[1])  # the green one carries nothing
+        found = reds.check_step_reds(self.steps, self.cache)
+        self.assertEqual([r["subject"] for r in found], [rows[0]["step"]])
+        self.assertIn(self.rel("a"), found[0]["selector"]["paths"])
+        os.environ["FN_REDS_TEST_OTHER_KEY"] = "1"  # a different step key: still found
+        try:
+            self.assertIn(self.rel("a"), reds.check_step_reds(self.steps, self.cache)[0]["selector"]["paths"])
+        finally:
+            del os.environ["FN_REDS_TEST_OTHER_KEY"]
 
     def test_a_replayed_red_names_its_run(self):
         with redirect_stdout(io.StringIO()):
