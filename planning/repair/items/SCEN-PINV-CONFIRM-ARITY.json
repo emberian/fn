@@ -10,7 +10,8 @@
  "notes": [
   "10-04 11:33 claimed: scope=['host/native/peer-invite.lisp', 'tests/native_peer_invite_dispatch_raw-mock.lisp'] test=python3 -m unittest tests.test_native_raw_scripts.RawHarnessTests.test_peer_invite_dispatch_raw_mock",
   "10-04 11:34 budget 110: the fix is 2 argument lines; spelling out the file's five apply dispatches (so raw-arity checks them) is the rest",
-  "10-04 11:35 READY 5520a0645 (verify ok, red at 3403e5ac2, green at head); natives pending: tests.test_native_peer_invite, tests.test_native_friends_feed on the next image set"
+  "10-04 11:35 READY 5520a0645 (verify ok, red at 3403e5ac2, green at head); natives pending: tests.test_native_peer_invite, tests.test_native_friends_feed on the next image set",
+  "10-04 15:51 10-04 20:10 integrator3 CLOSE: peer confirm cases green natively on set-6107ceb56 (lat1) and set-55ff708a6 (lat1), 6 of 7 OK; the one red, test_current_inviter_accept_resumes_after_configuration_cut, is a harness/environment red (composed native image source: tree/build/MANIFEST.json absent), not the confirm arity."
  ],
  "owner": "scenarios",
  "scope": [
@@ -19,11 +20,11 @@
  ],
  "severity": "high",
  "source": "scenarios",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_native_raw_scripts.RawHarnessTests.test_peer_invite_dispatch_raw_mock",
  "timeout": "300",
  "title": "peer confirm stops the owner: host/native/peer-invite.lisp:241 applies fn-pinv-host-confirm-record-plan to 10 arguments (bbfc3b915 appended fn-store-genesis-ident and fn-owner-config-generation, as it did for accept's new fn-par-host-accept-record-plan) but host/peer-invite-host.lisp:86 and books/peer-invite.lisp:1360 take 8; every confirm is 'owner quantum fault; process stopped: host-entry-guard ... takes 8 arguments ... the host passed 10'. Red: peer_invite 7/7, friends_feed 1/2 on run peer-d5b0b9100 (hbox:/tank/fn/scratch/scenarios/native-peer-d5b0b9100). The invite/confirm flow is how a friend's server peers.",
- "updated": "2026-10-04T15:35:08Z",
+ "updated": "2026-10-04T19:51:33Z",
  "verify": {
   "base": "3403e5ac20d253d0098f8da5d8d7b214bcf3e51c",
   "base_observation": {
