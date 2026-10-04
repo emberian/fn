@@ -104,7 +104,11 @@
 
 This runs in the sole feed worker.  ACL2 owns membership; the runtime lock
 only publishes the corresponding socket resources.  Removed links are
-closed by this worker, preserving the one-closer rule."
+closed by this worker, preserving the one-closer rule.  A removed link that
+held a connection is reported to ACL2 as a loss first, exactly as every other
+close is (fnn-feed-drop-link): the feed port still holds that connection and
+its in-flight offer, and without the loss a re-created link (`peer feed NAME
+resume') offers nothing until the stale state is cleared, which nothing does."
   (let* ((service (fnn-feed-runtime-service runtime))
          (names (fnn-feed-peer-list service))
          (removed nil))
@@ -118,7 +122,11 @@ closed by this worker, preserving the one-closer rule."
                     unless (member (fnn-feed-link-peer link) names :test #'string=)
                     collect link))
         (setf (fnn-feed-runtime-links runtime) (nreverse next))))
-    (dolist (link removed) (fnn-feed-close-link runtime link))))
+    (dolist (link removed)
+      (when (and (fnn-feed-link-socket link) (not (fnn-feed-stoppingp runtime)))
+        (setq *fnn-feed-active* t)
+        (fnn-feed-lost service link (fnn-feed-now)))
+      (fnn-feed-close-link runtime link))))
 
 (defun fnn-feed-checked-word (word allowed where)
   (unless (member word allowed)

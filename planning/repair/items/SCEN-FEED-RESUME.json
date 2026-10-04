@@ -1,12 +1,110 @@
 {
+ "budget": 160,
  "category": "implementation",
+ "expect-failure": "tests.test_native_feed_fair_round.FeedFairRoundTests.test_a_link_leaving_the_live_table_with_a_connection_is_reported_lost",
+ "failure-message": "False is not true : a removed link that held a connection must be reported lost before it closes",
  "file": "host/native/feed-service.lisp",
+ "harness": "tests/test_native_feed_fair_round.py,tests/native_feed_fair_round_raw.lisp",
  "id": "SCEN-FEED-RESUME",
- "notes": [],
+ "native": "tests.test_native_feed_tls_read",
+ "notes": [
+  "10-04 15:02 claimed: scope=['host/native/feed-service.lisp', 'tests/native_feed_fair_round_raw.lisp', 'tests/test_native_feed_fair_round.py', 'tests/test_native_feed_tls_read.py'] test=python3 -m unittest tests.test_native_feed_fair_round.FeedFairRoundTests.test_a_link_leaving_the_live_table_with_a_connection_is_reported_lost",
+  "10-04 15:02 READY 79cc0a7da overlay green cloud2 grn1 over 55ff708a6"
+ ],
  "owner": "unowned",
+ "scope": [
+  "host/native/feed-service.lisp",
+  "tests/native_feed_fair_round_raw.lisp",
+  "tests/test_native_feed_fair_round.py",
+  "tests/test_native_feed_tls_read.py"
+ ],
  "severity": "medium",
  "source": "scenarios",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_native_feed_fair_round.FeedFairRoundTests.test_a_link_leaving_the_live_table_with_a_connection_is_reported_lost",
  "title": "feed_tls_read test_a_paused_feed_is_not_dialled_until_resumed: after 'peer feed NAME resume' the article posted while paused is not delivered within 30 s (tests/test_native_feed_tls_read.py:237). Run peer-d5b0b9100 with the TicketingTlsPeer harness fix (4edb8509a); the other 3 cases now pass.",
- "updated": "2026-10-04T15:13:42Z"
+ "updated": "2026-10-04T19:02:58Z",
+ "verify": {
+  "base": "55ff708a65318fb0ed8553f5ebf2c66d154f7323",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "False is not true : a removed link that held a connection must be reported lost before it closes",
+      "test": "tests.test_native_feed_fair_round.FeedFairRoundTests.test_a_link_leaving_the_live_table_with_a_connection_is_reported_lost",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_native_feed_fair_round.FeedFairRoundTests.test_a_link_leaving_the_live_table_with_a_connection_is_reported_lost"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_feed_fair_round.py": "75635021bbb69e6e60e5fbd4a21f474f2d24bd89be963df0450c15e7a51deadf"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "55ff708a65318fb0ed8553f5ebf2c66d154f7323",
+   "stderr": "test_a_link_leaving_the_live_table_with_a_connection_is_reported_lost (tests.test_native_feed_fair_round.FeedFairRoundTests.test_a_link_leaving_the_live_table_with_a_connection_is_reported_lost) ... FAIL\n\n======================================================================\nFAIL: test_a_link_leaving_the_live_table_with_a_connection_is_reported_lost (tests.test_native_feed_fair_round.FeedFairRoundTests.test_a_link_leaving_the_live_table_with_a_connection_is_reported_lost)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-52kkm2nx/wt/tests/test_native_feed_fair_round.py\", line 43, in test_a_link_leaving_the_live_table_with_a_connection_is_reported_lost\n    self.assertTrue(result.returncode == 0 and 'FEED_FAIR_PASS removed' in result.stdout,\n    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                    'a removed link that held a connection must be reported lost before it closes')\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: False is not true : a removed link that held a connection must be reported lost before it closes\n\n----------------------------------------------------------------------\nRan 1 test in 0.339s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "host/native/feed-service.lisp",
+   "tests/native_feed_fair_round_raw.lisp",
+   "tests/test_native_feed_fair_round.py",
+   "tests/test_native_feed_tls_read.py"
+  ],
+  "diff_lines": 87,
+  "evidence": {
+   "bytes": 4594,
+   "path": "planning/evidence/repair/SCEN-FEED-RESUME-ba4272d0965c449ba41648e5d7913565.json",
+   "sha256": "6baaaa0c6b0c8f02b6f6a43c7e9d47ed91d27f84a0e5664ba2e8d91e423e6021"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "False is not true : a removed link that held a connection must be reported lost before it closes",
+   "test": "tests.test_native_feed_fair_round.FeedFairRoundTests.test_a_link_leaving_the_live_table_with_a_connection_is_reported_lost"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/native_feed_fair_round_raw.lisp": "b3be402b2c0d42843a4381b7ed3c50ea4e56509d2d7b0c15e8e37c8c0a62c65d",
+   "tests/test_native_feed_fair_round.py": "75635021bbb69e6e60e5fbd4a21f474f2d24bd89be963df0450c15e7a51deadf"
+  },
+  "head": "79cc0a7da88c49c447cc71f7cfe4a41182915c7b",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_native_feed_fair_round.FeedFairRoundTests.test_a_link_leaving_the_live_table_with_a_connection_is_reported_lost"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_feed_fair_round.py": "75635021bbb69e6e60e5fbd4a21f474f2d24bd89be963df0450c15e7a51deadf"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "79cc0a7da88c49c447cc71f7cfe4a41182915c7b",
+   "stderr": "test_a_link_leaving_the_live_table_with_a_connection_is_reported_lost (tests.test_native_feed_fair_round.FeedFairRoundTests.test_a_link_leaving_the_live_table_with_a_connection_is_reported_lost) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.291s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_native_feed_fair_round.FeedFairRoundTests.test_a_link_leaving_the_live_table_with_a_connection_is_reported_lost",
+  "timeout": 1800.0
+ }
 }
