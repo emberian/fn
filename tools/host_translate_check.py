@@ -130,6 +130,8 @@ def main(argv=None) -> int:
     elapsed = time.monotonic() - started
     output = result.stdout.decode("utf-8", "replace")
     log = ROOT / args.log
+    # hbox_native writes its logs beside the tree, not under it.
+    shown = log.relative_to(ROOT) if log.is_relative_to(ROOT) else log
     log.parent.mkdir(parents=True, exist_ok=True)
     log.write_text(output, encoding="utf-8")
     lines = output.splitlines()
@@ -141,7 +143,7 @@ def main(argv=None) -> int:
                   else "error marker" if first_error is not None
                   else "the prefix did not complete")
         print("host_translate_check: FAIL ({}) after {:.0f}s; transcript {}"
-              .format(reason, elapsed, log.relative_to(ROOT)))
+              .format(reason, elapsed, shown))
         start = max((first_error if first_error is not None else len(lines)) - 5, 0)
         print("\n".join(lines[start:start + 40]))
         return 1
@@ -153,7 +155,7 @@ def main(argv=None) -> int:
         print("host_translate_check: NOT RUN -- the prefix translated in {:.0f}s "
               "with no error, but {} includes warned [Uncertified] (certificates "
               "that do not compose); the verdict needs a consistent certificate "
-              "set.  Transcript {}".format(elapsed, len(stale), log.relative_to(ROOT)))
+              "set.  Transcript {}".format(elapsed, len(stale), shown))
         return NOT_RUN
     print("host_translate_check: ok -- {} includes and {} host `ld`s of {} "
           "translated in {:.0f}s".format(len(forms) - loads, loads, args.build, elapsed))
