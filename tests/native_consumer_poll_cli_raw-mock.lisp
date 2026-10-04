@@ -24,6 +24,7 @@
 
 (defvar *calls* nil)
 (defvar *register-test* nil)
+(defvar *bootstrap-test* nil)
 (defvar *bootstrap-status* :accepted)
 (defparameter +fnn-exit-usage+ 2)
 (defparameter +fnn-exit-ok+ 0)
@@ -35,24 +36,31 @@
 (defun fnn-core (name &rest args)
   (case name
     (fn-native-control-host-consumer-cli-plan
-     (if *register-test*
-         (list :run :register '(99) '(119) nil nil)
+     (cond
+       (*bootstrap-test* (list :run :bootstrap '(99) nil nil nil))
+       (*register-test*
+         (list :run :register '(99) '(119) nil nil))
+       (t
        (list :run :poll '(99) '(119) '(99 117 114 115 111 114)
-             '(114 101 112 111 114 116))))
+             '(114 101 112 111 114 116)))))
     (fn-native-control-host-status-exit-code
      (if (eq (first args) :accepted) 0 1))
     ;; PKT-709: no register retry for a poll; the report's summary for the
     ;; line (text mode prints only the status).
+    ;; books/consumer-reason.lisp fn-ncr-cli-after (COMMAND STEP STATUS WORD).
     (fn-native-control-host-consumer-cli-after
-     (cond ((and (eq (first args) :register) (eq (second args) :refused))
-            '(:bootstrap :register))
-           ((and (eq (first args) :bootstrap) (eq (second args) :accepted))
-            '(:register))))
+     (destructuring-bind (command step status word) args
+       (declare (ignore word))
+       (cond ((not (eq command :register)) nil)
+             ((and (eq step :register) (eq status :refused))
+              '(:bootstrap :register))
+             ((and (eq step :bootstrap) (eq status :accepted))
+              '(:register)))))
     (fn-native-control-host-consumer-report-summary '(:empty))
     (otherwise (error "unexpected ACL2 entry ~s" name))))
 (defun fnn-control-consumer-local (control operation first second)
   (push (list :request control operation first second) *calls*)
-  (if *register-test*
+  (if (or *register-test* *bootstrap-test*)
       (values (list :consumer-reply
                     (if (eq operation :bootstrap) *bootstrap-status*
                       (if (= (length *calls*) 1) :refused :accepted))) nil)
@@ -100,3 +108,15 @@
                        '(:register :bootstrap)))
         (error "register crossed unresolved bootstrap: ~s ~s" outcome *calls*)))))
 (format t "native consumer bootstrap outcome boundary passed~%")
+
+;; A `consumer bootstrap' command is one request: its accepted outcome is the
+;; command's, never a second bootstrap (native run2-d5b0b9100).
+(let ((*bootstrap-test* t))
+  (dolist (outcome '(:accepted :uncertain :fault :refused))
+    (let ((*calls* nil) (*bootstrap-status* outcome))
+      (unless (= (fnn-command-consumer-local "bootstrap" '("control"))
+                 (if (eq outcome :accepted) 0 1))
+        (error "bootstrap command outcome was lost: ~s" outcome))
+      (unless (equal (mapcar #'third (reverse *calls*)) '(:bootstrap))
+        (error "bootstrap command sent more than one request: ~s ~s" outcome *calls*)))))
+(format t "native consumer bootstrap command boundary passed~%")

@@ -4494,6 +4494,18 @@
                     (fn-owner-install-ocfg after state) state)))
     (value (list word next))))))
 
+;; C3 / PRF-933 for a retrieval's preflight (books/article-stream-owner.lisp
+;; fn-asto-plan-unavailable; the line is books/owner-resource-line.lisp
+;; fn-orln-preflight-line): PLAN with its first preflight answered by the 403
+;; the dependency WORD names -- :unavailable past the deadline (SINCE NOW
+;; LIMIT, time-bars' clock), or a named pool refusal -- or NIL when PLAN has
+;; no preflight or WORD no line.  No owner state moves: the preflight never
+;; committed the reader's selection (fn-asto-finish never ran).
+(defun fn-owner-article-preflight-unavailable (plan word since now limit)
+  (declare (xargs :guard t))
+  (let ((line (fn-orln-preflight-line word since now limit)))
+    (and line (fn-asto-plan-unavailable plan line))))
+
 (defun fn-owner-chunk-span-evaluate (id start end sched fn-octets fn-arena fn-cat state)
  (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
  (let ((owner (fn-owner-core state)))

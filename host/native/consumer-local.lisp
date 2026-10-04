@@ -20,19 +20,20 @@
   "One consumer command over the control socket CONTROL (octets): (values
 REPLY WORD).  PKT-709: a register the owner refused for want of the node's
 consumer history (or an old owner refused with no reason) bootstraps it and
-registers once more (fn-ncr-cli-after); the last reply is the command's.
+registers once more (fn-ncr-cli-after, which reads the command and the step
+whose outcome it decides); the last reply is the command's.
 Also the `pattern' verb's register, wait and ack (host/native/pattern.lisp)."
   (let ((reply nil) (word nil))
     (multiple-value-setq (reply word)
       (fnn-control-consumer-local (fnn-octets control) operation input argument))
     (when (fnn-core 'fn-native-control-host-consumer-cli-after
-                    operation (and (consp reply) (second reply)) word)
+                    operation operation (and (consp reply) (second reply)) word)
       (multiple-value-setq (reply word)
         (fnn-control-consumer-local (fnn-octets control) :bootstrap nil nil))
       ;; An uncertain bootstrap may have persisted.  Preserve its outcome
       ;; and stop; ACL2 permits registration only after acceptance.
       (when (fnn-core 'fn-native-control-host-consumer-cli-after
-                      :bootstrap (and (consp reply) (second reply)) word)
+                      operation :bootstrap (and (consp reply) (second reply)) word)
         (multiple-value-setq (reply word)
           (fnn-control-consumer-local (fnn-octets control)
                                       operation input argument))))

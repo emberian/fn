@@ -97,6 +97,42 @@ check`) holds every `tests/*.sh` to a `# witness: CLASS` header, a runner for
 its class, and a catalog row that cites it or the harness it drives.  A
 scenario is exercised exactly as far as its row's `execution_scope` says.
 
+## Scenario tiers
+
+`tests/scenarios/tiers.tsv` groups the native modules that drive an image
+(and the kits `hbox_native.sh` cannot launch) by the question each answers
+and by how long a run takes; `planning/scenarios-2026-10-04.md` is the
+coverage map behind it (questions x scenarios, the gaps, which assertions
+did not test their claim).
+
+| tier | what it answers | wall at `--jobs 4` |
+|---|---|---|
+| `peer` | can a stranger's server peer with us safely and usefully: transit both ways, catch-up, IHAVE/CHECK/TAKETHIS, NEWNEWS and HDR/XPAT past the cache, misbehaving peers, peer credentials, real INN (`FN_INN_SRC`) | ~20 min |
+| `smoke` | one short module per question (durability cuts, the three outcomes, resend, bounds, reader bytes, TLS, cursor, web, feed, BP, store identity) | minutes |
+| `core` | the integrator's twelve: the release image bar | ~10 min |
+| `e2e` | one whole module per user-visible surface, consumer and hybrid opt-ins on | 30-45 min |
+| `resilience` | crash cuts, fault injection, hostile input | an hour, plus kits |
+| `scale` | fixture stores and the F1-F8 measurements (quiet box, current fixtures) | hours |
+
+Run a tier against a published image set (no certify, no build):
+
+    python3 tools/scenario_suite.py run smoke --image-set SHA        # tests at SHA
+    python3 tools/scenario_suite.py run peer --image-set SHA --rev .  # this worktree's tests
+    tools/hbox_native.sh attach smoke-SHA9                             # wait; print run.log
+
+`run` prints the `hbox_native.sh` command it starts and, for a tier's kits,
+the command to run by hand on hbox.  `list [TIER]` shows each entry with its
+questions and reason; `modules TIER` prints the module names for any other
+runner (an overlay image is picked up through the same `FN_NATIVE_*`
+variables every module reads).  Tell the integrator before a run; one run
+at a time on hbox.  `tools/scenario_suite.py check` (in `make check`) keeps
+the file honest: every module exists and drives an image, codes and opt-ins
+are known, no `-mock` or source-only module is listed.
+
+A tier's result is the run's `run.log` (OK / FAILED / SKIPPED per module,
+with the image set named); a red is classified (implementation, harness,
+environment) with the run id, never re-expected.
+
 ## What `make check` is
 
 `make check` plans ~90 steps and `tools/check_steps.py` runs them in parallel,

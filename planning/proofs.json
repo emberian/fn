@@ -1410,7 +1410,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "planning/evidence/manifests/certify-20260924T144913Z-1419146.json",
         "planning/evidence/manifests/certify-20260924T145118Z-1441609.json",
@@ -6070,7 +6070,7 @@
         "PRF-160"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner.lisp",
         "books/owner-feed-subject.lisp",
@@ -8641,7 +8641,7 @@
         "PRF-256"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config.lisp",
         "books/config-invariants.lisp",
@@ -8801,7 +8801,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-feed.lisp",
         "books/owner-feed-subject.lisp",
@@ -9768,7 +9768,7 @@
         "PRF-252"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/consumer-reason.lisp",
         "books/consumer-owner-local.lisp",
@@ -9800,7 +9800,7 @@
         "PRF-263"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/consumer-withdrawal.lisp",
         "tests/acl2/consumer-withdrawal-tests.lisp",
@@ -10845,7 +10845,7 @@
         "PRF-164"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-reader-read.lisp",
         "tests/acl2/owner-reader-read-tests.lisp",
@@ -11895,7 +11895,7 @@
         "PRF-288"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-time-admission.lisp",
         "books/peer-inbound-invariants.lisp",
@@ -12431,7 +12431,7 @@
         "PRF-302"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-rcompat-reply-cat-is-rcompat-reply",
         "fn-rcompat-retrieval-cat-is-retrieval",
@@ -13819,7 +13819,7 @@
         "PRF-377"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/memory-credits.lisp",
         "books/owner-credits.lisp",
@@ -14210,7 +14210,7 @@
         "PRF-222"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/group-access-cache.lisp",
         "books/group-access.lisp",
@@ -15544,7 +15544,7 @@
         "PRF-106"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-frb-open-as-is-ref-open-as",
         "fn-frb-open-payload-as-is-ref-open-as",
@@ -16487,7 +16487,7 @@
         "PRF-383"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/rev-onto.lisp",
         "books/config.lisp",
@@ -19136,7 +19136,7 @@
         "PRF-1065"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/page-window-lease.lisp",
         "host/page-window-lease-host.lisp",
@@ -19161,7 +19161,7 @@
         "PRF-1119"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/page-window-executor.lisp",
         "books/page-window-read.lisp",
@@ -21555,7 +21555,7 @@
         "PRF-346"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/protocol-table.lisp",
         "books/protocol-served.lisp",
@@ -22059,7 +22059,7 @@
     {
       "id": "PRF-1260",
       "title": "Resumable pull/catch-up stable sweeps retain every admitted round",
-      "statement": "The actual pull worker calls fn-prd-sweep; under true-listp remaining and subsetp-equal remaining active, fn-prd-sweep-visits-all-admitted-rounds gives the complete ordered remaining list. fn-prd-action retains partial I/O before later effects/events. Assumes each physical attempt returns; DNS, physical latency, whole-round completion and retained-context funding are not proved. fn-prd-round-past-deadline-is-lost: an unfinished round at or past its ACL2 deadline (fn-prd-round-deadline, 600 s from its begin) has the single action (:lost :round-deadline); the session machines fail it with the cursor at its last journaled position (S054/S067 interim bound; a scheduling bound, not a data cap).",
+      "statement": "The actual pull worker calls fn-prd-sweep; under true-listp remaining and subsetp-equal remaining active, fn-prd-sweep-visits-all-admitted-rounds gives the complete ordered remaining list. fn-prd-action retains partial I/O before later effects/events. Assumes each physical attempt returns; DNS, physical latency, whole-round completion and retained-context funding are not proved. fn-prd-round-past-deadline-is-lost: an unfinished round at or past its ACL2 deadline (fn-prd-round-deadline, 600 s from its begin) has the single action (:lost :round-deadline); the session machines fail it with the cursor at its last journaled position (S054/S067 interim bound; a scheduling bound, not a data cap). EXTENSION (lane catchup2, 2026-10-04; S145 for the pull worker, tests/test_native_feed_idle.py on d5b0b9100: 2,466 owner transit holds in 13 s): host/native/pull-service.lisp fnn-pull-worker pauses, after a sweep in which no round progressed, for fn-prd-pause-ms on the owner's commit signal (fnn-pull-idle-wait; a commit, a configuration change or the stop wakes it). fn-prd-pause-is-bounded: every pause is at least fn-prd-idle-ms (10) and at most fn-prd-idle-max-ms (1,000). fn-prd-pause-polls-while-a-round-runs: with a round admitted the pause is the I/O poll. fn-prd-pause-never-sleeps-past-a-due-round: with none, the pause is at most the wait until any free, scheduled row of the pull and catch-up tables is due (or the poll). Teeth: tests/acl2/peer-round-driver-tests.lisp.",
       "milestone": "M4",
       "requirements": [
         "NNT-018",
@@ -23021,7 +23021,7 @@
         "PRF-1288"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "files": [
         "books/decoded-worker-assignment.lisp",
         "books/decoded-worker-job.lisp",

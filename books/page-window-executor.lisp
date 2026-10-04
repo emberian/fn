@@ -78,6 +78,26 @@
           (mv :released (list (fn-prl-nth 0 w) (fn-prl-nth 1 w) :idle nil) ledger1)
         (mv :stale-job w ledger)))))
 
+; The returned job's buffer moves to the window cache (fn-prw-cache): the
+; slot goes idle, the ledger keeps only KEEP for the cached buffer.
+(defun fn-pwx-cache (ledger w token keep)
+  (declare (xargs :guard t))
+  (if (not (fn-pwx-boundp ledger w token :returned)) (mv :stale-job w ledger)
+    (mv-let (word ledger1) (fn-prw-cache ledger token keep)
+      (if (equal word :cached)
+          (mv :cached (list (fn-prl-nth 0 w) (fn-prl-nth 1 w) :idle nil) ledger1)
+        (mv :stale-job w ledger)))))
+
+(defthm fn-pwx-cache-requires-exact-returned-window-and-slot
+  (implies (equal (mv-nth 0 (fn-pwx-cache ledger w token keep)) :cached)
+           (and (fn-pwx-boundp ledger w token :returned)
+                (equal (mv-nth 0 (fn-prw-cache ledger token keep)) :cached)
+                (equal (mv-nth 1 (fn-pwx-cache ledger w token keep))
+                       (list (fn-prl-nth 0 w) (fn-prl-nth 1 w) :idle nil))
+                (equal (mv-nth 2 (fn-pwx-cache ledger w token keep))
+                       (mv-nth 1 (fn-prw-cache ledger token keep)))))
+  :rule-classes nil)
+
 ; Cancellation revokes publication authority, but neither marks actual return
 ; nor frees any charge. The four-field worker is still the sole exact owner.
 (defun fn-pwx-cancel (ledger w token)
@@ -144,7 +164,7 @@
   :hints (("Goal" :in-theory (enable fn-prl-build fn-prl-nth))))
 
 (in-theory (disable fn-pwx-tokenp fn-pwx-rowp fn-pwx-boundp
-                    fn-pwx-acquire fn-pwx-return fn-pwx-release))
+                    fn-pwx-acquire fn-pwx-return fn-pwx-release fn-pwx-cache))
 
 (defthm fn-pwx-acquire-preserves-worker
   (implies (fn-pwx-rowp w)
