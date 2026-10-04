@@ -137,10 +137,10 @@ def attachments(paths) -> dict[str, set[str]]:
     found: dict[str, set[str]] = collections.defaultdict(set)
     for path in paths:
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = file_text(path)
         except OSError:
             continue
-        for form in forms(text):
+        for form in file_forms(path):
             if not form.startswith("(defattach"):
                 continue
             one = ATTACH_ONE.match(form)
@@ -151,6 +151,111 @@ def attachments(paths) -> dict[str, set[str]]:
             for left, right in ATTACH_PAIR.findall(head):
                 found[left.lower()].add(right.lower())
     return found
+
+
+# ---------------------------------------------------------------- file memo
+#
+# Every scan below reads a book's top-level forms, and theorem_forms parses
+# each book again with the ledger's reader: ~3,000 files, five or six times
+# over, every run (X17: reach --strict was 11 minutes of a train pass).
+# Both are functions of the file's bytes, so they are memoised by content:
+# FILE_MEMO holds, under the digest of (this file, tools/ledger.py, the
+# Python, the kind, the path and the text), what the scan computed.  An
+# edited book is re-read; the rest are not.  One pickle, read once and
+# rewritten when something new was computed, keeping only what this run
+# used.  Under build/cache/, which tools/check_steps.py never keys a step
+# on.  FN_REACH_CACHE=0 turns it off; a path moves it.
+FILE_MEMO = ROOT / "build" / "cache" / "reach" / "files.pickle.z"
+_TEXT: dict = {}
+_MEMO: dict | None = None
+_MEMO_USED: dict = {}
+_MEMO_SALT: bytes | None = None
+
+
+def _memo_path():
+    import os
+    setting = os.environ.get("FN_REACH_CACHE", "")
+    if setting == "0":
+        return None
+    return pathlib.Path(setting) if setting else FILE_MEMO
+
+
+def file_text(path) -> str:
+    """PATH's text, read once per process (OSError propagates, as read_text)."""
+    key = str(path)
+    if key not in _TEXT:
+        _TEXT[key] = pathlib.Path(path).read_text(encoding="utf-8", errors="replace")
+    return _TEXT[key]
+
+
+def memoised(kind: str, rel: str, text: str, compute):
+    """COMPUTE() for this KIND of scan over REL's TEXT, from the memo when an
+    earlier run computed it over the same bytes with the same code."""
+    global _MEMO, _MEMO_SALT
+    import hashlib
+    where = _memo_path()
+    if where is None:
+        return compute()
+    if _MEMO is None:
+        import atexit
+        import pickle
+        import zlib
+        try:
+            _MEMO = pickle.loads(zlib.decompress(where.read_bytes()))
+            if not isinstance(_MEMO, dict):
+                _MEMO = {}
+        except Exception:
+            _MEMO = {}
+        atexit.register(_memo_save)
+    if _MEMO_SALT is None:
+        salt = hashlib.sha256(b"fn-reach-file-memo-1\0" + sys.version.encode())
+        for source in (pathlib.Path(__file__), pathlib.Path(callgraph.ledger.__file__)):
+            salt.update(source.resolve().read_bytes())
+        _MEMO_SALT = salt.digest()
+    digest = hashlib.sha256(_MEMO_SALT)
+    digest.update(kind.encode() + b"\0" + rel.encode() + b"\0" + text.encode("utf-8", "surrogatepass"))
+    key = digest.hexdigest()
+    if key in _MEMO:
+        value = _MEMO[key]
+    else:
+        value = compute()
+        _MEMO[key] = value
+        _MEMO_USED["dirty"] = True
+    _MEMO_USED[key] = True
+    return value
+
+
+def _memo_save() -> None:
+    import os
+    import pickle
+    import zlib
+    where = _memo_path()
+    if where is None or _MEMO is None:
+        return
+    used = {k: v for k, v in _MEMO.items() if k in _MEMO_USED}
+    if not _MEMO_USED.get("dirty") and len(used) == len(_MEMO):
+        return
+    try:
+        where.parent.mkdir(parents=True, exist_ok=True)
+        temporary = where.with_name(".{}.{}.tmp".format(where.name, os.getpid()))
+        # zlib level 1: the memo is mostly book text (~50 MB raw, ~10 MB packed).
+        temporary.write_bytes(zlib.compress(pickle.dumps(used, protocol=pickle.HIGHEST_PROTOCOL), 1))
+        os.replace(temporary, where)
+    except OSError:
+        pass  # a memo that cannot be written is a slower run, never a wrong one
+
+
+def file_forms(path) -> list[str]:
+    """forms() of PATH's text, memoised by its bytes."""
+    text = file_text(path)
+    return memoised("forms", str(path), text, lambda: forms(text))
+
+
+def defined(symbols, table) -> set:
+    """The SYMBOLS that TABLE (a dict of definitions) defines.  Never
+    `symbols & set(table)': that copies the whole table (~25,000 names) per
+    call, and the audit asks it once per theorem (X17: most of the step)."""
+    return {symbol for symbol in symbols if symbol in table}
 
 
 def forms(text: str) -> list[str]:
@@ -193,10 +298,10 @@ def definitions(paths, pattern=DEFUN):
     found = {}
     for path in paths:
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = file_text(path)
         except OSError:
             continue
-        for form in forms(text):
+        for form in file_forms(path):
             match = pattern.match(form)
             if match:
                 found[match.group(1).lower()] = (
@@ -244,11 +349,11 @@ def record_definitions(paths):
     found = {}
     for path in paths:
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = file_text(path)
         except OSError:
             continue
         rel = str(path.relative_to(ROOT))
-        for form in forms(text):
+        for form in file_forms(path):
             if not re.match(r"\(fn-defrecord\s", form, re.I):
                 continue
             tree = read_sexp(form)
@@ -283,11 +388,11 @@ def absstobjs(paths):
     found = {}
     for path in paths:
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = file_text(path)
         except OSError:
             continue
         rel = str(path.relative_to(ROOT))
-        for form in forms(text):
+        for form in file_forms(path):
             head = re.match(r"\((defabsstobj|defstobj)\s", form, re.I)
             if not head:
                 continue
@@ -322,10 +427,10 @@ def stobj_attachments(paths) -> dict[str, set[str]]:
     found: dict[str, set[str]] = collections.defaultdict(set)
     for path in paths:
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = file_text(path)
         except OSError:
             continue
-        for form in forms(text):
+        for form in file_forms(path):
             match = re.match(rf"\(attach-stobj\s+({NAME})\s+({NAME})\s*\)", form, re.I)
             if match:
                 found[match.group(1).lower()].add(match.group(2).lower())
@@ -493,7 +598,7 @@ class Graph:
             if str(path.relative_to(ROOT)) not in self.loaded_hosts:
                 continue
             text = path.read_text(encoding="utf-8", errors="replace")
-            for symbol in self.symbols(text) & set(self.book_defs):
+            for symbol in defined(self.symbols(text), self.book_defs):
                 if symbol not in seen:
                     seen.add(symbol)
                     self.via[symbol] = str(path.relative_to(ROOT))
@@ -613,7 +718,7 @@ class Graph:
         symbols of the text this checker synthesises for the rest."""
         found = (self.symbols(form) if isinstance(form, str)
                  else callgraph.symbols(form[2:]))
-        return found & self.known - {own}
+        return {symbol for symbol in found if symbol in self.known and symbol != own}
 
 
 class Finding:
@@ -641,33 +746,49 @@ def theorem_forms(paths) -> dict:
     """name -> (file, form) for every `defthm'/`defthmd', including those
     inside an `encapsulate', `local', `defsection' or `progn' (a top-level
     only scan left such events unresolved, which passed them silently)."""
-    import ledger
     found = {}
     for path in paths:
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = file_text(path)
         except OSError:
             continue
         rel = str(path.relative_to(ROOT))
-        # Preserve literal theorem spelling for this checker's lexical term
-        # reader (including rationals and escaped symbols). Only generated
-        # events need the shared mirror's printable form.
-        for form in forms(text):
-            for match in NESTED_DEFTHM.finditer(form):
-                name = match.group(1).lower()
-                if name in found:
-                    continue
-                inner = forms(form[match.start():])
-                if inner:
-                    found[name] = (rel, inner[0])
-        try:
-            parsed = ledger.Reader(text).top_level()
-        except ledger.ReadError:
-            continue
-        for form, _ in ledger.source_events(parsed):
-            if ledger.head(form) in ("defthm", "defthmd") and len(form) >= 3:
-                found.setdefault(str(form[1]), (rel, ledger.source_text(form)))
+        for name, form in memoised("theorems", rel, text,
+                                   lambda: _file_theorems(text)):
+            if name not in found:
+                found[name] = (rel, form)
     return found
+
+
+def _file_theorems(text: str) -> list:
+    """[(name, form)] of one file's theorems, in theorem_forms' order of
+    preference: the lexical reader's nested spelling first, then the shared
+    reader's events (a name already seen keeps its first form)."""
+    import ledger
+    out, seen = [], set()
+    # Preserve literal theorem spelling for this checker's lexical term
+    # reader (including rationals and escaped symbols). Only generated
+    # events need the shared mirror's printable form.
+    for form in forms(text):
+        for match in NESTED_DEFTHM.finditer(form):
+            name = match.group(1).lower()
+            if name in seen:
+                continue
+            inner = forms(form[match.start():])
+            if inner:
+                seen.add(name)
+                out.append((name, inner[0]))
+    try:
+        parsed = ledger.Reader(text).top_level()
+    except ledger.ReadError:
+        return out
+    for form, _ in ledger.source_events(parsed):
+        if ledger.head(form) in ("defthm", "defthmd") and len(form) >= 3:
+            name = str(form[1])
+            if name not in seen:
+                seen.add(name)
+                out.append((name, ledger.source_text(form)))
+    return out
 
 
 def _substitute(term, env: dict):
@@ -854,7 +975,7 @@ def hosted_call(term, env, graph, subjects) -> bool:
                 and hasattr(graph, "unfold") else None)
     if unfolded is not None:
         # An abbreviation the event is about: what it abbreviates is.
-        widened = subjects | ((tree_symbols(unfolded) & set(graph.book_defs))
+        widened = subjects | (defined(tree_symbols(unfolded), graph.book_defs)
                               - graph.stobj_names)
         return hosted_call(unfolded, env, graph, widened)
     if (isinstance(head, str) and head in subjects and head in graph.reachable
@@ -889,14 +1010,14 @@ class Subject:
             self.via = "export"
             return
         hyps, conclusion = split_statement(form or "")
-        functions = tree_symbols(conclusion) & set(graph.book_defs)
+        functions = defined(tree_symbols(conclusion), graph.book_defs)
         functions -= graph.stobj_names
-        assumed = hypothesis_heads(hyps) & set(graph.book_defs)
+        assumed = defined(hypothesis_heads(hyps), graph.book_defs)
         narrowed = functions - assumed
         if not functions:
             # A conclusion that calls nothing (`(equal x :done)') states a
             # consequence of its hypotheses; what it is about is there.
-            functions = (tree_symbols(hyps) & set(graph.book_defs)) - graph.stobj_names
+            functions = defined(tree_symbols(hyps), graph.book_defs) - graph.stobj_names
             narrowed = functions
         self.functions = sorted(narrowed or functions)
         bound_hyps, bound_conclusion = split_statement(form or "", keep_binders=True)
@@ -1076,7 +1197,8 @@ def equality_bridges(graph: "Graph", theorems: dict) -> dict[str, list]:
         # indexed scan to `plain'; `(equal (fence d bs) (fn-bs-make (files
         # bs) ..))' only says what the result is built from.
         def plain(side):
-            return len(side) > 1 and not any(tree_symbols(arg) & set(graph.book_defs) for arg in side[1:])
+            return len(side) > 1 and not any(symbol in graph.book_defs
+                                             for arg in side[1:] for symbol in tree_symbols(arg))
         if left in graph.book_defs and right in graph.book_defs and left != right:
             if plain(conclusion[2]):
                 bridges[left].append((right, tname))
