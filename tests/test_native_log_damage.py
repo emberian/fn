@@ -92,8 +92,11 @@ class LogDamageTests(unittest.TestCase):
                 damaged = sha(self.store / SEGMENT)
                 stop = max(q for q in self.starts if q <= at)
                 after = sum(1 for q in self.starts if q > stop)
-                for verb in ("status", "recover", "status"):
-                    result = self.fn(verb)
+                # `status --replay': the plain `status' of a stopped store
+                # reads the checkpoint header alone (row S3); the open's
+                # report over the log is --replay's.
+                for verb in (("status", "--replay"), ("recover",), ("status", "--replay")):
+                    result = self.fn(*verb)
                     err = result.stderr.decode("utf-8", "replace")
                     self.assertEqual(result.returncode, fz.EXIT_REFUSED, (verb, err[-600:]))
                     self.assertIn("reason=log-damaged at=000001.log:{} ".format(stop), err)

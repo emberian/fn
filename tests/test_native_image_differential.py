@@ -294,8 +294,8 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
             self.assertEqual(sorted(ta), sorted(tb), name + ": the stores' file lists")
         REPORT[name] = row
 
-    def status(self, image, cfg):
-        got = image.run(["operator", cfg, "status"])
+    def status(self, image, cfg, *options):
+        got = image.run(["operator", cfg, "status", *options])
         return got.returncode, got.stdout, got.stderr
 
     # -- the cases ---------------------------------------------------------
@@ -429,7 +429,9 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
                 if "checkpoint" in p.name and p.is_file():
                     p.unlink()
             before = tree(store)
-            status = self.status(image, cfg)
+            # `status --replay': the plain status reads the checkpoint
+            # header alone (row S3), so the open's refusal is --replay's.
+            status = self.status(image, cfg, "--replay")
             run = image.run(["operator", cfg, "run"], timeout=300)
             for code, err in ((status[0], status[2]), (run.returncode, run.stderr)):
                 self.assertEqual(code, 1, err)

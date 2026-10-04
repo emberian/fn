@@ -31,6 +31,7 @@ import re
 import signal
 import shutil
 import sys
+import time
 import unittest
 
 from tests.campaign import native_cuts
@@ -502,13 +503,23 @@ class StateCheckpointTests(StateCheckpointFixture):
         holds it and leaves the checkpoint file untouched."""
         self.init_with_checkpoint_at_three()
         old = self.digest()
-        self.node.start()
+        owner = self.node.start()
         offline = self.checkpoint("store")
         self.assertNotEqual(offline.returncode, EXIT_OK, offline.stdout.decode())
         self.assertEqual(self.digest(), old)
         asked = self.checkpoint("operator")
         self.assertEqual(asked.returncode, EXIT_OK, asked.stderr.decode())
         self.assertIn(b"requested", asked.stdout + asked.stderr)
+        # "requested" starts the publication; it is not its end.  A stop
+        # while it runs ends it with the old checkpoint kept ("CHECKPOINT auto
+        # failed ... the owner is stopping"), so the stop waits for the
+        # owner's own line that sequence 5 is published.  (Until 10-04 the
+        # stop's own second of latency, SCEN-OWNER-STOP-LATENCY, hid the race.)
+        text, end = owner.stderr.wait_for(
+            lambda b: (lambda m: m.end() if m else None)(
+                re.search(rb"CHECKPOINT auto sequence=5 [^\n]*\n", b)),
+            0, time.monotonic() + 120)
+        self.assertIsNotNone(end, text[-3000:])
         self.node.stop()
         self.assertEqual(self.open_line(), "open=checkpoint:5 suffix=0")
 
@@ -647,8 +658,21 @@ class StateCheckpointCutTests(StateCheckpointFixture):
     """Every STATE_CHECKPOINT_CUTS cut, SIGKILL and EIO, through both entries."""
     image = DEVELOPER
 
-    def run_cut(self, cut, action, entry):
+    def checkpoint_at_three(self, entry):
+        """init_with_checkpoint_at_three's store, built and asserted once per
+        ENTRY in this test and restored from a snapshot for every later cut:
+        the cut loop's 20 cases start from byte-identical stores, and the
+        setup's assertions ran on the first."""
+        label = "checkpoint-at-three-" + entry
+        if (self.node.root / "snapshots" / label).is_dir():
+            self.node.restore(label)
+            self.ids = ["<scp-{}@example.invalid>".format(n) for n in range(5)]
+            return
         self.init_with_checkpoint_at_three(entry)
+        self.node.snapshot(label)
+
+    def run_cut(self, cut, action, entry):
+        self.checkpoint_at_three(entry)
         old = self.digest()
         expected = self.observation()
         died = self.checkpoint(entry, env={
