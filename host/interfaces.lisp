@@ -5425,6 +5425,9 @@
   :keystones (fn-prd-round-past-deadline-is-lost))
 (definterface fn-prd-round-deadline :class :common-lisp-compliant)
 (definterface fn-prd-flight-quantum :class :common-lisp-compliant)
+(definterface fn-prd-pause-ms :class :common-lisp-compliant
+  :keystones (fn-prd-pause-is-bounded fn-prd-pause-polls-while-a-round-runs
+              fn-prd-pause-never-sleeps-past-a-due-round))
 (definterface fn-prd-deadline :class :common-lisp-compliant)
 (definterface fn-prd-resume-at :class :common-lisp-compliant)
 (definterface fn-prd-read-limit :class :common-lisp-compliant)
