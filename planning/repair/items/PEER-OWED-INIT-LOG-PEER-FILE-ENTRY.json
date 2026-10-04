@@ -1,0 +1,12 @@
+{
+ "category": "proof-owed",
+ "file": "books/store-init-log-publication.lisp",
+ "id": "PEER-OWED-INIT-LOG-PEER-FILE-ENTRY",
+ "notes": [],
+ "owner": "peer-default",
+ "severity": "medium",
+ "source": "lanedumps/peer-default.md",
+ "state": "open",
+ "title": "fn-bs-init-log-complete-store-carries-the-peer-flight-profile (books/store-init-log-publication.lisp) is a keystone of the init-log model (fn-bs-init-log-files / -program), which no host entry calls: the host stages init's files by hand (host/native/io.lisp fnn-command-init-published) and tests/campaign/native_cuts.py checks the plan's order from source only. Its sibling fn-bs-init-log-complete-store-carries-the-node-secret is in the same position (cited on no entry). Owed: the host drives the publication through a generated program whose equation with fn-bs-init-log-program is proved, then both cite on that entry; until then neither keystone is a claim about the running init.",
+ "updated": "2026-10-04T19:52:25Z"
+}
