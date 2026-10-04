@@ -212,12 +212,18 @@ when it was filed).  Nothing is ever invalidated: a changed input is a new
 key.  Pruning is by age and by `kind` (certify entries are already pruned by
 `certs.py prune`).
 
-Why this is enough for the integrator's gate: the FORCE=1 rule exists to
-refuse another tree's STALE verdict.  A verdict whose every input digest
-re-verifies at the batch head is not another tree's verdict; it is this
-tree's, computed earlier.  The gate keeps `--no-cache` for the steps whose
-inputs cannot be traced and for a fresh audit once per release; for the rest
-it records which verdicts it reused, by key, in the step table.
+What a cached verdict is for, and what it is not (the integrator's
+conditions, 2026-10-04, accepted): it is for the LOOP, so a lane never
+re-runs a red whose inputs it did not touch.  It satisfies no READY and no
+batch gate: a lane's READY is a live run of the steps its change reaches,
+and the batch runner's `FORCE=1` pass stays a full live run.  For that to be
+safe with one store per box, the key covers what a red usually depends on
+outside the tree -- the interpreter path and version, the `FN_*`
+environment, the ACL2 and SBCL launchers' paths and digests -- so an
+environment red stops replaying the moment the box is fixed; and a replayed
+red names the run that produced it (sha, box, time, log path), so the reader
+opens the real failure, not a replay.  Non-verdicts (exit 2 NOT RUN, a
+signal, 127) are never cached.
 
 ### 2.2 The red set is a first-class object
 

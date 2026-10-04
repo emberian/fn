@@ -2622,9 +2622,14 @@ check-fast-lane:
 #     step's output printed whole and kept in build/check-steps/logs/;
 #   - skipping a step whose traced inputs (the files it opened, the
 #     directories it listed, the paths it stat'ed, its git commands' output)
-#     are unchanged since its last PASS: "cached (inputs unchanged since
-#     <sha>)", from build/check-cache/ (never committed).  A step that starts
-#     ACL2 or another untraceable process always runs.
+#     are unchanged since its last VERDICT (a pass, or a red with exit 1; a
+#     NOT RUN, a signal or 127 is never cached): "cached (inputs unchanged
+#     since <sha>)", a red replayed red with the run that produced it named,
+#     from build/check-cache/ (never committed; FN_VERDICT_STORE=DIR names a
+#     store shared by every worktree on the box, since tree files are keyed
+#     by relative path).  A step that starts ACL2 or another untraceable
+#     process always runs.  A cached verdict satisfies no READY and no batch
+#     gate: those are live runs.
 # `make check-lane CHECK_CHANGED_SINCE=REV` runs only the steps the diff from
 # REV can reach (their last traced inputs; a docs-only diff skips host_check,
 # reach_check, green_check; a step never traced in this tree runs): the rest
