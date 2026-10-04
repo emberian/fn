@@ -756,10 +756,6 @@ class DerivedStubTests(unittest.TestCase):
         self.assertTrue(harness_check.LINTS["test-harness-reach"][1], "reach gates")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class RawMacroTemplateTests(unittest.TestCase):
     def calls(self, source):
         from tools import ledger
@@ -870,3 +866,7 @@ class NestedFixtureTests(unittest.TestCase):
             (root / "tests/child.lisp").write_text(block)
             sources = harness_check.harness_fixture_sources(root, "tests/root.lisp", '(load "tests/child.lisp")')
             self.assertNotIn("fnn-missing", sources["tests/child.lisp"])
+
+
+if __name__ == "__main__":
+    unittest.main()
