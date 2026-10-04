@@ -24,6 +24,10 @@ book that cannot be a root yet names why in a `; UNHOOKED <who> (<date>):
 `tools/farm.py submit auto tests/acl2/NAME-tests` installs what the box's
 cache holds at current bytes and certifies the rest; `--affected-by
 books/X.lisp` adds every root whose closure contains a changed book.
+A lane's READY gate is a narrow `--recertify` of the books it touched, on
+the laptop (with `FN_CERT_ORIGIN_KIND=run`, so other worktrees may install
+the pairs: a `worktree`-origin pair is refused elsewhere as foreign-local)
+or on persvati; the closure certify is the integrator's, once per batch.
 
 A pass shows: each event holds in ACL2's logic, executed by ACL2's evaluator,
 over the definitions at these bytes.  It does not show that the host calls
