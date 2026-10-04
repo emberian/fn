@@ -5,14 +5,14 @@
   "proved": 2,
   "partial": 1,
   "derived": 6,
-  "none": 1680
+  "none": 1690
  },
  "by_class": {
   "common-lisp-compliant": {
    "proved": 2,
    "partial": 1,
    "derived": 6,
-   "none": 953
+   "none": 958
   },
   "ideal": {
    "proved": 0,
@@ -24,26 +24,30 @@
    "proved": 0,
    "partial": 0,
    "derived": 0,
-   "none": 581
+   "none": 586
   }
  },
  "families": {
-  "served": 25,
-  "priced": 1,
+  "served": 30,
+  "priced": 4,
   "priced_families": [
-   "article"
+   "article",
+   "body",
+   "head",
+   "stat"
   ],
   "unpriced_families": [
+   "article-input",
    "authentication",
-   "body",
    "capabilities",
    "check",
    "close",
+   "closed",
    "compression-transition",
    "date",
+   "extension",
    "group",
    "group-range",
-   "head",
    "header-pattern",
    "header-range",
    "help",
@@ -54,8 +58,9 @@
    "newgroups",
    "newnews",
    "overview",
+   "partial-input",
    "post",
-   "stat",
+   "protocol-error",
    "takethis",
    "tls-transition"
   ]
@@ -65,8 +70,9 @@
   "fn-sl-loop",
   "fn-sl-one",
   "fn-sl-step",
-  "fn-tariff-article-descriptor",
-  "fn-tariff-article-octets"
+  "fn-tariff-article-octets",
+  "fn-tariff-descriptor",
+  "fn-tariff-stat-octets"
  ],
  "entries": [
   {
@@ -5412,6 +5418,16 @@
    "declared_in": null
   },
   {
+   "name": "fn-lgu-take-verdict",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
    "name": "fn-lgw-entry-len-bounded",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -9464,6 +9480,16 @@
    "declared_in": null
   },
   {
+   "name": "fn-owner-article-preflight-unavailable",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
    "name": "fn-owner-article-ready-plan-step",
    "class": "program",
    "claim": "none",
@@ -11424,6 +11450,16 @@
    "declared_in": null
   },
   {
+   "name": "fn-owner-page-window-cache-byte-at",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
    "name": "fn-owner-page-window-current-octet",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -11465,6 +11501,16 @@
   },
   {
    "name": "fn-owner-page-window-executor-acquire-funded",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-owner-page-window-executor-cache",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -12524,6 +12570,26 @@
    "declared_in": null
   },
   {
+   "name": "fn-pinv-host-accept-step",
+   "class": "program",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-pinv-host-acceptance-source",
+   "class": "program",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
    "name": "fn-pinv-host-bindings-request-decode",
    "class": "program",
    "claim": "none",
@@ -12535,6 +12601,16 @@
   },
   {
    "name": "fn-pinv-host-bindings-request-encode",
+   "class": "program",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-pinv-host-confirm-record-plan",
    "class": "program",
    "claim": "none",
    "bound": null,
@@ -12564,6 +12640,16 @@
    "declared_in": null
   },
   {
+   "name": "fn-pinv-host-confirm-step",
+   "class": "program",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
    "name": "fn-pinv-host-genesis-principal",
    "class": "program",
    "claim": "none",
@@ -12575,6 +12661,16 @@
   },
   {
    "name": "fn-pinv-host-invitation-source",
+   "class": "program",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-pinv-host-issue-plan",
    "class": "program",
    "claim": "none",
    "bound": null,
@@ -12855,6 +12951,16 @@
   },
   {
    "name": "fn-prd-loss-class-ok",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-prd-pause-ms",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -17053,18 +17159,25 @@
    "theorem": "fn-sl-step-conses-bound",
    "declared_in": "books/string-line-cursor-cost.lisp"
   },
-  "fn-tariff-article-descriptor": {
-   "claim": "proved",
-   "bound": "3",
-   "unaccounted": [],
-   "theorem": "fn-tariff-article-descriptor-conses-bound",
-   "declared_in": "host/cost-host.lisp"
-  },
   "fn-tariff-article-octets": {
    "claim": "proved",
    "bound": "0",
    "unaccounted": [],
    "theorem": "fn-tariff-article-octets-conses-bound",
+   "declared_in": "host/cost-host.lisp"
+  },
+  "fn-tariff-descriptor": {
+   "claim": "proved",
+   "bound": "3",
+   "unaccounted": [],
+   "theorem": "fn-tariff-descriptor-conses-bound",
+   "declared_in": "host/cost-host.lisp"
+  },
+  "fn-tariff-stat-octets": {
+   "claim": "proved",
+   "bound": "0",
+   "unaccounted": [],
+   "theorem": "fn-tariff-stat-octets-conses-bound",
    "declared_in": "host/cost-host.lisp"
   }
  }

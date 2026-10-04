@@ -110,26 +110,14 @@
                                            server fn-arena fn-cat))
           (t 0))))
 
-; The producer.  PREVIEW is fn-ocap-preview's (:preview NEXT :article
-; TOKENS), TOKENS the first command's tokens with its keyword; AS the
-; connection's authenticated session and CONFIG its pinned configuration.
-; The reader session and the Xref server are the factory's own projections
-; (books/nntp-auth.lisp fn-auth-view-session; books/article-stream-server.lisp
-; fn-asto-server-candidate-is-original-server).
+; The Xref server the compatibility form prepends with, from the
+; connection's pinned configuration (books/article-stream-server.lisp
+; fn-asto-server-candidate-is-original-server).  The producer that reads
+; the row is generated (books/output-tariff-families.lisp).
 (defun fn-tariff-article-server (config)
   (declare (xargs :guard t))
   (let ((server (fn-asto-server-candidate config)))
     (if (fn-xref-serverp server) server nil)))
-
-(defun fn-tariff-article-preview (preview as config fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard t))
-  (let* ((tokens (fn-ocap-at 3 preview))
-         (args (if (consp tokens) (cdr tokens) nil))
-         (session (fn-post-session-base
-                   (fn-peer-session-base (fn-auth-view-session as config)))))
-    (fn-tariff-article-descriptor
-     (fn-tariff-article-row-charge session args (fn-tariff-article-server config)
-                                   fn-arena fn-cat))))
 
 ; ---------------------------------------------------------------------------
 ; What the charge is a bound of.
