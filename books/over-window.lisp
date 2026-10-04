@@ -108,6 +108,12 @@
   :hints (("Goal" :in-theory (disable fn-ovw-hdr-lines fn-nntp-stuff-lines fn-ovw-status
                                       fn-ovw-hdr-status fn-ovw-hdr-empty fn-ovw-hdr-quantum))))
 
+(defthm fn-ovw-hdr-step-next-consp
+  (implies (mv-nth 1 (fn-ovw-hdr-step cur w fn-arena fn-cat))
+           (consp (mv-nth 1 (fn-ovw-hdr-step cur w fn-arena fn-cat))))
+  :hints (("Goal" :in-theory (disable fn-ovw-hdr-lines fn-nntp-stuff-lines fn-ovw-status
+                                      fn-ovw-hdr-status fn-ovw-hdr-empty fn-ovw-hdr-quantum))))
+
 (verify-guards fn-ovw-hdr-step
   :hints (("Goal" :in-theory (disable fn-ovw-hdr-lines fn-nntp-stuff-lines fn-ovw-status
                                       fn-ovw-hdr-status fn-ovw-hdr-empty fn-ovw-hdr-quantum))))
