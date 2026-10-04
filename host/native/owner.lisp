@@ -3339,12 +3339,24 @@ follows is justified only by this line."
                 ;; The catalog's gate BEFORE the seal: a prepare it would
                 ;; refuse seals nothing (books/catalog-may-seal.lisp; the
                 ;; refusal path below consumes the reservation as before).
+                ;; RS-01: the gate's refusal is this POST's refusal, not a
+                ;; fault: the reservation is consumed as a known refusal,
+                ;; nothing is sealed, the store stays open, and the typed
+                ;; Store refusal is the attempt's :refused (the handlers
+                ;; above; books/nntp-post.lisp's 441).  It used to reach
+                ;; fnn-owner-prepare-refusal-word as :recovery-required, which
+                ;; has no arm: a fault that fenced the store and stopped the
+                ;; owner.
                 (when (and (eq prepared :seal-buffer)
                            (or (fnn-developer-selector "FN_NATIVE_TEST_CAT_SEAL_REFUSE")
                                (not (eq (fnn-owner-core 'fn-owner-cat-may-seal) t))))
-                  (setq prepared :recovery-required)
                   (fnn-err "POST seal-gate refused arena=~d"
-                           (first (fnn-call 'fn-arena-count (fnn-live-arena)))))
+                           (first (fnn-call 'fn-arena-count (fnn-live-arena))))
+                  (setf (fnn-store-fenced store) t)
+                  (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation) :refused)
+                    (fnn-indeterminate "owner could not consume refused reservation"))
+                  (setf (fnn-store-fenced store) nil)
+                  (fnn-refuse "the catalog cannot take a sealed payload now; nothing was sealed"))
                 (when (eq prepared :seal-buffer)
                   (fnn-seal-live-buffer)
                   ;; Step 8: the catalog prepares the store's row, which names
