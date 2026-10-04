@@ -4,11 +4,13 @@
  "file": "books/served-catalog.lisp",
  "id": "SCL2",
  "locus": "served-books",
- "notes": [],
+ "notes": [
+  "10-04 15:10 served path already answers option 2' (23ac96cac): tests.test_native_over_pins test_sparse_quanta_retain_pipeline_and_hold_until_complete_reply asserts exact 211 2 1 34, NEXT 1->34 across tombstones, LAST 34->1, LISTGROUP 1 and 34; ok at native-set-bdd4f40c4-r2. Not covered: all-reclaimed 211 0 W+1 W case. FAIRY-3 prep 2026-10-04."
+ ],
  "owner": "served-catalog-live",
  "severity": "high",
  "source": "over_pins",
- "state": "open",
+ "state": "refuted",
  "title": "GROUP/LISTGROUP/LIST count the AVAILABLE articles after reclaim (option 2'), NEXT/LAST reclaim-aware (with S042)",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-04T19:10:31Z"
 }
