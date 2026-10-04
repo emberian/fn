@@ -1,0 +1,16 @@
+{
+ "category": "error-handling",
+ "detail": "planning/spw-recheck-2026-10-04.md",
+ "evidence": "owner.lisp:1203 fnn-owner-feed-open failed-open path does (ignore-errors (fnn-close fd)): a physical close failure leaves no debt. owner.lisp:1244-1250 fnn-owner-feed-append-locked calls fnn-owner-feed-close unguarded before fnn-indeterminate, so a close failure replaces the indeterminate with the raw close error; its exit class then depends on *fnn-section-step* (not verified whether it classes as a fence).",
+ "exposure": "conditional",
+ "file": "host/native/owner.lisp",
+ "fix": "Failed-open close through the exact-debt path of the feed close; append-locked closes inside fnn-unwind-cleanups so the indeterminate stays primary.",
+ "id": "SPW-R5",
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "low",
+ "source": "spw-recheck-2026-10-04",
+ "state": "open",
+ "title": "Feed journal open/append swallow or replace close failures: failed-open path ignore-errors the close; append-locked closes unguarded before signalling indeterminate",
+ "updated": "2026-10-04T14:47:39Z"
+}

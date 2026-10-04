@@ -82,13 +82,24 @@
   (setq *opened-journal* (make-fnn-app-journal :store store :lock-fd :journal :fenced nil)))
 (dolist (body-fails '(t nil))
   (let* ((*store* (make-fnn-store :lock-fd :store)) (*opened-journal* nil)
-         (*failures* '(:journal)) (*calls* nil) (caught nil))
+         (*failures* '(:journal)) (*calls* nil) (caught nil)
+         (*fnn-escape-cleanup-debts* (list nil)))
     (handler-case
         (fnn-app-call-with-journal "/store" "/journal" :workflow t
           (lambda (journal) (declare (ignore journal))
             (if body-fails (error *body-condition*) (values :durable :detail))))
       (error (e) (setq caught e)))
-    (assert (if body-fails (eq caught *body-condition*) (typep caught 'fnn-store-indeterminate)))
+    ;; A fence dominates: a journal close that fails uncertainly under a body
+    ;; fault escalates the escape (fnn-escape-cleanup-failed) to the
+    ;; uncertain outcome, and the body fault is retained as its primary.
+    (assert (typep caught 'fnn-store-indeterminate))
+    (assert (if body-fails
+                ;; the journal's failed close and the Store close that conveys
+                ;; its debt: both recorded under the one primary.
+                (and (= (length (car *fnn-escape-cleanup-debts*)) 2)
+                     (every (lambda (debt) (eq (first debt) *body-condition*))
+                            (car *fnn-escape-cleanup-debts*)))
+              (null (car *fnn-escape-cleanup-debts*))))
     (assert (equal (reverse *calls*) '(:unlock :journal :unlock :store)))
     (assert (fnn-store-fenced *store*))
     (assert (fnn-store-close-debt *store*))
@@ -135,13 +146,24 @@
                (eq (second form) 'fnn-bpo-call-with-owner-journal)) (eval form))))
 (dolist (body-fails '(t nil))
   (let* ((*store* (make-fnn-store :lock-fd :store)) (*calls* nil)
-         (*failures* '(:carry)) (caught nil))
+         (*failures* '(:carry)) (caught nil)
+         (*fnn-escape-cleanup-debts* (list nil)))
     (handler-case
         (fnn-bpo-call-with-owner-journal "/store" "/journal" nil
           (lambda (&rest ignored) (declare (ignore ignored))
             (if body-fails (error *body-condition*) (values :durable :detail))))
       (error (e) (setq caught e)))
-    (assert (if body-fails (eq caught *body-condition*) (typep caught 'fnn-store-indeterminate)))
+    ;; A fence dominates: a journal close that fails uncertainly under a body
+    ;; fault escalates the escape (fnn-escape-cleanup-failed) to the
+    ;; uncertain outcome, and the body fault is retained as its primary.
+    (assert (typep caught 'fnn-store-indeterminate))
+    (assert (if body-fails
+                ;; the journal's failed close and the Store close that conveys
+                ;; its debt: both recorded under the one primary.
+                (and (= (length (car *fnn-escape-cleanup-debts*)) 2)
+                     (every (lambda (debt) (eq (first debt) *body-condition*))
+                            (car *fnn-escape-cleanup-debts*)))
+              (null (car *fnn-escape-cleanup-debts*))))
     (assert (equal (reverse *calls*) '(:unlock :carry :unlock :workflow :feeds :unlock :store)))
     (assert (fnn-store-close-debt *store*))))
 (format t "PASS actual carry owner cleanup: carry/workflow/feed/Store all attempted; uncertainty retained.~%")

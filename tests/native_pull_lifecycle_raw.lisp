@@ -232,6 +232,8 @@
 (defun fnn-pull-flight-release-lease (flight)
   (declare (ignorable flight))
   (harness-stub-reached 'fnn-pull-flight-release-lease "host/native/pull-service.lisp"))
+(defun fnn-pull-monotonic ()
+  (harness-stub-reached 'fnn-pull-monotonic "host/native/pull-service.lisp"))
 (defun fnn-pull-prune-journals (runtime plans &optional kind)
   (declare (ignorable runtime plans kind))
   (harness-stub-reached 'fnn-pull-prune-journals "host/native/pull-service.lisp"))
@@ -240,12 +242,14 @@
   (harness-stub-reached 'fnn-pull-retire-flights "host/native/pull-service.lisp"))
 ;;; ---- derived stubs: END ----
 (load-deployed-forms "host/native/owner.lisp"
- '((defun fnn-owner-actor-for-custody) (defun fnn-owner-thread-escape)))
+ '((defun fnn-owner-actor-for-custody) (defun fnn-owner-thread-escape)
+   (defun fnn-owner-signal-commit)))
 (load-deployed-forms "host/native/pull-service.lisp"
  '((defstruct (fnn-pull-runtime (:constructor %make-fnn-pull-runtime)))
    (defstruct (fnn-pull-flight (:constructor %make-fnn-pull-flight)))
    (defparameter *fnn-pull-runtime-lock*) (defparameter *fnn-pull-runtimes*)
-   (defun fnn-pull-runtime-get) (defun fnn-pull-worker) (defun fnn-pull-settle-leases)
+   (defun fnn-pull-runtime-get) (defun fnn-pull-commits-seen) (defun fnn-pull-idle-wait)
+   (defun fnn-pull-worker) (defun fnn-pull-settle-leases)
    (def-actor fnn-pull-spawn) (defun fnn-pull-service-start)
    (defun fnn-pull-service-wake) (defun fnn-pull-service-close)))
 (defvar *pull-cut* nil)

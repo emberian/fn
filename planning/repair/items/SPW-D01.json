@@ -1,0 +1,16 @@
+{
+ "category": "architecture",
+ "detail": "planning/spw-recheck-2026-10-04.md",
+ "evidence": "bp-node-machine.lisp:19 *fn-bpn-machine-max-octets* (fn-bpn-machine-limitp :383) with bp-adu.lisp:31,37, bp-bundle.lisp:56,67 and bp-node-foundation.lisp:18: a store profile admits an article up to 2^32-1 but BP cannot carry past 16 MiB; raising one alone breaks fn-bpnpf-profile-within-codec-widths (160+ dependents). bp-node-machine.lisp:21 *fn-bpn-machine-max-records* 4096: custody rows held at once (profile field 9 exists, not the live cap). bp-primary-cbor.lisp:111 *fn-bpc-max-text* 1024 (198 deps): EID text, RFC 9171 sets none. bp-receive-evidence.lisp:21 *fn-bpn-evidence-max-records* 4096: lab receiver evidence over its lifetime; the 4097th faults recovery. Owned by the BP-DESIGN/bp2 lane per caps.md; filed here because none had a ledger item.",
+ "exposure": "conditional",
+ "file": "books/bp-node-machine.lisp",
+ "fix": "Per design-2026-09-25-bounds.md 1.4: move the four with their codec widths into node-profile fields.",
+ "id": "SPW-D01",
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "medium",
+ "source": "spw-recheck-2026-10-04",
+ "state": "open",
+ "title": "D27 data ceilings left by the caps lane (design 1.4 binding rows, caps.md continuation): BP 2^24 profile ceiling with its codec widths, custody rows 4096, EID text 1024, lab receive-evidence 4096",
+ "updated": "2026-10-04T14:47:40Z"
+}

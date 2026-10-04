@@ -48,7 +48,8 @@ import signal
 import time
 import unittest
 
-from tests.native_harness import EXIT_OK, ROOT, Client, Node, native_image, scratch
+from tests.native_harness import (EXIT_OK, ROOT, Client, Node, decided_launch,
+                                  fund_peer_flights, native_image, scratch)
 import sys
 sys.path.insert(0, str(ROOT / "tools"))
 import blake3_ref  # noqa: E402  fn's digest (books/blake3.lisp), store format 10
@@ -81,14 +82,6 @@ LONG_PROFILE = ("--max-transactions", "4096", "--max-history-octets", str(256 <<
 # The independent peer flight authority (specs/resource-vector.md): FNP1 and
 # six big-endian u64 allowances -- heap, disk, flights, workers, spool per
 # flight, metered work.  The spool holds the largest batch (one long article).
-FLIGHT_POLICY = (8 << 20, 512 << 20, 2, 1, 64 << 20, 1 << 50)
-
-
-def fund_peer_flights(node, policy=FLIGHT_POLICY):
-    (node.store_path / "peer-flight-profile").write_bytes(
-        b"FNP1" + b"".join(v.to_bytes(8, "big") for v in policy))
-
-
 def sha256_of(path):
     try:
         return hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -168,12 +161,14 @@ class NativePeerCatchupTests(unittest.TestCase):
         node.operator("peer", "catch-up", name, INTERVAL, expect=EXIT_OK)
 
     def start(self, node, extra_env=None):
+        """Every node runs at the figure the installed launcher's probe decides
+        for it (native_harness.decided_launch)."""
         image = None
         if extra_env:
             if DEVELOPER is None or not os.access(DEVELOPER, os.X_OK):
                 self.skipTest("set FN_NATIVE_DEVELOPER_HOST: the FN_CATCHUP_TEST_KILL cuts")
             image = DEVELOPER
-        node.start(image=image, env=extra_env)
+        node.start(image=image, env={**decided_launch(node, image), **(extra_env or {})})
 
     def stop(self, node):
         node.stop(expect=None)

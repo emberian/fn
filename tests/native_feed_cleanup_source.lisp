@@ -8,6 +8,12 @@
   (loop for form = (read input nil :eof) until (eq form :eof) do
     (when (and (consp form) (eq (car form) 'defmacro)
                (eq (second form) 'fnn-unwind-cleanups)) (eval form))))
+;; The escape arm of the macro: the deployed fnn-escape-cleanup-failed and the
+;; ACL2 decisions it calls.  Every failure here is a fault (rank of the primary),
+;; so the primary stands; a cleanup that outranked it would signal fnn-fault.
+(load "tests/unwind_cleanups_prelude.lisp")
+(in-package "ACL2")
+(defun fnn-fault (&rest ignored) (declare (ignore ignored)) (error "outranked: not expected here"))
 (defstruct fnn-owner-service store feeds)
 (defvar *calls* nil)
 (defvar *close-condition* (make-condition 'simple-error :format-control "close failed"))
@@ -56,8 +62,11 @@
     (when (and (consp form) (eq (car form) 'defun)
                (eq (second form) 'fnn-bps-read-route-table)) (eval form))))
 (dolist (body-fails '(t nil))
-  (let ((*route-body-fails* body-fails) (*calls* nil) (caught nil))
+  (let ((*route-body-fails* body-fails) (*calls* nil) (caught nil)
+        (*fnn-escape-cleanup-debts* (list nil)))
     (handler-case (fnn-bps-read-route-table "/unused") (error (e) (setq caught e)))
     (assert (equal (reverse *calls*) '(:feeds :store)))
-    (assert (eq caught (if body-fails *open-condition* *close-condition*)))))
+    (assert (eq caught (if body-fails *open-condition* *close-condition*)))
+    ;; The cleanup failures under the escaping primary are recorded, not lost.
+    (assert (= (length (car *fnn-escape-cleanup-debts*)) (if body-fails 2 0)))))
 (format t "PASS actual route-table cleanup: Store close attempted; primary condition preserved.~%")

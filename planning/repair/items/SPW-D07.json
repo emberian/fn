@@ -1,0 +1,16 @@
+{
+ "category": "architecture",
+ "detail": "planning/spw-recheck-2026-10-04.md",
+ "evidence": "checkpoint-auxiliary.lisp:14 *fn-cpa-clone-max-entries* 1000000, :15 *fn-cpa-clone-max-bytes* 1099511627776; used at host/native/checkpoint.lisp:450,452. Not a work bound: the clone is a one-shot operator copy.",
+ "exposure": "conditional",
+ "file": "books/checkpoint-auxiliary.lisp",
+ "fix": "Stream the copy under per-step work bounds, or derive from the store profile.",
+ "id": "SPW-D07",
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "low",
+ "source": "spw-recheck-2026-10-04",
+ "state": "open",
+ "title": "D27: the checkpoint clone command refuses a store tree over 1,000,000 entries or 1 TiB",
+ "updated": "2026-10-04T14:47:40Z"
+}

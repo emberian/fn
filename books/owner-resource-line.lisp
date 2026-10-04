@@ -61,3 +61,26 @@
 
 (in-theory (disable fn-orln-refusalp fn-orln-unavailable-line
                     fn-orln-unavailable-result fn-orln-unavailable-span))
+
+; The 403 that answers a retrieval whose payload read did not come
+; (books/article-stream-owner.lisp fn-asto-plan-unavailable): past its
+; dependency deadline it is time-bars' line (fn-otb-unavailable-line, C3);
+; refused by name before allocation it is this book's line (P12).  NIL for
+; any other word: the host has no reply to give in its place.
+(defun fn-orln-preflight-line (word since now limit)
+  (declare (xargs :guard t))
+  (cond ((equal word :unavailable) (fn-otb-unavailable-line since now limit))
+        ((fn-orln-refusalp word) (fn-orln-unavailable-line word))
+        (t nil)))
+
+; KEYSTONE.  Every line it gives begins with the 403 code, and it gives one
+; exactly for the deadline and the two named refusals.
+(defthm fn-orln-preflight-line-is-a-403
+  (let ((line (fn-orln-preflight-line word since now limit)))
+    (and (iff line (or (equal word :unavailable) (fn-orln-refusalp word)))
+         (implies line (equal (take 3 line) '(52 48 51)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-orln-preflight-line fn-orln-unavailable-line
+                                     fn-otb-unavailable-line fn-osch-text fn-orln-refusalp))))
+
+(in-theory (disable fn-orln-preflight-line))

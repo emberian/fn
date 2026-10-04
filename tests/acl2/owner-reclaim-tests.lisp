@@ -92,10 +92,48 @@
 (assert-event (equal (fn-orc-request-status :blocked) :refused))
 (assert-event (equal (fn-orc-request-word nil nil nil nil) :no-recorded-instant))
 (assert-event (equal (fn-orc-request-status :no-recorded-instant) :refused))
+; S038 (the request's half): a pass or a publication in flight refuses the
+; request by name; it was answered :accepted before, so a second reclaim (dry
+; or recorded) exited 0 while the first ran (native run2-d5b0b9100).
+(assert-event (equal (fn-orc-request-status :in-flight) :refused))
+(assert-event (equal (fn-orc-request-status :queued) :refused))
+(assert-event (equal (fn-orc-request-status
+                      (fn-orc-request-word :dry-run nil nil t))
+                     :refused))
+; Premise inhabitation of fn-orc-request-accepted-only-when-it-runs: the
+; accepted side is reachable.
+(assert-event (equal (fn-orc-request-status (fn-orc-request-word nil nil nil t)) :accepted))
+; Teeth: the keystone fails for the status before S038 (a pass in flight
+; answered :accepted), and for one that refuses everything.
 (must-fail-checked
- (defthm ort-never-past-a-deferral-without-idle
-   (implies blockedp
-            (equal (fn-orc-request-status (fn-orc-request-word pass inflight blockedp recordedp))
+ (defthm ort-request-accepted-only-when-it-runs-old-status
+   (equal (equal (if (member-eq (fn-orc-request-word pass inflight blockedp recordedp)
+                                '(:blocked :no-recorded-instant))
+                     :refused :accepted)
+                 :accepted)
+          (equal (fn-orc-request-word pass inflight blockedp recordedp) :requested))
+   :rule-classes nil))
+(must-fail-checked
+ (defthm ort-request-accepted-only-when-it-runs-refuse-all
+   (equal (equal :refused :accepted)
+          (equal (fn-orc-request-word pass inflight blockedp recordedp) :requested))
+   :rule-classes nil))
+; Since S038 a pass or a publication in flight refuses too, so a standing
+; deferral is refused whatever is in flight (this was a must-fail while
+; :in-flight and :queued were accepted).
+(defthm ort-never-past-a-deferral-without-idle
+  (implies blockedp
+           (equal (fn-orc-request-status (fn-orc-request-word pass inflight blockedp recordedp))
+                  :refused))
+  :rule-classes nil)
+; Teeth of fn-orc-never-past-a-deferral: a status that refuses only a missing
+; instant answers a standing deferral :accepted.
+(must-fail-checked
+ (defthm ort-never-past-a-deferral-refusing-only-no-instant
+   (implies (and (not pass) (not (natp inflight)) blockedp)
+            (equal (if (eq (fn-orc-request-word pass inflight blockedp recordedp)
+                           :no-recorded-instant)
+                       :refused :accepted)
                    :refused))
    :rule-classes nil))
 

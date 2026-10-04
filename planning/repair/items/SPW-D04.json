@@ -1,0 +1,16 @@
+{
+ "category": "architecture",
+ "detail": "planning/spw-recheck-2026-10-04.md",
+ "evidence": "policy.lisp:59 *fn-pol-max-name-octets* 128, used at :71 fn-pol-namep; records-shape.lisp:51 allows 256.",
+ "exposure": "conditional",
+ "file": "books/policy.lisp",
+ "fix": "Derive from the group-name bound; not in the design doc.",
+ "id": "SPW-D04",
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "low",
+ "source": "spw-recheck-2026-10-04",
+ "state": "open",
+ "title": "D27: a group named 129..256 octets cannot have a policy (policy name cap 128 below the record group-name cap 256 and the RFC 3977 460)",
+ "updated": "2026-10-04T14:47:40Z"
+}

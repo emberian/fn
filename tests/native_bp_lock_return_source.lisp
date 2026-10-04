@@ -56,6 +56,10 @@
                  (member (if (consp (second f)) (car (second f)) (second f)) names))
         (eval f)))))
 (fixture-read "host/native/io.lisp" '(fnn-unwind-cleanups))
+;; The escape arm of the macro (cleanup-escalate, review M3d): the deployed
+;; fnn-escape-cleanup-failed and the ACL2 decisions it calls.
+(load "tests/unwind_cleanups_prelude.lisp")
+(in-package "ACL2")
 (fixture-read "host/native/tcpcl.lisp"
  '(fnn-tcl-spool-acquire fnn-tcl-spool-release fnn-tcl-spool-close-observation *fnn-tcl-spool-close-debts*))
 (fixture-read "host/native/bp-service.lisp"
@@ -78,9 +82,19 @@
 (let ((*fnn-bps-release-debts* nil) (*fnn-tcl-spool-close-debts* nil) (*calls* nil) (*fail* nil))
   (fnn-bps-release (make-fnn-bps :lock-fd 10 :spool-lock 11))
   (assert (eq (fnn-bps-release-observation) :closed)))
-(let ((*fnn-tcl-spool-close-debts* nil) (*calls* nil) (*fail* '(:close 11)) (*body-failure* t))
+;; A body fault whose descriptor close is then uncertain: the fence dominates
+;; (fnn-escape-cleanup-failed, review M3d), so the escape is the uncertain
+;; outcome and the body's fault is retained as its primary, never dropped.
+(defun primary-retained-p ()
+  (some (lambda (debt) (eq (first debt) *primary*)) (car *fnn-escape-cleanup-debts*)))
+(let ((*fnn-tcl-spool-close-debts* nil) (*calls* nil) (*fail* '(:close 11)) (*body-failure* t)
+      (*fnn-escape-cleanup-debts* (list nil)))
   (handler-case (progn (fnn-tcl-spool-acquire "/root") (error "false open"))
-    (simple-error (condition) (assert (eq condition *primary*))))
+    (error (condition)
+      ;; The body's fault is the transfer that starts the unwind; the failed
+      ;; close then replaces it with the uncertain outcome.
+      (assert (typep condition 'fnn-store-indeterminate))
+      (assert (primary-retained-p))))
   (assert (eq (fnn-tcl-spool-close-observation) :uncertain))
   (assert (= 11 (caar *fnn-tcl-spool-close-debts*)))
   (let ((before (copy-list *calls*)))
@@ -90,9 +104,12 @@
 (format t "native BP lock physical return source PASS~%")
 
 (let ((*fnn-bps-release-debts* nil) (*fnn-tcl-spool-close-debts* nil)
-      (*inspect-failure* t) (*fail* '(:close 11)) (*calls* nil))
-  (handler-case (fnn-bps-lock "/root")
-    (simple-error (condition) (assert (eq condition *primary*))))
+      (*inspect-failure* t) (*fail* '(:close 11)) (*calls* nil)
+      (*fnn-escape-cleanup-debts* (list nil)))
+  (handler-case (progn (fnn-bps-lock "/root") (error "false lock"))
+    (error (condition)
+      (assert (typep condition 'fnn-store-indeterminate))
+      (assert (primary-retained-p))))
   (assert (eq (fnn-bps-release-observation) :uncertain))
   (assert (equal (reverse *calls*) '((:unlock 11) (:close 11))))
   (assert (equal (subseq (fnn-bps-release-debt (car *fnn-bps-release-debts*)) 0 2) '(11 nil))))

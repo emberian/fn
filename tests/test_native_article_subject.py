@@ -2,6 +2,7 @@
 retaining their distinct stored-byte commitments. The harness invokes the
 runner's declared immutable image coordinate; changed protected bytes remain
 observable outside-in as different served bodies."""
+import email.utils
 import re
 import time
 import unittest
@@ -15,7 +16,13 @@ class NativeArticleSubjectTests(unittest.TestCase):
         root = scratch(self, "fn-native-article-subject-")
         nodes = []
         msgid = "<one-article@relay.invalid>"
-        protected = (b"From: a@example.invalid\r\nSubject: exact protected\r\n"
+        # A relayed article carries a Date within the skew (transit hygiene,
+        # PRF-236: books/peer-inbound.lisp refuses 437 "no Injection-Date or
+        # Date"); the fixture predated that rule and was refused before it
+        # reached the subject this case is about.
+        date = email.utils.formatdate(usegmt=True).encode("ascii")
+        protected = (b"Date: " + date + b"\r\n"
+                     b"From: a@example.invalid\r\nSubject: exact protected\r\n"
                      b" folded continuation\r\nNewsgroups: fn.test\r\n"
                      b"Message-ID: <one-article@relay.invalid>\r\n\r\n"
                      b"body\r\nPath: body text is protected\r\n")
