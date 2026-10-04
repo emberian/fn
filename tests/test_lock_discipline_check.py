@@ -397,11 +397,29 @@ class R5R6R8R10(unittest.TestCase):
         src = self.observed_mutex_template() + """
 (defun fnn-nested (service)
   (fnn-with-observed-mutex ((fnn-owner-service-lock service) :owner)
-    (sb-thread:with-mutex ((fnn-owner-service-syncer-ledger-lock service)) 1)))
+    (sb-thread:with-mutex ((fnn-owner-service-undeclared-ledger-lock service)) 1)))
 """
         found = run(src, ["R5"])
-        self.assertIn("O->?(fnn-owner-service-syncer-ledger-lock)", [f.key for f in found])
+        self.assertIn("O->?(fnn-owner-service-undeclared-ledger-lock)", [f.key for f in found])
         self.assertFalse(any("?nil" in f.key for f in found))
+
+    def test_unwind_cleanups_cleanup_forms_are_walked(self):
+        # The actual macro source: its `,@(mapcar (lambda (cleanup) `(handler-case
+        # ,cleanup ...)) cleanups)' splice must expand per cleanup, so a lock
+        # edge inside a cleanup is seen and the macro is not opaque.
+        forms = ldc.read_forms((ROOT / "host/native/io.lisp").read_text())
+        macro = ldc.render(next(f for f, _ in forms if ldc.head(f) == "defmacro"
+                                and ldc.sym(f[1]) == "fnn-unwind-cleanups"), limit=100000)
+        src = macro + """
+(defun fnn-cleanup-inverted (service)
+  (fnn-unwind-cleanups ((fnn-close 1))
+    (fnn-close 2)
+    (sb-thread:with-mutex (*fnn-extent-lock*)
+      (sb-thread:with-mutex ((fnn-owner-service-lock service)) 1))))
+"""
+        self.assertFalse([f for f in run(src, ["R1"]) if "hides" in f.message])
+        found = run(src, ["R5"])
+        self.assertTrue(any(f.key == "E->O" and "INVERTS" in f.message for f in found))
 
     def test_actual_section_envelope_keeps_owner_callback_lock(self):
         wanted = {"fnn-section-envelope", "fnn-with-observed-owner",
@@ -415,10 +433,10 @@ class R5R6R8R10(unittest.TestCase):
 (defun fnn-budget (service)
   (fnn-owner-serialized service nil
     (lambda ()
-      (sb-thread:with-mutex ((fnn-owner-service-syncer-ledger-lock service)) 1))))
+      (sb-thread:with-mutex ((fnn-owner-service-undeclared-ledger-lock service)) 1))))
 """
         found = run(src, ["R5"])
-        self.assertIn("O->?(fnn-owner-service-syncer-ledger-lock)", [f.key for f in found])
+        self.assertIn("O->?(fnn-owner-service-undeclared-ledger-lock)", [f.key for f in found])
         self.assertFalse(any("?nil" in f.key for f in found))
 
     def test_observed_mutex_still_refuses_reverse_order(self):

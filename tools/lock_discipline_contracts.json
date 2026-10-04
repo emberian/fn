@@ -276,6 +276,9 @@
   "fnn-owner-attempt-handlers",
   "fnn-owner-measured",
   "fnn-posix",
+  "fnn-unwind-cleanups",
+  "fnn-with-history-image",
+  "fnn-bps-with-send-socket",
   "fnn-stdout-guard",
   "fnn-core-cold-values",
   "fnn-core-cold-single",
@@ -708,13 +711,7 @@
   "files": [
    "host/native/admin.lisp"
   ],
-  "files_why": "lane ACTORS (rebuild step 0, the admin pilot): every owner section of host/native/admin.lisp is a declared def-section (fnn-quantum-control) and no function in it classifies a condition; strict by file, so a later hand wrapper or an undeclared quantum there fails --check with no baseline escape",
-  "files_except": {
-   "host/native/admin.lisp": {
-    "fnn-admin-query": "offline command executor (no owner section; the command scope fnn-failure-scope :command is the generator's next piece): fnn-unwind-cleanups hides a handler-case the check does not expand (io.lisp d8c94940b, 23 sites tree-wide)",
-    "fnn-admin-execute": "offline command executor, as fnn-admin-query"
-   }
-  }
+  "files_why": "lane ACTORS (rebuild step 0, the admin pilot): every owner section of host/native/admin.lisp is a declared def-section (fnn-quantum-control) and no function in it classifies a condition; strict by file, so a later hand wrapper or an undeclared quantum there fails --check with no baseline escape"
  },
  "realization": [
   {
