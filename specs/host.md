@@ -389,7 +389,7 @@ above measurement, instead of a fixed 20 s that sat within 2x of it.
 Native feed links retain peer identifiers as ACL2 octet lists. Socket buffers
 remain byte vectors, converted explicitly at the core boundary. The actual
 `fnn-feed-link-for-peer` constructor and `fnn-feed-dial-plan` calls are exercised
-by `tests/native_feed_peer_octets.lisp` using the production conversion helpers
+by `tests/native_feed_peer_octets_raw-mock.lisp` using the production conversion helpers
 and a boundary observer. This regression rejects the previous vector-valued
 identifier, which made the logical peer lookup report an absent endpoint. It
 checks representation transport only; configured lookup, reconnection and
@@ -1152,8 +1152,8 @@ native Lisp condition behavior.
 
 The native I/O repair at `3312778` shares EINTR/progress handling across file
 and socket calls, preserves partial offsets and EOF, and rejects zero write
-progress. `tests/native_io_progress.lisp`, run by
-`sh tests/test_native_io_progress.sh`, injects POSIX observations into the same
+progress. `tests/native_io_progress_raw.lisp`, run by
+`sh tests/native_io_progress_raw.lisp`, injects POSIX observations into the same
 raw functions and exercises reader condition propagation. Its error assertions
 check the requested condition type; a wrong-type witness checks the test helper.
 These are deterministic host tests, not ACL2 proofs or physical I/O qualification.
@@ -1903,7 +1903,7 @@ ACL2-authored five-field event, producing the one-shot grant consumed by
 `fn-owner-prepare-retention`. Refused or malformed gate results precede log
 kernel, owner reservation and frontier effects. Standalone Store reservations
 retain the existing codec successor route. The source routing fixture
-`tests/native_retention_identity_route_raw.lisp` checks these calls and order;
+`tests/native_retention_identity_route_raw-mock.lisp` checks these calls and order;
 a matching native BP undertake/release/reopen scenario remains required.
 
 ## Once-only mux cleanup receipts (SCN-1091)

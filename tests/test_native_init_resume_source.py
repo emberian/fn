@@ -13,7 +13,7 @@ SBCL = os.environ.get("FN_SBCL") or shutil.which("sbcl")
 class InitResumeSourceTests(unittest.TestCase):
     def test_existing_intent_is_checked_before_resumed_effects(self):
         result = subprocess.run(
-            [SBCL, "--script", str(ROOT / "tests/native_init_resume_source.lisp")],
+            [SBCL, "--script", str(ROOT / "tests/native_init_resume_source-mock.lisp")],
             cwd=ROOT, text=True, capture_output=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("profile-mismatch code=1 effects=NIL", result.stdout)

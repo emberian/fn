@@ -9,10 +9,11 @@
 ;; The deployed forms this boundary runs, loaded by name so a rename fails
 ;; here rather than leaving a stale stub in its place.  Since m5-capacity
 ;; (ce27b18d) the host holds no count and no bound: the capacity refusal is
-;; the owner's verdict, asked by the deployed fnn-owner-preflight-publication
-;; (host/native/owner.lisp) through fn-owner-publication-verdict
-;; (host/owner-host.lisp), whose word is books/store-capacity-vector.lisp
-;; fn-cvec-verdict-at's.  Both are loaded here; only the ACL2 call is recorded.
+;; the owner's verdict, asked by the deployed fnn-owner-consumer-commit
+;; (host/native/owner.lisp) through fn-owner-consumer-publication-verdict
+;; (host/owner-host.lisp) over the event's own charge, whose word is
+;; books/consumer-publication-budget.lisp fn-cpb-verdict-at's.  Only the ACL2
+;; call is recorded.
 (defun load-deployed-forms (path wanted)
   (let ((missing (copy-list wanted)))
     (with-open-file (stream path)
@@ -61,19 +62,28 @@
             do (return form)
           finally (error "~a has no defthm ~a" path name))))
 (defparameter *verdict-words*
-  (let ((host (read-acl2-defun "host/owner-host.lisp" 'fn-owner-publication-verdict))
-        (bridge (read-acl2-defthm "books/store-profile-carried.lisp"
-                                  'fn-pvc-verdict-carried-is-cvec-verdict-at))
-        (book (read-acl2-defun "books/store-capacity-vector.lisp" 'fn-cvec-verdict-at)))
-    (unless (tree-mentions (cdddr host) 'fn-pvc-verdict-carried)
-      (error "fn-owner-publication-verdict no longer answers fn-pvc-verdict-carried's word"))
-    (unless (and (tree-mentions bridge 'fn-pvc-verdict-carried)
-                 (tree-mentions bridge 'fn-cvec-verdict-at))
-      (error "fn-pvc-verdict-carried-is-cvec-verdict-at no longer equates the two"))
+  ;; Since the consumer charge (books/consumer-publication-budget.lisp) the
+  ;; deployed commit asks fn-owner-consumer-publication-verdict for THIS
+  ;; event's charge; its word is fn-cpb-event-verdict-carried's, which is
+  ;; fn-cpb-verdict-carried's, which is fn-cpb-verdict-at's
+  ;; (fn-cpb-carried-verdict-is-current-profile-verdict).
+  (let ((host (read-acl2-defun "host/owner-host.lisp" 'fn-owner-consumer-publication-verdict))
+        (event (read-acl2-defun "books/consumer-publication-budget.lisp"
+                                'fn-cpb-event-verdict-carried))
+        (bridge (read-acl2-defthm "books/consumer-publication-budget.lisp"
+                                  'fn-cpb-carried-verdict-is-current-profile-verdict))
+        (book (read-acl2-defun "books/consumer-publication-budget.lisp" 'fn-cpb-verdict-at)))
+    (unless (tree-mentions (cdddr host) 'fn-cpb-event-verdict-carried)
+      (error "fn-owner-consumer-publication-verdict no longer answers fn-cpb-event-verdict-carried's word"))
+    (unless (tree-mentions (cdddr event) 'fn-cpb-verdict-carried)
+      (error "fn-cpb-event-verdict-carried no longer answers fn-cpb-verdict-carried's word"))
+    (unless (and (tree-mentions bridge 'fn-cpb-verdict-carried)
+                 (tree-mentions bridge 'fn-cpb-verdict-at))
+      (error "fn-cpb-carried-verdict-is-current-profile-verdict no longer equates the two"))
     (let ((words (remove :release
                          (remove :guard (remove-duplicates (keyword-leaves (car (last book))))))))
       (unless (and (= (length words) 2) (member :admissible words))
-        (error "fn-cvec-verdict-at's words changed: ~s" words))
+        (error "fn-cpb-verdict-at's words changed: ~s" words))
       words)))
 (defparameter *at-capacity* (car (remove :admissible *verdict-words*)))
 
@@ -93,7 +103,7 @@
 (defun fnn-owner-core (name &rest args)
   (push (list* :core name args) *calls*)
   (case name
-    (fn-owner-publication-verdict *verdict*)
+    (fn-owner-consumer-publication-verdict *verdict*)
     (fn-owner-next-txid 7)
     (otherwise (error "wrong core call ~s" name))))
 (defun fnn-nat (x) (unless (and (integerp x) (<= 0 x)) (error "not nat")) x)
@@ -120,7 +130,7 @@
   (check (eq (fnn-owner-consumer-commit service event) :durable)
          "prepared event did not become durable")
   (check (equal (reverse *calls*)
-                (list '(:core fn-owner-publication-verdict :consumer)
+                (list (list :core 'fn-owner-consumer-publication-verdict event)
                       '(:core fn-owner-next-txid)
                       '(:advance 7)
                       (list :action 'fn-owner-prepare-consumer event)
@@ -132,14 +142,14 @@
                        (error "refused event published"))
     (consumer-refusal () nil))
   (check (equal (reverse *calls*)
-                (list '(:core fn-owner-publication-verdict :consumer)
+                (list (list :core 'fn-owner-consumer-publication-verdict event)
                       '(:core fn-owner-next-txid)
                       '(:advance 7)
                       (list :action 'fn-owner-prepare-consumer event)
                       '(:action fn-owner-refuse-reservation)))
          "refused reservation was not consumed before refusal")
 
-  ;; At capacity the owner's verdict is fn-cvec-verdict-at's refusing word: the
+  ;; Unaffordable, the owner's verdict is fn-cpb-verdict-at's refusing word: the
   ;; deployed preflight refuses on it before a transaction id is taken, the
   ;; frontier advanced or anything prepared.
   (setf *verdict* *at-capacity* *prepare-result* :prepared *calls* nil)
@@ -147,6 +157,6 @@
                        (error "capacity refusal missed"))
     (consumer-refusal () nil))
   (check (equal (reverse *calls*)
-                '((:core fn-owner-publication-verdict :consumer)))
+                (list (list :core 'fn-owner-consumer-publication-verdict event)))
          "capacity refusal advanced the frontier or was not the owner's verdict"))
 (format t "native owner consumer boundary passed~%")

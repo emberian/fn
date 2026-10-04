@@ -1,0 +1,96 @@
+        (:EXECUTABLE-COUNTERPART FN-NCTRL-REASON-WORD)
+        (:EXECUTABLE-COUNTERPART NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:TYPE-PRESCRIPTION FN-NATIVE-CONTROL-REASONED-REPLY-READ)
+        (:TYPE-PRESCRIPTION MEMBER-EQUAL))
+Hint-events: ((:USE FN-NATIVE-CONTROL-PRINTED-REASON-IS-THE-DECISIONS)
+              (:USE FN-NCTRL-REASONED-READ-OF-ENCODE))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION FN-NATIVE-CONTROL-STATUS-CLASS)
+             (:DEFINITION FN-NCR-CLIENT-READ))
+Time:  0.07 seconds (prove: 0.05, print: 0.00, other: 0.02)
+Prover steps counted:  6181
+
+---
+The key checkpoint goal, below, may help you to debug this failure.
+See :DOC failure and see :DOC set-checkpoint-summary-limit.
+---
+
+*** Key checkpoint at the top level
+    before a :DO-NOT-INDUCT hint stopped the proof attempt: ***
+
+Subgoal 27'
+(IMPLIES
+ (AND
+  (EQUAL (FN-NATIVE-CONTROL-REASONED-REPLY-READ
+              (FN-NATIVE-CONTROL-REASONED-REPLY-ENCODE STATUS REASON))
+         (LIST STATUS (FN-NCTRL-REASON-WORD REASON)))
+  (EQUAL
+   (FN-NATIVE-CONTROL-REASONED-CLIENT-STEP
+        (FN-NATIVE-CONTROL-REASONED-REPLY-READ
+             (FN-NATIVE-CONTROL-REASONED-REPLY-ENCODE STATUS REASON)))
+   (CONS
+      :STATUS (FN-NATIVE-CONTROL-REASONED-REPLY-READ
+                   (FN-NATIVE-CONTROL-REASONED-REPLY-ENCODE STATUS REASON))))
+  (NOT (MEMBER-EQUAL STATUS '(:ACCEPTED :DUPLICATE)))
+  (MEMBER-EQUAL STATUS
+                '(:REFUSED :CLOCK-UNUSABLE
+                           :BUSY :CONFLICT))
+  (NOT (MEMBER-EQUAL :REFUSED '(:REFUSED :UNCERTAIN :FAULT)))
+  (MEMBER-EQUAL STATUS
+                '(:ACCEPTED :DUPLICATE
+                            :REFUSED :CLOCK-UNUSABLE
+                            :BUSY :UNCERTAIN
+                            :FAULT :ARTICLE-EXCEEDS-PROFILE-BOUND
+                            :CONFLICT :AUTHOR-NOT-ENROLLED
+                            :SOURCE-MALFORMED :UNKNOWN-GROUP
+                            :CARRIER-REFUSED :CONTROL-NOT-FILED
+                            :CONTROL-MALFORMED :SIGNED-EVENT-NOT-FORMED))
+  (MEMBER-EQUAL
+       (CAR (FN-NATIVE-CONTROL-REASONED-REPLY-READ
+                 (FN-NATIVE-CONTROL-REASONED-REPLY-ENCODE STATUS REASON)))
+       '(:ACCEPTED :DUPLICATE
+                   :REFUSED :CLOCK-UNUSABLE
+                   :BUSY :UNCERTAIN
+                   :FAULT :ARTICLE-EXCEEDS-PROFILE-BOUND
+                   :CONFLICT :AUTHOR-NOT-ENROLLED
+                   :SOURCE-MALFORMED :UNKNOWN-GROUP
+                   :CARRIER-REFUSED :CONTROL-NOT-FILED
+                   :CONTROL-MALFORMED :SIGNED-EVENT-NOT-FORMED))
+  REASON)
+ (EQUAL
+  (FN-NATIVE-CONTROL-REPLY-DETAIL
+   (CADR (FN-NATIVE-CONTROL-REASONED-CLIENT-STEP
+              (FN-NATIVE-CONTROL-REASONED-REPLY-READ
+                   (FN-NATIVE-CONTROL-REASONED-REPLY-ENCODE STATUS REASON))))
+   (CADDR
+        (FN-NATIVE-CONTROL-REASONED-CLIENT-STEP
+             (FN-NATIVE-CONTROL-REASONED-REPLY-READ
+                  (FN-NATIVE-CONTROL-REASONED-REPLY-ENCODE STATUS REASON)))))
+  (FN-NCTRL-REASON-WORD REASON)))
+
+ACL2 Error [Failure] in ( DEFTHM FN-NCR-PRINTED-REASON-IS-THE-DECISIONS
+...):  See :DOC failure.
+
+******** FAILED ********
+
+ACL2 Warning in CERTIFY-BOOK:  The attempted CERTIFY-BOOK has failed
+while trying to establish the admissibility of one of the (local or
+non-local) forms in the book to be certified.
+
+
+Summary
+Form:  (CERTIFY-BOOK "books/consumer-reason" ...)
+Rules: NIL
+Warnings:  Subsume, Non-rec and Double-rewrite
+Time:  0.39 seconds (prove: 0.10, print: 0.00, other: 0.28)
+Prover steps counted:  7886
+
+ACL2 Error [Failure] in (CERTIFY-BOOK "books/consumer-reason" ...):
+See :DOC failure.
+
+******** FAILED ********
+ :ERROR
+ACL2 !>

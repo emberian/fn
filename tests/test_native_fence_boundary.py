@@ -27,7 +27,8 @@ import unittest
 from tests import test_native_checkpoint_auto as auto
 from tests import test_native_expiry as expiry
 from tests.native_harness import (EXIT, EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN,
-                                  EXIT_USAGE, Client, Node, article, native_image, scratch)
+                                  EXIT_USAGE, Client, Node, article, native_image, requires,
+                                  scratch)
 
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 
@@ -99,6 +100,7 @@ class PublicationBoundaryTests(auto.AutoCheckpointFixture):
         self.node.stop()
 
 
+@requires(DEVELOPER)
 class ReclaimInstallFenceTests(expiry.ExpiryMixin, unittest.TestCase):
     """r71 F1 / sweep S017: the reclaim pass's install/swap quantum runs inside
     the fence boundary; an uncertain install fences the owner before the
@@ -151,6 +153,7 @@ class ReclaimInstallFenceTests(expiry.ExpiryMixin, unittest.TestCase):
         self.assertTrue(replies[1].startswith(b"430") or replies[1].startswith(b"223"), replies)
 
 
+@requires(DEVELOPER)
 class NodeSecretBoundaryTests(unittest.TestCase):
     """r72 F6: the directory barrier after a node secret's publication."""
 

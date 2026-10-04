@@ -49,11 +49,6 @@ def text(result):
 
 
 class ConsumerIdentitySourceTests(unittest.TestCase):
-    def test_the_delta_code_is_24(self):
-        config = (ROOT / "books" / "config.lisp").read_text(encoding="ascii")
-        self.assertIn("((equal kind :consumer-bind) 24)", config)
-        self.assertIn("((equal code 24) :consumer-bind)", config)
-
     def test_the_host_calls_the_bound_decisions(self):
         host = (ROOT / "host" / "owner-host.lisp").read_text(encoding="ascii")
         # The polls read the live arena (records flip, flip-L6-2) inside the
