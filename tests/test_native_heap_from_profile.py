@@ -70,6 +70,8 @@ INIT_LINE = re.compile(r"^init: profile=([a-z]+) sizing=([a-z]+) "
                        re.M)
 # A named budget below the machine init observes (finding R1 of the
 # public-node rehearsal: books/heap-reservation.lisp fn-heap-init-budget-note-line).
+MIB = 1024 * 1024
+PEER_LAUNCH_RESERVE = 23082078  # fn-pfd-launch-reserve (tests/acl2/peer-flight-default-tests)
 INIT_NAMED_BELOW = re.compile(r"fn: warning init-budget-below-machine named-budget=(\d+) MB "
                               r"machine-budget=(\d+) MB: ")
 INIT_REFUSED = re.compile(r"refused init-budget-cannot-hold-profile profile=([a-z]+) "
@@ -245,8 +247,12 @@ class FreshInitTests(Harness, unittest.TestCase):
         word, sizing, reservation, budget = self.init_line(made)
         self.assertEqual(sizing, "conservative")
         self.assertIn(word, ("custom", "small"))
-        self.assertEqual(budget, 1536)
-        self.assertLessEqual(reservation, 1536)
+        # Init judges the store against the budget less the default peer
+        # flight profile's launch reserve (books/peer-flight-default.lisp
+        # fn-pfd-launch-reserve, 23,082,078 octets): every store it writes
+        # carries that profile, so every launch takes the peer extension.
+        self.assertEqual(budget, (1536 * MIB - PEER_LAUNCH_RESERVE) // MIB)
+        self.assertLessEqual(reservation, budget)
         self.start()
         self.post(port, ["<friend-{}@example.invalid>".format(n) for n in range(3)])
         self.stop()
@@ -291,7 +297,7 @@ class FreshInitTests(Harness, unittest.TestCase):
         self.assertEqual(made.returncode, EXIT_OK, text(made))
         word, _, _, budget = self.init_line(made)
         self.assertIn(word, ("small", "custom"))
-        self.assertEqual(budget, 2000)
+        self.assertEqual(budget, (2000 * MIB - PEER_LAUNCH_RESERVE) // MIB)
         # The machine gives more than the named 2,000 MB (2 GiB or more):
         # init says so by name with both figures, on stderr, and still writes.
         below = INIT_NAMED_BELOW.search(made.stderr.decode())

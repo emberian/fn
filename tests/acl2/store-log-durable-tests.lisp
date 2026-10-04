@@ -287,3 +287,39 @@
         (not (member-equal bypass run))
         (fn-bs-crash-choicesp nil (fn-bs-pending (car bypass)) (fn-bs-unit (car bypass)))
         (not (lgut-holds-p bypass nil)))))
+
+; -----------------------------------------------------------------------------
+; Lane m1-durable-2.  The log's frame bound (fn-lgu-log-max-frames-every-
+; record-within-r, fn-lgu-log-max-refuses-past-r).  At R = 64 a record of R
+; octets is framed at R + 32 and was refused at the old bound R (the batch-6
+; regression: shipped profiles admit records of R-31..R octets); R + 1 is
+; refused at both.
+(defun lgut-octets (n) (declare (xargs :guard t :verify-guards nil)) (make-list n :initial-element 7))
+(assert-event (equal (fn-lgu-take-verdict (lgut-octets 64) (fn-lgu-log-max 64)) :admissible))
+(assert-event (equal (fn-lgu-take-verdict (lgut-octets 64) 64) :record-exceeds-log-frame))
+(assert-event (equal (fn-lgu-take-verdict (lgut-octets 33) 64) :record-exceeds-log-frame))
+(assert-event (equal (fn-lgu-take-verdict (lgut-octets 65) (fn-lgu-log-max 64))
+                     :record-exceeds-log-frame))
+; Over the development preset's own R: a record of exactly R octets is framed.
+(defconst *lgut-dev-r*
+  (fn-bs-profile-max-record-octets (fn-bs-config-for-profile :development)))
+(assert-event (and (posp *lgut-dev-r*)
+                   (equal (fn-lgu-take-verdict (lgut-octets *lgut-dev-r*)
+                                               (fn-lgu-log-max *lgut-dev-r*))
+                          :admissible)
+                   (equal (fn-lgu-take-verdict (lgut-octets *lgut-dev-r*) *lgut-dev-r*)
+                          :record-exceeds-log-frame)))
+
+; fn-lgu-acknowledge (the host's one call): over the concrete kernel of the
+; opened segment with two committed records, after the third's take, seal
+; and fence, acknowledging 1 is one fn-lgc-finish-one, and asking for more
+; than the committed records stops at their count.
+(defun lgut-concrete (record)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-lgc-of (cdr (car (last (lgut-run record))))))
+(assert-event
+ (let ((c (lgut-concrete (lgut-r 3))))
+   (and (equal (fn-lgu-acknowledge c 1) (fn-lgc-finish-one c))
+        (equal (fn-lgu-acknowledge c 0) c)
+        (equal (fn-lgc-acked (fn-lgu-acknowledge c 9)) (fn-lgc-count c)))))
+

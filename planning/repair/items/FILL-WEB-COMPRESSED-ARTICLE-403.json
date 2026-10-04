@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Red on hbox batch 3 (bdd4f40c4), lat1 batch 4 (55ff708a6) and lat1:/tank/fn/scratch/fill-wt/native-fill-smoke-lat1 (fill-smoke-lat1, set 55ff708a6, tests.test_native_web 2 of 15). Not a box effect (same two fail on hbox). tests/test_native_web.py:250 article_bytes.",
+ "file": "host/native/web-host.lisp",
+ "id": "FILL-WEB-COMPRESSED-ARTICLE-403",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "tests.test_native_web test_compressed_article_uses_physical_windows_through_web_and_restart (plain and TLS classes): the first ARTICLE of a compressed article answers '403 article temporarily unavailable; a page it needs was not read within 5000 ms' instead of 220",
+ "updated": "2026-10-04T19:15:49Z"
+}

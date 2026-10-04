@@ -104,7 +104,11 @@
 
 This runs in the sole feed worker.  ACL2 owns membership; the runtime lock
 only publishes the corresponding socket resources.  Removed links are
-closed by this worker, preserving the one-closer rule."
+closed by this worker, preserving the one-closer rule.  A removed link that
+held a connection is reported to ACL2 as a loss first, exactly as every other
+close is (fnn-feed-drop-link): the feed port still holds that connection and
+its in-flight offer, and without the loss a re-created link (`peer feed NAME
+resume') offers nothing until the stale state is cleared, which nothing does."
   (let* ((service (fnn-feed-runtime-service runtime))
          (names (fnn-feed-peer-list service))
          (removed nil))
@@ -118,7 +122,11 @@ closed by this worker, preserving the one-closer rule."
                     unless (member (fnn-feed-link-peer link) names :test #'string=)
                     collect link))
         (setf (fnn-feed-runtime-links runtime) (nreverse next))))
-    (dolist (link removed) (fnn-feed-close-link runtime link))))
+    (dolist (link removed)
+      (when (and (fnn-feed-link-socket link) (not (fnn-feed-stoppingp runtime)))
+        (setq *fnn-feed-active* t)
+        (fnn-feed-lost service link (fnn-feed-now)))
+      (fnn-feed-close-link runtime link))))
 
 (defun fnn-feed-checked-word (word allowed where)
   (unless (member word allowed)
@@ -364,7 +372,7 @@ ACL2 decodes its bounded bytes; only named input/OS refusal is credential loss."
                                                     (fnn-octet-list octets) now))
             (word (fnn-feed-checked-word
                   (fnn-owner-feed-word publication)
-                  '(:starttls :tls :auth-user :auth-pass :mode :ready :send :quiet :refused :unsendable :connection-refused :streaming-refused :need-input :closed :invalid :fault)
+                  '(:starttls :tls :auth-user :auth-pass :mode :ready :send :quiet :lost :refused :unsendable :connection-refused :streaming-refused :need-input :closed :invalid :fault)
                   'fn-owner-feed-reply-chunk)))
        (when (eq word :fault)
          (fnn-fault "feed reply framer state is malformed"))
@@ -375,7 +383,10 @@ ACL2 decodes its bounded bytes; only named input/OS refusal is credential loss."
        ;; port moved and its records are flushed like a :send's; the line
        ;; names ACL2's reason and fnn-feed-consume drops the link, so
        ;; fn-feed-lost requeues the offer.  Never an owner stop.
-       (when (member word '(:send :quiet :refused :unsendable))
+       ;; :lost (books/owner-feed.lisp fn-own-feed-reply-word): ACL2 took the
+       ;; reply as a loss and moved the port; its records are flushed like a
+       ;; :quiet's and fnn-feed-consume drops the link.
+       (when (member word '(:send :quiet :lost :refused :unsendable))
          (fnn-owner-feed-flush service publication)
          ;; A reply outcome (not a 335/238 prompt) has one ACL2-rendered
          ;; line: a peer's refusal or deferral is never silent.
@@ -544,7 +555,7 @@ The greeting is then awaited under the reply wait (fn-prd-feed-action)."
          (when (fnn-feed-link-eof link)
            (fnn-feed-drop-link runtime link now
                                (fnn-feed-loss-backoff service (fnn-feed-link-peer-octets link)) :eof)))
-        ((:closed :invalid :connection-refused :streaming-refused :unsendable)
+        ((:closed :invalid :connection-refused :streaming-refused :unsendable :lost)
          (setf (fnn-feed-link-drain link) nil)
          (fnn-feed-drop-link runtime link now
                              (fnn-feed-loss-backoff service (fnn-feed-link-peer-octets link))

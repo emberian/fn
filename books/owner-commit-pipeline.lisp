@@ -88,6 +88,13 @@
 ;              the owner stops
 ;   :none      no batch remains
 ;   :fault     an event the step does not expect
+; :completed-stopping is :completed from a COMPLETE that found the owner
+; stopping: the next batch's members were told uncertain with the batch in
+; flight's (the stop's own release), so it is abandoned, not sealed: the
+; step leaves no batch in flight and none open.  (:completed there would
+; name :sync for an open next batch the stopping owner never syncs, and
+; the phase would stay :staged for ever, admitting only :inspect and
+; :commit while every other class waited at the gate.)
 (defun fn-ocp-commit-step (phase next event)
   (declare (xargs :guard t))
   (let ((next (if next t nil)))
@@ -101,7 +108,8 @@
             ((eq event :failed) (mv :stop :failed next))
             (t (mv :fault phase next))))
      ((eq phase :fenced)
-      (cond ((not (eq event :completed)) (mv :fault phase next))
+      (cond ((eq event :completed-stopping) (mv :none :idle nil))
+            ((not (eq event :completed)) (mv :fault phase next))
             (next (mv :sync :staged nil))
             (t (mv :none :idle nil))))
      ((eq phase :failed)
@@ -243,6 +251,18 @@
              (and (equal (mv-nth 0 (fn-ocp-commit-step :idle next event)) :none)
                   (equal (mv-nth 1 (fn-ocp-commit-step :idle next event)) :idle)
                   (not (mv-nth 2 (fn-ocp-commit-step :idle next event)))))))
+
+; KEYSTONE (a stop's COMPLETE leaves the gate open).  The completion of a
+; COMPLETE that found the owner stopping leaves nothing in flight and no
+; batch open, whether or not a next batch had been prepared behind it (the
+; idle phase: fn-ocs-in-flight-p is false, so the gate admits every class
+; again and no worker waits for a batch that nothing will sync).
+(defthm fn-ocp-a-stopping-completion-leaves-no-batch
+  (let ((step (fn-ocp-commit-step :fenced next :completed-stopping)))
+    (and (equal (mv-nth 0 step) :none)
+         (equal (mv-nth 1 step) :idle)
+         (not (mv-nth 2 step))))
+  :rule-classes nil)
 
 ; A next batch is opened only behind a batch in flight, and only one.
 (defthm fn-ocp-next-opens-only-behind-a-sync

@@ -582,8 +582,13 @@ def verify_init_publication_cut_map() -> None:
     # secret is the plan's last file.
     if not " ".join(body.split()).endswith("(fnn-core 'fn-bs-init-log-subdir-names) t) (fnn-out \"initialized ~a\" root-path) +fnn-exit-ok+)))"):
         raise AssertionError("init's staged publication does not hold its stage")
-    if "(cons (fnn-node-secret-path stage) secret))" not in body:
-        raise AssertionError("init's plan does not carry the node secret last")
+    flat = " ".join(body.split())
+    if ("(cons (fnn-node-secret-path stage) secret) "
+            "(cons (fnn-join (fnn-store-root stage) (fnn-core 'fn-pfp-file-name)) peer))") not in flat:
+        raise AssertionError("init's plan does not carry the node secret, then the default "
+                             "peer flight profile, last")
+    if "(fnn-core 'fn-pfp-default-octets" not in body:
+        raise AssertionError("init's peer flight profile is not ACL2's default")
     operator = (ROOT / "host/native/operator.lisp").read_text()
     # The call, whitespace collapsed: the root, the groups, the profile and
     # (since batch AS's merge of store-mount-identity) the mission's

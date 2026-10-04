@@ -26,9 +26,10 @@
 (include-book "../books/tcpcl-delivery-invariants")
 (include-book "../books/resource-syncer")
 (include-book "../books/response-identity")
-; Lane m1-durable: the log kernel's acknowledgement (fn-lgc-finish-one) and
-; its keystone, that every acknowledged record is recovered at every cut of
-; the host's run of the active segment.
+; Lane m1-durable: the log kernel's acknowledgement (fn-lgu-acknowledge, the
+; fold of fn-lgc-finish-one the host calls once) and its keystone, that every
+; acknowledged record is recovered from every crash image of the host's run
+; of the active segment; the log's frame bound (fn-lgu-log-max).
 (include-book "../books/store-log-durable")
 
 ; A private owner syncer ledger is installed only after the parent's real
@@ -517,11 +518,14 @@
   :class :common-lisp-compliant
   :keystones (fn-lgu-take-verdict-admits-exactly-log-records))
 
-(definterface fn-lgc-finish-one
+(definterface fn-lgu-log-max
   :class :common-lisp-compliant
-  :kinds ((c true-listp))
-  :keystones ((fn-lgu-host-kernel-acknowledges-only-recoverable-records
-               :step-of fn-lgc-host-run)))
+  :keystones (fn-lgu-log-max-frames-every-record-within-r))
+
+(definterface fn-lgu-acknowledge
+  :class :common-lisp-compliant
+  :kinds ((c true-listp) (n natp))
+  :keystones (fn-lgu-acknowledge-acknowledges-only-recoverable-records))
 
 (definterface fn-lgc-frontier
   :class :common-lisp-compliant
@@ -3605,17 +3609,21 @@
 (definterface fn-heap-init-budget-note-line
   :class :common-lisp-compliant)
 
-(definterface fn-heap-init-decide
+(definterface fn-pfd-init-decide
   :class :common-lisp-compliant
-  :keystones (fn-heap-init-decide-sized-init-is-held
-              fn-heap-init-decide-refuses-the-operators-request-past-the-budget
-              fn-heap-init-decide-largest-takes-scale-when-it-fits
-              fn-heap-init-decide-honors-the-operators-request
-              fn-heap-init-decide-fits-the-budget-and-the-machine
-              fn-heap-init-decide-conservative-takes-the-top-rung-when-it-fits
-              fn-heap-init-decide-conservative-is-a-friend-rung
-              fn-heap-init-decide-conservative-holds-the-floor
-              fn-heap-init-budget-note-names-the-budget-init-sized-for))
+  ;; The host's init decision is fn-heap-init-decide over LIMITS plus the
+  ;; machine less the peer launch reserve: its keystones hold for any LIMITS.
+  :keystones (fn-pfd-init-reserves-the-default-launch
+              (fn-heap-init-decide-sized-init-is-held :via fn-heap-init-decide)
+              (fn-heap-init-decide-refuses-the-operators-request-past-the-budget
+               :via fn-heap-init-decide)
+              (fn-heap-init-decide-largest-takes-scale-when-it-fits :via fn-heap-init-decide)
+              (fn-heap-init-decide-honors-the-operators-request :via fn-heap-init-decide)
+              (fn-heap-init-decide-fits-the-budget-and-the-machine :via fn-heap-init-decide)
+              (fn-heap-init-decide-conservative-takes-the-top-rung-when-it-fits
+               :via fn-heap-init-decide)
+              (fn-heap-init-decide-conservative-is-a-friend-rung :via fn-heap-init-decide)
+              (fn-heap-init-decide-conservative-holds-the-floor :via fn-heap-init-decide)))
 
 (definterface fn-heap-init-decision-request
   :class :common-lisp-compliant
@@ -5702,9 +5710,19 @@
 (definterface fn-pfp-file-name :class :common-lisp-compliant)
 (definterface fn-pfp-read-bound :class :common-lisp-compliant)
 (definterface fn-pfp-read :class :common-lisp-compliant)
+(definterface fn-pfp-default-octets :class :common-lisp-compliant
+  :keystones (fn-pfd-default-decodes-to-itself
+              (fn-pfd-default-is-a-policy :via fn-pfp-default-policy)
+              (fn-pfd-default-spools-one-batch :via fn-pfp-default-policy)))
 (definterface fn-pfp-refusal-line :class :common-lisp-compliant)
+(definterface fn-pfp-catch-up-observes-p :class :common-lisp-compliant)
+(definterface fn-pfp-catch-up-admission :class :common-lisp-compliant
+  :keystones (fn-pfp-catch-up-verb-accepted-only-funded
+              fn-pfp-catch-up-admission-is-identity-elsewhere))
+(definterface fn-pfp-catch-up-refusal-line :class :common-lisp-compliant)
 (definterface fn-pfr-policy-p :class :common-lisp-compliant)
-(definterface fn-pfr-extend-operation-reservation :class :common-lisp-compliant)
+(definterface fn-pfr-extend-operation-reservation :class :common-lisp-compliant
+  :keystones ((fn-pfd-default-launches-where-its-extra-fits :via fn-pfr-extend-reservation)))
 (definterface fn-pfr-operation-observes-p :class :common-lisp-compliant)
 
 (definterface fn-prstartup-default-plan-with-peer :class :common-lisp-compliant)

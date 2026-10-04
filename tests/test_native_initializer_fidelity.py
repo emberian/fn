@@ -261,8 +261,11 @@ class NativeInitializerFidelityTests(unittest.TestCase):
             f.write(b"\x00")
         before = segment.read_bytes()
         self.assertNotEqual(before.strip(b"\x00"), b"")
-        for command in ("recover", "status"):
-            result = self.invoke(store, command)
+        # Bare `status' reads the checkpoint header and never opens the log
+        # (fnn-command-stopped-status); `status --replay' opens it.
+        for command, extra in (("recover", ()), ("status", ("--replay",))):
+            result = run([IMAGE, "--fn", "store", store, command, *extra], timeout=None,
+                         env=environment({}))
             self.assertEqual(result.returncode, EXIT_REFUSED, (command, result.stderr))
             self.assertIn(b"reason=segment-misaligned", result.stderr)
             self.assertEqual(segment.read_bytes(), before, command)

@@ -43,6 +43,7 @@ import contextlib
 import os
 from pathlib import Path
 import re
+import select
 import signal
 import socket
 import ssl
@@ -636,6 +637,13 @@ class AcceptThenClosePeer:
         self._stopped.set()
         self._thread.join(timeout=5)
         self.listener.close()
+
+
+def read_line_within(sock, stream, seconds):
+    """One line from STREAM (a makefile of SOCK) within SECONDS, else b"": a select on
+    the socket, never a timeout on the stream (a SocketIO that timed out raises on every later read)."""
+    readable, _, _ = select.select([sock], [], [], seconds)
+    return stream.readline() if readable else b""
 
 
 def refused_port():

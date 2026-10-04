@@ -611,17 +611,17 @@
     {
       "id": "durable-after-ack",
       "name": "durable after acknowledgement (Mini M1)",
-      "contract": "ACKED: the log kernel's acknowledged count (fn-lgc-acked, advanced by fn-lgc-finish-one before the batch's replies leave); client contract: every record whose acceptance a client observed is recovered; not acknowledged = recovered.",
+      "contract": "ACKED: the log kernel's acknowledged count (fn-lgc-acked, advanced by fn-lgu-acknowledge (the fold of :finish-one; host/native/io.lisp fnn-log-finish) before the batch's replies leave); client contract: every record whose acceptance a client observed is recovered; not acknowledged = recovered.",
       "host": {
-        "function": "fn-lgc-finish-one",
+        "function": "fn-lgu-acknowledge",
         "file": "host/native/io.lisp"
       },
-      "bridge": "fn-lgu-host-kernel-acknowledges-only-recoverable-records",
+      "bridge": "fn-lgu-acknowledge-acknowledges-only-recoverable-records",
       "keystone": "fn-lgu-acknowledged-records-are-recovered-at-every-cut",
       "tested": null,
       "profile": "default",
-      "latest": "books/store-log-durable joins image-world, image-world-dtn and image-world-paged (laptop certify-20261004T161219Z-6428, -165405Z-4135); an oversize take is refused by name (:record-exceeds-log-frame, M1-LOG-RECORD-FRAMING-WINDOW).",
-      "obstruction": "rotation (incl. fnn-log-complete-rotation at open) outside the run; RL-01 (open reads cached bytes after a failed barrier) outside the model; containment RestartPreventExitStatus=3. Interface binding: fn-lgc-finish-one cites the bridge only as :step-of fn-lgc-host-run (host-loop correspondence owed, DI-OWED-STEP-OF-LGC-FINISH); the keystone is cited by no entry.",
+      "latest": "books/store-log-durable joins image-world, image-world-dtn and image-world-paged (laptop certify-20261004T161219Z-6428, -165405Z-4135); an oversize take is refused by name (:record-exceeds-log-frame, M1-LOG-RECORD-FRAMING-WINDOW). m1-durable-2 e8abd0f51: frame bound R+32 (fn-lgu-log-max, keystone fn-lgu-log-max-frames-every-record-within-r; certify-20261004T195103Z-266420); the host's ack loop is one call fn-lgu-acknowledge with a plain keystone (DI-OWED-STEP-OF-LGC-FINISH discharged).",
+      "obstruction": "rotation (incl. fnn-log-complete-rotation at open) outside the run; RL-01 (open reads cached bytes after a failed barrier) outside the model; containment RestartPreventExitStatus=3.",
       "next": "rotation (M1-e, two-segment R); the batch's core natives (log, recovery, crash_model) on the image that carries it."
     }
   ],

@@ -1,0 +1,18 @@
+{
+ "category": "native-red",
+ "detail": "hbox native-set-bdd4f40c4-r2 logs test-tests.test_native_over_pins.log (+ stderr/test-tests.test_native_over_pins/*idle-article*): the fixture is now sound (b89f433f6 funds the 12 MiB article: accepted post path=served 17:59:23Z) but at 17:59:32Z the reader connects, sends ARTICLE with SO_RCVBUF=4096, sleeps 5 s, and client.line() (tests/native_harness.py:1409 recv) times out at 300 s: the node never writes the first reply line and never closes. Same module's OVER tests pass. Unconfirmed hypotheses, in order: (1) the window/cold route has no path for one payload larger than the decoded-window storage (4 DECODED-WINDOW slots, extent.lisp:815) or the realizer cache, so the line is re-run forever as in sl-cold-line-deadline's mechanism; (2) the exposure idle/first-line deadlines (set to 3 s by the test) defer the connection while the client is not reading and the refresh-on-progress never fires because no output was accepted yet. First move: run the one test on lat1 with FN_NATIVE_OWNER_TEST_PIPELINE_TRACE and read the node's stderr while the client waits; try the same ARTICLE with a normal SO_RCVBUF and a 1 MiB / 4 MiB / 12 MiB payload to separate (1) from (2).",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/native/owner.lisp",
+ "fix": "Undiagnosed; this is a diagnosis item, not a ready fix. Owner of the cold-line/window route should take it.",
+ "id": "NATIVE-R2-OVER-PINS-LARGE-ARTICLE",
+ "locus": "owner-large-article",
+ "notes": [],
+ "owner": "unassigned",
+ "scenario": "A reader requests a 12 MiB article on a node whose profile admits it: no reply.",
+ "severity": "high",
+ "source": "native-set-bdd4f40c4-r2",
+ "state": "open",
+ "title": "tests.test_native_over_pins.test_a_large_article_drained_slowly_refreshes_the_idle_deadline: a 12 MiB ARTICLE gets no 220 line for 300 s (the POST is accepted, the reader connects, then silence; no log line, no close)",
+ "updated": "2026-10-04T19:04:15Z"
+}

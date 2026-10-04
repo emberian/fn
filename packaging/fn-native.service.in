@@ -28,6 +28,14 @@ Environment=HOME=@NODE@
 ExecStart=@PREFIX@/current/bin/fn operator @NODE@/fn.toml run
 Restart=on-failure
 RestartSec=5
+# CONTAINMENT, not the fix (RL-01, 2026-10-04): exit 3 is the storage fence
+# (an ambiguous Store or log barrier: the store needs recovery).  After a
+# failed barrier Linux may keep the unwritten pages readable in its cache,
+# and the open that a restart runs would read them as history; until the
+# open's recovery is qualified for that case, systemd does not restart a
+# fenced node.  The operator checks the disk (`health': last-stop exit=3),
+# then starts it (docs/operator.md, "uncertain").
+RestartPreventExitStatus=3
 KillSignal=SIGTERM
 TimeoutStopSec=120
 NoNewPrivileges=yes

@@ -194,15 +194,17 @@ representation ceiling."
           (fnn-out "~a" line))))))
 
 (defun fnn-heap-init-decision (request budget sizing)
-  "ACL2's decision for what `init' writes (books/heap-reservation.lisp
-fn-heap-init-decide, PKT-582 in gpt-6's wave-5 shape): the request, or for
+  "ACL2's decision for what `init' writes (books/peer-flight-default.lisp
+fn-pfd-init-decide: books/heap-reservation.lisp fn-heap-init-decide, PKT-582
+in gpt-6's wave-5 shape, against the machine less the default peer flight
+profile's launch reserve, which every store init writes carries): the request, or for
 a capacity-free one the preset the budget holds (conservative unless
 `init --largest'), within the budget of the physical memory less the OS's
 share, the process's limits and `init --budget MB'; or a refusal.  BUDGET
 and SIZING are the accepted init plan's (books/native-operator.lisp
 fn-native-operator-result-init-budget / -init-sizing, row Q10b)."
   (let ((observations (fnn-heap-observations)))
-    (fnn-core 'fn-heap-init-decide request (fnn-heap-image-observation)
+    (fnn-core 'fn-pfd-init-decide request (fnn-heap-image-observation)
               +fnn-gc-nursery-octets+ (first observations) (rest observations)
               budget sizing)))
 
@@ -213,7 +215,7 @@ fn-native-operator-result-init-budget / -init-sizing, row Q10b)."
 ;; limit.  Returns (values DECISION NOTE); the caller prints ACL2's line.
 (defun fnn-heap-init-decision-noted (request budget sizing)
   (let* ((observations (fnn-heap-observations))
-         (decision (fnn-core 'fn-heap-init-decide request (fnn-heap-image-observation)
+         (decision (fnn-core 'fn-pfd-init-decide request (fnn-heap-image-observation)
                              +fnn-gc-nursery-octets+ (first observations)
                              (rest observations) budget sizing)))
     (values decision

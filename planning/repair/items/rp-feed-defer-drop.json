@@ -7,12 +7,15 @@
  "fix": "Statement-first: 431/436 back off (capped at *fn-feed-max-backoff*, 1 h) and never count toward the give-up bound; the retry bound keeps applying to losses (S053: an offer that keeps dropping the connection). Changes fn-feed-observe and its journal replay (feed-events :feed-retry), so peer-feed-invariants/feed-correspondence/owner-feed theorems rebuild; wants the proofs or the peering lane. Native witness: tests.test_native_feed_temporary with four 431s before 238.",
  "id": "rp-feed-defer-drop",
  "locus": "peer-services",
- "notes": [],
- "owner": "read-peer",
+ "notes": [
+  "10-04 16:05 10-04 20:10 READY lane/peer-feed (fix 04669a5c6, witnesses 62468c9d2). RED certify-20261004T171953Z-23799 at 9ab11e8ee (tests/acl2/peer-feed-red-*-tests); GREEN certify-20261004T200106Z-125291 (cloud2, lane closure, 18/19; host/owner-host is an ld host file that no certify-book admits, gated by host_check) + certify-20261004T180200Z-48706 (lat1, 234/235, same). Native: overlay on 6107ceb56 refused (entry layout, def-loop/deftheory: 29 refusals); owed on the integrator's next image set: tests.test_native_peer_hostile_feed (lane/scenarios@6fef491f3) + operator_walk."
+ ],
+ "owner": "peer-feed",
  "scenario": "Friend's INN runs 'ctlinnd throttle' / 'pause' for maintenance, or its disk is slow, or (fn<->fn) the receiver is :busy/:staged/:disk-slow, which fn itself answers 431/436 (books/peer-inbound.lisp fn-peer-transit-code: 'the sender keeps the article'). The head entry gets 431 three times across base+2*base+4*base ms and is dropped :retry-bound; the next head entry repeats. A ten-minute throttle with a 5 s base drops ~17 articles for that peer permanently (operator re-feed only). specs/peering.md S9 expects 'fn backs off ... and resumes after ctlinnd go'; fn's own transit code promises senders keep the article on 436 (PKT-711), and fn's own sender does not.",
  "severity": "high",
+ "sha": "04669a5c6",
  "source": "read-peer-2026-10-04",
- "state": "open",
+ "state": "ready",
  "title": "Outbound feed drops an article for good after three 431/436 'not now' answers: a peer that is throttled or slow for a minute loses articles",
- "updated": "2026-10-04T15:30:12Z"
+ "updated": "2026-10-04T20:05:04Z"
 }

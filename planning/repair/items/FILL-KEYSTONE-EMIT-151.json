@@ -1,0 +1,13 @@
+{
+ "category": "check-lane",
+ "detail": "See '== keystone_emit' section. Run: cloud1:/tank/fn/scratch/fill-wt-check.log (remote_check cloud1 --target check, dev 55ff708a6, started 2026-10-04T19:03Z; local copy build/remote-check/cloud1-check.log)",
+ "file": "tests/acl2/resource-vector-relations-tests.lisp",
+ "id": "FILL-KEYSTONE-EMIT-151",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "keystone_emit --check red: 151 findings over 30 defkeystone forms in 5 books, e.g. tests/acl2/resource-vector-relations-tests.lisp:68 rvrt-prefix-teeth has no :id, PRF-1209 keystone_subjects is None, feed-connection-teeth-tests.lisp:250 fct-refused-login (5 removal, 0 mutant, 0 bound) subject fn-fc-step",
+ "updated": "2026-10-04T19:12:27Z"
+}

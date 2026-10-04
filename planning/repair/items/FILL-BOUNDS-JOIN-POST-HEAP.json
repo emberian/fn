@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Red on set 55ff708a6: cloud2:/tank/fn/scratch/fill-wt/native-fill-resil-cloud2-55 (scenario_suite run resilience --allow-skips, jobs 3; logs/test-native_bounds_join.log). The 17x overshoot is large enough to be real, but cloud2 is a shared-vCPU box: confirm on hbox.",
+ "file": "host/native/owner.lisp",
+ "id": "FILL-BOUNDS-JOIN-POST-HEAP",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "tests.test_native_bounds_join: test_large_post_allocates_less_than_one_article_list_under_the_mutex 862,643,600 bytes allocated under the owner mutex where < 50,331,648 is required (transit class 186 MB over 17,174 holds), and test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post errors",
+ "updated": "2026-10-04T20:03:40Z"
+}
