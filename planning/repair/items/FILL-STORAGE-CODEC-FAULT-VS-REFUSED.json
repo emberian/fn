@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Red on set 55ff708a6: cloud2:/tank/fn/scratch/fill-wt/native-fill-resil-cloud2-55 (scenario_suite run resilience, --allow-skips, jobs 3; logs/test-tests.test_native_storage_codec.log). Decide which class is right (a damaged store is a fault; a refusal means the operator can fix it), then align test or code.",
+ "file": "host/native/store-codec.lisp",
+ "id": "FILL-STORAGE-CODEC-FAULT-VS-REFUSED",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "tests.test_native_storage_codec 3F: legacy JSON and truncated/malformed config metadata are expected to stop the owner as a FAULT (exit 4) but the node answers REFUSED (exit 1): test_legacy_json_is_retained_and_is_a_fault, test_native_refuses_truncated_or_malformed_metadata (label config-truncated, +1)",
+ "updated": "2026-10-04T20:01:42Z"
+}
