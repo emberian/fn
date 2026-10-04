@@ -3421,6 +3421,9 @@
 (definterface fn-web-host-frame
   :class ::program)
 
+(definterface fn-web-host-identity
+  :class ::program)
+
 (definterface fn-web-host-head
   :class ::program)
 
@@ -5661,7 +5664,7 @@
 
 ; Host-called entries the raw host dispatches and no declaration named
 ; (integrator wave 0, 2026-10-04): :class and :kinds as tools/interface_kinds.py
-; derives them from the source, the defining file after each.  Twenty-four of
+; derives them from the source, the defining file after each.  Some of
 ; them are dispatched as `(fnn-call (if C 'A 'B) ...)', which the host-binding
 ; check now reads (pull/catchup sessions, workflow, the log writer's step).
 (definterface fn-csp-bank-idle-p :class :common-lisp-compliant) ; books/peer-catchup-spool-resources.lisp:26

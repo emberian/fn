@@ -468,6 +468,9 @@ class StateCheckpointTests(StateCheckpointFixture):
         try:
             damaged_checkpoint.acl2_executable()
         except damaged_checkpoint.FixtureError as error:
+            # waiver-ok: environment -- acl2_executable() refuses only when no
+            # ACL2 executable is named or found (FN_ACL2); the fixture needs one
+            # to re-write the checkpoint, and its refusal is the probe.
             self.skipTest(str(error))
         group, old = damaged_checkpoint.damage(self.path(), 2147483648)
         self.assertTrue(0 < old < 2147483647, (group, old))

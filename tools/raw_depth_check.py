@@ -23,7 +23,8 @@ not tail (conservative, as depth_check is).  `funcall', `apply' and #'f
 passed as a value are not direct calls; recursion through them is not seen.
 A `lambda' passed as an argument is read as called here (a handler or a
 serialized quantum runs it on this stack), except under `make-thread', whose
-function runs on the new thread's own stack.
+function runs on the new thread's own stack, and as the thunk or escape handler of a
+`def-actor' starter (the worker's own stack, host/native/owner.lisp fnn-owner-actor-run).
 
 THE BASELINE, tools/raw_depth_baseline.json, has depth_check's two classes
 and rules (tools/depth_check.py check): "bounded" names its bound (a
@@ -58,6 +59,11 @@ BINDERS = {"let", "let*"}
 LAST_AFTER_2 = {"multiple-value-bind", "destructuring-bind"}  # (m VARS FORM . body)
 # The arguments run on another thread's stack, not this one's.
 NEW_THREAD = {"sb-thread:make-thread", "make-thread", "sb-thread::make-thread"}
+# The arguments (by position) that a `def-actor' starter runs on the new
+# worker's own stack: the thunk (what the thread does) and the escape handler
+# (host/native/owner.lisp fnn-owner-actor-run), not the physical-callback or
+# before-start, which run on the starter's or the joiner's.
+ACTOR_THREAD_ARGS = (2, 3)
 # The body is not in tail position: a handler, cleanup or iteration frame.
 NEVER_TAIL = {"handler-case", "handler-bind", "unwind-protect", "catch", "loop",
               "dolist", "dotimes", "do", "do*", "prog1", "prog2", "ignore-errors",
@@ -88,8 +94,9 @@ class Walker:
     """Collects (callee, tailp) for one function body; `labels'/`flet'
     functions found inside are recorded as their own definitions."""
 
-    def __init__(self, owner: str, local_defs: dict) -> None:
+    def __init__(self, owner: str, local_defs: dict, actors: frozenset = frozenset()) -> None:
         self.owner = owner
+        self.actors = actors  # the names `def-actor' declared: starters of a new thread
         self.local_defs = local_defs  # qualified name -> (lambda-list, body forms)
         self.scopes: list[dict[str, str]] = []
 
@@ -191,6 +198,13 @@ class Walker:
             self.scopes.pop()
         elif name in NEW_THREAD:
             return  # the function runs on the new thread's own stack
+        elif name in self.actors:
+            # A declared actor's starter: its thunk and escape handler run on
+            # the new worker's stack, the rest of the call on this one.
+            out.append((self.resolve(name), tail))
+            for i, a in enumerate(args):
+                if i not in ACTOR_THREAD_ARGS:
+                    self.term(a, False, out)
         elif name in NEVER_TAIL or name.startswith("with-"):
             for a in args:
                 self.term(a, False, out)
@@ -212,19 +226,39 @@ def _defuns(form, found: list, line: int) -> None:
             _defuns(item, found, line)
 
 
+def _actors(form, found: set) -> None:
+    """The names of every top-level `(def-actor NAME ...)' in FORM."""
+    if not isinstance(form, list) or not form:
+        return
+    h = _name(form[0])
+    if h == "def-actor" and len(form) >= 2 and isinstance(form[1], Sym):
+        found.add(_name(form[1]))
+    elif h in ("progn", "eval-when", "locally"):
+        for item in form[1:]:
+            _actors(item, found)
+
+
 def definitions(root: Path = ROOT) -> dict[str, tuple[str, int, list]]:
     """name -> (file, line, [(callee, tailp)]) over every raw host function,
     `labels'/`flet' functions as OWNER/NAME."""
     out: dict[str, tuple[str, int, list]] = {}
+    parsed = []
+    declared: set = set()
     for path in sorted((root / RAW_DIR).glob("*.lisp")):
-        relative = path.relative_to(root).as_posix()
         text = path.read_text(encoding="utf-8", errors="replace")
+        forms = list(ledger.Reader(text).top_level())
+        for form, _line in forms:
+            _actors(form, declared)
+        parsed.append((path, forms))
+    actors = frozenset(declared)
+    for path, forms in parsed:
+        relative = path.relative_to(root).as_posix()
         found: list = []
-        for form, line in ledger.Reader(text).top_level():
+        for form, line in forms:
             _defuns(form, found, line)
         for name, _ll, body, line in found:
             local: dict = {}
-            w = Walker(name, local)
+            w = Walker(name, local, actors)
             sites: list = []
             w.seq(body, True, sites)
             out.setdefault(name, (relative, line, sites))
@@ -232,7 +266,7 @@ def definitions(root: Path = ROOT) -> dict[str, tuple[str, int, list]]:
             while pending:
                 qualified, (_ll2, lbody, scopes) = pending.popitem()
                 local2: dict = {}
-                w2 = Walker(qualified.split("/")[0], local2)
+                w2 = Walker(qualified.split("/")[0], local2, actors)
                 w2.scopes = scopes + [{qualified.split("/")[-1]: qualified}]
                 s2: list = []
                 w2.seq(lbody, True, s2)

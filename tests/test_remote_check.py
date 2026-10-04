@@ -138,6 +138,26 @@ class RemoteCheckTests(unittest.TestCase):
         refused = self.run_check("--ship", "../outside", "--cmd", "true")
         self.assertEqual(refused.returncode, 2)
 
+    def test_changed_since_and_baseline_ride_into_make(self):
+        (self.lane / "Makefile").write_text(
+            "check-lane:\n\t@echo since=$(CHECK_CHANGED_SINCE) base=$(CHECK_BASELINE)"
+            " out=$(CHECK_BASELINE_OUT); cat $(CHECK_BASELINE); echo table > $(CHECK_BASELINE_OUT)\n")
+        git(self.lane, "commit", "-q", "-am", "makefile")
+        base = subprocess.run(["git", "-C", str(self.lane), "rev-parse", "HEAD~1"],
+                              capture_output=True, text=True).stdout.strip()
+        (self.lane / "build").mkdir()
+        (self.lane / "build" / "known.txt").write_text("== check: 1 steps\n")
+        done = self.run_check("--changed-since", "HEAD~1", "--baseline", "build/known.txt",
+                              "--write-baseline", "build/new.txt")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        log = (self.lane / "build/remote-check/hbox-check-lane.log").read_text()
+        self.assertIn(f"since={base} base=build/known.txt out=build/new.txt", log)
+        self.assertIn("== check: 1 steps", done.stdout)  # the baseline was shipped
+        self.assertEqual((self.lane / "build" / "new.txt").read_text(), "table\n")
+        for words in (["--changed-since", "no-such-rev"], ["--baseline", "/abs"],
+                      ["--baseline", "a b"], ["--changed-since", "HEAD", "--cmd", "true"]):
+            self.assertEqual(self.run_check(*words).returncode, 2, words)
+
     def test_attach_recovers_a_run_whose_local_side_died(self):
         # obstructions-5 item 41: the box run kept going after the local side
         # died; attach re-reads its log to the end without re-running.

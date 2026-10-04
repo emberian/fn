@@ -84,7 +84,9 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         # the image leaves: both ACL2's (host/store-node-host.lisp)
         self.assertIn("(fnn-core 'fn-his-file-octets (fnn-history-image-np image)", publish)
         self.assertIn("(fnn-core 'fn-his-stream-free free (fnn-history-image-np image))", publish)
+        # (reclaim walk, PRF-1315: the first half's tail is fn-owner-sco-next-of)
         prepare = (native_cuts.host_function(owner_host, "fn-owner-sco-next")
+                   + native_cuts.host_function(owner_host, "fn-owner-sco-next-of")
                    + native_cuts.host_function(owner_host, "fn-owner-sco-setup-of"))
         # (the base is kept stripped of its event index and restored here:
         # fn-scka-restore-base-of-strip-of-capture, PKT-PRS-2)

@@ -3,12 +3,13 @@
  "file": "books/list-metadata-cursor.lisp",
  "id": "SRV-OWED-LIST-POTENTIAL",
  "notes": [
-  "10-04 00:24 fn-lst-one-finite-progress on lane/served; laptop REPL 83/83, certification pending"
+  "10-04 00:24 fn-lst-one-finite-progress on lane/served; laptop REPL 83/83, certification pending",
+  "10-04 02:32 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (21864250f, 1c0bddef8: books/list-metadata-cursor.lisp:575 fn-lst-one-finite-progress over fn-lst-potential); local test none; proof pending: certify (laptop REPL 83/83 per item note is not a certificate)"
  ],
  "owner": "served",
  "severity": "medium",
  "source": "served",
- "state": "ready",
+ "state": "landed",
  "title": "Composed finite potential for fn-lst-one (PRF-1313): the row renderer (fn-lsr-one-finite-progress), status lookup (fn-lss-one-progress), group summary (fn-gsc-one-progress) and wildmat (fn-wmc-one-progress) each decrease their own measure; a LIST-wide measure that every non-terminal fn-lst-one call strictly decreases, under a carried shape invariant (wmc-shapedp in :match, lsr-statep in :render), is not yet stated",
- "updated": "2026-10-04T04:24:17Z"
+ "updated": "2026-10-04T06:32:56Z"
 }

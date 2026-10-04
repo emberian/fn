@@ -182,7 +182,7 @@ S023, X08, r72-F6) are state=ready at that sha; one READY, one merge.
   tests.test_native_owner_scheduler tests.test_native_slow_disk tests.test_bp_service_native`. The new natives
   (tests/test_native_fence_boundary.py) have never run: expect to fix forward their fixture details (the
   committer cases assume a batching development profile; the reclaim case asserts p0 reclaimed OR readable).
-- Certification: farm run-20261003T022549Z-f421 (persvati, certify-20261003T022733Z-2852118) certified the 10-book
+- Certification: farm run-20261003T022549Z-f421 (persvati; its manifest was never filed) certified the 10-book
   closure of books/failure-scope + owner-export-request at the PREVIOUS book bytes; the last commit changed only a
   comment in failure-scope.lisp (its hash): resubmit `farm.py submit auto --affected-by books/failure-scope.lisp`.
 - Expected fix-forward spots: (1) fnn-owner-gated now wraps every bare gated body in the fence; any bare body that

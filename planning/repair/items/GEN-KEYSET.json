@@ -10,13 +10,14 @@
   "10-02 22:24 retention.lisp 96/96 + retention-tests 91/91 on hbox; store-files.lisp 194/194, its teeth book loading; closures to the farm",
   "10-02 22:30 both replacements green on hbox: retention.lisp 96/96 + retention-tests 91/91; store-files.lisp 194/194 + store-files-teeth-tests 109/109; closures submitted to the farm (retention+def-keyset-check run, store-files run)",
   "10-02 22:32 on lane/generators-2 ef9baca4d, sent to the runner for the dev merge (ember's all-onto-dev directive); fix forward after",
-  "10-02 22:33 wind-down 2026-10-03: continuation in lanedumps/generators-2.md (jobs bbivt3cm0 wix:bndu60b71 farm:biro1e0ml,bu5ojuks6 gate:b48v0w73o regen:bu49k925z); head ef9baca4d sent to the runner"
+  "10-02 22:33 wind-down 2026-10-03: continuation in lanedumps/generators-2.md (jobs bbivt3cm0 wix:bndu60b71 farm:biro1e0ml,bu5ojuks6 gate:b48v0w73o regen:bu49k925z); head ef9baca4d sent to the runner",
+  "10-04 02:32 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (1aca6bbfc, 5030ece7f: books/def-keyset-check.lisp; fn-retain-ks-disjointp in books/retention.lisp:24 and fn-sf-success-listp in books/store-files.lisp:587 are def-keyset-check declarations; tests/acl2/def-keyset-check-tests.lisp); local test none; proof pending: certify"
  ],
  "owner": "generators",
  "severity": "medium",
  "sha": "ef9baca4d",
  "source": "brief-2026-10-03",
- "state": "in-progress",
+ "state": "landed",
  "title": "def-keyset-check (the mbe keyset pattern) replacing fn-sf-success-listp and fn-retain-ids-disjointp",
- "updated": "2026-10-03T02:33:53Z"
+ "updated": "2026-10-04T06:32:56Z"
 }

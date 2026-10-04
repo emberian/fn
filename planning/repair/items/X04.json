@@ -7,12 +7,13 @@
  "line": "",
  "locus": "reclaim-publication",
  "notes": [
-  "10-02 22:33 wound down; continuation build/coordinator/lanedumps/arena-forget.md"
+  "10-02 22:33 wound down; continuation build/coordinator/lanedumps/arena-forget.md",
+  "10-04 02:30 ledger-close: left in-progress: the forget is NOT wired into the host (no fn-arena-forget reference in host/native/owner.lisp or host/owner-host.lisp; only books/arena-forget-columns.lisp/fn-arena-forget and mutation comments); smallest fix per build/coordinator/lanedumps/arena-forget.md NEXT 3: per-handle NAMED count in the rebuild walk, fail-stop forgotten-payload fault at the raw read boundary, lifecycle-status refusal on every reseat path, :forgotten cut placement, release scheduled by root count + leases, then Astra's eight-phase native"
  ],
  "owner": "arena-forget",
  "severity": "high",
  "source": "coordinator",
  "state": "in-progress",
  "title": "online reclaim never returns disk/memory (ARENA-FORGET, wiring after 8 proof requirements)",
- "updated": "2026-10-03T02:33:18Z"
+ "updated": "2026-10-04T06:30:35Z"
 }
