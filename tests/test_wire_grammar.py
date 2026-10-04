@@ -203,6 +203,9 @@ def encode(g, v):
     raise AssertionError("unknown node " + op)
 
 
+KINDS = {"accept", "concat", "prefix", "mutation", "length"}
+
+
 class WireGrammarFile(unittest.TestCase):
     def setUp(self):
         self.doc = json.loads(WIRE.read_bytes())
@@ -213,28 +216,43 @@ class WireGrammarFile(unittest.TestCase):
         self.assertEqual(self.doc["trailer"], "blake3-256")
 
     def test_every_vector(self):
+        """Each vector's octets decode here to exactly the answer the file
+        prints: the value, the octets consumed and the rest, or the refusal
+        (which consumes nothing); an accepted value re-encodes to exactly the
+        octets consumed."""
         names = {f["name"] for f in self.doc["families"]}
-        counted = 0
+        counted = {}
         for family in self.doc["families"]:
             g = family["grammar"]
-            self.assertTrue(family["vectors"], family["name"])
+            kinds = set()
             for vector in family["vectors"]:
+                where = "%s %s %s" % (family["name"], vector["kind"], vector["octets"][:80])
                 self.assertEqual(vector["family"], family["name"])
                 self.assertEqual(vector["version"], self.doc["version"])
+                self.assertIn(vector["kind"], KINDS)
+                kinds.add(vector["kind"])
                 octets = bytes.fromhex(vector["octets"])
-                if "refused" in vector:
-                    with self.assertRaises(Refused) as caught:
-                        value, rest = decode(g, octets)
-                        if rest:
-                            raise Refused("malformed")
-                    self.assertEqual(caught.exception.reason, vector["refused"])
-                else:
+                try:
                     value, rest = decode(g, octets)
-                    self.assertEqual(rest, b"", family["name"])
-                    self.assertEqual(value, vector["value"], family["name"])
-                    self.assertEqual(encode(g, value), octets, family["name"])
-                counted += 1
-        self.assertGreater(counted, 0)
+                except Refused as refusal:
+                    self.assertIn("refused", vector, where)
+                    self.assertEqual(refusal.reason, vector["refused"], where)
+                    continue
+                self.assertNotIn("refused", vector, where)
+                self.assertEqual(value, vector["value"], where)
+                self.assertEqual(len(octets) - len(rest), vector["consumed"], where)
+                self.assertEqual(rest.hex(), vector["rest"], where)
+                self.assertEqual(encode(g, value), octets[:vector["consumed"]], where)
+                counted[vector["kind"]] = counted.get(vector["kind"], 0) + 1
+            self.assertIn("accept", kinds, family["name"])
+            self.assertIn("prefix", kinds, family["name"])
+            self.assertIn("mutation", kinds, family["name"])
+            if g[0] == "frame":
+                self.assertIn("length", kinds, family["name"])
+                refused = {v.get("refused") for v in family["vectors"]}
+                self.assertIn("trailer", refused, family["name"])
+                self.assertIn("malformed", refused, family["name"])
+        self.assertTrue(counted)
         for exchange in self.doc["exchanges"]:
             self.assertIn(exchange["request"], names)
             for reply in exchange["replies"]:

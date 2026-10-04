@@ -162,8 +162,19 @@ on the octets XS, in this order:
   refused **`trailer`**; then G on exactly the n payload octets must succeed
   with nothing left (a refusal inside G is the frame's refusal) → value G's
   value, rest after the trailer.
-Every other failure is refused **`malformed`**. A MESSAGE is accepted when
-the decoder answers ok with nothing left.
+Every other failure is refused **`malformed`**. A refusal consumes nothing:
+the decoder answers the reason and no position. A MESSAGE is accepted when
+the decoder answers ok with nothing left; the octets CONSUMED by an ok answer
+are |XS| − |REST|, and they are exactly the encoding of its value
+(`fn-wg-encode-of-decode`).
+
+Affordability (the decoder's obligations, met by `fn-wg-decode`'s order of
+evaluation and owed as a theorem): a declared length (a `bytes` prefix, a
+frame's LENGTH) is compared with the grammar's bound (HI, MAX) and with the
+octets present BEFORE any octet is taken by it, so nothing is allocated from
+an external length; every node reads only the octets it consumes, plus at
+most the W-octet code of a `tag` arm it rejects and, for `line`, the octets up
+to the first CR.
 
 Encoding is the inverse, node by node: `const` its octets; `uint` W-octet
 big-endian; `bytes` W-octet length then the octets; `rest` the octets;
@@ -201,19 +212,22 @@ fast checks. Shape:
  "words":{"exit-classes":[...],"control-statuses":[...]}}
 ```
 
-`vectors` are `fn-wg-encode` evaluated in ACL2 on values the table names
-(including the boundary values: empty and widest fields, every tag arm).
-Each vector carries its family name and the file's language version
-(Mini's point 4). Every family whose grammar is a frame also carries
-refusal vectors: the first accepted vector with one trailer bit flipped,
-answered `{"refused":"trailer"}`, and a truncated one, answered
-`{"refused":"malformed"}` (Mini's point 3: a wrong trailer is a named
-refusal, distinct from a decode failure). For each request family,
-`exchanges` lists every reply family it can receive — the refusal and
-uncertain answers (`fnct.reasoned-reply`, `fnct.line-reply`, the plain
-reply's `refused`/`uncertain`/`fault` arms) included — and those families
-carry vectors for each status word (Mini's point 5: Reply / Refused /
-Unknown checked against bytes).
+`vectors` are the contract (GPT-6 review, 10-04: "the vectors are the
+contract"). Each is `{"family","version","kind","octets"}` plus the
+decoder's whole answer: `"value"`, `"consumed"` and `"rest"` (hex) when it
+accepts, `"refused"` (`trailer` or `malformed`) when it refuses. Kinds:
+`accept` (the encoding of each value the family table names), `concat` (two
+encodings back to back, for a delimited family: the first value, the second
+encoding as the rest), `prefix` (every proper prefix of the family's
+shortest encoding: each truncation boundary), `mutation` (that encoding with
+one octet changed, +1 mod 256, at each position: wrong magic, unknown
+version or kind, wrong declared lengths, wrong fields, wrong trailer), and
+`length` (a frame's declared length set to MAX+1 and to 2^32−1). The values
+and the answers are ACL2's (`fn-wg-encode`, `fn-wg-decode`); a second
+interpreter must give the same answer for every vector (Mini's CI;
+`tests/test_wire_grammar.py` here). For each request family, `exchanges`
+lists every reply family it can receive, refusal and uncertain answers
+included.
 
 **The file's digest.** `fn-wg-export-digest` is BLAKE3-256 of the file's
 octets, computed in ACL2 from the same value the emitter writes. The

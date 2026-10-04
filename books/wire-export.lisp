@@ -10,15 +10,16 @@
 ; entry per FAMILY (its grammar in the JSON form of the language, the ACL2
 ; names of its codec and of the theorems that make the grammar the codec, and
 ; its vectors), the exchanges (which reply families answer which request
-; family), and the word tables (exit classes).  A vector is
-; fn-wg-encode evaluated here on a value the family table names, with the
-; family name and the language version; a frame family adds the first
-; vector with its last trailer octet's low bit flipped and the same octets
-; less their last one, each with the refusal fn-wg-decode answers for them.
+; family), and the word tables (exit classes).  A vector is OCTETS with the
+; family, the language version, its kind and fn-wg-decode's whole answer --
+; the value, the octets consumed and the unconsumed rest, or the refusal (a
+; refusal consumes nothing) -- for the encoding of each value the table
+; names, two encodings back to back, every truncation and every one-octet
+; change of the family's shortest encoding, and a frame's declared length
+; set past its bound (section "Vectors" below).
 ;
-; KEYSTONE fn-wgx-vectors-decode: every accepted vector decodes, whole, to
-; its value, and every refusal vector is refused with the reason the file
-; prints (a ground fact of the table, by evaluation).
+; KEYSTONE fn-wgx-vectors-decode: every family's grammar is well formed and
+; every accept vector decodes, whole, to its value (by evaluation).
 ;
 ; `fn-wgx-file-digest' is BLAKE3-256 (`fn-frame-digest') of the file's
 ; octets; the running image reports it in the store-identity reply
@@ -266,60 +267,106 @@
 (defun fn-wgx-entry-grammar (e) (declare (xargs :guard t)) (fn-wg-arg 1 e))
 (defun fn-wgx-entry-values (e) (declare (xargs :guard t)) (fn-wg-arg 5 e))
 
-; -----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
 ; Vectors
+;
+; Every vector is OCTETS and what fn-wg-decode answers for them: accepted,
+; the value, the octets consumed and the unconsumed rest; or refused, the
+; reason (a refusal consumes nothing).  KIND says why the vector exists:
+;   accept     the encoding of each value the family table names;
+;   concat     two encodings back to back (a delimited family): the first
+;              value, the second encoding left as the rest;
+;   prefix     every proper prefix of the SUBJECT (the family's shortest
+;              encoding): each truncation boundary;
+;   mutation   the subject with one octet changed (+1 mod 256) at each
+;              position: wrong magic, an unknown version or kind, an oversized
+;              or short declared length, a wrong field, a wrong trailer;
+;   length     a frame's subject with its declared length set to MAX+1 and to
+;              2^32-1 (no payload behind either).
 
-(defun fn-wgx-flip-last (xs)
-  ; XS with its last octet's low bit flipped.
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (if (consp (cdr xs))
-          (cons (car xs) (fn-wgx-flip-last (cdr xs)))
-        (list (logxor 1 (nfix (car xs)))))
-    nil))
-
-(defun fn-wgx-drop-last (xs)
-  (declare (xargs :guard t))
-  (if (and (consp xs) (consp (cdr xs))) (cons (car xs) (fn-wgx-drop-last (cdr xs))) nil))
-
-(defun fn-wgx-family-head (name)
-  (declare (xargs :guard t))
-  (list (fn-wgx-field "family" (fn-wgx-quote (fn-wgx-str name)))
-        (fn-wgx-field "version" (fn-wgx-nat *fn-wgx-version*))))
-
-(defun fn-wgx-accept-vectors (name g values)
+(defun fn-wgx-decode-json (g octets)
+  ; The decoder's answer, in JSON fields.
   (declare (xargs :guard t :verify-guards nil))
-  (if (consp values)
-      (cons (fn-wgx-object
-             (append (fn-wgx-family-head name)
-                     (list (fn-wgx-field "value" (fn-wgx-value-json g (car values)))
-                           (fn-wgx-field "octets"
-                                         (fn-wgx-hexq (fn-wg-encode g (car values)))))))
-            (fn-wgx-accept-vectors name g (cdr values)))
-    nil))
+  (let ((r (fn-wg-decode g octets)))
+    (if (fn-wg-okp r)
+        (list (fn-wgx-field "value" (fn-wgx-value-json g (fn-wg-value r)))
+              (fn-wgx-field "consumed" (fn-wgx-nat (- (len octets) (len (fn-wg-rest r)))))
+              (fn-wgx-field "rest" (fn-wgx-hexq (fn-wg-rest r))))
+      (list (fn-wgx-field "refused" (fn-wgx-name (fn-wg-arg 1 r)))))))
 
-(defun fn-wgx-refusal-vector (name g octets)
+(defun fn-wgx-vector (name g kind octets)
   (declare (xargs :guard t :verify-guards nil))
   (fn-wgx-object
-   (append (fn-wgx-family-head name)
-           (list (fn-wgx-field "octets" (fn-wgx-hexq octets))
-                 (fn-wgx-field "refused"
-                               (fn-wgx-name (fn-wg-arg 1 (fn-wg-decode g octets))))))))
+   (append (list (fn-wgx-field "family" (fn-wgx-quote (fn-wgx-str name)))
+                 (fn-wgx-field "version" (fn-wgx-nat *fn-wgx-version*))
+                 (fn-wgx-field "kind" (fn-wgx-quote (fn-wgx-str kind)))
+                 (fn-wgx-field "octets" (fn-wgx-hexq octets)))
+           (fn-wgx-decode-json g octets))))
 
-(defun fn-wgx-refusal-octets (g values)
-  ; For a frame family: the first vector, its trailer flipped; then truncated.
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (equal (fn-wg-op g) :frame) (consp values))
-      (let ((e (fn-wg-encode g (car values))))
-        (list (fn-wgx-flip-last e) (fn-wgx-drop-last e)))
-    nil))
-
-(defun fn-wgx-refusal-vectors (name g list)
+(defun fn-wgx-vectors-of (name g kind list)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp list)
-      (cons (fn-wgx-refusal-vector name g (car list))
-            (fn-wgx-refusal-vectors name g (cdr list)))
+      (cons (fn-wgx-vector name g kind (car list))
+            (fn-wgx-vectors-of name g kind (cdr list)))
     nil))
+
+(defun fn-wgx-encodings (g values)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp values)
+      (cons (fn-wg-encode g (car values)) (fn-wgx-encodings g (cdr values)))
+    nil))
+
+(defun fn-wgx-shortest (xs best)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (fn-wgx-shortest (cdr xs) (if (< (len (car xs)) (len best)) (car xs) best))
+    best))
+
+(defun fn-wgx-prefixes (n xs)
+  ; The prefixes of XS of lengths 0 .. N-1.
+  (declare (xargs :guard (natp n)))
+  (if (zp n) nil
+    (append (fn-wgx-prefixes (1- n) xs) (list (fn-wg-take (1- n) xs)))))
+
+(defun fn-wgx-bump (i xs)
+  ; XS with its octet at position I changed by +1 mod 256.
+  (declare (xargs :guard (natp i)))
+  (if (consp xs)
+      (if (zp i)
+          (cons (mod (+ 1 (nfix (car xs))) 256) (cdr xs))
+        (cons (car xs) (fn-wgx-bump (1- i) (cdr xs))))
+    nil))
+
+(defun fn-wgx-mutations (n xs)
+  ; XS bumped at each position 0 .. N-1.
+  (declare (xargs :guard (natp n)))
+  (if (zp n) nil
+    (append (fn-wgx-mutations (1- n) xs) (list (fn-wgx-bump (1- n) xs)))))
+
+(defun fn-wgx-with-length (n xs)
+  ; A frame XS with its declared length (octets 6..9) set to N.
+  (declare (xargs :guard (natp n)))
+  (append (fn-wg-take 6 xs) (fn-wg-be-bytes 4 n) (fn-wg-drop 10 xs)))
+
+(defun fn-wgx-family-vectors (name g values)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((encs (fn-wgx-encodings g values))
+         (subject (fn-wgx-shortest encs (if (consp encs) (car encs) nil)))
+         (concat (if (and (fn-wg-delimitedp g) (consp encs))
+                     (list (append (car encs)
+                                   (if (consp (cdr encs)) (cadr encs) (car encs))))
+                   nil))
+         (lengths (if (equal (fn-wg-op g) :frame)
+                      (append (if (< (nfix (fn-wg-arg 4 g)) 4294967295)
+                                  (list (fn-wgx-with-length (+ 1 (nfix (fn-wg-arg 4 g))) subject))
+                                nil)
+                              (list (fn-wgx-with-length 4294967295 subject)))
+                    nil)))
+    (append (fn-wgx-vectors-of name g "accept" encs)
+            (fn-wgx-vectors-of name g "concat" concat)
+            (fn-wgx-vectors-of name g "prefix" (fn-wgx-prefixes (len subject) subject))
+            (fn-wgx-vectors-of name g "mutation" (fn-wgx-mutations (len subject) subject))
+            (fn-wgx-vectors-of name g "length" lengths))))
 
 ; -----------------------------------------------------------------------------
 ; The file
@@ -342,10 +389,7 @@
                                                (fn-wgx-names '(fn-wg-decode-of-encode
                                                                fn-wg-encode-of-decode)))))))
            (fn-wgx-field "vectors"
-                         (fn-wgx-array
-                          (append (fn-wgx-accept-vectors name g values)
-                                  (fn-wgx-refusal-vectors
-                                   name g (fn-wgx-refusal-octets g values)))))))))
+                         (fn-wgx-array (fn-wgx-family-vectors name g values)))))))
 
 (defun fn-wgx-families-json (es)
   (declare (xargs :guard t :verify-guards nil))
@@ -414,26 +458,18 @@
            (fn-wgx-accepts-okp g (cdr values)))
     t))
 
-(defun fn-wgx-refusals-okp (g list)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp list)
-      (and (not (fn-wg-okp (fn-wg-decode g (car list))))
-           (fn-wgx-refusals-okp g (cdr list)))
-    t))
-
 (defun fn-wgx-families-okp (es)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp es)
       (let ((g (fn-wgx-entry-grammar (car es))) (values (fn-wgx-entry-values (car es))))
         (and (fn-wg-grammarp g)
              (fn-wgx-accepts-okp g values)
-             (fn-wgx-refusals-okp g (fn-wgx-refusal-octets g values))
              (fn-wgx-families-okp (cdr es))))
     t))
 
-; KEYSTONE (by evaluation): every family's grammar is well formed, every
-; accepted vector decodes whole to its value, and every refusal vector is
-; refused.
+; KEYSTONE (by evaluation): every family's grammar is well formed and every
+; accept vector decodes whole to its value.  The other vectors print the
+; decoder's own answer; what they pin is the other side's agreement with it.
 (defthm fn-wgx-vectors-decode
   (fn-wgx-families-okp *fn-wgx-families*)
   :rule-classes nil)
