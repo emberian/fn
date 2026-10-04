@@ -22,6 +22,7 @@
 (include-book "output-tariff-family")
 (include-book "output-tariff-article-row")
 (include-book "output-tariff-line")
+(include-book "output-tariff-auth")
 
 (def-family-tariffs
   :context ((tokens (fn-ocap-at 3 preview))
@@ -43,4 +44,7 @@
          (:date (fn-tariff-line-octets *fn-tariff-session-line-octets*))
          (:mode (fn-tariff-line-octets *fn-tariff-session-line-octets*))
          (:close (fn-tariff-line-octets *fn-tariff-session-line-octets*))
-         (:help (fn-tariff-line-octets *fn-tariff-help-reply-octets*))))
+         (:help (fn-tariff-line-octets *fn-tariff-help-reply-octets*))
+         (:capabilities (fn-tariff-line-octets (fn-tariff-capabilities-reply-octets)))
+         (:tls-transition (fn-tariff-line-octets *fn-tariff-transition-reply-octets*))
+         (:compression-transition (fn-tariff-line-octets *fn-tariff-transition-reply-octets*))))

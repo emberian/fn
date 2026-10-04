@@ -336,3 +336,45 @@
    (equal (fn-tariff-family-price '(:preview 9 :help ((72 69 76 80))) *tfm-as* nil *tfm-a* *tfm-c*)
           (fn-tariff-family-price '(:preview 9 :date ((68 65 84 69))) *tfm-as* nil *tfm-a* *tfm-c*))
    :rule-classes nil))
+
+; ---------------------------------------------------------------------------
+; The authentication layer's rows (lane tariff4, batch 2): CAPABILITIES,
+; STARTTLS (:tls-transition) and COMPRESS (:compression-transition).
+;
+; RED BEFORE: (:unpriced :capabilities) and the two transitions.  GREEN:
+; CAPABILITIES' bound is 580 octets (the reader, peer and access lines, the
+; COMPRESS label and the shipped XFN-DICT line), 16 * (10 * 580 + 32) =
+; 93312; a transition's line bound is 160, 16 * (10 * 160 + 32) = 26112.
+(assert! (equal (fn-tariff-capabilities-reply-octets) 580))
+(assert! (equal (fn-tariff-line-octets 580) 93312))
+(assert! (equal (fn-tariff-line-octets *fn-tariff-transition-reply-octets*) 26112))
+
+(defthm tfm-producer-prices-the-auth-rows
+  (and (equal (fn-tariff-family-preview '(:preview 9 :capabilities ((67 65 80))) *tfm-as* nil
+                                        *tfm-a* *tfm-c*)
+              '(:tariff :capabilities 93312))
+       (equal (fn-tariff-family-preview '(:preview 9 :tls-transition ((83 84 65 82 84 84 76 83)))
+                                        *tfm-as* nil *tfm-a* *tfm-c*)
+              '(:tariff :tls-transition 26112))
+       (equal (fn-tariff-family-preview '(:preview 9 :compression-transition ((67 79 77)))
+                                        *tfm-as* nil *tfm-a* *tfm-c*)
+              '(:tariff :compression-transition 26112)))
+  :rule-classes nil)
+
+; The reader's own CAPABILITIES block (no peer, access or compression
+; lines) is within the bound the auth arm proves, with and without POST.
+(defthm tfm-capabilities-reply-witness
+  (and (< 100 (fn-tariff-effects-octets
+               (fn-nntp-result-effects (fn-nntp-capabilities *tfm-session* nil))))
+       (<= (fn-tariff-effects-octets
+               (fn-nntp-result-effects (fn-nntp-capabilities *tfm-session* t)))
+           (fn-tariff-capabilities-reply-octets)))
+  :rule-classes nil)
+
+; Teeth: a block is not a transition line, and the transitions share a bound.
+(must-fail-checked
+ (defthm tfm-teeth-capabilities-is-not-a-transition
+   (equal (fn-tariff-family-price '(:preview 9 :capabilities ((67 65 80))) *tfm-as* nil *tfm-a* *tfm-c*)
+          (fn-tariff-family-price '(:preview 9 :tls-transition ((83 84 65 82 84 84 76 83)))
+                                  *tfm-as* nil *tfm-a* *tfm-c*))
+   :rule-classes nil))
