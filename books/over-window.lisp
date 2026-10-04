@@ -652,6 +652,10 @@
                                             fn-cat)
                         (nth 3 cur) fn-arena fn-cat))))
 
+(fn-payload-kind fn-ovw-hdr-reads :source
+                 "returns the handles of a window's available articles: the model of which payloads a header quantum reads; reads no octets")
+(fn-payload-kind fn-ovw-hdr-step-reads :source "returns fn-ovw-hdr-reads of the quantum's window")
+
 (local
  (defthm fn-ovw-len-hdr-reads
    (<= (len (fn-ovw-hdr-reads group numbers v fn-arena fn-cat)) (len numbers))
