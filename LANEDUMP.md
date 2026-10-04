@@ -4548,3 +4548,7 @@ open. Bounds catchup controller draft is preserved but activation unwired.
 
 Entry: build/coordinator/lanedumps/docs.md (deliverables, shas, word counts,
 continuation point).
+
+## init (atomic init PKT-894/PRF-1040; catalog-root install order) -- 2026-10-04
+
+See build/coordinator/lanedumps/init.md (full). lane/init@612fdc33d. Atomic init re-derived (secret in the staged plan; retry discards an unheld unpublished stage; keystone fn-bs-init-log-crash-retry-is-old-or-new admitted in REPL, certification pending). Install order: fnn-owner-recover-core reserves the catalog root before the in-place catalog load (mock red/green; proof-owed INIT-OWED-CATALOG-ROOT-INSTALL). Native red-before init-red on 45e05c7f: init_publication 21F/1E. Green-after waits on the integrator image set; certify waits on the hbox slot (f728 cancelled on request). Continuation: lanedumps/init.md NEXT.
