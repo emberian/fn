@@ -664,41 +664,190 @@ def entry_backoff(attempt: int, sleep=None) -> None:
 PAIR_FACTS = "pair-facts.jsonl"
 
 
+def _pair_log_scan(store: Path, prover: str) -> dict[tuple[str, str], tuple[bool, bool]]:
+    known: dict[tuple[str, str], tuple[bool, bool]] = {}
+    try:
+        with store.open(encoding="utf-8") as handle:
+            for line in handle:
+                try:
+                    fact = json.loads(line)
+                    if fact["acl2"] == prover:
+                        known[(fact["parent"], fact["child"])] = (
+                            bool(fact["required"]), bool(fact["equal"]))
+                except (ValueError, KeyError, TypeError):
+                    continue
+    except OSError:
+        pass
+    return known
+
+
+# The memo's index (lane loops, 2026-10-04): `pair-facts.sqlite` beside the
+# log, keyed by (prover, parent, child).  Reading the whole log on every
+# check cost 15 s and a dict of every fact ever probed on hbox (2 GB, 8.3
+# million lines) and 6 s of a laptop REPL start (386 MB), once per check,
+# several checks an acquire.  The log stays the source of record and the
+# writers' common ground: each check imports the lines appended since the
+# offset the index holds (an older tool still appends there), then asks the
+# index for exactly its pairs, and new verdicts go to both.
+PAIR_DB = "pair-facts.sqlite"
+PAIR_IMPORT_CHUNK = 64 * 1024 * 1024
+
+
+def _pair_index(cache: Path):
+    import sqlite3
+    connection = sqlite3.connect(str(Path(cache) / PAIR_DB), timeout=900,
+                                 isolation_level=None)
+    connection.execute("PRAGMA busy_timeout=900000")
+    with contextlib.suppress(sqlite3.DatabaseError):
+        connection.execute("PRAGMA journal_mode=WAL")
+    connection.executescript(
+        "CREATE TABLE IF NOT EXISTS provers (id INTEGER PRIMARY KEY, path TEXT UNIQUE);"
+        "CREATE TABLE IF NOT EXISTS facts (prover INTEGER, parent BLOB, child BLOB,"
+        " required INTEGER, equal INTEGER, PRIMARY KEY (prover, parent, child))"
+        " WITHOUT ROWID;"
+        "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);")
+    return connection
+
+
+def _pair_prover(connection, path: str) -> int:
+    connection.execute("INSERT OR IGNORE INTO provers (path) VALUES (?)", (path,))
+    return connection.execute("SELECT id FROM provers WHERE path = ?", (path,)).fetchone()[0]
+
+
+def _pair_rows(connection, lines: bytes, provers: dict[str, int]) -> list[tuple]:
+    rows = []
+    for line in lines.split(b"\n"):
+        try:
+            fact = json.loads(line)
+            parent, child = bytes.fromhex(fact["parent"]), bytes.fromhex(fact["child"])
+            if len(parent) != 32 or len(child) != 32:
+                continue
+            prover = fact["acl2"]
+            if prover not in provers:
+                provers[prover] = _pair_prover(connection, prover)
+            rows.append((provers[prover], parent, child,
+                         int(bool(fact["required"])), int(bool(fact["equal"]))))
+        except (ValueError, KeyError, TypeError, AttributeError):
+            continue  # a torn or foreign line is never trusted
+    return rows
+
+
+def _pair_import(connection, log: Path) -> None:
+    """Index the log's complete lines past the recorded offset."""
+    try:
+        size = log.stat().st_size
+    except OSError:
+        return
+    provers: dict[str, int] = {}
+    while True:
+        row = connection.execute("SELECT value FROM meta WHERE key = 'log_offset'").fetchone()
+        offset = int(row[0]) if row else 0
+        if offset > size:
+            offset = 0  # the log was replaced: index it again (rows are idempotent)
+        if offset >= size:
+            return
+        connection.execute("BEGIN IMMEDIATE")
+        try:
+            row = connection.execute("SELECT value FROM meta WHERE key = 'log_offset'").fetchone()
+            recorded = int(row[0]) if row else 0
+            if (0 if recorded > size else recorded) != offset:
+                connection.execute("ROLLBACK")
+                continue  # another process imported meanwhile
+            with log.open("rb") as handle:
+                handle.seek(offset)
+                data = handle.read(min(PAIR_IMPORT_CHUNK, size - offset))
+            complete = data.rfind(b"\n") + 1
+            if complete == 0:
+                connection.execute("ROLLBACK")
+                return  # a torn last line: the next check takes it whole
+            connection.executemany("INSERT OR IGNORE INTO facts VALUES (?, ?, ?, ?, ?)",
+                                   _pair_rows(connection, data[:complete], provers))
+            connection.execute("INSERT OR REPLACE INTO meta VALUES ('log_offset', ?)",
+                               (str(offset + complete),))
+            connection.execute("COMMIT")
+        except BaseException:
+            with contextlib.suppress(Exception):
+                connection.execute("ROLLBACK")
+            raise
+
+
 def memoized_pair_checker(cache: Path, checker=None):
     """CHECKER (default the ACL2 probe) with its verdicts kept in CACHE."""
     checker = checker or cert_alists.acl2_certificate_pairs
 
     def check(paths: list[Path], pairs: list[tuple[int, int]], acl2: Path,
               root: Path) -> dict[tuple[int, int], tuple[bool, bool]]:
+        import sqlite3
         store = Path(cache) / PAIR_FACTS
         digests = [content_hash(Path(path)) if Path(path).is_file() else None
                    for path in paths]
         prover = str(Path(acl2).resolve()) if acl2 is not None else ""
-        known: dict[tuple[str, str], tuple[bool, bool]] = {}
-        try:
-            with store.open(encoding="utf-8") as handle:
-                for line in handle:
-                    try:
-                        fact = json.loads(line)
-                        if fact["acl2"] == prover:
-                            known[(fact["parent"], fact["child"])] = (
-                                bool(fact["required"]), bool(fact["equal"]))
-                    except (ValueError, KeyError, TypeError):
-                        continue
-        except OSError:
-            pass
         found: dict[tuple[int, int], tuple[bool, bool]] = {}
         ask: list[tuple[int, int]] = []
-        for p, c in pairs:
-            key = (digests[p], digests[c])
-            if None not in key and key in known:
-                found[(p, c)] = known[key]
-            else:
-                ask.append((p, c))
+        try:
+            connection = _pair_index(cache)
+        except (sqlite3.Error, OSError):
+            connection = None
+        if connection is not None:
+            try:
+                _pair_import(connection, store)
+                prover_id = _pair_prover(connection, prover)
+                for p, c in pairs:
+                    row = None
+                    if digests[p] is not None and digests[c] is not None:
+                        row = connection.execute(
+                            "SELECT required, equal FROM facts WHERE prover = ? AND parent = ?"
+                            " AND child = ?", (prover_id, bytes.fromhex(digests[p]),
+                                               bytes.fromhex(digests[c]))).fetchone()
+                    if row is None:
+                        ask.append((p, c))
+                    else:
+                        found[(p, c)] = (bool(row[0]), bool(row[1]))
+            except sqlite3.Error:
+                connection.close()
+                connection = None
+                found, ask = {}, []
+        if connection is None:
+            # No index here (unwritable cache, a broken database): the log alone.
+            known = _pair_log_scan(store, prover)
+            for p, c in pairs:
+                key = (digests[p], digests[c])
+                if None not in key and key in known:
+                    found[(p, c)] = known[key]
+                else:
+                    ask.append((p, c))
         check.hits = len(found)
         check.probed = len(ask)
         if not ask:
+            if connection is not None:
+                connection.close()
             return found
+        fresh = checker(paths, ask, acl2, root)
+        found.update(fresh)
+        written = [(p, c) for p, c in ask if (p, c) in fresh
+                   and digests[p] is not None and digests[c] is not None]
+        lines = "".join(json.dumps({"acl2": prover, "parent": digests[p],
+                                    "child": digests[c], "required": fresh[(p, c)][0],
+                                    "equal": fresh[(p, c)][1]}, sort_keys=True) + "\n"
+                        for p, c in written)
+        if lines:
+            try:
+                store.parent.mkdir(parents=True, exist_ok=True)
+                descriptor = os.open(store, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o664)
+                try:
+                    os.write(descriptor, lines.encode("utf-8"))
+                finally:
+                    os.close(descriptor)
+            except OSError:
+                pass
+        if connection is not None:
+            with contextlib.suppress(sqlite3.Error):
+                connection.executemany(
+                    "INSERT OR IGNORE INTO facts VALUES (?, ?, ?, ?, ?)",
+                    [(prover_id, bytes.fromhex(digests[p]), bytes.fromhex(digests[c]),
+                      int(fresh[(p, c)][0]), int(fresh[(p, c)][1])) for p, c in written])
+            connection.close()
+        return found
         fresh = checker(paths, ask, acl2, root)
         found.update(fresh)
         lines = "".join(json.dumps({"acl2": prover, "parent": digests[p],
