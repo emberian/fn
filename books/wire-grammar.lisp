@@ -262,7 +262,7 @@
 ; Base64 lines: the text cut into lines of WIDTH, each then CR LF.
 
 (defun fn-wg-lines (w text)
-  (declare (xargs :guard (posp w) :measure (len text)))
+  (declare (xargs :guard (natp w) :measure (len text)))
   (if (or (not (consp text)) (zp w)) nil
     (if (<= (len text) w)
         (fn-wg-app text (list 13 10))
@@ -270,7 +270,7 @@
                  (cons 13 (cons 10 (fn-wg-lines w (fn-wg-drop w text))))))))
 
 (defun fn-wg-unlines (w xs)
-  (declare (xargs :guard (posp w) :measure (len xs)))
+  (declare (xargs :guard (natp w) :measure (len xs)))
   (if (or (not (consp xs)) (zp w)) nil
     (if (<= (len xs) (+ w 2))
         (fn-wg-take (nfix (- (len xs) 2)) xs)
@@ -297,6 +297,11 @@
   (if (consp checks)
       (and (fn-wg-check-okp (car checks) v) (fn-wg-checks-okp (cdr checks) v))
     t))
+
+; A :where node's checks.
+(defun fn-wg-where-checks (g)
+  (declare (xargs :guard t))
+  (if (and (consp g) (consp (cdr g))) (cddr g) nil))
 
 (defun fn-wg-checkp (check)
   (declare (xargs :guard t))
@@ -558,7 +563,8 @@
      ((equal op :base64-lines)
       (and (fn-cbor-octet-listp v)
            (<= (nfix (fn-wg-arg 2 g)) (len v)) (<= (len v) (nfix (fn-wg-arg 3 g)))))
-     ((equal op :enum) (member-equal v (fn-wg-arg 3 g)))
+     ((equal op :enum)
+      (and (true-listp (fn-wg-arg 3 g)) (member-equal v (fn-wg-arg 3 g))))
      ((equal op :seq)
       (if (and (consp g) (consp (cdr g)))
           (and (consp v)
@@ -576,7 +582,7 @@
       (or (null v)
           (and (consp v) (null (cdr v)) (fn-wg-valuep (fn-wg-arg 1 g) (car v)))))
      ((equal op :where)
-      (and (fn-wg-valuep (fn-wg-arg 1 g) v) (fn-wg-checks-okp (cddr g) v)))
+      (and (fn-wg-valuep (fn-wg-arg 1 g) v) (fn-wg-checks-okp (fn-wg-where-checks g) v)))
      ((equal op :frame)
       (and (fn-wg-valuep (fn-wg-arg 5 g) v)
            (<= (len (fn-wg-encode (fn-wg-arg 5 g) v)) (nfix (fn-wg-arg 4 g)))))
@@ -690,7 +696,7 @@
         (fn-wg-ok nil xs)))
      ((equal op :where)
       (let ((r (fn-wg-decode (fn-wg-arg 1 g) xs)))
-        (if (and (fn-wg-okp r) (not (fn-wg-checks-okp (cddr g) (fn-wg-value r))))
+        (if (and (fn-wg-okp r) (not (fn-wg-checks-okp (fn-wg-where-checks g) (fn-wg-value r))))
             (fn-wg-malformed)
           r)))
      ((equal op :frame)
@@ -843,6 +849,7 @@
 
 ; Openers: each definition below at one node kind, so a proof about one kind
 ; never sees the others (generated from the definitions' arms).
+;; BEGIN GENERATED OPENERS
 (defthm fn-wg-decode-opener-const
   (implies (equal (fn-wg-op g) :const)
            (equal (fn-wg-decode g xs)
@@ -979,7 +986,7 @@
   (implies (equal (fn-wg-op g) :where)
            (equal (fn-wg-decode g xs)
                   (let ((r (fn-wg-decode (fn-wg-arg 1 g) xs)))
-        (if (and (fn-wg-okp r) (not (fn-wg-checks-okp (cddr g) (fn-wg-value r))))
+        (if (and (fn-wg-okp r) (not (fn-wg-checks-okp (fn-wg-where-checks g) (fn-wg-value r))))
             (fn-wg-malformed)
           r))))
   :hints (("Goal" :expand ((fn-wg-decode g xs)))))
@@ -1153,7 +1160,7 @@
 (defthm fn-wg-valuep-opener-enum
   (implies (equal (fn-wg-op g) :enum)
            (equal (fn-wg-valuep g v)
-                  (member-equal v (fn-wg-arg 3 g))))
+                  (and (true-listp (fn-wg-arg 3 g)) (member-equal v (fn-wg-arg 3 g)))))
   :hints (("Goal" :expand ((fn-wg-valuep g v)))))
 
 (defthm fn-wg-valuep-opener-seq
@@ -1187,7 +1194,7 @@
 (defthm fn-wg-valuep-opener-where
   (implies (equal (fn-wg-op g) :where)
            (equal (fn-wg-valuep g v)
-                  (and (fn-wg-valuep (fn-wg-arg 1 g) v) (fn-wg-checks-okp (cddr g) v))))
+                  (and (fn-wg-valuep (fn-wg-arg 1 g) v) (fn-wg-checks-okp (fn-wg-where-checks g) v))))
   :hints (("Goal" :expand ((fn-wg-valuep g v)))))
 
 (defthm fn-wg-valuep-opener-frame
@@ -1430,6 +1437,7 @@
             (natp (fn-wg-arg 4 g)) (< (fn-wg-arg 4 g) (fn-wg-limit 4))
             (fn-wg-grammarp (fn-wg-arg 5 g))))))
   :hints (("Goal" :expand ((fn-wg-grammarp g)))))
+;; END GENERATED OPENERS
 
 
 ; The :seq and :tag openers stay closed: their recursion is along the same
@@ -2053,3 +2061,12 @@
                (equal (len (access clause-id id :case-lst)) 1)
                (equal (access clause-id id :primes) 0)
                '(:use (fn-wg-shape-facts-2 fn-wg-grammarp-op fn-wg-grammarp-seq-tag-shape fn-wg-encode-of-decode-const fn-wg-encode-of-decode-uint fn-wg-encode-of-decode-bytes fn-wg-encode-of-decode-rest fn-wg-encode-of-decode-line fn-wg-encode-of-decode-base64-lines fn-wg-encode-of-decode-enum fn-wg-encode-of-decode-seq fn-wg-encode-of-decode-tag-hit fn-wg-encode-of-decode-tag-miss fn-wg-encode-of-decode-maybe fn-wg-encode-of-decode-where fn-wg-encode-of-decode-frame)))))
+
+; -----------------------------------------------------------------------------
+; Guards: the interpreter is total and guard-verified at :guard t (any
+; grammar, any value, any octets), so the image calls it at a family's
+; grammar constant.
+
+(verify-guards fn-wg-encode)
+(verify-guards fn-wg-valuep)
+(verify-guards fn-wg-decode)
