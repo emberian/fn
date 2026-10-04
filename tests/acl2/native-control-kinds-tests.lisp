@@ -48,6 +48,11 @@
 (ckt-is *ckt-bindings* :store)
 (ckt-is *ckt-redecide* :store)
 (ckt-is *ckt-revoke* :store)
+; The store-identity request (Mini M4): a wire-grammar frame of kind 24, a
+; read (fn-ctlk-identity-request-is-classified).
+(defconst *ckt-identity* (fn-wg-encode *fn-wf-identity-request-grammar* nil))
+(assert-event (fn-wg-okp (fn-wg-decode *fn-wf-identity-request-grammar* *ckt-identity*)))
+(ckt-is *ckt-identity* :read)
 (assert-event
  (and (fn-cbor-octet-listp *ckt-reload*)
       (equal (fn-tlsr-request-decode *ckt-reload*) :reload)
