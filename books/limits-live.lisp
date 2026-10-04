@@ -204,8 +204,8 @@
 (defun fn-lim-protected-growth (candidate funded core nursery)
   "Positive growth of the Store's protected share in this running process."
   (declare (xargs :guard t))
-  (nfix (- (fn-heap-runtime-protected-octets candidate core nursery)
-           (fn-heap-runtime-protected-octets funded core nursery))))
+  (nfix (- (fn-heap-runtime-protected-octets candidate core nursery nil)
+           (fn-heap-runtime-protected-octets funded core nursery nil))))
 
 (defun fn-lim-pool-decision (d preview)
   "A live change needs both process space and unclaimed installed-pool space."

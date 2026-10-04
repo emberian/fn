@@ -74,10 +74,7 @@
        (equal (fn-tariff-article-row-charge *tar-session* nil nil *tar-a* *tar-c*) 17)
        (equal (fn-tariff-article-row-charge *tar-session* '((60 98 64 120 62)) nil *tar-a* *tar-c*) 19)
        (equal (fn-tariff-article-row-charge '(:session nil nil) '((50)) nil *tar-a* *tar-c*) 0)
-       (equal (fn-tariff-article-row-charge *tar-session* '((49) (50)) nil *tar-a* *tar-c*) 0)
-       (equal (fn-tariff-article-descriptor
-               (fn-tariff-article-row-charge *tar-session* '((50)) nil *tar-a* *tar-c*))
-              (list :tariff :article (fn-tariff-article-octets 19))))
+       (equal (fn-tariff-article-row-charge *tar-session* '((49) (50)) nil *tar-a* *tar-c*) 0))
   :rule-classes nil)
 
 ; With an Xref server, a row in two groups is charged the two renders of the

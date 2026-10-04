@@ -3283,6 +3283,14 @@
         {
           "kind": "theorem",
           "name": "fn-scka-restore-base-of-strip-of-capture"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-read-ranges-is-the-range"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-read-ranges-read-the-whole-file"
         }
       ]
     },
@@ -14006,67 +14014,39 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-lgu-acknowledged-article-is-recoverable-at-every-crash-point"
+          "name": "fn-lgu-acknowledged-records-are-recovered-at-every-cut"
         },
         {
           "kind": "theorem",
-          "name": "fn-lgu-acknowledged-article-is-recoverable-at-every-cut-of-recovery"
+          "name": "fn-lgu-take-verdict-admits-exactly-log-records"
         },
         {
           "kind": "theorem",
-          "name": "fn-lgu-committed-record-is-read-from-every-crash-image"
+          "name": "fn-lgu-open-run-acknowledges-only-recoverable-records"
         },
         {
           "kind": "theorem",
-          "name": "fn-lgu-scan-of-a-complete-prefix-reads-its-records"
+          "name": "fn-lgu-host-kernel-acknowledges-only-recoverable-records"
         },
         {
           "kind": "theorem",
-          "name": "fn-lgu-committed-record-survives-every-cut-of-the-append"
+          "name": "fn-lgu-complete-acknowledges-the-fenced-batch"
         },
         {
           "kind": "theorem",
-          "name": "fn-lgu-committed-record-survives-every-cut-of-the-fence"
+          "name": "fn-lgu-safe-image-recovers-the-acknowledged-records"
         },
         {
           "kind": "theorem",
-          "name": "fn-lgu-committed-record-survives-every-cut-of-a-failed-fence"
+          "name": "fn-lgu-safe-image-scans-the-committed-records-first"
         },
         {
           "kind": "theorem",
-          "name": "fn-lgu-committed-record-survives-every-cut-of-the-extension"
+          "name": "fn-lgu-crash-keeps-the-prefix"
         },
         {
           "kind": "theorem",
-          "name": "fn-lgu-record-read-at-open-survives-every-cut-of-recovery"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgu-acknowledged-record-is-committed"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-owb-uncertain-batch-recovers-to-a-prefix"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-crash-of-aligned-append"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lg-extend-program-keeps-the-relation"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-read-ranges-is-the-range"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-read-ranges-read-the-whole-file"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgs-open-plan-scan-ignores-covered"
+          "name": "fn-lgu-recover-program-establishes-the-relation"
         }
       ]
     },
@@ -19621,6 +19601,51 @@
         {
           "kind": "theorem",
           "name": "fn-owner-orcp-rebuild-of-capture-is-the-full-open"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1320",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ak-layout-parses",
+          "pending_subject": "The subjects are fn-article-parse and fn-inj-decide, which the host calls; their input is fn-ak-layout, the proof-side layout of the kind. The host-called encoder of the kind will be fn-wg-encode at *fn-ak-grammar* (books/wire-grammar.lisp, lane mini-contract); the bridge fn-ak-grammar-encode-is-the-layout is owed (D50)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ak-layout-parses-under",
+          "pending_subject": "The subjects are fn-article-parse and fn-inj-decide, which the host calls; their input is fn-ak-layout, the proof-side layout of the kind. The host-called encoder of the kind will be fn-wg-encode at *fn-ak-grammar* (books/wire-grammar.lisp, lane mini-contract); the bridge fn-ak-grammar-encode-is-the-layout is owed (D50)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1321",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ak-layout-is-injected",
+          "pending_subject": "The subjects are fn-article-parse and fn-inj-decide, which the host calls; their input is fn-ak-layout, the proof-side layout of the kind. The host-called encoder of the kind will be fn-wg-encode at *fn-ak-grammar* (books/wire-grammar.lisp, lane mini-contract); the bridge fn-ak-grammar-encode-is-the-layout is owed (D50)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1322",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ak-layout-is-a-hybrid-injection",
+          "pending_subject": "The subject is fn-hsig-injected-carrier-plan, which the host calls (through fn-hsig-injected-carrier-octets and fn-hsig-authorized-injected-carried-submission-event); its source input is fn-ak-layout, whose host-called encoder will be fn-wg-encode at *fn-ak-grammar* (bridge fn-ak-grammar-encode-is-the-layout owed, D50)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ak-carrier-parses",
+          "pending_subject": "The subject is fn-hsig-injected-carrier-plan, which the host calls (through fn-hsig-injected-carrier-octets and fn-hsig-authorized-injected-carried-submission-event); its source input is fn-ak-layout, whose host-called encoder will be fn-wg-encode at *fn-ak-grammar* (bridge fn-ak-grammar-encode-is-the-layout owed, D50)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ak-carrier-parses-under",
+          "pending_subject": "The subject is fn-hsig-injected-carrier-plan, which the host calls (through fn-hsig-injected-carrier-octets and fn-hsig-authorized-injected-carried-submission-event); its source input is fn-ak-layout, whose host-called encoder will be fn-wg-encode at *fn-ak-grammar* (bridge fn-ak-grammar-encode-is-the-layout owed, D50)."
         }
       ]
     }
