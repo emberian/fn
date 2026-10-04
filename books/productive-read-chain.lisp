@@ -39,10 +39,10 @@
                 (not (fn-post-offeredp
                       (fn-nntp-result-effects
                        (fn-nntp-step-pinned (fn-post-session-base ps) archive index verdicts
-                                            (fn-post-reader-env config observation)
+                                            (fn-post-command-env config observation injection event)
                                             event fn-arena)))))
            (let ((r (fn-nntp-step-pinned (fn-post-session-base ps) archive index verdicts
-                                         (fn-post-reader-env config observation) event fn-arena))
+                                         (fn-post-command-env config observation injection event) event fn-arena))
                  (p (fn-nntp-post-step-pinned ps archive index verdicts config
                                               observation injection event fn-arena)))
              (and (equal (fn-post-result-effects p) (fn-nntp-result-effects r))
@@ -51,10 +51,50 @@
                          (fn-nntp-result-session r)))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-post-step-pinned)
                                  (fn-nntp-step-pinned fn-post-sessionp fn-post-session-awaiting
-                                  fn-post-offeredp fn-post-reader-env fn-nntp-result-effects
+                                  fn-post-offeredp fn-post-command-env fn-nntp-result-effects
                                   fn-nntp-result-session fn-post-result-effects fn-post-result-session
                                   fn-post-result-submission fn-post-make-result fn-post-make-session
                                   fn-post-session-base)))))
+
+; The served step reads the clock for DATE and NEWGROUPS only
+; (fn-post-command-env); every other command is the reader-env step.
+(defthm fn-pcr-post-delegates-an-ordinary-read-without-offer-by-definition
+  (implies (and (fn-post-sessionp ps)
+                (not (fn-post-session-awaiting ps))
+                (not (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "DATE"))
+                (not (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "NEWGROUPS"))
+                (not (fn-post-offeredp
+                      (fn-nntp-result-effects
+                       (fn-nntp-step-pinned (fn-post-session-base ps) archive index verdicts
+                                            (fn-post-reader-env config observation)
+                                            (list :command line) fn-arena)))))
+           (let ((r (fn-nntp-step-pinned (fn-post-session-base ps) archive index verdicts
+                                         (fn-post-reader-env config observation)
+                                         (list :command line) fn-arena))
+                 (p (fn-nntp-post-step-pinned ps archive index verdicts config
+                                              observation injection (list :command line) fn-arena)))
+             (and (equal (fn-post-result-effects p) (fn-nntp-result-effects r))
+                  (null (fn-post-result-submission p))
+                  (equal (fn-post-session-base (fn-post-result-session p))
+                         (fn-nntp-result-session r)))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-pcr-post-delegates-a-read-without-offer-by-definition
+                                   (event (list :command line)))
+                        (:instance fn-post-command-env-ordinary-unfolds
+                                   (wire-event (list :command line))))
+                  :in-theory (disable fn-nntp-step-pinned fn-nntp-post-step-pinned
+                                      fn-post-sessionp fn-post-session-awaiting fn-post-offeredp
+                                      fn-post-command-env fn-post-reader-env fn-nntp-result-effects
+                                      fn-nntp-result-session fn-post-result-effects
+                                      fn-post-result-session fn-post-result-submission
+                                      fn-post-session-base fn-nntp-keywordp fn-nntp-tokenize))))
+
+(defthm fn-pcr-article-line-is-an-ordinary-command
+  (implies (equal (fn-nntp-tokenize line) (list *fn-pcr-article-keyword* token))
+           (and (not (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "DATE"))
+                (not (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "NEWGROUPS"))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-nntp-keywordp) (fn-nntp-tokenize)))))
 
 (defthm fn-pcr-peer-reader-delegates-to-post-by-definition
   (implies (and (fn-peer-sessionp ps) (null (fn-peer-session-peer ps)))
@@ -227,8 +267,8 @@
            :use ((:instance fn-pcr-command-line-answers-the-numbered-article
                             (session (fn-post-session-base ps))
                             (env (fn-post-reader-env config observation)))
-                 (:instance fn-pcr-post-delegates-a-read-without-offer-by-definition
-                            (event (list :command line))))
+                 (:instance fn-pcr-post-delegates-an-ordinary-read-without-offer-by-definition)
+                 (:instance fn-pcr-article-line-is-an-ordinary-command))
            :in-theory (disable fn-nntp-post-step-pinned fn-nntp-step-pinned
                                fn-post-sessionp fn-post-session-awaiting fn-post-session-base
                                fn-post-reader-env fn-post-result-effects fn-post-result-session

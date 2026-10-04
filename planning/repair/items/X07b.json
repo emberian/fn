@@ -1,13 +1,113 @@
 {
+ "budget": "130",
  "category": "bug",
+ "expect-failure": "tests.test_post_delegates_env_source.PostDelegatesEnvTests.test_the_delegating_theorems_use_the_command_env",
+ "failure-message": "False is not true : fn-pcr-post-delegates-a-read-without-offer-by-definition must be stated over fn-post-command-env",
  "file": "books/owner-control-read.lisp",
+ "harness": "tests/test_post_delegates_env_source.py",
  "id": "X07b",
  "note": "recertify certify-20261003T020918Z-2995402 at 0bcd9a338: 59/20. Root failures: owner-control-read FN-OCTL-DISPATCH-ARCHIVE-COMMAND; productive-read-chain FN-PCR-POST-DELEGATES-A-READ-WITHOUT-OFFER-BY-DEFINITION; served-head-bridge FN-SHD-POST-DELEGATES-A-READ-WITHOUT-OFFER-BY-DEFINITION; the other 17 are includers. Same fix as 0bcd9a338: restate over (fn-post-command-env config observation injection wire-event) (identical for non-DATE/NEWGROUPS via fn-post-command-env-ordinary-unfolds); then recertify those roots. Logs: build/lanes/codex-t42-date-current/build/acl2/certify-20261003T020918Z-2995402/",
- "notes": [],
+ "notes": [
+  "10-04 16:13 claimed: scope=['books/productive-read-chain.lisp', 'books/served-head-bridge.lisp', 'books/productive-read-absent.lisp', 'books/productive-read-message-id.lisp', 'books/owner-control-read.lisp', 'tests/test_post_delegates_env_source.py'] test=python3 -m unittest tests.test_post_delegates_env_source",
+  "10-04 16:15 escalation accepted by assembler-2 2026-10-04: 123 lines = t42 restatement + per-book ordinary-command form lemmas + 4 consumer :use switches. Statements: fn-pcr-/fn-shd-post-delegates-a-read-without-offer-by-definition env (fn-post-reader-env config observation) -> (fn-post-command-env config observation injection event), no hypothesis added (old form false for DATE/NEWGROUPS under t42: fn-nntp-post-step-pinned uses the clock-injected env). New ordinary-command lemmas (fn-pcr-post-delegates-an-ordinary-read-without-offer-by-definition, fn-shd-post-delegates-a-head-without-offer-by-definition) carry the old reader-env statement plus not-DATE/not-NEWGROUPS (via fn-post-command-env-ordinary-unfolds); consumers are ARTICLE/HEAD theorems, whose tokenize hypothesis excludes DATE/NEWGROUPS, so no keystone narrows.",
+  "10-04 16:20 READY ef1603c70013cd987375a0928f67d14c5bc8f7b0; certify lat1 run-20261004T201106Z-fd6e (12 passed) + run-20261004T201821Z-3f44 (10 passed incl. owner-enrollment-read includer); statements: env (fn-post-reader-env config observation) -> (fn-post-command-env config observation injection event), no hypothesis added; ordinary-command lemmas add not-DATE/not-NEWGROUPS and serve ARTICLE/HEAD consumers only"
+ ],
  "owner": "liaison",
+ "scope": [
+  "books/productive-read-chain.lisp",
+  "books/served-head-bridge.lisp",
+  "books/productive-read-absent.lisp",
+  "books/productive-read-message-id.lisp",
+  "books/owner-control-read.lisp",
+  "tests/test_post_delegates_env_source.py"
+ ],
  "severity": "high",
  "source": "liaison",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_post_delegates_env_source",
  "title": "t42 fallout: three theorems still state the post step under fn-post-reader-env (17 includers red)",
- "updated": "2026-10-03T02:37:03Z"
+ "updated": "2026-10-04T20:20:39Z",
+ "verify": {
+  "base": "c4d6bd17ab7e932e6700df6b3f0d201d84f37d0c",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "False is not true : fn-pcr-post-delegates-a-read-without-offer-by-definition must be stated over fn-post-command-env",
+      "test": "tests.test_post_delegates_env_source.PostDelegatesEnvTests.test_the_delegating_theorems_use_the_command_env",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_post_delegates_env_source.PostDelegatesEnvTests.test_the_delegating_theorems_use_the_command_env"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_post_delegates_env_source.py": "cb751b0d46836880e361877f324964cf3020f929b4b183438f7ec6c8eb362216"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "c4d6bd17ab7e932e6700df6b3f0d201d84f37d0c",
+   "stderr": "test_the_delegating_theorems_use_the_command_env (tests.test_post_delegates_env_source.PostDelegatesEnvTests.test_the_delegating_theorems_use_the_command_env) ... FAIL\n\n======================================================================\nFAIL: test_the_delegating_theorems_use_the_command_env (tests.test_post_delegates_env_source.PostDelegatesEnvTests.test_the_delegating_theorems_use_the_command_env)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-0uy87cm5/wt/tests/test_post_delegates_env_source.py\", line 19, in test_the_delegating_theorems_use_the_command_env\n    self.assertTrue(\"fn-post-command-env\" in form(book, name),\n    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                    name + \" must be stated over fn-post-command-env\")\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: False is not true : fn-pcr-post-delegates-a-read-without-offer-by-definition must be stated over fn-post-command-env\n\n----------------------------------------------------------------------\nRan 1 test in 0.002s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "books/productive-read-absent.lisp",
+   "books/productive-read-chain.lisp",
+   "books/productive-read-message-id.lisp",
+   "books/served-head-bridge.lisp",
+   "tests/test_post_delegates_env_source.py"
+  ],
+  "diff_lines": 123,
+  "evidence": {
+   "bytes": 4213,
+   "path": "planning/evidence/repair/X07b-f3263d608e934658aac9915c205b49fd.json",
+   "sha256": "5e6b52f58a82e76301e6e20eb7c59950a9b7ff3ad993713029793b98f38e7922"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "False is not true : fn-pcr-post-delegates-a-read-without-offer-by-definition must be stated over fn-post-command-env",
+   "test": "tests.test_post_delegates_env_source.PostDelegatesEnvTests.test_the_delegating_theorems_use_the_command_env"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/test_post_delegates_env_source.py": "cb751b0d46836880e361877f324964cf3020f929b4b183438f7ec6c8eb362216"
+  },
+  "head": "ef1603c70013cd987375a0928f67d14c5bc8f7b0",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_post_delegates_env_source.PostDelegatesEnvTests.test_the_delegating_theorems_use_the_command_env"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_post_delegates_env_source.py": "cb751b0d46836880e361877f324964cf3020f929b4b183438f7ec6c8eb362216"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "ef1603c70013cd987375a0928f67d14c5bc8f7b0",
+   "stderr": "test_the_delegating_theorems_use_the_command_env (tests.test_post_delegates_env_source.PostDelegatesEnvTests.test_the_delegating_theorems_use_the_command_env) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.002s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_post_delegates_env_source",
+  "timeout": 1800.0
+ }
 }
