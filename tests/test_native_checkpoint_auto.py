@@ -79,7 +79,7 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         self.assertIn("(fnn-core 'fn-owner-sco-setup-of prepared frontier revision position2", publish)
         self.assertIn("(fnn-history-image-build", publish)
         self.assertIn("(fnn-history-image-write fd image)", publish)
-        self.assertIn("(fnn-live-octets-pub) arun)", publish)
+        self.assertIn("(fnn-live-octets-pub) arun arena)", publish)
         # the reported octets are the file's, the stream's free space what
         # the image leaves: both ACL2's (host/store-node-host.lisp)
         self.assertIn("(fnn-core 'fn-his-file-octets (fnn-history-image-np image)", publish)
@@ -95,7 +95,7 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         # in the write), not a second walk of the rows.
         self.assertIn("(fn-scka-lens-setup (reverse (nth 1 walked)) seg)", prepare)
         self.assertIn("(fn-scka-initial-state (reverse (nth 2 walked)) (nth 1 ws) 0)", prepare)
-        self.assertIn("(fnn-checkpoint-walk records)", publish)
+        self.assertIn("(fnn-checkpoint-walk records arena)", publish)
         walk = native_cuts.host_function(io, "fnn-checkpoint-walk")
         self.assertIn("(fnn-core 'fn-scka-srcs-n (first walk) +fnn-checkpoint-batch-rows+", walk)
         self.assertIn("(fnn-live-octets-pub)", publish)
@@ -150,15 +150,27 @@ class AutoCheckpointSourceTests(unittest.TestCase):
             body = native_cuts.host_function(owner, name)
             self.assertNotIn("fnn-disk-free-octets", body, name)
             self.assertNotIn("(fnn-owner-space-event ", body, name)
+        # Every owner quantum enters through the one section envelope (lane
+        # WRAPPER): fnn-owner-gated and def-section's entries expand it.
+        envelope = owner[owner.index("(defmacro fnn-section-envelope"):]
+        envelope = envelope[:envelope.index("\n(defun ")]
+        self.assertLess(envelope.index("(fnn-owner-space-preobserve ,s)"),
+                        envelope.index("(fnn-owner-gate-enter ,g ,c)"))
+        self.assertLess(envelope.index("(fnn-owner-gate-enter ,g ,c)"),
+                        envelope.index("(fnn-with-observed-owner ((fnn-owner-service-lock ,s))\n         (unwind-protect"))
         gated = owner[owner.index("(defmacro fnn-owner-gated"):]
-        gated = gated[:gated.index("\n(defun ")]
-        self.assertLess(gated.index("(fnn-owner-space-preobserve ,service)"),
-                        gated.index("(fnn-owner-gate-enter"))
+        gated = gated[:gated.index("\n(")]
+        self.assertIn("(fnn-section-run-cleanup ,service ,class", gated)
         preobserve = native_cuts.host_function(owner, "fnn-owner-space-preobserve")
         self.assertIn("'fn-otm-space-due-p", preobserve)
-        status = native_cuts.host_function(control, "fnn-control-live-status-answer")
+        # The legacy render forces a fresh reading before the mutex; the
+        # installed inspector's turns enter the envelope above, which
+        # observes (when due) before the gate.
+        status = native_cuts.host_function(control, "fnn-control-live-status-legacy-answer")
         self.assertLess(status.index("(fnn-owner-space-preobserve service t)"),
                         status.index("(fnn-owner-serialized"))
+        turns = native_cuts.host_function(control, "fnn-control-live-status-answer")
+        self.assertIn("(fnn-owner-serialized-with-control-turn", turns)
 
 
 class AutoCheckpointFixture(scp.StateCheckpointFixture):

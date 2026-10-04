@@ -4544,6 +4544,37 @@ versus current-image obligations, not completion claims. No live deployment.
 Protected recovery partition, expanded init/reopen and complete tariff remain
 open. Bounds catchup controller draft is preserved but activation unwired.
 
+## docs lane (lane/docs) — 2026-10-04
+
+Brief: scratchpad fn-briefs/COMMON.md + plan FN-SWARMPLAN-20261004 §3, §4 wave 0, §6.
+Owns: docs_check reds; docs/README.md, docs/engineering.md, CONTRIBUTING.md,
+CONTRIBUTORS.md; docs/articles/*.txt (fn.docs); docs/nodes/*.md and
+tools/runbooks/public-node/. Not: AGENTS.md, planning/how-we-work.md,
+planning/now.md (integrator's — proposals by message). No ACL2, no builds,
+nothing executed on any node.
+
+| # | deliverable | sha | docs_check | state |
+|---|---|---|---|---|
+| D1 | docs_check reds (specs/nntp.md table; tests/acl2/docs-operator-grammar-tests.lisp) | d77d4f433 | 0 failures | in the integrator's wave-0 batch; test book certifies there |
+| D2 | guides: CONTRIBUTING 843→450, CONTRIBUTORS 761→341, docs/README 142→101, docs/engineering 1291→493 words | 56043bab6 | 0 failures | READY |
+| D4 | docs/nodes/hbox.md rewritten, docs/nodes/fsn1.md new; tools/runbooks/public-node/ hbox-hosted plan removed, peering.md + exposure.policy corrected | e23781bec | 0 failures | READY; nothing executed on any node |
+| D3 | docs/articles/ (fn.docs): bodies 3,403→2,452 words; hand prose 2,284→1,333; whole files 3,992→3,041 (09-27 pre-site baseline 13,789); Subject lines unchanged; new Message-IDs dated 20261004 | be3c6f4d9 | 0 failures | READY; grammar test book regenerated, needs certifying; NOT posted to fn.docs (post_docs.py is a node action) |
+
+Remaining toward ember's quarter: the two generated regions (fn-faq-2's
+command list 499 words, fn-faq-6's codes and refusals 620) are now 46% of
+the article bodies; cutting them means changing tools/docs_check.py /
+tools/protocol_emit.py's output (or moving them to a reference page) —
+a decision for ember/integrator, not taken here.
+Known pre-existing in a fresh worktree: tests.test_docs_check's
+test_every_python_invocation... errors on missing bin/fn (untracked build
+product), unrelated to this lane.
+
+Continuation point: none owed; lane exits after D3 READY.
+
+Notes for the integrator: comments still naming removed files (no behaviour):
+books/store-mount-identity.lisp:660 (tools/runbooks/public-node, dir still
+exists), tests/test_native_tls_reload.py:97 (fn-cert-install.sh). Lane notes
+live here only (build/coordinator/lanedumps/docs.md untracked, per integrator).
 
 ## Lane tariff — 2026-10-04 (Fable, wound down; Opus continues)
 

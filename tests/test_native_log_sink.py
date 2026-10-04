@@ -20,6 +20,7 @@ import threading
 import time
 import unittest
 
+from tests.campaign import native_cuts
 from tests.native_harness import ROOT, Node, article, native_image, requires, wait_for_announcement
 
 IMAGE = native_image("FN_NATIVE_HOST")
@@ -45,7 +46,13 @@ class LogSinkSourceTests(unittest.TestCase):
         owner = (ROOT / "host" / "native" / "owner.lisp").read_text(encoding="utf-8")
         run = owner[owner.index("(defun fnn-owner-run "):owner.index("(defun fnn-owner-run-normalized")]
         self.assertIn("(fnn-log-writer-start)", run)
-        self.assertIn("(fnn-log-writer-stop)", run)
+        # The stop is the settlement's physical join, on both of the run's
+        # exits (the settled stop and the unwind that claimed the run):
+        # ACL2 decides from the join what happens to the pending lines.
+        self.assertGreaterEqual(run.count("(setq log-close-action (fnn-owner-log-settlement))"), 2)
+        settlement = native_cuts.host_function(owner, "fnn-owner-log-settlement")
+        self.assertIn("(fnn-log-writer-stop)", settlement)
+        self.assertIn("(fnn-core 'fn-ort-log-close-action observation", settlement)
 
 
 @requires(IMAGE)

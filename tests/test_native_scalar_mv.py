@@ -16,12 +16,15 @@ class ScalarMVTests(unittest.TestCase):
     def test_actual_bridge_preserves_scalar_values_and_fails_closed(self):
         selected = []
         for form in proof_repl.forms((ROOT / "host/native/io.lisp").read_text()):
-            if proof_repl.head_and_name(form)[1] in {"fnn-fixed-raw-callback", "fnn-core-mv"}:
+            if proof_repl.head_and_name(form)[1] in {
+                    "fnn-store-error", "fnn-store-fault", "fnn-fixed-callback-fault",
+                    "fnn-fixed-callback-fail", "fnn-fixed-raw-callback", "fnn-core-mv"}:
                 selected.append(form)
-        self.assertEqual(len(selected), 2)
+        # The shipped fault conditions and the callback failure the bridge
+        # raises (host/native/io.lisp), in the file's order.
+        self.assertEqual(len(selected), 6)
         driver = '''(defpackage "ACL2" (:use "COMMON-LISP"))
 (in-package "ACL2")
-(define-condition fnn-store-fault (error) ((message :initarg :message)))
 (defun fnn-fault (control &rest args)
   (error 'fnn-store-fault :message (apply #'format nil control args)))
 (defvar *fnn-raw-dispatch* (make-hash-table :test 'eq))
