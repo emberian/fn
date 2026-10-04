@@ -224,6 +224,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import theory_check  # noqa: E402
 import acl2_slots  # noqa: E402
 import acl2_toolchain  # noqa: E402
+import box_table  # noqa: E402
 import certs  # noqa: E402
 
 SESSIONS = ROOT / "build" / "proof-repl"
@@ -3534,6 +3535,7 @@ def diff(args) -> int:
 # reads its own cache; tools/cert_cache_sync.py (which farm's fetch runs)
 # copies one box's new certificates into the other's.
 REMOTE_TREES = {"persvati": "fn-gates", "hbox": "/tank/fn/gates"}
+REMOTE_TREES.update({name: row["gates"] for name, row in box_table.extra_boxes().items()})
 # Subcommands whose remote process may start a session server: on hbox they
 # run under swarm-build, whose scope carries the enforced memory cap and
 # makes the server killable (an ssh child inherits sshd's OOM immunity).
