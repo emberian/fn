@@ -3,19 +3,29 @@
  "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
  "evidence": "snapshot-producer.lisp:1-2: \"; The actual captured source portion of the online snapshot job.\" Line 19: :source (fnn-snapshot-source-begin captured). Also fnn-hsr-source-begin (125), fnn-hsr-cold-step (195), fnn-hpi-offer (288) and fnn-hpi-action (300). grep finds no (defun ...) for any of them under host/. fnn-owner-snapshot-capture, fnn-snapshot-job-source-step, -cleanup, -log-durable and -restart-source have no callers outside this file, and only the WIP snapshot-startup.lisp references the file. planning/ledger.json lists fnn-snapshot-source-begin as undefined, and HST-040 is 'planned'.",
+ "expect-failure": "tests.test_snapshot_producer_parked.SnapshotProducerParkedTests.test_header_declares_the_file_parked_and_names_what_is_undefined",
  "exposure": "latent",
+ "failure-message": "snapshot-producer.lisp describes itself as the actual capture but no build loads it and it calls undefined functions",
  "file": "host/native/snapshot-producer.lisp",
  "fix": "Mark the file PARKED the way receiver-turn-parked.lisp is (state what is undefined and that no build loads it), or remove it until the HPI writer lands. When it is wired in, classify fnn-store-error refusals separately from :uncertain, and release the canonical and publication captures on the refusal path.",
+ "harness": "tests/test_snapshot_producer_parked.py",
  "id": "S111",
  "line": "19",
  "locus": "store-books",
- "notes": [],
+ "notes": [
+  "10-04 15:53 claimed: scope=['host/native/snapshot-producer.lisp', 'tests/test_snapshot_producer_parked.py'] test=python3 -m unittest tests.test_snapshot_producer_parked"
+ ],
  "owner": "sweep-peer",
  "reviewer": "snapshot-producer.lisp is referenced only by the comment at snapshot-startup.lisp:1 ('Production startup assembly WIP'). host/native/build.lisp does not load it (grep finds no other reference in host/tools/tests/books). fnn-snapshot-source-begin, fnn-hsr-source-begin, fnn-hsr-cold-step, fnn-hpi-offer and fnn-hpi-action have no defun under host/ or books/. The refuse-io at 129 is caught by the generic error arm at 437-439, which sets :uncertain. This is dead code with a misleading 'actual capture' header and has no runtime effect.",
  "scenario": "A reader or lane treats the job's refusal/uncertain bookkeeping as live code. It is not, and parts of it are already wrong. For example, fnn-refuse-io \"snapshot source reader refused\" (line 129) is caught by the generic error arm at line 439, which sets outcome :uncertain, so a definite pre-I/O refusal would force recovery. Anyone wiring the file in inherits that collapse and unreleased canonical/publication captures on the refusal path of fnn-owner-snapshot-capture (603-607 are acquired, but the cleanup at 624-631 releases only root, view and capture).",
+ "scope": [
+  "host/native/snapshot-producer.lisp",
+  "tests/test_snapshot_producer_parked.py"
+ ],
  "severity": "low",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_snapshot_producer_parked",
  "title": "snapshot-producer.lisp is unloaded WIP that calls five undefined functions, but its header describes it as the actual capture",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-04T19:53:18Z"
 }
