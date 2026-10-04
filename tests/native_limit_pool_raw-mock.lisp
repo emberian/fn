@@ -35,13 +35,8 @@
 (defun fnn-heap-history-observation (store values) (declare (ignore store values)) 'history)
 (defun fnn-store-root (s) s)
 (defun fnn-gc-nursery-octets () 64)
-;; No developer selector is set: the production answer, so the admin fault
-;; injection (fnn-admin-test-fault, extracted below) never fires here, so the
-;; section list it checks a selector against is not consulted.
-(defparameter +fnn-admin-sections+ nil)
-(defun fnn-developer-selector (name) (declare (ignore name)) nil)
-(defun fnn-quantum-control (service cid thunk &optional class)
-  (declare (ignore service cid class))
+(defun fnn-owner-serialized (service cid thunk)
+  (declare (ignore service cid))
   (sb-thread:with-mutex (*fixture-owner-lock*) (funcall thunk)))
 ;; admin.lisp's owner sections run in the declared section (ACTORS step 0,
 ;; ba15dff48: def-section fnn-quantum-control, host/native/owner.lisp); the
@@ -110,7 +105,7 @@
     (sb-thread:join-thread *issuer*)
     (assert *issuer-acquired*)
     (assert (equal (reverse *events*) expected))))
-(load-limit-source "host/native/admin.lisp" '(fnn-admin-test-fault fnn-owner-limit-serialized))
+(load-limit-source "host/native/admin.lisp" '(fnn-owner-limit-serialized))
 (limit-pool-fixture :affordable :accepted '(:preview :publish :carry :pool :profile))
 (limit-pool-fixture :at-restart :accepted '(:preview :publish :carry))
 (limit-pool-fixture :affordable :refused '(:preview :publish))
