@@ -133,11 +133,13 @@
                             (x (mod (floor n 256) (expt 256 (+ -1 k))))
                             (r (mod n 256)) (big (expt 256 k))
                             (modn (mod n (expt 256 k)))))))))
+(local (defun pfd-u64-image (xs)
+  (declare (xargs :guard t))
+  (if (consp xs) (cons (mod (nfix (car xs)) (expt 2 64)) (pfd-u64-image (cdr xs))) nil)))
 (local (defthm pfd-u64-round-trip
-  (implies (and (natp n) (< n (expt 2 64)))
-           (equal (fn-cu-octets-value (fn-cu-u64-octets n) 0) n))
+  (equal (fn-cu-octets-value (fn-cu-u64-octets n) 0) (mod (nfix n) (expt 2 64)))
   :hints (("Goal" :in-theory (enable fn-cu-u64-octets)
-           :use ((:instance pfd-octets-value-of-u64-aux (k 8) (acc nil) (a 0)))))))
+           :use ((:instance pfd-octets-value-of-u64-aux (k 8) (n (nfix n)) (acc nil) (a 0)))))))
 (local (defthm pfd-u64-aux-len
   (equal (len (fn-cu-u64-octets-aux k n acc)) (+ (nfix k) (len acc)))
   :hints (("Goal" :in-theory (enable fn-cu-u64-octets-aux)))))
@@ -158,10 +160,6 @@
            (and (equal (fn-pfp-take n (append x y)) x)
                 (equal (fn-pfp-drop n (append x y)) y)))
   :hints (("Goal" :induct (fn-pfp-take n x) :in-theory (enable fn-pfp-take fn-pfp-drop)))))
-(local (defun pfd-u64-listp (xs)
-  (declare (xargs :guard t))
-  (if (consp xs) (and (natp (car xs)) (< (car xs) (expt 2 64)) (pfd-u64-listp (cdr xs)))
-    (null xs))))
 (local (defthm pfd-fields-shape
   (and (true-listp (fn-pfp-fields ps)) (equal (len (fn-pfp-fields ps)) (* 8 (len ps))))
   :hints (("Goal" :induct (fn-pfp-fields ps) :in-theory (e/d (fn-pfp-fields) (fn-cu-u64-octets))))))
@@ -177,37 +175,51 @@
   (declare (xargs :measure (nfix k)))
   (if (zp k) (list k ps) (pfd-ind (1- k) (cdr ps)))))
 (local (defthm pfd-values-of-fields
-  (implies (and (pfd-u64-listp ps) (equal (len ps) k))
-           (equal (fn-pfp-values k (fn-pfp-fields ps)) ps))
+  (implies (equal (len ps) k)
+           (equal (fn-pfp-values k (fn-pfp-fields ps)) (pfd-u64-image ps)))
   :hints (("Goal" :induct (pfd-ind k ps)
-           :in-theory (e/d (fn-pfp-values fn-pfp-fields pfd-u64-listp) (fn-cu-u64-octets))))))
+           :in-theory (e/d (fn-pfp-values fn-pfp-fields pfd-u64-image) (fn-cu-u64-octets))))))
 (local (defthm pfd-at-is-nth
   (equal (fn-pfr-at n xs) (nth n xs))
   :hints (("Goal" :in-theory (enable fn-pfr-at nth)))))
-(local (defthm pfd-six-u64
+(local (defthm pfd-u64-mod-id
+  (implies (and (natp x) (< x 18446744073709551616))
+           (equal (mod (nfix x) 18446744073709551616) x))))
+(local (defthm pfd-six-image
   (implies (and (true-listp p) (equal (len p) 6)
                 (natp (nth 0 p)) (< (nth 0 p) (expt 2 64)) (natp (nth 1 p)) (< (nth 1 p) (expt 2 64))
                 (natp (nth 2 p)) (< (nth 2 p) (expt 2 64)) (natp (nth 3 p)) (< (nth 3 p) (expt 2 64))
                 (natp (nth 4 p)) (< (nth 4 p) (expt 2 64)) (natp (nth 5 p)) (< (nth 5 p) (expt 2 64)))
-           (pfd-u64-listp p))
-  :hints (("Goal" :in-theory (enable pfd-u64-listp nth len)
-           :expand ((pfd-u64-listp p) (pfd-u64-listp (cdr p)) (pfd-u64-listp (cddr p))
-                    (pfd-u64-listp (cdddr p)) (pfd-u64-listp (cddddr p))
-                    (pfd-u64-listp (cdr (cddddr p))) (pfd-u64-listp (cddr (cddddr p))))))))
-(local (defthm pfd-policy-is-u64-list
-  (implies (fn-pfr-policy-p p) (and (pfd-u64-listp p) (equal (len p) 6)))
+           (equal (pfd-u64-image p) p))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(pfd-u64-image nth len pfd-u64-mod-id true-listp
+                                        (:e expt) car-cons cdr-cons zp (:e zp) natp
+                                        fix (:e fix) cons-car-cdr (:type-prescription len)
+                                        (:e binary-+))
+                                      (theory 'minimal-theory))
+           :expand ((pfd-u64-image p) (pfd-u64-image (cdr p)) (pfd-u64-image (cddr p))
+                    (pfd-u64-image (cdddr p)) (pfd-u64-image (cddddr p))
+                    (pfd-u64-image (cdr (cddddr p)))
+                    (len p) (len (cdr p)) (len (cddr p)) (len (cdddr p)) (len (cddddr p))
+                    (len (cdr (cddddr p))) (len (cddr (cddddr p)))
+                    (true-listp p) (true-listp (cdr p)) (true-listp (cddr p)) (true-listp (cdddr p))
+                    (true-listp (cddddr p)) (true-listp (cdr (cddddr p))) (true-listp (cddr (cddddr p)))
+                    (true-listp (cdddr (cddddr p))))))))
+(local (defthm pfd-policy-image
+  (implies (fn-pfr-policy-p p) (and (equal (pfd-u64-image p) p) (equal (len p) 6)))
   :hints (("Goal" :in-theory (e/d (fn-pfr-policy-p fn-pfr-slots fn-pfr-bookkeeping)
-                                  (fn-pfr-fixed-backing pfd-u64-listp nth))
-           :do-not-induct t :use (pfd-six-u64)))))
+                                  (fn-pfr-fixed-backing pfd-u64-image nth))
+           :do-not-induct t :use (pfd-six-image)))))
 
 ; The reader is the writer's inverse, for every policy.
 (defthm fn-pfp-read-of-write
   (implies (fn-pfr-policy-p policy)
            (equal (fn-pfp-read t (fn-pfp-write policy)) policy))
   :hints (("Goal" :in-theory (e/d (fn-pfp-read fn-pfp-write)
-                                  (fn-pfr-policy-p fn-pfp-fields fn-pfp-values fn-pfp-take fn-pfp-drop))
+                                  (fn-pfr-policy-p fn-pfp-fields fn-pfp-values fn-pfp-take fn-pfp-drop
+                                   pfd-u64-image))
            :use ((:instance pfd-take-drop-append (n 4) (x (fn-pfp-prefix)) (y (fn-pfp-fields policy)))
-                 pfd-policy-is-u64-list))))
+                 pfd-policy-image))))
 
 ; KEYSTONE: what init writes decodes to the default.
 (defthm fn-pfd-default-decodes-to-itself
@@ -238,17 +250,19 @@
 
 ; -----------------------------------------------------------------------------
 ; The launch cost.  The launcher's probe (fn-pfr-extend-reservation) grows the
-; runtime's dynamic space by the policy's heap and adds its workers' threads.
+; runtime's dynamic space by the policy's heap E and adds its workers' threads.
 ; For the default that adds at most (fn-pfd-launch-extra STACK) octets over
-; the base run reservation (BASE = (:heap MB _ _ STACK THREADS)): the heap,
-; twice the nursery bound the re-solve may add, one MiB of rounding, and one
-; worker's stack and runtime.  The nursery term makes it loose (~133 MiB);
-; init's acceptance reserving it is step 2's.
+; the base run reservation (BASE = (:heap MB _ _ STACK THREADS)): E; the
+; re-solve's nursery slack, at most twice the least nursery trigger and
+; ceiling((E + 15) / 7) (pfd-grow-tight: the trigger is at least D/16 or the
+; nursery cap is already in D); one MiB of rounding; one worker's stack and
+; runtime (4 MiB).  22 MiB beside a 1 MiB stack (it was ~134 MiB: twice the
+; nursery cap).
 (defun fn-pfd-launch-extra (stack-kib)
   (declare (xargs :guard t))
   (+ (fn-pfd-heap)
-     (* 2 (max *fn-heap-nursery-least-octets*
-               (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib))))
+     (* 2 *fn-heap-nursery-least-octets*)
+     (ceiling (+ (fn-pfd-heap) 15) 7)
      *fn-heap-mib*
      (* *fn-pfd-workers*
         (+ (* 1024 (nfix stack-kib)) *fn-heap-thread-runtime-octets*))))
@@ -257,39 +271,109 @@
   (declare (xargs :guard t))
   (fn-heap-reservation-octets (fn-pfr-at 1 base) core (fn-pfr-at 4 base) (fn-pfr-at 5 base)))
 
-(local (defthm pfd-with-nursery-bound
-  (<= (fn-heap-with-nursery x n) (+ (nfix x) (* 2 (max *fn-heap-nursery-least-octets* (nfix n)))))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (union-theories '(fn-heap-with-nursery max min nfix)
-                                             (theory 'minimal-theory))))))
-(local (defthm pfd-grow-abstract
-  (implies (and (natp d) (natp e) (natp tt) (natp c)
-                (<= w (+ (nfix (- d (* 2 tt))) e c)))
-           (<= (max (+ d e) w) (+ d e c)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (union-theories '(nfix max natp) (theory 'minimal-theory))))))
-(local (defthm pfd-max-natp
-  (natp (* 2 (max *fn-heap-nursery-least-octets* (nfix cap))))
+(local (defthm pfd-ceil-mono
+  (implies (and (rationalp a) (rationalp b) (<= a b)) (<= (ceiling a 7) (ceiling b 7)))
   :rule-classes nil))
-(local (defthm pfd-grow-bound
-  (<= (fn-heap-grow-runtime-dynamic d e cap)
-      (+ (nfix d) (nfix e) (* 2 (max *fn-heap-nursery-least-octets* (nfix cap)))))
+(local (defthm pfd-ceil-shift
+  (implies (and (integerp k) (rationalp a)) (equal (ceiling (+ a (* 7 k)) 7) (+ k (ceiling a 7))))
+  :rule-classes nil))
+(local (defthm pfd-ceil8-split
+  (implies (natp x) (equal (ceiling (* 8 x) 7) (+ x (ceiling x 7))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (union-theories '(fn-heap-grow-runtime-dynamic nfix natp
-                                               fn-heap-nursery-trigger-natp)
+  :hints (("Goal" :use ((:instance pfd-ceil-shift (a x) (k x)))
+           :in-theory (disable ceiling)))))
+(local (defthm pfd-floor16
+  (implies (natp d) (and (<= (* 16 (floor d 16)) d) (<= d (+ 15 (* 16 (floor d 16))))
+                         (natp (floor d 16))))
+  :rule-classes nil))
+(local (defthm pfd-tiny-case
+  (implies (and (natp d) (natp e) (natp l))
+           (<= (ceiling (* 8 e) 7) (+ d e (* 2 l) (ceiling (+ e 15) 7))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable ceiling)
+           :use ((:instance pfd-ceil8-split (x e))
+                 (:instance pfd-ceil-mono (a e) (b (+ e 15))))))))
+(local (defthm pfd-small-linear
+  (implies (and (rationalp x) (rationalp cx) (rationalp cb) (rationalp ce) (rationalp d)
+                (rationalp e) (rationalp tt) (rationalp l) (<= 0 l)
+                (equal c8 (+ x cx)) (<= cx cb) (equal cb (+ (* 2 tt) ce))
+                (equal x (+ (- d (* 2 tt)) e)))
+           (<= c8 (+ d e (* 2 l) ce)))
+  :rule-classes nil))
+(local (defthm pfd-small-case
+  (implies (and (natp d) (natp e) (natp l) (natp tt) (<= l tt) (<= (* 2 tt) d)
+                (<= d (+ 15 (* 16 tt))))
+           (<= (ceiling (* 8 (+ (- d (* 2 tt)) e)) 7)
+               (+ d e (* 2 l) (ceiling (+ e 15) 7))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(natp rationalp-implies-acl2-numberp
+                                               (:type-prescription ceiling))
                                              (theory 'minimal-theory))
-           :use (pfd-max-natp
-                 (:instance pfd-with-nursery-bound
-                            (x (+ (nfix (- (nfix d) (* 2 (fn-heap-nursery-trigger (nfix d) cap))))
-                                  (nfix e)))
-                            (n cap))
-                 (:instance pfd-grow-abstract (d (nfix d)) (e (nfix e))
+           :use ((:instance pfd-ceil8-split (x (+ (- d (* 2 tt)) e)))
+                 (:instance pfd-ceil-mono (a (+ (- d (* 2 tt)) e)) (b (+ (+ e 15) (* 7 (* 2 tt)))))
+                 (:instance pfd-ceil-shift (a (+ e 15)) (k (* 2 tt)))
+                 (:instance pfd-small-linear (x (+ (- d (* 2 tt)) e))
+                            (cx (ceiling (+ (- d (* 2 tt)) e) 7))
+                            (cb (ceiling (+ (+ e 15) (* 7 (* 2 tt))) 7))
+                            (ce (ceiling (+ e 15) 7))
+                            (c8 (ceiling (* 8 (+ (- d (* 2 tt)) e)) 7)))))
+          )))
+(local (defthm pfd-k8-bound
+  (implies (and (natp d) (natp e) (natp l) (natp tt) (<= l tt) (<= d (+ 15 (* 16 tt))))
+           (<= (ceiling (* 8 (+ (nfix (- d (* 2 tt))) e)) 7)
+               (+ d e (* 2 l) (ceiling (+ e 15) 7))))
+  :rule-classes nil
+  :hints (("Goal" :cases ((<= (* 2 tt) d)) :nonlinearp nil
+           :in-theory (disable ceiling)
+           :use (pfd-small-case pfd-tiny-case)))))
+(local (defthm pfd-trigger-def2
+  (implies (natp d)
+           (equal (fn-heap-nursery-trigger d n)
+                  (max 8388608 (min (nfix n) (floor d 16)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-heap-nursery-trigger)))))
+(local (defthm pfd-grow-linear3
+  (implies (and (natp d) (natp e) (natp fd) (natp cc) (natp ce) (rationalp k8)
+                (equal tt (max 8388608 (min cc fd)))
+                (<= (* 16 fd) d) (<= d (+ 15 (* 16 fd)))
+                (implies (<= d (+ 15 (* 16 tt))) (<= k8 (+ d e 16777216 ce))))
+           (<= (max (+ d e)
+                    (max (+ (nfix (+ (nfix (+ d (- (* 2 tt)))) e)) 16777216)
+                         (min k8 (+ (nfix (+ (nfix (+ d (- (* 2 tt)))) e)) (* 2 (max 8388608 cc))))))
+               (+ d e 16777216 ce)))
+  :rule-classes nil
+  :hints (("Goal" :nonlinearp nil :in-theory (enable max min nfix)))))
+(local (defthm pfd-k8-bound2
+  (implies (and (natp d) (natp e) (natp fd) (natp cc)
+                (equal tt (max 8388608 (min cc fd)))
+                (<= d (+ 15 (* 16 tt))))
+           (<= (ceiling (* 8 (nfix (+ (nfix (+ d (- (* 2 tt)))) e))) 7)
+               (+ d e 16777216 (ceiling (+ e 15) 7))))
+  :rule-classes nil
+  :hints (("Goal" :nonlinearp nil :in-theory (disable ceiling)
+           :use ((:instance pfd-k8-bound (l 8388608)))))))
+(local (defthm pfd-ceil-natp
+  (implies (natp e) (natp (ceiling (+ e 15) 7)))
+  :rule-classes nil))
+(local (defthm pfd-grow-tight
+  (<= (fn-heap-grow-runtime-dynamic d e cap)
+      (+ (nfix d) (nfix e) 16777216 (ceiling (+ (nfix e) 15) 7)))
+  :rule-classes nil
+  :hints (("Goal" :do-not '(preprocess)
+           :in-theory (union-theories '(fn-heap-grow-runtime-dynamic fn-heap-with-nursery
+                                        (:type-prescription ceiling) (:type-prescription nfix)
+                                        (:type-prescription floor) (:type-prescription max)
+                                        (:type-prescription min) natp (:e binary-*))
+                                      (theory 'minimal-theory))
+           :use ((:instance pfd-floor16 (d (nfix d)))
+                 (:instance pfd-ceil-natp (e (nfix e)))
+                 (:instance pfd-trigger-def2 (d (nfix d)) (n cap))
+                 (:instance pfd-k8-bound2 (d (nfix d)) (e (nfix e)) (fd (floor (nfix d) 16))
+                            (cc (nfix cap)) (tt (fn-heap-nursery-trigger (nfix d) cap)))
+                 (:instance pfd-grow-linear3 (d (nfix d)) (e (nfix e)) (fd (floor (nfix d) 16))
+                            (cc (nfix cap)) (ce (ceiling (+ (nfix e) 15) 7))
                             (tt (fn-heap-nursery-trigger (nfix d) cap))
-                            (c (* 2 (max *fn-heap-nursery-least-octets* (nfix cap))))
-                            (w (fn-heap-with-nursery
-                                (+ (nfix (- (nfix d) (* 2 (fn-heap-nursery-trigger (nfix d) cap))))
-                                   (nfix e))
-                                cap))))))))
+                            (k8 (ceiling (* 8 (nfix (+ (nfix (+ (nfix d) (- (* 2 (fn-heap-nursery-trigger (nfix d) cap))))) (nfix e)))) 7))))))))
 (local (defthm pfd-floor-mul
   (implies (and (natp y) (posp m)) (<= (* m (floor y m)) y))
   :rule-classes nil))
@@ -322,7 +406,7 @@
                                    fn-pfp-default-policy fn-heap-machine-octets fn-pfd-heap
                                    pfd-at-is-nth))
            :use (fn-pfd-default-is-a-policy pfd-default-fields
-                 (:instance pfd-grow-bound (d (* *fn-heap-mib* (nfix (fn-pfr-at 1 base))))
+                 (:instance pfd-grow-tight (d (* *fn-heap-mib* (nfix (fn-pfr-at 1 base))))
                             (e (fn-pfd-heap))
                             (cap (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib))))
                  (:instance pfd-mb-of-bound

@@ -34,6 +34,9 @@
       (equal (car (fn-pfr-extend-reservation *pfdt-base* (fn-pfp-default-policy *pfdt-dev*)
                                              *pfdt-core* *pfdt-base-only*))
              :refused)))
+;; The launch extra beside the launcher's 1 MiB stack: 22 MiB (it was
+;; ~134 MiB while it charged twice the 64 MiB nursery cap).
+(assert-event (equal (fn-pfd-launch-extra 1024) 23082078))
 (defteeth fn-pfd-default-is-a-policy
   :claim (() (fn-pfr-policy-p (fn-pfp-default-policy values)))
   :subject fn-pfp-default-policy
