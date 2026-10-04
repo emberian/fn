@@ -555,6 +555,17 @@ plan remains."
           (fnn-mux-conn-want conn) nil)
     (fnn-mux-flush loop conn)))
 
+(defun fnn-mux-read-class (loop conn)
+  "The gate class this connection's read-side quanta enter as -- its steps,
+its reply's identity, cursor and preflight quanta, its pages' settlement: a
+peer's is ACL2's peer read class (:reader while the disk sheds, PKT-858;
+books/owner-time-admission.lisp fn-otm-peer-read-class), any other
+connection's its own class.  A reply belongs to the read that made it, so
+none of it waits for a barrier in flight that the read itself did not."
+  (if (eq (fnn-mux-conn-class conn) :transit)
+      (fnn-owner-peer-read-class (fnn-mux-service loop))
+    (fnn-mux-conn-class conn)))
+
 (defun fnn-mux-render-next (loop conn plan)
   "The plan's next window, its cursor quantum run first when it is at one
 (lane join-f2-13, PRF-1020: a served OVER/XOVER range; fnn-owner-cursor-step
@@ -572,7 +583,7 @@ DONEP YIELDP COLD-READ END)."
                          (fourth (fnn-mux-conn-response-identity conn))
                          (third (fnn-mux-conn-response-identity conn)))
       (fnn-owner-render-next-quantum (fnn-mux-service loop) (fnn-mux-conn-cid conn) plan
-                                     (fnn-mux-conn-class conn)
+                                     (fnn-mux-read-class loop conn)
                                      (and (fnn-mux-conn-zout conn) t) t))))
 
 (defun fnn-mux-plan-yield (loop conn plan after &optional empty-progressp)
@@ -631,7 +642,7 @@ whole reply; a plan with nothing to write runs AFTER at once."
     (setf (fnn-mux-conn-response-identity conn)
           (fnn-owner-response-identity
            (fnn-mux-service loop) (fnn-mux-conn-connection-identity conn)
-           (fnn-mux-conn-class conn))))
+           (fnn-mux-read-class loop conn))))
   (multiple-value-bind (octets rest donep yieldedp cold-read end)
       (fnn-mux-render-next loop conn plan)
     (setf (fnn-mux-conn-plan conn) (if donep nil rest))
@@ -822,15 +833,14 @@ the same octets are handed to the next step."
          (results (multiple-value-list
                    ;; A peer read uses the owner's current ACL2 class.
                    (let ((peerp (eq (fnn-mux-conn-class conn) :transit))
+                         (class (fnn-mux-read-class loop conn))
                          (*fnn-response-capture* capture))
                      (setf (fnn-mux-conn-cold-word conn) nil)
                      (destructuring-bind (&optional w since now limit line-since) word
                        (fnn-owner-measured (:mux-input (fnn-mux-conn-cid conn))
                          (fnn-owner-handle-chunk-step service (fnn-mux-conn-cid conn) incoming
                                                       (fnn-mux-conn-socket conn)
-                                                      (if peerp
-                                                          (fnn-owner-peer-read-class service)
-                                                        (fnn-mux-conn-class conn))
+                                                      class
                                                       peerp w line-since since now limit)))))))
     (fnn-mux-capture-output-grant conn)
     ;; The page is read off this loop; the input and first clock stay held.
@@ -924,10 +934,16 @@ the same octets are handed to the next step."
 
 (defun fnn-mux-cold-check (loop conn)
   "Poll the retained line or response dependency, never awaiting the page.
-A response resumes its exact plan; refusal terminates the incomplete body."
+A response resumes its exact plan.  A response whose page did not come
+before it published anything -- a retrieval's preflight past its deadline,
+or refused a read by name -- is answered ACL2's 403 in the preflight's
+place, the session unchanged (books/article-stream-owner.lisp
+fn-asto-plan-unavailable; C3, PRF-933); a response that already wrote part
+of its reply has no reply to replace and is terminated."
   (destructuring-bind (read line-since since &optional kind) (fnn-mux-conn-cold conn)
     (multiple-value-bind (word since now limit)
-        (fnn-owner-cold-poll (fnn-mux-service loop) read line-since since)
+        (fnn-owner-cold-poll (fnn-mux-service loop) read line-since since
+                             (fnn-mux-read-class loop conn))
       (if (consp word)
           (setf (fnn-mux-conn-resume-at conn)
                 (+ (fnn-now) (round (* (min (second word) +fnn-mux-cold-poll-ms+)
@@ -942,9 +958,16 @@ A response resumes its exact plan; refusal terminates the incomplete body."
                       (fnn-err "OVER cold-quantum cid=~d" (fnn-mux-conn-cid conn)))
                     (fnn-mux-queue-plan loop conn (fnn-mux-conn-plan conn)
                                         (fnn-mux-conn-after conn)))
-                (error 'fnn-store-io-refusal
-                       :message (format nil "cursor quantum: payload read ~(~a~); the reply is terminated"
-                                        word)))
+                (let ((answered (fnn-core 'fn-owner-article-preflight-unavailable
+                                          (fnn-mux-conn-plan conn) word since now limit)))
+                  (unless answered
+                    (error 'fnn-store-io-refusal
+                           :message (format nil "cursor quantum: payload read ~(~a~); the reply is terminated"
+                                            word)))
+                  ;; The line-deadline clock belonged to the replaced
+                  ;; preflight; the plan now owes octets only.
+                  (setf (fnn-mux-conn-cursor-cold-since conn) nil)
+                  (fnn-mux-queue-plan loop conn answered (fnn-mux-conn-after conn))))
             (progn
               (setf (fnn-mux-conn-cold-word conn)
                     (list word since now limit (or line-since since)))

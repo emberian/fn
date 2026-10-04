@@ -5919,6 +5919,7 @@ same size (fnn-probe-article), so the served reader can frame it."
     (fnn-record-filesystem-at-init store :development)
     (fnn-acquire store)
     (fnn-bridge-reset)
+    (fnn-extent-pool-open-context)
     (fnn-recover store)
     (setq payload (make-array (fnn-config-max-payload store)
                               :element-type '(unsigned-byte 8)
@@ -6574,7 +6575,12 @@ served POST path here is refused rather than silently unowned."
     (when store-root
       (setq store (make-fnn-store store-root :writable nil))
       (handler-case
-          (progn (fnn-acquire store) (fnn-bridge-reset) (fnn-recover store))
+          (progn (fnn-acquire store) (fnn-bridge-reset)
+                 ;; The page pool's unfunded context before the replay's
+                 ;; first extent registration, as fnn-open-live-store enters
+                 ;; it: this reader serves no funded cold line.
+                 (fnn-extent-pool-open-context)
+                 (fnn-recover store))
         (error (e) (fnn-store-close store) (error e))))
     (handler-case (fnn-reader-select (not (null store-root)))
       (error (e) (when store (fnn-store-close store)) (error e)))

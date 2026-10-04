@@ -210,14 +210,20 @@ file stays readable after a later checkpoint replaces its name."
       (setf (gethash id *fnn-extent-bases*) base))
     id))
 
-(defun fnn-extent-pread (fd octets offset)
-  "Fill OCTETS from OFFSET of FD; the count read (short at end of file)."
-  ;; Developer image only (lane composed-owner-3, row A4): a stalled read
-  ;; device.  While the named file exists a pread does not return, as a read
-  ;; from a device under maintenance does not (tests/test_native_slow_disk.py).
+(defun fnn-extent-read-stall ()
+  "Developer image only (lane composed-owner-3, row A4): a stalled read
+device.  While the named file exists a pread does not return, as a read from
+a device under maintenance does not (tests/test_native_slow_disk.py).  Every
+physical payload pread passes here: the whole-extent realizer's
+(fnn-extent-pread) and the window workers' (fnn-extent-window-pread, raw and
+decoded), always off the owner and extent locks."
   (let ((stall (fnn-developer-selector "FN_NATIVE_TEST_READ_STALL_FILE")))
     (when (and stall (plusp (length stall)))
-      (loop while (probe-file stall) do (sleep 0.05))))
+      (loop while (probe-file stall) do (sleep 0.05)))))
+
+(defun fnn-extent-pread (fd octets offset)
+  "Fill OCTETS from OFFSET of FD; the count read (short at end of file)."
+  (fnn-extent-read-stall)
   (let ((n (length octets)) (done 0))
     (loop while (< done n) do
       (let ((got (sb-sys:with-pinned-objects (octets)
@@ -322,6 +328,7 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
 
 (defun fnn-extent-window-pread (fd input offset count)
   "One physical syscall, using ACL2's exact offset/count and fixed input."
+  (fnn-extent-read-stall)
   (let* ((octets (svref input 0))
          (got (sb-sys:with-pinned-objects (octets)
                 (sb-alien:alien-funcall
@@ -332,25 +339,39 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
     (setf (svref input 1) (if (minusp got) 0 got))
     (if (minusp got) :error :ok)))
 
+(defun fnn-extent-window-observation (control &rest args)
+  "fnn-extent-page-observation for a protected window job: the same
+developer-only primitive observations, under the window's own prefix."
+  (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
+    (let ((*print-pretty* nil))
+      (apply #'fnn-err (concatenate 'string "WINDOW-IO observed " control) args))))
+
+(defun fnn-extent-job-observation (token control &rest args)
+  "A shared executor observation (physical return, join) under the prefix
+of TOKEN's kind: WINDOW-IO for a protected window job, PAGE-IO otherwise."
+  (if (fnn-extent-window-p token)
+      (apply #'fnn-extent-window-observation control args)
+    (apply #'fnn-extent-page-observation control args)))
+
 (defun fnn-extent-window-run (worker token)
-  "Actual core digest trajectory; only the fixed private window is retained."
+  "Actual core digest trajectory; only the fixed private window is retained.
+The result is (PLAN WINDOW) whenever the job ran: a cancelled job keeps the
+plan it reached, so a read that failed before the cancellation was seen is
+still the core's fault (fn-pwr-outcome; specs/storage.md PRF-1057)."
   (destructuring-bind (kind ticket file eoff elen poff plen offset expected) token
     (declare (ignore kind))
     (unless (fnn-core-cold-single 'fn-crw-supportedp (cddr token) ticket)
       (fnn-fault "window descriptor is not representable by the selected native ABI"))
     (let ((fd nil) (incarnation nil) (plan nil)
           (input (fn-octets$c-reserve 64 (create-fn-octets$c)))
-          (hash (create-pgs-digest-state)) (window (create-fn-ew-buffer)))
+          (hash (create-pgs-digest-state)) (window (create-fn-ew-buffer))
+          (hold (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD"))
+          (mode (fnn-developer-selector "FN_NATIVE_PAGE_IO_RESULT")))
       (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
         (setq fd (gethash file *fnn-extent-fds*)
               incarnation (gethash file *fnn-extent-incarnations*)))
       (unless (and fd incarnation) (fnn-fault "window issued file closed"))
-      ;; Developer observation gate: the real token/fd/private fixed buffers
-      ;; remain owned while the test device delays actual worker completion.
-      (let ((hold (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")))
-        (when (and hold (plusp (length hold)) (not (probe-file hold)))
-          (fnn-err "WINDOW-IO held token=~s file=~d" token file)
-          (loop until (probe-file hold) do (sleep 0.05))))
+      (fnn-extent-window-observation "fd-capture token=~s file=~d fd=~d" token file fd)
       (destructuring-bind (next hash1)
           (fnn-core-cold-values 'fn-ews-begin file eoff elen poff plen offset ticket incarnation token expected hash)
         (setq plan next hash hash1))
@@ -360,7 +381,7 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
         (unless (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
                   (first (fnn-core-cold-pool 'fn-owner-page-window-work-permittedp
                             (fnn-cold-worker-row worker) token)))
-          (return nil))
+          (return (list plan window)))
         (destructuring-bind (status next hash1) (fnn-core-cold-values 'fn-ews-tick plan hash)
           (setq plan next hash hash1)
           (case status
@@ -369,7 +390,29 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
              ;; :READ status requests I/O; :READ plan phase is terminal.
              (let ((effect (fnn-core-cold-single 'fn-ews-effect plan hash)))
                (unless effect (return (list plan window)))
-               (let ((io-status (fnn-extent-window-pread fd input (fifth effect) (sixth effect))))
+               ;; Developer observation gate (PRF-1057, SCN-216; as the
+               ;; decoded controller's, SCN-1129): the core has selected this
+               ;; physical read and the token/fd/private buffers stay owned
+               ;; while the test device holds it, off owner and extent
+               ;; exclusion.  Released, the read completes and its literal
+               ;; result is observed before the next cancellation check.
+               (when (and hold (plusp (length hold)) (not (probe-file hold)))
+                 (let ((*print-pretty* nil))
+                   (fnn-err "WINDOW-IO held token=~s file=~d" token file))
+                 (loop until (probe-file hold) do (sleep 0.05)))
+               (fnn-extent-native-observe :io-begin t token)
+               (when (equal mode "error")
+                 (error 'fnn-extent-fault :message "arena-extent-read: injected pread error"))
+               (when (equal mode "runtime-error")
+                 ;; A condition that actually retains the private input.
+                 (error 'type-error :datum input :expected-type 'null))
+               (let ((io-status (if (equal mode "short")
+                                    (progn (setf (svref input 1) 0) :ok)
+                                  (fnn-extent-window-pread fd input (fifth effect) (sixth effect)))))
+                 (fnn-extent-window-observation
+                  "read-return token=~s fd=~d offset=~d count=~d got=~d status=~s injected=~s"
+                  token fd (fifth effect) (sixth effect) (svref input 1) io-status
+                  (equal mode "short"))
                  (destructuring-bind (answer next hash1 window1)
                      (fnn-core-cold-values 'fn-ews-read effect io-status plan input hash window)
                    (declare (ignore answer))
@@ -390,11 +433,11 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
             (fnn-cold-worker-phase worker) :returned)
       ;; The job activation has unwound. This is distinct from the owner's
       ;; later ledger settlement; a persistent executor thread stays alive.
-      (fnn-extent-page-observation "physical-return token=~s row=~s" token row)
+      (fnn-extent-job-observation token "physical-return token=~s row=~s" token row)
       (when (fnn-cold-worker-scope worker)
         (fnn-err "DECODED-WINDOW physical token=~s scope=~s" token (fnn-cold-worker-scope worker)))
       (when *fnn-native-observer*
-        (unless (or (fn-pwz-tokenp token) (fnn-extent-window-p token))
+        (unless (fn-pwz-tokenp token)
           (fnn-extent-native-observe :return t token))))))
 
 (defun fnn-extent-window-byte (worker token i)
@@ -416,20 +459,20 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
 
 (declaim (notinline fnn-extent-window-outcome))
 (defun fnn-extent-window-outcome (worker token)
-  "Scalar-only terminal disposition; integrity failure is never a new miss."
+  "Scalar-only terminal disposition; integrity failure is never a new miss.
+:pending, :ready, :cancelled, (:fault V) -- the core's (fn-pwr-outcome:
+a cancelled job's own failure is its fault) -- or the retained condition of
+a job that signalled, cancelled or not.  Nothing here settles or signals."
   (when (fn-pwz-tokenp token)
     (return-from fnn-extent-window-outcome
       (fnn-extent-decoded-window-outcome worker token)))
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (unless (fnn-extent-executor-observe-returned worker)
       (return-from fnn-extent-window-outcome :pending))
-    (when (eq (first (fnn-core-cold-pool 'fn-owner-page-window-outcome
-                       (fnn-cold-worker-row worker) token nil)) :cancelled)
-      (return-from fnn-extent-window-outcome :cancelled))
     (let ((result (fnn-cold-worker-result worker)))
-      (when (typep result 'condition) (error result))
-      (first (fnn-core-cold-pool 'fn-owner-page-window-outcome
-               (fnn-cold-worker-row worker) token (first result))))))
+      (if (typep result 'condition) result
+        (first (fnn-core-cold-pool 'fn-owner-page-window-outcome
+                 (fnn-cold-worker-row worker) token (first result)))))))
 
 (defun fnn-extent-window-byte-at (worker token file eoff elen poff plen trailer i)
   "Original arena payload coordinate goes unchanged to the core scalar join."
@@ -543,10 +586,25 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
       (declare (ignore ignored))
       (when (eq word :cancelled) (setf (fnn-cold-worker-row worker) row))
       (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
-        (when (fn-pwz-tokenp token)
-          (let ((*print-pretty* nil))
-            (fnn-err "DECODED-WINDOW cancel token=~s word=~s" token word))))
+        (let ((*print-pretty* nil))
+          (if (fn-pwz-tokenp token)
+              (fnn-err "DECODED-WINDOW cancel token=~s word=~s" token word)
+            (fnn-err "WINDOW-IO cancelled token=~s word=~s" token word))))
       word)))
+
+(defun fnn-extent-window-settle-fault (worker token)
+  "A returned job whose outcome is the core's fault or a retained condition:
+drop the result and release its charge by the transition its phase names --
+the ordinary release (:returned) or the cancelled settlement
+(:cancelled-returned).  :released, else what the transition answered.  The
+caller then stops the owner with the fault."
+  (if (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+        (fnn-core-cold-single 'fn-pwx-boundp
+                              (fnn-core-cold-single 'fn-owner-page-read-ledger
+                                                    (fnn-live-page-read-pool))
+                              (fnn-cold-worker-row worker) token :cancelled-returned))
+      (fnn-extent-window-settle-cancelled worker token)
+    (fnn-extent-window-release worker token)))
 
 (defun fnn-extent-window-settle-cancelled (worker token)
   "After actual return/join and last scalar borrow. Drop result before refund."
@@ -592,7 +650,9 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
            (handler-case
                (if (equal (fnn-developer-selector "FN_NATIVE_PAGE_IO_RESULT") "launch-error")
                    (progn
-                     (fnn-err "PAGE-IO dispatch-failed token=~s worker=retained buffer=none" token)
+                     (let ((*print-pretty* nil))
+                       (fnn-err "~a dispatch-failed token=~s worker=retained buffer=none"
+                                (if (fnn-extent-window-p token) "WINDOW-IO" "PAGE-IO") token))
                      (error 'fnn-extent-fault :message "arena-extent-read: injected job dispatch error"))
                  (cond ((fn-pwz-tokenp token)
                         (fnn-extent-decoded-window-run worker token))
@@ -610,6 +670,15 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
     (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
       (setf (fnn-cold-worker-result worker) result)
       (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
+        ;; A window job's stored result: the plan's phase, never its bytes.
+        (when (fnn-extent-window-p token)
+          (fnn-extent-window-observation "job-result token=~s condition=~s phase=~s"
+                                         token (typep result 'condition)
+                                         (and (consp result) (consp (first result))
+                                              (first (first result))))
+          (when (and *fnn-native-observer* (consp result))
+            (fnn-extent-native-observe :job-result t token
+                                       (and (consp (first result)) (first (first result))))))
         (unless (or (fn-pwz-tokenp token) (fnn-extent-window-p token))
           (fnn-extent-page-observation "job-result token=~s condition=~s verdict=~s"
                                        token (typep result 'condition)
@@ -733,11 +802,11 @@ No cancellation, timeout or thread termination releases a job or baseline."
         ;; These are actual call/return observations outside E; a call-site
         ;; marker does not claim an internal SBCL waiting state or success.
         (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
-          (fnn-extent-page-observation "executor-join-call token=~s alive=~s"
+          (fnn-extent-job-observation token "executor-join-call token=~s alive=~s"
                                        token (sb-thread:thread-alive-p thread)))
         (sb-thread:join-thread thread :default nil)
         (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
-          (fnn-extent-page-observation "executor-join-return token=~s alive=~s"
+          (fnn-extent-job-observation token "executor-join-return token=~s alive=~s"
                                        token (sb-thread:thread-alive-p thread))))))
   ;; Physical joins never discard the sole reference to unsettled draws,
   ;; private results or torn constructor/reset/settlement activations.
@@ -795,6 +864,11 @@ modern complete installations still refuse their unpriced operation."
                   *fnn-cold-free* worker)
             (return-from fnn-extent-issue-window (values nil word nil)))
           (setf (fnn-cold-worker-scope worker) scope)
+          ;; The literal descriptor the owner captured, not one read back
+          ;; from the token; before the worker can run.
+          (fnn-extent-window-observation "window-admit token=~s row=~s descriptor=~s"
+                                         token row descriptor)
+          (fnn-extent-native-observe :issue t descriptor)
           (let ((issued (fnn-extent-executor-enqueue worker row token retain)))
             (when decodedp
               (fnn-err "DECODED-WINDOW issue token=~s scope=~s" token scope))
