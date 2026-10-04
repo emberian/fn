@@ -4543,3 +4543,16 @@ S074/S090/S138/S151 and journal physical prepared fixtures remain source/proof
 versus current-image obligations, not completion claims. No live deployment.
 Protected recovery partition, expanded init/reopen and complete tariff remain
 open. Bounds catchup controller draft is preserved but activation unwired.
+
+## bp (BP-DESIGN, Fable) — 2026-10-04 wind-down
+
+Branch lane/bp from origin/integrate/20261004 @ec2c1b3da. Landed: the
+decision file `planning/design/bp-2026-10-04.md` (DECISION = PROPOSED;
+advisory review not run), `books/bp-forward-cursor.lisp` and
+`tests/acl2/bp-forward-cursor-tests.lisp` (both UNHOOKED: PRF-1311's
+keystones K1-K3 stated, not admitted). No host change, no certify, no image;
+SCN-1110 blocked only on a REPL/image, its plan is packet §2.9 (needs the
+integrator's developer + dtn-developer images at the slice's sha, base
+>= 83b905e89 which loads bp-session.lisp into the DTN image). No REPL is
+held anywhere. The exact continuation, 8 numbered steps, is
+`build/coordinator/lanedumps/bp.md`.
