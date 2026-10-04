@@ -33,6 +33,11 @@ field defaults to that row's and may be given:
     python3 tools/box_table.py row BOX     shell assignments for one box:
                                            BASE CACHE WRAP IMAGES_BASE OPENSSL
                                            GATES CHECK_JOBS (exit 2 unknown)
+    python3 tools/box_table.py env BOX     the `export FN_ACL2=... FN_CERT_CACHE=...
+                                           [FN_IMAGE_ACL2=...]` a remote command
+                                           runs under, for any box (hbox,
+                                           persvati or a live row); a leading ~
+                                           becomes $HOME for the box's shell
 """
 from __future__ import annotations
 
@@ -118,7 +123,34 @@ def farm_rows(fixed: dict, environ=None) -> dict:
             for name, row in extra_boxes(fixed, environ).items()}
 
 
+def env_line(box: str, environ=None) -> str | None:
+    """The toolchain exports for BOX, resolved HERE (where the box table
+    lives), so the box needs no copy of it: remote_check's run script used
+    to read the box tree's farm.py HOSTS literal, which names only hbox and
+    persvati, and refused every rented box with "no FN_ACL2"."""
+    fixed = _farm_literal()
+    hosts = dict(fixed)
+    hosts.update(farm_rows(fixed, environ))
+    row = hosts.get(box)
+    if not row or not row.get("acl2"):
+        return None
+    def shell(path: str) -> str:
+        return "$HOME/" + path[2:] if path.startswith("~/") else path
+    words = [f"FN_ACL2={shell(row['acl2'])}", f"FN_CERT_CACHE={shell(row.get('cache', ''))}"]
+    if row.get("image_acl2"):
+        words.append(f"FN_IMAGE_ACL2={shell(row['image_acl2'])}")
+    return "export " + " ".join(words)
+
+
 def main(argv: list[str]) -> int:
+    if argv and argv[0] == "env":
+        line = env_line(argv[1]) if len(argv) == 2 else None
+        if line is None:
+            print(f"box_table: no toolchain row for box {argv[1] if len(argv) > 1 else ''!r}",
+                  file=sys.stderr)
+            return 2
+        print(line)
+        return 0
     if not argv or argv[0] not in ("names", "pick", "row"):
         sys.stderr.write(__doc__.split("\n\n")[-1] + "\n")
         return 2
