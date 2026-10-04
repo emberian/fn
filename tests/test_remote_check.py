@@ -264,6 +264,27 @@ class RemoteCheckTests(unittest.TestCase):
         self.assertEqual(skipped.returncode, 0)
         self.assertEqual(self.run_check("--regen", "--cmd", "true").returncode, 2)
 
+    def test_a_rented_box_gets_its_toolchain_from_the_box_table_here(self):
+        # The box tree has no box table (the real boxes' farm.py names only
+        # hbox and persvati): the exports are resolved on this side.
+        table = Path(self.scratch.name) / "boxes.json"
+        table.write_text('{"boxes": {"rent1": {"like": "hbox", "cache": "/tank/rent/certcache",'
+                         ' "until": "2999-01-01T00:00:00Z"}}}')
+        env = {**self.env, "FN_BOXES_FILE": str(table)}
+        env.pop("FN_ACL2")
+        done = subprocess.run(["sh", str(SCRIPT), "rent1", "--no-install-certs", "--cmd",
+                               'echo "acl2=$FN_ACL2 cache=$FN_CERT_CACHE"'],
+                              cwd=self.lane, env=env, capture_output=True, text=True, timeout=120)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("acl2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k", done.stdout)
+        self.assertIn("cache=/tank/rent/certcache", done.stdout)
+        self.assertNotIn("no FN_ACL2", done.stdout)
+        # Past its `until` the row is gone and the box is unknown.
+        table.write_text('{"boxes": {"rent1": {"like": "hbox", "until": "2000-01-01T00:00:00Z"}}}')
+        gone = subprocess.run(["sh", str(SCRIPT), "rent1", "--cmd", "true"], cwd=self.lane,
+                              env=env, capture_output=True, text=True, timeout=60)
+        self.assertEqual(gone.returncode, 2, gone.stdout + gone.stderr)
+
     def test_unknown_box_and_option_are_usage(self):
         done = subprocess.run(["sh", str(SCRIPT), "nobox"], cwd=self.lane, env=self.env,
                               capture_output=True, text=True)
