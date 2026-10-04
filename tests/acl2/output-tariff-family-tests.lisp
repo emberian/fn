@@ -212,3 +212,127 @@
                                                10707))
           :hold)
    :rule-classes nil))
+
+; ---------------------------------------------------------------------------
+; The line rows (lane tariff4): GROUP and the neighbour family.
+;
+; RED BEFORE: (:unpriced :group) and (:unpriced :neighbour).  GREEN: GROUP
+; "fn.test" replies "211 n l h fn.test": 39 + 7 = 46 octets, 16 * (10 * 46 +
+; 32) = 7872; NEXT and LAST the retrieval initial line, 16 * (10 * 293 + 32)
+; = 47392, whatever the session's current article.
+(defconst *tfm-group-preview*
+  '(:preview 9 :group ((71 82 79 85 80) (102 110 46 116 101 115 116))))
+(defconst *tfm-group-long-preview*
+  '(:preview 9 :group ((71 82 79 85 80) (102 110 46 116 101 115 116 46 111 116 104 101 114))))
+(defconst *tfm-next-preview* '(:preview 9 :neighbour ((78 69 88 84))))
+(defconst *tfm-last-preview* '(:preview 9 :neighbour ((76 65 83 84))))
+
+(assert! (equal (fn-tariff-line-octets 46) 7872))
+(assert! (equal (fn-tariff-line-octets *fn-tariff-article-initial-octets*) 47392))
+
+(defthm tfm-producer-prices-the-line-rows
+  (and (equal (fn-tariff-family-preview *tfm-group-preview* *tfm-as* nil *tfm-a* *tfm-c*)
+              '(:tariff :group 7872))
+       ; the name's length is the price's argument: 6 more octets, 6 * 10 * 16 more
+       (equal (fn-tariff-family-preview *tfm-group-long-preview* *tfm-as* nil *tfm-a* *tfm-c*)
+              '(:tariff :group 8832))
+       (equal (fn-tariff-family-preview *tfm-next-preview* *tfm-as* nil *tfm-a* *tfm-c*)
+              '(:tariff :neighbour 47392))
+       (equal (fn-tariff-family-preview *tfm-last-preview* *tfm-as* nil *tfm-a* *tfm-c*)
+              '(:tariff :neighbour 47392))
+       ; no argument: the syntax line, the literal part only
+       (equal (fn-tariff-family-preview '(:preview 9 :group ((71 82 79 85 80))) *tfm-as* nil
+                                        *tfm-a* *tfm-c*)
+              '(:tariff :group 6752)))
+  :rule-classes nil)
+
+; The tariffs at the gate: GROUP held at exactly 7872, unaffordable at 7871.
+(defthm tfm-line-rows-charge-before-effect-witness
+  (and (equal (fn-ocap-admit-preview *tfm-group-preview*
+                                     (fn-tariff-family-preview *tfm-group-preview* *tfm-as* nil
+                                                               *tfm-a* *tfm-c*)
+                                     7872)
+              '(:hold 9 :group))
+       (equal (fn-ocap-admit-preview *tfm-group-preview*
+                                     (fn-tariff-family-preview *tfm-group-preview* *tfm-as* nil
+                                                               *tfm-a* *tfm-c*)
+                                     7871)
+              '(:refused :output-tariff-unaffordable :group))
+       (equal (fn-ocap-admit-preview *tfm-next-preview*
+                                     (fn-tariff-family-preview *tfm-next-preview* *tfm-as* nil
+                                                               *tfm-a* *tfm-c*)
+                                     47391)
+              '(:refused :output-tariff-unaffordable :neighbour)))
+  :rule-classes nil)
+
+; The reply bounds hold at the witness: the factories' own replies over the
+; fixture catalog are within the figures the rows multiply.
+(defconst *tfm-archive*
+  (fn-make-state '("fn.test" "fn.other") '(("fn.test" . 4) ("fn.other" . 2))
+                 nil 0 nil nil))
+
+(defthm tfm-line-reply-bounds-witness
+  (and (equal (fn-tariff-effects-octets
+               (fn-nntp-result-effects
+                (fn-av-nntp-group-result-cat '(t nil nil nil) *tfm-archive* "fn.test" 3 *tfm-c*)))
+              19)
+       (<= (fn-tariff-effects-octets
+            (fn-nntp-result-effects
+             (fn-av-nntp-next-or-last-cat '(t "fn.test" 1 nil) *tfm-archive* :next 3 *tfm-a* *tfm-c*)))
+           *fn-tariff-article-initial-octets*))
+  :rule-classes nil)
+
+; Teeth: GROUP's price is not the neighbour's, and a longer name costs more.
+(must-fail-checked
+ (defthm tfm-teeth-group-is-not-neighbour
+   (equal (fn-tariff-family-price *tfm-group-preview* *tfm-as* nil *tfm-a* *tfm-c*)
+          (fn-tariff-family-price *tfm-next-preview* *tfm-as* nil *tfm-a* *tfm-c*))
+   :rule-classes nil))
+(must-fail-checked
+ (defthm tfm-teeth-name-length-is-free
+   (equal (fn-tariff-family-price *tfm-group-preview* *tfm-as* nil *tfm-a* *tfm-c*)
+          (fn-tariff-family-price *tfm-group-long-preview* *tfm-as* nil *tfm-a* *tfm-c*))
+   :rule-classes nil))
+
+; DATE, MODE, QUIT (:close) and HELP: the session arm's fixed replies.  The
+; session's reply bound is 64 octets, 16 * (10 * 64 + 32) = 10752; HELP's
+; block is 248 octets, 16 * (10 * 248 + 32) = 40192.
+(assert! (equal (fn-tariff-line-octets *fn-tariff-session-line-octets*) 10752))
+(assert! (equal (fn-tariff-line-octets *fn-tariff-help-reply-octets*) 40192))
+
+(defthm tfm-producer-prices-the-session-rows
+  (and (equal (fn-tariff-family-preview '(:preview 9 :date ((68 65 84 69))) *tfm-as* nil *tfm-a* *tfm-c*)
+              '(:tariff :date 10752))
+       (equal (fn-tariff-family-preview '(:preview 9 :mode ((77 79 68 69) (82))) *tfm-as* nil *tfm-a* *tfm-c*)
+              '(:tariff :mode 10752))
+       (equal (fn-tariff-family-preview '(:preview 9 :close ((81 85 73 84))) *tfm-as* nil *tfm-a* *tfm-c*)
+              '(:tariff :close 10752))
+       (equal (fn-tariff-family-preview '(:preview 9 :help ((72 69 76 80))) *tfm-as* nil *tfm-a* *tfm-c*)
+              '(:tariff :help 40192)))
+  :rule-classes nil)
+
+; The session arm's own replies, at ground sessions: HELP's block is exactly
+; the 248 octets its row names; a DATE with no observation, MODE READER and
+; QUIT answer within the session bound.
+(defconst *tfm-session* '(t "fn.test" 3 nil))
+(defthm tfm-session-reply-witness
+  (and (equal (fn-tariff-effects-octets
+               (fn-nntp-result-effects
+                (fn-nntp-session-command *tfm-session* nil (fn-record-string-octets "HELP") nil)))
+              *fn-tariff-help-reply-octets*)
+       (<= (fn-tariff-effects-octets
+            (fn-nntp-result-effects
+             (fn-nntp-session-command *tfm-session* nil (fn-record-string-octets "DATE") nil)))
+           *fn-tariff-session-line-octets*)
+       (<= (fn-tariff-effects-octets
+            (fn-nntp-result-effects
+             (fn-nntp-session-command *tfm-session* nil (fn-record-string-octets "QUIT") nil)))
+           *fn-tariff-session-line-octets*))
+  :rule-classes nil)
+
+; Teeth: HELP's block is not a DATE line.
+(must-fail-checked
+ (defthm tfm-teeth-help-is-not-date
+   (equal (fn-tariff-family-price '(:preview 9 :help ((72 69 76 80))) *tfm-as* nil *tfm-a* *tfm-c*)
+          (fn-tariff-family-price '(:preview 9 :date ((68 65 84 69))) *tfm-as* nil *tfm-a* *tfm-c*))
+   :rule-classes nil))

@@ -358,8 +358,12 @@ priced by one row of `books/output-tariff-families.lisp`, from which
 (`fn-tariff-family-preview`) and its keystone
 (`fn-tariff-family-preview-charges-before-effect`); ARTICLE, HEAD, BODY and
 STAT are priced from the row their factory serves
-(`books/output-tariff-article-row.lisp`, PRF-1316). Every other family is
-unpriced and is answered
+(`books/output-tariff-article-row.lisp`, PRF-1316); GROUP, NEXT and LAST
+(family `:neighbour`), DATE, MODE, QUIT (family `:close`) and HELP are priced
+as built lines (`books/output-tariff-line.lisp`: 16 octets a cell times 10
+cells an octet of the reply bound proved over the factory the host runs, plus
+32 cells; the cell count is stated, PGO-TARIFF-LINE-REPLY-CONSES owes its
+derivation). Every other family is unpriced and is answered
 `403 command unavailable; its output is not priced on this server` with the
 connection kept. A reply over the quantum is answered `400` and the connection
 is closed (`books/output-admission-line.lisp`). `fn operator status` and

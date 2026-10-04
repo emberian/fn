@@ -5012,3 +5012,30 @@ Regenerate interfaces.json (interface_emit --write: stale against declarations),
 - Each row needs its reply-octets bound over the factory as a theorem, or a proof-owed item in the PRF-1316 style; prefer the theorem (the factories return fn-nntp-single lines).
 - Witness style: tests/acl2/output-tariff-family-tests.lisp (ground defthms over the *tfm-* catalog fixture, *tfm-as* session selecting fn.test current 3); the producer's stobj formals rule out defteeth witnesses there.
 - Gate: certify_books.py --recertify books/output-tariff-families (+ tests), host_check --load, cost_obligations.py count.
+
+# tariff4 lane (Sonnet, successor to tariff3), 2026-10-04
+
+Worktree build/lanes/tariff4, branch lane/tariff4 (origin), from lane/tariff3@9b03cdcaf.
+
+Batch 1: families priced 10/30 (was 4): GROUP, neighbour (NEXT and LAST), DATE, MODE, close (QUIT), HELP. Ratchet computed by tools/cost_obligations.py; cost-obligations.json is the integrator's --write.
+
+- books/output-tariff-line.lisp (new, in Makefile): fn-tariff-line-octets N = 16 * (10 * N + 32), a stated cells-an-octet figure over a reply bound; fn-tariff-effects-octets; and the reply bounds PROVED over the factories the host runs: fn-tariff-group-reply-within-line (fn-av-nntp-group-result-cat <= 39 + name), fn-tariff-neighbour-reply-within-line (fn-av-nntp-next-or-last-cat <= the retrieval initial line, hypothesis fn-nntp-sessionp: a non-natural current falls to the raw model that realizes the extent), fn-tariff-{date,mode,quit}-reply-within-line (<= 64) and fn-tariff-help-reply-within-block (<= 248) over fn-nntp-session-command.
+- NEXT/LAST are NOT a STAT-shaped extent price: the host runs fn-av-nntp-next-or-last-cat, which builds the line from held metadata (fn-av-held-article), no pread.
+- books/output-tariff-families.lisp: rows :group :neighbour :date :mode :close :help. Generated: producer arms, ratchet count, one fn-tariff-F-charges-before-effect each.
+- tests/acl2/output-tariff-family-tests.lisp: red/green at the producer ((:unpriced :group) -> (:tariff :group 7872) etc.), gate boundary witnesses, reply-bound witnesses over the fixture (GROUP "fn.test" = 19 octets), three must-fail teeth.
+- host/cost-host.lisp: def-cost rows fn-tariff-line-octets, fn-tariff-group-reply-octets (host world; not evaluated on the bare laptop).
+- Proof-owed: PGO-TARIFF-LINE-REPLY-CONSES (the 10 cells an octet is stated, not derived: def-cost :conses cannot cost coerce / explode-nonnegative-integer; *fn-cost-cons-contracts* is the trusted base, an integrator change). FINDING there: ARTICLE/HEAD/BODY/STAT charge their initial line at 2 cells an octet; the line figure is ~7-10, so the retrieval figures likely need re-pricing upward when the derivation lands.
+- Laptop gate: certify_books.py --jobs 2 --recertify books/output-tariff-line --recertify books/output-tariff-families + both + tests/acl2/output-tariff-family-tests: PASSED, manifest certify-20261004T171351Z-7271 (installed-without-cited-manifest: protocol-served, protocol-served-table, served-available-commands, served-catalog-dispatch: the line book newly includes served-available-commands). `--lane` is NOT usable for this lane: it selects host/owner-host (a Makefile root), which cannot certify-book on the laptop (LD of store-node-host.lisp is no embedded event); the explicit book list is the gate.
+- host_check: --read 0, --world 0 refused, --books 0; --interfaces fails only on stale planning/interfaces.json (integrator's emit --write); --load (FN_ACL2=/opt/homebrew/bin/acl2) see exit line.
+
+## Left (26 -> 20 families), what each needs
+- capabilities: the served reply is auth's composition (fn-auth-capability-lines-for-peer = peer lines + STARTTLS/AUTHINFO/SASL lines + fn-zc/fn-zdn lines); a total bound needs the length of fn-sasl-offers (mechanism words, 20 octets each) and the fixed label tables. Highest client impact (every client sends it): do first.
+- authentication, tls-transition, compression-transition, post, ihave, check, takethis: auth/peer-layer literal lines (fn-auth-authinfo-effects-well-formed etc. say well-formed, not bounded): per arm literal bound as DATE's. CHECK carries the Message-ID.
+- list, group-range (LISTGROUP), overview, header-range, header-pattern, newgroups, newnews: cursor/range replies; need the cursor quantum (a window of W emitted bytes), not a one-line row.
+- previews: closed and partial-input emit nothing (fn-wire-scan on a closed wire yields no events; partial: no complete line) so a 0 price needs the served-step-on-no-events theorem; article-input needs the POST/IHAVE terminal reply bound (a line); protocol-error the non-command event reply literal; extension is per keyword (XREDEEM, XFNCATCHUP, XFN-ZARTICLE: the last streams a stored payload).
+- Do not delete the pass-through until the count is 0 of 30.
+
+## Method that worked (successor: reuse)
+1. proof_repl: `start tN books/output-tariff-line --certify-missing`, then `send tN '<defthm>'`; each reply bound proved in seconds by `:in-theory (e/d (<factory> fn-nntp-make-result fn-nntp-result-effects fn-nntp-reply-effect fn-nntp-single fn-tariff-effects-octets ...) (<stobj readers>))`. Lemmas: len of fn-nntp-string-octets / append-pieces / crlf / decimal-field (<=10) are local in the line book. Do NOT open fn-nntp-pad2/pad4 (1.7M steps): state their lengths.
+2. Row = one line in def-family-tariffs; the generator emits the instance. Test witness values: ground defthms over *tfm-* fixture (find a ground value by proving (equal X n) for candidate n).
+3. Gate: explicit book list as above, not --lane.

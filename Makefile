@@ -2013,6 +2013,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/output-tariff-article-row \
 	tests/acl2/output-tariff-article-row-tests \
 	books/output-tariff-family \
+	books/output-tariff-line \
 	books/output-tariff-families \
 	tests/acl2/output-tariff-family-tests \
 	books/output-admission-line \
