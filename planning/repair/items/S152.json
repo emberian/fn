@@ -1,0 +1,17 @@
+{
+ "category": "resource-accounting",
+ "evidence": "hbox:/tank/fn/scratch/reclaim/native-reclaim-walk-red (image set 45e05c7f, developer): tests.test_native_reclaim_walk, 2,100 articles (every other expired), retention expire purge 30, store reclaim -> stdout 'reclaim deferred-credit', owner 'RECLAIM deferred reason=credit estimate=452968896'. fn-orcp-estimate (books/owner-reclaim-pass.lisp:50) = *fn-heap-octets-per-list-octet* (16) x (*fn-heap-compaction-history-copies* 6 - *fn-heap-serve-history-copies* 2) x history octets; the 6 is the OFFLINE store compact/reclaim measurement (books/heap-figure.lisp:385-398).",
+ "exposure": "default",
+ "file": "books/owner-reclaim-pass.lisp",
+ "fix": "Measure the live pass's resident set at 1k/10k/100k (tests.test_native_reclaim_walk FN_RUN_RECLAIM_RSS=1, on an image with the chunked walk PRF-1315 at lane/reclaim 086b9a38a) and replace the borrowed offline figure with the live pass's own measured copy count (a reclaim-specific constant beside *fn-heap-compaction-history-copies*, its derivation in heap-figure's comment), so the estimate funds what the pass holds. The walk no longer holds the rewritten-row list or a second predicted list; what it still holds whole is the checkpoint capture, the rebuilt capture, the fresh catalog and the history candidate.",
+ "id": "S152",
+ "line": "50",
+ "notes": [],
+ "owner": "reclaim",
+ "scenario": "A node with the default developer profile accumulates a few thousand articles with an expiry policy. Every live store reclaim answers deferred-credit, the expired payloads are never released, and the disk keeps growing although the policy says they expire. Only an operator-raised history bound (a larger reservation) lets the pass run.",
+ "severity": "high",
+ "source": "native-reclaim-walk-red-2026-10-04",
+ "state": "open",
+ "title": "A live store reclaim on a default developer node over 2,100 small articles is refused deferred-credit: the pass's reservation is the offline compaction's measured 4 extra list copies (fn-orcp-estimate = 16 x 4 x history octets), never measured for the live chunked pass",
+ "updated": "2026-10-04T04:36:15Z"
+}

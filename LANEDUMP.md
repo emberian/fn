@@ -4882,3 +4882,16 @@ answered 403 with the connection kept, and an over-quantum reply 400 and close
 Certified narrowly on persvati: certify-20261004T044137Z-1141752 and certify-20261004T051020Z-1493764.
 The pass-through stays until the last served family is priced (root ruling; specs/resource-vector.md).
 The opt-in (native-config) is on lane/tariff2-optin for batch R. PRF-1316 is proof-owed.
+
+## RECLAIM lane (lane/reclaim) — 2026-10-04
+
+Full entry: build/coordinator/lanedumps/reclaim.md. Landed: slice 1 (arena-writer rule scope,
+stub fixture renamed tests/native_history_root_raw-mock.lisp) in next e0a8516e9. On the
+branch: PRF-1315, the live reclaim pass walks the generation-pinned history in chunks with no
+whole rewritten-row list (books/reclaim-chunked-walk, books/reclaim-chunked-seal;
+fn-owner-orcp-rebuild takes the capture); the real native fixture
+tests/test_native_reclaim_walk.py (SCN-1140); S152 (the live pass's credit estimate refuses
+a 2,100-article reclaim: `deferred-credit estimate=452968896`, so the fixture cannot go
+green until it is measured and replaced); arena-reader-bound 12/12 REPL-admitted (PRF-1312,
+no teeth file yet). Held: PKT-855 on lane/reclaim-note@19b1b2211 (touches config.lisp).
+Continuation: the lanedump's numbered list.

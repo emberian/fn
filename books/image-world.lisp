@@ -328,6 +328,7 @@
 (include-book "owner-reclaim-ready")
 (include-book "owner-reclaim-carry")
 (include-book "owner-reclaim-seal")
+(include-book "reclaim-chunked-seal")
 (include-book "owner-recovery-retain")
 (include-book "owner-cursor-domain")
 (include-book "owner-retire")

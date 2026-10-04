@@ -9852,6 +9852,29 @@
         "planning/evidence/manifests/certify-20261003T180302Z-2794821.json"
       ],
       "execution_scope": "Actual trusted repository function bodies with Common Lisp shims and two MBE choices; normal ACL2 guards prove branch equivalence. No native endpoint, full semantic decode quantum or GC tariff claim."
+    },
+    {
+      "id": "SCN-1140",
+      "title": "The live reclaim pass walks a history longer than two chunks without a whole row list, installs, and GROUP reports the exact available count",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017",
+        "NNT-042"
+      ],
+      "steps": [
+        "Developer image: post 2,100 articles to fn.test, every other with a past Expires:; `retention expire fn.test purge 30`; `store reclaim` on the serving node, a connection open across it.",
+        "On that connection: STAT an expired and a kept article; GROUP; POST.",
+        "Stop, reopen: GROUP; STAT an expired article."
+      ],
+      "expected": [
+        "`installed`; the owner logs `RECLAIM installed ... reclaimed=1050`.",
+        "430 article reclaimed for the expired, 223 for the kept; `211 1050 1 2099 fn.test` (decision 2': the available count with the true first and last, not the allocation count); the POST is accepted.",
+        "`211 1051 1 2101 fn.test`; 430 article reclaimed."
+      ],
+      "evidence": [
+        "tests/test_native_reclaim_walk.py"
+      ]
     }
   ]
 }
