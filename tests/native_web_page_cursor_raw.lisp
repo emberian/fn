@@ -1,6 +1,6 @@
 ;;; Native consumer + deployed ACL2 cursor bodies, over the existing segment
 ;;; reference. This raw witness is not guard verification or saved-image use.
-(load "tests/native_web_reactor_raw.lisp")
+(load "tests/native_web_reactor_raw-mock.lisp")
 (in-package "ACL2")
 
 ;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----

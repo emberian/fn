@@ -74,6 +74,20 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(wrappers, [], "delete these: tests/test_native_raw_scripts.py "
                                        "runs every unnamed harness itself")
 
+    def test_no_proof_or_requirement_cites_a_mock(self):
+        # A fixture whose fnn-core answers are made up (its name ends in
+        # -mock.lisp, docs/testing.md) tests host plumbing only: it is
+        # evidence for no proof and no requirement.
+        import json
+        cited = []
+        for registry, key in (("planning/proofs.json", "proofs"),
+                              ("planning/requirements.json", "requirements")):
+            rows = json.loads((ROOT / registry).read_text(encoding="utf-8"))[key]
+            cited += [f"{registry} {row['id']}: {item}" for row in rows
+                      for item in row.get("evidence") or []
+                      if isinstance(item, str) and item.endswith("-mock.lisp")]
+        self.assertEqual(cited, [])
+
 
 @unittest.skipUnless(RUNTIME, "no SBCL runtime for the image and none on PATH")
 class RawHarnessTests(unittest.TestCase):

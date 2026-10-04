@@ -56,7 +56,13 @@ asserts for the inputs and seam answers it supplies.  It does not show the
 image (a different build, other definitions loaded, the real seams), guard
 conformance, or real I/O.  Where the harness answers `fnn-core` -- the host's
 call into ACL2 -- with values it made up instead of the real ACL2 function,
-it tests host plumbing only.
+it tests host plumbing only: its file name ends in `-mock.lisp`
+(`tests/native_*_raw-mock.lisp`, `*_source-mock.lisp`) and no proof or
+requirement in `planning/` cites it as evidence; a scenario row may still
+name it for the host step it drives.  To make one real, read the `defun`
+from its book and route `fnn-core` to it (`tests/native_web_reactor_raw-mock.lisp`
+does this for `fn-web-host-action-kind`, `native_live_config_cache_raw-mock.lisp`
+for `fn-nret-request`); when no fabricated answer is left, drop `-mock`.
 
 ## Native modules
 

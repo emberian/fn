@@ -2393,7 +2393,6 @@
         "tests/acl2/hybrid-signature-invariants-tests.lisp",
         "host/hybrid-signature-host.lisp",
         "host/native/signatures.lisp",
-        "tests/native_hybrid_signatures.lisp",
         "tests/evidence/2026-09-21-native-hybrid-signatures.md",
         "planning/evidence/hybrid-injectivity-certification-2026-09-21.md",
         "books/hybrid-carrier.lisp",
@@ -3108,7 +3107,6 @@
         "host/native/owner.lisp",
         "host/native/control.lisp",
         "host/native/consumer-local.lisp",
-        "tests/native_owner_consumer_local_raw.lisp",
         "tests/test_native_consumer_e2.py",
         "planning/evidence/manifests/certify-20260924T031621Z-3631800.json",
         "planning/evidence/native-luna-e160-selected-2026-09-24.md",
@@ -3491,7 +3489,7 @@
     {
       "id": "PRF-078",
       "title": "A control article is filed only in control.<verb>, or refused, over the filing plan every ingress calls",
-      "statement": "fn-ctl-control-article-is-filed-only-in-control: for every received octet string that fn-ctl-classify-octets classifies (:control VERB ARGS), fn-pa-filing-plan RECEIVED GROUPS DOMAIN (books/peer-authored-accept.lisp; host/owner-host.lisp fn-owner-control-filing-buffer calls its buffer twin (books/article-buffer.lisp fn-ars-filing-plan-is-reference) and host/native/owner.lisp fnn-owner-attempt-filled calls that first, for served POST, bound submission, NNTP transit and BP transit, and host/native/hybrid-control.lisp fnn-hybrid-control-author calls fn-owner-control-filing itself for the local signed-author path) either files the article in exactly one group, its filing group fn-ctl-filing-group VERB, which is \"control\" or begins \"control.\" and is a member of DOMAIN, or refuses it :control-not-filed; the ingress's own GROUPS (the names its Newsgroups field gave) are never the answer unless they are that group. fn-ctl-classify-reads-only-the-control-field: inserting any field F whose name is neither control nor supersedes anywhere in a field list leaves fn-ctl-classify-fields unchanged. fn-ctl-cmsg-subject-is-ordinary: an article whose parsed fields have no Control field is filed in GROUPS unchanged by fn-pa-filing-plan, whatever its Subject, Newsgroups or Also-Control. Covered scope: the filing decision; the host's use of the filed groups is a transcribed stub test (tests/native_peer_authored_accept_raw.lisp) and the native cases of the evidence file. A signed control article is filed the same way (the :control-signed refusal was removed 2026-09-25 by lane control-c3 when the signed record binding came to name the filing group; PRF-084).",
+      "statement": "fn-ctl-control-article-is-filed-only-in-control: for every received octet string that fn-ctl-classify-octets classifies (:control VERB ARGS), fn-pa-filing-plan RECEIVED GROUPS DOMAIN (books/peer-authored-accept.lisp; host/owner-host.lisp fn-owner-control-filing-buffer calls its buffer twin (books/article-buffer.lisp fn-ars-filing-plan-is-reference) and host/native/owner.lisp fnn-owner-attempt-filled calls that first, for served POST, bound submission, NNTP transit and BP transit, and host/native/hybrid-control.lisp fnn-hybrid-control-author calls fn-owner-control-filing itself for the local signed-author path) either files the article in exactly one group, its filing group fn-ctl-filing-group VERB, which is \"control\" or begins \"control.\" and is a member of DOMAIN, or refuses it :control-not-filed; the ingress's own GROUPS (the names its Newsgroups field gave) are never the answer unless they are that group. fn-ctl-classify-reads-only-the-control-field: inserting any field F whose name is neither control nor supersedes anywhere in a field list leaves fn-ctl-classify-fields unchanged. fn-ctl-cmsg-subject-is-ordinary: an article whose parsed fields have no Control field is filed in GROUPS unchanged by fn-pa-filing-plan, whatever its Subject, Newsgroups or Also-Control. Covered scope: the filing decision; the host's use of the filed groups is a transcribed stub test (tests/native_peer_authored_accept_raw-mock.lisp) and the native cases of the evidence file. A signed control article is filed the same way (the :control-signed refusal was removed 2026-09-25 by lane control-c3 when the signed record binding came to name the filing group; PRF-084).",
       "milestone": "M3",
       "requirements": [
         "NNT-010"
@@ -3505,7 +3503,6 @@
         "tests/acl2/control-tests.lisp",
         "host/owner-host.lisp",
         "host/native/owner.lisp",
-        "tests/native_peer_authored_accept_raw.lisp",
         "planning/evidence/control-c1-2026-09-25.md",
         "planning/evidence/manifests/certify-20260925T024843Z-3628885.json",
         "planning/evidence/manifests/certify-20260925T033259Z-4063610.json",
@@ -5965,7 +5962,6 @@
         "planning/evidence/manifests/certify-20260926T074028Z-855253.json",
         "planning/evidence/manifests/certify-20260926T075324Z-901451.json",
         "planning/evidence/public-exposure-2026-09-26-report.json",
-        "tests/native_owner_chunk_loop_raw.lisp",
         "tests/test_native_owner.py",
         "docs/operator.md",
         "planning/evidence/manifests/certify-20260926T081338Z-3125166.json",
@@ -8575,7 +8571,6 @@
         "host/native/tls.lisp",
         "host/native/heap.lisp",
         "tests/test_native_mux.py",
-        "tests/native_owner_chunk_loop_raw.lisp",
         "specs/host.md",
         "planning/evidence/connection-multiplexing-2026-09-26.md"
       ],
@@ -9572,7 +9567,6 @@
         "planning/evidence/owner-scheduler-2026-09-26.md",
         "tests/acl2/owner-scheduler-tests.lisp",
         "tests/acl2/served-plan-tests.lisp",
-        "tests/native_owner_chunk_loop_raw.lisp",
         "tests/test_native_owner_scheduler.py"
       ],
       "progress_note": "Lane owner-scheduler (Fable 5.1, 2026-09-26/27; ember's priority 2, gpt-6 consolidation review section 7, PKT-321). Host lines: host/native/owner.lisp fnn-owner-gate-pick calls fn-osch-next at every release of the owner mutex and at every arrival at an idle owner; fnn-owner-gate-leave calls fn-osch-observe; host/owner-host.lisp fn-owner-chunk-span returns fn-splan-step-make; fnn-owner-handle-chunk calls fn-splan-step-plan; fnn-owner-render-next calls fn-splan-window off the mutex and fnn-owner-write-plan loops it until fn-splan-donep. Teeth: tests/acl2/owner-scheduler-tests.lisp (the delay from every cursor, the worst case 3; the must-fail with control absent for four picks: delay 4; the pick's facts; the fold's row invariant and its labelled mutation; the health lines as text) and tests/acl2/served-plan-tests.lisp (the ARTICLE-shaped reply drained in windows of 5 and of 100; a must-fail per hypothesis of the progress conjunct; the must-fail for keystone 2's done hypothesis; the :malformed status; the 3 MiB body in 64 KiB windows: 49 windows). A quantum is one bounded semantic step; the bound is in quanta.",
@@ -11188,7 +11182,6 @@
       "evidence": [
         "books/owner-feed-article.lisp",
         "tests/acl2/owner-feed-article-tests.lisp",
-        "tests/native_feed_service_raw.lisp",
         "tests/test_native_peering.py",
         "planning/evidence/feed-fault-2026-09-27.md"
       ],
@@ -13669,7 +13662,6 @@
         "tests/acl2/feed-link-backoff-tests.lisp",
         "host/native/feed-service.lisp",
         "host/native/tls.lisp",
-        "tests/native_feed_service_raw.lisp",
         "tests/test_native_tls_transport.py",
         "tests/test_native_feed_tls_read.py"
       ],
@@ -15943,9 +15935,7 @@
         "books/bp-node-fragment-job.lisp",
         "tests/acl2/bp-node-fragment-job-tests.lisp",
         "books/bp-fragment-job-shape.lisp",
-        "tests/acl2/bp-node-fragment-step-job-tests.lisp",
-        "tests/native_bp_fragment_turn_raw.lisp",
-        "tests/native_tcpcl_progress_turn_raw.lisp"
+        "tests/acl2/bp-node-fragment-step-job-tests.lisp"
       ],
       "progress_note": "Lane bp-remainder-2 (Fable, 2026-09-29): REPL-admitted on hbox (13 defthms). Lane bp-remainder-3 (Fable, 2026-09-29): host-reached -- Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step). The debt-delta twin in bp-node-progress is deferred (the credit path still reassembles once per proposal and once per result, today's cost); the whole-bundle encode stays one step's work until PKT-585. Lane bp-remainder-4 (Fable, 2026-09-29): the job's shape is books/bp-fragment-job-shape (fn-bpfj-jobp: what a step needs, linear in the fragments; fn-bpfj-readable-jobp: the cells a true list too, for the readings), the guard of fn-bpfj-start / -step / -finishedp / -query / -plan / -apply and of the twins, checked by fn-bpnf-host-eventp of a job-carrying event; fn-bpfj-start-is-readable and fn-bpfj-step-keeps-readable carry it across the host's loop; every fn-bpfj-* the host reaches is guard-verified in books/bp-node-fragment-guards (fn-bpfj-image-octets, a specification function, is not). 2026-09-30: the host image limit is corrected to the held-octet budget. E739 SCN-077 reached the last fragment but produced no family because the old host supplied the 1 MiB received-wire limit for the 10 MiB whole image. The original 10 MiB profile and durability assertions remain unchanged; matching native validation is pending. BP-TRANSPORT 2026-10-03 S026: actual native consumer now carries one job across service turns, performs one quantum per turn, and never reassembles within receive callback. Post-ACK TCPCL input/timeout and idle listener/once turns continue it. Source-matched guard/job-root certification, native image and full allocation/cost boundary still owed; recording actual caller tests pass."
     },
@@ -21855,7 +21845,6 @@
         "planning/evidence/served-cursor-20261003/selector-composition-checks.json",
         "planning/evidence/served-cursor-20261003/selector-composition-repl.log.gz",
         "tests/test_cursor_cold_poll.py",
-        "tests/cursor_cold_poll_recording.lisp",
         "planning/evidence/cursor-cold-poll-20261003/checks-final.json",
         "books/def-cursor-batch.lisp",
         "planning/evidence/served-matcher-consumer-20261003/checks.json",
@@ -22049,7 +22038,7 @@
     {
       "id": "PRF-1263",
       "title": "Live retire observation expires as uncertain and report inspection requires stopped",
-      "statement": "Host-called subject fn-nret-observation-step in books/native-retire.lisp, called by host/native/operator.lisp fnn-operator-execute-retire. At or beyond fn-nret-observation-budget-ticks for the requested drain plus the explicit60-second operator allowance, live/held observations return :uncertain; a :report decision requires offline/stale liveness. Invalid request/clock and unknown liveness never mean stopped. This bounds operator observation under advancing monotonic host clock observations, not physical owner stop or final fence completion. Literal positive and each retained/omitted hypothesis witness in tests/acl2/native-retire-observation-tests.lisp; actual source loop fixtures in tests/native_retire_observation_source.lisp.",
+      "statement": "Host-called subject fn-nret-observation-step in books/native-retire.lisp, called by host/native/operator.lisp fnn-operator-execute-retire. At or beyond fn-nret-observation-budget-ticks for the requested drain plus the explicit60-second operator allowance, live/held observations return :uncertain; a :report decision requires offline/stale liveness. Invalid request/clock and unknown liveness never mean stopped. This bounds operator observation under advancing monotonic host clock observations, not physical owner stop or final fence completion. Literal positive and each retained/omitted hypothesis witness in tests/acl2/native-retire-observation-tests.lisp; actual source loop fixtures in tests/native_retire_observation_source-mock.lisp.",
       "milestone": "M5",
       "requirements": [
         "PKT-895"
@@ -22104,7 +22093,6 @@
       "evidence": [
         "books/bp-node-budget-input.lisp",
         "tests/acl2/bp-node-budget-input-tests.lisp",
-        "tests/native_bp_budget_input_raw.lisp",
         "host/native/bp-node.lisp",
         "specs/bp-node-machine.md",
         "planning/evidence/manifests/certify-20261003T102343Z-1448390.json",
@@ -22133,7 +22121,6 @@
         "books/history-image-builder.lisp",
         "tests/acl2/history-image-build-rows-tests.lisp",
         "tests/acl2/history-image-builder-tests.lisp",
-        "tests/native_history_builder_raw.lisp",
         "planning/evidence/manifests/certify-20261003T101722Z-1422001.json",
         "planning/evidence/native-history-builder-2026-10-03.json"
       ],
@@ -22269,7 +22256,6 @@
         "books/tcpcl-retained-turn.lisp",
         "tests/acl2/tcpcl-retained-turn-tests.lisp",
         "host/native/tcpcl.lisp",
-        "tests/native_tcpcl_retained_turn_raw.lisp",
         "planning/evidence/manifests/certify-20261003T104100Z-1504853.json",
         "planning/evidence/bp-retained-tcpcl-turn-2026-10-03.md"
       ],
@@ -22491,8 +22477,7 @@
         "tests/acl2/output-command-admission-tests.lisp",
         "host/owner-host.lisp",
         "host/native/owner.lisp",
-        "host/native/mux.lisp",
-        "tests/native_output_preflight_raw.lisp"
+        "host/native/mux.lisp"
       ],
       "progress_note": "Fresh laptop full source13forms admits4.08ACL2s/936154steps including six source-loaded dependencies in proper local encapsulates; actual input-stobj first-event pipeline and independent unpriced/mismatched/unaffordable families plus literal weakened-prefix hypothesis-removal teeth pass13/0. Program owner wrapper/native consumer integration and certificate pending. Prefix theorem weakened to only natural START and START<=END after proving fast-wire/type/end/storage premises redundant for the logical range property; executable guards remain unchanged. Actual admitted mux reader now reserves response identity and draws before buffer filling/preview; installed private ledger capacity is read under its own lock. Explicit program tariff delegates ACL2 unpriced producer, so incomplete coverage refuses before factory. Accepted NEXT is passed to actual span helper; cold fallback validates prefix before retry. Published holder retains known returned issuance on later refusal/fault, so finish can consume whole operation discard. SCN1111 actual helpers/decision bodies pass0.27s with recording wire/typed boundaries and injected positive tariff only to refute suffix escape; current producer has no priced family and optional profile remains unsupported. Program admission, whole driver refinement, runtime allocator/GC/root coverage and qualified image remain owed. Capacity/accessor source guards and live zero/installed-Q ledger cases also passed in the source-only25ee package; full changed resource-output certification is still pending."
     },
@@ -22516,7 +22501,6 @@
         "host/native/bp-session.lisp",
         "host/native/bp-node.lisp",
         "tests/acl2/bp-session-profile-tests.lisp",
-        "tests/native_bp_session_bank_raw.lisp",
         "planning/evidence/manifests/certify-20261003T113645Z-1660138.json",
         "planning/evidence/bp-retained-node-2026-10-03.md",
         "planning/evidence/manifests/certify-20261003T114543Z-1687865.json",
@@ -22676,10 +22660,10 @@
         "books/decoded-worker-assignment.lisp",
         "books/decoded-worker-job.lisp",
         "host/page-decoded-window-host.lisp",
-        "tests/native_decoded_worker_raw.lisp",
+        "tests/native_decoded_worker_raw-mock.lisp",
         "tools/runtime_decoded_source_prefix.py",
         "tests/native_decoded_constructor_source.lisp",
-        "tests/native_decoded_issue_raw.lisp",
+        "tests/native_decoded_issue_raw-mock.lisp",
         "tests/native_response_window_raw.lisp",
         "host/native/mux.lisp",
         "host/native/web-host.lisp",
@@ -22706,7 +22690,6 @@
         "books/tcpcl-frame-cursor.lisp",
         "tests/acl2/tcpcl-frame-cursor-tests.lisp",
         "host/native/tcpcl.lisp",
-        "tests/native_tcpcl_frame_cursor_raw.lisp",
         "planning/evidence/manifests/certify-20261003T123129Z-1811904.json",
         "books/tcpcl-input-materialize.lisp"
       ],
@@ -22750,7 +22733,6 @@
         "tests/acl2/bp-session-received-source-tests.lisp",
         "host/native/bp-session.lisp",
         "host/native/bp-node.lisp",
-        "tests/native_bp_received_source_raw.lisp",
         "books/tcpcl-received-source.lisp",
         "books/tcpcl-received-source-refinement.lisp",
         "tests/acl2/tcpcl-received-source-refinement-tests.lisp"
@@ -22802,14 +22784,13 @@
         "books/history-root-credit.lisp",
         "host/history-root-host.lisp",
         "host/native/history-root.lisp",
-        "tests/native_history_root_raw.lisp",
         "tests/acl2/history-paged-adopt-tests.lisp",
         "tests/acl2/history-paged-canonical-tests.lisp",
         "planning/evidence/native-history-roots-2026-10-03.json",
         "tests/history_root_abandon_host.lisp",
         "planning/evidence/history-activation-20261003/result-final.json"
       ],
-      "progress_note": "Fresh hbox source replay admitted the foundation, resident and five-export abstract books with their local proof events dropped; attachment table binds FN-HIST to FN-HIST-PAGED before the generic book. Guard-verified canonical five-export fixture passes. Actual mixed-event 5000-character page build/adoption/index/tail execution and native installer/reclaim/replacement control fixtures pass. This is source execution, not exact affected-root certification or a saved image. Complete adoption/index correspondence and tariff bounds remain open. Follow-through native rewritten-root preparation/install/held-generation/refusal fixture passes; count decision guard verified in the fresh canonical source world. The matching earlier receipt remains scoped to its own source hashes; follow-through receipt pending. Terminal retirement now checks the ACL2 no-lease word under the owner gate, clears private page/suffix backing and removes its registry binding before returning the generation grant; private failed builders dispose their backing before abandon. The two new disposal entries are guard-admitted in the retained current source world, and the actual raw consumer fixture checks disposal-before-refund and held-root readability. Physical disposal still clears Message-ID buckets as a whole; no bounded destruction claim is made. Root activation follow-through binds physical candidate before ACL2 activation; torn activation/publication retains backing and credit. Actual eight refresh/reclaim/refusal cuts plus corrupted credit-return case pass; abandonment PROGRAM query admits normally with five missing/building/live/retired/leased witnesses. Receipt planning/evidence/history-activation-20261003/result-final.json is scoped source execution, not whole-host certification or bounded retirement."
+      "progress_note": "Fresh hbox source replay admitted the foundation, resident and five-export abstract books with their local proof events dropped; attachment table binds FN-HIST to FN-HIST-PAGED before the generic book. Guard-verified canonical five-export fixture passes. Actual mixed-event 5000-character page build/adoption/index/tail execution and native installer/reclaim/replacement control fixtures pass. This is source execution, not exact affected-root certification or a saved image. Complete adoption/index correspondence and tariff bounds remain open. Follow-through native rewritten-root preparation/install/held-generation/refusal fixture passes; count decision guard verified in the fresh canonical source world. The matching earlier receipt remains scoped to its own source hashes; follow-through receipt pending. Terminal retirement now checks the ACL2 no-lease word under the owner gate, clears private page/suffix backing and removes its registry binding before returning the generation grant; private failed builders dispose their backing before abandon. The two new disposal entries are guard-admitted in the retained current source world, and the actual raw consumer fixture checks disposal-before-refund and held-root readability. Physical disposal still clears Message-ID buckets as a whole; no bounded destruction claim is made. Root activation follow-through binds physical candidate before ACL2 activation; torn activation/publication retains backing and credit. Actual eight refresh/reclaim/refusal cuts plus corrupted credit-return case pass; abandonment PROGRAM query admits normally with five missing/building/live/retired/leased witnesses. Receipt planning/evidence/history-activation-20261003/result-final.json is scoped source execution, not whole-host certification or bounded retirement. 2026-10-04 (lane reclaim): the raw consumer fixture stubs every ACL2 producer call, so it is renamed tests/native_history_root_raw-mock.lisp and is no longer cited as evidence here; this row's native evidence is owed to a real native reclaim run over a published image (lane reclaim)."
     },
     {
       "id": "PRF-1286",
@@ -22892,8 +22873,7 @@
       "evidence": [
         "books/tcpcl-source-control.lisp",
         "tests/acl2/tcpcl-source-control-tests.lisp",
-        "host/native/tcpcl.lisp",
-        "tests/native_tcpcl_source_control_raw.lisp"
+        "host/native/tcpcl.lisp"
       ],
       "progress_note": "2026-10-03 actual raw retained consumer with actual ACL2 control function PASS: KEEPALIVE alone writes, exact END ACK/root held, no duplicate while physical write waits,64-action private cursor resumes; receiving clock remains9. Constructor/control certificate pending. No transfer acceptance or settlement inferred. Exact control+teeth successor certify-20261003T134436Z-1978092 PASSED3/0 archived/indexed, guards verified. Actual be75 controller/core-leaf receipt planning/evidence/bp-source-continuations/be75-native-components.json indexed."
     },
@@ -22913,8 +22893,7 @@
       "evidence": [
         "books/tcpcl-retained-turn.lisp",
         "tests/acl2/tcpcl-retained-turn-tests.lisp",
-        "host/native/tcpcl.lisp",
-        "tests/native_tcpcl_retained_turn_raw.lisp"
+        "host/native/tcpcl.lisp"
       ],
       "progress_note": "2026-10-03 actual retained-controller raw deadline boundary/established source and held END ACK fixture PASS. Warm hbox normal definitions/guards plus14 literal assertions PASS (whole book1010 steps); definition-expansion helper names are not completion keystones. Matching affected-root certification and proposed composed custody boundary remain pending. SCN-1126 prepared, actual native real-time contact timeout unexecuted. Captured-input followthrough: fourth BUFFERED argument defers expiration only for an already retained bounded framing/materialization action, so a header physically received before deadline can complete without another read. Actual raw fixture and source-control/custody composition PASS; normal four-argument guard admission and15 assertions PASS; helpers87/44 steps, rule-classes NIL. Final exact certificate pending; earlier three-argument2155553 certificate has a different source digest and does not cover this followthrough. Final four-argument book+teeth certify-20261003T152229Z-2170515 PASSED2/0 archived/indexed. This certifies the changed definitions/guards and direct helper/literal assertions, not the still-proposed composed host/custody boundary."
     },
@@ -22935,8 +22914,7 @@
       "evidence": [
         "books/bp-session-profile.lisp",
         "tests/acl2/bp-session-profile-tests.lisp",
-        "host/native/bp-session.lisp",
-        "tests/native_bp_session_bank_raw.lisp"
+        "host/native/bp-session.lisp"
       ],
       "progress_note": "2026-10-03 actual controller/core-leaf raw matrix PASS for ordinary versus fenced context and observed versus unobserved physical close. Source/control composition and exact affected-root certification pending; full host no-future-publication/custody refinement remains proposed. Source/control/custody actual raw composition PASS. Exact profile+teeth certify-20261003T154249Z-2241830 PASSED2/0 archived/indexed; covers definitions/guards/direct helper/literals, not proposed composed host boundary."
     },
@@ -22958,7 +22936,6 @@
         "books/tcpcl-retained-turn.lisp",
         "tests/acl2/tcpcl-retained-turn-tests.lisp",
         "host/native/tcpcl.lisp",
-        "tests/native_tcpcl_retained_turn_raw.lisp",
         "tests/test_bp_node_native.py"
       ],
       "progress_note": "Actual retained driver and composed source/custody raw fixtures PASS fixed deadline, retained input continuation, no physical-close inference. Native SCN-1127 prepared/unexecuted; matching logical guards/certification pending. Constructor nonrenewal and timeout phase lemmas have literals, not a composed native proof. Warm normal admission/guards and25 literal assertions PASS; nonrenewal80 steps, phase lemma55 with rule-classes NIL after illegal variable rewrite fixed forward. Exact affected roots pending. Exact retained-turn+teeth certify-20261003T154952Z-2257690 PASSED2/0 archived/indexed; composed native caller boundary remains open."
@@ -22985,8 +22962,8 @@
         "tests/acl2/decoded-worker-reuse-tests.lisp",
         "host/native/extent.lisp",
         "host/native/extent-decoded.lisp",
-        "tests/native_decoded_worker_raw.lisp",
-        "tests/native_decoded_startup_raw.lisp",
+        "tests/native_decoded_worker_raw-mock.lisp",
+        "tests/native_decoded_startup_raw-mock.lisp",
         "tests/acl2/decoded-worker-reuse-execution-tests.lisp"
       ],
       "events": [
@@ -23026,8 +23003,7 @@
         "tests/acl2/bp-channel-ingress-tests.lisp",
         "host/bp-native-app-host.lisp",
         "host/native/tcpcl.lisp",
-        "host/native/bp-node.lisp",
-        "tests/native_tcpcl_source_control_raw.lisp"
+        "host/native/bp-node.lisp"
       ],
       "progress_note": "Actual shipped apply/flush raw accepted/refused matrix PASS: callback exactly once, refused never enters source issuer, drops held messages and remains :refused connection-local. ACL2 accepted/no-trust/malformed/wrong-EID literals added; guards/certification pending. SCN1128 prepared/unexecuted. Remote sees interruption without transfer ACK; receiver keeps exact policy refusal. Full configuration traversal/GC bounds remain explicit. Narrow warm initialization refused before changed book because current history-columns-foundation has no matching certificate and20 dependent books; no parallel wide initialization/certification launched. Shared History current world must admit these additive leaves before use; definition/guard proof pending."
     },
@@ -23050,7 +23026,6 @@
         "books/tcpcl-source-control.lisp",
         "tests/acl2/tcpcl-source-control-tests.lisp",
         "host/native/tcpcl.lisp",
-        "tests/native_tcpcl_source_control_raw.lisp",
         "tests/test_bp_node_native.py"
       ],
       "progress_note": "Actual retained framing/private source/session KEEPALIVE transition/delivery-plan raw composition PASS: incoming clock advances before publication, exact END ACK/root remainheld, next XFER prefix vector/offset preserved without extra read/issuer, normal or EOF source terminal publishes once and only observed close+context settles bank. Wire decoder/socket/durable callback are recorded; no full native verdict. Warm normal guards+13 literal assertions PASS; actual fn-tcl-step inbound/reception lemmas1599/1482 steps. Existing outgoing cheap-state lemma384714 steps makes book397806 steps/1.41s. Exact affected roots pending. New SCN1131 current-source native prepared/unexecuted."
