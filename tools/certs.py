@@ -743,6 +743,8 @@ def _pair_index(cache: Path):
     connection.execute("PRAGMA busy_timeout=900000")
     with contextlib.suppress(sqlite3.DatabaseError):
         connection.execute("PRAGMA journal_mode=WAL")
+        # A lost tail after a power cut costs a re-probe, never a wrong fact.
+        connection.execute("PRAGMA synchronous=NORMAL")
     connection.executescript(
         "CREATE TABLE IF NOT EXISTS provers (id INTEGER PRIMARY KEY, path TEXT UNIQUE);"
         "CREATE TABLE IF NOT EXISTS facts (prover INTEGER, parent BLOB, child BLOB,"
@@ -884,11 +886,20 @@ def memoized_pair_checker(cache: Path, checker=None):
             except OSError:
                 pass
         if connection is not None:
+            # One transaction: in autocommit every row was its own commit and
+            # sync (307 s for a cold closure's verdicts on lat1).
             with contextlib.suppress(sqlite3.Error):
-                connection.executemany(
-                    "INSERT OR IGNORE INTO facts VALUES (?, ?, ?, ?, ?)",
-                    [(prover_id, bytes.fromhex(digests[p]), bytes.fromhex(digests[c]),
-                      int(fresh[(p, c)][0]), int(fresh[(p, c)][1])) for p, c in written])
+                connection.execute("BEGIN IMMEDIATE")
+                try:
+                    connection.executemany(
+                        "INSERT OR IGNORE INTO facts VALUES (?, ?, ?, ?, ?)",
+                        [(prover_id, bytes.fromhex(digests[p]), bytes.fromhex(digests[c]),
+                          int(fresh[(p, c)][0]), int(fresh[(p, c)][1])) for p, c in written])
+                    connection.execute("COMMIT")
+                except BaseException:
+                    with contextlib.suppress(sqlite3.Error):
+                        connection.execute("ROLLBACK")
+                    raise
             connection.close()
         return found
         fresh = checker(paths, ask, acl2, root)
