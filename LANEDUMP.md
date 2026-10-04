@@ -10,14 +10,17 @@ Tree `build/lanes/cold-line`, branch `lane/cold-line` (origin), from `origin/dev
 - NEWNEWS: dev's `-cat` arm already scans the tombstone column (`fn-nntp-newnews-response-stream`); not changed here. Its quantum is bounded by W visits, not reads -> CL-OWED-NEWNEWS-DEMAND (generators' `:demand` at lane/generators d54b7b955).
 
 ## Evidence
-- RED before: hbox `cl-red-45e` (`hbox:/tank/fn/scratch/cold-line/native-cl-red-45e`), image set 45e05c7fd, tree dbf62fe95, `tests.test_native_cold_line_quanta`: all 10 lines NO ANSWER in 20 s at 40 articles.
-- REPL (persvati, --source-deps, start 03:5xZ, stopped after each book): served-catalog 0 refused; over-window 0 refused; served-plan-cursor 0 refused; served-catalog-dispatch 0 refused; protocol-served-table and protocol-served load; tests/acl2/over-window-tests 0 refused; laptop: cold-line-quanta, tests/acl2/cold-line-quanta-tests 0 refused. productive-read: 3 refusals, 1 pre-existing (CL-PRE-PRODUCTIVE-READ-NEWNEWS) + 2 that use it.
-- GREEN after: owed. Needs an image of this branch (asked of the integrator), then `tools/hbox_native.sh --reuse-image ... tests.test_native_cold_line_quanta`.
+- RED before: hbox `cl-red-45e` (`hbox:/tank/fn/scratch/cold-line/native-cl-red-45e`), image set 45e05c7fd, tree dbf62fe95, `tests.test_native_cold_line_quanta`: all 10 lines NO ANSWER in 20 s at 40 articles (filed: evidence index `docs/evidence/2026-10-04-cold-line/native-cl-red-45e-test_native_cold_line_quanta.log`, 5fe49066). Caveat: one node per run, so lines after the first may be victims of the first's pinned owner; the deadline test (cg) measured each separately on 10-03.
+- Certification (narrow --recertify on persvati, FN_CERT_ORIGIN_KIND=run): `certify-20261004T050147Z-1392072` at 1338b29d1, 17 books green (cold-line-quanta, served-catalog, over-window, served-plan-cursor, served-catalog-dispatch, protocol-served-table, protocol-served, served-catalog-chain, owner-reader-read, owner-time-admission, owner-article-slots, owner-cold-line, owner-credits, productive-read, tests cold-line-quanta/over-window/served-catalog); `certify-20261004T053927Z-1790009` at 888936ccc re-certifies over-window, served-plan-cursor, over-window-tests after the payload-kind declaration. Both manifests filed (box-written bytes).
+- REPL sessions: persvati (assembler-granted), started ~03:52Z, every session stopped (last 05:2xZ). Laptop: cold-line-quanta and its test.
+- Pre-existing reds met, not this slice: productive-read-chain `fn-pcr-post-delegates-a-read-without-offer-by-definition` (posting; 7 chain + 7 absent theorems stop with it). check-lane reds unrelated to this slice (reach_check owner-time-journal, interface_emit raw-dispatch, cost_obligations baseline, premise_audit adt-pg-pokp, hot_path_check, holder_check, raw_depth, clock_unit, owner_globals, list_codec, harness_check, host_check bp-session) are on next.
+- GREEN after: owed. The slice rides the integrator's next image set (assembler); selectors: tests.test_native_cold_line_quanta.NativeColdLineQuanta.test_lines_past_the_cache_answer_completely, tests.test_native_cold_line_deadline, tests.test_native_over_cursor_cost.
 
-## Continuation
-1. Integrator image of lane/cold-line HEAD -> run `tests.test_native_cold_line_quanta` (and `tests.test_native_cold_line_deadline`, `tests.test_native_over_cursor_cost`) on it; file evidence (`evidence_store.py put`), index line.
-2. Farm certify `--affected-by books/served-catalog.lisp` (hbox, one slot, --jobs 8, via the assembler); fix forward any red in the closure (served-catalog-chain, protocol-served, owner-reader-read, productive-read-*, tests).
-3. CL-OWED-NEWNEWS-DEMAND once generators' :demand is on next.
+## Continuation (exit, ramp-down 2026-10-04)
+1. On the integrator's image of next with this slice: run the three native selectors above; file the run (evidence_store put) and its index line; a red there is the finding (look first at a no-I/O miss inside fn-ovw-hdr-step's window: the window is <= 4 numbers for a payload source).
+2. CL-OWED-NEWNEWS-DEMAND: convert fn-nnw-stream's batch onto def-cursor :demand (lane/generators d54b7b955) once on next.
+3. CL-OWED-HDR-CURSOR-FRAME: the commit/withdraw frame for header cursors.
+4. productive-read-chain's posting theorem (pre-existing) belongs to the productive-read owner.
 
 # Harvest lane — Opus (2026-10-04)
 
