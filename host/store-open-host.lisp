@@ -644,7 +644,7 @@
                                     (mv-let (r replay fn-octets-lg fn-arena)
                                       (fn-xo-scan root (cadr plan) (cadr genesis)
                                                   (fn-store-log-unit)
-                                                  (fn-store-profile-max-record-octets config)
+                                                  (fn-lgu-log-max (fn-store-profile-max-record-octets config))
                                                   (list nil nil 0 0 nil 1)
                                                   fn-octets-lg fn-arena)
                                       (if (not (fn-xo-okp r))

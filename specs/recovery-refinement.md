@@ -93,7 +93,15 @@ log's served programs, which is a state satisfying the log relation R
    run itself (no owner layer: ACKED is the kernel's own count, advanced
    by `fn-lgc-finish-one` in the COMPLETE), the first ACKED records are
    recovered at every cut (`fn-lgu-acknowledged-records-are-recovered-at-every-cut`,
-   `books/store-log-durable.lisp`, PRF-936). A refused
+   `books/store-log-durable.lisp`, PRF-936). ACKED is the kernel's
+   count, not the client's: every record whose acceptance a client
+   observed is among the first ACKED (the COMPLETE advances ACKED before
+   any reply leaves), and the inclusion may be strict. The open is
+   modeled reading the durable content; RL-01 (a restart after a failed
+   barrier reading cached, never-written bytes) is outside this item until
+   the open's recovery is restated over what it read
+   (`fn-lg-durable-read-prefix-establishes-the-relation` is the common
+   core). A refused
    open stays refused: conjunct 2 carries the full open's refusal through
    the composed open unchanged, and the holding constraint is conditional
    on the open's success, so an always-refusing open satisfies the

@@ -196,7 +196,8 @@
 
 ; The developer `store post''s word for the same verdict
 ; (`fn-cvec-article-verdict-word'): :admissible, :memberships (the membership
-; charge alone refused it) or :unaffordable.
+; charge alone refused it), :history-exhausted (the history budget H) or
+; :unaffordable (the transactions T).
 (defun fn-store-sn-article-verdict-word (profile payload-length group-count state)
   (declare (xargs :stobjs state :mode :program))
   (let ((s (f-get-global 'fn-store-sn state)))

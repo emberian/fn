@@ -290,7 +290,7 @@
 ; START is taken from *ocst-s-done*, an idle owner the committer reached (a
 ; batch fenced and completed), through fn-ocs-commit-event as the inline
 ; quantum and the committer take it.
-(defconst *ocst-full* '(:unaffordable :memberships :unaffordable))
+(defconst *ocst-full* '(:unaffordable :memberships :history-exhausted :unaffordable))
 
 ; Positive witness: the complete antecedent (every drained word a refusal
 ; told at its drain) and every conjunct of the conclusion, over the reached

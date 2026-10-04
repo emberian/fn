@@ -2870,9 +2870,12 @@ in *fnn-checkpoint-load-io-error*."
         (fnn-os-error (e)
           (setq *fnn-checkpoint-load-io-error* e)
           (values :refused :io)))
+    ;; A refusal gives the buffer back: the plan reserved and filled a
+    ;; file-sized array in it, and only the :ok arena path hands it on (S071).
     (case status
       (:absent (fnn-core-state 'fn-store-sco-clear) (values :absent 0))
       (:refused (fnn-core-state 'fn-store-sco-clear)
+       (fnn-octets-release)
        (values (case value (:exceeds-bound :exceeds-bound) (:schema :schema) (t :refused)) 0))
       (t (let ((answer (fnn-core-buffer-state 'fn-store-sco-decode value)))
            (if (and (consp answer) (eq (first answer) :arena) (= (length answer) 4)
@@ -2885,7 +2888,8 @@ in *fnn-checkpoint-load-io-error*."
                      (values st s)))
                ;; A file without the arena run (tables-only, written before
                ;; the flip) is refused by name: reason=checkpoint-arena.
-               (values (if (equal answer '(:refused :arena)) :arena :refused) 0)))))))
+               (progn (fnn-octets-release)
+                      (values (if (equal answer '(:refused :arena)) :arena :refused) 0))))))))
 
 (defun fnn-state-checkpoint-adopt-image (store s)
   "The checkpoint's history image adopted (host/store-node-host.lisp
@@ -3611,10 +3615,12 @@ and source (books/store-checkpoint-arena-writer.lisp fn-scka-srcs-n), a
 bounded number of rows per call (+fnn-checkpoint-batch-rows+; the calls are
 one walk: fn-scka-srcs-n-compose).  READS the arena.  The last state,
 (ROWS' LACC SACC), ROWS' empty."
-  (let ((walk (list records nil nil)))
+  (let ((walk (list records nil nil))
+        (batch 0))
     (loop
       (when (atom (first walk)) (return walk))
-      (fnn-checkpoint-yield "walk" (length (second walk)))
+      (fnn-checkpoint-yield "walk" batch)
+      (incf batch)
       (setq walk (fnn-core 'fn-scka-srcs-n (first walk) +fnn-checkpoint-batch-rows+
                            (second walk) (third walk) arena))
       (unless (and (consp walk) (= (length walk) 3))
@@ -5566,16 +5572,20 @@ error for the same reason."
              ;; ACL2's article verdict: the count gate, the history gate and
              ;; the vector at this article's own figure, and its word
              ;; (fn-cvec-article-verdict-word): :memberships when the
-             ;; membership charge alone refused it, named as the served
-             ;; POST names it (books/nntp-post.lisp).
+             ;; membership charge alone refused it, :history-exhausted
+             ;; when the history budget did, :unaffordable when the
+             ;; transactions did, named as the served POST names them
+             ;; (books/nntp-post.lisp).
              (case (fnn-core-state 'fn-store-sn-article-verdict-word
                                    (fnn-store-config store) (length payload)
                                    (length codes))
                (:admissible nil)
                (:memberships
                 (fnn-refuse "store budget refuses the article's groups (memberships): each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups"))
+               (:history-exhausted
+                (fnn-refuse "store history budget is exhausted (history-exhausted): raise max-history-octets or reclaim"))
                (:unaffordable
-                (fnn-refuse "store budget refuses the article (transaction count or history bound)"))
+                (fnn-refuse "store budget refuses the article (transaction count)"))
                (otherwise
                 (fnn-fault "ACL2 returned an invalid article verdict word")))
              (fnn-advance-frontier store (fnn-bridge-next-txid))
@@ -7875,11 +7885,13 @@ serialized run fn-lgc-run-refines-the-kernel speaks of."
   (fnn-log-at :log-fenced))
 
 (defun fnn-log-finish (log count)
-  "Acknowledge COUNT members in order (fn-lgc-finish-one; the kernel never
-acknowledges past the committed records' count)."
+  "Acknowledge COUNT members in order: one ACL2 call, fn-lgu-acknowledge (the
+fold of COUNT fn-lgc-finish-one; the kernel never acknowledges past the
+committed records' count; books/store-log-durable.lisp KEYSTONE
+fn-lgu-acknowledge-acknowledges-only-recoverable-records)."
   (fnn-log-with-kernel (log)
-    (dotimes (i count)
-      (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-finish-one (fnn-log-kernel log))))))
+    (setf (fnn-log-kernel log)
+          (fnn-core 'fn-lgu-acknowledge (fnn-log-kernel log) (fnn-nat count)))))
 
 (defun fnn-log-rig-line (what log size &optional (base 0))
   ;; Not `fnn-log-line': that is the service log's one-argument writer
@@ -7945,7 +7957,11 @@ one ack window, kernel-concrete-2's first rig run)."
 (defun fnn-store-log-unit () (fnn-nat (fnn-core 'fn-store-log-unit)))
 
 (defun fnn-store-log-max (store)
-  (fnn-nat (fnn-core 'fn-store-profile-max-record-octets (fnn-store-config store))))
+  "The log's frame bound: R + 32 (books/store-log-durable.lisp fn-lgu-log-max;
+fn-lgu-log-max-frames-every-record-within-r: every record the profile admits
+is framed)."
+  (fnn-nat (fnn-core 'fn-lgu-log-max
+                     (fnn-core 'fn-store-profile-max-record-octets (fnn-store-config store)))))
 
 (defun fnn-log-observed-extent (path)
   "The segment's size (the extent the recovery zeroes to).  Not a positive
@@ -8887,13 +8903,19 @@ the observe callback): the frontier is the log's derived one."
     next))
 
 (defun fnn-log-take-verdict (store record)
-  "ACL2's verdict on whether the log can hold RECORD at the store's record
-bound (fn-lgu-take-verdict): refuses by name when it cannot."
-  (let ((verdict (fnn-core 'fn-lgu-take-verdict (fnn-octet-list record) (fnn-store-log-max store))))
+  "ACL2's verdict on whether the log can hold RECORD at the frame bound the
+store's log was opened with (fn-lgu-take-verdict over fnn-log-max, the bound
+its scan and appends use): refuses by name when it cannot.  The log's own
+bound, not one derived again from the store's configuration: the import
+opens the stage's log from the archive's profile before the stage has a
+configuration (fnn-log-write-history), and a bound read from no
+configuration is 0 (batch 6's regression)."
+  (let ((verdict (fnn-core 'fn-lgu-take-verdict (fnn-octet-list record)
+                           (fnn-log-max (fnn-store-log store)))))
     (case verdict
       (:admissible :admissible)
       (:record-exceeds-log-frame
-       (fnn-refuse "prepared Store transaction refused reason=record-exceeds-log-frame (its log entry would pass the profile's max_record_octets)"))
+       (fnn-refuse "prepared Store transaction refused reason=record-exceeds-log-frame (the record passes the profile's max_record_octets)"))
       (t (fnn-fault "ACL2 returned an invalid take verdict ~a" verdict)))))
 
 (defun fnn-log-take (store record)
@@ -9023,7 +9045,8 @@ acknowledged.  The stage is unpublished throughout: a death here leaves
 ROOT.import-XXXX, never a store at ROOT (fn-bs-imp-classify)."
   (let* ((path (fnn-segment-path store))
          (log (fnn-log-recover path (fnn-log-observed-extent path) (fnn-store-log-unit)
-                               (fnn-nat (fnn-core 'fn-store-profile-max-record-octets values))
+                               (fnn-nat (fnn-core 'fn-lgu-log-max
+                                                  (fnn-core 'fn-store-profile-max-record-octets values)))
                                ;; format 10: segment 1 chains from the stage's genesis
                                (fnn-genesis-open store values))))
     (setf (fnn-store-log store) log

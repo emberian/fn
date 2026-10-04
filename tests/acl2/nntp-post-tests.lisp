@@ -190,6 +190,18 @@
                      (fn-tp-line "441 posting failed; the store is full: no capacity for this article (unaffordable); the node's operator can raise it")))
 (assert-event (equal (fn-tp-outcome-line :memberships)
                      (fn-tp-line "441 posting failed; the store cannot pay for this article's groups: each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups (memberships)")))
+; Lane m1-durable-2: the history budget H refuses by name.
+(assert-event (fn-post-store-refusalp :history-exhausted))
+(assert-event (equal (fn-tp-outcome-line :history-exhausted)
+                     (fn-tp-line "441 posting failed; the store's history budget is exhausted (history-exhausted); the node's operator can raise max-history-octets or reclaim")))
+(assert-event (equal (fn-post-store-refusal-line :history-exhausted)
+                     "441 posting failed; the store's history budget is exhausted (history-exhausted); the node's operator can raise max-history-octets or reclaim"))
+(assert-event (and (not (equal (fn-tp-outcome-line :history-exhausted)
+                               (fn-tp-outcome-line :unaffordable)))
+                   (not (equal (fn-tp-outcome-line :history-exhausted)
+                               (fn-tp-outcome-line :memberships)))
+                   (not (equal (fn-tp-outcome-line :history-exhausted)
+                               (fn-tp-outcome-line :uncertain)))))
 (assert-event (equal (fn-tp-outcome-line :article-numbers-exhausted)
                      (fn-tp-line "441 posting failed; a group this article is posted to has no article number left (RFC 3977 section 6 ends at 2147483647), nothing was stored (article-numbers-exhausted)")))
 (assert-event (fn-post-store-refusalp :mpx-saturated))
@@ -233,11 +245,13 @@
  (defthm fn-tp-kinds-distinct-needs-two-kinds
    (not (equal (fn-tp-outcome-line :duplicate) (fn-tp-outcome-line :duplicate)))
    :rule-classes nil))
-; The witnesses separate every pair of the six kinds, not only the weakest.
+; The witnesses separate every pair of the eight kinds, not only the weakest.
 (assert-event
  (let ((lines (list (fn-tp-outcome-line :refused) (fn-tp-outcome-line :duplicate)
                     (fn-tp-outcome-line :conflict) (fn-tp-outcome-line :malformed)
                     (fn-tp-outcome-line :unaffordable)
+                    (fn-tp-outcome-line :memberships)
+                    (fn-tp-outcome-line :history-exhausted)
                     (fn-tp-outcome-line :storage-failed)
                     (fn-tp-outcome-line :uncertain))))
    (no-duplicatesp-equal lines)))

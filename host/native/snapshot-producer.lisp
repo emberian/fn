@@ -1,3 +1,12 @@
+;;; PARKED (sweep S111, 2026-10-04; planning/host-parked.json, family F10): no
+;;; build loads this file, and it calls five functions defined nowhere under
+;;; host/ or books/: fnn-snapshot-source-begin, fnn-hsr-source-begin,
+;;; fnn-hsr-cold-step, fnn-hpi-offer and fnn-hpi-action (the HPI writer and
+;;; the history source reader, not landed).  It is the intended shape of the
+;;; online snapshot job's source portion, not the actual capture.  When it is
+;;; wired in, a refusal by fnn-store-error is classified apart from
+;;; :uncertain, and the canonical and publication captures are released on the
+;;; refusal path.
 ; The actual captured source portion of the online snapshot job.  Loaded
 ; after owner and history-auth-reader.  Publication remains the same job's
 ; next phase; this module never routes a cheap capture into the old eager

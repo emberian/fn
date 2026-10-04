@@ -1,19 +1,31 @@
 {
+ "allow_forbidden": "true",
  "category": "bug",
  "detail": "planning/repair/sources/astra-r72-io-extent.md (## F9)",
  "disposition": "LOCAL",
+ "expect-failure": "tests.test_native_checkpoint_walk_yield.WalkYieldTests.test_walk_yield_is_a_batch_counter_not_a_list_length",
  "exposure": "live",
+ "failure-message": "the walk's yield named its position by the accumulated row count, not the batch ordinal",
  "file": "host/native/io.lisp",
+ "harness": "tests/test_native_checkpoint_walk_yield.py,tests/native_checkpoint_walk_yield-mock.lisp",
  "id": "r72-F9",
  "line": "3227",
  "locus": "reclaim-publication",
  "notes": [
-  "10-02 22:38 not measured yet: cost_gate.py logs checkpoint_s per N; blocked on the NEWNEWS hang in the window (see cost-gate lanedump)"
+  "10-02 22:38 not measured yet: cost_gate.py logs checkpoint_s per N; blocked on the NEWNEWS hang in the window (see cost-gate lanedump)",
+  "10-04 15:51 claimed: scope=['host/native/io.lisp', 'tests/native_checkpoint_walk_yield-mock.lisp', 'tests/test_native_checkpoint_walk_yield.py'] test=python3 -m unittest tests.test_native_checkpoint_walk_yield",
+  "10-04 15:51 granted by integrator-3 2026-10-04, scope: host/native/io.lisp fnn-checkpoint-walk only"
  ],
  "owner": "cost-gate",
+ "scope": [
+  "host/native/io.lisp",
+  "tests/native_checkpoint_walk_yield-mock.lisp",
+  "tests/test_native_checkpoint_walk_yield.py"
+ ],
  "severity": "high",
  "source": "r72",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_native_checkpoint_walk_yield",
  "title": "fnn-checkpoint-walk (bug)",
- "updated": "2026-10-03T02:38:17Z"
+ "updated": "2026-10-04T19:51:05Z"
 }
