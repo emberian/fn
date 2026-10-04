@@ -655,9 +655,12 @@ Legacy direct startup has no decoded scratch and cannot borrow this grant."
           ;; Publish before constructor/reserve/maker: partial backing remains
           ;; discoverable and never causes an uncharged replacement allocation.
           (push worker *fnn-cold-workers*)
+          ;; Both slot checks are owner-thread startup calls, once per slot,
+          ;; like fn-pxe-new above: the ordinary entry guard, not the funded
+          ;; per-job cold cache (books/cold-guard-bootstrap.lisp roster).
           (when plan
             (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
-              (unless (first (fnn-core-cold-pool
+              (unless (first (fnn-core-page-read-pool
                                'fn-owner-page-read-default-worker-constructionp slot))
                 (fnn-fault "decoded backing lacks its installed slot reservation")))
             (fnn-extent-decoded-storage-start worker))
@@ -667,7 +670,7 @@ Legacy direct startup has no decoded scratch and cannot borrow this grant."
                  :name "fn cold executor"))
           (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
             (when plan
-              (unless (eq (first (fnn-core-cold-pool
+              (unless (eq (first (fnn-core-page-read-pool
                                    'fn-owner-page-read-default-worker-ready slot)) :ready)
                 (fnn-fault "cold worker backing was not acknowledged"))
               (fnn-err "DECODED-WINDOW storage-ready slot=~s scope=:persistent-partial-fixed-storage" slot))
