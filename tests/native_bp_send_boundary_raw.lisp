@@ -12,6 +12,8 @@
   (loop for form = (read stream nil :eof) until (eq form :eof)
         when (and (consp form) (equal (subseq form 0 (min 2 (length form)))
                                      '(defmacro fnn-bps-with-send-socket))) do (eval form)))
+;; The retained-sender hook is unset here: the effect takes the direct send.
+(load-deployed-forms "host/native/bp-service.lisp" '((defvar *fnn-bps-retained-send*)))
 (load-deployed-forms "host/native/bp-service.lisp" '((defun fnn-bps-send-effect-next)))
 (defvar *mode* (second sb-ext:*posix-argv*))
 (defvar *connects* 0)

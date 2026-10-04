@@ -8,7 +8,7 @@
   (sb-bsd-sockets:socket-file-descriptor socket))
 
 (let ((found nil))
-  (with-open-file (stream "host/native/control.lisp")
+  (with-open-file (stream "host/native/control-transport.lisp")
     (loop for form = (read stream nil :eof)
           until (eq form :eof)
           when (and (consp form) (eq (car form) 'defun)

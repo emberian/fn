@@ -86,6 +86,17 @@
 (defun fnn-owner-commit-queued-locked (service)
   (declare (ignore service)) (incf *queued-commits*) 0)
 
+;; Retirement's intake fence (books/owner-retire-counted.lisp, the real
+;; definition): this owner is not retiring, so intake is admitted.
+(with-open-file (stream "books/owner-retire-counted.lisp")
+  (loop for form = (read stream nil :eof) until (eq form :eof)
+        when (and (consp form) (eq (car form) 'defun) (eq (cadr form) 'fn-ort-intake-action))
+          do (eval (list* 'defun (cadr form) (caddr form) (cddddr form))) (return)))
+(defun fnn-owner-service-retire (service) (declare (ignore service)) nil)
+(defun fnn-core (name &rest args)
+  (unless (eq name 'fn-ort-intake-action) (error "unexpected core ~s" name))
+  (apply #'fn-ort-intake-action args))
+
 (with-open-file (stream "host/native/owner.lisp")
   ;; The owner's own transit-detail global (the refusal arms set it).
   (loop for form = (read stream nil :eof) until (eq form :eof)

@@ -34,7 +34,12 @@
                              (remove-if (lambda (x) (and (consp x) (eq (car x) 'declare)))
                                         (nthcdr 3 form)))))
         (eval form)))))
-(fixture-load-definitions "books/payload-view-lease.lisp" '(fn-pvl-runtime-step) t)
+(fixture-load-definitions "books/payload-view-lease.lisp"
+                          '(fn-pvl-runtime-step fn-pvl-runtime-return-step) t)
+;; The arena's return observation (host/native/io.lisp): no release callback
+;; is in custody here, so the arena reads :closed.
+(fixture-load-definitions "host/native/io.lisp"
+                          '(*fnn-arena-release-custody* fnn-arena-return-observation))
 (defvar *the-live-state* :fixture-state)
 (defvar *fixture-arena* (vector :sealed))
 (defvar *fixture-owned* nil)
@@ -45,8 +50,10 @@
 (defun fnn-fault (control &rest args) (error (apply #'format nil control args)))
 (defun fnn-live-arena () *fixture-arena*)
 (defun fnn-core (name &rest args)
-  (assert (eq name 'fn-pvl-runtime-step))
-  (apply #'fn-pvl-runtime-step args))
+  ;; The lifecycle's decision is ACL2's: the step, and since the arena's
+  ;; return observation the step over that observation.
+  (assert (member name '(fn-pvl-runtime-step fn-pvl-runtime-return-step)))
+  (apply name args))
 (defun fnn-core-state (name &rest args)
   (incf *fixture-state-calls*)
   (case name
