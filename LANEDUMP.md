@@ -1,3 +1,27 @@
+# Cold-line lane — Opus (2026-10-04)
+
+Tree `build/lanes/cold-line`, branch `lane/cold-line` (origin), from `origin/dev` d4e53323c, merged `origin/next` 898969368 (nntp-auth fix). Ledger: `sl-cold-line-quanta` (owner cold-line), proof-owed `CL-OWED-HDR-CURSOR-FRAME`, `CL-OWED-NEWNEWS-DEMAND`, `CL-PRE-PRODUCTIVE-READ-NEWNEWS`.
+
+## What the change is
+- `books/cold-line-quanta.lisp` (new): the host's no-I/O rerun loop as an LRU model (`fn-clq-run`, `fn-clq-resume`, `fn-clq-line`). KEYSTONE `fn-clq-resume-finishes`: a quantum of at most C reads finishes within len+1 runs from any cache. TEETH `fn-clq-nine-reads-never-finish`: 9 distinct reads at C = 8 never finish, for every N (the 45e05c7fd defect). LINE `fn-clq-quantized-line-finishes`: N reads in quanta of Q <= C finish in ceiling(N/Q) quanta, <= N + ceiling(N/Q) runs. `fn-clq-payload-quantum` = 4 = C/2.
+- `books/served-catalog.lisp`: HDR/XHDR, XPAT and the compatibility HDR Xref RANGE arms answer with the OVER cursor carrying a header source in slot 7 (`fn-nntp-hdr-range-ovw`, `fn-ovw-hdr-cursor`, `fn-ovw-hdr-lines`); `fn-ovw-cursor-octets` gives its meaning. The three `-is-archive` / `-is-hdr` theorems and `fn-rcompat-reply-cat-is-rcompat-reply` are restated modulo `fn-ovw-expand` (via local copies of the replaced whole-range arms with their original proofs).
+- `books/over-window.lisp`: `fn-ovw-step` runs a header cursor's window of `fn-ovw-hdr-quantum` numbers (min(W,4) when the source reads payloads; W for an overview field). KEYSTONES `fn-ovw-run-is-hdr-reply` (no truncation, every W), `fn-ovw-step-payloads-fit` (a quantum reads <= 4 payloads), `fn-ovw-hdr-quanta-is-ceiling` (ceiling(N/Q') quanta). FRAME theorems now hypothesize `(not (nth 7 cur))` -> CL-OWED-HDR-CURSOR-FRAME.
+- `books/served-plan-cursor.lisp`: header cursors are fresh plan cursors (`fn-splan-fresh-cursorp`, `fn-nntp-hdr-range-ovw-emits-a-fresh-cursor`): the drain keystone covers HDR ranges. `books/served-catalog-dispatch.lisp`: `fn-nntp-archive-command-cat-is-pinned` statement UNCHANGED, proved again. `books/productive-read.lisp`: header reply is no article reply. No host change: the host already runs `fn-qplan-cursor-step` -> `fn-ovw-step` under `*fnn-extent-no-io*` with throw/issue/await/rerun.
+- NEWNEWS: dev's `-cat` arm already scans the tombstone column (`fn-nntp-newnews-response-stream`); not changed here. Its quantum is bounded by W visits, not reads -> CL-OWED-NEWNEWS-DEMAND (generators' `:demand` at lane/generators d54b7b955).
+
+## Evidence
+- RED before: hbox `cl-red-45e` (`hbox:/tank/fn/scratch/cold-line/native-cl-red-45e`), image set 45e05c7fd, tree dbf62fe95, `tests.test_native_cold_line_quanta`: all 10 lines NO ANSWER in 20 s at 40 articles (filed: evidence index `docs/evidence/2026-10-04-cold-line/native-cl-red-45e-test_native_cold_line_quanta.log`, 5fe49066). Caveat: one node per run, so lines after the first may be victims of the first's pinned owner; the deadline test (cg) measured each separately on 10-03.
+- Certification (narrow --recertify on persvati, FN_CERT_ORIGIN_KIND=run): `certify-20261004T050147Z-1392072` at 1338b29d1, 17 books green (cold-line-quanta, served-catalog, over-window, served-plan-cursor, served-catalog-dispatch, protocol-served-table, protocol-served, served-catalog-chain, owner-reader-read, owner-time-admission, owner-article-slots, owner-cold-line, owner-credits, productive-read, tests cold-line-quanta/over-window/served-catalog); `certify-20261004T053927Z-1790009` at 888936ccc re-certifies over-window, served-plan-cursor, over-window-tests after the payload-kind declaration. Both manifests filed (box-written bytes).
+- REPL sessions: persvati (assembler-granted), started ~03:52Z, every session stopped (last 05:2xZ). Laptop: cold-line-quanta and its test.
+- Pre-existing reds met, not this slice: productive-read-chain `fn-pcr-post-delegates-a-read-without-offer-by-definition` (posting; 7 chain + 7 absent theorems stop with it). check-lane reds unrelated to this slice (reach_check owner-time-journal, interface_emit raw-dispatch, cost_obligations baseline, premise_audit adt-pg-pokp, hot_path_check, holder_check, raw_depth, clock_unit, owner_globals, list_codec, harness_check, host_check bp-session) are on next.
+- GREEN after: owed. The slice rides the integrator's next image set (assembler); selectors: tests.test_native_cold_line_quanta.NativeColdLineQuanta.test_lines_past_the_cache_answer_completely, tests.test_native_cold_line_deadline, tests.test_native_over_cursor_cost.
+
+## Continuation (exit, ramp-down 2026-10-04)
+1. On the integrator's image of next with this slice: run the three native selectors above; file the run (evidence_store put) and its index line; a red there is the finding (look first at a no-I/O miss inside fn-ovw-hdr-step's window: the window is <= 4 numbers for a payload source).
+2. CL-OWED-NEWNEWS-DEMAND: convert fn-nnw-stream's batch onto def-cursor :demand (lane/generators d54b7b955) once on next.
+3. CL-OWED-HDR-CURSOR-FRAME: the commit/withdraw frame for header cursors.
+4. productive-read-chain's posting theorem (pre-existing) belongs to the productive-read owner.
+
 # Harvest lane — Opus (2026-10-04)
 
 Tree: `build/lanes/harvest`, branch `lane/harvest`, from `origin/dev` `d4e53323c`. Git only (no ACL2, no builds). The register is `planning/harvest-2026-10-04.md`.

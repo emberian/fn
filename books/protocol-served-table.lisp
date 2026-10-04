@@ -762,6 +762,7 @@
   ("HDR"
    :view :pinned :view-decided (:pin-or-completed "PRF-1238") :effect :none
    :view-rfc "NNT-042 (other reads); Message-ID completed fallback remains PRF-1238 debt; RFC 3977 8.5"
+   :quantum (:cursor fn-ovw-cursor-effectp)
    :forms (("compatibility" :test (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
             :view :pinned :effect :none
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
@@ -814,12 +815,13 @@
                  (:instance fn-nntp-enrollment-hdr-response-cat-is-pinned)
                  (:instance fn-nntp-hdr-command-cat-is-archive (legacyp nil)))
             :open (fn-nntp-hdr-response)))
-   :cost (:unrestricted "catalog number probes and overview metadata where available; cold field/payload and whole response working allocation remain GEN-CURSOR debt"
+   :cost (:unrestricted "a range is the header cursor (lane cold-line): one quantum of W numbers per scheduling step, at most fn-clq-payload-quantum when the field is read from payloads (books/over-window.lisp fn-ovw-step-payloads-fit); the current and Message-ID forms read one article"
           :restricted "reference pinned archive walk; whole response allocated")
    :teeth ("HDR Subject 1-3" "HDR Subject" "HDR Subject <b@x>" "HDR Xref 1-3"
            "HDR :FN-VERIFIED 1-3" "HDR :FN-CONTROL <b@x>" "HDR :FN-ENROLLMENT <b@x>" "HDR"))
   ("XHDR"
    :view :pinned :effect :none :view-rfc "NNT-042 (other reads); RFC 2980 2.6"
+   :quantum (:cursor fn-ovw-cursor-effectp)
    :forms (("compatibility" :test (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
             :view :pinned :effect :none
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
@@ -839,15 +841,16 @@
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
                  (:instance fn-nntp-hdr-command-cat-is-archive (legacyp t)))
             :open (fn-nntp-xhdr-response)))
-   :cost (:unrestricted "catalog number probes and overview metadata where available; cold field/payload and whole response working allocation remain GEN-CURSOR debt"
+   :cost (:unrestricted "a range is the header cursor (lane cold-line): one quantum of W numbers per scheduling step, at most fn-clq-payload-quantum when the field is read from payloads (books/over-window.lisp fn-ovw-step-payloads-fit); the current and Message-ID forms read one article"
           :restricted "reference pinned archive walk; whole response allocated")
    :teeth ("XHDR Subject 1-3" "XHDR Subject" "XHDR Subject <b@x>" "XHDR Xref 1-3" "XHDR"))
   ("XPAT"
    :view :pinned :effect :none :view-rfc "NNT-042 (other reads); RFC 2980 2.9"
+   :quantum (:cursor fn-ovw-cursor-effectp)
    :forms (("any" :test t :cat (fn-nntp-xpat-response-cat session args v fn-arena fn-cat)
             :view :pinned :effect :none
             :by ((:instance fn-nntp-xpat-response-cat-is-archive))))
-   :cost (:unrestricted "the range's numbers from the number table and one catalog probe per article (fn-scat-range-numbers, fn-scat-available-article), the field from the overview column"
+   :cost (:unrestricted "a range is the header cursor (lane cold-line): one quantum of W numbers per scheduling step, at most fn-clq-payload-quantum when the field is read from payloads (books/over-window.lisp fn-ovw-step-payloads-fit)"
           :restricted "the reference walk over the projected pinned archive (fn-nntp-xpat-response)")
    :teeth ("XPAT Subject 1-3 *" "XPAT Subject 2 *b*" "XPAT Subject <b@x> *" "XPAT Subject 1-3" "XPAT"))
   ("LIST"

@@ -317,11 +317,16 @@
 ; Fresh cursors: the arm's (its status line owed) read as their runs are
 ; what the expansion says they stand for.
 
+; An OVER cursor (fn-ovw-cursor) or a header cursor (fn-ovw-hdr-cursor, a
+; source in its eighth slot; lane cold-line), its status line owed.
 (defun fn-splan-fresh-cursorp (cur)
   (declare (xargs :guard t))
   (and (consp cur) (true-listp cur)
-       (equal cur (fn-ovw-cursor (nth 0 cur) (nth 1 cur) (nth 2 cur) (nth 3 cur) (nth 4 cur) t
-                                 (nth 6 cur)))
+       (or (equal cur (fn-ovw-cursor (nth 0 cur) (nth 1 cur) (nth 2 cur) (nth 3 cur) (nth 4 cur) t
+                                     (nth 6 cur)))
+           (and (nth 7 cur)
+                (equal cur (fn-ovw-hdr-cursor (nth 0 cur) (nth 1 cur) (nth 2 cur) (nth 3 cur) t
+                                              (nth 7 cur)))))
        (natp (nth 1 cur)) (natp (nth 2 cur)) (natp (nth 3 cur))))
 
 (defun fn-splan-fresh-effectsp (effects)
@@ -344,9 +349,17 @@
            :use ((:instance fn-ovw-run-is-reply
                             (group (nth 0 cur)) (k (nth 1 cur)) (top (nth 2 cur))
                             (v (nth 3 cur)) (legacyp (nth 4 cur)) (owedp t)
-                            (server (nth 6 cur)) (w wl)))
+                            (server (nth 6 cur)) (w wl))
+                 (:instance fn-ovw-run-is-hdr-reply
+                            (group (nth 0 cur)) (k (nth 1 cur)) (top (nth 2 cur))
+                            (v (nth 3 cur)) (owedp t) (src (nth 7 cur)) (w wl))
+                 (:instance fn-ovw-cursor-has-no-source
+                            (group (nth 0 cur)) (k (nth 1 cur)) (top (nth 2 cur))
+                            (v (nth 3 cur)) (legacyp (nth 4 cur)) (owedp t) (server (nth 6 cur))))
            :in-theory (e/d (fn-ovw-cursor-octets)
-                           (fn-ovw-run fn-ovw-run-is-reply fn-ovw-lines fn-ovw-reply)))))
+                           (fn-ovw-run fn-ovw-run-is-reply fn-ovw-lines fn-ovw-reply fn-ovw-cursor
+                            fn-ovw-cursor-has-no-source
+                            fn-ovw-run-is-hdr-reply fn-ovw-hdr-cursor fn-ovw-hdr-lines fn-ovw-hdr-reply)))))
 
 (defthm fn-splan-cw-octets-is-the-expanded-reply
   (implies (fn-splan-fresh-effectsp effects)
@@ -407,6 +420,15 @@
            (fn-splan-fresh-effectsp
             (cdr (fn-nntp-over-range-ovw session v token legacyp server fn-cat))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-range-ovw fn-ovw-start fn-ovw-cursor
+                                   fn-ovw-cursor-effect fn-nntp-make-result fn-nntp-reply-effect)
+                                  (fn-nntp-parse-range fn-cat-group-next fn-ovw-status)))))
+
+(defthm fn-nntp-hdr-range-ovw-emits-a-fresh-cursor
+  (implies (natp v)
+           (fn-splan-fresh-effectsp
+            (cdr (fn-nntp-hdr-range-ovw session v token (fn-ovw-hdr-source form field patterns xref)
+                                        fn-cat))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-range-ovw fn-ovw-hdr-start fn-ovw-hdr-cursor
                                    fn-ovw-cursor-effect fn-nntp-make-result fn-nntp-reply-effect)
                                   (fn-nntp-parse-range fn-cat-group-next fn-ovw-status)))))
 
@@ -518,7 +540,7 @@
    (implies (mv-nth 1 (fn-ovw-step cur w fn-arena fn-cat))
             (consp (mv-nth 1 (fn-ovw-step cur w fn-arena fn-cat))))
    :hints (("Goal" :in-theory (e/d (fn-ovw-step fn-ovw-cursor)
-                                   (fn-ovw-lines fn-nntp-stuff-lines fn-ovw-status))))))
+                                   (fn-ovw-lines fn-nntp-stuff-lines fn-ovw-status fn-ovw-hdr-step))))))
 
 (defthm fn-splan-rest-cursor-step-of-okp
   (implies (fn-splan-cw-rest-okp rest)
