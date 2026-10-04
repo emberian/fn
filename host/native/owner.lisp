@@ -3343,21 +3343,26 @@ follows is justified only by this line."
             (multiple-value-bind (obligation subject ignored)
                 (fnn-metadata-buffer msgid)
               (declare (ignore ignored))
-              (let ((prepared
-                      (fnn-owner-buffer-arena-action
-                       'fn-owner-prepare-buffer (fnn-octet-list msgid) codes
-                       (fnn-octet-list obligation) (fnn-octet-list subject)
-                       (fnn-octet-list evidence) charge)))
+              (let* ((prepared
+                       (fnn-owner-buffer-arena-action
+                        'fn-owner-prepare-buffer (fnn-octet-list msgid) codes
+                        (fnn-octet-list obligation) (fnn-octet-list subject)
+                        (fnn-octet-list evidence) charge))
+                     ;; An accepted prepare has staged the record (store phase
+                     ;; :record-staged, fn-pout-stagedp): its refusal is the
+                     ;; known abort; fn-owner-refuse-reservation answers :fault
+                     ;; unless the store is still :reserved.
+                     (staged (eq prepared :seal-buffer)))
                 ;; The prepare reads the arena only; on acceptance it answers
                 ;; :seal-buffer and the host seals the buffer's payload
                 ;; (host/owner-host.lisp fn-owner-prepare-buffer).
                 ;; The catalog's gate BEFORE the seal: a prepare it would
                 ;; refuse seals nothing (books/catalog-may-seal.lisp; the
-                ;; refusal path below consumes the reservation as before).
+                ;; refusal path below aborts the staged record).
                 (when (and (eq prepared :seal-buffer)
                            (or (fnn-developer-selector "FN_NATIVE_TEST_CAT_SEAL_REFUSE")
                                (not (eq (fnn-owner-core 'fn-owner-cat-may-seal) t))))
-                  (setq prepared :recovery-required)
+                  (setq prepared :refused)
                   (fnn-err "POST seal-gate refused arena=~d"
                            (first (fnn-call 'fn-arena-count (fnn-live-arena)))))
                 (when (eq prepared :seal-buffer)
@@ -3367,9 +3372,12 @@ follows is justified only by this line."
                   (setq prepared (fnn-owner-action 'fn-owner-cat-prepare-sealed)))
                 (unless (eq prepared :prepared)
                   (setf (fnn-store-fenced store) t)
-                  (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation)
-                              :refused)
-                    (fnn-indeterminate "owner could not consume refused reservation"))
+                  (if staged
+                      (unless (eq (fnn-owner-action 'fn-owner-known-abort) :aborted)
+                        (fnn-indeterminate "owner could not abort refused staged record"))
+                    (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation)
+                                :refused)
+                      (fnn-indeterminate "owner could not consume refused reservation")))
                   (setf (fnn-store-fenced store) nil)
                   (return-from fnn-owner-attempt
                     (fnn-owner-prepare-refusal-word prepared)))))

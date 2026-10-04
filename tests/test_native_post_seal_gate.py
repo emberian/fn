@@ -16,6 +16,20 @@ from tests import test_native_expiry as expiry
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 
 
+class PostSealGateRefusalSource(unittest.TestCase):
+    def test_refused_staged_prepare_is_a_known_abort_not_a_reservation_refusal(self):
+        from pathlib import Path
+        text = (Path(__file__).resolve().parent.parent / "host/native/owner.lisp").read_text()
+        start = text.index("(defun fnn-owner-attempt ")
+        body = text[start:text.index("\n(defun ", start + 1)]
+        gate = body.index("POST seal-gate refused")
+        arm = body[gate:body.index("fnn-owner-prepare-refusal-word", gate)]
+        # an accepted prepare leaves the store :record-staged, where
+        # fn-owner-refuse-reservation answers :fault (store phase :reserved only)
+        self.assertIn("(fnn-owner-action 'fn-owner-known-abort)", arm,
+                      "a seal-gate refusal after an accepted prepare must abort the staged record")
+
+
 @requires(IMAGE)
 class NativePostSealGate(unittest.TestCase):
     image = IMAGE
