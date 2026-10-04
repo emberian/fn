@@ -1674,6 +1674,27 @@ whole-guard path (tests.test_native_owner compares both). Actual loaded-world
 admission and matching raw/counterpart POST measurements remain outstanding
 at source integration; no image or runtime verdict transfers from old bytes.
 
+D40 image trap, lane raw-dispatch (2026-10-04; re-derived from lane/rd3-trap,
+Codex r63 F1-F6 and r69 F1-F7 + L1): host/native/raw-trap.lisp holds the
+dispatch table, captures each raw-dispatched function object and replaces its
+binding by a trap that faults (`fnn-raw-dispatch-trap`) outside a dispatcher
+extent.  The extent is a PER-THREAD SLOT -- an uninterned special bound by
+`fnn-raw-dispatch-apply` (fnn-call), a fixed callback, or the developer
+`acl2 session` -- replacing rd3's synchronized token table (r69 L1: a locked
+hash-table write and remhash on every fnn-call).  Fixed-arity traps and
+callbacks add no allocation per call (tests/test_native_raw_dispatch_trap.py
+measures plain = callback = trapped inner call).  Every build script loads it
+first and installs before any other raw host file, seals the table after the
+profile is selected (only a developer seal allows the session extent: r69 F4),
+and checks the traps at the end of its raw block; fnn-main checks again at
+every start.  io.lisp keeps its conditions and the entry guard runs before
+the dispatcher, outside fnn-call's handler (r69 F1, F2).  The first real raw
+entries are post-guard-off's owner rows and the hist$p rows already declared;
+the owed-writer list gains the 22 state-returning entries declared since
+(358 owed).  Not claimed here: the loaded-world admission of the row and the
+POST before/after on an image -- both wait for the first image set built from
+a source that contains them.
+
 ### 2026-09-29: authenticated remote consumers (PKT-673)
 
 Ember's explicit answer to whether a remote agent may poll and acknowledge

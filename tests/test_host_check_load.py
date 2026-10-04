@@ -107,7 +107,9 @@ class ClassifyTests(unittest.TestCase):
 
     def test_the_raw_order_is_build_lisps_and_skips_comments(self):
         order = host_check.raw_load_order()
-        self.assertEqual(order[:2], ["host/native/crypto.lisp", "host/native/io.lisp"])
+        # D40: the dispatch table and its traps load before every other raw file
+        self.assertEqual(order[:3], ["host/native/raw-trap.lisp", "host/native/crypto.lisp",
+                                     "host/native/io.lisp"])
         self.assertEqual(len(order), len(set(order)))
 
 

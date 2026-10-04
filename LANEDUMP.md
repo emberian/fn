@@ -4743,3 +4743,12 @@ Coordinator copy: build/coordinator/lanedumps/served.md (authoritative, updated 
 - SCL2 natives tightened (over_pins exact 211 2 1 34 + NEXT/LAST across tombstones; expiry exact 211 3 3 5);
   over_pins RED on 45e05c7f (211 34 1 34). Catalog-hole navigation native wired (green on 45e05c7f: guard).
 - SCL4 / PRF-1237/1238 discovery snapshot: not landed; continuation in the coordinator lanedump.
+
+## raw-dispatch lane (Opus), 2026-10-04
+The full entry is `build/coordinator/lanedumps/raw-dispatch.md`.
+- Landed on `lane/raw-dispatch`:
+  - `c2fd7526e`: the D40 image trap (`host/native/raw-trap.lisp`, per-thread extent, no lock or allocation per call), the owed list at 358, interface_kinds, raw_dispatch_rule.
+  - `2d5586549`: the image test.
+  - `d1d54bdd0`: merge of next@b7624961f.
+- Open: the trap's native run and the POST ms at 1k/10k/100k. Both wait on the first image set built from a source containing post-guard-off's raw rows; the owed list is judged by the same build's `fnn-install-raw-dispatch`.
+- Continuation: the lanedump's last section.
