@@ -4546,7 +4546,7 @@ open. Bounds catchup controller draft is preserved but activation unwired.
 
 ## web lane (wave 2, 2026-10-04) — concurrent web face, logic-mode stream books
 
-Branch `lane/web` on origin, base `integrate/20261004@ec2c1b3da`.
+Branch `lane/web` on origin; head a12741052 (origin/next merged at 0b113b642). STATUS: READY with natives pending; lane EXITED (ramp-down).
 
 ### Strand: the web face serves one connection at a time (S037/S065, §2 criterion 4)
 
@@ -4596,14 +4596,43 @@ reactor maps an :uncertain await completion to finish, host side).
 Proof-owed (planning/repair/items): WEB-OWED-STREAM-GUARDS,
 WEB-OWED-WPC-REFINES-SEQ, WEB-OWED-SCAN-REFINES-HEADERS, WEB-OWED-POST-WINDOW-REFINES.
 
-Certify: NOT YET. Farm run cancelled on the assembler's hold; queued for the
-hbox slot. On "go": `tools/farm.py submit hbox --jobs 8 --images off books/web-reply-stream books/web-post-stream tests/acl2/web-post-stream-tests --affected-by books/web-page-cursor --affected-by books/web-post-stream --affected-by books/web-reply-stream` (dry run: 5 roots, 320 to certify).
+Certify (narrow local, laptop, FN_CERT_ORIGIN_KIND=run, deps from cache):
+`certify-20261004T043801Z-3157` (manifest filed, planning/evidence-index.tsv)
+passes web-page-cursor, web-list-stream, web-article-stream, web-reply-stream,
+web-post-stream, owner-state-accessors, host/web-host, web-post-stream-tests,
+web-private-reply-tests, web-stream-consumer-source-tests.
+host/web-host had NOT certified since a6ed957ed (09-30, fn-owner-sco-deferred
+only in host/owner-host); fixed in 17cfbd37f: fn-owner-sco-global/-deferred moved
+unchanged into books/owner-state-accessors (touches host/owner-host.lisp,
+comment-only remainder). Not recertified here: owner-state-accessors' other
+includers (owner-config chain, image-world*) — affected-by owed to the
+integrator's batch certify.
 
 Raw witnesses green on laptop: tests/test_native_web_{page_cursor,post_stream,stream,private_begin,reactor,article_producer}_raw.sh.
 
 ### Not done / handed on
 - harvest gift web-domain-default (wave 3 operator UX): not started.
 - S037/S065 ledger notes: to be set READY with the green run ids.
+
+### check-lane (persvati, 0b113b642, log build/remote-check/persvati-check-lane.log)
+make exit 2, 26 of 90 steps red. All are reds already in the tree except
+depth_check's 9 web-book appends: the logic-mode conversion makes the host
+run the books' *1* bodies. a12741052 classifies those 9 appends, plus the
+3 web walks that were already reported, in tools/depth_baseline.json, each
+with its named bound. depth_check now reports nothing for the web books.
+Compared at head and at origin/next, these give the same output:
+owner_globals, list_codec, cost_obligations, payload_kind. reach_check's
+differences come from origin/next having moved on, not from this lane.
+
+### Continuation (for whoever picks up web)
+1. Green-after native: when the integrator publishes a set from >= a12741052
+   (or any set that contains 42403c929..6de37169e; the lane changes no
+   host/native bytes), run the hbox_native command above for the 4
+   concurrency cases plus the whole tests.test_native_web.NativeWebFaceTlsTests
+   class. Then set S037/S065 to READY with the run ids.
+2. Proof-owed: WEB-OWED-STREAM-GUARDS. Verifying guards would also retire
+   the 9 append classifications. Then the three refinement items.
+3. Harvest gift web-domain-default (wave 3) has not been started.
 
 ## docs lane (lane/docs) — 2026-10-04
 
