@@ -6333,9 +6333,18 @@ Synchronous DNS remains a named availability frontier outside TCP polling."
       (:refused (error 'fnn-peer-dial-error :outcome :host-syntax))
       (otherwise (fnn-fault "ACL2 returned a malformed peer dial target")))))
 
+(defconstant +fnn-socket-read-attempt-max+ 65536
+  "The most octets one nonblocking read attempt allocates.  An allocation
+ceiling for a malformed answer, not a protocol quantum: each caller's quantum
+is ACL2's: TCPCL fn-tcrt-read-limit, 4096; pull fn-prd-read-limit, at most
+*fn-feed-wire-input-max-chunk-octets* (512) by its definition; feed
+fn-owner-feed-read-limit, checked against +fnn-max-read+ in
+fnn-feed-read-limit.  It was +fnn-max-read+ (512, the reader's line buffer) until
+2026-10-04, which refused every TCPCL read: run2-d5b0b9100's BP family.")
+
 (defun fnn-socket-read-now (fd limit)
   "One nonblocking read attempt: octets/EOF or :wait on EINTR/EAGAIN."
-  (unless (and (integerp limit) (<= 1 limit +fnn-max-read+))
+  (unless (and (integerp limit) (<= 1 limit +fnn-socket-read-attempt-max+))
     (fnn-fault "invalid socket read quantum"))
   (let ((buffer (fnn-make-octets limit)))
     (multiple-value-bind (count errno) (funcall *fnn-read-syscall* fd buffer)
