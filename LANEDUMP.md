@@ -4543,3 +4543,9 @@ S074/S090/S138/S151 and journal physical prepared fixtures remain source/proof
 versus current-image obligations, not completion claims. No live deployment.
 Protected recovery partition, expanded init/reopen and complete tariff remain
 open. Bounds catchup controller draft is preserved but activation unwired.
+
+# reclaim-design — Fable, wave 3 row 2 (wound down 2026-10-04)
+
+Packet `planning/design/reclaim-2026-10-04.md` (DRAFT, 4 OPEN marks, no DECISION block); slice 1
+`books/arena-reader-bound.lisp` (PRF-1312) REPL-admitted 10/12, not certified. Full state and the exact
+continuation: `build/coordinator/lanedumps/reclaim-design.md`. Absorbed by the RECLAIM lane; no successor.
