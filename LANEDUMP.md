@@ -4604,3 +4604,19 @@ integrator's developer + dtn-developer images at the slice's sha, base
 >= 83b905e89 which loads bp-session.lisp into the DTN image). No REPL is
 held anywhere. The exact continuation, 8 numbered steps, is
 `build/coordinator/lanedumps/bp.md`.
+
+## bp2 (BP-2, Opus) — 2026-10-04 ramp-down
+
+Branch lane/bp2 (lane/bp@fed210549 + integrate/20261004 + origin/next).
+Slice 1 is landed. The forward-round cursor's K1–K3 (PRF-1311) are
+certified (manifest certify-20261004T044115Z-1138962, persvati, 4/4), and
+the host `:forward` arm calls fn-bpfc-turn: the O(held × table) plan arm
+is replaced, and the raw witness shows 2,000 decisions per turn become
+<= 64. The 13 bp stored-callback lock rows are declared through a checked
+`callback_contexts` table (baseline 366 → 353). The packet's advisory
+review ran (kimi + grok, verbatim with a fact-check), and its DECISION is
+AMENDED: S025 is escalated to ember, and the attempt budget is adopted.
+Natives are pending on the integrator's batched set: SCN-1110, the
+three forward natives and the ION X10A/X10B natives (45e05c7f does not
+reach the subject). The full entry and exact continuation are in
+`build/coordinator/lanedumps/bp2.md`.
