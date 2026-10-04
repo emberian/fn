@@ -5,8 +5,8 @@
     "declared": 1750,
     "declared_and_dispatched": 1699,
     "guard_verified": 1012,
-    "with_keystone": 251,
-    "with_fold_keystone_only": 3,
+    "with_keystone": 250,
+    "with_fold_keystone_only": 4,
     "raw_dispatched": 20
   },
   "raw_dispatched": [
@@ -2711,10 +2711,9 @@
       "exempt": {},
       "keystones": [
         {
-          "theorem": "fn-lgu-acknowledged-records-are-recovered-at-every-cut"
-        },
-        {
-          "theorem": "fn-lgu-host-kernel-acknowledges-only-recoverable-records"
+          "theorem": "fn-lgu-host-kernel-acknowledges-only-recoverable-records",
+          "step_of": "fn-lgc-host-run",
+          "status": "keystone via fold; host-loop correspondence owed"
         }
       ],
       "extraction": null,

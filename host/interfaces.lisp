@@ -520,8 +520,8 @@
 (definterface fn-lgc-finish-one
   :class :common-lisp-compliant
   :kinds ((c true-listp))
-  :keystones (fn-lgu-acknowledged-records-are-recovered-at-every-cut
-              fn-lgu-host-kernel-acknowledges-only-recoverable-records))
+  :keystones ((fn-lgu-host-kernel-acknowledges-only-recoverable-records
+               :step-of fn-lgc-host-run)))
 
 (definterface fn-lgc-frontier
   :class :common-lisp-compliant

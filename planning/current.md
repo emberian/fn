@@ -363,5 +363,5 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; absent from it: `books/store-log-durable.lisp`.
 - Latest positive result: books/store-log-durable joins image-world, image-world-dtn and image-world-paged (laptop certify-20261004T161219Z-6428, -165405Z-4135); an oversize take is refused by name (:record-exceeds-log-frame, M1-LOG-RECORD-FRAMING-WINDOW).
-- Remaining obstruction: rotation (incl. fnn-log-complete-rotation at open) outside the run; RL-01 (open reads cached bytes after a failed barrier) outside the model; containment RestartPreventExitStatus=3.
+- Remaining obstruction: rotation (incl. fnn-log-complete-rotation at open) outside the run; RL-01 (open reads cached bytes after a failed barrier) outside the model; containment RestartPreventExitStatus=3. Interface binding: fn-lgc-finish-one cites the bridge only as :step-of fn-lgc-host-run (host-loop correspondence owed, DI-OWED-STEP-OF-LGC-FINISH); the keystone is cited by no entry.
 - Next positive gate: rotation (M1-e, two-segment R); the batch's core natives (log, recovery, crash_model) on the image that carries it.
