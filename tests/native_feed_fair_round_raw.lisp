@@ -7,6 +7,7 @@
 (defun posp (x) (and (integerp x) (> x 0)))
 (defparameter *fn-feed-wire-input-max-chunk-octets* 512)
 (defconstant +fnn-max-read+ 65536)
+(defconstant +fnn-socket-read-attempt-max+ 65536)
 (load-deployed-forms "host/native/io.lisp"
  '((defmacro fnn-posix) (deftype fnn-octets) (defun fnn-make-octets) (defun fnn-octets)
    (defun fnn-octet-list) (defun fnn-string-octets) (defun fnn-octets-string)
