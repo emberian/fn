@@ -52,7 +52,8 @@
   ; The constructor leaves the optional resource policies absent. Path
   ; resolution must retain the explicit policies, including their refusal at
   ; the operator boundary, rather than silently resetting it to the default.
-  (update-nth 30 (fn-native-config-output-resources c)
+  (fn-ncfg-with-reclaim-live (fn-native-config-reclaim-livep c)
+   (update-nth 30 (fn-native-config-output-resources c)
    (update-nth 29 (fn-native-config-cold-resources c)
    (fn-native-config-make
    (fn-ncpath-resolve (fn-native-config-store c) base)
@@ -73,7 +74,7 @@
    (fn-native-config-ops-mission c) (fn-native-config-ops-unit c)
    (fn-native-config-ops-scope c) (fn-native-config-ops-keep-releases c)
    (fn-native-config-ops-log-max-bytes c) (fn-native-config-ops-log-keep c)
-   (fn-native-config-ops-memory-max c) (fn-native-config-listener-tls-port c)))))
+   (fn-native-config-ops-memory-max c) (fn-native-config-listener-tls-port c))))))
 
 ; The octets up to (not including) the last `/' of reversed octets REV, or
 ; nil when there is none.
