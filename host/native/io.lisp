@@ -7823,7 +7823,9 @@ serialized run fn-lgc-run-refines-the-kernel speaks of."
                   ;; made durable before any member in it is acknowledged.
                   (fnn-log-make-durable log)
                   (fnn-log-fdatasync (fnn-log-fd log)))
-    (fnn-os-error (e)
+    ;; fnn-log-make-durable answers its failed barrier as uncertain (it is
+    ;; never asked again); the batch in flight goes the same way.
+    ((or fnn-os-error fnn-store-indeterminate) (e)
       (fnn-log-with-kernel (log)
         (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence-failed (fnn-log-kernel log))
               (fnn-log-inflight log) nil))

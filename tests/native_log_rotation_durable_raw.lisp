@@ -97,4 +97,23 @@
   (check (eq (outcome (lambda () (fnn-log-make-durable log))) :uncertain)
          "a failed head barrier is never retried"))
 
+;; 4. The batch fence behind the failed name: uncertain, the members in
+;; flight no longer in flight, and no data barrier asked (the kernel is
+;; fenced; nothing in the new segment is ever acknowledged).
+(let* ((kernel (fn-lgc-make 0 '(7 7) 4096 12 nil '((r1)) 0 :fenced))
+       (log (%make-fnn-log :fd 80 :kernel kernel :dir-pending "/store/journal"
+                           :inflight (list (list 1 2 3 4))))
+       (*barriers* nil) (*dir-answers* (list :eio))
+       (datasyncs 0))
+  (check (eq (outcome (lambda () (fnn-log-make-durable log))) :uncertain) "publication's barrier fails")
+  (let ((old (fdefinition 'fnn-log-fdatasync)))
+    (setf (fdefinition 'fnn-log-fdatasync) (lambda (fd) (declare (ignore fd)) (incf datasyncs) nil))
+    (unwind-protect
+         (check (eq (outcome (lambda () (fnn-log-fence log))) :uncertain)
+                "the batch fence behind a failed rotate-durable barrier is uncertain")
+      (setf (fdefinition 'fnn-log-fdatasync) old)))
+  (check (zerop datasyncs) "the batch fence asked the data barrier behind a failed name")
+  (check (null (fnn-log-inflight log)) "the failed fence left members in flight")
+  (check (eq (fn-lgc-phase (fnn-log-kernel log)) :fault) "the failed fence left the kernel unfenced"))
+
 (format t "native_log_rotation_durable: PASS~%")
