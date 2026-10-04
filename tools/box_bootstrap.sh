@@ -2,7 +2,8 @@
 # Make an x86-64 Linux host a drop-in build box for fn, from this laptop.
 #
 #   tools/box_bootstrap.sh NAME TARGET --seed BOX [--until ISO-UTC] [--cores N]
-#                          [--check-jobs N] [--no-pick] [--identity KEYFILE] [--dry-run]
+#                          [--check-jobs N] [--no-pick] [--identity KEYFILE]
+#                          [--forget-host-key] [--dry-run]
 #
 # NAME is the box's name from now on (lower-case word: its ssh alias, its
 # hostname, its row in ~/.config/fn/boxes.json, what --box/--host/farm take).
@@ -27,7 +28,11 @@
 #             /usr/local/bin/swarm-build (hbox's wrapper: a systemd user scope
 #             under swarm.slice, MemoryMax per build and for the slice, 85% of RAM)
 #   seed      rsync from the seed box: sbcl, acl2-8.7, toolchains (not src),
-#             every published image set, the certificate cache
+#             every published image set, the certificate cache, the evidence
+#             archive (a mirror: FN_EVIDENCE_ARCHIVE=/tank/fn/evidence in
+#             /etc/environment, since a certify run reads every archived
+#             manifest and the box cannot reach hbox by name; keep it fresh
+#             with tools/box_mirror.sh)
 #   verify    tools/acl2_toolchain.py identity of the certify and load
 #             launchers equal to the seed's; every image set's SHA256SUMS;
 #             ldd of each image binary resolves; ACL2 starts under swarm-build
@@ -43,7 +48,7 @@ HERE=$(cd "$(dirname "$0")/.." && pwd)
 usage() { sed -n '2,/^set -eu/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' >&2; exit 2; }
 [ $# -ge 2 ] || usage
 NAME=$1; TARGET=$2; shift 2
-SEED=; UNTIL=; CORES=; CHECK_JOBS=; PICK=true; DRY=0; IDENTITY=
+SEED=; UNTIL=; CORES=; CHECK_JOBS=; PICK=true; DRY=0; IDENTITY=; FORGET=0
 while [ $# -gt 0 ]; do
     case $1 in
         --seed) SEED=$2; shift 2 ;;
@@ -53,6 +58,7 @@ while [ $# -gt 0 ]; do
         --no-pick) PICK=false; shift ;;
         --dry-run) DRY=1; shift ;;
         --identity) IDENTITY=$2; shift 2 ;;
+        --forget-host-key) FORGET=1; shift ;;
         *) usage ;;
     esac
 done
@@ -61,13 +67,18 @@ case $NAME in hbox|persvati|laptop|''|*[!a-z0-9-]*) echo "box_bootstrap: bad NAM
 [ $DRY = 1 ] || [ -n "$UNTIL" ] || { echo "box_bootstrap: --until ISO-UTC is required (a rented box has an end)" >&2; exit 2; }
 case $TARGET in *@*) ;; *) echo "box_bootstrap: TARGET is user@address" >&2; exit 2 ;; esac
 ADDR=${TARGET#*@}
-SSH="ssh -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new"
+# Rented hosts reuse addresses (a deleted VM's IP comes back with a new host
+# key), so their keys live in their own file, never ~/.ssh/known_hosts.
+KNOWN=$HOME/.ssh/known_hosts.fn-boxes
+SSH="ssh -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$KNOWN"
 [ -z "$IDENTITY" ] || SSH="$SSH -i $IDENTITY -o IdentitiesOnly=yes"
 FARM_MIRROR=$(dirname "$(dirname "$HERE")")   # .../fn/build/lanes/X -> .../fn/build; farm mirrors at the laptop's path
 case $FARM_MIRROR in */build) ;; *) FARM_MIRROR=$HERE/build ;; esac
 step() { echo "== $1 $(date -u +%H:%M:%SZ)"; }
 die() { echo "box_bootstrap: $*" >&2; exit 1; }
 
+# --forget-host-key: the address is a new host (the provider re-used it).
+[ $FORGET = 0 ] || [ ! -f "$KNOWN" ] || ssh-keygen -R "$ADDR" -f "$KNOWN" >/dev/null 2>&1 || true
 step probe
 NEED_GLIBC=$($SSH "$SEED" "grep -ao 'GLIBC_2\.[0-9]*' /tank/fn/sbcl/bin/sbcl | sort -u -t. -k2,2n | tail -1 | cut -d_ -f2") \
     || die "seed $SEED: cannot read /tank/fn/sbcl/bin/sbcl"
@@ -93,6 +104,11 @@ if [ $DRY = 1 ]; then echo "box_bootstrap: --dry-run: probe passed; nothing chan
 
 step system
 SEED_PUB=$($SSH "$SEED" 'test -f ~/.ssh/id_ed25519 || ssh-keygen -q -t ed25519 -N "" -f ~/.ssh/id_ed25519 -C "fn@$(hostname)"; cat ~/.ssh/id_ed25519.pub')
+# hbox pushes evidence and image sets (tools/box_mirror.sh) and pulls the
+# box's new certificates back at teardown, so its key is authorized too.
+HBOX_PUB=$(ssh -o BatchMode=yes -o ConnectTimeout=15 hbox 'cat ~/.ssh/id_ed25519.pub' 2>/dev/null) || HBOX_PUB=
+[ -n "$HBOX_PUB" ] || echo "   (hbox did not answer: its key is not authorized; add it before the mirror or teardown runs)"
+SEED_PUB=$(printf '%s\n%s' "$SEED_PUB" "$HBOX_PUB")
 $SSH "$TARGET" 'S=; [ "$(id -u)" = 0 ] || S="sudo -n"; exec $S env NAME='"$NAME"' SEED_PUB="'"$SEED_PUB"'" FARM_MIRROR='"$FARM_MIRROR"' bash -s' <<'SYS'
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
@@ -102,13 +118,16 @@ apt-get install -y -q rsync git python3 python3-venv "$ssl" libsodium23 zlib1g b
 python3 -c 'import sys; assert sys.version_info >= (3, 12), sys.version' || { echo "python3 < 3.12" >&2; exit 1; }
 id fn >/dev/null 2>&1 || useradd -m -s /bin/bash fn
 install -d -o fn -g fn -m 700 /home/fn/.ssh
-{ cat /root/.ssh/authorized_keys 2>/dev/null; for h in /home/*/.ssh/authorized_keys; do cat "$h" 2>/dev/null; done; echo "$SEED_PUB"; } | sort -u > /home/fn/.ssh/authorized_keys.new
+{ cat /root/.ssh/authorized_keys 2>/dev/null; for h in /home/*/.ssh/authorized_keys; do cat "$h" 2>/dev/null; done; printf '%s\n' "$SEED_PUB"; } | grep . | sort -u > /home/fn/.ssh/authorized_keys.new
 mv /home/fn/.ssh/authorized_keys.new /home/fn/.ssh/authorized_keys
 chown fn:fn /home/fn/.ssh/authorized_keys; chmod 600 /home/fn/.ssh/authorized_keys
 loginctl enable-linger fn
 hostnamectl set-hostname "$NAME" 2>/dev/null || hostname "$NAME"
 grep -qw "$NAME" /etc/hosts || echo "127.0.1.1 $NAME" >> /etc/hosts
-install -d -o fn -g fn /tank /tank/fn /tank/fn/scratch /tank/fn/certcache /tank/fn/images /tank/fn/toolchains /tank/fn/gates
+install -d -o fn -g fn /tank /tank/fn /tank/fn/scratch /tank/fn/certcache /tank/fn/images /tank/fn/toolchains /tank/fn/gates /tank/fn/evidence
+# The evidence archive is a local mirror here (hbox's is canonical; certify
+# reads every archived manifest), so tools/evidence_store.py reads it as local.
+grep -q '^FN_EVIDENCE_ARCHIVE=' /etc/environment || echo 'FN_EVIDENCE_ARCHIVE=/tank/fn/evidence' >> /etc/environment
 d=; for part in $(echo "$FARM_MIRROR" | tr / ' '); do d=$d/$part; install -d -o fn -g fn "$d"; done
 N=$(nproc); MEMG=$(awk '/MemTotal/{print int($2/1048576)}' /proc/meminfo); CAP=$(( MEMG * 85 / 100 ))
 cat > /usr/local/bin/swarm-build <<SB
@@ -140,7 +159,8 @@ step seed
 $SSH "$SEED" "set -e; for d in sbcl acl2-8.7; do rsync -a -e 'ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new' /tank/fn/\$d fn@$ADDR:/tank/fn/; done
 rsync -a --exclude=src -e 'ssh -o BatchMode=yes' /tank/fn/toolchains/ fn@$ADDR:/tank/fn/toolchains/
 rsync -a -e 'ssh -o BatchMode=yes' /tank/fn/images/ fn@$ADDR:/tank/fn/images/
-rsync -a --exclude=.entry.lock -e 'ssh -o BatchMode=yes' /tank/fn/certcache/ fn@$ADDR:/tank/fn/certcache/
+rsync -a --exclude=incoming -e 'ssh -o BatchMode=yes' /tank/fn/evidence/ fn@$ADDR:/tank/fn/evidence/
+rsync -a --exclude=.entry.lock --exclude='.*' -e 'ssh -o BatchMode=yes' /tank/fn/certcache/ fn@$ADDR:/tank/fn/certcache/
 echo \"   seeded: \$(ls /tank/fn/certcache | wc -l) cache keys, image sets \$(ls /tank/fn/images | cut -c1-9 | tr '\n' ' ')\""
 
 step verify
@@ -172,7 +192,7 @@ text = open(conf).read()
 text = re.sub(rf"(?ms)^Host {re.escape(name)}\n(?:[ \t]+.*\n?)*", "", text)
 text = text.rstrip("\n") + ("\n" if text.strip() else "") + (
     f"Host {name}\n\tHostName {addr}\n\tUser fn\n\tStrictHostKeyChecking accept-new\n"
-    f"\tServerAliveInterval 30\n"
+    f"\tServerAliveInterval 30\n\tUserKnownHostsFile ~/.ssh/known_hosts.fn-boxes\n"
     + (f"\tIdentityFile {identity}\n\tIdentitiesOnly yes\n" if identity else ""))
 open(conf, "w").write(text)
 PY
