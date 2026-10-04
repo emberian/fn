@@ -899,6 +899,127 @@
         (fn-ovw-status (fn-ovw-empty-text legacyp)))
     (append (fn-nntp-stuff-lines lines) '(46 13 10))))
 
+;;; -----------------------------------------------------------------------------
+;;; HDR/XHDR/XPAT of a range on the same cursor (lane cold-line, 2026-10-04;
+;;; ledger sl-cold-line-quanta).
+;;;
+;;; A header range was one served step: every number's field read in one run
+;;; of the line.  A field that is not in the overview column (Newsgroups,
+;;; Path, Organization, any non-overview header; Xref through the
+;;; compatibility arm's tombstone test) is read from the article's payload,
+;;; and the line runs with the extent realizer in its no-I/O mode: past
+;;; fn-arx-read-cache-entries (8) payloads it evicted its own reads on every
+;;; run and never finished (image set 45e05c7fd, 40 articles;
+;;; books/cold-line-quanta.lisp fn-clq-nine-reads-never-finish is the
+;;; mechanism).  The range now answers with the OVER cursor carrying a HEADER
+;;; SOURCE in its eighth slot (fn-ovw-hdr-cursor; an OVER cursor's is NIL):
+;;; books/over-window.lisp fn-ovw-step runs a header cursor's window of at
+;;; most fn-clq-payload-quantum numbers when the source reads payloads, so a
+;;; quantum's reads fit the cache with margin (fn-ovw-step-payloads-fit) and
+;;; the line finishes in ceiling(N/Q) quanta (fn-clq-quantized-line-finishes).
+;;; The status line is decided lazily, as OVER's: the 225/221 head before the
+;;; first line; with no line the arm's empty reply (423 HDR, 420 XHDR, the
+;;; empty 221 block for XPAT).
+
+; (:hdr FORM FIELD PATTERNS XREF): FORM :hdr, :xhdr or :xpat; FIELD the
+; header asked; PATTERNS XPAT's parsed wildmat (unused otherwise); XREF
+; (:xref . SERVER) when the range is the compatibility arm's HDR Xref
+; (fn-rcompat-hdr-cat, SERVER the node's Xref server name), else NIL.
+(defun fn-ovw-hdr-source (form field patterns xref)
+  (declare (xargs :guard t))
+  (list :hdr form field patterns xref))
+
+(defun fn-ovw-hdr-content (src article fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard t :verify-guards nil))
+  (if (nth 4 src)
+      (fn-rcompat-xref-content (cdr (nth 4 src)) article fn-arena)
+    (if (consp article)
+        (fn-scol-hdr-content (nth 2 src) article fn-arena fn-cat)
+      (list :error))))
+
+(defun fn-ovw-hdr-keepp (src content)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-nntp-hdr-okp content)
+       (or (not (eq (nth 1 src) :xpat))
+           (fn-nntp-xpat-matchesp (nth 3 src) (fn-nntp-hdr-octets content)))))
+
+; The lines of NUMBERS: the -cat readers' rows (fn-nntp-hdr-lines-for-
+; numbers-cat, fn-nntp-xpat-lines-for-numbers-cat, fn-rcompat-hdr-lines-cat;
+; books/over-window.lisp equates them).  Only a window's numbers are run.
+(defun fn-ovw-hdr-lines-for-numbers (group numbers src v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (natp v) :verify-guards nil))
+  (if (consp numbers)
+      (let ((content (fn-ovw-hdr-content
+                      src (fn-scat-available-article group (car numbers) v fn-arena fn-cat)
+                      fn-arena fn-cat)))
+        (if (fn-ovw-hdr-keepp src content)
+            (cons (fn-nntp-hdr-line (fn-nntp-decimal-field (car numbers))
+                                    (fn-nntp-hdr-octets content))
+                  (fn-ovw-hdr-lines-for-numbers group (cdr numbers) src v fn-arena fn-cat))
+          (fn-ovw-hdr-lines-for-numbers group (cdr numbers) src v fn-arena fn-cat)))
+    nil))
+
+; The lines of the numbers K..HI of GROUP in view V.
+(defun fn-ovw-hdr-lines (group k hi src v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (natp k) (natp hi) (natp v))
+                  :verify-guards nil))
+  (fn-ovw-hdr-lines-for-numbers
+   group (fn-scat-range-keep group (fn-cnx-range-aux group k hi v fn-cat) fn-cat)
+   src v fn-arena fn-cat))
+
+; The arm's status line (fn-nntp-hdr-initial: HDR's 225, XHDR's and XPAT's 221).
+(defun fn-ovw-hdr-status (src)
+  (declare (xargs :guard t))
+  (fn-ovw-status (if (eq (nth 1 src) :hdr)
+                     (fn-proto-text "HDR" :headers)
+                   (fn-proto-text * :header))))
+
+; The arm's reply when the range holds no line.
+(defun fn-ovw-hdr-empty (src)
+  (declare (xargs :guard t))
+  (case (nth 1 src)
+    (:xpat (append (fn-ovw-hdr-status src) '(46 13 10)))
+    (:xhdr (fn-ovw-status (fn-proto-text * :none-selected)))
+    (otherwise (fn-ovw-status (fn-proto-text * :empty-range)))))
+
+(defun fn-ovw-hdr-reply (lines src owedp)
+  (declare (xargs :guard t :verify-guards nil))
+  (if owedp
+      (if (consp lines)
+          (append (fn-ovw-hdr-status src) (fn-nntp-stuff-lines lines) '(46 13 10))
+        (fn-ovw-hdr-empty src))
+    (append (fn-nntp-stuff-lines lines) '(46 13 10))))
+
+; (GROUP K TOP V NIL OWEDP NIL SRC): the OVER cursor's slots, its LEGACYP and
+; SERVER unused, SRC the header source.
+(defun fn-ovw-hdr-cursor (group k top v owedp src)
+  (declare (xargs :guard t))
+  (list group k top v nil owedp nil src))
+
+(defthm fn-ovw-hdr-cursor-fields
+  (and (equal (nth 0 (fn-ovw-hdr-cursor group k top v owedp src)) group)
+       (equal (nth 1 (fn-ovw-hdr-cursor group k top v owedp src)) k)
+       (equal (nth 2 (fn-ovw-hdr-cursor group k top v owedp src)) top)
+       (equal (nth 3 (fn-ovw-hdr-cursor group k top v owedp src)) v)
+       (equal (nth 5 (fn-ovw-hdr-cursor group k top v owedp src)) owedp)
+       (equal (nth 7 (fn-ovw-hdr-cursor group k top v owedp src)) src)))
+
+(defthm fn-ovw-cursor-has-no-source
+  (equal (nth 7 (fn-ovw-cursor group k top v legacyp owedp server)) nil))
+
+; The arm's step: O(1), no number probed (fn-ovw-start's clamp).
+(defun fn-ovw-hdr-start (session v token src fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v)))
+  (let ((group (fn-nntp-session-group session))
+        (range (fn-nntp-parse-range token)))
+    (if (null group)
+        (mv (fn-ovw-status (fn-proto-text * :no-group-selected)) nil)
+      (mv nil
+          (fn-ovw-hdr-cursor group (nfix (fn-nntp-range-low range))
+                             (min (nfix (fn-nntp-range-high range))
+                                  (nfix (- (fn-cat-group-next group fn-cat) 1)))
+                             v t src)))))
+
 ; The cursor effect.  Built here and nowhere else (tools/callers.py
 ; fn-ovw-cursor-effect): the pinned reference's effects never carry one.
 (defun fn-ovw-cursor-effect (cur)
@@ -922,14 +1043,29 @@
      session
      (list (if cur (fn-ovw-cursor-effect cur) (fn-nntp-reply-effect octets))))))
 
+;; The header range arms (HDR/XHDR, XPAT, the compatibility arm's HDR Xref):
+;; the start's cursor as the step's one effect, or the 412 reply when no
+;; group is selected.
+(defun fn-nntp-hdr-range-ovw (session v token src fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v)))
+  (mv-let (octets cur)
+    (fn-ovw-hdr-start session v token src fn-cat)
+    (fn-nntp-make-result
+     session
+     (list (if cur (fn-ovw-cursor-effect cur) (fn-nntp-reply-effect octets))))))
+
 ; What a cursor effect stands for: the reply of the numbers K..TOP of GROUP
 ; in view V with the status line owed (the cursor a served step emits is
 ; fn-ovw-start's, whose status line is unsent).
 (defun fn-ovw-cursor-octets (cur fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
-  (fn-ovw-reply (fn-ovw-lines (nth 0 cur) (nfix (nth 1 cur)) (nfix (nth 2 cur)) (nth 6 cur)
-                              (nth 3 cur) fn-arena fn-cat)
-                (nth 4 cur) t))
+  (if (nth 7 cur)
+      (fn-ovw-hdr-reply (fn-ovw-hdr-lines (nth 0 cur) (nfix (nth 1 cur)) (nfix (nth 2 cur))
+                                          (nth 7 cur) (nth 3 cur) fn-arena fn-cat)
+                        (nth 7 cur) t)
+    (fn-ovw-reply (fn-ovw-lines (nth 0 cur) (nfix (nth 1 cur)) (nfix (nth 2 cur)) (nth 6 cur)
+                                (nth 3 cur) fn-arena fn-cat)
+                  (nth 4 cur) t)))
 
 ; The expansion: every cursor effect becomes the reply it stands for; every
 ; other element, and the list's final cdr, is kept.
@@ -1823,19 +1959,9 @@
           (if (and (consp rest) (null (cdr rest)))
               (let ((token (car rest)))
                 (if (fn-nntp-range-okp (fn-nntp-parse-range token))
-                    (if (null group)
-                        (fn-nntp-single session (fn-proto-text * :no-group-selected))
-                      (let* ((range (fn-nntp-parse-range token))
-                             (numbers (fn-scat-range-numbers
-                                       group (nfix (fn-nntp-range-low range))
-                                       (nfix (fn-nntp-range-high range)) v fn-cat))
-                             (lines (fn-nntp-hdr-lines-for-numbers-cat
-                                     field group numbers v fn-arena fn-cat)))
-                        (if (consp lines)
-                            (fn-nntp-multi session (fn-nntp-hdr-initial legacyp) lines)
-                          (if legacyp
-                              (fn-nntp-single session (fn-proto-text * :none-selected))
-                            (fn-nntp-single session (fn-proto-text * :empty-range))))))
+                    (fn-nntp-hdr-range-ovw
+                     session v token
+                     (fn-ovw-hdr-source (if legacyp :xhdr :hdr) field :all nil) fn-cat)
                   (if (fn-nntp-message-id-tokenp token)
                       (let ((article (fn-scat-msgid-article (fn-nntp-token-string token)
                                                             v fn-arena fn-cat)))
@@ -1973,16 +2099,8 @@
         (let ((patterns (fn-wildmat-result-value parsed))
               (group (fn-nntp-session-group session)))
           (if (fn-nntp-range-okp (fn-nntp-parse-range token))
-              (if (null group)
-                  (fn-nntp-single session (fn-proto-text * :no-group-selected))
-                (fn-nntp-multi
-                 session (fn-nntp-hdr-initial t)
-                 (fn-nntp-xpat-lines-for-numbers-cat
-                  field patterns group
-                  (fn-scat-range-numbers
-                   group (nfix (fn-nntp-range-low (fn-nntp-parse-range token)))
-                   (nfix (fn-nntp-range-high (fn-nntp-parse-range token))) v fn-cat)
-                  v fn-arena fn-cat)))
+              (fn-nntp-hdr-range-ovw
+               session v token (fn-ovw-hdr-source :xpat field patterns nil) fn-cat)
             (if (fn-nntp-message-id-tokenp token)
                 (let ((article (fn-scat-msgid-article (fn-nntp-token-string token)
                                                       v fn-arena fn-cat)))
@@ -2216,22 +2334,9 @@
           (fn-nntp-single session (fn-proto-text * :syntax))
         (let ((token (car rest)))
           (if (fn-nntp-range-okp (fn-nntp-parse-range token))
-              (let ((group (fn-nntp-session-group session))
-                    (range (fn-nntp-parse-range token)))
-                (if (null group)
-                    (fn-nntp-single session (fn-proto-text * :no-group-selected))
-                  (let ((lines (fn-rcompat-hdr-lines-cat
-                                group
-                                (fn-scat-range-numbers
-                                 group (nfix (fn-nntp-range-low range))
-                                 (nfix (fn-nntp-range-high range)) v fn-cat)
-                                server v fn-arena fn-cat)))
-                    (if (consp lines)
-                        (fn-nntp-multi session (fn-nntp-hdr-initial legacyp)
-                                       lines)
-                      (fn-nntp-single session
-                                      (if legacyp (fn-proto-text * :none-selected)
-                                        (fn-proto-text * :empty-range)))))))
+              (fn-nntp-hdr-range-ovw
+               session v token
+               (fn-ovw-hdr-source (if legacyp :xhdr :hdr) (car args) :all (cons :xref server)) fn-cat)
             (if (not (and (fn-nntp-message-id-tokenp token)
                           (fn-octet-listp token)))
                 (fn-nntp-single session (fn-proto-text * :syntax))
