@@ -3971,6 +3971,10 @@
         {
           "kind": "theorem",
           "name": "fn-pcb-absent-carrier-has-no-class"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-carried-event-keeps-budget-schedule-admitted"
         }
       ]
     },
@@ -11931,18 +11935,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cu-step-keeps-offers-verified"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cu-on-end-refuses-a-digest-mismatch"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cu-step-installs-only-through-the-verdict"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cu-records-replay-is-the-last-cursor"
         },
         {
@@ -15959,10 +15951,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cl-ring-keys-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cll-key-values-loop-of-rev-onto"
         },
         {
@@ -16256,10 +16244,6 @@
         {
           "kind": "theorem",
           "name": "fn-rcl-cursors-at-zero-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rof-first-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -19500,6 +19484,36 @@
         {
           "kind": "theorem",
           "name": "fn-prl-resident-shrink-keeps-funding"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1314",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-csp-step-keeps-window"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-csp-write-spools-whole-or-fails-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-csp-framer-window-accounts-for-every-octet"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1317",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pull-auth-after-extension"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-plans-credentials-come-from-selected-peer"
         }
       ]
     }

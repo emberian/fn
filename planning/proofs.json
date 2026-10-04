@@ -16579,7 +16579,6 @@
         "fn-cfg-rows-without-members-loop-is-rev-onto",
         "fn-cfg-rows-without-moderation-loop-is-rev-onto",
         "fn-cfg-rows-without-pair-loop-is-rev-onto",
-        "fn-cl-ring-keys-loop-is-rev-onto",
         "fn-cll-key-values-loop-of-rev-onto",
         "fn-cnode-extend-nexts-loop-is-rev-onto",
         "fn-cnx-walk-range-loop-is-rev-onto",
@@ -16654,7 +16653,6 @@
         "fn-pull-pending-envelope-loop-of-rev-onto",
         "fn-pull-plans-of-loop-is-rev-onto",
         "fn-rcl-cursors-at-zero-loop-is-rev-onto",
-        "fn-rof-first-loop-is-rev-onto",
         "fn-sched-pull-put-loop-is-rev-onto",
         "fn-scka-batches-loop-is-rev-onto",
         "fn-scr-dispatch-events-loop-is-rev-onto",
@@ -22070,8 +22068,7 @@
       ],
       "progress_note": "Source implemented in codex-sol-transport-rounds; ACL2 admission/guard certification and matching-image SCN-1090 are pending Integration. Stable-sweep visit property does not bound the whole host scheduling turn: current worker maps active flights and re-filters each remaining suffix, giving peer-dependent work/allocation (quadratic over a stable sweep). Retained scheduler cursor/cost refinement and context tariff remain owed; the 512-octet bound applies to each read/write attempt only.",
       "events": [
-        "fn-prd-sweep-visits-all-admitted-rounds",
-        "fn-prd-round-past-deadline-is-lost"
+        "fn-prd-sweep-visits-all-admitted-rounds"
       ]
     },
     {
