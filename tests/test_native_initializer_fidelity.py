@@ -86,7 +86,8 @@ class NativeInitializerFidelityTests(unittest.TestCase):
                     "required: FN_NATIVE_INIT_FAULT is a developer-image selector and a "
                     "production image refuses to start with it")
             image = DEVELOPER
-        return run([image, "--fn", "store", store, command], timeout=None,
+        words = command.split() if isinstance(command, str) else list(command)
+        return run([image, "--fn", "store", store, *words], timeout=None,
                    env=environment({"FN_NATIVE_INIT_FAULT": fault}))
 
     def test_fresh_init_then_new_process_recover(self):
@@ -261,11 +262,11 @@ class NativeInitializerFidelityTests(unittest.TestCase):
             f.write(b"\x00")
         before = segment.read_bytes()
         self.assertNotEqual(before.strip(b"\x00"), b"")
-        # Bare `status' reads the checkpoint header and never opens the log
-        # (fnn-command-stopped-status); `status --replay' opens it.
-        for command, extra in (("recover", ()), ("status", ("--replay",))):
-            result = run([IMAGE, "--fn", "store", store, command, *extra], timeout=None,
-                         env=environment({}))
+        # `status --replay': a stopped store's plain `status' reads the
+        # checkpoint header alone and replays nothing (row S3,
+        # docs/operator-internals.md); the open's report is --replay's.
+        for command in ("recover", "status --replay"):
+            result = self.invoke(store, command)
             self.assertEqual(result.returncode, EXIT_REFUSED, (command, result.stderr))
             self.assertIn(b"reason=segment-misaligned", result.stderr)
             self.assertEqual(segment.read_bytes(), before, command)

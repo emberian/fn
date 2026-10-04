@@ -1,0 +1,157 @@
+# Which native modules a changed file can affect (lane scenarios-2, 2026-10-04).
+# tools/scenario_suite.py `affected` reads this; the cloud lane's batch gate
+# runs the smoke and core tiers plus what this selects.
+#
+# One rule per line, TAB-separated:   GLOB  CODES  why
+# GLOB is an fnmatch pattern over the tree-relative path; the FIRST matching
+# rule decides.  CODES is one of
+#   ALL    every image-driving native (the module map's REAL, OPTIN, PINNED
+#          and WEAK rows): the file is under every owner start
+#   NONE   no native (the file is not in any image and no native reads it)
+#   SELF   the test module itself (tests/test_*.py)
+#   a comma list of the coverage map's question codes: every image-driving
+#   module whose `questions` column in planning/scenarios-2026-10-04-modules.tsv
+#   names one of them.
+# A path under host/, books/, packaging/ or tests/ that no rule matches selects
+# ALL: an unclassified file never escapes (`check` lists those files).
+#
+# The harness and launch, under every native.
+tests/native_harness.py	ALL	every native's Node, launch and assertions
+tests/fuzz_common.py	ALL	shared native helpers
+tests/__init__.py	ALL	package
+packaging/*	ALL	the launcher every installed start runs
+tools/test_budget.py	ALL	the runner of every module
+tools/native_env.py	ALL	the image variables every module reads
+tests/scenarios/*	NONE	tier and rule data
+tests/test_*.py	SELF	a test module selects itself
+tests/*.lisp	NONE	raw harnesses and ACL2 test books run under make check, not natives
+tests/*	ALL	other test helpers: unclassified, so everything
+# The owner's core: every start passes through these.
+host/native/io.lisp	ALL	the I/O core
+host/native/owner.lisp	ALL	the owner
+host/owner-host.lisp	ALL	the owner's ACL2 seam
+host/owner-*.lisp	ALL	the owner's turns
+host/native/mux.lisp	ALL	every served connection
+host/native/extent.lisp	ALL	every page read
+host/native/heap.lisp	ALL	the heap figure every start takes
+host/native/runtime-*.lisp	ALL	the runtime every start constructs
+host/native/config.lisp	ALL	every start reads fn.toml
+host/config-host.lisp	ALL	every start reads fn.toml
+host/native-config-host.lisp	ALL	every start reads fn.toml
+host/native/operator.lisp	ALL	the operator verbs every module drives
+host/native-operator-host.lisp	ALL	the operator verbs every module drives
+host/native/build*.lisp	ALL	the image build
+host/native/strip-world.lisp	ALL	the image world
+host/native/raw-trap.lisp	ALL	the image's raw region
+host/native/acl2-session.lisp	ALL	the image's ACL2 session
+host/native/trace.lisp	ALL	every owner's trace
+host/native/digest.lisp	ALL	every store digest
+host/interfaces*.lisp	ALL	the definterface table every entry dispatches through
+host/cost-host.lisp	ALL	the cost seam
+host/native/dev-repl.lisp	NONE	the developer REPL socket; no native drives it
+# Families.
+host/native/bp*.lisp	BP	bundle protocol
+host/bp-*.lisp	BP	bundle protocol
+host/native/tcpcl.lisp	BP	TCPCL
+host/tcpcl-host.lisp	BP	TCPCL
+host/native/bpsec-crypto.lisp	BP	BPSec
+host/native/feed-service.lisp	PEER	outbound feed
+host/native/feed-filename.lisp	PEER	feed journal names
+host/feed-filename-host.lisp	PEER	feed journal names
+host/native/pull-service.lisp	PEER	NEWNEWS pull
+host/native/catchup-spool.lisp	PEER	catch-up
+host/native/peer-invite.lisp	PEER,AUTH	peer invite/accept/confirm
+host/peer-invite-host.lisp	PEER,AUTH	peer invite/accept/confirm
+host/native/auth*.lisp	AUTH	AUTHINFO
+host/native-auth*.lisp	AUTH	AUTHINFO
+host/native/login-bindings.lisp	AUTH	logins
+host/native/account-adoption.lisp	AUTH	accounts
+host/account-*.lisp	AUTH	accounts
+host/native/tls*.lisp	AUTH,PEER,RDR	TLS listeners and feeds
+host/tls-reload-host.lisp	AUTH,PEER,RDR	TLS reload
+host/native/keys.lisp	AUTH,IDN,PEER	keys
+host/native/signature*.lisp	AUTH,IDN	signatures
+host/native/crypto.lisp	AUTH,IDN,PEER	crypto
+host/native/hybrid-control.lisp	AUTH,OPS	signed control
+host/native-hybrid-control-host.lisp	AUTH,OPS	signed control
+host/hybrid-signature-host.lisp	AUTH,IDN	hybrid signatures
+host/native/anchor.lisp	IDN,AUTH	anchors
+host/anchor*.lisp	IDN,AUTH	anchors
+host/native/web-host.lisp	WEB	web face
+host/web-host.lisp	WEB	web face
+host/native/consumer*.lisp	CUR,RCON	consumers
+host/consumer-*.lisp	CUR,RCON	consumers
+host/native/topic-local.lisp	CUR	topics
+host/topic-*.lisp	CUR	topics
+host/native/workflow.lisp	CUR,OPS	workflows
+host/workflow-host.lisp	CUR,OPS	workflows
+host/native/ninep.lisp	OPS	9P
+host/ninep-*.lisp	OPS	9P
+host/native/control*.lisp	OPS	control socket
+host/native/admin.lisp	OPS,AUTH	admin
+host/native-admin-host.lisp	OPS,AUTH	admin
+host/native/operator-*.lisp	OPS	operator live/control client
+host/native-control-host.lisp	OPS	control
+host/native-live-status-host.lisp	OPS	live status
+host/native/checkpoint.lisp	CKPT,DUR	checkpoints
+host/checkpoint-host.lisp	CKPT,DUR	checkpoints
+host/store-checkpoint-context-host.lisp	CKPT,DUR	checkpoints
+host/native/snapshot-*.lisp	CKPT,DUR,IDN	snapshots
+host/snapshot-*.lisp	CKPT,DUR,IDN	snapshots
+host/store-*.lisp	DUR,ARU,IDEM,CKPT	the store
+host/journal-*.lisp	DUR,ARU	journals
+host/native/recovery-*.lisp	DUR,ARU,CKPT	recovery
+host/recovery-*.lisp	DUR,ARU,CKPT	recovery
+host/native/history-root.lisp	DUR,IDN,CKPT	history
+host/history-*.lisp	DUR,IDN,CKPT	history
+host/native/immutable-publish.lisp	DUR,CKPT	publication
+host/native/index-writer-turn.lisp	DUR,ARU,IDEM,RDR	the index writer
+host/index-*.lisp	DUR,ARU,IDEM,RDR	the index
+host/native/receiver-*.lisp	ARU,IDEM,BND,PEER	receivers
+host/receiver-*.lisp	ARU,IDEM,BND,PEER	receivers
+host/runtime-receiver-source-host.lisp	ARU,IDEM,BND,PEER	receivers
+host/connection-receiver-source-host.lisp	ARU,IDEM,BND,PEER	receivers
+host/native/post-captured-parked.lisp	ARU,IDEM	posting
+host/post-*.lisp	ARU,IDEM	posting
+host/native/admission-*.lisp	ARU,BND,MEM	admission
+host/admission-*.lisp	ARU,BND,MEM	admission
+host/allocation-epoch-host.lisp	ARU,BND,MEM	allocation
+host/native/auth-adoption-parked.lisp	AUTH	auth adoption
+host/native/extent-decoded.lisp	LAT,BND,RDR,MEM	decoded windows
+host/page-*.lisp	LAT,BND,RDR,MEM	page reads
+host/payload-view-host.lisp	RDR,LAT	payload views
+host/native/recovery-payload-view.lisp	RDR,DUR	payload views
+host/query-*.lisp	RDR	queries
+host/native/reader-model-host.lisp	RDR	reader model
+host/reader-host.lisp	RDR	reader
+host/native/deflate.lisp	RDR,DUR	compression
+# Books reach the host through the world; classified by family name, else ALL.
+books/bp-*	BP	bundle protocol
+books/bpsec*	BP	bundle protocol
+books/tcpcl*	BP	TCPCL
+books/feed-*	PEER	feeds
+books/peer-*	PEER	peering
+books/owner-feed*	PEER	feeds
+books/pull-*	PEER	pull
+books/catchup*	PEER	catch-up
+books/transit*	PEER,ARU,IDEM	transit
+books/auth*	AUTH	AUTHINFO
+books/login-*	AUTH	logins
+books/account-*	AUTH	accounts
+books/web-*	WEB	web face
+books/consumer*	CUR,RCON	consumers
+books/topic-*	CUR	topics
+books/ninep*	OPS	9P
+books/checkpoint*	CKPT,DUR	checkpoints
+books/store-*	DUR,ARU,IDEM,CKPT	the store
+books/log-*	DUR,ARU	the log
+books/page-*	LAT,BND,RDR,MEM	page reads
+books/cold-*	LAT,BND,RDR	cold reads
+books/served-*	RDR,BND,LAT	served replies
+books/over-*	RDR,CKPT	OVER
+books/reclaim*	CKPT,RDR	reclaim
+# Not in any image and read by no native.
+docs/*	NONE	prose
+planning/*	NONE	ledgers and plans
+tools/*	NONE	tools outside the native run (the runner and env are listed above)
+specs/*	NONE	specifications

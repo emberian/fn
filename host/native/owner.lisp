@@ -8416,7 +8416,25 @@ the shared classifier after stop; cleanup return is not physical join."
       (loop
         (when (or *fnn-sigterm-requested* (fnn-owner-service-stopping service)) (return))
         (fnn-owner-maintenance-tick service)
-        (sleep 1)))
+        ;; Once a second, as before; but the stop's signal
+        ;; (fnn-owner-signal-commit) ends the wait, so the stop's join of
+        ;; this worker no longer waits out the rest of the second
+        ;; (SCEN-OWNER-STOP-LATENCY).  A commit's signal only re-waits.
+        (let ((due (+ (get-internal-real-time) internal-time-units-per-second))
+              (lock (fnn-owner-service-wait-lock service))
+              (queue (fnn-owner-service-wait-queue service)))
+          (sb-thread:with-mutex (lock)
+            (loop
+              (when (or *fnn-sigterm-requested* (fnn-owner-service-stopping service))
+                (return))
+              (let ((left (- due (get-internal-real-time))))
+                (unless (plusp left) (return))
+                (sb-thread:condition-wait
+                 queue lock
+                 :timeout (/ (coerce left 'double-float) internal-time-units-per-second))
+                ;; A timed-out wait may return without the mutex.
+                (unless (sb-thread:holding-mutex-p lock)
+                  (sb-thread:grab-mutex lock))))))))
     (lambda (condition) (fnn-owner-thread-escape service condition "owner maintenance"))))
 
 (defun fnn-owner-accept (service listener once)

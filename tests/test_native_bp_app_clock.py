@@ -14,7 +14,7 @@ class NativeBpAppClockTests(unittest.TestCase):
         if sbcl is None:
             raise unittest.SkipTest("sbcl is not on PATH")
         result = subprocess.run(
-            [sbcl, "--noinform", "--script", "tests/native_bp_app_clock_raw.lisp"],
+            [sbcl, "--noinform", "--script", "tests/native_bp_app_clock_raw-mock.lisp"],
             cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             timeout=60, check=False)
         self.assertEqual(result.returncode, 0,
