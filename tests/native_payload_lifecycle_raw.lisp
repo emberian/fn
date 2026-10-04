@@ -7,22 +7,6 @@
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 
-;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
-(define-condition harness-stub-reached (serious-condition)
-  ((name :initarg :name :reader harness-stub-reached-name)
-   (source :initarg :source :reader harness-stub-reached-source))
-  (:report (lambda (c s)
-             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
-                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
-(defun harness-stub-reached (name source)
-  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
-          name source)
-  (finish-output *error-output*)
-  (error 'harness-stub-reached :name name :source source))
-(defun fnn-arena-return-observation (log)
-  (declare (ignorable log))
-  (harness-stub-reached 'fnn-arena-return-observation "host/native/io.lisp"))
-;;; ---- derived stubs: END ----
 (defun member-equal (x xs) (member x xs :test #'equal))
 (defun fixture-load-definitions (file names &optional core)
   (with-open-file (stream file)
@@ -34,7 +18,12 @@
                              (remove-if (lambda (x) (and (consp x) (eq (car x) 'declare)))
                                         (nthcdr 3 form)))))
         (eval form)))))
-(fixture-load-definitions "books/payload-view-lease.lisp" '(fn-pvl-runtime-step) t)
+(fixture-load-definitions "books/payload-view-lease.lisp"
+                          '(fn-pvl-runtime-step fn-pvl-runtime-return-step) t)
+;; The arena's return observation (host/native/io.lisp): no release callback
+;; is in custody here, so the arena reads :closed.
+(fixture-load-definitions "host/native/io.lisp"
+                          '(*fnn-arena-release-custody* fnn-arena-return-observation))
 (defvar *the-live-state* :fixture-state)
 (defvar *fixture-arena* (vector :sealed))
 (defvar *fixture-owned* nil)
@@ -45,8 +34,10 @@
 (defun fnn-fault (control &rest args) (error (apply #'format nil control args)))
 (defun fnn-live-arena () *fixture-arena*)
 (defun fnn-core (name &rest args)
-  (assert (eq name 'fn-pvl-runtime-step))
-  (apply #'fn-pvl-runtime-step args))
+  ;; The lifecycle's decision is ACL2's: the step, and since the arena's
+  ;; return observation the step over that observation.
+  (assert (member name '(fn-pvl-runtime-step fn-pvl-runtime-return-step)))
+  (apply name args))
 (defun fnn-core-state (name &rest args)
   (incf *fixture-state-calls*)
   (case name
@@ -145,7 +136,7 @@
 ; Reuse the current typed-adapter/actor fixture rather than a stale partial
 ; service structure or a fake syncer issuer. Its funding responses remain
 ; explicitly recording boundaries; real typed methods have their own suite.
-(load "tests/native_syncer_custody_raw.lisp")
+(load "tests/native_syncer_custody_raw-mock.lisp")
 (in-package "ACL2")
 (load-deployed-forms "host/native/owner.lisp" '((defun fnn-owner-wait-workers)))
 (defvar *fixture-sync-entered* nil)

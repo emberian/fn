@@ -9,6 +9,8 @@
 (include-book "../books/web-page-cursor")
 (include-book "../books/web-reply-stream")
 (include-book "../books/web-post-stream")
+; fn-web-host-article-limit reads the owner (fn-owner-core, fn-own-body-limit).
+(include-book "../books/owner-state-accessors")
 
 (defun fn-web-host-plan (config-octets listener-port tls-port certp)
   (declare (xargs :mode :program :guard (fn-cbor-octet-listp config-octets)))

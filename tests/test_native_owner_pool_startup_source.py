@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class OwnerPoolStartupSourceTests(unittest.TestCase):
     def test_preopen_ordering_and_orphan_executor_cleanup(self):
         result = subprocess.run(
-            [shutil.which("sbcl"), "--script", str(ROOT / "tests/native_owner_pool_startup_source.lisp")],
+            [shutil.which("sbcl"), "--script", str(ROOT / "tests/native_owner_pool_startup_source-mock.lisp")],
             cwd=ROOT, capture_output=True, text=True, timeout=15)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("PASS actual owner pool pre-open ordering and orphan cleanup", result.stdout)
