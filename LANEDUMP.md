@@ -4976,7 +4976,7 @@ Worktree build/lanes/tariff3, branch lane/tariff3 (origin), based on origin/dev 
 | 88a7deabb (step 0) | laptop narrow certify, 5 passed | certify-20261004T153007Z-21520 | none | none (registry/teeth only) |
 | e71a47552 (step 1) | laptop narrow certify --recertify, 6 passed; host_check --load 56/56 raw files, 0 findings (BARE: laptop has no certified umbrella, definterface/def-cost rows NOT evaluated) | certify-20261004T161727Z-32503 | none | none: needs the [resources] opt-in image (lane/tariff2-optin, batch R, not on dev); producer red/green is ACL2 (tfm-producer-prices-the-retrieval-row) |
 
-Exit line: tariff3 exit: families priced 4/25 (ratchet computed by tools/cost_obligations.py at e71a47552; cost-obligations.json is the integrator's --write); pass-through remains: families left authentication, capabilities, check, close, compression-transition, date, group, group-range, header-pattern, header-range, help, ihave, list, mode, neighbour, newgroups, newnews, overview, post, takethis, tls-transition (21); keystone_emit refusals 19 → 0.
+Exit line: tariff3 exit: families priced 4/30 (ratchet computed by tools/cost_obligations.py at e71a47552; cost-obligations.json is the integrator's --write); pass-through remains: families left authentication, capabilities, check, close, compression-transition, date, group, group-range, header-pattern, header-range, help, ihave, list, mode, neighbour, newgroups, newnews, overview, post, takethis, tls-transition + previews article-input, closed, extension, partial-input, protocol-error (26); keystone_emit refusals 19 → 0.
 
 ## Step 0 (88a7deabb): the 19 keystone_emit --write refusals
 16 defkeystone forms in tests/acl2/resource-vector{,-tree,-relations}-tests.lisp named subjects no host line reaches (fn-rv-step/run/settle/destroy, fn-rt-step/run, fn-rv-of-prs): the node runs the typed ledger (resource-vector-exec), never the logical bank or tree. They became defteeth over the same theorems (every witness/removal/mutation kept, claim checked against the stored theorem); they re-enter as keystones when the exec tree gains a host line (tariff packet Q1). Hosted ones stay keystones (fn-rv-draw x2, fn-rv-install: PRF-1209); rvrt-plus/funded-root got :id PRF-1210. keystone_subjects for PRF-1209/1210 written by keystone_emit --write (proofs.json). `keystone_emit --write` now writes.
@@ -5000,3 +5000,15 @@ Regenerate interfaces.json (interface_emit --write: stale against declarations),
 2. CAPABILITIES/DATE/HELP/MODE/QUIT: def-cost :conses rows. Tried fn-nntp-help (laptop REPL): derivation leaves fn-nntp-string-octets and fn-nntp-multi unaccounted; they need their own :conses rows first (shared with PRF-1316's list).
 3. The denominator gap above, before any pass-through deletion.
 4. The 5 deferred-mutation teeth findings and the 2 fn-ocap teeth (step 0 list).
+
+## Step 2 (root ruling 2026-10-04, after READY)
+- Ruling: def-family-tariffs stays its own generator; `:operation :tariff` naming its producer is filed low: DI-OPERATION-TARIFF-NAMES-FAMILY-PRODUCER (planning/repair/items).
+- The ratchet now counts the non-command previews as served (tools/cost_obligations.py PREVIEW_KINDS: extension, protocol-error, article-input, partial-input, closed; each checked present in output-command-admission.lisp). At this tree: families priced 4 of 30. specs/resource-vector.md says so. tests/test_cost_obligations.py 9 OK.
+- Handed off at ~400K tokens; GROUP/NEXT/LAST not started.
+
+## Successor: start here (GROUP/NEXT/LAST)
+- Add rows to books/output-tariff-families.lisp; the macro generates the producer, the instances and the ratchet count. The context already binds session/args/server; fn-arena fn-cat are in scope.
+- Factories: GROUP books/served-catalog.lisp:1654 fn-nntp-group-result-cat (reply "211 count low high name": a line of at most 4 + 3*21 + len(name) + 2 octets, name the arg token); NEXT/LAST :3900 fn-nntp-next-or-last-cat (a "223 n <msgid>" line, L0-bounded; its walk is :work, not resident). LISTGROUP lists a range: needs a cursor quantum, not a row here.
+- Each row needs its reply-octets bound over the factory as a theorem, or a proof-owed item in the PRF-1316 style; prefer the theorem (the factories return fn-nntp-single lines).
+- Witness style: tests/acl2/output-tariff-family-tests.lisp (ground defthms over the *tfm-* catalog fixture, *tfm-as* session selecting fn.test current 3); the producer's stobj formals rule out defteeth witnesses there.
+- Gate: certify_books.py --recertify books/output-tariff-families (+ tests), host_check --load, cost_obligations.py count.

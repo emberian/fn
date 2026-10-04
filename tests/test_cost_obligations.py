@@ -44,6 +44,8 @@ class TariffFamiliesTests(unittest.TestCase):
     ((72 69 65 68) . :head)
     ((76 73 83 84) . :list)))
 
+(defun fn-ocap-tokens-family (tokens) (if tokens :extension :protocol-error))
+(defun fn-ocap-preview (w) (case w (0 :closed) (1 :article-input) (t :partial-input)))
 """
 
     def rows(self, families: str) -> str:
@@ -55,8 +57,9 @@ class TariffFamiliesTests(unittest.TestCase):
         root = tree([], {"output-command-admission.lisp": self.TABLE,
                          "output-tariff-families.lisp": self.rows(":article :head")}, {})
         self.assertEqual(cost_obligations.families(root),
-                         {"served": 3, "priced": 2, "priced_families": ["article", "head"],
-                          "unpriced_families": ["list"]})
+                         {"served": 8, "priced": 2, "priced_families": ["article", "head"],
+                          "unpriced_families": ["article-input", "closed", "extension", "list",
+                                                "partial-input", "protocol-error"]})
 
     def test_a_priced_family_outside_the_table_is_refused(self):
         root = tree([], {"output-command-admission.lisp": self.TABLE,

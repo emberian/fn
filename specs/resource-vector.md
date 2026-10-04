@@ -376,8 +376,10 @@ families reaches zero. Until then the unaccounted path is the default, not a
 mode. The count's denominator is `*fn-ocap-command-families*` (25 keywords);
 the gate also previews `:extension` (XREDEEM, XFNCATCHUP, XFN-ZARTICLE),
 `:article-input` (a POST or IHAVE body), `:protocol-error` and
-`:partial-input`, and refuses each as unpriced in accounted mode today, so
-they are priced or given their own rule before the pass-through goes.
+`:partial-input` (and `:closed`), and refuses each as unpriced in accounted
+mode today; the ratchet counts them as served (`tools/cost_obligations.py`
+PREVIEW_KINDS, 30 in all), so zero unpriced means every first event the gate
+can see is priced (root ruling 2026-10-04).
 
 `fn-orv-extend-reservation` extends the existing composed launch decision
 exactly once and checks the whole observed machine reservation. Startup

@@ -177,6 +177,7 @@ def build(root: Path = ROOT) -> dict:
 
 FAMILY_TABLE = ("books", "output-command-admission.lisp")
 PRICED_ROWS = ("books", "output-tariff-families.lisp")
+PREVIEW_KINDS = ("extension", "protocol-error", "article-input", "partial-input", "closed")
 
 
 def priced_rows(text: str) -> list[str]:
@@ -195,7 +196,8 @@ def priced_rows(text: str) -> list[str]:
 def families(root: Path = ROOT) -> dict:
     """The tariff ratchet: the command families the admission gate classifies
     (books/output-command-admission.lisp *fn-ocap-command-families*, every one
-    served by a stock node) and those priced (the rows of def-family-tariffs
+    served by a stock node, and the non-command previews PREVIEW_KINDS) and
+    those priced (the rows of def-family-tariffs
     in books/output-tariff-families.lisp, from which the producer the host
     calls is generated).  The pass-through for a node without [resources]
     goes when unpriced is empty (specs/resource-vector.md, the open
@@ -207,6 +209,13 @@ def families(root: Path = ROOT) -> dict:
     start = text.index("(defconst *fn-ocap-command-families*")
     table = text[start:text.index("\n\n", start)]
     served = sorted(set(re.findall(r"\. :([a-z-]+)\)", table)))
+    # The gate previews these too and refuses each as unpriced in accounted
+    # mode (fn-ocap-tokens-family, fn-ocap-preview): they count, so 0 left
+    # means every first event the gate can see is priced.
+    for kind in PREVIEW_KINDS:
+        if ":" + kind not in text[text.index("(defun fn-ocap-tokens-family"):]:
+            raise ValueError("the admission book no longer previews :{}".format(kind))
+    served = sorted(set(served) | set(PREVIEW_KINDS))
     named = priced_rows(root.joinpath(*PRICED_ROWS).read_text(encoding="utf-8"))
     priced = sorted(set(named))
     if len(priced) != len(named):
