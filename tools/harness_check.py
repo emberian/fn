@@ -1014,11 +1014,23 @@ def raw_applications(form, found: list, shadowed: frozenset = frozenset(),
         walk(form[1:])
         return
     if name in RAW_DISPATCHERS and len(form) > 1:
+        def quoted_name(x):
+            if (isinstance(x, list) and len(x) == 2 and isinstance(x[0], str)
+                    and str(x[0]) == "quote" and isinstance(x[1], str)):
+                return str(x[1]).lower()
+            return None
         target = form[1]
-        if (isinstance(target, list) and len(target) == 2
-                and isinstance(target[0], str) and str(target[0]) == "quote"
-                and isinstance(target[1], str)):
-            callee = str(target[1]).lower()
+        # `(fnn-call 'fn-x ...)', and the two-way choice
+        # `(fnn-call (if GROW 'fn-his-row-grow 'fn-his-row-step) ...)'
+        # (host/native/history-root.lisp, io.lisp, tcpcl.lisp): both arms
+        # are dispatched, with the same arguments.
+        callees = [quoted_name(target)]
+        if (callees[0] is None and isinstance(target, list) and len(target) == 4
+                and isinstance(target[0], str) and str(target[0]) == "if"):
+            callees = [quoted_name(target[2]), quoted_name(target[3])]
+            if None in callees:
+                callees = []
+        for callee in (c for c in callees if c is not None):
             found.append(("'" + callee,
                           (None if count is None else count - 1 + RAW_DISPATCHERS[name]
                           + (ARENA_ENTRIES.get(callee, 0)

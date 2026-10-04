@@ -515,6 +515,22 @@ class RawArityTests(unittest.TestCase):
         self.assertEqual(harness_check.feature_arities(
             [ledger_sym("#+"), [ledger_sym("or"), ledger_sym("a")], 1, 2]), {1, 2})
 
+    def test_a_two_way_dispatch_names_both_arms(self):
+        # host/native/history-root.lisp:67
+        source = """
+            (defun f (grow cursor stage)
+              (fnn-call (if grow 'fn-his-row-grow 'fn-his-row-step) cursor stage))
+            """
+        found = []
+        from tools import ledger
+        for form, _line in ledger.Reader(textwrap.dedent(source)).top_level():
+            harness_check.raw_applications(form, found)
+        self.assertIn(("'fn-his-row-grow", 2 + harness_check.RAW_DISPATCHERS["fnn-call"]), found)
+        self.assertIn(("'fn-his-row-step", 2 + harness_check.RAW_DISPATCHERS["fnn-call"]), found)
+        wrong = self.scan(source, {"fn-his-row-grow": 2, "fn-his-row-step": 3})
+        self.assertEqual([row["callee"] for row in wrong
+                          if row["callee"].startswith("fn-his-")], ["fn-his-row-step"])
+
     def test_the_eight_of_nine_call_is_caught(self):
         found = self.scan(self.DROPPED_INGRESS)
         self.assertEqual(len(found), 1)
