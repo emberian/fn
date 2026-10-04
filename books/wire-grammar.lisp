@@ -45,7 +45,11 @@
 ; tail-only node stands only last.
 ;
 ; Refusals: (:refused :trailer) for a frame whose trailer is not the digest
-; of its protected prefix, (:refused :malformed) for every other refusal.
+; of its protected prefix, (:refused :where) for octets a :where node's
+; grammar accepts and its checks refuse (the fields are well formed and
+; inconsistent with each other), (:refused :malformed) for every other
+; refusal.  The decoder is sequential, so the first refusal met is the
+; answer: a frame's trailer is checked before its payload is decoded.
 ;
 ; This book owns the prefix `fn-wg-' (docs/prefixes.md).
 
@@ -598,6 +602,10 @@
 (defun fn-wg-rest (r) (declare (xargs :guard t)) (if (and (consp r) (consp (cdr r)) (consp (cddr r))) (caddr r) nil))
 (defun fn-wg-malformed () (declare (xargs :guard t)) (fn-wg-refused :malformed))
 
+; Every refusal the decoder answers, in the order a reader meets them in the
+; description (`fn-wg-decode-answers').
+(defconst *fn-wg-refusals* '(:trailer :where :malformed))
+
 (defun fn-wg-decode (g xs)
   (declare (xargs :guard t :measure (acl2-count g) :verify-guards nil))
   (let ((op (fn-wg-op g)))
@@ -700,7 +708,7 @@
      ((equal op :where)
       (let ((r (fn-wg-decode (fn-wg-arg 1 g) xs)))
         (if (and (fn-wg-okp r) (not (fn-wg-checks-okp (fn-wg-where-checks g) (fn-wg-value r))))
-            (fn-wg-malformed)
+            (fn-wg-refused :where)
           r)))
      ((equal op :frame)
       ; Split in order: MAGIC(4) VERSION KIND LENGTH(4) PAYLOAD TRAILER(32).
@@ -995,7 +1003,7 @@
            (equal (fn-wg-decode g xs)
                   (let ((r (fn-wg-decode (fn-wg-arg 1 g) xs)))
         (if (and (fn-wg-okp r) (not (fn-wg-checks-okp (fn-wg-where-checks g) (fn-wg-value r))))
-            (fn-wg-malformed)
+            (fn-wg-refused :where)
           r))))
   :hints (("Goal" :expand ((fn-wg-decode g xs)))))
 
@@ -1781,6 +1789,13 @@
                (equal (access clause-id id :primes) 0)
                '(:use (fn-wg-shape-facts fn-wg-grammarp-op fn-wg-grammarp-seq-tag-shape fn-wg-decode-of-encode-const fn-wg-decode-of-encode-uint fn-wg-decode-of-encode-bytes fn-wg-decode-of-encode-rest fn-wg-decode-of-encode-line fn-wg-decode-of-encode-base64-lines fn-wg-decode-of-encode-enum fn-wg-decode-of-encode-seq fn-wg-decode-of-encode-tag-hit fn-wg-decode-of-encode-tag-miss fn-wg-decode-of-encode-maybe fn-wg-decode-of-encode-where fn-wg-decode-of-encode-frame)))))
 
+; A whole message: the encoding of a value decodes, with nothing left, to it.
+(defthm fn-wg-decode-of-encode-whole
+  (implies (and (fn-wg-grammarp g) (fn-wg-valuep g v))
+           (equal (fn-wg-decode g (fn-wg-encode g v)) (fn-wg-ok v nil)))
+  :hints (("Goal" :use ((:instance fn-wg-decode-of-encode (r nil)) fn-wg-encode-octets)
+           :in-theory (disable fn-wg-decode-of-encode fn-wg-encode-octets))))
+
 ; -----------------------------------------------------------------------------
 ; Encode of decode
 
@@ -2080,3 +2095,17 @@
 (verify-guards fn-wg-encode)
 (verify-guards fn-wg-valuep)
 (verify-guards fn-wg-decode)
+
+; -----------------------------------------------------------------------------
+; The decoder's answers: accepted, or refused by one of *fn-wg-refusals*.
+; (The exported file lists those words; a reader that meets another refuses
+; the file.)
+
+(defthm fn-wg-decode-answers
+  (let ((r (fn-wg-decode g xs)))
+    (or (equal r (fn-wg-ok (fn-wg-value r) (fn-wg-rest r)))
+        (and (equal r (fn-wg-refused (fn-wg-arg 1 r)))
+             (member-equal (fn-wg-arg 1 r) *fn-wg-refusals*))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-wg-decode g xs)
+                  :in-theory (enable fn-wg-decode))))

@@ -33,8 +33,10 @@ A grammar is ACL2 **data**: a tree of the nodes below. `books/wire-grammar.lisp`
 - `fn-wg-valuep G V`: V is a value of G;
 - `fn-wg-encode G V`: octets;
 - `fn-wg-decode G OCTETS`: `(:ok V REST)` or `(:refused REASON)`, REASON `:trailer`
-  (a frame whose trailer is not the digest of its protected prefix) or
-  `:malformed` (every other refusal);
+  (a frame whose trailer is not the digest of its protected prefix), `:where`
+  (a `where` node's fields decode and one of its checks fails) or
+  `:malformed` (every other refusal) — `*fn-wg-refusals*`, and
+  `fn-wg-decode-answers` proves no other answer exists;
 
 and proves, once, for every well-formed grammar:
 
@@ -154,7 +156,8 @@ on the octets XS, in this order:
 - `tag`: at least W octets; n their value; the arm whose CODE is n decodes
   what follows → value [NAME, V]; no such arm → refused.
 - `maybe`: XS empty → value [] (rest empty); otherwise G → value [V].
-- `where`: G, then every check on its value.
+- `where`: G (a refusal there is G's), then every check on its value; a
+  failed check is refused **`where`**.
 - `frame`: at least 4 octets and the first 4 are MAGIC; then at least 2 more,
   VERSION and KIND; then at least 4 more, n their value; n ≤ MAX; at least
   n+32 octets after the length; the 32 after the n payload octets equal
@@ -162,7 +165,12 @@ on the octets XS, in this order:
   refused **`trailer`**; then G on exactly the n payload octets must succeed
   with nothing left (a refusal inside G is the frame's refusal) → value G's
   value, rest after the trailer.
-Every other failure is refused **`malformed`**. A refusal consumes nothing:
+Every other failure is refused **`malformed`**. The decoder is sequential,
+so the first refusal met is the answer (a frame's trailer is checked before
+its payload is decoded, so a bad trailer over a payload that would fail a
+`where` is `trailer`). The refusal words are exactly `trailer`, `where`,
+`malformed`; the file lists them (`words.refusals`) and a reader that meets
+another word refuses the file. A refusal consumes nothing:
 the decoder answers the reason and no position. A MESSAGE is accepted when
 the decoder answers ok with nothing left; the octets CONSUMED by an ok answer
 are |XS| − |REST|, and they are exactly the encoding of its value
@@ -221,8 +229,13 @@ encodings back to back, for a delimited family: the first value, the second
 encoding as the rest), `prefix` (every proper prefix of the family's
 shortest encoding: each truncation boundary), `mutation` (that encoding with
 one octet changed, +1 mod 256, at each position: wrong magic, unknown
-version or kind, wrong declared lengths, wrong fields, wrong trailer), and
-`length` (a frame's declared length set to MAX+1 and to 2^32−1). The values
+version or kind, wrong declared lengths, wrong fields, wrong trailer),
+`length` (a frame's declared length set to MAX+1 and to 2^32−1), and
+`refuse` (the encoding of each named near miss the family table lists —
+a value that is NOT a value of the grammar, such as an empty identity field
+or a failed `where` check — with a `"case"` field naming it; the keystone
+`fn-wgx-vectors-decode` proves each case is not a value and is refused with
+the reason the table names). Only `refuse` vectors carry `"case"`. The values
 and the answers are ACL2's (`fn-wg-encode`, `fn-wg-decode`); a second
 interpreter must give the same answer for every vector (Mini's CI;
 `tests/test_wire_grammar.py` here). For each request family, `exchanges`
@@ -244,6 +257,15 @@ the same language with its own two round-trip theorems, the grammars loaded
 from this file, and a CI check that it decodes every vector to its value and
 re-encodes to identical octets. Lean needs BLAKE3-256 for the trailer (a
 trusted primitive on Mini's side, as SHA-256/cSHAKE are).
+
+Families named `conformance.*` are on no wire. They exist so the vectors
+exercise every node, class and check of the language (the wire families use
+only `const`, `uint`, `bytes`, `enum`, `seq`, `tag` and `frame`):
+`conformance.where` (each of `le`, `eq`, `diff` refused by name, and `diff`
+with J < I), `conformance.text` (`line`, the `utf8` and `header` classes with
+overlong and surrogate UTF-8 refused, an `enum` past a base, the 8-octet
+`uint`, canonical `base64-lines`), `conformance.tail` (`maybe` over a `seq`
+ending in `rest`).
 
 ### 4. Families in v1
 
@@ -278,14 +300,24 @@ language, added when it lands on dev).
 `fnct.store-identity.reply` (FNCT kind 25), a `:seq` of
 
 `format` (text), `node` (32 octets), `schema` (32), `profile` (32),
-`history` (1..64), `incarnation` (1..64), `created-revision` (text),
-`running-revision` (text), `grammar-digest` (32)
+`consumer`, `created-revision` (text), `running-revision` (text),
+`grammar-digest` (32), where `consumer` is a `tag`: `unbootstrapped` (no
+fields: the consumer state before its first bootstrap) or `bootstrapped`
+with `history` (1..64 octets) and `incarnation` (1..64). An identity field
+is never empty; absence is an arm, not an empty field (Mini's note 1,
+2026-10-04: the draft had `["bytes",1,0,64]` and an accept vector with both
+empty; an empty field in the `bootstrapped` arm is now refused, pinned by
+the `refuse` vectors `empty-history` and `empty-incarnation`). A
+consumer state whose ids are not ids (none `fn-cp-statep` accepts) is
+refused by name, `consumer-state`, beside `no-genesis`
 
 — the genesis record the open read (`fn-store-genesis`, the verdict of
 `fn-gen-open`), the consumer state's history id and incarnation, and the
 running image's recorded source revision. The CLI prints the ACL2-rendered
-line `fn-store-identity-v1 format=… node=… schema=… profile=… history=…
-incarnation=… created-revision=… running-revision=…` (a protocol-table
+line `fn-store-identity-v1 format=… node=… schema=… profile=…
+consumer=bootstrapped history=… incarnation=… created-revision=…
+running-revision=… grammar=…` (`consumer=unbootstrapped` and no history or
+incarnation before a bootstrap) (a protocol-table
 style row with its key and text), exit 0; refusals by name. Why the owner
 and not an offline verb on ROOT: history id and incarnation live in the
 owner's consumer state (a replay offline), and the **running** revision is
