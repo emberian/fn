@@ -23513,6 +23513,70 @@
         "fn-ak-carrier-parses",
         "fn-ak-carrier-parses-under"
       ]
+    },
+    {
+      "id": "PRF-1324",
+      "title": "The codec of article kind opaque v1 is the wire-grammar interpreter at its grammar: every value round-trips, an accepted source is the encoding of its value, and the interpreter's octets are the layout's",
+      "statement": "books/article-kind-codec.lisp. fn-ak-encode VALS PAYLOAD = fn-wg-encode *fn-ak-grammar* of the grammar value (nil outside the kind or above the article ceiling); fn-ak-decode SOURCE = fn-wg-decode at *fn-ak-grammar*, then the kind refinement (fn-ak-rows-check), refusals named (:from, :groups, :msgid, :kind-version, :kind, :malformed). fn-ak-decode-of-encode: for fn-ak-rows-valuesp VALS and fn-ak-payloadp PAYLOAD, (fn-ak-decode (fn-ak-encode VALS PAYLOAD)) = (:ok VALS PAYLOAD). fn-ak-encode-of-decode (canonicity): (fn-ak-decode SOURCE) :ok implies fn-ak-encode of its values is SOURCE. fn-ak-grammar-encode-is-the-layout: for fn-ak-payloadp PAYLOAD, fn-ak-encode = fn-ak-layout, so PRF-1320..1322 (stated of fn-ak-layout) hold of the codec's output. Over fn-wg-decode-of-encode and fn-wg-encode-of-decode (books/wire-grammar.lisp, lane mini-contract). Host: host/native/pattern.lisp through fn-pat-encode / fn-pat-decode.",
+      "milestone": "M6",
+      "requirements": [],
+      "depends_on": [
+        "PRF-1320",
+        "PRF-1321",
+        "PRF-1322"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/article-kind-codec.lisp",
+        "tests/acl2/article-kind-codec-tests.lisp (round trip and encode = layout at the example values and four payloads; the kind hypothesis needed: a grammar value with a From outside the kind decodes to :from; canonicity: unpadded base64, a bare LF, a trailing octet and a folded header refused; :kind-version and :kind named; the bridge's ceiling needed, proved: above it the codec is nil and the layout octets)"
+      ],
+      "progress_note": "Lane zmq-2 2026-10-04. D50.",
+      "events": [
+        "fn-ak-decode-of-encode",
+        "fn-ak-encode-of-decode",
+        "fn-ak-grammar-encode-is-the-layout"
+      ]
+    },
+    {
+      "id": "PRF-1325",
+      "title": "def-pattern: an accepted `fn pattern` command line binds every argument of its plan, and the posting role's check is exactly the kind",
+      "statement": "books/app-pattern.lisp. fn-pat-cli-run-binds-every-step: for any NAME ROLE ARGV, when fn-pat-cli-plan answers (:run NAME ROLE KIND PLAN BINDINGS TIMEOUT COUNT), every argument every step of PLAN needs (fn-pat-plan-needs: once and per message) is bound in BINDINGS to a nonempty octet word without NUL (fn-pat-bindings-coverp). fn-pat-values-check-is-the-kind: fn-pat-values-check NAME FROM SECONDS GROUP MSGID is nil exactly when the eight values fn-pat-values are a value of kind opaque v1 (fn-ak-rows-valuesp *fn-ak-v1-rows*). Host: host/native/pattern.lisp calls both.",
+      "milestone": "M6",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/app-pattern.lisp",
+        "tests/acl2/app-pattern-tests.lisp (pub and sub command lines accepted and covered; one word short, an extra word on a role that does not loop, an empty or NUL word, a bad option, an unknown pattern or role each refused by name; the values check names :from, :groups, :msgid; six malformed def-pattern declarations refused, a well-formed one admitted)"
+      ],
+      "progress_note": "Lane zmq-2 2026-10-04. D50.",
+      "events": [
+        "fn-pat-cli-run-binds-every-step",
+        "fn-pat-values-check-is-the-kind"
+      ]
+    },
+    {
+      "id": "PRF-1326",
+      "title": "pub/sub delivery: the reader delivers exactly the payload the writer encoded, when the poll pair projects the writer's source",
+      "statement": "books/app-pattern-delivery.lisp. fn-pat-reader-delivers-what-the-writer-encoded: for CURSOR EVENT with (fn-cpj-project CURSOR EVENT) = P :ok, values that pass fn-pat-values-check, fn-ak-payloadp PAYLOAD, and the projected authored source (nth 6 P) = fn-pat-encode NAME FROM SECONDS GROUP MSGID PAYLOAD: (fn-pat-decode :opaque-1 (fn-pat-project CURSOR EVENT)) = (:deliver (nth 2 P) (nth 5 P) PAYLOAD) -- the event's sequence, the record's Message-ID, the payload. Scope: that the projected source is the one the writer posted is the Store's retention and the cursor's, cited, not proved here. Host: host/native/pattern.lisp (:project, :decode, :deliver).",
+      "milestone": "M6",
+      "requirements": [],
+      "depends_on": [
+        "PRF-1324",
+        "PRF-1325"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/app-pattern-delivery.lisp",
+        "tests/acl2/app-pattern-delivery-tests.lisp (inhabited by a real Store event built by fn-hsig-authorized-injected-carried-submission-event around the pubsub writer's source: delivered payload equal; each hypothesis needed: a projecting event with another source is :foreign, a cursor of another position :binding, a grammar source outside the kind :from; empty and withdrawn reports pass through; the spool check refuses another payload, generation, a non-request)"
+      ],
+      "progress_note": "Lane zmq-2 2026-10-04. D50.",
+      "events": [
+        "fn-pat-reader-delivers-what-the-writer-encoded"
+      ]
     }
   ]
 }
