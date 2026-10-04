@@ -13,7 +13,8 @@
  "line": "2605",
  "locus": "log-kernel",
  "notes": [
-  "10-04 15:43 claimed: scope=['host/native/io.lisp', 'tests/native_checkpoint_load_release-mock.lisp', 'tests/test_native_checkpoint_load_release.py'] test=python3 -m unittest tests.test_native_checkpoint_load_release"
+  "10-04 15:43 claimed: scope=['host/native/io.lisp', 'tests/native_checkpoint_load_release-mock.lisp', 'tests/test_native_checkpoint_load_release.py'] test=python3 -m unittest tests.test_native_checkpoint_load_release",
+  "10-04 15:47 READY 3dfae2067 (io.lisp forbidden zone and budget: assembler to grant)"
  ],
  "owner": "sweep-store",
  "reviewer": "fnn-state-checkpoint-plan reserves min(file size, fn-store-sco-file-read-bound) in the served octet buffer (io.lisp:2537-2542) and appends chunks into it. The :refused branches of fnn-state-checkpoint-load (io.lisp:2605-2606) and the decode-refusal branch (io.lisp:2618) return without calling fnn-octets-release. The only releases are in fnn-state-checkpoint-load-arena (io.lisp:2669, 2675). The array is kept because fnn-octets-clear only resets the count (io.lisp:238-240). This is reached only with a corrupt, oversized or wrong-schema checkpoint, so it is rare, but it is the retention fnn-octets-release's docstring (io.lisp:257-262) says it prevents.",
@@ -28,5 +29,5 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_native_checkpoint_load_release",
  "title": "A refused or corrupt state checkpoint leaves a file-sized array in the served octet buffer",
- "updated": "2026-10-04T19:43:58Z"
+ "updated": "2026-10-04T19:47:41Z"
 }
