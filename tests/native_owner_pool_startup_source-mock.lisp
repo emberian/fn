@@ -278,15 +278,18 @@
 (defun fnn-heap-rlimit (resource) (assert (= resource #+linux 7 #-linux 8)) 1024)
 (defun fnn-extent-cache-limit () 32)
 (defun fnn-heap-observations () '(8589934592))
+;; The store on disk as the launcher's probe observes it (cold-start, 10-04).
+(defun fnn-heap-history-observation (root profile)
+  (assert (and (equal root "/scratch") (eq profile :profile))) '(4096 . 2))
 (defun fnn-core (name &rest args)
   (case name
     (fn-pio-direct-workers 4)
     (fn-prstartup-default-plan-with-peer
-     (assert (equal (cdr args) (append '(1234 :profile (54321 . 1234) 1048576 nil nil 2 "/scratch" 4 32 1024) (list *peer-policy*))))
+     (assert (equal (cdr args) (append '(1234 :profile (54321 . 1234) 1048576 nil nil 2 "/scratch" 4 32 1024) (list *peer-policy* '(4096 . 2)))))
      (assert (plusp (first args)))
      (push :preflight *events*) *plan*)
     (fn-prstartup-peer-native-grant
-     (assert (equal (cdr args) (list :profile '(54321 . 1234) 1048576 nil 2 *plan* *peer-policy* '(8589934592))))
+     (assert (equal (cdr args) (list :profile '(54321 . 1234) 1048576 nil 2 *plan* *peer-policy* '(8589934592) '(4096 . 2))))
      (push :peer-check *events*) *peer-grant*)
     (fn-prstartup-peer-native-refusal-line "peer native reservation not held")
     (fn-prstartup-status (first *plan*))

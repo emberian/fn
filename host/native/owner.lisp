@@ -3343,35 +3343,33 @@ follows is justified only by this line."
             (multiple-value-bind (obligation subject ignored)
                 (fnn-metadata-buffer msgid)
               (declare (ignore ignored))
-              (let ((prepared
-                      (fnn-owner-buffer-arena-action
-                       'fn-owner-prepare-buffer (fnn-octet-list msgid) codes
-                       (fnn-octet-list obligation) (fnn-octet-list subject)
-                       (fnn-octet-list evidence) charge)))
+              (let* ((prepared
+                       (fnn-owner-buffer-arena-action
+                        'fn-owner-prepare-buffer (fnn-octet-list msgid) codes
+                        (fnn-octet-list obligation) (fnn-octet-list subject)
+                        (fnn-octet-list evidence) charge))
+                     ;; An accepted prepare has staged the record (store phase
+                     ;; :record-staged, fn-pout-stagedp): its refusal is the
+                     ;; known abort; fn-owner-refuse-reservation answers :fault
+                     ;; unless the store is still :reserved.
+                     (staged (eq prepared :seal-buffer)))
                 ;; The prepare reads the arena only; on acceptance it answers
                 ;; :seal-buffer and the host seals the buffer's payload
                 ;; (host/owner-host.lisp fn-owner-prepare-buffer).
                 ;; The catalog's gate BEFORE the seal: a prepare it would
                 ;; refuse seals nothing (books/catalog-may-seal.lisp; the
-                ;; refusal path below consumes the reservation as before).
-                ;; RS-01: the gate's refusal is this POST's refusal, not a
-                ;; fault: the reservation is consumed as a known refusal,
-                ;; nothing is sealed, the store stays open, and the typed
-                ;; Store refusal is the attempt's :refused (the handlers
-                ;; above; books/nntp-post.lisp's 441).  It used to reach
-                ;; fnn-owner-prepare-refusal-word as :recovery-required, which
-                ;; has no arm: a fault that fenced the store and stopped the
-                ;; owner.
+                ;; refusal path below aborts the staged record).
+                ;; RS-01/X03: the gate's refusal is this POST's refusal, not a
+                ;; fault: nothing is sealed, the store stays open, and the
+                ;; attempt answers a known abort (441).  Consuming the
+                ;; reservation here with fn-owner-refuse-reservation was a
+                ;; :fault outside phase :reserved.
                 (when (and (eq prepared :seal-buffer)
                            (or (fnn-developer-selector "FN_NATIVE_TEST_CAT_SEAL_REFUSE")
                                (not (eq (fnn-owner-core 'fn-owner-cat-may-seal) t))))
+                  (setq prepared :refused)
                   (fnn-err "POST seal-gate refused arena=~d"
-                           (first (fnn-call 'fn-arena-count (fnn-live-arena))))
-                  (setf (fnn-store-fenced store) t)
-                  (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation) :refused)
-                    (fnn-indeterminate "owner could not consume refused reservation"))
-                  (setf (fnn-store-fenced store) nil)
-                  (fnn-refuse "the catalog cannot take a sealed payload now; nothing was sealed"))
+                           (first (fnn-call 'fn-arena-count (fnn-live-arena)))))
                 (when (eq prepared :seal-buffer)
                   (fnn-seal-live-buffer)
                   ;; Step 8: the catalog prepares the store's row, which names
@@ -3379,9 +3377,12 @@ follows is justified only by this line."
                   (setq prepared (fnn-owner-action 'fn-owner-cat-prepare-sealed)))
                 (unless (eq prepared :prepared)
                   (setf (fnn-store-fenced store) t)
-                  (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation)
-                              :refused)
-                    (fnn-indeterminate "owner could not consume refused reservation"))
+                  (if staged
+                      (unless (eq (fnn-owner-action 'fn-owner-known-abort) :aborted)
+                        (fnn-indeterminate "owner could not abort refused staged record"))
+                    (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation)
+                                :refused)
+                      (fnn-indeterminate "owner could not consume refused reservation")))
                   (setf (fnn-store-fenced store) nil)
                   (return-from fnn-owner-attempt
                     (fnn-owner-prepare-refusal-word prepared)))))
@@ -8520,6 +8521,10 @@ the caller joins any partial executor before relinquishing run authority."
   (let* ((profile (fnn-heap-store-profile root))
          (core (fnn-heap-image-observation))
          (peer (fnn-peer-flight-profile root))
+         ;; The store on disk, observed as the launcher's probe observed it
+         ;; (host/native/heap.lisp fnn-heap-operator-profile): its figure
+         ;; sized the open by it, so the protected allowance is the same.
+         (observed (and profile (fnn-heap-history-observation root profile)))
          (plan (fnn-core 'fn-prstartup-default-plan-with-peer
                          (sb-ext:dynamic-space-size) (cdr core) profile core
                          (fnn-gc-nursery-octets) cold-resources output-resources
@@ -8527,12 +8532,13 @@ the caller joins any partial executor before relinquishing run authority."
                          (fnn-extent-cache-limit)
                          ;; OS observation, not a profile/data ceiling. Linux
                          ;; numbers NOFILE7; Darwin and the BSDs number it8.
-                         (fnn-heap-rlimit #+linux 7 #-linux 8) peer))
+                         (fnn-heap-rlimit #+linux 7 #-linux 8) peer observed))
          (peer-grant
            (when peer
              (fnn-core 'fn-prstartup-peer-native-grant
                        (sb-ext:dynamic-space-size) profile core (fnn-gc-nursery-octets)
-                       output-resources max-connections plan peer (fnn-heap-observations)))))
+                       output-resources max-connections plan peer (fnn-heap-observations)
+                       observed))))
     (case (fnn-core 'fn-prstartup-status plan)
       (:admitted
        (unless (fnn-core 'fn-prstartup-planp plan)

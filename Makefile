@@ -1859,6 +1859,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/hybrid-signature-tests \
 	books/hybrid-carrier \
 	tests/acl2/hybrid-carrier-tests \
+	books/article-kind \
+	books/article-kind-acceptance \
+	books/article-kind-hybrid \
+	tests/acl2/article-kind-tests \
 	books/hybrid-store-injected \
 	books/hybrid-store-invariants \
 	books/control-classify \
@@ -2013,9 +2017,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/output-command-admission \
 	tests/acl2/output-command-admission-tests \
 	books/output-tariff-article \
-	tests/acl2/output-tariff-article-tests \
 	books/output-tariff-article-row \
 	tests/acl2/output-tariff-article-row-tests \
+	books/output-tariff-family \
+	books/output-tariff-families \
+	tests/acl2/output-tariff-family-tests \
 	books/output-admission-line \
 	tests/acl2/output-admission-line-tests \
 	books/string-line-fill \
