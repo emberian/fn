@@ -2,11 +2,13 @@
  "category": "check-lane",
  "file": "Makefile",
  "id": "X18",
- "notes": [],
+ "notes": [
+  "10-04 15:10 already fixed: Makefile:2533 root present, test_roots_check names no withdrawal-index row. FAIRY-3 prep 2026-10-04."
+ ],
  "owner": "generators",
  "severity": "low",
  "source": "check-lane",
- "state": "open",
+ "state": "refuted",
  "title": "test_roots: withdrawal-index-carried-tests and its book are not Makefile roots",
- "updated": "2026-10-03T02:30:26Z"
+ "updated": "2026-10-04T19:10:31Z"
 }
