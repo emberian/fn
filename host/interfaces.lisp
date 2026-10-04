@@ -3595,18 +3595,6 @@
 (definterface fn-heap-init-budget-note-line
   :class :common-lisp-compliant)
 
-(definterface fn-heap-init-decide
-  :class :common-lisp-compliant
-  :keystones (fn-heap-init-decide-sized-init-is-held
-              fn-heap-init-decide-refuses-the-operators-request-past-the-budget
-              fn-heap-init-decide-largest-takes-scale-when-it-fits
-              fn-heap-init-decide-honors-the-operators-request
-              fn-heap-init-decide-fits-the-budget-and-the-machine
-              fn-heap-init-decide-conservative-takes-the-top-rung-when-it-fits
-              fn-heap-init-decide-conservative-is-a-friend-rung
-              fn-heap-init-decide-conservative-holds-the-floor
-              fn-heap-init-budget-note-names-the-budget-init-sized-for))
-
 (definterface fn-pfd-init-decide
   :class :common-lisp-compliant
   :keystones (fn-pfd-init-reserves-the-default-launch))
