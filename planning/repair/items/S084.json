@@ -18,7 +18,8 @@
  "native": "mux",
  "notes": [
   "allow_forbidden granted by integrator-3 2026-10-04, scope: host/native/mux.lisp fnn-mux-finish only",
-  "10-04 15:42 claimed: scope=['host/native/mux.lisp', 'tests/native_mux_cleanup_raw.lisp', 'tests/test_native_mux_roster_order.py'] test=python3 -m unittest tests.test_native_mux_roster_order"
+  "10-04 15:42 claimed: scope=['host/native/mux.lisp', 'tests/native_mux_cleanup_raw.lisp', 'tests/test_native_mux_roster_order.py'] test=python3 -m unittest tests.test_native_mux_roster_order",
+  "10-04 15:55 READY c3154de6a: raw witness sbcl --script tests/native_mux_cleanup_raw.lisp red (wrapper rc1) at 26573d8d4-parent 3026c5fe7+witness, green (rc0) at c3154de6a; overlay native over 6107ceb56 on lat1 native-c3154de6a5df: test_native_mux OK 4, test_native_reader_clients OK 10"
  ],
  "owner": "host-lifecycle",
  "reviewer": "The ordering inversion is real. fnn-mux-finish calls fnn-socket-shut, which is socket-close (io.lisp:5550-5552), at mux.lisp:304, and removes the socket from clients only afterwards (mux.lisp:307-311). The stopper copies clients and shuts each one down (owner.lisp:1726-1731), relying on the invariant stated at owner.lisp:1723-1725. For the stopper to hit a reused fd, though, it must read the descriptor slot between SBCL's close(2) and its setf of the slot to -1, a few instructions apart, and the kernel must hand that fd out in the same window. New adopts are already refused once stopping is set, so only a feed or file fd could be hit, and only during a stop. Narrow race, low impact. Removing from the roster before closing would make it impossible.",
@@ -34,7 +35,7 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_native_mux_roster_order",
  "title": "fnn-mux-finish closes the socket before removing it from the clients roster, breaking the stop hook's no-fd-reuse invariant",
- "updated": "2026-10-04T19:42:32Z",
+ "updated": "2026-10-04T19:55:04Z",
  "verify": {
   "base": "3026c5fe79e6d1659504a6b6d653b86d843fb734",
   "base_observation": {
