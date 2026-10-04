@@ -23450,6 +23450,69 @@
         "fn-bs-init-log-crash-retry-is-old-or-new",
         "fn-bs-init-log-complete-store-carries-the-node-secret"
       ]
+    },
+    {
+      "id": "PRF-1320",
+      "title": "Every article of the kind opaque v1 is parsed by the article parser every reader calls, with exactly its eight fields and its base64 body",
+      "statement": "books/article-kind-acceptance.lisp. fn-ak-layout-parses: for VALS a value of the kind (fn-ak-rows-valuesp *fn-ak-v1-rows* VALS: eight header values in table order, each opening with a VCHAR, SP/VCHAR only, its line at most 998 octets, From a mailbox-list fn-mbx-mailbox-listp, Newsgroups a nonempty newsgroup-list, Message-ID fn-af-message-idp without WSP, FN-Kind exactly 'opaque 1', Content-Transfer-Encoding exactly 'base64') and PAYLOAD any octet list whose layout is within *fn-article-max-octets*, fn-article-parse of (fn-ak-layout VALS PAYLOAD) is (:ok ARTICLE) with header the rendered rows, body the 76-column CRLF frame of fn-ot-b64-encode PAYLOAD, and fields fn-ak-fields (one single-line field per row, lower-cased name, value SP followed by the row value). fn-ak-layout-parses-under: the same for fn-article-parse-under under any LIMITS with at least 8 fields, 8 lines and the header's octets. The subject is the authored source (D01), the suffix fn-hc-authored-source extracts from a served article.",
+      "milestone": "M6",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/article-kind.lisp",
+        "books/article-kind-acceptance.lisp",
+        "tests/acl2/article-kind-tests.lisp (positive: the parse of the example layout has 8 fields and the frame as body)"
+      ],
+      "progress_note": "Lane zmq 2026-10-04: certified on the laptop (run origin) certify-20261004T162258Z-57409 with its tests book. D50.",
+      "events": [
+        "fn-ak-layout-parses",
+        "fn-ak-layout-parses-under"
+      ]
+    },
+    {
+      "id": "PRF-1321",
+      "title": "The injection decision injects every article of the kind opaque v1, unchanged, under a configuration that admits its group and bounds",
+      "statement": "books/article-kind-acceptance.lisp. fn-ak-layout-is-injected: for FROM DATE GROUPS SUBJECT MSGID MEDIA-TYPE with fn-ak-valuesp, PAYLOAD octets, CONFIG fn-inj-configp with posting allowed, OBSERVATION a clock observation with a wall reading inside the 400-year cycle, header limits of CONFIG at least 8 fields, 8 lines and the rendered header's octets, the parsed newsgroups admissible in CONFIG's groups, and the injected octets within CONFIG's article bound: fn-inj-decide of SOURCE = (fn-ak-layout (fn-ak-values ...) PAYLOAD) is (fn-inj-make-decision :injected nil MSGID NAMES (fn-inj-append (fn-inj-prefix nil MSGID AGENT nil nil) SOURCE)): the author's Message-ID kept, no Injection-Date (Date and Message-ID supplied: independent of the clock reading), the source a suffix, unchanged. Host: the POST and operator-post routes call fn-inj-decide; the hybrid route is PRF-1322.",
+      "milestone": "M6",
+      "requirements": [],
+      "depends_on": [
+        "PRF-1320"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/article-kind-acceptance.lisp",
+        "tests/acl2/article-kind-tests.lisp (positive witness with 115- and 0-octet payloads; one hypothesis-removal witness for each of the 12 hypotheses, every other hypothesis holding and the decision not the injection; the kind's From, Newsgroups and Message-ID refinements shown needed: the same octets with a value outside the kind are refused :from-invalid, :newsgroups-invalid, :message-id-invalid)"
+      ],
+      "progress_note": "Lane zmq 2026-10-04: certified on the laptop (run origin) certify-20261004T162258Z-57409 with its tests book. D50.",
+      "events": [
+        "fn-ak-layout-is-injected"
+      ]
+    },
+    {
+      "id": "PRF-1322",
+      "title": "The hybrid-author route injects every article of the kind opaque v1 with its carrier in front, the authored source an unchanged suffix",
+      "statement": "books/article-kind-hybrid.lisp. fn-ak-layout-is-a-hybrid-injection: for a value of the kind and an octet PAYLOAD, SOURCE = fn-ak-layout, FIELD = fn-hc-field-encode-at at fn-hsig-source-version SOURCE of PRINCIPAL KEYS SIGNATURES non-nil (the carrier material is well formed), CONFIG valid with posting allowed, a usable in-cycle clock, header limits of at least 9 fields, 9 plus the carrier's fold lines, and the carrier's plus the rows' octets, the newsgroups admissible and the injected octets within the article bound: fn-hsig-injected-carrier-plan SOURCE PRINCIPAL KEYS SIGNATURES CONFIG OBSERVATION is (fn-inj-make-decision :injected nil MSGID NAMES (fn-inj-append (fn-inj-prefix nil MSGID AGENT nil nil) (append (fn-hc-field-lines FIELD) SOURCE))). fn-ak-carrier-parses[-under]: fn-article-parse of the carrier is :ok with the FN-Authorship field first (fn-akh-auth-field) and the kind's eight fields after it. Host: host/native/hybrid-control.lisp calls fn-hsig-injected-carrier-octets (the plan's octets); host/native/signatures.lisp calls fn-hsig-authorized-injected-carried-submission-event (the same plan).",
+      "milestone": "M6",
+      "requirements": [],
+      "depends_on": [
+        "PRF-1320",
+        "PRF-1321"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/article-kind-hybrid.lisp",
+        "tests/acl2/article-kind-tests.lisp (positive witness through the plan with a 7208-octet carrier field in 101 lines; one hypothesis-removal witness for each of the 13 hypotheses: a malformed principal leaves no carrier field, 8 fields and 100 lines refuse the carrier's ninth field and its lines)"
+      ],
+      "progress_note": "Lane zmq 2026-10-04: certified on the laptop (run origin) certify-20261004T162258Z-57409. D50.",
+      "events": [
+        "fn-ak-layout-is-a-hybrid-injection",
+        "fn-ak-carrier-parses",
+        "fn-ak-carrier-parses-under"
+      ]
     }
   ]
 }
