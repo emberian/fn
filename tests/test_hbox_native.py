@@ -1,4 +1,5 @@
 """tools/hbox_native.sh's box script, read through --dry-run (no ssh)."""
+import os
 import subprocess
 import unittest
 from pathlib import Path
@@ -7,17 +8,35 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "tools" / "hbox_native.sh"
 
 
-def dry(*args):
+def dry(*args, env=None):
     return subprocess.run(
         ["sh", str(SCRIPT), "--dry-run", "--name", "t", "--label", "l", *args],
-        cwd=ROOT, capture_output=True, text=True, timeout=30)
+        cwd=ROOT, capture_output=True, text=True, timeout=30,
+        env=None if env is None else {**os.environ, **env})
 
 
 def image_lines(out):
-    return [line for line in out.splitlines() if line.startswith("step image-")]
+    """The image saves, serial (step) or parallel (pstep), as `step image-...`
+    lines; the shared foreign-library step before parallel saves is not one."""
+    return [line[1:] if line.startswith("pstep ") else line for line in out.splitlines()
+            if line.startswith(("step image-", "pstep image-")) and not line.startswith("step image-libs")]
 
 
 class HboxNativeDryRunTests(unittest.TestCase):
+    def test_several_images_save_in_parallel_after_the_libraries_and_one_image_stays_serial(self):
+        answer = dry("--box", "hbox", "--images", "developer,production,dtn", "HEAD", "tests.test_native_owner")
+        lines = answer.stdout.splitlines()
+        saves = [i for i, line in enumerate(lines) if line.startswith("pstep image-")]
+        self.assertEqual(len(saves), 3, answer.stdout + answer.stderr)
+        libs = lines.index(next(l for l in lines if l.startswith("step image-libs")))
+        waits = [i for i, line in enumerate(lines) if line == "pwait"]
+        self.assertTrue(libs < saves[0] and waits and waits[0] > saves[-1])
+        single = dry("--box", "hbox", "--images", "developer", "HEAD", "tests.test_native_owner")
+        self.assertFalse([l for l in single.stdout.splitlines() if l.startswith("pstep ") or l == "pwait"])
+        serial = dry("--box", "hbox", "--images", "developer,production", "HEAD", "tests.test_native_owner",
+                     env={"FN_NATIVE_SERIAL_IMAGES": "1"})
+        self.assertFalse([l for l in serial.stdout.splitlines() if l.startswith("pstep image-")])
+
     def test_default_prefix_does_not_require_unrequested_dtn_certificates(self):
         answer = dry("--box", "hbox", "HEAD", "tests.test_native_owner")
         self.assertEqual(answer.returncode, 0, answer.stderr)
