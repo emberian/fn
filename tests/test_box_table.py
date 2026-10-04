@@ -69,5 +69,40 @@ class BoxTableTests(unittest.TestCase):
         self.assertEqual(missing.returncode, 2)
 
 
+class EveryToolKnowsEveryBoxTests(unittest.TestCase):
+    """A registered box is known to every box-aware tool, or it is half-registered:
+    tools/box_qualify.sh's `tools` check reads the same list."""
+
+    def test_a_registered_box_resolves_in_every_box_aware_tool(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            table = Path(tmp) / "boxes.json"
+            table.write_text(json.dumps({"boxes": {"rent9": {"like": "hbox", "cores": 4,
+                                                             "until": "2999-01-01T00:00:00Z",
+                                                             "qualified": {"ok": True}}}}))
+            env = {**os.environ, "FN_BOXES_FILE": str(table)}
+            probe = (
+                "import sys, subprocess; sys.path.insert(0, 'tools')\n"
+                "import acl2_slots, certs, proof_repl, gate_reap, evidence_manifests, box_table, boxq\n"
+                "b = 'rent9'\n"
+                "missing = [n for n, ok in [('farm HOSTS', b in acl2_slots.farm_hosts()),"
+                " ('certs.REMOTE_CACHES', b in certs.REMOTE_CACHES),"
+                " ('proof_repl.REMOTE_TREES', b in proof_repl.REMOTE_TREES),"
+                " ('gate_reap', b in gate_reap.DEFAULT_ROOTS and b in gate_reap.DEFAULT_LOCKS),"
+                " ('evidence_manifests', b in evidence_manifests.BOX_ROOTS),"
+                " ('box_table env', box_table.env_line(b) is not None),"
+                " ('boxq', b in boxq.known_boxes()),"
+                " ('native_box.sh', subprocess.run(['sh', 'tools/native_box.sh', b, '.'], capture_output=True).returncode == 0)]"
+                " if not ok]\n"
+                "print(' '.join(missing))\n")
+            done = subprocess.run([sys.executable, "-c", probe], cwd=ROOT, env=env,
+                                  capture_output=True, text=True, timeout=120)
+            self.assertEqual(done.returncode, 0, done.stderr)
+            self.assertEqual(done.stdout.strip(), "", f"half-registered: {done.stdout.strip()}")
+            dry = subprocess.run(["sh", "tools/hbox_native.sh", "--box", "rent9", "--dry-run", "--name", "t",
+                                  "--label", "l", "HEAD", "tests.test_native_owner"], cwd=ROOT, env=env,
+                                 capture_output=True, text=True, timeout=60)
+            self.assertEqual(dry.returncode, 0, dry.stderr[-500:])
+
+
 if __name__ == "__main__":
     unittest.main()

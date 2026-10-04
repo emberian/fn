@@ -20,4 +20,5 @@ Longer pages: [installing](install.md), [running a node](operator.md),
 [agents](agents.md), the nodes we run ([fsn1](nodes/fsn1.md), [hbox](nodes/hbox.md)).
 
 Working on fn: [CONTRIBUTING](../CONTRIBUTING.md), then
-[the engineers' map](engineering.md) and [testing](testing.md).
+[the engineers' map](engineering.md), [testing](testing.md) and
+[the build boxes](boxes.md) (boxq, bootstrap, qualification, teardown).
