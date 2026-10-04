@@ -3971,6 +3971,10 @@
         {
           "kind": "theorem",
           "name": "fn-pcb-absent-carrier-has-no-class"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-carried-event-keeps-budget-schedule-admitted"
         }
       ]
     },
@@ -19504,6 +19508,36 @@
         {
           "kind": "theorem",
           "name": "fn-prl-resident-shrink-keeps-funding"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1314",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-csp-step-keeps-window"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-csp-write-spools-whole-or-fails-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-csp-framer-window-accounts-for-every-octet"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1317",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pull-auth-after-extension"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-plans-credentials-come-from-selected-peer"
         }
       ]
     },
