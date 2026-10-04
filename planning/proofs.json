@@ -1410,7 +1410,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "planning/evidence/manifests/certify-20260924T144913Z-1419146.json",
         "planning/evidence/manifests/certify-20260924T145118Z-1441609.json",
@@ -6070,7 +6070,7 @@
         "PRF-160"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner.lisp",
         "books/owner-feed-subject.lisp",
@@ -8641,7 +8641,7 @@
         "PRF-256"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config.lisp",
         "books/config-invariants.lisp",
@@ -8801,7 +8801,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-feed.lisp",
         "books/owner-feed-subject.lisp",
@@ -10845,7 +10845,7 @@
         "PRF-164"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-reader-read.lisp",
         "tests/acl2/owner-reader-read-tests.lisp",
@@ -11895,7 +11895,7 @@
         "PRF-288"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-time-admission.lisp",
         "books/peer-inbound-invariants.lisp",
@@ -12431,7 +12431,7 @@
         "PRF-302"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-rcompat-reply-cat-is-rcompat-reply",
         "fn-rcompat-retrieval-cat-is-retrieval",
@@ -13819,7 +13819,7 @@
         "PRF-377"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/memory-credits.lisp",
         "books/owner-credits.lisp",
@@ -14210,7 +14210,7 @@
         "PRF-222"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/group-access-cache.lisp",
         "books/group-access.lisp",
@@ -16487,7 +16487,7 @@
         "PRF-383"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/rev-onto.lisp",
         "books/config.lisp",
@@ -21555,7 +21555,7 @@
         "PRF-346"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/protocol-table.lisp",
         "books/protocol-served.lisp",

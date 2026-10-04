@@ -2518,24 +2518,24 @@
     "books": 3005,
     "books_in_root_closure": 2830,
     "roots": 2511,
-    "theorems": 39482,
-    "functions": 25456,
-    "assert_events": 27116,
-    "must_fails": 2682,
+    "theorems": 39490,
+    "functions": 25461,
+    "assert_events": 27135,
+    "must_fails": 2684,
     "prover_refusals": 0,
     "encapsulates": 253,
     "guards": {
       "verified": 4046,
       "declared-off": 3288,
-      "default-guarded": 14022,
+      "default-guarded": 14027,
       "default-unguarded": 4100
     },
-    "suspect_theorems": 1447,
+    "suspect_theorems": 1448,
     "export_hygiene_warnings": 418,
     "enabled_projection_warnings": 80,
     "teeth_form_warnings": 294,
     "include_hygiene_warnings": 3988,
-    "host_names_warnings": 3490,
+    "host_names_warnings": 3494,
     "hand_written_record_warnings": 19
   },
   "books": [
@@ -36141,7 +36141,7 @@
       "book": "books/owner-reclaim.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 17,
+      "theorems": 19,
       "functions": 12,
       "guards": {
         "verified": 1,
@@ -40296,12 +40296,12 @@
       "book": "books/peer-round-driver.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 3,
-      "functions": 15,
+      "theorems": 8,
+      "functions": 20,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 15,
+        "default-guarded": 20,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -40312,10 +40312,12 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "feed-wire-input"
+        "feed-wire-input",
+        "scheduler-peers"
       ],
       "system_includes": [],
       "suspects": [
+        "fn-prd-pause-polls-while-a-round-runs",
         "fn-prd-round-past-deadline-is-lost"
       ],
       "read_error": null
@@ -76346,7 +76348,7 @@
       "book": "tests/acl2/owner-reclaim-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
+      "theorems": 1,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -76355,8 +76357,8 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 33,
-      "must_fails": 2,
+      "assert_events": 37,
+      "must_fails": 4,
       "prover_refusals": 0,
       "defconsts": 3,
       "defmacros": 3,
@@ -78853,10 +78855,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 36,
+      "assert_events": 51,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 2,
+      "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -93493,7 +93495,7 @@
     {
       "theorem": "fn-orc-one-pass-in-flight-by-definition",
       "book": "books/owner-reclaim.lisp",
-      "line": 284,
+      "line": 289,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-orc-request-word and the conclusion is that arm's value"
       ]
@@ -95182,9 +95184,18 @@
       ]
     },
     {
+      "theorem": "fn-prd-pause-polls-while-a-round-runs",
+      "book": "books/peer-round-driver.lisp",
+      "line": 182,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-prd-pause-ms and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis is a branch test of fn-prd-pause-ms and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-prd-round-past-deadline-is-lost",
       "book": "books/peer-round-driver.lisp",
-      "line": 70,
+      "line": 71,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-prd-action and the conclusion is that arm's value"
       ]
@@ -151822,49 +151833,77 @@
       },
       {
         "host": "host/native/pull-service.lisp",
-        "line": 1027,
+        "line": 1036,
+        "name": "fnn-owner-service-wait-lock",
+        "source": "host/native/owner.lisp",
+        "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/pull-service.lisp",
+        "line": 1036,
+        "name": "fnn-owner-service-wait-queue",
+        "source": "host/native/owner.lisp",
+        "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/pull-service.lisp",
+        "line": 1036,
+        "name": "fnn-owner-service-commits",
+        "source": "host/native/owner.lisp",
+        "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/pull-service.lisp",
+        "line": 1052,
         "name": "serious-condition",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/pull-service.lisp",
-        "line": 1082,
+        "line": 1114,
         "name": "fnn-owner-thread-escape",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/pull-service.lisp",
-        "line": 1088,
+        "line": 1120,
         "name": "def-actor",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/pull-service.lisp",
-        "line": 1091,
+        "line": 1123,
         "name": "fnn-pull-spawn",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/pull-service.lisp",
-        "line": 1091,
+        "line": 1123,
         "name": "fnn-owner-actor-for-custody",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/pull-service.lisp",
-        "line": 1091,
+        "line": 1123,
         "name": "fnn-owner-actor-thread",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/pull-service.lisp",
-        "line": 1134,
+        "line": 1155,
+        "name": "fnn-owner-signal-commit",
+        "source": "host/native/owner.lisp",
+        "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/pull-service.lisp",
+        "line": 1168,
         "name": "fnn-owner-actor-join",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"

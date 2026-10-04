@@ -13,22 +13,22 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 3005 |
 | Certification roots in the Makefile | 2511 |
 | Books inside the root closure | 2830 |
-| `defthm` and `defthmd` events | 39482 |
-| `defun` events | 25456 |
+| `defthm` and `defthmd` events | 39490 |
+| `defun` events | 25461 |
 | Functions with verified guards | 4046 |
 | Functions declared `:verify-guards nil` and never verified | 3288 |
-| Functions left at the default with an explicit guard | 14022 |
+| Functions left at the default with an explicit guard | 14027 |
 | Functions left at the default with no guard | 4100 |
-| `assert-event` checks | 27116 |
-| `must-fail` checks | 2682 |
+| `assert-event` checks | 27135 |
+| `must-fail` checks | 2684 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 253 |
-| Theorems flagged SUSPECT by shape | 1447 |
+| Theorems flagged SUSPECT by shape | 1448 |
 | Export-hygiene warnings | 418 |
 | Enabled-projection warnings | 80 |
 | Teeth-form warnings | 294 |
 | Include-hygiene warnings | 3988 |
-| Host-names warnings | 3490 |
+| Host-names warnings | 3494 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -1219,7 +1219,7 @@ that `make certify` requests.
 | `books/owner-reclaim-pass.lisp` | closure | 15 | 20 | 3/5/12/0 | 0 | 0 | 0 |
 | `books/owner-reclaim-ready.lisp` | closure | 10 | 4 | 0/2/2/0 | 0 | 0 | 2 |
 | `books/owner-reclaim-seal.lisp` | root | 7 | 9 | 1/0/8/0 | 0 | 0 | 1 |
-| `books/owner-reclaim.lisp` | root | 17 | 12 | 1/2/9/0 | 0 | 0 | 1 |
+| `books/owner-reclaim.lisp` | root | 19 | 12 | 1/2/9/0 | 0 | 0 | 1 |
 | `books/owner-recover-ocl.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-recovery-retain.lisp` | closure | 15 | 2 | 0/0/2/0 | 0 | 0 | 1 |
 | `books/owner-refresh-indexed.lisp` | root | 10 | 5 | 0/0/5/0 | 0 | 0 | 1 |
@@ -1360,7 +1360,7 @@ that `make certify` requests.
 | `books/peer-pull-session.lisp` | root | 44 | 51 | 4/0/47/0 | 0 | 0 | 3 |
 | `books/peer-pull.lisp` | root | 96 | 130 | 22/0/108/0 | 0 | 0 | 2 |
 | `books/peer-refused-offers.lisp` | root | 20 | 4 | 0/4/0/0 | 0 | 0 | 1 |
-| `books/peer-round-driver.lisp` | root | 3 | 15 | 0/0/15/0 | 0 | 0 | 1 |
+| `books/peer-round-driver.lisp` | root | 8 | 20 | 0/0/20/0 | 0 | 0 | 2 |
 | `books/peer-set.lisp` | root | 33 | 18 | 1/0/17/0 | 0 | 0 | 2 |
 | `books/peer-transit-authority.lisp` | root | 11 | 8 | 0/1/7/0 | 0 | 0 | 0 |
 | `books/peer-transit-forms.lisp` | root | 10 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -2647,7 +2647,7 @@ that `make certify` requests.
 | `tests/acl2/owner-reclaim-pass-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 36 | 4 | 0 |
 | `tests/acl2/owner-reclaim-ready-tests.lisp` | root | 1 | 1 | 0/1/0/0 | 18 | 2 | 0 |
 | `tests/acl2/owner-reclaim-seal-tests.lisp` | root | 7 | 0 | 0/0/0/0 | 1 | 3 | 2 |
-| `tests/acl2/owner-reclaim-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 33 | 2 | 0 |
+| `tests/acl2/owner-reclaim-tests.lisp` | root | 1 | 2 | 0/0/0/2 | 37 | 4 | 0 |
 | `tests/acl2/owner-recover-ocl-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 3 | 0 |
 | `tests/acl2/owner-refresh-indexed-tests.lisp` | root | 0 | 8 | 0/6/0/2 | 5 | 0 | 0 |
 | `tests/acl2/owner-report-count-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
@@ -2738,7 +2738,7 @@ that `make certify` requests.
 | `tests/acl2/peer-pull-auth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 23 | 1 | 0 |
 | `tests/acl2/peer-pull-session-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 63 | 11 | 0 |
 | `tests/acl2/peer-pull-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 87 | 20 | 0 |
-| `tests/acl2/peer-round-driver-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 36 | 0 | 0 |
+| `tests/acl2/peer-round-driver-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 51 | 0 | 0 |
 | `tests/acl2/peer-set-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 43 | 0 | 0 |
 | `tests/acl2/peer-transit-forms-tests.lisp` | root | 0 | 9 | 0/2/0/7 | 34 | 5 | 0 |
 | `tests/acl2/peer-transit-indexed-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 11 | 0 | 0 |
@@ -3704,7 +3704,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-oor-fields-budget` | `books/owner-operation-report.lisp` | 56 | instance-corollary: the statement is fn-od-fields-within-budget instantiated, discharging nothing |
 | `fn-opc-conn-id-of-conn-make` | `books/owner-prepare-correspondence.lisp` | 211 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-opc-prepare-keeps-configured-owner-context` | `books/owner-prepare-correspondence.lisp` | 371 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-orc-one-pass-in-flight-by-definition` | `books/owner-reclaim.lisp` | 284 | arm-of-definition: the hypotheses select one IF/COND arm of fn-orc-request-word and the conclusion is that arm's value |
+| `fn-orc-one-pass-in-flight-by-definition` | `books/owner-reclaim.lisp` | 289 | arm-of-definition: the hypotheses select one IF/COND arm of fn-orc-request-word and the conclusion is that arm's value |
 | `fn-orc-zero-current-requires-complete-current-scan-by-definition` | `books/owner-retire-cursor.lisp` | 87 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-orc-zero-currentp |
 | `fn-orcn-swap-base-view` | `books/owner-reclaim-conns.lisp` | 59 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-orcn-swapped-ocfg-fields` | `books/owner-reclaim-conns.lisp` | 70 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -3912,7 +3912,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-post-reader-env-listing` | `books/nntp-post.lisp` | 420 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-post-reader-env-observation` | `books/nntp-post.lisp` | 405 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-post-reader-env-posting` | `books/nntp-post.lisp` | 398 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-prd-round-past-deadline-is-lost` | `books/peer-round-driver.lisp` | 70 | arm-of-definition: the hypotheses select one IF/COND arm of fn-prd-action and the conclusion is that arm's value |
+| `fn-prd-pause-polls-while-a-round-runs` | `books/peer-round-driver.lisp` | 182 | arm-of-definition: the hypotheses select one IF/COND arm of fn-prd-pause-ms and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-prd-pause-ms and the conclusion is that branch's value |
+| `fn-prd-round-past-deadline-is-lost` | `books/peer-round-driver.lisp` | 71 | arm-of-definition: the hypotheses select one IF/COND arm of fn-prd-action and the conclusion is that arm's value |
 | `fn-prin-apply-succession-when-not-acceptable` | `books/principal-invariants.lisp` | 242 | arm-of-definition: the hypotheses select one IF/COND arm of fn-prin-apply-succession and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-prin-apply-succession and the conclusion is that branch's value |
 | `fn-prin-id-unfolds` | `books/principal-invariants.lisp` | 72 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-prin-sign-succession-fields` | `books/principal-invariants.lisp` | 124 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

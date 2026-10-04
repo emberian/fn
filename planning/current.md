@@ -31,7 +31,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [P4](#p4) one owner decides duplicate versus conflict | `fn-pb-same-article-is-answered-already-stored` | yes | no: closure moved | no: source changed since 69046a76 | no: dev source not on the node |
 | [P5](#p5) a connection-local fault costs one connection | `fn-ocfg-fault-keeps-every-other-connection` | yes | yes: `certify-20261004T075727Z-2319259` | no: source changed since 69046a76 | no: dev source not on the node |
 | [P6](#p6) live reconfiguration | `fn-ocl-no-reader-observes-a-half-change` | yes | yes: `certify-20261004T075727Z-2319259` | no: source changed since 69046a76 | no: dev source not on the node |
-| [P7](#p7) two nodes exchange both ways | `fn-own-submission-never-targets-a-loop` | yes | no: closure moved | no: source changed since 69046a76 | no: dev source not on the node |
+| [P7](#p7) two nodes exchange both ways | `fn-own-submission-never-targets-a-loop` | yes | yes: `certify-20261004T145847Z-94663` | no: source changed since 69046a76 | no: dev source not on the node |
 | [P8](#p8) signature verdict visible | `fn-own-read-hdr-fn-verified-is-the-pinned-verdict` | yes | no: caller bridge pending | no: caller bridge pending | no: caller bridge pending |
 | [P9](#p9) keep until release, refuse the unaffordable | `fn-sbud-prepare-refuses-at-budget` | yes | yes: `certify-20261004T075727Z-2319259` | no: source changed since 69046a76 | no: dev source not on the node |
 | [P10](#p10) every cut is a model crash point | `fn-lg-open-program-keeps-the-relation-at-every-cut` | yes | no: source uncertified | no: source changed since 69046a76 | no: dev source not on the node |
@@ -130,7 +130,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **two nodes exchange both ways.** An accepted article is offered to every configured peer except the one it came from and those its Path names, and a relayed article keeps the received Path tail.
 
 - Host-called subject: `fn-apc-submission-intent` at host/owner-host.lisp:3267, equated by `fn-own-submission-targets-are-feed-targets` (books/owner-feed-subject.lisp:35).
-- Keystone: `fn-own-submission-never-targets-a-loop` (books/owner-feed-subject.lisp:108; PRF-029 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260927T043640Z-3424681` passed this source of `books/owner-feed-subject.lisp`, and since then `books/acceptance-alloc.lisp`, `books/acceptance.lisp`, `books/accounts.lisp` and 220 more changed.
+- Keystone: `fn-own-submission-never-targets-a-loop` (books/owner-feed-subject.lisp:108; PRF-029 (certified)); certified at the current source and closure by `certify-20261004T145847Z-94663` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile two-node native-operator matrix with INN (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); changed since it: `books/owner-feed-subject.lisp`, `host/owner-host.lisp`.
 - Deployed: no: node image `a3553e6b`; changed since it: `host/owner-host.lisp`.
 - Latest positive result: all 22 TRANSIT-*-AB/BA rows and INN 33/33; peering 5/5 with the Path-identity transit, protected_peering 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
