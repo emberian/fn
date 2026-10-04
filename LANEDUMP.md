@@ -4543,3 +4543,8 @@ S074/S090/S138/S151 and journal physical prepared fixtures remain source/proof
 versus current-image obligations, not completion claims. No live deployment.
 Protected recovery partition, expanded init/reopen and complete tariff remain
 open. Bounds catchup controller draft is preserved but activation unwired.
+
+## docs lane (lane/docs) — 2026-10-04
+
+Entry: build/coordinator/lanedumps/docs.md (deliverables, shas, word counts,
+continuation point).

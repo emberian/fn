@@ -353,7 +353,7 @@ def verify_state_checkpoint_cut_map() -> None:
     # fnn-state-checkpoint-write is its two halves in order (Q16: the online
     # reclaim pass stages off the owner mutex and installs under it).
     top = host_function(source, "fnn-state-checkpoint-write")
-    if "(fnn-state-checkpoint-install store (fnn-state-checkpoint-stage store octets sequence))" not in top:
+    if "(fnn-state-checkpoint-install store (fnn-state-checkpoint-stage store octets sequence image))" not in top:
         raise AssertionError("fnn-state-checkpoint-write is not stage then install")
     write = (host_function(source, "fnn-state-checkpoint-stage")
              + host_function(source, "fnn-state-checkpoint-install"))
@@ -362,7 +362,7 @@ def verify_state_checkpoint_cut_map() -> None:
              # S045: the staged file is read back and verified after its
              # fence and before the rename that replaces the old checkpoint
              # (a read: no step of the program, no cut).
-             write.index("(fnn-state-checkpoint-verify store stage sequence)"),
+             write.index("(fnn-state-checkpoint-verify store stage sequence image)"),
              write.index("(fnn-replace stage (fnn-state-checkpoint-path store))"),
              write.index("(fnn-at store :state-checkpoint-replaced)"),
              write.index("(fnn-fsync-dir (fnn-store-root store))"),
@@ -989,7 +989,9 @@ def verify_post_log_cut_map() -> None:
     # it is found by its phase word, not its argument text.
     complete_at = re.search(r"\(fnn-owner-commit-complete-locked\s+service\s+:complete\s", pipeline)
     order = [pipeline.find("(fnn-owner-start-syncer "),
-             pipeline.find("(sb-thread:join-thread syncer"),
+             # The syncer is an actor: its physical join is the custody
+             # receipt (3bda776c6), not a bare join-thread.
+             pipeline.find("(fnn-owner-actor-join service syncer)"),
              complete_at.start() if complete_at else -1,
              pipeline.find("(fnn-log-seal-capture store)")]
     if not (0 <= order[0] < order[1] < order[2] < order[3]):

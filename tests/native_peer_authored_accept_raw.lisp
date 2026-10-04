@@ -18,15 +18,15 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
-(defun fnn-core-buffer-state (name &rest args)
-  (declare (ignorable name args))
-  (harness-stub-reached 'fnn-core-buffer-state "host/native/io.lisp"))
-(defun fnn-octets-fill (vector)
-  (declare (ignorable vector))
-  (harness-stub-reached 'fnn-octets-fill "host/native/io.lisp"))
-(defun fnn-owner-attempt-filled (service msgid payload groups evidence &optional nntp-transit-p)
-  (declare (ignorable service msgid payload groups evidence nntp-transit-p))
-  (harness-stub-reached 'fnn-owner-attempt-filled "host/native/owner.lisp"))
+(defun fnn-fixed-callback-fail (subject tag cause)
+  (declare (ignorable subject tag cause))
+  (harness-stub-reached 'fnn-fixed-callback-fail "host/native/io.lisp"))
+(defun fnn-indeterminate (control &rest args)
+  (declare (ignorable control args))
+  (harness-stub-reached 'fnn-indeterminate "host/native/io.lisp"))
+(defun fnn-owner-admission-pending (verdict)
+  (declare (ignorable verdict))
+  (harness-stub-reached 'fnn-owner-admission-pending "host/native/owner.lisp"))
 (defun fnn-owner-key-statement (service event &optional at-open)
   (declare (ignorable service event at-open))
   (harness-stub-reached 'fnn-owner-key-statement "host/native/owner.lisp"))
@@ -46,7 +46,7 @@
 (defvar *store* (make-sample-store))
 (defvar *form* :absent)
 (defvar *plan* '(:refused :local-enrollment))
-(defvar *existing* nil)
+(defvar *existing* :absent)  ; ACL2's word for no stored record (fnn-owner-existing-verdict)
 (defvar *signature* :verified)
 (defvar *calls* nil)
 (defvar *filing* nil)
@@ -110,6 +110,23 @@
   (declare (ignore args))
   (assert (eq name 'fn-hsig-host-preimage))
   '(1 2 3))
+;; D27 (sweep S002): the served attempt fills the octet buffer once and the
+;; login gate reads it (fn-owner-login-gate-buffer).  The buffer is the
+;; physical seam here: recorded; the gate is the default open policy's,
+;; as fn-owner-login-gate answers above.
+(defvar *filled* nil)
+(defun fnn-octets-fill (vector) (setq *filled* (coerce vector 'list)) :buffer)
+(defun fnn-core-buffer-state (name &rest args)
+  ;; The buffer readers answer as their list forms above (the same ACL2
+  ;; decisions over the filled octets: books/peer-authored-accept.lisp).
+  (case name
+    (fn-owner-login-gate-buffer (fnn-owner-core 'fn-owner-login-gate))
+    (fn-owner-control-filing-buffer
+     (fnn-owner-core 'fn-owner-control-filing *filled* (first args)))
+    (fn-owner-peer-carrier-form-buffer
+     (fnn-owner-core 'fn-owner-peer-carrier-form *filled*))
+    (fn-owner-transit-verdict-buffer (fnn-owner-core 'fn-owner-transit-verdict))
+    (otherwise (error "unexpected buffer core ~s" name))))
 (defun fnn-owner-action (name &rest args)
   (case name
     (fn-owner-existing-action
@@ -142,6 +159,7 @@
     (loop for form = (read stream nil :eof) until (eq form :eof)
           when (and (consp form) (eq (car form) 'defun)
                     (member (cadr form) '(fnn-owner-attempt-transit
+                                          fnn-owner-attempt-filled
                                           fnn-owner-attempt-served)))
             do (eval form)
                (when (eq (cadr form) 'fnn-owner-attempt-served)
@@ -164,6 +182,8 @@
                   (defvar *fnn-owner-payload-list*)
                   (defun fnn-owner-payload-octets)
                   (defun fnn-owner-note-transit-verdict)
+                  (defun fnn-owner-note-transit-verdict-buffer)
+                  (defun fnn-owner-existing-verdict)
                   (defun fnn-owner-transit-class)
                   (defun fnn-owner-statement-committed))))
     (loop for form = (read stream nil :eof) until (eq form :eof)
@@ -178,7 +198,7 @@
   (fnn-owner-attempt-transit :service #(60 120 62) #(65 66)
                              (list #(103)) #(69)))
 (defun reset-case ()
-  (setq *calls* nil *existing* nil *signature* :verified
+  (setq *calls* nil *existing* :absent *signature* :verified
         *fnn-owner-transit-detail* nil *filing* nil
         *plan* '(:refused :local-enrollment)))
 

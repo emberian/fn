@@ -75,7 +75,7 @@ class SlowDiskSourceTests(unittest.TestCase):
         self.assertIn("(fnn-owner-disk-event service :clock)", pipeline)
         self.assertIn("(fnn-owner-disk-wait-ms service)", pipeline)
         self.assertIn(":timeout (/ ms 1000)", pipeline)
-        self.assertLess(pipeline.index("(fnn-owner-start-syncer service gen job)"),
+        self.assertLess(pipeline.index("(fnn-owner-start-syncer service gen job syncer-grant)"),
                         pipeline.index("(fnn-owner-disk-event service :issue limits)"))
         # Slice 2: past H every member is told uncertain, once per barrier,
         # and the queued POSTs are shed; the told members are not answered
@@ -111,10 +111,10 @@ class SlowDiskSourceTests(unittest.TestCase):
         # fn-owner-chunk-span over the same scheduler value, first with a
         # cold payload thrown out of the mutex (the line is then read off
         # it), else the whole read as before when the cache is off.
-        self.assertIn("(fnn-owner-chunk-span-no-io cid incoming sched)", chunk)
+        self.assertIn("(fnn-owner-chunk-span-no-io\n                    cid incoming sched", chunk)
         no_io = owner[owner.index("(defun fnn-owner-chunk-span-no-io "):
                       owner.index("(defun fnn-owner-cold-line ")]
-        self.assertIn("'fn-owner-chunk-span cid 0 (length incoming) sched)", no_io)
+        self.assertIn("(cid incoming sched &optional (end (length incoming)))", no_io)
         self.assertIn("'fn-owner-chunk-span cid 0 end sched)", no_io)
         self.assertIn("(fnn-core 'fn-otm-peer-read-proceeds-p class sched)", chunk)
         mux = (ROOT / "host" / "native" / "mux.lisp").read_text()
@@ -137,16 +137,25 @@ class SlowDiskSourceTests(unittest.TestCase):
         self.assertIn("'fn-owner-shed-outcome", shed[:2000])
         wrapper = (ROOT / "host" / "owner-host.lisp").read_text()
         # The served read is the credit read over the slots' read over the
-        # time model's (lanes zero-copy-commit, admission-gap, credits):
-        # the disk's classification runs first, and a POST the slots refuse
+        # time model's (lanes zero-copy-commit, admission-gap, credits): the
+        # disk's classification runs first, and a POST the slots refuse
         # while the disk sheds is told the disk's reason
-        # (books/owner-article-slots.lisp fn-oas-refusal-line).
-        self.assertIn("(fn-mca-read-span\n", wrapper)
-        credits = (ROOT / "books" / "owner-credits.lisp").read_text()
-        self.assertIn("(r0 (fn-oas-read-span oc views id i end ", credits)
+        # (books/owner-article-slots.lisp fn-oas-refusal-line).  Since the
+        # selective available read the host's chain is the fn-av- one
+        # (books/served-available-read.lisp; its refinement to the fn-mca-
+        # chain is owed, see tests/test_native_served_cost.py).
+        self.assertIn("(fn-av-mca-read-span credits oc views id start stop cache sched",
+                      wrapper[wrapper.index("(defun fn-asto-mca-read-span "):][:1200])
+        available = (ROOT / "books" / "served-available-read.lisp").read_text()
+        credits = available[available.index("(defun fn-av-mca-read-span "):][:1200]
+        self.assertIn("(r0 (fn-av-oas-read-span oc views id i end ", credits)
         slots = (ROOT / "books" / "owner-article-slots.lisp").read_text()
-        body = slots[slots.index("(defun fn-oas-read-span "):]
-        self.assertIn("(let ((r (fn-otm-read-span oc views id i end ", body[:900])
+        body = available[available.index("(defun fn-av-oas-read-span "):]
+        self.assertIn("(let ((r (fn-av-otm-read-span oc views id i end ", body[:900])
+        admission = available[available.index("(defun fn-av-otm-read-span "):][:1200]
+        self.assertLess(admission.index("(eq (fn-otm-admit-post s) :shed)"),
+                        admission.index("(fn-av-orr-read-span"))
+        self.assertIn("(fn-otm-shed-reply s)", admission)
         self.assertIn("(fn-otm-post-command-reply s)",
                       slots[slots.index("(defun fn-oas-refusal-line "):][:400])
         self.assertIn("(fn-otm-shed-reply s)", wrapper)
