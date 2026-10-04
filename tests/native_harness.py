@@ -1198,9 +1198,14 @@ class Node:
                         cwd=ROOT, env=self.environment(env), limit=limit)
         self.processes.append(process)
         self.process = process
-        if ready and self.listening > 1:
+        # `run --once` serves its one connection on the plain listener: ACL2's
+        # run plan names no implicit-TLS port for it (books/native-operator.lisp
+        # fn-native-operator-result-run-implicit-tls-port), while the TLS
+        # context (STARTTLS) is installed either way.
+        listening = 1 if "--once" in verb else self.listening
+        if ready and listening > 1:
             # Several listeners announce in either order.
-            for _ in range(self.listening):
+            for _ in range(listening):
                 process.announcement(b"LISTENING", timeout=timeout)
         elif ready:
             line = process.announcement(ready, timeout=timeout)
