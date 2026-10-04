@@ -6921,7 +6921,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-nntp-archive-command-cat-is-pinned"
+          "name": "fn-proto-archive-command-cat-is-pinned"
         },
         {
           "kind": "theorem",
@@ -12237,8 +12237,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-nntp-archive-command-cat-is-pinned",
-          "note": "The -cat dispatcher's boundary theorem, statement unchanged, now over the twins."
+          "name": "fn-proto-archive-command-cat-is-pinned",
+          "note": "The served dispatcher's boundary theorem: the generated fn-proto-archive-command-cat-is-pinned replaced the hand fn-nntp-archive-command-cat-is-pinned (DC02), over the twins."
         },
         {
           "kind": "theorem",
@@ -18660,6 +18660,30 @@
         {
           "kind": "theorem",
           "name": "fn-rv-destroy-returns-exactly-the-unsettled-draws"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rv-replayed-completion-is-stale"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rt-step-keeps-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rt-run-keeps-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rt-step-refused-keeps-the-tree"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rt-sub-bank-steps-keep-the-root"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rt-destroy-revokes-the-sub-bank"
         }
       ]
     },
@@ -19514,6 +19538,89 @@
         {
           "kind": "theorem",
           "name": "fn-pull-plans-credentials-come-from-selected-peer"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1040",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-log-crash-retry-is-old-or-new"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-log-complete-store-carries-the-node-secret"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1313",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-qplan-cw-drain-is-a-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lst-active-command-is-av-list-active"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lst-counts-command-is-av-list-counts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lst-step-keeps-remaining"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lsr-one-finite-progress"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lst-one-finite-progress"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1315",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rcw-acc-steps-is-capture"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcw-canon-acc-steps-is-the-checkpoint-capture"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcw-load-chunks-is-load"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcw-finish-of-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcw-predict-acc-steps-is-predict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcw-srcs-steps-is-the-walk"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcw-load-chunks-keyed-is-keyed-load"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-orcp-rebuild-of-capture-is-the-full-open"
         }
       ]
     }

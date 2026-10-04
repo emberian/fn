@@ -4311,8 +4311,7 @@
         "fn-pcb-budget-after-extension",
         "fn-pcb-present-carrier-not-accepted-has-a-class",
         "fn-pcb-refused-carrier-is-never-signature-failed",
-        "fn-pcb-absent-carrier-has-no-class",
-        "fn-pcb-carried-event-keeps-budget-schedule-admitted"
+        "fn-pcb-absent-carrier-has-no-class"
       ]
     },
     {
@@ -12084,7 +12083,7 @@
         "PRF-1307"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "files": [
         "books/peer-catchup-spool.lisp",
         "books/peer-catchup-spool-framer.lisp",
@@ -12115,7 +12114,7 @@
         "PRF-125"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/peer-pull-auth.lisp",
         "books/peer-pull.lisp",
@@ -14074,7 +14073,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-feed.lisp",
         "books/feed-restart-domain.lisp",
@@ -21848,7 +21847,7 @@
         "PRF-1209"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/host-model-machine.lisp",
         "books/host-model.lisp",
@@ -22170,7 +22169,7 @@
     {
       "id": "PRF-1265",
       "title": "Native incremental history image rows preserve all-event history with a 16-slot consumed suffix envelope",
-      "statement": "The actual native publisher fnn-history-image-build calls fn-his-build-row. Under fn-hrc-wfp and fn-hrs-rel H C, a drained suffix accepts exactly one all-event row and the result represents H appended with that event; a pending suffix refuses without effects. Consumed one-row slots are cleared and recycled. fn-his-build-row-bounds-suffix-capacity proves a suffix capacity at most16 stays at most16 independent of event byte size. This is retained suffix pointer storage only, not whole-image allocation or per-step work: existing row encoding, relocation and flat page-array growth remain proportional. Native publishers own a fresh registered scratch instance through staged readback; finish compares ACL2 captured count to actual nimg before binding.",
+      "statement": "fn-his-build-row, the row builder this row's two events are about, is superseded: the native publisher fnn-history-image-build now runs fn-his-row-begin/step/grow through fnn-history-image-row-run (books/history-image-row-step.lisp), and no host line calls fn-his-build-row, so the events are unreachable-in-composition (reach_check baseline; function and theorems owed for deletion). Of fn-his-build-row: Under fn-hrc-wfp and fn-hrs-rel H C, a drained suffix accepts exactly one all-event row and the result represents H appended with that event; a pending suffix refuses without effects. Consumed one-row slots are cleared and recycled. fn-his-build-row-bounds-suffix-capacity proves a suffix capacity at most16 stays at most16 independent of event byte size. This is retained suffix pointer storage only, not whole-image allocation or per-step work: existing row encoding, relocation and flat page-array growth remain proportional. Native publishers own a fresh registered scratch instance through staged readback; finish compares ACL2 captured count to actual nimg before binding.",
       "milestone": "M5",
       "requirements": [
         "REP-010"
@@ -23266,7 +23265,7 @@
         "PRF-1211"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "files": [
         "books/peer-flight-reservation.lisp",
         "tests/acl2/peer-flight-reservation-tests.lisp",
@@ -23371,7 +23370,7 @@
         "PRF-1229"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "events": [
         "fn-qplan-cw-drain-is-a-prefix",
         "fn-lst-active-command-is-av-list-active",
@@ -23400,7 +23399,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/reclaim-chunked-walk.lisp",
         "tests/acl2/reclaim-chunked-walk-tests.lisp (the owner fixture store rewritten under the expiring context: two chunkings, one with an empty chunk, finish to the whole capture; teeth: chunks reordered or one dropped is not the capture; pass 2 with the handle not carried into the second chunk is not the checkpoint capture; the final handle is the sealed-payload count, positive)",
@@ -23433,7 +23432,7 @@
         "PRF-942"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/store-init-log-publication.lisp",
         "tests/acl2/store-init-log-publication-tests.lisp",

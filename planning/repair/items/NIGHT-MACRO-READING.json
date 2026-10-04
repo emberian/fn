@@ -7,7 +7,8 @@
  "harness": "tests/test_harness_check.py",
  "id": "NIGHT-MACRO-READING",
  "notes": [
-  "10-03 02:26 claimed: scope=['tools/harness_check.py', 'tests/test_harness_check.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_harness_check.RawMacroTemplateTests.test_section_envelope_literal_core_calls_are_inventory"
+  "10-03 02:26 claimed: scope=['tools/harness_check.py', 'tests/test_harness_check.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_harness_check.RawMacroTemplateTests.test_section_envelope_literal_core_calls_are_inventory",
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit 12ca1882e, tools/harness_check.py); local test python3.12 -m unittest tests.test_harness_check.RawMacroTemplateTests.test_section_envelope_literal_core_calls_are_inventory PASS at HEAD; native pending: none (tooling)"
  ],
  "owner": "codex-sol-tools",
  "scope": [
@@ -18,10 +19,10 @@
  ],
  "severity": "medium",
  "source": "runtime-convergence",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_harness_check.RawMacroTemplateTests.test_section_envelope_literal_core_calls_are_inventory",
  "title": "Host interface reading ignores literal calls emitted by macro templates",
- "updated": "2026-10-03T06:27:02Z",
+ "updated": "2026-10-04T06:28:43Z",
  "verify": {
   "base": "d8e306288b66dffd9510a6bb9f690a78eff60f03",
   "base_observation": {

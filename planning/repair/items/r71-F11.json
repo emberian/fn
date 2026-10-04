@@ -9,14 +9,15 @@
  "line": "1182",
  "locus": "connections",
  "notes": [
-  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
+  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification",
+  "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix d140933b5; current site host/native/mux.lisp fnn-mux-timers notes the idle deadline only when fnn-mux-idle-eligible-p); local test none (raw N/A); native pending: tests.test_native_host_lifecycle.IdleTimerTests.test_a_long_cursor_reply_does_not_busy_poll_between_quanta"
  ],
  "owner": "host-lifecycle",
  "severity": "high",
  "sha": "4e409a9d6",
  "slice": "mux",
  "source": "r71",
- "state": "in-progress",
+ "state": "landed",
  "title": "fnn-mux-timers (bug)",
- "updated": "2026-10-03T02:32:57Z"
+ "updated": "2026-10-04T06:31:39Z"
 }

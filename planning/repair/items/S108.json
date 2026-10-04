@@ -14,7 +14,8 @@
  "line": "418",
  "locus": "peer-services",
  "notes": [
-  "10-03 04:01 claimed: scope=['host/native/feed-service.lisp', 'host/native/pull-service.lisp', 'books/peer-host.lisp', 'books/feed-link-backoff.lisp', 'specs/peering.md', 'tests/acl2/peer-host-tests.lisp', 'tests/acl2/feed-link-backoff-tests.lisp', 'tests/native_feed_credential_raw-mock.lisp', 'tests/test_native_feed_credential.py', 'tests/test_native_peer_pull.py', 'tests/scenarios/catalog.json', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_invalid_profile_refuses_before_any_connect"
+  "10-03 04:01 claimed: scope=['host/native/feed-service.lisp', 'host/native/pull-service.lisp', 'books/peer-host.lisp', 'books/feed-link-backoff.lisp', 'specs/peering.md', 'tests/acl2/peer-host-tests.lisp', 'tests/acl2/feed-link-backoff-tests.lisp', 'tests/native_feed_credential_raw-mock.lisp', 'tests/test_native_feed_credential.py', 'tests/test_native_peer_pull.py', 'tests/scenarios/catalog.json', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_invalid_profile_refuses_before_any_connect",
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit 8fa6b902b credential preflight, host/native/feed-service.lisp); local test python3.12 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_invalid_profile_refuses_before_any_connect PASS at HEAD and whole tests.test_native_feed_credential PASS (raw SBCL harness); native pending: scenario-catalog credential image scenario (not run)"
  ],
  "owner": "codex-sol-tools",
  "reviewer": "feed-service.lisp:418-421 connects first and reads fnn-feed-auth-profile second. The handler (424-434) catches fnn-feed-auth-error together with the dial errors, calls fnn-peer-dial-report, and drops with cause :dial. fnn-peer-dial-outcome (io.lisp:5689-5699) maps fnn-feed-auth-error (feed-service.lisp:25, a plain error) to :connect. The result is a misleading diagnosis plus one wasted peer connection per backoff interval; there is no correctness loss.",
@@ -36,10 +37,10 @@
  ],
  "severity": "low",
  "source": "sweep-2026-10-03",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_native_feed_credential.CredentialAdmissionTests.test_invalid_profile_refuses_before_any_connect",
  "title": "Outbound feed dials TCP before reading the credential profile, and logs a profile failure as a peer connect failure",
- "updated": "2026-10-03T08:04:27Z",
+ "updated": "2026-10-04T06:28:44Z",
  "verify": {
   "base": "c73372af6f5fd383090399c7c89e8c2951a05add",
   "base_observation": {

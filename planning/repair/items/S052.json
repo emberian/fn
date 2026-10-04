@@ -12,6 +12,7 @@
  "notes": [
   "10-02 22:30 fixed 9b7508ccb on lane/sweep-peer; in the next READY batch after S005",
   "10-02 22:33 sent in 5536e2f08; books certified",
+  "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix 9b7508ccb; current site books/owner.lisp fn-own-bp-transit-kind-word + keystone fn-own-bp-transit-submit-result-defers-a-deferral, owner-log.lisp :clock-unusable -> :deferred, tcpcl-delivery.lisp No Resources); local test none (owner/tcpcl-delivery test books not loadable cached-only on laptop: deps uncertified); RESIDUAL not done by the lane: host/native/bp-app.lisp:262 still counts a :deferred class in the refused tally (pinned summary format), smallest fix a separate deferred counter; native pending: tests.test_bp_service_native",
   "10-04 04:17 ledger-open-a: bp-app keeps :deferred out of the refused tally (new deferred counter; summary line appends deferred=N only when N>0, pinned shape unchanged); tests/test_native_bp_app_tally.py runs the actual fnn-bpapp-deliver and fnn-bp-summary (red before: refused=1 for :busy). Source witness only; no native run."
  ],
  "owner": "sweep-peer",

@@ -11,6 +11,7 @@
  "locus": "store-books",
  "notes": [
   "10-02 23:06 LF sweep removed (test added); checkpoint entries kept: specs/checkpoint.md cites them, comment records it",
+  "10-04 02:28 ledger-close 2026-10-04: left in-progress: LF sweep (fn-store-sn-sweep-staging/-join-octet-names) is gone from origin/next (68ff759ef, test_lf_joined_staging_sweep_removed PASS), but the generation-checkpoint wrappers (host/checkpoint-host.lisp fn-store-checkpoint-decode/-restore/-differential) and fn-store-txn-observation-octets (host/store-node-host.lisp) are still in the tree; smallest fix: retire them with their specs/checkpoint.md claims and interface/coverage rows (same shape as open S150)",
   "10-04 04:19 ledger-open-a: wrappers deleted (see commit); the LF sweep and its test were already gone. Interface/coverage rows: none existed for the deleted names (definterface rows are the clone/rollover entries only). planning/proofs.json line 2083 still describes the retired native txn observer; not edited. Raw host load not run (no certs for 167 books here)."
  ],
  "owner": "sweep-store",

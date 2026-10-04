@@ -12,6 +12,7 @@
  "locus": "peer-services",
  "notes": [
   "10-02 22:33 WIP unverified: coverage gate on candidates; REPL not finished; S026 not started",
+  "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix 5536e2f08 + 4671ace0f guards; current site books/bp-node-fragment-step.lisp fn-bpfj-family-coveredp gates fn-bpfj-candidate on held payload octets >= declared total; host yield is S026); local test none: no teeth test names the gate (smallest: a tests/acl2/bp-node-fragment-step-tests.lisp case where held octets < declared total offers no candidate); book certification not re-checked by this lane; native pending: bp:step-bound",
   "10-04 04:17 ledger-open-a: teeth for fn-bpfj-family-coveredp in tests/acl2/bp-node-fragment-step-job-tests.lisp (offset-zero fragment held, 5 of 8 declared octets, every other candidate test passes, no candidate; control with both fragments is offered; must-fail-checked reverse). Certified laptop certify-20261004T080807Z-87764. Host yield between quanta (fix text) is not part of this row."
  ],
  "owner": "sweep-peer",

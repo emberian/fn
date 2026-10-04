@@ -588,8 +588,8 @@ form lands). All sixteen archive keywords now declare their forms, including
 HDR's compatibility, ordinary and fn metadata fields and XHDR's compatibility
 and ordinary fields. The actual unrestricted command layer calls this generated
 dispatcher. Other keywords go directly to the pinned reference; the executable
-has no hand catalog-dispatch fallback. The retained hand catalog dispatcher is
-only the migration reference for per-row equality proofs. This switch preserves
+has no hand catalog-dispatch fallback; the hand catalog dispatcher and its
+keystone are deleted. This switch preserves
 current reply and view semantics; completed discovery, pin-first Message-ID
 fallback and bounded cold field reads remain explicit work. DATE follows its
 separate generated session route. The restricted route (a session with a group-access rule,

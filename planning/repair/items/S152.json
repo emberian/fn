@@ -6,12 +6,14 @@
  "fix": "Measure the live pass's resident set at 1k/10k/100k (tests.test_native_reclaim_walk FN_RUN_RECLAIM_RSS=1, on an image with the chunked walk PRF-1315 at lane/reclaim 086b9a38a) and replace the borrowed offline figure with the live pass's own measured copy count (a reclaim-specific constant beside *fn-heap-compaction-history-copies*, its derivation in heap-figure's comment), so the estimate funds what the pass holds. The walk no longer holds the rewritten-row list or a second predicted list; what it still holds whole is the checkpoint capture, the rebuilt capture, the fresh catalog and the history candidate.",
  "id": "S152",
  "line": "50",
- "notes": [],
- "owner": "reclaim",
+ "notes": [
+  "10-04 04:00 s152 (2026-10-04): DESIGN, not a constant. The pass's credit has no producer on any node: fn-mca-initial-funds-exactly-the-articles makes the run ledger's free credit exactly fn-heap-articles-octets (<= max(reserve, 64 MiB), *fn-heap-article-slot-budget*), and fn-orcp-reserve draws the pass's estimate from that pool, beside the articles in flight. Live pass admitted iff 64 x history-octets <= pool: development preset (A 32,768) pool 3,441,664 so h <= 53,776 octets; default A (16 MiB) pool 64 MiB so h <= 1 MiB. No profile setting funds it (H is not in the pool; red2 with 64 MiB H refused the same 452,968,896). The proposed fix (a measured live copy count) cannot close it: one 16x list copy of the S152 history is 113 MB and the post-flip non-arena state of 2,100 records (48n + 2n x 4,160 + 8 used) about 74 MB, both far past 3.4 MB. Where the pass's second state comes from is the decision: (A) a reclaim term in the figure (every node's dynamic space grows), (B) the pass holds room in the store budget while it runs (POST admission changes during a pass), or (C) the open's completion reserve (about 1.2 GB at development bounds, idle after the open, never admitted against by the ledger's own comment; needs a repay transition in memory-credits). Keystone draft and teeth: build/coordinator/lanedumps/s152.md."
+ ],
+ "owner": "s152",
  "scenario": "A node with the default developer profile accumulates a few thousand articles with an expiry policy. Every live store reclaim answers deferred-credit, the expired payloads are never released, and the disk keeps growing although the policy says they expire. Only an operator-raised history bound (a larger reservation) lets the pass run.",
  "severity": "high",
  "source": "native-reclaim-walk-red-2026-10-04",
  "state": "open",
  "title": "A live store reclaim on a default developer node over 2,100 small articles is refused deferred-credit: the pass's reservation is the offline compaction's measured 4 extra list copies (fn-orcp-estimate = 16 x 4 x history octets), never measured for the live chunked pass",
- "updated": "2026-10-04T04:36:15Z"
+ "updated": "2026-10-04T08:01:06Z"
 }

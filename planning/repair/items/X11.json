@@ -8,12 +8,13 @@
  "locus": "peer-services",
  "notes": [
   "10-02 22:22 code on lane/reclaim-retention 37456df07 (fn-rcl-owner-feed-holders + fn-ofa-reclaimed-publication); after X01+S050",
-  "10-02 22:33 on 2f27ae729: feed holders in capture + renderer refuses tombstone (:article-reclaimed); REPL-admitted; no native yet"
+  "10-02 22:33 on 2f27ae729: feed holders in capture + renderer refuses tombstone (:article-reclaimed); REPL-admitted; no native yet",
+  "10-04 02:30 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (37456df07 + 2f27ae729, books/owner-feed-article.lisp fn-ofa-reclaimed-publication answers :article-reclaimed, host/owner-host.lisp feed path ~5157 and capture feed holders fn-rcl-owner-feed-holders); local test none run (REPL-admitted per notes); native pending: none named (no native test found)"
  ],
  "owner": "reclaim-retention",
  "severity": "high",
  "source": "coordinator",
- "state": "in-progress",
+ "state": "landed",
  "title": "feed queue renders a reclaimed article as tombstone bytes",
- "updated": "2026-10-03T02:33:28Z"
+ "updated": "2026-10-04T06:30:35Z"
 }

@@ -30,11 +30,6 @@
 ;; leaves a boundary (fn-fs-classify) and escalates the service's exit
 ;; (fn-fs-stop-exit-escalate); both run in handlers, called directly.
 (include-book "books/failure-scope")
-(include-book "books/peer-flight-profile")
-(include-book "books/peer-flight-startup")
-(include-book "books/peer-catchup-spool-resources")
-(include-book "books/peer-catchup-spool")
-(include-book "books/peer-catchup-spool-hash")
 (include-book "books/committer-actor")
 (include-book "books/replay")
 ; Every codec seam's attachment (books/codec-attach.lisp): the books above
@@ -52,6 +47,13 @@
 ;; comes right after the codec and record attachments, before any of them.
 (include-book "books/payload-arena-attach")
 (include-book "books/history-paged-attach")
+;; The peer flight books reach `fn-arena' (heap-store-figure includes
+;; owner-checkpoint-pipeline), so they follow the arena attachment.
+(include-book "books/peer-flight-profile")
+(include-book "books/peer-flight-startup")
+(include-book "books/peer-catchup-spool-resources")
+(include-book "books/peer-catchup-spool")
+(include-book "books/peer-catchup-spool-hash")
 (include-book "books/store-config")
 (include-book "books/identity")
 (include-book "books/hybrid-store-injected")

@@ -724,7 +724,7 @@ def served_region():
             continue
         cost = row["cost"]
         cost_text = ("%s / %s" % (cost["unrestricted"], cost["restricted"])
-                     if cost else "hand arms, forms not yet declared" if row["name"] in owed
+                     if cost else "pinned reference, forms not yet declared" if row["name"] in owed
                      else "pinned peer arm, no forms" if row["dispatch"] == "pinned"
                      else "")
         quantum = ("cursor %s" % row["quantum"][1]) if row["quantum"] else ""
