@@ -214,17 +214,16 @@ as cold resources. Both values survive whole-config and individual-key
 `operator show`; loading the rendering preserves the complete normalized
 record, including absence of either resource policy. The renderable invariant
 carries the loader's output-policy predicate: two positive u64 naturals, with
-total heap at least twice the quantum heap. Since 2026-10-04 an explicit pair
-is accepted by `run` as the operator's opt-in to accounted output
-(`specs/resource-vector.md`, "Shared output pool"); its absence keeps the
-unaccounted path. Existing round-trip and accepted-load keystones
+total heap at least twice the quantum heap. Parsing and rendering this pair
+does not enable its pending operational consumer or change the operator's
+`output_resources` refusal. Existing round-trip and accepted-load keystones
 cover these fields; output-only and combined cold/output fixtures discriminate
 the representation boundary.
 
 Relative-path normalization also preserves both resource policies before
 rendering the resolved configuration for `fn-native-operator-run-at`. It
-cannot turn an explicit output policy into an absent default; the actual
-operator receives the policy and installs it.
+cannot turn an explicit unsupported output policy into an absent default;
+the actual operator still receives the policy and refuses it by name.
 
 ## Current operation observation
 
