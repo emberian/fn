@@ -26,6 +26,11 @@ from tests.native_harness import (
     scratch)
 
 IMAGE = native_image("FN_NATIVE_HOST", "build/fn-host-developer")
+# The statement cut (FN_NATIVE_KEY_STATEMENT_FAULT) is a developer selector
+# (host/native/io.lisp): the production image FN_NATIVE_HOST names under
+# tools/hbox_native.sh refuses it, so the cut cases start the developer image.
+DEVELOPER = (IMAGE if "developer" in IMAGE.name
+             else native_image("FN_NATIVE_DEVELOPER_HOST", "build/fn-host-developer"))
 OPENSSL = os.environ.get("FN_TEST_OPENSSL", "openssl")
 
 P = bytes([85]) * 32
@@ -91,6 +96,12 @@ class NativeKeyStatementTests(unittest.TestCase):
         return {"ed_public": ed_public, "ed_secret": ed_secret,
                 "ed_raw": bytes.fromhex(public), "ml_private": ml_private,
                 "ml_public": ml_public, "ml_raw": der[-1952:]}
+
+    def developer(self):
+        if not executable(DEVELOPER):
+            self.skipTest("the statement cut is a developer selector; no developer image: {}"
+                          .format(DEVELOPER))
+        return DEVELOPER
 
     def node(self, name, groups=("fn.test", "fn.keys"), init=True):
         """A Node under ROOT/NAME logging to service.log; its store made by
@@ -311,7 +322,7 @@ class NativeKeyStatementTests(unittest.TestCase):
             self.enrol_and_grant(c)
         finally:
             c.stop()
-        proc = c.start(env={"FN_NATIVE_KEY_STATEMENT_FAULT": "statement-committed:kill"})
+        proc = c.start(image=self.developer(), env={"FN_NATIVE_KEY_STATEMENT_FAULT": "statement-committed:kill"})
         old, new = self.keys["old"], self.keys["new"]
         statement = self.carrier(self.principal_file, old,
                                  self.succession("<cut@keys.invalid>", P, old, new), "cut")
@@ -471,7 +482,7 @@ class NativeKeyStatementTests(unittest.TestCase):
             self.enrol_and_grant(e)
         finally:
             e.stop()
-        proc = e.start(env={"FN_NATIVE_KEY_STATEMENT_FAULT": "statement-committed:kill"})
+        proc = e.start(image=self.developer(), env={"FN_NATIVE_KEY_STATEMENT_FAULT": "statement-committed:kill"})
         old, new = self.keys["old"], self.keys["new"]
         statement = self.carrier(self.principal_file, old,
                                  self.succession("<admitted@keys.invalid>", P, old, new),

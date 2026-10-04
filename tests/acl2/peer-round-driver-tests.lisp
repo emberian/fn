@@ -99,3 +99,51 @@
                 (now 8) (deadline 10) (round-deadline 9))
                :fault "a deadline taken one millisecond early, losing a round still inside its budget")))
 
+
+; S145 for the pull worker: ACL2's pause (fn-prd-pause-ms).  A table row is
+; (PEER NEXT INTERVAL BUSY).
+(defconst *prd-sched* '(((65) 5000 1000 nil) ((66) 1500 1000 t) ((67) 2400 1000 nil)))
+(assert-event (equal (fn-prd-next-due-wait *prd-sched* 1000 nil) 1400))
+(assert-event (equal (fn-prd-pause-ms nil *prd-sched* 1000) 1000))
+(assert-event (equal (fn-prd-pause-ms nil *prd-sched* 2000) 400))
+(assert-event (equal (fn-prd-pause-ms nil *prd-sched* 2395) 10))
+(assert-event (equal (fn-prd-pause-ms nil nil 0) 1000))
+(assert-event (equal (fn-prd-pause-ms '((:pull (65))) *prd-sched* 1000) 10))
+
+(defteeth fn-prd-pause-is-bounded
+  :claim (()
+          (and (<= (fn-prd-idle-ms) (fn-prd-pause-ms active tbl now))
+               (<= (fn-prd-pause-ms active tbl now) (fn-prd-idle-max-ms))))
+  :subject fn-prd-pause-ms
+  :witness ((active nil) (tbl *prd-sched*) (now 2000))
+  :breaks ()
+  :mutations ((the-old-poll
+               (:conclusion (equal (fn-prd-pause-ms active tbl now) (fn-prd-idle-ms)))
+               ((active nil) (tbl *prd-sched*) (now 2000))
+               :fault "an idle worker that polls every 10 ms (2,466 transit holds in 13 s on d5b0b9100)")))
+
+(defteeth fn-prd-pause-polls-while-a-round-runs
+  :claim (((admitted (consp active)))
+          (equal (fn-prd-pause-ms active tbl now) (fn-prd-idle-ms)))
+  :subject fn-prd-pause-ms
+  :witness ((active '((:pull (65)))) (tbl *prd-sched*) (now 1000))
+  :breaks ((admitted ((active nil) (tbl *prd-sched*) (now 1000))))
+  :mutations ((sleeps-a-second
+               (:conclusion (equal (fn-prd-pause-ms active tbl now) (fn-prd-idle-max-ms)))
+               ((active '((:pull (65)))) (tbl *prd-sched*) (now 1000))
+               :fault "a worker that sleeps a second between the I/O polls of an admitted round")))
+
+(defteeth fn-prd-pause-never-sleeps-past-a-due-round
+  :claim (((listed (member-equal row tbl))
+           (schedulable (fn-prd-row-schedulablep row)))
+          (<= (fn-prd-pause-ms active tbl now)
+              (max (fn-prd-idle-ms) (fn-prd-row-wait row now))))
+  :subject fn-prd-pause-ms
+  :witness ((row '((67) 2400 1000 nil)) (active nil) (tbl *prd-sched*) (now 2000))
+  :breaks ((listed ((row '((68) 2100 1000 nil)) (active nil) (tbl *prd-sched*) (now 2000)))
+           (schedulable ((row '((66) 1500 1000 t)) (active nil) (tbl *prd-sched*) (now 1000))))
+  :mutations ((wakes-early
+               (:conclusion (< (fn-prd-pause-ms active tbl now)
+                               (max (fn-prd-idle-ms) (fn-prd-row-wait row now))))
+               ((row '((67) 2400 1000 nil)) (active nil) (tbl *prd-sched*) (now 2000))
+               :fault "a pause that always wakes before the earliest round is due, re-reading both plan tables for nothing")))

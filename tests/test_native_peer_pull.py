@@ -57,7 +57,8 @@ import threading
 import time
 import unittest
 
-from tests.native_harness import EXIT_OK, Client, Node, free_port, native_image, scratch
+from tests.native_harness import (EXIT_OK, Client, Node, decided_launch, free_port,
+                                  fund_peer_flights, native_image, scratch)
 from tools.wire_stream import whole_stream
 
 # The images must be named explicitly (a production and a developer image).
@@ -503,7 +504,10 @@ class NativePeerPullTests(unittest.TestCase):
         self.pull_from(b, "slow", "slow.round.example.invalid", slow.port)
         self.pull_from(b, "healthy", "healthy.round.example.invalid", a.port)
         b.operator("peer", "catch-up", "healthy", INTERVAL, expect=EXIT_OK)
-        self.start(b)
+        # Catch-up runs on the peer flight bank: funded, and launched at the
+        # figure the installed launcher decides with that profile in place.
+        fund_peer_flights(b)
+        b.start(env={**dict(self.env), **decided_launch(b)})
         self.assertTrue(slow.held.wait(20), "slow peer never reached incomplete ARTICLE body")
         self.await_article(b, healthy_mid, timeout=30)
         deadline = time.monotonic() + 30

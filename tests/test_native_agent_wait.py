@@ -195,7 +195,8 @@ class NativeAgentWaitTests(unittest.TestCase):
             self.account(node, login)
             self.ok(node, "account", "access", login, "--read", "fn." + login,
                     "--post", "fn.*")
-        self.assertEqual(self.consumer(node, "bootstrap").returncode, 0)
+        boot = self.consumer(node, "bootstrap")
+        self.assertEqual(boot.returncode, 0, (boot.stdout + boot.stderr)[-800:])
         for login in ("alice", "bob"):
             name = login + "-inbox"
             result = self.consumer(node, "register", name, "fn." + login,

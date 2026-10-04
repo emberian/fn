@@ -3,6 +3,7 @@
 ; gets one I/O quantum and the order of its already-authored effects/events.
 (in-package "ACL2")
 (include-book "feed-wire-input")
+(include-book "scheduler-peers")
 
 ; Keys are ACL2's pair (kind peer), never a host-derived identity.
 (defun fn-prd-key (kind peer)
@@ -106,6 +107,91 @@
 (defun fn-prd-idle-ms ()
   (declare (xargs :guard t))
   10)
+
+; S145 for the pull worker (tests/test_native_feed_idle.py on d5b0b9100: 2,466
+; owner transit holds in 13 s, the worker re-reading both plan tables every
+; 10 ms with no round admitted).  The pause after a sweep in which no round
+; progressed: while a round is admitted, the I/O poll fn-prd-idle-ms; with
+; none, until the earliest free scheduled row of the pull and catch-up tables
+; is due, at least fn-prd-idle-ms and at most fn-prd-idle-max-ms.  The host
+; sleeps it on the owner's commit signal (host/native/pull-service.lisp
+; fnn-pull-idle-wait), so a commit, a configuration change and the stop end it
+; early.  A scheduling bound, not a data cap.
+(defun fn-prd-idle-max-ms ()
+  (declare (xargs :guard t))
+  1000)
+
+; A row (PEER NEXT INTERVAL BUSY) that will start a round once NEXT passes.
+(defun fn-prd-row-schedulablep (row)
+  (declare (xargs :guard t))
+  (and (consp row)
+       (posp (fn-sched-pull-interval (cdr row)))
+       (not (fn-sched-pull-busy (cdr row)))))
+
+(defun fn-prd-row-wait (row now)
+  (declare (xargs :guard t))
+  (nfix (- (fn-sched-pull-next (if (consp row) (cdr row) nil)) (nfix now))))
+
+; The least wait past NOW until a schedulable row of TBL is due (BEST so far),
+; nil when none is.  Tail recursive: the tables hold the operator's peers.
+(defun fn-prd-next-due-wait (tbl now best)
+  (declare (xargs :guard t))
+  (if (consp tbl)
+      (fn-prd-next-due-wait
+       (cdr tbl) now
+       (if (fn-prd-row-schedulablep (car tbl))
+           (if (natp best)
+               (min (fn-prd-row-wait (car tbl) now) best)
+             (fn-prd-row-wait (car tbl) now))
+         best))
+    best))
+
+; KEYSTONE SUBJECT (host/native/pull-service.lisp fnn-pull-worker).
+(defun fn-prd-pause-ms (active tbl now)
+  (declare (xargs :guard t))
+  (if (consp active)
+      (fn-prd-idle-ms)
+    (let ((wait (fn-prd-next-due-wait tbl now nil)))
+      (if (natp wait)
+          (max (fn-prd-idle-ms) (min (fn-prd-idle-max-ms) wait))
+        (fn-prd-idle-max-ms)))))
+
+(local
+ (defthm fn-prd-next-due-wait-below-best
+   (implies (natp best)
+            (and (natp (fn-prd-next-due-wait tbl now best))
+                 (<= (fn-prd-next-due-wait tbl now best) best)))
+   :hints (("Goal" :induct (fn-prd-next-due-wait tbl now best)))))
+
+(local
+ (defthm fn-prd-next-due-wait-below-each-row
+   (implies (and (member-equal row tbl) (fn-prd-row-schedulablep row))
+            (and (natp (fn-prd-next-due-wait tbl now best))
+                 (<= (fn-prd-next-due-wait tbl now best) (fn-prd-row-wait row now))))
+   :hints (("Goal" :induct (fn-prd-next-due-wait tbl now best)
+            :in-theory (disable fn-prd-row-schedulablep fn-prd-row-wait)))))
+
+; KEYSTONE (an idle pull worker is not a busy poll, and never a stall): every
+; pause is at least the I/O poll and at most a second ...
+(defthm fn-prd-pause-is-bounded
+  (and (<= (fn-prd-idle-ms) (fn-prd-pause-ms active tbl now))
+       (<= (fn-prd-pause-ms active tbl now) (fn-prd-idle-max-ms)))
+  :rule-classes nil)
+
+; ... a worker with a round admitted keeps the I/O poll ...
+(defthm fn-prd-pause-polls-while-a-round-runs
+  (implies (consp active)
+           (equal (fn-prd-pause-ms active tbl now) (fn-prd-idle-ms))))
+
+; ... and an idle worker never sleeps past the time a schedulable row is due.
+(defthm fn-prd-pause-never-sleeps-past-a-due-round
+  (implies (and (member-equal row tbl) (fn-prd-row-schedulablep row))
+           (<= (fn-prd-pause-ms active tbl now)
+               (max (fn-prd-idle-ms) (fn-prd-row-wait row now))))
+  :hints (("Goal" :in-theory (disable fn-prd-row-schedulablep fn-prd-row-wait
+                                      fn-prd-next-due-wait
+                                      fn-prd-next-due-wait-below-each-row)
+           :use ((:instance fn-prd-next-due-wait-below-each-row (best nil))))))
 
 ; These are concrete observations of named transport failure classes.
 ; A core/store/unknown condition is never silently turned into round loss.

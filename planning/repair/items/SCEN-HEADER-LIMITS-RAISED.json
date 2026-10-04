@@ -1,0 +1,12 @@
+{
+ "category": "implementation",
+ "file": "host/native/io.lisp",
+ "id": "SCEN-HEADER-LIMITS-RAISED",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "scenarios",
+ "state": "open",
+ "title": "header_limits test_a_raised_profile_accepts_900_fields_and_refuses_1001_by_name: the node closes the connection (EOFError) on a raised-profile article; run peer-d5b0b9100. Last green 09-27.",
+ "updated": "2026-10-04T15:13:42Z"
+}
