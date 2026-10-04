@@ -21,63 +21,48 @@ def definition(source: str, name: str) -> str:
 
 
 class NativeServedCostTests(unittest.TestCase):
-    def test_owner_calls_fast_span_entry(self) -> None:
-        # The native read path is the span over the octet buffer (REP-012)
-        # and, since the catalog slice's step 8, the catalog: the host fills
-        # the buffer and calls fn-owner-chunk-span with the live arena and
-        # catalog, which calls fn-scr-ocfg-read-span
-        # (books/served-catalog-chain.lisp, equal to fn-scar-ocfg-read-span
-        # under the catalog relation), whose fold checks only the fast
-        # predicate; no list of the read's octets is built on the way.
+    def test_owner_reads_the_span_over_the_buffer(self) -> None:
+        # The native read path is the span over the octet buffer (REP-012):
+        # the host fills the buffer and calls fn-owner-chunk-span with the
+        # live arena and catalog; no list of the read's octets is built on
+        # the host's side.
         native = (ROOT / "host/native/owner.lisp").read_text()
         host = (ROOT / "host/owner-host.lisp").read_text()
-        chain = (ROOT / "books/served-catalog-chain.lisp").read_text()
         # Since scheduler-3 (1b3160bce) fnn-owner-handle-chunk runs the read
         # through fnn-owner-handle-chunk-read and the XREDEEM publication in
         # its own quantum; the fill and the span call are the read's.
         self.assertIn("(fnn-owner-handle-chunk-read service cid incoming socket class peerp)",
                       definition(native, "fnn-owner-handle-chunk"))
         handoff = definition(native, "fnn-owner-handle-chunk-read")
-        self.assertIn("(fnn-octets-fill incoming)", handoff)
+        self.assertIn("(fnn-owner-read-buffer-fill service incoming)", handoff)
+        self.assertIn("(fnn-octets-fill incoming)", definition(native, "fnn-owner-read-buffer-fill"))
         # Since composed-owner (Row A4 (c)) the read goes through
         # fnn-owner-chunk-span-no-io: the same span call with the extent
         # reader's disk I/O refused (a cold page is read off the mutex).
-        self.assertIn("(fnn-owner-chunk-span-no-io cid incoming sched)", handoff)
+        self.assertIn("(fnn-owner-chunk-span-no-io\n                    cid incoming sched", handoff)
         self.assertIn("(fnn-core-buffer-state 'fn-owner-chunk-span cid",
                       definition(native, "fnn-owner-chunk-span-no-io"))
         self.assertNotIn("fnn-octet-list incoming", handoff)
         self.assertNotIn("'fn-owner-chunk cid", handoff)
-        # fn-owner-chunk-span reads at the reader view (fn-owner-at-reader-view)
-        # through fn-owner-chunk-span-at, which calls the catalog chain.
-        self.assertIn("(fn-owner-chunk-span-at", definition(host, "fn-owner-chunk-span"))
-        # Since scheduler-3 (PKT-828) through fn-orr-read-span
-        # (books/owner-reader-read.lisp), which calls fn-scr-ocfg-read-span
-        # on both arms: at the captured reader view and, with none, directly.
-        # Since time-model-2 (PRF-323) the host calls fn-otm-read-span
-        # (books/owner-time-admission.lisp), which is fn-orr-read-span on
-        # both arms: admitted as is, shedding with the posting bit off.
-        # Since zero-copy-commit (PRF-377) the host calls fn-oas-read-span
-        # (books/owner-article-slots.lisp), which is fn-otm-read-span within
-        # the connection's article slots (fn-oas-read-span-when-held-unfolds).
-        # Since credits (PRF-380) through fn-mca-read-span
-        # (books/owner-credits.lisp), fn-oas-read-span within the credit.
-        self.assertIn("(fn-mca-read-span", definition(host, "fn-owner-chunk-span-at"))
-        credits = definition((ROOT / "books/owner-credits.lisp").read_text(),
-                             "fn-mca-read-span")
-        self.assertIn("(fn-oas-read-span", credits)
-        slots = definition((ROOT / "books/owner-article-slots.lisp").read_text(),
-                           "fn-oas-read-span")
-        self.assertIn("(fn-otm-read-span", slots)
-        admission = definition((ROOT / "books/owner-time-admission.lisp").read_text(),
-                               "fn-otm-read-span")
-        self.assertEqual(admission.count("(fn-orr-read-span"), 2)
-        reader = definition((ROOT / "books/owner-reader-read.lisp").read_text(),
-                            "fn-orr-read-span")
-        self.assertEqual(reader.count("(fn-scr-ocfg-read-span"), 2)
-        self.assertIn("(fn-scr-step-span-fast", definition(chain, "fn-scr-own-read-span"))
-        fast = definition(chain, "fn-scr-step-span-fast")
-        self.assertIn("fn-wire-fast-statep", fast)
-        self.assertNotIn("fn-wire-statep", fast)
+        # fn-owner-chunk-span reads at the reader view through
+        # fn-owner-chunk-span-at -> fn-owner-chunk-span-evaluate, which now
+        # calls fn-asto-mca-read-span (an ARTICLE capture, else the
+        # available-metadata read, fn-av-mca-read-span,
+        # books/served-available-read.lisp).  That route does not reach
+        # the credit chain this test used to follow (fn-mca-read-span ->
+        # fn-oas- -> fn-otm- -> fn-orr- -> fn-scr-ocfg-read-span ->
+        # fn-scr-step-span-fast), so the fast-predicate, list-free span is
+        # not shown for the host's read any more: its refinement is owed
+        # (PRF-1287 and the evaluate's own comment, "selective owner
+        # refinement/guards are owed").  The claim is not made here.
+        evaluate = definition(host, "fn-owner-chunk-span-evaluate")
+        self.assertIn("(fn-asto-mca-read-span", evaluate)
+        self.assertIn("(fn-av-mca-read-span credits oc views id start stop cache sched",
+                      definition(host, "fn-asto-mca-read-span"))
+        self.assertIn("(fn-owner-chunk-span-evaluate id start end sched",
+                      definition(host, "fn-owner-chunk-span-current-result"))
+        self.assertIn("(fn-owner-chunk-span-current-result id start end sched",
+                      definition(host, "fn-owner-chunk-span-at"))
 
     def test_span_fold_reads_the_buffer_by_index(self) -> None:
         # The served span fold reads each octet of the range from the buffer

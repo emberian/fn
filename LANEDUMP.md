@@ -1,3 +1,37 @@
+# Harvest lane — Opus (2026-10-04)
+
+Tree: `build/lanes/harvest`, branch `lane/harvest`, from `origin/dev` `d4e53323c`. Git only (no ACL2, no builds). The register is `planning/harvest-2026-10-04.md`.
+
+## Landed on this branch
+- `planning/harvest-2026-10-04.md`: 72 local branches, the re-read origin gifts, D1–D11, the parked families, the superseder of every superseded branch, and lane records folded from off-dev.
+- `planning/host-parked.json` corrected. `extent-decoded` is removed (loaded by `build.lisp:459`). The include-book-live files, the KEEP-and-certify extractions, the certified Makefile roots and the receiver twin are annotated. `tools/host_loaded_check.py` now reports only `host/native/source-load.lisp` (register A8, the integrator's).
+- `planning/archive/decisions-2026-09-29{,-log-2}-for-gpt6.md`: D1's two untracked docs, copied verbatim. The shared checkout is untouched.
+
+## Preservation
+- 53 local-only branches pushed to origin (public GitHub) as new branches, plain push.
+- `codex/sol-served-20261003` @`232fa612a` commits D4's two LIST books.
+
+## Dirty worktrees: decisions (the worktrees and their dirt are left exactly as found)
+- `codex-owner-carrier-current` (D2): discard. The P3 history split is superseded by dev b5bb98c92 + cdff5e219; nothing unique.
+- `codex-proof-luna-foundations` (D3): note only.
+  - The proof_repl half is on dev.
+  - The `blake3-list-spans.lisp` dedupe is broken as written: all 5 lemmas are local, so nothing is exported.
+  - If the dedupe is wanted, redo it with non-local lemmas.
+- `codex-sol-served` (D4): committed `232fa612a`.
+- `codex-sol-web` (D5): the LANEDUMP entry is folded into the register, section 6a.
+- `codex-sol-web-pages` (D6): discard. The 23 `build-web-*.log` files and 4 build scratch files are named by no evidence row.
+- `host-model` (D7): discard. They are stale regenerations of generated files.
+- `transfer-closeout` (D8): note only. Hunk 3 of `books/productive-transfer.lisp` (`fn-feed-with-queue-preserving-counts`/`-counted` in the third keystone's enable) is the fix to try if wave-1 certification reds that book. The planning edits are discarded.
+- `coordination-in-repo` (D9): discard. `planning/repair/STATUS.md` is an old regeneration.
+- `def-entry` (D10): discard. `tools/cost-prefix.lisp` is REPL preload scratch.
+- `stage-5b` (D11): discard. `tools/rd3-prefix.lisp` is generated REPL preload scratch.
+
+## Side effect, undone
+`git merge-tree` dry runs of 4 origin branches invoked the `fn-registry` merge driver, which appended 12 lines (2026-10-04T02:25:53–55Z) to the shared `build/merge-conflicts/registry.jsonl`. I removed exactly those 12 lines; a copy is in the lane scratch. Later dry runs used `-c merge.fn-registry.driver=false`.
+
+## Continuation
+Nothing is owed by this lane. The gift and partial stubs are in `build/coordinator/queue/harvest/`, with decision text in `DECISIONS-for-20261004.md` there. The next owner of each gift is the packet named in its stub.
+
 # Native history roots — continuing Sol owner
 
 Own tree: build/lanes/native-history-roots, branch codex/native-history-roots.
@@ -4509,3 +4543,35 @@ S074/S090/S138/S151 and journal physical prepared fixtures remain source/proof
 versus current-image obligations, not completion claims. No live deployment.
 Protected recovery partition, expanded init/reopen and complete tariff remain
 open. Bounds catchup controller draft is preserved but activation unwired.
+
+## docs lane (lane/docs) — 2026-10-04
+
+Brief: scratchpad fn-briefs/COMMON.md + plan FN-SWARMPLAN-20261004 §3, §4 wave 0, §6.
+Owns: docs_check reds; docs/README.md, docs/engineering.md, CONTRIBUTING.md,
+CONTRIBUTORS.md; docs/articles/*.txt (fn.docs); docs/nodes/*.md and
+tools/runbooks/public-node/. Not: AGENTS.md, planning/how-we-work.md,
+planning/now.md (integrator's — proposals by message). No ACL2, no builds,
+nothing executed on any node.
+
+| # | deliverable | sha | docs_check | state |
+|---|---|---|---|---|
+| D1 | docs_check reds (specs/nntp.md table; tests/acl2/docs-operator-grammar-tests.lisp) | d77d4f433 | 0 failures | in the integrator's wave-0 batch; test book certifies there |
+| D2 | guides: CONTRIBUTING 843→450, CONTRIBUTORS 761→341, docs/README 142→101, docs/engineering 1291→493 words | 56043bab6 | 0 failures | READY |
+| D4 | docs/nodes/hbox.md rewritten, docs/nodes/fsn1.md new; tools/runbooks/public-node/ hbox-hosted plan removed, peering.md + exposure.policy corrected | e23781bec | 0 failures | READY; nothing executed on any node |
+| D3 | docs/articles/ (fn.docs): bodies 3,403→2,452 words; hand prose 2,284→1,333; whole files 3,992→3,041 (09-27 pre-site baseline 13,789); Subject lines unchanged; new Message-IDs dated 20261004 | be3c6f4d9 | 0 failures | READY; grammar test book regenerated, needs certifying; NOT posted to fn.docs (post_docs.py is a node action) |
+
+Remaining toward ember's quarter: the two generated regions (fn-faq-2's
+command list 499 words, fn-faq-6's codes and refusals 620) are now 46% of
+the article bodies; cutting them means changing tools/docs_check.py /
+tools/protocol_emit.py's output (or moving them to a reference page) —
+a decision for ember/integrator, not taken here.
+Known pre-existing in a fresh worktree: tests.test_docs_check's
+test_every_python_invocation... errors on missing bin/fn (untracked build
+product), unrelated to this lane.
+
+Continuation point: none owed; lane exits after D3 READY.
+
+Notes for the integrator: comments still naming removed files (no behaviour):
+books/store-mount-identity.lisp:660 (tools/runbooks/public-node, dir still
+exists), tests/test_native_tls_reload.py:97 (fn-cert-install.sh). Lane notes
+live here only (build/coordinator/lanedumps/docs.md untracked, per integrator).

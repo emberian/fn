@@ -673,10 +673,6 @@
   :class :common-lisp-compliant
   :keystones (fn-log-sink-init-okp))
 
-(definterface fn-log-sink-offer
-  :class :common-lisp-compliant
-  :keystones (fn-log-sink-offer-preserves-okp
-              fn-log-sink-offer-drops-only-past-the-bound))
 
 (definterface fn-log-sink-pending-bound
   :class :common-lisp-compliant)
@@ -2048,8 +2044,6 @@
 (definterface fn-owner-workflow-sync-store-node
   :class ::program)
 
-(definterface fn-splan-donep
-  :class :common-lisp-compliant)
 
 (definterface fn-splan-step-closep
   :class :common-lisp-compliant)
@@ -2072,10 +2066,6 @@
 (definterface fn-splan-step-submittedp
   :class :common-lisp-compliant)
 
-(definterface fn-splan-window
-  :class :common-lisp-compliant
-  :kinds ((w natp))
-  :keystones (fn-splan-window-is-a-prefix-of-the-reply))
 
 ; PRF-1281 direct immutable-line renderer; exact buffer/continuation bridge
 ; remains a planned proof until its named theorem is admitted.
@@ -2086,9 +2076,6 @@
   :class :common-lisp-compliant
   :kinds ((bytes natp)))
 
-(definterface fn-splan-at-cursorp
-  :class :common-lisp-compliant
-  :keystones (fn-splan-window-size-is-positive-until-done))
 
 ; Shared ARTICLE/HEAD/BODY plans consumed by native NNTP and Web. Predicates
 ; have guard T. The retained renderer still uses its logical counterpart:
@@ -2100,13 +2087,6 @@
   :class :ideal
   :keystones ((fn-ast-render-window-byte-bound :via fn-ast-render-window)))
 
-(definterface fn-splan-cursor-step
-  :class :common-lisp-compliant
-  :kinds ((w natp))
-  ;; The keystone must call the entry: this one does (fn-splan-cw-drain-is-the-
-  ;; expanded-reply calls it only through fn-splan-cw-drain; hbox host-ld at
-  ;; 899634977 refused that).
-  :keystones (fn-splan-cursor-step-keeps-cw-remaining))
 
 (definterface fn-splan-cursor-window
   :class :common-lisp-compliant)
@@ -2114,9 +2094,6 @@
 (definterface fn-splan-cursor-resume-ms
   :class :common-lisp-compliant)
 
-(definterface fn-splan-window-size
-  :class :common-lisp-compliant
-  :keystones (fn-splan-window-size-is-positive-until-done))
 
 ; Consumed by native owner/mux. LIST is a distinct query residual subject;
 ; the old Splan prefix/CW theorems do not establish this facade's contract.
@@ -5279,7 +5256,6 @@
 
 ; DEFAULT partial startup: actual pre-open native consumer declarations.
 ; Numerical admission proof and selected layout refinement are separate.
-(definterface fn-prstartup-default-plan :class :common-lisp-compliant)
 (definterface fn-prstartup-status :class :common-lisp-compliant)
 (definterface fn-prstartup-refusal-line :class :common-lisp-compliant)
 (definterface fn-prstartup-install-status :class :common-lisp-compliant)
@@ -5293,7 +5269,6 @@
 (definterface fn-owner-payload-view-live-p :class :program)
 (definterface fn-owner-payload-view-release :class :program)
 (definterface fn-owner-payload-view-reset :class :program)
-(definterface fn-pvl-runtime-step :class :common-lisp-compliant)
 (definterface fn-pvl-runtime-return-step :class :common-lisp-compliant)
 (definterface fn-owner-payload-view-owned-p :class :program)
 
@@ -5430,10 +5405,6 @@
 (definterface fn-ocap-at :class :common-lisp-compliant)
 (definterface fn-rlo-capacity :class :common-lisp-compliant)
 
-(definterface fn-web-host-article-p :class ::program)
-(definterface fn-web-host-article-start :class ::program)
-(definterface fn-web-host-article-scan :class ::program)
-(definterface fn-web-host-article-page :class ::program)
 (definterface fn-web-host-window-page-step :class ::program)
 (definterface fn-web-host-replay-slice :class ::program)
 (definterface fn-web-host-replay-forward-p :class ::program)
@@ -5517,7 +5488,6 @@
 (definterface fn-owner-page-read-default-worker-constructionp :class :common-lisp-compliant)
 
 ; DEFAULT launcher backing; actual host consumers share captured observations.
-(definterface fn-prstartup-extend-default-reservation :class :common-lisp-compliant)
 (definterface fn-prstartup-extend-operation-reservation :class :common-lisp-compliant)
 
 ; Actual bounded BP heap projection and stopping-aware log admission consumers.
@@ -5541,7 +5511,6 @@
 (definterface fn-bpsched-service :class :common-lisp-compliant)
 (definterface fn-bpsched-timeout-p :class :common-lisp-compliant)
 (definterface fn-bpsched-work-credit :class :common-lisp-compliant)
-(definterface fn-bpsg-acquire :class :common-lisp-compliant)
 (definterface fn-bpsg-context-abort-plan :class :common-lisp-compliant)
 (definterface fn-bpsg-install :class :common-lisp-compliant)
 (definterface fn-bpsg-key :class :common-lisp-compliant :kinds ((row true-listp)))
@@ -5598,3 +5567,48 @@
 (definterface fn-prstartup-default-plan-with-peer :class :common-lisp-compliant)
 (definterface fn-prstartup-peer-native-grant :class :common-lisp-compliant)
 (definterface fn-prstartup-peer-native-refusal-line :class :common-lisp-compliant)
+
+; Host-called entries the raw host dispatches and no declaration named
+; (integrator wave 0, 2026-10-04): :class and :kinds as tools/interface_kinds.py
+; derives them from the source, the defining file after each.  Twenty-four of
+; them are dispatched as `(fnn-call (if C 'A 'B) ...)', which the host-binding
+; check now reads (pull/catchup sessions, workflow, the log writer's step).
+(definterface fn-csp-bank-idle-p :class :common-lisp-compliant) ; books/peer-catchup-spool-resources.lisp:26
+(definterface fn-csp-candidate :class :common-lisp-compliant) ; books/peer-catchup-spool-resources.lisp:6
+(definterface fn-cu-cursor-envelope :class :common-lisp-compliant) ; books/peer-catchup.lisp:1024
+(definterface fn-cu-session-close :class :common-lisp-compliant) ; books/peer-catchup.lisp:755
+(definterface fn-cu-session-close-effects :class :common-lisp-compliant) ; books/peer-catchup.lisp:759
+(definterface fn-cu-session-done-p :class :common-lisp-compliant) ; books/peer-catchup.lisp:751
+(definterface fn-cu-session-read-limit :class :common-lisp-compliant) ; books/peer-catchup.lisp:765
+(definterface fn-lgw-step-buf :class :common-lisp-compliant :kinds ((st true-listp))) ; books/store-log-buffer.lisp:539
+(definterface fn-lgw-step-buf-nf :class :common-lisp-compliant :kinds ((st true-listp))) ; books/store-log-walk-once.lisp:48
+(definterface fn-native-control-host-reply-seconds :class :program :kinds ((request-octets natp))) ; host/native-control-host.lisp:19
+(definterface fn-native-control-host-withdraw-result :class :program) ; host/native-control-host.lisp:23
+(definterface fn-native-operation-host-offline :class :program) ; host/native-live-status-host.lisp:23
+(definterface fn-ort-log-caller-action :class :common-lisp-compliant) ; books/owner-retire-settlement.lisp:47
+(definterface fn-owner-hroot-abandon-word :class :program) ; host/history-root-host.lisp:45
+(definterface fn-owner-page-read-protected-growth :class :common-lisp-compliant) ; host/page-read-host.lisp:549
+(definterface fn-owner-page-read-protected-growth-preview :class :common-lisp-compliant) ; host/page-read-host.lisp:542
+(definterface fn-owner-peer-carried-event :class :program) ; host/owner-host.lisp:3715
+(definterface fn-owner-peer-revoked-event :class :program) ; host/owner-host.lisp:3742
+(definterface fn-owner-workflow-apply-record :class :program) ; host/bp-release-owner-host.lisp:100
+(definterface fn-owner-workflow-install-replay :class :program) ; host/bp-release-owner-host.lisp:11
+(definterface fn-owner-workflow-preflight-record :class :program) ; host/bp-release-owner-host.lisp:31
+(definterface fn-owner-workflow-reset :class :program) ; host/bp-release-owner-host.lisp:27
+(definterface fn-pfr-flight-demand :class :common-lisp-compliant) ; books/peer-flight-reservation.lisp:46
+(definterface fn-pfr-install-funded :class :common-lisp-compliant) ; books/peer-flight-reservation.lisp:117
+(definterface fn-pfr-startup-grant :class :common-lisp-compliant) ; books/peer-flight-reservation.lisp:109
+(definterface fn-pfr-work-demand :class :common-lisp-compliant) ; books/peer-flight-reservation.lisp:53
+(definterface fn-pull-cursor-envelope :class :common-lisp-compliant) ; books/peer-pull.lisp:2176
+(definterface fn-pull-session-close :class :common-lisp-compliant) ; books/peer-pull-session.lisp:710
+(definterface fn-pull-session-close-effects :class :common-lisp-compliant) ; books/peer-pull-session.lisp:714
+(definterface fn-pull-session-done-p :class :common-lisp-compliant) ; books/peer-pull-session.lisp:706
+(definterface fn-pull-session-read-limit :class :common-lisp-compliant) ; books/peer-pull-session.lisp:811
+(definterface fn-rl-draw :class :common-lisp-compliant :kinds ((demand true-listp))) ; books/resource-vector-exec.lisp:239
+(definterface fn-rl-settle :class :common-lisp-compliant) ; books/resource-vector-exec.lisp:265
+(definterface fn-store-config-initial-observation :class :program) ; host/store-node-host.lisp:251
+(definterface fn-store-config-observation :class :program) ; host/store-node-host.lisp:243
+(definterface fn-workflow-apply-record :class :program) ; host/workflow-host.lisp:128
+(definterface fn-workflow-install-replay :class :program) ; host/workflow-host.lisp:19
+(definterface fn-workflow-preflight-record :class :program) ; host/workflow-host.lisp:114
+(definterface fn-workflow-reset :class :program) ; host/workflow-host.lisp:45

@@ -1917,10 +1917,6 @@ class SimpleReport:
         self.artifact_set = artifact_set
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class ScopedManifestAndGraphTests(unittest.TestCase):
     def test_source_normalization_only_hashes_the_query_closure(self):
         from unittest.mock import patch
@@ -1952,3 +1948,7 @@ class ScopedManifestAndGraphTests(unittest.TestCase):
             with patch.object(certs.ledger, "analyze_book", side_effect=AssertionError("whole book analysis")):
                 self.assertEqual(certs.book_facts(source)[1], expected)
             self.assertEqual(expected, ["dep", "local", "nested"])
+
+
+if __name__ == "__main__":
+    unittest.main()

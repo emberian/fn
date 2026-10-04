@@ -1,7 +1,24 @@
 ; Actual inert codec + native file capture, with real POSIX files.
 ; Source execution only: no active owner/image/full peer tariff claim.
-(load "tests/native_heap_default_source.lisp")
+(load "tests/native_heap_default_source-mock.lisp")
 (in-package "ACL2")
+
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-seconds-to-deadline (deadline)
+  (declare (ignorable deadline))
+  (harness-stub-reached 'fnn-seconds-to-deadline "host/native/io.lisp"))
+;;; ---- derived stubs: END ----
 (defmacro verify-guards (&rest args) (declare (ignore args)) nil)
 (defparameter *fn-rl-word-max* (1- (expt 2 64)))
 (selected-source "books/heap-store-figure.lisp" '(*fn-heap-nursery-least-octets* fn-heap-nursery-trigger fn-heap-with-nursery fn-heap-grow-runtime-dynamic))

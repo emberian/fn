@@ -3,6 +3,7 @@
 ; Split from tests/acl2/owner-time-model-tests.lisp (its reached states and
 ; helpers are included, not re-run) to keep each test book under 10 s.
 (in-package "ACL2")
+(include-book "must-fail-checked")
 (include-book "owner-time-model-tests")
 ; =============================================================================
 ; Lane health-truth (2026-09-28): the free space (PRF-359, PKT-872) and
