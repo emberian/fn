@@ -66,7 +66,9 @@ class DocsCheckTests(unittest.TestCase):
                  ("fn_consumer", "docs/x.md", 2, "fn_consumer.py --plane", ["--plane"], None),
                  ("bin/fn", "docs/x.md", 3, "fn --config c ruin", ["--config", "c", "ruin"],
                   None)]
-        self.assertEqual(len(docs_check.parse_python(wrong)), 3)
+        failures = docs_check.parse_python(wrong)
+        self.assertEqual(len(failures), 3)
+        self.assertIn("retired Python host", failures[2])
 
     def test_every_reply_line_is_printable_and_an_invented_one_is_not(self):
         self.assertEqual(docs_check.check_replies(self.found), [])
