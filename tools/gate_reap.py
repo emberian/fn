@@ -56,6 +56,11 @@ from deploy_gate import Host, LocalHost, SshHost, repo_root   # noqa: E402
 
 DEFAULT_ROOTS = {"persvati": "$HOME/fn-gates", "hbox": "/tank/fn/gates"}
 DEFAULT_LOCKS = {"persvati": "$HOME/fn-gates/.gate.lock", "hbox": "/tank/fn/gates/.lock"}
+import box_table  # noqa: E402  (rented boxes: their gates root, their like box's lock name)
+for _name, _row in box_table.extra_boxes().items():
+    _gates = _row["gates"] if _row["gates"].startswith("/") else "$HOME/" + _row["gates"]
+    DEFAULT_ROOTS[_name] = _gates
+    DEFAULT_LOCKS[_name] = _gates + ("/.lock" if _row["like"] == "hbox" else "/.gate.lock")
 REV = re.compile(r"^(?P<tree>.+)-(?P<rev>[0-9a-f]{7,40})$")
 
 # One round trip per box.  Bash sets the two parameters and python does the
