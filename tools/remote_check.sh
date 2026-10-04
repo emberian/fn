@@ -313,6 +313,16 @@ ENVS="eval \$(python3 -c 'import ast,os,sys
 t=ast.parse(open(\"tools/farm.py\").read())
 h=[ast.literal_eval(n.value) for n in t.body if isinstance(n,ast.Assign) and getattr(n.targets[0],\"id\",None)==\"HOSTS\"][0].get(sys.argv[1],{})
 print((\"export FN_ACL2=%s FN_CERT_CACHE=%s\" % (h.get(\"acl2\",\"\"), os.path.expanduser(h.get(\"cache\",\"\")))) + (\" FN_IMAGE_ACL2=%s\" % h[\"image_acl2\"] if h.get(\"image_acl2\") else \"\") if h else \"\")' $BOX 2>/dev/null)"
+# A rented box (~/.config/fn/boxes.json, tools/box_table.py) has no row in
+# farm.py's literal HOSTS, which ENVS reads on the box: its row is known only
+# here, so it is exported from here when the box's own lookup finds none.
+RENTED=$(python3 -c 'import sys
+sys.path.insert(0, "tools")
+import farm
+h = farm.HOSTS.get(sys.argv[1], {})
+if h and not str(h.get("cache", "")).startswith("~"):
+    print("export FN_ACL2=%s FN_CERT_CACHE=%s%s" % (h.get("acl2", ""), h.get("cache", ""), (" FN_IMAGE_ACL2=%s" % h["image_acl2"]) if h.get("image_acl2") else ""))' "$BOX" 2>/dev/null)
+[ -n "$RENTED" ] && ENVS="$ENVS; [ -n \"\${FN_ACL2:-}\" ] || $RENTED"
 echo "remote_check: $RUN in $BOX:$TREE (log $BOX:$LOG)"
 # make runs DETACHED on the box (its own script, nohup) and this side polls
 # the log's last line: an ssh session that ends early (exit 255) used to be
