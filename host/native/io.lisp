@@ -2851,15 +2851,25 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
              (values :ok (nreverse frames)))
         (fnn-close fd)))))
 
+(defvar *fnn-checkpoint-load-io-error* nil
+  "The OS error the last fnn-state-checkpoint-load met reading the file, or
+NIL: a read that failed is not a file that failed to verify
+(fnn-log-open-plan-check).")
+
 (defun fnn-state-checkpoint-load (store)
   "Decode the checkpoint into ACL2's global: (values STATUS S) with STATUS
 :absent, :refused, :exceeds-bound, :schema (a file of another schema, D34:
 the journal replays, `status' says reason=checkpoint-schema), :arena (a file
 without the arena run: reason=checkpoint-arena) or :ok, the vocabulary of
-fn-scka-select-named."
+fn-scka-select-named.  A read that fails is :refused (the full replay, when
+the log still holds the history, is authoritative) and its OS error is kept
+in *fnn-checkpoint-load-io-error*."
+  (setq *fnn-checkpoint-load-io-error* nil)
   (multiple-value-bind (status value)
       (handler-case (fnn-state-checkpoint-plan store)
-        (fnn-os-error () (values :refused :io)))
+        (fnn-os-error (e)
+          (setq *fnn-checkpoint-load-io-error* e)
+          (values :refused :io)))
     (case status
       (:absent (fnn-core-state 'fn-store-sco-clear) (values :absent 0))
       (:refused (fnn-core-state 'fn-store-sco-clear)
@@ -7163,7 +7173,11 @@ with its depth, and the rows under it name the path that called it."
   ;; the first fence of the new segment (fnn-log-fence) and the checkpoint
   ;; that names it (fnn-owner-publish-captured) fence journal/ first
   ;; (fnn-log-make-durable, cut rotate-durable).  NIL when durable.
-  (dir-pending nil))
+  ;; DURABLE-LOCK serializes those two callers; DURABLE-FAILED is the first
+  ;; failed barrier of a pending name, never retried (fnn-log-make-durable).
+  (dir-pending nil)
+  (durable-lock (sb-thread:make-mutex :name "fn log rotate-durable"))
+  (durable-failed nil))
 
 (defmacro fnn-log-with-kernel ((log) &body body)
   "BODY under the log's kernel lock (recursive: a kernel step may call another)."
@@ -7847,7 +7861,9 @@ serialized run fn-lgc-run-refines-the-kernel speaks of."
                   ;; made durable before any member in it is acknowledged.
                   (fnn-log-make-durable log)
                   (fnn-log-fdatasync (fnn-log-fd log)))
-    (fnn-os-error (e)
+    ;; fnn-log-make-durable answers its failed barrier as uncertain (it is
+    ;; never asked again); the batch in flight goes the same way.
+    ((or fnn-os-error fnn-store-indeterminate) (e)
       (fnn-log-with-kernel (log)
         (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence-failed (fnn-log-kernel log))
               (fnn-log-inflight log) nil))
@@ -8420,13 +8436,37 @@ rotate-durable) while the segment's name is pending.  Called off the owner
 mutex by the new segment's first fence (fnn-log-fence: no member there is
 acknowledged before its name is durable) and by the publication before its
 checkpoint names the segment, so an F row never names an unheaded segment.
-Two callers may both fence; that is harmless."
-  (let ((dir (fnn-log-dir-pending log)))
-    (when dir
-      (fnn-fsync-file (fnn-log-fd log))
-      (fnn-fsync-dir dir)
-      (fnn-log-at :rotate-durable)
-      (setf (fnn-log-dir-pending log) nil))))
+The two callers are serialized (DURABLE-LOCK); the second finds the name
+durable and does nothing.
+
+A failed barrier is never asked again (fsync after a failed fsync can answer
+success with nothing durable: the error is reported once).  The first
+failure fences the log kernel (fn-lgc-fence-failed: no member is fenced or
+acknowledged after it, and the store needs recovery) and is the log's
+uncertainty, signalled as such: the publication's thread boundary
+classifies a bare OS error with no step of its own as a job failure and
+serving went on, so the batch fence that called next believed a retried
+barrier and acknowledged members in a segment whose name may not survive.
+Every later call answers the same uncertainty without touching the disk."
+  (sb-thread:with-mutex ((fnn-log-durable-lock log))
+    (let ((failed (fnn-log-durable-failed log)))
+      (when failed
+        (fnn-indeterminate "the rotated log segment's barrier failed earlier; the store needs recovery: ~a"
+                           failed)))
+    (let ((dir (fnn-log-dir-pending log)))
+      (when dir
+        (handler-case
+            (progn
+              (fnn-fsync-file (fnn-log-fd log))
+              (fnn-fsync-dir dir))
+          (fnn-os-error (e)
+            (setf (fnn-log-durable-failed log) e)
+            (fnn-log-with-kernel (log)
+              (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence-failed (fnn-log-kernel log))))
+            (fnn-indeterminate "the rotated log segment's barrier failed; the store needs recovery: ~a"
+                               e)))
+        (fnn-log-at :rotate-durable)
+        (setf (fnn-log-dir-pending log) nil)))))
 
 (defun fnn-log-rotate-now (store)
   "The whole P-ROTATE in one thread, for a store no owner serves (`store
@@ -8580,6 +8620,27 @@ and last trailer must be the kernel's, or the read is a fault."
              (fnn-fault "the active log segment does not read back its committed records")))
       (fnn-close fd))))
 
+(defun fnn-log-open-plan-check (store plan log-position)
+  "Act on a refused open PLAN (books/store-log-segments.lisp fn-lgs-open-plan)
+before anything is scanned: no segment and no checkpoint is an init that
+did not finish (init again completes it); a refusal is the open's, by name.
+Except: when the checkpoint could not be READ (an OS error,
+*fnn-checkpoint-load-io-error*) the plan's checkpoint-damaged is a guess
+from a failed observation, not a verdict on the file -- the open stops as
+the read's fault, naming the error, never as a refusal that tells the
+operator the checkpoint is damaged (it may read whole on the next try)."
+  (when (equal plan '(:refused :no-segment))
+    (fnn-fault "missing store directory: ~a has no log segment (an init that did not finish: run init again)"
+               (fnn-journal-dir store)))
+  (when (eq (first plan) :refused)
+    (when (and *fnn-checkpoint-load-io-error* (null log-position)
+               (equal plan '(:refused :checkpoint-damaged)))
+      (fnn-fault "cannot read the state checkpoint, which covers the dropped log segments: ~a (not a verdict on the file; nothing was written)"
+                 *fnn-checkpoint-load-io-error*))
+    (error 'fnn-store-open-refusal
+           :message (format nil "open refused reason=~(~a~): the log's segments do not hold the history~@[ from segment ~d~]"
+                            (second plan) (first log-position)))))
+
 (defun fnn-recover-log-from-log-checkpoint (store config-records suffix s &optional (interned nil internedp))
   "The open from a checkpoint whose F row names the log's first suffix
 segment: SUFFIX is the scan from there (T8: with the checkpoint's records it
@@ -8636,15 +8697,7 @@ does, and records how the log holds the history (fnn-store-log-history) for
                                  (first log-position))))
             (unless (and (consp plan) (member (first plan) '(:scan :refused)))
               (fnn-fault "ACL2 returned a malformed log open plan"))
-            ;; No segment and no checkpoint: an init that did not finish
-            ;; (the segment is its last step); init again completes it.
-            (when (equal plan '(:refused :no-segment))
-              (fnn-fault "missing store directory: ~a has no log segment (an init that did not finish: run init again)"
-                         (fnn-journal-dir store)))
-            (when (eq (first plan) :refused)
-              (error 'fnn-store-open-refusal
-                     :message (format nil "open refused reason=~(~a~): the log's segments do not hold the history~@[ from segment ~d~]"
-                                      (second plan) (first log-position))))
+            (fnn-log-open-plan-check store plan log-position)
             (setq drop (third plan))
             ;; The records arrive one at a time (fnn-log-scan-segments), each
             ;; folded into the next txid (one past the largest txid of every
@@ -9206,13 +9259,7 @@ segment' (tests/test_native_topic_local.py)."
                              (first log-position))))
         (unless (and (consp plan) (member (first plan) '(:scan :refused)))
           (fnn-fault "ACL2 returned a malformed log open plan"))
-        (when (equal plan '(:refused :no-segment))
-          (fnn-fault "missing store directory: ~a has no log segment (an init that did not finish: run init again)"
-                     (fnn-journal-dir store)))
-        (when (eq (first plan) :refused)
-          (error 'fnn-store-open-refusal
-                 :message (format nil "open refused reason=~(~a~): the log's segments do not hold the history~@[ from segment ~d~]"
-                                  (second plan) (first log-position))))
+        (fnn-log-open-plan-check store plan log-position)
         (let ((genesis (if log-position (second log-position) chain))
               (base (if (eq status :ok) (fnn-nat s) 0)))
           (loop for (k . more) on (second plan) do
