@@ -12,7 +12,8 @@
  "locus": "peer-services",
  "notes": [
   "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification",
-  "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix 36670bccc, reshaped by f2ccbff38; current site host/native/pull-service.lisp fnn-pull-flight-try stage :local + books/peer-round-driver.lisp fn-prd-loss-class-ok: fnn-store-error from the local open becomes (:lost :local), faults/indeterminate still propagate); local test tests.test_native_peer_round_driver (S054 selector) PASS; native pending: SCN-1090 pull round image"
+  "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix 36670bccc, reshaped by f2ccbff38; current site host/native/pull-service.lisp fnn-pull-flight-try stage :local + books/peer-round-driver.lisp fn-prd-loss-class-ok: fnn-store-error from the local open becomes (:lost :local), faults/indeterminate still propagate); local test tests.test_native_peer_round_driver (S054 selector) PASS; native pending: SCN-1090 pull round image",
+  "10-04 10:41 native green: tests.test_native_peer_round_driver 6/6 OK, hbox run2-d5b0b9100 (images /tank/fn/images/d5b0b9100, dev d5b0b9100)"
  ],
  "owner": "host-lifecycle",
  "reviewer": "pull-service.lisp:258-266 fnn-pull-local-open calls fnn-refuse (io.lisp:132, a plain fnn-store-error) when fn-owner-open-peer answers no cid. books/owner.lisp:1502 fn-own-open-peer shares the fn-own-conns/max-conns bound with fn-own-open (owner.lisp:1430), which reader clients consume (host/native/owner.lisp:36 comment: no other host cap). The :open-local and :reopen-local arms (pull-service.lisp:381-399) have no handler. fnn-pull-round's unwind-protect only cleans up, fnn-pull-worker has no handler, and fnn-pull-worker-guarded (551-558) sends every non-indeterminate serious-condition to fnn-owner-fault-service (owner.lisp:1758-1769), which stops the service with +fnn-exit-fault+. A full connection table at the moment a pull or catch-up round is due therefore stops the node with exit 4. The same applies to any refusal fnn-owner-handle-chunk raises inside fnn-pull-local-send.",
@@ -23,5 +24,5 @@
  "source": "sweep-2026-10-03",
  "state": "landed",
  "title": "A refused pull/catch-up transit open (owner at max connections) stops the whole node as a fault",
- "updated": "2026-10-04T06:31:38Z"
+ "updated": "2026-10-04T14:41:58Z"
 }

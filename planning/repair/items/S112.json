@@ -17,7 +17,8 @@
  "notes": [
   "10-03 04:47 claimed: scope=['books/peer-pull.lisp', 'host/native/pull-service.lisp', 'specs/peering.md', 'tests/acl2/peer-pull-tests.lisp', 'tests/native_pull_journal_registry_raw.lisp', 'tests/test_native_pull_journal_registry.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_removed_peer_releases_kernel_descriptor_and_cursor",
   "Descriptor witness archived planning/evidence/repair/S112-dcccaf2ad4374c4cb5132f14ce1de6ba.json sha256 35473cb941e07a1a91817625ea10f82b9121f16a0c07a5e10e779561aaa52f57",
-  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit 5e53c814d, books/peer-pull.lisp + host/native/pull-service.lisp); local test python3.12 -m unittest tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_acl2_schedule_retires_removed_peers_and_preserves_live_state PASS at HEAD; native pending: services:fd-registry image scenario (not run); ACL2 tests/acl2/peer-pull-tests.lisp not re-run here"
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit 5e53c814d, books/peer-pull.lisp + host/native/pull-service.lisp); local test python3.12 -m unittest tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_acl2_schedule_retires_removed_peers_and_preserves_live_state PASS at HEAD; native pending: services:fd-registry image scenario (not run); ACL2 tests/acl2/peer-pull-tests.lisp not re-run here",
+  "10-04 10:41 native green: tests.test_native_pull_journal_registry.PullJournalRegistryTests 4/4 OK, hbox run2-d5b0b9100 (images /tank/fn/images/d5b0b9100, dev d5b0b9100)"
  ],
  "owner": "codex-sol-tools",
  "reviewer": "fnn-pull-cursor-for and fnn-catchup-cursor-for (pull-service.lisp:465-495) push a journal and cursor per peer key and never remove one. The journals are closed only at worker exit (546-549). The fd count grows with the number of distinct peer names seen over the process lifetime. The claim that a stale cursor is reused is not a defect: the cursor is the in-memory state of that same open journal. Real but minor.",
@@ -38,7 +39,7 @@
  "state": "landed",
  "test": "python3 -m unittest tests.test_native_pull_journal_registry.PullJournalRegistryTests.test_acl2_schedule_retires_removed_peers_and_preserves_live_state",
  "title": "Pull/catch-up journals for removed or renamed peers are never closed: fd leak for the process lifetime",
- "updated": "2026-10-04T06:28:44Z",
+ "updated": "2026-10-04T14:41:59Z",
  "verify": {
   "base": "5022d65bffd789afb545371c890c91e13de54758",
   "base_observation": {

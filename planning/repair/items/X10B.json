@@ -8,7 +8,8 @@
  "locus": "operator-verbs",
  "notes": [
   "2026-10-03 BP-TRANSPORT: ACL2 exact helper-seconds before any attempt publication; canonical pin fixture updated. Shipped raw caller passed; scoped cert/image pending.",
-  "10-04 02:30 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (e27ea2eb1, fnn-workflow-ion-submit refuses before any journal publication or helper launch when fn-workflow-ion-helper-seconds is nil, so refused(1) not uncertain(3)); local raw test tests/native_ion_lifetime_raw.lisp PASS; native pending: tests.test_native_ion_workflow.test_unrepresentable_lifetime_refuses_before_attempt_or_helper"
+  "10-04 02:30 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (e27ea2eb1, fnn-workflow-ion-submit refuses before any journal publication or helper launch when fn-workflow-ion-helper-seconds is nil, so refused(1) not uncertain(3)); local raw test tests/native_ion_lifetime_raw.lisp PASS; native pending: tests.test_native_ion_workflow.test_unrepresentable_lifetime_refuses_before_attempt_or_helper",
+  "10-04 10:41 native green: tests.test_native_ion_workflow 9/9 OK, hbox run2-d5b0b9100 (images /tank/fn/images/d5b0b9100, dev d5b0b9100)"
  ],
  "owner": "bp-transport",
  "severity": "medium",
@@ -16,5 +17,5 @@
  "source": "sweep-gates-X10",
  "state": "landed",
  "title": "ION workflow: an unrepresentable lifetime answers 3 (uncertain, 'observation binding requires recovery', ENOENT on the observation file) where refused-before-attempt (1) is owed: uncertain and refused must stay distinct",
- "updated": "2026-10-04T06:30:35Z"
+ "updated": "2026-10-04T14:41:58Z"
 }

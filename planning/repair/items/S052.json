@@ -13,7 +13,8 @@
   "10-02 22:30 fixed 9b7508ccb on lane/sweep-peer; in the next READY batch after S005",
   "10-02 22:33 sent in 5536e2f08; books certified",
   "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix 9b7508ccb; current site books/owner.lisp fn-own-bp-transit-kind-word + keystone fn-own-bp-transit-submit-result-defers-a-deferral, owner-log.lisp :clock-unusable -> :deferred, tcpcl-delivery.lisp No Resources); local test none (owner/tcpcl-delivery test books not loadable cached-only on laptop: deps uncertified); RESIDUAL not done by the lane: host/native/bp-app.lisp:262 still counts a :deferred class in the refused tally (pinned summary format), smallest fix a separate deferred counter; native pending: tests.test_bp_service_native",
-  "10-04 04:17 ledger-open-a: bp-app keeps :deferred out of the refused tally (new deferred counter; summary line appends deferred=N only when N>0, pinned shape unchanged); tests/test_native_bp_app_tally.py runs the actual fnn-bpapp-deliver and fnn-bp-summary (red before: refused=1 for :busy). Source witness only; no native run."
+  "10-04 04:17 ledger-open-a: bp-app keeps :deferred out of the refused tally (new deferred counter; summary line appends deferred=N only when N>0, pinned shape unchanged); tests/test_native_bp_app_tally.py runs the actual fnn-bpapp-deliver and fnn-bp-summary (red before: refused=1 for :busy). Source witness only; no native run.",
+  "10-04 10:41 REOPENED (integrator2 ledger rule): native red tests.test_bp_service_native 14F/1E of 19 (store: invalid socket read quantum) on hbox run2-d5b0b9100 (images /tank/fn/images/d5b0b9100, dev d5b0b9100)"
  ],
  "owner": "sweep-peer",
  "reviewer": "books/owner.lisp:1674: fn-own-bp-transit-submit-result maps every non-:want decision to :refused. That includes fn-peer-decide-transfer's :defer :staged/:busy/:fenced/:disk-slow/:inflight-limit/:capacity (books/peer-inbound.lisp:517-536, 619-622). Only the owner-queue check yields :busy. The host's second gate at host/native/owner.lisp:3859-3863 also returns :refused for any kind other than :want. Clock failure at host/native/bp-app.lisp:129-132 returns :clock-unusable, which fn-olog-bp-app-class (books/owner-log.lisp:561) classes as :refused. bp-app.lisp:262 then returns (list :refused app-result) with app-result = :refused or :clock-unusable. fn-tcl-delivery-refuse-reason (books/tcpcl-delivery.lisp:45-49) gives No Resources only for :busy/:capacity/:persistence, so these transient cases go out as XFER_REFUSE Not Acceptable. The transient/permanent distinction is lost at the boundary, against the AGENTS.md rule. Severity is medium: fenced and clock-unusable are rare, but stage-busy deferrals under load are plausible.",
@@ -21,7 +22,7 @@
  "severity": "medium",
  "sha": "b3f23fbfe",
  "source": "sweep-2026-10-03",
- "state": "landed",
+ "state": "open",
  "title": "BP-carried transit collapses transient deferrals and an unusable clock into a permanent refusal (TCPCL XFER_REFUSE Not Acceptable)",
- "updated": "2026-10-04T08:17:06Z"
+ "updated": "2026-10-04T14:41:55Z"
 }

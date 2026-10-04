@@ -15,7 +15,8 @@
   "10-02 23:22 escalate: fix lives in host/native/io.lisp (forbidden zone)",
   "2026-10-03 codex-operator-retire owns deferred engineering choice: compare decoded requested profile to sealed profile, and exact generation-one DELTAS ignoring clock stamp/later overlay. ACL2 fn-nir-resume-decision owns compatibility/refusal/fault; host checks under exclusive lock before resume directory/publication effects. Corrupt/missing required gen1 faults. PRF-1270 source-admitted, SCN-1100 actual source red/green; STO-10005 matching image/cert pending Integration.",
   "Operator ownership resumed from Access on2026-10-03; existing source/proof records retained. Matching current native command execution remains distinct; no duplicate source repair or transferred image qualification.",
-  "10-04 02:30 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (debaad165, host/native/io.lisp fnn-initialize-resume-check calling ACL2 fn-nir-resume-decision, books/native-init-resume.lisp, PRF-1270); local test none runnable (tests.test_native_init_resume 4 tests are image-gated, skipped); source fixture tests/native_init_resume_source-mock.lisp not rerun; native pending: tests.test_native_init_resume (SCN-1100, STO-10005 image/cert)"
+  "10-04 02:30 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (debaad165, host/native/io.lisp fnn-initialize-resume-check calling ACL2 fn-nir-resume-decision, books/native-init-resume.lisp, PRF-1270); local test none runnable (tests.test_native_init_resume 4 tests are image-gated, skipped); source fixture tests/native_init_resume_source-mock.lisp not rerun; native pending: tests.test_native_init_resume (SCN-1100, STO-10005 image/cert)",
+  "10-04 10:41 REOPENED (integrator2 ledger rule): native red tests.test_native_init_resume (expected fault, got: ACL2 refused configuration namespace observation) on hbox run2-d5b0b9100 (images /tank/fn/images/d5b0b9100, dev d5b0b9100)"
  ],
  "owner": "codex-operator-heap-default",
  "reviewer": "fnn-initialize (io.lisp:2389-2392) loads the existing config when the link returns :existing, and does not compare it with the requested profile frame. The groups are skipped whenever config history exists (io.lisp:2393). fnn-command-init (io.lisp:3968-3977) then prints \"initialized\" and exits 0. It is reachable through `store ROOT init` (fnn-dispatch io.lisp:8243 to fnn-command-developer-init io.lisp:4041). The init is resumable on purpose, but a mismatched profile goes unreported. The operator path, fnn-command-init-published (io.lisp:4001), refuses an existing path, so only the developer/store verb is affected.",
@@ -23,7 +24,7 @@
  "severity": "low",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "landed",
+ "state": "open",
  "title": "`init` over an existing store ignores the requested profile and groups and still prints \"initialized\"",
- "updated": "2026-10-04T06:30:34Z"
+ "updated": "2026-10-04T14:41:56Z"
 }

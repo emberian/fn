@@ -12,7 +12,8 @@
  "locus": "reclaim-publication",
  "notes": [
   "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification",
-  "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix 68533b1cb/4dda888b1; current site host/native/owner.lisp def-actor fnn-owner-spawn-publisher :roster t :join, registration survives the full unwind, slot released by fnn-owner-publisher-release after follow-up decision handled in-handler); local test none (raw N/A); native pending: tests.test_native_host_lifecycle.WorkerRosterTests.test_the_stop_joins_the_publisher_through_its_tail"
+  "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix 68533b1cb/4dda888b1; current site host/native/owner.lisp def-actor fnn-owner-spawn-publisher :roster t :join, registration survives the full unwind, slot released by fnn-owner-publisher-release after follow-up decision handled in-handler); local test none (raw N/A); native pending: tests.test_native_host_lifecycle.WorkerRosterTests.test_the_stop_joins_the_publisher_through_its_tail",
+  "10-04 10:41 native green: WorkerRosterTests.test_the_stop_joins_the_publisher_through_its_tail ok (the exporter case, r71-F10, is red) OK, hbox run2-d5b0b9100 (images /tank/fn/images/d5b0b9100, dev d5b0b9100)"
  ],
  "owner": "host-lifecycle",
  "reviewer": "owner.lisp:5147-5162: the publisher removes itself from workers and then still runs fnn-arena-unpin, the nursery and fnn-owner-maybe-publish. maybe-publish (5171-5179) does statvfs, a gated quantum and, on :needs-spare, fnn-log-prepare-spare (staging I/O). fnn-owner-wait-workers (4804-4811) therefore no longer waits for this work. The new-publisher half is mostly refuted: the quantum checks STOPPING (5212-5214), and a publisher it creates is pushed into workers under the same roster lock. The prepare-spare race with store close and the late unpin are still real. maybe-publish re-raises fault and indeterminate (5176) with no handler on this thread. The image is built with --disable-debugger (build.lisp:622), so that kills the process with exit 1, skipping the fence and settlement, even without a SIGTERM.",
@@ -23,5 +24,5 @@
  "source": "sweep-2026-10-03",
  "state": "landed",
  "title": "The publisher thread removes itself from the joined worker roster, then keeps doing store I/O and may start another publisher",
- "updated": "2026-10-04T06:31:38Z"
+ "updated": "2026-10-04T14:41:57Z"
 }

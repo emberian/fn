@@ -11,7 +11,8 @@
  "notes": [
   "GPT-6.1-Sol: imported maintenance worker. Publication arena captured with generation pin under owner section and passed through worker, walk, writer and release helpers; release diagnostics captured in section. Publication worker R1 regression and indirect mutation checked. Maintenance lifecycle/fault declaration and SIGHUP log getter routed to Runtime; no baseline growth or whole-maintenance owner lock.",
   "GPT-6.1-Sol continuation: export captures arena plus pin before spawn; dry-run and recorded reclaim capture arena and column key/salt within owner section, use captured capability throughout rewrite/writer/rebuild/release. Actual call graph exposes no R1 export/reclaim getter path (15 more sites removed); unit graph+mutation checks31/31; native acceptance remains pending integration. Redundant dry-run decision call removed.",
-  "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (current site host/native/owner.lisp fnn-owner-maintenance-tick runs on its own maintenance worker, accept loop enters no gate; cold-reap returns on empty head without a section); local test none; native pending: tests.test_native_accept_maintenance.test_sigterm_is_consumed_behind_a_stalled_barrier"
+  "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (current site host/native/owner.lisp fnn-owner-maintenance-tick runs on its own maintenance worker, accept loop enters no gate; cold-reap returns on empty head without a section); local test none; native pending: tests.test_native_accept_maintenance.test_sigterm_is_consumed_behind_a_stalled_barrier",
+  "10-04 10:41 native green: tests.test_native_accept_maintenance 1/1 OK, hbox run2-d5b0b9100 (images /tank/fn/images/d5b0b9100, dev d5b0b9100)"
  ],
  "owner": "owner-offlock",
  "severity": "high",
@@ -19,5 +20,5 @@
  "source": "r71",
  "state": "landed",
  "title": "fnn-owner-accept (bug)",
- "updated": "2026-10-04T06:31:39Z"
+ "updated": "2026-10-04T14:41:59Z"
 }

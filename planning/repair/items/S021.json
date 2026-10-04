@@ -12,7 +12,8 @@
  "locus": "connections",
  "notes": [
   "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification",
-  "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix c3db20174; current site host/native/mux.lisp fnn-mux-wake-locked checks loop-closed under LOCK, fnn-mux-adopt-place reads closed+pushes in one hold and settles the socket itself); local test tests/native_mux_lifecycle_raw.lisp PASS; native pending: tests.test_native_host_lifecycle.AdoptionRaceTests.test_a_socket_adopted_across_a_stop_is_closed_by_its_adopter"
+  "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix c3db20174; current site host/native/mux.lisp fnn-mux-wake-locked checks loop-closed under LOCK, fnn-mux-adopt-place reads closed+pushes in one hold and settles the socket itself); local test tests/native_mux_lifecycle_raw.lisp PASS; native pending: tests.test_native_host_lifecycle.AdoptionRaceTests.test_a_socket_adopted_across_a_stop_is_closed_by_its_adopter",
+  "10-04 10:41 native green: tests.test_native_host_lifecycle.AdoptionRaceTests 1/1 OK, hbox run2-d5b0b9100 (images /tank/fn/images/d5b0b9100, dev d5b0b9100)"
  ],
  "owner": "host-lifecycle",
  "reviewer": "Both halves hold. (a) STOPPING is set under the roster lock (owner.lisp:1704-1707), and fnn-mux-run returns as soon as it sees it (mux.lisp:1349-1350). It then runs fnn-mux-stop-loop, which closes both wake fds (mux.lisp:1333-1334). The committer's barrier still finishes afterwards: COMPLETE's stopping arm calls fnn-owner-deliver ... :uncertain for every member (owner.lisp:3611-3620). Deliver finds the awaiting entry, because fnn-mux-finish never removes it (only owner.lisp:3036-3038 and 3065 write that table), and runs the callback. The callback pushes onto ARRIVED and calls fnn-mux-wake, which writes to the old fd number with nothing checking it (mux.lisp:224-228, 677-680). fnn-owner-loops-snapshot (owner.lisp:3667-3669) also wakes every loop unconditionally after the committer's first wait, even once stopping is set. (b) fnn-mux-adopt checks stopping and pushes onto clients under the roster lock, then releases it and only then pushes onto the inbox under the loop lock and wakes (mux.lisp:1382-1397). A stop that lands in that gap lets stop-loop take an empty inbox (mux.lisp:1312-1315) and close the pipes. The conn is then orphaned: it is never finished or closed and its done semaphore is never signalled; it only gets the stopper's shutdown(2). The timing window is narrow, and an orphaned fd during a stop matters less because the process is exiting. A stray 0x00 written into a reused fd (a file or socket opened during stop or checkpoint) is the real hazard.",
@@ -23,5 +24,5 @@
  "source": "sweep-2026-10-03",
  "state": "landed",
  "title": "After a stop, the wake pipe's closed fd can still be written by an await completion or by a racing adopt, and a conn adopted during the race is never finished",
- "updated": "2026-10-04T06:31:38Z"
+ "updated": "2026-10-04T14:41:57Z"
 }

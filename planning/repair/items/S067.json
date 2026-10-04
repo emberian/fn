@@ -21,7 +21,8 @@
   "2026-10-03 Sol fair-push source retains TCP/TLS completion, output suffix and ACL2 framer drain across per-peer turns. Shared ACL2 action and512 physical range preserve existing65536/10s progress bound without resetting on short prefix. DNS/filesystem/whole-command tariff and native qualification remain open; no borrowed resource grant.",
   "Five actual fair-push source tests plus six credential tests PASS3.753s; raw phase/actor/peer-identity composition passes. Kernel slow-write/healthy drain, TCP/TLS pending, stable retry progress deadline, retained framer EOF and stopping fault tested. Native image/proof/funding/DNS remain pending.",
   "SCN-1106 actual native implicit-TLS pending then later healthy-peer selector prepared; no image execution yet.",
-  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit f2ccbff38; fair-push source in host/native/feed-service.lisp); local tests PASS at HEAD: tests.test_native_peer_round_driver, tests.test_native_feed_fair_round, tests.test_native_feed_credential (35 tests across the pull/push/credential modules, 0 skips); DNS/filesystem tariff and native qualification remain pending; native pending: SCN-1106 implicit-TLS then healthy-peer selector"
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit f2ccbff38; fair-push source in host/native/feed-service.lisp); local tests PASS at HEAD: tests.test_native_peer_round_driver, tests.test_native_feed_fair_round, tests.test_native_feed_credential (35 tests across the pull/push/credential modules, 0 skips); DNS/filesystem tariff and native qualification remain pending; native pending: SCN-1106 implicit-TLS then healthy-peer selector",
+  "10-04 10:41 native green: tests.test_native_feed_credential 6/6, feed_fair_round 5/5, peer_round_driver 6/6 OK, hbox run2-d5b0b9100 (images /tank/fn/images/d5b0b9100, dev d5b0b9100)"
  ],
  "owner": "codex-sol-fair-push",
  "reviewer": "pull-service.lisp:448-456 loops until the session is done or stopping. Each receive uses a 60 s read timeout (line 40), and nothing bounds the round's wall time: a grep of books/peer-pull-session.lisp finds no deadline, budget or clock. A peer that sends one byte every 59 s therefore holds the round indefinitely. fnn-pull-worker (lines 521-546) runs every due peer's round and then fnn-catchup-tick sequentially on one thread, so all other pull and catch-up work waits. On the push side, fnn-feed-dial (feed-service.lisp:418) calls fnn-peer-connect with a blocking timeout inside the sole worker loop (lines 549-558). DNS is noted as a separate unbounded boundary (lines 402-403). Each dial retry stalls the pump of every established link for that long. Pull peers are operator-configured, which limits who can do this.",
@@ -59,5 +60,5 @@
  "state": "landed",
  "test": "python3 -m unittest tests.test_native_peer_round_driver.PeerRoundDriverTests.test_trickling_pull_cannot_starve_healthy_pull_and_catchup",
  "title": "Pull, catch-up and push feeds each run on one serial thread with blocking I/O and no per-round deadline, so one slow peer starves the rest",
- "updated": "2026-10-04T06:28:44Z"
+ "updated": "2026-10-04T14:41:57Z"
 }
