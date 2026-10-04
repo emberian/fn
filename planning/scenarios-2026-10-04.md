@@ -135,7 +135,7 @@ Codes are those of `tests/scenarios/tiers.tsv`.
 - `implicit_tls`:90 vs :98: the comment says STARTTLS upgrades on the plaintext listener, but the assertion is 502.
 - `install`: an upgrade between identical image bytes.
 - `parser_turn_boundary`: its mutations edit frozen 09-30 snapshots, not live source.
-- The MOCK fixtures named `_raw` without `-mock`: `bp_app_clock`, `publication_lock`, `bpapp_acquisition`, `bp_transit_identity`, `pull_journal_registry`, `admin_cleanup`, `tcpcl_acquisition`, `bp_resume`, `auth_lock`. They stub `fnn-core`, syscalls or owner answers (the COMMON contract wants `-mock`).
+- The MOCK fixtures named `_raw` without `-mock`: seven renamed `-mock` on this branch (`bp_app_clock`, `publication_lock`, `bpapp_acquisition`, `admin_cleanup`, `tcpcl_acquisition`, `bp_resume`, `auth_lock`; each stubs `fnn-core`, `fnn-owner-action`, syscalls or `fnn-store-close`). Two are left to their owners: `bp_transit_identity_raw.lisp` is cited as evidence by planning/proofs.json and requirements.json (renaming it `-mock` withdraws those citations: a claim decision), and `pull_journal_registry_raw.lisp` is named by ledger items S054/S067/S106/S112.
 - `test_native_raw_scripts`:105 passes on "PASS" anywhere in the last line.
 
 ## 6. The gaps, ranked by what they hide
