@@ -377,6 +377,38 @@ def record_definitions(paths):
     return found
 
 
+def cursor_definitions(paths):
+    """name -> (file, body) for the step function each `(def-cursor NAME ...)'
+    and `(def-cursor/output NAME ...)' generates (books/def-cursor.lisp:
+    NAME-step).  The step is a definition no `defun' in the books writes, and
+    what it executes is the consumer's `:call' (the one-candidate function)
+    and, in the output phase, its `:output-phase' predicate: the metric and
+    the named proofs are proof-only and are not read.  Without it every
+    function a cursor's `:call' reaches (fn-nnw-stream-one, fn-lst-one,
+    fn-lsr-one and what they call) reads as unreached although the host's
+    fn-splan-cursor-step and fn-qplan-cursor-step run the generated batch
+    over this step; the batch's own definition is the shared
+    ledger.generated_expansion of `def-cursor/batch'."""
+    found = {}
+    for path in paths:
+        try:
+            text = file_text(path)
+        except OSError:
+            continue
+        rel = str(path.relative_to(ROOT))
+        for form in file_forms(path):
+            if not re.match(r"\(def-cursor(?:/output)?\s", form, re.I):
+                continue
+            tree = read_sexp(form)
+            if not tree or len(tree) < 3 or not isinstance(tree[1], str):
+                continue
+            keys = {tree[i]: tree[i + 1] for i in range(3, len(tree) - 1, 2)
+                    if isinstance(tree[i], str) and tree[i].startswith(":")}
+            executed = [flatten(keys.get(":call", [])), flatten(keys.get(":output-phase", []))]
+            found[tree[1].lower() + "-step"] = (rel, "(def-cursor-step %s)" % " ".join(executed))
+    return found
+
+
 def absstobjs(paths):
     """name -> {"exports": {export: (logic, exec)}, "file": rel} for every
     `defabsstobj' (and the plain stobj names of every `defstobj').
@@ -538,6 +570,7 @@ class Graph:
         # are this checker's own additions.
         self.unreadable = {}
         self.book_defs = {**record_definitions(self.books),
+                          **cursor_definitions(self.books),
                           **self.read_definitions(self.books)}
         host_defs = self.read_definitions(self.hosts)
         attached = attachments(self.books)
