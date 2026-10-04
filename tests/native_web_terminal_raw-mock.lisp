@@ -67,6 +67,9 @@
     (values nil :closed nil)))
 (defun fnn-web-dispose-semantic (face conn)
   (declare (ignore face)) (setf (fnn-web-conn-semantic-ended conn) t))
+;; The escape path of the macro below: the deployed helper and ACL2 decisions it calls.
+(load "tests/unwind_cleanups_prelude.lisp")
+(in-package "ACL2")
 (eval (source-form (or (sb-ext:posix-getenv "FN_CLEANUP_HOST_SOURCE") "host/native/io.lisp")
                    "(defmacro fnn-unwind-cleanups "))
 (let ((path (or (sb-ext:posix-getenv "FN_WEB_HOST_SOURCE") "host/native/web-host.lisp")))

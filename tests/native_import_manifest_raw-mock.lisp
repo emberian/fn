@@ -38,6 +38,9 @@
   (case name (fn-sxd-archive-verdict :read)
     (fn-sxi-head (cons nil nil)) (fn-sxi-final '(:import :profile))
     (otherwise nil)))
+;; The escape path of the macro below: the deployed helper and ACL2 decisions it calls.
+(load "tests/unwind_cleanups_prelude.lisp")
+(in-package "ACL2")
 (eval (source-definition (or (sb-ext:posix-getenv "FN_CLEANUP_HOST_SOURCE") "host/native/io.lisp")
                          "defmacro" "fnn-unwind-cleanups"))
 (eval (source-definition (or (sb-ext:posix-getenv "FN_IMPORT_HOST_SOURCE") "host/native/io.lisp")
