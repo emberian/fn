@@ -5414,7 +5414,7 @@
   :keystones ((fn-oadl-refusal-is-one-line :via fn-oadl-refusal-span)))
 (definterface fn-oadl-wordp :class :common-lisp-compliant)
 (definterface fn-oadl-log-line :class :common-lisp-compliant)
-(definterface fn-orv-accounting-line :class :common-lisp-compliant)
+(definterface fn-oadl-accounting-line :class :common-lisp-compliant)
 (definterface fn-ocap-admit-preview :class :common-lisp-compliant)
 (definterface fn-ocap-at :class :common-lisp-compliant :kinds ((n natp)))
 (definterface fn-rlo-capacity :class :common-lisp-compliant)

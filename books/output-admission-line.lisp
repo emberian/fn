@@ -18,6 +18,7 @@
 (in-package "ACL2")
 (include-book "owner-resource-line")
 (include-book "output-command-admission")
+(include-book "native-config")
 
 (defun fn-oadl-wordp (admission)
   (declare (xargs :guard t))
@@ -88,5 +89,23 @@
 (defthm fn-oadl-other-words-are-not-answered
   (implies (not (fn-oadl-wordp admission))
            (equal (fn-oadl-refusal-span oc id i admission fn-octets) nil)))
+
+;; The status/health line naming the output-accounting mode, so the mode is
+;; never silent (root ruling 2026-10-04): with no [resources] output policy
+;; the node runs unaccounted output; with one, every first command passes
+;; the admission gate.  POLICY is the loaded configuration's
+;; (fn-native-config-output-resources).
+(defun fn-oadl-accounting-line (policy)
+  (declare (xargs :guard t))
+  (if (and policy (fn-native-config-output-resources-wfp policy))
+      (coerce (append (coerce "output accounting: on output_heap_octets=" 'list)
+                      (explode-nonnegative-integer (nfix (fn-ncfg-nth 0 policy)) 10 nil)
+                      (coerce " output_quantum_heap_octets=" 'list)
+                      (explode-nonnegative-integer (nfix (fn-ncfg-nth 1 policy)) 10 nil))
+              'string)
+    "output accounting: off (no [resources])"))
+
+(defthm fn-oadl-accounting-line-off-without-policy
+  (equal (fn-oadl-accounting-line nil) "output accounting: off (no [resources])"))
 
 (in-theory (disable fn-oadl-wordp fn-oadl-line fn-oadl-effects fn-oadl-refusal-span))

@@ -802,7 +802,7 @@ Run-only accessors intentionally return NIL for these commands."
      (fnn-core 'fn-native-operator-host-result-store-root result)
      (fnn-core 'fn-native-config-cold-resources config)
      (fnn-core 'fn-native-config-output-resources config))
-    (fnn-out "~a" (fnn-core 'fn-orv-accounting-line
+    (fnn-out "~a" (fnn-core 'fn-oadl-accounting-line
                             (fnn-core 'fn-native-config-output-resources config)))))
 
 (defun fnn-operator-execute-status (result)

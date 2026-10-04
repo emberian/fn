@@ -23,3 +23,9 @@
 ; The log line names the family and the connection.
 (assert! (equal (fn-oadl-log-line *oadl-unpriced* 7)
                 (fn-osch-text "output admission: family unpriced, refused 403, connection 7 family NEWNEWS")))
+
+; The status/health line: off without a policy, on with the pair.
+(assert! (equal (fn-oadl-accounting-line nil) "output accounting: off (no [resources])"))
+(assert! (equal (fn-oadl-accounting-line '(16777216 1048576))
+                "output accounting: on output_heap_octets=16777216 output_quantum_heap_octets=1048576"))
+(assert! (equal (fn-oadl-accounting-line '(1024 1024)) "output accounting: off (no [resources])"))
