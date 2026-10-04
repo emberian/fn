@@ -170,9 +170,11 @@ representation stage (D41, ST2 to ST5), not this wave; section 4 names what it n
 ## 3. The lean: (B), with (A)'s book and tool kept for the owner's eventual physical form
 
 1. (B) is literally ember's answer ("we can just not have that guard"): the whole-state check leaves
-   the guard instead of being skipped under a marker. After it there is nothing for
-   A-OWNER-INVARIANT-CARRIED to cover on the converted chains; the 338 owed writers stop being a
-   DISPATCH-soundness debt (section 5 says what they become).
+   the guard instead of being skipped under a marker. After S4 (the rows deleted) there is nothing
+   for A-OWNER-INVARIANT-CARRIED to cover on the converted chains and the 338 owed writers stop
+   being a DISPATCH-soundness debt (section 5 says what they become). Between S1 and S4 the
+   converted entry's row still skips its (now O(1)) conjunct under the same marker: the debt is
+   unchanged until S4 (section 9, G2b and G6c).
 2. (B) is incremental per served entry; (A) is atomic by nature, which is why two attempts and ~12
    lane-days have produced no landed migration.
 3. (B) is strictly safer at runtime. Under (A) a violated invariant makes raw execution unfaithful
@@ -199,8 +201,8 @@ representation items for the ST-stages and are named, not hidden, when found.
 
 ## 4. What the owned invariant IS as a carried field: the exact workaround
 
-The invariant is NOT a stobj type, and cannot be (section 0, ACL2 8.7). The exact workaround, which
-is what both carriers already do and what `def-carried` exists for:
+The invariant is NOT a stobj type, and cannot be (section 0, ACL2 8.7). The workaround both
+carriers already use, and the one `def-carried` exists for (section 9 lists the alternatives):
 
 - the carrier's fields are untyped (`:initially nil`), its recognizer (`fn-owner-stp`) is structural
   and attachment-free;
@@ -334,56 +336,77 @@ form by form; a theorem that does not go through is a `proof-owed` item naming i
   this file missed), the escape stays for exactly the named route and section 5's deletions do not
   happen; the dispatch soundness argument of section 3 is unaffected (nothing is skipped).
 
-## 9. Advisory consultation (NOT COMPLETED -- the record, not a review)
+## 9. Advisory consultation (completed 2026-10-04, carrier2)
 
-Kimi K2.7 (`kimi -p`, agent file with `tools: []`/`subagents: []`, empty skills dir, the prompt =
-this file plus the pasted definitions; `scratchpad/carrier-review/prompt.txt` in the carrier
-session, 69 KB) was timeboxed at 25 minutes and did not emit an answer; per how-we-work.md a
-truncated reasoning trace is not a completed review. Its trace (46 KB of reasoning) raised points
-worth re-checking, listed here as UNVETTED hints for the continuation, not findings:
+Two reviews, both on the same prompt (this file as it stood at `b7195275e`, the pasted
+definitions, and the S1 diff and teeth book; no tools, no web, an empty directory; the prompt is
+78 KB). **grok-4.7** (`grok --prompt-file ... --tools "" --no-subagents --disable-web-search`)
+and **Kimi K2.7** (`kimi -p ... --agent-file reviewer.md --skills-dir <empty>`; it finished this
+time, inside the 50-minute cap) each returned numbered findings. Below, each finding with the
+answer and the witness for that answer.
+(F = finding; G = grok, K = Kimi.)
 
-1. The twins stay unconditional only because the abstract :io arm bottoms out at `fn-sn-io` itself
-   (`fn-ocfg-step` -> `fn-ocfg-pass` -> `fn-own-step` -> `fn-own-store-step` -> `fn-snrt-step`/`fn-snt-step`
-   :io arm = `fn-sn-io`); the trace agreed, contingent on that reading. Re-confirm in the REPL by
-   proving `fn-rcon-sn-io-is-sn-io` and `fn-rcon-ocfg-io-is-ocfg-step` unchanged.
-2. Section 5's closure scanner must match TRANSLATED names (`unnormalized-body` is translated:
-   `f-put-global` the macro expands to `put-global`; `assign` likewise); dev's `world.lisp` already
-   matches `get-global put-global boundp-global1`. Name `with-live-state` and `ld-redefinition-action`
-   (redefinition after the snapshot) as routes the criterion excludes by rule, not by scan.
-3. The three local lemmas that state the identity off the invariant (section 0) become FALSE, not
-   merely unused, when THEIR chains are converted (S2: `fn-si-prepare-off-state-is-identity`;
-   S3: `fn-hma-finish-outside-the-state-is-a-stutter`); they are deleted or restated in those
-   slices, in the same commit as the step they are about (a deleted lemma about a deleted
-   behaviour is not a deferral). S1 touches none of them.
-4. `planning/interfaces.json` records the entry guard; the integrator regenerates it in the merge
-   commit (plan section 3). Not a lane edit.
-5. The P1 witness as first written (`'junk` in the records field) is NOT a counterexample to
-   `fn-sf-statep` once `fn-sl-of` normalises it; the teeth book uses one barrier too many instead
-   (`tests/acl2/store-files-counters-tests.lisp`, `*sfc-junk*`).
-6. On section 4 "the only workaround": the trace wanted the phrasing softened to "the only one that
-   keeps `fn-digest` attached"; an attachment-free digest (a logic-mode reference implementation
-   executed as the attachment) would lift the restriction at the cost of the whole stobj's
-   recognizer running the digest in the logic. Recorded; not pursued.
+| # | finding | verdict | answer and witness |
+|---|---|---|---|
+| G1a | S1 must delete `fn-sn-io`'s and `fn-rcon-sn-io`'s own `mbe` too, or their guards cannot weaken | AGREE (it was the plan, P2) | done in `a10f9c6c7`: both bodies are now the unconditional `fn-sn-update`; `verify-guards fn-sn-io` / `fn-rcon-sn-io` take no hints |
+| G1b, K2 | `fn-rcon-sf-record-dir-result`'s `:use fn-sf-statep-implies-shapep` hint suggests the body needs shape (O(N)) | REFUTED | `fn-rcon-sf-record-pair` is `:guard t` (records-concrete.lisp:172), as are `fn-sfr-snoc`, `fn-sf-make-fields`, `fn-sf-records-field`, `fn-sf-successes-field`; the hint was decoration and is deleted; the function now has guard `fn-sf-countersp` with no hints, and it verifies (certify run in the lanedump) |
+| G1c | accessors are `:verify-guards nil` | REFUTED | they are verified before the steps (store-files #22-#33); the REPL admitted every step's `verify-guards` (#165-#194) |
+| G2 | `fn-sf-countersp` is not preserved: the frontier directory result installs the candidate as the frontier; the reserve composite's chained guard needs a preservation lemma | AGREE (the lemma was missing) | added `fn-sf-io-steps-keep-countersp` (every io step but the directory result keeps the guard; REPL #195), `fn-sn-file-step-keeps-countersp`, `fn-sn-io-keeps-countersp`, `fn-rcon-ocfg-io-keeps-the-store-counters`; the reserve chain is start, file, replace (each keeps it), then dir (needs it only on entry). An off-invariant `:log-reserve` can leave a junk frontier; the NEXT call's guard is then false |
+| G2b | while the `:raw-with` row stands, that next call runs raw and `<`/`1+` on a non-number is a Lisp error, not "a wrong answer"; section 3.3 overclaims for S1-S3 | AGREE, scoped | section 3.3's safety claim holds after S4, not before; between S1 and S4 the skip rests on the carried relation exactly as today (it implies the new head through `fn-owner-retain-statep-implies-io-guard`). Section 3.1 is corrected above |
+| G3 | the twins stay unconditional only if the deletion is lockstep; the predecessor's diff was not (`fn-rcon-sf-record-dir-result` kept its `mbe`) | AGREE | lockstep in `a10f9c6c7`: `fn-rcon-sf-record-dir-result`, `fn-rcon-sn-io` lose the `mbe` with their kernel twins; the unconditional `-is-` theorems are re-proved unchanged in the certify run |
+| K3 | an abstract wrapper on the `:io` path (`fn-snt-step`, `fn-snrt-step`, `fn-own-store-step`) may carry its own `fn-sn-statep` `mbe` and break `fn-rcon-ocfg-io-is-ocfg-step` | REFUTED by reading | store-node-traces.lisp:608 (`fn-snt-step`), store-node-resolution.lisp:593 (`fn-snrt-step`), owner.lisp:2143 (`fn-own-store-step`), owner.lisp:3154, owner-config.lisp:689: their `mbe`s are only over `car`/`cadr` of the event, never `fn-sn-statep`; the theorem's re-proof is in the certify run |
+| G4, K4 | the installer-closure criterion misses writer routes: `makunbound-global` (falsifies `boundp-global 'fn-owner`); a quoted form evaluated by `trans-eval`, `magic-ev-fncall`, `ev-fncall`, `ld` (`fn-ocw-callees` stops at `fquotep`); raw code through `return-last`/`progn!` under a ttag; attachments; the snapshot is an unproved `:program` tool | AGREE | section 5's criterion becomes conservative (section 5a below): every such route makes a function a writer, and a function whose closure reaches an unknown body (no `unnormalized-body`, not a known primitive) is a writer. The deletions happen only for functions the scanner proves free of every route |
+| G4b | `unnormalized-body` holds `f-put-global`; `put-global` is the macro, so `world.lisp` misses direct puts | REFUTED | in the REPL (ACL2 8.7), `(getpropc 'f-put-global 'macro-body)` is `(cons 'put-global ...)`, and `put-global` has formals `(key value state-state)`: `put-global` is the function, `f-put-global` the macro. The same session shows `makunbound-global` is a function `(x state-state)`, which is the route G4/K4 name |
+| G4c | `world.lisp` counts readers (`get-global`, `boundp-global1`) as hits | AGREE, by design | it computes the TOUCHER closure `thread.py` needs; the writer census is a separate scan (section 5a) |
+| G5, K5 | the 8.7 reading is right, but "the exact workaround" is not the only one: an attachment-free reference digest with an equality theorem; a `:corr-fn` absstobj whose exports may call `fn-digest`; removing the attachment | AGREE | section 4 now reads "the workaround both carriers use"; the alternatives are recorded for ST2/ST3 (a typed Store field over a reference digest is the one worth costing there). G5's note that the pasted `fn-sn-statep` does not show the `fn-digest` ancestry is right for the paste. The ancestry goes through `fn-node-statep`'s replay/record digests; the ST2 packet must exhibit it with `(all-fnnames ...)` before relying on it |
+| G6a | the census of off-invariant identity lemmas looked only for literal `(not (fn-sf-statep ...))` hypotheses | AGREE | the fan-in certification is the check: a theorem that relied on the identity under any other negated hypothesis fails to re-prove. A failure is a `proof-owed` item or a restatement, recorded in the lanedump |
+| G6b, K6d | T2 reads only the guard's head; `fn-sf-countersp` could hide a walk; T2 omits the owner layers and `fn-owner-io` | AGREE | the teeth book now checks `fn-sf-countersp`'s own body (only `natp` and the two accessors), T2 covers `fn-rcon-own-store-io`, `fn-rcon-ocfg-io`, `fn-olr-ocfg-reserve/-order`, and T2 has its own teeth (it must flag `fn-sf-core-completion`, still on the whole-log guard). `fn-owner-io`'s guard is checked by a `make-event` in host/owner-retain-host.lisp, at image build |
+| G6c | section 3.1 says the 338 stop being a dispatch debt when (B) lands, but S1 keeps the row | AGREE | corrected in section 3.1: unchanged until S4 |
+| G6d | the 92 ms was the guards-on counterpart; the raw-dispatched image already skips it, so S1 changes nothing a served POST on the raw image pays | AGREE | the before/after measurement is therefore the COUNTERPART arm (`FN_NATIVE_DISPATCH_COUNTERPART=1`, measure_post.py), where S1 must make `fn-owner-io` flat, plus the guard costs in the REPL. S1's payoff is that S4 can delete the row with no cost regression |
+| K6a | `fn-sf-statep-implies-countersp` needs uint32 implies natp | AGREE, no change | it proves with `fn-sf-statep fn-sf-countersp` enabled (REPL, store-files #163) |
+| K6b | why keep a no-op raw row rather than drop it in S1 | AGREE it is asserted, answered | RAW-DISPATCH owns `host/interfaces.lisp` until its exit; two lanes editing the rows is the collision section 6 avoids. S4 deletes it |
+| K6c | nothing pins the census snapshot to a build | AGREE | the census is filed as evidence with the image set's sha and the world's source sha (section 5a) |
 
-The continuation re-runs the consultation (`kimi -p "$(cat prompt.txt)" --agent-file reviewer.md
---skills-dir skills-empty`, or Codex/Astra after 10-08) and pastes the answer here before the
-DECISION block is marked AGREED.
+### 5a. The writer criterion, as amended by section 9
+
+F is a writer of the owner's globals iff F's closure (bodies, guards and attachments, `:logic`
+and `:program`) reaches any of these:
+(1) `put-global` or `makunbound-global` with key `'fn-owner` or `'fn-owner-retain-carry`, or
+with a non-literal key;
+(2) an evaluator over a form or a function symbol computed at run time: `trans-eval` and its
+variants, `ev`/`ev-fncall`/`ev-fncall-w`, `magic-ev-fncall`, `ld`/`ld-fn`. `apply$` and `ev$`
+are excluded by rule, because they run only badged functions, which cannot take `state`;
+(3) `return-last` whose first argument is not one of ACL2's built-in keys (raw code under a
+ttag);
+(4) a function with no `unnormalized-body` that is neither a primitive nor constrained without
+an attachment.
+
+The installers are writers by (1). The scan is conservative: each route counts as a write,
+whatever it does at run time. `with-live-state` and redefinition after the snapshot are excluded
+by rule. The image build refuses redefinition (`ld-redefinition-action` nil), and `with-live-state`
+in a host file is a ttag'd raw form, which (3) catches. Raw Lisp modules reach the globals only
+through dispatched entries (`tools/raw_dispatch_rule.py`). The census is run in an image world,
+filed with the image set's sha (`evidence_store.py put`), and is the evidence for each deletion.
 
 ## DECISION
 
-**Status: LEAN RECORDED by the carrier lane (Fable, 2026-10-04); not yet AGREED -- the advisory
-review did not complete (section 9). The Opus continuation completes the review, answers its
-findings in this file, and marks AGREED or escalates.**
+**Status: AGREED (carrier2, 2026-10-04), with the amendments of section 9.** The two reviews
+(grok-4.7 and Kimi K2.7, both completed) attack the slice's execution, not the lean. Every
+AGREE finding is folded into S1's commit or into section 5a. The REFUTED findings each carry
+their witness in the table above. No finding asks for option (A) or (C).
 
-The lean, for the record: (B) the sf-statep idiom change, per served chain, `fn-owner-io` first
-(section 7 is the slice; `books/store-files.lisp` and `tests/acl2/store-files-counters-tests.lisp`
-on `lane/carrier` carry the first, UNADMITTED edit); the stobj carrier is the eventual physical form
-(dev's `books/owner-carrier.lisp` + `tools/owner_carrier/thread.py`, run once on then-current dev);
-`lane/stage-5b-carrier@fa32ac06f` is retired as an input; the invariant is never a stobj type
-(section 4); the 338 owed writers are reclassified by the installer closure (section 5); RAW-DISPATCH
-lands first and S1 leaves `host/interfaces.lisp` untouched (section 6).
+The design: (B) the sf-statep idiom change, per served chain, `fn-owner-io` first (S1, landed on
+`lane/carrier2`, in lockstep on both sides of every twin). The stobj carrier is the eventual
+physical form (dev's `books/owner-carrier.lisp` + `tools/owner_carrier/thread.py`, run once on
+then-current dev). `lane/stage-5b-carrier@fa32ac06f` is retired as an input. The invariant is
+never a stobj type (section 4; the alternatives section 9 lists are recorded for ST2/ST3). The
+338 owed writers are reclassified by the conservative closure of section 5a; a deletion needs
+the filed census, and until S4 the escape stays for every name the census does not clear.
+RAW-DISPATCH lands first, and S1 leaves `host/interfaces.lisp` untouched (section 6). Between
+S1 and S4 the dispatch debt is unchanged (section 3.1, corrected).
 
-Open questions, marked: (q1) the generator owner's view of completeness-by-closure (section 5, 8);
-(q2) whether `fn-sn-shapep`/`fn-sf-shapep` should be made O(1) as well (section 0's trap) or left
-to the ST-stages; (q3) the native POST "after" figure needs the integrator's batch image
-(section 7); (q4) the exact owed-writer counts need `fn-ocw-snapshot` in a current image world.
+Open, marked:
+(q1) the generator owner's view of completeness-by-closure (S5).
+(q2) `fn-sn-shapep`/`fn-sf-shapep` O(N), left to the ST-stages.
+(q3) the native counterpart-arm POST "after" figure needs the integrator's batch image.
+(q4) the exact owed-writer counts need the section 5a census in a current image world.

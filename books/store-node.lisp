@@ -1332,7 +1332,8 @@
 (defthm fn-sn-io-keeps-countersp
   (implies (and (fn-sf-countersp (fn-sn-files s))
                 (not (equal operation :frontier-directory)))
-           (fn-sf-countersp (fn-sn-files (fn-sn-io s operation result)))))
+           (fn-sf-countersp (fn-sn-files (fn-sn-io s operation result))))
+  :hints (("Goal" :in-theory (disable fn-sn-update fn-sn-file-step))))
 
 ; A crash discards the live process view.  Recovery reconstructs a new node
 ; through the existing replay interpreter, whose individual records call the
