@@ -15,7 +15,8 @@
  "locus": "gates-tests-packaging",
  "notes": [
   "10-02 23:04 fixed; ran tests.test_native_build_scripts (image build not run)",
-  "10-03 03:08 claimed: scope=['tools/build_lists_check.py', 'tests/test_build_lists_check.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_build_lists_check.DuplicateLoadTests.test_findings_refuse_duplicate_ld_before_set_closure_hides_it"
+  "10-03 03:08 claimed: scope=['tools/build_lists_check.py', 'tests/test_build_lists_check.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_build_lists_check.DuplicateLoadTests.test_findings_refuse_duplicate_ld_before_set_closure_hides_it",
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commits 4315dbeba + cfc0980c4, tools/build_lists_check.py, host/native/build*.lisp); local test python3.12 -m unittest tests.test_build_lists_check.DuplicateLoadTests.test_findings_refuse_duplicate_ld_before_set_closure_hides_it PASS at HEAD and tests.test_native_build_scripts (13 tests) PASS; native pending: none (image build not run)"
  ],
  "owner": "codex-sol-tools",
  "reviewer": "host/native/build.lisp:318 and :365, and host/native/build-dtn.lisp:219 and :256, both ld host/page-read-host.lisp. The file holds only include-books, defuns and defthms. The build succeeds, so the second ld is all redundant events: wasted build time plus a latent ordering hazard, with no functional effect today.",
@@ -29,10 +30,10 @@
  "severity": "low",
  "sha": "cfc0980c4",
  "source": "sweep-2026-10-03",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_build_lists_check.DuplicateLoadTests.test_findings_refuse_duplicate_ld_before_set_closure_hides_it",
  "title": "host/page-read-host.lisp is ld'ed twice in both the production and the DTN build scripts",
- "updated": "2026-10-03T07:08:38Z",
+ "updated": "2026-10-04T06:28:44Z",
  "verify": {
   "base": "bf8582b775b0aa9330b53cc8c96911d6a72ed645",
   "base_observation": {

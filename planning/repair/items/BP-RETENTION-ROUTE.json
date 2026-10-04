@@ -1,13 +1,16 @@
 {
  "category": "repair",
- "id": "BP-RETENTION-ROUTE",
- "title": "Canonical BP retention event must reach the actual log identity gate before reservation",
- "state": "in-progress",
- "owner": "deputy_groundwork",
- "source": "actual current source and historical native preflight",
- "severity": "high",
  "exposure": "live",
  "file": "host/native/owner.lisp",
+ "id": "BP-RETENTION-ROUTE",
  "note": "Current log route binds no effective identity callback and never invokes the one-shot grant producer; retention preparation therefore refuses. Source7c6d135f3 restores dynamic callback and canonical operation transport through advance-frontier/log-reserve. Reviewed aggregate56f97b4d3 is with Integration. Extracted source routing fixture passes, logical grant predicate remains existing authority; matching native undertaking/release/reopen plus ordinary POST pending. Historical45 preflight reporta3b59cff9 remains a historical refusal, not a current execution claim.",
- "updated": "2026-10-03T08:40:00Z"
+ "notes": [
+  "10-04 02:32 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (e5601b448 and earlier; host/native/io.lisp *fnn-identity-reservation-callback* -> fnn-log-reserve, bound at host/native/owner.lisp 3324/3785/3815/3856/3873, event passed to fnn-advance-frontier at the retention undertaking at owner.lisp:3789; item's note commit 7c6d135f3 is not an ancestor but its routing is present); local sbcl --script tests/native_retention_identity_route_raw-mock.lisp PASS; native pending: matching undertaking/release/reopen plus ordinary POST scenario (ordinary POST route owner.lisp:3326/3817 still calls fnn-advance-frontier without an event)"
+ ],
+ "owner": "deputy_groundwork",
+ "severity": "high",
+ "source": "actual current source and historical native preflight",
+ "state": "landed",
+ "title": "Canonical BP retention event must reach the actual log identity gate before reservation",
+ "updated": "2026-10-04T06:32:55Z"
 }

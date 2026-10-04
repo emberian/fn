@@ -9,7 +9,8 @@
  "line": "4366",
  "locus": "connections",
  "notes": [
-  "GPT-6.1-Sol: imported mux cold polling continuation and native regression test. Matching native verdict pending integrator batch; physical cancellation/return custody remains runtime/resource composition debt."
+  "GPT-6.1-Sol: imported mux cold polling continuation and native regression test. Matching native verdict pending integrator batch; physical cancellation/return custody remains runtime/resource composition debt.",
+  "10-04 02:31 ledger-close 2026-10-04: left in-progress: the loop no longer waits for the page (fnn-owner-cold-poll, fnn-mux-cold-check) but settlement fnn-owner-cold-settle is still a :control quantum (owner.lisp:6072, comment at 6204 says so), so behind a barrier in flight the poll blocks the I/O loop; smallest fix: a non-blocking settle attempt (try-enter, else (:wait) re-poll next tick); native tests.test_native_cold_off_loop pending"
  ],
  "owner": "owner-offlock",
  "severity": "high",
@@ -17,5 +18,5 @@
  "source": "r71",
  "state": "in-progress",
  "title": "fnn-owner-cold-await (bug)",
- "updated": "2026-10-03T06:00:00Z"
+ "updated": "2026-10-04T06:31:39Z"
 }
