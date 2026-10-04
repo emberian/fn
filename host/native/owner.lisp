@@ -6027,7 +6027,9 @@ owner, as a late store fault does on the whole-extent line."
                            ((typep word 'condition) '(:fault :error))
                            (t word)))
              (released
-               (cond ((eq word :ready) (fnn-extent-window-release worker token))
+               ;; A published raw window's buffer moves into the verified-
+               ;; window cache when ACL2 admits it (fn-pwc-cache).
+               (cond ((eq word :ready) (fnn-extent-window-release worker token t))
                      ((eq word :cancelled) (fnn-extent-window-settle-cancelled worker token))
                      (t (setq condition (fnn-owner-cold-window-fault word))
                         (fnn-extent-window-settle-fault worker token)))))

@@ -168,6 +168,49 @@
   (equal (fn-owner-page-window-outcome worker token plan fn-page-read-pool)
          (fn-pwr-outcome (fn-owner-page-read-ledger fn-page-read-pool) worker token plan)))
 
+;; The verified-window cache (books/page-window-read.lisp fn-pwc-*).  KEEP is
+;; what the cached buffer retains: the fixed window stobj's two arrays
+;; (16 KiB octets, its one count word) and the cache entry's conses (token
+;; 9, plan 14, entry and list cells) at 16 octets each; never a worker slot.
+(defun fn-owner-page-window-cache-keep ()
+  (declare (xargs :guard t))
+  (list (+ (fn-crl-array-octets 16384 1) (fn-crl-array-octets 1 8) (* 16 32)) 0 0 0 0))
+
+(defun fn-owner-page-window-executor-cache (worker token plan fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool :guard (true-listp plan)))
+  (if (not (fn-owner-page-window-legacy-writablep fn-page-read-pool))
+      (mv :runtime-operation-unavailable worker fn-page-read-pool)
+    (mv-let (word worker1 ledger)
+      (fn-pwc-cache (fn-owner-page-read-ledger fn-page-read-pool) worker token plan
+                    (fn-owner-page-window-cache-keep))
+      (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
+        (mv word worker1 fn-page-read-pool)))))
+
+(defthm fn-owner-page-window-executor-cache-refines-pwc-by-definition
+  (implies (fn-owner-page-window-legacy-writablep fn-page-read-pool)
+   (equal (mv-list 3 (fn-owner-page-window-executor-cache worker token plan fn-page-read-pool))
+    (let ((r (mv-list 3 (fn-pwc-cache (fn-owner-page-read-ledger fn-page-read-pool) worker token plan
+                                      (fn-owner-page-window-cache-keep)))))
+      (list (nth 0 r) (nth 1 r) (fn-owner-page-read-keep-ledger (nth 2 r) fn-page-read-pool)))))
+  :hints (("Goal" :in-theory '(fn-owner-page-window-executor-cache mv-list mv-nth nth
+                               (:executable-counterpart binary-+)
+                               (:executable-counterpart zp)
+                               (:type-prescription fn-owner-page-window-legacy-writablep))
+           :expand ((:free (x) (mv-nth 1 x)) (:free (x) (mv-nth 2 x))
+                    (:free (x) (nth 1 x)) (:free (x) (nth 2 x))))))
+
+(defun fn-owner-page-window-cache-byte-at (token plan file eoff elen poff plen trailer i
+                                                 fn-ew-buffer fn-page-read-pool)
+  (declare (xargs :stobjs (fn-ew-buffer fn-page-read-pool) :guard (true-listp plan)))
+  (fn-pwc-byte-at (fn-owner-page-read-ledger fn-page-read-pool) token plan
+                  file eoff elen poff plen trailer i fn-ew-buffer))
+
+(defthm fn-owner-page-window-cache-byte-at-refines-pwc-by-definition
+  (equal (mv-list 2 (fn-owner-page-window-cache-byte-at token plan file eoff elen poff plen trailer i
+                                                        fn-ew-buffer fn-page-read-pool))
+         (mv-list 2 (fn-pwc-byte-at (fn-owner-page-read-ledger fn-page-read-pool) token plan
+                                    file eoff elen poff plen trailer i fn-ew-buffer))))
+
 (defun fn-owner-page-window-executor-cancel (worker token fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
   (if (not (fn-owner-page-window-legacy-writablep fn-page-read-pool))

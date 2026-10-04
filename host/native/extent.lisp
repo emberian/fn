@@ -511,8 +511,11 @@ a job that signalled, cancelled or not.  Nothing here settles or signals."
           ((member word '(:cancelled :stale-job))
            (throw 'fnn-extent-window-refused (values word nil nil nil)))
           ((eq word :unavailable)
-           (throw 'fnn-extent-cold
-             (fnn-core-cold-single 'fn-pwr-cold-descriptor file eoff elen poff plen trailer i)))
+           ;; Not in the borrowed window: a verified cached window, else the
+           ;; core's complete cold descriptor.
+           (or (fnn-extent-window-cache-byte file eoff elen poff plen trailer i)
+               (throw 'fnn-extent-cold
+                 (fnn-core-cold-single 'fn-pwr-cold-descriptor file eoff elen poff plen trailer i))))
           (t (error 'fnn-extent-fault
                     :message "arena-extent-read: window was not an authenticated returned result")))))
 
@@ -536,8 +539,58 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
       (multiple-value-bind (token word worker) (fnn-extent-issue-window descriptor)
         (values word nil token worker))))))
 
-(defun fnn-extent-window-release (worker token)
-  "Caller holds no buffer aliases. Drop the sole retained result BEFORE refund."
+;;; THE VERIFIED-WINDOW CACHE (lane window-read; books/page-window-read.lisp
+;;; fn-pwc-*).  A raw window job whose publication was read is, at its last
+;;; borrow's release, moved into this cache instead of freed: ACL2's
+;;; fn-pwc-cache admits only a :ready outcome and turns the job's ledger row
+;;; into a :cached row charged the buffer alone; the entry keeps the job's
+;;; token, its plan and its window buffer.  A later scalar read of the same
+;;; window borrows from the entry (fn-pwc-byte-at, KEYSTONE
+;;; fn-pwc-a-hit-is-the-published-window: exactly the byte the job's own
+;;; borrow gave) with no worker, pread or owner settlement -- the window
+;;; route's warm path.  At most fnn-extent-cache-limit entries (ACL2's
+;;; fn-arx-read-cache-entries, the bound books/cold-line-quanta.lisp's
+;;; quanta are shaped to); the oldest is evicted, and its exact :cached row
+;;; released (fn-prl-evict), on insertion and when its file retires
+;;; (fnn-extent-cache-drop-files).  Each entry is (TOKEN PLAN WINDOW).
+(defvar *fnn-extent-window-cache* nil) ; guarded-by: *fnn-extent-lock*
+
+(defun fnn-extent-window-cache-insert (token plan window)
+  "Extent lock held, the :cached row already ACL2's.  Front insertion; the
+tokens of the entries evicted past the bound (the caller releases them)."
+  (push (list token plan window) *fnn-extent-window-cache*)
+  (let ((limit (fnn-extent-cache-limit)))
+    (when (> (length *fnn-extent-window-cache*) limit)
+      (let ((evicted (mapcar #'first (nthcdr limit *fnn-extent-window-cache*))))
+        (setq *fnn-extent-window-cache* (subseq *fnn-extent-window-cache* 0 limit))
+        evicted))))
+
+(defun fnn-extent-window-cache-byte (file eoff elen poff plen trailer i)
+  "A cached window's payload byte I of this exact descriptor, or NIL.  The
+host only selects candidates by the token's own descriptor and requested
+offset; ACL2 decides the hit (fn-owner-page-window-cache-byte-at)."
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+    (dolist (entry *fnn-extent-window-cache* nil)
+      (destructuring-bind (token plan window) entry
+        (when (and (eql (third token) file) (eql (fourth token) eoff)
+                   (eql (fifth token) elen) (eql (sixth token) poff)
+                   (eql (seventh token) plen) (eql (ninth token) trailer)
+                   (integerp (eighth token)) (<= (eighth token) i))
+          (destructuring-bind (word byte)
+              (fnn-core-page-read-pool 'fn-owner-page-window-cache-byte-at
+                                       token plan file eoff elen poff plen trailer i window)
+            (when (eq word :byte)
+              (incf (first *fnn-extent-stats*))
+              (unless (eq entry (first *fnn-extent-window-cache*))
+                (setq *fnn-extent-window-cache*
+                      (cons entry (delete entry *fnn-extent-window-cache* :test #'eq))))
+              (return byte))))))))
+
+(defun fnn-extent-window-release (worker token &optional cachep)
+  "Caller holds no buffer aliases. Drop the sole retained result BEFORE refund.
+CACHEP: a published raw window's buffer moves into the verified-window cache
+(ACL2's fn-pwc-cache) when it admits it; otherwise, and for every other job,
+the job is released.  Values :released (or a stale word) and whether cached."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (unless (and (fnn-extent-executor-observe-returned worker)
                  (fnn-core-cold-single 'fn-pwx-boundp
@@ -547,7 +600,9 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
     (when (and (fnn-cold-worker-decoded worker)
                (eq (fnn-decoded-activation-stage (fnn-cold-worker-decoded worker)) :calling))
       (fnn-fault "decoded torn semantic step retains its cold debit"))
-    (let ((scope (fnn-cold-worker-scope worker)))
+    (let ((scope (fnn-cold-worker-scope worker))
+          (result (fnn-cold-worker-result worker))
+          (cached nil) (evicted nil))
       ;; A torn reset or settlement must never be retried or offered as idle.
       (setf (fnn-cold-worker-phase worker) :retiring)
       (when (fnn-cold-worker-decoded worker)
@@ -556,23 +611,38 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
       (setf (fnn-cold-worker-decoded worker) nil)
       (setf (fnn-cold-worker-result worker) nil)
       (destructuring-bind (word row &rest ignored)
-        (fnn-core-cold-pool 'fn-owner-page-window-executor-release
-                                (fnn-cold-worker-row worker) token)
-      (declare (ignore ignored))
-      (unless (eq word :released) (fnn-fault "window release lost exact returned job"))
-      (setf (fnn-cold-worker-row worker) row
-            (fnn-cold-worker-token worker) nil
-            (fnn-cold-worker-scope worker) nil
-            (fnn-cold-worker-phase worker) :idle)
-      (when (and (not *fnn-cold-stopping*)
-                 (sb-thread:thread-alive-p (fnn-cold-worker-thread worker)))
-        (setf (fnn-cold-worker-next worker) *fnn-cold-free*
-              *fnn-cold-free* worker))
+          (let ((attempt
+                  (and cachep (fnn-extent-window-p token)
+                       (plusp (fnn-extent-cache-limit))
+                       (consp result) (true-listp (first result))
+                       (fnn-core-page-read-pool 'fn-owner-page-window-executor-cache
+                                                (fnn-cold-worker-row worker) token (first result)))))
+            (if (and attempt (eq (first attempt) :cached))
+                (progn (setq cached t
+                             evicted (fnn-extent-window-cache-insert
+                                      token (first result) (second result)))
+                       (fnn-extent-window-observation "window-cached token=~s evicted=~s"
+                                                      token evicted)
+                       (list :released (second attempt)))
+              (fnn-core-cold-pool 'fn-owner-page-window-executor-release
+                                  (fnn-cold-worker-row worker) token)))
+        (declare (ignore ignored))
+        (unless (eq word :released) (fnn-fault "window release lost exact returned job"))
+        (setf (fnn-cold-worker-row worker) row
+              (fnn-cold-worker-token worker) nil
+              (fnn-cold-worker-scope worker) nil
+              (fnn-cold-worker-phase worker) :idle)
+        (when (and (not *fnn-cold-stopping*)
+                   (sb-thread:thread-alive-p (fnn-cold-worker-thread worker)))
+          (setf (fnn-cold-worker-next worker) *fnn-cold-free*
+                *fnn-cold-free* worker))
+        ;; The evicted buffers are gone from the cache: release their rows.
+        (fnn-extent-cache-release evicted)
         ;; This is the literal returned semantic release after actual
         ;; physical return and last scalar borrow, not a close inference.
         (when scope
           (fnn-err "DECODED-WINDOW release token=~s scope=~s word=~s" token scope word))
-        word))))
+        (values word cached)))))
 
 ; Staged cancellation never refunds, never terminates a thread, and never
 ; borrows its output. Extent mutex serializes revocation with scalar reads.
@@ -1030,19 +1100,25 @@ for the core resource ledger. No timeout or cancellation invokes this."
     (values (plusp limit) evicted)))
 
 (defun fnn-extent-cache-drop-files (files)
-  "Extent lock held. Remove physical buffers and return their exact tokens."
-  (let ((keep nil) (drop nil))
+  "Extent lock held. Remove physical buffers and return their exact tokens:
+the whole-extent cache's and the verified-window cache's (a window token
+names its file third)."
+  (let ((keep nil) (drop nil) (wkeep nil) (wdrop nil))
     (dolist (entry *fnn-extent-cache*)
       (if (member (first entry) files) (push entry drop) (push entry keep)))
     (setq *fnn-extent-cache* (nreverse keep))
-    (fnn-extent-cache-forget (nreverse drop))))
+    (dolist (entry *fnn-extent-window-cache*)
+      (if (member (third (first entry)) files) (push (first entry) wdrop) (push entry wkeep)))
+    (setq *fnn-extent-window-cache* (nreverse wkeep))
+    (append (fnn-extent-cache-forget (nreverse drop)) (nreverse wdrop))))
 
 (defun fnn-extent-end-recovery-cache ()
   "Before serving, drop startup-only borrows and every direct/offline cache.
 No recovery activation remains. Retained decoder array highwater is separate."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
-    (let ((tokens (fnn-extent-cache-forget *fnn-extent-cache*)))
-      (setq *fnn-extent-cache* nil *fnn-extent-lz-last* nil)
+    (let ((tokens (append (fnn-extent-cache-forget *fnn-extent-cache*)
+                          (mapcar #'first *fnn-extent-window-cache*))))
+      (setq *fnn-extent-cache* nil *fnn-extent-lz-last* nil *fnn-extent-window-cache* nil)
       (fnn-extent-cache-release tokens))))
 
 (defun fnn-extent-read-verified (file eoff elen trailer)
