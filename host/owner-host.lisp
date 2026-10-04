@@ -755,9 +755,7 @@
 ;; the owner and write only the four fn-owner-sco-* globals: the served
 ;; owner `fn-owner' is never written here.
 
-(defun fn-owner-sco-global (name state)
-  (declare (xargs :stobjs state :guard (symbolp name)))
-  (if (boundp-global name state) (f-get-global name state) nil))
+; fn-owner-sco-global: defined by books/owner-state-accessors.lisp under the same name.
 
 ; The committed record count: the snoc-list's carried count, which is
 ; `fn-sbud-used' by definition (books/history-columns-store.lisp
@@ -785,12 +783,8 @@
   (let ((state (f-put-global 'fn-owner-sco-base-payloads (and (natp count) count) state)))
     (value :noted)))
 
-; The publication the owner deferred by name, (:deferred REASON ESTIMATE
-; BUDGET) as fn-ock-publication-stream answered it, or nil; the status
-; report carries it (host/native-live-status-host.lisp).
-(defun fn-owner-sco-deferred (state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-owner-sco-global 'fn-owner-sco-deferred state))
+; fn-owner-sco-deferred: defined by books/owner-state-accessors.lisp under the same name
+; (host/web-host.lisp's readiness observation reads it without this file).
 
 ; The checkpoint budget the publication is decided against: the profile's
 ; (fn-ock-capture-budget, books/owner-checkpoint-pipeline.lisp), or, on a

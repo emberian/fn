@@ -78,6 +78,9 @@
       (if done (mv (reverse acc) next t)
         (fn-wps-window (1- fuel) next (if o (cons o acc) acc) fn-web-in)))))
 
+(local (defthm fn-wps-len-revappend
+  (equal (len (revappend a b)) (+ (len a) (len b)))))
+
 (defthm fn-wps-window-emits-at-most-fuel
   ; One host call (fuel 4096) emits at most FUEL octets; the at most one
   ; pending RFC 2047 fragment rides in the cursor, not the window.
