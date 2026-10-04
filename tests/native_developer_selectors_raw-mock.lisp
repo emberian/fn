@@ -236,6 +236,12 @@
 ;;; ---------------------------------------------------------------------------
 ;;; The deployed definitions.
 
+;; D40: the dispatcher's table and traps (host/native/raw-trap.lisp), loaded
+;; first as every build script does, and sealed: fnn-main checks the traps
+;; at every start, over the empty table here.
+(load "host/native/raw-trap.lisp")
+(fnn-raw-trap-seal)
+
 (load-named "host/native/io.lisp"
             '(+fnn-exit-ok+ +fnn-exit-refused+ +fnn-exit-uncertain+ +fnn-exit-fault+
               +fnn-exit-usage+ fnn-store-error fnn-store-fault fnn-store-indeterminate
