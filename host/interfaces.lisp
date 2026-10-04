@@ -1005,7 +1005,8 @@
 
 (definterface fn-store-charge
   :class :common-lisp-compliant
-  :keystones (fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge))
+  :keystones (fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge
+              fn-store-charge-of-profile-article-is-representable))
 
 (definterface fn-store-checkpoint-clone-fence-name
   :class ::program)
