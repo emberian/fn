@@ -26,6 +26,10 @@
 (include-book "../books/tcpcl-delivery-invariants")
 (include-book "../books/resource-syncer")
 (include-book "../books/response-identity")
+; Lane m1-durable: the log kernel's acknowledgement (fn-lgc-finish-one) and
+; its keystone, that every acknowledged record is recovered at every cut of
+; the host's run of the active segment.
+(include-book "../books/store-log-durable")
 
 ; A private owner syncer ledger is installed only after the parent's real
 ; startup :hold.  This is thread resident/worker custody, not full resource
@@ -509,9 +513,15 @@
   :class :common-lisp-compliant
   :kinds ((c true-listp)))
 
+(definterface fn-lgu-take-verdict
+  :class :common-lisp-compliant
+  :keystones (fn-lgu-take-verdict-admits-exactly-log-records))
+
 (definterface fn-lgc-finish-one
   :class :common-lisp-compliant
-  :kinds ((c true-listp)))
+  :kinds ((c true-listp))
+  :keystones ((fn-lgu-host-kernel-acknowledges-only-recoverable-records
+               :step-of fn-lgc-host-run)))
 
 (definterface fn-lgc-frontier
   :class :common-lisp-compliant
@@ -5499,17 +5509,18 @@
 
 (definterface fn-web-host-private-reply-p :class ::program)
 (definterface fn-web-host-private-reply-step :class ::program)
-; Actual admitted pre-factory output consumer. ARTICLE is priced from the
-; row its factory serves (books/output-tariff-article-row.lisp); every other
-; family is (:unpriced F) and answered 403 by name in accounted mode.  The
-; reply-within-tariff bound over the exec arm is not yet a theorem (see
-; planning/design/tariff-2026-10-04.md, the first slice).
+; Actual admitted pre-factory output consumer. Every family a row of
+; books/output-tariff-families.lisp names is priced from what its factory
+; touches (ARTICLE, HEAD, BODY, STAT: the row it serves); every other family
+; is (:unpriced F) and answered 403 by name in accounted mode.  The
+; reply-within-tariff bound over the exec arm is not yet a theorem
+; (PGO-TARIFF-ARTICLE-REPLY-WITHIN-TARIFF, PRF-1316).
 (definterface fn-owner-output-preview :class :program)
 (definterface fn-owner-output-tariff-preview
   :class :program
-  :keystones ((fn-tariff-article-prices-the-served-row :via fn-tariff-article-number-charge)
-              (fn-tariff-article-prices-the-served-msgid :via fn-tariff-article-msgid-charge)
-              (fn-tariff-article-admits-exactly-within-capacity :via fn-tariff-article-descriptor)))
+  :keystones ((fn-tariff-family-preview-charges-before-effect :via fn-tariff-family-preview)
+              (fn-tariff-article-prices-the-served-row :via fn-tariff-article-number-charge)
+              (fn-tariff-article-prices-the-served-msgid :via fn-tariff-article-msgid-charge)))
 (definterface fn-owner-output-refusal-line-at
   :class :program
   :keystones ((fn-oadl-refusal-is-one-line :via fn-oadl-refusal-span)))

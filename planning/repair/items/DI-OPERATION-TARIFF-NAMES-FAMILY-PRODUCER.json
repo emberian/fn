@@ -1,0 +1,12 @@
+{
+ "category": "design",
+ "file": "books/definterface.lisp",
+ "id": "DI-OPERATION-TARIFF-NAMES-FAMILY-PRODUCER",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "low",
+ "source": "tariff3",
+ "state": "open",
+ "title": "definterface :operation :tariff should name the generated family producer (fn-tariff-family-preview, books/output-tariff-family.lisp def-family-tariffs) once the host world is recertified; root ruling 2026-10-04 keeps def-family-tariffs its own generator until then",
+ "updated": "2026-10-04T16:33:40Z"
+}

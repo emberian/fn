@@ -996,7 +996,7 @@ correspondence to the article list and `fn-node-statep`.
 
 ### Refused-offer memory (NNT-049)
 
-NNT-049: An article refused for a reason its octets decide is remembered, within the operator's bound, and a later offer of its Message-ID from any peer is refused from the memory without a transfer
+NNT-049: An article refused for a reason its octets decide is remembered, within the operator's bound, and a later offer of its Message-ID from the same peer is refused from the memory without a transfer; no other peer's answer changes
 
 The octet-decided refusals are `fn-peer-intrinsic-refusal`'s
 (books/peer-inbound.lisp): not a valid article, the Message-ID the article
@@ -1008,9 +1008,16 @@ outcome (books/owner.lisp `fn-own-transit-refused`), recomputing the reason
 from the in-flight octets rather than trusting the host's word, into a list
 bounded by the operator's `refused-offer-capacity` (`policy set
 refused-offer-capacity N`, default 4096, 0 turns it off) that evicts the
-oldest entry first (books/refused-offers.lisp). Every peer session reads it,
-re-pinned per read with the node, after the history test: CHECK answers 438,
-IHAVE `435 not wanted; <reason>`. A future date is never remembered (it is
+oldest entry first (books/refused-offers.lisp). Entries are keyed by the
+offering peer and the Message-ID (rp-refused-memory-poison, 2026-10-04):
+every remembered reason is decided by the octets ONE peer sent, so a
+mismatched or garbage transfer from one peer cannot make another peer's
+offer of that Message-ID draw a final 438; only a peer's own sessions (its
+pull included) read its entries, re-pinned per read with the node, after the
+history test: CHECK answers 438, IHAVE `435 not wanted; <reason>`. The
+global answer for a Message-ID is the history (a durably held article). The
+capacity is per peer (`fn-peer-refused-record-keeps-every-other-key`,
+`fn-peer-refused-record-never-changes-another-peers-offer`). A future date is never remembered (it is
 acceptable later) and neither is a missing Path (the operator's to require).
 The memory is in memory only and is not persisted: a restart costs one
 re-parse per refused article and changes no answer. Its soundness is

@@ -285,7 +285,7 @@
 (include-book "../books/owner-cold-line")
 (include-book "../books/owner-resource-line")
 (include-book "../books/output-command-admission")
-(include-book "../books/output-tariff-article-row")
+(include-book "../books/output-tariff-families")
 (include-book "../books/output-admission-line")
 ; lane composed-owner-5 (PRF-941, row A6): the arena readers' generation
 ; pins (host/native/io.lisp fnn-arena-pins-step).
@@ -5585,22 +5585,21 @@ existing port only after fn-fc has made this connection ready."
           (t (value (fn-ocap-preview wire start end fn-octets))))))
 
 ; The tariff producer the admission gate consumes (planning/design/tariff-
-; 2026-10-04.md Q3).  ARTICLE is priced from the row its factory serves
-; (books/output-tariff-article-row.lisp fn-tariff-article-preview: the
-; connection's reader session and pinned configuration, the catalog and the
-; arena, read-only); every other family stays (:unpriced F) and is refused by
-; name in accounted mode.  The ARTICLE figure is a cumulative-constructor
-; tariff of the exec reply plus the realized extent; the collector and the
-; native vectors are its named unaccounted part (output-tariff-article.lisp).
+; 2026-10-04.md Q3).  ACL2 prices every family a row of
+; books/output-tariff-families.lisp names, from the connection's reader
+; session and pinned configuration, the catalog and the arena, read-only
+; (fn-tariff-family-preview, generated); every other family stays
+; (:unpriced F) and is refused by name in accounted mode.  The figures are
+; cumulative-constructor tariffs of the exec reply plus the realized extent;
+; the collector and the native vectors are their named unaccounted part
+; (books/output-tariff-article.lisp).
 (defun fn-owner-output-tariff-preview (id preview fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
   (let* ((owner (fn-owner-core state))
          (conn (fn-own-find-conn id (fn-own-conns owner))))
-    ; The priced families: tools/cost_obligations.py reads this list for the
-    ; ratchet (priced / served families) in planning/cost-obligations.json.
-    (value (if (and conn (member-eq (fn-ocap-at 2 preview) '(:article)))
-               (fn-tariff-article-preview preview (fn-own-conn-live-session owner conn)
-                                          (fn-own-conn-config conn) fn-arena fn-cat)
+    (value (if conn
+               (fn-tariff-family-preview preview (fn-own-conn-live-session owner conn)
+                                         (fn-own-conn-config conn) fn-arena fn-cat)
              (fn-ocap-unpriced-tariff preview)))))
 
 ; The admission's refusal answered on the wire (books/output-admission-line.lisp):
