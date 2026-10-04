@@ -33,6 +33,8 @@ SPEC.loader.exec_module(certs)
 
 class ACL2AlistProbeTests(unittest.TestCase):
     def test_missing_serialization_package_is_declared_only_in_probe(self):
+        certs.cert_alists._KNOWN_PACKAGES.clear()
+        self.addCleanup(certs.cert_alists._KNOWN_PACKAGES.clear)
         calls = []
 
         def run(*args, **kwargs):
@@ -47,6 +49,24 @@ class ACL2AlistProbeTests(unittest.TestCase):
         self.assertEqual(result, {(0, 1): (True, True)})
         self.assertIn('(defpkg "INSTANCE" nil)', calls[1])
         self.assertNotIn('(defpkg "INSTANCE" nil)', calls[0])
+
+    def test_only_the_asked_certificates_are_read_and_answers_keep_their_indices(self):
+        # TOOL-CERT-PAIR-PROBE-SCALE: every candidate path was read.
+        calls = []
+
+        def run(*args, **kwargs):
+            calls.append(kwargs["input"].decode())
+            return mock.Mock(returncode=0, stdout=b'ACL2 !>@@PAIR 0 1 T NIL\n@@DONE 1\n')
+
+        paths = [Path(f"c{i}.cert") for i in range(5)]
+        with mock.patch.object(certs.cert_alists.subprocess, "run", run):
+            result = certs.cert_alists.acl2_certificate_pairs(paths, [(1, 3)], Path("acl2"),
+                                                              Path("."))
+        self.assertEqual(result, {(1, 3): (True, False)})
+        self.assertIn('("c1.cert" "c3.cert")', calls[0])
+        self.assertNotIn("c0.cert", calls[0])
+        self.assertIn("((0 1))", calls[0])
+        self.assertEqual(certs.cert_alists.probe_timeout(4000, 400000), 60 + 1000 + 400)
 
     def test_unreadable_or_incomplete_probe_fails_closed(self):
         paths = [Path("a.cert"), Path("b.cert")]
@@ -1901,6 +1921,52 @@ class PairFactMemoTests(unittest.TestCase):
             fourth = certs.memoized_pair_checker(cache, fake)
             fourth(certs_, [(2, 1)], other, base)
             self.assertEqual(fourth.probed, 1)
+
+    def test_the_index_takes_lines_an_older_writer_appended(self):
+        # An older certs.py appends verdicts to the log only; the index
+        # imports them past its offset (a torn line stays untrusted), and a
+        # replaced (shorter) log is indexed again.
+        calls = []
+
+        def fake(paths, pairs, acl2, root):
+            calls.append(list(pairs))
+            return {pair: (True, True) for pair in pairs}
+
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            cache = base / "cache"
+            cache.mkdir()
+            paths = []
+            for index, text in enumerate(("a", "b", "c")):
+                path = base / f"c{index}.cert"
+                path.write_text(text)
+                paths.append(path)
+            acl2 = base / "acl2"
+            acl2.write_text("")
+            digest = [certs.content_hash(path) for path in paths]
+            prover = str(acl2.resolve())
+            with (cache / certs.PAIR_FACTS).open("a") as handle:
+                handle.write(json.dumps({"acl2": prover, "parent": digest[0], "child": digest[1],
+                                         "required": True, "equal": False}) + "\n")
+                handle.write('{"acl2": "x", "parent"\n')
+            check = certs.memoized_pair_checker(cache, fake)
+            self.assertEqual(check(paths, [(0, 1), (1, 2)], acl2, base),
+                             {(0, 1): (True, False), (1, 2): (True, True)})
+            self.assertEqual((check.hits, check.probed, calls), (1, 1, [[(1, 2)]]))
+            self.assertTrue((cache / certs.PAIR_DB).is_file())
+            with (cache / certs.PAIR_FACTS).open("a") as handle:
+                handle.write(json.dumps({"acl2": prover, "parent": digest[2], "child": digest[0],
+                                         "required": False, "equal": True}) + "\n")
+            again = certs.memoized_pair_checker(cache, fake)
+            self.assertEqual(again(paths, [(2, 0), (1, 2)], acl2, base),
+                             {(2, 0): (False, True), (1, 2): (True, True)})
+            self.assertEqual((again.hits, again.probed), (2, 0))
+            (cache / certs.PAIR_FACTS).write_text(
+                json.dumps({"acl2": prover, "parent": digest[1], "child": digest[0],
+                            "required": True, "equal": True}) + "\n")
+            third = certs.memoized_pair_checker(cache, fake)
+            self.assertEqual(third(paths, [(1, 0)], acl2, base), {(1, 0): (True, True)})
+            self.assertEqual((third.hits, third.probed), (1, 0))
 
     def test_install_partial_uses_the_memo_by_default(self):
         import inspect
