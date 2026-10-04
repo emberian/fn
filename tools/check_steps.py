@@ -318,12 +318,18 @@ def vs_baseline(rows: list[dict], baseline: Path) -> bool:
 
 # Everything that decides what a trace records: a change here reaches every step.
 GLOBAL_PATHS = ("tools/check_steps.py", "tools/check_trace/")
+# What no untraceable child (ACL2, a shell, a Python child without the tracer)
+# reads: prose.  A step whose trace is blind to its children is reached by any
+# change but these; it is the one hand-kept list here, and it is short on
+# purpose (a diff of only these never runs host_check --load's ACL2).
+INERT_FOR_CHILDREN = ("docs/",)
+INERT_SUFFIXES = (".md",)
 # git reads whose output is a function of the tracked PATH SET only (a file
 # added or removed moves it; an edit does not).
 LS_FLAGS = frozenset({"-z", "--cached", "-c", "--exclude-standard", "--full-name",
                       "--error-unmatch", "--", "-o", "--others"})
 # git reads whose output is none of the tree's business.
-GIT_STATIC = frozenset({"config", "var", "check-ignore", "symbolic-ref"})
+GIT_STATIC = frozenset({"config", "var", "check-ignore", "symbolic-ref", "init"})
 
 
 def rel_path(path: str) -> str | None:
@@ -375,23 +381,54 @@ class Changes:
         return bool(self.paths)
 
 
+PINNED = re.compile(r"[0-9a-f]{7,40}|(?:origin|upstream)/\S+|refs/(?:remotes|tags)/\S+")
+REV_READS = frozenset({"show", "cat-file", "ls-tree", "rev-parse", "log", "diff", "rev-list",
+                       "describe", "blame"})
+
+
+def spec_match(path: str, specs: list[str]) -> bool:
+    return any(path == spec or path.startswith(spec + "/") or fnmatch.fnmatch(path, spec)
+               for spec in (s.rstrip("/") for s in specs))
+
+
 def git_reached(argv: list[str], changed: Changes) -> str:
-    """Why a change can move this git read's output, "" when it cannot."""
-    words = [w for w in argv if not w.startswith("-")]
-    sub = words[0] if words else ""
-    if sub in GIT_STATIC:
+    """Why a change can move this git read's output, "" when it cannot.
+
+    Static: config and friends; merge-base (a fork point moves with history,
+    not with a file diff); anything about revisions that are all pinned (a
+    sha, origin/..., a tag), whatever the diff.  By path: ls-files by an added
+    or removed path; `REV:PATH`, and log, grep and blame with a pathspec, by a
+    changed path under it.  Everything else (rev-parse HEAD, status, diff,
+    log with no pathspec) by any change at all."""
+    if not changed:
         return ""
-    if sub == "rev-parse" and len(words) == 1:
+    dash = argv.index("--") if "--" in argv else None
+    specs = argv[dash + 1:] if dash is not None else []
+    head = argv[:dash] if dash is not None else argv
+    words = [w for w in head if not w.startswith("-")]
+    sub, positional = (words[0], words[1:]) if words else ("", [])
+    anything = f"git {' '.join(argv)[:50]}"
+    if sub in GIT_STATIC or sub == "merge-base" or (sub == "rev-parse" and not positional):
         return ""
     if sub == "ls-files" and all(a in LS_FLAGS or not a.startswith("-") for a in argv):
-        specs = [w.rstrip("/") for w in words[1:]]
         for path, status in changed.paths.items():
-            if status in ("A", "D") and (not specs or any(
-                    path == s or path.startswith(s + "/") or fnmatch.fnmatch(path, s)
-                    for s in specs)):
+            if status in ("A", "D") and (spec_match(path, specs + positional)
+                                         if specs or positional else True):
                 return f"git ls-files: {path} {status}"
         return ""
-    return f"git {' '.join(argv)[:50]}" if changed else ""
+    if sub in REV_READS and positional:
+        for word in positional:
+            rev, _, path = word.partition(":")
+            if PINNED.fullmatch(re.split(r"[~^]", rev)[0]):
+                continue
+            hit = next((p for p in changed.paths if spec_match(p, [path])), "") if path else ""
+            if hit or not path:
+                return f"git {sub} {word[:40]}: {hit or 'any change'}"
+        return ""
+    if sub in ("log", "grep", "blame") and specs:
+        hit = next((p for p in changed.paths if spec_match(p, specs)), "")
+        return f"git {sub}: {hit} changed" if hit else ""
+    return anything
 
 
 def reached_by(record: dict | None, command: list[str], changed: Changes) -> str:
@@ -399,7 +436,9 @@ def reached_by(record: dict | None, command: list[str], changed: Changes) -> str
     if record is None or record.get("command") != command:
         return "never traced here"
     if record["x"]:
-        return f"untraceable ({record['x'][:60]})"
+        for path in changed.paths:
+            if not path.startswith(INERT_FOR_CHILDREN) and not path.endswith(INERT_SUFFIXES):
+                return f"untraceable ({record['x'][:50]}) and {path} changed"
     for path in changed.paths:
         if path.startswith(GLOBAL_PATHS):
             return f"{path} changed"
@@ -410,6 +449,8 @@ def reached_by(record: dict | None, command: list[str], changed: Changes) -> str
     for where in sorted(set(record["l"]) & changed.listed):
         return f"{where}/ listing changed"
     for cwd, argv in record["g"]:
+        if rel_path(cwd) is None:  # another repository: a fixture, a scratch clone
+            continue
         why = git_reached(argv, changed)
         if why:
             return why
@@ -721,6 +762,7 @@ class Executor:
             why = reached_by(self.scope_of(step), step["command"], self.changed)
             if why:
                 kept.append(step)
+                print(f"check_steps: {step['name']}: {why}", flush=True)
                 continue
             note = (f"skipped (unaffected by the {len(self.changed.paths)} path(s) "
                     f"changed since {self.since})")

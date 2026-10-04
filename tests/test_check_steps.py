@@ -365,6 +365,9 @@ class ExecuteTests(ExecuteBase):
         self.assertEqual(self.ran(rows), [True, True])
         rows = self.scoped({"zzz": "M"})[2]  # the reader is now known; the shell never is
         self.assertEqual([bool(r.get("skipped")) for r in rows], [True, False])
+        # unless the diff is only prose, which no child reads
+        rows = self.scoped({"docs/x.md": "M", "specs/y.md": "A"})[2]
+        self.assertEqual([bool(r.get("skipped")) for r in rows], [True, True])
         record = json.loads(next(p for p in (self.cache / "scope").iterdir()
                                  if "subprocess" in p.read_text()).read_text())
         self.assertEqual(record["x"], "child process true")
@@ -413,6 +416,38 @@ class ExecuteTests(ExecuteBase):
         self.assertTrue(git_reached(["rev-parse", "HEAD"], edit))
         self.assertTrue(git_reached(["log", "-1"], edit))
         self.assertEqual(git_reached(["log", "-1"], Changes({})), "")
+        # pinned revisions, fork points and a scratch repository's init do not move
+        for static in (["show", "origin/dev:planning/events.json"],
+                       ["rev-parse", "--verify", "--quiet", "--end-of-options", "c7b76b59^{object}"],
+                       ["show", "4e5a4b8bb3d8284b687aac4f6aab4a3a4abb099f:planning/x.json"],
+                       ["merge-base", "HEAD", "origin/dev"], ["init", "-q", "/tmp/x"],
+                       ["log", "-1", "--format=%h %s", "--", "books/a.lisp"],
+                       ["grep", "-n", "pat", "--", "books"]):
+            self.assertEqual(git_reached(static, edit), "", static)
+        # a path-scoped read is moved by a change under its path, an unpinned REV:PATH by that path
+        self.assertIn("docs/x.md", git_reached(["log", "-1", "--", "docs"], edit))
+        self.assertIn("docs/x.md", git_reached(["grep", "-n", "pat", "--", "docs/x.md"], edit))
+        self.assertEqual(git_reached(["show", "HEAD:books/a.lisp"], edit), "")
+        self.assertTrue(git_reached(["show", "HEAD:docs/x.md"], edit))
+        self.assertTrue(git_reached(["show", "HEAD"], edit))
+        self.assertTrue(git_reached(["status", "--short"], edit))
+
+    def test_reached_by_a_record(self):
+        Changes = check_steps.Changes
+        command = ["c"]
+        record = {"command": command, "x": "", "r": ["tools/a.py", "docs/in.md"], "l": ["books"],
+                  "g": [["/elsewhere/scratch", ["rev-parse", "HEAD"]]]}
+        reached = check_steps.reached_by
+        self.assertEqual(reached(record, command, Changes({"docs/other.md": "M"})), "")
+        self.assertEqual(reached(record, command, Changes({"docs/in.md": "M"})), "docs/in.md changed")
+        self.assertEqual(reached(record, ["other"], Changes({"docs/other.md": "M"})),
+                         "never traced here")
+        self.assertEqual(reached(None, command, Changes({})), "never traced here")
+        self.assertIn("books/ listing", reached(record, command, Changes({"books/n.lisp": "A"}, {"books"})))
+        record["g"] = [[str(ROOT), ["rev-parse", "HEAD"]]]
+        self.assertIn("rev-parse HEAD", reached(record, command, Changes({"docs/other.md": "M"})))
+        record["x"] = "child process acl2"
+        self.assertIn("untraceable", reached(record, command, Changes({"books/n.lisp": "M"})))
 
     def test_changed_paths_of_a_real_diff(self):
         import subprocess
