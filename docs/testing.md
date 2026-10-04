@@ -173,16 +173,16 @@ did not test their claim).
 
 Run a tier against a published image set (no certify, no build):
 
-    python3 tools/scenario_suite.py run smoke --image-set SHA        # tests at SHA
-    python3 tools/scenario_suite.py run peer --image-set SHA --rev .  # this worktree's tests
-    tools/hbox_native.sh attach smoke-SHA9                             # wait; print run.log
+    python3 tools/scenario_suite.py run smoke --image-set SHA --wait  # boxq: sharded over the boxes
+    python3 tools/scenario_suite.py run peer --image-set SHA --box hbox --rev .  # hbox, this worktree
+    tools/hbox_native.sh attach peer-SHA9                              # wait for an hbox run
 
-`--box lat1` (or cloud1, cloud2) runs a tier on a rented box: they mirror
-the published image sets, but hold neither hbox's INN tree, nor docker, nor
-the fixture stores, so peer_pull's INN cases, reader_clients and the scale
-tier's fixtures need hbox (the default).  `run` prints the `hbox_native.sh`
-command it starts and, for a tier's kits,
-the command to run by hand on hbox.  `list [TIER]` shows each entry with its
+By default (`--box auto`) `run` submits the tier to `tools/boxq.py` as one
+native job. boxq shards it over the boxes that hold the set, and the tier's
+opt-in cases that need hbox's trees skip by name. `--box hbox` (INN, docker,
+the fixtures) or another named box runs `hbox_native.sh` there. `run` prints
+the command it starts and, for a tier's kits, the command to run by hand on
+hbox (`boxq submit --kind cmd --box hbox -- 'COMMAND'` queues one).  `list [TIER]` shows each entry with its
 questions and reason; `modules TIER` prints the module names for any other
 runner (an overlay image is picked up through the same `FN_NATIVE_*`
 variables every module reads).  Tell the integrator before a run; one run

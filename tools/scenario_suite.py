@@ -425,11 +425,25 @@ def run(args: argparse.Namespace) -> int:
                          capture_output=True, text=True).stdout.strip() or args.image_set
     rev = args.rev or sha
     label = args.label or f"{args.tier}-{sha[:9]}"
-    argv = ["sh", str(ROOT / "tools/hbox_native.sh"), "--box", args.box, "--image-set", sha,
-            "--images", IMAGES, "--jobs", str(args.jobs), "--label", label]
-    for env in got["env"]:
-        argv += ["--env", env]
-    argv += list(args.extra) + [rev] + got["module"]
+    envs = [word for env in got["env"] for word in ("--env", env)]
+    if args.box in (None, "auto"):
+        # boxq places the job (lane cloud): it shards the modules over the
+        # boxes that hold the set and records the verdicts; no second scheduler
+        # here.  The tier's opt-in variables name hbox's trees (INN, docker), so
+        # on a rented box their gated cases skip by name (--allow-skips).
+        if not (ROOT / "tools/boxq.py").is_file():
+            print("scenario_suite: tools/boxq.py is not in this tree; name --box hbox "
+                  "(or another box)", file=sys.stderr)
+            return 2
+        argv = ["python3", str(ROOT / "tools/boxq.py"), "submit", "--kind", "native",
+                "--priority", args.priority, "--image-set", sha, "--rev", rev,
+                "--images", IMAGES, "--note", label]
+        argv += (["--wait"] if args.wait else []) + got["module"]
+        argv += ["--", "--allow-skips"] + envs + list(args.extra)
+    else:
+        argv = ["sh", str(ROOT / "tools/hbox_native.sh"), "--box", args.box, "--image-set", sha,
+                "--images", IMAGES, "--jobs", str(args.jobs), "--label", label]
+        argv += envs + list(args.extra) + [rev] + got["module"]
     print("scenario_suite: " + " ".join(argv), flush=True)
     for tool in got["tool"]:
         words = [f"{IMAGE_BASE}/{sha}" + w[len("$IMAGES"):] if w.startswith("$IMAGES")
@@ -459,10 +473,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--rev", help="the tests' revision (default: the image set's; `.` = this worktree)")
     p.add_argument("--label")
     p.add_argument("--jobs", type=int, default=4)
-    p.add_argument("--box", default="hbox",
-                   help="hbox (default: the INN tree, docker and the fixtures live there) or a "
-                        "rented box from ~/.config/fn/boxes.json (lat1, cloud1, cloud2: they "
-                        "mirror the published image sets)")
+    p.add_argument("--box", default="auto",
+                   help="auto (default): tools/boxq.py places and shards the job on the boxes "
+                        "that hold the set; hbox (the INN tree, docker and the fixtures live "
+                        "there) or another box: tools/hbox_native.sh there, as named")
+    p.add_argument("--priority", default="lane", choices=("lane", "fill"),
+                   help="boxq priority (with --box auto)")
+    p.add_argument("--wait", action="store_true", help="boxq: wait for the verdict")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("extra", nargs="*", help="further tools/hbox_native.sh options, after --")
     args = parser.parse_args(argv)
