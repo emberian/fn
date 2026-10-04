@@ -300,6 +300,59 @@
                (fn-own-feed-parse-response (oft-o "238 <1@a.fn.test>")
                                            *oft-inflight*)))
 (assert-event (null (fn-own-feed-parse-response (oft-o "nope") *oft-inflight*)))
+;; rp-feed-reply-msgid.  `fn-own-feed-parse-response-names-the-echo',
+;; positive: a parsed CHECK/TAKETHIS reply names its echo, here the entry in
+;; flight, and an IHAVE reply (435) names the entry in flight.
+(assert-event
+ (let ((r (fn-own-feed-parse-response (oft-o "238 <1@a.fn.test>") *oft-inflight*)))
+   (and r
+        (equal (fn-feed-response-code r) 238)
+        (fn-own-feed-echo-codep 238)
+        (equal (fn-feed-response-msgid r) (fn-own-feed-echo-msgid (oft-o "238 <1@a.fn.test>")))
+        (equal (fn-feed-response-msgid r) *oft-inflight*))))
+(assert-event
+ (equal (fn-feed-response-msgid (fn-own-feed-parse-response (oft-o "435") *oft-inflight*))
+        *oft-inflight*))
+;; A stray `239 <other@a.fn.test>' while <1@a.fn.test> is in flight names
+;; <other@a.fn.test>; before 2026-10-04 it named the entry in flight and
+;; retired it as accepted.
+(defconst *oft-stray* (fn-own-feed-parse-response (oft-o "239 <other@a.fn.test>")
+                                                  *oft-inflight*))
+(assert-event (equal (fn-feed-response-msgid *oft-stray*) (oft-o "<other@a.fn.test>")))
+(assert-event (not (equal (fn-feed-response-msgid *oft-stray*) *oft-inflight*)))
+;; `fn-own-feed-port-stray-reply-is-a-loss', positive: the complete antecedent
+;; (a table, the bound peer, a reply naming another Message-ID) and the
+;; conclusion: the reply class is :lost, the port leaves the feed's own loss,
+;; and ACL2's word for the host is :lost.
+(defconst *oft-stray-port*
+  (fn-own-feed-port-peer "nodeB" (car *oft-ticked*)
+                                 (list :reply *oft-stray* nil *oft-obs*)))
+(assert-event
+ (let ((tbl (car *oft-ticked*)))
+   (and (fn-own-feed-tablep tbl)
+        (fn-own-feed-entry-of "nodeB" tbl)
+        (not (equal (fn-feed-response-msgid *oft-stray*)
+                    (fn-own-feed-inflight-msgid
+                     (fn-feed-queue (fn-own-feed-find "nodeB" tbl)))))
+        (equal (fn-feed-reply-class (fn-own-feed-find "nodeB" tbl) *oft-stray*) :lost)
+        (equal (fn-own-feed-find "nodeB" (fn-own-feed-port-table *oft-stray-port*))
+               (fn-feed-lost (fn-own-feed-find "nodeB" tbl) *oft-obs*))
+        (equal (fn-own-feed-reply-word tbl "nodeB" *oft-stray*
+                                       (fn-own-feed-port-effects *oft-stray-port*))
+               :lost)
+        ;; the entry in flight is requeued, not retired
+        (equal (fn-feed-state-of *oft-msgid*
+                                 (fn-feed-queue (fn-own-feed-find
+                                                 "nodeB" (fn-own-feed-port-table *oft-stray-port*))))
+               :queued))))
+;; Hypothesis removal: the reply names the entry in flight.  `239' for it is
+;; final, and the word is :quiet, not :lost.
+(assert-event
+ (let ((r (fn-own-feed-parse-response (oft-o "239 <1@a.fn.test>") *oft-inflight*))
+       (tbl (car *oft-ticked*)))
+   (and (equal (fn-feed-response-msgid r) *oft-inflight*)
+        (equal (fn-feed-reply-class (fn-own-feed-find "nodeB" tbl) r) :final)
+        (equal (fn-own-feed-reply-word tbl "nodeB" r nil) :quiet))))
 
 ; 238: the article follows.  The bytes are the store's, supplied by the owner.
 (defconst *oft-sent*
