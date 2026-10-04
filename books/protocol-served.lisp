@@ -57,6 +57,7 @@
 (include-book "served")       ; fn-served-advance-eventp
 (include-book "nntp-help")    ; *fn-nntp-served-command-table*
 (include-book "protocol-served-table")
+(include-book "defkeystone")  ; defteeth: the teeth of the keystones below ship here
 
 (local (in-theory (disable (tau-system))))
 
@@ -487,6 +488,21 @@
          :claim (() (equal (fn-proto-advance-eventp event) (fn-served-advance-eventp event)))
          :subject fn-served-advance-eventp))
 
+; The teeth ship with the keystone: every world that includes this book carries
+; them (defteeth-check in any test book that includes it holds the row met).
+(defteeth fn-proto-advance-eventp-is-served-advance-eventp
+  :claim (() (equal (fn-proto-advance-eventp event) (fn-served-advance-eventp event)))
+  :subject fn-served-advance-eventp
+  :witness ((event (list :command (fn-nntp-string-octets "LISTGROUP fn.test"))))
+  :breaks ()
+  :mutations ((select-rows-are-group-alone
+               (:conclusion
+                (equal (fn-proto-advance-eventp event)
+                       (fn-proto-keyword-in-listp
+                        (car (fn-nntp-tokenize (car (cdr event)))) '("GROUP"))))
+               ((event (list :command (fn-nntp-string-octets "LISTGROUP fn.test"))))
+               :fault "a table whose only :view :select row is GROUP, on a LISTGROUP line")))
+
 ;; The keywords that read the archive: the :dispatch :archive rows.
 (defun fn-proto-archive-keywordp (keyword)
   (declare (xargs :guard t))
@@ -506,6 +522,18 @@
        '(:by defprotocol
          :claim (() (equal (fn-proto-archive-keywordp keyword) (fn-nntp-archive-keywordp keyword)))
          :subject fn-nntp-archive-keywordp))
+
+(defteeth fn-proto-archive-keywordp-is-nntp-archive-keywordp
+  :claim (() (equal (fn-proto-archive-keywordp keyword) (fn-nntp-archive-keywordp keyword)))
+  :subject fn-nntp-archive-keywordp
+  :witness ((keyword (fn-nntp-string-octets "OVER")))
+  :breaks ()
+  :mutations ((retrieval-rows-only
+               (:conclusion
+                (equal (fn-proto-archive-keywordp keyword)
+                       (fn-proto-keyword-in-listp keyword '("ARTICLE" "HEAD" "BODY" "STAT"))))
+               ((keyword (fn-nntp-string-octets "OVER")))
+               :fault "a table whose :dispatch :archive rows are the single-article retrievals alone, on OVER")))
 
 ; -----------------------------------------------------------------------------
 ; HELP's table is the table's served names: a keyword the served step answers
