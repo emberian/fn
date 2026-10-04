@@ -91,9 +91,19 @@ class Reader:
     def __init__(self, source: str) -> None:
         self.source = source
         self.pos = 0
+        self._line_at = (0, 1)
 
     def line(self, position: int) -> int:
-        return self.source.count("\n", 0, position) + 1
+        # Counted on from the last position asked (top_level asks in
+        # increasing order): counting from the start each time made a read
+        # of N forms O(N x length) -- 12 minutes of make check for
+        # host_check --load's read of the whole world's text (X17).
+        at, number = self._line_at
+        if position < at:
+            at, number = 0, 1
+        number += self.source.count("\n", at, position)
+        self._line_at = (position, number)
+        return number
 
     def skip_space(self) -> None:
         source, n = self.source, len(self.source)
