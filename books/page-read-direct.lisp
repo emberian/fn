@@ -1030,3 +1030,69 @@
                             fn-hd-ident-drop-of-absent-token-is-refused fn-hd-ident-step
                             fn-pio-direct-okp fn-pio-issued-remove fn-pxe-commit-direct
                             fn-pird-drop-step-is-put)))))
+
+; The two entries' results, as the host model consumes them (lane proofs2,
+; 2026-10-04, for PRF-1242's issue and settle steps): an admitted read puts
+; exactly its fresh :issued row; a settlement that settles removes exactly
+; the token's row and idles the worker in its slot.
+(defthm fn-pio-direct-admit-issues-exactly-its-row
+  (implies (equal (mv-nth 0 (fn-pio-direct-admit next cid file eoff elen trailer worker issued holds))
+                  :admitted)
+           (let* ((n (if (null next) 0 next))
+                  (token (list n cid file eoff elen trailer))
+                  (row (list n cid file eoff elen trailer :issued)))
+             (and (natp n) (natp cid) (posp file) (natp eoff) (natp elen) (natp trailer)
+                  (not (fn-pio-issued-row token issued))
+                  (equal (mv-nth 1 (fn-pio-direct-admit next cid file eoff elen trailer worker
+                                                        issued holds))
+                         (+ 1 n))
+                  (equal (mv-nth 2 (fn-pio-direct-admit next cid file eoff elen trailer worker
+                                                        issued holds))
+                         token)
+                  (equal (mv-nth 5 (fn-pio-direct-admit next cid file eoff elen trailer worker
+                                                        issued holds))
+                         (fn-pio-issued-put token row issued))
+                  (fn-pio-rowp row) (equal (fn-pio-token row) token)
+                  (fn-pxe-rowp (mv-nth 4 (fn-pio-direct-admit next cid file eoff elen trailer worker
+                                                              issued holds)))
+                  (equal (nth 2 (mv-nth 4 (fn-pio-direct-admit next cid file eoff elen trailer worker
+                                                               issued holds)))
+                         :running)
+                  (equal (nth 3 (mv-nth 4 (fn-pio-direct-admit next cid file eoff elen trailer worker
+                                                               issued holds)))
+                         token))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-pird-admitted-shape)
+                 (:instance fn-pird-issued-row-shape (n (if (null next) 0 next)))
+                 (:instance fn-pxe-assignment-requires-idle-and-fresh-job
+                            (w worker)
+                            (token (list (if (null next) 0 next) cid file eoff elen trailer)))
+                 (:instance fn-pxe-assignment-preserves-row
+                            (w worker)
+                            (token (list (if (null next) 0 next) cid file eoff elen trailer))))
+           :in-theory (e/d (fn-prl-nth)
+                           (fn-pio-direct-admit fn-pio-issued-put fn-pio-issued-row
+                            fn-hd-ident-step fn-pxe-assign fn-pio-rowp fn-pio-token fn-pxe-rowp))))
+  :rule-classes nil)
+
+(defthm fn-pio-direct-settle-removes-exactly-its-row
+  (implies (not (member-equal (mv-nth 0 (fn-pio-direct-settle token worker verdict issued holds))
+                              '(:stale :unheld)))
+           (let ((row (fn-pio-issued-row token issued)))
+             (and (fn-pio-rowp row) (equal (fn-pio-token row) token)
+                  (not (equal (nth 6 row) :settled))
+                  (fn-pxe-rowp worker) (equal (nth 3 worker) token)
+                  (member-equal token (fn-hd-tokens-of (nth 2 token) holds))
+                  (equal (mv-nth 2 (fn-pio-direct-settle token worker verdict issued holds))
+                         (list (nth 0 worker) (nth 1 worker) :idle nil))
+                  (equal (mv-nth 3 (fn-pio-direct-settle token worker verdict issued holds))
+                         (fn-pio-issued-remove token issued))
+                  (equal (mv-nth 4 (fn-pio-direct-settle token worker verdict issued holds))
+                         (car (fn-hd-ident-step holds (list :drop (nth 2 token) token)))))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hd-ident-drop-of-absent-token-is-refused
+                            (table holds) (k (nth 2 token)) (tok token)))
+           :in-theory (e/d (fn-pio-direct-settle fn-pxe-commit-direct fn-prl-nth)
+                           (fn-hd-ident-drop-of-absent-token-is-refused fn-hd-ident-step
+                            fn-pio-issued-remove fn-pio-issued-row fn-pird-drop-step-is-put))))
+  :rule-classes nil)

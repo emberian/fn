@@ -1134,3 +1134,120 @@
 (defthm fn-hmc-do-return-preserves-invp (implies (fn-hmc-invp st) (fn-hmc-invp (mv-nth 0
    (fn-hmc-do-return st ev)))) :hints (("Goal" :cases ((fn-hmc-ended st)) :in-theory (disable
    fn-hmc-invp fn-hmc-do-return) :use ((:instance fn-hmc-do-return-keeps-invp)))))
+
+; ---- the close: an incarnation no read, lease or request names is unbound
+
+(local
+ (defthm fn-hmc-alistp-of-unbind-inc
+   (implies (alistp fds) (alistp (fn-hmc-unbind-inc inc fds)))))
+
+(local
+ (defthm fn-hmc-fds-incs-of-unbind-inc
+   (equal (fn-hmc-fds-incs (fn-hmc-unbind-inc inc fds))
+          (remove-equal inc (fn-hmc-fds-incs fds)))))
+
+(local
+ (defthm fn-hmc-strip-cars-of-unbind-inc-member
+   (implies (member-equal fd (strip-cars (fn-hmc-unbind-inc inc fds)))
+            (member-equal fd (strip-cars fds)))))
+
+(local
+ (defthm fn-hmc-strip-cars-of-unbind-inc-no-dups
+   (implies (no-duplicatesp-equal (strip-cars fds))
+            (no-duplicatesp-equal (strip-cars (fn-hmc-unbind-inc inc fds))))))
+
+(local
+ (defthm fn-hmc-intersect-of-remove-cons
+   (implies (not (intersectp-equal x closed))
+            (not (intersectp-equal (remove-equal inc x) (cons inc closed))))))
+
+(local
+ (defthm fn-hmc-boundp-of-unbind-inc
+   (equal (fn-hmc-boundp x (fn-hmc-unbind-inc inc fds))
+          (and (not (equal x inc)) (fn-hmc-boundp x fds)))))
+
+(local
+ (defthm fn-hmc-fd-inc-of-unbind-inc
+   (implies (and (alistp fds) (not (equal (fn-hmc-fd-inc fd fds) inc)))
+            (equal (fn-hmc-fd-inc fd (fn-hmc-unbind-inc inc fds))
+                   (fn-hmc-fd-inc fd fds)))
+   :hints (("Goal" :induct (fn-hmc-unbind-inc inc fds)
+            :in-theory (enable fn-hmc-fd-inc)))))
+
+(local
+ (defthm fn-hmc-lease-names-of-member
+   (implies (and (fn-hmc-memberp (cons kind inc) leases))
+            (fn-hmc-lease-names-p inc leases))))
+
+(local
+ (defthm fn-hmc-row-of-file-not-clear
+   (implies (and (fn-hmc-rowsp rows) (fn-hmc-row-of key rows)
+                 (not (fn-hmc-row-settledp (fn-hmc-row-of key rows)))
+                 (fn-pio-file-clear-p inc rows))
+            (not (equal (fn-hmc-row-file (fn-hmc-row-of key rows)) inc)))
+   :hints (("Goal" :in-theory (enable fn-pio-file-clear-p fn-hmc-row-of fn-hmc-rowsp
+                                      fn-hmc-row-file fn-hmc-row-settledp fn-hmc-row-phase)))))
+
+(local
+ (defthm fn-hmc-key-inc-not-the-closed
+   (implies (and (fn-hmc-rowsp rows) (fn-pio-file-clear-p inc rows)
+                 (not (fn-hmc-lease-names-p inc leases))
+                 (fn-hmc-key-inc key rows leases))
+            (not (equal (fn-hmc-key-inc key rows leases) inc)))
+   :hints (("Goal" :use ((:instance fn-hmc-row-of-file-not-clear)
+                         (:instance fn-hmc-lease-names-of-member (kind (car key)) (inc (cadr key))))
+            :in-theory (e/d (fn-hmc-key-inc) (fn-hmc-row-of fn-hmc-rowsp fn-pio-file-clear-p
+                                              fn-hmc-row-of-file-not-clear
+                                              fn-hmc-lease-names-of-member))))))
+
+(local
+ (defthm fn-hmc-reqs-okp-of-unbind-inc
+   (implies (and (fn-hmc-reqs-okp reqs fds rows leases) (alistp fds)
+                 (fn-hmc-rowsp rows) (fn-pio-file-clear-p inc rows)
+                 (not (fn-hmc-lease-names-p inc leases)))
+            (fn-hmc-reqs-okp reqs (fn-hmc-unbind-inc inc fds) rows leases))
+   :hints (("Goal" :induct (fn-hmc-reqs-okp reqs fds rows leases)
+            :in-theory (disable fn-hmc-key-inc fn-hmc-unbind-inc fn-hmc-rowsp
+                                fn-pio-file-clear-p fn-hmc-fd-inc))
+           ("Subgoal *1/2" :use ((:instance fn-hmc-key-inc-not-the-closed
+                                            (key (fn-hmc-req-key (car reqs)))))))))
+
+(local
+ (defthm fn-hmc-rows-open-p-of-close
+   (implies (and (fn-hmc-rows-open-p rows fds closed) (fn-hmc-rowsp rows)
+                 (fn-pio-file-clear-p inc rows) (true-listp closed))
+            (fn-hmc-rows-open-p rows (fn-hmc-unbind-inc inc fds) (cons inc closed)))
+   :hints (("Goal" :induct (fn-hmc-rows-open-p rows fds closed)
+            :in-theory (e/d (fn-pio-file-clear-p fn-hmc-rowsp fn-hmc-row-file
+                             fn-hmc-row-settledp fn-hmc-row-phase)
+                            (fn-hmc-unbind-inc fn-hmc-boundp))))))
+
+(local
+ (defthm fn-hmc-leases-open-p-of-close
+   (implies (and (fn-hmc-leases-open-p leases fds closed)
+                 (not (fn-hmc-lease-names-p inc leases)) (true-listp closed))
+            (fn-hmc-leases-open-p leases (fn-hmc-unbind-inc inc fds) (cons inc closed)))
+   :hints (("Goal" :in-theory (disable fn-hmc-unbind-inc fn-hmc-boundp)))))
+
+(local
+ (defthm fn-hmc-quiet-close-is-clear
+   (implies (and (fn-pio-direct-okp (fn-hmc-issued rows) holds) (fn-hmc-rowsp rows)
+                 (fn-pio-direct-quiet-p inc holds))
+            (fn-pio-file-clear-p inc rows))
+   :hints (("Goal" :use ((:instance fn-pio-direct-quiet-is-clear
+                                    (issued (fn-hmc-issued rows)) (file inc)))
+            :in-theory (disable fn-pio-direct-quiet-p fn-pio-direct-okp fn-hmc-issued
+                                fn-pio-file-clear-p)))))
+
+(local
+ (defthm fn-hmc-true-listp-of-remove1
+   (implies (true-listp l) (true-listp (fn-hmc-remove1 x l)))))
+
+(defthm fn-hmc-do-close-keeps-invp
+  (implies (and (fn-hmc-invp st) (not (fn-hmc-ended st)))
+           (fn-hmc-invp (mv-nth 0 (fn-hmc-do-close st ev))))
+  :hints (("Goal" :in-theory (e/d (fn-hmc-do-close fn-hmc-invp)
+                                  (fn-hmc-unbind-inc fn-hmc-issued fn-hmc-rowsp fn-pio-direct-okp
+                                   fn-pio-direct-quiet-p fn-pio-file-clear-p
+                                   fn-hmc-rows-open-p fn-hmc-leases-open-p fn-hmc-reqs-okp
+                                   fn-hmc-workersp fn-hmc-rows-below-p fn-hmc-row-ids)))))
