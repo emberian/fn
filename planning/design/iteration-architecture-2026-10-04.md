@@ -395,6 +395,21 @@ timings in r2: not computed separately here; bounded by 1,985 s at jobs 1,
 under 9 min at jobs 4).  With the scenarios lane's warm owner and test
 profiles, the same reds cost seconds.
 
+Slice 3 as built (`tools/native_verdicts.py`, `tools/test_budget.py`,
+`tools/hbox_native.sh --all`, `tests/test_native_verdicts.py`): every
+`test_budget.py --one` run records each case's outcome (`cases`) and stores
+the module's verdict under the key of section 2.1 (module + imported tests/
+helpers + harness + runner + each image's launcher/core/runtime digests or
+overlay record + the FN_* the module reads, always including the image
+variables hbox_native exports + SBCL + Python) in `FN_VERDICT_STORE/
+native-module/`; on the box the store is `BASE/.verdicts`.  The module step
+asks the store first: an OK/SKIPPED verdict for the exact key is replayed
+into run.log marked `cached` with its run (box, time, log); a red one
+re-runs only its red cases (`--one MODULE --cases a,b`) and the record
+carries the other cases forward, marked; `--all` runs everything.  A cached
+verdict satisfies no claim.  Not yet measured on a box with a published set
+(hbox is the integrator's); a lookup costs ~0.4 s per module on the laptop.
+
 ### Slice 4 (two lane-days): the image cycle does only what changed
 
 `certify --incremental` answers "nothing to certify" from the index; one

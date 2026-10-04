@@ -83,6 +83,16 @@ this tree; `tools/hbox_native.sh . tests.test_native_NAME` builds images
 from this tree first (certify + build, tens of minutes).  The integrator's
 set of twelve core modules is the release bar.
 
+The box keeps a verdict store (`tools/native_verdicts.py`, `FN_VERDICT_STORE`,
+else `BASE/.verdicts`): each module's run is stored under a key of exactly
+its inputs (the module and the tests/ helpers it imports, the harness and
+the runner, each image's launcher, core and runtime digests or overlay
+record, the `FN_*` it reads, the SBCL and Python), with every case's
+outcome.  A later run whose key is stored replays an OK or SKIPPED verdict
+in `run.log` marked `cached` with the run it came from, and re-runs only the
+red cases of a red one, the rest carried; `--all` runs everything.  A cached
+verdict satisfies no claim: a claim names a live run's id.
+
 A pass shows: the behaviour, on that image, for that run.  It is evidence to
 file (`tools/evidence_store.py put`), never a proof; a skipped test is not a
 pass, and a module's image tests count only with the image's identity named.
