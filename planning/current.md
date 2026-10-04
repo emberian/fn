@@ -46,7 +46,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [PRF-1269](#prf-1269) peer reader access | `fn-auth-view-excludes-unreadable-groups-on-any-connection` | yes | no: caller bridge pending | no: caller bridge pending | no: caller bridge pending |
 | [PRF-1268](#prf-1268) published handshake charges | `fn-cbud-live-held-charges-current-and-active` | yes | no: closure moved | no: no matching image evidence | no: dev source not on the node |
 | [operator-journal-stream](#operator-journal-stream) incremental decision journal replay | `fn-otjs-report-refines-journal-report` | yes | no: closure moved | no: no matching image evidence | no: profile not deployed |
-| [PRF-1021](#prf-1021) operator configuration preserves resource policy | `fn-ncpath-config-octets-load-the-resolved-configuration` | yes | yes: `certify-20261003T120245Z-1732642` | no: no matching image evidence | no: dev source not on the node |
+| [PRF-1021](#prf-1021) operator configuration preserves resource policy | `fn-ncpath-config-octets-load-the-resolved-configuration` | yes | no: closure moved | no: no matching image evidence | no: dev source not on the node |
 | [bp-source-window](#bp-source-window) bounded private TCPCL logical window | `fn-tcim-turn-boundary` | yes | yes: `certify-20261003T133032Z-1944927` | no: no matching image evidence | no: profile not deployed |
 | [bp-source-control](#bp-source-control) KEEPALIVE while exact received-source ACK remains held | `fn-tclsctl-never-releases-ack` | yes | yes: `certify-20261003T163429Z-2470673` | no: no matching image evidence | no: profile not deployed |
 | [operator-default-launch](#operator-default-launch) DEFAULT launcher and configured next-run resource projection | `fn-prstartup-accepted-default-launch-fits-machine` | yes | no: source uncertified | no: no matching image evidence | no: dev source not on the node |
@@ -227,7 +227,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **the Message-ID index on the served path.** A reader's Message-ID retrieval is answered from the connection's pinned trie and equals the archive scan, with no whole-store check per command.
 
 - Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4561, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix` (books/owner-tls-prefix.lisp:77).
-- Keystone: `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` (books/nntp-pinned-msgid.lisp:36; PRF-067 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260928T124849Z-2149901` passed this source of `books/nntp-pinned-msgid.lisp`, and since then `books/article-fields.lisp`, `books/article.lisp`, `books/assumptions-durable.lisp` and 71 more changed.
+- Keystone: `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` (books/nntp-pinned-msgid.lisp:36; PRF-067 (uncertified-at-current-digest)); no archived manifest records it passed at the current source and closure; `certify-20261004T204239Z-514279` installed a cached pair for them, made by a run not archived.
 - Tested: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Deployed: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Latest positive result: reader_index 4/4, served_differential 7/7, the peering duplicate rows ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -287,7 +287,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **published handshake charges.** Durable publication and settled handshake exits charge max(published TLS limit,still-owned admissions); refused proposals do not change the held charge.
 
 - Host-called subject: `fn-owner-connection-held-refresh` at host/owner-host.lisp:1660.
-- Keystone: `fn-cbud-live-held-charges-current-and-active` (books/connection-budget.lisp:800; PRF-1268 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20261003T104044Z-1503690` passed this source of `books/connection-budget.lisp`, and since then `books/byte-store-scan.lisp`, `books/feed-events.lisp`, `books/heap-store-figure.lisp` and 21 more changed.
+- Keystone: `fn-cbud-live-held-charges-current-and-active` (books/connection-budget.lisp:800; PRF-1268 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20261003T104044Z-1503690` passed this source of `books/connection-budget.lisp`, and since then `books/byte-store-scan.lisp`, `books/feed-events.lisp`, `books/heap-store-figure.lisp` and 22 more changed.
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; changed since it: `books/connection-budget.lisp`, `host/owner-host.lisp`.
 - Latest positive result: Connection-budget and exact teeth certified in certify-20261003T104044Z-1503690; actual host adapter outcome-injection fixture PASS, archived sol-access-native-faults-2026-10-03.
@@ -310,8 +310,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **operator configuration preserves resource policy.** The operator loads relative paths resolved under its config directory while retaining both explicit cold/output resource policies; canonical show reloads the complete normalized configuration.
 
-- Host-called subject: `fn-native-operator-host-run-at` at host/native/operator.lisp:1220.
-- Keystone: `fn-ncpath-config-octets-load-the-resolved-configuration` (books/native-config-paths.lisp:183; in no registry row); certified at the current source and closure by `certify-20261003T120245Z-1732642` (earliest archived).
+- Host-called subject: `fn-native-operator-host-run-at` at host/native/operator.lisp:1225.
+- Keystone: `fn-ncpath-config-octets-load-the-resolved-configuration` (books/native-config-paths.lisp:183; in no registry row); no archived manifest certifies the current closure; `certify-20261003T120245Z-1732642` passed this source of `books/native-config-paths.lisp`, and since then `books/native-config.lisp` changed.
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; absent from it: `books/native-config-paths.lisp`.
 - Latest positive result: Canonical rendering/source171+325 and resolverbb089: show+tests normal115041Z-1706527 PASS; paths/show+paths tests normal120245Z-1732642 PASS at75ad7a81a. Complete output-only/combined resource fixtures pass; exact manifests archived and indexed.
@@ -322,7 +322,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **bounded private TCPCL logical window.** Actual TCPCL frame and incoming BP source conversion retain exact concrete bytes and build the logical codec list in4096-octet windows, preserving the existing suffix.
 
-- Host-called subject: `fn-tcim-turn` at host/native/tcpcl.lisp:387.
+- Host-called subject: `fn-tcim-turn` at host/native/tcpcl.lisp:393.
 - Keystone: `fn-tcim-turn-boundary` (books/tcpcl-input-materialize.lisp:41; in no registry row); certified at the current source and closure by `certify-20261003T133032Z-1944927` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: the node runs default, this needs dtn.
@@ -334,7 +334,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **KEEPALIVE while exact received-source ACK remains held.** The retained TCPCL source controller emits only independent KEEPALIVE output while local work owns received bytes and the final ACK; it preserves reception state and clock.
 
-- Host-called subject: `fn-tclsctl-turn` at host/native/tcpcl.lisp:705.
+- Host-called subject: `fn-tclsctl-turn` at host/native/tcpcl.lisp:734.
 - Keystone: `fn-tclsctl-never-releases-ack` (books/tcpcl-source-control.lisp:17; in no registry row); certified at the current source and closure by `certify-20261003T163429Z-2470673` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: the node runs default, this needs dtn.
@@ -346,8 +346,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **DEFAULT launcher and configured next-run resource projection.** For an accepted DEFAULT run with no explicit cold policy, the extended selected reservation fits the captured least positive machine allowance; STATUS and HEALTH use the same actual configuration policy chain. This is a partial selected storage projection.
 
-- Host-called subject: `fn-prstartup-extend-operation-reservation` at host/native/heap.lisp:408, equated by `fn-prstartup-operation-extension-refines-default-by-definition` (books/page-read-startup.lisp:246).
-- Keystone: `fn-prstartup-accepted-default-launch-fits-machine` (books/page-read-startup.lisp:226; PRF-1301 (uncertified-at-current-digest)); no archived manifest records `books/page-read-startup.lisp` passed at its current source.
+- Host-called subject: `fn-prstartup-extend-operation-reservation` at host/native/heap.lisp:411, equated by `fn-prstartup-operation-extension-refines-default-by-definition` (books/page-read-startup.lisp:352).
+- Keystone: `fn-prstartup-accepted-default-launch-fits-machine` (books/page-read-startup.lisp:331; PRF-1301 (uncertified-at-current-digest)); no archived manifest records `books/page-read-startup.lisp` passed at its current source.
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; absent from it: `books/page-read-startup.lisp`.
 - Latest positive result: Actual DEFAULT/output/peer heap source consumers, real inert peer policy files, retained private-bank constructor cuts and snapshot/peer terminal conjunction pass. Foundation69b owns actual protected nursery growth and current-worker machine admission; source guard evidence remains separate from normal certification. Earlier manifests remain valid for their exact source coordinates.
