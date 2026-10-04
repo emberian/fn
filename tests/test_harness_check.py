@@ -710,6 +710,35 @@ class DuplicateDefunTests(unittest.TestCase):
                                    io="(defun fn-native-entry (st) st)"), [])
         self.assertIn("fn-native-entry", harness_check.DUPLICATE_ALLOWED)
 
+    # A defstruct's accessors are definitions (batch AU: `(defstruct (fnn-log
+    # ...) path fd unit ...)' defined fnn-log-unit), read as the form's
+    # elements: a struct with no blank line under it takes nothing after it
+    # (check-lane CL18, host/native/snapshot-producer.lisp).  Folded in from
+    # tools/host_defun_check.py (python-diet-4).
+    STRUCTS = """
+        (defstruct (fnn-job (:constructor %make-fnn-job))
+          service ; a comment, and that
+          (lock (sb-thread:make-mutex :name "job lock"))
+          "not a slot"
+          (phase :source))
+        (defun fnn-other (x) (and x that))
+        (defstruct (fnn-row (:conc-name fnn-r-)) a b)
+        (defstruct (fnn-bare (:conc-name nil)) bare-slot)
+        """
+
+    def test_defstruct_slots_are_the_forms_elements_only(self):
+        from tools import ledger
+        sites: dict = {}
+        for form, line in ledger.Reader(textwrap.dedent(self.STRUCTS)).top_level():
+            harness_check.raw_definition_sites(form, line, "host/native/a.lisp", sites)
+        self.assertEqual(sorted(sites), ["bare-slot", "fnn-job-lock", "fnn-job-phase",
+                                         "fnn-job-service", "fnn-other", "fnn-r-a", "fnn-r-b"])
+
+    def test_a_defun_colliding_with_an_accessor_is_caught(self):
+        found = self.scan(a=self.STRUCTS, b="(defun fnn-job-phase (j) j)")
+        self.assertEqual([(row["callee"], row["where"]) for row in found],
+                         [("fnn-job-phase", "host/native/b.lisp:1")])
+
     def test_the_tree_has_no_duplicate_definition(self):
         found, counts = harness_check.duplicate_defun_findings(ROOT)
         self.assertEqual(found, [])

@@ -623,11 +623,11 @@
         "books/bp-ion-lifetime.lisp",
         "tests/acl2/bp-ion-lifetime-tests.lisp",
         "tests/test_native_ion_workflow.py",
-        "tests/native_bp_fragment_turn_raw.lisp",
-        "tests/native_tcpcl_progress_turn_raw.lisp",
+        "tests/native_bp_fragment_turn_raw-mock.lisp",
+        "tests/native_tcpcl_progress_turn_raw-mock.lisp",
         "tests/acl2/bp-node-budget-input-tests.lisp",
-        "tests/native_bp_budget_input_raw.lisp",
-        "tests/native_tcpcl_retained_turn_raw.lisp"
+        "tests/native_bp_budget_input_raw-mock.lisp",
+        "tests/native_tcpcl_retained_turn_raw-mock.lisp"
       ],
       "execution_scope": "Partial: the actual pinned BPA exchange carries an experimental whole-article ADU and matching receipt through outage/restart/lost receipt/duplicate retry. Sender and receiver logical assurance and five receiver process-death cuts have separate evidence. Complete portable batches, explicit expiry/contact/quota cases, authenticated handoff and additional CLA profiles remain open. Moved to M4 to match the user's A06 active BP path; status remains specified. Native TCPCL request-to-owner-Store-to-receipt composition has a separate loopback restart witness; it is not external BPA interoperability or a complete contact-plan test. The fragment-carrier and observation-bound kind-18 transitions have ACL2 evidence; the two-process interrupted-fragment native fixture awaits a source-matched saved image. The optional offline ION sender has a certified ACL2 observation/route/replay component and a source-present native caller; native image qualification, real death/reopen and receipt-return over ION remain open.",
       "notes": " Retained TCPCL actual-driver recording fixture distinguishes partial/wait writes, ACK-write-before-progress, pump/input interleaving, source-owned input, EOF/deadline loss, and publication errors that escape the socket scope. Matching saved-image execution remains pending."
@@ -748,7 +748,7 @@
         "A stopped service releases the writer lock, and the store reopens without recovery."
       ],
       "evidence": [
-        "tests/native_live_config_cache_raw.lisp"
+        "tests/native_live_config_cache_raw-mock.lisp"
       ],
       "execution_scope": "Specified. The v0 rows (planning/v0-matrix.json, last run b6759850) are owned by tests/test_native_conformance.py on one node and by tests/test_native_peering.py and tests/test_native_protected_peering.py between two nodes on one host over loopback (planning/evidence/python-diet-2-2026-09-28/v0-row-owners.md). Nothing here exercises two machines, a real network, or an operator's own configuration."
     },
@@ -849,9 +849,9 @@
         "planning/evidence/feed-journal-w12-host.json",
         "planning/lanes/HANDOFF-w12-feed-durability.md",
         "tests/test_native_peering.py",
-        "tests/native_feed_peer_octets_raw.lisp",
-        "tests/native_feed_service_raw.lisp",
-        "tests/native_fnfd_budget_raw.lisp",
+        "tests/native_feed_peer_octets_raw-mock.lisp",
+        "tests/native_feed_service_raw-mock.lisp",
+        "tests/native_fnfd_budget_raw-mock.lisp",
         "tests/test_owner_feed_connection_host.sh"
       ],
       "execution_scope": "The owner drives outbound feeds; the former standalone tools/run_feed.py is retired. A source-matched production image ran the combined public operator, owner, feed and inbound NNTP path over private loopback. It transferred one article byte-identically in each direction, suppressed both duplicates, and requeued a durable FNFD obligation after the source process was killed and restarted. W12 separately covers bounded journal replay and cuts. Article-commit/feed-intent atomicity and general K5 correspondence remain active work, so the whole scenario is not marked validated."
@@ -1086,8 +1086,8 @@
       "note": "The ACL2 Store model is witnessed by tests/acl2/consumer-store-invariants-tests.lisp and its scoped manifest. Native image 1d26e01f passed signed local-owner poll, read-only repeat, advancing ACK with killed reply/reopen and fenced clone cursor recovery, as recorded in planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md. The local consumer-status command is an experimental v1 diagnostic and has no v0 gate. The Mini consumer-owned transaction/ACK/reply join and complete two-store E2-01.. trace set remain unqualified; component passes do not establish the whole scenario.",
       "evidence": [
         "tests/native_owner_consumer_raw.lisp",
-        "tests/native_owner_consumer_local_raw.lisp",
-        "tests/native_consumer_poll_cli_raw.lisp",
+        "tests/native_owner_consumer_local_raw-mock.lisp",
+        "tests/native_consumer_poll_cli_raw-mock.lisp",
         "tests/native_consumer_peer_raw.lisp"
       ]
     },
@@ -1271,7 +1271,7 @@
       ],
       "evidence": [
         "tests/acl2/peer-authored-accept-tests.lisp",
-        "tests/native_peer_authored_accept_raw.lisp",
+        "tests/native_peer_authored_accept_raw-mock.lisp",
         "tests/native_bp_transit_identity_raw.lisp",
         "tests/native_peer_raw_key_component.lisp"
       ],
@@ -1359,7 +1359,7 @@
       ],
       "evidence": [
         "tests/acl2/control-tests.lisp",
-        "tests/native_peer_authored_accept_raw.lisp",
+        "tests/native_peer_authored_accept_raw-mock.lisp",
         "tests/test_native_control_filing.py"
       ],
       "implementation": {
@@ -1385,7 +1385,7 @@
         "Enrol two boundaries with contact rows and a route from the transit destination to the second boundary; hold a transit bundle for that destination and open the outbound session.",
         "Remove the route and open the session again.",
         "Add the route back and open the session again.",
-        "tests/native_bp_forward_session_raw.lisp (raw SBCL, the shipped fnn-bpnode-forward-session over recording stubs): a hop that resets after SESS_INIT with nothing to send; the normal path; a reset after a durable attempt; the socket shut failing after the close; the connect failing."
+        "tests/native_bp_forward_session_raw-mock.lisp (raw SBCL, the shipped fnn-bpnode-forward-session over recording stubs): a hop that resets after SESS_INIT with nothing to send; the normal path; a reset after a durable attempt; the socket shut failing after the close; the connect failing."
       ],
       "expected": [
         "The bundle is offered on the routed session to the second boundary and settles status=sent; a session to any other boundary offers nothing.",
@@ -1397,7 +1397,7 @@
         "tests/test_bp_node_native.py",
         "tests/acl2/bp-route-tests.lisp",
         "planning/evidence/bp-routing-2026-09-25.md",
-        "tests/native_bp_forward_session_raw.lisp"
+        "tests/native_bp_forward_session_raw-mock.lisp"
       ],
       "implementation": {
         "test": "tests.test_bp_node_native",
@@ -6969,7 +6969,7 @@
       ],
       "evidence": [
         "tests/owner-feed-tls-ready-host.lsp",
-        "tests/native_feed_service_raw.lisp",
+        "tests/native_feed_service_raw-mock.lisp",
         "tests/test_native_feed_tls_ready.py"
       ],
       "implementation": {
@@ -8342,7 +8342,7 @@
         "tests/acl2/newnews-stream-cursor-tests.lisp",
         "tests/acl2/newnews-candidate-selector-tests.lisp",
         "tests/test_cursor_cold_poll.py",
-        "tests/cursor_cold_poll_recording.lisp",
+        "tests/cursor_cold_poll_recording-mock.lisp",
         "planning/evidence/cursor-cold-poll-20261003/checks-final.json",
         "tests/acl2/newnews-matching-selector-tests.lisp",
         "tests/acl2/wildmat-cursor-tests.lisp"
@@ -8396,7 +8396,7 @@
         "The committer actor records fault and stops service; it does not leave active service without a committer."
       ],
       "evidence": [
-        "tests/native_syncer_pipeline_escape_raw.lisp",
+        "tests/native_syncer_pipeline_escape_raw-mock.lisp",
         "tests/native_committer_actor_raw.lisp",
         "tests/test_native_syncer_typed_raw.sh",
         "tests/native_syncer_typed_raw.lisp"
@@ -8556,7 +8556,7 @@
       ],
       "evidence": [
         "tests/test_native_checkpoint_image_readback.py",
-        "tests/native_checkpoint_image_readback_raw.lisp",
+        "tests/native_checkpoint_image_readback_raw-mock.lisp",
         "tests/test_native_state_checkpoint.py"
       ],
       "implementation_note": "Actual raw host stage/readback/install, ACL2 header/page codec and kernel files exercised with recorded snapshot storage and framed-run verifier boundaries. Matching saved-image scenario and certification pending; no image/deployment claim."
@@ -8625,10 +8625,10 @@
         "Startup rows come from ACL2, without clamping; explicit output policy remains staged and full response custody/tariff remains open."
       ],
       "implementation": {
-        "test": "tests/native_output_startup_raw.lisp"
+        "test": "tests/native_output_startup_raw-mock.lisp"
       },
       "evidence": [
-        "tests/native_output_startup_raw.lisp",
+        "tests/native_output_startup_raw-mock.lisp",
         "books/output-reservation.lisp"
       ],
       "execution_scope": "Actual native transport/install/caller bodies with recorded ACL2 funding/method boundaries. Exact new helper and three normal declarations source-admitted in Foundations actual loaded output world; typed producer fixture independent. No configured live activation/full tariff/image claim."
@@ -8655,7 +8655,7 @@
         "test": "tests/test_native_retire_observation_source.py"
       },
       "evidence": [
-        "tests/native_retire_observation_source.lisp",
+        "tests/native_retire_observation_source-mock.lisp",
         "tests/acl2/native-retire-observation-tests.lisp",
         "planning/evidence/operator-retire-observation-2026-10-03-v2.json"
       ],
@@ -8682,7 +8682,7 @@
       "evidence": [
         "tests/test_native_web.py",
         "tests/test_native_host_lifecycle.py",
-        "tests/native_web_reactor_raw.lisp",
+        "tests/native_web_reactor_raw-mock.lisp",
         "planning/evidence/web-continuations-2026-10-03.md"
       ],
       "implementation": {
@@ -8824,7 +8824,7 @@
         "test": "tests/test_native_operator_diagnostics_source.py"
       },
       "evidence": [
-        "tests/native_operator_diagnostics_source.lisp",
+        "tests/native_operator_diagnostics_source-mock.lisp",
         "planning/evidence/operator-diagnostics-classification-2026-10-03.json"
       ],
       "execution_scope": "Actual source plus deliberate model/I/O observations, with actual closed ACL2 condition classifier. Saved-image matching consumer qualification remains Integration work."
@@ -8851,7 +8851,7 @@
         "test": "tests/test_native_init_resume_source.py"
       },
       "evidence": [
-        "tests/native_init_resume_source.lisp",
+        "tests/native_init_resume_source-mock.lisp",
         "tests/acl2/native-init-resume-tests.lisp",
         "tests/test_native_init_resume.py",
         "planning/evidence/operator-init-resume-2026-10-03-v2.json"
@@ -8907,10 +8907,10 @@
         "Original starting context is passed to grant by identity, renderer never reacquires root, and capture references end only at dual settlement; per-command final pin/auth remain separately authoritative."
       ],
       "implementation": {
-        "test": "tests/native_output_response_lease_raw.lisp"
+        "test": "tests/native_output_response_lease_raw-mock.lisp"
       },
       "evidence": [
-        "tests/native_output_response_lease_raw.lisp",
+        "tests/native_output_response_lease_raw-mock.lisp",
         "host/native/owner.lisp",
         "host/native/mux.lisp",
         "tests/native_output_custody_raw.lisp",
@@ -9051,10 +9051,10 @@
         "Absent output accounting follows the explicitly partial existing path."
       ],
       "implementation": {
-        "test": "tests/native_output_preflight_raw.lisp"
+        "test": "tests/native_output_preflight_raw-mock.lisp"
       },
       "evidence": [
-        "tests/native_output_preflight_raw.lisp",
+        "tests/native_output_preflight_raw-mock.lisp",
         "host/native/owner.lisp",
         "host/native/mux.lisp",
         "host/owner-host.lisp",
@@ -9084,17 +9084,17 @@
         "Each acquire invocation calls one typed candidate operation; yields create no context, every local service runs, and once returns only after the owed outgoing terminal settles."
       ],
       "evidence": [
-        "tests/native_bp_session_bank_raw.lisp",
-        "tests/native_tcpcl_retained_turn_raw.lisp",
+        "tests/native_bp_session_bank_raw-mock.lisp",
+        "tests/native_tcpcl_retained_turn_raw-mock.lisp",
         "host/native/bp-session.lisp",
         "host/native/bp-node.lisp",
         "tests/test_bp_node_native.py",
         "tests/acl2/bp-session-generations-tests.lisp",
-        "tests/native_tcpcl_frame_cursor_raw.lisp",
-        "tests/native_bp_received_source_raw.lisp",
+        "tests/native_tcpcl_frame_cursor_raw-mock.lisp",
+        "tests/native_bp_received_source_raw-mock.lisp",
         "tests/acl2/tcpcl-frame-cursor-tests.lisp",
         "tests/acl2/bp-session-received-source-tests.lisp",
-        "tests/native_tcpcl_source_control_raw.lisp"
+        "tests/native_tcpcl_source_control_raw-mock.lisp"
       ],
       "note": "Actual source raw scheduler/custody discrimination passes; canonical two-peer DTN image scenario and comprehensive physical-cut/restart qualification pending. Native selector now prepared using actual image tcpcl send with no payload/EXPECT1, canonical same-source producer and receiver Store reopen; execution pending matching image. S068 now prepares actual concrete input framing and private received operation under incoming grant; whole-frame decode remains open. Source-loaded actual ACL2/native process is the integration target, saved image is optional; raw predicates/consumer pass do not imply that result.",
       "implementation": {
@@ -9132,7 +9132,7 @@
       "evidence": [
         "tests/native_web_article_stream_raw.lisp",
         "planning/evidence/web-stream-consumers-2026-10-03.md",
-        "tests/native_web_reactor_raw.lisp",
+        "tests/native_web_reactor_raw-mock.lisp",
         "tests/native_web_article_producer_raw.lisp",
         "tests/acl2/web-stream-consumer-source-tests.lisp"
       ],
@@ -9505,7 +9505,7 @@
       ],
       "evidence": [
         "tests/test_bp_node_native.py",
-        "tests/native_tcpcl_retained_turn_raw.lisp",
+        "tests/native_tcpcl_retained_turn_raw-mock.lisp",
         "books/tcpcl-retained-turn.lisp"
       ],
       "note": "Actual retained-controller raw fixture PASS; real-time native selector test_silent_contact_expires_without_stopping_canonical_delivery prepared but UNEXECUTED. Stalled SESS_INIT and complete handshake/session admission scheduling remain open.",
@@ -9532,7 +9532,7 @@
       ],
       "evidence": [
         "tests/test_bp_node_native.py",
-        "tests/native_tcpcl_retained_turn_raw.lisp",
+        "tests/native_tcpcl_retained_turn_raw-mock.lisp",
         "books/tcpcl-retained-turn.lisp"
       ],
       "note": "Source/raw composed matrix PASS; native selector test_stalled_session_init_expires_beside_canonical_delivery UNEXECUTED until current initialized source world. Local policy, not an RFC fixed SESS_INIT timeout requirement."
@@ -9558,7 +9558,7 @@
       ],
       "evidence": [
         "tests/test_bp_node_native.py",
-        "tests/native_tcpcl_source_control_raw.lisp",
+        "tests/native_tcpcl_source_control_raw-mock.lisp",
         "books/bp-channel-ingress.lisp"
       ],
       "note": "Actual apply/flush raw composition PASS with recorded core admission answer; actual ACL2 producer literals prepared, native current-union UNEXECUTED."
@@ -9614,7 +9614,7 @@
       ],
       "evidence": [
         "tests/test_bp_node_native.py",
-        "tests/native_tcpcl_source_control_raw.lisp",
+        "tests/native_tcpcl_source_control_raw-mock.lisp",
         "books/tcpcl-source-control.lisp",
         "books/tcpcl-source-control-refinement.lisp",
         "tests/acl2/tcpcl-source-control-refinement-tests.lisp"
@@ -9653,7 +9653,7 @@
         "test": "tests/test_native_owner_pool_startup_source.py"
       },
       "evidence": [
-        "tests/native_owner_pool_startup_source.lisp",
+        "tests/native_owner_pool_startup_source-mock.lisp",
         "planning/evidence/operator-pool-startup-source-2026-10-03-v2.json",
         "planning/evidence/operator-executor-custody-source-2026-10-03.json",
         "planning/evidence/operator-arena-custody-source-2026-10-03.json"
@@ -9716,7 +9716,7 @@
         "test": "tests/test_native_bp_owner_startup_source.py"
       },
       "evidence": [
-        "tests/native_bp_owner_startup_source.lisp",
+        "tests/native_bp_owner_startup_source-mock.lisp",
         "planning/evidence/bp-served-startup-source-2026-10-03.json",
         "planning/evidence/bp-startup-peer-join-20261003/result.json"
       ],
@@ -9792,9 +9792,9 @@
         "test": "tests/test_native_heap_default_source.py"
       },
       "evidence": [
-        "tests/native_heap_default_source.lisp",
+        "tests/native_heap_default_source-mock.lisp",
         "planning/evidence/operator-default-heap-source-2026-10-03.json",
-        "tests/native_heap_diagnostic_policy_source.lisp",
+        "tests/native_heap_diagnostic_policy_source-mock.lisp",
         "planning/evidence/operator-default-heap-source-2026-10-03-v2.json"
       ],
       "execution_scope": "Actual native heap/profile/status bodies and actual selected ACL2 reservation/layout arithmetic. Base heap figure, config/machine capture and explicit output extension are deliberate seams; no complete allocation, expanded init/reopen theorem, nonempty recovery, saved-image or deployment qualification. Configured diagnostic cases execute actual STATUS/HEALTH and config field projections plus real output reservation arithmetic. Explicit cold arithmetic remains a declared seam; complete cold startup remains unsupported."
