@@ -222,10 +222,12 @@
             (equal (fn-rof-record mem cap msgid reason)
                    (cons (cons msgid reason) (butlast mem 1))))))
 
-; The owner's record over the refusal from peer innA, then the offers of the
-; same Message-ID from innA and innB answer 435 / 438 without a transfer.
-(defconst *th-mem* (fn-peer-refused-record nil *th-cfg* (th-o "<bp@example.invalid>") *th-badpath*))
-(assert-event (equal *th-mem* '(("<bp@example.invalid>" . :path-syntax))))
+; The owner's record over the refusal from peer innA: innA's later offers of
+; the same Message-ID answer 438 / 435 without a transfer; innB's are its own
+; and still wanted (rp-refused-memory-poison: before, innA's bad bytes made
+; innB's CHECK draw 438, final for the sender).
+(defconst *th-mem* (fn-peer-refused-record nil *th-cfg* "innA" (th-o "<bp@example.invalid>") *th-badpath*))
+(assert-event (equal *th-mem* '((("innA" . "<bp@example.invalid>") . :path-syntax))))
 (defconst *th-ps-a* (fn-peer-with-refused
                      (fn-peer-open-session (fn-node-acceptance *th-node*) "innA" *th-node* *th-cfg*)
                      *th-mem*))
@@ -236,31 +238,49 @@
 (defun th-code (ps k id)
   (fn-peer-wire-code (fn-post-result-effects (fn-peer-command ps (th-o k) (list (th-o id))))))
 (assert-event (equal (th-code *th-ps-a* "CHECK" "<bp@example.invalid>") 438))
-(assert-event (equal (th-code *th-ps-b* "CHECK" "<bp@example.invalid>") 438))
-(assert-event (equal (th-code *th-ps-b* "IHAVE" "<bp@example.invalid>") 435))
+(assert-event (equal (th-code *th-ps-a* "IHAVE" "<bp@example.invalid>") 435))
 (assert-event (equal (fn-post-result-effects
-                      (fn-peer-command *th-ps-b* (th-o "IHAVE") (list (th-o "<bp@example.invalid>"))))
-                     (fn-peer-single *th-ps-b* "435 not wanted; malformed Path")))
+                      (fn-peer-command *th-ps-a* (th-o "IHAVE") (list (th-o "<bp@example.invalid>"))))
+                     (fn-peer-single *th-ps-a* "435 not wanted; malformed Path")))
+; Teeth of the per-peer scope: innB, offered the same Message-ID, is asked for it.
+(assert-event (equal (th-code *th-ps-b* "CHECK" "<bp@example.invalid>") 238))
+(assert-event (equal (th-code *th-ps-b* "IHAVE" "<bp@example.invalid>") 335))
 ; Another Message-ID is still wanted, and a session with no memory wants it.
-(assert-event (equal (th-code *th-ps-b* "CHECK" "<g@example.invalid>") 238))
-(assert-event (equal (th-code (fn-peer-with-refused *th-ps-b* nil) "CHECK" "<bp@example.invalid>") 238))
+(assert-event (equal (th-code *th-ps-a* "CHECK" "<g@example.invalid>") 238))
+(assert-event (equal (th-code (fn-peer-with-refused *th-ps-a* nil) "CHECK" "<bp@example.invalid>") 238))
 ; A memory entry whose reason is not one the octets decide says nothing.
-(assert-event (equal (th-code (fn-peer-with-refused *th-ps-b* '(("<bp@example.invalid>" . :capacity)))
+(assert-event (equal (th-code (fn-peer-with-refused *th-ps-a* '((("innA" . "<bp@example.invalid>") . :capacity)))
                               "CHECK" "<bp@example.invalid>")
                      238))
+; The old Message-ID-only key no longer answers anyone.
+(assert-event (equal (th-code (fn-peer-with-refused *th-ps-a* '(("<bp@example.invalid>" . :path-syntax)))
+                              "CHECK" "<bp@example.invalid>")
+                     238))
+; KEYSTONE fn-peer-refused-record-never-changes-another-peers-offer on a
+; concrete pair: innA's record leaves innB's decision what it was before.
+(assert-event (equal (fn-peer-decide-offer *th-node* *th-cfg* "innB" *th-ps-b*
+                                           (th-o "<bp@example.invalid>") nil 0)
+                     (fn-peer-decide-offer *th-node* *th-cfg* "innB"
+                                           (fn-peer-with-refused *th-ps-b* nil)
+                                           (th-o "<bp@example.invalid>") nil 0)))
+; Capacity is per peer: innB's records never evict innA's entry.
+(assert-event (equal (fn-rof-lookup '("innA" . "<bp@example.invalid>")
+                                    (fn-peer-refused-record *th-mem* *th-cfg* "innB"
+                                                            (th-o "<bp@example.invalid>") *th-badpath*))
+                     :path-syntax))
 
 ; KEYSTONE fn-prof-offer-answer-is-the-reparse over one run of transfers:
 ; the offer's refusal, the witness transfer and the re-parse's decision.
-(defconst *th-transfers* (list (cons (th-o "<g@example.invalid>") *th-good*)
-                               (cons (th-o "<bp@example.invalid>") *th-badpath*)))
+(defconst *th-transfers* (list (list* "innA" (th-o "<g@example.invalid>") *th-good*)
+                               (list* "innA" (th-o "<bp@example.invalid>") *th-badpath*)))
 (defconst *th-run* (fn-prof-run nil *th-cfg* *th-transfers*))
 (assert-event (equal *th-run* *th-mem*))
-(defconst *th-w* (fn-prof-witness "<bp@example.invalid>" :path-syntax *th-transfers*))
-(assert-event (equal *th-w* (cons (th-o "<bp@example.invalid>") *th-badpath*)))
-(assert-event (equal (fn-peer-decide-offer *th-node* *th-cfg* "innB" *th-ps-b*
+(defconst *th-w* (fn-prof-witness '("innA" . "<bp@example.invalid>") :path-syntax *th-transfers*))
+(assert-event (equal *th-w* (list* "innA" (th-o "<bp@example.invalid>") *th-badpath*)))
+(assert-event (equal (fn-peer-decide-offer *th-node* *th-cfg* "innA" *th-ps-a*
                                            (th-o "<bp@example.invalid>") nil 0)
                      (fn-peer-decision :refuse :path-syntax)))
-(assert-event (equal (fn-peer-decide-transfer *th-node* *th-cfg* "innB" (car *th-w*) (cdr *th-w*)
+(assert-event (equal (fn-peer-decide-transfer *th-node* *th-cfg* "innA" (cadr *th-w*) (cddr *th-w*)
                                               *th-clock* "ob" "s")
                      (fn-peer-decision :refuse :path-syntax)))
 ; Hypothesis removal (history): without it the claim is false, because a
@@ -277,21 +297,25 @@
 ; Hypothesis removal (the disk-slow posture, PKT-858): the same session with
 ; the posture's entry in its memory defers the remembered Message-ID instead
 ; of refusing it; the owner's run of transfers never holds that entry.
-(assert-event (not (fn-peer-shed-p *th-ps-b*)))
+(assert-event (not (fn-peer-shed-p *th-ps-a*)))
 (assert-event (not (fn-rof-lookup :disk-slow *th-run*)))
-(assert-event (equal (fn-peer-decide-offer *th-node* *th-cfg* "innB"
-                                           (fn-peer-with-refused *th-ps-b* (cons *fn-peer-shed-entry* *th-mem*))
+(assert-event (equal (fn-peer-decide-offer *th-node* *th-cfg* "innA"
+                                           (fn-peer-with-refused *th-ps-a* (cons *fn-peer-shed-entry* *th-mem*))
                                            (th-o "<bp@example.invalid>") nil 0)
                      (fn-peer-decision :defer :disk-slow)))
-(assert-event (equal (th-code (fn-peer-with-refused *th-ps-b* (cons *fn-peer-shed-entry* *th-mem*))
+(assert-event (equal (th-code (fn-peer-with-refused *th-ps-a* (cons *fn-peer-shed-entry* *th-mem*))
                               "CHECK" "<bp@example.invalid>")
                      431))
+; A record keeps the posture's entry (fn-peer-refused-record-keeps-every-other-key).
+(assert-event (fn-peer-shed-p (fn-peer-with-refused *th-ps-a*
+                                (fn-peer-refused-record (cons *fn-peer-shed-entry* nil) *th-cfg* "innA"
+                                                        (th-o "<bp@example.invalid>") *th-badpath*))))
 
 ; The owner's recording step: only an intrinsic refusal is recorded, and the
 ; recorded reason is the octets', never the word the host relayed.
-(assert-event (equal (fn-peer-refused-record nil *th-cfg* (th-o "<g@example.invalid>") *th-good*) nil))
-(assert-event (equal (fn-peer-refused-record nil *th-cfg-skew* (th-o "<bp@example.invalid>") *th-badpath*)
-                     '(("<bp@example.invalid>" . :path-syntax))))
+(assert-event (equal (fn-peer-refused-record nil *th-cfg* "innA" (th-o "<g@example.invalid>") *th-good*) nil))
+(assert-event (equal (fn-peer-refused-record nil *th-cfg-skew* "innA" (th-o "<bp@example.invalid>") *th-badpath*)
+                     '((("innA" . "<bp@example.invalid>") . :path-syntax))))
 
 ; KEYSTONE fn-rck-skew-within-the-rfc (PRF-236; no hypothesis), by name: the
 ; default, the operator's 3600, and a value that is no configuration all
