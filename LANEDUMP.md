@@ -4544,6 +4544,11 @@ versus current-image obligations, not completion claims. No live deployment.
 Protected recovery partition, expanded init/reopen and complete tariff remain
 open. Bounds catchup controller draft is preserved but activation unwired.
 
+## docs lane (lane/docs) — 2026-10-04
+
+Entry: build/coordinator/lanedumps/docs.md (deliverables, shas, word counts,
+continuation point).
+
 ## bp (BP-DESIGN, Fable) — 2026-10-04 wind-down
 
 Branch lane/bp from origin/integrate/20261004 @ec2c1b3da. Landed: the

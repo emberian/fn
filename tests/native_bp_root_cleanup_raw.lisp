@@ -20,15 +20,6 @@
 (defun fnn-bp-run-evidence (tally)
   (declare (ignorable tally))
   (harness-stub-reached 'fnn-bp-run-evidence "host/native/bp.lisp"))
-(defun fnn-bp-served-owner-settle (custody service roots-ready)
-  (declare (ignorable custody service roots-ready))
-  (harness-stub-reached 'fnn-bp-served-owner-settle "host/native/bp-service.lisp"))
-(defun fnn-bp-served-owner-start (custody root max-connections)
-  (declare (ignorable custody root max-connections))
-  (harness-stub-reached 'fnn-bp-served-owner-start "host/native/bp-service.lisp"))
-(defun fnn-bp-served-owner-stop (custody service)
-  (declare (ignorable custody service))
-  (harness-stub-reached 'fnn-bp-served-owner-stop "host/native/bp-service.lisp"))
 (defun fnn-bpnode-budgeted (event)
   (declare (ignorable event))
   (harness-stub-reached 'fnn-bpnode-budgeted "host/native/bp-node.lisp"))
@@ -146,6 +137,13 @@
 (defun fnn-owner-service-store (&rest xs) (declare (ignore xs)) :store)
 (defun fnn-store-close (&rest xs) (declare (ignore xs)) (cleanup-error :store))
 (defun fnn-bps-release (&rest xs) (declare (ignore xs)) (cleanup-error :bp))
+;; A served node (a listen port) starts its owner through the served-owner
+;; custody (host/native/bp-service.lisp) and stops and settles it there, in
+;; place of the plain install and Store close.
+(defun make-fnn-bp-served-owner-custody () :custody)
+(defun fnn-bp-served-owner-start (&rest xs) (declare (ignore xs)) :owner)
+(defun fnn-bp-served-owner-stop (&rest xs) (declare (ignore xs)) (cleanup-error :served-stop))
+(defun fnn-bp-served-owner-settle (&rest xs) (declare (ignore xs)) (cleanup-error :served-settle))
 (defun fnn-core (name &rest xs)
  (case name ((fn-bpsp-root-release-ready fn-bpsg-step fn-bpsg-release-ready) (apply name xs))
   (otherwise (error "unexpected core ~s" name))))
@@ -159,14 +157,17 @@
      "node" "peer" "dest" "policy" "issuer" "host" 9 1 1 1 1000 nil 0 nil nil :control)
   (test-cleanup-error (condition) (setq caught condition)))
  (assert (eq caught *body-condition*))
- (assert (equal (reverse *root-calls*) '(:control :listener :unbind :feed :store :bp))))
+ (assert (equal (reverse *root-calls*)
+                '(:control :listener :unbind :feed :served-stop :bp :served-settle))))
 (let ((*held-root-test* t) (*root-calls* nil) (*fnn-bp-session-stranded-roots* nil) (caught nil))
  (handler-case
   (fnn-command-bp-node 9 nil "/bp" "/store" "/receipt" "/workflow"
      "node" "peer" "dest" "policy" "issuer" "host" 9 1 1 1 1000 nil 0 nil nil :control)
   (test-cleanup-error (condition) (setq caught condition)))
  (assert (eq caught *body-condition*))
- (assert (equal (reverse *root-calls*) '(:control :listener)))
+ ;; Held session debt: the owner, its Store and the BP lock are not released;
+ ;; the served owner is still stopped and its settlement still asked.
+ (assert (equal (reverse *root-calls*) '(:control :listener :served-stop :served-settle)))
  (assert (= (hash-table-count (fnn-bpsb-held *held-bank*)) 1))
  (assert (equal *fnn-bp-session-stranded-roots* (list (list *held-bank* :owner :bp)))))
 (format t "PASS actual BP root cleanup: all independent cleanup faults preserve original body fault.~%")
