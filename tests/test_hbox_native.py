@@ -234,6 +234,18 @@ class HboxNativeDryRunTests(unittest.TestCase):
             ["tests.test_bp_service_native"])
         self.assertIn("FN_NATIVE_BP_HOST=$T/build/fn-host-dtn-developer", " ".join(lines))
 
+    def test_a_stored_verdict_is_consulted_before_a_module_runs_unless_all(self):
+        answer = dry("HEAD", "tests.test_native_owner")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        script = answer.stdout
+        self.assertIn("export FN_VERDICT_STORE=${FN_VERDICT_STORE:-", script)
+        self.assertIn(".verdicts} FN_NATIVE_ALL=0", script)
+        self.assertIn("tcached test-tests.test_native_owner tests.test_native_owner", script)
+        self.assertIn("native_verdicts.py lookup $module", script)
+        self.assertIn("--one tests.test_native_owner $CASES", script)
+        self.assertIn("FN_NATIVE_MODULE_LOG=$L/$name.log", script)
+        self.assertIn("FN_NATIVE_ALL=1", dry("--all", "HEAD", "tests.test_native_owner").stdout)
+
     def test_a_big_memory_scope_waits_on_the_box_wide_lock(self):
         big = dry("--mem", "80G", "HEAD", "tests.test_native_owner")
         self.assertEqual(big.returncode, 0, big.stderr)
