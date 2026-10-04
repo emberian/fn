@@ -791,8 +791,11 @@ class NativePeeringTests(unittest.TestCase):
         unavailable-peer (books/native-health.lisp
         fn-nh-deferring-peer-is-held)."""
         source = self.initialize("full-source")
-        full = self.initialize("full-target", "--profile", "default", "--max-transactions", "12",
-                               "fn.test")
+        # Development base: `--profile default' with T=12 is a store no
+        # launcher starts (its heap probe: machine-cannot-hold-profile, about
+        # 16 TB); only the bare image's 32000 MB ever ran it.
+        full = self.initialize("full-target", "--profile", "development",
+                               "--max-transactions", "12", "fn.test")
         port = full.port
         self.configure_peer(full, source, outbound="-")
         self.start(full)
