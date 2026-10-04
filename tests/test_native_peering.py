@@ -1309,7 +1309,9 @@ class NativePeeringTests(unittest.TestCase):
         replies = self.inject(node, ids)
         self.assertEqual({r[:3] for r in replies}, {b"239"}, replies)
         over = node.operator("retire", "--drain", "86401", expect=EXIT_REFUSED)
-        self.assertIn(b"drain-seconds-over-bound", over.stdout + over.stderr)
+        # Refused by name: the operator's argument refusal prints the book's
+        # reason keyword, (RETIRE DRAIN-SECONDS-OVER-BOUND), in its case.
+        self.assertIn(b"DRAIN-SECONDS-OVER-BOUND", (over.stdout + over.stderr).upper())
         self.assertIsNone(node.process.poll())
         node.operator("retire", "--drain", "soon", expect=EXIT_REFUSED)
         node.operator("retire", "now", expect=EXIT_USAGE)

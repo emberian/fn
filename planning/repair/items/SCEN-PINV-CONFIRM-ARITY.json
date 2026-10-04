@@ -1,0 +1,12 @@
+{
+ "category": "implementation",
+ "file": "host/native/peer-invite.lisp",
+ "id": "SCEN-PINV-CONFIRM-ARITY",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "high",
+ "source": "scenarios",
+ "state": "open",
+ "title": "peer confirm stops the owner: host/native/peer-invite.lisp:241 applies fn-pinv-host-confirm-record-plan to 10 arguments (bbfc3b915 appended fn-store-genesis-ident and fn-owner-config-generation, as it did for accept's new fn-par-host-accept-record-plan) but host/peer-invite-host.lisp:86 and books/peer-invite.lisp:1360 take 8; every confirm is 'owner quantum fault; process stopped: host-entry-guard ... takes 8 arguments ... the host passed 10'. Red: peer_invite 7/7, friends_feed 1/2 on run peer-d5b0b9100 (hbox:/tank/fn/scratch/scenarios/native-peer-d5b0b9100). The invite/confirm flow is how a friend's server peers.",
+ "updated": "2026-10-04T15:13:41Z"
+}

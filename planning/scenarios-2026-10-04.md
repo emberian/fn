@@ -93,7 +93,7 @@ Codes are those of `tests/scenarios/tiers.tsv`.
 | push both ways, IHAVE/CHECK/TAKETHIS | `peering` (two production nodes: 235/435/437, CHECK 238x16 431x4 438, kill mid-IHAVE, requeue, queue bound 436), `protected_peering` (reciprocal over STARTTLS+AUTHINFO), `header_limits`/`header_lines` (exact 437/439 at the boundary), `conformance` IHAVE rows, `article_subject` | run2: peering 3/24 red; protected_peering last 10-01 FAILED | (P1) `peering` has no changed-bytes case on transit: 435/438 are by Message-ID presence alone (by design, M3) |
 | pull, catch-up after a gap | `peer_pull` (NEWNEWS pull, cursor cuts, TLS principal), `peer_catchup` (1000 articles, digest chain, kill mid-round) | run2: peer_pull 1/14 (catch-up stalls beside a slow pull: catchup2's); peer_catchup 3/4 (startup refusals: cold-start's) | - |
 | NEWNEWS wildmat, HDR/XPAT past the cache (the old node's hang) | `cold_line_quanta`, `cold_line_deadline`, `newnews_wildmat`, `cold_off_loop` | run2: both cold_line modules red (node closed the connection); newnews_wildmat and cold_off_loop have never run | (P2) `cold_line_deadline` accepts 403 (G9); `cold_line_quanta` counts rows and never checks their content |
-| a misbehaving peer never pins the owner | `public_exposure` (flood, slowloris, lockout), `tls_handshake_budget`, `host_lifecycle`, `feed_idle`, `feed_temporary` (400 then backoff), `feed_tls_read` (drops, backoff) | run2: feed_idle red (busy-poll; catchup2's); feed_tls_read red today **from a harness bug** (fixed, section 5) | (P3) no module puts a misbehaving *transit* peer (garbage mid-TAKETHIS, reset after 335, trickled article) against the owner. That lives only in `hostile_campaign.py`'s transit/pipelining families (a kit, last run 09-27). `peer_round_driver` (trickling pull) is MOCK |
+| a misbehaving peer never pins the owner (new: `peer_misbehaving`, below) | `public_exposure` (flood, slowloris, lockout), `tls_handshake_budget`, `host_lifecycle`, `feed_idle`, `feed_temporary` (400 then backoff), `feed_tls_read` (drops, backoff) | run2: feed_idle red (busy-poll; catchup2's); feed_tls_read red today **from a harness bug** (fixed, section 5) | (P3) no module put a misbehaving *transit* peer against the owner; only `hostile_campaign.py`'s transit family (two reader-port cases, a kit, last run 09-27) did, and `peer_round_driver` (trickling pull) is MOCK. **Filled by `tests/test_native_peer_misbehaving.py`** (this lane): a configured peer trickling inside IHAVE, resetting half-way through TAKETHIS, sending garbage and an endless line, flooding CHECK without reading; during each a reader's DATE is answered within 5 s and a good transfer completes and is served exact; after each the owner runs, the half-sent id is 430 and transfers cleanly (no stuck reservation). Not yet run on an image. hostile_campaign now counts a family whose harness raised as a defect (it passed as "no defect") |
 | peer login and credentials | `protected_peering`, `peer_invite`, `peer_by_name`, `friends_feed`, `injection_info` | peer_invite last 09-27 FAILED | `peer_invite`'s refused() checks exit 1 only, never the reason word (:97-102) |
 | real external software | `peer_pull` INN cases (`FN_INN_SRC=/tank/fn/inn/2.7.4`, installed on hbox; the tier sets it), `reader_clients` (slrn and pan in docker), `tools/inn_lab.py` (fn feeds innd, innfeed feeds fn, duplicates, loop, kill) | INN pull cases: 2 skipped in run2 (no FN_INN_SRC); inn_lab last ran in the per-file era | (P4) inn_lab is a kit, run from the laptop with `--host hbox`, so it is not in one hbox_native run |
 
@@ -123,6 +123,9 @@ Codes are those of `tests/scenarios/tiers.tsv`.
 | commit_log | acked posts after a death were checked by a body substring | served body == posted body |
 | replay_determinism | determinism of a store whose every write was refused passed | the 17 article writes must be accepted |
 | agent_wait | the bootstrap refusal kept no reason | carries the native output |
+| article_subject | its relayed fixture had no Date, so transit hygiene (PRF-236) refused it 437 before the subject under test was reached | a Date within the skew |
+| peering (retire) | expected the refusal keyword in lower case; the operator prints the book's keyword `(RETIRE DRAIN-SECONDS-OVER-BOUND)` | the keyword, case-insensitively |
+| hostile_campaign (kit) | a family whose harness raised was recorded and then judged by the liveness oracle alone, so "never ran" read as "no defect" | the raise is a `harness` defect |
 
 **Open.** These go to the ledger or to their owners; they are not harness edits:
 - `bp_fragment_node_native`:471,:514: named refusals asserted as uncertain (G4).
@@ -136,6 +139,7 @@ Codes are those of `tests/scenarios/tiers.tsv`.
 
 ## 6. The gaps, ranked by what they hide
 
+0. **Peering a friend's server today stops our owner**: `peer confirm` faults the owner on a host-entry guard (SCEN-PINV-CONFIRM-ARITY, high, since bbfc3b915 on 09-30), so the invite/accept/confirm flow cannot complete. Found by the peer tier's first run; nothing ran peer_invite between 09-27 and today.
 1. **G16 cursor**: the consumer cursor (Mini's read path) has no green run on any current image. agent_wait and consumer_exchange fail at bootstrap with `consumer refused identity`, and consumer_e2 and consumer_inspect never ran (the e2e tier now sets their opt-ins).
 2. **G1/G2 durability below process death**: no power-cut run on the record-log format, and no integrated crash campaign.
 3. **G18 identity command** (M4): nothing to test.
@@ -151,7 +155,7 @@ Codes are those of `tests/scenarios/tiers.tsv`.
 
 | tier | modules | wall (hbox, --jobs 4) | answers |
 |---|---|---|---|
-| peer | 28 + inn_lab + hostile transit families | ~20 min (estimate; first run section 8) | section 3 |
+| peer | 29 + inn_lab + hostile transit families | 13 min (peer-d5b0b9100: 14:57->15:10Z) | section 3 |
 | smoke | 14 | 2.5 min (smoke-d5b0b9100) | one REAL module per question |
 | core | 12 | ~10 min (coldstart1: 14:05->14:14Z) | the release image bar |
 | e2e | 39 + opt-ins | ~30-45 min (estimate) | one module per user-visible surface; consumer and hybrid opt-ins on |
@@ -162,4 +166,5 @@ Codes are those of `tests/scenarios/tiers.tsv`.
 
 | run | image set | tests at | result |
 |---|---|---|---|
+| peer-d5b0b9100 | d5b0b9100 | 4edb8509a | 13/28 OK: peer_by_name, feed_tls_ready, feed_temporary, header_lines, injection_info, reader_freshness, own_cancel, control_filing, source_corpus (3/3), newnews_wildmat, conformance, cold_off_loop, tls_handshake_budget. Red, already owned: peer_catchup 3/4 and peering's startup refusal (cold-start; catchup2@8d5210ee3), feed_idle 2,474 transit holds vs 150 and peer_pull's catch-up beside a slow pull (catchup2@8d5210ee3), cold_line_quanta and cold_line_deadline (node closed the connection; cold-line items S-reopened by run2), host_lifecycle 3 (run2's). Red, new and filed: **SCEN-PINV-CONFIRM-ARITY** (high: every `peer confirm` stops the owner on a host-entry guard, 10 arguments for 8; peer_invite 7/7, friends_feed), SCEN-EXPOSURE-LOCKOUT (address lockout not held for the next connection), SCEN-FEED-RESUME (a resumed feed does not deliver within 30 s), SCEN-HEADER-LIMITS-RAISED (node closes on a 900-field article), SCEN-GROUP-CREATE-UNCERTAIN (reader_clients' developer case: `group create` exit 3). Red, harness, fixed after the run: article_subject (its fixture had no Date; transit hygiene PRF-236 refuses 437 before the subject is reached), peering's retire case (expected the refusal keyword in lower case). Environment: protected_peering 1/6 (EADDRINUSE: a port race between concurrent modules) |
 | smoke-d5b0b9100 | d5b0b9100 | d5b0b9100 | 8/14 OK (log, visibility_join, crash_model, outcome_algebra, served_differential, starttls, mux, conformance). Red: web, bp_receive_integrity (BP family), commit_log (READ-RESOURCES-UNAVAILABLE), agent_wait (consumer bootstrap), replay_determinism (G15 fixture), feed_tls_read (harness, fixed) |
