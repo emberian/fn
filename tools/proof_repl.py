@@ -1073,6 +1073,28 @@ def session_dir(name: str) -> Path:
     return SESSIONS / name
 
 
+# sun_path holds 104 bytes on macOS and 108 on Linux, the terminating NUL included.
+SOCKET_PATH_LIMIT = (104 if sys.platform == "darwin" else 108) - 1
+
+
+def sock_file(directory: Path) -> Path:
+    """Where the session in DIRECTORY listens.
+
+    Beside its state (`DIRECTORY/sock`) when that path fits an AF_UNIX
+    address.  A worktree under a long path does not fit (`start` died with
+    "AF_UNIX path too long"), so the socket then lives under a short
+    per-session directory, `/tmp/fn-repl-<hash of DIRECTORY>/sock`: the name
+    is a function of the session directory alone, so the server, `ask`,
+    `status`, `stop` and `reap` all find the same file with no pointer to
+    keep in step.
+    """
+    beside = directory / "sock"
+    if len(os.fsencode(beside)) <= SOCKET_PATH_LIMIT:
+        return beside
+    digest = hashlib.sha256(os.fsencode(directory)).hexdigest()[:16]
+    return Path("/tmp") / f"fn-repl-{digest}" / "sock"
+
+
 def session_lock_path(name: str) -> Path:
     session_dir(name)  # validate the name before constructing a lock path
     return SESSIONS / ".locks" / name
@@ -1355,7 +1377,7 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
     directory.mkdir(parents=True, exist_ok=True)
     (directory / STOP_NOTE).unlink(missing_ok=True)
     state_path = directory / "state.json"
-    sock_path = directory / "sock"
+    sock_path = sock_file(directory)
     now = time.time()
     ld = list(ld or [])
     state = {"name": name, "book": book, "pid": os.getpid(), "loaded": [],
@@ -1410,6 +1432,7 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
 
         server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
+            sock_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
             server.bind(str(sock_path))
         except OSError as error:
             state["error"] = f"session socket unavailable: {error}"
@@ -1478,6 +1501,9 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
         save()
         if bound:
             sock_path.unlink(missing_ok=True)
+            if sock_path.parent != directory:
+                with contextlib.suppress(OSError):
+                    sock_path.parent.rmdir()
         os.close(lock_fd)
     return 0
 
@@ -1535,10 +1561,13 @@ def read_all(connection: socket.socket) -> bytes:
 # --- the client ----------------------------------------------------------------
 
 def ask(name: str, request: dict, timeout: float = 3600,
-        sock_path: Path | None = None) -> dict:
-    sock_path = sock_path or session_dir(name) / "sock"
+        directory: Path | None = None) -> dict:
+    """Send REQUEST to session NAME (whose state is in DIRECTORY, when it is
+    not this tree's own)."""
+    directory = directory or session_dir(name)
+    sock_path = sock_file(directory)
     if not sock_path.exists():
-        note = read_stop_note(sock_path.parent)
+        note = read_stop_note(directory)
         if note:
             raise SystemExit("proof-repl: " + stop_note_words(name, note))
         raise SystemExit(f"proof-repl: no live session {name!r} (start it first)")
@@ -1909,7 +1938,7 @@ def _start(args) -> int:
         # A server started by the older tool has no name lock. Do not probe
         # its socket: an empty or interrupted probe is malformed JSON to the
         # old server and can terminate that still-live proof session.
-        old_sock = directory / "sock"
+        old_sock = sock_file(directory)
         if old_sock.exists():
             print(f"proof-repl: session {args.name!r} has a socket; "
                   "stop it or inspect the stale endpoint before restarting")
@@ -1961,7 +1990,7 @@ def _start(args) -> int:
                 except (FileNotFoundError, json.JSONDecodeError):
                     time.sleep(0.05)
                     continue
-                if state.get("ready") and (directory / "sock").exists():
+                if state.get("ready") and sock_file(directory).exists():
                     break
                 if state.get("error") and not state.get("ready"):
                     print(f"proof-repl: session {args.name!r} failed during load; "
@@ -2099,7 +2128,7 @@ def status(args) -> int:
         print(f"proof-repl: no session {args.name!r}")
         return 1
     state = json.loads(state_path.read_text())
-    live = (session_dir(args.name) / "sock").exists()
+    live = (sock_file(session_dir(args.name))).exists()
     print(f"proof-repl {state['name']}: {state['book']}, "
           f"{'live' if live else 'not live'}, {len(state['loaded'])} forms loaded, "
           f"{state['sends']} sends")
@@ -2976,7 +3005,7 @@ def probe(args) -> int:
             from_source.append(normalize_book(extra))
     name = f"{args.name}.probe"
     idle_seconds = idle_from_args(args)
-    if (session_dir(args.name) / "sock").exists():
+    if (sock_file(session_dir(args.name))).exists():
         # A probe is work on the session it probes beside: keep that one alive too.
         with contextlib.suppress(SystemExit, OSError, ValueError):
             ask(args.name, {"op": "touch"}, timeout=30)
@@ -2992,7 +3021,7 @@ def probe(args) -> int:
                          f":hints: {error}") from None
 
     def load() -> int | None:
-        if (session_dir(name) / "sock").exists():
+        if (sock_file(session_dir(name))).exists():
             stop(argparse.Namespace(name=name))
         print(f"proof-repl probe: loading {book} up to #{index + 1} "
               f"({form_label(index + 1, event_form)}) in session {name}")
@@ -3024,7 +3053,7 @@ def probe(args) -> int:
     probe_state = read_state(name) or {}
     reusable = (previous.get("identity") == identity
                 and isinstance(previous.get("base"), int)
-                and (session_dir(name) / "sock").exists()
+                and (sock_file(session_dir(name))).exists()
                 and probe_state.get("ready") and not probe_state.get("stopped_at"))
     base = previous.get("base") if reusable else None
     if reusable:
@@ -3128,7 +3157,7 @@ def stop_holder(name: str) -> int:
 
 
 def stop(args) -> int:
-    if not (session_dir(args.name) / "sock").exists():
+    if not (sock_file(session_dir(args.name))).exists():
         return stop_holder(args.name)
     try:
         answer = ask(args.name, {"op": "stop"}, timeout=30)
@@ -3281,7 +3310,7 @@ def session_rows(roots: list[str] | None = None) -> list[dict]:
             started = first.stat().st_mtime if first.exists() else saved
         tree = directory.parent.parent.parent
         server = _is_server(state.get("pid"), directory.name, tree)
-        socket_file = (directory / "sock").exists()
+        socket_file = sock_file(directory).exists()
         rows.append({"name": directory.name, "state": state, "directory": directory,
                      "tree": tree,
                      "server": server, "socket": socket_file,
@@ -3351,7 +3380,7 @@ def reap_one(row: dict, reason: str | None = None) -> str:
     if row["server"] and row["socket"]:
         try:
             if ask(name, {"op": "stop", "reason": kind, "by": "proof_repl.py reap"},
-                   timeout=30, sock_path=row["directory"] / "sock").get("stopped"):
+                   timeout=30, directory=row["directory"]).get("stopped"):
                 return "stopped through its socket"
         except (SystemExit, OSError, ValueError):
             pass
@@ -3369,7 +3398,11 @@ def reap_one(row: dict, reason: str | None = None) -> str:
             os.killpg(pgid, signal.SIGTERM)
             signalled.append(f"ACL2 group {pgid}")
     if not _is_server(state.get("pid"), name, tree):
-        (row["directory"] / "sock").unlink(missing_ok=True)
+        short = sock_file(row["directory"])
+        short.unlink(missing_ok=True)
+        if short.parent != row["directory"]:
+            with contextlib.suppress(OSError):
+                short.parent.rmdir()
     if signalled and reason:
         write_stop_note(row["directory"], kind, row["idle"], row["deadline"],
                         "proof_repl.py reap (signal)")
