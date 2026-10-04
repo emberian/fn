@@ -5667,10 +5667,6 @@
 (definterface fn-csp-bank-idle-p :class :common-lisp-compliant) ; books/peer-catchup-spool-resources.lisp:26
 (definterface fn-csp-candidate :class :common-lisp-compliant) ; books/peer-catchup-spool-resources.lisp:6
 (definterface fn-cu-cursor-envelope :class :common-lisp-compliant) ; books/peer-catchup.lisp:1024
-(definterface fn-cu-session-close :class :common-lisp-compliant) ; books/peer-catchup.lisp:755
-(definterface fn-cu-session-close-effects :class :common-lisp-compliant) ; books/peer-catchup.lisp:759
-(definterface fn-cu-session-done-p :class :common-lisp-compliant) ; books/peer-catchup.lisp:751
-(definterface fn-cu-session-read-limit :class :common-lisp-compliant) ; books/peer-catchup.lisp:765
 (definterface fn-lgw-step-buf :class :common-lisp-compliant :kinds ((st true-listp))) ; books/store-log-buffer.lisp:539
 (definterface fn-lgw-step-buf-nf :class :common-lisp-compliant :kinds ((st true-listp))) ; books/store-log-walk-once.lisp:48
 (definterface fn-native-control-host-reply-seconds :class :program :kinds ((request-octets natp))) ; host/native-control-host.lisp:19
