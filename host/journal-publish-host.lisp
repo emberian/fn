@@ -19,7 +19,16 @@
 ; Native application journals carry this value from their one bounded recovery
 ; scan.  Each append asks ACL2 to authorize the exact next immutable name and
 ; its successor frontier; raw Lisp never recomputes capacity or sequence.
-(defun fn-aj-host-initial (domain) (fn-aj-initial domain))
+(defun fn-aj-host-initial (domain profile) (fn-aj-initial domain profile))
+; The journal's profile (D27, lane caps): the file's name and read bound, its
+; reading (NIL refuses the open) and the octets a write publishes for the
+; journal whose frontier is FRONTIER (NIL refuses the write).
+(defun fn-aj-host-profile-file-name () (fn-ajpf-file-name))
+(defun fn-aj-host-profile-read-bound () (fn-ajpf-read-bound))
+(defun fn-aj-host-profile-read (domain present bytes)
+  (fn-ajpf-read domain present bytes))
+(defun fn-aj-host-profile-write-octets (frontier records octets)
+  (fn-ajpf-write-octets frontier records octets))
 (defun fn-aj-host-recover (frontier name frame-length kind)
   (fn-aj-recover-record frontier name frame-length kind))
 (defun fn-aj-host-max-record-length (domain)
