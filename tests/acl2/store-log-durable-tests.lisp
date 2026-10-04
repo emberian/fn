@@ -4,7 +4,8 @@
 ; on a ground log: two records recovered at the open, a third taken, sealed
 ; (the segment extended first), fenced and acknowledged; every cut under
 ; explicit crash choices; then one witness per removed hypothesis, and the
-; witness for the run's rule that the host fences only a batch in flight.
+; witnesses for the run's two rules: the host fences only a batch in flight,
+; and takes only a record its verdict admits.
 ;
 ; Crash images are fn-bs-crash under explicit choices with
 ; fn-bs-crash-choicesp asserted (fn-bs-crash-imagep is a defun-sk and is
@@ -71,7 +72,7 @@
   (list (lgut-take record) (list :seal :ok :ok :ok) (list :fence :ok) (list :finish-one)))
 (defun lgut-run (record)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-lgu-host-run (car (lgut-opened)) (cdr (lgut-opened)) (lgut-ops record) 0))
+  (fn-lgu-host-run (car (lgut-opened)) (cdr (lgut-opened)) (lgut-ops record) 0 (lgut-max)))
 (defun lgut-pending-units (pair)
   (declare (xargs :guard t :verify-guards nil))
   (floor (len (nth 3 (car (fn-bs-pending (car pair))))) (lgut-unit)))
@@ -83,7 +84,7 @@
 (assert-event
  (let ((run (lgut-run (lgut-big))))
    (and (fn-lgk-relp (car (lgut-opened)) (cdr (lgut-opened)) 0 (lgut-genesis) (lgut-max))
-        (fn-lgu-host-records-p (lgut-ops (lgut-big)) (lgut-max))
+        (equal (fn-lgu-take-verdict (lgut-big) (lgut-max)) :admissible)
         (equal (len (lgut-recover-run)) 4)
         (equal (len run) 11)
         (consp (fn-bs-pending (car (nth 3 run))))              ; log-extended
@@ -141,7 +142,7 @@
                    (list (lgut-take (lgut-r 3)) (list :seal :ok :ok :ok)
                          (list :fence (cons :eio (list nil)))
                          (list :fence :ok) (list :finish-one))
-                   0))
+                   0 (lgut-max)))
 (assert-event
  (let ((run (lgut-failed-run)))
    (and (equal (fn-lgk-phase (cdr (car (last run)))) :fault)
@@ -167,11 +168,11 @@
     c))
 (assert-event
  (let* ((ops (lgut-ops (lgut-big)))
-        (final (fn-lgu-host-final (car (lgut-opened)) (cdr (lgut-opened)) ops 0))
+        (final (fn-lgu-host-final (car (lgut-opened)) (cdr (lgut-opened)) ops 0 (lgut-max)))
         (host (fn-lgc-host-run (lgut-opened-concrete)
-                               (fn-lgu-host-kops (car (lgut-opened)) (cdr (lgut-opened)) ops 0))))
+                               (fn-lgu-host-kops (car (lgut-opened)) (cdr (lgut-opened)) ops 0 (lgut-max)))))
    (and (equal (fn-lgd-octets (lgut-segment-string)) (lgut-content))
-        (equal (fn-lgu-host-kops (car (lgut-opened)) (cdr (lgut-opened)) ops 0)
+        (equal (fn-lgu-host-kops (car (lgut-opened)) (cdr (lgut-opened)) ops 0 (lgut-max))
                (list (lgut-take (lgut-big))
                      (list :seal (lgut-unit) (len (fn-bs-durable-content (car (lgut-opened)) 0)))
                      (list :fence (lgut-unit)) (list :finish-one)))
@@ -205,22 +206,33 @@
                (fn-lgk-next-txid (cdr (lgut-opened))) nil nil 3 :ready))
 (assert-event
  (let* ((bs (car (lgut-opened)))
-        (pair (car (fn-lgu-host-run bs (lgut-bad-ks) nil 0))))
+        (pair (car (fn-lgu-host-run bs (lgut-bad-ks) nil 0 (lgut-max)))))
    (and (not (fn-lgk-relp bs (lgut-bad-ks) 0 (lgut-genesis) (lgut-max)))
-        (fn-lgu-host-records-p nil (lgut-max))
-        (member-equal pair (fn-lgu-host-run bs (lgut-bad-ks) nil 0))
+        (member-equal pair (fn-lgu-host-run bs (lgut-bad-ks) nil 0 (lgut-max)))
         (fn-bs-crash-choicesp nil (fn-bs-pending (car pair)) (fn-bs-unit (car pair)))
         (not (lgut-holds-p pair nil)))))
 
-; (fn-lgu-host-records-p ops max) removed: a record the log cannot frame at
-; MAX is taken, sealed, fenced and acknowledged; the scan cannot read its
-; entry, so the open recovers r1 and r2 and the acknowledged third is lost.
+; The take's verdict (fn-lgu-take-verdict, the gate fnn-log-publish asks
+; before it fences): a record the log cannot frame at MAX is refused by name
+; and the run goes on without it; three acknowledged would need it.
 (assert-event
  (let* ((run (lgut-run (lgut-oversize))) (pair (car (last run))))
-   (and (fn-lgk-relp (car (lgut-opened)) (cdr (lgut-opened)) 0 (lgut-genesis) (lgut-max))
+   (and (equal (fn-lgu-take-verdict (lgut-oversize) (lgut-max)) :record-exceeds-log-frame)
         (not (fn-lg-recordp (lgut-oversize) (lgut-max)))
-        (not (fn-lgu-host-records-p (lgut-ops (lgut-oversize)) (lgut-max)))
-        (member-equal pair run)
+        (equal (fn-lgk-acked (cdr pair)) 2)
+        (not (member-equal (lgut-oversize) (fn-lgk-committed (cdr pair))))
+        (lgut-holds-p pair nil))))
+
+; The gate's witness: bypass it (the kernel takes the oversize record, as
+; it would without the verdict); the related state is lost at once, and the
+; rest of the run (seal, barrier, one acknowledgement) acknowledges a third
+; record the open cannot read: two recovered.
+(assert-event
+ (let* ((taken (fn-lgk-host-step (cdr (lgut-opened)) (lgut-take (lgut-oversize))))
+        (run (fn-lgu-host-run (car (lgut-opened)) taken (cdr (lgut-ops (lgut-oversize))) 0 (lgut-max)))
+        (pair (car (last run))))
+   (and (fn-lgk-relp (car (lgut-opened)) (cdr (lgut-opened)) 0 (lgut-genesis) (lgut-max))
+        (not (fn-lgk-relp (car (lgut-opened)) taken 0 (lgut-genesis) (lgut-max)))
         (fn-bs-crash-choicesp nil (fn-bs-pending (car pair)) (fn-bs-unit (car pair)))
         (equal (fn-lgk-acked (cdr pair)) 3)
         (equal (lgut-open (fn-bs-crash (car pair) nil)) (list (lgut-r 1) (lgut-r 2)))
@@ -236,7 +248,7 @@
         (pair (cons (car written)
                     (fn-lgk-finish-one (fn-lgk-fence (cdr written) (lgut-unit))))))
    (and (fn-lgk-relp (car (lgut-opened)) (cdr (lgut-opened)) 0 (lgut-genesis) (lgut-max))
-        (fn-lgu-host-records-p (lgut-ops (lgut-big)) (lgut-max))
+        (equal (fn-lgu-take-verdict (lgut-big) (lgut-max)) :admissible)
         (not (member-equal pair run))
         (fn-bs-crash-choicesp (list nil) (fn-bs-pending (car pair)) (fn-bs-unit (car pair)))
         (equal (fn-lgk-acked (cdr pair)) 3)
@@ -248,7 +260,7 @@
  (let* ((run (lgut-run (lgut-big))) (pair (car (last run)))
         (wiped (lgut-store (fn-bs-zeros (len (fn-bs-durable-content (car pair) 0))) nil)))
    (and (fn-lgk-relp (car (lgut-opened)) (cdr (lgut-opened)) 0 (lgut-genesis) (lgut-max))
-        (fn-lgu-host-records-p (lgut-ops (lgut-big)) (lgut-max))
+        (equal (fn-lgu-take-verdict (lgut-big) (lgut-max)) :admissible)
         (member-equal pair run)
         (null (fn-bs-pending (car pair)))
         (not (equal wiped (fn-bs-crash (car pair) nil)))

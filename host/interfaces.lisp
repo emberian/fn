@@ -513,6 +513,11 @@
   :class :common-lisp-compliant
   :kinds ((c true-listp)))
 
+(definterface fn-lgu-take-verdict
+  :class :common-lisp-compliant
+  :keystones (fn-lgu-take-verdict-admits-exactly-log-records
+              fn-lgu-acknowledged-records-are-recovered-at-every-cut))
+
 (definterface fn-lgc-finish-one
   :class :common-lisp-compliant
   :kinds ((c true-listp))

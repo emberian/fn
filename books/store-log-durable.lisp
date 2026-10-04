@@ -369,6 +369,29 @@
 ; the run is one segment's, from its open.  Every other operation is
 ; nothing.
 
+;; THE TAKE'S VERDICT (lane m1-durable, repair M1-LOG-RECORD-FRAMING-WINDOW).
+;; The log frames a record with the 32-octet chain before it, and the scan
+;; opens a one-record entry with payload bound MAX (fn-lg-open-bound), so the
+;; log holds a record only when 32 + its length is within MAX: fn-lg-recordp.
+;; The profile's publication gate admits a record of MAX octets
+;; (fn-store-publication-admissibility), so a record of MAX-31..MAX octets
+;; would be appended, fenced and acknowledged, and the next open would stop
+;; at its entry and zero it and every later record.  The host asks this
+;; verdict for the record the log takes before it fences the store
+;; (host/native/io.lisp fnn-log-publish, and the import's take in
+;; fnn-log-write-history), and refuses by name: a known pre-publication
+;; refusal.  The bound is the profile's own (D27), the log's format unchanged.
+(defun fn-lgu-take-verdict (record max)
+  (declare (xargs :guard t))
+  (if (fn-lg-recordp record max) :admissible :record-exceeds-log-frame))
+
+(defthm fn-lgu-take-verdict-admits-exactly-log-records
+  (and (member-equal (fn-lgu-take-verdict record max)
+                     '(:admissible :record-exceeds-log-frame))
+       (iff (equal (fn-lgu-take-verdict record max) :admissible)
+            (fn-lg-recordp record max)))
+  :rule-classes nil)
+
 (defun fn-lgu-kernel-op-p (op)
   (declare (xargs :guard t))
   (and (consp op)
@@ -391,13 +414,16 @@
 
 ; One operation: (mv PAIRS BS1 KS1), PAIRS the cut states it passes, in
 ; order, each (STORE . KERNEL) with the host's kernel at that cut.
-(defun fn-lgu-host-step (bs ks op ino)
+(defun fn-lgu-host-step (bs ks op ino max)
   (declare (xargs :guard t :verify-guards nil))
   (let ((unit (fn-bs-unit bs)))
     (cond
      ((fn-lgu-kernel-op-p op)
-      (let ((ks1 (fn-lgk-host-step ks op)))
-        (mv (list (cons bs ks1)) bs ks1)))
+      (if (and (member-equal (car op) '(:prepare :take))
+               (not (equal (fn-lgu-take-verdict (nth 1 op) max) :admissible)))
+          (mv nil bs ks)
+        (let ((ks1 (fn-lgk-host-step ks op)))
+          (mv (list (cons bs ks1)) bs ks1))))
      ((and (consp op) (equal (car op) :seal))
       (let* ((extent (len (fn-bs-durable-content bs ino)))
              (next (fn-lgk-sealed-extent ks extent unit)))
@@ -425,26 +451,12 @@
      (t (mv nil bs ks)))))
 
 ; Every cut state of a run of OPS from (BS . KS), the start included.
-(defun fn-lgu-host-run (bs ks ops ino)
+(defun fn-lgu-host-run (bs ks ops ino max)
   (declare (xargs :guard t :verify-guards nil))
   (if (atom ops)
       (list (cons bs ks))
-    (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks (car ops) ino)
-      (cons (cons bs ks) (append pairs (fn-lgu-host-run bs1 ks1 (cdr ops) ino))))))
-
-; The records the host hands the kernel are log records at the segment's
-; bound MAX (fn-lg-recordp: an octet list whose frame, its 32-octet chain
-; and the record, is within MAX).  R needs it of the open batch; without it
-; an acknowledged record the append wrote is one the scan cannot read
-; (tests/acl2/store-log-durable-tests.lisp, its removal witness).
-(defun fn-lgu-host-records-p (ops max)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (atom ops)
-      t
-    (and (if (and (consp (car ops)) (member-equal (car (car ops)) '(:prepare :take)))
-             (fn-lg-recordp (nth 1 (car ops)) max)
-           t)
-         (fn-lgu-host-records-p (cdr ops) max))))
+    (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks (car ops) ino max)
+      (cons (cons bs ks) (append pairs (fn-lgu-host-run bs1 ks1 (cdr ops) ino max))))))
 
 (defun fn-lgu-invp (bs ks ino genesis max)
   (declare (xargs :guard t :verify-guards nil))
@@ -636,7 +648,7 @@
  (defthm fn-lgu-seal-step-from-the-relation
    (implies (and (fn-lgk-relp bs ks ino genesis max)
                  (consp op) (equal (car op) :seal))
-            (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks op ino)
+            (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks op ino max)
               (and (fn-lgu-all-safep pairs ino genesis max)
                    (fn-lgu-invp bs1 ks1 ino genesis max)
                    (equal (fn-bs-unit bs1) (fn-bs-unit bs)))))
@@ -700,7 +712,7 @@
  (defthm fn-lgu-fence-step-from-the-relation
    (implies (and (fn-lgk-relp bs ks ino genesis max)
                  (consp op) (equal (car op) :fence))
-            (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks op ino)
+            (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks op ino max)
               (and (fn-lgu-all-safep pairs ino genesis max)
                    (fn-lgu-invp bs1 ks1 ino genesis max)
                    (equal (fn-bs-unit bs1) (fn-bs-unit bs)))))
@@ -718,7 +730,7 @@
  (defthm fn-lgu-step-from-the-fault
    (implies (and (equal (fn-lgk-phase ks) :fault)
                  (fn-lgu-safep bs ks ino genesis max))
-            (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks op ino)
+            (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks op ino max)
               (and (fn-lgu-all-safep pairs ino genesis max)
                    (fn-lgu-invp bs1 ks1 ino genesis max)
                    (equal (fn-bs-unit bs1) (fn-bs-unit bs)))))
@@ -730,35 +742,49 @@
             :use ((:instance fn-lgu-kernel-op-keeps-the-fault))))))
 (local
  (defthm fn-lgu-host-step-of-a-kernel-op
-   (implies (fn-lgu-kernel-op-p op)
-            (equal (fn-lgu-host-step bs ks op ino)
+   (implies (and (fn-lgu-kernel-op-p op)
+                 (implies (member-equal (car op) '(:prepare :take))
+                          (equal (fn-lgu-take-verdict (nth 1 op) max) :admissible)))
+            (equal (fn-lgu-host-step bs ks op ino max)
                    (list (list (cons bs (fn-lgk-host-step ks op))) bs (fn-lgk-host-step ks op))))
-   :hints (("Goal" :in-theory (disable fn-lgk-host-step)))))
+   :hints (("Goal" :in-theory (disable fn-lgk-host-step fn-lgu-take-verdict)))))
+(local
+ (defthm fn-lgu-host-step-of-a-refused-take
+   (implies (and (fn-lgu-kernel-op-p op)
+                 (member-equal (car op) '(:prepare :take))
+                 (not (equal (fn-lgu-take-verdict (nth 1 op) max) :admissible)))
+            (equal (fn-lgu-host-step bs ks op ino max) (list nil bs ks)))
+   :hints (("Goal" :in-theory (disable fn-lgk-host-step fn-lgu-take-verdict)))))
 (local
  (defthm fn-lgu-host-step-of-nothing
    (implies (and (not (fn-lgu-kernel-op-p op))
                  (not (and (consp op) (equal (car op) :seal)))
                  (not (and (consp op) (equal (car op) :fence))))
-            (equal (fn-lgu-host-step bs ks op ino) (list nil bs ks)))
+            (equal (fn-lgu-host-step bs ks op ino max) (list nil bs ks)))
    :hints (("Goal" :in-theory (disable fn-lgk-host-step)))))
 (local
  (defthm fn-lgu-step-from-the-relation
-   (implies (and (fn-lgk-relp bs ks ino genesis max)
-                 (implies (and (consp op) (member-equal (car op) '(:prepare :take)))
-                          (fn-lg-recordp (nth 1 op) max)))
-            (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks op ino)
+   (implies (fn-lgk-relp bs ks ino genesis max)
+            (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks op ino max)
               (and (fn-lgu-all-safep pairs ino genesis max)
                    (fn-lgu-invp bs1 ks1 ino genesis max)
                    (equal (fn-bs-unit bs1) (fn-bs-unit bs)))))
    :hints (("Goal" :do-not-induct t
-            :cases ((fn-lgu-kernel-op-p op)
+            :cases ((and (fn-lgu-kernel-op-p op)
+                         (member-equal (car op) '(:prepare :take))
+                         (not (equal (fn-lgu-take-verdict (nth 1 op) max) :admissible)))
+                    (fn-lgu-kernel-op-p op)
                     (and (consp op) (equal (car op) :seal))
                     (and (consp op) (equal (car op) :fence)))
             :in-theory (e/d (fn-lgu-invp)
                             (fn-lgk-relp fn-lgu-safep fn-lgk-host-step fn-lgu-host-step
-                             fn-lgu-kernel-op-p fn-lg-recordp
+                             fn-lgu-kernel-op-p fn-lg-recordp fn-lgu-take-verdict
+                             fn-lgu-host-step-of-a-kernel-op fn-lgu-host-step-of-a-refused-take
                              fn-lgu-seal-step-from-the-relation fn-lgu-fence-step-from-the-relation))
-            :use ((:instance fn-lgu-seal-step-from-the-relation)
+            :use ((:instance fn-lgu-take-verdict-admits-exactly-log-records (record (nth 1 op)))
+                  (:instance fn-lgu-host-step-of-a-kernel-op)
+                  (:instance fn-lgu-host-step-of-a-refused-take)
+                  (:instance fn-lgu-seal-step-from-the-relation)
                   (:instance fn-lgu-fence-step-from-the-relation)
                   (:instance fn-lgu-kernel-op-keeps-the-relation)
                   (:instance fn-lgu-related-state-is-safe
@@ -770,23 +796,20 @@
    :hints (("Goal" :in-theory (disable fn-lgu-safep fn-lgk-relp)))))
 (local
  (defthm fn-lgu-step-keeps-the-invariant
-   (implies (and (fn-lgu-invp bs ks ino genesis max)
-                 (implies (and (consp op) (member-equal (car op) '(:prepare :take)))
-                          (fn-lg-recordp (nth 1 op) max)))
-            (and (fn-lgu-all-safep (mv-nth 0 (fn-lgu-host-step bs ks op ino)) ino genesis max)
-                 (fn-lgu-invp (mv-nth 1 (fn-lgu-host-step bs ks op ino))
-                              (mv-nth 2 (fn-lgu-host-step bs ks op ino)) ino genesis max)))
+   (implies (fn-lgu-invp bs ks ino genesis max)
+            (and (fn-lgu-all-safep (mv-nth 0 (fn-lgu-host-step bs ks op ino max)) ino genesis max)
+                 (fn-lgu-invp (mv-nth 1 (fn-lgu-host-step bs ks op ino max))
+                              (mv-nth 2 (fn-lgu-host-step bs ks op ino max)) ino genesis max)))
    :hints (("Goal" :do-not-induct t
             :in-theory (union-theories '(fn-lgu-invp) (theory 'minimal-theory))
             :use ((:instance fn-lgu-step-from-the-relation)
                   (:instance fn-lgu-step-from-the-fault))))))
 (defthm fn-lgu-host-run-is-safe
-  (implies (and (fn-lgu-invp bs ks ino genesis max)
-                (fn-lgu-host-records-p ops max))
-           (fn-lgu-all-safep (fn-lgu-host-run bs ks ops ino) ino genesis max))
-  :hints (("Goal" :induct (fn-lgu-host-run bs ks ops ino)
+  (implies (fn-lgu-invp bs ks ino genesis max)
+           (fn-lgu-all-safep (fn-lgu-host-run bs ks ops ino max) ino genesis max))
+  :hints (("Goal" :induct (fn-lgu-host-run bs ks ops ino max)
            :in-theory (union-theories '(fn-lgu-host-run fn-lgu-all-safep fn-lgu-all-safep-of-append
-                                        fn-lgu-host-records-p fn-lgu-invp-is-safe car-cons cdr-cons
+                                        fn-lgu-invp-is-safe car-cons cdr-cons
                                         (:induction fn-lgu-host-run))
                                       (theory 'minimal-theory)))
           ("Subgoal *1/2" :use ((:instance fn-lgu-step-keeps-the-invariant (op (car ops)))))))
@@ -802,15 +825,15 @@
 ; fn-ocs-commit-step's :complete), and in a batch of one (fnn-finish).
 ; From a store related to the kernel (R: the open establishes it,
 ; fn-lgu-open-run-acknowledges-only-recoverable-records below), over any
-; sequence of the host's operations whose records are log records, at every
+; sequence of the host's operations (a take of a record the log cannot
+; frame refused by its verdict, as the host refuses it), at every
 ; cut state of the run and for every admissible crash image of it, the
 ; kernel's first ACKED committed records are the first ACKED records the
 ; next open recovers.  The tear model is the platform's (fn-bs-crash-imagep);
 ; no trailer assumption.  Scope: one segment, no rotation.
 (defthm fn-lgu-acknowledged-records-are-recovered-at-every-cut
   (implies (and (fn-lgk-relp bs ks ino genesis max)
-                (fn-lgu-host-records-p ops max)
-                (member-equal pair (fn-lgu-host-run bs ks ops ino))
+                (member-equal pair (fn-lgu-host-run bs ks ops ino max))
                 (fn-bs-crash-imagep (car pair) image))
            (let ((a (fn-lgk-acked (cdr pair)))
                  (recovered (fn-lgk-committed
@@ -821,7 +844,7 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn-lgu-invp) (theory 'minimal-theory))
            :use ((:instance fn-lgu-host-run-is-safe)
-                 (:instance fn-lgu-all-safep-member (pairs (fn-lgu-host-run bs ks ops ino)))
+                 (:instance fn-lgu-all-safep-member (pairs (fn-lgu-host-run bs ks ops ino max)))
                  (:instance fn-lgu-safe-image-recovers-the-acknowledged-records
                             (bs (car pair)) (ks (cdr pair)))))))
 
@@ -927,9 +950,8 @@
                   (equal (mod (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs)) 0)
                   (fn-frame-digestp genesis)
                   (null (fn-bs-pending bs))
-                  (fn-lgu-host-records-p ops max)
                   (or (member-equal pair (fn-lg-run bs ks0 (fn-lg-recover-program) routs ino))
-                      (member-equal pair (fn-lgu-host-run (car opened) (cdr opened) ops ino)))
+                      (member-equal pair (fn-lgu-host-run (car opened) (cdr opened) ops ino max)))
                   (fn-bs-crash-imagep (car pair) image))
              (let ((a (fn-lgk-acked (cdr pair)))
                    (recovered (fn-lgk-committed
@@ -971,16 +993,20 @@
 
 ; The kernel operations, in fn-lgk-host-step's language, an operation
 ; applies: what the host's concrete kernel runs (fn-lgc-host-step).
-(defun fn-lgu-step-kops (bs ks op ino)
+(defun fn-lgu-step-kops (bs ks op ino max)
   (declare (xargs :guard t :verify-guards nil))
   (let ((unit (fn-bs-unit bs)))
     (cond
-     ((fn-lgu-kernel-op-p op) (list op))
+     ((fn-lgu-kernel-op-p op)
+      (if (and (member-equal (car op) '(:prepare :take))
+               (not (equal (fn-lgu-take-verdict (nth 1 op) max) :admissible)))
+          nil
+        (list op)))
      ((and (consp op) (equal (car op) :seal))
       (let ((extent (len (fn-bs-durable-content bs ino))))
         (if (not (fn-lg-append-admitsp ks unit (fn-lgk-sealed-extent ks extent unit)))
             nil
-          (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks op ino)
+          (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks op ino max)
             (declare (ignore pairs bs1))
             (if (equal (fn-lgk-phase ks1) :fault)
                 (list (list :seal unit extent) (list :fence-failed))
@@ -990,22 +1016,22 @@
           nil
         (list (if (equal (nth 1 op) :ok) (list :fence unit) (list :fence-failed)))))
      (t nil))))
-(defun fn-lgu-host-kops (bs ks ops ino)
+(defun fn-lgu-host-kops (bs ks ops ino max)
   (declare (xargs :guard t :verify-guards nil))
   (if (atom ops)
       nil
-    (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks (car ops) ino)
+    (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks (car ops) ino max)
       (declare (ignore pairs))
-      (append (fn-lgu-step-kops bs ks (car ops) ino)
-              (fn-lgu-host-kops bs1 ks1 (cdr ops) ino)))))
+      (append (fn-lgu-step-kops bs ks (car ops) ino max)
+              (fn-lgu-host-kops bs1 ks1 (cdr ops) ino max)))))
 ; The state a run leaves.
-(defun fn-lgu-host-final (bs ks ops ino)
+(defun fn-lgu-host-final (bs ks ops ino max)
   (declare (xargs :guard t :verify-guards nil))
   (if (atom ops)
       (cons bs ks)
-    (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks (car ops) ino)
+    (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks (car ops) ino max)
       (declare (ignore pairs))
-      (fn-lgu-host-final bs1 ks1 (cdr ops) ino))))
+      (fn-lgu-host-final bs1 ks1 (cdr ops) ino max))))
 (local
  (defthm fn-lgu-lgk-host-run-of-append
    (equal (fn-lgk-host-run ks (append a b))
@@ -1013,8 +1039,8 @@
    :hints (("Goal" :in-theory (disable fn-lgk-host-step)))))
 (local
  (defthm fn-lgu-step-kops-are-the-step
-   (equal (fn-lgk-host-run ks (fn-lgu-step-kops bs ks op ino))
-          (mv-nth 2 (fn-lgu-host-step bs ks op ino)))
+   (equal (fn-lgk-host-run ks (fn-lgu-step-kops bs ks op ino max))
+          (mv-nth 2 (fn-lgu-host-step bs ks op ino max)))
    :hints (("Goal" :do-not-induct t
             :expand ((:free (k o) (fn-lgk-host-run k (list o)))
                      (:free (k o1 o2) (fn-lgk-host-run k (list o1 o2))))
@@ -1025,15 +1051,15 @@
                              fn-lgs-rotate fn-lgs-rotate-admitsp fn-lgk-make
                              fn-lgk-phase fn-lgk-inflight fn-bs-durable-content))))))
 (defthm fn-lgu-host-kops-run-to-the-final-kernel
-  (equal (fn-lgk-host-run ks (fn-lgu-host-kops bs ks ops ino))
-         (cdr (fn-lgu-host-final bs ks ops ino)))
-  :hints (("Goal" :induct (fn-lgu-host-final bs ks ops ino)
+  (equal (fn-lgk-host-run ks (fn-lgu-host-kops bs ks ops ino max))
+         (cdr (fn-lgu-host-final bs ks ops ino max)))
+  :hints (("Goal" :induct (fn-lgu-host-final bs ks ops ino max)
            :expand ((fn-lgk-host-run ks nil))
            :in-theory (disable fn-lgu-host-step fn-lgu-step-kops fn-lgk-host-run))))
 (local
  (defthm fn-lgu-host-final-is-a-cut
-   (member-equal (fn-lgu-host-final bs ks ops ino) (fn-lgu-host-run bs ks ops ino))
-   :hints (("Goal" :induct (fn-lgu-host-final bs ks ops ino)
+   (member-equal (fn-lgu-host-final bs ks ops ino max) (fn-lgu-host-run bs ks ops ino max))
+   :hints (("Goal" :induct (fn-lgu-host-final bs ks ops ino max)
             :in-theory (disable fn-lgu-host-step)))))
 (local
  (defthm fn-lgu-tail-step-keeps-the-kernel
@@ -1059,16 +1085,15 @@
 (defthm fn-lgu-host-kernel-acknowledges-only-recoverable-records
   (let* ((ks0 (fn-lg-recovered-kernel bs ino genesis max floor))
          (opened (car (last (fn-lg-run bs ks0 (fn-lg-recover-program) nil ino))))
-         (final (fn-lgu-host-final (car opened) (cdr opened) ops ino))
+         (final (fn-lgu-host-final (car opened) (cdr opened) ops ino max))
          (host (fn-lgc-host-run (mv-nth 1 (fn-lgc-open s genesis (fn-bs-unit bs) max floor))
-                                (fn-lgu-host-kops (car opened) (cdr opened) ops ino))))
+                                (fn-lgu-host-kops (car opened) (cdr opened) ops ino max))))
     (implies (and (posp (fn-bs-unit bs)) ino (assoc-equal ino (fn-bs-inodes bs))
                   (true-listp (fn-bs-durable-content bs ino))
                   (equal (mod (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs)) 0)
                   (fn-frame-digestp genesis)
                   (null (fn-bs-pending bs))
                   (equal (fn-lgd-octets s) (fn-bs-durable-content bs ino))
-                  (fn-lgu-host-records-p ops max)
                   (fn-bs-crash-imagep (car final) image))
              (let ((a (fn-lgc-acked host))
                    (recovered (fn-lgk-committed
@@ -1092,7 +1117,7 @@
                                                              (fn-lg-recover-program) nil ino))))
                                   (cdr (car (last (fn-lg-run bs (fn-lg-recovered-kernel bs ino genesis max floor)
                                                              (fn-lg-recover-program) nil ino))))
-                                  ops ino)))
+                                  ops ino max)))
                  (:instance fn-lgu-recover-program-establishes-the-relation)
                  (:instance fn-lgu-tail-run-keeps-the-kernel
                             (ks (fn-lg-recovered-kernel bs ino genesis max floor))
@@ -1109,7 +1134,7 @@
                                                               (fn-lg-recover-program) nil ino))))
                                    (cdr (car (last (fn-lg-run bs (fn-lg-recovered-kernel bs ino genesis max floor)
                                                               (fn-lg-recover-program) nil ino))))
-                                   ops ino)))))))
+                                   ops ino max)))))))
 
 
 ; -----------------------------------------------------------------------------

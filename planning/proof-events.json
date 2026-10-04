@@ -14018,6 +14018,10 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-lgu-take-verdict-admits-exactly-log-records"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-lgu-open-run-acknowledges-only-recoverable-records"
         },
         {
