@@ -57,6 +57,57 @@ start is refused (exit 1) by ACL2's word, the library's text after it."
                                               decision)))
                                   detail)))))))
 
+;;; The key-exchange policy (PRF-1327, books/tls-key-exchange.lisp).  `run'
+;;; reads the profile's [tls] table, observes whether the loaded library
+;;; accepts the hybrid group list, and ACL2 decides: the group list every
+;;; server context is given (*fnn-tls-groups*, host/native/tls.lisp), or a
+;;; refusal by name that stops the start.  *FNN-TLS-KX* is then (POLICY MODE
+;;; TALLY); every established server session is named in the log with its
+;;; negotiated group and counted in TALLY, under *FNN-TLS-KX-LOCK*.
+(defvar *fnn-tls-kx* nil)
+(defvar *fnn-tls-kx-lock* (sb-thread:make-mutex :name "fn tls key exchange"))
+
+(defun fnn-tls-key-exchange-observation ()
+  "A snapshot (POLICY MODE TALLY) of the decided key exchange, or NIL."
+  (sb-thread:with-mutex (*fnn-tls-kx-lock*)
+    (and *fnn-tls-kx* (copy-list *fnn-tls-kx*))))
+
+(defun fnn-tls-decide-key-exchange (config-octets)
+  "Decide the key exchange from CONFIG-OCTETS' [tls] table and this library,
+set the groups every server context takes, and answer ACL2's decision.  A
+refusal is a start refusal by ACL2's word."
+  (let* ((plan (fnn-core 'fn-tlsk-host-plan
+                         (and config-octets (fnn-octet-list config-octets))))
+         (reason (fnn-core 'fn-tlsk-host-plan-refusal plan)))
+    (when reason
+      (fnn-refuse "the [tls] table is refused: ~(~a~)" reason))
+    (let* ((policy (fnn-core 'fn-tlsk-host-plan-policy plan))
+           (offered (fnn-tls-groups-offered-p (fnn-core 'fn-tlsk-host-hybrid-list)))
+           (decision (fnn-core 'fn-tlsk-host-decide policy offered)))
+      (unless (fnn-core 'fn-tlsk-host-servep decision)
+        (error 'fnn-store-error
+               :message (fnn-octets-string
+                         (fnn-octets (fnn-core 'fn-tlsk-host-refusal-line decision)))))
+      (sb-thread:with-mutex (*fnn-tls-kx-lock*)
+        (setq *fnn-tls-groups* (fnn-core 'fn-tlsk-host-serve-groups decision)
+              *fnn-tls-kx* (list policy
+                                 (fnn-core 'fn-tlsk-host-serve-mode decision)
+                                 (fnn-core 'fn-tlsk-host-zero-tally))))
+      decision)))
+
+(defun fnn-tls-note-session (channel)
+  "An established server session: its negotiated group in the log, in ACL2's
+words, and in the tally.  Observation only (fnn-tls-established ignores a
+fault here)."
+  (when *fnn-tls-kx*
+    (let ((group (fnn-tls-negotiated-group channel)))
+      (fnn-log-line (fnn-core 'fn-tlsk-host-session-line group))
+      (sb-thread:with-mutex (*fnn-tls-kx-lock*)
+        (setf (third *fnn-tls-kx*)
+              (fnn-core 'fn-tlsk-host-tally-bump (third *fnn-tls-kx*) group))))))
+
+(setq *fnn-tls-session-hook* #'fnn-tls-note-session)
+
 (defun fnn-tls-served-facts (context)
   "The facts of the material CONTEXT serves: recorded by fnn-tls-start-context
 when `run' opened it and replaced only by fnn-tls-context-swap, both under
@@ -95,10 +146,16 @@ the context's lock."
                         (fnn-core 'fn-tlsr-host-reply-line served)))))))))))
 
 (defun fnn-tls-owner-status (service)
-  (let ((context (fnn-owner-service-tls-context service)))
+  (let* ((context (fnn-owner-service-tls-context service))
+         (served-line (fnn-core 'fn-tlsr-host-reply-line
+                                (and context (fnn-tls-served-facts context))))
+         (kx (and context (fnn-tls-key-exchange-observation))))
     (list :tls-reply :accepted nil
-          (fnn-core 'fn-tlsr-host-reply-line
-                    (and context (fnn-tls-served-facts context))))))
+          (if kx
+              (fnn-core 'fn-tlsk-host-status-lines served-line
+                        (fnn-core 'fn-tlsk-host-kx-line
+                                  (first kx) (second kx) (third kx)))
+            served-line))))
 
 (defvar *fnn-tls-reload-next-handler* *fnn-hybrid-control-handler*)
 
@@ -134,6 +191,16 @@ served certificate's names and notAfter, or ACL2's `tls unknown REASON'."
                 (error () nil))))
     (fnn-out "~a" (fnn-octets-string
                    (fnn-octets (fnn-core 'fn-tlsr-host-status-client-line read))))))
+
+(defun fnn-tls-health-line (control-path-octets)
+  "The key exchange's line `health' prints while an owner runs: ACL2's
+reading of the owner's status reply, nothing when no TLS is served."
+  (let* ((read (handler-case (fnn-tls-request (fnn-octets-string control-path-octets)
+                                              :status)
+                 (error () nil)))
+         (line (and read (fnn-core 'fn-tlsk-host-health-client-line read))))
+    (when line
+      (fnn-out "~a" (fnn-octets-string (fnn-octets line))))))
 
 (defun fnn-tls-execute (result)
   "Execute an accepted `tls reload' plan over the control socket."

@@ -29,6 +29,7 @@
 (defconstant +fnn-tls-error-zero-return+ 6)
 (defconstant +fnn-tls-ctrl-set-min-proto-version+ 123)
 (defconstant +fnn-tls-version-1-2+ #x0303)
+(defconstant +fnn-tls-ctrl-set-groups-list+ 92)
 (defconstant +fnn-tls-verify-peer+ 1)
 (defconstant +fnn-tls-ctrl-set-tlsext-hostname+ 55)
 (defconstant +fnn-tls-tlsext-nametype-host-name+ 0)
@@ -76,13 +77,30 @@
 (defvar *fnn-tls-initialize-lock*
   (sb-thread:make-mutex :name "fn native TLS initialization"))
 
-(defun fnn-tls-configured-library-pair ()
-  "Return the operator-selected matched libcrypto/libssl pair, if any.
-FN_OPENSSL_PREFIX is optional: unset, the system's pair is used."
+(defparameter *fnn-tls-default-openssl-prefix*
+  #+linux "/tank/fn/toolchains/openssl-3.5.8"
+  #-linux nil
+  "The OpenSSL fn is built against and ships: 3.5.8, whose X25519MLKEM768 the
+[tls] key_exchange policy offers.  FN_OPENSSL_PREFIX, unset, names this.  The
+installed launcher (packaging/fn) exports FN_OPENSSL_PREFIX as the release's
+own libexec/fn/openssl, so the default is the development and test boxes'
+toolchain.  A Linux start whose prefix holds no libcrypto/libssl pair is
+refused by name (fnn-tls-load-libraries); macOS and OpenBSD keep the system
+pair, which is all they have.")
+
+(defun fnn-tls-openssl-prefix ()
+  "The prefix FN_OPENSSL_PREFIX names, else the default, else NIL."
   (let ((prefix (sb-ext:posix-getenv "FN_OPENSSL_PREFIX")))
+    (cond ((null prefix) *fnn-tls-default-openssl-prefix*)
+          ((or (zerop (length prefix)) (find (code-char 0) prefix))
+           (error 'fnn-tls-unavailable :detail "invalid FN_OPENSSL_PREFIX"))
+          (t prefix))))
+
+(defun fnn-tls-configured-library-pair ()
+  "Return the matched libcrypto/libssl pair of the OpenSSL prefix
+(FN_OPENSSL_PREFIX, else the default one), if there is a prefix."
+  (let ((prefix (fnn-tls-openssl-prefix)))
     (when prefix
-      (when (or (zerop (length prefix)) (find (code-char 0) prefix))
-        (error 'fnn-tls-unavailable :detail "invalid FN_OPENSSL_PREFIX"))
       (let ((directory (string-right-trim "/" prefix)))
         (if (member :darwin *features*)
             (list (format nil "~a/lib/libcrypto.3.dylib" directory)
@@ -179,6 +197,12 @@ through OpenSSL_version_num and names itself in OpenSSL_version)."
 (sb-alien:define-alien-routine ("SSL_CTX_free" fnn-%ssl-ctx-free)
     sb-alien:void
   (context (* t)))
+;;; SSL_CTX_set1_groups_list is a public macro over SSL_CTX_ctrl, command
+;;; SSL_CTRL_SET_GROUPS_LIST (92), with the list as the pointer argument.
+(sb-alien:define-alien-routine ("SSL_CTX_ctrl" fnn-%ssl-ctx-ctrl-string)
+    sb-alien:long
+  (context (* t)) (command sb-alien:int) (larg sb-alien:long)
+  (parg sb-alien:c-string))
 (sb-alien:define-alien-routine ("SSL_CTX_ctrl" fnn-%ssl-ctx-ctrl)
     sb-alien:long
   (context (* t)) (command sb-alien:int) (larg sb-alien:long) (parg (* t)))
@@ -301,8 +325,12 @@ through OpenSSL_version_num and names itself in OpenSSL_version)."
                                    (not (char= (char (second candidate) 0) #\/))))
                             candidates))))
     (unless pair
-      (error 'fnn-tls-unavailable
-             :detail "no complete OpenSSL libcrypto/libssl pair exists"))
+      (let ((prefix (fnn-tls-openssl-prefix)))
+        (error 'fnn-tls-unavailable
+               :detail (if prefix
+                           (format nil "no OpenSSL libcrypto/libssl pair under ~a (OpenSSL 3.5.8 is expected there; FN_OPENSSL_PREFIX names another prefix)"
+                                   prefix)
+                         "no complete OpenSSL libcrypto/libssl pair exists"))))
     ;; Pin one pair for this process incarnation.  The foreign objects are
     ;; omitted from saved cores, so restart can select the frozen bundle's
     ;; paths without mixing two OpenSSL versions in one process.
@@ -407,6 +435,64 @@ this copies three of its fields and decides nothing."
                 (fnn-tls-asn1-octets (fnn-%x509-get0-not-after leaf))
                 san)))))
 
+;;; Key-exchange groups (the [tls] key_exchange policy, books/tls-key-exchange.lisp).
+;;; ACL2 decides the list; this file observes whether the library accepts one
+;;; and applies the decided list to every server context it builds.  NIL (no
+;;; decision taken, as in the transport harness) leaves the library default.
+(defvar *fnn-tls-groups* nil
+  "The colon-separated group list every server context is given, or NIL.")
+
+(defun fnn-tls-set-groups (pointer list)
+  "SSL_CTX_set1_groups_list(POINTER, LIST): whether the library knows every name."
+  (fnn-%err-clear-error)
+  (prog1 (= (fnn-%ssl-ctx-ctrl-string pointer +fnn-tls-ctrl-set-groups-list+ 0 list) 1)
+    ;; A name the library does not know leaves an error entry; the caller
+    ;; reads the refusal as a fact, not a fault.
+    (fnn-%err-clear-error)))
+
+(defun fnn-tls-groups-offered-p (list)
+  "Whether the loaded library accepts the group LIST (every name known),
+observed on a throwaway server context."
+  (fnn-tls-initialize)
+  (let* ((method (fnn-%tls-server-method))
+         (pointer (and (not (fnn-tls-null-pointer-p method))
+                       (fnn-%ssl-ctx-new method))))
+    (when (or (fnn-tls-null-pointer-p method) (fnn-tls-null-pointer-p pointer))
+      (error 'fnn-tls-config-error
+             :detail (format nil "server context creation failed: ~a"
+                             (fnn-tls-error-stack))))
+    (unwind-protect (fnn-tls-set-groups pointer list)
+      (fnn-%ssl-ctx-free pointer))))
+
+(defun fnn-tls-apply-groups (pointer)
+  "Give the server context POINTER the decided group list, if one is decided."
+  (when *fnn-tls-groups*
+    (unless (fnn-tls-set-groups pointer *fnn-tls-groups*)
+      (error 'fnn-tls-config-error
+             :detail (format nil "the TLS library refused the key-exchange groups ~a"
+                             *fnn-tls-groups*)))))
+
+(defun fnn-tls-negotiated-group (channel)
+  "The name of the group CHANNEL's key exchange used, or NIL when the library
+cannot say (SSL_get0_group_name is OpenSSL 3.2+).  An observation: ACL2 turns
+it into the logged token (fn-tlsk-group-token)."
+  (let ((address (sb-sys:find-foreign-symbol-address "SSL_get0_group_name")))
+    (and address
+         (sb-alien:alien-funcall
+          (sb-alien:sap-alien (sb-sys:int-sap address)
+                              (function sb-alien:c-string (* t)))
+          (fnn-tls-channel-pointer channel)))))
+
+(defvar *fnn-tls-session-hook* nil
+  "NIL, or a function of an established server channel (host/native/tls-reload.lisp
+logs and counts the negotiated group).  It observes; a fault in it never ends
+the session.")
+
+(defun fnn-tls-established (channel)
+  (when *fnn-tls-session-hook*
+    (ignore-errors (funcall *fnn-tls-session-hook* channel)))
+  channel)
+
 (defun fnn-tls-server-candidate (certificate-path private-key-path)
   "Build one server SSL_CTX from the pair and report what the library
 observed.  Returns (values POINTER CHAIN KEY MATCH DETAIL): POINTER is the
@@ -440,6 +526,7 @@ library cannot create at all is a config error."
             (error 'fnn-tls-config-error
                    :detail (format nil "cannot require TLS 1.2+: ~a"
                                    (fnn-tls-error-stack))))
+          (fnn-tls-apply-groups pointer)
           ;; The key first, then the chain.  SSL_CTX_use_PrivateKey_file
           ;; after a certificate refuses a key that does not match it, which
           ;; would report a readable key as unloadable; loaded before the
@@ -664,7 +751,8 @@ them).  Nothing else opens a client context."
             (fnn-%err-clear-error)
             (let ((result (fnn-%ssl-accept ssl)))
               (when (= result 1)
-                (return (fnn-tls-channel-make :pointer ssl :fd fd)))
+                (return (fnn-tls-established
+                         (fnn-tls-channel-make :pointer ssl :fd fd))))
               (let ((disposition (fnn-tls-retry-direction ssl result)))
                 (if (member disposition '(:input :output))
                     (fnn-tls-wait fd disposition deadline 'fnn-tls-handshake-error)
@@ -796,7 +884,7 @@ signals FNN-TLS-HANDSHAKE-ERROR; the caller frees SSL."
                                    disposition))))))
 
 (defun fnn-tls-channel-of (ssl fd)
-  (fnn-tls-channel-make :pointer ssl :fd fd))
+  (fnn-tls-established (fnn-tls-channel-make :pointer ssl :fd fd)))
 
 ;;; RFC 9266 section 2: the tls-exporter channel binding is the TLS exporter
 ;;; (RFC 8446 section 7.5) with this label and no context, defined for TLS 1.3
