@@ -94,3 +94,36 @@
     (fn-dwj-retire (fn-owner-page-read-ledger fn-page-read-pool)
                    worker token fn-decoded-job)
     (mv word fn-decoded-job fn-page-read-pool)))
+
+; The verified-window cache for a decoded window (lane w-window; the raw
+; window's is fn-owner-page-window-executor-cache).  ONE call on the live SAME
+; pool, off the owner: the returned job's controller is read from its own
+; carry, a :ready job is leased into the cache (books/decoded-window-read.lisp
+; fn-pwz-cache, KEEP the cached buffer's resident octets) and its authority
+; retired in the same step (books/decoded-worker-job.lisp fn-dwj-cache); any
+; other word leaves the job and the pool untouched, to be released as before.
+(defun fn-owner-page-decoded-job-cache (worker token fn-decoded-job fn-page-read-pool)
+  (declare (xargs :stobjs (fn-decoded-job fn-page-read-pool) :guard t))
+  (if (not (fn-owner-page-window-legacy-writablep fn-page-read-pool))
+      (mv :runtime-operation-unavailable worker fn-decoded-job fn-page-read-pool)
+    (mv-let (word worker1 ledger fn-decoded-job)
+      (fn-dwj-cache (fn-owner-page-read-ledger fn-page-read-pool) worker token
+                    (fn-owner-page-window-cache-keep) fn-decoded-job)
+      (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
+        (mv word worker1 fn-decoded-job fn-page-read-pool)))))
+
+(defun fn-owner-page-decoded-window-cache-byte-at
+    (token file eoff elen poff compressed trailer decoded dict-id i
+           fn-ew-buffer fn-page-read-pool)
+  (declare (xargs :stobjs (fn-ew-buffer fn-page-read-pool) :guard t))
+  (fn-pwz-cache-byte-at (fn-owner-page-read-ledger fn-page-read-pool) token
+                        file eoff elen poff compressed trailer decoded dict-id i
+                        fn-ew-buffer))
+
+(defthm fn-owner-page-decoded-window-cache-byte-at-refines-pwz-by-definition
+  (equal (mv-list 2 (fn-owner-page-decoded-window-cache-byte-at
+                     token file eoff elen poff compressed trailer decoded dict-id i
+                     fn-ew-buffer fn-page-read-pool))
+         (mv-list 2 (fn-pwz-cache-byte-at (fn-owner-page-read-ledger fn-page-read-pool) token
+                                          file eoff elen poff compressed trailer decoded dict-id i
+                                          fn-ew-buffer))))

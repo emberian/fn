@@ -572,7 +572,8 @@ offset; ACL2 decides the hit (fn-owner-page-window-cache-byte-at)."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (dolist (entry *fnn-extent-window-cache* nil)
       (destructuring-bind (token plan window) entry
-        (when (and (eql (third token) file) (eql (fourth token) eoff)
+        (when (and (eq (first token) :window)
+                   (eql (third token) file) (eql (fourth token) eoff)
                    (eql (fifth token) elen) (eql (sixth token) poff)
                    (eql (seventh token) plen) (eql (ninth token) trailer)
                    (integerp (eighth token)) (<= (eighth token) i))
@@ -602,30 +603,40 @@ the job is released.  Values :released (or a stale word) and whether cached."
       (fnn-fault "decoded torn semantic step retains its cold debit"))
     (let ((scope (fnn-cold-worker-scope worker))
           (result (fnn-cold-worker-result worker))
-          (cached nil) (evicted nil))
+          (cached nil) (evicted nil) (decoded-attempt nil))
+      ;; A returned decoded job whose window ACL2 admits (fn-dwj-cache: its
+      ;; outcome is :ready, KEEP is funded) is retired and cached in ONE
+      ;; ACL2 step; the buffer moves out of the persistent worker below.
+      (when (and cachep (fnn-cold-worker-decoded worker) (plusp (fnn-extent-cache-limit)))
+        (setq decoded-attempt (fnn-extent-decoded-window-cache-attempt worker token)))
       ;; A torn reset or settlement must never be retried or offered as idle.
       (setf (fnn-cold-worker-phase worker) :retiring)
-      (when (fnn-cold-worker-decoded worker)
+      (when (and (fnn-cold-worker-decoded worker) (not decoded-attempt))
         (fnn-extent-decoded-storage-retire worker token))
       (setf (fnn-cold-worker-phase worker) :releasing)
       (setf (fnn-cold-worker-decoded worker) nil)
       (setf (fnn-cold-worker-result worker) nil)
       (destructuring-bind (word row &rest ignored)
           (let ((attempt
-                  (and cachep (fnn-extent-window-p token)
+                  (and cachep (not decoded-attempt) (fnn-extent-window-p token)
                        (plusp (fnn-extent-cache-limit))
                        (consp result) (true-listp (first result))
                        (fnn-core-page-read-pool 'fn-owner-page-window-executor-cache
                                                 (fnn-cold-worker-row worker) token (first result)))))
-            (if (and attempt (eq (first attempt) :cached))
+            (cond
+              (decoded-attempt
+               (setq cached t evicted (third decoded-attempt))
+               (fnn-extent-window-observation "window-cached token=~s evicted=~s" token evicted)
+               (list :released (second decoded-attempt)))
+              ((and attempt (eq (first attempt) :cached))
                 (progn (setq cached t
                              evicted (fnn-extent-window-cache-insert
                                       token (first result) (second result)))
                        (fnn-extent-window-observation "window-cached token=~s evicted=~s"
                                                       token evicted)
-                       (list :released (second attempt)))
-              (fnn-core-cold-pool 'fn-owner-page-window-executor-release
-                                  (fnn-cold-worker-row worker) token)))
+                       (list :released (second attempt))))
+              (t (fnn-core-cold-pool 'fn-owner-page-window-executor-release
+                                     (fnn-cold-worker-row worker) token))))
         (declare (ignore ignored))
         (unless (eq word :released) (fnn-fault "window release lost exact returned job"))
         (setf (fnn-cold-worker-row worker) row
@@ -1099,6 +1110,25 @@ for the core resource ledger. No timeout or cancellation invokes this."
         (setq *fnn-extent-cache* (subseq *fnn-extent-cache* 0 limit))))
     (values (plusp limit) evicted)))
 
+(defun fnn-extent-cache-yield-oldest ()
+  "Extent lock held.  The caches hold pool charge only for speed: when a read
+cannot be admitted for want of the pool's octets, the least recently used
+cached buffer gives its charge back (the whole-extent entries first, then the
+verified windows) -- ACL2's exact eviction (fn-owner-page-cache-evict), never a
+guess about what is free.  T when one was evicted, NIL when no cache holds
+anything: the pool is then genuinely out."
+  (let ((entry (car (last *fnn-extent-cache*))))
+    (cond (entry
+           (setq *fnn-extent-cache* (butlast *fnn-extent-cache*))
+           (fnn-extent-cache-release (fnn-extent-cache-forget (list entry)))
+           t)
+          (*fnn-extent-window-cache*
+           (let ((window (car (last *fnn-extent-window-cache*))))
+             (setq *fnn-extent-window-cache* (butlast *fnn-extent-window-cache*))
+             (fnn-extent-cache-release (list (first window))))
+           t)
+          (t nil))))
+
 (defun fnn-extent-cache-drop-files (files)
   "Extent lock held. Remove physical buffers and return their exact tokens:
 the whole-extent cache's and the verified-window cache's (a window token
@@ -1167,9 +1197,18 @@ A served result transfers to the cache before the caller borrows the vector."
     (let ((cache-mode (fnn-core 'fn-pxe-cache-mode (plusp (fnn-extent-cache-limit)))))
       (unless (eq cache-mode :ready) (fnn-refuse "extent read refused: ~a" cache-mode)))
     (destructuring-bind (word token &rest ignored)
-        (fnn-core-page-read-pool 'fn-owner-page-read-admit 0 file eoff elen trailer)
+        (let ((admitted (fnn-core-page-read-pool 'fn-owner-page-read-admit 0 file eoff elen trailer)))
+          ;; The pool is out of octets while the caches hold some: they yield,
+          ;; oldest first, and the read is asked again.  Only a pool the caches
+          ;; cannot relieve refuses the read.
+          (loop while (and (eq (first admitted) :read-resources-unavailable)
+                           (fnn-extent-cache-yield-oldest))
+                do (setq admitted
+                         (fnn-core-page-read-pool 'fn-owner-page-read-admit 0 file eoff elen trailer)))
+          admitted)
       (declare (ignore ignored))
-      (unless (eq word :admitted) (fnn-refuse "extent read refused: ~a" word))
+      (unless (eq word :admitted)
+        (fnn-refuse "extent read refused: ~a" word))
       (let ((row (fnn-core 'fn-pio-own-admitted-token token))
             (octets nil) (transferring nil))
         (unless row (fnn-fault "synchronous admitted token lacks its owned read"))

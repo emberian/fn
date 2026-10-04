@@ -5619,6 +5619,15 @@
 ; Persistent baseline backing: offered only after actual construction.
 (definterface fn-dwj-reserve :class :common-lisp-compliant)
 (definterface fn-owner-page-decoded-job-retire :class :common-lisp-compliant)
+;; The verified-window cache for a decoded window (books/decoded-window-read.lisp
+;; fn-pwz-cache*, books/decoded-worker-job.lisp fn-dwj-cache).
+(definterface fn-owner-page-decoded-job-cache :class :common-lisp-compliant
+  :keystones ((fn-dwj-cache-only-a-ready-job :via fn-dwj-cache)
+              (fn-dwj-cached-job-refuses-scalar-publication :via fn-dwj-cache)
+              (fn-pwz-cache-lease-keeps-only-the-buffer-and-stays-funded :via fn-pwz-cache-lease)))
+(definterface fn-owner-page-decoded-window-cache-byte-at :class :common-lisp-compliant
+  :keystones ((fn-pwz-a-hit-is-the-published-window :via fn-pwz-cache-byte-at)
+              (fn-pwz-hit-requires-a-cached-exact-window :via fn-pwz-cache-byte-at)))
 (definterface fn-prstartup-planp :class :common-lisp-compliant)
 (definterface fn-prstartup-decoded-workers :class :common-lisp-compliant)
 (definterface fn-owner-page-read-default-worker-ready :class :common-lisp-compliant)
