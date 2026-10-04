@@ -82,7 +82,9 @@ class AffectedTests(unittest.TestCase):
         root = tree(tmp)
         (root / scenario_suite.AFFECTS_FILE).write_text("# rules\n" + AFFECTS)
         (root / "planning").mkdir()
-        (root / scenario_suite.MODULE_MAP).write_text(MAP)
+        (root / scenario_suite.MODULE_MAP).write_text(MAP + "test_native_gone\tREAL\tDUR\n")
+        for name in ("test_native_peer", "test_native_web", "test_native_mock"):
+            (root / "tests" / (name + ".py")).write_text("")
         return root
 
     def test_the_tree_rules_are_well_formed(self):

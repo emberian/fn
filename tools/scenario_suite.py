@@ -189,6 +189,8 @@ def module_codes(root: pathlib.Path = ROOT) -> dict[str, set[str]]:
     out: dict[str, set[str]] = {}
     for line in (root / MODULE_MAP).read_text(encoding="utf-8").splitlines()[1:]:
         fields = line.split("\t")
+        if not (root / "tests" / (fields[0] + ".py")).is_file():
+            continue
         if len(fields) >= 3 and (fields[1] in IMAGE_QUALITIES or "tests." + fields[0] in tiered):
             out["tests." + fields[0]] = {c for c in fields[2].split(",") if c in QUESTIONS}
     return out
