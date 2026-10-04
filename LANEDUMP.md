@@ -4543,3 +4543,27 @@ S074/S090/S138/S151 and journal physical prepared fixtures remain source/proof
 versus current-image obligations, not completion claims. No live deployment.
 Protected recovery partition, expanded init/reopen and complete tariff remain
 open. Bounds catchup controller draft is preserved but activation unwired.
+
+# CAPS lane — Opus (2026-10-04)
+
+Tree `build/lanes/caps`, branch `lane/caps`, base `origin/integrate/20261004@ec2c1b3da`. D27: every hardcoded ceiling a profile admission limit or a bounded-work stream.
+
+| slice | sha | what | local certify (manifest) | native |
+|---|---|---|---|---|
+| CAPS-1 B003 | `018abdd39` | app journals: `*fn-aj-max-records*` 4096 + 3 lifetime aggregates deleted; per-journal profile `app-journal-profile` (RECORDS OCTETS, default 2^20/2^40), carried by the frontier; verb `app-journal profile`; :beyond-profile refused by name | certify-20261004T033211Z-51814 | tests/test_native_app_journal.py `test_journal_capacity_is_the_operator_profile`, `test_journal_beyond_its_profile_is_refused_by_name`: pending a DTN developer image at this sha |
+| CAPS-2 PKT-825a | `f21b92dea` | feed journal: one barrier per peer journal per batch-job phase (re-derived onto the off-lock job, not cherry-picked) | certify-20261004T035321Z-48811 | batch crash cut pending image (test_native_owner_offlock exercises the job) |
+| CAPS-3 store-charge | `bb3cc6b24` | `fn-store-charge-of-profile-article-is-representable` + codec-domain theorem in store-host-boundary | certify-20261004T040214Z-81691 | n/a (no host change) |
+
+Keystones (CAPS-1): fn-ajpf-read-of-octets, fn-ajpf-read-is-a-profile, fn-aj-statep-of-initial, fn-aj-valid-profile-admits-first-work, fn-aj-reserved-resolution-fits, fn-ajpf-write-keeps-the-journal, fn-aj-recover-past-profile-is-named, fn-aj-record-name-fixed-width. ACL2 test walks 4,097 records through recovery under the default profile and admits the next (there is no app-journal reclaim to post "across": the journal only grows; open still replays it whole, so a generation rotation stays the next BP packet, now for open cost, not capacity).
+
+Checks run locally: make check-fast-lane (7 reds, none in this lane's files: HST-003, reach owner-time-journal/catalog/newnews, docs nntp.md, web-stream test root, lock admin.lisp:683 — all at base); lock_discipline --check 0 NEW feed findings; interface_emit --check no fn-aj/fn-store-charge findings; host_check --read 0; harness_check --write-stubs (CAPS-1 stub committed); secrets_check 0.
+
+Not READY yet: world receipt, green_check over the affected closure (app-journal/feed-journal/store-host-boundary reach the image-world umbrellas: needs the assembler's hbox slot), and the natives on an image.
+
+## Remaining ceilings (continuation)
+- PKT-700 (`max-control-clients`, stranded-2 2deed39a4+98224ff7a): a store-profile field 16 is a layout event under D34 (every 15-field store refuses at open: `:layout`). Not taken unilaterally. Decision for ember: field 16 (fresh-deploy layout event) vs a configuration row (the 09-28 rule for per-store switches).
+- 2^24 BP profile ceiling (`fn-bpn-machine-limitp`, `*fn-bpn-machine-max-octets*`): raising the constant alone breaks `fn-bpnpf-profile-within-codec-widths`; it must move with `*fn-bpa-max-octets*`/`*fn-bpb-max-*`/`*fn-bpnf-max-held-image*` (BP-DESIGN lane's codecs), 162+ dependents.
+- custody rows (`*fn-bpn-machine-max-records*` 4096, 20+ sites across bp-node-*): a node-profile field means threading a parameter through the machine codec/progress/offer books (BP-DESIGN's).
+- EID length (`*fn-bpc-max-text*` 1024, 198 deps): a node-profile field read by the primary-block decoder.
+- PKT-244 u32 readers: WIDE (file machine, observed open, checkpoint codec, consumer positions).
+bounds design §1.4 binding list: 5 rows left (2^24 + its 3 codec widths counted as one, custody rows, EID, blocks-per-bundle, lab receive-evidence); §1.3's app-journal row marked REMOVED.
