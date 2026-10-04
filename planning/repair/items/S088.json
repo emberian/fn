@@ -1,23 +1,121 @@
 {
  "acceptance": "mux:phase-machine",
+ "allow_forbidden": true,
+ "budget": 120,
  "category": "performance",
  "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
  "evidence": "mux.lisp:1157-1158 `((eq (fnn-mux-conn-phase conn) :proxy) (fnn-mux-proxy-expired loop conn))`, the only timer branch without a `due` test. fnn-mux-proxy-expired (mux.lisp:964-977) is an fnn-owner-serialized call. fnn-mux-proxy-readable also calls it before every read (981).",
+ "expect-failure": "tests.test_native_mux_proxy_timer.MuxProxyTimer.test_undue_proxy_deadline_does_not_ask_acl2",
  "exposure": "conditional",
+ "failure-message": "S088: an undue :proxy deadline asked ACL2 anyway",
  "file": "host/native/mux.lisp",
  "fix": "Gate the call on the ACL2-provided hs-deadline being due, as the :handshake and :tls-queued branches already do with `(due (fnn-mux-conn-hs-deadline conn))`, and let ACL2 decide only at or after that point.",
+ "harness": "tests/test_native_mux_proxy_timer.py,tests/native_mux_cleanup_raw.lisp",
  "id": "S088",
  "line": "1157",
  "locus": "connections",
- "notes": [],
+ "native": "mux",
+ "notes": [
+  "allow_forbidden granted by integrator-3 2026-10-04, scope: host/native/mux.lisp fnn-mux-timers :proxy branch only",
+  "10-04 15:54 claimed: scope=['host/native/mux.lisp', 'tests/native_mux_cleanup_raw.lisp', 'tests/test_native_mux_proxy_timer.py'] test=python3 -m unittest tests.test_native_mux_proxy_timer"
+ ],
  "owner": "host-lifecycle",
  "reviewer": "mux.lisp:1157-1158 calls fnn-mux-proxy-expired for every :proxy conn on every timer pass with no due test, and that function is an fnn-owner-serialized ACL2 call (mux.lisp:964-977). fnn-mux-proxy-readable calls it again before every read (mux.lisp:981). Only trusted-proxy connections that have not finished their PROXY header are in :proxy, and those already hold admitted handshake slots, so K is bounded by the in-flight handshake limit. This is a performance and contention cost, not a correctness bug.",
  "scenario": "With K connections from a trusted proxy waiting for their PROXY header, every pass of that loop takes the global owner mutex K times. A pass runs at least 4 times a second and once per I/O event on any of the loop's connections. Under load, mutex holds scale as passes \u00d7 K and contend with every served quantum, even though each deadline is seconds away.",
+ "scope": [
+  "host/native/mux.lisp",
+  "tests/native_mux_cleanup_raw.lisp",
+  "tests/test_native_mux_proxy_timer.py"
+ ],
  "severity": "low",
  "slice": "mux",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_native_mux_proxy_timer",
  "title": "Every loop pass makes an owner-mutex ACL2 call for every :proxy connection, whether or not its deadline is due",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-04T19:54:42Z",
+ "verify": {
+  "base": "26573d8d40f8c7b39a5b144dca8e767bc59f99d3",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "S088: an undue :proxy deadline asked ACL2 anyway",
+      "test": "tests.test_native_mux_proxy_timer.MuxProxyTimer.test_undue_proxy_deadline_does_not_ask_acl2",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_native_mux_proxy_timer.MuxProxyTimer.test_undue_proxy_deadline_does_not_ask_acl2"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_mux_proxy_timer.py": "3ee9534174ea067be741ec3ad3dbfbad727f3b02f2b7735f3698420db7599161"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "26573d8d40f8c7b39a5b144dca8e767bc59f99d3",
+   "stderr": "test_undue_proxy_deadline_does_not_ask_acl2 (tests.test_native_mux_proxy_timer.MuxProxyTimer.test_undue_proxy_deadline_does_not_ask_acl2) ... FAIL\n\n======================================================================\nFAIL: test_undue_proxy_deadline_does_not_ask_acl2 (tests.test_native_mux_proxy_timer.MuxProxyTimer.test_undue_proxy_deadline_does_not_ask_acl2)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-gr1o5uth/wt/tests/test_native_mux_proxy_timer.py\", line 21, in test_undue_proxy_deadline_does_not_ask_acl2\n    self.fail(FAILURE)\n    ~~~~~~~~~^^^^^^^^^\nAssertionError: S088: an undue :proxy deadline asked ACL2 anyway\n\n----------------------------------------------------------------------\nRan 1 test in 3.091s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "host/native/mux.lisp",
+   "planning/repair/items/S088.json",
+   "tests/native_mux_cleanup_raw.lisp",
+   "tests/test_native_mux_proxy_timer.py"
+  ],
+  "diff_lines": 51,
+  "evidence": {
+   "bytes": 3684,
+   "path": "planning/evidence/repair/S088-d9580779a0d24b85a9175786c93e033f.json",
+   "sha256": "92c48e68a784ce40a5212a0ea56e56c981a18bdf51eccf83aaf821992db80820"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "S088: an undue :proxy deadline asked ACL2 anyway",
+   "test": "tests.test_native_mux_proxy_timer.MuxProxyTimer.test_undue_proxy_deadline_does_not_ask_acl2"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/native_mux_cleanup_raw.lisp": "9dbf92165e872e490d5626703462e154e3a072bc1711856ada88350580864a2f",
+   "tests/test_native_mux_proxy_timer.py": "3ee9534174ea067be741ec3ad3dbfbad727f3b02f2b7735f3698420db7599161"
+  },
+  "head": "120119ae99d93ba0ef1be909ed6d69ed35b93168",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_native_mux_proxy_timer.MuxProxyTimer.test_undue_proxy_deadline_does_not_ask_acl2"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_mux_proxy_timer.py": "3ee9534174ea067be741ec3ad3dbfbad727f3b02f2b7735f3698420db7599161"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "120119ae99d93ba0ef1be909ed6d69ed35b93168",
+   "stderr": "test_undue_proxy_deadline_does_not_ask_acl2 (tests.test_native_mux_proxy_timer.MuxProxyTimer.test_undue_proxy_deadline_does_not_ask_acl2) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 2.798s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_native_mux_proxy_timer",
+  "timeout": 1800.0
+ }
 }
