@@ -1,0 +1,11 @@
+{
+ "file": "host/native/owner.lisp",
+ "id": "RET-RETIRE-CHECKPOINT-ABANDONED",
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "medium",
+ "source": "read-life",
+ "state": "open",
+ "title": "host/native/owner.lisp fnn-owner-maybe-retire requests the drained retire's final checkpoint (fnn-owner-compaction-request -> fnn-owner-maybe-publish -> fnn-owner-publisher-start, a separate thread) and sets *fnn-sigterm-requested* in the same tick; the stop sets STOPPING and the publication's *fnn-checkpoint-stop-test* refuses it at its next batch, so on any store whose publication spans more than one batch the final checkpoint is abandoned (the old checkpoint stays; durability unaffected). Fix: keep the drain open while a publication is in flight, bounded by the retire window, decided in ACL2 (a publication-in-flight observation into fn-ort-retire-step / fn-ort-final-checkpoint-action). Witness: tests.test_native_peering ...test_retire_waits_for_a_peer_then_stops_drained_with_a_checkpoint now asserts the CHECKPOINT auto line. Found by read-life (af2881f2874c0c439); related RL-02 (a publication that ends before NEXT never releases fn-owner-sco-inflight).",
+ "updated": "2026-10-04T15:33:48Z"
+}

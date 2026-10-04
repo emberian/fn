@@ -1397,6 +1397,11 @@ class NativePeeringTests(unittest.TestCase):
         source.exited(EXIT_OK, timeout=120)
         log = source.process.stderr.since(0)
         self.assertIn(b"COMPACTION request answer=", log)
+        # The checkpoint published, not merely requested: the publication
+        # runs on its own thread and refuses at its next batch once the stop
+        # begins (RET-RETIRE-CHECKPOINT-ABANDONED).
+        self.assertIn(b"CHECKPOINT auto sequence=", log,
+                      "the final checkpoint was requested but not published before the stop")
         print("NATIVE-PEERING-WITNESS " + json.dumps({
             "kind": "retire-drained-prf-1029", "elapsed_s": round(elapsed, 2),
             "retire": out.decode("ascii", "replace").splitlines()}, sort_keys=True))
