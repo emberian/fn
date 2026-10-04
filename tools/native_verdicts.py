@@ -208,6 +208,29 @@ def record(module: str, result: dict, log: str = "", store: Path | None = None,
     return key, path
 
 
+def timings(store: Path | None = None) -> dict:
+    """Learned wall times from every stored module verdict, newest run per
+    case: {"tests": {case id: seconds}, "modules": {module: seconds}}, the
+    shape tools/boxq.py (lane/cloud) reads from build/coordinator/boxq/
+    timings.json, so one store feeds both the verdicts and the placement."""
+    directory = (store or store_dir()) / KIND
+    newest: dict[str, tuple[str, float, str]] = {}
+    for path in directory.glob("*.json"):
+        try:
+            entry = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        when, module = entry.get("when", ""), entry.get("module", "")
+        for case, seconds in entry.get("timings", []):
+            if case not in newest or newest[case][0] < when:
+                newest[case] = (when, float(seconds), module)
+    tests = {case: seconds for case, (_, seconds, _) in newest.items()}
+    modules: dict[str, float] = {}
+    for case, (_, seconds, module) in newest.items():
+        modules[module] = modules.get(module, 0.0) + seconds
+    return {"tests": dict(sorted(tests.items())), "modules": dict(sorted(modules.items()))}
+
+
 def verdict_line(entry: dict) -> str:
     """The module's line as tools/test_budget.py --verdict prints one, plus
     where the verdict came from."""
@@ -248,6 +271,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--result", required=True, help="the --one log holding the result line")
     p.add_argument("--carry-from-key", default="")
     sub.add_parser("table", help="every stored module verdict")
+    p = sub.add_parser("timings", help="learned wall times per case and module (boxq's shape)")
+    p.add_argument("--out", default="", help="write the JSON here instead of stdout")
     args = parser.parse_args(argv)
     store = Path(args.store) if args.store else None
 
@@ -285,6 +310,19 @@ def main(argv: list[str] | None = None) -> int:
                 carried = None
         key, path = record(args.module, result, args.result, store, carried)
         print(f"{args.module}: verdict stored {key[:12]} -> {path}")
+        return 0
+    if args.action == "timings":
+        learned = timings(store)
+        text = json.dumps(learned, indent=1, sort_keys=True) + "\n"
+        if args.out:
+            out = Path(args.out)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            temporary = out.with_name(out.name + f".{os.getpid()}.tmp")
+            temporary.write_text(text, encoding="utf-8")
+            os.replace(temporary, out)
+            print(f"timings: {len(learned['tests'])} case(s), {len(learned['modules'])} module(s) -> {out}")
+        else:
+            sys.stdout.write(text)
         return 0
     directory = (store or store_dir()) / KIND
     rows = []

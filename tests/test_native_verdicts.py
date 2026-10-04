@@ -145,6 +145,21 @@ class StoreTests(unittest.TestCase):
         self.assertIn("2 carried", self.lookup().stdout)
         self.assertIsNone(record)
 
+    def test_timings_are_learned_from_the_store_in_boxqs_shape(self):
+        self.one()
+        done = subprocess.run([PY, str(ROOT / "tools/native_verdicts.py"), "timings"],
+                              cwd=ROOT, capture_output=True, text=True, env=self.env)
+        learned = json.loads(done.stdout)
+        self.assertEqual(set(learned), {"tests", "modules"})
+        self.assertIn(f"{self.module}.T.test_ok", learned["tests"])
+        self.assertIn(self.module, learned["modules"])
+        self.assertGreaterEqual(learned["modules"][self.module],
+                                max(learned["tests"].values()))
+        out = pathlib.Path(self.store.name) / "timings.json"
+        subprocess.run([PY, str(ROOT / "tools/native_verdicts.py"), "timings", "--out", str(out)],
+                       cwd=ROOT, capture_output=True, text=True, env=self.env, check=True)
+        self.assertEqual(json.loads(out.read_text()), learned)
+
     def test_an_empty_store_variable_stores_nothing(self):
         env = dict(self.env, FN_VERDICT_STORE="")
         done = subprocess.run([PY, str(ROOT / "tools/test_budget.py"), "--one", self.module],

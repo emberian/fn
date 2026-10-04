@@ -148,12 +148,19 @@ tests/: 217 `test_native_*.py` (51,113 lines), 211 other `test_*.py`
 Makefile `ACL2_BOOKS`: 2,511 roots.  books/: 1,812 files, 683,794 lines.
 host/: 78,135 lines (host/native: 83 files, 50,641).
 
-Named by nothing else in the tree (Makefile, docs, planning, tools, tests,
-packaging): 8 tools, 1,778 lines: `cost_gate.py` (825),
-`native_sparse_newnews.py` (233), `codec_golden.py` (195),
-`build_compress_dict.py` (167), `available_read_emit.py` (140),
-`spw_entry_inventory.py` (81), `runtime_decoded_source_prefix.py` (74),
-`repair_unittest.py` (63).
+A first census (Makefile, docs/, top-level planning/*.md, tools, tests,
+packaging) found 8 tools named by nothing else, 1,778 lines.  The wider
+grep (every .md/.py/.sh/.json/.tsv/.txt/.lisp under the tree including
+specs/, planning/**, .spw/, books/, and build/coordinator with its
+lanedumps) names every one of them: `cost_gate.py` (planning/handoff-2026-10-03/cost-gate.md,
+tools/cost-probe.lisp), `native_sparse_newnews.py` (tests/scenarios/catalog.json, a
+witness), `codec_golden.py` (specs/encoding.md), `build_compress_dict.py`
+(planning/proofs.json, books/payload-lz-dicts.lisp, its fixture),
+`available_read_emit.py` (specs/nntp.md, planning/proofs.json, a book),
+`spw_entry_inventory.py` (.spw/audits, the harvest decisions, lanedumps/small-reds.md),
+`runtime_decoded_source_prefix.py` (planning/proofs.json), `repair_unittest.py`
+(planning/repair/repair.py).  None is deleted; the deletion candidates are
+the readers of 1.3, not these.
 
 ## 2. Target architecture
 
@@ -330,7 +337,6 @@ exists and onto one `closure.py` until then.
 | REPLACE | the second `acquire` (dtn, 13 min in r2) by a lookup against the first set's chosen pairs (r2: dtn set 1,085 books, 427 roots; default 1,135 books, 469 roots, same toolchain; measured at 6107ceb56 with `certs.closure` over `proof_artifacts.py roots`: default 470 roots / 1,138 books, dtn 428 roots / 1,088 books, and exactly ONE dtn book is outside the default closure, `books/image-world-dtn` itself -- so the dtn set is the default set plus its umbrella) | ~40 lines in `proof_artifacts.py` | low: `validate-dtn` still loads the roots | validate-dtn unchanged |
 | MOVE TO LISP | the dependency/definition/theorem facts: `tools/extract/world-facts.lisp` dump; `ledger.py` reads it for include graph, guard status, arity | new ~300 lines Lisp, deletes the include-graph half of `certs.py` (~400 lines), `certify_books.py:418-535` (~120), `harness_check`'s arity derivation (~300) | medium: the ledger's SUSPECT shapes still need the forms; keep the reader for those | `ledger --check` output identical on the tree; `harness_check acl2-arity` finding count identical |
 | MERGE | eleven Lisp readers into `tools/lisp_reader.py` (ledger's), per-digest form cache | deletes ~10 x 60-150 lines; adds the cache (~80) | medium: readers differ at the edges (`#\\(`, `|bars|`, `#.`); the merged one takes the union and each check's test file is the oracle | each `*_check.py`'s unittest module passes unchanged |
-| DELETE | the 8 tools named by nothing (`cost_gate.py` 825, `native_sparse_newnews.py` 233, `codec_golden.py` 195, `build_compress_dict.py` 167, `available_read_emit.py` 140, `spw_entry_inventory.py` 81, `runtime_decoded_source_prefix.py` 74, `repair_unittest.py` 63) | 1,778 lines | low; verify each with `git log -1 --format=%cd -- tools/X.py` and ask the owner named there before deleting `cost_gate` (it looks like a gate someone meant to wire) | nothing ran them |
 | MOVE | the per-test owner start/stop choreography in `tests/native_harness.py` `Node` (`:1094-1323`, 230 lines) to a class-scoped warm owner + store snapshot (scenarios lane) | -2 x 242 MB core starts per test | medium: tests that depend on a fresh process must say so (`fresh=True`) | per-module `FN_TEST_BUDGET_RESULT` counts identical, timings lower |
 | REPLACE | deadlines and sleeps in tests by profile parameters (D27) read by the host | 175 `time.sleep`, 400+ `timeout=` kwargs | medium: each shortened bound must still be the policy's bound | the same assertions; the test profile is named in the verdict key |
 | KEEP, THIN | `farm.py` (2,144), `hbox_native.sh` (799), `remote_check.sh`: ship + ask the engine; the preflight/selection logic moves into the engine | -600 lines over time | low if done per command | their unittest modules |
