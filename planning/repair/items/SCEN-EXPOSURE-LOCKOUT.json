@@ -1,12 +1,25 @@
 {
+ "budget": 120,
  "category": "implementation",
+ "expect-failure": "tests.test_exposure_campaign_shape.CampaignShape.test_guessing_campaign_reconnects",
+ "failure-message": "SCEN-EXPOSURE-LOCKOUT: the guessing campaign does not reconnect",
  "file": "host/native/mux.lisp",
+ "harness": "tests/test_exposure_campaign_shape.py",
  "id": "SCEN-EXPOSURE-LOCKOUT",
- "notes": [],
+ "native": "public_exposure",
+ "notes": [
+  "10-04 15:37 claimed: scope=['tests/test_native_public_exposure.py', 'tests/test_exposure_campaign_shape.py'] test=python3 -m unittest tests.test_exposure_campaign_shape",
+  "10-04 15:38 claimed: scope=['tests/test_native_public_exposure.py', 'tests/test_exposure_campaign_shape.py'] test=python3 -m unittest tests.test_exposure_campaign_shape"
+ ],
  "owner": "unowned",
+ "scope": [
+  "tests/test_native_public_exposure.py",
+  "tests/test_exposure_campaign_shape.py"
+ ],
  "severity": "medium",
  "source": "scenarios",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_exposure_campaign_shape",
  "title": "public_exposure test_flood_campaign: credential guessing from 127.0.0.7 is closed after 3 x 481 with '400 too many authentication failures', but the next connection from the same address is greeted 201 instead of '400 too many authentication failures from this address' (tests/test_native_public_exposure.py:397). Green on 45c9ec0f6 (10-03); red on peer-d5b0b9100.",
- "updated": "2026-10-04T15:13:41Z"
+ "updated": "2026-10-04T19:38:13Z"
 }
