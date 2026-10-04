@@ -19,6 +19,14 @@
 (defun fnn-refuse (&rest ignored) (declare (ignore ignored)) (error 'fixture-refused))
 (defun fnn-refuse-io (&rest ignored) (declare (ignore ignored)) (error 'fixture-refused))
 (defun fnn-indeterminate (&rest ignored) (declare (ignore ignored)) (error 'fnn-store-indeterminate))
+;; The escape arm of fnn-unwind-cleanups (cleanup-escalate, review M3d): the
+;; deployed fnn-escape-cleanup-failed and the ACL2 decisions it calls.  The
+;; fixture's conditions classify as faults (fixture-refused is no table class),
+;; so a cleanup failure never outranks its primary here; one that did would
+;; signal fnn-fault, which this fixture refuses to reach.
+(load "tests/unwind_cleanups_prelude.lisp")
+(in-package "ACL2")
+(defun fnn-fault (&rest ignored) (declare (ignore ignored)) (error "outranked: not expected here"))
 (defun fnn-core (name &rest ignored)
   (declare (ignore ignored))
   (case name

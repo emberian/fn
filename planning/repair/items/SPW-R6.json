@@ -1,0 +1,16 @@
+{
+ "category": "error-handling",
+ "detail": "planning/spw-recheck-2026-10-04.md",
+ "evidence": "owner.lisp:1548-1655 (install rollback, retained carrier, operator fallback :982-1004) and fnn-open-live-store use handler-case with an error clause. storage-condition, sb-sys:interactive-interrupt or a throw skips them. Reachable in-process (tests, re-entry); the process is dying otherwise.",
+ "exposure": "conditional",
+ "file": "host/native/owner.lisp",
+ "fix": "Use fnn-unwind-cleanups (which preserves throws and records escape failures) for the rollback scope.",
+ "id": "SPW-R6",
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "low",
+ "source": "spw-recheck-2026-10-04",
+ "state": "open",
+ "title": "Owner install and fnn-open-live-store rollbacks catch only ERROR: a non-error serious condition or a throw during startup bypasses both rollbacks and leaves the lock and feeds open with no retained carrier",
+ "updated": "2026-10-04T14:47:40Z"
+}

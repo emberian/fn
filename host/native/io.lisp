@@ -2512,7 +2512,10 @@ store; anything else is left to the ordinary open."
           (error 'fnn-store-profile-refusal
                  :message (fnn-core 'fn-store-metadata-config-refusal-text verdict)))))))
 
-(defun fnn-load-config (store)
+(defun fnn-load-sealed-config (store)
+  "Read and decode STORE's sealed profile (config.json) into both the sealed
+and the effective configuration; return it.  No configuration history is
+observed."
   (fnn-check-regular (fnn-config-path store))
   (let ((raw (handler-case
                  (fnn-read-regular-bounded (fnn-config-path store) 16384)
@@ -2520,16 +2523,22 @@ store; anything else is left to the ordinary open."
     (let ((sealed (fnn-metadata-config-decode raw)))
       (setf (fnn-store-sealed-config store) sealed
             (fnn-store-config store) sealed)
-      ;; The live limits (row S1): the configuration history's :set-limit
-      ;; rows over the sealed profile, read before any bound of the log
-      ;; applies (the history's own readdir bound is a sealed field).
-      (when (let ((st (fnn-lstat (fnn-config-dir store))))
-              (and st (fnn-directory-p st) (not (fnn-symlink-p st))))
-        (let ((observation (fnn-config-record-observation store)))
-          (when observation
-            (setf (fnn-store-config store)
-                  (fnn-core 'fn-store-lim-effective sealed
-                            (mapcar #'fnn-octet-list (mapcar #'cdr observation))))))))))
+      sealed)))
+
+(defun fnn-load-config-overlay (store sealed)
+  "The live limits (row S1): the configuration history's :set-limit rows over
+the SEALED profile, read before any bound of the log applies (the history's
+own readdir bound is a sealed field)."
+  (when (let ((st (fnn-lstat (fnn-config-dir store))))
+          (and st (fnn-directory-p st) (not (fnn-symlink-p st))))
+    (let ((observation (fnn-config-record-observation store)))
+      (when observation
+        (setf (fnn-store-config store)
+              (fnn-core 'fn-store-lim-effective sealed
+                        (mapcar #'fnn-octet-list (mapcar #'cdr observation))))))))
+
+(defun fnn-load-config (store)
+  (fnn-load-config-overlay store (fnn-load-sealed-config store)))
 
 (defun fnn-initialize-resume-check (store groups requested-profile &optional history)
   "ACL2 compares requested init with the sealed profile and exact generation one."
@@ -2547,6 +2556,15 @@ store; anything else is left to the ordinary open."
           ((and (consp decision) (eq (first decision) :fault))
            (fnn-fault "~a" (fnn-core 'fn-nir-resume-line decision)))
           (t (fnn-fault "ACL2 returned a malformed init resume decision")))))
+
+(defun fnn-initialize-resume-history (store)
+  "The configuration history fn-nir-resume-decision consults: only when the
+generation-one record is absent (its :missing-initial-record arm); a present
+generation one is decided from its own octets, so a corrupt record is never
+first met by the whole-history observation."
+  (when (and (not (fnn-lstat (fnn-config-record-path store 1)))
+             (fnn-lstat (fnn-config-dir store)))
+    (fnn-config-record-names store nil t)))
 
 (defun fnn-initialize (store &optional (groups +fnn-default-groups+) (profile :development))
   ;; One durable configuration record at generation 1, built and admitted by
@@ -2569,12 +2587,16 @@ store; anything else is left to the ordinary open."
              ;; missing subdirectory is created. Compatible interrupted init
              ;; remains legal; an incompatible request never reaches resume.
              (setf existing-profile (fnn-lstat (fnn-config-path store)))
+             ;; ACL2's resume decision (fn-nir-resume-decision) comes
+             ;; BEFORE the live-limits overlay observes the whole history:
+             ;; a corrupt generation-one record is its named fault
+             ;; (recorded-initial-record-invalid), not the namespace
+             ;; observation's generic one.
              (when existing-profile
-               (fnn-load-config store)
-               (fnn-initialize-resume-check
-                store groups requested-profile
-                (when (fnn-lstat (fnn-config-dir store))
-                  (fnn-config-record-names store nil t))))
+               (let ((sealed (fnn-load-sealed-config store)))
+                 (fnn-initialize-resume-check
+                  store groups requested-profile (fnn-initialize-resume-history store))
+                 (fnn-load-config-overlay store sealed)))
              (fnn-safe-directory (fnn-staging store) t store
                                  "init-staging-mkdir" "init-staging-parent-fenced")
              (fnn-safe-directory (fnn-config-dir store) t store
@@ -2587,9 +2609,10 @@ store; anything else is left to the ordinary open."
                        :published)
                    (setf (fnn-store-config store) requested-profile
                          (fnn-store-sealed-config store) requested-profile)
-                   (progn
-                     (fnn-load-config store)
-                     (fnn-initialize-resume-check store groups requested-profile)))))
+                   (let ((sealed (fnn-load-sealed-config store)))
+                     (fnn-initialize-resume-check
+                      store groups requested-profile (fnn-initialize-resume-history store))
+                     (fnn-load-config-overlay store sealed)))))
              (let ((history (fnn-config-record-names store :init-config-records-first-enumerate t)))
               (if history
                  (fnn-initialize-resume-check store groups requested-profile history)
@@ -2828,15 +2851,25 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
              (values :ok (nreverse frames)))
         (fnn-close fd)))))
 
+(defvar *fnn-checkpoint-load-io-error* nil
+  "The OS error the last fnn-state-checkpoint-load met reading the file, or
+NIL: a read that failed is not a file that failed to verify
+(fnn-log-open-plan-check).")
+
 (defun fnn-state-checkpoint-load (store)
   "Decode the checkpoint into ACL2's global: (values STATUS S) with STATUS
 :absent, :refused, :exceeds-bound, :schema (a file of another schema, D34:
 the journal replays, `status' says reason=checkpoint-schema), :arena (a file
 without the arena run: reason=checkpoint-arena) or :ok, the vocabulary of
-fn-scka-select-named."
+fn-scka-select-named.  A read that fails is :refused (the full replay, when
+the log still holds the history, is authoritative) and its OS error is kept
+in *fnn-checkpoint-load-io-error*."
+  (setq *fnn-checkpoint-load-io-error* nil)
   (multiple-value-bind (status value)
       (handler-case (fnn-state-checkpoint-plan store)
-        (fnn-os-error () (values :refused :io)))
+        (fnn-os-error (e)
+          (setq *fnn-checkpoint-load-io-error* e)
+          (values :refused :io)))
     (case status
       (:absent (fnn-core-state 'fn-store-sco-clear) (values :absent 0))
       (:refused (fnn-core-state 'fn-store-sco-clear)
@@ -5927,6 +5960,7 @@ same size (fnn-probe-article), so the served reader can frame it."
     (fnn-record-filesystem-at-init store :development)
     (fnn-acquire store)
     (fnn-bridge-reset)
+    (fnn-extent-pool-open-context)
     (fnn-recover store)
     (setq payload (make-array (fnn-config-max-payload store)
                               :element-type '(unsigned-byte 8)
@@ -6344,9 +6378,18 @@ Synchronous DNS remains a named availability frontier outside TCP polling."
       (:refused (error 'fnn-peer-dial-error :outcome :host-syntax))
       (otherwise (fnn-fault "ACL2 returned a malformed peer dial target")))))
 
+(defconstant +fnn-socket-read-attempt-max+ 65536
+  "The most octets one nonblocking read attempt allocates.  An allocation
+ceiling for a malformed answer, not a protocol quantum: each caller's quantum
+is ACL2's: TCPCL fn-tcrt-read-limit, 4096; pull fn-prd-read-limit, at most
+*fn-feed-wire-input-max-chunk-octets* (512) by its definition; feed
+fn-owner-feed-read-limit, checked against +fnn-max-read+ in
+fnn-feed-read-limit.  It was +fnn-max-read+ (512, the reader's line buffer) until
+2026-10-04, which refused every TCPCL read: run2-d5b0b9100's BP family.")
+
 (defun fnn-socket-read-now (fd limit)
   "One nonblocking read attempt: octets/EOF or :wait on EINTR/EAGAIN."
-  (unless (and (integerp limit) (<= 1 limit +fnn-max-read+))
+  (unless (and (integerp limit) (<= 1 limit +fnn-socket-read-attempt-max+))
     (fnn-fault "invalid socket read quantum"))
   (let ((buffer (fnn-make-octets limit)))
     (multiple-value-bind (count errno) (funcall *fnn-read-syscall* fd buffer)
@@ -6582,7 +6625,12 @@ served POST path here is refused rather than silently unowned."
     (when store-root
       (setq store (make-fnn-store store-root :writable nil))
       (handler-case
-          (progn (fnn-acquire store) (fnn-bridge-reset) (fnn-recover store))
+          (progn (fnn-acquire store) (fnn-bridge-reset)
+                 ;; The page pool's unfunded context before the replay's
+                 ;; first extent registration, as fnn-open-live-store enters
+                 ;; it: this reader serves no funded cold line.
+                 (fnn-extent-pool-open-context)
+                 (fnn-recover store))
         (error (e) (fnn-store-close store) (error e))))
     (handler-case (fnn-reader-select (not (null store-root)))
       (error (e) (when store (fnn-store-close store)) (error e)))
@@ -7133,7 +7181,11 @@ with its depth, and the rows under it name the path that called it."
   ;; the first fence of the new segment (fnn-log-fence) and the checkpoint
   ;; that names it (fnn-owner-publish-captured) fence journal/ first
   ;; (fnn-log-make-durable, cut rotate-durable).  NIL when durable.
-  (dir-pending nil))
+  ;; DURABLE-LOCK serializes those two callers; DURABLE-FAILED is the first
+  ;; failed barrier of a pending name, never retried (fnn-log-make-durable).
+  (dir-pending nil)
+  (durable-lock (sb-thread:make-mutex :name "fn log rotate-durable"))
+  (durable-failed nil))
 
 (defmacro fnn-log-with-kernel ((log) &body body)
   "BODY under the log's kernel lock (recursive: a kernel step may call another)."
@@ -7817,7 +7869,9 @@ serialized run fn-lgc-run-refines-the-kernel speaks of."
                   ;; made durable before any member in it is acknowledged.
                   (fnn-log-make-durable log)
                   (fnn-log-fdatasync (fnn-log-fd log)))
-    (fnn-os-error (e)
+    ;; fnn-log-make-durable answers its failed barrier as uncertain (it is
+    ;; never asked again); the batch in flight goes the same way.
+    ((or fnn-os-error fnn-store-indeterminate) (e)
       (fnn-log-with-kernel (log)
         (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence-failed (fnn-log-kernel log))
               (fnn-log-inflight log) nil))
@@ -8390,13 +8444,37 @@ rotate-durable) while the segment's name is pending.  Called off the owner
 mutex by the new segment's first fence (fnn-log-fence: no member there is
 acknowledged before its name is durable) and by the publication before its
 checkpoint names the segment, so an F row never names an unheaded segment.
-Two callers may both fence; that is harmless."
-  (let ((dir (fnn-log-dir-pending log)))
-    (when dir
-      (fnn-fsync-file (fnn-log-fd log))
-      (fnn-fsync-dir dir)
-      (fnn-log-at :rotate-durable)
-      (setf (fnn-log-dir-pending log) nil))))
+The two callers are serialized (DURABLE-LOCK); the second finds the name
+durable and does nothing.
+
+A failed barrier is never asked again (fsync after a failed fsync can answer
+success with nothing durable: the error is reported once).  The first
+failure fences the log kernel (fn-lgc-fence-failed: no member is fenced or
+acknowledged after it, and the store needs recovery) and is the log's
+uncertainty, signalled as such: the publication's thread boundary
+classifies a bare OS error with no step of its own as a job failure and
+serving went on, so the batch fence that called next believed a retried
+barrier and acknowledged members in a segment whose name may not survive.
+Every later call answers the same uncertainty without touching the disk."
+  (sb-thread:with-mutex ((fnn-log-durable-lock log))
+    (let ((failed (fnn-log-durable-failed log)))
+      (when failed
+        (fnn-indeterminate "the rotated log segment's barrier failed earlier; the store needs recovery: ~a"
+                           failed)))
+    (let ((dir (fnn-log-dir-pending log)))
+      (when dir
+        (handler-case
+            (progn
+              (fnn-fsync-file (fnn-log-fd log))
+              (fnn-fsync-dir dir))
+          (fnn-os-error (e)
+            (setf (fnn-log-durable-failed log) e)
+            (fnn-log-with-kernel (log)
+              (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence-failed (fnn-log-kernel log))))
+            (fnn-indeterminate "the rotated log segment's barrier failed; the store needs recovery: ~a"
+                               e)))
+        (fnn-log-at :rotate-durable)
+        (setf (fnn-log-dir-pending log) nil)))))
 
 (defun fnn-log-rotate-now (store)
   "The whole P-ROTATE in one thread, for a store no owner serves (`store
@@ -8550,6 +8628,27 @@ and last trailer must be the kernel's, or the read is a fault."
              (fnn-fault "the active log segment does not read back its committed records")))
       (fnn-close fd))))
 
+(defun fnn-log-open-plan-check (store plan log-position)
+  "Act on a refused open PLAN (books/store-log-segments.lisp fn-lgs-open-plan)
+before anything is scanned: no segment and no checkpoint is an init that
+did not finish (init again completes it); a refusal is the open's, by name.
+Except: when the checkpoint could not be READ (an OS error,
+*fnn-checkpoint-load-io-error*) the plan's checkpoint-damaged is a guess
+from a failed observation, not a verdict on the file -- the open stops as
+the read's fault, naming the error, never as a refusal that tells the
+operator the checkpoint is damaged (it may read whole on the next try)."
+  (when (equal plan '(:refused :no-segment))
+    (fnn-fault "missing store directory: ~a has no log segment (an init that did not finish: run init again)"
+               (fnn-journal-dir store)))
+  (when (eq (first plan) :refused)
+    (when (and *fnn-checkpoint-load-io-error* (null log-position)
+               (equal plan '(:refused :checkpoint-damaged)))
+      (fnn-fault "cannot read the state checkpoint, which covers the dropped log segments: ~a (not a verdict on the file; nothing was written)"
+                 *fnn-checkpoint-load-io-error*))
+    (error 'fnn-store-open-refusal
+           :message (format nil "open refused reason=~(~a~): the log's segments do not hold the history~@[ from segment ~d~]"
+                            (second plan) (first log-position)))))
+
 (defun fnn-recover-log-from-log-checkpoint (store config-records suffix s &optional (interned nil internedp))
   "The open from a checkpoint whose F row names the log's first suffix
 segment: SUFFIX is the scan from there (T8: with the checkpoint's records it
@@ -8606,15 +8705,7 @@ does, and records how the log holds the history (fnn-store-log-history) for
                                  (first log-position))))
             (unless (and (consp plan) (member (first plan) '(:scan :refused)))
               (fnn-fault "ACL2 returned a malformed log open plan"))
-            ;; No segment and no checkpoint: an init that did not finish
-            ;; (the segment is its last step); init again completes it.
-            (when (equal plan '(:refused :no-segment))
-              (fnn-fault "missing store directory: ~a has no log segment (an init that did not finish: run init again)"
-                         (fnn-journal-dir store)))
-            (when (eq (first plan) :refused)
-              (error 'fnn-store-open-refusal
-                     :message (format nil "open refused reason=~(~a~): the log's segments do not hold the history~@[ from segment ~d~]"
-                                      (second plan) (first log-position))))
+            (fnn-log-open-plan-check store plan log-position)
             (setq drop (third plan))
             ;; The records arrive one at a time (fnn-log-scan-segments), each
             ;; folded into the next txid (one past the largest txid of every
@@ -9176,13 +9267,7 @@ segment' (tests/test_native_topic_local.py)."
                              (first log-position))))
         (unless (and (consp plan) (member (first plan) '(:scan :refused)))
           (fnn-fault "ACL2 returned a malformed log open plan"))
-        (when (equal plan '(:refused :no-segment))
-          (fnn-fault "missing store directory: ~a has no log segment (an init that did not finish: run init again)"
-                     (fnn-journal-dir store)))
-        (when (eq (first plan) :refused)
-          (error 'fnn-store-open-refusal
-                 :message (format nil "open refused reason=~(~a~): the log's segments do not hold the history~@[ from segment ~d~]"
-                                  (second plan) (first log-position))))
+        (fnn-log-open-plan-check store plan log-position)
         (let ((genesis (if log-position (second log-position) chain))
               (base (if (eq status :ok) (fnn-nat s) 0)))
           (loop for (k . more) on (second plan) do
