@@ -268,8 +268,12 @@ class AdminSectionStructureTests(unittest.TestCase):
         contracts = json.loads((ROOT / "tools/lock_discipline_contracts.json").read_text())
         enclave = contracts["enclave"]
         self.assertIn("host/native/admin.lisp", enclave["files"])
+        # Strict with no exception: the two offline executors (fnn-admin-query,
+        # -execute) were excepted only while the check could not expand
+        # fnn-unwind-cleanups' mapcar cleanups; lock-rows a7c8ba14c taught it
+        # and dropped the rows.  An exception coming back is a regression.
         excepted = enclave.get("files_except", {}).get("host/native/admin.lisp", {})
-        self.assertEqual(sorted(excepted), ["fnn-admin-execute", "fnn-admin-query"])
+        self.assertEqual(sorted(excepted), [])
 
 
 @unittest.skipUnless(DEVELOPER is not None and DEVELOPER.is_file(),
