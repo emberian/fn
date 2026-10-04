@@ -320,7 +320,7 @@
                     fn-cu-s-security))
 
 ; KEYSTONE SUBJECT.  Beginning a catch-up round (host/native/pull-service.lisp
-; `fnn-pull-round' through `fn-cu-session-begin-pair').  PLAN is a pull plan
+; `fnn-pull-flight-begin' through `fn-csp-begin' and `fn-cu-session-begin-pair').  PLAN is a pull plan
 ; (`fn-cu-plans'); whether it may be dialled with its transport and
 ; credential is the pull's verdict, decided before any connection.
 (defun fn-cu-session-begin (plan cursor credential)

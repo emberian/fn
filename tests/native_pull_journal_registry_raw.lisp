@@ -1,4 +1,4 @@
-;;; Actual worker/tick descriptor retirement over current ACL2 plans/schedule.
+;;; Actual worker descriptor retirement (pull and catch-up plans) over current ACL2 plans/schedule.
 ;;; Kernel descriptors/close are real; open/replay leaf is recorded, no image claim.
 (load "tests/native_section_envelope_raw.lisp")
 (in-package "ACL2")
@@ -39,9 +39,6 @@
 (defun fnn-pull-flight-release-lease (flight)
   (declare (ignorable flight))
   (harness-stub-reached 'fnn-pull-flight-release-lease "host/native/pull-service.lisp"))
-(defun fnn-pull-round (runtime plan journal cursor &optional kind)
-  (declare (ignorable runtime plan journal cursor kind))
-  (harness-stub-reached 'fnn-pull-round "host/native/pull-service.lisp"))
 ;;; ---- derived stubs: END ----
 (load-deployed-forms "host/native/io.lisp"
  '((defun fnn-make-octets) (deftype fnn-octets) (defun fnn-octets)
@@ -52,9 +49,9 @@
 (load-deployed-forms "host/native/pull-service.lisp"
  '((defstruct (fnn-pull-runtime (:constructor %make-fnn-pull-runtime)))
    (defun fnn-pull-peer-string) (defun fnn-pull-cursor-for) (defun fnn-catchup-cursor-for)
-   (defun fnn-catchup-tick) (defun fnn-pull-worker) (defun fnn-pull-settle-leases)))
+   (defun fnn-pull-worker) (defun fnn-pull-settle-leases)))
 ;; New private pruning helper is optional on the old defect base, whose
-;; worker/tick never invokes it. Load only the trusted source's literal form.
+;; worker never invokes it. Load only the trusted source's literal form.
 (with-open-file (stream "host/native/pull-service.lisp")
   (loop for form = (read stream nil :eof) until (eq form :eof)
         when (and (consp form) (equal (subseq form 0 (min 2 (length form)))
@@ -169,12 +166,12 @@
   (if (equal *mode* "close-fault")
       (progn
         (setq *plans* nil)
-        (handler-case (if (eq *kind* :catch-up) (fnn-catchup-tick runtime) (fnn-pull-worker runtime))
+        (handler-case (fnn-pull-worker runtime)
           (fnn-os-error () nil))
         (registry-check (and (not (fd-open-p old)) (not (fd-open-p live)))
                         "close fault still attempts every retired descriptor"))
     (progn
-      (if (eq *kind* :catch-up) (fnn-catchup-tick runtime) (fnn-pull-worker runtime))
+      (fnn-pull-worker runtime)
       (let ((remaining (if (eq *kind* :catch-up) (fnn-pull-runtime-cu-journals runtime)
                          (fnn-pull-runtime-journals runtime)))
             (values (if (eq *kind* :catch-up) (fnn-pull-runtime-cu-cursors runtime)

@@ -1,4 +1,4 @@
-"""Actual worker/tick custody over ACL2 plans; real fd close, no image claim."""
+"""Actual worker custody (pull and catch-up) over ACL2 plans; real fd close, no image claim."""
 from pathlib import Path
 import shutil
 import subprocess

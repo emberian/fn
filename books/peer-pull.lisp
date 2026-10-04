@@ -781,7 +781,7 @@
                               (fn-pull-r-pending r) (fn-pull-r-bound r)))))
 
 ; KEYSTONE SUBJECT.  The cursor after a round (host/native/pull-service.lisp
-; `fnn-pull-round' through `fn-pull-session-close').  An advancing round
+; `fnn-pull-flight-finish' through `fn-pull-session-close').  An advancing round
 ; moves the instant and clears PENDING; a complete round an unavailable id
 ; still holds keeps the instant and journals the new counts; any other round
 ; leaves the cursor as it began.

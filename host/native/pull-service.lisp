@@ -312,23 +312,6 @@ acceptance (the owner is stopping or fenced then)."
                                   (make-condition 'fnn-feed-auth-error)))
           nil)))))
 
-(defun fnn-pull-round (runtime plan journal cursor &optional (kind :pull))
-  "Blocking compatibility adapter; the worker uses retained flights directly."
-  (let ((flight (fnn-pull-flight-begin runtime plan journal cursor kind)) (primary nil))
-    (handler-bind ((serious-condition (lambda (condition) (unless primary (setq primary condition)))))
-      (unwind-protect
-           (progn
-             (loop for result = (if (fnn-pull-stoppingp runtime) :stopping
-                                  (fnn-pull-flight-quantum flight))
-                   until (member result '(:stopping :finished))
-                   do (when (eq result :wait) (sleep (/ (fnn-core 'fn-prd-idle-ms) 1000))))
-             (fnn-pull-flight-finish flight)
-             (fnn-pull-settle-leases runtime t)
-             (fnn-core (if (eq kind :catch-up) 'fn-csp-close 'fn-pull-session-close)
-                       (fnn-pull-flight-session flight)))
-        (if primary (ignore-errors (fnn-pull-flight-dispose flight))
-          (fnn-pull-flight-dispose flight))))))
-
 ;;; ---------------------------------------------------------------------------
 ;;; The worker
 
@@ -388,31 +371,6 @@ acceptance (the owner is stopping or fenced then)."
         (handler-case (fnn-owner-feed-close journal)
           (serious-condition (condition) (unless failure (setq failure condition)))))
       (when failure (error failure)))))
-
-;;; PRF-325: one due catch-up round, scheduled exactly as a pull
-;;; (fn-pull-schedule and fn-sched-pull-* over the catch-up plans, which are
-;;; pull plans with the catch-up interval) but on its own table.
-(defun fnn-catchup-tick (runtime)
-  (let* ((service (fnn-pull-runtime-service runtime))
-         (plans (fnn-owner-transit-serialized
-                 service nil (lambda () (fnn-owner-core 'fn-owner-catchup-plans))))
-         (now (fnn-pull-monotonic)))
-    (fnn-pull-prune-journals runtime plans :catch-up)
-    (setf (fnn-pull-runtime-cu-schedule runtime)
-          (fnn-core 'fn-pull-schedule plans now (fnn-pull-runtime-cu-schedule runtime)))
-    (let ((peer (fnn-core 'fn-sched-pull-due (fnn-pull-runtime-cu-schedule runtime) now)))
-      (when peer
-        (let ((plan (fnn-core 'fn-pull-plan-for peer plans)))
-          (setf (fnn-pull-runtime-cu-schedule runtime)
-                (fnn-core 'fn-sched-pull-start peer (fnn-pull-runtime-cu-schedule runtime)))
-          (multiple-value-bind (journal cursor) (fnn-catchup-cursor-for runtime plan)
-            (let ((closed (fnn-pull-round runtime plan journal cursor :catch-up))
-                  (key (fnn-pull-peer-string peer)))
-              (setf (cdr (assoc key (fnn-pull-runtime-cu-cursors runtime) :test #'string=))
-                    closed)))
-          (setf (fnn-pull-runtime-cu-schedule runtime)
-                (fnn-core 'fn-sched-pull-finish peer (fnn-pull-monotonic)
-                          (fnn-pull-runtime-cu-schedule runtime))))))))
 
 ;;; A worker owns these continuations. Callback threads publish only a cell
 ;;; under the runtime mutex; they never call the owner while holding it.
