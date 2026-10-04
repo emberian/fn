@@ -4945,3 +4945,8 @@ Certified on persvati: certify-20261004T063510Z-2314965, certify-20261004T071525
 red catchup-red-45e05c7f; green pending the integrator's batch image (tests.test_native_peer_catchup,
 tests.test_native_peer_pull). Proof-owed 4 (CSP-OWED-*). PRF-1318 not started (owner-number-bound-join
 does not admit). Entry: build/coordinator/lanedumps/catchup2.md.
+# reclaim-design — Fable, wave 3 row 2 (wound down 2026-10-04)
+
+Packet `planning/design/reclaim-2026-10-04.md` (DRAFT, 4 OPEN marks, no DECISION block); slice 1
+`books/arena-reader-bound.lisp` (PRF-1312) REPL-admitted 10/12, not certified. Full state and the exact
+continuation: `build/coordinator/lanedumps/reclaim-design.md`. Absorbed by the RECLAIM lane; no successor.
