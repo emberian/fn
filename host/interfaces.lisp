@@ -5308,7 +5308,18 @@
 (definterface fn-pwr-cold-descriptor :class :common-lisp-compliant)
 
 (definterface fn-owner-page-window-outcome :class :common-lisp-compliant
-  :kinds ((plan true-listp)))
+  :kinds ((plan true-listp))
+  :keystones ((fn-pwr-a-late-fault-is-a-fault-cancelled-or-not :via fn-pwr-outcome)
+              (fn-pwr-a-cancelled-job-never-publishes :via fn-pwr-outcome)))
+;; The verified-window cache (books/page-window-read.lisp fn-pwc-*).
+(definterface fn-owner-page-window-executor-cache :class :common-lisp-compliant
+  :kinds ((plan true-listp))
+  :keystones ((fn-pwc-cache-only-a-published-window :via fn-pwc-cache)
+              (fn-prw-cache-keeps-only-the-buffer :via fn-prw-cache)))
+(definterface fn-owner-page-window-cache-byte-at :class :common-lisp-compliant
+  :kinds ((plan true-listp))
+  :keystones ((fn-pwc-a-hit-is-the-published-window :via fn-pwc-byte-at)
+              (fn-pwc-hit-requires-a-cached-published-exact-window :via fn-pwc-byte-at)))
 
 (definterface fn-owner-page-window-executor-cancel :class :common-lisp-compliant)
 (definterface fn-owner-page-window-executor-settle-cancelled :class :common-lisp-compliant)

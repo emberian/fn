@@ -308,6 +308,31 @@ class PageIOTests(unittest.TestCase):
         self.assertEqual(collection["full_comparison"], "unavailable")
         self.assertEqual(self.observed_articles(node, "p0"), expected)
 
+    def test_a_published_window_is_served_warm_from_the_verified_window_cache(self):
+        # The verified-window cache (books/page-window-read.lisp fn-pwc-*,
+        # KEYSTONE fn-pwc-a-hit-is-the-published-window): after the first
+        # ARTICLE's window was published and read, its buffer is cached
+        # (window-cached) and the same ARTICLE is answered again, whole and
+        # equal, with no new window job (no window-admit) -- the window
+        # route's warm path, which reads no device.
+        node = self.filled()
+        expected = self.observed_articles(node, "p0")
+        release = node.store_path.parent / "page-io-release"
+        release.write_bytes(b"released: observations only")
+        owner = node.start(timeout=600, env={"FN_NATIVE_PAGE_IO_HOLD": str(release)})
+        client = Client(node.port, timeout=120, greeting=None)
+        self.addCleanup(client.close, False)
+        self.assertEqual(client.article(msgid("p0")), expected["p0"])
+        self.wait_line(owner, rb"WINDOW-IO observed window-cached token=" + WINDOW_TOKEN)
+        admits = len([l for l in page_io_logical_lines(owner.stderr.since(0))
+                      if l.startswith(b"WINDOW-IO observed window-admit ")])
+        self.assertGreaterEqual(admits, 1)
+        self.assertEqual(client.article(msgid("p0")), expected["p0"])
+        self.assertEqual(len([l for l in page_io_logical_lines(owner.stderr.since(0))
+                              if l.startswith(b"WINDOW-IO observed window-admit ")]), admits)
+        client.close(False)
+        node.stop(expect=EXIT.OK, grace=300)
+
     def test_a_held_read_is_answered_403_and_the_session_continues(self):
         # C3 / PRF-933 for a retrieval's preflight: the page did not come
         # within read-dependency-ms, so the ARTICLE line is answered 403

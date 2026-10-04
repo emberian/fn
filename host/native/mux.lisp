@@ -646,6 +646,10 @@ whole reply; a plan with nothing to write runs AFTER at once."
   (multiple-value-bind (octets rest donep yieldedp cold-read end)
       (fnn-mux-render-next loop conn plan)
     (setf (fnn-mux-conn-plan conn) (if donep nil rest))
+    ;; A quantum that completed is progress: the next cold page of this
+    ;; reply starts its own line deadline (books/cold-line-quanta.lisp: a
+    ;; quantum fits the cache and finishes; the deadline bounds one quantum).
+    (unless cold-read (setf (fnn-mux-conn-cursor-cold-since conn) nil))
     (cond (cold-read (fnn-mux-plan-cold loop conn rest after cold-read))
           (yieldedp (fnn-mux-plan-yield loop conn rest after t))
           ((> (or end (length octets)) 0)
@@ -684,6 +688,7 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
               (when cold-read
                 (fnn-mux-plan-cold loop conn rest (fnn-mux-conn-after conn) cold-read)
                 (return-from fnn-mux-flush nil))
+              (setf (fnn-mux-conn-cursor-cold-since conn) nil)
               (when yieldedp
                 (fnn-mux-plan-yield loop conn rest (fnn-mux-conn-after conn) t)
                 (return-from fnn-mux-flush nil))
