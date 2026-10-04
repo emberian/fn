@@ -458,3 +458,25 @@
               (null (fnn-mux-loop-cleanup-debts loop)))
          "queued native allocation failure reports admitted done once and no duplicate leave"))
 (format t "native_mux_queued_handshake_failure: PASS~%")
+
+;;; S088: a :proxy connection asks ACL2 about its deadline only once due.
+;;; The actual fnn-mux-timers over a :proxy connection with an ACL2-captured
+;;; hs-deadline; fnn-mux-proxy-expired (the owner-serialized ACL2 call) records.
+(load-deployed-forms "host/native/mux.lisp"
+ '((defmacro fnn-mux-guarded) (defun fnn-mux-timers)))
+(defvar *proxy-expired-calls* 0)
+(defun fnn-mux-proxy-expired (loop conn)
+  (declare (ignore loop conn))
+  (incf *proxy-expired-calls*) nil)
+(defun fnn-mux-idle-eligible-p (conn) (declare (ignore conn)) nil)
+(let* ((service (%make-fnn-owner-service :lock (sb-thread:make-mutex)))
+       (loop (%make-fnn-mux-loop :service service))
+       (conn (%make-fnn-mux-conn :phase :proxy :hs-deadline 5000)))
+  (setf (fnn-mux-loop-conns loop) (list conn) *proxy-expired-calls* 0)
+  (let ((next (fnn-mux-timers loop 4000)))
+    (check (zerop *proxy-expired-calls*)
+           "S088: an undue :proxy deadline asked ACL2 anyway")
+    (check (eql next 5000) "S088: the loop must still wake at the proxy deadline"))
+  (fnn-mux-timers loop 5000)
+  (check (= 1 *proxy-expired-calls*) "S088: a due :proxy deadline did not ask ACL2"))
+(format t "native_mux_proxy_timer: PASS~%")
