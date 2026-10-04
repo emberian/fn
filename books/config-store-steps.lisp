@@ -444,10 +444,9 @@
          (equal (fn-sn-identity-next s2) (fn-sn-identity-next s))
          (equal (fn-sn-consumer s2) (fn-sn-consumer s))
          (equal (fn-sn-topic s2) (fn-sn-topic s))
+         ; unconditional since lane carrier S1 (fn-sn-io has no identity arm)
          (equal (fn-sn-files s2)
-                (if (fn-sn-statep s)
-                    (fn-sn-file-step (fn-sn-files s) operation result)
-                  (fn-sn-files s)))))
+                (fn-sn-file-step (fn-sn-files s) operation result))))
   :hints (("Goal" :in-theory (e/d (fn-sn-io fn-sn-update)
                                   (fn-sn-statep fn-sn-file-step fn-cei-put
                                    fn-store-event-sequence)))))

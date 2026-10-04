@@ -85,11 +85,8 @@
 
 (local (defthm fn-sbsp-files-of-io
   (equal (fn-sn-files (fn-sn-io s operation result))
-         (if (fn-sn-statep s)
-             (fn-sn-file-step (fn-sn-files s) operation result)
-           (fn-sn-files s)))
-  :hints (("Goal" :in-theory '(fn-sn-io fn-sn-files-of-fn-sn-update
-                               fn-sn-files-of-fn-sn-with-event-index)))))
+         (fn-sn-file-step (fn-sn-files s) operation result))
+  :hints (("Goal" :in-theory '(fn-sn-io fn-sn-files-of-fn-sn-update)))))
 
 (defthm fn-sn-io-keeps-the-stored-octets
   (implies (fn-sbud-store-extents-okp s fn-arena)

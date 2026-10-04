@@ -44,9 +44,9 @@
 (assert-event (equal (symbol-class 'fn-sn-finish (w state)) :common-lisp-compliant))
 (assert-event (equal (guard 'fn-sn-finish nil (w state)) '(fn-sn-statep s)))
 (assert-event (equal (symbol-class 'fn-sn-file-step (w state)) :common-lisp-compliant))
-(assert-event (equal (guard 'fn-sn-file-step nil (w state)) '(fn-sf-statep files)))
+(assert-event (equal (guard 'fn-sn-file-step nil (w state)) '(fn-sf-countersp files)))
 (assert-event (equal (symbol-class 'fn-sn-io (w state)) :common-lisp-compliant))
-(assert-event (equal (guard 'fn-sn-io nil (w state)) '(fn-sn-statep s)))
+(assert-event (equal (guard 'fn-sn-io nil (w state)) '(fn-sf-countersp (fn-sn-files s))))
 (assert-event (equal (symbol-class 'fn-sn-crash (w state)) :common-lisp-compliant))
 (assert-event (equal (guard 'fn-sn-crash nil (w state)) ''t))
 (assert-event (equal (symbol-class 'fn-sn-recover (w state)) :common-lisp-compliant))
@@ -129,7 +129,11 @@
 (assert-event (with-guard-checking :none (equal (fn-sn-completion-record 7) nil)))
 (assert-event (with-guard-checking :none (not (fn-sn-completion-enabledp 7))))
 (assert-event (with-guard-checking :none (equal (fn-sn-finish 7) 7)))
-(assert-event (with-guard-checking :none (equal (fn-sn-io 7 :record-directory :ok) 7)))
+; fn-sn-io has no identity arm since lane carrier S1: total, it rebuilds the
+; store with the file step of its files.
+(assert-event (with-guard-checking :none
+               (equal (fn-sn-files (fn-sn-io 7 :record-directory :ok))
+                      (fn-sn-file-step (fn-sn-files 7) :record-directory :ok))))
 (assert-event (with-guard-checking :none (equal (fn-sn-crash 7 :new :present) 7)))
 (assert-event (with-guard-checking :none (equal (fn-sn-recover '(a . 7)) '(a . 7))))
 (assert-event (with-guard-checking :none (equal (fn-sn-prepare-node 7 nil) 7)))
