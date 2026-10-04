@@ -570,7 +570,7 @@ def verify_init_publication_cut_map() -> None:
              admit.index("(fnn-init-stage-lock leftover)"),
              admit.index("(fnn-core 'fn-bs-init-pub-admission"),
              admit.index("((eq admission :discard-stage)"),
-             admit.index("(fnn-init-discard-tree leftover 1)")]
+             admit.index("(fnn-init-discard-tree leftover)")]
     if steps != sorted(steps):
         raise AssertionError("fnn-init-admit acts before ACL2 admits")
     body = host_function(source, "fnn-command-init-published")

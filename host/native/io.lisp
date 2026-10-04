@@ -4462,24 +4462,38 @@ publication (exit 1, its stage named) -- never a partial store."
   "Names one round of fnn-init-discard-tree retains (a work quantum, not a
 bound on the stage).")
 
-(defun fnn-init-discard-tree (dir depth)
-  "Remove DIR and what is under it, DEPTH directory levels at most, a window
-of names at a time.  A deeper directory or anything but a regular file or a
-directory is refused by name: an init stage is its plan's subdirectories and
-files (books/store-init-log-publication.lisp) and nothing else."
+(defun fnn-init-discard-files (dir)
+  "Remove DIR's regular files, a window of names at a time, then DIR itself;
+anything else under DIR (a directory, a link, a device) is refused by name
+and nothing more is removed."
   (loop
     (let ((names (fnn-list-directory-window dir +fnn-init-discard-window+)))
       (when (null names) (return))
       (dolist (name names)
         (let* ((path (fnn-join dir name)) (st (fnn-lstat path)))
           (cond ((null st))
-                ((and (fnn-directory-p st) (not (fnn-symlink-p st)) (> depth 0))
-                 (fnn-init-discard-tree path (1- depth)))
                 ((and (fnn-regular-p st) (not (fnn-symlink-p st)))
                  (fnn-unlink path))
                 (t (fnn-refuse "init refused reason=not-an-init-stage: ~a holds ~a, which no init writes; nothing more was removed from it"
                                dir path)))))))
   (fnn-posix (dir) (sb-posix:rmdir dir)))
+
+(defun fnn-init-discard-tree (stage)
+  "Remove STAGE: its subdirectories' files and the subdirectories, then its
+own files and STAGE, a window of names at a time.  An init stage is its
+plan's subdirectories and files (books/store-init-log-publication.lisp),
+one level deep, and nothing else: a deeper directory or anything but a
+regular file or a directory is refused by name.  No recursion: the depth is
+the plan's, fixed at one."
+  (loop
+    (let ((subdirs nil))
+      (dolist (name (fnn-list-directory-window stage +fnn-init-discard-window+))
+        (let* ((path (fnn-join stage name)) (st (fnn-lstat path)))
+          (when (and st (fnn-directory-p st) (not (fnn-symlink-p st)))
+            (push path subdirs))))
+      (when (null subdirs) (return))
+      (dolist (sub subdirs) (fnn-init-discard-files sub))))
+  (fnn-init-discard-files stage))
 
 (defun fnn-init-admit (root-path)
   "Observe a leftover ROOT.init-*, whether a live init holds it, and ROOT;
@@ -4498,7 +4512,7 @@ Each round removes one stage, so the loop ends."
       (unwind-protect
            (cond ((eq admission :proceed) (return))
                  ((eq admission :discard-stage)
-                  (fnn-init-discard-tree leftover 1)
+                  (fnn-init-discard-tree leftover)
                   (fnn-fsync-dir (fnn-parent root-path))
                   (fnn-err "fn: init removed ~a, an earlier init's unpublished stage" leftover))
                  ((equal admission '(:refused :init-in-progress))

@@ -10,6 +10,7 @@
 ; The record codec seam's attachment: the log's txid reads the record through
 ; fn-record-decode-exact (books/store-log-txid.lisp).
 (include-book "../../books/codec-attach")
+(include-book "../../books/defkeystone")
 
 (defun sil-bs () (declare (xargs :guard t))
   (fn-bs-make 4 nil (list (cons :parent nil)) nil 0))
@@ -207,3 +208,103 @@
         (equal (car held) '(:refused :init-in-progress))
         (not (member-equal :discard-stage held))
         (not (member-equal :proceed held)))))
+
+; -----------------------------------------------------------------------------
+; Generated teeth (books/defkeystone.lisp) for the two PKT-894 keystones.
+(defconst *sil-bs* (sil-bs))
+(defconst *sil-ps* (sil-run))
+(defconst *sil-last* (car (last *sil-ps*)))
+; State 30: the stage's entry has landed and ROOT is absent under the crash
+; that applies everything: the retry's admission is :discard-stage.
+(defconst *sil-mid* (nth 30 *sil-ps*))
+(defconst *sil-bad-bs*
+  (fn-bs-make 4 (list (cons 5 nil)) (list (cons :parent (list (cons "store" 5)))) nil 6))
+(defconst *sil-bad-first* (car (sil-run-outs *sil-bad-bs* nil)))
+; An :ok outcome that carries a partial result, (:ok 1), at the plan's 13th
+; outcome (fn-bs-imp-outcomep admits :ok alone): the run goes on and
+; publishes a store that is not the plan's.
+(defconst *sil-torn-outs*
+  (append (make-list 12 :initial-element :ok) (list '(:ok 1))))
+(defconst *sil-torn-last* (car (last (sil-run-outs *sil-bs* *sil-torn-outs*))))
+; A state no run of the program reaches: ROOT already an unrelated inode.
+(defconst *sil-foreign-p* (list *sil-bad-bs*))
+
+(defteeth fn-bs-init-log-crash-retry-is-old-or-new
+  :claim (((input (fn-bs-imp-inputp bs stage root *fn-bs-init-log-subdirs*
+                                    (fn-bs-init-log-files config record-name record extent genesis secret)
+                                    nil))
+           (outcomes (fn-bs-imp-outcomesp outs))
+           (reached (member-equal p (fn-bs-imp-run bs ks
+                                                   (fn-bs-init-log-program stage root config
+                                                                           record-name record extent genesis secret)
+                                                   outs groups capacity))))
+          (let* ((img (fn-bs-crash (car p) choices))
+                 (stage-present (fn-bs-durable-entry img :parent stage))
+                 (root-present (fn-bs-durable-entry img :parent root))
+                 (admission (fn-bs-init-pub-admission
+                             (and stage-present
+                                  (fn-bs-imp-classify stage-present root-present))
+                             root-present nil)))
+            (and (implies (not root-present)
+                          (member-equal admission '(:proceed :discard-stage)))
+                 (implies root-present
+                          (fn-bs-imp-completep img *fn-bs-init-log-subdirs*
+                                               (fn-bs-init-log-files config record-name
+                                                                     record extent genesis secret)
+                                               (fn-bs-next-ino bs))))))
+  :subject fn-bs-init-pub-admission
+  :witness ((bs *sil-bs*) (stage "store.init-x") (root "store") (config '(1 2 3))
+            (record-name "00000001.cfg") (record '(4 5)) (extent 16) (genesis '(6 7))
+            (secret '(8 9)) (ks nil) (outs nil) (groups nil) (capacity nil)
+            (p *sil-last*) (choices nil))
+  :breaks ((input ((bs *sil-bad-bs*) (stage "store.init-x") (root "store") (config '(1 2 3))
+                   (record-name "00000001.cfg") (record '(4 5)) (extent 16) (genesis '(6 7))
+                   (secret '(8 9)) (ks nil) (outs nil) (groups nil) (capacity nil)
+                   (p *sil-bad-first*) (choices nil)))
+           (outcomes ((bs *sil-bs*) (stage "store.init-x") (root "store") (config '(1 2 3))
+                      (record-name "00000001.cfg") (record '(4 5)) (extent 16) (genesis '(6 7))
+                      (secret '(8 9)) (ks nil) (outs *sil-torn-outs*) (groups nil) (capacity nil)
+                      (p *sil-torn-last*) (choices nil)))
+           (reached ((bs *sil-bs*) (stage "store.init-x") (root "store") (config '(1 2 3))
+                     (record-name "00000001.cfg") (record '(4 5)) (extent 16) (genesis '(6 7))
+                     (secret '(8 9)) (ks nil) (outs nil) (groups nil) (capacity nil)
+                     (p *sil-foreign-p*) (choices nil))))
+  :mutations ((refuses-stage
+               (:conclusion
+                (let* ((img (fn-bs-crash (car p) choices))
+                       (stage-present (fn-bs-durable-entry img :parent stage))
+                       (root-present (fn-bs-durable-entry img :parent root))
+                       (admission (fn-bs-init-pub-admission
+                                   (and stage-present
+                                        (fn-bs-imp-classify stage-present root-present))
+                                   root-present nil)))
+                  (and (implies (not root-present)
+                                (member-equal admission '(:proceed)))
+                       (implies root-present
+                                (fn-bs-imp-completep img *fn-bs-init-log-subdirs*
+                                                     (fn-bs-init-log-files config record-name
+                                                                           record extent genesis secret)
+                                                     (fn-bs-next-ino bs))))))
+               ((bs *sil-bs*) (stage "store.init-x") (root "store") (config '(1 2 3))
+                (record-name "00000001.cfg") (record '(4 5)) (extent 16) (genesis '(6 7))
+                (secret '(8 9)) (ks nil) (outs nil) (groups nil) (capacity nil)
+                (p *sil-mid*) (choices *sil-apply-all*))
+               :fault "a retry that refuses an earlier init's unpublished stage until an operator removes it (the pre-PKT-894 :interrupted-init)")))
+
+(defteeth fn-bs-init-log-complete-store-carries-the-node-secret
+  :claim (((complete (fn-bs-imp-completep img *fn-bs-init-log-subdirs*
+                                          (fn-bs-init-log-files config record-name record extent genesis secret)
+                                          ino)))
+          (and (equal (fn-bs-durable-entry img :keys "node-secret.key") (+ 4 ino))
+               (equal (fn-bs-durable-content img (+ 4 ino)) secret)))
+  :subject fn-bs-init-log-subdir-names
+  :witness ((img (car *sil-last*)) (config '(1 2 3)) (record-name "00000001.cfg")
+            (record '(4 5)) (extent 16) (genesis '(6 7)) (secret '(8 9)) (ino 0))
+  :breaks ((complete ((img (car (car *sil-ps*))) (config '(1 2 3)) (record-name "00000001.cfg")
+                      (record '(4 5)) (extent 16) (genesis '(6 7)) (secret '(8 9)) (ino 0))))
+  :mutations ((secret-at-the-segment
+               (:conclusion (and (equal (fn-bs-durable-entry img :keys "node-secret.key") (+ 3 ino))
+                                 (equal (fn-bs-durable-content img (+ 3 ino)) secret)))
+               ((img (car *sil-last*)) (config '(1 2 3)) (record-name "00000001.cfg")
+                (record '(4 5)) (extent 16) (genesis '(6 7)) (secret '(8 9)) (ino 0))
+               :fault "a plan that writes the secret over the segment's slot, or omits it")))

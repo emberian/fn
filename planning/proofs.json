@@ -23309,9 +23309,9 @@
       "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-init-log-publication.lisp",
-        "tests/acl2/store-init-log-publication-tests.lisp (positive: every state of the run under the crash that keeps nothing pending and the one that keeps everything, :proceed at the first state, :discard-stage reached, the complete store with the secret at inode 4; hypothesis removal: ROOT present before the run fails the conclusion; the fixed nil: the same images with the stage held refuse :init-in-progress)",
-        "tests/test_native_init_publication.py (every INIT_PUB_CUTS cut, SIGKILL and EIO: the retry succeeds with no stage left, or the store is complete with keys/node-secret.key)",
-        "tools/power_loss.py check_init (block-level cuts in the init window)"
+        "tests/acl2/store-init-log-publication-tests.lisp",
+        "tests/test_native_init_publication.py",
+        "tools/power_loss.py"
       ],
       "events": [
         "fn-bs-init-log-crash-retry-is-old-or-new",
