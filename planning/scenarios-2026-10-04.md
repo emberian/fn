@@ -190,9 +190,9 @@ The run is lat1:/tank/fn/scratch/integrate-20261004/native-set-6107ceb56, which 
 | bp_service_native | 1F | S024: status=forwarded is the contract word. Green in batch 7 | w-bp (fixed) |
 | recovery | 1F | record-exceeds-log-frame (571b3cdbc) | m1-durable-2 |
 | log_compaction | 2F | record-exceeds-log-frame (571b3cdbc) | m1-durable-2 |
-| log_damage | 13F | `status` exits 0 on a damaged log (SCEN-STATUS-ACCEPTS-DAMAGE, red since b3) | unassigned (store open, m1/w-store) |
-| initializer_fidelity | 1F | `status` exits 0 on a misaligned segment (SCEN-STATUS-ACCEPTS-DAMAGE) | unassigned |
-| image_differential | 1F | `status` accepts a store whose checkpoint was deleted after compaction (SCEN-STATUS-ACCEPTS-DAMAGE) | unassigned |
+| log_damage | 13F | stale test contract: plain `status` reads the checkpoint header alone (row S3), so it exits 0 on a damaged log; the open's refusal is `status --replay`'s (SCEN-STATUS-ACCEPTS-DAMAGE, f751aac87) | scenarios-2 |
+| initializer_fidelity | 1F | the same, on a misaligned segment (`recover` already refused it by name) | scenarios-2 |
+| image_differential | 1F | the same, on a checkpoint deleted after compaction (the image needs the reference image; checked at the next batch) | scenarios-2 |
 | page_io | 3F | test_cancel_retire_and_reuse: it waits for a PAGE-IO line, but the window path emits DECODED-WINDOW. The test vocabulary predates the window executor (cold-start red 5). It costs its whole 382 s deadline | window-read lane (test contract) |
 | slow_disk | 1F 1E | 1F is a source assertion: `(fnn-owner-peer-read-class service)` is no longer in mux.lisp, so the test reads stale source. 1E: a graceful stop past the deadline (98 s) | window-read lane; w-serve (mux text) |
 | over_pins | 1E | test_a_large_article_drained_slowly: the socket read timed out at 300 s (fixture limits: cold-start red 3) | served-catalog-live (SCL2) |
