@@ -4591,3 +4591,7 @@ First slice: `books/output-tariff-article.lisp` admitted on the laptop (10 forms
 uncertified, unwired; the exact continuation is the numbered list in the coordinator lanedump
 (steps 1-7). Nothing certified, no image, no native run. The only owner-host.lisp region this lane
 touches is `fn-owner-output-tariff-preview` (:5512-5518), untouched so far.
+
+## retire lane (lane/retire) — 2026-10-04
+
+Entry: build/coordinator/lanedumps/retire.md (S9 fence READY at 947235f76, natives pending; fs-observe held on lane/fs-observe; continuation point).
