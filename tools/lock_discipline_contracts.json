@@ -536,6 +536,28 @@
    "why": "snapshot page lease: acquired under O+E, released in the unwind-protect cleanup or handed off (owner.lisp:4898-4917)"
   }
  },
+ "callback_contexts": {
+  "lambda@host/native/bp-node.lisp:fnn-bpnode-passive-begin#lambda2": {
+   "runs_in": "fnn-command-bp-node",
+   "why": "fnn-connection-scoped's word callback of a passive session; bp-node serve's single serialized loop (fnn-bp-session-loop, specs/bp-node-machine.md 9.1): the callback is stored in the session grant or bound for its turn and called only from that loop's turns, on the command's thread, inside its dynamic extent, holding no lock"
+  },
+  "lambda@host/native/bp-node.lisp:fnn-bpnode-passive-begin#lambda7": {
+   "runs_in": "fnn-command-bp-node",
+   "why": "fnn-tcl-begin's :session-admit callback (channel admission); bp-node serve's single serialized loop (fnn-bp-session-loop, specs/bp-node-machine.md 9.1): the callback is stored in the session grant or bound for its turn and called only from that loop's turns, on the command's thread, inside its dynamic extent, holding no lock"
+  },
+  "lambda@host/native/bp-node.lisp:fnn-bpnode-passive-begin#lambda8": {
+   "runs_in": "fnn-command-bp-node",
+   "why": "the grant's turn (fnn-bpsg-turn), funcalled by fnn-bp-session-loop; bp-node serve's single serialized loop (fnn-bp-session-loop, specs/bp-node-machine.md 9.1): the callback is stored in the session grant or bound for its turn and called only from that loop's turns, on the command's thread, inside its dynamic extent, holding no lock"
+  },
+  "lambda@host/native/bp-node.lisp:fnn-command-bp-node#lambda2": {
+   "runs_in": "fnn-command-bp-node",
+   "why": "*fnn-bpnode-control-pump*, let-bound by fnn-command-bp-node and funcalled by the node's own waits; bp-node serve's single serialized loop (fnn-bp-session-loop, specs/bp-node-machine.md 9.1): the callback is stored in the session grant or bound for its turn and called only from that loop's turns, on the command's thread, inside its dynamic extent, holding no lock"
+  },
+  "lambda@host/native/bp-app.lisp:fnn-command-bp-app-receive#lambda4": {
+   "runs_in": "fnn-command-bp-app-receive",
+   "why": "bp-app receive's *fnn-tcl-deliver* binding, called by fnn-tcl-session for one accepted connection; fnn-accept-loop runs each handler to completion on the command's thread (io.lisp), no lock held"
+  }
+ },
  "threads": {
   "fnn-log-writer-start": {
    "registry": null,

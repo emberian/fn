@@ -1440,7 +1440,9 @@ class Model:
             for e in info.events:
                 if e.kind == "call" and e.name in self.infos:
                     self.callers[e.name].append((name, e))
+        self.declare_callback_contexts()
         self.roots = self.find_roots()
+        self.check_callback_entries()
         self.entry_requirements = 0
         self.compute_blocking()
         self.compute_acquires()
@@ -1448,6 +1450,67 @@ class Model:
         self.compute_requirements()
         self.compute_actors()
         self.compute_mustheld()
+
+    def declare_callback_contexts(self) -> None:
+        """contracts `callback_contexts': {LAMBDA-ID: {"runs_in": ENTRY, "why"}}.
+
+        A stored callback (a lambda kept in a struct slot, a special binding or
+        a callee's state, and called later) is an async root because the walk
+        cannot name its caller.  The declaration names it: the callback runs
+        only on ENTRY's thread, inside ENTRY's dynamic extent, holding no lock
+        (a command's single serialized loop, specs/bp-node-machine.md 9.1).
+        It becomes a lock-free call edge ENTRY -> LAMBDA, so its requirements
+        are ENTRY's, as if ENTRY called it.  Checked here, refused otherwise:
+        the lambda exists at that lexical identity (an edit that renumbers it
+        re-declares it), ENTRY is reached only from startup or entry roots
+        (check_callback_entries), and the lambda's
+        lexical owner is reached from ENTRY by host calls (the callback is
+        created inside ENTRY's call tree).  It closes the analysis gap only:
+        that ENTRY never hands the callback to another thread is the declared
+        contract, not something this check proves."""
+        self.declared_callbacks: dict[str, str] = {}
+        analyzed = {info.path for info in self.infos.values()}
+        for lam, row in self.c.raw.get("callback_contexts", {}).items():
+            entry = row.get("runs_in")
+            if not row.get("why"):
+                raise ValueError(f"callback_contexts {lam}: no why")
+            if lam.removeprefix("lambda@").split(":", 1)[0] not in analyzed:
+                continue  # a run over other files (a fixture) does not see it
+            if lam not in self.infos:
+                raise ValueError(f"callback_contexts names {lam}, which the host does not have "
+                                 "(renumbered or removed: re-declare it from the current findings)")
+            if entry not in self.infos or entry.startswith("lambda@"):
+                raise ValueError(f"callback_contexts {lam}: runs_in {entry} is not a named host function")
+            owner = lam.split(":", 1)[1].split("#", 1)[0]
+            seen, todo = {entry}, [entry]
+            while todo:
+                for e in self.infos[todo.pop()].events:
+                    if e.kind in ("call", "async") and e.name in self.infos and e.name not in seen:
+                        seen.add(e.name)
+                        todo.append(e.name)
+            if owner not in seen:
+                raise ValueError(f"callback_contexts {lam}: its owner {owner} is not reached from {entry}")
+            edge = Event("call", lam, self.infos[lam].line, Ctx(), "declared-callback")
+            self.infos[entry].events.append(edge)
+            self.callers[lam].append((entry, edge))
+            self.declared_callbacks[lam] = entry
+
+    def check_callback_entries(self) -> None:
+        """A declared callback's ENTRY is reached only from startup or entry
+        roots (a command's own thread), never from a thread, serving or async
+        root, where "inside ENTRY's extent" would not be one thread."""
+        for lam, entry in self.declared_callbacks.items():
+            seen, todo = {entry}, [entry]
+            while todo:
+                name = todo.pop()
+                kind = self.roots.get(name)
+                if kind in ("thread", "serving", "async"):
+                    raise ValueError(f"callback_contexts {lam}: runs_in {entry} is reached from "
+                                     f"the {kind} root {name}")
+                for caller, _ in self.callers.get(name, []):
+                    if caller not in seen:
+                        seen.add(caller)
+                        todo.append(caller)
 
     # roots ---------------------------------------------------------------
     def find_roots(self) -> dict:
@@ -1459,7 +1522,7 @@ class Model:
                 roots[name] = "thread"
             elif name in serving:
                 roots[name] = "serving"
-            elif name.startswith("lambda@"):
+            elif name.startswith("lambda@") and name not in self.declared_callbacks:
                 roots[name] = "async"
             elif not self.callers.get(name):
                 roots[name] = "startup" if name in startup else "entry"
