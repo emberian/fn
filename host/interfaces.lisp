@@ -5672,8 +5672,8 @@
 (definterface fn-bpsp-held-projection :class :common-lisp-compliant)
 (definterface fn-bpsp-incoming-contended :class :common-lisp-compliant
   :keystones (fn-bpsp-free-incoming-slot-is-not-contention fn-bpsp-nobody-waiting-is-not-contention))
-(definterface fn-bpsp-passive-ms :class :common-lisp-compliant)
-(definterface fn-bpsp-stall-ms :class :common-lisp-compliant)
+(definterface fn-bpsp-passive-ms :class :common-lisp-compliant :kinds ((profile true-listp)))
+(definterface fn-bpsp-stall-ms :class :common-lisp-compliant :kinds ((profile true-listp)))
 (definterface fn-bpsp-read :class :common-lisp-compliant)
 (definterface fn-bpsp-read-bound :class :common-lisp-compliant)
 (definterface fn-bpsp-root-release-ready :class :common-lisp-compliant)
