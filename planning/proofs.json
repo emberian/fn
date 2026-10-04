@@ -23509,6 +23509,67 @@
         "fn-ak-carrier-parses",
         "fn-ak-carrier-parses-under"
       ]
+    },
+    {
+      "id": "PRF-1319",
+      "title": "The default peer flight profile init writes is a valid policy, decodes to itself, spools one whole batch, and init reserves its launch",
+      "statement": "books/peer-flight-default.lisp. fn-pfp-default-policy (the store profile VALUES -> six naturals: the least heap for 2 flights' bookkeeping and the fixed backing, 2 spools, 2 flights, 1 worker, a spool of the profile's record bound plus *fn-cu-request-quantum*, lifetime work 4 x the profile's history bound; every figure clamped). KEYSTONES: fn-pfd-default-is-a-policy (fn-pfr-policy-p for every VALUES); fn-pfp-read-of-write (the reader inverts the writer for every policy) and fn-pfd-default-decodes-to-itself; fn-pfd-default-spools-one-batch (spool >= record bound + quantum, for every VALUES: a valid profile's record bound is below the codec ceiling); fn-pfd-default-launches-where-its-extra-fits (a :heap base reservation plus (fn-pfd-launch-extra STACK) within the machine => fn-pfr-extend-reservation admits the default). The launch extra is 22 MiB at a 1 MiB stack (pfd-grow-tight bounds the nursery re-solve). fn-pfd-init-reserves-the-default-launch: an init held within this machine's budget through fn-pfd-init-decide (fn-heap-init-decide over LIMITS plus the machine less fn-pfd-launch-reserve) writes a store whose run reservation, extended by the default profile, is :heap on the same machine for any OBSERVED and K. Scope: the cold-read, page-read startup and output extensions the launcher also applies are not counted by init (as before); a --budget store for another machine is not covered. host/native/heap.lisp fnn-heap-init-decision calls fn-pfd-init-decide. Teeth: tests/acl2/peer-flight-default-tests.lisp (defteeth on every keystone).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-049"
+      ],
+      "depends_on": [
+        "PRF-1307"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "files": [
+        "books/peer-flight-default.lisp",
+        "tests/acl2/peer-flight-default-tests.lisp",
+        "books/store-init-log-publication.lisp",
+        "tests/acl2/store-init-log-publication-tests.lisp",
+        "host/native/io.lisp",
+        "host/native/heap.lisp"
+      ],
+      "events": [
+        "fn-pfd-default-is-a-policy",
+        "fn-pfp-read-of-write",
+        "fn-pfd-default-decodes-to-itself",
+        "fn-pfd-default-spools-one-batch",
+        "fn-pfd-default-launches-where-its-extra-fits",
+        "fn-bs-init-log-complete-store-carries-the-peer-flight-profile",
+        "fn-pfd-init-reserves-the-default-launch"
+      ],
+      "evidence": [
+        "tests/acl2/peer-flight-default-tests.lisp"
+      ]
+    },
+    {
+      "id": "PRF-1323",
+      "title": "peer catch-up NAME SECONDS with SECONDS > 0 is accepted exactly on a node whose observed peer flight profile is a policy, else refused by name",
+      "statement": "books/peer-flight-default.lisp. fn-pfp-catch-up-observes-p (an accepted :extend-peer plan with a nonzero catch-up-interval row) and fn-pfp-catch-up-admission (PLAN OBSERVED: the refusal :catch-up-unfunded when PLAN is observed and OBSERVED is not fn-pfr-policy-p, else PLAN). KEYSTONES: fn-pfp-catch-up-verb-accepted-only-funded (for every argv whose words are peer catch-up NAME SECONDS with SECONDS > 0 and whose fn-native-admin-plan is accepted: the admission is accepted iff OBSERVED is a policy, and refused :catch-up-unfunded otherwise; through fn-pfp-catch-up-verb-is-observed, the grammar's arm is an observed plan); fn-pfp-catch-up-admission-is-identity-elsewhere (an unobserved plan, including peer catch-up NAME 0, or any plan on a funded node, is returned unchanged). Host: host/native/operator.lisp fnn-operator-catch-up-admitted reads ROOT/peer-flight-profile (fnn-peer-flight-profile) only for an observed plan, before the live or offline executor, and refuses with fn-pfp-catch-up-refusal-line. Scope: the observation is the operator's read of the file; a live owner started without one keeps failing rounds peer-flight-unfunded until restart (the round-time reason stays). Teeth: tests/acl2/peer-flight-default-tests.lisp (defteeth on both).",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-053"
+      ],
+      "depends_on": [
+        "PRF-1319",
+        "PRF-325"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "files": [
+        "books/peer-flight-default.lisp",
+        "tests/acl2/peer-flight-default-tests.lisp",
+        "host/native/operator.lisp"
+      ],
+      "events": [
+        "fn-pfp-catch-up-verb-accepted-only-funded",
+        "fn-pfp-catch-up-admission-is-identity-elsewhere"
+      ],
+      "evidence": [
+        "tests/acl2/peer-flight-default-tests.lisp"
+      ]
     }
   ]
 }

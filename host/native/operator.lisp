@@ -381,6 +381,21 @@ dispatches here (`peer login', `account invite' too: sweep S104)."
         (funcall (fnn-olo-admin live) control-path argv liveness)
       (values (fnn-admin-execute root plan) nil))))
 
+(defun fnn-operator-catch-up-admitted (root plan)
+  "Catch-up out of the box (books/peer-flight-default.lisp
+fn-pfp-catch-up-admission): a plan that starts catch-up is admitted only on a
+node whose peer flight profile ACL2 accepts, else the verb refuses by name.
+The profile is read only for a plan ACL2 says observes it
+(fn-pfp-catch-up-observes-p), so a malformed file refuses no other verb; it
+refuses this one by its own line (fnn-peer-flight-profile)."
+  (if (fnn-core 'fn-pfp-catch-up-observes-p plan)
+      (let ((admitted (fnn-core 'fn-pfp-catch-up-admission plan
+                                (fnn-peer-flight-profile root))))
+        (unless (fnn-admin-plan-acceptedp admitted)
+          (fnn-refuse "~a" (fnn-core 'fn-pfp-catch-up-refusal-line)))
+        admitted)
+    plan))
+
 (defun fnn-operator-execute-admin (result)
   "Execute only the exact accepted ACL2 administrative plan."
   (let ((live-detail nil)
@@ -392,7 +407,8 @@ dispatches here (`peer login', `account invite' too: sweep S104)."
           (fnn-core 'fn-native-operator-host-result-admin-control-path-octets
                     result)))
     (handler-case
-        (let* ((queryp (fnn-core 'fn-native-admin-host-queryp plan))
+        (let* ((plan (fnn-operator-catch-up-admitted root plan))
+               (queryp (fnn-core 'fn-native-admin-host-queryp plan))
                (code
                  (progn
                   (cond

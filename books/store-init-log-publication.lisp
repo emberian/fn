@@ -15,6 +15,9 @@
 ;                                                           books/store-genesis)
 ;                   journal/000001.log                     (EXTENT zeros)
 ;                   keys/node-secret.key                   (SEC-006; PKT-894)
+;                   peer-flight-profile                    (the default peer
+;                                                           flight profile:
+;                                                           books/peer-flight-default)
 ;
 ; published by the import's program with init's cut names (the SAME steps
 ; and cuts as the import's program, fn-bs-imp-program's), so
@@ -48,22 +51,27 @@
 ; The segment's name is the log route's (books/store-log-route.lisp).
 (defmacro fn-bs-init-log-segment-name () '(fn-olr-segment-name))
 
-; The node secret (SEC-006) is the plan's last file (PKT-894): the store an
+; The node secret (SEC-006) is the plan's fifth file (PKT-894): the store an
 ; init publishes carries keys/node-secret.key, so no death after the
 ; publication leaves a store that `run' refuses until a repair verb.
-(defun fn-bs-init-log-files (config record-name record extent genesis secret)
+; The default peer flight profile (books/peer-flight-default.lisp
+; fn-pfp-default-octets of the store profile; its name is fn-pfp-file-name)
+; is the plan's sixth file (catch-up out of the box): published with the
+; store, never after it.
+(defun fn-bs-init-log-files (config record-name record extent genesis secret peer)
   (declare (xargs :guard t :verify-guards nil))
   (list (list* :stage "config.json" config)
         (list* :config record-name record)
         (list* :journal "000000.log" genesis)
         (list* :journal (fn-bs-init-log-segment-name) (fn-bs-zeros extent))
-        (list* :keys "node-secret.key" secret)))
+        (list* :keys "node-secret.key" secret)
+        (list* :stage "peer-flight-profile" peer)))
 
-(defun fn-bs-init-log-program (stage root config record-name record extent genesis secret)
+(defun fn-bs-init-log-program (stage root config record-name record extent genesis secret peer)
   (declare (xargs :guard t :verify-guards nil))
   (fn-bs-init-pub-rename-cuts
    (fn-bs-imp-program stage root *fn-bs-init-log-subdirs*
-                      (fn-bs-init-log-files config record-name record extent genesis secret))))
+                      (fn-bs-init-log-files config record-name record extent genesis secret peer))))
 
 ; -----------------------------------------------------------------------------
 ; The program is the import's, its cuts renamed: a cut changes no state.
@@ -89,31 +97,31 @@
 
 (defthm fn-bs-init-log-program-crash-is-no-store-or-the-complete-empty-log
   (implies (and (fn-bs-imp-inputp bs stage root *fn-bs-init-log-subdirs*
-                                  (fn-bs-init-log-files config record-name record extent genesis secret)
+                                  (fn-bs-init-log-files config record-name record extent genesis secret peer)
                                   old)
                 (fn-bs-imp-outcomesp outs)
                 (member-equal p (fn-bs-imp-run bs ks
                                                (fn-bs-init-log-program stage root config
-                                                                       record-name record extent genesis secret)
+                                                                       record-name record extent genesis secret peer)
                                                outs groups capacity)))
            (fn-bs-imp-no-store-or-completep
             (fn-bs-crash (car p) choices) root *fn-bs-init-log-subdirs*
-            (fn-bs-init-log-files config record-name record extent genesis secret)
+            (fn-bs-init-log-files config record-name record extent genesis secret peer)
             (fn-bs-next-ino bs) old))
   :hints (("Goal" :do-not-induct t
            :in-theory '(fn-bs-init-log-program fn-bs-init-log-run-of-renamed-cuts)
            :use ((:instance fn-bs-imp-program-crash-is-no-store-or-the-complete-store
                             (subdirs *fn-bs-init-log-subdirs*)
-                            (files (fn-bs-init-log-files config record-name record extent genesis secret)))))))
+                            (files (fn-bs-init-log-files config record-name record extent genesis secret peer)))))))
 
 (defthm fn-bs-init-log-classify-by-what-is-known
   (implies (and (fn-bs-imp-inputp bs stage root *fn-bs-init-log-subdirs*
-                                  (fn-bs-init-log-files config record-name record extent genesis secret)
+                                  (fn-bs-init-log-files config record-name record extent genesis secret peer)
                                   nil)
                 (fn-bs-imp-outcomesp outs)
                 (member-equal p (fn-bs-imp-run bs ks
                                                (fn-bs-init-log-program stage root config
-                                                                       record-name record extent genesis secret)
+                                                                       record-name record extent genesis secret peer)
                                                outs groups capacity)))
            (let* ((img (fn-bs-crash (car p) choices))
                   (verdict (fn-bs-imp-classify (fn-bs-durable-entry img :parent stage)
@@ -124,13 +132,13 @@
                            (and (equal (fn-bs-durable-entry img :parent root) :stage)
                                 (fn-bs-imp-completep img *fn-bs-init-log-subdirs*
                                                      (fn-bs-init-log-files config record-name
-                                                                           record extent genesis secret)
+                                                                           record extent genesis secret peer)
                                                      (fn-bs-next-ino bs)))))))
   :hints (("Goal" :do-not-induct t
            :in-theory '(fn-bs-init-log-program fn-bs-init-log-run-of-renamed-cuts)
            :use ((:instance fn-bs-imp-classify-by-what-is-known
                             (subdirs *fn-bs-init-log-subdirs*)
-                            (files (fn-bs-init-log-files config record-name record extent genesis secret)))))))
+                            (files (fn-bs-init-log-files config record-name record extent genesis secret peer)))))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE (PRF-1040, PKT-894).  Init is old-or-new at every cut: after a
@@ -144,12 +152,12 @@
 ; while ROOT is absent.
 (defthm fn-bs-init-log-crash-retry-is-old-or-new
   (implies (and (fn-bs-imp-inputp bs stage root *fn-bs-init-log-subdirs*
-                                  (fn-bs-init-log-files config record-name record extent genesis secret)
+                                  (fn-bs-init-log-files config record-name record extent genesis secret peer)
                                   nil)
                 (fn-bs-imp-outcomesp outs)
                 (member-equal p (fn-bs-imp-run bs ks
                                                (fn-bs-init-log-program stage root config
-                                                                       record-name record extent genesis secret)
+                                                                       record-name record extent genesis secret peer)
                                                outs groups capacity)))
            (let* ((img (fn-bs-crash (car p) choices))
                   (stage-present (fn-bs-durable-entry img :parent stage))
@@ -163,7 +171,7 @@
                   (implies root-present
                            (fn-bs-imp-completep img *fn-bs-init-log-subdirs*
                                                 (fn-bs-init-log-files config record-name
-                                                                      record extent genesis secret)
+                                                                      record extent genesis secret peer)
                                                 (fn-bs-next-ino bs))))))
   :hints (("Goal" :do-not-induct t
            :in-theory '(fn-bs-init-pub-admission fn-bs-imp-classify member-equal
@@ -175,25 +183,38 @@
 ; EXTENT zeros.
 (defthm fn-bs-init-log-complete-segment-is-zeros
   (implies (fn-bs-imp-completep img *fn-bs-init-log-subdirs*
-                                (fn-bs-init-log-files config record-name record extent genesis secret) ino)
+                                (fn-bs-init-log-files config record-name record extent genesis secret peer) ino)
            (and (equal (fn-bs-durable-entry img :journal "000000.log") (+ 2 ino))
                 (equal (fn-bs-durable-content img (+ 2 ino)) genesis)
                 (equal (fn-bs-durable-entry img :journal (fn-bs-init-log-segment-name)) (+ 3 ino))
                 (equal (fn-bs-durable-content img (+ 3 ino)) (fn-bs-zeros extent))))
   :hints (("Goal" :in-theory (enable fn-bs-imp-completep fn-bs-imp-files-completep
                                      fn-bs-init-log-files)
-           :expand ((fn-bs-imp-files-completep img (fn-bs-init-log-files config record-name record extent genesis secret) ino)))))
+           :expand ((fn-bs-imp-files-completep img (fn-bs-init-log-files config record-name record extent genesis secret peer) ino)))))
 
 ; ... and the node secret (the fifth, INO + 4) exactly its octets, under
 ; keys/ (PKT-894).
 (defthm fn-bs-init-log-complete-store-carries-the-node-secret
   (implies (fn-bs-imp-completep img *fn-bs-init-log-subdirs*
-                                (fn-bs-init-log-files config record-name record extent genesis secret) ino)
+                                (fn-bs-init-log-files config record-name record extent genesis secret peer) ino)
            (and (equal (fn-bs-durable-entry img :keys "node-secret.key") (+ 4 ino))
                 (equal (fn-bs-durable-content img (+ 4 ino)) secret)))
   :hints (("Goal" :in-theory (enable fn-bs-imp-completep fn-bs-imp-files-completep
                                      fn-bs-init-log-files)
-           :expand ((fn-bs-imp-files-completep img (fn-bs-init-log-files config record-name record extent genesis secret) ino)))))
+           :expand ((fn-bs-imp-files-completep img (fn-bs-init-log-files config record-name record extent genesis secret peer) ino)))))
+
+; KEYSTONE (catch-up out of the box): the complete store carries the
+; default peer flight profile -- the sixth file, INO + 5, exactly PEER, at
+; the store root (fn-pfp-file-name), where the launcher and the pull service
+; read it (host/native/heap.lisp fnn-peer-flight-profile).
+(defthm fn-bs-init-log-complete-store-carries-the-peer-flight-profile
+  (implies (fn-bs-imp-completep img *fn-bs-init-log-subdirs*
+                                (fn-bs-init-log-files config record-name record extent genesis secret peer) ino)
+           (and (equal (fn-bs-durable-entry img :stage "peer-flight-profile") (+ 5 ino))
+                (equal (fn-bs-durable-content img (+ 5 ino)) peer)))
+  :hints (("Goal" :in-theory (enable fn-bs-imp-completep fn-bs-imp-files-completep
+                                     fn-bs-init-log-files)
+           :expand ((fn-bs-imp-files-completep img (fn-bs-init-log-files config record-name record extent genesis secret peer) ino)))))
 
 ; The empty log: recovery's kernel of EXTENT zeros (the host's open,
 ; fn-lg-open-kernel = fn-lgt-recover) holds no record at frontier 0, and R's

@@ -1,0 +1,14 @@
+{
+ "category": "proof-owed",
+ "file": "books/heap-reservation.lisp",
+ "id": "PEER-OWED-INIT-RESERVES-LAUNCH-EXTRA",
+ "notes": [
+  "10-04 13:54 2b.1 tightened fn-pfd-launch-extra to 22 MiB (52becc212); 2b.2: init decides through fn-pfd-init-decide (books/peer-flight-default.lisp), which judges the store against the machine less fn-pfd-launch-reserve. KEYSTONE fn-pfd-init-reserves-the-default-launch (held init => the run's reservation extended by the default profile is :heap on the same machine, any OBSERVED and K), with defteeth (mutation: the old init writes the 64 MiB rung at an edge limit whose launch is refused). Scope: cold-read/page-read startup/output extensions are not counted by init (unchanged by this step); a --budget store for another machine (HELDP nil) is not covered."
+ ],
+ "owner": "peer-default",
+ "severity": "high",
+ "source": "lanedumps/catchup2.md",
+ "state": "ready",
+ "title": "Catch-up out of the box, step 2b (lane peer-default): init now publishes the default peer flight profile, so every launch takes the peer extension (fn-pfr-extend-reservation). books/peer-flight-default.lisp proves the sufficient condition (fn-pfd-default-launches-where-its-extra-fits: base run reservation + fn-pfd-launch-extra within the machine => admitted), but init's acceptance (books/heap-reservation.lisp fn-heap-reserve-acceptsp / fn-heap-reserve-init-choose) still judges the base run alone. Owed: make init's acceptance require base + fn-pfd-launch-extra, and restate fn-heap-init-accepted-store-always-reopens to conclude the extended launch is :heap. Until then a store init sizes to the edge of its machine can refuse to start (machine-cannot-hold-threads). Tighten fn-pfd-launch-extra (its nursery term is ~128 MiB of slack) before doing so.",
+ "updated": "2026-10-04T17:54:37Z"
+}
