@@ -2828,15 +2828,25 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
              (values :ok (nreverse frames)))
         (fnn-close fd)))))
 
+(defvar *fnn-checkpoint-load-io-error* nil
+  "The OS error the last fnn-state-checkpoint-load met reading the file, or
+NIL: a read that failed is not a file that failed to verify
+(fnn-log-open-plan-check).")
+
 (defun fnn-state-checkpoint-load (store)
   "Decode the checkpoint into ACL2's global: (values STATUS S) with STATUS
 :absent, :refused, :exceeds-bound, :schema (a file of another schema, D34:
 the journal replays, `status' says reason=checkpoint-schema), :arena (a file
 without the arena run: reason=checkpoint-arena) or :ok, the vocabulary of
-fn-scka-select-named."
+fn-scka-select-named.  A read that fails is :refused (the full replay, when
+the log still holds the history, is authoritative) and its OS error is kept
+in *fnn-checkpoint-load-io-error*."
+  (setq *fnn-checkpoint-load-io-error* nil)
   (multiple-value-bind (status value)
       (handler-case (fnn-state-checkpoint-plan store)
-        (fnn-os-error () (values :refused :io)))
+        (fnn-os-error (e)
+          (setq *fnn-checkpoint-load-io-error* e)
+          (values :refused :io)))
     (case status
       (:absent (fnn-core-state 'fn-store-sco-clear) (values :absent 0))
       (:refused (fnn-core-state 'fn-store-sco-clear)
@@ -8570,6 +8580,27 @@ and last trailer must be the kernel's, or the read is a fault."
              (fnn-fault "the active log segment does not read back its committed records")))
       (fnn-close fd))))
 
+(defun fnn-log-open-plan-check (store plan log-position)
+  "Act on a refused open PLAN (books/store-log-segments.lisp fn-lgs-open-plan)
+before anything is scanned: no segment and no checkpoint is an init that
+did not finish (init again completes it); a refusal is the open's, by name.
+Except: when the checkpoint could not be READ (an OS error,
+*fnn-checkpoint-load-io-error*) the plan's checkpoint-damaged is a guess
+from a failed observation, not a verdict on the file -- the open stops as
+the read's fault, naming the error, never as a refusal that tells the
+operator the checkpoint is damaged (it may read whole on the next try)."
+  (when (equal plan '(:refused :no-segment))
+    (fnn-fault "missing store directory: ~a has no log segment (an init that did not finish: run init again)"
+               (fnn-journal-dir store)))
+  (when (eq (first plan) :refused)
+    (when (and *fnn-checkpoint-load-io-error* (null log-position)
+               (equal plan '(:refused :checkpoint-damaged)))
+      (fnn-fault "cannot read the state checkpoint, which covers the dropped log segments: ~a (not a verdict on the file; nothing was written)"
+                 *fnn-checkpoint-load-io-error*))
+    (error 'fnn-store-open-refusal
+           :message (format nil "open refused reason=~(~a~): the log's segments do not hold the history~@[ from segment ~d~]"
+                            (second plan) (first log-position)))))
+
 (defun fnn-recover-log-from-log-checkpoint (store config-records suffix s &optional (interned nil internedp))
   "The open from a checkpoint whose F row names the log's first suffix
 segment: SUFFIX is the scan from there (T8: with the checkpoint's records it
@@ -8626,15 +8657,7 @@ does, and records how the log holds the history (fnn-store-log-history) for
                                  (first log-position))))
             (unless (and (consp plan) (member (first plan) '(:scan :refused)))
               (fnn-fault "ACL2 returned a malformed log open plan"))
-            ;; No segment and no checkpoint: an init that did not finish
-            ;; (the segment is its last step); init again completes it.
-            (when (equal plan '(:refused :no-segment))
-              (fnn-fault "missing store directory: ~a has no log segment (an init that did not finish: run init again)"
-                         (fnn-journal-dir store)))
-            (when (eq (first plan) :refused)
-              (error 'fnn-store-open-refusal
-                     :message (format nil "open refused reason=~(~a~): the log's segments do not hold the history~@[ from segment ~d~]"
-                                      (second plan) (first log-position))))
+            (fnn-log-open-plan-check store plan log-position)
             (setq drop (third plan))
             ;; The records arrive one at a time (fnn-log-scan-segments), each
             ;; folded into the next txid (one past the largest txid of every
@@ -9196,13 +9219,7 @@ segment' (tests/test_native_topic_local.py)."
                              (first log-position))))
         (unless (and (consp plan) (member (first plan) '(:scan :refused)))
           (fnn-fault "ACL2 returned a malformed log open plan"))
-        (when (equal plan '(:refused :no-segment))
-          (fnn-fault "missing store directory: ~a has no log segment (an init that did not finish: run init again)"
-                     (fnn-journal-dir store)))
-        (when (eq (first plan) :refused)
-          (error 'fnn-store-open-refusal
-                 :message (format nil "open refused reason=~(~a~): the log's segments do not hold the history~@[ from segment ~d~]"
-                                  (second plan) (first log-position))))
+        (fnn-log-open-plan-check store plan log-position)
         (let ((genesis (if log-position (second log-position) chain))
               (base (if (eq status :ok) (fnn-nat s) 0)))
           (loop for (k . more) on (second plan) do
