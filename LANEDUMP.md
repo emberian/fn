@@ -4591,3 +4591,12 @@ First slice: `books/output-tariff-article.lisp` admitted on the laptop (10 forms
 uncertified, unwired; the exact continuation is the numbered list in the coordinator lanedump
 (steps 1-7). Nothing certified, no image, no native run. The only owner-host.lisp region this lane
 touches is `fn-owner-output-tariff-preview` (:5512-5518), untouched so far.
+
+## raw-dispatch lane (Opus), 2026-10-04
+The full entry is `build/coordinator/lanedumps/raw-dispatch.md`.
+- Landed on `lane/raw-dispatch`:
+  - `c2fd7526e`: the D40 image trap (`host/native/raw-trap.lisp`, per-thread extent, no lock or allocation per call), the owed list at 358, interface_kinds, raw_dispatch_rule.
+  - `2d5586549`: the image test.
+  - `d1d54bdd0`: merge of next@b7624961f.
+- Open: the trap's native run and the POST ms at 1k/10k/100k. Both wait on the first image set built from a source containing post-guard-off's raw rows; the owed list is judged by the same build's `fnn-install-raw-dispatch`.
+- Continuation: the lanedump's last section.
