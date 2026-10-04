@@ -1996,6 +1996,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-plan-cursor \
 	books/output-command-admission \
 	tests/acl2/output-command-admission-tests \
+	books/output-tariff-article \
+	tests/acl2/output-tariff-article-tests \
 	books/string-line-fill \
 	books/served-plan-line-buffer \
 	books/served-query-plan \
