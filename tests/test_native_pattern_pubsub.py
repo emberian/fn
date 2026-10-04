@@ -13,8 +13,9 @@ for another payload is refused by name.
 
 Red before: the image has no `pattern' verb.
 
-Opt-in: FN_RUN_PATTERN_PUBSUB=1 and FN_NATIVE_HOST naming a source-matched
-image; OpenSSL 3.5 for ML-DSA-65 (FN_TEST_OPENSSL).
+Opt-in: FN_RUN_HYBRID_E2E=1 (the hybrid-signature saved-image gate this
+rides on; hbox_native.sh sets it) and FN_NATIVE_HOST naming a
+source-matched image; OpenSSL 3.5 for ML-DSA-65 (FN_TEST_OPENSSL).
 """
 import os
 from pathlib import Path
@@ -31,8 +32,8 @@ FROM = "pub <pub@example.invalid>"
 PAYLOADS = [b"", b"hello", bytes(range(114))]
 
 
-@unittest.skipUnless(os.environ.get("FN_RUN_PATTERN_PUBSUB") == "1",
-                     "set FN_RUN_PATTERN_PUBSUB=1 and a source-matched FN_NATIVE_HOST")
+@unittest.skipUnless(os.environ.get("FN_RUN_HYBRID_E2E") == "1",
+                     "set FN_RUN_HYBRID_E2E=1 and a source-matched FN_NATIVE_HOST")
 @requires(IMAGE)
 class NativePatternPubSubTest(unittest.TestCase):
     def setUp(self):
