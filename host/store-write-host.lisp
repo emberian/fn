@@ -1091,7 +1091,7 @@
                                 (mv-let (r store replay fn-octets-lg fn-arena)
                                   (fn-xw-scan (fn-xw-put store :lz-tally nil) (cadr plan) (cadr genesis)
                                               (fn-store-log-unit)
-                                              (fn-store-profile-max-record-octets (fn-xw-get store :config))
+                                              (fn-lgu-log-max (fn-store-profile-max-record-octets (fn-xw-get store :config)))
                                               replay fn-octets-lg fn-arena)
                                   (if (not (fn-xw-okp r)) (mv r store fn-octets-lg fn-arena state)
                                     (mv-let (f replay fn-arena) (fn-xw-replay-flush replay fn-arena)

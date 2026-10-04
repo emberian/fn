@@ -26,9 +26,10 @@
 (include-book "../books/tcpcl-delivery-invariants")
 (include-book "../books/resource-syncer")
 (include-book "../books/response-identity")
-; Lane m1-durable: the log kernel's acknowledgement (fn-lgc-finish-one) and
-; its keystone, that every acknowledged record is recovered at every cut of
-; the host's run of the active segment.
+; Lane m1-durable: the log kernel's acknowledgement (fn-lgu-acknowledge, the
+; fold of fn-lgc-finish-one the host calls once) and its keystone, that every
+; acknowledged record is recovered from every crash image of the host's run
+; of the active segment; the log's frame bound (fn-lgu-log-max).
 (include-book "../books/store-log-durable")
 
 ; A private owner syncer ledger is installed only after the parent's real
@@ -517,11 +518,14 @@
   :class :common-lisp-compliant
   :keystones (fn-lgu-take-verdict-admits-exactly-log-records))
 
-(definterface fn-lgc-finish-one
+(definterface fn-lgu-log-max
   :class :common-lisp-compliant
-  :kinds ((c true-listp))
-  :keystones ((fn-lgu-host-kernel-acknowledges-only-recoverable-records
-               :step-of fn-lgc-host-run)))
+  :keystones (fn-lgu-log-max-frames-every-record-within-r))
+
+(definterface fn-lgu-acknowledge
+  :class :common-lisp-compliant
+  :kinds ((c true-listp) (n natp))
+  :keystones (fn-lgu-acknowledge-acknowledges-only-recoverable-records))
 
 (definterface fn-lgc-frontier
   :class :common-lisp-compliant

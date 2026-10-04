@@ -7879,11 +7879,13 @@ serialized run fn-lgc-run-refines-the-kernel speaks of."
   (fnn-log-at :log-fenced))
 
 (defun fnn-log-finish (log count)
-  "Acknowledge COUNT members in order (fn-lgc-finish-one; the kernel never
-acknowledges past the committed records' count)."
+  "Acknowledge COUNT members in order: one ACL2 call, fn-lgu-acknowledge (the
+fold of COUNT fn-lgc-finish-one; the kernel never acknowledges past the
+committed records' count; books/store-log-durable.lisp KEYSTONE
+fn-lgu-acknowledge-acknowledges-only-recoverable-records)."
   (fnn-log-with-kernel (log)
-    (dotimes (i count)
-      (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-finish-one (fnn-log-kernel log))))))
+    (setf (fnn-log-kernel log)
+          (fnn-core 'fn-lgu-acknowledge (fnn-log-kernel log) (fnn-nat count)))))
 
 (defun fnn-log-rig-line (what log size &optional (base 0))
   ;; Not `fnn-log-line': that is the service log's one-argument writer
@@ -7949,7 +7951,11 @@ one ack window, kernel-concrete-2's first rig run)."
 (defun fnn-store-log-unit () (fnn-nat (fnn-core 'fn-store-log-unit)))
 
 (defun fnn-store-log-max (store)
-  (fnn-nat (fnn-core 'fn-store-profile-max-record-octets (fnn-store-config store))))
+  "The log's frame bound: R + 32 (books/store-log-durable.lisp fn-lgu-log-max;
+fn-lgu-log-max-frames-every-record-within-r: every record the profile admits
+is framed)."
+  (fnn-nat (fnn-core 'fn-lgu-log-max
+                     (fnn-core 'fn-store-profile-max-record-octets (fnn-store-config store)))))
 
 (defun fnn-log-observed-extent (path)
   "The segment's size (the extent the recovery zeroes to).  Not a positive
@@ -8897,7 +8903,7 @@ bound (fn-lgu-take-verdict): refuses by name when it cannot."
     (case verdict
       (:admissible :admissible)
       (:record-exceeds-log-frame
-       (fnn-refuse "prepared Store transaction refused reason=record-exceeds-log-frame (its log entry would pass the profile's max_record_octets)"))
+       (fnn-refuse "prepared Store transaction refused reason=record-exceeds-log-frame (the record passes the profile's max_record_octets)"))
       (t (fnn-fault "ACL2 returned an invalid take verdict ~a" verdict)))))
 
 (defun fnn-log-take (store record)
@@ -9027,7 +9033,8 @@ acknowledged.  The stage is unpublished throughout: a death here leaves
 ROOT.import-XXXX, never a store at ROOT (fn-bs-imp-classify)."
   (let* ((path (fnn-segment-path store))
          (log (fnn-log-recover path (fnn-log-observed-extent path) (fnn-store-log-unit)
-                               (fnn-nat (fnn-core 'fn-store-profile-max-record-octets values))
+                               (fnn-nat (fnn-core 'fn-lgu-log-max
+                                                  (fnn-core 'fn-store-profile-max-record-octets values)))
                                ;; format 10: segment 1 chains from the stage's genesis
                                (fnn-genesis-open store values))))
     (setf (fnn-store-log store) log
