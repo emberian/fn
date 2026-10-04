@@ -2194,6 +2194,36 @@
 (definterface fn-tlsr-host-request-encode
   :class ::program)
 
+(definterface fn-tlsk-host-decide :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-health-client-line :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-hybrid-list :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-kx-line :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-plan :class :common-lisp-compliant :kinds ((octets fn-cbor-octet-listp)))
+
+(definterface fn-tlsk-host-plan-policy :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-plan-refusal :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-refusal-line :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-serve-groups :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-serve-mode :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-servep :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-session-line :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-status-lines :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-tally-bump :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-zero-tally :class :common-lisp-compliant)
+
 (definterface fn-tlsr-host-start-decide
   :class ::program)
 
