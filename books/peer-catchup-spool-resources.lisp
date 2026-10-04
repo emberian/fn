@@ -27,3 +27,14 @@
   (declare (xargs :stobjs fn-resource-ledger :guard (fn-rl-wfp fn-resource-ledger)))
   (fn-csp-bank-idle-from 2 fn-resource-ledger))
 
+
+; The spool allowance one drawn flight lease carries (policy field 4, below
+; 2^63 by fn-pfr-policy-p): the LIMIT fn-csp-begin admits writes against.
+(defun fn-csp-flight-spool (policy)
+  (declare (xargs :guard t))
+  (if (fn-pfr-policy-p policy) (fn-pfr-at 4 policy) nil))
+
+; The hash cursor's lease identity: the exact flight slot and generation.
+(defun fn-csp-hash-lease (slot generation)
+  (declare (xargs :guard t))
+  (list slot generation))

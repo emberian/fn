@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/peer-catchup-spool-hash.lisp",
+ "id": "CSP-OWED-SPOOL-DIGEST",
+ "notes": [],
+ "owner": "catchup",
+ "severity": "medium",
+ "slice": "peer-services",
+ "source": "catchup",
+ "state": "open",
+ "title": "Catch-up digest correspondence owed: the ACL2 hash cursor fn-csp-hash-begin/action/read/tick over 64-octet spool reads yields fn-blake3 of the spooled record body, and the receive framer's emission over a record (fn-csp-framer-emit) equals the article octets fn-cu-chain-step hashes, so the requester's chain is the peer's fn-cu-chain-over. Test vectors only today (tests/acl2/peer-catchup-spool-hash-tests.lisp).",
+ "updated": "2026-10-04T04:01:41Z"
+}

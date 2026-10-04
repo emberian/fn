@@ -1879,12 +1879,22 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-carriage-tests \
 	books/peer-pull \
 	tests/acl2/peer-pull-tests \
+	books/peer-pull-auth \
+	tests/acl2/peer-pull-auth-tests \
+	tests/acl2/native-admin-peer-pull-auth-tests \
+	tests/acl2/native-admin-pull-auth-tests \
 	books/peer-pull-session \
 	tests/acl2/peer-pull-session-tests \
 	books/peer-catchup-serve \
 	books/peer-catchup-effects \
 	books/peer-catchup \
 	tests/acl2/peer-catchup-tests \
+	books/peer-catchup-spool-framer \
+	books/peer-catchup-spool-hash \
+	books/peer-catchup-spool \
+	tests/acl2/peer-catchup-spool-framer-tests \
+	tests/acl2/peer-catchup-spool-hash-tests \
+	tests/acl2/peer-catchup-spool-tests \
 	books/peer-round-driver \
 	tests/acl2/peer-round-driver-tests \
 	books/protocol-table \

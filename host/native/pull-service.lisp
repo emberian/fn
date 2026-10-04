@@ -47,7 +47,11 @@
   ;; the worker's already attempted cleanup from the close hook.
   (cleanup-debt nil) (cleanup-stage nil)
   ;; PRF-325: the catch-up rounds' own schedule, cursors and FNCU journals.
-  (cu-schedule nil) (cu-cursors nil) (cu-journals nil))
+  (cu-schedule nil) (cu-cursors nil) (cu-journals nil)
+  ;; Catch-up flight leases whose spool worker has been stopped but not yet
+  ;; joined: settled only after the actual thread is dead (never twice).
+  ;; Owned by the pull worker thread alone (finish, sweep and cleanup).
+  (settling nil))
 
 (defparameter *fnn-pull-runtime-lock* (sb-thread:make-mutex :name "fn pull runtimes"))
 ;; guarded-by: *fnn-pull-runtime-lock*
@@ -308,21 +312,6 @@ acceptance (the owner is stopping or fenced then)."
                                   (make-condition 'fnn-feed-auth-error)))
           nil)))))
 
-(defun fnn-pull-round (runtime plan journal cursor &optional (kind :pull))
-  "Blocking compatibility adapter; the worker uses retained flights directly."
-  (let ((flight (fnn-pull-flight-begin runtime plan journal cursor kind)) (primary nil))
-    (handler-bind ((serious-condition (lambda (condition) (unless primary (setq primary condition)))))
-      (unwind-protect
-           (progn
-             (loop until (or (fnn-pull-stoppingp runtime)
-                             (eq (fnn-pull-flight-step flight) :finished)) do
-               (sleep (/ (fnn-core 'fn-prd-idle-ms) 1000)))
-             (fnn-pull-flight-finish flight)
-             (fnn-core (if (eq kind :catch-up) 'fn-cu-session-close 'fn-pull-session-close)
-                       (fnn-pull-flight-session flight)))
-        (if primary (ignore-errors (fnn-pull-flight-dispose flight))
-          (fnn-pull-flight-dispose flight))))))
-
 ;;; ---------------------------------------------------------------------------
 ;;; The worker
 
@@ -383,38 +372,18 @@ acceptance (the owner is stopping or fenced then)."
           (serious-condition (condition) (unless failure (setq failure condition)))))
       (when failure (error failure)))))
 
-;;; PRF-325: one due catch-up round, scheduled exactly as a pull
-;;; (fn-pull-schedule and fn-sched-pull-* over the catch-up plans, which are
-;;; pull plans with the catch-up interval) but on its own table.
-(defun fnn-catchup-tick (runtime)
-  (let* ((service (fnn-pull-runtime-service runtime))
-         (plans (fnn-owner-transit-serialized
-                 service nil (lambda () (fnn-owner-core 'fn-owner-catchup-plans))))
-         (now (fnn-pull-monotonic)))
-    (fnn-pull-prune-journals runtime plans :catch-up)
-    (setf (fnn-pull-runtime-cu-schedule runtime)
-          (fnn-core 'fn-pull-schedule plans now (fnn-pull-runtime-cu-schedule runtime)))
-    (let ((peer (fnn-core 'fn-sched-pull-due (fnn-pull-runtime-cu-schedule runtime) now)))
-      (when peer
-        (let ((plan (fnn-core 'fn-pull-plan-for peer plans)))
-          (setf (fnn-pull-runtime-cu-schedule runtime)
-                (fnn-core 'fn-sched-pull-start peer (fnn-pull-runtime-cu-schedule runtime)))
-          (multiple-value-bind (journal cursor) (fnn-catchup-cursor-for runtime plan)
-            (let ((closed (fnn-pull-round runtime plan journal cursor :catch-up))
-                  (key (fnn-pull-peer-string peer)))
-              (setf (cdr (assoc key (fnn-pull-runtime-cu-cursors runtime) :test #'string=))
-                    closed)))
-          (setf (fnn-pull-runtime-cu-schedule runtime)
-                (fnn-core 'fn-sched-pull-finish peer (fnn-pull-monotonic)
-                          (fnn-pull-runtime-cu-schedule runtime))))))))
-
 ;;; A worker owns these continuations. Callback threads publish only a cell
 ;;; under the runtime mutex; they never call the owner while holding it.
 (defstruct (fnn-pull-flight (:constructor %make-fnn-pull-flight))
   runtime plan journal kind key peer session effects events why
   socket fd context channel tls-name io deadline data (offset 0) end
   cid input cold cold-word await completion render cursor-cold-since parts closing resume-at
-  (closed nil))
+  (closed nil)
+  ;; Catch-up only (books/peer-catchup-spool.lisp): the bank lease, its spool
+  ;; worker, the private digest cursor and the one outstanding spool operation.
+  lease worker hash hash-total hash-base spool-op
+  ;; S054/S067: the round's ACL2 deadline (fn-prd-round-deadline).
+  round-deadline)
 
 (defun fnn-pull-flight-event (flight event)
   (setf (fnn-pull-flight-events flight)
@@ -474,20 +443,49 @@ acceptance (the owner is stopping or fenced then)."
         (fnn-pull-flight-set-socket flight nil))
       (when failure (error failure)))))
 
+;;; A catch-up flight draws its independent bank lease before the session
+;;; exists; ACL2 names the spool allowance and refuses a round without one.
+(defun fnn-pull-flight-catchup-lease (runtime)
+  (let ((bank (fnn-owner-service-peer-flight-bank (fnn-pull-runtime-service runtime))))
+    (when bank
+      (let ((lease (fnn-peer-flight-draw bank)))
+        (when lease
+          (values lease (fnn-core 'fn-csp-flight-spool (fnn-peer-flight-bank-policy bank))))))))
+
 (defun fnn-pull-flight-begin (runtime plan journal cursor kind)
-  (let* ((peer (fnn-core 'fn-pull-plan-peer plan))
-         (begun (if (eq kind :catch-up)
-                    (fnn-core 'fn-cu-session-begin-pair plan cursor (fnn-pull-profile plan))
-                  (fnn-core 'fn-pull-session-begin-pair plan cursor
-                            (fnn-owner-wall-milliseconds) (fnn-pull-profile plan)))))
-    (%make-fnn-pull-flight :runtime runtime :plan plan :journal journal :kind kind
-                          :key (fnn-core 'fn-prd-key kind peer) :peer peer
-                          :session (first begun) :effects (second begun))))
+  (let ((peer (fnn-core 'fn-pull-plan-peer plan)))
+    (if (eq kind :catch-up)
+        (multiple-value-bind (lease limit) (fnn-pull-flight-catchup-lease runtime)
+          ;; The flight holds the lease from here; a refused round settles it.
+          (let* ((flight (%make-fnn-pull-flight
+                          :runtime runtime :plan plan :journal journal :kind kind
+                          :key (fnn-core 'fn-prd-key kind peer) :peer peer :lease lease
+                          :round-deadline (fnn-core 'fn-prd-round-deadline (fnn-pull-monotonic))))
+                 (begun (fnn-core 'fn-csp-begin plan cursor (fnn-pull-profile plan) limit)))
+            (setf (fnn-pull-flight-session flight) (first begun)
+                  (fnn-pull-flight-effects flight) (second begun))
+            flight))
+      (let ((begun (fnn-core 'fn-pull-session-begin-pair plan cursor
+                             (fnn-owner-wall-milliseconds) (fnn-pull-profile plan))))
+        (%make-fnn-pull-flight :runtime runtime :plan plan :journal journal :kind kind
+                              :key (fnn-core 'fn-prd-key kind peer) :peer peer
+                              :round-deadline (fnn-core 'fn-prd-round-deadline (fnn-pull-monotonic))
+                              :session (first begun) :effects (second begun))))))
+
+(defun fnn-pull-flight-metered-event (flight event)
+  "EVENT, or (:work-refused) when the bank refuses the step's metered work."
+  (let ((lease (fnn-pull-flight-lease flight)))
+    (if (and lease
+             (not (fnn-peer-flight-work
+                   lease (fnn-core 'fn-csp-work-units (fnn-pull-flight-session flight) event))))
+        (list :work-refused)
+      event)))
 
 (defun fnn-pull-flight-advance (flight event)
   (let ((triple (if (eq (fnn-pull-flight-kind flight) :catch-up)
-                    (append (fnn-core 'fn-cu-session-step-pair
-                                      (fnn-pull-flight-session flight) event) (list nil))
+                    (append (fnn-core 'fn-csp-step (fnn-pull-flight-session flight)
+                                      (fnn-pull-flight-metered-event flight event))
+                            (list nil))
                   (fnn-core 'fn-pull-session-step-triple
                             (fnn-pull-flight-session flight) event))))
     (setf (fnn-pull-flight-session flight) (first triple)
@@ -506,6 +504,147 @@ acceptance (the owner is stopping or fenced then)."
       (fnn-pull-local-open (fnn-pull-flight-service flight) (fnn-pull-flight-peer flight))
     (setf (fnn-pull-flight-cid flight) cid)
     (fnn-pull-flight-event flight (cons :local (fnn-octet-list greeting)))))
+
+;;; ---------------------------------------------------------------------------
+;;; Catch-up spool I/O (books/peer-catchup-spool.lisp decides every offset,
+;;; count and octet; host/native/catchup-spool.lisp performs them).  One
+;;; operation is outstanding per flight; the driver polls it, never waits.
+
+;; A process-unique private name; the worker opens it O_EXCL and unlinks it
+;; at once, so no name outlives the descriptor.
+(defvar *fnn-csp-spool-serial* (list 0))
+
+(defun fnn-pull-flight-spool-path (flight)
+  (let* ((store (fnn-owner-service-store (fnn-pull-flight-service flight)))
+         (directory (fnn-pull-directory store "catch-up")))
+    (fnn-safe-directory directory t)
+    (fnn-join directory (format nil ".spool-~d-~d" (sb-posix:getpid)
+                                (sb-ext:atomic-incf (car *fnn-csp-spool-serial*))))))
+
+;;; SPOOL-OP is (operation offset count bytes phase next): phase :ready (not
+;;; yet submitted) or :submitted; NEXT is the operation queued behind the
+;;; worker's own :open, the only one that can precede another.
+
+(defun fnn-pull-flight-ensure-worker (flight)
+  "Start the lease's private spool worker; its first operation opens the file."
+  (unless (fnn-pull-flight-worker flight)
+    (let ((lease (fnn-pull-flight-lease flight)))
+      (unless lease (fnn-fault "catch-up spool effect without a flight lease"))
+      (fnn-csp-worker-start
+       (fnn-pull-flight-spool-path flight) lease
+       (lambda (worker)
+         ;; Custody is published before the thread exists.
+         (setf (fnn-peer-flight-lease-worker lease) worker
+               (fnn-pull-flight-worker flight) worker)))
+      (setf (fnn-pull-flight-spool-op flight) (list :open 0 0 nil :ready nil))))
+  (fnn-pull-flight-worker flight))
+
+(defun fnn-pull-flight-spool-begin (flight operation offset count &optional bytes)
+  (let ((op (list operation offset count bytes :ready nil))
+        (open (fnn-pull-flight-spool-op flight)))
+    (if (and open (eq (first open) :open))
+        (setf (sixth (fnn-pull-flight-spool-op flight)) op)
+      (setf (fnn-pull-flight-spool-op flight) op))))
+
+(defun fnn-pull-flight-spool-submit (flight operation offset count)
+  "Draw the operation's metered work, then hand it to the worker; nil if refused."
+  (when (fnn-peer-flight-work (fnn-pull-flight-lease flight)
+                              (fnn-core 'fn-csp-io-work-units operation count))
+    (fnn-csp-worker-submit (fnn-pull-flight-worker flight) operation offset count)
+    t))
+
+(defun fnn-pull-flight-spool-event (flight operation status actual)
+  "The controller's event for a completed (or failed) worker operation."
+  (let ((worker (fnn-pull-flight-worker flight)))
+    (case operation
+      (:write (list :spool-written status actual))
+      (:replay
+       (let ((replay (fnn-csp-worker-replay worker)))
+         (list :spool-read status actual
+               (if (eq status :ok)
+                   (loop for i below (min actual (length replay)) collect (aref replay i))
+                 nil))))
+      (:digest (list :digest nil))
+      (t (fnn-fault "unknown catch-up spool completion ~s" operation)))))
+
+(defun fnn-pull-flight-spool-step (flight)
+  "One poll of the outstanding spool operation; never waits on the worker."
+  (let ((worker (fnn-pull-flight-worker flight)))
+    (destructuring-bind (operation offset count bytes phase next) (fnn-pull-flight-spool-op flight)
+      (flet ((finish (event)
+               (setf (fnn-pull-flight-spool-op flight) nil)
+               (fnn-pull-flight-set-io flight nil)
+               (fnn-pull-flight-event flight event)))
+        (case phase
+          (:ready
+           (when (eq operation :write)
+             (let ((input (fnn-csp-worker-input worker)) (i 0))
+               (dolist (byte bytes) (setf (aref input i) byte) (incf i))))
+           (if (fnn-pull-flight-spool-submit flight operation offset count)
+               (setf (fifth (fnn-pull-flight-spool-op flight)) :submitted)
+             (finish (list :work-refused)))
+           :progress)
+          (:submitted
+           (multiple-value-bind (ready status actual condition) (fnn-csp-worker-take worker)
+             (if (not ready) :wait
+              (progn
+               (let ((status (if condition :error status)) (actual (if condition 0 actual)))
+                 (cond
+                   ((eq operation :open)
+                    (if (eq status :ok)
+                        (setf (fnn-pull-flight-spool-op flight) next)
+                      (finish (fnn-pull-flight-spool-event flight (first next) :error 0))))
+                   ((eq operation :digest)
+                    (setf (fnn-pull-flight-spool-op flight) nil)
+                    (fnn-pull-flight-hash-read flight status actual))
+                   (t (finish (fnn-pull-flight-spool-event flight operation status actual)))))
+               :progress))))
+          (t (fnn-fault "unknown catch-up spool phase ~s" phase)))))))
+
+(defun fnn-pull-flight-hash-lease (flight)
+  (let ((lease (fnn-pull-flight-lease flight)))
+    (fnn-core 'fn-csp-hash-lease (fnn-peer-flight-lease-slot lease)
+              (fnn-peer-flight-lease-generation lease))))
+
+(defun fnn-pull-flight-hash-read (flight status actual)
+  (let ((worker (fnn-pull-flight-worker flight)))
+    (destructuring-bind (word hash)
+        (fnn-call 'fn-csp-hash-read (fnn-pull-flight-hash-total flight)
+                  (fnn-pull-flight-hash-lease flight) status actual
+                  (fnn-csp-worker-digest-input worker) (fnn-pull-flight-hash flight))
+      (setf (fnn-pull-flight-hash flight) hash)
+      (when (eq word :refused)
+        (fnn-pull-flight-set-io flight nil)
+        (fnn-pull-flight-event flight (list :digest nil))))))
+
+(defun fnn-pull-flight-hash-step (flight)
+  "One quantum of the ACL2 digest cursor over the immutable spool (io :hash)."
+  (if (fnn-pull-flight-spool-op flight)
+      (fnn-pull-flight-spool-step flight)
+    (let* ((total (fnn-pull-flight-hash-total flight))
+           (lease (fnn-pull-flight-hash-lease flight))
+           (action (fnn-core 'fn-csp-hash-action total (fnn-pull-flight-hash-base flight)
+                             lease (fnn-pull-flight-hash flight))))
+      (case (first action)
+        (:done (fnn-pull-flight-set-io flight nil)
+               (fnn-pull-flight-event flight (list :digest (second action))))
+        (:read
+         (fnn-pull-flight-spool-begin flight :digest (second action) (third action))
+         (fnn-pull-flight-spool-step flight))
+        (:tick
+         (if (fnn-peer-flight-work (fnn-pull-flight-lease flight)
+                                   (fnn-core 'fn-csp-io-work-units :tick 0))
+             (destructuring-bind (word hash)
+                 (fnn-call 'fn-csp-hash-tick total lease (fnn-pull-flight-hash flight))
+               (setf (fnn-pull-flight-hash flight) hash)
+               (when (eq word :refused)
+                 (fnn-pull-flight-set-io flight nil)
+                 (fnn-pull-flight-event flight (list :digest nil))))
+           (progn (fnn-pull-flight-set-io flight nil)
+                  (fnn-pull-flight-event flight (list :work-refused)))))
+        (t (fnn-pull-flight-set-io flight nil)
+           (fnn-pull-flight-event flight (list :digest nil))))
+      :progress)))
 
 (defun fnn-pull-flight-effect (flight effect)
   (case (car effect)
@@ -547,6 +686,24 @@ acceptance (the owner is stopping or fenced then)."
            (fnn-pull-flight-resume-at flight) nil)
      (fnn-pull-flight-set-io flight :local))
     (:close nil)
+    (:spool-write
+     (fnn-pull-flight-ensure-worker flight)
+     (fnn-pull-flight-spool-begin flight :write (second effect) (length (third effect))
+                                  (third effect))
+     (fnn-pull-flight-set-io flight :spool))
+    (:spool-read
+     (fnn-pull-flight-ensure-worker flight)
+     (fnn-pull-flight-spool-begin flight :replay (second effect) (third effect))
+     (fnn-pull-flight-set-io flight :spool))
+    (:spool-hash
+     (fnn-pull-flight-ensure-worker flight)
+     (let ((hash (or (fnn-pull-flight-hash flight) (create-pgs-digest-state))))
+       (setf (fnn-pull-flight-hash-total flight) (third effect)
+             (fnn-pull-flight-hash-base flight) (second effect)
+             (fnn-pull-flight-hash flight)
+             (first (fnn-call 'fn-csp-hash-begin (third effect)
+                              (fnn-pull-flight-hash-lease flight) hash))))
+     (fnn-pull-flight-set-io flight :hash))
     (t (fnn-fault "unknown pull effect ~s" (car effect)))))
 
 (defun fnn-pull-flight-local-step (flight)
@@ -614,8 +771,13 @@ acceptance (the owner is stopping or fenced then)."
       ((or (fnn-pull-flight-closing flight)
            (zerop (length (fnn-pull-flight-input flight))))
        (let ((reply (fnn-owner-join-octets (nreverse (fnn-pull-flight-parts flight)))))
-         (when (> (length reply) 0)
-           (fnn-pull-flight-event flight (cons :local (fnn-octet-list reply)))))
+         (cond ((> (length reply) 0)
+                (fnn-pull-flight-event flight (cons :local (fnn-octet-list reply))))
+               ;; A catch-up body window the local node took without a reply:
+               ;; the controller's next window may follow.
+               ((and (eq (fnn-pull-flight-kind flight) :catch-up)
+                     (not (fnn-pull-flight-closing flight)))
+                (fnn-pull-flight-event flight (list :local-window)))))
        (when (fnn-pull-flight-closing flight)
          (fnn-pull-flight-close-local flight)
          (fnn-pull-flight-event flight (list :lost :local)))
@@ -683,7 +845,7 @@ acceptance (the owner is stopping or fenced then)."
     (return-from fnn-pull-flight-read nil))
   (let* ((limit (fnn-core 'fn-prd-read-limit
                           (fnn-core (if (eq (fnn-pull-flight-kind flight) :catch-up)
-                                        'fn-cu-session-read-limit 'fn-pull-session-read-limit)
+                                        'fn-csp-read-limit 'fn-pull-session-read-limit)
                                     (fnn-pull-flight-session flight))))
          (incoming (if (fnn-pull-flight-channel flight)
                        (fnn-tls-read-now (fnn-pull-flight-channel flight) limit)
@@ -717,45 +879,110 @@ acceptance (the owner is stopping or fenced then)."
            (setf (fnn-pull-flight-data flight) nil)
            (fnn-pull-flight-set-io flight nil)))))
     (:local (fnn-pull-flight-local-step flight))
+    (:spool (fnn-pull-flight-spool-step flight))
+    (:hash (fnn-pull-flight-hash-step flight))
     (t (fnn-fault "unknown pull continuation"))))
 
 (defun fnn-pull-flight-step (flight)
+  "One driver action: :finished, :progress (state advanced without waiting on
+a peer or the local node), or :wait.  Local, dial, TLS and send continuations
+are always :wait here, so a selection never spins on them."
   (let* ((catchup (eq (fnn-pull-flight-kind flight) :catch-up))
          (action (fnn-core 'fn-prd-action
-                           (fnn-core (if catchup 'fn-cu-session-done-p 'fn-pull-session-done-p)
+                           (fnn-core (if catchup 'fn-csp-done-p 'fn-pull-session-done-p)
                                      (fnn-pull-flight-session flight))
                            (fnn-pull-flight-effects flight) (fnn-pull-flight-events flight)
                            (fnn-pull-flight-io flight) (fnn-pull-monotonic)
-                           (fnn-pull-flight-deadline flight))))
+                           (fnn-pull-flight-deadline flight)
+                           (fnn-pull-flight-round-deadline flight))))
     (case (car action)
       (:lost (fnn-pull-flight-set-io flight nil)
              (setf (fnn-pull-flight-effects flight) nil (fnn-pull-flight-events flight) nil)
-             (fnn-pull-flight-advance flight action))
-      (:io (fnn-pull-flight-try flight (lambda () (fnn-pull-flight-io-step flight)) (second action)))
+             (fnn-pull-flight-advance flight action)
+             :progress)
+      (:io (let ((r (fnn-pull-flight-try flight (lambda () (fnn-pull-flight-io-step flight))
+                                         (second action))))
+             (if (and (member (second action) '(:spool :hash)) (eq r :progress)) :progress :wait)))
       (:effect
        (pop (fnn-pull-flight-effects flight))
        (fnn-pull-flight-try flight
                             (lambda () (fnn-pull-flight-effect flight (second action)))
                             (case (car (second action))
                               ((:local :open-local :reopen-local) :local)
-                              (:remote :send) (t (car (second action))))))
+                              (:remote :send) (t (car (second action)))))
+       :progress)
       (:event (pop (fnn-pull-flight-events flight))
-              (fnn-pull-flight-advance flight (second action)))
-      (:read (fnn-pull-flight-try flight (lambda () (fnn-pull-flight-read flight)) :read))
+              (fnn-pull-flight-advance flight (second action))
+              :progress)
+      (:read
+       (if (and catchup (fnn-core 'fn-csp-tick-p (fnn-pull-flight-session flight)))
+           ;; The controller has retained input or a spool step of its own:
+           ;; one bounded quantum before any further peer read.
+           (progn (fnn-pull-flight-advance flight (list :tick)) :progress)
+         (if (eq (fnn-pull-flight-try flight (lambda () (fnn-pull-flight-read flight)) :read)
+                 :wait)
+             :wait :progress)))
       (:finish :finished)
       (t (fnn-fault "unknown ACL2 pull driver action")))))
+
+(defun fnn-pull-flight-quantum (flight)
+  "Run FLIGHT for at most ACL2's per-selection quantum of actions, while they
+progress; answer :finished, :progress or :wait (the last action's)."
+  (let ((result :wait))
+    (loop repeat (fnn-core 'fn-prd-flight-quantum)
+          do (setq result (fnn-pull-flight-step flight))
+          until (member result '(:finished :wait)))
+    result))
+
+;;; Catch-up custody: the bank lease settles only after the actual worker
+;;; thread is dead with a clean cleanup, the socket is shut and the local
+;;; transit connection is closed (fnn-pull-flight-dispose).  A worker still
+;;; running is stopped and parked in the runtime's SETTLING list; a reported
+;;; cleanup failure keeps the lease held, so the bank never reads as drained.
+(defun fnn-pull-flight-release-lease (flight)
+  (let ((lease (fnn-pull-flight-lease flight)))
+    (when lease
+      (setf (fnn-pull-flight-lease flight) nil
+            (fnn-peer-flight-lease-socket lease) t
+            (fnn-peer-flight-lease-semantic lease) t)
+      (let ((worker (fnn-pull-flight-worker flight)))
+        (setf (fnn-pull-flight-worker flight) nil (fnn-pull-flight-hash flight) nil)
+        (if worker
+            (let ((runtime (fnn-pull-flight-runtime flight)))
+              (fnn-csp-worker-stop worker)
+              (push lease (fnn-pull-runtime-settling runtime)))
+          (progn (setf (fnn-peer-flight-lease-physical lease) t)
+                 (fnn-peer-flight-settle lease)))))))
+
+(defun fnn-pull-settle-leases (runtime &optional wait)
+  "Settle parked leases whose worker has been joined; WAIT joins them all."
+  (loop
+    (let ((pending nil))
+      (dolist (lease (copy-list (fnn-pull-runtime-settling runtime)))
+        (multiple-value-bind (joined condition)
+            (fnn-csp-worker-join-now (fnn-peer-flight-lease-worker lease))
+          (cond ((not joined) (setq pending t))
+                (t (setf (fnn-pull-runtime-settling runtime)
+                         (remove lease (fnn-pull-runtime-settling runtime)))
+                   (if condition
+                       (setf (fnn-peer-flight-lease-fault lease) condition)
+                     (progn (setf (fnn-peer-flight-lease-physical lease) t)
+                            (fnn-peer-flight-settle lease)))))))
+      (unless (and wait pending) (return))
+      (sleep (/ (fnn-core 'fn-prd-idle-ms) 1000)))))
 
 (defun fnn-pull-flight-finish (flight)
   (let* ((runtime (fnn-pull-flight-runtime flight))
          (catchup (eq (fnn-pull-flight-kind flight) :catch-up))
          (session (fnn-pull-flight-session flight)))
     (fnn-pull-flight-dispose flight)
-    (dolist (effect (fnn-core (if catchup 'fn-cu-session-close-effects 'fn-pull-session-close-effects)
-                             session))
-      (fnn-pull-flight-effect flight effect))
-    (fnn-log-line (if catchup (fnn-core 'fn-cu-session-log-line session)
+    (if catchup
+        (fnn-pull-flight-release-lease flight)
+      (dolist (effect (fnn-core 'fn-pull-session-close-effects session))
+        (fnn-pull-flight-effect flight effect)))
+    (fnn-log-line (if catchup (fnn-core 'fn-csp-log-line session)
                    (fnn-core 'fn-pull-session-log-line-why session (fnn-pull-flight-why flight))))
-    (let ((closed (fnn-core (if catchup 'fn-cu-session-close 'fn-pull-session-close) session))
+    (let ((closed (fnn-core (if catchup 'fn-csp-close 'fn-pull-session-close) session))
           (key (fnn-pull-peer-string (fnn-pull-flight-peer flight))))
       (setf (cdr (assoc key (if catchup (fnn-pull-runtime-cu-cursors runtime)
                              (fnn-pull-runtime-cursors runtime)) :test #'string=)) closed))
@@ -798,7 +1025,8 @@ acceptance (the owner is stopping or fenced then)."
               (remove flight (fnn-pull-runtime-flights runtime)))))))
 
 (defun fnn-pull-worker (runtime)
-  (let ((service (fnn-pull-runtime-service runtime)) (remaining nil) (primary nil))
+  (let ((service (fnn-pull-runtime-service runtime)) (remaining nil) (primary nil)
+        (progressed nil))
     (handler-bind ((serious-condition (lambda (condition) (unless primary (setq primary condition)))))
     (unwind-protect
          (loop until (fnn-pull-stoppingp runtime) do
@@ -821,21 +1049,29 @@ acceptance (the owner is stopping or fenced then)."
                                 :key #'fnn-pull-flight-key :test #'equal)))
              (setq remaining (second selected))
              (when flight
-               (when (eq (fnn-pull-flight-step flight) :finished)
-                 (fnn-pull-flight-finish flight)
-                 (sb-thread:with-mutex ((fnn-pull-runtime-lock runtime))
-                   (setf (fnn-pull-runtime-flights runtime)
-                         (remove flight (fnn-pull-runtime-flights runtime))))))
-             ;; One scheduling pause per sweep, not per peer. It limits
-             ;; polling work without truncating input or ending any round.
-             (unless remaining (sleep (/ (fnn-core 'fn-prd-idle-ms) 1000)))))
+               (let ((result (fnn-pull-flight-quantum flight)))
+                 (unless (eq result :wait) (setq progressed t))
+                 (when (eq result :finished)
+                   (fnn-pull-flight-finish flight)
+                   (sb-thread:with-mutex ((fnn-pull-runtime-lock runtime))
+                     (setf (fnn-pull-runtime-flights runtime)
+                           (remove flight (fnn-pull-runtime-flights runtime)))))))
+             (fnn-pull-settle-leases runtime)
+             ;; One scheduling pause per sweep in which no round progressed,
+             ;; not per peer. It limits polling work without truncating input
+             ;; or ending any round.
+             (unless remaining
+               (unless progressed (sleep (/ (fnn-core 'fn-prd-idle-ms) 1000)))
+               (setq progressed nil))))
       (let ((failure nil))
         (setf (fnn-pull-runtime-cleanup-stage runtime) :calling)
         (flet ((release (thunk)
                  (handler-case (funcall thunk)
                    (serious-condition (condition) (unless failure (setq failure condition))))))
           (dolist (flight (fnn-pull-runtime-flights runtime))
-            (release (lambda () (fnn-pull-flight-dispose flight))))
+            (release (lambda () (fnn-pull-flight-dispose flight)
+                       (fnn-pull-flight-release-lease flight))))
+          (release (lambda () (fnn-pull-settle-leases runtime t)))
           (dolist (entry (append (fnn-pull-runtime-journals runtime)
                                 (fnn-pull-runtime-cu-journals runtime)))
             (release (lambda () (fnn-owner-feed-close (cdr entry))))))

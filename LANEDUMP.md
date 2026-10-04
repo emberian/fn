@@ -4924,3 +4924,24 @@ Continuation: the lanedump's numbered list.
 
 See build/coordinator/lanedumps/init.md (full). lane/init@612fdc33d. Atomic init re-derived (secret in the staged plan; retry discards an unheld unpublished stage; keystone fn-bs-init-log-crash-retry-is-old-or-new admitted in REPL, certification pending). Install order: fnn-owner-recover-core reserves the catalog root before the in-place catalog load (mock red/green; proof-owed INIT-OWED-CATALOG-ROOT-INSTALL). Native red-before init-red on 45e05c7f: init_publication 21F/1E. Green-after waits on the integrator image set; certify waits on the hbox slot (f728 cancelled on request). Continuation: lanedumps/init.md NEXT.
 Update 10-04: READY at 849a69643, natives pending; 6 changed books certified green (certify-20261004T043931Z-1117313, certify-20261004T051946Z-1594493); defteeth on both keystones; PRF-1040 proof-events regen owed to the integrator. Continuation: lanedumps/init.md "Resume".
+
+## catchup lane (lane/catchup) — 2026-10-04
+
+Wave 2 strand 7: the ACL2 catch-up spool controller (mined from
+codex/horse-bounds@0373a76c1) drives every catch-up round on the pull worker,
+through the lease's spool worker and the peer flight bank, under an ACL2 round
+deadline; the in-memory requester round is deleted (replacement), its three
+keystones are proof-owed (CSP-OWED-*). Plus the pull-credential (65a485229)
+and carriage-budget (5e2f8e957) gifts, re-derived. Entry with coordinates,
+natives, deploy note and continuation: build/coordinator/lanedumps/catchup.md.
+
+## catchup2 lane (lane/catchup2) — 2026-10-04
+
+Successor of catchup. READY at 3949a6578: one pull consumer (fnn-pull-round and fnn-catchup-tick
+deleted; fnn-pull-worker drives every pull and catch-up flight), defteeth for the strand's eight
+keystones (one equivalent restatement: fn-pcb-carried-event-keeps-budget-schedule-admitted without its
+outer let), peer-flight-reservation includes heap-reservation, spool worker close site declared.
+Certified on persvati: certify-20261004T063510Z-2314965, certify-20261004T071525Z-2708512. Natives:
+red catchup-red-45e05c7f; green pending the integrator's batch image (tests.test_native_peer_catchup,
+tests.test_native_peer_pull). Proof-owed 4 (CSP-OWED-*). PRF-1318 not started (owner-number-bound-join
+does not admit). Entry: build/coordinator/lanedumps/catchup2.md.

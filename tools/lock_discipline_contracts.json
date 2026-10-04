@@ -692,7 +692,8 @@
   "fnn-socket-fd"
  ],
  "close_sites": {
-  "fnn-extent-close": "the :close realization: closes a registered extent fd after fn-pio-file-clear-p (realization row :close)"
+  "fnn-extent-close": "the :close realization: closes a registered extent fd after fn-pio-file-clear-p (realization row :close)",
+  "fnn-csp-worker-loop": "the catch-up spool worker's own descriptor: fnn-csp-worker-perform's :open (O_EXCL, then unlink) on this worker thread stores it in the worker; the loop's exit retires the number, then closes it once (host/native/catchup-spool.lisp)"
  },
  "unlocked_publication": {},
  "exceptions": [],

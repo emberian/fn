@@ -33,6 +33,8 @@
 (include-book "books/peer-flight-profile")
 (include-book "books/peer-flight-startup")
 (include-book "books/peer-catchup-spool-resources")
+(include-book "books/peer-catchup-spool")
+(include-book "books/peer-catchup-spool-hash")
 (include-book "books/committer-actor")
 (include-book "books/replay")
 ; Every codec seam's attachment (books/codec-attach.lisp): the books above
