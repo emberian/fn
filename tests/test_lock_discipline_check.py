@@ -221,6 +221,51 @@ class R1State(unittest.TestCase):
         self.assertTrue(any(f.function.startswith("lambda@") and "fnn-live-arena" in f.key for f in found))
 
 
+class CallbackContexts(unittest.TestCase):
+    """contracts `callback_contexts': a stored callback declared to run in a
+    command's own extent gets that command's context, and nothing else does."""
+    SRC = """
+(defstruct fnn-cbx-grant turn)
+(defun fnn-cbx-loop (grant) (funcall (fnn-cbx-grant-turn grant)))
+(defun fnn-cbx-begin (grant) (setf (fnn-cbx-grant-turn grant) (lambda () (fnn-live-arena))))
+(defun fnn-command-cbx (grant) (fnn-cbx-begin grant) (fnn-cbx-loop grant))
+(defun fnn-cbx-spawn (grant) (sb-thread:make-thread (lambda () (fnn-cbx-loop grant)) :name "t"))
+"""
+    LAMBDA = "lambda@host/native/fixture.lisp:fnn-cbx-begin#lambda1"
+
+    def run_with(self, rows, src=SRC):
+        raw = dict(CONTRACTS.raw, callback_contexts=rows)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + src)
+            an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+            return [f for f in checker.run({"R1"}) if f.rule == "R1"]
+
+    def test_undeclared_stored_callback_is_unresolved(self):
+        found = self.run_with({})
+        self.assertTrue(any(f.function == self.LAMBDA and f.category == "unresolved" for f in found))
+
+    def test_declared_callback_runs_in_its_command(self):
+        src = self.SRC.replace('(defun fnn-cbx-spawn (grant) (sb-thread:make-thread (lambda () (fnn-cbx-loop grant)) :name "t"))', "")
+        found = self.run_with({self.LAMBDA: {"runs_in": "fnn-command-cbx", "why": "w"}}, src)
+        self.assertFalse(any(f.function == self.LAMBDA for f in found))
+
+    def test_a_renumbered_declaration_is_refused(self):
+        with self.assertRaises(ValueError):
+            self.run_with({self.LAMBDA.replace("lambda1", "lambda2"): {"runs_in": "fnn-command-cbx", "why": "w"}})
+
+    def test_an_entry_a_thread_reaches_is_refused(self):
+        src = self.SRC + "(defun fnn-cbx-threaded (grant) (sb-thread:make-thread (lambda () (fnn-command-cbx grant)) :name \"u\"))\n"
+        with self.assertRaises(ValueError):
+            self.run_with({self.LAMBDA: {"runs_in": "fnn-command-cbx", "why": "w"}}, src)
+
+    def test_an_entry_that_does_not_create_the_callback_is_refused(self):
+        src = self.SRC + "(defun fnn-command-other (grant) (fnn-cbx-loop grant))\n"
+        with self.assertRaises(ValueError):
+            self.run_with({self.LAMBDA: {"runs_in": "fnn-command-other", "why": "w"}}, src)
+
+
 class R7Failure(unittest.TestCase):
     COMMITTER = """
 (defun fnn-pipeline (service) (fnn-core 'fn-otb-issue service))

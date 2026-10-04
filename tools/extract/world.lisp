@@ -166,6 +166,7 @@
 (include-book "../../books/bp-node-job-offer-guards")
 (include-book "../../books/bp-node-control")
 (include-book "../../books/bp-node-forward-plan")
+(include-book "../../books/bp-forward-cursor")
 (include-book "../../books/bp-node-rotation")
 (include-book "../../books/bp-node-rotation-buffer")
 (include-book "../../books/bp-held-projection")

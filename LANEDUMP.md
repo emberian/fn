@@ -4752,3 +4752,32 @@ The full entry is `build/coordinator/lanedumps/raw-dispatch.md`.
   - `d1d54bdd0`: merge of next@b7624961f.
 - Open: the trap's native run and the POST ms at 1k/10k/100k. Both wait on the first image set built from a source containing post-guard-off's raw rows; the owed list is judged by the same build's `fnn-install-raw-dispatch`.
 - Continuation: the lanedump's last section.
+
+## bp (BP-DESIGN, Fable) — 2026-10-04 wind-down
+
+Branch lane/bp from origin/integrate/20261004 @ec2c1b3da. Landed: the
+decision file `planning/design/bp-2026-10-04.md` (DECISION = PROPOSED;
+advisory review not run), `books/bp-forward-cursor.lisp` and
+`tests/acl2/bp-forward-cursor-tests.lisp` (both UNHOOKED: PRF-1311's
+keystones K1-K3 stated, not admitted). No host change, no certify, no image;
+SCN-1110 blocked only on a REPL/image, its plan is packet §2.9 (needs the
+integrator's developer + dtn-developer images at the slice's sha, base
+>= 83b905e89 which loads bp-session.lisp into the DTN image). No REPL is
+held anywhere. The exact continuation, 8 numbered steps, is
+`build/coordinator/lanedumps/bp.md`.
+
+## bp2 (BP-2, Opus) — 2026-10-04 ramp-down
+
+Branch lane/bp2 (lane/bp@fed210549 + integrate/20261004 + origin/next).
+Slice 1 is landed. The forward-round cursor's K1–K3 (PRF-1311) are
+certified (manifest certify-20261004T044115Z-1138962, persvati, 4/4), and
+the host `:forward` arm calls fn-bpfc-turn: the O(held × table) plan arm
+is replaced, and the raw witness shows 2,000 decisions per turn become
+<= 64. The 13 bp stored-callback lock rows are declared through a checked
+`callback_contexts` table (baseline 366 → 353). The packet's advisory
+review ran (kimi + grok, verbatim with a fact-check), and its DECISION is
+AMENDED: S025 is escalated to ember, and the attempt budget is adopted.
+Natives are pending on the integrator's batched set: SCN-1110, the
+three forward natives and the ION X10A/X10B natives (45e05c7f does not
+reach the subject). The full entry and exact continuation are in
+`build/coordinator/lanedumps/bp2.md`.
