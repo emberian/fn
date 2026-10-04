@@ -8,8 +8,8 @@
 ; relation and its byte program were removed with it).  This book holds the
 ; gates the host consults when it opens a store, over the functions it calls:
 ;   - the transaction namespace observation, `fn-profile-txn-observation'
-;     (host/store-host.lisp `fn-store-txn-observation-selected', called from
-;     host/native/io.lisp `fnn-transaction-files' with field 4);
+;     (no host calls it since the record log: a format-9 store has no
+;     transactions/ directory, S117);
 ;   - the aggregate replay bound, `fn-profile-replay-within-boundp'
 ;     (host/store-host.lisp `fn-store-profile-replay-within-bound', called
 ;     per record from host/native/io.lisp `fnn-durable-records');
@@ -26,8 +26,7 @@
 ; The open gates, as the host calls them
 
 ; The transaction-namespace observation: at most MAXIMUM names (the profile's
-; max_transactions, host/native/io.lisp `fnn-transaction-files'), then ACL2's
-; name grammar and sequence binding.
+; max_transactions), then ACL2's name grammar and sequence binding.
 (defun fn-profile-txn-observation (names maximum selected-lower)
   (declare (xargs :guard t))
   (if (and (natp maximum) (natp selected-lower) (true-listp names)

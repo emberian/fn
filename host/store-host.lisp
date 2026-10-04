@@ -109,18 +109,6 @@
 (defun fn-store-octet-lists->strings (xs)
   (fn-store-octet-lists->strings-loop xs nil))
 
-; The bound and the grammar are `fn-profile-txn-observation'
-; (books/store-profile-facts.lisp); this wrapper converts octets.  The
-; per-file layout's namespace: its one caller left is the Python store's
-; bridge (host/store-node-host.lisp fn-store-txn-observation-octets, from
-; tools/frame_bridge.py txn_observation for tools/run_store.py).
-(defun fn-store-txn-observation-selected (observed maximum selected-lower)
-  (declare (xargs :mode :program))
-  (let ((names (fn-store-octet-lists->strings observed)))
-    (if (and (true-listp observed) (not (equal names :bad)))
-        (fn-profile-txn-observation names maximum selected-lower)
-      :invalid)))
-
 ; The record wrappers recognise and dispatch through the concrete twins of
 ; books/records-concrete.lisp.  What the codec decodes is a WIRE event
 ; (fn-rcon-wire-event-p-is-wire-event-p, -sequence-is-, -txid-is-): the
