@@ -3421,6 +3421,9 @@
 (definterface fn-web-host-frame
   :class ::program)
 
+(definterface fn-web-host-identity
+  :class ::program)
+
 (definterface fn-web-host-head
   :class ::program)
 
