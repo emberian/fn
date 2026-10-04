@@ -147,12 +147,16 @@ allocator/GC and pointed-to controller graphs remain outside that partial scope.
   (sb-thread:with-mutex (*fnn-extent-lock*)
     (unless (fnn-extent-executor-observe-returned worker)
       (return-from fnn-extent-decoded-window-outcome :pending))
+    ;; A job that signalled answers its condition, cancelled or not (the
+    ;; owner settles it and stops: specs/storage.md PRF-1057).
+    (let ((result (fnn-cold-worker-result worker)))
+      (when (typep result 'condition)
+        (return-from fnn-extent-decoded-window-outcome result)))
     (when (fnn-core-cold-single 'fn-pwx-boundp
               (fnn-core-cold-single 'fn-owner-page-read-ledger (fnn-live-page-read-pool))
               (fnn-cold-worker-row worker) token :cancelled-returned)
       (return-from fnn-extent-decoded-window-outcome :cancelled))
     (let ((result (fnn-cold-worker-result worker)))
-      (when (typep result 'condition) (error result))
       (unless (and (fnn-decoded-activation-p result)
                    (eq (fnn-decoded-activation-stage result) :idle))
         (fnn-fault "decoded result lacks a completed private activation"))

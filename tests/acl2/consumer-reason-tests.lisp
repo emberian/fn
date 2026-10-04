@@ -100,15 +100,15 @@
 
 ; ---------------------------------------------------------------------------
 ; fn-ncr-cli-after-retries-only-an-unbootstrapped-register.
-(assert-event (equal (fn-ncr-cli-after :register :refused *fn-ncr-unbootstrapped-word*)
+(assert-event (equal (fn-ncr-cli-after :register :register :refused *fn-ncr-unbootstrapped-word*)
                      '(:bootstrap :register)))
 (assert-event (equal *fn-ncr-unbootstrapped-word* (fn-nctrl-reason-word :unbootstrapped)))
-(assert-event (equal (fn-ncr-cli-after :register :refused *fn-nctrl-no-reason-word*)
+(assert-event (equal (fn-ncr-cli-after :register :register :refused *fn-nctrl-no-reason-word*)
                      '(:bootstrap :register)))
 ; Each conjunct fails alone.
-(assert-event (null (fn-ncr-cli-after :register :refused (fn-nctrl-reason-word :no-such-group))))
-(assert-event (null (fn-ncr-cli-after :register :uncertain *fn-nctrl-no-reason-word*)))
-(assert-event (null (fn-ncr-cli-after :poll :refused *fn-ncr-unbootstrapped-word*)))
+(assert-event (null (fn-ncr-cli-after :register :register :refused (fn-nctrl-reason-word :no-such-group))))
+(assert-event (null (fn-ncr-cli-after :register :register :uncertain *fn-nctrl-no-reason-word*)))
+(assert-event (null (fn-ncr-cli-after :poll :poll :refused *fn-ncr-unbootstrapped-word*)))
 
 ; ---------------------------------------------------------------------------
 ; fn-ncr-withdrawal-roundtrip and fn-ncr-withdrawal-report-fits-the-poll-reply.
@@ -170,7 +170,13 @@
                      (fn-cwait-cli-plan '(115 116 97 116 117 115) (list '(47 99) '(98 111 98)))))
 (assert-event (equal (fn-ncr-cli-plan *fn-ncr-json-flag* nil) '(:json (:usage :control-path))))
 
-(assert-event (equal (fn-ncr-cli-after :bootstrap :accepted nil) '(:register)))
-(assert-event (and (null (fn-ncr-cli-after :bootstrap :uncertain nil))
-                   (null (fn-ncr-cli-after :bootstrap :fault nil))
-                   (null (fn-ncr-cli-after :bootstrap :refused nil))))
+; fn-ncr-cli-after-bootstrap-needs-acceptance: the register's bootstrap step.
+(assert-event (equal (fn-ncr-cli-after :register :bootstrap :accepted nil) '(:register)))
+(assert-event (and (null (fn-ncr-cli-after :register :bootstrap :uncertain nil))
+                   (null (fn-ncr-cli-after :register :bootstrap :fault nil))
+                   (null (fn-ncr-cli-after :register :bootstrap :refused nil))))
+; fn-ncr-cli-after-only-a-register-sends-more: an accepted `consumer
+; bootstrap' command is one request (native run2-d5b0b9100 sent a second
+; bootstrap here and printed its `identity' refusal).
+(assert-event (null (fn-ncr-cli-after :bootstrap :bootstrap :accepted nil)))
+(assert-event (null (fn-ncr-cli-after :bootstrap :bootstrap :refused *fn-ncr-unbootstrapped-word*)))

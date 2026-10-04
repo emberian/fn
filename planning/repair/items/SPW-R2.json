@@ -1,0 +1,16 @@
+{
+ "category": "error-handling",
+ "detail": "planning/spw-recheck-2026-10-04.md",
+ "evidence": "A store close that fails while a command body is already failing: io.lisp:4400 (node-secret verb), 4412 (init), 5200 (bless), 5379 (staged-store validation in import/init publication), 5512 (store post), 5603 (recover), 5694 (status live report), 5714 (inspect --group), 5949 (probe reopen), 6590 and 6602 (reader); anchor.lisp:405; hybrid-control.lisp:298; operator.lisp:1091 (offline inspect). admin.lisp:737,751 already use fnn-unwind-cleanups.",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "fix": "Move each scope to fnn-unwind-cleanups (io.lisp:584) as the nine EX12 scopes were (ff9c51d4a).",
+ "id": "SPW-R2",
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "medium",
+ "source": "spw-recheck-2026-10-04",
+ "state": "open",
+ "title": "Offline command scopes around fnn-store-close still use bare unwind-protect (exits audit EX12 stated residual): a close error during a body error replaces the primary and a refusal is never escalated",
+ "updated": "2026-10-04T14:47:39Z"
+}
