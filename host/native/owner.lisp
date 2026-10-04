@@ -1210,32 +1210,61 @@ the owner mutex)."
   (sb-thread:with-mutex ((fnn-owner-feed-journal-lock journal))
     (fnn-owner-feed-append-locked journal frame)))
 
-(defun fnn-owner-feed-append-locked (journal frame)
+(defun fnn-owner-feed-append-locked (journal frame &key (barrier t))
+  "Write FRAME, one ACL2-sealed frame (none when NIL), then, with BARRIER,
+cross the append barrier if ACL2's phase says the journal holds written
+frames no barrier has covered (:sync).  Without BARRIER the journal is left
+in :sync: further appends may follow (PKT-825a: books/feed-journal.lisp
+admits :sync then :append) and one barrier makes them all durable
+(fn-feed-journal-batch-is-durable-only-at-its-one-barrier).  A journal
+another barrier already returned to :ready needs none: that barrier
+followed these writes, under this lock."
   (handler-case
-      (let ((envelope (fnn-core 'fn-feed-journal-wrap
-                                (fnn-octet-list frame))))
-        (unless (fnn-octet-list-p envelope)
-          (fnn-fault "owner refused FNFD envelope"))
-        (fnn-owner-feed-phase journal :append)
-        (fnn-write-all (fnn-owner-feed-journal-fd journal)
-                       (fnn-octets envelope))
-        (fnn-owner-feed-phase journal :written)
-        ;; Developer image only (lane owner-offlock): a slow or stalled
-        ;; feed-journal device -- the fsync takes MS, or does not return
-        ;; while the named file exists (tests/test_native_owner_offlock.py).
-        (let ((ms (fnn-developer-selector "FN_NATIVE_TEST_FEED_FSYNC_MS"))
-              (stall (fnn-developer-selector "FN_NATIVE_TEST_FEED_STALL_FILE")))
-          (when (and ms (plusp (length ms)) (every #'digit-char-p ms))
-            (sleep (/ (parse-integer ms) 1000)))
-          (when (and stall (plusp (length stall)))
-            (loop while (probe-file stall) do (sleep 0.05))))
-        (fnn-fsync-file (fnn-owner-feed-journal-fd journal))
-        (fnn-owner-feed-phase journal :append-durable))
+      (progn
+        (when frame
+          (let ((envelope (fnn-core 'fn-feed-journal-wrap
+                                    (fnn-octet-list frame))))
+            (unless (fnn-octet-list-p envelope)
+              (fnn-fault "owner refused FNFD envelope"))
+            (fnn-owner-feed-phase journal :append)
+            (fnn-write-all (fnn-owner-feed-journal-fd journal)
+                           (fnn-octets envelope))
+            (fnn-owner-feed-phase journal :written)))
+        (when (and barrier (eq (fnn-owner-feed-journal-phase journal) :sync))
+          ;; Developer image only (lane owner-offlock): a slow or stalled
+          ;; feed-journal device -- the fsync takes MS, or does not return
+          ;; while the named file exists (tests/test_native_owner_offlock.py).
+          (let ((ms (fnn-developer-selector "FN_NATIVE_TEST_FEED_FSYNC_MS"))
+                (stall (fnn-developer-selector "FN_NATIVE_TEST_FEED_STALL_FILE")))
+            (when (and ms (plusp (length ms)) (every #'digit-char-p ms))
+              (sleep (/ (parse-integer ms) 1000)))
+            (when (and stall (plusp (length stall)))
+              (loop while (probe-file stall) do (sleep 0.05))))
+          (fnn-fsync-file (fnn-owner-feed-journal-fd journal))
+          (fnn-owner-feed-phase journal :append-durable)))
     (error (e)
       (ignore-errors (fnn-owner-feed-phase journal :failed))
       (fnn-owner-feed-close journal)
       (fnn-indeterminate "FNFD append uncertain: ~a (~a)"
                          (fnn-owner-feed-journal-path journal) e))))
+
+(defun fnn-owner-feed-write-batch (pairs written)
+  "Write each (JOURNAL . FRAME) of PAIRS, in order, with no barrier; answer
+WRITTEN with each journal written added once, in first-written order.  The
+caller owes each one barrier (fnn-owner-feed-barrier-batch)."
+  (fnn-owner-measured (:feed-flush)
+    (dolist (pair pairs)
+      (sb-thread:with-mutex ((fnn-owner-feed-journal-lock (car pair)))
+        (fnn-owner-feed-append-locked (car pair) (cdr pair) :barrier nil))
+      (unless (member (car pair) written :test #'eq)
+        (setq written (append written (list (car pair)))))))
+  written)
+
+(defun fnn-owner-feed-barrier-batch (journals)
+  "One barrier per journal of JOURNALS that still holds unbarriered frames."
+  (dolist (journal journals)
+    (sb-thread:with-mutex ((fnn-owner-feed-journal-lock journal))
+      (fnn-owner-feed-append-locked journal nil))))
 
 (defun fnn-owner-feed-decoded-peer (components location)
   "Refuse a discovered entry unless ACL2 reconstructs its exact peer label."
@@ -4395,14 +4424,23 @@ phase's."
     (values phase condition)))
 
 (defun fnn-owner-job-items (service items)
-  "A batch job's items, in order: (:frames . PAIRS) appends each (JOURNAL .
-FRAME) across its barrier; (:deliver CID REPLY) hands a refusal told at its
-drain to its connection (after its resolution frames)."
-  (dolist (item items)
-    (case (car item)
-      (:frames (fnn-owner-feed-write-plan (cdr item)))
-      (:deliver (fnn-owner-deliver service (second item) (third item)))
-      (t (fnn-fault "malformed batch job item ~a" (car item))))))
+  "A batch job's items, in order: (:frames . PAIRS) writes each (JOURNAL .
+FRAME); (:deliver CID REPLY) hands a refusal told at its drain to its
+connection.  PKT-825a: the phase's frames share one barrier per peer journal
+written (fn-feed-journal-batch-is-durable-only-at-its-one-barrier), crossed
+before any reply leaves and before the phase returns, so a told member's
+resolution frames are durable before its reply, and the phase's word is :ok
+only once every frame it wrote is."
+  (let ((written nil))
+    (dolist (item items)
+      (case (car item)
+        (:frames (setq written (fnn-owner-feed-write-batch (cdr item) written)))
+        (:deliver
+         (fnn-owner-feed-barrier-batch written)
+         (setq written nil)
+         (fnn-owner-deliver service (second item) (third item)))
+        (t (fnn-fault "malformed batch job item ~a" (car item)))))
+    (fnn-owner-feed-barrier-batch written)))
 
 (defun fnn-owner-batch-fence (service)
   "The batch job's :fence phase: the sealed batch's barrier and the kernel's
