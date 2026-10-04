@@ -357,8 +357,6 @@
     "fn-cpc-encode": "never concluded; no one has said which host entry establishes it",
     "fn-cpc-validp": "never concluded; no one has said which host entry establishes it",
     "fn-cpe-eventp": "never concluded; no one has said which host entry establishes it",
-    "fn-cpp-entryp": "established off the host path; no one has said which host entry establishes it",
-    "fn-cpp-find": "preserved only; no one has said which host entry establishes it",
     "fn-cpp-imagep": "established off the host path; no one has said which host entry establishes it",
     "fn-cpr-config-firstp": "never concluded; no one has said which host entry establishes it",
     "fn-csi-no-crash-eventsp": "never concluded; no one has said which host entry establishes it",

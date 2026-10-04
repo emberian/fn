@@ -242,11 +242,6 @@
       "class": "cold",
       "packet": "PKT-041"
     },
-    "fn-cpe-projection-replay recursion N": {
-      "class": "cold",
-      "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries",
-      "packet": "PKT-448 (d)"
-    },
     "fn-ctl-apply-records recursion N": {
       "class": "unexpected",
       "packet": "PKT-658"
@@ -520,11 +515,6 @@
       "note": "online-reclaim-8 (2026-09-29): the reclaim context's Message-ID index (books/store-reclaim-pack.lisp fn-rclp-index-built = fn-rclp-index-into over the articles from nil; fn-rclp-index-into-finds, fn-rclp-article-index-finds-the-article): ONE forward pass over the Store's articles per `store reclaim' (offline, --dry-run, --recorded, or the live pass's context, off the owner mutex), never per request or arrival; each record's step is then one hashed lookup. It replaced a whole reversed copy of the article list followed by the pass (moved from 'fn-rclp-reversed recursion N'). The pass over the articles is the verb's own dimension, the same as its pass over the records.",
       "packet": "PKT-324 (8)"
     },
-    "fn-replay-identity-loop recursion N": {
-      "class": "cold",
-      "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries",
-      "packet": "PKT-223"
-    },
     "fn-replay-loop recursion N": {
       "class": "unexpected",
       "packet": "PKT-223"
@@ -676,11 +666,6 @@
     "fn-store-sn-article-count len N": {
       "class": "unexpected",
       "packet": "PKT-448 (f)"
-    },
-    "fn-th-prefix-loop recursion N": {
-      "class": "cold",
-      "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries",
-      "packet": "PKT-448 (d)"
     },
     "fn-xpy-walk recursion N": {
       "class": "cold",
