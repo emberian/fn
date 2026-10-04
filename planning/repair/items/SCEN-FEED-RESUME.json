@@ -9,7 +9,8 @@
  "native": "tests.test_native_feed_tls_read",
  "notes": [
   "10-04 15:02 claimed: scope=['host/native/feed-service.lisp', 'tests/native_feed_fair_round_raw.lisp', 'tests/test_native_feed_fair_round.py', 'tests/test_native_feed_tls_read.py'] test=python3 -m unittest tests.test_native_feed_fair_round.FeedFairRoundTests.test_a_link_leaving_the_live_table_with_a_connection_is_reported_lost",
-  "10-04 15:02 READY 79cc0a7da overlay green cloud2 grn1 over 55ff708a6"
+  "10-04 15:02 READY 79cc0a7da overlay green cloud2 grn1 over 55ff708a6",
+  "10-04 15:37 FILL 10-04: tests.test_native_feed_tls_read test_a_paused_feed_is_not_dialled_until_resumed red on set 55ff708a6 (hbox native-fill-peer-55 and lat1 native-fill-smoke-lat1); green on bdd4f40c4 (peer2); the integrator fix 1d44db09b is not in this set"
  ],
  "owner": "unowned",
  "scope": [

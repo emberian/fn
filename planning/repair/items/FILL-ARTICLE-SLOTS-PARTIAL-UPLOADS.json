@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Red on set 55ff708a6: cloud2:/tank/fn/scratch/fill-wt/native-fill-resil-cloud2-55 (scenario_suite run resilience, --allow-skips, jobs 3; logs/test-tests.test_native_article_slots.log). Could be cloud2-specific (12 shared vCPU, 22 GB): re-run on hbox before treating as a regression.",
+ "file": "host/native/article-slots.lisp",
+ "id": "FILL-ARTICLE-SLOTS-PARTIAL-UPLOADS",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "tests.test_native_article_slots test_partial_uploads_holding_the_pool_all_complete: the 8th concurrent partial upload is refused '441 posting failed; the store is full: no capacity for this article (unaffordable)' instead of completing",
+ "updated": "2026-10-04T20:01:42Z"
+}

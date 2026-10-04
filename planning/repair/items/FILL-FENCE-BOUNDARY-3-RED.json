@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Red on set 55ff708a6: cloud2:/tank/fn/scratch/fill-wt/native-fill-resil-cloud2-55 (scenario_suite run resilience, --allow-skips, jobs 3; logs/test-tests.test_native_fence_boundary.log). The node-secret case reads like a stale-scratch interaction (init run twice over the same store); the committer ones need the first assertion read.",
+ "file": "host/native/fence.lisp",
+ "id": "FILL-FENCE-BOUNDARY-3-RED",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "tests.test_native_fence_boundary 3F: injected committer fault and injected uncertain outcome do not stop/fence the owner as the test expects, and test_a_barrier_failure_after_the_secrets_publication_is_uncertain gets exit 1 'node secret .../keys/node-secret.key exists; refusing to replace it' instead of UNCERTAIN (3): the fixture's secret already exists on the second init",
+ "updated": "2026-10-04T20:01:42Z"
+}

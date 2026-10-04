@@ -1,0 +1,13 @@
+{
+ "category": "check-lane",
+ "detail": "FAIL lines 1473-1477 of the local copy. Some measurements were taken under load (nextop.local load 71/12cpu); re-measure quiet before treating owner-time-journal-writer as real. Run: cloud1:/tank/fn/scratch/fill-wt-check.log (remote_check cloud1 --target check, dev 55ff708a6, started 2026-10-04T19:03Z; local copy build/remote-check/cloud1-check.log)",
+ "file": "planning/proof-cost-baseline.json",
+ "id": "FILL-PROOF-COST-SLOW-BOOKS",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "proof_cost red: books over the 10 s budget not in baseline: history-pages-grow-append 49.0 s, ninep-transport 12.4 s, owner-time-journal-writer 77.1 s (loaded host), resource-vector-exec 17.0 s; native-config-show steps 7.69M > baseline 2.12M +10%",
+ "updated": "2026-10-04T19:12:27Z"
+}
