@@ -907,6 +907,41 @@
  (defthm fn-lgrc-ops-for-ino-of-create-then-write
    (equal (fn-bs-ops-for-ino (list (list :set-entry d n v) (list :write ino o x)) ino)
           (list (list :write ino o x)))))
+;  The empty copy (an empty read, only with an empty prefix).
+(local
+ (defthm fn-lgrc-write-keeps-next-ino
+   (equal (fn-bs-next-ino (fn-bsc-bs (mv-nth 1 (fn-bsc-step s (list :write i o x out)))))
+          (fn-bs-next-ino (fn-bsc-bs s)))
+   :hints (("Goal" :in-theory (enable fn-bsc-step fn-bsc-bs fn-bs-write fn-bsc-vapply)))))
+(local
+ (defthm fn-lgrc-writes-at-or-above-0
+   (fn-lgu-writes-at-or-above ops ino 0)))
+(local
+ (defthm fn-lgrc-holdsp-of-an-atom
+   (implies (and (fn-lgrc-holdsp x a) (not (consp x)))
+            (equal a nil))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :expand ((fn-bs-take 0 x)) :in-theory (enable fn-lgrc-holdsp)))))
+(local
+ (defthm fn-lgrc-holdsp-of-nil
+   (fn-lgrc-holdsp c nil)
+   :hints (("Goal" :expand ((fn-bs-take 0 c)) :in-theory (enable fn-lgrc-holdsp)))))
+(local
+ (defthm fn-lgrc-staged-inode-is-good-when-empty
+   (let* ((ino (fn-bs-next-ino (fn-bsc-bs s)))
+          (s1 (mv-nth 1 (fn-bsc-step s (list :create stg stage :ok))))
+          (s2 (mv-nth 1 (fn-bsc-step s1 (list :write ino 0 x :ok))))
+          (s3 (mv-nth 1 (fn-bsc-step s2 (list :fsync-file ino :ok)))))
+     (implies (and (natp ino) (not (fn-bsc-lookup s stg stage))
+                   (fn-bs-dir-idp stg) (fn-bs-namep stage))
+              (and (equal (fn-bsc-lookup s3 stg stage) ino)
+                   (fn-lgrc-goodp s3 ino nil))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-lgrc-goodp)
+                            (fn-lgrc-holdsp fn-bs-splice fn-bs-take fn-bsc-content fn-bs-durable-content
+                             fn-bs-apply-writes fn-bs-ops-for-ino fn-bs-ops-not-for-ino
+                             fn-lgrc-inodes-entry-is-durable-content fn-lgu-writes-at-or-above))))))
+
 ; The staged inode, written and fenced, is good and visibly named STG/STAGE.
 (defthm fn-lgrc-staged-inode-is-good
   (let* ((ino (fn-bs-next-ino (fn-bsc-bs s)))
@@ -914,10 +949,10 @@
          (s2 (mv-nth 1 (fn-bsc-step s1 (list :write ino 0 x :ok))))
          (s3 (mv-nth 1 (fn-bsc-step s2 (list :fsync-file ino :ok)))))
     (implies (and (natp ino) (not (fn-bsc-lookup s stg stage)) (fn-lgrc-holdsp x a)
-                  (true-listp x) (consp x) (fn-bs-dir-idp stg) (fn-bs-namep stage))
+                  (true-listp x) (fn-bs-dir-idp stg) (fn-bs-namep stage))
              (and (equal (fn-bsc-lookup s3 stg stage) ino)
                   (fn-lgrc-goodp s3 ino a))))
-  :hints (("Goal" :do-not-induct t
+  :hints (("Goal" :do-not-induct t :cases ((consp x))
            :in-theory (e/d (fn-lgrc-goodp fn-bs-ops-for-ino-of-append)
                            (fn-lgrc-holdsp fn-bs-splice fn-bs-take fn-bsc-content fn-bs-durable-content
                             fn-bs-apply-writes fn-bs-ops-for-ino fn-bs-ops-not-for-ino
@@ -1018,7 +1053,6 @@
 (defthm fn-lgrc-attempt-is-within-the-side-conditions
   (implies (and (fn-lgrc-invp s j k a)
                 (fn-lgrc-completep a genesis (fn-bs-unit (fn-bsc-bs s)) max)
-                (consp (fn-bsc-content s (fn-bsc-lookup s j k)))
                 (fn-bs-dir-idp stg) (fn-bs-namep stage)
                 (not (and (equal stg j) (equal stage k)))
                 (fn-lgrc-outcomesp outs))
@@ -1043,7 +1077,6 @@
 (defthm fn-lgrc-attempt-keeps-the-invariant
   (implies (and (fn-lgrc-invp s j k a)
                 (fn-lgrc-completep a genesis (fn-bs-unit (fn-bsc-bs s)) max)
-                (consp (fn-bsc-content s (fn-bsc-lookup s j k)))
                 (fn-bs-dir-idp stg) (fn-bs-namep stage)
                 (not (and (equal stg j) (equal stage k)))
                 (fn-lgrc-outcomesp outs))
@@ -1053,4 +1086,155 @@
            :use ((:instance fn-lgrc-attempt-is-within-the-side-conditions)
                  (:instance fn-lgrc-run-keeps-the-invariant
                             (ops (fn-lgrc-attempt-ops s j k stg stage genesis max floor outs)))))))
+
+; -----------------------------------------------------------------------------
+; 5. K2: the world -- any number of attempts, interrupted anywhere, with
+; evictions, exits, cache losses and anyone else's steps in between.
+
+(defthm fn-bsc-step-keeps-the-unit
+  (equal (fn-bs-unit (fn-bsc-bs (mv-nth 1 (fn-bsc-step s op)))) (fn-bs-unit (fn-bsc-bs s)))
+  :hints (("Goal" :in-theory (enable fn-bsc-step fn-bsc-bs fn-bsc-vapply fn-bs-write fn-bs-fsync-file
+                                     fn-bs-fsync-dir fn-bs-fence-file fn-bs-fence-dir fn-bs-crash))))
+
+(defthm fn-bsc-run-keeps-the-unit
+  (implies (member-equal x (fn-bsc-run s ops))
+           (equal (fn-bs-unit (fn-bsc-bs x)) (fn-bs-unit (fn-bsc-bs s))))
+  :hints (("Goal" :induct (fn-bsc-run s ops) :in-theory (disable fn-bsc-step))))
+
+(defthm fn-lgrc-all-invp-of-last
+  (implies (and (fn-lgrc-all-invp states j k a) (consp states))
+           (fn-lgrc-invp (car (last states)) j k a))
+  :hints (("Goal" :induct (fn-lgrc-all-invp states j k a) :in-theory (disable fn-lgrc-invp))))
+
+(defthm fn-lgrc-all-invp-of-append
+  (equal (fn-lgrc-all-invp (append x y) j k a)
+         (and (fn-lgrc-all-invp x j k a) (fn-lgrc-all-invp y j k a)))
+  :hints (("Goal" :in-theory (disable fn-lgrc-invp))))
+; The world: any sequence of events from S.  An event is an attempt
+; (:attempt STG STAGE OUTS), or one step of the cache model by anyone else:
+; the served run's appends and barriers, other files' writes, creates,
+; renames and fences, cache evictions, process exits (:exit) and cache
+; losses (:lose-cache).  Answers every state, in order.
+(defun fn-lgrc-world (s events j k genesis max floor)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp events)
+      (let ((e (car events)))
+        (if (and (consp e) (equal (car e) :attempt))
+            (let* ((run (fn-lgrc-attempt s j k (nth 1 e) (nth 2 e) genesis max floor (nth 3 e)))
+                   (s1 (if (consp run) (car (last run)) s)))
+              (append run (fn-lgrc-world s1 (cdr events) j k genesis max floor)))
+          (mv-let (r s1) (fn-bsc-step s e)
+            (declare (ignore r))
+            (cons s1 (fn-lgrc-world s1 (cdr events) j k genesis max floor)))))
+    nil))
+
+; What the world may do: an attempt stages under a name that is not
+; journal/K, with syscall outcomes; any other step keeps its side condition
+; (fn-lgrc-op-okp) at the state it runs in.
+(defun fn-lgrc-world-okp (s events j k a genesis max floor)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp events)
+      (let ((e (car events)))
+        (if (and (consp e) (equal (car e) :attempt))
+            (let* ((run (fn-lgrc-attempt s j k (nth 1 e) (nth 2 e) genesis max floor (nth 3 e)))
+                   (s1 (if (consp run) (car (last run)) s)))
+              (and (fn-bs-dir-idp (nth 1 e)) (fn-bs-namep (nth 2 e))
+                   (not (and (equal (nth 1 e) j) (equal (nth 2 e) k)))
+                   (fn-lgrc-outcomesp (nth 3 e))
+                   (fn-lgrc-world-okp s1 (cdr events) j k a genesis max floor)))
+          (mv-let (r s1) (fn-bsc-step s e)
+            (declare (ignore r))
+            (and (fn-lgrc-op-okp s e j k a)
+                 (fn-lgrc-world-okp s1 (cdr events) j k a genesis max floor)))))
+    t))
+
+(local
+ (defthm fn-lgrc-last-is-a-member
+   (implies (consp x) (member-equal (car (last x)) x))))
+
+(local
+ (defthm fn-lgrc-attempt-keeps-the-unit
+   (implies (consp (fn-lgrc-attempt s j k stg stage genesis max floor outs))
+            (equal (fn-bs-unit (fn-bsc-bs (car (last (fn-lgrc-attempt s j k stg stage genesis max floor outs)))))
+                   (fn-bs-unit (fn-bsc-bs s))))
+   :hints (("Goal" :in-theory (disable fn-lgrc-attempt-ops fn-bsc-run-keeps-the-unit)
+            :use ((:instance fn-bsc-run-keeps-the-unit
+                             (x (car (last (fn-lgrc-attempt s j k stg stage genesis max floor outs))))
+                             (ops (fn-lgrc-attempt-ops s j k stg stage genesis max floor outs))))))))
+(local
+ (defthm fn-lgrc-attempt-ends-in-the-invariant
+   (implies (and (fn-lgrc-invp s j k a)
+                 (fn-lgrc-completep a genesis (fn-bs-unit (fn-bsc-bs s)) max)
+                 (fn-bs-dir-idp stg) (fn-bs-namep stage)
+                 (not (and (equal stg j) (equal stage k)))
+                 (fn-lgrc-outcomesp outs)
+                 (consp (fn-lgrc-attempt s j k stg stage genesis max floor outs)))
+            (fn-lgrc-invp (car (last (fn-lgrc-attempt s j k stg stage genesis max floor outs))) j k a))
+   :hints (("Goal" :in-theory (disable fn-lgrc-attempt fn-lgrc-invp fn-lgrc-completep)
+            :use ((:instance fn-lgrc-attempt-keeps-the-invariant))))))
+; KEYSTONE (K2, the world).  From the invariant over a complete
+; acknowledged prefix A, every state of any world -- any number of
+; attempts, each interrupted at any cut or failing at any syscall
+; (a failed journal/ fence, then :exit, then another attempt that reads a
+; visible-but-not-durable replacement and copies it again, ...), other
+; files' activity, evictions, exits and cache losses -- keeps the
+; invariant.
+(defthm fn-lgrc-world-keeps-the-invariant
+  (implies (and (fn-lgrc-invp s j k a)
+                (fn-lgrc-completep a genesis (fn-bs-unit (fn-bsc-bs s)) max)
+                (fn-lgrc-world-okp s events j k a genesis max floor))
+           (fn-lgrc-all-invp (fn-lgrc-world s events j k genesis max floor) j k a))
+  :hints (("Goal" :induct (fn-lgrc-world-okp s events j k a genesis max floor)
+           :in-theory (disable fn-lgrc-invp fn-lgrc-completep fn-lgrc-attempt fn-bsc-step
+                               fn-lgrc-op-okp))))
+(local
+ (defthm fn-lgrc-all-invp-member
+   (implies (and (fn-lgrc-all-invp states j k a) (member-equal x states))
+            (fn-lgrc-invp x j k a))
+   :hints (("Goal" :in-theory (disable fn-lgrc-invp)))))
+
+(local
+ (defthm fn-lgrc-attempt-member-keeps-the-unit
+   (implies (member-equal x (fn-lgrc-attempt s j k stg stage genesis max floor outs))
+            (equal (fn-bs-unit (fn-bsc-bs x)) (fn-bs-unit (fn-bsc-bs s))))
+   :hints (("Goal" :in-theory (disable fn-lgrc-attempt-ops)))))
+(defthm fn-lgrc-world-keeps-the-unit
+  (implies (member-equal x (fn-lgrc-world s events j k genesis max floor))
+           (equal (fn-bs-unit (fn-bsc-bs x)) (fn-bs-unit (fn-bsc-bs s))))
+  :hints (("Goal" :induct (fn-lgrc-world s events j k genesis max floor)
+           :in-theory (e/d (fn-bs-member-of-append) (fn-lgrc-attempt fn-bsc-step)))))
+
+; KEYSTONE (K2, discoverable).  At every state of any world, in every
+; image a cache loss can leave, the inode journal/K DURABLY names holds the
+; acknowledged prefix A, and the open's scan of it reads A's records first.
+; The quantity is the durable binding (fn-bs-durable-entry of the image),
+; never the visible one.
+(defthm fn-lgrc-world-binds-the-acknowledged-records-in-every-image
+  (implies (and (fn-lgrc-invp s j k a)
+                (fn-lgrc-completep a genesis (fn-bs-unit (fn-bsc-bs s)) max)
+                (fn-lgrc-world-okp s events j k a genesis max floor)
+                (member-equal x (fn-lgrc-world s events j k genesis max floor))
+                (fn-bs-crash-imagep (fn-bsc-bs x) image))
+           (let* ((i (fn-bs-durable-entry image j k))
+                  (c (fn-bs-durable-content image i))
+                  (unit (fn-bs-unit (fn-bsc-bs s)))
+                  (acked (car (fn-lg-scan a genesis unit max)))
+                  (scan (fn-lg-scan c genesis unit max)))
+             (and (fn-bs-inop i)
+                  (fn-lgrc-holdsp c a)
+                  (<= (len a) (cdr scan))
+                  (equal (take (len acked) (car scan)) acked))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bs-crash-imagep fn-lgrc-holdsp)
+                           (fn-lgrc-invp fn-lgrc-completep fn-lgrc-world fn-lgrc-world-okp
+                            fn-bs-crash fn-bs-durable-entry fn-bs-durable-content fn-lg-scan
+                            fn-bs-take fn-lgrc-every-image-binds-the-acknowledged-prefix))
+           :use ((:instance fn-lgrc-world-keeps-the-invariant)
+                 (:instance fn-lgrc-all-invp-member (states (fn-lgrc-world s events j k genesis max floor)))
+                 (:instance fn-lgrc-world-keeps-the-unit)
+                 (:instance fn-lgrc-every-image-binds-the-acknowledged-prefix
+                            (s x) (choices (fn-bs-crash-imagep-witness (fn-bsc-bs x) image)))
+                 (:instance fn-lgrc-scan-of-a-read-holding-a-complete-prefix
+                            (o (fn-bs-durable-content image (fn-bs-durable-entry image j k)))
+                            (unit (fn-bs-unit (fn-bsc-bs s))))))))
 
