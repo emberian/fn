@@ -4,6 +4,7 @@
 (load "tests/bp_segmented_wire_job_recording.lisp")
 (load "tests/tcpcl_source_continuation_host_refuter.lisp")
 (in-package "ACL2")
+
 (let* ((conn (make-fnn-tcl-conn)) (*flushes* 0)
        (root (list (nthcdr 7 *bundle*) nil (subseq *bundle* 0 7)))
        (token (list :recording-source-job)) (job nil) (turns 0) (events nil)

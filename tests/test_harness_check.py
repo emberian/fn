@@ -211,6 +211,17 @@ class Acl2ArityWalkTests(unittest.TestCase):
         self.assertEqual(found.get("fn-p"), 1)
         self.assertEqual(found.get("fn-q"), 2)
 
+    def test_keyword_spec_declarations_list_names_not_applications(self):
+        # host/cost-host.lisp, host/owner-served-carried.lisp, host/interfaces.lisp
+        found = self.applications(
+            "(def-cost fn-ros-physical :unaccounted (fn-ros-livep member-eq-exec))\n"
+            "(def-carried fn-c :invariant fn-i :transitions ((fn-w fn-w-thm)))\n"
+            "(definterface fn-ros-issue :operation (:unaccounted (fn-rl-wfp fn-rl-draw)))\n"
+            "(defun f (x) (fn-ros-livep x 1))")
+        self.assertEqual(found.get("fn-ros-livep"), 2)   # the real call still counts
+        for name in ("fn-w", "fn-rl-wfp", "member-eq-exec"):
+            self.assertNotIn(name, found)
+
     def test_a_quoted_list_is_not_walked(self):
         found = self.applications("(defun f (x) (member x '(fn-g fn-h)))")
         self.assertNotIn("fn-g", found)
@@ -458,6 +469,11 @@ class BindTests(unittest.TestCase):
                       " ".join(signature.bind(1, [])))
 
 
+def ledger_sym(text):
+    from tools import ledger
+    return ledger.Sym(text)
+
+
 class RawArityTests(unittest.TestCase):
     """`raw-arity`: calls of the native host's raw Common Lisp `defun`s."""
 
@@ -485,6 +501,35 @@ class RawArityTests(unittest.TestCase):
                 service journal inbound-id (fnn-octets adu) node-id
                 (fnn-octets identity) source destination)))))
         """
+
+    def test_a_reader_conditional_argument_is_one_argument(self):
+        # host/native/owner.lisp: (fnn-heap-rlimit #+linux 7 #-linux 8)
+        source = """
+            (defun fnn-heap-rlimit (resource) resource)
+            (defun f () (fnn-heap-rlimit #+linux 7 #-linux 8))
+            (defun g () (fnn-heap-rlimit #+linux 7 #-linux 8 9))
+            """
+        found = self.scan(source)
+        self.assertEqual([row["where"] for row in found], ["host/native/x.lisp:4"])
+        self.assertIn("called with 2 arguments", found[0]["problem"])
+        self.assertEqual(harness_check.feature_arities(
+            [ledger_sym("#+"), [ledger_sym("or"), ledger_sym("a")], 1, 2]), {1, 2})
+
+    def test_a_two_way_dispatch_names_both_arms(self):
+        # host/native/history-root.lisp:67
+        source = """
+            (defun f (grow cursor stage)
+              (fnn-call (if grow 'fn-his-row-grow 'fn-his-row-step) cursor stage))
+            """
+        found = []
+        from tools import ledger
+        for form, _line in ledger.Reader(textwrap.dedent(source)).top_level():
+            harness_check.raw_applications(form, found)
+        self.assertIn(("'fn-his-row-grow", 2 + harness_check.RAW_DISPATCHERS["fnn-call"]), found)
+        self.assertIn(("'fn-his-row-step", 2 + harness_check.RAW_DISPATCHERS["fnn-call"]), found)
+        wrong = self.scan(source, {"fn-his-row-grow": 2, "fn-his-row-step": 3})
+        self.assertEqual([row["callee"] for row in wrong
+                          if row["callee"].startswith("fn-his-")], ["fn-his-row-step"])
 
     def test_the_eight_of_nine_call_is_caught(self):
         found = self.scan(self.DROPPED_INGRESS)
@@ -671,6 +716,36 @@ class DuplicateDefunTests(unittest.TestCase):
         self.assertGreater(counts["definitions"], 1000)
 
 
+class LoadedHostProvidesTests(unittest.TestCase):
+    """A fixture's loaded host file defines its names: they are never stubbed
+    (tests/native_bp_received_source_raw.lisp via native_bp_session_bank_raw)."""
+
+    def scan(self, fixtures):
+        from tools import ledger
+        host = ledger.Reader("(defun fnn-a (x) (fnn-b x))\n(defun fnn-b (x) x)\n").top_level()
+        rawdefs, _ = harness_check.raw_definitions({"host/native/x.lisp": host[:1],
+                                                    "host/native/y.lisp": host[1:]})
+        bodies = {"fnn-a": host[0][0], "fnn-b": host[1][0]}
+        origins = {"fnn-a": (host[0][0][2], "host/native/x.lisp"),
+                   "fnn-b": (host[1][0][2], "host/native/y.lisp")}
+        text = fixtures["tests/h_raw.lisp"]
+        return harness_check.harness_scan("tests/h_raw.lisp", text, rawdefs, bodies,
+                                          origins, fixtures)
+
+    def test_a_name_defined_by_a_nested_load_is_not_stubbed(self):
+        alone = self.scan({"tests/h_raw.lisp": "(fnn-a 1)"})
+        self.assertIn("fnn-b", alone["unresolved"])
+        nested = self.scan({"tests/h_raw.lisp": '(load "tests/bank_raw.lisp")\n(fnn-a 1)',
+                            "tests/bank_raw.lisp": '(load "host/native/y.lisp")'})
+        self.assertNotIn("fnn-b", nested["unresolved"])
+        self.assertIsNone(nested["expected"])
+        overridable = self.scan({
+            "tests/h_raw.lisp": '(load "tests/bank_raw.lisp")\n(fnn-a 1)',
+            "tests/bank_raw.lisp":
+                '(load (or (sb-ext:posix-getenv "FN_X") "host/native/y.lisp"))'})
+        self.assertNotIn("fnn-b", overridable["unresolved"])
+
+
 class DerivedStubTests(unittest.TestCase):
     """test-stubs / test-harness-reach (entry-guards-2): a call an extracted
     host function makes is stubbed by hand, extracted, or covered by a
@@ -754,10 +829,6 @@ class DerivedStubTests(unittest.TestCase):
         self.assertEqual(reach, [])
         self.assertGreater(counts["derived_stubs"], 0)
         self.assertTrue(harness_check.LINTS["test-harness-reach"][1], "reach gates")
-
-
-if __name__ == "__main__":
-    unittest.main()
 
 
 class RawMacroTemplateTests(unittest.TestCase):
@@ -870,3 +941,7 @@ class NestedFixtureTests(unittest.TestCase):
             (root / "tests/child.lisp").write_text(block)
             sources = harness_check.harness_fixture_sources(root, "tests/root.lisp", '(load "tests/child.lisp")')
             self.assertNotIn("fnn-missing", sources["tests/child.lisp"])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -266,7 +266,7 @@ operation generation are distinct: replay of either must refuse unchanged.
 An observed timeout or failed join leaves custody pending. A spawn refusal
 may use an affirmative `:no-actor-created` receipt; an unwind after actor
 creation requires the actual terminal join. A connection drains its issued
-custody before `fn-rt-destroy`; revocation alone cannot release resources an
+custody before its sub-bank's `:destroy` step (`fn-rt-step`); revocation alone cannot release resources an
 issued I/O still physically holds. Retained output additionally requires its
 own release or durable funded transfer.
 

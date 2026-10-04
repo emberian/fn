@@ -678,10 +678,6 @@ class MergeGateTests(unittest.TestCase):
         self.assertTrue(result.stdout.startswith("green-gate:"), result.stdout)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class ScopedAuditTests(unittest.TestCase):
     def test_cli_selects_affected_roots_before_audit(self):
         report = {"books_by_verdict": {"books/dep": {"verdict": "red"},
@@ -729,3 +725,7 @@ class ScopedAuditTests(unittest.TestCase):
                 patch.object(green_check, "audit", side_effect=AssertionError("unneeded archive")), \
                 patch("builtins.print"):
             self.assertEqual(green_check.main(["--changed-since", "HEAD", "--strict"]), 0)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -251,10 +251,6 @@ class BuildListsCheckTests(unittest.TestCase):
         self.assertEqual(check.RAW_USE.findall(text), ["fnn-y"])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class DuplicateLoadTests(unittest.TestCase):
     def test_findings_refuse_duplicate_ld_before_set_closure_hides_it(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -310,3 +306,6 @@ class DuplicateLoadTests(unittest.TestCase):
     def test_unreadable_load_list_is_a_finding(self):
         self.assertIn("unreadable", check.duplicate_load_findings('(ld "broken"', "fixture")[0])
 
+
+if __name__ == "__main__":
+    unittest.main()

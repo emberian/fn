@@ -1,5 +1,25 @@
 (load "tests/native_web_page_cursor_raw.lisp")
 (in-package "ACL2")
+
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-extent-window-cancel (worker token)
+  (declare (ignorable worker token))
+  (harness-stub-reached 'fnn-extent-window-cancel "host/native/extent.lisp"))
+(defun fnn-owner-cold-window-result-locked (service read)
+  (declare (ignorable service read))
+  (harness-stub-reached 'fnn-owner-cold-window-result-locked "host/native/owner.lisp"))
+;;; ---- derived stubs: END ----
 (defun assoc-eq (key xs) (assoc key xs :test #'eq))
 (defun fn-wm (s) (cons :m (fn-wrq-oct s)))
 (defun fn-wt (s) (cons :t (fn-wrq-oct s)))
