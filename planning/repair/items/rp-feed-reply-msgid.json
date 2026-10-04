@@ -7,12 +7,15 @@
  "fix": "For CHECK/TAKETHIS (streaming form) parse the echoed Message-ID and treat a mismatch as a protocol loss (fn-feed-lost: requeue, reconnect re-offers by CHECK); IHAVE replies carry none and keep today's rule.",
  "id": "rp-feed-reply-msgid",
  "locus": "peer-services",
- "notes": [],
- "owner": "read-peer",
+ "notes": [
+  "10-04 16:05 10-04 20:10 READY lane/peer-feed (fix 04669a5c6, witnesses 62468c9d2). RED certify-20261004T171953Z-23799 at 9ab11e8ee (tests/acl2/peer-feed-red-*-tests); GREEN certify-20261004T200106Z-125291 (cloud2, lane closure, 18/19; host/owner-host is an ld host file that no certify-book admits, gated by host_check) + certify-20261004T180200Z-48706 (lat1, 234/235, same). Native: overlay on 6107ceb56 refused (entry layout, def-loop/deftheory: 29 refusals); owed on the integrator's next image set: tests.test_native_peer_hostile_feed (lane/scenarios@6fef491f3) + operator_walk."
+ ],
+ "owner": "peer-feed",
  "scenario": "A peer (bug, or a duplicated reply line) sends a second '239 <a>' after fn has already offered 'CHECK <b>': the stray 239 retires <b> as accepted though <b> was never transferred; for that peer <b> is lost.",
  "severity": "low",
+ "sha": "04669a5c6",
  "source": "read-peer-2026-10-04",
- "state": "open",
+ "state": "ready",
  "title": "Outbound feed resolves a CHECK/TAKETHIS reply against the in-flight entry without reading the echoed Message-ID",
- "updated": "2026-10-04T15:30:12Z"
+ "updated": "2026-10-04T20:05:04Z"
 }
