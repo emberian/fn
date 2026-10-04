@@ -66,9 +66,10 @@
 ;              dispatcher's clause, one lemma per form (its view CONTRACT:
 ;              under the form's test and no earlier form's, the result equals
 ;              the reference on the pinned view), the row's case and the
-;              keystone.  A row without :forms is served by the hand arms
-;              (books/served-catalog-dispatch.lisp) under its row-level
-;              :view, until declared.
+;              keystone.  A row without :forms is answered by the generated
+;              dispatcher's last clause, the pinned reference
+;              (fn-nntp-archive-command-pinned), under its row-level :view,
+;              until declared.
 ;   :cost      what the command costs on each route, (:unrestricted TEXT
 ;              :restricted TEXT); required with :forms.  The restricted
 ;              route is the reference walk over the projected pin, so a -cat
