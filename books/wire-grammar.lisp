@@ -53,7 +53,6 @@
 (include-book "frame-octets")
 (include-book "utf8")
 (include-book "octet-text")
-(local (include-book "arithmetic-5/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
 ; Total list helpers
@@ -143,6 +142,8 @@
       (+ (nfix (car xs)) (* 256 (fn-wg-le-value (cdr xs))))
     0))
 
+(encapsulate ()
+(local (include-book "arithmetic-5/top" :dir :system))
 (defthm fn-wg-le-bytes-shape
   (and (true-listp (fn-wg-le-bytes w n))
        (equal (len (fn-wg-le-bytes w n)) (nfix w))
@@ -182,6 +183,8 @@
 (defthm fn-wg-true-list-fix-of-octets
   (implies (fn-cbor-octet-listp xs) (equal (true-list-fix xs) xs)))
 
+)
+
 (defun fn-wg-be-bytes (w n)
   (declare (xargs :guard (and (natp w) (natp n))))
   (fn-wg-rev (fn-wg-le-bytes w n)))
@@ -190,6 +193,8 @@
   (declare (xargs :guard t))
   (fn-wg-le-value (fn-wg-rev xs)))
 
+(encapsulate ()
+(local (include-book "arithmetic-5/top" :dir :system))
 (defthm fn-wg-be-bytes-shape
   (and (true-listp (fn-wg-be-bytes w n))
        (equal (len (fn-wg-be-bytes w n)) (nfix w))
@@ -214,6 +219,7 @@
            :use ((:instance fn-wg-le-bytes-of-value (xs (fn-wg-rev xs))))
            :in-theory (e/d (fn-wg-be-bytes fn-wg-be-value)
                            (fn-wg-le-bytes-of-value fn-wg-le-bytes fn-wg-le-value)))))
+)
 (in-theory (disable fn-wg-be-bytes fn-wg-be-value))
 
 ; -----------------------------------------------------------------------------
@@ -835,15 +841,662 @@
 
 (in-theory (disable fn-wg-op fn-wg-armp fn-wg-widthp fn-wg-limit))
 
+; Openers: each definition below at one node kind, so a proof about one kind
+; never sees the others (generated from the definitions' arms).
+(defthm fn-wg-decode-opener-const
+  (implies (equal (fn-wg-op g) :const)
+           (equal (fn-wg-decode g xs)
+                  (if (fn-wg-prefixp (fn-wg-arg 1 g) xs)
+          (fn-wg-ok nil (fn-wg-drop (len (fn-wg-arg 1 g)) xs))
+        (fn-wg-malformed))))
+  :hints (("Goal" :expand ((fn-wg-decode g xs)))))
+
+(defthm fn-wg-decode-opener-uint
+  (implies (equal (fn-wg-op g) :uint)
+           (equal (fn-wg-decode g xs)
+                  (let* ((w (nfix (fn-wg-arg 1 g)))
+             (n (fn-wg-be-value (fn-wg-take w xs))))
+        (if (and (<= w (len xs))
+                 (fn-cbor-octet-listp (fn-wg-take w xs))
+                 (<= (nfix (fn-wg-arg 2 g)) n) (<= n (nfix (fn-wg-arg 3 g))))
+            (fn-wg-ok n (fn-wg-drop w xs))
+          (fn-wg-malformed)))))
+  :hints (("Goal" :expand ((fn-wg-decode g xs)))))
+
+(defthm fn-wg-decode-opener-bytes
+  (implies (equal (fn-wg-op g) :bytes)
+           (equal (fn-wg-decode g xs)
+                  (let* ((w (nfix (fn-wg-arg 1 g)))
+             (n (fn-wg-be-value (fn-wg-take w xs)))
+             (body (fn-wg-drop w xs))
+             (v (fn-wg-take n body)))
+        (if (and (<= w (len xs))
+                 (fn-cbor-octet-listp (fn-wg-take w xs))
+                 (<= (nfix (fn-wg-arg 2 g)) n) (<= n (nfix (fn-wg-arg 3 g)))
+                 (<= n (len body))
+                 (fn-wg-class-okp (fn-wg-arg 4 g) v))
+            (fn-wg-ok v (fn-wg-drop n body))
+          (fn-wg-malformed)))))
+  :hints (("Goal" :expand ((fn-wg-decode g xs)))))
+
+(defthm fn-wg-decode-opener-rest
+  (implies (equal (fn-wg-op g) :rest)
+           (equal (fn-wg-decode g xs)
+                  (if (and (fn-wg-class-okp (fn-wg-arg 3 g) xs)
+               (fn-cbor-octet-listp xs)
+               (<= (nfix (fn-wg-arg 1 g)) (len xs))
+               (<= (len xs) (nfix (fn-wg-arg 2 g))))
+          (fn-wg-ok xs nil)
+        (fn-wg-malformed))))
+  :hints (("Goal" :expand ((fn-wg-decode g xs)))))
+
+(defthm fn-wg-decode-opener-line
+  (implies (equal (fn-wg-op g) :line)
+           (equal (fn-wg-decode g xs)
+                  (let* ((v (fn-wg-upto-cr xs))
+             (after (fn-wg-drop (len v) xs)))
+        (if (and (fn-wg-prefixp (list 13 10) after)
+                 (fn-wg-class-okp (fn-wg-arg 3 g) v)
+                 (<= (nfix (fn-wg-arg 1 g)) (len v))
+                 (<= (len v) (nfix (fn-wg-arg 2 g))))
+            (fn-wg-ok v (fn-wg-drop 2 after))
+          (fn-wg-malformed)))))
+  :hints (("Goal" :expand ((fn-wg-decode g xs)))))
+
+(defthm fn-wg-decode-opener-base64-lines
+  (implies (equal (fn-wg-op g) :base64-lines)
+           (equal (fn-wg-decode g xs)
+                  (let* ((w (nfix (fn-wg-arg 1 g)))
+             (text (fn-wg-unlines w xs)))
+        (if (equal (fn-wg-lines w text) xs)
+            (mv-let (err v) (fn-ot-b64-decode text)
+              (if (and (not err)
+                       (<= (nfix (fn-wg-arg 2 g)) (len v))
+                       (<= (len v) (nfix (fn-wg-arg 3 g))))
+                  (fn-wg-ok v nil)
+                (fn-wg-malformed)))
+          (fn-wg-malformed)))))
+  :hints (("Goal" :expand ((fn-wg-decode g xs)))))
+
+(defthm fn-wg-decode-opener-enum
+  (implies (equal (fn-wg-op g) :enum)
+           (equal (fn-wg-decode g xs)
+                  (let* ((w (nfix (fn-wg-arg 1 g)))
+             (n (fn-wg-be-value (fn-wg-take w xs)))
+             (base (nfix (fn-wg-arg 2 g)))
+             (names (fn-wg-arg 3 g)))
+        (if (and (<= w (len xs))
+                 (fn-cbor-octet-listp (fn-wg-take w xs))
+                 (<= base n) (< n (+ base (len names))))
+            (fn-wg-ok (nth (- n base) (true-list-fix names)) (fn-wg-drop w xs))
+          (fn-wg-malformed)))))
+  :hints (("Goal" :expand ((fn-wg-decode g xs)))))
+
+(defthm fn-wg-decode-opener-seq
+  (implies (equal (fn-wg-op g) :seq)
+           (equal (fn-wg-decode g xs)
+                  (if (and (consp g) (consp (cdr g)))
+          (let ((r1 (fn-wg-decode (fn-wg-arg 1 g) xs)))
+            (if (fn-wg-okp r1)
+                (let ((r2 (fn-wg-decode (fn-wg-next g) (fn-wg-rest r1))))
+                  (if (fn-wg-okp r2)
+                      (fn-wg-ok (cons (fn-wg-value r1) (fn-wg-value r2)) (fn-wg-rest r2))
+                    r2))
+              r1))
+        (fn-wg-ok nil xs))))
+  :hints (("Goal" :expand ((fn-wg-decode g xs)))))
+
+(defthm fn-wg-decode-opener-tag
+  (implies (equal (fn-wg-op g) :tag)
+           (equal (fn-wg-decode g xs)
+                  (if (and (consp g) (consp (cdr g)) (consp (cddr g)))
+          (let ((w (nfix (fn-wg-arg 1 g))))
+            (if (and (<= w (len xs))
+                     (fn-cbor-octet-listp (fn-wg-take w xs))
+                     (equal (fn-wg-be-value (fn-wg-take w xs))
+                            (fn-wg-arg 0 (fn-wg-arg 2 g))))
+                (let ((r (fn-wg-decode (fn-wg-arg 2 (fn-wg-arg 2 g)) (fn-wg-drop w xs))))
+                  (if (fn-wg-okp r)
+                      (fn-wg-ok (list (fn-wg-arg 1 (fn-wg-arg 2 g)) (fn-wg-value r))
+                                (fn-wg-rest r))
+                    r))
+              (fn-wg-decode (fn-wg-tag-next g) xs)))
+        (fn-wg-malformed))))
+  :hints (("Goal" :expand ((fn-wg-decode g xs)))))
+
+(defthm fn-wg-decode-opener-maybe
+  (implies (equal (fn-wg-op g) :maybe)
+           (equal (fn-wg-decode g xs)
+                  (if (consp xs)
+          (let ((r (fn-wg-decode (fn-wg-arg 1 g) xs)))
+            (if (fn-wg-okp r)
+                (fn-wg-ok (list (fn-wg-value r)) (fn-wg-rest r))
+              r))
+        (fn-wg-ok nil xs))))
+  :hints (("Goal" :expand ((fn-wg-decode g xs)))))
+
+(defthm fn-wg-decode-opener-where
+  (implies (equal (fn-wg-op g) :where)
+           (equal (fn-wg-decode g xs)
+                  (let ((r (fn-wg-decode (fn-wg-arg 1 g) xs)))
+        (if (and (fn-wg-okp r) (not (fn-wg-checks-okp (cddr g) (fn-wg-value r))))
+            (fn-wg-malformed)
+          r))))
+  :hints (("Goal" :expand ((fn-wg-decode g xs)))))
+
+(defthm fn-wg-decode-opener-frame
+  (implies (equal (fn-wg-op g) :frame)
+           (equal (fn-wg-decode g xs)
+                  (let* ((m (fn-wg-take 4 xs))
+             (x1 (fn-wg-drop 4 xs))
+             (version (if (consp x1) (car x1) nil))
+             (kind (if (and (consp x1) (consp (cdr x1))) (cadr x1) nil))
+             (x2 (if (and (consp x1) (consp (cdr x1))) (cddr x1) nil))
+             (lenb (fn-wg-take 4 x2))
+             (x3 (fn-wg-drop 4 x2))
+             (n (fn-wg-be-value lenb))
+             (payload (fn-wg-take n x3))
+             (x4 (fn-wg-drop n x3))
+             (trailer (fn-wg-take 32 x4)))
+        (if (not (and (<= 4 (len xs))
+                      (equal m (fn-wg-arg 1 g))
+                      (consp x1) (consp (cdr x1))
+                      (equal version (fn-wg-arg 2 g))
+                      (equal kind (fn-wg-arg 3 g))
+                      (<= 4 (len x2))
+                      (fn-cbor-octet-listp lenb)
+                      (<= n (nfix (fn-wg-arg 4 g)))
+                      (<= (+ n 32) (len x3))
+                      (fn-cbor-octet-listp payload)
+                      (fn-cbor-octet-listp trailer)))
+            (fn-wg-malformed)
+          (if (not (equal trailer
+                          (fn-frame-digest (fn-wg-frame-protected m version kind payload))))
+              (fn-wg-refused :trailer)
+            (let ((r (fn-wg-decode (fn-wg-arg 5 g) payload)))
+              (cond ((not (fn-wg-okp r)) r)
+                    ((consp (fn-wg-rest r)) (fn-wg-malformed))
+                    (t (fn-wg-ok (fn-wg-value r) (fn-wg-drop 32 x4))))))))))
+  :hints (("Goal" :expand ((fn-wg-decode g xs)))))
+
+(defthm fn-wg-encode-opener-const
+  (implies (equal (fn-wg-op g) :const)
+           (equal (fn-wg-encode g v)
+                  (fn-wg-arg 1 g)))
+  :hints (("Goal" :expand ((fn-wg-encode g v)))))
+
+(defthm fn-wg-encode-opener-uint
+  (implies (equal (fn-wg-op g) :uint)
+           (equal (fn-wg-encode g v)
+                  (fn-wg-be-bytes (nfix (fn-wg-arg 1 g)) (nfix v))))
+  :hints (("Goal" :expand ((fn-wg-encode g v)))))
+
+(defthm fn-wg-encode-opener-bytes
+  (implies (equal (fn-wg-op g) :bytes)
+           (equal (fn-wg-encode g v)
+                  (fn-wg-app (fn-wg-be-bytes (nfix (fn-wg-arg 1 g)) (len v)) v)))
+  :hints (("Goal" :expand ((fn-wg-encode g v)))))
+
+(defthm fn-wg-encode-opener-rest
+  (implies (equal (fn-wg-op g) :rest)
+           (equal (fn-wg-encode g v)
+                  v))
+  :hints (("Goal" :expand ((fn-wg-encode g v)))))
+
+(defthm fn-wg-encode-opener-line
+  (implies (equal (fn-wg-op g) :line)
+           (equal (fn-wg-encode g v)
+                  (fn-wg-app v (list 13 10))))
+  :hints (("Goal" :expand ((fn-wg-encode g v)))))
+
+(defthm fn-wg-encode-opener-base64-lines
+  (implies (equal (fn-wg-op g) :base64-lines)
+           (equal (fn-wg-encode g v)
+                  (fn-wg-lines (nfix (fn-wg-arg 1 g)) (fn-ot-b64-encode v))))
+  :hints (("Goal" :expand ((fn-wg-encode g v)))))
+
+(defthm fn-wg-encode-opener-enum
+  (implies (equal (fn-wg-op g) :enum)
+           (equal (fn-wg-encode g v)
+                  (fn-wg-be-bytes (nfix (fn-wg-arg 1 g))
+                      (+ (nfix (fn-wg-arg 2 g)) (fn-wg-position v (fn-wg-arg 3 g))))))
+  :hints (("Goal" :expand ((fn-wg-encode g v)))))
+
+(defthm fn-wg-encode-opener-seq
+  (implies (equal (fn-wg-op g) :seq)
+           (equal (fn-wg-encode g v)
+                  (if (and (consp g) (consp (cdr g)))
+          (fn-wg-app (fn-wg-encode (fn-wg-arg 1 g) (if (consp v) (car v) nil))
+                     (fn-wg-encode (fn-wg-next g) (if (consp v) (cdr v) nil)))
+        nil)))
+  :hints (("Goal" :expand ((fn-wg-encode g v)))))
+
+(defthm fn-wg-encode-opener-tag
+  (implies (equal (fn-wg-op g) :tag)
+           (equal (fn-wg-encode g v)
+                  (if (and (consp g) (consp (cdr g)) (consp (cddr g)))
+          (if (equal (if (consp v) (car v) nil) (fn-wg-arg 1 (fn-wg-arg 2 g)))
+              (fn-wg-app (fn-wg-be-bytes (nfix (fn-wg-arg 1 g))
+                                         (nfix (fn-wg-arg 0 (fn-wg-arg 2 g))))
+                         (fn-wg-encode (fn-wg-arg 2 (fn-wg-arg 2 g))
+                                       (if (and (consp v) (consp (cdr v))) (cadr v) nil)))
+            (fn-wg-encode (fn-wg-tag-next g) v))
+        nil)))
+  :hints (("Goal" :expand ((fn-wg-encode g v)))))
+
+(defthm fn-wg-encode-opener-maybe
+  (implies (equal (fn-wg-op g) :maybe)
+           (equal (fn-wg-encode g v)
+                  (if (consp v) (fn-wg-encode (fn-wg-arg 1 g) (car v)) nil)))
+  :hints (("Goal" :expand ((fn-wg-encode g v)))))
+
+(defthm fn-wg-encode-opener-where
+  (implies (equal (fn-wg-op g) :where)
+           (equal (fn-wg-encode g v)
+                  (fn-wg-encode (fn-wg-arg 1 g) v)))
+  :hints (("Goal" :expand ((fn-wg-encode g v)))))
+
+(defthm fn-wg-encode-opener-frame
+  (implies (equal (fn-wg-op g) :frame)
+           (equal (fn-wg-encode g v)
+                  (let ((prot (fn-wg-frame-protected (fn-wg-arg 1 g) (fn-wg-arg 2 g) (fn-wg-arg 3 g)
+                                         (fn-wg-encode (fn-wg-arg 5 g) v))))
+        (fn-wg-app prot (fn-frame-digest prot)))))
+  :hints (("Goal" :expand ((fn-wg-encode g v)))))
+
+(defthm fn-wg-valuep-opener-const
+  (implies (equal (fn-wg-op g) :const)
+           (equal (fn-wg-valuep g v)
+                  (null v)))
+  :hints (("Goal" :expand ((fn-wg-valuep g v)))))
+
+(defthm fn-wg-valuep-opener-uint
+  (implies (equal (fn-wg-op g) :uint)
+           (equal (fn-wg-valuep g v)
+                  (and (natp v) (<= (nfix (fn-wg-arg 2 g)) v) (<= v (nfix (fn-wg-arg 3 g))))))
+  :hints (("Goal" :expand ((fn-wg-valuep g v)))))
+
+(defthm fn-wg-valuep-opener-bytes
+  (implies (equal (fn-wg-op g) :bytes)
+           (equal (fn-wg-valuep g v)
+                  (let ((class (fn-wg-arg (if t 4 3) g))
+            (lo (fn-wg-arg (if t 2 1) g))
+            (hi (fn-wg-arg (if t 3 2) g)))
+        (and (fn-cbor-octet-listp v) (fn-wg-class-okp class v)
+             (<= (nfix lo) (len v)) (<= (len v) (nfix hi))))))
+  :hints (("Goal" :expand ((fn-wg-valuep g v)))))
+
+(defthm fn-wg-valuep-opener-line
+  (implies (equal (fn-wg-op g) :line)
+           (equal (fn-wg-valuep g v)
+                  (let ((class (fn-wg-arg (if nil 4 3) g))
+            (lo (fn-wg-arg (if nil 2 1) g))
+            (hi (fn-wg-arg (if nil 3 2) g)))
+        (and (fn-cbor-octet-listp v) (fn-wg-class-okp class v)
+             (<= (nfix lo) (len v)) (<= (len v) (nfix hi))))))
+  :hints (("Goal" :expand ((fn-wg-valuep g v)))))
+
+(defthm fn-wg-valuep-opener-rest
+  (implies (equal (fn-wg-op g) :rest)
+           (equal (fn-wg-valuep g v)
+                  (and (fn-cbor-octet-listp v) (fn-wg-class-okp (fn-wg-arg 3 g) v)
+           (<= (nfix (fn-wg-arg 1 g)) (len v)) (<= (len v) (nfix (fn-wg-arg 2 g))))))
+  :hints (("Goal" :expand ((fn-wg-valuep g v)))))
+
+(defthm fn-wg-valuep-opener-base64-lines
+  (implies (equal (fn-wg-op g) :base64-lines)
+           (equal (fn-wg-valuep g v)
+                  (and (fn-cbor-octet-listp v)
+           (<= (nfix (fn-wg-arg 2 g)) (len v)) (<= (len v) (nfix (fn-wg-arg 3 g))))))
+  :hints (("Goal" :expand ((fn-wg-valuep g v)))))
+
+(defthm fn-wg-valuep-opener-enum
+  (implies (equal (fn-wg-op g) :enum)
+           (equal (fn-wg-valuep g v)
+                  (member-equal v (fn-wg-arg 3 g))))
+  :hints (("Goal" :expand ((fn-wg-valuep g v)))))
+
+(defthm fn-wg-valuep-opener-seq
+  (implies (equal (fn-wg-op g) :seq)
+           (equal (fn-wg-valuep g v)
+                  (if (and (consp g) (consp (cdr g)))
+          (and (consp v)
+               (fn-wg-valuep (fn-wg-arg 1 g) (car v))
+               (fn-wg-valuep (fn-wg-next g) (cdr v)))
+        (null v))))
+  :hints (("Goal" :expand ((fn-wg-valuep g v)))))
+
+(defthm fn-wg-valuep-opener-tag
+  (implies (equal (fn-wg-op g) :tag)
+           (equal (fn-wg-valuep g v)
+                  (if (and (consp g) (consp (cdr g)) (consp (cddr g)))
+          (and (true-listp v) (equal (len v) 2)
+               (if (equal (car v) (fn-wg-arg 1 (fn-wg-arg 2 g)))
+                   (fn-wg-valuep (fn-wg-arg 2 (fn-wg-arg 2 g)) (cadr v))
+                 (fn-wg-valuep (fn-wg-tag-next g) v)))
+        nil)))
+  :hints (("Goal" :expand ((fn-wg-valuep g v)))))
+
+(defthm fn-wg-valuep-opener-maybe
+  (implies (equal (fn-wg-op g) :maybe)
+           (equal (fn-wg-valuep g v)
+                  (or (null v)
+          (and (consp v) (null (cdr v)) (fn-wg-valuep (fn-wg-arg 1 g) (car v))))))
+  :hints (("Goal" :expand ((fn-wg-valuep g v)))))
+
+(defthm fn-wg-valuep-opener-where
+  (implies (equal (fn-wg-op g) :where)
+           (equal (fn-wg-valuep g v)
+                  (and (fn-wg-valuep (fn-wg-arg 1 g) v) (fn-wg-checks-okp (cddr g) v))))
+  :hints (("Goal" :expand ((fn-wg-valuep g v)))))
+
+(defthm fn-wg-valuep-opener-frame
+  (implies (equal (fn-wg-op g) :frame)
+           (equal (fn-wg-valuep g v)
+                  (and (fn-wg-valuep (fn-wg-arg 5 g) v)
+           (<= (len (fn-wg-encode (fn-wg-arg 5 g) v)) (nfix (fn-wg-arg 4 g))))))
+  :hints (("Goal" :expand ((fn-wg-valuep g v)))))
+
+(defthm fn-wg-delimitedp-opener-const
+  (implies (equal (fn-wg-op g) :const)
+           (equal (fn-wg-delimitedp g)
+                  t))
+  :hints (("Goal" :expand ((fn-wg-delimitedp g)))))
+
+(defthm fn-wg-delimitedp-opener-uint
+  (implies (equal (fn-wg-op g) :uint)
+           (equal (fn-wg-delimitedp g)
+                  t))
+  :hints (("Goal" :expand ((fn-wg-delimitedp g)))))
+
+(defthm fn-wg-delimitedp-opener-bytes
+  (implies (equal (fn-wg-op g) :bytes)
+           (equal (fn-wg-delimitedp g)
+                  t))
+  :hints (("Goal" :expand ((fn-wg-delimitedp g)))))
+
+(defthm fn-wg-delimitedp-opener-line
+  (implies (equal (fn-wg-op g) :line)
+           (equal (fn-wg-delimitedp g)
+                  t))
+  :hints (("Goal" :expand ((fn-wg-delimitedp g)))))
+
+(defthm fn-wg-delimitedp-opener-enum
+  (implies (equal (fn-wg-op g) :enum)
+           (equal (fn-wg-delimitedp g)
+                  t))
+  :hints (("Goal" :expand ((fn-wg-delimitedp g)))))
+
+(defthm fn-wg-delimitedp-opener-frame
+  (implies (equal (fn-wg-op g) :frame)
+           (equal (fn-wg-delimitedp g)
+                  t))
+  :hints (("Goal" :expand ((fn-wg-delimitedp g)))))
+
+(defthm fn-wg-delimitedp-opener-seq
+  (implies (equal (fn-wg-op g) :seq)
+           (equal (fn-wg-delimitedp g)
+                  (if (and (consp g) (consp (cdr g)))
+               (and (fn-wg-delimitedp (fn-wg-arg 1 g))
+                    (fn-wg-delimitedp (fn-wg-next g)))
+             t)))
+  :hints (("Goal" :expand ((fn-wg-delimitedp g)))))
+
+(defthm fn-wg-delimitedp-opener-tag
+  (implies (equal (fn-wg-op g) :tag)
+           (equal (fn-wg-delimitedp g)
+                  (if (and (consp g) (consp (cdr g)) (consp (cddr g)))
+               (and (fn-wg-delimitedp (fn-wg-arg 2 (fn-wg-arg 2 g)))
+                    (fn-wg-delimitedp (fn-wg-tag-next g)))
+             t)))
+  :hints (("Goal" :expand ((fn-wg-delimitedp g)))))
+
+(defthm fn-wg-delimitedp-opener-where
+  (implies (equal (fn-wg-op g) :where)
+           (equal (fn-wg-delimitedp g)
+                  (fn-wg-delimitedp (fn-wg-arg 1 g))))
+  :hints (("Goal" :expand ((fn-wg-delimitedp g)))))
+
+(defthm fn-wg-nonemptyp-opener-const
+  (implies (equal (fn-wg-op g) :const)
+           (equal (fn-wg-nonemptyp g)
+                  (consp (fn-wg-arg 1 g))))
+  :hints (("Goal" :expand ((fn-wg-nonemptyp g)))))
+
+(defthm fn-wg-nonemptyp-opener-uint
+  (implies (equal (fn-wg-op g) :uint)
+           (equal (fn-wg-nonemptyp g)
+                  t))
+  :hints (("Goal" :expand ((fn-wg-nonemptyp g)))))
+
+(defthm fn-wg-nonemptyp-opener-bytes
+  (implies (equal (fn-wg-op g) :bytes)
+           (equal (fn-wg-nonemptyp g)
+                  t))
+  :hints (("Goal" :expand ((fn-wg-nonemptyp g)))))
+
+(defthm fn-wg-nonemptyp-opener-line
+  (implies (equal (fn-wg-op g) :line)
+           (equal (fn-wg-nonemptyp g)
+                  t))
+  :hints (("Goal" :expand ((fn-wg-nonemptyp g)))))
+
+(defthm fn-wg-nonemptyp-opener-enum
+  (implies (equal (fn-wg-op g) :enum)
+           (equal (fn-wg-nonemptyp g)
+                  t))
+  :hints (("Goal" :expand ((fn-wg-nonemptyp g)))))
+
+(defthm fn-wg-nonemptyp-opener-frame
+  (implies (equal (fn-wg-op g) :frame)
+           (equal (fn-wg-nonemptyp g)
+                  t))
+  :hints (("Goal" :expand ((fn-wg-nonemptyp g)))))
+
+(defthm fn-wg-nonemptyp-opener-tag
+  (implies (equal (fn-wg-op g) :tag)
+           (equal (fn-wg-nonemptyp g)
+                  t))
+  :hints (("Goal" :expand ((fn-wg-nonemptyp g)))))
+
+(defthm fn-wg-nonemptyp-opener-rest
+  (implies (equal (fn-wg-op g) :rest)
+           (equal (fn-wg-nonemptyp g)
+                  (posp (fn-wg-arg (if t 1 2) g))))
+  :hints (("Goal" :expand ((fn-wg-nonemptyp g)))))
+
+(defthm fn-wg-nonemptyp-opener-base64-lines
+  (implies (equal (fn-wg-op g) :base64-lines)
+           (equal (fn-wg-nonemptyp g)
+                  (posp (fn-wg-arg (if nil 1 2) g))))
+  :hints (("Goal" :expand ((fn-wg-nonemptyp g)))))
+
+(defthm fn-wg-nonemptyp-opener-seq
+  (implies (equal (fn-wg-op g) :seq)
+           (equal (fn-wg-nonemptyp g)
+                  (if (and (consp g) (consp (cdr g)))
+               (or (fn-wg-nonemptyp (fn-wg-arg 1 g))
+                   (fn-wg-nonemptyp (fn-wg-next g)))
+             nil)))
+  :hints (("Goal" :expand ((fn-wg-nonemptyp g)))))
+
+(defthm fn-wg-nonemptyp-opener-where
+  (implies (equal (fn-wg-op g) :where)
+           (equal (fn-wg-nonemptyp g)
+                  (fn-wg-nonemptyp (fn-wg-arg 1 g))))
+  :hints (("Goal" :expand ((fn-wg-nonemptyp g)))))
+
+(defthm fn-wg-grammarp-opener-const
+  (implies (equal (fn-wg-op g) :const)
+           (equal (fn-wg-grammarp g)
+                  (and (true-listp g) (and (equal (len g) 2) (fn-cbor-octet-listp (fn-wg-arg 1 g))))))
+  :hints (("Goal" :expand ((fn-wg-grammarp g)))))
+
+(defthm fn-wg-grammarp-opener-uint
+  (implies (equal (fn-wg-op g) :uint)
+           (equal (fn-wg-grammarp g)
+                  (and (true-listp g) (and (equal (len g) 4) (fn-wg-widthp (fn-wg-arg 1 g))
+            (natp (fn-wg-arg 2 g)) (natp (fn-wg-arg 3 g))
+            (<= (fn-wg-arg 2 g) (fn-wg-arg 3 g))
+            (< (fn-wg-arg 3 g) (fn-wg-limit (fn-wg-arg 1 g)))))))
+  :hints (("Goal" :expand ((fn-wg-grammarp g)))))
+
+(defthm fn-wg-grammarp-opener-bytes
+  (implies (equal (fn-wg-op g) :bytes)
+           (equal (fn-wg-grammarp g)
+                  (and (true-listp g) (and (equal (len g) 5) (fn-wg-widthp (fn-wg-arg 1 g))
+            (natp (fn-wg-arg 2 g)) (natp (fn-wg-arg 3 g))
+            (<= (fn-wg-arg 2 g) (fn-wg-arg 3 g))
+            (< (fn-wg-arg 3 g) (fn-wg-limit (fn-wg-arg 1 g)))
+            (fn-wg-classp (fn-wg-arg 4 g))))))
+  :hints (("Goal" :expand ((fn-wg-grammarp g)))))
+
+(defthm fn-wg-grammarp-opener-rest
+  (implies (equal (fn-wg-op g) :rest)
+           (equal (fn-wg-grammarp g)
+                  (and (true-listp g) (and (equal (len g) 4) (natp (fn-wg-arg 1 g)) (natp (fn-wg-arg 2 g))
+            (<= (fn-wg-arg 1 g) (fn-wg-arg 2 g)) (fn-wg-classp (fn-wg-arg 3 g))))))
+  :hints (("Goal" :expand ((fn-wg-grammarp g)))))
+
+(defthm fn-wg-grammarp-opener-line
+  (implies (equal (fn-wg-op g) :line)
+           (equal (fn-wg-grammarp g)
+                  (and (true-listp g) (and (equal (len g) 4) (natp (fn-wg-arg 1 g)) (natp (fn-wg-arg 2 g))
+            (<= (fn-wg-arg 1 g) (fn-wg-arg 2 g)) (equal (fn-wg-arg 3 g) :header)))))
+  :hints (("Goal" :expand ((fn-wg-grammarp g)))))
+
+(defthm fn-wg-grammarp-opener-base64-lines
+  (implies (equal (fn-wg-op g) :base64-lines)
+           (equal (fn-wg-grammarp g)
+                  (and (true-listp g) (and (equal (len g) 4) (posp (fn-wg-arg 1 g)) (natp (fn-wg-arg 2 g))
+            (natp (fn-wg-arg 3 g)) (<= (fn-wg-arg 2 g) (fn-wg-arg 3 g))))))
+  :hints (("Goal" :expand ((fn-wg-grammarp g)))))
+
+(defthm fn-wg-grammarp-opener-enum
+  (implies (equal (fn-wg-op g) :enum)
+           (equal (fn-wg-grammarp g)
+                  (and (true-listp g) (and (equal (len g) 4) (fn-wg-widthp (fn-wg-arg 1 g)) (natp (fn-wg-arg 2 g))
+            (symbol-listp (fn-wg-arg 3 g)) (consp (fn-wg-arg 3 g))
+            (no-duplicatesp-equal (fn-wg-arg 3 g))
+            (<= (+ (fn-wg-arg 2 g) (len (fn-wg-arg 3 g))) (fn-wg-limit (fn-wg-arg 1 g)))))))
+  :hints (("Goal" :expand ((fn-wg-grammarp g)))))
+
+(defthm fn-wg-grammarp-opener-seq
+  (implies (equal (fn-wg-op g) :seq)
+           (equal (fn-wg-grammarp g)
+                  (and (true-listp g) (if (consp (cdr g))
+           (and (fn-wg-grammarp (fn-wg-arg 1 g))
+                (or (not (consp (cddr g))) (fn-wg-delimitedp (fn-wg-arg 1 g)))
+                (fn-wg-grammarp (fn-wg-next g)))
+         t))))
+  :hints (("Goal" :expand ((fn-wg-grammarp g)))))
+
+(defthm fn-wg-grammarp-opener-tag
+  (implies (equal (fn-wg-op g) :tag)
+           (equal (fn-wg-grammarp g)
+                  (and (true-listp g) (and (consp (cdr g)) (fn-wg-widthp (fn-wg-arg 1 g))
+            (if (consp (cddr g))
+                (and (fn-wg-armp (fn-wg-arg 2 g) (fn-wg-arg 1 g))
+                     (fn-wg-grammarp (fn-wg-arg 2 (fn-wg-arg 2 g)))
+                     (not (member-equal (fn-wg-arg 0 (fn-wg-arg 2 g))
+                                        (fn-wg-tag-codes (fn-wg-tag-next g))))
+                     (not (member-equal (fn-wg-arg 1 (fn-wg-arg 2 g))
+                                        (fn-wg-tag-names (fn-wg-tag-next g))))
+                     (fn-wg-grammarp (fn-wg-tag-next g)))
+              t)))))
+  :hints (("Goal" :expand ((fn-wg-grammarp g)))))
+
+(defthm fn-wg-grammarp-opener-maybe
+  (implies (equal (fn-wg-op g) :maybe)
+           (equal (fn-wg-grammarp g)
+                  (and (true-listp g) (and (equal (len g) 2) (fn-wg-grammarp (fn-wg-arg 1 g))
+            (fn-wg-nonemptyp (fn-wg-arg 1 g))))))
+  :hints (("Goal" :expand ((fn-wg-grammarp g)))))
+
+(defthm fn-wg-grammarp-opener-where
+  (implies (equal (fn-wg-op g) :where)
+           (equal (fn-wg-grammarp g)
+                  (and (true-listp g) (and (consp (cdr g)) (fn-wg-grammarp (fn-wg-arg 1 g))
+            (equal (fn-wg-op (fn-wg-arg 1 g)) :seq)
+            (fn-wg-check-listp (cddr g))))))
+  :hints (("Goal" :expand ((fn-wg-grammarp g)))))
+
+(defthm fn-wg-grammarp-opener-frame
+  (implies (equal (fn-wg-op g) :frame)
+           (equal (fn-wg-grammarp g)
+                  (and (true-listp g) (and (equal (len g) 6)
+            (fn-cbor-octet-listp (fn-wg-arg 1 g)) (equal (len (fn-wg-arg 1 g)) 4)
+            (fn-cbor-octetp (fn-wg-arg 2 g)) (fn-cbor-octetp (fn-wg-arg 3 g))
+            (natp (fn-wg-arg 4 g)) (< (fn-wg-arg 4 g) (fn-wg-limit 4))
+            (fn-wg-grammarp (fn-wg-arg 5 g))))))
+  :hints (("Goal" :expand ((fn-wg-grammarp g)))))
+
+
+; The :seq and :tag openers stay closed: their recursion is along the same
+; node kind (fn-wg-next, fn-wg-tag-next), and an open opener would unroll a
+; whole element or arm list.  A proof about one opens it by :expand.
+(in-theory (disable fn-wg-decode-opener-seq fn-wg-encode-opener-seq fn-wg-valuep-opener-seq fn-wg-delimitedp-opener-seq fn-wg-nonemptyp-opener-seq fn-wg-grammarp-opener-seq fn-wg-decode-opener-tag fn-wg-encode-opener-tag fn-wg-valuep-opener-tag fn-wg-delimitedp-opener-tag fn-wg-nonemptyp-opener-tag fn-wg-grammarp-opener-tag))
+
+(defthm fn-wg-nonemptyp-of-tag
+  (implies (equal (fn-wg-op g) :tag) (fn-wg-nonemptyp g))
+  :hints (("Goal" :expand ((fn-wg-nonemptyp g)))))
+(defthm fn-wg-nonemptyp-of-maybe
+  (implies (equal (fn-wg-op g) :maybe) (not (fn-wg-nonemptyp g)))
+  :hints (("Goal" :expand ((fn-wg-nonemptyp g)))))
+(defthm fn-wg-delimitedp-of-tail-nodes
+  (implies (member-equal (fn-wg-op g) '(:rest :maybe :base64-lines))
+           (not (fn-wg-delimitedp g)))
+  :hints (("Goal" :expand ((fn-wg-delimitedp g)))))
+
+(defthm fn-wg-empty-seq
+  (implies (and (equal (fn-wg-op g) :seq) (not (consp (cdr g))))
+           (and (equal (fn-wg-encode g v) nil)
+                (equal (fn-wg-valuep g v) (null v))
+                (fn-wg-delimitedp g)
+                (not (fn-wg-nonemptyp g))
+                (equal (fn-wg-decode g xs) (fn-wg-ok nil xs))))
+  :hints (("Goal" :expand ((fn-wg-encode g v) (fn-wg-valuep g v) (fn-wg-delimitedp g)
+                           (fn-wg-nonemptyp g) (fn-wg-decode g xs)))))
+(defthm fn-wg-empty-tag
+  (implies (and (equal (fn-wg-op g) :tag) (not (consp (cddr g))))
+           (and (equal (fn-wg-encode g v) nil)
+                (not (fn-wg-valuep g v))
+                (fn-wg-delimitedp g)
+                (equal (fn-wg-tag-codes g) nil)
+                (equal (fn-wg-tag-names g) nil)
+                (equal (fn-wg-decode g xs) (fn-wg-malformed))))
+  :hints (("Goal" :expand ((fn-wg-encode g v) (fn-wg-valuep g v) (fn-wg-delimitedp g)
+                           (fn-wg-tag-codes g) (fn-wg-tag-names g) (fn-wg-decode g xs)))))
+
+(defthm fn-wg-grammarp-of-unknown-op
+  (implies (not (member-equal (fn-wg-op g)
+                              '(:const :uint :bytes :rest :line :base64-lines :enum
+                                :seq :tag :maybe :where :frame)))
+           (not (fn-wg-grammarp g)))
+  :hints (("Goal" :expand ((fn-wg-grammarp g)))))
+
+(in-theory (disable (:definition fn-wg-decode) (:definition fn-wg-encode)
+                    (:definition fn-wg-valuep) (:definition fn-wg-grammarp)
+                    (:definition fn-wg-delimitedp) (:definition fn-wg-nonemptyp)))
+
 (defthm fn-wg-encode-octets
   (implies (and (fn-wg-grammarp g) (fn-wg-valuep g v))
            (fn-cbor-octet-listp (fn-wg-encode g v)))
-  :hints (("Goal" :induct (fn-wg-encode g v))))
+  :hints (("Goal" :induct (fn-wg-encode g v)
+           :expand ((fn-wg-encode g v) (fn-wg-valuep g v) (fn-wg-grammarp g)
+                    (fn-wg-nonemptyp g)))))
 
 (defthm fn-wg-encode-nonempty
   (implies (and (fn-wg-grammarp g) (fn-wg-valuep g v) (fn-wg-nonemptyp g))
            (consp (fn-wg-encode g v)))
-  :hints (("Goal" :induct (fn-wg-encode g v))))
+  :hints (("Goal" :induct (fn-wg-encode g v)
+           :expand ((fn-wg-encode g v) (fn-wg-valuep g v) (fn-wg-grammarp g)
+                    (fn-wg-nonemptyp g)))))
+
+(defthm fn-wg-take-of-app-shorter
+  (implies (<= (nfix n) (len xs))
+           (equal (fn-wg-take n (fn-wg-app xs ys)) (fn-wg-take n xs)))
+  :hints (("Goal" :induct (fn-wg-take n xs))))
 
 (defun fn-wg-tag-code (g v)
   (declare (xargs :guard t :measure (acl2-count g) :verify-guards nil))
@@ -854,9 +1507,9 @@
     0))
 (defthm fn-wg-tag-encode-head
   (implies (and (equal (fn-wg-op g) :tag) (fn-wg-grammarp g) (fn-wg-valuep g v))
-           (and (equal (fn-wg-encode g v)
-                       (fn-wg-app (fn-wg-be-bytes (fn-wg-arg 1 g) (fn-wg-tag-code g v))
-                                  (fn-wg-drop (fn-wg-arg 1 g) (fn-wg-encode g v))))
+           (and (equal (fn-wg-take (fn-wg-arg 1 g) (fn-wg-encode g v))
+                       (fn-wg-be-bytes (fn-wg-arg 1 g) (fn-wg-tag-code g v)))
+                (<= (fn-wg-arg 1 g) (len (fn-wg-encode g v)))
                 (member-equal (fn-wg-tag-code g v) (fn-wg-tag-codes g))
                 (natp (fn-wg-tag-code g v))
                 (< (fn-wg-tag-code g v) (fn-wg-limit (fn-wg-arg 1 g)))))
@@ -869,6 +1522,13 @@
            (equal (list (car v) (cadr v)) v))
   :hints (("Goal" :expand ((len (cdr v)) (len (cddr v)) (true-listp (cdr v)) (true-listp (cddr v))))))
 
+(defthm fn-wg-plus-cancel
+  (equal (+ a (- a) p) (fix p)))
+(defthm fn-wg-symbol-listp-true-list-fix
+  (implies (symbol-listp x) (equal (true-list-fix x) x)))
+(defthm fn-wg-nth-position-of-member
+  (implies (member-equal v names)
+           (equal (nth (fn-wg-position v names) names) v)))
 (defthm fn-wg-position-bound
   (implies (member-equal v names) (< (fn-wg-position v names) (len names)))
   :rule-classes :linear)
@@ -880,7 +1540,7 @@
                   (fn-wg-ok v r)))
   :rule-classes nil
   :hints (("Goal" :expand ((fn-wg-grammarp g) (fn-wg-encode g v) (fn-wg-valuep g v)
-                           (fn-wg-decode g (fn-wg-app (fn-wg-encode g v) r))))))
+                           (:free (x) (fn-wg-decode g x))))))
 
 (defthm fn-wg-decode-of-encode-uint
   (implies (and (equal (fn-wg-op g) :uint) (fn-wg-grammarp g) (fn-wg-valuep g v)
@@ -889,7 +1549,7 @@
                   (fn-wg-ok v r)))
   :rule-classes nil
   :hints (("Goal" :expand ((fn-wg-grammarp g) (fn-wg-encode g v) (fn-wg-valuep g v)
-                           (fn-wg-decode g (fn-wg-app (fn-wg-encode g v) r))))))
+                           (:free (x) (fn-wg-decode g x))))))
 
 (defthm fn-wg-decode-of-encode-bytes
   (implies (and (equal (fn-wg-op g) :bytes) (fn-wg-grammarp g) (fn-wg-valuep g v)
@@ -898,7 +1558,7 @@
                   (fn-wg-ok v r)))
   :rule-classes nil
   :hints (("Goal" :expand ((fn-wg-grammarp g) (fn-wg-encode g v) (fn-wg-valuep g v)
-                           (fn-wg-decode g (fn-wg-app (fn-wg-encode g v) r))))))
+                           (:free (x) (fn-wg-decode g x))))))
 
 (defthm fn-wg-decode-of-encode-rest
   (implies (and (equal (fn-wg-op g) :rest) (fn-wg-grammarp g) (fn-wg-valuep g v)
@@ -908,7 +1568,7 @@
                   (fn-wg-ok v r)))
   :rule-classes nil
   :hints (("Goal" :expand ((fn-wg-grammarp g) (fn-wg-encode g v) (fn-wg-valuep g v)
-                           (fn-wg-decode g (fn-wg-app (fn-wg-encode g v) r))))))
+                           (:free (x) (fn-wg-decode g x))))))
 
 (defthm fn-wg-decode-of-encode-line
   (implies (and (equal (fn-wg-op g) :line) (fn-wg-grammarp g) (fn-wg-valuep g v)
@@ -917,7 +1577,7 @@
                   (fn-wg-ok v r)))
   :rule-classes nil
   :hints (("Goal" :expand ((fn-wg-grammarp g) (fn-wg-encode g v) (fn-wg-valuep g v)
-                           (fn-wg-decode g (fn-wg-app (fn-wg-encode g v) r))))))
+                           (:free (x) (fn-wg-decode g x))))))
 
 (defthm fn-wg-decode-of-encode-base64-lines
   (implies (and (equal (fn-wg-op g) :base64-lines) (fn-wg-grammarp g) (fn-wg-valuep g v)
@@ -927,7 +1587,7 @@
                   (fn-wg-ok v r)))
   :rule-classes nil
   :hints (("Goal" :expand ((fn-wg-grammarp g) (fn-wg-encode g v) (fn-wg-valuep g v)
-                           (fn-wg-decode g (fn-wg-app (fn-wg-encode g v) r))))))
+                           (:free (x) (fn-wg-decode g x))))))
 
 (defthm fn-wg-decode-of-encode-enum
   (implies (and (equal (fn-wg-op g) :enum) (fn-wg-grammarp g) (fn-wg-valuep g v)
@@ -936,7 +1596,7 @@
                   (fn-wg-ok v r)))
   :rule-classes nil
   :hints (("Goal" :expand ((fn-wg-grammarp g) (fn-wg-encode g v) (fn-wg-valuep g v)
-                           (fn-wg-decode g (fn-wg-app (fn-wg-encode g v) r))))))
+                           (:free (x) (fn-wg-decode g x))))))
 
 (defthm fn-wg-decode-of-encode-seq
   (implies (and (equal (fn-wg-op g) :seq) (consp g) (consp (cdr g))
@@ -954,9 +1614,9 @@
                            (fn-wg-ok (cdr v) r))))
            (equal (fn-wg-decode g (fn-wg-app (fn-wg-encode g v) r)) (fn-wg-ok v r)))
   :rule-classes nil
-  :hints (("Goal" :expand ((fn-wg-grammarp g) (fn-wg-encode g v) (fn-wg-valuep g v)
+  :hints (("Goal" :in-theory (disable fn-wg-decode-opener-seq fn-wg-encode-opener-seq fn-wg-valuep-opener-seq fn-wg-delimitedp-opener-seq fn-wg-nonemptyp-opener-seq fn-wg-grammarp-opener-seq) :expand ((fn-wg-grammarp g) (fn-wg-encode g v) (fn-wg-valuep g v)
                            (fn-wg-delimitedp g)
-                           (fn-wg-decode g (fn-wg-app (fn-wg-encode g v) r))))))
+                           (:free (x) (fn-wg-decode g x))))))
 
 (defthm fn-wg-decode-of-encode-tag-hit
   (implies (and (equal (fn-wg-op g) :tag) (consp g) (consp (cdr g)) (consp (cddr g))
@@ -971,9 +1631,9 @@
            (equal (fn-wg-decode g (fn-wg-app (fn-wg-encode g v) r)) (fn-wg-ok v r)))
   :rule-classes nil
   :otf-flg t
-  :hints (("Goal" :do-not (quote (generalize fertilize eliminate-destructors)) :do-not-induct t :expand ((fn-wg-grammarp g) (fn-wg-encode g v) (fn-wg-valuep g v)
+  :hints (("Goal" :in-theory (disable fn-wg-decode-opener-tag fn-wg-encode-opener-tag fn-wg-valuep-opener-tag fn-wg-delimitedp-opener-tag fn-wg-nonemptyp-opener-tag fn-wg-grammarp-opener-tag) :do-not (quote (generalize fertilize eliminate-destructors)) :do-not-induct t :expand ((fn-wg-grammarp g) (fn-wg-encode g v) (fn-wg-valuep g v)
                            (fn-wg-delimitedp g)
-                           (fn-wg-decode g (fn-wg-app (fn-wg-encode g v) r))))))
+                           (:free (x) (fn-wg-decode g x))))))
 
 (defthm fn-wg-decode-of-encode-tag-miss
   (implies (and (equal (fn-wg-op g) :tag) (consp g) (consp (cdr g)) (consp (cddr g))
@@ -987,10 +1647,10 @@
                            (fn-wg-ok v r))))
            (equal (fn-wg-decode g (fn-wg-app (fn-wg-encode g v) r)) (fn-wg-ok v r)))
   :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-wg-tag-encode-head (g (fn-wg-tag-next g))))
+  :hints (("Goal" :in-theory (disable fn-wg-decode-opener-tag fn-wg-encode-opener-tag fn-wg-valuep-opener-tag fn-wg-delimitedp-opener-tag fn-wg-nonemptyp-opener-tag fn-wg-grammarp-opener-tag) :use ((:instance fn-wg-tag-encode-head (g (fn-wg-tag-next g))))
            :expand ((fn-wg-grammarp g) (fn-wg-encode g v) (fn-wg-valuep g v)
                            (fn-wg-delimitedp g) (fn-wg-tag-codes g)
-                           (fn-wg-decode g (fn-wg-app (fn-wg-encode g v) r))))))
+                           (:free (x) (fn-wg-decode g x))))))
 
 (defthm fn-wg-decode-of-encode-maybe
   (implies (and (equal (fn-wg-op g) :maybe)
@@ -1005,7 +1665,7 @@
   :rule-classes nil
   :hints (("Goal" :expand ((fn-wg-grammarp g) (fn-wg-encode g v) (fn-wg-valuep g v)
                            (fn-wg-delimitedp g)
-                           (fn-wg-decode g (fn-wg-app (fn-wg-encode g v) r))))))
+                           (:free (x) (fn-wg-decode g x))))))
 
 (defthm fn-wg-decode-of-encode-where
   (implies (and (equal (fn-wg-op g) :where)
@@ -1020,7 +1680,7 @@
   :rule-classes nil
   :hints (("Goal" :expand ((fn-wg-grammarp g) (fn-wg-encode g v) (fn-wg-valuep g v)
                            (fn-wg-delimitedp g)
-                           (fn-wg-decode g (fn-wg-app (fn-wg-encode g v) r))))))
+                           (:free (x) (fn-wg-decode g x))))))
 
 (defthm fn-wg-decode-of-encode-frame
   (implies (and (equal (fn-wg-op g) :frame)
@@ -1035,7 +1695,7 @@
   :rule-classes nil
   :hints (("Goal" :expand ((fn-wg-grammarp g) (fn-wg-encode g v) (fn-wg-valuep g v)
                            (fn-wg-delimitedp g)
-                           (fn-wg-decode g (fn-wg-app (fn-wg-encode g v) r))))))
+                           (:free (x) (fn-wg-decode g x))))))
 
 (defthm fn-wg-grammarp-op
   (implies (fn-wg-grammarp g)
@@ -1102,3 +1762,294 @@
                (equal (len (access clause-id id :case-lst)) 1)
                (equal (access clause-id id :primes) 0)
                '(:use (fn-wg-shape-facts fn-wg-grammarp-op fn-wg-grammarp-seq-tag-shape fn-wg-decode-of-encode-const fn-wg-decode-of-encode-uint fn-wg-decode-of-encode-bytes fn-wg-decode-of-encode-rest fn-wg-decode-of-encode-line fn-wg-decode-of-encode-base64-lines fn-wg-decode-of-encode-enum fn-wg-decode-of-encode-seq fn-wg-decode-of-encode-tag-hit fn-wg-decode-of-encode-tag-miss fn-wg-decode-of-encode-maybe fn-wg-decode-of-encode-where fn-wg-decode-of-encode-frame)))))
+
+; -----------------------------------------------------------------------------
+; Encode of decode
+
+(defthm fn-wg-be-bytes-of-value-take
+  (implies (and (fn-cbor-octet-listp (fn-wg-take n xs)) (natp n))
+           (equal (fn-wg-be-bytes n (fn-wg-be-value (fn-wg-take n xs)))
+                  (fn-wg-take n xs)))
+  :hints (("Goal" :use ((:instance fn-wg-be-bytes-of-value (xs (fn-wg-take n xs))))
+           :in-theory (disable fn-wg-be-bytes-of-value))))
+(defthm fn-wg-member-of-nth
+  (implies (and (natp k) (< k (len names)))
+           (member-equal (nth k names) names))
+  :hints (("Goal" :induct (nth k names))))
+(defthm fn-wg-line-split
+  (let ((d (fn-wg-drop (len (fn-wg-upto-cr xs)) xs)))
+    (implies (and (consp d) (equal 13 (car d)) (consp (cdr d)) (equal 10 (cadr d)))
+             (equal (fn-wg-app (fn-wg-upto-cr xs) (list* 13 10 (fn-wg-drop 1 (cdr d))))
+                    xs)))
+  :hints (("Goal" :use ((:instance fn-wg-prefixp-app-drop (p (fn-wg-upto-cr xs))))
+           :expand ((fn-wg-drop 1 (cdr (fn-wg-drop (len (fn-wg-upto-cr xs)) xs))))
+           :in-theory (disable fn-wg-prefixp-app-drop))))
+(defthm fn-wg-upto-cr-prefix
+  (and (fn-wg-prefixp (fn-wg-upto-cr xs) xs)
+       (true-listp (fn-wg-upto-cr xs))))
+(defthm fn-wg-true-listp-of-unlines
+  (true-listp (fn-wg-unlines w xs)))
+(defthm fn-wg-header-octets-are-octets
+  (implies (fn-wg-header-octetsp xs) (fn-cbor-octet-listp xs)))
+
+(defthm fn-wg-encode-of-decode-const
+  (implies (and (equal (fn-wg-op g) :const) (fn-wg-grammarp g) (fn-cbor-octet-listp xs) (fn-wg-okp (fn-wg-decode g xs)))
+           (and (fn-wg-valuep g (fn-wg-value (fn-wg-decode g xs)))
+                (equal (fn-wg-app (fn-wg-encode g (fn-wg-value (fn-wg-decode g xs))) (fn-wg-rest (fn-wg-decode g xs))) xs)
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode g xs)))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn-wg-grammarp g) (:free (x) (fn-wg-decode g x)) (fn-wg-delimitedp g)
+                           (:free (v) (fn-wg-encode g v)) (:free (v) (fn-wg-valuep g v))))))
+(defthm fn-wg-encode-of-decode-uint
+  (implies (and (equal (fn-wg-op g) :uint) (fn-wg-grammarp g) (fn-cbor-octet-listp xs) (fn-wg-okp (fn-wg-decode g xs)))
+           (and (fn-wg-valuep g (fn-wg-value (fn-wg-decode g xs)))
+                (equal (fn-wg-app (fn-wg-encode g (fn-wg-value (fn-wg-decode g xs))) (fn-wg-rest (fn-wg-decode g xs))) xs)
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode g xs)))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn-wg-grammarp g) (:free (x) (fn-wg-decode g x)) (fn-wg-delimitedp g)
+                           (:free (v) (fn-wg-encode g v)) (:free (v) (fn-wg-valuep g v))))))
+(defthm fn-wg-encode-of-decode-bytes
+  (implies (and (equal (fn-wg-op g) :bytes) (fn-wg-grammarp g) (fn-cbor-octet-listp xs) (fn-wg-okp (fn-wg-decode g xs)))
+           (and (fn-wg-valuep g (fn-wg-value (fn-wg-decode g xs)))
+                (equal (fn-wg-app (fn-wg-encode g (fn-wg-value (fn-wg-decode g xs))) (fn-wg-rest (fn-wg-decode g xs))) xs)
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode g xs)))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn-wg-grammarp g) (:free (x) (fn-wg-decode g x)) (fn-wg-delimitedp g)
+                           (:free (v) (fn-wg-encode g v)) (:free (v) (fn-wg-valuep g v))))))
+(defthm fn-wg-encode-of-decode-rest
+  (implies (and (equal (fn-wg-op g) :rest) (fn-wg-grammarp g) (fn-cbor-octet-listp xs) (fn-wg-okp (fn-wg-decode g xs)))
+           (and (fn-wg-valuep g (fn-wg-value (fn-wg-decode g xs)))
+                (equal (fn-wg-app (fn-wg-encode g (fn-wg-value (fn-wg-decode g xs))) (fn-wg-rest (fn-wg-decode g xs))) xs)
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode g xs)))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn-wg-grammarp g) (:free (x) (fn-wg-decode g x)) (fn-wg-delimitedp g)
+                           (:free (v) (fn-wg-encode g v)) (:free (v) (fn-wg-valuep g v))))))
+(defthm fn-wg-encode-of-decode-line
+  (implies (and (equal (fn-wg-op g) :line) (fn-wg-grammarp g) (fn-cbor-octet-listp xs) (fn-wg-okp (fn-wg-decode g xs)))
+           (and (fn-wg-valuep g (fn-wg-value (fn-wg-decode g xs)))
+                (equal (fn-wg-app (fn-wg-encode g (fn-wg-value (fn-wg-decode g xs))) (fn-wg-rest (fn-wg-decode g xs))) xs)
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode g xs)))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn-wg-grammarp g) (:free (x) (fn-wg-decode g x)) (fn-wg-delimitedp g)
+                           (:free (v) (fn-wg-encode g v)) (:free (v) (fn-wg-valuep g v))))))
+(defthm fn-wg-encode-of-decode-base64-lines
+  (implies (and (equal (fn-wg-op g) :base64-lines) (fn-wg-grammarp g) (fn-cbor-octet-listp xs) (fn-wg-okp (fn-wg-decode g xs)))
+           (and (fn-wg-valuep g (fn-wg-value (fn-wg-decode g xs)))
+                (equal (fn-wg-app (fn-wg-encode g (fn-wg-value (fn-wg-decode g xs))) (fn-wg-rest (fn-wg-decode g xs))) xs)
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode g xs)))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn-wg-grammarp g) (:free (x) (fn-wg-decode g x)) (fn-wg-delimitedp g)
+                           (:free (v) (fn-wg-encode g v)) (:free (v) (fn-wg-valuep g v))))))
+(defthm fn-wg-tag-decode-name
+  (implies (and (equal (fn-wg-op g) :tag) (fn-wg-okp (fn-wg-decode g xs)))
+           (member-equal (car (fn-wg-value (fn-wg-decode g xs))) (fn-wg-tag-names g)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-wg-tag-names g)
+           :expand ((fn-wg-decode g xs) (fn-wg-tag-names g)))))
+(defthm fn-wg-encode-of-decode-seq
+  (implies (and (equal (fn-wg-op g) :seq) (consp g) (consp (cdr g)) (fn-wg-grammarp g) (fn-cbor-octet-listp xs) (fn-wg-okp (fn-wg-decode g xs))
+                (implies (and (fn-wg-grammarp (fn-wg-arg 1 g)) (fn-cbor-octet-listp xs) (fn-wg-okp (fn-wg-decode (fn-wg-arg 1 g) xs))) (and (fn-wg-valuep (fn-wg-arg 1 g) (fn-wg-value (fn-wg-decode (fn-wg-arg 1 g) xs)))
+                (equal (fn-wg-app (fn-wg-encode (fn-wg-arg 1 g) (fn-wg-value (fn-wg-decode (fn-wg-arg 1 g) xs))) (fn-wg-rest (fn-wg-decode (fn-wg-arg 1 g) xs))) xs)
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode (fn-wg-arg 1 g) xs)))))
+                (implies (and (fn-wg-grammarp (fn-wg-next g)) (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode (fn-wg-arg 1 g) xs))) (fn-wg-okp (fn-wg-decode (fn-wg-next g) (fn-wg-rest (fn-wg-decode (fn-wg-arg 1 g) xs))))) (and (fn-wg-valuep (fn-wg-next g) (fn-wg-value (fn-wg-decode (fn-wg-next g) (fn-wg-rest (fn-wg-decode (fn-wg-arg 1 g) xs)))))
+                (equal (fn-wg-app (fn-wg-encode (fn-wg-next g) (fn-wg-value (fn-wg-decode (fn-wg-next g) (fn-wg-rest (fn-wg-decode (fn-wg-arg 1 g) xs))))) (fn-wg-rest (fn-wg-decode (fn-wg-next g) (fn-wg-rest (fn-wg-decode (fn-wg-arg 1 g) xs))))) (fn-wg-rest (fn-wg-decode (fn-wg-arg 1 g) xs)))
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode (fn-wg-next g) (fn-wg-rest (fn-wg-decode (fn-wg-arg 1 g) xs))))))))
+           (and (fn-wg-valuep g (fn-wg-value (fn-wg-decode g xs)))
+                (equal (fn-wg-app (fn-wg-encode g (fn-wg-value (fn-wg-decode g xs))) (fn-wg-rest (fn-wg-decode g xs))) xs)
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode g xs)))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn-wg-grammarp g) (:free (x) (fn-wg-decode g x)) (fn-wg-delimitedp g)
+                           (:free (v) (fn-wg-encode g v)) (:free (v) (fn-wg-valuep g v))))))
+(defthm fn-wg-encode-of-decode-tag-hit
+  (implies (and (equal (fn-wg-op g) :tag) (consp g) (consp (cdr g)) (consp (cddr g))
+                (and (<= (nfix (fn-wg-arg 1 g)) (len xs))
+                     (fn-cbor-octet-listp (fn-wg-take (nfix (fn-wg-arg 1 g)) xs))
+                     (equal (fn-wg-be-value (fn-wg-take (nfix (fn-wg-arg 1 g)) xs))
+                            (fn-wg-arg 0 (fn-wg-arg 2 g))))
+                (fn-wg-grammarp g) (fn-cbor-octet-listp xs) (fn-wg-okp (fn-wg-decode g xs))
+                (implies (and (fn-wg-grammarp (fn-wg-arg 2 (fn-wg-arg 2 g))) (fn-cbor-octet-listp (fn-wg-drop (nfix (fn-wg-arg 1 g)) xs)) (fn-wg-okp (fn-wg-decode (fn-wg-arg 2 (fn-wg-arg 2 g)) (fn-wg-drop (nfix (fn-wg-arg 1 g)) xs)))) (and (fn-wg-valuep (fn-wg-arg 2 (fn-wg-arg 2 g)) (fn-wg-value (fn-wg-decode (fn-wg-arg 2 (fn-wg-arg 2 g)) (fn-wg-drop (nfix (fn-wg-arg 1 g)) xs))))
+                (equal (fn-wg-app (fn-wg-encode (fn-wg-arg 2 (fn-wg-arg 2 g)) (fn-wg-value (fn-wg-decode (fn-wg-arg 2 (fn-wg-arg 2 g)) (fn-wg-drop (nfix (fn-wg-arg 1 g)) xs)))) (fn-wg-rest (fn-wg-decode (fn-wg-arg 2 (fn-wg-arg 2 g)) (fn-wg-drop (nfix (fn-wg-arg 1 g)) xs)))) (fn-wg-drop (nfix (fn-wg-arg 1 g)) xs))
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode (fn-wg-arg 2 (fn-wg-arg 2 g)) (fn-wg-drop (nfix (fn-wg-arg 1 g)) xs)))))))
+           (and (fn-wg-valuep g (fn-wg-value (fn-wg-decode g xs)))
+                (equal (fn-wg-app (fn-wg-encode g (fn-wg-value (fn-wg-decode g xs))) (fn-wg-rest (fn-wg-decode g xs))) xs)
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode g xs)))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn-wg-grammarp g) (:free (x) (fn-wg-decode g x)) (fn-wg-delimitedp g)
+                           (:free (v) (fn-wg-encode g v)) (:free (v) (fn-wg-valuep g v))))))
+(defthm fn-wg-encode-of-decode-maybe
+  (implies (and (equal (fn-wg-op g) :maybe) (fn-wg-grammarp g) (fn-cbor-octet-listp xs) (fn-wg-okp (fn-wg-decode g xs))
+                (implies (and (fn-wg-grammarp (fn-wg-arg 1 g)) (fn-cbor-octet-listp xs) (fn-wg-okp (fn-wg-decode (fn-wg-arg 1 g) xs))) (and (fn-wg-valuep (fn-wg-arg 1 g) (fn-wg-value (fn-wg-decode (fn-wg-arg 1 g) xs)))
+                (equal (fn-wg-app (fn-wg-encode (fn-wg-arg 1 g) (fn-wg-value (fn-wg-decode (fn-wg-arg 1 g) xs))) (fn-wg-rest (fn-wg-decode (fn-wg-arg 1 g) xs))) xs)
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode (fn-wg-arg 1 g) xs))))))
+           (and (fn-wg-valuep g (fn-wg-value (fn-wg-decode g xs)))
+                (equal (fn-wg-app (fn-wg-encode g (fn-wg-value (fn-wg-decode g xs))) (fn-wg-rest (fn-wg-decode g xs))) xs)
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode g xs)))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn-wg-grammarp g) (:free (x) (fn-wg-decode g x)) (fn-wg-delimitedp g)
+                           (:free (v) (fn-wg-encode g v)) (:free (v) (fn-wg-valuep g v))))))
+(defthm fn-wg-encode-of-decode-where
+  (implies (and (equal (fn-wg-op g) :where) (fn-wg-grammarp g) (fn-cbor-octet-listp xs) (fn-wg-okp (fn-wg-decode g xs))
+                (implies (and (fn-wg-grammarp (fn-wg-arg 1 g)) (fn-cbor-octet-listp xs) (fn-wg-okp (fn-wg-decode (fn-wg-arg 1 g) xs))) (and (fn-wg-valuep (fn-wg-arg 1 g) (fn-wg-value (fn-wg-decode (fn-wg-arg 1 g) xs)))
+                (equal (fn-wg-app (fn-wg-encode (fn-wg-arg 1 g) (fn-wg-value (fn-wg-decode (fn-wg-arg 1 g) xs))) (fn-wg-rest (fn-wg-decode (fn-wg-arg 1 g) xs))) xs)
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode (fn-wg-arg 1 g) xs))))))
+           (and (fn-wg-valuep g (fn-wg-value (fn-wg-decode g xs)))
+                (equal (fn-wg-app (fn-wg-encode g (fn-wg-value (fn-wg-decode g xs))) (fn-wg-rest (fn-wg-decode g xs))) xs)
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode g xs)))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn-wg-grammarp g) (:free (x) (fn-wg-decode g x)) (fn-wg-delimitedp g)
+                           (:free (v) (fn-wg-encode g v)) (:free (v) (fn-wg-valuep g v))))))
+
+(defthm fn-wg-position-of-nth
+  (implies (and (no-duplicatesp-equal names) (natp k) (< k (len names)) (true-listp names))
+           (equal (fn-wg-position (nth k names) names) k))
+  :hints (("Goal" :induct (nth k names))))
+(defthm fn-wg-encode-of-decode-enum
+  (implies (and (equal (fn-wg-op g) :enum) (fn-wg-grammarp g) (fn-cbor-octet-listp xs) (fn-wg-okp (fn-wg-decode g xs)))
+           (and (fn-wg-valuep g (fn-wg-value (fn-wg-decode g xs)))
+                (equal (fn-wg-app (fn-wg-encode g (fn-wg-value (fn-wg-decode g xs))) (fn-wg-rest (fn-wg-decode g xs))) xs)
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode g xs)))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn-wg-grammarp g) (:free (x) (fn-wg-decode g x)) (fn-wg-delimitedp g)
+                           (:free (v) (fn-wg-encode g v)) (:free (v) (fn-wg-valuep g v))))))
+(defthm fn-wg-tag-value-shape-rewrite
+  (implies (and (equal (fn-wg-op g) :tag)
+                (not (and (true-listp v) (equal (len v) 2))))
+           (not (fn-wg-valuep g v)))
+  :hints (("Goal" :expand ((fn-wg-valuep g v)))))
+(defthm fn-wg-encode-of-decode-tag-miss
+  (implies (and (equal (fn-wg-op g) :tag) (consp g) (consp (cdr g)) (consp (cddr g))
+                (not (and (<= (nfix (fn-wg-arg 1 g)) (len xs))
+                     (fn-cbor-octet-listp (fn-wg-take (nfix (fn-wg-arg 1 g)) xs))
+                     (equal (fn-wg-be-value (fn-wg-take (nfix (fn-wg-arg 1 g)) xs))
+                            (fn-wg-arg 0 (fn-wg-arg 2 g)))))
+                (fn-wg-grammarp g) (fn-cbor-octet-listp xs) (fn-wg-okp (fn-wg-decode g xs))
+                (implies (and (fn-wg-grammarp (fn-wg-tag-next g)) (fn-cbor-octet-listp xs) (fn-wg-okp (fn-wg-decode (fn-wg-tag-next g) xs))) (and (fn-wg-valuep (fn-wg-tag-next g) (fn-wg-value (fn-wg-decode (fn-wg-tag-next g) xs)))
+                (equal (fn-wg-app (fn-wg-encode (fn-wg-tag-next g) (fn-wg-value (fn-wg-decode (fn-wg-tag-next g) xs))) (fn-wg-rest (fn-wg-decode (fn-wg-tag-next g) xs))) xs)
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode (fn-wg-tag-next g) xs))))))
+           (and (fn-wg-valuep g (fn-wg-value (fn-wg-decode g xs)))
+                (equal (fn-wg-app (fn-wg-encode g (fn-wg-value (fn-wg-decode g xs))) (fn-wg-rest (fn-wg-decode g xs))) xs)
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode g xs)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t :do-not (quote (generalize eliminate-destructors fertilize)) :in-theory (disable fn-wg-tag-codes fn-wg-tag-names) :use ((:instance fn-wg-tag-decode-name (g (fn-wg-tag-next g))))
+           :expand ((fn-wg-grammarp g) (:free (x) (fn-wg-decode g x)) (fn-wg-delimitedp g)
+                    (:free (v) (fn-wg-encode g v)) (:free (v) (fn-wg-valuep g v))))))
+(defthm fn-wg-octets-of-cdr
+  (implies (fn-cbor-octet-listp x) (fn-cbor-octet-listp (cdr x))))
+(defthm fn-wg-frame-reassembly
+  (let* ((x1 (fn-wg-drop 4 xs))
+         (x2 (cddr x1))
+         (lenb (fn-wg-take 4 x2))
+         (x3 (fn-wg-drop 4 x2))
+         (n (fn-wg-be-value lenb))
+         (payload (fn-wg-take n x3))
+         (x4 (fn-wg-drop n x3)))
+    (implies (and (fn-cbor-octet-listp xs)
+                  (<= 4 (len xs)) (consp x1) (consp (cdr x1))
+                  (<= 4 (len x2))
+                  (<= (+ n 32) (len x3)))
+             (equal (fn-wg-app (fn-wg-frame-protected (fn-wg-take 4 xs) (car x1) (cadr x1) payload)
+                               (fn-wg-app (fn-wg-take 32 x4) (fn-wg-drop 32 x4)))
+                    xs)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (enable fn-wg-frame-protected))))
+(defthm fn-wg-decode-frame-inversion-2
+  (let* ((x1 (fn-wg-drop 4 xs))
+         (x2 (cddr x1))
+         (lenb (fn-wg-take 4 x2))
+         (x3 (fn-wg-drop 4 x2))
+         (n (fn-wg-be-value lenb))
+         (payload (fn-wg-take n x3))
+         (x4 (fn-wg-drop n x3))
+         (r (fn-wg-decode (fn-wg-arg 5 g) payload)))
+    (implies (and (equal (fn-wg-op g) :frame) (fn-wg-okp (fn-wg-decode g xs)))
+             (and (<= 4 (len xs)) (consp x1) (consp (cdr x1)) (<= 4 (len x2))
+                  (<= (+ n 32) (len x3))
+                  (<= n (nfix (fn-wg-arg 4 g)))
+                  (equal (fn-wg-take 4 xs) (fn-wg-arg 1 g))
+                  (equal (car x1) (fn-wg-arg 2 g))
+                  (equal (cadr x1) (fn-wg-arg 3 g))
+                  (equal (fn-wg-take 32 x4)
+                         (fn-frame-digest (fn-wg-frame-protected (fn-wg-arg 1 g) (fn-wg-arg 2 g)
+                                                                  (fn-wg-arg 3 g) payload)))
+                  (fn-wg-okp r)
+                  (not (consp (fn-wg-rest r)))
+                  (equal (fn-wg-value (fn-wg-decode g xs)) (fn-wg-value r))
+                  (equal (fn-wg-rest (fn-wg-decode g xs)) (fn-wg-drop 32 x4))
+                  (implies (fn-cbor-octet-listp xs)
+                           (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode g xs)))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t :in-theory (disable fn-wg-frame-protected))))
+(defthm fn-wg-encode-of-decode-frame
+  (implies (and (equal (fn-wg-op g) :frame) (fn-wg-grammarp g) (fn-cbor-octet-listp xs) (fn-wg-okp (fn-wg-decode g xs))
+                (implies (and (fn-wg-grammarp (fn-wg-arg 5 g)) (fn-cbor-octet-listp (fn-wg-take (fn-wg-be-value (fn-wg-take 4 (cddr (fn-wg-drop 4 xs)))) (fn-wg-drop 4 (cddr (fn-wg-drop 4 xs))))) (fn-wg-okp (fn-wg-decode (fn-wg-arg 5 g) (fn-wg-take (fn-wg-be-value (fn-wg-take 4 (cddr (fn-wg-drop 4 xs)))) (fn-wg-drop 4 (cddr (fn-wg-drop 4 xs))))))) (and (fn-wg-valuep (fn-wg-arg 5 g) (fn-wg-value (fn-wg-decode (fn-wg-arg 5 g) (fn-wg-take (fn-wg-be-value (fn-wg-take 4 (cddr (fn-wg-drop 4 xs)))) (fn-wg-drop 4 (cddr (fn-wg-drop 4 xs)))))))
+                (equal (fn-wg-app (fn-wg-encode (fn-wg-arg 5 g) (fn-wg-value (fn-wg-decode (fn-wg-arg 5 g) (fn-wg-take (fn-wg-be-value (fn-wg-take 4 (cddr (fn-wg-drop 4 xs)))) (fn-wg-drop 4 (cddr (fn-wg-drop 4 xs))))))) (fn-wg-rest (fn-wg-decode (fn-wg-arg 5 g) (fn-wg-take (fn-wg-be-value (fn-wg-take 4 (cddr (fn-wg-drop 4 xs)))) (fn-wg-drop 4 (cddr (fn-wg-drop 4 xs))))))) (fn-wg-take (fn-wg-be-value (fn-wg-take 4 (cddr (fn-wg-drop 4 xs)))) (fn-wg-drop 4 (cddr (fn-wg-drop 4 xs)))))
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode (fn-wg-arg 5 g) (fn-wg-take (fn-wg-be-value (fn-wg-take 4 (cddr (fn-wg-drop 4 xs)))) (fn-wg-drop 4 (cddr (fn-wg-drop 4 xs))))))))))
+           (and (fn-wg-valuep g (fn-wg-value (fn-wg-decode g xs)))
+                (equal (fn-wg-app (fn-wg-encode g (fn-wg-value (fn-wg-decode g xs))) (fn-wg-rest (fn-wg-decode g xs))) xs)
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode g xs)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :do-not '(generalize eliminate-destructors fertilize)
+           :use (fn-wg-decode-frame-inversion-2 fn-wg-frame-reassembly)
+           :in-theory (disable fn-wg-decode-opener-frame fn-wg-frame-protected fn-wg-value fn-wg-rest fn-wg-okp))))
+
+(defthm fn-wg-result-accessors
+  (and (fn-wg-okp (fn-wg-ok v r))
+       (equal (fn-wg-value (fn-wg-ok v r)) v)
+       (equal (fn-wg-rest (fn-wg-ok v r)) r)
+       (not (fn-wg-okp (fn-wg-refused reason)))
+       (equal (fn-wg-app nil x) x)))
+
+(defun fn-wg-decode-induction (g xs)
+  (declare (xargs :measure (acl2-count g) :verify-guards nil))
+  (let ((op (fn-wg-op g)))
+    (cond ((equal op :seq)
+           (if (and (consp g) (consp (cdr g)))
+               (list (fn-wg-decode-induction (fn-wg-arg 1 g) xs)
+                     (fn-wg-decode-induction (fn-wg-next g)
+                                             (fn-wg-rest (fn-wg-decode (fn-wg-arg 1 g) xs))))
+             (list g xs)))
+          ((equal op :tag)
+           (if (and (consp g) (consp (cdr g)) (consp (cddr g)))
+               (if (and (<= (nfix (fn-wg-arg 1 g)) (len xs))
+                        (fn-cbor-octet-listp (fn-wg-take (nfix (fn-wg-arg 1 g)) xs))
+                        (equal (fn-wg-be-value (fn-wg-take (nfix (fn-wg-arg 1 g)) xs))
+                               (fn-wg-arg 0 (fn-wg-arg 2 g))))
+                   (fn-wg-decode-induction (fn-wg-arg 2 (fn-wg-arg 2 g))
+                                           (fn-wg-drop (nfix (fn-wg-arg 1 g)) xs))
+                 (fn-wg-decode-induction (fn-wg-tag-next g) xs))
+             (list g xs)))
+          ((equal op :maybe) (fn-wg-decode-induction (fn-wg-arg 1 g) xs))
+          ((equal op :where) (fn-wg-decode-induction (fn-wg-arg 1 g) xs))
+          ((equal op :frame) (fn-wg-decode-induction (fn-wg-arg 5 g) (fn-wg-take (fn-wg-be-value (fn-wg-take 4 (cddr (fn-wg-drop 4 xs)))) (fn-wg-drop 4 (cddr (fn-wg-drop 4 xs))))))
+          (t (list g xs)))))
+
+(defthm fn-wg-shape-facts-2
+  (implies (and (equal (fn-wg-op g) :seq) (not (and (consp g) (consp (cdr g)))))
+           (and (equal (fn-wg-decode g xs) (fn-wg-ok nil xs))
+                (fn-wg-valuep g nil)
+                (equal (fn-wg-encode g nil) nil)))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn-wg-decode g xs) (fn-wg-valuep g nil) (fn-wg-encode g nil)))))
+
+; KEYSTONE (canonicity).  An accepted octet string is the encoding of the
+; value it decodes to, followed by what the decoder left; the value is a
+; value of the grammar.  So each value has exactly one accepted encoding.
+(defthm fn-wg-encode-of-decode
+  (implies (and (fn-wg-grammarp g) (fn-cbor-octet-listp xs)
+                (fn-wg-okp (fn-wg-decode g xs)))
+           (and (fn-wg-valuep g (fn-wg-value (fn-wg-decode g xs)))
+                (equal (fn-wg-app (fn-wg-encode g (fn-wg-value (fn-wg-decode g xs)))
+                                  (fn-wg-rest (fn-wg-decode g xs)))
+                       xs)
+                (fn-cbor-octet-listp (fn-wg-rest (fn-wg-decode g xs)))))
+  :hints (("Goal" :induct (fn-wg-decode-induction g xs)
+           :in-theory (disable fn-wg-decode fn-wg-encode fn-wg-valuep fn-wg-grammarp
+                               fn-wg-delimitedp fn-wg-app fn-wg-ok fn-wg-okp fn-wg-value
+                               fn-wg-rest)
+           :do-not '(generalize fertilize eliminate-destructors))
+          (and (equal (access clause-id id :pool-lst) '(1))
+               (equal (len (access clause-id id :case-lst)) 1)
+               (equal (access clause-id id :primes) 0)
+               '(:use (fn-wg-shape-facts-2 fn-wg-grammarp-op fn-wg-grammarp-seq-tag-shape fn-wg-encode-of-decode-const fn-wg-encode-of-decode-uint fn-wg-encode-of-decode-bytes fn-wg-encode-of-decode-rest fn-wg-encode-of-decode-line fn-wg-encode-of-decode-base64-lines fn-wg-encode-of-decode-enum fn-wg-encode-of-decode-seq fn-wg-encode-of-decode-tag-hit fn-wg-encode-of-decode-tag-miss fn-wg-encode-of-decode-maybe fn-wg-encode-of-decode-where fn-wg-encode-of-decode-frame)))))
