@@ -1637,6 +1637,93 @@ class RecertifyFromTests(unittest.TestCase):
             submit.assert_not_called()
 
 
+class RootsFromTests(unittest.TestCase):
+    """--roots-from: the preflight's root list computed here, not on the box."""
+
+    STUB = ("import sys\n"
+            "print('\\n'.join(a for a in sys.argv[1:] if not a.startswith('--')))\n")
+
+    def preflight(self, **kwargs) -> str:
+        return farm.cache_preflight_script(
+            "persvati", Path("/home/ember/fn-lanes/x"), ["books/a"], ["books/b"],
+            False, **kwargs)
+
+    def test_the_default_preflight_selects_on_the_box(self):
+        script = self.preflight()
+        self.assertIn("roots=$(python3 tools/certify_books.py --dry-run "
+                      "--affected-by books/b books/a) || exit 13;", script)
+
+    def test_given_roots_replace_the_box_side_selection(self):
+        script = self.preflight(roots=["books/a", "tests/acl2/a-tests"])
+        self.assertIn("roots='books/a tests/acl2/a-tests'; ", script)
+        self.assertNotIn("certify_books.py", script)
+        self.assertNotIn("exit 13", script)
+        self.assertIn("install-partial $roots", script)
+        # An empty list is still the empty selection, not "every root".
+        self.assertIn("roots=''; if [ -z", self.preflight(roots=[]))
+
+    def test_lane_reaches_the_selection_and_the_runner(self):
+        self.assertIn("--affected-by books/b --lane books/a", self.preflight(lane=True))
+        script = farm.remote_script("persvati", Path("/r"), "run-1", ["books/a"], 8, 900,
+                                    ["books/b"], lane=True)
+        self.assertIn("--affected-by books/b --lane", script)
+        self.assertNotIn("--lane", farm.remote_script(
+            "persvati", Path("/r"), "run-1", ["books/a"], 8, 900, ["books/b"]))
+
+    def root(self, directory: str) -> Path:
+        root = Path(directory).resolve()
+        (root / "tools").mkdir()
+        (root / "tools" / "certify_books.py").write_text(self.STUB)
+        return root
+
+    def test_submit_passes_checked_roots_to_the_preflight(self):
+        fake = Fake([])
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.root(directory)
+            with driving(fake, root / "cache"):
+                farm.submit("persvati", root, ["books/alpha"], jobs=4,
+                            timeout_seconds=900, affected_by=[],
+                            roots=["books/alpha"])
+            preflight = [script for script in fake.scripts()
+                         if "install-partial" in script]
+            self.assertEqual(len(preflight), 1)
+            self.assertIn("roots=books/alpha; ", preflight[0])
+            self.assertNotIn("--dry-run", preflight[0])
+
+    def test_a_list_that_is_not_this_trees_selection_is_refused_before_any_sync(self):
+        fake = Fake([])
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.root(directory)
+            with driving(fake, root / "cache"):
+                for stale in (["books/beta"], ["books/alpha", "books/beta"], []):
+                    with self.assertRaises(farm.FarmError) as raised:
+                        farm.submit("persvati", root, ["books/alpha"], jobs=4,
+                                    timeout_seconds=900, affected_by=[], roots=stale)
+                    self.assertIn("--roots-from lists", str(raised.exception))
+            self.assertEqual(fake.rsyncs(), [])
+
+    def test_the_cli_reads_the_file_and_refuses_lane_alone(self):
+        with tempfile.TemporaryDirectory() as directory:
+            listing = Path(directory) / "roots.txt"
+            listing.write_text("books/a\ntests/acl2/a-tests  # companion\n")
+            with mock.patch.object(farm, "submit", return_value="run-1") as submit, \
+                    mock.patch.object(farm, "honour_reservation"), \
+                    contextlib.redirect_stdout(io.StringIO()), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(farm.main(
+                    ["submit", "hbox", "--affected-by", "books/a", "--lane",
+                     "--roots-from", str(listing), "--root", directory]), 0)
+            self.assertEqual(submit.call_args.kwargs["roots"],
+                             ["books/a", "tests/acl2/a-tests"])
+            self.assertTrue(submit.call_args.kwargs["lane"])
+            with mock.patch.object(farm, "submit") as submit, \
+                    contextlib.redirect_stderr(io.StringIO()), \
+                    self.assertRaises(SystemExit) as raised:
+                farm.main(["submit", "hbox", "books/a", "--lane", "--root", directory])
+            self.assertEqual(raised.exception.code, 2)
+            submit.assert_not_called()
+
+
 class FailedSummaryTests(unittest.TestCase):
     """obstructions-5 item 35: status --failed-summary RUN prints each failed
     book's checkpoint; the run record names the box path as such."""

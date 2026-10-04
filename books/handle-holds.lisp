@@ -96,14 +96,16 @@
 (def-holder fn-handle-holds
   :shape :stamped
   :key "an arena generation: a holder pins the generation current when it takes its handles (under the owner's mutex); the handles a reclaim swap stops naming are retired at the stamp of that moment (fn-arf-retire-event, in the swap's quantum) and released once no pin is at or below it"
-  :holders ((publication :host t :acquire fnn-arena-pin :release fnn-arena-unpin
-                         :in (fnn-owner-maybe-publish-quantum fnn-owner-publish-captured))
-            (export :host t :acquire fnn-arena-pin :release fnn-arena-unpin
-                    :in (fnn-owner-export-start fnn-owner-export-captured))
-            (reclaim-dry-run :host t :acquire fnn-arena-pin :release fnn-arena-unpin
+  ; The reclaim rows come first: tools/holder_check.py takes the effect's cut
+  ; markers (:installed, :released) from the first :in function that names
+  ; them, and the snapshot job's own stage keyword :released is not the cut.
+  :holders ((reclaim-dry-run :host t :acquire fnn-arena-pin :release fnn-arena-unpin
                              :in (fnn-owner-reclaim-dry-run))
             (reclaim-pass :host t :acquire fnn-arena-pin :release fnn-arena-unpin
                           :in (fnn-owner-reclaim-pass))
+            (snapshot-job :host t :acquire fnn-arena-pin :release fnn-arena-unpin
+                          :in (fnn-owner-snapshot-job-capture fnn-owner-snapshot-job-release
+                               fnn-owner-snapshot-pin-release))
             (response-plan
              :acquire (fn-rpin-step fn-hh-rpin-acquire-pins
                        :table 1 :result (mv-nth 1 _)
@@ -134,7 +136,7 @@
             (whole-arena-lease :root t :in (fnn-snapshot-payload-view-acquire fnn-snapshot-payload-view-release)
                                :status (:unwired "fn-pvl-livep / fn-rpv-livep hold every handle below the token's prefix; their drivers are not in host/native/build.lisp; a forget under a live one is refused by the host before the step is asked")))
   :effect (:physical *fn-orcp-cuts* :cut :released :after :installed)
-  :complete-by "fn-rpin-step is the only function of the world that calls fn-arpn-step (def-holder-check's walk refuses another); the host's own calls are the four fnn-arena-pin sites named above and the roots' :in functions (tools/holder_check.py)")
+  :complete-by "fn-rpin-step is the only function of the world that calls fn-arpn-step (def-holder-check's walk refuses another); the host's own calls are the three fnn-arena-pin sites named above (the snapshot job's capture, which the publication and the export both take; the dry run; the pass) and the roots' :in functions (tools/holder_check.py)")
 
 ; ---------------------------------------------------------------------------
 ; The composed release theorem.
