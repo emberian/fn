@@ -1860,6 +1860,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-catchup-effects \
 	books/peer-catchup \
 	tests/acl2/peer-catchup-tests \
+	books/peer-catchup-spool-framer \
+	books/peer-catchup-spool-hash \
+	books/peer-catchup-spool \
+	tests/acl2/peer-catchup-spool-framer-tests \
+	tests/acl2/peer-catchup-spool-hash-tests \
+	tests/acl2/peer-catchup-spool-tests \
 	books/peer-round-driver \
 	tests/acl2/peer-round-driver-tests \
 	books/protocol-table \
