@@ -739,6 +739,11 @@ class LoadedHostProvidesTests(unittest.TestCase):
                             "tests/bank_raw.lisp": '(load "host/native/y.lisp")'})
         self.assertNotIn("fnn-b", nested["unresolved"])
         self.assertIsNone(nested["expected"])
+        overridable = self.scan({
+            "tests/h_raw.lisp": '(load "tests/bank_raw.lisp")\n(fnn-a 1)',
+            "tests/bank_raw.lisp":
+                '(load (or (sb-ext:posix-getenv "FN_X") "host/native/y.lisp"))'})
+        self.assertNotIn("fnn-b", overridable["unresolved"])
 
 
 class DerivedStubTests(unittest.TestCase):

@@ -1831,6 +1831,10 @@ def harness_fixture_sources(root: Path, relative: str, text: str) -> dict[str, s
     return sources
 
 
+HOST_LOAD = re.compile(
+    r'\(load\s+(?:\(or\s+\([^()]*\)\s+)?"(host/[^"]+\.lisp)"')
+
+
 def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
                  origins: dict, fixture_sources: dict[str, str] | None = None) -> dict | None:
     """One harness: its stale hand stubs, the calls it leaves unresolved,
@@ -1858,8 +1862,11 @@ def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
     # what that file defines is the real definition, provided, never stubbed
     # (a derived stub after the load redefined fnn-bp-session-observe to
     # signal and turned two harnesses red, facef3839).
+    # `(load "host/x.lisp")', and the overridable default
+    # `(load (or (sb-ext:posix-getenv "FN_WEB_REACTOR_SOURCE") "host/native/web-host.lisp"))'
+    # (tests/native_web_reactor_raw.lisp, which seven web harnesses load).
     loaded_hosts = {target for source in sources.values()
-                    for target in re.findall(r'\(load\s+"(host/[^"]+)"', source)}
+                    for target in HOST_LOAD.findall(source)}
     provided = {name for name, (_formals, origin) in origins.items() if origin in loaded_hosts}
     extracted = {name for name in mentioned
                  if name in bodies and name not in stubs and name not in provided}
