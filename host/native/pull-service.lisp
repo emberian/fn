@@ -1024,12 +1024,38 @@ progress; answer :finished, :progress or :wait (the last action's)."
         (setf (fnn-pull-runtime-flights runtime)
               (remove flight (fnn-pull-runtime-flights runtime)))))))
 
+;;; S145 for the pull worker: an idle sweep sleeps ACL2's pause
+;;; (books/peer-round-driver.lisp fn-prd-pause-ms) on the owner's commit
+;;; signal, as the outbound feed's idle worker does (fnn-feed-idle-wait), so
+;;; a commit, a configuration change or the stop ends it at once.
+(defun fnn-pull-commits-seen (runtime)
+  (let ((service (fnn-pull-runtime-service runtime)))
+    (sb-thread:with-mutex ((fnn-owner-service-wait-lock service))
+      (fnn-owner-service-commits service))))
+
+(defun fnn-pull-idle-wait (runtime seen ms)
+  "Sleep up to MS milliseconds on the owner's commit signal unless a commit
+(or the stop) came after SEEN was read; a missed signal is seen by the count."
+  (let* ((service (fnn-pull-runtime-service runtime))
+         (lock (fnn-owner-service-wait-lock service))
+         (queue (fnn-owner-service-wait-queue service)))
+    (sb-thread:grab-mutex lock)
+    (unwind-protect
+         ;; The stop hook raises the signal after setting stopping, so a
+         ;; stop after SEEN changes the count and is never slept through.
+         (when (= seen (fnn-owner-service-commits service))
+           (sb-thread:condition-wait queue lock :timeout (/ ms 1000d0)))
+      ;; A timed-out condition-wait may return without the mutex.
+      (when (sb-thread:holding-mutex-p lock)
+        (sb-thread:release-mutex lock)))))
+
 (defun fnn-pull-worker (runtime)
   (let ((service (fnn-pull-runtime-service runtime)) (remaining nil) (primary nil)
-        (progressed nil))
+        (progressed nil) (seen 0))
     (handler-bind ((serious-condition (lambda (condition) (unless primary (setq primary condition)))))
     (unwind-protect
          (loop until (fnn-pull-stoppingp runtime) do
+           (setq seen (fnn-pull-commits-seen runtime))
            (let ((plans (fnn-owner-transit-serialized
                          service nil (lambda () (fnn-owner-core 'fn-owner-pull-plans))))
                  (cu-plans (fnn-owner-transit-serialized
@@ -1058,10 +1084,16 @@ progress; answer :finished, :progress or :wait (the last action's)."
                            (remove flight (fnn-pull-runtime-flights runtime)))))))
              (fnn-pull-settle-leases runtime)
              ;; One scheduling pause per sweep in which no round progressed,
-             ;; not per peer. It limits polling work without truncating input
-             ;; or ending any round.
+             ;; not per peer: ACL2's (the I/O poll while a round is admitted,
+             ;; else until the next scheduled round, at most a second). It
+             ;; limits polling work without truncating input or ending any round.
              (unless remaining
-               (unless progressed (sleep (/ (fnn-core 'fn-prd-idle-ms) 1000)))
+               (unless progressed
+                 (fnn-pull-idle-wait runtime seen
+                                     (fnn-core 'fn-prd-pause-ms active
+                                               (append (fnn-pull-runtime-schedule runtime)
+                                                       (fnn-pull-runtime-cu-schedule runtime))
+                                               (fnn-pull-monotonic))))
                (setq progressed nil))))
       (let ((failure nil))
         (setf (fnn-pull-runtime-cleanup-stage runtime) :calling)
@@ -1128,7 +1160,9 @@ progress; answer :finished, :progress or :wait (the last action's)."
         (dolist (socket (cons (fnn-pull-runtime-socket runtime)
                              (mapcar #'fnn-pull-flight-socket
                                      (fnn-pull-runtime-flights runtime))))
-          (when socket (ignore-errors (fnn-socket-shutdown socket)))))))
+          (when socket (ignore-errors (fnn-socket-shutdown socket)))))
+      ;; An idle worker sleeps on the commit signal (fnn-pull-idle-wait): wake it.
+      (fnn-owner-signal-commit service)))
   nil)
 
 (defun fnn-pull-service-close (service)

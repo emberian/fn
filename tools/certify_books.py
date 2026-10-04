@@ -187,13 +187,47 @@ def source_symbols(source: str) -> list[str]:
     return tokens
 
 
+AUDIT_CACHE = ROOT / "build" / "cache" / "certify-audit.json"
+
+
+def _audit_format() -> str:
+    """The audit is a function of a text's bytes, this scanner and the list."""
+    import inspect
+    return hashlib.sha256(("fn-certify-audit-1\0" + inspect.getsource(source_symbols) + "\0"
+                           + "\0".join(sorted(FORBIDDEN_FACILITIES))).encode()).hexdigest()[:24]
+
+
 def audit_sources(sources: dict[str, str]) -> dict[str, list[str]]:
+    """Each source's forbidden facilities.  A text's answer is kept by its
+    digest (build/cache/certify-audit.json): the scan of ~800 sources was 26 s
+    of a lane run's Python (lane loops, 2026-10-04)."""
+    fmt = _audit_format()
+    try:
+        cached = json.loads(AUDIT_CACHE.read_text(encoding="utf-8"))
+        known = cached["entries"] if cached.get("format") == fmt else {}
+    except (OSError, ValueError, KeyError, TypeError):
+        known = {}
+    fresh: dict[str, list[str]] = {}
     findings: dict[str, list[str]] = {}
     for relative in sources:
-        symbols = source_symbols((ROOT / relative).read_text(encoding="utf-8"))
-        found = sorted({symbol.rsplit(":", 1)[-1] for symbol in symbols} & FORBIDDEN_FACILITIES)
+        data = (ROOT / relative).read_bytes()
+        key = hashlib.sha256(data).hexdigest()
+        found = known.get(key)
+        if found is None:
+            symbols = source_symbols(data.decode("utf-8"))
+            found = sorted({symbol.rsplit(":", 1)[-1] for symbol in symbols} & FORBIDDEN_FACILITIES)
+        fresh[key] = found
         if found:
-            findings[relative] = found
+            findings[relative] = list(found)
+    if any(key not in known for key in fresh):
+        try:
+            AUDIT_CACHE.parent.mkdir(parents=True, exist_ok=True)
+            temporary = AUDIT_CACHE.with_name(f".{AUDIT_CACHE.name}.{os.getpid()}")
+            temporary.write_text(json.dumps({"format": fmt, "entries": {**(known if len(known) < 20000 else {}), **fresh}}),
+                                 encoding="utf-8")
+            os.replace(temporary, AUDIT_CACHE)
+        except OSError:
+            pass
     return findings
 
 
@@ -372,7 +406,28 @@ def book_source(book: str) -> Path:
     return source
 
 
+# `--images auto`: below this many books a run certifies in a plain world.
+# An image only pays for books above its checkpoint that start after it is
+# built (two builders, ~40 s each on the laptop); a small run finishes first
+# and then waited for the builds at close.
+CERT_IMAGES_MIN_BOOKS = 24
+
+_LOCAL_INCLUDES: dict[tuple[str, int, int], list[str]] = {}
+
+
 def local_include_books(book: str, source: Path) -> list[str]:
+    """`_local_include_books`, once per book's bytes in this process: one
+    --lane plan asked for each of ~1,300 books' includes ~15 times
+    (lane_edges' closures; 355 of a 544 s profiled run, lane loops)."""
+    stat = source.stat()
+    key = (book, stat.st_mtime_ns, stat.st_size)
+    found = _LOCAL_INCLUDES.get(key)
+    if found is None:
+        found = _LOCAL_INCLUDES[key] = _local_include_books(book, source)
+    return list(found)
+
+
+def _local_include_books(book: str, source: Path) -> list[str]:
     """Repository-relative books this book includes, in source order.
 
     `ledger.analyze_book` separates a bare `(include-book "x")`, which is local
@@ -1035,13 +1090,16 @@ def main() -> int:
     )
     parser.add_argument(
         "--images",
-        choices=("on", "off"),
-        default=os.environ.get("FN_CERT_IMAGES", "on"),
+        choices=("on", "off", "auto"),
+        default=os.environ.get("FN_CERT_IMAGES", "auto"),
         help=(
             "certify each book from the costliest built certification image "
             "its closure allows (tools/cert_images.py, tools/cert-images.json); "
-            "off certifies every book in a plain world (default: on; or "
-            "FN_CERT_IMAGES)"
+            "off certifies every book in a plain world; auto (the default, or "
+            "FN_CERT_IMAGES) is on for a run of more than "
+            f"{CERT_IMAGES_MIN_BOOKS} books and off below: a lane's seven-book "
+            "run spent 81 s building images no book of it used, 65 s off "
+            "against 96-154 s on (lane loops, 2026-10-04)"
         ),
     )
     parser.add_argument(
@@ -1373,7 +1431,9 @@ def main() -> int:
     # Certification images (tools/cert_images.py): built during the run in
     # this tree, handed to each book as they become available.
     images = None
-    if (not args.pcert and args.images == "on" and args.books
+    use_images = args.images == "on" or (args.images == "auto"
+                                         and len(args.books) > CERT_IMAGES_MIN_BOOKS)
+    if (not args.pcert and use_images and args.books
             and cert_images.load_config(ROOT)):
         images = cert_images.Runner(
             ROOT, run_dir, acl2, args.books,

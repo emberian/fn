@@ -1,0 +1,16 @@
+{
+ "category": "error-handling",
+ "detail": "planning/spw-recheck-2026-10-04.md",
+ "evidence": "bp-node.lisp:1255-1269 and bp-app.lisp:399-408 `(unless primary-condition ...)`: with a primary the physical release debt stays in carriers but the exit class is the primary's, unlike fnn-unwind-cleanups' escalation (cd4673a17). Plain unwind-protect release at bp-contact.lisp:56, bp.lisp:728, bp.lisp:808 (release follows owner/Store close in the same cleanup list), bp-node.lisp:535, bp-node.lisp:585 (handler-case error only). Low impact: one-shot CLI verbs exit right after.",
+ "exposure": "conditional",
+ "file": "host/native/bp-node.lisp",
+ "fix": "Route these through fnn-unwind-cleanups with independent release clauses.",
+ "id": "SPW-R3",
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "low",
+ "source": "spw-recheck-2026-10-04",
+ "state": "open",
+ "title": "BP outer served cleanups are hand-rolled and drop the cleanup condition when a primary exists; fnn-bps-release is called from plain unwind-protect at five more sites, and bp.lisp:808 skips the release when the Store close errors",
+ "updated": "2026-10-04T14:47:39Z"
+}

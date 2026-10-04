@@ -343,13 +343,25 @@ every transit server has."
   "Dial PEER only with queued work and no recorded stop."
   (and queued (not (fn-fc-stopped-reason peer stopped)) t))
 
+; The key the owner records a stop under and asks the dial with: the peer
+; AND the peer record it was stopped under (read-peer 2026-10-04,
+; rp-feed-stop-outlives-remedy).  The stop holds for the rest of the owner
+; process while the record is unchanged (the keystone below, over this key);
+; the operator's remedy -- `peer set NAME --streaming false', a new login, a
+; new address -- changes the record, and the peer is dialled again at once,
+; as every live peer change applies (docs/peering-with-a-friend.md).  Keyed
+; by the name alone the stop outlived every remedy until a restart.
+(defun fn-fc-stop-key (peer record)
+  (declare (xargs :guard t))
+  (list peer record))
+
 (defun fn-fc-stop-log-line (peer)
   "The owner's one log line for a stopped peer (printable ASCII: PEER is a
 configuration label)."
   (append (fn-record-string-octets "refused feed peer=")
           (if (stringp peer) (fn-record-string-octets peer) nil)
           (fn-record-string-octets
-           " stopped reason=mode-stream-refused (RFC 4644 2.3: the peer does not stream; this owner does not dial it again; re-add the peer with streaming false to feed it with IHAVE)")))
+           " stopped reason=mode-stream-refused (RFC 4644 2.3: the peer does not stream; this owner does not dial it again until its peer record changes; peer set NAME --streaming false feeds it with IHAVE)")))
 
 ; The host's classification of the fallback (PRF-207): ST was waiting for
 ; the MODE STREAM answer and STEP made the connection ready with streaming
@@ -536,6 +548,20 @@ not stream, nil when it does."
            (equal (fn-fc-dial-allowedp queued other
                                        (fn-fc-stopped-put peer reason stopped))
                   (fn-fc-dial-allowedp queued other stopped))))
+
+; A stop recorded under one record does not hold the same peer under any
+; other record; under the same record it holds (the keystone with PEER the
+; key).
+(defthm fn-fc-stop-lifts-on-a-changed-record
+  (implies (not (equal record2 record))
+           (equal (fn-fc-dial-allowedp
+                   queued (fn-fc-stop-key peer record2)
+                   (fn-fc-stopped-put (fn-fc-stop-key peer record) reason stopped))
+                  (fn-fc-dial-allowedp queued (fn-fc-stop-key peer record2) stopped)))
+  :hints (("Goal" :in-theory (enable fn-fc-stop-key)
+           :use ((:instance fn-fc-dial-allowedp-of-put-other
+                            (other (fn-fc-stop-key peer record2))
+                            (peer (fn-fc-stop-key peer record)))))))
 
 (verify-guards fn-fc-make-state)
 (verify-guards fn-fc-input)

@@ -49,6 +49,7 @@
 (load-deployed-forms "host/native/pull-service.lisp"
  '((defstruct (fnn-pull-runtime (:constructor %make-fnn-pull-runtime)))
    (defun fnn-pull-peer-string) (defun fnn-pull-cursor-for) (defun fnn-catchup-cursor-for)
+   (defun fnn-pull-commits-seen) (defun fnn-pull-idle-wait)
    (defun fnn-pull-worker) (defun fnn-pull-settle-leases)))
 ;; New private pruning helper is optional on the old defect base, whose
 ;; worker never invokes it. Load only the trusted source's literal form.
@@ -66,7 +67,10 @@
           do (load-deployed-forms "host/native/pull-service.lisp" (list (list (car form) (cadr form))))))
 (when (probe-file "books/peer-round-driver.lisp")
   (load-deployed-forms "books/peer-round-driver.lisp"
-                      '((defun fn-prd-sweep) (defun fn-prd-select) (defun fn-prd-idle-ms))))
+                      '((defun fn-prd-sweep) (defun fn-prd-select) (defun fn-prd-idle-ms)
+                        (defun fn-prd-idle-max-ms) (defun fn-prd-row-schedulablep)
+                        (defun fn-prd-row-wait) (defun fn-prd-next-due-wait)
+                        (defun fn-prd-pause-ms))))
 (load-deployed-forms "books/rev-onto.lisp" '((defun fn-ag-rev-onto)))
 (load-deployed-forms "books/scheduler-peers.lisp"
  '((defun fn-sched-pull-entry) (defun fn-sched-pull-next) (defun fn-sched-pull-interval)
@@ -84,6 +88,7 @@
 (defun nfix (x) (if (and (integerp x) (>= x 0)) x 0))
 (defun zp (x) (not (and (integerp x) (> x 0))))
 (defun natp (x) (and (integerp x) (>= x 0)))
+(defun posp (x) (and (integerp x) (> x 0)))
 (defun mbe (&key logic exec) (declare (ignore exec)) logic)
 (defconstant +fnn-pull-poll-seconds+ 0)
 (defvar *path* (second sb-ext:*posix-argv*))
@@ -115,6 +120,15 @@
     (error "unexpected owner subject ~s" subject))
   (if (eq (eq subject 'fn-owner-catchup-plans) (eq *kind* :catch-up)) *plans* nil))
 (defun fnn-pull-monotonic () 10000)
+;; The owner's commit signal (fnn-pull-idle-wait sleeps on it).  This
+;; harness is about descriptor custody, not the idle pause: every read of the
+;; count sees a new commit, so the worker's one pause never sleeps.
+(defvar *wait-lock* (sb-thread:make-mutex :name "harness commit"))
+(defvar *wait-queue* (sb-thread:make-waitqueue :name "harness commit"))
+(defvar *commits* 0)
+(defun fnn-owner-service-wait-lock (service) (declare (ignore service)) *wait-lock*)
+(defun fnn-owner-service-wait-queue (service) (declare (ignore service)) *wait-queue*)
+(defun fnn-owner-service-commits (service) (declare (ignore service)) (incf *commits*))
 (defun fnn-pull-stoppingp (runtime) (declare (ignore runtime)) (> (incf *stop-checks*) 1))
 (defun fnn-core (subject &rest args)
   (when (eq subject 'fn-pull-schedule)
@@ -127,7 +141,8 @@
     (fn-pull-plan-peer (apply #'fn-pull-plan-peer args))
     (fn-pull-schedule (apply #'fn-pull-schedule args))
     (fn-sched-pull-due (apply #'fn-sched-pull-due args))
-    ((fn-prd-sweep fn-prd-select fn-prd-idle-ms) (apply (symbol-function subject) args))
+    ((fn-prd-sweep fn-prd-select fn-prd-idle-ms fn-prd-pause-ms)
+     (apply (symbol-function subject) args))
     (otherwise (error "unexpected core subject ~s" subject))))
 (defun fnn-pull-journal-open (store peer)
   (declare (ignore store peer)) (incf *opened*)

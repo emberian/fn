@@ -456,8 +456,12 @@ exposure admission decides (the id, or NIL when it refused)."
        (fnn-owner-space-preobserve service t)
        (setf (fnn-web-conn-flow conn) (second action)
              (fnn-web-conn-event conn) (list :health-observation
+               ;; fn-web-host-health-observe READS state and returns its one
+               ;; observation, not (mv erp val state): fnn-core with the live
+               ;; state, as fnn-command-live-pages calls its offline start.
                (fnn-owner-serialized service nil (lambda ()
-                 (fnn-owner-core 'fn-web-host-health-observe (fnn-owner-sched-snapshot service))) :reader))))
+                 (fnn-core 'fn-web-host-health-observe (fnn-owner-sched-snapshot service)
+                           *the-live-state*)) :reader))))
       (:open (destructuring-bind (family address protected next) (rest action)
                (let ((cid (fnn-web-open service family address protected)))
                  (when cid (push cid (fnn-web-conn-opened conn)))
@@ -649,7 +653,8 @@ exposure admission decides (the id, or NIL when it refused)."
 (defun fnn-web-cold-step (face conn)
   (destructuring-bind (read mode issued) (fnn-web-conn-cold conn)
     (multiple-value-bind (word since now limit)
-        (fnn-owner-cold-poll (fnn-web-face-service face) read (fnn-web-conn-line-since conn) issued)
+        (fnn-owner-cold-poll (fnn-web-face-service face) read (fnn-web-conn-line-since conn) issued
+                             :reader)
       (cond ((and (consp word) (eq (first word) :wait))
              (setf (fnn-web-conn-resume-at conn) (fnn-mux-ms-ticks (min (second word) 2))))
             ((and (member mode '(:ready :render :replay)) (not (eq word :serve)))

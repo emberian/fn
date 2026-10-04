@@ -174,6 +174,38 @@
     (check (handler-case (progn (fnn-feed-pump-link runtime link 0) nil)
              (fnn-store-fault () t)) "push stopping fault must escape peer loss handling")
     (format t "~&FEED_FAIR_PASS reply~%")))
+;; A peer that takes a command and never answers (a hung server, or a path
+;; that went half-open after the write was acknowledged) must not hold its
+;; link and its in-flight entry forever: past ACL2's round deadline the link
+;; is dropped as a read loss, so fn-feed-lost requeues the entry.
+(defun silent-fixture ()
+  (multiple-value-bind (client server) (pair)
+    (let* ((link (%make-fnn-feed-link :peer "silent" :peer-octets '(83) :socket client
+                                      :fd (fnn-socket-fd client) :ready t :tick-due nil))
+           (runtime (%make-fnn-feed-runtime :service :recorded :links (list link)
+                                           :lock (sb-thread:make-mutex) :limit 512))
+           (dropped nil))
+      (unwind-protect
+           (progn
+             (setf (symbol-function 'fnn-feed-now) (lambda () 0)
+                   (symbol-function 'fnn-feed-tick)
+                   (lambda (&rest args) (declare (ignore args)) (values :idle (fnn-make-octets 0)))
+                   (symbol-function 'fnn-feed-loss-backoff) (lambda (&rest args) (declare (ignore args)) 0)
+                   (symbol-function 'fnn-feed-drop-link)
+                   (lambda (runtime link now base cause) (declare (ignore runtime link now base))
+                     (setq dropped cause)))
+             (fnn-feed-send link (fnn-octets (map 'list #'char-code (format nil "CHECK <a@b>~c~c" #\Return #\Newline))))
+             (fnn-feed-pump-link runtime link 1)          ; the command leaves
+             (check (null (fnn-feed-link-output link)) "the offer must drain to the kernel")
+             (fnn-feed-pump-link runtime link 2)          ; nothing to read yet
+             (fnn-feed-pump-link runtime link 3)
+             (check (null dropped) "a link awaiting a reply within its deadline is kept")
+             (loop for now from 700000 below 700004 until dropped
+                   do (fnn-feed-pump-link runtime link now))
+             (check (eq dropped :read) "a peer that never answers must be dropped at the reply deadline")
+             (format t "~&FEED_FAIR_PASS silent~%"))
+        (dolist (socket (list client server)) (ignore-errors (sb-bsd-sockets:socket-close socket)))))))
 (let ((mode (second sb-ext:*posix-argv*)))
   (cond ((equal mode "retained") (retained-fixture))
-        ((equal mode "reply") (reply-fixture)) (t (fair-fixture mode))))
+        ((equal mode "reply") (reply-fixture))
+        ((equal mode "silent") (silent-fixture)) (t (fair-fixture mode))))

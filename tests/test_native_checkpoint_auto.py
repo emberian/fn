@@ -410,15 +410,19 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         self.assertTrue(20 <= health.returncode <= 29, (health.returncode, text))
         self.assertEqual(self.headroom()["transactions-used"], 66)
         self.node.stop(process=owner)
-        # Offline the publisher is unobserved, never clear: a stopped
-        # store's health is the not-running header and the stopped report
-        # (operability-2, row S3; nothing replayed), so it names no
-        # checkpoint-deferred state at all.
+        # Offline the publisher is unobserved, never clear and never held: a
+        # stopped store's health is the not-running header and the stopped
+        # report (operability-2, row S3; nothing replayed), whose state
+        # lines name what no running owner can observe
+        # (books/native-health.lisp *fn-nh-no-checkpoint*).
         health = self.op("health")
         offline = health.stdout.decode("ascii")
         self.assertTrue(offline.startswith("health exit=18 state=not-running"), offline)
         self.assertEqual(health.returncode, 18, offline)
-        self.assertNotIn("checkpoint-deferred", offline)
+        self.assertEqual(
+            [l for l in offline.splitlines() if l.startswith("checkpoint-deferred")],
+            ["checkpoint-deferred unobserved (no running owner: the checkpoint "
+             "publisher lives in the owner)"], offline)
         self.assertFalse(self.path().exists())
         # Offline: no owner, no publisher, no deferral; the store opens by
         # full replay with every article.

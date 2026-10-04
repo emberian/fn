@@ -299,9 +299,9 @@
                   :guard (fn-cbor-octet-listp octets)))
   (fn-ncr-client-read operation octets))
 
-(defun fn-native-control-host-consumer-cli-after (operation status word)
+(defun fn-native-control-host-consumer-cli-after (command step status word)
   (declare (xargs :mode :program))
-  (fn-ncr-cli-after operation status word))
+  (fn-ncr-cli-after command step status word))
 
 (defun fn-native-control-host-consumer-report-summary (octets)
   (declare (xargs :mode :program

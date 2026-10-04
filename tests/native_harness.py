@@ -1258,9 +1258,14 @@ class Node:
         process = start(argv, cwd=ROOT, env=launch_env, limit=limit)
         self.processes.append(process)
         self.process = process
-        if ready and self.listening > 1:
+        # `run --once` serves its one connection on the plain listener: ACL2's
+        # run plan names no implicit-TLS port for it (books/native-operator.lisp
+        # fn-native-operator-result-run-implicit-tls-port), while the TLS
+        # context (STARTTLS) is installed either way.
+        listening = 1 if "--once" in verb else self.listening
+        if ready and listening > 1:
             # Several listeners announce in either order.
-            for _ in range(self.listening):
+            for _ in range(listening):
                 process.announcement(b"LISTENING", timeout=timeout)
         elif ready:
             line = process.announcement(ready, timeout=timeout)
@@ -1334,6 +1339,38 @@ class Node:
 
     def log_on_failure(self, process=None):
         return node_log_on_failure(process or self.process)
+
+
+# The peer flight bank's profile (books/peer-flight-reservation.lisp,
+# host/native/owner.lisp fnn-peer-flight-profile): FNP1 then six big-endian
+# u64 -- heap, disk, flights, workers, spool per flight, metered work.  A
+# node without it refuses every catch-up round at its preamble
+# (reason=peer-flight-unfunded); the spool allowance holds the largest batch.
+PEER_FLIGHT_POLICY = (8 << 20, 512 << 20, 2, 1, 64 << 20, 1 << 50)
+
+
+def fund_peer_flights(node, policy=PEER_FLIGHT_POLICY):
+    (node.store_path / "peer-flight-profile").write_bytes(
+        b"FNP1" + b"".join(v.to_bytes(8, "big") for v in policy))
+
+
+def decided_launch(node, image=None):
+    """The environment of a run at the heap and control stack the installed
+    launcher (packaging/fn) decides for NODE's served run: its own probe,
+    `heap -- operator CONFIG run`, which reads the store profile, the peer
+    flight profile and this machine (a cgroup's MemoryMax included).  A run
+    at the image launcher's figure (32000 MB) on a smaller machine holds no
+    peer worker reservation (books/peer-flight-startup.lisp
+    fn-prstartup-peer-native-grant refuses its start), which an installed
+    node, launched at the probe's figure, never meets."""
+    probe = node.invoke("heap", "--", "operator", node.config, "run", image=image)
+    out = probe.stdout.decode("utf-8", "replace")
+    node.case.assertEqual(probe.returncode, 0, out + probe.stderr.decode("utf-8", "replace"))
+    heap = re.search(r"heap=(\d+) MB", out)
+    stack = re.search(r"stack=(\d+) KB", out)
+    node.case.assertTrue(heap and stack, out)
+    return {"SBCL_USER_ARGS": "--dynamic-space-size {}MB --control-stack-size {}KB".format(
+        heap.group(1), stack.group(1))}
 
 
 def _log_digest(log):

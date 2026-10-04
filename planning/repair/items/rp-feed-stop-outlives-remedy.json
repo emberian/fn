@@ -1,0 +1,20 @@
+{
+ "category": "bug",
+ "disposition": "SLICE",
+ "evidence": "host/owner-host.lisp fn-owner-feed-reply-chunk-synced records (fn-fc-stopped-put peer ...) keyed by the peer NAME; fn-owner-feed-has-queued asks fn-fc-dial-allowedp by name; fn-owner-feed-stopped is never cleared. The stop's log line (books/feed-connection.lisp fn-fc-stop-log-line) says 're-add the peer with streaming false', and docs/peering-with-a-friend.md says every peer change applies to the running node.",
+ "exposure": "live",
+ "file": "host/owner-host.lisp",
+ "fix": "Key the stop by (peer record) (books/feed-connection.lisp fn-fc-stop-key): the keystone fn-fc-mode-stream-refusal-stops-the-dial holds unchanged over the key, and fn-fc-stop-lifts-on-a-changed-record states the remedy. The log line names 'peer set NAME --streaming false'.",
+ "id": "rp-feed-stop-outlives-remedy",
+ "locus": "peer-services",
+ "notes": [
+  "10-04 11:54 source READY c516bb761 (lane/read-peer); ACL2 certify-20261004T154532Z-86811; native red-before/green-after owed: tests.test_native_operator_walk test_a_stopped_peer_is_fed_with_ihave_once_its_record_says_streaming_false"
+ ],
+ "owner": "read-peer",
+ "scenario": "We enable sending to a friend before they finish their side (or their server needs AUTHINFO first): MODE STREAM draws 502/480, fn stops the peer. The friend fixes their side; we run 'peer set friend --streaming false' or 'peer login' as the log line says. Nothing is dialled until a restart; queued articles wait and their 431/loss attempts are not even tried.",
+ "severity": "medium",
+ "source": "read-peer-2026-10-04",
+ "state": "in-progress",
+ "title": "A peer stopped for refusing MODE STREAM stays stopped after the operator's remedy until the node restarts",
+ "updated": "2026-10-04T15:54:23Z"
+}

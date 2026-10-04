@@ -111,6 +111,14 @@
 (assert-event (fn-fc-streaming-refusal-p *fc-mode-state* *fc-502*))
 (assert-event (fn-fc-dial-allowedp t "hub" nil))
 (assert-event (not (fn-fc-dial-allowedp t "hub" (fn-fc-stopped-put "hub" :mode-stream-refused nil))))
+;; rp-feed-stop-outlives-remedy: the stop is keyed by the record it was
+;; recorded under; the same record stays stopped, a changed one dials.
+(assert-event (not (fn-fc-dial-allowedp t (fn-fc-stop-key "hub" '(:streaming t))
+                                        (fn-fc-stopped-put (fn-fc-stop-key "hub" '(:streaming t))
+                                                           :mode-stream-refused nil))))
+(assert-event (fn-fc-dial-allowedp t (fn-fc-stop-key "hub" '(:streaming nil))
+                                   (fn-fc-stopped-put (fn-fc-stop-key "hub" '(:streaming t))
+                                                      :mode-stream-refused nil)))
 (assert-event (fn-fc-dial-allowedp t "far" (fn-fc-stopped-put "hub" :mode-stream-refused nil)))
 (assert-event (fn-fc-stopped-reason "hub" (fn-fc-stopped-put "hub" :mode-stream-refused nil)))
 ; Tooth for PRF-207's added hypothesis (not 500/501): 501 is no longer a

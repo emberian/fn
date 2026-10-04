@@ -264,11 +264,16 @@
 ; publication in flight captured (a natural) or nil; BLOCKEDP a deferral of
 ; the publication by the budget or the space (PKT-492); RECORDEDP whether
 ; the configuration carries a recorded instant.
-;   :in-flight   a pass runs; this request is that pass (no second).
-;   :queued      a publication runs; the pass starts when it ends.
+;   :in-flight   a pass runs; this request starts no second one (S038).
+;   :queued      a publication runs; this request starts nothing (nothing
+;                queues it: the operator asks again when it ends).
 ;   :blocked     a deferral stands; refused by name (status says which).
 ;   :no-recorded-instant  nothing to decide at (`--recorded' without one).
 ;   :requested   the pass starts now.
+; Only :requested starts anything (host/native/admin.lisp
+; fnn-owner-reclaim-request runs the pass or the dry run on it alone), so
+; every other word is a refusal by name (KEYSTONE
+; fn-orc-request-accepted-only-when-it-runs).
 (defun fn-orc-request-word (pass inflight blockedp recordedp)
   (declare (xargs :guard t))
   (cond (pass :in-flight)
@@ -279,11 +284,25 @@
 
 (defun fn-orc-request-status (word)
   (declare (xargs :guard t))
-  (if (member-eq word '(:blocked :no-recorded-instant)) :refused :accepted))
+  (if (member-eq word '(:in-flight :queued :blocked :no-recorded-instant)) :refused :accepted))
 
 (defthm fn-orc-one-pass-in-flight-by-definition
   (implies pass
            (equal (fn-orc-request-word pass inflight blockedp recordedp) :in-flight)))
+
+;; KEYSTONE (S038, the request's half).  A request is accepted exactly when
+;; it starts the pass: a pass or a publication in flight, a deferral, or no
+;; recorded instant is each refused by name, so a second reclaim of any mode
+;; is never answered as if it ran.
+(defthm fn-orc-request-accepted-only-when-it-runs
+  (equal (equal (fn-orc-request-status (fn-orc-request-word pass inflight blockedp recordedp))
+                :accepted)
+         (equal (fn-orc-request-word pass inflight blockedp recordedp) :requested)))
+
+(defthm fn-orc-request-refused-while-a-pass-runs
+  (implies pass
+           (equal (fn-orc-request-status (fn-orc-request-word pass inflight blockedp recordedp))
+                  :refused)))
 
 (defthm fn-orc-never-past-a-deferral
   (implies (and (not pass) (not (natp inflight)) blockedp)

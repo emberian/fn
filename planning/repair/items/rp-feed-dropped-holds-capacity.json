@@ -1,0 +1,18 @@
+{
+ "category": "bug",
+ "disposition": "SLICE",
+ "evidence": "books/peer-feed.lisp fn-feed-give-up sets (:dropped reason) in place (fn-feed-queue-set-state); nothing retires a dropped entry (fn-feed-done retires only in-flight ones; fn-feed-queue-settle keeps them). books/owner-feed.lisp fn-own-feed-target-capacityp and fn-feed-enqueue compare (len (fn-feed-queue f)) with max-queue, dropped entries included (fn-fct-pending-model subtracts them, the capacity test does not). books/owner.lisp fn-own-submission-intent-result -> :capacity -> :feed-queue-full: POST 441, transit 436. Default outbound via 'peer set --send' is (send t 1024 1000): max-queue 1024, backoff 1000 ms.",
+ "exposure": "live",
+ "file": "books/owner-feed.lisp",
+ "fix": "Statement-first: a :dropped entry leaves the live queue at the give-up (its outcome stays in the FNFD :feed-drop record and the drop count), or the capacity tests count fn-feed-undelivered rather than len; keystone: capacity is refused only by entries still owed delivery. Pair with rp-feed-defer-drop (431/436 should not drop at all).",
+ "id": "rp-feed-dropped-holds-capacity",
+ "locus": "peer-services",
+ "notes": [],
+ "owner": "read-peer",
+ "scenario": "With rp-feed-defer-drop, a friend's server answering 431/436 for 7 s (1+2+4 s at the default 1000 ms base) drops the head article; a throttle or slow disk lasting a few hours drops 1024 of them (or 1024 S053 loss drops over the peer's life). The queue is then full of :dropped entries forever -- the FNFD replay rebuilds them after a restart -- and every local POST to local.* (or whatever that peer is fed) is answered 441 feed-queue-full, every inbound transfer for those groups 436, node-wide, although the peer has nothing in flight and may be healthy again. Memory: the live queue also grows by one entry per drop without bound (D27).",
+ "severity": "high",
+ "source": "read-peer-2026-10-04",
+ "state": "open",
+ "title": "Dropped feed entries never leave the peer's queue and count against max-queue: once max-queue entries are dropped, every POST and transit for the groups fed to that peer is refused (441 / 436) for good",
+ "updated": "2026-10-04T15:52:41Z"
+}

@@ -105,6 +105,36 @@ class NativeAuthTests(unittest.TestCase):
             client.close(quit=False)
         self.node.stop()
 
+    def test_the_address_limit_closes_a_read_that_also_posts(self):
+        # read-serve: one read whose 481 reaches the address's
+        # exposure-auth-failures (PRF-161, fn-exp-observe-facts) and which also
+        # completes a POST.  The submission waits for its batch; the plan is
+        # the step's replies, the batch's 240 and ACL2's 400
+        # (fn-splan-step-plan), and the close the exposure decided
+        # (fn-splan-step-exposure-close) follows it.  The queued-commit path
+        # used to drop that close: the 400 was sent and the connection went
+        # on being served.
+        self.node.operator("policy", "set", "exposure-auth-failures", "1", expect=EXIT_OK)
+        self.start()
+        with self.client() as client:
+            client.send(b"AUTHINFO USER native-reader\r\nAUTHINFO PASS wrong\r\n"
+                        b"AUTHINFO USER native-reader\r\nAUTHINFO PASS correct-horse\r\n"
+                        b"POST\r\n"
+                        b"From: Native Reader <reader@example.invalid>\r\n"
+                        b"Newsgroups: fn.test\r\nSubject: the limit\r\n"
+                        b"Message-ID: <address-limit@example.invalid>\r\n\r\n"
+                        b"posted in the read that reached the limit\r\n.\r\n")
+            replies = []
+            try:
+                while True:
+                    replies.append(client.line()[:3])
+            except EOFError:
+                pass
+            client.close(quit=False)
+        self.assertEqual(replies, [b"381", b"481", b"381", b"281", b"340", b"240", b"400"],
+                         replies)
+        self.node.exited(EXIT_OK)
+
     def test_restricted_command_before_login_is_480_and_leaves_no_article(self):
         # P1 (b) on the image: fn-served-dispatch-of-a-gated-command-is-480-
         # and-changes-nothing says a restricted command before the login is
