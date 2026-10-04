@@ -50,7 +50,7 @@ import box_table  # noqa: E402
 import boxq  # noqa: E402
 
 ALL_IMAGES = "developer,production,dtn,dtn-developer"
-SELECTOR_REFS = ("HEAD", "origin/dev", "origin/lane/scenarios-2")
+SELECTOR_REFS = ("HEAD", "origin/dev", "origin/lane/scenarios-2-speed", "origin/lane/scenarios-2")
 # The opt-in variables the tiers set (tests/scenarios/tiers.tsv `env` rows):
 # a gate runs what it selects, with skips allowed for the rest (INN trees).
 OPT_IN = ("FN_RUN_CONSUMER_E2E=1", "FN_RUN_CONSUMER_POLL_E2E=1", "FN_RUN_CONSUMER_INSPECT=1",
@@ -100,7 +100,41 @@ def runnable(tree: Path, mods: list[str], images: str) -> tuple[list[str], list[
     return [m for m in mods if m not in refused], refused
 
 
-def affected(head: str, files: list[str], everything: bool, images: str = "") -> list[str]:
+def affected_since(head: str, base: str, images: str) -> list[str] | None:
+    """`scenario_suite.py affected --since BASE` in a detached checkout of HEAD, when
+    HEAD's scenario_suite has it: the selector diffs helpers by their AST, which
+    needs the real tree (bare FILE arguments select ALL for a helper change).
+    None when HEAD lacks it."""
+    if "--since" not in git("show", f"{head}:tools/scenario_suite.py"):
+        return None
+    tree = Path(tempfile.mkdtemp(prefix="batch-since."))
+    try:
+        subprocess.run(["git", "-C", str(TOOLS_ROOT), "worktree", "add", "-q", "--detach", str(tree), head],
+                       check=True, capture_output=True)
+        done = subprocess.run([sys.executable, "tools/scenario_suite.py", "affected", "--since", base],
+                              cwd=tree, capture_output=True, text=True)
+        if done.returncode:
+            raise SystemExit(f"batch: scenario_suite affected --since failed: {done.stderr.strip()}")
+        mods = []
+        for m in done.stdout.split():
+            if m not in mods and (tree / (m.replace(".", "/") + ".py")).exists():
+                mods.append(m)
+        if images:
+            mods, refused = runnable(tree, mods, images)
+            for m in refused:
+                print(f"batch: {m} not run: it reads an image the set does not hold", flush=True)
+        return mods
+    finally:
+        subprocess.run(["git", "-C", str(TOOLS_ROOT), "worktree", "remove", "--force", str(tree)],
+                       capture_output=True)
+        shutil.rmtree(tree, ignore_errors=True)
+
+
+def affected(head: str, files: list[str], everything: bool, images: str = "", base: str = "") -> list[str]:
+    if base and not everything:
+        got = affected_since(head, base, images)
+        if got is not None:
+            return got
     tree = selector_tree(head)
     try:
         if everything:
@@ -186,7 +220,7 @@ def gate(args) -> int:
     files = changed(base, head)
     stages = []
     images = args.images or ALL_IMAGES
-    mods = affected(head, files, args.all, images)
+    mods = affected(head, files, args.all, images, base)
     mode = "build" if args.build else None
     why = "--build"
     if mode is None:
