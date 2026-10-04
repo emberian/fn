@@ -1,0 +1,20 @@
+{
+ "category": "bug",
+ "disposition": "SLICE",
+ "evidence": "books/peer-inbound.lisp fn-peer-command, TAKETHIS arm: (if (not (fn-peer-msgid-argp args)) (fn-post-make-result ps (fn-peer-single ps (fn-proto-text * :syntax)) nil) ...) -- no fn-nntp-begin-article-effect, no transfer. RFC 4644 2.5.2: the client sends the article immediately after the command line and 'The server MUST return either a 239 response ... or a 439'.",
+ "exposure": "live",
+ "file": "books/peer-inbound.lisp",
+ "fix": "Statement-first: a TAKETHIS line whose argument is not a Message-ID still enters article mode (the transfer remembers the raw argument); the article is consumed by the wire machine and answered 439 echoing the argument (RFC 4644 2.5.1/2.5.2), never submitted to the owner, never remembered in the refused-offer memory. Keystone: after any TAKETHIS line on a peer session the next wire event is an :article (or the close), so no article line is ever a command. Touches fn-peer-command and peer-inbound-invariants; wants the proofs lane or a peering slice.",
+ "id": "rp-takethis-bad-msgid-desync",
+ "locus": "peer-services",
+ "notes": [
+  "10-04 12:19 READY 55bf4771d+41e004bc0 (lane/read-peer): article mode for any TAKETHIS, 439 echo, keystones fn-peer-takethis-always-takes-its-article / fn-peer-refused-takethis-submits-nothing; red at base certify-20261004T160325Z-71813, green certify-20261004T160744Z-92862, carried copies certify-20261004T161018Z-7482 + certify-20261004T161816Z-36705 (laptop). Native: scenarios lane case 7 (tests/test_native_peer_hostile_feed.py) owed on an image."
+ ],
+ "owner": "read-peer",
+ "scenario": "A streaming peer (INN with laxmid, or any sender whose Message-ID is over 250 octets or outside fn-af-msg-id-corep) sends 'TAKETHIS <odd id>' then the article. fn answers 501, then reads every header and body line as a command on the PEER session: each draws a reply the sender maps onto its later outstanding CHECK/TAKETHIS (the stream desynchronises, answers land on the wrong Message-IDs), and a body line such as 'TAKETHIS <x@y>' starts a new transfer whose article is the rest of the body (dot-unstuffed), stored as relayed from that peer. The article's author, not the peer, chooses those lines.",
+ "severity": "high",
+ "source": "read-peer-2026-10-04",
+ "state": "in-progress",
+ "title": "TAKETHIS whose argument fails fn's Message-ID grammar is answered 501 and its article is then executed line by line as commands on the peer session",
+ "updated": "2026-10-04T16:19:52Z"
+}

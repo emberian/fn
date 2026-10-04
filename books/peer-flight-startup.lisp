@@ -3,29 +3,30 @@
 (include-book "page-read-startup")
 (include-book "peer-flight-reservation")
 
-(defun fn-prstartup-protected-with-peer (profile core nursery output max-connections peer)
+(defun fn-prstartup-protected-with-peer (profile core nursery output max-connections peer observed)
  (declare (xargs :guard t))
- (+ (fn-prstartup-protected profile core nursery output max-connections)
+ (+ (fn-prstartup-protected profile core nursery output max-connections observed)
     (if (fn-pfr-policy-p peer) (nfix (fn-pfr-at 0 peer)) 0)))
 (defun fn-prstartup-default-plan-with-peer
- (dynamic occupied profile core nursery cold output max-connections root workers cache-limit fd-limit peer)
+ (dynamic occupied profile core nursery cold output max-connections root workers cache-limit fd-limit peer
+  observed)
  (declare (xargs :guard t))
  (cond ((not peer) (fn-prstartup-default-plan dynamic occupied profile core nursery cold output
-                      max-connections root workers cache-limit fd-limit))
+                      max-connections root workers cache-limit fd-limit observed))
        ((not (fn-pfr-policy-p peer)) (list :refused :invalid-peer-flight-profile))
        (cold (list :refused :unpriced-complete-cold-profile))
        ((not (or (not output) (fn-orv-policy-p output)))
         (list :refused :invalid-output-resource-profile))
        (t (fn-prstartup-plan dynamic occupied
-              (fn-prstartup-protected-with-peer profile core nursery output max-connections peer)
+              (fn-prstartup-protected-with-peer profile core nursery output max-connections peer observed)
               root workers (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*
               cache-limit fd-limit))))
 
 ; Pool budget includes native bytes already reserved outside the heap.
 ; Its remaining heap allowance is exclusive of the peer heap slice.
-(defun fn-prstartup-peer-protected (profile core nursery output max-connections plan)
+(defun fn-prstartup-peer-protected (profile core nursery output max-connections plan observed)
  (declare (xargs :guard t))
- (+ (fn-prstartup-protected profile core nursery output max-connections)
+ (+ (fn-prstartup-protected profile core nursery output max-connections observed)
     (nfix (- (nfix (fn-prstartup-nth 0 (fn-prstartup-nth 1 plan)))
              (* (fn-prstartup-decoded-workers plan)
                 (+ (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*))))))
@@ -34,29 +35,29 @@
 (defun fn-pfr-extend-operation-reservation (base action peer core observations)
  (declare (xargs :guard t))
  (if (fn-pfr-operation-observes-p action) (fn-pfr-extend-reservation base peer core observations) base))
-(defun fn-prstartup-peer-grant (dynamic profile core nursery output max-connections plan peer)
+(defun fn-prstartup-peer-grant (dynamic profile core nursery output max-connections plan peer observed)
  (declare (xargs :guard t))
  (if (not (fn-prstartup-planp plan)) (list :refused :default-pool-not-held)
    (fn-pfr-startup-grant dynamic
-     (fn-prstartup-peer-protected profile core nursery output max-connections plan) peer)))
+     (fn-prstartup-peer-protected profile core nursery output max-connections plan observed) peer)))
 
 ; Carry this exact parent capture until the retained service publishes its bank.
 (defun fn-prstartup-peer-native-capture
- (dynamic profile core nursery output max-connections plan peer)
+ (dynamic profile core nursery output max-connections plan peer observed)
  (declare (xargs :guard t))
  (if (not (eq (fn-pfr-at 0 (fn-prstartup-peer-grant dynamic profile core nursery
-                              output max-connections plan peer)) :hold)) nil
+                              output max-connections plan peer observed)) :hold)) nil
    (list dynamic
-         (fn-prstartup-peer-protected profile core nursery output max-connections plan)
+         (fn-prstartup-peer-protected profile core nursery output max-connections plan observed)
          peer (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*)))
 
 ; Revalidate the current file capture against the whole native reservation.
 ; A file changed after launch cannot obtain extra unfunded worker authority.
 (defun fn-prstartup-peer-native-grant
- (dynamic profile core nursery output max-connections plan peer observations)
+ (dynamic profile core nursery output max-connections plan peer observations observed)
  (declare (xargs :guard t))
  (let ((grant (fn-prstartup-peer-grant dynamic profile core nursery output
-                                        max-connections plan peer)))
+                                        max-connections plan peer observed)))
   (if (not (eq (fn-pfr-at 0 grant) :hold)) grant
     (if (< (fn-heap-machine-octets observations)
            (fn-heap-reservation-octets (fn-heap-mb-of dynamic) core
@@ -64,7 +65,7 @@
              (+ (fn-heap-thread-count max-connections) (nfix (fn-pfr-at 3 peer)))))
         (list :refused :peer-native-reservation-not-held)
       (list :hold (fn-prstartup-peer-native-capture dynamic profile core nursery output
-                                                  max-connections plan peer))))))
+                                                  max-connections plan peer observed))))))
 
 (defun fn-prstartup-peer-native-refusal-line (grant)
  (declare (xargs :guard t))

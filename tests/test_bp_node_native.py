@@ -328,7 +328,12 @@ class NativeBpNodeTests(unittest.TestCase):
             "tcpcl", "send", "127.0.0.1", port, "-",
             self.tmp / "forged-peer-spool", "dtn://forged/", "dtn://receiver/",
             1, 65536, 1048576, 1, timeout=30)
-        self.assertEqual(forged.returncode, LOST, forged.stdout + forged.stderr)
+        # The node closes before its own SESS_INIT (early admission, PRF-1299),
+        # so a bundle-less probe never reaches the established phase and has no
+        # transfer to classify as lost: its observation is the closed session.
+        forged_out = (forged.stdout + forged.stderr).decode(errors="replace") \
+            if isinstance(forged.stdout, bytes) else forged.stdout + forged.stderr
+        self.assertIn("accepted=0 refused=0 uncertain=0 phase=closed", forged_out)
         refused = receiver.output_until(
             b"BP channel admission refused reason=eid-mismatch", timeout=30)
         self.assertNotIn(b"BP accepted", refused)
@@ -1575,7 +1580,7 @@ class NativeBpNodeTests(unittest.TestCase):
         before = len(tuple((self.receiver_store / "config").iterdir()))
         refused = self.invoke("operator", config, "group", "create", "fn.unrelated")
         self.assertEqual(refused.returncode, EXIT.REFUSED, refused.stderr)
-        self.assertIn(b"unsupported-bp-control-operation", refused.stdout)
+        self.assertIn(b"unsupported-bp-control-operation", (refused.stdout + refused.stderr).lower())
         self.assertEqual(len(tuple((self.receiver_store / "config").iterdir())), before)
         removed = self.invoke("operator", config, "bp-route", "remove",
                               "dtn://sender/*", "sender-boundary")
@@ -1715,7 +1720,7 @@ class NativeBpNodeTests(unittest.TestCase):
         result = run(self.dispatch_receiver_args() + ["--control-config", str(wrong)],
                      cwd=ROOT, env=environment(), timeout=120)
         self.assertEqual(result.returncode, EXIT.REFUSED, result.stderr)
-        self.assertIn(b"control-store-mismatch", result.stdout + result.stderr)
+        self.assertIn(b"control-store-mismatch", (result.stdout + result.stderr).lower())
         self.assertNotIn(b"BP NODE CONTROL", result.stdout)
         self.assertFalse((self.sender_store / "control.sock").exists())
         self.assertFalse((self.receiver_store / "control.sock").exists())

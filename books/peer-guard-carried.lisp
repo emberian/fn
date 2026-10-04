@@ -251,8 +251,13 @@
            (fn-peer-echo-reply (fn-peer-check-code d) (car args))
            nil))))
      ((fn-nntp-keywordp keyword "TAKETHIS")
+      ; rp-takethis-bad-msgid-desync: as fn-peer-command, the article is taken.
       (if (not (fn-peer-msgid-argp args))
-          (fn-post-make-result ps (fn-peer-single ps (fn-proto-text * :syntax)) nil)
+          (fn-post-make-result
+           (fn-peer-with-transfer ps (list :takethis-refused (fn-peer-takethis-echo args))
+                                  inflight)
+           (list (fn-nntp-begin-article-effect))
+           nil)
         (fn-post-make-result
          (fn-peer-with-transfer ps (list :takethis (car args))
                                 (nfix (- (nfix inflight) 1)))
@@ -327,12 +332,17 @@
              (equal (car wire-event) :article)
              (consp (cdr wire-event))
              (null (cdr (cdr wire-event))))
-        (fn-post-make-result
-         (fn-peer-with-transfer ps nil (fn-peer-session-inflight ps))
-         nil
-         (fn-peer-make-submission (fn-peer-session-peer ps)
-                                  (car transfer) (car (cdr transfer))
-                                  (fn-post-body-octets (car (cdr wire-event)))))
+        (if (equal (car transfer) :takethis-refused)
+            (fn-post-make-result
+             (fn-peer-with-transfer ps nil (fn-peer-session-inflight ps))
+             (fn-peer-echo-reply "439 " (car (cdr transfer)))
+             nil)
+          (fn-post-make-result
+           (fn-peer-with-transfer ps nil (fn-peer-session-inflight ps))
+           nil
+           (fn-peer-make-submission (fn-peer-session-peer ps)
+                                    (car transfer) (car (cdr transfer))
+                                    (fn-post-body-octets (car (cdr wire-event))))))
       (fn-post-make-result
        (fn-peer-with-transfer ps nil (fn-peer-session-inflight ps))
        (fn-peer-transfer-unreceived-effects ps transfer wire-event)

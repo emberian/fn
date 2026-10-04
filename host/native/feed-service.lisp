@@ -104,7 +104,11 @@
 
 This runs in the sole feed worker.  ACL2 owns membership; the runtime lock
 only publishes the corresponding socket resources.  Removed links are
-closed by this worker, preserving the one-closer rule."
+closed by this worker, preserving the one-closer rule.  A removed link that
+held a connection is reported to ACL2 as a loss first, exactly as every other
+close is (fnn-feed-drop-link): the feed port still holds that connection and
+its in-flight offer, and without the loss a re-created link (`peer feed NAME
+resume') offers nothing until the stale state is cleared, which nothing does."
   (let* ((service (fnn-feed-runtime-service runtime))
          (names (fnn-feed-peer-list service))
          (removed nil))
@@ -118,7 +122,11 @@ closed by this worker, preserving the one-closer rule."
                     unless (member (fnn-feed-link-peer link) names :test #'string=)
                     collect link))
         (setf (fnn-feed-runtime-links runtime) (nreverse next))))
-    (dolist (link removed) (fnn-feed-close-link runtime link))))
+    (dolist (link removed)
+      (when (and (fnn-feed-link-socket link) (not (fnn-feed-stoppingp runtime)))
+        (setq *fnn-feed-active* t)
+        (fnn-feed-lost service link (fnn-feed-now)))
+      (fnn-feed-close-link runtime link))))
 
 (defun fnn-feed-checked-word (word allowed where)
   (unless (member word allowed)
@@ -308,7 +316,10 @@ ACL2 decodes its bounded bytes; only named input/OS refusal is credential loss."
       (incf (fnn-feed-link-output-offset link) sent)
       (let ((offset (fnn-feed-link-output-offset link)))
         (cond ((= offset (length data))
-               (setf (fnn-feed-link-output link) nil (fnn-feed-link-deadline link) nil))
+               ;; Every feed command is answered: the drained command arms
+               ;; the wait for that reply (fn-prd-feed-action).
+               (setf (fnn-feed-link-output link) nil
+                     (fnn-feed-link-deadline link) (fnn-core 'fn-prd-round-deadline now)))
               (t
                (when (= offset (fnn-feed-link-output-quantum-end link))
                  (let ((bound (fnn-feed-link-output-quantum link)))
@@ -509,13 +520,14 @@ DNS/profile/context filesystem work remains a separate availability frontier."
                                     (typecase condition (fnn-feed-auth-error :credential)
                                       (fnn-tls-error :tls) (t :dial)))))))))))
 
-(defun fnn-feed-connected-step (runtime link)
-  "Establish ACL2's connection phase after TCP completion, never before it."
+(defun fnn-feed-connected-step (runtime link now)
+  "Establish ACL2's connection phase after TCP completion, never before it.
+The greeting is then awaited under the reply wait (fn-prd-feed-action)."
   (destructuring-bind (user pass clear) (fnn-feed-link-dial-auth link)
     (fnn-feed-connect-core (fnn-feed-runtime-service runtime) (fnn-feed-link-peer-octets link)
                            (fnn-feed-link-fd link) user pass clear))
   (setf (fnn-feed-link-dial-auth link) nil (fnn-feed-link-phase link) nil
-        (fnn-feed-link-deadline link) nil)
+        (fnn-feed-link-deadline link) (fnn-core 'fn-prd-round-deadline now))
   (let ((security (fnn-feed-link-security link)))
     (when (and (equal (car security) :tls) (equal (cadr security) :implicit))
       (fnn-feed-enable-tls runtime link security))))
@@ -528,7 +540,11 @@ DNS/profile/context filesystem work remains a separate availability frontier."
       (when (and (eq word :send)
                  (string= (or (fnn-developer-selector "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT") "") "1"))
         (fnn-control-stop-calling-thread))
-      (when (> (length command) 0) (fnn-feed-send link command))
+      (if (> (length command) 0)
+          (fnn-feed-send link command)
+        ;; A complete reply ends the wait its command armed; a partial line
+        ;; (:need-input) does not, so a trickling peer cannot extend it.
+        (unless (eq word :need-input) (setf (fnn-feed-link-deadline link) nil)))
       (setf (fnn-feed-link-drain link) (not (eq word :need-input)))
       (case word
         (:need-input
@@ -569,13 +585,16 @@ DNS/profile/context filesystem work remains a separate availability frontier."
             (:connect
              (when (eq (fnn-connect-poll (fnn-feed-link-socket link)) :connected)
                (setf (fnn-feed-link-phase link) :connected)))
-            (:connected (fnn-feed-connected-step runtime link))
+            (:connected (fnn-feed-connected-step runtime link now))
             (:tls
              (when (eq (fnn-tls-client-step (fnn-feed-link-tls-channel link)
                                             (fnn-feed-link-tls-name link)) :connected)
                (setf (fnn-feed-link-phase link) nil (fnn-feed-link-deadline link) nil)
                (multiple-value-bind (word command)
                    (fnn-feed-tls-established-core (fnn-feed-runtime-service runtime) link)
+                 ;; Implicit TLS then awaits the greeting (:need-input).
+                 (when (eq word :need-input)
+                   (setf (fnn-feed-link-deadline link) (fnn-core 'fn-prd-round-deadline now)))
                  (when (> (length command) 0) (fnn-feed-send link command))
                  (when (eq word :ready) (fnn-feed-link-became-ready link)))))
             (:write (fnn-feed-write-step link now))

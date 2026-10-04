@@ -8,11 +8,13 @@
  "fix": "the deferral leaves the quantum as its value; the return-from runs after the quantum",
  "id": "WR01",
  "locus": "reclaim-publication",
- "notes": [],
+ "notes": [
+  "10-04 13:57 fixed at origin/dev by d39bf9a4a: fnn-owner-reclaim-dry-run sets DEFERRED inside the gated quantum and the return-from runs after it; NativeOwnerHandlerStructureTests.test_every_owner_quantum_runs_inside_the_one_fence_boundary escape walk is green at b1f0821d7"
+ ],
  "owner": "wrapper",
  "severity": "high",
  "source": "WRAPPER",
- "state": "open",
+ "state": "refuted",
  "title": "fnn-owner-reclaim-dry-run leaves its gated quantum by return-from when a pass is in flight: the boundary's unwind guard (review M3) classifies it as an unclassified exit and stops the node as a FAULT",
- "updated": "2026-10-03T04:07:33Z"
+ "updated": "2026-10-04T17:57:56Z"
 }

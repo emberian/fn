@@ -4623,7 +4623,7 @@
     },
     {
       "id": "NNT-049",
-      "title": "An article refused for a reason its octets decide is remembered, within the operator's bound, and a later offer of its Message-ID from any peer is refused from the memory without a transfer",
+      "title": "An article refused for a reason its octets decide is remembered, within the operator's bound, and a later offer of its Message-ID from the same peer is refused from the memory without a transfer; no other peer's answer changes",
       "specification": "specs/peering.md#refused-offer-memory-nnt-049",
       "milestone": "M5",
       "status": "implemented",

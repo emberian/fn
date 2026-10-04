@@ -716,9 +716,7 @@
 ; A reader's POST still goes through the POST-composed step.
 (assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* *pt-reader* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "POST")))
                      (list (pt-reply "340 send article to be posted") (fn-nntp-begin-article-effect))))
-; Malformed transit lines: 501, no article mode.
-(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "TAKETHIS")))
-                     (list (pt-reply "501 syntax error"))))
+; Malformed IHAVE: 501, no article mode (the article follows only a 335).
 (assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE a1")))
                      (list (pt-reply "501 syntax error"))))
 ; Awaiting the article and something else arrives: retry code and close.
@@ -1048,3 +1046,54 @@
 (assert-event (equal (fn-peer-transit-code :ihave '(:want nil) :unaffordable) 436))
 ; Another Store refusal keeps the drop code: the retry class is capacity's.
 (assert-event (equal (fn-peer-transit-code :takethis '(:want nil) :conflict) 439))
+
+; -----------------------------------------------------------------------------
+; rp-takethis-bad-msgid-desync (read-peer 2026-10-04).  RFC 4644 section
+; 2.5.2: the article follows a TAKETHIS line immediately, whatever its
+; argument, and the server answers 239 or 439.  A TAKETHIS whose argument is
+; no Message-ID used to draw 501 with no article mode, so the article's own
+; lines ran as commands on the peer session: a body line
+; `TAKETHIS <inner@...>' began a transfer whose article was the rest of the
+; body.  Now the line enters article mode, the article is consumed whole and
+; answered 439 echoing the argument, and nothing reaches the owner.
+
+(defconst *pt-tb-smuggle-lines*
+  (pt-lines '("Path: evil.example!not-for-mail" "From: x@evil.example"
+              "Newsgroups: fn.letters" "Subject: carrier"
+              "Message-ID: <carrier@evil.example>" ""
+              "TAKETHIS <inner@evil.example>"
+              "Path: evil.example!not-for-mail" "From: forged@example.invalid"
+              "Newsgroups: fn.letters" "Subject: smuggled"
+              "Date: Sat, 19 Sep 2026 12:00:00 +0000"
+              "Message-ID: <inner@evil.example>" "" "forged body")))
+
+(defconst *pt-tb1* (in-arena-fn-peer-step *sr-arena* *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "TAKETHIS not-a-message-id")))
+(assert-event (equal (fn-post-result-effects *pt-tb1*) (list (fn-nntp-begin-article-effect))))
+(assert-event (null (fn-post-result-submission *pt-tb1*)))
+(assert-event (equal (fn-peer-session-inflight (fn-post-result-session *pt-tb1*)) 0))
+(defconst *pt-tb2* (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-tb1*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (list :article *pt-tb-smuggle-lines*)))
+(assert-event (equal (fn-post-result-effects *pt-tb2*) (list (pt-reply "439 not-a-message-id"))))
+(assert-event (null (fn-post-result-submission *pt-tb2*)))
+(assert-event (null (fn-peer-session-transfer (fn-post-result-session *pt-tb2*))))
+(assert-event (fn-nntp-effectsp (fn-post-result-effects *pt-tb2*)))
+; No argument at all: still the article, echoed as "-".
+(defconst *pt-tb3* (in-arena-fn-peer-step *sr-arena* *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "TAKETHIS")))
+(assert-event (equal (fn-post-result-effects *pt-tb3*) (list (fn-nntp-begin-article-effect))))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-tb3*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (list :article *pt-tb-smuggle-lines*)))
+                     (list (pt-reply "439 -"))))
+; An argument over 250 octets (no Message-ID can be) is echoed as "-".
+(defconst *pt-tb-long* (coerce (append '(#\<) (make-list 260 :initial-element #\a) '(#\@ #\b #\>)) 'string))
+(defconst *pt-tb4* (in-arena-fn-peer-step *sr-arena* *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd (concatenate 'string "TAKETHIS " *pt-tb-long*))))
+(assert-event (equal (fn-post-result-effects *pt-tb4*) (list (fn-nntp-begin-article-effect))))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-tb4*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (list :article *pt-tb-smuggle-lines*)))
+                     (list (pt-reply "439 -"))))
+; Cut at the body limit: 439 echoing the argument, and closed.
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-tb1*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* *pt-overlimit*))
+                     (list (pt-reply "439 not-a-message-id") (fn-nntp-close-effect))))
+; The teeth's other side: the same smuggled octets taken as COMMANDS (what
+; the 501 used to cause) are a valid transfer of <inner@evil.example> -- the
+; inner TAKETHIS line opens a transfer and its article becomes a submission.
+(defconst *pt-tb5* (in-arena-fn-peer-step *sr-arena* *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "TAKETHIS <inner@evil.example>")))
+(assert-event (equal (fn-peer-session-transfer (fn-post-result-session *pt-tb5*))
+                     (list :takethis (pt-o "<inner@evil.example>"))))
+
