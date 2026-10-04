@@ -77,8 +77,11 @@
 ; entry its :pin made): a thread cannot unpin what it did not pin, which is
 ; the generation-pin capability of the realization table.
 ;
+; ESTABLISHED over every schedule (books/host-model.lisp, lane proofs2
+; 2026-10-04): fn-hmc-run-keeps-invp (PRF-1242), the composed invariant from
+; any invariant state, and fn-hmc-init-run-keeps-invp, from fn-hmc-init; one
+; step keeps it for every label (fn-hmc-step-keeps-invp).
 ; PROOF TARGETS (not established over every schedule; HM02 remains open):
-;   fn-hmc-run-keeps-invp (PRF-1242): the composed invariant.
 ;   fn-hmc-an-unsettled-read-keeps-its-incarnation-open (PRF-1243, T1(b).1):
 ;     retire, release, close and swap interleaved arbitrarily never close an
 ;     incarnation an issued or cancelled read, or a lease, names.

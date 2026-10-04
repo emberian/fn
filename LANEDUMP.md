@@ -4589,6 +4589,11 @@ owner 54 (other lanes' territory now: WEB/INIT/RETIRE/RECLAIM; convert LAST, the
 ### Residue I did not touch (reported, not fixed)
 `fnn-unwind-cleanups` (io.lisp:545) does not escalate the exit when a cleanup after a body escape fails (review M3d: the dominated outcome is logged, never escalated) — the offline command's version of S028. The control thread's handler-case (control.lisp:395-420) classifies by parent class (M1's fail-open shape, outside the envelope). Both are CONTROL/io lanes' work.
 
+
+# proofs (Fable) — 2026-10-04 wind-down
+
+See build/coordinator/lanedumps/proofs.md (the full entry). State: four statements drafted and committed at lane/proofs@1c5e987b2, none admitted (laptop cache is box-toolchain-keyed; slot pool held). Continuation: take a REPL where the toolchain matches (persvati, ask the assembler) or after carrier's laptop certify finishes; admit books/served-available-read (PRF-1287), books/catalog-may-seal, books/statement-recover-stream in that order; then cite the may-seal keystones in host/interfaces.lisp:1553 and run keystone_emit --check; PRF-1242 needs issue/settle/close preservation first (finding recorded).
+
 ## docs lane (lane/docs) — 2026-10-04
 
 Brief: scratchpad fn-briefs/COMMON.md + plan FN-SWARMPLAN-20261004 §3, §4 wave 0, §6.
@@ -4697,3 +4702,7 @@ def-actor declaration half (fn-fs-actor-declp, 12 actors declared, lock check R4
 test_native_admin main-last fix. Continuation: the 23 fnn-unwind-cleanups rows (teach the expander the mapcar
 splice; escalate M3d in io.lisp), def-actor failure half, history-root/control conversion.
 
+
+# proofs2 (Opus) — 2026-10-04 (exit)
+
+See build/coordinator/lanedumps/proofs2.md. READY lane/proofs2@883c28b5a: PRF-1287 / may-seal / ssr=srs / PRF-1242 (composed: fn-hmc-run-keeps-invp) certified (certify-20261004T043850Z-1112347, certify-20261004T043618Z-98000); interfaces.lisp may-seal row re-cited. S150 at lane/proofs2-s150@82abba272 owes check-lane. Continuation: S150 READY, S151 narrow recertify, PGO-* (PGO-REFUSE-ABORT first).

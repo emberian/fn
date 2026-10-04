@@ -134,3 +134,103 @@
  (declare (xargs :guard t))
  (if (eq acc :bad) :bad (fn-ag-rev-onto (fn-ssr-at 0 acc) nil)))
 (in-theory (disable fn-ssr-state fn-ssr-statep fn-ssr-seed fn-ssr-publish fn-ssr-intern-step fn-ssr-rows))
+
+; -----------------------------------------------------------------------------
+; The relation to the chunked raw replay (books/store-recover-stream.lisp
+; fn-srs-intern-step and fn-srs-rows, what host/store-open-host.lisp and
+; host/store-write-host.lisp open over; lane proofs 2026-10-04, the KW-i row
+; of the 10-01 re-tag): this worker is that one with the keyring and
+; generation each row freezes.  Over a history with no keyring snapshot
+; (fn-ssr-no-snapshot-p: no wire is an fn-stxk-p event, so no row publishes a
+; new generation), from an accumulator whose keys are the open's (no keyring,
+; generation 0), the rows this worker answers are exactly the raw worker's
+; rows and its arena is the raw worker's arena.  What this worker adds over
+; the raw one -- the identity cursor (a history whose sequences do not run
+; from the seed's cursor is :bad here and not there) and the frozen keys of
+; a rotated keyring -- is exactly what the hypotheses name.  The host's full
+; recovery (host/native/io.lisp fnn-bridge-recover-begin) starts from
+; fn-ssr-seed of fn-stxk-initial-context, whose keys are the open's:
+; fn-ssr-recovery-rows-are-the-raw-rows-without-snapshots is that instance.
+
+(defun fn-ssr-no-snapshot-p (ws)
+  (declare (xargs :guard t))
+  (if (atom ws)
+      t
+    (and (not (fn-stxk-p (car ws)))
+         (fn-ssr-no-snapshot-p (cdr ws)))))
+
+(local
+ (defthm fn-ssr-raw-fold-without-snapshots
+   (implies (and (fn-ssr-no-snapshot-p ws)
+                 (not (eq acc :bad))
+                 (null (fn-ssr-at 1 acc)) (equal (fn-ssr-at 2 acc) 0)
+                 (not (eq (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena))
+                          :bad)))
+            (and (not (eq (mv-nth 0 (fn-intern-events ws nil 0 fn-arena)) :bad))
+                 (equal (fn-ssr-at 0 (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident dicts
+                                                                   fn-arena)))
+                        (revappend (mv-nth 0 (fn-intern-events ws nil 0 fn-arena))
+                                   (fn-ssr-at 0 acc)))
+                 (equal (mv-nth 1 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena))
+                        (mv-nth 1 (fn-intern-events ws nil 0 fn-arena)))))
+   :hints (("Goal" :induct (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena)
+            :do-not '(generalize fertilize eliminate-destructors)
+            :in-theory (e/d (fn-ssr-intern-step fn-ssr-publish fn-ssr-state fn-ssr-at
+                             fn-intern-events)
+                            (fn-intern-event fn-arx-intern-event fn-lzr-intern-event
+                             fn-replay-identity-step fn-stxk-context-kind
+                             fn-stxk-context-current-generation fn-stxk-p
+                             fn-ssk-apply-snapshot fn-stxk-keyring-generation
+                             fn-ssr-resident-ignores-places))))))
+
+;; The two folds' tails, in the terms the theorem below is stated in.
+(local
+ (defthm fn-ssr-rev-onto-is-revappend
+   (equal (fn-ag-rev-onto x acc) (revappend x acc))))
+
+(local
+ (defthm fn-ssr-intern-step-of-bad-history
+   (equal (fn-ssr-intern-step acc :bad rs ps mode dicts fn-arena)
+          (mv :bad fn-arena))
+   :hints (("Goal" :in-theory (enable fn-ssr-intern-step)))))
+
+(defthm fn-ssr-rows-are-the-raw-rows-without-snapshots
+  (implies (and (fn-ssr-no-snapshot-p ws)
+                (not (eq acc :bad))
+                (null (fn-ssr-at 1 acc)) (equal (fn-ssr-at 2 acc) 0)
+                (true-listp (fn-ssr-at 0 acc))
+                (not (eq (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena))
+                         :bad)))
+           (and (equal (fn-ssr-rows (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident dicts
+                                                                  fn-arena)))
+                       (fn-srs-rows (mv-nth 0 (fn-srs-intern-step (fn-ssr-at 0 acc) ws fn-arena))))
+                (equal (mv-nth 1 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena))
+                       (mv-nth 1 (fn-srs-intern-step (fn-ssr-at 0 acc) ws fn-arena)))))
+  :hints (("Goal" :do-not-induct t
+           :use (fn-ssr-raw-fold-without-snapshots
+                 (:instance fn-srs-intern-events-true-listp (keyring nil) (generation 0)))
+           :in-theory (e/d (fn-ssr-rows fn-srs-intern-step fn-srs-rows)
+                           (fn-ssr-intern-step fn-intern-events fn-ssr-at
+                            fn-ssr-resident-ignores-places
+                            fn-ssr-raw-fold-without-snapshots)))))
+
+; The host's full recovery: from the seed of the initial identity context.
+(defthm fn-ssr-recovery-rows-are-the-raw-rows-without-snapshots
+  (let ((seed (fn-ssr-seed (fn-stxk-initial-context 0))))
+    (implies (and (fn-ssr-no-snapshot-p ws)
+                  (not (eq (mv-nth 0 (fn-ssr-intern-step seed ws nil nil :resident dicts fn-arena))
+                           :bad)))
+             (and (equal (fn-ssr-rows (mv-nth 0 (fn-ssr-intern-step seed ws nil nil :resident dicts
+                                                                    fn-arena)))
+                         (fn-srs-rows (mv-nth 0 (fn-srs-intern-step nil ws fn-arena))))
+                  (equal (mv-nth 1 (fn-ssr-intern-step seed ws nil nil :resident dicts fn-arena))
+                         (mv-nth 1 (fn-srs-intern-step nil ws fn-arena))))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-ssr-rows-are-the-raw-rows-without-snapshots
+                            (acc (fn-ssr-seed (fn-stxk-initial-context 0)))))
+           :in-theory (e/d (fn-ssr-seed fn-ssr-state fn-ssr-at fn-stxk-initial-context
+                            fn-stxk-context fn-stxk-context-snapshots
+                            fn-ssk-keyring-of-snapshots fn-ssk-generation)
+                           (fn-ssr-intern-step fn-srs-intern-step fn-ssr-rows fn-srs-rows
+                            fn-ssr-resident-ignores-places
+                            fn-ssr-rows-are-the-raw-rows-without-snapshots)))))
