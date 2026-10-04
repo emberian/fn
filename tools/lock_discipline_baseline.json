@@ -954,14 +954,6 @@
    "reason": "io leaf sb-posix:chmod runs while holding O; reached from 37 site(s) under O, e.g. fnn-owner-reclaim-request (host/native/admin.lisp:422)"
   },
   {
-   "key": "R2|fnn-close|?(fnn-owner-feed-journal-lock):sb-posix:close",
-   "count": 1,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/io.lisp:562",
-   "reason": "io leaf sb-posix:close runs while holding ?(fnn-owner-feed-journal-lock); reached from 1 site(s) under ?(fnn-owner-feed-journal-lock), e.g. fnn-owner-feed-appen"
-  },
-  {
    "key": "R2|fnn-close|E:sb-posix:close",
    "count": 1,
    "rule": "R2",
@@ -992,22 +984,6 @@
    "category": "violation",
    "where": "host/native/io.lisp:562",
    "reason": "io leaf sb-posix:close runs while holding XSNAP; reached from 2 site(s) under XSNAP, e.g. fnn-snapshot-job-cleanup (host/native/snapshot-producer.lisp:492)"
-  },
-  {
-   "key": "R2|fnn-durable-barrier|?(fnn-owner-feed-journal-lock):sb-posix:fcntl",
-   "count": 1,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/io.lisp:583",
-   "reason": "io leaf sb-posix:fcntl runs while holding ?(fnn-owner-feed-journal-lock); reached from 1 site(s) under ?(fnn-owner-feed-journal-lock), e.g. fnn-owner-feed-appen"
-  },
-  {
-   "key": "R2|fnn-durable-barrier|?(fnn-owner-feed-journal-lock):sb-posix:fsync",
-   "count": 1,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/io.lisp:588",
-   "reason": "io leaf sb-posix:fsync runs while holding ?(fnn-owner-feed-journal-lock); reached from 1 site(s) under ?(fnn-owner-feed-journal-lock), e.g. fnn-owner-feed-appen"
   },
   {
    "key": "R2|fnn-durable-barrier|O:sb-posix:fcntl",
@@ -1386,22 +1362,6 @@
    "reason": "io leaf read-sequence runs while holding O; reached from 1 site(s) under O, e.g. fnn-owner-consumer-local-serialized (host/native/owner.lisp:2686)"
   },
   {
-   "key": "R2|fnn-owner-feed-append-locked|?(fnn-owner-feed-journal-lock):probe-file",
-   "count": 1,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/owner.lisp:1242",
-   "reason": "io leaf probe-file runs while holding ?(fnn-owner-feed-journal-lock); reached from 1 site(s) under ?(fnn-owner-feed-journal-lock), e.g. fnn-owner-feed-append (h"
-  },
-  {
-   "key": "R2|fnn-owner-feed-append-locked|?(fnn-owner-feed-journal-lock):sleep",
-   "count": 2,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/owner.lisp:1240",
-   "reason": "sleep leaf sleep runs while holding ?(fnn-owner-feed-journal-lock); reached from 1 site(s) under ?(fnn-owner-feed-journal-lock), e.g. fnn-owner-feed-append (hos"
-  },
-  {
    "key": "R2|fnn-owner-feed-append-locked|O:probe-file",
    "count": 10,
    "rule": "R2",
@@ -1666,14 +1626,6 @@
    "reason": "thread 'fn service log writer' (fault policy private) has no top-level serious-condition handler: an escaping condition ends it silently"
   },
   {
-   "key": "R5|fnn-bpapp-deliver|O->?(fnn-owner-feed-journal-lock)",
-   "count": 1,
-   "rule": "R5",
-   "category": "unresolved",
-   "where": "host/native/bp-app.lisp:248",
-   "reason": "edge O -> ?(fnn-owner-feed-journal-lock) with an unknown lock object"
-  },
-  {
    "key": "R5|fnn-command-bp-app-receive|unresolved:lock object (sb-thread:make-mutex)",
    "count": 1,
    "rule": "R5",
@@ -1736,14 +1688,6 @@
    "category": "unresolved",
    "where": "host/native/owner.lisp:4099",
    "reason": "manual grab-mutex of W"
-  },
-  {
-   "key": "R5|fnn-owner-feed-append|unresolved:lock object (fnn-owner-feed-journal-lock)",
-   "count": 1,
-   "rule": "R5",
-   "category": "unresolved",
-   "where": "host/native/owner.lisp:1210",
-   "reason": "lock object (fnn-owner-feed-journal-lock)"
   },
   {
    "key": "R5|lambda@host/native/owner.lisp:fnn-owner-await-logical#lambda1|unresolved:lock object lock",
