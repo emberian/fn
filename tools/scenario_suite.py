@@ -193,35 +193,196 @@ def affect_findings(root: pathlib.Path = ROOT) -> list[str]:
     return out
 
 
-def affected(paths: list[str], root: pathlib.Path = ROOT) -> dict[str, str]:
-    """tests.MODULE -> why, for every native module PATHS can affect,
-    the floor tiers (smoke, core) first."""
+def _first_rule(rules, path):
     import fnmatch
+    return next(((n, g, c) for n, g, c, _ in rules if fnmatch.fnmatchcase(path, g)), None)
+
+
+_GRAPH = None
+
+
+def book_hosts(path: str) -> "set[str] | None":
+    """The loaded host files whose definitions reach a definition of book
+    PATH through the call graph (tools/callgraph.py: books and host files,
+    an edge per mention), the image build scripts left out (they name book
+    symbols to build the world, not to run them).  None when PATH defines
+    nothing the graph knows (a new or deleted book: the caller takes ALL)."""
+    global _GRAPH
+    import collections
+    if _GRAPH is None:
+        sys.path.insert(0, str(ROOT / "tools"))
+        import callgraph  # noqa: E402
+        graph = callgraph.build(callgraph.tree_files())
+        back: dict[str, set[str]] = collections.defaultdict(set)
+        for source, targets in graph.edges.items():
+            for one in targets:
+                back[one].add(source)
+        bypath: dict[str, set[str]] = collections.defaultdict(set)
+        for name, definitions in graph.definitions.items():
+            for definition in definitions:
+                bypath[definition.path].add(name)
+        _GRAPH = (graph, back, bypath)
+    graph, back, bypath = _GRAPH
+    seen = set(bypath.get(path, ()))
+    if not seen:
+        return None
+    frontier = list(seen)
+    while frontier:
+        following = []
+        for name in frontier:
+            for caller in back.get(name, ()):
+                if caller not in seen:
+                    seen.add(caller)
+                    following.append(caller)
+        frontier = following
+    return {d.path for name in seen for d in graph.definitions.get(name, ())
+            if d.path.startswith("host/") and not d.path.startswith("host/native/build")}
+
+
+def _python_defs(source: str):
+    """(key -> ast dump, key -> names it mentions, module-level dumps) of a
+    Python file: top-level functions and classes' members by key
+    (`f', `Class.m', `Class.<body>'); imports are left out of the module
+    level (make check's native_source_check imports every module)."""
+    import ast
+    tree = ast.parse(source)
+    dumps, refs, rest = {}, {}, []
+
+    def names(node):
+        found = set()
+        for sub in ast.walk(node):
+            if isinstance(sub, ast.Name):
+                found.add(sub.id)
+            elif isinstance(sub, ast.Attribute):
+                found.add(sub.attr)
+        return found
+
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            dumps[node.name], refs[node.name] = ast.dump(node), names(node)
+        elif isinstance(node, ast.ClassDef):
+            other = []
+            for member in node.body:
+                if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    key = node.name + "." + member.name
+                    dumps[key], refs[key] = ast.dump(member), names(member)
+                else:
+                    other.append(member)
+            key = node.name + ".<body>"
+            dumps[key] = ast.dump(ast.Module(body=other, type_ignores=[])) + repr(
+                [ast.dump(b) for b in node.bases])
+            refs[key] = set().union(*(names(m) for m in other)) if other else set()
+        elif not isinstance(node, (ast.Import, ast.ImportFrom)):
+            rest.append(ast.dump(node))
+    return dumps, refs, rest
+
+
+def helper_names(path: str, since: str, root: pathlib.Path = ROOT) -> "set[str] | None":
+    """The names whose behaviour a change to the Python test helper PATH
+    since SINCE can alter: the changed functions and class members, and every
+    member of the file that mentions one of those names, to a fixed point.
+    None when the file is new or deleted, or a module-level statement other
+    than an import changed (the caller takes the file's rule, ALL)."""
+    old = subprocess.run(["git", "-C", str(root), "show", f"{since}:{path}"],
+                         capture_output=True, text=True)
+    if old.returncode != 0 or not (root / path).is_file():
+        return None
+    try:
+        before = _python_defs(old.stdout)
+        after = _python_defs((root / path).read_text(encoding="utf-8"))
+    except SyntaxError:
+        return None
+    if before[2] != after[2]:
+        return None
+    changed = {k for k in set(before[0]) | set(after[0]) if before[0].get(k) != after[0].get(k)}
+    hit = {k.split(".")[-1] for k in changed if not k.endswith(".<body>")}
+    hit |= {k.split(".")[0] for k in changed if k.endswith(".<body>")}
+    while True:
+        more = {k.split(".")[-1] if not k.endswith(".<body>") else k.split(".")[0]
+                for k, mentioned in after[1].items() if mentioned & hit} - hit
+        if not more:
+            return hit
+        hit |= more
+
+
+def _module_text(name: str, root: pathlib.Path, seen: set) -> str:
+    """tests/NAME.py and, transitively, the tests modules it imports."""
+    if name in seen:
+        return ""
+    seen.add(name)
+    path = root / "tests" / (name + ".py")
+    if not path.is_file():
+        return ""
+    text = path.read_text(encoding="utf-8", errors="replace")
+    imported = set(re.findall(r"^\s*from tests(?:\.(\w+))? import ([\w, ()]+)", text, re.M))
+    more = []
+    for module, names in imported:
+        if module:
+            more.append(module)
+        else:
+            more += [n.strip() for n in names.strip("()").split(",") if n.strip()]
+    more += re.findall(r"^\s*import tests\.(\w+)", text, re.M)
+    return text + "".join(_module_text(m, root, seen) for m in more if m != "native_harness")
+
+
+def affected(paths: list[str], root: pathlib.Path = ROOT, since: "str | None" = None) -> dict[str, str]:
+    """tests.MODULE -> why, for every native module PATHS can affect,
+    the floor tier (smoke) first.  With SINCE, a changed Python test helper
+    selects only the modules that mention a name its change can alter."""
     codes = module_codes(root)
     chosen: dict[str, str] = {}
     for t in FLOOR_TIERS:
         for entry in tier(t, root)["module"]:
             chosen.setdefault(".".join(entry.split(".")[:2]), f"tier {t} (always)")
     rules = affect_rules(root)
+
+    def select(word: str, why: str) -> None:
+        if word == "NONE":
+            return
+        wanted = None if word == "ALL" else set(word.split(","))
+        for name, have in sorted(codes.items()):
+            if wanted is None or have & wanted:
+                chosen.setdefault(name, why)
+
     for path in paths:
-        rule = next(((n, g, c) for n, g, c, _ in rules if fnmatch.fnmatchcase(path, g)), None)
+        rule = _first_rule(rules, path)
+        if (since and path.startswith("tests/") and path.endswith(".py")
+                and not pathlib.PurePath(path).name.startswith("test_")):
+            names = helper_names(path, since, root)
+            if names is not None:
+                pattern = re.compile(r"\b(" + "|".join(map(re.escape, sorted(names))) + r")\b") if names else None
+                for name in sorted(codes):
+                    if pattern and pattern.search(_module_text(name[len("tests."):], root, set())):
+                        chosen.setdefault(name, f"{path} changes {', '.join(sorted(names))[:120]}")
+                continue
+        if rule is None and path.startswith("books/") and path.endswith(".lisp") and root == ROOT:
+            hosts = book_hosts(path)
+            if hosts is None:
+                select("ALL", f"{path}: a book the call graph does not know: ALL")
+                continue
+            words = set()
+            for host in sorted(hosts):
+                hr = _first_rule(rules, host)
+                words.add(hr[2] if hr else "ALL")
+            if "ALL" in words:
+                culprits = sorted(h for h in hosts if (_first_rule(rules, h) or (0, 0, "ALL"))[2] == "ALL")
+                select("ALL", f"{path} reached from {', '.join(culprits[:3])}: ALL")
+            elif words - {"NONE"}:
+                merged = ",".join(sorted(set().union(*(w.split(",") for w in words - {"NONE"}))))
+                select(merged, f"{path} reached from {len(hosts)} host file(s): {merged}")
+            continue
         if rule is None:
             if not path.startswith(ESCAPES):
                 continue
             rule = (0, "(unclassified)", "ALL")
         number, glob, word = rule
         why = f"{path} ({AFFECTS_FILE}:{number} {glob} {word})" if number else f"{path} unclassified: ALL"
-        if word == "NONE":
-            continue
         if word == "SELF":
             name = "tests." + pathlib.PurePath(path).stem
             if name in codes:
                 chosen.setdefault(name, why)
             continue
-        wanted = None if word == "ALL" else set(word.split(","))
-        for name, have in sorted(codes.items()):
-            if wanted is None or have & wanted:
-                chosen.setdefault(name, why)
+        select(word, why)
     return chosen
 
 
@@ -290,7 +451,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1 if found else 0
     if args.command == "affected":
         paths = list(args.files) + (changed_since(args.since) if args.since else [])
-        for name, why in affected(paths).items():
+        for name, why in affected(paths, since=args.since).items():
             print(f"{name}\t{why}" if args.explain else name)
         return 0
     if args.command == "modules":
