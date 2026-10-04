@@ -4543,3 +4543,9 @@ S074/S090/S138/S151 and journal physical prepared fixtures remain source/proof
 versus current-image obligations, not completion claims. No live deployment.
 Protected recovery partition, expanded init/reopen and complete tariff remain
 open. Bounds catchup controller draft is preserved but activation unwired.
+
+## python-diet-4 (2026-10-04) — tools/ diet
+Full entry: build/coordinator/lanedumps/python-diet.md. lane/python-diet@fd4335285 on
+integrate/20261004@ec2c1b3da: inventory TSV, 11 tools deleted, host_defun_check folded into
+harness_check, runtime_floor merged, T5 brief stub. tools/*.py 111,718 -> 109,862 (-1.7%);
+the quarter target needs the decision list in the full entry.
