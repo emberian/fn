@@ -4934,3 +4934,14 @@ deadline; the in-memory requester round is deleted (replacement), its three
 keystones are proof-owed (CSP-OWED-*). Plus the pull-credential (65a485229)
 and carriage-budget (5e2f8e957) gifts, re-derived. Entry with coordinates,
 natives, deploy note and continuation: build/coordinator/lanedumps/catchup.md.
+
+## catchup2 lane (lane/catchup2) — 2026-10-04
+
+Successor of catchup. READY at 3949a6578: one pull consumer (fnn-pull-round and fnn-catchup-tick
+deleted; fnn-pull-worker drives every pull and catch-up flight), defteeth for the strand's eight
+keystones (one equivalent restatement: fn-pcb-carried-event-keeps-budget-schedule-admitted without its
+outer let), peer-flight-reservation includes heap-reservation, spool worker close site declared.
+Certified on persvati: certify-20261004T063510Z-2314965, certify-20261004T071525Z-2708512. Natives:
+red catchup-red-45e05c7f; green pending the integrator's batch image (tests.test_native_peer_catchup,
+tests.test_native_peer_pull). Proof-owed 4 (CSP-OWED-*). PRF-1318 not started (owner-number-bound-join
+does not admit). Entry: build/coordinator/lanedumps/catchup2.md.
