@@ -756,3 +756,277 @@
 
 (in-theory (disable fn-pio-direct-admit fn-pxe-commit-direct fn-pio-direct-settle
                     fn-pio-direct-cancel fn-pio-direct-quiet-p fn-pio-direct-okp))
+
+; ---------------------------------------------------------------------------
+; The carried agreement is kept by the two entries that change the tables
+; (lane proofs2, 2026-10-04; PRF-1242 composes host-model's run invariant
+; from these): an admitted read and a settled one keep fn-pio-direct-okp.
+
+(local
+ (defthm fn-pird-ident-step-keeps-identp
+   (implies (fn-hd-identp holds)
+            (fn-hd-identp (car (fn-hd-ident-step holds ev))))
+   :hints (("Goal" :use ((:instance fn-hd-ident-run-preserves-table
+                                    (table holds) (evs (list ev))))
+            :in-theory (enable fn-hd-ident-run)))))
+
+(local
+ (defthm fn-pird-hold-step-is-put
+   (implies (and (natp k) (not (member-equal tok (fn-hd-tokens-of k holds))))
+            (equal (car (fn-hd-ident-step holds (list :hold k tok)))
+                   (fn-hd-ident-put k (cons tok (fn-hd-tokens-of k holds)) holds)))
+   :hints (("Goal" :in-theory (enable fn-hd-ident-step)))))
+
+(local
+ (defthm fn-pird-drop-step-is-put
+   (implies (and (natp k) (member-equal tok (fn-hd-tokens-of k holds)))
+            (equal (car (fn-hd-ident-step holds (list :drop k tok)))
+                   (fn-hd-ident-put k (remove1-equal tok (fn-hd-tokens-of k holds)) holds)))
+   :hints (("Goal" :in-theory (enable fn-hd-ident-step)))))
+
+; The holds-to-issued direction over a put row of the holds table.
+(local
+ (defthm fn-pird-holds-in-issued-of-ident-put
+   (implies (and (fn-hd-identp table)
+                 (fn-pio-holds-in-issued-p table issued)
+                 (fn-pio-tokens-in-issued-p k tokens issued))
+            (fn-pio-holds-in-issued-p (fn-hd-ident-put k tokens table) issued))
+   :hints (("Goal" :induct (fn-hd-ident-put k tokens table)
+            :in-theory (enable fn-hd-ident-put fn-hd-identp)))))
+
+; Growing the issued table by a fresh token keeps every named token named.
+(local
+ (defthm fn-pird-tokens-in-issued-of-put
+   (implies (and (fn-pio-tokens-in-issued-p file tokens issued) row)
+            (fn-pio-tokens-in-issued-p file tokens (fn-pio-issued-put tok row issued)))))
+
+(local
+ (defthm fn-pird-holds-in-issued-of-put
+   (implies (and (fn-pio-holds-in-issued-p holds issued) row)
+            (fn-pio-holds-in-issued-p holds (fn-pio-issued-put tok row issued)))
+   :hints (("Goal" :in-theory (disable fn-pio-issued-put)))))
+
+(local
+ (defthm fn-pird-tokens-of-hold
+   (implies (and (fn-hd-identp holds) (natp k)
+                 (not (member-equal tok (fn-hd-tokens-of k holds))))
+            (equal (fn-hd-tokens-of h (car (fn-hd-ident-step holds (list :hold k tok))))
+                   (if (equal h k)
+                       (cons tok (fn-hd-tokens-of k holds))
+                     (fn-hd-tokens-of h holds))))
+   :hints (("Goal" :use ((:instance fn-hd-ident-hold-adds-exactly-its-token (table holds)))
+            :in-theory (disable fn-hd-ident-hold-adds-exactly-its-token fn-hd-ident-step
+                                fn-pird-hold-step-is-put)))))
+
+(local
+ (defthm fn-pird-tokens-of-drop
+   (implies (and (fn-hd-identp holds) (natp k)
+                 (member-equal tok (fn-hd-tokens-of k holds)))
+            (equal (fn-hd-tokens-of h (car (fn-hd-ident-step holds (list :drop k tok))))
+                   (if (equal h k)
+                       (remove1-equal tok (fn-hd-tokens-of k holds))
+                     (fn-hd-tokens-of h holds))))
+   :hints (("Goal" :use ((:instance fn-hd-ident-drop-removes-exactly-its-token (table holds)))
+            :in-theory (disable fn-hd-ident-drop-removes-exactly-its-token fn-hd-ident-step
+                                fn-pird-drop-step-is-put)))))
+
+; The issued-to-holds direction over a hold of a fresh token.
+(local
+ (defthm fn-pird-issued-in-holds-of-hold
+   (implies (and (fn-pio-issued-in-holds-p issued holds) (fn-hd-identp holds)
+                 (natp k) (not (member-equal tok (fn-hd-tokens-of k holds))))
+            (fn-pio-issued-in-holds-p issued (car (fn-hd-ident-step holds (list :hold k tok)))))
+   :hints (("Goal" :in-theory (disable fn-pird-hold-step-is-put fn-hd-ident-step)))))
+
+(local
+ (defthm fn-pird-issued-in-holds-of-put
+   (implies (and (fn-pio-issued-in-holds-p issued holds)
+                 (member-equal tok (fn-hd-tokens-of (fn-pio-token-file tok) holds)))
+            (fn-pio-issued-in-holds-p (fn-pio-issued-put tok row issued) holds))))
+
+(local
+ (defthm fn-pird-issuedp-of-fresh-put
+   (implies (and (fn-pio-issuedp issued) (not (fn-pio-issued-row tok issued))
+                 (fn-pio-rowp row) (equal tok (fn-pio-token row))
+                 (not (equal (nth 6 row) :settled)))
+            (fn-pio-issuedp (fn-pio-issued-put tok row issued)))))
+
+(local
+ (defthm fn-pird-holds-in-issued-of-hold
+   (implies (and (fn-hd-identp holds) (fn-pio-holds-in-issued-p holds issued)
+                 (natp k) (not (member-equal tok (fn-hd-tokens-of k holds)))
+                 (fn-pio-tokens-in-issued-p k (cons tok (fn-hd-tokens-of k holds)) issued))
+            (fn-pio-holds-in-issued-p (car (fn-hd-ident-step holds (list :hold k tok))) issued))
+   :hints (("Goal" :in-theory (disable fn-pio-tokens-in-issued-p fn-hd-ident-step)))))
+
+(local
+ (defthm fn-pird-okp-of-fresh-issue
+   (let ((tok (list n cid file eoff elen trailer))
+         (row (list n cid file eoff elen trailer :issued)))
+     (implies (and (fn-pio-direct-okp issued holds)
+                   (natp n) (natp cid) (posp file) (natp eoff) (natp elen) (natp trailer)
+                   (not (fn-pio-issued-row tok issued))
+                   (not (member-equal tok (fn-hd-tokens-of file holds))))
+              (fn-pio-direct-okp (fn-pio-issued-put tok row issued)
+                                 (car (fn-hd-ident-step holds (list :hold file tok))))))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-pird-issued-row-shape)
+                  (:instance fn-pird-holds-in-issued-tokens (file file)))
+            :in-theory (e/d (fn-pio-direct-okp)
+                            (fn-hd-ident-step fn-pio-issued-put fn-pio-issuedp
+                             fn-pio-issued-in-holds-p fn-pio-holds-in-issued-p
+                             fn-pird-hold-step-is-put fn-pird-holds-in-issued-tokens
+                             fn-pio-rowp fn-pio-token))))))
+
+; KEYSTONE (PRF-1242's issue step).  An admitted read keeps the carried
+; agreement of the two tables: the fresh row is issued under its token, the
+; token holds the row's file, and every other row and hold is as it was.
+(defthm fn-pio-direct-admit-keeps-okp
+  (implies (and (fn-pio-direct-okp issued holds)
+                (equal (mv-nth 0 (fn-pio-direct-admit next cid file eoff elen trailer worker
+                                                      issued holds))
+                       :admitted))
+           (fn-pio-direct-okp
+            (mv-nth 5 (fn-pio-direct-admit next cid file eoff elen trailer worker issued holds))
+            (mv-nth 6 (fn-pio-direct-admit next cid file eoff elen trailer worker issued holds))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-pird-admitted-shape)
+                 (:instance fn-pird-okp-of-fresh-issue (n (if (null next) 0 next)))
+                 (:instance fn-hd-ident-duplicate-hold-is-refused
+                            (table holds) (k file)
+                            (tok (list (if (null next) 0 next) cid file eoff elen trailer))))
+           :in-theory (disable fn-pio-direct-admit fn-pird-okp-of-fresh-issue
+                               fn-hd-ident-duplicate-hold-is-refused fn-hd-ident-step
+                               fn-pio-direct-okp fn-pio-issued-put fn-pxe-assign
+                               fn-pird-hold-step-is-put fn-pio-issued-row))))
+
+(local
+ (defthm fn-pird-token-file-is-nth-2
+   (equal (fn-pio-token-file tok) (nth 2 tok))))
+
+(local
+ (defthm fn-pird-issued-row-of-remove-other
+   (implies (not (equal tk tok))
+            (equal (fn-pio-issued-row tk (fn-pio-issued-remove tok issued))
+                   (fn-pio-issued-row tk issued)))))
+
+(local
+ (defthm fn-pird-member-of-remove1-other
+   (implies (and (member-equal b x) (not (equal a b)))
+            (member-equal b (remove1-equal a x)))))
+
+(local
+ (defthm fn-pird-tokens-in-issued-of-remove
+   (implies (and (fn-pio-tokens-in-issued-p file tokens issued)
+                 (not (member-equal tok tokens)))
+            (fn-pio-tokens-in-issued-p file tokens (fn-pio-issued-remove tok issued)))
+   :hints (("Goal" :in-theory (disable fn-pio-issued-remove fn-pird-token-file-is-nth-2)))))
+
+(local
+ (defthm fn-pird-tokens-in-issued-of-remove1
+   (implies (fn-pio-tokens-in-issued-p file tokens issued)
+            (fn-pio-tokens-in-issued-p file (remove1-equal a tokens) issued))
+   :hints (("Goal" :in-theory (disable fn-pird-token-file-is-nth-2)))))
+
+(local
+ (defthm fn-pird-tokens-in-issued-other-file
+   (implies (and (fn-pio-tokens-in-issued-p file tokens issued)
+                 (not (equal (fn-pio-token-file tok) file)))
+            (not (member-equal tok tokens)))
+   :hints (("Goal" :in-theory (disable fn-pird-token-file-is-nth-2)))))
+
+; The rows of keys other than the token's file keep their tokens named.
+(local
+ (defthm fn-pird-holds-in-issued-of-remove-elsewhere
+   (implies (and (fn-hd-identp table) (fn-pio-holds-in-issued-p table issued)
+                 (not (fn-hd-ident-row (fn-pio-token-file tok) table)))
+            (fn-pio-holds-in-issued-p table (fn-pio-issued-remove tok issued)))
+   :hints (("Goal" :induct (fn-hd-identp table)
+            :in-theory (e/d (fn-hd-identp fn-hd-ident-row)
+                            (fn-pio-issued-remove fn-pird-token-file-is-nth-2))))))
+
+(local
+ (defthm fn-pird-holds-in-issued-of-drop-put
+   (implies (and (fn-hd-identp table) (fn-pio-holds-in-issued-p table issued)
+                 (no-duplicatesp-equal (fn-hd-tokens-of k table))
+                 (equal (fn-pio-token-file tok) k))
+            (fn-pio-holds-in-issued-p
+             (fn-hd-ident-put k (remove1-equal tok (fn-hd-tokens-of k table)) table)
+             (fn-pio-issued-remove tok issued)))
+   :hints (("Goal" :induct (fn-hd-identp table)
+            :in-theory (e/d (fn-hd-identp fn-hd-ident-row fn-hd-ident-put fn-hd-tokens-of)
+                            (fn-pio-issued-remove fn-pird-token-file-is-nth-2))))))
+
+(local
+ (defthm fn-pird-issuedp-of-remove
+   (implies (fn-pio-issuedp issued)
+            (fn-pio-issuedp (fn-pio-issued-remove tok issued)))))
+
+; Entries whose key is not TOK keep their holds when TOK's hold is dropped.
+(local
+ (defthm fn-pird-issued-in-holds-of-drop-without-tok
+   (implies (and (fn-pio-issued-in-holds-p issued holds) (fn-pio-issuedp issued)
+                 (fn-hd-identp holds) (natp k)
+                 (member-equal tok (fn-hd-tokens-of k holds))
+                 (not (fn-pio-issued-row tok issued)))
+            (fn-pio-issued-in-holds-p issued (car (fn-hd-ident-step holds (list :drop k tok)))))
+   :hints (("Goal" :in-theory (disable fn-pird-drop-step-is-put fn-hd-ident-step
+                                       fn-pird-token-file-is-nth-2)))))
+
+(local
+ (defthm fn-pird-issued-in-holds-of-drop
+   (implies (and (fn-pio-issued-in-holds-p issued holds) (fn-pio-issuedp issued)
+                 (fn-hd-identp holds) (natp k)
+                 (member-equal tok (fn-hd-tokens-of k holds)))
+            (fn-pio-issued-in-holds-p (fn-pio-issued-remove tok issued)
+                                      (car (fn-hd-ident-step holds (list :drop k tok)))))
+   :hints (("Goal" :induct (fn-pio-issued-remove tok issued)
+            :in-theory (disable fn-pird-drop-step-is-put fn-hd-ident-step
+                                fn-pird-token-file-is-nth-2)))))
+
+(local
+ (defthm fn-pird-holds-in-issued-of-drop
+   (implies (and (fn-hd-identp holds) (fn-pio-holds-in-issued-p holds issued)
+                 (natp k) (equal (fn-pio-token-file tok) k)
+                 (member-equal tok (fn-hd-tokens-of k holds)))
+            (fn-pio-holds-in-issued-p (car (fn-hd-ident-step holds (list :drop k tok)))
+                                      (fn-pio-issued-remove tok issued)))
+   :hints (("Goal" :in-theory (disable fn-hd-ident-step fn-pio-issued-remove
+                                       fn-pird-token-file-is-nth-2)))))
+
+(local
+ (defthm fn-pird-okp-of-settled-removal
+   (implies (and (fn-pio-direct-okp issued holds)
+                 (fn-pio-issued-row tok issued)
+                 (member-equal tok (fn-hd-tokens-of (nth 2 tok) holds)))
+            (fn-pio-direct-okp (fn-pio-issued-remove tok issued)
+                               (car (fn-hd-ident-step holds (list :drop (nth 2 tok) tok)))))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-pird-issued-row-is-a-row-naming (token tok))
+                  (:instance fn-pird-token-file-of-token (r (fn-pio-issued-row tok issued))))
+            :in-theory (e/d (fn-pio-direct-okp)
+                            (fn-hd-ident-step fn-pio-issued-remove fn-pio-issuedp
+                             fn-pio-issued-in-holds-p fn-pio-holds-in-issued-p
+                             fn-pird-drop-step-is-put
+                             fn-pird-issued-row-is-a-row-naming fn-pird-token-file-of-token
+                             fn-pio-rowp fn-pio-token))))))
+
+; KEYSTONE (PRF-1242's settle step).  A settlement that settles (any answer
+; but :stale and :unheld) keeps the carried agreement: the row leaves the
+; issued table exactly as its token's hold leaves the holds table.
+(defthm fn-pio-direct-settle-keeps-okp
+  (implies (and (fn-pio-direct-okp issued holds)
+                (not (member-equal (mv-nth 0 (fn-pio-direct-settle token worker verdict issued holds))
+                                   '(:stale :unheld))))
+           (fn-pio-direct-okp
+            (mv-nth 3 (fn-pio-direct-settle token worker verdict issued holds))
+            (mv-nth 4 (fn-pio-direct-settle token worker verdict issued holds))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-pird-okp-of-settled-removal (tok token))
+                 (:instance fn-hd-ident-drop-of-absent-token-is-refused
+                            (table holds) (k (nth 2 token)) (tok token)))
+           :in-theory (e/d (fn-pio-direct-settle)
+                           (fn-pird-okp-of-settled-removal
+                            fn-hd-ident-drop-of-absent-token-is-refused fn-hd-ident-step
+                            fn-pio-direct-okp fn-pio-issued-remove fn-pxe-commit-direct
+                            fn-pird-drop-step-is-put)))))
