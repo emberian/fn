@@ -588,8 +588,8 @@ form lands). All sixteen archive keywords now declare their forms, including
 HDR's compatibility, ordinary and fn metadata fields and XHDR's compatibility
 and ordinary fields. The actual unrestricted command layer calls this generated
 dispatcher. Other keywords go directly to the pinned reference; the executable
-has no hand catalog-dispatch fallback. The retained hand catalog dispatcher is
-only the migration reference for per-row equality proofs. This switch preserves
+has no hand catalog-dispatch fallback; the hand catalog dispatcher and its
+keystone are deleted. This switch preserves
 current reply and view semantics; completed discovery, pin-first Message-ID
 fallback and bounded cold field reads remain explicit work. DATE follows its
 separate generated session route. The restricted route (a session with a group-access rule,
@@ -695,8 +695,8 @@ The EXECUTED rule per command and form; a ruling recorded but not landed is DEBT
 | STARTTLS | none (no archive) | none |  |  |  | RFC 4642 (no archive) |
 | COMPRESS | none (no archive) | none |  |  |  | RFC 8054 (no archive) |
 | XREDEEM | none (no archive) | none |  |  |  | PRF-164 (no archive) |
-| XFNCATCHUP | the connection's pinned view | none |  |  | hand arms, forms not yet declared | NNT-053: the pinned view and the log position the peer names |
-| XFN-ZARTICLE | the connection's pinned view | none |  |  | hand arms, forms not yet declared | NNT-055: the pinned Message-ID index |
+| XFNCATCHUP | the connection's pinned view | none |  |  | pinned reference, forms not yet declared | NNT-053: the pinned view and the log position the peer names |
+| XFN-ZARTICLE | the connection's pinned view | none |  |  | pinned reference, forms not yet declared | NNT-055: the pinned Message-ID index |
 
 [end of generated text]
 

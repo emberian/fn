@@ -6917,7 +6917,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-nntp-archive-command-cat-is-pinned"
+          "name": "fn-proto-archive-command-cat-is-pinned"
         },
         {
           "kind": "theorem",
@@ -12245,8 +12245,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-nntp-archive-command-cat-is-pinned",
-          "note": "The -cat dispatcher's boundary theorem, statement unchanged, now over the twins."
+          "name": "fn-proto-archive-command-cat-is-pinned",
+          "note": "The served dispatcher's boundary theorem: the generated fn-proto-archive-command-cat-is-pinned replaced the hand fn-nntp-archive-command-cat-is-pinned (DC02), over the twins."
         },
         {
           "kind": "theorem",
