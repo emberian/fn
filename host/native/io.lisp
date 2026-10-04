@@ -8903,9 +8903,15 @@ the observe callback): the frontier is the log's derived one."
     next))
 
 (defun fnn-log-take-verdict (store record)
-  "ACL2's verdict on whether the log can hold RECORD at the store's record
-bound (fn-lgu-take-verdict): refuses by name when it cannot."
-  (let ((verdict (fnn-core 'fn-lgu-take-verdict (fnn-octet-list record) (fnn-store-log-max store))))
+  "ACL2's verdict on whether the log can hold RECORD at the frame bound the
+store's log was opened with (fn-lgu-take-verdict over fnn-log-max, the bound
+its scan and appends use): refuses by name when it cannot.  The log's own
+bound, not one derived again from the store's configuration: the import
+opens the stage's log from the archive's profile before the stage has a
+configuration (fnn-log-write-history), and a bound read from no
+configuration is 0 (batch 6's regression)."
+  (let ((verdict (fnn-core 'fn-lgu-take-verdict (fnn-octet-list record)
+                           (fnn-log-max (fnn-store-log store)))))
     (case verdict
       (:admissible :admissible)
       (:record-exceeds-log-frame
