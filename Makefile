@@ -2717,6 +2717,11 @@ check:
 # helper) and a scenario-catalog row cites it (KNOWN shrink-only).
 	@$(CHECK_STEP) $(PYTHON) tools/witness_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_witness_check
+# The scenario tiers (tests/scenarios/tiers.tsv; docs/testing.md "Scenario
+# tiers"): every listed module exists and drives an image, every question
+# code and opt-in is known, no tier is empty.  Mechanical; no image.
+	@$(CHECK_STEP) $(PYTHON) tools/scenario_suite.py check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_scenario_suite
 # specs/crash-model-v2.md section 2.3's transcription check for the native
 # host (the Python host and its transcribe_check retired, python-diet T5):
 # for each program tests/campaign/native_cuts.py names, the

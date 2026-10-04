@@ -983,7 +983,13 @@ class NativePeeringTests(unittest.TestCase):
         """
         source = self.initialize("productive-reader")
         message_id = "<productive-read@example.invalid>"
+        # `operator post' goes through the owner's control socket (a stopped
+        # node refuses it `no-owner', ops-fixes 99de13e07): post to a running
+        # owner, stop it, and start again, so the first read is still the
+        # recovered representation's.
+        self.start(source)
         self.post(source, message_id, ".productive-read")
+        source.stop()
         self.start(source)
         with Client(source.port, timeout=60, greeting=(b"200",)) as client:
             selected = client.command("GROUP fn.test")
