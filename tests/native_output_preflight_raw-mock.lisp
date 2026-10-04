@@ -2,8 +2,8 @@
 ;;; actual refusal-word classifier and limited span retry. Wire preview,
 ;;; typed bank and the owner's connection table are recording boundaries.
 ;;; Positive tariff is injected ONLY to discriminate prefix consumption; the
-;;; ARTICLE producer's catalog read is the ACL2 fixture's
-;;; (tests/owner_output_preview_fixture.lisp), not this harness's.
+;;; family producer's catalog read is the ACL2 fixture's
+;;; (tests/acl2/output-tariff-family-tests.lisp), not this harness's.
 (load "tests/native_output_response_lease_raw-mock.lisp")
 (in-package "ACL2")
 

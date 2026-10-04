@@ -356,7 +356,7 @@
 (include-book "../../books/owner-cold-line")
 (include-book "../../books/owner-resource-line")
 (include-book "../../books/output-command-admission")
-(include-book "../../books/output-tariff-article-row")
+(include-book "../../books/output-tariff-families")
 (include-book "../../books/output-admission-line")
 (include-book "../../books/arena-reader-pins")
 (include-book "../../books/response-plan-pins")

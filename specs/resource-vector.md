@@ -352,9 +352,14 @@ thread and cold-resource launch reservation. `resources.output_heap_octets`
 and `resources.output_quantum_heap_octets` form an optional normalized pair;
 the quantum is allocation heap octets, not wire octets or a maximum reply.
 An explicit policy is the operator's opt-in to accounted output: every
-first command passes `fn-ocap-admit-preview` before any factory. ARTICLE is
-priced from the row its factory serves (`books/output-tariff-article-row.lisp`,
-PRF-1316). Every other family is unpriced and is answered
+first command passes `fn-ocap-admit-preview` before any factory. A family is
+priced by one row of `books/output-tariff-families.lisp`, from which
+`books/output-tariff-family.lisp` generates the producer the host calls
+(`fn-tariff-family-preview`) and its keystone
+(`fn-tariff-family-preview-charges-before-effect`); ARTICLE, HEAD, BODY and
+STAT are priced from the row their factory serves
+(`books/output-tariff-article-row.lisp`, PRF-1316). Every other family is
+unpriced and is answered
 `403 command unavailable; its output is not priced on this server` with the
 connection kept. A reply over the quantum is answered `400` and the connection
 is closed (`books/output-admission-line.lisp`). `fn operator status` and
@@ -368,7 +373,11 @@ supported profile gains a default policy (its quantum the maximum of the
 families' tariffs at the profile's article bound), in the commit that prices
 the last family a stock node serves, i.e. when the count of unpriced served
 families reaches zero. Until then the unaccounted path is the default, not a
-mode.
+mode. The count's denominator is `*fn-ocap-command-families*` (25 keywords);
+the gate also previews `:extension` (XREDEEM, XFNCATCHUP, XFN-ZARTICLE),
+`:article-input` (a POST or IHAVE body), `:protocol-error` and
+`:partial-input`, and refuses each as unpriced in accounted mode today, so
+they are priced or given their own rule before the pass-through goes.
 
 `fn-orv-extend-reservation` extends the existing composed launch decision
 exactly once and checks the whole observed machine reservation. Startup
