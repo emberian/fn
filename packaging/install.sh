@@ -138,7 +138,9 @@ ask() {  # $1: a release.  Its own verdict on the node's store (the node stopped
   # saying it cannot run this node here, and sets $refusal by class: the
   # format refusal by name, else the outcome class of its exit (1 refused,
   # 3 uncertain, 4 fault: a heap probe that never ran, a library that does
-  # not load; 5 usage) or the code itself.
+  # not load; 5 usage); any other code is a fault too (the runtime itself
+  # died: SBCL's own exit under ENOMEM is not ACL2's word).  install exits 4
+  # on every one of them.
   echo "== asking $1/bin/fn whether it opens the store of $config"
   set +e
   answer=$("$1/bin/fn" operator "$config" status 2>&1)
@@ -153,7 +155,7 @@ ask() {  # $1: a release.  Its own verdict on the node's store (the node stopped
     3) refusal="uncertain (status exit 3: fenced or not answered; recover before anything else)" ;;
     4) refusal="fault (status exit 4: the release cannot run here)" ;;
     5) refusal="usage (status exit 5)" ;;
-    *) refusal="status exit $rc" ;;
+    *) refusal="fault (status code $rc is no fn outcome: the runtime died before ACL2 decided; the release cannot run here)" ;;
   esac
   return 1
 }

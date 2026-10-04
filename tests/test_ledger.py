@@ -1829,10 +1829,6 @@ class FlipLinesTests(unittest.TestCase):
         self.assertIn("books/d.lisp (green only in an unarchived local run): 1 row(s)", text)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class CursorBatchSourceTests(unittest.TestCase):
     declaration = """(def-cursor/batch walk (arena cat)
       :step one :stobjs (arena cat) :byte-proof one-bytes
@@ -1859,3 +1855,7 @@ class CursorBatchSourceTests(unittest.TestCase):
             if text.endswith(' :bogus t'):
                 form += [ledger.Sym(':bogus'), ledger.Sym('t')]
             self.assertEqual(ledger.generated_expansion(form), [])
+
+
+if __name__ == "__main__":
+    unittest.main()

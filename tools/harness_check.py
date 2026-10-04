@@ -483,6 +483,15 @@ def signature_findings(root: Path) -> tuple[list[dict], dict]:
 # explicitly below: guessing at a binder's shape is how an arity lint invents
 # a call out of a variable in a binding list.
 OPAQUE = {"quote", "declare", "xargs", "ignore", "ignorable", "type"}
+# Declarations whose arguments are keyword specs, not terms: `:unaccounted
+# (fn-a fn-b)', `:transitions ((fn-w theorem) ...)', `:operation (:draw fn-d
+# ...)' list NAMES, and an arity read of them invents calls (10 false
+# findings at d4e53323c, host/cost-host.lisp, owner-served-carried.lisp,
+# interfaces.lisp).  The terms these specs do carry (`:visits', `:ok',
+# `:hyps', `:witness') are translated by ACL2 itself when the macro's
+# make-event runs, so a wrong arity there refuses the ld; nothing is lost.
+KEYWORD_SPECS = {"def-cost", "def-cost-check", "def-carried", "def-carried-check",
+                 "definterface"}
 DEFINERS = {"defun", "defund", "defun-nx", "defund-nx", "defmacro", "define"}
 NAMED = {"defthm", "defthmd", "defrule", "defruled", "defconst", "deftheory",
          "in-theory", "verify-guards", "defstobj", "table"}
@@ -501,7 +510,7 @@ def acl2_applications(form, found: list) -> None:
         return
     head = form[0]
     name = head if isinstance(head, str) else None
-    if name in OPAQUE:
+    if name in OPAQUE or name in KEYWORD_SPECS:
         return
     if name in ("let", "let*"):
         # (let <bindings> <declare>* <body>); a binding is (var val).
@@ -824,6 +833,45 @@ def raw_lambda_range(formals) -> tuple[int, int | None] | None:
     return required, (None if unbounded else required + optional)
 
 
+def feature_arities(items: list) -> set[int]:
+    """The argument counts ITEMS reads as, over every truth assignment to the
+    feature expressions of its `#+F x' / `#-F x' reader conditionals.
+
+    The reader keeps the form after `#+F' only when F holds and after `#-F'
+    only when it fails, so `(fnn-heap-rlimit #+linux 7 #-linux 8)' is one
+    argument on every platform.  `#+linux' reads as one symbol; `#+(or a b)'
+    as the symbol `#+' and then the expression.  Each distinct expression is
+    one variable (exclusive features such as linux/openbsd are not modelled,
+    so a call whose count differs between assignments is left undecided).
+    """
+    plain = 0
+    conditionals: list[tuple[str, bool]] = []
+    index = 0
+    while index < len(items):
+        item = items[index]
+        text = str(item) if isinstance(item, str) else ""
+        if text[:2] in ("#+", "#-") and index + 1 < len(items):
+            if text in ("#+", "#-"):
+                expression, index = repr(items[index + 1]), index + 2
+            else:
+                expression, index = text[2:], index + 1
+            if index < len(items):
+                conditionals.append((expression, text[1] == "+"))
+                index += 1
+            continue
+        plain += 1
+        index += 1
+    variables = sorted({expression for expression, _ in conditionals})
+    if len(variables) > 8:
+        return set()  # too many to enumerate: undecided
+    counts = set()
+    for bits in range(1 << len(variables)):
+        holds = {name: bool(bits >> position & 1) for position, name in enumerate(variables)}
+        counts.add(plain + sum(1 for expression, positive in conditionals
+                               if holds[expression] == positive))
+    return counts
+
+
 def raw_applications(form, found: list, shadowed: frozenset = frozenset(),
                      *, _macro=False, _template=False) -> None:
     """Raw evaluated calls and literal calls emitted by macro backquotes.
@@ -838,6 +886,12 @@ def raw_applications(form, found: list, shadowed: frozenset = frozenset(),
     name = str(head_) if isinstance(head_, Sym if _template else str) else None
     splice = Sym("#fn-template-splice")
     count = None if _template and splice in form[1:] else len(form) - 1
+    if count is not None and any(isinstance(item, str) and str(item)[:2] in ("#+", "#-")
+                                 for item in form[1:]):
+        # A reader conditional: decided when every feature assignment reads
+        # the same count, else undecided (None, like a template splice).
+        arities = feature_arities(form[1:])
+        count = arities.pop() if len(arities) == 1 else None
 
     def walk(items, local=shadowed, macro=_macro):
         for item in items:
@@ -960,11 +1014,23 @@ def raw_applications(form, found: list, shadowed: frozenset = frozenset(),
         walk(form[1:])
         return
     if name in RAW_DISPATCHERS and len(form) > 1:
+        def quoted_name(x):
+            if (isinstance(x, list) and len(x) == 2 and isinstance(x[0], str)
+                    and str(x[0]) == "quote" and isinstance(x[1], str)):
+                return str(x[1]).lower()
+            return None
         target = form[1]
-        if (isinstance(target, list) and len(target) == 2
-                and isinstance(target[0], str) and str(target[0]) == "quote"
-                and isinstance(target[1], str)):
-            callee = str(target[1]).lower()
+        # `(fnn-call 'fn-x ...)', and the two-way choice
+        # `(fnn-call (if GROW 'fn-his-row-grow 'fn-his-row-step) ...)'
+        # (host/native/history-root.lisp, io.lisp, tcpcl.lisp): both arms
+        # are dispatched, with the same arguments.
+        callees = [quoted_name(target)]
+        if (callees[0] is None and isinstance(target, list) and len(target) == 4
+                and isinstance(target[0], str) and str(target[0]) == "if"):
+            callees = [quoted_name(target[2]), quoted_name(target[3])]
+            if None in callees:
+                callees = []
+        for callee in (c for c in callees if c is not None):
             found.append(("'" + callee,
                           (None if count is None else count - 1 + RAW_DISPATCHERS[name]
                           + (ARENA_ENTRIES.get(callee, 0)
@@ -1765,6 +1831,10 @@ def harness_fixture_sources(root: Path, relative: str, text: str) -> dict[str, s
     return sources
 
 
+HOST_LOAD = re.compile(
+    r'\(load\s+(?:\(or\s+\([^()]*\)\s+)?"(host/[^"]+\.lisp)"')
+
+
 def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
                  origins: dict, fixture_sources: dict[str, str] | None = None) -> dict | None:
     """One harness: its stale hand stubs, the calls it leaves unresolved,
@@ -1787,7 +1857,19 @@ def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
     stubs, _ = raw_definitions(forms)
     mentioned = {m.lower() for source in sources.values()
                  for m in re.findall(r"\b(fnn-[A-Za-z0-9*+%-]+)", source)}
-    extracted = {name for name in mentioned if name in bodies and name not in stubs}
+    # A fixture this harness loads may itself load a whole host file
+    # (tests/native_bp_session_bank_raw.lisp loads host/native/bp-session.lisp):
+    # what that file defines is the real definition, provided, never stubbed
+    # (a derived stub after the load redefined fnn-bp-session-observe to
+    # signal and turned two harnesses red, facef3839).
+    # `(load "host/x.lisp")', and the overridable default
+    # `(load (or (sb-ext:posix-getenv "FN_WEB_REACTOR_SOURCE") "host/native/web-host.lisp"))'
+    # (tests/native_web_reactor_raw.lisp, which seven web harnesses load).
+    loaded_hosts = {target for source in sources.values()
+                    for target in HOST_LOAD.findall(source)}
+    provided = {name for name, (_formals, origin) in origins.items() if origin in loaded_hosts}
+    extracted = {name for name in mentioned
+                 if name in bodies and name not in stubs and name not in provided}
     if not extracted:
         return None
     stale: list[dict] = []
@@ -1815,7 +1897,7 @@ def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
                                    "argument(s); the stub takes {}".format(
                                        name, count, low if high == low else
                                        "{} to {}".format(low, "any" if high is None else high))})
-            elif callee not in extracted and callee in origins:
+            elif callee not in extracted and callee not in provided and callee in origins:
                 unresolved[callee] = origins[callee]
                 callers.setdefault(callee, set()).add(name)
     expected = derived_stub_block(unresolved) if unresolved else None

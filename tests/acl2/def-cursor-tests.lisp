@@ -46,14 +46,14 @@
         (equal (nth 1 (mv-list 4 (fn-cur-test-step cur 1 0))) cur))))
 
 ; Missing named candidate obligation is refused before emitting definitions.
-(must-fail
+(must-fail-checked
  (def-cursor fn-cur-absent ()
    :call (fn-cur-test-one progress)
    :visit-proof fn-cur-nonexistent-proof :visit-metric (len progress)))
 
 ; An admitted theorem of another statement cannot license a declaration.
 (defthm fn-cur-unrelated t :rule-classes nil)
-(must-fail
+(must-fail-checked
  (def-cursor fn-cur-wrong-proof ()
    :call (fn-cur-test-one progress)
    :visit-proof fn-cur-unrelated :visit-metric (len progress)))
@@ -67,11 +67,11 @@
 (defthm fn-cur-test-output-no-visits
   (implies t
            (equal (- (len progress) (len (mv-nth 1 (fn-cur-test-output-one progress)))) 0)))
-(must-fail
+(must-fail-checked
  (def-cursor/output fn-cur-output-without-proof ()
    :call (fn-cur-test-output-one progress) :output-phase t
    :visit-proof fn-cur-test-output-visits :visit-metric (len progress)))
-(must-fail
+(must-fail-checked
  (def-cursor/output fn-cur-output-wrong-proof ()
    :call (fn-cur-test-output-one progress) :output-phase t :output-proof fn-cur-unrelated
    :visit-proof fn-cur-test-output-visits :visit-metric (len progress)))

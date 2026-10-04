@@ -129,6 +129,7 @@
     ("docs/operator-internals.md#agents-consumers-bind-each-to-its-account" 2 "consumer" "unbind" "agent-bob")
     ("docs/operator-internals.md#agents-consumers-bind-each-to-its-account" 3 "consumer" "show")
     ("docs/operator.md#1-choose-the-disk-for-the-store" 1 "store" "rebind-filesystem" "--storage-require-durable" "off")
+    ("docs/operator.md#status" 2 "operation")
     ("docs/operator.md#accounts-and-invitation-codes" 3 "account" "delete" "probe")
     ("docs/operator.md#tls-handshakes-what-the-node-resists-on-its-own" 1 "policy" "set" "tls-handshakes-per-source-per-minute" "30")
     ("docs/operator.md#tls-handshakes-what-the-node-resists-on-its-own" 2 "policy" "set" "tls-handshakes-in-flight" "16")

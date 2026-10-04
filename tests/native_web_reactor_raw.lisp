@@ -4,6 +4,26 @@
 (require :sb-bsd-sockets)
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
+
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-extent-window-cancel (worker token)
+  (declare (ignorable worker token))
+  (harness-stub-reached 'fnn-extent-window-cancel "host/native/extent.lisp"))
+(defun fnn-owner-cold-window-result-locked (service read)
+  (declare (ignorable service read))
+  (harness-stub-reached 'fnn-owner-cold-window-result-locked "host/native/owner.lisp"))
+;;; ---- derived stubs: END ----
 (deftype fnn-octets () '(simple-array (unsigned-byte 8) (*)))
 (define-condition fnn-os-error (error) ())
 (define-condition fnn-store-error (error) ())
@@ -347,7 +367,8 @@
 ;;; listener closure, and cannot retry an ambiguous physical close.
 (let* ((conn (fixture-conn 83 :done))
        (face (%make-fnn-web-face :service *fixture-service* :listener 84
-                                :jobs-closed t :wake-closed t :conns (list conn)))
+                                :jobs-closed t :wake-closed t
+                                :wake-read-close :returned :wake-write-close :returned :conns (list conn)))
        (*fnn-web-face* face))
   (setf (fnn-web-conn-closedp conn) t)
   (assert (handler-case (progn (fnn-web-close-face *fixture-service*) nil) (error () t)))
@@ -363,7 +384,8 @@
   (fnn-web-close-face *fixture-service*)
   (assert (null *fnn-web-face*)))
 (let* ((face (%make-fnn-web-face :service *fixture-service* :listener 85
-                                :jobs-closed t :wake-closed t))
+                                :jobs-closed t :wake-closed t
+                                :wake-read-close :returned :wake-write-close :returned))
        (*fnn-web-face* face) (saved (symbol-function 'fnn-socket-shut)) (calls 0))
   (unwind-protect
        (progn
@@ -378,7 +400,8 @@
 (let* ((hold (sb-thread:make-semaphore))
        (thread (sb-thread:make-thread (lambda () (sb-thread:wait-on-semaphore hold))))
        (face (%make-fnn-web-face :service *fixture-service* :listener 86
-                                :jobs-closed t :wake-closed t :semantic-thread thread))
+                                :jobs-closed t :wake-closed t
+                                :wake-read-close :returned :wake-write-close :returned :semantic-thread thread))
        (*fnn-web-face* face))
   (unwind-protect
        (progn
@@ -394,4 +417,13 @@
          (assert (null *fnn-web-face*)))
     (when (sb-thread:thread-alive-p thread)
       (sb-thread:signal-semaphore hold) (sb-thread:join-thread thread))))
+;; The wake pipe's two descriptors are physical resources too: a face whose
+;; wake closes have not returned keeps its debt.
+(dolist (unfinished '((:wake-read-close nil) (:wake-write-close :calling)))
+  (let* ((face (apply #'%make-fnn-web-face :service *fixture-service* :listener 87
+                      :jobs-closed t :wake-closed t
+                      (append unfinished '(:wake-read-close :returned :wake-write-close :returned))))
+         (*fnn-web-face* face))
+    (assert (handler-case (progn (fnn-web-close-face *fixture-service*) nil) (error () t)))
+    (assert (eq *fnn-web-face* face))))
 (format t "native_web_reactor_raw: PASS root teardown retains debt/physical close receipt/no torn retry~%")

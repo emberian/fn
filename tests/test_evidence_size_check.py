@@ -51,6 +51,7 @@ class Rules(unittest.TestCase):
         for suffix in (".json", ".md", ".log.gz", ".png", ".lisp"):
             self.log("planning/data" + suffix, 5000)
         self.log("docs/outside.log", 5000)
+        self.log("planning/commit-map-20261002.txt", 5000)   # tools/commit_map.py's table
         self.assertEqual(self.run_tool(), (0,
             "evidence_size_check: 0 raw logs, 0 refused, 0 baselined, 0 stale\n"))
 

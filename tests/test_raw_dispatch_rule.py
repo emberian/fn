@@ -186,10 +186,6 @@ class Tree(unittest.TestCase):
         self.assertGreater(covered["dispatchers"], len(rule.BASE_DISPATCHERS))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class DirectMacroHeads(unittest.TestCase):
     def observed(self, source, direct=("fn-open",)):
         forms = ledger.Reader(PRELUDE + source).top_level()
@@ -224,3 +220,7 @@ class DirectMacroHeads(unittest.TestCase):
             problems, _ = rule.findings(tree=object(), declared=set(BOOK))
         self.assertTrue(problems == [],
                         "declared direct macro call must follow its actual interface")
+
+
+if __name__ == "__main__":
+    unittest.main()

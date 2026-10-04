@@ -205,10 +205,6 @@ class TransitionTests(Sandbox):
             "planning/evidence/d/b.json": (store.sha256_bytes(b"{}\n"), 3)})
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class CheckoutMemoTests(unittest.TestCase):
     def test_object_reads_locate_shared_cache_once_and_git_marker_changes_invalidate(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -284,3 +280,7 @@ class CheckoutMemoTests(unittest.TestCase):
                 with mock.patch.dict(os.environ, {"GIT_COMMON_DIR": str(root / "redirect")}):
                     store.checkout_of(root)
                 self.assertEqual(git.call_count, 2)
+
+
+if __name__ == "__main__":
+    unittest.main()
