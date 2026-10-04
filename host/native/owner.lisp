@@ -4869,7 +4869,7 @@ flight).  While any batch is in flight or open ACL2's pick admits only
 :inspect and :commit (fn-ocp-next-open-only-in-flight); a batch's replies
 leave only in its COMPLETE, after its barrier returned
 (fn-ocp-complete-only-after-the-barrier)."
-  (let ((members nil) (uncertain nil) (deferred nil) (action nil) (job nil)
+  (let ((members nil) (uncertain nil) (deferred nil) (action nil) (job nil) (abandoned nil)
         (next nil) (next-deferred nil) (next-job nil) (frames-only nil) (syncer nil) (result nil) (limits nil)
         (need nil) (syncer-actor nil) (syncer-grant nil) (completion-pending nil)
         (return-receipt '(:pipeline-returned nil :none nil nil))
@@ -5098,6 +5098,9 @@ leave only in its COMPLETE, after its barrier returned
                              ;; answered (uncertain to its client).
                              (fnn-owner-reader-capture :drop)
                              (fnn-owner-action 'fn-owner-credits-stop)
+                             ;; The next batch's members are told uncertain
+                             ;; just below: it is abandoned, never synced.
+                             (setq abandoned t)
                              (multiple-value-bind (tell ledger2)
                                  (fnn-owner-answer-early ledger next)
                                (setq ledger ledger2)
@@ -5147,9 +5150,14 @@ leave only in its COMPLETE, after its barrier returned
                              (setq next nil))
                             (t (fnn-fault "owner named ~a after a barrier" step)))
                       (setq done t))))
-              (setq action (fnn-owner-commit-event service :completed))
+              ;; A COMPLETE that found the owner stopping abandoned the next
+              ;; batch (its members were told uncertain): ACL2 leaves no batch
+              ;; in flight (fn-ocp-a-stopping-completion-leaves-no-batch), so
+              ;; the gate admits every class again and the stop's joins of the
+              ;; workers waiting at it return.
+              (setq action (fnn-owner-commit-event
+                            service (if abandoned :completed-stopping :completed)))
               (unless done (setq action :none))
-              (when (fnn-owner-service-stopping service) (setq action :none))
               (if (and next (eq action :sync))
                   (setq members next deferred next-deferred job next-job
                         next nil next-deferred nil next-job nil)
