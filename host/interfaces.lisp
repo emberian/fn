@@ -1547,9 +1547,11 @@
 
 ; host/native/owner.lisp asks it before the POST's seal (lane arena-forget).
 (definterface fn-owner-cat-may-seal
-  :class :common-lisp-compliant)
-; Its named host wrapper equality is -by-definition. The old Boolean gate
-; restatement is not a prepare-transition keystone; that relation remains owed.
+  :class :common-lisp-compliant
+  :keystones ((fn-cat-may-seal-is-the-prepare-transition-gate :via fn-cat-may-seal)
+              (fn-cat-may-seal-admits-the-prepare-after-the-seal :via fn-cat-may-seal)))
+; Its named host wrapper equality is -by-definition; the keystones relate the
+; word to T1 (books/catalog-may-seal.lisp, lane proofs2 2026-10-04).
 
 (definterface fn-owner-catchup-plans
   :class :common-lisp-compliant)
