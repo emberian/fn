@@ -75,3 +75,36 @@
   (:invalid-peer-flight-profile "Peer flight startup refused: invalid resource profile.")
   (:default-pool-not-held "Peer flight startup refused: parent DEFAULT pool is not held.")
   (otherwise "Peer flight startup refused: unsupported resource allowance.")))
+
+; The peer composition of fn-prstartup-launch-admits-owner-protected
+; (cold-start, 2026-10-04; w-peer cls2/cls3 on 6107ceb56: a peer-funded
+; store refused at its launcher figure).  The peer extension grows the served
+; run by the peer heap over the DEFAULT figure's backing; the owner's
+; protected runtime with that heap fits the grown figure.
+(defthm fn-prstartup-peer-backing-holds-owner
+ (implies (and (natp d1)
+               (<= (fn-prstartup-launch-floor profile core observed) d1)
+               (equal (fn-heap-core-file owner-core) (fn-heap-core-file core)))
+          (<= (fn-heap-store-base-octets profile owner-core observed)
+              (nfix (- d1 (* 2 (fn-heap-nursery-trigger
+                                d1 (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib))))))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-prstartup-protected fn-heap-runtime-protected-octets)
+                                 (fn-heap-nursery-trigger fn-heap-store-base-octets
+                                  fn-prstartup-launch-floor))
+          :use ((:instance fn-prstartup-launch-floor-holds-owner (dyn d1))))))
+
+(defthm fn-prstartup-grow-holds-base
+ (implies (and (natp d1) (natp b) (natp dd)
+               (<= b (nfix (- d1 (* 2 (fn-heap-nursery-trigger d1 cap)))))
+               (<= (fn-heap-grow-runtime-dynamic d1 extra cap) dd))
+          (<= (+ b (nfix extra) (* 2 (fn-heap-nursery-trigger dd cap))) dd))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-heap-grow-runtime-dynamic)
+                                 (fn-heap-with-nursery fn-heap-nursery-trigger))
+          :use ((:instance fn-heap-with-nursery-monotone
+                 (b1 (+ b (nfix extra)))
+                 (b2 (+ (nfix (- d1 (* 2 (fn-heap-nursery-trigger d1 cap)))) (nfix extra)))
+                 (nursery cap))
+                (:instance fn-heap-with-nursery-holds-the-trigger
+                 (d dd) (base (+ b (nfix extra))) (nursery cap))))))
