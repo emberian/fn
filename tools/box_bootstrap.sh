@@ -21,8 +21,8 @@
 #             runtime needs (its highest GLIBC_ symbol version), apt-get,
 #             systemd, free disk; --dry-run stops after this and prints the plan
 #   system    packages (python3 3.12+, git, rsync, libssl3, libsodium, zlib,
-#             build tools, zstd), user fn with this laptop's and the seed's
-#             keys, linger (systemd user scopes), hostname NAME,
+#             build tools, zstd, docker.io, pip + dilithium-py 1.4.0), user fn with
+#             this laptop's and the seed's keys, linger (systemd user scopes), hostname NAME,
 #             /tank/fn/{sbcl,acl2-8.7,toolchains,certcache,images,scratch,gates},
 #             the farm mirror path (this worktree's parent of build/), and
 #             /usr/local/bin/swarm-build (hbox's wrapper: a systemd user scope
@@ -115,6 +115,19 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -q >/dev/null
 ssl=libssl3; apt-cache show libssl3t64 >/dev/null 2>&1 && ssl=libssl3t64
 apt-get install -y -q rsync git python3 python3-venv "$ssl" libsodium23 zlib1g build-essential pigz zstd openssl >/dev/null
+# docker: tests.test_native_reader_clients builds the slrn/pan container
+# (tools/reader_clients/Dockerfile) and skips on a box without it (lat1,
+# 2026-10-04); fn must be in the docker group (reset any ssh ControlMaster so
+# the new group is seen).
+apt-get install -y -q docker.io >/dev/null
+systemctl enable --now docker >/dev/null 2>&1 || true
+id fn >/dev/null 2>&1 || useradd -m -s /bin/bash fn
+usermod -aG docker fn
+# dilithium-py: tools/fn_verify.py (the consumer independent verifier) has no ML-DSA-65
+# implementation without it and answers undecided, so tests.test_native_consumer_exchange
+# fails 7 of 11 (lat1, 2026-10-04).  Pure Python, pinned to the version hbox runs.
+apt-get install -y -q python3-pip >/dev/null
+su - fn -c 'python3 -m pip install --user --break-system-packages -q dilithium-py==1.4.0'
 python3 -c 'import sys; assert sys.version_info >= (3, 12), sys.version' || { echo "python3 < 3.12" >&2; exit 1; }
 id fn >/dev/null 2>&1 || useradd -m -s /bin/bash fn
 install -d -o fn -g fn -m 700 /home/fn/.ssh
