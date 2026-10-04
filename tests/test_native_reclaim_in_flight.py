@@ -4,8 +4,15 @@ anything), and the running pass completes normally.
 
 The first pass is held at its rebuilt cut (FN_NATIVE_TEST_RECLAIM_STALL_FILE);
 a dry run and a recorded pass are requested meanwhile; both answer REFUSED
-with DEFERRED-IN-FLIGHT (or -QUEUED) and never finish the held pass's slot;
+by name (in-flight or queued) and never finish the held pass's slot;
 releasing the stall, the held pass installs.
+
+The refusal is ACL2's at either of the two admissions over the slot: the
+request's quantum (books/owner-reclaim.lisp fn-orc-request-status, KEYSTONE
+fn-orc-request-accepted-only-when-it-runs; the owner logs `RECLAIM request
+mode=M answer=in-flight') or, when a pass took the slot between the request
+and the capture, the capture's (fn-orc-capture-slot; `RECLAIM dry-run
+refused: in-flight' / `RECLAIM deferred reason=in-flight').
 """
 import re
 import threading
@@ -47,7 +54,8 @@ class NativeReclaimInFlight(unittest.TestCase):
             second = self.reclaim(node, "--recorded", expect=None)
             self.assertEqual(second.returncode, EXIT.REFUSED, (second.stdout, second.stderr[-600:]))
             self.assertNotIn(b"installed", second.stdout)
-            refused = self.owner_lines(owner, re.compile(rb"RECLAIM (dry-run refused: (in-flight|queued)|deferred reason=(in-flight|queued))"), 2)
+            refused = self.owner_lines(owner, re.compile(rb"RECLAIM (dry-run refused: (in-flight|queued)|deferred reason=(in-flight|queued)"
+                                                       rb"|request mode=(dry-run|recorded) answer=(in-flight|queued))"), 2)
             self.assertEqual(len(refused), 2, owner.stderr.since(0)[-3000:])
             stall.unlink()
             worker.join(timeout=1300)
