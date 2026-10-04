@@ -101,7 +101,14 @@ class OwnerOfflockNativeTests(unittest.TestCase):
                 started = time.monotonic()
                 health = self.node.operator("health", timeout=60)
                 healths.append(time.monotonic() - started)
-                self.assertEqual(health.returncode, 0, health.stderr.decode())
+                # The running owner answers; its verdict is ACL2's.  The
+                # fixture's peer `down' refuses every dial and holds this
+                # POST's feed work, so health's first held state is
+                # unavailable-peer (books/native-health.lisp *fn-nh-states*,
+                # exit 20 + 6), never healthy.
+                text = health.stdout.decode("ascii", "replace")
+                self.assertEqual(health.returncode, 26, text + health.stderr.decode())
+                self.assertIn("\nunavailable-peer held", text)
                 time.sleep(0.5)
             c1.settimeout(0.5)
             try:
