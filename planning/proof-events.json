@@ -15959,10 +15959,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cl-ring-keys-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cll-key-values-loop-of-rev-onto"
         },
         {
@@ -16256,10 +16252,6 @@
         {
           "kind": "theorem",
           "name": "fn-rcl-cursors-at-zero-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rof-first-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
