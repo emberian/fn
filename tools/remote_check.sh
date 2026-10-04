@@ -309,10 +309,10 @@ UNTRACKED=$(git -C "$ROOT" ls-files --others --exclude-standard | grep -v '^LANE
 [ -z "$UNTRACKED" ] || { echo "remote_check: untracked here, NOT shipped:"; echo "$UNTRACKED" | sed 's/^/  /'; }
 
 # 5. make there, with the box's own toolchain.
-ENVS="eval \$(python3 -c 'import ast,os,sys
-t=ast.parse(open(\"tools/farm.py\").read())
-h=[ast.literal_eval(n.value) for n in t.body if isinstance(n,ast.Assign) and getattr(n.targets[0],\"id\",None)==\"HOSTS\"][0].get(sys.argv[1],{})
-print((\"export FN_ACL2=%s FN_CERT_CACHE=%s\" % (h.get(\"acl2\",\"\"), os.path.expanduser(h.get(\"cache\",\"\")))) + (\" FN_IMAGE_ACL2=%s\" % h[\"image_acl2\"] if h.get(\"image_acl2\") else \"\") if h else \"\")' $BOX 2>/dev/null)"
+# The box's toolchain exports, resolved here from tools/farm.py HOSTS and the
+# rented-box table (tools/box_table.py env): the box's own tree reads only
+# farm.py's literal, which names no rented box ("no FN_ACL2 for lat1").
+ENVS=$(python3 "$(dirname "$0")/box_table.py" env "$BOX" 2>/dev/null) || ENVS=true
 echo "remote_check: $RUN in $BOX:$TREE (log $BOX:$LOG)"
 # make runs DETACHED on the box (its own script, nohup) and this side polls
 # the log's last line: an ssh session that ends early (exit 255) used to be
