@@ -32,7 +32,7 @@
  "test": "python3 -m unittest tests.test_native_feed_fair_round",
  "timeout": "300",
  "title": "Outbound feed waits for a peer's reply (and greeting) with no deadline: a hung or half-open peer holds its link and in-flight entry until restart",
- "updated": "2026-10-04T15:27:16Z",
+ "updated": "2026-10-04T15:27:39Z",
  "verify": {
   "base": "65389a90e601e0ce3c25aa951d4f4f40afe110f8",
   "base_observation": {
@@ -64,7 +64,7 @@
    },
    "returncode": 1,
    "revision": "65389a90e601e0ce3c25aa951d4f4f40afe110f8",
-   "stderr": "test_blocked_kernel_write_yields_to_healthy_peer (tests.test_native_feed_fair_round.FeedFairRoundTests.test_blocked_kernel_write_yields_to_healthy_peer) ... ok\ntest_peer_that_never_answers_is_dropped_at_the_reply_deadline (tests.test_native_feed_fair_round.FeedFairRoundTests.test_peer_that_never_answers_is_dropped_at_the_reply_deadline) ... FAIL\ntest_pending_tcp_completion_yields_to_healthy_peer (tests.test_native_feed_fair_round.FeedFairRoundTests.test_pending_tcp_completion_yields_to_healthy_peer) ... ok\ntest_pending_tls_completion_yields_to_healthy_peer (tests.test_native_feed_fair_round.FeedFairRoundTests.test_pending_tls_completion_yields_to_healthy_peer) ... ok\ntest_reply_suffix_and_eof_wait_for_durable_output_then_preserve_fault (tests.test_native_feed_fair_round.FeedFairRoundTests.test_reply_suffix_and_eof_wait_for_durable_output_then_preserve_fault) ... ok\ntest_tls_write_retains_range_and_original_progress_deadline (tests.test_native_feed_fair_round.FeedFairRoundTests.test_tls_write_retains_range_and_original_progress_deadline) ... ok\n\n======================================================================\nFAIL: test_peer_that_never_answers_is_dropped_at_the_reply_deadline (tests.test_native_feed_fair_round.FeedFairRoundTests.test_peer_that_never_answers_is_dropped_at_the_reply_deadline)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-bkzpukp_/wt/tests/test_native_feed_fair_round.py\", line 36, in test_peer_that_never_answers_is_dropped_at_the_reply_deadline\n    self.assertTrue(result.returncode == 0 and 'FEED_FAIR_PASS silent' in result.stdout,\n    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                    'a peer that never answers must be dropped at the reply deadline')\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: False is not true : a peer that never answers must be dropped at the reply deadline\n\n----------------------------------------------------------------------\nRan 6 tests in 6.627s\n\nFAILED (failures=1)\n",
+   "stderr": "test_blocked_kernel_write_yields_to_healthy_peer (tests.test_native_feed_fair_round.FeedFairRoundTests.test_blocked_kernel_write_yields_to_healthy_peer) ... ok\ntest_peer_that_never_answers_is_dropped_at_the_reply_deadline (tests.test_native_feed_fair_round.FeedFairRoundTests.test_peer_that_never_answers_is_dropped_at_the_reply_deadline) ... FAIL\ntest_pending_tcp_completion_yields_to_healthy_peer (tests.test_native_feed_fair_round.FeedFairRoundTests.test_pending_tcp_completion_yields_to_healthy_peer) ... ok\ntest_pending_tls_completion_yields_to_healthy_peer (tests.test_native_feed_fair_round.FeedFairRoundTests.test_pending_tls_completion_yields_to_healthy_peer) ... ok\ntest_reply_suffix_and_eof_wait_for_durable_output_then_preserve_fault (tests.test_native_feed_fair_round.FeedFairRoundTests.test_reply_suffix_and_eof_wait_for_durable_output_then_preserve_fault) ... ok\ntest_tls_write_retains_range_and_original_progress_deadline (tests.test_native_feed_fair_round.FeedFairRoundTests.test_tls_write_retains_range_and_original_progress_deadline) ... ok\n\n======================================================================\nFAIL: test_peer_that_never_answers_is_dropped_at_the_reply_deadline (tests.test_native_feed_fair_round.FeedFairRoundTests.test_peer_that_never_answers_is_dropped_at_the_reply_deadline)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-4k38z24g/wt/tests/test_native_feed_fair_round.py\", line 36, in test_peer_that_never_answers_is_dropped_at_the_reply_deadline\n    self.assertTrue(result.returncode == 0 and 'FEED_FAIR_PASS silent' in result.stdout,\n    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                    'a peer that never answers must be dropped at the reply deadline')\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: False is not true : a peer that never answers must be dropped at the reply deadline\n\n----------------------------------------------------------------------\nRan 6 tests in 4.355s\n\nFAILED (failures=1)\n",
    "stdout": ""
   },
   "changed_files": [
@@ -78,13 +78,13 @@
   ],
   "diff_lines": 99,
   "evidence": {
-   "bytes": 7500,
-   "path": "planning/evidence/repair/rp-feed-reply-deadline-7f960ccc369b4ec995ca86fab944be4f.json",
-   "sha256": "3ff26a584b20e040177d9f817db6d0f862e3b90a903051e9a663e13d03749437"
+   "bytes": 7409,
+   "path": "planning/evidence/repair/rp-feed-reply-deadline-7524cc45d77c406ba26d7132a547eeae.json",
+   "sha256": "f403430ccc157c4adf4c91caf53fc333149e4ddc55f2b87ca777ea2e38c5c4d9"
   },
   "evidence_outcome": "archived",
   "expected_failure": {
-   "message": "a peer that never answers must be dropped at the reply deadline",
+   "message": "False is not true : a peer that never answers must be dropped at the reply deadline",
    "test": "tests.test_native_feed_fair_round.FeedFairRoundTests.test_peer_that_never_answers_is_dropped_at_the_reply_deadline"
   },
   "green_at_head": true,
@@ -92,7 +92,7 @@
    "tests/native_feed_fair_round_raw.lisp": "899a036754aba8541dd7e1114bc4249056a532a595a1278f122da3df7206f90e",
    "tests/test_native_feed_fair_round.py": "2e8c29963e41ed86160d006007b569e83095ad985feae1ba784dbad09d3a59ba"
   },
-  "head": "c502c5301a3b20b8765689eb07585663eb806c93",
+  "head": "869bf4f340f6ef11e696d17cc748fa13a6d61dd6",
   "head_observation": {
    "result": {
     "assertions": [],
@@ -115,19 +115,17 @@
     "unexpected_successes": []
    },
    "returncode": 0,
-   "revision": "c502c5301a3b20b8765689eb07585663eb806c93",
-   "stderr": "test_blocked_kernel_write_yields_to_healthy_peer (tests.test_native_feed_fair_round.FeedFairRoundTests.test_blocked_kernel_write_yields_to_healthy_peer) ... ok\ntest_peer_that_never_answers_is_dropped_at_the_reply_deadline (tests.test_native_feed_fair_round.FeedFairRoundTests.test_peer_that_never_answers_is_dropped_at_the_reply_deadline) ... ok\ntest_pending_tcp_completion_yields_to_healthy_peer (tests.test_native_feed_fair_round.FeedFairRoundTests.test_pending_tcp_completion_yields_to_healthy_peer) ... ok\ntest_pending_tls_completion_yields_to_healthy_peer (tests.test_native_feed_fair_round.FeedFairRoundTests.test_pending_tls_completion_yields_to_healthy_peer) ... ok\ntest_reply_suffix_and_eof_wait_for_durable_output_then_preserve_fault (tests.test_native_feed_fair_round.FeedFairRoundTests.test_reply_suffix_and_eof_wait_for_durable_output_then_preserve_fault) ... ok\ntest_tls_write_retains_range_and_original_progress_deadline (tests.test_native_feed_fair_round.FeedFairRoundTests.test_tls_write_retains_range_and_original_progress_deadline) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 9.695s\n\nOK\n",
+   "revision": "869bf4f340f6ef11e696d17cc748fa13a6d61dd6",
+   "stderr": "test_blocked_kernel_write_yields_to_healthy_peer (tests.test_native_feed_fair_round.FeedFairRoundTests.test_blocked_kernel_write_yields_to_healthy_peer) ... ok\ntest_peer_that_never_answers_is_dropped_at_the_reply_deadline (tests.test_native_feed_fair_round.FeedFairRoundTests.test_peer_that_never_answers_is_dropped_at_the_reply_deadline) ... ok\ntest_pending_tcp_completion_yields_to_healthy_peer (tests.test_native_feed_fair_round.FeedFairRoundTests.test_pending_tcp_completion_yields_to_healthy_peer) ... ok\ntest_pending_tls_completion_yields_to_healthy_peer (tests.test_native_feed_fair_round.FeedFairRoundTests.test_pending_tls_completion_yields_to_healthy_peer) ... ok\ntest_reply_suffix_and_eof_wait_for_durable_output_then_preserve_fault (tests.test_native_feed_fair_round.FeedFairRoundTests.test_reply_suffix_and_eof_wait_for_durable_output_then_preserve_fault) ... ok\ntest_tls_write_retains_range_and_original_progress_deadline (tests.test_native_feed_fair_round.FeedFairRoundTests.test_tls_write_retains_range_and_original_progress_deadline) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 3.573s\n\nOK\n",
    "stdout": ""
   },
   "interpreter": "/opt/homebrew/bin/python3",
-  "ok": false,
-  "problems": [
-   "base did not produce exactly the intended assertion failure (errors/skips/timeout are not defect red)"
-  ],
-  "red_at_base": false,
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
   "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
   "same_tests": true,
-  "semantic_ok": false,
+  "semantic_ok": true,
   "test": "python3 -m unittest tests.test_native_feed_fair_round",
   "timeout": 300.0
  }
