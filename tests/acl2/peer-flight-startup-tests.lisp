@@ -71,7 +71,8 @@
   (fn-prstartup-extend-operation-reservation
    (fn-heap-reserve-operation-decide :run *fn-bs-profile-development* *pfrst-run-core*
                                      (* 64 1048576) *pfrst-machine* 32 *pfrst-fresh*)
-   :run nil "/tmp/store" 4 8 *pfrst-run-core* *pfrst-machine*)
+   :run nil "/tmp/store" 4 8 *pfrst-run-core* *pfrst-machine*
+   *fn-bs-profile-development* *pfrst-fresh*)
   :run *pfrst-flight* *pfrst-run-core* *pfrst-machine*))
 (assert-event
  (let* ((dyn (* 1048576 (fn-prstartup-nth 1 *pfrst-run*)))
