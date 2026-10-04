@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 import socket
+import threading
 import time
 import unittest
 
@@ -1969,6 +1970,219 @@ class NativeBpNodePeerResetTests(unittest.TestCase):
         finally:
             again.close()
         self.assertIsNone(receiver.poll(), "the node stopped serving after a reset")
+        receiver.stop(grace=5)
+
+
+class RawTcpclPeer:
+    """An active TCPCLv4 peer (RFC 9174) written by hand: contact header,
+    SESS_INIT announcing NODE_ID with a one second keepalive, a thread that
+    answers with KEEPALIVEs, and a reader that records every message the
+    node sends as (type, first field).  It sends transfer segments only when
+    the test says so."""
+
+    def __init__(self, port, node_id=b"dtn://sender/"):
+        self.sock = socket.create_connection(("127.0.0.1", port), timeout=30)
+        self.received = []
+        self.lock = threading.Lock()
+        self.alive = True
+        self.node_id = node_id
+        self.sock.sendall(b"dtn!\x04\x00")
+        self.exact(6)
+        self.send(b"\x07\x00\x01" + (1 << 16).to_bytes(8, "big") + (1 << 20).to_bytes(8, "big")
+                  + len(node_id).to_bytes(2, "big") + node_id + b"\x00\x00\x00\x00")
+        self.reader = threading.Thread(target=self.read_loop, daemon=True)
+        self.keeper = threading.Thread(target=self.keepalive_loop, daemon=True)
+        self.reader.start()
+        self.keeper.start()
+
+    def exact(self, n):
+        data = b""
+        while len(data) < n:
+            chunk = self.sock.recv(n - len(data))
+            if not chunk:
+                raise EOFError("closed after %d of %d octets" % (len(data), n))
+            data += chunk
+        return data
+
+    def send(self, data):
+        with self.lock:
+            self.sock.sendall(data)
+
+    def read_loop(self):
+        u = lambda b: int.from_bytes(b, "big")
+        try:
+            while self.alive:
+                kind = self.exact(1)[0]
+                if kind == 7:
+                    self.exact(18)
+                    self.exact(u(self.exact(2)))
+                    self.exact(u(self.exact(4)))
+                    first = 0
+                elif kind == 1:
+                    flags = self.exact(1)[0]
+                    self.exact(8)
+                    if flags & 2:
+                        self.exact(u(self.exact(4)))
+                    self.exact(u(self.exact(8)))
+                    first = flags
+                elif kind == 2:
+                    first = self.exact(1)[0]
+                    self.exact(16)
+                elif kind == 3:
+                    first = self.exact(1)[0]
+                    self.exact(8)
+                elif kind == 5:
+                    flags, first = self.exact(2)
+                    self.received.append((5, first))
+                    if not flags & 1:
+                        self.send(b"\x05\x01" + bytes([first]))
+                    return
+                elif kind == 6:
+                    first = self.exact(2)[0]
+                else:
+                    first = 0
+                self.received.append((kind, first))
+        except (EOFError, OSError):
+            return
+
+    def keepalive_loop(self):
+        while self.alive:
+            time.sleep(0.5)
+            try:
+                self.send(b"\x04")
+            except OSError:
+                return
+
+    def segment(self, xfer, data, *, start=False, end=False):
+        flags = (2 if start else 0) | (1 if end else 0)
+        self.send(b"\x01" + bytes([flags]) + xfer.to_bytes(8, "big")
+                  + (b"\x00\x00\x00\x00" if start else b"")
+                  + len(data).to_bytes(8, "big") + data)
+
+    def term_reason(self):
+        """The reason of the SESS_TERM the node sent, or None so far."""
+        for kind, first in list(self.received):
+            if kind == 5:
+                return first
+        return None
+
+    def wait_term(self, timeout):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            reason = self.term_reason()
+            if reason is not None:
+                return reason
+            time.sleep(0.1)
+        return None
+
+    def close(self):
+        self.alive = False
+        try:
+            self.sock.close()
+        except OSError:
+            pass
+
+
+class NativeBpNodeSessionBoundTests(unittest.TestCase):
+    """S025: the no-progress bounds of an established incoming session
+    (books/tcpcl-retained-turn.lisp fn-tcrt-expiry; planning/design/bp-2026-10-04.md
+    2.6).  passive-ms binds only while the incoming class is full and a peer
+    waits (SESS_TERM reason 5); stall-ms binds a session whose transfer
+    stopped advancing (reason 1).  Keepalives are never progress."""
+
+    invoke = NativeBpNodeTests.invoke
+    start_node = NativeBpNodeTests.start_node
+
+    def setUp(self):
+        self.tmp = scratch(self, "fn-bp-node-bound-")
+        self.relay = ByteRelay()
+        self.addCleanup(self.relay.close)
+        self.receiver_store = self.tmp / "receiver-store"
+        self.receiver_journal = self.tmp / "receiver-fnbs"
+        self.receiver_receipts = self.tmp / "receiver-fnrj"
+        initialized = self.invoke("store", self.receiver_store, "init", "fn.test")
+        self.assertEqual(initialized.returncode, EXIT.OK, initialized.stderr)
+
+    def install_profile(self, inbound, passive_ms, stall_ms):
+        installed = self.invoke(
+            "bp-node", "session-profile", self.receiver_journal, "dtn://receiver/",
+            inbound, 1, "-", 30000, passive_ms, stall_ms)
+        self.assertEqual(installed.returncode, EXIT.OK, installed.stderr)
+        self.assertIn(b"passive-ms=%d stall-ms=%d" % (passive_ms, stall_ms), installed.stdout)
+
+    def idle_peer(self, port, name):
+        peer = start(
+            [IMAGE, "--fn", "tcpcl", "send", "127.0.0.1", str(port), "-",
+             str(self.tmp / (name + "-spool")), "dtn://sender/", "dtn://receiver/",
+             "1", "65536", "1048576", "1"], cwd=ROOT, env=environment())
+        self.addCleanup(peer.stop, 5)
+        self.wait_for_output(peer, b":SESSION-UP", timeout=45)
+        return peer
+
+    wait_for_output = staticmethod(NativeBpNodeTests.wait_for_output)
+
+    def test_contended_idle_session_is_ended_with_resource_exhaustion(self):
+        self.install_profile(1, 3000, 600000)
+        receiver, port = self.start_node(True, once=False)
+        holder = self.idle_peer(port, "holder")
+        waiting = socket.create_connection(("127.0.0.1", port), timeout=30)
+        self.addCleanup(waiting.close)
+        waiting.sendall(b"dtn!\x04\x00")
+        # The holder keeps sending keepalives; they are not progress.
+        out = self.wait_for_output(holder, b":PEER-TERMINATING", timeout=60)
+        self.assertIn(b":PEER-TERMINATING 5", out, "SESS_TERM reason 5, Resource Exhaustion")
+        receiver.output_until(b"no transfer progress: SESS_TERM reason 5", timeout=30)
+        # The freed slot admits the waiting peer.
+        waiting.settimeout(30)
+        self.assertEqual(waiting.recv(6), b"dtn!\x04\x00")
+        self.assertIsNone(receiver.poll(), receiver.diagnostics())
+        receiver.stop(grace=5)
+
+    def test_quiet_node_leaves_an_idle_session_alone(self):
+        self.install_profile(1, 3000, 600000)
+        receiver, port = self.start_node(True, once=False)
+        holder = self.idle_peer(port, "holder")
+        time.sleep(10)
+        self.assertIsNone(holder.poll(), holder.diagnostics())
+        self.assertIsNone(receiver.poll(), receiver.diagnostics())
+        receiver.stop(grace=5)
+        self.assertNotIn(b"no transfer progress", receiver.output_since_cursor())
+
+    def test_stalled_transfer_is_ended_without_contention(self):
+        self.install_profile(2, 600000, 3000)
+        receiver, port = self.start_node(True, once=False)
+        peer = RawTcpclPeer(port)
+        self.addCleanup(peer.close)
+        time.sleep(1)
+        peer.segment(1, b"first half of a bundle", start=True)
+        # Only keepalives from here on.
+        self.assertEqual(peer.wait_term(45), 1, "SESS_TERM reason 1, Idle timeout")
+        receiver.output_until(b"no transfer progress: SESS_TERM reason 1", timeout=15)
+        self.assertIsNone(receiver.poll(), receiver.diagnostics())
+        receiver.stop(grace=5)
+
+    def test_transfer_frames_renew_progress(self):
+        self.install_profile(2, 600000, 3000)
+        receiver, port = self.start_node(True, once=False)
+        peer = RawTcpclPeer(port)
+        self.addCleanup(peer.close)
+        time.sleep(1)
+        peer.segment(1, b"part 0 ", start=True)
+        for index in range(1, 7):
+            time.sleep(1)
+            peer.segment(1, b"part %d " % index)
+            self.assertIsNone(peer.term_reason(), "a session that advances is not ended")
+        self.assertEqual(peer.wait_term(45), 1)
+        self.assertIsNone(receiver.poll(), receiver.diagnostics())
+        receiver.stop(grace=5)
+
+    def test_idle_session_without_a_transfer_is_not_stalled(self):
+        self.install_profile(2, 600000, 3000)
+        receiver, port = self.start_node(True, once=False)
+        peer = RawTcpclPeer(port)
+        self.addCleanup(peer.close)
+        time.sleep(9)
+        self.assertIsNone(peer.term_reason(), "stall-ms binds a transfer, not a quiet session")
         receiver.stop(grace=5)
 
 
