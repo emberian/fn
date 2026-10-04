@@ -4543,3 +4543,12 @@ S074/S090/S138/S151 and journal physical prepared fixtures remain source/proof
 versus current-image obligations, not completion claims. No live deployment.
 Protected recovery partition, expanded init/reopen and complete tariff remain
 open. Bounds catchup controller draft is preserved but activation unwired.
+
+## Lane generators (Fable), 2026-10-04 -- wind-down
+
+Branch `lane/generators` from origin/integrate/20261004@ec2c1b3da. Full entry and the exact continuation:
+`build/coordinator/lanedumps/generators.md`. Landed on the branch: def-cursor `:demand-metric`/`:demand-proof`
+(NAME-STEP-DEMAND-BOUND) and def-cursor/batch with a DEMAND budget (NAME-BATCH-DEMAND-BOUND), agreed with
+cold-line for cursor quanta; test book admitted (43 forms, laptop REPL); closure certification owed on hbox.
+Not started: ST1 instances (three chosen: snoc-list fn-sl-append1, cancel-lock fn-cl-ring-keys, refused-offers
+fn-rof-first), the teeth fix-3 world check, the proto/adt move. Continue from the lanedump's "Continuation".
