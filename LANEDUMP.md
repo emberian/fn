@@ -4543,3 +4543,13 @@ S074/S090/S138/S151 and journal physical prepared fixtures remain source/proof
 versus current-image obligations, not completion claims. No live deployment.
 Protected recovery partition, expanded init/reopen and complete tariff remain
 open. Bounds catchup controller draft is preserved but activation unwired.
+
+
+## Lane tariff — 2026-10-04 (Fable, wound down; Opus continues)
+
+The full lanedump is `build/coordinator/lanedumps/tariff.md` (same commit). Design packet:
+`planning/design/tariff-2026-10-04.md` (DECISION block written; two lines escalated to ember).
+First slice: `books/output-tariff-article.lisp` admitted on the laptop (10 forms, 2,770 steps),
+uncertified, unwired; the exact continuation is the numbered list in the coordinator lanedump
+(steps 1-7). Nothing certified, no image, no native run. The only owner-host.lisp region this lane
+touches is `fn-owner-output-tariff-preview` (:5512-5518), untouched so far.
