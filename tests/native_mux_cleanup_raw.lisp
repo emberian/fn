@@ -480,3 +480,30 @@
   (fnn-mux-timers loop 5000)
   (check (= 1 *proxy-expired-calls*) "S088: a due :proxy deadline did not ask ACL2"))
 (format t "native_mux_proxy_timer: PASS~%")
+
+;;; S091: consecutive handshake refusals drain iteratively.  The actual
+;;; fnn-mux-start-waiting-handshake and fnn-mux-finish (not stopping): every
+;;; queued socket is refused, and each refusal's finish ends by calling
+;;; start-waiting again.  The ask records how many start-waiting frames are live.
+(load-deployed-forms "host/native/mux.lisp"
+ '((defun fnn-mux-handshake-refused) (defun fnn-mux-start-waiting-handshake)))
+(defvar *waiting-depths* nil)
+(defun fnn-mux-handshake-ask (loop conn queuedp)
+  (declare (ignore loop conn queuedp))
+  (push (count 'fnn-mux-start-waiting-handshake (sb-debug:list-backtrace) :key #'first)
+        *waiting-depths*)
+  (values :refuse nil nil nil))
+(let* ((*cleanup-mode* nil) (*cleanup-calls* nil) (*waiting-depths* nil)
+       (service (%make-fnn-owner-service :lock (sb-thread:make-mutex)))
+       (loop (%make-fnn-mux-loop :service service))
+       (conns (loop repeat 300 collect (%make-fnn-mux-conn :phase :new))))
+  (setf (fnn-mux-loop-conns loop) (copy-list conns)
+        (fnn-mux-loop-queued loop) (copy-list conns))
+  (fnn-mux-start-waiting-handshake loop)
+  (check (and (= 300 (length *waiting-depths*))
+              (null (fnn-mux-loop-queued loop))
+              (every (lambda (c) (eq (fnn-mux-conn-phase c) :done)) conns))
+         "S091: every refused queued socket is finished by the drain")
+  (check (<= (reduce #'max *waiting-depths*) 1)
+         "S091: consecutive handshake refusals nest start-waiting"))
+(format t "native_mux_start_waiting_depth: PASS~%")
