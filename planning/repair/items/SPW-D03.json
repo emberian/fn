@@ -1,0 +1,16 @@
+{
+ "category": "architecture",
+ "detail": "planning/spw-recheck-2026-10-04.md",
+ "evidence": "policy.lisp:58 *fn-pol-max-members* 64, used at :97 fn-pol-policy-p and :127 decode; byte-store-frame.lisp:142 and store-profile-namespace.lisp:29,45 define the profile field.",
+ "exposure": "conditional",
+ "file": "books/policy.lisp",
+ "fix": "Read the profile field for admission (design 1.3 row, P5).",
+ "id": "SPW-D03",
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "low",
+ "source": "spw-recheck-2026-10-04",
+ "state": "open",
+ "title": "D27: group policy member count capped at 64; profile field 12 max-policy-members is defined and nothing reads it for admission",
+ "updated": "2026-10-04T14:47:40Z"
+}

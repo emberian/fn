@@ -1,0 +1,16 @@
+{
+ "category": "error-handling",
+ "detail": "planning/spw-recheck-2026-10-04.md",
+ "evidence": "io.lisp:1289-1291 fnn-log-writer-stop clears *fnn-log-queue-head* after the join; if the writer died inside fnn-log-sink-accept (no handler) a queued (:swap . fd) is dropped with no close and no debt. operator-live.lisp:166-170 escalates through fn-ort-log-close-exit only (when run-code ...); when the run escapes with an error the held/uncertain settlement is a returned value, so the exit code comes from the primary alone (authority is retained in *fnn-owner-retained-service*; reachability of this second case not verified). The unbounded :swap queue push at io.lisp:1301 is r72-F7.",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "fix": "Writer stop closes any queued swap fd through the log close ledger; escalate the settlement on the escape path too.",
+ "id": "SPW-R7",
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "low",
+ "source": "spw-recheck-2026-10-04",
+ "state": "open",
+ "title": "Log writer stop drops a queued swap fd if the writer thread died abnormally, and the operator run escalation of the final log settlement is skipped when the run escapes",
+ "updated": "2026-10-04T14:47:40Z"
+}

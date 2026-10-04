@@ -55,13 +55,13 @@ class TicketingTlsPeer(peer.ScriptedTransitPeer):
         self.context.num_tickets = 2
         self.greeting_delay = greeting_delay
         self.close_after_tickets = close_after_tickets
-        self.accepted = []
+        self.connected_at = []
         self.handshakes = 0
         super().__init__("203 streaming permitted")
 
     def session(self, client, number):
         with self.lock:
-            self.accepted.append(time.monotonic())
+            self.connected_at.append(time.monotonic())
         try:
             tls = self.context.wrap_socket(client, server_side=True)
         except (ssl.SSLError, OSError):
@@ -189,11 +189,11 @@ class NativeFeedTlsReadTests(unittest.TestCase):
         deadline = time.monotonic() + 40
         while time.monotonic() < deadline:
             with scripted.lock:
-                if len(scripted.accepted) >= 5:
+                if len(scripted.connected_at) >= 5:
                     break
             time.sleep(0.1)
         with scripted.lock:
-            accepted = list(scripted.accepted)
+            accepted = list(scripted.connected_at)
         stderr = self.stderr_text(source)
         self.assertGreaterEqual(len(accepted), 5, (accepted, stderr[-4000:]))
         gaps = [b - a for a, b in zip(accepted, accepted[1:])]
@@ -225,19 +225,19 @@ class NativeFeedTlsReadTests(unittest.TestCase):
         self.assertIsNotNone(scripted.await_article(first, timeout=30))
         source.operator("peer", "feed", "pausable", "pause", expect=EXIT_OK)
         with scripted.lock:
-            accepted = len(scripted.accepted)
+            accepted = len(scripted.connected_at)
         held = "<while-paused@example.invalid>"
         self.post(source, held, "while-paused")
         time.sleep(5)
         with scripted.lock:
             self.assertNotIn(held, scripted.articles)
-            self.assertEqual(len(scripted.accepted), accepted, scripted.accepted)
+            self.assertEqual(len(scripted.connected_at), accepted, scripted.connected_at)
         source.operator("peer", "feed", "pausable", "resume", expect=EXIT_OK)
         got = scripted.await_article(held, timeout=30)
         self.assertIsNotNone(got, self.stderr_text(source)[-4000:])
         print("NATIVE-FEED-TLS-READ-WITNESS " + json.dumps({
             "kind": "feed-pause-resume", "held_delivered_after_resume": True,
-            "connections": len(scripted.accepted)}, sort_keys=True), flush=True)
+            "connections": len(scripted.connected_at)}, sort_keys=True), flush=True)
 
     def initialize_implicit(self, name, login, password):
         node = self.initialize(name, login, password)

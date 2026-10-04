@@ -1,0 +1,16 @@
+{
+ "category": "architecture",
+ "detail": "planning/spw-recheck-2026-10-04.md",
+ "evidence": "topic-history-metadata.lisp:12 *fn-th-max-authors* 16 (uses :68,:73,:176); topic-history-admission.lisp:8 *fn-th-max-anchors* 16 (use :99), :9 *fn-th-max-report-quota* 64 (uses :96, topic-history-store-events.lisp:39).",
+ "exposure": "conditional",
+ "file": "books/topic-history-metadata.lisp",
+ "fix": "Decide whether the surface is served; if so move to the profile.",
+ "id": "SPW-D08",
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "low",
+ "source": "spw-recheck-2026-10-04",
+ "state": "open",
+ "title": "D27: topic-history authors per topic, anchors and report quota are capped at 16 / 16 / 64 (experimental surface, low confidence)",
+ "updated": "2026-10-04T14:47:41Z"
+}

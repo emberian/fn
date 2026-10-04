@@ -34,6 +34,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tarfile
@@ -301,6 +302,14 @@ class NativeReplayDeterminismTests(unittest.TestCase):
 
     def test_a_mixed_store_full_replay_is_deterministic(self):
         print("workload:", json.dumps(self.workload), flush=True)
+        # Determinism of a store the workload never changed would pass too:
+        # the article-writing steps must have been accepted (the other
+        # steps' outcomes are recorded above and replay whatever they were).
+        writes = {label: result for label, result in self.workload
+                  if re.fullmatch(r"nntp post (extra )?\d+|operator post \d+", label)}
+        self.assertEqual(len(writes), 17, self.workload)
+        self.assertEqual({label: result for label, result in writes.items()
+                          if result not in ("240", 0)}, {}, self.workload)
         digests, _, _ = self.replays_identically(self.store, "mixed")
         print("\n".join(digests), flush=True)
         if EXPORT:

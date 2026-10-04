@@ -133,12 +133,10 @@ carrier to observe."
        (unless observed
          (return-from issue
            (fnn-pinv-refused :invite '(:refused :carrier))))
-       (let ((plan (apply #'fnn-core 'fn-pinv-host-issue-plan received
-                          (append observed
-                                  (list (fnn-owner-core
-                                         'fn-pinv-host-owner-invitations)
-                                        (fnn-owner-core
-                                         'fn-owner-hybrid-snapshots))))))
+       (let ((plan (fnn-core 'fn-pinv-host-issue-plan received
+                             (first observed) (second observed) (third observed)
+                             (fnn-owner-core 'fn-pinv-host-owner-invitations)
+                             (fnn-owner-core 'fn-owner-hybrid-snapshots))))
          (if (not (eq (first plan) :issue))
              (fnn-pinv-refused :invite plan)
            (fnn-owner-live-reconfigure-locked
@@ -190,11 +188,10 @@ fn-pinv-accept-record-plan); the enrolment follows it."
                 (fnn-pinv-refused :accept plan)))))
        (destructuring-bind (sequence txid generation)
            (fnn-owner-core 'fn-owner-next-store-coordinates)
-         (let ((step (apply #'fnn-core 'fn-pinv-host-accept-step
-                            sequence txid generation received
-                            (append observed
-                                    (list (fnn-owner-core
-                                           'fn-owner-hybrid-snapshots))))))
+         (let ((step (fnn-core 'fn-pinv-host-accept-step
+                               sequence txid generation received
+                               (first observed) (second observed) (third observed)
+                               (fnn-owner-core 'fn-owner-hybrid-snapshots))))
            ;; PKT-473: (:current) is ACL2's answer for an inviter this
            ;; keyring already holds at the invitation's keys: nothing to enrol.
            (case (first step)
@@ -210,13 +207,11 @@ fn-pinv-accept-record-plan); the enrolment follows it."
 slot again, so only a row consumed by exactly this acceptance yields one."
   (destructuring-bind (sequence txid generation)
       (fnn-owner-core 'fn-owner-next-store-coordinates)
-    (let ((step (apply #'fnn-core 'fn-pinv-host-confirm-step
-                       sequence txid generation received
-                       (append observed
-                               (list (fnn-owner-core
-                                      'fn-pinv-host-owner-invitations)
-                                     (fnn-owner-core
-                                      'fn-owner-hybrid-snapshots))))))
+    (let ((step (fnn-core 'fn-pinv-host-confirm-step
+                          sequence txid generation received
+                          (first observed) (second observed) (third observed)
+                          (fnn-owner-core 'fn-pinv-host-owner-invitations)
+                          (fnn-owner-core 'fn-owner-hybrid-snapshots))))
       ;; PKT-211: (:current) is ACL2's answer for an acceptor this keyring
       ;; already holds at the acceptance's keys: nothing to enrol.
       (case (first step)
@@ -238,17 +233,17 @@ the enrolment follows it."
        (unless observed
          (return-from confirm
            (fnn-pinv-refused :confirm '(:refused :carrier))))
-       (let ((plan (apply #'fnn-core 'fn-pinv-host-confirm-record-plan
-                          received invitation
-                          (append observed
-                                  (list (fnn-owner-core
-                                         'fn-pinv-host-owner-invitations)
-                                        (fnn-owner-core
-                                         'fn-owner-hybrid-snapshots)
-                                        (fnn-owner-core
-                                         'fn-pinv-host-owner-peers)
-                                        (fnn-owner-core 'fn-store-genesis-ident)
-                                        (fnn-owner-core 'fn-owner-config-generation))))))
+       ;; SCEN-PINV-CONFIRM-ARITY: the confirm plan takes the invitations,
+       ;; snapshots and peers (books/peer-invite.lisp
+       ;; fn-pinv-confirm-record-plan); the store ident and configuration
+       ;; generation are the accept retry's (books/peer-invite-retry.lisp),
+       ;; which has no confirm form.  Spelled out so the arity lint reads it.
+       (let ((plan (fnn-core 'fn-pinv-host-confirm-record-plan
+                             received invitation
+                             (first observed) (second observed) (third observed)
+                             (fnn-owner-core 'fn-pinv-host-owner-invitations)
+                             (fnn-owner-core 'fn-owner-hybrid-snapshots)
+                             (fnn-owner-core 'fn-pinv-host-owner-peers))))
          (case (first plan)
            (:configure
             (let ((published
@@ -450,14 +445,14 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
           code
         (let* ((observed (fnn-pinv-observe received))
                (source (and observed
-                            (apply #'fnn-core 'fn-pinv-host-acceptance-source
-                                   (fnn-owner-wall-milliseconds) received
-                                   (append observed
-                                           (list (fnn-pinv-principal directory)
-                                                 (fnn-pinv-token directory)
-                                                 (fnn-pinv-public-keys directory)
-                                                 (fnn-pinv-text path)
-                                                 (fnn-pinv-text reachable)))))))
+                            (fnn-core 'fn-pinv-host-acceptance-source
+                                      (fnn-owner-wall-milliseconds) received
+                                      (first observed) (second observed) (third observed)
+                                      (fnn-pinv-principal directory)
+                                      (fnn-pinv-token directory)
+                                      (fnn-pinv-public-keys directory)
+                                      (fnn-pinv-text path)
+                                      (fnn-pinv-text reachable)))))
           (unless (and (fnn-octet-list-p source) (consp source))
             (fnn-refuse "ACL2 refused the acceptance's words"))
           (let ((signed (fnn-pinv-sign directory source

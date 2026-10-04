@@ -74,6 +74,23 @@ class HboxNativeDryRunTests(unittest.TestCase):
         self.assertEqual(dry("--image-set", "nope", "HEAD", "tests.test_native_owner")
                          .returncode, 2)
 
+    def test_overlay_plans_here_and_derives_cores_after_the_link(self):
+        sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
+                             text=True, check=True).stdout.strip()
+        answer = dry("--image-set", sha, "--overlay", "--images", "developer", "HEAD",
+                     "tests.test_native_owner")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        lines = answer.stdout.splitlines()
+        link = next(i for i, line in enumerate(lines) if line.startswith("step image-set"))
+        overlay = next(i for i, line in enumerate(lines) if line.startswith("step overlay"))
+        self.assertLess(link, overlay)
+        self.assertIn("$S/bin/native_overlay.py build $S/overlay --image-set "
+                      f"/tank/fn/images/{sha} --tree $T --images developer", lines[overlay])
+        self.assertIn("native_overlay: plan", answer.stdout + answer.stderr)
+        refused = dry("--overlay", "HEAD", "tests.test_native_owner")
+        self.assertEqual(refused.returncode, 2)
+        self.assertIn("give --image-set SHA", refused.stderr)
+
     def test_reuse_image_links_an_earlier_runs_images_instead_of_building(self):
         answer = dry("--reuse-image", "crem/native-crem3-786b", "--images",
                      "developer,production", "HEAD", "tests.test_native_owner")
@@ -487,6 +504,7 @@ class IdentityTests(unittest.TestCase):
         shutil.copy(ROOT / "tools" / "boxes.sh", tree / "tools" / "boxes.sh")
         shutil.copy(ROOT / "tools" / "native_box.sh", tree / "tools" / "native_box.sh")
         shutil.copy(ROOT / "tools" / "image_set.py", tree / "tools" / "image_set.py")
+        shutil.copy(ROOT / "tools" / "native_overlay.py", tree / "tools" / "native_overlay.py")
         env = {k: v for k, v in os.environ.items() if not k.startswith("FN_HBOX_NATIVE_")}
         probe = subprocess.run(["sh", str(tree / "tools" / "hbox_native.sh")], cwd=ROOT,
                                capture_output=True, text=True, timeout=30, env=env)

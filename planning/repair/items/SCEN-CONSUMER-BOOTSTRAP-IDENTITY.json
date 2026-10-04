@@ -1,0 +1,12 @@
+{
+ "category": "implementation",
+ "file": "host/native/consumer-local.lisp",
+ "id": "SCEN-CONSUMER-BOOTSTRAP-IDENTITY",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "high",
+ "source": "scenarios",
+ "state": "open",
+ "title": "consumer bootstrap/registration refused on the d5b0b9100 images ('consumer refused identity', exit 1): agent_wait 2/2 (smoke-d5b0b9100), consumer_exchange 8/11 and consumer_exchange_two_nodes 3/3 (run2-d5b0b9100). The consumer cursor has no green native run on any current image; consumer_e2 and consumer_inspect have never executed.",
+ "updated": "2026-10-04T15:13:41Z"
+}

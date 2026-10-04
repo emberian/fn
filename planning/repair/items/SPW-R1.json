@@ -1,0 +1,16 @@
+{
+ "category": "tests",
+ "detail": "planning/spw-recheck-2026-10-04.md",
+ "evidence": "Run sbcl --script on tests/native_feed_cleanup_source.lisp (route-table half), native_application_cleanup_source, native_arena_return_source, native_bp_lock_return_source, native_immutable_close_source, native_command_cleanup_source-mock, native_export_terminal_source-mock, native_node_secret_return_source-mock, native_bp_profile_return_source-mock: all exit 1 (UNDEFINED-FUNCTION or SIMPLE-ERROR). native_store_cleanup_source, native_owner_install_cleanup_source, native_checkpoint_cleanup_source-mock and native_log_terminal_source pass. native_rotation_cleanup_source no longer exists and native_arena_return_source / native_immutable_close_source die loading it.",
+ "exposure": "conditional",
+ "file": "tests/native_feed_cleanup_source.lisp",
+ "fix": "Load tests/unwind_cleanups_prelude.lisp (as cd4673a17 did for the *_raw harnesses) in each fixture and update the assertions that a refusal-class primary survives a faulting cleanup to the escalating contract; replace the deleted rotation fixture. Six of these are -mock (f7a1265e8) and back no claim, so a witness that cites a claim needs a non-mock version.",
+ "id": "SPW-R1",
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "medium",
+ "source": "spw-recheck-2026-10-04",
+ "state": "open",
+ "title": "Nine of the thirteen existing exits-audit source witnesses exit 1 at HEAD: they load the real fnn-unwind-cleanups without fnn-escape-cleanup-failed (cd4673a17) or assert the old refusal-primary-always-survives behaviour; the fixes stay in source but no longer have a green witness",
+ "updated": "2026-10-04T14:47:39Z"
+}

@@ -1,0 +1,23 @@
+{
+ "category": "durability",
+ "disposition": "DESIGN",
+ "evidence": "host/native/io.lisp fnn-log-fence (7797-7826): a failed fdatasync fences the kernel and the store (exit 3); the restarted open's fnn-log-recover (7553-7590) streams the active segment through read(2) (fnn-log-pread) and writes only the zero tail [F, EXTENT) before its fdatasync. On Linux a writeback error marks the failed pages clean and keeps them cached (the error is reported once, errseq), so the failed batch's entries read back as valid, become committed history, and are never written again: the recovery's barrier and every later one flush only dirty pages.",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "fix": "Make the open's recovered region durable from its own bytes: P-LOG-RECOVER rewrites the octets it validated in [genesis, F) (one bounded buffer, the octets just read, written back in place: identical bytes, pages dirtied) before its fdatasync, so a cached-but-not-durable batch is either made durable now or its barrier fails again; or read the active segment with O_DIRECT where the platform has it (not ZFS < 2.3). Either changes fn-lg-recover-program's byte program (a write of the read octets is the identity on the byte model but must be a step of it): statement first, a keystone that after log-recovered every octet below F was written by this process's program before its barrier. Cost: one extra write of the active segment per open (the segment is bounded by rotation at K/2). Durable-after-ack (Mini M1) depends on this under FLR-002's indeterminate-completion outcome.",
+ "id": "RL-01",
+ "line": "7553",
+ "locus": "log-recover",
+ "notes": [
+  "10-04 11:32 filed by read-life 2026-10-04",
+  "10-04 11:47 same class: an FNFD feed journal after a failed fsync (fnn-owner-feed-append-locked fences; the restart's fnn-owner-feed-open scans frames from cache and its fsync covers only dirty pages)"
+ ],
+ "owner": "read-life",
+ "reviewer": "read-life (Opus reader), mental execution 2026-10-04; Linux writeback-error semantics (fsyncgate), not reproduced on hbox",
+ "scenario": "EIO (or a transient device error) on the batch barrier, service exits 3, systemd restarts it: the open recovers the batch from cache (unacknowledged members may appear: allowed), serves those articles, and appends and acknowledges later batches after them. A power loss then leaves zeros or garbage under the batch and valid entries after it: the open refuses log-damaged and the operator's only offer is --repair truncate, which drops every acknowledged entry after the hole. Acknowledged data lost; articles served then gone. The same holds for the S045 staged-checkpoint read-back (fnn-state-checkpoint-verify reads the page cache, so it checks the encoder, not the disk) and for P-LOG-RECOVER's own zero tail after a failed recover barrier.",
+ "severity": "high",
+ "source": "read-life",
+ "state": "open",
+ "title": "recovery after a failed log barrier reads the batch from the page cache and re-fences nothing",
+ "updated": "2026-10-04T15:47:42Z"
+}

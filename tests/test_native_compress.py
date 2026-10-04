@@ -13,6 +13,9 @@ host/native/deflate.lisp); its outbound one by the vendored zlib
     AUTHINFO, STARTTLS and a second COMPRESS are 502 (section 2.2.2);
   * compressed octets pipelined behind the COMPRESS line in the same send
     are the stream's first octets, not NNTP;
+  * plaintext the decoder still owes after a :full stop with every input
+    octet read (a match crossing the served read's bound) is served without
+    the client sending more;
   * a decompression bomb is refused by name (compress-bomb) and the
     connection closes; a malformed stream is refused by name
     (compress-malformed) and the connection closes;
@@ -168,6 +171,29 @@ class NativeCompressTests(unittest.TestCase):
             z.out = out
             self.assertTrue(z.line().startswith(b"111 "))
             self.assertTrue(z.command(b"QUIT").startswith(b"205 "))
+            client.close(quit=False)
+        self.node.exited(EXIT_OK)
+
+    def test_plaintext_the_inflater_still_owes_is_served(self):
+        # One fixed-Huffman block (RFC 1951 3.2.6): "DATE" CR LF, then sixteen
+        # matches of length 258 at distance 6, padded to an octet.  Its last
+        # octet is read to decode the last match, whose copy crosses the
+        # served read's 4096th octet, so ACL2's decoder stops :full with no
+        # input left and the last six commands still inside it
+        # (tests/native_zin_owed_raw.lisp).  They are answered without the
+        # client sending anything more.
+        stream = bytes.fromhex("72710c71e5e51a2547c95172941c2547c95172941c"
+                               "2547c95172941c2547c951729404")
+        self.assertEqual(zlib.decompressobj(-15).decompress(stream), b"DATE\r\n" * 689)
+        self.start()
+        with self.client() as client:
+            self.login(client)
+            self.expect(client, b"COMPRESS DEFLATE", b"206 ")
+            z = Compressed(client)
+            client.sock.sendall(stream)
+            for answered in range(689):
+                self.assertTrue(z.line().startswith(b"111 "), answered)
+            # The block is still open, so the session ends with the socket.
             client.close(quit=False)
         self.node.exited(EXIT_OK)
 

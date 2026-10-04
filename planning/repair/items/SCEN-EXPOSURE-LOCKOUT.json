@@ -1,0 +1,12 @@
+{
+ "category": "implementation",
+ "file": "host/native/mux.lisp",
+ "id": "SCEN-EXPOSURE-LOCKOUT",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "scenarios",
+ "state": "open",
+ "title": "public_exposure test_flood_campaign: credential guessing from 127.0.0.7 is closed after 3 x 481 with '400 too many authentication failures', but the next connection from the same address is greeted 201 instead of '400 too many authentication failures from this address' (tests/test_native_public_exposure.py:397). Green on 45c9ec0f6 (10-03); red on peer-d5b0b9100.",
+ "updated": "2026-10-04T15:13:41Z"
+}

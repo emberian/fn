@@ -2388,11 +2388,20 @@
   :keystones (fn-peer-tls-verification-sni-is-never-a-literal
               fn-peer-tls-verification-selects-one-check))
 
+(definterface fn-pinv-host-accept-step
+  :class ::program)
+
+(definterface fn-pinv-host-acceptance-source
+  :class ::program)
+
 (definterface fn-pinv-host-bindings-request-decode
   :class ::program
   :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-pinv-host-bindings-request-encode
+  :class ::program)
+
+(definterface fn-pinv-host-confirm-record-plan
   :class ::program)
 
 (definterface fn-pinv-host-confirm-request-decode
@@ -2402,10 +2411,16 @@
 (definterface fn-pinv-host-confirm-request-encode
   :class ::program)
 
+(definterface fn-pinv-host-confirm-step
+  :class ::program)
+
 (definterface fn-pinv-host-genesis-principal
   :class ::program)
 
 (definterface fn-pinv-host-invitation-source
+  :class ::program)
+
+(definterface fn-pinv-host-issue-plan
   :class ::program)
 
 (definterface fn-pinv-host-kind
@@ -4690,6 +4705,12 @@
 ; replay consumes the immutable render plan without repeating authority.
 ; PROGRAM owner installation and complete guard/refinement bridge are open.
 (definterface fn-owner-article-ready-plan-step :class :program)
+;; A preflight whose payload read did not come is answered 403 in its place.
+(definterface fn-owner-article-preflight-unavailable
+  :class :common-lisp-compliant
+  :keystones ((fn-asto-an-unavailable-preflight-is-answered-in-its-place
+               :via fn-asto-plan-unavailable)
+              (fn-orln-preflight-line-is-a-403 :via fn-orln-preflight-line)))
 (definterface fn-owner-unavailable-line-at :class :program)
 (definterface fn-store-sco-decode :class :program)
 (definterface fn-store-sco-decode-finish :class :program)
@@ -5302,7 +5323,18 @@
 (definterface fn-pwr-cold-descriptor :class :common-lisp-compliant)
 
 (definterface fn-owner-page-window-outcome :class :common-lisp-compliant
-  :kinds ((plan true-listp)))
+  :kinds ((plan true-listp))
+  :keystones ((fn-pwr-a-late-fault-is-a-fault-cancelled-or-not :via fn-pwr-outcome)
+              (fn-pwr-a-cancelled-job-never-publishes :via fn-pwr-outcome)))
+;; The verified-window cache (books/page-window-read.lisp fn-pwc-*).
+(definterface fn-owner-page-window-executor-cache :class :common-lisp-compliant
+  :kinds ((plan true-listp))
+  :keystones ((fn-pwc-cache-only-a-published-window :via fn-pwc-cache)
+              (fn-prw-cache-keeps-only-the-buffer :via fn-prw-cache)))
+(definterface fn-owner-page-window-cache-byte-at :class :common-lisp-compliant
+  :kinds ((plan true-listp))
+  :keystones ((fn-pwc-a-hit-is-the-published-window :via fn-pwc-byte-at)
+              (fn-pwc-hit-requires-a-cached-published-exact-window :via fn-pwc-byte-at)))
 
 (definterface fn-owner-page-window-executor-cancel :class :common-lisp-compliant)
 (definterface fn-owner-page-window-executor-settle-cancelled :class :common-lisp-compliant)
@@ -5425,6 +5457,9 @@
   :keystones (fn-prd-round-past-deadline-is-lost))
 (definterface fn-prd-round-deadline :class :common-lisp-compliant)
 (definterface fn-prd-flight-quantum :class :common-lisp-compliant)
+(definterface fn-prd-pause-ms :class :common-lisp-compliant
+  :keystones (fn-prd-pause-is-bounded fn-prd-pause-polls-while-a-round-runs
+              fn-prd-pause-never-sleeps-past-a-due-round))
 (definterface fn-prd-deadline :class :common-lisp-compliant)
 (definterface fn-prd-resume-at :class :common-lisp-compliant)
 (definterface fn-prd-read-limit :class :common-lisp-compliant)

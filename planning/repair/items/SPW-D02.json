@@ -1,0 +1,16 @@
+{
+ "category": "architecture",
+ "detail": "planning/spw-recheck-2026-10-04.md",
+ "evidence": "bp-node-machine.lisp:20 *fn-bpn-machine-max-job-octets* = *fn-frame-max-blob*; uses bp-node-machine-authorization.lisp:208-210 (send refused), bp-node-machine-codec.lisp:406, bp-report-author.lisp:83. bp-limits.lisp:10-17 admits a sender cannot yet hold an ADU above about 64 KiB as one job (PKT-294 in planning/proofs.json only).",
+ "exposure": "conditional",
+ "file": "books/bp-node-machine.lisp",
+ "fix": "A profile field or a streamed job image; add the row to the bounds design.",
+ "id": "SPW-D02",
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "medium",
+ "source": "spw-recheck-2026-10-04",
+ "state": "open",
+ "title": "D27: a sender job's encoded bundle is capped at 131072 octets whatever the profile ADU/bundle octets (up to 2^24); not in the bounds design",
+ "updated": "2026-10-04T14:47:40Z"
+}

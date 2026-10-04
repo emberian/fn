@@ -191,37 +191,56 @@
 
 ; -----------------------------------------------------------------------------
 ; `register' on a node whose consumer history was never made (PKT-709).  The
-; host sends the register once; when the owner refuses it for want of that
-; history (the word `unbootstrapped'), or an old owner refused it with no
-; word (NONE), the host sends these steps, bootstrap then the register again,
-; only an accepted bootstrap permits the second register; otherwise the
-; bootstrap outcome is the command's.  A register refused for any
-; other named reason, and every outcome that is not a refusal (an uncertain
-; one above all), sends nothing more.
+; host sends the command's request once.  COMMAND is the command's operation
+; and STEP the operation whose outcome (STATUS, WORD) the host just read: the
+; command's own request first (STEP = COMMAND), then, only for a register the
+; owner refused for want of that history (the word `unbootstrapped'), or an
+; old owner refused with no word (NONE), the bootstrap (STEP = :bootstrap).
+; Only an accepted bootstrap permits the second register; otherwise the
+; bootstrap outcome is the command's.  A register refused for any other named
+; reason, every outcome that is not a refusal (an uncertain one above all),
+; and every command that is not a register (`consumer bootstrap' itself above
+; all) sends nothing more.
+;
+; Until 2026-10-04 this decision read only the step: the bootstrap step's
+; acceptance was the same call as a `consumer bootstrap' command's, so an
+; accepted bootstrap command sent a second bootstrap, which the owner refused
+; `identity', and that refusal became the command's (native run2-d5b0b9100:
+; every `consumer bootstrap' on a fresh node answered `consumer refused
+; identity').
 
 (defconst *fn-ncr-unbootstrapped-word*
   '(117 110 98 111 111 116 115 116 114 97 112 112 101 100)) ; unbootstrapped
 
-(defun fn-ncr-cli-after (operation status word)
+(defun fn-ncr-cli-after (command step status word)
   (declare (xargs :guard t))
-  (cond ((and (equal operation :register) (equal status :refused)
+  (cond ((not (equal command :register)) nil)
+        ((and (equal step :register) (equal status :refused)
               (or (equal word *fn-ncr-unbootstrapped-word*)
                   (equal word *fn-nctrl-no-reason-word*)))
          (list :bootstrap :register))
-        ((and (equal operation :bootstrap) (equal status :accepted))
+        ((and (equal step :bootstrap) (equal status :accepted))
          (list :register))
         (t nil)))
 
+; The command's own outcome: only a register refused for want of the
+; consumer history continues, for every command.
 (defthm fn-ncr-cli-after-retries-only-an-unbootstrapped-register
-  (implies (equal operation :register)
-           (iff (fn-ncr-cli-after operation status word)
-                (and (equal status :refused)
-                     (or (equal word *fn-ncr-unbootstrapped-word*)
-                         (equal word *fn-nctrl-no-reason-word*))))))
+  (iff (fn-ncr-cli-after command command status word)
+       (and (equal command :register) (equal status :refused)
+            (or (equal word *fn-ncr-unbootstrapped-word*)
+                (equal word *fn-nctrl-no-reason-word*)))))
 
+; The register's bootstrap step: only its acceptance sends the register again.
 (defthm fn-ncr-cli-after-bootstrap-needs-acceptance
-  (equal (fn-ncr-cli-after :bootstrap status word)
+  (equal (fn-ncr-cli-after :register :bootstrap status word)
          (if (equal status :accepted) (list :register) nil)))
+
+; A command that is not a register is exactly one request, whatever any
+; step answered.
+(defthm fn-ncr-cli-after-only-a-register-sends-more
+  (implies (not (equal command :register))
+           (null (fn-ncr-cli-after command step status word))))
 
 ; -----------------------------------------------------------------------------
 ; 3. The withdrawal report (PKT-710).

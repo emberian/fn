@@ -546,3 +546,34 @@ Cancellation after assignment keeps that operation authority until physical
 return and exact retirement. `fnn-extent-executor-drained-p` observes an empty
 retained native roster under E; joining threads alone is not that observation
 and neither observation substitutes for typed settlement.
+
+## Verified-window cache and served contracts (lane window-read, 2026-10-04)
+
+The served cold path's warm route. A raw window job whose outcome is
+`:ready` (its plan is its token's and published) is, at its last borrow's
+release, moved into the realizer's window cache instead of freed:
+`fn-pwc-cache` admits only a `:ready` outcome (KEYSTONE
+`fn-pwc-cache-only-a-published-window`) and `fn-prw-cache` turns the job's
+ledger row into a `:cached` row charged only the cached buffer
+(`fn-owner-page-window-cache-keep`: no worker slot, descriptor or identity;
+KEYSTONE `fn-prw-cache-keeps-only-the-buffer`). The row holds its file
+incarnation until eviction (`fn-prw-cached-window-holds-file`); eviction
+releases exactly the kept charge (`fn-prw-cached-window-evicts-its-keep`).
+A scalar read of payload byte I first borrows the response's own returned
+window, then a cached window (`fn-pwc-byte-at`; KEYSTONE
+`fn-pwc-a-hit-is-the-published-window`: for a job whose outcome was `:ready`
+and whose row is `:cached`, the cache answers exactly the byte the job's own
+borrow answered, and a byte only when that borrow gave one), and only then
+issues a cold window. The host keeps at most `fn-arx-read-cache-entries`
+entries (the bound `books/cold-line-quanta.lisp` shapes cursor quanta to),
+evicts the oldest on insertion and every entry of a retiring file at
+`fnn-extent-close`. Decoded (compressed) windows are not cached.
+
+Cancellation: a cancelled job whose own plan ended in a failure answers that
+fault (`fn-pwr-outcome`; KEYSTONE
+`fn-pwr-a-late-fault-is-a-fault-cancelled-or-not`, PRF-1057/SCN-216), and
+never publishes (`fn-pwr-a-cancelled-job-never-publishes`); the owner settles
+it and stops. A retrieval whose preflight window did not come within its
+dependency deadline, or was refused by name, is answered 403 in the
+preflight's place with the session unchanged
+(`books/article-stream-owner.lisp` `fn-asto-plan-unavailable`; C3, PRF-933).

@@ -570,7 +570,9 @@ DICT (a list) to N octets: (:ok . OCTET-LIST) or ACL2's (:error WHY)."
 
 (defstruct (fnn-zin (:constructor %make-fnn-zin))
   st win tab out in
-  ;; compressed octets received and not yet consumed (after a :full stop)
+  ;; after a :full stop: the compressed octets received and not yet
+  ;; consumed, an empty vector when every one was read but the decoder still
+  ;; owes plaintext (fnn-zin-inflate); NIL when nothing is owed
   (pending nil))
 
 (defun fnn-zin-private-octets (n)
@@ -601,7 +603,7 @@ lengths (ACL2's fn-zin-reset and fn-zin-buffers-ready)."
   "Feed the compressed OCTETS (appended to what an earlier call left) to
 ACL2's inflater with output bound LIM: (values PLAINTEXT STATUS), PLAINTEXT
 a byte vector of at most LIM octets, STATUS :more (every octet taken; read
-more), :full (LIM reached; octets remain pending for the next call) or the
+more), :full (LIM reached; the next call, with no new octets, goes on) or the
 refusal's line (a string: the connection closes).  The budget covers the
 whole call (at most one action per input bit and per output octet, plus the
 table builds), so :yield only loops."
@@ -626,7 +628,14 @@ table builds), so :yield only loops."
         (case status
           (:yield nil)
           ((:more :full)
-           (setf (fnn-zin-pending zin) (if (< ip n) (subseq input ip) nil))
+           ;; :full can stop with every input octet read and plaintext still
+           ;; owed inside the decoder: the rest of a match being copied, or
+           ;; codes already in its bit buffer.  PENDING is then the empty
+           ;; vector, never NIL, so the caller (host/native/mux.lisp
+           ;; fnn-mux-work) inflates again without waiting for octets the
+           ;; client has no reason to send.
+           (setf (fnn-zin-pending zin)
+                 (if (or (< ip n) (eq status :full)) (subseq input ip) nil))
            (return (values (subseq (svref out2 0) 0 (svref out2 1)) status)))
           (t
            (setf (fnn-zin-pending zin) nil)
