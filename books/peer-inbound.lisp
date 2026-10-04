@@ -437,20 +437,53 @@
   (declare (xargs :guard t))
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))
 
+; rp-refused-memory-poison (read-peer 2026-10-04; the coordinator's ruling).
+; Every remembered reason (*fn-peer-intrinsic-reasons*) is decided by the
+; octets ONE peer offered, so the memory is scoped to that peer: an entry is
+; keyed (PEER . Message-ID string) and only offers on PEER's own sessions
+; read it.  Before, the key was the Message-ID alone and every peer read it,
+; so one peer's mismatched or garbage transfer of <v> made every other
+; peer's offer of <v> draw 438 -- final for the sender -- and the real <v>
+; was never taken (pull offers on the pulled peer's own session, so the same
+; rule holds there).  What is a property of the Message-ID itself is global
+; already: the history (a durably held article, fn-peer-history-hasp), asked
+; first.  No remembered reason is independent of the offered octets.
+(defun fn-peer-refused-key (peer msgid)
+  (declare (xargs :guard t))
+  (cons peer (fn-record-octets-string msgid)))
+
+; The session's peer is its second field (fn-peer-session-peer, below).
 (defun fn-peer-remembered-reason (msgid session)
   (declare (xargs :guard t))
-  (let ((r (fn-rof-lookup (fn-record-octets-string msgid)
+  (let ((r (fn-rof-lookup (fn-peer-refused-key (fn-ag-car (fn-ag-cdr session)) msgid)
                           (fn-peer-session-refused session))))
     (if (member-equal r *fn-peer-intrinsic-reasons*) r nil)))
 
-; What the owner remembers after a transfer: the intrinsic refusal of the
-; octets, under the operator's capacity (books/relay-checks.lisp).
-(defun fn-peer-refused-record (mem cfg msgid octets)
+; The memory's entries of PEER's own offers, and every other entry (other
+; peers', and a shed read's posture entry), each in its order.
+(defun fn-peer-refused-ownp (peer e)
   (declare (xargs :guard t))
-  (if (fn-af-message-idp msgid)
-      (fn-rof-record mem (fn-rck-refused-capacity cfg)
-                     (fn-record-octets-string msgid)
-                     (fn-peer-intrinsic-refusal msgid octets))
+  (and (consp e) (consp (car e)) (equal (car (car e)) peer)))
+
+(def-loop fn-peer-refused-of (mem peer) :shape :concat :over mem
+  :body (if (fn-peer-refused-ownp peer (car mem)) (list (car mem)) nil))
+
+(def-loop fn-peer-refused-others (mem peer) :shape :concat :over mem
+  :body (if (fn-peer-refused-ownp peer (car mem)) nil (list (car mem))))
+
+; What the owner remembers after PEER's transfer: the intrinsic refusal of
+; the octets, among PEER's own entries, under the operator's capacity per
+; peer (books/relay-checks.lisp; the whole memory is at most the capacity
+; times the configured peers, D27).  The others' entries are untouched.
+(defun fn-peer-refused-record (mem cfg peer msgid octets)
+  (declare (xargs :guard t))
+  (if (and (fn-af-message-idp msgid)
+           (fn-peer-intrinsic-refusal msgid octets))
+      (append (fn-rof-record (fn-peer-refused-of mem peer)
+                             (fn-rck-refused-capacity cfg)
+                             (fn-peer-refused-key peer msgid)
+                             (fn-peer-intrinsic-refusal msgid octets))
+              (fn-peer-refused-others mem peer))
     mem))
 
 ; RFC 5537 section 3.6 step 4 ("SHOULD reject any article that does not
