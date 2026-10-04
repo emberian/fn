@@ -9852,6 +9852,36 @@
         "planning/evidence/manifests/certify-20261003T180302Z-2794821.json"
       ],
       "execution_scope": "Actual trusted repository function bodies with Common Lisp shims and two MBE choices; normal ACL2 guards prove branch equivalence. No native endpoint, full semantic decode quantum or GC tariff claim."
+    },
+    {
+      "id": "SCN-1139",
+      "title": "Dedicated pull credential survives feed edits and restart",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-023"
+      ],
+      "steps": [
+        "Configure scratch A with TLS-only reader authentication and B with a wrong outbound credential. Select a separate correct pull-login file and pull the first article while both distinct profiles remain configured.",
+        "Stop B, disable outbound with peer set --send -, restart B, and pull a second article."
+      ],
+      "expected": [
+        "Both articles are present exactly once; the reader selection survives the feed edit and persisted restart.",
+        "The recording proxy sees no AUTHINFO or archive-reading command in plaintext."
+      ],
+      "evidence": [
+        "tests/test_native_peer_pull.py",
+        "tests/acl2/peer-pull-auth-tests.lisp",
+        "tests/acl2/native-admin-pull-auth-tests.lisp",
+        "tests/acl2/native-admin-peer-pull-auth-tests.lisp"
+      ],
+      "implementation": {
+        "test": "tests.test_native_peer_pull",
+        "cases": [
+          "NativePeerPullTests.test_pull_only_credential_survives_feed_edits_and_restart"
+        ],
+        "native": true
+      }
     }
   ]
 }

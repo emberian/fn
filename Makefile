@@ -1870,6 +1870,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-carriage-tests \
 	books/peer-pull \
 	tests/acl2/peer-pull-tests \
+	books/peer-pull-auth \
+	tests/acl2/peer-pull-auth-tests \
+	tests/acl2/native-admin-peer-pull-auth-tests \
+	tests/acl2/native-admin-pull-auth-tests \
 	books/peer-pull-session \
 	tests/acl2/peer-pull-session-tests \
 	books/peer-catchup-serve \
