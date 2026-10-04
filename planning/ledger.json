@@ -146142,245 +146142,245 @@
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 128,
+        "line": 136,
         "name": "fnn-owner-transit-serialized",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 128,
+        "line": 136,
         "name": "fnn-owner-names",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 148,
+        "line": 156,
         "name": "fnn-owner-core",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 199,
+        "line": 207,
         "name": "serious-condition",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 199,
+        "line": 207,
         "name": "type-of",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 241,
+        "line": 249,
         "name": "fnn-owner-action",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 250,
+        "line": 258,
         "name": "fnn-owner-feed-arena-step",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 250,
+        "line": 258,
         "name": "fnn-owner-feed-word",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 250,
+        "line": 258,
         "name": "fnn-owner-feed-command",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 263,
+        "line": 271,
         "name": "fnn-tls-open-client-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 263,
+        "line": 271,
         "name": "fnn-tls-client-begin",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 281,
+        "line": 289,
         "name": "plusp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 298,
+        "line": 306,
         "name": "fnn-tls-write-now-range",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 325,
+        "line": 333,
         "name": "fnn-tls-read-now",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 333,
+        "line": 341,
         "name": "fnn-owner-feed-step",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 333,
+        "line": 341,
         "name": "fnn-owner-feed-flush",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 333,
+        "line": 341,
         "name": "fnn-owner-feed-log",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 427,
+        "line": 435,
         "name": "fnn-tls-close-channel",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 427,
+        "line": 435,
         "name": "fnn-tls-close-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 484,
+        "line": 492,
         "name": "fnn-tls-error",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 515,
+        "line": 523,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 527,
+        "line": 535,
         "name": "fnn-control-stop-calling-thread",
         "source": "host/native/control.lisp",
         "reason": "defined in host/native/control.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 560,
+        "line": 568,
         "name": "fnn-tls-client-step",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 560,
+        "line": 568,
         "name": "fnn-tls-handshake-error",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 641,
+        "line": 649,
         "name": "expt",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 656,
+        "line": 664,
         "name": "fnn-owner-service-wait-lock",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 656,
+        "line": 664,
         "name": "fnn-owner-service-wait-queue",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 656,
+        "line": 664,
         "name": "fnn-owner-service-commits",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 701,
+        "line": 709,
         "name": "fnn-owner-thread-escape",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 710,
+        "line": 718,
         "name": "def-actor",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 717,
+        "line": 725,
         "name": "fnn-feed-spawn-worker",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 732,
+        "line": 740,
         "name": "fnn-owner-signal-commit",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 749,
+        "line": 757,
         "name": "fnn-owner-actor-for-custody",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 749,
+        "line": 757,
         "name": "fnn-owner-actor-thread",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/feed-service.lisp",
-        "line": 749,
+        "line": 757,
         "name": "fnn-owner-actor-join",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
