@@ -114,7 +114,7 @@ class StreamingPeer:
                 words = line.rstrip(b"\r\n").decode("ascii", "replace").split()
                 verb = words[0].upper() if words else ""
                 with self.lock:
-                    self.commands.append(" ".join(words))
+                    self.commands.append((number, " ".join(words)))
                 if verb == "MODE":
                     stream.write(b"203 streaming permitted\r\n")
                 elif verb == "CHECK":
@@ -208,6 +208,14 @@ class HostileFeedTests(unittest.TestCase):
             commands = list(peer.commands)
         self.assertIsNotNone(got, "the stray 239 for {} was taken as the answer for {}: {}"
                              .format(first, second, commands[-12:]))
+        # The stray echo is a loss of the link (books/peer-feed.lisp
+        # fn-feed-reply-class :lost): <b> is re-offered by CHECK on a fresh
+        # connection, never retired by the stray line on the old one.
+        first_link = next(n for n, line in commands if line == "TAKETHIS " + first)
+        self.assertTrue(any(n > first_link and line == "CHECK " + second
+                            for n, line in commands),
+                        "no fresh connection re-offered {} by CHECK: {}".format(
+                            second, commands[-12:]))
         self.assertIsNone(source.process.poll())
 
     def test_a_silent_peer_is_dropped_at_the_round_deadline_and_redialled(self):
