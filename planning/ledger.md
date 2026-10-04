@@ -13,17 +13,17 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 3005 |
 | Certification roots in the Makefile | 2511 |
 | Books inside the root closure | 2830 |
-| `defthm` and `defthmd` events | 39481 |
+| `defthm` and `defthmd` events | 39482 |
 | `defun` events | 25456 |
 | Functions with verified guards | 4046 |
 | Functions declared `:verify-guards nil` and never verified | 3288 |
 | Functions left at the default with an explicit guard | 14022 |
 | Functions left at the default with no guard | 4100 |
-| `assert-event` checks | 27114 |
+| `assert-event` checks | 27116 |
 | `must-fail` checks | 2682 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 253 |
-| Theorems flagged SUSPECT by shape | 1446 |
+| Theorems flagged SUSPECT by shape | 1447 |
 | Export-hygiene warnings | 418 |
 | Enabled-projection warnings | 80 |
 | Teeth-form warnings | 294 |
@@ -586,7 +586,7 @@ that `make certify` requests.
 | `books/consumer-progress-carried.lisp` | root | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/consumer-publication-budget.lisp` | closure | 5 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/consumer-publication-charge.lisp` | closure | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/consumer-reason.lisp` | root | 22 | 28 | 5/0/23/0 | 0 | 0 | 1 |
+| `books/consumer-reason.lisp` | root | 23 | 28 | 5/0/23/0 | 0 | 0 | 2 |
 | `books/consumer-remote-buffer.lisp` | root | 1 | 15 | 0/0/15/0 | 0 | 0 | 0 |
 | `books/consumer-remote-codec.lisp` | root | 4 | 9 | 0/0/9/0 | 0 | 0 | 1 |
 | `books/consumer-remote-collection-buffer.lisp` | closure | 1 | 6 | 0/0/6/0 | 0 | 0 | 0 |
@@ -2218,7 +2218,7 @@ that `make certify` requests.
 | `tests/acl2/consumer-poll-index-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 5 | 1 | 0 |
 | `tests/acl2/consumer-poll-projection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |
 | `tests/acl2/consumer-position-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 48 | 10 | 0 |
-| `tests/acl2/consumer-reason-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 60 | 1 | 0 |
+| `tests/acl2/consumer-reason-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 62 | 1 | 0 |
 | `tests/acl2/consumer-remote-buffer-tests.lisp` | root | 1 | 2 | 0/0/2/0 | 2 | 0 | 0 |
 | `tests/acl2/consumer-remote-client-contract-tests.lisp` | - | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/consumer-remote-collection-state-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
@@ -3586,6 +3586,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-ncfg-opt-pair-of-nil` | `books/native-config-show.lisp` | 821 | arm-of-definition: constant arguments select one IF/COND arm of fn-ncfg-opt-pair and the conclusion is that arm's value |
 | `fn-ncfg-trim-left-noop` | `books/native-config-show.lisp` | 389 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ncfg-trim-left and the conclusion is that arm's value |
 | `fn-ncfg-trim-right-rev-noop` | `books/native-config-show.lisp` | 389 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ncfg-trim-right-rev and the conclusion is that arm's value |
+| `fn-ncr-cli-after-only-a-register-sends-more` | `books/consumer-reason.lisp` | 241 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ncr-cli-after and the conclusion is that arm's value |
 | `fn-ncr-cli-plan-without-the-flag-by-definition` | `books/consumer-reason.lisp` | 187 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ncr-cli-plan and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-ncr-cli-plan and the conclusion is that branch's value |
 | `fn-ndh-cnode-of-non-cnode` | `books/number-durability-handles.lisp` | 476 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ndh-cnode and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-ndh-cnode and the conclusion is that branch's value |
 | `fn-ndh-event-held` | `books/number-durability-handles.lisp` | 385 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ndh-event and the conclusion is that arm's value |
