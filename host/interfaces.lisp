@@ -4904,13 +4904,6 @@
 (definterface fn-owner-orcp-finish
   :class ::program)
 
-; host/native/owner.lisp dispatches it (lane arena-forget: the deferred
-; reclaim seals nothing).
-(definterface fn-orcs-predict
-  :class :common-lisp-compliant
-  :kinds ((generation natp) (h natp))
-  :keystones (fn-orcs-predict-seal-refines-intern))
-
 (definterface fn-orcs-seal
   :class :common-lisp-compliant
   :keystones (fn-orcs-seal-is-the-intern))
