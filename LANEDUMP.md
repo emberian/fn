@@ -4780,3 +4780,19 @@ Coordinator copy: build/coordinator/lanedumps/served.md (authoritative, updated 
 - SCL2 natives tightened (over_pins exact 211 2 1 34 + NEXT/LAST across tombstones; expiry exact 211 3 3 5);
   over_pins RED on 45e05c7f (211 34 1 34). Catalog-hole navigation native wired (green on 45e05c7f: guard).
 - SCL4 / PRF-1237/1238 discovery snapshot: not landed; continuation in the coordinator lanedump.
+
+## carrier2 (Opus, successor of carrier) -- 2026-10-04, ramp-down exit
+
+Branch lane/carrier2 (worktree build/lanes/carrier2). Full entry: build/coordinator/lanedumps/carrier2.md.
+- Packet planning/design/owner-carrier-2026-10-04.md: DECIDED (AGREED with amendments). grok-4.7 and Kimi K2.7 both
+  completed; section 9 answers each finding with a witness; section 5a is the conservative writer criterion.
+- S1 (fn-owner-io off the whole-state guard): io chain mbe-free in lockstep (store-files, store-node, records-concrete,
+  records-concrete-owner, owner-log-route); fn-owner-io's guard is fn-sf-countersp of the store's files; the bridge
+  fn-owner-retain-statep-implies-io-guard plus one :concludes line. The theorems that stated the deleted identity arm
+  are restated: store-node-traces (2), config-store-steps (1), store-budget-stored-post (1), owner-number-bound (3),
+  owner-number-bound-join (PRF-1318, unadmitted, blocked below by served-catalog-join reds S1 did not cause).
+- Gate: laptop certify-20261004T050354Z-53576 passed (36 roots, 70 books); the teeth book loads green in the REPL.
+- Guard cost (evidence carrier2-s1-guard-cost-2026-10-04.json): the old head costs 4.0 ms / 9.1 MB at 1k and
+  45 ms / 88 MB at 10k. The new head costs 30 ns; fn-sn-io (guard plus step) costs 0.39 us, flat in N.
+- Writer census tool tools/owner_carrier/writers.lisp + teeth (REPL green); the census itself needs an image world.
+Continuation: build/coordinator/lanedumps/carrier2.md "Continuation, exactly".
