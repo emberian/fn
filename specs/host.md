@@ -389,7 +389,7 @@ above measurement, instead of a fixed 20 s that sat within 2x of it.
 Native feed links retain peer identifiers as ACL2 octet lists. Socket buffers
 remain byte vectors, converted explicitly at the core boundary. The actual
 `fnn-feed-link-for-peer` constructor and `fnn-feed-dial-plan` calls are exercised
-by `tests/native_feed_peer_octets_raw.lisp` using the production conversion helpers
+by `tests/native_feed_peer_octets_raw-mock.lisp` using the production conversion helpers
 and a boundary observer. This regression rejects the previous vector-valued
 identifier, which made the logical peer lookup report an absent endpoint. It
 checks representation transport only; configured lookup, reconnection and
@@ -1886,7 +1886,7 @@ ACL2-authored five-field event, producing the one-shot grant consumed by
 `fn-owner-prepare-retention`. Refused or malformed gate results precede log
 kernel, owner reservation and frontier effects. Standalone Store reservations
 retain the existing codec successor route. The source routing fixture
-`tests/native_retention_identity_route_raw.lisp` checks these calls and order;
+`tests/native_retention_identity_route_raw-mock.lisp` checks these calls and order;
 a matching native BP undertake/release/reopen scenario remains required.
 
 ## Once-only mux cleanup receipts (SCN-1091)

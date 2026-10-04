@@ -1,8 +1,0 @@
-[Unit]
-Description=Snapshot rpool/fn-public (hourly, pruned)
-Requires=fn-store-rpool.service
-After=fn-store-rpool.service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/sbin/fn-store-snapshot

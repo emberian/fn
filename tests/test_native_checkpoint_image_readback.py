@@ -19,7 +19,7 @@ class CheckpointImageReadback(unittest.TestCase):
             with self.subTest(mode=mode), tempfile.TemporaryDirectory(prefix="fn-image-readback-") as directory:
                 result = subprocess.run(
                     [os.environ.get("FN_SBCL", "sbcl"), "--noinform", "--script",
-                     "tests/native_checkpoint_image_readback_raw.lisp", directory, mode],
+                     "tests/native_checkpoint_image_readback_raw-mock.lisp", directory, mode],
                     cwd=ROOT, capture_output=True, text=True, timeout=30)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn("CHECKPOINT_IMAGE_READBACK_PASS " + mode, result.stdout)
