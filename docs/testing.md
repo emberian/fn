@@ -167,7 +167,11 @@ Run a tier against a published image set (no certify, no build):
     python3 tools/scenario_suite.py run peer --image-set SHA --rev .  # this worktree's tests
     tools/hbox_native.sh attach smoke-SHA9                             # wait; print run.log
 
-`run` prints the `hbox_native.sh` command it starts and, for a tier's kits,
+`--box lat1` (or cloud1, cloud2) runs a tier on a rented box: they mirror
+the published image sets, but hold neither hbox's INN tree, nor docker, nor
+the fixture stores, so peer_pull's INN cases, reader_clients and the scale
+tier's fixtures need hbox (the default).  `run` prints the `hbox_native.sh`
+command it starts and, for a tier's kits,
 the command to run by hand on hbox.  `list [TIER]` shows each entry with its
 questions and reason; `modules TIER` prints the module names for any other
 runner (an overlay image is picked up through the same `FN_NATIVE_*`
