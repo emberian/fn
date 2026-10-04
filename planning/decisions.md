@@ -1695,6 +1695,21 @@ the owed-writer list gains the 22 state-returning entries declared since
 POST before/after on an image -- both wait for the first image set built from
 a source that contains them.
 
+D40 reader carve-out, coordinator ruling (2026-10-04; integrator-2, e63b7d1ff):
+the declaration lint's preservation clause (bc4900e8d: each guard conjunct a
+:raw-with entry skips needs a named positive preservation theorem mentioning
+the entry) now applies only to conjuncts over a stobj the entry RETURNS
+(books/definterface.lisp fn-di-written-conjuncts).  An entry that returns no
+stobj -- the history-root readers fn-hroot-index-demand, fn-hroot-read-demand,
+fn-hist$p-read, fn-hist$p-candidate-word -- cannot change the carried state,
+so a preservation theorem for it is vacuous; the obligation that matters for a
+reader is unchanged: a named bridge theorem concludes each skipped conjunct,
+and every named theorem relates to the guard.  Teeth in
+tests/acl2/definterface-tests.lisp section 4: a reader accepted with the bridge
+alone, a writer with the bridge alone still refused.  The readers' rows were
+never admitted before: each interfaces ld reverts the world at its first
+error, and the image runs stopped earlier.
+
 ### 2026-09-29: authenticated remote consumers (PKT-673)
 
 Ember's explicit answer to whether a remote agent may poll and acknowledge
