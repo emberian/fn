@@ -1,3 +1,24 @@
+# Cold-line lane — Opus (2026-10-04)
+
+Tree `build/lanes/cold-line`, branch `lane/cold-line` (origin), from `origin/dev` d4e53323c, merged `origin/next` 898969368 (nntp-auth fix). Ledger: `sl-cold-line-quanta` (owner cold-line), proof-owed `CL-OWED-HDR-CURSOR-FRAME`, `CL-OWED-NEWNEWS-DEMAND`, `CL-PRE-PRODUCTIVE-READ-NEWNEWS`.
+
+## What the change is
+- `books/cold-line-quanta.lisp` (new): the host's no-I/O rerun loop as an LRU model (`fn-clq-run`, `fn-clq-resume`, `fn-clq-line`). KEYSTONE `fn-clq-resume-finishes`: a quantum of at most C reads finishes within len+1 runs from any cache. TEETH `fn-clq-nine-reads-never-finish`: 9 distinct reads at C = 8 never finish, for every N (the 45e05c7fd defect). LINE `fn-clq-quantized-line-finishes`: N reads in quanta of Q <= C finish in ceiling(N/Q) quanta, <= N + ceiling(N/Q) runs. `fn-clq-payload-quantum` = 4 = C/2.
+- `books/served-catalog.lisp`: HDR/XHDR, XPAT and the compatibility HDR Xref RANGE arms answer with the OVER cursor carrying a header source in slot 7 (`fn-nntp-hdr-range-ovw`, `fn-ovw-hdr-cursor`, `fn-ovw-hdr-lines`); `fn-ovw-cursor-octets` gives its meaning. The three `-is-archive` / `-is-hdr` theorems and `fn-rcompat-reply-cat-is-rcompat-reply` are restated modulo `fn-ovw-expand` (via local copies of the replaced whole-range arms with their original proofs).
+- `books/over-window.lisp`: `fn-ovw-step` runs a header cursor's window of `fn-ovw-hdr-quantum` numbers (min(W,4) when the source reads payloads; W for an overview field). KEYSTONES `fn-ovw-run-is-hdr-reply` (no truncation, every W), `fn-ovw-step-payloads-fit` (a quantum reads <= 4 payloads), `fn-ovw-hdr-quanta-is-ceiling` (ceiling(N/Q') quanta). FRAME theorems now hypothesize `(not (nth 7 cur))` -> CL-OWED-HDR-CURSOR-FRAME.
+- `books/served-plan-cursor.lisp`: header cursors are fresh plan cursors (`fn-splan-fresh-cursorp`, `fn-nntp-hdr-range-ovw-emits-a-fresh-cursor`): the drain keystone covers HDR ranges. `books/served-catalog-dispatch.lisp`: `fn-nntp-archive-command-cat-is-pinned` statement UNCHANGED, proved again. `books/productive-read.lisp`: header reply is no article reply. No host change: the host already runs `fn-qplan-cursor-step` -> `fn-ovw-step` under `*fnn-extent-no-io*` with throw/issue/await/rerun.
+- NEWNEWS: dev's `-cat` arm already scans the tombstone column (`fn-nntp-newnews-response-stream`); not changed here. Its quantum is bounded by W visits, not reads -> CL-OWED-NEWNEWS-DEMAND (generators' `:demand` at lane/generators d54b7b955).
+
+## Evidence
+- RED before: hbox `cl-red-45e` (`hbox:/tank/fn/scratch/cold-line/native-cl-red-45e`), image set 45e05c7fd, tree dbf62fe95, `tests.test_native_cold_line_quanta`: all 10 lines NO ANSWER in 20 s at 40 articles.
+- REPL (persvati, --source-deps, start 03:5xZ, stopped after each book): served-catalog 0 refused; over-window 0 refused; served-plan-cursor 0 refused; served-catalog-dispatch 0 refused; protocol-served-table and protocol-served load; tests/acl2/over-window-tests 0 refused; laptop: cold-line-quanta, tests/acl2/cold-line-quanta-tests 0 refused. productive-read: 3 refusals, 1 pre-existing (CL-PRE-PRODUCTIVE-READ-NEWNEWS) + 2 that use it.
+- GREEN after: owed. Needs an image of this branch (asked of the integrator), then `tools/hbox_native.sh --reuse-image ... tests.test_native_cold_line_quanta`.
+
+## Continuation
+1. Integrator image of lane/cold-line HEAD -> run `tests.test_native_cold_line_quanta` (and `tests.test_native_cold_line_deadline`, `tests.test_native_over_cursor_cost`) on it; file evidence (`evidence_store.py put`), index line.
+2. Farm certify `--affected-by books/served-catalog.lisp` (hbox, one slot, --jobs 8, via the assembler); fix forward any red in the closure (served-catalog-chain, protocol-served, owner-reader-read, productive-read-*, tests).
+3. CL-OWED-NEWNEWS-DEMAND once generators' :demand is on next.
+
 # Harvest lane — Opus (2026-10-04)
 
 Tree: `build/lanes/harvest`, branch `lane/harvest`, from `origin/dev` `d4e53323c`. Git only (no ACL2, no builds). The register is `planning/harvest-2026-10-04.md`.

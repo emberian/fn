@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/over-window.lisp",
+ "id": "CL-OWED-HDR-CURSOR-FRAME",
+ "notes": [],
+ "owner": "cold-line",
+ "severity": "medium",
+ "slice": "cold-line",
+ "source": "cold-line",
+ "state": "open",
+ "title": "fn-ovw-step-of-commit-pinned / fn-ovw-step-of-withdraw-pinned now carry (not (nth 7 cur)): the FRAME (a quantum after a commit or a later withdrawal answers what it answered before, for a cursor pinned at or below the count) is proved for OVER cursors only. Owed: the same two theorems for header cursors (fn-ovw-hdr-step), through a view lemma for fn-ovw-hdr-lines (fn-scol-hdr-content and fn-rcompat-xref-content over the pinned view's articles) as fn-ovw-lines-is-view does for NOV lines.",
+ "updated": "2026-10-04T04:18:51Z"
+}

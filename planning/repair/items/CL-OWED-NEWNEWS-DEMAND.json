@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/served-plan-cursor.lisp",
+ "id": "CL-OWED-NEWNEWS-DEMAND",
+ "notes": [],
+ "owner": "cold-line",
+ "severity": "high",
+ "slice": "cold-line",
+ "source": "cold-line",
+ "state": "open",
+ "title": "The NEWNEWS stream quantum (fn-splan-rest-cursor-step: fn-nnw-stream-batch cur w w) visits up to W = 256 candidates; each reads no payload only while the row's column is decided (fn-scol-tombstonep falls back to fn-nntp-article-tombstonep, a payload read). Owed: convert fn-nnw-stream's batch onto def-cursor :demand (lane/generators d54b7b955: D = candidates visited, demand = fn-clq-payload-quantum) so a quantum's payload reads are bounded below fn-arx-read-cache-entries unconditionally, with the residual/octet theorems re-proved at the new arity.",
+ "updated": "2026-10-04T04:18:51Z"
+}

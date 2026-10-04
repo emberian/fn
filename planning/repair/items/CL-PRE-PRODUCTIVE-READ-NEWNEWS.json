@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/productive-read.lisp",
+ "id": "CL-PRE-PRODUCTIVE-READ-NEWNEWS",
+ "notes": [],
+ "owner": "cold-line",
+ "severity": "medium",
+ "slice": "cold-line",
+ "source": "cold-line",
+ "state": "open",
+ "title": "books/productive-read.lisp fn-pcr-expand-inverts-a-distinct-single-reply does not go through (persvati REPL, lane cold-line at 7bb667b19): its checkpoint is a :newnews-cursor effect whose expansion is fn-nnw-stream-remaining, not fn-ovw-cursor-octets, so the hypothesis about fn-ovw-cursor-octets does not decide it. The goal holds no header-cursor term (not a cold-line regression); fn-pcr-expand-inverts-220-reply and fn-pcr-expanded-numbered-220-is-the-raw-reply use it and stop with it. Owed: state the hypothesis over the effect's expansion (fn-ovw-expand of the one effect), or exclude NEWNEWS effects.",
+ "updated": "2026-10-04T04:18:51Z"
+}
