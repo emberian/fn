@@ -426,6 +426,14 @@ failed effects remain discoverable while independent physical cleanup runs."
           (fnn-mux-cleanup-attempt loop conn :zout-free
             (lambda () (fnn-zout-free (fnn-mux-conn-zout conn))) nil nil)
           (setf (fnn-mux-conn-zout conn) nil))
+        ;; Leave the stop hook's roster before the fd can be reused
+        ;; (S084): the stopper shuts down every socket still listed.
+        (fnn-mux-cleanup-attempt loop conn :client-roster
+          (lambda ()
+            (fnn-with-roster (service)
+              (setf (fnn-owner-service-clients service)
+                    (delete (fnn-mux-conn-socket conn)
+                            (fnn-owner-service-clients service) :test #'eq)))) nil nil)
         (fnn-mux-cleanup-attempt loop conn :socket-shut
           (lambda ()
             (multiple-value-bind (ignored receipt condition)
@@ -441,12 +449,6 @@ failed effects remain discoverable while independent physical cleanup runs."
               (delete conn (fnn-mux-loop-queued loop) :test #'eq)
               (fnn-mux-loop-conns loop)
               (delete conn (fnn-mux-loop-conns loop) :test #'eq))
-        (fnn-mux-cleanup-attempt loop conn :client-roster
-          (lambda ()
-            (fnn-with-roster (service)
-              (setf (fnn-owner-service-clients service)
-                    (delete (fnn-mux-conn-socket conn)
-                            (fnn-owner-service-clients service) :test #'eq)))) nil nil)
         (when (fnn-mux-conn-done conn)
           (fnn-mux-cleanup-attempt loop conn :done-signal
             (lambda () (sb-thread:signal-semaphore (fnn-mux-conn-done conn))) nil nil)))
