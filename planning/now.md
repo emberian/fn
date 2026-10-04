@@ -1,4 +1,29 @@
-# Now — 2026-10-03 convergence
+# Now — coordinates (2026-10-04, wave 0)
+
+Coordinates, not narrative. A number here names the sha it was measured at;
+a generated number is quoted from its generator's output at that sha or not
+at all. The integrator rewrites this table when a batch lands on `dev`.
+The operating contract for this wave is the 2026-10-04 swarm plan's §3
+(the loading gate, replacement not reverts, generated truth, the cadence);
+"What a step is" in [how we work](how-we-work.md) stands.
+
+| coordinate | value |
+|---|---|
+| source | `origin/dev` = `d4e53323c` (2026-10-03 15:20); wave-0 batch on `integrate/20261004` |
+| last published image set | `hbox:/tank/fn/images/45e05c7f…` (dev 2026-10-02 18:30) |
+| last serving evidence on dev | stage 0, 2026-10-01 21:16 (`6eb7d166a`, native s0p 12/13) |
+| deployment | two nodes on 6.6.0 from 2026-09-28 source (`fn.fg-goose.online`; hbox `/tank/fn/node`) |
+| `make check` (Python 3.12, hbox, real checkout, certs installed) | 47/91 red at `4fd4cfc51` (= `d4e53323c` + the 3.11 f-string fix) |
+| composition | current source does not `ld` to native entry; deferral list 85 (`planning/evidence/current-union-recipe-20261003/`); zero-deferral world is wave 1's exit |
+| proof base | `tools/green_check.py`, `planning/current.md`: regenerated in the wave-0 batch commit, quoted at that sha |
+| boxes | hbox for image sets, farm certify (≤6 jobs, `swarm-build`) and ≤3 REPLs; persvati for the certify mirror and REPLs |
+
+## Historical
+
+Everything below is the narrative of earlier pages, kept as written; it is
+not current.
+
+## Now — 2026-10-03 convergence (historical)
 
 The implementation and source-tracing wave has ended. All domain owners yielded;
 Source merge and generated metadata are converged. All deputies remain stopped.

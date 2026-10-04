@@ -15,9 +15,6 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
-(defun fnn-close (fd)
-  (declare (ignorable fd))
-  (harness-stub-reached 'fnn-close "host/native/io.lisp"))
 (defun fnn-control-close (control service)
   (declare (ignorable control service))
   (harness-stub-reached 'fnn-control-close "host/native/control.lisp"))
@@ -93,6 +90,7 @@
     (fn-orv-startup-grant (if *startup-refuse* '(:refused :output-pool-not-held) '(:hold)))
     (create-fn-resource-ledger (incf *startup-allocations*) (setq *startup-ledger* (list :private-ledger)))
     (fn-heap-figure-octets 1000000)
+    (fn-ort-log-close-exit (apply #'fn-ort-log-close-exit args))
     (otherwise (error "unrecorded startup subject ~s" name))))
 (defun fnn-call (name &rest args)
   (push (cons name args) *startup-calls*)
@@ -118,12 +116,22 @@
 (defun fnn-pull-service-wake (&rest args) (declare (ignore args)) nil)
 (defun fnn-pull-service-close (&rest args) (declare (ignore args)) nil)
 (defun fnn-web-close-face (&rest args) (declare (ignore args)) nil)
+;; The run's final log/Store settlement (fnn-operator-run-final-settlement)
+;; is outside this boundary: the owner run above is a recording stub, so
+;; nothing was opened to settle.  Recorded, never decided here.
+(defvar *startup-settlements* nil)
+(defun fnn-operator-run-final-settlement (cleanup-okp)
+  (push cleanup-okp *startup-settlements*) :joined)
+;; ACL2's exit over that settlement (books/owner-retire-settlement.lisp).
+(load-deployed-forms "books/owner-retire-settlement.lisp" '((defun fn-ort-log-close-exit)))
 (defun fnn-exit-code-for (condition) (error condition))
 (load-deployed-forms "host/native/control-transport.lisp"
  '((defstruct (fnn-control-state (:constructor %make-fnn-control-state)))))
 (load-deployed-forms "host/native/control.lisp" '((defun fnn-control-owner-run-normalized)))
 (load-deployed-forms "host/native/owner.lisp"
  '((defun fnn-owner-run-normalized) (defun fnn-owner-output-install)))
+;; The run's cleanup is the shipped unwind macro.
+(load-deployed-forms "host/native/io.lisp" '((defmacro fnn-unwind-cleanups)))
 (load-deployed-forms "host/native/operator-live.lisp" '((defun fnn-operator-execute-run)))
 (check (= 0 (fnn-operator-execute-run :accepted-result)) "actual accepted-plan transport reaches owner")
 (check (and (eq (nth 11 *startup-run-args*) *startup-cold*)

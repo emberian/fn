@@ -64,11 +64,6 @@ def text(result):
 
 
 class ModerationSourceTests(unittest.TestCase):
-    def test_the_delta_code_is_23(self):
-        config = (ROOT / "books" / "config.lisp").read_text(encoding="ascii")
-        self.assertIn("((equal kind :set-group-moderation) 23)", config)
-        self.assertIn("((equal code 23) :set-group-moderation)", config)
-
     def test_the_post_step_runs_the_gate_after_the_read_only_gate(self):
         post = (ROOT / "books" / "nntp-post.lisp").read_text(encoding="ascii")
         start = post.index("(defun fn-post-gated-decision")

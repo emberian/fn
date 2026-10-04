@@ -17,7 +17,6 @@
 ; and defun bodies: the seal is fn-blake3's.)
 
 (in-package "ACL2")
-(include-book "std/testing/must-fail" :dir :system)
 (include-book "must-fail-checked")
 (include-book "../../books/store-checkpoint-arena-load")
 (include-book "../../books/store-checkpoint-arena-writer")

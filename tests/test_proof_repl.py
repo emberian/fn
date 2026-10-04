@@ -3153,10 +3153,6 @@ class AttachmentOrderTests(unittest.TestCase):
                             sent.index('(defthm observation t)'))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class SourcePrefixTests(unittest.TestCase):
     def args(self, **over):
         args = dict(name="warm", keep_source_prefix=True, ld_local=True, certify_missing=False)
@@ -3229,3 +3225,7 @@ class SourcePrefixTests(unittest.TestCase):
             self.assertIn("--ld-local", command)
             self.assertIn("--lock-fd", command)
             self.assertTrue(kwargs["pass_fds"])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -111,6 +111,14 @@ DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
         "the node's own web face (PRF-340); used only by host/native/web-host.lisp, which "
         "build-dtn.lisp does not load: the web face is an owner start hook of the operator's "
         "`run' (host/native/operator-live.lisp), and the DTN image has no live owner", {}),
+    "host/owner-served-carried.lisp": (
+        "the def-carried relation over host/owner-host.lisp's writers (D40 raw "
+        "dispatch, lane post-guard-off); the DTN image does not ld owner-host.lisp, "
+        "and the file defines no function any raw file calls", {}),
+    "host/cost-host.lisp": (
+        "def-cost rows checked in the default image's world after host/interfaces.lisp "
+        "(itself omitted here); its reader rows are over books/served, which the DTN "
+        "image leaves out by design, and the file defines no function any raw file calls", {}),
     "host/topic-history-metadata-host.lisp": (
         "includes books/topic-history-authorship for topic-local.lisp, not loaded; defines nothing", {}),
 }

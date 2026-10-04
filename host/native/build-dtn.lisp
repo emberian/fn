@@ -112,6 +112,9 @@
 ; Carry the verified step guards into this image as well as the default one.
 (include-book "books/bp-node-machine-guards")
 (include-book "books/bp-node-fragment-guards")
+;; host/native/bp-session.lisp (bp-node serve's sessions) asks the scheduler,
+;; as in build.lisp.
+(include-book "books/bp-session-scheduler")
 (include-book "books/bp-fragment-send")
 (include-book "books/bp-node-receive-boundary")
 (include-book "books/bp-fnbs-replay")
@@ -229,6 +232,7 @@
 (ld "host/page-file-lease-host.lisp" :ld-error-action :error)
 (ld "host/page-window-lease-host.lisp" :ld-error-action :error)
 (ld "host/page-window-executor-host.lisp" :ld-error-action :error)
+(ld "host/page-decoded-window-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
 (include-book "books/store-checkpoint-buffer")
@@ -301,6 +305,13 @@
 (include-book "books/heap-reservation")
 (include-book "books/bp-heap-command")
 (include-book "books/cold-read-reservation")
+;; host/native/owner.lisp's output and syncer resources, the served plan's
+;; line window and the response identity, as in the default image (where the
+;; last two arrive through host/interfaces.lisp, which this image omits).
+(include-book "books/resource-output")
+(include-book "books/served-plan-line-buffer")
+(include-book "books/resource-syncer")
+(include-book "books/response-identity")
 ;; host/native/owner-control-turn.lisp (loaded for owner.lisp's control-turn
 ;; macro) names fn-ats-uncertain-internal, as in the default image's world.
 (include-book "books/allocation-turn-slots")
@@ -339,6 +350,7 @@
         (fnn-install-raw-dispatch)
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
+        (load "host/native/extent-decoded.lisp")
         ; The COMPRESS DEFLATE layer (RFC 8054): mux.lisp serves it here too.
         (load "host/native/deflate.lisp")
         ; Select once during construction, before any diagnostic module loads.
@@ -416,6 +428,7 @@
         ; receive' above stay as the lab's transport tools.
         (load "host/native/bp-listener-control.lisp")
         (load "host/native/bp-control.lisp")
+        (load "host/native/bp-session.lisp")
         (load "host/native/bp-node.lisp")
         ; `acl2 session': developer images only (the test fixtures' ACL2).
         (load "host/native/acl2-session.lisp")
