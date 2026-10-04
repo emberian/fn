@@ -1009,7 +1009,8 @@
 
 (definterface fn-store-charge
   :class :common-lisp-compliant
-  :keystones (fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge))
+  :keystones (fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge
+              fn-store-charge-of-profile-article-is-representable))
 
 (definterface fn-store-checkpoint-clone-fence-name
   :class ::program)
@@ -3480,10 +3481,28 @@
   :class ::ideal)
 
 (definterface fn-aj-host-authorize
-  :class ::ideal)
+  :class ::ideal
+  :keystones ((fn-aj-reserved-resolution-fits :via fn-aj-authorize)))
 
 (definterface fn-aj-host-initial
+  :class ::ideal
+  :keystones ((fn-aj-statep-of-initial :via fn-aj-initial)
+              (fn-aj-valid-profile-admits-first-work :via fn-aj-initial)))
+
+(definterface fn-aj-host-profile-file-name
   :class ::ideal)
+
+(definterface fn-aj-host-profile-read-bound
+  :class ::ideal)
+
+(definterface fn-aj-host-profile-read
+  :class ::ideal
+  :keystones ((fn-ajpf-read-of-octets :via fn-ajpf-read)
+              (fn-ajpf-read-is-a-profile :via fn-ajpf-read)))
+
+(definterface fn-aj-host-profile-write-octets
+  :class ::ideal
+  :keystones ((fn-ajpf-write-keeps-the-journal :via fn-ajpf-write-octets)))
 
 (definterface fn-aj-host-max-record-length
   :class ::ideal)
@@ -3507,7 +3526,8 @@
   :class ::ideal)
 
 (definterface fn-aj-host-recover
-  :class ::ideal)
+  :class ::ideal
+  :keystones ((fn-aj-recover-past-profile-is-named :via fn-aj-recover-record)))
 
 (definterface fn-bs-profile-resolve
   :class :common-lisp-compliant

@@ -72,6 +72,10 @@
 ; scan completion, suffix truncation, content barrier, feed directory barrier,
 ; store directory barrier, append write and append barrier. Every non-durable
 ; append result fences; there is no rollback arm and no unfence in this image.
+; A batch (PKT-825a): further appends may follow a write before its barrier
+; (:sync then :append), and ONE barrier makes all of them durable; until it
+; completes the journal is in :sync, never :ready, and a crash at any cut in
+; between leaves the journal :uncertain (recovery scans it).
 (defun fn-feed-journal-phase-step (phase event)
   (declare (xargs :guard t))
   (cond ((equal phase :uncertain) :uncertain)
@@ -85,6 +89,7 @@
         ((and (equal phase :parent) (equal event :parent-durable)) :ready)
         ((and (equal phase :ready) (equal event :append)) :write)
         ((and (equal phase :write) (equal event :written)) :sync)
+        ((and (equal phase :sync) (equal event :append)) :write)
         ((and (equal phase :sync) (equal event :append-durable)) :ready)
         (t :uncertain)))
 
@@ -98,6 +103,36 @@
 ; is an induction across arbitrary later events, not a single branch restated.
 (defthm fn-feed-journal-uncertainty-survives-all-later-observations
   (equal (fn-feed-journal-phase-run :uncertain events) :uncertain))
+
+; K appends written with no barrier between them (one batch job phase's
+; frames for one peer journal, host/native/owner.lisp fnn-owner-job-items).
+(defun fn-feed-journal-batch-writes (k)
+  (declare (xargs :guard (natp k)))
+  (if (zp k) nil
+    (list* :append :written (fn-feed-journal-batch-writes (1- k)))))
+
+(defthm fn-feed-journal-phase-run-of-append-unfolds
+  (equal (fn-feed-journal-phase-run phase (append a b))
+         (fn-feed-journal-phase-run (fn-feed-journal-phase-run phase a) b)))
+
+(local
+ (defthm fn-feed-journal-batch-writes-from-sync
+   (equal (fn-feed-journal-phase-run :sync (fn-feed-journal-batch-writes k))
+          :sync)))
+
+; KEYSTONE (PRF-043, PKT-825a): a batch of K >= 1 appends from a ready
+; journal is NOT durable (phase :sync) until its one barrier, and that one
+; barrier returns the journal to :ready, whatever K.
+(defthm fn-feed-journal-batch-is-durable-only-at-its-one-barrier
+  (implies (posp k)
+           (and (equal (fn-feed-journal-phase-run
+                        :ready (fn-feed-journal-batch-writes k))
+                       :sync)
+                (equal (fn-feed-journal-phase-run
+                        :ready (append (fn-feed-journal-batch-writes k)
+                                       '(:append-durable)))
+                       :ready)))
+  :hints (("Goal" :expand ((fn-feed-journal-batch-writes k)))))
 
 ; The actual scanner's accepted offset is strictly advancing and bounded;
 ; a host never consumes an unbounded peer-supplied length or repairs into
