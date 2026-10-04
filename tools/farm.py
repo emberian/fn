@@ -1998,9 +1998,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--all", action="store_true",
                         help="submit: certify every Makefile root (an empty "
                              "selection is refused without it)")
-    parser.add_argument("--images", choices=("on", "off"), default=None,
+    parser.add_argument("--images", choices=("on", "off", "auto"), default=None,
                         help="submit: certify from certification images or not "
-                             "(the runner's --images; default: the runner's own, on; "
+                             "(the runner's --images; default: the runner's own, auto: "
+                             "on above 24 books; "
                              "FN_CERT_IMAGES here is forwarded when set)")
     parser.add_argument("--failed-summary", metavar="RUN", default=None,
                         help="status: print each failed book of RUN with its first failure "
