@@ -11,7 +11,8 @@
  "locus": "operator-verbs",
  "notes": [
   "10-02 23:08 fixed (error-path unlink); source-level test only, no fault injection run; crash-time leftovers still unswept",
-  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit d5cdc34cd error-path unlink + later write/close cleanup; host/native/io.lisp, host/store-write-host.lisp); local tests test_rotation_stage_removed_when_write_or_fsync_fails and test_write_new_unlinks_partial_file_on_failure PASS at HEAD; new rotation candidates use the recovery-swept staging namespace; native pending: NativeRecoveryFidelityTests.test_secret_rotation_orphan_is_swept_without_changing_key_authority"
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit d5cdc34cd error-path unlink + later write/close cleanup; host/native/io.lisp, host/store-write-host.lisp); local tests test_rotation_stage_removed_when_write_or_fsync_fails and test_write_new_unlinks_partial_file_on_failure PASS at HEAD; new rotation candidates use the recovery-swept staging namespace; native pending: NativeRecoveryFidelityTests.test_secret_rotation_orphan_is_swept_without_changing_key_authority",
+  "10-04 08:38 native green: hbox set-e9438c288 (images /tank/fn/images/fe7ef2807) tests.test_native_recovery OK 14/14 at dev fe7ef2807 (NativeRecoveryFidelityTests included)"
  ],
  "owner": "sweep-store",
  "reviewer": "fnn-node-secret-rotate (io.lisp:3938-3943) creates .node-secret-PID-HEX.stage in the keys directory. If fnn-write-all or fnn-fsync-file fails, the unwind-protect only closes the fd, and the unlink at io.lisp:3946 runs only when the replace fails. fnn-sweep-staging (io.lisp:2291) enumerates staging/, not keys/, so a partial file of new secret material (mode 0600) stays behind. It needs ENOSPC or EIO during an operator rotate.",
@@ -21,5 +22,5 @@
  "source": "sweep-2026-10-03",
  "state": "landed",
  "title": "A failed node-secret rotation leaves a partial secret file in keys/, which no sweep removes",
- "updated": "2026-10-04T06:28:44Z"
+ "updated": "2026-10-04T12:38:44Z"
 }
