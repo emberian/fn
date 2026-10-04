@@ -405,6 +405,16 @@
                                   (fn-cur-split fn-lst-one fn-cur-make fn-cur-progress
                                    fn-cur-pending fn-lst-progress-reference)))))
 
+; A started LIST cursor owes the reference reply body: every selected group's
+; row, then the terminator.
+(defthm fn-lst-start-remaining
+  (equal (fn-lst-remaining (fn-lst-start archive closed statusp countsp patterns filteredp v) fn-cat)
+         (fn-lst-groups-reference (fn-lst-env archive closed statusp countsp patterns filteredp v)
+                                  (fn-state-groups archive) fn-cat))
+  :hints (("Goal" :in-theory (enable fn-lst-remaining fn-lst-start fn-lst-progress-reference
+                                     fn-lst-progress fn-cur-make fn-cur-pending fn-cur-progress
+                                     fn-cur-at))))
+
 (in-theory (disable fn-lst-row-status fn-lst-row-reference fn-lst-next-summary
                     fn-lst-group-reference fn-lst-groups-reference
                     fn-lst-progress-reference fn-lst-remaining))
