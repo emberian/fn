@@ -2312,7 +2312,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "planning/evidence/manifests/certify-20260924T070931Z-1040432.json",
         "planning/evidence/feed-tls-teeth-2026-09-22.md",
@@ -2465,7 +2465,7 @@
         "PRF-047"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "planning/evidence/manifests/certify-20260924T070931Z-1040432.json",
         "planning/evidence/feed-tls-teeth-2026-09-22.md",
@@ -5066,7 +5066,7 @@
         "PRF-100"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-pull-session.lisp",
         "books/peer-pull.lisp",
@@ -6480,7 +6480,7 @@
         "PRF-125"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-pull.lisp",
         "books/peer-pull-session.lisp",
@@ -9770,7 +9770,7 @@
         "PRF-252"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/consumer-reason.lisp",
         "books/consumer-owner-local.lisp",
@@ -12052,7 +12052,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-catchup-serve.lisp",
         "books/peer-catchup-effects.lisp",
@@ -12086,7 +12086,7 @@
         "PRF-1307"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "files": [
         "books/peer-catchup-spool.lisp",
         "books/peer-catchup-spool-framer.lisp",
@@ -12701,7 +12701,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/web-config.lisp",
         "host/web-host.lisp",
@@ -13715,7 +13715,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/feed-link-backoff.lisp",
         "tests/acl2/feed-link-backoff-tests.lisp",
@@ -19123,7 +19123,7 @@
         "PRF-1065"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/page-window-lease.lisp",
         "host/page-window-lease-host.lisp",
@@ -19148,7 +19148,7 @@
         "PRF-1119"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/page-window-executor.lisp",
         "books/page-window-read.lisp",
@@ -22063,7 +22063,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-round-driver.lisp",
         "tests/acl2/peer-round-driver-tests.lisp"
@@ -22459,7 +22459,7 @@
         "PRF-1259"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-sl-step-derived-conses-within-source-count",
         "fn-sl-step-derived-conses-bound"
@@ -23017,7 +23017,7 @@
         "PRF-1288"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "files": [
         "books/decoded-worker-assignment.lisp",
         "books/decoded-worker-job.lisp",

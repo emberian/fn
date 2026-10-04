@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import pathlib
 import shlex
 import shutil
@@ -163,6 +164,26 @@ class ExecuteTests(ExecuteBase):
         # Settled now: the next run may replay it.
         self.assertTrue(execute(self.steps, self.cache)[2][0].get("cached"))
 
+    def test_a_sibling_write_in_a_stated_directory_does_not_refuse_the_cache(self):
+        """pathlib's resolve() stats every ancestor of a path, so a step's
+        stat set holds directories whose mtime moves whenever a neighbour
+        writes beside them (/Users/ember on the laptop).  A directory keyed
+        as "dir" is unchanged by that; only a listed directory's mtime matters."""
+        import threading
+        (self.data / "a").write_text("one\n")
+        slow = [PY, "-c", f"import pathlib, time; p = pathlib.Path({str(self.data / 'a')!r})"
+                          ".resolve(); print('read', p.read_text().strip()); time.sleep(1.5)"]
+        plan(self.steps, slow)
+        neighbour = threading.Timer(0.8, (self.data / "neighbour").write_text, args=("x",))
+        neighbour.start()
+        try:
+            verdict, text, rows = execute(self.steps, self.cache)
+        finally:
+            neighbour.join()
+        self.assertEqual(verdict, 0)
+        self.assertNotIn("changed while it ran", text)
+        self.assertTrue(execute(self.steps, self.cache)[2][0].get("cached"))
+
     def test_a_hazard_drops_both_steps_cache_entries(self):
         """S055: a write hazard found after the run drops the writer's and the
         reader's entries, not only a warning."""
@@ -189,18 +210,75 @@ class ExecuteTests(ExecuteBase):
         rows = execute(self.steps, self.cache)[2]
         self.assertEqual([bool(row.get("cached")) for row in rows], [False, False])
 
-    def test_failures_and_untraceable_children_are_never_cached(self):
+    def test_non_verdicts_and_untraceable_children_are_never_cached(self):
         (self.data / "a").write_text("x")
-        failing = [PY, "-c", f"open({str(self.data / 'a')!r}).read(); raise SystemExit(1)"]
+        not_run = [PY, "-c", f"open({str(self.data / 'a')!r}).read(); print('NOT RUN'); "
+                             "raise SystemExit(2)"]
+        missing = [PY, "-c", f"open({str(self.data / 'a')!r}).read(); raise SystemExit(127)"]
         child = [PY, "-c", "import subprocess; subprocess.run(['true'])"]
         blind = [PY, "-c", "import subprocess, sys; subprocess.run([sys.executable, '-c', "
                            "'pass'], env={})"]
-        plan(self.steps, failing, child, blind)
+        plan(self.steps, not_run, missing, child, blind)
         execute(self.steps, self.cache)
         verdict, text, rows = execute(self.steps, self.cache)
-        self.assertEqual([bool(row.get("cached")) for row in rows], [False, False, False])
+        self.assertEqual([bool(row.get("cached")) for row in rows], [False] * 4)
+        self.assertEqual(list((self.cache / "steps").glob("*")), [])
         self.assertIn("not cacheable (child process true)", text)
         self.assertIn("not cacheable (python child without the tracer", text)
+
+    def test_a_red_verdict_is_cached_and_replayed_red(self):
+        """A red with exit 1 is a verdict on its inputs: the same inputs give
+        the same red without running it, the row stays red with its finding,
+        the header names the run that produced it, and a changed input or a
+        later pass replaces it (the integrator's conditions, 2026-10-04)."""
+        (self.data / "a").write_text("alpha\n")
+        red = [PY, "-c", f"import sys; v = open({str(self.data / 'a')!r}).read().strip(); "
+                         "print('judged', v); print('FAIL ' + v + ': 1 findings') "
+                         "if v == 'alpha' else print('ok'); sys.exit(1 if v == 'alpha' else 0)"]
+        plan(self.steps, red)
+        verdict, text, rows = execute(self.steps, self.cache)
+        self.assertEqual((verdict, rows[0]["exit"]), (1, 1))
+        entry = json.loads(next((self.cache / "steps").iterdir()).read_text())
+        self.assertEqual(entry["exit"], 1)
+        self.assertTrue(entry["box"] and entry["when"] and entry["log"].endswith(".log"))
+        verdict, text, rows = execute(self.steps, self.cache)
+        self.assertEqual((verdict, rows[0]["exit"]), (1, 1))
+        self.assertTrue(rows[0]["cached"].startswith("red, cached (inputs unchanged since "))
+        self.assertIn(f"run on {entry['box']} {entry['when']}, log {entry['log']}", text)
+        self.assertEqual(rows[0]["finding"], "FAIL alpha: 1 findings")
+        self.assertIn("== check: 1 steps, 1 failed (jobs 3", text)
+        self.assertIn("1 cached", text)
+        (self.data / "a").write_text("alphb\n")  # same size: the digest decides
+        verdict, text, rows = execute(self.steps, self.cache)
+        self.assertEqual((verdict, rows[0]["exit"], bool(rows[0].get("cached"))), (0, 0, False))
+        verdict, text, rows = execute(self.steps, self.cache)
+        self.assertTrue(rows[0]["cached"].startswith("cached (inputs unchanged since "))
+        verdict, text, rows = execute(self.steps, self.cache, use_cache=False)
+        self.assertFalse(rows[0].get("cached"))
+
+    def test_keys_are_tree_relative_and_the_step_key_ignores_cwd(self):
+        """An entry written in one worktree is found from another worktree of
+        the same bytes: tree files are keyed by relative path, the git read's
+        cwd too, and the step key has no cwd in it; files outside the tree
+        (the interpreter) stay absolute."""
+        (self.data / "a").write_text("alpha\n")
+        plan(self.steps, self.reader("a"))
+        execute(self.steps, self.cache)
+        entry = json.loads(next((self.cache / "steps").iterdir()).read_text())
+        inside = [p for p in entry["inputs"]["r"] if "test-check-steps-" in p]
+        self.assertTrue(inside and all(p.startswith("./build/") for p in inside), inside)
+        self.assertEqual(check_steps.portable(sys.executable), sys.executable)  # outside: absolute
+        for key in entry["inputs"]["r"]:
+            self.assertEqual(check_steps.portable(check_steps.located(key)), key)
+        self.assertEqual(check_steps.located("./"), str(check_steps.ROOT))
+        here = pathlib.Path.cwd()
+        try:
+            os.chdir(self.data)
+            moved = check_steps.step_key(self.reader("a"))
+        finally:
+            os.chdir(here)
+        self.assertEqual(moved, check_steps.step_key(self.reader("a")))
+        self.assertNotEqual(check_steps.step_key(self.reader("a")), check_steps.step_key(self.reader("b")))
 
     def test_a_python_child_is_traced(self):
         (self.data / "a").write_text("one")
@@ -245,7 +323,7 @@ class ExecuteTests(ExecuteBase):
         execute(self.steps, self.cache)
         self.assertTrue(execute(self.steps, self.cache)[2][0].get("cached"))
         entry = json.loads(next((self.cache / "steps").iterdir()).read_text())
-        self.assertEqual(entry["inputs"]["g"][0][:2], [str(ROOT), ["rev-parse", "HEAD"]])
+        self.assertEqual(entry["inputs"]["g"][0][:2], ["./", ["rev-parse", "HEAD"]])  # portable cwd
 
     def test_a_git_read_that_timed_out_is_never_cached(self):
         """S055: a git read that timed out keyed the step as "error ..." and

@@ -183,8 +183,13 @@ environment) with the run id, never re-expected.
 ## What `make check` is
 
 `make check` plans ~90 steps and `tools/check_steps.py` runs them in parallel,
-skipping a step whose recorded inputs are unchanged since it last passed
-(`make check FORCE=1` runs every step).  It needs no image; a step that needs ACL2 or
+skipping a step whose recorded inputs are unchanged since its last verdict: a
+pass is replayed as a pass, a red (exit 1) as the same red, naming the run,
+box and log that produced it; a NOT RUN, a signal or a missing program is
+never cached (`make check FORCE=1` runs every step).  Tree files are keyed by
+relative path, so `FN_VERDICT_STORE=DIR` lets every worktree on a box share
+one store; a cached verdict satisfies no READY and no batch gate, which are
+live runs.  It needs no image; a step that needs ACL2 or
 certificates it cannot find says NOT RUN and counts as failed.  `make check-lane`
 is the same in a scratch directory; `tools/remote_check.sh auto` runs it on a
 build box.
