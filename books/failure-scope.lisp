@@ -255,7 +255,7 @@
 ; purpose (t43: a stopped owner never retries an ambiguous fd).
 
 (defconst *fn-fs-actors*
-  '(:control :mux :web :feed :pull :bp :committer :publisher :exporter
+  '(:control :mux :web :feed :pull :bp :committer :syncer :publisher :exporter
     :accept :cold :maintenance :command))
 
 (defconst *fn-fs-gate-classes*
@@ -475,6 +475,32 @@
     (otherwise :none)))
 
 ; -----------------------------------------------------------------------------
+; Actor declarations (def-actor, host/native/owner.lisp).  A declaration names
+; the actor's KIND (the words a section's :actors use), whether its thread
+; joins the owner's worker roster (ROSTER, a boolean), the host function that
+; joins it (the host's word, checked by tools/lock_discipline_check.py R4),
+; and its FAILURE policy: how a condition that escapes its body is decided.
+;   :service  the service's boundary decides it (fn-fs-classify): the fence,
+;             the fault, or a pass scoped to its caller;
+;   :job      a private job's (fn-fs-classify-job): an OS failure before it
+;             published anything is its own, never the service's;
+;   :result   the body catches its own failure and hands the outcome word to
+;             the parent that joins it; nothing escapes to a boundary.
+; The host refuses to load a def-actor this answers nil for
+; (fnn-actor-declare): the image does not build.
+
+(defconst *fn-fs-actor-failures* '(:service :job :result))
+
+(defun fn-fs-actor-declp (kind roster failure)
+  (declare (xargs :guard t))
+  ; ROSTER by member-equal, not booleanp: the raw harnesses load this body
+  ; into plain SBCL with only member-equal supplied.
+  (and (member-equal kind *fn-fs-actors*)
+       (member-equal roster '(t nil))
+       (member-equal failure *fn-fs-actor-failures*)
+       t))
+
+; -----------------------------------------------------------------------------
 ; Admission to a live inbox (def-actor :admit; r71 F9, review S1).  The
 ; receiver sets CLOSED under its inbox lock before its final drain; an offer
 ; is decided under the same lock: :admitted, or :closed, and the offerer
@@ -664,6 +690,29 @@
   (and (equal (fn-fs-receipt-action :indeterminate) :fence)
        (equal (fn-fs-receipt-action :fault) :fault)))
 
+; An actor is declared with a known kind, a boolean roster and a policy from
+; the closed set; anything else stops the image's load.
+(defthm fn-fs-actor-declp-refuses-an-unknown-kind-or-policy
+  (implies (or (not (member-equal kind *fn-fs-actors*))
+               (not (booleanp roster))
+               (not (member-equal failure *fn-fs-actor-failures*)))
+           (not (fn-fs-actor-declp kind roster failure))))
+
+; Teeth: the words a hand-written thread used (a fence policy, a roster slot
+; name) and an actor nobody declared are refused; the declared owner actors
+; are accepted.
+(defthm fn-fs-actor-declp-teeth
+  (and (not (fn-fs-actor-declp :committer nil :fence))
+       (not (fn-fs-actor-declp :committer :roster :service))
+       (not (fn-fs-actor-declp :somebody t :service))
+       (not (fn-fs-actor-declp :syncer t nil))))
+
+(defthm fn-fs-actor-declp-positive-witness
+  (and (fn-fs-actor-declp :committer nil :service)
+       (fn-fs-actor-declp :syncer t :result)
+       (fn-fs-actor-declp :publisher t :job)
+       (fn-fs-actor-declp :web t :service)))
+
 (defthm fn-fs-inbox-admit-closed
   (and (equal (fn-fs-inbox-admit t) :closed)
        (equal (fn-fs-inbox-admit nil) :admitted)))
@@ -675,4 +724,5 @@
                     fn-fs-unwind fn-fs-section-action fn-fs-classify-connection
                     fn-fs-connection-word fn-fs-connection-action fn-fs-settled-action
                     fn-fs-actor-exit-kind fn-fs-actor-step fn-fs-actor-registered-p
-                    fn-fs-actor-receipt fn-fs-actor-join-action fn-fs-receipt-action fn-fs-inbox-admit))
+                    fn-fs-actor-receipt fn-fs-actor-join-action fn-fs-receipt-action fn-fs-inbox-admit
+                    fn-fs-actor-declp))

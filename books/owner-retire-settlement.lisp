@@ -107,6 +107,34 @@
            (and (equal writer nil) (equal authority nil)))
   :rule-classes nil)
 
+; KEYSTONE (a clean stop keeps its exit).  host/native/owner.lisp
+; fnn-owner-run's cleanup decides a stop's exit through these actions in
+; turn: the log writer's join (fn-ort-log-close-action, fnn-owner-log-
+; settlement), the journal's close (fn-ort-report-close-action), the Store's
+; (fn-ort-store-close-action, dispatched by fnn-owner-store-settlement as
+; below, then fn-ort-service-settlement-action) and the exit
+; (fn-ort-log-close-exit).  When every observation is definite -- the writer
+; joined or absent with nothing accounted, the journal and the Store closed
+; or absent -- each step is :joined and the exit is the one the stop chose
+; (0 for a SIGTERM and for a retire): settlement never makes a clean stop
+; uncertain.
+(defthm fn-ort-clean-stop-keeps-its-exit
+  (implies (and (or (equal join :joined) (equal join :absent))
+                (equal lines 0) (equal octets 0) (equal queuedp nil)
+                (or (equal journal :closed) (equal journal :absent))
+                (or (equal store :closed) (equal store :absent)))
+           (let* ((log (fn-ort-log-close-action join lines octets queuedp))
+                  (report (fn-ort-report-close-action log journal))
+                  (action (fn-ort-store-close-action report authority caller-fd))
+                  (settled (case action
+                             (:defer report)
+                             (:settled (fn-ort-service-settlement-action report :absent))
+                             (t (fn-ort-service-settlement-action report store)))))
+             (and (equal log :joined) (equal report :joined)
+                  (not (equal action :held))
+                  (equal settled :joined)
+                  (equal (fn-ort-log-close-exit prior uncertain settled) prior)))))
+
 (in-theory (disable fn-ort-log-close-action fn-ort-log-close-exit
                     fn-ort-report-close-action fn-ort-log-caller-action
                     fn-ort-store-close-action fn-ort-service-settlement-action

@@ -4854,7 +4854,7 @@
         "Before the rename: exit 1 (EIO) or death, ROOT absent, the next import refuses reason=interrupted-import naming the staged directory; after its removal the import succeeds.",
         "At and after the rename: ROOT, when present, opens to the exported history article for article; a staged directory beside a present ROOT is refused reason=publication-uncertain, never treated as no store.",
         "An existing unrelated ROOT is never replaced (reason=store-exists).",
-        "init: before the rename ROOT is absent and the next init refuses reason=interrupted-init naming the staged directory, after whose removal init succeeds; at and after the rename a present ROOT is the empty store (status transactions=0) and init refuses STORE-EXISTS; an existing empty ROOT is refused reason=store-path-exists."
+        "init: before the rename ROOT is absent and the next init removes the unheld staged directory (init removed STAGE) and publishes (PKT-894); at and after the rename a present ROOT is the empty store (status transactions=0) carrying keys/node-secret.key and init refuses STORE-EXISTS; an existing empty ROOT is refused reason=store-path-exists."
       ]
     },
     {
@@ -9852,6 +9852,59 @@
         "planning/evidence/manifests/certify-20261003T180302Z-2794821.json"
       ],
       "execution_scope": "Actual trusted repository function bodies with Common Lisp shims and two MBE choices; normal ACL2 guards prove branch equivalence. No native endpoint, full semantic decode quantum or GC tariff claim."
+    },
+    {
+      "id": "SCN-1139",
+      "title": "Dedicated pull credential survives feed edits and restart",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-023"
+      ],
+      "steps": [
+        "Configure scratch A with TLS-only reader authentication and B with a wrong outbound credential. Select a separate correct pull-login file and pull the first article while both distinct profiles remain configured.",
+        "Stop B, disable outbound with peer set --send -, restart B, and pull a second article."
+      ],
+      "expected": [
+        "Both articles are present exactly once; the reader selection survives the feed edit and persisted restart.",
+        "The recording proxy sees no AUTHINFO or archive-reading command in plaintext."
+      ],
+      "evidence": [
+        "tests/test_native_peer_pull.py",
+        "tests/acl2/peer-pull-auth-tests.lisp",
+        "tests/acl2/native-admin-pull-auth-tests.lisp",
+        "tests/acl2/native-admin-peer-pull-auth-tests.lisp"
+      ],
+      "implementation": {
+        "test": "tests.test_native_peer_pull",
+        "cases": [
+          "NativePeerPullTests.test_pull_only_credential_survives_feed_edits_and_restart"
+        ],
+        "native": true
+      }
+    },
+    {
+      "id": "SCN-1140",
+      "title": "The live reclaim pass walks a history longer than two chunks without a whole row list, installs, and GROUP reports the exact available count",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017",
+        "NNT-042"
+      ],
+      "steps": [
+        "Developer image: post 2,100 articles to fn.test, every other with a past Expires:; `retention expire fn.test purge 30`; `store reclaim` on the serving node, a connection open across it.",
+        "On that connection: STAT an expired and a kept article; GROUP; POST.",
+        "Stop, reopen: GROUP; STAT an expired article."
+      ],
+      "expected": [
+        "`installed`; the owner logs `RECLAIM installed ... reclaimed=1050`.",
+        "430 article reclaimed for the expired, 223 for the kept; `211 1050 1 2099 fn.test` (decision 2': the available count with the true first and last, not the allocation count); the POST is accepted.",
+        "`211 1051 1 2101 fn.test`; 430 article reclaimed."
+      ],
+      "evidence": [
+        "tests/test_native_reclaim_walk.py"
+      ]
     }
   ]
 }

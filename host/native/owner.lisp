@@ -1210,32 +1210,61 @@ the owner mutex)."
   (sb-thread:with-mutex ((fnn-owner-feed-journal-lock journal))
     (fnn-owner-feed-append-locked journal frame)))
 
-(defun fnn-owner-feed-append-locked (journal frame)
+(defun fnn-owner-feed-append-locked (journal frame &key (barrier t))
+  "Write FRAME, one ACL2-sealed frame (none when NIL), then, with BARRIER,
+cross the append barrier if ACL2's phase says the journal holds written
+frames no barrier has covered (:sync).  Without BARRIER the journal is left
+in :sync: further appends may follow (PKT-825a: books/feed-journal.lisp
+admits :sync then :append) and one barrier makes them all durable
+(fn-feed-journal-batch-is-durable-only-at-its-one-barrier).  A journal
+another barrier already returned to :ready needs none: that barrier
+followed these writes, under this lock."
   (handler-case
-      (let ((envelope (fnn-core 'fn-feed-journal-wrap
-                                (fnn-octet-list frame))))
-        (unless (fnn-octet-list-p envelope)
-          (fnn-fault "owner refused FNFD envelope"))
-        (fnn-owner-feed-phase journal :append)
-        (fnn-write-all (fnn-owner-feed-journal-fd journal)
-                       (fnn-octets envelope))
-        (fnn-owner-feed-phase journal :written)
-        ;; Developer image only (lane owner-offlock): a slow or stalled
-        ;; feed-journal device -- the fsync takes MS, or does not return
-        ;; while the named file exists (tests/test_native_owner_offlock.py).
-        (let ((ms (fnn-developer-selector "FN_NATIVE_TEST_FEED_FSYNC_MS"))
-              (stall (fnn-developer-selector "FN_NATIVE_TEST_FEED_STALL_FILE")))
-          (when (and ms (plusp (length ms)) (every #'digit-char-p ms))
-            (sleep (/ (parse-integer ms) 1000)))
-          (when (and stall (plusp (length stall)))
-            (loop while (probe-file stall) do (sleep 0.05))))
-        (fnn-fsync-file (fnn-owner-feed-journal-fd journal))
-        (fnn-owner-feed-phase journal :append-durable))
+      (progn
+        (when frame
+          (let ((envelope (fnn-core 'fn-feed-journal-wrap
+                                    (fnn-octet-list frame))))
+            (unless (fnn-octet-list-p envelope)
+              (fnn-fault "owner refused FNFD envelope"))
+            (fnn-owner-feed-phase journal :append)
+            (fnn-write-all (fnn-owner-feed-journal-fd journal)
+                           (fnn-octets envelope))
+            (fnn-owner-feed-phase journal :written)))
+        (when (and barrier (eq (fnn-owner-feed-journal-phase journal) :sync))
+          ;; Developer image only (lane owner-offlock): a slow or stalled
+          ;; feed-journal device -- the fsync takes MS, or does not return
+          ;; while the named file exists (tests/test_native_owner_offlock.py).
+          (let ((ms (fnn-developer-selector "FN_NATIVE_TEST_FEED_FSYNC_MS"))
+                (stall (fnn-developer-selector "FN_NATIVE_TEST_FEED_STALL_FILE")))
+            (when (and ms (plusp (length ms)) (every #'digit-char-p ms))
+              (sleep (/ (parse-integer ms) 1000)))
+            (when (and stall (plusp (length stall)))
+              (loop while (probe-file stall) do (sleep 0.05))))
+          (fnn-fsync-file (fnn-owner-feed-journal-fd journal))
+          (fnn-owner-feed-phase journal :append-durable)))
     (error (e)
       (ignore-errors (fnn-owner-feed-phase journal :failed))
       (fnn-owner-feed-close journal)
       (fnn-indeterminate "FNFD append uncertain: ~a (~a)"
                          (fnn-owner-feed-journal-path journal) e))))
+
+(defun fnn-owner-feed-write-batch (pairs written)
+  "Write each (JOURNAL . FRAME) of PAIRS, in order, with no barrier; answer
+WRITTEN with each journal written added once, in first-written order.  The
+caller owes each one barrier (fnn-owner-feed-barrier-batch)."
+  (fnn-owner-measured (:feed-flush)
+    (dolist (pair pairs)
+      (sb-thread:with-mutex ((fnn-owner-feed-journal-lock (car pair)))
+        (fnn-owner-feed-append-locked (car pair) (cdr pair) :barrier nil))
+      (unless (member (car pair) written :test #'eq)
+        (setq written (append written (list (car pair)))))))
+  written)
+
+(defun fnn-owner-feed-barrier-batch (journals)
+  "One barrier per journal of JOURNALS that still holds unbarriered frames."
+  (dolist (journal journals)
+    (sb-thread:with-mutex ((fnn-owner-feed-journal-lock journal))
+      (fnn-owner-feed-append-locked journal nil))))
 
 (defun fnn-owner-feed-decoded-peer (components location)
   "Refuse a discovered entry unless ACL2 reconstructs its exact peer label."
@@ -1446,6 +1475,14 @@ fn-owner-recover-from-checkpoint-equals-full-recover says both paths install
 the full open's owner, and nothing is replayed a second time.  Returns the
 checkpoint's S, or NIL."
   (declare (ignore records))
+  ;; The install loads the catalog INTO the live fn-cat
+  ;; (fn-owner-install-extended's fn-sca-load-held-rows-keyed): a binding of
+  ;; a replacement catalog, so its allocation identity is reserved first, as
+  ;; fnn-install-stobj reserves before it binds (books/catalog-root-
+  ;; incarnation.lisp).  Without it an owner installed a second time in one
+  ;; process kept the previous owner's root token over the reloaded catalog;
+  ;; a refused or faulted install spends the reservation.
+  (fnn-owner-core 'fn-owner-catalog-root-reserve)
   (let* ((mode (fnn-store-open-mode store))
          (s (and (eq (first mode) :checkpoint) (second mode)))
          ;; THE SWITCH (PRF-1037): ENTRY is the node secret's current entry
@@ -1745,15 +1782,44 @@ termination; only the maker's no-child failure cancels the reservation."
           (fnn-owner-actor-fault-service service condition))
         (error condition)))))
 
-(defmacro def-actor (name &key thread-name roster)
+;;; def-actor: the declared actor (lane ACTORS/GENERATORS-2, rebuild step 0;
+;;; planning/handoff-2026-10-03/failure-scope.md).  One declaration per kind
+;;; of thread: its KIND (books/failure-scope.lisp *fn-fs-actors*), the
+;;; THREAD-NAME, whether it joins the worker roster (ROSTER), the host
+;;; function that JOINs it, and its FAILURE policy (:service, :job or
+;;; :result; fn-fs-actor-declp says what each means).  ACL2 accepts the
+;;; declaration when the image loads; tools/lock_discipline_check.py reads
+;;; the same form and holds the join site and every starter call to it (R4).
+;;; *fnn-actors* is the same table at run time.
+
+(defvar *fnn-actors* nil
+  "The declared actors, (NAME KIND THREAD-NAME ROSTER JOIN FAILURE) each, in load order.")
+
+(defun fnn-actor-declare (name kind thread-name roster join failure)
+  "Record NAME's declaration once ACL2 accepts it; a refused declaration
+stops the load (the image is not built)."
+  (unless (and (stringp thread-name) join (symbolp join)
+               (fn-fs-actor-declp kind roster failure))
+    (error "def-actor ~(~a~): ACL2 refuses the declaration ~s (books/failure-scope.lisp fn-fs-actor-declp)"
+           name (list kind thread-name roster join failure)))
+  (setq *fnn-actors*
+        (append (remove name *fnn-actors* :key #'first)
+                (list (list name kind thread-name roster join failure))))
+  name)
+
+(defmacro def-actor (name &key kind thread-name roster join failure)
   "Generate the physical lifecycle starter, sharing ACL2's failure model.
 Private decision steps must avoid live STATE, hons/memoize and protected
 abstract-stobj exports; shared-state work enters declared owner sections."
-  `(defun ,name (service custody thunk &optional escape physical-callback before-start)
-     (fnn-owner-actor-start service custody thunk ,thread-name ,roster escape physical-callback before-start)))
+  `(progn
+     (fnn-actor-declare ',name ',kind ',thread-name ',roster ',join ',failure)
+     (defun ,name (service custody thunk &optional escape physical-callback before-start)
+       (fnn-owner-actor-start service custody thunk ,thread-name ,roster escape physical-callback before-start))))
 
-(def-actor fnn-owner-spawn-syncer :thread-name "fn owner syncer" :roster t)
-(def-actor fnn-owner-spawn-committer :thread-name "fn owner committer" :roster nil)
+(def-actor fnn-owner-spawn-syncer :kind :syncer :thread-name "fn owner syncer" :roster t
+  :join fnn-owner-commit-pipeline :failure :result)
+(def-actor fnn-owner-spawn-committer :kind :committer :thread-name "fn owner committer" :roster nil
+  :join fnn-owner-run :failure :service)
 
 (defun fnn-owner-actor-for-custody (service retained)
   "Find the native reservation retaining RETAINED, including a failed start.
@@ -1928,7 +1994,11 @@ This installs only the explicit output projection, not a full allocation gate."
               *fnn-response-capture*)))))
 
 (defun fnn-owner-output-prefix-locked (service cid incoming)
-  "ACL2's funded first event prefix; absent policy is explicitly partial."
+  "ACL2's funded first event prefix, or ACL2's refusal word when the gate
+answers it on the wire (books/output-admission-line.lisp: an unpriced family
+or an unaffordable reply).  Absent policy passes the buffer: the pass-through
+goes in the commit that prices the last family a stock node serves
+(specs/resource-vector.md, the dated open precondition)."
   (if (null (fnn-owner-service-output-ledger service)) (length incoming)
     (let* ((preview (fnn-core-buffer-state 'fn-owner-output-preview cid 0 (length incoming)))
            (tariff (fnn-owner-core 'fn-owner-output-tariff-preview cid preview))
@@ -1936,9 +2006,30 @@ This installs only the explicit output projection, not a full allocation gate."
             (sb-thread:with-mutex ((fnn-owner-service-output-ledger-lock service))
               (fnn-core 'fn-rlo-capacity (fnn-owner-service-output-ledger service))))
            (admission (fnn-core 'fn-ocap-admit-preview preview tariff capacity)))
-      (unless (eq (fnn-core 'fn-ocap-at 0 admission) :hold)
-        (fnn-refuse "accounted output command refused ~s" admission))
-      (fnn-core 'fn-ocap-at 1 admission))))
+      (cond ((eq (fnn-core 'fn-ocap-at 0 admission) :hold)
+             (fnn-core 'fn-ocap-at 1 admission))
+            ((fnn-core 'fn-oadl-wordp admission)
+             (fnn-log-line (fnn-core 'fn-oadl-log-line admission cid))
+             admission)
+            (t (fnn-refuse "accounted output command refused ~s" admission))))))
+
+(defun fnn-owner-output-refusal-locked (service cid incoming admission)
+  "Owner held, inside the read's quantum: ACL2's refusal line over the refused
+command's line, in fnn-owner-handle-chunk-read's values."
+  (fnn-owner-read-buffer-fill service incoming)
+  (let ((step (fnn-core-buffer-state 'fn-owner-output-refusal-line-at cid 0 admission)))
+    (when (eq step :unknown) (fnn-refuse "owner no longer knows connection ~d" cid))
+    (unless (fnn-core 'fn-splan-step-p step)
+      (fnn-fault "owner returned a malformed output refusal step ~a" step))
+    (fnn-owner-refresh-read-octets service)
+    (let ((consumed (fnn-core 'fn-splan-step-consumed step)))
+      (unless (and (integerp consumed) (< 0 consumed) (<= consumed (length incoming)))
+        (fnn-fault "owner returned a malformed output refusal count"))
+      (values (fnn-core 'fn-splan-step-plan step nil nil)
+              (or (fnn-core 'fn-splan-step-closep step)
+                  (fnn-core 'fn-splan-step-exposure-close step))
+              (fnn-core 'fn-splan-step-handshake-owed step)
+              consumed nil nil))))
 
 (defun fnn-owner-output-dependency (service grant read)
   "Owner held before a newly issued cold read escapes its capture quantum."
@@ -4395,14 +4486,23 @@ phase's."
     (values phase condition)))
 
 (defun fnn-owner-job-items (service items)
-  "A batch job's items, in order: (:frames . PAIRS) appends each (JOURNAL .
-FRAME) across its barrier; (:deliver CID REPLY) hands a refusal told at its
-drain to its connection (after its resolution frames)."
-  (dolist (item items)
-    (case (car item)
-      (:frames (fnn-owner-feed-write-plan (cdr item)))
-      (:deliver (fnn-owner-deliver service (second item) (third item)))
-      (t (fnn-fault "malformed batch job item ~a" (car item))))))
+  "A batch job's items, in order: (:frames . PAIRS) writes each (JOURNAL .
+FRAME); (:deliver CID REPLY) hands a refusal told at its drain to its
+connection.  PKT-825a: the phase's frames share one barrier per peer journal
+written (fn-feed-journal-batch-is-durable-only-at-its-one-barrier), crossed
+before any reply leaves and before the phase returns, so a told member's
+resolution frames are durable before its reply, and the phase's word is :ok
+only once every frame it wrote is."
+  (let ((written nil))
+    (dolist (item items)
+      (case (car item)
+        (:frames (setq written (fnn-owner-feed-write-batch (cdr item) written)))
+        (:deliver
+         (fnn-owner-feed-barrier-batch written)
+         (setq written nil)
+         (fnn-owner-deliver service (second item) (third item)))
+        (t (fnn-fault "malformed batch job item ~a" (car item)))))
+    (fnn-owner-feed-barrier-batch written)))
 
 (defun fnn-owner-batch-fence (service)
   "The batch job's :fence phase: the sealed batch's barrier and the kernel's
@@ -6295,8 +6395,11 @@ EPIPE and the client saw a bare close)."
        ;; Shared values and actual stobj references are captured under the
        ;; same O admission as the factory; rendering never re-reads a root.
        (fnn-owner-capture-reader-context cid)
-       (let ((step (fnn-owner-chunk-span-no-io
-                    cid incoming sched (fnn-owner-output-prefix-locked service cid incoming))))
+       (let* ((prefix (fnn-owner-output-prefix-locked service cid incoming))
+              (step (if (consp prefix)
+                        (return-from step
+                          (fnn-owner-output-refusal-locked service cid incoming prefix))
+                      (fnn-owner-chunk-span-no-io cid incoming sched prefix))))
          ;; Row A4 (c): the first line needs a page not in memory; its read
          ;; happens off the mutex (fnn-owner-handle-chunk, fnn-owner-cold-line).
          (when (and (consp step) (eq (car step) :fnn-extent-cold))
@@ -6502,12 +6605,17 @@ back and backs off as it names)."
 ;;; (books/native-retire.lisp fn-nret-request) starts the retire: from then
 ;;; on new connections are refused by name (host/native/owner.lisp
 ;;; fnn-owner-launch-client), the pull service stops, and at each accept-loop
-;;; tick ACL2 checks the independent drain window, then carried pending
-;;; under the owner mutex (fn-ort-window-step and fn-ort-drain-step-counted).
-;;; Producer settlement remains unestablished, so zero alone cannot end the
-;;; drain. The deadline stops intake and starts SIGTERM cleanup. Report
-;;; observation follows worker and committer joins; definite log/journal
-;;; settlement, funded bounded rendering and final checkpoint remain OPEN.
+;;; tick ACL2 checks the independent drain window, then, under the owner
+;;; mutex, the carried feed count and the owner's queue (fn-ort-window-step,
+;;; then fn-owner-retire-step's fn-ort-retire-step): :drained once nothing is
+;;; pending and nothing queued -- every intake site refuses under the same
+;;; mutex while retiring (fn-ort-intake-action), so the queue is the last
+;;; producer -- :deadline once the window passed.  A drained owner takes
+;;; its final checkpoint (the compaction request `store checkpoint' makes;
+;;; fn-ort-final-checkpoint-action); either way it stops as a SIGTERM stops
+;;; it, and the report is rendered and written after the worker, committer,
+;;; log and journal joins (fnn-owner-retire-final-report), so it reads the
+;;; settled owner.
 (defun fnn-owner-retire-report-path (service)
   (fnn-join (fnn-store-root (fnn-owner-service-store service))
             (fnn-octets-string (fnn-octets (fnn-core 'fn-nret-report-file-name)))))
@@ -6572,9 +6680,18 @@ renamed into place, the directory fenced."
           (unless (member step '(:wait :drained :deadline))
             (fnn-fault "owner returned a malformed retire step ~a" step))
           (unless (eq step :wait)
-            ;; Record the ACL2 decision, then begin stop immediately. Rendering
-            ;; is deferred until the accepted producers and workers are joined.
+            ;; Record the ACL2 decision; a drained node's final checkpoint,
+            ;; as `store checkpoint' asks it (its answer is logged; a
+            ;; :blocked or :nothing-to-compact answer does not hold the stop;
+            ;; a :deadline stop takes none: fn-ort-final-checkpoint-action);
+            ;; then the stop a SIGTERM takes.  Rendering is deferred until
+            ;; the accepted producers and workers are joined.
             (setf (fnn-owner-service-retire service) (list s0 seconds step))
+            (let ((final (fnn-core 'fn-ort-final-checkpoint-action step)))
+              (unless (member final '(:checkpoint :stop))
+                (fnn-fault "owner returned a malformed final checkpoint action ~a" final))
+              (when (eq final :checkpoint)
+                (fnn-owner-compaction-request service)))
             (setf *fnn-sigterm-requested* t)))))))
 
 (defun fnn-owner-retire-final-report (service)
@@ -6860,8 +6977,10 @@ mutex; other faults stop the owner. Neither terminal outcome resumes serving."
 (defstruct (fnn-snapshot-job (:constructor %make-fnn-snapshot-job))
   kind captured arena pin thread (stage :pinning) physical condition)
 
-(def-actor fnn-owner-spawn-publisher :thread-name "fn owner checkpoint" :roster t)
-(def-actor fnn-owner-spawn-exporter :thread-name "fn owner export" :roster t)
+(def-actor fnn-owner-spawn-publisher :kind :publisher :thread-name "fn owner checkpoint" :roster t
+  :join fnn-owner-wait-workers :failure :job)
+(def-actor fnn-owner-spawn-exporter :kind :exporter :thread-name "fn owner export" :roster t
+  :join fnn-owner-wait-workers :failure :job)
 
 (defun fnn-owner-snapshot-job-capture (service kind captured)
   "Owner held. Retain the envelope before the possibly torn pin operation."
@@ -7436,31 +7555,38 @@ the stop's refusal at a chunk boundary is `owner-stopping'."
   "Rows rewritten and folded per ACL2 call while a reclaim pass walks the
 captured history (a work quantum per call, never a bound on the store).")
 
-(defun fnn-owner-reclaim-walk (records ctx rewrite arena &optional service history-source)
-  "The pass over the captured RECORDS in chunks of +fnn-reclaim-chunk-rows+
-(fn-owner-orc-chunk: fn-orc-chunk, whose rewrite is the offline rewrite and
-whose fold is the offline fold, fn-orc-rewrite-rows-of-append and
-fn-orc-fold-of-append joining the chunks).  Answers (values ACC REWRITTEN),
-REWRITTEN the rewritten rows in order when REWRITE, else nil."
-  (let ((acc (fnn-core 'fn-owner-orc-init)) (out nil) (rest records) (ordinal 0))
-    (loop while (if history-source (< ordinal (fourth (first history-source))) rest) do
+(defun fnn-owner-reclaim-walk (records ctx arena service history-source &optional consumer)
+  "One pass over the captured history in chunks of +fnn-reclaim-chunk-rows+:
+from the pinned P3 root HISTORY-SOURCE when there is one (each row's decode
+funded before it is read, the chunk's grant returned once the chunk is
+consumed), else the captured RECORDS.  Without CONSUMER the pass folds the
+decision's accumulator (fn-owner-orc-fold-chunk: fn-orc-fold, joined across
+chunks by fn-orc-fold-of-append) and answers it.  With CONSUMER each chunk is
+rewritten (fn-owner-orc-rewrite-chunk: fn-orc-rewrite-rows, the offline
+rewrite, joined by fn-orc-rewrite-rows-of-append) and handed to CONSUMER;
+no rewritten row outlives its chunk here (lane reclaim, PRF-1315: the pass
+keeps no whole rewritten-row list) and the answer is nil."
+  (let ((acc (and (null consumer) (fnn-core 'fn-owner-orc-init)))
+        (rest records) (ordinal 0)
+        (total (and history-source (fourth (first history-source)))))
+    (loop while (if history-source (< ordinal total) rest) do
       (let ((chunk
               (if history-source
                   (loop repeat +fnn-reclaim-chunk-rows+
-                        while (< ordinal (fourth (first history-source)))
+                        while (< ordinal total)
                         collect (prog1 (fnn-owner-history-root-at service history-source ordinal)
                                   (incf ordinal)))
                 (loop repeat +fnn-reclaim-chunk-rows+ while rest collect (pop rest)))))
-        (let ((r (fnn-core 'fn-owner-orc-chunk chunk ctx acc arena)))
-          (unless (and (consp r) (= (length r) 2) (listp (first r))
-                       (= (length (first r)) (length chunk)))
-            (fnn-fault "owner returned a malformed reclaim chunk"))
-          (setq acc (second r))
-          (when rewrite (push (first r) out))
-          (setq chunk nil)
-          (when history-source (fnn-owner-history-root-chunk-return service history-source)))))
-    (values acc (and rewrite (let ((all nil))
-                               (dolist (c out all) (setq all (nconc c all))))))))
+        (if consumer
+            (let ((rewritten (fnn-core 'fn-owner-orc-rewrite-chunk chunk ctx arena)))
+              (unless (and (listp rewritten) (= (length rewritten) (length chunk)))
+                (fnn-fault "owner returned a malformed reclaim chunk"))
+              (setq chunk nil)
+              (funcall consumer rewritten))
+          (setq acc (fnn-core 'fn-owner-orc-fold-chunk chunk ctx acc arena)
+                chunk nil))
+        (when history-source (fnn-owner-history-root-chunk-return service history-source))))
+    acc))
 
 (defun fnn-owner-reclaim-dry-run (service free)
   "The dry run on the running owner: under the owner mutex the capture
@@ -7511,7 +7637,7 @@ the reply word: :dry-run, or ACL2's refusal."
                ;; the context's hash tables freed whatever the walk does
                (unwind-protect
                     (setq classes (fnn-core 'fn-owner-orc-classes ctx arena)
-                          acc (fnn-owner-reclaim-walk records ctx nil arena service history-source))
+                          acc (fnn-owner-reclaim-walk records ctx arena service history-source))
                  (fnn-core 'fn-owner-orc-ctx-free ctx)
                  (when history-source
                    (fnn-owner-history-root-unpin service history-source)
@@ -7665,7 +7791,10 @@ pointer and the live state's binding)."
   "`store reclaim --recorded' on the running owner: the capture under the
 mutex (the pass's credit reserved, refused by name; the log rotated as a
 publication's capture rotates it; the pass the publication in flight), then
-off it the walk with the rewrite, the decision, the reclaimed checkpoint
+off it three walks of the pinned history a chunk at a time and no whole
+rewritten-row list (lane reclaim, PRF-1315: the fold, then the rewrite into
+the checkpoint's capture, then the rewrite predicted into the rebuilt
+capture), the decision, the reclaimed checkpoint
 staged (the rewritten rows' tombstoned records are the writer's sources),
 the tombstones interned in owner quanta, the rebuild (the open's recovery
 over the rewritten rows) and the fresh catalog and history columns; then ONE
@@ -7681,7 +7810,7 @@ publication).  Answers the reply word."
          (answer nil) (captured nil) (pin nil) (history-source nil) (history-candidate nil) (position nil) (stage nil) (ident nil)
          (installed nil) (swapped nil) (word :failed) (*fnn-checkpoint-frames* nil)
          (base nil) (seal-payloads nil) (seal-us 0) (arena nil) (column-key nil) (column-salt nil)
-         (image nil)
+         (image nil) (ctx-held nil)
          (started (get-internal-real-time)))
     (flet ((ms () (round (* 1000 (- (get-internal-real-time) started))
                          internal-time-units-per-second))
@@ -7735,17 +7864,20 @@ publication).  Answers the reply word."
                                   now record-octets feeds)
                  captured
                (declare (ignore now))
-               (let* ((ctx (fnn-core 'fn-owner-orc-ctx :recorded v s nil feeds arena))
-                      (acc nil) (rows nil) (decision nil))
-                 ;; the context freed right after the walk (orc-decide does
-                 ;; not read it), also when the walk faults
-                 (unwind-protect
-                      (multiple-value-setq (acc rows) (fnn-owner-reclaim-walk records ctx t arena service history-source))
-                   (fnn-core 'fn-owner-orc-ctx-free ctx)
-                 (when history-source
-                   (fnn-owner-history-root-unpin service history-source)
-                   (setq history-source nil)))
-                 (setq decision (fnn-core 'fn-owner-orc-decide :recorded profile v s nil acc
+               ;; Lane reclaim (PRF-1315): three passes over the pinned
+               ;; history, each a chunk at a time, and no whole rewritten-row
+               ;; list: pass 1 folds the decision; pass 2 rewrites into the
+               ;; checkpoint's capture and writer walk; pass 3 rewrites into
+               ;; the predicted rows' capture (the rebuild's input) and the
+               ;; seal payloads.  CTX and the root pin live across the three
+               ;; and go before the swap; the pass's cleanup frees them on
+               ;; any exit.
+               (let* ((ctx (setq ctx-held (fnn-core 'fn-owner-orc-ctx :recorded v s nil feeds
+                                                    arena)))
+                      (decision nil) (e nil))
+                 (setq decision (fnn-core 'fn-owner-orc-decide :recorded profile v s nil
+                                          (fnn-owner-reclaim-walk records ctx arena service
+                                                                  history-source)
                                           arena))
                  (fnn-reclaim-cut :rewritten)
                  (case (and (consp decision) (first decision))
@@ -7758,14 +7890,40 @@ publication).  Answers the reply word."
                    (t (fnn-fault "ACL2 returned no reclaim decision")))
                  ;; the reclaimed checkpoint, staged off the mutex
                  (let ((segment (fnn-core 'fn-ockp-segment-octets record-octets
-                                          +fnn-checkpoint-batch-octets+)))
+                                          +fnn-checkpoint-batch-octets+))
+                       (acc2 (fnn-core 'fn-rcw-acc-init configs)) (h2 0)
+                       (lacc nil) (sacc nil) (nrows 0) (bad nil))
+                   ;; pass 2: each rewritten chunk's canonical rows from the
+                   ;; carried handle into the capture (KEYSTONE
+                   ;; fn-rcw-canon-acc-steps-is-the-checkpoint-capture) and
+                   ;; its payloads' lengths and sources into the writer walk
+                   ;; (KEYSTONE fn-rcw-srcs-steps-is-the-walk)
+                   (fnn-owner-reclaim-walk
+                    records ctx arena service history-source
+                    (lambda (chunk)
+                      (fnn-checkpoint-yield "reclaim-walk" nrows)
+                      (unless bad
+                        (let ((r (fnn-core 'fn-rcw-canon-acc-step acc2 configs chunk h2 arena)))
+                          (if (eq r :bad)
+                              (setq bad t)
+                            (setq acc2 (first r) h2 (second r)))))
+                      (unless bad
+                        (let ((st (fnn-core 'fn-scka-srcs-n chunk (length chunk) lacc sacc arena)))
+                          (unless (and (consp st) (= (length st) 3) (null (first st)))
+                            (fnn-fault "ACL2 returned a malformed checkpoint walk"))
+                          (setq lacc (second st) sacc (third st))))
+                      (incf nrows (length chunk))))
+                   (when bad (deferred :unencodable) (return-from pass))
+                   (unless (= nrows count)
+                     (fnn-fault "the rewritten history is not the captured history's length"))
                    ;; as a publication stages it (fnn-owner-publish-captured):
                    ;; NEXT, the history image of NEXT's records with its
                    ;; binding into the F row's position, then the setup
                    (destructuring-bind (setup next n arun)
-                       (let ((prepared (fnn-core 'fn-owner-sco-next nil nil configs rows
-                                                 (fnn-checkpoint-walk rows arena) segment
-                                                 arena)))
+                       (let ((prepared (fnn-core 'fn-owner-sco-next-of
+                                                 (fnn-core 'fn-rcw-acc-finish acc2)
+                                                 (list nil lacc sacc) segment)))
+                         (setq acc2 nil lacc nil sacc nil)
                          (multiple-value-bind (position2 image2)
                              (if prepared
                                  (fnn-history-image-build
@@ -7790,37 +7948,75 @@ publication).  Answers the reply word."
                                        (lambda (fd)
                                          (fnn-history-image-write fd image)
                                          (fnn-checkpoint-write-steps
-                                          fd setup segment (length rows) (fnn-store-config store)
+                                          fd setup segment count (fnn-store-config store)
                                           (fnn-live-octets-pub) arun arena))
-                                       (length rows) image))
+                                       count image))
                        (fnn-octets-pub-release))))
                  (fnn-reclaim-cut :staged)
                  ;; The tombstones are PREDICTED here (their handles from
                  ;; BASE, the live arena's count now) and sealed only in the
                  ;; swap quantum, after the seal word answers :swap: a
                  ;; deferred pass seals nothing (books/owner-reclaim-seal.lisp,
-                 ;; KEYSTONE fn-orcs-seal-is-the-intern).
+                 ;; KEYSTONE fn-orcs-seal-is-the-intern).  Pass 3: each
+                 ;; rewritten chunk predicted from the carried handle into the
+                 ;; rebuilt capture (KEYSTONES fn-rcw-predict-acc-steps-is-
+                 ;; predict, fn-rcw-rebuild-of-the-chunked-capture-is-the-
+                 ;; full-open); the chunks' seal payloads, in order.
                  (destructuring-bind (keyring generation)
                      (fnn-core 'fn-owner-orcp-keyring s)
                    (setq base (fnn-owner-gated (service :control)
                                 (first (fnn-call 'fn-arena-count arena))))
-                   (destructuring-bind (predicted payloads)
-                       (fnn-core 'fn-orcs-predict rows keyring generation base)
-                     (setq rows predicted seal-payloads payloads)))
-                 (when (eq rows :bad) (deferred :unencodable) (return-from pass))
+                   (let ((acc3 (fnn-core 'fn-rcw-acc-init configs)) (h3 base) (bad nil)
+                         (payload-chunks nil) (nrows 0))
+                     (fnn-owner-reclaim-walk
+                      records ctx arena service history-source
+                      (lambda (chunk)
+                        (fnn-checkpoint-yield "reclaim-walk" nrows)
+                        (unless bad
+                          (let ((r (fnn-core 'fn-rcw-predict-acc-step acc3 configs chunk
+                                             keyring generation h3)))
+                            (if (eq r :bad)
+                                (setq bad t)
+                              (progn (setq acc3 (first r) h3 (second r))
+                                     (when (third r) (push (third r) payload-chunks))))))
+                        (incf nrows (length chunk))))
+                     (when bad (deferred :unencodable) (return-from pass))
+                     (unless (= nrows count)
+                       (fnn-fault "the rewritten history is not the captured history's length"))
+                     (setq seal-payloads (let ((all nil))
+                                           (dolist (c payload-chunks all)
+                                             (setq all (append c all))))
+                           e (fnn-core 'fn-rcw-acc-finish acc3)
+                           acc3 nil)))
+                 ;; the walks are done: the context freed and the root pin
+                 ;; returned before the swap is attempted
+                 (fnn-core 'fn-owner-orc-ctx-free ctx)
+                 (setq ctx-held nil)
+                 (when history-source
+                   (fnn-owner-history-root-unpin service history-source)
+                   (setq history-source nil))
                  (fnn-reclaim-cut :interned)
-                 (let* ((rebuilt (fnn-core 'fn-owner-orcp-rebuild rows configs frontier
+                 (let* ((rebuilt (fnn-core 'fn-owner-orcp-rebuild e configs frontier
                                            (third answer)))
                         (cat (fnn-fresh-stobj 'fn-cat)))
                    (when (eq (second rebuilt) :fault)
                      (deferred :rebuild) (return-from pass))
-                   (setq history-candidate
-                     (fnn-owner-history-root-prepare-rows service rows column-salt))
-                   (fnn-call 'fn-owner-orcp-load-catalog
-                             column-key
-                             rows
-                             (fnn-core 'fn-owner-orcp-view-index (second rebuilt))
-                             arena cat)
+                   ;; the history candidate and the fresh catalog over the
+                   ;; rebuilt capture's own records (no copy), the catalog a
+                   ;; chunk per call after the keyed clear (KEYSTONE
+                   ;; fn-rcw-load-chunks-keyed-is-keyed-load)
+                   (let ((rows (fnn-core 'fn-sco-records e)))
+                     (setq history-candidate
+                       (fnn-owner-history-root-prepare-rows service rows column-salt))
+                     (fnn-call 'fn-owner-orcp-load-catalog-begin column-key cat)
+                     (let ((view-index (fnn-core 'fn-owner-orcp-view-index (second rebuilt)))
+                           (rest rows))
+                       (loop while rest do
+                         (fnn-call 'fn-owner-orcp-load-catalog-chunk
+                                   (loop repeat +fnn-reclaim-chunk-rows+ while rest
+                                         collect (pop rest))
+                                   view-index arena cat))))
+                   (setq e nil)
                    (fnn-reclaim-cut :rebuilt)
                    (dotimes (round +fnn-reclaim-swap-rounds+)
                      ;; ONE live quantum (refused once the owner is stopping:
@@ -7904,6 +8100,7 @@ publication).  Answers the reply word."
                               (length seal-payloads) seal-us)
                      (fnn-owner-release-extents service store *fnn-checkpoint-frames* paths pin arena))
                    (fnn-reclaim-cut :released))))))
+        (when ctx-held (fnn-core 'fn-owner-orc-ctx-free ctx-held))
         (when history-candidate
           (fnn-owner-history-root-abandon-candidate service history-candidate))
         (when history-source (fnn-owner-history-root-unpin service history-source))
@@ -8061,9 +8258,12 @@ torn last entry follows.  Answers the offset the writer resumes at."
               (fnn-err "service log reopen failed: ~a" condition))))
         (setq *fnn-owner-log-handled* (second decision))))))
 
-(def-actor fnn-owner-spawn-listener :thread-name "fn owner accept" :roster t)
-(def-actor fnn-owner-spawn-tls-listener :thread-name "fn owner TLS accept" :roster t)
-(def-actor fnn-owner-spawn-maintenance :thread-name "fn owner maintenance" :roster t)
+(def-actor fnn-owner-spawn-listener :kind :accept :thread-name "fn owner accept" :roster t
+  :join fnn-owner-wait-workers :failure :service)
+(def-actor fnn-owner-spawn-tls-listener :kind :accept :thread-name "fn owner TLS accept" :roster t
+  :join fnn-owner-wait-workers :failure :service)
+(def-actor fnn-owner-spawn-maintenance :kind :maintenance :thread-name "fn owner maintenance" :roster t
+  :join fnn-owner-wait-workers :failure :service)
 
 (defun fnn-owner-start-tls-accept (service listener &optional (implicit-tls t))
   "Registered secondary listener; preserve its custody through physical join.

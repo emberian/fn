@@ -1,0 +1,17 @@
+{
+ "acceptance": "wrapper:closed-classification: tests.test_native_admin.AdminSectionStructureTests.test_the_cache_refresh_leaves_its_failure_to_the_section (red on ec2c1b3da); native AdminSectionBoundaryTests (never run)",
+ "category": "failure-scope",
+ "disposition": "LOCAL",
+ "exposure": "live",
+ "file": "host/native/admin.lisp",
+ "id": "AC01",
+ "notes": [
+  "10-03 23:43 10-04 fixed on lane/actors (the arm deleted; the section envelope classifies); repair.py verify not run (wind-down)"
+ ],
+ "owner": "actors",
+ "severity": "medium",
+ "source": "ACTORS",
+ "state": "in-progress",
+ "title": "fnn-owner-refresh-config-cache recast every failure after a durable configuration publication, a fault included, as an uncertain outcome (exit 3, store fenced) by a parent-class error arm; the record is durable and the next open replays it, so ACL2's closed classification at the section boundary (a fault, exit 4) is the honest word",
+ "updated": "2026-10-04T03:43:51Z"
+}

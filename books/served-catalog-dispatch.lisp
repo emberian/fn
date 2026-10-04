@@ -37,6 +37,30 @@
                                       fn-nntp-multi fn-nntp-make-result
                                       fn-nntp-reply-effect))))
 
+;; The pinned HDR/XHDR and XPAT readers carry no cursor (lane cold-line: the
+;; -cat arms answer ranges with one, so the boundary theorem reads these
+;; references through the expansion).
+(defthm fn-scat-hdr-reference-has-no-cursor
+  (and (consp (fn-nntp-hdr-command session archive args legacyp fn-arena))
+       (equal (fn-ovw-expand (cdr (fn-nntp-hdr-command session archive args legacyp fn-arena))
+                             fn-arena fn-cat)
+              (cdr (fn-nntp-hdr-command session archive args legacyp fn-arena))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-command fn-nntp-hdr-current fn-nntp-hdr-range
+                                   fn-nntp-hdr-msgid)
+                                  (fn-nntp-single fn-nntp-multi fn-nntp-hdr-lines-for-numbers
+                                   fn-nntp-group-range-numbers fn-nntp-available-article
+                                   fn-find-article fn-nntp-hdr-content fn-nntp-parse-range)))))
+
+(defthm fn-scat-xpat-reference-has-no-cursor
+  (and (consp (fn-nntp-xpat-response session archive args fn-arena))
+       (equal (fn-ovw-expand (cdr (fn-nntp-xpat-response session archive args fn-arena))
+                             fn-arena fn-cat)
+              (cdr (fn-nntp-xpat-response session archive args fn-arena))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-xpat-response fn-nntp-xpat-range fn-nntp-xpat-msgid)
+                                  (fn-nntp-single fn-nntp-multi fn-nntp-xpat-lines-for-numbers
+                                   fn-nntp-group-range-numbers fn-find-article fn-nntp-xpat-msgid-lines
+                                   fn-nntp-parse-range fn-wildmat-parse-text)))))
+
 (local
  (defthm fn-scat-over-reference-one-reply
    (equal (list (fn-nntp-reply-effect

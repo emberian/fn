@@ -1,3 +1,27 @@
+# Cold-line lane — Opus (2026-10-04)
+
+Tree `build/lanes/cold-line`, branch `lane/cold-line` (origin), from `origin/dev` d4e53323c, merged `origin/next` 898969368 (nntp-auth fix). Ledger: `sl-cold-line-quanta` (owner cold-line), proof-owed `CL-OWED-HDR-CURSOR-FRAME`, `CL-OWED-NEWNEWS-DEMAND`, `CL-PRE-PRODUCTIVE-READ-NEWNEWS`.
+
+## What the change is
+- `books/cold-line-quanta.lisp` (new): the host's no-I/O rerun loop as an LRU model (`fn-clq-run`, `fn-clq-resume`, `fn-clq-line`). KEYSTONE `fn-clq-resume-finishes`: a quantum of at most C reads finishes within len+1 runs from any cache. TEETH `fn-clq-nine-reads-never-finish`: 9 distinct reads at C = 8 never finish, for every N (the 45e05c7fd defect). LINE `fn-clq-quantized-line-finishes`: N reads in quanta of Q <= C finish in ceiling(N/Q) quanta, <= N + ceiling(N/Q) runs. `fn-clq-payload-quantum` = 4 = C/2.
+- `books/served-catalog.lisp`: HDR/XHDR, XPAT and the compatibility HDR Xref RANGE arms answer with the OVER cursor carrying a header source in slot 7 (`fn-nntp-hdr-range-ovw`, `fn-ovw-hdr-cursor`, `fn-ovw-hdr-lines`); `fn-ovw-cursor-octets` gives its meaning. The three `-is-archive` / `-is-hdr` theorems and `fn-rcompat-reply-cat-is-rcompat-reply` are restated modulo `fn-ovw-expand` (via local copies of the replaced whole-range arms with their original proofs).
+- `books/over-window.lisp`: `fn-ovw-step` runs a header cursor's window of `fn-ovw-hdr-quantum` numbers (min(W,4) when the source reads payloads; W for an overview field). KEYSTONES `fn-ovw-run-is-hdr-reply` (no truncation, every W), `fn-ovw-step-payloads-fit` (a quantum reads <= 4 payloads), `fn-ovw-hdr-quanta-is-ceiling` (ceiling(N/Q') quanta). FRAME theorems now hypothesize `(not (nth 7 cur))` -> CL-OWED-HDR-CURSOR-FRAME.
+- `books/served-plan-cursor.lisp`: header cursors are fresh plan cursors (`fn-splan-fresh-cursorp`, `fn-nntp-hdr-range-ovw-emits-a-fresh-cursor`): the drain keystone covers HDR ranges. `books/served-catalog-dispatch.lisp`: `fn-nntp-archive-command-cat-is-pinned` statement UNCHANGED, proved again. `books/productive-read.lisp`: header reply is no article reply. No host change: the host already runs `fn-qplan-cursor-step` -> `fn-ovw-step` under `*fnn-extent-no-io*` with throw/issue/await/rerun.
+- NEWNEWS: dev's `-cat` arm already scans the tombstone column (`fn-nntp-newnews-response-stream`); not changed here. Its quantum is bounded by W visits, not reads -> CL-OWED-NEWNEWS-DEMAND (generators' `:demand` at lane/generators d54b7b955).
+
+## Evidence
+- RED before: hbox `cl-red-45e` (`hbox:/tank/fn/scratch/cold-line/native-cl-red-45e`), image set 45e05c7fd, tree dbf62fe95, `tests.test_native_cold_line_quanta`: all 10 lines NO ANSWER in 20 s at 40 articles (filed: evidence index `docs/evidence/2026-10-04-cold-line/native-cl-red-45e-test_native_cold_line_quanta.log`, 5fe49066). Caveat: one node per run, so lines after the first may be victims of the first's pinned owner; the deadline test (cg) measured each separately on 10-03.
+- Certification (narrow --recertify on persvati, FN_CERT_ORIGIN_KIND=run): `certify-20261004T050147Z-1392072` at 1338b29d1, 17 books green (cold-line-quanta, served-catalog, over-window, served-plan-cursor, served-catalog-dispatch, protocol-served-table, protocol-served, served-catalog-chain, owner-reader-read, owner-time-admission, owner-article-slots, owner-cold-line, owner-credits, productive-read, tests cold-line-quanta/over-window/served-catalog); `certify-20261004T053927Z-1790009` at 888936ccc re-certifies over-window, served-plan-cursor, over-window-tests after the payload-kind declaration. Both manifests filed (box-written bytes).
+- REPL sessions: persvati (assembler-granted), started ~03:52Z, every session stopped (last 05:2xZ). Laptop: cold-line-quanta and its test.
+- Pre-existing reds met, not this slice: productive-read-chain `fn-pcr-post-delegates-a-read-without-offer-by-definition` (posting; 7 chain + 7 absent theorems stop with it). check-lane reds unrelated to this slice (reach_check owner-time-journal, interface_emit raw-dispatch, cost_obligations baseline, premise_audit adt-pg-pokp, hot_path_check, holder_check, raw_depth, clock_unit, owner_globals, list_codec, harness_check, host_check bp-session) are on next.
+- GREEN after: owed. The slice rides the integrator's next image set (assembler); selectors: tests.test_native_cold_line_quanta.NativeColdLineQuanta.test_lines_past_the_cache_answer_completely, tests.test_native_cold_line_deadline, tests.test_native_over_cursor_cost.
+
+## Continuation (exit, ramp-down 2026-10-04)
+1. On the integrator's image of next with this slice: run the three native selectors above; file the run (evidence_store put) and its index line; a red there is the finding (look first at a no-I/O miss inside fn-ovw-hdr-step's window: the window is <= 4 numbers for a payload source).
+2. CL-OWED-NEWNEWS-DEMAND: convert fn-nnw-stream's batch onto def-cursor :demand (lane/generators d54b7b955) once on next.
+3. CL-OWED-HDR-CURSOR-FRAME: the commit/withdraw frame for header cursors.
+4. productive-read-chain's posting theorem (pre-existing) belongs to the productive-read owner.
+
 # Harvest lane — Opus (2026-10-04)
 
 Tree: `build/lanes/harvest`, branch `lane/harvest`, from `origin/dev` `d4e53323c`. Git only (no ACL2, no builds). The register is `planning/harvest-2026-10-04.md`.
@@ -4544,6 +4568,170 @@ versus current-image obligations, not completion claims. No live deployment.
 Protected recovery partition, expanded init/reopen and complete tariff remain
 open. Bounds catchup controller draft is preserved but activation unwired.
 
+## Lane generators (Fable), 2026-10-04 -- wind-down
+
+Branch `lane/generators` from origin/integrate/20261004@ec2c1b3da. Full entry and the exact continuation:
+`build/coordinator/lanedumps/generators.md`. Landed on the branch: def-cursor `:demand-metric`/`:demand-proof`
+(NAME-STEP-DEMAND-BOUND) and def-cursor/batch with a DEMAND budget (NAME-BATCH-DEMAND-BOUND), agreed with
+cold-line for cursor quanta; test book admitted (43 forms, laptop REPL); closure certification owed on hbox.
+Not started: ST1 instances (three chosen: snoc-list fn-sl-append1, cancel-lock fn-cl-ring-keys, refused-offers
+fn-rof-first), the teeth fix-3 world check, the proto/adt move. Continue from the lanedump's "Continuation".
+
+## ACTORS lane — 2026-10-04 (Fable; wound down on ember's word)
+
+Branch `lane/actors`, worktree `build/lanes/actors`, base `origin/integrate/20261004` @ `ec2c1b3da` (the assembler's base; `origin/dev` `d4e53323c` is behind it by 14 commits, interfaces.lisp only among my files). Wound down on ember's word before the natives ran. An Opus generators successor absorbs this pilot.
+
+### Coordinates
+| sha | world receipt | manifest | image | native run |
+|---|---|---|---|---|
+| `ba15dff48` (host + tools + tests only; no book changed) | n/a (no book touched) | none | none | none — never run |
+
+### Where step 0 actually stands (read this before the briefs: they predate the merge)
+- `lane/wrapper`'s first change is ON dev already, evolved: `fnn-section-envelope`, `def-section` (owner.lisp:2456-2640), five declared sections (`fnn-quantum-control/-command/-bp/-connection/-mux-finish`), the transitional `fnn-owner-serialized/-gated/-transit-serialized/-with-control-turn` calling the envelope, `books/failure-scope.lisp` with `fn-fs-section-declp/-admit/-class-ok/-unwind/-section-action`, the connection and settled scopes, the actor machine (`fn-fs-actor-step` with `:spawning` reserved, `fn-fs-actor-join-action`), `fn-fs-inbox-admit`. `lane/wrapper` itself is now BEHIND dev (its checker/book versions are older); nothing left to re-derive from it. WR01 is `open` on dev although its fix is in (the ledger state was not carried).
+- `def-actor` exists on dev as a thin starter (owner.lisp:1748: `(def-actor NAME :thread-name :roster)` → `fnn-owner-actor-start`: reserve → spawn → publish thread object → latch; `fnn-owner-actor-run` is the top boundary: `catch 'raw-ev-fncall` (M1b), one `serious-condition` arm → `fn-fs-classify` → `(:exit KIND)` recorded under the roster, a torn step never re-stepped (M1c); `fnn-owner-actor-join` = the receipt via `fn-fs-actor-step`/`-receipt`). Two instances: `fnn-owner-spawn-syncer` (roster t), `fnn-owner-spawn-committer` (roster nil). NOT declared: `:failure`, `:register` slot, `:join` site, `:admit`; the lock checker does not read `def-actor` (R4 `threads` rows are still hand contracts).
+- The four must-fixes: M1 closed refusal set — in (`*fn-fs-refusal-classes*`, `fnn-condition-class` = concrete class; structure test holds every host condition to a table); M2 class+step — in (`*fnn-section-step*` written by `fnn-link/-replace`, cleared by fsync-dir; `fn-fs-classify (class step)`; the declared `:effects` cut list is NOT done, the window is still primitive-level); M3 unwind — in (`fn-fs-unwind`: an unexplained exit under the mutex is a fault; declared `:exits` NOT done, none admitted); M4 cleanup set — in (`*fn-fs-cleanup-purposes*`, pending-extent release excluded, theorem with teeth).
+
+### What this lane landed (`ba15dff48`)
+- `host/native/admin.lisp`: 8 of 8 owner-section sites → `fnn-quantum-control` (the brief said 7; there are 8 call sites: compaction, inspect, export, reclaim, reclaim-instant, limit-carry, limit, admin; all run on the control thread or the startup command, both declared actors). The thunks are unchanged except one `(fnn-admin-test-fault "SECTION")` line at the top of each (developer selector `FN_NATIVE_ADMIN_FAULT=SECTION:fault|uncertain`, registered in io.lisp `+fnn-developer-selectors+`).
+- Hand wrapper deleted: `fnn-owner-refresh-config-cache`'s `(error (e) (setf fenced t) (fnn-indeterminate ...))` arm — ledger **AC01** (in-progress; `repair.py verify` NOT run). The two other handler-cases in the file are left with notes: `fnn-admin-verify-under-lock` (`(error () ... :unavailable)`, OFFLINE command path — the command scope `fnn-failure-scope :command` is the generator's next piece; it swallows a fault after a durable publication into a word) and `fnn-owner-live-reconfigure-locked`'s `fnn-store-error` arm (re-signals; only the exact bare class un-stages — `fnn-store-io-refusal` is also "nothing stored" and is not un-staged: a decision the host still makes by class; move it to ACL2 with the conversion of the owner's writers).
+- LOCK-CHECK strict by file: `tools/lock_discipline_check.py` gained `enclave.files` (+ `files_except` {FILE: {FN: why}}); contracts declare `host/native/admin.lisp` strict, excepting `fnn-admin-query`/`fnn-admin-execute` (offline executors: `fnn-unwind-cleanups` hides a handler-case the checker cannot expand — the macro gained that arm in d8c94940b and now produces 23 unresolved rows tree-wide, NEW on the base). New lock `XOBS` (the native observer's record mutex, a leaf under every observed lock: 3 unresolved rows + 3 `lock object` rows dissolve) and the edge `E -> XCRYPTO` (limit record staged under the extent mutex). Baseline: 1 row dropped (`R7|fnn-owner-refresh-config-cache|swallow:error:fault`, the dissolved hand arm).
+- **Lock gate result**: `--check` is RED ON THE BASE ITSELF: ec2c1b3da = new 250 / stale 81 (fnn-unwind-cleanups ×23, bp-node/bp-app stored-callback R1 ×13, `fnn-bps-with-send-socket` ×2, 81 moved rows incl. control.lisp lambda R1 ×9). This tree: new 243 / stale 81; **admin.lisp: 0 enclave findings** (the 2 excepted rows are the unwind-cleanups ones). `--write-baseline` cannot be used (it refuses to raise); the integrator must rebaseline/declare the base's rows. `tests.test_lock_discipline_check`: 2 failures (`O->?(fnn-owner-service-syncer-ledger-lock)` expectations), pre-existing on the base.
+- Tests: `tests/test_native_admin.py AdminSectionStructureTests` 4/4 green here (the cache-refresh one is red on the base by construction; the others pass there too as they assert declared shapes — re-check); `AdminSectionBoundaryTests` (inspect fault → exit 4, inspect uncertain → exit 3, compaction fault, admin fault; developer image) NEVER RUN. `harness_check --write-stubs` regenerated two raw stub blocks (committed).
+- Items dissolved: 0 ledger items by admin's conversion alone (none of the wrapper-class items name admin.lisp); 1 R7 row; 6 R5 rows (XOBS). AC01 filed (new, mine).
+
+### Natives / boxes: nothing ran
+No hbox or persvati job was started; no REPL; no image. The published set `45e05c7f` predates t45 (3de331433, 10-02 22:33) so a red-before there would be "no selector" red, not a defect red — state that honestly when the natives run. Successor: build one developer image of this sha (integrator batch), run `tests.test_native_admin` (all classes), `tests.test_native_maintenance_live`, `tests.test_native_operator_verbs`, `tests.test_native_control`; `tools/remote_check.sh auto --target check-lane`.
+
+### Per-file conversion list for the next wave (transitional-wrapper call sites at ec2c1b3da, `grep -c`)
+owner 54 (other lanes' territory now: WEB/INIT/RETIRE/RECLAIM; convert LAST, then delete `fnn-owner-serialized`, `-gated`, `-transit-serialized`, `-with-control-turn`), history-root 17 (new since wrapper's count; owner-thread maintenance quanta — needs `:actors (:maintenance)`), mux 10 (→ `fnn-quantum-connection`; budget-install → `-control`; `fnn-mux-guarded` → one `serious-condition` arm over `fn-fs-classify-connection`; replace mux-finish/tls-log/handshake `ignore-errors` with a settled scope over `fn-fs-settled-action`), feed-service 9 and web-host 9 (`:actors (:feed)` / `(:web)`: a new def-section each), hybrid-control 5, control 5 (the control thread's own 6-arm handler-case at control.lisp:395-420 is the next hand classifier to delete: it has parent-class `fnn-store-error`/`error` arms), pull-service 5, peer-invite 3 (`fnn-pinv-owner-issue`: control actor → `fnn-quantum-control`), snapshot-producer 1 (bare gated: decide :live vs `(:cleanup ...)`), io 1, build-dtn 1, dev-repl 1, auth-adoption-parked 2 (parked). Mechanical rule that held for admin: `(fnn-owner-serialized service cid thunk [class])` ≡ `(fnn-quantum-X service cid thunk [class])` when X's declared actors include the caller's thread and its classes include the class; add the file to `enclave.files` and clear its rows.
+
+### Exact continuation (the successor's first three moves)
+1. `def-actor`'s declaration half: `(def-actor NAME :kind K :thread-name S :register (:roster|nil) :join SITE :failure POLICY)` → `fn-fs-actor-declp` beside `fn-fs-section-declp` in books/failure-scope.lisp (kind ∈ `*fn-fs-actors*`, policy ∈ {:fence :fault :private :result}), `fnn-actor-declare` at load, `*fnn-actors*` the table, the checker reading `def-actor` and deriving the R4 `threads` row (then the hand rows for syncer/committer go). Owner.lisp lines 1748-1756 only.
+2. Run the natives above on an image of this sha; `repair.py verify AC01 --base ec2c1b3da`; READY to the assembler with the table.
+3. Committer actor book (tcb-shrink §3.3) as statements: NOT started. Statement-first means a `Prop` per theorem with its teeth planned; the repo has no precedent for an unproved `defthm` (no `skip-proofs` toward a claim) — file the seven as `proof-owed` ledger items naming the theorem and write `books/committer-actor.lisp` with the stobj and `fn-cmt-step`'s signature only.
+
+### Residue I did not touch (reported, not fixed)
+`fnn-unwind-cleanups` (io.lisp:545) does not escalate the exit when a cleanup after a body escape fails (review M3d: the dominated outcome is logged, never escalated) — the offline command's version of S028. The control thread's handler-case (control.lisp:395-420) classifies by parent class (M1's fail-open shape, outside the envelope). Both are CONTROL/io lanes' work.
+
+
+# proofs (Fable) — 2026-10-04 wind-down
+
+See build/coordinator/lanedumps/proofs.md (the full entry). State: four statements drafted and committed at lane/proofs@1c5e987b2, none admitted (laptop cache is box-toolchain-keyed; slot pool held). Continuation: take a REPL where the toolchain matches (persvati, ask the assembler) or after carrier's laptop certify finishes; admit books/served-available-read (PRF-1287), books/catalog-may-seal, books/statement-recover-stream in that order; then cite the may-seal keystones in host/interfaces.lisp:1553 and run keystone_emit --check; PRF-1242 needs issue/settle/close preservation first (finding recorded).
+
+# CAPS lane — Opus (2026-10-04)
+
+Tree `build/lanes/caps`, branch `lane/caps`, base `origin/integrate/20261004@ec2c1b3da`. D27: every hardcoded ceiling a profile admission limit or a bounded-work stream.
+
+| slice | sha | what | local certify (manifest) | native |
+|---|---|---|---|---|
+| CAPS-1 B003 | `018abdd39` | app journals: `*fn-aj-max-records*` 4096 + 3 lifetime aggregates deleted; per-journal profile `app-journal-profile` (RECORDS OCTETS, default 2^20/2^40), carried by the frontier; verb `app-journal profile`; :beyond-profile refused by name | certify-20261004T033211Z-51814 | tests/test_native_app_journal.py `test_journal_capacity_is_the_operator_profile`, `test_journal_beyond_its_profile_is_refused_by_name`: pending a DTN developer image at this sha |
+| CAPS-2 PKT-825a | `f21b92dea` | feed journal: one barrier per peer journal per batch-job phase (re-derived onto the off-lock job, not cherry-picked) | certify-20261004T035321Z-48811 | batch crash cut pending image (test_native_owner_offlock exercises the job) |
+| CAPS-3 store-charge | `bb3cc6b24` | `fn-store-charge-of-profile-article-is-representable` + codec-domain theorem in store-host-boundary | certify-20261004T040214Z-81691 | n/a (no host change) |
+
+Keystones (CAPS-1): fn-ajpf-read-of-octets, fn-ajpf-read-is-a-profile, fn-aj-statep-of-initial, fn-aj-valid-profile-admits-first-work, fn-aj-reserved-resolution-fits, fn-ajpf-write-keeps-the-journal, fn-aj-recover-past-profile-is-named, fn-aj-record-name-fixed-width. ACL2 test walks 4,097 records through recovery under the default profile and admits the next (there is no app-journal reclaim to post "across": the journal only grows; open still replays it whole, so a generation rotation stays the next BP packet, now for open cost, not capacity).
+
+Checks run locally: make check-fast-lane (7 reds, none in this lane's files: HST-003, reach owner-time-journal/catalog/newnews, docs nntp.md, web-stream test root, lock admin.lisp:683 — all at base); lock_discipline --check 0 NEW feed findings; interface_emit --check no fn-aj/fn-store-charge findings; host_check --read 0; harness_check --write-stubs (CAPS-1 stub committed); secrets_check 0.
+
+Not READY yet: world receipt, green_check over the affected closure (app-journal/feed-journal/store-host-boundary reach the image-world umbrellas: needs the assembler's hbox slot), and the natives on an image.
+
+## Remaining ceilings (continuation)
+- PKT-700 (`max-control-clients`, stranded-2 2deed39a4+98224ff7a): a store-profile field 16 is a layout event under D34 (every 15-field store refuses at open: `:layout`). Not taken unilaterally. Decision for ember: field 16 (fresh-deploy layout event) vs a configuration row (the 09-28 rule for per-store switches).
+- 2^24 BP profile ceiling (`fn-bpn-machine-limitp`, `*fn-bpn-machine-max-octets*`): raising the constant alone breaks `fn-bpnpf-profile-within-codec-widths`; it must move with `*fn-bpa-max-octets*`/`*fn-bpb-max-*`/`*fn-bpnf-max-held-image*` (BP-DESIGN lane's codecs), 162+ dependents.
+- custody rows (`*fn-bpn-machine-max-records*` 4096, 20+ sites across bp-node-*): a node-profile field means threading a parameter through the machine codec/progress/offer books (BP-DESIGN's).
+- EID length (`*fn-bpc-max-text*` 1024, 198 deps): a node-profile field read by the primary-block decoder.
+- PKT-244 u32 readers: WIDE (file machine, observed open, checkpoint codec, consumer positions).
+bounds design §1.4 binding list: 5 rows left (2^24 + its 3 codec widths counted as one, custody rows, EID, blocks-per-bundle, lab receive-evidence); §1.3's app-journal row marked REMOVED.
+
+## web lane (wave 2, 2026-10-04) — concurrent web face, logic-mode stream books
+
+Branch `lane/web` on origin; head a12741052 (origin/next merged at 0b113b642). STATUS: READY with natives pending; lane EXITED (ramp-down).
+
+### Strand: the web face serves one connection at a time (S037/S065, §2 criterion 4)
+
+Finding: the fix is already on dev. The concurrent reactor (one I/O actor
+multiplexing bounded HTTP records + one fixed semantic actor; `:defer` and
+cursor resume are timers, not sleeps) landed 42403c929..6de37169e
+(host/native/web-host.lisp). It has never run in an image: the last
+published set 45e05c7f predates it. So this lane's job is: tests that
+classify the red, then the native green on the next image set. No host or
+mux change needed; nothing sent to ACTORS.
+
+| commit | what |
+|---|---|
+| a6143d5f1 | tests/test_native_web.py: stalled-socket case measures /signin first (<4 s); new `test_two_requests_in_flight_are_answered_out_of_arrival_order` (B answered while A's head is incomplete); per-case owner stderr kept when FN_NATIVE_TEST_DIAGNOSTIC_DIR is set |
+| a7d08c2da | five web stream books :program -> :logic, keystones proved, 4 proof-owed items, twin fn-wps-private-begin deleted, raw witnesses caught up with the reactor's terminal custody |
+
+### Red-before (published set 45e05c7f, tests at a6143d5f1)
+hbox run `/tank/fn/scratch/web/native-red3-45e05c7f` (status 1, 4/4 FAILED, classified):
+- plain stalled: `14.92 not less than 4 : stalled socket held the HTTP actor before the first page` (request deadline 15 s)
+- TLS stalled: `9.92 not less than 4` (handshake deadline 10 s)
+- plain two-in-flight: B `TimeoutError` (6 s) behind A
+- TLS two-in-flight: B `The handshake operation timed out`
+Note: on 45e05c7f GET /health alone kills the "fn web face" thread
+(`ACL2 returned a malformed web action`, run native-red-45e05c7f-diag) —
+that is why /signin is measured first.
+
+### Green-after: PENDING
+Waiting on the integrator's image set from integrate/20261004 (>= 6d8fdea88,
+ETA ~2 h from 03:30Z). Continuation: when the sha arrives,
+`tools/hbox_native.sh --box hbox --name web --label green-<sha> --image-set <sha> --images developer --env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/web/diag-green <lane sha> tests.test_native_web.NativeWebFaceTests.test_stalled_socket_does_not_block_health_reader_or_account_post tests.test_native_web.NativeWebFaceTests.test_two_requests_in_flight_are_answered_out_of_arrival_order tests.test_native_web.NativeWebFaceTlsTests.test_stalled_socket_does_not_block_health_reader_or_account_post tests.test_native_web.NativeWebFaceTlsTests.test_two_requests_in_flight_are_answered_out_of_arrival_order`
+plus TLS coverage: `tests.test_native_web.NativeWebFaceTlsTests` (whole class: health, stalled, two-in-flight, test_1 friend flow, refusals, code-once, compressed article).
+If red: read diag stderr, fix in host/native/web-host.lisp.
+
+### Program-mode books -> logic
+web-page-cursor, web-list-stream, web-article-stream, web-reply-stream,
+web-post-stream: :logic, :verify-guards nil. Proved (laptop REPL, all forms
+of tests/test_web_private_source.sh admitted):
+- fn-was/wov/wls/wrs-scan-refused-stays, fn-wrs-page-accepted-only-when-done,
+  fn-wrs-page-invalid-exactly, fn-wrs-refused-reply-is-never-accepted
+- fn-wpf-finish-accepts-to-its-session, fn-wpf-finish-refusal-is-the-existing-gate,
+  fn-wpf-private-begin-refusal-is-the-existing-gate, fn-wps-private-reply-streams-only-after-340
+- fn-wpc-drive-, fn-wpc-window-drive-, fn-wps-window-emits-at-most-fuel (4096-octet quantum)
+Witnesses: tests/acl2/web-post-stream-tests.lisp wpft (accepted post widths
+1/2/7/4096, bad-csrf refused = old gate, remove); raw article stream asserts
+:done/200 = reference. No "uncertain" outcome exists in these books (the
+reactor maps an :uncertain await completion to finish, host side).
+Proof-owed (planning/repair/items): WEB-OWED-STREAM-GUARDS,
+WEB-OWED-WPC-REFINES-SEQ, WEB-OWED-SCAN-REFINES-HEADERS, WEB-OWED-POST-WINDOW-REFINES.
+
+Certify (narrow local, laptop, FN_CERT_ORIGIN_KIND=run, deps from cache):
+`certify-20261004T043801Z-3157` (manifest filed, planning/evidence-index.tsv)
+passes web-page-cursor, web-list-stream, web-article-stream, web-reply-stream,
+web-post-stream, owner-state-accessors, host/web-host, web-post-stream-tests,
+web-private-reply-tests, web-stream-consumer-source-tests.
+host/web-host had NOT certified since a6ed957ed (09-30, fn-owner-sco-deferred
+only in host/owner-host); fixed in 17cfbd37f: fn-owner-sco-global/-deferred moved
+unchanged into books/owner-state-accessors (touches host/owner-host.lisp,
+comment-only remainder). Not recertified here: owner-state-accessors' other
+includers (owner-config chain, image-world*) — affected-by owed to the
+integrator's batch certify.
+
+Raw witnesses green on laptop: tests/test_native_web_{page_cursor,post_stream,stream,private_begin,reactor,article_producer}_raw.sh.
+
+### Not done / handed on
+- harvest gift web-domain-default (wave 3 operator UX): not started.
+- S037/S065 ledger notes: to be set READY with the green run ids.
+
+### check-lane (persvati, 0b113b642, log build/remote-check/persvati-check-lane.log)
+make exit 2, 26 of 90 steps red. All are reds already in the tree except
+depth_check's 9 web-book appends: the logic-mode conversion makes the host
+run the books' *1* bodies. a12741052 classifies those 9 appends, plus the
+3 web walks that were already reported, in tools/depth_baseline.json, each
+with its named bound. depth_check now reports nothing for the web books.
+Compared at head and at origin/next, these give the same output:
+owner_globals, list_codec, cost_obligations, payload_kind. reach_check's
+differences come from origin/next having moved on, not from this lane.
+
+### Continuation (for whoever picks up web)
+1. Green-after native: when the integrator publishes a set from >= a12741052
+   (or any set that contains 42403c929..6de37169e; the lane changes no
+   host/native bytes), run the hbox_native command above for the 4
+   concurrency cases plus the whole tests.test_native_web.NativeWebFaceTlsTests
+   class. Then set S037/S065 to READY with the run ids.
+2. Proof-owed: WEB-OWED-STREAM-GUARDS. Verifying guards would also retire
+   the 9 append classifications. Then the three refinement items.
+3. Harvest gift web-domain-default (wave 3) has not been started.
+
 ## docs lane (lane/docs) — 2026-10-04
 
 Brief: scratchpad fn-briefs/COMMON.md + plan FN-SWARMPLAN-20261004 §3, §4 wave 0, §6.
@@ -4591,3 +4779,169 @@ First slice: `books/output-tariff-article.lisp` admitted on the laptop (10 forms
 uncertified, unwired; the exact continuation is the numbered list in the coordinator lanedump
 (steps 1-7). Nothing certified, no image, no native run. The only owner-host.lisp region this lane
 touches is `fn-owner-output-tariff-preview` (:5512-5518), untouched so far.
+
+Entry: build/coordinator/lanedumps/docs.md (deliverables, shas, word counts,
+continuation point).
+
+## Apps lane (lane/apps) — 2026-10-04
+
+Own tree /Users/ember/dev/fn/build/lanes/apps, branch lane/apps, base
+origin/integrate/20261004 @ec2c1b3da (assembler af2c7accc6871ee99).
+Owns the application boundary: E1/E2 consumer scenarios on an image of
+current source, the local cursor poll/wait/ack end to end, specs/applications.md,
+wiring gap 8 (FNCR remote receive).
+
+Slice 1 (source; no host or book change):
+- tools/fn_consumer.py `wake --wait SECONDS`: the first page is fn's
+  `consumer wait`/`bound-wait --timeout S` (client deadline S+60), later pages
+  poll. Unit: tests/test_fn_consumer_delivery.py
+  test_wait_sleeps_in_fn_for_the_first_page_only (10/10 OK, py3.12).
+- tests/test_native_consumer_exchange.py
+  test_sleeping_consumer_waits_for_the_report_then_acks: B blocked in wait
+  (still running after 5 s, ack 0), A reports r1, B's wait answers within
+  120 s, inbox r1 applied, committed ack advanced, reply stored; A's wait
+  returns reply-r1 applied; a further wait over nothing sleeps to its deadline.
+- specs/applications.md: rely-on-today (signed exact bytes, D25 resend, the
+  local cursor, two nodes) vs not-yet (remote consumer, view change/rebase,
+  retention, non-NNTP inter-node, zmq patterns), with the five selectors.
+- docs/agents.md one line for `wake --wait`.
+
+Gap 8: un-parked by ember 10-04 ("gates-with-producers"): the remote
+consumer (route, interim-funded TLS listener, client verb, two-node native) is
+lane/apps@25dd82d5a, which waits for the assembler's native-config batch after
+the image-set freeze (it adds a [remote_consumer] table to books/native-config).
+This branch (lane/apps-wait) carries only the Python/test/spec slice.
+
+history-auth-reader harvest stub: wave 3's (ST5 / snapshot producer is its
+consumer), not this strand's.
+
+Native: the five scenarios run from the frozen next tree on the integrator's set on the
+integrator's set: modules tests.test_native_consumer_exchange (selectors
+in applications.md) + tests.test_native_consumer_exchange_two_nodes,
+env FN_RUN_CONSUMER_EXCHANGE=1. Pending: image sha, run ids.
+
+Continuation point: when an image set of current source with this branch
+exists, run `tools/hbox_native.sh --image-set <sha> --env
+FN_RUN_CONSUMER_EXCHANGE=1 <rev> <the five selectors>`, file evidence, update
+the coordinate table, READY to assembler + integrator.
+
+## retire lane (lane/retire) — 2026-10-04
+
+Entry: build/coordinator/lanedumps/retire.md (S9 fence READY at 947235f76, natives pending; fs-observe held on lane/fs-observe; continuation point).
+
+## GENERATORS-2 (Opus), 2026-10-04 -- ramp-down exit
+
+Branch `lane/generators2` (generators + actors + origin/next). Full entry: build/coordinator/lanedumps/generators2.md.
+| sha | world receipt | manifest id | image sha | native run id |
+|---|---|---|---|---|
+| 0d262d092 | not run | certify-20261004T044031Z-13746 (laptop, 16/16) | none | none |
+Landed: def-loop snoc-list/cancel-lock/refused-offers (twins deleted); defkeystone :derived-by world check (fix 3);
+def-actor declaration half (fn-fs-actor-declp, 12 actors declared, lock check R4 reads def-actor, 9 hand rows gone);
+test_native_admin main-last fix. Continuation: the 23 fnn-unwind-cleanups rows (teach the expander the mapcar
+splice; escalate M3d in io.lisp), def-actor failure half, history-root/control conversion.
+
+
+# proofs2 (Opus) — 2026-10-04 (exit)
+
+See build/coordinator/lanedumps/proofs2.md. READY lane/proofs2@883c28b5a: PRF-1287 / may-seal / ssr=srs / PRF-1242 (composed: fn-hmc-run-keeps-invp) certified (certify-20261004T043850Z-1112347, certify-20261004T043618Z-98000); interfaces.lisp may-seal row re-cited. S150 at lane/proofs2-s150@82abba272 owes check-lane. Continuation: S150 READY, S151 narrow recertify, PGO-* (PGO-REFUSE-ABORT first).
+
+Entry: build/coordinator/lanedumps/docs.md (deliverables, shas, word counts,
+continuation point).
+
+## served lane (wave 2) — 2026-10-04
+
+Coordinator copy: build/coordinator/lanedumps/served.md (authoritative, updated at each step).
+- LIST residual model, plan drain and finite potential wired to the host-called fn-qplan-cursor-step (PRF-1313):
+  fn-lst-step-keeps-remaining, fn-qplan-cw-drain-is-a-prefix, fn-lst-active-command-is-av-list-active /
+  -counts-, fn-lst-one-finite-progress, fn-lsr-one-finite-progress. Owed: SRV-OWED-LIST-AGREE.
+- NOV full decimals (harvest 50cb50075). Natives: nov-red RED on 45e05c7f as expected.
+- SCL2 natives tightened (over_pins exact 211 2 1 34 + NEXT/LAST across tombstones; expiry exact 211 3 3 5);
+  over_pins RED on 45e05c7f (211 34 1 34). Catalog-hole navigation native wired (green on 45e05c7f: guard).
+- SCL4 / PRF-1237/1238 discovery snapshot: not landed; continuation in the coordinator lanedump.
+
+## raw-dispatch lane (Opus), 2026-10-04
+The full entry is `build/coordinator/lanedumps/raw-dispatch.md`.
+- Landed on `lane/raw-dispatch`:
+  - `c2fd7526e`: the D40 image trap (`host/native/raw-trap.lisp`, per-thread extent, no lock or allocation per call), the owed list at 358, interface_kinds, raw_dispatch_rule.
+  - `2d5586549`: the image test.
+  - `d1d54bdd0`: merge of next@b7624961f.
+- Open: the trap's native run and the POST ms at 1k/10k/100k. Both wait on the first image set built from a source containing post-guard-off's raw rows; the owed list is judged by the same build's `fnn-install-raw-dispatch`.
+- Continuation: the lanedump's last section.
+
+## bp (BP-DESIGN, Fable) — 2026-10-04 wind-down
+
+Branch lane/bp from origin/integrate/20261004 @ec2c1b3da. Landed: the
+decision file `planning/design/bp-2026-10-04.md` (DECISION = PROPOSED;
+advisory review not run), `books/bp-forward-cursor.lisp` and
+`tests/acl2/bp-forward-cursor-tests.lisp` (both UNHOOKED: PRF-1311's
+keystones K1-K3 stated, not admitted). No host change, no certify, no image;
+SCN-1110 blocked only on a REPL/image, its plan is packet §2.9 (needs the
+integrator's developer + dtn-developer images at the slice's sha, base
+>= 83b905e89 which loads bp-session.lisp into the DTN image). No REPL is
+held anywhere. The exact continuation, 8 numbered steps, is
+`build/coordinator/lanedumps/bp.md`.
+
+## bp2 (BP-2, Opus) — 2026-10-04 ramp-down
+
+Branch lane/bp2 (lane/bp@fed210549 + integrate/20261004 + origin/next).
+Slice 1 is landed. The forward-round cursor's K1–K3 (PRF-1311) are
+certified (manifest certify-20261004T044115Z-1138962, persvati, 4/4), and
+the host `:forward` arm calls fn-bpfc-turn: the O(held × table) plan arm
+is replaced, and the raw witness shows 2,000 decisions per turn become
+<= 64. The 13 bp stored-callback lock rows are declared through a checked
+`callback_contexts` table (baseline 366 → 353). The packet's advisory
+review ran (kimi + grok, verbatim with a fact-check), and its DECISION is
+AMENDED: S025 is escalated to ember, and the attempt budget is adopted.
+Natives are pending on the integrator's batched set: SCN-1110, the
+three forward natives and the ION X10A/X10B natives (45e05c7f does not
+reach the subject). The full entry and exact continuation are in
+`build/coordinator/lanedumps/bp2.md`.
+
+## Lane tariff2: 2026-10-04 (Opus; exited on ramp-down)
+
+The full lanedump is build/coordinator/lanedumps/tariff2.md. ARTICLE is priced from its row
+(books/output-tariff-article-row.lisp) and wired. In accounted mode an unpriced family is
+answered 403 with the connection kept, and an over-quantum reply 400 and close
+(books/output-admission-line.lisp). Status and health show the accounting mode.
+Certified narrowly on persvati: certify-20261004T044137Z-1141752 and certify-20261004T051020Z-1493764.
+The pass-through stays until the last served family is priced (root ruling; specs/resource-vector.md).
+The opt-in (native-config) is on lane/tariff2-optin for batch R. PRF-1316 is proof-owed.
+
+## RECLAIM lane (lane/reclaim) — 2026-10-04
+
+Full entry: build/coordinator/lanedumps/reclaim.md. Landed: slice 1 (arena-writer rule scope,
+stub fixture renamed tests/native_history_root_raw-mock.lisp) in next e0a8516e9. On the
+branch: PRF-1315, the live reclaim pass walks the generation-pinned history in chunks with no
+whole rewritten-row list (books/reclaim-chunked-walk, books/reclaim-chunked-seal;
+fn-owner-orcp-rebuild takes the capture); the real native fixture
+tests/test_native_reclaim_walk.py (SCN-1140); S152 (the live pass's credit estimate refuses
+a 2,100-article reclaim: `deferred-credit estimate=452968896`, so the fixture cannot go
+green until it is measured and replaced); arena-reader-bound 12/12 REPL-admitted (PRF-1312,
+no teeth file yet). Held: PKT-855 on lane/reclaim-note@19b1b2211 (touches config.lisp).
+Continuation: the lanedump's numbered list.
+
+## init (atomic init PKT-894/PRF-1040; catalog-root install order) -- 2026-10-04
+
+See build/coordinator/lanedumps/init.md (full). lane/init@612fdc33d. Atomic init re-derived (secret in the staged plan; retry discards an unheld unpublished stage; keystone fn-bs-init-log-crash-retry-is-old-or-new admitted in REPL, certification pending). Install order: fnn-owner-recover-core reserves the catalog root before the in-place catalog load (mock red/green; proof-owed INIT-OWED-CATALOG-ROOT-INSTALL). Native red-before init-red on 45e05c7f: init_publication 21F/1E. Green-after waits on the integrator image set; certify waits on the hbox slot (f728 cancelled on request). Continuation: lanedumps/init.md NEXT.
+Update 10-04: READY at 849a69643, natives pending; 6 changed books certified green (certify-20261004T043931Z-1117313, certify-20261004T051946Z-1594493); defteeth on both keystones; PRF-1040 proof-events regen owed to the integrator. Continuation: lanedumps/init.md "Resume".
+
+## catchup lane (lane/catchup) — 2026-10-04
+
+Wave 2 strand 7: the ACL2 catch-up spool controller (mined from
+codex/horse-bounds@0373a76c1) drives every catch-up round on the pull worker,
+through the lease's spool worker and the peer flight bank, under an ACL2 round
+deadline; the in-memory requester round is deleted (replacement), its three
+keystones are proof-owed (CSP-OWED-*). Plus the pull-credential (65a485229)
+and carriage-budget (5e2f8e957) gifts, re-derived. Entry with coordinates,
+natives, deploy note and continuation: build/coordinator/lanedumps/catchup.md.
+
+## catchup2 lane (lane/catchup2) — 2026-10-04
+
+Successor of catchup. READY at 3949a6578: one pull consumer (fnn-pull-round and fnn-catchup-tick
+deleted; fnn-pull-worker drives every pull and catch-up flight), defteeth for the strand's eight
+keystones (one equivalent restatement: fn-pcb-carried-event-keeps-budget-schedule-admitted without its
+outer let), peer-flight-reservation includes heap-reservation, spool worker close site declared.
+Certified on persvati: certify-20261004T063510Z-2314965, certify-20261004T071525Z-2708512. Natives:
+red catchup-red-45e05c7f; green pending the integrator's batch image (tests.test_native_peer_catchup,
+tests.test_native_peer_pull). Proof-owed 4 (CSP-OWED-*). PRF-1318 not started (owner-number-bound-join
+does not admit). Entry: build/coordinator/lanedumps/catchup2.md.

@@ -14,6 +14,37 @@
 (defun fnn-admin-plan-reason (plan)
   (fnn-core 'fn-native-admin-host-reason plan))
 
+;;; Lane ACTORS (rebuild step 0, the admin pilot).  Every owner quantum in
+;;; this file is a declared section (host/native/owner.lisp def-section
+;;; fnn-quantum-control: run by the control thread or the startup command,
+;;; admitted :live), so ACL2 decides its failure, admission and unwind
+;;; (books/failure-scope.lisp) and the fence is installed before the owner
+;;; mutex is released.  No function below classifies a condition itself.
+;;; The selector raises inside a named section so the natives observe the
+;;; boundary (tests/test_native_admin.py AdminSectionBoundaryTests);
+;;; production has no injection branch (fnn-developer-selector).
+
+(defparameter +fnn-admin-sections+
+  '("compaction" "inspect" "export" "reclaim" "reclaim-instant"
+    "limit-carry" "limit" "admin")
+  "This file's owner sections, by the name FN_NATIVE_ADMIN_FAULT uses.")
+
+(defun fnn-admin-test-fault (section)
+  "Developer-only FN_NATIVE_ADMIN_FAULT=SECTION:fault|uncertain: raise inside
+the named owner section of this file, before its body runs."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_ADMIN_FAULT")))
+    (when raw
+      (let* ((colon (position #\: raw :from-end t))
+             (name (and colon (subseq raw 0 colon)))
+             (kind (and colon (subseq raw (1+ colon)))))
+        (unless (and name (member name +fnn-admin-sections+ :test #'string=)
+                     (member kind '("fault" "uncertain") :test #'string=))
+          (fnn-fault "invalid FN_NATIVE_ADMIN_FAULT (expected SECTION:fault|uncertain)"))
+        (when (string= name section)
+          (if (string= kind "fault")
+              (fnn-fault "FN_NATIVE_ADMIN_FAULT ~a" raw)
+            (fnn-indeterminate "FN_NATIVE_ADMIN_FAULT ~a" raw)))))))
+
 (defun fnn-admin-clock-plan ()
   "Raw Lisp observes clock values but does not coerce or wrap them.  ACL2
 builds the record stamp and refuses values that its durable schema cannot
@@ -179,26 +210,29 @@ uncertainty."
   "Install one coherent native projection of the ACL2 owner's durable config.
 
 The Store bridge is a separate ACL2 global and does not follow live owner
-reconfiguration.  A failed observation after publication fences this writer;
-it cannot continue with its old group-code table."
-  (let ((store (fnn-owner-service-store service)))
-    (handler-case
-        (let* ((generation (fnn-owner-core 'fn-owner-config-generation))
-               (served (fnn-decode-joined-names
-                        (fnn-owner-core 'fn-owner-config-served)))
-               (domain (fnn-decode-joined-names
-                        (fnn-owner-core 'fn-owner-domain))))
-          (unless (and (integerp generation) (>= generation 0)
-                       (= generation expected-generation))
-            (fnn-fault "owner configuration generation changed after publication"))
-          (setf (fnn-store-config-generation store) generation
-                (fnn-store-config-served store) served
-                (fnn-store-config-domain store) domain)
-          :refreshed)
-      (error (e)
-        (setf (fnn-store-fenced store) t)
-        (fnn-indeterminate
-         "durable configuration needs owner cache recovery: ~a" e)))))
+reconfiguration.  The caller is inside an owner section
+(fnn-owner-live-reconfigure-locked's callers are all quanta of the one
+envelope): a failed observation after the publication leaves this body as
+the condition it is, the section's boundary classifies it by its concrete
+class (books/failure-scope.lisp fn-fs-classify) and stops the service before
+the owner mutex is released, so this writer never continues with its old
+group-code table.  The record is durable and the next open replays it:
+nothing here is uncertain, and no arm of this function says otherwise (lane
+ACTORS, item AC01: a parent-class `error' arm recast every failure here, a
+fault included, as an uncertain outcome)."
+  (let* ((store (fnn-owner-service-store service))
+         (generation (fnn-owner-core 'fn-owner-config-generation))
+         (served (fnn-decode-joined-names
+                  (fnn-owner-core 'fn-owner-config-served)))
+         (domain (fnn-decode-joined-names
+                  (fnn-owner-core 'fn-owner-domain))))
+    (unless (and (integerp generation) (>= generation 0)
+                 (= generation expected-generation))
+      (fnn-fault "owner configuration generation changed after publication"))
+    (setf (fnn-store-config-generation store) generation
+          (fnn-store-config-served store) served
+          (fnn-store-config-domain store) domain)
+    :refreshed))
 
 ;; lane prepare-served: ACL2's un-stage of a configuration record whose
 ;; publication was refused before anything was written (host/owner-host.lisp
@@ -333,9 +367,10 @@ read before (statvfs is I/O: never under the mutex); a request it answers
 install, the drop).  The reply names the word; :blocked is a refusal (a
 deferral stands, and `status' names it)."
   (let* ((free (fnn-disk-free-octets (fnn-owner-service-store service)))
-         (word (fnn-owner-serialized
+         (word (fnn-quantum-control
                 service nil
                 (lambda ()
+                  (fnn-admin-test-fault "compaction")
                   (fnn-owner-core 'fn-owner-sco-request
                                   (fnn-checkpoint-budget-test-override nil) free)))))
     (unless (member word '(:requested :coalesced :nothing-to-compact :blocked))
@@ -352,8 +387,11 @@ word (books/owner-maintenance-request.lisp fn-omr-inspect-word) with the
 status fn-omr-inspect-status decides: accepted when found, refused when
 absent.  The client renders the offline report from the word."
   (let* ((octets (fnn-octets (fnn-core 'fn-record-string-octets msgid)))
-         (found (fnn-owner-serialized
-                 service nil (lambda () (and (fnn-bridge-lookup-found-p octets) t))))
+         (found (fnn-quantum-control
+                 service nil
+                 (lambda ()
+                   (fnn-admin-test-fault "inspect")
+                   (and (fnn-bridge-lookup-found-p octets) t))))
          (word (fnn-core 'fn-omr-inspect-word found)))
     (list :reason (fnn-core 'fn-omr-inspect-status word) word)))
 (defun fnn-owner-export-request (service dir)
@@ -367,9 +405,10 @@ fnn-owner-export-start), so the captured list and the pinned generation
 agree.  The reply carries the word and ACL2's sentence (kind 23,
 fn-oex-request-line)."
   (let* ((existsp (and (fnn-lstat dir) t))
-         (word (fnn-owner-serialized
+         (word (fnn-quantum-control
                 service nil
                 (lambda ()
+                  (fnn-admin-test-fault "export")
                   (let* ((inflightp (first (fnn-owner-export-observation service)))
                          (word (fnn-core 'fn-oex-request-word inflightp existsp)))
                     (when (eq word :requested)
@@ -405,9 +444,10 @@ answers :in-flight; `--recorded' runs the pass that installs
 `store reclaim' without it records the instant live, then runs that pass.
 The reply names the word."
   (let* ((free (fnn-disk-free-octets (fnn-owner-service-store service)))
-         (word (fnn-owner-serialized
+         (word (fnn-quantum-control
                 service nil
                 (lambda ()
+                  (fnn-admin-test-fault "reclaim")
                   (fnn-owner-core 'fn-owner-orc-request mode
                                   (fnn-checkpoint-budget-test-override nil) free)))))
     (unless (member word '(:requested :in-flight :queued :blocked :no-recorded-instant
@@ -420,9 +460,10 @@ The reply names the word."
       ;; before the pass reads it; a refusal is before anything was written.
       (let ((clock (fnn-store-prepare-observation)))
         (destructuring-bind (recorded &optional reason &rest ignored)
-            (fnn-owner-serialized
+            (fnn-quantum-control
              service nil
              (lambda ()
+               (fnn-admin-test-fault "reclaim-instant")
                (multiple-value-list
                 (fnn-owner-live-reconfigure-locked
                  service
@@ -506,15 +547,19 @@ ordinary live reconfiguration, and on :applied served at once."
          ;; when a concurrent limit change moved it.
          (seen nil) (history nil))
     (loop
-     (let ((carry (fnn-owner-serialized
-                   service nil (lambda () (fnn-owner-core 'fn-owner-limit-carried)))))
+     (let ((carry (fnn-quantum-control
+                   service nil
+                   (lambda ()
+                     (fnn-admin-test-fault "limit-carry")
+                     (fnn-owner-core 'fn-owner-limit-carried)))))
        (when (and seen (equal (car carry) seen)) (return))
        (setq seen (car carry)
              history (and seen (fnn-heap-history-observation
                                 (fnn-store-root store) seen)))))
-    (fnn-owner-serialized
+    (fnn-quantum-control
      service nil
      (lambda ()
+      (fnn-admin-test-fault "limit")
       ;; The extent mutex owns pool draws independently of the owner mutex.
       ;; Keep it through preview, durability and the exact budget reduction.
       (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
@@ -630,9 +675,10 @@ ACL2's fn-native-admin-result-owner-requestp, -inspect-msgid and
     (when (fnn-lim-plan-p plan)
       (return-from fnn-owner-live-admin-serialized
         (fnn-owner-limit-serialized service plan))))
-  (fnn-owner-serialized
+  (fnn-quantum-control
    service nil
    (lambda ()
+     (fnn-admin-test-fault "admin")
      ;; PKT-453 (a): a refusal answers (:reason :refused REASON), the
      ;; plan's reason or the staging step's, both ACL2's.  The quantum's
      ;; value is the answer: no early return crosses its boundary (lane

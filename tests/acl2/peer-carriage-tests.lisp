@@ -3,6 +3,7 @@
 ; hypothesis showing the conclusion fails without it.
 (in-package "ACL2")
 (include-book "../../books/peer-carriage")
+(include-book "../../books/defkeystone")
 (include-book "peer-authored-accept-tests")
 (include-book "must-fail-checked")
 
@@ -196,6 +197,78 @@
 
 ; -----------------------------------------------------------------------------
 ; The refusal classes
+
+; PKT-211: changing budgets apply to the NEXT decision, not retroactively
+; to the old records.  Complete literal antecedent/conclusion for
+; fn-pcb-carried-event-keeps-budget-schedule-admitted: accept one, lower
+; below retained usage and refuse, then raise and accept another.
+(defconst *pcb-schedule-low* '(0 0))
+(defconst *pcb-schedule-high* (list (* 2 *pcb-charge*) 2))
+(defconst *pcb-schedule-one* (list *pcb-budget*))
+(assert-event
+ (fn-pcb-scheduled-from *pcb-h1* '(0 . 0) *pcb-schedule-one* *pcb-evidence*))
+(assert-event
+ (fn-pcb-scheduled-from
+  (append *pcb-h1*
+          (list (pcb-gated *pcb-schedule-low*
+                           (fn-pcb-usage *pcb-h1* *pcb-evidence*))))
+  '(0 . 0) (append *pcb-schedule-one* (list *pcb-schedule-low*))
+  *pcb-evidence*))
+(make-event
+ `(defconst *pcb-schedule-h2*
+    ',(append *pcb-h1*
+              (list (pcb-gated *pcb-schedule-low*
+                               (fn-pcb-usage *pcb-h1* *pcb-evidence*))))))
+(assert-event
+ (and (equal (cadr *pcb-schedule-h2*) '(:refused :carried-count-exhausted))
+      (equal (fn-pcb-usage *pcb-schedule-h2* *pcb-evidence*)
+             (fn-pcb-usage *pcb-h1* *pcb-evidence*))
+      ; Lowering does not make existing usage obey the new limit.
+      (< (car *pcb-schedule-low*)
+         (car (fn-pcb-usage *pcb-schedule-h2* *pcb-evidence*)))))
+(defconst *pcb-schedule-two* (list *pcb-budget* *pcb-schedule-low*))
+(assert-event
+ (fn-pcb-scheduled-from *pcb-schedule-h2* '(0 . 0) *pcb-schedule-two*
+                        *pcb-evidence*))
+(assert-event
+ (fn-pcb-scheduled-from
+  (append *pcb-schedule-h2*
+          (list (pcb-gated *pcb-schedule-high*
+                           (fn-pcb-usage *pcb-schedule-h2* *pcb-evidence*))))
+  '(0 . 0) (append *pcb-schedule-two* (list *pcb-schedule-high*))
+  *pcb-evidence*))
+(make-event
+ `(defconst *pcb-schedule-h3*
+    ',(append *pcb-schedule-h2*
+              (list (pcb-gated *pcb-schedule-high*
+                               (fn-pcb-usage *pcb-schedule-h2*
+                                              *pcb-evidence*))))))
+(assert-event
+ (equal (fn-pcb-usage *pcb-schedule-h3* *pcb-evidence*)
+        (cons (* 2 *pcb-charge*) 2)))
+
+; Hypothesis removal: the old history itself violates its first budget.
+; The current constructor refuses correctly, but cannot repair that old
+; admission.  No other retained hypothesis is hidden by the witness.
+(defconst *pcb-schedule-bad* (list *pcb-schedule-low*))
+(assert-event
+ (not (fn-pcb-scheduled-from *pcb-h1* '(0 . 0) *pcb-schedule-bad*
+                             *pcb-evidence*)))
+(assert-event
+ (not (fn-pcb-scheduled-from
+       (append *pcb-h1*
+               (list (pcb-gated *pcb-schedule-low*
+                                (fn-pcb-usage *pcb-h1* *pcb-evidence*))))
+       '(0 . 0) (append *pcb-schedule-bad* (list *pcb-schedule-low*))
+       *pcb-evidence*)))
+(must-fail-checked
+ (assert-event
+  (fn-pcb-scheduled-from
+   (append *pcb-h1*
+           (list (pcb-gated *pcb-schedule-low*
+                            (fn-pcb-usage *pcb-h1* *pcb-evidence*))))
+   '(0 . 0) (append *pcb-schedule-bad* (list *pcb-schedule-low*))
+   *pcb-evidence*)))
 
 ; unsupported-profile: the carrier's nine items decode but name suite 2.
 ; The field is folded at 64 octets, as a received carrier is.
@@ -641,3 +714,49 @@
                                               :verified :verified)
                       (fn-pcb-admission-verdict *pat-relayed* *pat-after-revocation* nil
                                                 :verified :verified))))
+
+; The keystone's declared teeth (TEETH CONTRACT v1), from the PKT-211
+; schedule above: lower below retained usage and the next decision is
+; refused, yet the trace stays admitted at each record's own budget.
+(defteeth fn-pcb-carried-event-keeps-budget-schedule-admitted
+  :claim (((scheduled (fn-pcb-scheduled-from records (cons 0 0) budgets
+                                             release-evidence)))
+          (fn-pcb-scheduled-from
+           (append records
+                   (list (fn-pcb-carried-event
+                          sequence txid generation msgid received groups obligation-id
+                          content-subject release-evidence charge snapshots carried
+                          clock-observation budget
+                          (fn-pcb-usage records release-evidence))))
+           (cons 0 0) (append budgets (list budget)) release-evidence))
+  :subject fn-pcb-carried-event
+  :witness ((sequence 2) (txid 3) (generation 4) (msgid "<topic-binding@example.invalid>")
+            (received *pat-relayed*) (groups '("fn.test")) (obligation-id *pat-obligation*)
+            (content-subject *pat-subject*) (release-evidence *pcb-evidence*)
+            (charge *pcb-charge*) (snapshots nil) (carried *pat-carries*)
+            (clock-observation (fn-clock-observation 1 841000000000 0 t))
+            (budget *pcb-schedule-low*) (records *pcb-h1*) (budgets *pcb-schedule-one*))
+  :breaks ((scheduled ((sequence 2) (txid 3) (generation 4) (msgid "<topic-binding@example.invalid>")
+            (received *pat-relayed*) (groups '("fn.test")) (obligation-id *pat-obligation*)
+            (content-subject *pat-subject*) (release-evidence *pcb-evidence*)
+            (charge *pcb-charge*) (snapshots nil) (carried *pat-carries*)
+            (clock-observation (fn-clock-observation 1 841000000000 0 t))
+            (budget *pcb-schedule-low*) (records *pcb-h1*) (budgets *pcb-schedule-bad*))))
+  :mutations ((retroactive-budget
+               (:conclusion
+                (fn-pcb-scheduled-from
+                 (append records
+                         (list (fn-pcb-carried-event
+                                sequence txid generation msgid received groups obligation-id
+                                content-subject release-evidence charge snapshots carried
+                                clock-observation budget
+                                (fn-pcb-usage records release-evidence))))
+                 (cons 0 0) (make-list (+ 1 (len budgets)) :initial-element budget)
+                 release-evidence))
+               ((sequence 2) (txid 3) (generation 4) (msgid "<topic-binding@example.invalid>")
+            (received *pat-relayed*) (groups '("fn.test")) (obligation-id *pat-obligation*)
+            (content-subject *pat-subject*) (release-evidence *pcb-evidence*)
+            (charge *pcb-charge*) (snapshots nil) (carried *pat-carries*)
+            (clock-observation (fn-clock-observation 1 841000000000 0 t))
+            (budget *pcb-schedule-low*) (records *pcb-h1*) (budgets *pcb-schedule-one*))
+               :fault "a lowered budget applied retroactively to records admitted under the earlier one (PKT-211)")))

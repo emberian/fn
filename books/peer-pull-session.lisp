@@ -64,8 +64,8 @@
        (or (stringp (cadddr security)) (equal (cadddr security) :system-roots))
        t))
 
-; KEYSTONE SUBJECT.  host/native/pull-service.lisp `fnn-pull-round' calls it
-; through `fn-pull-plan-profile-path' and `fn-pull-session-begin'.
+; KEYSTONE SUBJECT.  host/native/pull-service.lisp `fnn-pull-flight-begin' calls
+; it through `fn-pull-plan-profile-path' and `fn-pull-session-begin'.
 (defun fn-pull-plan-verdict (plan)
   (declare (xargs :guard t))
   (let ((security (fn-pull-plan-security plan))
@@ -145,7 +145,7 @@
   (list :tls (fn-pull-at 2 security) (fn-pull-at 3 security)))
 
 ; KEYSTONE SUBJECT.  Beginning a pull (host/native/pull-service.lisp
-; `fnn-pull-round').  The cursor's first instant is journaled exactly as
+; `fnn-pull-flight-begin').  The cursor's first instant is journaled exactly as
 ; `fn-pull-begin-effects' says, before the dial, refused or not.
 (defun fn-pull-session-begin (plan cursor now credential)
   (declare (xargs :guard t))
@@ -313,8 +313,8 @@
   (fn-pull-session (fn-pull-s-fc s) round (fn-pull-s-refusal s) (fn-pull-s-security s)))
 
 ; KEYSTONE SUBJECT.  One event of a pull session: the function the host calls
-; (host/native/pull-service.lisp `fnn-pull-round', through
-; `fn-pull-session-step-pair').
+; (host/native/pull-service.lisp `fnn-pull-flight-advance', through
+; `fn-pull-session-step-triple').
 (defun fn-pull-session-step (s event)
   (declare (xargs :guard t))
   (let ((fc (fn-pull-s-fc s))
@@ -716,8 +716,9 @@
   (fn-pull-close-effects (fn-pull-s-round s)))
 
 ; -----------------------------------------------------------------------------
-; PRF-165 over the host's close and step (pull-service.lisp `fnn-pull-round'
-; calls `fn-pull-session-step-pair' and `fn-pull-session-close').
+; PRF-165 over the host's close and step (pull-service.lisp `fnn-pull-flight-advance'
+; and `fnn-pull-flight-finish' call `fn-pull-session-step-triple' and
+; `fn-pull-session-close').
 
 ; KEYSTONE (PRF-165; PRF-100's advance restated with the unavailable class).
 ; If the host's close moves a session's cursor, its round ran to its end and
@@ -926,7 +927,7 @@
 
 ; KEYSTONE SUBJECT.  Why the step from S on EVENT to S2 failed the round:
 ; (WORD CODE PHASE), or nil when it did not fail it.  The host
-; (host/native/pull-service.lisp fnn-pull-round) calls it through
+; (host/native/pull-service.lisp fnn-pull-flight-advance) calls it through
 ; `fn-pull-session-step-triple'.
 (defun fn-pull-session-failure (s event s2)
   (declare (xargs :guard t))

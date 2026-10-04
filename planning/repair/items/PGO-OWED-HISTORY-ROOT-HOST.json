@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "host/history-root-host.lisp",
+ "id": "PGO-OWED-HISTORY-ROOT-HOST",
+ "notes": [],
+ "owner": "raw-dispatch",
+ "severity": "medium",
+ "slice": "carrier",
+ "source": "raw-dispatch",
+ "state": "open",
+ "title": "A-OWNER-INVARIANT-CARRIED owes: 15 state writer(s) defined in host/history-root-host.lisp have no preservation theorem of fn-owner-retain-statep; each is listed in host/owner-served-carried.lisp :incomplete. Prove (def-owner-writer / the carrier move) and move it to :transitions: fn-owner-hroot-abandon fn-owner-hroot-abandon-word fn-owner-hroot-activate fn-owner-hroot-begin fn-owner-hroot-detach fn-owner-hroot-frontier-value fn-owner-hroot-pin-funded fn-owner-hroot-read-fund fn-owner-hroot-read-owned fn-owner-hroot-read-plan fn-owner-hroot-resize fn-owner-hroot-retire fn-owner-hroot-retire-word fn-owner-hroot-return fn-owner-hroot-row",
+ "updated": "2026-10-04T03:54:55Z"
+}

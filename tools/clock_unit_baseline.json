@@ -5,7 +5,6 @@
   "books/bp-node-progress.lisp": 2,
   "books/injection.lisp": 1,
   "books/nntp-responses.lisp": 1,
-  "books/peer-feed.lisp": 1,
   "books/records-stamp.lisp": 2,
   "books/scheduler.lisp": 2
  }

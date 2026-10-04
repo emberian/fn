@@ -5,15 +5,15 @@
 (include-book "web-list-stream")
 (include-book "web-page-cursor")
 
-(defun fn-was-get (key x) (declare (xargs :mode :program)) (cdr (assoc-eq key x)))
+(defun fn-was-get (key x) (declare (xargs :verify-guards nil)) (cdr (assoc-eq key x)))
 (defun fn-was-put (key value x)
-  (declare (xargs :mode :program))
+  (declare (xargs :verify-guards nil))
   (if (consp x)
       (if (equal key (caar x)) (cons (cons key value) (cdr x))
         (cons (car x) (fn-was-put key value (cdr x))))
     (list (cons key value))))
 (defun fn-was-start (login)
-  (declare (xargs :mode :program))
+  (declare (xargs :verify-guards nil))
   (list (cons :kind :article) (cons :phase :group) (cons :at 0) (cons :ls 0) (cons :prefix nil)
         (cons :last nil) (cons :slot nil) (cons :vs nil) (cons :fe 0)
         (cons :name nil) (cons :colon nil) (cons :skipping nil)
@@ -21,19 +21,19 @@
         (cons :status-end nil) (cons :pattern (append (list 60) login (list 64)))
         (cons :tail nil) (cons :own nil)))
 (defun fn-was-commit (x)
-  (declare (xargs :mode :program))
+  (declare (xargs :verify-guards nil))
   (let ((slot (fn-was-get :slot x)) (vs (fn-was-get :vs x)))
     (if (and slot vs)
         (fn-was-put :fields (fn-wss-put-span slot (cons vs (fn-was-get :fe x))
                                             (fn-was-get :fields x)) x)
       x)))
 (defun fn-was-code (prefix)
-  (declare (xargs :mode :program))
+  (declare (xargs :verify-guards nil))
   (let ((a (car prefix)) (b (cadr prefix)) (c (caddr prefix)))
     (and (fn-ot-digitp a) (fn-ot-digitp b) (fn-ot-digitp c)
          (+ (* 100 (- a 48)) (* 10 (- b 48)) (- c 48)))))
 (defun fn-was-octet (o x)
-  (declare (xargs :mode :program))
+  (declare (xargs :verify-guards nil))
   (let* ((at (fn-was-get :at x)) (ls (fn-was-get :ls x))
          (phase (fn-was-get :phase x)) (first (equal at ls))
          (prefix (fn-was-get :prefix x))
@@ -83,14 +83,15 @@
             (fn-was-put :ls (1+ at) (fn-was-put :prefix nil (fn-was-put :last o x))))
         (fn-was-put :last o x)))))
 (defun fn-was-scan (i end x fn-web-in)
-  (declare (xargs :mode :program :stobjs fn-web-in))
+  (declare (xargs :verify-guards nil :stobjs fn-web-in
+                  :measure (nfix (- (nfix end) (nfix i)))))
   (if (>= (nfix i) (nfix end)) x
     (fn-was-scan (1+ (nfix i)) end (fn-was-octet (fn-octets-get i fn-web-in) x) fn-web-in)))
 
 ; The window cursor returns a fifth value NEED=(START . END). It never
 ; advances a virtual source without those exact source octets being present.
 (defun fn-wpc-window-next (cursor base fn-web-in)
-  (declare (xargs :mode :program :stobjs fn-web-in))
+  (declare (xargs :verify-guards nil :stobjs fn-web-in))
   (let* ((kind (fn-wrq-nth 1 cursor)) (s (nfix (fn-wrq-nth 3 cursor)))
          (e (nfix (fn-wrq-nth 4 cursor))) (seg (car (fn-wrq-nth 0 cursor)))
          (wk (and (not kind) (consp seg) (equal (car seg) :w)))
@@ -140,7 +141,7 @@
                               (+ base (fn-wrq-nth 4 next)) (fn-wrq-nth 5 next) (fn-wrq-nth 6 next)) next)
                     done nil)))))))))))
 (defun fn-wpc-window-drive (fuel cursor base count emitp rev fn-web-in)
-  (declare (xargs :mode :program :stobjs fn-web-in))
+  (declare (xargs :verify-guards nil :stobjs fn-web-in))
   (if (zp fuel) (mv (reverse rev) cursor count nil nil)
     (mv-let (present octet next done need) (fn-wpc-window-next cursor base fn-web-in)
       (if (or done need) (mv (reverse rev) next count done need)
@@ -148,7 +149,7 @@
                              emitp (if (and present emitp) (cons octet rev) rev) fn-web-in)))))
 
 (defun fn-was-page (config flow scan)
-  (declare (xargs :mode :program))
+  (declare (xargs :verify-guards nil))
   (let* ((ctx (fn-wss-f-ctx flow)) (session (fn-wss-c-session ctx))
          (group (fn-wrq-nth 0 (fn-wss-f-data flow)))
          (ok (equal (fn-was-get :phase scan) :done))
@@ -167,3 +168,12 @@
                             (and session (fn-wss-s-login session))
                             (and session (fn-wss-s-csrf session)) main)))
     (list :respond (if ok 200 404) *fn-wss-html-fields* (fn-wss-bodyp ctx) :page-plan segs)))
+
+; The windowed cursor's quantum: at most FUEL octets per call (4096 from
+; fn-web-host-page-window), and it never advances past a span whose source
+; octets are absent (it returns NEED instead).
+(defthm fn-wpc-window-drive-emits-at-most-fuel
+  (<= (len (mv-nth 0 (fn-wpc-window-drive fuel cursor base count emitp rev fn-web-in)))
+      (+ (len rev) (nfix fuel)))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (disable fn-wpc-window-next))))

@@ -53,6 +53,9 @@
     (fnn-os-error (e) (list :os (fnn-os-errno e)))
     (refused () :refused) (uncertain () :uncertain)
     (error (e) (princ-to-string e))))
+;; The escape path of the macro below: the deployed helper and ACL2 decisions it calls.
+(load "tests/unwind_cleanups_prelude.lisp")
+(in-package "ACL2")
 (eval (source-definition (or (sb-ext:posix-getenv "FN_CLEANUP_HOST_SOURCE") "host/native/io.lisp")
                          "defmacro" "fnn-unwind-cleanups"))
 (dolist (name '("fnn-publication-lock" "fnn-publication-unlock"))

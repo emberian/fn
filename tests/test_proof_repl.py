@@ -1233,6 +1233,66 @@ class OutputPumpTests(unittest.TestCase):
             self.assertIsNotNone(children[0].process.returncode)
 
 
+class SocketPathTests(unittest.TestCase):
+    """An AF_UNIX address holds 103 bytes on macOS: a worktree under a long
+    path made `start` die with "AF_UNIX path too long"."""
+
+    def test_a_short_session_directory_keeps_its_socket_beside_its_state(self):
+        directory = pathlib.Path("/tmp/fn-short/build/proof-repl/s")
+        self.assertEqual(proof_repl.sock_file(directory), directory / "sock")
+
+    def test_a_long_one_gets_a_short_per_session_directory(self):
+        long = pathlib.Path("/tmp") / ("deep" * 30) / "build" / "proof-repl" / "s"
+        other = long.parent / "t"
+        found = proof_repl.sock_file(long)
+        self.assertEqual(found, proof_repl.sock_file(long))
+        self.assertNotEqual(found, proof_repl.sock_file(other))
+        self.assertEqual(found.name, "sock")
+        self.assertRegex(found.parent.name, r"fn-repl-[0-9a-f]{16}")
+        self.assertLessEqual(len(os.fsencode(found)), proof_repl.SOCKET_PATH_LIMIT)
+
+    def test_start_send_and_stop_under_a_long_worktree_path(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary).resolve()
+            tree = base / ("a-very-long-worktree-name-" * 4) / "lane"
+            shutil.copytree(ROOT / "tools", tree / "tools", ignore=shutil.ignore_patterns(
+                "__pycache__", "*.so", "*.o"))
+            (tree / "tiny.lisp").write_text('(in-package "ACL2")\n')
+            fake = base / "fake-acl2"
+            fake.write_text(FAKE_ACL2)
+            fake.chmod(0o755)
+            env = {**os.environ, "FN_ACL2": str(fake),
+                   "FN_ACL2_SLOT_DIR": str(base / "slots"), "FN_ACL2_SLOTS": "1"}
+            name = "longpath-test"
+
+            def cli(*words):
+                return subprocess.run(
+                    [sys.executable, str(tree / "tools" / "proof_repl.py"), *words],
+                    cwd=tree, env=env, capture_output=True, text=True, timeout=30)
+
+            beside = tree / "build" / "proof-repl" / name / "sock"
+            self.assertGreater(len(os.fsencode(beside)), proof_repl.SOCKET_PATH_LIMIT)
+            short = None
+            try:
+                started = cli("start", name, "tiny")
+                self.assertEqual(started.returncode, 0, started.stdout + started.stderr)
+                self.assertNotIn("too long", started.stdout + started.stderr)
+                short = proof_repl.sock_file(tree / "build" / "proof-repl" / name)
+                self.assertTrue(short.exists(), str(short))
+                self.assertFalse(beside.exists())
+                sent = cli("send", name, "(+ 1 2)")
+                self.assertEqual(sent.returncode, 0, sent.stdout + sent.stderr)
+            finally:
+                cli("stop", name)
+                if short is not None:
+                    deadline = time.monotonic() + 5
+                    while short.exists() and time.monotonic() < deadline:
+                        time.sleep(.05)
+            if short is not None:
+                self.assertFalse(short.exists())
+                self.assertFalse(short.parent.exists())
+
+
 class ProcessLifetimeTests(unittest.TestCase):
     def test_debugger_invalidation_is_persisted_and_endpoint_closes(self):
         with tempfile.TemporaryDirectory() as temporary:

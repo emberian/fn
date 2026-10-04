@@ -98,6 +98,12 @@ class FaceCases:
         node.listening = 3
         node.start()
 
+    def setUp(self):
+        # Every case keeps the class owner's stderr when the runner names
+        # FN_NATIVE_TEST_DIAGNOSTIC_DIR: a disconnect is classified from the
+        # node's own trace, not from the client's RemoteDisconnected.
+        keep_diagnostics(self, [self.node])
+
     def invite(self):
         result = self.node.operator("account", "invite", "--expires", "3600", timeout=240,
                                     expect=EXIT.OK)
@@ -147,11 +153,16 @@ class FaceCases:
             time.sleep(0.1)
             started = time.monotonic()
             b = self.browser()
-            status, _, body, _, _ = b.request("GET", "/health")
-            self.assertEqual((status, body), (200, "ready\n"))
+            # The sign-in page first: it is the route every face since the
+            # inline one serves, so the first measurement isolates the wait
+            # behind the stalled socket from any later route's defect.
             status, _, page, _, _ = b.request("GET", "/signin")
             self.assertEqual(status, 200)
             self.assertIn("Make your account", page)
+            self.assertLess(time.monotonic() - started, 4,
+                            "stalled socket held the HTTP actor before the first page")
+            status, _, body, _, _ = b.request("GET", "/health")
+            self.assertEqual((status, body), (200, "ready\n"))
             status, where, page, _, _ = self.make_account(
                 b, "parallel_tls" if self.TLS else "parallel_plain")
             self.assertEqual((status, where), (303, "/"), page)
@@ -161,10 +172,51 @@ class FaceCases:
         finally:
             slow.close()
 
+    def raw_connection(self, timeout):
+        s = socket.create_connection(("127.0.0.1", self.web_port), timeout=timeout)
+        if self.TLS:
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            s = context.wrap_socket(s)
+        return s
+
+    @staticmethod
+    def read_answer(s):
+        answer = b""
+        while True:
+            chunk = s.recv(65536)
+            if not chunk:
+                return answer
+            answer += chunk
+
+    def test_two_requests_in_flight_are_answered_out_of_arrival_order(self):
+        # A's head arrives in two parts; B arrives whole between them and is
+        # answered before A's head is complete.  One connection at a time
+        # cannot do this: B would wait out A's request deadline.
+        host = b"Host: 127.0.0.1:%d\r\n" % self.web_port
+        a = self.raw_connection(30)
+        try:
+            a.sendall(b"GET /sign")
+            time.sleep(0.1)
+            started = time.monotonic()
+            with self.raw_connection(6) as b:
+                b.sendall(b"GET /health HTTP/1.1\r\n" + host + b"\r\n")
+                answer = self.read_answer(b)
+            self.assertTrue(answer.startswith(b"HTTP/1.1 200 "), answer[:120])
+            self.assertTrue(answer.endswith(b"\r\n\r\nready\n"), answer[-120:])
+            self.assertLess(time.monotonic() - started, 4, "B waited behind A")
+            a.sendall(b"in HTTP/1.1\r\n" + host + b"\r\n")
+            answer = self.read_answer(a)
+            self.assertTrue(answer.startswith(b"HTTP/1.1 200 "), answer[:120])
+            self.assertIn(b"Make your account", answer)
+            self.assertIsNone(self.node.process.poll())
+        finally:
+            a.close()
+
     def test_compressed_article_uses_physical_windows_through_web_and_restart(self):
         # This selector requires the current physical decoded producer. The
         # ordinary compression report proves the stored form independently.
-        keep_diagnostics(self, [self.node])
         user = "decode_tls" if self.TLS else "decode_plain"
         b = self.browser()
         status, where, page, _, _ = self.make_account(b, user)

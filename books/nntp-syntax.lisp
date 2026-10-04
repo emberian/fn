@@ -451,13 +451,10 @@
   (if (natp number)
       (fn-nntp-decimal-rev number)
     nil))
-; Every number a response renders passes through this field renderer, so the
-; RFC 3977 section 3.1 length argument for an initial line is structural rather
-; than conditional: a rendered field is always a nonempty run of at most ten
-; decimal digits.  Section 6 bounds every number this profile renders, so the
-; guard is inactive across the whole legal range; see
-; fn-nntp-decimal-field-is-exact-in-range in books/nntp-effects.lisp and the
-; boundary transcripts in tests/acl2/nntp-tests.lisp.
+; Initial response-line numbers use at most ten decimal digits, making the
+; RFC 3977 section 3.1 line-length argument structural. NOV metadata counts
+; are separate: section 8.3.2 byte and body-line counts use fn-nntp-decimal
+; without this status-line width clamp (D27).
 (defun fn-nntp-decimal-field (number)
   (let ((octets (fn-nntp-decimal number)))
     (if (and (consp octets)

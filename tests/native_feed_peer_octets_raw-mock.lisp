@@ -11,7 +11,10 @@
 ;; fixture never starts an actor and does not replace its lifecycle semantics.
 (with-open-file (stream "host/native/owner.lisp")
   (loop for form = (read stream nil :eof) until (eq form :eof)
-        when (and (consp form) (eq (car form) 'defmacro) (eq (cadr form) 'def-actor))
+        when (and (consp form)
+                  (or (and (eq (car form) 'defmacro) (eq (cadr form) 'def-actor))
+                      (and (eq (car form) 'defvar) (eq (cadr form) '*fnn-actors*))
+                      (and (eq (car form) 'defun) (eq (cadr form) 'fnn-actor-declare))))
           do (eval form)))
 (load "host/native/feed-service.lisp")
 

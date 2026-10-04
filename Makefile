@@ -839,6 +839,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/arena-forget-tests \
 	books/arena-forget-columns \
 	books/owner-reclaim-seal \
+	books/reclaim-chunked-walk \
+	books/reclaim-chunked-seal \
 	books/catalog-may-seal \
 	books/catalog-root-incarnation \
 	tests/acl2/catalog-root-incarnation-tests \
@@ -983,6 +985,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-listener-set-tests \
 	books/bp-node-forward-plan \
 	tests/acl2/bp-node-forward-plan-tests \
+	books/bp-forward-cursor \
+	tests/acl2/bp-forward-cursor-tests \
 	books/bp-signed-binding \
 	tests/acl2/bp-signed-binding-tests \
 	books/post-identity-index \
@@ -1485,6 +1489,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-view \
 	books/served-columns \
 	tests/acl2/served-columns-tests \
+	books/nov-column-pieces \
+	tests/acl2/nov-column-pieces-tests \
+	tests/acl2/nov-metadata-tests \
 	books/nov-piece-window \
 	tests/acl2/nov-piece-window-tests \
 	books/nov-span-window \
@@ -1531,6 +1538,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-join-host-columns-open \
 	books/served-catalog-join-host-views \
 	books/catalog-number-window \
+	books/cold-line-quanta \
+	tests/acl2/cold-line-quanta-tests \
 	books/over-window \
 	books/served-chunk-live-free \
 	books/poster-bytes-buffer \
@@ -1870,12 +1879,22 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-carriage-tests \
 	books/peer-pull \
 	tests/acl2/peer-pull-tests \
+	books/peer-pull-auth \
+	tests/acl2/peer-pull-auth-tests \
+	tests/acl2/native-admin-peer-pull-auth-tests \
+	tests/acl2/native-admin-pull-auth-tests \
 	books/peer-pull-session \
 	tests/acl2/peer-pull-session-tests \
 	books/peer-catchup-serve \
 	books/peer-catchup-effects \
 	books/peer-catchup \
 	tests/acl2/peer-catchup-tests \
+	books/peer-catchup-spool-framer \
+	books/peer-catchup-spool-hash \
+	books/peer-catchup-spool \
+	tests/acl2/peer-catchup-spool-framer-tests \
+	tests/acl2/peer-catchup-spool-hash-tests \
+	tests/acl2/peer-catchup-spool-tests \
 	books/peer-round-driver \
 	tests/acl2/peer-round-driver-tests \
 	books/protocol-table \
@@ -1996,9 +2015,16 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-plan-cursor \
 	books/output-command-admission \
 	tests/acl2/output-command-admission-tests \
+	books/output-tariff-article \
+	tests/acl2/output-tariff-article-tests \
+	books/output-tariff-article-row \
+	tests/acl2/output-tariff-article-row-tests \
+	books/output-admission-line \
+	tests/acl2/output-admission-line-tests \
 	books/string-line-fill \
 	books/served-plan-line-buffer \
 	books/served-query-plan \
+	books/list-available-reference \
 	tests/acl2/served-query-plan-tests \
 	tests/acl2/served-plan-cursor-tests \
 	books/owner-scheduler \
@@ -2089,6 +2115,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-maintenance-request-tests \
 	tests/acl2/owner-reclaim-conns-tests \
 	tests/acl2/owner-reclaim-pass-tests \
+	tests/acl2/reclaim-chunked-walk-tests \
+	tests/acl2/reclaim-chunked-seal-tests \
 	tests/acl2/owner-reclaim-carry-tests \
 	tests/acl2/owner-retain-state-tests \
 	tests/acl2/owner-reclaim-ready-tests \

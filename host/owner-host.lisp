@@ -86,6 +86,8 @@
 (include-book "../books/owner-reclaim-conns")
 ;; online-reclaim-5: the swapped owner is :ready after the open's barriers.
 (include-book "../books/owner-reclaim-ready")
+;; lane reclaim (PRF-1315): the pass over the pinned history in chunks.
+(include-book "../books/reclaim-chunked-seal")
 (include-book "../books/owner-reclaim-carry")
 (include-book "../books/owner-reclaim-seal")
 (include-book "../books/owner-recovery-retain")
@@ -283,6 +285,8 @@
 (include-book "../books/owner-cold-line")
 (include-book "../books/owner-resource-line")
 (include-book "../books/output-command-admission")
+(include-book "../books/output-tariff-article-row")
+(include-book "../books/output-admission-line")
 ; lane composed-owner-5 (PRF-941, row A6): the arena readers' generation
 ; pins (host/native/io.lisp fnn-arena-pins-step).
 (include-book "../books/arena-reader-pins")
@@ -755,9 +759,7 @@
 ;; the owner and write only the four fn-owner-sco-* globals: the served
 ;; owner `fn-owner' is never written here.
 
-(defun fn-owner-sco-global (name state)
-  (declare (xargs :stobjs state :guard (symbolp name)))
-  (if (boundp-global name state) (f-get-global name state) nil))
+; fn-owner-sco-global: defined by books/owner-state-accessors.lisp under the same name.
 
 ; The committed record count: the snoc-list's carried count, which is
 ; `fn-sbud-used' by definition (books/history-columns-store.lisp
@@ -785,12 +787,8 @@
   (let ((state (f-put-global 'fn-owner-sco-base-payloads (and (natp count) count) state)))
     (value :noted)))
 
-; The publication the owner deferred by name, (:deferred REASON ESTIMATE
-; BUDGET) as fn-ock-publication-stream answered it, or nil; the status
-; report carries it (host/native-live-status-host.lisp).
-(defun fn-owner-sco-deferred (state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-owner-sco-global 'fn-owner-sco-deferred state))
+; fn-owner-sco-deferred: defined by books/owner-state-accessors.lisp under the same name
+; (host/web-host.lisp's readiness observation reads it without this file).
 
 ; The checkpoint budget the publication is decided against: the profile's
 ; (fn-ock-capture-budget, books/owner-checkpoint-pipeline.lisp), or, on a
@@ -947,6 +945,18 @@
                  (fn-sn-config-history st)
                  (fn-sf-frontier files)))))
 
+; The first half's answer from NEXT and WALKED computed elsewhere: the
+; reclaim pass builds NEXT chunk by chunk (books/reclaim-chunked-walk.lisp
+; KEYSTONE fn-rcw-canon-acc-steps-is-the-checkpoint-capture: the capture of
+; the canonical rows from 0, as above with no base) and WALKED by
+; fn-scka-srcs-n per chunk (books/reclaim-chunked-seal.lisp KEYSTONE
+; fn-rcw-srcs-steps-is-the-walk).
+(defun fn-owner-sco-next-of (next walked seg)
+  (declare (xargs :mode :program))
+  (if (or (equal next :bad) (not (and (consp walked) (atom (nth 0 walked)))))
+      nil
+    (list next (fn-scka-lens-setup (reverse (nth 1 walked)) seg) walked)))
+
 ; Off the mutex, over the values captured above and the live arena, READ
 ; only (host/native/owner.lisp fnn-owner-publish-captured): NEXT, the capture
 ; of the captured rows' canonical rows (books/store-checkpoint-arena-writer.lisp
@@ -978,9 +988,8 @@
                    (let ((canon (fn-scka-canon-rows records fn-arena 0)))
                      (if (equal canon :bad) :bad (fn-sco-capture configs canon)))
                  next0)))
-    (if (or (equal next :bad) (not (and (consp walked) (atom (nth 0 walked)))))
-        nil
-      (list next (fn-scka-lens-setup (reverse (nth 1 walked)) seg) walked))))
+    (fn-owner-sco-next-of next walked seg)))
+
 
 (defun fn-owner-sco-setup-of (prepared frontier revision log seg budget free)
   ; The second half: (list SETUP NEXT N ARUN) as fn-owner-sco-prepare answers.
@@ -1142,9 +1151,19 @@
   (declare (xargs :guard t))
   (fn-rclp-ctx-free ctx))
 
-(defun fn-owner-orc-chunk (rows ctx acc fn-arena)
+; One chunk of the reclaim walk (books/owner-reclaim.lisp fn-orc-chunk's two
+; halves, fn-orc-fold-of-append and fn-orc-rewrite-rows-of-append joining
+; the chunks).  Pass 1 folds (the decision's accumulator, no rewrite);
+; passes 2 and 3 rewrite (the chunk handed to books/reclaim-chunked-walk.lisp
+; and books/reclaim-chunked-seal.lisp's steps, no fold): the rewrite reads
+; CTX and the arena only, never the fold, so each pass's chunk is the same.
+(defun fn-owner-orc-fold-chunk (rows ctx acc fn-arena)
   (declare (xargs :stobjs fn-arena :mode :program))
-  (fn-orc-chunk rows ctx acc fn-arena))
+  (fn-orc-fold rows ctx acc fn-arena))
+
+(defun fn-owner-orc-rewrite-chunk (rows ctx fn-arena)
+  (declare (xargs :stobjs fn-arena :mode :program))
+  (fn-orc-rewrite-rows rows ctx fn-arena))
 
 (defun fn-owner-orc-init ()
   (declare (xargs :guard t))
@@ -1821,8 +1840,9 @@
 ;; (`policy set barrier-deadline-ms|barrier-stall-ms|clock-event-ms N'); the
 ;; barrier's :issue event normalizes them (fn-otm-limits: defaults for
 ;; absent rows, H at least D).
-;; Row S9 (retire, books/owner-retire.lisp): the drain's step over the
-;; owner's feed table, and the report the owner writes when the drain ends.
+;; Row S9 (retire): the drain's step over the carried feed count and the
+;; owner's queue (books/owner-retire-counted.lisp), and the report the owner
+;; writes when the drain ends (books/owner-retire.lisp).
 (defun fn-owner-feed-pending (state)
   (declare (xargs :stobjs state :mode :program))
   ; Cold installation establishes this scalar; no served fallback census.
@@ -1830,10 +1850,11 @@
 
 (defun fn-owner-retire-step (s0 s seconds state)
   (declare (xargs :stobjs state :mode :program))
-  ;; The native accepted-producer/barrier settlement observation is still
-  ;; OPEN. Until its lifecycle relation lands, zero cannot authorize drained.
-  (value (fn-ort-drain-step-counted
-          s0 s seconds (fn-owner-feed-pending state) t nil)))
+  ;; Under the owner mutex: the carried feed count and the owner's queue,
+  ;; the producers left once intake is fenced (books/owner-retire-counted.lisp
+  ;; fn-ort-retire-step, fn-ort-producers-settled).
+  (value (fn-ort-retire-step s0 s seconds (fn-owner-feed-pending state)
+                             (fn-own-queue (fn-owner-core state)))))
 
 (defun fn-owner-retire-report (step state)
   (declare (xargs :stobjs state :mode :program))
@@ -5509,9 +5530,49 @@ existing port only after fn-fc has made this connection ready."
           ((not (fn-wire-fast-statep wire)) (value :invalid-wire))
           (t (value (fn-ocap-preview wire start end fn-octets))))))
 
-; Explicit producer frontier. A derived logical graph count alone is not a
-; complete physical allocation/collector/root-custody tariff. All families
-; remain unpriced until the actual producer supplies that coverage.
-(defun fn-owner-output-tariff-preview (id preview state)
-  (declare (xargs :stobjs state :mode :program) (ignore id))
-  (value (fn-ocap-unpriced-tariff preview)))
+; The tariff producer the admission gate consumes (planning/design/tariff-
+; 2026-10-04.md Q3).  ARTICLE is priced from the row its factory serves
+; (books/output-tariff-article-row.lisp fn-tariff-article-preview: the
+; connection's reader session and pinned configuration, the catalog and the
+; arena, read-only); every other family stays (:unpriced F) and is refused by
+; name in accounted mode.  The ARTICLE figure is a cumulative-constructor
+; tariff of the exec reply plus the realized extent; the collector and the
+; native vectors are its named unaccounted part (output-tariff-article.lisp).
+(defun fn-owner-output-tariff-preview (id preview fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
+  (let* ((owner (fn-owner-core state))
+         (conn (fn-own-find-conn id (fn-own-conns owner))))
+    ; The priced families: tools/cost_obligations.py reads this list for the
+    ; ratchet (priced / served families) in planning/cost-obligations.json.
+    (value (if (and conn (member-eq (fn-ocap-at 2 preview) '(:article)))
+               (fn-tariff-article-preview preview (fn-own-conn-live-session owner conn)
+                                          (fn-own-conn-config conn) fn-arena fn-cat)
+             (fn-ocap-unpriced-tariff preview)))))
+
+; The admission's refusal answered on the wire (books/output-admission-line.lisp):
+; an unpriced family 403 with the connection kept, an unaffordable reply 400
+; and close, over the refused command's line, before any factory.  The same
+; owner step as fn-owner-resource-unavailable-line-at.
+(defun fn-owner-output-refusal-line-at (id start admission fn-octets fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program)
+           (ignorable fn-arena fn-cat))
+  (let ((owner (fn-owner-core state)))
+    (if (not (fn-own-find-conn id (fn-own-conns owner)))
+        (value :unknown)
+      (if (not (and (natp start) (<= start (fn-octets-len fn-octets))))
+          (value :bad-range)
+        (let ((result (fn-oadl-refusal-span (fn-owner-ocfg state) id start admission fn-octets)))
+          (if (null result)
+              (value :not-command)
+            (let* ((effects (fn-own-tls-result-effects result))
+                   (consumed (fn-own-tls-result-consumed result))
+                   (state (fn-owner-install-ocfg (fn-own-tls-result-owner result) state))
+                   (state (fn-owner-exposure-observe id effects consumed state)))
+              (value (fn-splan-step-make
+                      effects
+                      (fn-served-closingp effects)
+                      (fn-served-starttlsp effects)
+                      (fn-served-submission effects)
+                      consumed
+                      (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
+                      (f-get-global 'fn-owner-exposure-close state))))))))))

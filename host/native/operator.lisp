@@ -573,7 +573,7 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
 ;;; no owner the verb is refused by name (nothing drains a stopped node).
 ;;; After the answer the operator waits while ACL2's liveness decision over
 ;;; the socket and the lock says an owner runs (the owner's drain ends by its
-;;; window, books/owner-retire.lisp fn-oret-drain-step-ends-by-the-window).
+;;; window, books/owner-retire-counted.lisp fn-ort-retire-step-ends-by-the-window).
 ;;; ACL2 separately bounds this operator's observation; PRF-357 does not
 ;;; bound a physical final fence.  Expiry is uncertain and leaves the owner
 ;;; running.  After a stopped observation, print only its fresh report.
@@ -801,7 +801,9 @@ Run-only accessors intentionally return NIL for these commands."
     (fnn-heap-print-store-line
      (fnn-core 'fn-native-operator-host-result-store-root result)
      (fnn-core 'fn-native-config-cold-resources config)
-     (fnn-core 'fn-native-config-output-resources config))))
+     (fnn-core 'fn-native-config-output-resources config))
+    (fnn-out "~a" (fnn-core 'fn-oadl-accounting-line
+                            (fnn-core 'fn-native-config-output-resources config)))))
 
 (defun fnn-operator-execute-status (result)
   "One report, or with `--watch N' one every N seconds until interrupted."

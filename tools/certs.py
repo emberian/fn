@@ -339,6 +339,12 @@ def default_origin_kind() -> str:
     return kind if kind in ORIGIN_KINDS else LIVE_ORIGIN
 
 
+def kind_is_stated(origin_kind: str | None) -> bool:
+    """Whether the caller said what the origin tree is (argument or
+    ``FN_CERT_ORIGIN_KIND``), rather than leaving the live-worktree default."""
+    return origin_kind is not None or os.environ.get("FN_CERT_ORIGIN_KIND") in ORIGIN_KINDS
+
+
 def content_hash(path: Path) -> str:
     hasher = hashlib.sha256()
     with path.open("rb") as source:
@@ -1702,6 +1708,7 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
     entry may be installed on a machine where the tree still exists.
     """
     kind = origin_kind or default_origin_kind()
+    stated = kind_is_stated(origin_kind)
     report = Report(action="publish", cache=str(cache))
     loaded = load_manifests(root) if manifests is None else list(manifests)
     report.manifests = len(loaded)
@@ -1762,7 +1769,7 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
         fasl = (fasl if record.fasl and fasl.is_file()
                 and content_hash(fasl) == record.fasl else None)
         outcome = write_entry(directory, name, key, listing, cert, port, record,
-                              where, origin_host, kind, fasl)
+                              where, origin_host, kind, fasl, stated)
         if outcome != "uncompiled":
             report.cache_entries.append(directory.relative_to(cache).as_posix())
         if outcome == "uncompiled":
@@ -1781,9 +1788,18 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
                 cert: Path, port: Path | None, record: Certified,
                 origin: str, origin_host: str | None = None,
                 origin_kind: str = LIVE_ORIGIN,
-                fasl: Path | None = None) -> str:
+                fasl: Path | None = None,
+                kind_stated: bool = True) -> str:
     """Commit a matched pair, its compiled file when there is one, and
-    provenance under one cache-entry lock."""
+    provenance under one cache-entry lock.
+
+    ``kind_stated`` is False when nobody said what the origin tree is and the
+    live-worktree default applies.  That default never takes a snapshot label
+    off the same certificate from the same origin: a lane that certified with
+    ``FN_CERT_ORIGIN_KIND=run`` and then re-ran a certify, a
+    ``proof_repl start`` or a bare ``certs.py publish`` without the variable
+    turned its shareable entries back into ``foreign-local`` ones.  Saying
+    ``--origin-kind worktree`` still relabels."""
     meta = {
         "book": name,
         "closure_key": key,
@@ -1823,6 +1839,10 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
                      (fasl is not None and target_fasl.is_file() and
                       content_hash(target_fasl) == meta["fasl_sha256"]))
         old_meta = read_meta(directory)
+        if (not kind_stated and origin_kind == LIVE_ORIGIN and same_cert
+                and old_meta.get("origin_root") == origin
+                and old_meta.get("origin_kind", LIVE_ORIGIN) != LIVE_ORIGIN):
+            origin_kind = meta["origin_kind"] = old_meta["origin_kind"]
         if (fasl is None and same_cert and target_fasl.is_file()
                 and old_meta.get("cert_sha256") == record.cert
                 and old_meta.get("toolchain") == record.compatibility
