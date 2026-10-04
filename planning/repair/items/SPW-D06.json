@@ -1,0 +1,16 @@
+{
+ "category": "architecture",
+ "detail": "planning/spw-recheck-2026-10-04.md",
+ "evidence": "feed-filename.lisp:22 *fn-ff-max-observations* 8192, used at :93 fn-feed-filename-observation-limit. About 1170 peers at depth 7. Unlike the store sweep this caps durable journal names, not a per-step quantum.",
+ "exposure": "conditional",
+ "file": "books/feed-filename.lisp",
+ "fix": "Bounded-work stream of the names, or a profile field with a named refusal.",
+ "id": "SPW-D06",
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "medium",
+ "source": "spw-recheck-2026-10-04",
+ "state": "open",
+ "title": "D27: durable feed journal names are capped at 8192 observations; recovery faults past it and there is no next round",
+ "updated": "2026-10-04T14:47:40Z"
+}

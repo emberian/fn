@@ -116,7 +116,14 @@
 # published for dev commit SHA from hbox:/tank/fn/images/SHA, verified by its
 # SHA256SUMS; layout and publishing in tools/image_set.py; --images names
 # which of its production, developer, dtn, dtn-developer to link; the
-# images' identity source is SHA, the tree is REV), --reuse-image RUN (no
+# images' identity source is SHA, the tree is REV), --overlay (with
+# --image-set SHA: REV's host and book changes since SHA applied form by form
+# to the set's cores and saved as derived cores in the tree's build/, seconds
+# instead of the image cycle; tools/native_overlay.py plans it here first and
+# refuses, by name and before anything ships, a change a definition swap
+# cannot carry -- layouts, macros, constants, build-time effects, the
+# sealed dispatch table; a stripped image under an ACL2 change is refused and
+# so is every module that reads it; docs/testing.md "Overlay"), --reuse-image RUN (no
 # certify and no build: link the images an earlier run built, RUN =
 # NAME/native-LABEL or a /tank/fn/scratch path, from RUN/tree/build; their
 # identity source is the one RUN's log names; `tools/image_set.py link-run`),
@@ -145,7 +152,7 @@ if [ -z "${FN_HBOX_NATIVE_COPY:-}" ]; then
     FN_HBOX_NATIVE_COPY=$(mktemp -d "${TMPDIR:-/tmp}/hbox_native.XXXXXX") || exit 3
     cp "$FN_HBOX_NATIVE_HERE/tools/hbox_native.sh" "$FN_HBOX_NATIVE_HERE/tools/wait_for.sh" \
         "$FN_HBOX_NATIVE_HERE/tools/boxes.sh" "$FN_HBOX_NATIVE_HERE/tools/image_set.py" \
-        "$FN_HBOX_NATIVE_HERE/tools/native_box.sh" \
+        "$FN_HBOX_NATIVE_HERE/tools/native_box.sh" "$FN_HBOX_NATIVE_HERE/tools/native_overlay.py" \
         "$FN_HBOX_NATIVE_COPY/" || exit 3
     export FN_HBOX_NATIVE_COPY FN_HBOX_NATIVE_HERE
     exec sh "$FN_HBOX_NATIVE_COPY/hbox_native.sh" "$@"
@@ -170,6 +177,7 @@ IMAGES_GIVEN=0
 POSITIONAL=
 IMAGE_SET=
 REUSE=
+OVERLAY=
 CATALOG=old
 usage() { sed -n '2,/^set -eu/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' >&2; exit 2; }
 # status / attach LABEL: read the record this worktree's start wrote.
@@ -245,6 +253,7 @@ while [ $# -gt 0 ]; do
             esac
             case $REUSE in *..*|*[!A-Za-z0-9._/-]*) echo "hbox_native: bad --reuse-image $2" >&2; exit 2 ;; esac
             BUILD=0; shift 2 ;;
+        --overlay) OVERLAY=1; shift ;;
         --detach) DETACH=1; shift ;;
         --wait) DETACH=0; shift ;;
         --dry-run) DRY=1; shift ;;
@@ -312,6 +321,9 @@ for image in $(echo "$IMAGES" | tr ',' ' '); do
         *) echo "hbox_native: --images takes developer,production,dtn,dtn-developer,reference,developer-stripped,prof" >&2; exit 2 ;;
     esac
 done
+if [ -n "$OVERLAY" ] && [ -z "$IMAGE_SET" ]; then
+    echo "hbox_native: --overlay applies REV over a published set: give --image-set SHA" >&2; exit 2
+fi
 if [ -n "$IMAGE_SET" ] && [ -n "$REUSE" ]; then
     echo "hbox_native: --image-set and --reuse-image both name the images; give one" >&2; exit 2
 fi
@@ -367,6 +379,18 @@ else
     [ -n "$LABEL" ] || LABEL=$(echo "$FULL" | cut -c1-12)
 fi
 case $LABEL in ''|*[!A-Za-z0-9._-]*) echo "hbox_native: bad --label $LABEL" >&2; exit 2 ;; esac
+# The overlay's plan, here where git is: a refusal stops the launch, naming
+# each change an image build must carry instead.
+if [ -n "$OVERLAY" ]; then
+    OVERLAY_DIR=$HERE/build/native-overlay/$LABEL
+    python3 "$HERE/tools/native_overlay.py" plan "$IMAGE_SET" "$REV" --out "$OVERLAY_DIR" >&2 \
+        || { echo "hbox_native: --overlay refused (above); run without --overlay to build images" >&2; exit 2; }
+    REFUSED_IMAGES=$(python3 -c 'import json,sys; p=json.load(open(sys.argv[1])); print(" ".join(i for i in sys.argv[2].split(",") if p["images"][i].get("refused")))' "$OVERLAY_DIR/plan.json" "$IMAGES")
+    if [ -n "$REFUSED_IMAGES" ]; then
+        echo "hbox_native: --overlay cannot carry this change into: $REFUSED_IMAGES (above); drop the modules that read them or build images" >&2
+        exit 2
+    fi
+fi
 # The images' own source is the set's commit, whatever tree runs the tests.
 [ -z "$IMAGE_SET" ] || SOURCE_ID=$IMAGE_SET
 # The box and its row (item 67).  auto takes hbox for --image-set and
@@ -439,6 +463,9 @@ export FN_TEST_OPENSSL_BIN=\$S/bin/openssl-test
 # the tank's ZFS cost 4.7 s at load 33 and one command 194 s (tooling-truth-3).
 export FN_TEST_DURABLE_TMP=\${FN_TEST_DURABLE_TMP:-/var/tmp}
 export FN_ACL2=\$ACL2 FN_CERT_CACHE=\$CACHE FN_CERT_ORIGIN_KIND=run
+# The book reader's per-text cache (tools/ledger.py), shared by this box's
+# runs: content-addressed, so a fresh tree reads only what changed.
+export FN_LEDGER_FORMS_CACHE=\${FN_LEDGER_FORMS_CACHE:-$BASE/.ledger-forms}
 mkdir -p \$L
 rm -f \$S/status
 cd \$T || { echo 9 > \$S/status; exit 9; }
@@ -576,6 +603,12 @@ BOX
 echo "== images: the published set $IMAGE_SET ($IMAGES_BASE/$IMAGE_SET)"
 step image-set python3 \$S/bin/image_set.py link --base $IMAGES_BASE $IMAGE_SET \$T $(echo "$IMAGES" | tr ',' ' ')
 BOX
+        if [ -n "$OVERLAY" ]; then
+            cat <<BOX
+echo "== overlay: $SOURCE over the published set $IMAGE_SET (plan \$(sed -n 's/.*"digest": "\\(.\\{12\\}\\).*/\\1/p' \$S/overlay/plan.json))"
+step overlay $WRAP python3 \$S/bin/native_overlay.py build \$S/overlay --image-set $IMAGES_BASE/$IMAGE_SET --tree \$T --images $IMAGES
+BOX
+        fi
     fi
     # The production image's identity (tests/test_native_peering and
     # test_native_admin check the running process against it), computed by
@@ -747,6 +780,11 @@ fi
 box_script "$@" | ssh "$HOST" "cat > $S/run.sh" || exit 3
 if [ -n "$IMAGE_SET" ] || [ -n "$REUSE" ]; then
     ssh "$HOST" "mkdir -p $S/bin && cat > $S/bin/image_set.py" < "$FN_HBOX_NATIVE_COPY/image_set.py" || exit 3
+fi
+if [ -n "$OVERLAY" ]; then
+    ssh -n "$HOST" "rm -rf $S/overlay && mkdir -p $S/overlay" || exit 3
+    tar -C "$OVERLAY_DIR" -cf - . | ssh "$HOST" "tar -xf - -C $S/overlay" || exit 3
+    ssh "$HOST" "cat > $S/bin/native_overlay.py" < "$FN_HBOX_NATIVE_COPY/native_overlay.py" || exit 3
 fi
 PID=$(ssh -n "$HOST" "rm -f $S/status; nohup sh $S/run.sh > $S/run.log 2>&1 < /dev/null & echo \$!") || exit 3
 echo "hbox_native: started; progress in $HOST:$S/run.log"

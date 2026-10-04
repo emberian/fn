@@ -9,7 +9,7 @@ shows and what it does not.  The long account of validation by layer is
 |---|---|---|---|
 | ACL2 test book | `tests/acl2/*-tests.lisp` | `python3 tools/farm.py submit auto tests/acl2/NAME-tests` then `farm.py wait BOX RUN` | a farm box (persvati, hbox); the laptop only through `tools/acl2` |
 | raw SBCL harness | `tests/native_*_raw.lisp` | `python3 -m unittest tests.test_native_raw_scripts` (all), or `sbcl --script tests/native_NAME_raw.lisp` | anywhere with the toolchain SBCL; `make check` |
-| native module | `tests/test_native_*.py` | image-free half: `python3 tools/native_source_check.py tests.test_native_NAME`; image half: `tools/hbox_native.sh --image-set SHA . tests.test_native_NAME` | image-free: anywhere, `make check`; image: a build box |
+| native module | `tests/test_native_*.py` | image-free half: `python3 tools/native_source_check.py tests.test_native_NAME`; image half: `tools/hbox_native.sh --image-set SHA . tests.test_native_NAME`; a host edit over a published set: `tools/hbox_native.sh --image-set SHA --overlay . tests.test_native_NAME` | image-free: anywhere, `make check`; image: a build box |
 | scenario | a row of `tests/scenarios/catalog.json` | run its witnesses (rows above, or a `tests/*.sh` its row cites) | where the witness runs |
 | tooling test | `tests/test_*.py` that are not `test_native_*` | `make test-modules MODULES="tests.test_NAME"` | anywhere; `make tooling-test` runs the set |
 
@@ -87,6 +87,53 @@ A pass shows: the behaviour, on that image, for that run.  It is evidence to
 file (`tools/evidence_store.py put`), never a proof; a skipped test is not a
 pass, and a module's image tests count only with the image's identity named.
 
+## Overlay: a host edit's native verdict without an image build
+
+`tools/hbox_native.sh --image-set SHA --overlay REV tests.test_native_NAME`
+(REV `.` is this worktree, uncommitted files included) runs the modules
+against the published set for SHA with REV's changes since SHA applied to
+its cores.  `tools/native_overlay.py plan SHA REV` runs here first: it diffs
+every file an image loads (the build scripts' `ld` and raw `load` files and
+the books their worlds include) form by form, and either lists what it will
+apply or refuses, naming each form, a change a definition swap cannot carry:
+a changed defmacro, defconst, defconstant, defparameter, defvar, declaim or
+inline function (callers hold the old expansion or value), a defstobj,
+defabsstobj, attach-stobj, defstruct or defclass (never mix obsolete
+layouts), a table, definterface or defattach event, a top-level form with a
+load-time effect, a function some build-time form calls (its result is in
+the saved core) or whose object a registration captured (`#'NAME`), a
+deleted definition still named, and every image input (build scripts, C
+libraries, VERSION, the world umbrellas, the sealed dispatch table).  On the
+box `native_overlay.py build` restarts each base core into ACL2's loop,
+admits the ACL2 forms with redefinition allowed (and proves again, under a
+fresh name, every unchanged theorem of the images' host files and the
+changed books that names a changed function), loads the raw forms, checks
+that no changed function is a raw-dispatch target and that every trap and
+`:raw-with` declaration still holds, and saves the derived core into the
+tree's `build/` beside an `.overlay.json` record (base set, source, plan
+digest, applied forms).  A stripped image (production, dtn) takes only a
+raw-only plan; under an ACL2 change it is refused, and so is every module
+that reads it.  About 20 seconds of overlay, then the modules; the image
+cycle it replaces is 25 to 70 minutes on hbox (`planning/loops-2026-10-04.md`).
+
+A pass shows the behaviour of REV's host over SHA's certified world on that
+run.  It is a lane's verdict, not an image: the integrator's image cycle
+(certify, host-ld, the four builds) is what a release or a claim names.
+Overlay cores are not timing-identical to built ones: a re-saved
+production core lost `tests.test_native_state_checkpoint`'s running-owner
+compaction race (stop right after the request) 3 of 3 where the published
+core won it 3 of 3, and both pass with a pause before the stop; a red that
+depends on timing is confirmed on a built image.
+
+A live owner for exploration: `python3 tools/native_overlay.py live --image
+build/fn-host-developer --root DIR` (on the box, in the run's tree) starts a
+developer owner on a scratch store with its developer REPL and prints the
+NNTP port and the socket; `python3 tools/fn_dev.py repl --socket DIR/dev.sock`
+attaches (`:load` a raw file, `:acl2-file` events), `native_overlay.py stop
+--root DIR` ends it.  A definition loaded into a running owner does not
+re-run what already ran (startup, threads holding closures); for a verdict,
+build the overlay again and restart.
+
 ## Scenarios
 
 A catalog row (`SCN-NNN`) is a specification -- steps, expected outcomes,
@@ -96,6 +143,42 @@ runs once in the convergence checklist.  `tools/witness_check.py` (in `make
 check`) holds every `tests/*.sh` to a `# witness: CLASS` header, a runner for
 its class, and a catalog row that cites it or the harness it drives.  A
 scenario is exercised exactly as far as its row's `execution_scope` says.
+
+## Scenario tiers
+
+`tests/scenarios/tiers.tsv` groups the native modules that drive an image
+(and the kits `hbox_native.sh` cannot launch) by the question each answers
+and by how long a run takes; `planning/scenarios-2026-10-04.md` is the
+coverage map behind it (questions x scenarios, the gaps, which assertions
+did not test their claim).
+
+| tier | what it answers | wall at `--jobs 4` |
+|---|---|---|
+| `peer` | can a stranger's server peer with us safely and usefully: transit both ways, catch-up, IHAVE/CHECK/TAKETHIS, NEWNEWS and HDR/XPAT past the cache, misbehaving peers, peer credentials, real INN (`FN_INN_SRC`) | ~20 min |
+| `smoke` | one short module per question (durability cuts, the three outcomes, resend, bounds, reader bytes, TLS, cursor, web, feed, BP, store identity) | minutes |
+| `core` | the integrator's twelve: the release image bar | ~10 min |
+| `e2e` | one whole module per user-visible surface, consumer and hybrid opt-ins on | 30-45 min |
+| `resilience` | crash cuts, fault injection, hostile input | an hour, plus kits |
+| `scale` | fixture stores and the F1-F8 measurements (quiet box, current fixtures) | hours |
+
+Run a tier against a published image set (no certify, no build):
+
+    python3 tools/scenario_suite.py run smoke --image-set SHA        # tests at SHA
+    python3 tools/scenario_suite.py run peer --image-set SHA --rev .  # this worktree's tests
+    tools/hbox_native.sh attach smoke-SHA9                             # wait; print run.log
+
+`run` prints the `hbox_native.sh` command it starts and, for a tier's kits,
+the command to run by hand on hbox.  `list [TIER]` shows each entry with its
+questions and reason; `modules TIER` prints the module names for any other
+runner (an overlay image is picked up through the same `FN_NATIVE_*`
+variables every module reads).  Tell the integrator before a run; one run
+at a time on hbox.  `tools/scenario_suite.py check` (in `make check`) keeps
+the file honest: every module exists and drives an image, codes and opt-ins
+are known, no `-mock` or source-only module is listed.
+
+A tier's result is the run's `run.log` (OK / FAILED / SKIPPED per module,
+with the image set named); a red is classified (implementation, harness,
+environment) with the run id, never re-expected.
 
 ## What `make check` is
 

@@ -37,6 +37,7 @@ class NativeApplicationJournalTests(unittest.TestCase):
             "-", "-", "fn.test",
         )
         self.assertEqual(posted.returncode, 0, posted.stderr)
+        self.posted = set()
 
     def invoke(self, *args, env=None):
         """`IMAGE --fn ARGS...`; ENV names extra variables (a cut's selector)."""
@@ -107,10 +108,31 @@ class NativeApplicationJournalTests(unittest.TestCase):
         self.assertEqual(reopened.returncode, 0, reopened.stderr)
         self.assertIn("status=outstanding", reopened.stdout)
 
+    def post_article(self, msgid):
+        payload = self.tmp / f"payload-{len(list(self.tmp.glob('payload-*')))}"
+        payload.write_bytes(
+            (f"Message-ID: {msgid}\r\nNewsgroups: fn.test\r\n\r\n"
+             "native workflow application payload\r\n").encode("ascii"))
+        posted = self.invoke("store", self.store, "post", msgid, payload,
+                             "-", "-", "fn.test")
+        self.assertEqual(posted.returncode, 0, posted.stderr)
+
+    # specs/bp-workflow-host.md "Publication and recovery": one work entry per
+    # Message-ID, and an intent consumes its transaction/generation pair for
+    # good (fn-bp-prepare-enqueue refuses a used pair or a Message-ID that
+    # already has work).  Each work is its own article under its own pair;
+    # work-a is the article setUp posted.
+    WORKS = {"work-a": 1, "work-b": 2}
+
     def enqueue_work(self, journal, work):
+        msgid = (self.msgid if work == "work-a"
+                 else f"<native-workflow-{work}@example.invalid>")
+        if msgid != self.msgid and msgid not in self.posted:
+            self.post_article(msgid)
+            self.posted.add(msgid)
         return self.invoke(
             "app-journal", "workflow-enqueue", self.store, journal,
-            "1", "0", work, self.msgid, f"forward-{work}",
+            str(self.WORKS[work]), "0", work, msgid, f"forward-{work}",
             "dtn://fn-b/", "policy-a", f"terms-{work}",
         )
 

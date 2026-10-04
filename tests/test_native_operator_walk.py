@@ -209,6 +209,10 @@ class OperatorWalkTests(unittest.TestCase):
         except FileNotFoundError:
             return 0
 
+    def stat(self, node, message_id):
+        with node.session() as client:
+            return client.command("STAT {}".format(message_id).encode())
+
     def post(self, node, tag, expect=EXIT.OK, body=None):
         result = node.post("<walk-{}@example.invalid>".format(tag), article(tag, body),
                            group="local.test", expect=expect)
@@ -268,6 +272,10 @@ class OperatorWalkTests(unittest.TestCase):
         self.mark("posted")
         until(lambda: self.log_count(b, "accepted peer"), 15, "b's log names the accepted peer a")
         until(lambda: self.log_count(a, " feed "), 15, "a's log names its feed to b")
+        # The log lines say a feed ran; the article being served at b says it
+        # carried the post (the logs alone passed with nothing delivered).
+        until(lambda: self.stat(b, "<walk-1@example.invalid>").startswith(b"223"), 15,
+              "b serves the post a was fed")
         self.mark("fed")
         b.operator("status", expect=EXIT.OK)
         a.operator("health", expect=HEALTH_CLEAR)
@@ -321,6 +329,20 @@ class OperatorWalkTests(unittest.TestCase):
         a.operator("health", expect=HEALTH_UNAVAILABLE_PEER)
         self.assertEqual(peer.count(b"MODE STREAM"), 1, peer.lines)
         self.assertEqual(peer.count(b"IHAVE"), 0, peer.lines)
+
+    def test_a_stopped_peer_is_fed_with_ihave_once_its_record_says_streaming_false(self):
+        """The stop's remedy applies live (rp-feed-stop-outlives-remedy,
+        fn-fc-stop-lifts-on-a-changed-record): the log line names `peer set
+        NAME --streaming false', and that record change feeds the peer with
+        IHAVE in the same run, with no further MODE STREAM.  Before, the stop
+        was keyed by the name alone and outlived it until a restart."""
+        a, peer = self.nostream(b"502 not for you")
+        self.logged(a, peer, "reason=mode-stream-refused")
+        a.operator("peer", "set", "nostream", "--streaming", "false", expect=EXIT.OK)
+        self.post(a, "2c")
+        until(lambda: peer.count(b"IHAVE <walk-2@example.invalid>"), 20,
+              "the stopped peer is fed once its record changes")
+        self.assertEqual(peer.count(b"MODE STREAM"), 1, peer.lines)
 
     def test_backup_of_the_stopped_node_restored_on_a_copy_and_recovered(self):
         """docs/operator.md section 9, "Back up": stop, copy the node folder,
@@ -481,6 +503,8 @@ class OperatorWalkTests(unittest.TestCase):
         self.mark("listening again")
         a.operator("health", expect=HEALTH_CLEAR)
         a.operator("status", expect=EXIT.OK)
+        # The post answered before the kill is still served after recovery.
+        self.assertTrue(self.stat(a, "<walk-1@example.invalid>").startswith(b"223"))
         self.mark("health and status")
 
 

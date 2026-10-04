@@ -1,0 +1,16 @@
+{
+ "category": "bug",
+ "detail": "planning/spw-recheck-2026-10-04.md",
+ "evidence": "io.lisp:793 fnn-read-regular-bounded: (fnn-open path o-rdonly nofollow) then fstat. fnn-archive-entry (io.lisp:4900-4906) reads profile/frontier/config/records through it after an lstat check; fnn-stopped-observation reads config.json (io.lisp:5763). A FIFO swapped in between the lstat and the open blocks. Needs write access to the archive or store directory. About 69 call sites share the helper.",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "fix": "Open NONBLOCK in the shared helper and refuse a non-regular descriptor before reading, as io.lisp:5256 and :5724 do.",
+ "id": "SPW-R4",
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "low",
+ "source": "spw-recheck-2026-10-04",
+ "state": "open",
+ "title": "fnn-read-regular-bounded opens without O_NONBLOCK, so the FIFO-substitution hang fixed for the import MANIFEST (E013) and the status prefix reader (E014) remains for every other archive entry and stopped-status config.json",
+ "updated": "2026-10-04T14:47:39Z"
+}

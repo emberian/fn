@@ -689,6 +689,8 @@ class NativeConsumerExchangeTests(unittest.TestCase):
         self.assertEqual(again.returncode, 0,
                          "identical resend answered %d, not D25 duplicate"
                          % again.returncode)
+        # Exit 0 is also a fresh accept: the word is what tells the duplicate.
+        self.assertIn(b"accepted hybrid-author DUPLICATE", again.stdout + again.stderr)
 
     def test_identical_operator_post_resend_answers_duplicate(self):
         """D25 on the operator post route (unsigned, same control socket)."""
@@ -701,12 +703,15 @@ class NativeConsumerExchangeTests(unittest.TestCase):
                             b"Message-ID: " + msgid.encode() + b"\r\n\r\nexact\r\n")
         words = ("operator", self.config, "post", "--message-id", msgid,
                  "--payload", article, "--group", "fn.test")
-        self.native(*words)
+        first = self.native(*words)
         again = self.native(*words, expected=None)
         self.stop_owner(self.owner)
         self.assertEqual(again.returncode, 0,
                          "identical operator post resend answered %d: %s"
                          % (again.returncode, (again.stdout + again.stderr).decode()))
+        # Exit 0 is also a fresh accept: the word is what tells the duplicate.
+        self.assertNotIn(b"DUPLICATE", first.stdout + first.stderr)
+        self.assertIn(b"accepted operator post DUPLICATE", again.stdout + again.stderr)
 
 
 if __name__ == "__main__":
