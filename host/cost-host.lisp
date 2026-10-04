@@ -10,8 +10,12 @@
   :visits (+ 1 request-octets)
   :sizes ((request-octets (len octets)))
   :unaccounted (fn-served-step fn-reader-install-result)
+  ;; The bound adds (+ 1 (len octets)) to the route's unaccounted leaves, so
+  ;; the proof needs both to be naturals: minimal-theory carries neither.
   :hints (("Goal" :in-theory
-           (union-theories '(fn-reader-chunk-visits fn-reader-chunk-route-visits)
+           (union-theories '(fn-reader-chunk-visits fn-reader-chunk-route-visits
+                             (:type-prescription len)
+                             (:type-prescription fn-cost-unaccounted-natp))
                            (theory 'minimal-theory)))))
 (def-cost-check fn-reader-chunk)
 
