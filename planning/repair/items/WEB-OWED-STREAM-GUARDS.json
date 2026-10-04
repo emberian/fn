@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/web-reply-stream.lisp",
+ "id": "WEB-OWED-STREAM-GUARDS",
+ "notes": [],
+ "owner": "web",
+ "severity": "medium",
+ "slice": "services",
+ "source": "lane-web",
+ "state": "open",
+ "title": "verify-guards for the five web stream books (web-page-cursor, web-list-stream, web-article-stream, web-reply-stream, web-post-stream): logic mode since lane/web, admitted :verify-guards nil; the host calls them through program-mode wrappers in host/web-host.lisp, so raw execution is unguarded",
+ "updated": "2026-10-04T03:47:33Z"
+}

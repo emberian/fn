@@ -4617,6 +4617,97 @@ Not READY yet: world receipt, green_check over the affected closure (app-journal
 - EID length (`*fn-bpc-max-text*` 1024, 198 deps): a node-profile field read by the primary-block decoder.
 - PKT-244 u32 readers: WIDE (file machine, observed open, checkpoint codec, consumer positions).
 bounds design §1.4 binding list: 5 rows left (2^24 + its 3 codec widths counted as one, custody rows, EID, blocks-per-bundle, lab receive-evidence); §1.3's app-journal row marked REMOVED.
+
+## web lane (wave 2, 2026-10-04) — concurrent web face, logic-mode stream books
+
+Branch `lane/web` on origin; head a12741052 (origin/next merged at 0b113b642). STATUS: READY with natives pending; lane EXITED (ramp-down).
+
+### Strand: the web face serves one connection at a time (S037/S065, §2 criterion 4)
+
+Finding: the fix is already on dev. The concurrent reactor (one I/O actor
+multiplexing bounded HTTP records + one fixed semantic actor; `:defer` and
+cursor resume are timers, not sleeps) landed 42403c929..6de37169e
+(host/native/web-host.lisp). It has never run in an image: the last
+published set 45e05c7f predates it. So this lane's job is: tests that
+classify the red, then the native green on the next image set. No host or
+mux change needed; nothing sent to ACTORS.
+
+| commit | what |
+|---|---|
+| a6143d5f1 | tests/test_native_web.py: stalled-socket case measures /signin first (<4 s); new `test_two_requests_in_flight_are_answered_out_of_arrival_order` (B answered while A's head is incomplete); per-case owner stderr kept when FN_NATIVE_TEST_DIAGNOSTIC_DIR is set |
+| a7d08c2da | five web stream books :program -> :logic, keystones proved, 4 proof-owed items, twin fn-wps-private-begin deleted, raw witnesses caught up with the reactor's terminal custody |
+
+### Red-before (published set 45e05c7f, tests at a6143d5f1)
+hbox run `/tank/fn/scratch/web/native-red3-45e05c7f` (status 1, 4/4 FAILED, classified):
+- plain stalled: `14.92 not less than 4 : stalled socket held the HTTP actor before the first page` (request deadline 15 s)
+- TLS stalled: `9.92 not less than 4` (handshake deadline 10 s)
+- plain two-in-flight: B `TimeoutError` (6 s) behind A
+- TLS two-in-flight: B `The handshake operation timed out`
+Note: on 45e05c7f GET /health alone kills the "fn web face" thread
+(`ACL2 returned a malformed web action`, run native-red-45e05c7f-diag) —
+that is why /signin is measured first.
+
+### Green-after: PENDING
+Waiting on the integrator's image set from integrate/20261004 (>= 6d8fdea88,
+ETA ~2 h from 03:30Z). Continuation: when the sha arrives,
+`tools/hbox_native.sh --box hbox --name web --label green-<sha> --image-set <sha> --images developer --env FN_NATIVE_TEST_DIAGNOSTIC_DIR=/tank/fn/scratch/web/diag-green <lane sha> tests.test_native_web.NativeWebFaceTests.test_stalled_socket_does_not_block_health_reader_or_account_post tests.test_native_web.NativeWebFaceTests.test_two_requests_in_flight_are_answered_out_of_arrival_order tests.test_native_web.NativeWebFaceTlsTests.test_stalled_socket_does_not_block_health_reader_or_account_post tests.test_native_web.NativeWebFaceTlsTests.test_two_requests_in_flight_are_answered_out_of_arrival_order`
+plus TLS coverage: `tests.test_native_web.NativeWebFaceTlsTests` (whole class: health, stalled, two-in-flight, test_1 friend flow, refusals, code-once, compressed article).
+If red: read diag stderr, fix in host/native/web-host.lisp.
+
+### Program-mode books -> logic
+web-page-cursor, web-list-stream, web-article-stream, web-reply-stream,
+web-post-stream: :logic, :verify-guards nil. Proved (laptop REPL, all forms
+of tests/test_web_private_source.sh admitted):
+- fn-was/wov/wls/wrs-scan-refused-stays, fn-wrs-page-accepted-only-when-done,
+  fn-wrs-page-invalid-exactly, fn-wrs-refused-reply-is-never-accepted
+- fn-wpf-finish-accepts-to-its-session, fn-wpf-finish-refusal-is-the-existing-gate,
+  fn-wpf-private-begin-refusal-is-the-existing-gate, fn-wps-private-reply-streams-only-after-340
+- fn-wpc-drive-, fn-wpc-window-drive-, fn-wps-window-emits-at-most-fuel (4096-octet quantum)
+Witnesses: tests/acl2/web-post-stream-tests.lisp wpft (accepted post widths
+1/2/7/4096, bad-csrf refused = old gate, remove); raw article stream asserts
+:done/200 = reference. No "uncertain" outcome exists in these books (the
+reactor maps an :uncertain await completion to finish, host side).
+Proof-owed (planning/repair/items): WEB-OWED-STREAM-GUARDS,
+WEB-OWED-WPC-REFINES-SEQ, WEB-OWED-SCAN-REFINES-HEADERS, WEB-OWED-POST-WINDOW-REFINES.
+
+Certify (narrow local, laptop, FN_CERT_ORIGIN_KIND=run, deps from cache):
+`certify-20261004T043801Z-3157` (manifest filed, planning/evidence-index.tsv)
+passes web-page-cursor, web-list-stream, web-article-stream, web-reply-stream,
+web-post-stream, owner-state-accessors, host/web-host, web-post-stream-tests,
+web-private-reply-tests, web-stream-consumer-source-tests.
+host/web-host had NOT certified since a6ed957ed (09-30, fn-owner-sco-deferred
+only in host/owner-host); fixed in 17cfbd37f: fn-owner-sco-global/-deferred moved
+unchanged into books/owner-state-accessors (touches host/owner-host.lisp,
+comment-only remainder). Not recertified here: owner-state-accessors' other
+includers (owner-config chain, image-world*) — affected-by owed to the
+integrator's batch certify.
+
+Raw witnesses green on laptop: tests/test_native_web_{page_cursor,post_stream,stream,private_begin,reactor,article_producer}_raw.sh.
+
+### Not done / handed on
+- harvest gift web-domain-default (wave 3 operator UX): not started.
+- S037/S065 ledger notes: to be set READY with the green run ids.
+
+### check-lane (persvati, 0b113b642, log build/remote-check/persvati-check-lane.log)
+make exit 2, 26 of 90 steps red. All are reds already in the tree except
+depth_check's 9 web-book appends: the logic-mode conversion makes the host
+run the books' *1* bodies. a12741052 classifies those 9 appends, plus the
+3 web walks that were already reported, in tools/depth_baseline.json, each
+with its named bound. depth_check now reports nothing for the web books.
+Compared at head and at origin/next, these give the same output:
+owner_globals, list_codec, cost_obligations, payload_kind. reach_check's
+differences come from origin/next having moved on, not from this lane.
+
+### Continuation (for whoever picks up web)
+1. Green-after native: when the integrator publishes a set from >= a12741052
+   (or any set that contains 42403c929..6de37169e; the lane changes no
+   host/native bytes), run the hbox_native command above for the 4
+   concurrency cases plus the whole tests.test_native_web.NativeWebFaceTlsTests
+   class. Then set S037/S065 to READY with the run ids.
+2. Proof-owed: WEB-OWED-STREAM-GUARDS. Verifying guards would also retire
+   the 9 append classifications. Then the three refinement items.
+3. Harvest gift web-domain-default (wave 3) has not been started.
+
 ## docs lane (lane/docs) — 2026-10-04
 
 Brief: scratchpad fn-briefs/COMMON.md + plan FN-SWARMPLAN-20261004 §3, §4 wave 0, §6.
