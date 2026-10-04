@@ -21,8 +21,8 @@
 #             runtime needs (its highest GLIBC_ symbol version), apt-get,
 #             systemd, free disk; --dry-run stops after this and prints the plan
 #   system    packages (python3 3.12+, git, rsync, libssl3, libsodium, zlib,
-#             build tools, zstd), user fn with this laptop's and the seed's
-#             keys, linger (systemd user scopes), hostname NAME,
+#             build tools, zstd, docker.io, pip + dilithium-py 1.4.0), user fn with
+#             this laptop's and the seed's keys, linger (systemd user scopes), hostname NAME,
 #             /tank/fn/{sbcl,acl2-8.7,toolchains,certcache,images,scratch,gates},
 #             the farm mirror path (this worktree's parent of build/), and
 #             /usr/local/bin/swarm-build (hbox's wrapper: a systemd user scope
@@ -44,6 +44,9 @@
 # Removing a box: delete its row (or let `until` pass) and its Host block;
 # nothing in the repository names it.
 set -eu
+# The one package list: the system step installs it and tools/box_qualify.sh
+# checks it (libssl3 is libssl3t64 on Ubuntu 24.04; both accept either).
+FN_BOX_PACKAGES="rsync git python3 python3-venv python3-pip libssl3 libsodium23 zlib1g build-essential pigz zstd openssl docker.io acl"
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 usage() { sed -n '2,/^set -eu/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' >&2; exit 2; }
 [ $# -ge 2 ] || usage
@@ -109,12 +112,35 @@ SEED_PUB=$($SSH "$SEED" 'test -f ~/.ssh/id_ed25519 || ssh-keygen -q -t ed25519 -
 HBOX_PUB=$(ssh -o BatchMode=yes -o ConnectTimeout=15 hbox 'cat ~/.ssh/id_ed25519.pub' 2>/dev/null) || HBOX_PUB=
 [ -n "$HBOX_PUB" ] || echo "   (hbox did not answer: its key is not authorized; add it before the mirror or teardown runs)"
 SEED_PUB=$(printf '%s\n%s' "$SEED_PUB" "$HBOX_PUB")
-$SSH "$TARGET" 'S=; [ "$(id -u)" = 0 ] || S="sudo -n"; exec $S env NAME='"$NAME"' SEED_PUB="'"$SEED_PUB"'" FARM_MIRROR='"$FARM_MIRROR"' bash -s' <<'SYS'
+$SSH "$TARGET" 'S=; [ "$(id -u)" = 0 ] || S="sudo -n"; exec $S env NAME='"$NAME"' PKGS="'"$FN_BOX_PACKAGES"'" SEED_PUB="'"$SEED_PUB"'" FARM_MIRROR='"$FARM_MIRROR"' bash -s' <<'SYS'
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q >/dev/null
 ssl=libssl3; apt-cache show libssl3t64 >/dev/null 2>&1 && ssl=libssl3t64
-apt-get install -y -q rsync git python3 python3-venv "$ssl" libsodium23 zlib1g build-essential pigz zstd openssl >/dev/null
+apt-get install -y -q $(echo "$PKGS" | sed "s/libssl3/$ssl/") >/dev/null
+# docker: tests.test_native_reader_clients builds the slrn/pan container
+# (tools/reader_clients/Dockerfile) and skips on a box without it (lat1,
+# 2026-10-04); fn must be in the docker group (reset any ssh ControlMaster so
+# the new group is seen).
+apt-get install -y -q docker.io >/dev/null
+systemctl enable --now docker >/dev/null 2>&1 || true
+id fn >/dev/null 2>&1 || useradd -m -s /bin/bash fn
+usermod -aG docker fn
+# The group alone is not enough: a systemd user manager that started before
+# the usermod (linger, or a re-run on a live box) keeps its old groups, and
+# every swarm-build scope under it was refused the socket ("permission denied
+# ... docker.sock": reader_clients 30F on lat1, 2026-10-04).  fn gets the socket
+# by ACL, re-applied whenever docker starts.
+apt-get install -y -q acl docker-buildx >/dev/null 2>&1 || apt-get install -y -q acl >/dev/null
+mkdir -p /etc/systemd/system/docker.service.d
+printf '[Service]\nExecStartPost=/usr/bin/setfacl -m u:fn:rw /run/docker.sock\n' > /etc/systemd/system/docker.service.d/fn-acl.conf
+systemctl daemon-reload
+setfacl -m u:fn:rw /run/docker.sock 2>/dev/null || true
+# dilithium-py: tools/fn_verify.py (the consumer independent verifier) has no ML-DSA-65
+# implementation without it and answers undecided, so tests.test_native_consumer_exchange
+# fails 7 of 11 (lat1, 2026-10-04).  Pure Python, pinned to the version hbox runs.
+apt-get install -y -q python3-pip >/dev/null
+su - fn -c 'python3 -m pip install --user --break-system-packages -q dilithium-py==1.4.0'
 python3 -c 'import sys; assert sys.version_info >= (3, 12), sys.version' || { echo "python3 < 3.12" >&2; exit 1; }
 id fn >/dev/null 2>&1 || useradd -m -s /bin/bash fn
 install -d -o fn -g fn -m 700 /home/fn/.ssh
@@ -177,7 +203,10 @@ $SSH "$FN" 'set -e; for s in /tank/fn/images/*/; do (cd "$s" && sha256sum -c --q
 echo "   images: $(ls /tank/fn/images | wc -l) set(s) verified, binaries resolve"
 out=$(echo "(+ 20 22) (good-bye)" | timeout 180 swarm-build /tank/fn/toolchains/w28/acl2-literal-4g-tls64k 2>&1) || true
 echo "$out" | grep -q "ACL2 Version 8.7" || { echo "ACL2 did not start: $(echo "$out" | tail -3)"; exit 1; }
-echo "   ACL2 8.7 starts under swarm-build"' || die "verify failed on $NAME"
+echo "   ACL2 8.7 starts under swarm-build"
+systemd-run --user --scope --quiet docker info >/dev/null 2>&1 || { echo "docker is refused inside a user scope (reader_clients needs it)"; exit 1; }
+python3 -c "import dilithium_py" 2>/dev/null || { echo "dilithium-py missing for fn (consumer_exchange needs it)"; exit 1; }
+echo "   docker usable in a swarm-build scope; dilithium-py present"' || die "verify failed on $NAME"
 
 step register
 CONF=$HOME/.ssh/fn-boxes.conf
@@ -214,4 +243,6 @@ for box in $(python3 "$HERE/tools/box_table.py" names); do
     scp -q -o BatchMode=yes "${FN_BOXES_FILE:-$HOME/.config/fn/boxes.json}" "$box:.config/fn/boxes.json" || echo "   (could not update $box's copy)"
 done
 ssh -o BatchMode=yes "$NAME" true || die "alias $NAME does not answer"
+step qualify
+sh "$HERE/tools/box_qualify.sh" "$NAME" || die "$NAME is registered but NOT qualified (above); boxq will not place work on it"
 echo "box_bootstrap: $NAME ready: --box $NAME / farm.py submit $NAME / proof_repl --host $NAME (until $UNTIL)"
