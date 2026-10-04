@@ -696,7 +696,8 @@ stop) came after SEEN was read; a missed signal is seen by the count."
       ;; A known stopping refusal is scoped; an unknown subclass is a fault.
       (fnn-owner-thread-escape (fnn-feed-runtime-service runtime) e "outbound feed"))))
 
-(def-actor fnn-feed-spawn-worker :thread-name "fn outbound feed" :roster t)
+(def-actor fnn-feed-spawn-worker :kind :feed :thread-name "fn outbound feed" :roster t
+  :join fnn-feed-service-close :failure :service)
 
 ;;; These are registered through the owner's composable resource lifecycle
 ;;; hooks by the owner convergence lane.  They are idempotent: stop only

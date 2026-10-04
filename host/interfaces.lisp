@@ -316,6 +316,10 @@
   :class :common-lisp-compliant
   :keystones (fn-fs-section-declp-refuses-an-unlisted-cleanup-purpose)
   :direct "runs at load in fnn-section-declare, before fnn-call's dispatcher serves")
+(definterface fn-fs-actor-declp
+  :class :common-lisp-compliant
+  :keystones (fn-fs-actor-declp-refuses-an-unknown-kind-or-policy)
+  :direct "runs at load in fnn-actor-declare (every def-actor), before fnn-call's dispatcher serves")
 (definterface fn-fs-section-class-ok
   :class :common-lisp-compliant
   :keystones (fn-fs-section-class-ok-only-for-a-declared-class)

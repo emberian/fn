@@ -566,42 +566,6 @@
    "fault_policy": "private",
    "why": "persistent cold workers (extent.lisp:534)"
   },
-  "fnn-owner-start-syncer": {
-   "registry": "fnn-owner-service-workers",
-   "join": "fnn-owner-commit-pipeline",
-   "fault_policy": "fence",
-   "why": "one issued log barrier job (owner.lisp:3344)"
-  },
-  "fnn-owner-start-committer": {
-   "registry": null,
-   "join": "fnn-owner-run",
-   "fault_policy": "fence",
-   "why": "the batching committer (owner.lisp:3714)"
-  },
-  "fnn-owner-maybe-publish-quantum": {
-   "registry": "fnn-owner-service-workers",
-   "join": "fnn-owner-wait-workers",
-   "fault_policy": "fence",
-   "why": "checkpoint publisher (owner.lisp:5257)"
-  },
-  "fnn-owner-export-start": {
-   "registry": "fnn-owner-service-workers",
-   "join": "fnn-owner-wait-workers",
-   "fault_policy": "fence",
-   "why": "exporter (owner.lisp:5307)"
-  },
-  "fnn-owner-start-tls-accept": {
-   "registry": "fnn-owner-service-workers",
-   "join": "fnn-owner-wait-workers",
-   "fault_policy": "connection",
-   "why": "additional plain/implicit-TLS listener (owner.lisp:5934)"
-  },
-  "fnn-mux-start": {
-   "registry": "fnn-owner-service-workers",
-   "join": "fnn-owner-wait-workers",
-   "fault_policy": "fence",
-   "why": "fixed I/O loops (mux.lisp:1373)"
-  },
   "fnn-control-launch-client": {
    "registry": "fnn-control-state-workers",
    "join": "fnn-control-close",
@@ -613,24 +577,6 @@
    "join": "fnn-control-close",
    "fault_policy": "connection",
    "why": "local control listener (control.lisp:529)"
-  },
-  "fnn-feed-service-start": {
-   "registry": null,
-   "join": "fnn-feed-service-close",
-   "fault_policy": "private",
-   "why": "feed runtime (feed-service.lisp:596)"
-  },
-  "fnn-pull-service-start": {
-   "registry": null,
-   "join": "fnn-pull-service-close",
-   "fault_policy": "private",
-   "why": "pull runtime (pull-service.lisp:568)"
-  },
-  "fnn-web-start": {
-   "registry": "fnn-owner-service-workers",
-   "join": "fnn-owner-wait-workers",
-   "fault_policy": "connection",
-   "why": "web face (web-host.lisp:312)"
   }
  },
  "after_deregistration_ok": [

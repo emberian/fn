@@ -246,6 +246,7 @@ class Tree:
     files: dict = field(default_factory=dict)         # path -> loaded?
     unreadable: dict = field(default_factory=dict)
     sections: dict = field(default_factory=dict)      # def-section name -> (path, line, actors, classes, admits)
+    actors: dict = field(default_factory=dict)        # def-actor name -> (path, line, kind, thread-name, roster, join, failure)
 
 
 GUARDED = re.compile(r"guarded-by:\s*([^(;]+?)\s*(?:\(|\.\s|\.$|$)")
@@ -354,9 +355,39 @@ def section_definition(form, line: int):
     return defun, decl
 
 
+# def-actor (host/native/owner.lisp, lanes ACTORS / GENERATORS-2): a declared
+# actor.  Its starter (NAME SERVICE CUSTODY THUNK [ESCAPE ...]) spawns a
+# thread that runs THUNK (fnn-owner-actor-start -> fnn-owner-actor-run), so a
+# call to it is walked as a make-thread of THUNK under the declared thread
+# name, and rule R4 takes that thread's row from the declaration (its join
+# site and failure policy) instead of a hand-written `threads' contract.
+def actor_declaration(form):
+    """(kind, thread-name, roster, join, failure) of a (def-actor NAME :kind K
+    :thread-name S :roster R :join J :failure F), or None without a thread
+    name (ACL2 refuses an incomplete declaration at load)."""
+    name = sym(form[1]) if len(form) > 1 else None
+    keys = {}
+    rest = list(form[2:])
+    for k in range(0, len(rest) - 1, 2):
+        if isinstance(rest[k], Sym):
+            keys[str(rest[k])] = rest[k + 1]
+    thread = keys.get(":thread-name")
+    if not name or not isinstance(thread, str) or isinstance(thread, Sym):
+        return None
+    return (render(keys.get(":kind", Sym("nil")), 200), thread,
+            render(keys.get(":roster", Sym("nil")), 200),
+            render(keys.get(":join", Sym("nil")), 200),
+            render(keys.get(":failure", Sym("nil")), 200))
+
+
 def visit_top(tree: Tree, form, line: int, rel: str, lines: list[str]) -> None:
     h = head(form)
     if h is None:
+        return
+    if h == "def-actor":
+        decl = actor_declaration(form)
+        if decl is not None:
+            tree.actors[str(form[1])] = (rel, line) + decl
         return
     if h == "def-section":
         defun, decl = section_definition(form, line)
@@ -600,6 +631,7 @@ class FnInfo:
     sig: object = None                             # SigX of the whole body
     thread_of: tuple | None = None                 # (creator, line, name) for a thread root
     params: list = field(default_factory=list)
+    actor_starts: list = field(default_factory=list)  # (actor, line, args) per declared starter call
 
 
 # SigX: a small expression for the conditions a form can signal.
@@ -994,6 +1026,12 @@ class Analyzer:
             return self.walk_with_lock(form, ctx, env, line)
         if h == "sb-thread:make-thread":
             return self.walk_make_thread(form, ctx, env, line)
+        if h in self.tree.actors:
+            return self.walk_actor_start(form, h, form[1:], ctx, env, line)
+        if h == "funcall" and len(form) > 1 and self.funcalled_actors(form[1]):
+            parts = [self.walk_actor_start(form, a, form[2:], ctx, env, line)
+                     for a in self.funcalled_actors(form[1])]
+            return sig_union(parts + [self.walk(form[1], ctx, env, line)])
         if h == "sb-thread:condition-wait":
             lock = self.lock_of(form[2], env) if len(form) > 2 else "?"
             self.ev("leaf", "sb-thread:condition-wait", line, ctx, ("await", lock))
@@ -1187,6 +1225,32 @@ class Analyzer:
         else:
             self.ev("unresolved", "make-thread of a computed function " + render(fn, 40), line, ctx)
         return EMPTY_SIG
+
+    def funcalled_actors(self, fn) -> list:
+        """The declared actors a funcall's function form names: #'A, or each
+        arm of an (if C #'A #'B)."""
+        if head(fn) == "function" and len(fn) > 1 and sym(fn[1]) in self.tree.actors:
+            return [sym(fn[1])]
+        if head(fn) == "if" and len(fn) == 4:
+            arms = [self.funcalled_actors(x) for x in fn[2:]]
+            if all(len(a) == 1 for a in arms):
+                return [a[0] for a in arms]
+        return []
+
+    def walk_actor_start(self, form, actor, args, ctx, env, line):
+        """A declared actor's starter: THUNK (the third argument) runs as the
+        actor's thread; the other arguments are walked as values (the escape
+        and the physical callbacks run later, on that thread or its joiner)."""
+        tname = self.tree.actors[actor][3]
+        parts = [self.walk(a, ctx, env, line) for k, a in enumerate(args) if k != 2]
+        if len(args) > 2:
+            spawn = Node([Sym("sb-thread:make-thread"), args[2], Sym(":name"), tname])
+            spawn.line = line_of(form, line)
+            spawn.identity = getattr(form, "identity", None) or getattr(args[2], "identity", None)
+            parts.append(self.walk_make_thread(spawn, ctx, env, line))
+        if self.recording:
+            self.cur.actor_starts.append((actor, line_of(form, line), list(args)))
+        return sig_union(parts)
 
     def spawn_lambda(self, lam, line, thread_of, env):
         identity = getattr(lam, "identity", None)
@@ -2104,10 +2168,14 @@ class Checker:
     # R4 ----------------------------------------------------------------------
     def rule_R4(self):
         declared = self.c.raw.get("threads", {})
+        actor_threads = {decl[3]: actor for actor, decl in self.an.tree.actors.items()}
+        self.check_actor_declarations()
         for name, info in self.infos.items():
             for e in info.events:
                 if e.kind != "thread":
                     continue
+                if e.extra in actor_threads:
+                    continue  # a declared actor: its row is the declaration (check_actor_*)
                 key = f"{name}"
                 row = declared.get(key)
                 if row is None:
@@ -2120,6 +2188,76 @@ class Checker:
         # deregistration before terminal shared cleanup
         for name, info in self.infos.items():
             self.check_deregistration(info)
+
+    # The failure policies a def-actor declares (books/failure-scope.lisp
+    # *fn-fs-actor-failures*) and what each asks of a starter call: the
+    # actor's escape is decided by the service's boundary (:service,
+    # fnn-owner-thread-escape), by a private job's (:job, the same with its
+    # JOBP argument t), or the body hands its outcome to its joiner (:result:
+    # no escape, the thunk handles serious-condition itself).
+    ACTOR_ESCAPE = "fnn-owner-thread-escape"
+    ACTOR_JOIN = "fnn-owner-actor-join"
+
+    def escape_calls(self, form, depth=1) -> list:
+        """The (fnn-owner-thread-escape ...) forms in FORM, following named
+        calls DEPTH levels into their definitions."""
+        found, stack, seen = [], [form], set()
+        while stack:
+            x = stack.pop()
+            if not isinstance(x, list):
+                continue
+            h = head(x)
+            if h == self.ACTOR_ESCAPE:
+                found.append(x)
+            elif depth and h in self.an.tree.defs and h not in seen:
+                seen.add(h)
+                found.extend(self.escape_calls(self.an.tree.defs[h].body, depth - 1))
+            stack.extend(x)
+        return found
+
+    @staticmethod
+    def jobp(call) -> bool:
+        return len(call) > 4 and not (isinstance(call[4], Sym) and str(call[4]) == "nil")
+
+    @staticmethod
+    def handles_serious(form) -> bool:
+        stack = [form]
+        while stack:
+            x = stack.pop()
+            if isinstance(x, list):
+                if head(x) == "handler-case" and any(
+                        isinstance(c, list) and c and sym(c[0]) in ("serious-condition", "condition", "t")
+                        for c in x[2:]):
+                    return True
+                stack.extend(x)
+        return False
+
+    def check_actor_declarations(self):
+        for actor, (path, line, kind, tname, roster, join, failure) in sorted(self.an.tree.actors.items()):
+            jinfo = self.infos.get(join)
+            if jinfo is None or not any(x.kind == "call" and x.name == self.ACTOR_JOIN for x in jinfo.events):
+                self.add("R4", self.infos.get(actor) or FnInfo(actor, path, line, True), line,
+                         f"def-actor {actor}: declared join site {join} does not call {self.ACTOR_JOIN}",
+                         "actor-no-join:" + actor)
+        for name, info in self.infos.items():
+            for actor, line, args in info.actor_starts:
+                failure = self.an.tree.actors[actor][6]
+                thunk = args[2] if len(args) > 2 else None
+                escape = args[3] if len(args) > 3 else None
+                no_escape = escape is None or (isinstance(escape, Sym) and str(escape) == "nil")
+                if failure == ":result":
+                    ok = no_escape and thunk is not None and self.handles_serious(thunk)
+                    why = "a :result actor has no escape and its thunk handles serious-condition"
+                elif failure in (":service", ":job"):
+                    calls = self.escape_calls(escape if not no_escape else thunk)
+                    ok = bool(calls) and all(self.jobp(c) == (failure == ":job") for c in calls)
+                    why = (f"a {failure} actor's escape (or, with none, its thunk) reaches "
+                           f"{self.ACTOR_ESCAPE}" + (" with JOBP t" if failure == ":job" else " without JOBP"))
+                else:
+                    ok, why = False, f"failure policy {failure} is not :service, :job or :result"
+                if not ok:
+                    self.add("R4", info, line, f"starts def-actor {actor} against its declared failure "
+                             f"policy {failure}: {why}", "actor-failure:" + actor)
 
     def check_registration(self, info, e, row):
         d = self.an.tree.defs.get(info.name)

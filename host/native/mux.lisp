@@ -1647,7 +1647,8 @@ its descriptor and calling receipt; physical uncertainty never permits retry."
         (serious-condition () nil)))
     nil))
 
-(def-actor fnn-mux-spawn :thread-name "fn owner io" :roster t)
+(def-actor fnn-mux-spawn :kind :mux :thread-name "fn owner io" :roster t
+  :join fnn-owner-wait-workers :failure :service)
 
 (defun fnn-mux-stop-loop (loop)
   "The service is stopping: deliver what a connection still has queued,
