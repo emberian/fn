@@ -5,7 +5,7 @@
   "proved": 2,
   "partial": 1,
   "derived": 6,
-  "none": 1679
+  "none": 1680
  },
  "by_class": {
   "common-lisp-compliant": {
@@ -24,7 +24,7 @@
    "proved": 0,
    "partial": 0,
    "derived": 0,
-   "none": 580
+   "none": 581
   }
  },
  "families": {
@@ -16255,6 +16255,16 @@
   },
   {
    "name": "fn-web-host-health-observe",
+   "class": "program",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-web-host-identity",
    "class": "program",
    "claim": "none",
    "bound": null,
