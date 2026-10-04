@@ -4598,6 +4598,6 @@ uncertified, unwired; the exact continuation is the numbered list in the coordin
 touches is `fn-owner-output-tariff-preview` (:5512-5518), untouched so far.
 
 
-# proofs2 (Opus) — 2026-10-04
+# proofs2 (Opus) — 2026-10-04 (exit)
 
-See build/coordinator/lanedumps/proofs2.md. State: PRF-1287 / may-seal / ssr=srs / PRF-1242 (composed: fn-hmc-run-keeps-invp) REPL-admitted at lane/proofs2@0a1e06ad2; hbox certify queued (assembler #5). interfaces.lisp may-seal row re-cited.
+See build/coordinator/lanedumps/proofs2.md. READY lane/proofs2@883c28b5a: PRF-1287 / may-seal / ssr=srs / PRF-1242 (composed: fn-hmc-run-keeps-invp) certified (certify-20261004T043850Z-1112347, certify-20261004T043618Z-98000); interfaces.lisp may-seal row re-cited. S150 at lane/proofs2-s150@82abba272 owes check-lane. Continuation: S150 READY, S151 narrow recertify, PGO-* (PGO-REFUSE-ABORT first).
