@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Red on set bdd4f40c4 (hbox:/tank/fn/scratch/fill-wt/native-fill-e2e) and set 55ff708a6 (lat1:/tank/fn/scratch/fill-wt/native-fill-e2e-lat1-55; scenario_suite run e2e); logs/test-tests.test_native_control.log. Exit 3 in two of the three suggests the operator verbs now fault (owner-quantum fault / process stopped) where they used to refuse; compare with SCEN-PINV-CONFIRM-ARITY (same exit 4 'fault operator peer' class on 3403e5ac2).",
+ "file": "host/native/control.lisp",
+ "id": "FILL-CONTROL-3-RED",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "tests.test_native_control 3F: test_health_and_status_say_the_node_is_not_running_and_why gets 'last-stop exit=03'; test_shared_control_path_is_not_stolen_by_another_store gets exit 3 where EXIT_REFUSED (1) is expected; test_sigkilled_owner_socket_is_stale_and_control_list_runs_offline lacks 'stale control socket removed' (only 'accepted operator control')",
+ "updated": "2026-10-04T19:41:18Z"
+}

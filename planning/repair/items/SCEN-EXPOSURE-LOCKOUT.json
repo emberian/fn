@@ -10,7 +10,9 @@
  "notes": [
   "10-04 15:37 claimed: scope=['tests/test_native_public_exposure.py', 'tests/test_exposure_campaign_shape.py'] test=python3 -m unittest tests.test_exposure_campaign_shape",
   "10-04 15:38 claimed: scope=['tests/test_native_public_exposure.py', 'tests/test_exposure_campaign_shape.py'] test=python3 -m unittest tests.test_exposure_campaign_shape",
-  "10-04 15:39 READY c8efb5800 (overlay native tests.test_native_public_exposure OK on lat1 native-wt-20261004T175901Z; base red in hbox fill-peer2)"
+  "10-04 15:39 READY c8efb5800 (overlay native tests.test_native_public_exposure OK on lat1 native-wt-20261004T175901Z; base red in hbox fill-peer2)",
+  "10-04 15:12 FILL 10-04: still red on set bdd4f40c4 (hbox:/tank/fn/scratch/fill-wt/native-fill-peer2, tests.test_native_public_exposure test_flood_campaign: next_connection after 3 x 481 + 400 is '201 fn-nntp experimental reader ready')",
+  "10-04 15:37 FILL 10-04: also red on set 55ff708a6 (hbox:/tank/fn/scratch/fill-wt/native-fill-peer-55, tests.test_native_public_exposure)"
  ],
  "owner": "unowned",
  "scope": [

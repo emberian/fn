@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Red on set bdd4f40c4 (hbox:/tank/fn/scratch/fill-wt/native-fill-e2e) and set 55ff708a6 (lat1:/tank/fn/scratch/fill-wt/native-fill-e2e-lat1-55; scenario_suite run e2e); logs/test-tests.test_native_moderation.log; assertion at tests/test_native_moderation.py:228. Possibly the same cause as FILL-GROUP-ACCESS-PRIVATE-LEAK (an article visible outside its group's grant).",
+ "file": "tests/test_native_moderation.py",
+ "id": "FILL-MODERATION-ENVELOPE-READABLE",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "high",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "tests.test_native_moderation test_moderated_group_holds_approves_and_refuses (production and developer): PKT-658 asserts a non-moderator's STAT <fn-moderate.held1@...> is 430 (the held envelope is not hers to read); the node answers something else",
+ "updated": "2026-10-04T19:41:18Z"
+}
