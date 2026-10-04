@@ -13,7 +13,8 @@
  "line": "19",
  "locus": "store-books",
  "notes": [
-  "10-04 15:53 claimed: scope=['host/native/snapshot-producer.lisp', 'tests/test_snapshot_producer_parked.py'] test=python3 -m unittest tests.test_snapshot_producer_parked"
+  "10-04 15:53 claimed: scope=['host/native/snapshot-producer.lisp', 'tests/test_snapshot_producer_parked.py'] test=python3 -m unittest tests.test_snapshot_producer_parked",
+  "10-04 15:54 READY 00d2ae89b"
  ],
  "owner": "sweep-peer",
  "reviewer": "snapshot-producer.lisp is referenced only by the comment at snapshot-startup.lisp:1 ('Production startup assembly WIP'). host/native/build.lisp does not load it (grep finds no other reference in host/tools/tests/books). fnn-snapshot-source-begin, fnn-hsr-source-begin, fnn-hsr-cold-step, fnn-hpi-offer and fnn-hpi-action have no defun under host/ or books/. The refuse-io at 129 is caught by the generic error arm at 437-439, which sets :uncertain. This is dead code with a misleading 'actual capture' header and has no runtime effect.",
@@ -27,5 +28,88 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_snapshot_producer_parked",
  "title": "snapshot-producer.lisp is unloaded WIP that calls five undefined functions, but its header describes it as the actual capture",
- "updated": "2026-10-04T19:53:18Z"
+ "updated": "2026-10-04T19:54:29Z",
+ "verify": {
+  "base": "0274bbe04dbe172d69bd718a653117cd53443480",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "snapshot-producer.lisp describes itself as the actual capture but no build loads it and it calls undefined functions",
+      "test": "tests.test_snapshot_producer_parked.SnapshotProducerParkedTests.test_header_declares_the_file_parked_and_names_what_is_undefined",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_snapshot_producer_parked.SnapshotProducerParkedTests.test_header_declares_the_file_parked_and_names_what_is_undefined",
+     "tests.test_snapshot_producer_parked.SnapshotProducerParkedTests.test_the_named_functions_are_still_undefined"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_snapshot_producer_parked.py": "8031662ef1fbe919c1ca3b8ea17190d3ad6dc2ca7fc94cf95c8d34886cdfbc44"
+    },
+    "tests_run": 2,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "0274bbe04dbe172d69bd718a653117cd53443480",
+   "stderr": "test_header_declares_the_file_parked_and_names_what_is_undefined (tests.test_snapshot_producer_parked.SnapshotProducerParkedTests.test_header_declares_the_file_parked_and_names_what_is_undefined) ... FAIL\ntest_the_named_functions_are_still_undefined (tests.test_snapshot_producer_parked.SnapshotProducerParkedTests.test_the_named_functions_are_still_undefined) ... ok\n\n======================================================================\nFAIL: test_header_declares_the_file_parked_and_names_what_is_undefined (tests.test_snapshot_producer_parked.SnapshotProducerParkedTests.test_header_declares_the_file_parked_and_names_what_is_undefined)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-vewo7sxt/wt/tests/test_snapshot_producer_parked.py\", line 26, in test_header_declares_the_file_parked_and_names_what_is_undefined\n    self.fail(\"snapshot-producer.lisp describes itself as the actual capture but no build loads it and it calls undefined functions\")\n    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: snapshot-producer.lisp describes itself as the actual capture but no build loads it and it calls undefined functions\n\n----------------------------------------------------------------------\nRan 2 tests in 6.035s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "host/native/snapshot-producer.lisp",
+   "planning/repair/items/S111.json",
+   "tests/test_snapshot_producer_parked.py"
+  ],
+  "diff_lines": 46,
+  "evidence": {
+   "bytes": 4897,
+   "path": "planning/evidence/repair/S111-ad8942675a8e4249b3e744e3746e52a2.json",
+   "sha256": "92f803f788464ee81dd60816d5ea0a7c63b21fdfaa86af4e6a5b081dba07d61a"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "snapshot-producer.lisp describes itself as the actual capture but no build loads it and it calls undefined functions",
+   "test": "tests.test_snapshot_producer_parked.SnapshotProducerParkedTests.test_header_declares_the_file_parked_and_names_what_is_undefined"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/test_snapshot_producer_parked.py": "8031662ef1fbe919c1ca3b8ea17190d3ad6dc2ca7fc94cf95c8d34886cdfbc44"
+  },
+  "head": "00d2ae89b0230b31a594d96503a49304d098e61c",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_snapshot_producer_parked.SnapshotProducerParkedTests.test_header_declares_the_file_parked_and_names_what_is_undefined",
+     "tests.test_snapshot_producer_parked.SnapshotProducerParkedTests.test_the_named_functions_are_still_undefined"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_snapshot_producer_parked.py": "8031662ef1fbe919c1ca3b8ea17190d3ad6dc2ca7fc94cf95c8d34886cdfbc44"
+    },
+    "tests_run": 2,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "00d2ae89b0230b31a594d96503a49304d098e61c",
+   "stderr": "test_header_declares_the_file_parked_and_names_what_is_undefined (tests.test_snapshot_producer_parked.SnapshotProducerParkedTests.test_header_declares_the_file_parked_and_names_what_is_undefined) ... ok\ntest_the_named_functions_are_still_undefined (tests.test_snapshot_producer_parked.SnapshotProducerParkedTests.test_the_named_functions_are_still_undefined) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 4.285s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_snapshot_producer_parked",
+  "timeout": 1800.0
+ }
 }
