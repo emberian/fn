@@ -183,19 +183,23 @@
 ; -----------------------------------------------------------------------------
 ; 2. The invariant over an acknowledged prefix A, and what it gives a crash.
 
+; Octets C hold A at offset 0.
+(defun fn-lgrc-holdsp (c a)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (<= (len a) (len c))
+       (equal (fn-bs-take (len a) c) a)))
+
 ; Inode I holds A at offset 0 durably and visibly, and every pending write to
 ; it starts at or above (len A).  I is below the next inode number, so no
 ; create returns it.
 (defun fn-lgrc-goodp (s i a)
   (declare (xargs :guard t :verify-guards nil))
-  (let ((bs (fn-bsc-bs s)) (fa (len a)))
+  (let ((bs (fn-bsc-bs s)))
     (and (fn-bs-inop i)
          (< i (nfix (fn-bs-next-ino bs)))
-         (<= fa (len (fn-bs-durable-content bs i)))
-         (equal (fn-bs-take fa (fn-bs-durable-content bs i)) a)
-         (<= fa (len (fn-bsc-content s i)))
-         (equal (fn-bs-take fa (fn-bsc-content s i)) a)
-         (fn-lgu-writes-at-or-above (fn-bs-pending bs) i fa))))
+         (fn-lgrc-holdsp (fn-bs-durable-content bs i) a)
+         (fn-lgrc-holdsp (fn-bsc-content s i) a)
+         (fn-lgu-writes-at-or-above (fn-bs-pending bs) i (len a)))))
 
 (defun fn-lgrc-all-goodp (s is a)
   (declare (xargs :guard t :verify-guards nil))
@@ -256,3 +260,452 @@
                  (:instance fn-lgu-crash-with-choices-keeps-the-prefix
                             (s (fn-bsc-bs s)) (f (len a))
                             (ino (fn-bs-durable-entry (fn-bs-crash (fn-bsc-bs s) choices) j k)))))))
+
+; -----------------------------------------------------------------------------
+; 3. Every step keeps the invariant.
+;
+; Per step kind: what it does to an inode's durable and visible content and
+; to its pending writes (fn-lgrc-goodp-after-step: only a write below (len A)
+; to the inode breaks it), and what it does to journal/K's candidates and
+; visible binding (fn-lgrc-names-after-*).  The candidates after a step are
+; the old ones (writes, file fences, creates, evictions), one of the old
+; ones (a fence of journal/, a cache loss), or the old ones with a rename's
+; source (a rename onto journal/K); the visible binding is the old one, a
+; candidate (evict-dir, lose-cache) or the rename's source.
+
+(local
+ (defthm fn-lgrc-take-of-append-short
+   (implies (and (natp f) (<= f (len x)))
+            (equal (fn-bs-take f (append x y)) (fn-bs-take f x)))
+   :hints (("Goal" :in-theory (enable fn-bs-take)))))
+(local
+ (defthm fn-lgrc-take-of-take
+   (implies (and (natp f) (natp n) (<= f n))
+            (equal (fn-bs-take f (fn-bs-take n x)) (fn-bs-take f x)))
+   :hints (("Goal" :in-theory (enable fn-bs-take)))))
+(local
+ (defthm fn-lgrc-len-of-take
+   (equal (len (fn-bs-take n x)) (nfix n))
+   :hints (("Goal" :in-theory (enable fn-bs-take)))))
+(local
+ (defthm fn-lgrc-holdsp-of-splice
+   (implies (and (fn-lgrc-holdsp old a) (<= (len a) (nfix off)))
+            (fn-lgrc-holdsp (fn-bs-splice old off oct) a))
+   :hints (("Goal" :in-theory (e/d (fn-bs-splice) (fn-bs-take))
+            :use ((:instance fn-lgrc-take-of-append-short (f (len a))
+                             (x (fn-bs-take (nfix off) old))
+                             (y (append oct (nthcdr (+ (nfix off) (len oct)) old))))
+                  (:instance fn-lgrc-take-of-take (f (len a)) (n (nfix off)) (x old)))))))
+(local
+ (defthm fn-lgrc-holdsp-of-put-splice
+   (implies (and (fn-bs-inop i) (fn-lgrc-holdsp (cdr (assoc-equal i inodes)) a)
+                 (or (not (equal k i)) (<= (len a) (nfix off))))
+            (fn-lgrc-holdsp (cdr (assoc-equal i (fn-bs-put-assoc k (fn-bs-splice (cdr (assoc-equal k inodes)) off oct) inodes))) a))
+   :hints (("Goal" :cases ((equal k i))
+            :in-theory (e/d (fn-bs-assoc-of-put-assoc-same fn-bs-assoc-of-put-assoc-other)
+                            (fn-lgrc-holdsp fn-bs-splice fn-bs-put-assoc))))))
+(local
+ (defthm fn-lgrc-holdsp-of-apply-writes
+   (implies (and (fn-bs-inop i) (fn-lgu-writes-at-or-above ops i (len a))
+                 (fn-lgrc-holdsp (cdr (assoc-equal i inodes)) a))
+            (fn-lgrc-holdsp (cdr (assoc-equal i (fn-bs-apply-writes inodes ops))) a))
+   :hints (("Goal" :induct (fn-bs-apply-writes inodes ops)
+            :in-theory (e/d () (fn-lgrc-holdsp fn-bs-splice fn-bs-put-assoc fn-bs-inop))))))
+(local
+ (defthm fn-lgrc-ops-not-for-dir-writes-at-or-above
+   (implies (fn-lgu-writes-at-or-above ops ino f)
+            (and (fn-lgu-writes-at-or-above (fn-bs-ops-not-for-dir ops d) ino f)
+                 (fn-lgu-writes-at-or-above (fn-bs-ops-for-dir ops d) ino f)))))
+(local
+ (defthm fn-lgrc-writes-at-or-above-of-entry-op
+   (implies (not (equal (car op) :write))
+            (fn-lgu-writes-at-or-above (list op) ino f))))
+
+(defthm fn-lgrc-goodp-after-write
+  (implies (and (fn-lgrc-goodp s i a)
+                (equal (car op) :write)
+                (or (not (equal i (nth 1 op))) (<= (len a) (nfix (nth 2 op)))))
+           (fn-lgrc-goodp (mv-nth 1 (fn-bsc-step s op)) i a))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bs-write fn-bsc-vapply fn-bsc-content fn-bs-durable-content
+                            fn-bs-apply-op)
+                           (fn-bs-take fn-bs-splice fn-lgrc-holdsp fn-bs-put-assoc)))))
+
+(defthm fn-lgrc-goodp-after-fsync-file
+  (implies (and (fn-lgrc-goodp s i a) (equal (car op) :fsync-file))
+           (fn-lgrc-goodp (mv-nth 1 (fn-bsc-step s op)) i a))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bs-fsync-file fn-bs-fence-file fn-bsc-content fn-bs-durable-content
+                            fn-bs-apply-ops-inodes-are-apply-writes)
+                           (fn-bs-take fn-bs-splice fn-lgrc-holdsp fn-bs-put-assoc fn-bs-apply-ops
+                            fn-bs-apply-writes fn-bs-crash-select fn-bs-ops-for-ino fn-bs-ops-not-for-ino)))))
+
+(defthm fn-lgrc-goodp-after-fsync-dir
+  (implies (and (fn-lgrc-goodp s i a) (equal (car op) :fsync-dir))
+           (fn-lgrc-goodp (mv-nth 1 (fn-bsc-step s op)) i a))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bs-fsync-dir fn-bs-fence-dir fn-bsc-content fn-bs-durable-content
+                            fn-bs-apply-ops-inodes-are-apply-writes)
+                           (fn-bs-take fn-bs-splice fn-lgrc-holdsp fn-bs-put-assoc fn-bs-apply-ops
+                            fn-bs-apply-writes fn-bs-crash-select fn-bs-ops-for-dir fn-bs-ops-not-for-dir)))))
+(defthm fn-lgrc-goodp-after-create
+  (implies (and (fn-lgrc-goodp s i a) (equal (car op) :create))
+           (fn-lgrc-goodp (mv-nth 1 (fn-bsc-step s op)) i a))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bsc-content fn-bs-durable-content
+                            fn-bs-assoc-of-put-assoc-other)
+                           (fn-bs-take fn-lgrc-holdsp fn-bs-put-assoc fn-bs-apply-op)))))
+
+(defthm fn-lgrc-goodp-after-rename
+  (implies (and (fn-lgrc-goodp s i a) (equal (car op) :rename))
+           (fn-lgrc-goodp (mv-nth 1 (fn-bsc-step s op)) i a))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bsc-content fn-bsc-vapply fn-bs-durable-content fn-bs-apply-op)
+                           (fn-bs-take fn-lgrc-holdsp fn-bs-put-assoc fn-bs-del-assoc)))))
+
+(defthm fn-lgrc-goodp-after-evict-ino
+  (implies (and (fn-lgrc-goodp s i a) (equal (car op) :evict-ino))
+           (fn-lgrc-goodp (mv-nth 1 (fn-bsc-step s op)) i a))
+  :hints (("Goal" :do-not-induct t
+           :cases ((equal i (nth 1 op)))
+           :in-theory (e/d (fn-bsc-content fn-bs-assoc-of-put-assoc-other fn-bs-assoc-of-put-assoc-same)
+                           (fn-bs-take fn-lgrc-holdsp fn-bs-put-assoc fn-bs-durable-content)))))
+
+(defthm fn-lgrc-goodp-after-evict-dir
+  (implies (and (fn-lgrc-goodp s i a) (equal (car op) :evict-dir))
+           (fn-lgrc-goodp (mv-nth 1 (fn-bsc-step s op)) i a))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bsc-content)
+                           (fn-bs-take fn-lgrc-holdsp fn-bs-put-assoc fn-bs-durable-content)))))
+
+(local
+ (defthm fn-lgrc-inodes-entry-is-durable-content
+   (equal (cdr (assoc-equal i (fn-bs-inodes x))) (fn-bs-durable-content x i))
+   :hints (("Goal" :in-theory (enable fn-bs-durable-content)))))
+(local
+ (defthm fn-lgrc-crash-keeps-next-ino-and-unit
+   (and (equal (fn-bs-next-ino (fn-bs-crash x choices)) (fn-bs-next-ino x))
+        (equal (fn-bs-unit (fn-bs-crash x choices)) (fn-bs-unit x))
+        (equal (fn-bs-pending (fn-bs-crash x choices)) nil))
+   :hints (("Goal" :in-theory (enable fn-bs-crash)))))
+(defthm fn-lgrc-goodp-after-lose-cache
+  (implies (and (fn-lgrc-goodp s i a) (equal (car op) :lose-cache))
+           (fn-lgrc-goodp (mv-nth 1 (fn-bsc-step s op)) i a))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bsc-content)
+                           (fn-bs-take fn-bs-crash fn-bs-durable-content
+                            fn-lgu-crash-with-choices-keeps-the-prefix))
+           :use ((:instance fn-lgu-crash-with-choices-keeps-the-prefix
+                            (s (fn-bsc-bs s)) (ino i) (f (len a)) (choices (nth 1 op)))))))
+; --- the name algebra
+(local
+ (defthm fn-lgrc-ops-for-name-of-append
+   (equal (fn-bs-ops-for-name (append x y) d n)
+          (append (fn-bs-ops-for-name x d n) (fn-bs-ops-for-name y d n)))))
+(local
+ (defthm fn-lgrc-ops-for-name-of-ops-for-ino
+   (equal (fn-bs-ops-for-name (fn-bs-ops-for-ino ops ino) d n) nil)))
+(local
+ (defthm fn-lgrc-ops-for-name-of-ops-not-for-ino
+   (equal (fn-bs-ops-for-name (fn-bs-ops-not-for-ino ops ino) d n)
+          (fn-bs-ops-for-name ops d n))))
+(local
+ (defthm fn-lgrc-ops-for-name-of-ops-for-dir
+   (equal (fn-bs-ops-for-name (fn-bs-ops-for-dir ops dir) d n)
+          (if (equal dir d) (fn-bs-ops-for-name ops d n) nil))))
+(local
+ (defthm fn-lgrc-ops-for-name-of-ops-not-for-dir
+   (equal (fn-bs-ops-for-name (fn-bs-ops-not-for-dir ops dir) d n)
+          (if (equal dir d) nil (fn-bs-ops-for-name ops d n)))))
+(local
+ (defthm fn-lgrc-ops-for-name-when-dir-quiet
+   (implies (not (fn-bs-ops-for-dir ops d))
+            (equal (fn-bs-ops-for-name ops d n) nil))))
+(local
+ (defthm fn-lgrc-entry-outcomes-of-nil
+   (equal (fn-bs-entry-outcomes nil old) (list old))))
+(local
+ (defthm fn-lgrc-entry-after-is-an-outcome
+   (member-equal (fn-bs-entry-after ops old d n)
+                 (fn-bs-entry-outcomes (fn-bs-ops-for-name ops d n) old))
+   :hints (("Goal" :induct (fn-bs-entry-after ops old d n)
+            :in-theory (enable fn-bs-entry-after fn-bs-member-of-append)))))
+(local
+ (defthm fn-lgrc-all-goodp-of-outcomes-of-append-set
+   (implies (and (fn-lgrc-all-goodp s (fn-bs-entry-outcomes ops old) a) (fn-lgrc-goodp s v a))
+            (fn-lgrc-all-goodp s (fn-bs-entry-outcomes (append ops (list (list :set-entry d n v))) old) a))
+   :hints (("Goal" :induct (fn-bs-entry-outcomes ops old)
+            :in-theory (disable fn-lgrc-goodp)))))
+(defthm fn-bsc-step-of-another-kind
+  (implies (not (member-equal (car op) '(:create :write :fsync-file :fsync-dir :rename
+                                         :evict-ino :evict-dir :lose-cache)))
+           (equal (mv-nth 1 (fn-bsc-step s op)) s)))
+
+; A step keeps inode I good unless it writes I below (len A).
+(defthm fn-lgrc-goodp-after-step
+  (implies (and (fn-lgrc-goodp s i a)
+                (or (not (equal (car op) :write)) (not (equal i (nth 1 op)))
+                    (<= (len a) (nfix (nth 2 op)))))
+           (fn-lgrc-goodp (mv-nth 1 (fn-bsc-step s op)) i a))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d () (fn-lgrc-goodp fn-bsc-step))
+           :cases ((equal (car op) :write) (equal (car op) :fsync-file) (equal (car op) :fsync-dir)
+                   (equal (car op) :create) (equal (car op) :rename) (equal (car op) :evict-ino)
+                   (equal (car op) :evict-dir) (equal (car op) :lose-cache)))
+))
+
+(defthm fn-lgrc-all-goodp-after-step
+  (implies (and (fn-lgrc-all-goodp s is a)
+                (or (not (equal (car op) :write)) (not (member-equal (nth 1 op) is))
+                    (<= (len a) (nfix (nth 2 op)))))
+           (fn-lgrc-all-goodp (mv-nth 1 (fn-bsc-step s op)) is a))
+  :hints (("Goal" :induct (fn-lgrc-all-goodp s is a)
+           :in-theory (disable fn-lgrc-goodp fn-bsc-step))))
+(local
+ (defthm fn-lgrc-ops-for-name-of-write
+   (equal (fn-bs-ops-for-name (list (list :write i o x)) d n) nil)))
+(local
+ (defthm fn-lgrc-durable-entry-of-make
+   (equal (fn-bs-durable-entry (fn-bs-make u in dirs p nx) d n)
+          (cdr (assoc-equal n (cdr (assoc-equal d dirs)))))
+   :hints (("Goal" :in-theory (enable fn-bs-durable-entry)))))
+
+(defthm fn-lgrc-names-after-write
+  (implies (equal (car op) :write)
+           (and (equal (fn-lgrc-candidates (fn-bsc-bs (mv-nth 1 (fn-bsc-step s op))) j k)
+                       (fn-lgrc-candidates (fn-bsc-bs s) j k))
+                (equal (fn-bsc-lookup (mv-nth 1 (fn-bsc-step s op)) j k)
+                       (fn-bsc-lookup s j k))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bs-write fn-bsc-vapply fn-bs-apply-op fn-bs-durable-entry)
+                           (fn-bs-take fn-bs-splice fn-bs-put-assoc fn-bs-entry-outcomes
+                            fn-bs-ops-for-name)))))
+
+(defthm fn-lgrc-names-after-fsync-file
+  (implies (and (equal (car op) :fsync-file) (fn-bs-dir-idp j) (fn-bs-namep k))
+           (and (equal (fn-lgrc-candidates (fn-bsc-bs (mv-nth 1 (fn-bsc-step s op))) j k)
+                       (fn-lgrc-candidates (fn-bsc-bs s) j k))
+                (equal (fn-bsc-lookup (mv-nth 1 (fn-bsc-step s op)) j k)
+                       (fn-bsc-lookup s j k))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bs-fsync-file fn-bs-fence-file fn-bs-durable-entry
+                            fn-bs-apply-ops-dirs-are-apply-entries fn-bs-apply-entries-of-ops-for-ino)
+                           (fn-bs-entry-outcomes fn-bs-ops-for-name fn-bs-crash-select
+                            fn-bs-ops-for-ino fn-bs-ops-not-for-ino fn-bs-apply-entries
+                            fn-bs-apply-ops))
+           :use ((:instance fn-bs-crash-select-entry-is-an-outcome
+                            (ops (fn-bs-ops-for-ino (fn-bs-pending (fn-bsc-bs s)) (nth 1 op)))
+                            (choices (cdr (nth 2 op))) (unit (fn-bs-unit (fn-bsc-bs s)))
+                            (old (fn-bs-durable-entry (fn-bsc-bs s) j k)) (dir j) (name k))
+                 (:instance fn-bs-apply-entries-entry-is-entry-after
+                            (dirs (fn-bs-dirs (fn-bsc-bs s))) (dir j) (name k)
+                            (ops (fn-bs-crash-select (fn-bs-ops-for-ino (fn-bs-pending (fn-bsc-bs s)) (nth 1 op))
+                                                     (cdr (nth 2 op)) (fn-bs-unit (fn-bsc-bs s)))))))))
+(local
+ (defthm fn-lgrc-old-is-an-outcome
+   (member-equal old (fn-bs-entry-outcomes ops old))
+   :hints (("Goal" :induct (fn-bs-entry-outcomes ops old)
+            :in-theory (enable fn-bs-member-of-append)))))
+(defthm fn-lgrc-names-after-fsync-dir
+  (implies (and (equal (car op) :fsync-dir) (fn-bs-dir-idp j) (fn-bs-namep k))
+           (let ((s1 (mv-nth 1 (fn-bsc-step s op))))
+             (and (equal (fn-bsc-lookup s1 j k) (fn-bsc-lookup s j k))
+                  (member-equal (fn-bs-durable-entry (fn-bsc-bs s1) j k)
+                                (fn-lgrc-candidates (fn-bsc-bs s) j k))
+                  (equal (fn-lgrc-candidates (fn-bsc-bs s1) j k)
+                         (if (equal (nth 1 op) j)
+                             (list (fn-bs-durable-entry (fn-bsc-bs s1) j k))
+                           (fn-lgrc-candidates (fn-bsc-bs s) j k))))))
+  :hints (("Goal" :do-not-induct t
+           :cases ((equal (nth 1 op) j))
+           :in-theory (e/d (fn-bs-fsync-dir fn-bs-fence-dir fn-bs-durable-entry
+                            fn-bs-apply-ops-dirs-are-apply-entries)
+                           (fn-bs-entry-outcomes fn-bs-ops-for-name fn-bs-crash-select
+                            fn-bs-ops-for-dir fn-bs-ops-not-for-dir fn-bs-apply-entries
+                            fn-bs-apply-ops fn-lgrc-entry-after-is-an-outcome
+                            fn-bs-crash-select-entry-is-an-outcome))
+           :use ((:instance fn-bs-crash-select-entry-is-an-outcome
+                            (ops (fn-bs-ops-for-dir (fn-bs-pending (fn-bsc-bs s)) (nth 1 op)))
+                            (choices (cdr (nth 2 op))) (unit (fn-bs-unit (fn-bsc-bs s)))
+                            (old (fn-bs-durable-entry (fn-bsc-bs s) j k)) (dir j) (name k))
+                 (:instance fn-lgrc-entry-after-is-an-outcome
+                            (ops (fn-bs-ops-for-dir (fn-bs-pending (fn-bsc-bs s)) (nth 1 op)))
+                            (old (fn-bs-durable-entry (fn-bsc-bs s) j k)) (d j) (n k))
+                 (:instance fn-bs-apply-entries-entry-is-entry-after
+                            (dirs (fn-bs-dirs (fn-bsc-bs s))) (dir j) (name k)
+                            (ops (fn-bs-crash-select (fn-bs-ops-for-dir (fn-bs-pending (fn-bsc-bs s)) (nth 1 op))
+                                                     (cdr (nth 2 op)) (fn-bs-unit (fn-bsc-bs s)))))
+                 (:instance fn-bs-apply-entries-entry-is-entry-after
+                            (dirs (fn-bs-dirs (fn-bsc-bs s))) (dir j) (name k)
+                            (ops (fn-bs-ops-for-dir (fn-bs-pending (fn-bsc-bs s)) (nth 1 op))))))))
+(local
+ (defthm fn-lgrc-entry-of-set
+   (implies (and j k)
+            (equal (cdr (assoc-equal k (cdr (assoc-equal j (fn-bs-put-assoc d (fn-bs-put-assoc n v (cdr (assoc-equal d dirs))) dirs)))))
+                   (if (and (equal d j) (equal n k)) v (cdr (assoc-equal k (cdr (assoc-equal j dirs)))))))
+   :hints (("Goal" :cases ((equal d j) (equal n k))
+            :in-theory (enable fn-bs-assoc-of-put-assoc-other fn-bs-assoc-of-put-assoc-same)))))
+(local
+ (defthm fn-lgrc-entry-of-del
+   (implies (and j k)
+            (equal (cdr (assoc-equal k (cdr (assoc-equal j (fn-bs-put-assoc d (fn-bs-del-assoc n (cdr (assoc-equal d dirs))) dirs)))))
+                   (if (and (equal d j) (equal n k)) nil (cdr (assoc-equal k (cdr (assoc-equal j dirs)))))))
+   :hints (("Goal" :cases ((equal d j) (equal n k))
+            :in-theory (enable fn-bs-assoc-of-put-assoc-other fn-bs-assoc-of-put-assoc-same
+                               fn-bs-assoc-of-del-assoc-other fn-bs-assoc-of-del-assoc-same)))))
+(local
+ (defthm fn-lgrc-dir-idp-is-not-nil
+   (implies (fn-bs-dir-idp j) (and j (keywordp j)))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-bs-dir-idp)))))
+(defthm fn-lgrc-names-after-create
+  (implies (and (equal (car op) :create) (fn-bs-dir-idp j) (fn-bs-namep k)
+                (fn-bsc-lookup s j k))
+           (and (equal (fn-lgrc-candidates (fn-bsc-bs (mv-nth 1 (fn-bsc-step s op))) j k)
+                       (fn-lgrc-candidates (fn-bsc-bs s) j k))
+                (equal (fn-bsc-lookup (mv-nth 1 (fn-bsc-step s op)) j k)
+                       (fn-bsc-lookup s j k))))
+  :hints (("Goal" :do-not-induct t
+           :cases ((and (equal (nth 1 op) j) (equal (nth 2 op) k)))
+           :in-theory (e/d (fn-bs-apply-op fn-bs-durable-entry fn-bs-assoc-of-put-assoc-other
+                            fn-bs-assoc-of-put-assoc-same)
+                           (fn-bs-entry-outcomes fn-bs-put-assoc)))))
+
+(defthm fn-lgrc-names-after-rename
+  (implies (and (equal (car op) :rename) (fn-bs-dir-idp j) (fn-bs-namep k)
+                (not (and (equal (nth 1 op) j) (equal (nth 2 op) k))))
+           (let* ((s1 (mv-nth 1 (fn-bsc-step s op)))
+                  (bs (fn-bsc-bs s))
+                  (src (fn-bsc-lookup s (nth 1 op) (nth 2 op))))
+             (and (or (equal (fn-lgrc-candidates (fn-bsc-bs s1) j k)
+                             (fn-lgrc-candidates bs j k))
+                      (and (equal (nth 3 op) j) (equal (nth 4 op) k)
+                           (equal (fn-lgrc-candidates (fn-bsc-bs s1) j k)
+                                  (fn-bs-entry-outcomes
+                                   (append (fn-bs-ops-for-name (fn-bs-pending bs) j k)
+                                           (list (list :set-entry j k src)))
+                                   (fn-bs-durable-entry bs j k)))))
+                  (or (equal (fn-bsc-lookup s1 j k) (fn-bsc-lookup s j k))
+                      (and (equal (nth 3 op) j) (equal (nth 4 op) k)
+                           (equal (fn-bsc-lookup s1 j k) src))))))
+  :hints (("Goal" :do-not-induct t
+           :cases ((and (equal (nth 3 op) j) (equal (nth 4 op) k)))
+           :in-theory (e/d (fn-bsc-vapply fn-bs-apply-op fn-bs-durable-entry
+                            fn-bs-assoc-of-put-assoc-other fn-bs-assoc-of-put-assoc-same
+                            fn-bs-assoc-of-del-assoc-other)
+                           (fn-bs-entry-outcomes fn-bs-put-assoc fn-bs-del-assoc)))))
+
+(defthm fn-lgrc-names-after-evict
+  (implies (and (or (equal (car op) :evict-ino) (equal (car op) :evict-dir))
+                (fn-bs-dir-idp j) (fn-bs-namep k))
+           (and (equal (fn-lgrc-candidates (fn-bsc-bs (mv-nth 1 (fn-bsc-step s op))) j k)
+                       (fn-lgrc-candidates (fn-bsc-bs s) j k))
+                (or (equal (fn-bsc-lookup (mv-nth 1 (fn-bsc-step s op)) j k)
+                           (fn-bsc-lookup s j k))
+                    (member-equal (fn-bsc-lookup (mv-nth 1 (fn-bsc-step s op)) j k)
+                                  (fn-lgrc-candidates (fn-bsc-bs s) j k)))))
+  :hints (("Goal" :do-not-induct t
+           :cases ((equal (nth 1 op) j))
+           :in-theory (e/d (fn-bs-durable-entry fn-bs-assoc-of-put-assoc-other
+                            fn-bs-assoc-of-put-assoc-same)
+                           (fn-bs-entry-outcomes fn-bs-put-assoc fn-bs-ops-for-name fn-bs-ops-for-dir)))))
+
+(defthm fn-lgrc-names-after-lose-cache
+  (implies (and (equal (car op) :lose-cache) (fn-bs-dir-idp j) (fn-bs-namep k))
+           (let* ((s1 (mv-nth 1 (fn-bsc-step s op)))
+                  (d (fn-bs-durable-entry (fn-bsc-bs s1) j k)))
+             (and (equal (fn-lgrc-candidates (fn-bsc-bs s1) j k) (list d))
+                  (equal (fn-bsc-lookup s1 j k) d)
+                  (member-equal d (fn-lgrc-candidates (fn-bsc-bs s) j k)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bs-durable-entry)
+                           (fn-bs-entry-outcomes fn-bs-crash fn-bs-ops-for-name
+                            fn-bs-crash-with-choices-entry-is-old-or-a-pending-target))
+           :use ((:instance fn-bs-crash-with-choices-entry-is-old-or-a-pending-target
+                            (s (fn-bsc-bs s)) (choices (nth 1 op)) (dir j) (name k))))))
+(defun fn-lgrc-op-okp (s op j k a)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((kind (if (consp op) (car op) nil)))
+    (cond ((equal kind :write)
+           (or (<= (len a) (nfix (nth 2 op)))
+               (and (not (member-equal (nth 1 op) (fn-lgrc-candidates (fn-bsc-bs s) j k)))
+                    (not (equal (nth 1 op) (fn-bsc-lookup s j k))))))
+          ((equal kind :rename)
+           (and (not (and (equal (nth 1 op) j) (equal (nth 2 op) k)))
+                (or (not (and (equal (nth 3 op) j) (equal (nth 4 op) k)))
+                    (fn-lgrc-goodp s (fn-bsc-lookup s (nth 1 op) (nth 2 op)) a))))
+          (t t))))
+
+(local
+ (defthm fn-lgrc-goodp-is-an-inode
+   (implies (fn-lgrc-goodp s i a) (natp i))
+   :rule-classes :forward-chaining))
+
+(defthm fn-lgrc-names-after-evict-ino
+  (implies (equal (car op) :evict-ino)
+           (and (equal (fn-bsc-bs (mv-nth 1 (fn-bsc-step s op))) (fn-bsc-bs s))
+                (equal (fn-bsc-lookup (mv-nth 1 (fn-bsc-step s op)) j k)
+                       (fn-bsc-lookup s j k))))
+  :hints (("Goal" :in-theory (enable fn-bsc-step fn-bsc-bs fn-bsc-lookup))))
+
+(local (in-theory (disable fn-lgrc-goodp fn-bsc-step fn-lgrc-candidates fn-bsc-lookup fn-bsc-bs)))
+
+(local
+ (defthm fn-lgrc-invp-after-unnaming-step
+   (implies (and (fn-lgrc-invp s j k a)
+                 (member-equal (car op) '(:write :fsync-file :create :evict-ino))
+                 (fn-lgrc-op-okp s op j k a))
+            (fn-lgrc-invp (mv-nth 1 (fn-bsc-step s op)) j k a))
+   :hints (("Goal" :do-not-induct t))))
+(local
+ (defthm fn-lgrc-invp-after-fsync-dir
+   (implies (and (fn-lgrc-invp s j k a) (equal (car op) :fsync-dir))
+            (fn-lgrc-invp (mv-nth 1 (fn-bsc-step s op)) j k a))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-lgrc-all-goodp-member
+                             (is (fn-lgrc-candidates (fn-bsc-bs s) j k))
+                             (i (fn-bs-durable-entry (fn-bsc-bs (mv-nth 1 (fn-bsc-step s op))) j k))))))))
+(local
+ (defthm fn-lgrc-invp-after-lose-cache
+   (implies (and (fn-lgrc-invp s j k a) (equal (car op) :lose-cache))
+            (fn-lgrc-invp (mv-nth 1 (fn-bsc-step s op)) j k a))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-lgrc-all-goodp-member
+                             (is (fn-lgrc-candidates (fn-bsc-bs s) j k))
+                             (i (fn-bs-durable-entry (fn-bsc-bs (mv-nth 1 (fn-bsc-step s op))) j k))))))))
+(local
+ (defthm fn-lgrc-invp-after-evict-dir
+   (implies (and (fn-lgrc-invp s j k a) (equal (car op) :evict-dir))
+            (fn-lgrc-invp (mv-nth 1 (fn-bsc-step s op)) j k a))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-lgrc-all-goodp-member
+                             (is (fn-lgrc-candidates (fn-bsc-bs s) j k))
+                             (i (fn-bsc-lookup (mv-nth 1 (fn-bsc-step s op)) j k)))
+                  (:instance fn-lgrc-names-after-evict))))))
+(local
+ (defthm fn-lgrc-invp-after-rename
+   (implies (and (fn-lgrc-invp s j k a) (equal (car op) :rename) (fn-lgrc-op-okp s op j k a))
+            (fn-lgrc-invp (mv-nth 1 (fn-bsc-step s op)) j k a))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-lgrc-candidates) (fn-bs-entry-outcomes fn-bs-ops-for-name
+                                                  fn-lgrc-names-after-rename))
+            :use ((:instance fn-lgrc-names-after-rename)
+                  (:instance fn-lgrc-all-goodp-of-outcomes-of-append-set
+                             (s (mv-nth 1 (fn-bsc-step s op)))
+                             (ops (fn-bs-ops-for-name (fn-bs-pending (fn-bsc-bs s)) j k))
+                             (old (fn-bs-durable-entry (fn-bsc-bs s) j k))
+                             (v (fn-bsc-lookup s (nth 1 op) (nth 2 op))) (d j) (n k))
+                  (:instance fn-lgrc-all-goodp-after-step
+                             (is (fn-lgrc-candidates (fn-bsc-bs s) j k)))
+                  (:instance fn-lgrc-goodp-after-step (i (fn-bsc-lookup s (nth 1 op) (nth 2 op))))
+                  (:instance fn-lgrc-goodp-after-step (i (fn-bsc-lookup s j k))))))))
+; Every step keeps the invariant under its side condition.
+(defthm fn-lgrc-step-keeps-the-invariant
+  (implies (and (fn-lgrc-invp s j k a) (fn-lgrc-op-okp s op j k a))
+           (fn-lgrc-invp (mv-nth 1 (fn-bsc-step s op)) j k a))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-lgrc-invp fn-lgrc-op-okp)
+           :cases ((member-equal (car op) '(:write :fsync-file :create :evict-ino))
+                   (equal (car op) :fsync-dir) (equal (car op) :lose-cache)
+                   (equal (car op) :evict-dir) (equal (car op) :rename)))))
+
