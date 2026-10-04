@@ -7538,6 +7538,9 @@ the stop's refusal at a chunk boundary is `owner-stopping'."
         (setf (fnn-owner-service-exporter service) nil
               (fnn-owner-service-export-outcome service)
               (or outcome (cons :failed :archive-write))))
+      ;; r71 F10: the outcome is published and the pin still held; the
+      ;; actor leaves the roster only after this unwind (def-actor).
+      (fnn-owner-worker-tail-hold "exporter")
       (fnn-owner-snapshot-pin-release service pin))))
 
 ;;; Q16 (lane online-reclaim): `store reclaim --dry-run' on the running
