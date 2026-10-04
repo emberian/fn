@@ -2518,20 +2518,20 @@
     "books": 3005,
     "books_in_root_closure": 2830,
     "roots": 2511,
-    "theorems": 39480,
-    "functions": 25451,
-    "assert_events": 27108,
-    "must_fails": 2680,
+    "theorems": 39481,
+    "functions": 25456,
+    "assert_events": 27114,
+    "must_fails": 2682,
     "prover_refusals": 0,
     "encapsulates": 253,
     "guards": {
       "verified": 4046,
       "declared-off": 3288,
-      "default-guarded": 14020,
-      "default-unguarded": 4097
+      "default-guarded": 14022,
+      "default-unguarded": 4100
     },
     "suspect_theorems": 1446,
-    "export_hygiene_warnings": 417,
+    "export_hygiene_warnings": 418,
     "enabled_projection_warnings": 80,
     "teeth_form_warnings": 294,
     "include_hygiene_warnings": 3988,
@@ -19327,12 +19327,12 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 53,
+      "functions": 54,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 53
+        "default-unguarded": 54
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -67002,17 +67002,17 @@
       "book": "tests/acl2/definterface-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 8,
-      "functions": 10,
+      "theorems": 9,
+      "functions": 14,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 7,
-        "default-unguarded": 3
+        "default-guarded": 9,
+        "default-unguarded": 5
       },
       "verify_guards_events": 0,
-      "assert_events": 42,
-      "must_fails": 24,
+      "assert_events": 48,
+      "must_fails": 26,
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
@@ -90987,7 +90987,7 @@
     {
       "theorem": "fn-dit-f-keeps-n",
       "book": "tests/acl2/definterface-tests.lisp",
-      "line": 26,
+      "line": 30,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -102864,6 +102864,12 @@
         "theorem": "drt-pay-count-is-arena-count",
         "book": "tests/acl2/def-representation-tests.lisp",
         "line": 240,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-dit-fold-is-list-fix",
+        "book": "tests/acl2/definterface-tests.lisp",
+        "line": 456,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -125807,14 +125813,14 @@
       },
       {
         "book": "tests/acl2/definterface-tests.lisp",
-        "line": 17,
+        "line": 21,
         "include": "../../books/definterface",
         "included": "books/definterface.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/definterface-tests.lisp",
-        "line": 19,
+        "line": 23,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -137331,28 +137337,28 @@
       },
       {
         "host": "host/cost-host.lisp",
-        "line": 24,
+        "line": 25,
         "name": "assert-event",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/cost-host.lisp",
-        "line": 24,
+        "line": 25,
         "name": "assoc-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/cost-host.lisp",
-        "line": 24,
+        "line": 25,
         "name": "table-alist",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/cost-host.lisp",
-        "line": 24,
+        "line": 25,
         "name": "w",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"

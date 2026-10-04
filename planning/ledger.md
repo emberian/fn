@@ -13,18 +13,18 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 3005 |
 | Certification roots in the Makefile | 2511 |
 | Books inside the root closure | 2830 |
-| `defthm` and `defthmd` events | 39480 |
-| `defun` events | 25451 |
+| `defthm` and `defthmd` events | 39481 |
+| `defun` events | 25456 |
 | Functions with verified guards | 4046 |
 | Functions declared `:verify-guards nil` and never verified | 3288 |
-| Functions left at the default with an explicit guard | 14020 |
-| Functions left at the default with no guard | 4097 |
-| `assert-event` checks | 27108 |
-| `must-fail` checks | 2680 |
+| Functions left at the default with an explicit guard | 14022 |
+| Functions left at the default with no guard | 4100 |
+| `assert-event` checks | 27114 |
+| `must-fail` checks | 2682 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 253 |
 | Theorems flagged SUSPECT by shape | 1446 |
-| Export-hygiene warnings | 417 |
+| Export-hygiene warnings | 418 |
 | Enabled-projection warnings | 80 |
 | Teeth-form warnings | 294 |
 | Include-hygiene warnings | 3988 |
@@ -689,7 +689,7 @@ that `make certify` requests.
 | `books/def-representation-tree.lisp` | closure | 12 | 8 | 0/7/1/0 | 0 | 0 | 0 |
 | `books/def-representation.lisp` | root | 0 | 34 | 0/0/0/34 | 0 | 0 | 0 |
 | `books/defevent.lisp` | root | 0 | 14 | 0/0/0/14 | 0 | 0 | 0 |
-| `books/definterface.lisp` | root | 0 | 53 | 0/0/0/53 | 0 | 0 | 0 |
+| `books/definterface.lisp` | root | 0 | 54 | 0/0/0/54 | 0 | 0 | 0 |
 | `books/defkeystone.lisp` | root | 0 | 72 | 0/0/0/72 | 0 | 0 | 0 |
 | `books/deflate-frame.lisp` | closure | 37 | 3 | 0/0/2/1 | 0 | 0 | 0 |
 | `books/deflate-inflate.lisp` | root | 171 | 85 | 0/0/74/11 | 0 | 0 | 0 |
@@ -2305,7 +2305,7 @@ that `make certify` requests.
 | `tests/acl2/def-representation-tests.lisp` | root | 13 | 25 | 0/15/5/5 | 30 | 8 | 0 |
 | `tests/acl2/defevent-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 19 | 1 | 0 |
 | `tests/acl2/definterface-recognizer-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 3 | 0 | 0 |
-| `tests/acl2/definterface-tests.lisp` | root | 8 | 10 | 0/0/7/3 | 42 | 24 | 1 |
+| `tests/acl2/definterface-tests.lisp` | root | 9 | 14 | 0/0/9/5 | 48 | 26 | 1 |
 | `tests/acl2/defkeystone-tests.lisp` | root | 9 | 2 | 0/0/2/0 | 59 | 12 | 0 |
 | `tests/acl2/deflate-inflate-tests.lisp` | root | 6 | 9 | 0/5/4/0 | 22 | 4 | 0 |
 | `tests/acl2/deflate-inflate-vectors.lisp` | closure | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -3400,7 +3400,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-cwd-page-of-a-refusal` | `books/consumer-withdrawal.lisp` | 478 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cwd-page and the conclusion is that arm's value |
 | `fn-cwd-page-of-a-withdrawal` | `books/consumer-withdrawal.lisp` | 469 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cwd-page and the conclusion is that arm's value |
 | `fn-date-post-canonical-pinned` | `books/served-date-current.lisp` | 96 | instance-corollary: the statement is fn-post-date-result-independent-of-pinned-observation instantiated, discharging nothing |
-| `fn-dit-f-keeps-n` | `tests/acl2/definterface-tests.lisp` | 26 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-dit-f-keeps-n` | `tests/acl2/definterface-tests.lisp` | 30 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-dm-keyp-fc` | `books/catalog-dense-map.lisp` | 182 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-dm-keyp |
 | `fn-dm-lanep-fc` | `books/catalog-dense-map.lisp` | 178 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-dm-lanep |
 | `fn-drt-mark-unfolds-to-a-tagged-list` | `tests/acl2/defrecord-tests.lisp` | 169 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-drt-mark; reflexive-conclusion: a conjunct is (equal X X) |
