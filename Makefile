@@ -2613,6 +2613,12 @@ check-fast-lane:
 #     are unchanged since its last PASS: "cached (inputs unchanged since
 #     <sha>)", from build/check-cache/ (never committed).  A step that starts
 #     ACL2 or another untraceable process always runs.
+# `make check-lane CHECK_CHANGED_SINCE=REV` runs only the steps the diff from
+# REV can reach (their last traced inputs; a docs-only diff skips host_check,
+# reach_check, green_check; a step never traced in this tree runs): the rest
+# print "skipped".  `CHECK_BASELINE=FILE` (a step table, e.g.
+# build/coordinator/check-baseline-<sha>.txt) prints "NEW reds vs baseline: ..."
+# and fails only for those; `CHECK_BASELINE_OUT=FILE` writes this run's table.
 # `make check FORCE=1` runs every step whatever the cache says.  The batch
 # runner's full pass at a pushed head runs ONCE with FORCE=1: that pass is the
 # gate's evidence and must not rest on another tree's cached verdicts.
@@ -2620,7 +2626,10 @@ CHECK_STEPS_DIR ?= build/check-steps
 CHECK_STEP = $(PYTHON) tools/check_steps.py add $(CHECK_STEPS_DIR) --
 CHECK_STEP_WARM = $(PYTHON) tools/check_steps.py add --warm $(CHECK_STEPS_DIR) --
 CHECK_EXECUTE = $(PYTHON) tools/check_steps.py execute $(CHECK_STEPS_DIR) \
-	$(if $(CHECK_JOBS),--jobs $(CHECK_JOBS)) $(if $(filter 1 yes true,$(FORCE)),--no-cache)
+	$(if $(CHECK_JOBS),--jobs $(CHECK_JOBS)) $(if $(filter 1 yes true,$(FORCE)),--no-cache) \
+	$(if $(CHECK_CHANGED_SINCE),--changed-since $(CHECK_CHANGED_SINCE)) \
+	$(if $(CHECK_BASELINE),--baseline $(CHECK_BASELINE)) \
+	$(if $(CHECK_BASELINE_OUT),--write-baseline $(CHECK_BASELINE_OUT))
 
 check:
 	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)

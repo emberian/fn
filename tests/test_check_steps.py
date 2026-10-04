@@ -75,14 +75,14 @@ def plan(directory: pathlib.Path, *commands: list[str]) -> None:
 
 
 def execute(directory: pathlib.Path, cache: pathlib.Path, jobs: int = 3,
-            use_cache: bool = True) -> tuple[int, str, list[dict]]:
+            use_cache: bool = True, **scoped) -> tuple[int, str, list[dict]]:
     out = io.StringIO()
     with redirect_stdout(out):
-        verdict = check_steps.execute(directory, jobs, use_cache, cache)
+        verdict = check_steps.execute(directory, jobs, use_cache, cache, **scoped)
     return verdict, out.getvalue(), check_steps.read_results(directory)
 
 
-class ExecuteTests(unittest.TestCase):
+class ExecuteBase(unittest.TestCase):
     """`execute`: parallel, input-hashed, same table.  Inputs live under build/,
     since the trace ignores reads under the temporary directories."""
 
@@ -101,6 +101,11 @@ class ExecuteTests(unittest.TestCase):
     def reader(self, name: str) -> list[str]:
         return [PY, "-c", f"import pathlib; print('read', pathlib.Path({str(self.data / name)!r})"
                           ".read_text().strip())"]
+
+
+
+class ExecuteTests(ExecuteBase):
+    """The execute tests."""
 
     def test_parallel_rows_in_plan_order_and_red_is_red(self):
         (self.data / "a").write_text("alpha\n")
@@ -309,6 +314,264 @@ class ExecuteTests(unittest.TestCase):
         self.assertFalse(check_steps.git_replayable(["-c", "core.pager=x", "log"]))
         self.assertFalse(check_steps.git_replayable(["config", "user.name", "x"]))
         self.assertTrue(check_steps.git_replayable(["config", "--get", "user.name"]))
+
+
+    # ------------------------------------------------------------ scoped runs
+
+    def rel(self, name: str) -> str:
+        return str((self.data / name).relative_to(ROOT))
+
+    def scoped(self, paths: dict[str, str], old_dirs: set[str] | None = None, **more):
+        changed = check_steps.Changes({self.rel(k) if "/" not in k else k: v
+                                       for k, v in paths.items()}, old_dirs)
+        return execute(self.steps, self.cache, since="BASE", changed=changed, **more)
+
+    def ran(self, rows: list[dict]) -> list[bool]:
+        """Selected, whether it then ran or replayed its cached pass."""
+        return [not row.get("skipped") for row in rows]
+
+    def test_a_scoped_run_skips_steps_the_change_cannot_reach(self):
+        (self.data / "a").write_text("alpha\n")
+        (self.data / "b").write_text("beta\n")
+        plan(self.steps, self.reader("a"), self.reader("b"))
+        self.assertEqual(execute(self.steps, self.cache)[0], 0)
+        verdict, text, rows = self.scoped({"a": "M"})
+        self.assertEqual(verdict, 0)
+        self.assertIn("1 of 2 steps can be affected", text)
+        self.assertFalse(rows[0].get("skipped"))
+        self.assertTrue(rows[1]["skipped"].startswith("skipped (unaffected by the 1 path(s)"))
+        self.assertIn("1 skipped", text)
+        self.assertNotIn("read beta", text)
+        # nothing changed: nothing can be affected
+        self.assertEqual([bool(r.get("skipped")) for r in self.scoped({})[2]], [True, True])
+
+    def test_a_failed_step_keeps_its_inputs_so_a_docs_change_skips_it(self):
+        (self.data / "a").write_text("alpha\n")
+        red = [PY, "-c", f"import sys; print(open({str(self.data / 'a')!r}).read(), 'NOT RUN');"
+                         " sys.exit(2)"]
+        plan(self.steps, red)
+        self.assertEqual(execute(self.steps, self.cache)[0], 1)
+        self.assertEqual(list((self.cache / "steps").glob("*")), [])  # a failure is not cached
+        verdict, text, rows = self.scoped({"other": "M"})
+        self.assertEqual((verdict, [bool(r.get("skipped")) for r in rows]), (0, [True]))
+        verdict, text, rows = self.scoped({"a": "M"})
+        self.assertEqual((verdict, self.ran(rows)), (1, [True]))
+
+    def test_a_step_never_traced_or_untraceable_always_runs(self):
+        (self.data / "a").write_text("alpha\n")
+        shell = [PY, "-c", "import subprocess; subprocess.run(['true'])"]
+        plan(self.steps, self.reader("a"), shell)
+        rows = self.scoped({"zzz": "M"})[2]  # nothing traced yet
+        self.assertEqual(self.ran(rows), [True, True])
+        rows = self.scoped({"zzz": "M"})[2]  # the reader is now known; the shell never is
+        self.assertEqual([bool(r.get("skipped")) for r in rows], [True, False])
+        record = json.loads(next(p for p in (self.cache / "scope").iterdir()
+                                 if "subprocess" in p.read_text()).read_text())
+        self.assertEqual(record["x"], "child process true")
+
+    def test_a_changed_command_or_the_tracer_reaches_every_step(self):
+        (self.data / "a").write_text("alpha\n")
+        plan(self.steps, self.reader("a"))
+        execute(self.steps, self.cache)
+        for path in ("tools/check_steps.py", "tools/check_trace/sitecustomize.py"):
+            self.assertEqual(self.ran(self.scoped({path: "M"})[2]), [True], path)
+        check_steps.add(self.steps, [PY, "-c", "print('another')"])
+        self.assertEqual(self.ran(self.scoped({"zzz": "M"})[2]), [False, True])
+
+    def test_an_added_or_removed_file_moves_listings_an_edit_does_not(self):
+        (self.data / "dir").mkdir()
+        (self.data / "dir" / "x").write_text("x")
+        lister = [PY, "-c", f"import os; print(sorted(os.listdir({str(self.data / 'dir')!r})))"]
+        plan(self.steps, lister)
+        execute(self.steps, self.cache)
+        here = self.rel("dir")
+        self.assertEqual(self.ran(self.scoped({here + "/x": "M"})[2]), [False])
+        self.assertEqual(self.ran(self.scoped({here + "/y": "A"}, {here})[2]), [True])
+        self.assertEqual(self.ran(self.scoped({here + "/x": "D"}, {here})[2]), [True])
+        self.assertEqual(self.ran(self.scoped({"elsewhere/y": "A"}, {"elsewhere"})[2]), [False])
+
+    def test_which_directories_a_change_lists(self):
+        Changes = check_steps.Changes
+        old = {"docs", "docs/a", "books"}
+        self.assertEqual(Changes({"docs/a/n.md": "A"}, old).listed, {"docs/a"})
+        self.assertEqual(Changes({"docs/new/deep/n.md": "A"}, old).listed, {"docs"})
+        self.assertEqual(Changes({"top/n.md": "A"}, old).listed, {"."})
+        self.assertEqual(Changes({"docs/a/n.md": "M"}, old).listed, set())
+
+    def test_a_git_read_is_reached_only_by_what_can_move_it(self):
+        git_reached, Changes = check_steps.git_reached, check_steps.Changes
+        edit = Changes({"docs/x.md": "M"}, {"docs"})
+        add = Changes({"docs/y.md": "A"}, {"docs"})
+        self.assertEqual(git_reached(["ls-files", "--", "books"], edit), "")
+        self.assertEqual(git_reached(["ls-files"], edit), "")
+        self.assertEqual(git_reached(["ls-files"], add), "git ls-files: docs/y.md A")
+        self.assertEqual(git_reached(["ls-files", "books"], add), "")
+        self.assertEqual(git_reached(["ls-files", "docs"], add), "git ls-files: docs/y.md A")
+        self.assertEqual(git_reached(["ls-files", "-s"], add), "git ls-files -s")  # blob ids
+        self.assertEqual(git_reached(["rev-parse", "--show-toplevel"], edit), "")
+        self.assertEqual(git_reached(["config", "--get", "user.name"], edit), "")
+        self.assertTrue(git_reached(["rev-parse", "HEAD"], edit))
+        self.assertTrue(git_reached(["log", "-1"], edit))
+        self.assertEqual(git_reached(["log", "-1"], Changes({})), "")
+
+    def test_changed_paths_of_a_real_diff(self):
+        import subprocess
+        repo = self.base / "repo"
+        (repo / "docs").mkdir(parents=True)
+        (repo / "books").mkdir()
+
+        def git(*argv):
+            subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t",
+                            "-c", "commit.gpgsign=false", *argv], check=True,
+                           capture_output=True)
+        git("init", "-q")
+        (repo / "docs" / "a.md").write_text("a")
+        (repo / "books" / "b.lisp").write_text("b")
+        git("add", ".")
+        git("commit", "-qm", "base")
+        git("tag", "base")
+        (repo / "docs" / "a.md").write_text("a2")
+        (repo / "docs" / "new").mkdir()
+        (repo / "docs" / "new" / "n.md").write_text("n")
+        git("add", ".")
+        git("commit", "-qm", "docs")
+        (repo / "books" / "b.lisp").unlink()
+        (repo / "books" / "u.lisp").write_text("untracked")
+        old, check_steps.ROOT = check_steps.ROOT, repo
+        try:
+            changed = check_steps.changed_paths("base")
+            self.assertEqual(changed.paths, {"docs/a.md": "M", "docs/new/n.md": "A",
+                                             "books/b.lisp": "D", "books/u.lisp": "A"})
+            self.assertEqual(changed.listed, {"docs", "books"})
+            self.assertEqual(check_steps.changed_paths("HEAD").paths,
+                             {"books/b.lisp": "D", "books/u.lisp": "A"})
+        finally:
+            check_steps.ROOT = old
+
+    def test_an_unreadable_cache_entry_falls_back_to_the_last_pass(self):
+        (self.data / "a").write_text("alpha\n")
+        plan(self.steps, self.reader("a"))
+        execute(self.steps, self.cache)
+        shutil.rmtree(self.cache / "scope")  # a cache from before scope records
+        self.assertEqual(self.ran(self.scoped({"zzz": "M"})[2]), [False])
+        self.assertEqual(self.ran(self.scoped({"a": "M"})[2]), [True])
+
+
+TABLE = """remote_check: noise
+== check: 6 steps, 3 failed (jobs 12, wall 99.0 s, 0 cached)
+  ledger          ok          130.8 s
+  host_check      exit 2        0.1 s  host_check: NOT RUN host/native/build-dtn.lisp
+  host_check      exit 1       36.6 s  FAIL host/native/owner.lisp:645 fn-x: not defined
+  host_check      ok           58.2 s
+  reach_check     exit 1       71.9 s  reach_check: NEW unreachable subject -- books/a.lisp: f (PRF-322)
+  docs_check      ok            1.6 s  cached (inputs unchanged since abc)
+make: *** [Makefile:2677: check] Error 1
+"""
+
+
+def row(step: str, exit: int = 0, finding: str = "") -> dict:
+    return {"step": step, "exit": exit, "finding": finding, "seconds": 1.0}
+
+
+class BaselineTests(unittest.TestCase):
+    def test_the_table_is_read_out_of_a_runner_log(self):
+        rows = check_steps.read_baseline(TABLE)
+        self.assertEqual([(r["step"], r["red"]) for r in rows],
+                         [("ledger", False), ("host_check", True), ("host_check", True),
+                          ("host_check", False), ("reach_check", True), ("docs_check", False)])
+        self.assertEqual(rows[1]["finding"], "host_check: NOT RUN host/native/build-dtn.lisp")
+        # the last table wins; text with no table has no rows
+        self.assertEqual(len(check_steps.read_baseline(TABLE + TABLE.replace("host_check", "hc"))), 6)
+        self.assertEqual(check_steps.read_baseline("nothing here\n"), [])
+
+    def test_a_table_this_tool_writes_is_one_it_reads(self):
+        rows = [{**row("a"), "cached": "cached (inputs unchanged since x)"},
+                row("b", 2, "b: NOT RUN"), {**row("c"), "skipped": "skipped (unaffected)"}]
+        text = "\n".join(check_steps.table_lines(rows, " (jobs 1, wall 1.0 s)"))
+        self.assertEqual([(r["step"], r["red"], r["finding"])
+                          for r in check_steps.read_baseline(text)],
+                         [("a", False, "cached (inputs unchanged since x)"), ("b", True, "b: NOT RUN"),
+                          ("c", False, "skipped (unaffected)")])
+
+    def test_only_a_red_the_baseline_did_not_have_is_new(self):
+        known = check_steps.read_baseline(TABLE)
+        # the same reds, their line numbers drifted: nothing new
+        again = [row("ledger"), row("host_check", 2, "host_check: NOT RUN host/native/build-dtn.lisp"),
+                 row("host_check", 1, "FAIL host/native/owner.lisp:700 fn-x: not defined"),
+                 row("host_check"), row("reach_check", 1, "reach_check: NEW unreachable subject -- "
+                                                          "books/z.lisp: g (PRF-9)")]
+        self.assertEqual(check_steps.new_reds(again, known), [])
+        # a green step gone red; a step the baseline never had
+        fresh = check_steps.new_reds(again + [row("docs_check", 1, "stale"),
+                                              row("brand_new", 3, "x")], known)
+        self.assertEqual([r["step"] for r in fresh], ["docs_check", "brand_new"])
+        # the OK instance of a repeated name going red is new; the name's count decides
+        three = [row("host_check", 2, "host_check: NOT RUN host/native/build-dtn.lisp"),
+                 row("host_check", 1, "FAIL host/native/owner.lisp:700 fn-x: not defined"),
+                 row("host_check", 1, "FAIL something else entirely")]
+        self.assertEqual([r["finding"] for r in check_steps.new_reds(three, known)],
+                         ["FAIL something else entirely"])
+        # one step, red on a different line than the baseline: the same red
+        self.assertEqual(check_steps.new_reds([row("reach_check", 1, "a different complaint")],
+                                              known), [])
+        # fewer reds than the baseline: nothing new
+        self.assertEqual(check_steps.new_reds([row("ledger")], known), [])
+
+
+class BaselineRunTests(ExecuteBase):
+    """`execute --baseline` / `--write-baseline`: the verdict is the new reds."""
+
+    def run_with(self, baseline_text: str | None, **more):
+        if baseline_text is not None:
+            (self.base / "baseline.txt").write_text(baseline_text)
+        return execute(self.steps, self.cache, baseline=self.base / "baseline.txt", **more)
+
+    def test_a_known_red_passes_and_a_new_red_fails(self):
+        (self.data / "a").write_text("alpha\n")
+        (self.data / "red.py").write_text("print('boom: 1 failures'); raise SystemExit(4)\n")
+        (self.data / "reads.py").write_text(f"print(open({str(self.data / 'a')!r}).read())\n")
+        plan(self.steps, [PY, str(self.data / "red.py")], [PY, str(self.data / "reads.py")])
+        written = self.base / "out" / "baseline.txt"
+        verdict, text, rows = execute(self.steps, self.cache, write_baseline=written)
+        self.assertEqual(verdict, 1)
+        self.assertIn(f"step table written to {written}", text)
+        self.assertEqual([r["red"] for r in check_steps.read_baseline(written.read_text())],
+                         [True, False])
+        # the table we wrote is a baseline: its red is carried over, exit 0
+        verdict, text, rows = self.run_with(written.read_text())
+        self.assertEqual(verdict, 0)
+        self.assertIn("no new reds vs baseline", text)
+        self.assertNotIn("NEW reds", text)
+        self.assertIn("1 carried over", text)
+        # a baseline with that step green: the red is new
+        verdict, text, rows = self.run_with(TABLE.replace("host_check", "other"))
+        self.assertEqual(verdict, 1)
+        self.assertIn("NEW reds vs baseline: ", text)
+        # a step fixed since the baseline is named
+        text_fixed = "== check: 1 steps, 1 failed\n  " + rows[1]["step"] + "  exit 1  1.0 s  x\n"
+        verdict, text, rows = self.run_with(text_fixed)
+        self.assertIn("1 fixed", text)
+
+    def test_an_unreadable_or_empty_baseline_fails_closed(self):
+        (self.data / "a").write_text("alpha\n")
+        plan(self.steps, self.reader("a"))
+        verdict, text, rows = execute(self.steps, self.cache, baseline=self.base / "absent.txt")
+        self.assertEqual(verdict, 1)
+        self.assertIn("cannot read the baseline", text)
+        verdict, text, rows = self.run_with("no table\n")
+        self.assertEqual(verdict, 1)
+        self.assertIn("no step table in the baseline", text)
+
+    def test_skipped_steps_are_never_new_reds(self):
+        (self.data / "a").write_text("alpha\n")
+        (self.data / "red.py").write_text(
+            f"print(open({str(self.data / 'a')!r}).read(), 'bad'); raise SystemExit(3)\n")
+        plan(self.steps, [PY, str(self.data / "red.py")])
+        execute(self.steps, self.cache)
+        changed = check_steps.Changes({"unrelated": "M"})
+        verdict, text, rows = self.run_with(TABLE, since="BASE", changed=changed)
+        self.assertEqual((verdict, rows[0].get("skipped") is not None), (0, True))
+        self.assertIn("no new reds vs baseline", text)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@
 #   tools/remote_check.sh BOX [--target T | --cmd 'COMMAND' | --regen]
 #                             [--fetch PATH]... [--no-dirty] [--no-install-certs]
 #                             [--tree BOXPATH] [--log BOXPATH] [--ship PATH]...
+#                             [--changed-since REV] [--baseline PATH] [--write-baseline PATH]
 #   tools/remote_check.sh attach BOX [--log BOXPATH] [--fetch PATH]...
 #
 # `attach` recovers a run whose local side died (a session limit, an ssh
@@ -73,6 +74,14 @@
 #      the fetch names each such file on stdout and in its last line (a
 #      fetch clobbered a lane's newer ledger files, 2026-09-28; a later one
 #      kept a lane's copy aside with only a line on stderr, item 77).
+# `--changed-since REV` runs only the steps the diff from REV can reach
+# (make CHECK_CHANGED_SINCE=<REV's sha>: tools/check_steps.py execute
+# --changed-since; the box tree's last traced run decides, a step it never
+# ran there runs); `--baseline PATH` ships PATH (a step table, a path inside
+# this worktree such as build/coordinator/check-baseline-<sha>.txt) and fails
+# only for a red step it did not have red, printing "NEW reds vs baseline:
+# ..."; `--write-baseline PATH` has the box write its table to PATH and
+# fetches it back.  All three are for a make target, not --cmd.
 # <base> is /tank/fn/scratch on hbox and ~/fn-gates on persvati (hbox's
 # mirror was seeded by `git clone --bare` of a box repo; seeding avoids the
 # first run's whole-history bundle).  LANE is
@@ -112,6 +121,9 @@ TREE=
 LOG=
 CMD=
 REGEN=0
+SINCE=
+BASELINE=
+BASELINE_OUT=
 while [ $# -gt 0 ]; do
     case $1 in
         --target) [ $# -ge 2 ] || usage; TARGET=$2; shift 2 ;;
@@ -119,6 +131,15 @@ while [ $# -gt 0 ]; do
         --ship) [ $# -ge 2 ] || usage
             case $2 in /*|*..*|*' '*) echo "remote_check: --ship $2: a path inside the tree, no spaces" >&2; exit 2 ;; esac
             SHIP="$SHIP $2"; shift 2 ;;
+        --changed-since) [ $# -ge 2 ] || usage
+            SINCE=$(git rev-parse --verify --quiet "$2^{commit}") || {
+                echo "remote_check: --changed-since $2: not a commit here" >&2; exit 2; }
+            shift 2 ;;
+        --baseline|--write-baseline) [ $# -ge 2 ] || usage
+            case $2 in /*|*..*|*' '*|*"'"*) echo "remote_check: $1 $2: a path inside the tree, no spaces" >&2; exit 2 ;; esac
+            if [ "$1" = --baseline ]; then BASELINE=$2; SHIP="$SHIP $2"
+            else BASELINE_OUT=$2; FETCH="$FETCH $2"; fi
+            shift 2 ;;
         --no-dirty) DIRTY=0; shift ;;
         --install-certs) INSTALL=1; shift ;;
         --no-install-certs) INSTALL=0; shift ;;
@@ -140,6 +161,12 @@ if [ $REGEN = 1 ]; then
 fi
 sq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 if [ -n "$CMD" ]; then RUN="sh -c $(sq "$CMD")"; else RUN="make $TARGET"; fi
+if [ -n "$SINCE$BASELINE$BASELINE_OUT" ]; then
+    [ -z "$CMD" ] || { echo "remote_check: --changed-since, --baseline and --write-baseline are for a make target, not --cmd/--regen" >&2; exit 2; }
+    [ -z "$SINCE" ] || RUN="$RUN CHECK_CHANGED_SINCE=$SINCE"
+    [ -z "$BASELINE" ] || RUN="$RUN CHECK_BASELINE=$BASELINE"
+    [ -z "$BASELINE_OUT" ] || RUN="$RUN CHECK_BASELINE_OUT=$BASELINE_OUT"
+fi
 
 if [ "$BOX" = auto ]; then
     BOX=$(sh "$(dirname "$0")/boxes.sh" --pick) || exit 3

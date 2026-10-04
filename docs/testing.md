@@ -105,3 +105,20 @@ skipping a step whose recorded inputs are unchanged since it last passed
 certificates it cannot find says NOT RUN and counts as failed.  `make check-lane`
 is the same in a scratch directory; `tools/remote_check.sh auto` runs it on a
 build box.
+
+**Scoped and baselined runs.**  `make check-lane CHECK_CHANGED_SINCE=<rev>` (or
+`tools/remote_check.sh BOX --changed-since <rev>`) runs only the steps the diff
+from `<rev>` (committed, uncommitted and untracked files) can reach: the steps
+whose last traced run, passing or failing, read, stat'ed or listed a changed
+path, ran a git command the change can move, or could not be traced (ACL2, a
+shell child).  The rest print `skipped`; a docs-only diff skips host_check,
+reach_check and green_check.  A step this tree has never run is not skipped, so
+the first run in a fresh worktree is a full one.  `CHECK_BASELINE=<table>`
+(`--baseline`) reads a step table such as
+`build/coordinator/check-baseline-<sha>.txt` (or a remote_check log holding
+one), prints `NEW reds vs baseline: ...` and exits nonzero only for a red step
+the baseline did not have red (matched by step name and, for a name planned
+several times like host_check, by finding with its numbers ignored);
+`CHECK_BASELINE_OUT=<file>` (`--write-baseline`) writes this run's table in that
+format.  A scoped run is a lane's gate, not the integrator's: a full
+`make check FORCE=1` at the batch head stays the evidence.
