@@ -215,6 +215,18 @@
      :in-theory
      (e/d (fn-nntp-reply-effect) (fn-ovw-cursor-effectp fn-ovw-cursor-octets)))))
 
+; The header cursor's reply (lane cold-line) is no article reply either.
+(defthm fn-pcr-hdr-cursor-never-expands-to-an-article-reply
+  (let ((octets (fn-ovw-hdr-reply lines src t)))
+    (and (not (equal octets (append (quote (50 50 48)) tail)))
+         (not (equal octets
+                     (append (fn-nntp-string-octets "423 no article with that number") (quote (13 10)))))
+         (not (equal octets
+                     (append (fn-nntp-string-octets "430 no article with that message-id") (quote (13 10)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ovw-hdr-reply fn-ovw-hdr-status fn-ovw-hdr-empty fn-ovw-status fn-nntp-crlf)
+                                  (fn-nntp-stuff-lines)))))
+
 (defthm
   fn-pcr-over-cursor-never-expands-to-an-article-reply
   (let
@@ -233,10 +245,14 @@
   nil
   :hints
   (("Goal"
+     :use ((:instance fn-pcr-hdr-cursor-never-expands-to-an-article-reply
+                      (lines (fn-ovw-hdr-lines (nth 0 cur) (nfix (nth 1 cur)) (nfix (nth 2 cur))
+                                               (nth 7 cur) (nth 3 cur) fn-arena fn-cat))
+                      (src (nth 7 cur))))
      :in-theory
      (e/d
        (fn-ovw-cursor-octets fn-ovw-reply fn-ovw-status fn-ovw-empty-text fn-nntp-crlf)
-       (fn-ovw-lines fn-nntp-stuff-lines)))))
+       (fn-ovw-lines fn-nntp-stuff-lines fn-ovw-hdr-lines fn-ovw-hdr-reply)))))
 
 (defthm
   fn-pcr-expand-inverts-220-reply
