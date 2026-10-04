@@ -1,0 +1,131 @@
+This is SBCL 2.6.8, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built September 19, 2026  03:17:41
+                   then October 3, 2026  22:24:53.                      +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+MODIFICATION NOTICE:
+
+fn certification image nntp for books
+
+Project-dir-alist:
+((:SYSTEM . "/tank/fn/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>
+Exiting the ACL2 read-eval-print loop.  To re-enter, execute (LP).
+* 
+FN_CERT_IMAGE_RELINKED 5
+NIL
+* 
+Project-dir-alist:
+((:SYSTEM . "/tank/fn/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/tank/fn/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>>
+Note: Writing .port file, /tank/fn/scratch/compose-lane/books/acceptance-
+payload-ref.port.
+
+CERTIFICATION ATTEMPT FOR 
+"/tank/fn/scratch/compose-lane/books/acceptance-payload-ref.lisp"
+ACL2 Version 8.7
+
+* Step 1: Read 
+"/tank/fn/scratch/compose-lane/books/acceptance-payload-ref.lisp" and
+compute its book-hash.
+
+* Step 2:  There were 55 forms in the file.  We now attempt to establish
+that each form, whether local or non-local, is indeed an admissible
+embedded event form in the context of the previously admitted ones.
+
+
+ACL2 !>>>(INCLUDE-BOOK "store-files-traces")
+
+Summary
+Form:  ( INCLUDE-BOOK "store-files-traces" ...)
+Rules: NIL
+Time:  0.62 seconds (prove: 0.00, print: 0.00, other: 0.62)
+"/tank/fn/scratch/compose-lane/books/store-files-traces.lisp"
+
+
+ACL2 !>>>(INCLUDE-BOOK "history-columns-relation")
+
+Summary
+Form:  ( INCLUDE-BOOK "history-columns-relation" ...)
+Rules: NIL
+Time:  0.05 seconds (prove: 0.00, print: 0.00, other: 0.05)
+"/tank/fn/scratch/compose-lane/books/history-columns-relation.lisp"
+
+
+ACL2 !>>>(INCLUDE-BOOK "store-node-traces-prepare")
+
+Summary
+Form:  ( INCLUDE-BOOK "store-node-traces-prepare" ...)
+Rules: NIL
+Time:  0.02 seconds (prove: 0.00, print: 0.00, other: 0.02)
+"/tank/fn/scratch/compose-lane/books/store-node-traces-prepare.lisp"
+
+
+ACL2 !>>>(INCLUDE-BOOK "owner")
+
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "owner" ...):  Unable
+to load compiled file for book
+  /tank/fn/scratch/compose-lane/books/owner.lisp
+because that book is not certified.  See :DOC include-book.  No load
+was in progress for any parent book.
+
+
+
+ACL2 Error in ( INCLUDE-BOOK "owner" ...):  There is no certificate
+on file for "/tank/fn/scratch/compose-lane/books/owner.lisp".  See
+:DOC uncertified-books.  This is illegal because we are currently attempting
+certify-book; see :DOC certify-book.
+
+
+Summary
+Form:  ( INCLUDE-BOOK "owner" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+
+ACL2 Error [Failure] in ( INCLUDE-BOOK "owner" ...):  See :DOC failure.
+
+******** FAILED ********
+
+ACL2 Warning in CERTIFY-BOOK:  The attempted CERTIFY-BOOK has failed
+while trying to establish the admissibility of one of the (local or
+non-local) forms in the book to be certified.
+
+
+Summary
+Form:  (CERTIFY-BOOK "books/acceptance-payload-ref" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  0.72 seconds (prove: 0.00, print: 0.00, other: 0.72)
+
+ACL2 Error [Failure] in (CERTIFY-BOOK "books/acceptance-payload-ref"
+...):  See :DOC failure.
+
+******** FAILED ********
+ :ERROR
+ACL2 !>

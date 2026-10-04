@@ -3,11 +3,13 @@
 
 D40 lets the host run a carried entry's raw definition because every way
 into it is known: the dispatcher resolves a QUOTED entry name against the
-generated `fn-interfaces' table (host/native/io.lisp fnn-dispatch-function,
-fnn-fixed-raw-callback), and a def-carried open whose premise is produced
+generated `fn-interfaces' table (host/native/raw-trap.lisp
+fnn-raw-dispatch-apply, host/native/io.lisp fnn-fixed-raw-callback), and a def-carried open whose premise is produced
 (:produced) is never such an entry.  Codex review r28 (F1) found the hole:
 `(funcall 'F ...)', `(apply #'F ...)', a symbol held in a variable, a
-symbol built by `intern' -- each reaches F with no table and no lint.  This
+symbol built by `intern' -- each reaches F with no table and no lint.  The
+image-level guarantee is host/native/raw-trap.lisp's trap (a raw-dispatched
+symbol faults outside a dispatcher extent); this rule is the early lint.  This
 rule closes it BY CONSTRUCTION over the raw-loaded host files
 (tools/ledger.py raw_host_paths): it does not chase where a book symbol
 could flow, it refuses every way one could be made.
@@ -33,7 +35,7 @@ CALL   Every function position (funcall / apply / multiple-value-call, the
        CL higher-order functions' function argument, every :key / :test /
        :test-not) holds a value TRACED to a host function: #'G or 'G with G
        no book function, a lambda, a table resolution (fnn-fixed-raw-callback
-       / fnn-dispatch-function of a literal), or a variable, special, struct
+       / fnn-raw-dispatch-callback of a literal), or a variable, special, struct
        slot or raw function result every one of whose sources is such.  An
        ACL2 value is never a function object, so a value the host cannot
        trace -- a dispatched result, an opaque binding -- is refused, which
@@ -64,13 +66,20 @@ from tools import ledger  # noqa: E402
 Sym = ledger.Sym
 
 # The base dispatchers: head -> the argument positions holding an entry
-# name.  fnn-call resolves through fnn-dispatch-function (the table, else
-# the executable counterpart of a definterface-declared name: interface_emit
-# refuses an undeclared dispatched name); fnn-fixed-raw-callback resolves
-# only a :raw-with entry of the table; fnn-fixed-callback-fail only names
-# the entry in a fault.  Every other dispatcher is derived from these.
+# name.  fnn-call resolves through host/native/raw-trap.lisp's
+# fnn-raw-dispatch-apply (the table, else the executable counterpart of a
+# definterface-declared name: interface_emit refuses an undeclared
+# dispatched name); fnn-fixed-raw-callback / fnn-raw-dispatch-callback
+# resolve only a :raw-with entry of the table, to a closure that enters the
+# dispatcher extent itself; the raw-trap accessors answer a symbol, a count
+# or a boolean; fnn-fixed-callback-fail only names the entry in a fault.
+# Every other dispatcher is derived from these.
 BASE_DISPATCHERS = {
-    "fnn-call": (0,), "fnn-dispatch-function": (0,), "fnn-fixed-raw-callback": (0,),
+    "fnn-call": (0,), "fnn-raw-dispatch-apply": (0,), "fnn-fixed-raw-callback": (0,),
+    "fnn-raw-dispatch-callback": (0,), "fnn-dispatch-symbol": (0,),
+    "fnn-raw-dispatch-target": (0,), "fnn-raw-dispatch-captured-p": (0,),
+    "fnn-raw-dispatch-arity": (0,), "fnn-raw-dispatch-creator-p": (0,),
+    "fnn-raw-trap-install": (0, 1),
     "fnn-fixed-callback-fail": (0,), "fnn-counterpart": (0,),
     "fnn-entry-guard": (0,), "fnn-entry-guard-spec": (0,), "fnn-trailing-kind": (0,),
 }
@@ -88,7 +97,7 @@ LABEL_SINKS = {"format": 1, "fnn-fault": 0, "fnn-refuse": 0, "error": 1, "fnn-ou
                "warn": 0, "cerror": 1, "fnn-fixed-callback-fail": 0}
 
 # The table resolutions: their value is the entry's function object.
-RESOLVERS = {"fnn-fixed-raw-callback", "fnn-dispatch-function"}
+RESOLVERS = {"fnn-fixed-raw-callback", "fnn-raw-dispatch-callback"}
 
 MAKERS = {"intern", "find-symbol", "read", "read-from-string",
           "read-preserving-whitespace", "find-all-symbols", "do-symbols",
@@ -186,15 +195,32 @@ DIGEST = ("the BLAKE3 reference/native pair (host/native/digest.lisp): the ACL2 
 LOOKUPS = ("developer lookup counters, FN_NATIVE_COUNT_LOOKUPS only (fnn-developer-"
            "selector; a production image refuses to start with it set): "
            "sb-int:encapsulate wraps each listed read function to count its calls")
+TRAP = ("the dispatcher itself (host/native/raw-trap.lisp, D40): it reads fn-interfaces "
+        "and formals off the world at image build, captures each raw-dispatched function "
+        "object and replaces its binding by a trap, applies the captured object or the "
+        "*1* counterpart in a per-thread extent, and its self-probe calls a probe target "
+        "outside one; context * = every form of this one file")
 ALLOW: list[Allow] = [
-    Allow("WORLD", "host/native/io.lisp", "fnn-install-raw-dispatch",
-          INTERNAL + " (reads fn-interfaces off the world once, at image build)"),
+    Allow("WORLD", "host/native/raw-trap.lisp", "*", TRAP),
+    Allow("MAKE", "host/native/raw-trap.lisp", "*", TRAP),
+    Allow("CALL", "host/native/raw-trap.lisp", "*", TRAP),
+    Allow("NAMEVAR", "host/native/raw-trap.lisp", "*", TRAP),
+] + [Allow(r, "host/native/acl2-session.lisp", "fnn-command-acl2",
+           "`fn acl2 raw-traps' (developer images only): calls each raw-dispatched "
+           "target OUTSIDE the dispatcher -- by its symbol, an interned symbol, its "
+           "binding, under a same-named slot symbol -- to show the trap faults; it "
+           "passes NILs of the entry's arity and the trap refuses before the entry runs")
+     for r in ("CALL", "MAKE", "NAMEVAR", "WORLD")] + [
+    Allow(r, "host/native/dev-repl.lisp", "*",
+          "the developer debugger (FN_NATIVE_DEV_REPL on a developer image, peer UID "
+          "checked): it reads and evals the developer's forms by design; a form that "
+          "calls a raw-dispatched function outside fnn-call meets the image trap "
+          "(host/native/raw-trap.lisp), which this lint does not replace")
+    for r in ("MAKE", "WORLD")] + [
     Allow("WORLD", "host/native/io.lisp", "fnn-entry-guard-spec",
           INTERNAL + " (reads the entry's formals, stobjs-in and guard, cached)"),
     Allow("WORLD", "host/native/io.lisp", "fnn-trailing-kind",
           INTERNAL + " (reads the entry's stobjs-in, cached)"),
-    Allow("WORLD", "host/native/io.lisp", "fnn-fixed-raw-callback",
-          INTERNAL + " (the compiled function of a :raw-with entry the table resolved)"),
     Allow("MAKE", "host/native/io.lisp", "fnn-counterpart",
           INTERNAL + " (find-symbol of the entry's *1* counterpart in ACL2_*1*_ACL2)"),
     Allow("CALL", "host/native/io.lisp", "fnn-entry-guard",
@@ -728,6 +754,21 @@ class Walker:
             for item in form[2:]:
                 self.code(item, inner)
             return
+        if h == "cond":
+            # each clause is a list of forms, never a call: (cond (read ...))
+            # tests the variable READ (host/native/web-host.lisp)
+            for clause in form[1:]:
+                for item in clause if isinstance(clause, list) else [clause]:
+                    self.code(item, env)
+            return
+        if h in ("case", "ecase", "ccase", "typecase", "etypecase", "ctypecase") \
+                and len(form) > 1:
+            # the keys (or types) are data; each clause's body is code
+            self.code(form[1], env)
+            for clause in form[2:]:
+                for item in clause[1:] if isinstance(clause, list) else []:
+                    self.code(item, env)
+            return
         if h == "lambda" and len(form) > 1:
             inner = dict(env)
             slot = self.scan.lambda_slot.get(id(form))
@@ -1152,7 +1193,7 @@ def judge(scan: Scan, allows: list[Allow], carried: set[str]) -> tuple[list[str]
     covered = {"allowed": 0, "pending": 0}
     for s in scan.sites:
         match = [i for i, a in enumerate(allows)
-                 if (a.rule, a.file, a.context) == (s.rule, s.file, s.context)]
+                 if (a.rule, a.file) == (s.rule, s.file) and a.context in (s.context, "*")]
         bad = sorted(s.symbols & carried)
         if match and not bad:
             used.update(match)

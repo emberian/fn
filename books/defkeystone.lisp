@@ -74,7 +74,11 @@
 ; attains is slack, not a claim.  V is the caller's visit-counting term;
 ; this book records it and does not derive it: `:derived-by RECORD' names
 ; the cost-derivation record that ties V to the subject's executed
-; definition (DEF-ENTRY / COST-GATE); a bound without one is recorded
+; definition, the subject's `def-cost' row (books/def-cost.lisp, table
+; fn-cost), and the world checks the link when the teeth bind: RECORD is
+; :subject, it has a fn-cost row, and V calls that row's route twin
+; (:route-twin for :visits, :cons-route-twin for :allocation), else the
+; form is refused :underived-record.  A bound without :derived-by is recorded
 ; :underived and counted as debt, never coverage.  `:rests-on (A ...)' names
 ; the facts the bound rests on.  A bound without :subject is refused.
 ;
@@ -771,6 +775,26 @@
                            teeth are declared once." (cadr reason)))
     (:unknown-keyword (msg "unknown keyword(s) ~&0; the keywords are ~&1."
                            (cdr reason) *fn-dk-keys*))
+    (:underived-record
+     (let ((name (cadr reason)) (label (caddr reason)) (record (cadddr reason))
+           (why (car (cddddr reason))) (detail (cadr (cddddr reason))))
+       (case why
+         (:not-subject
+          (msg "~x0: bound ~x1 says :derived-by ~x2, but the subject is ~x3: the ~
+                cost-derivation record of a bound is its subject's def-cost row."
+               name label record detail))
+         (:no-row
+          (msg "~x0: bound ~x1 says :derived-by ~x2, which has no def-cost row in ~
+                this world (table fn-cost): declare (def-cost ~x2 ...) first, or ~
+                drop :derived-by and the bound is recorded as underived debt."
+               name label record))
+         (:no-twin
+          (msg "~x0: bound ~x1 says :derived-by ~x2, whose def-cost row derives no ~
+                ~x3 twin." name label record detail))
+         (otherwise
+          (msg "~x0: bound ~x1 says :derived-by ~x2, but its visit term does not ~
+                call that row's route twin ~x3: V is the derived cost, not a term ~
+                beside it." name label record detail)))))
     (otherwise (msg "malformed form: ~x0." reason))))
 
 ; ---------------------------------------------------------------------------
@@ -865,12 +889,46 @@
           ((assoc-eq name (table-alist 'fn-teeth w)) (list :declared-twice name))
           (t nil))))
 
+(defun fn-dt-derivation-problem (name kind entries subject w)
+  (declare (xargs :mode :program))
+  ; nil, or the refusal for the first bound of KIND (:visits | :allocation)
+  ; among ENTRIES whose :derived-by RECORD is not SUBJECT, has no fn-cost row,
+  ; or whose V does not call the row's route twin for KIND.  A bound without
+  ; :derived-by is underived debt, not a refusal.
+  (if (atom entries)
+      nil
+    (let* ((entry (car entries))
+           (record (fn-dk-get :derived-by (cdddr entry))))
+      (if (null record)
+          (fn-dt-derivation-problem name kind (cdr entries) subject w)
+        (let* ((row (cdr (assoc-eq record (table-alist 'fn-cost w))))
+               (twin-key (if (eq kind :allocation) :cons-route-twin :route-twin))
+               (twin (fn-dk-get twin-key row)))
+          (cond ((not (eq record subject))
+                 (list :underived-record name (car entry) record :not-subject subject))
+                ((null row) (list :underived-record name (car entry) record :no-row))
+                ((null twin)
+                 (list :underived-record name (car entry) record :no-twin twin-key))
+                (t (mv-let (bad term)
+                     (fn-dt-translate (cadr entry) w)
+                     (cond (bad (list :bad-term name (car bad)))
+                           ((not (member-eq twin (all-fnnames term)))
+                            (list :underived-record name (car entry) record
+                                  :not-called twin))
+                           (t (fn-dt-derivation-problem name kind (cdr entries)
+                                                        subject w)))))))))))
+
 (defun fn-dt-expand (name by kvs state)
   (declare (xargs :mode :program :stobjs state))
   ; the event list of (defteeth NAME . KVS) in the current world, or a soft error
   (let* ((w (w state))
          (claim (fn-dk-get :claim kvs))
-         (problem (fn-dt-world-problem name claim w)))
+         (subject (fn-dk-get :subject kvs))
+         (problem (or (fn-dt-world-problem name claim w)
+                      (fn-dt-derivation-problem name :visits (fn-dk-get :visits kvs)
+                                                subject w)
+                      (fn-dt-derivation-problem name :allocation
+                                                (fn-dk-get :allocation kvs) subject w))))
     (if problem
         (er soft by "~x0: ~@1" name (fn-dk-refusal-text problem))
       (value (cons 'progn (fn-dk-teeth-events name by claim

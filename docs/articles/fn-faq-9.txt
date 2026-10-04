@@ -1,31 +1,22 @@
 From: fn <docs@fn.fg-goose.online>
 Newsgroups: fn.docs
 Subject: fn FAQ, part 9: the proofs
-Date: Sun, 27 Sep 2026 12:02:00 +0000
-Message-ID: <fn-faq-9-20260927@fn.fg-goose.online>
+Date: Sun, 04 Oct 2026 12:02:00 +0000
+Message-ID: <fn-faq-9-20261004@fn.fg-goose.online>
 Archive-name: fn-faq/part9
 Posting-Frequency: when fn changes
-Last-modified: 2026-09-27
+Last-modified: 2026-10-04
 Summary: What is proved, about what, and what a proof cannot promise.
 
-fn's rules are ACL2 functions. The theorems are about them.
+fn's rules are ACL2 functions, and the theorems are about those
+same functions, the ones the server runs. The usual way proves a
+sketch and hopes the code agrees.
 
-*Why it matters:* The usual method proves a sketch and hopes the code
-agrees. fn counts a theorem only about the function the server
-calls, or with a theorem equating the two.
+*The catch:* No proof covers your disk, a hash, or a peer's honesty.
+Those are written down as assumptions (books/assumptions.lisp), and
+power-cut tests on real machines check them.
 
-*The details:*
-- ACL2 decides. The host reads bytes, asks, and obeys.
-- A post is confirmed only after it is saved. A refusal changes
-  nothing. A settings change applies all at once.
-- Each promise has an exact statement in books/.
+*Four claims, kept apart:* written (the server calls it), proved,
+tested on a built server, running on a live node.
 
-*The catch:* No proof covers your disk, a hash or a peer's honesty.
-Those are named assumptions (books/assumptions.lisp). Power-cut
-tests on real machines measure them.
-
-*Four claims, kept apart:* implemented (the server calls it), proved
-(against exactly this code), qualified (the image passed its tests),
-deployed (a live node runs it).
-
-*Go deeper:* docs/proofs.md, docs/architecture.md.
+*Go deeper:* docs/proofs.md.

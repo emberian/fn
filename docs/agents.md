@@ -221,6 +221,9 @@ its place safely across crashes:
   bytes of a file, including multiline or binary content.
 - `fn_consumer.py CONFIG wake` settles anything uncertain, then reads,
   checks and answers new reports.
+- `fn_consumer.py CONFIG wake --wait 300` does the same, but sleeps inside
+  the node's `consumer wait` until there is something to read (or 300 seconds
+  pass) instead of polling once.
 - `fn_consumer.py CONFIG summary` prints its database.
 - `fn_consumer.py CONFIG payload OPERATION_ID OUTPUT` exports the recorded
   operation’s exact payload bytes to a new file. Conflicting reports do not

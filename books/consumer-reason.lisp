@@ -141,16 +141,19 @@
 ; `fn-native-control-host-consumer-client-read') for whatever operation it
 ; sent, and prints the word `fn-native-control-reply-detail' answers
 ; (host/native/consumer-local.lisp fnn-command-consumer-local).  For every
-; status the client reads the owner's status and word; for a refusal that
-; named a reason the printed word is exactly the reason's.
+; status the client reads the owner's status and word; for a refusal, an
+; uncertain outcome or a fault that named a reason the printed word is
+; exactly the reason's (the owner-side statement
+; `fn-native-control-printed-reason-is-the-decisions' covers the same three
+; classes since e9cf2340d; this one tracks it).
 (defthm fn-ncr-printed-reason-is-the-decisions
   (implies (member-equal status *fn-nctrl-statuses*)
            (let ((read (fn-ncr-client-read
                         operation
                         (fn-native-control-reasoned-reply-encode status reason))))
              (and (equal read (list :status status (fn-nctrl-reason-word reason)))
-                  (implies (and (equal (fn-native-control-status-class status)
-                                       :refused)
+                  (implies (and (member-equal (fn-native-control-status-class status)
+                                              '(:refused :uncertain :fault))
                                 reason)
                            (equal (fn-native-control-reply-detail
                                    (cadr read) (caddr read))

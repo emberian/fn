@@ -156,7 +156,19 @@
               do (eval form)
                  (setf missing (remove (list (car form) (cadr form)) missing :test #'equal))))
     (when missing (error "deployed forms missing: ~s" missing))))
-(load-deployed-forms "host/native/owner.lisp" '((defmacro def-actor)))
+(declaim (declaration xargs))
+(defun member-equal (x l) (member x l :test #'equal))
+;; ACL2 accepts each def-actor as it loads (fn-fs-actor-declp): its tables
+;; and body, read from the book.
+(with-open-file (stream "books/failure-scope.lisp")
+  (loop for form = (read stream nil :eof) until (eq form :eof)
+        when (and (consp form) (eq (car form) 'defconst)
+                  (member (cadr form) '(*fn-fs-actors* *fn-fs-actor-failures*)))
+          do (eval (cons 'defparameter (cdr form)))
+        when (and (consp form) (eq (car form) 'defun) (eq (cadr form) 'fn-fs-actor-declp))
+          do (eval form)))
+(load-deployed-forms "host/native/owner.lisp"
+                     '((defvar *fnn-actors*) (defun fnn-actor-declare) (defmacro def-actor)))
 
 (declaim (declaration xargs))
 (defun nfix (x) (if (and (integerp x) (>= x 0)) x 0))

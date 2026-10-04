@@ -25,6 +25,40 @@
   (declare (xargs :guard t))
   (if (natp length) (fn-charge-for-payload length) 0))
 
+; D27 (lane caps; the gift of codex/canonical-size a2ab7c2de): the charge
+; the host computes for a payload fits the record codec's u32 charge field
+; for every payload the record codec carries, so for every article an
+; admitted profile admits (its A is at most that codec ceiling,
+; fn-bs-profile-validp-facts).  Validation and representation agree: no
+; profile names an article whose charge the record cannot encode.
+(defthm fn-store-charge-is-positive-and-representable
+  (implies (and (natp length) (<= length *fn-record-max-payload*))
+           (and (posp (fn-store-charge length))
+                (fn-record-uint32p (fn-store-charge length))))
+  :hints (("Goal"
+           :use ((:instance fn-charge-for-payload-monotone
+                            (m length) (n *fn-record-max-payload*)))
+           :in-theory (e/d (fn-store-charge fn-record-uint32p)
+                           (fn-charge-for-payload)))))
+
+(defthm fn-store-charge-of-profile-article-is-representable
+  (implies (and (fn-bs-profile-admittedp values)
+                (natp length)
+                (<= length (fn-bs-profile-max-article-octets values)))
+           (and (posp (fn-store-charge length))
+                (fn-record-uint32p (fn-store-charge length))))
+  :hints (("Goal"
+           :use ((:instance fn-bs-profile-validp-facts
+                            (values (fn-bs-profile-of values)))
+                 (:instance fn-store-charge-is-positive-and-representable))
+           :in-theory (e/d (fn-bs-profile-admittedp
+                            fn-bs-profile-max-article-octets
+                            fn-bs-profile-field)
+                           (fn-store-charge fn-record-uint32p
+                            fn-store-charge-is-positive-and-representable
+                            fn-bs-profile-validp-facts
+                            fn-bs-profile-validp fn-bs-profile-of)))))
+
 (defun fn-store-publication-admissibility (profile committed-count
                                                    prospective-payload-octets)
   (declare (xargs :guard t))

@@ -684,7 +684,7 @@ The EXECUTED rule per command and form; a ruling recorded but not landed is DEBT
 | NEWGROUPS | the connection's pinned view | none | the latest completed durable view; pin unmoved (PRF-1237) |  | creation-fact and configured-group walks over the pinned environment and archive; whole reply allocated / the same pinned creation-fact and configured-group walks; whole reply allocated | NNT-042 by silence today (the pinned creation facts filtered to the pinned groups); decided c07 B: the completed discovery snapshot; RFC 3977 7.3 |
 | NEWGROUPS / compatibility | the connection's pinned view | none |  |  | generated: test value |  |
 | NEWGROUPS / other | the connection's pinned view | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
-| NEWNEWS | the connection's pinned view | none | the latest completed durable view; pin unmoved (PRF-1237) | cursor fn-nnw-meta-effectp | bounded control calls per quantum and at most W emitted bytes; configured selection retains group/member references and inspects at most one entry per selector call; retained suffix avoids rescanning and catalog tombstone column avoids payload I/O; matcher/name comparison, composed heap tariff, resource custody, legacy cold metadata fallback and completed-view capture remain GEN-CURSOR debt / the reference whole pinned archive walk, including payload tombstone reads | NNT-042 by silence today (the pinned article root retained across one-candidate quanta); decided c07 C: one completed discovery snapshot captured at the first quantum and held across quanta; RFC 3977 7.4 |
+| NEWNEWS | the connection's pinned view | none | the latest completed durable view; pin unmoved (PRF-1237) | cursor fn-nnw-meta-effectp | one retained group/member entry or wildcard matcher microstep or indexed output phase per quantum and at most W emitted bytes; fixed reference-only initialization; matcher/comparison and composed heap tariff, physical resource custody, legacy cold metadata fallback and completed-view capture remain GEN-CURSOR debt / the reference whole pinned archive walk, including payload tombstone reads | NNT-042 by silence today (the pinned article root retained across one-candidate quanta); decided c07 C: one completed discovery snapshot captured at the first quantum and held across quanta; RFC 3977 7.4 |
 | NEWNEWS / any | the connection's pinned view | none |  |  | generated: (fn-nntp-newnews-response-stream session archive env args fn-arena fn-cat) |  |
 | DATE | none (no archive) | none |  |  |  | RFC 3977 7.1; no article view. DEFECT (c07): answers the clock observation pinned at accept (fn-nntp-env-observation; books/served.lisp fn-served-conn-observation), not the current reading; fixed separately |
 | POST | none (no archive) | offer |  |  |  | RFC 3977 6.3.1 (no archive) |
@@ -2176,6 +2176,19 @@ the maintained column relation. These functions are not yet the served
 cursor implementation. Integration, legacy rows without a decided NOV,
 the maintained codec bound on numeric setup and matched runtime cost
 measurement remain open; no complete long-row scheduling claim is made.
+
+NOV `:bytes` and `:lines` metadata render their complete decimal natural
+values in `fn-nov-line`, including values above ten digits (RFC 3977
+§8.3.2 and D27). The initial NNTP status-line number renderer keeps its
+separate width rule. `fn-npw-column-pieces` captures five cached strings
+and resumable numeric references with a fixed number of pieces; under
+cached field shape and natural metadata its complete abstraction equals
+the existing cached-row renderer, including arbitrary-width counts.
+`nov-metadata-tests` checks exact wide and ordinary rows and semantic block
+framing; `nov-column-pieces-tests` checks continuation and literal premise
+removals. `tests.test_native_nov_metadata` distinguishes a real saved-image
+scalar renderer fixture from a socket fixture over an actual retained
+article. Its matching-image result remains a separate qualification step.
 
 The decimal setup component `fn-nbw-decimal-tick` retains an unrendered
 natural and a reverse-produced character suffix. Each division spends fuel;

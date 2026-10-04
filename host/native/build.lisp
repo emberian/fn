@@ -443,6 +443,13 @@
   (declare (xargs :mode :program :stobjs state))
   (prog2$ (cw "fn-native: raw entry not installed~%") (value :missing)))
 (progn! (set-raw-mode t)
+        ;; D40: the dispatch table and its traps (host/native/raw-trap.lisp),
+        ;; installed from the fn-interfaces table of this world before any
+        ;; other raw host file loads, so no load-time form captures a
+        ;; raw-dispatched function object (an unknown or unverified target
+        ;; stops the build).
+        (load "host/native/raw-trap.lisp")
+        (fnn-install-raw-dispatch)
         ; Native cryptographic observations are a required process facility.
         ; Validate them before saving and again after the saved image starts.
         ; crypto.lisp and tls.lisp load with :dont-save t, so SBCL does not
@@ -451,9 +458,6 @@
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
-        ;; D40: the raw-dispatched entries, from the fn-interfaces table of
-        ;; this world (an unknown or unverified target stops the build).
-        (fnn-install-raw-dispatch)
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
         (load "host/native/extent-decoded.lisp")
@@ -467,6 +471,9 @@
         ; restarted process cannot expose diagnostics by changing its
         ; environment.
         (fnn-select-image-profile)
+        ;; D40: close the table; only a developer image may run ACL2's
+        ;; loop in a dispatcher extent (`fn acl2 session').
+        (fnn-raw-trap-seal :developer (fnn-developer-image-p))
         ; The release version (VERSION at the tree root, D37), serialized
         ; into the image for `fn --version'; a missing or malformed file
         ; stops the build.
@@ -616,6 +623,9 @@
         ; the bootstrap producer (section 4, stage 6); tools/extract/
         ; core_build.py splices their participant setup only when the
         ; prepare form is present.
+        ;; D40: every raw-dispatched target is still its trap after every
+        ;; raw host file loaded (fnn-main checks again at every start).
+        (fnn-raw-dispatch-traps-intact)
         (setq *print-startup-banner* nil))
 (defttag nil)
 (value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))

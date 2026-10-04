@@ -88,3 +88,36 @@ section 4). There is no release switching, no versioned release directory, no
 refused at open by name (`open refused reason=store-format: reinstall from the
 release and import`).
 
+
+## Measurement kits and the source-world emitter
+
+Not gates and not claims; a number from one of these is quoted only with the
+image and revision it ran on.
+
+- `tools/native_source_world.py`: emit the current native logical world as
+  ordinary, resumable ACL2 source (the composition gate: `--world-book
+  books/image-world-dtn --cache-root CERTS --output build/... --source-revision
+  REV`, no `--defer-defthm`; the result must `ld` in one `proof_repl` session
+  to `FN_SOURCE_LOGICAL_WORLD_READY`). `native_source_runner.py` and
+  `native_source_cache.py` drive and cache it (CONTRIBUTING.md).
+- `tools/image_anatomy/` (`anatomy.sh IMAGE OUT SNAPSHOT...`, `derive.sh`,
+  `ia_node.py`, `ia_report.py`): every object of an image's core given an
+  owner and joined with a node's residency snapshots, and the probes behind
+  three ways to make the image smaller (lane image-anatomy, 2026-09-26).
+- `tools/runtime_floor/` (lane runtime-floor, 2026-09-27, `8ac70017a`; merged
+  by python-diet-4): `extract.lisp`, loaded into a DEVELOPER image's core
+  started without ACL2's loop (`rf-start.sh IMAGE FILE`), exports the
+  world's executable definitions (ACL2's own CLTL-COMMAND raw forms, macros
+  expanded) as a plain Common Lisp system; `build-sbcl.lisp` /
+  `save-plain-sbcl.lisp` save it with host/native unchanged in a bare SBCL
+  core, `build-ecl*.lisp` the same on ECL; `trace.lisp` + `replay*.lisp`
+  record the host-to-ACL2 calls of a run and replay them on each target;
+  `mapbreak.py` splits a node's RSS by mapping (runs on hbox beside
+  `tools/runtime_image/node_measure.py`). At `bc7958f87` it measured: the
+  production image 90 MiB RSS at start (70.5 clean core pages, 17 anon of
+  which 9.1 the 65,536-word TLS); the export 10,173 definitions, 0 undefined;
+  a bare-SBCL node 30 MiB at start with the identical served transcript and
+  store digests; 191,423 recorded calls identical on bare SBCL and ECL 26.5.5
+  (ECL 16-45x slower). Those numbers are that revision's; no current-image
+  run exists. It is the prototype for the D35 question (an extracted build
+  on plain SBCL), wave 3/4 tcb-shrink.

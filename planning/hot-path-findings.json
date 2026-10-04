@@ -273,10 +273,6 @@
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
       "packet": "PKT-448 (b)"
     },
-    "fn-ctl-msgid-withdrawn recursion N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (b)"
-    },
     "fn-ctl-row-event recursion N": {
       "class": "unexpected",
       "packet": "PKT-448 (b)"
@@ -643,11 +639,6 @@
       "class": "unexpected",
       "packet": "PKT-223"
     },
-    "fn-sf-record-listp recursion N": {
-      "class": "unexpected",
-      "confirmed": "section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
-      "packet": "PKT-448 (a)"
-    },
     "fn-sl-of len N": {
       "class": "cold",
       "note": "the model crash event (fn-sn-crash -> fn-sf-crash builds the post-crash image with fn-sf-make, which converts its lists to snoc-lists, books/snoc-list.lisp): reached only through fn-own-step's (:store (:crash ...)) arm, which no host line selects (every fn-owner-step call names its event); post-alloc-2 2026-09-27",
@@ -684,11 +675,6 @@
     },
     "fn-store-sn-article-count len N": {
       "class": "unexpected",
-      "packet": "PKT-448 (f)"
-    },
-    "fn-store-sn-finish len N": {
-      "class": "unexpected",
-      "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it",
       "packet": "PKT-448 (f)"
     },
     "fn-th-prefix-loop recursion N": {

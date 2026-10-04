@@ -33,8 +33,7 @@ IMAGE is the actual saved policy object, with final artifact hashes external."
                              (user-stobj-alist *the-live-state*))))
          (controller (cdr (assoc 'fn-page-file-open
                                  (user-stobj-alist *the-live-state*))))
-         (source (symbol-function
-                  (fnn-dispatch-function 'fn-recovery-profile-envelope)))
+         (source (fnn-raw-dispatch-callback 'fn-recovery-profile-envelope))
          (envelope (fnn-core 'fn-recovery-profile-envelope)))
     (unless buffer
       (error "runtime-profile-envelope-buffer-unavailable"))
@@ -65,7 +64,6 @@ IMAGE is the actual saved policy object, with final artifact hashes external."
                  (svref (fnn-runtime-profile-envelope-binding-buffer binding)
                         *fn-rpf-bytesi*))
              (eq (fnn-runtime-profile-envelope-binding-source binding)
-                 (symbol-function
-                   (fnn-dispatch-function 'fn-recovery-profile-envelope))))
+                 (fnn-raw-dispatch-callback 'fn-recovery-profile-envelope)))
         (values :profile-envelope-available binding)
       (values :profile-envelope-unavailable nil))))

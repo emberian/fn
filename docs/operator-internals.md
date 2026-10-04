@@ -1717,8 +1717,8 @@ running node at once.
 
 ### Renew the certificate without a restart: `tls reload`
 
-The owner reads `tls_cert` and `tls_key` at `run`. When a renewal (the
-Let's Encrypt hook, `tools/runbooks/public-node/acme/fn-cert-install.sh`)
+The owner reads `tls_cert` and `tls_key` at `run`. When a renewal (on the
+public node, dregg-infra's certificate-sync unit; `docs/nodes/fsn1.md`)
 has replaced the two files, ask the running node to take them:
 
 ```
@@ -2511,6 +2511,17 @@ refused (`BP refused reason=adu-beyond-profile` or
 than its rows or held octets fences with `held-beyond-profile`, and since
 `bp-node profile` opens the journal too, the remedy is to restore the
 profile file that was in force.
+
+The application journals beside a Store (the FNWF workflow, FNRJ receipt and
+carry journals) have a profile of their own: how many records each admits over
+its life and how many octets they total. Absent, it is 2^20 records and 2^40
+octets; raise it offline with `app-journal profile STORE JOURNAL
+workflow|receipt|carry MAX-RECORDS MAX-OCTETS` (each a 64-bit count, at least
+three records and three of the domain's widest records; never lowered). A
+journal full under its profile refuses the next intent (`ACL2 refused
+application journal admission`) and writes nothing; one opened under a profile
+smaller than what it holds is refused (`holds more than its profile admits`),
+and the remedy is to restore the `app-journal-profile` file that was in force.
 
 `uncertain` (exit 3) is not a soft failure. It means fn asked the operating
 system to make something durable and did not get an answer it can act on:

@@ -47,6 +47,12 @@
  :hints (("Goal" :in-theory (disable fn-od-fields fn-apr-livep fn-apr-naturals fn-prl-nth))))
 (verify-guards fn-owner-operation-report
  :hints (("Goal" :in-theory (disable fn-oor-report))))
+; `fn-od-len-append' is local to books/operation-diagnostics.lisp, so the
+; rendered line's length (prefix, fields, newline) needs it again here.
+(local
+ (defthm fn-oor-len-append
+  (equal (len (append x y)) (+ (len x) (len y)))
+  :hints (("Goal" :induct (append x y)))))
 (local
 (defthm fn-oor-fields-budget
  (implies (natp budget)

@@ -1227,6 +1227,35 @@ DUPLICATE_ALLOWED = {
 }
 
 
+def defstruct_accessors(form) -> list[str]:
+    """The slot accessors a raw `defstruct' defines.  They are definitions
+    like any `defun': batch AU's `(defstruct (fnn-log ...) path fd unit ...)'
+    defined fnn-log-unit, which a later `(defun fnn-log-unit ()' replaced.
+    `(:conc-name X)' sets the prefix (`(:conc-name nil)' or `(:conc-name)'
+    none); a docstring is not a slot."""
+    from tools.ledger import Sym
+
+    if len(form) < 2:
+        return []
+    spec = form[1]
+    name = spec[0] if isinstance(spec, list) and spec else spec
+    if not isinstance(name, Sym):
+        return []
+    prefix = str(name).lower() + "-"
+    for option in spec[1:] if isinstance(spec, list) else ():
+        if (isinstance(option, list) and option and isinstance(option[0], Sym)
+                and str(option[0]).lower() == ":conc-name"):
+            given = option[1] if len(option) > 1 else None
+            prefix = ("" if given is None or str(given).lower() == "nil"
+                      else str(given).lower())
+    accessors = []
+    for slot in form[2:]:
+        slot_name = slot[0] if isinstance(slot, list) and slot else slot
+        if isinstance(slot_name, Sym):
+            accessors.append(prefix + str(slot_name).lower())
+    return accessors
+
+
 def raw_definition_sites(form, line: int, relative: str, found: dict) -> None:
     """Every raw `defun'/`defmacro'/`defgeneric' in FORM, at any depth
     (a definition inside a `let' or `eval-when' replaces the name as well);
@@ -1239,6 +1268,10 @@ def raw_definition_sites(form, line: int, relative: str, found: dict) -> None:
     if head_ in DUPLICATE_DEFINERS and len(form) >= 2 and isinstance(form[1], str):
         found.setdefault(str(form[1]).lower(), []).append(
             "{}:{}".format(relative, line))
+    if head_ == "defstruct":
+        for accessor in defstruct_accessors(form):
+            found.setdefault(accessor, []).append("{}:{}".format(relative, line))
+        return
     for item in form[1:] if head_ in DUPLICATE_DEFINERS else form:
         raw_definition_sites(item, line, relative, found)
 
