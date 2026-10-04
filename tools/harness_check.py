@@ -1880,7 +1880,7 @@ def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
         # It extracts the closure of its *ROOTS* over the host's definitions
         # at load and refuses there, by name, a reached function it neither
         # extracts, stubs nor declares unreached (tests/native_owner_chunk_
-        # loop_raw.lisp).  The mention-based model below is not its
+        # loop_raw-mock.lisp).  The mention-based model below is not its
         # extraction: a derived stub for a function the closure extracts cut
         # the closure (batch AY: its *unreached* all went unreached).
         return None
@@ -1891,13 +1891,13 @@ def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
     mentioned = {m.lower() for source in sources.values()
                  for m in re.findall(r"\b(fnn-[A-Za-z0-9*+%-]+)", source)}
     # A fixture this harness loads may itself load a whole host file
-    # (tests/native_bp_session_bank_raw.lisp loads host/native/bp-session.lisp):
+    # (tests/native_bp_session_bank_raw-mock.lisp loads host/native/bp-session.lisp):
     # what that file defines is the real definition, provided, never stubbed
     # (a derived stub after the load redefined fnn-bp-session-observe to
     # signal and turned two harnesses red, facef3839).
     # `(load "host/x.lisp")', and the overridable default
     # `(load (or (sb-ext:posix-getenv "FN_WEB_REACTOR_SOURCE") "host/native/web-host.lisp"))'
-    # (tests/native_web_reactor_raw.lisp, which seven web harnesses load).
+    # (tests/native_web_reactor_raw-mock.lisp, which seven web harnesses load).
     loaded_hosts = {target for source in sources.values()
                     for target in HOST_LOAD.findall(source)}
     provided = {name for name, (_formals, origin) in origins.items() if origin in loaded_hosts}
