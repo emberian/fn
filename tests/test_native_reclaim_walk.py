@@ -30,12 +30,19 @@ import time
 import unittest
 from pathlib import Path
 
-from tests.native_harness import Client, EXIT, native_image, requires
+from tests.native_harness import Client, EXIT, Node, native_image, requires
 from tests import test_native_expiry as expiry
 
 GROUP, PAST = expiry.GROUP, expiry.PAST
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 CHUNK = 1024
+# The store's profile: the default developer profile's heap reservation does
+# not fund the pass's credit estimate (fn-orcp-estimate) over a 2,100-article
+# history -- the red-before run on 45e05c7f answered `deferred-credit`,
+# estimate=452968896 -- so the store is initialized with an explicit history
+# bound whose reservation does.
+PROFILE = ("--profile", "development", "--max-transactions", "16384",
+           "--max-history-octets", str(64 << 20))
 
 
 def tag(i: int) -> str:
@@ -65,9 +72,15 @@ def rss_kib(pid: int):
 class NativeReclaimWalkTests(unittest.TestCase):
     image = IMAGE
     setUp = expiry.ExpiryMixin.setUp
-    node = expiry.ExpiryMixin.node
     reclaim = expiry.ExpiryMixin.reclaim
     owner_lines = expiry.ExpiryMixin.owner_lines
+
+    def node(self, name="node"):
+        node = Node(self, self.image, root=self.root / name)
+        node.operator("init", *PROFILE, GROUP, expiry.KEEP, timeout=600, expect=EXIT.OK)
+        secret = node.store("node-secret", "create", timeout=600)
+        self.assertIn(secret.returncode, (EXIT.OK, EXIT.REFUSED), secret.stderr[-600:])
+        return node
 
     def group_line(self, client) -> bytes:
         return client.command("GROUP " + GROUP)
