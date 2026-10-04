@@ -13,7 +13,8 @@
  "notes": [
   "10-04 11:26 claimed: scope=['books/peer-round-driver.lisp', 'host/native/feed-service.lisp', 'tests/acl2/peer-round-driver-tests.lisp', 'tests/native_feed_credential_raw-mock.lisp', 'tests/native_feed_fair_round_raw.lisp', 'tests/test_native_feed_fair_round.py', 'planning/repair/items/rp-feed-reply-deadline.json'] test=python3 -m unittest tests.test_native_feed_fair_round tests.test_native_feed_credential",
   "10-04 11:26 claimed: scope=['books/peer-round-driver.lisp', 'host/native/feed-service.lisp', 'tests/acl2/peer-round-driver-tests.lisp', 'tests/native_feed_credential_raw-mock.lisp', 'tests/native_feed_fair_round_raw.lisp', 'tests/test_native_feed_fair_round.py', 'planning/repair/items/rp-feed-reply-deadline.json'] test=python3 -m unittest tests.test_native_feed_fair_round",
-  "10-04 11:27 claimed: scope=['books/peer-round-driver.lisp', 'host/native/feed-service.lisp', 'tests/acl2/peer-round-driver-tests.lisp', 'tests/native_feed_credential_raw-mock.lisp', 'tests/native_feed_fair_round_raw.lisp', 'tests/test_native_feed_fair_round.py', 'planning/repair/items/rp-feed-reply-deadline.json'] test=python3 -m unittest tests.test_native_feed_fair_round"
+  "10-04 11:27 claimed: scope=['books/peer-round-driver.lisp', 'host/native/feed-service.lisp', 'tests/acl2/peer-round-driver-tests.lisp', 'tests/native_feed_credential_raw-mock.lisp', 'tests/native_feed_fair_round_raw.lisp', 'tests/test_native_feed_fair_round.py', 'planning/repair/items/rp-feed-reply-deadline.json'] test=python3 -m unittest tests.test_native_feed_fair_round",
+  "10-04 11:54 READY 1e683fe6f (lane/read-peer); verify ok red@65389a90e green@head; laptop certify-20261004T153140Z-15375"
  ],
  "owner": "read-peer",
  "scenario": "Peer accepts TCP, takes CHECK <a> (or the TAKETHIS article) and never answers (a hung innd, a paused server, a NAT path that dropped state after the ACK). The link reads :wait forever; the in-flight entry stays :offered/:sent; every later article for that peer queues behind it until the node restarts. Same for a peer that never sends its greeting.",
@@ -32,7 +33,7 @@
  "test": "python3 -m unittest tests.test_native_feed_fair_round",
  "timeout": "300",
  "title": "Outbound feed waits for a peer's reply (and greeting) with no deadline: a hung or half-open peer holds its link and in-flight entry until restart",
- "updated": "2026-10-04T15:27:39Z",
+ "updated": "2026-10-04T15:54:23Z",
  "verify": {
   "base": "65389a90e601e0ce3c25aa951d4f4f40afe110f8",
   "base_observation": {

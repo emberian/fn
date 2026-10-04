@@ -1,3 +1,28 @@
+# Read-peer lane — Opus reader (2026-10-04)
+
+Tree `build/lanes/read-peer`, branch `lane/read-peer` (origin), from `origin/dev` 65389a90e. Pathway: a stranger's news server peering with us: ingress IHAVE/CHECK/TAKETHIS, the outbound feed, pull/catch-up, MODE STREAM, invitations, TCPCL. Findings list: `build/coordinator/lanedumps/read-peer.md`.
+
+## Landed on this branch
+| sha | defect | input that broke it | test before -> after |
+|---|---|---|---|
+| 1e683fe6f (+ c502c5301, 869bf4f34, 5e2910dda ledger/verify) | rp-feed-reply-deadline: the outbound feed waited for a reply or a greeting with no deadline (fn-prd-feed-action read DEADLINE only with PHASE/OUTPUT; the host cleared it at drain and after TCP up) | the peer takes `CHECK <a>`, or the dial, and never answers; the socket stays open | tests.test_native_feed_fair_round...test_peer_that_never_answers_is_dropped_at_the_reply_deadline: `repair.py verify` red at 65389a90e, green at head (evidence planning/evidence/repair/rp-feed-reply-deadline-7524cc45...json) |
+| c516bb761 | rp-feed-stop-outlives-remedy: a MODE STREAM stop was keyed by peer name and never cleared, so `peer set --streaming false` (the remedy the log line names), a new login or a new address did nothing until a restart | 502/480 to MODE STREAM, then `peer set NAME --streaming false` | ACL2: tests/acl2/feed-connection-tests (same record stopped, changed record dials). Native: tests.test_native_operator_walk...test_a_stopped_peer_is_fed_with_ihave_once_its_record_says_streaming_false, red-before/green-after OWED on an image |
+
+Certification (laptop, narrow `--recertify`): certify-20261004T153140Z-15375 (books/peer-round-driver, tests/acl2/peer-round-driver-tests); certify-20261004T154532Z-86811 (books/feed-connection, tests/acl2/feed-connection-tests). Both filed (evidence_manifests add). Not certified: the ~790 books above feed-connection (host/owner-host includes them), which is the integrator's umbrella run. host/owner-host.lisp loads with the fixture: tests/owner_feed_connection_host_check.py passes. host_check --read/--books/--interfaces green. Raw: test_native_feed_fair_round 6/6, feed_credential, peer_round_driver; feed service/actor/peer-octets raw scripts PASS.
+Shared files: host/owner-host.lisp, feed region only (fn-owner-feed-has-queued, fn-owner-feed-reply-chunk-synced, plus the new fn-owner-feed-stop-key).
+
+## Filed, not fixed (ledger, owner read-peer)
+- rp-feed-defer-drop (HIGH): three 431/436 answers drop an article for good (*fn-own-feed-retry-bound* 3; at the default 1000 ms backoff base that is 7 s of "not now").
+- rp-feed-dropped-holds-capacity (HIGH): :dropped entries stay in the queue and count against max-queue (default 1024). Once it is full, every POST (441) and transfer (436) for the groups fed to that peer is refused for good, across restarts.
+- rp-takethis-bad-msgid-desync (HIGH): TAKETHIS with an argument that fails fn's grammar gets 501 and no article mode, so the article's lines run as commands on the peer session. An inner `TAKETHIS <x>` line stores a forged article. Two copies must change together: fn-peer-command (peer-inbound) and fn-pgc-peer-command (peer-guard-carried).
+- rp-refused-memory-poison (MEDIUM, decision): the refused-offer memory is owner-wide and keyed by the OFFERED id, including :message-id-syntax. One peer's mismatched or garbage transfer makes every other peer's CHECK of that id draw 438 (final). Also reachable through pull.
+- rp-feed-reply-msgid (LOW): CHECK/TAKETHIS replies are not matched to the echoed Message-ID, so a stray reply retires the wrong entry.
+
+## Continuation
+1. Integrator: on the image of a batch carrying lane/read-peer, run tests.test_native_operator_walk (the new stop-remedy test plus the 502/501 neighbours) and tests.test_native_feed_temporary/feed_idle/friends_feed as the feed regression guard. File the run ids here.
+2. The three HIGH items need a peering/proofs slice. rp-feed-defer-drop and rp-feed-dropped-holds-capacity change books/peer-feed.lisp (fn-feed-observe, fn-feed-give-up), and peer-feed's fan-out is the whole tree. Do them together, statement-first.
+3. The scenarios lane (a84b445cf2df926af) has native modules for cases 1-7 in tests/test_native_peer_hostile_feed.py and test_native_peer_misbehaving.py on lane/scenarios. Cases 2/3/4/7 are expected red until the items above land.
+
 # Cold-line lane — Opus (2026-10-04)
 
 Tree `build/lanes/cold-line`, branch `lane/cold-line` (origin), from `origin/dev` d4e53323c, merged `origin/next` 898969368 (nntp-auth fix). Ledger: `sl-cold-line-quanta` (owner cold-line), proof-owed `CL-OWED-HDR-CURSOR-FRAME`, `CL-OWED-NEWNEWS-DEMAND`, `CL-PRE-PRODUCTIVE-READ-NEWNEWS`.
