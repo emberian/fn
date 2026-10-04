@@ -158,11 +158,15 @@
 ; else of it: for a session awaiting (KIND MSGID), the article event yields
 ; the submission (peer KIND MSGID octets), so an IHAVE transfer and a
 ; TAKETHIS of the same article reach the owner's one decision with the same
-; peer, Message-ID and octets.  -unfolds: the branch is the definition.
+; peer, Message-ID and octets.  -unfolds: the branch is the definition.  KIND
+; is a transfer that submits: a TAKETHIS whose argument was no Message-ID
+; (:takethis-refused, rp-takethis-bad-msgid-desync) submits nothing
+; (books/peer-inbound.lisp fn-peer-refused-takethis-submits-nothing).
 (defthm fn-peer-transfer-submission-differs-only-in-form-unfolds
   (implies (and (fn-peer-sessionp ps)
                 (fn-peer-session-peer ps)
                 (equal (fn-nntp-session-openp (fn-peer-reader-session ps)) t)
+                (member-equal kind '(:ihave :takethis))
                 (equal (fn-peer-session-transfer ps) (list kind msgid)))
            (equal (fn-post-result-submission
                    (fn-peer-step-pinned ps archive index verdicts config observation

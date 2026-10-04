@@ -28,3 +28,10 @@ class FeedFairRoundTests(unittest.TestCase):
 
     def test_reply_suffix_and_eof_wait_for_durable_output_then_preserve_fault(self):
         self.run_mode('reply')
+
+    def test_peer_that_never_answers_is_dropped_at_the_reply_deadline(self):
+        result = subprocess.run([shutil.which('sbcl') or 'sbcl', '--noinform', '--script',
+                                 'tests/native_feed_fair_round_raw.lisp', 'silent'],
+                                cwd=ROOT, capture_output=True, text=True, timeout=5)
+        self.assertTrue(result.returncode == 0 and 'FEED_FAIR_PASS silent' in result.stdout,
+                        'a peer that never answers must be dropped at the reply deadline')

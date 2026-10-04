@@ -1,22 +1,6 @@
 (load "tests/native_immutable_close_source.lisp")
 (in-package "ACL2")
 
-;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
-(define-condition harness-stub-reached (serious-condition)
-  ((name :initarg :name :reader harness-stub-reached-name)
-   (source :initarg :source :reader harness-stub-reached-source))
-  (:report (lambda (c s)
-             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
-                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
-(defun harness-stub-reached (name source)
-  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
-          name source)
-  (finish-output *error-output*)
-  (error 'harness-stub-reached :name name :source source))
-(defun fnn-fault (control &rest args)
-  (declare (ignorable control args))
-  (harness-stub-reached 'fnn-fault "host/native/io.lisp"))
-;;; ---- derived stubs: END ----
 (defun fnn-node-secret-ensure-directory (&rest args) (declare (ignore args)) "/root")
 (defun fnn-node-secret-path (&rest args) (declare (ignore args)) "/root/key")
 (defun fnn-node-secret-read-entry (&rest args) (declare (ignore args)) :current)
@@ -37,8 +21,11 @@
 (with-open-file (in "host/native/io.lisp")
  (loop for f = (read in nil :eof) until (eq f :eof) do
   (when (and (consp f) (eq (car f) 'defun) (eq (second f) 'fnn-node-secret-rotate)) (eval f))))
+;; Fence dominates: an uncertain close under the body's fault escalates the escape;
+;; the body's own condition is retained as its primary (body-primary-retained-p).
 (dolist (fault '(:close :write-close :body-close nil))
   (let ((*fnn-immutable-close-debts* nil) (*publication-failure* fault)
+        (*fnn-escape-cleanup-debts* (list nil))
         (*publication-calls* nil) (*published* nil) (caught nil) (epoch nil))
     (handler-case (setq epoch (fnn-node-secret-rotate (%make-fnn-store)))
       (error (e) (setq caught e)))
@@ -48,6 +35,7 @@
           (assert caught) (assert (not *published*))
           (assert (member :unlink *publication-calls*))
           (assert (eq (fnn-immutable-close-observation) :uncertain))
-          (when (eq fault :body-close) (assert (eq caught *body-primary*))))
+          (assert (typep caught 'fnn-store-indeterminate))
+          (when (eq fault :body-close) (assert (body-primary-retained-p))))
       (progn (assert (null caught)) (assert *published*) (assert (= epoch 2))))))
 (format t "native node secret staged return source PASS~%")

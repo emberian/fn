@@ -26,6 +26,10 @@
 (include-book "../books/tcpcl-delivery-invariants")
 (include-book "../books/resource-syncer")
 (include-book "../books/response-identity")
+; Lane m1-durable: the log kernel's acknowledgement (fn-lgc-finish-one) and
+; its keystone, that every acknowledged record is recovered at every cut of
+; the host's run of the active segment.
+(include-book "../books/store-log-durable")
 
 ; A private owner syncer ledger is installed only after the parent's real
 ; startup :hold.  This is thread resident/worker custody, not full resource
@@ -509,9 +513,15 @@
   :class :common-lisp-compliant
   :kinds ((c true-listp)))
 
+(definterface fn-lgu-take-verdict
+  :class :common-lisp-compliant
+  :keystones (fn-lgu-take-verdict-admits-exactly-log-records))
+
 (definterface fn-lgc-finish-one
   :class :common-lisp-compliant
-  :kinds ((c true-listp)))
+  :kinds ((c true-listp))
+  :keystones ((fn-lgu-host-kernel-acknowledges-only-recoverable-records
+               :step-of fn-lgc-host-run)))
 
 (definterface fn-lgc-frontier
   :class :common-lisp-compliant
@@ -2388,11 +2398,20 @@
   :keystones (fn-peer-tls-verification-sni-is-never-a-literal
               fn-peer-tls-verification-selects-one-check))
 
+(definterface fn-pinv-host-accept-step
+  :class ::program)
+
+(definterface fn-pinv-host-acceptance-source
+  :class ::program)
+
 (definterface fn-pinv-host-bindings-request-decode
   :class ::program
   :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-pinv-host-bindings-request-encode
+  :class ::program)
+
+(definterface fn-pinv-host-confirm-record-plan
   :class ::program)
 
 (definterface fn-pinv-host-confirm-request-decode
@@ -2402,10 +2421,16 @@
 (definterface fn-pinv-host-confirm-request-encode
   :class ::program)
 
+(definterface fn-pinv-host-confirm-step
+  :class ::program)
+
 (definterface fn-pinv-host-genesis-principal
   :class ::program)
 
 (definterface fn-pinv-host-invitation-source
+  :class ::program)
+
+(definterface fn-pinv-host-issue-plan
   :class ::program)
 
 (definterface fn-pinv-host-kind
@@ -3580,18 +3605,6 @@
 (definterface fn-heap-init-budget-note-line
   :class :common-lisp-compliant)
 
-(definterface fn-heap-init-decide
-  :class :common-lisp-compliant
-  :keystones (fn-heap-init-decide-sized-init-is-held
-              fn-heap-init-decide-refuses-the-operators-request-past-the-budget
-              fn-heap-init-decide-largest-takes-scale-when-it-fits
-              fn-heap-init-decide-honors-the-operators-request
-              fn-heap-init-decide-fits-the-budget-and-the-machine
-              fn-heap-init-decide-conservative-takes-the-top-rung-when-it-fits
-              fn-heap-init-decide-conservative-is-a-friend-rung
-              fn-heap-init-decide-conservative-holds-the-floor
-              fn-heap-init-budget-note-names-the-budget-init-sized-for))
-
 (definterface fn-pfd-init-decide
   :class :common-lisp-compliant
   :keystones (fn-pfd-init-reserves-the-default-launch))
@@ -4694,6 +4707,12 @@
 ; replay consumes the immutable render plan without repeating authority.
 ; PROGRAM owner installation and complete guard/refinement bridge are open.
 (definterface fn-owner-article-ready-plan-step :class :program)
+;; A preflight whose payload read did not come is answered 403 in its place.
+(definterface fn-owner-article-preflight-unavailable
+  :class :common-lisp-compliant
+  :keystones ((fn-asto-an-unavailable-preflight-is-answered-in-its-place
+               :via fn-asto-plan-unavailable)
+              (fn-orln-preflight-line-is-a-403 :via fn-orln-preflight-line)))
 (definterface fn-owner-unavailable-line-at :class :program)
 (definterface fn-store-sco-decode :class :program)
 (definterface fn-store-sco-decode-finish :class :program)
@@ -5306,7 +5325,18 @@
 (definterface fn-pwr-cold-descriptor :class :common-lisp-compliant)
 
 (definterface fn-owner-page-window-outcome :class :common-lisp-compliant
-  :kinds ((plan true-listp)))
+  :kinds ((plan true-listp))
+  :keystones ((fn-pwr-a-late-fault-is-a-fault-cancelled-or-not :via fn-pwr-outcome)
+              (fn-pwr-a-cancelled-job-never-publishes :via fn-pwr-outcome)))
+;; The verified-window cache (books/page-window-read.lisp fn-pwc-*).
+(definterface fn-owner-page-window-executor-cache :class :common-lisp-compliant
+  :kinds ((plan true-listp))
+  :keystones ((fn-pwc-cache-only-a-published-window :via fn-pwc-cache)
+              (fn-prw-cache-keeps-only-the-buffer :via fn-prw-cache)))
+(definterface fn-owner-page-window-cache-byte-at :class :common-lisp-compliant
+  :kinds ((plan true-listp))
+  :keystones ((fn-pwc-a-hit-is-the-published-window :via fn-pwc-byte-at)
+              (fn-pwc-hit-requires-a-cached-published-exact-window :via fn-pwc-byte-at)))
 
 (definterface fn-owner-page-window-executor-cancel :class :common-lisp-compliant)
 (definterface fn-owner-page-window-executor-settle-cancelled :class :common-lisp-compliant)
@@ -5429,6 +5459,9 @@
   :keystones (fn-prd-round-past-deadline-is-lost))
 (definterface fn-prd-round-deadline :class :common-lisp-compliant)
 (definterface fn-prd-flight-quantum :class :common-lisp-compliant)
+(definterface fn-prd-pause-ms :class :common-lisp-compliant
+  :keystones (fn-prd-pause-is-bounded fn-prd-pause-polls-while-a-round-runs
+              fn-prd-pause-never-sleeps-past-a-due-round))
 (definterface fn-prd-deadline :class :common-lisp-compliant)
 (definterface fn-prd-resume-at :class :common-lisp-compliant)
 (definterface fn-prd-read-limit :class :common-lisp-compliant)
@@ -5476,17 +5509,18 @@
 
 (definterface fn-web-host-private-reply-p :class ::program)
 (definterface fn-web-host-private-reply-step :class ::program)
-; Actual admitted pre-factory output consumer. ARTICLE is priced from the
-; row its factory serves (books/output-tariff-article-row.lisp); every other
-; family is (:unpriced F) and answered 403 by name in accounted mode.  The
-; reply-within-tariff bound over the exec arm is not yet a theorem (see
-; planning/design/tariff-2026-10-04.md, the first slice).
+; Actual admitted pre-factory output consumer. Every family a row of
+; books/output-tariff-families.lisp names is priced from what its factory
+; touches (ARTICLE, HEAD, BODY, STAT: the row it serves); every other family
+; is (:unpriced F) and answered 403 by name in accounted mode.  The
+; reply-within-tariff bound over the exec arm is not yet a theorem
+; (PGO-TARIFF-ARTICLE-REPLY-WITHIN-TARIFF, PRF-1316).
 (definterface fn-owner-output-preview :class :program)
 (definterface fn-owner-output-tariff-preview
   :class :program
-  :keystones ((fn-tariff-article-prices-the-served-row :via fn-tariff-article-number-charge)
-              (fn-tariff-article-prices-the-served-msgid :via fn-tariff-article-msgid-charge)
-              (fn-tariff-article-admits-exactly-within-capacity :via fn-tariff-article-descriptor)))
+  :keystones ((fn-tariff-family-preview-charges-before-effect :via fn-tariff-family-preview)
+              (fn-tariff-article-prices-the-served-row :via fn-tariff-article-number-charge)
+              (fn-tariff-article-prices-the-served-msgid :via fn-tariff-article-msgid-charge)))
 (definterface fn-owner-output-refusal-line-at
   :class :program
   :keystones ((fn-oadl-refusal-is-one-line :via fn-oadl-refusal-span)))
@@ -5661,10 +5695,7 @@
 (definterface fn-pfp-read-bound :class :common-lisp-compliant)
 (definterface fn-pfp-read :class :common-lisp-compliant)
 (definterface fn-pfp-default-octets :class :common-lisp-compliant
-  :keystones (fn-pfd-default-is-a-policy fn-pfd-default-decodes-to-itself
-              fn-pfd-default-spools-one-batch
-              fn-pfd-default-launches-where-its-extra-fits
-              fn-bs-init-log-complete-store-carries-the-peer-flight-profile))
+  :keystones (fn-pfd-default-decodes-to-itself))
 (definterface fn-pfp-refusal-line :class :common-lisp-compliant)
 (definterface fn-pfp-catch-up-observes-p :class :common-lisp-compliant)
 (definterface fn-pfp-catch-up-admission :class :common-lisp-compliant

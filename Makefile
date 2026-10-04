@@ -1860,6 +1860,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/hybrid-signature-tests \
 	books/hybrid-carrier \
 	tests/acl2/hybrid-carrier-tests \
+	books/article-kind \
+	books/article-kind-acceptance \
+	books/article-kind-hybrid \
+	tests/acl2/article-kind-tests \
 	books/hybrid-store-injected \
 	books/hybrid-store-invariants \
 	books/control-classify \
@@ -1998,6 +2002,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/legacy-header-query \
 	tests/acl2/legacy-header-query-tests \
 	tests/acl2/article-stream-server-tests \
+	books/article-stream-owner \
+	tests/acl2/article-stream-owner-tests \
 	tests/acl2/catalog-availability-tests \
 	tests/acl2/catalog-availability-owner-load-tests \
 	tests/acl2/catalog-availability-paged-tests \
@@ -2012,9 +2018,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/output-command-admission \
 	tests/acl2/output-command-admission-tests \
 	books/output-tariff-article \
-	tests/acl2/output-tariff-article-tests \
 	books/output-tariff-article-row \
 	tests/acl2/output-tariff-article-row-tests \
+	books/output-tariff-family \
+	books/output-tariff-families \
+	tests/acl2/output-tariff-family-tests \
 	books/output-admission-line \
 	tests/acl2/output-admission-line-tests \
 	books/string-line-fill \
@@ -2719,6 +2727,11 @@ check:
 # helper) and a scenario-catalog row cites it (KNOWN shrink-only).
 	@$(CHECK_STEP) $(PYTHON) tools/witness_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_witness_check
+# The scenario tiers (tests/scenarios/tiers.tsv; docs/testing.md "Scenario
+# tiers"): every listed module exists and drives an image, every question
+# code and opt-in is known, no tier is empty.  Mechanical; no image.
+	@$(CHECK_STEP) $(PYTHON) tools/scenario_suite.py check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_scenario_suite
 # specs/crash-model-v2.md section 2.3's transcription check for the native
 # host (the Python host and its transcribe_check retired, python-diet T5):
 # for each program tests/campaign/native_cuts.py names, the

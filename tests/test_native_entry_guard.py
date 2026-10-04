@@ -70,8 +70,13 @@ class NativeEntryGuardTests(unittest.TestCase):
             probe("arity", "fn-store-record-txid", "'(1 2) 3"),
             # a length where a length is meant, octets where octets are: admitted
             probe("octets", "fn-store-record-txid", "'(1 2 3)"),
-            # a handle in the second position of a two-kind entry
-            probe("second", "fn-owner-transit-decide", "'(54 54 97) 7 *the-live-state*"),
+            # a handle in the second position of a two-kind entry, with the
+            # trailing stobjs the host passes it (fnn-owner-action appends
+            # fn-arena, fn-cat and state: fnn-arena-then-state; the two
+            # stobjs are its formals since 3bf928dd4)
+            probe("second", "fn-owner-transit-decide",
+                  "'(54 54 97) 7 (fnn-live-stobj 'fn-arena) (fnn-live-stobj 'fn-cat) "
+                  "*the-live-state*"),
         ]
         argv, env = image_command(forms)
         result = subprocess.run(argv, env=env, cwd=ROOT, stdout=subprocess.PIPE,

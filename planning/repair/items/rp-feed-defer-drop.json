@@ -1,0 +1,18 @@
+{
+ "category": "bug",
+ "disposition": "SLICE",
+ "evidence": "books/peer-feed.lisp fn-feed-observe: (431 436) -> fn-feed-back-off, then (fn-feed-retry-exhaustedp g msgid) -> fn-feed-give-up :retry-bound. books/owner-feed.lisp *fn-own-feed-retry-bound* = 3. A :dropped entry is never re-offered automatically (fn-feed-give-up comment).",
+ "exposure": "live",
+ "file": "books/peer-feed.lisp",
+ "fix": "Statement-first: 431/436 back off (capped at *fn-feed-max-backoff*, 1 h) and never count toward the give-up bound; the retry bound keeps applying to losses (S053: an offer that keeps dropping the connection). Changes fn-feed-observe and its journal replay (feed-events :feed-retry), so peer-feed-invariants/feed-correspondence/owner-feed theorems rebuild; wants the proofs or the peering lane. Native witness: tests.test_native_feed_temporary with four 431s before 238.",
+ "id": "rp-feed-defer-drop",
+ "locus": "peer-services",
+ "notes": [],
+ "owner": "read-peer",
+ "scenario": "Friend's INN runs 'ctlinnd throttle' / 'pause' for maintenance, or its disk is slow, or (fn<->fn) the receiver is :busy/:staged/:disk-slow, which fn itself answers 431/436 (books/peer-inbound.lisp fn-peer-transit-code: 'the sender keeps the article'). The head entry gets 431 three times across base+2*base+4*base ms and is dropped :retry-bound; the next head entry repeats. A ten-minute throttle with a 5 s base drops ~17 articles for that peer permanently (operator re-feed only). specs/peering.md S9 expects 'fn backs off ... and resumes after ctlinnd go'; fn's own transit code promises senders keep the article on 436 (PKT-711), and fn's own sender does not.",
+ "severity": "high",
+ "source": "read-peer-2026-10-04",
+ "state": "open",
+ "title": "Outbound feed drops an article for good after three 431/436 'not now' answers: a peer that is throttled or slow for a minute loses articles",
+ "updated": "2026-10-04T15:30:12Z"
+}

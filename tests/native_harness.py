@@ -1190,17 +1190,54 @@ class Node:
         words = (["--profile", profile] if profile else []) + list(groups or ("fn.test",))
         return self.operator("init", *words, expect=expect, **options)
 
+    def deployed_heap(self, image, words, env=None):
+        """The installed launcher's figure for `IMAGE --fn WORDS' (packaging/fn
+        installed mode): the image's own `heap -- WORDS' probe, run in the
+        core's size plus 128 MiB, gives the heap and control stack, as
+        SBCL_USER_ARGS for the run.  A refusal fails the test with ACL2's
+        line: the deployed node would not start either."""
+        image = Path(image or self.image)
+        boot = (Path(str(image) + ".core").stat().st_size + 1048575) // 1048576 + 128
+        probe_env = dict(env or {})
+        probe_env["SBCL_USER_ARGS"] = "--dynamic-space-size {}".format(boot)
+        probe = run([image, "--fn", "heap", "--", *words],
+                    env=self.environment(probe_env), text=True)
+        figure = re.match(r"heap=(\d+) MB .* stack=(\d+) KB", probe.stdout.strip())
+        if figure is None:
+            self.case.fail("{}: the launcher's heap probe answered {!r} (exit {}): {}".format(
+                self.name, probe.stdout.strip(), probe.returncode, probe.stderr.strip()))
+        return {"SBCL_USER_ARGS": "--dynamic-space-size {} --control-stack-size {}KB".format(
+            figure.group(1), figure.group(2))}
+
+    def run_environment(self, image, words, env):
+        """A store carrying a peer flight profile starts at the deployed
+        launcher's figure: its owner revalidates that reservation against the
+        machine at startup (books/peer-flight-startup.lisp
+        fn-prstartup-peer-native-grant), which the image's saved 32000 MB is
+        not, under any test scope smaller than that."""
+        if self.launcher or not (self.store_path / "peer-flight-profile").exists():
+            return self.environment(env)
+        merged = dict(env or {})
+        merged.update(self.deployed_heap(image, words, env))
+        return self.environment(merged)
+
     def start(self, *, image=None, env=None, ready=b"LISTENING ", timeout=180, verb=("run",),
               limit=DEFAULT_LIMIT):
         """`operator CONFIG run`, drained (LIMIT octets kept per stream),
         returned once READY is on stdout."""
-        process = start(self.argv(image, ("operator", self.config, *verb)),
-                        cwd=ROOT, env=self.environment(env), limit=limit)
+        words = ("operator", self.config, *verb)
+        process = start(self.argv(image, words),
+                        cwd=ROOT, env=self.run_environment(image, words, env), limit=limit)
         self.processes.append(process)
         self.process = process
-        if ready and self.listening > 1:
+        # `run --once` serves its one connection on the plain listener: ACL2's
+        # run plan names no implicit-TLS port for it (books/native-operator.lisp
+        # fn-native-operator-result-run-implicit-tls-port), while the TLS
+        # context (STARTTLS) is installed either way.
+        listening = 1 if "--once" in verb else self.listening
+        if ready and listening > 1:
             # Several listeners announce in either order.
-            for _ in range(self.listening):
+            for _ in range(listening):
                 process.announcement(b"LISTENING", timeout=timeout)
         elif ready:
             line = process.announcement(ready, timeout=timeout)
@@ -1223,8 +1260,9 @@ class Node:
         """(the owner, None) once it announces LISTENING, or (the exited
         owner, its stderr) when it refuses to start: for a case whose
         subject is the refusal."""
-        process = start(self.argv(image, ("operator", self.config, "run")),
-                        cwd=ROOT, env=self.environment(env))
+        words = ("operator", self.config, "run")
+        process = start(self.argv(image, words),
+                        cwd=ROOT, env=self.run_environment(image, words, env))
         self.processes.append(process)
         self.process = process
         text, end = process.stdout.wait_for(_line_starting(b"LISTENING "), 0,
@@ -1274,6 +1312,38 @@ class Node:
 
     def log_on_failure(self, process=None):
         return node_log_on_failure(process or self.process)
+
+
+# The peer flight bank's profile (books/peer-flight-reservation.lisp,
+# host/native/owner.lisp fnn-peer-flight-profile): FNP1 then six big-endian
+# u64 -- heap, disk, flights, workers, spool per flight, metered work.  A
+# node without it refuses every catch-up round at its preamble
+# (reason=peer-flight-unfunded); the spool allowance holds the largest batch.
+PEER_FLIGHT_POLICY = (8 << 20, 512 << 20, 2, 1, 64 << 20, 1 << 50)
+
+
+def fund_peer_flights(node, policy=PEER_FLIGHT_POLICY):
+    (node.store_path / "peer-flight-profile").write_bytes(
+        b"FNP1" + b"".join(v.to_bytes(8, "big") for v in policy))
+
+
+def decided_launch(node, image=None):
+    """The environment of a run at the heap and control stack the installed
+    launcher (packaging/fn) decides for NODE's served run: its own probe,
+    `heap -- operator CONFIG run`, which reads the store profile, the peer
+    flight profile and this machine (a cgroup's MemoryMax included).  A run
+    at the image launcher's figure (32000 MB) on a smaller machine holds no
+    peer worker reservation (books/peer-flight-startup.lisp
+    fn-prstartup-peer-native-grant refuses its start), which an installed
+    node, launched at the probe's figure, never meets."""
+    probe = node.invoke("heap", "--", "operator", node.config, "run", image=image)
+    out = probe.stdout.decode("utf-8", "replace")
+    node.case.assertEqual(probe.returncode, 0, out + probe.stderr.decode("utf-8", "replace"))
+    heap = re.search(r"heap=(\d+) MB", out)
+    stack = re.search(r"stack=(\d+) KB", out)
+    node.case.assertTrue(heap and stack, out)
+    return {"SBCL_USER_ARGS": "--dynamic-space-size {}MB --control-stack-size {}KB".format(
+        heap.group(1), stack.group(1))}
 
 
 def _log_digest(log):

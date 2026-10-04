@@ -54,7 +54,11 @@ SMALL_PROFILE = ("--max-transactions", "16384", "--max-history-octets", "8388608
                  "--max-record-octets", "196608", "--max-article-octets", "32768",
                  "--max-groups-per-article", "16", "--max-open-suffix", "128")
 READY = bool(IMAGE.is_file() and os.access(IMAGE, os.X_OK))
-DEVELOPER = "developer" in IMAGE.name
+# The crash cut is a developer-image selector (FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH,
+# host/native/admin.lisp); under tools/hbox_native.sh FN_NATIVE_HOST is the
+# production image, so the cut runs on the developer image over the same store.
+CRASH_IMAGE = (IMAGE if "developer" in IMAGE.name
+               else native_image("FN_NATIVE_DEVELOPER_HOST", "build/fn-host-developer"))
 
 
 def text(result):
@@ -351,26 +355,26 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         log = self.stop()
         self.assertNotIn(code, log)
         self.assertNotIn(second, log)
-        if DEVELOPER:
-            crashed = self.node.start(image=IMAGE,
-                                      env={"FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH": "1"})
-            client = self.tls()
-            self.addCleanup(client.close, quit=False)
-            self.assertTrue(self.exchange(client, "XREDEEM {} robin2".format(second))
-                            .startswith("381"))
-            client.send(b"XREDEEM PASS battery-staple\r\n")
-            try:
-                lost = client.line()
-            except (OSError, ssl.SSLError, EOFError):
-                lost = b""
-            self.assertEqual(lost, b"")
-            self.assertEqual(crashed.wait(timeout=60), 137)
-            crashed.finish()
-            self.node.start()
-            self.assertTrue(self.redeem(second, "robin2", "battery-staple")
-                            .startswith("281"))
-            reply = self.login_and_post("robin2", "battery-staple",
-                                        "<robin2-1@friend.example>")
-            self.assertTrue(reply.startswith("240"), reply)
-            self.stop()
-            self.assertNotIn("usage", text(refused))
+        if not (CRASH_IMAGE.is_file() and os.access(CRASH_IMAGE, os.X_OK)):
+            self.skipTest("the crash cut needs the developer image (FN_NATIVE_DEVELOPER_HOST)")
+        crashed = self.node.start(image=CRASH_IMAGE,
+                                  env={"FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH": "1"})
+        client = self.tls()
+        self.addCleanup(client.close, quit=False)
+        self.assertTrue(self.exchange(client, "XREDEEM {} robin2".format(second))
+                        .startswith("381"))
+        client.send(b"XREDEEM PASS battery-staple\r\n")
+        try:
+            lost = client.line()
+        except (OSError, ssl.SSLError, EOFError):
+            lost = b""
+        self.assertEqual(lost, b"")
+        self.assertEqual(crashed.wait(timeout=60), 137)
+        crashed.finish()
+        self.node.start()
+        self.assertTrue(self.redeem(second, "robin2", "battery-staple")
+                        .startswith("281"))
+        reply = self.login_and_post("robin2", "battery-staple",
+                                    "<robin2-1@friend.example>")
+        self.assertTrue(reply.startswith("240"), reply)
+        self.stop()

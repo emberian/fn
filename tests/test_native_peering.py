@@ -791,8 +791,11 @@ class NativePeeringTests(unittest.TestCase):
         unavailable-peer (books/native-health.lisp
         fn-nh-deferring-peer-is-held)."""
         source = self.initialize("full-source")
-        full = self.initialize("full-target", "--profile", "default", "--max-transactions", "12",
-                               "fn.test")
+        # Development base: `--profile default' with T=12 is a store no
+        # launcher starts (its heap probe: machine-cannot-hold-profile, about
+        # 16 TB); only the bare image's 32000 MB ever ran it.
+        full = self.initialize("full-target", "--profile", "development",
+                               "--max-transactions", "12", "fn.test")
         port = full.port
         self.configure_peer(full, source, outbound="-")
         self.start(full)
@@ -983,7 +986,13 @@ class NativePeeringTests(unittest.TestCase):
         """
         source = self.initialize("productive-reader")
         message_id = "<productive-read@example.invalid>"
+        # `operator post' goes through the owner's control socket (a stopped
+        # node refuses it `no-owner', ops-fixes 99de13e07): post to a running
+        # owner, stop it, and start again, so the first read is still the
+        # recovered representation's.
+        self.start(source)
         self.post(source, message_id, ".productive-read")
+        source.stop()
         self.start(source)
         with Client(source.port, timeout=60, greeting=(b"200",)) as client:
             selected = client.command("GROUP fn.test")
@@ -1309,7 +1318,10 @@ class NativePeeringTests(unittest.TestCase):
         replies = self.inject(node, ids)
         self.assertEqual({r[:3] for r in replies}, {b"239"}, replies)
         over = node.operator("retire", "--drain", "86401", expect=EXIT_REFUSED)
-        self.assertIn(b"drain-seconds-over-bound", over.stdout + over.stderr)
+        # The refusal names ACL2's reason, books/native-retire.lisp fn-nret-plan's
+        # :drain-seconds-over-bound, printed as the keyword prints
+        # (lanedumps/retire.md: "uppercase DRAIN-SECONDS-OVER-BOUND text").
+        self.assertIn(b"(RETIRE DRAIN-SECONDS-OVER-BOUND)", over.stdout + over.stderr)
         self.assertIsNone(node.process.poll())
         node.operator("retire", "--drain", "soon", expect=EXIT_REFUSED)
         node.operator("retire", "now", expect=EXIT_USAGE)

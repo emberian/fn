@@ -2596,7 +2596,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-100",
-        "PRF-318"
+        "PRF-318",
+        "PRF-1260"
       ],
       "verification": [
         "proof",
@@ -4622,7 +4623,7 @@
     },
     {
       "id": "NNT-049",
-      "title": "An article refused for a reason its octets decide is remembered, within the operator's bound, and a later offer of its Message-ID from any peer is refused from the memory without a transfer",
+      "title": "An article refused for a reason its octets decide is remembered, within the operator's bound, and a later offer of its Message-ID from the same peer is refused from the memory without a transfer; no other peer's answer changes",
       "specification": "specs/peering.md#refused-offer-memory-nnt-049",
       "milestone": "M5",
       "status": "implemented",
@@ -5228,7 +5229,8 @@
       "proof_targets": [
         "PRF-325",
         "PRF-1314",
-        "PRF-1323"
+        "PRF-1323",
+        "PRF-1260"
       ],
       "verification": [
         "proof",

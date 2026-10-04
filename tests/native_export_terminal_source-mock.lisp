@@ -16,9 +16,6 @@
 (defun fnn-bridge-record-sequence (record)
   (declare (ignorable record))
   (harness-stub-reached 'fnn-bridge-record-sequence "host/native/io.lisp"))
-(defun fnn-fault (control &rest args)
-  (declare (ignorable control args))
-  (harness-stub-reached 'fnn-fault "host/native/io.lisp"))
 ;;; ---- derived stubs: END ----
 (defconstant +fnn-exit-ok+ 0)
 (defconstant +fnn-export-chunk+ 1024)
@@ -50,15 +47,20 @@
 (with-open-file (in "host/native/io.lisp")
  (loop for f = (read in nil :eof) until (eq f :eof) do
   (when (and (consp f) (eq (car f) 'defun) (eq (second f) 'fnn-command-store-export)) (eval f))))
+;; Fence dominates: an uncertain close under the body's fault escalates the escape;
+;; the body's own condition is retained as its primary (body-primary-retained-p).
 (dolist (fault '(:close :body-close :rename :barrier nil))
   (let ((*fnn-immutable-close-debts* nil) (*fnn-publication-close-debts* nil)
+        (*fnn-escape-cleanup-debts* (list nil))
         (*publication-failure* (and (member fault '(:close :body-close)) fault))
         (*export-failure* fault) (*publication-calls* nil) (*published* nil)
         (*export-store* (%make-fnn-store :root "/root")) (caught nil) (code nil))
     (handler-case (setq code (fnn-command-store-export "/root" "/export"))
       (error (e) (setq caught e)))
     (assert (= 1 (count '(:close 55) *publication-calls* :test #'equal)))
-    (cond ((eq fault :body-close) (assert (eq caught *body-primary*)))
+    (cond ((eq fault :body-close)
+           (assert (typep caught 'fnn-store-indeterminate))
+           (assert (body-primary-retained-p)))
           (fault (assert (typep caught 'fnn-store-indeterminate)))
           (t (assert (null caught)) (assert (= code 0))))
     (when (member fault '(:rename :barrier)) (assert *published*))

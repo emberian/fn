@@ -1,22 +1,6 @@
 (load "tests/native_rotation_cleanup_source-mock.lisp")
 (in-package "ACL2")
 
-;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
-(define-condition harness-stub-reached (serious-condition)
-  ((name :initarg :name :reader harness-stub-reached-name)
-   (source :initarg :source :reader harness-stub-reached-source))
-  (:report (lambda (c s)
-             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
-                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
-(defun harness-stub-reached (name source)
-  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
-          name source)
-  (finish-output *error-output*)
-  (error 'harness-stub-reached :name name :source source))
-(defun fnn-fault (control &rest args)
-  (declare (ignorable control args))
-  (harness-stub-reached 'fnn-fault "host/native/io.lisp"))
-;;; ---- derived stubs: END ----
 (defun true-listp (x) (if (consp x) (true-listp (cdr x)) (null x)))
 (defun len (x) (length x))
 (defun booleanp (x) (member x '(t nil)))
@@ -62,8 +46,15 @@
                (or (eq (car f) 'defvar)
                    (and (eq (car f) 'defun) (not (eq (second f) 'fnn-immutable-test-fault)))))
       (eval f))))
+;; A body that escapes while its descriptor close is uncertain: the fence
+;; dominates (fnn-escape-cleanup-failed, review M3d), so the escape is the
+;; uncertain outcome and the body's own condition is retained as its primary
+;; in the escape-cleanup debts, never dropped.
+(defun body-primary-retained-p ()
+  (some (lambda (debt) (eq (first debt) *body-primary*)) (car *fnn-escape-cleanup-debts*)))
 (dolist (fault '(:close :write-close :fsync-close :body-close :write nil))
   (let ((*fnn-immutable-close-debts* nil) (*publication-failure* fault)
+        (*fnn-escape-cleanup-debts* (list nil))
         (*published* nil) (*publication-calls* nil) (caught nil) (outcome nil))
     (handler-case
         (setq outcome (fnn-immutable-publish-effect (fn-jpub-initial t) "/stage" "/final" "/root" #(1)
@@ -72,8 +63,8 @@
     (assert (= 1 (count '(:close 55) *publication-calls* :test #'equal)))
     (cond ((member fault '(:close :write-close :fsync-close :body-close))
            (assert caught)
-           (if (eq fault :body-close) (assert (eq caught *body-primary*))
-             (assert (typep caught 'fnn-store-indeterminate)))
+           (assert (typep caught 'fnn-store-indeterminate))
+           (when (eq fault :body-close) (assert (body-primary-retained-p)))
            (assert (null *published*))
            (assert (eq (fnn-immutable-close-observation) :uncertain))
            (let ((debt (car *fnn-immutable-close-debts*)))
@@ -114,6 +105,7 @@
 (dolist (command '(fnn-write-staged fnn-write-staged-at))
   (dolist (fault '(:close :write-close :body-close nil))
     (let ((*fnn-immutable-close-debts* nil) (*publication-failure* fault)
+          (*fnn-escape-cleanup-debts* (list nil))
           (*publication-calls* nil) (store (%make-fnn-store)) (caught nil))
       (handler-case
           (if (eq command 'fnn-write-staged)
@@ -122,7 +114,9 @@
         (error (condition) (setq caught condition)))
       (assert (= 1 (count '(:close 55) *publication-calls* :test #'equal)))
       (if fault (assert caught) (assert (null caught)))
-      (when (eq fault :body-close) (assert (eq caught *body-primary*)))
+      (when (eq fault :body-close)
+        (assert (typep caught 'fnn-store-indeterminate))
+        (assert (body-primary-retained-p)))
       (when fault (assert (eq (fnn-immutable-close-observation) :uncertain)))
       (when (and (eq command 'fnn-write-staged-at) (member fault '(:write-close :body-close)))
         (assert (member :unlink *publication-calls*)))

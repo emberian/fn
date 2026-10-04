@@ -318,6 +318,9 @@
 (include-book "books/served-plan-line-buffer")
 (include-book "books/resource-syncer")
 (include-book "books/response-identity")
+;; The log kernel's acknowledgement keystone (books/store-log-durable), as
+;; in the default image, where it arrives through host/interfaces.lisp.
+(include-book "books/store-log-durable")
 ;; host/native/owner-control-turn.lisp (loaded for owner.lisp's control-turn
 ;; macro) names fn-ats-uncertain-internal, as in the default image's world.
 (include-book "books/allocation-turn-slots")

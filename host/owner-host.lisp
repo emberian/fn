@@ -285,7 +285,7 @@
 (include-book "../books/owner-cold-line")
 (include-book "../books/owner-resource-line")
 (include-book "../books/output-command-admission")
-(include-book "../books/output-tariff-article-row")
+(include-book "../books/output-tariff-families")
 (include-book "../books/output-admission-line")
 ; lane composed-owner-5 (PRF-941, row A6): the arena readers' generation
 ; pins (host/native/io.lisp fnn-arena-pins-step).
@@ -4494,6 +4494,18 @@
                     (fn-owner-install-ocfg after state) state)))
     (value (list word next))))))
 
+;; C3 / PRF-933 for a retrieval's preflight (books/article-stream-owner.lisp
+;; fn-asto-plan-unavailable; the line is books/owner-resource-line.lisp
+;; fn-orln-preflight-line): PLAN with its first preflight answered by the 403
+;; the dependency WORD names -- :unavailable past the deadline (SINCE NOW
+;; LIMIT, time-bars' clock), or a named pool refusal -- or NIL when PLAN has
+;; no preflight or WORD no line.  No owner state moves: the preflight never
+;; committed the reader's selection (fn-asto-finish never ran).
+(defun fn-owner-article-preflight-unavailable (plan word since now limit)
+  (declare (xargs :guard t))
+  (let ((line (fn-orln-preflight-line word since now limit)))
+    (and line (fn-asto-plan-unavailable plan line))))
+
 (defun fn-owner-chunk-span-evaluate (id start end sched fn-octets fn-arena fn-cat state)
  (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
  (let ((owner (fn-owner-core state)))
@@ -4999,6 +5011,13 @@
       (f-get-global 'fn-owner-feed-stopped state)
     nil))
 
+; The stop table's key for PEER (books/feed-connection.lisp fn-fc-stop-key):
+; the name and the peer record the owner's feed table holds for it now.
+(defun fn-owner-feed-stop-key (peer state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-fc-stop-key peer (fn-own-feed-entry-record
+                        (fn-own-feed-entry-of peer (fn-own-feeds (fn-owner-core state))))))
+
 (defun fn-owner-feed-has-queued (peer-octets state)
   (declare (xargs :stobjs state :mode :program
                   :guard (fn-cbor-octet-listp peer-octets)))
@@ -5006,13 +5025,14 @@
     (if (equal peer :bad)
         (value nil)
       ;; A peer the owner stopped (it refused MODE STREAM, books/
-      ;; feed-connection.lisp) is not dialled, whatever it has queued.
+      ;; feed-connection.lisp) is not dialled, whatever it has queued, until
+      ;; its peer record changes (fn-fc-stop-lifts-on-a-changed-record).
       (value (fn-fc-dial-allowedp
               (fn-feed-head-queued
                (fn-feed-queue
                 (fn-own-feed-find peer (fn-own-feeds
                                         (fn-owner-core state)))))
-              peer
+              (fn-owner-feed-stop-key peer state)
               (fn-owner-feed-stopped state))))))
 
 (defun fn-owner-feed-queue-length (peer-octets state)
@@ -5238,7 +5258,8 @@ existing port only after fn-fc has made this connection ready."
                  (stop (fn-fc-streaming-refusal-p input step))
                  (kind (if stop :streaming-refused
                          (fn-owner-feed-connection-result-kind step)))
-                 (stopped (fn-fc-stopped-put peer *fn-fc-stop-mode-stream-refused*
+                 (stopped (fn-fc-stopped-put (fn-owner-feed-stop-key peer state)
+                                             *fn-fc-stop-mode-stream-refused*
                                              (fn-owner-feed-stopped state)))
                  (state (if stop
                             (f-put-global 'fn-owner-feed-stopped stopped state)
@@ -5564,22 +5585,21 @@ existing port only after fn-fc has made this connection ready."
           (t (value (fn-ocap-preview wire start end fn-octets))))))
 
 ; The tariff producer the admission gate consumes (planning/design/tariff-
-; 2026-10-04.md Q3).  ARTICLE is priced from the row its factory serves
-; (books/output-tariff-article-row.lisp fn-tariff-article-preview: the
-; connection's reader session and pinned configuration, the catalog and the
-; arena, read-only); every other family stays (:unpriced F) and is refused by
-; name in accounted mode.  The ARTICLE figure is a cumulative-constructor
-; tariff of the exec reply plus the realized extent; the collector and the
-; native vectors are its named unaccounted part (output-tariff-article.lisp).
+; 2026-10-04.md Q3).  ACL2 prices every family a row of
+; books/output-tariff-families.lisp names, from the connection's reader
+; session and pinned configuration, the catalog and the arena, read-only
+; (fn-tariff-family-preview, generated); every other family stays
+; (:unpriced F) and is refused by name in accounted mode.  The figures are
+; cumulative-constructor tariffs of the exec reply plus the realized extent;
+; the collector and the native vectors are their named unaccounted part
+; (books/output-tariff-article.lisp).
 (defun fn-owner-output-tariff-preview (id preview fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
   (let* ((owner (fn-owner-core state))
          (conn (fn-own-find-conn id (fn-own-conns owner))))
-    ; The priced families: tools/cost_obligations.py reads this list for the
-    ; ratchet (priced / served families) in planning/cost-obligations.json.
-    (value (if (and conn (member-eq (fn-ocap-at 2 preview) '(:article)))
-               (fn-tariff-article-preview preview (fn-own-conn-live-session owner conn)
-                                          (fn-own-conn-config conn) fn-arena fn-cat)
+    (value (if conn
+               (fn-tariff-family-preview preview (fn-own-conn-live-session owner conn)
+                                         (fn-own-conn-config conn) fn-arena fn-cat)
              (fn-ocap-unpriced-tariff preview)))))
 
 ; The admission's refusal answered on the wire (books/output-admission-line.lisp):

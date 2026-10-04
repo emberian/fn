@@ -21,9 +21,6 @@
 (defun fnn-bridge-lookup (msgid)
   (declare (ignorable msgid))
   (harness-stub-reached 'fnn-bridge-lookup "host/native/io.lisp"))
-(defun fnn-fault (control &rest args)
-  (declare (ignorable control args))
-  (harness-stub-reached 'fnn-fault "host/native/io.lisp"))
 (defun fnn-make-octets (n)
   (declare (ignorable n))
   (harness-stub-reached 'fnn-make-octets "host/native/io.lisp"))
@@ -102,13 +99,22 @@
                       fnn-command-state-checkpoint fnn-command-retention fnn-command-compression
                       fnn-command-config fnn-command-inspect fnn-command-provenance)))))
     (eval f))))
+;; The escape arm of fnn-unwind-cleanups (cleanup-escalate, review M3d): the
+;; deployed fnn-escape-cleanup-failed and the ACL2 decisions it calls.  The
+;; primary (simple-error) and the close failure are both faults, so the primary
+;; stands; an outranking cleanup would reach the fnn-fault stub above and fail.
+(load "tests/unwind_cleanups_prelude.lisp")
+(in-package "ACL2")
 (dolist (entry '((fnn-command-rebind-filesystem "/root" nil) (fnn-command-store-digest "/root")
  (fnn-command-store-journal "/root") (fnn-command-state-checkpoint "/root")
  (fnn-command-retention "/root") (fnn-command-compression "/root") (fnn-command-config "/root")
  (fnn-command-inspect "/root" "id") (fnn-command-provenance "/root" "id")))
  (dolist (mode '(:body-and-close :close nil))
-  (let ((*body-failure* (eq mode :body-and-close)) (*close-failure* mode) (*closes* nil) (caught nil))
+  (let ((*body-failure* (eq mode :body-and-close)) (*close-failure* mode) (*closes* nil) (caught nil)
+        (*fnn-escape-cleanup-debts* (list nil)))
    (handler-case (apply (first entry) (rest entry)) (error (e) (setq caught e)))
    (assert (= (length *closes*) 1))
-   (assert (eq caught (case mode (:body-and-close *primary*) (:close *secondary*) (t nil)))))))
+   (assert (eq caught (case mode (:body-and-close *primary*) (:close *secondary*) (t nil))))
+   ;; The close failure under the escaping primary is recorded, not lost.
+   (assert (= (length (car *fnn-escape-cleanup-debts*)) (if (eq mode :body-and-close) 1 0))))))
 (format t "native nine command cleanup source PASS~%")
