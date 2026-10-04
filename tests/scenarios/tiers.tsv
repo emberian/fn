@@ -57,6 +57,7 @@ peer	env	FN_INN_SRC=/tank/fn/inn/2.7.4	INTEROP	tests.test_native_peer_pull's INN
 peer	env	FN_PULL_SOAK_SECONDS=600	PEER,MEM	tests.test_native_peer_pull's bounded soak (SCN-095): ten minutes of pulls from a node and a peer listing an unproducible id, a clean restart half-way, RSS sampled
 peer	env	FN_RUN_HYBRID_E2E=1	AUTH	the signed control cases of tests.test_native_control_filing
 peer	tool	python3 tools/inn_lab.py SHA --host hbox --native-image $IMAGES/fn-host	PEER,INTEROP,IDEM	real INN both ways: fn feeds innd, innfeed feeds fn, duplicates 435, loop refused, both killed and recovered
+peer	module	tests.test_native_peer_hostile_feed	PEER,IDEM,ARU,BND	replies a stranger gives fn's feed (431 four times, a stray 239, a swallowed CHECK, no greeting: ten minutes) and offers that must not poison or desynchronise (forged Message-ID, changed bytes, TAKETHIS with an ungrammatical id smuggling a second TAKETHIS); lane read-peer's cases
 peer	tool	python3 tools/hostile_campaign.py --image $IMAGES/fn-host-developer --families transit,pipelining,tls,connection --evidence $OUT --report $OUT/report.json	BND,PEER,AUTH	a misbehaving peer: garbage, resets, slowloris, IHAVE/TAKETHIS abuse; the node stays sound
 #
 # smoke: one short module per question, minutes at --jobs 4.
