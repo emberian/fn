@@ -479,6 +479,9 @@ class PageIOTests(unittest.TestCase):
         try:
             asked = base.operator("store", "compact", timeout=1200, expect=None)
             self.assertEqual(asked.returncode, EXIT.OK, asked.stdout + asked.stderr)
+            # "requested" starts the publication; a stop while it runs keeps
+            # the old checkpoint (without the image).  Stop once it is out.
+            self.wait_line(owner, rb"CHECKPOINT auto sequence=\d+ ")
         finally:
             base.stop(expect=None, grace=300)
         node = self.copy_of(base, "image")
