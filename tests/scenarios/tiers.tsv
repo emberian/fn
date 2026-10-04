@@ -54,6 +54,7 @@ peer	module	tests.test_native_tls_handshake_budget	BND,AUTH	per-source TLS hands
 peer	module	tests.test_native_host_lifecycle	BND,LAT	client and peer events (EMFILE, resets, adoption race) never stop the owner
 peer	module	tests.test_native_reader_clients	RDR,INTEROP	stock slrn and pan (docker) against a TLS owner
 peer	env	FN_INN_SRC=/tank/fn/inn/2.7.4	INTEROP	tests.test_native_peer_pull's INN cases: hbox's installed INN 2.7.4
+peer	env	FN_PULL_SOAK_SECONDS=600	PEER,MEM	tests.test_native_peer_pull's bounded soak (SCN-095): ten minutes of pulls from a node and a peer listing an unproducible id, a clean restart half-way, RSS sampled
 peer	env	FN_RUN_HYBRID_E2E=1	AUTH	the signed control cases of tests.test_native_control_filing
 peer	tool	python3 tools/inn_lab.py SHA --host hbox --native-image $IMAGES/fn-host	PEER,INTEROP,IDEM	real INN both ways: fn feeds innd, innfeed feeds fn, duplicates 435, loop refused, both killed and recovered
 peer	tool	python3 tools/hostile_campaign.py --image $IMAGES/fn-host-developer --families transit,pipelining,tls,connection --evidence $OUT --report $OUT/report.json	BND,PEER,AUTH	a misbehaving peer: garbage, resets, slowloris, IHAVE/TAKETHIS abuse; the node stays sound

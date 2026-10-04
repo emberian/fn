@@ -15,11 +15,17 @@
 ;   * so the answer the memory gives at offer time is the answer the parse
 ;     of the remembered transfer gives (`fn-prof-offer-answer-is-the-reparse').
 ;
-; The Message-ID is a transfer's; nothing here assumes two peers send the
-; same octets under one Message-ID.  If they do not (RFC 5536 section 3.1.3:
-; a Message-ID names one article), the memory refuses the second on the
-; first's refusal, which is the reject-history behaviour of INN; the
-; statement below says whose octets the reason is about.
+;   * the memory is per offering peer: a record for one peer changes no
+;     lookup of another's key (`fn-peer-refused-record-keeps-every-other-key')
+;     and so no other peer's offer decision
+;     (`fn-peer-refused-record-never-changes-another-peers-offer').
+;
+; Nothing here assumes two peers send the same octets under one Message-ID.
+; Until rp-refused-memory-poison (2026-10-04) the key was the Message-ID
+; alone, INN's reject-history behaviour: one peer's mismatched or garbage
+; transfer of <v> made every other peer's offer of <v> draw a final 438.
+; The key is now (peer . Message-ID), and the soundness statement names the
+; peer whose octets the remembered reason is about.
 ;
 ; This book owns the prefix `fn-prof-' (docs/prefixes.md).
 
@@ -93,27 +99,123 @@
 ; -----------------------------------------------------------------------------
 ; The memory, over the transfers it was built from
 
-; A transfer is (msgid . octets), as the owner holds it in flight.
+; -----------------------------------------------------------------------------
+; The memory is per peer (rp-refused-memory-poison)
+
+; No entry of XS is keyed K.
+(defun fn-prof-keylessp (k xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (and (not (and (consp (car xs)) (equal (car (car xs)) k)))
+           (fn-prof-keylessp k (cdr xs)))
+    t))
+
+(local (defthm fn-prof-lookup-of-append-keyless
+  (implies (fn-prof-keylessp k a)
+           (equal (fn-rof-lookup k (append a b)) (fn-rof-lookup k b)))
+  :hints (("Goal" :in-theory (enable fn-rof-lookup)))))
+
+(local (defthm fn-prof-keyless-of-first
+  (implies (fn-prof-keylessp k xs)
+           (fn-prof-keylessp k (fn-rof-first n xs)))
+  :hints (("Goal" :in-theory (enable fn-rof-first)))))
+
+(local (defthm fn-prof-keyless-of-record
+  (implies (and (fn-prof-keylessp k xs) (not (equal k key)))
+           (fn-prof-keylessp k (fn-rof-record xs cap key reason)))
+  :hints (("Goal" :in-theory (enable fn-rof-record)))))
+
+(local (defthm fn-prof-keyless-of-own-entries
+  (implies (not (and (consp k) (equal (car k) peer)))
+           (fn-prof-keylessp k (fn-peer-refused-of mem peer)))
+  :hints (("Goal" :in-theory (enable fn-peer-refused-of fn-peer-refused-ownp)))))
+
+(local (defthm fn-prof-lookup-of-others
+  (implies (not (and (consp k) (equal (car k) peer)))
+           (equal (fn-rof-lookup k (fn-peer-refused-others mem peer))
+                  (fn-rof-lookup k mem)))
+  :hints (("Goal" :in-theory (enable fn-peer-refused-others fn-peer-refused-ownp
+                                     fn-rof-lookup)))))
+
+; KEYSTONE (rp-refused-memory-poison).  A record made for PEER's transfer
+; changes no lookup of a key that is not PEER's: another peer's entries, and
+; a shed read's posture entry, answer exactly as before.
+(defthm fn-peer-refused-record-keeps-every-other-key
+  (implies (not (and (consp k) (equal (car k) peer)))
+           (equal (fn-rof-lookup k (fn-peer-refused-record mem cfg peer msgid octets))
+                  (fn-rof-lookup k mem)))
+  :hints (("Goal" :in-theory (e/d (fn-peer-refused-record fn-peer-refused-key)
+                                  (fn-peer-intrinsic-refusal fn-rof-record
+                                   fn-af-message-idp fn-record-octets-string)))))
+
+(local (defthm fn-prof-remembered-reason-of-another-peer
+  (implies (not (equal (fn-peer-session-peer session) peer))
+           (equal (fn-peer-remembered-reason
+                   m (fn-peer-with-refused
+                      session (fn-peer-refused-record mem cfg2 peer msgid octets)))
+                  (fn-peer-remembered-reason m (fn-peer-with-refused session mem))))
+  :hints (("Goal" :in-theory (e/d (fn-peer-remembered-reason fn-peer-with-refused
+                                   fn-peer-make-session fn-peer-session-refused
+                                   fn-peer-session-peer fn-peer-refused-key
+                                   fn-ag-car fn-ag-cdr)
+                                  (fn-peer-refused-record fn-record-octets-string))))))
+
+(local (defthm fn-prof-shed-of-another-peer
+  (equal (fn-peer-shed-p
+          (fn-peer-with-refused
+           session (fn-peer-refused-record mem cfg2 peer msgid octets)))
+         (fn-peer-shed-p (fn-peer-with-refused session mem)))
+  :hints (("Goal" :in-theory (e/d (fn-peer-shed-p fn-peer-with-refused
+                                   fn-peer-make-session fn-peer-session-refused
+                                   fn-ag-car fn-ag-cdr)
+                                  (fn-peer-refused-record))))))
+
+; KEYSTONE (the ruling: one peer's offer never changes the answer another
+; peer gets).  Whatever PEER transferred and however it was refused, the
+; offer decision on a session of any other peer is unchanged by the record --
+; for every Message-ID, held or not.
+(defthm fn-peer-refused-record-never-changes-another-peers-offer
+  (implies (not (equal (fn-peer-session-peer session) peer))
+           (equal (fn-peer-decide-offer
+                   node cfg q
+                   (fn-peer-with-refused session
+                                         (fn-peer-refused-record mem cfg2 peer msgid octets))
+                   m clock inflight)
+                  (fn-peer-decide-offer node cfg q (fn-peer-with-refused session mem)
+                                        m clock inflight)))
+  :hints (("Goal" :in-theory (e/d (fn-peer-decide-offer)
+                                  (fn-peer-remembered-reason fn-peer-shed-p
+                                   fn-peer-with-refused
+                                   fn-peer-refused-record fn-cfg-peer-find
+                                   fn-af-message-idp fn-peer-history-hasp
+                                   fn-peer-stagedp fn-retain-admissiblep
+                                   fn-record-octets-string)))))
+
+; A transfer is (peer msgid . octets), as the owner holds it in flight.
 (defun fn-prof-run (mem cfg transfers)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp transfers)
       (fn-prof-run (fn-peer-refused-record mem cfg (car (car transfers))
-                                           (cdr (car transfers)))
+                                           (car (cdr (car transfers)))
+                                           (cdr (cdr (car transfers))))
                    cfg (cdr transfers))
     mem))
 
-; The first transfer that drew reason R for the Message-ID string M.
-(defun fn-prof-witness (m r transfers)
+; The first transfer that drew reason R under the memory key K.
+(defun fn-prof-witness (k r transfers)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp transfers)
       (if (and (consp (car transfers))
-               (fn-af-message-idp (car (car transfers)))
-               (equal (fn-record-octets-string (car (car transfers))) m)
-               (equal (fn-peer-intrinsic-refusal (car (car transfers))
-                                                 (cdr (car transfers)))
+               (consp (cdr (car transfers)))
+               (fn-af-message-idp (car (cdr (car transfers))))
+               (equal (fn-peer-refused-key (car (car transfers))
+                                           (car (cdr (car transfers))))
+                      k)
+               (equal (fn-peer-intrinsic-refusal (car (cdr (car transfers)))
+                                                 (cdr (cdr (car transfers))))
                       r))
           (car transfers)
-        (fn-prof-witness m r (cdr transfers)))
+        (fn-prof-witness k r (cdr transfers)))
     nil))
 
 ; Every entry of MEM has a witness in TRANSFERS.
@@ -126,21 +228,21 @@
     t))
 
 (defthm fn-prof-witness-of-append
-  (implies (fn-prof-witness m r a)
-           (equal (fn-prof-witness m r (append a b))
-                  (fn-prof-witness m r a))))
+  (implies (fn-prof-witness k r a)
+           (equal (fn-prof-witness k r (append a b))
+                  (fn-prof-witness k r a))))
 
 (defthm fn-prof-soundp-of-append-right
   (implies (fn-prof-soundp mem ts)
            (fn-prof-soundp mem (append ts b))))
 
 (defthm fn-prof-witness-of-appended-transfer
-  (implies (and (consp e)
-                (fn-af-message-idp (car e))
-                (equal (fn-record-octets-string (car e)) m)
-                (equal (fn-peer-intrinsic-refusal (car e) (cdr e)) r))
-           (fn-prof-witness m r (append ts (list e))))
-  :hints (("Goal" :in-theory (disable fn-peer-intrinsic-refusal
+  (implies (and (consp e) (consp (cdr e))
+                (fn-af-message-idp (car (cdr e)))
+                (equal (fn-peer-refused-key (car e) (car (cdr e))) k)
+                (equal (fn-peer-intrinsic-refusal (car (cdr e)) (cdr (cdr e))) r))
+           (fn-prof-witness k r (append ts (list e))))
+  :hints (("Goal" :in-theory (disable fn-peer-intrinsic-refusal fn-peer-refused-key
                                       fn-af-message-idp fn-record-octets-string))))
 
 (defthm fn-prof-soundp-of-first
@@ -148,53 +250,52 @@
            (fn-prof-soundp (fn-rof-first n mem) ts))
   :hints (("Goal" :in-theory (enable fn-rof-first))))
 
+(local (defthm fn-prof-soundp-of-append
+  (equal (fn-prof-soundp (append a b) ts)
+         (and (fn-prof-soundp a ts) (fn-prof-soundp b ts)))))
+
+(local (defthm fn-prof-soundp-of-own-entries
+  (implies (fn-prof-soundp mem ts)
+           (fn-prof-soundp (fn-peer-refused-of mem peer) ts))
+  :hints (("Goal" :in-theory (e/d (fn-peer-refused-of) (fn-prof-witness))))))
+
+(local (defthm fn-prof-soundp-of-others
+  (implies (fn-prof-soundp mem ts)
+           (fn-prof-soundp (fn-peer-refused-others mem peer) ts))
+  :hints (("Goal" :in-theory (e/d (fn-peer-refused-others) (fn-prof-witness))))))
+
+(local (defthm fn-prof-soundp-of-record-entry
+  (implies (and (fn-prof-soundp mem ts) (fn-prof-witness k r ts))
+           (fn-prof-soundp (fn-rof-record mem cap k r) ts))
+  :hints (("Goal" :in-theory (e/d (fn-rof-record) (fn-prof-witness fn-rof-first))
+           :use ((:instance fn-prof-soundp-of-first (n cap)
+                            (mem (cons (cons k r) mem))))))))
+
 (defthm fn-prof-lookup-of-sound-has-a-witness
-  (implies (and (fn-prof-soundp mem ts) (fn-rof-lookup m mem))
-           (fn-prof-witness m (fn-rof-lookup m mem) ts)))
-
-(local (defthm fn-prof-refused-record-of-a-non-message-id
-  (implies (not (fn-af-message-idp msgid))
-           (equal (fn-peer-refused-record mem cfg msgid octets) mem))
-  :hints (("Goal" :in-theory (enable fn-peer-refused-record)))))
-
-(local (defthm fn-prof-message-idp-of-nil
-  (not (fn-af-message-idp nil))
-  :hints (("Goal" :in-theory (enable fn-af-message-idp)))))
+  (implies (and (fn-prof-soundp mem ts) (fn-rof-lookup k mem))
+           (fn-prof-witness k (fn-rof-lookup k mem) ts)))
 
 ; One record keeps the memory sound over the transfers so far and this one.
 (defthm fn-prof-record-keeps-soundness
   (implies (fn-prof-soundp mem ts)
-           (fn-prof-soundp (fn-peer-refused-record mem cfg (car e) (cdr e))
+           (fn-prof-soundp (fn-peer-refused-record mem cfg (car e) (car (cdr e)) (cdr (cdr e)))
                            (append ts (list e))))
   :hints (("Goal" :do-not-induct t
-           :cases ((consp e))
-           :in-theory (e/d (fn-peer-refused-record fn-rof-record)
-                           (fn-peer-intrinsic-refusal fn-rof-first fn-prof-soundp
-                            fn-prof-soundp-of-first fn-prof-witness
+           :in-theory (e/d (fn-peer-refused-record)
+                           (fn-peer-intrinsic-refusal fn-rof-record fn-prof-soundp
+                            fn-prof-witness fn-peer-refused-key
                             fn-af-message-idp fn-record-octets-string))
-           :expand ((fn-prof-soundp
-                     (cons (cons (fn-record-octets-string (car e))
-                                 (fn-peer-intrinsic-refusal (car e) (cdr e)))
-                           mem)
-                     (append ts (list e))))
-           :use ((:instance fn-prof-soundp-of-first
-                            (n (fn-rck-refused-capacity cfg))
-                            (mem (cons (cons (fn-record-octets-string (car e))
-                                             (fn-peer-intrinsic-refusal (car e)
-                                                                        (cdr e)))
-                                       mem))
-                            (ts (append ts (list e))))
+           :use ((:instance fn-prof-soundp-of-append-right (b (list e)))
                  (:instance fn-prof-witness-of-appended-transfer
-                            (m (fn-record-octets-string (car e)))
-                            (r (fn-peer-intrinsic-refusal (car e) (cdr e))))
-                 (:instance fn-prof-soundp-of-append-right
-                            (b (list e)))))))
+                            (k (fn-peer-refused-key (car e) (car (cdr e))))
+                            (r (fn-peer-intrinsic-refusal (car (cdr e)) (cdr (cdr e)))))))))
 
 (defun fn-prof-run-ind (mem cfg transfers done)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp transfers)
       (fn-prof-run-ind (fn-peer-refused-record mem cfg (car (car transfers))
-                                               (cdr (car transfers)))
+                                               (car (cdr (car transfers)))
+                                               (cdr (cdr (car transfers))))
                        cfg (cdr transfers)
                        (append done (list (car transfers))))
     (list mem done)))
@@ -213,33 +314,35 @@
                                            (e (car transfers)))))))
 
 (defthm fn-prof-witness-facts
-  (implies (fn-prof-witness m r ts)
-           (and (member-equal (fn-prof-witness m r ts) ts)
-                (fn-af-message-idp (car (fn-prof-witness m r ts)))
-                (equal (fn-record-octets-string (car (fn-prof-witness m r ts))) m)
-                (equal (fn-peer-intrinsic-refusal (car (fn-prof-witness m r ts))
-                                                  (cdr (fn-prof-witness m r ts)))
+  (implies (fn-prof-witness k r ts)
+           (and (member-equal (fn-prof-witness k r ts) ts)
+                (fn-af-message-idp (car (cdr (fn-prof-witness k r ts))))
+                (equal (fn-peer-refused-key (car (fn-prof-witness k r ts))
+                                            (car (cdr (fn-prof-witness k r ts))))
+                       k)
+                (equal (fn-peer-intrinsic-refusal (car (cdr (fn-prof-witness k r ts)))
+                                                  (cdr (cdr (fn-prof-witness k r ts))))
                        r)))
-  :hints (("Goal" :induct (fn-prof-witness m r ts)
+  :hints (("Goal" :induct (fn-prof-witness k r ts)
            :in-theory (disable fn-peer-intrinsic-refusal fn-af-message-idp
-                               fn-record-octets-string))))
+                               fn-peer-refused-key fn-record-octets-string))))
 
 ; KEYSTONE: a memory built from nothing by the owner's record step names, for
-; every Message-ID it holds, a transfer of that Message-ID whose octets drew
-; exactly the remembered refusal.
+; every key (PEER . Message-ID) it holds, a transfer BY THAT PEER of that
+; Message-ID whose octets drew exactly the remembered refusal.
 (defthm fn-prof-run-is-sound
-  (implies (fn-rof-lookup m (fn-prof-run nil cfg transfers))
-           (let ((w (fn-prof-witness m (fn-rof-lookup m (fn-prof-run nil cfg transfers))
+  (implies (fn-rof-lookup k (fn-prof-run nil cfg transfers))
+           (let ((w (fn-prof-witness k (fn-rof-lookup k (fn-prof-run nil cfg transfers))
                                      transfers)))
              (and (member-equal w transfers)
-                  (fn-af-message-idp (car w))
-                  (equal (fn-record-octets-string (car w)) m)
-                  (equal (fn-peer-intrinsic-refusal (car w) (cdr w))
-                         (fn-rof-lookup m (fn-prof-run nil cfg transfers))))))
+                  (fn-af-message-idp (car (cdr w)))
+                  (equal (fn-peer-refused-key (car w) (car (cdr w))) k)
+                  (equal (fn-peer-intrinsic-refusal (car (cdr w)) (cdr (cdr w)))
+                         (fn-rof-lookup k (fn-prof-run nil cfg transfers))))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-prof-run-sound-from (mem nil) (done nil))
                  (:instance fn-prof-witness-facts
-                            (r (fn-rof-lookup m (fn-prof-run nil cfg transfers)))
+                            (r (fn-rof-lookup k (fn-prof-run nil cfg transfers)))
                             (ts transfers))
                  (:instance fn-prof-lookup-of-sound-has-a-witness
                             (mem (fn-prof-run nil cfg transfers))
@@ -248,12 +351,13 @@
                                fn-prof-lookup-of-sound-has-a-witness
                                fn-prof-run fn-peer-intrinsic-refusal
                                fn-prof-witness fn-prof-soundp fn-rof-lookup
+                               fn-peer-refused-key
                                fn-af-message-idp fn-record-octets-string))))
 
 ; -----------------------------------------------------------------------------
 ; The offer answers the memory
 
-; The owner's memory, built from transfers, is keyed by Message-ID strings:
+; The owner's memory, built from transfers, is keyed (peer . Message-ID):
 ; it never holds the disk-slow posture's entry (books/peer-inbound.lisp
 ; fn-peer-shed-p), which a shed read adds for itself and takes out after it
 ; (books/owner-time-admission.lisp fn-otm-read-span, PKT-858).
@@ -265,8 +369,7 @@
 (defthm fn-prof-run-keeps-no-posture
   (implies (not (fn-rof-lookup :disk-slow mem))
            (not (fn-rof-lookup :disk-slow (fn-prof-run mem cfg transfers))))
-  :hints (("Goal" :in-theory (enable fn-prof-run fn-peer-refused-record fn-rof-record
-                                     fn-rof-lookup fn-record-octets-string))))
+  :hints (("Goal" :in-theory (e/d (fn-prof-run) (fn-peer-refused-record)))))
 
 (defthm fn-peer-decide-offer-answers-the-memory
   (let ((record (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg)))))
@@ -285,70 +388,74 @@
                                    fn-af-message-idp fn-peer-history-hasp
                                    fn-record-octets-string)))))
 
-; KEYSTONE (the brief's statement).  An offer on a session whose memory the
-; owner built from TRANSFERS, of a Message-ID the memory holds and the node
-; has not accepted, is refused for the reason the parse of a remembered
-; transfer of that Message-ID gives; and that transfer's own decision, on
-; this node, from this peer, is the same refusal whenever its octets fit the
-; peer's size.  The one re-parse the memory saves is equal to the answer.
+; KEYSTONE (the brief's statement, now per peer).  An offer on PEER's
+; session whose memory the owner built from TRANSFERS, of a Message-ID the
+; memory holds for PEER and the node has not accepted, is refused for the
+; reason the parse of a remembered transfer gives -- a transfer BY PEER of
+; that Message-ID; and that transfer's own decision, on this node, is the
+; same refusal whenever its octets fit the peer's size.
 (defthm fn-prof-offer-answer-is-the-reparse
   (let* ((record (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg))))
          (mem (fn-prof-run nil cfg0 transfers))
-         (m (fn-record-octets-string msgid))
-         (r (fn-rof-lookup m mem))
-         (w (fn-prof-witness m r transfers)))
+         (k (fn-peer-refused-key peer msgid))
+         (r (fn-rof-lookup k mem))
+         (w (fn-prof-witness k r transfers)))
     (implies (and record
                   (fn-cfg-peer-inbound record)
                   (fn-af-message-idp msgid)
-                  (not (fn-peer-history-hasp m node))
+                  (not (fn-peer-history-hasp (fn-record-octets-string msgid) node))
+                  (equal (fn-peer-session-peer session) peer)
                   (equal (fn-peer-session-refused session) mem)
                   r)
              (and (equal (fn-peer-decide-offer node cfg peer session msgid clock
                                                inflight)
                          (fn-peer-decision :refuse r))
                   (member-equal w transfers)
-                  (equal (fn-record-octets-string (car w)) m)
-                  (equal (fn-peer-intrinsic-refusal (car w) (cdr w)) r)
-                  (implies (<= (len (cdr w))
+                  (equal (car w) peer)
+                  (equal (fn-record-octets-string (car (cdr w)))
+                         (fn-record-octets-string msgid))
+                  (equal (fn-peer-intrinsic-refusal (car (cdr w)) (cdr (cdr w))) r)
+                  (implies (<= (len (cdr (cdr w)))
                                (fn-cfg-peer-inbound-max-octets record))
-                           (equal (fn-peer-decide-transfer node cfg peer (car w)
-                                                           (cdr w) clock2 id
+                           (equal (fn-peer-decide-transfer node cfg peer (car (cdr w))
+                                                           (cdr (cdr w)) clock2 id
                                                            subject)
                                   (fn-peer-decision :refuse r))))))
   :hints (("Goal" :use ((:instance fn-prof-run-is-sound
-                                   (m (fn-record-octets-string msgid))
+                                   (k (fn-peer-refused-key peer msgid))
                                    (cfg cfg0))
                         (:instance fn-prof-witness-facts
-                                   (m (fn-record-octets-string msgid))
-                                   (r (fn-rof-lookup (fn-record-octets-string msgid)
+                                   (k (fn-peer-refused-key peer msgid))
+                                   (r (fn-rof-lookup (fn-peer-refused-key peer msgid)
                                                      (fn-prof-run nil cfg0 transfers)))
                                    (ts transfers))
                         (:instance fn-peer-intrinsic-refusal-is-an-intrinsic-reason
-                                   (msgid (car (fn-prof-witness
-                                                (fn-record-octets-string msgid)
-                                                (fn-rof-lookup (fn-record-octets-string msgid)
-                                                               (fn-prof-run nil cfg0 transfers))
-                                                transfers)))
-                                   (octets (cdr (fn-prof-witness
-                                                 (fn-record-octets-string msgid)
-                                                 (fn-rof-lookup (fn-record-octets-string msgid)
-                                                                (fn-prof-run nil cfg0 transfers))
-                                                 transfers))))
+                                   (msgid (car (cdr (fn-prof-witness
+                                                     (fn-peer-refused-key peer msgid)
+                                                     (fn-rof-lookup (fn-peer-refused-key peer msgid)
+                                                                    (fn-prof-run nil cfg0 transfers))
+                                                     transfers))))
+                                   (octets (cdr (cdr (fn-prof-witness
+                                                      (fn-peer-refused-key peer msgid)
+                                                      (fn-rof-lookup (fn-peer-refused-key peer msgid)
+                                                                     (fn-prof-run nil cfg0 transfers))
+                                                      transfers)))))
                         (:instance fn-peer-decide-offer-answers-the-memory)
                         (:instance fn-prof-run-keeps-no-posture (mem nil) (cfg cfg0))
                         (:instance fn-peer-decide-transfer-refuses-what-the-octets-refuse
                                    (clock clock2)
-                                   (msgid (car (fn-prof-witness
-                                                (fn-record-octets-string msgid)
-                                                (fn-rof-lookup (fn-record-octets-string msgid)
-                                                               (fn-prof-run nil cfg0 transfers))
-                                                transfers)))
-                                   (octets (cdr (fn-prof-witness
-                                                 (fn-record-octets-string msgid)
-                                                 (fn-rof-lookup (fn-record-octets-string msgid)
-                                                                (fn-prof-run nil cfg0 transfers))
-                                                 transfers)))))
-           :in-theory (e/d (fn-peer-remembered-reason fn-peer-shed-p)
+                                   (msgid (car (cdr (fn-prof-witness
+                                                     (fn-peer-refused-key peer msgid)
+                                                     (fn-rof-lookup (fn-peer-refused-key peer msgid)
+                                                                    (fn-prof-run nil cfg0 transfers))
+                                                     transfers))))
+                                   (octets (cdr (cdr (fn-prof-witness
+                                                      (fn-peer-refused-key peer msgid)
+                                                      (fn-rof-lookup (fn-peer-refused-key peer msgid)
+                                                                     (fn-prof-run nil cfg0 transfers))
+                                                      transfers))))))
+           :in-theory (e/d (fn-peer-remembered-reason fn-peer-shed-p fn-peer-refused-key
+                            fn-peer-session-peer)
                            (fn-prof-run-keeps-no-posture fn-prof-run-is-sound fn-prof-witness-facts
                             fn-peer-decide-offer-answers-the-memory
                             fn-peer-decide-transfer-refuses-what-the-octets-refuse

@@ -2,8 +2,8 @@
 ;;; actual refusal-word classifier and limited span retry. Wire preview,
 ;;; typed bank and the owner's connection table are recording boundaries.
 ;;; Positive tariff is injected ONLY to discriminate prefix consumption; the
-;;; ARTICLE producer's catalog read is the ACL2 fixture's
-;;; (tests/owner_output_preview_fixture.lisp), not this harness's.
+;;; family producer's catalog read is the ACL2 fixture's
+;;; (tests/acl2/output-tariff-family-tests.lisp), not this harness's.
 (load "tests/native_output_response_lease_raw-mock.lisp")
 (in-package "ACL2")
 
@@ -64,6 +64,9 @@
 (defun fnn-mux-queue (loop conn octets op after &optional end)
   (declare (ignorable loop conn octets op after end))
   (harness-stub-reached 'fnn-mux-queue "host/native/mux.lisp"))
+(defun fnn-mux-read-class (loop conn)
+  (declare (ignorable loop conn))
+  (harness-stub-reached 'fnn-mux-read-class "host/native/mux.lisp"))
 (defun fnn-mux-start (service)
   (declare (ignorable service))
   (harness-stub-reached 'fnn-mux-start "host/native/mux.lisp"))
@@ -152,9 +155,6 @@
 (defun fnn-owner-peer-flight-startup (service capture)
   (declare (ignorable service capture))
   (harness-stub-reached 'fnn-owner-peer-flight-startup "host/native/owner.lisp"))
-(defun fnn-owner-peer-read-class (service)
-  (declare (ignorable service))
-  (harness-stub-reached 'fnn-owner-peer-read-class "host/native/owner.lisp"))
 (defun fnn-owner-reader-capture (event)
   (declare (ignorable event))
   (harness-stub-reached 'fnn-owner-reader-capture "host/native/owner.lisp"))

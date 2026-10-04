@@ -1,0 +1,18 @@
+{
+ "category": "bug",
+ "disposition": "SLICE",
+ "evidence": "books/owner-feed.lisp fn-own-feed-parse-response reads only the code; the subject is fn-own-feed-inflight-msgid. RFC 4644 sections 2.4/2.5 require the reply to echo the Message-ID.",
+ "exposure": "live",
+ "file": "books/owner-feed.lisp",
+ "fix": "For CHECK/TAKETHIS (streaming form) parse the echoed Message-ID and treat a mismatch as a protocol loss (fn-feed-lost: requeue, reconnect re-offers by CHECK); IHAVE replies carry none and keep today's rule.",
+ "id": "rp-feed-reply-msgid",
+ "locus": "peer-services",
+ "notes": [],
+ "owner": "read-peer",
+ "scenario": "A peer (bug, or a duplicated reply line) sends a second '239 <a>' after fn has already offered 'CHECK <b>': the stray 239 retires <b> as accepted though <b> was never transferred; for that peer <b> is lost.",
+ "severity": "low",
+ "source": "read-peer-2026-10-04",
+ "state": "open",
+ "title": "Outbound feed resolves a CHECK/TAKETHIS reply against the in-flight entry without reading the echoed Message-ID",
+ "updated": "2026-10-04T15:30:12Z"
+}

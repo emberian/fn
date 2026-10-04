@@ -48,13 +48,14 @@ class TicketingTlsPeer(peer.ScriptedTransitPeer):
     """
 
     def __init__(self, certificate, key, greeting_delay=0.0,
-                 close_after_tickets=False):
+                 close_after_tickets=False, takethis_delay=0.0):
         self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self.context.minimum_version = ssl.TLSVersion.TLSv1_3
         self.context.load_cert_chain(str(certificate), str(key))
         self.context.num_tickets = 2
         self.greeting_delay = greeting_delay
         self.close_after_tickets = close_after_tickets
+        self.takethis_delay = takethis_delay
         self.connected_at = []
         self.handshakes = 0
         super().__init__("203 streaming permitted")
@@ -100,7 +101,13 @@ class TicketingTlsPeer(peer.ScriptedTransitPeer):
                     article = self.read_article(stream)
                     with self.lock:
                         self.articles[words[1]] = ("TAKETHIS", article)
-                    stream.write(b"239 " + words[1].encode("ascii") + b"\r\n")
+                    with self.lock:
+                        delay, self.takethis_delay = self.takethis_delay, 0.0
+                    time.sleep(delay)
+                    try:
+                        stream.write(b"239 " + words[1].encode("ascii") + b"\r\n")
+                    except (ssl.SSLError, OSError):
+                        return
                 elif verb == "IHAVE":
                     stream.write(b"335 send it\r\n")
                     article = self.read_article(stream)
@@ -237,6 +244,30 @@ class NativeFeedTlsReadTests(unittest.TestCase):
         self.assertIsNotNone(got, self.stderr_text(source)[-4000:])
         print("NATIVE-FEED-TLS-READ-WITNESS " + json.dumps({
             "kind": "feed-pause-resume", "held_delivered_after_resume": True,
+            "connections": len(scripted.connected_at)}, sort_keys=True), flush=True)
+
+    def test_a_feed_paused_while_an_offer_is_unanswered_delivers_after_resume(self):
+        """The pause closes the link with the first article's reply still
+        owed.  ACL2 must be told the connection was lost, so that the
+        article returns to the queue and a resumed link offers again; with
+        no loss recorded the feed port keeps the dead connection's in-flight
+        offer and nothing is ever sent (SCEN-FEED-RESUME)."""
+        scripted, certificate = self.scripted("unanswered", takethis_delay=4.0)
+        source = self.plain_source("unanswered-source")
+        self.configure_tls_peer(source, "unanswered", scripted.port, certificate)
+        self.start_plain(source)
+        first = "<unanswered-first@example.invalid>"
+        self.post(source, first, "unanswered-first")
+        self.assertIsNotNone(scripted.await_article(first, timeout=30))
+        source.operator("peer", "feed", "unanswered", "pause", expect=EXIT_OK)
+        held = "<unanswered-held@example.invalid>"
+        self.post(source, held, "unanswered-held")
+        source.operator("peer", "feed", "unanswered", "resume", expect=EXIT_OK)
+        got = scripted.await_article(held, timeout=30)
+        self.assertIsNotNone(got, self.stderr_text(source)[-4000:])
+        print("NATIVE-FEED-TLS-READ-WITNESS " + json.dumps({
+            "kind": "feed-pause-with-unanswered-offer",
+            "held_delivered_after_resume": True,
             "connections": len(scripted.connected_at)}, sort_keys=True), flush=True)
 
     def initialize_implicit(self, name, login, password):

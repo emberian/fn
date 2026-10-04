@@ -35,6 +35,12 @@
 (assert-event (equal (fn-prd-feed-action nil nil t t 11 nil) :reply))
 (assert-event (equal (fn-prd-feed-action nil nil nil t 11 nil) :offer))
 (assert-event (equal (fn-prd-feed-action nil nil nil nil 11 nil) :read))
+;; The reply wait: past it the link is lost; a retained reply drains first.
+(assert-event (equal (fn-prd-feed-action nil nil nil t 11 10) :timeout))
+(assert-event (equal (fn-prd-feed-action nil nil nil nil 10 10) :timeout))
+(assert-event (equal (fn-prd-feed-action nil nil t t 11 10) :reply))
+(assert-event (equal (fn-prd-feed-action nil nil nil t 9 10) :offer))
+(assert-event (equal (fn-prd-feed-action nil nil nil nil 9 10) :read))
 (assert-event (equal (fn-prd-write-quantum-end 65500 100000 65536) 100000))
 (assert-event (equal (fn-prd-write-end 512 (fn-prd-write-quantum-end 0 2000 600)) 600))
 
