@@ -37,8 +37,11 @@
 (with-open-file (in "host/native/io.lisp")
  (loop for f = (read in nil :eof) until (eq f :eof) do
   (when (and (consp f) (eq (car f) 'defun) (eq (second f) 'fnn-node-secret-rotate)) (eval f))))
+;; Fence dominates: an uncertain close under the body's fault escalates the escape;
+;; the body's own condition is retained as its primary (body-primary-retained-p).
 (dolist (fault '(:close :write-close :body-close nil))
   (let ((*fnn-immutable-close-debts* nil) (*publication-failure* fault)
+        (*fnn-escape-cleanup-debts* (list nil))
         (*publication-calls* nil) (*published* nil) (caught nil) (epoch nil))
     (handler-case (setq epoch (fnn-node-secret-rotate (%make-fnn-store)))
       (error (e) (setq caught e)))
@@ -48,6 +51,7 @@
           (assert caught) (assert (not *published*))
           (assert (member :unlink *publication-calls*))
           (assert (eq (fnn-immutable-close-observation) :uncertain))
-          (when (eq fault :body-close) (assert (eq caught *body-primary*))))
+          (assert (typep caught 'fnn-store-indeterminate))
+          (when (eq fault :body-close) (assert (body-primary-retained-p))))
       (progn (assert (null caught)) (assert *published*) (assert (= epoch 2))))))
 (format t "native node secret staged return source PASS~%")
