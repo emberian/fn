@@ -4311,8 +4311,7 @@
         "fn-pcb-budget-after-extension",
         "fn-pcb-present-carrier-not-accepted-has-a-class",
         "fn-pcb-refused-carrier-is-never-signature-failed",
-        "fn-pcb-absent-carrier-has-no-class",
-        "fn-pcb-carried-event-keeps-budget-schedule-admitted"
+        "fn-pcb-absent-carrier-has-no-class"
       ]
     },
     {
@@ -12084,7 +12083,7 @@
         "PRF-1307"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "files": [
         "books/peer-catchup-spool.lisp",
         "books/peer-catchup-spool-framer.lisp",
@@ -12115,7 +12114,7 @@
         "PRF-125"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/peer-pull-auth.lisp",
         "books/peer-pull.lisp",
@@ -14074,7 +14073,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-feed.lisp",
         "books/feed-restart-domain.lisp",
@@ -21850,7 +21849,7 @@
         "PRF-1209"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/host-model-machine.lisp",
         "books/host-model.lisp",
@@ -22070,8 +22069,7 @@
       ],
       "progress_note": "Source implemented in codex-sol-transport-rounds; ACL2 admission/guard certification and matching-image SCN-1090 are pending Integration. Stable-sweep visit property does not bound the whole host scheduling turn: current worker maps active flights and re-filters each remaining suffix, giving peer-dependent work/allocation (quadratic over a stable sweep). Retained scheduler cursor/cost refinement and context tariff remain owed; the 512-octet bound applies to each read/write attempt only.",
       "events": [
-        "fn-prd-sweep-visits-all-admitted-rounds",
-        "fn-prd-round-past-deadline-is-lost"
+        "fn-prd-sweep-visits-all-admitted-rounds"
       ]
     },
     {
@@ -23269,7 +23267,7 @@
         "PRF-1211"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "files": [
         "books/peer-flight-reservation.lisp",
         "tests/acl2/peer-flight-reservation-tests.lisp",
@@ -23374,7 +23372,7 @@
         "PRF-1229"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "events": [
         "fn-qplan-cw-drain-is-a-prefix",
         "fn-lst-active-command-is-av-list-active",
@@ -23403,7 +23401,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/reclaim-chunked-walk.lisp",
         "tests/acl2/reclaim-chunked-walk-tests.lisp (the owner fixture store rewritten under the expiring context: two chunkings, one with an empty chunk, finish to the whole capture; teeth: chunks reordered or one dropped is not the capture; pass 2 with the handle not carried into the second chunk is not the checkpoint capture; the final handle is the sealed-payload count, positive)",
@@ -23436,7 +23434,7 @@
         "PRF-942"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/store-init-log-publication.lisp",
         "tests/acl2/store-init-log-publication-tests.lisp",

@@ -42,10 +42,21 @@
     (fn-nntp-archive-command-pinned
      ns (fn-served-conn-archive conn) (fn-served-conn-pinned-index conn)
      (fn-served-conn-verdicts conn)
-     (fn-post-reader-env (fn-auth-moderation-config (fn-served-conn-session conn)
-                                                    (fn-served-conn-config conn))
-                         (fn-served-conn-observation conn))
+     ; the environment the served dispatch passes: DATE and NEWGROUPS read
+     ; the owner's fresh injection clock (books/nntp-post.lisp
+     ; fn-post-command-env), every other command the reader observation
+     (fn-post-command-env (fn-auth-moderation-config (fn-served-conn-session conn)
+                                                     (fn-served-conn-config conn))
+                          (fn-served-conn-observation conn)
+                          (fn-served-conn-injection conn)
+                          (list :command line))
      (car tokens) (cdr tokens) fn-arena)))
+
+; The wire frame keeps the injection clock the reply's environment reads.
+(defthm fn-octl-injection-of-with-wire
+  (equal (fn-served-conn-injection (fn-ovr-with-wire conn w))
+         (fn-served-conn-injection conn))
+  :hints (("Goal" :in-theory (enable fn-ovr-with-wire))))
 
 (defthm fn-octl-reply-of-with-wire
   (equal (fn-octl-reply (fn-ovr-with-wire conn w) line fn-arena)
@@ -806,7 +817,7 @@
                   (verdicts (fn-served-conn-verdicts
                              (fn-octl-served-conn
                               o (fn-own-find-conn id (fn-own-conns o)))))
-                  (env (fn-post-reader-env
+                  (env (fn-post-command-env
                         (fn-auth-moderation-config
                          (fn-served-conn-session
                           (fn-octl-served-conn
@@ -816,7 +827,11 @@
                            o (fn-own-find-conn id (fn-own-conns o)))))
                         (fn-served-conn-observation
                          (fn-octl-served-conn
-                          o (fn-own-find-conn id (fn-own-conns o))))))
+                          o (fn-own-find-conn id (fn-own-conns o))))
+                        (fn-served-conn-injection
+                         (fn-octl-served-conn
+                          o (fn-own-find-conn id (fn-own-conns o))))
+                        (list :command line)))
                   (keyword (car (fn-nntp-tokenize line)))
                   (args (cdr (fn-nntp-tokenize line)))
                   (raw (fn-state-articles
