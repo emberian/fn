@@ -45,8 +45,12 @@
   (cond
    ((not (and (natp dynamic) (natp occupied) (natp protected) (stringp root)
               (posp workers) (natp stack) (natp runtime) (natp cache-limit) (natp fd-limit)
-              (<= occupied dynamic) (<= protected dynamic)))
+              (<= occupied dynamic)))
     (list :refused :invalid-default-pool-capture))
+   ; A well-formed capture whose process heap is smaller than the Store's
+   ; protected runtime: the process was started below its launcher figure.
+   ((not (<= protected dynamic))
+    (list :refused :default-pool-heap-not-held))
    ((not (and (<= minimum fd-limit) (fn-crl-table-supportedp minimum)))
     (list :refused :default-pool-table-not-representable))
    ((not (<= (fn-prstartup-required-heap minimum workers root) available))
@@ -71,19 +75,21 @@
 (defun fn-prstartup-scope ()
  (declare (xargs :guard t)) :partial-fixed-storage)
 
-(defun fn-prstartup-protected (profile core nursery output max-connections)
+; OBSERVED: the store on disk, as the launcher's figure observed it.
+(defun fn-prstartup-protected (profile core nursery output max-connections observed)
  (declare (xargs :guard t) (ignore max-connections))
- (+ (fn-heap-runtime-protected-octets profile core nursery)
+ (+ (fn-heap-runtime-protected-octets profile core nursery observed)
     (nfix (fn-crv-nth 0 output))))
 
 (defun fn-prstartup-default-plan
-  (dynamic occupied profile core nursery cold output max-connections root workers cache-limit fd-limit)
+  (dynamic occupied profile core nursery cold output max-connections root workers cache-limit fd-limit
+   observed)
  (declare (xargs :guard t))
  (cond (cold (list :refused :unpriced-complete-cold-profile))
        ((not (or (not output) (fn-orv-policy-p output)))
         (list :refused :invalid-output-resource-profile))
        (t (fn-prstartup-plan dynamic occupied
-            (fn-prstartup-protected profile core nursery output max-connections)
+            (fn-prstartup-protected profile core nursery output max-connections observed)
             root workers (fn-heap-stack-octets profile)
             *fn-heap-thread-runtime-octets* cache-limit fd-limit))))
 
@@ -117,6 +123,7 @@
   (:unpriced-complete-cold-profile "cold startup refused: complete cold profile is unpriced")
   (:invalid-output-resource-profile "cold startup refused: invalid output resource profile")
   (:invalid-default-pool-capture "cold startup refused: invalid runtime capture")
+  (:default-pool-heap-not-held "cold startup refused: the process heap does not hold the store's protected runtime")
   (:default-pool-table-not-representable "cold startup refused: descriptor table cannot represent the runtime allowance")
   (:default-pool-headroom-unavailable "cold startup refused: fixed storage headroom unavailable")
   (otherwise "cold startup refused: unsupported resource decision")))
@@ -179,12 +186,12 @@
 ; This definitional bridge is not a separate funding keystone.
 (defthm fn-prstartup-default-plan-refines-plan-by-definition
  (equal (fn-prstartup-default-plan dynamic occupied profile core nursery cold output
-                                   max-connections root workers cache-limit fd-limit)
+                                   max-connections root workers cache-limit fd-limit observed)
         (cond (cold (list :refused :unpriced-complete-cold-profile))
               ((not (or (not output) (fn-orv-policy-p output)))
                (list :refused :invalid-output-resource-profile))
               (t (fn-prstartup-plan dynamic occupied
-                   (fn-prstartup-protected profile core nursery output max-connections)
+                   (fn-prstartup-protected profile core nursery output max-connections observed)
                    root workers (fn-heap-stack-octets profile)
                    *fn-heap-thread-runtime-octets* cache-limit fd-limit))))
  :hints (("Goal" :in-theory (e/d (fn-prstartup-default-plan)

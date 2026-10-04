@@ -1,3 +1,48 @@
+# Lifecycle reader (read-life) — Opus (2026-10-04)
+
+Tree `build/lanes/read-life`, branch `lane/read-life` (origin), from `origin/dev` 65389a90e. Running findings: `build/coordinator/lanedumps/read-life.md`.
+
+## Landed on this branch (host only, no books)
+- 4069968a7 + bb3d052fc: `fnn-log-make-durable` (io.lisp). A failed rotate-durable barrier is now serialized, never retried, fences the kernel and answers uncertain. The batch fence handles it as its own failure. Before: in the publication thread it was a job failure, and the next batch fence retried the fsync and acknowledged. Witness `tests/native_log_rotation_durable_raw.lisp`: red at 65389a90e, PASS after.
+- 8d70026de: an EIO reading an intact checkpoint after a compaction is a fault naming the read, no longer the refusal `reason=checkpoint-damaged`. `fnn-log-open-plan-check` is shared by `fnn-recover-log` and `log scan-store`. Witness `tests/native_checkpoint_read_error_raw.lisp`: red at 19469e6b1, PASS after.
+- 19469e6b1: ledger RL-01 (design: a failed log barrier's batch is recovered from the page cache and never rewritten; the same holds for the FNFD journal and the S045 read-back) and RL-02 (a publication that ends before NEXT leaves `fn-owner-sco-inflight` set for the run).
+
+## Handed
+- retire (a6c56dc9790ceb96c): the retire's final checkpoint is started async and then abandoned by the stop it triggers. Filed as RET-RETIRE-CHECKPOINT-ABANDONED; lane/retire@911c51cad now asserts the CHECKPOINT line.
+
+## Gates
+- Raw harnesses as above. `native_program_check` and `tests.test_native_cut_map` are green. `check-fast-lane` has 3 reds, all present at base and none touching this diff (merge_registry HST-003, reach_check NEW in other books, lock R1b rows in mux/owner/pull). Native red/green on an image is owed: test_native_log_compaction, test_native_checkpoint_auto, test_native_image_differential.
+
+## Continuation
+1. Native run of the three selectors on the integrator's next image.
+2. Not yet read in depth: import/init staged publication (init lane), extent/window release (window-read lane), the inline commit paths' I/O under the owner mutex (noted, not filed).
+3. RL-01 and RL-02 need owners. RL-02's fix needs a deferral for a named refusal, so it is not a release alone.
+
+# Read-peer lane — Opus reader (2026-10-04)
+
+Tree `build/lanes/read-peer`, branch `lane/read-peer` (origin), from `origin/dev` 65389a90e. Pathway: a stranger's news server peering with us: ingress IHAVE/CHECK/TAKETHIS, the outbound feed, pull/catch-up, MODE STREAM, invitations, TCPCL. Findings list: `build/coordinator/lanedumps/read-peer.md`.
+
+## Landed on this branch
+| sha | defect | input that broke it | test before -> after |
+|---|---|---|---|
+| 1e683fe6f (+ c502c5301, 869bf4f34, 5e2910dda ledger/verify) | rp-feed-reply-deadline: the outbound feed waited for a reply or a greeting with no deadline (fn-prd-feed-action read DEADLINE only with PHASE/OUTPUT; the host cleared it at drain and after TCP up) | the peer takes `CHECK <a>`, or the dial, and never answers; the socket stays open | tests.test_native_feed_fair_round...test_peer_that_never_answers_is_dropped_at_the_reply_deadline: `repair.py verify` red at 65389a90e, green at head (evidence planning/evidence/repair/rp-feed-reply-deadline-7524cc45...json) |
+| c516bb761 | rp-feed-stop-outlives-remedy: a MODE STREAM stop was keyed by peer name and never cleared, so `peer set --streaming false` (the remedy the log line names), a new login or a new address did nothing until a restart | 502/480 to MODE STREAM, then `peer set NAME --streaming false` | ACL2: tests/acl2/feed-connection-tests (same record stopped, changed record dials). Native: tests.test_native_operator_walk...test_a_stopped_peer_is_fed_with_ihave_once_its_record_says_streaming_false, red-before/green-after OWED on an image |
+
+Certification (laptop, narrow `--recertify`): certify-20261004T153140Z-15375 (books/peer-round-driver, tests/acl2/peer-round-driver-tests); certify-20261004T154532Z-86811 (books/feed-connection, tests/acl2/feed-connection-tests). Both filed (evidence_manifests add). Not certified: the ~790 books above feed-connection (host/owner-host includes them), which is the integrator's umbrella run. host/owner-host.lisp loads with the fixture: tests/owner_feed_connection_host_check.py passes. host_check --read/--books/--interfaces green. Raw: test_native_feed_fair_round 6/6, feed_credential, peer_round_driver; feed service/actor/peer-octets raw scripts PASS.
+Shared files: host/owner-host.lisp, feed region only (fn-owner-feed-has-queued, fn-owner-feed-reply-chunk-synced, plus the new fn-owner-feed-stop-key).
+
+## Filed, not fixed (ledger, owner read-peer)
+- rp-feed-defer-drop (HIGH): three 431/436 answers drop an article for good (*fn-own-feed-retry-bound* 3; at the default 1000 ms backoff base that is 7 s of "not now").
+- rp-feed-dropped-holds-capacity (HIGH): :dropped entries stay in the queue and count against max-queue (default 1024). Once it is full, every POST (441) and transfer (436) for the groups fed to that peer is refused for good, across restarts.
+- rp-takethis-bad-msgid-desync (HIGH): TAKETHIS with an argument that fails fn's grammar gets 501 and no article mode, so the article's lines run as commands on the peer session. An inner `TAKETHIS <x>` line stores a forged article. Two copies must change together: fn-peer-command (peer-inbound) and fn-pgc-peer-command (peer-guard-carried).
+- rp-refused-memory-poison (MEDIUM, decision): the refused-offer memory is owner-wide and keyed by the OFFERED id, including :message-id-syntax. One peer's mismatched or garbage transfer makes every other peer's CHECK of that id draw 438 (final). Also reachable through pull.
+- rp-feed-reply-msgid (LOW): CHECK/TAKETHIS replies are not matched to the echoed Message-ID, so a stray reply retires the wrong entry.
+
+## Continuation
+1. Integrator: on the image of a batch carrying lane/read-peer, run tests.test_native_operator_walk (the new stop-remedy test plus the 502/501 neighbours) and tests.test_native_feed_temporary/feed_idle/friends_feed as the feed regression guard. File the run ids here.
+2. The three HIGH items need a peering/proofs slice. rp-feed-defer-drop and rp-feed-dropped-holds-capacity change books/peer-feed.lisp (fn-feed-observe, fn-feed-give-up), and peer-feed's fan-out is the whole tree. Do them together, statement-first.
+3. The scenarios lane (a84b445cf2df926af) has native modules for cases 1-7 in tests/test_native_peer_hostile_feed.py and test_native_peer_misbehaving.py on lane/scenarios. Cases 2/3/4/7 are expected red until the items above land.
+
 # Cold-line lane — Opus (2026-10-04)
 
 Tree `build/lanes/cold-line`, branch `lane/cold-line` (origin), from `origin/dev` d4e53323c, merged `origin/next` 898969368 (nntp-auth fix). Ledger: `sl-cold-line-quanta` (owner cold-line), proof-owed `CL-OWED-HDR-CURSOR-FRAME`, `CL-OWED-NEWNEWS-DEMAND`, `CL-PRE-PRODUCTIVE-READ-NEWNEWS`.
@@ -4966,3 +5011,49 @@ Tree `build/lanes/harness-reds`, branch `lane/harness-reds`, from origin/integra
 
 Verified: test_native_raw_scripts 78 OK; test_docs_check 9 OK + docs_check --check 0 failures; test_certs.InstallUmbrellasTests OK; test_host_check_modes OK; test_host_check_load.RealLoadTests + test_host_check_forward 10 OK (1191 s, the heavy ones); tests/acl2/protocol-served-tests certified (run certify-20261004T094235Z-45148, laptop).
 Not mine, left: native_application_cleanup_source.lisp (unrun); harness_check entry-guards 23 / waivers 2 findings.
+
+# tariff3 lane — Opus trailblazer (2026-10-04)
+
+Worktree build/lanes/tariff3, branch lane/tariff3 (origin), based on origin/dev 65389a90e.
+
+| sha | world receipt | manifest id | image sha | native run id |
+|---|---|---|---|---|
+| 88a7deabb (step 0) | laptop narrow certify, 5 passed | certify-20261004T153007Z-21520 | none | none (registry/teeth only) |
+| e71a47552 (step 1) | laptop narrow certify --recertify, 6 passed; host_check --load 56/56 raw files, 0 findings (BARE: laptop has no certified umbrella, definterface/def-cost rows NOT evaluated) | certify-20261004T161727Z-32503 | none | none: needs the [resources] opt-in image (lane/tariff2-optin, batch R, not on dev); producer red/green is ACL2 (tfm-producer-prices-the-retrieval-row) |
+
+Exit line: tariff3 exit: families priced 4/30 (ratchet computed by tools/cost_obligations.py at e71a47552; cost-obligations.json is the integrator's --write); pass-through remains: families left authentication, capabilities, check, close, compression-transition, date, group, group-range, header-pattern, header-range, help, ihave, list, mode, neighbour, newgroups, newnews, overview, post, takethis, tls-transition + previews article-input, closed, extension, partial-input, protocol-error (26); keystone_emit refusals 19 → 0.
+
+## Step 0 (88a7deabb): the 19 keystone_emit --write refusals
+16 defkeystone forms in tests/acl2/resource-vector{,-tree,-relations}-tests.lisp named subjects no host line reaches (fn-rv-step/run/settle/destroy, fn-rt-step/run, fn-rv-of-prs): the node runs the typed ledger (resource-vector-exec), never the logical bank or tree. They became defteeth over the same theorems (every witness/removal/mutation kept, claim checked against the stored theorem); they re-enter as keystones when the exec tree gains a host line (tariff packet Q1). Hosted ones stay keystones (fn-rv-draw x2, fn-rv-install: PRF-1209); rvrt-plus/funded-root got :id PRF-1210. keystone_subjects for PRF-1209/1210 written by keystone_emit --write (proofs.json). `keystone_emit --write` now writes.
+Still open (teeth gate, not --write blockers): new :deferred mutations on fn-rt-step-keeps-okp, fn-rt-run-keeps-okp, fn-rt-step-refused-keeps-the-tree, fn-rt-destroy-revokes-the-sub-bank, fn-rv-replayed-completion-is-stale; fn-ocap-held-prefix-has-matching-funded-tariff and fn-ocap-preview-keeps-input-prefix-bounds have no generated teeth.
+
+## Step 1 (e71a47552): the generator and HEAD/BODY/STAT
+- books/output-tariff-family.lisp: fn-tariff-descriptor + keystones (admits-exactly-within-capacity, unrepresentable-is-refused, is-a-tariff); def-family-tariffs emits *fn-tariff-priced-families*, fn-tariff-family-octets/-price/-preview, KEYSTONE fn-tariff-family-preview-charges-before-effect and a generated fn-tariff-F-charges-before-effect per row.
+- books/output-tariff-families.lisp: rows :article :head :body :stat over fn-tariff-article-row-charge (same finders for the four kinds). STAT = fn-tariff-stat-octets (2*16*L0 + ELEN: its exec realizes the octets for the tombstone test).
+- Replaced: fn-tariff-article-descriptor/-preview + theorems, the quoted family list in fn-owner-output-tariff-preview, tests/acl2/output-tariff-article-tests.lisp, orphan tests/owner_output_preview_fixture.lisp. image-world* and extract worlds regenerated (owner-host includes output-tariff-families). Ratchet reads the rows (tools/cost_obligations.py; tests/test_cost_obligations.py 9 OK).
+- Proof-owed: PGO-TARIFF-ARTICLE-REPLY-WITHIN-TARIFF (PRF-1316) note extended to HEAD/BODY/STAT.
+- specs/resource-vector.md: generator; DENOMINATOR GAP (finding): the gate also previews :extension (XREDEEM/XFNCATCHUP/XFN-ZARTICLE), :article-input (POST/IHAVE body; fnn-owner-output-prefix-locked runs on every read chunk), :protocol-error, :partial-input, all refused as unpriced in accounted mode. "unpriced_families empty" is NOT a sufficient condition for deleting the pass-through; these need a price or a rule first.
+
+## Deviation from the brief, for root
+The brief said `definterface :operation` as the generator. I built the family-table generator the packet's Q3 names (a producer per family row, the :unpriced count as ratchet) instead, because (a) the admission gate draws a fixed output lease, not the entry's tariff on a ledger slot, so def-operation-check's `(D 'N (... T ...))` shape does not fit a family; (b) changing books/definterface.lisp recertifies the entire host world (integrator-only). The generated producer is what a later `:operation :tariff` would name.
+
+## For the integrator at merge
+Regenerate interfaces.json (interface_emit --write: stale against declarations), cost-obligations.json (expect families priced 4 of 25), ledger.json/md, proof-events.json, teeth manifest. Certified-world host load (definterface :keystones row for fn-owner-output-tariff-preview now cites fn-tariff-family-preview-charges-before-effect :via fn-tariff-family-preview; def-cost rows fn-tariff-stat-octets, fn-tariff-descriptor replace fn-tariff-article-descriptor) not evaluated on the laptop. Image native: tests/test_native_output_tariff.py not written (needs batch R opt-in image): [resources] set, HEAD 1 → 221, STAT 1 → 223, NEWNEWS → 403; red at dev: HEAD → 403.
+
+## Continuation (exact, in packet order)
+1. GROUP/NEXT/LAST (constant-bounded lines; LISTGROUP needs a cursor quantum): add rows; each needs a reply-octets bound over its factory (fn-nntp-group-result-cat, fn-nntp-next-or-last-cat).
+2. CAPABILITIES/DATE/HELP/MODE/QUIT: def-cost :conses rows. Tried fn-nntp-help (laptop REPL): derivation leaves fn-nntp-string-octets and fn-nntp-multi unaccounted; they need their own :conses rows first (shared with PRF-1316's list).
+3. The denominator gap above, before any pass-through deletion.
+4. The 5 deferred-mutation teeth findings and the 2 fn-ocap teeth (step 0 list).
+
+## Step 2 (root ruling 2026-10-04, after READY)
+- Ruling: def-family-tariffs stays its own generator; `:operation :tariff` naming its producer is filed low: DI-OPERATION-TARIFF-NAMES-FAMILY-PRODUCER (planning/repair/items).
+- The ratchet now counts the non-command previews as served (tools/cost_obligations.py PREVIEW_KINDS: extension, protocol-error, article-input, partial-input, closed; each checked present in output-command-admission.lisp). At this tree: families priced 4 of 30. specs/resource-vector.md says so. tests/test_cost_obligations.py 9 OK.
+- Handed off at ~400K tokens; GROUP/NEXT/LAST not started.
+
+## Successor: start here (GROUP/NEXT/LAST)
+- Add rows to books/output-tariff-families.lisp; the macro generates the producer, the instances and the ratchet count. The context already binds session/args/server; fn-arena fn-cat are in scope.
+- Factories: GROUP books/served-catalog.lisp:1654 fn-nntp-group-result-cat (reply "211 count low high name": a line of at most 4 + 3*21 + len(name) + 2 octets, name the arg token); NEXT/LAST :3900 fn-nntp-next-or-last-cat (a "223 n <msgid>" line, L0-bounded; its walk is :work, not resident). LISTGROUP lists a range: needs a cursor quantum, not a row here.
+- Each row needs its reply-octets bound over the factory as a theorem, or a proof-owed item in the PRF-1316 style; prefer the theorem (the factories return fn-nntp-single lines).
+- Witness style: tests/acl2/output-tariff-family-tests.lisp (ground defthms over the *tfm-* catalog fixture, *tfm-as* session selecting fn.test current 3); the producer's stobj formals rule out defteeth witnesses there.
+- Gate: certify_books.py --recertify books/output-tariff-families (+ tests), host_check --load, cost_obligations.py count.

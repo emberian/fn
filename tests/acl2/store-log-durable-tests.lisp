@@ -1,255 +1,289 @@
-; Teeth for books/store-log-durable (lane byte-model, row Q3b): the keystone
-; fn-lgu-acknowledged-article-is-recoverable-at-every-crash-point and its
-; recovery half, on a ground two-record log, at every cut of every program
-; the host runs, under explicit crash choices; then one witness per removed
-; hypothesis.
+; Teeth for books/store-log-durable (lane m1-durable, 2026-10-04): the
+; keystone fn-lgu-acknowledged-records-are-recovered-at-every-cut, its open
+; corollary, the count the host holds and the COMPLETE's acknowledgements,
+; on a ground log: two records recovered at the open, a third taken, sealed
+; (the segment extended first), fenced and acknowledged; every cut under
+; explicit crash choices; then one witness per removed hypothesis, and the
+; witnesses for the run's two rules: the host fences only a batch in flight,
+; and takes only a record its verdict admits.
 ;
 ; Crash images are fn-bs-crash under explicit choices with
 ; fn-bs-crash-choicesp asserted (fn-bs-crash-imagep is a defun-sk and is
-; not executable); fn-assume-log-sole-pending-writer is constrained, so a
-; witness asserts its constraint's consequent instead.
+; not executable: fn-bs-crash-imagep-suff makes each one an image).
 (in-package "ACL2")
 (include-book "../../books/store-log-durable")
 (include-book "../../books/frame-trailer")
+; The record codec seam's attachment: the recovered kernel's next txid reads
+; the records through fn-record-decode-exact (books/store-log-txid.lisp).
+(include-book "../../books/codec-attach")
 
 (defun lgut-unit () (declare (xargs :guard t)) 4)
 (defun lgut-max () (declare (xargs :guard t)) 4096)
 (defun lgut-genesis () (declare (xargs :guard t :verify-guards nil)) *fn-lg-genesis*)
 (defun lgut-r (i) (declare (xargs :guard t)) (list i (+ 1 (nfix i)) 7))
+; A record large enough that its append needs the segment extended.
+(defun lgut-big () (declare (xargs :guard t)) (make-list 700 :initial-element 5))
+; A record the log cannot frame at MAX: its 32-octet chain and its octets
+; exceed the bound (fn-lg-recordp fails).
+(defun lgut-oversize () (declare (xargs :guard t)) (make-list 4070 :initial-element 6))
 (defun lgut-store (content pending)
   (declare (xargs :guard t))
   (fn-bs-make (lgut-unit) (list (cons 0 content)) nil pending 1))
 (defun lgut-sels (count sel)
   (declare (xargs :guard t :verify-guards nil))
   (if (zp count) nil (cons sel (lgut-sels (1- count) sel))))
-(defun lgut-units-of (octets)
-  (declare (xargs :guard t :verify-guards nil))
-  (floor (len octets) (lgut-unit)))
-; The recovered kernel of an image's segment: what the next open holds.
+; What the next open recovers from a crash image.
 (defun lgut-open (image)
   (declare (xargs :guard t :verify-guards nil))
   (fn-lgk-committed (fn-lgk-recover (fn-bs-durable-content image 0)
                                     (lgut-genesis) (lgut-unit) (lgut-max) 0)))
-; The keystone's conclusion on the image the choices leave.
-(defun lgut-recovered-p (m pair choices)
+; The keystone's conclusion at PAIR for the image the choices leave, with
+; the choices admissible.
+(defun lgut-holds-p (pair choices)
   (declare (xargs :guard t :verify-guards nil))
-  (and (fn-bs-crash-choicesp choices (fn-bs-pending (car pair)) (fn-bs-unit (car pair)))
-       (member-equal (fn-owb-member-record m)
-                     (lgut-open (fn-bs-crash (car pair) choices)))))
+  (let ((a (fn-lgk-acked (cdr pair)))
+        (recovered (lgut-open (fn-bs-crash (car pair) choices))))
+    (and (fn-bs-crash-choicesp choices (fn-bs-pending (car pair)) (fn-bs-unit (car pair)))
+         (<= a (len recovered))
+         (equal (take a recovered) (take a (fn-lgk-committed (cdr pair)))))))
 
-; The segment a crash left: two records logged, a torn unit, zeros, then the
-; preallocated extent.
+; The segment a crash left: two records logged, a torn unit, zeros.
 (defun lgut-content ()
   (declare (xargs :guard t :verify-guards nil))
   (append (fn-lg-log (list (lgut-r 1) (lgut-r 2)) (lgut-genesis) (lgut-unit))
           '(9 9 9 9 0 0 0 0 0 0 0 0)
           (fn-bs-zeros 512)))
 (defun lgut-bs-raw () (declare (xargs :guard t :verify-guards nil)) (lgut-store (lgut-content) nil))
-; P-LOG-RECOVER: the recovered layer (every scanned record an acknowledged
-; anonymous member), the run, the fenced store at log-recovered.
-(defun lgut-st0 ()
+(defun lgut-ks0 ()
   (declare (xargs :guard t :verify-guards nil))
-  (fn-owb-recover (lgut-content) (lgut-genesis) (lgut-unit) (lgut-max) 3))
-(defun lgut-ks0 () (declare (xargs :guard t :verify-guards nil)) (fn-owb-ks (lgut-st0)))
+  (fn-lg-recovered-kernel (lgut-bs-raw) 0 (lgut-genesis) (lgut-max) 0))
 (defun lgut-recover-run ()
   (declare (xargs :guard t :verify-guards nil))
   (fn-lg-run (lgut-bs-raw) (lgut-ks0) (fn-lg-recover-program) nil 0))
-(defun lgut-bs0 () (declare (xargs :guard t :verify-guards nil)) (car (car (last (lgut-recover-run)))))
-(defun lgut-m1 () (declare (xargs :guard t :verify-guards nil)) (car (fn-owb-acked (lgut-st0))))
-(defun lgut-m2 () (declare (xargs :guard t :verify-guards nil)) (cadr (fn-owb-acked (lgut-st0))))
+(defun lgut-opened () (declare (xargs :guard t :verify-guards nil)) (car (last (lgut-recover-run))))
 
-; Reachable: the recovered layer is aligned, related to the fenced store,
-; and holds the two records as acknowledged members.
-(assert-event
- (and (fn-owb-alignedp (lgut-st0))
-      (fn-lgk-relp (lgut-bs0) (lgut-ks0) 0 (lgut-genesis) (lgut-max))
-      (equal (fn-lgk-committed (lgut-ks0)) (list (lgut-r 1) (lgut-r 2)))
-      (equal (fn-owb-member-record (lgut-m1)) (lgut-r 1))
-      (equal (fn-owb-member-record (lgut-m2)) (lgut-r 2))
-      (equal (len (lgut-recover-run)) 4)))
+; The served run: the third record taken at the kernel's next txid, the
+; seal (extension and write :ok), the barrier :ok, one acknowledgement.
+(defun lgut-take (record)
+  (declare (xargs :guard t :verify-guards nil))
+  (list :take record (fn-lgk-next-txid (cdr (lgut-opened))) 0 0 64 1048576 (lgut-unit)))
+(defun lgut-ops (record)
+  (declare (xargs :guard t :verify-guards nil))
+  (list (lgut-take record) (list :seal :ok :ok :ok) (list :fence :ok) (list :finish-one)))
+(defun lgut-run (record)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-lgu-host-run (car (lgut-opened)) (cdr (lgut-opened)) (lgut-ops record) 0 (lgut-max)))
+(defun lgut-pending-units (pair)
+  (declare (xargs :guard t :verify-guards nil))
+  (floor (len (nth 3 (car (fn-bs-pending (car pair))))) (lgut-unit)))
 
 ; -----------------------------------------------------------------------------
-; The recovery half: every cut of P-LOG-RECOVER from the raw store, the
-; zeroing write torn four ways at log-truncated, nothing pending at
-; log-recovered.
-
-(defun lgut-recover-pair (i) (declare (xargs :guard t :verify-guards nil)) (nth i (lgut-recover-run)))
-(defun lgut-tail-units ()
-  (declare (xargs :guard t :verify-guards nil))
-  (lgut-units-of (nth 3 (car (fn-bs-pending (car (lgut-recover-pair 0)))))))
-
+; Reachable: the opened state is related; the run's cuts are the start, the
+; take, the extension's two cuts, log-written, log-fenced and the
+; acknowledgement; at the end three records are acknowledged.
 (assert-event
- (and (not (fn-bs-ops-for-ino (fn-bs-pending (lgut-bs-raw)) 0))
-      (not (fn-bs-ops-not-for-ino (fn-bs-pending (lgut-bs-raw)) 0))
-      (consp (fn-bs-pending (car (lgut-recover-pair 0))))
-      (null (fn-bs-pending (car (lgut-recover-pair 2))))
-      ; log-truncated: all landed, none, the first unit only, a hole
-      (lgut-recovered-p (lgut-m1) (lgut-recover-pair 0) (list (lgut-sels (lgut-tail-units) :new)))
-      (lgut-recovered-p (lgut-m2) (lgut-recover-pair 0) (list (lgut-sels (lgut-tail-units) :new)))
-      (lgut-recovered-p (lgut-m1) (lgut-recover-pair 0) (list nil))
-      (lgut-recovered-p (lgut-m1) (lgut-recover-pair 1) (list (list :new)))
-      (lgut-recovered-p (lgut-m2) (lgut-recover-pair 1) (list (list :old :new :old)))
-      ; log-recovered: nothing pending, the image is the store
-      (lgut-recovered-p (lgut-m1) (lgut-recover-pair 2) nil)
-      (lgut-recovered-p (lgut-m2) (lgut-recover-pair 3) nil)))
+ (let ((run (lgut-run (lgut-big))))
+   (and (fn-lgk-relp (car (lgut-opened)) (cdr (lgut-opened)) 0 (lgut-genesis) (lgut-max))
+        (equal (fn-lgu-take-verdict (lgut-big) (lgut-max)) :admissible)
+        (equal (len (lgut-recover-run)) 4)
+        (equal (len run) 11)
+        (consp (fn-bs-pending (car (nth 3 run))))              ; log-extended
+        (null (fn-bs-pending (car (nth 4 run))))               ; log-extent-fenced
+        (consp (fn-bs-pending (car (nth 5 run))))              ; log-written
+        (equal (fn-lgk-phase (cdr (nth 5 run))) :appended)
+        (null (fn-bs-pending (car (nth 7 run))))               ; log-fenced
+        (equal (fn-lgk-acked (cdr (nth 1 run))) 2)
+        (equal (fn-lgk-acked (cdr (car (last run)))) 3)
+        (equal (fn-lgk-committed (cdr (car (last run))))
+               (list (lgut-r 1) (lgut-r 2) (lgut-big))))))
+
+; The keystone at every cut, under explicit choices: log-extended's zeros
+; landed whole, not at all, torn; log-written's batch landed whole, not at
+; all, its first unit, with a hole; the rest nothing pending.  At the last
+; cut the conclusion names three records.
+(assert-event
+ (let ((run (lgut-run (lgut-big))))
+   (and (lgut-holds-p (nth 0 run) nil)
+        (lgut-holds-p (nth 2 run) nil)
+        (lgut-holds-p (nth 3 run) (list (lgut-sels (lgut-pending-units (nth 3 run)) :new)))
+        (lgut-holds-p (nth 3 run) (list nil))
+        (lgut-holds-p (nth 3 run) (list (list :new :old :zero)))
+        (lgut-holds-p (nth 4 run) nil)
+        (lgut-holds-p (nth 5 run) (list (lgut-sels (lgut-pending-units (nth 5 run)) :new)))
+        (lgut-holds-p (nth 5 run) (list nil))
+        (lgut-holds-p (nth 5 run) (list (list :new)))
+        (lgut-holds-p (nth 5 run) (list (list :old :new :old)))
+        (lgut-holds-p (nth 7 run) nil)
+        (lgut-holds-p (car (last run)) nil)
+        (equal (take 3 (lgut-open (fn-bs-crash (car (car (last run))) nil)))
+               (list (lgut-r 1) (lgut-r 2) (lgut-big))))))
+
+; Every cut of P-LOG-RECOVER, :ok and with the zeroing write failed part
+; way: the open corollary's first disjunct; its conclusion names r1 and r2.
+(assert-event
+ (let ((ok (lgut-recover-run))
+       (torn (fn-lg-run (lgut-bs-raw) (lgut-ks0) (fn-lg-recover-program)
+                        (list (cons :eio 4)) 0)))
+   (and (equal (len torn) 1)
+        (lgut-holds-p (nth 0 ok) (list (lgut-sels (lgut-pending-units (nth 0 ok)) :new)))
+        (lgut-holds-p (nth 0 ok) (list nil))
+        (lgut-holds-p (nth 3 ok) nil)
+        (lgut-holds-p (nth 0 torn) (list (list (list :garble 1 2 3 4))))
+        (equal (fn-lgk-acked (cdr (nth 0 ok))) 2)
+        (equal (take 2 (lgut-open (fn-bs-crash (car (nth 0 ok)) (list nil))))
+               (list (lgut-r 1) (lgut-r 2))))))
+
+; A failed barrier (nothing of the batch landed): the kernel faults, nothing
+; more is acknowledged, every later cut holds; the third record, never
+; acknowledged, is not recovered.
+(defun lgut-failed-run ()
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-lgu-host-run (car (lgut-opened)) (cdr (lgut-opened))
+                   (list (lgut-take (lgut-r 3)) (list :seal :ok :ok :ok)
+                         (list :fence (cons :eio (list nil)))
+                         (list :fence :ok) (list :finish-one))
+                   0 (lgut-max)))
+(assert-event
+ (let ((run (lgut-failed-run)))
+   (and (equal (fn-lgk-phase (cdr (car (last run)))) :fault)
+        (equal (fn-lgk-acked (cdr (car (last run)))) 2)
+        (lgut-holds-p (car (last run)) nil)
+        (equal (lgut-open (fn-bs-crash (car (car (last run))) nil))
+               (list (lgut-r 1) (lgut-r 2))))))
+
+; The count the host holds: the concrete kernel from fn-lgc-open of the
+; segment read as a string, after the run's kernel operations, acknowledges
+; three, the logical kernel's count.
+(defun lgut-chars (octets)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (atom octets) nil (cons (code-char (nfix (car octets))) (lgut-chars (cdr octets)))))
+(defun lgut-segment-string ()
+  (declare (xargs :guard t :verify-guards nil))
+  (coerce (lgut-chars (lgut-content)) 'string))
+; The concrete kernel fnn-log-recover opens (fn-lgc-open's second value).
+(defun lgut-opened-concrete ()
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (records c) (fn-lgc-open (lgut-segment-string) (lgut-genesis) (lgut-unit) (lgut-max) 0)
+    (declare (ignore records))
+    c))
+(assert-event
+ (let* ((ops (lgut-ops (lgut-big)))
+        (final (fn-lgu-host-final (car (lgut-opened)) (cdr (lgut-opened)) ops 0 (lgut-max)))
+        (host (fn-lgc-host-run (lgut-opened-concrete)
+                               (fn-lgu-host-kops (car (lgut-opened)) (cdr (lgut-opened)) ops 0 (lgut-max)))))
+   (and (equal (fn-lgd-octets (lgut-segment-string)) (lgut-content))
+        (equal (fn-lgu-host-kops (car (lgut-opened)) (cdr (lgut-opened)) ops 0 (lgut-max))
+               (list (lgut-take (lgut-big))
+                     (list :seal (lgut-unit) (len (fn-bs-durable-content (car (lgut-opened)) 0)))
+                     (list :fence (lgut-unit)) (list :finish-one)))
+        (equal (fn-lgc-acked host) 3)
+        (equal (fn-lgc-acked host) (fn-lgk-acked (cdr final)))
+        (lgut-holds-p final nil))))
+
+; The COMPLETE: from the fenced-on-arrival state of the run (r1, r2
+; acknowledged, the big record in flight), the fence and one acknowledgement
+; per member acknowledge exactly the committed records then the batch.
+(assert-event
+ (let* ((ks (cdr (nth 5 (lgut-run (lgut-big)))))
+        (k2 (fn-lgk-host-run (fn-lgk-fence ks (lgut-unit))
+                             (fn-lgu-finishes (len (fn-lgk-inflight ks))))))
+   (and (equal (fn-lgk-acked ks) (len (fn-lgk-committed ks)))
+        (true-listp (fn-lgk-committed ks)) (true-listp (fn-lgk-inflight ks))
+        (equal (take (fn-lgk-acked k2) (fn-lgk-committed k2))
+               (list (lgut-r 1) (lgut-r 2) (lgut-big))))))
 
 ; -----------------------------------------------------------------------------
-; The served programs from the recovered state: a third record prepared,
-; the append, the fence (:ok and failed), the extension.
+; Hypothesis removal, one witness each, for the keystone.  Every retained
+; hypothesis is asserted, the omitted one is asserted false, and the
+; conclusion is false.
 
-(defun lgut-ks1 () (declare (xargs :guard t :verify-guards nil)) (fn-lgk-prepare (lgut-ks0) (lgut-r 3)))
-(defun lgut-m3 () (declare (xargs :guard t :verify-guards nil)) (fn-owb-member 9 :t9 (lgut-r 3)))
-; The layer with the third record open: aligned over ks1.
-(defun lgut-st1 ()
-  (declare (xargs :guard t :verify-guards nil))
-  (fn-owb-make (lgut-ks1) (list (lgut-m3)) nil nil (fn-owb-acked (lgut-st0))))
-(defun lgut-append-run ()
-  (declare (xargs :guard t :verify-guards nil))
-  (fn-lg-run (lgut-bs0) (lgut-ks1) (fn-lg-append-program) nil 0))
-(defun lgut-appended () (declare (xargs :guard t :verify-guards nil)) (car (last (lgut-append-run))))
-(defun lgut-batch-units ()
-  (declare (xargs :guard t :verify-guards nil))
-  (lgut-units-of (nth 3 (car (fn-bs-pending (car (lgut-appended)))))))
-(defun lgut-fence-run ()
-  (declare (xargs :guard t :verify-guards nil))
-  (fn-lg-run (car (lgut-appended)) (cdr (lgut-appended)) (fn-lg-fence-program) nil 0))
-(defun lgut-failed-outcome (choices) (declare (xargs :guard t)) (cons :eio choices))
-(defun lgut-failed-fence-run (choices)
-  (declare (xargs :guard t :verify-guards nil))
-  (fn-lg-run (car (lgut-appended)) (cdr (lgut-appended)) (fn-lg-fence-program)
-             (list (lgut-failed-outcome choices)) 0))
-(defun lgut-next ()
-  (declare (xargs :guard t :verify-guards nil))
-  (+ (len (fn-bs-durable-content (lgut-bs0) 0)) 512))
-(defun lgut-extend-run ()
-  (declare (xargs :guard t :verify-guards nil))
-  (fn-lg-extend-run (lgut-bs0) (lgut-ks0) (fn-lg-extend-program (lgut-next)) nil 0))
-
-; Reachable: the layer with the third record is aligned and related; the
-; append reaches log-written with the batch in flight; every cut of the
-; append, the fence and the extension is a crash point of the keystone.
-(assert-event
- (and (fn-owb-alignedp (lgut-st1))
-      (fn-lgk-relp (lgut-bs0) (lgut-ks1) 0 (lgut-genesis) (lgut-max))
-      (equal (len (lgut-append-run)) 2)
-      (equal (fn-lgk-inflight (cdr (lgut-appended))) (list (lgut-r 3)))
-      (equal (len (lgut-fence-run)) 2)
-      (equal (len (lgut-failed-fence-run (list nil))) 1)
-      (equal (len (lgut-extend-run)) 4)
-      (fn-lgu-crash-point-p (nth 0 (lgut-append-run)) (lgut-bs0) (lgut-ks1) nil 0 0 (lgut-genesis) (lgut-max))
-      (fn-lgu-crash-point-p (nth 1 (lgut-append-run)) (lgut-bs0) (lgut-ks1) nil 0 0 (lgut-genesis) (lgut-max))
-      (fn-lgu-crash-point-p (nth 1 (lgut-fence-run)) (car (lgut-appended)) (cdr (lgut-appended))
-                            nil 0 0 (lgut-genesis) (lgut-max))
-      (fn-lgu-crash-point-p (nth 0 (lgut-failed-fence-run (list (list :new))))
-                            (car (lgut-appended)) (cdr (lgut-appended))
-                            (lgut-failed-outcome (list (list :new))) 0 0 (lgut-genesis) (lgut-max))
-      (fn-lgu-crash-point-p (nth 0 (lgut-extend-run)) (lgut-bs0) (lgut-ks0) nil (lgut-next) 0
-                            (lgut-genesis) (lgut-max))
-      (fn-lgu-crash-point-p (nth 3 (lgut-extend-run)) (lgut-bs0) (lgut-ks0) nil (lgut-next) 0
-                            (lgut-genesis) (lgut-max))))
-
-; The keystone at every served cut: the acknowledged records r1 and r2
-; are held by the open of every image.  log-written: the batch's write
-; landed whole, not at all, its first unit only, with a hole; log-fenced:
-; nothing pending; the failed barrier under each selection: the store it
-; leaves has nothing pending (its one image is itself); log-extended: the
-; zeros landed whole, not at all, torn; log-extent-fenced.
-(assert-event
- (let ((w (lgut-appended)) (x0 (nth 0 (lgut-extend-run))) (x3 (nth 3 (lgut-extend-run))))
-   (and (lgut-recovered-p (lgut-m1) w (list (lgut-sels (lgut-batch-units) :new)))
-        (lgut-recovered-p (lgut-m2) w (list (lgut-sels (lgut-batch-units) :new)))
-        (lgut-recovered-p (lgut-m1) w (list nil))
-        (lgut-recovered-p (lgut-m2) w (list (list :new)))
-        (lgut-recovered-p (lgut-m1) w (list (list :new :old :new)))
-        (lgut-recovered-p (lgut-m1) (nth 1 (lgut-fence-run)) nil)
-        (lgut-recovered-p (lgut-m2) (nth 1 (lgut-fence-run)) nil)
-        (lgut-recovered-p (lgut-m1) (nth 0 (lgut-failed-fence-run (list (lgut-sels (lgut-batch-units) :new)))) nil)
-        (lgut-recovered-p (lgut-m2) (nth 0 (lgut-failed-fence-run (list nil))) nil)
-        (lgut-recovered-p (lgut-m1) (nth 0 (lgut-failed-fence-run (list (list :old :new)))) nil)
-        (lgut-recovered-p (lgut-m1) x0 (list (lgut-sels 128 :new)))
-        (lgut-recovered-p (lgut-m2) x0 (list nil))
-        (lgut-recovered-p (lgut-m1) x0 (list (list :new :old :new)))
-        (lgut-recovered-p (lgut-m2) x3 nil))))
-
-; T7 on the ground: after the failed barrier the kernel is faulted and the
-; open holds the committed records then a prefix of the batch: the whole
-; batch when its write landed, nothing of it when nothing landed.
-(assert-event
- (let ((all (nth 0 (lgut-failed-fence-run (list (lgut-sels (lgut-batch-units) :new)))))
-       (none (nth 0 (lgut-failed-fence-run (list nil)))))
-   (and (equal (fn-lgk-phase (cdr all)) :fault)
-        (equal (lgut-open (car all)) (list (lgut-r 1) (lgut-r 2) (lgut-r 3)))
-        (equal (lgut-open (car none)) (list (lgut-r 1) (lgut-r 2))))))
-
-; -----------------------------------------------------------------------------
-; Hypothesis removal, one witness each.  Every retained hypothesis is
-; asserted, the omitted one is asserted false, and the conclusion false.
-
-; (member-equal m (fn-owb-acked st)) removed: the third record is a member
-; of the layer, not acknowledged; at log-written with nothing landed the
-; open does not hold it.
-(assert-event
- (let ((pair (lgut-appended)))
-   (and (fn-owb-alignedp (lgut-st1))
-        (fn-lgu-crash-point-p pair (lgut-bs0) (lgut-ks1) nil 0 0 (lgut-genesis) (lgut-max))
-        (fn-bs-crash-choicesp (list nil) (fn-bs-pending (car pair)) (fn-bs-unit (car pair)))
-        (member-equal (lgut-m3) (fn-owb-members (lgut-st1)))
-        (not (member-equal (lgut-m3) (fn-owb-acked (lgut-st1))))
-        (not (member-equal (fn-owb-member-record (lgut-m3))
-                           (lgut-open (fn-bs-crash (car pair) (list nil))))))))
-
-; fn-lgu-crash-point-p removed (its relation R): a CORRUPTED-STATE witness.
-; The kernel says (r9) is committed; the segment holds r1 and r2.  The
-; layer acknowledges r9; the state is not related, the append's cut is no
-; crash point, and the open does not hold r9.
+; (fn-lgk-relp bs ks ...) removed: a CORRUPTED-STATE witness.  The kernel
+; says r9 is committed and acknowledged; the segment holds r1 and r2.
 (defun lgut-bad-ks ()
   (declare (xargs :guard t :verify-guards nil))
-  (fn-lgk-make (list (lgut-r 9)) (lgut-genesis) 0 1 nil nil 1 :ready))
-(defun lgut-bad-st ()
-  (declare (xargs :guard t :verify-guards nil))
-  (fn-owb-make (lgut-bad-ks) nil nil nil (fn-owb-anonymous (list (lgut-r 9)))))
+  (fn-lgk-make (list (lgut-r 1) (lgut-r 2) (lgut-r 9))
+               (fn-lgk-last (cdr (lgut-opened))) (fn-lgk-frontier (cdr (lgut-opened)))
+               (fn-lgk-next-txid (cdr (lgut-opened))) nil nil 3 :ready))
 (assert-event
- (let* ((m (car (fn-owb-acked (lgut-bad-st))))
-        (pair (car (last (fn-lg-run (lgut-bs0) (lgut-bad-ks) (fn-lg-append-program) nil 0)))))
-   (and (fn-owb-alignedp (lgut-bad-st))
-        (member-equal m (fn-owb-acked (lgut-bad-st)))
+ (let* ((bs (car (lgut-opened)))
+        (pair (car (fn-lgu-host-run bs (lgut-bad-ks) nil 0 (lgut-max)))))
+   (and (not (fn-lgk-relp bs (lgut-bad-ks) 0 (lgut-genesis) (lgut-max)))
+        (member-equal pair (fn-lgu-host-run bs (lgut-bad-ks) nil 0 (lgut-max)))
         (fn-bs-crash-choicesp nil (fn-bs-pending (car pair)) (fn-bs-unit (car pair)))
-        (not (fn-lgk-relp (lgut-bs0) (lgut-bad-ks) 0 (lgut-genesis) (lgut-max)))
-        (not (fn-lgu-crash-point-p pair (lgut-bs0) (lgut-bad-ks) nil 0 0 (lgut-genesis) (lgut-max)))
-        (not (member-equal (fn-owb-member-record m) (lgut-open (fn-bs-crash (car pair) nil)))))))
+        (not (lgut-holds-p pair nil)))))
 
-; fn-lgu-crash-point-p removed (the cut): a MUTATION witness.  A state that
-; is no cut of any program (the segment wiped to zeros) with the related
-; layer: not a crash point, and the open holds nothing.
+; The take's verdict (fn-lgu-take-verdict, the gate fnn-log-publish asks
+; before it fences): a record the log cannot frame at MAX is refused by name
+; and the run goes on without it; three acknowledged would need it.
 (assert-event
- (let ((pair (cons (lgut-store (fn-bs-zeros (len (lgut-content))) nil) (lgut-ks0))))
-   (and (fn-owb-alignedp (lgut-st0))
-        (member-equal (lgut-m1) (fn-owb-acked (lgut-st0)))
+ (let* ((run (lgut-run (lgut-oversize))) (pair (car (last run))))
+   (and (equal (fn-lgu-take-verdict (lgut-oversize) (lgut-max)) :record-exceeds-log-frame)
+        (not (fn-lg-recordp (lgut-oversize) (lgut-max)))
+        (equal (fn-lgk-acked (cdr pair)) 2)
+        (not (member-equal (lgut-oversize) (fn-lgk-committed (cdr pair))))
+        (lgut-holds-p pair nil))))
+
+; The gate's witness: bypass it (the kernel takes the oversize record, as
+; it would without the verdict); the related state is lost at once, and the
+; rest of the run (seal, barrier, one acknowledgement) acknowledges a third
+; record the open cannot read: two recovered.
+(assert-event
+ (let* ((taken (fn-lgk-host-step (cdr (lgut-opened)) (lgut-take (lgut-oversize))))
+        (run (fn-lgu-host-run (car (lgut-opened)) taken (cdr (lgut-ops (lgut-oversize))) 0 (lgut-max)))
+        (pair (car (last run))))
+   (and (fn-lgk-relp (car (lgut-opened)) (cdr (lgut-opened)) 0 (lgut-genesis) (lgut-max))
+        (not (fn-lgk-relp (car (lgut-opened)) taken 0 (lgut-genesis) (lgut-max)))
         (fn-bs-crash-choicesp nil (fn-bs-pending (car pair)) (fn-bs-unit (car pair)))
-        (not (fn-lgu-crash-point-p pair (lgut-bs0) (lgut-ks0) nil 0 0 (lgut-genesis) (lgut-max)))
-        (not (member-equal (fn-owb-member-record (lgut-m1)) (lgut-open (fn-bs-crash (car pair) nil)))))))
+        (equal (fn-lgk-acked (cdr pair)) 3)
+        (equal (lgut-open (fn-bs-crash (car pair) nil)) (list (lgut-r 1) (lgut-r 2)))
+        (not (lgut-holds-p pair nil)))))
 
-; The image's admissibility removed: an "image" no crash of the appended
-; state leaves (its segment wiped), with the retained hypotheses: the open
-; holds nothing.  (fn-bs-crash-imagep is not executable; the witness shows
-; the wiped store differs from every image of the sample choices.)
+; (member-equal pair (fn-lgu-host-run ...)) removed: a MUTATION witness.
+; The kernel acknowledges the batch at log-written, before its barrier;
+; that pair is no cut of the run, and with nothing landed the record is not
+; recovered.
 (assert-event
- (let* ((pair (lgut-appended))
-        (wiped (lgut-store (fn-bs-zeros (len (fn-bs-durable-content (car pair) 0))) nil)))
-   (and (fn-owb-alignedp (lgut-st1))
-        (member-equal (lgut-m1) (fn-owb-acked (lgut-st1)))
-        (fn-lgu-crash-point-p pair (lgut-bs0) (lgut-ks1) nil 0 0 (lgut-genesis) (lgut-max))
-        (not (equal wiped (fn-bs-crash (car pair) (list nil))))
-        (not (equal wiped (fn-bs-crash (car pair) (list (lgut-sels (lgut-batch-units) :new)))))
-        (not (member-equal (fn-owb-member-record (lgut-m1)) (lgut-open wiped))))))
-
-; The recovery half's (member-equal r committed) removed: a record the scan
-; did not read (r3, never logged) is not in the open of any recovery cut's
-; image; the retained hypotheses hold.
-(assert-event
- (let ((pair (lgut-recover-pair 0)))
-   (and (not (fn-bs-ops-for-ino (fn-bs-pending (lgut-bs-raw)) 0))
-        (not (fn-bs-ops-not-for-ino (fn-bs-pending (lgut-bs-raw)) 0))
+ (let* ((run (lgut-run (lgut-big)))
+        (written (nth 5 run))
+        (pair (cons (car written)
+                    (fn-lgk-finish-one (fn-lgk-fence (cdr written) (lgut-unit))))))
+   (and (fn-lgk-relp (car (lgut-opened)) (cdr (lgut-opened)) 0 (lgut-genesis) (lgut-max))
+        (equal (fn-lgu-take-verdict (lgut-big) (lgut-max)) :admissible)
+        (not (member-equal pair run))
         (fn-bs-crash-choicesp (list nil) (fn-bs-pending (car pair)) (fn-bs-unit (car pair)))
-        (not (member-equal (lgut-r 3) (fn-lgk-committed (lgut-ks0))))
-        (not (member-equal (lgut-r 3) (lgut-open (fn-bs-crash (car pair) (list nil))))))))
+        (equal (fn-lgk-acked (cdr pair)) 3)
+        (not (lgut-holds-p pair (list nil))))))
+
+; (fn-bs-crash-imagep (car pair) image) removed: an "image" no crash of the
+; last cut leaves (the segment wiped to zeros); the open recovers nothing.
+(assert-event
+ (let* ((run (lgut-run (lgut-big))) (pair (car (last run)))
+        (wiped (lgut-store (fn-bs-zeros (len (fn-bs-durable-content (car pair) 0))) nil)))
+   (and (fn-lgk-relp (car (lgut-opened)) (cdr (lgut-opened)) 0 (lgut-genesis) (lgut-max))
+        (equal (fn-lgu-take-verdict (lgut-big) (lgut-max)) :admissible)
+        (member-equal pair run)
+        (null (fn-bs-pending (car pair)))
+        (not (equal wiped (fn-bs-crash (car pair) nil)))
+        (equal (fn-lgk-acked (cdr pair)) 3)
+        (equal (lgut-open wiped) nil))))
+
+; The run's rule (fn-lgu-host-step's :fence, the host's sealed-count gate):
+; the host fences only a batch in flight.  After a failed barrier that
+; landed nothing, a later :ok barrier and the kernel's fence of the faulted
+; kernel (what fn-lg-fence-program would do) then one acknowledgement: three
+; acknowledged, two recovered.  The run itself refuses that fence (the
+; faulted kernel stays faulted with two acknowledged, above).
+(defun lgut-barrier (bs)
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (r s) (fn-bs-fsync-file bs 0 :ok) (declare (ignore r)) s))
+(assert-event
+ (let* ((run (lgut-failed-run))
+        (failed (nth 5 run))
+        (bypass (cons (lgut-barrier (car failed))
+                      (fn-lgk-finish-one (fn-lgk-fence (cdr failed) (lgut-unit))))))
+   (and (equal (fn-lgk-phase (cdr failed)) :fault)
+        (consp (fn-lgk-inflight (cdr failed)))
+        (equal (fn-lgk-acked (cdr bypass)) 3)
+        (not (member-equal bypass run))
+        (fn-bs-crash-choicesp nil (fn-bs-pending (car bypass)) (fn-bs-unit (car bypass)))
+        (not (lgut-holds-p bypass nil)))))

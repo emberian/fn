@@ -16,9 +16,6 @@
 (defun fnn-bridge-record-sequence (record)
   (declare (ignorable record))
   (harness-stub-reached 'fnn-bridge-record-sequence "host/native/io.lisp"))
-(defun fnn-fault (control &rest args)
-  (declare (ignorable control args))
-  (harness-stub-reached 'fnn-fault "host/native/io.lisp"))
 ;;; ---- derived stubs: END ----
 (defconstant +fnn-exit-ok+ 0)
 (defconstant +fnn-export-chunk+ 1024)

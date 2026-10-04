@@ -1,0 +1,12 @@
+{
+ "category": "bug",
+ "file": "host/native/bp-node.lisp",
+ "id": "BP-FORGED-SESSION-SENDER-EXIT6",
+ "notes": [],
+ "owner": "w-bp",
+ "severity": "high",
+ "source": "integrator3",
+ "state": "open",
+ "title": "test_bp_node_native test_forged_session line ~343: after the refused forged peer, bp-service run to the same node exits 6 (INTERRUPTED: XFER-SEGMENT, :SEND-REFUSED :BUSY x4, :OUTBOUND-FAILED, SESSION-DOWN) although the node delivered. Possible product defect (receiver's final XFER_ACK later than the sender's BUSY window) or harness race; test_conflicting_return_job is the same shape. NOT re-expected (coordinator ruling 2026-10-04). Repro and first step: lanedumps/w-bp.md class A.",
+ "updated": "2026-10-04T19:23:04Z"
+}

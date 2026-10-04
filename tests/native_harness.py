@@ -1190,12 +1190,44 @@ class Node:
         words = (["--profile", profile] if profile else []) + list(groups or ("fn.test",))
         return self.operator("init", *words, expect=expect, **options)
 
+    def deployed_heap(self, image, words, env=None):
+        """The installed launcher's figure for `IMAGE --fn WORDS' (packaging/fn
+        installed mode): the image's own `heap -- WORDS' probe, run in the
+        core's size plus 128 MiB, gives the heap and control stack, as
+        SBCL_USER_ARGS for the run.  A refusal fails the test with ACL2's
+        line: the deployed node would not start either."""
+        image = Path(image or self.image)
+        boot = (Path(str(image) + ".core").stat().st_size + 1048575) // 1048576 + 128
+        probe_env = dict(env or {})
+        probe_env["SBCL_USER_ARGS"] = "--dynamic-space-size {}".format(boot)
+        probe = run([image, "--fn", "heap", "--", *words],
+                    env=self.environment(probe_env), text=True)
+        figure = re.match(r"heap=(\d+) MB .* stack=(\d+) KB", probe.stdout.strip())
+        if figure is None:
+            self.case.fail("{}: the launcher's heap probe answered {!r} (exit {}): {}".format(
+                self.name, probe.stdout.strip(), probe.returncode, probe.stderr.strip()))
+        return {"SBCL_USER_ARGS": "--dynamic-space-size {} --control-stack-size {}KB".format(
+            figure.group(1), figure.group(2))}
+
+    def run_environment(self, image, words, env):
+        """A store carrying a peer flight profile starts at the deployed
+        launcher's figure: its owner revalidates that reservation against the
+        machine at startup (books/peer-flight-startup.lisp
+        fn-prstartup-peer-native-grant), which the image's saved 32000 MB is
+        not, under any test scope smaller than that."""
+        if self.launcher or not (self.store_path / "peer-flight-profile").exists():
+            return self.environment(env)
+        merged = dict(env or {})
+        merged.update(self.deployed_heap(image, words, env))
+        return self.environment(merged)
+
     def start(self, *, image=None, env=None, ready=b"LISTENING ", timeout=180, verb=("run",),
               limit=DEFAULT_LIMIT):
         """`operator CONFIG run`, drained (LIMIT octets kept per stream),
         returned once READY is on stdout."""
-        process = start(self.argv(image, ("operator", self.config, *verb)),
-                        cwd=ROOT, env=self.environment(env), limit=limit)
+        words = ("operator", self.config, *verb)
+        process = start(self.argv(image, words),
+                        cwd=ROOT, env=self.run_environment(image, words, env), limit=limit)
         self.processes.append(process)
         self.process = process
         # `run --once` serves its one connection on the plain listener: ACL2's
@@ -1228,8 +1260,9 @@ class Node:
         """(the owner, None) once it announces LISTENING, or (the exited
         owner, its stderr) when it refuses to start: for a case whose
         subject is the refusal."""
-        process = start(self.argv(image, ("operator", self.config, "run")),
-                        cwd=ROOT, env=self.environment(env))
+        words = ("operator", self.config, "run")
+        process = start(self.argv(image, words),
+                        cwd=ROOT, env=self.run_environment(image, words, env))
         self.processes.append(process)
         self.process = process
         text, end = process.stdout.wait_for(_line_starting(b"LISTENING "), 0,
