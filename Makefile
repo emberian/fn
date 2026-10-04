@@ -1751,6 +1751,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-feed-port \
 	tests/acl2/owner-feed-port-tests \
 	tests/acl2/owner-feed-tests \
+	tests/acl2/owner-feed-live-carried-tests \
 	books/owner \
 	books/transit-header-limits \
 	tests/acl2/transit-header-limits-tests \

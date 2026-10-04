@@ -5206,7 +5206,11 @@ written within SECONDS."
             (mv-let (status publication state)
               (fn-owner-feed-install-port-result
                owner result
-               (list (cons :accepted (if (fn-own-feed-port-effects result) :send :quiet))
+               ;; ACL2's word (books/owner-feed.lisp fn-own-feed-reply-word):
+               ;; :lost when the reply was a loss, so the link is dropped.
+               (list (cons :accepted (fn-own-feed-reply-word
+                                      (fn-own-feeds owner) peer response
+                                      (fn-own-feed-port-effects result)))
                      (cons :refused :refused))
                (fn-olog-feed-reply-line owner peer response) state)
               (declare (ignore status))
