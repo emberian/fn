@@ -9,13 +9,15 @@
  "id": "S039",
  "line": "1075",
  "locus": "store-books",
- "notes": [],
+ "notes": [
+  "10-04 13:56 already fixed in tree: host/store-write-host.lisp fn-xw-recover-body joins (fn-store-cfg-next-txid (cadr config-records) 0) into next (comment cites S039/walk F3); see git log -S'sweep S039'"
+ ],
  "owner": "sweep-store",
  "reviewer": "host/store-write-host.lisp:1075-1077 joins only the events fold (nth 3 replay) and fn-lgc-next-txid of the kernel. The read-only port (host/store-open-host.lisp:643-646) and the native open (host/native/io.lisp:7718-7724) both also join fn-store-cfg-next-txid over the config records, and the native comment names the case: a record accepted while POSTs were refused on a full budget. books/open-frontier.lisp:15-22 says the open refuses :frontier when the replayed node stands above the frontier, and gives walk F3 (txids 12 and 13 refused, group create at 14, frontier 12) as exactly this omission. fn-store-sn-recover-rows (store-node-host.lisp:535) receives `next` unchanged, so the writable extracted program (fn-xw-main, driven by tools/extract/served-main.scm:156-160 for `store ROOT recover/post`) fails the open on that healthy store while the native image opens it. The extracted program is a second implementation and differential oracle, not the deployed SBCL product, so this is medium, not high.",
  "scenario": "POSTs refused on a full transaction budget consume txids 12 and 13 and leave no record; a `group create` is then accepted naming txid 14. `store ROOT recover` or `store ROOT post` through the extracted writable program computes a frontier of 12 from the events and the kernel alone. fn-store-sn-recover-rows refuses :frontier because the replayed node stands above it, so the open faults with \"ACL2 replay rejected committed transaction history\" on a healthy store. The native image opens the same store. The stateful differential that should hold the two programs to the same outcome diverges on exactly the history the F3 fix was written for.",
  "severity": "medium",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "refuted",
  "title": "Writable extracted open leaves configuration records out of the txid frontier (reintroduces walk F3)",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-04T17:56:49Z"
 }
