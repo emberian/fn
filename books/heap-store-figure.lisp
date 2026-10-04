@@ -849,10 +849,14 @@
   :hints (("Goal" :in-theory (enable fn-heap-nursery-trigger))))
 
 ; The runtime capture is the actual fixed-process trigger, not the nursery
-; cap used to solve the launcher's least dynamic-space equation.
-(defun fn-heap-runtime-protected-octets (profile core nursery)
+; cap used to solve the launcher's least dynamic-space equation.  OBSERVED is
+; the store on disk the launcher's figure was sized by (heap-figure.lisp
+; fn-heap-operation-observation; lane reservation-after-flip): the open term
+; replays at most that, the state term stays at the profile's bounds.  NIL
+; is the unobserved bound.
+(defun fn-heap-runtime-protected-octets (profile core nursery observed)
  (declare (xargs :guard t))
- (+ (fn-heap-store-base-octets profile core nil)
+ (+ (fn-heap-store-base-octets profile core observed)
     (* 2 (max *fn-heap-nursery-least-octets* (nfix nursery)))))
 
 ; Adding backing can raise the launcher's trigger. Re-solve that room rather

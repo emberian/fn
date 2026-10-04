@@ -607,6 +607,22 @@
       "latest": "Actual DEFAULT/output/peer heap source consumers, real inert peer policy files, retained private-bank constructor cuts and snapshot/peer terminal conjunction pass. Foundation69b owns actual protected nursery growth and current-worker machine admission; source guard evidence remains separate from normal certification. Earlier manifests remain valid for their exact source coordinates.",
       "obstruction": "Matching normal certificate/image, expanded init-budget/reopen refinement, protected recovery partition and complete tariff remain open; no physical deployment claim.",
       "next": "Integration composes Foundation69b, Bounds bank+a121 creator-custody fix, Runtime2c7 snapshot observer and this native consumer once; the History initializer then supplies the current nonempty Store physical command driver."
+    },
+    {
+      "id": "durable-after-ack",
+      "name": "durable after acknowledgement (Mini M1)",
+      "contract": "ACKED: the log kernel's acknowledged count (fn-lgc-acked, advanced by fn-lgc-finish-one before the batch's replies leave); client contract: every record whose acceptance a client observed is recovered; not acknowledged = recovered.",
+      "host": {
+        "function": "fn-lgc-finish-one",
+        "file": "host/native/io.lisp"
+      },
+      "bridge": "fn-lgu-host-kernel-acknowledges-only-recoverable-records",
+      "keystone": "fn-lgu-acknowledged-records-are-recovered-at-every-cut",
+      "tested": null,
+      "profile": "default",
+      "latest": "books/store-log-durable joins image-world, image-world-dtn and image-world-paged (laptop certify-20261004T161219Z-6428, -165405Z-4135); an oversize take is refused by name (:record-exceeds-log-frame, M1-LOG-RECORD-FRAMING-WINDOW).",
+      "obstruction": "rotation (incl. fnn-log-complete-rotation at open) outside the run; RL-01 (open reads cached bytes after a failed barrier) outside the model; containment RestartPreventExitStatus=3. Interface binding: fn-lgc-finish-one cites the bridge only as :step-of fn-lgc-host-run (host-loop correspondence owed, DI-OWED-STEP-OF-LGC-FINISH); the keystone is cited by no entry.",
+      "next": "rotation (M1-e, two-segment R); the batch's core natives (log, recovery, crash_model) on the image that carries it."
     }
   ],
   "other_deployments": [

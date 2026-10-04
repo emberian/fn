@@ -392,7 +392,7 @@
 (include-book "owner-cold-line")
 (include-book "owner-resource-line")
 (include-book "output-command-admission")
-(include-book "output-tariff-article-row")
+(include-book "output-tariff-families")
 (include-book "output-admission-line")
 (include-book "arena-reader-pins")
 (include-book "owner-reader-read")

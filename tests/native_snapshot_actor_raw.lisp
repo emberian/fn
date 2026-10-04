@@ -215,7 +215,10 @@
    (defun fnn-owner-snapshot-pin-release) (defun fnn-owner-snapshot-job-run)
    (defun fnn-owner-publisher-start) (defun fnn-owner-publisher-release)
    (defun fnn-owner-export-start) (defun fnn-owner-export-captured)
+   (defun fnn-owner-worker-tail-hold)
    (defun fnn-owner-actor-for-custody) (defun fnn-owner-thread-escape)))
+;; No developer selector is set: the tail hold is the deployed no-op.
+(defun fnn-developer-selector (name) (declare (ignore name)) nil)
 (defvar *snapshot-service* nil)
 (defvar *snapshot-cut* nil)
 (defvar *snapshot-pin-cut* nil)
