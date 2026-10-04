@@ -8,6 +8,26 @@
 ; supply a resumable renderer or a proved profile-derived unit bound. In
 ; particular, wrapping an arbitrary OVER/HDR row does not bound its payload
 ; allocation or make a multi-entry cold read terminate.
+;
+; DEMAND (lane generators with cold-line, 2026-10-04).  The host runs a
+; quantum under the realizer's no-I/O mode: a payload head the quantum needs
+; and the realizer does not hold is a cold miss, the line is re-run once the
+; miss is read off the owner, and the realizer keeps fn-arx-read-cache-entries
+; of them.  A quantum whose steps read more heads than that evicts its own
+; earlier entries on every re-run and never runs warm (owner.lisp, ONE
+; deadline per LINE).  ACL2 cannot see whether a read is warm, so the bound
+; that matters is READS PER QUANTUM, and a declaration states it as a metric
+; over PROGRESS: `:demand-metric D' is the number of payload heads the
+; consumer has touched by this progress (or an over-approximation of it; the
+; shell reads D as (nfix D)), and `:demand-proof' names the admitted theorem
+; that one call raises it by at most one, (<= (- (nfix D') (nfix D)) 1),
+; checked against the world like :visit-proof.  The shell then proves
+; NAME-STEP-DEMAND-BOUND (one step raises (nfix D) by at most one) and, in
+; def-cursor/batch, NAME-BATCH-DEMAND-BOUND: a batch with budget Q raises it
+; by at most (nfix Q), so a caller that passes Q < fn-arx-read-cache-entries
+; gets a quantum whose misses fit the cache.  That the heads a step actually
+; reads are counted by its D is the consumer's claim about its own reader,
+; stated beside the instance; the shell proves only the sum.
 (in-package "ACL2")
 (include-book "immutable-list")
 
@@ -83,18 +103,23 @@
             (value '(value-triple :cursor-visit-proof-matches))
           (er soft 'def-cursor "~x0 does not prove this consumer's literal one-candidate metric: ~x1" name statement))))))
 
-(defmacro def-cursor/output (name formals &key call stobjs visit-proof visit-metric output-phase output-proof)
+(defmacro def-cursor/output (name formals &key call stobjs visit-proof visit-metric output-phase output-proof
+                                  demand-metric demand-proof)
   (let ((step (intern-in-package-of-symbol
                (concatenate 'string (symbol-name name) "-STEP") name))
         (byte-bound (intern-in-package-of-symbol
                      (concatenate 'string (symbol-name name) "-STEP-BYTE-BOUND") name))
         (call-bound (intern-in-package-of-symbol
-                     (concatenate 'string (symbol-name name) "-STEP-CALL-BOUND") name)))
+                     (concatenate 'string (symbol-name name) "-STEP-CALL-BOUND") name))
+        (demand-bound (intern-in-package-of-symbol
+                       (concatenate 'string (symbol-name name) "-STEP-DEMAND-BOUND") name)))
     (if (or (not (symbolp name)) (not (true-listp formals))
             (not (consp call)) (not (symbolp visit-proof)) (not visit-proof)
             (not (consp visit-metric))
-            (and output-phase (or (not (symbolp output-proof)) (not output-proof))))
-        '(assert-event nil :msg "def-cursor requires a call and named one-candidate visit proof")
+            (and output-phase (or (not (symbolp output-proof)) (not output-proof)))
+            (and (or demand-metric demand-proof)
+                 (or (not (consp demand-metric)) (not (symbolp demand-proof)) (not demand-proof))))
+        '(assert-event nil :msg "def-cursor requires a call and named one-candidate visit proof (and, with :demand-metric, a named one-read demand proof)")
       `(progn
          (make-event
           (fn-cur-visit-proof-event
@@ -102,6 +127,15 @@
            '(<= (- ,visit-metric
                    ,(subst `(mv-nth 1 ,call) 'progress visit-metric)) 1)
            state))
+         ,@(if demand-metric
+               `((make-event
+                  (fn-cur-visit-proof-event
+                   ',demand-proof
+                   '(<= (- (nfix ,(subst `(mv-nth 1 ,call) 'progress demand-metric))
+                           (nfix ,demand-metric))
+                        1)
+                   state)))
+             nil)
          ,@(if output-phase
                `((make-event
                   (fn-cur-visit-proof-event
@@ -141,13 +175,26 @@
            (<= (mv-nth 2 (,step cur visits bytes ,@formals)) (nfix visits))
            :rule-classes :linear
            :hints (("Goal" :in-theory (e/d (,step) (fn-cur-split)))))
+         ,@(if demand-metric
+               `((defthm ,demand-bound
+                   (<= (- (nfix ,(subst `(fn-cur-progress (mv-nth 1 (,step cur visits bytes ,@formals)))
+                                        'progress demand-metric))
+                          (nfix ,(subst '(fn-cur-progress cur) 'progress demand-metric)))
+                       1)
+                   :rule-classes :linear
+                   :hints (("Goal" :in-theory (e/d (,step) (fn-cur-split))
+                            :use ((:instance ,demand-proof (progress (fn-cur-progress cur))))))))
+             nil)
          (table fn-cursor ',name
                 '(:step ,step :call ,call :visit-proof ,visit-proof :visit-metric ,visit-metric
                   :output-phase ,output-phase :output-proof ,output-proof
+                  :demand-metric ,demand-metric :demand-proof ,demand-proof
+                  :demand-bound ,(and demand-metric demand-bound)
                   :context-preserved t :output-residual fn-cur-split-residual
                   :byte-bound fn-cur-split-byte-bound
                   :working-bound :consumer-owed :dependency-settlement :operation-owned))))))
 
-(defmacro def-cursor (name formals &key call stobjs visit-proof visit-metric)
+(defmacro def-cursor (name formals &key call stobjs visit-proof visit-metric demand-metric demand-proof)
   `(def-cursor/output ,name ,formals :call ,call :stobjs ,stobjs
-     :visit-proof ,visit-proof :visit-metric ,visit-metric))
+     :visit-proof ,visit-proof :visit-metric ,visit-metric
+     :demand-metric ,demand-metric :demand-proof ,demand-proof))

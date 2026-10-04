@@ -573,7 +573,7 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
 ;;; no owner the verb is refused by name (nothing drains a stopped node).
 ;;; After the answer the operator waits while ACL2's liveness decision over
 ;;; the socket and the lock says an owner runs (the owner's drain ends by its
-;;; window, books/owner-retire.lisp fn-oret-drain-step-ends-by-the-window).
+;;; window, books/owner-retire-counted.lisp fn-ort-retire-step-ends-by-the-window).
 ;;; ACL2 separately bounds this operator's observation; PRF-357 does not
 ;;; bound a physical final fence.  Expiry is uncertain and leaves the owner
 ;;; running.  After a stopped observation, print only its fresh report.

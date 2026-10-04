@@ -76,6 +76,8 @@ defconst becomes a defparameter and its defun loses its xargs declaration."
                        (defun fn-fs-keyword-subsetp)
                        (defun fn-fs-admissionp)
                        (defun fn-fs-section-declp)
+                       (defconst *fn-fs-actor-failures*)
+                       (defun fn-fs-actor-declp)
                        (defun fn-fs-section-admit)
                        (defun fn-fs-section-class-ok)
                        (defun fn-fs-unwind)))

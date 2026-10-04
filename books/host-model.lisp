@@ -1134,3 +1134,526 @@
 (defthm fn-hmc-do-return-preserves-invp (implies (fn-hmc-invp st) (fn-hmc-invp (mv-nth 0
    (fn-hmc-do-return st ev)))) :hints (("Goal" :cases ((fn-hmc-ended st)) :in-theory (disable
    fn-hmc-invp fn-hmc-do-return) :use ((:instance fn-hmc-do-return-keeps-invp)))))
+
+; ---- the close: an incarnation no read, lease or request names is unbound
+
+(local
+ (defthm fn-hmc-alistp-of-unbind-inc
+   (implies (alistp fds) (alistp (fn-hmc-unbind-inc inc fds)))))
+
+(local
+ (defthm fn-hmc-fds-incs-of-unbind-inc
+   (equal (fn-hmc-fds-incs (fn-hmc-unbind-inc inc fds))
+          (remove-equal inc (fn-hmc-fds-incs fds)))))
+
+(local
+ (defthm fn-hmc-strip-cars-of-unbind-inc-member
+   (implies (member-equal fd (strip-cars (fn-hmc-unbind-inc inc fds)))
+            (member-equal fd (strip-cars fds)))))
+
+(local
+ (defthm fn-hmc-strip-cars-of-unbind-inc-no-dups
+   (implies (no-duplicatesp-equal (strip-cars fds))
+            (no-duplicatesp-equal (strip-cars (fn-hmc-unbind-inc inc fds))))))
+
+(local
+ (defthm fn-hmc-intersect-of-remove-cons
+   (implies (not (intersectp-equal x closed))
+            (not (intersectp-equal (remove-equal inc x) (cons inc closed))))))
+
+(local
+ (defthm fn-hmc-boundp-of-unbind-inc
+   (equal (fn-hmc-boundp x (fn-hmc-unbind-inc inc fds))
+          (and (not (equal x inc)) (fn-hmc-boundp x fds)))))
+
+(local
+ (defthm fn-hmc-fd-inc-of-unbind-inc
+   (implies (and (alistp fds) (not (equal (fn-hmc-fd-inc fd fds) inc)))
+            (equal (fn-hmc-fd-inc fd (fn-hmc-unbind-inc inc fds))
+                   (fn-hmc-fd-inc fd fds)))
+   :hints (("Goal" :induct (fn-hmc-unbind-inc inc fds)
+            :in-theory (enable fn-hmc-fd-inc)))))
+
+(local
+ (defthm fn-hmc-lease-names-of-member
+   (implies (and (fn-hmc-memberp (cons kind inc) leases))
+            (fn-hmc-lease-names-p inc leases))))
+
+(local
+ (defthm fn-hmc-row-of-file-not-clear
+   (implies (and (fn-hmc-rowsp rows) (fn-hmc-row-of key rows)
+                 (not (fn-hmc-row-settledp (fn-hmc-row-of key rows)))
+                 (fn-pio-file-clear-p inc rows))
+            (not (equal (fn-hmc-row-file (fn-hmc-row-of key rows)) inc)))
+   :hints (("Goal" :in-theory (enable fn-pio-file-clear-p fn-hmc-row-of fn-hmc-rowsp
+                                      fn-hmc-row-file fn-hmc-row-settledp fn-hmc-row-phase)))))
+
+(local
+ (defthm fn-hmc-key-inc-not-the-closed
+   (implies (and (fn-hmc-rowsp rows) (fn-pio-file-clear-p inc rows)
+                 (not (fn-hmc-lease-names-p inc leases))
+                 (fn-hmc-key-inc key rows leases))
+            (not (equal (fn-hmc-key-inc key rows leases) inc)))
+   :hints (("Goal" :use ((:instance fn-hmc-row-of-file-not-clear)
+                         (:instance fn-hmc-lease-names-of-member (kind (car key)) (inc (cadr key))))
+            :in-theory (e/d (fn-hmc-key-inc) (fn-hmc-row-of fn-hmc-rowsp fn-pio-file-clear-p
+                                              fn-hmc-row-of-file-not-clear
+                                              fn-hmc-lease-names-of-member))))))
+
+(local
+ (defthm fn-hmc-reqs-okp-of-unbind-inc
+   (implies (and (fn-hmc-reqs-okp reqs fds rows leases) (alistp fds)
+                 (fn-hmc-rowsp rows) (fn-pio-file-clear-p inc rows)
+                 (not (fn-hmc-lease-names-p inc leases)))
+            (fn-hmc-reqs-okp reqs (fn-hmc-unbind-inc inc fds) rows leases))
+   :hints (("Goal" :induct (fn-hmc-reqs-okp reqs fds rows leases)
+            :in-theory (disable fn-hmc-key-inc fn-hmc-unbind-inc fn-hmc-rowsp
+                                fn-pio-file-clear-p fn-hmc-fd-inc))
+           ("Subgoal *1/2" :use ((:instance fn-hmc-key-inc-not-the-closed
+                                            (key (fn-hmc-req-key (car reqs)))))))))
+
+(local
+ (defthm fn-hmc-rows-open-p-of-close
+   (implies (and (fn-hmc-rows-open-p rows fds closed) (fn-hmc-rowsp rows)
+                 (fn-pio-file-clear-p inc rows) (true-listp closed))
+            (fn-hmc-rows-open-p rows (fn-hmc-unbind-inc inc fds) (cons inc closed)))
+   :hints (("Goal" :induct (fn-hmc-rows-open-p rows fds closed)
+            :in-theory (e/d (fn-pio-file-clear-p fn-hmc-rowsp fn-hmc-row-file
+                             fn-hmc-row-settledp fn-hmc-row-phase)
+                            (fn-hmc-unbind-inc fn-hmc-boundp))))))
+
+(local
+ (defthm fn-hmc-leases-open-p-of-close
+   (implies (and (fn-hmc-leases-open-p leases fds closed)
+                 (not (fn-hmc-lease-names-p inc leases)) (true-listp closed))
+            (fn-hmc-leases-open-p leases (fn-hmc-unbind-inc inc fds) (cons inc closed)))
+   :hints (("Goal" :in-theory (disable fn-hmc-unbind-inc fn-hmc-boundp)))))
+
+(local
+ (defthm fn-hmc-quiet-close-is-clear
+   (implies (and (fn-pio-direct-okp (fn-hmc-issued rows) holds) (fn-hmc-rowsp rows)
+                 (fn-pio-direct-quiet-p inc holds))
+            (fn-pio-file-clear-p inc rows))
+   :hints (("Goal" :use ((:instance fn-pio-direct-quiet-is-clear
+                                    (issued (fn-hmc-issued rows)) (file inc)))
+            :in-theory (disable fn-pio-direct-quiet-p fn-pio-direct-okp fn-hmc-issued
+                                fn-pio-file-clear-p)))))
+
+(local
+ (defthm fn-hmc-true-listp-of-remove1
+   (implies (true-listp l) (true-listp (fn-hmc-remove1 x l)))))
+
+(defthm fn-hmc-do-close-keeps-invp
+  (implies (and (fn-hmc-invp st) (not (fn-hmc-ended st)))
+           (fn-hmc-invp (mv-nth 0 (fn-hmc-do-close st ev))))
+  :hints (("Goal" :in-theory (e/d (fn-hmc-do-close fn-hmc-invp)
+                                  (fn-hmc-unbind-inc fn-hmc-issued fn-hmc-rowsp fn-pio-direct-okp
+                                   fn-pio-direct-quiet-p fn-pio-file-clear-p
+                                   fn-hmc-rows-open-p fn-hmc-leases-open-p fn-hmc-reqs-okp
+                                   fn-hmc-workersp fn-hmc-rows-below-p fn-hmc-row-ids)))))
+
+; ---- the issue: a fresh row joins the end of the rows, a running worker its slot
+
+(local
+ (defthm fn-hmc-issued-put-fresh-is-append
+   (implies (and (fn-hmc-rowsp rows) (not (fn-pio-issued-row tok (fn-hmc-issued rows)))
+                 (true-listp row) (equal (fn-pio-token row) tok))
+            (equal (fn-pio-issued-put tok row (fn-hmc-issued rows))
+                   (fn-hmc-issued (append rows (list row)))))
+   :hints (("Goal" :induct (fn-hmc-rowsp rows)
+            :in-theory (enable fn-hmc-issued fn-pio-issued-put fn-pio-issued-row fn-hmc-rowsp)))))
+
+(local
+ (defthm fn-hmc-row-of-absent-from-issued
+   (implies (and (fn-hmc-rowsp rows) (not (fn-pio-issued-row tok (fn-hmc-issued rows))))
+            (not (fn-hmc-row-of tok rows)))
+   :hints (("Goal" :induct (fn-hmc-rowsp rows)
+            :in-theory (enable fn-hmc-issued fn-pio-issued-row fn-hmc-rowsp fn-hmc-row-of)))))
+
+(local
+ (defthm fn-hmc-rowsp-of-append-row
+   (implies (and (fn-hmc-rowsp rows) (fn-pio-rowp row))
+            (fn-hmc-rowsp (append rows (list row))))))
+
+(local
+ (defthm fn-hmc-row-ids-of-append
+   (equal (fn-hmc-row-ids (append rows x))
+          (append (fn-hmc-row-ids rows) (fn-hmc-row-ids x)))))
+
+(local
+ (defthm fn-hmc-no-dup-of-append-fresh
+   (implies (and (no-duplicatesp-equal x) (not (member-equal a x)))
+            (no-duplicatesp-equal (append x (list a))))))
+
+(local
+ (defthm fn-hmc-rows-below-p-not-member
+   (implies (fn-hmc-rows-below-p rows next)
+            (not (member-equal next (fn-hmc-row-ids rows))))))
+
+(local
+ (defthm fn-hmc-rows-below-p-of-append-next
+   (implies (and (fn-hmc-rows-below-p rows next) (natp next)
+                 (equal (fn-hmc-row-id row) next))
+            (fn-hmc-rows-below-p (append rows (list row)) (+ 1 next)))))
+
+(local
+ (defthm fn-hmc-rows-open-p-of-append-row
+   (implies (and (fn-hmc-rows-open-p rows fds closed)
+                 (fn-hmc-boundp (fn-hmc-row-file row) fds)
+                 (not (fn-hmc-memberp (fn-hmc-row-file row) closed)))
+            (fn-hmc-rows-open-p (append rows (list row)) fds closed))
+   :hints (("Goal" :in-theory (disable fn-hmc-boundp fn-hmc-memberp)))))
+
+(local
+ (defthm fn-hmc-row-of-append
+   (implies (fn-hmc-rowsp rows)
+            (equal (fn-hmc-row-of key (append rows x))
+                   (if (fn-hmc-row-of key rows) (fn-hmc-row-of key rows) (fn-hmc-row-of key x))))
+   :hints (("Goal" :induct (fn-hmc-rowsp rows)
+            :in-theory (enable fn-hmc-rowsp fn-hmc-row-of)))))
+
+(local
+ (defthm fn-hmc-workersp-of-append-row
+   (implies (and (fn-hmc-workersp ws rows) (fn-hmc-rowsp rows))
+            (fn-hmc-workersp ws (append rows (list row))))
+   :hints (("Goal" :induct (fn-hmc-workersp ws rows)
+            :in-theory (e/d (fn-hmc-workersp) (fn-hmc-row-of))))))
+
+(local
+ (defthm fn-hmc-key-inc-of-append-row
+   (implies (and (fn-hmc-rowsp rows) (fn-hmc-key-inc key rows leases)
+                 (natp (car (fn-pio-token row))) (true-listp row))
+            (equal (fn-hmc-key-inc key (append rows (list row)) leases)
+                   (fn-hmc-key-inc key rows leases)))
+   :hints (("Goal" :in-theory (e/d (fn-hmc-key-inc fn-hmc-row-of) ())))))
+
+(local
+ (defthm fn-hmc-reqs-okp-of-append-row
+   (implies (and (fn-hmc-reqs-okp reqs fds rows leases) (fn-hmc-rowsp rows)
+                 (natp (car (fn-pio-token row))) (true-listp row))
+            (fn-hmc-reqs-okp reqs fds (append rows (list row)) leases))
+   :hints (("Goal" :induct (fn-hmc-reqs-okp reqs fds rows leases)
+            :in-theory (disable fn-hmc-key-inc)))))
+
+; A busy worker's token names a row, so its id is below the counter: the
+; fresh token (whose id is the counter) is nobody's.
+(local
+ (defthm fn-hmc-busy-token-names-a-row
+   (implies (and (fn-hmc-workersp ws rows) (member-equal tk (fn-hmc-busy-tokens ws)))
+            (fn-hmc-row-of tk rows))
+   :hints (("Goal" :induct (fn-hmc-workersp ws rows)
+            :in-theory (e/d (fn-hmc-workersp fn-hmc-busy-tokens) (fn-hmc-row-of))))))
+
+(local
+ (defthm fn-hmc-no-row-at-the-counter
+   (implies (and (fn-hmc-rowsp rows) (fn-hmc-rows-below-p rows next))
+            (not (fn-hmc-row-of (cons next rest) rows)))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-hmc-row-of-has-the-token (key (cons next rest)))
+                  (:instance fn-hmc-row-of-is-a-true-list (key (cons next rest)))
+                  (:instance fn-hmc-row-of-is-a-member (key (cons next rest)))
+                  (:instance fn-hmc-car-of-token (r (fn-hmc-row-of (cons next rest) rows)))
+                  (:instance fn-hmc-rows-below-p-member (r (fn-hmc-row-of (cons next rest) rows))))
+            :in-theory (disable fn-hmc-row-of fn-hmc-rows-below-p fn-hmc-row-of-has-the-token
+                                fn-hmc-row-of-is-a-true-list fn-hmc-row-of-is-a-member
+                                fn-hmc-car-of-token fn-hmc-rows-below-p-member)))))
+
+(local
+ (defthm fn-hmc-busy-token-below-next
+   (implies (and (fn-hmc-workersp ws rows) (fn-hmc-rowsp rows)
+                 (fn-hmc-rows-below-p rows next))
+            (not (member-equal (cons next rest) (fn-hmc-busy-tokens ws))))
+   :hints (("Goal" :use ((:instance fn-hmc-busy-token-names-a-row (tk (cons next rest))))
+            :in-theory (disable fn-hmc-busy-token-names-a-row fn-hmc-workersp
+                                fn-hmc-busy-tokens fn-hmc-rows-below-p)))))
+
+(local
+ (defthm fn-hmc-rows-open-p-of-append-issued-row
+   (implies (and (fn-hmc-rows-open-p rows fds closed)
+                 (member-equal file (fn-hmc-fds-incs fds))
+                 (not (member-equal file closed)) (true-listp closed))
+            (fn-hmc-rows-open-p (append rows (list (list* n cid file eoff elen trailer '(:issued))))
+                                fds closed))
+   :hints (("Goal" :use ((:instance fn-hmc-rows-open-p-of-append-row
+                                    (row (list* n cid file eoff elen trailer '(:issued)))))
+            :in-theory (e/d (fn-hmc-row-file fn-hmc-row-settledp fn-hmc-row-phase)
+                            (fn-hmc-rows-open-p-of-append-row))))))
+
+(local
+ (defthm fn-hmc-issued-row-accessors
+   (and (equal (fn-hmc-row-id (list* n cid file eoff elen trailer '(:issued))) n)
+        (equal (fn-hmc-row-file (list* n cid file eoff elen trailer '(:issued))) file)
+        (not (fn-hmc-row-settledp (list* n cid file eoff elen trailer '(:issued)))))
+   :hints (("Goal" :in-theory (enable fn-hmc-row-id fn-hmc-row-file fn-hmc-row-settledp
+                                      fn-hmc-row-phase)))))
+
+(local
+ (defthm fn-hmc-row-ids-of-append-one
+   (equal (fn-hmc-row-ids (append rows (list r)))
+          (append (fn-hmc-row-ids rows) (list (fn-hmc-row-id r))))))
+
+(local
+ (defthm fn-hmc-worker-slots-of-workers-put-no-dup
+   (implies (no-duplicatesp-equal (fn-hmc-worker-slots ws))
+            (no-duplicatesp-equal
+             (fn-hmc-worker-slots (cons w (fn-hmc-workers-remove (fn-hmc-worker-slot w) ws)))))
+   :hints (("Goal" :in-theory (disable fn-hmc-workers-remove)))))
+
+(local
+ (defthm fn-hmc-busy-tokens-of-running-cons
+   (implies (and (no-duplicatesp-equal (fn-hmc-busy-tokens ws))
+                 (not (member-equal (fn-hmc-worker-token w) (fn-hmc-busy-tokens ws))))
+            (no-duplicatesp-equal
+             (fn-hmc-busy-tokens (cons w (fn-hmc-workers-remove slot ws)))))
+   :hints (("Goal" :in-theory (disable fn-hmc-workers-remove)))))
+
+(local
+ (defthm fn-hmc-workersp-of-running-cons
+   (implies (and (fn-hmc-workersp rest rows) (fn-pxe-rowp w)
+                 (fn-hmc-row-of (fn-hmc-worker-token w) rows)
+                 (not (fn-hmc-row-settledp (fn-hmc-row-of (fn-hmc-worker-token w) rows))))
+            (fn-hmc-workersp (cons w rest) rows))
+   :hints (("Goal" :in-theory (disable fn-hmc-row-of fn-pxe-rowp)))))
+
+(local
+ (defthm fn-hmc-worker-fields-are-nths
+   (implies (true-listp w)
+            (and (equal (fn-hmc-worker-token w) (nth 3 w))
+                 (equal (fn-hmc-worker-phase w) (nth 2 w))))
+   :hints (("Goal" :in-theory (enable fn-hmc-worker-token fn-hmc-worker-phase)))))
+
+(local
+ (defthm fn-hmc-row-of-singleton
+   (equal (fn-hmc-row-of key (list r))
+          (if (and (true-listp r) (equal (fn-pio-token r) key)) r nil))
+   :hints (("Goal" :in-theory (enable fn-hmc-row-of)))))
+
+
+; PRF-1242's issue step: an admitted read joins the rows (a fresh :issued row
+; at the counter, for a bound and unclosed incarnation), runs on the idle
+; worker's slot, holds its file, and advances the counter.
+(defthm fn-hmc-do-issue-keeps-invp
+  (implies (and (fn-hmc-invp st) (not (fn-hmc-ended st)))
+           (fn-hmc-invp (mv-nth 0 (fn-hmc-do-issue st ev))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-pio-direct-admit-issues-exactly-its-row
+                            (next (fn-hmc-next st)) (cid (fn-hmc-arg 2 ev)) (file (fn-hmc-arg 3 ev))
+                            (eoff (fn-hmc-arg 4 ev)) (elen (fn-hmc-arg 5 ev)) (trailer (fn-hmc-arg 6 ev))
+                            (worker (fn-hmc-idle-worker (fn-hmc-workers st)))
+                            (issued (fn-hmc-issued (fn-hmc-rows st))) (holds (fn-hmc-holds st)))
+                 (:instance fn-pio-direct-admit-keeps-okp
+                            (next (fn-hmc-next st)) (cid (fn-hmc-arg 2 ev)) (file (fn-hmc-arg 3 ev))
+                            (eoff (fn-hmc-arg 4 ev)) (elen (fn-hmc-arg 5 ev)) (trailer (fn-hmc-arg 6 ev))
+                            (worker (fn-hmc-idle-worker (fn-hmc-workers st)))
+                            (issued (fn-hmc-issued (fn-hmc-rows st))) (holds (fn-hmc-holds st))))
+           :in-theory (e/d (fn-hmc-do-issue fn-hmc-invp)
+                           (fn-pio-direct-admit fn-hmc-issued fn-pio-issued-put fn-pio-issued-rows
+                            fn-hmc-rowsp fn-pio-direct-okp fn-hmc-workersp fn-hmc-reqs-okp
+                            fn-hmc-rows-open-p fn-hmc-rows-below-p fn-hmc-row-ids
+                            fn-hmc-idle-worker fn-hmc-workers-remove fn-hmc-busy-tokens
+                            fn-hmc-worker-slots fn-pxe-rowp fn-pio-rowp fn-pio-token
+                            fn-pio-issued-row fn-hmc-row-of)))))
+
+; ---- the settle: the token's row leaves the rows, its worker idles in its slot
+
+(local
+ (defun fn-hmc-rows-drop (tok rows)
+   (cond ((atom rows) nil)
+         ((and (true-listp (car rows)) (equal (fn-pio-token (car rows)) tok)) (cdr rows))
+         (t (cons (car rows) (fn-hmc-rows-drop tok (cdr rows)))))))
+
+(local
+ (defthm fn-hmc-issued-remove-is-rows-drop
+   (implies (fn-hmc-rowsp rows)
+            (equal (fn-pio-issued-remove tok (fn-hmc-issued rows))
+                   (fn-hmc-issued (fn-hmc-rows-drop tok rows))))
+   :hints (("Goal" :induct (fn-hmc-rows-drop tok rows)
+            :in-theory (enable fn-hmc-issued fn-pio-issued-remove fn-hmc-rowsp)))))
+
+(local
+ (defthm fn-hmc-rowsp-of-rows-drop
+   (implies (fn-hmc-rowsp rows) (fn-hmc-rowsp (fn-hmc-rows-drop tok rows)))))
+
+(local
+ (defthm fn-hmc-row-ids-of-rows-drop-member
+   (implies (member-equal x (fn-hmc-row-ids (fn-hmc-rows-drop tok rows)))
+            (member-equal x (fn-hmc-row-ids rows)))))
+
+(local
+ (defthm fn-hmc-row-ids-of-rows-drop-no-dup
+   (implies (no-duplicatesp-equal (fn-hmc-row-ids rows))
+            (no-duplicatesp-equal (fn-hmc-row-ids (fn-hmc-rows-drop tok rows))))))
+
+(local
+ (defthm fn-hmc-rows-below-p-of-rows-drop
+   (implies (fn-hmc-rows-below-p rows next)
+            (fn-hmc-rows-below-p (fn-hmc-rows-drop tok rows) next))))
+
+(local
+ (defthm fn-hmc-rows-open-p-of-rows-drop
+   (implies (fn-hmc-rows-open-p rows fds closed)
+            (fn-hmc-rows-open-p (fn-hmc-rows-drop tok rows) fds closed))
+   :hints (("Goal" :in-theory (disable fn-hmc-boundp fn-hmc-memberp)))))
+
+(local
+ (defthm fn-hmc-row-of-rows-drop-other
+   (implies (not (equal key tok))
+            (equal (fn-hmc-row-of key (fn-hmc-rows-drop tok rows))
+                   (fn-hmc-row-of key rows)))
+   :hints (("Goal" :in-theory (enable fn-hmc-row-of)))))
+
+(local
+ (defthm fn-hmc-workersp-of-rows-drop
+   (implies (and (fn-hmc-workersp ws rows)
+                 (not (member-equal tok (fn-hmc-busy-tokens ws))))
+            (fn-hmc-workersp ws (fn-hmc-rows-drop tok rows)))
+   :hints (("Goal" :induct (fn-hmc-workersp ws rows)
+            :in-theory (e/d (fn-hmc-workersp fn-hmc-busy-tokens)
+                            (fn-hmc-row-of fn-hmc-rows-drop))))))
+
+(local
+ (defthm fn-hmc-key-inc-of-rows-drop-other
+   (implies (not (equal key tok))
+            (equal (fn-hmc-key-inc key (fn-hmc-rows-drop tok rows) leases)
+                   (fn-hmc-key-inc key rows leases)))
+   :hints (("Goal" :in-theory (e/d (fn-hmc-key-inc) (fn-hmc-row-of fn-hmc-rows-drop))))))
+
+(local
+ (defthm fn-hmc-reqs-okp-of-rows-drop
+   (implies (and (fn-hmc-reqs-okp reqs fds rows leases) (not (fn-hmc-req-of tok reqs)))
+            (fn-hmc-reqs-okp reqs fds (fn-hmc-rows-drop tok rows) leases))
+   :hints (("Goal" :induct (fn-hmc-reqs-okp reqs fds rows leases)
+            :in-theory (disable fn-hmc-key-inc fn-hmc-rows-drop)))))
+
+(local
+ (defthm fn-hmc-results-landed-p-of-remove1-assoc
+   (implies (fn-hmc-results-landed-p results reqs)
+            (fn-hmc-results-landed-p (remove1-assoc-equal key results) reqs))))
+
+(local
+ (defthm fn-hmc-workersp-of-idle-cons
+   (implies (and (fn-hmc-workersp rest rows) (fn-pxe-rowp w)
+                 (equal (fn-hmc-worker-phase w) :idle))
+            (fn-hmc-workersp (cons w rest) rows))
+   :hints (("Goal" :in-theory (disable fn-pxe-rowp)))))
+
+(local
+ (defthm fn-hmc-busy-tokens-of-idle-cons
+   (implies (equal (fn-hmc-worker-phase w) :idle)
+            (equal (fn-hmc-busy-tokens (cons w rest)) (fn-hmc-busy-tokens rest)))))
+
+
+(local
+ (defthm fn-hmc-idle-worker-of-row
+   (implies (fn-pxe-rowp w)
+            (and (fn-pxe-rowp (list* (car w) (nth 1 w) '(:idle nil)))
+                 (equal (fn-hmc-worker-phase (list* (car w) (nth 1 w) '(:idle nil))) :idle)
+                 (equal (fn-hmc-worker-slot (list* (car w) (nth 1 w) '(:idle nil)))
+                        (fn-hmc-worker-slot w))))
+   :hints (("Goal" :in-theory (enable fn-pxe-rowp fn-hmc-worker-phase fn-hmc-worker-slot)))))
+
+(local
+ (defthm fn-hmc-worker-slots-of-cons-same-slot-no-dup
+   (implies (and (no-duplicatesp-equal (fn-hmc-worker-slots ws))
+                 (equal (fn-hmc-worker-slot w) slot))
+            (no-duplicatesp-equal
+             (fn-hmc-worker-slots (cons w (fn-hmc-workers-remove slot ws)))))
+   :hints (("Goal" :in-theory (disable fn-hmc-workers-remove)))))
+
+(local
+ (defthm fn-hmc-token-of-row-is-consp
+   (implies (fn-pio-rowp r) (consp (fn-pio-token r)))
+   :hints (("Goal" :in-theory (enable fn-pio-rowp fn-pio-token)))))
+
+(local
+ (defthm fn-hmc-pxe-row-is-consp
+   (implies (fn-pxe-rowp w) (consp w))
+   :rule-classes (:rewrite :forward-chaining)
+   :hints (("Goal" :in-theory (enable fn-pxe-rowp)))))
+
+
+; PRF-1242's settle step: a settlement that settles drops the token's row (no
+; request is in flight for it: its verdict has landed), idles its worker in
+; the same slot, drops the token's hold and consumes the verdict.
+(defthm fn-hmc-do-settle-keeps-invp
+  (implies (and (fn-hmc-invp st) (not (fn-hmc-ended st)))
+           (fn-hmc-invp (mv-nth 0 (fn-hmc-do-settle st ev))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-pio-direct-settle-removes-exactly-its-row
+                            (token (fn-hmc-arg 2 ev))
+                            (worker (fn-hmc-worker-of (fn-hmc-arg 2 ev) (fn-hmc-workers st)))
+                            (verdict (cdr (assoc-equal (fn-hmc-arg 2 ev) (fn-hmc-results st))))
+                            (issued (fn-hmc-issued (fn-hmc-rows st))) (holds (fn-hmc-holds st)))
+                 (:instance fn-pio-direct-settle-keeps-okp
+                            (token (fn-hmc-arg 2 ev))
+                            (worker (fn-hmc-worker-of (fn-hmc-arg 2 ev) (fn-hmc-workers st)))
+                            (verdict (cdr (assoc-equal (fn-hmc-arg 2 ev) (fn-hmc-results st))))
+                            (issued (fn-hmc-issued (fn-hmc-rows st))) (holds (fn-hmc-holds st)))
+                 (:instance fn-hmc-worker-token-absent-after-removing-found-slot
+                            (tok (fn-hmc-arg 2 ev)) (ws (fn-hmc-workers st)))
+                 (:instance fn-hmc-req-of-is-assoc-like
+                            (key (fn-hmc-arg 2 ev)) (results (fn-hmc-results st))
+                            (reqs (fn-hmc-reqs st))))
+           :in-theory (e/d (fn-hmc-do-settle fn-hmc-invp)
+                           (fn-pio-direct-settle fn-hmc-issued fn-pio-issued-remove fn-pio-issued-rows
+                            fn-hmc-rowsp fn-pio-direct-okp fn-hmc-workersp fn-hmc-reqs-okp
+                            fn-hmc-rows-open-p fn-hmc-rows-below-p fn-hmc-row-ids
+                            fn-hmc-worker-of fn-hmc-workers-remove fn-hmc-busy-tokens
+                            fn-hmc-worker-slots fn-pxe-rowp fn-pio-rowp fn-pio-token
+                            fn-pio-issued-row fn-hmc-row-of fn-hmc-rows-drop
+                            fn-hmc-worker-token-absent-after-removing-found-slot
+                            fn-hmc-req-of-is-assoc-like fn-hmc-results-landed-p fn-hmc-req-of)))))
+
+; -----------------------------------------------------------------------------
+; PRF-1242: the invariant of the concurrent reference holds over every run.
+; One step keeps it whatever the event (each label's lemma above; an ended
+; state and an unknown label refuse and change nothing), so every schedule
+; from an invariant state ends in one -- in particular every schedule from
+; fn-hmc-init (fn-hmc-init-invp).
+
+(defthm fn-hmc-step-keeps-invp
+  (implies (fn-hmc-invp st)
+           (fn-hmc-invp (mv-nth 0 (fn-hmc-step st ev))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hmc-do-acquire-keeps-invp)
+                 (:instance fn-hmc-do-release-keeps-invp)
+                 (:instance fn-hmc-do-fd-open-keeps-invp)
+                 (:instance fn-hmc-do-io-begin-keeps-invp)
+                 (:instance fn-hmc-do-io-complete-keeps-invp)
+                 (:instance fn-hmc-do-issue-keeps-invp)
+                 (:instance fn-hmc-do-job-result-keeps-invp)
+                 (:instance fn-hmc-do-cancel-keeps-invp)
+                 (:instance fn-hmc-do-settle-keeps-invp)
+                 (:instance fn-hmc-do-pin-keeps-invp)
+                 (:instance fn-hmc-do-unpin-keeps-invp)
+                 (:instance fn-hmc-do-pass-pin-keeps-invp)
+                 (:instance fn-hmc-do-capture-keeps-invp)
+                 (:instance fn-hmc-do-drain-keeps-invp)
+                 (:instance fn-hmc-do-retire-keeps-invp)
+                 (:instance fn-hmc-do-release-retired-keeps-invp)
+                 (:instance fn-hmc-do-swap-keeps-invp)
+                 (:instance fn-hmc-do-close-keeps-invp)
+                 (:instance fn-hmc-do-crash-keeps-invp)
+                 (:instance fn-hmc-do-return-preserves-invp)
+                 (:instance fn-hmc-do-lease-acquire-keeps-invp (kind :window))
+                 (:instance fn-hmc-do-lease-release-keeps-invp (kind :window))
+                 (:instance fn-hmc-do-lease-acquire-keeps-invp (kind :discovery))
+                 (:instance fn-hmc-do-lease-release-keeps-invp (kind :discovery)))
+           :in-theory (e/d (fn-hmc-step)
+                           (fn-hmc-invp fn-hmc-do-acquire fn-hmc-do-release fn-hmc-do-fd-open fn-hmc-do-io-begin fn-hmc-do-io-complete fn-hmc-do-issue fn-hmc-do-job-result fn-hmc-do-cancel fn-hmc-do-settle fn-hmc-do-pin fn-hmc-do-unpin fn-hmc-do-pass-pin fn-hmc-do-capture fn-hmc-do-drain fn-hmc-do-retire fn-hmc-do-release-retired fn-hmc-do-swap fn-hmc-do-close fn-hmc-do-crash fn-hmc-do-return fn-hmc-do-lease-acquire fn-hmc-do-lease-release fn-hmc-do-acquire-keeps-invp fn-hmc-do-release-keeps-invp fn-hmc-do-fd-open-keeps-invp fn-hmc-do-io-begin-keeps-invp fn-hmc-do-io-complete-keeps-invp fn-hmc-do-issue-keeps-invp fn-hmc-do-job-result-keeps-invp fn-hmc-do-cancel-keeps-invp fn-hmc-do-settle-keeps-invp fn-hmc-do-pin-keeps-invp fn-hmc-do-unpin-keeps-invp fn-hmc-do-pass-pin-keeps-invp fn-hmc-do-capture-keeps-invp fn-hmc-do-drain-keeps-invp fn-hmc-do-retire-keeps-invp fn-hmc-do-release-retired-keeps-invp fn-hmc-do-swap-keeps-invp fn-hmc-do-close-keeps-invp fn-hmc-do-crash-keeps-invp fn-hmc-do-lease-acquire-keeps-invp fn-hmc-do-lease-release-keeps-invp fn-hmc-do-return-preserves-invp)))))
+
+(local
+ (defthm fn-hmc-step-keeps-invp-car
+   (implies (fn-hmc-invp st) (fn-hmc-invp (car (fn-hmc-step st ev))))
+   :hints (("Goal" :use fn-hmc-step-keeps-invp
+            :in-theory (disable fn-hmc-invp fn-hmc-step fn-hmc-step-keeps-invp)))))
+
+(defthm fn-hmc-run-keeps-invp
+  (implies (fn-hmc-invp st)
+           (fn-hmc-invp (fn-hmc-run st sched)))
+  :hints (("Goal" :induct (fn-hmc-run st sched)
+           :in-theory (e/d (fn-hmc-run) (fn-hmc-invp fn-hmc-step)))))
+
+(defthm fn-hmc-init-run-keeps-invp
+  (fn-hmc-invp (fn-hmc-run (fn-hmc-init) sched))
+  :hints (("Goal" :in-theory (disable fn-hmc-invp fn-hmc-run fn-hmc-init))))

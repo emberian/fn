@@ -149,7 +149,20 @@ class NativeOverPinsTests(unittest.TestCase):
             })
             try:
                 with Client(node.port, timeout=300, greeting=None) as client:
-                    self.assertTrue(client.command("GROUP " + GROUP).startswith(b"211 2 "))
+                    # Option 2' (planning/design/group-count-after-reclaim
+                    # DECISION): the exact AVAILABLE count with the true first
+                    # and last numbers, and NEXT/LAST step over the 32
+                    # reclaimed tombstones (S042) instead of stopping at 423.
+                    group = ("211 2 1 34 %s\r\n" % GROUP).encode()
+                    self.assertEqual(client.command("GROUP " + GROUP), group)
+                    self.assertEqual(client.command("STAT")[:6], b"223 1 ")
+                    self.assertEqual(client.command("NEXT")[:7], b"223 34 ")
+                    self.assertEqual(client.command("NEXT")[:3], b"421")
+                    self.assertEqual(client.command("LAST")[:6], b"223 1 ")
+                    self.assertEqual(client.command("LAST")[:3], b"422")
+                    listed = client.multiline("LISTGROUP " + GROUP)
+                    self.assertTrue(listed[0].startswith(b"211 2 1 34 "), listed)
+                    self.assertEqual(listed[1].split(), [b"1", b"34"], listed)
                     at = len(owner.stderr.since(0))
                     client.send(("OVER 1-34\r\nSTAT %s\r\n" % msgid("f0")).encode())
                     # A write-half-close is not response cancellation.  The

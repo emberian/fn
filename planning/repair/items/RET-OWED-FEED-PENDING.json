@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/owner-feed.lisp",
+ "id": "RET-OWED-FEED-PENDING",
+ "notes": [],
+ "owner": "retire",
+ "severity": "medium",
+ "slice": "retire",
+ "source": "lane/retire",
+ "state": "open",
+ "title": "proof-owed (S9 retire fence): the carried fn-owner-feed-pending equals fn-own-feed-table-pending-model of the owner's feeds. fn-ort-retire-step-drains-a-settled-zero decides :drained from the carried count; that a zero count means no feed entry is still tried is this whole-owner invariant (KW-c), stated nowhere yet. Until it is proved, PRF-1029's drained claim is over the carried count, not the feed table.",
+ "updated": "2026-10-04T03:28:46Z"
+}

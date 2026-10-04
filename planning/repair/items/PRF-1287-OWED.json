@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/served-available-read.lisp",
+ "id": "PRF-1287-OWED",
+ "notes": [],
+ "owner": "proofs2",
+ "severity": "medium",
+ "slice": "proofs",
+ "source": "proofs2",
+ "state": "open",
+ "title": "PRF-1287 (row in planning/proofs.json): the generated reader fn-av-mca-read-span replaced fn-mca-read-span on the host path (fn-owner-chunk-span-evaluate). Regained, pending certification: the four credit keystones restated over it (fn-av-mca-read-span-keeps-funded, -within-the-credit-unfolds, -never-blocks-what-is-held, -covers-the-connection; lane/proofs2, REPL-admitted 33/33 at next b7624961f). STILL OWED, no claim made: (1) the selective-chain refinement, i.e. fn-av-scr-step's fn-scr-command-available equals fn-proto-archive-command-available-reference over the same arena/root under fn-scat-availability-completep, lifted through the post/peer/auth/dispatch/span chain to fn-av-mca-read-span; (2) guard verification of the chain (every fn-av- form is :verify-guards nil); (3) re-citing host/owner-host.lisp:4484-4486 and the P1/P3/P8/M6/T17/PRF-1266/PRF-1269 rows from fn-mca-read-span-* to the fn-av- names. Close (1) by a theorem naming fn-av-mca-read-span, not by a schedule- or command-restricted variant.",
+ "updated": "2026-10-04T04:00:04Z"
+}

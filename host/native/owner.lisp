@@ -1210,32 +1210,61 @@ the owner mutex)."
   (sb-thread:with-mutex ((fnn-owner-feed-journal-lock journal))
     (fnn-owner-feed-append-locked journal frame)))
 
-(defun fnn-owner-feed-append-locked (journal frame)
+(defun fnn-owner-feed-append-locked (journal frame &key (barrier t))
+  "Write FRAME, one ACL2-sealed frame (none when NIL), then, with BARRIER,
+cross the append barrier if ACL2's phase says the journal holds written
+frames no barrier has covered (:sync).  Without BARRIER the journal is left
+in :sync: further appends may follow (PKT-825a: books/feed-journal.lisp
+admits :sync then :append) and one barrier makes them all durable
+(fn-feed-journal-batch-is-durable-only-at-its-one-barrier).  A journal
+another barrier already returned to :ready needs none: that barrier
+followed these writes, under this lock."
   (handler-case
-      (let ((envelope (fnn-core 'fn-feed-journal-wrap
-                                (fnn-octet-list frame))))
-        (unless (fnn-octet-list-p envelope)
-          (fnn-fault "owner refused FNFD envelope"))
-        (fnn-owner-feed-phase journal :append)
-        (fnn-write-all (fnn-owner-feed-journal-fd journal)
-                       (fnn-octets envelope))
-        (fnn-owner-feed-phase journal :written)
-        ;; Developer image only (lane owner-offlock): a slow or stalled
-        ;; feed-journal device -- the fsync takes MS, or does not return
-        ;; while the named file exists (tests/test_native_owner_offlock.py).
-        (let ((ms (fnn-developer-selector "FN_NATIVE_TEST_FEED_FSYNC_MS"))
-              (stall (fnn-developer-selector "FN_NATIVE_TEST_FEED_STALL_FILE")))
-          (when (and ms (plusp (length ms)) (every #'digit-char-p ms))
-            (sleep (/ (parse-integer ms) 1000)))
-          (when (and stall (plusp (length stall)))
-            (loop while (probe-file stall) do (sleep 0.05))))
-        (fnn-fsync-file (fnn-owner-feed-journal-fd journal))
-        (fnn-owner-feed-phase journal :append-durable))
+      (progn
+        (when frame
+          (let ((envelope (fnn-core 'fn-feed-journal-wrap
+                                    (fnn-octet-list frame))))
+            (unless (fnn-octet-list-p envelope)
+              (fnn-fault "owner refused FNFD envelope"))
+            (fnn-owner-feed-phase journal :append)
+            (fnn-write-all (fnn-owner-feed-journal-fd journal)
+                           (fnn-octets envelope))
+            (fnn-owner-feed-phase journal :written)))
+        (when (and barrier (eq (fnn-owner-feed-journal-phase journal) :sync))
+          ;; Developer image only (lane owner-offlock): a slow or stalled
+          ;; feed-journal device -- the fsync takes MS, or does not return
+          ;; while the named file exists (tests/test_native_owner_offlock.py).
+          (let ((ms (fnn-developer-selector "FN_NATIVE_TEST_FEED_FSYNC_MS"))
+                (stall (fnn-developer-selector "FN_NATIVE_TEST_FEED_STALL_FILE")))
+            (when (and ms (plusp (length ms)) (every #'digit-char-p ms))
+              (sleep (/ (parse-integer ms) 1000)))
+            (when (and stall (plusp (length stall)))
+              (loop while (probe-file stall) do (sleep 0.05))))
+          (fnn-fsync-file (fnn-owner-feed-journal-fd journal))
+          (fnn-owner-feed-phase journal :append-durable)))
     (error (e)
       (ignore-errors (fnn-owner-feed-phase journal :failed))
       (fnn-owner-feed-close journal)
       (fnn-indeterminate "FNFD append uncertain: ~a (~a)"
                          (fnn-owner-feed-journal-path journal) e))))
+
+(defun fnn-owner-feed-write-batch (pairs written)
+  "Write each (JOURNAL . FRAME) of PAIRS, in order, with no barrier; answer
+WRITTEN with each journal written added once, in first-written order.  The
+caller owes each one barrier (fnn-owner-feed-barrier-batch)."
+  (fnn-owner-measured (:feed-flush)
+    (dolist (pair pairs)
+      (sb-thread:with-mutex ((fnn-owner-feed-journal-lock (car pair)))
+        (fnn-owner-feed-append-locked (car pair) (cdr pair) :barrier nil))
+      (unless (member (car pair) written :test #'eq)
+        (setq written (append written (list (car pair)))))))
+  written)
+
+(defun fnn-owner-feed-barrier-batch (journals)
+  "One barrier per journal of JOURNALS that still holds unbarriered frames."
+  (dolist (journal journals)
+    (sb-thread:with-mutex ((fnn-owner-feed-journal-lock journal))
+      (fnn-owner-feed-append-locked journal nil))))
 
 (defun fnn-owner-feed-decoded-peer (components location)
   "Refuse a discovered entry unless ACL2 reconstructs its exact peer label."
@@ -1745,15 +1774,44 @@ termination; only the maker's no-child failure cancels the reservation."
           (fnn-owner-actor-fault-service service condition))
         (error condition)))))
 
-(defmacro def-actor (name &key thread-name roster)
+;;; def-actor: the declared actor (lane ACTORS/GENERATORS-2, rebuild step 0;
+;;; planning/handoff-2026-10-03/failure-scope.md).  One declaration per kind
+;;; of thread: its KIND (books/failure-scope.lisp *fn-fs-actors*), the
+;;; THREAD-NAME, whether it joins the worker roster (ROSTER), the host
+;;; function that JOINs it, and its FAILURE policy (:service, :job or
+;;; :result; fn-fs-actor-declp says what each means).  ACL2 accepts the
+;;; declaration when the image loads; tools/lock_discipline_check.py reads
+;;; the same form and holds the join site and every starter call to it (R4).
+;;; *fnn-actors* is the same table at run time.
+
+(defvar *fnn-actors* nil
+  "The declared actors, (NAME KIND THREAD-NAME ROSTER JOIN FAILURE) each, in load order.")
+
+(defun fnn-actor-declare (name kind thread-name roster join failure)
+  "Record NAME's declaration once ACL2 accepts it; a refused declaration
+stops the load (the image is not built)."
+  (unless (and (stringp thread-name) join (symbolp join)
+               (fn-fs-actor-declp kind roster failure))
+    (error "def-actor ~(~a~): ACL2 refuses the declaration ~s (books/failure-scope.lisp fn-fs-actor-declp)"
+           name (list kind thread-name roster join failure)))
+  (setq *fnn-actors*
+        (append (remove name *fnn-actors* :key #'first)
+                (list (list name kind thread-name roster join failure))))
+  name)
+
+(defmacro def-actor (name &key kind thread-name roster join failure)
   "Generate the physical lifecycle starter, sharing ACL2's failure model.
 Private decision steps must avoid live STATE, hons/memoize and protected
 abstract-stobj exports; shared-state work enters declared owner sections."
-  `(defun ,name (service custody thunk &optional escape physical-callback before-start)
-     (fnn-owner-actor-start service custody thunk ,thread-name ,roster escape physical-callback before-start)))
+  `(progn
+     (fnn-actor-declare ',name ',kind ',thread-name ',roster ',join ',failure)
+     (defun ,name (service custody thunk &optional escape physical-callback before-start)
+       (fnn-owner-actor-start service custody thunk ,thread-name ,roster escape physical-callback before-start))))
 
-(def-actor fnn-owner-spawn-syncer :thread-name "fn owner syncer" :roster t)
-(def-actor fnn-owner-spawn-committer :thread-name "fn owner committer" :roster nil)
+(def-actor fnn-owner-spawn-syncer :kind :syncer :thread-name "fn owner syncer" :roster t
+  :join fnn-owner-commit-pipeline :failure :result)
+(def-actor fnn-owner-spawn-committer :kind :committer :thread-name "fn owner committer" :roster nil
+  :join fnn-owner-run :failure :service)
 
 (defun fnn-owner-actor-for-custody (service retained)
   "Find the native reservation retaining RETAINED, including a failed start.
@@ -4395,14 +4453,23 @@ phase's."
     (values phase condition)))
 
 (defun fnn-owner-job-items (service items)
-  "A batch job's items, in order: (:frames . PAIRS) appends each (JOURNAL .
-FRAME) across its barrier; (:deliver CID REPLY) hands a refusal told at its
-drain to its connection (after its resolution frames)."
-  (dolist (item items)
-    (case (car item)
-      (:frames (fnn-owner-feed-write-plan (cdr item)))
-      (:deliver (fnn-owner-deliver service (second item) (third item)))
-      (t (fnn-fault "malformed batch job item ~a" (car item))))))
+  "A batch job's items, in order: (:frames . PAIRS) writes each (JOURNAL .
+FRAME); (:deliver CID REPLY) hands a refusal told at its drain to its
+connection.  PKT-825a: the phase's frames share one barrier per peer journal
+written (fn-feed-journal-batch-is-durable-only-at-its-one-barrier), crossed
+before any reply leaves and before the phase returns, so a told member's
+resolution frames are durable before its reply, and the phase's word is :ok
+only once every frame it wrote is."
+  (let ((written nil))
+    (dolist (item items)
+      (case (car item)
+        (:frames (setq written (fnn-owner-feed-write-batch (cdr item) written)))
+        (:deliver
+         (fnn-owner-feed-barrier-batch written)
+         (setq written nil)
+         (fnn-owner-deliver service (second item) (third item)))
+        (t (fnn-fault "malformed batch job item ~a" (car item)))))
+    (fnn-owner-feed-barrier-batch written)))
 
 (defun fnn-owner-batch-fence (service)
   "The batch job's :fence phase: the sealed batch's barrier and the kernel's
@@ -6502,12 +6569,17 @@ back and backs off as it names)."
 ;;; (books/native-retire.lisp fn-nret-request) starts the retire: from then
 ;;; on new connections are refused by name (host/native/owner.lisp
 ;;; fnn-owner-launch-client), the pull service stops, and at each accept-loop
-;;; tick ACL2 checks the independent drain window, then carried pending
-;;; under the owner mutex (fn-ort-window-step and fn-ort-drain-step-counted).
-;;; Producer settlement remains unestablished, so zero alone cannot end the
-;;; drain. The deadline stops intake and starts SIGTERM cleanup. Report
-;;; observation follows worker and committer joins; definite log/journal
-;;; settlement, funded bounded rendering and final checkpoint remain OPEN.
+;;; tick ACL2 checks the independent drain window, then, under the owner
+;;; mutex, the carried feed count and the owner's queue (fn-ort-window-step,
+;;; then fn-owner-retire-step's fn-ort-retire-step): :drained once nothing is
+;;; pending and nothing queued -- every intake site refuses under the same
+;;; mutex while retiring (fn-ort-intake-action), so the queue is the last
+;;; producer -- :deadline once the window passed.  A drained owner takes
+;;; its final checkpoint (the compaction request `store checkpoint' makes;
+;;; fn-ort-final-checkpoint-action); either way it stops as a SIGTERM stops
+;;; it, and the report is rendered and written after the worker, committer,
+;;; log and journal joins (fnn-owner-retire-final-report), so it reads the
+;;; settled owner.
 (defun fnn-owner-retire-report-path (service)
   (fnn-join (fnn-store-root (fnn-owner-service-store service))
             (fnn-octets-string (fnn-octets (fnn-core 'fn-nret-report-file-name)))))
@@ -6572,9 +6644,18 @@ renamed into place, the directory fenced."
           (unless (member step '(:wait :drained :deadline))
             (fnn-fault "owner returned a malformed retire step ~a" step))
           (unless (eq step :wait)
-            ;; Record the ACL2 decision, then begin stop immediately. Rendering
-            ;; is deferred until the accepted producers and workers are joined.
+            ;; Record the ACL2 decision; a drained node's final checkpoint,
+            ;; as `store checkpoint' asks it (its answer is logged; a
+            ;; :blocked or :nothing-to-compact answer does not hold the stop;
+            ;; a :deadline stop takes none: fn-ort-final-checkpoint-action);
+            ;; then the stop a SIGTERM takes.  Rendering is deferred until
+            ;; the accepted producers and workers are joined.
             (setf (fnn-owner-service-retire service) (list s0 seconds step))
+            (let ((final (fnn-core 'fn-ort-final-checkpoint-action step)))
+              (unless (member final '(:checkpoint :stop))
+                (fnn-fault "owner returned a malformed final checkpoint action ~a" final))
+              (when (eq final :checkpoint)
+                (fnn-owner-compaction-request service)))
             (setf *fnn-sigterm-requested* t)))))))
 
 (defun fnn-owner-retire-final-report (service)
@@ -6860,8 +6941,10 @@ mutex; other faults stop the owner. Neither terminal outcome resumes serving."
 (defstruct (fnn-snapshot-job (:constructor %make-fnn-snapshot-job))
   kind captured arena pin thread (stage :pinning) physical condition)
 
-(def-actor fnn-owner-spawn-publisher :thread-name "fn owner checkpoint" :roster t)
-(def-actor fnn-owner-spawn-exporter :thread-name "fn owner export" :roster t)
+(def-actor fnn-owner-spawn-publisher :kind :publisher :thread-name "fn owner checkpoint" :roster t
+  :join fnn-owner-wait-workers :failure :job)
+(def-actor fnn-owner-spawn-exporter :kind :exporter :thread-name "fn owner export" :roster t
+  :join fnn-owner-wait-workers :failure :job)
 
 (defun fnn-owner-snapshot-job-capture (service kind captured)
   "Owner held. Retain the envelope before the possibly torn pin operation."
@@ -8061,9 +8144,12 @@ torn last entry follows.  Answers the offset the writer resumes at."
               (fnn-err "service log reopen failed: ~a" condition))))
         (setq *fnn-owner-log-handled* (second decision))))))
 
-(def-actor fnn-owner-spawn-listener :thread-name "fn owner accept" :roster t)
-(def-actor fnn-owner-spawn-tls-listener :thread-name "fn owner TLS accept" :roster t)
-(def-actor fnn-owner-spawn-maintenance :thread-name "fn owner maintenance" :roster t)
+(def-actor fnn-owner-spawn-listener :kind :accept :thread-name "fn owner accept" :roster t
+  :join fnn-owner-wait-workers :failure :service)
+(def-actor fnn-owner-spawn-tls-listener :kind :accept :thread-name "fn owner TLS accept" :roster t
+  :join fnn-owner-wait-workers :failure :service)
+(def-actor fnn-owner-spawn-maintenance :kind :maintenance :thread-name "fn owner maintenance" :roster t
+  :join fnn-owner-wait-workers :failure :service)
 
 (defun fnn-owner-start-tls-accept (service listener &optional (implicit-tls t))
   "Registered secondary listener; preserve its custody through physical join.
