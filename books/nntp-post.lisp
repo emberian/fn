@@ -570,6 +570,7 @@
                        ;; reservation, the transactions admitting it
                        ;; (books/store-capacity-vector.lisp
                        ;; fn-cvec-article-refusal-word; lane m1-durable-2).
+                       ;; "441 posting failed; the store's history budget is exhausted (history-exhausted); ..."
                        :history-exhausted
                        ;; RFC 3977 section 6: a group's next article number
                        ;; would pass 2,147,483,647 (the admission's number
