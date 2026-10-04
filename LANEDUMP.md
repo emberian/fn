@@ -4681,3 +4681,15 @@ Continuation point: when an image set of current source with this branch
 exists, run `tools/hbox_native.sh --image-set <sha> --env
 FN_RUN_CONSUMER_EXCHANGE=1 <rev> <the five selectors>`, file evidence, update
 the coordinate table, READY to assembler + integrator.
+
+## GENERATORS-2 (Opus), 2026-10-04 -- ramp-down exit
+
+Branch `lane/generators2` (generators + actors + origin/next). Full entry: build/coordinator/lanedumps/generators2.md.
+| sha | world receipt | manifest id | image sha | native run id |
+|---|---|---|---|---|
+| 0d262d092 | not run | certify-20261004T044031Z-13746 (laptop, 16/16) | none | none |
+Landed: def-loop snoc-list/cancel-lock/refused-offers (twins deleted); defkeystone :derived-by world check (fix 3);
+def-actor declaration half (fn-fs-actor-declp, 12 actors declared, lock check R4 reads def-actor, 9 hand rows gone);
+test_native_admin main-last fix. Continuation: the 23 fnn-unwind-cleanups rows (teach the expander the mapcar
+splice; escalate M3d in io.lisp), def-actor failure half, history-root/control conversion.
+
