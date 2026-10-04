@@ -1467,8 +1467,11 @@ kind); :unknown when the world has no formals for NAME (a raw primitive)."
     cache))
 
 (defun fnn-cold-call (name &rest args)
-  (unless (and *fnn-cold-entry-guard-specs* (fn-cgb-namep name))
-    (error 'fnn-store-fault :message "cold guard cache: unprepared or unsupported entry"))
+  (unless *fnn-cold-entry-guard-specs*
+    (error 'fnn-store-fault :message "cold guard cache: unprepared"))
+  (unless (fn-cgb-namep name)
+    (error 'fnn-store-fault
+           :message (format nil "cold guard cache: ~(~a~) is not on the roster" name)))
   (let ((*fnn-entry-guard-specs* *fnn-cold-entry-guard-specs*))
     (apply #'fnn-call name args)))
 

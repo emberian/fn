@@ -1565,6 +1565,69 @@ def entry_guard_kinds(root: Path) -> set[str]:
     return kinds
 
 
+# The cold dispatchers (host/native/io.lisp fnn-cold-call and its three
+# extent.lisp macros) run an entry against the funded cache that
+# fnn-cold-guard-cache-prepare fills from books/cold-guard-bootstrap.lisp's
+# *fn-cgb-roster*, and fault on any name off that roster.  A subject off it
+# is a fault on its first call; on 2026-10-04 two startup-only slot checks in
+# fnn-extent-executor-start stopped every owner start of image fe7ef2807,
+# while the raw harnesses that cover that code stub fnn-cold-call.
+COLD_DISPATCHERS = ("fnn-cold-call", "fnn-core-cold-values",
+                    "fnn-core-cold-single", "fnn-core-cold-pool")
+
+
+def cold_guard_roster(root: Path) -> set[str] | None:
+    """*fn-cgb-roster* of books/cold-guard-bootstrap.lisp; None when absent."""
+    source = root / "books" / "cold-guard-bootstrap.lisp"
+    if not source.is_file():
+        return None
+    from tools import ledger
+    for form, _line in ledger.Reader(source.read_text(encoding="utf-8")).top_level():
+        if (ledger.head(form) == "defconst" and len(form) >= 3
+                and str(form[1]).lower() == "*fn-cgb-roster*"):
+            value = form[2]
+            if ledger.head(value) == "quote":
+                value = value[1]
+            return {str(name).lower() for name in value} if isinstance(value, list) else None
+    return None
+
+
+def cold_dispatch_subjects(form, found: list, line: int) -> None:
+    """(subject, line) of each cold dispatch with a quoted literal subject."""
+    if not isinstance(form, list) or not form:
+        return
+    head_ = str(form[0]).lower() if isinstance(form[0], str) else None
+    if head_ == "quote":
+        return
+    if head_ in COLD_DISPATCHERS and len(form) > 1:
+        target = form[1]
+        if (isinstance(target, list) and len(target) == 2 and isinstance(target[0], str)
+                and str(target[0]).lower() == "quote" and isinstance(target[1], str)):
+            found.append((str(target[1]).lower(), line))
+    for item in form:
+        cold_dispatch_subjects(item, found, line)
+
+
+def cold_roster_scan(sources: dict[str, list], roster: set[str]) -> tuple[list[dict], int]:
+    """Findings: a cold dispatch in SOURCES whose subject ROSTER lacks."""
+    findings: list[dict] = []
+    calls = 0
+    for relative, forms in sorted(sources.items()):
+        for form, line in forms:
+            subjects: list = []
+            cold_dispatch_subjects(form, subjects, line)
+            for subject, at in subjects:
+                calls += 1
+                if subject not in roster:
+                    findings.append({
+                        "lint": "entry-guards", "where": "{}:{}".format(relative, at),
+                        "callee": subject,
+                        "problem": "cold dispatch of an entry that "
+                                   "books/cold-guard-bootstrap.lisp *fn-cgb-roster* "
+                                   "does not fund: fnn-cold-call faults on it"})
+    return findings, calls
+
+
 def _acl2_definition_forms(tree, raw: set[str]) -> dict[str, tuple[list, str]]:
     from tools import ledger
     found: dict[str, tuple[list, str]] = {}
@@ -1708,6 +1771,15 @@ def entry_guard_findings(root: Path) -> tuple[list[dict], dict]:
                              "callee": key[0],
                              "problem": "stale definterface :exempt ({}: {})".format(
                                  key[1], why)})
+    roster = cold_guard_roster(root)
+    if roster is None:
+        findings.append({"lint": "entry-guards", "where": "books/cold-guard-bootstrap.lisp",
+                         "problem": "*fn-cgb-roster* not found: cold dispatches "
+                                    "cannot be checked against the funded roster"})
+    else:
+        cold, counts["cold_calls"] = cold_roster_scan(
+            {relative: tree.hosts[relative].forms for relative in raw}, roster)
+        findings.extend(cold)
     for name, site in direct:
         if name in ENTRY_DIRECT_ALLOWED:
             counts["direct_calls_allowed"] += 1

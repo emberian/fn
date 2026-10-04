@@ -745,6 +745,46 @@ class DuplicateDefunTests(unittest.TestCase):
         self.assertGreater(counts["definitions"], 1000)
 
 
+class ColdRosterTests(unittest.TestCase):
+    """entry-guards: every cold dispatch names an entry the funded roster has."""
+
+    def scan(self, source: str, roster):
+        from tools import ledger
+        forms = ledger.Reader(textwrap.dedent(source)).top_level()
+        return harness_check.cold_roster_scan({"host/native/x.lisp": forms}, set(roster))
+
+    # The break it exists for, in the shape it had at dev fe7ef2807
+    # (host/native/extent.lisp fnn-extent-executor-start): a startup slot
+    # check dispatched cold, off the roster, so every owner start faulted.
+    STARTUP_SLOT_CHECK = """
+        (defmacro fnn-core-cold-pool (name &rest arguments)
+          `(fnn-cold-call ,name ,@arguments (fnn-live-page-read-pool)))
+        (defun fnn-start (slot)
+          (list (fnn-core-cold-pool 'fn-owner-page-read-default-worker-ready slot)
+                (fnn-core-cold-single 'fn-ews-begin slot)
+                (fnn-cold-call 'fn-ews-tick slot)
+                (fnn-core-page-read-pool 'fn-owner-page-read-default-worker-ready slot)
+                '(fnn-core-cold-pool 'fn-quoted-data)))
+        """
+
+    def test_a_cold_subject_off_the_roster_is_a_finding(self):
+        findings, calls = self.scan(self.STARTUP_SLOT_CHECK, ["fn-ews-begin", "fn-ews-tick"])
+        self.assertEqual(calls, 3)
+        self.assertEqual([row["callee"] for row in findings],
+                         ["fn-owner-page-read-default-worker-ready"])
+        self.assertEqual(findings[0]["where"], "host/native/x.lisp:4")
+
+    def test_ordinary_dispatch_and_quoted_data_are_not_cold(self):
+        findings, _calls = self.scan(self.STARTUP_SLOT_CHECK, [
+            "fn-ews-begin", "fn-ews-tick", "fn-owner-page-read-default-worker-ready"])
+        self.assertEqual(findings, [])
+
+    def test_the_tree_roster_is_read(self):
+        roster = harness_check.cold_guard_roster(harness_check.ROOT)
+        self.assertIn("fn-ews-begin", roster)
+        self.assertNotIn("fn-owner-page-read-default-worker-ready", roster)
+
+
 class LoadedHostProvidesTests(unittest.TestCase):
     """A fixture's loaded host file defines its names: they are never stubbed
     (tests/native_bp_received_source_raw.lisp via native_bp_session_bank_raw)."""
