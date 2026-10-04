@@ -193,6 +193,25 @@
                (equal (fn-ort-drain-step-counted s0 s seconds pending t nil) :drained))))
 (assert-event (equal (fn-ort-drain-step-counted *nrt-s0* (nrt-at 1) 600 0 t nil) :wait))
 
+; fn-ort-final-checkpoint-only-when-drained: a drained stop takes the final
+; checkpoint (both sides true); a :deadline stop -- and the :wait the host
+; never acts on -- takes none (both sides false).
+(assert-event (and (equal :drained :drained)
+                   (equal (fn-ort-final-checkpoint-action :drained) :checkpoint)))
+(assert-event (and (not (equal :deadline :drained))
+                   (equal (fn-ort-final-checkpoint-action :deadline) :stop)))
+(assert-event (equal (fn-ort-final-checkpoint-action :wait) :stop))
+; Reached: the step a drained fence answers is the one that checkpoints, the
+; window's is not.
+(assert-event (equal (fn-ort-final-checkpoint-action
+                      (fn-ort-retire-step *nrt-s0* (nrt-at 1) 600 0 nil))
+                     :checkpoint))
+(assert-event (equal (fn-ort-final-checkpoint-action
+                      (fn-ort-retire-step *nrt-s0* (nrt-at 60000) 60 3 *nrt-queued*))
+                     :stop))
+(must-fail-checked
+ (thm (equal (fn-ort-final-checkpoint-action step) :checkpoint)))
+
 ; ---------------------------------------------------------------------------
 ; fn-ort-clean-stop-keeps-its-exit: positive witnesses over the observations
 ; fnn-owner-run's cleanup takes (writer joined, nothing accounted, journal
