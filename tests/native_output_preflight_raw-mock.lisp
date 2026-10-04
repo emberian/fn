@@ -1,7 +1,9 @@
-;;; Actual pre-factory helpers, actual ACL2 admission/unpriced bodies and
-;;; limited span retry. Wire preview/typed bank are recording boundaries.
-;;; Positive tariff is injected ONLY to discriminate prefix consumption;
-;;; the actual current tariff producer always refuses incomplete coverage.
+;;; Actual pre-factory helpers, actual ACL2 admission/unpriced bodies, the
+;;; actual refusal-word classifier and limited span retry. Wire preview,
+;;; typed bank and the owner's connection table are recording boundaries.
+;;; Positive tariff is injected ONLY to discriminate prefix consumption; the
+;;; ARTICLE producer's catalog read is the ACL2 fixture's
+;;; (tests/owner_output_preview_fixture.lisp), not this harness's.
 (load "tests/native_output_response_lease_raw-mock.lisp")
 (in-package "ACL2")
 
@@ -72,7 +74,15 @@
 (load-deployed-forms "books/output-command-admission.lisp"
  '((defun fn-ocap-at) (defun fn-ocap-previewp) (defun fn-ocap-tariffp)
    (defun fn-ocap-admit-preview) (defun fn-ocap-unpriced-tariff)))
+(load-deployed-forms "books/output-admission-line.lisp" '((defun fn-oadl-wordp)))
 (load-deployed-forms "host/owner-host.lisp" '((defun fn-owner-output-tariff-preview)))
+;; Recording owner: no connection is known, so the producer's family test
+;; is the only arm reached (the ARTICLE arm needs a connection and a catalog).
+(defun fn-owner-core (state) (declare (ignore state)) :recorded-owner)
+(defun fn-own-conns (owner) (declare (ignore owner)) nil)
+(defun fn-own-find-conn (id conns) (declare (ignore id conns)) nil)
+(defvar *preflight-log* nil)
+(defun fnn-log-line (line) (push line *preflight-log*))
 (load-deployed-forms "host/native/extent.lisp"
  '((defvar *fnn-extent-lock*) (defvar *fnn-extent-window-mode*)
    (defvar *fnn-extent-window-worker*) (defvar *fnn-extent-window-token*)
@@ -96,7 +106,8 @@
     (otherwise (apply *preflight-lease-call* subject args))))
 (defun fnn-core (subject &rest args)
   (case subject
-    ((fn-ocap-at fn-ocap-admit-preview) (apply (symbol-function subject) args))
+    ((fn-ocap-at fn-ocap-admit-preview fn-oadl-wordp) (apply (symbol-function subject) args))
+    (fn-oadl-log-line (list :recorded-log-line (second args)))
     (fn-rlo-capacity 1048576) ; recording typed installed projection
     (fn-rlo-drainedp (null (test-output-ledger-token (car args))))
     (otherwise (error "unexpected pure preflight subject ~s" subject))))
@@ -104,7 +115,7 @@
   (check (eq subject 'fn-owner-output-tariff-preview) "actual tariff producer subject")
   (push :tariff *preflight-events*)
   (or *preflight-injected-tariff*
-      (nth-value 1 (apply #'fn-owner-output-tariff-preview (append args (list nil))))))
+      (nth-value 1 (apply #'fn-owner-output-tariff-preview (append args (list nil nil nil))))))
 (defun fnn-core-buffer-state (subject &rest args)
   (case subject
     (fn-owner-output-preview
@@ -120,20 +131,20 @@
 (defun fnn-live-octets () :recorded-existing-buffer)
 (defun fnn-extent-no-io-usable-p () t)
 (defun preflight-holder () (%make-fnn-response-capture :connection '(:connection 7 11)))
-;; Actual unpriced producer refuses BEFORE any response factory. Known draw
-;; is discoverable through the holder even though the reader has escaped.
+;; Actual unpriced producer: the gate's refusal word comes back to the step,
+;; which answers it on the wire (403, connection kept) BEFORE any response
+;; factory, and is logged. Known draw is discoverable through the holder.
 (let* ((s (lease-service)) (*fnn-response-capture* (preflight-holder))
-       (*preflight-events* nil) (*preflight-injected-tariff* nil)
+       (*preflight-events* nil) (*preflight-injected-tariff* nil) (*preflight-log* nil)
        (conn (%make-fnn-mux-conn :cid 7 :response-capture *fnn-response-capture*)))
   (fnn-owner-output-begin-locked s 7)
-  (check (equal (nth-value 1 (fn-owner-output-tariff-preview 7 *preflight-preview* nil))
-                '(:unpriced :newnews)) "actual program producer is explicit unpriced")
-  (let ((condition nil))
-    (handler-case (fnn-owner-output-prefix-locked s 7 #(1 2 3 4 5 6 7 8))
-      (simple-error (c) (setq condition c)))
-    (check (and condition (search "accounted output command refused" (format nil "~a" condition)))
-           "actual unpriced admission is the named refusal cause"))
-  (check (equal (reverse *preflight-events*) '(:preview :tariff)) "no factory on unknown tariff")
+  (check (equal (nth-value 1 (fn-owner-output-tariff-preview 7 *preflight-preview* nil nil nil))
+                '(:unpriced :newnews)) "actual program producer leaves NEWNEWS unpriced")
+  (check (equal (fnn-owner-output-prefix-locked s 7 #(1 2 3 4 5 6 7 8))
+                '(:refused :unpriced-output-family :newnews))
+         "unpriced family returns ACL2's refusal word for the 403 line")
+  (check (equal *preflight-log* '((:recorded-log-line 7))) "unpriced refusal is logged once")
+  (check (equal (reverse *preflight-events*) '(:preview :tariff)) "no factory on unpriced tariff")
   (fnn-mux-capture-output-grant conn)
   (check (eq (fnn-mux-conn-output-grant conn) (fnn-response-capture-grant *fnn-response-capture*))
          "returned issuance survives rejected reader")
@@ -160,7 +171,27 @@
                "invalid fallback end faults before dispatch"))
       (check (equal *preflight-events* '((:factory 3))) "no fallback factory beyond accepted prefix")))
   (fnn-owner-output-close s (fnn-response-capture-grant *fnn-response-capture*) :drained))
+;; A reply over the quantum: the same word path, answered 400 and close.
+(let* ((s (lease-service)) (*fnn-response-capture* (preflight-holder))
+       (*preflight-events* nil) (*preflight-injected-tariff* '(:tariff :newnews 1048577)))
+  (fnn-owner-output-begin-locked s 7)
+  (check (equal (fnn-owner-output-prefix-locked s 7 #(1 2 3 4 5 6 7 8))
+                '(:refused :output-tariff-unaffordable :newnews))
+         "unaffordable reply returns ACL2's refusal word for the 400 line")
+  (check (equal (reverse *preflight-events*) '(:preview :tariff)) "no factory over quantum")
+  (fnn-owner-output-close s (fnn-response-capture-grant *fnn-response-capture*) :discarded))
+;; A malformed preview is the host's defect: refused, never answered.
+(let* ((s (lease-service)) (*fnn-response-capture* (preflight-holder))
+       (*preflight-events* nil) (*preflight-injected-tariff* '(:tariff :newnews 1))
+       (*preflight-preview* '(:preview -1 :newnews nil)))
+  (fnn-owner-output-begin-locked s 7)
+  (let ((condition nil))
+    (handler-case (fnn-owner-output-prefix-locked s 7 #(1 2 3 4 5 6 7 8))
+      (simple-error (c) (setq condition c)))
+    (check (and condition (search "accounted output command refused" (format nil "~a" condition)))
+           "invalid preview stays a named host refusal"))
+  (fnn-owner-output-close s (fnn-response-capture-grant *fnn-response-capture*) :discarded))
 (let ((s (%make-fnn-owner-service :output-ledger nil)))
   (check (= (fnn-owner-output-prefix-locked s 7 #(1 2 3 4 5 6 7 8)) 8)
          "absent output policy preserves explicitly partial legacy prefix"))
-(format t "native_output_preflight_raw: PASS actual unpriced producer/refusal/retained draw/accepted prefix/cold retry~%")
+(format t "native_output_preflight_raw: PASS unpriced 403 word/unaffordable 400 word/invalid refusal/retained draw/accepted prefix/cold retry~%")

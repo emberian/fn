@@ -4781,3 +4781,13 @@ Natives are pending on the integrator's batched set: SCN-1110, the
 three forward natives and the ION X10A/X10B natives (45e05c7f does not
 reach the subject). The full entry and exact continuation are in
 `build/coordinator/lanedumps/bp2.md`.
+
+## Lane tariff2: 2026-10-04 (Opus; exited on ramp-down)
+
+The full lanedump is build/coordinator/lanedumps/tariff2.md. ARTICLE is priced from its row
+(books/output-tariff-article-row.lisp) and wired. In accounted mode an unpriced family is
+answered 403 with the connection kept, and an over-quantum reply 400 and close
+(books/output-admission-line.lisp). Status and health show the accounting mode.
+Certified narrowly on persvati: certify-20261004T044137Z-1141752 and certify-20261004T051020Z-1493764.
+The pass-through stays until the last served family is priced (root ruling; specs/resource-vector.md).
+The opt-in (native-config) is on lane/tariff2-optin for batch R. PRF-1316 is proof-owed.

@@ -37,6 +37,39 @@ def entry(name: str, cls: str = "common-lisp-compliant", dispatched=("host/nativ
     return {"name": name, "class": cls, "dispatched_from": list(dispatched)}
 
 
+class TariffFamiliesTests(unittest.TestCase):
+    TABLE = """(defconst *fn-ocap-command-families*
+  '(
+    ((65 82 84 73 67 76 69) . :article)
+    ((72 69 65 68) . :head)
+    ((76 73 83 84) . :list)))
+
+"""
+
+    def producer(self, families: str) -> str:
+        return ("(defun fn-owner-output-tariff-preview (id preview fn-arena fn-cat state)\n"
+                "  (value (if (and conn (member-eq (fn-ocap-at 2 preview) '({}))) x y)))\n"
+                "(defun fn-next ())\n".format(families))
+
+    def test_the_ratchet_counts_priced_of_served(self):
+        root = tree([], {"output-command-admission.lisp": self.TABLE},
+                    {"owner-host.lisp": self.producer(":article")})
+        self.assertEqual(cost_obligations.families(root),
+                         {"served": 3, "priced": 1, "priced_families": ["article"],
+                          "unpriced_families": ["head", "list"]})
+
+    def test_a_priced_family_outside_the_table_is_refused(self):
+        root = tree([], {"output-command-admission.lisp": self.TABLE},
+                    {"owner-host.lisp": self.producer(":article :tapes")})
+        with self.assertRaisesRegex(ValueError, "not in the admission table: tapes"):
+            cost_obligations.families(root)
+
+    def test_the_real_tree_prices_article(self):
+        doc = cost_obligations.families(ROOT)
+        self.assertIn("article", doc["priced_families"])
+        self.assertEqual(doc["served"], doc["priced"] + len(doc["unpriced_families"]))
+
+
 class CostObligationsTests(unittest.TestCase):
     def test_rows_claims_and_contracts(self):
         root = tree(

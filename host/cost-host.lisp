@@ -34,3 +34,15 @@
   :unaccounted (fn-ros-livep member-eq-exec fn-ros-settle-ready))
 (def-cost fn-ros-outcome :unaccounted (fn-ros-livep fn-ros-settle-ready))
 (def-cost fn-ros-drainedp :unaccounted (fn-rl-wfp))
+
+; The output admission gate and the ARTICLE tariff's arithmetic (lane
+; tariff2; planning/design/tariff-2026-10-04.md Q6): derived, nothing
+; unaccounted, no host visit, and the logical conses a descriptor or a
+; refusal word holds (laptop REPL over def-cost, 2026-10-04).  The row
+; producer fn-tariff-article-preview and its catalog/arena reads are not
+; costed here; the program wrapper fn-owner-output-tariff-preview carries
+; no row (a :program entry cannot).
+(def-cost fn-ocap-at :visits 0 :conses 0)
+(def-cost fn-ocap-admit-preview :visits 0 :conses 3)
+(def-cost fn-tariff-article-octets :visits 0 :conses 0)
+(def-cost fn-tariff-article-descriptor :visits 0 :conses 3)
