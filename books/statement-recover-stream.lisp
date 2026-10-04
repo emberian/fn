@@ -183,6 +183,17 @@
                              fn-ssk-apply-snapshot fn-stxk-keyring-generation
                              fn-ssr-resident-ignores-places))))))
 
+;; The two folds' tails, in the terms the theorem below is stated in.
+(local
+ (defthm fn-ssr-rev-onto-is-revappend
+   (equal (fn-ag-rev-onto x acc) (revappend x acc))))
+
+(local
+ (defthm fn-ssr-intern-step-of-bad-history
+   (equal (fn-ssr-intern-step acc :bad rs ps mode dicts fn-arena)
+          (mv :bad fn-arena))
+   :hints (("Goal" :in-theory (enable fn-ssr-intern-step)))))
+
 (defthm fn-ssr-rows-are-the-raw-rows-without-snapshots
   (implies (and (fn-ssr-no-snapshot-p ws)
                 (not (eq acc :bad))
@@ -196,9 +207,11 @@
                 (equal (mv-nth 1 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena))
                        (mv-nth 1 (fn-srs-intern-step (fn-ssr-at 0 acc) ws fn-arena)))))
   :hints (("Goal" :do-not-induct t
-           :use fn-ssr-raw-fold-without-snapshots
+           :use (fn-ssr-raw-fold-without-snapshots
+                 (:instance fn-srs-intern-events-true-listp (keyring nil) (generation 0)))
            :in-theory (e/d (fn-ssr-rows fn-srs-intern-step fn-srs-rows)
                            (fn-ssr-intern-step fn-intern-events fn-ssr-at
+                            fn-ssr-resident-ignores-places
                             fn-ssr-raw-fold-without-snapshots)))))
 
 ; The host's full recovery: from the seed of the initial identity context.
@@ -219,4 +232,5 @@
                             fn-stxk-context fn-stxk-context-snapshots
                             fn-ssk-keyring-of-snapshots fn-ssk-generation)
                            (fn-ssr-intern-step fn-srs-intern-step fn-ssr-rows fn-srs-rows
+                            fn-ssr-resident-ignores-places
                             fn-ssr-rows-are-the-raw-rows-without-snapshots)))))
