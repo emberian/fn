@@ -876,10 +876,44 @@ class Analyzer:
                 binding[var] = saved
             return expanded
 
+        def conditional_template(expr):
+            """`,(if TEST `THEN `ELSE)' where each arm is a backquote template (or
+            a literal NIL/absent) and TEST is a macro parameter: a literal NIL
+            argument selects ELSE, any other literal (T, a keyword, a number) selects
+            THEN; an argument that is itself computed selects neither provably, so
+            the expansion is both arms in a PROGN (each is walked; events common to
+            both are deduplicated).  Any other computed unquote stays opaque."""
+            if not (isinstance(expr, list) and head(expr) == "if" and len(expr) in (3, 4)):
+                return None
+            arms = []
+            for arm in list(expr[2:]) + [Sym("nil")] * (4 - len(expr)):
+                if isinstance(arm, list) and head(arm) == "quasiquote" and len(arm) == 2:
+                    arms.append(arm[1])
+                elif isinstance(arm, Sym) and str(arm) == "nil":
+                    arms.append(Sym("nil"))
+                else:
+                    return None
+            test = expr[1]
+            if not (isinstance(test, Sym) and str(test) in binding and binding[str(test)][0] == "one"):
+                return None
+            val = binding[str(test)][1]
+            if isinstance(val, Sym) and str(val) == "nil":
+                return sub(arms[1])
+            literal = (isinstance(val, Sym) and (str(val) == "t" or str(val).startswith(":"))) or \
+                (not isinstance(val, (Sym, list)))
+            if literal:
+                return sub(arms[0])
+            out = Node([Sym("progn"), sub(arms[0]), sub(arms[1])])
+            out.line = getattr(form, "line", 0)
+            return out
+
         def sub(t):
             if isinstance(t, list):
                 h = head(t)
                 if h == "unquote" and len(t) == 2:
+                    chosen = conditional_template(t[1])
+                    if chosen is not None:
+                        return chosen
                     if isinstance(t[1], Sym) and str(t[1]) in binding and binding[str(t[1])][0] == "one":
                         return binding[str(t[1])][1]
                     return opaque(t[1])
@@ -1234,6 +1268,12 @@ class Analyzer:
 
     def walk_make_thread(self, form, ctx, env, line):
         fn = form[1] if len(form) > 1 else None
+        # a declared identity-on-its-thunk wrapper (fnn-native-observed-thread-
+        # thunk: returns THUNK, or a lambda that rebinds two specials and funcalls
+        # it) makes the thread run its first argument
+        while (isinstance(fn, list) and len(fn) > 1 and head(fn)
+               and head(fn) in self.c.raw.get("thread_thunk_wrappers", [])):
+            fn = fn[1]
         tname = None
         for k in range(2, len(form) - 1):
             if isinstance(form[k], Sym) and str(form[k]) == ":name":
@@ -2116,6 +2156,8 @@ class Checker:
                                 cands.append((leaf, kind, held, ("core", e.name, r, noio)))
                 for leaf, kind, locks, how in cands:
                     for lock in sorted(locks):
+                        if leaf.split(":", 2)[2] in self.c.locks.get(lock, {}).get("io_leaves_ok", []):
+                            continue   # this lock's declared non-blocking leaves
                         k = (lock, leaf)
                         row = found.get(k)
                         if row is None:
@@ -2864,6 +2906,24 @@ def realization_rows(root: Path) -> list:
 LABEL_LAYERS = {"C", "P"}
 
 
+def realized_core_sites(checker: Checker, fn: str, core: str, via: dict, seen=frozenset()) -> list:
+    """Where FN makes its ACL2 call CORE: (line, locks held there) for each direct
+    call, and for each call of a function the contracts' realization_via names
+    for FN (a declared delegation: that helper is the one choke point of the
+    call), the locks held at that call plus whatever the helper holds around its
+    own realization.  A delegation is followed only where declared."""
+    info = checker.infos.get(fn)
+    if info is None or fn in seen:
+        return []
+    out = [(e.line, e.ctx.locks) for e in info.events if e.kind == "core" and e.name == core]
+    for helper in via.get(fn, []):
+        inner = realized_core_sites(checker, helper, core, via, seen | {fn})
+        for e in info.events:
+            if e.kind in ("call", "core") and e.name == helper:
+                out.extend((e.line, e.ctx.locks | locks) for _, locks in inner)
+    return out
+
+
 def check_realization(checker: Checker) -> None:
     """The host-model realization table (review M3): each label's host sites
     exist, call their primitive and ACL2 subject, hold the label's locks, and
@@ -2872,6 +2932,7 @@ def check_realization(checker: Checker) -> None:
     or :crash's A-CRASH-IMAGE,
     'enabled' names ACL2 functions that exist)."""
     known = getattr(checker.an.reach, "known", set())
+    via = checker.c.raw.get("realization_via", {})
     try:
         checker.realization = realization_table(checker.an.tree.root)
     except (OSError, ValueError, ledger.ReadError) as error:
@@ -2913,22 +2974,30 @@ def check_realization(checker: Checker) -> None:
                             "realization:" + label)
                 continue
             core = site.get("core")
-            if core and not any(e.kind == "core" and e.name == core for e in info.events):
+            core_sites = realized_core_sites(checker, fn, core, via) if core else []
+            if core and not core_sites:
                 checker.add("R3", info, info.line, f"realization {label}: {fn} no longer calls {core}",
                             "realization:" + label)
             held_req = set(site.get("locks_held", []))
             if held_req:
-                where = prim_events or [e for e in info.events if e.kind == "core" and e.name == core]
-                for e in where:
-                    have = e.ctx.locks | checker.m.mustheld.get(fn, frozenset())
+                where = [(e.line, e.ctx.locks) for e in prim_events] or core_sites
+                for line, locks in where:
+                    have = locks | checker.m.mustheld.get(fn, frozenset())
                     if not held_req <= have:
-                        checker.add("R3", info, e.line,
+                        checker.add("R3", info, line,
                                     f"realization {label}: {fn} runs {prim or core} holding "
                                     f"{sorted(have)}, the label needs {sorted(held_req)}",
                                     "realization-locks:" + label)
+            borrow = checker.c.raw.get("borrows", {}).get(fn)
             for before in site.get("requires_before", []):
                 firsts = [e.line for e in info.events if e.kind in ("core", "call") and e.name == before]
                 for e in prim_events:
+                    # a site that holds a typed borrow (the row's capability) is
+                    # dominated by its issue: the function the borrow names issues
+                    # the row through BEFORE, and R3 verifies that protocol itself
+                    if (site.get("capability") and borrow and borrow.get("issue_core") == before
+                            and checker.verify_borrow(info, e, borrow) is None):
+                        continue
                     if not firsts or min(firsts) > e.line:
                         checker.add("R3", info, e.line,
                                     f"realization {label}: {prim} at :{e.line} without {before} before it",
