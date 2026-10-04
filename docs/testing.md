@@ -8,7 +8,7 @@ shows and what it does not.  The long account of validation by layer is
 | kind | files | one test | where |
 |---|---|---|---|
 | ACL2 test book | `tests/acl2/*-tests.lisp` | `python3 tools/farm.py submit auto tests/acl2/NAME-tests` then `farm.py wait BOX RUN` | a farm box (persvati, hbox); the laptop only through `tools/acl2` |
-| raw SBCL harness | `tests/native_*_raw.lisp` | `sbcl --script tests/native_NAME_raw.lisp`, or the module that names it | anywhere with the toolchain SBCL; `make check` |
+| raw SBCL harness | `tests/native_*_raw.lisp` | `python3 -m unittest tests.test_native_raw_scripts` (all), or `sbcl --script tests/native_NAME_raw.lisp` | anywhere with the toolchain SBCL; `make check` |
 | native module | `tests/test_native_*.py` | image-free half: `python3 tools/native_source_check.py tests.test_native_NAME`; image half: `tools/hbox_native.sh --image-set SHA . tests.test_native_NAME` | image-free: anywhere, `make check`; image: a build box |
 | scenario | a row of `tests/scenarios/catalog.json` | run its witnesses (rows above, or a `tests/*.sh` its row cites) | where the witness runs |
 | tooling test | `tests/test_*.py` that are not `test_native_*` | `make test-modules MODULES="tests.test_NAME"` | anywhere; `make tooling-test` runs the set |
@@ -36,12 +36,20 @@ is deleted, not kept as coverage.
 `tests/native_*_raw.lisp` read host source (`host/native/*.lisp`) and the
 ACL2 `defun`s it calls from their files, evaluate them in a plain SBCL, and
 drive them with recording stubs for the I/O seams.  Each ends by printing a
-line containing `PASS`.  Today a harness is run either by the test module
-that names it (with the arguments or fixture directory it needs) or by a
-one-line `tests/test_native_*_raw.sh` wrapper marked `# witness: raw`, which
-`tests/test_native_raw_scripts.py` runs under the toolchain SBCL (`FN_SBCL`,
-else the image's runtime, else `sbcl` on PATH).  `make check` runs both
-through `tools/native_source_check.py`.
+line containing `PASS`.  `tests/test_native_raw_scripts.py` is the one
+runner: it discovers every `tests/native_*_raw.lisp`; a harness that another
+test module or `tests/*.sh` names is run there (it needs arguments, a fixture
+directory or an ACL2 world), and every other one is run by this module as
+`sbcl --script` from the tree's root under the toolchain SBCL (`FN_SBCL`,
+else the image's runtime, else `sbcl` on PATH).  Adding a harness needs no
+wiring; a one-line wrapper that only runs one is refused.  `make check` runs
+the module through `tools/native_source_check.py`.
+
+Six harnesses run over the real certified ACL2 definitions instead of
+copies: six `tests/test_native_*.sh` scripts (`# witness: needs-acl2`)
+include the books through `tools/acl2` and load the harness in raw mode.
+They need a certified tree and run once per convergence (row 15a of
+`planning/release-v6.6.0.md`).
 
 A pass shows: the host function, as written, takes the branch the harness
 asserts for the inputs and seam answers it supplies.  It does not show the

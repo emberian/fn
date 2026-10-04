@@ -2909,7 +2909,7 @@
         "tests/test_native_log_compaction.py",
         "books/reclaim-instant.lisp",
         "tests/test_native_replay_determinism.py",
-        "tests/test_native_reclaim_capture_raw.sh",
+        "tests/native_reclaim_capture_raw.lisp",
         "books/history-pages-relocate-step.lisp",
         "tests/acl2/history-pages-relocate-step-tests.lisp"
       ],
