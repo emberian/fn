@@ -75,6 +75,9 @@
   (waiting nil)
   ;; Implicit-TLS sockets not yet admitted, waiting for a handshake slot.
   (queued nil)
+  ;; True while fnn-mux-start-waiting-handshake drains WAITING and QUEUED:
+  ;; a refusal's fnn-mux-finish inside the drain does not start a nested one.
+  (draining nil)
   ;; Lane commit-onto-log: (CONN . COMPLETION) pairs the committer thread
   ;; handed over for connections waiting on their batch (under LOCK); the
   ;; loop's completed passes and whether it sleeps in poll(2) now, which the
@@ -426,6 +429,14 @@ failed effects remain discoverable while independent physical cleanup runs."
           (fnn-mux-cleanup-attempt loop conn :zout-free
             (lambda () (fnn-zout-free (fnn-mux-conn-zout conn))) nil nil)
           (setf (fnn-mux-conn-zout conn) nil))
+        ;; Leave the stop hook's roster before the fd can be reused
+        ;; (S084): the stopper shuts down every socket still listed.
+        (fnn-mux-cleanup-attempt loop conn :client-roster
+          (lambda ()
+            (fnn-with-roster (service)
+              (setf (fnn-owner-service-clients service)
+                    (delete (fnn-mux-conn-socket conn)
+                            (fnn-owner-service-clients service) :test #'eq)))) nil nil)
         (fnn-mux-cleanup-attempt loop conn :socket-shut
           (lambda ()
             (multiple-value-bind (ignored receipt condition)
@@ -441,12 +452,6 @@ failed effects remain discoverable while independent physical cleanup runs."
               (delete conn (fnn-mux-loop-queued loop) :test #'eq)
               (fnn-mux-loop-conns loop)
               (delete conn (fnn-mux-loop-conns loop) :test #'eq))
-        (fnn-mux-cleanup-attempt loop conn :client-roster
-          (lambda ()
-            (fnn-with-roster (service)
-              (setf (fnn-owner-service-clients service)
-                    (delete (fnn-mux-conn-socket conn)
-                            (fnn-owner-service-clients service) :test #'eq)))) nil nil)
         (when (fnn-mux-conn-done conn)
           (fnn-mux-cleanup-attempt loop conn :done-signal
             (lambda () (sb-thread:signal-semaphore (fnn-mux-conn-done conn))) nil nil)))
@@ -1163,30 +1168,38 @@ whether it is still waiting."
   "Every pass and every freed slot: the waiting STARTTLS upgrades first, then
 the queued implicit-TLS sockets, oldest first, each asked again until ACL2
 answers :wait (the node's slots or this second's starts are spent)."
-  (loop
-    (let ((next (or (first (fnn-mux-loop-waiting loop))
-                    (first (fnn-mux-loop-queued loop)))))
-      (unless next (return))
-      (if (eq (fnn-mux-conn-phase next) :hs-wait)
-          (when (fnn-mux-guarded (loop next)
-                  (fnn-mux-request-handshake loop next t))
-            (return))
-        (let ((waits nil))
-          (fnn-mux-guarded (loop next)
-            (multiple-value-bind (verdict x ms line)
-                (fnn-mux-handshake-ask loop next t)
-              (ecase verdict
-                (:admit (pop (fnn-mux-loop-queued loop))
-                        (setf (fnn-mux-conn-phase next) :new
-                              (fnn-mux-conn-hs-deadline next) nil
-                              (fnn-mux-conn-hs-id next) x)
-                        (fnn-mux-proxy-or-admit loop next ms))
-                (:wait (setq waits t))
-                (:refuse (pop (fnn-mux-loop-queued loop))
-                         (setf (fnn-mux-conn-phase next) :new)
-                         (fnn-mux-handshake-refused loop next line)))))
-          ;; A fault inside the guard finished NEXT (it left the queue).
-          (when waits (return)))))))
+  ;; A refusal inside the drain finishes its connection, and finish ends by
+  ;; calling this function: the nested call would recurse once per refused
+  ;; socket (S091).  The outer drain re-reads the queues each round, so the
+  ;; nested call is redundant.
+  (unless (fnn-mux-loop-draining loop)
+    (setf (fnn-mux-loop-draining loop) t)
+    (unwind-protect
+      (loop
+        (let ((next (or (first (fnn-mux-loop-waiting loop))
+                        (first (fnn-mux-loop-queued loop)))))
+          (unless next (return))
+          (if (eq (fnn-mux-conn-phase next) :hs-wait)
+              (when (fnn-mux-guarded (loop next)
+                      (fnn-mux-request-handshake loop next t))
+                (return))
+            (let ((waits nil))
+              (fnn-mux-guarded (loop next)
+                (multiple-value-bind (verdict x ms line)
+                    (fnn-mux-handshake-ask loop next t)
+                  (ecase verdict
+                    (:admit (pop (fnn-mux-loop-queued loop))
+                            (setf (fnn-mux-conn-phase next) :new
+                                  (fnn-mux-conn-hs-deadline next) nil
+                                  (fnn-mux-conn-hs-id next) x)
+                            (fnn-mux-proxy-or-admit loop next ms))
+                    (:wait (setq waits t))
+                    (:refuse (pop (fnn-mux-loop-queued loop))
+                             (setf (fnn-mux-conn-phase next) :new)
+                             (fnn-mux-handshake-refused loop next line)))))
+              ;; A fault inside the guard finished NEXT (it left the queue).
+              (when waits (return))))))
+      (setf (fnn-mux-loop-draining loop) nil))))
 
 (defun fnn-mux-handshake-step (loop conn)
   (let ((service (fnn-mux-service loop))
@@ -1492,7 +1505,8 @@ included), no input in hand, no completion awaited, no resume timer."
                     (due (fnn-mux-conn-hs-deadline conn)))
                (fnn-mux-tls-log loop conn :timeout)
                (fnn-mux-finish loop conn))
-              ((eq (fnn-mux-conn-phase conn) :proxy)
+              ((and (eq (fnn-mux-conn-phase conn) :proxy)
+                    (due (fnn-mux-conn-hs-deadline conn)))
                (fnn-mux-proxy-expired loop conn))
               ((and (eq (fnn-mux-conn-phase conn) :draining)
                     (due (fnn-mux-conn-drain-deadline conn)))
