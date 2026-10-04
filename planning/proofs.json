@@ -21229,7 +21229,12 @@
         "tests/acl2/resource-vector-tests.lisp",
         "specs/resource-vector.md"
       ],
-      "progress_note": "Lane resource-ledger (Fable, 2026-10-01): books/resource-vector.lisp REPL-admitted and certified on the laptop (179 forms); teeth tests/acl2/resource-vector-tests.lisp (defkeystone, one removal witness a hypothesis, corrupted-state witnesses labelled, mutations for the hypothesis-free keystones). NO EVENTS ARE CITED: no host line calls the bank yet (MODE 2026-10-01 section 3: no gate before its producer); the first caller is definterface :operation (the next lane), which charges every host-called entry through the typed twin (PRF-1211)."
+      "progress_note": "Lane resource-ledger (Fable, 2026-10-01): books/resource-vector.lisp REPL-admitted and certified on the laptop (179 forms); teeth tests/acl2/resource-vector-tests.lisp (defkeystone, one removal witness a hypothesis, corrupted-state witnesses labelled, mutations for the hypothesis-free keystones). NO EVENTS ARE CITED: no host line calls the bank yet (MODE 2026-10-01 section 3: no gate before its producer); the first caller is definterface :operation (the next lane), which charges every host-called entry through the typed twin (PRF-1211).",
+      "keystone_subjects": {
+        "fn-rv-draw-admits-exactly-within-the-budget": "fn-rv-draw",
+        "fn-rv-draw-charges-exactly-the-demand": "fn-rv-draw",
+        "fn-rv-install-reserves-the-owner-first": "fn-rv-install"
+      }
     },
     {
       "id": "PRF-1210",
@@ -21259,7 +21264,11 @@
         "books/resource-vector-relations-heap.lisp",
         "tests/acl2/resource-vector-relations-tests.lisp"
       ],
-      "progress_note": "Lane resource-ledger (Fable, 2026-10-01): the light book (PRS prefix, credits) REPL-driven on persvati; the heap book's include closure is the owner's (fifty-odd books uncertified at this digest on persvati), so it is certified by the farm after the next cite. See build/coordinator/lanedumps/resource-ledger.md for what is admitted and what remains."
+      "progress_note": "Lane resource-ledger (Fable, 2026-10-01): the light book (PRS prefix, credits) REPL-driven on persvati; the heap book's include closure is the owner's (fifty-odd books uncertified at this digest on persvati), so it is certified by the farm after the next cite. See build/coordinator/lanedumps/resource-ledger.md for what is admitted and what remains.",
+      "keystone_subjects": {
+        "fn-rv-prs-gate-is-a-funded-root": "fn-prs-fundedp",
+        "fn-rv-prs-plus-is-plus": "fn-prs-plus"
+      }
     },
     {
       "id": "PRF-1211",
