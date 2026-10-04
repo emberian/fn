@@ -34,5 +34,88 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_native_mux_roster_order",
  "title": "fnn-mux-finish closes the socket before removing it from the clients roster, breaking the stop hook's no-fd-reuse invariant",
- "updated": "2026-10-04T19:42:05Z"
+ "updated": "2026-10-04T19:42:32Z",
+ "verify": {
+  "base": "3026c5fe79e6d1659504a6b6d653b86d843fb734",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "S084: socket closed while still in the clients roster",
+      "test": "tests.test_native_mux_roster_order.MuxRosterOrder.test_socket_leaves_the_roster_before_it_is_closed",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_native_mux_roster_order.MuxRosterOrder.test_socket_leaves_the_roster_before_it_is_closed"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_mux_roster_order.py": "bce07db7d3494239d600817935c576649eac41d64ae2f4d78d0163b996c0d3d0"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "3026c5fe79e6d1659504a6b6d653b86d843fb734",
+   "stderr": "test_socket_leaves_the_roster_before_it_is_closed (tests.test_native_mux_roster_order.MuxRosterOrder.test_socket_leaves_the_roster_before_it_is_closed) ... FAIL\n\n======================================================================\nFAIL: test_socket_leaves_the_roster_before_it_is_closed (tests.test_native_mux_roster_order.MuxRosterOrder.test_socket_leaves_the_roster_before_it_is_closed)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-zh73o4r8/wt/tests/test_native_mux_roster_order.py\", line 21, in test_socket_leaves_the_roster_before_it_is_closed\n    self.fail(FAILURE)\n    ~~~~~~~~~^^^^^^^^^\nAssertionError: S084: socket closed while still in the clients roster\n\n----------------------------------------------------------------------\nRan 1 test in 1.377s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "host/native/mux.lisp",
+   "planning/repair/items/S084.json",
+   "tests/native_mux_cleanup_raw.lisp",
+   "tests/test_native_mux_roster_order.py"
+  ],
+  "diff_lines": 53,
+  "evidence": {
+   "bytes": 3785,
+   "path": "planning/evidence/repair/S084-82587083a2c74477908802ea606f7e73.json",
+   "sha256": "feea4619f7625d9c96395492dfafe8b9f87a753304da9dd5315b90a814d35404"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "S084: socket closed while still in the clients roster",
+   "test": "tests.test_native_mux_roster_order.MuxRosterOrder.test_socket_leaves_the_roster_before_it_is_closed"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/native_mux_cleanup_raw.lisp": "e5639d4bba4f126274b0888a6a9aa4a7f162946208f8141ed286c43060deae0b",
+   "tests/test_native_mux_roster_order.py": "bce07db7d3494239d600817935c576649eac41d64ae2f4d78d0163b996c0d3d0"
+  },
+  "head": "c3154de6a5df78dc30f3f8080c52b0447646164d",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_native_mux_roster_order.MuxRosterOrder.test_socket_leaves_the_roster_before_it_is_closed"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_mux_roster_order.py": "bce07db7d3494239d600817935c576649eac41d64ae2f4d78d0163b996c0d3d0"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "c3154de6a5df78dc30f3f8080c52b0447646164d",
+   "stderr": "test_socket_leaves_the_roster_before_it_is_closed (tests.test_native_mux_roster_order.MuxRosterOrder.test_socket_leaves_the_roster_before_it_is_closed) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.576s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_native_mux_roster_order",
+  "timeout": 1800.0
+ }
 }
