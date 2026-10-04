@@ -1,0 +1,18 @@
+{
+ "category": "design",
+ "disposition": "DECISION",
+ "evidence": "books/peer-inbound.lisp fn-peer-refused-record records fn-peer-intrinsic-refusal under (fn-record-octets-string msgid), msgid being the TAKETHIS/IHAVE argument; reasons include :message-id-syntax (the article's own Message-ID differs from the offered one) and :proto-article/:line-length (octets that do not parse at all). fn-peer-decide-offer answers from fn-own-refused for every peer session (specs/peering.md NNT-049: 'from any peer').",
+ "exposure": "live",
+ "file": "books/peer-inbound.lisp",
+ "fix": "Two options for ember: (a) narrow, certain: remember only reasons reached after the Message-ID equality arm (:no-date :path-syntax :date-syntax), never :message-id-syntax, :proto-article or :line-length, whose octets do not name the offered id; (b) key the memory by (peer . msgid) so a peer can only poison its own offers. Either keeps fn-prof-run-is-sound (a subset of what is recorded); NNT-049's text changes with (b).",
+ "id": "rp-refused-memory-poison",
+ "locus": "peer-services",
+ "notes": [],
+ "owner": "read-peer",
+ "scenario": "Peer X sends 'TAKETHIS <victim@a>' with an article whose header is Message-ID: <junk@x> (or garbage bytes). fn answers 439 and remembers <victim@a> :message-id-syntax. When honest peer Y later offers 'CHECK <victim@a>', fn answers 438, which innfeed and fn's own sender treat as final: the real article is never taken from anyone until 4096 later refusals evict the entry or the node restarts. The remembered octets never even claimed to be <victim@a>. A hostile peer can also forge Message-ID: <victim@a> with no Date (:no-date) to the same effect; that is INN remembertrash behaviour, the mismatch case is not.",
+ "severity": "medium",
+ "source": "read-peer-2026-10-04",
+ "state": "open",
+ "title": "Refused-offer memory is shared by every peer and keyed by the OFFERED Message-ID: one peer's bad transfer makes every honest peer's later offer of that Message-ID draw 438 (dropped for good)",
+ "updated": "2026-10-04T15:30:12Z"
+}
