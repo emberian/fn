@@ -121,18 +121,13 @@ ACL2_BOOKS ?= books/defrecord \
 	books/ninep-session \
 	books/ninep-stat-stream \
 	books/ninep-transport \
-	host/ninep-mounted-directory-host \
-	host/ninep-stat-stream-host \
-	host/ninep-transport-host \
 	tests/acl2/ninep-group-buckets-tests \
 	tests/acl2/ninep-mount-tests \
 	tests/acl2/ninep-mounted-directory-tests \
 	tests/acl2/ninep-qids-tests \
 	tests/acl2/ninep-session-host-tests \
 	tests/acl2/ninep-session-tests \
-	tests/acl2/ninep-stat-stream-host-tests \
 	tests/acl2/ninep-stat-stream-tests \
-	tests/acl2/ninep-transport-tests \
 	books/extent-window-compressed-input \
 	books/extent-window-compressed-output \
 	books/extent-window-source-words \
