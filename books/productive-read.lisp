@@ -204,7 +204,12 @@
   (implies
     (and
       (equal (fn-ovw-expand effects fn-arena fn-cat) (list (fn-nntp-reply-effect octets)))
-      (not (equal (fn-ovw-cursor-octets (car (cdr (car effects))) fn-arena fn-cat) octets)))
+      (not (equal (fn-ovw-cursor-octets (car (cdr (car effects))) fn-arena fn-cat) octets))
+      ;; The NEWNEWS stream's initial cursor expands too (fn-ovw-expand):
+      ;; its reply is not OCTETS either.
+      (implies (fn-nnw-meta-initialp (car (cdr (car effects))))
+               (not (equal (fn-nnw-stream-remaining (car (cdr (car effects))) fn-arena fn-cat)
+                           octets))))
     (equal effects (list (fn-nntp-reply-effect octets))))
   :rule-classes
   nil
@@ -254,6 +259,32 @@
        (fn-ovw-cursor-octets fn-ovw-reply fn-ovw-status fn-ovw-empty-text fn-nntp-crlf)
        (fn-ovw-lines fn-nntp-stuff-lines fn-ovw-hdr-lines fn-ovw-hdr-reply)))))
 
+; The NEWNEWS stream's initial cursor (its 230 status line pending) is no
+; article reply either.
+(defthm
+  fn-pcr-newnews-cursor-never-expands-to-an-article-reply
+  (implies
+    (fn-nnw-meta-initialp cur)
+    (let
+      ((octets (fn-nnw-stream-remaining cur fn-arena fn-cat)))
+      (and
+        (not (equal octets (append (quote (50 50 48)) tail)))
+        (not
+          (equal
+            octets
+            (append (fn-nntp-string-octets "423 no article with that number") (quote (13 10)))))
+        (not
+          (equal
+            octets
+            (append (fn-nntp-string-octets "430 no article with that message-id") (quote (13 10))))))))
+  :rule-classes
+  nil
+  :hints
+  (("Goal"
+     :in-theory
+     (e/d (fn-nnw-meta-initialp fn-nnw-stream-remaining)
+          (fn-nnw-stream-owes fn-nnw-stream-fresh-remaining)))))
+
 (defthm
   fn-pcr-expand-inverts-220-reply
   (implies
@@ -271,6 +302,9 @@
         (octets (append (quote (50 50 48)) tail)))
        (:instance
          fn-pcr-over-cursor-never-expands-to-an-article-reply
+         (cur (car (cdr (car effects)))))
+       (:instance
+         fn-pcr-newnews-cursor-never-expands-to-an-article-reply
          (cur (car (cdr (car effects))))))
      :in-theory
      (theory (quote minimal-theory)))))
