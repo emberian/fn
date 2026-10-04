@@ -19136,7 +19136,7 @@
         "PRF-1065"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/page-window-lease.lisp",
         "host/page-window-lease-host.lisp",
@@ -19161,7 +19161,7 @@
         "PRF-1119"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/page-window-executor.lisp",
         "books/page-window-read.lisp",
@@ -23021,7 +23021,7 @@
         "PRF-1288"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "files": [
         "books/decoded-worker-assignment.lisp",
         "books/decoded-worker-job.lisp",

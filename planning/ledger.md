@@ -13,12 +13,12 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 3006 |
 | Certification roots in the Makefile | 2513 |
 | Books inside the root closure | 2831 |
-| `defthm` and `defthmd` events | 39499 |
-| `defun` events | 25473 |
+| `defthm` and `defthmd` events | 39511 |
+| `defun` events | 25481 |
 | Functions with verified guards | 4046 |
 | Functions declared `:verify-guards nil` and never verified | 3288 |
-| Functions left at the default with an explicit guard | 14035 |
-| Functions left at the default with no guard | 4104 |
+| Functions left at the default with an explicit guard | 14041 |
+| Functions left at the default with no guard | 4106 |
 | `assert-event` checks | 27141 |
 | `must-fail` checks | 2684 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -1280,9 +1280,9 @@ that `make certify` requests.
 | `books/page-read-pool-state.lisp` | closure | 0 | 3 | 0/0/1/2 | 0 | 0 | 0 |
 | `books/page-read-resources.lisp` | root | 7 | 11 | 0/0/11/0 | 0 | 0 | 1 |
 | `books/page-read-startup.lisp` | root | 6 | 19 | 0/0/19/0 | 0 | 0 | 2 |
-| `books/page-window-executor.lisp` | root | 12 | 9 | 0/0/9/0 | 0 | 0 | 0 |
-| `books/page-window-lease.lisp` | root | 4 | 5 | 0/0/5/0 | 0 | 0 | 0 |
-| `books/page-window-read.lisp` | root | 5 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/page-window-executor.lisp` | root | 13 | 10 | 0/0/10/0 | 0 | 0 | 0 |
+| `books/page-window-lease.lisp` | root | 10 | 7 | 0/0/7/0 | 0 | 0 | 0 |
+| `books/page-window-read.lisp` | root | 8 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/page-window-worker-storage.lisp` | closure | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/pagestore-digest-block-predicate.lisp` | root | 0 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/pagestore-digest-byte-cursor.lisp` | root | 3 | 6 | 1/0/4/1 | 0 | 0 | 0 |
@@ -2692,7 +2692,7 @@ that `make certify` requests.
 | `tests/acl2/page-window-admission-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 2 | 0 | 0 |
 | `tests/acl2/page-window-executor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/page-window-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 0 | 0 |
-| `tests/acl2/page-window-read-tests.lisp` | root | 8 | 12 | 0/1/0/11 | 0 | 0 | 0 |
+| `tests/acl2/page-window-read-tests.lisp` | root | 10 | 14 | 0/1/0/13 | 0 | 0 | 0 |
 | `tests/acl2/pagestore-digest-byte-cursor-tests.lisp` | root | 9 | 3 | 0/1/0/2 | 0 | 0 | 0 |
 | `tests/acl2/pagestore-digest-byte-domain-tests.lisp` | root | 9 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `tests/acl2/pagestore-digest-cursor-domain-tests.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
