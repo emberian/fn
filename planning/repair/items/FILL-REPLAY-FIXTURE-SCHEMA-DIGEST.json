@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Red on set bdd4f40c4 (e2e, hbox native-fill-e2e) and set 55ff708a6 (hbox:/tank/fn/scratch/fill-wt/native-fill-smoke-55, scenario_suite run smoke; logs/test-tests.test_native_replay_determinism.log). Only the registered-fixture test (test_d) fails; the generated-store tests a/b/c pass, so the node and its determinism are fine and the committed fixture store carries the old schema digest. tests/test_native_replay_determinism.py:559.",
+ "file": "tests/native_replay_determinism_fixtures",
+ "id": "FILL-REPLAY-FIXTURE-SCHEMA-DIGEST",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "tests.test_native_replay_determinism test_d_registered_fixture_replays_identically: the registered fixture store n1k-2k-a is refused 'store: open refused reason=schema-digest: the store was made under another schema' by the 55ff708a6 image, so the fixture needs regenerating or the schema change needs an export/import path for it",
+ "updated": "2026-10-04T19:40:21Z"
+}
