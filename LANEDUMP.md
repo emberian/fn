@@ -4576,6 +4576,13 @@ books/store-mount-identity.lisp:660 (tools/runbooks/public-node, dir still
 exists), tests/test_native_tls_reload.py:97 (fn-cert-install.sh). Lane notes
 live here only (build/coordinator/lanedumps/docs.md untracked, per integrator).
 
+## python-diet-4 (2026-10-04) — tools/ diet
+Full entry: build/coordinator/lanedumps/python-diet.md. lane/python-diet@fd4335285 on
+integrate/20261004@ec2c1b3da: inventory TSV, 11 tools deleted, host_defun_check folded into
+harness_check, runtime_floor merged, T5 brief stub. tools/*.py 111,718 -> 109,862 (-1.7%);
+the quarter target needs the decision list in the full entry.
+
+
 ## Lane tariff — 2026-10-04 (Fable, wound down; Opus continues)
 
 The full lanedump is `build/coordinator/lanedumps/tariff.md` (same commit). Design packet:
