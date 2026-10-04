@@ -8,8 +8,9 @@
  ],
  "owner": "scenarios-2",
  "severity": "medium",
+ "sha": "b5057bb3b",
  "source": "scenarios-2",
- "state": "in-progress",
+ "state": "ready",
  "title": "'operator status' exits 0 with no message on a store whose record log is damaged, so the open's refusal by name never reaches the operator. Affected: log_damage 13/5 (a flipped octet inside an entry followed by valid entries, at offsets 0/20/4116/8212/...: status exits 0 with empty stderr, and the test needs exit 1 with reason=log-damaged at=000001.log:N valid-after=K and the --repair truncate hint), initializer_fidelity test_committed_segment_at_a_misaligned_length_is_refused_untouched (status exits 0), and image_differential test_checkpoint_deleted_after_compaction_is_refused_by_name (status prints 'accepted operator status'). The same three were red at b3 bdd4f40c4, b4 55ff708a6 and b6 6107ceb56 (lat1:/tank/fn/scratch/integrate-20261004/native-set-6107ceb56/logs), so this is not a batch-6 regression. Either status no longer runs the open's damage check (b8124f005 put that check in the open), or the check moved behind the owner. Owner to decide which, then fix forward.",
- "updated": "2026-10-04T20:17:42Z"
+ "updated": "2026-10-04T20:52:43Z"
 }
