@@ -706,6 +706,7 @@ def served_region():
         "live-index": "the live Message-ID index (peer offers)",
     }
     views["pin-or-completed"] = "the pinned article if retrievable there, else the completed snapshot"
+    owed = set(protocol_emit.forms_owed(table))
     lines = [SERVED_BEGIN, "",
              "The EXECUTED rule per command and form; a ruling recorded but not landed is DEBT, "
              "shown beside it with the registry row that carries it (tools/view_policy_debt.json, "
@@ -723,7 +724,8 @@ def served_region():
             continue
         cost = row["cost"]
         cost_text = ("%s / %s" % (cost["unrestricted"], cost["restricted"])
-                     if cost else "hand arms, forms not yet declared" if row["view"] in ("pinned", "select")
+                     if cost else "hand arms, forms not yet declared" if row["name"] in owed
+                     else "pinned peer arm, no forms" if row["dispatch"] == "pinned"
                      else "")
         quantum = ("cursor %s" % row["quantum"][1]) if row["quantum"] else ""
         lines.append("| %s | %s | %s | %s | %s | %s | %s |" % (
