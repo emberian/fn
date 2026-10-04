@@ -2869,6 +2869,20 @@
                             fn-rcompat-list-keywordp fn-cat-view-articles fn-cnx-freshp
                             fn-midx-correspondencep)))))
 
+; The dispatcher tests the compatibility reply's truth (a one-element cond
+; clause): equal to the reference's.
+(defthm fn-rcompat-reply-cat-iff-rcompat-reply
+  (iff (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
+       (fn-rcompat-reply session archive index env keyword args fn-arena))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-rcompat-reply-cat fn-rcompat-reply fn-rcompat-hdr-cat fn-rcompat-hdr
+                            fn-nntp-hdr-range-ovw fn-nntp-make-result fn-nntp-single fn-nntp-multi
+                            fn-rcompat-retrieval-cat fn-rcompat-retrieval)
+                           (fn-rcompat-newgroups fn-rcompat-active-times fn-rcompat-subscriptions
+                            fn-nntp-xref-server fn-gidx-pinp fn-gidx-pin-trie
+                            fn-rcompat-list-keywordp fn-cat-view-articles fn-cnx-freshp
+                            fn-midx-correspondencep)))))
+
 ;; The withdrawn test of a by-number line: the article's absence is read
 ;; from the catalog's number table (one probe), not by a walk of the pinned
 ;; archive; the pinned withdrawn list W is walked only when the number names
