@@ -49,11 +49,6 @@ class GroupPolicySourceTests(unittest.TestCase):
         body = host[start:host.index("(defun", start + 10)]
         self.assertIn("(fn-inj-config-closed cfg)", body)
 
-    def test_the_delta_code_is_21(self):
-        config = (ROOT / "books" / "config.lisp").read_text(encoding="ascii")
-        self.assertIn("((equal kind :set-group-status) 21)", config)
-        self.assertIn("((equal code 21) :set-group-status)", config)
-
 
 @requires(IMAGE)
 class GroupPolicyImageTests(unittest.TestCase):

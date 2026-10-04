@@ -1,6 +1,8 @@
-;;; Use the existing warm source owner. Destination methods affirmatively
-;;; reject trace I/O under the collector lock; no timing race or sleeps.
+;;; host/native/trace.lisp, loaded into a plain SBCL: the collector is
+;;; host-only code (no ACL2 definition), so no ACL2 world is needed.
+(defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
+(load "host/native/trace.lisp")
 
 (defclass fntrs-lock-free-stream (sb-gray:fundamental-character-output-stream)
   ((lock :initarg :lock :reader fntrs-lock)
@@ -41,3 +43,4 @@
         (assert (= (fnn-trace-state-next *fnn-trace-state*) 2))))
     (format t "NATIVE_TRACE_SNAPSHOT_PASS~%")
     :passed))
+(fntrs-run)
