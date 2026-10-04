@@ -18,12 +18,11 @@
 ; the cache entry.  This is a logical-constructor tariff times a measured
 ; layout constant; it does NOT price the collector's copy, native vectors,
 ; the session update or the lookup's own cells (named in the packet's D).
-; It is produced by ACL2 from the row, never declared by an operator, and
-; `fn-ocap-admit-preview' consumes it exactly as any descriptor.
+; It is produced by ACL2 from the row, never declared by an operator.
 ;
-; The descriptor is `(:tariff :article OCTETS)' (books/output-command-
-; admission.lisp fn-ocap-tariffp); an ELEN the descriptor cannot carry is
-; refused by name (:unrepresentable), never saturated (D27).
+; The descriptor is the family generator's (books/output-tariff-family.lisp
+; fn-tariff-descriptor): a price the descriptor cannot carry is refused by
+; name, never saturated (D27).
 
 (in-package "ACL2")
 (include-book "output-command-admission")
@@ -51,42 +50,25 @@
   (+ (* 2 *fn-tariff-cons-octets* (fn-tariff-article-reply-octets elen))
      elen))
 
-; Every ELEN below this bound gives an OCTETS below 2^64, the descriptor's
-; domain; an extent is a u64 length, so the bound is the descriptor's, not a
-; ceiling on stored data.
-(defconst *fn-tariff-article-elen-max* (expt 2 56))
-
-(defun fn-tariff-article-descriptor (elen)
-  (declare (xargs :guard t))
-  (if (and (natp elen) (< elen *fn-tariff-article-elen-max*))
-      (list :tariff :article (fn-tariff-article-octets elen))
-    (list :unrepresentable :article)))
-
 (defthm fn-tariff-article-octets-natp
   (implies (natp elen) (natp (fn-tariff-article-octets elen)))
   :rule-classes :type-prescription)
 
-(defthm fn-tariff-article-descriptor-is-a-tariff
-  (implies (and (natp elen) (< elen *fn-tariff-article-elen-max*))
-           (fn-ocap-tariffp (fn-tariff-article-descriptor elen))))
+; HEAD and BODY answer one section of the same octets through the same
+; exec (fn-nntp-response-block-rev over the section, then revappend), with
+; an initial line no longer than ARTICLE's, so ARTICLE's figure bounds them.
+; STAT answers the initial line alone, but its exec realizes the octets
+; once to tell a reclaimed article (fn-nntp-article-response-of-bytes
+; reads them before the kind test): the line's two spines and the extent.
+(defun fn-tariff-stat-octets (elen)
+  (declare (xargs :guard (natp elen)))
+  (+ (* 2 *fn-tariff-cons-octets* *fn-tariff-article-initial-octets*) elen))
 
-; KEYSTONE (charge-before-effect at the gate): over an :article preview the
-; produced descriptor is admitted EXACTLY when its octets are within the
-; capacity, and then the held prefix is the preview's own; any other word
-; is a refusal.  Both directions, so an unaffordable article is refused by
-; name and an affordable one is never refused for its price.
-(defthm fn-tariff-article-admits-exactly-within-capacity
-  (implies (and (natp elen) (< elen *fn-tariff-article-elen-max*)
-                (fn-ocap-previewp preview)
-                (equal (fn-ocap-at 2 preview) :article)
-                (natp capacity) (< capacity 18446744073709551616))
-           (equal (fn-ocap-admit-preview preview (fn-tariff-article-descriptor elen) capacity)
-                  (if (<= (fn-tariff-article-octets elen) capacity)
-                      (list :hold (fn-ocap-at 1 preview) :article)
-                    (list :refused :output-tariff-unaffordable :article)))))
+(defthm fn-tariff-stat-octets-natp
+  (implies (natp elen) (natp (fn-tariff-stat-octets elen)))
+  :rule-classes :type-prescription)
 
-; An unrepresentable length is refused by name, never held.
-(defthm fn-tariff-article-unrepresentable-is-refused
-  (implies (not (and (natp elen) (< elen *fn-tariff-article-elen-max*)))
-           (equal (fn-ocap-at 0 (fn-ocap-admit-preview preview (fn-tariff-article-descriptor elen) capacity))
-                  :refused)))
+(defthm fn-tariff-stat-within-article
+  (implies (natp elen)
+           (<= (fn-tariff-stat-octets elen) (fn-tariff-article-octets elen)))
+  :rule-classes :linear)

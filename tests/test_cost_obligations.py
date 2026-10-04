@@ -44,29 +44,39 @@ class TariffFamiliesTests(unittest.TestCase):
     ((72 69 65 68) . :head)
     ((76 73 83 84) . :list)))
 
+(defun fn-ocap-tokens-family (tokens) (if tokens :extension :protocol-error))
+(defun fn-ocap-preview (w) (case w (0 :closed) (1 :article-input) (t :partial-input)))
 """
 
-    def producer(self, families: str) -> str:
-        return ("(defun fn-owner-output-tariff-preview (id preview fn-arena fn-cat state)\n"
-                "  (value (if (and conn (member-eq (fn-ocap-at 2 preview) '({}))) x y)))\n"
-                "(defun fn-next ())\n".format(families))
+    def rows(self, families: str) -> str:
+        return ("(in-package \"ACL2\")\n(def-family-tariffs\n  :context ((args nil))\n  :rows ("
+                + " ".join("({} (len args))".format(f) for f in families.split())
+                + "))\n")
 
     def test_the_ratchet_counts_priced_of_served(self):
-        root = tree([], {"output-command-admission.lisp": self.TABLE},
-                    {"owner-host.lisp": self.producer(":article")})
+        root = tree([], {"output-command-admission.lisp": self.TABLE,
+                         "output-tariff-families.lisp": self.rows(":article :head")}, {})
         self.assertEqual(cost_obligations.families(root),
-                         {"served": 3, "priced": 1, "priced_families": ["article"],
-                          "unpriced_families": ["head", "list"]})
+                         {"served": 8, "priced": 2, "priced_families": ["article", "head"],
+                          "unpriced_families": ["article-input", "closed", "extension", "list",
+                                                "partial-input", "protocol-error"]})
 
     def test_a_priced_family_outside_the_table_is_refused(self):
-        root = tree([], {"output-command-admission.lisp": self.TABLE},
-                    {"owner-host.lisp": self.producer(":article :tapes")})
+        root = tree([], {"output-command-admission.lisp": self.TABLE,
+                         "output-tariff-families.lisp": self.rows(":article :tapes")}, {})
         with self.assertRaisesRegex(ValueError, "not in the admission table: tapes"):
             cost_obligations.families(root)
 
-    def test_the_real_tree_prices_article(self):
+    def test_a_family_priced_twice_is_refused(self):
+        root = tree([], {"output-command-admission.lisp": self.TABLE,
+                         "output-tariff-families.lisp": self.rows(":article :article")}, {})
+        with self.assertRaisesRegex(ValueError, "priced by two rows"):
+            cost_obligations.families(root)
+
+    def test_the_real_tree_prices_the_retrieval_row(self):
         doc = cost_obligations.families(ROOT)
-        self.assertIn("article", doc["priced_families"])
+        for family in ("article", "head", "body", "stat"):
+            self.assertIn(family, doc["priced_families"])
         self.assertEqual(doc["served"], doc["priced"] + len(doc["unpriced_families"]))
 
 
