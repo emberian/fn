@@ -410,8 +410,12 @@ def _forms_cache_write(directory: Path, name: str, data: bytes) -> None:
     try:
         if not directory.is_dir():
             directory.mkdir(parents=True, exist_ok=True)
+            # Another reader's format (an older ledger.py) goes once nothing
+            # has created it for a day: a shared directory (a box's runs, by
+            # FN_LEDGER_FORMS_CACHE) may hold two versions' readers at once.
             for other in directory.parent.iterdir():
-                if other.is_dir() and other != directory:
+                if (other.is_dir() and other != directory
+                        and time.time() - other.stat().st_mtime > 86400):
                     import shutil
                     shutil.rmtree(other, ignore_errors=True)
         sub = directory / name[:2]

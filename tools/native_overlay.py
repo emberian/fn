@@ -117,9 +117,11 @@ class Form:
         self.norm = " ".join(t for _, t in toks).lower()
         atoms = [t.lower() for kind, t in toks if kind == "atom"]
         self.tokens = set(atoms)
-        # call position (an atom right after an open paren) and #'NAME
-        self.calls = {toks[i + 1][1].lower() for i in range(len(toks) - 1)
-                      if toks[i][0] == "open" and toks[i + 1][0] == "atom"}
+        # what evaluating the form at load time calls (`eager_calls`), and
+        # every #'NAME it takes
+        tree = _nest(toks)
+        self.calls = set()
+        _eager_calls(tree, self.calls)
         self.fnrefs = {toks[i + 1][1].lower() for i in range(len(toks) - 1)
                        if toks[i][1] == "#'" and toks[i + 1][0] == "atom"}
         lead = [t for kind, t in toks if kind != "quote"]
@@ -148,6 +150,67 @@ class Form:
                          "defabbrev", "defvar", "defparameter", "defconstant", "defconst"):
             found.append(self.name or "")
         return {f.lower() for f in found if f}
+
+
+# Heads whose arguments are not evaluated when the form is: a definition's
+# body runs when it is called, a quoted or lambda form when it is applied.
+UNEVALUATED = {"quote", "function", "lambda", "defun", "defund", "defmacro", "defmethod",
+               "defgeneric", "define-condition", "defstruct", "defclass", "deftype",
+               "declare", "declaim", "defthm", "defthmd", "in-theory", "mutual-recursion",
+               "flet", "labels", "macrolet"}
+
+
+def _nest(toks):
+    """Tokens to nested lists: atoms lowercased, a quoted form ("'", form)."""
+    stack: list[tuple[list, list[str]]] = [([], [])]
+    pending: list[str] = []
+
+    def wrap(item, markers):
+        for marker in reversed(markers):
+            item = (marker, item)
+        return item
+
+    for kind, text in toks:
+        if kind == "open":
+            stack.append(([], pending))
+            pending = []
+        elif kind == "close":
+            if len(stack) > 1:
+                done, markers = stack.pop()
+                stack[-1][0].append(wrap(done, markers))
+            pending = []
+        elif kind == "quote":
+            pending.append(text)
+        else:
+            stack[-1][0].append(wrap(text.lower() if kind == "atom" else '"', pending))
+            pending = []
+    top = stack[0][0]
+    return top[0] if top else None
+
+
+def _eager_calls(node, out: set[str]) -> None:
+    """The heads evaluating NODE calls, not those it only defines or quotes."""
+    if isinstance(node, tuple):
+        marker, inner = node
+        if marker in ("`",):
+            _eager_calls(inner, out)  # a backquote evaluates its unquotes; over-approximate
+        return
+    if not isinstance(node, list) or not node:
+        return
+    head = node[0]
+    if isinstance(head, str):
+        if head in UNEVALUATED:
+            return
+        if head in ("defparameter", "defvar", "defconstant", "defconst"):
+            for value in node[2:3]:
+                _eager_calls(value, out)
+            return
+        out.add(head)
+        rest = node[1:]
+    else:
+        rest = node
+    for item in rest:
+        _eager_calls(item, out)
 
 
 def read_forms(text: str) -> list[Form]:
@@ -474,7 +537,7 @@ class Plan:
         # call and reaches the new body.
         seen = set()
         for path, f in sites:
-            called = sorted((f.calls - {f.head}) & reached) if f.head in DEFINING_HEADS else sorted(f.calls & reached)
+            called = sorted(f.calls & reached)
             captured = sorted(f.fnrefs & self.changed_names)
             if (called or captured) and (path, f.line) not in seen:
                 seen.add((path, f.line))
@@ -742,8 +805,12 @@ def cmd_build(args) -> int:
                 refused = re.findall(r"FN_OVERLAY_REFUSED [^\n]*", output)
                 print(f"native_overlay: {image}: REFUSED (exit {proc.returncode}; "
                       f"{', '.join(refused or marks) or 'no FN_OVERLAY_READY'}); log {log}")
-                for line in [l for l in output.splitlines() if "Error" in l or "REFUSED" in l][:8]:
-                    print(f"   | {line}")
+                # name each refused event: ACL2 prints "ACL2 Error ... in ( HEAD"
+                # and the name on the next line when it does not fit
+                lines = output.splitlines()
+                for i, line in enumerate(lines):
+                    if "ACL2 Error" in line or "REFUSED" in line:
+                        print(f"   | {' '.join((line + ' ' + (lines[i + 1] if i + 1 < len(lines) else '')).split())}")
                 status = status or 3
                 continue
         (build / launcher).write_text(text.replace(f'--core "{base_core}"', f'--core "{out_core}"'))
