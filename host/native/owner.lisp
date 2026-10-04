@@ -1745,15 +1745,44 @@ termination; only the maker's no-child failure cancels the reservation."
           (fnn-owner-actor-fault-service service condition))
         (error condition)))))
 
-(defmacro def-actor (name &key thread-name roster)
+;;; def-actor: the declared actor (lane ACTORS/GENERATORS-2, rebuild step 0;
+;;; planning/handoff-2026-10-03/failure-scope.md).  One declaration per kind
+;;; of thread: its KIND (books/failure-scope.lisp *fn-fs-actors*), the
+;;; THREAD-NAME, whether it joins the worker roster (ROSTER), the host
+;;; function that JOINs it, and its FAILURE policy (:service, :job or
+;;; :result; fn-fs-actor-declp says what each means).  ACL2 accepts the
+;;; declaration when the image loads; tools/lock_discipline_check.py reads
+;;; the same form and holds the join site and every starter call to it (R4).
+;;; *fnn-actors* is the same table at run time.
+
+(defvar *fnn-actors* nil
+  "The declared actors, (NAME KIND THREAD-NAME ROSTER JOIN FAILURE) each, in load order.")
+
+(defun fnn-actor-declare (name kind thread-name roster join failure)
+  "Record NAME's declaration once ACL2 accepts it; a refused declaration
+stops the load (the image is not built)."
+  (unless (and (stringp thread-name) join (symbolp join)
+               (fn-fs-actor-declp kind roster failure))
+    (error "def-actor ~(~a~): ACL2 refuses the declaration ~s (books/failure-scope.lisp fn-fs-actor-declp)"
+           name (list kind thread-name roster join failure)))
+  (setq *fnn-actors*
+        (append (remove name *fnn-actors* :key #'first)
+                (list (list name kind thread-name roster join failure))))
+  name)
+
+(defmacro def-actor (name &key kind thread-name roster join failure)
   "Generate the physical lifecycle starter, sharing ACL2's failure model.
 Private decision steps must avoid live STATE, hons/memoize and protected
 abstract-stobj exports; shared-state work enters declared owner sections."
-  `(defun ,name (service custody thunk &optional escape physical-callback before-start)
-     (fnn-owner-actor-start service custody thunk ,thread-name ,roster escape physical-callback before-start)))
+  `(progn
+     (fnn-actor-declare ',name ',kind ',thread-name ',roster ',join ',failure)
+     (defun ,name (service custody thunk &optional escape physical-callback before-start)
+       (fnn-owner-actor-start service custody thunk ,thread-name ,roster escape physical-callback before-start))))
 
-(def-actor fnn-owner-spawn-syncer :thread-name "fn owner syncer" :roster t)
-(def-actor fnn-owner-spawn-committer :thread-name "fn owner committer" :roster nil)
+(def-actor fnn-owner-spawn-syncer :kind :syncer :thread-name "fn owner syncer" :roster t
+  :join fnn-owner-commit-pipeline :failure :result)
+(def-actor fnn-owner-spawn-committer :kind :committer :thread-name "fn owner committer" :roster nil
+  :join fnn-owner-run :failure :service)
 
 (defun fnn-owner-actor-for-custody (service retained)
   "Find the native reservation retaining RETAINED, including a failed start.
@@ -6874,8 +6903,10 @@ mutex; other faults stop the owner. Neither terminal outcome resumes serving."
 (defstruct (fnn-snapshot-job (:constructor %make-fnn-snapshot-job))
   kind captured arena pin thread (stage :pinning) physical condition)
 
-(def-actor fnn-owner-spawn-publisher :thread-name "fn owner checkpoint" :roster t)
-(def-actor fnn-owner-spawn-exporter :thread-name "fn owner export" :roster t)
+(def-actor fnn-owner-spawn-publisher :kind :publisher :thread-name "fn owner checkpoint" :roster t
+  :join fnn-owner-wait-workers :failure :job)
+(def-actor fnn-owner-spawn-exporter :kind :exporter :thread-name "fn owner export" :roster t
+  :join fnn-owner-wait-workers :failure :job)
 
 (defun fnn-owner-snapshot-job-capture (service kind captured)
   "Owner held. Retain the envelope before the possibly torn pin operation."
@@ -8075,9 +8106,12 @@ torn last entry follows.  Answers the offset the writer resumes at."
               (fnn-err "service log reopen failed: ~a" condition))))
         (setq *fnn-owner-log-handled* (second decision))))))
 
-(def-actor fnn-owner-spawn-listener :thread-name "fn owner accept" :roster t)
-(def-actor fnn-owner-spawn-tls-listener :thread-name "fn owner TLS accept" :roster t)
-(def-actor fnn-owner-spawn-maintenance :thread-name "fn owner maintenance" :roster t)
+(def-actor fnn-owner-spawn-listener :kind :accept :thread-name "fn owner accept" :roster t
+  :join fnn-owner-wait-workers :failure :service)
+(def-actor fnn-owner-spawn-tls-listener :kind :accept :thread-name "fn owner TLS accept" :roster t
+  :join fnn-owner-wait-workers :failure :service)
+(def-actor fnn-owner-spawn-maintenance :kind :maintenance :thread-name "fn owner maintenance" :roster t
+  :join fnn-owner-wait-workers :failure :service)
 
 (defun fnn-owner-start-tls-accept (service listener &optional (implicit-tls t))
   "Registered secondary listener; preserve its custody through physical join.

@@ -66,8 +66,11 @@ compiled here: the book's own body, never a restatement."
   (book-defconst-value "books/failure-scope.lisp" '*fn-fs-gate-classes*))
 (defparameter *fn-fs-cleanup-purposes*
   (book-defconst-value "books/failure-scope.lisp" '*fn-fs-cleanup-purposes*))
+(defparameter *fn-fs-actor-failures*
+  (book-defconst-value "books/failure-scope.lisp" '*fn-fs-actor-failures*))
 (book-defuns "books/failure-scope.lisp"
-             '(fn-fs-keyword-subsetp fn-fs-admissionp fn-fs-section-declp))
+             '(fn-fs-keyword-subsetp fn-fs-admissionp fn-fs-section-declp
+               fn-fs-actor-declp))
 
 ;; The native exit adapter now calls the actual failure-scope classifier.
 ;; Keep raw I/O witnesses on that same closed table and function body.

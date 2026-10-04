@@ -17,7 +17,8 @@
    (define-condition fnn-peer-dial-error)))
 (define-condition fnn-tls-error (error) ())
 (define-condition fnn-tls-handshake-error (fnn-tls-error) ())
-(load-deployed-forms "host/native/owner.lisp" '((defmacro def-actor)))
+(load-deployed-forms "host/native/owner.lisp"
+ '((defvar *fnn-actors*) (defun fnn-actor-declare) (defmacro def-actor)))
 (load-deployed-forms "host/owner-host.lisp"
  '((defconst *fn-owner-feed-send-quantum-octets*) (defconst *fn-owner-feed-send-quantum-seconds*)
    (defun fn-owner-feed-send-quantum)))
