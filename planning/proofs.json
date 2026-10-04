@@ -23450,6 +23450,34 @@
         "fn-bs-init-log-crash-retry-is-old-or-new",
         "fn-bs-init-log-complete-store-carries-the-node-secret"
       ]
+    },
+    {
+      "id": "PRF-1319",
+      "title": "The default peer flight profile init writes is a valid policy, decodes to itself, spools one whole batch, and launches on a machine that holds the store's run and its stated extra",
+      "statement": "books/peer-flight-default.lisp. fn-pfp-default-policy (the store profile VALUES -> six naturals: the least heap for 2 flights' bookkeeping and the fixed backing, 2 spools, 2 flights, 1 worker, a spool of the profile's record bound plus *fn-cu-request-quantum*, lifetime work 4 x the profile's history bound; every figure clamped). KEYSTONES: fn-pfd-default-is-a-policy (fn-pfr-policy-p for every VALUES); fn-pfp-read-of-write (the reader inverts the writer for every policy) and fn-pfd-default-decodes-to-itself; fn-pfd-default-spools-one-batch (spool >= record bound + quantum, for every VALUES: a valid profile's record bound is below the codec ceiling); fn-pfd-default-launches-where-its-extra-fits (a :heap base reservation plus (fn-pfd-launch-extra STACK) within the machine => fn-pfr-extend-reservation admits the default). Scope: the launch extra is a loose bound (twice the nursery cap, ~134 MiB at a 1 MiB stack); init's acceptance reserving it, the host writing the file and the verb refusal are steps 2-3 (lanedumps/catchup2.md). Teeth: tests/acl2/peer-flight-default-tests.lisp (defteeth on all four).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-049"
+      ],
+      "depends_on": [
+        "PRF-1307"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "files": [
+        "books/peer-flight-default.lisp",
+        "tests/acl2/peer-flight-default-tests.lisp"
+      ],
+      "events": [
+        "fn-pfd-default-is-a-policy",
+        "fn-pfp-read-of-write",
+        "fn-pfd-default-decodes-to-itself",
+        "fn-pfd-default-spools-one-batch",
+        "fn-pfd-default-launches-where-its-extra-fits"
+      ],
+      "evidence": [
+        "tests/acl2/peer-flight-default-tests.lisp"
+      ]
     }
   ]
 }

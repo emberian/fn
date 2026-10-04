@@ -623,10 +623,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-flight-reservation \
 	books/peer-u64-codec \
 	books/peer-flight-profile \
+	books/peer-flight-default \
 	books/peer-flight-startup \
 	tests/acl2/page-read-startup-tests \
 	tests/acl2/peer-flight-reservation-tests \
 	tests/acl2/peer-flight-profile-tests \
+	tests/acl2/peer-flight-default-tests \
 	tests/acl2/peer-flight-startup-tests \
 	tests/acl2/page-read-startup-host-tests \
 	books/output-reservation \

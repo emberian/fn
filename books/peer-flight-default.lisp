@@ -1,0 +1,326 @@
+; The default peer flight profile `init' writes (coordinator decision,
+; 2026-10-04; plan lanedumps/catchup2.md "DECIDED, NOT STARTED", step 1): a
+; fresh node peers out of the box.  ACL2 decides the figure from the store
+; profile; the host writes fn-pfp-write of it as ROOT/peer-flight-profile
+; inside init's publication (step 2).
+;
+; The six fields (books/peer-flight-reservation.lisp fn-pfr-policy-p):
+;   heap     the policy's least heap: its bookkeeping for FLIGHTS and the
+;            fixed backing (fn-pfr-bookkeeping, fn-pfr-fixed-backing); the
+;            spool is on disk, not in the heap
+;   disk     FLIGHTS spools
+;   flights  *fn-pfd-flights*, workers *fn-pfd-workers*
+;   spool    one batch: the first record (the profile's record bound) and the
+;            request quantum beyond it (books/peer-catchup.lisp
+;            *fn-cu-request-quantum*: a batch is spooled whole)
+;   work     the lifetime metered work: four units per octet of the
+;            profile's history bound (fn-csp-io-work-units: each spooled
+;            octet is written, replayed and digested once; one more covers
+;            the per-operation unit) -- a lifetime figure, renewal is open
+; Every figure is clamped so the default is a policy for EVERY input; the
+; clamps bind only at bounds beyond any admitted profile (2^61 octets).
+(in-package "ACL2")
+(include-book "peer-flight-profile")
+(include-book "byte-store-frame")
+(include-book "peer-catchup")
+(include-book "heap-store-figure")
+(include-book "heap-reservation")
+(local (include-book "arithmetic-5/top" :dir :system))
+
+(defconst *fn-pfd-flights* 2)
+(defconst *fn-pfd-workers* 1)
+(defconst *fn-pfd-clamp* (expt 2 61))
+
+(defun fn-pfd-spool (record-octets)
+  (declare (xargs :guard t))
+  (min (+ (nfix record-octets) *fn-cu-request-quantum*) *fn-pfd-clamp*))
+
+(defun fn-pfd-work (history-octets)
+  (declare (xargs :guard t))
+  (min (* 4 (nfix history-octets)) *fn-rl-word-max*))
+
+(defun fn-pfd-heap ()
+  (declare (xargs :guard t))
+  (+ (fn-pfr-bookkeeping *fn-pfd-flights*) (fn-pfr-fixed-backing)))
+
+(defun fn-pfd-policy (record-octets history-octets)
+  (declare (xargs :guard t))
+  (list (fn-pfd-heap)
+        (* *fn-pfd-flights* (fn-pfd-spool record-octets))
+        *fn-pfd-flights*
+        *fn-pfd-workers*
+        (fn-pfd-spool record-octets)
+        (fn-pfd-work history-octets)))
+
+; The host-called entry: the default for the store profile VALUES.
+(defun fn-pfp-default-policy (values)
+  (declare (xargs :guard t))
+  (fn-pfd-policy (fn-bs-profile-max-record-octets values)
+                 (fn-bs-profile-max-history-octets values)))
+
+; The octets init publishes.
+(defun fn-pfp-default-octets (values)
+  (declare (xargs :guard t))
+  (fn-pfp-write (fn-pfp-default-policy values)))
+
+; -----------------------------------------------------------------------------
+; KEYSTONE: the default is a valid policy for every store profile.
+(local (defthm fn-pfd-heap-value
+  (equal (fn-pfd-heap) 11728)
+  :hints (("Goal" :in-theory (enable (:e fn-pfd-heap))))))
+
+(defthm fn-pfd-default-is-a-policy
+  (fn-pfr-policy-p (fn-pfp-default-policy values))
+  :hints (("Goal" :in-theory (e/d (fn-pfd-heap-value)
+                                  (fn-pfd-heap fn-bs-profile-max-record-octets
+                                   fn-bs-profile-max-history-octets
+                                   fn-pfr-bookkeeping fn-pfr-fixed-backing)))))
+
+; -----------------------------------------------------------------------------
+; The u64 codec round trip (books/peer-u64-codec.lisp), then the profile's.
+(local (defthm pfd-mod-qr
+  (implies (and (natp q) (natp r) (< r 256) (posp m))
+           (equal (mod (+ r (* 256 q)) (* 256 m)) (+ r (* 256 (mod q m)))))
+  :rule-classes nil))
+(local (defthm pfd-n-split
+  (implies (natp n)
+           (and (natp (floor n 256)) (natp (mod n 256)) (< (mod n 256) 256)
+                (equal (+ (mod n 256) (* 256 (floor n 256))) n)))
+  :rule-classes nil))
+(local (defthm pfd-mod-split
+  (implies (and (natp n) (posp m))
+           (equal (mod n (* 256 m)) (+ (mod n 256) (* 256 (mod (floor n 256) m)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (theory 'minimal-theory)
+           :use (pfd-n-split (:instance pfd-mod-qr (q (floor n 256)) (r (mod n 256))))))))
+(local (defthm pfd-step-arith
+  (implies (and (acl2-numberp a) (acl2-numberp mm) (acl2-numberp x) (acl2-numberp r)
+                (equal big (* 256 mm)) (equal modn (+ r (* 256 x))))
+           (equal (+ (* 256 (+ (* a mm) x)) r) (+ (* a big) modn)))
+  :rule-classes nil))
+(local (defthm pfd-expt-step
+  (implies (posp k) (equal (expt 256 k) (* 256 (expt 256 (+ -1 k)))))
+  :rule-classes nil))
+(local (defthm pfd-expt-posp
+  (implies (natp j) (posp (expt 256 j)))
+  :rule-classes nil))
+(local (defthm pfd-mod-num (acl2-numberp (mod x y)) :rule-classes nil))
+(local (defthm pfd-octets-value-cons
+  (equal (fn-cu-octets-value (cons x xs) a)
+         (fn-cu-octets-value xs (+ (* 256 a) (nfix x))))
+  :hints (("Goal" :in-theory (enable fn-cu-octets-value)))))
+(local (defthm pfd-octets-value-of-u64-aux
+  (implies (and (natp k) (natp n) (natp a))
+           (equal (fn-cu-octets-value (fn-cu-u64-octets-aux k n acc) a)
+                  (fn-cu-octets-value acc (+ (* a (expt 256 k)) (mod n (expt 256 k))))))
+  :hints (("Goal" :induct (fn-cu-u64-octets-aux k n acc)
+           :in-theory (enable fn-cu-u64-octets-aux))
+          ("Subgoal *1/2"
+           :in-theory (union-theories '(fn-cu-u64-octets-aux pfd-octets-value-cons nfix natp posp zp)
+                                      (theory 'minimal-theory))
+           :use (pfd-n-split
+                 (:instance pfd-expt-posp (j (+ -1 k)))
+                 (:instance pfd-mod-num (x (floor n 256)) (y (expt 256 (+ -1 k))))
+                 (:instance pfd-mod-split (m (expt 256 (+ -1 k))))
+                 (:instance pfd-expt-step)
+                 (:instance pfd-step-arith (mm (expt 256 (+ -1 k)))
+                            (x (mod (floor n 256) (expt 256 (+ -1 k))))
+                            (r (mod n 256)) (big (expt 256 k))
+                            (modn (mod n (expt 256 k)))))))))
+(local (defthm pfd-u64-round-trip
+  (implies (and (natp n) (< n (expt 2 64)))
+           (equal (fn-cu-octets-value (fn-cu-u64-octets n) 0) n))
+  :hints (("Goal" :in-theory (enable fn-cu-u64-octets)
+           :use ((:instance pfd-octets-value-of-u64-aux (k 8) (acc nil) (a 0)))))))
+(local (defthm pfd-u64-aux-len
+  (equal (len (fn-cu-u64-octets-aux k n acc)) (+ (nfix k) (len acc)))
+  :hints (("Goal" :in-theory (enable fn-cu-u64-octets-aux)))))
+(local (defthm pfd-u64-aux-octets
+  (implies (and (natp n) (fn-cbor-octet-listp acc))
+           (fn-cbor-octet-listp (fn-cu-u64-octets-aux k n acc)))
+  :hints (("Goal" :induct (fn-cu-u64-octets-aux k n acc)
+           :in-theory (enable fn-cu-u64-octets-aux fn-cbor-octet-listp fn-cbor-octetp)))))
+(local (defthm pfd-u64-aux-true-listp
+  (equal (true-listp (fn-cu-u64-octets-aux k n acc)) (true-listp acc))
+  :hints (("Goal" :in-theory (enable fn-cu-u64-octets-aux)))))
+(local (defthm pfd-u64-octets-shape
+  (and (true-listp (fn-cu-u64-octets n)) (equal (len (fn-cu-u64-octets n)) 8)
+       (fn-cbor-octet-listp (fn-cu-u64-octets n)))
+  :hints (("Goal" :in-theory (enable fn-cu-u64-octets)))))
+(local (defthm pfd-take-drop-append
+  (implies (and (natp n) (true-listp x) (equal (len x) n))
+           (and (equal (fn-pfp-take n (append x y)) x)
+                (equal (fn-pfp-drop n (append x y)) y)))
+  :hints (("Goal" :induct (fn-pfp-take n x) :in-theory (enable fn-pfp-take fn-pfp-drop)))))
+(local (defun pfd-u64-listp (xs)
+  (declare (xargs :guard t))
+  (if (consp xs) (and (natp (car xs)) (< (car xs) (expt 2 64)) (pfd-u64-listp (cdr xs)))
+    (null xs))))
+(local (defthm pfd-fields-shape
+  (and (true-listp (fn-pfp-fields ps)) (equal (len (fn-pfp-fields ps)) (* 8 (len ps))))
+  :hints (("Goal" :induct (fn-pfp-fields ps) :in-theory (e/d (fn-pfp-fields) (fn-cu-u64-octets))))))
+(local (defthm pfd-octet-listp-append
+  (implies (and (fn-cbor-octet-listp x) (fn-cbor-octet-listp y))
+           (fn-cbor-octet-listp (append x y)))
+  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
+(local (defthm pfd-fields-octets
+  (fn-cbor-octet-listp (fn-pfp-fields ps))
+  :hints (("Goal" :induct (fn-pfp-fields ps)
+           :in-theory (e/d (fn-pfp-fields fn-cbor-octet-listp) (fn-cu-u64-octets))))))
+(local (defun pfd-ind (k ps)
+  (declare (xargs :measure (nfix k)))
+  (if (zp k) (list k ps) (pfd-ind (1- k) (cdr ps)))))
+(local (defthm pfd-values-of-fields
+  (implies (and (pfd-u64-listp ps) (equal (len ps) k))
+           (equal (fn-pfp-values k (fn-pfp-fields ps)) ps))
+  :hints (("Goal" :induct (pfd-ind k ps)
+           :in-theory (e/d (fn-pfp-values fn-pfp-fields pfd-u64-listp) (fn-cu-u64-octets))))))
+(local (defthm pfd-at-is-nth
+  (equal (fn-pfr-at n xs) (nth n xs))
+  :hints (("Goal" :in-theory (enable fn-pfr-at nth)))))
+(local (defthm pfd-six-u64
+  (implies (and (true-listp p) (equal (len p) 6)
+                (natp (nth 0 p)) (< (nth 0 p) (expt 2 64)) (natp (nth 1 p)) (< (nth 1 p) (expt 2 64))
+                (natp (nth 2 p)) (< (nth 2 p) (expt 2 64)) (natp (nth 3 p)) (< (nth 3 p) (expt 2 64))
+                (natp (nth 4 p)) (< (nth 4 p) (expt 2 64)) (natp (nth 5 p)) (< (nth 5 p) (expt 2 64)))
+           (pfd-u64-listp p))
+  :hints (("Goal" :in-theory (enable pfd-u64-listp nth len)
+           :expand ((pfd-u64-listp p) (pfd-u64-listp (cdr p)) (pfd-u64-listp (cddr p))
+                    (pfd-u64-listp (cdddr p)) (pfd-u64-listp (cddddr p))
+                    (pfd-u64-listp (cdr (cddddr p))) (pfd-u64-listp (cddr (cddddr p))))))))
+(local (defthm pfd-policy-is-u64-list
+  (implies (fn-pfr-policy-p p) (and (pfd-u64-listp p) (equal (len p) 6)))
+  :hints (("Goal" :in-theory (e/d (fn-pfr-policy-p fn-pfr-slots fn-pfr-bookkeeping)
+                                  (fn-pfr-fixed-backing pfd-u64-listp nth))
+           :do-not-induct t :use (pfd-six-u64)))))
+
+; The reader is the writer's inverse, for every policy.
+(defthm fn-pfp-read-of-write
+  (implies (fn-pfr-policy-p policy)
+           (equal (fn-pfp-read t (fn-pfp-write policy)) policy))
+  :hints (("Goal" :in-theory (e/d (fn-pfp-read fn-pfp-write)
+                                  (fn-pfr-policy-p fn-pfp-fields fn-pfp-values fn-pfp-take fn-pfp-drop))
+           :use ((:instance pfd-take-drop-append (n 4) (x (fn-pfp-prefix)) (y (fn-pfp-fields policy)))
+                 pfd-policy-is-u64-list))))
+
+; KEYSTONE: what init writes decodes to the default.
+(defthm fn-pfd-default-decodes-to-itself
+  (equal (fn-pfp-read t (fn-pfp-default-octets values))
+         (fn-pfp-default-policy values))
+  :hints (("Goal" :in-theory (e/d (fn-pfp-default-octets)
+                                  (fn-pfp-default-policy fn-pfp-read fn-pfp-write)))))
+
+; -----------------------------------------------------------------------------
+;; Every profile's record bound is within the codec ceiling (an invalid
+;; profile reads as no bound), so the clamp never binds.
+(local (defthm pfd-record-bound
+  (<= (nfix (fn-bs-profile-max-record-octets values)) *fn-cbor-max-uint*)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-bs-profile-max-record-octets fn-bs-profile-field
+                                     fn-bs-profile-of fn-bs-profile-validp
+                                     fn-bs-profile-invalid-reason)))))
+
+; KEYSTONE: the spool holds one whole batch of the store's records: the first
+; record at the profile's record bound and the quantum beyond it.
+(defthm fn-pfd-default-spools-one-batch
+  (<= (+ (nfix (fn-bs-profile-max-record-octets values)) *fn-cu-request-quantum*)
+      (fn-pfr-at 4 (fn-pfp-default-policy values)))
+  :hints (("Goal" :in-theory (e/d (fn-pfp-default-policy fn-pfd-policy fn-pfd-spool)
+                                  (fn-pfd-heap fn-pfd-work fn-bs-profile-max-record-octets
+                                   fn-bs-profile-max-history-octets))
+           :use (pfd-record-bound))))
+
+; -----------------------------------------------------------------------------
+; The launch cost.  The launcher's probe (fn-pfr-extend-reservation) grows the
+; runtime's dynamic space by the policy's heap and adds its workers' threads.
+; For the default that adds at most (fn-pfd-launch-extra STACK) octets over
+; the base run reservation (BASE = (:heap MB _ _ STACK THREADS)): the heap,
+; twice the nursery bound the re-solve may add, one MiB of rounding, and one
+; worker's stack and runtime.  The nursery term makes it loose (~133 MiB);
+; init's acceptance reserving it is step 2's.
+(defun fn-pfd-launch-extra (stack-kib)
+  (declare (xargs :guard t))
+  (+ (fn-pfd-heap)
+     (* 2 (max *fn-heap-nursery-least-octets*
+               (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib))))
+     *fn-heap-mib*
+     (* *fn-pfd-workers*
+        (+ (* 1024 (nfix stack-kib)) *fn-heap-thread-runtime-octets*))))
+
+(defun fn-pfd-base-octets (base core)
+  (declare (xargs :guard t))
+  (fn-heap-reservation-octets (fn-pfr-at 1 base) core (fn-pfr-at 4 base) (fn-pfr-at 5 base)))
+
+(local (defthm pfd-with-nursery-bound
+  (<= (fn-heap-with-nursery x n) (+ (nfix x) (* 2 (max *fn-heap-nursery-least-octets* (nfix n)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn-heap-with-nursery max min nfix)
+                                             (theory 'minimal-theory))))))
+(local (defthm pfd-grow-abstract
+  (implies (and (natp d) (natp e) (natp tt) (natp c)
+                (<= w (+ (nfix (- d (* 2 tt))) e c)))
+           (<= (max (+ d e) w) (+ d e c)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(nfix max natp) (theory 'minimal-theory))))))
+(local (defthm pfd-max-natp
+  (natp (* 2 (max *fn-heap-nursery-least-octets* (nfix cap))))
+  :rule-classes nil))
+(local (defthm pfd-grow-bound
+  (<= (fn-heap-grow-runtime-dynamic d e cap)
+      (+ (nfix d) (nfix e) (* 2 (max *fn-heap-nursery-least-octets* (nfix cap)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn-heap-grow-runtime-dynamic nfix natp
+                                               fn-heap-nursery-trigger-natp)
+                                             (theory 'minimal-theory))
+           :use (pfd-max-natp
+                 (:instance pfd-with-nursery-bound
+                            (x (+ (nfix (- (nfix d) (* 2 (fn-heap-nursery-trigger (nfix d) cap))))
+                                  (nfix e)))
+                            (n cap))
+                 (:instance pfd-grow-abstract (d (nfix d)) (e (nfix e))
+                            (tt (fn-heap-nursery-trigger (nfix d) cap))
+                            (c (* 2 (max *fn-heap-nursery-least-octets* (nfix cap))))
+                            (w (fn-heap-with-nursery
+                                (+ (nfix (- (nfix d) (* 2 (fn-heap-nursery-trigger (nfix d) cap))))
+                                   (nfix e))
+                                cap))))))))
+(local (defthm pfd-floor-mul
+  (implies (and (natp y) (posp m)) (<= (* m (floor y m)) y))
+  :rule-classes nil))
+(local (defthm pfd-mb-of-bound
+  (<= (* *fn-heap-mib* (fn-heap-mb-of x)) (+ (nfix x) *fn-heap-mib*))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-heap-mb-of) (floor))
+           :use ((:instance pfd-floor-mul (y (+ (nfix x) (1- *fn-heap-mib*))) (m *fn-heap-mib*)))))))
+(local (defthm pfd-default-fields
+  (and (equal (fn-pfr-at 0 (fn-pfp-default-policy values)) (fn-pfd-heap))
+       (equal (fn-pfr-at 3 (fn-pfp-default-policy values)) *fn-pfd-workers*)
+       (fn-pfp-default-policy values))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-pfp-default-policy fn-pfd-policy)
+                                  (fn-pfd-heap fn-pfd-spool fn-pfd-work pfd-at-is-nth))))))
+
+; KEYSTONE: on a machine that holds the store's run reservation and the
+; default's launch extra, the launcher's probe admits the default.
+(defthm fn-pfd-default-launches-where-its-extra-fits
+  (implies (and (equal (fn-pfr-at 0 base) :heap)
+                (<= (+ (fn-pfd-base-octets base core)
+                       (fn-pfd-launch-extra (fn-pfr-at 4 base)))
+                    (fn-heap-machine-octets observations)))
+           (equal (fn-pfr-at 0 (fn-pfr-extend-reservation
+                                base (fn-pfp-default-policy values) core observations))
+                  :heap))
+  :hints (("Goal" :in-theory (e/d (fn-pfr-extend-reservation fn-pfd-base-octets
+                                   fn-pfd-launch-extra fn-heap-reservation-octets)
+                                  (fn-heap-grow-runtime-dynamic fn-heap-mb-of fn-pfr-policy-p
+                                   fn-pfp-default-policy fn-heap-machine-octets fn-pfd-heap
+                                   pfd-at-is-nth))
+           :use (fn-pfd-default-is-a-policy pfd-default-fields
+                 (:instance pfd-grow-bound (d (* *fn-heap-mib* (nfix (fn-pfr-at 1 base))))
+                            (e (fn-pfd-heap))
+                            (cap (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib))))
+                 (:instance pfd-mb-of-bound
+                            (x (fn-heap-grow-runtime-dynamic
+                                (* *fn-heap-mib* (nfix (fn-pfr-at 1 base)))
+                                (fn-pfd-heap)
+                                (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib)))))))))
