@@ -5073,3 +5073,26 @@ Done: app-pattern (1), app-pattern-delivery (1), article-kind-acceptance/-hybrid
 Reclassified: store-log-entry-bound -step x2 -> MV class; fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open -> no-counterexample (both antecedents).
 Continuation: still T = output-command-admission(1), payload-lz-scalar-realizer(1), store-checkpoint-verify(1), served-access-revoke(3), store-log-durable(8), store-log-route-programs(3), tcpcl-received-source-refinement(1), tcpcl-retained-turn(1), tcpcl-source-control-refinement(2).  lanedumps/teeth-gate-owed.md holds the list, the no-counterexample notes and the method notes (let-wrapped claims; trailing-group rule).
 Certify: NOT done.  Narrow certify of the 19 touched tests/acl2/*-tests books via boxq --box hbox is pending INTEGRATOR-4's slot.
+
+### Exact certify command for INTEGRATOR-4 (run from build/lanes/teeth-62 at lane/teeth-62, merged on lane/teeth-gate@ab595894d)
+python3 tools/boxq.py submit --kind certify-lane --box hbox --wait -- --lane --jobs 8 --affected-by tests/acl2/app-pattern-delivery-tests --affected-by tests/acl2/app-pattern-tests --affected-by tests/acl2/article-kind-tests --affected-by tests/acl2/bp-ion-lifetime-tests --affected-by tests/acl2/bp-node-budget-input-tests --affected-by tests/acl2/connection-budget-tests --affected-by tests/acl2/feed-journal-order-tests --affected-by tests/acl2/moderation-tests --affected-by tests/acl2/native-init-resume-tests --affected-by tests/acl2/native-retire-observation-tests --affected-by tests/acl2/nntp-auth-tests --affected-by tests/acl2/output-reservation-tests --affected-by tests/acl2/owner-queued-work-tests --affected-by tests/acl2/owner-reclaim-carry-tests --affected-by tests/acl2/page-read-startup-tests --affected-by tests/acl2/peer-flight-reservation-tests --affected-by tests/acl2/reclaim-chunked-seal-tests --affected-by tests/acl2/reclaim-chunked-walk-tests --affected-by tests/acl2/store-log-entry-bound-tests 
+Books (      19, correcting the 19 in my message: LANEDUMP.md is the 19th changed file):
+- tests/acl2/app-pattern-delivery-tests
+- tests/acl2/app-pattern-tests
+- tests/acl2/article-kind-tests
+- tests/acl2/bp-ion-lifetime-tests
+- tests/acl2/bp-node-budget-input-tests
+- tests/acl2/connection-budget-tests
+- tests/acl2/feed-journal-order-tests
+- tests/acl2/moderation-tests
+- tests/acl2/native-init-resume-tests
+- tests/acl2/native-retire-observation-tests
+- tests/acl2/nntp-auth-tests
+- tests/acl2/output-reservation-tests
+- tests/acl2/owner-queued-work-tests
+- tests/acl2/owner-reclaim-carry-tests
+- tests/acl2/page-read-startup-tests
+- tests/acl2/peer-flight-reservation-tests
+- tests/acl2/reclaim-chunked-seal-tests
+- tests/acl2/reclaim-chunked-walk-tests
+- tests/acl2/store-log-entry-bound-tests
