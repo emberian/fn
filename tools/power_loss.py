@@ -1708,6 +1708,290 @@ def log_evaluate(image, rig, img, rec, kind, acked, per, done, violations):
         sudo("losetup", "-d", loop, check=False)
 
 
+# ---------------------------------------------------------------------------
+# RL-01 on the block layer (lane m1-durable-5): a log barrier that FAILS,
+# the restart with the page cache kept, then a power loss.  dm-flakey sits
+# ON TOP of dm-log-writes, so a write flakey errors never reaches the log and
+# no replay can contain it.  Its table errors writes to the active segment's
+# own sectors only (filefrag), never ext4's journal or metadata, so the EIO
+# is a clean writeback failure of the segment's data.  The kernel then marks
+# the pages clean and keeps them readable: the restarted open reads the
+# failed batch as history (the defect, books/store-log-recover-copy.lisp's
+# header).
+#
+#   rl01        A acknowledged; B's barrier fails (EIO), the owner exits;
+#               the restart (no drop_caches) acknowledges C; the device is
+#               replayed to the mark after C's acknowledgement.
+#   eio-only    the same up to B's failure; the replay is to the mark after it.
+#   kill-only   no flakey error: the owner is killed after B's write and
+#               before its barrier (FN_NATIVE_LOG_FAULT=log-written, the
+#               developer image); restart, C, replay after C.
+#
+# The ORACLE, per replay mode (flush: up to the last flush before the mark;
+# prefix: every completed write before it): the image mounts, e2fsck -fn is
+# clean, `store ROOT recover' exits 0 and every acknowledged article (A and,
+# but for eio-only, C) answers `store ROOT inspect'.  B was never
+# acknowledged: present or absent.  A run whose B was acknowledged, or whose
+# EIO aborted ext4's journal (dmesg), is INVALID, not a pass.
+FL_SUFFIX = "-fl"
+
+
+def flakey_up(sectors):
+    lw = "/dev/mapper/" + DM
+    return "0 %d flakey %s 0 3600 0" % (sectors, lw)
+
+
+def flakey_error(sectors, extents):
+    """A table erroring writes on EXTENTS (sector, count) and linear elsewhere."""
+    lw = "/dev/mapper/" + DM
+    rows, at = [], 0
+    for start, count in sorted(extents):
+        if start > at:
+            rows.append("%d %d linear %s %d" % (at, start - at, lw, at))
+        rows.append("%d %d flakey %s %d 0 3600 1 error_writes" % (start, count, lw, start))
+        at = start + count
+    if at < sectors:
+        rows.append("%d %d linear %s %d" % (at, sectors - at, lw, at))
+    return "\n".join(rows)
+
+
+def flakey_load(table):
+    fl = DM + FL_SUFFIX
+    sudo("dmsetup", "suspend", fl)
+    sudo("dmsetup", "load", fl, input=table.encode("ascii"))
+    sudo("dmsetup", "resume", fl)
+
+
+def rig_up_flakey(work, data_mib, log_mib):
+    """rig_up's stack with dm-flakey on top; ext4 on the flakey device."""
+    work.mkdir(parents=True, exist_ok=True)
+    data, log = work / "data.img", work / "log.img"
+    for p, mib in ((data, data_mib), (log, log_mib)):
+        if p.exists():
+            p.unlink()
+        sh("truncate", "-s", "%dM" % mib, p)
+    sudo("modprobe", "dm-log-writes")
+    sudo("modprobe", "dm-flakey")
+    dloop = sudo("losetup", "--show", "-f", data, stdout=subprocess.PIPE, text=True).stdout.strip()
+    lloop = sudo("losetup", "--show", "-f", log, stdout=subprocess.PIPE, text=True).stdout.strip()
+    sectors = int(sudo("blockdev", "--getsz", dloop, stdout=subprocess.PIPE, text=True).stdout.strip())
+    sudo("dmsetup", "create", DM, "--table", "0 %d log-writes %s %s" % (sectors, dloop, lloop))
+    sudo("dmsetup", "create", DM + FL_SUFFIX, "--table", flakey_up(sectors))
+    top = "/dev/mapper/" + DM + FL_SUFFIX
+    caches = {}
+    for name in (DM, DM + FL_SUFFIX):
+        dm = os.path.basename(os.path.realpath("/dev/mapper/" + name))
+        caches[name] = Path("/sys/block/%s/queue/write_cache" % dm).read_text().strip()
+        if caches[name] != "write back":
+            raise SystemExit("%s is %r: flushes would be dropped" % (name, caches[name]))
+    mark("mkfs-begin")
+    sudo("mkfs.ext4", "-q", "-F", top)
+    mark("mkfs-end")
+    mnt = work / "mnt"
+    mnt.mkdir(exist_ok=True)
+    sudo("mount", "-t", "ext4", top, mnt)
+    sudo("chown", "%d:%d" % (os.getuid(), os.getgid()), mnt)
+    mark("mounted")
+    rig = {"data": str(data), "log": str(log), "data_loop": dloop, "log_loop": lloop,
+           "sectors": sectors, "mnt": str(mnt), "write_cache": caches, "flakey": True,
+           "kernel": os.uname().release,
+           "mount": [l for l in Path("/proc/mounts").read_text().splitlines() if str(mnt) in l]}
+    (work / "rig.json").write_text(json.dumps(rig, indent=1))
+    return rig
+
+
+def rig_down_flakey(work):
+    rig = json.loads((work / "rig.json").read_text())
+    sudo("umount", rig["mnt"], check=False)
+    sudo("dmsetup", "remove", DM + FL_SUFFIX, check=False)
+    sudo("dmsetup", "remove", DM, check=False)
+    sudo("losetup", "-d", rig["data_loop"], rig["log_loop"], check=False)
+    sudo("chown", "%d:%d" % (os.getuid(), os.getgid()), rig["data"], rig["log"], check=False)
+
+
+def file_extents(path):
+    """PATH's physical extents as (sector, count) in 512-octet sectors, and
+    whether any is unwritten (filefrag -v)."""
+    text = sh("filefrag", "-v", path, stdout=subprocess.PIPE, text=True).stdout
+    bs = int(re.search(r"blocks? of (\d+) bytes", text).group(1))
+    out, unwritten = [], False
+    for line in text.splitlines():
+        m = re.match(r"\s*\d+:\s*\d+\.\.\s*\d+:\s*(\d+)\.\.\s*(\d+):\s*(\d+):", line)
+        if m:
+            lo, length = int(m.group(1)), int(m.group(3))
+            out.append((lo * bs // 512, length * bs // 512))
+            unwritten = unwritten or "unwritten" in line
+    return out, unwritten
+
+
+def active_segment(store):
+    segs = sorted(p for p in (store / "journal").iterdir()
+                  if re.fullmatch(r"\d{6}\.log", p.name) and p.name != "000000.log")
+    return segs[-1]
+
+
+def post_one(port, i, octets):
+    """One POST on its own connection: the reply line, or b'' when the
+    connection ends without one."""
+    import msgid_measure as m
+    try:
+        c = m.Conn(port)
+        r = c.line("POST")
+        if not r.startswith(b"340"):
+            return r
+        c.stream.write(article_bytes(i, octets) + b".\r\n")
+        return c.readline()
+    except OSError as e:
+        return ("oserror " + str(e)).encode()
+
+
+def start_owner_env(image, cfg, stderr_path, env, timeout=600):
+    from tests.native_harness import wait_for_announcement
+    err = open(stderr_path, "ab")
+    p = subprocess.Popen([str(image), "--fn", "operator", str(cfg), "run"],
+                         stdout=subprocess.PIPE, stderr=err, env=dict(os.environ, **env))
+    try:
+        wait_for_announcement(p, b"LISTENING ", timeout=timeout)
+    except BaseException:
+        p.kill()
+        p.wait()
+        err.close()
+        raise
+    return p, err
+
+
+def journal_aborted():
+    text = sudo("dmesg", stdout=subprocess.PIPE, text=True, check=False).stdout
+    return [l for l in text.splitlines()
+            if "aborting journal" in l or "Remounting filesystem read-only" in l
+            or "Detected aborted journal" in l]
+
+
+def rl01_replay(a, work, rig, target, acked, image):
+    """Replay the log to the mark TARGET under each mode; the oracle."""
+    L = parse_log(rig["log"])
+    ss, ents = L["sectorsize"], L["entries"]
+    cut = next(e[0] for e in ents if e[3] & MARK and e[5] == target)
+    results = []
+    for mode in ("flush", "prefix"):
+        base = work / ("replay-base-%s.img" % mode)
+        img = work / ("replay-%s.img" % mode)
+        sh("truncate", "-s", str(os.path.getsize(rig["data"])), base)
+        with open(rig["log"], "rb") as logf:
+            _, tail = build_image(ents, logf, base, 0, cut, mode, a.seed, ss, img)
+        base.unlink()
+        mnt = work / ("mnt-%s" % mode)
+        mnt.mkdir(exist_ok=True)
+        loop = sudo("losetup", "--show", "-f", img, stdout=subprocess.PIPE, text=True).stdout.strip()
+        rec = {"mode": mode, "target": target, "cut": cut, "tail": tail["tail"]}
+        try:
+            sudo("mount", "-t", "ext4", loop, mnt)
+            sudo("umount", mnt)
+            fsck = sudo("e2fsck", "-fn", loop, check=False, stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT, text=True)
+            rec["fsck"] = fsck.returncode
+            sudo("mount", "-t", "ext4", loop, mnt)
+            sudo("chown", "-R", "%d:%d" % (os.getuid(), os.getgid()), mnt)
+            store = mnt / "store"
+            code, so, se = native(image, "store", store, "recover")
+            rec["recover"] = code
+            rec["recover_out"] = (so + se)[-600:]
+            present = {}
+            for name, ids in acked.items():
+                for i in ids:
+                    c, _, _ = native(image, "store", store, "inspect", msgid(i))
+                    present.setdefault(name, []).append(c == 0)
+            rec["present"] = present
+            rec["green"] = (rec["fsck"] == 0 and code == 0
+                            and all(all(v) for k, v in present.items() if k != "B"))
+        finally:
+            sudo("umount", mnt, check=False)
+            sudo("losetup", "-d", loop, check=False)
+            img.unlink()
+        results.append(rec)
+    return results
+
+
+def rl01(a):
+    import msgid_measure as m
+    work = Path(a.work)
+    image = a.image
+    out = work / "rl01.jsonl"
+    rig = rig_up_flakey(work, a.data_mib, a.log_mib)
+    record = {"tag": "rl01", "scenario": a.scenario, "image": str(image), "rig": rig}
+    store = Path(rig["mnt"]) / "store"
+    port = m.free_port()
+    cfg = config_for(work, store, port)
+    n = a.posts
+    ids = {"A": list(range(0, n)), "B": [n], "C": list(range(n + 1, 2 * n + 1))}
+    acked = {"A": [], "B": [], "C": []}
+    try:
+        code, so, se = native(image, "operator", cfg, "init", *native_env.HARNESS_INIT_WORDS, GROUP)
+        if code:
+            raise SystemExit("init failed: %s" % se[-400:])
+        native(image, "store", store, "node-secret", "create")
+        p, err = start_owner_env(image, cfg, work / "owner-1.err", {})
+        for i in ids["A"]:
+            r = post_one(port, i, a.octets)
+            if r.startswith(b"240"):
+                acked["A"].append(i)
+                mark("ack-%d" % i)
+        seg = active_segment(store)
+        extents, unwritten = file_extents(seg)
+        record.update(segment=seg.name, extents=extents, unwritten=unwritten)
+        if a.scenario == "kill-only":
+            stop_owner(p, err)
+            p, err = start_owner_env(image, cfg, work / "owner-2.err",
+                                     {"FN_NATIVE_LOG_FAULT": "log-written"})
+        else:
+            if unwritten:
+                raise SystemExit("INVALID: the segment has unwritten extents %r" % extents)
+            flakey_load(flakey_error(rig["sectors"], extents))
+            mark("eio-on")
+        r = post_one(port, ids["B"][0], a.octets)
+        record["b_reply"] = r[:80].decode("latin-1")
+        if r.startswith(b"240"):
+            acked["B"].append(ids["B"][0])
+        try:
+            record["owner_exit_after_b"] = p.wait(timeout=120)
+            err.close()
+        except subprocess.TimeoutExpired:
+            record["owner_exit_after_b"] = "alive (stopped: %s)" % stop_owner(p, err)
+        if a.scenario != "kill-only":
+            flakey_load(flakey_up(rig["sectors"]))
+            mark("eio-off")
+        record["journal_aborted"] = journal_aborted()
+        if a.scenario == "eio-only":
+            mark("end")
+            target = "end"
+        else:
+            p, err = start_owner_env(image, cfg, work / "owner-3.err", {})
+            for i in ids["C"]:
+                r = post_one(port, i, a.octets)
+                if r.startswith(b"240"):
+                    acked["C"].append(i)
+                    mark("ack-%d" % i)
+            mark("after-C")
+            target = "after-C"
+            stop_owner(p, err)
+        record["acked"] = acked
+        record["invalid"] = ([] if not acked["B"] else ["B acknowledged"]) + \
+            (["journal aborted"] if record["journal_aborted"] else []) + \
+            ([] if len(acked["A"]) == n else ["A not all acknowledged"]) + \
+            ([] if a.scenario == "eio-only" or len(acked["C"]) == n else ["C not all acknowledged"])
+    finally:
+        rig_down_flakey(work)
+    record["replays"] = rl01_replay(a, work, rig, target, {k: v for k, v in acked.items() if v}, image)
+    record["verdict"] = ("INVALID" if record["invalid"] else
+                         "GREEN" if all(r["green"] for r in record["replays"]) else "RED")
+    out_line(out, **record)
+    print(json.dumps({k: record[k] for k in ("scenario", "verdict", "invalid", "acked", "b_reply",
+                                             "owner_exit_after_b", "segment", "extents")}, indent=1))
+    for r in record["replays"]:
+        print(json.dumps({k: r.get(k) for k in ("mode", "fsck", "recover", "present", "green",
+                                                "recover_out")}))
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -1766,6 +2050,16 @@ def main(argv=None):
     lc.add_argument("--controls", type=int, default=10)
     lc.add_argument("--seed", type=int, default=7)
     lc.add_argument("--label", default="log")
+    rl = sub.add_parser("rl01", help="RL-01: a failed log barrier, the restart with the cache kept, "
+                                      "a power loss (dm-flakey over dm-log-writes)")
+    rl.add_argument("work")
+    rl.add_argument("--image", required=True, help="the developer image")
+    rl.add_argument("--scenario", choices=("rl01", "eio-only", "kill-only"), default="rl01")
+    rl.add_argument("--posts", type=int, default=6, help="articles in A and in C")
+    rl.add_argument("--octets", type=int, default=2048)
+    rl.add_argument("--seed", type=int, default=7)
+    rl.add_argument("--data-mib", type=int, default=512)
+    rl.add_argument("--log-mib", type=int, default=2048)
     sm = sub.add_parser("summary")
     sm.add_argument("results", nargs="+", help="cuts-*.jsonl files")
     a = ap.parse_args(argv)
@@ -1785,6 +2079,8 @@ def main(argv=None):
         log_workload(a)
     elif a.cmd == "log-cuts":
         log_cuts(a)
+    elif a.cmd == "rl01":
+        rl01(a)
     elif a.cmd == "summary":
         summary(a.results)
 
