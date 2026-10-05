@@ -31,6 +31,7 @@
 (include-book "wire-grammar")
 (include-book "wire-family-fncu")
 (include-book "wire-family-identity")
+(include-book "wire-family-consumer")
 (include-book "outcome-class")
 
 (defconst *fn-wgx-language* "fn-wire-grammar")
@@ -326,6 +327,16 @@
     ("rest-past-hi" (nil ((7 (0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16)))) :malformed)
     ("header-class" ((10) nil) :malformed)))
 
+;; fnct.consumer.status-reply: every arm, including the refusal and the
+;; uncertain reply, and both `where' checks refused by name.
+(defconst *fn-wgx-status-values*
+  '((:accepted (3 10 7)) (:accepted (0 0 0)) (:accepted (0 4294967295 4294967295))
+    (:refused nil) (:uncertain nil) (:fault nil)))
+
+(defconst *fn-wgx-status-refusals*
+  '(("ack-past-frontier" (:accepted (11 10 1)) :where)
+    ("distance-not-frontier-minus-ack" (:accepted (3 10 6)) :where)))
+
 (defconst *fn-wgx-families*
   (list
    (list "fncu.cursor" *fn-wf-fncu-grammar*
@@ -333,6 +344,11 @@
          '(fn-wf-fncu-encode-agrees fn-wf-fncu-decode-agrees
            fn-cp-cursor-decode-encode-roundtrip fn-cp-cursor-encode-decode-roundtrip)
          *fn-wgx-fncu-values* *fn-wgx-fncu-refusals*)
+   (list "fnct.consumer.status-reply" *fn-wf-cs-status-reply-grammar*
+         'fn-ncl-status-reply-encode 'fn-ncl-status-reply-decode
+         '(fn-wf-cs-status-encode-agrees fn-wf-cs-status-decode-agrees
+           fn-ncl-status-accepted-reply-roundtrip fn-ncl-status-nonaccepted-reply-roundtrip)
+         *fn-wgx-status-values* *fn-wgx-status-refusals*)
    (list "fnct.store-identity.request" *fn-wf-identity-request-grammar*
          'fn-wg-encode 'fn-wg-decode nil (list nil) nil)
    (list "fnct.store-identity.reply" *fn-wf-identity-reply-grammar*
