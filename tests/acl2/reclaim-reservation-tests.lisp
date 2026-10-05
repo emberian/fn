@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/reclaim-reservation")
+(include-book "../../books/owner-credits")
 (include-book "std/testing/assert-bang" :dir :system)
 
 ; The opt-in's reservation (books/reclaim-reservation.lisp), both settings.
