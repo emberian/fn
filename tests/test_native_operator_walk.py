@@ -214,15 +214,22 @@ class OperatorWalkTests(unittest.TestCase):
 
     def reader(self, node):
         """A reader login on NODE, enrolled before it starts: the mission's
-        nodes require authentication ([auth] required=true), so an anonymous
-        STAT is 480 whatever the store holds (SCEN-WALK-FED-POST-STAT-480)."""
+        nodes require authentication ([auth] required=true) over a protected
+        channel (protected_only=true), so an anonymous STAT is 480 and a
+        cleartext AUTHINFO is 483 whatever the store holds
+        (SCEN-WALK-FED-POST-STAT-480)."""
         node.operator("principal", "set-password", self.READER.decode(),
                       input=self.READER_SECRET + b"\n" + self.READER_SECRET + b"\n",
                       expect=EXIT.OK)
 
     def stat(self, node, message_id):
-        """STAT MESSAGE_ID as the reader `reader' enrolled on NODE."""
+        """STAT MESSAGE_ID as a newsreader would ask it of NODE: STARTTLS,
+        verifying the mission's self-signed pair (tls/cert.pem) under the
+        name 127.0.0.1, then the login `reader' enrolled, then STAT."""
+        context = ssl.create_default_context(cafile=str(node.root / "tls" / "cert.pem"))
         with node.session() as client:
+            upgraded = client.starttls(context)
+            self.assertTrue(upgraded.startswith(b"382"), upgraded)
             user = client.command(b"AUTHINFO USER " + self.READER)
             self.assertTrue(user.startswith(b"381"), user)
             login = client.command(b"AUTHINFO PASS " + self.READER_SECRET)
