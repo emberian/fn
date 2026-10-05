@@ -1101,6 +1101,8 @@ def scratch(case, prefix="fn-native-"):
 
 _INSTALLED = {}
 _INSTALLED_LOCK = threading.Lock()
+# The OpenSSL a release ships (host/native/tls.lisp's Linux default prefix).
+OPENSSL_SHIPPED = "/tank/fn/toolchains/openssl-3.5.8"
 
 
 def installed_launcher(image):
@@ -1120,6 +1122,15 @@ def installed_launcher(image):
             launcher.chmod(0o755)
             (prefix / "libexec" / "fn" / "fn-host").symlink_to(image)
             (prefix / "libexec" / "fn" / "fn-host.core").symlink_to(Path(str(image) + ".core"))
+            # A release ships its OpenSSL 3.5.8 as libexec/fn/openssl, and
+            # packaging/fn's installed branch points FN_OPENSSL_PREFIX there
+            # (D59, PRF-1327); the layout carries the same pair the image
+            # was built against: the caller's FN_OPENSSL_PREFIX, else the
+            # host's default (host/native/tls.lisp
+            # *fnn-tls-default-openssl-prefix*, the boxes' toolchain).
+            shipped = Path(os.environ.get("FN_OPENSSL_PREFIX") or OPENSSL_SHIPPED)
+            if (shipped / "lib").is_dir():
+                (prefix / "libexec" / "fn" / "openssl").symlink_to(shipped)
             import atexit
             import shutil
             atexit.register(shutil.rmtree, prefix, True)
