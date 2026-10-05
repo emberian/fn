@@ -41,6 +41,10 @@ IMAGE = native_image("FN_NATIVE_HOST")
 PREFIX = Path(os.environ.get("FN_TEST_OPENSSL_PREFIX", "/tank/fn/toolchains/openssl-3.5.8"))
 CLIENT = PREFIX / "bin" / "openssl"
 HYBRID = "X25519MLKEM768"
+# The pair a Linux release ships (packaging/floor-openssl.sh's output, the
+# release's FN_FREEZE_OPENSSL): 3.5.8 built against the glibc floor, with no
+# bin/openssl of its own (the client is the toolchain's).
+FLOOR = Path(os.environ.get("FN_TEST_OPENSSL_FLOOR", "/tank/fn/toolchains/openssl-3.5.8-floor"))
 
 
 def have_toolchain() -> bool:
@@ -139,8 +143,12 @@ class NativeTlsKeyExchangeTests(unittest.TestCase):
             self.assertIn("Negotiated TLS1.3 group: {}".format(HYBRID), hybrid, hybrid)
             self.assertIn("111 ", hybrid, "the hybrid session answered no DATE: " + hybrid)
             classical = self.s_client("X25519")
-            self.assertIn("Negotiated TLS1.3 group: X25519", classical, classical)
-            self.assertNotIn(HYBRID, classical.replace("Negotiated TLS1.3 group: X25519", ""))
+            # s_client names a key-exchange group whose peer key it can
+            # print as `Peer Temp Key: X25519, 253 bits'; only a KEM group
+            # (the hybrid) as `Negotiated TLS1.3 group: NAME'.
+            self.assertRegex(classical,
+                             r"(Peer Temp Key|Negotiated TLS1\.3 group): X25519(,|\s)")
+            self.assertNotIn(HYBRID, classical)
             self.assertIn("111 ", classical, "the classical session answered no DATE: " + classical)
             # The service log names each session's group (ACL2's line).
             text = self.wait_for_log(r"tls established group=X25519\b")
@@ -155,6 +163,22 @@ class NativeTlsKeyExchangeTests(unittest.TestCase):
                              r"tls key-exchange policy=hybrid-preferred serving=hybrid "
                              r"hybrid=1 classical=1 unknown=0")
             self.assertIsNone(process.poll(), "a client stopped the owner")
+        finally:
+            self.node.stop(expect=None, process=process, grace=20)
+
+    def test_the_release_pair_negotiates_the_hybrid(self) -> None:
+        # The node on the very libcrypto/libssl the release ships: a hybrid
+        # client negotiates X25519MLKEM768 and is answered.
+        if not (FLOOR / "lib" / "libssl.so.3").exists():
+            self.skipTest("no release OpenSSL pair at {}".format(FLOOR))
+        self.node.env["FN_OPENSSL_PREFIX"] = str(FLOOR)
+        self.configure("hybrid-preferred")
+        process = self.node.start()
+        try:
+            hybrid = self.s_client(HYBRID)
+            self.assertIn("Negotiated TLS1.3 group: {}".format(HYBRID), hybrid, hybrid)
+            self.assertIn("111 ", hybrid, hybrid)
+            self.wait_for_log(r"tls established group={}\b".format(HYBRID))
         finally:
             self.node.stop(expect=None, process=process, grace=20)
 

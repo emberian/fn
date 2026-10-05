@@ -54,8 +54,9 @@ groups = \"x\"
 "))
                      '(:refused :syntax)))
 
-; --- KEYSTONE fn-tlsk-required-refuses-by-name-without-the-hybrid and
-; fn-tlsk-required-serves-only-the-hybrid-list.  Witness: both observations.
+; --- KEYSTONE fn-tlsk-required-serves-only-the-hybrid-list (and its arm
+; fn-tlsk-required-without-the-hybrid-refuses-by-definition).  Witness: both
+; observations.
 (assert-event (equal (fn-tlsk-decide :hybrid-required nil)
                      '(:refuse :hybrid-unavailable)))
 (assert-event (equal (fn-tlsk-decide :hybrid-required t)
@@ -172,8 +173,10 @@ groups = \"x\"
 (assert-event (null (fn-tlsk-health-client-line (list :refused nil (fn-tlsk-status-lines *tkxt-served* *tkxt-kx*)))))
 
 ; --- KEYSTONES fn-tlsk-library-without-tls-never-refuses and
-; fn-tlsk-library-tls-without-the-pinned-pair-refuses (D59's refusal scope).
-; Witness: each of the three answers is reached.
+; fn-tlsk-library-served-tls-never-falls-back (D59's refusal scope).
+; Witness: each of the three answers is reached, and both antecedents are
+; inhabited (a served node and a hybrid-required one, each with the pair
+; missing, are refused, not fallen back).
 (assert-event (equal (fn-tlsk-library-decide nil t :hybrid-required) :pinned))
 (assert-event (equal (fn-tlsk-library-decide t nil :hybrid-preferred) :fallback))
 (assert-event (equal (fn-tlsk-library-decide t t :hybrid-preferred) :refuse))
@@ -200,4 +203,8 @@ groups = \"x\"
  (defthm tkxt-tooth-required-without-tls-runs
    (implies missing
             (not (equal (fn-tlsk-library-decide missing nil :hybrid-required) :refuse)))
+   :rule-classes nil))
+(must-fail-checked
+ (defthm tkxt-tooth-any-node-never-falls-back
+   (not (equal (fn-tlsk-library-decide missing served policy) :fallback))
    :rule-classes nil))
