@@ -23595,6 +23595,31 @@
         "fn-av-scr-dispatch-core-restricted-is-reference",
         "fn-av-mca-read-span-restricted-is-legacy"
       ]
+    },
+    {
+      "id": "PRF-1330",
+      "title": "Access tightening reaches every open connection at its next command (pinned AND live read rule)",
+      "statement": "books/served-access-revoke.lisp. fn-own-served-conn-refuses-what-the-live-rule-refuses: for any owner O, any of its connections CONN (however long ago it pinned), any session AS at a command and any ARCHIVE the command reads (the pin or a GROUP re-pin), when AS is projected and the live rule of AS's login in (fn-own-config o) restricts and refuses group G, the view the command is answered from (fn-auth-view-archive AS C ARCHIVE, C the served connection's configuration) holds neither G nor any article naming G. fn-own-served-conn-refuses-what-the-pin-refuses: the same for the pinned rule (a widening never reaches an open connection). fn-own-served-conn-rule-is-the-pin-when-access-is-unchanged: equal live and pinned rules serve the pinned rule. Mechanism: fn-own-served-conn serves fn-gac-config-with-live (pin, live); fn-auth-access-text is fn-gac-and-text of the pinned and live rule of the login at that command; fn-gac-readablep reads (:and a b). Composition with PRF-1328 carries the view to the host's read. Teeth (tests/acl2/served-access-revoke-tests.lisp): the pin alone answers a revoked STAT 223, lists the group and admits GROUP; the served configuration answers 430 as absent (STAT/ARTICLE/HDR), 411, omits it from LIST ACTIVE and from <c@>'s Xref after GROUP fn.public, 223 for a readable article; one socket read of AUTHINFO USER bob, AUTHINFO PASS and STAT, with the anonymous rule unchanged and only bob's revoked, answers 223 under the pin and 430 served; a widening stays at the pin.",
+      "milestone": "M4",
+      "requirements": [
+        "NNT-046",
+        "SEC-007"
+      ],
+      "depends_on": [
+        "PRF-222",
+        "PRF-228",
+        "PRF-1269",
+        "PRF-1328"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-own-served-conn-refuses-what-the-live-rule-refuses",
+        "fn-own-served-conn-refuses-what-the-pin-refuses",
+        "fn-own-served-conn-rule-is-the-pin-when-access-is-unchanged"
+      ],
+      "evidence": [],
+      "note": "ACCESS-REVOKE-PINNED (coordinator ruling 2026-10-04; specs/reconfiguration.md 2.3 Readers). Nothing is written back into the pin. Per-command cost: one more rule lookup and one rule-text comparison."
     }
   ]
 }
