@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/tcpcl-retained-turn")
+(include-book "../../books/defkeystone")
 ; Literal complete positive and each retained hypothesis removal witness.
 (assert-event
  (let ((offset 2) (total 5000))
@@ -76,3 +77,22 @@
                   (not (equal (fn-tcrt-init-deadline :contact 0 100) 100))))
 (assert-event (and (equal :messaging :messaging) (not (natp nil))
                   (not (equal (fn-tcrt-init-deadline :messaging 0 nil) nil))))
+
+; TEETH-21 BEGIN
+(defteeth fn-tcrt-write-range-is-bounded
+  :claim (((offset-natural (natp offset)) (total-integer (integerp total)) (within-total (<= offset total)))
+          (and (<= offset (fn-tcrt-write-end offset total))
+               (<= (fn-tcrt-write-end offset total) total)
+               (<= (- (fn-tcrt-write-end offset total) offset) (fn-tcrt-read-limit))))
+  :subject fn-tcrt-write-end
+  :witness ((offset 2) (total 5000))
+  :breaks ((offset-natural ((offset -1))
+                           :logical "a negative offset is outside the guard of fn-tcrt-write-end")
+           (total-integer ((offset 1) (total 3/2))
+                          :logical "a fractional total is outside the guard of fn-tcrt-write-end")
+           (within-total ((offset 4) (total 2))))
+  :mutations ((range-past-the-total
+               (:conclusion (<= (fn-tcrt-write-end offset total) (- total 1)))
+               ((offset 2) (total 5))
+               :fault "a write range that may not use the last octet of the total")))
+; TEETH-21 END
