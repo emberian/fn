@@ -10,7 +10,7 @@
 (with-open-file (stream "books/bp-session-profile.lisp")
  (loop for form = (read stream nil :eof) until (eq form :eof) do
   (when (and (consp form) (eq (first form) 'defun)
-             (member (second form) '(fn-bpsg-row fn-bpsg-step fn-bpsg-release-ready fn-bpsg-slots fn-bpsg-key fn-bpsp-root-release-ready fn-bpsg-context-abort-plan)))
+             (member (second form) '(fn-bpsg-row fn-bpsg-step fn-bpsg-release-ready fn-bpsg-slots fn-bpsg-key fn-bpsp-root-release-ready fn-bpsp-incoming-contended fn-bpsg-context-abort-plan)))
    (eval (cons 'defun (cons (second form) (cons (third form)
     (remove-if (lambda (x) (and (consp x) (eq (car x) 'declare))) (cdddr form)))))))))
 (with-open-file (stream "books/bp-session-scheduler.lisp")
@@ -37,7 +37,7 @@
   (otherwise (error "unexpected call ~s" name))))
 (defun fnn-core (name &rest args)
  (case name
-  ((fn-bpsg-context-abort-plan fn-bpsg-step fn-bpsg-release-ready fn-bpsg-key fn-bpsched-service fn-bpsched-next
+  ((fn-bpsp-incoming-contended fn-bpsg-context-abort-plan fn-bpsg-step fn-bpsg-release-ready fn-bpsg-key fn-bpsched-service fn-bpsched-next
      fn-bpsched-next-slot fn-bpsched-listener-index fn-bpsched-deadline fn-bpsched-timeout-p
      fn-bpsched-work-credit fn-bpsched-idle-p)
    (apply name args))

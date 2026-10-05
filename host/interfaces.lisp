@@ -3460,6 +3460,12 @@
 (definterface fn-tcl-host-terminate
   :class ::ideal)
 
+(definterface fn-tcl-host-terminate-reason
+  :class ::ideal)
+
+(definterface fn-tcl-host-in-transfer
+  :class ::ideal)
+
 (definterface fn-tcl-host-tick
   :class ::ideal)
 
@@ -5756,6 +5762,10 @@
 (definterface fn-bpsp-captured-wire-span :class :common-lisp-compliant)
 (definterface fn-bpsp-file-name :class :common-lisp-compliant)
 (definterface fn-bpsp-held-projection :class :common-lisp-compliant)
+(definterface fn-bpsp-incoming-contended :class :common-lisp-compliant
+  :keystones (fn-bpsp-free-incoming-slot-is-not-contention fn-bpsp-nobody-waiting-is-not-contention))
+(definterface fn-bpsp-passive-ms :class :common-lisp-compliant :kinds ((profile true-listp)))
+(definterface fn-bpsp-stall-ms :class :common-lisp-compliant :kinds ((profile true-listp)))
 (definterface fn-bpsp-read :class :common-lisp-compliant)
 (definterface fn-bpsp-read-bound :class :common-lisp-compliant)
 (definterface fn-bpsp-root-release-ready :class :common-lisp-compliant)
@@ -5778,6 +5788,14 @@
 (definterface fn-tcrt-contact-timeout-p :class :common-lisp-compliant)
 (definterface fn-tcrt-init-deadline :class :common-lisp-compliant)
 (definterface fn-tcrt-init-timeout-p :class :common-lisp-compliant)
+(definterface fn-tcrt-progress-clock :class :common-lisp-compliant
+  :keystones (fn-tcrt-progress-clock-does-not-renew))
+(definterface fn-tcrt-note-frame :class :common-lisp-compliant
+  :keystones (fn-tcrt-only-transfer-frames-renew-progress fn-tcrt-transfer-frame-renews-progress))
+(definterface fn-tcrt-expiry :class :common-lisp-compliant
+  :keystones (fn-tcrt-expiry-only-at-a-message-boundary fn-tcrt-expiry-resource-exhaustion-only-under-contention
+              fn-tcrt-quiet-idle-session-is-never-expired fn-tcrt-stall-expiry-needs-a-transfer
+              fn-tcrt-no-expiry-before-established-session))
 (definterface fn-tsc-at :class :common-lisp-compliant :kinds ((n natp)))
 
 (definterface fn-bpnpf-adu-octets :class :common-lisp-compliant)
