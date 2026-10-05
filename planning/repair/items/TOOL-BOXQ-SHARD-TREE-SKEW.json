@@ -1,0 +1,13 @@
+{
+ "category": "tooling",
+ "detail": "Fix: resolve the tier and the test ids at REV (git show REV:tests/scenarios/tiers.tsv; import the module list from the archive) or refuse the job when a named module is absent at REV.",
+ "file": "tools/boxq.py",
+ "id": "TOOL-BOXQ-SHARD-TREE-SKEW",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "rollup-20261004",
+ "state": "open",
+ "title": "boxq builds a job's module list and shard ids from the TREE boxq.py lives in (tiers.tsv, timings.json learned elsewhere), not from the job's REV: the smoke fill job bq10042053-0034 ERRORs 'no source for tests.test_native_installed_start' (the row is in scenarios-2's tiers, absent from dev 7616e2c97), peer fill bq10042056-0038 ImportError tests.test_native_peer_hostile_feed, and lane trees older than the ids get 'no attribute test_x' ERROR shards (HARDEN section 2). Owner: lane cloud.",
+ "updated": "2026-10-05T00:26:45Z"
+}

@@ -1,0 +1,13 @@
+{
+ "category": "tests",
+ "detail": "log cloud2:/tank/fn/scratch/fill-resilience/native-bq10042105-0041/logs/test-tests.test_native_resilience_cuts.log",
+ "file": "tests/test_native_resilience_cuts.py",
+ "id": "FILL-RESILIENCE-CUTS-GIT-IN-SHIPPED-TREE",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "low",
+ "source": "rollup-20261004",
+ "state": "open",
+ "title": "tests.test_native_resilience_cuts 4 ERRORs: CalledProcessError git rev-parse HEAD exit 128 (resilience fill bq10042105-0041, cloud2): the module shells out to git in the box's tree, which hboxes ship as a git archive with no .git. Environment-class harness defect: the test needs the revision from the runner's record, not from git.",
+ "updated": "2026-10-05T00:26:45Z"
+}

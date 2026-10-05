@@ -1,0 +1,13 @@
+{
+ "category": "tooling",
+ "detail": "Also seen at the same merge: tests/scenarios/tiers.tsv carried the same peer_hostile_feed row twice (integrate f1ea3172d plus scenarios-2); the rehearsal deleted the later one.",
+ "file": "planning/scenarios-2026-10-04-modules.tsv",
+ "id": "ROLLUP-STORE-IDENTITY-NO-MODULES-ROW",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "rollup-20261004",
+ "state": "open",
+ "title": "Interaction red of mini-contract-2 + scenarios-2: scenario_suite.py check fails 'tests.test_native_store_identity (a tier module) has no image-driving row' in planning/scenarios-2026-10-04-modules.tsv. mini-contract-2 (M4) added the e2e tier row; scenarios-2's rule wants a quality/questions/needs_owner row there. Needs the scenarios-2 lane's judgement of the row's columns (quality, questions OPS, evidence). Seen on rollup/rehearsal-1 at dce7b2333.",
+ "updated": "2026-10-05T00:26:45Z"
+}

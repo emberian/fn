@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "logs cloud1:/tank/fn/scratch/fill-e2e/native-bq10042054-0036/logs/test-tests.test_native_peering.log",
+ "file": "host/native/feed-service.lisp",
+ "id": "FILL-PEERING-TRANSIT-HYGIENE-TIMEOUT",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "rollup-20261004",
+ "state": "open",
+ "title": "tests.test_native_peering test_transit_hygiene_refused_offer_memory_and_relay_checks times out (TimeoutError) on the e2e and peer fill runs (bq10042054-0036 cloud1, bq10042056-0038 cloud2) over images 6107ceb56. Area: feed/transit; may be the SCEN-FEED-PACE 2.4 articles/s rate (peering 462 s) rather than a hang; classify before fixing.",
+ "updated": "2026-10-05T00:26:44Z"
+}

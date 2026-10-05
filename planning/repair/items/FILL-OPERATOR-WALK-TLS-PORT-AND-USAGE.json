@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "log cloud2:/tank/fn/scratch/fill-peer/native-bq10042058-0039/logs/test-tests.test_native_operator_walk.log",
+ "file": "host/native/operator.lisp",
+ "id": "FILL-OPERATOR-WALK-TLS-PORT-AND-USAGE",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "rollup-20261004",
+ "state": "open",
+ "title": "tests.test_native_operator_walk, besides the SCEN-INSTALLED-HEAP-NOT-HELD startup refusals, has two failures of its own (peer fill bq10042058-0039): test_a_node_on_tls_from_the_mission_with_no_openssl_program ('tls_port = N' absent from the written config) and test_before_init_every_verb_is_refused_no_store_and_init_takes_no_profile_word (expected USAGE exit 5, got FAULT 4). Area: operator verbs / TLS config; the first overlaps the w-serve TLS-defaults quest (PRF-1327).",
+ "updated": "2026-10-05T00:26:44Z"
+}

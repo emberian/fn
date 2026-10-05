@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "boxq fill logs cloud2:/tank/fn/scratch/fill-core/native-bq10042052-0030, cloud1:.../native-bq10042052-0029; also resilience bq10042101-0040 (cloud1). Not re-measured on the rollup image; rerun after the rollup image set exists.",
+ "file": "host/native/owner.lisp",
+ "id": "FILL-SLOW-DISK-STALL-UNCERTAIN",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "rollup-20261004",
+ "state": "open",
+ "title": "tests.test_native_slow_disk 2 native cases red on the fill run over images 6107ceb56 (core tier, bq10042052-0029/-0030): test_a_stall_past_h_tells_the_posters_uncertain_and_the_articles_land (posters not all answered uncertain; 'a' still holds a socket) and test_a_graceful_stop_past_the_deadline_answers_uncertain (ERROR, empty message). Same 2F in HARDEN 'unchanged reds'. The third slow_disk red (source test naming fnn-owner-peer-read-class) is fixed in 08d16fe02. Area: owner disk-stall deadline.",
+ "updated": "2026-10-05T00:26:44Z"
+}

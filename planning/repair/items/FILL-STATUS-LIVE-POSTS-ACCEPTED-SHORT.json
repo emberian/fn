@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "log cloud2:/tank/fn/scratch/fill-scale/native-bq10042107-0043/logs/test-tests.test_native_status_live_posts.log",
+ "file": "host/native/owner.lisp",
+ "id": "FILL-STATUS-LIVE-POSTS-ACCEPTED-SHORT",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "rollup-20261004",
+ "state": "open",
+ "title": "tests.test_native_status_live_posts test_status_after_live_posts_stays_within_the_slack: only 12805 of 60000 posts accepted before the test asserts (accepted != POSTS), scale fill bq10042107-0043. Area: capacity/admission under sustained posts (store full or pool refusal), not the status slack the test names.",
+ "updated": "2026-10-05T00:26:44Z"
+}

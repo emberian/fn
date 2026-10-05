@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "log cloud2:/tank/fn/scratch/fill-scale/native-bq10042107-0043/logs/test-tests.test_native_image_floor.log. Re-measure on the rollup image.",
+ "file": "host/native/build.lisp",
+ "id": "FILL-IMAGE-FLOOR-SIZE-AND-256MB",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "rollup-20261004",
+ "state": "open",
+ "title": "tests.test_native_image_floor 3F on the scale fill run (bq10042107-0043, cloud2): test_core_dynamic_content core needs 136736 KiB > 131072 limit (core_file_octets 248194816), test_decided_stack_holds_the_largest_small_article and test_fresh_node_serves_in_256_mb answer False. Area: image floor / heap figure; cold-start-2's reservation cost note (365 MB over the 1891 MB figure) is the likely interaction.",
+ "updated": "2026-10-05T00:26:44Z"
+}

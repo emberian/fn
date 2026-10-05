@@ -1,0 +1,13 @@
+{
+ "category": "proof",
+ "detail": "Roll-up: merge harden/may-seal-hang before mini-contract-2. rollup/rehearsal-1 merges it after (same tree).",
+ "file": "books/wire-grammar.lisp",
+ "id": "ROLLUP-WIRE-GRAMMAR-LOCAL-RULE",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "high",
+ "source": "rollup-20261004",
+ "state": "open",
+ "title": "mini-contract-2 (f84daa568) and zmq-2 (same wire-grammar.lisp blob) hang host-ld: the global rewrite rule fn-wg-consp-when-len-positive fired on every consp term (12.3M frames) and timed out host_translate_check on fn-owner-cat-may-seal-refines-cat-by-definition. Fixed on harden/may-seal-hang@a99f7abd6 (rule made local; lat1: farm 15/0, host_check --load 57/57, translate ok both builds). The fix must also land ON lane/mini-contract-2 when it resumes, or the lane re-introduces it.",
+ "updated": "2026-10-05T00:26:45Z"
+}
