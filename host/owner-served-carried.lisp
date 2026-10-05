@@ -258,7 +258,7 @@
                 fn-pinv-host-owner-reconfigure-deltas fn-reader-chunk
                 fn-reader-model-octets fn-reader-observe-clock
                 fn-reader-outcome fn-reader-reset fn-reader-set-posting
-                fn-reader-use-seed fn-reader-use-store fn-store-cfg-domain
+                fn-reader-use-seed fn-reader-use-store fn-stid-host-reply fn-store-cfg-domain
                 fn-store-cfg-generation fn-store-cfg-last-octets
                 fn-store-cfg-last-reason
                 fn-store-cfg-native-admin-authorize-carried
