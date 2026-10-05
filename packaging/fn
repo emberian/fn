@@ -111,6 +111,12 @@ if [ -n "$installed" ]; then
     case $figure in
         refused\ *) echo "fn: $figure" >&2; exit "$status" ;;
     esac
+    # 5 is ACL2's usage outcome and no runtime's own code: the image refused
+    # its environment before the probe ran (a developer-image selector in a
+    # production image), its reason on stderr above.  It stays usage.
+    case $status in
+        5) exit 5 ;;
+    esac
     if [ "$status" -ne 0 ]; then
         echo "fn: fault heap-probe-did-not-run exit=$status datasize-kib=$(ulimit -d): the image stopped before it decided its memory (its own message is above); nothing ran" >&2
         exit 4
