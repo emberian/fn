@@ -12,7 +12,7 @@
 
 (in-package "ACL2")
 (include-book "wire-family-fnct")
-(include-book "consumer-local-control")
+(include-book "consumer-reason") ; consumer-local-control, the wait codes 9 and 10, kind 22
 
 ; -----------------------------------------------------------------------------
 ; fnct.consumer.status-reply (FNCT kind 9, payload at most 13 octets): a status
@@ -436,10 +436,13 @@
 
 ; -----------------------------------------------------------------------------
 ; fnct.consumer.request (FNCT kind 4, payload at most 1024 octets; the host
-; reads a request under 513 octets except the bound commands 7 and 8): a
-; command code, then its fields -- consumer and group ids (1..64 octets,
+; reads a request under 513 octets except the bound commands 7, 8 and 10):
+; a command code, then its fields -- consumer and group ids (1..64 octets,
 ; one-octet length), the account secret of the bound commands (1..496
-; octets, two-octet length) and the fncu cursor of ack and bound-ack.  The
+; octets, two-octet length), the fncu cursor of ack and bound-ack, and the
+; wait commands' timeout (uint32 0..3600 seconds).  The host's codec is
+; books/consumer-wait-codec.lisp's (codes 9 and 10 over the consumer
+; codec's 0..8), which host/native-control-host.lisp calls.  The
 ; decoder's answer (:consumer KIND FIRST SECOND) and the encoder's arguments
 ; have the grammar value (fn-wf-cs-request-value KIND FIRST SECOND).
 
@@ -481,6 +484,12 @@
                                   (fn-wg-decode))
            :expand ((fn-wg-take 2 b) (fn-wg-take 1 (cdr b)) (fn-wg-drop 2 b) (fn-wg-drop 1 (cdr b))))))
 
+(defconst *fn-wf-cs-timeout* '(:uint 4 0 3600))
+(defun fn-wf-cs-request-name (code)
+  (declare (xargs :guard t))
+  (cond ((equal code 9) :wait)
+        ((equal code 10) :bound-wait)
+        (t (fn-ncl-code-command code))))
 (defconst *fn-wf-cs-request-payload*
   `(:tag 1
     (0 :register (:seq ,*fn-wf-cs-id* ,*fn-wf-cs-id*))
@@ -491,7 +500,9 @@
     (5 :poll (:seq ,*fn-wf-cs-id*))
     (6 :status (:seq ,*fn-wf-cs-id*))
     (7 :bound-poll (:seq ,*fn-wf-cs-id* ,*fn-wf-cs-secret*))
-    (8 :bound-ack (:seq ,*fn-wf-cs-secret* ,*fn-wf-fncu-grammar*))))
+    (8 :bound-ack (:seq ,*fn-wf-cs-secret* ,*fn-wf-fncu-grammar*))
+    (9 :wait (:seq ,*fn-wf-cs-id* ,*fn-wf-cs-timeout*))
+    (10 :bound-wait (:seq ,*fn-wf-cs-id* (:seq ,*fn-wf-cs-timeout* ,*fn-wf-cs-secret*)))))
 (defconst *fn-wf-cs-request-grammar*
   `(:frame (70 78 67 84) 1 4 1024 ,*fn-wf-cs-request-payload*))
 (defthm fn-wf-cs-request-grammarp
@@ -503,14 +514,14 @@
 (defthm fn-wf-cs-request-payload-decode
   (implies (fn-cbor-octet-listp p)
            (equal (fn-wg-decode *fn-wf-cs-request-payload* p)
-                  (if (and (consp p) (fn-ncl-code-command (car p)))
+                  (if (and (consp p) (fn-wf-cs-request-name (car p)))
                       (let ((r (fn-wg-decode (fn-wf-cs-request-arm (car p)) (cdr p))))
                         (if (fn-wg-okp r)
-                            (fn-wg-ok (list (fn-ncl-code-command (car p)) (fn-wg-value r)) (fn-wg-rest r))
+                            (fn-wg-ok (list (fn-wf-cs-request-name (car p)) (fn-wg-value r)) (fn-wg-rest r))
                           r))
                     (fn-wg-malformed))))
   :hints (("Goal" :in-theory (e/d (fn-wg-decode-opener-tag fn-wg-tag-next fn-wg-take fn-wg-drop
-                                   fn-wg-be-value fn-wg-rev fn-ncl-code-command fn-wf-cs-request-arm)
+                                   fn-wg-be-value fn-wg-rev fn-ncl-code-command fn-wf-cs-request-name fn-wf-cs-request-arm)
                                   (fn-wg-decode (:e fn-wg-decode)))
            :expand ((fn-wg-take 1 p) (fn-wg-drop 1 p)))))
 
@@ -523,9 +534,10 @@
     (:bootstrap (list :bootstrap nil))
     (:bound-poll (list :bound-poll (list first second)))
     (:bound-ack (list :bound-ack (list second (fn-wf-fncu-value (cadr (fn-cp-cursor-decode first))))))
+    ((:wait :bound-wait) (list kind (list first second)))
     (otherwise nil)))
 (defun fn-wf-cs-request-host (p)
-  (fn-ncl-request-payload-decode (fn-frame-ok '(70 78 67 84) 1 4 p)))
+  (fn-cwait-request-payload-decode (fn-frame-ok '(70 78 67 84) 1 4 p)))
 (local
  (defthm fn-wf-cs-len-take
    (equal (len (take n x)) (nfix n))))
@@ -570,8 +582,8 @@
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-wf-cs-read-id-len (b (cdr p)))
                  (:instance fn-wf-cs-read-id-len (b (fn-cp-nth 2 (fn-cp-read-id (cdr p))))))
-           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-ncl-request-payload-decode
-                            fn-wf-cs-request-arm fn-wf-wg-decode-seq2 fn-wf-cs-id-decode fn-ncl-code-command
+           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-cwait-request-payload-decode fn-ncl-request-payload-decode
+                            fn-wf-cs-request-arm fn-wf-wg-decode-seq2 fn-wf-cs-id-decode fn-ncl-code-command fn-wf-cs-request-name
                             fn-wg-result-accessors)
                            (fn-wg-decode fn-cp-read-id fn-cp-nth fn-wg-okp fn-wg-ok fn-wg-rest fn-wg-value))))
   :rule-classes nil)
@@ -585,9 +597,9 @@
                            (equal (fn-wg-value w) (fn-wf-cs-request-value (nth 1 h) (nth 2 h) (nth 3 h)))))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-wf-cs-read-id-len (b (cdr p))))
-           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-ncl-request-payload-decode
+           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-cwait-request-payload-decode fn-ncl-request-payload-decode
                             fn-wf-cs-request-arm fn-wf-wg-decode-seq1 fn-wf-wg-decode-seq2 fn-wf-wg-decode-empty-seq
-                            fn-wf-cs-id-decode fn-wf-cs-secret-decode fn-ncl-code-command
+                            fn-wf-cs-id-decode fn-wf-cs-secret-decode fn-ncl-code-command fn-wf-cs-request-name
                             fn-wg-result-accessors)
                            (fn-wg-decode fn-cp-read-id fn-ncl-read-secret fn-cp-nth fn-wg-okp fn-wg-ok fn-wg-rest
                             fn-wg-value fn-cp-cursor-decode fn-wf-fncu-decode-agrees fn-wf-fncu-value fn-wf-fncu-cursor
@@ -603,9 +615,9 @@
                            (equal (fn-wg-value w) (fn-wf-cs-request-value (nth 1 h) (nth 2 h) (nth 3 h)))))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-wf-cs-read-id-len (b (cdr p))))
-           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-ncl-request-payload-decode
+           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-cwait-request-payload-decode fn-ncl-request-payload-decode
                             fn-wf-cs-request-arm fn-wf-wg-decode-seq1 fn-wf-wg-decode-seq2 fn-wf-wg-decode-empty-seq
-                            fn-wf-cs-id-decode fn-wf-cs-secret-decode fn-ncl-code-command
+                            fn-wf-cs-id-decode fn-wf-cs-secret-decode fn-ncl-code-command fn-wf-cs-request-name
                             fn-wg-result-accessors)
                            (fn-wg-decode fn-cp-read-id fn-ncl-read-secret fn-cp-nth fn-wg-okp fn-wg-ok fn-wg-rest
                             fn-wg-value fn-cp-cursor-decode fn-wf-fncu-decode-agrees fn-wf-fncu-value fn-wf-fncu-cursor
@@ -621,9 +633,9 @@
                            (equal (fn-wg-value w) (fn-wf-cs-request-value (nth 1 h) (nth 2 h) (nth 3 h)))))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-wf-cs-read-id-len (b (cdr p))))
-           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-ncl-request-payload-decode
+           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-cwait-request-payload-decode fn-ncl-request-payload-decode
                             fn-wf-cs-request-arm fn-wf-wg-decode-seq1 fn-wf-wg-decode-seq2 fn-wf-wg-decode-empty-seq
-                            fn-wf-cs-id-decode fn-wf-cs-secret-decode fn-ncl-code-command
+                            fn-wf-cs-id-decode fn-wf-cs-secret-decode fn-ncl-code-command fn-wf-cs-request-name
                             fn-wg-result-accessors)
                            (fn-wg-decode fn-cp-read-id fn-ncl-read-secret fn-cp-nth fn-wg-okp fn-wg-ok fn-wg-rest
                             fn-wg-value fn-cp-cursor-decode fn-wf-fncu-decode-agrees fn-wf-fncu-value fn-wf-fncu-cursor
@@ -639,9 +651,9 @@
                            (equal (fn-wg-value w) (fn-wf-cs-request-value (nth 1 h) (nth 2 h) (nth 3 h)))))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-wf-cs-read-id-len (b (cdr p))))
-           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-ncl-request-payload-decode
+           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-cwait-request-payload-decode fn-ncl-request-payload-decode
                             fn-wf-cs-request-arm fn-wf-wg-decode-seq1 fn-wf-wg-decode-seq2 fn-wf-wg-decode-empty-seq
-                            fn-wf-cs-id-decode fn-wf-cs-secret-decode fn-ncl-code-command
+                            fn-wf-cs-id-decode fn-wf-cs-secret-decode fn-ncl-code-command fn-wf-cs-request-name
                             fn-wg-result-accessors)
                            (fn-wg-decode fn-cp-read-id fn-ncl-read-secret fn-cp-nth fn-wg-okp fn-wg-ok fn-wg-rest
                             fn-wg-value fn-cp-cursor-decode fn-wf-fncu-decode-agrees fn-wf-fncu-value fn-wf-fncu-cursor
@@ -657,9 +669,9 @@
                            (equal (fn-wg-value w) (fn-wf-cs-request-value (nth 1 h) (nth 2 h) (nth 3 h)))))))
   :hints (("Goal" :do-not-induct t
            :use ()
-           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-ncl-request-payload-decode
+           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-cwait-request-payload-decode fn-ncl-request-payload-decode
                             fn-wf-cs-request-arm fn-wf-wg-decode-seq1 fn-wf-wg-decode-seq2 fn-wf-wg-decode-empty-seq
-                            fn-wf-cs-id-decode fn-wf-cs-secret-decode fn-ncl-code-command
+                            fn-wf-cs-id-decode fn-wf-cs-secret-decode fn-ncl-code-command fn-wf-cs-request-name
                             fn-wg-result-accessors)
                            (fn-wg-decode fn-cp-read-id fn-ncl-read-secret fn-cp-nth fn-wg-okp fn-wg-ok fn-wg-rest
                             fn-wg-value fn-cp-cursor-decode fn-wf-fncu-decode-agrees fn-wf-fncu-value fn-wf-fncu-cursor
@@ -679,9 +691,9 @@
                  (:instance fn-wf-fncu-value-is-a-cursor (v (fn-wg-value (fn-wg-decode *fn-wf-fncu-grammar* (cdr p)))))
                  (:instance fn-wf-cs-cursor-ok-bounds (c (cdr p)))
                  (:instance fn-cp-at-most-length (xs (cdr p)) (bound 512)))
-           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-ncl-request-payload-decode
+           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-cwait-request-payload-decode fn-ncl-request-payload-decode
                             fn-wf-cs-request-arm fn-wf-wg-decode-seq1 fn-wf-wg-decode-seq2 fn-wf-wg-decode-empty-seq
-                            fn-wf-cs-id-decode fn-wf-cs-secret-decode fn-ncl-code-command
+                            fn-wf-cs-id-decode fn-wf-cs-secret-decode fn-ncl-code-command fn-wf-cs-request-name
                             fn-wg-result-accessors)
                            (fn-wg-decode fn-cp-read-id fn-ncl-read-secret fn-cp-nth fn-wg-okp fn-wg-ok fn-wg-rest
                             fn-wg-value fn-cp-cursor-decode fn-wf-fncu-decode-agrees fn-wf-fncu-value fn-wf-fncu-cursor
@@ -697,9 +709,9 @@
                            (equal (fn-wg-value w) (fn-wf-cs-request-value (nth 1 h) (nth 2 h) (nth 3 h)))))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-wf-cs-read-id-len (b (cdr p))))
-           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-ncl-request-payload-decode
+           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-cwait-request-payload-decode fn-ncl-request-payload-decode
                             fn-wf-cs-request-arm fn-wf-wg-decode-seq1 fn-wf-wg-decode-seq2 fn-wf-wg-decode-empty-seq
-                            fn-wf-cs-id-decode fn-wf-cs-secret-decode fn-ncl-code-command
+                            fn-wf-cs-id-decode fn-wf-cs-secret-decode fn-ncl-code-command fn-wf-cs-request-name
                             fn-wg-result-accessors)
                            (fn-wg-decode fn-cp-read-id fn-ncl-read-secret fn-cp-nth fn-wg-okp fn-wg-ok fn-wg-rest
                             fn-wg-value fn-cp-cursor-decode fn-wf-fncu-decode-agrees fn-wf-fncu-value fn-wf-fncu-cursor
@@ -719,23 +731,90 @@
                  (:instance fn-wf-fncu-value-is-a-cursor (v (fn-wg-value (fn-wg-decode *fn-wf-fncu-grammar* (fn-cp-nth 2 (fn-ncl-read-secret (cdr p)))))))
                  (:instance fn-wf-cs-cursor-ok-bounds (c (fn-cp-nth 2 (fn-ncl-read-secret (cdr p)))))
                  (:instance fn-cp-at-most-length (xs (fn-cp-nth 2 (fn-ncl-read-secret (cdr p)))) (bound 512)))
-           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-ncl-request-payload-decode
+           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-cwait-request-payload-decode fn-ncl-request-payload-decode
                             fn-wf-cs-request-arm fn-wf-wg-decode-seq1 fn-wf-wg-decode-seq2 fn-wf-wg-decode-empty-seq
-                            fn-wf-cs-id-decode fn-wf-cs-secret-decode fn-ncl-code-command
+                            fn-wf-cs-id-decode fn-wf-cs-secret-decode fn-ncl-code-command fn-wf-cs-request-name
                             fn-wg-result-accessors)
                            (fn-wg-decode fn-cp-read-id fn-ncl-read-secret fn-cp-nth fn-wg-okp fn-wg-ok fn-wg-rest
                             fn-wg-value fn-cp-cursor-decode fn-wf-fncu-decode-agrees fn-wf-fncu-value fn-wf-fncu-cursor
                             fn-wg-encode-of-decode fn-wf-fncu-value-is-a-cursor fn-wg-valuep fn-wg-encode))))
   :rule-classes nil)
 
+(local
+ (defthm fn-wf-cs-be-value-of-take-4
+   (implies (and (fn-cbor-octet-listp xs) (<= 4 (len xs)))
+            (equal (fn-wg-be-value (fn-wg-take 4 xs)) (fn-cbor-u32-from xs)))
+   :hints (("Goal" :in-theory (enable fn-wg-be-value fn-wg-le-value fn-wg-rev fn-cbor-u32-from
+                                      fn-cbor-octet-listp)
+            :expand ((fn-wg-take 4 xs) (fn-wg-take 3 (cdr xs)) (fn-wg-take 2 (cddr xs))
+                     (fn-wg-take 1 (cdddr xs)))))))
+(local
+ (defthm fn-wf-cs-u32-from-natural
+   (implies (and (fn-cbor-octet-listp xs) (<= 4 (len xs)))
+            (natp (fn-cbor-u32-from xs)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-cbor-u32-from fn-cbor-octet-listp fn-cbor-octetp)))))
+(defthm fn-wf-cs-timeout-decode
+  (implies (fn-cbor-octet-listp b)
+           (equal (fn-wg-decode *fn-wf-cs-timeout* b)
+                  (if (and (equal (car (fn-cp-read-u32 b)) :ok)
+                           (fn-cwait-secondsp (fn-cp-nth 1 (fn-cp-read-u32 b))))
+                      (fn-wg-ok (fn-cp-nth 1 (fn-cp-read-u32 b)) (fn-cp-nth 2 (fn-cp-read-u32 b)))
+                    (fn-wg-malformed))))
+  :hints (("Goal" :in-theory (e/d (fn-wg-decode-opener-uint fn-cp-read-u32 fn-cp-nth fn-cwait-secondsp)
+                                  (fn-wg-decode fn-wg-be-value fn-cbor-u32-from fn-wf-cs-wg-take-is-take))
+           :use ((:instance fn-wf-cs-u32-from-natural (xs b))))))
+(local
+ (defthm fn-wf-cs-read-u32-rest-octets
+   (implies (fn-cbor-octet-listp b)
+            (fn-cbor-octet-listp (fn-cp-nth 2 (fn-cp-read-u32 b))))
+   :hints (("Goal" :in-theory (enable fn-cp-read-u32 fn-cp-nth)))))
+(local
+ (defthm fn-wf-cs-read-u32-len
+   (implies (equal (car (fn-cp-read-u32 b)) :ok)
+            (equal (len b) (+ 4 (len (fn-cp-nth 2 (fn-cp-read-u32 b))))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-cp-read-u32 fn-cp-nth)))))
+(defthm fn-wf-cs-request-wait-agrees
+  (implies (and (fn-cbor-octet-listp p) (consp p) (equal (car p) 9) (<= (len p) 1024))
+           (let ((h (fn-wf-cs-request-host p))
+                 (w (fn-wg-decode *fn-wf-cs-request-payload* p)))
+             (and (iff (equal (car h) :consumer) (and (fn-wg-okp w) (null (fn-wg-rest w))))
+                  (implies (equal (car h) :consumer)
+                           (equal (fn-wg-value w) (fn-wf-cs-request-value (nth 1 h) (nth 2 h) (nth 3 h)))))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-wf-cs-read-id-len (b (cdr p))) (:instance fn-wf-cs-read-u32-len (b (fn-cp-nth 2 (fn-cp-read-id (cdr p))))))
+           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-cwait-request-payload-decode
+                            fn-cwait-read-body fn-wf-cs-request-arm fn-wf-wg-decode-seq1 fn-wf-wg-decode-seq2
+                            fn-wf-cs-id-decode fn-wf-cs-secret-decode fn-wf-cs-timeout-decode fn-wf-cs-request-name
+                            fn-wg-result-accessors)
+                           (fn-wg-decode fn-cp-read-id fn-ncl-read-secret fn-cp-read-u32 fn-cp-nth fn-wg-okp fn-wg-ok
+                            fn-wg-rest fn-wg-value fn-cwait-secondsp))))
+  :rule-classes nil)
+(defthm fn-wf-cs-request-bound-wait-agrees
+  (implies (and (fn-cbor-octet-listp p) (consp p) (equal (car p) 10) (<= (len p) 1024))
+           (let ((h (fn-wf-cs-request-host p))
+                 (w (fn-wg-decode *fn-wf-cs-request-payload* p)))
+             (and (iff (equal (car h) :consumer) (and (fn-wg-okp w) (null (fn-wg-rest w))))
+                  (implies (equal (car h) :consumer)
+                           (equal (fn-wg-value w) (fn-wf-cs-request-value (nth 1 h) (nth 2 h) (nth 3 h)))))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-wf-cs-read-id-len (b (cdr p))) (:instance fn-wf-cs-read-u32-len (b (fn-cp-nth 2 (fn-cp-read-id (cdr p))))))
+           :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-cwait-request-payload-decode
+                            fn-cwait-read-body fn-wf-cs-request-arm fn-wf-wg-decode-seq1 fn-wf-wg-decode-seq2
+                            fn-wf-cs-id-decode fn-wf-cs-secret-decode fn-wf-cs-timeout-decode fn-wf-cs-request-name
+                            fn-wg-result-accessors)
+                           (fn-wg-decode fn-cp-read-id fn-ncl-read-secret fn-cp-read-u32 fn-cp-nth fn-wg-okp fn-wg-ok
+                            fn-wg-rest fn-wg-value fn-cwait-secondsp))))
+  :rule-classes nil)
 (defthm fn-wf-cs-request-other-refused
   (implies (and (fn-cbor-octet-listp p)
-                (not (and (consp p) (member (car p) '(0 1 2 3 4 5 6 7 8)))))
+                (not (and (consp p) (member (car p) '(0 1 2 3 4 5 6 7 8 9 10)))))
            (and (not (equal (car (fn-wf-cs-request-host p)) :consumer))
                 (not (fn-wg-okp (fn-wg-decode *fn-wf-cs-request-payload* p)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host
-                                   fn-ncl-request-payload-decode fn-ncl-code-command)
+  :hints (("Goal" :in-theory (e/d (fn-wf-cs-request-payload-decode fn-wf-cs-request-host fn-cwait-request-payload-decode
+                                   fn-ncl-request-payload-decode fn-ncl-code-command fn-wf-cs-request-name)
                                   (fn-wg-decode)))))
 (defthm fn-wf-cs-request-payload-agrees
   (implies (and (fn-cbor-octet-listp p) (<= (len p) 1024))
@@ -748,13 +827,14 @@
            :use (fn-wf-cs-request-other-refused fn-wf-cs-request-register-agrees fn-wf-cs-request-ack-agrees
                  fn-wf-cs-request-position-agrees fn-wf-cs-request-unregister-agrees
                  fn-wf-cs-request-bootstrap-agrees fn-wf-cs-request-poll-agrees fn-wf-cs-request-status-agrees
-                 fn-wf-cs-request-bound-poll-agrees fn-wf-cs-request-bound-ack-agrees)
+                 fn-wf-cs-request-bound-poll-agrees fn-wf-cs-request-bound-ack-agrees
+                 fn-wf-cs-request-wait-agrees fn-wf-cs-request-bound-wait-agrees)
            :in-theory (union-theories '((:e member-equal) member-equal) (theory 'minimal-theory)))))
 
 (defthm fn-wf-cs-request-decode-is-host
   (implies (fn-cbor-octet-listp x)
            (let ((r (fn-frame-decode x (fn-frame-trailer (fn-frame-protected-prefix x)) *fn-nctrl-max-payload*)))
-             (equal (fn-ncl-request-decode x)
+             (equal (fn-cwait-request-decode x)
                     (if (and (fn-frame-result-okp r)
                              (equal (fn-frame-result-magic r) (list 70 78 67 84))
                              (equal (fn-frame-result-version r) 1)
@@ -762,7 +842,7 @@
                         (fn-wf-cs-request-host (fn-frame-result-payload r))
                       (list :refused :frame)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-ncl-request-decode fn-nctrl-open fn-wf-cs-request-host
+  :hints (("Goal" :in-theory (e/d (fn-cwait-request-decode fn-nctrl-open fn-wf-cs-request-host fn-cwait-request-payload-decode
                                    fn-ncl-request-payload-decode)
                                   (fn-frame-decode fn-frame-trailer fn-frame-protected-prefix
                                    fn-cp-read-id fn-ncl-read-secret fn-cp-cursor-decode)))))
@@ -770,13 +850,14 @@
   (implies (equal (car (fn-wf-cs-request-host p)) :consumer)
            (<= (len p) 1024))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-wf-cs-request-host fn-ncl-request-payload-decode)
-                                  (fn-cp-read-id fn-ncl-read-secret fn-cp-cursor-decode)))))
+  :hints (("Goal" :in-theory (e/d (fn-wf-cs-request-host fn-cwait-request-payload-decode fn-ncl-request-payload-decode
+                                   fn-cwait-read-body)
+                                  (fn-cp-read-id fn-ncl-read-secret fn-cp-cursor-decode fn-cp-read-u32)))))
 ; KEYSTONE (agreement).  The host's request decoder answers :consumer for
 ; exactly the frames the exported grammar accepts whole, with the same value.
 (defthm fn-wf-cs-request-decode-agrees
   (implies (fn-cbor-octet-listp x)
-           (let ((r (fn-ncl-request-decode x))
+           (let ((r (fn-cwait-request-decode x))
                  (w (fn-wg-decode *fn-wf-cs-request-grammar* x)))
              (and (iff (equal (car r) :consumer)
                        (and (fn-wg-okp w) (null (fn-wg-rest w))))
@@ -828,6 +909,16 @@
                                      fn-ncl-secret-bytes fn-wg-app-is-append)
                            (fn-wg-be-bytes))))))
 
+(defthm fn-wf-cs-timeout-encode
+  (implies (fn-cwait-secondsp x)
+           (and (fn-wg-valuep *fn-wf-cs-timeout* x)
+                (equal (fn-wg-encode *fn-wf-cs-timeout* x) (fn-cbor-u32-bytes x))
+                (fn-cbor-octet-listp (fn-cbor-u32-bytes x))
+                (equal (len (fn-cbor-u32-bytes x)) 4)))
+  :hints (("Goal" :in-theory (e/d (fn-wg-encode-opener-uint fn-wg-valuep-opener-uint fn-cwait-secondsp
+                                   fn-cbor-u32-bytes-are-octets fn-cp-u32-bytes-four)
+                                  (fn-cbor-u32-bytes)))))
+
 (defun fn-wf-cs-request-payload (kind first second)
   (let ((code (fn-ncl-command-code kind)))
     (case kind
@@ -837,16 +928,19 @@
       ((:position :unregister :poll :status) (cons code (fn-cp-id-bytes first)))
       (:bound-poll (append (list code) (fn-cp-id-bytes first) (fn-ncl-secret-bytes second)))
       (:bound-ack (append (list code) (fn-ncl-secret-bytes second) first))
+      (:wait (append (list 9) (fn-cp-id-bytes first) (fn-cbor-u32-bytes second)))
+      (:bound-wait (append (list 10) (fn-cp-id-bytes first) (fn-cbor-u32-bytes (car second))
+                           (fn-ncl-secret-bytes (cadr second))))
       (otherwise nil))))
 (defthm fn-wf-cs-request-encode-is-seal
-  (implies (not (equal (fn-ncl-request-encode kind first second) :bad))
-           (equal (fn-ncl-request-encode kind first second)
+  (implies (not (equal (fn-cwait-request-encode kind first second) :bad))
+           (equal (fn-cwait-request-encode kind first second)
                   (fn-nctrl-seal 4 (fn-wf-cs-request-payload kind first second))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-ncl-request-encode) (fn-nctrl-seal fn-cp-cursor-decode)))))
+  :hints (("Goal" :in-theory (e/d (fn-cwait-request-encode fn-ncl-request-encode) (fn-nctrl-seal fn-cp-cursor-decode)))))
 
 (defthm fn-wf-cs-request-payload-encode-bootstrap
-  (implies (and (equal kind :bootstrap) (not (equal (fn-ncl-request-encode kind first second) :bad)))
+  (implies (and (equal kind :bootstrap) (not (equal (fn-cwait-request-encode kind first second) :bad)))
            (let ((p (fn-wf-cs-request-payload kind first second))
                  (v (fn-wf-cs-request-value kind first second)))
              (and (fn-wg-valuep *fn-wf-cs-request-payload* v)
@@ -856,7 +950,7 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ()
-           :in-theory (e/d (fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
+           :in-theory (e/d (fn-cwait-request-encode fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
                             fn-wg-encode-opener-tag fn-wg-valuep-opener-tag fn-wg-tag-next
                             fn-wf-wg-encode-seq1 fn-wf-wg-encode-seq2 fn-wf-wg-encode-empty-seq
                             fn-wg-app-is-append fn-wf-be-bytes-1)
@@ -865,7 +959,7 @@
                             fn-cp-id-bytes fn-ncl-secret-bytes fn-wg-be-bytes)))))
 
 (defthm fn-wf-cs-request-payload-encode-register
-  (implies (and (equal kind :register) (not (equal (fn-ncl-request-encode kind first second) :bad)))
+  (implies (and (equal kind :register) (not (equal (fn-cwait-request-encode kind first second) :bad)))
            (let ((p (fn-wf-cs-request-payload kind first second))
                  (v (fn-wf-cs-request-value kind first second)))
              (and (fn-wg-valuep *fn-wf-cs-request-payload* v)
@@ -875,7 +969,7 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-wf-cs-id-encode (x first)) (:instance fn-wf-cs-id-encode (x second)))
-           :in-theory (e/d (fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
+           :in-theory (e/d (fn-cwait-request-encode fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
                             fn-wg-encode-opener-tag fn-wg-valuep-opener-tag fn-wg-tag-next
                             fn-wf-wg-encode-seq1 fn-wf-wg-encode-seq2 fn-wf-wg-encode-empty-seq
                             fn-wg-app-is-append fn-wf-be-bytes-1)
@@ -884,7 +978,7 @@
                             fn-cp-id-bytes fn-ncl-secret-bytes fn-wg-be-bytes)))))
 
 (defthm fn-wf-cs-request-payload-encode-ack
-  (implies (and (equal kind :ack) (not (equal (fn-ncl-request-encode kind first second) :bad)))
+  (implies (and (equal kind :ack) (not (equal (fn-cwait-request-encode kind first second) :bad)))
            (let ((p (fn-wf-cs-request-payload kind first second))
                  (v (fn-wf-cs-request-value kind first second)))
              (and (fn-wg-valuep *fn-wf-cs-request-payload* v)
@@ -894,7 +988,7 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-wf-cs-cursor-ok-facts (c first)))
-           :in-theory (e/d (fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
+           :in-theory (e/d (fn-cwait-request-encode fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
                             fn-wg-encode-opener-tag fn-wg-valuep-opener-tag fn-wg-tag-next
                             fn-wf-wg-encode-seq1 fn-wf-wg-encode-seq2 fn-wf-wg-encode-empty-seq
                             fn-wg-app-is-append fn-wf-be-bytes-1)
@@ -903,7 +997,7 @@
                             fn-cp-id-bytes fn-ncl-secret-bytes fn-wg-be-bytes)))))
 
 (defthm fn-wf-cs-request-payload-encode-position
-  (implies (and (equal kind :position) (not (equal (fn-ncl-request-encode kind first second) :bad)))
+  (implies (and (equal kind :position) (not (equal (fn-cwait-request-encode kind first second) :bad)))
            (let ((p (fn-wf-cs-request-payload kind first second))
                  (v (fn-wf-cs-request-value kind first second)))
              (and (fn-wg-valuep *fn-wf-cs-request-payload* v)
@@ -913,7 +1007,7 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-wf-cs-id-encode (x first)))
-           :in-theory (e/d (fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
+           :in-theory (e/d (fn-cwait-request-encode fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
                             fn-wg-encode-opener-tag fn-wg-valuep-opener-tag fn-wg-tag-next
                             fn-wf-wg-encode-seq1 fn-wf-wg-encode-seq2 fn-wf-wg-encode-empty-seq
                             fn-wg-app-is-append fn-wf-be-bytes-1)
@@ -922,7 +1016,7 @@
                             fn-cp-id-bytes fn-ncl-secret-bytes fn-wg-be-bytes)))))
 
 (defthm fn-wf-cs-request-payload-encode-unregister
-  (implies (and (equal kind :unregister) (not (equal (fn-ncl-request-encode kind first second) :bad)))
+  (implies (and (equal kind :unregister) (not (equal (fn-cwait-request-encode kind first second) :bad)))
            (let ((p (fn-wf-cs-request-payload kind first second))
                  (v (fn-wf-cs-request-value kind first second)))
              (and (fn-wg-valuep *fn-wf-cs-request-payload* v)
@@ -932,7 +1026,7 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-wf-cs-id-encode (x first)))
-           :in-theory (e/d (fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
+           :in-theory (e/d (fn-cwait-request-encode fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
                             fn-wg-encode-opener-tag fn-wg-valuep-opener-tag fn-wg-tag-next
                             fn-wf-wg-encode-seq1 fn-wf-wg-encode-seq2 fn-wf-wg-encode-empty-seq
                             fn-wg-app-is-append fn-wf-be-bytes-1)
@@ -941,7 +1035,7 @@
                             fn-cp-id-bytes fn-ncl-secret-bytes fn-wg-be-bytes)))))
 
 (defthm fn-wf-cs-request-payload-encode-poll
-  (implies (and (equal kind :poll) (not (equal (fn-ncl-request-encode kind first second) :bad)))
+  (implies (and (equal kind :poll) (not (equal (fn-cwait-request-encode kind first second) :bad)))
            (let ((p (fn-wf-cs-request-payload kind first second))
                  (v (fn-wf-cs-request-value kind first second)))
              (and (fn-wg-valuep *fn-wf-cs-request-payload* v)
@@ -951,7 +1045,7 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-wf-cs-id-encode (x first)))
-           :in-theory (e/d (fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
+           :in-theory (e/d (fn-cwait-request-encode fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
                             fn-wg-encode-opener-tag fn-wg-valuep-opener-tag fn-wg-tag-next
                             fn-wf-wg-encode-seq1 fn-wf-wg-encode-seq2 fn-wf-wg-encode-empty-seq
                             fn-wg-app-is-append fn-wf-be-bytes-1)
@@ -960,7 +1054,7 @@
                             fn-cp-id-bytes fn-ncl-secret-bytes fn-wg-be-bytes)))))
 
 (defthm fn-wf-cs-request-payload-encode-status
-  (implies (and (equal kind :status) (not (equal (fn-ncl-request-encode kind first second) :bad)))
+  (implies (and (equal kind :status) (not (equal (fn-cwait-request-encode kind first second) :bad)))
            (let ((p (fn-wf-cs-request-payload kind first second))
                  (v (fn-wf-cs-request-value kind first second)))
              (and (fn-wg-valuep *fn-wf-cs-request-payload* v)
@@ -970,7 +1064,7 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-wf-cs-id-encode (x first)))
-           :in-theory (e/d (fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
+           :in-theory (e/d (fn-cwait-request-encode fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
                             fn-wg-encode-opener-tag fn-wg-valuep-opener-tag fn-wg-tag-next
                             fn-wf-wg-encode-seq1 fn-wf-wg-encode-seq2 fn-wf-wg-encode-empty-seq
                             fn-wg-app-is-append fn-wf-be-bytes-1)
@@ -979,7 +1073,7 @@
                             fn-cp-id-bytes fn-ncl-secret-bytes fn-wg-be-bytes)))))
 
 (defthm fn-wf-cs-request-payload-encode-bound-poll
-  (implies (and (equal kind :bound-poll) (not (equal (fn-ncl-request-encode kind first second) :bad)))
+  (implies (and (equal kind :bound-poll) (not (equal (fn-cwait-request-encode kind first second) :bad)))
            (let ((p (fn-wf-cs-request-payload kind first second))
                  (v (fn-wf-cs-request-value kind first second)))
              (and (fn-wg-valuep *fn-wf-cs-request-payload* v)
@@ -989,7 +1083,7 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-wf-cs-id-encode (x first)) (:instance fn-wf-cs-secret-encode (x second)))
-           :in-theory (e/d (fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
+           :in-theory (e/d (fn-cwait-request-encode fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
                             fn-wg-encode-opener-tag fn-wg-valuep-opener-tag fn-wg-tag-next
                             fn-wf-wg-encode-seq1 fn-wf-wg-encode-seq2 fn-wf-wg-encode-empty-seq
                             fn-wg-app-is-append fn-wf-be-bytes-1)
@@ -998,7 +1092,7 @@
                             fn-cp-id-bytes fn-ncl-secret-bytes fn-wg-be-bytes)))))
 
 (defthm fn-wf-cs-request-payload-encode-bound-ack
-  (implies (and (equal kind :bound-ack) (not (equal (fn-ncl-request-encode kind first second) :bad)))
+  (implies (and (equal kind :bound-ack) (not (equal (fn-cwait-request-encode kind first second) :bad)))
            (let ((p (fn-wf-cs-request-payload kind first second))
                  (v (fn-wf-cs-request-value kind first second)))
              (and (fn-wg-valuep *fn-wf-cs-request-payload* v)
@@ -1008,7 +1102,46 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-wf-cs-cursor-ok-facts (c first)) (:instance fn-wf-cs-secret-encode (x second)))
-           :in-theory (e/d (fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
+           :in-theory (e/d (fn-cwait-request-encode fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
+                            fn-wg-encode-opener-tag fn-wg-valuep-opener-tag fn-wg-tag-next
+                            fn-wf-wg-encode-seq1 fn-wf-wg-encode-seq2 fn-wf-wg-encode-empty-seq
+                            fn-wg-app-is-append fn-wf-be-bytes-1)
+                           (fn-nctrl-seal fn-wg-encode fn-wg-valuep fn-cp-cursor-decode fn-wf-fncu-value
+                            fn-wf-cs-id-encode fn-wf-cs-secret-encode
+                            fn-cp-id-bytes fn-ncl-secret-bytes fn-wg-be-bytes)))))
+
+(defthm fn-wf-cs-request-payload-encode-wait
+  (implies (and (equal kind :wait) (not (equal (fn-cwait-request-encode kind first second) :bad)))
+           (let ((p (fn-wf-cs-request-payload kind first second))
+                 (v (fn-wf-cs-request-value kind first second)))
+             (and (fn-wg-valuep *fn-wf-cs-request-payload* v)
+                  (equal (fn-wg-encode *fn-wf-cs-request-payload* v) p)
+                  (fn-cbor-octet-listp p)
+                  (<= (len p) 1024))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-wf-cs-id-encode (x first)) (:instance fn-wf-cs-timeout-encode (x second)))
+           :in-theory (e/d (fn-cwait-request-encode fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
+                            fn-wg-encode-opener-tag fn-wg-valuep-opener-tag fn-wg-tag-next
+                            fn-wf-wg-encode-seq1 fn-wf-wg-encode-seq2 fn-wf-wg-encode-empty-seq
+                            fn-wg-app-is-append fn-wf-be-bytes-1)
+                           (fn-nctrl-seal fn-wg-encode fn-wg-valuep fn-cp-cursor-decode fn-wf-fncu-value
+                            fn-wf-cs-id-encode fn-wf-cs-secret-encode
+                            fn-cp-id-bytes fn-ncl-secret-bytes fn-wg-be-bytes)))))
+
+(defthm fn-wf-cs-request-payload-encode-bound-wait
+  (implies (and (equal kind :bound-wait) (not (equal (fn-cwait-request-encode kind first second) :bad)))
+           (let ((p (fn-wf-cs-request-payload kind first second))
+                 (v (fn-wf-cs-request-value kind first second)))
+             (and (fn-wg-valuep *fn-wf-cs-request-payload* v)
+                  (equal (fn-wg-encode *fn-wf-cs-request-payload* v) p)
+                  (fn-cbor-octet-listp p)
+                  (<= (len p) 1024))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-wf-cs-id-encode (x first)) (:instance fn-wf-cs-timeout-encode (x (car second)))
+                 (:instance fn-wf-cs-secret-encode (x (cadr second))))
+           :in-theory (e/d (fn-cwait-request-encode fn-ncl-request-encode fn-ncl-command-code fn-wf-cs-request-value fn-wf-cs-request-payload
                             fn-wg-encode-opener-tag fn-wg-valuep-opener-tag fn-wg-tag-next
                             fn-wf-wg-encode-seq1 fn-wf-wg-encode-seq2 fn-wf-wg-encode-empty-seq
                             fn-wg-app-is-append fn-wf-be-bytes-1)
@@ -1017,12 +1150,12 @@
                             fn-cp-id-bytes fn-ncl-secret-bytes fn-wg-be-bytes)))))
 
 (defthm fn-wf-cs-request-encode-other-bad
-  (implies (not (member kind '(:bootstrap :register :ack :position :unregister :poll :status :bound-poll :bound-ack)))
-           (equal (fn-ncl-request-encode kind first second) :bad))
+  (implies (not (member kind '(:bootstrap :register :ack :position :unregister :poll :status :bound-poll :bound-ack :wait :bound-wait)))
+           (equal (fn-cwait-request-encode kind first second) :bad))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-ncl-request-encode) (fn-nctrl-seal fn-cp-cursor-decode)))))
+  :hints (("Goal" :in-theory (e/d (fn-cwait-request-encode fn-ncl-request-encode) (fn-nctrl-seal fn-cp-cursor-decode)))))
 (defthm fn-wf-cs-request-payload-encode-agrees
-  (implies (not (equal (fn-ncl-request-encode kind first second) :bad))
+  (implies (not (equal (fn-cwait-request-encode kind first second) :bad))
            (let ((p (fn-wf-cs-request-payload kind first second))
                  (v (fn-wf-cs-request-value kind first second)))
              (and (fn-wg-valuep *fn-wf-cs-request-payload* v)
@@ -1030,15 +1163,16 @@
                   (fn-cbor-octet-listp p)
                   (<= (len p) 1024))))
   :hints (("Goal" :do-not-induct t
-           :use (fn-wf-cs-request-encode-other-bad fn-wf-cs-request-payload-encode-bootstrap fn-wf-cs-request-payload-encode-register fn-wf-cs-request-payload-encode-ack fn-wf-cs-request-payload-encode-position fn-wf-cs-request-payload-encode-unregister fn-wf-cs-request-payload-encode-poll fn-wf-cs-request-payload-encode-status fn-wf-cs-request-payload-encode-bound-poll fn-wf-cs-request-payload-encode-bound-ack)
+           :use (fn-wf-cs-request-encode-other-bad fn-wf-cs-request-payload-encode-bootstrap fn-wf-cs-request-payload-encode-register fn-wf-cs-request-payload-encode-ack fn-wf-cs-request-payload-encode-position fn-wf-cs-request-payload-encode-unregister fn-wf-cs-request-payload-encode-poll fn-wf-cs-request-payload-encode-status fn-wf-cs-request-payload-encode-bound-poll fn-wf-cs-request-payload-encode-bound-ack
+                 fn-wf-cs-request-payload-encode-wait fn-wf-cs-request-payload-encode-bound-wait)
            :in-theory (union-theories '(member-equal) (theory 'minimal-theory)))))
 
 ; KEYSTONE (agreement).  The host's request encoder, when it encodes, is
 ; fn-wg-encode at the grammar.
 (defthm fn-wf-cs-request-encode-agrees
-  (implies (not (equal (fn-ncl-request-encode kind first second) :bad))
+  (implies (not (equal (fn-cwait-request-encode kind first second) :bad))
            (and (fn-wg-valuep *fn-wf-cs-request-grammar* (fn-wf-cs-request-value kind first second))
-                (equal (fn-ncl-request-encode kind first second)
+                (equal (fn-cwait-request-encode kind first second)
                        (fn-wg-encode *fn-wf-cs-request-grammar* (fn-wf-cs-request-value kind first second)))))
   :hints (("Goal" :do-not-induct t
            :use (fn-wf-cs-request-payload-encode-agrees fn-wf-cs-request-encode-is-seal
@@ -1048,3 +1182,85 @@
                             (p (fn-wf-cs-request-payload kind first second))))
            :in-theory (union-theories '(fn-wf-cs-request-grammarp (:e fn-cbor-octetp) (:e natp) (:e <))
                                       (theory 'minimal-theory)))))
+
+; -----------------------------------------------------------------------------
+; fnct.consumer.reasoned-request (FNCT kind 22): the kind-4 request's payload
+; in a kind-22 frame (books/consumer-reason.lisp), decided as the kind-4
+; request with that payload.  Same payload grammar, same value.
+
+(defconst *fn-wf-cs-reasoned-request-grammar*
+  `(:frame (70 78 67 84) 1 22 1024 ,*fn-wf-cs-request-payload*))
+(defthm fn-wf-cs-reasoned-request-grammarp
+  (fn-wg-grammarp *fn-wf-cs-reasoned-request-grammar*))
+(defthm fn-wf-cs-reasoned-request-decode-is-host
+  (implies (fn-cbor-octet-listp x)
+           (let ((r (fn-frame-decode x (fn-frame-trailer (fn-frame-protected-prefix x)) *fn-nctrl-max-payload*)))
+             (equal (fn-ncr-request-decode x)
+                    (if (and (fn-frame-result-okp r)
+                             (equal (fn-frame-result-magic r) (list 70 78 67 84))
+                             (equal (fn-frame-result-version r) 1)
+                             (equal (fn-frame-result-kind r) 22))
+                        (fn-wf-cs-request-host (fn-frame-result-payload r))
+                      (list :refused :frame)))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-nctrl-open-of-seal (kind 4)
+                                   (payload (fn-frame-result-payload
+                                             (fn-frame-decode x (fn-frame-trailer (fn-frame-protected-prefix x))
+                                                              *fn-nctrl-max-payload*))))
+                        (:instance fn-frame-decode-payload-octets (octets x)
+                                   (digest (fn-frame-trailer (fn-frame-protected-prefix x)))
+                                   (max-payload *fn-nctrl-max-payload*))
+                        (:instance fn-frame-decode-bounds-its-payload (octets x)
+                                   (digest (fn-frame-trailer (fn-frame-protected-prefix x)))
+                                   (max-payload *fn-nctrl-max-payload*)))
+           :in-theory (e/d (fn-ncr-request-decode fn-ncr-request-payload-decode fn-nctrl-open fn-cwait-request-decode
+                            fn-wf-cs-request-host)
+                           (fn-nctrl-open-of-seal fn-frame-decode-payload-octets fn-frame-decode-bounds-its-payload
+                            fn-frame-decode fn-frame-trailer fn-frame-protected-prefix fn-nctrl-seal
+                            fn-cwait-request-payload-decode)))))
+; KEYSTONE (agreement), kind 22.
+(defthm fn-wf-cs-reasoned-request-decode-agrees
+  (implies (fn-cbor-octet-listp x)
+           (let ((r (fn-ncr-request-decode x))
+                 (w (fn-wg-decode *fn-wf-cs-reasoned-request-grammar* x)))
+             (and (iff (equal (car r) :consumer)
+                       (and (fn-wg-okp w) (null (fn-wg-rest w))))
+                  (implies (equal (car r) :consumer)
+                           (equal (fn-wg-value w) (fn-wf-cs-request-value (nth 1 r) (nth 2 r) (nth 3 r)))))))
+  :hints (("Goal" :do-not-induct t
+           :use (fn-wf-cs-reasoned-request-decode-is-host
+                 (:instance fn-wf-fnct-whole-decode (g *fn-wf-cs-request-payload*) (k 22) (mx 1024)
+                            (hm *fn-nctrl-max-payload*))
+                 (:instance fn-frame-decode-payload-octets (octets x)
+                            (digest (fn-frame-trailer (fn-frame-protected-prefix x)))
+                            (max-payload *fn-nctrl-max-payload*))
+                 (:instance fn-wf-cs-request-host-size
+                            (p (fn-frame-result-payload
+                                (fn-frame-decode x (fn-frame-trailer (fn-frame-protected-prefix x))
+                                                 *fn-nctrl-max-payload*))))
+                 (:instance fn-wf-cs-request-payload-agrees
+                            (p (fn-frame-result-payload
+                                (fn-frame-decode x (fn-frame-trailer (fn-frame-protected-prefix x))
+                                                 *fn-nctrl-max-payload*)))))
+           :in-theory (union-theories '(fn-wf-cs-request-grammarp fn-wf-cs-reasoned-request-grammarp car-cons cdr-cons
+                                        (:e fn-cbor-octetp) (:e natp) (:e <) (:e equal))
+                                      (theory 'minimal-theory)))))
+; KEYSTONE (agreement), kind 22.
+(defthm fn-wf-cs-reasoned-request-encode-agrees
+  (implies (not (equal (fn-ncr-request-encode kind first second) :bad))
+           (and (fn-wg-valuep *fn-wf-cs-reasoned-request-grammar* (fn-wf-cs-request-value kind first second))
+                (equal (fn-ncr-request-encode kind first second)
+                       (fn-wg-encode *fn-wf-cs-reasoned-request-grammar*
+                                     (fn-wf-cs-request-value kind first second)))))
+  :hints (("Goal" :do-not-induct t
+           :use (fn-wf-cs-request-payload-encode-agrees fn-wf-cs-request-encode-is-seal
+                 (:instance fn-nctrl-open-of-seal (kind 4) (payload (fn-wf-cs-request-payload kind first second)))
+                 (:instance fn-wf-fnct-host-seal-is-wg-encode (g *fn-wf-cs-request-payload*) (k 22) (mx 1024)
+                            (v (fn-wf-cs-request-value kind first second)))
+                 (:instance fn-wf-fnct-nctrl-seal-is-host-framing (k 22)
+                            (p (fn-wf-cs-request-payload kind first second))))
+           :in-theory (e/d (fn-ncr-request-encode)
+                           (fn-wf-cs-request-payload-encode-agrees fn-nctrl-open-of-seal fn-wf-fnct-host-seal-is-wg-encode
+                            fn-cwait-request-encode fn-nctrl-open fn-nctrl-seal fn-wg-encode fn-wg-valuep
+                            fn-wg-encode-opener-frame fn-wg-valuep-opener-frame fn-frame-protected fn-frame-trailer
+                            fn-wf-cs-request-payload fn-wf-cs-request-value)))))

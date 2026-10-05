@@ -1945,6 +1945,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/wire-family-identity \
 	books/wire-family-fnct \
 	books/wire-family-consumer \
+	books/wire-family-control \
 	tests/acl2/wire-family-consumer-tests \
 	books/wire-export \
 	books/store-identity \
