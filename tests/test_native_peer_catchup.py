@@ -271,7 +271,39 @@ class NativePeerCatchupTests(unittest.TestCase):
         self.catch_up_from(b, "A", "a.catchup.example.invalid", a.port)
         started = time.monotonic()
         self.start(b)
-        done = self.await_log(b, r"catch-up peer=A round=done position={} ".format(COUNT))
+        try:
+            done = self.await_log(b, r"catch-up peer=A round=done position={} ".format(COUNT), timeout=420)
+        except AssertionError:
+            import sys, collections
+            blines = b.log.read_text(errors="replace").splitlines() if b.log.exists() else []
+            hist = collections.Counter()
+            last = {}
+            for l in blines:
+                m = re.search(r"message-id=<catchup-(\d+)@.*time=\S+T(\d\d:\d\d:\d)", l)
+                if m and l.startswith("accepted transit"):
+                    hist[m.group(2)] += 1
+                    last[m.group(2)] = m.group(1)
+            for k in sorted(hist):
+                sys.stderr.write("DIAG B-IMPORT {}0s count={} last={}\n".format(k, hist[k], last[k]))
+            for l in blines:
+                if "catch-up" in l or "CHECKPOINT" in l or "refus" in l or "fault" in l.lower():
+                    if "accepted transit" not in l:
+                        sys.stderr.write("DIAG B| " + l[:600] + "\n")
+            alines = a.log.read_text(errors="replace").splitlines() if a.log.exists() else []
+            for l in alines:
+                if ("CHECKPOINT" in l or "refus" in l or "fault" in l.lower()) and "accepted post" not in l:
+                    sys.stderr.write("DIAG A| " + l[:600] + "\n")
+            pos = max([int(v) for v in last.values()] or [0]) + 1
+            for q in (262144,):
+                for attempt in range(3):
+                    t0 = time.monotonic()
+                    try:
+                        with Client(a.port, timeout=60) as probe:
+                            first = probe.command("XFNCATCHUP * {:016x} ".format(pos) + "0" * 64 + " {}".format(q))
+                            sys.stderr.write("DIAG PROBE pos={} {:.2f}s -> {!r}\n".format(pos, time.monotonic() - t0, first[:200]))
+                    except Exception as e:
+                        sys.stderr.write("DIAG PROBE error {!r}\n".format(e))
+            raise
         elapsed = time.monotonic() - started
         a_articles, a_order = self.compare(a, b)
         digest = re.search(r"digest=([0-9a-f]{64})", done).group(1)
