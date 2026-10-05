@@ -5541,6 +5541,13 @@
 (definterface fn-prd-read-limit :class :common-lisp-compliant)
 (definterface fn-prd-write-end :class :common-lisp-compliant)
 (definterface fn-prd-feed-action :class :common-lisp-compliant)
+; SCEN-FEED-PACE: the push worker's quantum and wait (host/native/feed-service.lisp).
+(definterface fn-prd-feed-quantum :class :common-lisp-compliant)
+(definterface fn-prd-feed-poll-ms :class :common-lisp-compliant)
+(definterface fn-prd-feed-link-wait :class :common-lisp-compliant)
+(definterface fn-prd-feed-pause :class :common-lisp-compliant
+  :keystones (fn-prd-feed-never-sleeps-while-an-article-can-leave fn-prd-feed-pause-is-bounded
+              fn-prd-feed-pause-polls-a-waiting-socket fn-prd-feed-pause-never-sleeps-past-a-redial))
 (definterface fn-prd-write-quantum-end :class :common-lisp-compliant)
 (definterface fn-prd-idle-ms :class :common-lisp-compliant)
 (definterface fn-prd-loss-class-ok :class :common-lisp-compliant)

@@ -20,18 +20,19 @@
   (unless (fboundp 'fnn-core)
     (load "host/native/io.lisp")))
 
-(defconstant +fnn-feed-poll-seconds+ 1/20)
 
-;;; S145 (lane served-live): an idle worker no longer enters the owner gate
-;;; twenty times a second.  After +fnn-feed-busy-rounds+ rounds with nothing
-;;; done (no offer, no octet read, no dial, no drop) the worker sleeps on the
-;;; owner's commit signal (fnn-owner-signal-commit: every durable
-;;; publication and the stop), doubling the sleep up to
-;;; +fnn-feed-idle-max-seconds+ and never past a link's next dial.  Any work
-;;; returns it to the poll cadence.  Scheduling only: ACL2 still decides
-;;; every offer, dial and backoff.
-(defconstant +fnn-feed-busy-rounds+ 20)
-(defconstant +fnn-feed-idle-max-seconds+ 1)
+;;; The worker's pace (SCEN-FEED-PACE, lane feed-pace; S145 before it, lane
+;;; served-live).  Each round pumps every link until its next action waits on
+;;; the kernel or its ACL2 quantum (fn-prd-feed-quantum) is spent, then waits
+;;; as books/peer-round-driver.lisp fn-prd-feed-pause answers from what each
+;;; link reports: not at all while any link can act (an offer to ask for, a
+;;; reply read, a write the kernel has not refused), on poll(2) of the
+;;; sockets a peer owes something, or on the owner's commit signal
+;;; (fnn-owner-signal-commit: every durable publication and the stop) when
+;;; nothing is in progress, for ACL2's bounded time.  It used to sleep a
+;;; fixed 1/20 s after every round that did anything, one action per link a
+;;; round: about eight rounds an article.  Scheduling only: ACL2 still
+;;; decides every offer, dial and backoff.
 
 ;;; Set by a round that did something; bound per round by the worker loop.
 (defvar *fnn-feed-active* nil)
@@ -304,39 +305,51 @@ ACL2 decodes its bounded bytes; only named input/OS refusal is credential loss."
             (fnn-feed-link-deadline link) (fnn-core 'fn-prd-deadline (fnn-feed-now) (cdr bound))))))
 
 (defun fnn-feed-write-step (link now)
-  "One physical attempt, retaining the exact buffer/range on TLS WANT."
+  "One physical attempt, retaining the exact buffer/range on TLS WANT.
+Answers :progress, or the readiness the attempt waits on (:input/:output)."
   (setq *fnn-feed-io-phase* :send)
   (let* ((data (fnn-feed-link-output link)) (offset (fnn-feed-link-output-offset link))
          (end (fnn-feed-link-output-end link))
          (sent (if (fnn-feed-link-tls-channel link)
                    (fnn-tls-write-now-range (fnn-feed-link-tls-channel link) data offset end)
                  (fnn-socket-write-now (fnn-feed-link-fd link) data offset end))))
-    (when (integerp sent)
-      (setq *fnn-feed-active* t)
-      (incf (fnn-feed-link-output-offset link) sent)
-      (let ((offset (fnn-feed-link-output-offset link)))
-        (cond ((= offset (length data))
-               ;; Every feed command is answered: the drained command arms
-               ;; the wait for that reply (fn-prd-feed-action).
-               (setf (fnn-feed-link-output link) nil
-                     (fnn-feed-link-deadline link) (fnn-core 'fn-prd-round-deadline now)))
-              (t
-               (when (= offset (fnn-feed-link-output-quantum-end link))
-                 (let ((bound (fnn-feed-link-output-quantum link)))
-                   (setf (fnn-feed-link-output-quantum-end link)
-                         (fnn-core 'fn-prd-write-quantum-end offset (length data) (car bound))
-                         (fnn-feed-link-deadline link) (fnn-core 'fn-prd-deadline now (cdr bound)))))
-               (when (= offset end)
-                 (setf (fnn-feed-link-output-end link)
-                       (fnn-core 'fn-prd-write-end offset (fnn-feed-link-output-quantum-end link))))))))))
+    (unless (integerp sent)
+      (return-from fnn-feed-write-step (fnn-feed-readiness sent :output)))
+    (setq *fnn-feed-active* t)
+    (incf (fnn-feed-link-output-offset link) sent)
+    (let ((offset (fnn-feed-link-output-offset link)))
+      (cond ((= offset (length data))
+             ;; Every feed command is answered: the drained command arms
+             ;; the wait for that reply (fn-prd-feed-action).
+             (setf (fnn-feed-link-output link) nil
+                   (fnn-feed-link-deadline link) (fnn-core 'fn-prd-round-deadline now)))
+            (t
+             (when (= offset (fnn-feed-link-output-quantum-end link))
+               (let ((bound (fnn-feed-link-output-quantum link)))
+                 (setf (fnn-feed-link-output-quantum-end link)
+                       (fnn-core 'fn-prd-write-quantum-end offset (length data) (car bound))
+                       (fnn-feed-link-deadline link) (fnn-core 'fn-prd-deadline now (cdr bound)))))
+             (when (= offset end)
+               (setf (fnn-feed-link-output-end link)
+                     (fnn-core 'fn-prd-write-end offset (fnn-feed-link-output-quantum-end link)))))))
+    :progress))
+
+(defun fnn-feed-readiness (word default)
+  "A physical attempt's wait word as a readiness direction: a socket's :wait
+(EAGAIN/EINTR) is DEFAULT, a TLS WANT says its own direction."
+  (case word
+    ((:input :output) word)
+    (:wait default)
+    (t (fnn-fault "feed transport answered ~s" word))))
 
 (defun fnn-feed-recv (link limit)
-  "One physical read; readiness yields with the ACL2 framer state untouched."
+  "One physical read: octets (empty at end of input), or the readiness it
+waits on (:input, or :output for a TLS WANT), the ACL2 framer state untouched."
   (setq *fnn-feed-io-phase* :read)
   (let ((result (if (fnn-feed-link-tls-channel link)
                     (fnn-tls-read-now (fnn-feed-link-tls-channel link) limit)
                   (fnn-socket-read-now (fnn-feed-link-fd link) limit))))
-    (if (member result '(:wait :input :output)) :timeout result)))
+    (if (member result '(:wait :input :output)) (fnn-feed-readiness result :input) result)))
 
 (defun fnn-feed-tick (service link now)
   "One ACL2 tick.  Its command, if any, is copied only after FNFD append."
@@ -569,6 +582,9 @@ The greeting is then awaited under the reply wait (fn-prd-feed-action)."
              (fnn-feed-drop-link runtime link now backoff :peer))))))))
 
 (defun fnn-feed-pump-link (runtime link now)
+  "One ACL2-chosen action on LINK (fn-prd-feed-action).  Answers what it saw:
+:progress, :idle (the feed port had no offer), the readiness a physical
+attempt waits on (:input/:output), or nil when the link has no connection."
   (when (and (not (fnn-feed-stoppingp runtime)) (fnn-feed-link-socket link))
     (setq *fnn-feed-io-phase* :read)
     (handler-case
@@ -576,47 +592,51 @@ The greeting is then awaited under the reply wait (fn-prd-feed-action)."
                                  (not (null (fnn-feed-link-output link))) (fnn-feed-link-drain link)
                                  (and (fnn-feed-link-ready link) (fnn-feed-link-tick-due link))
                                  now (fnn-feed-link-deadline link))))
-          ;; Retained work keeps the existing busy cadence even on WANT;
-          ;; the idle backoff is only for links with no pending operation.
-          (when (or (fnn-feed-link-phase link) (fnn-feed-link-output link)
-                    (fnn-feed-link-drain link))
-            (setq *fnn-feed-active* t))
           (setq *fnn-feed-io-phase*
                 (case action ((:connect :connected) :dial) (:tls :tls) (:write :send) (t :read)))
           (case action
             (:timeout (fnn-os-fail sb-posix:etimedout))
             (:connect
-             (when (eq (fnn-connect-poll (fnn-feed-link-socket link)) :connected)
-               (setf (fnn-feed-link-phase link) :connected)))
-            (:connected (fnn-feed-connected-step runtime link now))
+             (cond ((eq (fnn-connect-poll (fnn-feed-link-socket link)) :connected)
+                    (setf (fnn-feed-link-phase link) :connected)
+                    :progress)
+                   ;; TCP completion is the socket becoming writable.
+                   (t :output)))
+            (:connected (fnn-feed-connected-step runtime link now) :progress)
             (:tls
-             (when (eq (fnn-tls-client-step (fnn-feed-link-tls-channel link)
-                                            (fnn-feed-link-tls-name link)) :connected)
-               (setf (fnn-feed-link-phase link) nil (fnn-feed-link-deadline link) nil)
-               (multiple-value-bind (word command)
-                   (fnn-feed-tls-established-core (fnn-feed-runtime-service runtime) link)
-                 ;; Implicit TLS then awaits the greeting (:need-input).
-                 (when (eq word :need-input)
-                   (setf (fnn-feed-link-deadline link) (fnn-core 'fn-prd-round-deadline now)))
-                 (when (> (length command) 0) (fnn-feed-send link command))
-                 (when (eq word :ready) (fnn-feed-link-became-ready link)))))
+             (let ((step (fnn-tls-client-step (fnn-feed-link-tls-channel link)
+                                              (fnn-feed-link-tls-name link))))
+               (cond ((eq step :connected)
+                      (setf (fnn-feed-link-phase link) nil (fnn-feed-link-deadline link) nil)
+                      (multiple-value-bind (word command)
+                          (fnn-feed-tls-established-core (fnn-feed-runtime-service runtime) link)
+                        ;; Implicit TLS then awaits the greeting (:need-input).
+                        (when (eq word :need-input)
+                          (setf (fnn-feed-link-deadline link) (fnn-core 'fn-prd-round-deadline now)))
+                        (when (> (length command) 0) (fnn-feed-send link command))
+                        (when (eq word :ready) (fnn-feed-link-became-ready link)))
+                      :progress)
+                     (t (fnn-feed-readiness step :input)))))
             (:write (fnn-feed-write-step link now))
-            (:reply (fnn-feed-consume runtime link nil nil now))
+            (:reply (fnn-feed-consume runtime link nil nil now) :progress)
             (:offer
              (setf (fnn-feed-link-tick-due link) nil)
              (multiple-value-bind (word command) (fnn-feed-tick (fnn-feed-runtime-service runtime) link now)
-               (when (eq word :offer) (setq *fnn-feed-active* t))
                (when (> (length command) 0) (fnn-feed-send link command))
-               (when (eq word :unsendable)
-                 (fnn-feed-drop-link runtime link now
-                                     (fnn-feed-loss-backoff (fnn-feed-runtime-service runtime)
-                                                            (fnn-feed-link-peer-octets link)) :unsendable))))
+               (case word
+                 (:offer :progress)
+                 (:unsendable
+                  (fnn-feed-drop-link runtime link now
+                                      (fnn-feed-loss-backoff (fnn-feed-runtime-service runtime)
+                                                             (fnn-feed-link-peer-octets link)) :unsendable)
+                  :progress)
+                 (t :idle))))
             (:read
-             (setf (fnn-feed-link-tick-due link) t)
              (let ((incoming (fnn-feed-recv link (fnn-core 'fn-prd-read-limit (fnn-feed-runtime-limit runtime)))))
-               (unless (eq incoming :timeout)
-                 (setq *fnn-feed-active* t)
-                 (fnn-feed-consume runtime link incoming (zerop (length incoming)) now))))
+               (cond ((member incoming '(:input :output)) incoming)
+                     (t (setq *fnn-feed-active* t)
+                        (fnn-feed-consume runtime link incoming (zerop (length incoming)) now)
+                        :progress))))
             (t (fnn-fault "unknown feed driver action ~s" action))))
       ((or fnn-os-error sb-bsd-sockets:socket-error fnn-tls-error
            fnn-peer-dial-error) (condition)
@@ -643,30 +663,38 @@ The greeting is then awaited under the reply wait (fn-prd-feed-action)."
                                 (typecase condition
                                   (fnn-tls-handshake-error :tls)
                                   (fnn-peer-dial-error :dial)
-                                  (t *fnn-feed-io-phase*)))))))))
+                                  (t *fnn-feed-io-phase*)))))
+        :progress))))
+
+(defun fnn-feed-pump-quantum (runtime link)
+  "Pump LINK while it progresses, at most ACL2's quantum (fn-prd-feed-quantum)
+of actions, each at its own monotonic observation.  A physical wait ends the
+turn; a tick with no offer does not (its next action is the read).  Answers
+LINK's report for fn-prd-feed-pause, (ACTION BLOCKED AWAITING)."
+  (let ((outcome nil) (now (fnn-feed-now)))
+    (loop repeat (fnn-core 'fn-prd-feed-quantum)
+          while (and (fnn-feed-link-socket link) (not (fnn-feed-stoppingp runtime)))
+          do (setq now (fnn-feed-now)
+                   outcome (fnn-feed-pump-link runtime link now))
+             (when (eq outcome :progress) (setq *fnn-feed-active* t))
+          until (member outcome '(:input :output)))
+    (if (null (fnn-feed-link-socket link))
+        (list :dial nil nil)
+      (list (fnn-core 'fn-prd-feed-action (fnn-feed-link-phase link)
+                      (not (null (fnn-feed-link-output link))) (fnn-feed-link-drain link)
+                      (and (fnn-feed-link-ready link) (fnn-feed-link-tick-due link))
+                      now (fnn-feed-link-deadline link))
+            (and (member outcome '(:input :output)) outcome)
+            (not (null (fnn-feed-link-deadline link)))))))
 
 (defun fnn-feed-worker (runtime)
   (let ((*fnn-feed-io-phase* :read))
     (fnn-feed-worker-loop runtime)))
 
-(defun fnn-feed-idle-seconds (runtime idle now)
-  "How long an idle round may sleep: the poll for the first busy rounds,
-then doubling to +fnn-feed-idle-max-seconds+, and never past the earliest
-next dial of a link with no socket (its ACL2 backoff)."
-  (let ((seconds (if (< idle +fnn-feed-busy-rounds+)
-                     +fnn-feed-poll-seconds+
-                   (min +fnn-feed-idle-max-seconds+
-                        (* +fnn-feed-poll-seconds+
-                           (expt 2 (min 8 (- idle +fnn-feed-busy-rounds+ -1))))))))
-    (dolist (link (fnn-feed-links runtime) seconds)
-      (unless (fnn-feed-link-socket link)
-        (let ((due (- (fnn-feed-link-next-dial link) now)))
-          (when (plusp due)
-            (setq seconds (min seconds (max +fnn-feed-poll-seconds+ (/ due 1000))))))))))
-
-(defun fnn-feed-idle-wait (runtime seen seconds)
-  "Sleep up to SECONDS on the owner's commit signal unless a commit (or the
-stop) came after SEEN was read; a missed signal is seen by the count."
+(defun fnn-feed-idle-wait (runtime seen ms)
+  "Sleep up to MS milliseconds on the owner's commit signal unless a commit
+(or the stop) came after SEEN was read; a missed signal is seen by the count.
+Answers :commit when the count moved, else :timeout."
   (let* ((service (fnn-feed-runtime-service runtime))
          (lock (fnn-owner-service-wait-lock service))
          (queue (fnn-owner-service-wait-queue service)))
@@ -674,8 +702,12 @@ stop) came after SEEN was read; a missed signal is seen by the count."
     (unwind-protect
          ;; The stop hook raises the signal after setting stopping, so a
          ;; stop after SEEN changes the count and is never slept through.
-         (when (= seen (fnn-owner-service-commits service))
-           (sb-thread:condition-wait queue lock :timeout (coerce seconds 'double-float)))
+         (progn
+           (when (= seen (fnn-owner-service-commits service))
+             (sb-thread:condition-wait queue lock :timeout (/ ms 1000d0)))
+           (unless (sb-thread:holding-mutex-p lock)
+             (sb-thread:grab-mutex lock))
+           (if (= seen (fnn-owner-service-commits service)) :timeout :commit))
       ;; A timed-out condition-wait may return without the mutex.
       (when (sb-thread:holding-mutex-p lock)
         (sb-thread:release-mutex lock)))))
@@ -685,26 +717,76 @@ stop) came after SEEN was read; a missed signal is seen by the count."
     (sb-thread:with-mutex ((fnn-owner-service-wait-lock service))
       (fnn-owner-service-commits service))))
 
+(defun fnn-feed-poll-wait (runtime seen ms links reports)
+  "Wait up to MS milliseconds for a socket ACL2 names as waited on
+(fn-prd-feed-link-wait of its report: :input is POLLIN, :output POLLOUT), a
+commit after SEEN, or the stop.  A commit cannot wake poll(2), so it runs in
+slices of ACL2's I/O poll (fn-prd-feed-poll-ms) with the commit count read
+between them: a worker waiting on one peer's reply still offers a new
+article within a slice, and the slices take no owner hold.  The stop
+shutdowns the sockets (they poll ready) and raises the signal.  Answers
+:ready, :commit or :timeout."
+  (let ((fds nil) (events nil))
+    (loop for link in links
+          for report in reports
+          for wait = (fnn-core 'fn-prd-feed-link-wait report)
+          when (and (member wait '(:input :output)) (fnn-feed-link-fd link))
+            do (push (fnn-feed-link-fd link) fds)
+               (push (if (eq wait :output) +fnn-mux-pollout+ +fnn-mux-pollin+) events))
+    (let ((fds (coerce (nreverse fds) 'vector))
+          (events (coerce (nreverse events) 'vector))
+          (slice (fnn-core 'fn-prd-feed-poll-ms))
+          (deadline (+ (get-internal-real-time)
+                       (ceiling (* ms internal-time-units-per-second) 1000))))
+      (loop
+        (let ((left (floor (* 1000 (- deadline (get-internal-real-time)))
+                           internal-time-units-per-second)))
+          (when (<= left 0) (return :timeout))
+          (when (some #'plusp (fnn-mux-poll fds events (min left slice)))
+            (return :ready))
+          (when (or (fnn-feed-stoppingp runtime)
+                    (/= seen (fnn-feed-commits-seen runtime)))
+            (return :commit)))))))
+
 (defun fnn-feed-worker-loop (runtime)
   (unwind-protect
        (let ((idle 0))
          (loop until (fnn-feed-stoppingp runtime) do
            (let ((seen (fnn-feed-commits-seen runtime))
-                 (*fnn-feed-active* nil))
+                 (*fnn-feed-active* nil)
+                 (links nil) (reports nil))
              (fnn-feed-refresh-links runtime)
-             (let ((now (fnn-feed-now)))
-               (dolist (link (fnn-feed-links runtime))
-                 (unless (fnn-feed-stoppingp runtime)
-                   (fnn-feed-dial runtime link now)
-                   (unless (fnn-feed-stoppingp runtime)
-                     (fnn-feed-pump-link runtime link now))))
-               ;; The worker's cadence is availability-only.  ACL2 gates
-               ;; actual offers with its monotonic observation and peer
-               ;; backoff state.
-               (if *fnn-feed-active*
-                   (progn (setq idle 0) (sleep +fnn-feed-poll-seconds+))
-                 (fnn-feed-idle-wait runtime seen
-                                     (fnn-feed-idle-seconds runtime (incf idle) now)))))))
+             (setq links (fnn-feed-links runtime))
+             (dolist (link links)
+               (unless (fnn-feed-stoppingp runtime)
+                 (fnn-feed-dial runtime link (fnn-feed-now)))
+               (push (if (fnn-feed-stoppingp runtime)
+                         (list :dial nil nil)
+                       (fnn-feed-pump-quantum runtime link))
+                     reports))
+             (setq reports (nreverse reports)
+                   idle (if *fnn-feed-active* 0 (1+ idle)))
+             ;; ACL2 decides the wait from what each link reported: none while
+             ;; any link can act (fn-prd-feed-never-sleeps-while-an-article-
+             ;; can-leave), the sockets a peer owes something, or the commit
+             ;; signal; bounded, and never past a redial.
+             (let* ((now (fnn-feed-now))
+                    (dials (loop for link in links
+                                 unless (fnn-feed-link-socket link)
+                                   collect (fnn-feed-link-next-dial link)))
+                    (pause (fnn-core 'fn-prd-feed-pause reports idle dials now))
+                    (woke (case (first pause)
+                            (:now :ready)
+                            (:poll (fnn-feed-poll-wait runtime seen (second pause) links reports))
+                            (:signal (fnn-feed-idle-wait runtime seen (second pause)))
+                            (t (fnn-fault "feed core returned a malformed pause: ~s" pause)))))
+               ;; A commit or the clock may have made an offer due on any link
+               ;; (a new article, a retry come due): each asks the feed port
+               ;; again.  A socket's readiness concerns only its own link,
+               ;; whose read asks again once a reply is consumed.
+               (unless (eq woke :ready)
+                 (dolist (link links)
+                   (setf (fnn-feed-link-tick-due link) t)))))))
     ;; Stop only shutdowns; this worker is the sole final closer.
     (dolist (link (fnn-feed-links runtime))
       (fnn-feed-close-link runtime link))))
