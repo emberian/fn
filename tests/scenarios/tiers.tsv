@@ -115,6 +115,7 @@ e2e	module	tests.test_native_web	WEB,AUTH,BND	the web face
 e2e	module	tests.test_native_group_access	AUTH,RDR	hidden group indistinguishable from absent, across restart
 e2e	module	tests.test_native_sasl	AUTH	SASL PLAIN and SCRAM(-PLUS)
 e2e	module	tests.test_native_tls_reload	AUTH,OPS	live certificate reload
+e2e	module	tests.test_native_store_identity	OPS	store identity by command (Mini M4)
 e2e	module	tests.test_native_consumer_identity	CUR,AUTH	account-bound consumers; cursors across restart
 e2e	module	tests.test_native_agent_wait	CUR,LAT,DUR	bound wait, waiter cap, redelivery after restart
 e2e	module	tests.test_native_consumer_e2	CUR,ARU,DUR	register/position/ack/poll; lost reply exit 3 resolved on reopen

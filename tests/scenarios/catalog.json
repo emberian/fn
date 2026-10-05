@@ -9905,6 +9905,41 @@
       "evidence": [
         "tests/test_native_reclaim_walk.py"
       ]
+    },
+    {
+      "id": "SCN-1142",
+      "title": "`fn identity CONTROL` asks the running owner who this store is and prints ACL2's line: format, genesis node, schema and profile digests, the consumer arm, both image revisions and the digest of the wire-grammar file (Mini M4)",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "ENC-001",
+        "CNS-001"
+      ],
+      "steps": [
+        "`store init fn.test`; `run` with a control socket; `identity CONTROL`.",
+        "`consumer bootstrap CONTROL`; `identity CONTROL`.",
+        "Stop the owner; `identity CONTROL`.",
+        "`identity relative/control`; `identity /a /b`; `identity help`."
+      ],
+      "expected": [
+        "Exit 0; `fn-store-identity-v1 format=... node=HEX64 schema=HEX64 profile=HEX64 consumer=unbootstrapped created-revision=... running-revision=... grammar=HEX64`, grammar the BLAKE3 of specs/wire-grammar.json.",
+        "Exit 0; `consumer=bootstrapped history=HEX incarnation=HEX`, every other field unchanged.",
+        "Not exit 0, and no identity line.",
+        "Exit 5 (usage) twice; `help` prints `usage: fn identity CONTROL ...` and exits 0."
+      ],
+      "implementation": {
+        "test": "tests.test_native_store_identity",
+        "cases": [
+          "StoreIdentity.test_identity_before_and_after_bootstrap",
+          "StoreIdentity.test_usage"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tests/test_native_store_identity.py",
+        "books/store-identity.lisp",
+        "tests/acl2/store-identity-tests.lisp"
+      ]
     }
   ]
 }

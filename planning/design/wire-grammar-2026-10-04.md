@@ -295,7 +295,7 @@ language, added when it lands on dev).
 
 ### 5. M4: one command, answered by the owner
 
-`fn store identity CONTROL` sends `fnct.store-identity.request` (FNCT kind
+`fn identity CONTROL` sends `fnct.store-identity.request` (FNCT kind
 24, empty payload) over the 0600 control socket; the owner answers
 `fnct.store-identity.reply` (FNCT kind 25), a `:seq` of
 
@@ -317,8 +317,12 @@ running image's recorded source revision. The CLI prints the ACL2-rendered
 line `fn-store-identity-v1 format=… node=… schema=… profile=…
 consumer=bootstrapped history=… incarnation=… created-revision=…
 running-revision=… grammar=…` (`consumer=unbootstrapped` and no history or
-incarnation before a bootstrap) (a protocol-table
-style row with its key and text), exit 0; refusals by name. Why the owner
+incarnation before a bootstrap), exit 0; a refusal prints
+`fn-store-identity-refused-v1 WORD`, exit 1; no readable reply prints
+`fn-store-identity-uncertain-v1 reply`, exit 3 (books/store-identity.lisp
+fn-stid-line, fn-stid-exit-code; the request is a read for the handler
+chain, books/native-control-kinds.lisp fn-ctlk-identity-request-is-classified,
+so it is never shed as a mutating request). Why the owner
 and not an offline verb on ROOT: history id and incarnation live in the
 owner's consumer state (a replay offline), and the **running** revision is
 the owner process's image, which an offline verb (another process, perhaps

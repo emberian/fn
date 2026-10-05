@@ -1938,6 +1938,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/wire-family-fncu-tests \
 	books/wire-family-identity \
 	books/wire-export \
+	books/store-identity \
+	tests/acl2/store-identity-tests \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
 	books/control-visible-indexed \
