@@ -5065,3 +5065,11 @@ Landed on lane/access-check (pushed):
 Continuation (not started; context cap): ACCESS-REVOKE-PINNED (repair item, design notes there): access tightening
 applies at once to open connections (coordinator ruling). Red->green = test_source_peer_reader_access_preserves_transit
 old-socket assertions; amend specs/reconfiguration.md 2.3.
+
+## teeth-62 (Sonnet, 2026-10-05) -- lane/teeth-62, base origin/lane/teeth-gate@ab595894d, worktree build/lanes/teeth-62
+38 of the 62 "T not yet written" keystones now carry defteeth (tests/acl2/*-tests.lisp, one commit per book); keystone_emit --check findings 126 -> 88.
+Every changed test book was loaded to its end on an hbox proof REPL (all forms admitted, source deps; NOT certified).
+Done: app-pattern (1), app-pattern-delivery (1), article-kind-acceptance/-hybrid (6, in article-kind-tests), bp-ion-lifetime (1), bp-node-budget-input (3), connection-budget (2), feed-journal-order (1), native-init-resume (2), native-retire (2, in native-retire-observation-tests), nntp-auth (2, in nntp-auth-tests), fn-auth-view-excludes-unreadable-groups-on-any-connection (moderation-tests), output-reservation (3), owner-queued-work (3), owner-reclaim-carry (1), page-read-startup (2), peer-flight-reservation (2), reclaim-chunked-walk (2), reclaim-chunked-seal (1), store-log-entry-bound (2).
+Reclassified: store-log-entry-bound -step x2 -> MV class; fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open -> no-counterexample (both antecedents).
+Continuation: still T = output-command-admission(1), payload-lz-scalar-realizer(1), store-checkpoint-verify(1), served-access-revoke(3), store-log-durable(8), store-log-route-programs(3), tcpcl-received-source-refinement(1), tcpcl-retained-turn(1), tcpcl-source-control-refinement(2).  lanedumps/teeth-gate-owed.md holds the list, the no-counterexample notes and the method notes (let-wrapped claims; trailing-group rule).
+Certify: NOT done.  Narrow certify of the 19 touched tests/acl2/*-tests books via boxq --box hbox is pending INTEGRATOR-4's slot.
