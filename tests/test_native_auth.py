@@ -106,14 +106,16 @@ class NativeAuthTests(unittest.TestCase):
         self.node.stop()
 
     def test_the_address_limit_closes_a_read_that_also_posts(self):
-        # read-serve: one read whose 481 reaches the address's
-        # exposure-auth-failures (PRF-161, fn-exp-observe-facts) and which also
-        # completes a POST.  The submission waits for its batch; the plan is
-        # the step's replies, the batch's 240 and ACL2's 400
-        # (fn-splan-step-plan), and the close the exposure decided
-        # (fn-splan-step-exposure-close) follows it.  The queued-commit path
-        # used to drop that close: the 400 was sent and the connection went
-        # on being served.
+        # D55 (planning/decisions.md; NAT-AUTH-ADDRESS-LIMIT-WITNESS): at the
+        # address's login-failure limit (exposure-auth-failures, PRF-161,
+        # fn-exp-observe-facts) the connection closes and input already
+        # pipelined but unread is discarded.  One read carries a wrong
+        # login, which reaches the limit of 1, then a right login and a
+        # complete POST: the reply is 381, the limit-reaching 481, ACL2's
+        # 400 (fn-splan-step-plan), then end of file; the right login and
+        # the POST behind it are never served, so the store holds no
+        # article under that Message-ID.
+        message_id = "<address-limit@example.invalid>"
         self.node.operator("policy", "set", "exposure-auth-failures", "1", expect=EXIT_OK)
         self.start()
         with self.client() as client:
@@ -122,7 +124,7 @@ class NativeAuthTests(unittest.TestCase):
                         b"POST\r\n"
                         b"From: Native Reader <reader@example.invalid>\r\n"
                         b"Newsgroups: fn.test\r\nSubject: the limit\r\n"
-                        b"Message-ID: <address-limit@example.invalid>\r\n\r\n"
+                        b"Message-ID: " + message_id.encode("ascii") + b"\r\n\r\n"
                         b"posted in the read that reached the limit\r\n.\r\n")
             replies = []
             try:
@@ -131,9 +133,12 @@ class NativeAuthTests(unittest.TestCase):
             except EOFError:
                 pass
             client.close(quit=False)
-        self.assertEqual(replies, [b"381", b"481", b"381", b"281", b"340", b"240", b"400"],
-                         replies)
+        self.assertEqual(replies, [b"381", b"481", b"400"], replies)
         self.node.exited(EXIT_OK)
+        # Not stored: `store inspect' refuses the absent Message-ID (the
+        # sibling P1 case below shows it answers 0 for one that is held).
+        absent = self.node.store("inspect", message_id)
+        self.assertNotEqual(absent.returncode, 0, absent.stdout + absent.stderr)
 
     def test_restricted_command_before_login_is_480_and_leaves_no_article(self):
         # P1 (b) on the image: fn-served-dispatch-of-a-gated-command-is-480-
