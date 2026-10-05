@@ -16,6 +16,15 @@ def _published_source(image):
     launcher = Path(image).resolve(strict=True)
     directory = launcher.parent
     manifest_path = directory / "MANIFEST.json"
+    if not manifest_path.exists():
+        # An image built in this tree (not linked from a published set) records
+        # its source commit beside the launcher (tools/build_native_host.sh
+        # IMAGE.source: "commit SHA"); that is its identity.
+        record = launcher.with_name(launcher.name + ".source")
+        found = re.fullmatch(r"commit ([0-9a-f]{40})\n?", record.read_text())
+        if not found:
+            raise ValueError(f"{record}: no immutable source commit")
+        return found.group(1)
     manifest = json.loads(manifest_path.read_text())
     source = manifest.get("sha")
     if not isinstance(source, str) or not re.fullmatch(r"[0-9a-f]{40}", source):
