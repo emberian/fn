@@ -255,7 +255,7 @@ ROWS: tuple[Row, ...] = (
     Row("D4", "on-disk growth per accepted article",
         theorems=(("books/store-log-durable", "fn-lgu-acknowledge-acknowledges-only-recoverable-records"),
                   ("books/store-log-durable", "fn-lgu-acknowledged-records-are-recovered-at-every-cut"),
-                  ("books/store-log-durable", "fn-lgu-open-run-acknowledges-only-recoverable-records"),
+                  ("books/store-log-recover-copy", "fn-lgrc-acknowledge-from-the-copy"),
                   ("books/store-log-crash", "fn-lg-entry-len-is-units"),
                   ("books/store-log-extend", "fn-olr-extension-target-is-an-extent"),
                   ("books/store-log", "fn-lg-rotation-entry-len"),

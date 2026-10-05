@@ -321,6 +321,10 @@
 ;; The log kernel's acknowledgement keystone (books/store-log-durable), as
 ;; in the default image, where it arrives through host/interfaces.lisp.
 (include-book "books/store-log-durable")
+;; The writable open's copy (RL-01 A2, P-LOG-RECOVER-COPY): io.lisp's
+;; fnn-log-recover calls fn-lgrc-copy-verdict and fn-lgrc-copy-refusal-text,
+;; as in the default image.
+(include-book "books/store-log-recover-copy")
 ;; host/native/owner-control-turn.lisp (loaded for owner.lisp's control-turn
 ;; macro) names fn-ats-uncertain-internal, as in the default image's world.
 (include-book "books/allocation-turn-slots")

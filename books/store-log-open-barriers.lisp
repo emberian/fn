@@ -163,7 +163,7 @@
 ; Three barriers, not five (lane open-barriers, 2026-09-27).
 ;
 ; fn-lg-open-program (books/store-log-route-programs.lisp) now runs, after
-; P-LOG-RECOVER, three recovery barriers: journal/, the root, the root's
+; P-LOG-RECOVER-COPY, three recovery barriers: journal/, the root, the root's
 ; parent (host/native/io.lisp fnn-store-recovery-barriers;
 ; *fn-sf-recovery-barrier-count* 3 in books/store-files.lisp).  The five it
 ; replaces are kept here as a constant, the "before".  Read over the byte
@@ -179,13 +179,9 @@
 ;       repeated twice in front (the two dropped fences change nothing).  So
 ;       a process death or a power cut at any cut of either open leaves the
 ;       same set of states and crash images.
-;   fn-lgob-recovered-state-meets-the-segment-hypothesis   P-LOG-RECOVER's own
-;       fence leaves the segment with no pending write and a config file with
-;       none still with none: at log-recovered, the segment half of the
-;       keystone's hypotheses holds for every store whose segment exists.
-;       (Two hypotheses the first statement carried, a true-list pending
-;       list and a config inode other than the segment, were redundant: the
-;       weakened statement was proved and they are gone.)
+;   the segment half of the keystone's hypotheses: P-LOG-RECOVER-COPY leaves
+;       nothing pending at log-recovered (books/store-log-recover-copy.lisp
+;       fn-lgrc-attempt-makes-the-read-prefix-durable).
 ;   fn-lgob-only-a-write-unfences-a-file   the config half: of every byte
 ;       syscall, only a write of the inode adds a pending write of it.  The
 ;       config file's only writes are its publication's (init: host/native/
@@ -197,13 +193,12 @@
 ;       a profile change is a configuration record in the log).  So at every
 ;       process-death cut a later open can start from, the config file has
 ;       no pending write (argued from the host source, not proved here).
-;   fn-lgob-three-barrier-open-after-recovery-is-the-five   the keystone
-;       composed with P-LOG-RECOVER: the open as the host runs it, from any
-;       store whose segment exists and whose config file has no pending
-;       write.
+;   fn-lgob-three-barrier-open-after-the-copy-is-the-five   the keystone
+;       at the state the copy leaves (nothing pending): the open as the host
+;       runs it.
 ;
 ; Teeth: tests/acl2/store-log-open-barriers-tests.lisp: a reachable witness
-; (the rotated store after P-LOG-RECOVER), and per hypothesis a state that
+; (the rotated store after the open's copy), and per hypothesis a state that
 ; fails it where the two opens differ.  And journal/'s and the parent's
 ; barriers cannot go: one ground counterexample per omitted barrier, each a
 ; two-barrier open losing an acknowledged or published state to a power cut

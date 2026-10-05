@@ -8282,7 +8282,7 @@ P-ROTATE, P-DROP or init left pending), the root (a checkpoint renamed before
 its root fence) and the root's parent (an import at import-published).  The
 config file's and the segment's second fence are gone: both are the identity
 at the open (books/store-log-open-barriers.lisp
-fn-lgob-three-barrier-open-after-recovery-is-the-five); journal/'s and the
+fn-lgob-three-barrier-open-after-the-copy-is-the-five); journal/'s and the
 parent's cannot go (the same book's fn-lgob-two-barriers-without-*
 counterexamples).  The root's counterexample was the open's drop, which is
 gone (RL-01-CHECKPOINT-NAME-BEFORE-DROP); the barrier stays until its removal

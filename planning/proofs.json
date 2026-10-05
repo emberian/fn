@@ -10060,6 +10060,8 @@
         "fn-lgob-three-barrier-open-after-recovery-is-the-five",
         "fn-lgob-two-barriers-without-journal-lose-a-rotated-segment",
         "fn-lgob-three-barriers-keep-the-rotated-segment",
+        "fn-lgob-two-barriers-without-root-lose-a-checkpointed-history",
+        "fn-lgob-three-barriers-keep-the-checkpoint",
         "fn-lgob-two-barriers-without-parent-lose-an-imported-store",
         "fn-lgob-three-barriers-keep-the-imported-store",
         "fn-lg-run-of-append-when-complete",
