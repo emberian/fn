@@ -116,6 +116,48 @@
                                  "output_quantum_heap_octets = 1024"))
                      '(:refused :invalid)))
 
+; Live reclaim is opt-in (D53): `[resources] reclaim_live = true' sets field
+; 31; false and absent are the same configuration, byte for byte (the list is
+; what it was before the key existed), so no node that does not ask for it
+; changes.  The flag survives show/load, alone and beside cold and output.
+(defconst *ncst-live* (ncst-with '("[resources]" "reclaim_live = true")))
+(defconst *ncst-live-off* (ncst-with '("[resources]" "reclaim_live = false")))
+(defconst *ncst-live-all*
+  (ncst-with '("[resources]" "reclaim_live = true" "cold_heap_octets = 8192" "cold_workers = 1"
+               "cold_descriptors = 2" "cold_read_ids = 3" "cold_file_ids = 4"
+               "output_heap_octets = 4096" "output_quantum_heap_octets = 1024")))
+(assert-event (equal (car *ncst-live*) :accepted))
+(assert-event (equal (fn-native-config-reclaim-livep (cadr *ncst-live*)) t))
+(assert-event (null (fn-native-config-reclaim-livep (cadr *ncst-live-off*))))
+(assert-event (null (fn-native-config-reclaim-livep *ncst-min*)))
+(assert-event (equal *ncst-live-off* (list :accepted *ncst-min*)))
+(assert-event (equal (len *ncst-min*) 31))
+(assert-event (not (equal (cadr *ncst-live*) *ncst-min*)))
+(assert-event
+ (let ((c (cadr *ncst-live*)))
+   (and (fn-native-config-show-wfp c)
+        (equal (fn-native-config-load (fn-native-config-show-octets c)) (list :accepted c)))))
+(assert-event
+ (let ((c (cadr *ncst-live-all*)))
+   (and (equal (car *ncst-live-all*) :accepted)
+        (fn-native-config-show-wfp c)
+        (fn-native-config-reclaim-livep c)
+        (equal (fn-native-config-cold-resources c) '(8192 1 2 3 4))
+        (equal (fn-native-config-output-resources c) '(4096 1024))
+        (equal (fn-native-config-load (fn-native-config-show-octets c)) (list :accepted c)))))
+(assert-event
+ (equal (fn-native-config-show (cadr *ncst-live*) "resources" "reclaim_live")
+        (list :shown (fn-record-string-octets "true"))))
+; Off renders no [resources] table at all.
+(assert-event (equal (fn-native-config-show-octets (cadr *ncst-live-off*))
+                     (fn-native-config-show-octets *ncst-min*)))
+; Refused by name: a value that is not a boolean, and the key twice.
+(assert-event (equal (ncst-with '("[resources]" "reclaim_live = 1")) '(:refused :invalid)))
+(assert-event (equal (car (ncst-with '("[resources]" "reclaim_live = true" "reclaim_live = true")))
+                     :refused))
+; Mutation: a flag that is not a boolean is not renderable as itself.
+(assert-event (not (fn-native-config-show-wfp (update-nth 31 7 (cadr *ncst-live*)))))
+
 ; Teeth (the one hypothesis, well-formedness): a store path with a quote
 ; is not a configuration the grammar can name, and it does not come back.
 (defconst *ncst-quoted*

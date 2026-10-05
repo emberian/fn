@@ -329,6 +329,9 @@ not armed. Instrumentation has no semantic or admission role."
   ;; Exact normalized launch descriptors, and private output pool projection.
   ;; Explicit policy activation/full tariffs are still PRF-1259 obligations.
   (cold-resources nil) (output-resources nil) (output-slots nil)
+  ;; The operator's live-reclaim opt-in (D53, `[resources] reclaim_live'):
+  ;; the connection budget holds the owner's work reserve only with it.
+  (reclaim-live nil)
   ;; ACL2 serials, independent of configuration and ledger draw generations.
   (connection-generation 0) (response-generation 0)
   (output-ledger nil) (output-grants nil)
@@ -7988,9 +7991,10 @@ publication).  Answers the reply word."
              (unless captured
                ;; S038: another pass in flight or queued is refused by name
                ;; before any credit is reserved (CAPTURED stays nil, so the
-               ;; cleanup never finishes the other pass's slot)
+               ;; cleanup never finishes the other pass's slot); D53: so is
+               ;; a live pass on a node without `[resources] reclaim_live'
                (cond ((and (eq (first answer) :deferred)
-                           (member (second answer) '(:in-flight :queued))
+                           (member (second answer) '(:in-flight :queued :offline-only))
                            (null (third answer)))
                       (deferred (second answer)))
                      ((and (eq (first answer) :deferred) (integerp (third answer)))
@@ -8636,7 +8640,7 @@ the caller joins any partial executor before relinquishing run authority."
 (defun fnn-owner-run (root port once max-connections
                       &optional fault address (family :inet) tls-context
                         connection-fault-operation tls-port more-addresses
-                        cold-resources output-resources)
+                        cold-resources output-resources reclaim-live)
   "Run one service from already-normalized boundary values.
 MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
 `[listener] host' list (NNT-041); each gets the same port and TLS port."
@@ -8678,6 +8682,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                   (setq service (fnn-owner-install root max-connections fault))
                   (setf (fnn-owner-service-cold-resources service) cold-resources
                         (fnn-owner-service-output-resources service) output-resources
+                        (fnn-owner-service-reclaim-live service) (and reclaim-live t)
                         (fnn-owner-service-output-slots service)
                         (fnn-core 'fn-orv-startup-slots max-connections))
                   (fnn-owner-retain-run-authority service)
@@ -8945,7 +8950,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
 
 (defun fnn-owner-run-normalized (store-octets listener-host-octets
                                  listener-port oncep max-connections &optional tls-context
-                                 tls-port cold-resources output-resources)
+                                 tls-port cold-resources output-resources reclaim-live)
   "Operator callback over ACL2-normalized projections; no argv semantics."
   (unless (and (typep store-octets 'fnn-octets)
                (typep listener-host-octets 'fnn-octets)
@@ -8955,7 +8960,8 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                (or (null tls-context) (fnn-tls-context-p tls-context))
                (or (null tls-port)
                    (and tls-context (integerp tls-port) (< 0 tls-port 65536)
-                        (/= tls-port listener-port) (not oncep))))
+                        (/= tls-port listener-port) (not oncep)))
+               (member reclaim-live '(t nil)))
     (fnn-fault "malformed ACL2 owner run plan"))
   (let* ((root (fnn-octets-string store-octets))
          (projections
@@ -8990,7 +8996,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                (cons (first projection)
                                      (fnn-octets (second projection))))
                              (rest projections))
-                     cold-resources output-resources))))
+                     cold-resources output-resources reclaim-live))))
 
 (defun fnn-command-owner (command args)
   "Private low-level test entry; public operators use the normalized callback."

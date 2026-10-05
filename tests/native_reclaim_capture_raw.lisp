@@ -57,7 +57,7 @@
 (load-deployed-forms "books/owner-state-accessors.lisp" '((defun fn-owner-sco-global)))
 (load-deployed-forms "host/owner-host.lisp"
  '((defun fn-owner-record-octets) (defun fn-owner-sco-count) (defun fn-owner-orc-pass)
-   (defun fn-owner-orcp-capture)))
+   (defun fn-owner-reclaim-live-p) (defun fn-owner-orcp-capture)))
 (load-deployed-forms "host/native/io.lisp"
  '((defun fnn-trailing-kind) (defun fnn-live-stobj) (defun fnn-arena-then-state)
    (defun fnn-core-state)))
@@ -82,6 +82,7 @@
 (defun fnn-call (name &rest args) (multiple-value-list (apply name args)))
 (defun boundp-global (key state) (nth-value 1 (gethash key state)))
 (defun f-get-global (key state) (gethash key state))
+(defun f-boundp-global (key state) (nth-value 1 (gethash key state)))
 (defun f-put-global (key val state) (setf (gethash key state) val) state)
 (defun fn-owner-store (state) (gethash :records state))
 (defun fn-own-store (owner) (declare (ignore owner)) (gethash :records *the-live-state*))
@@ -111,7 +112,9 @@
         (*capture-count* 0) (*rows-read* nil)
         (credits (fn-mcr-make (+ reserve 20) 0 0 reserve 0 0 '((:other . (0 . 10))))))
   (setf (gethash :records *the-live-state*) '(100 200)
-        (gethash :credits *the-live-state*) credits)
+        (gethash :credits *the-live-state*) credits
+        ;; the operator's opt-in (D53), installed by the connection budget
+        (gethash 'fn-owner-reclaim-live *the-live-state*) t)
   (unless (eq cache-mode :missing)
    (setf (gethash 'fn-owner-record-octets *the-live-state*)
          (if (eq cache-mode :ahead) '(9 . 900) '(1 . 100))))
@@ -156,4 +159,19 @@
     (census-check (and (null *rows-read*) (= (fn-hist-count *hist*) 1)
                        (not (nth-value 1 (gethash 'fn-owner-record-octets *the-live-state*))))
                   "a held slot touches neither the history nor the census cache")))))
+;; D53: without the opt-in (the budget installed NIL, or never ran) the
+;; capture's own check refuses by name, whatever the reserve: :offline-only,
+;; nothing captured, credits unchanged.
+(dolist (installed '(:nil :unbound))
+ (let* ((*the-live-state* (make-hash-table)) (*hist* (vector '(100)))
+        (*capture-count* 0) (*rows-read* nil)
+        (credits (fn-mcr-make 99999 0 0 60000 0 0 '((:other . (0 . 10))))))
+  (setf (gethash :records *the-live-state*) '(100 200)
+        (gethash :credits *the-live-state*) credits)
+  (when (eq installed :nil) (setf (gethash 'fn-owner-reclaim-live *the-live-state*) nil))
+  (let ((answer (fnn-owner-core 'fn-owner-orcp-capture :recorded :clock nil 99999 :revision)))
+   (census-check (equal answer '(:deferred :offline-only nil))
+                 "without the opt-in the capture is refused by name")
+   (census-check (and (zerop *capture-count*) (equal credits (fn-owner-credits *the-live-state*)))
+                 "an off capture reserves no credit and captures nothing"))))
 (format t "RECLAIM_CENSUS_PASS refused, admitted, missing and out-of-range cache through actual trailing-stobj dispatch~%")

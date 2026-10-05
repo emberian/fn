@@ -5462,6 +5462,8 @@ existing port only after fn-fc has made this connection ready."
 ; demand over the committed records N and the history octets C the owner
 ; carries, fn-owner-record-octets, borrowed from the owner's work reserve; lane
 ; reclaim-funding); refused by name, nothing is captured or in flight.
+; Without the operator's opt-in (D53) the reservation is refused
+; :offline-only, answered (:deferred :offline-only NIL).
 ; Admitted, fn-owner-orc-capture's values (the pass and the publication in
 ; flight at COUNT) and the owner's connection bound.  Answers (:deferred WORD
 ; NIL), (:deferred :credit DEMAND) or (:captured CAPTURE MAX-CONNS).
@@ -5479,7 +5481,11 @@ existing port only after fn-fc has made this connection ready."
                (r (fn-orcp-reserve (fn-owner-credits state) n octets
                                    (fn-owner-reclaim-live-p state))))
           (if (not (eq (car r) :ok))
-              (mv nil (list :deferred :credit (fn-heap-reclaim-demand-octets n octets))
+              ;; without the opt-in, by that name (the request refuses it
+              ;; first; this is the capture's own check), else the demand
+              (mv nil (if (eq (cadr r) :offline-only)
+                          (list :deferred :offline-only nil)
+                        (list :deferred :credit (fn-heap-reclaim-demand-octets n octets)))
                   fn-hist state)
             (let ((state (fn-owner-put-credits (cadr r) state)))
               (mv-let (erp captured state)

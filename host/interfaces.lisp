@@ -4018,6 +4018,9 @@
 (definterface fn-native-operator-host-result-run-output-resources
   :class :program)
 
+(definterface fn-native-operator-host-result-run-reclaim-live
+  :class :program)
+
 (definterface fn-native-operator-host-result-run-implicit-tls-port
   :class ::program)
 
@@ -5736,6 +5739,7 @@
 (definterface fn-native-operator-host-result-config :class :program)
 (definterface fn-native-config-cold-resources :class :common-lisp-compliant)
 (definterface fn-native-config-output-resources :class :common-lisp-compliant)
+(definterface fn-native-config-reclaim-livep :class :common-lisp-compliant)
 ; Actual retained BP/TCPCL consumer entries. COMMON denotes guard-verified
 ; logical execution, not whole-turn funding, allocation or native qualification.
 (definterface fn-bpsched-accept-plan :class :common-lisp-compliant)
