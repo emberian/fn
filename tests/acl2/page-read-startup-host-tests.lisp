@@ -4,7 +4,7 @@
 (include-book "std/testing/assert-bang" :dir :system)
 
 (defconst *prst-host-plan*
- (fn-prstartup-plan 536870912 67108864 268435456 "/tmp/store" 4 1048576 4194304 8 256))
+ (fn-prstartup-plan 536870912 67108864 268435456 "/tmp/store" 4 1048576 4194304 8 256 (fn-prstartup-read-reserve 196677 4)))
 
 (defun prst-host-run (fn-page-read-pool)
  (declare (xargs :mode :program :stobjs fn-page-read-pool))

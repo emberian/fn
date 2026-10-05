@@ -1181,6 +1181,14 @@ The local exact I/O row belongs only to this activation, under extent lock."
     (unless (eq (first (fnn-core-page-read-pool 'fn-owner-page-read-settle token cachedp)) :settled)
       (fnn-fault "synchronous cold completion lost its resource lease"))))
 
+(defun fnn-extent-read-refused (what word)
+  "A synchronous read refused by WORD (no lease taken).  Under a stage that
+decides its own reads (host/native/io.lisp fnn-extent-with-read-refusal) the
+word goes back to it; elsewhere the refusal is raised here, as before."
+  (if *fnn-extent-read-refusal*
+      (throw 'fnn-extent-read-refused word)
+    (fnn-refuse "extent ~a refused: ~a" what word)))
+
 (defun fnn-extent-entry-direct (file eoff elen trailer)
   "A synchronous miss reserves before allocation. Its execution slot is
 conservatively charged while the persistent native worker baseline stays put.
@@ -1193,9 +1201,9 @@ A served result transfers to the cache before the caller borrows the vector."
           (declare (ignore cachedp))
           (fnn-extent-cache-release evicted))
         (return-from fnn-extent-entry-direct octets)))
-    (unless (eq mode :funded-pool) (fnn-refuse "extent read refused: ~a" mode))
+    (unless (eq mode :funded-pool) (fnn-extent-read-refused "read" mode))
     (let ((cache-mode (fnn-core 'fn-pxe-cache-mode (plusp (fnn-extent-cache-limit)))))
-      (unless (eq cache-mode :ready) (fnn-refuse "extent read refused: ~a" cache-mode)))
+      (unless (eq cache-mode :ready) (fnn-extent-read-refused "read" cache-mode)))
     (destructuring-bind (word token &rest ignored)
         (let ((admitted (fnn-core-page-read-pool 'fn-owner-page-read-admit 0 file eoff elen trailer)))
           ;; The pool is out of octets while the caches hold some: they yield,
@@ -1208,7 +1216,7 @@ A served result transfers to the cache before the caller borrows the vector."
           admitted)
       (declare (ignore ignored))
       (unless (eq word :admitted)
-        (fnn-refuse "extent read refused: ~a" word))
+        (fnn-extent-read-refused "read" word))
       (let ((row (fnn-core 'fn-pio-own-admitted-token token))
             (octets nil) (transferring nil))
         (unless row (fnn-fault "synchronous admitted token lacks its owned read"))
@@ -1261,9 +1269,9 @@ keeps that lease until its last buffer borrow ends. Extent lock held."
        (destructuring-bind (word lease &rest ignored)
            (fnn-core-page-read-pool 'fn-owner-page-read-discovery-admit file eoff elen)
          (declare (ignore ignored))
-         (unless (eq word :admitted) (fnn-refuse "extent discovery refused: ~a" word))
+         (unless (eq word :admitted) (fnn-extent-read-refused "discovery" word))
          (setq token lease)))
-      (otherwise (fnn-refuse "extent discovery refused: ~a" mode)))
+      (otherwise (fnn-extent-read-refused "discovery" mode)))
     (unwind-protect
          (progn
            (setq octets (fnn-extent-read-entry file eoff elen))
