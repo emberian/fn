@@ -634,6 +634,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/page-read-startup-host-tests \
 	books/output-reservation \
 	tests/acl2/output-reservation-tests \
+	books/reclaim-reservation \
+	tests/acl2/reclaim-reservation-tests \
 	books/resource-output \
 	tests/acl2/resource-output-tests \
 	tests/acl2/resource-syncer-tests \

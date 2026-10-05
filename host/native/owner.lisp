@@ -7685,12 +7685,18 @@ the stop's refusal at a chunk boundary is `owner-stopping'."
     (format nil "reclaimable=~d reclaimable-octets=~d held=~d reclaimed=~d freed-octets=~d"
             reclaimable octets held reclaimed freed)))
 
-(defparameter +fnn-reclaim-chunk-rows+ 1024
+(defun fnn-reclaim-chunk-rows ()
   "Rows rewritten and folded per ACL2 call while a reclaim pass walks the
-captured history (a work quantum per call, never a bound on the store).")
+captured history (a work quantum per call, never a bound on the store):
+ACL2's (books/heap-store-figure.lisp fn-heap-reclaim-chunk-rows), the chunk
+the pass's reserved demand holds (fn-heap-reclaim-demand-octets)."
+  (let ((n (fnn-core 'fn-heap-reclaim-chunk-rows)))
+    (unless (and (integerp n) (> n 0))
+      (fnn-fault "ACL2 returned a malformed reclaim chunk size"))
+    n))
 
 (defun fnn-owner-reclaim-walk (records ctx arena service history-source &optional consumer)
-  "One pass over the captured history in chunks of +fnn-reclaim-chunk-rows+:
+  "One pass over the captured history in chunks of (fnn-reclaim-chunk-rows):
 from the pinned P3 root HISTORY-SOURCE when there is one (each row's decode
 funded before it is read, the chunk's grant returned once the chunk is
 consumed), else the captured RECORDS.  Without CONSUMER the pass folds the
@@ -7701,16 +7707,16 @@ rewrite, joined by fn-orc-rewrite-rows-of-append) and handed to CONSUMER;
 no rewritten row outlives its chunk here (lane reclaim, PRF-1315: the pass
 keeps no whole rewritten-row list) and the answer is nil."
   (let ((acc (and (null consumer) (fnn-core 'fn-owner-orc-init)))
-        (rest records) (ordinal 0)
+        (rest records) (ordinal 0) (chunk-rows (fnn-reclaim-chunk-rows))
         (total (and history-source (fourth (first history-source)))))
     (loop while (if history-source (< ordinal total) rest) do
       (let ((chunk
               (if history-source
-                  (loop repeat +fnn-reclaim-chunk-rows+
+                  (loop repeat chunk-rows
                         while (< ordinal total)
                         collect (prog1 (fnn-owner-history-root-at service history-source ordinal)
                                   (incf ordinal)))
-                (loop repeat +fnn-reclaim-chunk-rows+ while rest collect (pop rest)))))
+                (loop repeat chunk-rows while rest collect (pop rest)))))
         (if consumer
             (let ((rewritten (fnn-core 'fn-owner-orc-rewrite-chunk chunk ctx arena)))
               (unless (and (listp rewritten) (= (length rewritten) (length chunk)))
@@ -8144,10 +8150,10 @@ publication).  Answers the reply word."
                        (fnn-owner-history-root-prepare-rows service rows column-salt))
                      (fnn-call 'fn-owner-orcp-load-catalog-begin column-key cat)
                      (let ((view-index (fnn-core 'fn-owner-orcp-view-index (second rebuilt)))
-                           (rest rows))
+                           (rest rows) (chunk-rows (fnn-reclaim-chunk-rows)))
                        (loop while rest do
                          (fnn-call 'fn-owner-orcp-load-catalog-chunk
-                                   (loop repeat +fnn-reclaim-chunk-rows+ while rest
+                                   (loop repeat chunk-rows while rest
                                          collect (pop rest))
                                    view-index arena cat))))
                    (setq e nil)

@@ -1716,9 +1716,12 @@ Memory credits (lane credits, B5, 2026-09-28; PRF-380, SCN-194). The
 article slots are now one instance of the credit ledger
 (books/memory-credits.lisp): the run's ledger (`fn-owner-credits`, installed
 by `fn-owner-connection-budget` as `fn-mca-initial`) has the launcher's heap
-figure as its budget, the figure's fixed terms as its base, the open's terms
-as a completion reserve that nothing is admitted against, the collector's room
-as the runtime reserve, and exactly the articles' pool free
+figure as its budget, the figure's fixed terms as its base, the owner's work
+reserve as its completion reserve (the open's terms and a live reclaim's
+excess over them: only the live reclaim pass draws it, by `fn-mcr-borrow`, and
+no user's operation is admitted against it; lane reclaim-funding,
+planning/design/reclaim-funding-2026-10-04.md), the collector's room as the
+runtime reserve, and exactly the articles' pool free
 (`fn-mca-initial-funds-exactly-the-articles`). Every served read is
 `fn-mca-read-span` (books/owner-credits.lisp) over `fn-oas-read-span`: the
 connection's credit becomes one reserve while it is mid-article plus one per

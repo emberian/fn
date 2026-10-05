@@ -7,7 +7,7 @@ This replaces tests/native_history_root_raw-mock.lisp as the walk's evidence:
 the mock drives the host walk against a hand-written ACL2 case table, and
 these cases run the real owner, real ACL2 and the real P3 history root.
 
-* A history longer than two walk chunks (+fnn-reclaim-chunk-rows+ = 1024
+* A history longer than two walk chunks (fnn-reclaim-chunk-rows = 1024
   rows), every other article expired by a posted Expires: in the past: the
   live `store reclaim` installs, reclaims exactly the expired half, and the
   connection open across the swap reads the survivors and refuses the
@@ -36,13 +36,15 @@ from tests import test_native_expiry as expiry
 GROUP, PAST = expiry.GROUP, expiry.PAST
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 CHUNK = 1024
-# The store's profile: the default developer profile's heap reservation does
-# not fund the pass's credit estimate (fn-orcp-estimate) over a 2,100-article
-# history -- the red-before run on 45e05c7f answered `deferred-credit`,
-# estimate=452968896 -- so the store is initialized with an explicit history
-# bound whose reservation does.
-PROFILE = ("--profile", "development", "--max-transactions", "16384",
-           "--max-history-octets", str(64 << 20))
+# The store's profile: the development preset with room for the 2,100
+# records (its own T is 128).  Until lane reclaim-funding (S152,
+# planning/design/reclaim-funding-2026-10-04.md) the pass reserved 64 x its
+# history's octets out of the articles' pool -- the red-before runs on
+# 45e05c7f answered `deferred-credit`, estimate=452968896, at the preset's H
+# and at an explicit 64 MiB alike -- so no history bound funded it; the pass
+# now borrows its second generation's demand from the owner's work reserve,
+# which the launcher's figure holds at the profile's bounds.
+PROFILE = ("--profile", "development", "--max-transactions", "16384")
 
 
 def tag(i: int) -> str:
@@ -126,6 +128,36 @@ class NativeReclaimWalkTests(unittest.TestCase):
                 self.assertTrue(got.startswith(want), (got, want))
                 self.assertTrue(c.command("STAT <xpy-%s@example.invalid>" % tag(3))
                                 .startswith(b"430 article reclaimed"))
+        finally:
+            node.stop(expect=None, grace=300)
+
+    def test_a_capacity_free_node_reclaims_live(self):
+        """S152 on a node without a profile: `init` sizes the store itself (the
+        friend ladder), the articles' pool is the defaults' (a few MiB), and a
+        history of 1,100 articles is two orders of magnitude past what the
+        pass's former reservation (64 x the history's octets out of that pool)
+        admitted.  The live pass installs and reclaims exactly the expired."""
+        n = CHUNK + 76
+        expired = lambda i: i % 2 == 0
+        node = Node(self, self.image, root=self.root / "capacity-free")
+        node.operator("init", GROUP, expiry.KEEP, timeout=600, expect=EXIT.OK)
+        secret = node.store("node-secret", "create", timeout=600)
+        self.assertIn(secret.returncode, (EXIT.OK, EXIT.REFUSED), secret.stderr[-600:])
+        owner = node.start(timeout=600)
+        try:
+            post_many(node, n, expired)
+            node.operator("retention", "expire", GROUP, "purge", "30", expect=EXIT.OK)
+            done = self.reclaim(node)
+            self.assertIn(b"installed", done.stdout, (done.stdout, owner.stderr.since(0)[-3000:]))
+            self.assertNotIn(b"reason=credit", owner.stderr.since(0))
+            line = self.owner_lines(owner, re.compile(rb"RECLAIM installed records="), 1)
+            self.assertEqual(len(line), 1, owner.stderr.since(0)[-3000:])
+            self.assertIn(b"reclaimed=%d " % sum(1 for i in range(n) if expired(i)), line[0], line)
+            with Client(node.port, timeout=300, greeting=None) as c:
+                self.assertTrue(c.command("STAT <xpy-%s@example.invalid>" % tag(0))
+                                .startswith(b"430 article reclaimed"))
+                self.assertTrue(c.command("STAT <xpy-%s@example.invalid>" % tag(1))
+                                .startswith(b"223"))
         finally:
             node.stop(expect=None, grace=300)
 

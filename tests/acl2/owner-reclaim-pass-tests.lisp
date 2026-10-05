@@ -10,40 +10,112 @@
 (include-book "expiry-tests")
 
 ; -----------------------------------------------------------------------------
-; 1. The credit.  A ledger with 10^6 octets of budget, 1,000 held by a
-; connection, 500 by the open batch.
+; 1. The credit (lane reclaim-funding, 2026-10-04;
+; planning/design/reclaim-funding-2026-10-04.md).  A ledger with 10^6 octets
+; of budget, 1,000 held by a connection, 500 by the open batch, and an
+; owner's work reserve (the completion reserve) of 200,000.
 (defconst *orcp-t-ops* (list (cons (fn-mca-conn-key 3) (cons 0 1000))
                              (cons :open (cons 0 500))))
-(defconst *orcp-t-l* (fn-mcr-make 1000000 100000 0 0 0 0 *orcp-t-ops*))
+(defconst *orcp-t-l* (fn-mcr-make 1000000 100000 0 200000 0 0 *orcp-t-ops*))
 (assert-event (fn-mcr-fundedp *orcp-t-l*))
-(assert-event (equal (fn-orcp-estimate 1000) 64000))
+; The demand over 3 records charging 1,000 octets: 10,416 a record and the
+; same for the walk's chunk, 4,640 a tombstone, 12 a charged octet.
+(assert-event (equal (fn-heap-reclaim-demand-octets 3 1000) (+ (* 10416 6) (* 4640 3) 12000)))
+(assert-event (equal (fn-heap-reclaim-demand-octets 3 1000) 88416))
+; The chunk term saturates at the walk's quantum.
+(assert-event (equal (fn-heap-reclaim-demand-octets 2000 0) (+ (* 10416 3024) (* 4640 2000))))
+(assert-event (equal (fn-heap-reclaim-chunk-rows) 1024))
 
-; KEYSTONES fn-orcp-reserve-keeps-funded and fn-orcp-reserve-holds-the-
-; estimate, positive witness: admitted, funded, the pass holds its estimate,
-; the connection and the open batch hold what they held.
-(defconst *orcp-t-r* (fn-orcp-reserved-credits *orcp-t-l* 1000))
-(assert-event (equal (car (fn-orcp-reserve *orcp-t-l* 1000)) :ok))
+; KEYSTONES fn-orcp-reserve-keeps-funded, fn-orcp-reserve-holds-the-estimate
+; and fn-orcp-reserve-keeps-the-articles-room, positive witness: admitted,
+; funded, the pass holds its demand, the connection and the open batch hold
+; what they held, the funded total (the articles' room) is unchanged and the
+; completion reserve is the demand less.
+(defconst *orcp-t-r* (fn-orcp-reserved-credits *orcp-t-l* 3 1000))
+(assert-event (equal (car (fn-orcp-reserve *orcp-t-l* 3 1000)) :ok))
 (assert-event (fn-mcr-fundedp *orcp-t-r*))
-(assert-event (equal (fn-mcr-credit-of :reclaim (fn-mcr-ops *orcp-t-r*)) 64000))
+(assert-event (equal (fn-mcr-credit-of :reclaim (fn-mcr-ops *orcp-t-r*)) 88416))
 (assert-event (equal (fn-mcr-credit-of (fn-mca-conn-key 3) (fn-mcr-ops *orcp-t-r*)) 1000))
 (assert-event (equal (fn-mcr-credit-of :open (fn-mcr-ops *orcp-t-r*)) 500))
+(assert-event (equal (fn-mcr-total *orcp-t-r*) (fn-mcr-total *orcp-t-l*)))
+(assert-event (equal (fn-mcr-budget *orcp-t-r*) (fn-mcr-budget *orcp-t-l*)))
+(assert-event (equal (fn-mcr-completion *orcp-t-r*) (- 200000 88416)))
 ; Mutation: a reservation that took the connection's credit is not this one.
 (must-fail-checked
  (assert-event (equal (fn-mcr-credit-of (fn-mca-conn-key 3) (fn-mcr-ops *orcp-t-r*)) 0)))
+; Mutation (K3): the reservation before this lane, a resize of :reclaim out of
+; the budget's free room, takes the articles' room by the whole demand.
+(must-fail-checked
+ (assert-event (equal (fn-mcr-total (cadr (fn-mcr-resize *orcp-t-l* :reclaim 88416)))
+                      (fn-mcr-total *orcp-t-l*))))
 
-; fn-orcp-reserve-refused-by-name: past the budget (a history whose copy
-; needs 64 x 20,000 octets) it is refused by name and the ledger is kept.
-(assert-event (equal (fn-orcp-reserve *orcp-t-l* 20000) '(:refused :memory-budget-exhausted)))
-(assert-event (equal (fn-orcp-reserved-credits *orcp-t-l* 20000) *orcp-t-l*))
-; The boundary: exactly the headroom is admitted, one octet more is not.
-(defconst *orcp-t-room* (- 1000000 (fn-mcr-total *orcp-t-l*)))
-(assert-event (equal (car (fn-mcr-resize *orcp-t-l* :reclaim *orcp-t-room*)) :ok))
-(assert-event (equal (car (fn-mcr-resize *orcp-t-l* :reclaim (1+ *orcp-t-room*))) :refused))
+; fn-orcp-reserve-refused-by-name: a demand past the reserve is refused by
+; name and the ledger is kept; the boundary is the reserve exactly
+; (76,416 + 12 x 10,298 = 199,992 admitted, 12 more refused).
+(assert-event (equal (fn-orcp-reserve *orcp-t-l* 3 20000) '(:refused :completion-reserve-exhausted)))
+(assert-event (equal (fn-orcp-reserved-credits *orcp-t-l* 3 20000) *orcp-t-l*))
+(assert-event (equal (car (fn-orcp-reserve *orcp-t-l* 3 10298)) :ok))
+(assert-event (equal (car (fn-orcp-reserve *orcp-t-l* 3 10299)) :refused))
+; A second pass while one holds the reserve is refused by name.
+(assert-event (equal (fn-orcp-reserve *orcp-t-r* 3 1000) '(:refused :operation-already-admitted)))
 
-; fn-orcp-release-frees-the-pass: nothing held after, funded.
-(assert-event (equal (fn-mcr-credit-of :reclaim (fn-mcr-ops (fn-orcp-release *orcp-t-r*))) 0))
-(assert-event (fn-mcr-fundedp (fn-orcp-release *orcp-t-r*)))
-(assert-event (equal (fn-mcr-credit-of :open (fn-mcr-ops (fn-orcp-release *orcp-t-r*))) 500))
+; fn-orcp-release-frees-the-pass and fn-orcp-release-of-reserve-is-pass-free:
+; nothing held after, funded, the reserve and every operation as before.
+(defconst *orcp-t-back* (fn-orcp-release *orcp-t-r*))
+(assert-event (equal (fn-mcr-credit-of :reclaim (fn-mcr-ops *orcp-t-back*)) 0))
+(assert-event (fn-mcr-fundedp *orcp-t-back*))
+(assert-event (equal (fn-mcr-completion *orcp-t-back*) 200000))
+(assert-event (equal (fn-mcr-ops *orcp-t-back*) *orcp-t-ops*))
+
+; KEYSTONE fn-orcp-profile-admitted-reclaim-is-funded on a run's ledger
+; (fn-mca-initial-is-pass-free).  The S152 store: the development preset at
+; T = 16,384 and H = 64 MiB (tests/test_native_reclaim_walk.py's PROFILE),
+; the production core, the 64 MiB nursery cap.
+(defconst *orcp-t-core* '(200411640 . 114644864))
+(defconst *orcp-t-s152* (fn-bs-profile-resolve
+                         (list :development (list (cons *fn-bs-pf-max-transactions* 16384)
+                                                  (cons *fn-bs-pf-max-history-octets* 67108864)))
+                         nil))
+(assert-event (fn-bs-profile-admittedp *orcp-t-s152*))
+(defconst *orcp-t-run* (fn-mca-initial *orcp-t-s152* *orcp-t-core* 67108864))
+(assert-event (fn-mca-pass-free-p *orcp-t-run* *orcp-t-s152*))
+; The S152 run: 2,100 articles charging 7,077,639 octets, demand 127,215,252.
+(assert-event (equal (fn-heap-reclaim-demand-octets 2100 7077639) 127215252))
+(assert-event (equal (car (fn-orcp-reserve *orcp-t-run* 2100 7077639)) :ok))
+; And the store at the profile's bounds.
+(assert-event (equal (car (fn-orcp-reserve *orcp-t-run* 16384 67108864)) :ok))
+; RED BEFORE (the witness the keystone must kill): the reservation before
+; this lane, 64 x h resized out of the articles' pool, refuses the S152 run
+; (estimate 452,968,896) on this ledger, and on the development preset's own
+; run refuses 64 x 53,777 octets.
+(assert-event (equal (fn-mcr-resize *orcp-t-run* :reclaim (* 64 7077639))
+                     '(:refused :memory-budget-exhausted)))
+(assert-event (equal (fn-mcr-resize (fn-mca-initial *fn-bs-profile-development* *orcp-t-core* 67108864)
+                                    :reclaim (* 64 53777))
+                     '(:refused :memory-budget-exhausted)))
+; K2: the articles' steps leave the reserve to the pass -- a connection
+; mid-article, then its submission taken and sealed.
+(defconst *orcp-t-busy*
+  (fn-mca-seal (fn-mca-take (cadr (fn-mcr-resize *orcp-t-run* (fn-mca-conn-key 7)
+                                                 (fn-heap-article-reserve-octets *orcp-t-s152*)))
+                            7 (fn-heap-article-reserve-octets *orcp-t-s152*))))
+(assert-event (fn-mca-pass-free-p *orcp-t-busy* *orcp-t-s152*))
+(assert-event (equal (car (fn-orcp-reserve *orcp-t-busy* 16384 67108864)) :ok))
+; Hypothesis removal (pass-free): a ledger whose :reclaim already holds an
+; entry refuses.
+(must-fail-checked
+ (assert-event (equal (car (fn-orcp-reserve (fn-orcp-reserved-credits *orcp-t-run* 1 0)
+                                            2100 7077639))
+                      :ok)))
+; Hypothesis removal (C <= H, N <= T): on the small preset the owner's work
+; reserve is the demand at the bounds exactly (its open's transient is
+; smaller), so one charged octet or one record past the bounds is refused.
+(defconst *orcp-t-small-run* (fn-mca-initial *fn-heap-small-profile* *orcp-t-core* 67108864))
+(assert-event (equal (fn-mca-owner-octets *fn-heap-small-profile*)
+                     (fn-heap-reclaim-demand-octets 16384 8388608)))
+(assert-event (equal (car (fn-orcp-reserve *orcp-t-small-run* 16384 8388608)) :ok))
+(assert-event (equal (car (fn-orcp-reserve *orcp-t-small-run* 16384 8388609)) :refused))
+(assert-event (equal (car (fn-orcp-reserve *orcp-t-small-run* 16385 8388608)) :refused))
 
 ; -----------------------------------------------------------------------------
 ; 2. The swap word.  KEYSTONE fn-orcp-swap-only-over-the-capture: the
