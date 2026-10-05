@@ -161,6 +161,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/decoded-window-yield-trajectory-tests \
 	tests/acl2/decoded-worker-controller-trajectory-tests \
 	tests/acl2/decoded-worker-reuse-execution-tests \
+	tests/acl2/decoded-window-cache-tests \
 	tests/acl2/decoded-worker-reuse-tests \
 	tests/acl2/extent-window-buffer-tests \
 	tests/acl2/extent-window-capture-tests \
@@ -623,10 +624,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-flight-reservation \
 	books/peer-u64-codec \
 	books/peer-flight-profile \
+	books/peer-flight-default \
 	books/peer-flight-startup \
 	tests/acl2/page-read-startup-tests \
 	tests/acl2/peer-flight-reservation-tests \
 	tests/acl2/peer-flight-profile-tests \
+	tests/acl2/peer-flight-default-tests \
 	tests/acl2/peer-flight-startup-tests \
 	tests/acl2/page-read-startup-host-tests \
 	books/output-reservation \
@@ -1745,12 +1748,16 @@ ACL2_BOOKS ?= books/defrecord \
 	books/feed-journal \
 	tests/acl2/feed-journal-tests \
 	tests/acl2/peer-feed-tests \
+	tests/acl2/peer-feed-red-defer-tests \
+	tests/acl2/peer-feed-red-capacity-tests \
+	tests/acl2/peer-feed-red-msgid-tests \
 	tests/acl2/feed-correspondence-tests \
 	tests/acl2/feed-port-replay-tests \
 	books/owner-feed \
 	books/owner-feed-port \
 	tests/acl2/owner-feed-port-tests \
 	tests/acl2/owner-feed-tests \
+	tests/acl2/owner-feed-live-carried-tests \
 	books/owner \
 	books/transit-header-limits \
 	tests/acl2/transit-header-limits-tests \
@@ -1862,6 +1869,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/article-kind-acceptance \
 	books/article-kind-hybrid \
 	tests/acl2/article-kind-tests \
+	books/app-pattern \
+	tests/acl2/app-pattern-tests \
+	books/article-kind-codec \
+	tests/acl2/article-kind-codec-tests \
+	books/app-pattern-delivery \
+	tests/acl2/app-pattern-delivery-tests \
 	books/hybrid-store-injected \
 	books/hybrid-store-invariants \
 	books/control-classify \
@@ -1925,6 +1938,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-invite-administrator-tests \
 	books/tls-reload \
 	tests/acl2/tls-reload-tests \
+	books/wire-grammar \
+	tests/acl2/wire-grammar-tests \
+	books/wire-family-fncu \
+	tests/acl2/wire-family-fncu-tests \
+	books/wire-family-identity \
+	books/wire-export \
+	books/store-identity \
+	tests/acl2/store-identity-tests \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
 	books/control-visible-indexed \
@@ -1994,6 +2015,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-availability \
 	books/served-available-commands \
 	books/served-available-read \
+	books/served-available-access \
 	books/article-stream \
 	tests/acl2/article-stream-tests \
 	books/article-stream-server \
@@ -2008,6 +2030,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-available-readers-tests \
 	tests/acl2/served-available-commands-tests \
 	tests/acl2/served-available-read-tests \
+	tests/acl2/served-available-access-tests \
 	books/def-cursor-batch \
 	books/newnews-stream-cursor \
 	tests/acl2/newnews-stream-cursor-tests \
@@ -2071,6 +2094,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/feed-journal-order-tests \
 	tests/acl2/tls-handshake-budget-tests \
 	tests/acl2/tls-proxy-tests \
+	books/tls-key-exchange \
+	tests/acl2/tls-key-exchange-tests \
 	tests/acl2/owner-cold-line-tests \
 	books/owner-resource-line \
 	tests/acl2/owner-resource-line-tests \
@@ -2532,7 +2557,7 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/owner-prepare-deferred-carried-owner-tests \
     tests/acl2/withdrawal-index-carried-tests
 
-.PHONY: host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
+.PHONY: wire-grammar wire-grammar-check host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
@@ -2594,6 +2619,7 @@ check-lane:
 # an image build).
 check-fast:
 	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
+	@$(CHECK_STEP_WARM) $(PYTHON) tools/evidence_store.py fetch --all
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --read
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --books
 	@$(CHECK_STEP) $(PYTHON) tools/merge_registry.py --reciprocate --check
@@ -2622,9 +2648,14 @@ check-fast-lane:
 #     step's output printed whole and kept in build/check-steps/logs/;
 #   - skipping a step whose traced inputs (the files it opened, the
 #     directories it listed, the paths it stat'ed, its git commands' output)
-#     are unchanged since its last PASS: "cached (inputs unchanged since
-#     <sha>)", from build/check-cache/ (never committed).  A step that starts
-#     ACL2 or another untraceable process always runs.
+#     are unchanged since its last VERDICT (a pass, or a red with exit 1; a
+#     NOT RUN, a signal or 127 is never cached): "cached (inputs unchanged
+#     since <sha>)", a red replayed red with the run that produced it named,
+#     from build/check-cache/ (never committed; FN_VERDICT_STORE=DIR names a
+#     store shared by every worktree on the box, since tree files are keyed
+#     by relative path).  A step that starts ACL2 or another untraceable
+#     process always runs.  A cached verdict satisfies no READY and no batch
+#     gate: those are live runs.
 # `make check-lane CHECK_CHANGED_SINCE=REV` runs only the steps the diff from
 # REV can reach (their last traced inputs; a docs-only diff skips host_check,
 # reach_check, green_check; a step never traced in this tree runs): the rest
@@ -2645,6 +2676,13 @@ CHECK_EXECUTE = $(PYTHON) tools/check_steps.py execute $(CHECK_STEPS_DIR) \
 
 check:
 	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
+# The committed evidence objects (tools/evidence_store.py: ledger --check and
+# current_view --check read them) are fetched once here, in parallel with
+# every step that does not read them, so no step spawns the rsync itself: a
+# step that does is untraceable and never cached (lane iter-arch, 2026-10-04:
+# 46 + 28 s on every check-fast of a fresh tree).  Objects are content-named,
+# so the cache is a shared cache to check_steps, not an input.
+	@$(CHECK_STEP_WARM) $(PYTHON) tools/evidence_store.py fetch --all
 # The analysed tree (tools/ledger.py load_tree, persisted by its inputs'
 # digest under build/cache/ledger-tree) that check_scaffold, certified_claims,
 # current_view, depth_check, harness_check, interface_emit and spec_cite_check
@@ -2661,6 +2699,11 @@ check:
 # not what the docs say now; the Python tools' invocations by their own
 # argparse parsers; quoted reply lines against the source that prints them.
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
+# The exported wire grammars (Mini M5): specs/wire-grammar.json is the value
+# ACL2 renders (books/wire-export.lisp fn-wgx-file), and a second interpreter
+# written from the language's description reads every vector in it.
+	@$(CHECK_STEP) $(PYTHON) tools/protocol_emit.py --wire --check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_wire_grammar tests.test_protocol_emit_wire
 # The shape-books table in docs/proof-style.md (books by certification
 # fan-in, the farm's graph).  A WARNING when stale, never a failure: the
 # counts move with every include (lane lane-tools-2, for served-columns).
@@ -3108,3 +3151,11 @@ test-modules:
 	$(PYTHON) tools/test_budget.py $(MODULES) --logs build/test-budget
 
 # Current captured and RX component roots; proof/native scope stays explicit.
+
+# The exported wire grammars (Mini M5): write specs/wire-grammar.json from
+# ACL2's fn-wgx-file; `make wire-grammar-check' compares.
+wire-grammar:
+	$(PYTHON) tools/protocol_emit.py --wire --write
+
+wire-grammar-check:
+	$(PYTHON) tools/protocol_emit.py --wire --check

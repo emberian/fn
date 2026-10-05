@@ -4870,7 +4870,7 @@ flight).  While any batch is in flight or open ACL2's pick admits only
 :inspect and :commit (fn-ocp-next-open-only-in-flight); a batch's replies
 leave only in its COMPLETE, after its barrier returned
 (fn-ocp-complete-only-after-the-barrier)."
-  (let ((members nil) (uncertain nil) (deferred nil) (action nil) (job nil)
+  (let ((members nil) (uncertain nil) (deferred nil) (action nil) (job nil) (abandoned nil)
         (next nil) (next-deferred nil) (next-job nil) (frames-only nil) (syncer nil) (result nil) (limits nil)
         (need nil) (syncer-actor nil) (syncer-grant nil) (completion-pending nil)
         (return-receipt '(:pipeline-returned nil :none nil nil))
@@ -5099,6 +5099,9 @@ leave only in its COMPLETE, after its barrier returned
                              ;; answered (uncertain to its client).
                              (fnn-owner-reader-capture :drop)
                              (fnn-owner-action 'fn-owner-credits-stop)
+                             ;; The next batch's members are told uncertain
+                             ;; just below: it is abandoned, never synced.
+                             (setq abandoned t)
                              (multiple-value-bind (tell ledger2)
                                  (fnn-owner-answer-early ledger next)
                                (setq ledger ledger2)
@@ -5148,9 +5151,14 @@ leave only in its COMPLETE, after its barrier returned
                              (setq next nil))
                             (t (fnn-fault "owner named ~a after a barrier" step)))
                       (setq done t))))
-              (setq action (fnn-owner-commit-event service :completed))
+              ;; A COMPLETE that found the owner stopping abandoned the next
+              ;; batch (its members were told uncertain): ACL2 leaves no batch
+              ;; in flight (fn-ocp-a-stopping-completion-leaves-no-batch), so
+              ;; the gate admits every class again and the stop's joins of the
+              ;; workers waiting at it return.
+              (setq action (fnn-owner-commit-event
+                            service (if abandoned :completed-stopping :completed)))
               (unless done (setq action :none))
-              (when (fnn-owner-service-stopping service) (setq action :none))
               (if (and next (eq action :sync))
                   (setq members next deferred next-deferred job next-job
                         next nil next-deferred nil next-job nil)
@@ -8408,7 +8416,25 @@ the shared classifier after stop; cleanup return is not physical join."
       (loop
         (when (or *fnn-sigterm-requested* (fnn-owner-service-stopping service)) (return))
         (fnn-owner-maintenance-tick service)
-        (sleep 1)))
+        ;; Once a second, as before; but the stop's signal
+        ;; (fnn-owner-signal-commit) ends the wait, so the stop's join of
+        ;; this worker no longer waits out the rest of the second
+        ;; (SCEN-OWNER-STOP-LATENCY).  A commit's signal only re-waits.
+        (let ((due (+ (get-internal-real-time) internal-time-units-per-second))
+              (lock (fnn-owner-service-wait-lock service))
+              (queue (fnn-owner-service-wait-queue service)))
+          (sb-thread:with-mutex (lock)
+            (loop
+              (when (or *fnn-sigterm-requested* (fnn-owner-service-stopping service))
+                (return))
+              (let ((left (- due (get-internal-real-time))))
+                (unless (plusp left) (return))
+                (sb-thread:condition-wait
+                 queue lock
+                 :timeout (/ (coerce left 'double-float) internal-time-units-per-second))
+                ;; A timed-out wait may return without the mutex.
+                (unless (sb-thread:holding-mutex-p lock)
+                  (sb-thread:grab-mutex lock))))))))
     (lambda (condition) (fnn-owner-thread-escape service condition "owner maintenance"))))
 
 (defun fnn-owner-accept (service listener once)

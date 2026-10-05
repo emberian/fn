@@ -83,6 +83,16 @@ this tree; `tools/hbox_native.sh . tests.test_native_NAME` builds images
 from this tree first (certify + build, tens of minutes).  The integrator's
 set of twelve core modules is the release bar.
 
+The box keeps a verdict store (`tools/native_verdicts.py`, `FN_VERDICT_STORE`,
+else `BASE/.verdicts`): each module's run is stored under a key of exactly
+its inputs (the module and the tests/ helpers it imports, the harness and
+the runner, each image's launcher, core and runtime digests or overlay
+record, the `FN_*` it reads, the SBCL and Python), with every case's
+outcome.  A later run whose key is stored replays an OK or SKIPPED verdict
+in `run.log` marked `cached` with the run it came from, and re-runs only the
+red cases of a red one, the rest carried; `--all` runs everything.  A cached
+verdict satisfies no claim: a claim names a live run's id.
+
 A pass shows: the behaviour, on that image, for that run.  It is evidence to
 file (`tools/evidence_store.py put`), never a proof; a skipped test is not a
 pass, and a module's image tests count only with the image's identity named.
@@ -163,12 +173,16 @@ did not test their claim).
 
 Run a tier against a published image set (no certify, no build):
 
-    python3 tools/scenario_suite.py run smoke --image-set SHA        # tests at SHA
-    python3 tools/scenario_suite.py run peer --image-set SHA --rev .  # this worktree's tests
-    tools/hbox_native.sh attach smoke-SHA9                             # wait; print run.log
+    python3 tools/scenario_suite.py run smoke --image-set SHA --wait  # boxq: sharded over the boxes
+    python3 tools/scenario_suite.py run peer --image-set SHA --box hbox --rev .  # hbox, this worktree
+    tools/hbox_native.sh attach peer-SHA9                              # wait for an hbox run
 
-`run` prints the `hbox_native.sh` command it starts and, for a tier's kits,
-the command to run by hand on hbox.  `list [TIER]` shows each entry with its
+By default (`--box auto`) `run` submits the tier to `tools/boxq.py` as one
+native job. boxq shards it over the boxes that hold the set, and the tier's
+opt-in cases that need hbox's trees skip by name. `--box hbox` (INN, docker,
+the fixtures) or another named box runs `hbox_native.sh` there. `run` prints
+the command it starts and, for a tier's kits, the command to run by hand on
+hbox (`boxq submit --kind cmd --box hbox -- 'COMMAND'` queues one).  `list [TIER]` shows each entry with its
 questions and reason; `modules TIER` prints the module names for any other
 runner (an overlay image is picked up through the same `FN_NATIVE_*`
 variables every module reads).  Tell the integrator before a run; one run
@@ -180,21 +194,50 @@ A tier's result is the run's `run.log` (OK / FAILED / SKIPPED per module,
 with the image set named); a red is classified (implementation, harness,
 environment) with the run id, never re-expected.
 
+Which natives a change can affect: `python3 tools/scenario_suite.py
+affected --since REV` (or `affected FILE...`; `--explain` names the rule).
+It prints the smoke tier, which always runs, and then every image-driving
+module that `tests/scenarios/affects.tsv` selects. Each rule maps a path
+glob to the coverage map's question codes, and the module map
+(`planning/scenarios-2026-10-04-modules.tsv`) gives each module's codes.
+A file under host/, books/, packaging/ or tests/ that no rule names selects
+every native. The batch gate runs host-ld, then this list.
+
 ## What `make check` is
 
 `make check` plans ~90 steps and `tools/check_steps.py` runs them in parallel,
-skipping a step whose recorded inputs are unchanged since it last passed
-(`make check FORCE=1` runs every step).  It needs no image; a step that needs ACL2 or
+skipping a step whose recorded inputs are unchanged since its last verdict: a
+pass is replayed as a pass, a red (exit 1) as the same red, naming the run,
+box and log that produced it; a NOT RUN, a signal or a missing program is
+never cached (`make check FORCE=1` runs every step).  Tree files are keyed by
+relative path, so `FN_VERDICT_STORE=DIR` lets every worktree on a box share
+one store; a cached verdict satisfies no READY and no batch gate, which are
+live runs.  It needs no image; a step that needs ACL2 or
 certificates it cannot find says NOT RUN and counts as failed.  `make check-lane`
 is the same in a scratch directory; `tools/remote_check.sh auto` runs it on a
 build box.
+
+**The red set and one iteration.**  `python3 tools/reds.py collect` writes
+`build/reds.json`: every known red (a red check step from the last
+`execute`, a `FAIL`/`ERROR` case from native module logs named with
+`--native`, a `real` red of a certify run named with `--certify`) with an
+impact selector, the paths whose change could flip it (the step's traced
+inputs, the module and the paths it names, the book's include closure).
+`reds.py affected --since REV` prints the reds a diff reaches with why and
+the narrowest command for each; `reds.py delta OLD NEW` the reds that
+appeared and the ones fixed.  `python3 tools/iterate.py --since REV [--fast]`
+is the lane loop: the scoped check-lane (unreached verdicts replayed from
+the store), then the collection, the delta against the previous red set and
+the reds of other kinds the diff reaches, each with its command, printed and
+never started (overlays run on a build box through the integrator, certifies
+through the farm).  Neither is a gate; `FORCE=1` and a READY stay live runs.
 
 **Scoped and baselined runs.**  `make check-lane CHECK_CHANGED_SINCE=<rev>` (or
 `tools/remote_check.sh BOX --changed-since <rev>`) runs only the steps the diff
 from `<rev>` (committed, uncommitted and untracked files) can reach: the steps
 whose last traced run, passing or failing, read, stat'ed or listed a changed
 path, ran a git command the change can move, or could not be traced (ACL2, a
-shell child).  The rest print `skipped`; a docs-only diff skips host_check,
+shell child).  The rest print `skipped`, with the store's last verdict beside it when that was red (`last verdict exit 1: ...`; the row's own exit stays 0); a docs-only diff skips host_check,
 reach_check and green_check.  A step this tree has never run is not skipped, so
 the first run in a fresh worktree is a full one.  `CHECK_BASELINE=<table>`
 (`--baseline`) reads a step table such as

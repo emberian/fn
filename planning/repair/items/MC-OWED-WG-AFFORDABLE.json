@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/wire-grammar.lisp",
+ "id": "MC-OWED-WG-AFFORDABLE",
+ "notes": [],
+ "owner": "mini-contract",
+ "severity": "medium",
+ "slice": "mini-contract",
+ "source": "mini-contract",
+ "state": "open",
+ "title": "books/wire-grammar.lisp fn-wg-decode: the affordability bound Mini's M5 (and the GPT-6 review 10-04, section 5) asks for is met by the decoder's order of evaluation (a declared bytes length or frame LENGTH is compared with HI/MAX and the octets present before fn-wg-take allocates by it; lane mini-contract fixed the two eager takes) but is not yet a theorem. Owed: def-cost rows for fn-wg-decode with :conses <= a per-grammar constant times (len xs) + c, and :visits linear in the octets consumed; needs cost contracts (or rows) for fn-frame-digest (BLAKE3), fn-ot-b64-decode and fn-wildmat-decode-aux, which are unaccounted today. Until then the language description (planning/design/wire-grammar-2026-10-04.md, Affordability) states the obligation and no claim cites a bound.",
+ "updated": "2026-10-04T17:44:04Z"
+}

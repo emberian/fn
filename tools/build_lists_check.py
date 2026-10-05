@@ -105,6 +105,10 @@ DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
         "host/native/tls-reload.lisp, which build-dtn.lisp does not load: its "
         "operator has no :tls executor and no live owner (host/native/operator-live.lisp "
         "installs both), so it refuses `tls` and `status` asks no owner", {}),
+    "host/store-identity-host.lisp": (
+        "`fn identity CONTROL` (Mini M4); used only by host/native/store-identity.lisp, "
+        "which build-dtn.lisp does not load: the DTN image registers no `identity` verb "
+        "and its owner answers no control request of kind 24", {}),
     "host/native-hybrid-control-host.lisp": (
         "hybrid authoring control; used by control.lisp and hybrid-control.lisp, not loaded", {}),
     "host/web-host.lisp": (

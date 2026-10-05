@@ -214,6 +214,12 @@ If it goes wrong:
   know how to send batches. Use `peer pull` instead.
 - `reason=local-deferred`: your own node asked to try an article later.
   The next round tries again.
+- `reason=peer-flight-unfunded`: your node has no `peer-flight-profile`
+  file in its store directory, the allowance catching up spends. `init`
+  writes one; a store made before it, or one whose file was removed, needs
+  one again (see [resource vector](../specs/resource-vector.md)) and a
+  restart. Without the file, `peer catch-up` itself is refused:
+  `peer catch-up refused: no peer flight profile`.
 
 To stop: `fn operator /var/lib/fn/fn.toml peer catch-up friend 0`.
 

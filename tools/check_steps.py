@@ -32,16 +32,24 @@ its steps and this driver runs them:
 - INPUT-HASHED.  Every step runs under tools/check_trace/sitecustomize.py,
   which records what it actually read: the files it opened (imports
   included), the directories it listed, the paths it stat'ed and the git
-  commands it ran.  After a PASS, the driver keys those inputs (content
-  digests, listings, git outputs, the command, the FN_* environment and the
-  Python version) under CACHE (build/check-cache, never committed).  A step
-  whose recorded inputs are all unchanged is not run: its row says
-  "cached (inputs unchanged since <sha>)" and its stored output is replayed.
-  A step that starts a process the trace cannot see into (ACL2, a shell, a
-  Python child without the tracer) or runs a git command with side effects
-  or stdin is never cached.  A failure is never cached.  `--no-cache`
-  (`make check FORCE=1`) runs every step; the batch runner's one full pass
-  at a pushed head uses it.
+  commands it ran.  After a VERDICT (exit 0, a pass; exit 1, a finding),
+  the driver keys those inputs (content digests, listings, git outputs, the
+  command, the FN_* environment, the Python interpreter and version, and the
+  ACL2 and SBCL launchers the environment names) under CACHE.  A step whose
+  recorded inputs are all unchanged is not run: its row says "cached (inputs
+  unchanged since <sha>)" and its stored output is replayed; a RED is
+  replayed red, with the same exit and finding, and its header names the
+  run that produced it (sha, box, when, log), so the reader opens the real
+  failure.  Paths inside the tree are keyed relative to its root, so one
+  store serves every worktree of the same bytes on a box: CACHE is
+  build/check-cache (never committed) unless FN_VERDICT_STORE or --cache
+  names a shared one.  A step that starts a process the trace cannot see
+  into (ACL2, a shell, a Python child without the tracer) or runs a git
+  command with side effects or stdin is never cached, and neither is a
+  NON-VERDICT: exit 2 (NOT RUN), a signal, 127.  `--no-cache` (`make check
+  FORCE=1`) runs every step; the batch runner's one full pass at a pushed
+  head uses it, and a cached verdict never satisfies a READY or a batch
+  gate (a lane's READY is a live run of the steps its change reaches).
 
 - SCOPED.  `execute --changed-since REV` (make check-lane CHECK_CHANGED_SINCE=REV)
   runs only the steps the diff from REV (committed, uncommitted and untracked
@@ -107,9 +115,38 @@ GIT_REPLAY_LIMIT = 200
 # of the bytes it was computed from, which the step reads (and the trace
 # records) to name it, and it is written by an atomic rename.  Neither an
 # input nor a hazard (tools/ledger.py's ledger-tree, tools/callgraph.py's).
-SHARED_CACHES = (str(ROOT / "build" / "cache") + os.sep,)
+def _main_checkout() -> Path:
+    """The checkout whose build/ a worktree shares (tools/evidence_store.py
+    checkout_of): a worktree's .git is a file naming the main .git."""
+    dot_git = ROOT / ".git"
+    try:
+        if dot_git.is_file():
+            text = dot_git.read_text(encoding="utf-8").strip()
+            if text.startswith("gitdir:"):
+                git_dir = Path(text[len("gitdir:"):].strip())
+                if git_dir.parent.name == "worktrees":
+                    return git_dir.parent.parent.parent
+    except OSError:
+        pass
+    return ROOT
+
+
+# The evidence cache too (tools/evidence_store.py: objects named by their
+# sha256, fetched by `evidence_store.py fetch`, the warm-up `make check`
+# plans first): ledger --check and current_view --check read it, and a read
+# of a content-named object is neither an input nor a hazard.
+SHARED_CACHES = tuple(dict.fromkeys([
+    str(ROOT / "build" / "cache") + os.sep,
+    str(_main_checkout() / "build" / "evidence-cache") + os.sep,
+    str(ROOT / "build" / "evidence-cache") + os.sep,
+    *([os.environ["FN_EVIDENCE_CACHE"].rstrip(os.sep) + os.sep]
+      if os.environ.get("FN_EVIDENCE_CACHE") else [])]))
 # Environment that does not change what a step decides.
 ENV_IGNORED = frozenset({"FN_LANE_CHECK_DIR", "FN_CHECK_TRACE"})
+# Exit codes that are a verdict on the inputs, and so are cached: a pass and a
+# finding.  Exit 2 is NOT RUN (the tree's convention: no ACL2, no certificate),
+# 127 is a missing program, a negative code a signal: none judged the inputs.
+VERDICT_EXITS = (0, 1)
 
 
 def step_name(command: list[str]) -> str:
@@ -341,6 +378,23 @@ def rel_path(path: str) -> str | None:
             if form.startswith(root + os.sep):
                 return form[len(root) + 1:]
     return None
+
+
+def portable(path: str) -> str:
+    """`path` as the store keys it: tree-relative (`./x`) inside the repository,
+    absolute outside it (the interpreter, site-packages), so an entry written
+    in one worktree is found from another worktree of the same bytes."""
+    rel = rel_path(path)
+    if rel is None:
+        return path
+    return "./" if rel == "." else "./" + rel
+
+
+def located(key: str) -> str:
+    """The path a stored key names in THIS tree."""
+    if key == "./":
+        return str(ROOT)
+    return str(ROOT / key[2:]) if key.startswith("./") else key
 
 
 def scope_record(command: list[str], trace: dict) -> dict:
@@ -620,10 +674,10 @@ def inputs_of(trace: dict, memo: FileMemo) -> tuple[dict | None, str]:
             return None, f"git {' '.join(argv)[:60]} did not answer ({value[:60]})"
     reads = sorted(p for p in trace["r"] if keep(p))
     return {
-        "r": {p: memo.digest(p) for p in reads},
-        "l": {p: listing(p) for p in sorted(trace["l"]) if keep(p)},
-        "s": {p: path_state(p) for p in sorted(trace["s"] - trace["r"]) if keep(p)},
-        "g": replayed,
+        "r": {portable(p): memo.digest(p) for p in reads},
+        "l": {portable(p): listing(p) for p in sorted(trace["l"]) if keep(p)},
+        "s": {portable(p): path_state(p) for p in sorted(trace["s"] - trace["r"]) if keep(p)},
+        "g": [[portable(cwd), argv, value] for cwd, argv, value in replayed],
     }, ""
 
 
@@ -637,12 +691,23 @@ def moved_during(inputs: dict, since_ns: int) -> str:
     (S055, sweep 2026-10-03).  Any input touched since the step started makes
     the run uncacheable; the comparison is `>=`, so a write in the same clock
     tick as the start counts as during."""
-    for path in [*inputs["r"], *inputs["l"], *inputs["s"]]:
-        try:
-            if os.stat(path).st_mtime_ns >= since_ns:
-                return path
-        except OSError:
-            continue
+    # A stat'ed or opened DIRECTORY is keyed as "dir" (path_state, FileMemo):
+    # its mtime moves whenever an entry is added beside it, which says
+    # nothing the key records.  pathlib's resolve() stats every ancestor of a
+    # tree path, so /Users/ember is in every step's `s`, and a sibling
+    # session's write there refused to cache host_check, ledger, reach_check
+    # and spec_cite_check on every laptop run (lane iter-arch, 2026-10-04).
+    # A listed directory is different: its listing IS the key.
+    for kind in ("r", "l", "s"):
+        for path in inputs[kind]:
+            where = located(path)
+            try:
+                if kind != "l" and os.path.isdir(where):
+                    continue
+                if os.stat(where).st_mtime_ns >= since_ns:
+                    return where
+            except OSError:
+                continue
     return ""
 
 
@@ -657,24 +722,54 @@ def fs_now(directory: Path) -> int:
 
 def inputs_unchanged(inputs: dict, memo: FileMemo) -> bool:
     for path, value in inputs["r"].items():
-        if memo.digest(path) != value:
+        if memo.digest(located(path)) != value:
             return False
     for path, value in inputs["l"].items():
-        if listing(path) != value:
+        if listing(located(path)) != value:
             return False
     for path, value in inputs["s"].items():
-        if path_state(path) != value:
+        if path_state(located(path)) != value:
             return False
     for cwd, argv, value in inputs["g"]:
-        if value.startswith(GIT_FAILED) or git_output(cwd, argv) != value:
+        if value.startswith(GIT_FAILED) or git_output(located(cwd), argv) != value:
             return False
     return True
 
 
+def toolchain_identity() -> list:
+    """The launchers a step may run that the trace cannot see into, by path
+    and content: FN_ACL2 and FN_SBCL when set, else `acl2` and `sbcl` on PATH.
+    An environment red (a box whose launcher is broken or absent) is keyed
+    to that launcher, so fixing the box changes the key and the red re-runs."""
+    found = []
+    for variable, name in (("FN_ACL2", "acl2"), ("FN_SBCL", "sbcl")):
+        path = os.environ.get(variable) or shutil.which(name) or ""
+        if not path:
+            found.append([name, "absent", ""])
+            continue
+        try:
+            value = file_digest(path) if os.path.isfile(path) else "dir"
+        except OSError:
+            value = "unreadable"
+        found.append([name, path, value])
+    return found
+
+
 def step_key(command: list[str]) -> str:
+    """One key per (command, environment, interpreter, toolchain): the tree's
+    bytes are the entry's inputs, never part of the key, so every worktree of
+    the same bytes asks the store for the same entry."""
     env = {k: v for k, v in os.environ.items() if k.startswith("FN_") and k not in ENV_IGNORED}
-    material = json.dumps([command, sorted(env.items()), sys.version, os.getcwd()])
+    material = json.dumps([command, sorted(env.items()), sys.version, sys.executable,
+                           toolchain_identity()])
     return hashlib.sha256(material.encode()).hexdigest()[:24]
+
+
+def box_name() -> str:
+    try:
+        return os.uname().nodename.split(".")[0]
+    except (OSError, AttributeError):
+        return "unknown"
 
 
 def head_sha() -> str:
@@ -750,9 +845,9 @@ class Executor:
             return None
         inputs = entry["inputs"]
         return {"command": entry["command"], "x": "", "r": sorted(
-            {*map(rel_path, [*inputs["r"], *inputs["s"]])} - {None}),
-            "l": sorted({*map(rel_path, inputs["l"])} - {None}),
-            "g": [[cwd, argv] for cwd, argv, _ in inputs["g"]]}
+            {rel_path(located(p)) for p in [*inputs["r"], *inputs["s"]]} - {None}),
+            "l": sorted({rel_path(located(p)) for p in inputs["l"]} - {None}),
+            "g": [[located(cwd), argv] for cwd, argv, _ in inputs["g"]]}
 
     def scope(self, steps: list[dict]) -> list[dict]:
         """The steps the change can reach; the others get a "skipped" row."""
@@ -766,9 +861,21 @@ class Executor:
                 continue
             note = (f"skipped (unaffected by the {len(self.changed.paths)} path(s) "
                     f"changed since {self.since})")
-            self.record({"index": step["index"], "step": step["name"],
-                         "command": shlex.join(step["command"]), "exit": 0, "seconds": 0.0,
-                         "finding": "", "skipped": note})
+            row = {"index": step["index"], "step": step["name"],
+                   "command": shlex.join(step["command"]), "exit": 0, "seconds": 0.0,
+                   "finding": "", "skipped": note}
+            # The store's verdict for the untouched step, carried beside the
+            # row so a scoped table still shows a known red (tools/reds.py
+            # reads it); the row's own exit stays 0: a scoped run judges the
+            # change, and its gate is `--baseline`.
+            entry = self.cached(step)
+            if entry is not None and entry.get("exit", 0):
+                row["last"] = {"exit": entry["exit"], "head": entry["head"],
+                               "finding": first_finding(entry["output"].splitlines()),
+                               "box": entry.get("box", ""), "when": entry.get("when", ""),
+                               "log": entry.get("log", "")}
+                row["skipped"] += f"; last verdict exit {entry['exit']}: {row['last']['finding']}"
+            self.record(row)
         return kept
 
     def emit(self, text: str) -> None:
@@ -788,11 +895,16 @@ class Executor:
         log = self.directory / "logs" / f"{index:02d}-{slug}.log"
         entry = self.cached(step)
         if entry is not None:
+            code = entry.get("exit", 0)
             note = f"cached (inputs unchanged since {entry['head']})"
+            if code:
+                note = (f"red, {note}; run on {entry.get('box', '?')} {entry.get('when', '?')}, "
+                        f"log {entry.get('log', '?')}")
             log.write_text(entry["output"], encoding="utf-8")
             self.emit(header + f"-- {note}; its output then:\n" + entry["output"])
             self.record({"index": index, "step": name, "command": shlex.join(command),
-                         "exit": 0, "seconds": 0.0, "finding": "", "cached": note})
+                         "exit": code, "seconds": 0.0, "cached": note,
+                         "finding": first_finding(entry["output"].splitlines()) if code else ""})
             return
         serial_stream = alone or self.jobs == 1
         if not serial_stream:
@@ -840,7 +952,7 @@ class Executor:
             self.worlds[step["key"]] = any(
                 (p + os.sep).startswith(SHARED_CACHES)
                 for p in trace["r"] | trace["l"] | trace["w"] | trace["s"])
-        if code == 0:  # a forced run refreshes the cache too
+        if code in VERDICT_EXITS:  # a forced run refreshes the cache too
             inputs, why = inputs_of(trace, self.memo)
             if inputs is not None:
                 moved = moved_during(inputs, began)
@@ -855,7 +967,14 @@ class Executor:
             else:
                 save_json(self.entry_path(step["key"]),
                           {"command": command, "head": self.head, "inputs": inputs,
-                           "output": output, "seconds": seconds})
+                           "output": output, "seconds": seconds, "exit": code,
+                           "box": box_name(), "log": str(log.resolve()),
+                           "when": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())})
+        else:  # a non-verdict (NOT RUN, a signal, 127) replaces nothing and is kept by nobody
+            try:
+                self.entry_path(step["key"]).unlink()
+            except OSError:
+                pass
         self.record({"index": index, "step": name, "command": shlex.join(command), "exit": code,
                      "seconds": seconds,
                      "finding": first_finding(output.splitlines()) if code else ""})
@@ -1025,7 +1144,10 @@ def main(argv: list[str] | None = None) -> int:
                    help="workers (default: CHECK_JOBS, else half the cores); 1 is serial")
     p.add_argument("--no-cache", action="store_true",
                    help="run every step, whatever its inputs (make check FORCE=1)")
-    p.add_argument("--cache", default=str(DEFAULT_CACHE), help="default build/check-cache")
+    p.add_argument("--cache", default=os.environ.get("FN_VERDICT_STORE") or str(DEFAULT_CACHE),
+                   help="the verdict store (default FN_VERDICT_STORE, else build/check-cache); "
+                        "entries key tree files by relative path, so one store serves every "
+                        "worktree on a box")
     p.add_argument("--changed-since", metavar="REV", default="",
                    help="run only the steps a diff from REV can reach (their last traced "
                         "inputs; a step never traced here runs)")

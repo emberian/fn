@@ -120,7 +120,14 @@ class NativeGroupAccessTests(unittest.TestCase):
         return {row.split()[0]: row.split()[field] for row in rows if row.strip()}
 
     def test_source_peer_reader_access_preserves_transit(self):
-        """D48: one source peer has separate reader and transfer policies."""
+        """D48: one source peer has separate reader and transfer policies.
+
+        A connection serves the configuration it pinned (specs/
+        reconfiguration.md 2.3, "Readers": a reconfiguration writes no
+        connection's pin), so the access rule binds the sockets opened after
+        it is published.  The socket opened before it is only reported: how
+        a live revocation reaches an already-pinned connection is an open
+        decision, not this test's to settle."""
         for label, image in IMAGES:
             with self.subTest(image=label):
                 node = self.node(image)
@@ -131,23 +138,31 @@ class NativeGroupAccessTests(unittest.TestCase):
                 node.start()
                 writer = self.tls(node)
                 self.assertTrue(self.post(writer, "fn.private.x", "peer-private").startswith("240"))
-                # Populate the captured access view and selected group before
-                # publishing a new policy on this already-connected peer.
                 self.assertIn("fn.private.x", self.listed(writer, "LIST ACTIVE"))
                 self.assertTrue(self.line(writer, "GROUP fn.private.x").startswith("211"))
                 self.ok(node, "account", "access", "--anonymous", "--read", "fn.public", "--post", "*")
                 reader = self.tls(node)
+                self.assertNotIn("fn.private.x", self.listed(reader, "LIST ACTIVE"))
+                self.assertTrue(self.line(reader, "GROUP fn.private.x").startswith("411"))
+                self.assertTrue(self.line(reader, "STAT <peer-private@example.invalid>").startswith("430"))
+                status, _ = self.multi(reader, "OVER <peer-private@example.invalid>")
+                self.assertTrue(status.startswith("430"), status)
+                status, _ = self.multi(reader, "HDR Subject <peer-private@example.invalid>")
+                self.assertTrue(status.startswith("430"), status)
+                # Transit stays the peer record's (SEC-007, D48).
                 for stream in (writer, reader):
-                    self.assertNotIn("fn.private.x", self.listed(stream, "LIST ACTIVE"))
-                    self.assertTrue(self.line(stream, "GROUP fn.private.x").startswith("411"))
-                    self.assertTrue(self.line(stream, "STAT <peer-private@example.invalid>").startswith("430"))
                     self.assertTrue(self.line(stream, "CHECK <peer-new@example.invalid>").startswith("238"))
+                # The pinned socket, after a GROUP that advances it: reported.
+                self.assertTrue(self.line(writer, "GROUP fn.public").startswith("211"))
+                print("NATIVE-ACCESS pinned socket after advance:",
+                      self.listed(writer, "LIST ACTIVE"),
+                      self.line(writer, "STAT <peer-private@example.invalid>"))
                 self.ok(node, "account", "access", "--anonymous", "--read", "fn.*", "--post", "*")
-                for stream in (writer, reader):
-                    self.assertIn("fn.private.x", self.listed(stream, "LIST ACTIVE"))
-                    self.assertTrue(self.line(stream, "GROUP fn.private.x").startswith("211"))
-                    self.assertTrue(self.line(stream, "STAT <peer-private@example.invalid>").startswith("223"))
-                    self.assertTrue(self.line(stream, "CHECK <peer-new@example.invalid>").startswith("238"))
+                restored = self.tls(node)
+                self.assertIn("fn.private.x", self.listed(restored, "LIST ACTIVE"))
+                self.assertTrue(self.line(restored, "GROUP fn.private.x").startswith("211"))
+                self.assertTrue(self.line(restored, "STAT <peer-private@example.invalid>").startswith("223"))
+                self.assertTrue(self.line(restored, "CHECK <peer-new@example.invalid>").startswith("238"))
                 node.stop_all()
 
     def scenario(self, image):
@@ -216,6 +231,13 @@ class NativeGroupAccessTests(unittest.TestCase):
             self.assertEqual(self.line(bob, "STAT <secret@example.invalid>"), nothere)
             status, _ = self.multi(bob, "ARTICLE <secret@example.invalid>")
             self.assertTrue(status.startswith("430"), status)
+            # Every Message-ID form answers as for an absent article (NNT-046).
+            for command in ("OVER <secret@example.invalid>",
+                            "HDR Subject <secret@example.invalid>",
+                            "HEAD <secret@example.invalid>",
+                            "BODY <secret@example.invalid>"):
+                status, _ = self.multi(bob, command)
+                self.assertTrue(status.startswith("430"), (phase, command, status))
             self.assertTrue(self.line(bob, "STAT <cross@example.invalid>").startswith("223"))
             self.assertTrue(self.line(bob, "GROUP fn.public").startswith("211"))
             status, rows = self.multi(bob, "OVER <cross@example.invalid>")

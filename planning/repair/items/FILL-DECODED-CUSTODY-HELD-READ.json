@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Red on set 55ff708a6: cloud2:/tank/fn/scratch/fill-wt/native-fill-resil-cloud2-55 (scenario_suite run resilience, --allow-skips, jobs 3; logs/test-tests.test_native_decoded_custody.log). ",
+ "file": "host/native/decoded-custody.lisp",
+ "id": "FILL-DECODED-CUSTODY-HELD-READ",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "tests.test_native_decoded_custody test_held_decoded_read_allows_post_then_cancel_return_release_and_reopen: 'unexpectedly None' (a held decoded read is expected to let a post through, then cancel/return/release/reopen)",
+ "updated": "2026-10-04T20:01:42Z"
+}

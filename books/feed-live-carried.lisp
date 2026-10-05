@@ -16,7 +16,7 @@
       f
       (fn-feed-with-queue-counted
        f (append (fn-feed-queue f)
-                 (list (fn-feed-entry msgid :queued 0 (nfix tick))))
+                 (list (fn-feed-entry msgid :queued 0 (nfix tick) 0)))
        (+ 1 (nfix (fn-feed-undelivered f))) (fn-feed-retry-dropped f))))
 
 (defun fn-fcv-raw-selection (f obs)
@@ -119,15 +119,13 @@
   (declare (xargs :guard (and (fn-feedp f) (fn-feed-count-relationp f))
                   :verify-guards nil))
   (if (or (not t)
-          (not (consp (fn-feed-find msgid (fn-feed-queue f))))
-          (fn-feed-droppedp (fn-feed-state-of msgid (fn-feed-queue f))))
+          (not (consp (fn-feed-find msgid (fn-feed-queue f)))))
       f
       (fn-feed-with-queue-counted
-       f (fn-feed-queue-set-state (fn-feed-queue f) msgid
-                                  (fn-feed-dropped reason))
-       (fn-feed-undelivered f)
+       f (fn-feed-queue-retire (fn-feed-queue f) msgid)
+       (nfix (- (nfix (fn-feed-undelivered f)) 1))
        (+ (nfix (fn-feed-retry-dropped f))
-          (fn-fct-retry-drop-bit (fn-feed-dropped reason))))))
+          (fn-fct-retry-drop-bit reason)))))
 
 (defun fn-fcv-raw-lost (f obs)
   (declare (xargs :guard (and (fn-feedp f) (fn-feed-count-relationp f))
@@ -143,18 +141,12 @@
                   :verify-guards nil))
   (if (not t)
       (mv f nil)
-      (let ((code (fn-feed-response-code response))
-            (msgid (fn-feed-response-msgid response)))
-        (cond ((member-equal code '(335 238)) (fn-fcv-raw-send f msgid article))
-              ((member-equal code '(235 239 435 438 437 439))
-               (mv (fn-fcv-raw-done f msgid) nil))
-              ((member-equal code '(431 436))
-               (let ((g (fn-fcv-raw-back-off f msgid obs)))
-                 (mv (if (fn-feed-retry-exhaustedp g msgid)
-                         (fn-fcv-raw-give-up g msgid :retry-bound)
-                         g)
-                     nil)))
-              (t (mv (fn-fcv-raw-lost f obs) nil))))))
+      (let ((msgid (fn-feed-response-msgid response)))
+        (case (fn-feed-reply-class f response)
+          (:send (fn-fcv-raw-send f msgid article))
+          (:final (mv (fn-fcv-raw-done f msgid) nil))
+          (:defer (mv (fn-fcv-raw-back-off f msgid obs) nil))
+          (otherwise (mv (fn-fcv-raw-lost f obs) nil))))))
 
 (defun fn-fcv-raw-restart (f)
   (declare (xargs :guard (and (fn-feedp f) (fn-feed-count-relationp f))
@@ -203,10 +195,7 @@
     (cons (fn-feed-journal-entry :feed-lost
             (list (fn-feed-peer f) (nfix (fn-clock-monotonic obs))))
           (if (and entry
-                   (fn-feed-retry-exhaustedp g (fn-feed-entry-msgid entry))
-                   (not (fn-feed-droppedp
-                         (fn-feed-state-of (fn-feed-entry-msgid entry)
-                                           (fn-feed-queue g)))))
+                   (fn-feed-retry-exhaustedp g (fn-feed-entry-msgid entry)))
               (list (fn-feed-journal-entry :feed-drop
                       (list (fn-feed-peer f) (fn-feed-entry-msgid entry)
                             :retry-bound)))
@@ -220,28 +209,19 @@
            (msgid (fn-feed-response-msgid response))
            (st (fn-feed-state-of msgid (fn-feed-queue f)))
            (attempt (fn-feed-state-attempt st)))
-      (cond
-       ((member-equal code '(335 238))
-        (if (and (fn-feed-offeredp st) (natp (fn-feed-conn f)))
-            (list (fn-feed-journal-entry :feed-sent
-                    (list (fn-feed-peer f) msgid attempt))) nil))
-       ((member-equal code '(235 239 435 438 437 439))
-        (if (fn-feed-state-inflightp st)
-            (list (fn-feed-journal-entry :feed-outcome
-                    (list (fn-feed-peer f) msgid attempt code))) nil))
-       ((member-equal code '(431 436))
-        (let* ((g (fn-fcv-raw-back-off f msgid obs))
-               (gs (fn-feed-state-of msgid (fn-feed-queue g))))
-          (append
-           (if (fn-feed-state-inflightp st)
-               (list (fn-feed-journal-entry :feed-retry
-                       (list (fn-feed-peer f) msgid attempt code
-                             (nfix (fn-clock-monotonic obs))))) nil)
-           (if (and (fn-feed-retry-exhaustedp g msgid)
-                    (not (fn-feed-droppedp gs)))
-               (list (fn-feed-journal-entry :feed-drop
-                       (list (fn-feed-peer f) msgid :retry-bound))) nil))))
-       (t (fn-fcv-raw-lost-records f obs))))))
+      (case (fn-feed-reply-class f response)
+        (:send
+         (if (and (fn-feed-offeredp st) (natp (fn-feed-conn f)))
+             (list (fn-feed-journal-entry :feed-sent
+                     (list (fn-feed-peer f) msgid attempt))) nil))
+        (:final
+         (list (fn-feed-journal-entry :feed-outcome
+                 (list (fn-feed-peer f) msgid attempt code))))
+        (:defer
+         (list (fn-feed-journal-entry :feed-retry
+                 (list (fn-feed-peer f) msgid attempt code
+                       (nfix (fn-clock-monotonic obs))))))
+        (otherwise (fn-fcv-raw-lost-records f obs))))))
 
 (defun fn-fcv-raw-restart-records (f)
   (declare (xargs :guard (and (fn-feedp f) (fn-feed-count-relationp f))
@@ -421,7 +401,7 @@
   :hints (("Goal" :in-theory (e/d (fn-fcv-raw-lost-records fn-feed-lost-records)
                                   (fn-feedp fn-fcv-raw-lost-requeue fn-feed-lost-requeue
                                    fn-feed-retry-exhaustedp fn-feed-inflight-entry
-                                   fn-feed-state-of fn-feed-droppedp))))))
+                                   fn-feed-state-of))))))
 
 (local
  (defthm fn-fcv-raw-observe-records-is-reference

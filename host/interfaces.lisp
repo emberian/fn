@@ -2205,6 +2205,36 @@
 (definterface fn-tlsr-host-request-encode
   :class ::program)
 
+(definterface fn-tlsk-host-decide :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-health-client-line :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-hybrid-list :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-kx-line :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-plan :class :common-lisp-compliant :kinds ((octets fn-cbor-octet-listp)))
+
+(definterface fn-tlsk-host-plan-policy :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-plan-refusal :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-refusal-line :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-serve-groups :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-serve-mode :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-servep :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-session-line :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-status-lines :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-tally-bump :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-zero-tally :class :common-lisp-compliant)
+
 (definterface fn-tlsr-host-start-decide
   :class ::program)
 
@@ -3616,17 +3646,21 @@
 (definterface fn-heap-init-budget-note-line
   :class :common-lisp-compliant)
 
-(definterface fn-heap-init-decide
+(definterface fn-pfd-init-decide
   :class :common-lisp-compliant
-  :keystones (fn-heap-init-decide-sized-init-is-held
-              fn-heap-init-decide-refuses-the-operators-request-past-the-budget
-              fn-heap-init-decide-largest-takes-scale-when-it-fits
-              fn-heap-init-decide-honors-the-operators-request
-              fn-heap-init-decide-fits-the-budget-and-the-machine
-              fn-heap-init-decide-conservative-takes-the-top-rung-when-it-fits
-              fn-heap-init-decide-conservative-is-a-friend-rung
-              fn-heap-init-decide-conservative-holds-the-floor
-              fn-heap-init-budget-note-names-the-budget-init-sized-for))
+  ;; The host's init decision is fn-heap-init-decide over LIMITS plus the
+  ;; machine less the peer launch reserve: its keystones hold for any LIMITS.
+  :keystones (fn-pfd-init-reserves-the-default-launch
+              (fn-heap-init-decide-sized-init-is-held :via fn-heap-init-decide)
+              (fn-heap-init-decide-refuses-the-operators-request-past-the-budget
+               :via fn-heap-init-decide)
+              (fn-heap-init-decide-largest-takes-scale-when-it-fits :via fn-heap-init-decide)
+              (fn-heap-init-decide-honors-the-operators-request :via fn-heap-init-decide)
+              (fn-heap-init-decide-fits-the-budget-and-the-machine :via fn-heap-init-decide)
+              (fn-heap-init-decide-conservative-takes-the-top-rung-when-it-fits
+               :via fn-heap-init-decide)
+              (fn-heap-init-decide-conservative-is-a-friend-rung :via fn-heap-init-decide)
+              (fn-heap-init-decide-conservative-holds-the-floor :via fn-heap-init-decide)))
 
 (definterface fn-heap-init-decision-request
   :class :common-lisp-compliant
@@ -4127,6 +4161,34 @@
 
 (definterface fn-cpj-project
   :class :common-lisp-compliant)
+
+; `fn pattern' (D50; host/native/pattern.lisp, books/app-pattern*.lisp).
+(definterface fn-pat-cli-plan
+  :class :common-lisp-compliant
+  :keystones (fn-pat-cli-run-binds-every-step))
+(definterface fn-pat-usage-text
+  :class :common-lisp-compliant)
+(definterface fn-pat-values-check
+  :class :common-lisp-compliant
+  :keystones (fn-pat-values-check-is-the-kind))
+(definterface fn-pat-encode
+  :class :common-lisp-compliant
+  :keystones (fn-pat-reader-delivers-what-the-writer-encoded))
+(definterface fn-pat-key-names
+  :class :common-lisp-compliant)
+(definterface fn-pat-spool-check
+  :class :common-lisp-compliant)
+(definterface fn-pat-project
+  :class :common-lisp-compliant
+  :keystones (fn-pat-reader-delivers-what-the-writer-encoded))
+(definterface fn-pat-decode
+  :class :common-lisp-compliant
+  :keystones (fn-pat-reader-delivers-what-the-writer-encoded))
+(definterface fn-pat-delivery-name
+  :class :common-lisp-compliant)
+(definterface fn-pat-select
+  :class :common-lisp-compliant
+  :keystones (fn-pat-select-is-one-worker))
 
 (definterface fn-hl-host-enroll-event
   :class ::program)
@@ -5630,6 +5692,15 @@
 ; Persistent baseline backing: offered only after actual construction.
 (definterface fn-dwj-reserve :class :common-lisp-compliant)
 (definterface fn-owner-page-decoded-job-retire :class :common-lisp-compliant)
+;; The verified-window cache for a decoded window (books/decoded-window-read.lisp
+;; fn-pwz-cache*, books/decoded-worker-job.lisp fn-dwj-cache).
+(definterface fn-owner-page-decoded-job-cache :class :common-lisp-compliant
+  :keystones ((fn-dwj-cache-only-a-ready-job :via fn-dwj-cache)
+              (fn-dwj-cached-job-refuses-scalar-publication :via fn-dwj-cache)
+              (fn-pwz-cache-lease-keeps-only-the-buffer-and-stays-funded :via fn-pwz-cache-lease)))
+(definterface fn-owner-page-decoded-window-cache-byte-at :class :common-lisp-compliant
+  :keystones ((fn-pwz-a-hit-is-the-published-window :via fn-pwz-cache-byte-at)
+              (fn-pwz-hit-requires-a-cached-exact-window :via fn-pwz-cache-byte-at)))
 (definterface fn-prstartup-planp :class :common-lisp-compliant)
 (definterface fn-prstartup-decoded-workers :class :common-lisp-compliant)
 (definterface fn-owner-page-read-default-worker-ready :class :common-lisp-compliant)
@@ -5713,9 +5784,19 @@
 (definterface fn-pfp-file-name :class :common-lisp-compliant)
 (definterface fn-pfp-read-bound :class :common-lisp-compliant)
 (definterface fn-pfp-read :class :common-lisp-compliant)
+(definterface fn-pfp-default-octets :class :common-lisp-compliant
+  :keystones (fn-pfd-default-decodes-to-itself
+              (fn-pfd-default-is-a-policy :via fn-pfp-default-policy)
+              (fn-pfd-default-spools-one-batch :via fn-pfp-default-policy)))
 (definterface fn-pfp-refusal-line :class :common-lisp-compliant)
+(definterface fn-pfp-catch-up-observes-p :class :common-lisp-compliant)
+(definterface fn-pfp-catch-up-admission :class :common-lisp-compliant
+  :keystones (fn-pfp-catch-up-verb-accepted-only-funded
+              fn-pfp-catch-up-admission-is-identity-elsewhere))
+(definterface fn-pfp-catch-up-refusal-line :class :common-lisp-compliant)
 (definterface fn-pfr-policy-p :class :common-lisp-compliant)
-(definterface fn-pfr-extend-operation-reservation :class :common-lisp-compliant)
+(definterface fn-pfr-extend-operation-reservation :class :common-lisp-compliant
+  :keystones ((fn-pfd-default-launches-where-its-extra-fits :via fn-pfr-extend-reservation)))
 (definterface fn-pfr-operation-observes-p :class :common-lisp-compliant)
 
 (definterface fn-prstartup-default-plan-with-peer :class :common-lisp-compliant)
@@ -5762,3 +5843,13 @@
 (definterface fn-workflow-install-replay :class :program) ; host/workflow-host.lisp:19
 (definterface fn-workflow-preflight-record :class :program) ; host/workflow-host.lisp:114
 (definterface fn-workflow-reset :class :program) ; host/workflow-host.lisp:45
+
+;; host/store-identity-host.lisp (Mini M4, `fn identity CONTROL')
+(definterface fn-stid-host-request :class ::program)
+(definterface fn-stid-host-request-p :class ::program)
+(definterface fn-stid-host-reply :class ::program)
+(definterface fn-stid-host-cli-plan :class ::program)
+(definterface fn-stid-host-usage :class ::program)
+(definterface fn-stid-host-reply-read :class ::program)
+(definterface fn-stid-host-line :class ::program)
+(definterface fn-stid-host-exit-code :class ::program)

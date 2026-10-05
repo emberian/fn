@@ -4573,10 +4573,17 @@ fn-bs-init-log-crash-retry-is-old-or-new (PRF-1040)."
                            (fnn-metadata-config-decode (fnn-metadata-config-frame profile))))
            (record (fnn-bridge-config-initial (or groups +fnn-default-groups+)))
            ;; SEC-006: the node's secret, epoch 1, as fnn-node-secret-create
-           ;; renders it; the plan's last file.
+           ;; renders it; the plan's fifth file.
            (secret (fnn-node-secret-render
                     (fnn-core 'fn-ns-create-entry (fnn-node-secret-identity nil)
-                              (fnn-node-secret-fresh-root)))))
+                              (fnn-node-secret-fresh-root))))
+           ;; Catch-up out of the box: the default peer flight profile ACL2
+           ;; derives from the store profile (books/peer-flight-default.lisp
+           ;; fn-pfp-default-octets), the plan's sixth file, at the store
+           ;; root where fnn-peer-flight-profile reads it.
+           (peer (fnn-as-octets
+                  (fnn-core 'fn-pfp-default-octets
+                            (fnn-metadata-config-decode (fnn-metadata-config-frame profile))))))
       (unless logp
         (fnn-fault "the init profile is not a record-log profile"))
       (fnn-staged-publication
@@ -4584,8 +4591,8 @@ fn-bs-init-log-crash-retry-is-old-or-new (PRF-1040)."
        ;; books/store-init-log-publication.lisp fn-bs-init-log-files, in
        ;; its order: the profile, the generation-1 configuration record,
        ;; the genesis (format 10, books/store-genesis.lisp), the segment's
-       ;; ACL2 extent of zeros, the node secret.  No allocator file and no
-       ;; transactions/.
+       ;; ACL2 extent of zeros, the node secret, the default peer flight
+       ;; profile.  No allocator file and no transactions/.
        (list (cons (fnn-config-path stage) (fnn-metadata-config-frame profile))
              (cons (fnn-config-record-path stage 1) record)
              (cons (fnn-genesis-path stage)
@@ -4593,7 +4600,8 @@ fn-bs-init-log-crash-retry-is-old-or-new (PRF-1040)."
                     (fnn-metadata-config-decode (fnn-metadata-config-frame profile))))
              (cons (fnn-segment-path stage)
                    (fnn-make-octets (fnn-nat (fnn-core 'fn-store-log-initial-extent))))
-             (cons (fnn-node-secret-path stage) secret))
+             (cons (fnn-node-secret-path stage) secret)
+             (cons (fnn-join (fnn-store-root stage) (fnn-core 'fn-pfp-file-name)) peer))
        0
        (lambda (stage) (fnn-record-filesystem-at-init stage profile policy))
        (fnn-core 'fn-bs-init-log-subdir-names)

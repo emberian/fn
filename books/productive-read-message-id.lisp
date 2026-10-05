@@ -266,8 +266,8 @@
      ((:instance fn-pcr-command-line-answers-the-message-id-article
         (session (fn-post-session-base ps))
         (env (fn-post-reader-env config observation)))
-      (:instance fn-pcr-post-delegates-a-read-without-offer-by-definition
-        (event (list :command line)))
+      (:instance fn-pcr-post-delegates-an-ordinary-read-without-offer-by-definition)
+      (:instance fn-pcr-article-line-is-an-ordinary-command)
       (:instance fn-pcr-msgid-220-is-a-reply-without-an-offer-by-definition
         (session (fn-post-session-base ps))
         (article (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie index)))

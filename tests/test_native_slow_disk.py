@@ -118,7 +118,7 @@ class SlowDiskSourceTests(unittest.TestCase):
         self.assertIn("'fn-owner-chunk-span cid 0 end sched)", no_io)
         self.assertIn("(fnn-core 'fn-otm-peer-read-proceeds-p class sched)", chunk)
         mux = (ROOT / "host" / "native" / "mux.lisp").read_text()
-        self.assertIn("(fnn-owner-peer-read-class service)", mux)
+        self.assertIn("(fnn-owner-peer-read-class (fnn-mux-service loop))", mux)
         peer_class = owner[owner.index("(defun fnn-owner-peer-read-class "):owner.index("(defun fnn-owner-disk-stalled-p")]
         self.assertIn("'fn-otm-peer-read-class", peer_class)
         admit = owner[owner.index("(defun fnn-owner-disk-admission "):owner.index("(defun fnn-owner-disk-stalled-p")]
@@ -937,8 +937,14 @@ class SlowDiskNativeTests(unittest.TestCase):
         self.assertIn(b"disk space recovered: ", log)
         self.assertNotIn(b"needs recovery", log)
 
-    FULL_REFUSAL = (b"441 posting failed; the store is full: no capacity for this article "
-                    b"(unaffordable); the node's operator can raise it\r\n")
+    # The store below fills its history budget H (--max-history-octets), so
+    # ACL2's word for the refusal is H's: :history-exhausted
+    # (books/store-capacity-vector.lisp fn-cvec-article-refusal-word, lane
+    # m1-durable-2; books/nntp-post.lisp's 441 text).  Before H was refused
+    # by name it was :unaffordable's "store is full" line.
+    FULL_REFUSAL = (b"441 posting failed; the store's history budget is exhausted "
+                    b"(history-exhausted); the node's operator can raise "
+                    b"max-history-octets or reclaim\r\n")
 
     def test_a_full_store_refusal_is_told_while_another_barrier_stalls(self):
         """PRF-354 (lane full-vs-uncertain; books/owner-commit-steps.lisp

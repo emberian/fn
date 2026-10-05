@@ -154,3 +154,21 @@
 ; and a :fenced word at an already-failed batch is the stop, not COMPLETE.
 (assert-event (equal (ocpt-step-action :staged nil :fenced) :complete))
 (assert-event (equal (ocpt-step-action :failed t :fenced) :stop))
+
+; --- fn-ocp-a-stopping-completion-leaves-no-batch: a COMPLETE found the owner
+; stopping with a next batch open (the s3 state: batch fenced, next sealed
+; by a plain :completed).  :completed names :sync and leaves the phase
+; staged -- a batch the stopping owner never syncs, the gate shut to every
+; class but :inspect and :commit; :completed-stopping abandons the next batch.
+(assert-event (and (equal (ocpt-action *ocpt-s3* :completed) :sync)
+                   (equal (ocpt-phase (ocpt-event *ocpt-s3* :completed)) :staged)
+                   (fn-ocs-in-flight-p (ocpt-phase (ocpt-event *ocpt-s3* :completed)))))
+(assert-event (and (equal (ocpt-action *ocpt-s3* :completed-stopping) :none)
+                   (equal (ocpt-phase (ocpt-event *ocpt-s3* :completed-stopping)) :idle)
+                   (not (fn-ocp-open-next (ocpt-event *ocpt-s3* :completed-stopping)))))
+; Idle after it: the transit class the stuck gate starved is admitted.
+(assert-event (equal (ocpt-class (ocpt-event *ocpt-s3* :completed-stopping) '(0 0 0 2 0 0)) :transit))
+(assert-event (equal (ocpt-class (ocpt-event *ocpt-s3* :completed) '(0 0 0 2 0 0)) nil))
+; Only from a fenced batch: a staged one still faults on it.
+(assert-event (equal (ocpt-step-action :staged nil :completed-stopping) :fault))
+(assert-event (equal (ocpt-step-action :idle nil :completed-stopping) :fault))

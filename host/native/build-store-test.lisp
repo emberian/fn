@@ -37,6 +37,8 @@
 ;; comes right after the codec and record attachments, before any of them.
 (include-book "books/payload-arena-attach")
 (include-book "books/history-paged-attach")
+;; The default peer flight profile `init' writes (fn-pfp-default-octets).
+(include-book "books/peer-flight-default")
 (include-book "books/store-config")
 (include-book "books/identity")
 (include-book "books/article-fields")

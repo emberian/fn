@@ -19613,13 +19613,11 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-ak-layout-parses",
-          "pending_subject": "The subjects are fn-article-parse and fn-inj-decide, which the host calls; their input is fn-ak-layout, the proof-side layout of the kind. The host-called encoder of the kind will be fn-wg-encode at *fn-ak-grammar* (books/wire-grammar.lisp, lane mini-contract); the bridge fn-ak-grammar-encode-is-the-layout is owed (D50)."
+          "name": "fn-ak-layout-parses"
         },
         {
           "kind": "theorem",
-          "name": "fn-ak-layout-parses-under",
-          "pending_subject": "The subjects are fn-article-parse and fn-inj-decide, which the host calls; their input is fn-ak-layout, the proof-side layout of the kind. The host-called encoder of the kind will be fn-wg-encode at *fn-ak-grammar* (books/wire-grammar.lisp, lane mini-contract); the bridge fn-ak-grammar-encode-is-the-layout is owed (D50)."
+          "name": "fn-ak-layout-parses-under"
         }
       ]
     },
@@ -19628,8 +19626,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-ak-layout-is-injected",
-          "pending_subject": "The subjects are fn-article-parse and fn-inj-decide, which the host calls; their input is fn-ak-layout, the proof-side layout of the kind. The host-called encoder of the kind will be fn-wg-encode at *fn-ak-grammar* (books/wire-grammar.lisp, lane mini-contract); the bridge fn-ak-grammar-encode-is-the-layout is owed (D50)."
+          "name": "fn-ak-layout-is-injected"
         }
       ]
     },
@@ -19638,18 +19635,130 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-ak-layout-is-a-hybrid-injection",
-          "pending_subject": "The subject is fn-hsig-injected-carrier-plan, which the host calls (through fn-hsig-injected-carrier-octets and fn-hsig-authorized-injected-carried-submission-event); its source input is fn-ak-layout, whose host-called encoder will be fn-wg-encode at *fn-ak-grammar* (bridge fn-ak-grammar-encode-is-the-layout owed, D50)."
+          "name": "fn-ak-layout-is-a-hybrid-injection"
         },
         {
           "kind": "theorem",
-          "name": "fn-ak-carrier-parses",
-          "pending_subject": "The subject is fn-hsig-injected-carrier-plan, which the host calls (through fn-hsig-injected-carrier-octets and fn-hsig-authorized-injected-carried-submission-event); its source input is fn-ak-layout, whose host-called encoder will be fn-wg-encode at *fn-ak-grammar* (bridge fn-ak-grammar-encode-is-the-layout owed, D50)."
+          "name": "fn-ak-carrier-parses"
         },
         {
           "kind": "theorem",
-          "name": "fn-ak-carrier-parses-under",
-          "pending_subject": "The subject is fn-hsig-injected-carrier-plan, which the host calls (through fn-hsig-injected-carrier-octets and fn-hsig-authorized-injected-carried-submission-event); its source input is fn-ak-layout, whose host-called encoder will be fn-wg-encode at *fn-ak-grammar* (bridge fn-ak-grammar-encode-is-the-layout owed, D50)."
+          "name": "fn-ak-carrier-parses-under"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1324",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ak-decode-of-encode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ak-encode-of-decode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ak-grammar-encode-is-the-layout"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1325",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pat-cli-run-binds-every-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pat-values-check-is-the-kind"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1326",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pat-reader-delivers-what-the-writer-encoded"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1329",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pat-select-is-one-worker"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pat-partition-is-a-worker"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1319",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pfd-default-is-a-policy"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfp-read-of-write"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfd-default-decodes-to-itself"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfd-default-spools-one-batch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfd-default-launches-where-its-extra-fits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-log-complete-store-carries-the-peer-flight-profile"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfd-init-reserves-the-default-launch"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1323",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pfp-catch-up-verb-accepted-only-funded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfp-catch-up-admission-is-identity-elsewhere"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1328",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-av-scr-auth-delegate-restricted-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-av-scr-dispatch-core-restricted-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-av-mca-read-span-restricted-is-legacy"
         }
       ]
     }

@@ -92,8 +92,11 @@ class LogDamageTests(unittest.TestCase):
                 damaged = sha(self.store / SEGMENT)
                 stop = max(q for q in self.starts if q <= at)
                 after = sum(1 for q in self.starts if q > stop)
-                for verb in ("status", "recover", "status"):
-                    result = self.fn(verb)
+                # `status --replay': the plain `status' of a stopped store
+                # reads the checkpoint header alone (row S3); the open's
+                # report over the log is --replay's.
+                for verb in (("status", "--replay"), ("recover",), ("status", "--replay")):
+                    result = self.fn(*verb)
                     err = result.stderr.decode("utf-8", "replace")
                     self.assertEqual(result.returncode, fz.EXIT_REFUSED, (verb, err[-600:]))
                     self.assertIn("reason=log-damaged at=000001.log:{} ".format(stop), err)
@@ -118,7 +121,7 @@ class LogDamageTests(unittest.TestCase):
         self.assertEqual(result.returncode, fz.EXIT_OK, result.stderr[-600:])
         self.assertIn(b"recovered transactions=11 articles=11", result.stdout)
         self.assertIn(b"log torn-tail at=000001.log:%d debris-units=" % last, result.stdout)
-        self.assertEqual(self.fn("status").returncode, fz.EXIT_OK)
+        self.assertEqual(self.fn("status", "--replay").returncode, fz.EXIT_OK)
         self.assertEqual(self.served(), self.ids[:-1])
 
     def test_the_repair_is_the_confirmed_truncate_and_keeps_the_segment(self):
@@ -145,7 +148,7 @@ class LogDamageTests(unittest.TestCase):
         self.assertIn(b"recovered transactions=%d articles=%d" % (records, records), result.stdout)
         self.assertIn(b"log repaired at=000001.log:%d dropped-valid-entries=%d dropped-records=%d"
                       % (stop, after, after), result.stdout)
-        self.assertEqual(self.fn("status").returncode, fz.EXIT_OK)
+        self.assertEqual(self.fn("status", "--replay").returncode, fz.EXIT_OK)
         self.assertEqual(self.served(), self.ids[:records])
         # The repair is not repeated: the log is now clean.
         again = self.fn("recover")
