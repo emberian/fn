@@ -5,7 +5,7 @@
     "declared": 1805,
     "declared_and_dispatched": 1754,
     "guard_verified": 1057,
-    "with_keystone": 269,
+    "with_keystone": 270,
     "with_fold_keystone_only": 3,
     "raw_dispatched": 20
   },
@@ -31820,6 +31820,51 @@
       "applied_directly_in": []
     },
     {
+      "name": "fn-owner-page-window-span-at",
+      "subsystem": "owner",
+      "declared_in": "host/interfaces.lisp",
+      "class": "common-lisp-compliant",
+      "kinds": [
+        [
+          "plan",
+          "true-listp"
+        ],
+        [
+          "i",
+          "natp"
+        ],
+        [
+          "j",
+          "natp"
+        ]
+      ],
+      "exempt": {},
+      "keystones": [
+        {
+          "theorem": "fn-pwr-span-at-is-the-borrowed-bytes",
+          "via": "fn-pwr-span-at"
+        },
+        {
+          "theorem": "fn-pwr-span-at-refuses-where-the-octet-refuses",
+          "via": "fn-pwr-span-at"
+        },
+        {
+          "theorem": "fn-pwr-span-at-answers-when-its-ends-do",
+          "via": "fn-pwr-span-at"
+        }
+      ],
+      "extraction": null,
+      "direct": null,
+      "delegates": null,
+      "raw_with": [],
+      "raw_with_carried": null,
+      "raw_guarded": null,
+      "dispatched_from": [
+        "host/native/extent.lisp"
+      ],
+      "applied_directly_in": []
+    },
+    {
       "name": "fn-pwr-cold-descriptor",
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
@@ -35202,25 +35247,6 @@
     {
       "name": "fn-owner-page-decoded-window-price-status",
       "subsystem": "owner",
-      "declared_in": "host/interfaces.lisp",
-      "class": "common-lisp-compliant",
-      "kinds": [],
-      "exempt": {},
-      "keystones": [],
-      "extraction": null,
-      "direct": null,
-      "delegates": null,
-      "raw_with": [],
-      "raw_with_carried": null,
-      "raw_guarded": null,
-      "dispatched_from": [
-        "host/native/extent.lisp"
-      ],
-      "applied_directly_in": []
-    },
-    {
-      "name": "fn-oct-nth",
-      "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
       "kinds": [],

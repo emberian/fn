@@ -5413,7 +5413,7 @@
 (definterface fn-owner-page-window-byte-at :class :common-lisp-compliant
   :kinds ((plan true-listp)))
 (definterface fn-owner-page-window-span-at :class :common-lisp-compliant
-  :kinds ((plan true-listp))
+  :kinds ((plan true-listp) (i natp) (j natp))
   :keystones ((fn-pwr-span-at-is-the-borrowed-bytes :via fn-pwr-span-at)
               (fn-pwr-span-at-refuses-where-the-octet-refuses :via fn-pwr-span-at)
               (fn-pwr-span-at-answers-when-its-ends-do :via fn-pwr-span-at)))
@@ -5699,7 +5699,6 @@
 (definterface fn-pwz-cold-descriptor :class :common-lisp-compliant)
 (definterface fn-pwz-nth :class :common-lisp-compliant :kinds ((index natp)))
 (definterface fn-owner-page-decoded-window-price-status :class :common-lisp-compliant)
-(definterface fn-oct-nth :class :common-lisp-compliant)
 
 (definterface fn-owner-page-decoded-window-acquire-projected :class :common-lisp-compliant)
 (definterface fn-owner-page-window-discovery-kind :class :common-lisp-compliant)
