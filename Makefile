@@ -2906,6 +2906,12 @@ check:
 # pattern: a buffer twin and its boundary theorem).
 	@$(CHECK_STEP) $(PYTHON) tools/list_codec_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_list_codec_check
+# Host loops that call ACL2 or take a lock once per iteration (the per-octet borrow
+# protocol, PERF-REGRESSION-20261005): tools/loop_call_baseline.json counts them
+# per host file and only shrinks; a new one is judged (a span or batch call) or
+# its baseline raised with the reason.  Source-level, no ACL2.
+	@$(CHECK_STEP) $(PYTHON) tools/loop_call_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_loop_call_check
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make
