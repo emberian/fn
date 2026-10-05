@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/page-read-startup")
+(include-book "../../books/defkeystone")
 
 (defconst *prst-plan* (fn-prstartup-plan 536870912 67108864 268435456 "/tmp/store" 4 1048576 4194304 8 256))
 (assert-event (and (fn-prstartup-planp *prst-plan*)
@@ -132,3 +133,42 @@
        (not (<= (fn-prstartup-protected *fn-bs-profile-development* *prst-owner-core*
                   (fn-heap-nursery-trigger dyn (* 64 1048576)) nil 32 *prst-fresh*)
                 dyn)))))
+
+; TEETH-62 BEGIN
+; The two page-read-startup keystones with their teeth (TEETH CONTRACT v1).  The admitted-capacity keystone states its antecedent inside a `let'; its removal is a mutation.
+(defteeth fn-prstartup-accepted-default-launch-fits-machine
+  :claim (((no-cold (not cold)) (accepted (equal (fn-prstartup-nth 0
+                        (fn-prstartup-extend-default-reservation base cold root workers cache-limit core observations profile observed)) :heap)))
+          (let ((d (fn-prstartup-extend-default-reservation base cold root workers cache-limit core observations profile observed)))
+   (<= (fn-heap-reservation-octets (fn-prstartup-nth 1 d) core
+                                  (fn-prstartup-nth 4 d) (fn-prstartup-nth 5 d))
+       (fn-heap-machine-octets observations))))
+  :subject fn-prstartup-extend-default-reservation
+  :witness ((base *prst-launch-base*) (cold nil) (root "/tmp/store") (workers 4) (cache-limit 8) (core '(83886080 . 67108864)) (observations '(8589934592)) (profile nil) (observed nil))
+  :breaks ((no-cold ((base *prst-launch-base*) (cold '(complete)) (root "/tmp/store") (workers 4) (cache-limit 8) (core 100) (observations nil) (profile nil) (observed nil)))
+           (accepted ((base *prst-launch-base*) (cold nil) (root "/tmp/store") (workers 4) (cache-limit 8) (core 100) (observations nil) (profile nil) (observed nil))))
+  :mutations ((read-against-unobserved-machine
+               (:conclusion (let ((d (fn-prstartup-extend-default-reservation base cold root workers cache-limit core observations profile observed))) (<= (fn-heap-reservation-octets (fn-prstartup-nth 1 d) core (fn-prstartup-nth 4 d) (fn-prstartup-nth 5 d)) (fn-heap-machine-octets nil))))
+               ((base *prst-launch-base*) (cold nil) (root "/tmp/store") (workers 4) (cache-limit 8) (core '(83886080 . 67108864)) (observations '(8589934592)) (profile nil) (observed nil))
+               :fault "the bound read against an unobserved machine")))
+
+(defteeth fn-prstartup-admitted-capacity-is-funded
+  :claim (() (let ((plan (fn-prstartup-plan dynamic occupied protected root workers stack runtime cache-limit fd-limit))) (implies (equal (fn-prstartup-nth 0 plan) :admitted) (and (natp (fn-prstartup-file-capacity plan))
+        (<= (max 8 (+ 1 (nfix cache-limit))) (fn-prstartup-file-capacity plan))
+        (<= (fn-prstartup-file-capacity plan) (nfix fd-limit))
+        (<= (fn-prstartup-required-heap (fn-prstartup-file-capacity plan) workers root)
+            (nfix (- (nfix dynamic) (max (nfix occupied) (nfix protected)))))))))
+  :subject fn-prstartup-plan
+  :witness ((dynamic 536870912) (occupied 67108864) (protected 268435456) (root "/tmp/store") (workers 4) (stack 1048576) (runtime 4194304) (cache-limit 8) (fd-limit 256))
+  :mutations ((without-admitted
+               (:conclusion (let ((plan (fn-prstartup-plan dynamic occupied protected root workers stack runtime cache-limit fd-limit))) (and (natp (fn-prstartup-file-capacity plan))
+        (<= (max 8 (+ 1 (nfix cache-limit))) (fn-prstartup-file-capacity plan))
+        (<= (fn-prstartup-file-capacity plan) (nfix fd-limit))
+        (<= (fn-prstartup-required-heap (fn-prstartup-file-capacity plan) workers root)
+            (nfix (- (nfix dynamic) (max (nfix occupied) (nfix protected))))))))
+               ((dynamic 1024) (occupied 0) (protected 0) (root "/tmp/store") (workers 4) (stack 1048576) (runtime 4194304) (cache-limit 8) (fd-limit 256))
+               :fault "the antecedent dropped: (equal (fn-prstartup-nth 0 plan) :admitted)")
+              (capacity-by-cache-limit
+               (:conclusion (let ((plan (fn-prstartup-plan dynamic occupied protected root workers stack runtime cache-limit fd-limit))) (<= (fn-prstartup-file-capacity plan) (nfix cache-limit))))
+               ((dynamic 536870912) (occupied 67108864) (protected 268435456) (root "/tmp/store") (workers 4) (stack 1048576) (runtime 4194304) (cache-limit 8) (fd-limit 256))
+               :fault "the file capacity bounded by the cache limit, not the descriptor limit")))
