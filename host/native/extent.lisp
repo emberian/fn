@@ -1621,6 +1621,26 @@ Anything but :stale removes the row (the file pin) and idles the worker."
 (defun acl2_*1*_acl2::fn-durable-realize-lz (file eoff elen poff plen trailer n dict)
   (fn-durable-realize-lz file eoff elen poff plen trailer n dict))
 
+;;; Octet I of the decoded payload.  The decoded payload is the one list
+;;; fn-durable-realize-lz keeps (the last one read); fn-oct-nth on it walked I
+;;; conses per octet, so a reader of N octets did N^2/2 steps.  One vector copy
+;;; per distinct decoded list (EQ), under the extent lock that guards the list's
+;;; own cache, answers every octet in constant time: the logical answer is the
+;;; same, (nth I LIST) (fn-oct-nth: NIL past the end, the first octet for a
+;;; non-natural I).
+(defvar *fnn-extent-lz-last-vector* nil)      ; (octets-list . vector), guarded-by: *fnn-extent-lock*
+
+(defun fnn-extent-lz-octet (i octets)
+  (cond ((not (typep i '(integer 0))) (car octets))
+        (t (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
+             (let ((cell *fnn-extent-lz-last-vector*))
+               (unless (and cell (eq (car cell) octets))
+                 (setq cell (cons octets (coerce octets '(simple-array (unsigned-byte 8) (*))))
+                       *fnn-extent-lz-last-vector* cell))
+               (let ((vector (cdr cell)))
+                 (declare (type (simple-array (unsigned-byte 8) (*)) vector))
+                 (and (< i (length vector)) (aref vector i))))))))
+
 ;;; The arena scalar export consumes this seam. Window mode may only borrow
 ;;; the authenticated returned decoded window; it never falls back to the
 ;;; full-payload realizer. The physical decoded worker installs that leaf.
@@ -1632,8 +1652,8 @@ Anything but :stale removes the row (the file pin) and idles the worker."
         (throw 'fnn-extent-window-refused
           (values (fnn-core-cold-single 'fn-owner-page-window-decoded-refusal)
                   nil nil nil)))
-    (fnn-core 'fn-oct-nth i
-      (fn-durable-realize-lz file eoff elen poff compressed trailer decoded dict))))
+    (fnn-extent-lz-octet
+     i (fn-durable-realize-lz file eoff elen poff compressed trailer decoded dict))))
 
 (defun acl2_*1*_acl2::fn-durable-realize-lz-octet
     (file eoff elen poff compressed trailer decoded dict i)
