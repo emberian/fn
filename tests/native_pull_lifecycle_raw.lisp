@@ -252,6 +252,14 @@
    (defun fnn-pull-worker) (defun fnn-pull-settle-leases)
    (def-actor fnn-pull-spawn) (defun fnn-pull-service-start)
    (defun fnn-pull-service-wake) (defun fnn-pull-service-close)))
+;; SCEN-CATCHUP-PACE: the worker's own wake and its plan refresh, where the
+;; source has them (the old defect base has none and never calls them).
+(with-open-file (stream "host/native/pull-service.lisp")
+  (loop for form = (read stream nil :eof) until (eq form :eof)
+        when (and (consp form) (eq (car form) 'defun)
+                  (member (cadr form) '(fnn-pull-runtime-wake fnn-pull-wakes-seen
+                                        fnn-pull-ready-wait fnn-pull-refresh-plans)))
+          do (eval form)))
 (defvar *pull-cut* nil)
 (defvar *pull-close-cut* nil)
 (defvar *pull-entered* nil)

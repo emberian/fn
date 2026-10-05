@@ -178,6 +178,32 @@
     (or (<= (in-arena-fn-cu-octets-of *sr-arena* served) -1)
         (equal (len served) 1)))))
 
+; KEYSTONE fn-cu-select-examines-a-bounded-batch (lane pool-refusal).  The
+; bound is the served cursors' payload quantum (books/cold-line-quanta.lisp).
+; Witness: a view of eight entries, quantum 1000, examines four (A1 and A2
+; served, NEXT 4, and the reply says more).  Teeth: the walk over the whole
+; view -- the select before the bound -- examines all eight.
+(include-book "../../books/cold-line-quanta")
+(assert-event (equal (fn-cu-batch-entries) (fn-clq-payload-quantum)))
+(defconst *cut-eight* (append *cut-articles* *cut-articles*))
+(assert-event
+ (equal (in-arena-cut-select *sr-arena* *cut-eight* 0 *cut-groups* *cut-trie* 1000)
+        (list 4 (list *cut-a1* *cut-a2*))))
+(defun cut-select-whole (articles from groups trie quantum fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (next served used)
+    (fn-cu-select-aux (fn-cu-drop from (fn-cu-rev articles nil))
+                      groups trie quantum from nil 0 fn-arena)
+    (declare (ignore served used))
+    next))
+(bpr-lift cut-select-whole 5)
+(assert-event
+ (equal (in-arena-cut-select-whole *sr-arena* *cut-eight* 0 *cut-groups* *cut-trie* 1000) 8))
+(must-fail-checked
+ (assert-event
+  (<= (in-arena-cut-select-whole *sr-arena* *cut-eight* 0 *cut-groups* *cut-trie* 1000)
+      (+ 0 (fn-cu-batch-entries)))))
+
 ; KEYSTONE fn-cu-serve-reply-effects-well-formed: the reply is one
 ; well-formed response.
 (assert-event (fn-nntp-effectsp (list (list :reply *cut-reply*))))

@@ -62,6 +62,7 @@
 ;                                           the view the session could fetch
 ;   fn-cu-select-makes-progress            NEXT > FROM whenever FROM < END
 ;   fn-cu-select-stays-within-the-quantum  records after the first fit QUANTUM
+;   fn-cu-select-examines-a-bounded-batch  NEXT - FROM <= fn-cu-batch-entries
 (in-package "ACL2")
 (include-book "peer-u64-codec")
 (include-book "nntp-responses")
@@ -259,12 +260,38 @@
         (fn-cu-select-aux (cdr entries) groups trie quantum (+ 1 pos)
                           served used fn-arena)))))
 
+; THE ENTRIES ONE BATCH EXAMINES (lane pool-refusal, 2026-10-05).  The
+; reply is rendered in ONE served quantum, which reads its payloads with the
+; realizer in no-I/O mode: a payload it has not cached aborts the quantum,
+; is read off the owner mutex into the realizer's cache, and the quantum
+; runs again (books/cold-line-quanta.lisp).  A quantum that needs more
+; payloads than the cache keeps never finishes (TEETH fn-clq-nine-reads-
+; never-finish), and a batch of QUANTUM octets of small articles needed
+; dozens: on the peer catch-up native every XFNCATCHUP at the requester's
+; 262144 octets answered 403 "a page it needs was not read within 5000 ms"
+; and the round failed (reason=peer-refused), round after round.  A batch
+; now examines at most fn-cu-batch-entries entries -- the served cursors'
+; payload quantum, half the realizer's cache (books/cold-line-quanta.lisp
+; fn-clq-payload-quantum, restated here; tests/acl2/peer-catchup-tests.lisp
+; checks the two agree) -- and says `more'; the requester asks again.
+(defun fn-cu-batch-entries ()
+  (declare (xargs :guard t))
+  4)
+
+; The first N elements of X (at most N; never padded).
+(defun fn-cu-first (n x)
+  (declare (xargs :guard (natp n)))
+  (if (or (zp n) (atom x))
+      nil
+    (cons (car x) (fn-cu-first (1- n) (cdr x)))))
+
 ; KEYSTONE SUBJECT.  The batch at FROM: (mv next articles), ARTICLES oldest
 ; first.
 (defun fn-cu-select (articles from groups trie quantum fn-arena)
   (declare (xargs :stobjs fn-arena :guard (and (natp from) (natp quantum))))
   (mv-let (next served used)
-    (fn-cu-select-aux (fn-cu-drop from (fn-cu-rev articles nil))
+    (fn-cu-select-aux (fn-cu-first (fn-cu-batch-entries)
+                                   (fn-cu-drop from (fn-cu-rev articles nil)))
                       groups trie quantum from nil 0 fn-arena)
     (declare (ignore used))
     (mv next (fn-cu-rev served nil))))
@@ -401,6 +428,22 @@
    :hints (("Goal" :use ((:instance fn-cu-member-drop (x (fn-cu-rev x nil))))
             :in-theory (disable fn-cu-member-drop fn-cu-drop fn-cu-rev)))))
 
+(local
+ (defthm fn-cu-member-first
+   (implies (member-equal a (fn-cu-first n x))
+            (member-equal a x))))
+
+(local
+ (defthm fn-cu-consp-first
+   (implies (and (posp n) (consp x))
+            (consp (fn-cu-first n x)))
+   :hints (("Goal" :expand ((fn-cu-first n x))))))
+
+(local
+ (defthm fn-cu-len-first
+   (<= (len (fn-cu-first n x)) (nfix n))
+   :rule-classes :linear))
+
 ; KEYSTONE (what is served).  Every article a batch serves is an entry of the
 ; view and one the session could fetch by Message-ID (`fn-cu-servedp'): the
 ; view's trie holds it, it is not reclaimed, it is framed, and WILDMAT's
@@ -410,10 +453,14 @@
                                                    quantum fn-arena)))
            (and (member-equal a articles)
                 (fn-cu-servedp a groups trie fn-arena)))
-  :hints (("Goal" :in-theory (disable fn-cu-servedp fn-cu-select-aux fn-cu-drop fn-cu-rev)
+  :hints (("Goal" :in-theory (disable fn-cu-servedp fn-cu-select-aux fn-cu-drop fn-cu-rev
+                                      fn-cu-first fn-cu-member-first)
            :use ((:instance fn-cu-select-aux-served-member
-                            (entries (fn-cu-drop from (fn-cu-rev articles nil)))
-                            (pos from) (served nil) (used 0))))))
+                            (entries (fn-cu-first (fn-cu-batch-entries)
+                                                  (fn-cu-drop from (fn-cu-rev articles nil))))
+                            (pos from) (served nil) (used 0))
+                 (:instance fn-cu-member-first (n (fn-cu-batch-entries))
+                            (x (fn-cu-drop from (fn-cu-rev articles nil))))))))
 
 (local
  (defthm fn-cu-select-aux-pos-grows
@@ -453,10 +500,44 @@
            (< from (mv-nth 0 (fn-cu-select articles from groups trie quantum
                                            fn-arena))))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (disable fn-cu-select-aux fn-cu-servedp fn-cu-drop fn-cu-rev)
+  :hints (("Goal" :in-theory (disable fn-cu-select-aux fn-cu-servedp fn-cu-drop fn-cu-rev
+                                      fn-cu-first)
            :use ((:instance fn-cu-select-aux-progress
-                            (entries (fn-cu-drop from (fn-cu-rev articles nil)))
-                            (pos from) (served nil) (used 0))))))
+                            (entries (fn-cu-first (fn-cu-batch-entries)
+                                                  (fn-cu-drop from (fn-cu-rev articles nil))))
+                            (pos from) (served nil) (used 0))
+                 (:instance fn-cu-consp-first (n (fn-cu-batch-entries))
+                            (x (fn-cu-drop from (fn-cu-rev articles nil))))))))
+
+(local
+ (defthm fn-cu-select-aux-pos-bound
+   (implies (natp pos)
+            (<= (car (fn-cu-select-aux entries groups trie quantum
+                                       pos served used fn-arena))
+                (+ pos (len entries))))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (disable fn-cu-servedp fn-nntp-article-bytes)))))
+
+; KEYSTONE (bounded reads).  A batch examines at most fn-cu-batch-entries
+; entries of the view (NEXT - FROM), so the one served quantum that renders
+; it reads at most that many payloads: the served cursors' payload quantum,
+; which books/cold-line-quanta.lisp fn-clq-line-finishes proves finishes
+; from any cache of the realizer's capacity.  Teeth (tests/acl2/
+; peer-catchup-tests.lisp): the walk over the whole view (the select before
+; this bound) examines all eight entries of a view of eight.
+(defthm fn-cu-select-examines-a-bounded-batch
+  (implies (natp from)
+           (<= (mv-nth 0 (fn-cu-select articles from groups trie quantum fn-arena))
+               (+ from (fn-cu-batch-entries))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-cu-select-aux fn-cu-servedp fn-cu-drop fn-cu-rev
+                                      fn-cu-first (fn-cu-batch-entries))
+           :use ((:instance fn-cu-select-aux-pos-bound
+                            (entries (fn-cu-first (fn-cu-batch-entries)
+                                                  (fn-cu-drop from (fn-cu-rev articles nil))))
+                            (pos from) (served nil) (used 0))
+                 (:instance fn-cu-len-first (n (fn-cu-batch-entries))
+                            (x (fn-cu-drop from (fn-cu-rev articles nil))))))))
 
 ; The octets of a list of articles.
 (defun fn-cu-octets-of (articles fn-arena)
@@ -494,9 +575,10 @@
                                                  quantum fn-arena))))
              (or (<= (fn-cu-octets-of served fn-arena) quantum)
                  (equal (len served) 1))))
-  :hints (("Goal" :in-theory (disable fn-cu-select-aux fn-nntp-article-bytes)
+  :hints (("Goal" :in-theory (disable fn-cu-select-aux fn-nntp-article-bytes fn-cu-first)
            :use ((:instance fn-cu-select-aux-within
-                            (entries (fn-cu-drop from (fn-cu-rev articles nil)))
+                            (entries (fn-cu-first (fn-cu-batch-entries)
+                                                  (fn-cu-drop from (fn-cu-rev articles nil))))
                             (pos from) (served nil) (used 0)))))
   :rule-classes nil)
 

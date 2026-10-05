@@ -59,6 +59,7 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         owner = (ROOT / "host" / "native" / "owner.lisp").read_text(encoding="ascii")
         owner_host = (ROOT / "host" / "owner-host.lisp").read_text(encoding="ascii")
         io = (ROOT / "host" / "native" / "io.lisp").read_text(encoding="ascii")
+        extent = (ROOT / "host" / "native" / "extent.lisp").read_text(encoding="ascii")
         publish = native_cuts.host_function(owner, "fnn-owner-publish-captured")
         # checkpoint-pipeline: NEXT (fn-ock-next-checkpoint), then the setup
         # (fn-ockp-setup: the tables, the estimate, the decision BEFORE any
@@ -100,6 +101,26 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         self.assertIn("(fnn-checkpoint-walk records arena)", publish)
         walk = native_cuts.host_function(io, "fnn-checkpoint-walk")
         self.assertIn("(fnn-core 'fn-scka-srcs-n (first walk) +fnn-checkpoint-batch-rows+", walk)
+        # pool-refusal: every ACL2 call of the publication that reads the
+        # arena decides a read the pool refuses for its stage
+        # (fnn-extent-with-read-refusal; books/owner-resource-line.lisp
+        # fn-orln-read-refusal-outcome), never a fault raised in the call.
+        self.assertIn("(fnn-extent-with-read-refusal\n                  :checkpoint-walk", walk)
+        self.assertIn(":checkpoint-walk\n                                     (lambda ()\n"
+                      "                                       (fnn-core 'fn-owner-sco-next", publish)
+        arena_steps = native_cuts.host_function(io, "fnn-checkpoint-write-arena-steps")
+        self.assertIn(":checkpoint-write\n                       (lambda ()\n"
+                      "                         (fnn-call 'fn-scka-write-step", arena_steps)
+        release = native_cuts.host_function(owner, "fnn-owner-release-extents")
+        self.assertEqual(release.count(":checkpoint-release"), 2)
+        self.assertIn("(if (eq octets :read-deferred)", release)
+        wrapper = native_cuts.host_function(io, "fnn-extent-with-read-refusal")
+        self.assertIn("(fnn-core 'fn-orln-read-refusal-outcome stage word)", wrapper)
+        self.assertIn("(:defer-publication\n         (fnn-refuse-io ", wrapper)
+        refused = native_cuts.host_function(extent, "fnn-extent-read-refused")
+        self.assertIn("(throw 'fnn-extent-read-refused word)", refused)
+        direct = native_cuts.host_function(extent, "fnn-extent-entry-direct")
+        self.assertNotIn("(fnn-refuse ", direct)
         self.assertIn("(fnn-live-octets-pub)", publish)
         self.assertNotIn("(fnn-live-octets)", publish)
         self.assertNotIn("'fn-ock-publication ", publish)
@@ -160,6 +181,8 @@ class AutoCheckpointSourceTests(unittest.TestCase):
                         envelope.index("(fnn-owner-gate-enter ,g ,c)"))
         self.assertLess(envelope.index("(fnn-owner-gate-enter ,g ,c)"),
                         envelope.index("(fnn-with-observed-owner ((fnn-owner-service-lock ,s))\n         (unwind-protect"))
+        # a read refused inside a section is raised there, never thrown past it
+        self.assertIn("(*fnn-extent-read-refusal* nil))", envelope)
         gated = owner[owner.index("(defmacro fnn-owner-gated"):]
         gated = gated[:gated.index("\n(")]
         self.assertIn("(fnn-section-run-cleanup ,service ,class", gated)

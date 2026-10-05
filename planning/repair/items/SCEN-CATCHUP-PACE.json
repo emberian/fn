@@ -1,0 +1,15 @@
+{
+ "file": "host/native/pull-service.lisp",
+ "id": "SCEN-CATCHUP-PACE",
+ "native": "tests.test_native_peer_catchup",
+ "notes": [
+  "10-05 00:21 READY 3d37f3d4c (lane/feed-pace, carries lane/pool-refusal@671e54932). peer_catchup on hbox: red-before roll-up set ecf10066f (bq10050324-0132) 1F+1E (imports_every_article 612.9 s round=failed, kill_mid 617.3 s); pool-refusal's own lane image prlane2: imports 776/784 of 1000 in the 600 s round (~1.3/s). Green-after lane set 3a9806784 (bq10050400-0135): 5/5 OK; imports_every_article seconds_to_done 28.69 for 1000 articles (~35/s), kill_mid done imported=988 duplicate=4. Remaining bound is not a sleep: one IHAVE in flight on the local transit connection, each import waiting its commit barrier (fsync ~30 ms on hbox) -> ~33/s ceiling; hundreds/s needs several offers in flight so the committer batches them (fn-csp controller window), not a scheduling change."
+ ],
+ "owner": "feed-pace",
+ "severity": "medium",
+ "sha": "3d37f3d4c",
+ "source": "pool-refusal",
+ "state": "ready",
+ "title": "Catch-up import runs at about 1.3 articles a second (peer_catchup imports ~780 of 1000 in a 600 s round on hbox): the pull worker ends a selection at every spool, local, send and digest step (about 25 worker hand-offs an ~2 KiB article, 32 of them 64-octet digest reads), reads only the selection's last action as progress, and pauses ACL2's 10 ms I/O poll on the owner commit signal, which neither a spool worker nor a local submission raises; every selection also re-reads both plan tables under the owner",
+ "updated": "2026-10-05T04:21:07Z"
+}

@@ -54,6 +54,7 @@
   "fn-cp-read-fields": "kinds is always the fixed 9-field cursor grammar '(:id :id :id :id :id :uint :uint :uint :uint)",
   "fn-cpt-ins": "walks the withdrawals-by-version trie root to leaf: depth = the trie height, log n of the largest row number filed at the version (n the catalog count), never n itself",
   "fn-cpt-walk": "non-tail only into the LOW subtree: recursion depth = the trie height, log n of the largest row number (n the catalog count); the high subtree is the accumulator argument",
+  "fn-cu-first": "walks n, always called with (fn-cu-batch-entries) = 4 (the entries one XFNCATCHUP batch examines), never store data",
   "fn-cu-hex": "hex-encodes a fixed 8-octet u64 or 32-octet chain digest",
   "fn-cu-render-lines": "walks the selected catch-up batch; capped by *fn-cu-max-quantum*",
   "fn-digest-hex-chars": "Walks digest octets; its only caller (fn-auth-principal-match) passes a 32-octet principal digest.",

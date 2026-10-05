@@ -7,11 +7,14 @@
  "fix": "After the caches yield, refuse by a condition class the callback boundary passes as a refusal (checkpoint publication aborts, old checkpoint stays, retried), or serialize the checkpoint's reads behind the read that holds the pool; and size the pool's headroom to at least two max-record reads at startup (page-read-startup refusal by name).",
  "id": "POOL-DIRECT-READ-REFUSAL-FAULTS",
  "locus": "storage",
- "notes": [],
+ "notes": [
+  "10-05 05:10 integrator3: allow_forbidden GRANTED at merge (carried by lane/feed-pace@3dbedc021 from lane/pool-refusal@671e54932, commit 94d8e6529), scope reviewed: host/native/extent.lisp fnn-extent-read-refused (new), fnn-extent-entry-direct, fnn-extent-entry-fresh; host/native/io.lisp fnn-extent-with-read-refusal (new), fnn-checkpoint-walk, fnn-checkpoint-write-arena-steps; host/native/owner.lisp fnn-section-envelope (one dynamic binding *fnn-extent-read-refusal*), fnn-owner-release-extents, fnn-owner-publish-captured. Native: peer_catchup red bq10050324-0132 (set ecf10066f) -> green bq10050400-0135 (set 3a9806784, persvati-built); integrator image batch owed."
+ ],
  "owner": "w-window",
  "severity": "high",
  "source": "batch-6-peer-catchup-2026-10-04",
- "state": "open",
+ "state": "ready",
  "title": "A synchronous funded read the pool cannot admit refuses inside an ACL2 callback, which the call boundary makes an owner fault (batch-6 peer_catchup: 1000 posts)",
- "updated": "2026-10-04T20:43:52Z"
+ "updated": "2026-10-04T20:43:52Z",
+ "allow_forbidden": true
 }
