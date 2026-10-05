@@ -14,7 +14,11 @@ X25519MLKEM768 first and the classical groups after it when its OpenSSL
     (a prefix of the system's 3.0 to 3.4 pair) is refused by name at `run`,
     before it listens; under hybrid-preferred the same library serves
     classical groups;
-  * a missing OpenSSL prefix, and an unknown policy word, are refused by name.
+  * a missing OpenSSL prefix is refused by name on a node that serves TLS
+    or requires the hybrid; a node that does neither runs on the system's
+    pair and logs a `tls library warning` line (D59's refusal scope,
+    fn-tlsk-library-decide);
+  * an unknown policy word is refused.
 
 Needs the OpenSSL 3.5.8 toolchain (FN_TEST_OPENSSL_PREFIX, default
 /tank/fn/toolchains/openssl-3.5.8) for the client and the node's library.
@@ -25,6 +29,7 @@ from __future__ import annotations
 import ctypes.util
 import os
 import re
+import socket
 import subprocess
 import time
 import unittest
@@ -103,11 +108,16 @@ class NativeTlsKeyExchangeTests(unittest.TestCase):
             handle.write('\n[log]\npath = "{}"\n'.format(self.log))
 
     def s_client(self, groups: str, commands: bytes = b"DATE\r\nQUIT\r\n") -> str:
-        """`openssl s_client -starttls nntp -groups GROUPS`, the 3.5.8 tool."""
+        """`openssl s_client -starttls nntp -groups GROUPS`, the 3.5.8 tool.
+        -ign_eof: without it s_client stops at the end of its input before
+        the server's replies arrive, and reads a line starting `Q' (QUIT) as
+        its own quit command, so no reply is ever printed; with it the
+        commands are sent as written and s_client reads until the server
+        closes after QUIT."""
         result = subprocess.run(
             [str(CLIENT), "s_client", "-starttls", "nntp", "-groups", groups,
              "-connect", "127.0.0.1:{}".format(self.port), "-servername", "localhost",
-             "-brief"],
+             "-brief", "-ign_eof"],
             input=commands, env=client_environment(), capture_output=True, timeout=60)
         return (result.stdout + result.stderr).decode("utf-8", "replace")
 
@@ -194,8 +204,42 @@ class NativeTlsKeyExchangeTests(unittest.TestCase):
         result = self.node.operator("run", "--once")
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertNotIn(b"LISTENING ", result.stdout)
-        self.assertIn(b"no OpenSSL libcrypto/libssl pair under", result.stderr)
+        self.assertEqual(result.returncode, EXIT.REFUSED, result.stdout + result.stderr)
+        self.assertIn(b"tls library refused: no OpenSSL libcrypto/libssl pair under", result.stderr)
         self.assertIn(str(self.root / "no-such-openssl").encode(), result.stderr)
+
+    def test_a_missing_prefix_on_a_node_without_tls_runs_on_the_system_pair(self) -> None:
+        # D59's refusal scope: no certificate, so no TLS is served; the node
+        # starts on the system's pair, says so in its log, and serves NNTP.
+        missing = self.root / "no-such-openssl"
+        self.node.env["FN_OPENSSL_PREFIX"] = str(missing)
+        self.node.write_config()
+        with self.node.config.open("a", encoding="utf-8") as handle:
+            handle.write('\n[log]\npath = "{}"\n'.format(self.log))
+        process = self.node.start()
+        try:
+            text = self.wait_for_log(r"tls library warning: ")
+            line = [l for l in text.splitlines() if l.startswith("tls library warning: ")][0]
+            self.assertIn("the system's pair is loaded", line)
+            self.assertTrue(line.endswith(": " + str(missing)), line)
+            with socket.create_connection(("127.0.0.1", self.port), timeout=30) as sock:
+                greeting = sock.makefile("rb").readline()
+            self.assertTrue(greeting.startswith(b"20"), greeting)
+            self.assertIsNone(process.poll())
+        finally:
+            self.node.stop(expect=None, process=process, grace=20)
+
+    def test_a_missing_prefix_with_hybrid_required_and_no_tls_is_refused(self) -> None:
+        # hybrid-required is the operator's demand for the pinned library
+        # even before a certificate is configured: refused by name.
+        missing = self.root / "no-such-openssl"
+        self.node.env["FN_OPENSSL_PREFIX"] = str(missing)
+        self.node.write_config(tls='key_exchange = "hybrid-required"\n')
+        result = self.node.operator("run", "--once")
+        self.assertEqual(result.returncode, EXIT.REFUSED, result.stdout + result.stderr)
+        self.assertNotIn(b"LISTENING ", result.stdout)
+        self.assertIn(b"tls library refused: no OpenSSL libcrypto/libssl pair under", result.stderr)
+        self.assertIn(str(missing).encode(), result.stderr)
 
     def test_an_unknown_policy_word_is_refused(self) -> None:
         self.configure("classical")

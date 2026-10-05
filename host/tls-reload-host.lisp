@@ -129,3 +129,12 @@
 (defun fn-tlsk-host-health-client-line (read)
   (declare (xargs :guard t))
   (fn-tlsk-health-client-line read))
+
+; D59's refusal scope: the library a start runs on (fn-tlsk-library-decide).
+(defun fn-tlsk-host-library-decide (missing served policy)
+  (declare (xargs :guard t))
+  (fn-tlsk-library-decide missing served policy))
+
+(defun fn-tlsk-host-library-line (decision)
+  (declare (xargs :guard t))
+  (fn-tlsk-library-line decision))

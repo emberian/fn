@@ -55,7 +55,13 @@
 #   fn/libexec/fn/               the frozen launcher, the production core,
 #                                source-revision, runtime/ (SBCL) and lib/
 #                                (libsodium, libfn-mldsa65, libfn-blake3, libfn-deflate; libzstd on
-#                                OpenBSD).  TLS is the system's libssl.
+#                                OpenBSD); on Linux openssl/lib/, the
+#                                OpenSSL 3.5.8 pair fn ships (D59; set
+#                                FN_FREEZE_OPENSSL to packaging/floor-
+#                                openssl.sh's output, built against the
+#                                glibc floor, or step 4's runpath check
+#                                refuses the boxes' toolchain build).  On
+#                                OpenBSD TLS is the base system's LibreSSL.
 #   fn/share/fn/                 fn.toml.example, systemd/fn.service.in or
 #                                rc.d/fn.rc.in, caddy/fn-web.caddy (HTTPS
 #                                in front of the node's own web face,
@@ -221,6 +227,10 @@ if [ -z "$frozen" ]; then
     echo "acl2: $FN_ACL2"
     [ "$image_acl2" = "$FN_ACL2" ] || echo "image-acl2: $image_acl2"
     [ -z "$runtime_from" ] || echo "runtime-from: $($sums "$runtime_from/sbcl")"
+    if [ -d "$frozen/openssl/lib" ]; then
+      echo "openssl: ${FN_FREEZE_OPENSSL:-${FN_OPENSSL_PREFIX:-/tank/fn/toolchains/openssl-3.5.8}}"
+      (cd "$frozen" && $sums openssl/lib/libcrypto.so.3 openssl/lib/libssl.so.3)
+    fi
   } > "$work/release-gate.txt"
   gate=$work/release-gate.txt
 else

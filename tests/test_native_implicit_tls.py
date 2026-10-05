@@ -118,11 +118,15 @@ class NativeImplicitTlsTests(unittest.TestCase):
                 response, final = peer.post(article)
                 self.assertTrue(response.startswith(b"340 "), response)
                 self.assertTrue(final.startswith(b"240 "), final)
-            # With the owner running the store is held: refused, no verdict.
-            held = self.node.operator("store", "inspect", msgid)
-            self.assertNotEqual(held.returncode, 0)
-            self.assertNotIn(b"accepted <", held.stdout)
-            self.assertNotIn(b"absent <", held.stdout)
+            # With the owner running, the node answers from its own table
+            # over [control] (docs/operator.md "store inspect": it answers
+            # while the node runs and while it is stopped); the same verdict
+            # as the stopped store's below.
+            running = self.node.operator("store", "inspect", msgid)
+            self.assertEqual(running.returncode, 0, running.stdout + running.stderr)
+            self.assertEqual(
+                running.stdout.decode().splitlines()[0],
+                "accepted {} an article is stored here under this Message-ID".format(msgid))
         finally:
             self.stop(process)
         found = self.node.operator("store", "inspect", msgid)

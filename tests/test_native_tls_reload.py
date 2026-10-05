@@ -123,11 +123,17 @@ class TlsReloadCases:
         return served
 
     def status_tls_line(self) -> str:
+        """The served certificate's line of `status'.  Since PRF-1327 the
+        owner's status reply carries the key exchange's line after it
+        (`tls key-exchange policy=...', books/tls-key-exchange.lisp
+        fn-tlsk-status-lines): exactly one of each."""
         result = self.operator("status")
         self.assertEqual(result.returncode, EXIT.OK, result.stdout + result.stderr)
-        lines = [l for l in result.stdout.decode().splitlines() if l.startswith("tls ")]
-        self.assertEqual(len(lines), 1, result.stdout)
-        return lines[0]
+        tls = [l for l in result.stdout.decode().splitlines() if l.startswith("tls ")]
+        served = [l for l in tls if not l.startswith("tls key-exchange ")]
+        self.assertEqual(len(served), 1, result.stdout)
+        self.assertEqual(len(tls) - len(served), 1, result.stdout)
+        return served[0]
 
     def test_reload_serves_new_connections_and_keeps_open_sessions(self) -> None:
         process = self.node.start()

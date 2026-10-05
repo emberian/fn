@@ -651,10 +651,14 @@ class NativePeeringTests(unittest.TestCase):
         """PRF-235 / PRF-236 (NNT-049, NNT-050, SCN-161, SCN-162), INN-shaped:
         three peers offer one article whose Path is malformed.  The first
         peer's CHECK draws 238 and its TAKETHIS 439 (the transfer decision
-        parses it once); the refusal is remembered (books/owner.lisp
-        fn-own-transit-refused), so the second and third peers' CHECK draw
-        438 and IHAVE 435 with the remembered reason, and no transfer
-        happens.  With `relay-date-skew 3600' and `relay-require-path 1' set
+        parses it once); the refusal is remembered under the offering
+        peer's own key (books/owner.lisp fn-own-transit-refused,
+        rp-refused-memory-poison, 11d067e03), so that peer's next CHECK
+        draws 438 and its IHAVE 435 with the remembered reason, and no
+        transfer happens.  One peer's offer never changes another peer's
+        answer: the second and third peers' CHECK draw 238 and IHAVE 335,
+        their own transfer is refused 437, and only then do they draw 438
+        (tests/acl2/transit-hygiene-tests.lisp says the same).  With `relay-date-skew 3600' and `relay-require-path 1' set
         by the operator, an article dated two hours ahead is refused 437
         "dated in the future" and a Path-less one 437 "no Path"; an article
         within the skew and with a Path is accepted 235.  Nothing is
@@ -699,11 +703,20 @@ class NativePeeringTests(unittest.TestCase):
             stream.write(b"TAKETHIS " + bad.encode() + b"\r\n" + bad_article + b".\r\n")
             witness["peer1-takethis"] = stream.readline().decode()
             ask(stream, b"QUIT")
+        client, stream = session("127.0.0.1")
+        with client:
+            witness["peer1-recheck"] = ask(stream, b"CHECK " + bad.encode()).decode()
+            witness["peer1-ihave"] = ask(stream, b"IHAVE " + bad.encode()).decode()
+            ask(stream, b"QUIT")
         for name, address in sources[1:]:
             client, stream = session(address)
             with client:
                 witness[name + "-check"] = ask(stream, b"CHECK " + bad.encode()).decode()
                 witness[name + "-ihave"] = ask(stream, b"IHAVE " + bad.encode()).decode()
+                if witness[name + "-ihave"].startswith("335 "):
+                    stream.write(bad_article + b".\r\n")
+                    witness[name + "-transfer"] = stream.readline().decode()
+                witness[name + "-recheck"] = ask(stream, b"CHECK " + bad.encode()).decode()
                 ask(stream, b"QUIT")
 
         future = "<hygiene-future@example.invalid>"
@@ -725,10 +738,13 @@ class NativePeeringTests(unittest.TestCase):
 
         self.assertTrue(witness["peer1-check"].startswith("238 "), witness)
         self.assertTrue(witness["peer1-takethis"].startswith("439 "), witness)
+        self.assertTrue(witness["peer1-recheck"].startswith("438 "), witness)
+        self.assertEqual(witness["peer1-ihave"], "435 not wanted; malformed Path\r\n", witness)
         for name, _ in sources[1:]:
-            self.assertTrue(witness[name + "-check"].startswith("438 "), witness)
-            self.assertEqual(witness[name + "-ihave"],
-                             "435 not wanted; malformed Path\r\n", witness)
+            self.assertTrue(witness[name + "-check"].startswith("238 "), witness)
+            self.assertTrue(witness[name + "-ihave"].startswith("335 "), witness)
+            self.assertTrue(witness[name + "-transfer"].startswith("437 "), witness)
+            self.assertTrue(witness[name + "-recheck"].startswith("438 "), witness)
         self.assertTrue(witness["future-offer"].startswith("335 "), witness)
         self.assertEqual(witness["future-transfer"],
                          "437 transfer rejected; dated in the future\r\n", witness)

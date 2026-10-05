@@ -5110,12 +5110,31 @@ RFC9174 section4 transport acknowledgment remains distinct from application
 commitment and its durable returned receipt.
 
 The operator's separate `bp-session-profile` is strict bounded ASCII text:
-`inbound N`, `outbound N`, optional `resident N`, and `outbound-ms N`, one per LF
-line, no duplicate key. Absent rows default to 2 incoming, 1 outgoing, derived
-resident projection and 30000ms outbound deadline. Counts are representable
-slot counts; zero in one class is allowed, but their total is positive.
-`bp-node session-profile JOURNAL NODE-ID INBOUND OUTBOUND [RESIDENT|- [OUTBOUND-MS]]`
+`inbound N`, `outbound N`, optional `resident N`, `outbound-ms N`, `passive-ms N`
+and `stall-ms N`, one per LF line, no duplicate key. Absent rows default to 2
+incoming, 1 outgoing, derived resident projection, 30000ms outbound deadline,
+120000ms passive-ms and 600000ms stall-ms. Counts are representable slot counts;
+zero in one class is allowed, but their total is positive; the two bounds are
+positive and below 2^32.
+`bp-node session-profile JOURNAL NODE-ID INBOUND OUTBOUND [RESIDENT|- [OUTBOUND-MS [PASSIVE-MS [STALL-MS]]]]`
 uses the ACL2 encoder and publishes it under the existing journal lifecycle lock.
+
+Established-session no-progress bounds (S025, coordinator ruling 2026-10-04;
+books/tcpcl-retained-turn.lisp `fn-tcrt-expiry`). Progress is transfer
+advancement in either direction: a whole XFER_SEGMENT or XFER_ACK frame read from
+the socket, or written to it. A locally queued ACK, a KEEPALIVE, SESS_TERM,
+XFER_REFUSE, MSG_REJECT and SESS_INIT are not progress. The clock starts when the
+session is established and is never renewed by capture. `passive-ms` binds only
+under contention (`fn-bpsp-incoming-contended`: a peer waits at a listener and every
+incoming slot is held): the session is ended with SESS_TERM reason 5, Resource
+Exhaustion. `stall-ms` binds a session with a transfer in flight whether or not
+the class is contended: SESS_TERM reason 1, Idle timeout; a quiet session with no
+transfer is not stalled. The host asks only at the :local action, so SESS_TERM
+queues behind complete messages and never inside an unfinished one or over held
+custody (`fn-tcrt-expiry-only-at-a-message-boundary`). Both bounds are admission
+policy: a peer that advances one frame per window keeps its slot, and fairness
+among incoming peers is not bounded. Frame granularity: a single frame (at most
+the segment MRU) in flight is one progress step.
 
 Startup captures Store heap profile, BP held profile, actual runtime dynamic
 space and the supported transfer/bundle span. ACL2 refuses an unrepresentable

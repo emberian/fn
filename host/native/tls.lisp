@@ -74,6 +74,11 @@
 (defvar *fnn-tls-libraries* nil)
 (defvar *fnn-tls-pinned-libraries* nil)
 (defvar *fnn-tls-version* nil)
+;; The prefix whose pair was missing at this start, when the system's pair
+;; was loaded in its place (fnn-tls-load-libraries); NIL when the pinned pair
+;; loaded or none was named.  An observation: `run' asks ACL2 whether the
+;; node may run on the fallback (fn-tlsk-library-decide, D59).
+(defvar *fnn-tls-pinned-missing* nil)
 (defvar *fnn-tls-initialize-lock*
   (sb-thread:make-mutex :name "fn native TLS initialization"))
 
@@ -84,9 +89,12 @@
 [tls] key_exchange policy offers.  FN_OPENSSL_PREFIX, unset, names this.  The
 installed launcher (packaging/fn) exports FN_OPENSSL_PREFIX as the release's
 own libexec/fn/openssl, so the default is the development and test boxes'
-toolchain.  A Linux start whose prefix holds no libcrypto/libssl pair is
-refused by name (fnn-tls-load-libraries); macOS and OpenBSD keep the system
-pair, which is all they have.")
+toolchain.  When the prefix holds no libcrypto/libssl pair the system's pair
+is loaded in its place and the missing prefix is recorded
+(*fnn-tls-pinned-missing*); `run' then refuses by name a node that serves
+TLS or requires the hybrid key exchange, and logs a warning for one that
+does neither (fn-tlsk-library-decide, D59).  macOS and OpenBSD name no
+default prefix and keep the system pair, which is all they have.")
 
 (defun fnn-tls-openssl-prefix ()
   "The prefix FN_OPENSSL_PREFIX names, else the default, else NIL."
@@ -112,23 +120,33 @@ pair, which is all they have.")
             (if (and (probe-file (first lib64)) (probe-file (second lib64)))
                 lib64 lib)))))))
 
-(defun fnn-tls-library-candidates ()
-  (let ((configured (fnn-tls-configured-library-pair)))
-    (if configured
-        (list configured)
-      ;; Read-time, as fnn-crypto-library-candidates: the core carries only
-      ;; its platform's names (PKT-723).
-      #+darwin
-      '(("/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib"
-         "/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib")
-        ("/usr/local/opt/openssl@3/lib/libcrypto.3.dylib"
-         "/usr/local/opt/openssl@3/lib/libssl.3.dylib")
-        ("libcrypto.3.dylib" "libssl.3.dylib"))
-      #+linux '(("libcrypto.so.3" "libssl.so.3"))
-      ;; LibreSSL in the base system; ld.so resolves an unversioned
-      ;; name to the installed major.
-      #+openbsd '(("libcrypto.so" "libssl.so"))
-      #-(or darwin linux openbsd) nil)))
+(defun fnn-tls-system-library-candidates ()
+  "The system's libcrypto/libssl pairs, in the order they are tried."
+  ;; Read-time, as fnn-crypto-library-candidates: the core carries only
+  ;; its platform's names (PKT-723).
+  #+darwin
+  '(("/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib"
+     "/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib")
+    ("/usr/local/opt/openssl@3/lib/libcrypto.3.dylib"
+     "/usr/local/opt/openssl@3/lib/libssl.3.dylib")
+    ("libcrypto.3.dylib" "libssl.3.dylib"))
+  #+linux '(("libcrypto.so.3" "libssl.so.3"))
+  ;; LibreSSL in the base system; ld.so resolves an unversioned
+  ;; name to the installed major.
+  #+openbsd '(("libcrypto.so" "libssl.so"))
+  #-(or darwin linux openbsd) nil)
+
+(defun fnn-tls-select-pair (candidates)
+  "The first candidate pair whose two files exist, else the first named by
+bare sonames (the loader resolves those), else NIL."
+  (or (find-if (lambda (candidate)
+                 (and (probe-file (first candidate))
+                      (probe-file (second candidate))))
+               candidates)
+      (find-if (lambda (candidate)
+                 (and (not (char= (char (first candidate) 0) #\/))
+                      (not (char= (char (second candidate) 0) #\/))))
+               candidates)))
 
 ;;; Every libssl/libcrypto function this file calls.  OpenSSL 3.0 to 3.5 and
 ;;; LibreSSL 3+ export all of them; SSL_CTX_set_min_proto_version and
@@ -313,22 +331,25 @@ through OpenSSL_version_num and names itself in OpenSSL_version)."
       "OpenSSL reported no queued detail")))
 
 (defun fnn-tls-load-libraries ()
-  "Select one complete pair before loading either member; never mix fallback."
-  (let* ((candidates (fnn-tls-library-candidates))
+  "Select one complete pair before loading either member; never mix two.
+The pinned prefix's pair when it holds one; otherwise the system's, with
+the missing prefix recorded in *fnn-tls-pinned-missing* for `run' to decide
+on (fn-tlsk-library-decide, D59).  Nothing here refuses for the prefix."
+  (let* ((configured (fnn-tls-configured-library-pair))
+         (pinned (and configured
+                      (probe-file (first configured))
+                      (probe-file (second configured))
+                      configured))
          (pair (or *fnn-tls-pinned-libraries*
-                   (find-if (lambda (candidate)
-                              (and (probe-file (first candidate))
-                                   (probe-file (second candidate))))
-                            candidates)
-                   (find-if (lambda (candidate)
-                              (and (not (char= (char (first candidate) 0) #\/))
-                                   (not (char= (char (second candidate) 0) #\/))))
-                            candidates))))
+                   pinned
+                   (fnn-tls-select-pair (fnn-tls-system-library-candidates)))))
+    (unless (or *fnn-tls-pinned-libraries* pinned (null configured))
+      (setq *fnn-tls-pinned-missing* (fnn-tls-openssl-prefix)))
     (unless pair
       (let ((prefix (fnn-tls-openssl-prefix)))
         (error 'fnn-tls-unavailable
                :detail (if prefix
-                           (format nil "no OpenSSL libcrypto/libssl pair under ~a (OpenSSL 3.5.8 is expected there; FN_OPENSSL_PREFIX names another prefix)"
+                           (format nil "no OpenSSL libcrypto/libssl pair under ~a (OpenSSL 3.5.8 is expected there; FN_OPENSSL_PREFIX names another prefix), and the system has none"
                                    prefix)
                          "no complete OpenSSL libcrypto/libssl pair exists"))))
     ;; Pin one pair for this process incarnation.  The foreign objects are
@@ -342,8 +363,8 @@ through OpenSSL_version_num and names itself in OpenSSL_version)."
           pair)
       (error (condition)
         (error 'fnn-tls-unavailable
-               :detail (format nil "pinned OpenSSL pair cannot be loaded: ~a"
-                               condition))))))
+               :detail (format nil "pinned OpenSSL pair cannot be loaded~@[ (no pair under ~a; the system's was tried)~]: ~a"
+                               *fnn-tls-pinned-missing* condition))))))
 
 (defun fnn-tls-initialize ()
   "Load the system libssl pair once and check its version and symbols.  This establishes facility availability, not a
@@ -387,8 +408,15 @@ configured server context and never a protected client session."
     (setq *fnn-tls-state* :uninitialized
           *fnn-tls-libraries* nil
           *fnn-tls-pinned-libraries* nil
+          *fnn-tls-pinned-missing* nil
           *fnn-tls-version* nil))
   t)
+
+(defun fnn-tls-pinned-missing ()
+  "The prefix whose pair was missing at this start (the system's pair then
+loaded), else NIL."
+  (sb-thread:with-mutex (*fnn-tls-initialize-lock*)
+    *fnn-tls-pinned-missing*))
 
 ;; test-only (tools/host_callers.py): tests/native_tls_transport.lisp
 (defun fnn-tls-version ()
