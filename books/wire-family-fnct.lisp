@@ -7,11 +7,14 @@
 ; protected prefix.  This book proves, once, that this framing IS the
 ; interpreter's :frame node:
 ;
-;   fn-wf-fnct-seal-is-wg-frame      sealing the encoding of a value is
-;                                    fn-wg-encode at the :frame grammar;
-;   fn-wf-fnct-open-inversion        a frame the host opens is the sealing of
-;                                    the fields it answers (canonicity of the
-;                                    host's framing);
+;   fn-wf-fnct-encode-is-host-framing   fn-wg-encode at the :frame grammar is
+;                                       the host's protected prefix of the
+;                                       payload encoding, then its digest;
+;   fn-wf-fnct-decode-inversion         a frame the host opens is the sealing
+;                                       of the fields it answers (canonicity
+;                                       of the host's framing);
+;   fn-wf-fnct-wg-accept-is-host-open,
+;   fn-wf-fnct-host-open-is-wg-accept   the two readers agree on a whole frame;
 ;
 ; so each family book (wire-family-consumer, ...) proves only its payload
 ; agreement and instantiates these.
@@ -22,11 +25,6 @@
 (include-book "wire-grammar")
 (include-book "wire-family-fncu") ; fn-wf-be-bytes-4
 (include-book "native-control")
-
-; -----------------------------------------------------------------------------
-; WIP (lane mini-contract-2, 2026-10-04): every event below was admitted in a
-; lat1 REPL session (proof_repl, not a certificate) except the last, which is
-; the open step.  The book is not certified and is in no Makefile root yet.
 
 (defthm fn-wf-fnct-protected-is-wg
   (implies (and (true-listp magic) (natp (len p)) (< (len p) 4294967296))
@@ -166,16 +164,127 @@
   :hints (("Goal" :in-theory (enable fn-wg-grammarp-opener-frame fn-wg-valuep-opener-frame
                                      fn-wg-arg fn-wg-limit fn-cbor-octetp))))
 
-; OPEN STEP (refused in the REPL at 34 s, 8.2M steps; checkpoint not yet
-; read): a frame the interpreter accepts whole is the frame the host opens.
-; Next: read the checkpoint (build/proof-repl/fnct/last-output.txt on lat1);
-; likely the :use of fn-wg-encode-of-decode needs its hypotheses fed
-; (grammarp of the frame from fn-wf-fnct-frame-facts) under a minimal theory.
+; -----------------------------------------------------------------------------
+; Agreement of the two readers of a whole FNCT frame.  The host opens a frame
+; with the trailer it re-derives over the frame's own protected prefix
+; (fn-frame-trailer of fn-frame-protected-prefix, books/frame-trailer.lisp);
+; the interpreter reads it at the :frame grammar.  For every well-formed
+; payload grammar G, any kind and any MX the host's cap HM covers:
 ;
-; (defthm fn-wf-fnct-wg-accept-is-host-open
-;   (implies (and (fn-wg-grammarp g) (fn-cbor-octetp k) (natp mx) (< mx 4294967296)
-;                 (fn-cbor-octet-listp x)
-;                 (equal (fn-wg-decode (list :frame (list 70 78 67 84) 1 k mx g) x) (fn-wg-ok v nil))
-;                 (natp hm) (<= mx hm) (<= hm 4294967295))
-;            (equal (fn-frame-decode x (fn-frame-trailer (fn-frame-protected-prefix x)) hm)
-;                   (fn-frame-ok (list 70 78 67 84) 1 k (fn-wg-encode g v)))))
+;   fn-wf-fnct-wg-accept-is-host-open   the interpreter accepts X whole as V
+;                                       => the host opens X, payload = the
+;                                       encoding of V;
+;   fn-wf-fnct-host-open-is-wg-accept   the host opens X with payload P and G
+;                                       accepts P whole as V within MX
+;                                       => the interpreter accepts X whole as V.
+;
+; So a family book proves only that its host payload codec is G's
+; (fn-wg-encode / fn-wg-decode at G) and the frame-level agreement follows.
+
+(defthm fn-wf-fnct-whole-accept-is-encoding
+  (implies (and (fn-wg-grammarp f) (fn-cbor-octet-listp x)
+                (equal (fn-wg-decode f x) (fn-wg-ok v nil)))
+           (and (fn-wg-valuep f v)
+                (equal (fn-wg-encode f v) x)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-wg-encode-of-decode (g f) (xs x))
+                 (:instance fn-wg-encode-octets (g f)))
+           :in-theory (disable fn-wg-encode-of-decode fn-wg-encode-octets
+                               fn-wg-decode fn-wg-encode fn-wg-valuep fn-wg-grammarp))))
+
+(defthm fn-wf-fnct-wg-accept-is-host-open
+  (implies (and (fn-wg-grammarp g) (fn-cbor-octetp k) (natp mx) (< mx 4294967296)
+                (fn-cbor-octet-listp x)
+                (equal (fn-wg-decode (list :frame (list 70 78 67 84) 1 k mx g) x) (fn-wg-ok v nil))
+                (natp hm) (<= mx hm) (<= hm 4294967295))
+           (equal (fn-frame-decode x (fn-frame-trailer (fn-frame-protected-prefix x)) hm)
+                  (fn-frame-ok (list 70 78 67 84) 1 k (fn-wg-encode g v))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-wf-fnct-whole-accept-is-encoding (f (list :frame (list 70 78 67 84) 1 k mx g)))
+                 (:instance fn-wf-fnct-frame-facts)
+                 (:instance fn-wf-fnct-encode-is-host-framing)
+                 (:instance fn-wg-encode-octets)
+                 (:instance fn-frame-decode-of-host-framing (magic (list 70 78 67 84)) (version 1) (kind k)
+                            (payload (fn-wg-encode g v)) (max-payload hm))
+                 (:instance fn-wf-fnct-protected-is-wg (magic (list 70 78 67 84)) (version 1) (kind k)
+                            (p (fn-wg-encode g v)))
+                 (:instance fn-wg-frame-protected-octets (magic (list 70 78 67 84)) (version 1) (kind k)
+                            (payload (fn-wg-encode g v)))
+                 (:instance fn-frame-trailer-of-octets
+                            (octets (fn-frame-protected (list 70 78 67 84) 1 k (fn-wg-encode g v)))))
+           :in-theory (e/d (fn-frame-inputp fn-frame-magicp)
+                           (fn-wf-fnct-frame-facts fn-wf-fnct-encode-is-host-framing
+                            fn-wg-encode-octets fn-frame-decode-of-host-framing fn-wf-fnct-protected-is-wg
+                            fn-wg-frame-protected-octets fn-frame-trailer-of-octets fn-wg-frame-protected
+                            fn-wg-decode-opener-frame fn-wg-encode-opener-frame fn-wg-valuep-opener-frame
+                            fn-wg-grammarp-opener-frame
+                            fn-wg-decode fn-wg-encode fn-wg-valuep fn-wg-grammarp fn-wg-ok
+                            fn-frame-decode fn-frame-protected fn-frame-protected-prefix
+                            fn-frame-trailer fn-frame-digest)))))
+
+(defthm fn-wf-fnct-decode-ok-digestp
+  (implies (fn-frame-result-okp (fn-frame-decode x digest mx))
+           (and (fn-frame-digestp digest)
+                (natp mx) (<= mx 4294967295)
+                (fn-cbor-octet-listp x)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-frame-decode) (fn-frame-head-fields fn-cbor-u32-from fn-frame-split)))))
+
+(defthm fn-wf-fnct-trailer-when-digestp
+  (implies (fn-frame-digestp (fn-frame-trailer y))
+           (equal (fn-frame-trailer y) (fn-frame-digest y)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-frame-trailer fn-frame-digestp))))
+
+(defthm fn-wf-fnct-protected-prefix-is-split
+  (equal (fn-frame-protected-prefix x)
+         (car (fn-frame-split (- (len x) 32) x)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-frame-protected-prefix) (fn-frame-split))
+           :do-not-induct t
+           :cases ((< (len x) 32)))
+          ("Subgoal 1" :expand ((fn-frame-split (- (len x) 32) x) (fn-frame-split 0 x)))))
+
+(defthm fn-wf-fnct-host-open-is-sealed
+  (let* ((r (fn-frame-decode x (fn-frame-trailer (fn-frame-protected-prefix x)) hm))
+         (pr (fn-frame-protected (fn-frame-result-magic r) (fn-frame-result-version r)
+                                 (fn-frame-result-kind r) (fn-frame-result-payload r))))
+    (implies (fn-frame-result-okp r)
+             (equal (append pr (fn-frame-digest pr)) x)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-wf-fnct-decode-inversion (digest (fn-frame-trailer (fn-frame-protected-prefix x))) (mx hm))
+                 (:instance fn-wf-fnct-decode-ok-digestp (digest (fn-frame-trailer (fn-frame-protected-prefix x))) (mx hm))
+                 (:instance fn-frame-decode-trailer-is-the-supplied-digest (octets x) (digest (fn-frame-trailer (fn-frame-protected-prefix x))) (max-payload hm))
+                 (:instance fn-wf-fnct-trailer-when-digestp (y (fn-frame-protected-prefix x)))
+                 fn-wf-fnct-protected-prefix-is-split)
+           :in-theory (disable fn-wf-fnct-decode-inversion fn-frame-encode-of-decode fn-frame-trailer-of-octets
+                            fn-frame-decode-trailer-is-the-supplied-digest fn-frame-protected-prefix
+                            fn-frame-decode fn-frame-protected fn-frame-trailer fn-frame-digest fn-frame-split
+                            fn-frame-result-okp fn-frame-result-magic fn-frame-result-version
+                            fn-frame-result-kind fn-frame-result-payload))))
+
+(defthm fn-wf-fnct-host-open-is-wg-accept
+  (implies (and (fn-wg-grammarp g) (fn-cbor-octetp k) (natp mx) (< mx 4294967296)
+                (equal (fn-frame-decode x (fn-frame-trailer (fn-frame-protected-prefix x)) hm)
+                       (fn-frame-ok (list 70 78 67 84) 1 k p))
+                (equal (fn-wg-decode g p) (fn-wg-ok v nil))
+                (<= (len p) mx))
+           (equal (fn-wg-decode (list :frame (list 70 78 67 84) 1 k mx g) x)
+                  (fn-wg-ok v nil)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-wf-fnct-host-open-is-sealed)
+                 (:instance fn-frame-decode-payload-octets (octets x)
+                            (digest (fn-frame-trailer (fn-frame-protected-prefix x))) (max-payload hm))
+                 (:instance fn-wf-fnct-whole-accept-is-encoding (f g) (x p))
+                 (:instance fn-wf-fnct-encode-is-host-framing)
+                 (:instance fn-wf-fnct-frame-facts)
+                 (:instance fn-wg-decode-of-encode-whole (g (list :frame (list 70 78 67 84) 1 k mx g))))
+           :in-theory (disable fn-wf-fnct-encode-is-host-framing fn-wf-fnct-frame-facts
+                               fn-wg-decode-of-encode-whole fn-frame-decode-payload-octets
+                               fn-wg-decode-opener-frame fn-wg-encode-opener-frame fn-wg-valuep-opener-frame
+                               fn-wg-grammarp-opener-frame
+                               fn-wg-decode fn-wg-encode fn-wg-valuep fn-wg-grammarp fn-wg-ok
+                               fn-frame-decode fn-frame-protected fn-frame-protected-prefix
+                               fn-frame-trailer fn-frame-digest))))
