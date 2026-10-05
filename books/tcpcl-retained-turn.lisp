@@ -167,6 +167,25 @@
   (member-equal (fn-tcrt-expiry-reason phase now progress-at passive-ms stall-ms in-transfer contended)
                 '(1 5)))
  :rule-classes nil)
+; The same bounds stated over the decision the host calls, fn-tcrt-expiry.
+(defthm fn-tcrt-expiry-resource-exhaustion-only-under-contention
+ (implies (equal (fn-tcrt-expiry action phase now progress-at passive-ms stall-ms in-transfer contended) 5)
+  contended)
+ :rule-classes nil)
+(defthm fn-tcrt-quiet-idle-session-is-never-expired
+ (not (fn-tcrt-expiry action phase now progress-at passive-ms stall-ms nil nil)))
+(defthm fn-tcrt-stall-expiry-needs-a-transfer
+ (implies (equal (fn-tcrt-expiry action phase now progress-at passive-ms stall-ms in-transfer contended) 1)
+  in-transfer)
+ :rule-classes nil)
+(defthm fn-tcrt-no-expiry-before-established-session
+ (implies (not (equal phase :established))
+  (not (fn-tcrt-expiry action phase now progress-at passive-ms stall-ms in-transfer contended))))
+(defthm fn-tcrt-expiry-is-idle-or-resource-exhaustion
+ (implies (fn-tcrt-expiry action phase now progress-at passive-ms stall-ms in-transfer contended)
+  (member-equal (fn-tcrt-expiry action phase now progress-at passive-ms stall-ms in-transfer contended)
+                '(1 5)))
+ :rule-classes nil)
 ; The session is never ended inside an unfinished message or over held custody.
 (defthm fn-tcrt-expiry-only-at-a-message-boundary
  (implies (fn-tcrt-expiry (fn-tcrt-action source-pending source-more writep messagesp input-due pump closing phase now1 deadline)

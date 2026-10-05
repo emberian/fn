@@ -5776,8 +5776,9 @@
 (definterface fn-tcrt-note-frame :class :common-lisp-compliant
   :keystones (fn-tcrt-only-transfer-frames-renew-progress fn-tcrt-transfer-frame-renews-progress))
 (definterface fn-tcrt-expiry :class :common-lisp-compliant
-  :keystones (fn-tcrt-expiry-only-at-a-message-boundary fn-tcrt-quiet-node-never-passive-timeout
-              fn-tcrt-idle-session-never-stall-timeout fn-tcrt-no-expiry-before-established))
+  :keystones (fn-tcrt-expiry-only-at-a-message-boundary fn-tcrt-expiry-resource-exhaustion-only-under-contention
+              fn-tcrt-quiet-idle-session-is-never-expired fn-tcrt-stall-expiry-needs-a-transfer
+              fn-tcrt-no-expiry-before-established-session))
 (definterface fn-tsc-at :class :common-lisp-compliant :kinds ((n natp)))
 
 (definterface fn-bpnpf-adu-octets :class :common-lisp-compliant)
