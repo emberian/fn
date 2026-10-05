@@ -17,6 +17,13 @@ these cases run the real owner, real ACL2 and the real P3 history root.
   the allocation count.  On an image without the available projection, GROUP
   answers the allocation count: that is the red-before.
 * The reopen after a stop serves the same.
+* Live reclaim is the operator's opt-in (D53, `[resources] reclaim_live`):
+  every pass above runs on a node that asks for it.  Without the key the
+  same live `store reclaim` (and `--recorded`) is refused by name,
+  offline-only, before anything is recorded or reserved, the history is
+  untouched and the offline verbs still reclaim; and the next run's heap
+  figure (`status`, heap=) is the store's alone, smaller than the opted-in
+  one.
 * FN_RUN_RECLAIM_RSS=1 adds the measurement the reclaim-design packet asks
   for (its slice 3): the owner's resident set before and after a pass at 1k
   and 10k articles (Linux /proc only), recorded in the test's output and not
@@ -77,8 +84,8 @@ class NativeReclaimWalkTests(unittest.TestCase):
     reclaim = expiry.ExpiryMixin.reclaim
     owner_lines = expiry.ExpiryMixin.owner_lines
 
-    def node(self, name="node"):
-        node = Node(self, self.image, root=self.root / name)
+    def node(self, name="node", live=True):
+        node = Node(self, self.image, root=self.root / name, extra=expiry.reclaim_extra(live))
         node.operator("init", *PROFILE, GROUP, expiry.KEEP, timeout=600, expect=EXIT.OK)
         secret = node.store("node-secret", "create", timeout=600)
         self.assertIn(secret.returncode, (EXIT.OK, EXIT.REFUSED), secret.stderr[-600:])
@@ -139,7 +146,8 @@ class NativeReclaimWalkTests(unittest.TestCase):
         admitted.  The live pass installs and reclaims exactly the expired."""
         n = CHUNK + 76
         expired = lambda i: i % 2 == 0
-        node = Node(self, self.image, root=self.root / "capacity-free")
+        node = Node(self, self.image, root=self.root / "capacity-free",
+                    extra=expiry.reclaim_extra(True))
         node.operator("init", GROUP, expiry.KEEP, timeout=600, expect=EXIT.OK)
         secret = node.store("node-secret", "create", timeout=600)
         self.assertIn(secret.returncode, (EXIT.OK, EXIT.REFUSED), secret.stderr[-600:])
@@ -160,6 +168,58 @@ class NativeReclaimWalkTests(unittest.TestCase):
                                 .startswith(b"223"))
         finally:
             node.stop(expect=None, grace=300)
+
+    def test_without_the_opt_in_a_live_pass_is_refused_by_name(self):
+        """D53: no `[resources] reclaim_live`: the serving node refuses
+        `store reclaim` and `--recorded` by name (offline-only), records no
+        instant and reclaims nothing; the dry run still answers; stopped, the
+        offline `store reclaim` reclaims the expired as ever."""
+        n = 64
+        expired = lambda i: i % 2 == 0
+        node = self.node("off", live=False)
+        self.assertNotIn("reclaim_live", node.config.read_text())
+        owner = node.start(timeout=600)
+        try:
+            post_many(node, n, expired)
+            node.operator("retention", "expire", GROUP, "purge", "30", expect=EXIT.OK)
+            for flags in ((), ("--recorded",)):
+                refused = self.reclaim(node, *flags, expect=None)
+                self.assertEqual(refused.returncode, EXIT.REFUSED,
+                                 (flags, refused.stdout, refused.stderr[-600:]))
+                self.assertIn(b"offline-only", refused.stdout + refused.stderr,
+                              (flags, refused.stdout, refused.stderr[-600:]))
+            answers = self.owner_lines(owner, re.compile(rb"RECLAIM request mode="), 2)
+            self.assertEqual(len(answers), 2, owner.stderr.since(0)[-3000:])
+            self.assertTrue(all(b"answer=offline-only" in a for a in answers), answers)
+            self.assertNotIn(b"RECLAIM installed", owner.stderr.since(0))
+            dry = self.reclaim(node, "--dry-run")
+            self.assertEqual(dry.returncode, EXIT.OK, dry.stderr[-600:])
+            with Client(node.port, timeout=300, greeting=None) as c:
+                self.assertTrue(c.command("STAT <xpy-%s@example.invalid>" % tag(0))
+                                .startswith(b"223"))
+        finally:
+            node.stop(expect=None, grace=300)
+        done = self.reclaim(node)
+        self.assertIn(b"reclaimed=%d " % sum(1 for i in range(n) if expired(i)), done.stdout,
+                      done.stdout)
+
+    def test_the_opt_in_is_the_only_change_to_the_figure(self):
+        """The next run's figure (`status` heap=) on the same store: without
+        the key it is the store's alone; with it, larger by the owner's work
+        reserve.  Their numbers are printed for the record (the off figure is
+        compared with the release image's on the box, by hand)."""
+        line = re.compile(rb"^heap=(\d+) MB", re.M)
+        off = self.node("figure", live=False)
+        status = off.operator("status", timeout=600, expect=EXIT.OK)
+        a = line.search(status.stdout)
+        self.assertIsNotNone(a, status.stdout)
+        on = Node(self, self.image, root=self.root / "figure", extra=expiry.reclaim_extra(True))
+        status = on.operator("status", timeout=600, expect=EXIT.OK)
+        b = line.search(status.stdout)
+        self.assertIsNotNone(b, status.stdout)
+        print("RECLAIM-OPTIN-FIGURE off=%s on=%s" % (a.group(1).decode(), b.group(1).decode()),
+              flush=True)
+        self.assertLess(int(a.group(1)), int(b.group(1)), (a.group(0), b.group(0)))
 
     @unittest.skipUnless(os.environ.get("FN_RUN_RECLAIM_RSS") == "1",
                          "FN_RUN_RECLAIM_RSS=1 runs the walk's resident-set measurement")

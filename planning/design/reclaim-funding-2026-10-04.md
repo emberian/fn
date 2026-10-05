@@ -354,3 +354,18 @@ checked against their MemoryMax before the redeploy. The two positions:
   closure, held for batch R) and a node that must be told.
 Either way the representation is what makes the price high (a second generation of ~10 KB a record);
 D41 stage 5 lowers it for both.
+
+**Decided: opt-in** (D53, coordinator ruling, ember-delegated, 2026-10-04; built on lane
+reclaim-optin). The key is `[resources] reclaim_live = true` (native-config field 31, absent and
+`false` the same configuration). Without it the figure is the store's alone: init's rungs and every
+deployed node's figure are what they were before this decision (`fn-mca-figure-off-is-the-store-figure`,
+`fn-rrv-without-the-opt-in-is-the-base-decision`), and a live `store reclaim` or `--recorded` is
+refused by name, `offline-only` (not `deferred-credit`), before anything is recorded or reserved
+(`fn-orcp-request-word-refuses-an-installing-pass-without-the-opt-in`; the capture's own check,
+`fn-orcp-reserve-refused-without-the-opt-in`). With it the launcher extends the store decision
+first (books/reclaim-reservation.lisp, before the cold and output allowances) and K4 becomes
+`fn-heap-store-live-figure-holds-every-store-and-its-reclaim` over the live figure; the running
+owner's budget holds the reserve (`fn-mca-figure-on-is-the-live-figure`). Small preset, production
+core: the reserve grows the figure by 227,983,360 octets (the reserve 358,006,784 against the
+open's 130,023,424; tests/acl2/owner-credits-tests.lisp). Init does not size for the key: a node
+that adds it can be refused at start (`machine-cannot-hold-reclaim-reserve`), by name.

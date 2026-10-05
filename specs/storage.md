@@ -1524,7 +1524,7 @@ from the articles' pool (`fn-orcp-reserve-keeps-funded`,
 `fn-orcp-reserve-keeps-the-articles-room`; on every store the profile admits
 it is admitted, `fn-orcp-profile-admitted-reclaim-is-funded`, and the
 launcher's figure holds what it builds,
-`fn-heap-store-figure-holds-every-store-and-its-reclaim`; a refusal is
+`fn-heap-store-live-figure-holds-every-store-and-its-reclaim`; a refusal is
 `deferred reason=credit` by name, nothing moved; lane reclaim-funding,
 planning/design/reclaim-funding-2026-10-04.md), captures under
 the owner mutex, and off it rewrites, decides, stages the reclaimed
@@ -2176,6 +2176,22 @@ records' and handles' terms, the open's per-record build, one walk chunk, the
 tombstones held as lists, the header term), held at the profile's bounds in
 the owner's work reserve (lane reclaim-funding); it becomes the pages a
 reclaim dirties when those allocations are removed (D41 stage 5).
+
+Live reclaim is the operator's opt-in (D53): `[resources] reclaim_live =
+true` in fn.toml (specs/native-config.md).  Only with it does the owner's work
+reserve hold the live reclaim's excess over the open's transient
+(books/owner-credits.lisp `fn-mca-owner-octets`, `fn-mca-figure-on-is-the-live-figure`)
+and does the launcher reserve the live figure
+(books/reclaim-reservation.lisp `fn-rrv-accepted-launch-holds-the-live-figure`;
+refused by name, `machine-cannot-hold-reclaim-reserve`, when the machine
+cannot hold it).  Without it the figure is the store's alone
+(`fn-rrv-without-the-opt-in-is-the-base-decision`,
+`fn-mca-figure-off-is-the-store-figure`) and a live `store reclaim` or
+`store reclaim --recorded` is refused by name, `offline-only`, before
+anything is recorded or reserved (books/owner-reclaim-pass.lisp
+`fn-orcp-request-word-refuses-an-installing-pass-without-the-opt-in`,
+`fn-orcp-reserve-refused-without-the-opt-in`); the dry run and the offline
+verbs are unchanged.
 
 ### Reclaim's walk in chunks (PRF-1315)
 
