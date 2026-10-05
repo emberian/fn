@@ -358,12 +358,16 @@
 ; successful GROUP or LISTGROUP in the chunk acquires that view; books/served
 ; fn-served-repin), nothing else.  A peer connection also reads the live node
 ; (fn-own-conn-live-session): its offers answer from the store as it is now,
-; deliberately, so it is outside this statement.
+; deliberately, so it is outside this statement.  ACCESS-REVOKE-PINNED: the
+; owner's live configuration is read as well -- its access decides every
+; command together with the pin's (books/served-access-revoke.lisp) -- so the
+; two owners agree on it too.
 (defthm fn-own-reader-tls-read-depends-only-on-its-connection-clock-and-view
   (implies (and (equal (fn-own-find-conn id (fn-own-conns o2))
                        (fn-own-find-conn id (fn-own-conns o)))
                 (equal (fn-own-clock o2) (fn-own-clock o))
                 (equal (fn-own-view o2) (fn-own-view o))
+                (equal (fn-own-config o2) (fn-own-config o))
                 (not (fn-peer-session-cfg
                       (fn-auth-session-base
                        (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o)))))))
