@@ -782,8 +782,14 @@
   (equal (true-list-fix (fn-wg-take n xs)) (fn-wg-take n xs)))
 (defthm fn-wg-consp-of-drop
   (implies (< (nfix n) (len xs)) (consp (fn-wg-drop n xs))))
-(defthm fn-wg-consp-when-len-positive
-  (implies (< 0 (len x)) (consp x)))
+;; Local: a global :rewrite rule whose conclusion is (consp x) fires on EVERY
+;; consp term of every proof after this book is included, and backchains on
+;; (< 0 (len x)); it made host/owner-host.lisp's
+;; fn-owner-cat-may-seal-refines-cat-by-definition spin (12M rule attempts in
+;; 60 s, 0.9 s without it).
+(local
+ (defthm fn-wg-consp-when-len-positive
+   (implies (< 0 (len x)) (consp x))))
 
 (defthm fn-wg-lines-octets
   (implies (fn-cbor-octet-listp text)
