@@ -190,6 +190,7 @@
 (include-book "../host/page-window-executor-host")
 (include-book "decoded-worker-assignment")
 (include-book "decoded-worker-job")
+(include-book "decoded-window-span")
 (include-book "decoded-worker-backing")
 (include-book "history-columns-relation")
 (include-book "open-frontier")

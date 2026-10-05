@@ -1021,6 +1021,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/page-window-executor \
 	books/page-window-read \
 	books/page-window-span \
+	books/decoded-window-span \
 	tests/acl2/page-window-executor-tests \
 	tests/acl2/page-window-read-tests \
 	tests/acl2/page-window-span-tests \

@@ -254,6 +254,7 @@
 (include-book "../../host/page-window-executor-host")
 (include-book "../../books/decoded-worker-assignment")
 (include-book "../../books/decoded-worker-job")
+(include-book "../../books/decoded-window-span")
 (include-book "../../books/decoded-worker-backing")
 (include-book "../../books/history-columns-relation")
 (include-book "../../books/open-frontier")

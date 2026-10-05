@@ -27,6 +27,7 @@
   (fn-pwz-outcome (fn-owner-page-read-ledger fn-page-read-pool) worker token z))
 
 (include-book "../books/decoded-worker-job")
+(include-book "../books/decoded-window-span")
 
 (defun fn-owner-page-decoded-job-assign (worker token root incarnation fn-decoded-job fn-page-read-pool)
   (declare (xargs :stobjs (fn-decoded-job fn-page-read-pool) :guard t :verify-guards nil))
@@ -48,6 +49,42 @@
 (verify-guards fn-owner-page-decoded-job-assign)
 (verify-guards fn-owner-page-decoded-job-outcome)
 (verify-guards fn-owner-page-decoded-job-byte-at)
+
+; The span borrow of a decoded job's window (books/decoded-window-span.lisp).
+(defun fn-owner-page-decoded-job-span-at
+    (worker token file eoff elen poff compressed trailer decoded dict-id i j
+            fn-decoded-job fn-ew-span fn-page-read-pool)
+  (declare (xargs :stobjs (fn-decoded-job fn-ew-span fn-page-read-pool)
+                  :guard (and (natp i) (natp j) (< i j)) :verify-guards nil))
+  (fn-dwj-span-at (fn-owner-page-read-ledger fn-page-read-pool) worker token
+                  file eoff elen poff compressed trailer decoded dict-id i j
+                  fn-decoded-job fn-ew-span))
+
+(verify-guards fn-owner-page-decoded-job-span-at)
+
+; KEYSTONE (a decoded span is the job's scalar borrows), at the owner row.
+(defthm fn-owner-page-decoded-job-span-at-is-the-scalar-borrows
+  (implies (and (natp i) (natp j) (< i j) (natp k) (< k (- j i))
+                (equal (mv-nth 0 (fn-owner-page-decoded-job-span-at
+                                  worker token file eoff elen poff compressed trailer decoded
+                                  dict-id i j fn-decoded-job fn-ew-span fn-page-read-pool))
+                       :span))
+           (and (equal (mv-nth 0 (fn-owner-page-decoded-job-byte-at
+                                  worker token file eoff elen poff compressed trailer decoded
+                                  dict-id (+ i k) fn-decoded-job fn-page-read-pool))
+                       :byte)
+                (equal (nth k (nth 0 (mv-nth 1 (fn-owner-page-decoded-job-span-at
+                                                worker token file eoff elen poff compressed trailer
+                                                decoded dict-id i j fn-decoded-job fn-ew-span
+                                                fn-page-read-pool))))
+                       (mv-nth 1 (fn-owner-page-decoded-job-byte-at
+                                  worker token file eoff elen poff compressed trailer decoded
+                                  dict-id (+ i k) fn-decoded-job fn-page-read-pool)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-owner-page-decoded-job-span-at
+                                     fn-owner-page-decoded-job-byte-at)
+           :use (:instance fn-dwj-span-at-is-the-borrowed-bytes
+                           (ledger (fn-owner-page-read-ledger fn-page-read-pool))))))
 
 ; A complete producer cannot be manufactured from raw-window storage prices.
 ; The native issuer consumes this explicit status before any decoded buffers.
@@ -127,3 +164,36 @@
          (mv-list 2 (fn-pwz-cache-byte-at (fn-owner-page-read-ledger fn-page-read-pool) token
                                           file eoff elen poff compressed trailer decoded dict-id i
                                           fn-ew-buffer))))
+
+(defun fn-owner-page-decoded-window-cache-span-at
+    (token file eoff elen poff compressed trailer decoded dict-id i j
+           fn-ew-buffer fn-ew-span fn-page-read-pool)
+  (declare (xargs :stobjs (fn-ew-buffer fn-ew-span fn-page-read-pool)
+                  :guard (and (natp i) (natp j) (< i j))))
+  (fn-pwz-cache-span-at (fn-owner-page-read-ledger fn-page-read-pool) token
+                        file eoff elen poff compressed trailer decoded dict-id i j
+                        fn-ew-buffer fn-ew-span))
+
+; KEYSTONE (a decoded cache span is the cache's scalar hits), at the owner row.
+(defthm fn-owner-page-decoded-window-cache-span-at-is-the-cached-bytes
+  (implies (and (natp i) (natp j) (< i j) (natp k) (< k (- j i))
+                (equal (mv-nth 0 (fn-owner-page-decoded-window-cache-span-at
+                                  token file eoff elen poff compressed trailer decoded dict-id
+                                  i j fn-ew-buffer fn-ew-span fn-page-read-pool))
+                       :span))
+           (and (equal (mv-nth 0 (fn-owner-page-decoded-window-cache-byte-at
+                                  token file eoff elen poff compressed trailer decoded dict-id
+                                  (+ i k) fn-ew-buffer fn-page-read-pool))
+                       :byte)
+                (equal (nth k (nth 0 (mv-nth 1 (fn-owner-page-decoded-window-cache-span-at
+                                                token file eoff elen poff compressed trailer
+                                                decoded dict-id i j fn-ew-buffer fn-ew-span
+                                                fn-page-read-pool))))
+                       (mv-nth 1 (fn-owner-page-decoded-window-cache-byte-at
+                                  token file eoff elen poff compressed trailer decoded dict-id
+                                  (+ i k) fn-ew-buffer fn-page-read-pool)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-owner-page-decoded-window-cache-span-at
+                                     fn-owner-page-decoded-window-cache-byte-at)
+           :use (:instance fn-pwz-cache-span-at-is-the-cached-bytes
+                           (ledger (fn-owner-page-read-ledger fn-page-read-pool))))))

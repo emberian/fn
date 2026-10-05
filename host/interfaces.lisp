@@ -2111,6 +2111,7 @@
   :keystones ((fn-ast-render-window-byte-bound :via fn-ast-render-window)))
 
 
+(definterface fn-asto-quantum :class :common-lisp-compliant)
 (definterface fn-splan-cursor-window
   :class :common-lisp-compliant)
 
@@ -5700,6 +5701,10 @@
 (definterface fn-owner-page-decoded-job-assign :class :common-lisp-compliant)
 (definterface fn-owner-page-decoded-job-outcome :class :common-lisp-compliant)
 (definterface fn-owner-page-decoded-job-byte-at :class :common-lisp-compliant)
+(definterface fn-owner-page-decoded-job-span-at :class :common-lisp-compliant
+  :kinds ((i natp) (j natp))
+  :keystones ((fn-pwz-span-at-is-the-borrowed-bytes :via fn-pwz-span-at)
+              (fn-pwz-span-at-answers-when-its-ends-do :via fn-pwz-span-at)))
 (definterface fn-pwz-cold-descriptor :class :common-lisp-compliant)
 (definterface fn-pwz-nth :class :common-lisp-compliant :kinds ((index natp)))
 (definterface fn-owner-page-decoded-window-price-status :class :common-lisp-compliant)
@@ -5722,6 +5727,10 @@
   :keystones ((fn-dwj-cache-only-a-ready-job :via fn-dwj-cache)
               (fn-dwj-cached-job-refuses-scalar-publication :via fn-dwj-cache)
               (fn-pwz-cache-lease-keeps-only-the-buffer-and-stays-funded :via fn-pwz-cache-lease)))
+(definterface fn-owner-page-decoded-window-cache-span-at :class :common-lisp-compliant
+  :kinds ((i natp) (j natp))
+  :keystones ((fn-pwz-cache-span-at-is-the-cached-bytes :via fn-pwz-cache-span-at)
+              (fn-pwz-cache-span-at-answers-when-its-ends-do :via fn-pwz-cache-span-at)))
 (definterface fn-owner-page-decoded-window-cache-byte-at :class :common-lisp-compliant
   :keystones ((fn-pwz-a-hit-is-the-published-window :via fn-pwz-cache-byte-at)
               (fn-pwz-hit-requires-a-cached-exact-window :via fn-pwz-cache-byte-at)))
