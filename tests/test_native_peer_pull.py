@@ -503,10 +503,12 @@ class NativePeerPullTests(unittest.TestCase):
         self.addCleanup(slow.close)
         self.pull_from(b, "slow", "slow.round.example.invalid", slow.port)
         self.pull_from(b, "healthy", "healthy.round.example.invalid", a.port)
-        b.operator("peer", "catch-up", "healthy", INTERVAL, expect=EXIT_OK)
-        # Catch-up runs on the peer flight bank: funded, and launched at the
-        # figure the installed launcher decides with that profile in place.
+        # Catch-up runs on the peer flight bank: funded first (the verb refuses
+        # an unfunded node by name, books/peer-flight-default.lisp
+        # fn-pfp-catch-up-admission), and launched at the figure the installed
+        # launcher decides with that profile in place.
         fund_peer_flights(b)
+        b.operator("peer", "catch-up", "healthy", INTERVAL, expect=EXIT_OK)
         b.start(env={**dict(self.env), **decided_launch(b)})
         self.assertTrue(slow.held.wait(20), "slow peer never reached incomplete ARTICLE body")
         self.await_article(b, healthy_mid, timeout=30)
