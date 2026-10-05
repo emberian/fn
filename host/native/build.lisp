@@ -50,6 +50,7 @@
 ;; The peer flight books reach `fn-arena' (heap-store-figure includes
 ;; owner-checkpoint-pipeline), so they follow the arena attachment.
 (include-book "books/peer-flight-profile")
+(include-book "books/peer-flight-default")
 (include-book "books/peer-flight-startup")
 (include-book "books/peer-catchup-spool-resources")
 (include-book "books/peer-catchup-spool")
@@ -218,6 +219,9 @@
 ; PKT-209: `control log' and `control evidence'.
 (include-book "books/control-evidence")
 (include-book "books/native-hybrid-control")
+;; D50 (lane zmq-2): the pattern table, its plans and argv grammar, the
+;; article kind's codec and the plan steps host/native/pattern.lisp calls.
+(include-book "books/app-pattern-delivery")
 (include-book "books/peer-invite")
 (include-book "books/bp-receipt-records")
 (include-book "books/bp-native-app-fast")
@@ -405,6 +409,8 @@
 (ld "host/peer-invite-host.lisp" :ld-error-action :error)
 ; `tls reload' and the served certificate line (PRF-212).
 (ld "host/tls-reload-host.lisp" :ld-error-action :error)
+; `fn identity CONTROL' (Mini M4): the store-identity request and reply.
+(ld "host/store-identity-host.lisp" :ld-error-action :error)
 ; The node's own web face (PRF-340): the request, the pages, the sessions,
 ; the [web] plan (books/web-*.lisp).
 (ld "host/web-host.lisp" :ld-error-action :error)
@@ -575,6 +581,9 @@
         ; line `status' and `health' print; after operator.lisp, whose plan it reads.
         (load "host/native/heap.lisp")
         (load "host/native/signature-command.lisp")
+        ; `fn pattern NAME ROLE ...' (D50): one loop over a declared
+        ; pattern's plan; after the consumer and signing commands it calls.
+        (load "host/native/pattern.lisp")
         ; Peering invitations (PRF-097): after the hybrid control handler it
         ; wraps, the signing commands it reuses and the admin publisher.
         (load "host/native/peer-invite.lisp")
@@ -584,6 +593,8 @@
         (load "host/native/login-bindings.lisp")
         ; `tls reload' (PRF-212): request 19, wrapping login-bindings.
         (load "host/native/tls-reload.lisp")
+        ; `fn identity CONTROL' (Mini M4): request 24, wrapping tls-reload.
+        (load "host/native/store-identity.lisp")
         ; The operator's live surfaces (`run', `post', `principal', the
         ; control-socket arms), installed into operator.lisp; after every
         ; file above whose functions it names.

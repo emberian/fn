@@ -1,0 +1,17 @@
+{
+ "category": "correctness",
+ "detail": "fnn-extent-entry-direct (and the checkpoint publication callers fn-scka-srcs-n, fn-xrt-reseat-checkpoint-frame) asks fn-owner-page-read-admit; word :read-resources-unavailable is fnn-refuse'd inside the realizer callback; fnn-call turns any condition leaving a callback into an execution-boundary fault, so the owner stops (exit 4) under a write load. Measured on cloud1 over set 6107ceb56 (overlay, DIAG print): budget=(22512946 0 1024 4 2^64), a :DISCOVERY read of 195846 octets holds (391756 0 0 1 1) when a second read of 195846 is asked; the pool's headroom over its baseline is under 2 reads (the heap headroom after cold-start 2ce265ec8's protected allowance). Two causes: (1) the whole-extent and verified-window caches kept charge while a read was refused (fixed: fnn-extent-cache-yield-oldest, evict oldest, ask again), (2) two concurrent large reads exceed the pool's headroom, so refusal is real exhaustion and must refuse by name (abort the checkpoint publication, old checkpoint stays) rather than fault.",
+ "disposition": "OPEN",
+ "exposure": "live",
+ "file": "host/native/extent.lisp",
+ "fix": "After the caches yield, refuse by a condition class the callback boundary passes as a refusal (checkpoint publication aborts, old checkpoint stays, retried), or serialize the checkpoint's reads behind the read that holds the pool; and size the pool's headroom to at least two max-record reads at startup (page-read-startup refusal by name).",
+ "id": "POOL-DIRECT-READ-REFUSAL-FAULTS",
+ "locus": "storage",
+ "notes": [],
+ "owner": "w-window",
+ "severity": "high",
+ "source": "batch-6-peer-catchup-2026-10-04",
+ "state": "open",
+ "title": "A synchronous funded read the pool cannot admit refuses inside an ACL2 callback, which the call boundary makes an owner fault (batch-6 peer_catchup: 1000 posts)",
+ "updated": "2026-10-04T20:43:52Z"
+}

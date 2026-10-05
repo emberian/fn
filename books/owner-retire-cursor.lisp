@@ -9,9 +9,7 @@
 (defun fn-orc-queue-pending-model (queue)
   (declare (xargs :guard t))
   (if (consp queue)
-      (+ (if (equal (fn-feed-entry-state (car queue))
-                    '(:dropped :retry-bound)) 0 1)
-         (fn-orc-queue-pending-model (cdr queue)))
+      (+ 1 (fn-orc-queue-pending-model (cdr queue)))
     0))
 
 (defun fn-orc-table-pending-model (table)
@@ -42,9 +40,7 @@
     (cond
      ((consp queue)
       (list (nth 0 cursor) table (cdr queue)
-            (+ pending (if (equal (fn-feed-entry-state (car queue))
-                                  '(:dropped :retry-bound))
-                           0 1))
+            (+ pending 1)
             (nth 4 cursor)))
      ((consp table)
       (list (nth 0 cursor) (cdr table)

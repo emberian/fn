@@ -58,6 +58,25 @@
                                (fnn-tls-test-major-at-least-3-p (second version) "LibreSSL ")))
                       "OpenSSL 3+ or LibreSSL 3+ loader/version"))
 
+;; PRF-1327: the key-exchange groups.  The classical list every library
+;; knows is accepted; a list with a name no library knows is refused as a fact
+;; (not a fault); the hybrid list is accepted exactly by OpenSSL 3.5 and later.
+(fnn-tls-test-check (fnn-tls-groups-offered-p "X25519:secp256r1:secp384r1")
+                    "the classical group list is offered by every supported library")
+(fnn-tls-test-check (not (fnn-tls-groups-offered-p "X25519:no-such-group"))
+                    "an unknown group name is refused as an observation")
+(fnn-tls-test-check (not (fnn-tls-groups-offered-p "X25519MLKEM768:no-such-group"))
+                    "the hybrid group does not excuse an unknown name")
+(let* ((text (second (fnn-tls-version)))
+       (hybrid (fnn-tls-groups-offered-p "X25519MLKEM768:X25519:secp256r1:secp384r1")))
+  (fnn-tls-test-check
+   (eq (and hybrid t)
+       (and (fnn-tls-test-major-at-least-3-p text "OpenSSL ")
+            (let ((minor (parse-integer text :start 10 :junk-allowed t)))
+              (and minor (>= minor 5)))
+            t))
+   "the hybrid group list is offered exactly by OpenSSL 3.5 and later"))
+
 ;; The sole-reader premise is checked at the host boundary: exact consumption
 ;; returns the peeked bytes, while EOF and changed bytes are connection faults.
 (let ((source #(83 84 65 82 84 84 76 83 13 10))

@@ -1,0 +1,16 @@
+{
+ "category": "implementation",
+ "file": "host/native/owner.lisp",
+ "id": "SCEN-OWNER-STOP-LATENCY",
+ "native": "tests.test_native_owner,tests.test_native_log",
+ "notes": [
+  "10-04 16:52 10-04 READY on lane/scenarios-2-speed@de5169cac: same pass/fail set on lat1 overlay of 6107ceb56 over the 42 batch-6 modules (speed-b6 vs batch 6: 3286.6 -> 2965.6 s summed) and the 9-module A/B (stop-before 670.0 -> stop-after 407.2 s); the two test races it exposed fixed (state_checkpoint compaction, page_io history image); expiry 1F / fence_boundary 3F identical base vs overlay (race-base/race-after)"
+ ],
+ "owner": "scenarios-2",
+ "severity": "low",
+ "sha": "9ab80cd8f",
+ "source": "scenarios-2",
+ "state": "ready",
+ "title": "A SIGTERM stop of a serving owner takes 0 to 1 s after its drain finishes. The maintenance worker (host/native/owner.lisp fnn-owner-start-maintenance) sleeps a fixed (sleep 1) between ticks, and the stop joins it. Measured on hbox, set 6107ceb56, developer image, fresh store: 'stopping: drained after 0 ms' came at +1 ms and the exit at +528 ms; Node.stop measured 1.07 s three times out of three, against init 0.14 s and start 0.13 s. Every native pays this on every stop and restart (405 tests at batch 6, most stopping at least once), and so does an operator stop. Fix: the worker waits on the owner's commit signal (fnn-owner-signal-commit, which the stop raises), bounded by the same one-second cadence. The maintenance still runs once a second and never more often.",
+ "updated": "2026-10-04T20:52:43Z"
+}

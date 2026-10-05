@@ -14,7 +14,8 @@
 ; kind whose handler writes the Store or the configuration (the hybrid
 ; enrolment, author and revocation requests, peer issue, accept and confirm,
 ; keys redecide, the login-bindings reload), :read for the TLS request
-; (reload or status: a handshake context, no Store write), and nil for
+; (reload or status: a handshake context, no Store write) and the store
+; identity request (fn-ctlk-identity-request-is-classified), and nil for
 ; every other frame.  The host asks the chain only on a non-nil word and
 ; sheds a :store word like every other mutating request.
 ;
@@ -32,6 +33,7 @@
 (include-book "tls-reload")
 (include-book "peer-invite")
 (include-book "native-hybrid-control")
+(include-book "wire-family-identity")
 
 ; -----------------------------------------------------------------------------
 ; The kinds.
@@ -42,7 +44,8 @@
         *fn-pinv-issue-kind* *fn-pinv-accept-kind* *fn-pinv-confirm-kind*
         *fn-pinv-redecide-kind* *fn-pinv-bindings-kind*))
 
-(defconst *fn-ctlk-read-kinds* (list *fn-tlsr-request-kind*))
+(defconst *fn-ctlk-read-kinds*
+  (list *fn-tlsr-request-kind* *fn-wf-identity-request-kind*))
 
 (defun fn-ctlk-word (kind)
   (declare (xargs :guard t))
@@ -131,6 +134,36 @@
    :hints (("Goal" :in-theory (e/d (fn-nhctrl-open-values)
                                    (fn-frame-decode fn-ctlk-header-kind
                                     fn-frame-fields-parse))))))
+
+(local (defthm fn-ctlk-len-of-nthcdr
+         (equal (len (nthcdr n x)) (nfix (- (len x) (nfix n))))
+         :hints (("Goal" :induct (nthcdr n x) :in-theory (enable nthcdr)))))
+(local (defthm fn-ctlk-car-of-nthcdr
+         (equal (car (nthcdr n x)) (nth n x))
+         :hints (("Goal" :induct (nthcdr n x) :in-theory (enable nthcdr nth)))))
+(local (defthm fn-ctlk-cdr-of-nthcdr
+         (equal (cdr (nthcdr n x)) (nthcdr (+ 1 (nfix n)) x))
+         :hints (("Goal" :induct (nthcdr n x) :in-theory (enable nthcdr)))))
+(local (defthm fn-ctlk-wg-drop-4
+         (equal (fn-wg-drop 4 xs) (nthcdr 4 xs))
+         :hints (("Goal" :expand ((fn-wg-drop 4 xs) (fn-wg-drop 3 (cdr xs))
+                                  (fn-wg-drop 2 (cddr xs)) (fn-wg-drop 1 (cdddr xs))
+                                  (fn-wg-drop 0 (cddddr xs)))))))
+(local (defthm fn-ctlk-wg-take-4
+         (equal (fn-wg-take 4 xs) (list (nth 0 xs) (nth 1 xs) (nth 2 xs) (nth 3 xs)))
+         :hints (("Goal" :expand ((fn-wg-take 4 xs) (fn-wg-take 3 (cdr xs))
+                                  (fn-wg-take 2 (cddr xs)) (fn-wg-take 1 (cdddr xs))
+                                  (fn-wg-take 0 (cddddr xs)) (fn-wg-take 3 nil)
+                                  (fn-wg-take 2 nil) (fn-wg-take 1 nil) (fn-wg-take 0 nil))))))
+
+; The store-identity request (Mini M4, host/native/store-identity.lisp) is a
+; wire-grammar frame: one the interpreter accepts at its grammar carries the
+; FNCT header of kind 24, a read.
+(defthm fn-ctlk-identity-request-is-classified
+  (implies (fn-wg-okp (fn-wg-decode *fn-wf-identity-request-grammar* octets))
+           (equal (fn-ctlk-frame-handler octets) :read))
+  :hints (("Goal" :in-theory (enable fn-wg-decode-opener-frame fn-ctlk-header-kind
+                                     fn-frb-magic))))
 
 ; KEYSTONE.  No hypothesis.
 (defthm fn-ctlk-every-handled-frame-is-classified

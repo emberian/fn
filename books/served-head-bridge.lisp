@@ -11,10 +11,10 @@
                 (not (fn-post-offeredp
                       (fn-nntp-result-effects
                        (fn-nntp-step-pinned (fn-post-session-base ps) archive index verdicts
-                                            (fn-post-reader-env config observation)
+                                            (fn-post-command-env config observation injection event)
                                             event fn-arena)))))
            (let ((r (fn-nntp-step-pinned (fn-post-session-base ps) archive index verdicts
-                                         (fn-post-reader-env config observation) event fn-arena))
+                                         (fn-post-command-env config observation injection event) event fn-arena))
                  (p (fn-nntp-post-step-pinned ps archive index verdicts config
                                               observation injection event fn-arena)))
              (and (equal (fn-post-result-effects p) (fn-nntp-result-effects r))
@@ -23,7 +23,7 @@
                          (fn-nntp-result-session r)))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-post-step-pinned)
                                  (fn-nntp-step-pinned fn-post-sessionp fn-post-session-awaiting
-                                  fn-post-offeredp fn-post-reader-env fn-nntp-result-effects
+                                  fn-post-offeredp fn-post-command-env fn-nntp-result-effects
                                   fn-nntp-result-session fn-post-result-effects fn-post-result-session
                                   fn-post-result-submission fn-post-make-result fn-post-make-session
                                   fn-post-session-base))))))
@@ -311,7 +311,39 @@
 
 
 (local
- (defthm fn-shd-post-is-served-retrieval (let* ((session (fn-post-session-base ps)) (env (fn-post-reader-env config observation)) (server (fn-nntp-xref-server env)) (r (fn-rcompat-retrieval session archive (fn-gidx-pin-trie index) :head (list token) server fn-arena)) (p (fn-nntp-post-step-pinned ps archive index verdicts config observation injection (list :command line) fn-arena))) (implies (and (fn-post-sessionp ps) (not (fn-post-session-awaiting ps)) (fn-nntp-sessionp session) (equal (fn-nntp-session-openp session) t) (fn-nntp-session-projected session) (fn-nntp-command-inputp line) (equal (fn-nntp-tokenize line) (list *fn-shd-head-keyword* token)) server (fn-gidx-pinp index) (not (fn-nntp-number-withdrawn-p session archive index token)) (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p index token)))) (and (equal (fn-post-result-effects p) (fn-nntp-result-effects r)) (null (fn-post-result-submission p)) (equal (fn-post-session-base (fn-post-result-session p)) (fn-nntp-result-session r))))) :rule-classes nil :hints (("Goal" :use ((:instance fn-shd-reader-step-is-served-retrieval (session (fn-post-session-base ps)) (env (fn-post-reader-env config observation))) (:instance fn-shd-post-delegates-a-read-without-offer-by-definition (event (list :command line))) (:instance fn-shd-retrieval-has-no-offer (session (fn-post-session-base ps)) (trie (fn-gidx-pin-trie index)) (kind :head) (args (list token)) (server (fn-nntp-xref-server (fn-post-reader-env config observation))))) :in-theory (theory (quote minimal-theory))))))
+ (defthm fn-shd-post-delegates-a-head-without-offer-by-definition
+  (implies (and (fn-post-sessionp ps)
+                (not (fn-post-session-awaiting ps))
+                (equal (fn-nntp-tokenize line) (list *fn-shd-head-keyword* token))
+                (not (fn-post-offeredp
+                      (fn-nntp-result-effects
+                       (fn-nntp-step-pinned (fn-post-session-base ps) archive index verdicts
+                                            (fn-post-reader-env config observation)
+                                            (list :command line) fn-arena)))))
+           (let ((r (fn-nntp-step-pinned (fn-post-session-base ps) archive index verdicts
+                                         (fn-post-reader-env config observation)
+                                         (list :command line) fn-arena))
+                 (p (fn-nntp-post-step-pinned ps archive index verdicts config
+                                              observation injection (list :command line) fn-arena)))
+             (and (equal (fn-post-result-effects p) (fn-nntp-result-effects r))
+                  (null (fn-post-result-submission p))
+                  (equal (fn-post-session-base (fn-post-result-session p))
+                         (fn-nntp-result-session r)))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-shd-post-delegates-a-read-without-offer-by-definition
+                                   (event (list :command line)))
+                        (:instance fn-post-command-env-ordinary-unfolds
+                                   (wire-event (list :command line))))
+                  :in-theory (e/d (fn-nntp-keywordp)
+                                  (fn-nntp-step-pinned fn-nntp-post-step-pinned
+                                   fn-post-sessionp fn-post-session-awaiting fn-post-offeredp
+                                   fn-post-command-env fn-post-reader-env fn-nntp-result-effects
+                                   fn-nntp-result-session fn-post-result-effects
+                                   fn-post-result-session fn-post-result-submission
+                                   fn-post-session-base fn-nntp-tokenize))))))
+
+(local
+ (defthm fn-shd-post-is-served-retrieval (let* ((session (fn-post-session-base ps)) (env (fn-post-reader-env config observation)) (server (fn-nntp-xref-server env)) (r (fn-rcompat-retrieval session archive (fn-gidx-pin-trie index) :head (list token) server fn-arena)) (p (fn-nntp-post-step-pinned ps archive index verdicts config observation injection (list :command line) fn-arena))) (implies (and (fn-post-sessionp ps) (not (fn-post-session-awaiting ps)) (fn-nntp-sessionp session) (equal (fn-nntp-session-openp session) t) (fn-nntp-session-projected session) (fn-nntp-command-inputp line) (equal (fn-nntp-tokenize line) (list *fn-shd-head-keyword* token)) server (fn-gidx-pinp index) (not (fn-nntp-number-withdrawn-p session archive index token)) (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p index token)))) (and (equal (fn-post-result-effects p) (fn-nntp-result-effects r)) (null (fn-post-result-submission p)) (equal (fn-post-session-base (fn-post-result-session p)) (fn-nntp-result-session r))))) :rule-classes nil :hints (("Goal" :use ((:instance fn-shd-reader-step-is-served-retrieval (session (fn-post-session-base ps)) (env (fn-post-reader-env config observation))) (:instance fn-shd-post-delegates-a-head-without-offer-by-definition) (:instance fn-shd-retrieval-has-no-offer (session (fn-post-session-base ps)) (trie (fn-gidx-pin-trie index)) (kind :head) (args (list token)) (server (fn-nntp-xref-server (fn-post-reader-env config observation))))) :in-theory (theory (quote minimal-theory))))))
 
 
 (local

@@ -780,7 +780,14 @@ three parts have three different owners of the *reply*, all of them ACL2.
    any changed source octet, an authored Date changed or removed included, is
    the conflict; the stored record keeps its injected fields;
    `books/poster-bytes-invariants.lisp`), `:malformed` (`fn-owner-prepare`'s `:invalid`),
-   `:unaffordable` (the persisted profile or the transaction capacity),
+   `:unaffordable` (the persisted profile or the transaction capacity T),
+   `:history-exhausted` (the history budget H: the history gate or the
+   capacity vector's octet reservation refused, the transactions admitting;
+   "the store's history budget is exhausted (history-exhausted); the node's
+   operator can raise max-history-octets or reclaim",
+   `books/store-capacity-vector.lisp`
+   `fn-cvec-article-refusal-word-names-the-history`; IHAVE and TAKETHIS
+   answer it 436, as a full T),
    `:mpx-saturated` (the keyed Message-ID table cannot place the offered
    article; refused before buffer fill, transaction identity allocation or
    prepare, and the exact word survives the host boundary into the named

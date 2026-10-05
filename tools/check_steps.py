@@ -115,7 +115,32 @@ GIT_REPLAY_LIMIT = 200
 # of the bytes it was computed from, which the step reads (and the trace
 # records) to name it, and it is written by an atomic rename.  Neither an
 # input nor a hazard (tools/ledger.py's ledger-tree, tools/callgraph.py's).
-SHARED_CACHES = (str(ROOT / "build" / "cache") + os.sep,)
+def _main_checkout() -> Path:
+    """The checkout whose build/ a worktree shares (tools/evidence_store.py
+    checkout_of): a worktree's .git is a file naming the main .git."""
+    dot_git = ROOT / ".git"
+    try:
+        if dot_git.is_file():
+            text = dot_git.read_text(encoding="utf-8").strip()
+            if text.startswith("gitdir:"):
+                git_dir = Path(text[len("gitdir:"):].strip())
+                if git_dir.parent.name == "worktrees":
+                    return git_dir.parent.parent.parent
+    except OSError:
+        pass
+    return ROOT
+
+
+# The evidence cache too (tools/evidence_store.py: objects named by their
+# sha256, fetched by `evidence_store.py fetch`, the warm-up `make check`
+# plans first): ledger --check and current_view --check read it, and a read
+# of a content-named object is neither an input nor a hazard.
+SHARED_CACHES = tuple(dict.fromkeys([
+    str(ROOT / "build" / "cache") + os.sep,
+    str(_main_checkout() / "build" / "evidence-cache") + os.sep,
+    str(ROOT / "build" / "evidence-cache") + os.sep,
+    *([os.environ["FN_EVIDENCE_CACHE"].rstrip(os.sep) + os.sep]
+      if os.environ.get("FN_EVIDENCE_CACHE") else [])]))
 # Environment that does not change what a step decides.
 ENV_IGNORED = frozenset({"FN_LANE_CHECK_DIR", "FN_CHECK_TRACE"})
 # Exit codes that are a verdict on the inputs, and so are cached: a pass and a
@@ -836,9 +861,21 @@ class Executor:
                 continue
             note = (f"skipped (unaffected by the {len(self.changed.paths)} path(s) "
                     f"changed since {self.since})")
-            self.record({"index": step["index"], "step": step["name"],
-                         "command": shlex.join(step["command"]), "exit": 0, "seconds": 0.0,
-                         "finding": "", "skipped": note})
+            row = {"index": step["index"], "step": step["name"],
+                   "command": shlex.join(step["command"]), "exit": 0, "seconds": 0.0,
+                   "finding": "", "skipped": note}
+            # The store's verdict for the untouched step, carried beside the
+            # row so a scoped table still shows a known red (tools/reds.py
+            # reads it); the row's own exit stays 0: a scoped run judges the
+            # change, and its gate is `--baseline`.
+            entry = self.cached(step)
+            if entry is not None and entry.get("exit", 0):
+                row["last"] = {"exit": entry["exit"], "head": entry["head"],
+                               "finding": first_finding(entry["output"].splitlines()),
+                               "box": entry.get("box", ""), "when": entry.get("when", ""),
+                               "log": entry.get("log", "")}
+                row["skipped"] += f"; last verdict exit {entry['exit']}: {row['last']['finding']}"
+            self.record(row)
         return kept
 
     def emit(self, text: str) -> None:

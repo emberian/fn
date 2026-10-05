@@ -52,6 +52,17 @@ else
     image=$root/build/fn-host
 fi
 
+# The TLS library (PRF-1327): OpenSSL 3.5.8, whose X25519MLKEM768 the
+# [tls] key_exchange policy offers.  Installed, it is the release's own
+# libexec/fn/openssl (lib/libcrypto.so.3 and lib/libssl.so.3); an operator's
+# FN_OPENSSL_PREFIX wins.  The image refuses a start by name when the prefix
+# holds no pair (host/native/tls.lisp fnn-tls-load-libraries).  Developer
+# runs leave it unset: the host's default is the toolchain on the build boxes.
+if [ -n "$installed" ] && [ -z "${FN_OPENSSL_PREFIX:-}" ]; then
+    FN_OPENSSL_PREFIX=$(CDPATH= cd -- "$here/../libexec/fn" && pwd)/openssl
+    export FN_OPENSSL_PREFIX
+fi
+
 if [ ! -x "$image" ]; then
     echo "fn: native host image missing: $image (run tools/build_native_host.sh)" >&2
     exit 4
@@ -99,6 +110,12 @@ if [ -n "$installed" ]; then
     figure=$(SBCL_USER_ARGS="--dynamic-space-size $boot" "$image" --fn heap -- "$@") || status=$?
     case $figure in
         refused\ *) echo "fn: $figure" >&2; exit "$status" ;;
+    esac
+    # 5 is ACL2's usage outcome and no runtime's own code: the image refused
+    # its environment before the probe ran (a developer-image selector in a
+    # production image), its reason on stderr above.  It stays usage.
+    case $status in
+        5) exit 5 ;;
     esac
     if [ "$status" -ne 0 ]; then
         echo "fn: fault heap-probe-did-not-run exit=$status datasize-kib=$(ulimit -d): the image stopped before it decided its memory (its own message is above); nothing ran" >&2

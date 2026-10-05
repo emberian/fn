@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Red on set 55ff708a6: cloud2:/tank/fn/scratch/fill-wt/native-fill-resil-cloud2-55 (scenario_suite run resilience, --allow-skips, jobs 3; logs/test-tests.test_native_resilience_cuts.log). Harness defect, not a node defect: take the commit from the SHA hbox_native passes (or FN_NATIVE_SOURCE_SHA) instead of git.",
+ "file": "tests/test_native_resilience_cuts.py",
+ "id": "FILL-RESILIENCE-CUTS-GIT-HEAD",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "tests.test_native_resilience_cuts 4 errors: the tests call 'git rev-parse HEAD' inside the box's copied tree, which is not a git checkout (exit 128), so the capture-first reclaim tests (test_capture_first_reclaim_waits_for_independent_response_then_makes_progress, test_disabling_the_capture_first_reclaim_hold_cannot_pass, +2) cannot run under hbox_native",
+ "updated": "2026-10-04T20:01:41Z"
+}

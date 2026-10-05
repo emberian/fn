@@ -35,7 +35,7 @@
 (defconst *prst-launch-base* '(:heap 256 "custom" 8192 1024 20))
 (defconst *prst-launch*
  (fn-prstartup-extend-operation-reservation *prst-launch-base* :run nil "/tmp/store" 4 8
-                                           '(83886080 . 67108864) '(8589934592)))
+                                           '(83886080 . 67108864) '(8589934592) nil nil))
 (assert-event
  (and (equal (fn-prstartup-nth 0 *prst-launch*) :heap)
       (equal (fn-prstartup-nth 1 *prst-launch*) 257)
@@ -51,19 +51,19 @@
                            "/tmp/store" 4 1048576 4194304 8 256))))
 (assert-event
  (and (equal (fn-prstartup-extend-operation-reservation *prst-launch-base* :status nil "/tmp/store" 4 8
-                                                       '(83886080 . 67108864) '(8589934592)) *prst-launch-base*)
+                                                       '(83886080 . 67108864) '(8589934592) nil nil) *prst-launch-base*)
       (equal (fn-prstartup-extend-operation-reservation *prst-launch-base* :run '(complete) "/tmp/store" 4 8
-                                                       '(83886080 . 67108864) '(8589934592)) *prst-launch-base*)))
+                                                       '(83886080 . 67108864) '(8589934592) nil nil) *prst-launch-base*)))
 ; Literal removal of each machine-fit hypothesis; the other is retained.
 (assert-event
  (let* ((cold '(complete))
-        (d (fn-prstartup-extend-default-reservation *prst-launch-base* cold "/tmp/store" 4 8 100 nil)))
+        (d (fn-prstartup-extend-default-reservation *prst-launch-base* cold "/tmp/store" 4 8 100 nil nil nil)))
   (and cold (equal (fn-prstartup-nth 0 d) :heap)
        (not (<= (fn-heap-reservation-octets (fn-prstartup-nth 1 d) 100
                   (fn-prstartup-nth 4 d) (fn-prstartup-nth 5 d)) (fn-heap-machine-octets nil))))))
 (assert-event
  (let* ((cold nil)
-        (d (fn-prstartup-extend-default-reservation *prst-launch-base* cold "/tmp/store" 4 8 100 nil)))
+        (d (fn-prstartup-extend-default-reservation *prst-launch-base* cold "/tmp/store" 4 8 100 nil nil nil)))
   (and (not cold) (not (equal (fn-prstartup-nth 0 d) :heap))
        (not (<= (fn-heap-reservation-octets (fn-prstartup-nth 1 d) 100
                   (fn-prstartup-nth 4 d) (fn-prstartup-nth 5 d)) (fn-heap-machine-octets nil))))))
@@ -91,7 +91,8 @@
  (fn-prstartup-extend-operation-reservation
   (fn-heap-reserve-operation-decide :run *fn-bs-profile-development* *prst-run-core*
                                     (* 64 1048576) *prst-run-machine* 32 *prst-fresh*)
-  :run nil "/tmp/store" 4 8 *prst-run-core* *prst-run-machine*))
+  :run nil "/tmp/store" 4 8 *prst-run-core* *prst-run-machine*
+  *fn-bs-profile-development* *prst-fresh*))
 (assert-event
  (let ((dyn (* 1048576 (fn-prstartup-nth 1 *prst-run*))))
   (and (equal (fn-prstartup-nth 0 *prst-run*) :heap)
@@ -104,3 +105,30 @@
                                          nil)
               '(:refused :default-pool-heap-not-held))
        (stringp (fn-prstartup-refusal-line '(:refused :default-pool-heap-not-held))))))
+
+; KEYSTONE fn-prstartup-launch-admits-owner-protected, its fields
+; (cold-start, 2026-10-04; scenarios-2 SCEN-INSTALLED-HEAP-NOT-HELD).
+; Satisfiable: the extension above admits, and an owner whose image
+; observation exceeds the probe's (same core file) passes its protected check
+; at the heap it got.  Teeth: drop the core-file hypothesis (an owner core
+; with a larger file) and the check fails at that heap; the base figure alone
+; (no launch floor) fails for the larger owner observation, as on 6107ceb56.
+(defconst *prst-owner-core* '(615110568 . 600000000))
+(assert-event
+ (let* ((dyn (* 1048576 (fn-prstartup-nth 1 *prst-run*)))
+        (n (fn-heap-nursery-trigger dyn (* 1048576 (fn-profile-limit :gc-nursery-mib)))))
+  (and (equal (fn-prstartup-nth 0 *prst-run*) :heap)
+       (equal (fn-heap-core-file *prst-owner-core*) (fn-heap-core-file *prst-run-core*))
+       (<= (fn-prstartup-protected *fn-bs-profile-development* *prst-owner-core* n nil 32 *prst-fresh*)
+           dyn)
+       (not (<= (fn-prstartup-protected *fn-bs-profile-development* '(1615110568 . 1600000000)
+                                        n nil 32 *prst-fresh*)
+                dyn)))))
+(assert-event
+ (let* ((base (fn-heap-reserve-operation-decide :run *fn-bs-profile-development* '(615110568 . 300000000)
+                                                (* 64 1048576) *prst-run-machine* 32 *prst-fresh*))
+        (dyn (* 1048576 (fn-prstartup-nth 1 base))))
+  (and (equal (fn-prstartup-nth 0 base) :heap)
+       (not (<= (fn-prstartup-protected *fn-bs-profile-development* *prst-owner-core*
+                  (fn-heap-nursery-trigger dyn (* 64 1048576)) nil 32 *prst-fresh*)
+                dyn)))))

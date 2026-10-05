@@ -128,7 +128,15 @@
 # NAME/native-LABEL or a /tank/fn/scratch path, from RUN/tree/build; their
 # identity source is the one RUN's log names; `tools/image_set.py link-run`),
 # --env NAME=VALUE (repeatable; paths may use $T, the tree),
-# --deadline S (default 5400), --dry-run (print the box script; the refusal
+# --all (run every module even when the box's verdict store holds a verdict
+# for exactly its inputs: without it, a module whose stored verdict -- keyed by
+# the module and its tests/ helpers, the harness, the runner, the images'
+# launcher/core/runtime digests or overlay record, and the FN_* it reads --
+# is OK or SKIPPED is replayed from the store, naming the run it came from,
+# and one whose stored verdict is red re-runs only its red cases, the rest
+# carried; tools/native_verdicts.py, store $FN_VERDICT_STORE else
+# BASE/.verdicts; a cached verdict satisfies no claim: a claim names a live
+# run), --deadline S (default 5400), --dry-run (print the box script; the refusal
 # and the per-module environment show there), --allow-skips (run a module
 # whose opt-in gate -- FN_RUN_*_E2E, FN_INN_SRC ... -- is unset; without it
 # such a module is refused at launch, naming the variable, not skipped after
@@ -171,10 +179,13 @@ BUILD=1
 DETACH=1
 DRY=0
 ALLOW_SKIPS=
+ALL=${FN_NATIVE_ALL:-0}
 DEADLINE=5400
 ENVS=
 IMAGES_GIVEN=0
 POSITIONAL=
+BUILD_ONLY=
+PUBLISH=
 IMAGE_SET=
 REUSE=
 OVERLAY=
@@ -235,6 +246,12 @@ while [ $# -gt 0 ]; do
             MODULE_JOBS=$2; shift 2 ;;
         --certify-jobs) JOBS=$2; shift 2 ;;
         --no-build) BUILD=0; shift ;;
+        # --build-only: certify, acquire, host-ld and the --images saves, no
+        # modules (they run afterwards, sharded, through tools/boxq.py against
+        # the published set).  --publish: on success, tools/image_set.py
+        # publish the tree's images as REV's set on this box (REV a commit).
+        --build-only) BUILD_ONLY=1; shift ;;
+        --publish) PUBLISH=1; shift ;;
         --image-set)
             case $2 in *[!0-9a-f]*|'') echo "hbox_native: --image-set takes a commit sha" >&2; exit 2 ;; esac
             IMAGE_SET=$2; BUILD=0; shift 2 ;;
@@ -260,6 +277,7 @@ while [ $# -gt 0 ]; do
         # A module gated by an unset opt-in (FN_RUN_*_E2E ...) is refused at
         # launch unless this is given (tools/native_env.py plan; item 45).
         --allow-skips) ALLOW_SKIPS=--allow-skips; shift ;;
+        --all) ALL=1; shift ;;
         --deadline) DEADLINE=$2; shift 2 ;;
         # The ACL2 wrapper the IMAGE builds run under (certification keeps
         # the toolchain's, whose identity the cache keys on).  The world is
@@ -289,7 +307,12 @@ while [ $# -gt 0 ]; do
 done
 # shellcheck disable=SC2086
 set -- $POSITIONAL
-[ $# -ge 2 ] || usage
+if [ -n "$BUILD_ONLY" ]; then [ $# -eq 1 ] || { echo "hbox_native: --build-only takes REV and no modules" >&2; exit 2; }
+else [ $# -ge 2 ] || usage; fi
+if [ -n "$PUBLISH" ]; then
+    [ "$BUILD" = 1 ] && [ -z "$OVERLAY" ] || { echo "hbox_native: --publish publishes images this run builds (not --image-set, --overlay, --reuse-image or --no-build)" >&2; exit 2; }
+    case $1 in .) echo "hbox_native: --publish needs REV to be a commit, not ." >&2; exit 2 ;; esac
+fi
 REV=$1; shift
 for module in "$@"; do
     case $module in
@@ -365,7 +388,8 @@ if [ "$CATALOG" = paged ]; then
     done
 fi
 for assignment in $ENVS; do ENVARGS="$ENVARGS --env $assignment"; done
-PLAN=$(python3 "$HERE/tools/native_env.py" plan --images "$IMAGES" $ENVARGS $ALLOW_SKIPS "$@") || exit 2
+if [ -n "$BUILD_ONLY" ]; then PLAN=
+else PLAN=$(python3 "$HERE/tools/native_env.py" plan --images "$IMAGES" $ENVARGS $ALLOW_SKIPS "$@") || exit 2; fi
 if [ "$REV" = . ]; then
     # The image's declared source: HEAD, marked +dirty for uncommitted edits
     # (before 2026-09-27 FN_NATIVE_IMAGE_SOURCE_SHA was the literal ".").
@@ -480,6 +504,41 @@ step() {
         finish \$rc
     fi
 }
+# Steps that may run at once (the image saves: each its own ACL2 session
+# over the same certified books, writing only its own build/fn-host* files;
+# the foreign libraries are built first, once).  pstep starts one in the
+# background; pwait waits for all of them and stops the run at the first that
+# failed, in the order they were started.  Batch 6: six serial saves were
+# 10m44s of a 36-minute run, the longest single one 2m06s.
+# At most one save per 6 GiB available (a save holds the world, about 4-5 GiB;
+# cloud2's 22 GiB takes three at once, lat1 all six).
+PSTEPS=
+PPIDS=
+PMAX=\$(awk '/MemAvailable/{n=int(\$2/6291456); print (n<1)?1:n}' /proc/meminfo)
+pstep() {
+    name=\$1; shift
+    n=0; first=
+    for p in \$PPIDS; do n=\$((n + 1)); [ -n "\$first" ] || first=\$p; done
+    if [ \$n -ge \$PMAX ]; then wait \$first; PPIDS=\${PPIDS#* \$first}; fi
+    echo "== \$name \$(date -u +%H:%M:%SZ) (parallel, at most \$PMAX)"
+    ( "\$@" > \$L/\$name.log 2>&1; echo \$? > \$L/\$name.rc ) &
+    PPIDS="\$PPIDS \$!"
+    PSTEPS="\$PSTEPS \$name"
+}
+pwait() {
+    wait
+    prc=0
+    for name in \$PSTEPS; do
+        rc=\$(cat \$L/\$name.rc 2>/dev/null || echo 3)
+        echo "   \$name exit \$rc \$(date -u -r \$L/\$name.rc +%H:%M:%SZ 2>/dev/null) (\$L/\$name.log)"
+        if [ \$rc -ne 0 ] && [ \$prc -eq 0 ]; then
+            tail -n 15 \$L/\$name.log | sed 's/^/   | /'
+            prc=\$rc
+        fi
+    done
+    PSTEPS=
+    [ \$prc -eq 0 ] || finish \$prc
+}
 # A module reads an image variable: the image must be in the tree.
 need() {
     [ -x "\$3" ] || { echo "hbox_native: \$1 reads \$2: \$3 is not in the tree (build it with --images)"; finish 2; }
@@ -563,6 +622,17 @@ step validate-dtn python3 tools/proof_artifacts.py validate --profile dtn --acl2
 step host-ld-dtn env FN_ACL2="${IMAGE_ACL2:-\$ACL2}" python3 tools/host_translate_check.py --build host/native/build-dtn.lisp --log \$L/host-translate-dtn.log
 BOX
         fi
+        # More than one image: build the foreign libraries once, then every
+        # save at once (pstep/pwait); one image keeps the plain step.
+        NIMG=$(echo "$IMAGES" | tr ',' '\n' | grep -vc '^prof$')
+        if [ "$NIMG" -gt 1 ] && [ "${FN_NATIVE_SERIAL_IMAGES:-}" != 1 ]; then
+            ISTEP=pstep
+            cat <<BOX
+step image-libs sh -c 'sh tools/build_mldsa65.sh build/lib && sh tools/build_deflate.sh build/lib && sh tools/build_blake3.sh build/lib'
+BOX
+        else
+            ISTEP=step
+        fi
         for image in $(echo "$IMAGES" | tr ',' ' '); do
             # The (profile, session script, image) triple per image, as
             # tools/runbooks/hbox-image-build.sh's four build lines.
@@ -588,9 +658,19 @@ BOX
             catalog_env=FN_NATIVE_CATALOG=old
             if [ "$CATALOG" = paged ]; then case $image in developer|production|reference|developer-stripped) catalog_env=FN_NATIVE_CATALOG=paged out=$out-paged ;; esac; fi
             cat <<BOX
-step image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} $catalog_env FN_NATIVE_PROFILE=$profile FN_NATIVE_WORLD=$world FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log $WRAP sh tools/build_native_host.sh
+$ISTEP image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} $catalog_env FN_NATIVE_PROFILE=$profile FN_NATIVE_WORLD=$world FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log $WRAP sh tools/build_native_host.sh
 BOX
         done
+        [ "$ISTEP" != pstep ] || echo pwait
+        if [ -n "$PUBLISH" ]; then
+            cat <<BOX
+step publish python3 tools/image_set.py publish \$T $SOURCE_ID --base ${IMAGES_BASE:-/tank/fn/images}
+BOX
+        fi
+    fi
+    if [ -n "$BUILD_ONLY" ]; then
+        echo 'echo "== build only: no modules"'
+        echo 'finish 0'
     fi
     if [ -n "$REUSE" ]; then
         cat <<BOX
@@ -656,6 +736,7 @@ BOX
     # its own ephemeral ports and makes its own temporary directories, and
     # each module keeps its own MemoryMax scope (N jobs can hold N x --mem).
     echo "export S T L FN_TEST_OPENSSL_BIN"
+    echo "export FN_VERDICT_STORE=\${FN_VERDICT_STORE:-$BASE/.verdicts} FN_NATIVE_ALL=$ALL"
     echo "rm -rf \$S/rc; mkdir -p \$S/rc"
     echo "cat > \$S/module.sh <<'MODULE'"
     cat <<'MOD'
@@ -665,12 +746,35 @@ cd "$T" || exit 0
 # A test module runs to the end whatever the others did; its verdict goes in
 # run.log: OK (N ran, K skipped), FAILED, or SKIPPED (N of N), with every
 # skip's reason (a skipped witness is not evidence).  SKIPPED is status 4.
+# The box's verdict store (tools/native_verdicts.py): a module whose stored
+# verdict is for exactly these inputs is replayed (OK, SKIPPED) or re-run on
+# its red cases only; FN_NATIVE_ALL=1 (--all) runs everything.  CASES is read
+# by the module's command line.
+CASES=
+tcached() {
+    name=$1; module=$2; shift 2
+    CASES=
+    [ "${FN_NATIVE_ALL:-0}" != 1 ] || return 1
+    verdict=$(env "$@" python3 tools/native_verdicts.py lookup $module 2>/dev/null) || return 1
+    case $verdict in
+        *": OK ("*|*": SKIPPED ("*)
+            echo "== $name $(date -u +%H:%M:%SZ) cached"
+            echo "   $name cached: $verdict"
+            case $verdict in *": SKIPPED ("*) echo 4 ;; *) echo 0 ;; esac > $S/rc/$name
+            return 0 ;;
+    esac
+    reds=$(env "$@" python3 tools/native_verdicts.py lookup $module --red-cases 2>/dev/null | paste -sd, -)
+    [ -n "$reds" ] || return 1
+    CASES="--cases $reds"
+    echo "   $name: re-running $(echo "$reds" | tr , '\n' | wc -l | tr -d ' ') red case(s) of the cached verdict; the rest carried: $verdict"
+    return 1
+}
 tstep() {
     name=$1; shift
     echo "== $name $(date -u +%H:%M:%SZ) load $(cut -d' ' -f1-3 /proc/loadavg)"
     # A failed test's processes' stderr lands in $L/stderr/$name (and its
     # digest in the module log after the failure): tools/test_budget.py.
-    FN_NATIVE_STDERR_DIR=$L/stderr/$name "$@" > $L/$name.log 2>&1
+    FN_NATIVE_STDERR_DIR=$L/stderr/$name FN_NATIVE_MODULE_LOG=$L/$name.log "$@" > $L/$name.log 2>&1
     rc=$?
     verdict=$(python3 tools/test_budget.py --verdict $L/$name.log)
     vrc=$?
@@ -688,7 +792,8 @@ MOD
         i=$((i+1))
         cat <<BOX
 $i)
-tstep test-$module $BIGMEM env $assignments systemd-run --user --scope --quiet --slice=swarm.slice -p MemoryMax=$MEM -p MemorySwapMax=0 -- sh -c 'echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one $module'
+tcached test-$module $module $assignments ||
+tstep test-$module $BIGMEM env $assignments systemd-run --user --scope --quiet --slice=swarm.slice -p MemoryMax=$MEM -p MemorySwapMax=0 -- sh -c "echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one $module \$CASES"
 ;;
 BOX
     done

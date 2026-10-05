@@ -18,6 +18,17 @@ reach safely. Words you may not know are in
   because its glibc is below the 2.36 floor. A minimal Debian 12 lacks three packages
   the steps below use: `apt install libssl3 openssl sudo`. On OpenBSD, nothing
   extra.
+- For post-quantum TLS, OpenSSL 3.5 or later. fn offers the hybrid key
+  exchange X25519MLKEM768 only when the OpenSSL it loads knows it: OpenSSL 3.0
+  to 3.4 and LibreSSL do not. fn loads the OpenSSL named by `FN_OPENSSL_PREFIX`
+  (a directory holding `lib/libcrypto.so.3` and `lib/libssl.so.3`); the
+  installed `fn` command sets it to the OpenSSL 3.5.8 the release carries in
+  `libexec/fn/openssl`, and a node whose prefix holds no pair refuses to
+  start, naming it. In `fn.toml`, `[tls] key_exchange = "hybrid-preferred"` (the
+  default) offers the hybrid group first and keeps the classical groups for
+  ordinary readers; `"hybrid-required"` refuses to start, by name, when the
+  loaded library cannot offer the hybrid group. `status` and `health` print the
+  policy and how many sessions used each kind of group.
 - Root access, for the install and the service.
 - A disk that really saves data when asked. Read
   [storage](operator.md#1-choose-the-disk-for-the-store) before you begin.

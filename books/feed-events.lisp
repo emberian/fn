@@ -36,16 +36,17 @@
         (cons (fn-feed-journal-entry :feed-lost
                 (list (fn-feed-peer f) (nfix (fn-clock-monotonic obs))))
               (if (and entry
-                       (fn-feed-retry-exhaustedp g (fn-feed-entry-msgid entry))
-                       (not (fn-feed-droppedp
-                             (fn-feed-state-of (fn-feed-entry-msgid entry)
-                                               (fn-feed-queue g)))))
+                       (fn-feed-retry-exhaustedp g (fn-feed-entry-msgid entry)))
                   (list (fn-feed-journal-entry :feed-drop
                           (list (fn-feed-peer f) (fn-feed-entry-msgid entry)
                                 :retry-bound)))
                 nil)))
     nil))
 
+; One reply's records, by the class `fn-feed-observe' acts on
+; (`fn-feed-reply-class'): a 431/436 writes its :feed-retry and never a
+; :feed-drop (rp-feed-defer-drop); a reply naming an entry not in flight is a
+; loss and writes the loss's records (rp-feed-reply-msgid).
 (defun fn-feed-observe-records (f response obs)
   (declare (xargs :guard t))
   (if (not (fn-feedp f)) nil
@@ -53,28 +54,19 @@
            (msgid (fn-feed-response-msgid response))
            (st (fn-feed-state-of msgid (fn-feed-queue f)))
            (attempt (fn-feed-state-attempt st)))
-      (cond
-       ((member-equal code '(335 238))
-        (if (and (fn-feed-offeredp st) (natp (fn-feed-conn f)))
-            (list (fn-feed-journal-entry :feed-sent
-                    (list (fn-feed-peer f) msgid attempt))) nil))
-       ((member-equal code '(235 239 435 438 437 439))
-        (if (fn-feed-state-inflightp st)
-            (list (fn-feed-journal-entry :feed-outcome
-                    (list (fn-feed-peer f) msgid attempt code))) nil))
-       ((member-equal code '(431 436))
-        (let* ((g (fn-feed-back-off f msgid obs))
-               (gs (fn-feed-state-of msgid (fn-feed-queue g))))
-          (append
-           (if (fn-feed-state-inflightp st)
-               (list (fn-feed-journal-entry :feed-retry
-                       (list (fn-feed-peer f) msgid attempt code
-                             (nfix (fn-clock-monotonic obs))))) nil)
-           (if (and (fn-feed-retry-exhaustedp g msgid)
-                    (not (fn-feed-droppedp gs)))
-               (list (fn-feed-journal-entry :feed-drop
-                       (list (fn-feed-peer f) msgid :retry-bound))) nil))))
-       (t (fn-feed-lost-records f obs))))))
+      (case (fn-feed-reply-class f response)
+        (:send
+         (if (and (fn-feed-offeredp st) (natp (fn-feed-conn f)))
+             (list (fn-feed-journal-entry :feed-sent
+                     (list (fn-feed-peer f) msgid attempt))) nil))
+        (:final
+         (list (fn-feed-journal-entry :feed-outcome
+                 (list (fn-feed-peer f) msgid attempt code))))
+        (:defer
+         (list (fn-feed-journal-entry :feed-retry
+                 (list (fn-feed-peer f) msgid attempt code
+                       (nfix (fn-clock-monotonic obs))))))
+        (otherwise (fn-feed-lost-records f obs))))))
 
 (defun fn-feed-restart-records (f)
   (declare (xargs :guard t))

@@ -332,28 +332,89 @@ the capacity vector at the composite's figure."
                          (fn-sbud-article-record-figure payload-length group-count))
                       debt)))
 
-; The word the host reports for the served POST's prepare: the prepare's
-; word, except an :unaffordable refusal that the membership charge alone
-; caused, which is :memberships.  The host line: host/owner-host.lisp
-; `fn-owner-prepare' and `fn-owner-prepare-buffer', over the word
-; `fn-pout-prepare-article' answered and the same count, octets, record and
-; debt the budget was decided from.
+; THE TWO RESOURCES (lane m1-durable-2, 2026-10-04: Mini's condition for
+; leaving segment rotation out of 6.6.0, "the history budget refuses by
+; name").  The article's admission asks two resources, and each has two
+; tests:
+;
+;   transactions  the count gate (one more record under T) and the vector's
+;                 transaction reservation (DEBT + 1 release records after
+;                 it, under T): `fn-cvec-article-transactions-admitp'.
+;   history       the history gate (the article's figure within H after
+;                 the committed octets) and the vector's octet reservation
+;                 (DEBT + 1 release ceilings after it, within H):
+;                 `fn-cvec-article-history-admitp'.
+;
+; The vector's own refusal is split between them: near H it is the octet
+; reservation that refuses first, a band of (DEBT + 1) x 4096 octets in
+; which the history gate alone still admits.  A word that called that band
+; `unaffordable' would name H only some of the time.  The budget the
+; served prepare is handed admits exactly when both resources do
+; (`fn-cvec-article-budget-for-admits-exactly-both-sides').
+(defun fn-cvec-article-transactions-admitp (profile used debt)
+  (declare (xargs :guard t))
+  (and (fn-sbud-admitp (fn-sbud-budget profile :article) used)
+       (fn-sbud-admitp (fn-sbud-budget profile :release)
+                       (+ 1 (nfix used) (nfix debt)))))
+
+(defun fn-cvec-article-history-admitp (profile bytes-used figure debt)
+  (declare (xargs :guard t))
+  (and (fn-bs-history-admissiblep profile bytes-used figure)
+       (fn-bs-history-admissiblep
+        profile
+        (+ (nfix bytes-used) (nfix figure)
+           (* (nfix debt) (fn-smr-reserve-octets)))
+        (fn-smr-reserve-octets))))
+
+; The word the host reports for the served POST's prepare.  The prepare
+; answers :unaffordable whenever its budget does not admit one more record;
+; this names which resource refused, in this precedence:
+;
+;   1. the transactions refuse                         :unaffordable (T)
+;   2. the history refuses at the gate figure, but the
+;      record figure without the membership charge fits  :memberships
+;   3. the history refuses                             :history-exhausted (H)
+;   4. otherwise (no budget refusal the host can hand)  :unaffordable
+;
+; Any other word is passed through.  T first: a store out of transactions
+; is full whatever its octets, and only compaction-free growth of T helps.
+; :memberships before :history-exhausted: the poster can act on it (fewer
+; groups), the operator need not.  KEYSTONES
+; `fn-cvec-article-refusal-word-names-the-memberships',
+; `fn-cvec-article-refusal-word-names-the-history',
+; `fn-cvec-article-refusal-word-keeps-unaffordable-for-the-transactions' and,
+; under the budget the host handed,
+; `fn-cvec-article-refusal-word-under-the-budget-names-the-resource' (case 4
+; unreachable).  The host line: host/owner-host.lisp `fn-owner-prepare' and
+; `fn-owner-prepare-buffer', over the word `fn-pout-prepare-article'
+; answered and the same count, octets, record and debt the budget was
+; decided from.
 (defun fn-cvec-article-refusal-word (word profile used bytes-used record debt)
   (declare (xargs :guard t))
-  (if (and (equal word :unaffordable)
-           (fn-cvec-article-memberships-refusedp
-            profile used bytes-used (len (fn-record-payload record))
-            (len (fn-record-groups record)) debt))
-      :memberships
-    word))
+  (let ((p (len (fn-record-payload record)))
+        (k (len (fn-record-groups record))))
+    (cond ((not (equal word :unaffordable)) word)
+          ((not (fn-cvec-article-transactions-admitp profile used debt))
+           :unaffordable)
+          ((fn-cvec-article-memberships-refusedp profile used bytes-used p k debt)
+           :memberships)
+          ((not (fn-cvec-article-history-admitp
+                 profile bytes-used (fn-sbud-article-gate-figure p k) debt))
+           :history-exhausted)
+          (t :unaffordable))))
 
-; The developer `store post' names the membership refusal as the served
-; path does (lane bp-retention-leftovers, membership-budget's deferral): its
-; verdict (`fn-cvec-article-verdict-at', host/store-node-host.lisp
-; `fn-store-sn-article-verdict-word') refused, the article is in at least
-; one group, and at the same count, octets and debt the article's figure
-; WITHOUT its membership charge would have passed the count gate, the
-; history gate and the vector.
+; The developer `store post' names its refusal as the served path does
+; (lane bp-retention-leftovers, membership-budget's deferral; lane
+; m1-durable-2 the history): its verdict (`fn-cvec-article-verdict-at',
+; host/store-node-host.lisp `fn-store-sn-article-verdict-word') refused,
+; and the word is the resource that refused, in the served word's
+; precedence: the transactions (:unaffordable); the membership charge alone
+; (:memberships: the article is in at least one group, and at the same
+; count, octets and debt its figure WITHOUT that charge would have passed
+; the count gate, the history gate and the vector); the history
+; (:history-exhausted).  KEYSTONE
+; `fn-cvec-article-verdict-word-names-the-resource' (the last arm is
+; unreachable).
 (defun fn-cvec-article-verdict-word (profile used bytes-used payload-length
                                              group-count debt)
   (declare (xargs :guard t))
@@ -361,6 +422,8 @@ the capacity vector at the composite's figure."
                                             payload-length group-count debt)
                 :admissible)
          :admissible)
+        ((not (fn-cvec-article-transactions-admitp profile used debt))
+         :unaffordable)
         ((and (posp group-count)
               (fn-sbud-admitp (fn-sbud-budget profile :article) used)
               (fn-bs-history-admissiblep
@@ -372,6 +435,10 @@ the capacity vector at the composite's figure."
                                                                group-count))
                              debt))
          :memberships)
+        ((not (fn-cvec-article-history-admitp
+               profile bytes-used
+               (fn-sbud-article-gate-figure payload-length group-count) debt))
+         :history-exhausted)
         (t :unaffordable)))
 
 ; The word admits exactly what the verdict admits; :memberships names a
@@ -383,7 +450,8 @@ the capacity vector at the composite's figure."
               (equal (fn-cvec-article-verdict-at profile used bytes-used
                                                  payload-length group-count debt)
                      :admissible))
-         (member-equal word '(:admissible :memberships :unaffordable))
+         (member-equal word '(:admissible :memberships :history-exhausted
+                              :unaffordable))
          (implies (equal word :memberships)
                   (and (posp group-count)
                        (equal (fn-cvec-article-verdict-at
@@ -1077,12 +1145,97 @@ the capacity vector at the composite's figure."
            :in-theory (disable fn-cvec-roomp fn-cvec-history-admittedp))))
 
 (in-theory (disable fn-cvec-roomp fn-cvec-verdict-at fn-cvec-article-verdict-at
+                    fn-cvec-article-transactions-admitp
+                    fn-cvec-article-history-admitp
                     fn-cvec-statement-verdict-at fn-cvec-statement-figure
                     fn-cvec-article-budget fn-cvec-article-budget-for
                     fn-cvec-report fn-cvec-debt-extend fn-cvec-record-debt
                     fn-cvec-history-admittedp
                     fn-cvec-record-admittedp fn-cvec-record-figure
                     fn-cvec-row-payload-length))
+
+; -----------------------------------------------------------------------------
+; The two resources (lane m1-durable-2)
+
+; The vector at one more record is its transaction reservation and its octet
+; reservation.
+(defthm fn-cvec-roomp-is-the-two-sides
+  (implies (and (natp used) (natp bytes-used))
+           (equal (fn-cvec-roomp profile (+ 1 used) (+ bytes-used figure) debt)
+                  (and (fn-sbud-admitp (fn-sbud-budget profile :release)
+                                       (+ 1 used (nfix debt)))
+                       (fn-bs-history-admissiblep
+                        profile
+                        (+ bytes-used figure (* (nfix debt) (fn-smr-reserve-octets)))
+                        (fn-smr-reserve-octets))
+                       (natp (+ bytes-used figure)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-cvec-roomp fn-smr-roomp fn-sbud-verdict-at) (fn-smr-reserve-octets fn-sbud-verdict-is-the-count-and-history-admissibility fn-sbud-budget-is-the-profile-admissibility fn-sbud-admitp fn-bs-history-admissiblep fn-sbud-budget)))))
+
+; A membership refusal is one the transactions admit: its own vector test is
+; at the record figure, and the transaction half does not read the figure.
+(defthm fn-cvec-article-memberships-refused-admits-the-transactions
+  (implies (fn-cvec-article-memberships-refusedp profile used bytes-used
+                                                 payload-length group-count debt)
+           (fn-cvec-article-transactions-admitp profile used debt))
+  :hints (("Goal" :in-theory (e/d (fn-cvec-article-memberships-refusedp
+                                   fn-cvec-article-transactions-admitp
+                                   fn-cvec-roomp fn-smr-roomp fn-sbud-verdict-at)
+                                  (fn-smr-reserve-octets
+                                   fn-sbud-verdict-is-the-count-and-history-admissibility
+                                   fn-sbud-budget-is-the-profile-admissibility
+                                   fn-sbud-admitp fn-bs-history-admissiblep
+                                   fn-sbud-budget fn-cvec-article-budget
+                                   fn-sbud-article-record-figure)))))
+
+; The budget the served prepare is handed (`fn-cvec-article-budget-for')
+; admits one more record exactly when both resources admit it at the gate
+; figure.  So the prepare's :unaffordable is one of them refusing.
+(defthm fn-cvec-article-budget-for-admits-exactly-both-sides
+  (let ((p (len (fn-record-payload record)))
+        (k (len (fn-record-groups record))))
+    (iff (fn-sbud-admitp (fn-cvec-article-budget-for profile used bytes-used
+                                                     record debt)
+                         used)
+         (and (fn-cvec-article-transactions-admitp profile used debt)
+              (fn-cvec-article-history-admitp
+               profile bytes-used (fn-sbud-article-gate-figure p k) debt))))
+  :hints (("Goal" :use ((:instance fn-cvec-roomp-is-the-two-sides
+                                   (used (nfix used)) (bytes-used (nfix bytes-used))
+                                   (figure (fn-sbud-article-gate-figure
+                                            (len (fn-record-payload record))
+                                            (len (fn-record-groups record))))))
+           :in-theory (e/d (fn-cvec-article-budget-for fn-cvec-article-budget
+                            fn-sbud-article-budget
+                            fn-cvec-article-transactions-admitp
+                            fn-cvec-article-history-admitp fn-sbud-admitp
+                            fn-bs-history-admissiblep)
+                           (fn-smr-reserve-octets fn-cvec-roomp
+                            fn-sbud-verdict-is-the-count-and-history-admissibility
+                            fn-sbud-budget-is-the-profile-admissibility
+                            fn-sbud-budget fn-sbud-article-gate-figure)))))
+
+; The developer `store post''s verdict admits exactly when both resources do.
+(defthm fn-cvec-article-verdict-admits-exactly-both-sides
+  (iff (equal (fn-cvec-article-verdict-at profile used bytes-used payload-length
+                                          group-count debt)
+              :admissible)
+       (and (fn-cvec-article-transactions-admitp profile used debt)
+            (fn-cvec-article-history-admitp
+             profile bytes-used
+             (fn-sbud-article-gate-figure payload-length group-count) debt)))
+  :hints (("Goal" :use ((:instance fn-cvec-roomp-is-the-two-sides
+                                   (used (nfix used)) (bytes-used (nfix bytes-used))
+                                   (figure (fn-sbud-article-gate-figure
+                                            payload-length group-count))))
+           :in-theory (e/d (fn-cvec-article-verdict-at fn-sbud-article-verdict-at
+                            fn-cvec-article-transactions-admitp
+                            fn-cvec-article-history-admitp fn-sbud-admitp
+                            fn-bs-history-admissiblep)
+                           (fn-smr-reserve-octets fn-cvec-roomp
+                            fn-sbud-verdict-is-the-count-and-history-admissibility
+                            fn-sbud-budget-is-the-profile-admissibility
+                            fn-sbud-budget fn-sbud-article-gate-figure)))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE (a crosspost the budget cannot pay for is refused by name).  The
@@ -1114,8 +1267,126 @@ the capacity vector at the composite's figure."
                   (equal (fn-cvec-article-refusal-word word profile used
                                                        bytes-used record debt)
                          word))))
-  :hints (("Goal" :in-theory (e/d (fn-cvec-article-budget-for)
+  :hints (("Goal" :use ((:instance fn-cvec-article-memberships-refused-admits-the-transactions
+                                   (payload-length (len (fn-record-payload record)))
+                                   (group-count (len (fn-record-groups record)))))
+           :in-theory (e/d (fn-cvec-article-budget-for)
                                   (fn-cvec-article-budget fn-cvec-roomp
+                                   fn-cvec-article-transactions-admitp
+                                   fn-cvec-article-history-admitp
                                    fn-sbud-article-record-figure
                                    fn-bs-history-admissiblep fn-sbud-admitp
                                    fn-sbud-budget)))))
+
+; KEYSTONE (the history budget refuses by name).  The word the host reports
+; is :history-exhausted exactly when the prepare answered :unaffordable, the
+; transactions admit the article (the count gate and the vector's
+; transaction reservation), the history does not at the article's gate
+; figure (the history gate or the vector's octet reservation), and the
+; refusal is not the membership charge's alone.
+(defthm fn-cvec-article-refusal-word-names-the-history
+  (let ((p (len (fn-record-payload record)))
+        (k (len (fn-record-groups record))))
+    (equal (equal (fn-cvec-article-refusal-word word profile used
+                                                bytes-used record debt)
+                  :history-exhausted)
+           (or (equal word :history-exhausted)
+               (and (equal word :unaffordable)
+                    (fn-cvec-article-transactions-admitp profile used debt)
+                    (not (fn-cvec-article-history-admitp
+                          profile bytes-used (fn-sbud-article-gate-figure p k)
+                          debt))
+                    (not (fn-cvec-article-memberships-refusedp
+                          profile used bytes-used p k debt))))))
+  :hints (("Goal" :in-theory (e/d ()
+                                  (fn-cvec-article-memberships-refusedp
+                                   fn-cvec-article-transactions-admitp
+                                   fn-cvec-article-history-admitp
+                                   fn-sbud-article-gate-figure)))))
+
+; KEYSTONE (completeness: :unaffordable is left only to T).  The word stays
+; :unaffordable exactly when the transactions refuse, or the history admits
+; (which the host's budget never refuses: below).
+(defthm fn-cvec-article-refusal-word-keeps-unaffordable-for-the-transactions
+  (let ((p (len (fn-record-payload record)))
+        (k (len (fn-record-groups record))))
+    (equal (equal (fn-cvec-article-refusal-word word profile used
+                                                bytes-used record debt)
+                  :unaffordable)
+           (and (equal word :unaffordable)
+                (or (not (fn-cvec-article-transactions-admitp profile used debt))
+                    (fn-cvec-article-history-admitp
+                     profile bytes-used (fn-sbud-article-gate-figure p k) debt)))))
+  :hints (("Goal" :use ((:instance fn-cvec-article-budget-for-admits-exactly-both-sides)
+                        (:instance fn-cvec-article-memberships-refused-admits-the-transactions
+                                   (payload-length (len (fn-record-payload record)))
+                                   (group-count (len (fn-record-groups record)))))
+           :in-theory (e/d (fn-cvec-article-memberships-refusedp fn-sbud-admitp fn-cvec-article-budget-for)
+                           (fn-cvec-article-budget-for-admits-exactly-both-sides
+                            fn-cvec-article-memberships-refused-admits-the-transactions
+                            fn-cvec-article-transactions-admitp
+                            fn-cvec-article-history-admitp
+                            fn-cvec-article-budget
+                            fn-cvec-roomp fn-sbud-budget
+                            fn-bs-history-admissiblep
+                            fn-sbud-article-record-figure
+                            fn-sbud-article-gate-figure)))))
+
+; KEYSTONE (under the host's budget, the word names the resource).  When the
+; budget the host handed does not admit one more record (the only way the
+; prepare answers :unaffordable), the word is :unaffordable exactly when the
+; transactions refuse, and :memberships or :history-exhausted exactly when
+; the transactions admit and the history refuses.
+(defthm fn-cvec-article-refusal-word-under-the-budget-names-the-resource
+  (let ((p (len (fn-record-payload record)))
+        (k (len (fn-record-groups record)))
+        (word2 (fn-cvec-article-refusal-word :unaffordable profile used
+                                             bytes-used record debt)))
+    (implies (and (natp used)
+                  (not (fn-sbud-admitp (fn-cvec-article-budget-for
+                                        profile used bytes-used record debt)
+                                       used)))
+             (and (member-equal word2 '(:unaffordable :memberships :history-exhausted))
+                  (iff (equal word2 :unaffordable)
+                       (not (fn-cvec-article-transactions-admitp profile used debt)))
+                  (iff (member-equal word2 '(:memberships :history-exhausted))
+                       (and (fn-cvec-article-transactions-admitp profile used debt)
+                            (not (fn-cvec-article-history-admitp
+                                  profile bytes-used
+                                  (fn-sbud-article-gate-figure p k) debt)))))))
+  :hints (("Goal" :use ((:instance fn-cvec-article-budget-for-admits-exactly-both-sides)
+                        (:instance fn-cvec-article-refusal-word-keeps-unaffordable-for-the-transactions
+                                   (word :unaffordable)))
+           :in-theory (e/d ()
+                           (fn-cvec-article-budget-for-admits-exactly-both-sides
+                            fn-cvec-article-refusal-word-keeps-unaffordable-for-the-transactions
+                            fn-cvec-article-memberships-refusedp
+                            fn-cvec-article-transactions-admitp
+                            fn-cvec-article-history-admitp
+                            fn-cvec-article-budget-for fn-sbud-admitp
+                            fn-sbud-article-gate-figure)))))
+
+; KEYSTONE (the developer `store post' names the resource the same way).
+(defthm fn-cvec-article-verdict-word-names-the-resource
+  (let ((word (fn-cvec-article-verdict-word profile used bytes-used
+                                            payload-length group-count debt))
+        (tx (fn-cvec-article-transactions-admitp profile used debt))
+        (hx (fn-cvec-article-history-admitp
+             profile bytes-used
+             (fn-sbud-article-gate-figure payload-length group-count) debt)))
+    (and (member-equal word '(:admissible :memberships :history-exhausted
+                              :unaffordable))
+         (iff (equal word :admissible) (and tx hx))
+         (iff (equal word :unaffordable) (not tx))
+         (iff (member-equal word '(:memberships :history-exhausted))
+              (and tx (not hx)))))
+  :hints (("Goal" :use ((:instance fn-cvec-article-verdict-admits-exactly-both-sides))
+           :in-theory (e/d (fn-cvec-article-verdict-word)
+                           (fn-cvec-article-verdict-admits-exactly-both-sides
+                            fn-cvec-article-verdict-at
+                            fn-cvec-article-transactions-admitp
+                            fn-cvec-article-history-admitp
+                            fn-cvec-roomp fn-sbud-admitp fn-sbud-budget
+                            fn-bs-history-admissiblep
+                            fn-sbud-article-record-figure
+                            fn-sbud-article-gate-figure)))))

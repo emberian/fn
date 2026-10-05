@@ -81,7 +81,13 @@
               ;; ACL2 already enforced paired presence.  Only a pair ACL2
               ;; accepted (fn-tlsr-start-decide, the decision `tls reload'
               ;; applies; PRF-387) is passed to auth/owner.
+              ;; PRF-1327: the key exchange is decided before the context is
+              ;; built (the groups every server context takes); a
+              ;; hybrid-required node whose library cannot offer
+              ;; X25519MLKEM768 is refused here by name, before anything
+              ;; listens.
               (when certificate
+                (fnn-tls-decide-key-exchange *fnn-operator-config-octets*)
                 (setq tls-context
                       (fnn-tls-start-context certificate private-key)))
               (let* ((web-plan
@@ -278,7 +284,11 @@ profile bounds the credentials (max-credentials, D27, PRF-102)."
 (defun fnn-operator-live-status-tail (control-path kind)
   ;; PRF-212: the certificate the running owner serves, its names and
   ;; notAfter, in ACL2's words.
-  (when (eq kind :status) (fnn-tls-status-line control-path)))
+  ;; PRF-1327: `health' ends with the key exchange's line (the policy, the
+  ;; groups served and the sessions counted by negotiated group).
+  (case kind
+    (:status (fnn-tls-status-line control-path))
+    (:health (fnn-tls-health-line control-path))))
 
 
 

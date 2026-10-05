@@ -76,6 +76,11 @@ class InitFixture(ProfileFixture):
     def assert_empty_store(self):
         self.assertTrue((self.store / "keys" / "node-secret.key").is_file(),
                         "the published store carries its node secret (PKT-894)")
+        profile = self.store / "peer-flight-profile"
+        self.assertTrue(profile.is_file(),
+                        "the published store carries its default peer flight profile")
+        data = profile.read_bytes()
+        self.assertEqual((len(data), data[:4]), (52, b"FNP1"))
         status = self.op("status", "--replay")
         self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
         self.assertIn(b"transactions=0", status.stdout)

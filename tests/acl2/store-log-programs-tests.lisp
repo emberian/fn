@@ -338,3 +338,79 @@
  (and (equal (fn-lgt-txid (fn-lg-workload-record 7 16)) 7)
       (fn-lg-extent-okp 8192 4096)
       (not (fn-lg-extent-okp 8190 4096))))
+
+; -----------------------------------------------------------------------------
+; fn-lg-durable-read-prefix-establishes-the-relation (lane m1-durable-2,
+; RL-01).  O, what the open read: three records, then zeros.  The durable
+; content before the open holds only the first two (the third's barrier
+; failed and the page cache kept it): the read is not the disk.
+(defun slp-read () (declare (xargs :guard t :verify-guards nil))
+  (append (slp-log (list (slp-r 1) (slp-r 2) (slp-r 3)) (slp-genesis)) (fn-bs-zeros 64)))
+(defun slp-read-ks () (declare (xargs :guard t :verify-guards nil))
+  (fn-lgt-recover (slp-read) (slp-genesis) (slp-unit) (slp-max) 0))
+(defun slp-read-f () (declare (xargs :guard t :verify-guards nil))
+  (fn-lgk-frontier (slp-read-ks)))
+(defun slp-disk () (declare (xargs :guard t :verify-guards nil))
+  (append (slp-log (list (slp-r 1) (slp-r 2)) (slp-genesis))
+          (fn-bs-zeros (- (len (slp-read)) (len (slp-log (list (slp-r 1) (slp-r 2)) (slp-genesis)))))))
+(defun slp-read-hyps (bs o)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((ks (fn-lgt-recover o (slp-genesis) (fn-bs-unit bs) (slp-max) 0))
+         (f (fn-lgk-frontier ks)) (c (fn-bs-durable-content bs 0)))
+    (list (posp (fn-bs-unit bs)) (and (assoc-equal 0 (fn-bs-inodes bs)) t)
+          (true-listp o) (equal (mod (len o) (fn-bs-unit bs)) 0)
+          (fn-frame-digestp (slp-genesis))
+          (true-listp c) (equal (mod (len c) (fn-bs-unit bs)) 0)
+          (<= f (len c))
+          (equal (fn-bs-take f c) (fn-bs-take f o))
+          (fn-lg-zerosp (nthcdr f c))
+          (null (fn-bs-pending bs)))))
+(defun slp-read-relp (bs o)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-lgk-relp bs (fn-lgt-recover o (slp-genesis) (fn-bs-unit bs) (slp-max) 0) 0
+               (slp-genesis) (slp-max)))
+(assert-event (and (equal (fn-lgk-committed (slp-read-ks)) (list (slp-r 1) (slp-r 2) (slp-r 3)))
+                   (equal (len (slp-disk)) (len (slp-read)))
+                   (not (equal (slp-disk) (slp-read)))))
+; Positive: the read prefix made durable and the tail zeroed, whatever the
+; disk held before; R holds against the durable content, three records.
+(assert-event
+ (let ((bs (slp-bs (append (fn-bs-take (slp-read-f) (slp-read))
+                           (fn-bs-zeros (- (len (slp-read)) (slp-read-f))))
+                   nil)))
+   (and (equal (slp-read-hyps bs (slp-read)) '(t t t t t t t t t t t))
+        (slp-read-relp bs (slp-read)))))
+; The same R over a longer durable segment (a different extent): only the
+; prefix and the zero tail matter, not the read's length.
+(assert-event
+ (let ((bs (slp-bs (append (fn-bs-take (slp-read-f) (slp-read))
+                           (fn-bs-zeros (+ 128 (- (len (slp-read)) (slp-read-f)))))
+                   nil)))
+   (and (equal (slp-read-hyps bs (slp-read)) '(t t t t t t t t t t t))
+        (slp-read-relp bs (slp-read)))))
+; Removal (RL-01, the read prefix not durable): the disk without the third
+; record, the read with it.  Every other hypothesis holds; R fails.
+(assert-event
+ (let ((bs (slp-bs (slp-disk) nil)))
+   (and (equal (slp-read-hyps bs (slp-read)) '(t t t t t t t t nil t t))
+        (not (slp-read-relp bs (slp-read))))))
+; Removal: the tail not zeros.
+(assert-event
+ (let ((bs (slp-bs (append (fn-bs-take (slp-read-f) (slp-read)) '(9 9 9 9)
+                           (fn-bs-zeros (- (len (slp-read)) (+ 4 (slp-read-f)))))
+                   nil)))
+   (and (equal (slp-read-hyps bs (slp-read)) '(t t t t t t t t t nil t))
+        (not (slp-read-relp bs (slp-read))))))
+; Removal: a write pending.
+(assert-event
+ (let ((bs (slp-bs (append (fn-bs-take (slp-read-f) (slp-read))
+                           (fn-bs-zeros (- (len (slp-read)) (slp-read-f))))
+                   (list (list :write 0 (slp-read-f) '(1 2 3 4))))))
+   (and (equal (slp-read-hyps bs (slp-read)) '(t t t t t t t t t t nil))
+        (not (slp-read-relp bs (slp-read))))))
+; Removal: the durable segment shorter than the frontier.
+(assert-event
+ (let ((bs (slp-bs (fn-bs-take (- (slp-read-f) 4) (slp-read)) nil)))
+   (and (equal (nth 7 (slp-read-hyps bs (slp-read))) nil)
+        (equal (nth 6 (slp-read-hyps bs (slp-read))) t)
+        (not (slp-read-relp bs (slp-read))))))

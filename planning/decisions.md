@@ -1791,3 +1791,36 @@ Status: DECIDED (ember). Consequences: the 6.6.0 bar includes the remote consume
 goal: Give applications (Mini first; M6 of MINI-FN-660-REQUIREMENTS-20261004) ONE kind of article for an opaque payload, owned by fn's grammar and proved accepted, and carry D49's zmq patterns as declarations over groups, the consumer cursor and that kind. Design: `planning/design/zmq-surface-2026-10-04.md`.
 Status: DECIDED (lane zmq under D49; the vocabulary row the fn response asked for). Consequences: (1) "Article kind", never "profile" (D27's store profile). Kind `opaque` v1 is a grammar of the AUTHORED SOURCE (D01's signed bytes; the reader's extraction is `fn-hc-authored-source`): eight fixed header rows (From, Date, Newsgroups, Subject, Message-ID, `FN-Kind: opaque 1`, Content-Type, `Content-Transfer-Encoding: base64`), the blank line, the payload as padded base64 in CRLF lines of 76; the rows are `*fn-ak-v1-rows*` (books/article-kind.lisp). (2) The codec is the wire-grammar interpreter at `*fn-ak-grammar*`, no second encoder or decoder; the kind refines the grammar by fn's own injection checks on From, Newsgroups and Message-ID, so every value of the kind is accepted: `fn-ak-layout-parses` (PRF-1320) and `fn-ak-layout-is-injected` (PRF-1321), and through the hybrid-author route Mini posts by, `fn-ak-layout-is-a-hybrid-injection` (PRF-1322). (3) A version is a new row table, never an edit; an unknown version is refused `:kind-version` by name. (4) The patterns are `def-pattern` declarations (books/app-pattern.lisp): plans over existing control requests, one generic host verb, one delivery keystone proved once and instanced; transport ACK, retention receipt and application outcome stay three things. pub/sub, pair and partitioned push/pull ride the existing cursor; competing consumers with leases need new owner state (D46) and a row of their own; req/rep waits for kind `opaque-reply` (a References row).
 
+
+### 2026-10-04: D51–D60 — coordinator rulings (ember-delegated 2026-10-04; ember may overturn)
+goal: close the decisions open in `/Users/ember/dev/redregg/work/FN-OPEN-DECISIONS-20261004.md` and `FN-WAITING-ON-EMBER-20261004.md`. ember delegated them to the fn swarm's coordinator on 2026-10-04; each row is the coordinator's ruling as relayed to the integrator. ember may overturn any of them. D51's direction is ember's own GO.
+
+### 2026-10-04: D51 — RL-01: recovery after a failed write barrier is A2 (coordinator ruling, ember-delegated; ember's own GO)
+Status: DECIDED. Copy-and-swap: the durable prefix is copied to a fresh segment and switched atomically; nothing is written below the frontier. Option A as written is unsafe; A1 is not taken. Owner: m1-durable-3 (A2 design v3 in lanedumps/m1-durable.md).
+
+### 2026-10-04: D52 — RL-02: a checkpoint that fails early releases its slot; retry by reason (coordinator ruling, ember-delegated)
+Status: DECIDED. The slot is released on every early failure. The failure is classified by what makes a retry meaningful: blocked plus a health alarm, retry on completion, or bounded backoff that POSTs never reset. Settlement is keyed to the publication. The safety and liveness theorems are separate (liveness: every captured publication releases its slot). A log-growth budget refuses by name while keeping maintenance headroom. Owner: w-store (RL-02 WIP).
+
+### 2026-10-04: D53 — Live reclaim is opt-in (coordinator ruling, ember-delegated)
+Status: DECIDED. When live reclaim is enabled, the launcher guarantees the owner's work reserve and the pass borrows and returns it. When it is not enabled, live reclaim is refused by name. Offline reclaim stays as it is.
+
+### 2026-10-04: D54 — S025: SESS_TERM reason 5 for pressure eviction; a separate no-progress policy (coordinator ruling, ember-delegated)
+Status: DECIDED. An idle incoming DTN session evicted under resource pressure ends with SESS_TERM reason 5 (Resource Exhaustion). A stalled active transfer is governed by a separate, configurable no-progress policy.
+
+### 2026-10-04: D55 — The auth address limit closes the connection and discards unread pipelined input (coordinator ruling, ember-delegated)
+Status: DECIDED. At the address limit the connection closes and input already pipelined but unread is discarded. tests.test_native_auth test_the_address_limit_closes_a_read_that_also_posts is measured against this contract (NAT-AUTH-ADDRESS-LIMIT-WITNESS).
+
+### 2026-10-04: D56 — Mini's asks (coordinator ruling, ember-delegated)
+Status: DECIDED. M2 is delivered in 6.6.x under Mini's adapter contract. M1's first statement is made without rotation; the full claim lives inside A2 (D51). The codec is generated directly from the grammar file.
+
+### 2026-10-04: D57 — Competing consumers with leases are outside 6.6.0 (coordinator ruling, ember-delegated)
+Status: DECIDED. zmq-style push/pull with competing workers needs new owner state (collides with D46) and is not in 6.6.0. Pub/sub, pair and fixed-worker patterns stay in scope (D49, D50).
+
+### 2026-10-04: D58 — Access tightening applies at once to open connections (coordinator ruling, ember-delegated)
+Status: DECIDED. A revocation (access tightening) takes effect immediately for open connections: the next command is checked against the new rule, or the connection closes by name. Every other reconfiguration stays pinned per specs/reconfiguration.md 2.3. Owner: access-revoke (ACCESS-REVOKE-PINNED).
+
+### 2026-10-04: D59 — TLS defaults: shipped OpenSSL 3.5.8, explicit groups, hybrid preferred (coordinator ruling, ember-delegated)
+Status: DECIDED. FN_OPENSSL_PREFIX defaults to the shipped OpenSSL 3.5.8. Groups are explicit, with hybrid X25519MLKEM768 preferred, and a hybrid-required policy is available. Refusal scope (root correction): a missing OpenSSL prefix refuses start only when a TLS listener or STARTTLS is configured or key_exchange is hybrid-required; otherwise the system pair is used with a warning. Owner: w-serve (PRF-1327).
+
+### 2026-10-04: D60 — Redeploy of both nodes (coordinator ruling, ember-delegated)
+Status: DECIDED. Both public nodes are redeployed once the blockers close: the installed heap (SCEN-INSTALLED-HEAP-NOT-HELD), the restricted read (access-check), and the image batch. The core, smoke and peer tiers must pass first. The redeploy goes through session breadstuffs-89. The old store is kept with an export route, and the new store is initialised fresh. Docs are posted to fn.docs after the redeploy, and the lane branches on GitHub stay.

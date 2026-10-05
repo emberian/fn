@@ -304,5 +304,54 @@ class StableStatusLinesTests(unittest.TestCase):
                             stable_status_lines(report.replace("articles=7", "articles=6")))
 
 
+
+FAKE_IMAGE = """#!/bin/sh
+# A stand-in image: the heap probe answers a figure, a run prints what it got.
+if [ "$1 $2" = "--fn heap" ]; then
+    echo "heap=777 MB profile=custom machine=4096 MB stack=1536 KB threads=3"
+    exit 0
+fi
+echo "ran SBCL_USER_ARGS=${SBCL_USER_ARGS:-} args=$*"
+"""
+
+
+class InstalledLaunchTests(unittest.TestCase):
+    """Node.launch (the decided-launch ruling, 2026-10-04): an owner starts
+    through packaging/fn in its installed layout, at the heap probe's
+    figure; a test that names its own heap keeps the image."""
+
+    def setUp(self):
+        import tempfile
+        from pathlib import Path
+        self.tmp = Path(tempfile.mkdtemp(prefix="fn-launch-test-"))
+        self.addCleanup(__import__("shutil").rmtree, self.tmp, True)
+        self.image = self.tmp / "fn-host"
+        self.image.write_text(FAKE_IMAGE)
+        self.image.chmod(0o755)
+        (self.tmp / "fn-host.core").write_bytes(b"core" * 1024)
+
+    def test_an_owner_run_goes_through_the_installed_launcher_at_the_decided_heap(self):
+        node = native_harness.Node(self, self.image, root=self.tmp / "node")
+        result = node.invoke("operator", node.config, "run", "--once",
+                             env={"FN_NATIVE_HOST": "/elsewhere"})
+        out = result.stdout.decode()
+        self.assertEqual(result.returncode, 0, out + result.stderr.decode())
+        self.assertIn("SBCL_USER_ARGS=--dynamic-space-size 777 --control-stack-size 1536KB", out)
+        self.assertIn("args=--fn operator {} run --once".format(node.config), out)
+        launcher = native_harness.installed_launcher(self.image)
+        self.assertEqual(launcher.read_bytes(),
+                         (native_harness.ROOT / "packaging" / "fn").read_bytes())
+
+    def test_a_named_heap_opts_out_and_other_verbs_run_the_image(self):
+        node = native_harness.Node(self, self.image, root=self.tmp / "named",
+                                   image_heap="the subject is the image's own figure")
+        out = node.invoke("operator", node.config, "run").stdout.decode()
+        self.assertNotIn("--dynamic-space-size 777", out)
+        plain = native_harness.Node(self, self.image, root=self.tmp / "plain")
+        out = plain.invoke("operator", plain.config, "status").stdout.decode()
+        self.assertNotIn("--dynamic-space-size 777", out)
+        self.assertIn("args=--fn operator {} status".format(plain.config), out)
+
+
 if __name__ == "__main__":
     unittest.main()

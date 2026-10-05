@@ -242,9 +242,8 @@
         fn-pcr-command-line-answers-the-absent-article
         (session (fn-post-session-base ps))
         (env (fn-post-reader-env config observation)))
-       (:instance
-         fn-pcr-post-delegates-a-read-without-offer-by-definition
-         (event (list :command line))))
+       (:instance fn-pcr-post-delegates-an-ordinary-read-without-offer-by-definition)
+      (:instance fn-pcr-article-line-is-an-ordinary-command))
      :in-theory
      (disable
        fn-nntp-post-step-pinned

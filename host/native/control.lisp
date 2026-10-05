@@ -54,6 +54,10 @@
             ;; (`fn-native-live-status-host-answer').
             ((and (consp status) (eq (first status) :live-status-reply))
              (second status))
+            ;; A handler's reply ACL2 has already sealed whole: the store
+            ;; identity, FNCT kind 25 (host/native/store-identity.lisp).
+            ((and (consp status) (eq (first status) :sealed-reply))
+             (second status))
             ;; A reply with no line seals kind 18 as before
             ;; (fn-ncline-read-of-a-lineless-encode).
             ((and (consp status) (eq (first status) :reasoned-reply))
@@ -443,7 +447,8 @@ ACL2 returns."
       (when (and (consp status) (eq (first status) :reason))
         (setq reason (third status) line (fourth status) status (second status)))
       (fnn-control-test-after-submit
-       (if (and (consp status) (eq (first status) :live-status-reply))
+       (if (and (consp status)
+                (member (first status) '(:live-status-reply :sealed-reply)))
            nil
        (if (and (consp status)
                 (member (first status)

@@ -1,0 +1,15 @@
+{
+ "category": "implementation",
+ "file": "host/native/feed-service.lisp",
+ "id": "SCEN-FEED-PACE",
+ "native": "tests.test_native_peering,tests.test_native_peer_catchup,tests.test_native_feed_idle",
+ "notes": [
+  "10-04 16:18 10-04 scenarios-2 design notes for the owner of feed-service.lisp (reserved: peer-feed). Reads are nonblocking (fnn-feed-recv: fnn-socket-read-now / fnn-tls-read-now), so after a CHECK is written the next round's :read usually finds nothing, and the worker sleeps 50 ms. Shape: when a round was active, do not sleep a fixed 1/20 s. Continue at once if a link has bytes to consume (drain). Otherwise poll(2) the links' fds readable (io.lisp fnn-poll-readable), capped at the same 50 ms, so a reply wakes the worker. Pitfalls: (1) a write that would block leaves output pending, so 'output pending -> continue' spins on a slow peer; poll for writable, or keep the sleep for that case. (2) A TLS channel can hold decrypted bytes the fd poll does not see; the 50 ms cap bounds that to today's cadence. (3) The idle path (S145, feed_idle under 150 owner entries in 10 s) is untouched. Guards: peering (the 462 s case), feed_idle, peer_misbehaving, peer_hostile_feed, feed_tls_read."
+ ],
+ "owner": "unassigned",
+ "severity": "medium",
+ "source": "scenarios-2",
+ "state": "open",
+ "title": "An outbound feed to a streaming peer that answers at once delivers about 2.4 articles a second. peering test_feeding_past_the_queue_bound_keeps_local_posts_accepted feeds 1,100 articles to ScriptedTransitPeer, which answers 238/239 without delay, and took 462 s at batch 6 (lat1, set 6107ceb56): 0.42 s per article, and the slowest test in the suite. Cause, from host/native/feed-service.lisp: fnn-feed-worker-loop runs ONE fnn-feed-pump-link action per link per round (offer, write, read, consume), and a round that did work sleeps +fnn-feed-poll-seconds+ (1/20 s) before the next. A CHECK/TAKETHIS article needs about 8 such rounds. At that rate a peer catching up 10,000 articles waits about 70 minutes on scheduling alone. Fix forward (scheduling only, ACL2 still decides every offer): a link that made progress keeps pumping inside the round, up to a bound, before the round's sleep. Measure: the peering module's case time before and after, with every assertion kept.",
+ "updated": "2026-10-04T20:18:41Z"
+}

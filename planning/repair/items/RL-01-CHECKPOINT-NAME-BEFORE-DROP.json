@@ -1,0 +1,22 @@
+{
+ "category": "durability",
+ "disposition": "DESIGN",
+ "evidence": "Same run: verified safe. fnn-owner-publish-captured (host/native/owner.lisp) calls fnn-log-drop only after fnn-state-checkpoint-write returns, and fnn-state-checkpoint-install (host/native/io.lisp) returns only after fnn-replace then fnn-fsync-dir of the root succeeded (an OS error there is fnn-indeterminate: fence, exit 3, no drop). Across a restart: fnn-recover-log loads the checkpoint the root names as read(2)/lookup sees it (fnn-state-checkpoint-load), its F row names the covered segments, the recovery barriers fsync journal/, the root and its parent (fnn-store-recovery-barriers), then a writable open runs the interrupted drop (fnn-log-drop: unlink, fsync journal/). After a FAILED root fsync in the previous run, the rename may be visible (dentry cache) but not durable, and a later root fsync with nothing dirty succeeds without writing it: the open's root barrier does not re-establish the binding.",
+ "exposure": "conditional",
+ "file": "host/native/io.lisp",
+ "fix": "Part of RL-01's design (lanedumps/m1-durable.md, A2 design v2 item 3a): the open must not drop on the strength of a checkpoint name it cannot show durable. Re-publish the binding at open (link the loaded checkpoint to a fresh staged name, fsync, rename, fsync the root) before the drop, or defer the drop to the first publication of this run whose root fence succeeded. Statement first over the cached-namespace model (fn-bsc).",
+ "id": "RL-01-CHECKPOINT-NAME-BEFORE-DROP",
+ "line": "8761",
+ "locus": "log-recover",
+ "notes": [
+  "10-04 13:41 Platform caveat: books/byte-store.lisp's fn-bs-fsync-dir allows a failed directory fence to drop its entry ops; on ext4 a metadata write error usually aborts the journal (errors=remount-ro) rather than leaving a clean cached dentry, so real reachability is unverified. Config/profile checked at the same time: config.json and config/000001 are written only at init (fnn-publish-initial-file: stage, fsync, link, dir fsync; later configuration changes are log records), so no acknowledged record depends on them; a failed init fsync costs at most an open refusal after a power loss."
+ ],
+ "owner": "m1-durable-2",
+ "reviewer": "m1-durable-2 (Opus), mental execution of host order 2026-10-04 after the GPT-6 review's dependency-set point; not reproduced",
+ "scenario": "Run 1: checkpoint staged and fenced, renamed onto the checkpoint name, the root fsync fails (EIO): fence, exit 3. A restart without power loss: the open reads the NEW checkpoint (its content is durable: the stage was fenced before the rename), its root barrier succeeds vacuously, and it drops the covered segments durably (journal/ fenced). Power loss: the root names the OLD checkpoint, whose suffix starts in a dropped segment: the open refuses history-short-of-checkpoint; acknowledged records in the dropped segments are unreachable. Same class as RL-01 (the visible namespace is not the durable one); containment RestartPreventExitStatus=3 (lane m1-durable-2) blocks the automatic restart, not a manual one.",
+ "severity": "high",
+ "source": "m1-durable-2",
+ "state": "open",
+ "title": "the open's drop of covered segments trusts a checkpoint name a failed root fsync left only in the dentry cache",
+ "updated": "2026-10-04T17:41:56Z"
+}

@@ -1975,11 +1975,15 @@
 ; recorded that as an open twin.  That file was retired on 2026-09-21
 ; (w11/harness-health) precisely because this reader replaced it, so the
 ; citation is history and not a pointer.  It is here now: the host hands the owner one
-; reply LINE and ACL2 reads the code.  The Message-ID a CHECK or TAKETHIS
-; reply echoes is not read back from the wire -- at most one entry is in
-; flight per peer (`fn-feedp'), so the in-flight Message-ID the owner already
-; holds is the unambiguous subject, which is also how `fn-feed-observe' reads
-; an IHAVE reply that carries none.
+; reply LINE and ACL2 reads the code.  A CHECK or TAKETHIS reply (238, 431,
+; 438, 239, 439; RFC 4644 sec. 2.4, 2.5) echoes the Message-ID it answers,
+; and that echo is the response's subject: `fn-feed-observe' treats a reply
+; naming anything but the entry in flight as a protocol loss
+; (rp-feed-reply-msgid).  Before 2026-10-04 the echo was not read and the
+; in-flight Message-ID stood in for it, so a duplicated `239 <a>' arriving
+; after `CHECK <b>' retired <b> as accepted though <b> was never sent.  An
+; IHAVE reply carries none; at most one entry is in flight per peer
+; (`fn-feedp'), so the in-flight Message-ID the owner holds is its subject.
 
 (defun fn-own-feed-digitp (b)
   (declare (xargs :guard t))
@@ -2015,19 +2019,82 @@
         (fn-own-feed-inflight-msgid (cdr xs)))
     nil))
 
+; The reply codes that echo a Message-ID (RFC 4644 sec. 2.4, 2.5).
+(defun fn-own-feed-echo-codep (code)
+  (declare (xargs :guard t))
+  (and (member-equal code '(238 431 438 239 439)) t))
+
+; The echoed token: the octets after "NNN " up to the next SP, CR or LF.
+; The reply line is one framed line (`fn-fc-line'), so the walk is bounded by
+; the framer's line limit.  An empty token is NIL, which names no entry.
+(defun fn-own-feed-token-loop (xs acc)
+  (declare (xargs :guard (true-listp acc)))
+  (if (or (atom xs) (member-equal (car xs) '(32 13 10)))
+      (revappend acc nil)
+    (fn-own-feed-token-loop (cdr xs) (cons (car xs) acc))))
+
+(defun fn-own-feed-drop-octet (xs)
+  (declare (xargs :guard t))
+  (if (consp xs) (cdr xs) nil))
+
+(defun fn-own-feed-echo-msgid (octets)
+  (declare (xargs :guard t))
+  (fn-own-feed-token-loop
+   (fn-own-feed-drop-octet
+    (fn-own-feed-drop-octet
+     (fn-own-feed-drop-octet (fn-own-feed-drop-octet octets))))
+   nil))
+
+; MSGID is the entry in flight (nil when there is none).  A reply that echoes
+; names its echo; any other reply names the entry in flight and is no reply
+; at all when nothing is in flight.
 (defun fn-own-feed-parse-response (octets msgid)
   (declare (xargs :guard t))
   (let ((code (fn-own-feed-response-code octets)))
-    (if (or (null code) (not (fn-feed-namep msgid)))
-        nil
-      (fn-feed-response code msgid))))
+    (cond ((null code) nil)
+          ((fn-own-feed-echo-codep code)
+           (fn-feed-response code (fn-own-feed-echo-msgid octets)))
+          ((not (fn-feed-namep msgid)) nil)
+          (t (fn-feed-response code msgid)))))
 
-(defthm fn-own-feed-parse-response-is-a-response
+; KEYSTONE (rp-feed-reply-msgid, the parse half).  A parsed reply carries the
+; code ACL2 read, and the Message-ID it names is the one the peer echoed for
+; a CHECK/TAKETHIS reply -- never the entry in flight standing in for it --
+; and the entry in flight for an IHAVE reply, which echoes none.
+(defthm fn-own-feed-parse-response-names-the-echo
   (implies (fn-own-feed-parse-response octets msgid)
-           (fn-feed-responsep (fn-own-feed-parse-response octets msgid)))
+           (and (equal (fn-feed-response-code
+                        (fn-own-feed-parse-response octets msgid))
+                       (fn-own-feed-response-code octets))
+                (natp (fn-feed-response-code
+                       (fn-own-feed-parse-response octets msgid)))
+                (equal (fn-feed-response-msgid
+                        (fn-own-feed-parse-response octets msgid))
+                       (if (fn-own-feed-echo-codep
+                            (fn-own-feed-response-code octets))
+                           (fn-own-feed-echo-msgid octets)
+                         msgid))))
   :hints (("Goal" :use fn-own-feed-response-code-is-a-nat
-           :in-theory (e/d (fn-feed-responsep fn-feed-response)
-                           (fn-own-feed-response-code)))))
+           :in-theory (e/d (fn-feed-response fn-feed-response-code
+                            fn-feed-response-msgid)
+                           (fn-own-feed-response-code
+                            fn-own-feed-echo-msgid)))))
+
+; The host word for one reply's port step, decided over the feed the reply
+; reached (TBL before the step).  A reply `fn-feed-observe' takes as a loss
+; -- a reply naming an entry not in flight (rp-feed-reply-msgid), a 400, 503
+; or any code outside the map -- has already requeued the entry and forgotten
+; the connection, so the host must drop the link: :lost.  Before 2026-10-04
+; the host rendered every effect-free reply :quiet and kept the socket, so
+; the feed (its connection forgotten) offered nothing on it until the peer
+; closed it.  A reply that authorized a command is :send, every other
+; :quiet.
+(defun fn-own-feed-reply-word (tbl peer response effects)
+  (declare (xargs :guard t))
+  (cond ((consp effects) :send)
+        ((equal (fn-feed-reply-class (fn-own-feed-find peer tbl) response) :lost)
+         :lost)
+        (t :quiet)))
 
 ; -----------------------------------------------------------------------------
 ; The connection to ONE peer is gone (K5, specs/peering.md sec. 3.2)
@@ -2162,10 +2229,12 @@
     nil))
 
 ; S9 carried aggregate vocabulary. The model fold is cold/reference only.
+; Every entry a feed's queue holds is owed delivery (a given-up entry leaves
+; it, rp-feed-dropped-holds-capacity), so a peer's pending work is its
+; carried UNDELIVERED.
 (defun fn-own-feed-pending-of (f)
   (declare (xargs :guard t))
-  (nfix (- (nfix (fn-feed-undelivered f))
-           (nfix (fn-feed-retry-dropped f)))))
+  (nfix (fn-feed-undelivered f)))
 
 (defun fn-own-feed-pending-delta (old new)
   (declare (xargs :guard t))
@@ -2317,7 +2386,7 @@
     fn-own-feed-intent-values fn-own-feed-intent-records
     fn-own-feed-resolution-records fn-own-feed-target-capacityp
     fn-own-feed-new-targets
-    fn-own-feed-parse-response
+    fn-own-feed-parse-response fn-own-feed-echo-msgid fn-own-feed-reply-word
     fn-own-feed-lost-one fn-own-feed-lost-records-of
     fn-own-feed-tick-peer-records fn-own-feed-tick-records
     fn-own-feed-pending-of fn-own-feed-pending-delta

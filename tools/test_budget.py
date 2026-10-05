@@ -56,8 +56,29 @@ class _TimedResult(unittest.TextTestResult):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.timings: list[tuple[str, float]] = []
+        self.cases: list[tuple[str, str]] = []  # (test id, ok|FAIL|ERROR|skip|xfail|unexpected-ok)
         self._started: dict[str, float] = {}
         self._failed: set[str] = set()
+
+    def _case(self, test, outcome: str) -> None:
+        name = test.id() if isinstance(test, unittest.TestCase) else str(test)
+        self.cases.append((name, outcome))
+
+    def addSuccess(self, test):
+        super().addSuccess(test)
+        self._case(test, "ok")
+
+    def addSkip(self, test, reason):
+        super().addSkip(test, reason)
+        self._case(test, "skip")
+
+    def addExpectedFailure(self, test, err):
+        super().addExpectedFailure(test, err)
+        self._case(test, "xfail")
+
+    def addUnexpectedSuccess(self, test):
+        super().addUnexpectedSuccess(test)
+        self._case(test, "unexpected-ok")
 
     def startTest(self, test):
         self._started[test.id()] = time.monotonic()
@@ -66,11 +87,13 @@ class _TimedResult(unittest.TextTestResult):
     def addFailure(self, test, err):
         super().addFailure(test, err)
         self._failed.add(test.id())
+        self._case(test, "FAIL")
 
     def addError(self, test, err):
         super().addError(test, err)
         if isinstance(test, unittest.TestCase):
             self._failed.add(test.id())
+        self._case(test, "ERROR")
 
     def stopTest(self, test):
         started = self._started.pop(test.id(), None)
@@ -105,8 +128,15 @@ def _flatten(suite) -> list:
     return out
 
 
-def run_one(module: str, order: str = "default") -> int:
+def run_one(module: str, order: str = "default", cases: list[str] | None = None) -> int:
     """Child mode: run one module and print its timings as one JSON line.
+
+    `cases` (test ids of the module) runs only those: a module whose stored
+    verdict is red re-runs its red cases, and the stored record carries the
+    rest forward (tools/native_verdicts.py).  Every run's record, with each
+    case's outcome, is stored under the module's key when the store is
+    writable (FN_VERDICT_STORE, else build/check-cache); FN_VERDICT_STORE=
+    (empty) stores nothing.
 
     `order="reverse"` runs the module's tests last to first (classes stay
     contiguous, so class fixtures still run once per class).  A test that
@@ -117,7 +147,10 @@ def run_one(module: str, order: str = "default") -> int:
     sys.path.insert(0, str(ROOT))
     os.chdir(ROOT)
     try:
-        suite = unittest.defaultTestLoader.loadTestsFromName(module)
+        if cases:
+            suite = unittest.defaultTestLoader.loadTestsFromNames(cases)
+        else:
+            suite = unittest.defaultTestLoader.loadTestsFromName(module)
     except BaseException as error:  # noqa: BLE001 -- SystemExit included
         # Importing the module exited or raised: an unguarded `unittest.main()`
         # read this runner's own argv and exited 2 (correctness-remainder,
@@ -138,7 +171,7 @@ def run_one(module: str, order: str = "default") -> int:
     # A setUpClass/setUpModule SkipTest is one skip for tests never counted
     # in testsRun; a skipped test is counted in both.
     counted = sum(isinstance(test, unittest.TestCase) for test, _ in result.skipped)
-    print(RESULT_PREFIX + json.dumps({
+    record = {
         "module": module,
         "tests": result.testsRun,
         "failures": len(result.failures),
@@ -148,8 +181,41 @@ def run_one(module: str, order: str = "default") -> int:
         "skips": [[test.id() if isinstance(test, unittest.TestCase) else str(test),
                    str(reason)] for test, reason in result.skipped],
         "timings": result.timings,
-    }), flush=True)
+        "cases": result.cases,
+        "only_cases": sorted(cases) if cases else None,
+    }
+    print(RESULT_PREFIX + json.dumps(record), flush=True)
+    store_verdict(module, record, bool(cases))
     return 0 if result.wasSuccessful() else 1
+
+
+def store_verdict(module: str, record: dict, partial: bool) -> None:
+    """Store the run's record under the module's key (tools/native_verdicts.py);
+    a partial run (--cases) carries the stored entry's other cases forward.
+    Never fails the run: a store that cannot be written is said and skipped."""
+    if "FN_VERDICT_STORE" in os.environ and not os.environ["FN_VERDICT_STORE"]:
+        return
+    try:
+        import native_verdicts  # noqa: PLC0415  (beside this file)
+        carried = None
+        if partial:
+            _, carried = native_verdicts.lookup(module)
+        key, path = native_verdicts.record(module, record, os.environ.get("FN_NATIVE_MODULE_LOG", ""),
+                                           None, carried)
+        print(f"{RESULT_PREFIX.strip()}: verdict stored {key[:12]} -> {path}", flush=True)
+    except (Exception, SystemExit) as error:  # noqa: BLE001  the verdict is in the line above
+        # either way; native_env.module_file exits for a module outside tests/
+        print(f"{RESULT_PREFIX.strip()}: verdict not stored ({type(error).__name__}: {error})",
+              flush=True)
+
+
+def read_result(path: Path) -> dict | None:
+    """The FN_TEST_BUDGET_RESULT record of a --one log, None when it has none."""
+    found = None
+    for line in path.read_text(errors="replace").splitlines():
+        if line.startswith(RESULT_PREFIX):
+            found = json.loads(line[len(RESULT_PREFIX):])
+    return found
 
 
 def budgets() -> dict[str, float]:
@@ -327,9 +393,11 @@ def main(argv: list[str] | None = None) -> int:
                         help="print the verdict of a --one run's log and exit with it "
                              "(0 passed, 1 failed, 4 every test skipped)")
     parser.add_argument("--one", default=None, help=argparse.SUPPRESS)
+    parser.add_argument("--cases", default="", help=argparse.SUPPRESS)
     arguments = parser.parse_args(argv)
     if arguments.one:
-        return run_one(arguments.one, arguments.order)
+        return run_one(arguments.one, arguments.order,
+                       [c for c in arguments.cases.split(",") if c] or None)
     if arguments.verdict:
         return verdict_of_log(arguments.verdict)
     if arguments.budget > DEFAULT_BUDGET_SECONDS:
