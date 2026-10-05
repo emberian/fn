@@ -2611,7 +2611,10 @@ fnn-section-run and fnn-section-run-cleanup."
                       (fnn-owner-gate-fail-locked ,s ,g ,failure)))))
             (,h (get-internal-real-time))
             (*fnn-boundary-outcome* nil)
-            (*fnn-section-step* nil))
+            (*fnn-section-step* nil)
+            ;; A read refused in this section is raised in it, never thrown
+            ;; past its boundary (host/native/io.lisp fnn-extent-with-read-refusal).
+            (*fnn-extent-read-refusal* nil))
        (fnn-with-observed-owner ((fnn-owner-service-lock ,s))
          (unwind-protect
               (fnn-owner-shared-action-locked
@@ -7001,24 +7004,40 @@ mutex; other faults stop the owner. Neither terminal outcome resumes serving."
               ;; and its trailer, self-consistency checked; ACL2 makes the
               ;; descriptors from the frame's own trailer, held in the buffer
               ;; after the prefix (fn-xrt-reseat-one; lane extent-identity).
+              ;; A read the pool refuses -- the frame's own, or the old
+              ;; extent the reseat compares against -- defers this frame
+              ;; (ACL2's :defer-frame, books/owner-resource-line.lisp): it
+              ;; is not reseated, its old files stay retired, and the
+              ;; handles reseated before the refusal keep their arena
+              ;; (each reseat keeps it: fn-xrt-reseat-frame-keeps-the-arena).
               (multiple-value-bind (octets lease)
-                  (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-                    (fnn-extent-entry-fresh new-id eoff elen))
-                (unwind-protect
-                     (fnn-owner-gated (service :control)
-                       (let ((st (fnn-live-octets-pub)))
-                         (setf (svref st 0) octets (svref st 1) (length octets))
-                         (unwind-protect
-                              (let ((answer (fnn-call 'fn-xrt-reseat-checkpoint-frame
-                                                      handles new-id eoff elen st arena)))
-                                (if (eq (first answer) t) (incf reseated) (incf incomplete)))
-                           (setf (svref st 1) 0
-                                 (svref st 0) (make-array 0 :element-type '(unsigned-byte 8))))))
-                  ;; The publication buffer no longer aliases OCTETS. A
-                  ;; scheduling refusal or reseat fault reaches this too.
-                  (setq octets nil)
-                  (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-                    (fnn-extent-discovery-release lease))))))
+                  (fnn-extent-with-read-refusal
+                   :checkpoint-release
+                   (lambda ()
+                     (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+                       (fnn-extent-entry-fresh new-id eoff elen))))
+                (if (eq octets :read-deferred)
+                    (incf incomplete)
+                  (unwind-protect
+                       (fnn-owner-gated (service :control)
+                         (let ((st (fnn-live-octets-pub)))
+                           (setf (svref st 0) octets (svref st 1) (length octets))
+                           (unwind-protect
+                                (let ((answer (fnn-extent-with-read-refusal
+                                               :checkpoint-release
+                                               (lambda ()
+                                                 (fnn-call 'fn-xrt-reseat-checkpoint-frame
+                                                           handles new-id eoff elen st arena)))))
+                                  (if (and (consp answer) (eq (first answer) t))
+                                      (incf reseated)
+                                    (incf incomplete)))
+                             (setf (svref st 1) 0
+                                   (svref st 0) (make-array 0 :element-type '(unsigned-byte 8))))))
+                    ;; The publication buffer no longer aliases OCTETS. A
+                    ;; scheduling refusal or reseat fault reaches this too.
+                    (setq octets nil)
+                    (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+                      (fnn-extent-discovery-release lease)))))))
           (fnn-owner-gated (service :control)
             ;; fnn-call answers the values as a list: the quiet set is its
             ;; first (the whole list was taken for the set once, so no
@@ -7235,8 +7254,12 @@ the crash keystone) and serving continues."
               ;; setup over that position and the space the image leaves
               ;; (fn-owner-sco-setup-of): fn-owner-sco-prepare in two halves.
               (destructuring-bind (setup prepared-next n arun)
-                  (let ((prepared (fnn-core 'fn-owner-sco-next base base-payloads configs records
-                                            (fnn-checkpoint-walk records arena) segment arena)))
+                  (let ((prepared (let ((walk (fnn-checkpoint-walk records arena)))
+                                    (fnn-extent-with-read-refusal
+                                     :checkpoint-walk
+                                     (lambda ()
+                                       (fnn-core 'fn-owner-sco-next base base-payloads configs records
+                                                 walk segment arena))))))
                     (multiple-value-bind (position2 image2)
                         (if prepared
                             (fnn-history-image-build (fnn-core 'fn-sco-records (first prepared))

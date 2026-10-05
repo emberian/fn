@@ -5262,6 +5262,12 @@
 (definterface fn-tls-self-signed-host-serial-octets
   :class :program)
 
+;; A read the pool refuses inside a publication's call, decided for its stage
+;; (host/native/io.lisp fnn-extent-with-read-refusal; lane pool-refusal).
+(definterface fn-orln-read-refusal-outcome :class :common-lisp-compliant
+  :keystones (fn-orln-exhausted-pool-never-faults-a-publication
+              fn-orln-read-refusal-otherwise-faults))
+
 (definterface fn-pxe-cache-mode :class :common-lisp-compliant
   :kinds ((enabledp booleanp)))
 
