@@ -288,3 +288,85 @@
                                fn-wg-decode fn-wg-encode fn-wg-valuep fn-wg-grammarp fn-wg-ok
                                fn-frame-decode fn-frame-protected fn-frame-protected-prefix
                                fn-frame-trailer fn-frame-digest))))
+
+; -----------------------------------------------------------------------------
+; The host's sealing and opening, as a family book uses them: the host seals
+; a payload as protected prefix plus fn-frame-trailer of it (fn-nctrl-seal,
+; fn-ncl-poll-seal), and an opened FNCT frame is exactly that sealing of its
+; payload.
+
+(defthm fn-wf-fnct-host-seal-is-wg-encode
+  (implies (and (fn-wg-grammarp g) (fn-wg-valuep g v)
+                (fn-cbor-octetp k) (natp mx) (< mx 4294967296)
+                (<= (len (fn-wg-encode g v)) mx))
+           (and (fn-wg-valuep (list :frame (list 70 78 67 84) 1 k mx g) v)
+                (equal (append (fn-frame-protected (list 70 78 67 84) 1 k (fn-wg-encode g v))
+                               (fn-frame-trailer
+                                (fn-frame-protected (list 70 78 67 84) 1 k (fn-wg-encode g v))))
+                       (fn-wg-encode (list :frame (list 70 78 67 84) 1 k mx g) v))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-wf-fnct-frame-facts)
+                 (:instance fn-wf-fnct-encode-is-host-framing)
+                 (:instance fn-wg-encode-octets)
+                 (:instance fn-wf-fnct-protected-is-wg (magic (list 70 78 67 84)) (version 1) (kind k)
+                            (p (fn-wg-encode g v)))
+                 (:instance fn-wg-frame-protected-octets (magic (list 70 78 67 84)) (version 1) (kind k)
+                            (payload (fn-wg-encode g v)))
+                 (:instance fn-frame-trailer-of-octets
+                            (octets (fn-frame-protected (list 70 78 67 84) 1 k (fn-wg-encode g v)))))
+           :in-theory (disable fn-wf-fnct-frame-facts fn-wf-fnct-encode-is-host-framing
+                               fn-wg-encode-octets fn-wf-fnct-protected-is-wg
+                               fn-wg-frame-protected-octets fn-frame-trailer-of-octets fn-wg-frame-protected
+                               fn-wg-decode-opener-frame fn-wg-encode-opener-frame fn-wg-valuep-opener-frame
+                               fn-wg-grammarp-opener-frame
+                               fn-wg-decode fn-wg-encode fn-wg-valuep fn-wg-grammarp
+                               fn-frame-protected fn-frame-trailer fn-frame-digest))))
+
+(defthm fn-wf-fnct-protected-octets-fields
+  (implies (fn-cbor-octet-listp (fn-frame-protected (list 70 78 67 84) 1 k p))
+           (and (fn-cbor-octetp k) (fn-cbor-octet-listp p)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-frame-protected fn-frame-header))))
+
+(defthm fn-wf-fnct-opened-is-host-seal
+  (let* ((r (fn-frame-decode x (fn-frame-trailer (fn-frame-protected-prefix x)) hm))
+         (p (fn-frame-result-payload r)))
+    (implies (and (fn-frame-result-okp r)
+                  (equal (fn-frame-result-magic r) (list 70 78 67 84))
+                  (equal (fn-frame-result-version r) 1)
+                  (equal (fn-frame-result-kind r) k))
+             (and (fn-cbor-octet-listp p)
+                  (<= (len p) hm)
+                  (fn-cbor-octetp k)
+                  (equal (append (fn-frame-protected (list 70 78 67 84) 1 k p)
+                                 (fn-frame-trailer (fn-frame-protected (list 70 78 67 84) 1 k p)))
+                         x))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-wf-fnct-host-open-is-sealed)
+                 (:instance fn-wf-fnct-decode-ok-digestp (digest (fn-frame-trailer (fn-frame-protected-prefix x))) (mx hm))
+                 (:instance fn-frame-decode-payload-octets (octets x)
+                            (digest (fn-frame-trailer (fn-frame-protected-prefix x))) (max-payload hm))
+                 (:instance fn-frame-decode-bounds-its-payload (octets x)
+                            (digest (fn-frame-trailer (fn-frame-protected-prefix x))) (max-payload hm))
+                 (:instance fn-wf-fnct-protected-octets-fields
+                            (p (fn-frame-result-payload (fn-frame-decode x (fn-frame-trailer (fn-frame-protected-prefix x)) hm))))
+                 (:instance fn-frame-protected-true-listp (magic (list 70 78 67 84)) (version 1) (kind k)
+                            (payload (fn-frame-result-payload (fn-frame-decode x (fn-frame-trailer (fn-frame-protected-prefix x)) hm))))
+                 (:instance fn-frame-trailer-of-octets
+                            (octets (fn-frame-protected (list 70 78 67 84) 1 k
+                                                        (fn-frame-result-payload (fn-frame-decode x (fn-frame-trailer (fn-frame-protected-prefix x)) hm))))))
+           :in-theory (disable fn-frame-trailer-of-octets fn-frame-decode-payload-octets fn-frame-decode-bounds-its-payload
+                               fn-frame-decode fn-frame-protected fn-frame-trailer fn-frame-digest
+                               fn-frame-protected-prefix
+                               fn-frame-result-okp fn-frame-result-magic fn-frame-result-version
+                               fn-frame-result-kind fn-frame-result-payload))))
+
+(defthm fn-wf-fnct-nctrl-seal-is-host-framing
+  (implies (and (fn-cbor-octetp k) (fn-cbor-octet-listp p)
+                (<= (len p) *fn-nctrl-max-payload*))
+           (equal (fn-nctrl-seal k p)
+                  (append (fn-frame-protected (list 70 78 67 84) 1 k p)
+                          (fn-frame-trailer (fn-frame-protected (list 70 78 67 84) 1 k p)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-nctrl-seal) (fn-frame-protected fn-frame-trailer)))))
