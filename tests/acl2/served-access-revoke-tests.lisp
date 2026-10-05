@@ -61,7 +61,7 @@
 (defconst *sar-bob*
   (fn-auth-make-cred (fn-nntp-string-octets "bob") (make-list 32 :initial-element 8)
                      *sar-verifier* t))
-(defconst *sar-acfg* (fn-auth-make-config t nil t (list *sar-bob*)))
+(defconst *sar-acfg* (fn-auth-make-config nil nil t (list *sar-bob*)))
 (assert-event (fn-auth-configp *sar-acfg*))
 
 (defconst *sar-agent* (fn-nntp-string-octets "fn.example.invalid"))
@@ -151,15 +151,17 @@
               octets fn-arena)))))
     (if (fn-octet-listp x) (fn-record-octets-string x) nil)))
 (bpr-lift sar-read 2)
-(defconst *sar-read-pin* (in-arena-sar-read *sar-arena* *sar-pin2* *sar-pipelined*))
-(defconst *sar-read-served* (in-arena-sar-read *sar-arena* *sar-served2* *sar-pipelined*))
-; Both reads authenticated bob (281) before the STAT.
-(assert-event (sar-searchp "281 " *sar-read-pin*))
-(assert-event (sar-searchp "281 " *sar-read-served*))
-; The pin answers bob's STAT 223; the served configuration 430.
-(assert-event (sar-searchp "223 " *sar-read-pin*))
-(assert-event (not (sar-searchp "223 " *sar-read-served*)))
-(assert-event (sar-searchp "430 " *sar-read-served*))
+; (The SCRAM digest is an attachment, which a defconst may not call: each
+; read is evaluated inside its assertion.)
+; The pin: bob authenticates (281) and is served <s@> (223).
+(assert-event
+ (let ((r (in-arena-sar-read *sar-arena* *sar-pin2* *sar-pipelined*)))
+   (and (sar-searchp "281 " r) (sar-searchp "223 " r))))
+; The served configuration: bob authenticates in the same read, and his
+; STAT is decided by his live rule: 430, never 223.
+(assert-event
+ (let ((r (in-arena-sar-read *sar-arena* *sar-served2* *sar-pipelined*)))
+   (and (sar-searchp "281 " r) (sar-searchp "430 " r) (not (sar-searchp "223 " r)))))
 
 ; -----------------------------------------------------------------------------
 ; (3) Widening stays at the pin.
