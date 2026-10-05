@@ -5412,6 +5412,11 @@
 
 (definterface fn-owner-page-window-byte-at :class :common-lisp-compliant
   :kinds ((plan true-listp)))
+(definterface fn-owner-page-window-span-at :class :common-lisp-compliant
+  :kinds ((plan true-listp))
+  :keystones ((fn-pwr-span-at-is-the-borrowed-bytes :via fn-pwr-span-at)
+              (fn-pwr-span-at-refuses-where-the-octet-refuses :via fn-pwr-span-at)
+              (fn-pwr-span-at-answers-when-its-ends-do :via fn-pwr-span-at)))
 (definterface fn-pwr-cold-descriptor :class :common-lisp-compliant)
 
 (definterface fn-owner-page-window-outcome :class :common-lisp-compliant
