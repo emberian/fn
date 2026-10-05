@@ -23587,14 +23587,14 @@
         "PRF-1287"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
+      "evidence": [],
+      "note": "Closes FILL-GROUP-ACCESS-PRIVATE-LEAK and FILL-MODERATION-ENVELOPE-READABLE (lane access-check). Discharges, for read-restricted sessions only, the 'selective owner refinement owed' of the generated av route (6a5427e9e); the unrestricted available projection's selective reference and the av route's guards remain owed (PRF-1287). The read-level hypothesis is per event: AUTHINFO may change the rule between events of one read. Native: developer-image overlay over set 6107ceb56; production at the next image batch.",
       "events": [
         "fn-av-scr-auth-delegate-restricted-is-reference",
         "fn-av-scr-dispatch-core-restricted-is-reference",
         "fn-av-mca-read-span-restricted-is-legacy"
-      ],
-      "evidence": [],
-      "note": "Closes FILL-GROUP-ACCESS-PRIVATE-LEAK and FILL-MODERATION-ENVELOPE-READABLE (lane access-check). Discharges, for read-restricted sessions only, the 'selective owner refinement owed' of the generated av route (6a5427e9e); the unrestricted available projection's selective reference and the av route's guards remain owed (PRF-1287). The read-level hypothesis is per event: AUTHINFO may change the rule between events of one read. Native: developer-image overlay over set 6107ceb56; production at the next image batch."
+      ]
     }
   ]
 }

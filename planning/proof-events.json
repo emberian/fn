@@ -19694,6 +19694,23 @@
           "name": "fn-pfp-catch-up-admission-is-identity-elsewhere"
         }
       ]
+    },
+    {
+      "id": "PRF-1328",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-av-scr-auth-delegate-restricted-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-av-scr-dispatch-core-restricted-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-av-mca-read-span-restricted-is-legacy"
+        }
+      ]
     }
   ]
 }
