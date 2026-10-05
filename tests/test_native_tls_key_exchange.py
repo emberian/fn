@@ -151,7 +151,10 @@ class NativeTlsKeyExchangeTests(unittest.TestCase):
             self.assertNotIn(HYBRID, classical)
             self.assertIn("111 ", classical, "the classical session answered no DATE: " + classical)
             # The service log names each session's group (ACL2's line).
-            text = self.wait_for_log(r"tls established group=X25519\b")
+            # The library's own name for the group: OpenSSL 3.5's
+            # SSL_get0_group_name says `x25519' for the classical group and
+            # `X25519MLKEM768' for the hybrid (hbox bq10050759-0151).
+            text = self.wait_for_log(r"(?m)^tls established group=(?i:x25519)$")
             self.assertIn("tls established group={}".format(HYBRID), text)
             # status and health end with the tallies, the policy and the groups served.
             status = self.node.operator("status")
