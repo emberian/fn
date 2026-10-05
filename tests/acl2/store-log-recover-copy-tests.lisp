@@ -146,3 +146,52 @@
    (and (not (fn-lgrc-op-okp s op :journal "K" (lgrct-a)))
         (fn-bs-crash-choicesp (list (list :zero)) (fn-bs-pending (fn-bsc-bs s1)) (lgrct-unit))
         (equal (lgrct-bound-records s2) nil))))
+
+; K1 on the ground restart: the open's kernel is the read's (A and B), and
+; after A2's attempt the store is R-related to it through inode 1; after
+; the OLD program the same kernel is not R-related to the store (B's
+; octets are not durable).
+(defun lgrct-read-kernel () (declare (xargs :guard t :verify-guards nil))
+  (let ((s (lgrct-restarted)))
+    (fn-lgt-recover (fn-bsc-content s (fn-bsc-lookup s :journal "K"))
+                    (lgrct-genesis) (lgrct-unit) (lgrct-max) 0)))
+(assert-event
+ (and (equal (fn-lgk-committed (lgrct-read-kernel)) (list (lgrct-r 1) (lgrct-r 2) (lgrct-r 3)))
+      (fn-lgk-relp (fn-bsc-bs (lgrct-a2-recovered)) (lgrct-read-kernel) 1 (lgrct-genesis) (lgrct-max))
+      (not (fn-lgk-relp (fn-bsc-bs (lgrct-old-recovered)) (lgrct-read-kernel) 0
+                        (lgrct-genesis) (lgrct-max)))))
+
+; K3 on the ground: the RL-01 trace through epochs under A2.  The first open
+; serves A; B's barrier fails (the service ends); the restart's open reads
+; B from the clean cache and serves A and B; C is fenced and acknowledged;
+; power loss.  Every state keeps the epoch invariant, and the final image
+; binds an inode whose scan reads all four records.
+(defun lgrct-epoch-events () (declare (xargs :guard t :verify-guards nil))
+  (list (list :open :staging "stage" nil)
+        (list :commit (lgrct-b) :ok (cons :eio nil))
+        (list :exit)
+        (list :open :staging "stage" nil)
+        (list :commit (lgrct-c) :ok :ok)
+        (list :ack)
+        (list :lose-cache nil)))
+(defun lgrct-epochs () (declare (xargs :guard t :verify-guards nil))
+  (fn-lgrc-epochs (lgrct-s0) (lgrct-a) (lgrct-a) nil (lgrct-epoch-events)
+                  :journal "K" (lgrct-genesis) (lgrct-max) 0))
+(assert-event
+ (let* ((w (lgrct-epochs)) (last (car (last w))))
+   (and (fn-lgrc-epochs-okp (lgrct-s0) (lgrct-a) (lgrct-a) nil (lgrct-epoch-events)
+                            :journal "K" (lgrct-genesis) (lgrct-max) 0)
+        (fn-lgrc-completep (append (lgrct-a) (lgrct-b) (lgrct-c)) (lgrct-genesis) (lgrct-unit) (lgrct-max))
+        (equal (cdr last) (append (lgrct-a) (lgrct-b) (lgrct-c)))     ; acknowledged: A, B, C
+        (equal (lgrct-bound-records (car last))
+               (list (lgrct-r 1) (lgrct-r 2) (lgrct-r 3) (lgrct-r 4))))))
+
+; No space: the restart's writable open needs the read's length (512) free.
+; With 511 it refuses by name and takes no step; with 512 it copies.
+(assert-event
+ (mv-let (v1 sts1) (fn-lgrc-open (lgrct-restarted) :journal "K" :staging "stage"
+                                 (lgrct-genesis) (lgrct-max) 0 511 nil)
+   (mv-let (v2 sts2) (fn-lgrc-open (lgrct-restarted) :journal "K" :staging "stage"
+                                   (lgrct-genesis) (lgrct-max) 0 512 nil)
+     (and (equal v1 :recover-copy-no-space) (null sts1)
+          (equal v2 :copy) (equal (len sts2) 6)))))

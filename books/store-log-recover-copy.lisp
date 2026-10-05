@@ -1238,3 +1238,979 @@
                             (o (fn-bs-durable-content image (fn-bs-durable-entry image j k)))
                             (unit (fn-bs-unit (fn-bsc-bs s))))))))
 
+; -----------------------------------------------------------------------------
+; 6. K1: an attempt that succeeds makes the READ prefix durable.
+
+(local
+ (defthm fn-lgrc-after-rename-ok
+   (let ((s4 (mv-nth 1 (fn-bsc-step s (list :rename sd sn dd dn :ok))))
+         (ino (fn-bsc-lookup s sd sn)))
+     (implies (fn-bs-inop ino)
+              (and (equal (car (fn-bsc-step s (list :rename sd sn dd dn :ok))) :ok)
+                   (equal (fn-bs-inodes (fn-bsc-bs s4)) (fn-bs-inodes (fn-bsc-bs s)))
+                   (equal (fn-bs-dirs (fn-bsc-bs s4)) (fn-bs-dirs (fn-bsc-bs s)))
+                   (equal (fn-bs-unit (fn-bsc-bs s4)) (fn-bs-unit (fn-bsc-bs s)))
+                   (equal (fn-bs-next-ino (fn-bsc-bs s4)) (fn-bs-next-ino (fn-bsc-bs s)))
+                   (equal (fn-bs-pending (fn-bsc-bs s4))
+                          (append (fn-bs-pending (fn-bsc-bs s))
+                                  (list (list :set-entry dd dn ino) (list :del-entry sd sn)))))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-bsc-step fn-bsc-bs fn-bsc-vapply) (fn-bs-apply-op fn-bsc-lookup))))))
+(local
+ (defthm fn-lgrc-after-fsync-dir-ok
+   (let ((s5 (mv-nth 1 (fn-bsc-step s (list :fsync-dir d :ok)))))
+     (and (equal (car (fn-bsc-step s (list :fsync-dir d :ok))) :ok)
+          (equal (fn-bs-inodes (fn-bsc-bs s5)) (fn-bs-inodes (fn-bsc-bs s)))
+          (equal (fn-bs-dirs (fn-bsc-bs s5))
+                 (fn-bs-apply-entries (fn-bs-dirs (fn-bsc-bs s))
+                                      (fn-bs-ops-for-dir (fn-bs-pending (fn-bsc-bs s)) d)))
+          (equal (fn-bs-unit (fn-bsc-bs s5)) (fn-bs-unit (fn-bsc-bs s)))
+          (equal (fn-bs-next-ino (fn-bsc-bs s5)) (fn-bs-next-ino (fn-bsc-bs s)))
+          (equal (fn-bs-pending (fn-bsc-bs s5))
+                 (fn-bs-ops-not-for-dir (fn-bs-pending (fn-bsc-bs s)) d))
+          (equal (fn-bsc-lookup s5 dd nn) (fn-bsc-lookup s dd nn))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-bsc-step fn-bsc-bs fn-bsc-lookup fn-bs-fsync-dir fn-bs-fence-dir
+                             fn-bs-apply-ops-inodes-are-apply-writes fn-bs-apply-ops-dirs-are-apply-entries
+                             fn-bs-apply-writes-of-ops-for-dir)
+                            (fn-bs-apply-entries fn-bs-ops-for-dir fn-bs-ops-not-for-dir fn-bs-apply-ops))))))
+(local
+ (defthm fn-lgrc-after-fsync-file-keeps-names
+   (let ((s3 (mv-nth 1 (fn-bsc-step s (list :fsync-file ino :ok)))))
+     (and (equal (fn-bs-dirs (fn-bsc-bs s3)) (fn-bs-dirs (fn-bsc-bs s)))
+          (equal (fn-bs-unit (fn-bsc-bs s3)) (fn-bs-unit (fn-bsc-bs s)))
+          (equal (fn-bsc-lookup s3 dd nn) (fn-bsc-lookup s dd nn))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-bsc-step fn-bsc-bs fn-bsc-lookup fn-bs-fsync-file fn-bs-fence-file
+                             fn-bs-apply-ops-dirs-are-apply-entries fn-bs-apply-entries-of-ops-for-ino)
+                            (fn-bs-apply-entries fn-bs-ops-for-ino fn-bs-ops-not-for-ino fn-bs-apply-ops))))))
+(local
+ (defthm fn-lgrc-create-keeps-dirs-and-unit
+   (let ((s1 (mv-nth 1 (fn-bsc-step s (list :create d n out)))))
+     (and (equal (fn-bs-dirs (fn-bsc-bs s1)) (fn-bs-dirs (fn-bsc-bs s)))
+          (equal (fn-bs-unit (fn-bsc-bs s1)) (fn-bs-unit (fn-bsc-bs s)))))
+   :hints (("Goal" :in-theory (enable fn-bsc-step fn-bsc-bs)))))
+(local
+ (defthm fn-lgrc-write-keeps-dirs-and-unit
+   (let ((s1 (mv-nth 1 (fn-bsc-step s (list :write i o x out)))))
+     (and (equal (fn-bs-dirs (fn-bsc-bs s1)) (fn-bs-dirs (fn-bsc-bs s)))
+          (equal (fn-bs-unit (fn-bsc-bs s1)) (fn-bs-unit (fn-bsc-bs s)))))
+   :hints (("Goal" :in-theory (enable fn-bsc-step fn-bsc-bs fn-bs-write fn-bsc-vapply)))))
+(local
+ (defthm fn-lgrc-splice-into-nothing
+   (implies (true-listp x) (equal (fn-bs-splice nil 0 x) x))
+   :hints (("Goal" :expand ((fn-bs-take 0 nil)) :in-theory (enable fn-bs-splice)))))
+
+(local
+ (defthm fn-lgrc-after-fsync-file-ok-inodes
+   (equal (cdr (assoc-equal ino (fn-bs-inodes (fn-bsc-bs (mv-nth 1 (fn-bsc-step s (list :fsync-file ino :ok)))))))
+          (cdr (assoc-equal ino (fn-bs-apply-writes (fn-bs-inodes (fn-bsc-bs s))
+                                                    (fn-bs-ops-for-ino (fn-bs-pending (fn-bsc-bs s)) ino)))))
+   :hints (("Goal" :in-theory (e/d (fn-bs-durable-content) (fn-lgrc-after-fsync-file-ok fn-bsc-step fn-lgrc-inodes-entry-is-durable-content))
+            :use ((:instance fn-lgrc-after-fsync-file-ok))))))
+; The six steps under :ok from a quiet store publish the copy: journal/K
+; durably names the staged inode, which durably holds the copy, and
+; nothing is pending.
+(defthm fn-lgrc-copy-chain-publishes
+  (let* ((ino (fn-bs-next-ino (fn-bsc-bs s)))
+         (s1 (mv-nth 1 (fn-bsc-step s (list :create stg stage :ok))))
+         (s2 (mv-nth 1 (fn-bsc-step s1 (list :write ino 0 x :ok))))
+         (s3 (mv-nth 1 (fn-bsc-step s2 (list :fsync-file ino :ok))))
+         (s4 (mv-nth 1 (fn-bsc-step s3 (list :rename stg stage j k :ok))))
+         (s5 (mv-nth 1 (fn-bsc-step s4 (list :fsync-dir j :ok))))
+         (s6 (mv-nth 1 (fn-bsc-step s5 (list :fsync-dir stg :ok))))
+         (bs6 (fn-bsc-bs s6)))
+    (implies (and (natp ino) (not (fn-bsc-lookup s stg stage))
+                  (fn-bs-dir-idp stg) (fn-bs-namep stage) (fn-bs-dir-idp j) (fn-bs-namep k)
+                  (not (and (equal stg j) (equal stage k)))
+                  (true-listp x) (consp x)
+                  (null (fn-bs-pending (fn-bsc-bs s))))
+             (and (equal (fn-bs-durable-entry bs6 j k) ino)
+                  (equal (fn-bs-durable-content bs6 ino) x)
+                  (equal (fn-bs-unit bs6) (fn-bs-unit (fn-bsc-bs s)))
+                  (null (fn-bs-pending bs6)))))
+  :hints (("Goal" :do-not-induct t
+           :cases ((equal stg j))
+           :in-theory (e/d (fn-bs-durable-entry fn-bs-durable-content fn-bs-ops-for-ino-of-append
+                            fn-bs-apply-entries-entry-is-entry-after fn-bs-entry-after
+                            fn-bs-assoc-of-put-assoc-same fn-bs-assoc-of-put-assoc-other
+                            fn-bs-assoc-of-del-assoc-other fn-bs-assoc-of-del-assoc-same)
+                           (fn-bsc-step fn-bsc-lookup fn-bsc-content fn-bs-splice fn-bs-put-assoc
+                            fn-lgrc-inodes-entry-is-durable-content)))))
+
+(local
+ (defthm fn-lgrc-durable-content-names-an-inode
+   (implies (consp (fn-bs-durable-content bs i)) (assoc-equal i (fn-bs-inodes bs)))
+   :hints (("Goal" :in-theory (e/d (fn-bs-durable-content) (fn-lgrc-inodes-entry-is-durable-content)))))
+)
+(local
+ (defthm fn-lgrc-zerosp-of-zeros
+   (fn-lg-zerosp (fn-bs-zeros n))
+   :hints (("Goal" :in-theory (enable fn-bs-zeros fn-lg-zerosp)))))
+(local
+ (defthm fn-lgrc-len-of-zeros
+   (equal (len (fn-bs-zeros n)) (nfix n))
+   :hints (("Goal" :in-theory (enable fn-bs-zeros)))))
+(local
+ (defthm fn-lgrc-nthcdr-of-append-exact
+   (implies (equal n (len x))
+            (equal (nthcdr n (append x y)) y))))
+(local
+ (defthm fn-lgrc-copy-octets-shape
+   (implies (and (natp f) (<= f (len o)))
+            (let ((x (fn-lgrc-copy-octets o f)))
+              (and (true-listp x)
+                   (equal (len x) (len o))
+                   (equal (fn-bs-take f x) (fn-bs-take f o))
+                   (fn-lg-zerosp (nthcdr f x)))))
+   :hints (("Goal" :in-theory (e/d () (fn-bs-take fn-bs-zeros fn-lg-zerosp))))))
+
+(defun fn-lgrc-final (run s)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp run) (car (last run)) s))
+
+(local
+ (defthm fn-lgrc-six-ok-steps-publish
+   (let* ((ino (fn-bs-next-ino (fn-bsc-bs s)))
+          (run (fn-bsc-run s (list (list :create stg stage :ok)
+                                   (list :write ino 0 x :ok)
+                                   (list :fsync-file ino :ok)
+                                   (list :rename stg stage j k :ok)
+                                   (list :fsync-dir j :ok)
+                                   (list :fsync-dir stg :ok))))
+          (final (fn-bsc-bs (fn-lgrc-final run s))))
+     (implies (and (natp ino) (not (fn-bsc-lookup s stg stage))
+                   (fn-bs-dir-idp stg) (fn-bs-namep stage) (fn-bs-dir-idp j) (fn-bs-namep k)
+                   (not (and (equal stg j) (equal stage k)))
+                   (true-listp x) (consp x)
+                   (null (fn-bs-pending (fn-bsc-bs s))))
+              (and (equal (len run) 6)
+                   (equal (fn-bs-durable-entry final j k) ino)
+                   (equal (fn-bs-durable-content final ino) x)
+                   (equal (fn-bs-unit final) (fn-bs-unit (fn-bsc-bs s)))
+                   (null (fn-bs-pending final)))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d () (fn-bsc-step fn-lgrc-copy-chain-publishes fn-lgrc-staged-inode-is-good
+                                fn-bsc-lookup fn-bs-durable-entry fn-bs-durable-content))
+            :use ((:instance fn-lgrc-copy-chain-publishes)
+                  (:instance fn-lgrc-staged-inode-is-good (a nil)))))))
+
+(local
+ (defthm fn-lgrc-attempt-ops-with-no-failures
+   (equal (fn-lgrc-attempt-ops s j k stg stage genesis max floor nil)
+          (let ((ino (fn-bs-next-ino (fn-bsc-bs s)))
+                (x (fn-lgrc-copy-octets
+                    (fn-bsc-content s (fn-bsc-lookup s j k))
+                    (fn-lgk-frontier (fn-lgt-recover (fn-bsc-content s (fn-bsc-lookup s j k))
+                                                     genesis (fn-bs-unit (fn-bsc-bs s)) max floor)))))
+            (list (list :create stg stage :ok)
+                  (list :write ino 0 x :ok)
+                  (list :fsync-file ino :ok)
+                  (list :rename stg stage j k :ok)
+                  (list :fsync-dir j :ok)
+                  (list :fsync-dir stg :ok))))
+   :hints (("Goal" :in-theory (disable fn-lgrc-copy-octets fn-lgt-recover fn-lgk-frontier
+                                       fn-bsc-content fn-bsc-lookup fn-lgrc-frontier-of-recover)))))
+(local
+ (defthm fn-lgrc-read-frontier-is-within
+   (implies (and (posp unit) (true-listp o) (equal (mod (len o) unit) 0))
+            (let ((f (fn-lgk-frontier (fn-lgt-recover o genesis unit max floor))))
+              (and (natp f) (<= f (len o)))))
+   :hints (("Goal" :in-theory (disable fn-lg-scan fn-lg-scan-last fn-lgt-recover)
+            :use ((:instance fn-lg-recovered-frontier-is-the-last-complete-record (c o)))))))
+
+; KEYSTONE (K1).  An attempt whose six syscalls all succeed, from a store
+; with nothing pending, leaves journal/K DURABLY naming the staged inode,
+; which durably holds the read's validated prefix [0, F) and zeros to the
+; read's length, with nothing pending; the store is R-related to the
+; kernel of what the open READ (by fn-lg-durable-read-prefix-establishes-
+; the-relation).  No hypothesis relates the read to the durable content
+; before the open: the read may hold a failed barrier's clean pages.
+(defthm fn-lgrc-attempt-makes-the-read-prefix-durable
+  (let* ((bs (fn-bsc-bs s))
+         (unit (fn-bs-unit bs))
+         (o (fn-bsc-content s (fn-bsc-lookup s j k)))
+         (ks (fn-lgt-recover o genesis unit max floor))
+         (ino (fn-bs-next-ino bs))
+         (run (fn-lgrc-attempt s j k stg stage genesis max floor nil))
+         (final (fn-bsc-bs (fn-lgrc-final run s))))
+    (implies (and (natp ino) (fn-bs-dir-idp j) (fn-bs-namep k)
+                  (fn-bs-dir-idp stg) (fn-bs-namep stage)
+                  (not (and (equal stg j) (equal stage k)))
+                  (not (fn-bsc-lookup s stg stage))
+                  (null (fn-bs-pending bs))
+                  (posp unit) (true-listp o) (consp o) (equal (mod (len o) unit) 0)
+                  (fn-frame-digestp genesis))
+             (and (equal (len run) 6)
+                  (equal (fn-bs-durable-entry final j k) ino)
+                  (equal (fn-bs-durable-content final ino)
+                         (fn-lgrc-copy-octets o (fn-lgk-frontier ks)))
+                  (null (fn-bs-pending final))
+                  (fn-lgk-relp final ks ino genesis max))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgrc-durable-content-names-an-inode)
+                           (fn-bsc-step fn-bsc-run fn-lgrc-final fn-lgrc-copy-octets fn-lgt-recover
+                            fn-lgk-frontier fn-lgrc-frontier-of-recover mod
+                            fn-lgk-relp fn-lg-scan fn-bsc-content fn-bsc-lookup
+                            fn-bs-durable-content fn-bs-durable-entry fn-lgrc-inodes-entry-is-durable-content
+                            fn-lg-durable-read-prefix-establishes-the-relation
+                            fn-lgrc-six-ok-steps-publish fn-lgrc-copy-octets-shape))
+           :use ((:instance fn-lgrc-read-frontier-is-within
+                            (o (fn-bsc-content s (fn-bsc-lookup s j k)))
+                            (unit (fn-bs-unit (fn-bsc-bs s))))
+                 (:instance fn-lgrc-copy-octets-shape
+                            (o (fn-bsc-content s (fn-bsc-lookup s j k)))
+                            (f (fn-lgk-frontier (fn-lgt-recover (fn-bsc-content s (fn-bsc-lookup s j k))
+                                                                genesis (fn-bs-unit (fn-bsc-bs s)) max floor))))
+                 (:instance fn-lgrc-consp-of-copy
+                            (o (fn-bsc-content s (fn-bsc-lookup s j k)))
+                            (f (fn-lgk-frontier (fn-lgt-recover (fn-bsc-content s (fn-bsc-lookup s j k))
+                                                                genesis (fn-bs-unit (fn-bsc-bs s)) max floor))))
+                 (:instance fn-lgrc-six-ok-steps-publish
+                            (x (fn-lgrc-copy-octets
+                                (fn-bsc-content s (fn-bsc-lookup s j k))
+                                (fn-lgk-frontier (fn-lgt-recover (fn-bsc-content s (fn-bsc-lookup s j k))
+                                                                 genesis (fn-bs-unit (fn-bsc-bs s)) max floor)))))
+                 (:instance fn-lg-durable-read-prefix-establishes-the-relation
+                            (o (fn-bsc-content s (fn-bsc-lookup s j k)))
+                            (ino (fn-bs-next-ino (fn-bsc-bs s)))
+                            (bs (fn-bsc-bs (fn-lgrc-final (fn-lgrc-attempt s j k stg stage genesis max floor nil) s))))))))
+
+; -----------------------------------------------------------------------------
+; 7. No space: the open refuses by name, before any write.
+;
+; The copy needs room for the read's length (the segment's extent); the
+; host observes the filesystem's free octets (statvfs) before creating the
+; staged inode.  Without the room the WRITABLE open refuses
+; :recover-copy-no-space: no step is taken, the old basis is untouched,
+; and there is no fallback to rewriting in place.  The read-only open
+; (readers) is not this program.  An ENOSPC the observation did not
+; predict (another writer, delayed allocation) fails the copy's write or
+; its fence, and the attempt stops there: fn-lgrc-attempt-keeps-the-
+; invariant covers it like any other failed syscall.
+(defun fn-lgrc-copy-verdict (free need)
+  (declare (xargs :guard t))
+  (if (and (natp free) (natp need) (<= need free)) :copy :recover-copy-no-space))
+
+(defthm fn-lgrc-copy-verdict-copies-exactly-with-room
+  (equal (equal (fn-lgrc-copy-verdict free need) :copy)
+         (and (natp free) (natp need) (<= need free))))
+
+; The writable open: the verdict over the read's length, then the attempt
+; or nothing.  Answers (mv verdict states).
+(defun fn-lgrc-open (s j k stg stage genesis max floor free outs)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((o (fn-bsc-content s (fn-bsc-lookup s j k)))
+         (verdict (fn-lgrc-copy-verdict free (len o))))
+    (if (equal verdict :copy)
+        (mv :copy (fn-lgrc-attempt s j k stg stage genesis max floor outs))
+      (mv verdict nil))))
+
+; KEYSTONE.  A refused open takes no step (the store is the one it found:
+; journal/K, its inodes and its pending operations untouched), and refuses
+; by name exactly when the free octets are short of the read's length.
+(defthm fn-lgrc-open-refuses-without-room-and-takes-no-step
+  (mv-let (verdict states) (fn-lgrc-open s j k stg stage genesis max floor free outs)
+    (and (iff (equal verdict :recover-copy-no-space)
+              (not (and (natp free)
+                        (<= (len (fn-bsc-content s (fn-bsc-lookup s j k))) free))))
+         (implies (equal verdict :recover-copy-no-space) (null states))
+         (implies (not (equal verdict :recover-copy-no-space))
+                  (equal states (fn-lgrc-attempt s j k stg stage genesis max floor outs)))))
+  :hints (("Goal" :in-theory (disable fn-lgrc-attempt fn-bsc-content fn-bsc-lookup))))
+; -----------------------------------------------------------------------------
+; 8. K3: epochs.
+;
+; While the service runs on journal/K (SERVED), the visible binding V is the
+; only inode journal/K can name (no entry operation for it is pending and it
+; is the durable binding) and V is good for the kernel's COMMITTED octets
+; CM.  A successful attempt establishes it over what the open read; a
+; fenced append extends it; an acknowledgement moves the acknowledged
+; prefix up to CM; any failure, exit or cache loss ends it.
+(defun fn-lgrc-servedp (s j k cm)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((v (fn-bsc-lookup s j k)))
+    (and (fn-bs-dir-idp j) (fn-bs-namep k)
+         (equal (fn-lgrc-candidates (fn-bsc-bs s) j k) (list v))
+         (fn-lgrc-goodp s v cm))))
+
+(defthm fn-lgrc-servedp-is-the-invariant
+  (implies (fn-lgrc-servedp s j k cm) (fn-lgrc-invp s j k cm))
+  :hints (("Goal" :in-theory (disable fn-lgrc-goodp fn-lgrc-candidates))))
+
+(local
+ (defthm fn-lgrc-after-rename-ok-visible
+   (implies (and (fn-bs-inop (fn-bsc-lookup s sd sn)) (fn-bs-dir-idp dd) (fn-bs-namep dn)
+                 (not (and (equal sd dd) (equal sn dn))))
+            (let ((s4 (mv-nth 1 (fn-bsc-step s (list :rename sd sn dd dn :ok)))))
+              (and (equal (fn-bsc-lookup s4 dd dn) (fn-bsc-lookup s sd sn))
+                   (equal (fn-bsc-content s4 i) (fn-bsc-content s i)))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-bsc-step fn-bsc-vapply fn-bsc-lookup fn-bsc-content fn-bs-apply-op)
+                            (fn-bs-put-assoc fn-bs-del-assoc))))))
+(local
+ (defthm fn-lgrc-fsync-dir-keeps-visible-content
+   (equal (fn-bsc-content (mv-nth 1 (fn-bsc-step s (list :fsync-dir d out))) i)
+          (fn-bsc-content s i))
+   :hints (("Goal" :in-theory (enable fn-bsc-step fn-bsc-content)))))
+(local
+ (defthm fn-lgrc-write-ok-visible-content
+   (implies (and (assoc-equal ino (fn-bs-inodes (fn-bsc-bs s))) (true-listp x) (consp x) ino)
+            (equal (fn-bsc-content (mv-nth 1 (fn-bsc-step s (list :write ino 0 x :ok))) ino)
+                   (fn-bs-splice (fn-bsc-content s ino) 0 x)))
+   :hints (("Goal" :use ((:instance fn-lgrc-after-write-ok))))))
+(local
+ (defthm fn-lgrc-next-ino-after-rename-and-fsync-dir
+   (and (equal (fn-bs-next-ino (fn-bsc-bs (mv-nth 1 (fn-bsc-step s (list :fsync-dir d out)))))
+               (fn-bs-next-ino (fn-bsc-bs s)))
+        (equal (fn-bs-next-ino (fn-bsc-bs (mv-nth 1 (fn-bsc-step s (list :rename sd sn dd dn out)))))
+               (fn-bs-next-ino (fn-bsc-bs s))))
+   :hints (("Goal" :in-theory (enable fn-bsc-step fn-bsc-bs fn-bsc-vapply fn-bs-fsync-dir fn-bs-fence-dir)))))
+(local
+ (defthm fn-lgrc-candidates-when-quiet
+   (implies (null (fn-bs-pending bs))
+            (equal (fn-lgrc-candidates bs j k) (list (fn-bs-durable-entry bs j k))))
+   :hints (("Goal" :in-theory (enable fn-lgrc-candidates)
+            :expand ((fn-bs-ops-for-name nil j k))))))
+
+(local
+ (defthm fn-lgrc-fsync-of-another-dir-keeps-the-entry
+   (implies (and (not (equal d j)) (fn-bs-dir-idp j) (fn-bs-namep k))
+            (equal (fn-bs-durable-entry (fn-bsc-bs (mv-nth 1 (fn-bsc-step s (list :fsync-dir d out)))) j k)
+                   (fn-bs-durable-entry (fn-bsc-bs s) j k)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-bsc-step fn-bsc-bs fn-bs-fsync-dir fn-bs-fence-dir fn-bs-durable-entry
+                             fn-bs-apply-ops-dirs-are-apply-entries)
+                            (fn-bs-entry-outcomes fn-bs-ops-for-name fn-bs-crash-select
+                             fn-bs-ops-for-dir fn-bs-ops-not-for-dir fn-bs-apply-entries
+                             fn-bs-apply-ops fn-lgrc-entry-after-is-an-outcome
+                             fn-bs-crash-select-entry-is-an-outcome))
+            :use ((:instance fn-bs-crash-select-entry-is-an-outcome
+                             (ops (fn-bs-ops-for-dir (fn-bs-pending (fn-bsc-bs s)) d))
+                             (choices (cdr out)) (unit (fn-bs-unit (fn-bsc-bs s)))
+                             (old (fn-bs-durable-entry (fn-bsc-bs s) j k)) (dir j) (name k))
+                  (:instance fn-lgrc-entry-after-is-an-outcome
+                             (ops (fn-bs-ops-for-dir (fn-bs-pending (fn-bsc-bs s)) d))
+                             (old (fn-bs-durable-entry (fn-bsc-bs s) j k)) (d j) (n k))
+                  (:instance fn-bs-apply-entries-entry-is-entry-after
+                             (dirs (fn-bs-dirs (fn-bsc-bs s))) (dir j) (name k)
+                             (ops (fn-bs-crash-select (fn-bs-ops-for-dir (fn-bs-pending (fn-bsc-bs s)) d)
+                                                      (cdr out) (fn-bs-unit (fn-bsc-bs s)))))
+                  (:instance fn-bs-apply-entries-entry-is-entry-after
+                             (dirs (fn-bs-dirs (fn-bsc-bs s))) (dir j) (name k)
+                             (ops (fn-bs-ops-for-dir (fn-bs-pending (fn-bsc-bs s)) d))))))))
+(local
+ (defthm fn-lgrc-six-ok-steps-serve
+   (let* ((ino (fn-bs-next-ino (fn-bsc-bs s)))
+          (s1 (mv-nth 1 (fn-bsc-step s (list :create stg stage :ok))))
+          (s2 (mv-nth 1 (fn-bsc-step s1 (list :write ino 0 x :ok))))
+          (s3 (mv-nth 1 (fn-bsc-step s2 (list :fsync-file ino :ok))))
+          (s4 (mv-nth 1 (fn-bsc-step s3 (list :rename stg stage j k :ok))))
+          (s5 (mv-nth 1 (fn-bsc-step s4 (list :fsync-dir j :ok))))
+          (s6 (mv-nth 1 (fn-bsc-step s5 (list :fsync-dir stg :ok)))))
+     (implies (and (natp ino) (not (fn-bsc-lookup s stg stage))
+                   (fn-bs-dir-idp stg) (fn-bs-namep stage) (fn-bs-dir-idp j) (fn-bs-namep k)
+                   (not (and (equal stg j) (equal stage k)))
+                   (true-listp x) (consp x) (fn-lgrc-holdsp x p)
+                   (null (fn-bs-pending (fn-bsc-bs s))))
+              (fn-lgrc-servedp s6 j k p)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-lgrc-goodp)
+                            (fn-bsc-step fn-lgrc-copy-chain-publishes fn-lgrc-staged-inode-is-good
+                             fn-lgrc-candidates fn-bs-durable-content fn-bs-durable-entry fn-lgrc-holdsp
+                             fn-lgrc-inodes-entry-is-durable-content))
+            :use ((:instance fn-lgrc-copy-chain-publishes)
+                  (:instance fn-lgrc-staged-inode-is-good (a nil)))))))
+(local
+ (defthm fn-lgrc-holdsp-of-splice-at-the-end
+   (implies (and (fn-lgrc-holdsp d cm) (true-listp b))
+            (fn-lgrc-holdsp (fn-bs-splice d (len cm) b) (append cm b)))
+   :hints (("Goal" :in-theory (e/d (fn-bs-splice fn-lgrc-holdsp) (fn-bs-take fn-lgrc-take-of-append-short))
+            :use ((:instance fn-lgrc-take-of-append-short (f (+ (len cm) (len b)))
+                             (x (append cm b))
+                             (y (nthcdr (+ (len cm) (len b)) d))))))))
+(local
+ (defthm fn-lgrc-apply-writes-ending-in-a-write
+   (implies ino
+            (equal (cdr (assoc-equal ino (fn-bs-apply-writes inodes (append ops (list (list :write ino o x))))))
+                   (fn-bs-splice (cdr (assoc-equal ino (fn-bs-apply-writes inodes ops))) o x)))
+   :hints (("Goal" :in-theory (e/d (fn-bs-apply-writes-of-append fn-bs-assoc-of-put-assoc-same)
+                                   (fn-bs-splice fn-bs-put-assoc))
+            :expand ((:free (in) (fn-bs-apply-writes in (list (list :write ino o x))))
+                     (:free (in) (fn-bs-apply-writes in nil)))))))
+(local
+ (defthm fn-lgrc-after-append-ok
+   (let ((s2 (mv-nth 1 (fn-bsc-step s (list :write ino o x :ok)))))
+     (implies (and (assoc-equal ino (fn-bs-inodes (fn-bsc-bs s))) (true-listp x) (consp x) ino)
+              (and (equal (car (fn-bsc-step s (list :write ino o x :ok))) :ok)
+                   (equal (fn-bsc-content s2 ino) (fn-bs-splice (fn-bsc-content s ino) o x))
+                   (equal (fn-bs-inodes (fn-bsc-bs s2)) (fn-bs-inodes (fn-bsc-bs s)))
+                   (equal (fn-bs-pending (fn-bsc-bs s2))
+                          (append (fn-bs-pending (fn-bsc-bs s)) (list (list :write ino o x)))))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-bsc-step fn-bsc-bs fn-bsc-content fn-bs-write fn-bsc-vapply
+                             fn-bs-apply-op fn-bs-assoc-of-put-assoc-same)
+                            (fn-bs-put-assoc fn-bs-splice fn-bs-take))))))
+
+(local
+ (defthm fn-lgrc-ops-for-ino-of-one-write
+   (equal (fn-bs-ops-for-ino (list (list :write ino o x)) ino) (list (list :write ino o x)))))
+; A fenced append extends the served prefix: the batch written at the end
+; of CM and fenced :ok makes CM ++ B durable in the bound inode.
+(defthm fn-lgrc-fenced-append-extends-the-served-prefix
+  (let* ((v (fn-bsc-lookup s j k))
+         (s1 (mv-nth 1 (fn-bsc-step s (list :write v (len cm) b :ok))))
+         (s2 (mv-nth 1 (fn-bsc-step s1 (list :fsync-file v :ok)))))
+    (implies (and (fn-lgrc-servedp s j k cm) (true-listp b) (consp b)
+                  (assoc-equal v (fn-bs-inodes (fn-bsc-bs s))))
+             (fn-lgrc-servedp s2 j k (append cm b))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgrc-goodp fn-bs-ops-for-ino-of-append)
+                           (fn-bsc-step fn-lgrc-holdsp fn-bs-splice fn-bs-take fn-lgrc-candidates
+                            fn-bsc-content fn-bsc-lookup fn-bs-durable-content fn-bs-apply-writes
+                            fn-bs-ops-for-ino fn-bs-ops-not-for-ino fn-lgrc-inodes-entry-is-durable-content))
+           :use ((:instance fn-lgrc-holdsp-of-apply-writes
+                            (i (fn-bsc-lookup s j k)) (a cm)
+                            (inodes (fn-bs-inodes (fn-bsc-bs s)))
+                            (ops (fn-bs-ops-for-ino (fn-bs-pending (fn-bsc-bs s)) (fn-bsc-lookup s j k))))
+                 (:instance fn-lgrc-inodes-entry-is-durable-content
+                            (x (fn-bsc-bs s)) (i (fn-bsc-lookup s j k)))))))
+; While served, anyone else's step under the side condition over CM, other
+; than a rename onto journal/K, keeps it served.
+(defun fn-lgrc-served-op-okp (s op j k cm)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-lgrc-op-okp s op j k cm)
+       (not (and (consp op) (equal (car op) :rename)
+                 (equal (nth 3 op) j) (equal (nth 4 op) k)))))
+
+(defthm fn-lgrc-step-keeps-it-served
+  (implies (and (fn-lgrc-servedp s j k cm) (fn-lgrc-served-op-okp s op j k cm))
+           (fn-lgrc-servedp (mv-nth 1 (fn-bsc-step s op)) j k cm))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d () (fn-lgrc-goodp fn-bsc-step fn-lgrc-candidates fn-bsc-lookup
+                               fn-bs-durable-entry fn-lgrc-names-after-evict
+                               fn-lgrc-names-after-rename fn-lgrc-names-after-lose-cache
+                               fn-lgrc-names-after-fsync-dir))
+           :cases ((member-equal (car op) '(:write :fsync-file :create :evict-ino))
+                   (equal (car op) :fsync-dir) (equal (car op) :lose-cache)
+                   (equal (car op) :evict-dir) (equal (car op) :rename))
+           :use ((:instance fn-lgrc-names-after-fsync-dir)
+                 (:instance fn-lgrc-names-after-lose-cache)
+                 (:instance fn-lgrc-names-after-evict)
+                 (:instance fn-lgrc-names-after-rename)))))(local
+ (defthm fn-lgrc-copy-holds-the-read-prefix
+   (implies (and (natp f) (<= f (len o)))
+            (fn-lgrc-holdsp (fn-lgrc-copy-octets o f) (fn-bs-take f o)))
+   :hints (("Goal" :in-theory (e/d (fn-lgrc-holdsp) (fn-lgrc-copy-octets fn-bs-take))
+            :use ((:instance fn-lgrc-copy-octets-shape))))))
+
+; What an open must see to serve afterwards: the attempt's six syscalls
+; succeed, from a store with nothing pending, over a read of whole units.
+(defun fn-lgrc-open-servesp (s j k stg stage outs)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((bs (fn-bsc-bs s)) (o (fn-bsc-content s (fn-bsc-lookup s j k))) (unit (fn-bs-unit bs)))
+    (and (equal (fn-lgrc-out outs 0) :ok) (equal (fn-lgrc-out outs 1) :ok)
+         (equal (fn-lgrc-out outs 2) :ok) (equal (fn-lgrc-out outs 3) :ok)
+         (equal (fn-lgrc-out outs 4) :ok) (equal (fn-lgrc-out outs 5) :ok)
+         (not (fn-bsc-lookup s stg stage))
+         (null (fn-bs-pending bs))
+         (posp unit) (true-listp o) (consp o) (equal (mod (len o) unit) 0))))
+
+(defun fn-lgrc-read-prefix (s j k genesis max floor)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((o (fn-bsc-content s (fn-bsc-lookup s j k))))
+    (fn-bs-take (fn-lgk-frontier (fn-lgt-recover o genesis (fn-bs-unit (fn-bsc-bs s)) max floor)) o)))
+
+(local
+ (defthm fn-lgrc-attempt-ops-are-ok-ops
+   (implies (and (syntaxp (not (equal outs ''nil))) (fn-lgrc-open-servesp s j k stg stage outs))
+            (equal (fn-lgrc-attempt-ops s j k stg stage genesis max floor outs)
+                   (fn-lgrc-attempt-ops s j k stg stage genesis max floor nil)))
+   :hints (("Goal" :in-theory (disable fn-lgrc-copy-octets fn-lgt-recover fn-lgk-frontier fn-bsc-content
+                                       fn-bsc-lookup fn-lgrc-frontier-of-recover fn-lgrc-out mod)))))
+
+; A successful open serves the read's validated prefix.
+(defthm fn-lgrc-successful-open-serves-the-read-prefix
+  (implies (and (fn-lgrc-open-servesp s j k stg stage outs)
+                (natp (fn-bs-next-ino (fn-bsc-bs s))) (fn-bs-dir-idp j) (fn-bs-namep k)
+                (fn-bs-dir-idp stg) (fn-bs-namep stage) (not (and (equal stg j) (equal stage k))))
+           (let ((run (fn-lgrc-attempt s j k stg stage genesis max floor outs)))
+             (and (consp run)
+                  (fn-lgrc-servedp (car (last run)) j k (fn-lgrc-read-prefix s j k genesis max floor)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d () (fn-bsc-step fn-lgrc-copy-octets fn-lgt-recover fn-lgk-frontier
+                               fn-lgrc-frontier-of-recover mod fn-bsc-content fn-bsc-lookup
+                               fn-lgrc-servedp fn-lgrc-out fn-lgrc-six-ok-steps-serve
+                               fn-lgrc-copy-holds-the-read-prefix fn-lgrc-copy-octets-shape))
+           :use ((:instance fn-lgrc-read-frontier-is-within
+                            (o (fn-bsc-content s (fn-bsc-lookup s j k)))
+                            (unit (fn-bs-unit (fn-bsc-bs s))))
+                 (:instance fn-lgrc-copy-octets-shape
+                            (o (fn-bsc-content s (fn-bsc-lookup s j k)))
+                            (f (fn-lgk-frontier (fn-lgt-recover (fn-bsc-content s (fn-bsc-lookup s j k))
+                                                                genesis (fn-bs-unit (fn-bsc-bs s)) max floor))))
+                 (:instance fn-lgrc-consp-of-copy
+                            (o (fn-bsc-content s (fn-bsc-lookup s j k)))
+                            (f (fn-lgk-frontier (fn-lgt-recover (fn-bsc-content s (fn-bsc-lookup s j k))
+                                                                genesis (fn-bs-unit (fn-bsc-bs s)) max floor))))
+                 (:instance fn-lgrc-copy-holds-the-read-prefix
+                            (o (fn-bsc-content s (fn-bsc-lookup s j k)))
+                            (f (fn-lgk-frontier (fn-lgt-recover (fn-bsc-content s (fn-bsc-lookup s j k))
+                                                                genesis (fn-bs-unit (fn-bsc-bs s)) max floor))))
+                 (:instance fn-lgrc-six-ok-steps-serve
+                            (p (fn-lgrc-read-prefix s j k genesis max floor))
+                            (x (fn-lgrc-copy-octets
+                                (fn-bsc-content s (fn-bsc-lookup s j k))
+                                (fn-lgk-frontier (fn-lgt-recover (fn-bsc-content s (fn-bsc-lookup s j k))
+                                                                 genesis (fn-bs-unit (fn-bsc-bs s)) max floor)))))))))
+(local
+ (defthm fn-lgrc-holdsp-of-take
+   (implies (and (fn-lgrc-holdsp o a) (natp f) (<= (len a) f))
+            (fn-lgrc-holdsp (fn-bs-take f o) a))
+   :hints (("Goal" :in-theory (e/d (fn-lgrc-holdsp) (fn-bs-take))))))
+(local
+ (defthm fn-lgrc-read-prefix-holds-the-acknowledged-prefix
+   (implies (and (fn-lgrc-invp s j k a)
+                 (fn-lgrc-completep a genesis (fn-bs-unit (fn-bsc-bs s)) max))
+            (fn-lgrc-holdsp (fn-lgrc-read-prefix s j k genesis max floor) a))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d () (fn-lgrc-invp fn-lgrc-completep fn-lg-scan fn-bs-take fn-lgrc-holdsp
+                                fn-bsc-content fn-bsc-lookup fn-lgt-recover))
+            :use ((:instance fn-lgrc-visible-binding-holds-the-prefix)
+                  (:instance fn-lgrc-scan-of-a-read-holding-a-complete-prefix
+                             (o (fn-bsc-content s (fn-bsc-lookup s j k)))
+                             (unit (fn-bs-unit (fn-bsc-bs s)))))))))
+(local
+ (defthm fn-lgrc-read-prefix-is-complete
+   (implies (and (posp (fn-bs-unit (fn-bsc-bs s)))
+                 (true-listp (fn-bsc-content s (fn-bsc-lookup s j k)))
+                 (equal (mod (len (fn-bsc-content s (fn-bsc-lookup s j k))) (fn-bs-unit (fn-bsc-bs s))) 0))
+            (fn-lgrc-completep (fn-lgrc-read-prefix s j k genesis max floor)
+                               genesis (fn-bs-unit (fn-bsc-bs s)) max))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d () (fn-lg-scan fn-lg-scan-last fn-bs-take fn-bsc-content fn-bsc-lookup mod))
+            :use ((:instance fn-lg-recovered-frontier-is-the-last-complete-record
+                             (c (fn-bsc-content s (fn-bsc-lookup s j k)))
+                             (unit (fn-bs-unit (fn-bsc-bs s)))))))))
+(defun fn-lgrc-pair-each (states ack)
+  (declare (xargs :guard t))
+  (if (consp states) (cons (cons (car states) ack) (fn-lgrc-pair-each (cdr states) ack)) nil))
+
+; One batch while the service runs: written at the end of CM, then fenced.
+; Answers (mv STATES STORE CM' RUNNING'): the batch joins CM only when both
+; succeed; any failure ends the service.
+(defun fn-lgrc-commit (s cm b wout fout j k)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((v (fn-bsc-lookup s j k)))
+    (mv-let (r1 s1) (fn-bsc-step s (list :write v (len cm) b wout))
+      (if (not (equal r1 :ok))
+          (mv (list s1) s1 cm nil)
+        (mv-let (r2 s2) (fn-bsc-step s1 (list :fsync-file v fout))
+          (mv (list s1 s2) s2 (if (equal r2 :ok) (append cm b) cm) (equal r2 :ok)))))))
+
+; The epochs.  The state carries, besides the store, the acknowledged
+; octets ACK, the kernel's committed octets CM, and whether the service
+; runs (EST: an open succeeded in this process and nothing failed since).
+;   (:open STG STAGE OUTS)   an open: the attempt; the service runs after
+;                            it exactly when it succeeded (CM := the read's
+;                            validated prefix);
+;   (:commit B WOUT FOUT)    while the service runs: the batch B written at
+;                            the end of CM and fenced; both :ok extend CM,
+;                            any failure ends the service (the node fences);
+;   (:ack)                   while the service runs: ACK := CM (the
+;                            COMPLETE's acknowledgements, before replies);
+;   any other step           anyone's, under the side condition; :exit and
+;                            :lose-cache end the service.
+; Answers the (store . ACK) pair after every step, in order.
+(defun fn-lgrc-epochs (s ack cm est events j k genesis max floor)
+  (declare (xargs :guard t :verify-guards nil :measure (len events)))
+  (if (consp events)
+      (let ((e (car events)) (rest (cdr events)))
+        (cond
+         ((and (consp e) (equal (car e) :open))
+          (let* ((run (fn-lgrc-attempt s j k (nth 1 e) (nth 2 e) genesis max floor (nth 3 e)))
+                 (s1 (if (consp run) (car (last run)) s))
+                 (serves (fn-lgrc-open-servesp s j k (nth 1 e) (nth 2 e) (nth 3 e))))
+            (append (fn-lgrc-pair-each run ack)
+                    (fn-lgrc-epochs s1 ack (if serves (fn-lgrc-read-prefix s j k genesis max floor) cm)
+                                    serves rest j k genesis max floor))))
+         ((and (consp e) (equal (car e) :commit))
+          (if (not est)
+              (fn-lgrc-epochs s ack cm est rest j k genesis max floor)
+            (mv-let (sts s2 cm2 est2) (fn-lgrc-commit s cm (nth 1 e) (nth 2 e) (nth 3 e) j k)
+              (append (fn-lgrc-pair-each sts ack)
+                      (fn-lgrc-epochs s2 ack cm2 est2 rest j k genesis max floor)))))
+         ((and (consp e) (equal (car e) :ack))
+          (if est
+              (cons (cons s cm) (fn-lgrc-epochs s cm cm est rest j k genesis max floor))
+            (fn-lgrc-epochs s ack cm est rest j k genesis max floor)))
+         (t (mv-let (r s1) (fn-bsc-step s e)
+              (declare (ignore r))
+              (cons (cons s1 ack)
+                    (fn-lgrc-epochs s1 ack cm
+                                    (and est (not (and (consp e) (member-equal (car e) '(:exit :lose-cache)))))
+                                    rest j k genesis max floor))))))
+    nil))
+
+(defun fn-lgrc-epochs-okp (s ack cm est events j k genesis max floor)
+  (declare (xargs :guard t :verify-guards nil :measure (len events)))
+  (if (consp events)
+      (let ((e (car events)) (rest (cdr events)) (unit (fn-bs-unit (fn-bsc-bs s))))
+        (cond
+         ((and (consp e) (equal (car e) :open))
+          (let* ((run (fn-lgrc-attempt s j k (nth 1 e) (nth 2 e) genesis max floor (nth 3 e)))
+                 (s1 (if (consp run) (car (last run)) s))
+                 (serves (fn-lgrc-open-servesp s j k (nth 1 e) (nth 2 e) (nth 3 e))))
+            (and (fn-bs-dir-idp (nth 1 e)) (fn-bs-namep (nth 2 e))
+                 (not (and (equal (nth 1 e) j) (equal (nth 2 e) k)))
+                 (fn-lgrc-outcomesp (nth 3 e))
+                 (fn-lgrc-epochs-okp s1 ack (if serves (fn-lgrc-read-prefix s j k genesis max floor) cm)
+                                     serves rest j k genesis max floor))))
+         ((and (consp e) (equal (car e) :commit))
+          (if (not est)
+              (fn-lgrc-epochs-okp s ack cm est rest j k genesis max floor)
+            (and (true-listp (nth 1 e)) (consp (nth 1 e))
+                 (fn-lgrc-completep (append cm (nth 1 e)) genesis unit max)
+                 (fn-lgrc-outcomep (nth 2 e)) (fn-lgrc-outcomep (nth 3 e))
+                 (mv-let (sts s2 cm2 est2) (fn-lgrc-commit s cm (nth 1 e) (nth 2 e) (nth 3 e) j k)
+                   (declare (ignore sts))
+                   (fn-lgrc-epochs-okp s2 ack cm2 est2 rest j k genesis max floor)))))
+         ((and (consp e) (equal (car e) :ack))
+          (if est
+              (fn-lgrc-epochs-okp s cm cm est rest j k genesis max floor)
+            (fn-lgrc-epochs-okp s ack cm est rest j k genesis max floor)))
+         (t (mv-let (r s1) (fn-bsc-step s e)
+              (declare (ignore r))
+              (and (fn-lgrc-op-okp s e j k ack)
+                   (or (not est) (fn-lgrc-served-op-okp s e j k cm))
+                   (fn-lgrc-epochs-okp s1 ack cm
+                                       (and est (not (and (consp e) (member-equal (car e) '(:exit :lose-cache)))))
+                                       rest j k genesis max floor))))))
+    t))
+
+(defun fn-lgrc-all-pairs-invp (pairs j k ack0)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp pairs)
+      (and (consp (car pairs))
+           (fn-lgrc-invp (car (car pairs)) j k (cdr (car pairs)))
+           (fn-lgrc-holdsp (cdr (car pairs)) ack0)
+           (fn-lgrc-all-pairs-invp (cdr pairs) j k ack0))
+    t))
+
+(local
+ (defthm fn-lgrc-holdsp-is-transitive
+   (implies (and (fn-lgrc-holdsp x y) (fn-lgrc-holdsp y z))
+            (fn-lgrc-holdsp x z))
+   :hints (("Goal" :in-theory (e/d (fn-lgrc-holdsp) (fn-bs-take))
+            :use ((:instance fn-lgrc-take-of-take (f (len z)) (n (len y))))))))
+(local
+ (defthm fn-lgrc-holdsp-of-append-right
+   (implies (fn-lgrc-holdsp x y) (fn-lgrc-holdsp (append x b) y))
+   :hints (("Goal" :in-theory (e/d (fn-lgrc-holdsp) (fn-bs-take))))))
+(local
+ (defthm fn-lgrc-holdsp-of-self
+   (implies (true-listp x) (fn-lgrc-holdsp x x))
+   :hints (("Goal" :in-theory (enable fn-lgrc-holdsp fn-bs-take)))))
+(local
+ (defthm fn-lgrc-holdsp-bounds-the-length
+   (implies (fn-lgrc-holdsp x y) (<= (len y) (len x)))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-lgrc-holdsp)))))
+(local
+ (defthm fn-lgrc-completep-is-true-list
+   (implies (fn-lgrc-completep a genesis unit max) (true-listp a))
+   :rule-classes :forward-chaining))
+(local
+ (defthm fn-lgrc-all-pairs-of-one-ack
+   (implies (and (fn-lgrc-all-invp run j k ack) (fn-lgrc-holdsp ack ack0))
+            (fn-lgrc-all-pairs-invp (fn-lgrc-pair-each run ack) j k ack0))
+   :hints (("Goal" :induct (fn-lgrc-pair-each run ack) :in-theory (disable fn-lgrc-invp fn-lgrc-holdsp)))))
+(local
+ (defthm fn-lgrc-all-pairs-of-append
+   (equal (fn-lgrc-all-pairs-invp (append x y) j k a0)
+          (and (fn-lgrc-all-pairs-invp x j k a0) (fn-lgrc-all-pairs-invp y j k a0)))
+   :hints (("Goal" :in-theory (disable fn-lgrc-invp fn-lgrc-holdsp)))))
+(local
+ (defthm fn-lgrc-write-ok-names-an-inode
+   (implies (equal (car (fn-bsc-step s (list :write i o x out))) :ok)
+            (assoc-equal i (fn-bs-inodes (fn-bsc-bs s))))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-bsc-step fn-bs-write)))))
+(local
+ (defthm fn-lgrc-attempt-is-not-empty
+   (consp (fn-lgrc-attempt s j k stg stage genesis max floor outs))))
+(local
+ (defthm fn-lgrc-servedp-parts
+   (implies (fn-lgrc-servedp s j k cm)
+            (and (fn-bs-dir-idp j) (fn-bs-namep k)
+                 (fn-lgrc-goodp s (fn-bsc-lookup s j k) cm)))
+   :rule-classes :forward-chaining))
+(defun fn-lgrc-epoch-invp (s ack cm est j k genesis max ack0)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((unit (fn-bs-unit (fn-bsc-bs s))))
+    (and (fn-lgrc-invp s j k ack)
+         (fn-lgrc-completep ack genesis unit max)
+         (fn-lgrc-holdsp ack ack0)
+         (implies est (and (fn-lgrc-servedp s j k cm)
+                           (fn-lgrc-completep cm genesis unit max)
+                           (fn-lgrc-holdsp cm ack))))))
+
+(local
+ (defthm fn-lgrc-open-servesp-reads-whole-units
+   (implies (fn-lgrc-open-servesp s j k stg stage outs)
+            (and (posp (fn-bs-unit (fn-bsc-bs s)))
+                 (true-listp (fn-bsc-content s (fn-bsc-lookup s j k)))
+                 (equal (mod (len (fn-bsc-content s (fn-bsc-lookup s j k))) (fn-bs-unit (fn-bsc-bs s))) 0)))
+   :rule-classes :forward-chaining))
+(local
+ (defthm fn-lgrc-invp-names
+   (implies (fn-lgrc-invp s j k a) (and (fn-bs-dir-idp j) (fn-bs-namep k)))
+   :rule-classes :forward-chaining))
+(local
+ (defthm fn-lgrc-epoch-open
+   (let* ((run (fn-lgrc-attempt s j k stg stage genesis max floor outs))
+          (s1 (car (last run)))
+          (serves (fn-lgrc-open-servesp s j k stg stage outs)))
+     (implies (and (fn-lgrc-epoch-invp s ack cm est j k genesis max ack0)
+                   (fn-bs-dir-idp stg) (fn-bs-namep stage) (not (and (equal stg j) (equal stage k)))
+                   (fn-lgrc-outcomesp outs))
+              (and (fn-lgrc-all-pairs-invp (fn-lgrc-pair-each run ack) j k ack0)
+                   (fn-lgrc-epoch-invp s1 ack (if serves (fn-lgrc-read-prefix s j k genesis max floor) cm)
+                                       serves j k genesis max ack0))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d () (fn-lgrc-attempt fn-lgrc-invp fn-lgrc-completep fn-lgrc-holdsp
+                                fn-lgrc-servedp fn-lgrc-open-servesp fn-lgrc-read-prefix))
+            :use ((:instance fn-lgrc-attempt-keeps-the-invariant (a ack))
+                  (:instance fn-lgrc-attempt-ends-in-the-invariant (a ack))
+                  (:instance fn-lgrc-successful-open-serves-the-read-prefix)
+                  (:instance fn-lgrc-read-prefix-holds-the-acknowledged-prefix (a ack))
+                  (:instance fn-lgrc-invp-has-a-natural-next-ino (a ack))
+                  (:instance fn-lgrc-read-prefix-is-complete))
+            :cases ((fn-lgrc-open-servesp s j k stg stage outs)))
+           ("Subgoal 2" :in-theory (e/d (fn-lgrc-open-servesp)
+                                        (fn-lgrc-attempt fn-lgrc-invp fn-lgrc-completep fn-lgrc-holdsp
+                                         fn-lgrc-servedp fn-lgrc-read-prefix))))))
+(local
+ (defthm fn-lgrc-epoch-commit
+   (let ((v (fn-bsc-lookup s j k)))
+     (mv-let (r1 s1) (fn-bsc-step s (list :write v (len cm) b wout))
+       (mv-let (r2 s2) (fn-bsc-step s1 (list :fsync-file v fout))
+         (implies (and (fn-lgrc-epoch-invp s ack cm t j k genesis max ack0)
+                       (true-listp b) (consp b)
+                       (fn-lgrc-completep (append cm b) genesis (fn-bs-unit (fn-bsc-bs s)) max)
+                       (fn-lgrc-outcomep wout) (fn-lgrc-outcomep fout))
+                  (and (fn-lgrc-invp s1 j k ack)
+                       (fn-lgrc-epoch-invp s1 ack cm nil j k genesis max ack0)
+                       (implies (equal r1 :ok)
+                                (and (fn-lgrc-invp s2 j k ack)
+                                     (fn-lgrc-epoch-invp s2 ack cm nil j k genesis max ack0)
+                                     (implies (equal r2 :ok)
+                                              (fn-lgrc-epoch-invp s2 ack (append cm b) t
+                                                                  j k genesis max ack0)))))))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-lgrc-op-okp)
+                            (fn-bsc-step fn-lgrc-invp fn-lgrc-completep fn-lgrc-holdsp fn-lgrc-servedp
+                             fn-lgrc-goodp fn-lgrc-candidates fn-bsc-lookup fn-lgrc-outcomep))
+            :cases ((equal wout :ok))
+            :use ((:instance fn-lgrc-step-keeps-the-invariant (a ack)
+                             (op (list :write (fn-bsc-lookup s j k) (len cm) b wout)))
+                  (:instance fn-lgrc-step-keeps-the-invariant (a ack)
+                             (s (mv-nth 1 (fn-bsc-step s (list :write (fn-bsc-lookup s j k) (len cm) b wout))))
+                             (op (list :fsync-file (fn-bsc-lookup s j k) fout)))
+                  (:instance fn-lgrc-fenced-append-extends-the-served-prefix)
+                  (:instance fn-bsc-step-keeps-the-unit
+                             (op (list :write (fn-bsc-lookup s j k) (len cm) b wout)))
+                  (:instance fn-bsc-step-keeps-the-unit
+                             (s (mv-nth 1 (fn-bsc-step s (list :write (fn-bsc-lookup s j k) (len cm) b wout))))
+                             (op (list :fsync-file (fn-bsc-lookup s j k) fout)))))
+           ("Subgoal 1" :cases ((equal fout :ok))))))
+(local
+ (defthm fn-lgrc-epoch-invp-parts
+   (implies (fn-lgrc-epoch-invp s ack cm est j k genesis max ack0)
+            (and (fn-lgrc-invp s j k ack)
+                 (fn-lgrc-holdsp ack ack0)))
+   :rule-classes :forward-chaining))
+(local
+ (defthm fn-lgrc-epoch-commit-step
+   (mv-let (sts s2 cm2 est2) (fn-lgrc-commit s cm b wout fout j k)
+     (implies (and (fn-lgrc-epoch-invp s ack cm t j k genesis max ack0)
+                   (true-listp b) (consp b)
+                   (fn-lgrc-completep (append cm b) genesis (fn-bs-unit (fn-bsc-bs s)) max)
+                   (fn-lgrc-outcomep wout) (fn-lgrc-outcomep fout))
+              (and (fn-lgrc-all-pairs-invp (fn-lgrc-pair-each sts ack) j k ack0)
+                   (booleanp est2)
+                   (fn-lgrc-epoch-invp s2 ack cm2 est2 j k genesis max ack0))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d () (fn-lgrc-epoch-invp fn-bsc-step fn-lgrc-invp fn-lgrc-holdsp
+                                fn-lgrc-epoch-commit fn-bsc-lookup fn-lgrc-completep fn-lgrc-outcomep))
+            :use ((:instance fn-lgrc-epoch-commit))))))
+(local
+ (defthm fn-lgrc-epoch-ack
+   (implies (fn-lgrc-epoch-invp s ack cm t j k genesis max ack0)
+            (and (fn-lgrc-invp s j k cm)
+                 (fn-lgrc-holdsp cm ack0)
+                 (fn-lgrc-epoch-invp s cm cm t j k genesis max ack0)))
+   :hints (("Goal" :in-theory (disable fn-lgrc-invp fn-lgrc-holdsp fn-lgrc-servedp fn-lgrc-completep)))))
+
+(local
+ (defthm fn-lgrc-epoch-other
+   (implies (and (fn-lgrc-epoch-invp s ack cm est j k genesis max ack0)
+                 (fn-lgrc-op-okp s e j k ack)
+                 (or (not est) (fn-lgrc-served-op-okp s e j k cm)))
+            (and (fn-lgrc-invp (mv-nth 1 (fn-bsc-step s e)) j k ack)
+                 (fn-lgrc-epoch-invp (mv-nth 1 (fn-bsc-step s e)) ack cm
+                                     (and est (not (and (consp e) (member-equal (car e) '(:exit :lose-cache)))))
+                                     j k genesis max ack0)))
+   :hints (("Goal" :in-theory (disable fn-bsc-step fn-lgrc-invp fn-lgrc-holdsp fn-lgrc-servedp
+                                       fn-lgrc-completep fn-lgrc-op-okp fn-lgrc-served-op-okp)))))
+(local
+ (defthm fn-lgrc-epoch-invp-of-a-running-service
+   (implies (and est (not (equal est t)))
+            (equal (fn-lgrc-epoch-invp s ack cm est j k genesis max ack0)
+                   (fn-lgrc-epoch-invp s ack cm t j k genesis max ack0)))))
+(local
+ (defthm fn-lgrc-epoch-open-serves
+   (implies (and (fn-lgrc-epoch-invp s ack cm est j k genesis max ack0)
+                 (fn-bs-dir-idp stg) (fn-bs-namep stage) (not (and (equal stg j) (equal stage k)))
+                 (fn-lgrc-outcomesp outs))
+            (and (fn-lgrc-all-pairs-invp (fn-lgrc-pair-each (fn-lgrc-attempt s j k stg stage genesis max floor outs) ack) j k ack0)
+                 (implies (fn-lgrc-open-servesp s j k stg stage outs)
+                          (fn-lgrc-epoch-invp (car (last (fn-lgrc-attempt s j k stg stage genesis max floor outs)))
+                                              ack (fn-lgrc-read-prefix s j k genesis max floor)
+                                              t j k genesis max ack0))
+                 (implies (not (fn-lgrc-open-servesp s j k stg stage outs))
+                          (fn-lgrc-epoch-invp (car (last (fn-lgrc-attempt s j k stg stage genesis max floor outs)))
+                                              ack cm nil j k genesis max ack0))))
+   :hints (("Goal" :in-theory (disable fn-lgrc-epoch-invp fn-lgrc-attempt fn-lgrc-open-servesp
+                                       fn-lgrc-read-prefix fn-lgrc-epoch-open)
+            :use ((:instance fn-lgrc-epoch-open))))))
+
+(local
+ (defthm fn-lgrc-epoch-other-stopped
+   (implies (and (fn-lgrc-epoch-invp s ack cm nil j k genesis max ack0)
+                 (fn-lgrc-op-okp s e j k ack))
+            (and (fn-lgrc-invp (mv-nth 1 (fn-bsc-step s e)) j k ack)
+                 (fn-lgrc-epoch-invp (mv-nth 1 (fn-bsc-step s e)) ack cm nil j k genesis max ack0)))
+   :hints (("Goal" :in-theory (disable fn-lgrc-epoch-invp fn-lgrc-epoch-other fn-bsc-step fn-lgrc-invp
+                                       fn-lgrc-op-okp)
+            :use ((:instance fn-lgrc-epoch-other (est nil)))))))
+(local
+ (defthm fn-lgrc-epoch-invp-stops
+   (implies (fn-lgrc-epoch-invp s ack cm t j k genesis max ack0)
+            (fn-lgrc-epoch-invp s ack cm nil j k genesis max ack0))))
+(local
+ (defthm fn-lgrc-epoch-other-running
+   (implies (and (fn-lgrc-epoch-invp s ack cm t j k genesis max ack0)
+                 (fn-lgrc-op-okp s e j k ack)
+                 (fn-lgrc-served-op-okp s e j k cm))
+            (and (fn-lgrc-invp (mv-nth 1 (fn-bsc-step s e)) j k ack)
+                 (fn-lgrc-epoch-invp (mv-nth 1 (fn-bsc-step s e)) ack cm nil j k genesis max ack0)
+                 (implies (not (and (consp e) (member-equal (car e) '(:exit :lose-cache))))
+                          (fn-lgrc-epoch-invp (mv-nth 1 (fn-bsc-step s e)) ack cm t j k genesis max ack0))))
+   :hints (("Goal" :in-theory (disable fn-lgrc-epoch-invp fn-lgrc-epoch-other fn-bsc-step fn-lgrc-invp
+                                       fn-lgrc-op-okp fn-lgrc-served-op-okp)
+            :use ((:instance fn-lgrc-epoch-other (est t))
+                  (:instance fn-lgrc-epoch-other-stopped))))))
+(local
+ (defthm fn-lgrc-epoch-invp-stops-any
+   (implies (fn-lgrc-epoch-invp s ack cm est j k genesis max ack0)
+            (fn-lgrc-epoch-invp s ack cm nil j k genesis max ack0))))
+(local
+ (defthm fn-lgrc-epoch-other-any
+   (implies (and (fn-lgrc-epoch-invp s ack cm est j k genesis max ack0)
+                 (fn-lgrc-op-okp s e j k ack)
+                 (or (not est) (fn-lgrc-served-op-okp s e j k cm)))
+            (and (fn-lgrc-invp (mv-nth 1 (fn-bsc-step s e)) j k ack)
+                 (fn-lgrc-epoch-invp (mv-nth 1 (fn-bsc-step s e)) ack cm nil j k genesis max ack0)
+                 (implies (and est (not (and (consp e) (member-equal (car e) '(:exit :lose-cache)))))
+                          (fn-lgrc-epoch-invp (mv-nth 1 (fn-bsc-step s e)) ack cm t j k genesis max ack0))))
+   :hints (("Goal" :in-theory (disable fn-lgrc-epoch-invp fn-lgrc-epoch-other fn-bsc-step fn-lgrc-invp
+                                       fn-lgrc-op-okp fn-lgrc-served-op-okp fn-lgrc-epoch-other-running
+                                       fn-lgrc-epoch-other-stopped)
+            :cases (est)
+            :use ((:instance fn-lgrc-epoch-other-running)
+                  (:instance fn-lgrc-epoch-other-stopped)
+                  (:instance fn-lgrc-epoch-invp-of-a-running-service)
+                  (:instance fn-lgrc-epoch-invp-stops-any))))))
+(local
+ (defthm fn-lgrc-epoch-commit-step-pairs
+   (implies (and (fn-lgrc-epoch-invp s ack cm t j k genesis max ack0)
+                 (true-listp b) (consp b)
+                 (fn-lgrc-completep (append cm b) genesis (fn-bs-unit (fn-bsc-bs s)) max)
+                 (fn-lgrc-outcomep wout) (fn-lgrc-outcomep fout))
+            (fn-lgrc-all-pairs-invp (fn-lgrc-pair-each (car (fn-lgrc-commit s cm b wout fout j k)) ack)
+                                    j k ack0))
+   :hints (("Goal" :in-theory (disable fn-lgrc-epoch-commit-step fn-lgrc-commit fn-lgrc-epoch-invp
+                                       fn-lgrc-completep fn-lgrc-outcomep)
+            :use ((:instance fn-lgrc-epoch-commit-step))))))
+(local
+ (defthm fn-lgrc-epochs-keep-the-epoch-invariant
+   (implies (and (booleanp est)
+                 (fn-lgrc-epoch-invp s ack cm est j k genesis max ack0)
+                 (fn-lgrc-epochs-okp s ack cm est events j k genesis max floor))
+            (fn-lgrc-all-pairs-invp (fn-lgrc-epochs s ack cm est events j k genesis max floor) j k ack0))
+   :hints (("Goal" :induct (fn-lgrc-epochs s ack cm est events j k genesis max floor)
+            :in-theory (disable fn-lgrc-epoch-invp fn-lgrc-attempt fn-bsc-step fn-lgrc-invp
+                                fn-lgrc-holdsp fn-lgrc-open-servesp fn-lgrc-read-prefix
+                                fn-lgrc-completep fn-lgrc-op-okp fn-lgrc-served-op-okp fn-lgrc-outcomep
+                                fn-bsc-lookup fn-lgrc-epoch-open fn-lgrc-epoch-other fn-lgrc-epoch-other-running
+                                fn-lgrc-epoch-other-stopped fn-lgrc-commit fn-lgrc-epoch-commit)))))
+
+(local
+ (defthm fn-lgrc-all-pairs-invp-member
+   (implies (and (fn-lgrc-all-pairs-invp pairs j k ack0) (member-equal pair pairs))
+            (and (fn-lgrc-invp (car pair) j k (cdr pair))
+                 (fn-lgrc-holdsp (cdr pair) ack0)))
+   :hints (("Goal" :in-theory (disable fn-lgrc-invp fn-lgrc-holdsp)))))
+
+(local
+ (defthm fn-lgrc-every-image-holds-the-prefix
+   (implies (fn-lgrc-invp s j k a)
+            (let ((image (fn-bs-crash (fn-bsc-bs s) choices)))
+              (and (fn-bs-inop (fn-bs-durable-entry image j k))
+                   (fn-lgrc-holdsp (fn-bs-durable-content image (fn-bs-durable-entry image j k)) a))))
+   :hints (("Goal" :in-theory (e/d (fn-lgrc-holdsp)
+                                   (fn-lgrc-invp fn-bs-crash fn-bs-durable-entry fn-bs-durable-content))
+            :use ((:instance fn-lgrc-every-image-binds-the-acknowledged-prefix))))))
+; KEYSTONE (K3, M1 across restarts).  From an open's start -- a store whose
+; durable and visible journal/K bindings hold the acknowledged octets ACK0
+; (any crash image, or any state K2 reaches) -- through any number of
+; epochs: opens (attempts, failing anywhere or succeeding), the service's
+; fenced appends and acknowledgements, failed barriers, exits with the
+; cache kept, cache losses and anyone else's steps: at every state, in
+; every crash image, the inode journal/K DURABLY names holds the octets
+; acknowledged at that state, those octets extend ACK0, and the open's scan
+; reads ACK0's records first.  ACK0 is arbitrary, so every record
+; acknowledged in any epoch survives every later one.
+(defthm fn-lgrc-acknowledged-records-survive-restarts
+  (implies (and (fn-lgrc-invp s j k ack0)
+                (fn-lgrc-completep ack0 genesis (fn-bs-unit (fn-bsc-bs s)) max)
+                (fn-lgrc-epochs-okp s ack0 cm nil events j k genesis max floor)
+                (member-equal pair (fn-lgrc-epochs s ack0 cm nil events j k genesis max floor))
+                (fn-bs-crash-imagep (fn-bsc-bs (car pair)) image))
+           (let* ((i (fn-bs-durable-entry image j k))
+                  (c (fn-bs-durable-content image i))
+                  (unit (fn-bs-unit (fn-bsc-bs s)))
+                  (acked0 (car (fn-lg-scan ack0 genesis unit max))))
+             (and (fn-bs-inop i)
+                  (fn-lgrc-holdsp c (cdr pair))
+                  (fn-lgrc-holdsp (cdr pair) ack0)
+                  (fn-lgrc-holdsp c ack0)
+                  (equal (take (len acked0) (car (fn-lg-scan c genesis unit max))) acked0))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bs-crash-imagep)
+                           (fn-lgrc-invp fn-lgrc-completep fn-lgrc-epochs fn-lgrc-epochs-okp fn-lgrc-holdsp
+                            fn-bs-crash fn-bs-durable-entry fn-bs-durable-content fn-lg-scan fn-bs-take
+                            fn-lgrc-every-image-holds-the-prefix fn-lgrc-epoch-invp
+                            fn-lgrc-epochs-keep-the-epoch-invariant fn-lgrc-all-pairs-invp-member))
+           :use ((:instance fn-lgrc-epochs-keep-the-epoch-invariant (ack ack0) (est nil))
+                 (:instance fn-lgrc-all-pairs-invp-member
+                            (pairs (fn-lgrc-epochs s ack0 cm nil events j k genesis max floor)))
+                 (:instance fn-lgrc-every-image-holds-the-prefix
+                            (s (car pair)) (a (cdr pair))
+                            (choices (fn-bs-crash-imagep-witness (fn-bsc-bs (car pair)) image)))
+                 (:instance fn-lgrc-scan-of-a-read-holding-a-complete-prefix
+                            (a ack0) (unit (fn-bs-unit (fn-bsc-bs s)))
+                            (o (fn-bs-durable-content image (fn-bs-durable-entry image j k))))
+                 (:instance fn-lgrc-epoch-invp (est nil) (ack ack0))))))
+
