@@ -2006,6 +2006,7 @@
     "books/served-available-commands",
     "books/served-available-read",
     "books/served-available-access",
+    "books/served-access-revoke",
     "books/article-stream",
     "tests/acl2/article-stream-tests",
     "books/article-stream-server",
@@ -2021,6 +2022,7 @@
     "tests/acl2/served-available-commands-tests",
     "tests/acl2/served-available-read-tests",
     "tests/acl2/served-available-access-tests",
+    "tests/acl2/served-access-revoke-tests",
     "books/def-cursor-batch",
     "books/newnews-stream-cursor",
     "tests/acl2/newnews-stream-cursor-tests",
@@ -2548,26 +2550,26 @@
     "tests/acl2/withdrawal-index-carried-tests"
   ],
   "totals": {
-    "books": 3038,
-    "books_in_root_closure": 2862,
-    "roots": 2544,
-    "theorems": 40105,
-    "functions": 25843,
-    "assert_events": 27474,
+    "books": 3040,
+    "books_in_root_closure": 2864,
+    "roots": 2546,
+    "theorems": 40123,
+    "functions": 25862,
+    "assert_events": 27501,
     "must_fails": 2703,
     "prover_refusals": 0,
     "encapsulates": 255,
     "guards": {
       "verified": 4053,
-      "declared-off": 3358,
-      "default-guarded": 14310,
-      "default-unguarded": 4122
+      "declared-off": 3362,
+      "default-guarded": 14318,
+      "default-unguarded": 4129
     },
-    "suspect_theorems": 1463,
-    "export_hygiene_warnings": 424,
+    "suspect_theorems": 1464,
+    "export_hygiene_warnings": 423,
     "enabled_projection_warnings": 78,
     "teeth_form_warnings": 296,
-    "include_hygiene_warnings": 4038,
+    "include_hygiene_warnings": 4041,
     "host_names_warnings": 3552,
     "hand_written_record_warnings": 19
   },
@@ -21021,12 +21023,12 @@
       "book": "books/group-access.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 70,
-      "functions": 29,
+      "theorems": 77,
+      "functions": 35,
       "guards": {
         "verified": 8,
         "declared-off": 0,
-        "default-guarded": 21,
+        "default-guarded": 27,
         "default-unguarded": 0
       },
       "verify_guards_events": 8,
@@ -31408,12 +31410,12 @@
       "book": "books/nntp-auth.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 200,
-      "functions": 109,
+      "theorems": 202,
+      "functions": 110,
       "guards": {
         "verified": 64,
         "declared-off": 3,
-        "default-guarded": 42,
+        "default-guarded": 43,
         "default-unguarded": 0
       },
       "verify_guards_events": 73,
@@ -33578,7 +33580,7 @@
       "book": "books/owner-agent.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 45,
+      "theorems": 46,
       "functions": 19,
       "guards": {
         "verified": 5,
@@ -37126,7 +37128,7 @@
       "book": "books/owner-served-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 23,
+      "theorems": 24,
       "functions": 6,
       "guards": {
         "verified": 0,
@@ -46215,6 +46217,35 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/served-access-revoke.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner-tls-prefix",
+        "served-available-access"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-sar-served-config"
+      ],
       "read_error": null
     },
     {
@@ -83108,6 +83139,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/served-access-revoke-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 11,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 0,
+        "default-unguarded": 7
+      },
+      "verify_guards_events": 0,
+      "assert_events": 27,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 26,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/served-access-revoke",
+        "arena-lift"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/served-auth-wire-bridge-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -92225,7 +92283,7 @@
     {
       "theorem": "fn-gac-msgid-of-restrict-article",
       "book": "books/group-access.lisp",
-      "line": 498,
+      "line": 603,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -92233,7 +92291,7 @@
     {
       "theorem": "fn-gac-state-articles-of-restrict",
       "book": "books/group-access.lisp",
-      "line": 573,
+      "line": 678,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -92241,7 +92299,7 @@
     {
       "theorem": "fn-gac-state-groups-of-restrict",
       "book": "books/group-access.lisp",
-      "line": 565,
+      "line": 670,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -92249,7 +92307,7 @@
     {
       "theorem": "fn-gac-state-nexts-of-restrict",
       "book": "books/group-access.lisp",
-      "line": 569,
+      "line": 674,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -93922,7 +93980,7 @@
     {
       "theorem": "fn-oag-conns-of-set-conns",
       "book": "books/owner-agent.lisp",
-      "line": 842,
+      "line": 850,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -93938,7 +93996,7 @@
     {
       "theorem": "fn-oag-tls-served-conn-config",
       "book": "books/owner-agent.lisp",
-      "line": 770,
+      "line": 773,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -94092,7 +94150,7 @@
     {
       "theorem": "fn-ocfg-fault-is-own-fault",
       "book": "books/owner-served-invariants.lisp",
-      "line": 489,
+      "line": 509,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -95203,7 +95261,7 @@
     {
       "theorem": "fn-own-declare-group-without-clock-is-refused",
       "book": "books/owner-invariants-outcome.lisp",
-      "line": 949,
+      "line": 950,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-own-declare-group and the conclusion is that arm's value"
       ]
@@ -95403,7 +95461,7 @@
     {
       "theorem": "fn-own-repinned-cursor-fields",
       "book": "books/owner-invariants-outcome.lisp",
-      "line": 558,
+      "line": 559,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -95411,7 +95469,7 @@
     {
       "theorem": "fn-own-served-conn-wire",
       "book": "books/owner-invariants-outcome.lisp",
-      "line": 366,
+      "line": 367,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -95515,7 +95573,7 @@
     {
       "theorem": "fn-own-transit-outcome-needs-a-transit-submission",
       "book": "books/owner-invariants-outcome.lisp",
-      "line": 476,
+      "line": 477,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-own-transit-outcome and the conclusion is that arm's value"
       ]
@@ -97160,6 +97218,14 @@
       "theorem": "fn-rv-row-demand-of-nth",
       "book": "books/resource-vector.lisp",
       "line": 899,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-sar-served-config",
+      "book": "books/served-access-revoke.lisp",
+      "line": 48,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -102740,12 +102806,6 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
-        "theorem": "fn-oag-tls-served-conn-config",
-        "book": "books/owner-agent.lisp",
-        "line": 770,
-        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
         "theorem": "fn-oah-article-conns-is-count",
         "book": "books/owner-article-held.lisp",
         "line": 60,
@@ -102850,7 +102910,7 @@
       {
         "theorem": "fn-own-served-conn-wire",
         "book": "books/owner-invariants-outcome.lisp",
-        "line": 366,
+        "line": 367,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -120579,6 +120639,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/served-access-revoke.lisp",
+        "line": 37,
+        "include": "served-available-access",
+        "included": "books/served-available-access.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/served-available-access.lisp",
         "line": 36,
         "include": "served-available-read",
@@ -132896,6 +132963,20 @@
         "line": 2,
         "include": "../../books/runtime-construction-inventory",
         "included": "books/runtime-construction-inventory.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-access-revoke-tests.lisp",
+        "line": 25,
+        "include": "../../books/served-access-revoke",
+        "included": "books/served-access-revoke.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-access-revoke-tests.lisp",
+        "line": 26,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
