@@ -22312,7 +22312,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-tcrt-write-range-is-bounded"
       ],
@@ -23728,11 +23728,9 @@
       ],
       "note": "D59 (coordinator ruling, ember-delegated) with the root's refusal-scope correction. The host observes two things: whether the loaded library accepts the hybrid group list (SSL_CTX_set1_groups_list), and whether the pinned prefix held a pair (host/native/tls.lisp fnn-tls-load-libraries). It decides nothing. Server contexts only; the peer feed's client contexts keep the library's default groups.",
       "events": [
-        "fn-tlsk-required-refuses-by-name-without-the-hybrid",
         "fn-tlsk-preferred-never-refuses",
         "fn-tlsk-hybrid-is-served-only-when-offered",
-        "fn-tlsk-library-without-tls-never-refuses",
-        "fn-tlsk-library-tls-without-the-pinned-pair-refuses"
+        "fn-tlsk-library-without-tls-never-refuses"
       ]
     }
   ]

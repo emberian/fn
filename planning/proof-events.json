@@ -19780,10 +19780,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-tlsk-required-refuses-by-name-without-the-hybrid"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-tlsk-preferred-never-refuses"
         },
         {
@@ -19793,10 +19789,6 @@
         {
           "kind": "theorem",
           "name": "fn-tlsk-library-without-tls-never-refuses"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-tlsk-library-tls-without-the-pinned-pair-refuses"
         }
       ]
     }

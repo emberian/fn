@@ -51,6 +51,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [bp-source-control](#bp-source-control) KEEPALIVE while exact received-source ACK remains held | `fn-tclsctl-never-releases-ack` | yes | yes: `certify-20261003T163429Z-2470673` | no: no matching image evidence | no: profile not deployed |
 | [operator-default-launch](#operator-default-launch) DEFAULT launcher and configured next-run resource projection | `fn-prstartup-accepted-default-launch-fits-machine` | yes | no: source uncertified | no: no matching image evidence | no: dev source not on the node |
 | [durable-after-ack](#durable-after-ack) durable after acknowledgement (Mini M1) | `fn-lgu-acknowledged-records-are-recovered-at-every-cut` | yes | yes: `certify-20261004T195103Z-266420` | no: no matching image evidence | no: dev source not on the node |
+| [store-identity](#store-identity) store identity by command (Mini M4) | `fn-stid-reply-of-a-genesis-decodes` | yes | no: closure moved | no: no matching image evidence | no: dev source not on the node |
 
 ## Records
 
@@ -322,7 +323,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **bounded private TCPCL logical window.** Actual TCPCL frame and incoming BP source conversion retain exact concrete bytes and build the logical codec list in4096-octet windows, preserving the existing suffix.
 
-- Host-called subject: `fn-tcim-turn` at host/native/tcpcl.lisp:387.
+- Host-called subject: `fn-tcim-turn` at host/native/tcpcl.lisp:393.
 - Keystone: `fn-tcim-turn-boundary` (books/tcpcl-input-materialize.lisp:41; in no registry row); certified at the current source and closure by `certify-20261003T133032Z-1944927` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: the node runs default, this needs dtn.
@@ -334,7 +335,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **KEEPALIVE while exact received-source ACK remains held.** The retained TCPCL source controller emits only independent KEEPALIVE output while local work owns received bytes and the final ACK; it preserves reception state and clock.
 
-- Host-called subject: `fn-tclsctl-turn` at host/native/tcpcl.lisp:705.
+- Host-called subject: `fn-tclsctl-turn` at host/native/tcpcl.lisp:734.
 - Keystone: `fn-tclsctl-never-releases-ack` (books/tcpcl-source-control.lisp:17; in no registry row); certified at the current source and closure by `certify-20261003T163429Z-2470673` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: the node runs default, this needs dtn.
@@ -365,3 +366,15 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 - Latest positive result: books/store-log-durable joins image-world, image-world-dtn and image-world-paged (laptop certify-20261004T161219Z-6428, -165405Z-4135); an oversize take is refused by name (:record-exceeds-log-frame, M1-LOG-RECORD-FRAMING-WINDOW). m1-durable-2 e8abd0f51: frame bound R+32 (fn-lgu-log-max, keystone fn-lgu-log-max-frames-every-record-within-r; certify-20261004T195103Z-266420); the host's ack loop is one call fn-lgu-acknowledge with a plain keystone (DI-OWED-STEP-OF-LGC-FINISH discharged).
 - Remaining obstruction: rotation (incl. fnn-log-complete-rotation at open) outside the run; RL-01 (open reads cached bytes after a failed barrier) outside the model; containment RestartPreventExitStatus=3.
 - Next positive gate: rotation (M1-e, two-segment R); the batch's core natives (log, recovery, crash_model) on the image that carries it.
+
+### store-identity
+
+**store identity by command (Mini M4).** IDENTITY: `fn identity CONTROL` asks the running owner (FNCT kind 24, a :read control) and prints the reply (kind 25) that ACL2 encodes over the exported wire grammar: the open's genesis format, node, schema and profile digests, the consumer arm (unbootstrapped, or bootstrapped with non-empty history id and incarnation), the created and running revisions and the BLAKE3 of specs/wire-grammar.json; Mini pins its decoder by that digest.
+
+- Host-called subject: `fn-stid-host-reply` at host/native/store-identity.lisp:23, equated by `fn-stid-value-is-a-reply-value` (books/store-identity.lisp:282).
+- Keystone: `fn-stid-reply-of-a-genesis-decodes` (books/store-identity.lisp:317; in no registry row); no archived manifest certifies the current closure; `certify-20261004T202723Z-407947` passed this source of `books/store-identity.lisp`, and since then `books/native-config.lisp`, `books/wire-export.lisp`, `books/wire-family-consumer.lisp` and 3 more changed.
+- Tested: no matching image; source proof experiments are recorded separately below.
+- Deployed: no: node image `a3553e6b`; absent from it: `books/store-identity.lisp`, `host/native/store-identity.lisp`.
+- Latest positive result: M4 on dev ad33dd8c4 (merge dce7b2333 of f84daa568, with the may-seal fix 5ea752578): tests.test_native_store_identity 2 ran OK on the published set ad33dd8c4 (developer image), boxq bq10050444-0146, run hbox:/tank/fn/scratch/mini-contract-3/native-bq10050444-0146; books certified lat1 certify-20261004T202723Z-407947 and certify-20261004T203446Z-443120.
+- Remaining obstruction: no qualified image carries it yet; the consumer FNCT families (kinds 4/5/6/9/18/22/23) are not yet grammar families, so Mini still reads them outside the interpreter.
+- Next positive gate: the consumer FNCT families as wire-grammar families with host agreement theorems (books/wire-family-fnct.lisp gives the frame half), then specs/wire-grammar.json re-rendered and re-pinned by Mini.
