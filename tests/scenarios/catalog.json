@@ -9950,7 +9950,7 @@
         "HST-020"
       ],
       "steps": [
-        "Start a node with a certificate under [tls] key_exchange = hybrid-preferred on OpenSSL 3.5.8; connect with openssl s_client -starttls nntp -groups X25519MLKEM768, then with -groups X25519; read the service log, status and health.",
+        "Start a node with a certificate under [tls] key_exchange = hybrid-preferred on OpenSSL 3.5.8; connect with openssl s_client -starttls nntp -groups X25519MLKEM768, then with -groups X25519; read the service log, status and health. Repeat the hybrid client against a node on the release's own pair (packaging/floor-openssl.sh's output).",
         "Start it under hybrid-required on a library that cannot offer the hybrid (the system's 3.0 to 3.4 pair), then under hybrid-preferred on the same library.",
         "Start it with FN_OPENSSL_PREFIX naming a directory with no pair: with a certificate, without one, and without one under hybrid-required; and with an unknown policy word."
       ],
@@ -9967,6 +9967,7 @@
         "test": "tests.test_native_tls_key_exchange",
         "cases": [
           "NativeTlsKeyExchangeTests.test_preferred_negotiates_the_hybrid_and_serves_classical_readers",
+          "NativeTlsKeyExchangeTests.test_the_release_pair_negotiates_the_hybrid",
           "NativeTlsKeyExchangeTests.test_required_serves_the_hybrid_with_a_library_that_offers_it",
           "NativeTlsKeyExchangeTests.test_required_is_refused_by_name_with_a_library_that_cannot_offer_it",
           "NativeTlsKeyExchangeTests.test_preferred_serves_classical_groups_with_a_library_that_cannot_offer_it",

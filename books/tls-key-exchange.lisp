@@ -131,13 +131,15 @@
         (equal d (list :refuse :policy))))
   :rule-classes nil)
 
-; KEYSTONE.  hybrid-required never serves without the hybrid group: with a
-; library that cannot offer it the start is refused by name; with one that
-; can, the list served is the hybrid list.
-(defthm fn-tlsk-required-refuses-by-name-without-the-hybrid
+; hybrid-required with a library that cannot offer the hybrid is refused by
+; name: the arm of fn-tlsk-decide, named so, never cited as an event.
+(defthm fn-tlsk-required-without-the-hybrid-refuses-by-definition
   (equal (fn-tlsk-decide :hybrid-required nil)
          (list :refuse :hybrid-unavailable)))
 
+; KEYSTONE.  hybrid-required never serves without the hybrid group: any
+; decision it serves had the library's offer, and the list served is the
+; hybrid list.
 (defthm fn-tlsk-required-serves-only-the-hybrid-list
   (implies (fn-tlsk-servep (fn-tlsk-decide :hybrid-required offered))
            (and offered
@@ -222,14 +224,20 @@
            (not (equal (fn-tlsk-library-decide missing served policy) :refuse))))
 
 ; KEYSTONE.  A node that serves TLS, or requires the hybrid key exchange,
-; never runs on the system's pair in place of a missing pinned one: its start
-; is refused by name.
-(defthm fn-tlsk-library-tls-without-the-pinned-pair-refuses
+; never runs on the system's pair in place of the pinned one, whatever the
+; library observation: with fn-tlsk-library-decide-is-one-of-three it runs on
+; the pinned pair or its start is refused.
+(defthm fn-tlsk-library-served-tls-never-falls-back
+  (implies (or served (equal policy :hybrid-required))
+           (not (equal (fn-tlsk-library-decide missing served policy) :fallback))))
+
+; The arms, named so and never cited: with the pinned pair missing such a
+; node is refused, and a loaded pinned pair is always what runs.
+(defthm fn-tlsk-library-tls-without-the-pinned-pair-refuses-by-definition
   (implies (and missing (or served (equal policy :hybrid-required)))
            (equal (fn-tlsk-library-decide missing served policy) :refuse)))
 
-; The pinned pair, loaded, is always what runs.
-(defthm fn-tlsk-library-pinned-is-taken
+(defthm fn-tlsk-library-pinned-is-taken-by-definition
   (implies (not missing)
            (equal (fn-tlsk-library-decide missing served policy) :pinned)))
 

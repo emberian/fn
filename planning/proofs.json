@@ -23723,7 +23723,7 @@
     {
       "id": "PRF-1327",
       "title": "The TLS key exchange is a decided policy, and a missing pinned OpenSSL refuses only a node that serves TLS or requires the hybrid",
-      "statement": "books/tls-key-exchange.lisp. fn-tlsk-required-refuses-by-name-without-the-hybrid: (fn-tlsk-decide :hybrid-required nil) is (:refuse :hybrid-unavailable). fn-tlsk-required-serves-only-the-hybrid-list: a served hybrid-required decision has the offer and serves *fn-tlsk-hybrid-list*. fn-tlsk-preferred-never-refuses and fn-tlsk-preferred-serves-the-hybrid-iff-offered: hybrid-preferred always serves, the hybrid list exactly when the library offers it, the classical list otherwise. fn-tlsk-hybrid-is-served-only-when-offered: a :hybrid serve mode implies the offer. fn-tlsk-hybrid-list-is-the-hybrid-group-before-the-classical-list: every served list keeps X25519, P-256 and P-384. fn-tlsk-tally-bump-counts-one-session and the two hybrid-count theorems: each established session is counted once, as hybrid exactly when the library named X25519MLKEM768. D59's refusal scope: fn-tlsk-library-without-tls-never-refuses (no certificate and not hybrid-required: never :refuse, whatever MISSING), fn-tlsk-library-tls-without-the-pinned-pair-refuses (MISSING and (SERVED or hybrid-required): :refuse), fn-tlsk-library-pinned-is-taken. Teeth (tests/acl2/tls-key-exchange-tests.lisp): required serving without the offer, required serving the classical list, preferred always hybrid, hybrid without the offer, missing always refusing, a served node falling back, and hybrid-required without TLS running all fail.",
+      "statement": "books/tls-key-exchange.lisp. fn-tlsk-required-serves-only-the-hybrid-list: a served hybrid-required decision had the library's offer and serves *fn-tlsk-hybrid-list*, so hybrid-required without the offer is never served (the refusal itself, (:refuse :hybrid-unavailable), is the arm fn-tlsk-required-without-the-hybrid-refuses-by-definition, not cited). fn-tlsk-preferred-never-refuses and fn-tlsk-preferred-serves-the-hybrid-iff-offered: hybrid-preferred always serves, the hybrid list exactly when the library offers it, the classical list otherwise. fn-tlsk-hybrid-is-served-only-when-offered: a :hybrid serve mode implies the offer. fn-tlsk-hybrid-list-is-the-hybrid-group-before-the-classical-list: every served list keeps X25519, P-256 and P-384. fn-tlsk-tally-bump-counts-one-session and the two hybrid-count theorems: each established session is counted once, as hybrid exactly when the library named X25519MLKEM768. D59's refusal scope: fn-tlsk-library-without-tls-never-refuses (no certificate and not hybrid-required: never :refuse, whatever MISSING), fn-tlsk-library-served-tls-never-falls-back (SERVED or hybrid-required: never :fallback, whatever MISSING; with fn-tlsk-library-decide-is-one-of-three the node runs on the pinned pair or is refused). The arms -tls-without-the-pinned-pair-refuses-by-definition and -pinned-is-taken-by-definition are not cited. Teeth (tests/acl2/tls-key-exchange-tests.lisp): required serving without the offer, required serving the classical list, preferred always hybrid, hybrid without the offer, missing always refusing, a served node falling back, hybrid-required without TLS running, and any node never falling back all fail.",
       "milestone": "M4",
       "requirements": [
         "HST-020"
@@ -23739,9 +23739,11 @@
       ],
       "note": "D59 (coordinator ruling, ember-delegated) with the root's refusal-scope correction. The host observes two things: whether the loaded library accepts the hybrid group list (SSL_CTX_set1_groups_list), and whether the pinned prefix held a pair (host/native/tls.lisp fnn-tls-load-libraries). It decides nothing. Server contexts only; the peer feed's client contexts keep the library's default groups.",
       "events": [
+        "fn-tlsk-required-serves-only-the-hybrid-list",
         "fn-tlsk-preferred-never-refuses",
         "fn-tlsk-hybrid-is-served-only-when-offered",
-        "fn-tlsk-library-without-tls-never-refuses"
+        "fn-tlsk-library-without-tls-never-refuses",
+        "fn-tlsk-library-served-tls-never-falls-back"
       ]
     }
   ]

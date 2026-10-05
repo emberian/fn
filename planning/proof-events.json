@@ -19780,6 +19780,10 @@
       "events": [
         {
           "kind": "theorem",
+          "name": "fn-tlsk-required-serves-only-the-hybrid-list"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-tlsk-preferred-never-refuses"
         },
         {
@@ -19789,6 +19793,10 @@
         {
           "kind": "theorem",
           "name": "fn-tlsk-library-without-tls-never-refuses"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tlsk-library-served-tls-never-falls-back"
         }
       ]
     }
