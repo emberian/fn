@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/defkeystone.lisp",
+ "id": "TEETH-OWED-STOBJ-WITNESS",
+ "notes": [],
+ "owner": "teeth-gate",
+ "severity": "medium",
+ "slice": "proof-tooling",
+ "source": "teeth-gate",
+ "state": "open",
+ "title": "defteeth cannot witness a claim over stobjs: fn-proto-archive-command-cat-is-pinned (books/protocol-served.lisp, PRF-202/PRF-346/PRF-1236) is owed teeth by defprotocol (table fn-teeth-owed) and no defteeth can meet the row, since books/defkeystone.lisp refuses a stobj (fn-arena, fn-cat) among witness bindings (executable and :lemma modes alike). Its teeth are hand-written in tests/acl2/protocol-served-tests.lisp (positive per declared row, view-articles reachable removal, trie-correspondence logical removal, statep/pin-correspondence/fresh/columns removals deferred). Owed: a defteeth witness mode that binds a stobj by a builder (with-local-stobj), then the row met; until then tools/keystone_emit.py reports it as a new hand keystone and test books with defteeth-check exclude it by name (tests/acl2/withdrawal-index-carried-tests.lisp).",
+ "updated": "2026-10-05T07:31:57Z"
+}

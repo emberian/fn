@@ -5,6 +5,9 @@
 (in-package "ACL2")
 (include-book "../../books/store-log-route-programs")
 (include-book "store-log-kernel-tests")
+; The witnesses evaluate the recovered kernel, which decodes records through
+; the seam's constrained fn-record-decode-exact: run it under its attachment.
+(include-book "../../books/records-attach")
 
 (defun slrp-related-run-p (bs ks program)
   (declare (xargs :verify-guards nil))
@@ -126,13 +129,14 @@
                                (fn-lg-open-program) nil 0))
                11))))
 
-; HYPOTHESIS REMOVED (the owner's sole-pending-writer obligation, and with it
-; "no operation of the segment pending"): the log's own write pending at the
-; open.  The recover program still runs, and the state it leaves is NOT
-; related, so neither is the suffix.
+; HYPOTHESIS REMOVED ("no operation of the segment pending"): the log's own
+; write pending at the open.  The sole-pending-writer obligation is RETAINED
+; (its executable twin holds: the one pending operation is the log's own); the
+; recover program still runs, and the state it leaves is NOT related, so
+; neither is the suffix.
 (assert-event
  (let ((bs (slk-store (slk-content) (list (list :write 0 (len (slk-content)) '(1 2 3 4))))))
-   (and (equal (slrp-open-hyps bs (slk-genesis)) '(t t t t t nil nil))
+   (and (equal (slrp-open-hyps bs (slk-genesis)) '(t t t t t t nil))
         (not (slrp-open-conclusion bs (slk-genesis))))))
 
 ; HYPOTHESIS REMOVED (the content's length a multiple of the unit): a

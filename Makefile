@@ -139,12 +139,16 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/decoded-window-action-trajectory-tests \
 	tests/acl2/decoded-window-begin-tests \
 	tests/acl2/decoded-window-budget-completion-tests \
+	tests/acl2/decoded-window-budget-completion-2-tests \
 	tests/acl2/decoded-window-budget-trajectory-tests \
+	tests/acl2/decoded-window-budget-trajectory-2-tests \
+	tests/acl2/decoded-window-budget-trajectory-3-tests \
 	tests/acl2/decoded-window-canonical-trajectory-tests \
 	tests/acl2/decoded-window-clear-trajectory-tests \
 	tests/acl2/decoded-window-copy-trajectory-tests \
 	tests/acl2/decoded-window-descriptor-tests \
 	tests/acl2/decoded-window-digest-trajectory-tests \
+	tests/acl2/decoded-window-digest-trajectory-2-tests \
 	tests/acl2/decoded-window-executor-tests \
 	tests/acl2/decoded-window-finite-canonical-tests \
 	tests/acl2/decoded-window-finite-output-trajectory-tests \

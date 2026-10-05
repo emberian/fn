@@ -5,6 +5,10 @@
 
 (include-book "../../books/resource-output-chain")
 
+; The book closes over its proof-only chain predicate (in-theory disable at its
+; end, 0ff71d35a); these ground witnesses open it to evaluate the chain.
+(local (in-theory (enable fn-rlo-free-chainp)))
+
 (defthm rct-issue-positive
  (let* ((ledger (mv-nth 1 (fn-rl-install '(16777216 0 0 0 0 0 0 0 0)
                                       '(8192 0 0 0 0 0 0 0 0)
