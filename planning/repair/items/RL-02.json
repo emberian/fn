@@ -1,5 +1,5 @@
 {
- "budget": 1400,
+ "budget": "1500",
  "category": "liveness",
  "disposition": "LOCAL",
  "evidence": "host/native/owner.lisp fnn-owner-publish-captured: the done quantum runs only (when next ...) (owner.lisp:7224-7228); NEXT is set from fn-owner-sco-setup-of's PREPARED-NEXT, nil for the :unencodable verdict (host/owner-host.lisp:997-998), and never set when fnn-history-image-build refuses by name (io.lisp:3683/3713 fnn-refuse-io 'history image refused by name') or the walk refuses, all before (setq next ...). The capture set fn-owner-sco-inflight to COUNT (owner-host.lisp:904); only fn-owner-sco-publication-done (1037-1044), the reclaim release and the swap clear it.",
@@ -15,7 +15,8 @@
  "native": "checkpoint_abandon",
  "notes": [
   "10-04 11:32 filed by read-life 2026-10-04",
-  "10-05 10:40 claimed: scope=['Makefile', 'books/failure-scope.lisp', 'books/owner-compact-request.lisp', 'books/owner-publication-lifecycle.lisp', 'host/interfaces.lisp', 'host/native/admin.lisp', 'host/native/io.lisp', 'host/native/owner.lisp', 'host/owner-host.lisp', 'host/owner-served-carried.lisp', 'tests/acl2/owner-publication-lifecycle-tests.lisp', 'tests/native_checkpoint_abandon_raw-mock.lisp', 'tests/native_checkpoint_image_readback_raw-mock.lisp', 'tests/native_history_builder_raw-mock.lisp', 'tests/test_native_checkpoint_abandon.py', 'tests/test_native_checkpoint_abandon_raw.py', 'tests/test_native_checkpoint_auto.py'] test=python3 -m unittest tests.test_native_checkpoint_abandon_raw.CheckpointAbandonRawTests"
+  "10-05 10:40 claimed: scope=['Makefile', 'books/failure-scope.lisp', 'books/owner-compact-request.lisp', 'books/owner-publication-lifecycle.lisp', 'host/interfaces.lisp', 'host/native/admin.lisp', 'host/native/io.lisp', 'host/native/owner.lisp', 'host/owner-host.lisp', 'host/owner-served-carried.lisp', 'tests/acl2/owner-publication-lifecycle-tests.lisp', 'tests/native_checkpoint_abandon_raw-mock.lisp', 'tests/native_checkpoint_image_readback_raw-mock.lisp', 'tests/native_history_builder_raw-mock.lisp', 'tests/test_native_checkpoint_abandon.py', 'tests/test_native_checkpoint_abandon_raw.py', 'tests/test_native_checkpoint_auto.py'] test=python3 -m unittest tests.test_native_checkpoint_abandon_raw.CheckpointAbandonRawTests",
+  "10-05 10:40 rl02 2026-10-05: lane/rl02. Raw witness RED at base 319aee828/f375da27c, GREEN at head (manual run; verify's observer waits for allow_forbidden on owner-host/owner/io/interfaces, per named function, from the integrator). Native witness tests/test_native_checkpoint_abandon.py needs an image (queued INTEGRATOR-5 item 5)."
  ],
  "owner": "rl02",
  "reviewer": "read-life (Opus reader), mental execution 2026-10-04; not reproduced natively",
@@ -45,5 +46,5 @@
  "test": "python3 -m unittest tests.test_native_checkpoint_abandon_raw.CheckpointAbandonRawTests",
  "timeout": "300",
  "title": "publication that ends before NEXT leaves fn-owner-sco-inflight set for the run",
- "updated": "2026-10-05T14:40:27Z"
+ "updated": "2026-10-05T14:40:50Z"
 }
