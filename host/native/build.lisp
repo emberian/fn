@@ -219,6 +219,9 @@
 ; PKT-209: `control log' and `control evidence'.
 (include-book "books/control-evidence")
 (include-book "books/native-hybrid-control")
+;; D50 (lane zmq-2): the pattern table, its plans and argv grammar, the
+;; article kind's codec and the plan steps host/native/pattern.lisp calls.
+(include-book "books/app-pattern-delivery")
 (include-book "books/peer-invite")
 (include-book "books/bp-receipt-records")
 (include-book "books/bp-native-app-fast")
@@ -578,6 +581,9 @@
         ; line `status' and `health' print; after operator.lisp, whose plan it reads.
         (load "host/native/heap.lisp")
         (load "host/native/signature-command.lisp")
+        ; `fn pattern NAME ROLE ...' (D50): one loop over a declared
+        ; pattern's plan; after the consumer and signing commands it calls.
+        (load "host/native/pattern.lisp")
         ; Peering invitations (PRF-097): after the hybrid control handler it
         ; wraps, the signing commands it reuses and the admin publisher.
         (load "host/native/peer-invite.lisp")

@@ -9,39 +9,46 @@
                               label width)))
     (fnn-octet-list octets)))
 
+(defun fnn-hsig-sign-source (principal-path ed-public-path ed-secret-path
+                             ml-public-path ml-private-path source)
+  "Sign the exact SOURCE octets with the supplied key files: (values SOURCE
+PRINCIPAL KEYS SIGNATURES), the signatures checked against the keys."
+  (let* ((principal
+          (fnn-hsig-command-read-exact principal-path 32 "principal"))
+         (ed-public
+          (fnn-hsig-command-read-exact ed-public-path 32 "Ed25519 public key"))
+         (ed-secret
+          (fnn-hsig-command-read-exact ed-secret-path 64 "Ed25519 secret key"))
+         (ml-public (coerce (fnn-hsig-ml-dsa-65-public-key ml-public-path)
+                            'list))
+         (keys (list (cons :ed25519 ed-public)
+                     (cons :ml-dsa-65 ml-public)))
+         (preimage (fnn-core 'fn-hsig-host-preimage principal keys source)))
+    (unless preimage
+      (fnn-refuse "hybrid signing subject is outside the selected profile"))
+    (let* ((ed-signature
+            (fnn-hsig-ed25519-sign (fnn-octets ed-secret) preimage))
+           (ml-signature
+            (fnn-hsig-ml-dsa-65-sign ml-private-path preimage))
+           (signatures
+            (list (cons :ed25519 (fnn-octet-list ed-signature))
+                  (cons :ml-dsa-65 (fnn-octet-list ml-signature)))))
+      ;; Detect mismatched supplied private/public material before emitting
+      ;; an unusable artifact.  ACL2 still owns the final conjunction.
+      (unless (fnn-hsig-authorize-profile principal keys source signatures
+                                          ml-public-path)
+        (fnn-refuse "supplied keys do not produce the enrolled hybrid profile"))
+      (values source principal keys signatures))))
+
 (defun fnn-hsig-command-sign-material (args)
   "Return the exact source, ordered public key set and both checked signatures."
   (destructuring-bind (principal-path ed-public-path ed-secret-path ml-public-path
                        ml-private-path source-path) args
-    (let* ((principal
-            (fnn-hsig-command-read-exact principal-path 32 "principal"))
-           (ed-public
-            (fnn-hsig-command-read-exact ed-public-path 32 "Ed25519 public key"))
-           (ed-secret
-            (fnn-hsig-command-read-exact ed-secret-path 64 "Ed25519 secret key"))
-           (ml-public (coerce (fnn-hsig-ml-dsa-65-public-key ml-public-path)
-                              'list))
-           (source (fnn-octet-list
-                    (fnn-read-regular-bounded
-                     source-path (fnn-core 'fn-hsig-host-max-source-octets))))
-           (keys (list (cons :ed25519 ed-public)
-                       (cons :ml-dsa-65 ml-public)))
-           (preimage (fnn-core 'fn-hsig-host-preimage principal keys source)))
-      (unless preimage
-        (fnn-refuse "hybrid signing subject is outside the selected profile"))
-      (let* ((ed-signature
-              (fnn-hsig-ed25519-sign (fnn-octets ed-secret) preimage))
-             (ml-signature
-              (fnn-hsig-ml-dsa-65-sign ml-private-path preimage))
-             (signatures
-              (list (cons :ed25519 (fnn-octet-list ed-signature))
-                    (cons :ml-dsa-65 (fnn-octet-list ml-signature)))))
-        ;; Detect mismatched supplied private/public material before emitting
-        ;; an unusable artifact.  ACL2 still owns the final conjunction.
-        (unless (fnn-hsig-authorize-profile principal keys source signatures
-                                            ml-public-path)
-          (fnn-refuse "supplied keys do not produce the enrolled hybrid profile"))
-        (values source principal keys signatures)))))
+    (fnn-hsig-sign-source
+     principal-path ed-public-path ed-secret-path ml-public-path ml-private-path
+     (fnn-octet-list
+      (fnn-read-regular-bounded
+       source-path (fnn-core 'fn-hsig-host-max-source-octets))))))
 
 (defun fnn-command-hybrid-sign (args)
   "Sign exact source bytes with caller-supplied independent key material.
