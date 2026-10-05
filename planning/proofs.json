@@ -22312,7 +22312,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-tcrt-write-range-is-bounded"
       ],
@@ -23522,7 +23522,7 @@
         "PRF-1322"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/article-kind-codec.lisp",
         "tests/acl2/article-kind-codec-tests.lisp (round trip and encode = layout at the example values and four payloads; the kind hypothesis needed: a grammar value with a From outside the kind decodes to :from; canonicity: unpadded base64, a bare LF, a trailing octet and a folded header refused; :kind-version and :kind named; the bridge's ceiling needed, proved: above it the codec is nil and the layout octets)"

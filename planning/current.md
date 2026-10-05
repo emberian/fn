@@ -322,7 +322,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **bounded private TCPCL logical window.** Actual TCPCL frame and incoming BP source conversion retain exact concrete bytes and build the logical codec list in4096-octet windows, preserving the existing suffix.
 
-- Host-called subject: `fn-tcim-turn` at host/native/tcpcl.lisp:393.
+- Host-called subject: `fn-tcim-turn` at host/native/tcpcl.lisp:387.
 - Keystone: `fn-tcim-turn-boundary` (books/tcpcl-input-materialize.lisp:41; in no registry row); certified at the current source and closure by `certify-20261003T133032Z-1944927` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: the node runs default, this needs dtn.
@@ -334,7 +334,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **KEEPALIVE while exact received-source ACK remains held.** The retained TCPCL source controller emits only independent KEEPALIVE output while local work owns received bytes and the final ACK; it preserves reception state and clock.
 
-- Host-called subject: `fn-tclsctl-turn` at host/native/tcpcl.lisp:734.
+- Host-called subject: `fn-tclsctl-turn` at host/native/tcpcl.lisp:705.
 - Keystone: `fn-tclsctl-never-releases-ack` (books/tcpcl-source-control.lisp:17; in no registry row); certified at the current source and closure by `certify-20261003T163429Z-2470673` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: the node runs default, this needs dtn.
