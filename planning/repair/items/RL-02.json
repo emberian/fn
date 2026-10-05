@@ -1,22 +1,49 @@
 {
+ "budget": 1400,
  "category": "liveness",
  "disposition": "LOCAL",
  "evidence": "host/native/owner.lisp fnn-owner-publish-captured: the done quantum runs only (when next ...) (owner.lisp:7224-7228); NEXT is set from fn-owner-sco-setup-of's PREPARED-NEXT, nil for the :unencodable verdict (host/owner-host.lisp:997-998), and never set when fnn-history-image-build refuses by name (io.lisp:3683/3713 fnn-refuse-io 'history image refused by name') or the walk refuses, all before (setq next ...). The capture set fn-owner-sco-inflight to COUNT (owner-host.lisp:904); only fn-owner-sco-publication-done (1037-1044), the reclaim release and the swap clear it.",
+ "expect-failure": "tests.test_native_checkpoint_abandon_raw.CheckpointAbandonRawTests.test_an_abandoned_publication_releases_and_classifies_its_slot",
  "exposure": "conditional",
+ "failure-message": "an abandoned publication left fn-owner-sco-inflight set for the run",
  "file": "host/native/owner.lisp",
  "fix": "A done quantum for every publication that captured: when NEXT is nil, release the slot as the publication's own (fn-orc-release-slot (list :publication COUNT) ...) through a new program-mode entry fn-owner-sco-publication-abandoned COUNT REASON, which also records the named refusal as a deferral that blocks the due path (fn-ock-publication-blockedp, or a new :refused deferral kind) until the operator asks: releasing alone turns the stuck slot into a full walk + log rotation on every later POST (fn-ock-publication-duep re-arms on any count change). Statement first: a keystone that every captured publication releases its slot (fn-ock-one-publication-in-flight's liveness half). COUNT is already in CAPTURED (destructured and ignored at owner.lisp:7103).",
+ "harness": "tests/test_native_checkpoint_abandon_raw.py,tests/native_checkpoint_abandon_raw-mock.lisp",
  "id": "RL-02",
  "line": "7224",
  "locus": "checkpoint-publication",
+ "native": "checkpoint_abandon",
  "notes": [
-  "10-04 11:32 filed by read-life 2026-10-04"
+  "10-04 11:32 filed by read-life 2026-10-04",
+  "10-05 10:40 claimed: scope=['Makefile', 'books/failure-scope.lisp', 'books/owner-compact-request.lisp', 'books/owner-publication-lifecycle.lisp', 'host/interfaces.lisp', 'host/native/admin.lisp', 'host/native/io.lisp', 'host/native/owner.lisp', 'host/owner-host.lisp', 'host/owner-served-carried.lisp', 'tests/acl2/owner-publication-lifecycle-tests.lisp', 'tests/native_checkpoint_abandon_raw-mock.lisp', 'tests/native_checkpoint_image_readback_raw-mock.lisp', 'tests/native_history_builder_raw-mock.lisp', 'tests/test_native_checkpoint_abandon.py', 'tests/test_native_checkpoint_abandon_raw.py', 'tests/test_native_checkpoint_auto.py'] test=python3 -m unittest tests.test_native_checkpoint_abandon_raw.CheckpointAbandonRawTests"
  ],
- "owner": "read-life",
+ "owner": "rl02",
  "reviewer": "read-life (Opus reader), mental execution 2026-10-04; not reproduced natively",
  "scenario": "A capture whose history image row is refused by name (fn-his-row-begin :refused :pending-suffix, a flush-init or x-append verdict) or whose history is unencodable: 'CHECKPOINT auto failed'/'refused=unencodable' is logged and serving continues, but fn-ock-publication-next answers :inflight/:coalesce for the rest of the run: no automatic checkpoint, every 'store compact'/'store checkpoint' answers :coalesced, a reclaim pass is refused in-flight (fn-orc-capture-word), the record log grows without bound and the next open replays the whole suffix (and meets the same refusal).",
+ "scope": [
+  "Makefile",
+  "books/failure-scope.lisp",
+  "books/owner-compact-request.lisp",
+  "books/owner-publication-lifecycle.lisp",
+  "host/interfaces.lisp",
+  "host/native/admin.lisp",
+  "host/native/io.lisp",
+  "host/native/owner.lisp",
+  "host/owner-host.lisp",
+  "host/owner-served-carried.lisp",
+  "tests/acl2/owner-publication-lifecycle-tests.lisp",
+  "tests/native_checkpoint_abandon_raw-mock.lisp",
+  "tests/native_checkpoint_image_readback_raw-mock.lisp",
+  "tests/native_history_builder_raw-mock.lisp",
+  "tests/test_native_checkpoint_abandon.py",
+  "tests/test_native_checkpoint_abandon_raw.py",
+  "tests/test_native_checkpoint_auto.py"
+ ],
  "severity": "high",
  "source": "read-life",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_native_checkpoint_abandon_raw.CheckpointAbandonRawTests",
+ "timeout": "300",
  "title": "publication that ends before NEXT leaves fn-owner-sco-inflight set for the run",
- "updated": "2026-10-04T15:32:48Z"
+ "updated": "2026-10-05T14:40:27Z"
 }
