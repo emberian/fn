@@ -213,8 +213,5 @@
  (equal (fn-bs-pending (fn-lgob-open-then-batch (fn-lgob-rotated-store) 2 '(:root :parent)))
         '((:set-entry :journal "000002.log" 2))))
 (assert-event
- (equal (fn-bs-pending (fn-lgob-open-then-drop '(:journal :parent)))
-        '((:set-entry :root "checkpoint" 5) (:del-entry :staging ".checkpoint-stage"))))
-(assert-event
  (equal (fn-bs-pending (fn-lgob-open-then-batch (fn-lgob-imported-store) 1 '(:journal :root)))
         '((:set-entry :parent "store" :root) (:del-entry :parent ".import-stage"))))

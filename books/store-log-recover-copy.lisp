@@ -18,6 +18,9 @@
 ;   a FAILED fsync changes BS only: it lands the environment's selection and
 ;     drops the rest from pending, while the visible tables keep every
 ;     operation -- readable, not durable, not dirty;
+;   an unlink, like a rename, resolves its name in the VISIBLE namespace
+;     and leaves a pending :del-entry: the name is gone from the cache at
+;     once and from the durable table only once its directory is fenced;
 ;   :evict-ino / :evict-dir drop clean cache: the visible inode or directory
 ;     becomes its durable value, allowed only with nothing pending for it;
 ;   :exit is a process death that keeps the cache (the restart's case);
@@ -54,6 +57,9 @@
 ;   fn-lgrc-attempt-makes-the-read-prefix-durable   (K1) an attempt that
 ;       completes from a quiet store leaves journal/K durably bound to an
 ;       inode R-related to the read's kernel.
+;   fn-lgrc-open-unlinks-no-segment   (section 10) every journal/ name that
+;       every crash image binds stays bound at every state of the open, any
+;       outcomes: the open never drops (RL-01-CHECKPOINT-NAME-BEFORE-DROP).
 ; Assumptions: none new.  A-CRASH-IMAGE's tear model and A-DURABILITY are
 ; the byte model's; A-WRITE-ISOLATION's cross-inode reading
 ; (specs/failures.md) is what lets the old inode's blocks survive its unlink.
@@ -104,6 +110,8 @@
 ;   (:fsync-file INO OUTCOME)  (:fsync-dir DIR OUTCOME)
 ;   (:rename SDIR SNAME DDIR DNAME OUTCOME)   the source resolved in the
 ;                                    VISIBLE namespace
+;   (:unlink DIR NAME OUTCOME)       the name resolved in the VISIBLE
+;                                    namespace (fn-bs-unlink's outcomes)
 ;   (:evict-ino INO)  (:evict-dir DIR)  (:exit)  (:lose-cache CHOICES)
 (defun fn-bsc-step (s op)
   (declare (xargs :guard t :verify-guards nil))
@@ -162,6 +170,20 @@
                                        (fn-bsc-vinodes s) (fn-bsc-vdirs s))
                           (car ops))
                          (cadr ops))))))))
+      (:unlink
+       (let* ((dir (nth 1 op)) (name (nth 2 op)) (outcome (nth 3 op))
+              (del (list :del-entry dir name)))
+         (cond ((not (fn-bsc-lookup s dir name)) (mv :enoent s))
+               ((not (or (equal outcome :ok)
+                         (and (consp outcome) (equal (cdr outcome) :issued))))
+                (mv (if (consp outcome) (car outcome) outcome) s))
+               (t (mv (if (equal outcome :ok) :ok (car outcome))
+                      (fn-bsc-vapply
+                       (fn-bsc-make (fn-bs-make (fn-bs-unit bs) (fn-bs-inodes bs) (fn-bs-dirs bs)
+                                                (append (fn-bs-pending bs) (list del))
+                                                (fn-bs-next-ino bs))
+                                    (fn-bsc-vinodes s) (fn-bsc-vdirs s))
+                       del))))))
       (:evict-ino
        (let ((ino (nth 1 op)))
          (if (fn-bs-ops-for-ino (fn-bs-pending bs) ino)
@@ -270,7 +292,8 @@
 ; to its pending writes (fn-lgrc-goodp-after-step: only a write below (len A)
 ; to the inode breaks it), and what it does to journal/K's candidates and
 ; visible binding (fn-lgrc-names-after-*).  The candidates after a step are
-; the old ones (writes, file fences, creates, evictions), one of the old
+; the old ones (writes, file fences, creates, evictions, an unlink of
+; another name), one of the old
 ; ones (a fence of journal/, a cache loss), or the old ones with a rename's
 ; source (a rename onto journal/K); the visible binding is the old one, a
 ; candidate (evict-dir, lose-cache) or the rename's source.
@@ -365,6 +388,13 @@
            :in-theory (e/d (fn-bsc-content fn-bsc-vapply fn-bs-durable-content fn-bs-apply-op)
                            (fn-bs-take fn-lgrc-holdsp fn-bs-put-assoc fn-bs-del-assoc)))))
 
+(defthm fn-lgrc-goodp-after-unlink
+  (implies (and (fn-lgrc-goodp s i a) (equal (car op) :unlink))
+           (fn-lgrc-goodp (mv-nth 1 (fn-bsc-step s op)) i a))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bsc-content fn-bsc-vapply fn-bs-durable-content fn-bs-apply-op)
+                           (fn-bs-take fn-lgrc-holdsp fn-bs-put-assoc fn-bs-del-assoc)))))
+
 (defthm fn-lgrc-goodp-after-evict-ino
   (implies (and (fn-lgrc-goodp s i a) (equal (car op) :evict-ino))
            (fn-lgrc-goodp (mv-nth 1 (fn-bsc-step s op)) i a))
@@ -440,7 +470,7 @@
             :in-theory (disable fn-lgrc-goodp)))))
 (defthm fn-bsc-step-of-another-kind
   (implies (not (member-equal (car op) '(:create :write :fsync-file :fsync-dir :rename
-                                         :evict-ino :evict-dir :lose-cache)))
+                                         :unlink :evict-ino :evict-dir :lose-cache)))
            (equal (mv-nth 1 (fn-bsc-step s op)) s)))
 
 ; A step keeps inode I good unless it writes I below (len A).
@@ -452,8 +482,9 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d () (fn-lgrc-goodp fn-bsc-step))
            :cases ((equal (car op) :write) (equal (car op) :fsync-file) (equal (car op) :fsync-dir)
-                   (equal (car op) :create) (equal (car op) :rename) (equal (car op) :evict-ino)
-                   (equal (car op) :evict-dir) (equal (car op) :lose-cache)))
+                   (equal (car op) :create) (equal (car op) :rename) (equal (car op) :unlink)
+                   (equal (car op) :evict-ino) (equal (car op) :evict-dir)
+                   (equal (car op) :lose-cache)))
 ))
 
 (defthm fn-lgrc-all-goodp-after-step
@@ -597,6 +628,22 @@
                             fn-bs-assoc-of-del-assoc-other)
                            (fn-bs-entry-outcomes fn-bs-put-assoc fn-bs-del-assoc)))))
 
+; An unlink of another name leaves journal/K's candidates and visible
+; binding as they were.
+(defthm fn-lgrc-names-after-unlink
+  (implies (and (equal (car op) :unlink) (fn-bs-dir-idp j) (fn-bs-namep k)
+                (not (and (equal (nth 1 op) j) (equal (nth 2 op) k))))
+           (and (equal (fn-lgrc-candidates (fn-bsc-bs (mv-nth 1 (fn-bsc-step s op))) j k)
+                       (fn-lgrc-candidates (fn-bsc-bs s) j k))
+                (equal (fn-bsc-lookup (mv-nth 1 (fn-bsc-step s op)) j k)
+                       (fn-bsc-lookup s j k))))
+  :hints (("Goal" :do-not-induct t
+           :cases ((equal (nth 1 op) j))
+           :in-theory (e/d (fn-bsc-vapply fn-bs-apply-op fn-bs-durable-entry
+                            fn-bs-assoc-of-put-assoc-other fn-bs-assoc-of-put-assoc-same
+                            fn-bs-assoc-of-del-assoc-other)
+                           (fn-bs-entry-outcomes fn-bs-put-assoc fn-bs-del-assoc)))))
+
 (defthm fn-lgrc-names-after-evict
   (implies (and (or (equal (car op) :evict-ino) (equal (car op) :evict-dir))
                 (fn-bs-dir-idp j) (fn-bs-namep k))
@@ -636,6 +683,8 @@
            (and (not (and (equal (nth 1 op) j) (equal (nth 2 op) k)))
                 (or (not (and (equal (nth 3 op) j) (equal (nth 4 op) k)))
                     (fn-lgrc-goodp s (fn-bsc-lookup s (nth 1 op) (nth 2 op)) a))))
+          ((equal kind :unlink)
+           (not (and (equal (nth 1 op) j) (equal (nth 2 op) k))))
           (t t))))
 
 (local
@@ -701,6 +750,11 @@
                              (is (fn-lgrc-candidates (fn-bsc-bs s) j k)))
                   (:instance fn-lgrc-goodp-after-step (i (fn-bsc-lookup s (nth 1 op) (nth 2 op))))
                   (:instance fn-lgrc-goodp-after-step (i (fn-bsc-lookup s j k))))))))
+(local
+ (defthm fn-lgrc-invp-after-unlink
+   (implies (and (fn-lgrc-invp s j k a) (equal (car op) :unlink) (fn-lgrc-op-okp s op j k a))
+            (fn-lgrc-invp (mv-nth 1 (fn-bsc-step s op)) j k a))
+   :hints (("Goal" :do-not-induct t))))
 ; Every step keeps the invariant under its side condition.
 (defthm fn-lgrc-step-keeps-the-invariant
   (implies (and (fn-lgrc-invp s j k a) (fn-lgrc-op-okp s op j k a))
@@ -709,7 +763,8 @@
            :in-theory (disable fn-lgrc-invp fn-lgrc-op-okp)
            :cases ((member-equal (car op) '(:write :fsync-file :create :evict-ino))
                    (equal (car op) :fsync-dir) (equal (car op) :lose-cache)
-                   (equal (car op) :evict-dir) (equal (car op) :rename)))))
+                   (equal (car op) :evict-dir) (equal (car op) :rename)
+                   (equal (car op) :unlink)))))
 
 ; -----------------------------------------------------------------------------
 ; 4. The attempt (P-LOG-RECOVER-COPY).
@@ -1714,7 +1769,8 @@
                                fn-lgrc-names-after-fsync-dir))
            :cases ((member-equal (car op) '(:write :fsync-file :create :evict-ino))
                    (equal (car op) :fsync-dir) (equal (car op) :lose-cache)
-                   (equal (car op) :evict-dir) (equal (car op) :rename))
+                   (equal (car op) :evict-dir) (equal (car op) :rename)
+                   (equal (car op) :unlink))
            :use ((:instance fn-lgrc-names-after-fsync-dir)
                  (:instance fn-lgrc-names-after-lose-cache)
                  (:instance fn-lgrc-names-after-evict)
@@ -2348,3 +2404,163 @@
                             (bs (fn-bsc-bs (fn-lgrc-final (fn-lgrc-attempt s j k stg stage genesis max floor nil) s)))
                             (s str)
                             (ino (fn-bs-next-ino (fn-bsc-bs s))))))))
+
+; -----------------------------------------------------------------------------
+; 10. The open never drops (RL-01-CHECKPOINT-NAME-BEFORE-DROP; coordinator
+; ruling 2026-10-05, on lane m1-durable-4's finding).
+;
+; THE DEFECT.  The open used to finish an interrupted drop: after its
+; barriers it unlinked every segment below the first suffix segment of the
+; checkpoint it READ (fn-lgs-open-plan's DROP) and fenced journal/.  That
+; checkpoint's name may be visible only.  A run renames the checkpoint into
+; the root and the root's fsync fails: the rename leaves pending, the cache
+; keeps the name, the process exits.  The restart reads the name and plans
+; the drop; its own root fence succeeds and lands nothing (nothing for the
+; root is pending); the unlink and journal/'s fence land; a power loss then
+; leaves neither the checkpoint nor the segments it covers
+; (fn-lgrc-dropping-open-loses-a-checkpointed-history, a ground trace).
+;
+; THE RULING.  The open unlinks no segment.  Covered segments stay until the
+; next checkpoint install's drop, which runs only after that install's own
+; root fence succeeded in the same run (host/native/io.lisp
+; fnn-state-checkpoint-write raises before any drop on a failed fence) and
+; which names every segment below its own first suffix segment, so it
+; covers what an earlier drop left (books/store-log-segments.lisp
+; fn-lgs-install-drop-covers-what-the-open-left).
+;
+; The open's byte steps (host/native/io.lisp fnn-recover-log): the copy
+; (fn-lgrc-attempt-ops, the program fn-lgrc-program) and then the three
+; recovery barriers (books/store-log-route-programs.lisp fn-lg-open-program:
+; journal/, the root, the root's parent), each under the environment's
+; outcome.  The staging sweep unlinks staging/ names only; the byte model
+; here does not carry it.
+(defun fn-lgrc-open-ops (s j k stg stage root parent genesis max floor outs)
+  (declare (xargs :guard t :verify-guards nil))
+  (append (fn-lgrc-attempt-ops s j k stg stage genesis max floor outs)
+          (list (list :fsync-dir j (fn-lgrc-out outs 6))
+                (list :fsync-dir root (fn-lgrc-out outs 7))
+                (list :fsync-dir parent (fn-lgrc-out outs 8)))))
+
+(defun fn-lgrc-dir-fences-p (ops)
+  (declare (xargs :guard t))
+  (if (consp ops)
+      (and (consp (car ops)) (equal (car (car ops)) :fsync-dir)
+           (fn-lgrc-dir-fences-p (cdr ops)))
+    t))
+
+(local
+ (defthm fn-lgrc-run-okp-of-dir-fences
+   (implies (fn-lgrc-dir-fences-p ops)
+            (fn-lgrc-run-okp s ops j n a))
+   :hints (("Goal" :induct (fn-lgrc-run-okp s ops j n a)))))
+
+(local
+ (defthm fn-lgrc-run-okp-of-append-dir-fences
+   (implies (and (fn-lgrc-run-okp s x j n a) (fn-lgrc-dir-fences-p y))
+            (fn-lgrc-run-okp s (append x y) j n a))
+   :hints (("Goal" :induct (fn-lgrc-run-okp s x j n a)))))
+
+(local
+ (defthm fn-lgrc-completep-of-nil
+   (fn-lgrc-completep nil genesis unit max)
+   :hints (("Goal" :in-theory (enable fn-lg-scan)))))
+
+; KEYSTONE (RL-01-CHECKPOINT-NAME-BEFORE-DROP, the open's half).  A name N
+; of journal/ that every crash image binds to an inode, and that the cache
+; binds (the invariant over the empty prefix), stays so at every state of
+; the open -- the copy of segment K (N = K included) and the three barriers,
+; under any outcomes the environment chooses.  The open unlinks no segment.
+(defthm fn-lgrc-open-unlinks-no-segment
+  (implies (and (fn-lgrc-invp s j n nil)
+                (fn-bs-dir-idp stg) (fn-bs-namep stage)
+                (not (and (equal stg j) (equal stage k)))
+                (not (and (equal stg j) (equal stage n)))
+                (fn-lgrc-outcomesp outs))
+           (fn-lgrc-all-invp
+            (fn-bsc-run s (fn-lgrc-open-ops s j k stg stage root parent genesis max floor outs))
+            j n nil))
+  :hints (("Goal" :do-not-induct t
+           :cases ((equal n k))
+           :in-theory (e/d (fn-lgrc-open-ops)
+                           (fn-lgrc-invp fn-lgrc-completep fn-lgrc-out fn-bsc-run
+                            fn-lgrc-copy-octets fn-lgt-recover fn-lgk-frontier
+                            fn-bsc-content))
+           :use ((:instance fn-lgrc-attempt-is-within-the-side-conditions (k n) (a nil))
+                 (:instance fn-lgrc-run-keeps-the-invariant (k n) (a nil)
+                            (ops (fn-lgrc-open-ops s j k stg stage root parent genesis max
+                                                   floor outs)))))))
+
+; KEYSTONE (discoverable).  At every state of the open, in every image a
+; power loss can leave, journal/N durably names an inode, and the open's own
+; listing still sees N.
+(defthm fn-lgrc-open-keeps-every-segment-name-in-every-image
+  (implies (and (fn-lgrc-invp s j n nil)
+                (fn-bs-dir-idp stg) (fn-bs-namep stage)
+                (not (and (equal stg j) (equal stage k)))
+                (not (and (equal stg j) (equal stage n)))
+                (fn-lgrc-outcomesp outs)
+                (member-equal x (fn-bsc-run s (fn-lgrc-open-ops s j k stg stage root parent
+                                                                genesis max floor outs))))
+           (and (fn-bs-inop (fn-bs-durable-entry (fn-bs-crash (fn-bsc-bs x) choices) j n))
+                (fn-bs-inop (fn-bsc-lookup x j n))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgrc-goodp) (fn-lgrc-open-ops fn-bsc-run fn-bs-crash
+                                            fn-bs-durable-entry fn-lgrc-all-invp
+                                            fn-lgrc-every-image-binds-the-acknowledged-prefix))
+           :use ((:instance fn-lgrc-open-unlinks-no-segment)
+                 (:instance fn-lgrc-all-invp-member (k n) (a nil)
+                            (states (fn-bsc-run s (fn-lgrc-open-ops s j k stg stage root parent
+                                                                    genesis max floor outs))))
+                 (:instance fn-lgrc-every-image-binds-the-acknowledged-prefix
+                            (s x) (k n) (a nil))))))
+
+; THE DEFECT, ground (the trace above).  Segment 1 holds the history
+; (1 1 1 1), segment 2 is the active one; a state checkpoint (inode 5)
+; covering segment 1 is staged and fenced.  The install renames it into the
+; root, the root's fence fails (EIO, nothing landed), the process exits with
+; the cache kept.  The restarted open reads the checkpoint's name, runs the
+; copy of segment 2 and the three barriers -- every step succeeds -- then
+; the old drop: unlink journal/000001.log, fence journal/.  Nothing is
+; pending afterwards, so every image a power loss leaves is the durable
+; tables: no checkpoint and no segment 1.  The A2 open alone (the keystone's
+; premise holds at the restart: fn-lgrc-invp over journal/000001.log)
+; keeps segment 1 in every image.
+(defun fn-lgrc-rl01-checkpointed-store ()
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-bsc-of (fn-bs-make 4 '((1 . (1 1 1 1)) (2 . (0 0 0 0)) (5 . (9 9 9 9)))
+                         '((:root ("journal" . :journal) ("staging" . :staging))
+                           (:journal ("000001.log" . 1) ("000002.log" . 2))
+                           (:staging (".checkpoint-stage" . 5)))
+                         nil 6)))
+
+(defun fn-lgrc-rl01-restarted-store ()
+  (declare (xargs :guard t :verify-guards nil))
+  (car (last (fn-bsc-run (fn-lgrc-rl01-checkpointed-store)
+                         '((:rename :staging ".checkpoint-stage" :root "checkpoint" :ok)
+                           (:fsync-dir :root (:eio))
+                           (:exit))))))
+
+(defun fn-lgrc-rl01-open-ops (drop)
+  (declare (xargs :guard t :verify-guards nil))
+  (append (fn-lgrc-open-ops (fn-lgrc-rl01-restarted-store) :journal "000002.log"
+                            :staging ".stage-recover-000002" :root :parent
+                            (fn-bs-zeros 32) 4096 0 nil)
+          (if drop
+              '((:unlink :journal "000001.log" :ok) (:fsync-dir :journal :ok))
+            nil)))
+
+(defthm fn-lgrc-dropping-open-loses-a-checkpointed-history
+  (let* ((s1 (fn-lgrc-rl01-restarted-store))
+         (run (fn-bsc-run s1 (fn-lgrc-rl01-open-ops t)))
+         (bs (fn-bsc-bs (car (last run))))
+         (image (fn-bs-crash bs choices)))
+    (and (equal (fn-bsc-lookup s1 :root "checkpoint") 5)
+         (null (fn-bs-durable-entry (fn-bsc-bs s1) :root "checkpoint"))
+         (fn-lgrc-invp s1 :journal "000001.log" nil)
+         (equal (len run) (len (fn-lgrc-rl01-open-ops t)))
+         (null (fn-bs-pending bs))
+         (null (fn-bs-durable-entry image :root "checkpoint"))
+         (null (fn-bs-durable-entry image :journal "000001.log"))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-bsc-step fn-bsc-lookup fn-bsc-bs fn-lgrc-goodp
+                                     fn-lgrc-candidates fn-bs-crash))))

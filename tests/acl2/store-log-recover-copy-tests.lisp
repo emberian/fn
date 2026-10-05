@@ -195,3 +195,47 @@
                                    (lgrct-genesis) (lgrct-max) 0 512 nil)
      (and (equal v1 :recover-copy-no-space) (null sts1)
           (equal v2 :copy) (equal (len sts2) 6)))))
+;
+; -----------------------------------------------------------------------------
+; Section 10 (RL-01-CHECKPOINT-NAME-BEFORE-DROP).
+;
+; The unlink step: the name leaves the cache at once and the durable table
+; only at journal/'s fence; a name the cache does not hold is :enoent.
+(assert-event
+ (let ((s (fn-lgrc-rl01-checkpointed-store)))
+   (mv-let (r s1) (fn-bsc-step s '(:unlink :journal "000001.log" :ok))
+     (mv-let (r2 s2) (fn-bsc-step s '(:unlink :journal "000009.log" :ok))
+       (and (equal r :ok)
+            (null (fn-bsc-lookup s1 :journal "000001.log"))
+            (equal (fn-bs-durable-entry (fn-bsc-bs s1) :journal "000001.log") 1)
+            (equal (fn-bs-pending (fn-bsc-bs s1)) '((:del-entry :journal "000001.log")))
+            (equal r2 :enoent) (equal s2 s))))))
+
+; Premise inhabitation and the conclusion, ground: at the restart of the
+; RL-01-CHECKPOINT trace (the checkpoint named only in the cache) segment 1
+; satisfies the keystone's premise, and every state of the A2 open (the copy
+; of segment 2 and the three barriers, all succeeding) keeps it.  The open
+; that drops (the old program) does not: after its journal/ fence no image
+; binds segment 1.
+(assert-event
+ (let* ((s1 (fn-lgrc-rl01-restarted-store))
+        (a2 (fn-bsc-run s1 (fn-lgrc-rl01-open-ops nil)))
+        (old (fn-bsc-run s1 (fn-lgrc-rl01-open-ops t))))
+   (and (fn-lgrc-invp s1 :journal "000001.log" nil)
+        (equal (len a2) 9)
+        (fn-lgrc-all-invp a2 :journal "000001.log" nil)
+        (equal (fn-bs-durable-entry (fn-bsc-bs (car (last a2))) :journal "000001.log") 1)
+        (null (fn-bs-pending (fn-bsc-bs (car (last a2)))))
+        (equal (len old) 11)
+        (not (fn-lgrc-invp (car (last old)) :journal "000001.log" nil)))))
+
+; The restart's premise: the root's fence failed, so the checkpoint's name is
+; in the cache only; had the fence succeeded the name would be durable and
+; the old drop safe.  The keystone needs neither fact.
+(assert-event
+ (let ((ok (car (last (fn-bsc-run (fn-lgrc-rl01-checkpointed-store)
+                                  '((:rename :staging ".checkpoint-stage" :root "checkpoint" :ok)
+                                    (:fsync-dir :root :ok)
+                                    (:exit)))))))
+   (and (equal (fn-bs-durable-entry (fn-bsc-bs ok) :root "checkpoint") 5)
+        (null (fn-bs-durable-entry (fn-bsc-bs (fn-lgrc-rl01-restarted-store)) :root "checkpoint")))))

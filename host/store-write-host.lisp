@@ -9,7 +9,7 @@
 ; host/store-open-host.lisp did the reader's read-only open; this file is the
 ; writable closure: the exclusive open with P-LOG-RECOVER-COPY on the active
 ; segment (fnn-open-live-store, fnn-acquire, fnn-recover-log), the staging
-; sweep and the interrupted drop, the reservation, the prepare and seal, the
+; sweep (the open unlinks no segment: RL-01-CHECKPOINT-NAME-BEFORE-DROP), the reservation, the prepare and seal, the
 ; publication on the record log (fnn-log-publish: the compressed append,
 ; fn-lgc-take, the extension, P-BATCH's append and barrier), the finish, and
 ; the node-secret key files.  Every decision is the ACL2 function the image
@@ -1097,32 +1097,9 @@
                            store state))))))))))
 
 ; ---------------------------------------------------------------------------
-; P-DROP of the covered segments an interrupted drop left (fnn-log-drop).
-
-(defun fn-xw-drop-each (store indices)
-  (declare (xargs :mode :program))
-  (if (endp indices) (list :ok)
-    (let ((p (fn-xw-segment-path store (car indices))))
-      (if (not (fn-xw-okp p)) p
-        (let ((l (fn-xw-lstat (cadr p))))
-          (if (not (fn-xw-okp l)) l
-            (let ((u (if (cadr l) (fn-xw-sys (fn-hx-unlink (cadr p))) (list :ok))))
-              (if (not (fn-xw-okp u)) u
-                (let ((c (fn-xw-log-at "drop-unlinked")))
-                  (if (not (fn-xw-okp c)) c (fn-xw-drop-each store (cdr indices))))))))))))
-
-(defun fn-xw-drop (store indices)
-  (declare (xargs :mode :program))
-  (if (endp indices) (list :ok)
-    (let ((r (fn-xw-drop-each store indices)))
-      (if (not (fn-xw-okp r)) r
-        (let ((f (fn-xw-fsync-dir (fn-xw-store-path store "journal"))))
-          (if (not (fn-xw-okp f)) f (fn-xw-log-at "drop-durable")))))))
-
-; ---------------------------------------------------------------------------
 ; The open (fnn-open-live-store STORE t: fnn-acquire, fnn-bridge-reset,
-; fnn-recover -> fnn-recover-log's full replay, the barriers, the sweep and
-; the interrupted drop).
+; fnn-recover -> fnn-recover-log's full replay, the barriers and the sweep;
+; no drop).
 
 (defun fn-xw-split-lf (octets current acc)
   ; fnn-decode-joined-names, each name kept as its octets
@@ -1133,7 +1110,7 @@
 
 (defun fn-xw-recover-body (store fn-octets-lg fn-arena state)
   ; fnn-recover-log's first handler-case body: (mv RESULT STORE fn-octets-lg
-  ; fn-arena state), RESULT (:ok COUNT DROP)
+  ; fn-arena state), RESULT (:ok COUNT)
   (declare (xargs :mode :program :stobjs (fn-octets-lg fn-arena state)))
   (let ((c (fn-xw-check-regular (fn-xw-store-path store (fn-store-sco-file-name)))))
     (cond
@@ -1229,7 +1206,7 @@
                                                               (mv (fn-xw-fault "ACL2 returned a non-octet list")
                                                                   store fn-octets-lg fn-arena state))
                                                              (t
-                                                              (mv (list :ok (nth 7 replay) (caddr plan))
+                                                              (mv (list :ok (nth 7 replay))
                                                                   (fn-xw-put (fn-xw-put (fn-xw-put store :generation gen)
                                                                                         :served (fn-xw-split-lf served nil nil))
                                                                              :domain (fn-xw-split-lf domain nil nil))
@@ -1250,7 +1227,7 @@
             (fn-xw-put store :fenced t) fn-octets-lg fn-arena state))
        ((not (fn-xw-okp r)) (mv r store fn-octets-lg fn-arena state))
        (t
-        (let ((count (cadr r)) (drop (caddr r))
+        (let ((count (cadr r))
               (c (fn-xw-at store "recover-replayed")))
           (if (not (fn-xw-okp c)) (mv c store fn-octets-lg fn-arena state)
             (mv-let (b store state)
@@ -1268,16 +1245,8 @@
                    ((member-eq (car s) '(:fault :indeterminate))
                     (mv s (fn-xw-put store :fenced t) fn-octets-lg fn-arena state))
                    ((not (fn-xw-okp s)) (mv s store fn-octets-lg fn-arena state))
-                   (t
-                    (let ((d (fn-xw-drop store drop)))
-                      (cond
-                       ((eq (car d) :os)
-                        (mv (fn-xw-indeterminate
-                             (concatenate 'string "the drop of covered log segments is uncertain: " (fn-xw-text d)))
-                            (fn-xw-put store :fenced t) fn-octets-lg fn-arena state))
-                       ((not (fn-xw-okp d)) (mv d store fn-octets-lg fn-arena state))
-                       (t (mv (list :ok count) (fn-xw-put store :fenced nil)
-                              fn-octets-lg fn-arena state)))))))))))))))))
+                   (t (mv (list :ok count) (fn-xw-put store :fenced nil)
+                          fn-octets-lg fn-arena state))))))))))))))
 
 (defun fn-xw-open-live-store (root fault repair fn-octets-lg fn-arena state)
   ; fnn-open-live-store ROOT t FAULT: (mv RESULT STORE fn-octets-lg fn-arena

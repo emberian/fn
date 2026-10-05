@@ -32,9 +32,13 @@
 ;
 ; What the model needs at the open, then: the segment (the copy's own
 ; fence), journal/ (a create or unlink in flight at a death in P-ROTATE,
-; P-DROP or init), the parent (an import at import-published, init before
-; init-parent-fenced), and the root before the open's drop of covered
-; segments (a checkpoint renamed but not fenced).  The second barrier (the
+; P-DROP or init) and the parent (an import at import-published, init before
+; init-parent-fenced).  The root's barrier was for the open's drop of covered
+; segments after a checkpoint renamed but not fenced; the open no longer
+; drops (RL-01-CHECKPOINT-NAME-BEFORE-DROP, books/store-log-recover-copy.lisp
+; fn-lgrc-open-unlinks-no-segment), so no counterexample here needs the root
+; barrier; it stays in the host's program until its removal is stated and
+; proved.  The second barrier (the
 ; segment) is redundant (the theorems here); config.json is written only by
 ; init's publication and the import's staging, each of which fences its data
 ; before it is named (books/byte-store-initializer.lisp fn-bsi-publish-steps,
@@ -200,19 +204,15 @@
 ;
 ; Teeth: tests/acl2/store-log-open-barriers-tests.lisp: a reachable witness
 ; (the rotated store after P-LOG-RECOVER), and per hypothesis a state that
-; fails it where the two opens differ.  And none of the three can go: one
-; ground counterexample per omitted barrier, each a two-barrier open losing an
-; acknowledged or published state to a power cut:
+; fails it where the two opens differ.  And journal/'s and the parent's
+; barriers cannot go: one ground counterexample per omitted barrier, each a
+; two-barrier open losing an acknowledged or published state to a power cut
+; (the root's had one while the open dropped covered segments; see above):
 ;
 ;   fn-lgob-one-barrier-loses-a-rotated-segment (above) and
 ;   fn-lgob-two-barriers-without-journal-lose-a-rotated-segment
 ;       the root and the parent fenced, not journal/: a death at
 ;       rotate-created, a batch fenced (acknowledged), its segment unnamed.
-;   fn-lgob-two-barriers-without-root-lose-a-checkpointed-history
-;       journal/ and the parent fenced, not the root: a death after a state
-;       checkpoint's rename and before its root fence; the open's drop of the
-;       segments it covers (unlinked, journal/ fenced) lands, the checkpoint's
-;       name does not: neither the checkpoint nor the history it covers.
 ;   fn-lgob-two-barriers-without-parent-lose-an-imported-store
 ;       journal/ and the root fenced, not the parent: a death at
 ;       import-published (the stage renamed to the store's name, the parent
@@ -339,14 +339,12 @@
                             fn-lgob-cut-states fn-bs-fence-dir fn-bs-fence-file)))))
 
 ; -----------------------------------------------------------------------------
-; Why none of the three can go: one ground counterexample per omitted barrier.
+; Why journal/'s and the parent's barriers cannot go: one ground
+; counterexample per omitted barrier.
 
 (defun fn-lgob-rename (s sdir sname ddir dname)
   (declare (xargs :guard t :verify-guards nil))
   (mv-let (r s1) (fn-bs-rename s sdir sname ddir dname :ok) (declare (ignore r)) s1))
-(defun fn-lgob-unlink (s dir name)
-  (declare (xargs :guard t :verify-guards nil))
-  (mv-let (r s1) (fn-bs-unlink s dir name :ok) (declare (ignore r)) s1))
 
 ; The open's recovery barriers DIRS, each fsync(dir) answering :ok.
 (defun fn-lgob-open-fences (s dirs)
@@ -389,53 +387,6 @@
          (implies (fn-bs-crash-imagep s image)
                   (and (equal (fn-bs-durable-entry image :journal "000002.log") 2)
                        (equal (fn-bs-durable-content image 2) '(7 7 7 7))))))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-bs-crash-imagep fn-bs-crash fn-bs-crash-select))))
-
-; The root omitted.  Segment 1 holds the history (octets 1 1 1 1) and a state
-; checkpoint covering it (inode 5) was staged, fenced and renamed into the
-; root (its name there fn-store-sco-file-name's; "checkpoint" here) when the
-; process died, before the root's fence.  The next open fences journal/ and
-; the parent, not the root, and drops the covered segment (P-DROP: unlink,
-; journal/ fenced).  A power cut then keeps the drop and loses the rename:
-; neither the checkpoint nor the segment it covers has a durable name.
-(defun fn-lgob-checkpointed-store ()
-  (declare (xargs :guard t :verify-guards nil))
-  (fn-lgob-rename (fn-bs-make 4 '((5 . (9 9 9 9)) (1 . (1 1 1 1)))
-                              '((:staging (".checkpoint-stage" . 5))
-                                (:root ("journal" . :journal) ("staging" . :staging))
-                                (:journal ("000001.log" . 1)))
-                              nil 6)
-                  :staging ".checkpoint-stage" :root "checkpoint"))
-
-(defun fn-lgob-open-then-drop (dirs)
-  (declare (xargs :guard t :verify-guards nil))
-  (let* ((s (fn-lgob-open-fences (fn-lgob-checkpointed-store) dirs))
-         (s (fn-lgob-unlink s :journal "000001.log")))
-    (fn-lgob-fsync-dir s :journal)))
-
-(defthm fn-lgob-two-barriers-without-root-lose-a-checkpointed-history
-  (let* ((s (fn-lgob-open-then-drop '(:journal :parent)))
-         (image (fn-bs-crash s '(:drop :drop))))
-    (and (equal (fn-bs-pending s) '((:set-entry :root "checkpoint" 5)
-                                    (:del-entry :staging ".checkpoint-stage")))
-         (fn-bs-crash-choicesp '(:drop :drop) (fn-bs-pending s) (fn-bs-unit s))
-         (fn-bs-crash-imagep s image)
-         (null (fn-bs-durable-entry image :root "checkpoint"))
-         (null (fn-bs-durable-entry image :journal "000001.log"))))
-  :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-bs-crash-imagep-suff
-                                   (s (fn-lgob-open-then-drop '(:journal :parent)))
-                                   (choices '(:drop :drop))
-                                   (image (fn-bs-crash (fn-lgob-open-then-drop '(:journal :parent))
-                                                       '(:drop :drop))))))))
-
-(defthm fn-lgob-three-barriers-keep-the-checkpoint
-  (let ((s (fn-lgob-open-then-drop '(:journal :root :parent))))
-    (and (equal (fn-bs-pending s) '((:del-entry :staging ".checkpoint-stage")))
-         (implies (fn-bs-crash-imagep s image)
-                  (and (equal (fn-bs-durable-entry image :root "checkpoint") 5)
-                       (equal (fn-bs-durable-content image 5) '(9 9 9 9))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-bs-crash-imagep fn-bs-crash fn-bs-crash-select))))
 

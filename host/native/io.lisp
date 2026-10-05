@@ -8279,11 +8279,14 @@ replay."
 in the model's order (books/store-log-route-programs.lisp fn-lg-open-program;
 *fn-sf-recovery-barrier-count* 3): journal/ (a create or unlink a death in
 P-ROTATE, P-DROP or init left pending), the root (a checkpoint renamed before
-its root fence, ahead of the open's drop) and the root's parent (an import
-at import-published).  The config file's and the segment's second fence are
-gone: both are the identity at the open (books/store-log-open-barriers.lisp
-fn-lgob-three-barrier-open-after-recovery-is-the-five); none of the three can
-go (the same book's fn-lgob-two-barriers-without-* counterexamples)."
+its root fence) and the root's parent (an import at import-published).  The
+config file's and the segment's second fence are gone: both are the identity
+at the open (books/store-log-open-barriers.lisp
+fn-lgob-three-barrier-open-after-recovery-is-the-five); journal/'s and the
+parent's cannot go (the same book's fn-lgob-two-barriers-without-*
+counterexamples).  The root's counterexample was the open's drop, which is
+gone (RL-01-CHECKPOINT-NAME-BEFORE-DROP); the barrier stays until its removal
+is proved."
   (list (lambda () (fnn-fsync-dir (fnn-journal-dir store)))
         (lambda () (fnn-fsync-dir (fnn-store-root store)))
         (lambda () (fnn-fsync-dir (fnn-parent (fnn-store-root store))))))
@@ -8347,8 +8350,13 @@ zeros from offset 0, which over committed records would destroy them)."
   "P-DROP (design 2026-09-27 storage-log section 6): unlink each covered
 segment of INDICES (a checkpoint names a later first suffix segment and is
 installed), cut drop-unlinked after each, then fence journal/, cut
-drop-durable.  A death between unlinks leaves covered segments the next
-open's plan names again (fn-lgs-open-plan's DROP), never a segment it scans."
+drop-durable.  Called only after the install's own root fence succeeded in
+this run (fnn-state-checkpoint-write raises otherwise).  A death between
+unlinks leaves covered segments the next open scans past and keeps: the open
+never unlinks a segment (RL-01-CHECKPOINT-NAME-BEFORE-DROP; books/store-log-
+recover-copy.lisp fn-lgrc-open-unlinks-no-segment), and the next install's
+drop names them with its own (books/store-log-segments.lisp
+fn-lgs-install-drop-covers-what-the-open-left)."
   (when indices
     (dolist (k indices)
       (let ((path (fnn-segment-path-at store k)))
@@ -8767,18 +8775,22 @@ refused by name."
 the log's suffix starts (books/store-log-segments.lisp: the first suffix
 segment and its genesis) and the txid frontier at S.  ACL2's plan over
 journal/ (fn-lgs-open-plan) names the segments to scan and the covered ones
-to drop, or refuses by name (history-short-of-checkpoint,
+it covers, or refuses by name (history-short-of-checkpoint,
 checkpoint-damaged).  The segments are scanned with the chain carried across
 them (fnn-log-scan-segments: P-LOG-RECOVER-COPY on the active one, cuts
 log-copied, log-copy-fenced, log-swapped and log-recovered), the frontier derived (fn-store-log-next-txid
 over the scanned records, floored at the checkpoint's), then the replay: over
 the checkpoint when its F row names a position, else the per-file open's
 choice (fnn-recover-log-from-state-checkpoint or the full replay); then the
-three recovery barriers the per-file open runs, and a writable open finishes
-an interrupted drop.  Answers the history's record COUNT, as `fnn-recover'
+three recovery barriers the per-file open runs.  The open unlinks no segment,
+not even the covered ones an interrupted drop left: the checkpoint it read
+may be named only in the page cache (a failed root fence), and its drop would
+outlive that name across a power loss (RL-01-CHECKPOINT-NAME-BEFORE-DROP,
+books/store-log-recover-copy.lisp fn-lgrc-open-unlinks-no-segment).  The next
+install's drop, after its own root fence, takes them.  Answers the history's record COUNT, as `fnn-recover'
 does, and records how the log holds the history (fnn-store-log-history) for
 `fnn-log-history-records'."
-  (let ((count nil) (drop nil))
+  (let ((count nil))
     (handler-case
         (multiple-value-bind (status sequence) (fnn-state-checkpoint-load store)
           (let* ((position (and (eq status :ok) (fnn-core-state 'fn-store-sco-log-position)))
@@ -8789,7 +8801,6 @@ does, and records how the log holds the history (fnn-store-log-history) for
             (unless (and (consp plan) (member (first plan) '(:scan :refused)))
               (fnn-fault "ACL2 returned a malformed log open plan"))
             (fnn-log-open-plan-check store plan log-position)
-            (setq drop (third plan))
             ;; The records arrive one at a time (fnn-log-scan-segments), each
             ;; folded into the next txid (one past the largest txid of every
             ;; record the log holds, of every event kind: fn-store-log-next-
@@ -8936,12 +8947,6 @@ does, and records how the log holds the history (fnn-store-log-history) for
       ((or fnn-store-fault fnn-store-indeterminate) (e)
         (setf (fnn-store-fenced store) t)
         (error e)))
-    ;; An interrupted drop: the covered segments the plan named go now.
-    (when (and drop (fnn-store-writable store))
-      (handler-case (fnn-log-drop store drop)
-        (fnn-os-error (e)
-          (setf (fnn-store-fenced store) t)
-          (fnn-indeterminate "the drop of covered log segments is uncertain: ~a" e))))
     (setf (fnn-store-fenced store) nil)
     count))
 

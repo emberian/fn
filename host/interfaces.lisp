@@ -661,7 +661,8 @@
 
 (definterface fn-lgs-open-plan
   :class :common-lisp-compliant
-  :keystones (fn-lgs-open-plan-scan-ignores-covered))
+  :keystones (fn-lgs-open-plan-scan-ignores-covered
+              fn-lgs-install-drop-covers-what-the-open-left))
 
 (definterface fn-lgs-segment-index
   :class :common-lisp-compliant)
