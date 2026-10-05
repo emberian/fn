@@ -2556,10 +2556,10 @@
     "books": 3043,
     "books_in_root_closure": 2867,
     "roots": 2549,
-    "theorems": 40212,
+    "theorems": 40213,
     "functions": 25903,
     "assert_events": 27615,
-    "must_fails": 2707,
+    "must_fails": 2708,
     "prover_refusals": 0,
     "encapsulates": 255,
     "guards": {
@@ -54321,7 +54321,7 @@
       "book": "books/tls-key-exchange.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 16,
+      "theorems": 17,
       "functions": 23,
       "guards": {
         "verified": 0,
@@ -54342,9 +54342,9 @@
       ],
       "system_includes": [],
       "suspects": [
-        "fn-tlsk-library-pinned-is-taken",
-        "fn-tlsk-library-tls-without-the-pinned-pair-refuses",
-        "fn-tlsk-required-refuses-by-name-without-the-hybrid",
+        "fn-tlsk-library-pinned-is-taken-by-definition",
+        "fn-tlsk-library-tls-without-the-pinned-pair-refuses-by-definition",
+        "fn-tlsk-required-without-the-hybrid-refuses-by-definition",
         "fn-tlsk-unknown-policy-refuses"
       ],
       "read_error": null
@@ -88299,7 +88299,7 @@
       },
       "verify_guards_events": 0,
       "assert_events": 50,
-      "must_fails": 10,
+      "must_fails": 11,
       "prover_refusals": 0,
       "defconsts": 2,
       "defmacros": 0,
@@ -100872,25 +100872,25 @@
       ]
     },
     {
-      "theorem": "fn-tlsk-library-pinned-is-taken",
+      "theorem": "fn-tlsk-library-pinned-is-taken-by-definition",
       "book": "books/tls-key-exchange.lisp",
-      "line": 232,
+      "line": 240,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-tlsk-library-decide and the conclusion is that arm's value"
       ]
     },
     {
-      "theorem": "fn-tlsk-library-tls-without-the-pinned-pair-refuses",
+      "theorem": "fn-tlsk-library-tls-without-the-pinned-pair-refuses-by-definition",
       "book": "books/tls-key-exchange.lisp",
-      "line": 227,
+      "line": 236,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-tlsk-library-decide and the conclusion is that arm's value"
       ]
     },
     {
-      "theorem": "fn-tlsk-required-refuses-by-name-without-the-hybrid",
+      "theorem": "fn-tlsk-required-without-the-hybrid-refuses-by-definition",
       "book": "books/tls-key-exchange.lisp",
-      "line": 137,
+      "line": 136,
       "reasons": [
         "arm-of-definition: constant arguments select one IF/COND arm of fn-tlsk-decide and the conclusion is that arm's value"
       ]
@@ -100898,7 +100898,7 @@
     {
       "theorem": "fn-tlsk-unknown-policy-refuses",
       "book": "books/tls-key-exchange.lisp",
-      "line": 172,
+      "line": 174,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-tlsk-decide and the conclusion is that arm's value"
       ]
@@ -107492,13 +107492,13 @@
       {
         "check": "tkxt-tooth-unknown-policy-serves",
         "book": "tests/acl2/tls-key-exchange-tests.lisp",
-        "line": 104,
+        "line": 105,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "tkxt-tooth-token-is-the-name",
         "book": "tests/acl2/tls-key-exchange-tests.lisp",
-        "line": 128,
+        "line": 129,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {

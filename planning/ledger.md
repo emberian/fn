@@ -13,14 +13,14 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 3043 |
 | Certification roots in the Makefile | 2549 |
 | Books inside the root closure | 2867 |
-| `defthm` and `defthmd` events | 40212 |
+| `defthm` and `defthmd` events | 40213 |
 | `defun` events | 25903 |
 | Functions with verified guards | 4053 |
 | Functions declared `:verify-guards nil` and never verified | 3363 |
 | Functions left at the default with an explicit guard | 14354 |
 | Functions left at the default with no guard | 4133 |
 | `assert-event` checks | 27615 |
-| `must-fail` checks | 2707 |
+| `must-fail` checks | 2708 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 255 |
 | Theorems flagged SUSPECT by shape | 1469 |
@@ -1843,7 +1843,7 @@ that `make certify` requests.
 | `books/tls-handshake-budget.lisp` | closure | 37 | 12 | 0/1/10/1 | 0 | 0 | 0 |
 | `books/tls-handshake-decision.lisp` | closure | 37 | 44 | 0/0/44/0 | 0 | 0 | 0 |
 | `books/tls-handshake-source.lisp` | closure | 4 | 8 | 0/0/8/0 | 0 | 0 | 0 |
-| `books/tls-key-exchange.lisp` | root | 16 | 23 | 0/0/23/0 | 0 | 0 | 4 |
+| `books/tls-key-exchange.lisp` | root | 17 | 23 | 0/0/23/0 | 0 | 0 | 4 |
 | `books/tls-proxy.lisp` | closure | 8 | 16 | 0/0/16/0 | 0 | 0 | 1 |
 | `books/tls-reload.lisp` | root | 18 | 43 | 3/0/40/0 | 0 | 0 | 0 |
 | `books/tls-self-signed.lisp` | root | 41 | 38 | 0/0/38/0 | 0 | 0 | 0 |
@@ -3079,7 +3079,7 @@ that `make certify` requests.
 | `tests/acl2/tcpcl-spool-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/tcpcl-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 171 | 6 | 0 |
 | `tests/acl2/tls-handshake-budget-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 67 | 0 | 0 |
-| `tests/acl2/tls-key-exchange-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 50 | 10 | 0 |
+| `tests/acl2/tls-key-exchange-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 50 | 11 | 0 |
 | `tests/acl2/tls-proxy-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 50 | 4 | 0 |
 | `tests/acl2/tls-reload-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 41 | 1 | 0 |
 | `tests/acl2/tls-self-signed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 23 | 0 | 0 |
@@ -4508,10 +4508,10 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-th-decode-refuses-oversize-by-definition` | `books/topic-history-metadata.lisp` | 292 | arm-of-definition: the hypotheses select one IF/COND arm of fn-th-decode and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-th-decode and the conclusion is that branch's value |
 | `fn-th-prefix-step-failure-sticks` | `books/topic-history-prefix.lisp` | 100 | arm-of-definition: the hypotheses select one IF/COND arm of fn-th-prefix-step and the conclusion is that arm's value |
 | `fn-th-topic-decode-refuses-oversize` | `books/topic-history-store-events.lisp` | 190 | arm-of-definition: the hypotheses select one IF/COND arm of fn-th-topic-event-decode-exact and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-th-topic-event-decode-exact and the conclusion is that branch's value |
-| `fn-tlsk-library-pinned-is-taken` | `books/tls-key-exchange.lisp` | 232 | arm-of-definition: the hypotheses select one IF/COND arm of fn-tlsk-library-decide and the conclusion is that arm's value |
-| `fn-tlsk-library-tls-without-the-pinned-pair-refuses` | `books/tls-key-exchange.lisp` | 227 | arm-of-definition: the hypotheses select one IF/COND arm of fn-tlsk-library-decide and the conclusion is that arm's value |
-| `fn-tlsk-required-refuses-by-name-without-the-hybrid` | `books/tls-key-exchange.lisp` | 137 | arm-of-definition: constant arguments select one IF/COND arm of fn-tlsk-decide and the conclusion is that arm's value |
-| `fn-tlsk-unknown-policy-refuses` | `books/tls-key-exchange.lisp` | 172 | arm-of-definition: the hypotheses select one IF/COND arm of fn-tlsk-decide and the conclusion is that arm's value |
+| `fn-tlsk-library-pinned-is-taken-by-definition` | `books/tls-key-exchange.lisp` | 240 | arm-of-definition: the hypotheses select one IF/COND arm of fn-tlsk-library-decide and the conclusion is that arm's value |
+| `fn-tlsk-library-tls-without-the-pinned-pair-refuses-by-definition` | `books/tls-key-exchange.lisp` | 236 | arm-of-definition: the hypotheses select one IF/COND arm of fn-tlsk-library-decide and the conclusion is that arm's value |
+| `fn-tlsk-required-without-the-hybrid-refuses-by-definition` | `books/tls-key-exchange.lisp` | 136 | arm-of-definition: constant arguments select one IF/COND arm of fn-tlsk-decide and the conclusion is that arm's value |
+| `fn-tlsk-unknown-policy-refuses` | `books/tls-key-exchange.lisp` | 174 | arm-of-definition: the hypotheses select one IF/COND arm of fn-tlsk-decide and the conclusion is that arm's value |
 | `fn-vcu-done-meaning-by-definition` | `books/view-delta-cursor-refinement.lisp` | 152 | arm-of-definition: the hypotheses select one IF/COND arm of fn-vcu-meaning and the conclusion is that arm's value |
 | `fn-vdc-put-nonstring-key-is-unchanged` | `books/view-delta-concrete.lisp` | 133 | arm-of-definition: the hypotheses select one IF/COND arm of fn-vdc-put and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-vdc-put and the conclusion is that branch's value |
 | `fn-web-client-address-without-proxy-unfolds` | `books/web-request.lisp` | 1370 | arm-of-definition: the hypotheses select one IF/COND arm of fn-web-client-address and the conclusion is that arm's value |
