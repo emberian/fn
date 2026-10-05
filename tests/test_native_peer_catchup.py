@@ -272,7 +272,7 @@ class NativePeerCatchupTests(unittest.TestCase):
         started = time.monotonic()
         self.start(b)
         try:
-            done = self.await_log(b, r"catch-up peer=A round=done position={} ".format(COUNT), timeout=420)
+            done = self.await_log(b, r"catch-up peer=A round=done position={} ".format(COUNT), timeout=120)
         except AssertionError:
             import sys, collections
             blines = b.log.read_text(errors="replace").splitlines() if b.log.exists() else []
@@ -283,6 +283,10 @@ class NativePeerCatchupTests(unittest.TestCase):
                 if m and l.startswith("accepted transit"):
                     hist[m.group(2)] += 1
                     last[m.group(2)] = m.group(1)
+            for l in blines:
+                m = re.search(r"message-id=<catchup-(\d+)@.*time=\S+T(\d\d:\d\d:\d\d)", l)
+                if m and l.startswith("accepted transit") and int(m.group(1)) < 120:
+                    sys.stderr.write("DIAG B-T {} {}\n".format(m.group(1), m.group(2)))
             for k in sorted(hist):
                 sys.stderr.write("DIAG B-IMPORT {}0s count={} last={}\n".format(k, hist[k], last[k]))
             for l in blines:
