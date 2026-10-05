@@ -122,12 +122,12 @@ class NativeGroupAccessTests(unittest.TestCase):
     def test_source_peer_reader_access_preserves_transit(self):
         """D48: one source peer has separate reader and transfer policies.
 
-        A connection serves the configuration it pinned (specs/
-        reconfiguration.md 2.3, "Readers": a reconfiguration writes no
-        connection's pin), so the access rule binds the sockets opened after
-        it is published.  The socket opened before it is only reported: how
-        a live revocation reaches an already-pinned connection is an open
-        decision, not this test's to settle."""
+        Access tightening reaches open connections at once (specs/
+        reconfiguration.md 2.3, "Readers"; ACCESS-REVOKE-PINNED): every
+        command is decided by the rule the connection pinned AND the live
+        one, so the socket opened before the revocation, already inside
+        fn.private.x, loses it at its next command, and regains it when the
+        operator restores the rule (its pin was unrestricted)."""
         for label, image in IMAGES:
             with self.subTest(image=label):
                 node = self.node(image)
@@ -138,31 +138,35 @@ class NativeGroupAccessTests(unittest.TestCase):
                 node.start()
                 writer = self.tls(node)
                 self.assertTrue(self.post(writer, "fn.private.x", "peer-private").startswith("240"))
+                # Populate the captured access view and selected group before
+                # publishing a new policy on this already-connected peer.
                 self.assertIn("fn.private.x", self.listed(writer, "LIST ACTIVE"))
                 self.assertTrue(self.line(writer, "GROUP fn.private.x").startswith("211"))
                 self.ok(node, "account", "access", "--anonymous", "--read", "fn.public", "--post", "*")
                 reader = self.tls(node)
-                self.assertNotIn("fn.private.x", self.listed(reader, "LIST ACTIVE"))
-                self.assertTrue(self.line(reader, "GROUP fn.private.x").startswith("411"))
-                self.assertTrue(self.line(reader, "STAT <peer-private@example.invalid>").startswith("430"))
-                status, _ = self.multi(reader, "OVER <peer-private@example.invalid>")
-                self.assertTrue(status.startswith("430"), status)
-                status, _ = self.multi(reader, "HDR Subject <peer-private@example.invalid>")
-                self.assertTrue(status.startswith("430"), status)
-                # Transit stays the peer record's (SEC-007, D48).
                 for stream in (writer, reader):
+                    self.assertNotIn("fn.private.x", self.listed(stream, "LIST ACTIVE"))
+                    self.assertTrue(self.line(stream, "GROUP fn.private.x").startswith("411"))
+                    self.assertTrue(self.line(stream, "STAT <peer-private@example.invalid>").startswith("430"))
+                    status, _ = self.multi(stream, "OVER <peer-private@example.invalid>")
+                    self.assertTrue(status.startswith("430"), status)
+                    status, _ = self.multi(stream, "HDR Subject <peer-private@example.invalid>")
+                    self.assertTrue(status.startswith("430"), status)
+                    # Transit stays the peer record's (SEC-007, D48).
                     self.assertTrue(self.line(stream, "CHECK <peer-new@example.invalid>").startswith("238"))
-                # The pinned socket, after a GROUP that advances it: reported.
+                # The old socket after a GROUP that advances it: still refused.
                 self.assertTrue(self.line(writer, "GROUP fn.public").startswith("211"))
-                print("NATIVE-ACCESS pinned socket after advance:",
-                      self.listed(writer, "LIST ACTIVE"),
-                      self.line(writer, "STAT <peer-private@example.invalid>"))
+                self.assertNotIn("fn.private.x", self.listed(writer, "LIST ACTIVE"))
+                self.assertTrue(self.line(writer, "STAT <peer-private@example.invalid>").startswith("430"))
                 self.ok(node, "account", "access", "--anonymous", "--read", "fn.*", "--post", "*")
                 restored = self.tls(node)
-                self.assertIn("fn.private.x", self.listed(restored, "LIST ACTIVE"))
-                self.assertTrue(self.line(restored, "GROUP fn.private.x").startswith("211"))
-                self.assertTrue(self.line(restored, "STAT <peer-private@example.invalid>").startswith("223"))
-                self.assertTrue(self.line(restored, "CHECK <peer-new@example.invalid>").startswith("238"))
+                for stream in (writer, restored):
+                    self.assertIn("fn.private.x", self.listed(stream, "LIST ACTIVE"))
+                    self.assertTrue(self.line(stream, "GROUP fn.private.x").startswith("211"))
+                    self.assertTrue(self.line(stream, "STAT <peer-private@example.invalid>").startswith("223"))
+                    self.assertTrue(self.line(stream, "CHECK <peer-new@example.invalid>").startswith("238"))
+                # reader opened under fn.public: a widening never reaches it.
+                self.assertTrue(self.line(reader, "STAT <peer-private@example.invalid>").startswith("430"))
                 node.stop_all()
 
     def scenario(self, image):
