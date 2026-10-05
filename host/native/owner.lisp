@@ -7225,11 +7225,14 @@ the crash keystone) and serving continues."
   (unwind-protect
   (fnn-with-history-image
   (destructuring-bind (base configs records record-octets count suffix budget frontier free revision
-                        base-payloads ident)
+                        base-payloads ident serial)
       captured
-    (declare (ignore count))
     (let ((started (get-internal-real-time)) (next nil) (durablep nil) (verdict nil)
           (payloads nil) (dropped-paths nil) (image nil)
+          ;; RL-02: what ended this publication without a durable checkpoint
+          ;; or a deferral by name, for ACL2's classification
+          ;; (books/owner-publication-lifecycle.lisp fn-opl-classify)
+          (failure nil)
           ;; this thread's boundary: the last durable step it completed
           (*fnn-section-step* nil)
           ;; the payload frames the arena run writes, for the reseat after
@@ -7274,6 +7277,7 @@ the crash keystone) and serving continues."
                 (setq verdict (first setup))
                 (cond
                   ((eq verdict :unencodable)
+                   (setq failure '(:unencodable))
                    (fnn-err "CHECKPOINT auto refused=unencodable sequence=~d" sequence))
                   ((and (consp verdict) (eq (first verdict) :deferred)
                         (= (length verdict) 4) (keywordp (second verdict))
@@ -7329,6 +7333,7 @@ the crash keystone) and serving continues."
                        ;; below, which fences (sweep S019: both were logged
                        ;; here and serving went on).
                        (fnn-store-io-refusal (e)
+                         (setq failure '(:io-refusal))
                          (fnn-err "CHECKPOINT auto failed sequence=~d: ~a" sequence e)))))
                   (t (fnn-fault "owner returned a malformed checkpoint verdict")))))
           ;; GEN: def-actor publisher :failure :private-job -- one arm; ACL2
@@ -7339,9 +7344,16 @@ the crash keystone) and serving continues."
           ;; the fence, a core/store fault the fault, both before the cleanup
           ;; below; a known refusal is logged, serving continues.
           (serious-condition (e)
-            (when (member (fnn-owner-thread-escape service e "CHECKPOINT auto" t)
-                          '(:refusal :usage :job-failure))
-              (fnn-err "CHECKPOINT auto failed: ~a" e)))))
+            (let ((kind (fnn-owner-thread-escape service e "CHECKPOINT auto" t)))
+              ;; RL-02: the outcome the settlement classifies
+              (setq failure
+                    (typecase e
+                      (fnn-history-image-refusal
+                       (list :image-refused (fnn-history-image-refusal-verdict e)))
+                      (fnn-store-io-refusal '(:io-refusal))
+                      (t (list :job-failure kind))))
+              (when (member kind '(:refusal :usage :job-failure))
+                (fnn-err "CHECKPOINT auto failed: ~a" e))))))
       (unwind-protect
            (progn
            (handler-case
@@ -7352,6 +7364,22 @@ the crash keystone) and serving continues."
                (fnn-owner-serialized
                 service nil
                 (lambda ()
+                  ;; RL-02: a capture that ended neither durable nor
+                  ;; deferred by name settles its own slot first, keyed by
+                  ;; its count and serial, and ACL2 records the outcome as
+                  ;; a deferral classified by what could make another attempt
+                  ;; meaningful (fn-owner-sco-publication-abandoned).  An
+                  ;; ending nothing observed is settled as unclassified,
+                  ;; retried under the backoff: the slot is never left set.
+                  (unless (or durablep
+                              (and (consp verdict) (eq (first verdict) :deferred)))
+                    (let ((d (fnn-owner-core 'fn-owner-sco-publication-abandoned
+                                             count serial (or failure '(:unobserved))
+                                             (fnn-owner-monotonic-ms))))
+                      (if (and (consp d) (= (length d) 8))
+                          (fnn-err "CHECKPOINT auto abandoned sequence=~d reason=~(~a~) class=~(~a~) attempts=~d not-before-ms=~d"
+                                   count (second d) (fifth d) (sixth d) (seventh d))
+                        (fnn-err "CHECKPOINT auto abandoned sequence=~d: ~(~a~)" count d))))
                   (when next
                     (let ((done (fnn-owner-core 'fn-owner-sco-publication-done
                                                 next payloads durablep verdict)))
@@ -7468,7 +7496,10 @@ reads run as a :control quantum; the thread's registration is the roster's."
       ;; capture, so both see one budget.
       (progn
         (when (eq (fnn-owner-core 'fn-owner-sco-due
-                                  (fnn-checkpoint-budget-test-override nil) free)
+                                  (fnn-checkpoint-budget-test-override nil) free
+                                  ;; RL-02: an abandonment's backoff is by the
+                                  ;; monotonic clock (fn-opl-eligiblep)
+                                  (fnn-owner-monotonic-ms))
                   :due)
           ;; The capture rotates the log (fnn-log-rotate, under
           ;; the owner mutex: no batch is open in a :control quantum), so
@@ -7491,7 +7522,7 @@ reads run as a :control quantum; the thread's registration is the roster's."
                                                 (fnn-checkpoint-budget-test-override nil)
                                                 free (fnn-checkpoint-revision)))))
             (unless (or (eq position :failed)
-                        (and (true-listp captured) (= (length captured) 12)))
+                        (and (true-listp captured) (= (length captured) 13)))
               (fnn-fault "owner returned a malformed checkpoint capture"))
             ;; The publication reads the live arena outside the mutex, so it
             ;; pins the generation as such a reader here, under the mutex,

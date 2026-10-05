@@ -1986,6 +1986,11 @@
   :class :common-lisp-compliant)
 
 
+; RL-02: the settlement of an abandoned capture (host/native/owner.lisp
+; fnn-owner-publish-captured's done quantum).
+(definterface fn-owner-sco-publication-abandoned
+  :class :common-lisp-compliant)
+
 (definterface fn-owner-sco-publication-done
   :class :common-lisp-compliant)
 

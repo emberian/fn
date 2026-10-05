@@ -34,17 +34,18 @@
 (assert-event (equal (fn-opl-delay 1000000) 900000))
 (assert-event (equal (fn-opl-delay nil) 30000))
 
-; --- KEYSTONE fn-opl-settle-releases-the-holder, positive witness: a
-; publication that captured at count 64 holds the slot; nothing else does.
-(assert-event (fn-opl-holdsp 64 nil 64))
-(assert-event (fn-opl-holdsp 64 :dry-run 64))
+;; --- KEYSTONE fn-opl-settle-releases-the-holder, positive witness: the
+; publication that captured at count 64 as capture 7 holds the slot while the
+; owner's serial is 7; nothing else does.
+(assert-event (fn-opl-holdsp 64 7 nil 64 7))
+(assert-event (fn-opl-holdsp 64 7 :dry-run 64 7))
 (assert-event
- (equal (fn-opl-settle 64 '(:unencodable) 1000 nil 64 nil)
+ (equal (fn-opl-settle 64 7 '(:unencodable) 1000 nil 64 7 nil)
         (list nil nil
-              '(:deferred :blocked-unencodable-history 1 30000 :blocked 1 0 64))))
+              '(:deferred :blocked-unencodable-history 1 0 :blocked 1 0 64))))
 ; the run of abandonments is counted and the next one waits longer
 (assert-event
- (equal (fn-opl-settle 65 '(:io-refusal) 2000 nil 65
+ (equal (fn-opl-settle 65 8 '(:io-refusal) 2000 nil 65 8
                        '(:deferred :retry-after-backoff-store-io-refusal 1 30000 :backoff 1 31000 64))
         (list nil nil
               '(:deferred :retry-after-backoff-store-io-refusal 2 60000 :backoff 2 62000 65))))
@@ -52,23 +53,33 @@
 ; --- KEYSTONE fn-opl-settle-never-touches-another-capture: the hypothesis
 ; (not holdsp) removed, affirmatively: a late settlement of A (count 64) while B
 ; (count 80) holds the slot changes nothing, and its deferral stands
-(assert-event (not (fn-opl-holdsp 64 nil 80)))
+(assert-event (not (fn-opl-holdsp 64 7 nil 80 8)))
 (assert-event
- (equal (fn-opl-settle 64 '(:unencodable) 3000 nil 80 '(:deferred :x 1 2 :backoff 1 5 6))
+ (equal (fn-opl-settle 64 7 '(:unencodable) 3000 nil 80 8 '(:deferred :x 1 2 :backoff 1 5 6))
         (list nil 80 '(:deferred :x 1 2 :backoff 1 5 6))))
+; --- KEYSTONE fn-opl-late-settlement-of-a-cannot-release-b: B retried A's
+; count 64 (a :backoff retry with no commit between); A's serial 7 is not the
+; owner's serial 8, so A's late settlement releases nothing of B's
+(assert-event (not (fn-opl-holdsp 64 7 nil 64 (fn-opl-next-serial 7))))
+(assert-event
+ (equal (fn-opl-settle 64 7 '(:unencodable) 3000 nil 64 (fn-opl-next-serial 7)
+                       '(:deferred :retry-after-backoff-store-io-refusal 1 30000 :backoff 1 31000 64))
+        (list nil 64 '(:deferred :retry-after-backoff-store-io-refusal 1 30000 :backoff 1 31000 64))))
+; ... while B itself, serial 8, does
+(assert-event (fn-opl-holdsp 64 8 nil 64 (fn-opl-next-serial 7)))
 ; the slot held by nobody: nothing to settle
-(assert-event (not (fn-opl-holdsp 64 nil nil)))
-(assert-event (equal (fn-opl-settle 64 '(:unencodable) 3000 nil nil nil) (list nil nil nil)))
+(assert-event (not (fn-opl-holdsp 64 7 nil nil 7)))
+(assert-event (equal (fn-opl-settle 64 7 '(:unencodable) 3000 nil nil 7 nil) (list nil nil nil)))
 ; a writing reclaim pass holds the slot at the same count: the publication's
 ; settlement releases nothing of the pass's
-(assert-event (not (fn-opl-holdsp 64 :reclaim 64)))
-(assert-event (equal (fn-opl-settle 64 '(:unencodable) 3000 :reclaim 64 nil)
+(assert-event (not (fn-opl-holdsp 64 7 :reclaim 64 7)))
+(assert-event (equal (fn-opl-settle 64 7 '(:unencodable) 3000 :reclaim 64 7 nil)
                      (list :reclaim 64 nil)))
 
 ; --- KEYSTONE fn-opl-settle-is-once: the second settlement is the identity
 (assert-event
- (let ((r (fn-opl-settle 64 '(:unencodable) 1000 nil 64 nil)))
-   (equal (fn-opl-settle 64 '(:io-refusal) 9000 (car r) (cadr r) (caddr r)) r)))
+ (let ((r (fn-opl-settle 64 7 '(:unencodable) 1000 nil 64 7 nil)))
+   (equal (fn-opl-settle 64 7 '(:io-refusal) 9000 (car r) (cadr r) 7 (caddr r)) r)))
 
 ; --- the due decision after a settlement: the slot is free; with the deferral
 ; standing the decision is :blocked, and with nothing standing the rule's
@@ -113,7 +124,7 @@
 ; --- must-fail: each hypothesis dropped
 (must-fail-checked
  (defthm opl-settle-touches-any-capture
-   (equal (fn-opl-settle count outcome now pass inflight deferred)
+   (equal (fn-opl-settle count serial outcome now pass inflight current deferred)
           (list pass nil (fn-opl-record outcome count now deferred)))
    :rule-classes nil))
 (must-fail-checked
@@ -130,6 +141,88 @@
    :rule-classes nil))
 (must-fail-checked
  (defthm opl-settle-is-once-without-the-holder-test
-   (equal (fn-opl-settle count o1 now pass inflight deferred)
-          (fn-opl-settle count o2 now pass inflight deferred))
+   (equal (fn-opl-settle count serial o1 now pass inflight current deferred)
+          (fn-opl-settle count serial o2 now pass inflight current deferred))
+   :rule-classes nil))
+(must-fail-checked
+ (defthm opl-late-settlement-releases-nothing-without-the-serial
+   (implies (natp a)
+            (equal (fn-opl-settle count a outcome now pass inflight current deferred)
+                   (list pass inflight deferred)))
+   :rule-classes nil))
+
+; --- the due path.  KEYSTONE fn-opl-backoff-is-retried-without-a-commit,
+; positive witness: K=128, nothing durable, capture 7 at count 64 (due:
+; 2*64 >= 128) abandoned on an I/O refusal at t=1000.  At t=900999 (the cap
+; less one) no commit has come: before the backoff (31000) the decision is
+; :blocked; from 31000 on it is :due at the SAME count 64.
+(assert-event
+ (let* ((r (fn-opl-settle 64 7 '(:io-refusal) 1000 nil 64 7 nil))
+        (d (caddr r)))
+   (and (equal (cadr r) nil)
+        (fn-ock-publication-duep 0 64 128 nil)
+        (not (fn-ock-publication-duep 0 64 128 64))
+        (equal (fn-ock-publication-next 0 64 128 (fn-opl-attempted d 64 64 30999) nil
+                                        (fn-opl-blockedp d 0 nil 64 30999))
+               :blocked)
+        (equal (fn-ock-publication-next 0 64 128 (fn-opl-attempted d 64 64 31000) nil
+                                        (fn-opl-blockedp d 0 nil 64 31000))
+               :due)
+        (equal (fn-ock-publication-next 0 64 128 (fn-opl-attempted d 64 64 901000) nil
+                                        (fn-opl-blockedp d 0 nil 64 901000))
+               :due))))
+; the hypothesis removed: without the attempted override (the old rule) the
+; same record, eligible, never captures count 64 again
+(assert-event
+ (let ((d (fn-opl-record '(:io-refusal) 64 1000 nil)))
+   (equal (fn-ock-publication-next 0 64 128 64 nil (fn-opl-blockedp d 0 nil 64 901000))
+          :idle)))
+; a budget deferral keeps the rule's ATTEMPTED: no same-count retry
+(assert-event (equal (fn-opl-attempted '(:deferred :exceeds-budget 900 800) 64 64 901000) 64))
+; KEYSTONE fn-opl-blocked-is-never-due: at any count and time
+(assert-event
+ (let ((d (fn-opl-record '(:unencodable) 64 1000 nil)))
+   (and (equal (fn-ock-publication-next 0 64 128 (fn-opl-attempted d 64 64 1000) nil
+                                        (fn-opl-blockedp d 0 nil 64 1000))
+               :blocked)
+        (equal (fn-ock-publication-next 0 100000 128 (fn-opl-attempted d 64 100000 900000000) nil
+                                        (fn-opl-blockedp d 0 nil 100000 900000000))
+               :blocked))))
+; KEYSTONE fn-opl-backoff-is-not-hastened-by-commits: 100000 records later,
+; before the backoff, still :blocked; the same count at the backoff, :due
+(assert-event
+ (let ((d (fn-opl-record '(:io-refusal) 64 1000 nil)))
+   (and (equal (fn-ock-publication-next 0 100000 128 (fn-opl-attempted d 64 100000 30999) nil
+                                        (fn-opl-blockedp d 0 nil 100000 30999))
+               :blocked)
+        (equal (fn-ock-publication-next 0 100000 128 (fn-opl-attempted d 64 100000 31000) nil
+                                        (fn-opl-blockedp d 0 nil 100000 31000))
+               :due))))
+(must-fail-checked
+ (defthm opl-backoff-is-retried-whatever-the-class
+   (implies (and (fn-opl-holdsp count serial pass count current)
+                 (natp now) (natp later)
+                 (<= (+ now *fn-opl-backoff-cap-ms*) later)
+                 (fn-ock-publication-duep durable count k nil))
+            (let* ((r (fn-opl-settle count serial outcome now pass count current deferred))
+                   (d (caddr r)))
+              (equal (fn-ock-publication-next durable count k
+                                              (fn-opl-attempted d count count later)
+                                              (cadr r)
+                                              (fn-opl-blockedp d budget space count later))
+                     :due)))
+   :rule-classes nil))
+(must-fail-checked
+ (defthm opl-backoff-is-retried-before-the-cap
+   (implies (and (fn-opl-holdsp count serial pass count current)
+                 (natp now) (natp later)
+                 (equal (car (fn-opl-classify outcome)) :backoff)
+                 (fn-ock-publication-duep durable count k nil))
+            (let* ((r (fn-opl-settle count serial outcome now pass count current deferred))
+                   (d (caddr r)))
+              (equal (fn-ock-publication-next durable count k
+                                              (fn-opl-attempted d count count later)
+                                              (cadr r)
+                                              (fn-opl-blockedp d budget space count later))
+                     :due)))
    :rule-classes nil))

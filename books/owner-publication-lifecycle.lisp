@@ -45,45 +45,54 @@
 ; consumer of a deferral reads (fn-nh-checkpoint-deferredp, the status line,
 ; the readiness observation), so `status' and `health' name the deferral and
 ; its reason without a second report; ESTIMATE is the attempts so far and BOUND
-; the backoff just taken.
+; the backoff just taken in milliseconds (0 for :blocked, which waits for no
+; time).  Those two labels are the budget deferral's: the readers print them
+; as `estimate=' and `budget='.
 ;
 ; WHAT IS PROVED, and what is stated and not provable here.
 ;
 ;  SAFETY.  A terminal outcome settles its OWN capture exactly once and can
-;  release no other capture: a settlement by a count that does not hold the slot
-;  changes nothing at all, neither the slot nor the recorded deferral (a late
-;  callback of publication A cannot release or overwrite publication B,
-;  `fn-opl-settle-never-touches-another-capture'); the holder's settlement frees
-;  the slot and records one deferral (`fn-opl-settle-releases-the-holder'); a
-;  second settlement of the same capture is the identity (`fn-opl-settle-is-once');
-;  and a settled capture's count is never captured again, so successive
-;  publications carry distinct identities
-;  (`fn-opl-a-settled-capture-is-not-recaptured-at-its-count', the due rule's
-;  `attempted' conjunct).  The identity is the captured COUNT, the key
-;  fn-orc-release-slot already uses.
+;  release no other capture.  A capture's identity is its SERIAL, the owner's
+;  capture counter, with the COUNT it captured (the slot's key, the one
+;  fn-orc-release-slot uses); the count alone is not one, because a :backoff
+;  abandonment is retried at the same count when no commit came between.  A
+;  settlement by a capture that does not hold the slot changes nothing at all,
+;  neither the slot nor the recorded deferral
+;  (`fn-opl-settle-never-touches-another-capture'); a late callback of
+;  publication A cannot release or overwrite publication B, even at A's count
+;  (`fn-opl-late-settlement-of-a-cannot-release-b'); the holder's settlement
+;  frees the slot and records one deferral (`fn-opl-settle-releases-the-holder');
+;  a second settlement of the same capture is the identity
+;  (`fn-opl-settle-is-once').
 ;
-;  LIVENESS, under the stated assumptions.  The ASSUMPTIONS are the host's, and
+;  LIVENESS, under stated assumptions.  The ASSUMPTIONS are the host's, and
 ;  are witnessed natively, not proved here: (1) every capture's thread reaches
 ;  its done quantum (fnn-owner-publish-captured's unwinding), which settles it,
-;  with the outcome the thread observed; (2) the monotonic clock advances.  Under
-;  them: after a settlement the owner decides again and never answers :inflight
-;  or :coalesce for the settled capture (`fn-opl-after-settlement-the-owner-
-;  decides-again'); a :backoff or :await-change deferral becomes eligible no
-;  later than the capped delay after the abandonment
-;  (`fn-opl-backoff-is-eligible-within-the-cap',
-;  `fn-opl-await-change-is-eligible-after-completion-and-the-cap'); and a
-;  :blocked deferral is never eligible, which is the alarm
-;  (`fn-opl-blocked-is-never-eligible').  An indefinitely blocked physical
-;  operation is outside this book: releasing the logical slot says nothing about
-;  memory or disk work that has not ended, which the publication thread's own
+;  with the outcome the thread observed; (2) the monotonic clock advances; (3)
+;  the owner's maintenance takes the due decision once a second
+;  (fnn-owner-start-maintenance).  Under them: after a settlement the owner
+;  decides again and never answers :inflight or :coalesce for the settled
+;  capture (`fn-opl-after-settlement-the-owner-decides-again'); a :backoff
+;  abandonment is due again at the same count once the capped backoff has
+;  elapsed, with no commit (`fn-opl-backoff-is-retried-without-a-commit'); an
+;  :await-change one becomes eligible once the history has advanced and the
+;  capped delay has elapsed
+;  (`fn-opl-await-change-is-eligible-after-completion-and-the-cap'); and a
+;  :blocked one never captures again while it stands, which is the alarm
+;  (`fn-opl-blocked-is-never-due').  An indefinitely blocked physical operation
+;  is outside this book: releasing the logical slot says nothing about memory
+;  or disk work that has not ended, which the publication thread's own
 ;  unwinding (pin release, buffer release, nursery) owns.
 ;
 ;  NOT BY POSTs.  A :backoff deferral's eligibility is a function of the clock
-;  alone (`fn-opl-backoff-eligibility-ignores-the-count'); an :await-change's
-;  count condition is conjoined with the clock's, never a substitute for it.
+;  alone (`fn-opl-backoff-eligibility-ignores-the-count'), and before it no
+;  number of commits makes the decision :due
+;  (`fn-opl-backoff-is-not-hastened-by-commits'); an :await-change's count
+;  condition is conjoined with the clock's, never a substitute for it.
 ;
 ;  PRESERVATION.  A record that is not an abandonment keeps the old decision
-;  (`fn-opl-blockedp-of-a-budget-or-space-deferral').
+;  and the rule's ATTEMPTED (`fn-opl-blockedp-of-a-budget-or-space-deferral',
+;  `fn-opl-attempted-of-a-budget-or-space-deferral').
 ;
 ; Statement-first teeth are in tests/acl2/owner-publication-lifecycle-tests.lisp.
 (in-package "ACL2")
@@ -194,7 +203,9 @@
   (declare (xargs :guard t))
   (let* ((cr (fn-opl-classify outcome))
          (attempts (+ 1 (fn-opl-attempts-before prev))))
-    (list :deferred (cadr cr) attempts (fn-opl-delay attempts) (car cr) attempts
+    (list :deferred (cadr cr) attempts
+          (if (eq (car cr) :blocked) 0 (fn-opl-delay attempts))
+          (car cr) attempts
           (fn-opl-not-before (car cr) now attempts)
           (nfix count))))
 
@@ -226,8 +237,6 @@
   (let ((d (fn-opl-record outcome count now prev)))
     (and (consp d) (equal (car d) :deferred)
          (keywordp (cadr d)) (natp (caddr d)) (natp (cadddr d))))
-  ; UNTESTED WIP (the previous hint left (symbolp (cadr record)) open): open the
-  ; record itself and use the reason lemma.
   :hints (("Goal" :in-theory (e/d (fn-opl-record) (keywordp))
            :use (fn-opl-classify-reason)))
   :rule-classes nil)
@@ -258,45 +267,69 @@
                   (fn-ock-publication-blockedp deferred budget space))))
 
 ; -----------------------------------------------------------------------------
-; Settlement.  HOLDSP: the capture of COUNT holds the slot: a publication's own
-; slot, which no writing reclaim pass holds (the dry run holds none), at its
-; own count.  fn-orc-release-slot's rule for (:publication COUNT).
+; The publication's identity.  A capture is named by its SERIAL, the owner's
+; capture counter after the capture (fn-opl-next-serial: one more than the
+; one before, host/owner-host.lisp fn-owner-sco-capture), and by the COUNT it
+; captured, the slot's key (fn-owner-sco-inflight, fn-orc-release-slot's
+; (:publication COUNT)).  The count alone is not an identity: a :backoff
+; abandonment is retried at the SAME count when no commit came in between
+; (fn-opl-attempted below), so two captures can share a count; no two share a
+; serial.
 
-(defun fn-opl-holdsp (count pass inflight)
+(defun fn-opl-next-serial (serial)
+  (declare (xargs :guard t))
+  (+ 1 (nfix serial)))
+
+(defthm fn-opl-next-serial-natp
+  (natp (fn-opl-next-serial serial))
+  :rule-classes :type-prescription)
+
+; Settlement.  HOLDSP: the capture (COUNT SERIAL) holds the slot: a
+; publication's own slot, which no writing reclaim pass holds (the dry run
+; holds none), at its own count (fn-orc-release-slot's rule for
+; (:publication COUNT)), and it is the newest capture (CURRENT, the owner's
+; serial now).
+
+(defun fn-opl-holdsp (count serial pass inflight current)
   (declare (xargs :guard t))
   (and (or (not pass) (eq pass :dry-run))
        (natp inflight)
-       (equal inflight count)))
+       (equal inflight count)
+       (natp serial)
+       (equal serial current)))
 
 ; The settlement of an abandoned capture: (PASS' INFLIGHT' DEFERRED').  A
 ; capture that does not hold the slot changes nothing.
-(defun fn-opl-settle (count outcome now pass inflight deferred)
+(defun fn-opl-settle (count serial outcome now pass inflight current deferred)
   (declare (xargs :guard t))
-  (if (fn-opl-holdsp count pass inflight)
+  (if (fn-opl-holdsp count serial pass inflight current)
       (let ((rel (fn-orc-release-slot (list :publication count) pass inflight)))
         (list (car rel) (cadr rel) (fn-opl-record outcome count now deferred)))
     (list pass inflight deferred)))
 
-; KEYSTONE (safety, no capture but one's own).  A settlement by a count that
+; KEYSTONE (safety, no capture but one's own).  A settlement by a capture that
 ; does not hold the slot changes nothing: not the pass, not the slot, not the
-; recorded deferral.  A late callback of publication A cannot release, or
-; overwrite the deferral of, publication B.
+; recorded deferral.
 (defthm fn-opl-settle-never-touches-another-capture
-  (implies (not (fn-opl-holdsp count pass inflight))
-           (equal (fn-opl-settle count outcome now pass inflight deferred)
+  (implies (not (fn-opl-holdsp count serial pass inflight current))
+           (equal (fn-opl-settle count serial outcome now pass inflight current deferred)
                   (list pass inflight deferred))))
 
+; ... and so a late callback of publication A cannot release, or overwrite
+; the deferral of, publication B: B's capture made the serial one past every
+; serial before it, A's among them, even when B captured A's count.
 (defthm fn-opl-late-settlement-of-a-cannot-release-b
-  (implies (and (natp b) (not (equal a b)))
-           (equal (fn-opl-settle a outcome now pass b deferred)
-                  (list pass b deferred)))
-  :hints (("Goal" :in-theory (enable fn-opl-holdsp))))
+  (implies (and (natp a) (natp s) (<= a s))
+           (equal (fn-opl-settle count a outcome now pass inflight (fn-opl-next-serial s)
+                                 deferred)
+                  (list pass inflight deferred)))
+  :hints (("Goal" :in-theory (enable fn-opl-holdsp fn-opl-next-serial))))
 
 ; KEYSTONE (safety, the holder settles).  The capture that holds the slot
 ; frees it, leaves the pass as it was, and records exactly one deferral.
 (defthm fn-opl-settle-releases-the-holder
-  (implies (fn-opl-holdsp count pass inflight)
-           (let ((r (fn-opl-settle count outcome now pass inflight deferred)))
+  (implies (fn-opl-holdsp count serial pass inflight current)
+           (let ((r (fn-opl-settle count serial outcome now pass inflight current deferred)))
              (and (equal (car r) pass)
                   (equal (cadr r) nil)
                   (equal (caddr r) (fn-opl-record outcome count now deferred))
@@ -307,24 +340,17 @@
 ; any outcome and any later clock, is the identity: the first settlement is the
 ; only one.
 (defthm fn-opl-settle-is-once
-  (let ((r (fn-opl-settle count o1 now1 pass inflight deferred)))
-    (equal (fn-opl-settle count o2 now2 (car r) (cadr r) (caddr r)) r))
+  (let ((r (fn-opl-settle count serial o1 now1 pass inflight current deferred)))
+    (equal (fn-opl-settle count serial o2 now2 (car r) (cadr r) current (caddr r)) r))
   :hints (("Goal" :in-theory (enable fn-opl-holdsp fn-orc-release-slot))))
-
-; The identity of successive publications: a settled capture's count is the
-; attempted count, which the due rule never captures again, so no capture
-; shares a count with an earlier one and a settlement keyed by count names one.
-(defthm fn-opl-a-settled-capture-is-not-recaptured-at-its-count
-  (not (fn-ock-publication-duep durable count k count))
-  :hints (("Goal" :in-theory (enable fn-ock-publication-duep))))
 
 ; KEYSTONE (liveness of the slot, given the host's assumption that the thread
 ; settles).  After the holder's settlement the owner decides again from the
 ; newest frontier and never answers that a publication is in flight or
 ; coalesces a request for the settled capture.
 (defthm fn-opl-after-settlement-the-owner-decides-again
-  (implies (fn-opl-holdsp count pass inflight)
-           (let ((r (fn-opl-settle count outcome now pass inflight deferred)))
+  (implies (fn-opl-holdsp count serial pass inflight current)
+           (let ((r (fn-opl-settle count serial outcome now pass inflight current deferred)))
              (not (member-eq (fn-ock-publication-next durable cnt k attempted (cadr r) blockedp)
                              '(:inflight :coalesce)))))
   :hints (("Goal" :in-theory (enable fn-opl-holdsp fn-orc-release-slot fn-ock-publication-next))))
@@ -350,6 +376,8 @@
 (defthm fn-opl-backoff-eligibility-ignores-the-count
   (implies (and (equal (nth 4 d) :backoff) (natp c1) (natp c2))
            (equal (fn-opl-eligiblep d c1 now) (fn-opl-eligiblep d c2 now)))
+  ; not a rewrite rule: its two sides differ only in the count, so it loops
+  :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-opl-eligiblep))))
 
 ; The backoff taken is the capped delay: a record is eligible no later than
@@ -403,3 +431,79 @@
 (defthm fn-opl-delay-does-not-shrink
   (<= (fn-opl-delay attempts) (fn-opl-delay (+ 1 (nfix attempts))))
   :hints (("Goal" :in-theory (enable fn-opl-delay))))
+
+; -----------------------------------------------------------------------------
+; The due path.  The owner's rule (fn-ock-publication-duep) never captures the
+; ATTEMPTED count again: a deferral by budget or space, or a durable
+; publication, at that count would come out the same.  An abandonment's own
+; eligibility replaces that conjunct: an eligible record frees the due rule to
+; capture the same count again, because time, not a commit, is what made the
+; attempt meaningful (gpt-6's review, section 2: a backoff counted in commits
+; goes inert once admission stops to protect the log).  The owner's
+; maintenance takes the decision once a second (host/native/owner.lisp
+; fnn-owner-start-maintenance), so the clock is read without a POST.
+
+(defun fn-opl-attempted (deferred attempted count now)
+  (declare (xargs :guard t))
+  (if (fn-opl-eligiblep deferred count now) nil attempted))
+
+; Only an abandonment's record changes the rule's ATTEMPTED.
+(defthm fn-opl-attempted-of-a-budget-or-space-deferral
+  (implies (not (fn-opl-recordp deferred))
+           (equal (fn-opl-attempted deferred attempted count now) attempted))
+  :hints (("Goal" :in-theory (enable fn-opl-eligiblep))))
+
+; KEYSTONE (liveness of the retry, under the host's assumptions: the thread
+; settles, the clock advances, the maintenance decides).  A capture at COUNT
+; that the rule had due, abandoned for a reason that may pass (:backoff), is
+; due again at the SAME count once the capped backoff has elapsed: no commit,
+; no POST and no operator is needed.
+(defthm fn-opl-backoff-is-retried-without-a-commit
+  (implies (and (fn-opl-holdsp count serial pass count current)
+                (natp now) (natp later)
+                (<= (+ now *fn-opl-backoff-cap-ms*) later)
+                (equal (car (fn-opl-classify outcome)) :backoff)
+                (fn-ock-publication-duep durable count k nil))
+           (let* ((r (fn-opl-settle count serial outcome now pass count current deferred))
+                  (d (caddr r)))
+             (equal (fn-ock-publication-next durable count k
+                                             (fn-opl-attempted d count count later)
+                                             (cadr r)
+                                             (fn-opl-blockedp d budget space count later))
+                    :due)))
+  :hints (("Goal" :in-theory (e/d (fn-opl-attempted fn-opl-blockedp fn-ock-publication-next)
+                                  (fn-opl-settle))
+           :use ((:instance fn-opl-settle-releases-the-holder (inflight count))
+                 (:instance fn-opl-backoff-is-eligible-within-the-cap
+                            (c0 count) (count count))
+                 (:instance fn-opl-record-class (now now) (prev deferred))))))
+
+; KEYSTONE (the alarm, on the due path).  A :blocked abandonment's record
+; blocks every decision with nothing in flight, at every count and every
+; time: it never captures again while the record stands (the owner's, in
+; memory: a restart, with whatever code, format or history it brings, ends it;
+; the operator's request and the writing reclaim pass read the same rule).
+(defthm fn-opl-blocked-is-never-due
+  (implies (and (fn-opl-recordp d) (equal (nth 4 d) :blocked)
+                (not (natp inflight)))
+           (equal (fn-ock-publication-next durable count k
+                                           (fn-opl-attempted d attempted count now)
+                                           inflight
+                                           (fn-opl-blockedp d budget space count now))
+                  :blocked))
+  :hints (("Goal" :in-theory (enable fn-opl-blockedp fn-opl-eligiblep
+                                     fn-ock-publication-next))))
+
+; KEYSTONE (not by POSTs, on the due path).  Before a :backoff record's
+; not-before, no count captures: a thousand commits decide :blocked.
+(defthm fn-opl-backoff-is-not-hastened-by-commits
+  (implies (and (fn-opl-recordp d) (equal (nth 4 d) :backoff)
+                (natp now) (< now (nth 6 d))
+                (not (natp inflight)))
+           (equal (fn-ock-publication-next durable count k
+                                           (fn-opl-attempted d attempted count now)
+                                           inflight
+                                           (fn-opl-blockedp d budget space count now))
+                  :blocked))
+  :hints (("Goal" :in-theory (enable fn-opl-blockedp fn-opl-eligiblep
+                                     fn-ock-publication-next))))
