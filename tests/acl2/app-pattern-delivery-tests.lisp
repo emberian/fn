@@ -187,3 +187,51 @@
                ((name-word *apd-name*) (from *apd-from*) (seconds *apd-seconds*)
                 (group *apd-group*) (msgid *apd-msgid*))
                :fault "a values check that refuses exactly the article-kind rows it should pass")))
+
+; ---------------------------------------------------------------------------
+; fn-pat-reader-delivers-what-the-writer-encoded (TEETH CONTRACT v1).  The
+; keystone's four antecedents sit inside its `let', so the claim has no
+; labelled hypothesis and the removal witness is a mutation: the source
+; antecedent dropped, at the fixture's own event (a source that is not the
+; writer's encoding, delivered as :foreign).  The other three have no
+; counterexample here: fn-pat-encode answers nil exactly for values or a
+; payload outside the kind, and an :ok projection carries a nonempty source,
+; so (nth 6 p) = the encoding forces :ok, a passing check and a payload of the
+; kind together; their removal waits on a proof of the weakened theorem.
+(defteeth fn-pat-reader-delivers-what-the-writer-encoded
+  :claim (() (let ((p (fn-cpj-project cursor event)))
+               (implies (and (equal (car p) :ok)
+                             (not (fn-pat-values-check name-word from seconds group msgid))
+                             (fn-ak-payloadp payload)
+                             (equal (nth 6 p)
+                                    (fn-pat-encode name-word from seconds group msgid payload)))
+                        (equal (fn-pat-decode :opaque-1 (fn-pat-project cursor event))
+                               (list :deliver (nth 2 p) (nth 5 p) payload)))))
+  :subject fn-pat-decode
+  :witness ((cursor *apd-cursor*) (event *apd-event-bytes*) (name-word *apd-name*)
+            (from *apd-from*) (seconds *apd-seconds*) (group *apd-group*)
+            (msgid *apd-msgid*) (payload *apd-payload*))
+  :mutations ((without-the-source-antecedent
+               (:conclusion (let ((p (fn-cpj-project cursor event)))
+                              (implies (and (equal (car p) :ok)
+                                            (not (fn-pat-values-check name-word from seconds group msgid))
+                                            (fn-ak-payloadp payload))
+                                       (equal (fn-pat-decode :opaque-1 (fn-pat-project cursor event))
+                                              (list :deliver (nth 2 p) (nth 5 p) payload)))))
+               ((cursor *apd-cursor*) (event *apd-other-bytes*) (name-word *apd-name*)
+                (from *apd-from*) (seconds *apd-seconds*) (group *apd-group*)
+                (msgid *apd-msgid*) (payload *apd-payload*))
+               :fault "a reader that owes the payload for any projected event, whatever source it binds")
+              (delivered-after-its-sequence
+               (:conclusion (let ((p (fn-cpj-project cursor event)))
+                              (implies (and (equal (car p) :ok)
+                                            (not (fn-pat-values-check name-word from seconds group msgid))
+                                            (fn-ak-payloadp payload)
+                                            (equal (nth 6 p)
+                                                   (fn-pat-encode name-word from seconds group msgid payload)))
+                                       (equal (fn-pat-decode :opaque-1 (fn-pat-project cursor event))
+                                              (list :deliver (1+ (nth 2 p)) (nth 5 p) payload)))))
+               ((cursor *apd-cursor*) (event *apd-event-bytes*) (name-word *apd-name*)
+                (from *apd-from*) (seconds *apd-seconds*) (group *apd-group*)
+                (msgid *apd-msgid*) (payload *apd-payload*))
+               :fault "a payload file numbered one past the event's sequence")))

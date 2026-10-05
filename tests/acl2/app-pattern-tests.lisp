@@ -12,6 +12,7 @@
 (in-package "ACL2")
 (include-book "../../books/app-pattern")
 (include-book "must-fail-checked")
+(include-book "../../books/defkeystone")
 
 (defconst *apt-pub-argv*
   (list (fn-ak-text "/s/control") (fn-ak-text "1") (fn-ak-text "/k")
@@ -161,3 +162,23 @@
 (must-fail-checked
  (def-pattern bad-partition :kind :opaque-1 :roles ((p :posts g) (s :reads-partition h)) :guarantee (:partitioned))
  :unchecked "def-pattern refuses a partitioned reader of a group nobody posts to")
+
+; ---------------------------------------------------------------------------
+; fn-pat-cli-run-binds-every-step with its teeth (TEETH CONTRACT v1).  The
+; keystone's own `let' carries its one antecedent, (equal (car cli) :run), so
+; the claim has no labelled hypothesis: that antecedent has no counterexample
+; to remove (fn-pat-cli-plan answers :usage and :help with a nil plan, whose
+; needs are bound vacuously), and teeth-gate-owed.md records it as such.
+(defteeth fn-pat-cli-run-binds-every-step
+  :claim (() (let ((cli (fn-pat-cli-plan name role argv)))
+               (implies (equal (car cli) :run)
+                        (fn-pat-bindings-coverp (fn-pat-plan-needs (nth 4 cli))
+                                                (nth 5 cli)))))
+  :subject fn-pat-cli-plan
+  :witness ((name *apt-pubsub*) (role *apt-sub*) (argv *apt-sub-argv*))
+  :mutations ((covers-every-argument
+               (:conclusion (let ((cli (fn-pat-cli-plan name role argv)))
+                              (implies (equal (car cli) :run)
+                                       (fn-pat-bindings-coverp *fn-pat-arg-order* (nth 5 cli)))))
+               ((name *apt-pubsub*) (role *apt-pub*) (argv *apt-pub-argv*))
+               :fault "an accepted command line claimed to bind every argument of the pattern language, not the plan's needs (a pub line binds no consumer)")))
