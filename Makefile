@@ -1020,8 +1020,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/page-window-lease \
 	books/page-window-executor \
 	books/page-window-read \
+	books/page-window-span \
 	tests/acl2/page-window-executor-tests \
 	tests/acl2/page-window-read-tests \
+	tests/acl2/page-window-span-tests \
 	tests/acl2/page-window-admission-tests \
 	tests/acl2/page-window-lease-tests \
 	tests/acl2/page-file-lease-tests \

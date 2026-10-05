@@ -84,6 +84,7 @@
                     (:free (x) (nth 1 x)) (:free (x) (nth 2 x))))))
 
 (include-book "../books/page-window-read")
+(include-book "../books/page-window-span")
 
 (defun fn-owner-page-window-byte (worker token plan i fn-ew-buffer fn-page-read-pool)
   (declare (xargs :stobjs (fn-ew-buffer fn-page-read-pool) :guard (true-listp plan)))
@@ -159,6 +160,137 @@
    (mv-list 2 (fn-owner-page-window-byte-at worker token plan file eoff elen poff plen trailer i fn-ew-buffer fn-page-read-pool))
    (mv-list 2 (fn-pwr-byte-at (fn-owner-page-read-ledger fn-page-read-pool) worker token plan
                             file eoff elen poff plen trailer i fn-ew-buffer))))
+
+;; The span borrow (books/page-window-span.lisp): one ledger decision copies the
+;; window octets [I, J) into the caller's own buffer FN-EW-SPAN.  I and J are
+;; window-relative, as fn-owner-page-window-byte's I.
+(defun fn-owner-page-window-span (worker token plan i j fn-ew-buffer fn-ew-span fn-page-read-pool)
+  (declare (xargs :stobjs (fn-ew-buffer fn-ew-span fn-page-read-pool)
+                  :guard (and (true-listp plan) (natp i) (natp j) (< i j))))
+  (fn-pwr-span (fn-owner-page-read-ledger fn-page-read-pool) worker token plan i j
+               fn-ew-buffer fn-ew-span))
+
+(defthm fn-owner-page-window-span-refines-pwr-by-definition
+  (and (equal (mv-nth 0 (fn-owner-page-window-span worker token plan i j fn-ew-buffer fn-ew-span
+                                                   fn-page-read-pool))
+              (mv-nth 0 (fn-pwr-span (fn-owner-page-read-ledger fn-page-read-pool)
+                                     worker token plan i j fn-ew-buffer fn-ew-span)))
+       (equal (mv-nth 1 (fn-owner-page-window-span worker token plan i j fn-ew-buffer fn-ew-span
+                                                   fn-page-read-pool))
+              (mv-nth 1 (fn-pwr-span (fn-owner-page-read-ledger fn-page-read-pool)
+                                     worker token plan i j fn-ew-buffer fn-ew-span)))))
+
+; KEYSTONE (the span is the scalar borrows).  Octet K of a span the owner
+; answers is exactly what fn-owner-page-window-byte answers at I+K, which
+; answers a byte; so a span refuses wherever the scalar refuses at a covered
+; index, under the preconditions the scalar has.
+(defthm fn-owner-page-window-span-is-the-scalar-borrows
+  (implies (and (natp i) (natp j) (< i j) (natp k) (< k (- j i))
+                (equal (mv-nth 0 (fn-owner-page-window-span worker token plan i j fn-ew-buffer
+                                                            fn-ew-span fn-page-read-pool))
+                       :span))
+           (and (equal (mv-nth 0 (fn-owner-page-window-byte worker token plan (+ i k)
+                                                            fn-ew-buffer fn-page-read-pool))
+                       :byte)
+                (equal (nth k (nth 0 (mv-nth 1 (fn-owner-page-window-span worker token plan i j
+                                                                           fn-ew-buffer fn-ew-span
+                                                                           fn-page-read-pool))))
+                       (mv-nth 1 (fn-owner-page-window-byte worker token plan (+ i k)
+                                                            fn-ew-buffer fn-page-read-pool)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-owner-page-window-span fn-owner-page-window-byte)
+           :use (:instance fn-pwr-span-is-the-borrowed-bytes
+                           (ledger (fn-owner-page-read-ledger fn-page-read-pool)) (s plan)))))
+
+(defthm fn-owner-page-window-span-refuses-where-the-scalar-does
+  (implies (and (natp i) (natp j) (< i j) (natp k) (< k (- j i))
+                (not (equal (mv-nth 0 (fn-owner-page-window-byte worker token plan (+ i k)
+                                                                 fn-ew-buffer fn-page-read-pool))
+                            :byte)))
+           (not (equal (mv-nth 0 (fn-owner-page-window-span worker token plan i j fn-ew-buffer
+                                                            fn-ew-span fn-page-read-pool))
+                       :span)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-owner-page-window-span-is-the-scalar-borrows)))
+
+(defthm fn-owner-page-window-span-answers-when-its-ends-do
+  (implies (and (natp i) (natp j) (< i j)
+                (equal (mv-nth 0 (fn-owner-page-window-byte worker token plan i fn-ew-buffer
+                                                            fn-page-read-pool))
+                       :byte)
+                (equal (mv-nth 0 (fn-owner-page-window-byte worker token plan (- j 1) fn-ew-buffer
+                                                            fn-page-read-pool))
+                       :byte))
+           (equal (mv-nth 0 (fn-owner-page-window-span worker token plan i j fn-ew-buffer
+                                                       fn-ew-span fn-page-read-pool))
+                  :span))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-owner-page-window-span fn-owner-page-window-byte)
+           :use (:instance fn-pwr-span-answers-when-its-ends-do
+                           (ledger (fn-owner-page-read-ledger fn-page-read-pool)) (s plan)))))
+
+; The payload-coordinate join the host calls (fn-owner-page-window-byte-at's).
+(defun fn-owner-page-window-span-at (worker token plan file eoff elen poff plen trailer i j
+                                            fn-ew-buffer fn-ew-span fn-page-read-pool)
+  (declare (xargs :stobjs (fn-ew-buffer fn-ew-span fn-page-read-pool)
+                  :guard (and (true-listp plan) (natp i) (natp j) (< i j))))
+  (fn-pwr-span-at (fn-owner-page-read-ledger fn-page-read-pool) worker token plan
+                  file eoff elen poff plen trailer i j fn-ew-buffer fn-ew-span))
+
+(defthm fn-owner-page-window-span-at-is-the-scalar-borrows
+  (implies (and (natp i) (natp j) (< i j) (natp k) (< k (- j i))
+                (equal (mv-nth 0 (fn-owner-page-window-span-at worker token plan file eoff elen
+                                                               poff plen trailer i j
+                                                               fn-ew-buffer fn-ew-span
+                                                               fn-page-read-pool))
+                       :span))
+           (and (equal (mv-nth 0 (fn-owner-page-window-byte-at worker token plan file eoff elen
+                                                               poff plen trailer (+ i k)
+                                                               fn-ew-buffer fn-page-read-pool))
+                       :byte)
+                (equal (nth k (nth 0 (mv-nth 1 (fn-owner-page-window-span-at
+                                                worker token plan file eoff elen poff plen trailer
+                                                i j fn-ew-buffer fn-ew-span fn-page-read-pool))))
+                       (mv-nth 1 (fn-owner-page-window-byte-at worker token plan file eoff elen
+                                                               poff plen trailer (+ i k)
+                                                               fn-ew-buffer fn-page-read-pool)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-owner-page-window-span-at fn-owner-page-window-byte-at)
+           :use (:instance fn-pwr-span-at-is-the-borrowed-bytes
+                           (ledger (fn-owner-page-read-ledger fn-page-read-pool)) (s plan)))))
+
+(defthm fn-owner-page-window-span-at-refuses-where-the-scalar-does
+  (implies (and (natp i) (natp j) (< i j) (natp k) (< k (- j i))
+                (not (equal (mv-nth 0 (fn-owner-page-window-byte-at worker token plan file eoff
+                                                                    elen poff plen trailer (+ i k)
+                                                                    fn-ew-buffer fn-page-read-pool))
+                            :byte)))
+           (not (equal (mv-nth 0 (fn-owner-page-window-span-at worker token plan file eoff elen
+                                                               poff plen trailer i j
+                                                               fn-ew-buffer fn-ew-span
+                                                               fn-page-read-pool))
+                       :span)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-owner-page-window-span-at-is-the-scalar-borrows)))
+
+(defthm fn-owner-page-window-span-at-answers-when-its-ends-do
+  (implies (and (natp i) (natp j) (< i j)
+                (equal (mv-nth 0 (fn-owner-page-window-byte-at worker token plan file eoff elen
+                                                               poff plen trailer i
+                                                               fn-ew-buffer fn-page-read-pool))
+                       :byte)
+                (equal (mv-nth 0 (fn-owner-page-window-byte-at worker token plan file eoff elen
+                                                               poff plen trailer (- j 1)
+                                                               fn-ew-buffer fn-page-read-pool))
+                       :byte))
+           (equal (mv-nth 0 (fn-owner-page-window-span-at worker token plan file eoff elen
+                                                          poff plen trailer i j fn-ew-buffer
+                                                          fn-ew-span fn-page-read-pool))
+                  :span))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-owner-page-window-span-at fn-owner-page-window-byte-at)
+           :use (:instance fn-pwr-span-at-answers-when-its-ends-do
+                           (ledger (fn-owner-page-read-ledger fn-page-read-pool)) (s plan)))))
 
 (defun fn-owner-page-window-outcome (worker token plan fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool :guard (true-listp plan)))
