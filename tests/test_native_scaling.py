@@ -17,7 +17,7 @@ import time
 import unittest
 
 from tests.native_harness import EXIT_OK, Client
-from tests.test_native_bounds_join import JoinFixture, article, post, read_article
+from tests.test_native_bounds_join import JoinFixture, article, post
 
 N = int(os.environ.get("FN_SCALING_N", str(64 * 1024)))
 RATIO_LIMIT = 10.0
@@ -30,12 +30,13 @@ INIT_PROFILE = ("--profile", "development", "--max-transactions", "256",
 
 
 def timed_article(client, message_id):
-    """(seconds to the terminating dot, octets served)."""
+    """(seconds to the terminating dot, octets served, seconds to the 220 line)."""
     start = time.monotonic()
-    status, body = read_article(client, message_id)
-    elapsed = time.monotonic() - start
-    assert body is not None, status
-    return elapsed, len(body)
+    status = client.command(b"ARTICLE " + message_id.encode("ascii"))
+    first = time.monotonic() - start
+    assert status.startswith(b"220"), status
+    body = client.block()
+    return time.monotonic() - start, len(body), first
 
 
 class ScalingTests(JoinFixture):
@@ -51,7 +52,8 @@ class ScalingTests(JoinFixture):
                 reply = post(client, article(message_id, size))
                 self.assertTrue(reply.startswith("240"), reply)
                 times[size] = timed_article(client, message_id)
-                print("ARTICLE", size, "%.3f s" % times[size][0], flush=True)
+                print("ARTICLE", size, "220 at %.3f s, total %.3f s" % (times[size][2], times[size][0]),
+                      flush=True)
         self.node.stop()
         small, large = times[N], times[8 * N]
         self.assertGreater(large[1], 8 * N)
