@@ -699,6 +699,15 @@ range), which the caller runs under the owner mutex
                    (every #'digit-char-p raw)
                    (parse-integer raw)))))
 
+(defun fnn-owner-article-window ()
+  "ACL2's ARTICLE quantum (fn-asto-quantum), the developer selector's override
+passed through as for the OVER cursor."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")))
+    (fnn-core 'fn-asto-quantum
+              (and raw (> (length raw) 0)
+                   (every #'digit-char-p raw)
+                   (parse-integer raw)))))
+
 (defun fnn-owner-response-pin (service cid)
   "Hold ACL2's arena-reader generation for CID's response.  The caller
 holds the owner mutex, before returning its captured plan.  Only one
@@ -764,7 +773,7 @@ READY is immutable and can be replayed by Web without authority effects."
                        (fnn-owner-window-activation (lambda () (let ((*fnn-extent-no-io* t))
                          (let ((answer
                                  (fnn-core-state 'fn-owner-article-ready-plan-step
-                                                 cid plan (fnn-owner-over-window))))
+                                                 cid plan (fnn-owner-article-window))))
                            (list :warm answer))))))))
                (if (eq (car attempt) :warm) attempt
                  (list :cold (fnn-owner-cold-issue-locked service cid attempt)))))
@@ -823,7 +832,7 @@ Empty progress yields; a cold read retains the exact original plan/capture."
                        (catch 'fnn-extent-cold
                          (fnn-owner-window-activation (lambda () (let ((*fnn-extent-no-io* t))
                            (destructuring-bind (word bytes next done)
-                               (fnn-call 'fn-asto-plan-render-window plan (fnn-owner-over-window)
+                               (fnn-call 'fn-asto-plan-render-window plan (fnn-owner-article-window)
                                          (fnn-live-stobj 'fn-arena))
                              (list :warm word bytes next done))))))))
                  (if (eq (car attempt) :warm) attempt
