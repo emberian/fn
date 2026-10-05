@@ -7,7 +7,11 @@
   lease path fd created lock changed thread
   input digest replay digest-input replay-input
   (phase :idle) operation offset count status actual condition
-  stopping returned joined cleanup-condition)
+  stopping returned joined cleanup-condition
+  ;; SCEN-CATCHUP-PACE: called (no arguments, outside the lock) after each
+  ;; completed operation, so the driver that waits on its runtime's wake
+  ;; takes the result at once rather than at its next poll.
+  (notify nil))
 
 (defun fnn-csp-worker-perform (worker operation offset count)
   ;; The worker alone touches the spool descriptor's position. No closure
@@ -63,7 +67,9 @@
                      (fnn-csp-worker-actual worker) actual
                      (fnn-csp-worker-condition worker) condition
                      (fnn-csp-worker-phase worker) :complete)
-               (sb-thread:condition-broadcast (fnn-csp-worker-changed worker))))))
+               (sb-thread:condition-broadcast (fnn-csp-worker-changed worker)))
+             (let ((notify (fnn-csp-worker-notify worker)))
+               (when notify (funcall notify))))))
     (let ((failure nil))
       (flet ((cleanup (thunk)
                (handler-case (funcall thunk)
@@ -81,7 +87,7 @@
               (fnn-csp-worker-returned worker) t)
         (sb-thread:condition-broadcast (fnn-csp-worker-changed worker))))))
 
-(defun fnn-csp-worker-start (path lease &optional retain)
+(defun fnn-csp-worker-start (path lease &optional retain notify)
   ;; No reusable credit is minted here. The caller retains the exact ledger
   ;; slot/generation through buffer borrowing, local acceptance and cleanup.
   (unless lease (fnn-fault "catchup worker has no independently issued lease"))
@@ -92,7 +98,7 @@
          (digest (svref digest-input 0)) (replay (svref replay-input 0))
          (worker (%make-fnn-csp-worker
                   :lease lease :path path :input input :digest digest :replay replay
-                  :digest-input digest-input :replay-input replay-input
+                  :digest-input digest-input :replay-input replay-input :notify notify
                   :lock (sb-thread:make-mutex :name "fn catchup spool")
                   :changed (sb-thread:make-waitqueue :name "fn catchup spool"))))
     ;; Publish physical custody before thread creation can escape.

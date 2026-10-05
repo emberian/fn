@@ -10,6 +10,7 @@
 (defun mbe (&key logic exec) (declare (ignore exec)) logic)
 (defparameter *fn-feed-wire-input-max-chunk-octets* 512)
 (defconstant +fnn-max-read+ 65536)
+(defconstant +fnn-socket-read-attempt-max+ 65536)
 (load-deployed-forms "host/native/io.lisp"
  '((define-condition fnn-store-io-refusal) (defun fnn-make-octets) (deftype fnn-octets) (defun fnn-octets)
    (defun fnn-octet-list) (defun fnn-octets-string) (defun fnn-string-octets)

@@ -51,7 +51,15 @@
   ;; Catch-up flight leases whose spool worker has been stopped but not yet
   ;; joined: settled only after the actual thread is dead (never twice).
   ;; Owned by the pull worker thread alone (finish, sweep and cleanup).
-  (settling nil))
+  (settling nil)
+  ;; SCEN-CATCHUP-PACE: the worker's own wake.  A spool worker's completed
+  ;; operation, a local submission's completion and the stop count WAKES up
+  ;; and broadcast WAKE-QUEUE (fnn-pull-runtime-wake), so a worker pausing
+  ;; with a round admitted takes the result at once, not at its next poll.
+  (wake-lock (sb-thread:make-mutex :name "fn pull wake"))
+  (wake-queue (sb-thread:make-waitqueue :name "fn pull wake"))
+  ;; guarded-by: wake-lock
+  (wakes 0))
 
 (defparameter *fnn-pull-runtime-lock* (sb-thread:make-mutex :name "fn pull runtimes"))
 ;; guarded-by: *fnn-pull-runtime-lock*
@@ -535,7 +543,9 @@ acceptance (the owner is stopping or fenced then)."
        (lambda (worker)
          ;; Custody is published before the thread exists.
          (setf (fnn-peer-flight-lease-worker lease) worker
-               (fnn-pull-flight-worker flight) worker)))
+               (fnn-pull-flight-worker flight) worker))
+       (let ((runtime (fnn-pull-flight-runtime flight)))
+         (lambda () (fnn-pull-runtime-wake runtime))))
       (setf (fnn-pull-flight-spool-op flight) (list :open 0 0 nil :ready nil))))
   (fnn-pull-flight-worker flight))
 
@@ -707,7 +717,9 @@ acceptance (the owner is stopping or fenced then)."
     (t (fnn-fault "unknown pull effect ~s" (car effect)))))
 
 (defun fnn-pull-flight-local-step (flight)
-  "One local cold/commit/render/input quantum; no page or completion waits."
+  "One local cold/commit/render/input quantum; no page or completion waits.
+Answers :wait when it is waiting (a resume time, a submission's completion,
+a cold page), else :progress."
   (let ((service (fnn-pull-flight-service flight)) (cid (fnn-pull-flight-cid flight))
         (now (fnn-pull-monotonic)))
     (when (and (fnn-pull-flight-resume-at flight)
@@ -723,7 +735,8 @@ acceptance (the owner is stopping or fenced then)."
              ((consp word)
               (when (eq kind :cursor)
                 (setf (fnn-pull-flight-resume-at flight)
-                      (fnn-core 'fn-prd-resume-at now (second word)))))
+                      (fnn-core 'fn-prd-resume-at now (second word))))
+              (return-from fnn-pull-flight-local-step :wait))
              ((eq kind :cursor)
               ;; A rendered response resumes its exact plan, never the input
               ;; decoder. Keep the read for cleanup if polling refuses/faults.
@@ -818,7 +831,10 @@ acceptance (the owner is stopping or fenced then)."
                                    ((fnn-pull-runtime-lock (fnn-pull-flight-runtime flight)))
                                  (when (and (not (fnn-pull-flight-closed flight))
                                             (eq marker (fnn-pull-flight-await flight)))
-                                   (setf (fnn-pull-flight-completion flight) (list completion)))))
+                                   (setf (fnn-pull-flight-completion flight) (list completion))))
+                               ;; Outside the runtime lock: the worker may be
+                               ;; pausing for exactly this completion.
+                               (fnn-pull-runtime-wake (fnn-pull-flight-runtime flight)))
                              nil)))
                       (when early
                         (sb-thread:with-mutex ((fnn-pull-runtime-lock (fnn-pull-flight-runtime flight)))
@@ -856,13 +872,20 @@ acceptance (the owner is stopping or fenced then)."
                                      (cons :remote (fnn-octet-list incoming)))))))
 
 (defun fnn-pull-flight-io-step (flight)
+  "One attempt at the flight's continuation: :progress when it advanced
+(connected, octets written, a local, spool or digest quantum done), else
+:wait."
   (case (fnn-pull-flight-io flight)
-    (:dial (when (eq (fnn-connect-poll (fnn-pull-flight-socket flight)) :connected)
-             (fnn-pull-flight-set-io flight nil)))
-    (:tls (when (eq (fnn-tls-client-step (fnn-pull-flight-channel flight)
-                                       (fnn-pull-flight-tls-name flight)) :connected)
-            (fnn-pull-flight-set-io flight nil)
-            (fnn-pull-flight-event flight (list :tls-up))))
+    (:dial (cond ((eq (fnn-connect-poll (fnn-pull-flight-socket flight)) :connected)
+                  (fnn-pull-flight-set-io flight nil)
+                  :progress)
+                 (t :wait)))
+    (:tls (cond ((eq (fnn-tls-client-step (fnn-pull-flight-channel flight)
+                                        (fnn-pull-flight-tls-name flight)) :connected)
+                 (fnn-pull-flight-set-io flight nil)
+                 (fnn-pull-flight-event flight (list :tls-up))
+                 :progress)
+                (t :wait)))
     (:send
      (let* ((data (fnn-pull-flight-data flight)) (offset (fnn-pull-flight-offset flight))
             (end (or (fnn-pull-flight-end flight)
@@ -871,22 +894,27 @@ acceptance (the owner is stopping or fenced then)."
             (written (if (fnn-pull-flight-channel flight)
                          (fnn-tls-write-now-range (fnn-pull-flight-channel flight) data offset end)
                        (fnn-socket-write-now (fnn-pull-flight-fd flight) data offset end))))
-       (when (integerp written)
-         (incf (fnn-pull-flight-offset flight) written)
-         (when (= (fnn-pull-flight-offset flight) end)
-           (setf (fnn-pull-flight-end flight) nil))
-         (when (= (fnn-pull-flight-offset flight) (length data))
-           (setf (fnn-pull-flight-data flight) nil)
-           (fnn-pull-flight-set-io flight nil)))))
-    (:local (fnn-pull-flight-local-step flight))
+       (cond ((integerp written)
+              (incf (fnn-pull-flight-offset flight) written)
+              (when (= (fnn-pull-flight-offset flight) end)
+                (setf (fnn-pull-flight-end flight) nil))
+              (when (= (fnn-pull-flight-offset flight) (length data))
+                (setf (fnn-pull-flight-data flight) nil)
+                (fnn-pull-flight-set-io flight nil))
+              :progress)
+             (t :wait))))
+    (:local (if (eq (fnn-pull-flight-local-step flight) :wait) :wait :progress))
     (:spool (fnn-pull-flight-spool-step flight))
     (:hash (fnn-pull-flight-hash-step flight))
     (t (fnn-fault "unknown pull continuation"))))
 
 (defun fnn-pull-flight-step (flight)
-  "One driver action: :finished, :progress (state advanced without waiting on
-a peer or the local node), or :wait.  Local, dial, TLS and send continuations
-are always :wait here, so a selection never spins on them."
+  "One driver action: :finished, :progress (state advanced), or :wait (it
+waits on a peer, the local node, a spool operation or a time).  A
+continuation that advanced is :progress, so the selection takes its next
+action at once (SCEN-CATCHUP-PACE: every local, send and spool step used to
+end the selection and cost the sweep its pause, about 25 pauses an
+article); one that waits is :wait, so a selection never spins on it."
   (let* ((catchup (eq (fnn-pull-flight-kind flight) :catch-up))
          (action (fnn-core 'fn-prd-action
                            (fnn-core (if catchup 'fn-csp-done-p 'fn-pull-session-done-p)
@@ -902,7 +930,8 @@ are always :wait here, so a selection never spins on them."
              :progress)
       (:io (let ((r (fnn-pull-flight-try flight (lambda () (fnn-pull-flight-io-step flight))
                                          (second action))))
-             (if (and (member (second action) '(:spool :hash)) (eq r :progress)) :progress :wait)))
+             ;; A loss handled by fnn-pull-flight-try (nil) advanced the round.
+             (if (eq r :wait) :wait :progress)))
       (:effect
        (pop (fnn-pull-flight-effects flight))
        (fnn-pull-flight-try flight
@@ -927,12 +956,17 @@ are always :wait here, so a selection never spins on them."
 
 (defun fnn-pull-flight-quantum (flight)
   "Run FLIGHT for at most ACL2's per-selection quantum of actions, while they
-progress; answer :finished, :progress or :wait (the last action's)."
-  (let ((result :wait))
+progress; answer :finished, :progress when any action progressed, else :wait.
+A selection that advanced the round before it came to a wait is progress: the
+sweep then pauses for nothing (it used to read the last action alone)."
+  (let ((result :wait) (progressed nil))
     (loop repeat (fnn-core 'fn-prd-flight-quantum)
           do (setq result (fnn-pull-flight-step flight))
+             (when (eq result :progress) (setq progressed t))
           until (member result '(:finished :wait)))
-    result))
+    (cond ((eq result :finished) :finished)
+          (progressed :progress)
+          (t :wait))))
 
 ;;; Catch-up custody: the bank lease settles only after the actual worker
 ;;; thread is dead with a clean cleanup, the socket is shut and the local
@@ -1049,23 +1083,67 @@ progress; answer :finished, :progress or :wait (the last action's)."
       (when (sb-thread:holding-mutex-p lock)
         (sb-thread:release-mutex lock)))))
 
+(defun fnn-pull-runtime-wake (runtime)
+  "Count one wake and wake a pausing worker (SCEN-CATCHUP-PACE): a spool
+operation completed, a local submission completed, or the stop."
+  (sb-thread:with-mutex ((fnn-pull-runtime-wake-lock runtime))
+    (incf (fnn-pull-runtime-wakes runtime))
+    (sb-thread:condition-broadcast (fnn-pull-runtime-wake-queue runtime))))
+
+(defun fnn-pull-wakes-seen (runtime)
+  (sb-thread:with-mutex ((fnn-pull-runtime-wake-lock runtime))
+    (fnn-pull-runtime-wakes runtime)))
+
+(defun fnn-pull-ready-wait (runtime seen ms)
+  "With a round admitted: sleep up to MS milliseconds (ACL2's I/O poll) on
+the runtime's own wake unless a wake came after SEEN was read.  A round
+waiting on its spool worker or on a local submission is woken by it at
+once; a round waiting on its peer's socket polls at MS, as before."
+  (let ((lock (fnn-pull-runtime-wake-lock runtime))
+        (queue (fnn-pull-runtime-wake-queue runtime)))
+    (sb-thread:grab-mutex lock)
+    (unwind-protect
+         (when (= seen (fnn-pull-runtime-wakes runtime))
+           (sb-thread:condition-wait queue lock :timeout (/ ms 1000d0)))
+      ;; A timed-out condition-wait may return without the mutex.
+      (when (sb-thread:holding-mutex-p lock)
+        (sb-thread:release-mutex lock)))))
+
+(defun fnn-pull-refresh-plans (runtime)
+  "Read both plan tables under the owner and follow them: retire, prune, admit."
+  (let* ((service (fnn-pull-runtime-service runtime))
+         (plans (fnn-owner-transit-serialized
+                 service nil (lambda () (fnn-owner-core 'fn-owner-pull-plans))))
+         (cu-plans (fnn-owner-transit-serialized
+                    service nil (lambda () (fnn-owner-core 'fn-owner-catchup-plans)))))
+    (fnn-pull-retire-flights runtime plans :pull)
+    (fnn-pull-retire-flights runtime cu-plans :catch-up)
+    (fnn-pull-prune-journals runtime plans)
+    (fnn-pull-prune-journals runtime cu-plans :catch-up)
+    (fnn-pull-admit-flight runtime plans :pull)
+    (fnn-pull-admit-flight runtime cu-plans :catch-up)))
+
 (defun fnn-pull-worker (runtime)
-  (let ((service (fnn-pull-runtime-service runtime)) (remaining nil) (primary nil)
-        (progressed nil) (seen 0))
+  (let ((remaining nil) (primary nil)
+        (progressed nil) (seen 0) (woken 0) (refreshed-at nil) (refreshed-seen nil))
     (handler-bind ((serious-condition (lambda (condition) (unless primary (setq primary condition)))))
     (unwind-protect
          (loop until (fnn-pull-stoppingp runtime) do
-           (setq seen (fnn-pull-commits-seen runtime))
-           (let ((plans (fnn-owner-transit-serialized
-                         service nil (lambda () (fnn-owner-core 'fn-owner-pull-plans))))
-                 (cu-plans (fnn-owner-transit-serialized
-                            service nil (lambda () (fnn-owner-core 'fn-owner-catchup-plans)))))
-             (fnn-pull-retire-flights runtime plans :pull)
-             (fnn-pull-retire-flights runtime cu-plans :catch-up)
-             (fnn-pull-prune-journals runtime plans)
-             (fnn-pull-prune-journals runtime cu-plans :catch-up)
-             (fnn-pull-admit-flight runtime plans :pull)
-             (fnn-pull-admit-flight runtime cu-plans :catch-up))
+           ;; Both counts are read when a sweep begins, so a completion during
+           ;; any selection of the sweep is never slept through.
+           (unless remaining
+             (setq seen (fnn-pull-commits-seen runtime)
+                   woken (fnn-pull-wakes-seen runtime)))
+           ;; The plan tables are re-read when a commit came (a configuration
+           ;; change, a new article) or ACL2's I/O poll has passed, not before
+           ;; every selection: a selection now ends at each spool or local
+           ;; wait, and two owner holds a selection would tax the import.
+           (let ((now (fnn-pull-monotonic)))
+             (when (or (null refreshed-at) (/= seen refreshed-seen)
+                       (>= now (fnn-core 'fn-prd-resume-at refreshed-at
+                                         (fnn-core 'fn-prd-idle-ms))))
+               (fnn-pull-refresh-plans runtime)
+               (setq refreshed-at now refreshed-seen seen)))
            (let* ((active (mapcar #'fnn-pull-flight-key (fnn-pull-runtime-flights runtime)))
                   ;; The host calls the keystone's actual subject. Removed
                   ;; keys drop out; newcomers join only after this sweep.
@@ -1087,13 +1165,18 @@ progress; answer :finished, :progress or :wait (the last action's)."
              ;; not per peer: ACL2's (the I/O poll while a round is admitted,
              ;; else until the next scheduled round, at most a second). It
              ;; limits polling work without truncating input or ending any round.
+             ;; With a round admitted the pause is the I/O poll on the
+             ;; runtime's wake (spool and local completions end it); with none,
+             ;; until the next scheduled round on the commit signal.
              (unless remaining
                (unless progressed
-                 (fnn-pull-idle-wait runtime seen
-                                     (fnn-core 'fn-prd-pause-ms active
-                                               (append (fnn-pull-runtime-schedule runtime)
-                                                       (fnn-pull-runtime-cu-schedule runtime))
-                                               (fnn-pull-monotonic))))
+                 (let ((ms (fnn-core 'fn-prd-pause-ms active
+                                     (append (fnn-pull-runtime-schedule runtime)
+                                             (fnn-pull-runtime-cu-schedule runtime))
+                                     (fnn-pull-monotonic))))
+                   (if active
+                       (fnn-pull-ready-wait runtime woken ms)
+                     (fnn-pull-idle-wait runtime seen ms))))
                (setq progressed nil))))
       (let ((failure nil))
         (setf (fnn-pull-runtime-cleanup-stage runtime) :calling)
@@ -1161,7 +1244,9 @@ progress; answer :finished, :progress or :wait (the last action's)."
                              (mapcar #'fnn-pull-flight-socket
                                      (fnn-pull-runtime-flights runtime))))
           (when socket (ignore-errors (fnn-socket-shutdown socket)))))
-      ;; An idle worker sleeps on the commit signal (fnn-pull-idle-wait): wake it.
+      ;; An idle worker sleeps on the commit signal (fnn-pull-idle-wait), a
+      ;; busy one on its own wake (fnn-pull-ready-wait): wake both.
+      (fnn-pull-runtime-wake runtime)
       (fnn-owner-signal-commit service)))
   nil)
 
