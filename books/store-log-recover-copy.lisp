@@ -1582,12 +1582,15 @@
         (mv :copy (fn-lgrc-attempt s j k stg stage genesis max floor outs))
       (mv verdict nil))))
 
-; KEYSTONE.  A refused open takes no step (the store is the one it found:
-; journal/K, its inodes and its pending operations untouched), and refuses
-; by name exactly when the free octets are short of the read's length.
+; KEYSTONE.  The open's verdict is fn-lgrc-copy-verdict over the read's
+; length (the host's one call, host/native/io.lisp fnn-log-recover); a
+; refused open takes no step (the store is the one it found: journal/K, its
+; inodes and its pending operations untouched), and refuses by name exactly
+; when the free octets are short of the read's length.
 (defthm fn-lgrc-open-refuses-without-room-and-takes-no-step
   (mv-let (verdict states) (fn-lgrc-open s j k stg stage genesis max floor free outs)
-    (and (iff (equal verdict :recover-copy-no-space)
+    (and (equal verdict (fn-lgrc-copy-verdict free (len (fn-bsc-content s (fn-bsc-lookup s j k)))))
+         (iff (equal verdict :recover-copy-no-space)
               (not (and (natp free)
                         (<= (len (fn-bsc-content s (fn-bsc-lookup s j k))) free))))
          (implies (equal verdict :recover-copy-no-space) (null states))
