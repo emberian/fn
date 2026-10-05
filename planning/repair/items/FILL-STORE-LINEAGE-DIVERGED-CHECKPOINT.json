@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Red on set 55ff708a6: cloud2:/tank/fn/scratch/fill-wt/native-fill-resil-cloud2-55 (scenario_suite run resilience, --allow-skips, jobs 3; logs/test-tests.test_native_store_lineage.log). A checkpoint of a diverged copy that is accepted writes a lineage that is not the store's: check that the offline verb sees the divergence before the live-owner probe.",
+ "file": "host/native/store-lineage.lisp",
+ "id": "FILL-STORE-LINEAGE-DIVERGED-CHECKPOINT",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "high",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "tests.test_native_store_lineage 3F: 'checkpoint' over a diverged copy (with a suffix and with an empty suffix) is expected to be refused by name but succeeds with exit 0 / 'not-running (no process holds the store ...)'",
+ "updated": "2026-10-04T20:01:42Z"
+}

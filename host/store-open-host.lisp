@@ -54,6 +54,10 @@
 (defun fn-hx-lock-shared (path) (declare (xargs :mode :program) (ignore path)) (fn-hx-stub fn-hx-lock-shared))
 ; :ok | (:error TEXT)
 (defun fn-hx-fsync-dir (path) (declare (xargs :mode :program) (ignore path)) (fn-hx-stub fn-hx-fsync-dir))
+; close(2) of a handle fn-hx-open (or a later opener) returned, and its table
+; entry's release: :ok | (:error ...).  Every handle this file opens other
+; than a segment's (the extent realizer's file id) is closed by its opener.
+(defun fn-hx-close (h) (declare (xargs :mode :program) (ignore h)) (fn-hx-stub fn-hx-close))
 ; the raw struct statfs (4096 octets) or NIL
 (defun fn-hx-statfs (path) (declare (xargs :mode :program) (ignore path)) (fn-hx-stub fn-hx-statfs))
 ; realpath(3) as octets, or NIL
@@ -121,14 +125,18 @@
 (defun fn-xo-read-bounded (path maximum)
   (declare (xargs :mode :program))
   (let ((o (fn-hx-open path)))
-    (cond ((not (fn-xo-okp o))
-           (fn-xo-fault (concatenate 'string "cannot read store file: " path)))
-          ((not (nth 3 o))
-           (fn-xo-fault (concatenate 'string "refusing non-regular store file: " path)))
-          ((> (nth 2 o) maximum) (list :overbound))
-          (t (let ((r (fn-hx-pread (nth 1 o) 0 (nth 2 o))))
-               (if (fn-xo-okp r) (list :ok (cadr r))
-                 (fn-xo-fault (concatenate 'string "cannot read store file: " path))))))))
+    (if (not (fn-xo-okp o))
+        (fn-xo-fault (concatenate 'string "cannot read store file: " path))
+      ;; the handle is closed on every path out (sweep S041)
+      (let* ((r (cond ((not (nth 3 o))
+                       (fn-xo-fault (concatenate 'string "refusing non-regular store file: " path)))
+                      ((> (nth 2 o) maximum) (list :overbound))
+                      (t (let ((p (fn-hx-pread (nth 1 o) 0 (nth 2 o))))
+                           (if (fn-xo-okp p) (list :ok (cadr p))
+                             (fn-xo-fault (concatenate 'string "cannot read store file: " path)))))))
+             (c (fn-hx-close (nth 1 o))))
+        (declare (ignore c))
+        r))))
 
 ; fnn-list-directory-bounded: (:ok NAMES) or a fault past the bound
 (defun fn-xo-list-bounded (path limit namespace)
@@ -176,12 +184,18 @@
         (:linux
          (let ((path (fn-hx-realpath root))
                (o (fn-hx-open "/proc/self/mountinfo")))
-           (if (or (null path) (not (fn-xo-okp o)))
+           (if (not (fn-xo-okp o))
                (list :unobserved)
-             (fn-smid-linux-observation
-              (take 8 (nthcdr 56 raw))
-              (fn-xo-mountinfo-fold (fn-xo-read-proc (nth 1 o) 0 nil) nil nil
-                                    (fn-smid-mountinfo-line-max) nil path)))))
+             ;; the handle is closed whether or not the root resolved (sweep S041)
+             (let* ((text (if path (fn-xo-read-proc (nth 1 o) 0 nil) nil))
+                    (c (fn-hx-close (nth 1 o))))
+               (declare (ignore c))
+               (if (null path)
+                   (list :unobserved)
+                 (fn-smid-linux-observation
+                  (take 8 (nthcdr 56 raw))
+                  (fn-xo-mountinfo-fold text nil nil
+                                        (fn-smid-mountinfo-line-max) nil path)))))))
         (otherwise (list :unobserved))))))
 
 (defun fn-xo-record-observation (root)
@@ -630,7 +644,7 @@
                                     (mv-let (r replay fn-octets-lg fn-arena)
                                       (fn-xo-scan root (cadr plan) (cadr genesis)
                                                   (fn-store-log-unit)
-                                                  (fn-store-profile-max-record-octets config)
+                                                  (fn-lgu-log-max (fn-store-profile-max-record-octets config))
                                                   (list nil nil 0 0 nil 1)
                                                   fn-octets-lg fn-arena)
                                       (if (not (fn-xo-okp r))

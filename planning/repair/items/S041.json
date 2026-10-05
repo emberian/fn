@@ -1,21 +1,117 @@
 {
+ "budget": "160",
  "category": "resource-leak",
  "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "LOCAL",
  "evidence": "host/store-open-host.lisp:121-131 fn-xo-read-bounded: `(let ((o (fn-hx-open path))) ... (fn-hx-pread (nth 1 o) 0 (nth 2 o)) ...)`. No close follows on any path, and this file declares no close primitive. tools/extract/hostio.scm:138-144 a-hx-open does `(hx-register fd path)`, keeping the fd in the handle table for the process's life. Callers: fn-xo-read-config-entries (line 296, once per config/ entry), fn-xo-load-config, fn-xo-record-observation, fn-xo-genesis-open, and fn-xo-filesystem-observation's /proc/self/mountinfo open (line 178).",
+ "expect-failure": "tests.test_store_open_host_handles.StoreOpenHostHandleTests.test_every_non_segment_handle_is_closed",
  "exposure": "latent",
+ "failure-message": "the extracted read-only open leaves handles open",
  "file": "host/store-open-host.lisp",
  "fix": "Add an fn-hx-close primitive and close every handle this file opens other than segment handles, which are deliberately kept as realizer file ids. Or use a read-whole-file primitive like store-write-host's fn-hx-read-file, which opens, reads and closes in one call.",
+ "harness": "tests/test_store_open_host_handles.py",
  "id": "S041",
  "line": "123",
  "locus": "store-books",
- "notes": [],
+ "notes": [
+  "10-04 13:59 claimed: scope=['host/store-open-host.lisp', 'host/store-write-host.lisp', 'tests/test_store_open_host_handles.py'] test=python3 -m unittest tests.test_store_open_host_handles",
+  "10-04 15:37 READY pending sha",
+  "10-04 15:37 READY 81c7be5f1"
+ ],
  "owner": "sweep-store",
  "reviewer": "host/store-open-host.lisp:121-131 fn-xo-read-bounded calls fn-hx-open, and no path closes the handle; the file never calls fn-hx-close. tools/extract/hostio.scm:138-145 a-hx-open stores the fd in hx-handles (107-112), which grows without bound, so the fd stays open for the life of the process. Callers: fn-xo-read-config-entries (296, once per config/ entry), lines 193, 241 and 532. So the extracted read-only open holds one fd per configuration generation plus the fixed files, and once the generation count passes RLIMIT_NOFILE the open fails with 'cannot read store file'. Below the limit it is a permanent leak. It only affects the extracted (Chicken) reader.",
  "scenario": "The extracted reader (tools/extract/served-main.scm select-store, then fn-xo-open-store) opens a store whose configuration history has grown to more generations than RLIMIT_NOFILE allows. max-config-generations is operator data (D27, no fixed cap), and the history grows with every group create or peer change. Past the limit (about 256 on a default macOS shell, 1024 on Linux), fn-hx-open fails with EMFILE and the open faults with \"cannot read store file\". Below the limit, the served process keeps one dead fd per configuration record, plus genesis, config.json and mountinfo, for its whole life.",
+ "scope": [
+  "host/store-open-host.lisp",
+  "host/store-write-host.lisp",
+  "tests/test_store_open_host_handles.py"
+ ],
  "severity": "medium",
  "source": "sweep-2026-10-03",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_store_open_host_handles",
  "title": "Extracted read-only open leaks a registered fd for every file it reads, one per configuration generation",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-04T19:37:15Z",
+ "verify": {
+  "base": "4ae59370f4082c1f489057c8c26e5e0ca946e773",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "the extracted read-only open leaves handles open",
+      "test": "tests.test_store_open_host_handles.StoreOpenHostHandleTests.test_every_non_segment_handle_is_closed",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_store_open_host_handles.StoreOpenHostHandleTests.test_every_non_segment_handle_is_closed"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_store_open_host_handles.py": "c00af616555e196908d338e7e19f0bddb8bda62d0798d285095542b074176fa5"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "4ae59370f4082c1f489057c8c26e5e0ca946e773",
+   "stderr": "test_every_non_segment_handle_is_closed (tests.test_store_open_host_handles.StoreOpenHostHandleTests.test_every_non_segment_handle_is_closed) ... FAIL\n\n======================================================================\nFAIL: test_every_non_segment_handle_is_closed (tests.test_store_open_host_handles.StoreOpenHostHandleTests.test_every_non_segment_handle_is_closed)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-iw35xfm_/wt/tests/test_store_open_host_handles.py\", line 103, in test_every_non_segment_handle_is_closed\n    self.fail(\"the extracted read-only open leaves handles open\")\n    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: the extracted read-only open leaves handles open\n\n----------------------------------------------------------------------\nRan 1 test in 0.065s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "host/store-open-host.lisp",
+   "host/store-write-host.lisp",
+   "planning/repair/items/S041.json",
+   "tests/test_store_open_host_handles.py"
+  ],
+  "diff_lines": 152,
+  "evidence": {
+   "bytes": 3711,
+   "path": "planning/evidence/repair/S041-8c2f69b1705b4571a87e53c4d3b80169.json",
+   "sha256": "40b77e16010ef1fb43a34e921a1d11b2f00193e8fe9f29bd407bd1e67926041d"
+  },
+  "evidence_outcome": "archived",
+  "expected_failure": {
+   "message": "the extracted read-only open leaves handles open",
+   "test": "tests.test_store_open_host_handles.StoreOpenHostHandleTests.test_every_non_segment_handle_is_closed"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/test_store_open_host_handles.py": "c00af616555e196908d338e7e19f0bddb8bda62d0798d285095542b074176fa5"
+  },
+  "head": "81c7be5f15fbd55c2da7faa1818c52626d06682f",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_store_open_host_handles.StoreOpenHostHandleTests.test_every_non_segment_handle_is_closed"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_store_open_host_handles.py": "c00af616555e196908d338e7e19f0bddb8bda62d0798d285095542b074176fa5"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "81c7be5f15fbd55c2da7faa1818c52626d06682f",
+   "stderr": "test_every_non_segment_handle_is_closed (tests.test_store_open_host_handles.StoreOpenHostHandleTests.test_every_non_segment_handle_is_closed) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.059s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_store_open_host_handles",
+  "timeout": 1800.0
+ }
 }

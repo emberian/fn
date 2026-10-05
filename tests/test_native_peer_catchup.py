@@ -17,8 +17,16 @@ itself (books/peer-catchup.lisp, host/native/pull-service.lisp).
   line.  The in-memory round refused any line over 1 MiB (line-too-long)
   and so never imported it; the spool controller streams it in 512-octet
   windows and B ends with it byte-identical apart from Path.
-- test_catch_up_without_flight_funding_refuses_by_name: with no
-  peer-flight-profile B's round fails peer-flight-unfunded and never dials.
+- test_catch_up_out_of_the_box: B is only `init`ed -- no profile written by
+  the test: init publishes the default peer flight profile
+  (books/peer-flight-default.lisp) -- and its first catch-up round from A is
+  done, with every A article on B.
+- test_catch_up_without_flight_funding_refuses_by_name: with B's
+  peer-flight-profile removed, `peer catch-up A 2` is refused by name
+  (`peer catch-up refused: no peer flight profile`, PRF-1323) and `peer
+  catch-up A 0` is still accepted; a profile removed after the verb was
+  accepted leaves the round-time refusal: the round fails
+  peer-flight-unfunded and never dials.
 - test_kill_mid_catch_up_resumes: B is started with
   FN_CATCHUP_TEST_KILL=before-write:3 (developer image): it dies by SIGKILL
   after committing the third batch's records and before journaling that
@@ -358,22 +366,58 @@ class NativePeerCatchupTests(unittest.TestCase):
                                             "seconds_to_done": round(elapsed, 2),
                                             "lines": self.log_lines(b)}, [a, b])
 
+    def test_catch_up_out_of_the_box(self):
+        a = self.initialize("A", "a.catchup.example.invalid")
+        self.start(a)
+        with Client(a.port, timeout=60) as client:
+            for n in range(3):
+                first, second = client.post(article(n))
+                self.assertTrue(second.startswith(b"240"), second)
+        b = self.initialize("B", "b.catchup.example.invalid")
+        profile = (b.store_path / "peer-flight-profile").read_bytes()
+        self.assertEqual((len(profile), profile[:4]), (52, b"FNP1"))
+        self.catch_up_from(b, "A", "a.catchup.example.invalid", a.port)
+        self.start(b)
+        line = self.await_log(b, r"catch-up peer=A round=(done|failed) ")
+        self.assertIn("round=done", line, line)
+        self.assertIn("position=3 end=3", line, line)
+        a_articles, a_order = self.articles_of(a)
+        b_articles, b_order = self.articles_of(b)
+        self.assertEqual(b_order, a_order)
+        self.stop(b)
+        self.stop(a)
+        self.witness("catch-up-out-of-the-box", {"line": line}, [a, b])
+
     def test_catch_up_without_flight_funding_refuses_by_name(self):
+        from tests.native_harness import EXIT_REFUSED
         a = self.initialize("A", "a.catchup.example.invalid")
         self.start(a)
         with Client(a.port, timeout=60) as client:
             first, second = client.post(article(0))
             self.assertTrue(second.startswith(b"240"), second)
         b = self.initialize("B", "b.catchup.example.invalid")
-        self.catch_up_from(b, "A", "a.catchup.example.invalid", a.port)
+        profile = b.store_path / "peer-flight-profile"
+        default = profile.read_bytes()
+        profile.unlink()
+        b.operator("peer", "add", "A", "a.catchup.example.invalid", "127.0.0.1", str(a.port),
+                   "fn.*", "-", "source-address", "127.0.0.9", "true", expect=EXIT_OK)
+        # The verb: refused by name before any executor runs; stopping needs
+        # no funding.
+        refused = b.operator("peer", "catch-up", "A", INTERVAL, expect=EXIT_REFUSED)
+        text = (refused.stdout + refused.stderr).decode("utf-8", "replace")
+        self.assertIn("peer catch-up refused: no peer flight profile", text)
+        b.operator("peer", "catch-up", "A", "0", expect=EXIT_OK)
+        # The round: init's profile, removed after the verb was accepted.
+        profile.write_bytes(default)
+        b.operator("peer", "catch-up", "A", INTERVAL, expect=EXIT_OK)
+        profile.unlink()
         self.start(b)
         line = self.await_log(b, r"catch-up peer=A round=(done|failed) ")
         self.assertIn("reason=peer-flight-unfunded", line, line)
         self.assertIn("at=preamble", line, line)
         self.stop(b)
         self.stop(a)
-        self.witness("catch-up-unfunded", {"line": line}, [a, b])
-
+        self.witness("catch-up-unfunded", {"refusal": text, "line": line}, [a, b])
 
 def without_xref(octets):
     head, _, body = octets.partition(b"\r\n\r\n")

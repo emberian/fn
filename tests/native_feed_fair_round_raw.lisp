@@ -7,6 +7,7 @@
 (defun posp (x) (and (integerp x) (> x 0)))
 (defparameter *fn-feed-wire-input-max-chunk-octets* 512)
 (defconstant +fnn-max-read+ 65536)
+(defconstant +fnn-socket-read-attempt-max+ 65536)
 (load-deployed-forms "host/native/io.lisp"
  '((defmacro fnn-posix) (deftype fnn-octets) (defun fnn-make-octets) (defun fnn-octets)
    (defun fnn-octet-list) (defun fnn-string-octets) (defun fnn-octets-string)
@@ -205,7 +206,38 @@
              (check (eq dropped :read) "a peer that never answers must be dropped at the reply deadline")
              (format t "~&FEED_FAIR_PASS silent~%"))
         (dolist (socket (list client server)) (ignore-errors (sb-bsd-sockets:socket-close socket)))))))
+;; A link that leaves ACL2's live feed table while it holds a connection (`peer
+;; feed NAME pause', or the peer removed) must be reported lost before it is
+;; closed: the feed port otherwise keeps the connection and its in-flight
+;; offer, and a re-created link (resume) offers nothing.  A link with no
+;; connection has nothing to report.
+(defun removed-fixture ()
+  (multiple-value-bind (client server) (pair)
+    (let* ((held (%make-fnn-feed-link :peer "paused" :peer-octets '(80) :socket client
+                                      :fd (fnn-socket-fd client)))
+           (idle (%make-fnn-feed-link :peer "idle" :peer-octets '(73)))
+           (kept (%make-fnn-feed-link :peer "kept" :peer-octets '(75)))
+           (runtime (%make-fnn-feed-runtime :service :recorded :links (list held idle kept)
+                                           :lock (sb-thread:make-mutex) :limit 512))
+           (lost nil))
+      (unwind-protect
+           (progn
+             (setf (symbol-function 'fnn-feed-peer-list) (lambda (service) (declare (ignore service)) '("kept"))
+                   (symbol-function 'fnn-feed-now) (lambda () 7)
+                   (symbol-function 'fnn-feed-lost)
+                   (lambda (service link now) (declare (ignore service))
+                     (push (list (fnn-feed-link-peer link) now (null (fnn-feed-link-socket link))) lost)
+                     :ok))
+             (fnn-feed-refresh-links runtime)
+             (check (equal lost '(("paused" 7 nil)))
+                    "a removed link that held a connection is reported lost, before it is closed, and only it")
+             (check (equal (mapcar #'fnn-feed-link-peer (fnn-feed-runtime-links runtime)) '("kept"))
+                    "the live table's links remain")
+             (check (null (fnn-feed-link-socket held)) "the removed link is closed")
+             (format t "~&FEED_FAIR_PASS removed~%"))
+        (dolist (socket (list client server)) (ignore-errors (sb-bsd-sockets:socket-close socket)))))))
 (let ((mode (second sb-ext:*posix-argv*)))
   (cond ((equal mode "retained") (retained-fixture))
         ((equal mode "reply") (reply-fixture))
-        ((equal mode "silent") (silent-fixture)) (t (fair-fixture mode))))
+        ((equal mode "silent") (silent-fixture))
+        ((equal mode "removed") (removed-fixture)) (t (fair-fixture mode))))

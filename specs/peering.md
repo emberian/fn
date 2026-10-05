@@ -356,6 +356,13 @@ batches instead of one NEWNEWS listing and one ARTICLE per Message-ID. The
 row `(name "catch-up-interval" "" SECONDS)` of the peer's group, set by
 `fn operator CONFIG peer catch-up NAME SECONDS` (0 stops), makes the owner
 run a catch-up round every SECONDS against the peer's NNTP transport. The
+verb with SECONDS > 0 is admitted only on a funded node: the operator reads
+the Store's `peer-flight-profile` and ACL2 admits the plan only when it is a
+policy (books/peer-flight-default.lisp `fn-pfp-catch-up-admission`,
+`fn-pfp-catch-up-verb-accepted-only-funded`, PRF-1323); otherwise the verb
+is refused by name (`peer catch-up refused: no peer flight profile`, reason
+`:catch-up-unfunded`) and no row is written. `init` writes a default
+profile, so a fresh node is funded out of the box. The
 plan is the pull plan of the same rows with that interval
 (`fn-cu-plans`, books/peer-catchup.lisp): the transport, the credential
 policy and the preamble (STARTTLS, the verified handshake, AUTHINFO) are
@@ -440,7 +447,9 @@ pull worker):
 - **Funding.** A catch-up round draws a lease from the independent peer
   flight bank (`peer-flight-profile`, specs/resource-vector.md) before it
   dials; without one (no profile, or every flight slot held) it fails
-  `peer-flight-unfunded` and never dials. Every controller step and spool
+  `peer-flight-unfunded` and never dials. The verb's admission covers a
+  profile absent when catch-up is configured; this reason remains for one
+  removed afterwards, or absent when the owner started. Every controller step and spool
   operation draws its metered work from the bank (a spent coordinate);
   a refusal fails the round `peer-work-exhausted`. The lease settles only
   after the worker thread is joined, the socket is shut and the local
@@ -1154,10 +1163,11 @@ K2 states the same equation for the feed side against the three host calls).
       (otherwise (fn-feed-lost f obs)))))                        ; any other code: treat as loss (RFC 3977 §6.3.2.2)
 
 ;; Loss of the connection: every (:offered _) or (:sent _) entry returns to
-;; :queued with attempts+1 and backoff; nothing is dropped.
+;; :queued with attempts+1, losses+1 and backoff.
 (defun fn-feed-close (f obs) ...)
-;; Give up: after retry-bound backoffs an entry becomes (:dropped :retry-bound);
-;; the record stays in the journal (an operator can re-feed).
+;; Give up: once an entry's LOSSES reach the retry bound it leaves the queue
+;; (:feed-drop :retry-bound); the record stays in the journal (an operator
+;; can re-feed).  A 431/436 never counts toward it.
 ```
 
 `235`/`239` and `435`/`438` both end the entry as `:done` (as built, PRF-335:
@@ -1165,8 +1175,15 @@ the entry is retired, it leaves the queue) because both mean
 the peer has the article; RFC 5537 §3.3 makes the peer's `438` its history
 answer, and that is what lets a restart resolve an unknown outcome by asking
 again (§3.3). Backoff on `431`/`436` is exponential with the peer record's
-base and capped at the retry bound; a `:dropped` entry is never re-offered
-automatically and is reported as refused by the CLI.
+base and capped at one hour (`*fn-feed-max-backoff*`); a `431`/`436` keeps
+the entry however many times it comes (rp-feed-defer-drop, 2026-10-04: the
+peer keeps the article for later, as fn's own `436` promises its senders).
+Only connections lost with the entry in flight count toward the retry bound
+(S053), and a reply naming an entry not in flight is such a loss
+(rp-feed-reply-msgid). A given-up entry leaves the queue in that step, so it
+never holds a slot of the peer's max-queue (rp-feed-dropped-holds-capacity);
+it is never re-offered automatically, and the feed's tally counts it for the
+health report.
 
 ### 3.2.1 A control article's scope (PRF-163)
 
@@ -1243,7 +1260,7 @@ the effect it authorizes" (bp-workflow-host, scheduler.md):
 | `(:feed-outcome peer msgid attempt code)` | final code in `{235 239 435 438 437 439}` | after the response is parsed, before the next selection |
 | `(:feed-retry peer msgid attempt code tick)` | code in `{431 436}`, the observation's monotonic tick | after a retry response, before the next selection |
 | `(:feed-lost peer tick)` | the observation's monotonic tick | on a lost connection or a reply outside the map, before the next selection |
-| `(:feed-drop peer msgid reason)` | | when the retry bound is reached or the peer is removed |
+| `(:feed-drop peer msgid reason)` | | when the entry's losses reach the retry bound or the peer is removed; the entry leaves the queue |
 | `(:feed-restart peer)` | | on open, before any offer; fences the in-flight entries |
 | `(:feed-intent peer msgid obligation evidence generation txid tick)` | text, text, text, text, nat, nat, nat | before the article transaction may begin |
 | `(:feed-commit peer msgid obligation evidence generation txid tick)` | the exact intent values | after durable article completion and before the accepted reply or live enqueue |
@@ -1527,9 +1544,17 @@ does not carry feeds:
 | After restart an in-flight entry is resolved by an offer | `fn-feed-restart-emits-no-transfer` with `fn-feed-restart-then-tick-offers` | **Earned over `fn-feed-send`** -- the only producer of a TAKETHIS or an article block -- **and `fn-feed-tick-step`**, not over an F_node restart, which does not exist. Read the first one narrowly: `fn-feed-restart` also forgets the connection and `fn-feed-send` refuses a feed whose `fn-feed-conn` is not a `natp`, so the settled queue is not what it rests on. The statement that would need the settled queue is the one over the REOPENED feed, which is what the host does next; it is recorded open in the lane handoff. |
 
 The fifth keystone of the book has no row above because §4 does not state it:
-`fn-feed-drop-needs-a-drop-record`, "nothing leaves the queue without a drop
-record naming a reason", which is §3.2's give-up rule. It is proved, with
-`fn-feed-not-dropped-survives-a-non-drop-record` under it.
+`fn-feed-leaving-needs-an-answer-or-a-drop-record`, "nothing leaves the queue
+without a final answer or a drop record naming it", which is §3.2's give-up
+rule. It is proved, with `fn-feed-present-survives-a-non-leave-entry` under
+it. Beside it (2026-10-04): `fn-feed-deferral-keeps-every-entry`,
+`fn-feed-undelivered-is-the-owed-count` and
+`fn-feed-enqueue-refuses-only-for-owed-work`, and over the host-called port
+(`books/owner-feed-live-carried.lisp`)
+`fn-own-feed-port-deferral-keeps-every-entry`,
+`fn-own-feed-port-holds-only-owed-entries`,
+`fn-own-feed-capacity-refusal-is-owed-work` and
+`fn-own-feed-port-stray-reply-is-a-loss`.
 
 ### K6. Every peer input is on the served path
 

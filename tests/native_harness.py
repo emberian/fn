@@ -43,6 +43,7 @@ import contextlib
 import os
 from pathlib import Path
 import re
+import select
 import signal
 import socket
 import ssl
@@ -638,6 +639,13 @@ class AcceptThenClosePeer:
         self.listener.close()
 
 
+def read_line_within(sock, stream, seconds):
+    """One line from STREAM (a makefile of SOCK) within SECONDS, else b"": a select on
+    the socket, never a timeout on the stream (a SocketIO that timed out raises on every later read)."""
+    readable, _, _ = select.select([sock], [], [], seconds)
+    return stream.readline() if readable else b""
+
+
 def refused_port():
     """A loopback socket bound and never listening, and its port.
 
@@ -1091,6 +1099,34 @@ def scratch(case, prefix="fn-native-"):
 
 # --- Nodes ------------------------------------------------------------------
 
+_INSTALLED = {}
+_INSTALLED_LOCK = threading.Lock()
+
+
+def installed_launcher(image):
+    """PREFIX/bin/fn of a scratch installed layout around IMAGE: this tree's
+    packaging/fn as bin/fn beside libexec/fn/fn-host (and .core) linked to
+    IMAGE, which is what makes packaging/fn take its installed branch (the
+    heap probe, FN_NATIVE_HOST and the caller's SBCL_USER_ARGS ignored).
+    One layout per image per process, removed at exit."""
+    image = Path(image).resolve()
+    with _INSTALLED_LOCK:
+        if image not in _INSTALLED:
+            prefix = Path(tempfile.mkdtemp(prefix="fn-installed-"))
+            (prefix / "bin").mkdir()
+            (prefix / "libexec" / "fn").mkdir(parents=True)
+            launcher = prefix / "bin" / "fn"
+            launcher.write_bytes((ROOT / "packaging" / "fn").read_bytes())
+            launcher.chmod(0o755)
+            (prefix / "libexec" / "fn" / "fn-host").symlink_to(image)
+            (prefix / "libexec" / "fn" / "fn-host.core").symlink_to(Path(str(image) + ".core"))
+            import atexit
+            import shutil
+            atexit.register(shutil.rmtree, prefix, True)
+            _INSTALLED[image] = launcher
+        return _INSTALLED[image]
+
+
 class Node:
     """One node's scratch tree and the verbs a test runs on it.
 
@@ -1103,10 +1139,13 @@ class Node:
 
     def __init__(self, case, image, *, root=None, name="node", listener=True,
                  control=True, tls=None, extra="", env=None, port=None, launcher=None,
-                 cold_resources=None):
+                 cold_resources=None, image_heap=None):
         self.case = case
         self.image = Path(image)
         self.launcher = launcher
+        # A reason this node's owner runs at the image's saved heap instead of
+        # the installed launcher's decided figure (Node.launch); None: decided.
+        self.image_heap = image_heap
         self.listening = 1 if listener else 0
         self.tls_port = None
         self.name = name
@@ -1171,9 +1210,14 @@ class Node:
         return [image or self.image, "--fn", *words]
 
     def invoke(self, *words, image=None, env=None, timeout=180, input=None, expect=None):
-        """`IMAGE --fn WORDS...` to completion; with EXPECT, assert its class."""
-        result = run(self.argv(image, words), env=self.environment(env),
-                     timeout=timeout, input=input)
+        """`IMAGE --fn WORDS...` to completion; with EXPECT, assert its class.
+        `operator CONFIG run ...` (an owner run in the foreground: --once, or
+        a refusal under test) starts the way `start` does (Node.launch)."""
+        if len(words) >= 3 and words[0] == "operator" and words[2] == "run":
+            argv, launch_env = self.launch(image, words, env)
+        else:
+            argv, launch_env = self.argv(image, words), self.environment(env)
+        result = run(argv, env=launch_env, timeout=timeout, input=input)
         if expect is not None:
             assert_outcome(self.case, result, expect,
                            log=self.process if self.process is not None else None)
@@ -1190,44 +1234,36 @@ class Node:
         words = (["--profile", profile] if profile else []) + list(groups or ("fn.test",))
         return self.operator("init", *words, expect=expect, **options)
 
-    def deployed_heap(self, image, words, env=None):
-        """The installed launcher's figure for `IMAGE --fn WORDS' (packaging/fn
-        installed mode): the image's own `heap -- WORDS' probe, run in the
-        core's size plus 128 MiB, gives the heap and control stack, as
-        SBCL_USER_ARGS for the run.  A refusal fails the test with ACL2's
-        line: the deployed node would not start either."""
-        image = Path(image or self.image)
-        boot = (Path(str(image) + ".core").stat().st_size + 1048575) // 1048576 + 128
-        probe_env = dict(env or {})
-        probe_env["SBCL_USER_ARGS"] = "--dynamic-space-size {}".format(boot)
-        probe = run([image, "--fn", "heap", "--", *words],
-                    env=self.environment(probe_env), text=True)
-        figure = re.match(r"heap=(\d+) MB .* stack=(\d+) KB", probe.stdout.strip())
-        if figure is None:
-            self.case.fail("{}: the launcher's heap probe answered {!r} (exit {}): {}".format(
-                self.name, probe.stdout.strip(), probe.returncode, probe.stderr.strip()))
-        return {"SBCL_USER_ARGS": "--dynamic-space-size {} --control-stack-size {}KB".format(
-            figure.group(1), figure.group(2))}
-
-    def run_environment(self, image, words, env):
-        """A store carrying a peer flight profile starts at the deployed
-        launcher's figure: its owner revalidates that reservation against the
-        machine at startup (books/peer-flight-startup.lisp
-        fn-prstartup-peer-native-grant), which the image's saved 32000 MB is
-        not, under any test scope smaller than that."""
-        if self.launcher or not (self.store_path / "peer-flight-profile").exists():
-            return self.environment(env)
-        merged = dict(env or {})
-        merged.update(self.deployed_heap(image, words, env))
-        return self.environment(merged)
+    def launch(self, image, words, env):
+        """(argv, environment) of an owner start, the way an installed node
+        starts (ruling of 2026-10-04): through packaging/fn in its installed
+        layout (installed_launcher), which runs the image's own heap probe,
+        `heap -- WORDS', and starts the owner at the heap and control stack
+        ACL2 decides for this store profile and this machine -- or refuses,
+        by name, a profile the machine cannot hold.  Every native used to
+        start the image at its saved 32000 MB, so an installed node's
+        startup refusal ("invalid runtime capture", cold-start 2026-10-04)
+        went unseen by all of them.  A test whose subject needs a fixed heap
+        opts out by name with Node(image_heap=REASON), or by setting
+        SBCL_USER_ARGS or FN_TEST_HEAP_MB itself; tools/scenario_suite.py
+        lists the opt-outs."""
+        if self.launcher and image is None:
+            return self.argv(image, words), self.environment(env)
+        given = dict(self.env)
+        given.update(env or {})
+        if (self.image_heap or "SBCL_USER_ARGS" in given or "FN_TEST_HEAP_MB" in given
+                or os.environ.get("FN_TEST_CONTROL_STACK_KB")):
+            return self.argv(image, words), self.environment(env)
+        merged = {"FN_NATIVE_HOST": None}
+        merged.update(env or {})
+        return [installed_launcher(image or self.image), *words], self.environment(merged)
 
     def start(self, *, image=None, env=None, ready=b"LISTENING ", timeout=180, verb=("run",),
               limit=DEFAULT_LIMIT):
         """`operator CONFIG run`, drained (LIMIT octets kept per stream),
         returned once READY is on stdout."""
-        words = ("operator", self.config, *verb)
-        process = start(self.argv(image, words),
-                        cwd=ROOT, env=self.run_environment(image, words, env), limit=limit)
+        argv, launch_env = self.launch(image, ("operator", self.config, *verb), env)
+        process = start(argv, cwd=ROOT, env=launch_env, limit=limit)
         self.processes.append(process)
         self.process = process
         # `run --once` serves its one connection on the plain listener: ACL2's
@@ -1260,9 +1296,8 @@ class Node:
         """(the owner, None) once it announces LISTENING, or (the exited
         owner, its stderr) when it refuses to start: for a case whose
         subject is the refusal."""
-        words = ("operator", self.config, "run")
-        process = start(self.argv(image, words),
-                        cwd=ROOT, env=self.run_environment(image, words, env))
+        argv, launch_env = self.launch(image, ("operator", self.config, "run"), env)
+        process = start(argv, cwd=ROOT, env=launch_env)
         self.processes.append(process)
         self.process = process
         text, end = process.stdout.wait_for(_line_starting(b"LISTENING "), 0,

@@ -41,6 +41,11 @@
    fn-prstartup-extend-operation-reservation))
 (source-forms (or (third sb-ext:*posix-argv*) "host/native/heap.lisp")
  '(fnn-heap-extend-reservation))
+;; The launch floor's store figure is books/page-read-startup.lisp's keystone
+;; subject; here it records the observation the host passes and adds nothing.
+(defvar *floor-args* nil)
+(defun fn-prstartup-launch-floor (profile core observed)
+  (push (list profile core observed) *floor-args*) 0)
 (source-forms (or (fifth sb-ext:*posix-argv*) (third sb-ext:*posix-argv*) "host/native/heap.lisp")
  '(fnn-heap-reservation fnn-heap-print-store-line))
 (source-forms "host/native/extent.lisp" '(fnn-extent-cache-limit))
@@ -91,6 +96,10 @@
   (assert (equal (subseq (cdr (second calls)) 1 6)
                  '(:run nil "/absolute/fixture" 4 8)))
   (assert (equal (second (cdr (fourth calls))) nil))
+  ;; The base decision's own profile and observation reach the launch floor.
+  (assert (equal (nthcdr 8 (cdr (second calls)))
+                 (list (first (car *floor-args*)) (third (car *floor-args*)))))
+  (assert (equal (second (car *floor-args*)) *core-observation*))
   (assert (= cores machines 1)))
 ; No selected backing extension for init/offline/help, or explicit cold.
 (dolist (action '(:init :status :compact nil))
@@ -100,7 +109,7 @@
   (assert (= code 0)) (assert (equal line "(:HEAP 256 :SMALL 8192 1024 16)")))
 ; Exact minimum-machine boundary and prior refusal remain ACL2 decisions.
 (let* ((d (fn-prstartup-extend-default-reservation *base* nil "/absolute/fixture" 4 8
-                                                  *core-observation* *machine*))
+                                                  *core-observation* *machine* nil '(0 . 0)))
        (total (fn-heap-reservation-octets (second d) *core-observation* (fifth d) (sixth d))))
   (let ((*machine* (list total))) (assert (= (heap-command) 0)))
   (let ((*machine* (list (1- total)))) (assert (= (heap-command) 1))))

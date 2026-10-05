@@ -172,14 +172,13 @@ CORE and MACHINE are each captured once for both ACL2 reservation steps."
            (profile (fnn-heap-store-profile absolute-root))
            (core (fnn-heap-image-observation))
            (machine (fnn-heap-observations))
+           (observed (and profile (fnn-heap-history-observation absolute-root profile)))
            (base (fnn-core 'fn-heap-status-decide profile core
-                           +fnn-gc-nursery-octets+ machine
-                           (and profile
-                                (fnn-heap-history-observation absolute-root profile)))))
+                           +fnn-gc-nursery-octets+ machine observed)))
       (fnn-out "~a" (fnn-core 'fn-heap-reserve-report-line
                               (fnn-heap-extend-reservation base :run cold-resources
                                                           output-resources absolute-root
-                                                          core machine
+                                                          core machine profile observed
                                                           (fnn-peer-flight-profile absolute-root)))))))
 
 (defun fnn-lim-print-values (root)
@@ -195,15 +194,17 @@ representation ceiling."
           (fnn-out "~a" line))))))
 
 (defun fnn-heap-init-decision (request budget sizing)
-  "ACL2's decision for what `init' writes (books/heap-reservation.lisp
-fn-heap-init-decide, PKT-582 in gpt-6's wave-5 shape): the request, or for
+  "ACL2's decision for what `init' writes (books/peer-flight-default.lisp
+fn-pfd-init-decide: books/heap-reservation.lisp fn-heap-init-decide, PKT-582
+in gpt-6's wave-5 shape, against the machine less the default peer flight
+profile's launch reserve, which every store init writes carries): the request, or for
 a capacity-free one the preset the budget holds (conservative unless
 `init --largest'), within the budget of the physical memory less the OS's
 share, the process's limits and `init --budget MB'; or a refusal.  BUDGET
 and SIZING are the accepted init plan's (books/native-operator.lisp
 fn-native-operator-result-init-budget / -init-sizing, row Q10b)."
   (let ((observations (fnn-heap-observations)))
-    (fnn-core 'fn-heap-init-decide request (fnn-heap-image-observation)
+    (fnn-core 'fn-pfd-init-decide request (fnn-heap-image-observation)
               +fnn-gc-nursery-octets+ (first observations) (rest observations)
               budget sizing)))
 
@@ -214,7 +215,7 @@ fn-native-operator-result-init-budget / -init-sizing, row Q10b)."
 ;; limit.  Returns (values DECISION NOTE); the caller prints ACL2's line.
 (defun fnn-heap-init-decision-noted (request budget sizing)
   (let* ((observations (fnn-heap-observations))
-         (decision (fnn-core 'fn-heap-init-decide request (fnn-heap-image-observation)
+         (decision (fnn-core 'fn-pfd-init-decide request (fnn-heap-image-observation)
                              +fnn-gc-nursery-octets+ (first observations)
                              (rest observations) budget sizing)))
     (values decision
@@ -399,14 +400,18 @@ share this boundary, including standalone BP owners."
 ;; native storage to this same observed machine decision. DEFAULT adds the
 ;; selected fixed backing only for a served run, before output allocation;
 ;; ACL2 chooses both the scope and the reservation.
-(defun fnn-heap-extend-reservation (base action cold-resources output-resources root core machine &optional peer)
-  "The same policy extensions for the launch probe and next-run diagnostics."
+(defun fnn-heap-extend-reservation (base action cold-resources output-resources root core machine
+                                    profile observed &optional peer)
+  "The same policy extensions for the launch probe and next-run diagnostics.
+PROFILE and OBSERVED are the base decision's: the served run's figure holds
+the owner's protected runtime for that observed store (books/page-read-startup.lisp
+fn-prstartup-launch-admits-owner-protected)."
   (fnn-core 'fn-orv-extend-reservation
             (fnn-core 'fn-pfr-extend-operation-reservation
                       (fnn-core 'fn-prstartup-extend-operation-reservation
                                 (fnn-core 'fn-crv-extend-reservation base cold-resources core machine)
                                 action cold-resources root (fnn-core 'fn-pio-direct-workers)
-                                (fnn-extent-cache-limit) core machine)
+                                (fnn-extent-cache-limit) core machine profile observed)
                       action peer core machine)
             output-resources core machine))
 
@@ -415,7 +420,8 @@ share this boundary, including standalone BP owners."
          (machine (fnn-heap-observations))
          (base (fnn-core 'fn-heap-reserve-operation-decide action profile core
                          +fnn-gc-nursery-octets+ machine connections observed)))
-    (fnn-heap-extend-reservation base action cold-resources output-resources root core machine peer)))
+    (fnn-heap-extend-reservation base action cold-resources output-resources root core machine
+                                 profile observed peer)))
 
 (defun fnn-command-heap (marker argv)
   (unless (string= marker "--")

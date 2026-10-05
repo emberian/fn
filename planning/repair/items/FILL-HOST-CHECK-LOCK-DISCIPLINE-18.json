@@ -1,0 +1,13 @@
+{
+ "category": "check-lane",
+ "detail": "Source-level, box-independent. The tests.test_host_check_tables fixture failure (tests/fixtures/host-tables/refused.lisp:7) is the same rule firing on the fixture. Run: cloud1:/tank/fn/scratch/fill-wt-check.log (remote_check cloud1 --target check, dev 55ff708a6, started 2026-10-04T19:03Z; local copy build/remote-check/cloud1-check.log)",
+ "file": "host/native/extent.lisp",
+ "id": "FILL-HOST-CHECK-LOCK-DISCIPLINE-18",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "high",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "host_check lock discipline red (+ tests.test_host_check_tables): 18 FAIL lines: host/native/bp-session.lisp:3 fnn-bp-session-bank hash table neither :synchronized t nor declared thread-confined/guarded-by; host/native/extent.lisp:71-139 *fnn-extent-fds*/paths/incarnations/bases/cache-tokens declared guarded-by *fnn-extent-lock* but no with-mutex/with-recursive-lock in the file takes it",
+ "updated": "2026-10-04T19:12:27Z"
+}

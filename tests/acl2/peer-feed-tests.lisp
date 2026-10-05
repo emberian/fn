@@ -220,23 +220,114 @@
                         (nthcdr 4 *ff-journal*))))
 
 ; -----------------------------------------------------------------------------
-; Scenario 5: the retry bound drops the entry WITH its reason
+; Scenario 5 (rp-feed-defer-drop): a 431/436 never drops the entry.  At a
+; retry bound of ONE, five 436 answers keep <a> queued with no loss counted,
+; the back-off grows and is capped, and the sixth offer's 238 then 239
+; delivers it.  Before 2026-10-04 the first 436 here dropped <a> with
+; :retry-bound (the bound counted deferrals), and at the default bound of
+; three a peer throttled for about seven seconds lost the article for good.
 
 (defconst *ff-lim1* (fn-feed-limits 4 1000 1 t))
 (defconst *ff-tight* (fn-feed-enqueue
                       (fn-feed-open *ff-peer* *ff-lim1* *ff-contact* 7)
                       *ff-a* 1))
 (defconst *ff-tight-offered* (nth 0 (mv-list 2 (fn-feed-tick-step *ff-tight* *ff-obs*))))
-(defconst *ff-tight-dropped*
+(defconst *ff-tight-deferred*
   (nth 0 (mv-list 2 (fn-feed-observe *ff-tight-offered*
                              (fn-feed-response 436 *ff-a*) nil *ff-obs*))))
-(assert-event (fn-feed-droppedp
-               (fn-feed-state-of *ff-a* (fn-feed-queue *ff-tight-dropped*))))
-(assert-event (equal (fn-feed-state-reason
-                      (fn-feed-state-of *ff-a*
-                                        (fn-feed-queue *ff-tight-dropped*)))
-                     :retry-bound))
-(assert-event (null (fn-feed-selection *ff-tight-dropped* *ff-obs-later*)))
+(assert-event (equal (fn-feed-state-of *ff-a* (fn-feed-queue *ff-tight-deferred*))
+                     :queued))
+(assert-event (equal (fn-feed-entry-losses
+                      (fn-feed-find *ff-a* (fn-feed-queue *ff-tight-deferred*)))
+                     0))
+(assert-event (equal (fn-feed-entry-attempts
+                      (fn-feed-find *ff-a* (fn-feed-queue *ff-tight-deferred*)))
+                     1))
+(assert-event (equal (fn-feed-undelivered *ff-tight-deferred*) 1))
+(assert-event (equal (fn-feed-retry-dropped *ff-tight-deferred*) 0))
+(assert-event (equal (fn-feed-selection *ff-tight-deferred* *ff-obs-later*) *ff-a*))
+
+; Offer, defer, again: K times, 100 s apart from TK (inside the contact).
+; Its records are pinned in tests/acl2/feed-correspondence-tests.lisp.
+(defun ff-defer-k (f k tk)
+  (declare (xargs :measure (nfix k)))
+  (if (zp k)
+      f
+    (let* ((obs (fn-clock-observation tk 0 0 nil))
+           (offered (nth 0 (mv-list 2 (fn-feed-tick-step f obs))))
+           (deferred (nth 0 (mv-list 2 (fn-feed-observe
+                                        offered (fn-feed-response 431 *ff-a*)
+                                        nil obs)))))
+      (ff-defer-k deferred (- k 1) (+ tk 100000)))))
+(defconst *ff-deferred-5* (ff-defer-k *ff-tight* 5 10))
+(assert-event (fn-feedp *ff-deferred-5*))
+(assert-event (equal (fn-feed-state-of *ff-a* (fn-feed-queue *ff-deferred-5*)) :queued))
+(assert-event (equal (fn-feed-entry-attempts
+                      (fn-feed-find *ff-a* (fn-feed-queue *ff-deferred-5*)))
+                     5))
+(assert-event (equal (fn-feed-entry-losses
+                      (fn-feed-find *ff-a* (fn-feed-queue *ff-deferred-5*)))
+                     0))
+; The fifth back-off is 1000 * 2^4 ms after the fifth reading.
+(assert-event (equal (fn-feed-backoff-until *ff-deferred-5*)
+                     (+ (+ 10 (* 4 100000)) 16000)))
+; The sixth offer is answered 238, then 239: delivered and retired.
+(defconst *ff-obs-6* (fn-clock-observation 500000 0 0 nil))
+(defconst *ff-sixth* (nth 0 (mv-list 2 (fn-feed-tick-step *ff-deferred-5* *ff-obs-6*))))
+(defconst *ff-sixth-sent*
+  (nth 0 (mv-list 2 (fn-feed-observe *ff-sixth* (fn-feed-response 238 *ff-a*)
+                                     '(65 13 10 46 13 10) *ff-obs-6*))))
+(assert-event (fn-feed-sentp (fn-feed-state-of *ff-a* (fn-feed-queue *ff-sixth-sent*))))
+(defconst *ff-sixth-done*
+  (nth 0 (mv-list 2 (fn-feed-observe *ff-sixth-sent* (fn-feed-response 239 *ff-a*)
+                                     nil *ff-obs-6*))))
+(assert-event (null (fn-feed-queue *ff-sixth-done*)))
+(assert-event (equal (fn-feed-undelivered *ff-sixth-done*) 0))
+
+; Teeth of `fn-feed-deferral-keeps-every-entry'.  Positive: the complete
+; antecedent and conclusion at the first 436 above.
+(assert-event
+ (and (fn-feedp *ff-tight-offered*)
+      (member-equal 436 '(431 436))
+      (fn-feed-inflightp *ff-a* *ff-tight-offered*)
+      (fn-feed-presentp *ff-a* *ff-tight-offered*)
+      (fn-feed-presentp *ff-a* *ff-tight-deferred*)
+      (equal (fn-feed-undelivered *ff-tight-deferred*)
+             (fn-feed-undelivered *ff-tight-offered*))
+      (equal (fn-feed-owed-count (fn-feed-queue *ff-tight-deferred*))
+             (len (fn-feed-queue *ff-tight-deferred*)))
+      (equal (fn-feed-state-of *ff-a* (fn-feed-queue *ff-tight-deferred*)) :queued)
+      (equal (fn-feed-entry-losses (fn-feed-find *ff-a* (fn-feed-queue *ff-tight-deferred*)))
+             (nfix (fn-feed-entry-losses
+                    (fn-feed-find *ff-a* (fn-feed-queue *ff-tight-offered*)))))))
+; Hypothesis removal: drop "the deferral names the entry in flight".  A 436
+; naming <b>, which is queued and not in flight, is a protocol loss
+; (rp-feed-reply-msgid); at a bound of one that loss gives up the in-flight
+; <a>, so <a> is no longer present.  Every retained hypothesis holds.
+(defconst *ff-tight2* (fn-feed-enqueue *ff-tight* *ff-b* 2))
+(defconst *ff-tight2-offered* (nth 0 (mv-list 2 (fn-feed-tick-step *ff-tight2* *ff-obs*))))
+(assert-event
+ (and (fn-feedp *ff-tight2-offered*)
+      (fn-feed-inflightp *ff-a* *ff-tight2-offered*)
+      (fn-feed-presentp *ff-a* *ff-tight2-offered*)
+      (not (fn-feed-inflightp *ff-b* *ff-tight2-offered*))
+      (not (fn-feed-presentp
+            *ff-a* (nth 0 (mv-list 2 (fn-feed-observe *ff-tight2-offered*
+                                                      (fn-feed-response 436 *ff-b*)
+                                                      nil *ff-obs*)))))))
+; Hypothesis removal: drop the code.  A 437 for the entry in flight retires it.
+(assert-event
+ (not (fn-feed-presentp
+       *ff-a* (nth 0 (mv-list 2 (fn-feed-observe *ff-tight-offered*
+                                                 (fn-feed-response 437 *ff-a*)
+                                                 nil *ff-obs*))))))
+; Mutation: the pre-2026-10-04 436 arm gave up once the ATTEMPTS reached the
+; bound.  At this first deferral they have, so that arm removes <a>.
+(assert-event
+ (let* ((g (fn-feed-back-off *ff-tight-offered* *ff-a* *ff-obs*)))
+   (and (<= (fn-feed-retry-bound (fn-feed-limits-of g))
+            (fn-feed-entry-attempts (fn-feed-find *ff-a* (fn-feed-queue g))))
+        (not (fn-feed-presentp *ff-a* (fn-feed-give-up g *ff-a* :retry-bound))))))
 
 ; -----------------------------------------------------------------------------
 ; Scenario 6: a 400 loses the connection; nothing is dropped
@@ -252,21 +343,39 @@
 
 ; -----------------------------------------------------------------------------
 ; Scenario 7 (inspection sweep 2026-10-03 S053): an offer that drops the
-; connection every time.  A loss applies the same retry bound a 436 does, and
-; its delay grows with the entry's attempts; before, the entry was requeued
-; at the head forever at a constant delay, and every article behind it
-; waited.
+; connection every time.  A loss counts toward the retry bound (a 431/436
+; never does, scenario 5), and its delay grows with the entry's attempts;
+; before, the entry was requeued at the head forever at a constant delay, and
+; every article behind it waited.
 
-; Bound 1: the first loss of the in-flight <a> gives it up with :retry-bound
-; and <b> behind it is offered next.
+; Bound 1: the first loss of the in-flight <a> gives it up with :retry-bound:
+; it leaves the queue in that step and its slot with it
+; (rp-feed-dropped-holds-capacity), the tally counts it, and <b> behind it is
+; offered next.
 (defconst *ff-poison* (fn-feed-enqueue *ff-tight* *ff-b* 2))
 (defconst *ff-poison-offered* (nth 0 (mv-list 2 (fn-feed-tick-step *ff-poison* *ff-obs*))))
 (assert-event (fn-feed-state-inflightp
                (fn-feed-state-of *ff-a* (fn-feed-queue *ff-poison-offered*))))
 (defconst *ff-poison-lost* (fn-feed-lost *ff-poison-offered* *ff-obs*))
 (assert-event (fn-feedp *ff-poison-lost*))
-(assert-event (equal (fn-feed-state-of *ff-a* (fn-feed-queue *ff-poison-lost*))
-                     (fn-feed-dropped :retry-bound)))
+(assert-event (not (fn-feed-presentp *ff-a* *ff-poison-lost*)))
+(assert-event (equal (len (fn-feed-queue *ff-poison-lost*)) 1))
+(assert-event (equal (fn-feed-undelivered *ff-poison-lost*) 1))
+(assert-event (equal (fn-feed-retry-dropped *ff-poison-lost*) 1))
+(assert-event (equal (fn-feed-owed-count (fn-feed-queue *ff-poison-lost*))
+                     (fn-feed-undelivered *ff-poison-lost*)))
+; The slot is free: a limit-one feed that gave up its one entry takes the
+; next.  Before, the (:dropped :retry-bound) entry held it and every enqueue
+; was refused -- POST 441, transfer 436 -- for good.
+(defconst *ff-one* (fn-feed-limits 1 1000 1 t))
+(defconst *ff-one-lost*
+  (fn-feed-lost (nth 0 (mv-list 2 (fn-feed-tick-step
+                                   (fn-feed-enqueue (fn-feed-open *ff-peer* *ff-one* *ff-contact* 7)
+                                                    *ff-a* 1)
+                                   *ff-obs*)))
+                *ff-obs*))
+(assert-event (null (fn-feed-queue *ff-one-lost*)))
+(assert-event (fn-feed-presentp *ff-b* (fn-feed-enqueue *ff-one-lost* *ff-b* 2)))
 (assert-event (equal (fn-feed-head-queued (fn-feed-queue *ff-poison-lost*)) *ff-b*))
 ; Its records are pinned in tests/acl2/feed-correspondence-tests.lisp.
 ; Reconnected after the delay, the feed offers <b>.
@@ -341,8 +450,8 @@
 ;; distinct one is, and a seen set that already holds a Message-ID of the
 ;; queue answers nil.
 (defconst *ff-twice-a*
-  (list (fn-feed-entry *ff-a* :queued 0 0) (fn-feed-entry *ff-b* :queued 0 0)
-        (fn-feed-entry *ff-a* :queued 0 0)))
+  (list (fn-feed-entry *ff-a* :queued 0 0 0) (fn-feed-entry *ff-b* :queued 0 0 0)
+        (fn-feed-entry *ff-a* :queued 0 0 0)))
 (assert-event (not (fn-feed-distinct-fast *ff-twice-a* nil)))
 (assert-event (not (fn-feed-distinctp *ff-twice-a*)))
 (assert-event (fn-feed-distinct-fast (cdr *ff-twice-a*) nil))
@@ -491,8 +600,8 @@
 ; `fn-feed-restart' refuses a feed that is not `fn-feedp'.
 (defconst *ff-two-inflight*
   (fn-feed-make *ff-peer* *ff-limits*
-                (list (fn-feed-entry *ff-a* (fn-feed-offered 1) 0 0)
-                      (fn-feed-entry *ff-b* (fn-feed-offered 2) 0 0))
+                (list (fn-feed-entry *ff-a* (fn-feed-offered 1) 0 0 0)
+                      (fn-feed-entry *ff-b* (fn-feed-offered 2) 0 0 0))
                 *ff-contact* 0 7 3))
 (assert-event (not (fn-feedp *ff-two-inflight*)))
 (assert-event (equal (fn-feed-inflight-count (fn-feed-queue *ff-two-inflight*))
@@ -536,25 +645,34 @@
 (assert-event (not (not (equal (fn-feed-selection *ff-no-conn* *ff-obs*)
                                nil))))
 
-; `fn-feed-drop-needs-a-drop-record' -- the separating witness.  Replaying the
-; journal WITHOUT its drop record leaves the entry queued, not dropped: the
-; drop is in the record, not in the machine.
+; `fn-feed-leaving-needs-an-answer-or-a-drop-record' -- the separating
+; witness.  Replaying the journal WITHOUT its drop record leaves the entry
+; present: the give-up is in the record, not in the machine.  Positive: the
+; complete antecedent (a recognized feed, <a> present after the enqueue, absent
+; after the drop) and the conclusion.
 (defconst *ff-drop-journal*
   (list (fn-feed-journal-entry :feed-enqueue (list *ff-peer* *ff-a* 1))
         (fn-feed-journal-entry :feed-drop (list *ff-peer* *ff-a* :retry-bound))))
+(defconst *ff-drop-from* (fn-feed-replay *ff0* (take 1 *ff-drop-journal*)))
 (assert-event (fn-feed-drivenp *ff0* *ff-drop-journal*))
-(assert-event (fn-feed-droppedp
-               (fn-feed-state-of *ff-a*
-                                 (fn-feed-queue (fn-feed-replay
-                                                 *ff0* *ff-drop-journal*)))))
+(assert-event (and (fn-feedp *ff-drop-from*)
+                   (fn-feed-presentp *ff-a* *ff-drop-from*)
+                   (not (fn-feed-presentp
+                         *ff-a* (fn-feed-replay *ff-drop-from* (cdr *ff-drop-journal*))))
+                   (fn-feed-has-leave-recordp *ff-peer* *ff-a* (cdr *ff-drop-journal*))))
+(assert-event (equal (fn-feed-retry-dropped
+                      (fn-feed-replay *ff0* *ff-drop-journal*))
+                     1))
 (assert-event (fn-feed-has-drop-recordp *ff-peer* *ff-a* *ff-drop-journal*))
-(assert-event (not (fn-feed-droppedp
-                    (fn-feed-state-of *ff-a*
-                                      (fn-feed-queue
-                                       (fn-feed-replay
-                                        *ff0* (take 1 *ff-drop-journal*)))))))
-(assert-event (not (fn-feed-has-drop-recordp *ff-peer* *ff-a*
-                                             (take 1 *ff-drop-journal*))))
+; Without the drop record <a> stays: the conclusion's record is what moved it.
+(assert-event (fn-feed-presentp *ff-a* (fn-feed-replay *ff-drop-from* nil)))
+(assert-event (not (fn-feed-has-leave-recordp *ff-peer* *ff-a* nil)))
+; A drop record for another peer is no leave record for this one, and the
+; replay ignores it.
+(defconst *ff-other-drop*
+  (list (fn-feed-journal-entry :feed-drop (list '(120) *ff-a* :retry-bound))))
+(assert-event (not (fn-feed-has-leave-recordp *ff-peer* *ff-a* *ff-other-drop*)))
+(assert-event (fn-feed-presentp *ff-a* (fn-feed-replay *ff-drop-from* *ff-other-drop*)))
 
 ; `fn-feed-back-off-does-not-lower-the-deadline' -- the separating witness.
 ; The delay grows with the attempt count and is clamped at the ceiling, so a

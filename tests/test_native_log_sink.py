@@ -67,9 +67,11 @@ class LogSinkNativeTests(unittest.TestCase):
     def start_owner(self):
         # The subject: stderr is a pipe this test does not read until it
         # chooses to, so the harness's draining start is deliberately not used.
+        # Started as an installed node starts (Node.launch: the launcher's
+        # decided heap), not at the image's saved figure.
+        argv, env = self.node.launch(None, ("operator", self.node.config, "run"), None)
         process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(self.node.config), "run"],
-            cwd=ROOT, env=self.node.environment(), stdout=subprocess.PIPE,
+            [str(word) for word in argv], cwd=ROOT, env=env, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, bufsize=0)
         self.addCleanup(self.reap, process)
         wait_for_announcement(process, b"LISTENING ")

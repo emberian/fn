@@ -363,35 +363,46 @@ class NativePublicExposureTests(unittest.TestCase):
         self.assertLessEqual(anonymous["stat_loop"]["per_second"], 25.0, anonymous)
         self.policy("anonymous", "none")
 
-        # --- credential guessing at about 100 a second
+        # --- credential guessing at about 100 a second.  One connection gets
+        # three failures (specs/nntp.md "Authentication failures"), so a
+        # campaign reconnects; the address budget (exposure-auth-failures 10
+        # a minute) is what finally refuses the address at the greeting.
         legit.phase = "credential-guessing"
-        guessing = {"481": 0, "attempts": 0}
-        with self.connect("127.0.0.7") as sock:
-            stream = whole_stream(sock)
-            stream.readline()
-            last = b""
-            for n in range(200):
-                try:
-                    stream.write(b"AUTHINFO USER legit\r\n")
-                    last = stream.readline()
-                    if not last.startswith(b"381"):
-                        break
-                    stream.write("AUTHINFO PASS wrong{}\r\n".format(n).encode())
-                except OSError:
+        guessing = {"481": 0, "attempts": 0, "connections": 0,
+                    "per_connection": [], "last": "", "next_connection": ""}
+        for _ in range(8):
+            with self.connect("127.0.0.7") as sock:
+                stream = whole_stream(sock)
+                greeting = stream.readline()
+                if greeting.startswith(b"400"):
+                    guessing["next_connection"] = greeting.decode().strip()
                     break
-                guessing["attempts"] += 1
-                last = stream.readline()
-                if last.startswith(b"481"):
-                    guessing["481"] += 1
-                    time.sleep(0.01)
-                    continue
-                break
-            guessing["last"] = last.decode().strip()
-            guessing["after_last"] = first_line(sock, 5).decode("ascii", "replace")
-        with self.connect("127.0.0.7") as sock:
-            guessing["next_connection"] = first_line(sock, 10).decode().strip()
+                guessing["connections"] += 1
+                before = guessing["481"]
+                last = b""
+                for n in range(200):
+                    try:
+                        stream.write(b"AUTHINFO USER legit\r\n")
+                        last = stream.readline()
+                        if not last.startswith(b"381"):
+                            break
+                        stream.write("AUTHINFO PASS wrong{}\r\n".format(n).encode())
+                    except OSError:
+                        break
+                    guessing["attempts"] += 1
+                    last = stream.readline()
+                    if last.startswith(b"481"):
+                        guessing["481"] += 1
+                        time.sleep(0.01)
+                        continue
+                    break
+                guessing["per_connection"].append(guessing["481"] - before)
+                guessing["last"] = last.decode().strip()
+                if not last.startswith(b"400"):
+                    break
         report["credential_guessing"] = guessing
         self.assertLessEqual(guessing["481"], 10, guessing)
+        self.assertGreater(guessing["connections"], 1, guessing)
         self.assertTrue(guessing["last"].startswith(
             "400 too many authentication failures"), guessing)
         self.assertTrue(guessing["next_connection"].startswith(

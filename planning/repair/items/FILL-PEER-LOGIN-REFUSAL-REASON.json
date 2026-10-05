@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "test_peer_set_and_peer_login_make_the_record_while_serving, tests/test_native_protected_peering.py:337. Red on bdd4f40c4 and 55ff708a6: hbox:/tank/fn/scratch/fill-wt/native-fill-peer-55 (scenario_suite run peer --image-set 55ff708a6), logs/stderr/test-tests.test_native_protected_peering/ steps 10-12. The other refusals in the same test (no-such-peer, tls-needs-server-name) do name their reason, so only the login path drops it.",
+ "file": "host/native/peer-invite.lisp",
+ "id": "FILL-PEER-LOGIN-REFUSAL-REASON",
+ "notes": [],
+ "owner": "unowned",
+ "severity": "medium",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "peer login before a send pattern exists is refused ('peer login: peer set set-b --login was not accepted (exit 1)') but the refusal never names the reason: tests.test_native_protected_peering expects 'needs-send' in stdout/stderr and gets only 'refused operator peer'",
+ "updated": "2026-10-04T19:37:04Z"
+}

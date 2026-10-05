@@ -15,10 +15,10 @@
 (defun sil-bs () (declare (xargs :guard t))
   (fn-bs-make 4 nil (list (cons :parent nil)) nil 0))
 (defun sil-files () (declare (xargs :guard t :verify-guards nil))
-  (fn-bs-init-log-files '(1 2 3) "00000001.cfg" '(4 5) 16 '(6 7) '(8 9)))
+  (fn-bs-init-log-files '(1 2 3) "00000001.cfg" '(4 5) 16 '(6 7) '(8 9) '(10 11)))
 (defun sil-run () (declare (xargs :guard t :verify-guards nil))
   (fn-bs-imp-run (sil-bs) nil (fn-bs-init-log-program "store.init-x" "store" '(1 2 3)
-                                                      "00000001.cfg" '(4 5) 16 '(6 7) '(8 9))
+                                                      "00000001.cfg" '(4 5) 16 '(6 7) '(8 9) '(10 11))
                  nil nil nil))
 
 ; The plan: four subdirectories, no transactions/, no frontier file; the
@@ -29,11 +29,13 @@
 (assert-event (equal (cadr (third (sil-files))) "000000.log"))
 (assert-event (equal (cddr (fourth (sil-files))) (fn-bs-zeros 16)))
 (assert-event (equal (fifth (sil-files)) (list* :keys "node-secret.key" '(8 9))))
+; The default peer flight profile is the sixth file, at the store root.
+(assert-event (equal (sixth (sil-files)) (list* :stage "peer-flight-profile" '(10 11))))
 ; Its cuts are init's names for the import program's, in order.
 (assert-event
- (equal (fn-bs-init-log-program "s" "r" '(1) "c" '(2) 4 '(3) '(5))
+ (equal (fn-bs-init-log-program "s" "r" '(1) "c" '(2) 4 '(3) '(5) '(12))
         (fn-bs-init-pub-rename-cuts
-         (fn-bs-imp-program "s" "r" *fn-bs-init-log-subdirs* (fn-bs-init-log-files '(1) "c" '(2) 4 '(3) '(5))))))
+         (fn-bs-imp-program "s" "r" *fn-bs-init-log-subdirs* (fn-bs-init-log-files '(1) "c" '(2) 4 '(3) '(5) '(12))))))
 ; The keystone's hypotheses hold of this reachable input, and the run ends
 ; in the complete store at ROOT with the segment's 16 zeros durable.
 (assert-event (fn-bs-imp-inputp (sil-bs) "store.init-x" "store" *fn-bs-init-log-subdirs*
@@ -96,7 +98,7 @@
                         (fn-bs-durable-entry img :parent "store"))))
 (defun sil-run-outs (bs outs) (declare (xargs :guard t :verify-guards nil))
   (fn-bs-imp-run bs nil (fn-bs-init-log-program "store.init-x" "store" '(1 2 3)
-                                                "00000001.cfg" '(4 5) 16 '(6 7) '(8 9))
+                                                "00000001.cfg" '(4 5) 16 '(6 7) '(8 9) '(10 11))
                  outs nil nil))
 ; Positive: the input and the outcomes hold; the first state's crash image
 ; is :no-store with no ROOT entry, the final state's is :store-present with
@@ -231,12 +233,12 @@
 
 (defteeth fn-bs-init-log-crash-retry-is-old-or-new
   :claim (((input (fn-bs-imp-inputp bs stage root *fn-bs-init-log-subdirs*
-                                    (fn-bs-init-log-files config record-name record extent genesis secret)
+                                    (fn-bs-init-log-files config record-name record extent genesis secret peer)
                                     nil))
            (outcomes (fn-bs-imp-outcomesp outs))
            (reached (member-equal p (fn-bs-imp-run bs ks
                                                    (fn-bs-init-log-program stage root config
-                                                                           record-name record extent genesis secret)
+                                                                           record-name record extent genesis secret peer)
                                                    outs groups capacity))))
           (let* ((img (fn-bs-crash (car p) choices))
                  (stage-present (fn-bs-durable-entry img :parent stage))
@@ -250,24 +252,24 @@
                  (implies root-present
                           (fn-bs-imp-completep img *fn-bs-init-log-subdirs*
                                                (fn-bs-init-log-files config record-name
-                                                                     record extent genesis secret)
+                                                                     record extent genesis secret peer)
                                                (fn-bs-next-ino bs))))))
   :subject fn-bs-init-pub-admission
   :witness ((bs *sil-bs*) (stage "store.init-x") (root "store") (config '(1 2 3))
             (record-name "00000001.cfg") (record '(4 5)) (extent 16) (genesis '(6 7))
-            (secret '(8 9)) (ks nil) (outs nil) (groups nil) (capacity nil)
+            (secret '(8 9)) (peer '(10 11)) (ks nil) (outs nil) (groups nil) (capacity nil)
             (p *sil-last*) (choices nil))
   :breaks ((input ((bs *sil-bad-bs*) (stage "store.init-x") (root "store") (config '(1 2 3))
                    (record-name "00000001.cfg") (record '(4 5)) (extent 16) (genesis '(6 7))
-                   (secret '(8 9)) (ks nil) (outs nil) (groups nil) (capacity nil)
+                   (secret '(8 9)) (peer '(10 11)) (ks nil) (outs nil) (groups nil) (capacity nil)
                    (p *sil-bad-first*) (choices nil)))
            (outcomes ((bs *sil-bs*) (stage "store.init-x") (root "store") (config '(1 2 3))
                       (record-name "00000001.cfg") (record '(4 5)) (extent 16) (genesis '(6 7))
-                      (secret '(8 9)) (ks nil) (outs *sil-torn-outs*) (groups nil) (capacity nil)
+                      (secret '(8 9)) (peer '(10 11)) (ks nil) (outs *sil-torn-outs*) (groups nil) (capacity nil)
                       (p *sil-torn-last*) (choices nil)))
            (reached ((bs *sil-bs*) (stage "store.init-x") (root "store") (config '(1 2 3))
                      (record-name "00000001.cfg") (record '(4 5)) (extent 16) (genesis '(6 7))
-                     (secret '(8 9)) (ks nil) (outs nil) (groups nil) (capacity nil)
+                     (secret '(8 9)) (peer '(10 11)) (ks nil) (outs nil) (groups nil) (capacity nil)
                      (p *sil-foreign-p*) (choices nil))))
   :mutations ((refuses-stage
                (:conclusion
@@ -283,28 +285,47 @@
                        (implies root-present
                                 (fn-bs-imp-completep img *fn-bs-init-log-subdirs*
                                                      (fn-bs-init-log-files config record-name
-                                                                           record extent genesis secret)
+                                                                           record extent genesis secret peer)
                                                      (fn-bs-next-ino bs))))))
                ((bs *sil-bs*) (stage "store.init-x") (root "store") (config '(1 2 3))
                 (record-name "00000001.cfg") (record '(4 5)) (extent 16) (genesis '(6 7))
-                (secret '(8 9)) (ks nil) (outs nil) (groups nil) (capacity nil)
+                (secret '(8 9)) (peer '(10 11)) (ks nil) (outs nil) (groups nil) (capacity nil)
                 (p *sil-mid*) (choices *sil-apply-all*))
                :fault "a retry that refuses an earlier init's unpublished stage until an operator removes it (the pre-PKT-894 :interrupted-init)")))
 
 (defteeth fn-bs-init-log-complete-store-carries-the-node-secret
   :claim (((complete (fn-bs-imp-completep img *fn-bs-init-log-subdirs*
-                                          (fn-bs-init-log-files config record-name record extent genesis secret)
+                                          (fn-bs-init-log-files config record-name record extent genesis secret peer)
                                           ino)))
           (and (equal (fn-bs-durable-entry img :keys "node-secret.key") (+ 4 ino))
                (equal (fn-bs-durable-content img (+ 4 ino)) secret)))
   :subject fn-bs-init-log-subdir-names
   :witness ((img (car *sil-last*)) (config '(1 2 3)) (record-name "00000001.cfg")
-            (record '(4 5)) (extent 16) (genesis '(6 7)) (secret '(8 9)) (ino 0))
+            (record '(4 5)) (extent 16) (genesis '(6 7)) (secret '(8 9)) (peer '(10 11)) (ino 0))
   :breaks ((complete ((img (car (car *sil-ps*))) (config '(1 2 3)) (record-name "00000001.cfg")
-                      (record '(4 5)) (extent 16) (genesis '(6 7)) (secret '(8 9)) (ino 0))))
+                      (record '(4 5)) (extent 16) (genesis '(6 7)) (secret '(8 9)) (peer '(10 11)) (ino 0))))
   :mutations ((secret-at-the-segment
                (:conclusion (and (equal (fn-bs-durable-entry img :keys "node-secret.key") (+ 3 ino))
                                  (equal (fn-bs-durable-content img (+ 3 ino)) secret)))
                ((img (car *sil-last*)) (config '(1 2 3)) (record-name "00000001.cfg")
-                (record '(4 5)) (extent 16) (genesis '(6 7)) (secret '(8 9)) (ino 0))
+                (record '(4 5)) (extent 16) (genesis '(6 7)) (secret '(8 9)) (peer '(10 11)) (ino 0))
                :fault "a plan that writes the secret over the segment's slot, or omits it")))
+
+(defteeth fn-bs-init-log-complete-store-carries-the-peer-flight-profile
+  :claim (((complete (fn-bs-imp-completep img *fn-bs-init-log-subdirs*
+                                          (fn-bs-init-log-files config record-name record extent genesis secret peer)
+                                          ino)))
+          (and (equal (fn-bs-durable-entry img :stage "peer-flight-profile") (+ 5 ino))
+               (equal (fn-bs-durable-content img (+ 5 ino)) peer)))
+  :subject fn-bs-init-log-subdir-names
+  :witness ((img (car *sil-last*)) (config '(1 2 3)) (record-name "00000001.cfg")
+            (record '(4 5)) (extent 16) (genesis '(6 7)) (secret '(8 9)) (peer '(10 11)) (ino 0))
+  :breaks ((complete ((img (car (car *sil-ps*))) (config '(1 2 3)) (record-name "00000001.cfg")
+                      (record '(4 5)) (extent 16) (genesis '(6 7)) (secret '(8 9)) (peer '(10 11))
+                      (ino 0))))
+  :mutations ((profile-at-the-secret
+               (:conclusion (and (equal (fn-bs-durable-entry img :stage "peer-flight-profile") (+ 4 ino))
+                                 (equal (fn-bs-durable-content img (+ 4 ino)) peer)))
+               ((img (car *sil-last*)) (config '(1 2 3)) (record-name "00000001.cfg")
+                (record '(4 5)) (extent 16) (genesis '(6 7)) (secret '(8 9)) (peer '(10 11)) (ino 0))
+               :fault "a plan that writes the peer profile over the secret's slot, or omits it")))

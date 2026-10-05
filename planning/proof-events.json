@@ -19648,6 +19648,69 @@
           "pending_subject": "The subject is fn-hsig-injected-carrier-plan, which the host calls (through fn-hsig-injected-carrier-octets and fn-hsig-authorized-injected-carried-submission-event); its source input is fn-ak-layout, whose host-called encoder will be fn-wg-encode at *fn-ak-grammar* (bridge fn-ak-grammar-encode-is-the-layout owed, D50)."
         }
       ]
+    },
+    {
+      "id": "PRF-1319",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pfd-default-is-a-policy"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfp-read-of-write"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfd-default-decodes-to-itself"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfd-default-spools-one-batch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfd-default-launches-where-its-extra-fits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-log-complete-store-carries-the-peer-flight-profile"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfd-init-reserves-the-default-launch"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1323",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pfp-catch-up-verb-accepted-only-funded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pfp-catch-up-admission-is-identity-elsewhere"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1328",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-av-scr-auth-delegate-restricted-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-av-scr-dispatch-core-restricted-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-av-mca-read-span-restricted-is-legacy"
+        }
+      ]
     }
   ]
 }

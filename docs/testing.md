@@ -167,7 +167,11 @@ Run a tier against a published image set (no certify, no build):
     python3 tools/scenario_suite.py run peer --image-set SHA --rev .  # this worktree's tests
     tools/hbox_native.sh attach smoke-SHA9                             # wait; print run.log
 
-`run` prints the `hbox_native.sh` command it starts and, for a tier's kits,
+`--box lat1` (or cloud1, cloud2) runs a tier on a rented box: they mirror
+the published image sets, but hold neither hbox's INN tree, nor docker, nor
+the fixture stores, so peer_pull's INN cases, reader_clients and the scale
+tier's fixtures need hbox (the default).  `run` prints the `hbox_native.sh`
+command it starts and, for a tier's kits,
 the command to run by hand on hbox.  `list [TIER]` shows each entry with its
 questions and reason; `modules TIER` prints the module names for any other
 runner (an overlay image is picked up through the same `FN_NATIVE_*`
@@ -183,18 +187,38 @@ environment) with the run id, never re-expected.
 ## What `make check` is
 
 `make check` plans ~90 steps and `tools/check_steps.py` runs them in parallel,
-skipping a step whose recorded inputs are unchanged since it last passed
-(`make check FORCE=1` runs every step).  It needs no image; a step that needs ACL2 or
+skipping a step whose recorded inputs are unchanged since its last verdict: a
+pass is replayed as a pass, a red (exit 1) as the same red, naming the run,
+box and log that produced it; a NOT RUN, a signal or a missing program is
+never cached (`make check FORCE=1` runs every step).  Tree files are keyed by
+relative path, so `FN_VERDICT_STORE=DIR` lets every worktree on a box share
+one store; a cached verdict satisfies no READY and no batch gate, which are
+live runs.  It needs no image; a step that needs ACL2 or
 certificates it cannot find says NOT RUN and counts as failed.  `make check-lane`
 is the same in a scratch directory; `tools/remote_check.sh auto` runs it on a
 build box.
+
+**The red set and one iteration.**  `python3 tools/reds.py collect` writes
+`build/reds.json`: every known red (a red check step from the last
+`execute`, a `FAIL`/`ERROR` case from native module logs named with
+`--native`, a `real` red of a certify run named with `--certify`) with an
+impact selector, the paths whose change could flip it (the step's traced
+inputs, the module and the paths it names, the book's include closure).
+`reds.py affected --since REV` prints the reds a diff reaches with why and
+the narrowest command for each; `reds.py delta OLD NEW` the reds that
+appeared and the ones fixed.  `python3 tools/iterate.py --since REV [--fast]`
+is the lane loop: the scoped check-lane (unreached verdicts replayed from
+the store), then the collection, the delta against the previous red set and
+the reds of other kinds the diff reaches, each with its command, printed and
+never started (overlays run on a build box through the integrator, certifies
+through the farm).  Neither is a gate; `FORCE=1` and a READY stay live runs.
 
 **Scoped and baselined runs.**  `make check-lane CHECK_CHANGED_SINCE=<rev>` (or
 `tools/remote_check.sh BOX --changed-since <rev>`) runs only the steps the diff
 from `<rev>` (committed, uncommitted and untracked files) can reach: the steps
 whose last traced run, passing or failing, read, stat'ed or listed a changed
 path, ran a git command the change can move, or could not be traced (ACL2, a
-shell child).  The rest print `skipped`; a docs-only diff skips host_check,
+shell child).  The rest print `skipped`, with the store's last verdict beside it when that was red (`last verdict exit 1: ...`; the row's own exit stays 0); a docs-only diff skips host_check,
 reach_check and green_check.  A step this tree has never run is not skipped, so
 the first run in a fresh worktree is a full one.  `CHECK_BASELINE=<table>`
 (`--baseline`) reads a step table such as

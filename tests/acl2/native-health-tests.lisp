@@ -82,12 +82,13 @@
 (defconst *nht-feeds*
   (list (fn-own-feed-entry "down" nil
                            (fn-feed-make '(100 111 119 110) *nht-limits*
-                                         (list (fn-feed-entry '(60 97 62) :queued 1 0))
+                                         (list (fn-feed-entry '(60 97 62) :queued 1 0 0))
                                          nil 0 nil 0))
         (fn-own-feed-entry "gave-up" nil
-                           (fn-feed-make '(103) *nht-limits*
-                                         (list (fn-feed-entry '(60 98 62) '(:dropped :retry-bound) 3 0))
-                                         nil 0 7 0))))
+                           ;; Given up: the entry left the queue and the
+                           ;; tally counts it (rp-feed-dropped-holds-capacity).
+                           (fn-feed-make-counted '(103) *nht-limits* nil
+                                                 nil 0 7 0 0 1))))
 (defconst *nht-idle-feeds*
   (list (fn-own-feed-entry "up" nil
                            (fn-feed-make '(117 112) *nht-limits*
@@ -129,7 +130,7 @@
 (defconst *nht-full-feeds*
   (list (fn-own-feed-entry "full" nil
                            (fn-feed-make '(102) *nht-limits*
-                                         (list (fn-feed-entry '(60 102 62) :queued 2 0))
+                                         (list (fn-feed-entry '(60 102 62) :queued 2 0 0))
                                          nil 0 7 0))))
 (assert-event (fn-nh-feed-deferredp (fn-own-feed-entry-feed (car *nht-full-feeds*))))
 (assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0
@@ -161,7 +162,7 @@
 (defconst *nht-sat-feeds*
   (list (fn-own-feed-entry "sat" nil
                            (fn-feed-make '(115) (fn-feed-limits 1 1000 3 t)
-                                         (list (fn-feed-entry '(60 115 62) :queued 0 0))
+                                         (list (fn-feed-entry '(60 115 62) :queued 0 0 0))
                                          nil 0 7 1))))
 (defconst *nht-sat-feed* (fn-own-feed-entry-feed (car *nht-sat-feeds*)))
 (assert-event (fn-feedp *nht-sat-feed*))

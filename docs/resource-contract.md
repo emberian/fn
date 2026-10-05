@@ -784,7 +784,17 @@ class and quotes what has been measured with its scope.
   no trailer assumption (`fn-lgu-acknowledged-records-are-recovered-at-every-cut`,
   `fn-lgu-open-run-acknowledges-only-recoverable-records`; every pending
   write is at or above the frontier and the scan reads a complete prefix's
-  entries first). One segment, no rotation. The log grows per batch by
+  entries first). One segment, no rotation. ACKED is the log kernel's
+  acknowledged count, advanced in the COMPLETE before any of the batch's
+  replies leaves; so the client-level statement is an inclusion:
+  every record whose acceptance a client observed is recovered (a record
+  can be recovered whose acceptance no client saw: a crash after the
+  barrier, before the reply). Not "acknowledged equals recovered". Scope
+  beyond the segment: the open is modeled reading the segment's durable
+  content; after a failed barrier and a restart without a power loss the
+  read can be cached bytes that never reached the disk (RL-01), which no
+  theorem here covers yet, and a writable open's
+  `fnn-log-complete-rotation` runs before the modeled recovery program. The log grows per batch by
   its entries, each a whole number of write units
   (`fn-lg-entry-len-is-units`; the frontier advances by the batch's log
   length at the fence, `fn-lgk-fence`), and the segment file grows only to

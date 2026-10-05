@@ -169,6 +169,12 @@ class MisbehavingPeerTests(unittest.TestCase):
     def assert_id_unspoiled(self, message_id, what):
         """The half-sent article is absent, and the id transfers cleanly now."""
         self.assertTrue(self.stat(message_id).startswith(b"430"), (what, message_id))
+        # Nothing about the dead transfer is remembered as refused: a
+        # streaming peer's CHECK still wants it (lane read-peer's case 5).
+        with Client(self.port, timeout=30, greeting=(b"200",)) as client:
+            self.assertTrue(client.command(b"MODE STREAM").startswith(b"203"), what)
+            wanted = client.command(b"CHECK " + message_id.encode("ascii"))
+        self.assertTrue(wanted.startswith(b"238"), (what, "CHECK after the dead transfer", wanted))
         offer, final, _ = self.transfer(message_id, what + "-retry")
         self.assertTrue(offer.startswith(b"335"), (what, "retry offer", offer))
         self.assertTrue(final is not None and final.startswith(b"235"),

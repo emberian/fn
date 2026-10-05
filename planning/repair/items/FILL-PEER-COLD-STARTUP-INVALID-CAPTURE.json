@@ -1,0 +1,16 @@
+{
+ "category": "implementation",
+ "detail": "Red on hbox batch 3 (bdd4f40c4), lat1 batch 4 (55ff708a6) and fill-peer2 (bdd4f40c4). Heaps in the failing starts: decided_launch gave heap=1518 MB / 4945 MB, machine=24576 MB, stack=1024 KB, threads=34; the probe 'init: profile=custom ... reservation=2093 MB budget=24576 MB within-budget=yes' passes, so the run refuses what init admitted. Native: hbox:/tank/fn/scratch/fill-wt/native-fill-peer2 (set bdd4f40c4, scenario_suite run peer; logs/test-tests.test_native_peer_catchup.log). Process stderr under logs/stderr/test-tests.test_native_peer_catchup/. Run: cloud1:/tank/fn/scratch/fill-wt-check.log (remote_check cloud1 --target check, dev 55ff708a6, started 2026-10-04T19:03Z; local copy build/remote-check/cloud1-check.log)",
+ "file": "books/page-read-startup.lisp",
+ "id": "FILL-PEER-COLD-STARTUP-INVALID-CAPTURE",
+ "notes": [
+  "10-04 15:37 also red on set 55ff708a6: hbox:/tank/fn/scratch/fill-wt/native-fill-peer-55 (peer_catchup 4F, peering 1F, peer_pull 1F)",
+  "10-04 15:41 same refusal in the e2e tier: tests.test_native_install test_upgrade_beside_and_rollback_walk_with_the_printed_gap (stderr tail 'cold startup refused: invalid runtime capture') and, by the same start_owner path, tests.test_native_hybrid_author test_v2_source_through_hybrid_author (LISTENING not seen); lat1:/tank/fn/scratch/fill-wt/native-fill-e2e-lat1-55"
+ ],
+ "owner": "unowned",
+ "severity": "high",
+ "source": "fill-20261004",
+ "state": "open",
+ "title": "peer tier: nodes started at the decided_launch heap refuse cold startup: 'refused operator run cold startup refused: invalid runtime capture' (books/page-read-startup.lisp:119 :invalid-default-pool-capture); test_native_peer_catchup 4 of 4 fail at node.start, test_native_peering test_a_full_store_defers_transit_and_the_sender_is_not_healthy, test_native_peer_pull test_trickling_body_retained_while_other_pull_and_catchup_complete",
+ "updated": "2026-10-04T19:41:19Z"
+}

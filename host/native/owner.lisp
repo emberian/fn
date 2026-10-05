@@ -3231,12 +3231,13 @@ here: its budget is part of its prepare (fn-owner-prepare)."
 ;; answers :invalid for inputs outside its domain; its other non-prepared
 ;; answers are D25's :duplicate / :conflict (books/store-intern.lisp fn-store-existing-action,
 ;; keyed on the poster's source through the injection inverse, D25), :clock-unusable,
-;; :unaffordable (the Store's transaction budget, fn-sbud-refusal-kind), or
-;; :refused.
+;; :unaffordable (the Store's transaction budget, fn-sbud-refusal-kind), its
+;; history budget's :memberships or :history-exhausted
+;; (fn-cvec-article-refusal-word), or :refused.
 (defun fnn-owner-prepare-refusal-word (prepared)
   (case prepared
     ((:duplicate :conflict :clock-unusable :refused :unaffordable :memberships
-      :article-numbers-exhausted :canonical-size-unavailable :invalid-binding)
+      :history-exhausted :article-numbers-exhausted :canonical-size-unavailable :invalid-binding)
      prepared)
     (:invalid :malformed)
     (t (fnn-fault "owner prepare returned ~a" prepared))))
@@ -5283,7 +5284,7 @@ owner's recovery fence."
                 (fnn-store-fault (condition) (error condition))
                 (fnn-store-error () :refused))))
     (unless (member word '(:durable :duplicate :conflict :malformed :unaffordable
-                           :memberships :article-numbers-exhausted
+                           :memberships :history-exhausted :article-numbers-exhausted
                            :storage-failed :refused :clock-unusable :uncertain))
       (fnn-fault "owner bound commit returned ~a" word))
     word))

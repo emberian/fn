@@ -381,6 +381,27 @@
 ;; (host/native/io.lisp fnn-log-publish, and the import's take in
 ;; fnn-log-write-history), and refuses by name: a known pre-publication
 ;; refusal.  The bound is the profile's own (D27), the log's format unchanged.
+;;
+;; THE LOG'S FRAME BOUND (lane m1-durable-2; the regression the verdict above
+;; exposed in batch 6, dev 6107ceb56: native recovery's atomic hybrid article
+;; and log_compaction's rotation took records of R-31..R octets that the
+;; shipped profiles admit, and the verdict refused them).  The verdict is
+;; right about the bound it is handed; the bound was wrong.  The log is
+;; scanned and appended with MAX = R + 32 (fn-lgu-log-max of the profile's
+;; record field R), so every record the store admits -- R octets or fewer --
+;; is framed (fn-lgu-log-max-frames-every-record-within-r: R is at most the
+;; poll reply's ceiling, u32 - 355, so R + 32 stays within the frame's u32),
+;; and the verdict refuses exactly the records past R
+;; (fn-lgu-log-max-refuses-past-r), which the publication gate never admits.
+;; The host's log bound: host/native/io.lisp fnn-store-log-max and the
+;; import's open (fnn-log-write-history); the read-only and developer scans
+;; in host/store-open-host.lisp and host/store-write-host.lisp.  The entry
+;; checks bound sizes from above only, so a segment written under the old
+;; bound reads the same under the new one (not stated as a theorem here).
+(defun fn-lgu-log-max (r)
+  (declare (xargs :guard t))
+  (+ (nfix r) *fn-frame-trailer-octets*))
+
 (defun fn-lgu-take-verdict (record max)
   (declare (xargs :guard t))
   (if (fn-lg-recordp record max) :admissible :record-exceeds-log-frame))
@@ -391,6 +412,27 @@
        (iff (equal (fn-lgu-take-verdict record max) :admissible)
             (fn-lg-recordp record max)))
   :rule-classes nil)
+
+; KEYSTONE: every record within the profile's record field is framed by the
+; log at its frame bound.
+(defthm fn-lgu-log-max-frames-every-record-within-r
+  (implies (and (fn-cbor-octet-listp record)
+                (<= (len record) (fn-bs-profile-max-record-octets values)))
+           (equal (fn-lgu-take-verdict record
+                                       (fn-lgu-log-max (fn-bs-profile-max-record-octets values)))
+                  :admissible))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-profile-valid-record-fits-a-poll-reply))
+           :in-theory (e/d (fn-lgu-take-verdict fn-lg-recordp fn-lgu-log-max)
+                           (fn-bs-profile-max-record-octets fn-cbor-octet-listp
+                            fn-bs-publication-admissiblep)))))
+
+; And refuses exactly past R.
+(defthm fn-lgu-log-max-refuses-past-r
+  (implies (< (nfix r) (len record))
+           (equal (fn-lgu-take-verdict record (fn-lgu-log-max r))
+                  :record-exceeds-log-frame))
+  :hints (("Goal" :in-theory (enable fn-lgu-take-verdict fn-lg-recordp))))
 
 (defun fn-lgu-kernel-op-p (op)
   (declare (xargs :guard t))
@@ -1197,3 +1239,113 @@
                             fn-lgu-finishes-acknowledge-n))
            :use ((:instance fn-lgu-finishes-acknowledge-n
                             (ks (fn-lgk-fence ks unit)) (n (len (fn-lgk-inflight ks))))))))
+
+; -----------------------------------------------------------------------------
+; 8. The host's acknowledgement is one ACL2 call (lane m1-durable-2;
+; DI-OWED-STEP-OF-LGC-FINISH).  host/native/io.lisp fnn-log-finish used to
+; call fn-lgc-finish-one COUNT times in a Lisp loop, and no theorem equated
+; that loop to the fold the keystones are about (:step-of fn-lgc-host-run).
+; Now the host calls fn-lgu-acknowledge once: the fold of COUNT
+; :finish-one operations by definition (its :exec is the loop,
+; fn-lgu-acknowledge-loop-is-the-run), and the KEYSTONE
+; fn-lgu-acknowledge-acknowledges-only-recoverable-records is
+; fn-lgu-host-kernel-acknowledges-only-recoverable-records over the run
+; that ends with the COMPLETE's COUNT acknowledgements, stated over the
+; function the host calls.
+
+(defun fn-lgu-acknowledge-loop (c n)
+  (declare (xargs :guard (and (true-listp c) (natp n))))
+  (if (zp n) c (fn-lgu-acknowledge-loop (fn-lgc-finish-one c) (1- n))))
+
+(defthm fn-lgu-acknowledge-loop-is-the-run
+  (equal (fn-lgu-acknowledge-loop c n) (fn-lgc-host-run c (fn-lgu-finishes n)))
+  :hints (("Goal" :induct (fn-lgu-acknowledge-loop c n)
+           :in-theory (e/d (fn-lgc-host-step) (fn-lgc-finish-one)))))
+
+(defun fn-lgu-acknowledge (c n)
+  (declare (xargs :guard (and (true-listp c) (natp n))
+                  :guard-hints (("Goal" :in-theory (disable fn-lgu-acknowledge-loop)))))
+  (mbe :logic (fn-lgc-host-run c (fn-lgu-finishes n))
+       :exec (fn-lgu-acknowledge-loop c n)))
+
+(local
+ (defthm fn-lgu-lgc-host-run-of-append
+   (equal (fn-lgc-host-run c (append x y)) (fn-lgc-host-run (fn-lgc-host-run c x) y))
+   :hints (("Goal" :induct (fn-lgc-host-run c x) :in-theory (disable fn-lgc-host-step)))))
+
+(local
+ (defthm fn-lgu-host-final-of-append
+   (equal (fn-lgu-host-final bs ks (append x y) ino max)
+          (let ((f (fn-lgu-host-final bs ks x ino max)))
+            (fn-lgu-host-final (car f) (cdr f) y ino max)))
+   :hints (("Goal" :induct (fn-lgu-host-final bs ks x ino max)
+            :in-theory (disable fn-lgu-host-step)))))
+
+(local
+ (defthm fn-lgu-host-kops-of-append
+   (equal (fn-lgu-host-kops bs ks (append x y) ino max)
+          (let ((f (fn-lgu-host-final bs ks x ino max)))
+            (append (fn-lgu-host-kops bs ks x ino max)
+                    (fn-lgu-host-kops (car f) (cdr f) y ino max))))
+   :hints (("Goal" :induct (fn-lgu-host-final bs ks x ino max)
+            :in-theory (disable fn-lgu-host-step fn-lgu-step-kops)))))
+
+(local
+ (defthm fn-lgu-step-kops-of-finish-one
+   (equal (fn-lgu-step-kops bs ks '(:finish-one) ino max) '((:finish-one)))
+   :hints (("Goal" :in-theory (enable fn-lgu-step-kops fn-lgu-kernel-op-p)))))
+(local
+ (defthm fn-lgu-host-step-of-finish-one-bs
+   (equal (mv-nth 1 (fn-lgu-host-step bs ks '(:finish-one) ino max)) bs)
+   :hints (("Goal" :in-theory (e/d (fn-lgu-host-step fn-lgu-kernel-op-p) (fn-lgk-host-step))))))
+(local
+ (defun fn-lgu-kops-fin-ind (n bs ks ino max)
+   (declare (xargs :guard t :verify-guards nil))
+   (if (zp n) (list bs ks)
+     (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks '(:finish-one) ino max)
+       (declare (ignore pairs bs1))
+       (fn-lgu-kops-fin-ind (1- n) bs ks1 ino max)))))
+(local
+ (defthm fn-lgu-host-kops-of-finishes
+   (equal (fn-lgu-host-kops bs ks (fn-lgu-finishes n) ino max)
+          (fn-lgu-finishes n))
+   :hints (("Goal" :induct (fn-lgu-kops-fin-ind n bs ks ino max)
+            :expand ((fn-lgu-finishes n)
+                     (:free (op rest) (fn-lgu-host-kops bs ks (cons op rest) ino max)))
+            :in-theory (union-theories '(fn-lgu-kops-fin-ind fn-lgu-step-kops-of-finish-one
+                                         fn-lgu-host-step-of-finish-one-bs zp
+                                         car-cons cdr-cons (:executable-counterpart fn-lgu-finishes)
+                                         append-to-nil binary-append (:induction fn-lgu-kops-fin-ind)
+                                         fn-lgu-host-kops)
+                                       (theory 'minimal-theory))))))
+
+; KEYSTONE.
+(defthm fn-lgu-acknowledge-acknowledges-only-recoverable-records
+  (let* ((ks0 (fn-lg-recovered-kernel bs ino genesis max floor))
+         (opened (car (last (fn-lg-run bs ks0 (fn-lg-recover-program) nil ino))))
+         (final (fn-lgu-host-final (car opened) (cdr opened)
+                                   (append ops (fn-lgu-finishes n)) ino max))
+         (host (fn-lgu-acknowledge
+                (fn-lgc-host-run (mv-nth 1 (fn-lgc-open s genesis (fn-bs-unit bs) max floor))
+                                 (fn-lgu-host-kops (car opened) (cdr opened) ops ino max))
+                n)))
+    (implies (and (posp (fn-bs-unit bs)) ino (assoc-equal ino (fn-bs-inodes bs))
+                  (true-listp (fn-bs-durable-content bs ino))
+                  (equal (mod (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs)) 0)
+                  (fn-frame-digestp genesis)
+                  (null (fn-bs-pending bs))
+                  (equal (fn-lgd-octets s) (fn-bs-durable-content bs ino))
+                  (fn-bs-crash-imagep (car final) image))
+             (let ((a (fn-lgc-acked host))
+                   (recovered (fn-lgk-committed
+                               (fn-lgk-recover (fn-bs-durable-content image ino)
+                                               genesis (fn-bs-unit (car final)) max next-txid))))
+               (and (equal a (fn-lgk-acked (cdr final)))
+                    (<= a (len recovered))
+                    (equal (take a recovered) (take a (fn-lgk-committed (cdr final))))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-lgu-acknowledge fn-lgu-host-kops-of-append
+                                        fn-lgu-host-kops-of-finishes fn-lgu-lgc-host-run-of-append)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-lgu-host-kernel-acknowledges-only-recoverable-records
+                            (ops (append ops (fn-lgu-finishes n))))))))
