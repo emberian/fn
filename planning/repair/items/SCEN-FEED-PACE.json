@@ -11,7 +11,8 @@
  "notes": [
   "10-04 16:18 10-04 scenarios-2 design notes for the owner of feed-service.lisp (reserved: peer-feed). Reads are nonblocking (fnn-feed-recv: fnn-socket-read-now / fnn-tls-read-now), so after a CHECK is written the next round's :read usually finds nothing, and the worker sleeps 50 ms. Shape: when a round was active, do not sleep a fixed 1/20 s. Continue at once if a link has bytes to consume (drain). Otherwise poll(2) the links' fds readable (io.lisp fnn-poll-readable), capped at the same 50 ms, so a reply wakes the worker. Pitfalls: (1) a write that would block leaves output pending, so 'output pending -> continue' spins on a slow peer; poll for writable, or keep the sleep for that case. (2) A TLS channel can hold decrypted bytes the fd poll does not see; the 50 ms cap bounds that to today's cadence. (3) The idle path (S145, feed_idle under 150 owner entries in 10 s) is untouched. Guards: peering (the 462 s case), feed_idle, peer_misbehaving, peer_hostile_feed, feed_tls_read.",
   "10-04 21:29 claimed: scope=['host/native/feed-service.lisp', 'books/peer-round-driver.lisp', 'tests/acl2/peer-round-driver-tests.lisp', 'tests/native_feed_fair_round_raw.lisp', 'tests/test_native_feed_fair_round.py', 'host/interfaces.lisp', 'planning/proofs.json', 'planning/repair/items/SCEN-FEED-PACE.json'] test=python3 -m unittest tests.test_native_feed_fair_round.FeedFairRoundTests.test_an_answering_peer_gets_hundreds_of_commands_a_second",
-  "10-04 21:29 feed-pace: host/interfaces.lisp carries the definterface rows of the four new host-called entries (fn-prd-feed-quantum, -poll-ms, -link-wait, -pause)"
+  "10-04 21:29 feed-pace: host/interfaces.lisp carries the definterface rows of the four new host-called entries (fn-prd-feed-quantum, -poll-ms, -link-wait, -pause)",
+  "10-05 00:21 READY 3d37f3d4c (lane/feed-pace). Natives on hbox, red-before = roll-up set ecf10066f at dev f4b9d7943 (bq10050324-0132), green-after = lane set 3a9806784 (built persvati bq10050337-0133, relayed sha256-clean; tests at 95cdbf981 = image commit + 7456b9f2c) (bq10050400-0135). peering: 24 ran, the same 1 error (transit_hygiene TimeoutError) both; module 564.3 s (7616 set) / ~565 s (roll-up) -> 93.8 s; test_feeding_past_the_queue_bound 451.2 s -> 5.8 s (1,100 articles). feed_idle OK both: transit holds 126 -> 129 (limit 150), deliver 1.20 s -> 0.00 s. peer_hostile_feed 6/6 both. feed_fair_round 7/7 -> 8/8 (pace mode added). operator_walk 9F both, all the OpenSSL install refusal (SCEN-WALK-INSTALL-NO-OPENSSL); with it linked (diag) the 3 MODE STREAM feed cases pass on both sets."
  ],
  "owner": "feed-pace",
  "scope": [
@@ -27,12 +28,13 @@
   "planning/evidence/repair/*"
  ],
  "severity": "medium",
+ "sha": "3d37f3d4c",
  "source": "scenarios-2",
- "state": "in-progress",
+ "state": "ready",
  "test": "python3 -m unittest tests.test_native_feed_fair_round.FeedFairRoundTests.test_an_answering_peer_gets_hundreds_of_commands_a_second",
  "timeout": "300",
  "title": "An outbound feed to a streaming peer that answers at once delivers about 2.4 articles a second. peering test_feeding_past_the_queue_bound_keeps_local_posts_accepted feeds 1,100 articles to ScriptedTransitPeer, which answers 238/239 without delay, and took 462 s at batch 6 (lat1, set 6107ceb56): 0.42 s per article, and the slowest test in the suite. Cause, from host/native/feed-service.lisp: fnn-feed-worker-loop runs ONE fnn-feed-pump-link action per link per round (offer, write, read, consume), and a round that did work sleeps +fnn-feed-poll-seconds+ (1/20 s) before the next. A CHECK/TAKETHIS article needs about 8 such rounds. At that rate a peer catching up 10,000 articles waits about 70 minutes on scheduling alone. Fix forward (scheduling only, ACL2 still decides every offer): a link that made progress keeps pumping inside the round, up to a bound, before the round's sleep. Measure: the peering module's case time before and after, with every assertion kept.",
- "updated": "2026-10-05T01:43:49Z",
+ "updated": "2026-10-05T04:21:07Z",
  "verify": {
   "base": "0d5054d3ed71c5b25bbab7aa7c626d28ef5b340e",
   "base_observation": {

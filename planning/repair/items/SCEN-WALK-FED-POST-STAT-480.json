@@ -1,0 +1,12 @@
+{
+ "file": "tests/test_native_operator_walk.py",
+ "id": "SCEN-WALK-FED-POST-STAT-480",
+ "native": "tests.test_native_operator_walk",
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "low",
+ "source": "feed-pace",
+ "state": "open",
+ "title": "operator_walk test_two_peered_nodes_carry_a_post_and_refuse_one_over_the_article_bound: the feed delivers (a logs accepted feed peer=b message-id=<walk-1@example.invalid> code=239 within the second), but the walk's proof that b serves it, an anonymous STAT, is answered 480 authentication required: the mission's nodes require authentication ([auth] required=true protected_only=true), and every loopback session is source-address peer a. Red on the roll-up set ecf10066f and on lane feed-pace's set 3a9806784 alike (diag runs bq10050413-0136/-0137, bq10050417-0141, each with libexec/fn/openssl linked by hand). Not the feed: the check needs an authenticated reader on b (or another served-at-b witness).",
+ "updated": "2026-10-05T04:20:55Z"
+}
