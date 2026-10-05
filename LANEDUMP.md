@@ -5076,7 +5076,7 @@ Certify: NOT done.  Narrow certify of the 19 touched tests/acl2/*-tests books vi
 
 ### Exact certify command for INTEGRATOR-4 (run from build/lanes/teeth-62 at lane/teeth-62, merged on lane/teeth-gate@ab595894d)
 python3 tools/boxq.py submit --kind certify-lane --box hbox --wait -- --lane --jobs 8 --affected-by tests/acl2/app-pattern-delivery-tests --affected-by tests/acl2/app-pattern-tests --affected-by tests/acl2/article-kind-tests --affected-by tests/acl2/bp-ion-lifetime-tests --affected-by tests/acl2/bp-node-budget-input-tests --affected-by tests/acl2/connection-budget-tests --affected-by tests/acl2/feed-journal-order-tests --affected-by tests/acl2/moderation-tests --affected-by tests/acl2/native-init-resume-tests --affected-by tests/acl2/native-retire-observation-tests --affected-by tests/acl2/nntp-auth-tests --affected-by tests/acl2/output-reservation-tests --affected-by tests/acl2/owner-queued-work-tests --affected-by tests/acl2/owner-reclaim-carry-tests --affected-by tests/acl2/page-read-startup-tests --affected-by tests/acl2/peer-flight-reservation-tests --affected-by tests/acl2/reclaim-chunked-seal-tests --affected-by tests/acl2/reclaim-chunked-walk-tests --affected-by tests/acl2/store-log-entry-bound-tests 
-Books (      19, correcting the 19 in my message: LANEDUMP.md is the 19th changed file):
+Books (19):
 - tests/acl2/app-pattern-delivery-tests
 - tests/acl2/app-pattern-tests
 - tests/acl2/article-kind-tests
