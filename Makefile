@@ -1947,6 +1947,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/wire-family-consumer \
 	books/wire-family-control \
 	tests/acl2/wire-family-consumer-tests \
+	tests/acl2/wire-family-control-tests \
 	books/wire-export \
 	books/store-identity \
 	tests/acl2/store-identity-tests \
