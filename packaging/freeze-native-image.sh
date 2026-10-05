@@ -5,8 +5,15 @@
 #
 # The directory carries the cores, the SBCL runtime, libsodium and the
 # ML-DSA-65 library (BUILD_DIR/lib/libfn-mldsa65.so, tools/build_mldsa65.sh)
-# in lib/.  It carries no TLS library: the system provides libssl (OpenSSL
-# 3.0+ or LibreSSL 3+), HST-016.
+# in lib/.  On Linux it also carries the TLS library fn ships (D59,
+# PRF-1327): OpenSSL 3.5.8's libcrypto.so.3 and libssl.so.3 under
+# openssl/lib/, from FN_FREEZE_OPENSSL (a prefix; the release build names
+# packaging/floor-openssl.sh's output, built against the glibc floor), else
+# FN_OPENSSL_PREFIX, else the build boxes' /tank/fn/toolchains/openssl-3.5.8.
+# Each launcher exports FN_OPENSSL_PREFIX as that directory unless the caller
+# named one.  It is never put in lib/ (LD_LIBRARY_PATH), so the system's
+# pair the host falls back to stays the system's.  OpenBSD keeps the base
+# system's LibreSSL (HST-016).
 #
 # On OpenBSD, FN_FREEZE_SODIUM names the libsodium to bundle (pkg_add
 # libsodium: /usr/local/lib/libsodium.so.11.1 on 7.9, kept under its own
@@ -58,6 +65,17 @@ else
     echo "freeze-native-image: OpenBSD libsodium must be libsodium.so.MAJOR.MINOR: $sodium" >&2; exit 4;; esac
   hash_tool=sha256   # BSD-format lines; checked with sha256 -c
 fi
+openssl_lib=
+if [ "$system" = Linux ]; then
+  openssl_prefix=${FN_FREEZE_OPENSSL:-${FN_OPENSSL_PREFIX:-/tank/fn/toolchains/openssl-3.5.8}}
+  for d in "$openssl_prefix/lib64" "$openssl_prefix/lib"; do
+    if [ -s "$d/libcrypto.so.3" ] && [ -s "$d/libssl.so.3" ]; then openssl_lib=$d; break; fi
+  done
+  [ -n "$openssl_lib" ] || {
+    echo "freeze-native-image: no OpenSSL libcrypto.so.3/libssl.so.3 pair under $openssl_prefix (FN_FREEZE_OPENSSL)" >&2; exit 4; }
+  grep -aq 'OpenSSL 3\.5\.8 ' "$openssl_lib/libcrypto.so.3" || {
+    echo "freeze-native-image: $openssl_lib/libcrypto.so.3 is not OpenSSL 3.5.8" >&2; exit 4; }
+fi
 if [ -n "${FN_FREEZE_RUNTIME:-}" ]; then
   [ -x "$FN_FREEZE_RUNTIME" ] || { echo "freeze-native-image: FN_FREEZE_RUNTIME is not executable: $FN_FREEZE_RUNTIME" >&2; exit 4; }
   [ "$("$FN_FREEZE_RUNTIME" --version)" = "$("$runtime" --version)" ] || {
@@ -76,6 +94,11 @@ cp -L "$sodium" "$out/lib/$sodium_name"
 cp -L "$mldsa" "$out/lib/libfn-mldsa65.so"
 cp -L "$deflate" "$out/lib/libfn-deflate.so"
 cp -L "$blake3" "$out/lib/libfn-blake3.so"
+if [ -n "$openssl_lib" ]; then
+  mkdir -p "$out/openssl/lib"
+  cp -L "$openssl_lib/libcrypto.so.3" "$out/openssl/lib/libcrypto.so.3"
+  cp -L "$openssl_lib/libssl.so.3" "$out/openssl/lib/libssl.so.3"
+fi
 if [ "$system" = OpenBSD ]; then
   # The runtime's DT_NEEDED objects outside the base system (/usr/lib) travel
   # with it: pkg_add sbcl links libzstd from /usr/local/lib.
@@ -131,6 +154,9 @@ for name in $variants; do
     echo 'here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)'
     echo 'export SBCL_HOME="$here/runtime/sbcl-home/"'
     echo 'export LD_LIBRARY_PATH="$here/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"'
+    if [ -n "$openssl_lib" ]; then
+      echo 'FN_OPENSSL_PREFIX="${FN_OPENSSL_PREFIX:-$here/openssl}"; export FN_OPENSSL_PREFIX'
+    fi
     sed -n '/^exec "/p' "$src" |
       sed -e 's|^exec "[^"]*"|exec "$here/runtime/sbcl"|' \
           -e "s|--core \"[^\"]*\"|--core \"\$here/$name.core\"|" \
@@ -138,4 +164,4 @@ for name in $variants; do
   } > "$out/$name"
   chmod 0755 "$out/$name"
 done
-(cd "$out" && find fn-host* runtime lib -type f | LC_ALL=C sort | xargs $hash_tool > image.sha256)
+(cd "$out" && find fn-host* runtime lib $( [ -z "$openssl_lib" ] || echo openssl ) -type f | LC_ALL=C sort | xargs $hash_tool > image.sha256)
