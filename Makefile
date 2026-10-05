@@ -397,6 +397,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/retention \
 	books/retention-invariants \
 	tests/acl2/retention-tests \
+	tests/acl2/committer-actor-tests \
 	books/node \
 	books/node-invariants \
 	books/node-retention-transitions \
