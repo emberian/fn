@@ -4,6 +4,7 @@
 ; zeros, the kernel it recovers, the batch appended).
 (in-package "ACL2")
 (include-book "../../books/store-log-route-programs")
+(include-book "../../books/defkeystone")
 (include-book "store-log-kernel-tests")
 ; The witnesses evaluate the recovered kernel, which decodes records through
 ; the seam's constrained fn-record-decode-exact: run it under its attachment.
@@ -148,3 +149,41 @@
 ; The other hypotheses' removals are tests/acl2/store-log-programs-tests.lisp's
 ; for fn-lg-recover-program-establishes-the-relation, whose antecedent this
 ; theorem carries unchanged.
+; TEETH-21 BEGIN
+; Teeth (TEETH CONTRACT v1) for two of the three "T" keystones.  Owed, no
+; ground counterexample: fn-lg-full-length-run-ending-in-a-cut-is-complete's
+; `(consp steps)' (the empty program is complete).  Not written:
+; fn-lg-open-program-keeps-the-relation-at-every-cut carries
+; fn-assume-log-sole-pending-writer, a constrained function no evaluator runs
+; (store-log-programs-tests asserts its executable twin instead).
+(defteeth fn-lg-full-length-run-ending-in-a-cut-is-complete
+  :claim (() (implies (and (consp steps)
+                           (fn-lg-cut-stepp (car (last steps)))
+                           (equal (len (fn-lg-run bs ks steps nil ino)) (len steps)))
+                      (fn-lg-run-completep bs ks steps ino)))
+  :subject fn-lg-run-completep
+  :witness ((bs (slk-bs-extended)) (ks (slk-ks0)) (steps (fn-lg-recover-program)) (ino 0))
+  :mutations ((last-step-not-a-cut
+               (:conclusion (implies (and (consp steps)
+                                          (equal (len (fn-lg-run bs ks steps nil ino)) (len steps)))
+                                     (fn-lg-run-completep bs ks steps ino)))
+               ((bs (slk-appended-bs)) (ks (slk-appended-ks)) (steps '((:write-at :segment :batch))) (ino 0))
+               :fault "a run whose last step is a refused append, which is not a cut and not complete")
+              (run-cut-short
+               (:conclusion (implies (and (consp steps)
+                                          (fn-lg-cut-stepp (car (last steps))))
+                                     (fn-lg-run-completep bs ks steps ino)))
+               ((bs (slk-appended-bs)) (ks (slk-appended-ks)) (steps '((:write-at :segment :batch) (:cut "log-written"))) (ino 0))
+               :fault "a run that stops at a refused step before its final cut")))
+(defteeth fn-lg-run-of-append-when-complete
+  :claim (((complete (fn-lg-run-completep bs ks a ino)))
+          (equal (fn-lg-run bs ks (append a b) nil ino)
+                 (append (fn-lg-run bs ks a nil ino)
+                         (fn-lg-run (car (fn-lg-run-final bs ks a ino))
+                                    (cdr (fn-lg-run-final bs ks a ino))
+                                    b nil ino))))
+  :subject fn-lg-run
+  :witness ((bs (slk-bs-extended)) (ks (slk-ks0)) (a (fn-lg-recover-program)) (b (fn-lg-open-suffix)) (ino 0))
+  :breaks ((complete ((bs (slk-appended-bs)) (ks (slk-appended-ks)) (a '((:write-at :segment :batch))) (b '((:cut "log-written"))))))
+  :mutations (:not-applicable "the one hypothesis is labelled; its removal witness is the tooth"))
+; TEETH-21 END
