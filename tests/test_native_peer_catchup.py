@@ -266,6 +266,20 @@ class NativePeerCatchupTests(unittest.TestCase):
 
     def test_catch_up_imports_every_article(self):
         a = self.populated_a()
+        import sys
+        with Client(a.port, timeout=60) as probe:
+            for pos in list(range(600, 640, 4)) + list(range(100, 120, 4)):
+                t0 = time.monotonic()
+                first = probe.command("XFNCATCHUP * {:016x} ".format(pos) + "0" * 64 + " 262144")
+                n = 0
+                if first.startswith(b"291"):
+                    while True:
+                        l = probe.line()
+                        if l == b".\r\n":
+                            break
+                        n += 1
+                sys.stderr.write("DIAG RTT pos={} {:.3f}s lines={} -> {!r}\n".format(pos, time.monotonic() - t0, n, first[:60]))
+        self.fail("DIAG stop")
         b = self.initialize("B", "b.catchup.example.invalid")
         fund_peer_flights(b)
         self.catch_up_from(b, "A", "a.catchup.example.invalid", a.port)
