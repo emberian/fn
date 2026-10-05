@@ -3929,17 +3929,32 @@
 ;; moderated group's groups also hides that group's queue
 ;; (books/moderation.lisp `fn-mod-hidden-queues' over the owner's status
 ;; entries); an unrestricted login's rule is then "*" with the queues hidden.
+(defun fn-auth-rule-text (table closed login field)
+  (declare (xargs :guard t))
+  (let ((base (fn-gac-pattern table login field))
+        (hidden (and (equal field 1) (fn-mod-hidden-queues closed login))))
+    (if (consp hidden)
+        (list* :hide (or base "*") hidden)
+      base)))
+
+;; ACCESS-REVOKE-PINNED (coordinator ruling 2026-10-04; specs/
+;; reconfiguration.md 2.3 "Readers"): when the configuration carries the
+;; LIVE access beside its pin (books/group-access.lisp `fn-gac-listing-live',
+;; attached by books/owner.lisp `fn-own-served-conn' at every read), the READ
+;; rule is the pinned rule AND the live rule of the same login
+;; (fn-gac-and-text).  The login is read here, per command, so an AUTHINFO
+;; pipelined ahead of a retrieval in one socket read is decided by its own
+;; login's live rule.  POST stays the pinned rule.
 (defun fn-auth-access-text (as config field)
   (declare (xargs :guard t))
-  (let ((base (fn-gac-pattern
-                    (fn-gac-listing-table (fn-inj-config-listing config))
-                    (fn-auth-access-login as) field))
-             (hidden (and (equal field 1)
-                          (fn-mod-hidden-queues (fn-inj-config-closed config)
-                                                (fn-auth-access-login as)))))
-         (if (consp hidden)
-             (list* :hide (or base "*") hidden)
-           base)))
+  (let* ((login (fn-auth-access-login as))
+         (listing (fn-inj-config-listing config))
+         (pinned (fn-auth-rule-text (fn-gac-listing-table listing)
+                                    (fn-inj-config-closed config) login field))
+         (live (fn-gac-listing-live listing)))
+    (if (and (equal field 1) (consp live))
+        (fn-gac-and-text pinned (fn-auth-rule-text (car live) (cdr live) login 1))
+      pinned)))
 
 (defun fn-auth-access-read (as config)
   (declare (xargs :guard t))
@@ -4021,6 +4036,7 @@
   (equal (fn-auth-access-text as (fn-auth-moderation-config as config) field)
          (fn-auth-access-text as config field))
   :hints (("Goal" :in-theory (enable fn-auth-access-text fn-auth-access-login
+                                     fn-auth-rule-text
                                      fn-auth-moderation-config
                                      fn-auth-moderation-login))))
 
@@ -4072,6 +4088,49 @@
 ;; not moderate (or any queue, before AUTHINFO) nor any article filed in it:
 ;; GROUP answers as for a group the node does not carry, and ARTICLE by
 ;; Message-ID finds no envelope.
+(defthm fn-auth-rule-text-refuses-a-hidden-queue
+  (implies (fn-mod-queue-hiddenp (fn-gac-text-octets g) closed login)
+           (and (fn-auth-rule-text table closed login 1)
+                (not (fn-gac-readablep (fn-auth-rule-text table closed login 1) g))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-rule-text fn-gac-readablep)
+                                  (fn-mod-queue-hiddenp fn-mod-hidden-queues
+                                   fn-gac-pattern fn-mod-hidden-queues-is-hiddenp
+                                   fn-gac-text-octets fn-gac-text-readablep))
+           :use ((:instance fn-mod-hidden-queues-is-hiddenp
+                            (g (fn-gac-text-octets g)))))))
+
+(defthm fn-auth-access-text-refuses-a-hidden-queue
+  (implies (fn-mod-queue-hiddenp (fn-gac-text-octets g)
+                                 (fn-inj-config-closed config)
+                                 (fn-auth-access-login as))
+           (and (fn-auth-access-text as config 1)
+                (not (fn-gac-readablep (fn-auth-access-text as config 1) g))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-access-text)
+                                  (fn-auth-rule-text fn-gac-readablep fn-gac-and-text
+                                   fn-mod-queue-hiddenp fn-gac-text-octets))
+           :use ((:instance fn-auth-rule-text-refuses-a-hidden-queue
+                            (table (fn-gac-listing-table (fn-inj-config-listing config)))
+                            (closed (fn-inj-config-closed config))
+                            (login (fn-auth-access-login as)))
+                 (:instance fn-gac-and-text-refuses-what-pinned-refuses
+                            (pinned (fn-auth-rule-text
+                                     (fn-gac-listing-table (fn-inj-config-listing config))
+                                     (fn-inj-config-closed config)
+                                     (fn-auth-access-login as) 1))
+                            (live (fn-auth-rule-text
+                                   (car (fn-gac-listing-live (fn-inj-config-listing config)))
+                                   (cdr (fn-gac-listing-live (fn-inj-config-listing config)))
+                                   (fn-auth-access-login as) 1)))
+                 (:instance fn-gac-and-text-restricts-when-either-does
+                            (pinned (fn-auth-rule-text
+                                     (fn-gac-listing-table (fn-inj-config-listing config))
+                                     (fn-inj-config-closed config)
+                                     (fn-auth-access-login as) 1))
+                            (live (fn-auth-rule-text
+                                   (car (fn-gac-listing-live (fn-inj-config-listing config)))
+                                   (cdr (fn-gac-listing-live (fn-inj-config-listing config)))
+                                   (fn-auth-access-login as) 1)))))))
+
 (defthm fn-auth-view-hides-the-queue-from-a-non-moderator
   (implies (and (fn-mod-queue-hiddenp (fn-gac-text-octets g)
                                       (fn-inj-config-closed config)
@@ -4082,20 +4141,17 @@
                 (not (fn-auth-arts-name-groupp
                       g (fn-state-articles
                          (fn-auth-view-archive as config archive))))))
-  :hints (("Goal" :in-theory (e/d (fn-auth-view-archive fn-auth-access-read
-                                   fn-auth-access-text)
-                                  (fn-gac-restrict-state fn-mod-queue-hiddenp
-                                   fn-mod-hidden-queues fn-gac-pattern
-                                   fn-mod-hidden-queues-is-hiddenp
-                                   fn-gac-text-octets))
-           :use ((:instance fn-mod-hidden-queues-is-hiddenp
-                            (g (fn-gac-text-octets g))
-                            (closed (fn-inj-config-closed config))
-                            (login (fn-auth-access-login as)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-view-archive fn-auth-access-read)
+                           (fn-auth-access-text fn-gac-readablep fn-gac-restrict-state
+                            fn-mod-queue-hiddenp fn-gac-text-octets
+                            fn-auth-access-text-refuses-a-hidden-queue
+                            fn-gac-restrict-state-groups-are-readable fn-auth-restrict-articles-exclude))
+           :use (fn-auth-access-text-refuses-a-hidden-queue
                  (:instance fn-gac-restrict-state-groups-are-readable
+                            (text (fn-auth-access-text as config 1)) (s archive))
+                 (:instance fn-auth-restrict-articles-exclude
                             (text (fn-auth-access-text as config 1))
-                            (s archive))
-))))
+                            (arts (fn-state-articles archive)))))))
 
  ;; PRF-1269: all reader roles use this same captured projection.
 (defthm fn-auth-view-excludes-unreadable-groups-on-any-connection
