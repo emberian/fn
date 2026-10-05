@@ -31,7 +31,6 @@
   ((fn-tcim-turn fn-tcf-at fn-tcf-begin fn-tcf-contactp fn-tcf-byte fn-tcf-span) (apply name args))
   (fn-tcl-max-message 200000)
   (fn-tcl-host-segment-mru 100000)
-  (fn-tcrt-note-frame (third args))
   (fn-tcl-host-phase (first args))
   (fn-tcl-host-input-probe
    ;; Only segment extension probe is reachable in these cases. Record the
