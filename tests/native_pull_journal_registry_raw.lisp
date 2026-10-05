@@ -51,6 +51,14 @@
    (defun fnn-pull-peer-string) (defun fnn-pull-cursor-for) (defun fnn-catchup-cursor-for)
    (defun fnn-pull-commits-seen) (defun fnn-pull-idle-wait)
    (defun fnn-pull-worker) (defun fnn-pull-settle-leases)))
+;; SCEN-CATCHUP-PACE: the worker's own wake and its plan refresh, where the
+;; source has them (the old defect base has none and never calls them).
+(with-open-file (stream "host/native/pull-service.lisp")
+  (loop for form = (read stream nil :eof) until (eq form :eof)
+        when (and (consp form) (eq (car form) 'defun)
+                  (member (cadr form) '(fnn-pull-runtime-wake fnn-pull-wakes-seen
+                                        fnn-pull-ready-wait fnn-pull-refresh-plans)))
+          do (eval form)))
 ;; New private pruning helper is optional on the old defect base, whose
 ;; worker never invokes it. Load only the trusted source's literal form.
 (with-open-file (stream "host/native/pull-service.lisp")
@@ -70,7 +78,7 @@
                       '((defun fn-prd-sweep) (defun fn-prd-select) (defun fn-prd-idle-ms)
                         (defun fn-prd-idle-max-ms) (defun fn-prd-row-schedulablep)
                         (defun fn-prd-row-wait) (defun fn-prd-next-due-wait)
-                        (defun fn-prd-pause-ms))))
+                        (defun fn-prd-pause-ms) (defun fn-prd-resume-at))))
 (load-deployed-forms "books/rev-onto.lisp" '((defun fn-ag-rev-onto)))
 (load-deployed-forms "books/scheduler-peers.lisp"
  '((defun fn-sched-pull-entry) (defun fn-sched-pull-next) (defun fn-sched-pull-interval)

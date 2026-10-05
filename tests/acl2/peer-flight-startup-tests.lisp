@@ -131,7 +131,9 @@
   (and (fn-bs-profile-validp *pfrst-wp-profile*)
        (fn-pfr-policy-p *pfrst-flight*)
        (equal (fn-prstartup-nth 0 *pfrst-wp-run*) :heap)
-       (equal (fn-prstartup-nth 1 *pfrst-wp-run*) 1891)
+       ;; 1891 before the pool's read reserve (lane pool-refusal): the
+       ;; served run now also holds its workers' reads in flight.
+       (equal (fn-prstartup-nth 1 *pfrst-wp-run*) 1893)
        (equal (fn-heap-core-file *pfrst-wp-owner-core*) (fn-heap-core-file *pfrst-wp-probe-core*))
        (<= (pfrst-wp-owner-need dyn *pfrst-wp-owner-core*) dyn)
        (fn-prstartup-planp plan)
@@ -141,7 +143,7 @@
               :hold))))
 ; Teeth: without the DEFAULT extension's launch floor the peer figure is
 ; 6107ceb56's 1509, and the owner refuses it (it needs 1526); an owner core
-; with a larger file (the core-file hypothesis dropped) fails at 1891.
+; with a larger file (the core-file hypothesis dropped) fails at 1893.
 (assert-event
  (let* ((old (fn-pfr-extend-operation-reservation *pfrst-wp-base* :run *pfrst-flight*
                                                    *pfrst-wp-probe-core* *pfrst-machine*))

@@ -5328,6 +5328,12 @@
 (definterface fn-tls-self-signed-host-serial-octets
   :class :program)
 
+;; A read the pool refuses inside a publication's call, decided for its stage
+;; (host/native/io.lisp fnn-extent-with-read-refusal; lane pool-refusal).
+(definterface fn-orln-read-refusal-outcome :class :common-lisp-compliant
+  :keystones (fn-orln-exhausted-pool-never-faults-a-publication
+              fn-orln-read-refusal-otherwise-faults))
+
 (definterface fn-pxe-cache-mode :class :common-lisp-compliant
   :kinds ((enabledp booleanp)))
 
@@ -5549,6 +5555,13 @@
 (definterface fn-prd-read-limit :class :common-lisp-compliant)
 (definterface fn-prd-write-end :class :common-lisp-compliant)
 (definterface fn-prd-feed-action :class :common-lisp-compliant)
+; SCEN-FEED-PACE: the push worker's quantum and wait (host/native/feed-service.lisp).
+(definterface fn-prd-feed-quantum :class :common-lisp-compliant)
+(definterface fn-prd-feed-poll-ms :class :common-lisp-compliant)
+(definterface fn-prd-feed-link-wait :class :common-lisp-compliant)
+(definterface fn-prd-feed-pause :class :common-lisp-compliant
+  :keystones (fn-prd-feed-never-sleeps-while-an-article-can-leave fn-prd-feed-pause-is-bounded
+              fn-prd-feed-pause-polls-a-waiting-socket fn-prd-feed-pause-never-sleeps-past-a-redial))
 (definterface fn-prd-write-quantum-end :class :common-lisp-compliant)
 (definterface fn-prd-idle-ms :class :common-lisp-compliant)
 (definterface fn-prd-loss-class-ok :class :common-lisp-compliant)

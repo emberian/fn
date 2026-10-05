@@ -19761,6 +19761,23 @@
           "name": "fn-av-mca-read-span-restricted-is-legacy"
         }
       ]
+    },
+    {
+      "id": "PRF-1330",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-own-served-conn-refuses-what-the-live-rule-refuses"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-served-conn-refuses-what-the-pin-refuses"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-served-conn-rule-is-the-pin-when-access-is-unchanged"
+        }
+      ]
     }
   ]
 }

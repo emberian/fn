@@ -230,3 +230,220 @@
 (defun fn-prd-write-quantum-end (offset total quantum)
   (declare (xargs :guard t))
   (min (nfix total) (+ (nfix offset) (nfix quantum))))
+
+; ---------------------------------------------------------------------------
+; SCEN-FEED-PACE (lane feed-pace, 2026-10-05): the push worker's pace.
+;
+; scenarios-2 measured an outbound feed to a streaming peer that answers at
+; once at 2.4 articles a second (tests/test_native_peering.py, the
+; 1,100-article case: 462 s at batch 6).  The worker ran ONE
+; fn-prd-feed-action per link per round and slept a fixed 1/20 s after every
+; round that did anything, about eight rounds an article.  Now the worker
+; (host/native/feed-service.lisp fnn-feed-worker-loop) pumps each link until
+; its next action waits on the kernel or its quantum is spent, and asks this
+; how long to wait, and on what.  Each link reports (ACTION BLOCKED AWAITING):
+;   ACTION    fn-prd-feed-action's answer for the link after its pump, or
+;             :dial for a link with no connection;
+;   BLOCKED   the readiness its last physical attempt reported: :input or
+;             :output (a read or a write that would block, a handshake's
+;             WANT, a connect still in progress), nil when it progressed;
+;   AWAITING  the peer owes the link an answer: a reply to a command that has
+;             left, the greeting, a handshake (the link's deadline is armed).
+; A scheduling decision only: every offer, reply and loss stays the feed
+; port's, and the 600 s reply deadline stays fn-prd-feed-action's.
+
+; The most actions one link takes in a round while they progress.  Fairness,
+; not a data cap: an unfinished link continues at once in the next round,
+; after every other link has had its turn.
+(defun fn-prd-feed-quantum ()
+  (declare (xargs :guard t))
+  32)
+
+; The I/O poll: the first wait of a quiet worker, the floor of every wait,
+; and how often a worker waiting on its sockets looks at the commit count.
+(defun fn-prd-feed-poll-ms ()
+  (declare (xargs :guard t))
+  50)
+
+; S145 (lane served-live): quiet rounds at the poll before the wait doubles.
+(defun fn-prd-feed-busy-rounds ()
+  (declare (xargs :guard t))
+  20)
+
+(defun fn-prd-feed-link-action (link)
+  (declare (xargs :guard t))
+  (if (consp link) (car link) nil))
+
+(defun fn-prd-feed-link-blocked (link)
+  (declare (xargs :guard t))
+  (if (and (consp link) (consp (cdr link))) (cadr link) nil))
+
+(defun fn-prd-feed-link-awaiting (link)
+  (declare (xargs :guard t))
+  (if (and (consp link) (consp (cdr link)) (consp (cddr link))) (caddr link) nil))
+
+; What one link waits on: :now (it can act without waiting: an offer to ask
+; for, a reply already read, a write the kernel has not refused), :input or
+; :output (its socket's readiness), or :commit (nothing is owed to it and
+; nothing is in progress: it waits for an article, a retry coming due or a
+; redial, which a commit or the clock brings).  A read that found nothing on
+; a link the peer owes nothing is :commit, not :input: an idle connection is
+; not a busy poll (S145).
+(defun fn-prd-feed-link-wait (link)
+  (declare (xargs :guard t))
+  (let ((action (fn-prd-feed-link-action link))
+        (blocked (fn-prd-feed-link-blocked link)))
+    (cond ((member-equal action '(:offer :reply :connected :timeout)) :now)
+          ((member-equal action '(:write :connect :tls :read))
+           (cond ((not (member-equal blocked '(:input :output))) :now)
+                 ((or (fn-prd-feed-link-awaiting link) (not (equal action :read)))
+                  blocked)
+                 (t :commit)))
+          (t :commit))))
+
+(defun fn-prd-feed-wait-rank (wait)
+  (declare (xargs :guard t))
+  (cond ((equal wait :now) 2)
+        ((member-equal wait '(:input :output)) 1)
+        (t 0)))
+
+; The most urgent wait of LINKS (BEST so far): 2 :now, 1 a socket, 0 the
+; commit signal.  Tail recursive: LINKS are the operator's peers.
+(defun fn-prd-feed-round-rank (links best)
+  (declare (xargs :guard t))
+  (if (consp links)
+      (fn-prd-feed-round-rank
+       (cdr links) (max (nfix best) (fn-prd-feed-wait-rank (fn-prd-feed-link-wait (car links)))))
+    (nfix best)))
+
+; The least positive wait past NOW until one of DIALS (the next-dial times of
+; the links with no connection) comes due, or BEST; nil when none is ahead.
+(defun fn-prd-feed-dial-wait (dials now best)
+  (declare (xargs :guard t))
+  (if (consp dials)
+      (fn-prd-feed-dial-wait
+       (cdr dials) now
+       (let ((wait (- (nfix (car dials)) (nfix now))))
+         (if (and (posp wait) (or (not (natp best)) (< wait best))) wait best)))
+    best))
+
+; A quiet worker's wait: the poll for its first busy rounds, then doubling
+; (100, 200, 400, 800 ms) to fn-prd-idle-max-ms.  This was the host's
+; fnn-feed-idle-seconds; it is decided here now.
+(defun fn-prd-feed-quiet-ms (idle)
+  (declare (xargs :guard t))
+  (let ((past (- (nfix idle) (fn-prd-feed-busy-rounds))))
+    (cond ((< past 0) (fn-prd-feed-poll-ms))
+          ((equal past 0) 100)
+          ((equal past 1) 200)
+          ((equal past 2) 400)
+          ((equal past 3) 800)
+          (t (fn-prd-idle-max-ms)))))
+
+(local
+ (defthm fn-prd-feed-quiet-ms-is-bounded
+   (and (<= (fn-prd-feed-poll-ms) (fn-prd-feed-quiet-ms idle))
+        (<= (fn-prd-feed-quiet-ms idle) (fn-prd-idle-max-ms)))
+   :rule-classes :linear))
+
+; KEYSTONE SUBJECT (host/native/feed-service.lisp fnn-feed-worker-loop).
+; The round's wait: (:now 0) when any link can act; else (:poll MS), waiting
+; on the sockets ACL2 named (fn-prd-feed-link-wait) and the commit count, or
+; (:signal MS), waiting on the owner's commit signal alone.  IDLE counts the
+; rounds since one progressed.  MS never passes a redial.
+(defun fn-prd-feed-pause (links idle dials now)
+  (declare (xargs :guard t))
+  (let ((rank (fn-prd-feed-round-rank links 0)))
+    (if (equal rank 2)
+        (list :now 0)
+      (let ((ms (fn-prd-feed-quiet-ms idle))
+            (due (fn-prd-feed-dial-wait dials now nil)))
+        (list (if (equal rank 1) :poll :signal)
+              (if (natp due) (min ms (max (fn-prd-feed-poll-ms) due)) ms))))))
+
+(local
+ (defthm fn-prd-feed-round-rank-at-least-best
+   (<= (nfix best) (fn-prd-feed-round-rank links best))
+   :rule-classes :linear))
+
+(local
+ (defthm fn-prd-feed-round-rank-at-least-each-link
+   (implies (member-equal link links)
+            (<= (fn-prd-feed-wait-rank (fn-prd-feed-link-wait link))
+                (fn-prd-feed-round-rank links best)))
+   :hints (("Goal" :induct (fn-prd-feed-round-rank links best)
+            :in-theory (disable fn-prd-feed-link-wait fn-prd-feed-wait-rank)))))
+
+(local
+ (defthm fn-prd-feed-round-rank-at-most-two
+   (implies (<= (nfix best) 2)
+            (and (natp (fn-prd-feed-round-rank links best))
+                 (<= (fn-prd-feed-round-rank links best) 2)))
+   :hints (("Goal" :induct (fn-prd-feed-round-rank links best)))))
+
+(local
+ (defthm fn-prd-feed-dial-wait-below-best
+   (implies (natp best)
+            (and (natp (fn-prd-feed-dial-wait dials now best))
+                 (<= (fn-prd-feed-dial-wait dials now best) best)))
+   :hints (("Goal" :induct (fn-prd-feed-dial-wait dials now best)))))
+
+(local
+ (defthm fn-prd-feed-dial-wait-below-each-dial
+   (implies (and (member-equal dial dials) (< (nfix now) (nfix dial)))
+            (and (natp (fn-prd-feed-dial-wait dials now best))
+                 (<= (fn-prd-feed-dial-wait dials now best) (- (nfix dial) (nfix now)))))
+   :hints (("Goal" :induct (fn-prd-feed-dial-wait dials now best)))))
+
+; KEYSTONE (SCEN-FEED-PACE): the feed never sleeps while an article can
+; leave.  A link that may have a deliverable article (its action is :offer:
+; it is ready and the feed port has not been asked since something changed),
+; that holds a reply already read, or whose command is retained for a socket
+; the kernel has not refused (:write, last attempt not blocked) makes the
+; round's wait (:now 0).
+(defthm fn-prd-feed-never-sleeps-while-an-article-can-leave
+  (implies (and (member-equal link links)
+                (or (member-equal (fn-prd-feed-link-action link) '(:offer :reply))
+                    (and (equal (fn-prd-feed-link-action link) :write)
+                         (not (member-equal (fn-prd-feed-link-blocked link)
+                                            '(:input :output))))))
+           (equal (fn-prd-feed-pause links idle dials now) '(:now 0)))
+  :hints (("Goal" :in-theory (disable fn-prd-feed-round-rank-at-least-each-link
+                                      fn-prd-feed-round-rank-at-most-two
+                                      fn-prd-feed-round-rank fn-prd-feed-dial-wait
+                                      fn-prd-feed-quiet-ms)
+           :use ((:instance fn-prd-feed-round-rank-at-least-each-link (best 0))
+                 (:instance fn-prd-feed-round-rank-at-most-two (best 0))))))
+
+; KEYSTONE (a waiting worker neither spins nor stalls): every wait that is
+; not (:now 0) is on the sockets or the commit signal, for at least the poll
+; and at most fn-prd-idle-max-ms ...
+(defthm fn-prd-feed-pause-is-bounded
+  (let ((pause (fn-prd-feed-pause links idle dials now)))
+    (or (equal pause '(:now 0))
+        (and (member-equal (car pause) '(:poll :signal))
+             (<= (fn-prd-feed-poll-ms) (cadr pause))
+             (<= (cadr pause) (fn-prd-idle-max-ms)))))
+  :rule-classes nil)
+
+; ... a link waiting on its socket is never left to the commit signal alone
+; (its reply would wait for the timer) ...
+(defthm fn-prd-feed-pause-polls-a-waiting-socket
+  (implies (and (member-equal link links)
+                (member-equal (fn-prd-feed-link-wait link) '(:input :output)))
+           (not (equal (car (fn-prd-feed-pause links idle dials now)) :signal)))
+  :hints (("Goal" :in-theory (disable fn-prd-feed-round-rank-at-least-each-link
+                                      fn-prd-feed-round-rank-at-most-two
+                                      fn-prd-feed-round-rank fn-prd-feed-link-wait
+                                      fn-prd-feed-dial-wait fn-prd-feed-quiet-ms)
+           :use ((:instance fn-prd-feed-round-rank-at-least-each-link (best 0))
+                 (:instance fn-prd-feed-round-rank-at-most-two (best 0))))))
+
+; ... and never sleeps past a redial that is ahead.
+(defthm fn-prd-feed-pause-never-sleeps-past-a-redial
+  (implies (and (member-equal dial dials) (< (nfix now) (nfix dial)))
+           (<= (cadr (fn-prd-feed-pause links idle dials now))
+               (max (fn-prd-feed-poll-ms) (- (nfix dial) (nfix now)))))
+  :hints (("Goal" :in-theory (disable fn-prd-feed-dial-wait-below-each-dial
+                                      fn-prd-feed-dial-wait)
+           :use ((:instance fn-prd-feed-dial-wait-below-each-dial (best nil))))))

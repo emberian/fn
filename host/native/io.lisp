@@ -3614,6 +3614,37 @@ which the process is killed, or NIL."
       (fnn-refuse-io "the owner is stopping: the checkpoint publication ends before ~a batch ~d; the old checkpoint stays"
                      where count))))
 
+;;; A read the pool refuses inside an ACL2 call (lane pool-refusal).  The
+;;; dispatcher makes every condition raised in a call a fault (fnn-call), so
+;;; a stage that decides its own reads binds *fnn-extent-read-refusal*: the
+;;; extent realizer then hands the refusal's word back here by a throw
+;;; (host/native/extent.lisp fnn-extent-read-refused), and ACL2 decides it
+;;; for the stage (books/owner-resource-line.lisp fn-orln-read-refusal-
+;;; outcome, KEYSTONE fn-orln-exhausted-pool-never-faults-a-publication).
+;;; Every owner section rebinds the variable to NIL (fnn-section-envelope),
+;;; so the throw never leaves a section: a read refused inside one is raised
+;;; there as before.  Unbound (NIL), a refusal is raised in place.
+(defvar *fnn-extent-read-refusal* nil)
+
+(defun fnn-extent-with-read-refusal (stage thunk)
+  "THUNK's values; or, when a read inside it is refused, STAGE's decided
+outcome: (values :read-deferred WORD) for a deferred frame, the publication
+refused before anything is stored (fnn-store-io-refusal) for a deferred
+publication, a fault for anything else."
+  (let* ((done nil) (answers nil)
+         (word (catch 'fnn-extent-read-refused
+                 (let ((*fnn-extent-read-refusal* t))
+                   (setq answers (multiple-value-list (funcall thunk)) done t))
+                 nil)))
+    (if done
+        (values-list answers)
+      (case (fnn-core 'fn-orln-read-refusal-outcome stage word)
+        (:defer-frame (values :read-deferred word))
+        (:defer-publication
+         (fnn-refuse-io "the checkpoint publication is deferred: extent read refused (~a) at the ~(~a~); the old checkpoint stays"
+                        word stage))
+        (t (fnn-fault "extent read refused: ~a (~(~a~))" word stage))))))
+
 (defun fnn-checkpoint-walk (records arena)
   "The walk of the owner's captured RECORDS: each canonical payload's length
 and source (books/store-checkpoint-arena-writer.lisp fn-scka-srcs-n), a
@@ -3626,8 +3657,11 @@ one walk: fn-scka-srcs-n-compose).  READS the arena.  The last state,
       (when (atom (first walk)) (return walk))
       (fnn-checkpoint-yield "walk" batch)
       (incf batch)
-      (setq walk (fnn-core 'fn-scka-srcs-n (first walk) +fnn-checkpoint-batch-rows+
-                           (second walk) (third walk) arena))
+      (setq walk (fnn-extent-with-read-refusal
+                  :checkpoint-walk
+                  (lambda ()
+                    (fnn-core 'fn-scka-srcs-n (first walk) +fnn-checkpoint-batch-rows+
+                              (second walk) (third walk) arena))))
       (unless (and (consp walk) (= (length walk) 3))
         (fnn-fault "ACL2 returned a malformed checkpoint walk")))))
 
@@ -3651,8 +3685,11 @@ the publication buffer ST."
       (loop
         (when (fnn-core 'fn-scka-write-donep state count) (return steps))
         (fnn-checkpoint-yield "arena" steps)
-        (let ((answer (fnn-call 'fn-scka-write-step state n count sequence
-                                segment-bound file-bound arena st)))
+        (let ((answer (fnn-extent-with-read-refusal
+                       :checkpoint-write
+                       (lambda ()
+                         (fnn-call 'fn-scka-write-step state n count sequence
+                                   segment-bound file-bound arena st)))))
           (unless (and (consp answer) (>= (length answer) 3))
             (fnn-fault "ACL2 returned a malformed checkpoint arena step"))
           (destructuring-bind (verdict frames next &rest stobj) answer

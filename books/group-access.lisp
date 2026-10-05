@@ -126,7 +126,14 @@
 ; that moderates none of their groups may not read (books/moderation.lisp
 ; `fn-mod-hidden-queues', composed by books/nntp-auth.lisp
 ; `fn-auth-access-text').
-(defun fn-gac-readablep (text group)
+;
+; ACCESS-REVOKE-PINNED (coordinator ruling 2026-10-04, specs/reconfiguration.md
+; 2.3 "Readers"): a READ rule may also be (:and PINNED LIVE), readable where
+; both are -- the rule a connection is decided by once the live configuration
+; differs from the one it pinned (fn-gac-and-text below; books/nntp-auth.lisp
+; `fn-auth-access-text').  A tightening reaches the open connection at its next
+; command; a widening never makes it wider than its pin.
+(defun fn-gac-rule-readablep (text group)
   (declare (xargs :guard t))
   (if (and (consp text) (equal (car text) :hide) (consp (cdr text)))
       (and (fn-gac-text-readablep (cadr text) group)
@@ -134,6 +141,42 @@
                               (true-list-fix (cddr text))))
            t)
     (fn-gac-text-readablep text group)))
+
+; (:and A B) is one level: A and B are rules (a text or a :hide), never
+; another :and (fn-gac-and-text builds it from two session rules), so the
+; reader does not recurse.
+(defun fn-gac-readablep (text group)
+  (declare (xargs :guard t))
+  (if (and (consp text) (equal (car text) :and) (consp (cdr text))
+           (consp (cddr text)))
+      (and (fn-gac-rule-readablep (cadr text) group)
+           (fn-gac-rule-readablep (caddr text) group))
+    (fn-gac-rule-readablep text group)))
+
+; The rule of a session decided by PINNED and LIVE, each nil when it
+; restricts nothing: the one that restricts when only one does, either when
+; they are equal (the common read: one comparison of two rule texts), else
+; both.
+(defun fn-gac-and-text (pinned live)
+  (declare (xargs :guard t))
+  (cond ((equal pinned live) pinned)
+        ((null live) pinned)
+        ((null pinned) live)
+        (t (list :and pinned live))))
+
+(defthm fn-gac-and-text-refuses-what-live-refuses
+  (implies (and live (not (fn-gac-readablep live g)))
+           (not (fn-gac-readablep (fn-gac-and-text pinned live) g))))
+
+(defthm fn-gac-and-text-refuses-what-pinned-refuses
+  (implies (and pinned (not (fn-gac-readablep pinned g)))
+           (not (fn-gac-readablep (fn-gac-and-text pinned live) g))))
+
+(defthm fn-gac-and-text-restricts-when-either-does
+  (implies (or pinned live) (fn-gac-and-text pinned live)))
+
+(defthm fn-gac-and-text-of-nil
+  (equal (fn-gac-and-text pinned nil) pinned))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
@@ -424,10 +467,72 @@
                            (append (true-list-fix (fn-inj-config-closed config))
                                    (and post (fn-gac-unpostable-octets post groups)))))
 
+;; ACCESS-REVOKE-PINNED: the live configuration's access, carried beside a
+;; connection's pin.  The reader listing's seventh element (books/owner-
+;; agent.lisp `fn-oag-listing' fills six) is nil, or (TABLE . CLOSED): the
+;; access rows and the closed/moderation list of the LIVE configuration, which
+;; books/nntp-auth.lisp `fn-auth-access-text' intersects with the pinned rule
+;; of the same login (fn-gac-and-text).  books/owner.lisp `fn-own-served-conn'
+;; attaches it at every read; nothing persists it, so the pin itself (every
+;; other field, and the six listing elements) is unchanged.
+(defun fn-gac-listing-live (listing)
+  (declare (xargs :guard t))
+  (fn-inj-nth 6 listing))
+
+(defun fn-gac-listing-with-live (listing live)
+  (declare (xargs :guard t))
+  (list (fn-inj-nth 0 listing) (fn-inj-nth 1 listing) (fn-inj-nth 2 listing)
+        (fn-inj-nth 3 listing) (fn-inj-nth 4 listing) (fn-inj-nth 5 listing)
+        live))
+
+(defun fn-gac-live-access (live-config)
+  (declare (xargs :guard t))
+  (cons (fn-gac-listing-table (fn-inj-config-listing live-config))
+        (fn-inj-config-closed live-config)))
+
+(defun fn-gac-config-with-live (config live-config)
+  (declare (xargs :guard t))
+  (list (fn-inj-nth 0 config) (fn-inj-nth 1 config) (fn-inj-nth 2 config)
+        (fn-inj-nth 3 config)
+        (fn-gac-listing-with-live (fn-inj-config-listing config)
+                                  (fn-gac-live-access live-config))
+        (fn-inj-nth 5 config) (fn-inj-nth 6 config)))
+
+(defthm fn-gac-listing-live-of-with-live
+  (equal (fn-gac-listing-live (fn-gac-listing-with-live listing live)) live)
+  :hints (("Goal" :in-theory (enable fn-inj-nth fn-inj-car fn-inj-cdr))))
+
+(defthm fn-gac-listing-table-of-with-live
+  (equal (fn-gac-listing-table (fn-gac-listing-with-live listing live))
+         (fn-gac-listing-table listing))
+  :hints (("Goal" :in-theory (enable fn-inj-nth fn-inj-car fn-inj-cdr))))
+
+(defthm fn-gac-config-with-live-fields
+  (and (equal (fn-inj-config-allow (fn-gac-config-with-live c l)) (fn-inj-config-allow c))
+       (equal (fn-inj-config-agent (fn-gac-config-with-live c l)) (fn-inj-config-agent c))
+       (equal (fn-inj-config-groups (fn-gac-config-with-live c l)) (fn-inj-config-groups c))
+       (equal (fn-inj-config-max-octets (fn-gac-config-with-live c l))
+              (fn-inj-config-max-octets c))
+       (equal (fn-inj-config-listing (fn-gac-config-with-live c l))
+              (fn-gac-listing-with-live (fn-inj-config-listing c) (fn-gac-live-access l)))
+       (equal (fn-inj-config-closed (fn-gac-config-with-live c l)) (fn-inj-config-closed c))
+       (equal (fn-inj-config-header-limits (fn-gac-config-with-live c l))
+              (fn-inj-config-header-limits c))
+       (fn-inj-config-shapep (fn-gac-config-with-live c l)))
+  :hints (("Goal" :in-theory (e/d (fn-inj-nth fn-inj-car fn-inj-cdr fn-inj-config-allow
+                                   fn-inj-config-agent fn-inj-config-groups
+                                   fn-inj-config-max-octets fn-inj-config-listing
+                                   fn-inj-config-closed fn-inj-config-header-limits
+                                   fn-inj-config-shapep)
+                                  (fn-gac-listing-with-live fn-gac-live-access)))))
+
+(in-theory (disable fn-gac-listing-live fn-gac-listing-with-live fn-gac-live-access
+                    fn-gac-config-with-live))
+
 ; -----------------------------------------------------------------------------
 ; The view is a store the reader machine serves
 
-(in-theory (disable fn-gac-readablep fn-gac-text-readablep))
+(in-theory (disable fn-gac-readablep fn-gac-rule-readablep fn-gac-text-readablep))
 
 (defthm fn-gac-member-of-filter-groups
   (iff (member-equal g (fn-gac-filter-groups text groups))
@@ -469,7 +574,7 @@
 (defthm fn-gac-readablep-implies-stringp
   (implies (fn-gac-readablep text g) (stringp g))
   :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-gac-readablep fn-gac-text-readablep))))
+  :hints (("Goal" :in-theory (enable fn-gac-readablep fn-gac-rule-readablep fn-gac-text-readablep))))
 
 (defthm fn-gac-next-number-of-filter
   (implies (fn-gac-readablep text group)

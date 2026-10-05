@@ -1870,10 +1870,20 @@
 ; per-event law), the owner's clock as the injection reading, its pin
 ; identity and the owner's committed view as the live pin GROUP and LISTGROUP
 ; advance to (NNT-042, books/served.lisp fn-served-repin).
+; ACCESS-REVOKE-PINNED (coordinator ruling 2026-10-04, specs/
+; reconfiguration.md 2.3 "Readers"): the pinned configuration is served with
+; the LIVE configuration's access beside it (books/group-access.lisp
+; `fn-gac-config-with-live'), so every command's READ rule is the pinned rule
+; AND the live rule of the session's login at that command (books/nntp-auth.lisp
+; `fn-auth-access-text').  A revocation reaches an open connection at its
+; next command; nothing else of the live configuration does, and nothing is
+; written back into the pin (fn-own-finish-read keeps fn-own-conn-config).
 (defun fn-own-served-conn (o conn session)
   (declare (xargs :guard t))
   (fn-served-make-conn-live (fn-own-conn-wire conn) session
-                            (fn-own-conn-archive conn) (fn-own-conn-config conn)
+                            (fn-own-conn-archive conn)
+                            (fn-gac-config-with-live (fn-own-conn-config conn)
+                                                     (fn-own-config o))
                             (fn-own-conn-observation conn) (fn-own-clock o)
                             (fn-own-conn-verdicts conn) (fn-own-conn-index conn)
                             (fn-own-conn-group-index conn) (fn-own-conn-control conn)

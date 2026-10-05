@@ -16,6 +16,8 @@
    (defun fnn-socket-shut) (defun fnn-set-nonblocking)
    (defun fnn-socket-read-now) (defun fnn-socket-write-now)
    (define-condition fnn-peer-dial-error)))
+(load-deployed-forms "host/native/mux.lisp"
+ '((defconstant +fnn-mux-pollin+) (defconstant +fnn-mux-pollout+) (defun fnn-mux-poll)))
 (define-condition fnn-tls-error (error) ())
 (define-condition fnn-tls-handshake-error (fnn-tls-error) ())
 (load-deployed-forms "host/native/owner.lisp"
@@ -236,8 +238,102 @@
              (check (null (fnn-feed-link-socket held)) "the removed link is closed")
              (format t "~&FEED_FAIR_PASS removed~%"))
         (dolist (socket (list client server)) (ignore-errors (sb-bsd-sockets:socket-close socket)))))))
+;; SCEN-FEED-PACE: the actual worker loop over a kernel socket to a peer that
+;; answers every command at once.  The recorded feed port offers TOTAL
+;; commands, one in flight at a time as fn's feed does (fn-feed-at-most-one-
+;; in-flight).  Every sleep and every wait is checked: none may come while a
+;; command could leave (none in flight, more to offer).  The fixed 1/20 s
+;; sleep after each active round (eight rounds an article) did, about 2.4
+;; articles a second on a real peer; this asks hundreds a second.
+(defun answering-peer (server)
+  (let ((buffer (fnn-make-octets 4096)) (line nil))
+    (handler-case
+        (loop
+          (multiple-value-bind (got count) (sb-bsd-sockets:socket-receive server buffer 4096)
+            (declare (ignore got))
+            (when (or (null count) (zerop count)) (return))
+            (loop for i below count
+                  for octet = (aref buffer i)
+                  do (push octet line)
+                     (when (= octet 10)
+                       (let* ((text (map 'string #'code-char (nreverse line)))
+                              (id (subseq text (position #\< text)
+                                          (1+ (position #\> text))))
+                              (reply (map '(vector (unsigned-byte 8)) #'char-code
+                                          (format nil "238 ~a~c~c" id #\Return #\Newline))))
+                         (setq line nil)
+                         (sb-bsd-sockets:socket-send server reply (length reply)))))))
+      (error () nil))))
+
+(defun pace-fixture ()
+  (multiple-value-bind (client server) (pair)
+    (let* ((link (%make-fnn-feed-link :peer "fast" :peer-octets '(70) :socket client
+                                      :fd (fnn-socket-fd client) :ready t))
+           (runtime (%make-fnn-feed-runtime :service :recorded :links (list link)
+                                           :lock (sb-thread:make-mutex) :limit 65536))
+           (total 300) (offered 0) (answered 0) (inflight nil) (input nil)
+           (beside-work 0) (waits 0) (dropped nil)
+           (empty (fnn-make-octets 0)) (started (get-internal-real-time))
+           (real-sleep (fdefinition 'sleep)) (real-poll (fdefinition 'fnn-mux-poll)))
+      (flet ((note-wait ()
+               (incf waits)
+               (when (and (not inflight) (< offered total)) (incf beside-work))))
+        (unwind-protect
+             (progn
+               (sb-thread:make-thread (lambda () (answering-peer server)))
+               ;; A watchdog ends a stalled run, so a red reports, not hangs.
+               (sb-thread:make-thread
+                (lambda () (funcall real-sleep 30)
+                  (setf (fnn-feed-runtime-stopping runtime) t)))
+               (setf (symbol-function 'fnn-feed-refresh-links) (lambda (runtime) (declare (ignore runtime)))
+                     (symbol-function 'fnn-feed-commits-seen) (lambda (runtime) (declare (ignore runtime)) 0)
+                     (symbol-function 'fnn-feed-dial) (lambda (&rest args) (declare (ignore args)))
+                     (symbol-function 'fnn-feed-now)
+                     (lambda () (floor (* 1000 (get-internal-real-time)) internal-time-units-per-second))
+                     (symbol-function 'fnn-feed-loss-backoff) (lambda (&rest args) (declare (ignore args)) 0)
+                     (symbol-function 'fnn-feed-drop-link)
+                     (lambda (runtime link now base cause) (declare (ignore link now base))
+                       (setq dropped cause) (setf (fnn-feed-runtime-stopping runtime) t))
+                     (symbol-function 'fnn-feed-tick)
+                     (lambda (service link now) (declare (ignore service link now))
+                       (if (and (not inflight) (< offered total))
+                           (progn (setq inflight t) (incf offered)
+                                  (values :offer (fnn-octets (map 'list #'char-code
+                                                                  (format nil "CHECK <~d@pace>~c~c" offered
+                                                                          #\Return #\Newline)))))
+                         (values :idle empty)))
+                     (symbol-function 'fnn-feed-reply-step)
+                     (lambda (service link octets now) (declare (ignore service link now))
+                       (setq input (append input (and octets (coerce octets 'list))))
+                       (let ((end (position 10 input)))
+                         (cond (end (setq input (nthcdr (1+ end) input) inflight nil)
+                                    (when (= (incf answered) total)
+                                      (setf (fnn-feed-runtime-stopping runtime) t))
+                                    (values :quiet empty))
+                               (t (values :need-input empty)))))
+                     (symbol-function 'fnn-feed-idle-wait)
+                     (lambda (runtime seen ms) (declare (ignore runtime seen))
+                       (note-wait) (funcall real-sleep (/ ms 1000)) :timeout)
+                     (symbol-function 'fnn-mux-poll)
+                     (lambda (fds events ms) (note-wait) (funcall real-poll fds events ms)))
+               (sb-ext:without-package-locks
+                 (setf (fdefinition 'sleep)
+                       (lambda (seconds) (note-wait) (funcall real-sleep seconds))))
+               (unwind-protect (fnn-feed-worker-loop runtime)
+                 (sb-ext:without-package-locks (setf (fdefinition 'sleep) real-sleep)))
+               (let ((seconds (/ (- (get-internal-real-time) started)
+                                 internal-time-units-per-second 1.0)))
+                 (format t "~&FEED_PACE answered=~d of ~d in ~,3f s (~,1f a second); waits=~d, beside work=~d~%"
+                         answered total seconds (/ answered (max seconds 0.001)) waits beside-work)
+                 (check (null dropped) "the answering peer's link must not be dropped")
+                 (check (= answered total) "every command must be answered before the watchdog")
+                 (check (zerop beside-work) "the worker must never wait while a command could leave")
+                 (check (> (/ answered seconds) 200) "an answering local peer must get hundreds of commands a second"))
+               (format t "~&FEED_FAIR_PASS pace~%"))
+          (dolist (socket (list client server)) (ignore-errors (sb-bsd-sockets:socket-close socket))))))))
 (let ((mode (second sb-ext:*posix-argv*)))
   (cond ((equal mode "retained") (retained-fixture))
+        ((equal mode "pace") (pace-fixture))
         ((equal mode "reply") (reply-fixture))
         ((equal mode "silent") (silent-fixture))
         ((equal mode "removed") (removed-fixture)) (t (fair-fixture mode))))

@@ -51,3 +51,23 @@
         (not (equal (fn-own-tls-result-consumed r) (len *oclnt-l2*))))))
 ; Mutation that consumes the rest of a pipeline is refuted affirmatively.
 (assert-event (not (equal (fn-own-tls-result-consumed *orlnt-r*) (len *orlnt-octs*))))
+
+; KEYSTONE fn-orln-exhausted-pool-never-faults-a-publication (lane
+; pool-refusal), its fields.  Satisfiable: each stage's exhausted pool.
+(assert-event
+ (and (equal (fn-orln-read-refusal-outcome :checkpoint-walk :read-resources-unavailable) :defer-publication)
+      (equal (fn-orln-read-refusal-outcome :checkpoint-write :read-identities-exhausted) :defer-publication)
+      (equal (fn-orln-read-refusal-outcome :checkpoint-release :read-resources-unavailable) :defer-frame)
+      (equal (fn-fs-classify (fn-orln-read-refusal-class :defer-publication) nil) :refusal)
+      (equal (fn-fs-classify (fn-orln-read-refusal-class :defer-publication) :durable) :refusal)
+      (null (fn-orln-read-refusal-class :defer-frame))))
+; Teeth: the class the dispatcher made of a refusal raised inside the call
+; (host/native/io.lisp fnn-call: fnn-store-fault) is a fault -- the owner's
+; exit 4 on the catch-up native; and the decision is not "everything
+; defers": another word, or a stage outside the publication, faults.
+(assert-event
+ (and (equal (fn-fs-classify "fnn-store-fault" nil) :fault)
+      (equal (fn-fs-classify (fn-orln-read-refusal-class :fault) nil) :fault)
+      (equal (fn-orln-read-refusal-outcome :checkpoint-walk :invalid-read-demand) :fault)
+      (equal (fn-orln-read-refusal-outcome :checkpoint-release :invalid-resource-state) :fault)
+      (equal (fn-orln-read-refusal-outcome :served-line :read-resources-unavailable) :fault)))

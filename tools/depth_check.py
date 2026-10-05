@@ -315,6 +315,25 @@ _EAGER0 = re.compile(r"\(set-verify-guards-eagerness\s+0\s*\)", re.IGNORECASE)
 _EAGER2 = re.compile(r"\(set-verify-guards-eagerness\s+2\s*\)", re.IGNORECASE)
 
 
+_GENERATOR_OPENERS = tuple("(" + h for h in ledger.GENERATOR_EXPANSIONS)
+
+
+def _generated_verifications(text: str) -> set[str]:
+    """The `verify-guards' events a generator form's expansion carries.
+
+    A generator (def-loop: its wrapper and its loop) emits its own
+    `(verify-guards NAME)', which is in no source text: the regex over the
+    text never sees it, and without this every def-loop on the closure read
+    as unverified and its :logic recursion as what runs."""
+    if not any(opener in text for opener in _GENERATOR_OPENERS):
+        return set()
+    found: set[str] = set()
+    for form, _line in ledger.source_events(ledger.Reader(text).top_level()):
+        if callgraph.head(form) == "verify-guards" and len(form) > 1:
+            found.add(str(form[1]).lower())
+    return found
+
+
 def unverified(defs: dict) -> set[str]:
     """The logic-mode functions of DEFS whose guards are not verified: an
     explicit `:verify-guards nil', no guard declared (eagerness 1 verifies only
@@ -326,6 +345,7 @@ def unverified(defs: dict) -> set[str]:
         for path in sorted((ROOT / top).rglob("*.lisp")):
             text = path.read_text(encoding="utf-8", errors="replace")
             events.update(m.lower() for m in _VERIFY.findall(text))
+            events.update(_generated_verifications(text))
             rel = path.relative_to(ROOT).as_posix()
             eager[rel] = 0 if _EAGER0.search(text) else 2 if _EAGER2.search(text) else 1
     out = set()

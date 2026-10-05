@@ -147,3 +147,111 @@
                                (max (fn-prd-idle-ms) (fn-prd-row-wait row now))))
                ((row '((67) 2400 1000 nil)) (active nil) (tbl *prd-sched*) (now 2000))
                :fault "a pause that always wakes before the earliest round is due, re-reading both plan tables for nothing")))
+
+; SCEN-FEED-PACE: the push worker's pace (fn-prd-feed-pause).  A link is
+; (ACTION BLOCKED AWAITING).
+(assert-event (equal (fn-prd-feed-link-wait '(:offer nil nil)) :now))
+(assert-event (equal (fn-prd-feed-link-wait '(:write nil t)) :now))
+(assert-event (equal (fn-prd-feed-link-wait '(:write :output t)) :output))
+(assert-event (equal (fn-prd-feed-link-wait '(:tls :input t)) :input))
+(assert-event (equal (fn-prd-feed-link-wait '(:connect :output t)) :output))
+(assert-event (equal (fn-prd-feed-link-wait '(:read :input t)) :input))
+(assert-event (equal (fn-prd-feed-link-wait '(:read :input nil)) :commit))
+(assert-event (equal (fn-prd-feed-link-wait '(:dial nil nil)) :commit))
+(assert-event (equal (fn-prd-feed-link-wait '(:mystery nil nil)) :commit))
+(assert-event (equal (list (fn-prd-feed-quiet-ms 0) (fn-prd-feed-quiet-ms 19)
+                           (fn-prd-feed-quiet-ms 20) (fn-prd-feed-quiet-ms 21)
+                           (fn-prd-feed-quiet-ms 22) (fn-prd-feed-quiet-ms 23)
+                           (fn-prd-feed-quiet-ms 24) (fn-prd-feed-quiet-ms 500))
+                     '(50 50 100 200 400 800 1000 1000)))
+(assert-event (equal (fn-prd-feed-pause '((:read :input t) (:offer nil nil)) 30 nil 0)
+                     '(:now 0)))
+(assert-event (equal (fn-prd-feed-pause '((:read :input t) (:dial nil nil)) 30 nil 0)
+                     '(:poll 1000)))
+(assert-event (equal (fn-prd-feed-pause '((:read :input nil) (:dial nil nil)) 0 '(500 1300) 1000)
+                     '(:signal 50)))
+(assert-event (equal (fn-prd-feed-pause '((:read :input nil)) 30 '(900 1300) 1000)
+                     '(:signal 300)))
+
+(defteeth fn-prd-feed-never-sleeps-while-an-article-can-leave
+  :claim (((listed (member-equal link links))
+           (can-leave (or (member-equal (fn-prd-feed-link-action link) '(:offer :reply))
+                          (and (equal (fn-prd-feed-link-action link) :write)
+                               (not (member-equal (fn-prd-feed-link-blocked link)
+                                                  '(:input :output)))))))
+          (equal (fn-prd-feed-pause links idle dials now) '(:now 0)))
+  :subject fn-prd-feed-pause
+  :witness ((link '(:write nil t)) (links '((:read :input t) (:write nil t) (:dial nil nil)))
+            (idle 30) (dials '(5000)) (now 1000))
+  :breaks ((listed ((link '(:offer nil nil)) (links '((:read :input t))) (idle 0)
+                    (dials nil) (now 0)))
+           (can-leave ((link '(:write :output t)) (links '((:write :output t))) (idle 0)
+                       (dials nil) (now 0))))
+  :mutations ((the-fixed-sleep
+               (:conclusion (equal (fn-prd-feed-pause links idle dials now)
+                                   (list :signal (fn-prd-feed-poll-ms))))
+               ((link '(:offer nil nil)) (links '((:offer nil nil))) (idle 0) (dials nil) (now 0))
+               :fault "the fixed 1/20 s sleep after every round that did anything: about eight rounds an article, 2.4 articles a second (SCEN-FEED-PACE)")
+              (spins-on-a-full-socket
+               (:hypothesis can-leave (member-equal (fn-prd-feed-link-action link)
+                                                    '(:offer :reply :write)))
+               ((link '(:write :output t)) (links '((:write :output t))) (idle 0)
+                (dials nil) (now 0))
+               :fault "a worker that retries a write the kernel refused at once, spinning on a full send queue")))
+
+(defteeth fn-prd-feed-pause-is-bounded
+  :claim (()
+          (let ((pause (fn-prd-feed-pause links idle dials now)))
+            (or (equal pause '(:now 0))
+                (and (member-equal (car pause) '(:poll :signal))
+                     (<= (fn-prd-feed-poll-ms) (cadr pause))
+                     (<= (cadr pause) (fn-prd-idle-max-ms))))))
+  :subject fn-prd-feed-pause
+  :witness ((links '((:read :input nil))) (idle 30) (dials nil) (now 0))
+  :breaks ()
+  :mutations ((polls-forever
+               (:conclusion
+                (let ((pause (fn-prd-feed-pause links idle dials now)))
+                  (or (equal pause '(:now 0))
+                      (and (member-equal (car pause) '(:poll :signal))
+                           (<= (fn-prd-feed-poll-ms) (cadr pause))
+                           (<= (cadr pause) (fn-prd-feed-poll-ms))))))
+               ((links '((:read :input nil))) (idle 30) (dials nil) (now 0))
+               :fault "a quiet feed that wakes every 50 ms forever (S145: about 40 owner transit holds a second)")))
+
+(defteeth fn-prd-feed-pause-polls-a-waiting-socket
+  :claim (((listed (member-equal link links))
+           (waiting (member-equal (fn-prd-feed-link-wait link) '(:input :output))))
+          (not (equal (car (fn-prd-feed-pause links idle dials now)) :signal)))
+  :subject fn-prd-feed-pause
+  :witness ((link '(:read :input t)) (links '((:read :input t) (:dial nil nil)))
+            (idle 30) (dials nil) (now 0))
+  :breaks ((listed ((link '(:read :input t)) (links '((:dial nil nil))) (idle 0)
+                    (dials nil) (now 0)))
+           (waiting ((link '(:read :input nil)) (links '((:read :input nil))) (idle 0)
+                     (dials nil) (now 0))))
+  :mutations ((spins-on-a-reply
+               (:conclusion (equal (car (fn-prd-feed-pause links idle dials now)) :now))
+               ((link '(:read :input t)) (links '((:read :input t))) (idle 0) (dials nil) (now 0))
+               :fault "a worker that spins while its peer owes a reply, instead of polling the socket")
+              (idle-link-as-owed
+               (:hypothesis waiting (member-equal (fn-prd-feed-link-wait link)
+                                                  '(:input :output :commit)))
+               ((link '(:read :input nil)) (links '((:read :input nil))) (idle 0)
+                (dials nil) (now 0))
+               :fault "an idle connection the peer owes nothing treated as owed a reply: polled every 50 ms instead of sleeping on the commit signal (S145)")))
+
+(defteeth fn-prd-feed-pause-never-sleeps-past-a-redial
+  :claim (((listed (member-equal dial dials))
+           (ahead (< (nfix now) (nfix dial))))
+          (<= (cadr (fn-prd-feed-pause links idle dials now))
+              (max (fn-prd-feed-poll-ms) (- (nfix dial) (nfix now)))))
+  :subject fn-prd-feed-pause
+  :witness ((dial 1200) (dials '(5000 1200)) (now 1000) (idle 30) (links '((:dial nil nil))))
+  :breaks ((listed ((dial 1100) (dials '(5000)) (now 1000) (idle 30) (links '((:dial nil nil)))))
+           (ahead ((dial 900) (dials '(900)) (now 1000) (idle 30) (links '((:dial nil nil))))))
+  :mutations ((spins-before-a-redial
+               (:conclusion (<= (cadr (fn-prd-feed-pause links idle dials now))
+                                (- (nfix dial) (nfix now))))
+               ((dial 1010) (dials '(1010)) (now 1000) (idle 30) (links '((:dial nil nil))))
+               :fault "a wait cut below the poll for a redial a few milliseconds ahead: a spin")))

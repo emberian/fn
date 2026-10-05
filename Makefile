@@ -2016,6 +2016,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-available-commands \
 	books/served-available-read \
 	books/served-available-access \
+	books/served-access-revoke \
 	books/article-stream \
 	tests/acl2/article-stream-tests \
 	books/article-stream-server \
@@ -2031,6 +2032,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-available-commands-tests \
 	tests/acl2/served-available-read-tests \
 	tests/acl2/served-available-access-tests \
+	tests/acl2/served-access-revoke-tests \
 	books/def-cursor-batch \
 	books/newnews-stream-cursor \
 	tests/acl2/newnews-stream-cursor-tests \

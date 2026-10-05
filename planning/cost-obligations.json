@@ -5,14 +5,14 @@
   "proved": 2,
   "partial": 1,
   "derived": 6,
-  "none": 1730
+  "none": 1735
  },
  "by_class": {
   "common-lisp-compliant": {
    "proved": 2,
    "partial": 1,
    "derived": 6,
-   "none": 990
+   "none": 995
   },
   "ideal": {
    "proved": 0,
@@ -8760,6 +8760,16 @@
    "declared_in": null
   },
   {
+   "name": "fn-orln-read-refusal-outcome",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
    "name": "fn-ort-fenced-input-consumed",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -13081,6 +13091,46 @@
   },
   {
    "name": "fn-prd-feed-action",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-prd-feed-link-wait",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-prd-feed-pause",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-prd-feed-poll-ms",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-prd-feed-quantum",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,

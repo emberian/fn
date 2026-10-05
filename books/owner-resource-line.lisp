@@ -2,6 +2,7 @@
 ; dependency is not a deadline observation. RFC 3977 section 3.2.1 code 403.
 (in-package "ACL2")
 (include-book "owner-cold-line")
+(include-book "failure-scope")
 
 (defun fn-orln-refusalp (word)
   (declare (xargs :guard t))
@@ -84,3 +85,68 @@
                                      fn-otb-unavailable-line fn-osch-text fn-orln-refusalp))))
 
 (in-theory (disable fn-orln-preflight-line))
+
+; ---------------------------------------------------------------------------
+; THE PUBLICATION'S OWN READS (lane pool-refusal, 2026-10-05).  A checkpoint
+; publication reads the arena synchronously inside ACL2 calls (the walk,
+; fn-scka-srcs-n; the arena steps, fn-scka-write-step) and, after its
+; install, reads each new frame and reseats it (fn-xrt-reseat-checkpoint-
+; frame, whose payload comparison reads the old extent).  A read the pool
+; refuses there used to be raised inside the call, where the dispatcher
+; (host/native/io.lisp fnn-call) makes every condition a fault: the owner
+; stopped, exit 4 (peer catch-up native, 1000 posts: "extent read refused:
+; READ-RESOURCES-UNAVAILABLE").  The host now hands the refusal's word back
+; to the stage that asked (host/native/io.lisp fnn-extent-with-read-refusal)
+; and this decides it:
+;   * the walk or an arena step: the publication is deferred -- refused as a
+;     Store write refused before publication (fnn-store-io-refusal: nothing
+;     stored, the old checkpoint stays, the next decision publishes again);
+;   * the release's reseat of one frame: that frame is deferred -- not
+;     reseated, its old files stay retired until a later publication's frame
+;     names the payloads;
+;   * any other word (a malformed demand, an unknown resource state) or any
+;     other stage stays a fault.
+(defconst *fn-orln-read-stages* '(:checkpoint-walk :checkpoint-write :checkpoint-release))
+
+(defun fn-orln-read-refusal-outcome (stage word)
+  (declare (xargs :guard t))
+  (cond ((not (fn-orln-refusalp word)) :fault)
+        ((member-eq stage '(:checkpoint-walk :checkpoint-write)) :defer-publication)
+        ((eq stage :checkpoint-release) :defer-frame)
+        (t :fault)))
+
+; The condition class the host raises for an outcome (NIL: none, the stage
+; goes on); the failure scope's tables classify it (books/failure-scope.lisp).
+(defun fn-orln-read-refusal-class (outcome)
+  (declare (xargs :guard t))
+  (case outcome
+    (:defer-publication "fnn-store-io-refusal")
+    (:defer-frame nil)
+    (otherwise "fnn-store-fault")))
+
+; KEYSTONE.  An exhausted pool (either named refusal) on a read any stage of
+; the publication runs is a deferral, never a fault: the frame's is no
+; condition at all, the publication's is a class the failure scope
+; classifies as a refusal at every step.  Teeth (tests/acl2/
+; owner-resource-line-tests.lisp): the class the dispatcher made of it
+; before, fnn-store-fault, classifies as a fault; a word that is not an
+; exhausted pool still faults.
+(defthm fn-orln-exhausted-pool-never-faults-a-publication
+  (implies (and (member-equal stage *fn-orln-read-stages*)
+                (fn-orln-refusalp word))
+           (let* ((outcome (fn-orln-read-refusal-outcome stage word))
+                  (class (fn-orln-read-refusal-class outcome)))
+             (and (member-equal outcome '(:defer-publication :defer-frame))
+                  (or (and (equal outcome :defer-frame) (null class))
+                      (equal (fn-fs-classify class step) :refusal)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-orln-read-refusal-outcome fn-orln-read-refusal-class
+                                     fn-fs-classify))))
+
+; And only an exhausted pool on those stages is: everything else faults.
+(defthm fn-orln-read-refusal-otherwise-faults
+  (implies (not (and (member-equal stage *fn-orln-read-stages*)
+                     (fn-orln-refusalp word)))
+           (equal (fn-orln-read-refusal-outcome stage word) :fault))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-orln-read-refusal-outcome))))

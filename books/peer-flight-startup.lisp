@@ -20,7 +20,8 @@
        (t (fn-prstartup-plan dynamic occupied
               (fn-prstartup-protected-with-peer profile core nursery output max-connections peer observed)
               root workers (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*
-              cache-limit fd-limit))))
+              cache-limit fd-limit
+              (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)))))
 
 ; Pool budget includes native bytes already reserved outside the heap.
 ; Its remaining heap allowance is exclusive of the peer heap slice.
@@ -125,7 +126,7 @@
  :rule-classes nil
  :hints (("Goal" :in-theory (e/d (fn-prstartup-extend-default-reservation)
                                  (fn-prstartup-launch-floor fn-heap-grow-runtime-dynamic
-                                  fn-prstartup-required-heap fn-heap-reservation-octets
+                                  fn-prstartup-required-heap fn-prstartup-launch-extra fn-heap-reservation-octets
                                   fn-heap-machine-octets fn-crl-table-supportedp fn-heap-mb-of)))))
 
 ; A :heap peer extension holds a valid policy over a :heap base and grows
