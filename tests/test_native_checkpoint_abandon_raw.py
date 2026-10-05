@@ -15,9 +15,11 @@ class CheckpointAbandonRawTests(unittest.TestCase):
         result = subprocess.run(
             ["sbcl", "--noinform", "--script", "tests/native_checkpoint_abandon_raw-mock.lisp"],
             text=True, capture_output=True, timeout=60)
-        failed = [line for line in result.stdout.splitlines()
+        failed = [line.split(":", 1)[1] for line in result.stdout.splitlines()
                   if line.startswith("CHECKPOINT_ABANDON_ASSERTION:")]
-        self.assertEqual(failed, [], result.stdout[-2000:] + result.stderr[-2000:])
+        if failed:
+            # the harness's own assertion, exactly (the defect's name)
+            self.fail(failed[0])
         self.assertEqual(result.returncode, 0, result.stdout[-2000:] + result.stderr[-2000:])
         self.assertIn("checkpoint abandon passed (5 cases)", result.stdout)
 
