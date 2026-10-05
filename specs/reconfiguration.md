@@ -426,6 +426,32 @@ Stated as `fn-ocfg-pin-is-stable-without-advance` (§8), whose trace predicate
 `fn-ocfg-repins-forp` counts every `:advance`, `:close`, `:fault`, `:octets`
 and `:read` event on that connection as a possible pin change.
 
+**Access tightening is the one exception** (coordinator ruling 2026-10-04,
+ACCESS-REVOKE-PINNED). After a reconfiguration that removes or narrows a
+session's read access (its login's group-access row, or moderation-queue
+hiding), the session's next command is decided against the new rule; no open
+connection keeps serving what the live configuration refuses it. Mechanism:
+`fn-own-served-conn` serves the pinned configuration with the live
+configuration's access beside it (`fn-gac-config-with-live`), and
+`fn-auth-access-text` decides every command by the pinned rule AND the live
+rule of the login the session has at that command (`(:and PINNED LIVE)` in
+`fn-gac-readablep`). Consequences, each a theorem in
+`books/served-access-revoke.lisp`:
+
+- what the live rule refuses, no command of any connection is served from
+  (`fn-own-served-conn-refuses-what-the-live-rule-refuses`), including after
+  a GROUP re-pin and after an AUTHINFO pipelined into the same socket read;
+- what the pin refuses stays refused: a widening never reaches an open
+  connection (`fn-own-served-conn-refuses-what-the-pin-refuses`); a re-grant
+  after a revocation restores at most the pinned access;
+- a reconfiguration that leaves the session's rule unchanged changes nothing
+  it is served (`fn-own-served-conn-rule-is-the-pin-when-access-is-unchanged`).
+
+Nothing is written back into the pin: POST rules, the group table, the
+listing and every other field stay the pinned generation's, per the rule
+above. The decision costs one more rule lookup and one comparison of two rule
+texts per command; nothing walks the catalog or the group table to make it.
+
 **Group removal.** Never while any obligation or pin references the group.
 Admissibility splits into a replay-checkable layer and an owner layer, because
 reader pins are not durable state:

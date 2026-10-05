@@ -226,7 +226,8 @@
 (defthm fn-own-complete-keeps-every-connection
   (and (equal (fn-own-conns (fn-own-complete o)) (fn-own-conns o))
        (equal (fn-own-clock (fn-own-complete o)) (fn-own-clock o))
-       (equal (fn-own-inflight (fn-own-complete o)) (fn-own-inflight o)))
+       (equal (fn-own-inflight (fn-own-complete o)) (fn-own-inflight o))
+       (equal (fn-own-config (fn-own-complete o)) (fn-own-config o)))
   :hints (("Goal" :in-theory (enable fn-own-complete fn-own-refresh-keeps-fields))))
 
 ; KEYSTONE (P2, T5's name).  If the reply fn-own-outcome renders for
@@ -321,7 +322,8 @@
 (defthm fn-own-writer-step-keeps-every-connection
   (implies (fn-ocfg-writer-eventp event)
            (and (equal (fn-own-conns (fn-own-step o event fn-arena)) (fn-own-conns o))
-                (equal (fn-own-clock (fn-own-step o event fn-arena)) (fn-own-clock o))))
+                (equal (fn-own-clock (fn-own-step o event fn-arena)) (fn-own-clock o))
+                (equal (fn-own-config (fn-own-step o event fn-arena)) (fn-own-config o))))
   :hints (("Goal" :in-theory (enable fn-own-step fn-own-take-submission fn-own-begin
                                      fn-own-store-step fn-own-refresh-keeps-fields))))
 
@@ -330,7 +332,9 @@
            (and (equal (fn-own-conns (fn-ocfg-owner (fn-ocfg-step oc event fn-arena)))
                        (fn-own-conns (fn-ocfg-owner oc)))
                 (equal (fn-own-clock (fn-ocfg-owner (fn-ocfg-step oc event fn-arena)))
-                       (fn-own-clock (fn-ocfg-owner oc)))))
+                       (fn-own-clock (fn-ocfg-owner oc)))
+                (equal (fn-own-config (fn-ocfg-owner (fn-ocfg-step oc event fn-arena)))
+                       (fn-own-config (fn-ocfg-owner oc)))))
   :hints (("Goal" :in-theory (e/d (fn-ocfg-step fn-ocfg-pass fn-ocfg-complete
                                    fn-ocfg-with-owner)
                                   (fn-own-step fn-own-complete fn-ocfg-open fn-ocfg-read
@@ -344,7 +348,9 @@
            (and (equal (fn-own-conns (fn-ocfg-owner (fn-ocfg-run oc events fn-arena)))
                        (fn-own-conns (fn-ocfg-owner oc)))
                 (equal (fn-own-clock (fn-ocfg-owner (fn-ocfg-run oc events fn-arena)))
-                       (fn-own-clock (fn-ocfg-owner oc)))))
+                       (fn-own-clock (fn-ocfg-owner oc)))
+                (equal (fn-own-config (fn-ocfg-owner (fn-ocfg-run oc events fn-arena)))
+                       (fn-own-config (fn-ocfg-owner oc)))))
   :hints (("Goal" :induct (fn-ocfg-run oc events fn-arena)
            :in-theory (e/d (fn-ocfg-run) (fn-ocfg-step fn-ocfg-writer-eventp)))))
 
@@ -353,17 +359,26 @@
   :hints (("Goal" :in-theory (enable fn-own-outcome fn-own-advance fn-own-advance-result
                                      fn-own-set-conns))))
 
+(defthm fn-own-outcome-keeps-the-config
+  (equal (fn-own-config (cdr (fn-own-outcome o id word))) (fn-own-config o))
+  :hints (("Goal" :in-theory (enable fn-own-outcome fn-own-advance fn-own-advance-result
+                                     fn-own-set-conns))))
+
 ; A reader connection's served chunk reads its own connection record, the
 ; owner's clock and the owner's committed view (NNT-042, specs/nntp.md: a
 ; successful GROUP or LISTGROUP in the chunk acquires that view; books/served
 ; fn-served-repin), nothing else.  A peer connection also reads the live node
 ; (fn-own-conn-live-session): its offers answer from the store as it is now,
-; deliberately, so it is outside this statement.
+; deliberately, so it is outside this statement.  ACCESS-REVOKE-PINNED: the
+; owner's live configuration is read as well -- its access decides every
+; command together with the pin's (books/served-access-revoke.lisp) -- so the
+; two owners agree on it too.
 (defthm fn-own-reader-tls-read-depends-only-on-its-connection-clock-and-view
   (implies (and (equal (fn-own-find-conn id (fn-own-conns o2))
                        (fn-own-find-conn id (fn-own-conns o)))
                 (equal (fn-own-clock o2) (fn-own-clock o))
                 (equal (fn-own-view o2) (fn-own-view o))
+                (equal (fn-own-config o2) (fn-own-config o))
                 (not (fn-peer-session-cfg
                       (fn-auth-session-base
                        (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o)))))))
@@ -407,6 +422,9 @@
                        (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
                 (equal (fn-own-clock (fn-ocfg-owner oc2))
                        (fn-own-clock (fn-ocfg-owner oc)))
+                ;; ACCESS-REVOKE-PINNED: the live access decides with the pin's.
+                (equal (fn-own-config (fn-ocfg-owner oc2))
+                       (fn-own-config (fn-ocfg-owner oc)))
                 (not (fn-served-advance-eventp event)))
            (equal (car (fn-ocfg-read-step oc2 id event fn-arena))
                   (car (fn-ocfg-read-step oc id event fn-arena))))
@@ -447,7 +465,9 @@
              (and (equal (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc2)))
                          (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
                   (equal (fn-own-clock (fn-ocfg-owner oc2))
-                         (fn-own-clock (fn-ocfg-owner oc))))))
+                         (fn-own-clock (fn-ocfg-owner oc)))
+                  (equal (fn-own-config (fn-ocfg-owner oc2))
+                         (fn-own-config (fn-ocfg-owner oc))))))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-own-outcome-touches-only-its-connection

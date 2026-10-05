@@ -767,10 +767,18 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
 ; -----------------------------------------------------------------------------
 ; The owner transitions the host calls
 
+; The served configuration is the pin with the live access beside it
+; (ACCESS-REVOKE-PINNED, books/owner.lisp fn-own-served-conn): its agent is
+; the pin's.
 (defthm fn-oag-tls-served-conn-config
   (equal (fn-served-conn-config (fn-own-tls-served-conn o conn))
-         (fn-own-conn-config conn))
+         (fn-gac-config-with-live (fn-own-conn-config conn) (fn-own-config o)))
   :hints (("Goal" :in-theory (enable fn-own-tls-served-conn))))
+
+(defthm fn-oag-tls-served-conn-agent
+  (equal (fn-inj-config-agent (fn-served-conn-config (fn-own-tls-served-conn o conn)))
+         (fn-inj-config-agent (fn-own-conn-config conn)))
+  :hints (("Goal" :in-theory (disable fn-own-tls-served-conn))))
 
 (defthm fn-oag-read-tls-prefix-submission-names-the-pinned-agent
   (implies (fn-served-connp
