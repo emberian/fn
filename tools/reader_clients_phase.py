@@ -283,10 +283,22 @@ class Node:
                     *words], cwd=str(ROOT), env=self.env, timeout=timeout)
 
     def start(self):
+        # The owner starts the way an installed node starts (decided-launch
+        # ruling, 2026-10-04; tests/native_harness.py Node.launch): through
+        # packaging/fn in its installed layout, which runs the image's heap
+        # probe and starts at the figure ACL2 decides for this store.  The
+        # developer launcher's fixed heap left a store carrying the default
+        # peer flight profile refused ("native worker reservation is not
+        # held", roll-up set-ecf10066f).
+        if str(ROOT) not in sys.path:
+            sys.path.insert(0, str(ROOT))
+        from tests.native_harness import installed_launcher
+        env = dict(self.env)
+        image = env.pop("FN_NATIVE_HOST")
         self.log = open(self.work / "owner.stderr", "wb")
         self.process = subprocess.Popen(
-            [str(ROOT / "packaging" / "fn-native"), "operator", str(self.config), "run"],
-            cwd=str(ROOT), env=self.env, stdout=subprocess.PIPE, stderr=self.log,
+            [str(installed_launcher(image)), "operator", str(self.config), "run"],
+            cwd=str(ROOT), env=env, stdout=subprocess.PIPE, stderr=self.log,
             bufsize=0)
         seen, deadline = 0, time.monotonic() + 300
         while seen < 2 and time.monotonic() < deadline:
