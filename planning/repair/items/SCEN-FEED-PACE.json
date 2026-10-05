@@ -22,7 +22,9 @@
   "tests/test_native_feed_fair_round.py",
   "host/interfaces.lisp",
   "planning/proofs.json",
-  "planning/repair/items/SCEN-FEED-PACE.json"
+  "planning/repair/items/SCEN-FEED-PACE.json",
+  "planning/evidence-index.tsv",
+  "planning/evidence/repair/*"
  ],
  "severity": "medium",
  "source": "scenarios-2",
@@ -30,9 +32,36 @@
  "test": "python3 -m unittest tests.test_native_feed_fair_round.FeedFairRoundTests.test_an_answering_peer_gets_hundreds_of_commands_a_second",
  "timeout": "300",
  "title": "An outbound feed to a streaming peer that answers at once delivers about 2.4 articles a second. peering test_feeding_past_the_queue_bound_keeps_local_posts_accepted feeds 1,100 articles to ScriptedTransitPeer, which answers 238/239 without delay, and took 462 s at batch 6 (lat1, set 6107ceb56): 0.42 s per article, and the slowest test in the suite. Cause, from host/native/feed-service.lisp: fnn-feed-worker-loop runs ONE fnn-feed-pump-link action per link per round (offer, write, read, consume), and a round that did work sleeps +fnn-feed-poll-seconds+ (1/20 s) before the next. A CHECK/TAKETHIS article needs about 8 such rounds. At that rate a peer catching up 10,000 articles waits about 70 minutes on scheduling alone. Fix forward (scheduling only, ACL2 still decides every offer): a link that made progress keeps pumping inside the round, up to a bound, before the round's sleep. Measure: the peering module's case time before and after, with every assertion kept.",
- "updated": "2026-10-05T01:43:00Z",
+ "updated": "2026-10-05T01:43:49Z",
  "verify": {
   "base": "0d5054d3ed71c5b25bbab7aa7c626d28ef5b340e",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "False is not true : an answering local peer must get hundreds of commands a second, and the feed must never wait while one could leave",
+      "test": "tests.test_native_feed_fair_round.FeedFairRoundTests.test_an_answering_peer_gets_hundreds_of_commands_a_second",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_native_feed_fair_round.FeedFairRoundTests.test_an_answering_peer_gets_hundreds_of_commands_a_second"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_feed_fair_round.py": "26b6fd5c3f383ca188fe5b87fcb46f18923dc03592b228471133b60c0b0d7650"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "0d5054d3ed71c5b25bbab7aa7c626d28ef5b340e",
+   "stderr": "test_an_answering_peer_gets_hundreds_of_commands_a_second (tests.test_native_feed_fair_round.FeedFairRoundTests.test_an_answering_peer_gets_hundreds_of_commands_a_second) ... native_section_envelope_raw: PASS\nFEED_PACE answered=134 of 300 in 30.063 s (4.5 a second); waits=0, beside work=0\nFEED_FAIR_ASSERTION:every command must be answered before the watchdog\n)\n14: (SB-C::%DO-FORMS-FROM-INFO #<FUNCTION (LAMBDA (SB-KERNEL:FORM &KEY :CURRENT-INDEX &ALLOW-OTHER-KEYS) :IN SB-INT:LOAD-AS-SOURCE) {108D90E0B}> #<SB-C::SOURCE-INFO {8008680423}> SB-C::INPUT-ERROR-IN-LOAD)\n15: (SB-INT:LOAD-AS-SOURCE #<SB-SYS:FD-STREAM for \"file /private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-a004mceq/wt/tests/native_feed_fair_round_raw.lisp\" {8008680043}> :VERBOSE NIL :PRINT NIL :CONTEXT \"loading\")\n16: ((LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD) #<SB-SYS:FD-STREAM for \"file /private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-a004mceq/wt/tests/native_feed_fair_round_raw.lisp\" {8008680043}> NIL)\n17: (SB-FASL::CALL-WITH-LOAD-BINDINGS #<FUNCTION (LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD) {108D909EB}> #<SB-SYS:FD-STREAM for \"file /private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-a004mceq/wt/tests/native_feed_fair_round_raw.lisp\" {8008680043}> NIL #<SB-SYS:FD-STREAM for \"file /private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-a004mceq/wt/tests/native_feed_fair_round_raw.lisp\" {8008680043}>)\n18: (LOAD #<SB-SYS:FD-STREAM for \"file /private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-a004mceq/wt/tests/native_feed_fair_round_raw.lisp\" {8008680043}> :VERBOSE NIL :PRINT NIL :IF-DOES-NOT-EXIST :ERROR :EXTERNAL-FORMAT :DEFAULT)\n19: ((FLET SB-IMPL::LOAD-SCRIPT :IN SB-IMPL::PROCESS-SCRIPT) #<SB-SYS:FD-STREAM for \"file /private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-a004mceq/wt/tests/native_feed_fair_round_raw.lisp\" {8008680043}>)\n20: ((FLET SB-UNIX::BODY :IN SB-IMPL::PROCESS-SCRIPT))\n21: ((FLET \"WITHOUT-INTERRUPTS-BODY-\" :IN SB-IMPL::PROCESS-SCRIPT))\n22: (SB-IMPL::PROCESS-SCRIPT \"tests/native_feed_fair_round_raw.lisp\")\n23: (SB-IMPL::TOPLEVEL-INIT)\n24: ((FLET SB-UNIX::BODY :IN SB-IMPL::START-LISP))\n25: ((FLET \"WITHOUT-INTERRUPTS-BODY-3\" :IN SB-IMPL::START-LISP))\n26: (SB-IMPL::%START-LISP)\n\nunhandled condition in --disable-debugger mode, quitting\nFAIL\n\n======================================================================\nFAIL: test_an_answering_peer_gets_hundreds_of_commands_a_second (tests.test_native_feed_fair_round.FeedFairRoundTests.test_an_answering_peer_gets_hundreds_of_commands_a_second)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-a004mceq/wt/tests/test_native_feed_fair_round.py\", line 64, in test_an_answering_peer_gets_hundreds_of_commands_a_second\n    self.assertTrue(result.returncode == 0 and 'FEED_FAIR_PASS pace' in result.stdout,\n    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                    'an answering local peer must get hundreds of commands a second, '\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                    'and the feed must never wait while one could leave')\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: False is not true : an answering local peer must get hundreds of commands a second, and the feed must never wait while one could leave\n\n----------------------------------------------------------------------\nRan 1 test in 30.400s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
   "changed_files": [
    "books/peer-round-driver.lisp",
    "host/interfaces.lisp",
@@ -44,18 +73,53 @@
    "tests/native_feed_fair_round_raw.lisp",
    "tests/test_native_feed_fair_round.py"
   ],
-  "diff_lines": 810,
+  "diff_lines": 811,
   "evidence": {
-   "bytes": 604,
-   "path": "planning/evidence/repair/SCEN-FEED-PACE-7239eee4289b4f42900a5a7fa2b09169.json",
-   "sha256": "a858f005bf042636a626cb5bfe8aca4c9d78de3f617d1f82ac736221fd4ae293"
+   "bytes": 7883,
+   "path": "planning/evidence/repair/SCEN-FEED-PACE-0ea9c5da45284322b5cc220330df945f.json",
+   "sha256": "b215c72e6e2e66a736ee606b9a25bcbf5617282346979de93d63f7f2c630ca7a"
   },
   "evidence_outcome": "archived",
-  "head": "510f451eaa43b74d6ce88192b5cdf53215d3b855",
-  "ok": false,
-  "problems": [
-   "files outside the claimed scope: planning/evidence-index.tsv"
-  ],
-  "semantic_ok": false
+  "expected_failure": {
+   "message": "False is not true : an answering local peer must get hundreds of commands a second, and the feed must never wait while one could leave",
+   "test": "tests.test_native_feed_fair_round.FeedFairRoundTests.test_an_answering_peer_gets_hundreds_of_commands_a_second"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/native_feed_fair_round_raw.lisp": "dc1aeeadc1dcb2434a31e4ca7449059b077b21448bb689d4eeccda0165edc938",
+   "tests/native_harness.py": "862a235209b1d357173bb4ece767ff5b8e506aa5fde8f692ab2d550a81133249",
+   "tests/test_native_feed_fair_round.py": "26b6fd5c3f383ca188fe5b87fcb46f18923dc03592b228471133b60c0b0d7650"
+  },
+  "head": "b11ebec6f7a799c151b5c0f2ad9c95b2cf559687",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_native_feed_fair_round.FeedFairRoundTests.test_an_answering_peer_gets_hundreds_of_commands_a_second"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_native_feed_fair_round.py": "26b6fd5c3f383ca188fe5b87fcb46f18923dc03592b228471133b60c0b0d7650"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "b11ebec6f7a799c151b5c0f2ad9c95b2cf559687",
+   "stderr": "test_an_answering_peer_gets_hundreds_of_commands_a_second (tests.test_native_feed_fair_round.FeedFairRoundTests.test_an_answering_peer_gets_hundreds_of_commands_a_second) ... native_section_envelope_raw: PASS\nFEED_PACE answered=300 of 300 in 0.051 s (5891.6 a second); waits=300, beside work=0\nFEED_FAIR_PASS pace\n\n; file: /private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-w_psh7b7/wt/host/native/feed-service.lisp\n; in: DEFUN FNN-FEED-AUTH-PROFILE\n;     (LOGIOR SB-POSIX:O-RDONLY ACL2::+FNN-O-NOFOLLOW+ SB-POSIX:O-NONBLOCK)\n; \n; caught WARNING:\n;   undefined variable: ACL2::+FNN-O-NOFOLLOW+\n; \n; compilation unit finished\n;   Undefined type:\n;     FNN-INPUT-OVERBOUND\n;   Undefined functions:\n;     FNN-CLOSE FNN-FSTAT FNN-OPEN FNN-READ-BOUNDED-FD FNN-REGULAR-P\n;   Undefined variable:\n;     +FNN-O-NOFOLLOW+\n;   caught 1 WARNING condition\nok\n\n----------------------------------------------------------------------\nRan 1 test in 0.382s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_native_feed_fair_round.FeedFairRoundTests.test_an_answering_peer_gets_hundreds_of_commands_a_second",
+  "timeout": 300.0
  }
 }
