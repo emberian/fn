@@ -185,6 +185,7 @@
 (include-book "page-window-executor")
 (include-book "cold-read-window")
 (include-book "page-window-read")
+(include-book "page-window-span")
 (include-book "payload-arena")
 (include-book "../host/page-window-executor-host")
 (include-book "decoded-worker-assignment")
