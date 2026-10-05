@@ -135,11 +135,15 @@
 (defun fnn-tls-close-context (&rest ignored) (declare (ignore ignored)) nil)
 (defun fnn-tls-close-channel (&rest ignored) (declare (ignore ignored)) nil)
 (defun fnn-tls-send-all (&rest ignored) (declare (ignore ignored)) nil)
-(defun fnn-tls-read-now (&rest ignored) (declare (ignore ignored)) :timeout)
+;; The real leaves' words (host/native/tls.lisp fnn-tls-read-now: :input or
+;; :output when the session must wait; io.lisp fnn-socket-read-now: :wait on
+;; EAGAIN/EINTR), never fnn-recv's :timeout.
+(defun fnn-tls-read-now (&rest ignored) (declare (ignore ignored)) :input)
 (defun fnn-developer-selector (&rest ignored) (declare (ignore ignored)) nil)
 
 (defun fnn-monotonic-ms () 0)
-(defun fnn-socket-read-now (fd limit) (fnn-recv fd 0 limit))
+(defun fnn-socket-read-now (fd limit)
+  (let ((result (fnn-recv fd 0 limit))) (if (eq result :timeout) :wait result)))
 (defun fnn-socket-write-now (fd data offset end)
   (push (list fd (coerce (subseq data offset end) 'list)) *test-sends*)
   (- end offset))
