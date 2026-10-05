@@ -175,6 +175,65 @@
            (equal (fn-tlsk-decide policy offered) (list :refuse :policy))))
 
 ; -----------------------------------------------------------------------------
+; The library (D59's refusal scope, the root's correction)
+;
+; THE OBSERVATION: whether the pinned OpenSSL prefix (FN_OPENSSL_PREFIX, else
+; the shipped 3.5.8's) held no libcrypto/libssl pair at this start, so the
+; host loaded the system's pair in its place (host/native/tls.lisp
+; fnn-tls-load-libraries).  With it: whether `run' serves TLS (a certificate
+; is configured: STARTTLS, and the implicit-TLS listener beside it) and the
+; [tls] policy.
+;
+; THE DECISION (fn-tlsk-library-decide MISSING SERVED POLICY):
+;   the pinned pair loaded                          -> :pinned
+;   missing, and TLS served or hybrid-required      -> :refuse (by name)
+;   missing, no TLS served, not hybrid-required     -> :fallback (a warning
+;                                                      line; the node runs on
+;                                                      the system's pair)
+; A node that serves no TLS never refuses for lack of the pinned library.
+
+(defun fn-tlsk-library-decide (missing served policy)
+  (declare (xargs :guard t))
+  (cond ((not missing) :pinned)
+        ((or served (equal policy :hybrid-required)) :refuse)
+        (t :fallback)))
+
+; The decision's line, or nil for :pinned: the warning `run' logs, or the
+; start's refusal.  The host appends the prefix it looked under.
+(defun fn-tlsk-library-line (decision)
+  (declare (xargs :guard t))
+  (cond ((equal decision :refuse)
+         (fn-record-string-octets
+          "tls library refused: no OpenSSL libcrypto/libssl pair under the pinned prefix, and this node serves TLS or requires the hybrid key exchange (OpenSSL 3.5.8; FN_OPENSSL_PREFIX names the prefix)"))
+        ((equal decision :fallback)
+         (fn-record-string-octets
+          "tls library warning: no OpenSSL libcrypto/libssl pair under the pinned prefix; the system's pair is loaded, and this node serves no TLS"))
+        (t nil)))
+
+(defthm fn-tlsk-library-decide-is-one-of-three
+  (member-equal (fn-tlsk-library-decide missing served policy)
+                '(:pinned :fallback :refuse))
+  :rule-classes nil)
+
+; KEYSTONE.  A node that serves no TLS and does not require the hybrid key
+; exchange never refuses its start for lack of the pinned library.
+(defthm fn-tlsk-library-without-tls-never-refuses
+  (implies (and (not served) (not (equal policy :hybrid-required)))
+           (not (equal (fn-tlsk-library-decide missing served policy) :refuse))))
+
+; KEYSTONE.  A node that serves TLS, or requires the hybrid key exchange,
+; never runs on the system's pair in place of a missing pinned one: its start
+; is refused by name.
+(defthm fn-tlsk-library-tls-without-the-pinned-pair-refuses
+  (implies (and missing (or served (equal policy :hybrid-required)))
+           (equal (fn-tlsk-library-decide missing served policy) :refuse)))
+
+; The pinned pair, loaded, is always what runs.
+(defthm fn-tlsk-library-pinned-is-taken
+  (implies (not missing)
+           (equal (fn-tlsk-library-decide missing served policy) :pinned)))
+
+; -----------------------------------------------------------------------------
 ; The per-session group token and the log line
 
 (defun fn-tlsk-token-char-p (c)
