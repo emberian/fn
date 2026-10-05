@@ -15,6 +15,7 @@
 (in-package "ACL2")
 (include-book "../../books/app-pattern-delivery")
 (include-book "hybrid-store-tests")
+(include-book "../../books/defkeystone")
 
 (defconst *apd-name* (fn-ak-text "pubsub"))
 (defconst *apd-from* (fn-ak-text "author@example.invalid"))
@@ -151,3 +152,38 @@
  (not (equal (list (fn-pat-partition (fn-ak-text "<a@x>") 4) (fn-pat-partition (fn-ak-text "<b@x>") 4)
                    (fn-pat-partition (fn-ak-text "<c@x>") 4) (fn-pat-partition (fn-ak-text "<d@x>") 4))
              (make-list 4 :initial-element (fn-pat-partition (fn-ak-text "<a@x>") 4)))))
+
+; ---------------------------------------------------------------------------
+; PRF-1325/1329 keystones with their teeth (TEETH CONTRACT v1).  Not here:
+; fn-pat-select-is-one-worker, whose (posp workers) hypothesis has no
+; counterexample (fn-pat-select skips exactly when the index is not the
+; partition, and fn-pat-partition is total in N), so its removal waits on a
+; proof of the weakened theorem; fn-pat-reader-delivers-what-the-writer-encoded
+; (four hypotheses over a projected cursor event, owed).
+(defteeth fn-pat-partition-is-a-worker
+  :claim (((workers (posp n)))
+          (and (natp (fn-pat-partition msgid n)) (< (fn-pat-partition msgid n) n)))
+  :subject fn-pat-select
+  :witness ((msgid *apd-msgid*) (n 3))
+  :breaks ((workers ((msgid *apd-msgid*) (n 0))))
+  :mutations ((worker-zero-unused
+               (:conclusion (and (natp (fn-pat-partition msgid n))
+                                 (< 0 (fn-pat-partition msgid n))
+                                 (< (fn-pat-partition msgid n) n)))
+               ((msgid *apd-msgid*) (n 3))
+               :fault "a partition that never chooses worker 0")))
+
+(defteeth fn-pat-values-check-is-the-kind
+  :claim (() (iff (fn-pat-values-check name-word from seconds group msgid)
+                  (not (fn-ak-rows-valuesp *fn-ak-v1-rows*
+                                           (fn-pat-values name-word from seconds group msgid)))))
+  :subject fn-pat-values-check
+  :witness ((name-word *apd-name*) (from (fn-ak-text "nomailbox")) (seconds 0)
+            (group *apd-group*) (msgid *apd-msgid*))
+  :mutations ((check-inverted
+               (:conclusion (iff (fn-pat-values-check name-word from seconds group msgid)
+                                 (fn-ak-rows-valuesp *fn-ak-v1-rows*
+                                                     (fn-pat-values name-word from seconds group msgid))))
+               ((name-word *apd-name*) (from *apd-from*) (seconds *apd-seconds*)
+                (group *apd-group*) (msgid *apd-msgid*))
+               :fault "a values check that refuses exactly the article-kind rows it should pass")))
