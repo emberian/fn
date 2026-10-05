@@ -52,13 +52,16 @@ else
     image=$root/build/fn-host
 fi
 
-# The TLS library (PRF-1327): OpenSSL 3.5.8, whose X25519MLKEM768 the
-# [tls] key_exchange policy offers.  Installed, it is the release's own
-# libexec/fn/openssl (lib/libcrypto.so.3 and lib/libssl.so.3); an operator's
-# FN_OPENSSL_PREFIX wins.  The image refuses a start by name when the prefix
-# holds no pair (host/native/tls.lisp fnn-tls-load-libraries).  Developer
-# runs leave it unset: the host's default is the toolchain on the build boxes.
-if [ -n "$installed" ] && [ -z "${FN_OPENSSL_PREFIX:-}" ]; then
+# The TLS library (PRF-1327, D59): OpenSSL 3.5.8, whose X25519MLKEM768 the
+# [tls] key_exchange policy offers.  Installed on Linux, it is the release's
+# own libexec/fn/openssl (lib/libcrypto.so.3 and lib/libssl.so.3,
+# packaging/install-native.sh); an operator's FN_OPENSSL_PREFIX wins.  When
+# the prefix holds no pair the image loads the system's, and `run' refuses
+# by name only a node that serves TLS or requires the hybrid key exchange
+# (books/tls-key-exchange.lisp fn-tlsk-library-decide).  A release with no
+# such directory (macOS, OpenBSD) keeps the system pair; developer runs
+# leave it unset: the host's default is the toolchain on the build boxes.
+if [ -n "$installed" ] && [ -z "${FN_OPENSSL_PREFIX:-}" ] && [ -d "$here/../libexec/fn/openssl" ]; then
     FN_OPENSSL_PREFIX=$(CDPATH= cd -- "$here/../libexec/fn" && pwd)/openssl
     export FN_OPENSSL_PREFIX
 fi

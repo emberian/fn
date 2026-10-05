@@ -13,18 +13,21 @@ reach safely. Words you may not know are in
 ## What you need
 
 - A Linux machine (x86-64, with systemd) or an OpenBSD 7.9 machine (amd64).
-- On Linux: glibc 2.36 or later (Debian 12, Ubuntu 24.04 or newer) and
-  OpenSSL 3.0 or later. Ubuntu 22.04 is unsupported by the distributed binary
-  because its glibc is below the 2.36 floor. A minimal Debian 12 lacks three packages
-  the steps below use: `apt install libssl3 openssl sudo`. On OpenBSD, nothing
-  extra.
+- On Linux: glibc 2.36 or later (Debian 12, Ubuntu 24.04 or newer). The
+  release carries its own OpenSSL 3.5.8 in `libexec/fn/openssl`. Ubuntu 22.04
+  is unsupported by the distributed binary because its glibc is below the 2.36
+  floor. A minimal Debian 12 lacks three packages the steps below use:
+  `apt install libssl3 openssl sudo`. On OpenBSD, nothing extra.
 - For post-quantum TLS, OpenSSL 3.5 or later. fn offers the hybrid key
   exchange X25519MLKEM768 only when the OpenSSL it loads knows it: OpenSSL 3.0
   to 3.4 and LibreSSL do not. fn loads the OpenSSL named by `FN_OPENSSL_PREFIX`
-  (a directory holding `lib/libcrypto.so.3` and `lib/libssl.so.3`); the
-  installed `fn` command sets it to the OpenSSL 3.5.8 the release carries in
-  `libexec/fn/openssl`, and a node whose prefix holds no pair refuses to
-  start, naming it. In `fn.toml`, `[tls] key_exchange = "hybrid-preferred"` (the
+  (a directory holding `lib/libcrypto.so.3` and `lib/libssl.so.3`). On Linux
+  the installed `fn` command sets it to the release's `libexec/fn/openssl`,
+  which reads the machine's trust store and `openssl.cnf` in `/etc/ssl`. If
+  that directory holds no pair, fn loads the system's OpenSSL instead. A node
+  that serves TLS (a `tls_cert`), or sets `hybrid-required`, then refuses to
+  start, naming the directory. A node that serves no TLS starts and writes a
+  `tls library warning` line to its log. In `fn.toml`, `[tls] key_exchange = "hybrid-preferred"` (the
   default) offers the hybrid group first and keeps the classical groups for
   ordinary readers; `"hybrid-required"` refuses to start, by name, when the
   loaded library cannot offer the hybrid group. `status` and `health` print the

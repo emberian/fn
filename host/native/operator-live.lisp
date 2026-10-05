@@ -78,6 +78,10 @@
                       *fnn-owner-log-path* log-path)
                 (fnn-operator-log-run-line
                  (fnn-core 'fn-native-health-host-run-started-line)))
+              ;; D59: a start whose pinned OpenSSL prefix held no pair runs
+              ;; on the system's only when it serves no TLS and does not
+              ;; require the hybrid; otherwise it is refused here by name.
+              (fnn-tls-decide-library *fnn-operator-config-octets* certificate)
               ;; ACL2 already enforced paired presence.  Only a pair ACL2
               ;; accepted (fn-tlsr-start-decide, the decision `tls reload'
               ;; applies; PRF-387) is passed to auth/owner.

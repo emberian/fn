@@ -2206,6 +2206,10 @@
 
 (definterface fn-tlsk-host-kx-line :class :common-lisp-compliant)
 
+(definterface fn-tlsk-host-library-decide :class :common-lisp-compliant)
+
+(definterface fn-tlsk-host-library-line :class :common-lisp-compliant)
+
 (definterface fn-tlsk-host-plan :class :common-lisp-compliant :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-tlsk-host-plan-policy :class :common-lisp-compliant)

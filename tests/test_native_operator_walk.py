@@ -209,8 +209,24 @@ class OperatorWalkTests(unittest.TestCase):
         except FileNotFoundError:
             return 0
 
+    READER = b"walk-reader"
+    READER_SECRET = b"walk-reader-secret-1"
+
+    def reader(self, node):
+        """A reader login on NODE, enrolled before it starts: the mission's
+        nodes require authentication ([auth] required=true), so an anonymous
+        STAT is 480 whatever the store holds (SCEN-WALK-FED-POST-STAT-480)."""
+        node.operator("principal", "set-password", self.READER.decode(),
+                      input=self.READER_SECRET + b"\n" + self.READER_SECRET + b"\n",
+                      expect=EXIT.OK)
+
     def stat(self, node, message_id):
+        """STAT MESSAGE_ID as the reader `reader' enrolled on NODE."""
         with node.session() as client:
+            user = client.command(b"AUTHINFO USER " + self.READER)
+            self.assertTrue(user.startswith(b"381"), user)
+            login = client.command(b"AUTHINFO PASS " + self.READER_SECRET)
+            self.assertTrue(login.startswith(b"281"), login)
             return client.command("STAT {}".format(message_id).encode())
 
     def post(self, node, tag, expect=EXIT.OK, body=None):
@@ -257,6 +273,7 @@ class OperatorWalkTests(unittest.TestCase):
         self.assertIn("effective-at-next-start", text(enrolled))
         principals = a.operator("principal", "list", expect=EXIT.OK)
         self.assertIn(b"walker", principals.stdout)
+        self.reader(b)
         a.operator("peer", "add", "b", "b.walk.invalid", "127.0.0.1", str(b.port), "-",
                    "local.*", "127.0.0.1", "true", expect=EXIT.OK)
         b.operator("peer", "add", "a", "a.walk.invalid", "127.0.0.1", str(a.port), "local.*",
@@ -454,7 +471,9 @@ class OperatorWalkTests(unittest.TestCase):
         self.assertTrue(cert.read_bytes().startswith(b"-----BEGIN CERTIFICATE-----\n"))
         self.assertTrue(key.read_bytes().startswith(b"-----BEGIN EC PRIVATE KEY-----\n"))
         self.assertEqual(key.stat().st_mode & 0o777, 0o600)
-        self.assertIn("tls_port = {}".format(tls_port), node.config.read_text(encoding="utf-8"))
+        # The mission renders fn.toml as `key=value' lines.
+        self.assertRegex(node.config.read_text(encoding="utf-8"),
+                         r"(?m)^tls_port ?= ?{}$".format(tls_port))
         node.log = root / "log" / "fn.log"
         node.operator("init", env=env, expect=EXIT.OK)
         node.start(env=env)
@@ -485,6 +504,7 @@ class OperatorWalkTests(unittest.TestCase):
 
     def test_sigkill_of_the_owner_then_status_recover_run_and_health(self):
         a = self.initialized("a", "a.walk.invalid")
+        self.reader(a)
         owner = a.start()
         self.post(a, "1")
         self.mark("posted")

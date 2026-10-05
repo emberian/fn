@@ -540,6 +540,29 @@ not your certificate itself: they add you by host name with `- -` in
 place of a certificate file (see
 [peering with a friend](peering-with-a-friend.md#3-turn-on-the-encrypted-feed-both-ways)).
 
+### The key exchange: post-quantum first
+
+```toml
+[tls]
+key_exchange = "hybrid-preferred"   # the default; or "hybrid-required"
+```
+
+On Linux the release loads its own OpenSSL 3.5.8 (`libexec/fn/openssl`).
+That version can offer the hybrid post-quantum group X25519MLKEM768.
+Under `hybrid-preferred` the node offers that group first and keeps
+X25519, P-256 and P-384 after it, so ordinary readers still connect. When
+the loaded library cannot offer the hybrid group, the node serves the
+classical groups. Under `hybrid-required` such a node refuses to start,
+by name. Each session's group is a `tls established group=...` line in
+the service log. `status` and `health` end with
+`tls key-exchange policy=... serving=... hybrid=H classical=C unknown=U`.
+
+If `libexec/fn/openssl` (or the directory `FN_OPENSSL_PREFIX` names) holds
+no library, fn loads the system's OpenSSL instead. A node with a
+`tls_cert`, or under `hybrid-required`, then refuses to start, naming the
+directory. A node that serves no TLS starts, and its log says
+`tls library warning: ...`.
+
 ## 7. Opening your node to the internet
 
 Before you open the port:
