@@ -4069,7 +4069,7 @@
   (implies (and (consp text) (equal (car text) :hide) (consp (cdr text))
                 (member-equal (fn-gac-text-octets g) (cddr text)))
            (not (fn-gac-readablep text g)))
-  :hints (("Goal" :in-theory (enable fn-gac-readablep)))))
+  :hints (("Goal" :in-theory (enable fn-gac-readablep fn-gac-rule-readablep)))))
 
 (local (defthm fn-auth-restrict-articles-exclude
   (implies (not (fn-gac-readablep text g))
@@ -4092,7 +4092,7 @@
   (implies (fn-mod-queue-hiddenp (fn-gac-text-octets g) closed login)
            (and (fn-auth-rule-text table closed login 1)
                 (not (fn-gac-readablep (fn-auth-rule-text table closed login 1) g))))
-  :hints (("Goal" :in-theory (e/d (fn-auth-rule-text fn-gac-readablep)
+  :hints (("Goal" :in-theory (e/d (fn-auth-rule-text fn-gac-readablep fn-gac-rule-readablep)
                                   (fn-mod-queue-hiddenp fn-mod-hidden-queues
                                    fn-gac-pattern fn-mod-hidden-queues-is-hiddenp
                                    fn-gac-text-octets fn-gac-text-readablep))

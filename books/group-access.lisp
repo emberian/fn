@@ -133,18 +133,25 @@
 ; differs from the one it pinned (fn-gac-and-text below; books/nntp-auth.lisp
 ; `fn-auth-access-text').  A tightening reaches the open connection at its next
 ; command; a widening never makes it wider than its pin.
+(defun fn-gac-rule-readablep (text group)
+  (declare (xargs :guard t))
+  (if (and (consp text) (equal (car text) :hide) (consp (cdr text)))
+      (and (fn-gac-text-readablep (cadr text) group)
+           (not (member-equal (fn-gac-text-octets group)
+                              (true-list-fix (cddr text))))
+           t)
+    (fn-gac-text-readablep text group)))
+
+; (:and A B) is one level: A and B are rules (a text or a :hide), never
+; another :and (fn-gac-and-text builds it from two session rules), so the
+; reader does not recurse.
 (defun fn-gac-readablep (text group)
   (declare (xargs :guard t))
-  (cond ((and (consp text) (equal (car text) :hide) (consp (cdr text)))
-         (and (fn-gac-text-readablep (cadr text) group)
-              (not (member-equal (fn-gac-text-octets group)
-                                 (true-list-fix (cddr text))))
-              t))
-        ((and (consp text) (equal (car text) :and) (consp (cdr text))
-              (consp (cddr text)))
-         (and (fn-gac-readablep (cadr text) group)
-              (fn-gac-readablep (caddr text) group)))
-        (t (fn-gac-text-readablep text group))))
+  (if (and (consp text) (equal (car text) :and) (consp (cdr text))
+           (consp (cddr text)))
+      (and (fn-gac-rule-readablep (cadr text) group)
+           (fn-gac-rule-readablep (caddr text) group))
+    (fn-gac-rule-readablep text group)))
 
 ; The rule of a session decided by PINNED and LIVE, each nil when it
 ; restricts nothing: the one that restricts when only one does, either when
@@ -525,7 +532,7 @@
 ; -----------------------------------------------------------------------------
 ; The view is a store the reader machine serves
 
-(in-theory (disable fn-gac-readablep fn-gac-text-readablep))
+(in-theory (disable fn-gac-readablep fn-gac-rule-readablep fn-gac-text-readablep))
 
 (defthm fn-gac-member-of-filter-groups
   (iff (member-equal g (fn-gac-filter-groups text groups))
@@ -567,7 +574,7 @@
 (defthm fn-gac-readablep-implies-stringp
   (implies (fn-gac-readablep text g) (stringp g))
   :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-gac-readablep fn-gac-text-readablep))))
+  :hints (("Goal" :in-theory (enable fn-gac-readablep fn-gac-rule-readablep fn-gac-text-readablep))))
 
 (defthm fn-gac-next-number-of-filter
   (implies (fn-gac-readablep text group)
