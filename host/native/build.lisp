@@ -115,6 +115,9 @@
 ;; The record log's kernel, decode and programs (lane w6-log-core): the host
 ;; functions fnn-log-* in host/native/io.lisp call them (the `log' verb).
 (include-book "books/store-log-programs")
+;; The writable open's copy (RL-01 A2, P-LOG-RECOVER-COPY): fnn-log-recover
+;; calls fn-lgrc-copy-verdict and fn-lgrc-copy-refusal-text.
+(include-book "books/store-log-recover-copy")
 ;; Its segments, rotation and drop (lane log-recovery): fnn-recover-log,
 ;; fnn-log-rotate and fnn-log-drop call them.
 (include-book "books/store-log-segments")

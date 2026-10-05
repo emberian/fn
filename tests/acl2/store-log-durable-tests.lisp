@@ -59,10 +59,16 @@
 (defun lgut-ks0 ()
   (declare (xargs :guard t :verify-guards nil))
   (fn-lg-recovered-kernel (lgut-bs-raw) 0 (lgut-genesis) (lgut-max) 0))
-(defun lgut-recover-run ()
+; The state the open's copy leaves (books/store-log-recover-copy.lisp K1):
+; the segment durably holds the read's validated prefix [0, F), then zeros,
+; nothing pending; the kernel is the read's.
+(defun lgut-opened ()
   (declare (xargs :guard t :verify-guards nil))
-  (fn-lg-run (lgut-bs-raw) (lgut-ks0) (fn-lg-recover-program) nil 0))
-(defun lgut-opened () (declare (xargs :guard t :verify-guards nil)) (car (last (lgut-recover-run))))
+  (let ((f (fn-lgk-frontier (lgut-ks0))))
+    (cons (lgut-store (append (fn-bs-take f (lgut-content))
+                              (fn-bs-zeros (- (len (lgut-content)) f)))
+                      nil)
+          (lgut-ks0))))
 
 ; The served run: the third record taken at the kernel's next txid, the
 ; seal (extension and write :ok), the barrier :ok, one acknowledgement.
@@ -87,7 +93,6 @@
  (let ((run (lgut-run (lgut-big))))
    (and (fn-lgk-relp (car (lgut-opened)) (cdr (lgut-opened)) 0 (lgut-genesis) (lgut-max))
         (equal (fn-lgu-take-verdict (lgut-big) (lgut-max)) :admissible)
-        (equal (len (lgut-recover-run)) 4)
         (equal (len run) 11)
         (consp (fn-bs-pending (car (nth 3 run))))              ; log-extended
         (null (fn-bs-pending (car (nth 4 run))))               ; log-extent-fenced
@@ -119,21 +124,6 @@
         (lgut-holds-p (car (last run)) nil)
         (equal (take 3 (lgut-open (fn-bs-crash (car (car (last run))) nil)))
                (list (lgut-r 1) (lgut-r 2) (lgut-big))))))
-
-; Every cut of P-LOG-RECOVER, :ok and with the zeroing write failed part
-; way: the open corollary's first disjunct; its conclusion names r1 and r2.
-(assert-event
- (let ((ok (lgut-recover-run))
-       (torn (fn-lg-run (lgut-bs-raw) (lgut-ks0) (fn-lg-recover-program)
-                        (list (cons :eio 4)) 0)))
-   (and (equal (len torn) 1)
-        (lgut-holds-p (nth 0 ok) (list (lgut-sels (lgut-pending-units (nth 0 ok)) :new)))
-        (lgut-holds-p (nth 0 ok) (list nil))
-        (lgut-holds-p (nth 3 ok) nil)
-        (lgut-holds-p (nth 0 torn) (list (list (list :garble 1 2 3 4))))
-        (equal (fn-lgk-acked (cdr (nth 0 ok))) 2)
-        (equal (take 2 (lgut-open (fn-bs-crash (car (nth 0 ok)) (list nil))))
-               (list (lgut-r 1) (lgut-r 2))))))
 
 ; A failed barrier (nothing of the batch landed): the kernel faults, nothing
 ; more is acknowledged, every later cut holds; the third record, never

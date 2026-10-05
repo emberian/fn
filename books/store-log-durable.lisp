@@ -898,143 +898,19 @@
                             (bs (car pair)) (ks (cdr pair)))))))
 
 ; -----------------------------------------------------------------------------
-; 5. From the open: P-LOG-RECOVER's every cut, then the served run.
-;
-; The store the open reads (BS) is a crash image or a fresh segment:
-; nothing pending (fn-bs-crash leaves no pending operation).  Its kernel is
-; fn-lg-recovered-kernel (fnn-log-recover: fn-lgc-open of the segment's
-; octets, fn-lgc-open-refines); every cut of the recovery program under any
-; outcomes acknowledges only what the scan read (the recovered kernel's
-; ACKED is its record count), and from the program's last state, related
-; (fn-lg-recover-program-establishes-the-relation, its sole-pending-writer
-; obligation discharged here for a store with nothing pending), the
-; keystone covers every cut of the served run.
-
-(defun fn-lgu-tail-steps-p (steps)
-  (declare (xargs :guard t))
-  (if (atom steps)
-      t
-    (and (or (equal (car steps) '(:write-at :segment :tail))
-             (equal (car steps) '(:fence :segment :tail))
-             (and (consp (car steps)) (equal (car (car steps)) :cut)))
-         (fn-lgu-tail-steps-p (cdr steps)))))
-(local
- (defthm fn-lgu-tail-step-is-safe
-   (implies (and (fn-lgu-safep bs ks ino genesis max)
-                 (or (equal step '(:write-at :segment :tail))
-                     (equal step '(:fence :segment :tail))
-                     (and (consp step) (equal (car step) :cut))))
-            (and (fn-lgu-safep (mv-nth 1 (fn-lg-step bs ks step outcome ino)) ks ino genesis max)
-                 (equal (mv-nth 2 (fn-lg-step bs ks step outcome ino)) ks)))
-   :hints (("Goal" :do-not-induct t
-            :in-theory (e/d (fn-lg-step)
-                            (fn-lgu-safep fn-bs-write fn-bs-fsync-file fn-bs-zeros
-                             fn-bs-durable-content fn-lgk-frontier fn-lgk-append fn-lgk-fence
-                             fn-lgk-fence-failed fn-lg-append-admitsp fn-lgk-append-octets))
-            :use ((:instance fn-lgu-write-keeps-safe
-                             (off (fn-lgk-frontier ks))
-                             (octets (fn-bs-zeros (- (len (fn-bs-durable-content bs ino))
-                                                     (fn-lgk-frontier ks)))))
-                  (:instance fn-lgu-fsync-keeps-safe))))))
-(local
- (defthm fn-lgu-tail-run-is-safe
-   (implies (and (fn-lgu-safep bs ks ino genesis max)
-                 (fn-lgu-tail-steps-p steps))
-            (fn-lgu-all-safep (fn-lg-run bs ks steps outcomes ino) ino genesis max))
-   :hints (("Goal" :induct (fn-lg-run bs ks steps outcomes ino)
-            :in-theory (union-theories '(fn-lg-run fn-lgu-all-safep fn-lgu-tail-steps-p
-                                         car-cons cdr-cons (:induction fn-lg-run))
-                                       (theory 'minimal-theory)))
-           ("Subgoal *1/1" :use ((:instance fn-lgu-tail-step-is-safe
-                                            (step (car steps))
-                                            (outcome (if (consp outcomes) (car outcomes) :ok))))))))
-(local
- (defthm fn-lgu-acked-of-recover
-   (equal (fn-lgk-acked (fn-lgk-recover c genesis unit max next-txid))
-          (len (car (fn-lg-scan c genesis unit max))))
-   :hints (("Goal" :in-theory (disable fn-lg-scan fn-lg-scan-last)))))
-(defthm fn-lgu-recovered-kernel-is-safe
-  (implies (and (posp (fn-bs-unit bs)) ino
-                (true-listp (fn-bs-durable-content bs ino))
-                (equal (mod (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs)) 0)
-                (null (fn-bs-pending bs)))
-           (fn-lgu-safep bs (fn-lg-recovered-kernel bs ino genesis max floor) ino genesis max))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-lgu-safep fn-lgu-recovered-kernel-is-the-recover-by-definition)
-                           (fn-lg-scan fn-lg-scan-last fn-bs-take fn-lgk-recover fn-lgt-next-after
-                            fn-lg-recovered-kernel fn-bs-durable-content mod))
-           :use ((:instance fn-lg-recovered-frontier-is-the-last-complete-record
-                            (c (fn-bs-durable-content bs ino)) (unit (fn-bs-unit bs)))
-                 (:instance fn-lgc-scan-records-true-listp
-                            (octets (fn-bs-durable-content bs ino)) (prev genesis)
-                            (unit (fn-bs-unit bs)))))))
-; The sole pending writer at the open, discharged at kernel level: a store
-; with nothing pending (every crash image: fn-bs-crash leaves none) has no
-; operation of another file pending.
-(defun fn-lgu-sole-pending-writer (bs ino)
-  (declare (xargs :guard t :verify-guards nil))
-  (not (fn-bs-ops-not-for-ino (fn-bs-pending bs) ino)))
-(defthm fn-lgu-recover-program-establishes-the-relation
-  (let* ((ks (fn-lg-recovered-kernel bs ino genesis max floor))
-         (run (fn-lg-run bs ks (fn-lg-recover-program) nil ino))
-         (final (car (last run))))
-    (implies (and (posp (fn-bs-unit bs)) ino (assoc-equal ino (fn-bs-inodes bs))
-                  (true-listp (fn-bs-durable-content bs ino))
-                  (equal (mod (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs)) 0)
-                  (fn-frame-digestp genesis)
-                  (fn-lgu-sole-pending-writer bs ino)
-                  (not (fn-bs-ops-for-ino (fn-bs-pending bs) ino)))
-             (and (equal (len run) 4)
-                  (fn-lgk-relp (car final) (cdr final) ino genesis max))))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (union-theories (theory 'minimal-theory) '(fn-lgu-sole-pending-writer))
-           :use ((:functional-instance fn-lg-recover-program-establishes-the-relation
-                                       (fn-assume-log-sole-pending-writer
-                                        fn-lgu-sole-pending-writer))))))
-(defthm fn-lgu-open-run-acknowledges-only-recoverable-records
-  (let* ((ks0 (fn-lg-recovered-kernel bs ino genesis max floor))
-         (opened (car (last (fn-lg-run bs ks0 (fn-lg-recover-program) nil ino)))))
-    (implies (and (posp (fn-bs-unit bs)) ino (assoc-equal ino (fn-bs-inodes bs))
-                  (true-listp (fn-bs-durable-content bs ino))
-                  (equal (mod (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs)) 0)
-                  (fn-frame-digestp genesis)
-                  (null (fn-bs-pending bs))
-                  (or (member-equal pair (fn-lg-run bs ks0 (fn-lg-recover-program) routs ino))
-                      (member-equal pair (fn-lgu-host-run (car opened) (cdr opened) ops ino max)))
-                  (fn-bs-crash-imagep (car pair) image))
-             (let ((a (fn-lgk-acked (cdr pair)))
-                   (recovered (fn-lgk-committed
-                               (fn-lgk-recover (fn-bs-durable-content image ino)
-                                               genesis (fn-bs-unit (car pair)) max next-txid))))
-               (and (<= a (len recovered))
-                    (equal (take a recovered) (take a (fn-lgk-committed (cdr pair))))))))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (union-theories '(fn-lgu-sole-pending-writer fn-bs-ops-not-for-ino
-                                        fn-bs-ops-for-ino atom
-                                        (:executable-counterpart fn-lg-recover-program)
-                                        (:executable-counterpart fn-lgu-tail-steps-p))
-                                      (theory 'minimal-theory))
-           :use ((:instance fn-lgu-recovered-kernel-is-safe)
-                 (:instance fn-lgu-tail-run-is-safe
-                            (ks (fn-lg-recovered-kernel bs ino genesis max floor))
-                            (steps (fn-lg-recover-program)) (outcomes routs))
-                 (:instance fn-lgu-all-safep-member
-                            (pairs (fn-lg-run bs (fn-lg-recovered-kernel bs ino genesis max floor)
-                                              (fn-lg-recover-program) routs ino)))
-                 (:instance fn-lgu-safe-image-recovers-the-acknowledged-records
-                            (bs (car pair)) (ks (cdr pair)))
-                 (:instance fn-lgu-recover-program-establishes-the-relation)
-                 (:instance fn-lgu-acknowledged-records-are-recovered-at-every-cut
-                            (bs (car (car (last (fn-lg-run bs (fn-lg-recovered-kernel bs ino genesis max floor)
-                                                           (fn-lg-recover-program) nil ino)))))
-                            (ks (cdr (car (last (fn-lg-run bs (fn-lg-recovered-kernel bs ino genesis max floor)
-                                                           (fn-lg-recover-program) nil ino))))))))))
+; 5. The open.  Since RL-01 A2 the writable open never writes the segment it
+; read: it copies the read's validated prefix into a fresh file and swaps it
+; in by name (books/store-log-recover-copy.lisp, fn-lgrc-attempt-makes-the-
+; read-prefix-durable: the store it leaves is R-related to the kernel of
+; what it READ, with nothing pending).  The keystones below start from that
+; state: a store BS R-related to the read's kernel.  Every cut of the copy
+; itself (and of repeated, interrupted copies) is the book's K2,
+; fn-lgrc-world-keeps-the-invariant.
 
 ; -----------------------------------------------------------------------------
 ; 6. The count the host holds.  The host's kernel is the concrete one
 ; (books/store-log-kernel-concrete.lisp, PRF-282): from fn-lgc-open of the
-; segment's octets S (the durable content, A-HOST's read of the regular
-; file), after the kernel operations of the run (fn-lgu-host-kops, each a
+; segment's octets S (what the open read), after the kernel operations of the run (fn-lgu-host-kops, each a
 ; fn-lgc-host-step the host calls), its acknowledged count fn-lgc-acked is
 ; the logical kernel's (fn-lgc-run-refines-the-kernel), so the first that
 ; many committed records are the first the next open recovers from every
@@ -1110,79 +986,37 @@
    (member-equal (fn-lgu-host-final bs ks ops ino max) (fn-lgu-host-run bs ks ops ino max))
    :hints (("Goal" :induct (fn-lgu-host-final bs ks ops ino max)
             :in-theory (disable fn-lgu-host-step)))))
-(local
- (defthm fn-lgu-tail-step-keeps-the-kernel
-   (implies (or (equal step '(:write-at :segment :tail))
-                (equal step '(:fence :segment :tail))
-                (and (consp step) (equal (car step) :cut)))
-            (equal (mv-nth 2 (fn-lg-step bs ks step outcome ino)) ks))
-   :hints (("Goal" :in-theory (e/d (fn-lg-step)
-                                   (fn-bs-write fn-bs-fsync-file fn-bs-zeros fn-bs-durable-content
-                                    fn-lgk-append fn-lgk-fence fn-lgk-fence-failed
-                                    fn-lg-append-admitsp fn-lgk-append-octets fn-lgk-frontier))))))
-(local
- (defthm fn-lgu-tail-run-keeps-the-kernel
-   (implies (and (fn-lgu-tail-steps-p steps) (consp (fn-lg-run bs ks steps outcomes ino)))
-            (equal (cdr (car (last (fn-lg-run bs ks steps outcomes ino)))) ks))
-   :hints (("Goal" :induct (fn-lg-run bs ks steps outcomes ino)
-            :in-theory (union-theories '(fn-lg-run fn-lgu-tail-steps-p last car-cons cdr-cons
-                                         (:induction fn-lg-run))
-                                       (theory 'minimal-theory)))
-           ("Subgoal *1/1" :use ((:instance fn-lgu-tail-step-keeps-the-kernel
-                                            (step (car steps))
-                                            (outcome (if (consp outcomes) (car outcomes) :ok))))))))
 (defthm fn-lgu-host-kernel-acknowledges-only-recoverable-records
-  (let* ((ks0 (fn-lg-recovered-kernel bs ino genesis max floor))
-         (opened (car (last (fn-lg-run bs ks0 (fn-lg-recover-program) nil ino))))
-         (final (fn-lgu-host-final (car opened) (cdr opened) ops ino max))
+  (let* ((ks0 (fn-lgt-recover (fn-lgd-octets s) genesis (fn-bs-unit bs) max floor))
+         (final (fn-lgu-host-final bs ks0 ops ino max))
          (host (fn-lgc-host-run (mv-nth 1 (fn-lgc-open s genesis (fn-bs-unit bs) max floor))
-                                (fn-lgu-host-kops (car opened) (cdr opened) ops ino max))))
-    (implies (and (posp (fn-bs-unit bs)) ino (assoc-equal ino (fn-bs-inodes bs))
-                  (true-listp (fn-bs-durable-content bs ino))
-                  (equal (mod (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs)) 0)
-                  (fn-frame-digestp genesis)
-                  (null (fn-bs-pending bs))
-                  (equal (fn-lgd-octets s) (fn-bs-durable-content bs ino))
-                  (fn-bs-crash-imagep (car final) image))
-             (let ((a (fn-lgc-acked host))
-                   (recovered (fn-lgk-committed
-                               (fn-lgk-recover (fn-bs-durable-content image ino)
-                                               genesis (fn-bs-unit (car final)) max next-txid))))
-               (and (equal a (fn-lgk-acked (cdr final)))
-                    (<= a (len recovered))
-                    (equal (take a recovered) (take a (fn-lgk-committed (cdr final))))))))
+                                (fn-lgu-host-kops bs ks0 ops ino max))))
+    (implies (fn-lgk-relp bs ks0 ino genesis max)
+             (and (equal (fn-lgc-acked host) (fn-lgk-acked (cdr final)))
+                  (implies (fn-bs-crash-imagep (car final) image)
+                           (let ((a (fn-lgc-acked host))
+                                 (recovered (fn-lgk-committed
+                                             (fn-lgk-recover (fn-bs-durable-content image ino)
+                                                             genesis (fn-bs-unit (car final)) max
+                                                             next-txid))))
+                             (and (<= a (len recovered))
+                                  (equal (take a recovered)
+                                         (take a (fn-lgk-committed (cdr final))))))))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (union-theories '(fn-lg-recovered-kernel fn-lgc-observers-of-abstraction
-                                        fn-lgu-sole-pending-writer fn-bs-ops-not-for-ino
-                                        fn-bs-ops-for-ino atom len
-                                        (:executable-counterpart fn-lg-recover-program)
-                                        (:executable-counterpart fn-lgu-tail-steps-p)
+           :in-theory (union-theories '(fn-lgc-observers-of-abstraction
                                         fn-lgu-host-kops-run-to-the-final-kernel)
                                       (theory 'minimal-theory))
            :use ((:instance fn-lgc-run-refines-the-kernel
                             (unit (fn-bs-unit bs))
-                            (ops (fn-lgu-host-kops
-                                  (car (car (last (fn-lg-run bs (fn-lg-recovered-kernel bs ino genesis max floor)
-                                                             (fn-lg-recover-program) nil ino))))
-                                  (cdr (car (last (fn-lg-run bs (fn-lg-recovered-kernel bs ino genesis max floor)
-                                                             (fn-lg-recover-program) nil ino))))
-                                  ops ino max)))
-                 (:instance fn-lgu-recover-program-establishes-the-relation)
-                 (:instance fn-lgu-tail-run-keeps-the-kernel
-                            (ks (fn-lg-recovered-kernel bs ino genesis max floor))
-                            (steps (fn-lg-recover-program)) (outcomes nil))
+                            (ops (fn-lgu-host-kops bs (fn-lgt-recover (fn-lgd-octets s) genesis
+                                                                      (fn-bs-unit bs) max floor)
+                                                   ops ino max)))
                  (:instance fn-lgu-host-final-is-a-cut
-                            (bs (car (car (last (fn-lg-run bs (fn-lg-recovered-kernel bs ino genesis max floor)
-                                                           (fn-lg-recover-program) nil ino)))))
-                            (ks (cdr (car (last (fn-lg-run bs (fn-lg-recovered-kernel bs ino genesis max floor)
-                                                           (fn-lg-recover-program) nil ino))))))
-                 (:instance fn-lgu-open-run-acknowledges-only-recoverable-records
-                            (routs nil)
+                            (ks (fn-lgt-recover (fn-lgd-octets s) genesis (fn-bs-unit bs) max floor)))
+                 (:instance fn-lgu-acknowledged-records-are-recovered-at-every-cut
+                            (ks (fn-lgt-recover (fn-lgd-octets s) genesis (fn-bs-unit bs) max floor))
                             (pair (fn-lgu-host-final
-                                   (car (car (last (fn-lg-run bs (fn-lg-recovered-kernel bs ino genesis max floor)
-                                                              (fn-lg-recover-program) nil ino))))
-                                   (cdr (car (last (fn-lg-run bs (fn-lg-recovered-kernel bs ino genesis max floor)
-                                                              (fn-lg-recover-program) nil ino))))
+                                   bs (fn-lgt-recover (fn-lgd-octets s) genesis (fn-bs-unit bs) max floor)
                                    ops ino max)))))))
 
 
@@ -1326,31 +1160,25 @@
                                          fn-lgu-host-kops)
                                        (theory 'minimal-theory))))))
 
-; KEYSTONE (M1 at the host's entry).  From an open of a store with nothing
-; pending (every crash image), the count the host holds after fnn-log-finish
-; (fn-lgu-acknowledge, the one ACL2 call) is the run's acknowledged count;
-; every crash image of the store it leaves recovers that many records first;
-; and at EVERY cut of the run -- each operation's intermediate states
-; included -- the acknowledged records are recovered from every crash image
-; of the cut.  Scope: one segment, no rotation; the open is P-LOG-RECOVER
-; (RL-01's A2 replaces it, books/store-log-recover-copy.lisp).
+; KEYSTONE (M1 at the host's entry).  From the store the open leaves, BS,
+; R-related to the kernel of what the open read (the octets of S; the open's
+; copy establishes it: books/store-log-recover-copy.lisp, whose
+; fn-lgrc-acknowledge-from-the-copy composes the two), the count the host
+; holds after fnn-log-finish (fn-lgu-acknowledge, the one ACL2 call) is the
+; run's acknowledged count; every crash image of the store it leaves
+; recovers that many records first; and at EVERY cut of the run -- each
+; operation's intermediate states included -- the acknowledged records are
+; recovered from every crash image of the cut.  Scope: one segment, no
+; rotation.
 (defthm fn-lgu-acknowledge-acknowledges-only-recoverable-records
-  (let* ((ks0 (fn-lg-recovered-kernel bs ino genesis max floor))
-         (opened (car (last (fn-lg-run bs ks0 (fn-lg-recover-program) nil ino))))
-         (run (fn-lgu-host-run (car opened) (cdr opened)
-                               (append ops (fn-lgu-finishes n)) ino max))
-         (final (fn-lgu-host-final (car opened) (cdr opened)
-                                   (append ops (fn-lgu-finishes n)) ino max))
+  (let* ((ks0 (fn-lgt-recover (fn-lgd-octets s) genesis (fn-bs-unit bs) max floor))
+         (run (fn-lgu-host-run bs ks0 (append ops (fn-lgu-finishes n)) ino max))
+         (final (fn-lgu-host-final bs ks0 (append ops (fn-lgu-finishes n)) ino max))
          (host (fn-lgu-acknowledge
                 (fn-lgc-host-run (mv-nth 1 (fn-lgc-open s genesis (fn-bs-unit bs) max floor))
-                                 (fn-lgu-host-kops (car opened) (cdr opened) ops ino max))
+                                 (fn-lgu-host-kops bs ks0 ops ino max))
                 n)))
-    (implies (and (posp (fn-bs-unit bs)) ino (assoc-equal ino (fn-bs-inodes bs))
-                  (true-listp (fn-bs-durable-content bs ino))
-                  (equal (mod (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs)) 0)
-                  (fn-frame-digestp genesis)
-                  (null (fn-bs-pending bs))
-                  (equal (fn-lgd-octets s) (fn-bs-durable-content bs ino)))
+    (implies (fn-lgk-relp bs ks0 ino genesis max)
              (and
               ;; the count the host holds after acknowledging is the run's
               (equal (fn-lgc-acked host) (fn-lgk-acked (cdr final)))
@@ -1379,22 +1207,6 @@
                                       (theory 'minimal-theory))
            :use ((:instance fn-lgu-host-kernel-acknowledges-only-recoverable-records
                             (ops (append ops (fn-lgu-finishes n))))
-                 (:instance fn-lgu-host-kernel-acknowledges-only-recoverable-records
-                            (ops (append ops (fn-lgu-finishes n)))
-                            (image (fn-bs-crash
-                                    (car (fn-lgu-host-final
-                                          (car (car (last (fn-lg-run bs (fn-lg-recovered-kernel bs ino genesis max floor)
-                                                                     (fn-lg-recover-program) nil ino))))
-                                          (cdr (car (last (fn-lg-run bs (fn-lg-recovered-kernel bs ino genesis max floor)
-                                                                     (fn-lg-recover-program) nil ino))))
-                                          (append ops (fn-lgu-finishes n)) ino max))
-                                    nil)))
-                 (:instance fn-bs-lose-everything-is-an-admissible-image
-                            (s (car (fn-lgu-host-final
-                                     (car (car (last (fn-lg-run bs (fn-lg-recovered-kernel bs ino genesis max floor)
-                                                                (fn-lg-recover-program) nil ino))))
-                                     (cdr (car (last (fn-lg-run bs (fn-lg-recovered-kernel bs ino genesis max floor)
-                                                                (fn-lg-recover-program) nil ino))))
-                                     (append ops (fn-lgu-finishes n)) ino max))))
-                 (:instance fn-lgu-open-run-acknowledges-only-recoverable-records
-                            (ops (append ops (fn-lgu-finishes n))) (routs nil))))))
+                 (:instance fn-lgu-acknowledged-records-are-recovered-at-every-cut
+                            (ks (fn-lgt-recover (fn-lgd-octets s) genesis (fn-bs-unit bs) max floor))
+                            (ops (append ops (fn-lgu-finishes n))))))))

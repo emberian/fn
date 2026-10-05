@@ -1461,7 +1461,7 @@ def summary(paths):
 # ---------------------------------------------------------------------------
 # The record log's workload (lane w6-log-core; books/store-log-programs.lisp,
 # host/native/io.lisp fnn-log-*).  The developer image's `fn log append`
-# recovers the segment (fn-lg-recover-program) and appends batches of PER
+# recovers the segment (fn-lgrc-program: the copy) and appends batches of PER
 # workload records, each written (fn-lg-append-program: one positioned write
 # at the frontier) and fenced (fn-lg-fence-program: fdatasync on the
 # preallocated segment); it prints one `ACK' line after each fence, and the
@@ -1471,9 +1471,13 @@ def summary(paths):
 # marks `rec-begin-K' and `rec-end-K'.  A cut position is named by its window
 # (LOG_CUTS, tests/campaign/native_cuts.py): in a batch window, `log-written'
 # before the window's first flush (the batch's write may be torn) and
-# `log-fenced' after it; in a recovery window, `log-truncated' before its
-# last flush and `log-recovered' after it (run 1's window also holds the
-# segment's creation and preallocation).
+# `log-fenced' after it; in a recovery window (P-LOG-RECOVER-COPY: the copy
+# written into a staged file, fenced, renamed over the segment, journal/ and
+# the staging directory fenced), `log-copied' up to its first flush (the
+# copy's fence), `log-recovered' after its last, and `log-copy-fenced' between
+# (the rename reaches the device only with a directory's flush, so the
+# block log cannot place `log-swapped' apart from it; run 1's window also
+# holds the segment's creation and preallocation).
 #
 # The ORACLE, outside the device (the client's own record of the ACK lines):
 # the image is mounted (journal replay), unmounted, `e2fsck -fn`, mounted;
@@ -1591,7 +1595,9 @@ def log_cut_name(ents, kind, lo, p, hi):
     flushes = [e[0] for e in ents[lo:hi] if e[3] & FLUSH]
     if kind == "batch":
         return "log-written" if not flushes or p <= flushes[0] else "log-fenced"
-    return "log-recovered" if flushes and p > flushes[-1] else "log-truncated"
+    if not flushes or p <= flushes[0]:
+        return "log-copied"
+    return "log-recovered" if p > flushes[-1] else "log-copy-fenced"
 
 
 def log_cuts(a):

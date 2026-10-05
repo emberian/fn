@@ -59,6 +59,8 @@
 ; (specs/failures.md) is what lets the old inode's blocks survive its unlink.
 (in-package "ACL2")
 (include-book "store-log-durable")
+(include-book "store-log-damage")
+(include-book "store-log-route-programs")
 
 ; -----------------------------------------------------------------------------
 ; 1. The cache model.
@@ -785,20 +787,25 @@
   (declare (xargs :guard t :verify-guards nil))
   (fn-bsc-run s (fn-lgrc-attempt-ops s j k stg stage genesis max floor outs)))
 
-; The program's shape for the host and its cut map (native_cuts LOG_CUTS):
-; the cut after each step the host names.
+; The program as the host runs it (host/native/io.lisp fnn-log-recover),
+; in the step language tests/campaign/native_cuts.py reads (LOG_PROGRAM_HOSTS,
+; verify_log_program_steps): the staged file's create, the copy's write
+; (fnn-log-copy-entry once per validated entry, from the walk's buffer; the
+; zeros past F are the staged file's preallocation, A-HOST), its fence, the
+; rename over journal/K, then journal/'s and staging/'s fences, each followed
+; by its cut.  fn-lgrc-attempt-ops is this program over a store.
 (defun fn-lgrc-program ()
   (declare (xargs :guard t))
-  '((:create :staging :stage-recover)
-    (:write :staged 0 :validated-prefix)
-    (:cut "log-copied")
-    (:fsync-file :staged)
-    (:cut "log-copy-fenced")
-    (:rename :staging :stage-recover :journal :segment)
-    (:cut "log-swapped")
-    (:fsync-dir :journal)
-    (:fsync-dir :staging)
-    (:cut "log-recovered")))
+  (list (list :create :staging :stage-recover)
+        (list :write :staged 0 :validated-prefix)
+        (list :cut "log-copied")
+        (list :fsync-file :staged)
+        (list :cut "log-copy-fenced")
+        (list :rename :staging :stage-recover :journal :segment)
+        (list :cut "log-swapped")
+        (list :fsync-dir :journal)
+        (list :fsync-dir :staging)
+        (list :cut "log-recovered")))
 
 (defun fn-lgrc-all-invp (states j k a)
   (declare (xargs :guard t :verify-guards nil))
@@ -1495,6 +1502,20 @@
 (defthm fn-lgrc-copy-verdict-copies-exactly-with-room
   (equal (equal (fn-lgrc-copy-verdict free need) :copy)
          (and (natp free) (natp need) (<= need free))))
+
+; The refusal's line (host/native/io.lisp fnn-log-recover signals it as the
+; open's refusal): SEGMENT the segment's file name, NEED the octets the copy
+; needs (the segment's extent), FREE the observation (NIL: unobserved).
+(defun fn-lgrc-copy-refusal-text (free need segment)
+  (declare (xargs :guard t))
+  (concatenate 'string
+               "open refused reason=recover-copy-no-space segment="
+               (if (stringp segment) segment "?")
+               " need=" (fn-lgdm-dec need)
+               " free=" (if (natp free) (fn-lgdm-dec free) "unobserved")
+               ": the writable open publishes the log segment's validated prefix into a new"
+               " file before it serves, and the store's filesystem has not the room; nothing"
+               " was written.  Free space on it and open again (read-only commands are unaffected)."))
 
 ; The writable open: the verdict over the read's length, then the attempt
 ; or nothing.  Answers (mv verdict states).
@@ -2214,3 +2235,116 @@
                             (o (fn-bs-durable-content image (fn-bs-durable-entry image j k))))
                  (:instance fn-lgrc-epoch-invp (est nil) (ack ack0))))))
 
+; -----------------------------------------------------------------------------
+; 9. The open, composed: the copy, then the rest of the open, then the
+; served run.
+
+(local
+ (defthm fn-lgrc-final-of-the-attempt-keeps-the-unit
+   (equal (fn-bs-unit (fn-bsc-bs (fn-lgrc-final (fn-lgrc-attempt s j k stg stage genesis max floor outs) s)))
+          (fn-bs-unit (fn-bsc-bs s)))
+   :hints (("Goal" :in-theory (e/d (fn-lgrc-final) (fn-lgrc-attempt))
+            :cases ((consp (fn-lgrc-attempt s j k stg stage genesis max floor outs)))))))
+
+; KEYSTONE (P10, the served open at every cut).  From a quiet store, the copy
+; (P-LOG-RECOVER-COPY, all six syscalls :ok) leaves a store R-related to the
+; kernel of what the open read, and every state of the rest of the open
+; (fn-lg-open-program: recover-replayed and the three recovery barriers,
+; each with its cut) is related.  The copy's own cuts, under any outcomes
+; and any number of interrupted attempts, are K2 (fn-lgrc-attempt-keeps-the-
+; invariant, fn-lgrc-world-keeps-the-invariant).
+(defthm fn-lgrc-open-keeps-the-relation-at-every-cut
+  (let* ((bs (fn-bsc-bs s))
+         (o (fn-bsc-content s (fn-bsc-lookup s j k)))
+         (ks (fn-lgt-recover o genesis (fn-bs-unit bs) max floor))
+         (ino (fn-bs-next-ino bs))
+         (final (fn-bsc-bs (fn-lgrc-final (fn-lgrc-attempt s j k stg stage genesis max floor nil) s))))
+    (implies (and (natp ino) (fn-bs-dir-idp j) (fn-bs-namep k)
+                  (fn-bs-dir-idp stg) (fn-bs-namep stage)
+                  (not (and (equal stg j) (equal stage k)))
+                  (not (fn-bsc-lookup s stg stage))
+                  (null (fn-bs-pending bs))
+                  (posp (fn-bs-unit bs)) (true-listp o) (consp o)
+                  (equal (mod (len o) (fn-bs-unit bs)) 0)
+                  (fn-frame-digestp genesis))
+             (and (fn-lgk-relp final ks ino genesis max)
+                  (fn-lg-all-relp (fn-lg-run final ks (fn-lg-open-program) nil ino) ino genesis max))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '() (theory 'minimal-theory))
+           :use ((:instance fn-lgrc-attempt-makes-the-read-prefix-durable)
+                 (:instance fn-lg-open-program-keeps-the-relation
+                            (bs (fn-bsc-bs (fn-lgrc-final (fn-lgrc-attempt s j k stg stage genesis max floor nil) s)))
+                            (ks (fn-lgt-recover (fn-bsc-content s (fn-bsc-lookup s j k)) genesis
+                                                (fn-bs-unit (fn-bsc-bs s)) max floor))
+                            (ino (fn-bs-next-ino (fn-bsc-bs s))))))))
+
+(local
+ (defthm fn-lgrc-relp-of-an-equal-read
+   (implies (and (equal a b) (fn-lgk-relp bs (fn-lgt-recover a genesis unit max floor) ino genesis max))
+            (fn-lgk-relp bs (fn-lgt-recover b genesis unit max floor) ino genesis max))
+   :rule-classes nil))
+
+; KEYSTONE (M1 from the open).  From a quiet store: the copy, then the served
+; run over the inode it published (whatever the host's operations), then
+; the COMPLETE's acknowledgements (fn-lgu-acknowledge, the host's one call).
+; STR is what the open read, as the host holds it (fn-lgc-open's input).
+; The count the host holds is the run's; every crash image of the store the
+; run leaves recovers that many records first; and so does every crash
+; image of every cut of the run.  No hypothesis relates the read to the
+; durable content before the open: the read may hold a failed barrier's
+; clean pages (RL-01).
+(defthm fn-lgrc-acknowledge-from-the-copy
+  (let* ((bs0 (fn-bsc-bs s))
+         (unit (fn-bs-unit bs0))
+         (o (fn-bsc-content s (fn-bsc-lookup s j k)))
+         (ino (fn-bs-next-ino bs0))
+         (bs (fn-bsc-bs (fn-lgrc-final (fn-lgrc-attempt s j k stg stage genesis max floor nil) s)))
+         (ks0 (fn-lgt-recover (fn-lgd-octets str) genesis unit max floor))
+         (run (fn-lgu-host-run bs ks0 (append ops (fn-lgu-finishes n)) ino max))
+         (final (fn-lgu-host-final bs ks0 (append ops (fn-lgu-finishes n)) ino max))
+         (host (fn-lgu-acknowledge
+                (fn-lgc-host-run (mv-nth 1 (fn-lgc-open str genesis unit max floor))
+                                 (fn-lgu-host-kops bs ks0 ops ino max))
+                n)))
+    (implies (and (natp ino) (fn-bs-dir-idp j) (fn-bs-namep k)
+                  (fn-bs-dir-idp stg) (fn-bs-namep stage)
+                  (not (and (equal stg j) (equal stage k)))
+                  (not (fn-bsc-lookup s stg stage))
+                  (null (fn-bs-pending bs0))
+                  (posp unit) (true-listp o) (consp o) (equal (mod (len o) unit) 0)
+                  (fn-frame-digestp genesis)
+                  (equal o (fn-lgd-octets str)))
+             (and (equal (fn-lgc-acked host) (fn-lgk-acked (cdr final)))
+                  (implies (fn-bs-crash-imagep (car final) image)
+                           (let ((a (fn-lgc-acked host))
+                                 (recovered (fn-lgk-committed
+                                             (fn-lgk-recover (fn-bs-durable-content image ino)
+                                                             genesis (fn-bs-unit (car final)) max
+                                                             next-txid))))
+                             (and (<= a (len recovered))
+                                  (equal (take a recovered) (take a (fn-lgk-committed (cdr final)))))))
+                  (implies (and (member-equal pair run)
+                                (fn-bs-crash-imagep (car pair) image))
+                           (let ((a (fn-lgk-acked (cdr pair)))
+                                 (recovered (fn-lgk-committed
+                                             (fn-lgk-recover (fn-bs-durable-content image ino)
+                                                             genesis (fn-bs-unit (car pair)) max
+                                                             next-txid))))
+                             (and (<= a (len recovered))
+                                  (equal (take a recovered) (take a (fn-lgk-committed (cdr pair))))))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-lgrc-final-of-the-attempt-keeps-the-unit)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-lgrc-attempt-makes-the-read-prefix-durable)
+                 (:instance fn-lgrc-relp-of-an-equal-read
+                            (a (fn-bsc-content s (fn-bsc-lookup s j k)))
+                            (b (fn-lgd-octets str))
+                            (bs (fn-bsc-bs (fn-lgrc-final (fn-lgrc-attempt s j k stg stage genesis max floor nil) s)))
+                            (unit (fn-bs-unit (fn-bsc-bs s)))
+                            (ino (fn-bs-next-ino (fn-bsc-bs s))))
+                 (:instance fn-lgu-acknowledge-acknowledges-only-recoverable-records
+                            (bs (fn-bsc-bs (fn-lgrc-final (fn-lgrc-attempt s j k stg stage genesis max floor nil) s)))
+                            (s str)
+                            (ino (fn-bs-next-ino (fn-bsc-bs s))))))))

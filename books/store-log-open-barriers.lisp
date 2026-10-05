@@ -1,9 +1,10 @@
 ; fn: which of the format-9 open's recovery barriers the byte model needs
 ; (lane log-recovery-2, item 3, 2026-09-27).
 ;
-; host/native/io.lisp fnn-recover-log runs P-LOG-RECOVER (the tail zeroed,
-; the segment fenced: books/store-log-programs.lisp fn-lg-recover-program)
-; and then the five recovery barriers of fnn-store-recovery-barriers
+; host/native/io.lisp fnn-recover-log runs the open's recovery
+; (P-LOG-RECOVER-COPY since RL-01 A2: books/store-log-recover-copy.lisp; it
+; leaves nothing pending, fn-lgrc-attempt-makes-the-read-prefix-durable) and
+; then the five recovery barriers of fnn-store-recovery-barriers
 ; (config.json, the segment, journal/, the root, its parent), counted by
 ; books/store-files.lisp *fn-sf-recovery-barrier-count*.  The design
 ; (planning/design-2026-09-27-storage-log.md section 3.5) names ONE recovery
@@ -13,9 +14,9 @@
 ;   fn-lgob-duplicate-segment-fence-is-identity   the second barrier (the
 ;       segment again) is the identity on a related state with nothing in
 ;       flight: after P-LOG-RECOVER nothing is pending, so it fences nothing.
-;   fn-lgob-recovered-segment-fence-is-identity   the same at the state the
-;       host holds after fnn-log-recover (log-recovered), for any store
-;       whose segment inode exists: no obligation, no relation needed.
+;   fn-lgob-three-barrier-open-after-the-copy-is-the-five   at the state
+;       the host holds after fnn-log-recover (nothing pending), the three
+;       barriers' cut states are the five's.
 ;   fn-lgob-file-fence-keeps-entry-operations      a file fence never drains a
 ;       pending directory entry: a create or rename into journal/ (P-ROTATE's
 ;       rotate-renamed, init's init-segment-created), a rename into the root
@@ -29,7 +30,7 @@
 ;   fn-lgob-journal-fence-keeps-the-rotated-segment   with journal/ fenced
 ;       at the open, every crash image names it.
 ;
-; What the model needs at the open, then: the segment (P-LOG-RECOVER's own
+; What the model needs at the open, then: the segment (the copy's own
 ; fence), journal/ (a create or unlink in flight at a death in P-ROTATE,
 ; P-DROP or init), the parent (an import at import-published, init before
 ; init-parent-fenced), and the root before the open's drop of covered
@@ -75,60 +76,11 @@
   :hints (("Goal" :in-theory (e/d (fn-lg-step fn-bs-fsync-file fn-bs-fence-file)
                                   (fn-lgk-relp fn-bs-durable-content fn-bs-make)))))
 
-; The state the host holds after fnn-log-recover (fn-lg-recover-program run
-; to log-recovered) is such a state: the recovered kernel has nothing in
-; flight, the run's store is a byte store, and R holds there
-; (fn-lg-recover-program-establishes-the-relation).
+; The kernel the open recovers has nothing in flight.
 (defthm fn-lgob-recovered-kernel-has-nothing-in-flight
   (not (consp (fn-lgk-inflight (fn-lg-recovered-kernel bs ino genesis max floor))))
   :hints (("Goal" :in-theory (enable fn-lg-recovered-kernel fn-lgt-recover fn-lgk-recover
                                      fn-lgk-inflight fn-lgk-make))))
-
-(defthm fn-lgob-recover-run-keeps-the-kernel
-  (implies (assoc-equal ino (fn-bs-inodes bs))
-           (let ((final (car (last (fn-lg-run bs ks (fn-lg-recover-program) nil ino)))))
-             (and (equal (cdr final) ks)
-                  (fn-bs-shapep (car final)))))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-lg-step fn-bs-write fn-bs-fsync-file fn-bs-fence-file)
-                           (fn-bs-durable-content fn-bs-zeros fn-bs-apply-ops)))))
-
-; The recovery program ends with the segment's fence, which leaves nothing of
-; the segment pending, so fencing it again changes nothing: the only premise
-; is that the segment's inode exists (otherwise the program's first write is
-; refused with :ebadf and the run stops before its fence).  The statement
-; once carried six more hypotheses -- a positive unit, a unit-aligned true
-; content, a digest genesis, the owner's sole-pending-writer obligation and
-; no pending write of the segment -- which R needed and the conclusion does
-; not (lane audit-fixes, keystone-audit G4-7: this weakened theorem was
-; proved, so they were removed).
-
-(local
- (defthm fn-lgob-ops-for-ino-of-not-for-ino
-   (equal (fn-bs-ops-for-ino (fn-bs-ops-not-for-ino ops ino) ino) nil)))
-
-(local
- (defthm fn-lgob-ops-not-for-ino-idempotent
-   (equal (fn-bs-ops-not-for-ino (fn-bs-ops-not-for-ino ops ino) ino)
-          (fn-bs-ops-not-for-ino ops ino))))
-
-(local
- (defthm fn-lgob-fence-file-idempotent
-   (equal (fn-bs-fence-file (fn-bs-fence-file s ino) ino)
-          (fn-bs-fence-file s ino))
-   :hints (("Goal" :in-theory (enable fn-bs-fence-file)))))
-
-(defthm fn-lgob-recovered-segment-fence-is-identity
-  (let* ((ks (fn-lg-recovered-kernel bs ino genesis max floor))
-         (final (car (last (fn-lg-run bs ks (fn-lg-recover-program) nil ino)))))
-    (implies (assoc-equal ino (fn-bs-inodes bs))
-             (equal (fn-lg-step (car final) (cdr final) '(:fence :segment :tail) :ok ino)
-                    (mv :ok (car final) (cdr final)))))
-  :hints (("Goal" :do-not-induct t
-           :expand ((:free (bs ks steps outcomes) (fn-lg-run bs ks steps outcomes ino)))
-           :in-theory (e/d (fn-lg-step fn-bs-fsync-file fn-bs-write fn-lg-recover-program)
-                           (fn-bs-fence-file fn-lg-recovered-kernel fn-bs-durable-content
-                            fn-bs-zeros fn-bs-take)))))
 
 ; -----------------------------------------------------------------------------
 ; Why one barrier is not enough.
@@ -320,7 +272,7 @@
   (implies (and (fn-bs-shapep s) (true-listp (fn-bs-pending s))
                 (fn-bs-fencedp s seg) (fn-bs-fencedp s cfg))
            (equal (fn-lgob-cut-states s *fn-lgob-five-barrier-suffix* seg cfg)
-                  (list* s s (fn-lgob-cut-states s (fn-lg-open-suffix) seg cfg))))
+                  (list* s s (fn-lgob-cut-states s (fn-lg-open-program) seg cfg))))
   :hints (("Goal" :in-theory (disable fn-bs-fence-dir fn-bs-fence-file fn-bs-fencedp))))
 
 ; The same, as sets: a state is a cut state of the five-barrier open exactly
@@ -329,7 +281,7 @@
   (implies (and (fn-bs-shapep s) (true-listp (fn-bs-pending s))
                 (fn-bs-fencedp s seg) (fn-bs-fencedp s cfg))
            (iff (member-equal x (fn-lgob-cut-states s *fn-lgob-five-barrier-suffix* seg cfg))
-                (member-equal x (fn-lgob-cut-states s (fn-lg-open-suffix) seg cfg))))
+                (member-equal x (fn-lgob-cut-states s (fn-lg-open-program) seg cfg))))
   :hints (("Goal" :use fn-lgob-three-barrier-open-is-the-five-at-every-cut
            :in-theory (disable fn-lgob-three-barrier-open-is-the-five-at-every-cut
                                fn-bs-fence-dir fn-bs-fence-file fn-bs-fencedp))))
@@ -373,43 +325,18 @@
                                      fn-bs-unlink fn-bs-mkdir fn-bs-fsync-file fn-bs-fsync-dir
                                      fn-bs-write fn-bs-fence-file fn-bs-fence-dir))))
 
-(defthm fn-lgob-recovered-state-meets-the-segment-hypothesis
-  (let* ((ks (fn-lg-recovered-kernel bs ino genesis max floor))
-         (final (car (car (last (fn-lg-run bs ks (fn-lg-recover-program) nil ino))))))
-    (implies (and (assoc-equal ino (fn-bs-inodes bs))
-                  (fn-bs-fencedp bs cfg))
-             (and (fn-bs-shapep final)
-                  (true-listp (fn-bs-pending final))
-                  (fn-bs-fencedp final ino)
-                  (fn-bs-fencedp final cfg))))
-  :hints (("Goal" :do-not-induct t
-           :expand ((:free (bs ks steps outcomes) (fn-lg-run bs ks steps outcomes ino)))
-           :in-theory (e/d (fn-lg-step fn-bs-fsync-file fn-bs-write fn-lg-recover-program
-                            fn-bs-fence-file fn-bs-fencedp)
-                           (fn-lg-recovered-kernel fn-bs-durable-content
-                            fn-bs-zeros fn-bs-take)))))
-
-; KEYSTONE, composed: the open as the host runs it.  From any store whose
-; segment exists and whose config file has no pending write, P-LOG-RECOVER to
-; log-recovered and then the five barriers leave, at every process-death cut,
-; the states the three barriers leave.
-(defthm fn-lgob-three-barrier-open-after-recovery-is-the-five
-  (let* ((ks (fn-lg-recovered-kernel bs ino genesis max floor))
-         (final (car (car (last (fn-lg-run bs ks (fn-lg-recover-program) nil ino))))))
-    (implies (and (assoc-equal ino (fn-bs-inodes bs))
-                  (fn-bs-fencedp bs cfg))
-             (equal (fn-lgob-cut-states final *fn-lgob-five-barrier-suffix* ino cfg)
-                    (list* final final
-                           (fn-lgob-cut-states final (fn-lg-open-suffix) ino cfg)))))
-  :hints (("Goal" :use (fn-lgob-recovered-state-meets-the-segment-hypothesis
-                        (:instance fn-lgob-three-barrier-open-is-the-five-at-every-cut
-                                   (s (car (car (last (fn-lg-run bs (fn-lg-recovered-kernel bs ino genesis max floor)
-                                                                 (fn-lg-recover-program) nil ino)))))
-                                   (seg ino)))
-           :in-theory (disable fn-lgob-recovered-state-meets-the-segment-hypothesis
-                               fn-lgob-three-barrier-open-is-the-five-at-every-cut
-                               fn-lg-run fn-lg-recovered-kernel fn-lgob-cut-states
-                               fn-lg-open-suffix fn-bs-fencedp))))
+; KEYSTONE, composed: the open as the host runs it.  The copy leaves nothing
+; pending (books/store-log-recover-copy.lisp fn-lgrc-attempt-makes-the-read-
+; prefix-durable); from such a store the five barriers leave, at every
+; process-death cut, the states the three barriers leave.
+(defthm fn-lgob-three-barrier-open-after-the-copy-is-the-five
+  (implies (and (fn-bs-shapep s) (null (fn-bs-pending s)))
+           (equal (fn-lgob-cut-states s *fn-lgob-five-barrier-suffix* seg cfg)
+                  (list* s s (fn-lgob-cut-states s (fn-lg-open-program) seg cfg))))
+  :hints (("Goal" :use ((:instance fn-lgob-three-barrier-open-is-the-five-at-every-cut))
+           :in-theory (e/d (fn-bs-fencedp)
+                           (fn-lgob-three-barrier-open-is-the-five-at-every-cut
+                            fn-lgob-cut-states fn-bs-fence-dir fn-bs-fence-file)))))
 
 ; -----------------------------------------------------------------------------
 ; Why none of the three can go: one ground counterexample per omitted barrier.

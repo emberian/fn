@@ -235,11 +235,11 @@ class LogProgramListingTests(unittest.TestCase):
         self.assertEqual([(p, h) for p, h, _ in listing],
                          [("fn-lg-append-program", "fnn-log-append"),
                           ("fn-lg-fence-program", "fnn-log-fence"),
-                          ("fn-lg-recover-program", "fnn-log-recover"),
+                          ("fn-lgrc-program", "fnn-log-recover"),
                           ("fn-lg-extend-program", "fnn-log-ensure-extent")])
         self.assertEqual([c for _, _, c in listing],
                          [("log-written",), ("log-fenced",),
-                          ("log-truncated", "log-recovered"),
+                          ("log-copied", "log-copy-fenced", "log-swapped", "log-recovered"),
                           ("log-extended", "log-extent-fenced")])
 
     def test_a_missing_append_cut_fails(self):
@@ -349,7 +349,7 @@ runpy.run_path(sys.argv[0], run_name='__main__')
 (defun fnn-document-log-cuts () "(fnn-log-at :string-cut)" nil)
 '''})
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("log cut inventory: PASS (13 cuts; 7 segment cuts)", result.stdout)
+        self.assertIn("log cut inventory: PASS (15 cuts; 7 segment cuts)", result.stdout)
 
 
 if __name__ == "__main__":

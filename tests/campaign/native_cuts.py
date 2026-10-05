@@ -156,18 +156,24 @@ LOG_BOOK = "store-log-programs.lisp"
 LOG_PROGRAM_HOSTS = {
     "fn-lg-append-program": "fnn-log-append",
     "fn-lg-fence-program": "fnn-log-fence",
-    "fn-lg-recover-program": "fnn-log-recover",
+    # The writable open's copy (RL-01 A2, books/store-log-recover-copy.lisp).
+    "fn-lgrc-program": "fnn-log-recover",
     # The segment's extension (lane log-2, PKT-COL-4).
     "fn-lg-extend-program": "fnn-log-ensure-extent",
 }
 LOG_EXTEND_BOOK = "store-log-extend.lisp"
-LOG_PROGRAM_BOOKS = {"fn-lg-extend-program": LOG_EXTEND_BOOK}
+LOG_RECOVER_BOOK = "store-log-recover-copy.lisp"
+LOG_PROGRAM_BOOKS = {"fn-lg-extend-program": LOG_EXTEND_BOOK, "fn-lgrc-program": LOG_RECOVER_BOOK}
 LOG_CUTS = (
     NativeCut("log-written", "fn-lg-append-program", "either", book=LOG_BOOK),
     NativeCut("log-fenced", "fn-lg-fence-program", "present",
               follows="fn-lg-append-program", book=LOG_BOOK),
-    NativeCut("log-truncated", "fn-lg-recover-program", "present", book=LOG_BOOK),
-    NativeCut("log-recovered", "fn-lg-recover-program", "present", book=LOG_BOOK),
+    # The open's copy never writes the inode it read; every cut of it leaves
+    # the records the scan read (fn-lgrc-attempt-keeps-the-invariant).
+    NativeCut("log-copied", "fn-lgrc-program", "present", book=LOG_RECOVER_BOOK),
+    NativeCut("log-copy-fenced", "fn-lgrc-program", "present", book=LOG_RECOVER_BOOK),
+    NativeCut("log-swapped", "fn-lgrc-program", "present", book=LOG_RECOVER_BOOK),
+    NativeCut("log-recovered", "fn-lgrc-program", "present", book=LOG_RECOVER_BOOK),
     # A death during the extension (at rest: no batch in flight) leaves the
     # committed records exactly (fn-lg-extension-written-crash-reads-the-
     # committed-records); no member is in the log's batch yet.
@@ -177,6 +183,14 @@ LOG_CUTS = (
 # The host primitive that performs each log step kind, and its cut call.
 LOG_STEP_HOST = {"write-at": "(fnn-log-pwrite ", "fence": "(fnn-log-fdatasync ",
                  "extend-to": "(fnn-log-preallocate "}
+# fnn-log-recover's steps (fn-lgrc-program): the stage's create, the copy's
+# write (one call site, per validated entry), its fence, the rename over the
+# segment, journal/'s and staging/'s fences.  The stage's preallocation is the
+# write's zeros past F (A-HOST) and is not a step.
+LOG_RECOVER_STEP_HOST = {"create": "(fnn-open stage", "write": "(fnn-log-copy-entry ",
+                         "fsync-file": "(fnn-fsync-file ", "rename": "(fnn-replace ",
+                         "fsync-dir": "(fnn-fsync-dir "}
+LOG_PROGRAM_STEP_HOSTS = {"fn-lgrc-program": LOG_RECOVER_STEP_HOST}
 
 # The served commit on a store (lane commit-onto-log): P-BATCH as the
 # owner's commit quantum runs it (host/native/owner.lisp
@@ -760,7 +774,8 @@ def log_program_cut_map(source: str | None = None) -> list[tuple[str, str, tuple
     for program, host in LOG_PROGRAM_HOSTS.items():
         book = LOG_PROGRAM_BOOKS.get(program, LOG_BOOK)
         body = host_function(source, host)
-        verify_log_program_steps(body, host, program, book, LOG_STEP_HOST)
+        verify_log_program_steps(body, host, program, book,
+                                 LOG_PROGRAM_STEP_HOSTS.get(program, LOG_STEP_HOST))
         listing.append((program, host, tuple(model_cut_names(program, book))))
     for cut in LOG_CUTS:
         cut_step_index(cut)
@@ -1169,7 +1184,8 @@ LOG_ROUTE_ARMS = {
     "fnn-publish": ("fnn-log-publish", (("fn-lg-append-program", LOG_BOOK),
                                         ("fn-lg-fence-program", LOG_BOOK),
                                         ("fn-lg-order-program", LOG_ROUTE_BOOK))),
-    "fnn-recover": ("fnn-recover-log", (("fn-lg-open-program", LOG_ROUTE_BOOK),)),
+    "fnn-recover": ("fnn-recover-log", (("fn-lgrc-program", LOG_RECOVER_BOOK),
+                                        ("fn-lg-open-program", LOG_ROUTE_BOOK))),
 }
 # fnn-log-scan-segments (lane log-recovery): the multi-segment open reads the
 # closed segments only (no step) and recovers the active one through
