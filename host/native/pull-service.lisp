@@ -544,8 +544,7 @@ acceptance (the owner is stopping or fenced then)."
          ;; Custody is published before the thread exists.
          (setf (fnn-peer-flight-lease-worker lease) worker
                (fnn-pull-flight-worker flight) worker))
-       (let ((runtime (fnn-pull-flight-runtime flight)))
-         (lambda () (fnn-pull-runtime-wake runtime))))
+       (lambda () (fnn-pull-runtime-wake (fnn-pull-flight-runtime flight))))
       (setf (fnn-pull-flight-spool-op flight) (list :open 0 0 nil :ready nil))))
   (fnn-pull-flight-worker flight))
 
