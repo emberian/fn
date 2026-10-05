@@ -35,7 +35,12 @@
 #   3. builds the PRODUCTION image (tools/build_native_host.sh, under
 #      swarm-build where it exists; FN_IMAGE_ACL2, when set, is the ACL2
 #      launcher the image load runs under, e.g. the toolchain's at
-#      --tls-limit 65536) and freezes it,
+#      --tls-limit 65536) and freezes it: the ACL2 production image itself
+#      is what ships (FN_RELEASE_SERVED=image, the default), or, with
+#      FN_RELEASE_SERVED=extracted, the bare-SBCL core tools/extract/core.sh
+#      extracts from it (E1/E2; NOT YET QUALIFIED -- decisions.md item 8 is
+#      open, and no gate tier runs on the extracted core, so a release does
+#      not ship it until one does; coordinator ruling 2026-10-05),
 #   4. stages it (packaging/install-native.sh), checks that no Python is on
 #      the deployed path (tools/runpath_check.py --tree) and that
 #      `bin/fn --version' prints `fn VERSION (REV12)', and packs it.
@@ -209,13 +214,22 @@ if [ -z "$frozen" ]; then
   FN_ACL2=$image_acl2 FN_NATIVE_PROFILE=production FN_NATIVE_BUILD=host/native/build.lisp \
     FN_NATIVE_IMAGE=build/fn-host FN_NATIVE_LOG="$work/native-build.log" \
     $wrap sh tools/build_native_host.sh
-  # E1: the ACL2 production image above is the proof reference. The served
-  # product is the extracted bare SBCL core under the same launcher contract.
-  FN_EXTRACT_ACL2=$image_acl2 FN_EXTRACT_IMAGE="$work/src/build/fn-host" \
-    FN_NATIVE_PROFILE=production FN_CORE_OUT="$work/src/build/served" FN_CORE_NAME=fn-host \
-    sh tools/extract/core.sh "$work/src"
+  # What ships (coordinator ruling 2026-10-05, D60 redeploy): the ACL2
+  # production image above, the artifact every gate tier runs on and the kind
+  # the 6.6.0 nodes run.  The extracted bare-SBCL core (E1) ships only with
+  # FN_RELEASE_SERVED=extracted, once it is qualified (decisions.md item 8).
+  served=${FN_RELEASE_SERVED:-image}
+  case $served in
+    image) served_dir=$work/src/build ;;
+    extracted)
+      FN_EXTRACT_ACL2=$image_acl2 FN_EXTRACT_IMAGE="$work/src/build/fn-host" \
+        FN_NATIVE_PROFILE=production FN_CORE_OUT="$work/src/build/served" FN_CORE_NAME=fn-host \
+        sh tools/extract/core.sh "$work/src"
+      served_dir=$work/src/build/served ;;
+    *) echo "release-tarball: FN_RELEASE_SERVED is image or extracted, not '$served'" >&2; exit 2 ;;
+  esac
   FN_FREEZE_VARIANTS=fn-host FN_FREEZE_RUNTIME=${runtime_from:+$runtime_from/sbcl} \
-    sh packaging/freeze-native-image.sh "$work/src/build/served" "$work/frozen"
+    sh packaging/freeze-native-image.sh "$served_dir" "$work/frozen"
   frozen=$work/frozen
   stage=$work/stage
   {
@@ -225,6 +239,7 @@ if [ -z "$frozen" ]; then
     echo "acquire: $(tail -1 "$work/acquire.txt")"
     echo "validate: $(tail -1 "$work/validate.txt")"
     echo "acl2: $FN_ACL2"
+    echo "served: $served"
     [ "$image_acl2" = "$FN_ACL2" ] || echo "image-acl2: $image_acl2"
     [ -z "$runtime_from" ] || echo "runtime-from: $($sums "$runtime_from/sbcl")"
     if [ -d "$frozen/openssl/lib" ]; then
