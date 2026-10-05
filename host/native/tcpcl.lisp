@@ -79,7 +79,13 @@
   ;; Private concrete octet buffer, one incomplete frame only. The incoming
   ;; socket vector survives cursor turns; no list carry is appended/reparsed.
   input-buffer input-cursor input-vector (input-offset 0)
-  input-materialize-end input-materialize-probe input-octets contact-deadline init-deadline)
+  input-materialize-end input-materialize-probe input-octets contact-deadline init-deadline
+  ;; S025: the established session's no-progress bounds (books/tcpcl-retained-turn.lisp).
+  ;; PROGRESS-AT is ACL2's clock of the last whole XFER_SEGMENT/XFER_ACK frame read or
+  ;; written; PASSIVE-MS/STALL-MS are the profile's bounds (nil: none installed, as for
+  ;; a verb outside the BP session bank); CONTENDED is a thunk answering whether the
+  ;; incoming class is full with a peer waiting.
+  progress-at passive-ms stall-ms contended)
 
 ;;; ---------------------------------------------------------------------------
 ;;; The clock.  One monotonic reading per wakeup, in milliseconds, handed to
@@ -395,6 +401,7 @@ and faults without following or deleting anything."
                      (fnn-core 'fn-tcl-host-input-probe (fnn-tclc-session conn) octets))
           (when (fnn-tclc-source-pending conn)
             (fnn-tcl-log conn "event" "control input while source held"))
+          (fnn-tcl-note-frame conn now (car octets))
           (let ((triple (fnn-core
                         (if *fnn-tcl-source-start* 'fn-tcl-host-source-drive 'fn-tcl-host-drive)
                         (fnn-tclc-session conn) octets now)))
@@ -643,6 +650,25 @@ and faults without following or deleting anything."
         (fnn-tclc-tx-data conn) nil (fnn-tclc-tx-messages conn) nil)
   (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-tcp-closed (fnn-tclc-session conn))))
 
+;;; S025.  ACL2 decides (fn-tcrt-expiry); the host asks only at the :local action,
+;;; where no message is half written and no custody is held, and sends the bound's
+;;; own SESS_TERM reason through the session machine's handshake.
+(defun fnn-tcl-note-frame (conn now type)
+  "A whole frame of message TYPE was read or written: ACL2 says whether it is progress."
+  (setf (fnn-tclc-progress-at conn)
+        (fnn-core 'fn-tcrt-note-frame type now (fnn-tclc-progress-at conn))))
+
+(defun fnn-tcl-expire-no-progress (conn action phase now)
+  (when (and (fnn-tclc-passive-ms conn) (fnn-tclc-stall-ms conn))
+    (let* ((session (fnn-tclc-session conn))
+           (contended (and (fnn-tclc-contended conn) (funcall (fnn-tclc-contended conn)) t))
+           (reason (fnn-core 'fn-tcrt-expiry action phase now (fnn-tclc-progress-at conn)
+                             (fnn-tclc-passive-ms conn) (fnn-tclc-stall-ms conn)
+                             (fnn-core 'fn-tcl-host-in-transfer session) contended)))
+      (when reason
+        (fnn-tcl-log conn "event" "no transfer progress: SESS_TERM reason ~d" reason)
+        (fnn-tcl-apply conn (fnn-core 'fn-tcl-host-terminate-reason session reason now))))))
+
 (defun fnn-tcl-turn-local (conn now)
   ;; The progress callback follows actual released ACK writes, not merely
   ;; enqueueing them. A retained received-source borrow also excludes it.
@@ -692,6 +718,9 @@ The caller keeps this connection and its socket until actual physical close."
                           (fnn-tclc-source-more conn))
            (fnn-tcl-log conn "event" "peer SESS_INIT timeout")
            (fnn-tcl-turn-lost conn)))
+         (progress-watch (setf (fnn-tclc-progress-at conn)
+                           (fnn-core 'fn-tcrt-progress-clock phase now
+                                     (fnn-tclc-progress-at conn))))
          (contact-timeout
           (when (fnn-core 'fn-tcrt-contact-timeout-p
                   (fnn-core 'fn-tcl-host-phase (fnn-tclc-session conn))
@@ -723,7 +752,7 @@ The caller keeps this connection and its socket until actual physical close."
                    (fnn-tclc-source-input-turn conn) (fnn-tclc-source-more conn)
                    (fnn-tcl-source-control-octet conn)))
          (result :work))
-    (declare (ignore ignored contact-timeout init-timeout))
+    (declare (ignore ignored contact-timeout init-timeout progress-watch))
     (when (and (fnn-tclc-source-pending conn) (member action '(:source :read :buffer)))
       (setf (fnn-tclc-source-input-turn conn) (eq action :source)))
     (case action
@@ -744,6 +773,7 @@ The caller keeps this connection and its socket until actual physical close."
                  (t (progn
                (incf (fnn-tclc-tx-offset conn) written)
                (when (= (fnn-tclc-tx-offset conn) (length data))
+                 (fnn-tcl-note-frame conn now (aref data 0))
                  (setf (fnn-tclc-tx-data conn) nil (fnn-tclc-tx-deadline conn) nil)))))))
         (:source (fnn-tcl-source-tick conn))
         (:buffer (fnn-tcl-input-turn conn nil now))
@@ -754,6 +784,7 @@ The caller keeps this connection and its socket until actual physical close."
            (setf (fnn-tclc-pump-pending conn) (and (second triple) t)
                  (fnn-tclc-input-due conn) t)))
         (:local
+         (fnn-tcl-expire-no-progress conn action phase now)
          (fnn-tcl-turn-local conn now)
          (setf (fnn-tclc-input-due conn) t))
         (:read

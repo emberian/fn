@@ -19,6 +19,14 @@ tools/cut_release.sh gate 01: VERSION is the next entry after the newest
 existing v* tag (by position), or the first entry when there is none, or
 VERSION's own tag is the newest (the cut's own commit, re-run).
 
+Pre-releases (coordinator ruling 2026-10-05, D37): `ENTRY-pre' names the
+bytes built toward sequence entry ENTRY before ENTRY's cut criteria are met
+(the D60 redeploy ships 6.6.1-pre).  It takes ENTRY's position, so it sorts
+with ENTRY, and `fn --version' prints it with its REV12 (`fn 6.6.1-pre
+(R12)').  It is never a release: cut-check refuses it, so tools/cut_release.sh
+can never tag one, and the live nodes' version (6.6.0) never names other
+bytes.
+
 Prehistory (2026-09-28, lane devhist): the first segment may be marked
 "prehistory": true.  Its entries (v1.0.0 to v5.0.0) are retrospective
 annotated tags on milestones of the development history (DEVHIST.md), not
@@ -39,6 +47,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SEQUENCE_FILE = ROOT / "planning" / "release-sequence.json"
 _NUMERAL = re.compile(r"0|[1-9][0-9]*\Z")
+PRE = "-pre"
+
+
+def entry_of(text: str) -> str:
+    """The sequence entry TEXT names: TEXT itself, or ENTRY for ENTRY-pre."""
+    if isinstance(text, str) and text.endswith(PRE):
+        return text[:-len(PRE)]
+    return text
+
+
+def is_pre(text: str) -> bool:
+    """TEXT is a pre-release word (ENTRY-pre), not a release."""
+    return isinstance(text, str) and text.endswith(PRE) and bool(entry_of(text))
 
 
 class NotInSequence(ValueError):
@@ -111,7 +132,9 @@ def _index_in(seg: dict, version: str) -> int | None:
 
 
 def position(version: str, segments: list[dict] | None = None) -> tuple[int, int]:
-    """(segment, index within it): the release order, compared as a pair."""
+    """(segment, index within it): the release order, compared as a pair.
+    ENTRY-pre takes ENTRY's position."""
+    version = entry_of(version)
     parse(version)
     segments = segments if segments is not None else load()
     for i, seg in enumerate(segments):
@@ -212,12 +235,16 @@ def cut_check(version: str, tags, segments: list[dict] | None = None) -> tuple[b
         position(version, segments)
     except ValueError as e:
         return False, f"VERSION {version!r}: {e}"
+    if is_pre(version):
+        return False, f"VERSION {version} is a pre-release of {entry_of(version)}, never cut"
     if is_prehistory(version, segments):
         return False, f"VERSION {version} is a prehistory tag (DEVHIST.md), not a release"
     released = []
     for t in tags:
         if not t.startswith("v"):
             continue
+        if is_pre(t[1:]):
+            return False, f"tag {t} names a pre-release; a pre-release is never tagged"
         try:
             position(t[1:], segments)
         except ValueError:

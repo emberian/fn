@@ -1,8 +1,11 @@
 {
+ "allow_forbidden": "host/interfaces.lisp",
  "file": "packaging/install-native.sh",
  "id": "SCEN-WALK-INSTALL-NO-OPENSSL",
  "native": "tests.test_native_operator_walk",
- "notes": [],
+ "notes": [
+  "2026-10-05 INTEGRATOR-4: allow_forbidden GRANTED at the merge of lane/w-serve-2@94bbaa03d (the release batch), scope-reviewed: host/interfaces.lisp gains exactly 2 definterface rows, fn-tlsk-host-library-decide and fn-tlsk-host-library-line (D59 refusal scope e2301f288, which this release ships with the bundled OpenSSL 4d62d9f48). No other forbidden path touched."
+ ],
  "owner": "unassigned",
  "severity": "high",
  "source": "feed-pace",

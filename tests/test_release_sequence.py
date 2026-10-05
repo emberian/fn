@@ -114,6 +114,21 @@ class CutCheckTests(unittest.TestCase):
         self.assertFalse(rs.cut_check("6.6.9", [])[0])
         self.assertFalse(rs.cut_check("6.6.1", ["v6.6.0", "v9.9.9"])[0])
 
+    def test_pre_release_sorts_with_its_entry_and_is_never_cut(self):
+        # coordinator ruling 2026-10-05 (D37): ENTRY-pre, never a release
+        self.assertEqual(rs.position("6.6.1-pre"), rs.position("6.6.1"))
+        self.assertEqual(rs.entry_of("6.6.1-pre"), "6.6.1")
+        self.assertTrue(rs.is_pre("6.6.1-pre"))
+        self.assertFalse(rs.is_pre("6.6.1"))
+        ok, why = rs.cut_check("6.6.1-pre", ["v6.6.0"])
+        self.assertFalse(ok)
+        self.assertIn("pre-release of 6.6.1, never cut", why)
+        self.assertFalse(rs.cut_check("6.6.2", ["v6.6.0", "v6.6.1-pre"])[0])
+        self.assertTrue(rs.cut_check("6.6.1", ["v6.6.0"])[0])
+        for bad in ["-pre", "6.6.1-pre-pre", "6.6.1-rc1", "6.6.9-pre", "6.6.1pre"]:
+            with self.assertRaises(ValueError, msg=bad):
+                rs.position(bad)
+
     def test_cli(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):

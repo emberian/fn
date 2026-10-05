@@ -1,5 +1,6 @@
 {
  "acceptance": "bp:step-bound",
+ "allow_forbidden": "host/interfaces.lisp",
  "category": "architecture",
  "detail": "planning/repair/sources/inspection-sweep-2026-10-03.md",
  "disposition": "DISSOLVES-IN",
@@ -13,7 +14,8 @@
  "notes": [
   "2026-10-03 retained TCPCL begin/turn and actual generic session consumer replace whole-send/pump with bounded socket ranges/alternating input. Scalar scheduling proof PRF-1273; node loop still retains its scalar acceptance pin and between-session forwarding. Supported-profile funding and actual node multiplexer next; S025 not closed.",
   "2026-10-03 actual serve now consumes private explicitly profiled incoming/outgoing typed bank and retained rotating listener/context/service loop. Forwarding/receipt continuations and same-token fragmented socket rearm are connected; raw actual-loop live-peer discrimination passes. Native matching-image scenario, whole scheduling/physical-cut refinement and complete allocator/GC/work tariff remain open; S025 stays in-progress.",
-  "10-04 02:31 ledger-close 2026-10-04: left in-progress: the serialized node loop is still not multiplexed: the owner's own notes say native matching-image scenario, whole scheduling/physical-cut refinement and allocator/GC/work tariff remain open; smallest fix is the S025 native live-peer scenario (a keepalive-holding peer beside a second listener) green on a matching image"
+  "10-04 02:31 ledger-close 2026-10-04: left in-progress: the serialized node loop is still not multiplexed: the owner's own notes say native matching-image scenario, whole scheduling/physical-cut refinement and allocator/GC/work tariff remain open; smallest fix is the S025 native live-peer scenario (a keepalive-holding peer beside a second listener) green on a matching image",
+  "2026-10-05 INTEGRATOR-4: allow_forbidden GRANTED at the merge of w/bp@b8e846956 (the release batch), scope-reviewed: host/interfaces.lisp gains only definterface rows for entries this change defines: fn-tcl-host-terminate-reason, fn-tcl-host-in-transfer (host/tcpcl-host.lisp), fn-bpsp-incoming-contended, fn-bpsp-passive-ms, fn-bpsp-stall-ms (books/bp-session-profile.lisp), fn-tcrt-progress-clock, fn-tcrt-note-frame, fn-tcrt-expiry with its 5 restated keystones (books/tcpcl-retained-turn.lisp). Nothing removed; no other forbidden path."
  ],
  "owner": "bp-transport",
  "reviewer": "bp-node.lisp:973-987 and bp-control.lisp:192-207 run one session to completion before the next poll, which is deliberate (spec 9.1). fnn-tcl-session (tcpcl.lisp:499-553) has no bound on session duration: it loops while the peer sends input or keepalives. Admission is decided per transfer in fnn-bp-deliver-node, not at SESS_INIT (comment at bp-node.lisp:1033-1039), so even an unadmitted peer can complete SESS_INIT and then hold the session. *fnn-tcl-progress* runs only on a read timeout after acknowledged custody (tcpcl.lisp:517-521), and even then only dispatch-pending. Forwarding, outboxes, receipts, expiry (delete-expired) and rotation (bp-node.lisp:1056-1077) never run while the session lasts. The control pump still runs through fnn-bpnc-wait-input.",

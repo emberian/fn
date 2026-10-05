@@ -68,3 +68,127 @@
  (implies (fn-tcrt-init-timeout-p phase now deadline buffered)
   (equal phase :messaging))
  :rule-classes nil)
+
+; S025 (coordinator ruling 2026-10-04, planning/design/bp-2026-10-04.md 2.6):
+; the no-progress bounds of an ESTABLISHED session.  Progress is transfer
+; advancement in either direction: a whole XFER_SEGMENT or XFER_ACK frame
+; received, or written to the socket (RFC 9174 5.2.4, 5.2.5; message type
+; octets 1 and 2).  An ACK merely queued does not count (the host notes only
+; frames whose last octet was written), and neither do KEEPALIVE, SESS_TERM,
+; XFER_REFUSE, MSG_REJECT or SESS_INIT.  The bounds are admission policy:
+; fairness among inbound peers is not bounded, and a peer that advances one
+; frame per window keeps its slot.
+;   passive-ms  bounded only under contention (the incoming class is full and
+;               another peer is waiting): SESS_TERM reason 5, Resource Exhaustion.
+;   stall-ms    bounded always, for a session with a transfer in flight:
+;               SESS_TERM reason 1, Idle timeout.
+; The host acts only at the :local arm of fn-tcrt-action, so the SESS_TERM
+; is queued behind complete messages and never inside an unfinished one.
+(defun fn-tcrt-progress-frame-p (type)
+ (declare (xargs :guard t))
+ (and (member-equal type '(1 2)) t))
+; Captured once on entering :established; the prior value is never renewed here.
+(defun fn-tcrt-progress-clock (phase now prior)
+ (declare (xargs :guard t))
+ (and (equal phase :established)
+      (if (natp prior) prior (nfix now))))
+(defun fn-tcrt-note-frame (type now prior)
+ (declare (xargs :guard t))
+ (if (and (natp prior) (natp now) (<= prior now) (fn-tcrt-progress-frame-p type))
+     now
+   prior))
+(defun fn-tcrt-passive-timeout-p (phase now progress-at passive-ms contended)
+ (declare (xargs :guard t))
+ (and contended (equal phase :established)
+      (natp now) (natp progress-at) (posp passive-ms)
+      (<= (+ progress-at passive-ms) now) t))
+(defun fn-tcrt-stall-timeout-p (phase now progress-at stall-ms in-transfer)
+ (declare (xargs :guard t))
+ (and in-transfer (equal phase :established)
+      (natp now) (natp progress-at) (posp stall-ms)
+      (<= (+ progress-at stall-ms) now) t))
+(defun fn-tcrt-expiry-reason (phase now progress-at passive-ms stall-ms in-transfer contended)
+ (declare (xargs :guard t))
+ (cond ((fn-tcrt-passive-timeout-p phase now progress-at passive-ms contended)
+        5)  ; Resource Exhaustion
+       ((fn-tcrt-stall-timeout-p phase now progress-at stall-ms in-transfer)
+        1)  ; Idle timeout
+       (t nil)))
+; The one decision the host obeys: the SESS_TERM reason, or nil.  Only the
+; :local action may end a session this way.
+(defun fn-tcrt-expiry (action phase now progress-at passive-ms stall-ms in-transfer contended)
+ (declare (xargs :guard t))
+ (and (equal action :local)
+      (fn-tcrt-expiry-reason phase now progress-at passive-ms stall-ms in-transfer contended)))
+
+(defthm fn-tcrt-passive-timeout-only-under-contention-by-definition
+ (implies (fn-tcrt-passive-timeout-p phase now progress-at passive-ms contended)
+  (and contended (equal phase :established)
+       (natp now) (natp progress-at) (posp passive-ms)
+       (<= (+ progress-at passive-ms) now)))
+ :rule-classes nil)
+(defthm fn-tcrt-quiet-node-never-passive-timeout
+ (not (fn-tcrt-passive-timeout-p phase now progress-at passive-ms nil)))
+(defthm fn-tcrt-stall-timeout-needs-a-transfer-by-definition
+ (implies (fn-tcrt-stall-timeout-p phase now progress-at stall-ms in-transfer)
+  (and in-transfer (equal phase :established)
+       (natp now) (natp progress-at) (posp stall-ms)
+       (<= (+ progress-at stall-ms) now)))
+ :rule-classes nil)
+(defthm fn-tcrt-idle-session-never-stall-timeout
+ (not (fn-tcrt-stall-timeout-p phase now progress-at stall-ms nil)))
+(defthm fn-tcrt-no-expiry-before-established
+ (implies (not (equal phase :established))
+  (not (fn-tcrt-expiry-reason phase now progress-at passive-ms stall-ms in-transfer contended))))
+(defthm fn-tcrt-progress-clock-does-not-renew
+ (implies (natp prior)
+  (equal (fn-tcrt-progress-clock :established now prior) prior)))
+(defthm fn-tcrt-only-transfer-frames-renew-progress
+ (implies (not (fn-tcrt-progress-frame-p type))
+  (equal (fn-tcrt-note-frame type now prior) prior)))
+(defthm fn-tcrt-transfer-frame-renews-progress
+ (implies (and (fn-tcrt-progress-frame-p type) (natp prior) (natp now) (<= prior now)
+               (posp passive-ms) (posp stall-ms))
+  (and (not (fn-tcrt-passive-timeout-p :established now (fn-tcrt-note-frame type now prior)
+                                        passive-ms t))
+       (not (fn-tcrt-stall-timeout-p :established now (fn-tcrt-note-frame type now prior)
+                                      stall-ms t)))))
+(defthm fn-tcrt-contention-is-reason-five-by-definition
+ (implies (fn-tcrt-passive-timeout-p phase now progress-at passive-ms t)
+  (equal (fn-tcrt-expiry-reason phase now progress-at passive-ms stall-ms in-transfer t) 5))
+ :rule-classes nil)
+(defthm fn-tcrt-stall-bound-ignores-contention
+ (implies (fn-tcrt-stall-timeout-p phase now progress-at stall-ms in-transfer)
+  (and (fn-tcrt-expiry-reason phase now progress-at passive-ms stall-ms in-transfer nil)
+       (fn-tcrt-expiry-reason phase now progress-at passive-ms stall-ms in-transfer t)))
+ :rule-classes nil)
+(defthm fn-tcrt-expiry-reason-is-idle-or-resource-exhaustion
+ (implies (fn-tcrt-expiry-reason phase now progress-at passive-ms stall-ms in-transfer contended)
+  (member-equal (fn-tcrt-expiry-reason phase now progress-at passive-ms stall-ms in-transfer contended)
+                '(1 5)))
+ :rule-classes nil)
+; The same bounds stated over the decision the host calls, fn-tcrt-expiry.
+(defthm fn-tcrt-expiry-resource-exhaustion-only-under-contention
+ (implies (equal (fn-tcrt-expiry action phase now progress-at passive-ms stall-ms in-transfer contended) 5)
+  contended)
+ :rule-classes nil)
+(defthm fn-tcrt-quiet-idle-session-is-never-expired
+ (not (fn-tcrt-expiry action phase now progress-at passive-ms stall-ms nil nil)))
+(defthm fn-tcrt-stall-expiry-needs-a-transfer
+ (implies (equal (fn-tcrt-expiry action phase now progress-at passive-ms stall-ms in-transfer contended) 1)
+  in-transfer)
+ :rule-classes nil)
+(defthm fn-tcrt-no-expiry-before-established-session
+ (implies (not (equal phase :established))
+  (not (fn-tcrt-expiry action phase now progress-at passive-ms stall-ms in-transfer contended))))
+(defthm fn-tcrt-expiry-is-idle-or-resource-exhaustion
+ (implies (fn-tcrt-expiry action phase now progress-at passive-ms stall-ms in-transfer contended)
+  (member-equal (fn-tcrt-expiry action phase now progress-at passive-ms stall-ms in-transfer contended)
+                '(1 5)))
+ :rule-classes nil)
+; The session is never ended inside an unfinished message or over held custody.
+(defthm fn-tcrt-expiry-only-at-a-message-boundary
+ (implies (fn-tcrt-expiry (fn-tcrt-action source-pending source-more writep messagesp input-due pump closing phase now1 deadline)
+                          phase now progress-at passive-ms stall-ms in-transfer contended)
+  (and (not writep) (not messagesp) (not source-pending) (not closing)))
+ :rule-classes nil)

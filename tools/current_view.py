@@ -176,6 +176,9 @@ def carried(evidence: Evidence, image: dict, files: list[str]) -> tuple[bool, st
     for rel in files:
         recorded = sources.get(rel)
         if recorded is None:
+            if rel in (image.get("host_absent") or []):
+                absent.append(rel)
+                continue
             if not rel.startswith("books/"):
                 raise ViewError(f"image {image['source'][:8]} has no digest for {rel}; "
                                 "run `python3 tools/current_view.py --pin-image NAME`")
@@ -384,12 +387,24 @@ def pin_image(name: str, root: Path = ROOT) -> int:
                         for cap in view["capabilities"]
                         for name_ in (cap["keystone"], cap.get("bridge")) if name_})
     revision = commit_map.resolve(image["source"], root)
-    digests = {}
+    digests, missing = {}, []
     for rel in files:
+        # A host file the revision does not have (a capability newer than
+        # the image) is pinned as absent, so the view says "absent from it"
+        # instead of refusing the sidecar.
+        exists = subprocess.run(["git", "-C", str(root), "cat-file", "-e", f"{revision}:{rel}"],
+                                capture_output=True).returncode == 0
+        if not exists:
+            missing.append(rel)
+            continue
         blob = subprocess.run(["git", "-C", str(root), "show", f"{revision}:{rel}"],
                               check=True, capture_output=True).stdout
         digests[rel] = hashlib.sha256(blob).hexdigest()
     image["host_sha256"] = digests
+    if missing:
+        image["host_absent"] = missing
+    else:
+        image.pop("host_absent", None)
     if books:
         pinned = {}
         for rel in books:

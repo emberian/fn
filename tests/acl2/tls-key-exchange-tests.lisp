@@ -54,8 +54,9 @@ groups = \"x\"
 "))
                      '(:refused :syntax)))
 
-; --- KEYSTONE fn-tlsk-required-refuses-by-name-without-the-hybrid and
-; fn-tlsk-required-serves-only-the-hybrid-list.  Witness: both observations.
+; --- KEYSTONE fn-tlsk-required-serves-only-the-hybrid-list (and its arm
+; fn-tlsk-required-without-the-hybrid-refuses-by-definition).  Witness: both
+; observations.
 (assert-event (equal (fn-tlsk-decide :hybrid-required nil)
                      '(:refuse :hybrid-unavailable)))
 (assert-event (equal (fn-tlsk-decide :hybrid-required t)
@@ -170,3 +171,40 @@ groups = \"x\"
 (assert-event (null (fn-tlsk-health-client-line (list :accepted nil *tkxt-served*))))
 (assert-event (null (fn-tlsk-health-client-line :bad)))
 (assert-event (null (fn-tlsk-health-client-line (list :refused nil (fn-tlsk-status-lines *tkxt-served* *tkxt-kx*)))))
+
+; --- KEYSTONES fn-tlsk-library-without-tls-never-refuses and
+; fn-tlsk-library-served-tls-never-falls-back (D59's refusal scope).
+; Witness: each of the three answers is reached, and both antecedents are
+; inhabited (a served node and a hybrid-required one, each with the pair
+; missing, are refused, not fallen back).
+(assert-event (equal (fn-tlsk-library-decide nil t :hybrid-required) :pinned))
+(assert-event (equal (fn-tlsk-library-decide t nil :hybrid-preferred) :fallback))
+(assert-event (equal (fn-tlsk-library-decide t t :hybrid-preferred) :refuse))
+(assert-event (equal (fn-tlsk-library-decide t nil :hybrid-required) :refuse))
+; A bad policy word on a node with no certificate is not hybrid-required: the
+; [tls] table is refused only where the key exchange is decided.
+(assert-event (equal (fn-tlsk-library-decide t nil :bad) :fallback))
+(assert-event (equal (fn-record-octets-string (fn-tlsk-library-line :fallback))
+                     "tls library warning: no OpenSSL libcrypto/libssl pair under the pinned prefix; the system's pair is loaded, and this node serves no TLS"))
+(assert-event (null (fn-tlsk-library-line :pinned)))
+; Teeth: a missing pinned pair does not always refuse (the node without TLS
+; runs), and a served TLS node with it missing never falls back.
+(must-fail-checked
+ (defthm tkxt-tooth-missing-always-refuses
+   (implies missing
+            (equal (fn-tlsk-library-decide missing served policy) :refuse))
+   :rule-classes nil))
+(must-fail-checked
+ (defthm tkxt-tooth-served-may-fall-back
+   (implies (and missing served)
+            (equal (fn-tlsk-library-decide missing served policy) :fallback))
+   :rule-classes nil))
+(must-fail-checked
+ (defthm tkxt-tooth-required-without-tls-runs
+   (implies missing
+            (not (equal (fn-tlsk-library-decide missing nil :hybrid-required) :refuse)))
+   :rule-classes nil))
+(must-fail-checked
+ (defthm tkxt-tooth-any-node-never-falls-back
+   (not (equal (fn-tlsk-library-decide missing served policy) :fallback))
+   :rule-classes nil))

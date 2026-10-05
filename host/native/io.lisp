@@ -6830,7 +6830,12 @@ entry (a harness that calls it directly)."
 
 (defun fnn-release-version-word-p (text)
   "TEXT is dotted decimal numerals without leading zeros, any number of
-components (6.6.0, 6.7.12, 6.6.6.6)."
+components (6.6.0, 6.7.12, 6.6.6.6), optionally followed by -pre: a
+pre-release of that sequence entry, never cut (6.6.1-pre;
+tools/release_sequence.py, coordinator ruling 2026-10-05 under D37)."
+  (when (and (stringp text) (> (length text) 4)
+             (string= "-pre" text :start2 (- (length text) 4)))
+    (setq text (subseq text 0 (- (length text) 4))))
   (and (stringp text)
        (plusp (length text))
        (let ((start 0))
