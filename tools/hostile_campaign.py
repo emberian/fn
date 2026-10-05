@@ -1187,13 +1187,23 @@ def family_tls(node, evidence):
     rows["handshake burst (30 s, 48-way)"] = burst_row
 
     # -- 8. The clean TLS probe still answers after all the abuse ------------
-    ok, greeting, date = _tls_handshake_then_date(node)
+    # From a source that took no part in it: the handshake budget is per
+    # source (books/tls-handshake-budget.lisp, PKT-639), so the abusing
+    # address may be refused by design, and its refusal says nothing about
+    # whether the listener is alive.  That address's answer is recorded
+    # beside it, as the budget's verdict, not as a defect.
+    ok, greeting, date = _tls_handshake_then_date(node, source="127.0.0.2")
     rows["clean TLS probe after abuse"] = {
+        "source": "127.0.0.2",
         "ok": ok, "greeting": greeting.decode("ascii", "replace").strip()[:40],
         "date": date.decode("ascii", "replace").strip()[:40]}
+    abuser_ok, abuser_greeting, _ = _tls_handshake_then_date(node)
+    rows["abusing source after abuse (per-source budget)"] = {
+        "source": "127.0.0.1", "ok": abuser_ok,
+        "greeting": abuser_greeting.decode("ascii", "replace").strip()[:40]}
     if not ok:
         defects.append(("owner-death-like",
-                        "the implicit-TLS listener stopped answering after the family"))
+                        "the implicit-TLS listener stopped answering a fresh source after the family"))
 
     rows["_defects"] = defects
     return rows, None
