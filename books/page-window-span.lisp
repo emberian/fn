@@ -306,3 +306,122 @@
   :hints (("Goal" :in-theory (enable fn-pwr-span-at))))
 
 (in-theory (disable fn-pwr-span-at))
+
+; The verified-window cache's span (fn-pwc-byte-at's join): the warm path read
+; octet by octet too, one lock and one ACL2 call each.  Same shape: the cached
+; window's octets [I, J) in payload coordinates copied to the caller's buffer.
+(defun fn-pwc-span-at (ledger token s file eoff elen poff plen trailer i j
+                              fn-ew-buffer fn-ew-span)
+  (declare (xargs :stobjs (fn-ew-buffer fn-ew-span)
+                  :guard (and (true-listp s) (natp i) (natp j) (< i j))
+                  :guard-hints (("Goal" :in-theory (enable fn-pwr-span-copy)))))
+  (if (and (fn-pwc-cachedp ledger token)
+           (fn-pwr-plan-matches-token s token)
+           (fn-ewp-publication s)
+           (equal (list file eoff elen poff plen trailer)
+                  (list (fn-prl-nth 2 token) (fn-prl-nth 3 token)
+                        (fn-prl-nth 4 token) (fn-prl-nth 5 token)
+                        (fn-prl-nth 6 token) (fn-prl-nth 8 token)))
+           (natp plen) (<= j plen)
+           (natp (fn-prl-nth 7 token)) (<= (fn-prl-nth 7 token) i)
+           (natp (nth 5 s)) (<= (nth 5 s) 16384)
+           (<= (- j (fn-prl-nth 7 token)) (nth 5 s)))
+      (let ((fn-ew-span (fn-pwr-span-copy (- i (fn-prl-nth 7 token)) (- j i) 0
+                                          fn-ew-buffer fn-ew-span)))
+        (mv :span fn-ew-span))
+    (mv :miss fn-ew-span)))
+
+(local
+ (defthm fn-pwc-span-byte-at-facts
+   (implies (equal (mv-nth 0 (fn-pwc-byte-at ledger token s file eoff elen poff plen trailer i
+                                             fn-ew-buffer))
+                   :byte)
+            (and (fn-pwc-cachedp ledger token)
+                 (fn-pwr-plan-matches-token s token) (fn-ewp-publication s)
+                 (equal (list file eoff elen poff plen trailer)
+                        (list (fn-prl-nth 2 token) (fn-prl-nth 3 token)
+                              (fn-prl-nth 4 token) (fn-prl-nth 5 token)
+                              (fn-prl-nth 6 token) (fn-prl-nth 8 token)))
+                 (natp i) (natp plen) (< i plen)
+                 (natp (fn-prl-nth 7 token)) (<= (fn-prl-nth 7 token) i)
+                 (natp (nth 5 s)) (<= (nth 5 s) 16384)
+                 (< (- i (fn-prl-nth 7 token)) (nth 5 s))
+                 (equal (mv-nth 1 (fn-pwc-byte-at ledger token s file eoff elen poff plen trailer i
+                                                  fn-ew-buffer))
+                        (nth (- i (fn-prl-nth 7 token)) (nth 0 fn-ew-buffer)))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-pwc-byte-at fn-ew-bytesi)))))
+
+(local
+ (defthm fn-pwc-span-byte-at-is-byte
+   (implies (and (fn-pwc-cachedp ledger token)
+                 (fn-pwr-plan-matches-token s token) (fn-ewp-publication s)
+                 (equal (list file eoff elen poff plen trailer)
+                        (list (fn-prl-nth 2 token) (fn-prl-nth 3 token)
+                              (fn-prl-nth 4 token) (fn-prl-nth 5 token)
+                              (fn-prl-nth 6 token) (fn-prl-nth 8 token)))
+                 (natp i) (natp plen) (< i plen)
+                 (natp (fn-prl-nth 7 token)) (<= (fn-prl-nth 7 token) i)
+                 (natp (nth 5 s)) (<= (nth 5 s) 16384)
+                 (< (- i (fn-prl-nth 7 token)) (nth 5 s)))
+            (equal (fn-pwc-byte-at ledger token s file eoff elen poff plen trailer i fn-ew-buffer)
+                   (mv :byte (nth (- i (fn-prl-nth 7 token)) (nth 0 fn-ew-buffer)))))
+   :hints (("Goal" :in-theory (enable fn-pwc-byte-at fn-ew-bytesi)))))
+
+; KEYSTONE (a cache span is the cache's scalar hits).
+(defthm fn-pwc-span-at-is-the-cached-bytes
+  (implies (and (natp i) (natp j) (< i j) (natp k) (< k (- j i))
+                (equal (mv-nth 0 (fn-pwc-span-at ledger token s file eoff elen poff plen trailer
+                                                 i j fn-ew-buffer fn-ew-span))
+                       :span))
+           (and (equal (mv-nth 0 (fn-pwc-byte-at ledger token s file eoff elen poff plen trailer
+                                                 (+ i k) fn-ew-buffer))
+                       :byte)
+                (equal (nth k (nth 0 (mv-nth 1 (fn-pwc-span-at ledger token s file eoff elen poff
+                                                              plen trailer i j fn-ew-buffer
+                                                              fn-ew-span))))
+                       (mv-nth 1 (fn-pwc-byte-at ledger token s file eoff elen poff plen trailer
+                                                 (+ i k) fn-ew-buffer)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-pwc-span-at)
+           :use ((:instance fn-pwr-span-copy-exact-output-and-effects
+                            (src (- i (fn-prl-nth 7 token))) (count (- j i)) (dst 0) (j k))
+                 (:instance fn-pwc-span-byte-at-is-byte (i (+ i k)))))))
+
+(defthm fn-pwc-span-at-misses-where-the-octet-does
+  (implies (and (natp i) (natp j) (< i j) (natp k) (< k (- j i))
+                (not (equal (mv-nth 0 (fn-pwc-byte-at ledger token s file eoff elen poff plen
+                                                      trailer (+ i k) fn-ew-buffer))
+                            :byte)))
+           (not (equal (mv-nth 0 (fn-pwc-span-at ledger token s file eoff elen poff plen trailer
+                                                 i j fn-ew-buffer fn-ew-span))
+                       :span)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-pwc-span-at-is-the-cached-bytes)))
+
+(defthm fn-pwc-span-at-answers-when-its-ends-do
+  (implies (and (natp i) (natp j) (< i j)
+                (equal (mv-nth 0 (fn-pwc-byte-at ledger token s file eoff elen poff plen trailer i
+                                                 fn-ew-buffer))
+                       :byte)
+                (equal (mv-nth 0 (fn-pwc-byte-at ledger token s file eoff elen poff plen trailer
+                                                 (- j 1) fn-ew-buffer))
+                       :byte))
+           (equal (mv-nth 0 (fn-pwc-span-at ledger token s file eoff elen poff plen trailer
+                                            i j fn-ew-buffer fn-ew-span))
+                  :span))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-pwc-span-at)
+           :use ((:instance fn-pwc-span-byte-at-facts (i i))
+                 (:instance fn-pwc-span-byte-at-facts (i (- j 1)))))))
+
+(defthm fn-pwc-span-at-refusal-leaves-the-buffer
+  (implies (not (equal (mv-nth 0 (fn-pwc-span-at ledger token s file eoff elen poff plen trailer
+                                                 i j fn-ew-buffer fn-ew-span))
+                       :span))
+           (equal (mv-nth 1 (fn-pwc-span-at ledger token s file eoff elen poff plen trailer
+                                            i j fn-ew-buffer fn-ew-span))
+                  fn-ew-span))
+  :hints (("Goal" :in-theory (enable fn-pwc-span-at))))
+
+(in-theory (disable fn-pwc-span-at))

@@ -5428,6 +5428,10 @@
   :kinds ((plan true-listp))
   :keystones ((fn-pwc-cache-only-a-published-window :via fn-pwc-cache)
               (fn-prw-cache-keeps-only-the-buffer :via fn-prw-cache)))
+(definterface fn-owner-page-window-cache-span-at :class :common-lisp-compliant
+  :kinds ((plan true-listp) (i natp) (j natp))
+  :keystones ((fn-pwc-span-at-is-the-cached-bytes :via fn-pwc-span-at)
+              (fn-pwc-span-at-answers-when-its-ends-do :via fn-pwc-span-at)))
 (definterface fn-owner-page-window-cache-byte-at :class :common-lisp-compliant
   :kinds ((plan true-listp))
   :keystones ((fn-pwc-a-hit-is-the-published-window :via fn-pwc-byte-at)

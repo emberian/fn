@@ -629,11 +629,26 @@ tokens of the entries evicted past the bound (the caller releases them)."
         (setq *fnn-extent-window-cache* (subseq *fnn-extent-window-cache* 0 limit))
         evicted))))
 
+(defvar *fnn-extent-cache-span* nil)  ; (entry key base len), guarded-by: *fnn-extent-lock*
+(defvar *fnn-extent-cache-span-dst* nil) ; the span's one buffer, guarded-by: *fnn-extent-lock*
+
 (defun fnn-extent-window-cache-byte (file eoff elen poff plen trailer i)
   "A cached window's payload byte I of this exact descriptor, or NIL.  The
 host only selects candidates by the token's own descriptor and requested
-offset; ACL2 decides the hit (fn-owner-page-window-cache-byte-at)."
+offset; ACL2 decides the hit (fn-owner-page-window-cache-byte-at).  A hit is
+decided as a SPAN (fn-owner-page-window-cache-span-at, KEYSTONE
+fn-owner-page-window-cache-span-at-is-the-cached-bytes): the window's octets
+from I on are copied once into this host's buffer and the octets after I are
+read from the copy, valid while its entry is still in the cache."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+    (let ((span *fnn-extent-cache-span*)
+          (key (list file eoff elen poff plen trailer)))
+      (when (and span (equal (second span) key)
+                 (<= (third span) i) (< i (+ (third span) (fourth span)))
+                 (member (first span) *fnn-extent-window-cache* :test #'eq))
+        (incf (first *fnn-extent-stats*))
+        (return-from fnn-extent-window-cache-byte
+          (fn-ew-span-bytesi (- i (third span)) *fnn-extent-cache-span-dst*))))
     (dolist (entry *fnn-extent-window-cache* nil)
       (destructuring-bind (token plan window) entry
         (when (and (eq (first token) :window)
@@ -641,6 +656,20 @@ offset; ACL2 decides the hit (fn-owner-page-window-cache-byte-at)."
                    (eql (fifth token) elen) (eql (sixth token) poff)
                    (eql (seventh token) plen) (eql (ninth token) trailer)
                    (integerp (eighth token)) (<= (eighth token) i))
+          (let ((j (and (integerp (nth 5 plan))
+                        (min plen (+ i +fnn-extent-span-capacity+) (+ (eighth token) (nth 5 plan))))))
+            (when (and j (< (1+ i) j))
+              (let ((dst (or *fnn-extent-cache-span-dst*
+                             (setq *fnn-extent-cache-span-dst* (create-fn-ew-span)))))
+                (when (eq (first (fnn-core-page-read-pool 'fn-owner-page-window-cache-span-at
+                                    token plan file eoff elen poff plen trailer i j window dst))
+                          :span)
+                  (setq *fnn-extent-cache-span* (list entry (list file eoff elen poff plen trailer) i (- j i)))
+                  (incf (first *fnn-extent-stats*))
+                  (unless (eq entry (first *fnn-extent-window-cache*))
+                    (setq *fnn-extent-window-cache*
+                          (cons entry (delete entry *fnn-extent-window-cache* :test #'eq))))
+                  (return (fn-ew-span-bytesi 0 dst))))))
           (destructuring-bind (word byte)
               (fnn-core-page-read-pool 'fn-owner-page-window-cache-byte-at
                                        token plan file eoff elen poff plen trailer i window)

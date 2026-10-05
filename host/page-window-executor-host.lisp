@@ -343,6 +343,37 @@
          (mv-list 2 (fn-pwc-byte-at (fn-owner-page-read-ledger fn-page-read-pool) token plan
                                     file eoff elen poff plen trailer i fn-ew-buffer))))
 
+; The cache's span borrow (books/page-window-span.lisp fn-pwc-span-at).
+(defun fn-owner-page-window-cache-span-at (token plan file eoff elen poff plen trailer i j
+                                                 fn-ew-buffer fn-ew-span fn-page-read-pool)
+  (declare (xargs :stobjs (fn-ew-buffer fn-ew-span fn-page-read-pool)
+                  :guard (and (true-listp plan) (natp i) (natp j) (< i j))))
+  (fn-pwc-span-at (fn-owner-page-read-ledger fn-page-read-pool) token plan
+                  file eoff elen poff plen trailer i j fn-ew-buffer fn-ew-span))
+
+; KEYSTONE (a cache span is the cache's scalar hits), at the owner row.
+(defthm fn-owner-page-window-cache-span-at-is-the-cached-bytes
+  (implies (and (natp i) (natp j) (< i j) (natp k) (< k (- j i))
+                (equal (mv-nth 0 (fn-owner-page-window-cache-span-at token plan file eoff elen poff
+                                                                     plen trailer i j fn-ew-buffer
+                                                                     fn-ew-span fn-page-read-pool))
+                       :span))
+           (and (equal (mv-nth 0 (fn-owner-page-window-cache-byte-at token plan file eoff elen poff
+                                                                     plen trailer (+ i k)
+                                                                     fn-ew-buffer fn-page-read-pool))
+                       :byte)
+                (equal (nth k (nth 0 (mv-nth 1 (fn-owner-page-window-cache-span-at
+                                                token plan file eoff elen poff plen trailer i j
+                                                fn-ew-buffer fn-ew-span fn-page-read-pool))))
+                       (mv-nth 1 (fn-owner-page-window-cache-byte-at token plan file eoff elen poff
+                                                                     plen trailer (+ i k)
+                                                                     fn-ew-buffer fn-page-read-pool)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-owner-page-window-cache-span-at
+                                     fn-owner-page-window-cache-byte-at)
+           :use (:instance fn-pwc-span-at-is-the-cached-bytes
+                           (ledger (fn-owner-page-read-ledger fn-page-read-pool)) (s plan)))))
+
 (defun fn-owner-page-window-executor-cancel (worker token fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
   (if (not (fn-owner-page-window-legacy-writablep fn-page-read-pool))
