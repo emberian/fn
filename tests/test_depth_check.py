@@ -30,6 +30,14 @@ class TailPositionTests(unittest.TestCase):
         self.assertIn(("f", True), s)
         self.assertNotIn(("f", False), s)
 
+    def test_a_def_loop_verifies_its_own_guards(self):
+        # The expansion's (verify-guards NAME) is in no source text; without
+        # it every def-loop read as unverified and its :logic recursion ran.
+        text = ("(def-loop fn-x-of (mem peer) :shape :concat :over mem\n"
+                "  :body (if (equal peer (car mem)) (list (car mem)) nil))\n")
+        self.assertEqual(d._generated_verifications(text), {"fn-x-of-loop", "fn-x-of"})
+        self.assertEqual(d._generated_verifications("(defun f (x) x)"), set())
+
     def test_mbe_runs_its_exec_branch_only(self):
         s = sites("(defun f (x) (mbe :logic (if (consp x) (+ 1 (f (cdr x))) 0)"
                   " :exec (f-loop x 0)))")
