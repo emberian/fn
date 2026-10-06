@@ -222,6 +222,50 @@ class R1State(unittest.TestCase):
         found = [f for f in run(src, ["R1"]) if f.rule == "R1"]
         self.assertTrue(any(f.function.startswith("lambda@") and "fnn-live-arena" in f.key for f in found))
 
+    def test_a_lambda_an_flet_funcalls_is_not_its_own_root(self):
+        # the cleanup shape: the lambda runs at the funcall, on this call.
+        # Spawning it as an async root invents a second actor.
+        src = """
+(defvar *fnn-box* nil)
+(defun fnn-touch () (setq *fnn-box* t))
+(defun fnn-command-box ()
+  (flet ((cleanup (operation)
+           (handler-case (funcall operation)
+             (serious-condition () nil))))
+    (cleanup (lambda () (fnn-touch)))))
+"""
+        self.assertFalse(any(f.rule == "R1b" and "*fnn-box*" in f.key for f in run(src, ["R1b"])))
+        self.assertFalse(any(name.startswith("lambda@") for name in analyzed(src).infos))
+
+    def test_a_lambda_funcalled_inside_the_flets_lock_holds_it(self):
+        src = """
+(defun fnn-run (service)
+  (flet ((call (operation) (funcall operation)))
+    (sb-thread:with-mutex ((fnn-owner-service-lock service))
+      (call (lambda () (fnn-live-arena))))))
+"""
+        self.assertEqual([f for f in run(src, ["R1"]) if f.rule == "R1"], [])
+
+    def test_a_lambda_an_flet_stores_stays_async(self):
+        src = """
+(defvar *fnn-hooks* nil)
+(defun fnn-register (service)
+  (flet ((save (operation) (setq *fnn-hooks* operation)))
+    (sb-thread:with-mutex ((fnn-owner-service-lock service))
+      (save (lambda () (fnn-live-arena))))))
+"""
+        found = [f for f in run(src, ["R1"]) if f.rule == "R1"]
+        self.assertTrue(any(f.function.startswith("lambda@") and "fnn-live-arena" in f.key for f in found))
+
+    def test_a_close_in_a_funcalled_flet_lambda_stays_with_the_opener(self):
+        src = """
+(defun fnn-command-close ()
+  (let ((fd (fnn-open "x" 0)))
+    (flet ((cleanup (thunk) (funcall thunk)))
+      (cleanup (lambda () (fnn-close fd))))))
+"""
+        self.assertFalse(any(f.key.startswith("foreign-close") for f in run(src, ["R10"])))
+
 
 class CallbackContexts(unittest.TestCase):
     """contracts `callback_contexts': a stored callback declared to run in a

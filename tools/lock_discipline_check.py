@@ -686,6 +686,8 @@ BINDING_FORMS = {"let", "let*", "sb-int:dx-let"}
 FUNCALLERS = {"funcall", "apply", "multiple-value-call"}
 # env value marking "this name is the current defun's parameter" (walk_if)
 PARAM_MARKER = ("param",)
+# env value ("flet-lambda", form): this flet parameter is a lambda the flet
+# funcalls synchronously. The form is not a free variable of that lambda.
 # forms that can change a variable's value: if the tested parameter is
 # written anywhere in its defun, its if-arms are not tagged (the value the
 # test reads may not be the value the caller passed)
@@ -1251,11 +1253,55 @@ class Analyzer:
                 return sc[name]
         return None
 
-    def walk_flet_body(self, entry, ctx, env, line):
+    def _flet_param_uses(self, params: list, body_forms) -> dict:
+        """How an flet body uses each parameter: 'sync' when every mention is
+        the operator of funcall/apply (the argument runs at that funcall, on
+        this call), 'escapes' when the parameter is stored, returned, passed
+        on or bound over, 'dead' when it is not mentioned. Only a 'sync'
+        parameter's lambda is inlined; an escaping one stays a stored
+        callback with a fresh lockset."""
+        names = set(params)
+        uses = {p: "dead" for p in params}
+
+        def note(name: str, kind: str) -> None:
+            if uses[name] == "escapes":
+                return
+            if kind == "escapes" or uses[name] == "dead":
+                uses[name] = kind
+
+        def scan(f) -> None:
+            if isinstance(f, Sym):
+                n = str(f)
+                if n in names:
+                    note(n, "escapes")
+                return
+            if not isinstance(f, list) or not f:
+                return
+            h = head(f)
+            if h in SPECIAL_SKIP:
+                return
+            if h in FUNCALLERS and len(f) > 1 and isinstance(f[1], Sym) and str(f[1]) in names:
+                note(str(f[1]), "sync")
+                for el in f[2:]:
+                    scan(el)
+                return
+            if h == "function" and len(f) > 1 and isinstance(f[1], Sym) and str(f[1]) in names:
+                note(str(f[1]), "escapes")
+                return
+            for el in f:
+                scan(el)
+
+        for stmt in body_forms:
+            scan(stmt)
+        return uses
+
+    def walk_flet_body(self, entry, ctx, env, line, bound=None):
         fparams, fbody = entry
         env2 = dict(env)
         for p in lambda_params(fparams):
             env2[p] = None
+        for name, form in (bound or {}).items():
+            env2[name] = ("flet-lambda", form)
         return self.walk_body(fbody, ctx, env2, line)
 
     def walk_binding(self, form, h, ctx, env, line):
@@ -1610,12 +1656,24 @@ class Analyzer:
         args = form[1:]
         parts = []
         # a locally defined flet fn walked per reference (see the flet branch
-        # of walk): its body runs here, under the call site's context
+        # of walk): its body runs here, under the call site's context.
+        # A lambda passed to a parameter the flet only funcalls is not a
+        # stored callback: walking it with walk() would spawn an async root
+        # and attribute the body to a thread that does not exist.
         if h not in self.tree.defs:
             fl = self._lookup_flet(h)
             if fl is not None:
-                parts.extend(self.walk(a, ctx, env, line) for a in args)
-                parts.append(self.walk_flet_body(fl, ctx, env, line))
+                fparams = lambda_params(fl[0])
+                uses = self._flet_param_uses(fparams, fl[1])
+                bound = {}
+                for i, a in enumerate(args):
+                    pname = fparams[i] if i < len(fparams) else None
+                    if (pname and uses.get(pname) == "sync" and isinstance(a, list)
+                            and head(a) == "lambda"):
+                        bound[pname] = a
+                        continue
+                    parts.append(self.walk(a, ctx, env, line))
+                parts.append(self.walk_flet_body(fl, ctx, env, line, bound))
                 return sig_union(parts)
         # an ACL2 core call: a quoted subject in first position
         subject = quoted_symbol(args[0]) if args else None
@@ -1633,6 +1691,16 @@ class Analyzer:
         if h in FUNCALLERS and args:
             target = args[0]
             if isinstance(target, Sym) and str(target) in env:
+                bound_form = env[str(target)]
+                if (isinstance(bound_form, tuple) and len(bound_form) == 2
+                        and bound_form[0] == "flet-lambda"):
+                    # the lambda runs at this funcall. Its free variables are
+                    # the caller's, not the flet parameters bound to lambdas.
+                    outer = {k: v for k, v in env.items()
+                             if not (isinstance(v, tuple) and len(v) == 2 and v[0] == "flet-lambda")}
+                    parts.append(self.walk_lambda_inline(bound_form[1], ctx, outer, line))
+                    parts.extend(self.walk(a, ctx, env, line) for a in args[1:])
+                    return sig_union(parts)
                 pname = str(target)
                 if not self.recording and pname in self.cur.params:
                     # a run site lexically inside a closure that was passed
