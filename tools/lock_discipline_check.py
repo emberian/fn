@@ -691,7 +691,7 @@ PARAM_MARKER = ("param",)
 # forms that can change a variable's value: if the tested parameter is
 # written anywhere in its defun, its if-arms are not tagged (the value the
 # test reads may not be the value the caller passed)
-WRITE_HEADS = {"setq", "setf", "psetq", "multiple-value-setq", "incf", "decf",
+WRITE_HEADS = {"setq", "setf", "psetf", "psetq", "multiple-value-setq", "incf", "decf",
                "push", "pushnew", "pop", "rotatef", "shiftf"}
 
 
@@ -1360,6 +1360,10 @@ class Analyzer:
                         for el in f[1:]:
                             if isinstance(el, Sym):
                                 names.add(str(el))
+                            elif isinstance(el, list) and (head(f) == "multiple-value-setq"
+                                                           or head(el) == "values"):
+                                # (multiple-value-setq (a b) ...) / (setf (values a b) ...)
+                                names.update(str(x) for x in el if isinstance(x, Sym))
                     if head(f) != "quote":
                         for el in f:
                             scan(el)
@@ -1834,7 +1838,7 @@ class Analyzer:
                             sub = result.get(row[2])
                             if isinstance(sub, Ctx):
                                 ctx = Ctx(ctx.locks | sub.locks, None, sub.scope or ctx.scope,
-                                          sub.gated or ctx.gated, ctx.cond)
+                                          sub.gated or ctx.gated, cond=ctx.cond)
                         ctxs.append(ctx)
                     else:
                         _, ctx, callee, cparam = row
@@ -1872,7 +1876,7 @@ class Analyzer:
                         sub = result.get(row[2])
                         if isinstance(sub, Ctx):
                             ctx = Ctx(ctx.locks | sub.locks, None, sub.scope or ctx.scope,
-                                      sub.gated or ctx.gated, ctx.cond)
+                                      sub.gated or ctx.gated, cond=ctx.cond)
                     entries.append((ctx.locks, ctx.gated, ctx.scope, ctx.cond))
                 else:
                     _, ctx, callee, cparam = row
