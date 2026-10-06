@@ -1064,6 +1064,17 @@
   (declare (xargs :stobjs state :mode :program))
   (fn-owner-sco-global 'fn-owner-orc-pass state))
 
+; The operator's opt-in (`[resources] reclaim_live', books/reclaim-
+; reservation.lisp): installed once per run by fn-owner-connection-budget
+; (below), NIL until then (an offline or unconfigured owner has no live
+; reclaim).  Defined here, above fn-owner-orc-request which reads it: the
+; ld build order refuses a forward call.
+(defun fn-owner-reclaim-live-p (state)
+  (declare (xargs :stobjs state :guard t))
+  (and (f-boundp-global 'fn-owner-reclaim-live state)
+       (f-get-global 'fn-owner-reclaim-live state)
+       t))
+
 ; The answer to the request (fn-orc-request-word) over the owner's own
 ; observations: the pass in flight, the publication in flight, a deferral
 ; (the publication's, as fn-owner-sco-due reads it; FREE the statvfs the
@@ -1526,15 +1537,6 @@
   (declare (xargs :stobjs state :mode :program))
   (let ((state (fn-owner-put-credits (fn-mca-stop (fn-owner-credits state)) state)))
     (value :ok)))
-
-; The operator's opt-in (`[resources] reclaim_live', books/reclaim-
-; reservation.lisp): installed once per run by fn-owner-connection-budget,
-; NIL until then (an offline or unconfigured owner has no live reclaim).
-(defun fn-owner-reclaim-live-p (state)
-  (declare (xargs :stobjs state :guard t))
-  (and (f-boundp-global 'fn-owner-reclaim-live state)
-       (f-get-global 'fn-owner-reclaim-live state)
-       t))
 
 (defun fn-owner-connection-budget (machine dynamic core threads stack nursery profile
                                            tlsp live state)
