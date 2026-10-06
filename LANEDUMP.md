@@ -5180,9 +5180,11 @@ Before that commit the mock stubbed the exchange, so the guard did not
 exercise the retry the zmq-2 move put in fnn-consumer-local-exchange.
 
 (c) Not run: native green-after on an image that contains 0f480d107.
-No local image (FN_NATIVE_HOST unset). Not started on hbox. Selectors, one
-module at a time, env FN_RUN_CONSUMER_EXCHANGE=1 where the module requires it:
-tests.test_native_consumer_exchange, tests.test_native_agent_wait,
-tests.test_native_consumer_exchange_two_nodes. The repair row stays open
-until that image run; the diagnostic overlay on d5b0b9100 was not a claim
-(lanedumps/consumers.md).
+No local image. Not started on hbox (the integrator is certifying there).
+
+Repair row PARKED (state deferred; disposition PARKED). Reason: source fix
+0f480d107 is on dev; native green-after still owed. Un-park when the next
+image batch runs tests.test_native_consumer_exchange,
+tests.test_native_agent_wait, and
+tests.test_native_consumer_exchange_two_nodes, one module at a time.
+The d5b0b9100 overlay was not a claim (lanedumps/consumers.md).
