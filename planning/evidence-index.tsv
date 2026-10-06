@@ -3700,6 +3700,8 @@ e6b30dc312fbeaa15268f5137c1aa904d5fc8d7dcbe72fec6a5487027350f964 1341 planning/e
 55b5e848b96e07c8342a43b519cdc250ebf31851866fdcb304c2be662c0f83ff 708 planning/evidence/ltp-native-return-2026-09-30/receipt-recovery.log
 36b83adb4e9c840eee9457615d92bdac788c341a049889f414093b4a84b25272 2062 planning/evidence/ltp-source-lifetime-2026-09-24.md
 8512218bcb5fefcfb0f6438aaa995db96ad7dd153b00916e10f49784fe411950 1657 planning/evidence/m1d5-harvest-2026-10-06/m1d5-ctl-run.log
+14aa905283fa2d31c81d06312b0ba63aa58e84b23b1fb617f40c4878d5434490 13151 planning/evidence/m1d5-harvest-2026-10-06/m1d5-teeth-log-compaction.log
+d93f323cefb24a2978ccb2a8c361bf7a30a57a6496e24f0090e14964ea0064ff 2482 planning/evidence/m1d5-harvest-2026-10-06/m1d5-teeth-run.log
 ecf7dfdde8ff27f6051708a8d07ba165de205c21b6dac4a07232b0dc27d334f6 17516 planning/evidence/m1d5-harvest-2026-10-06/test-tests.test_native_expiry.log
 3221e4493a0825e6c817b40b2ef00b373f22b39ea2a40d46142c84f52fce51b9 17586 planning/evidence/m1d5-harvest-2026-10-06/test-tests.test_native_fence_boundary.log
 174424721d1718bcec8fe397861a2e054c4c1f9adec1af43fc15968be403a726 15607 planning/evidence/m4-app-receipt-2026-09-24.md
