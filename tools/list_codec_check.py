@@ -38,6 +38,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from tools import ledger  # noqa: E402
+from tools import ratchet  # noqa: E402
 from tools.ledger import Sym, head  # noqa: E402
 
 BASELINE = ROOT / "tools" / "list_codec_baseline.json"
@@ -173,6 +174,8 @@ def main(argv=None) -> int:
     for s in errors:
         print(f"list_codec_check: cannot read {s['file']}: {s['error']}")
     if args.write:
+        if ratchet.report("list_codec_check", ratchet.refused("list_codec_check", base["sites"], now)):
+            return 1
         base["sites"] = now
         base["total"] = total
         BASELINE.write_text(json.dumps(base, indent=1) + "\n")

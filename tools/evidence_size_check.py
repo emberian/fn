@@ -30,6 +30,8 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from tools import ratchet  # noqa: E402
 LIMIT = 1000
 RAW_LOG_SUFFIXES = (".log", ".txt", ".out", ".stderr", ".stdout", ".jsonl", ".times")
 BASELINE = Path("tools/evidence_size_baseline.txt")
@@ -87,12 +89,18 @@ def read_baseline(root: Path = ROOT) -> set[str]:
 
 
 def write_baseline(root: Path = ROOT, limit: int = LIMIT) -> None:
-    """Capture existing oversized logs once; subsequent writes only shrink."""
+    """Capture existing oversized logs once; later writes only shrink.  A
+    file over the limit that is not a row is added only when ACKS.md carries
+    its ratchet line (tools/ratchet.py); otherwise it stays out and `check`
+    refuses it."""
     oversized = {path.relative_to(root).as_posix() for path in tracked_files(root)
                  if path.exists() and line_count(path) > limit}
     path = root / BASELINE
     if path.exists():
-        oversized &= read_baseline(root)
+        old = read_baseline(root)
+        allowed = ratchet.acked()
+        oversized = {n for n in oversized
+                     if n in old or ratchet.token("evidence_size_check", n) in allowed}
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(BASELINE_HEADER + "".join(name + "\n" for name in sorted(oversized)))
 

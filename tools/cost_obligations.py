@@ -59,6 +59,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from tools import ledger  # noqa: E402
+from tools import ratchet  # noqa: E402
 
 OBLIGATIONS = ROOT / "planning" / "cost-obligations.json"
 CONTRACTS = ROOT / "planning" / "cost-contracts.json"
@@ -342,9 +343,9 @@ def main(argv=None) -> int:
         old = load_baseline()
         names = sorted(r["name"] for r in doc["entries"]
                        if r["claim"] == "none" and r["class"] == "common-lisp-compliant")
-        if old and set(names) - old:
-            print("cost_obligations: the baseline only shrinks; new undeclared entries: {}".format(
-                ", ".join(sorted(set(names) - old))))
+        if ratchet.report("cost_obligations", ratchet.refused(
+                "cost_obligations", {n: 1 for n in old} if BASELINE.is_file() else None,
+                {n: 1 for n in names})):
             return 1
         BASELINE.write_text(json.dumps({"description": "guard-verified dispatched entries with "
                                         "no def-cost yet; shrinks only (tools/cost_obligations.py)",

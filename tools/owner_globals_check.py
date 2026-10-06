@@ -32,10 +32,11 @@ global (into the owner value or a wrapper's result) and lower the count.
     python3 tools/owner_globals_check.py --write-baseline # after a global is retired
     python3 tools/owner_globals_check.py --write-baseline --reason "WHY" # a raise: one dated reason line
 
-A RAISE needs a reason.  `--reason' lets --write-baseline raise a count (or add
-a file) and appends one dated line to the baseline's "_reasons" list naming
-what moved; the baseline's other keys are file -> count.  A raise without a
-reason is refused.
+A RAISE needs an ACK.  --write-baseline raises a count (or adds a file) only
+when planning/repair/ACKS.md has `ratchet:owner_globals_check:<file>` for it
+(tools/ratchet.py); `--reason' then appends one dated line to the baseline's
+"_reasons" list naming what moved; the baseline's other keys are file -> count.
+A raise without the ACK line is refused.
 """
 import argparse
 import datetime
@@ -45,6 +46,8 @@ import re
 import sys
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from tools import ratchet  # noqa: E402
 BASELINE = ROOT / "tools" / "owner_globals_baseline.json"
 HOST_DIRS = ("host",)
 ACCESSOR = re.compile(r"(?:^|[\s(])[A-Za-z0-9*+/<>=!?.-]*-global\s+'(fn-owner-[a-z0-9*+/<>=!?.-]*)",
@@ -136,7 +139,9 @@ def main(argv=None):
     parser.add_argument("--write-baseline", action="store_true",
                         help="write the counts as the baseline (refuses to raise any)")
     parser.add_argument("--reason", default=None,
-                        help="with --write-baseline: why a count is raised (one dated line is kept)")
+                        help="with --write-baseline: why an ACKed raise happened (one dated line is kept); "
+                             "the raise itself needs a ratchet:owner_globals_check:<file> line in "
+                             "planning/repair/ACKS.md")
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--baseline", type=Path, default=None)
     args = parser.parse_args(argv)
@@ -154,14 +159,13 @@ def main(argv=None):
     if args.write_baseline:
         raised = [(p, len(n), baseline.get(p)) for p, n in found.items()
                   if p not in baseline or len(n) > baseline[p]]
-        if raised and not args.reason:
-            for p, have, had in raised:
-                print("owner_globals_check: refusing to raise {} from {} to {} without --reason".format(
-                    p, had, have))
+        if ratchet.report("owner_globals_check", ratchet.refused(
+                "owner_globals_check", baseline if baseline_path.exists() else None,
+                {p: len(n) for p, n in found.items()})):
             return 1
         if raised:
             reasons.append("{}: {} ({})".format(
-                datetime.date.today().isoformat(), args.reason.strip(),
+                datetime.date.today().isoformat(), (args.reason or "ACKS.md ratchet").strip(),
                 ", ".join("{} {}->{}".format(p, had or 0, have) for p, have, had in raised)))
         counts = {p: len(n) for p, n in found.items()}
         if reasons:

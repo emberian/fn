@@ -102,6 +102,8 @@ import acl2_cost  # noqa: E402
 import certs  # noqa: E402
 import green_check  # noqa: E402
 import ledger  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from tools import ratchet as ratchet_rule  # noqa: E402
 
 
 
@@ -911,6 +913,19 @@ def regression_baseline(selected: dict[tuple[str, str, str, str], Measurement],
             if conclusive_over(record, threshold)}
 
 
+def row_steps(row: dict) -> float:
+    """A baseline row's ratcheted number: its steps, else its seconds."""
+    return float(row.get("steps") if row.get("steps") is not None else row.get("seconds", 0))
+
+
+def allowance_refused(baseline: dict[str, dict], entries: dict[str, dict]) -> bool:
+    """--allow-regression adds or raises rows only with an ACKS.md ratchet line
+    per row (tools/ratchet.py); prints the refusal and returns True."""
+    return ratchet_rule.report("proof_cost", ratchet_rule.refused(
+        "proof_cost", {b: row_steps(r) for b, r in baseline.items()},
+        {b: row_steps(r) for b, r in entries.items()}))
+
+
 def write_baseline(path: Path, entries: dict[str, dict], threshold: float,
                    near: float | None = None,
                    aggregate_value: dict | None = None) -> None:
@@ -1017,6 +1032,10 @@ def main(argv: list[str] | None = None) -> int:
                 entries = dict(verdict.proposed)
                 entries.update(regression_baseline(
                     computed[0], args.threshold if near is None else min(near, args.threshold)))
+                # The allowance is a decision, written down: each added or
+                # raised book needs its ratchet line in planning/repair/ACKS.md.
+                if allowance_refused(baseline, entries):
+                    return 1
             elif verdict.failing:
                 print(f"proof_cost: refusing to write {args.baseline}: "
                       f"{len(verdict.failing)} book(s) above would be added or "
@@ -1057,6 +1076,10 @@ def write_aggregate(path: Path, baseline: dict[str, dict], near: float | None,
             print(line)
         print("proof_cost: refusing to record an aggregate over the recorded "
               "convergence's tolerance; rerun with --allow-regression to accept it")
+        return 1
+    if allow_regression and recorded and ratchet_rule.report("proof_cost", ratchet_rule.refused(
+            "proof_cost", {"aggregate": float(recorded.get("steps", 0))},
+            {"aggregate": float(current.steps)})):
         return 1
     if tolerance is None:
         tolerance = float(recorded.get("tolerance", AGGREGATE_TOLERANCE)) if recorded \

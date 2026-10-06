@@ -31,6 +31,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from tools import ledger  # noqa: E402
+from tools import ratchet  # noqa: E402
 from tools.ledger import Sym, head  # noqa: E402
 
 BASELINE = ROOT / "tools" / "loop_call_baseline.json"
@@ -118,6 +119,9 @@ def main(argv=None) -> int:
     for s in errors:
         print(f"loop_call_check: cannot read {s['file']}: {s['error']}")
     if args.write:
+        old = json.loads(BASELINE.read_text())["sites"] if BASELINE.exists() else None
+        if ratchet.report("loop_call_check", ratchet.refused("loop_call_check", old, now)):
+            return 1
         BASELINE.write_text(json.dumps({"_doc": __doc__.splitlines()[0], "total": total,
                                         "sites": now}, indent=1) + "\n")
         print(f"loop_call_check: baseline written: {total} sites in {len(now)} files")
