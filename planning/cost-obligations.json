@@ -5,14 +5,14 @@
   "proved": 2,
   "partial": 1,
   "derived": 6,
-  "none": 1745
+  "none": 1750
  },
  "by_class": {
   "common-lisp-compliant": {
    "proved": 2,
    "partial": 1,
    "derived": 6,
-   "none": 1003
+   "none": 1007
   },
   "ideal": {
    "proved": 0,
@@ -24,7 +24,7 @@
    "proved": 0,
    "partial": 0,
    "derived": 0,
-   "none": 594
+   "none": 595
   }
  },
  "families": {
@@ -4288,6 +4288,16 @@
    "declared_in": null
   },
   {
+   "name": "fn-heap-reclaim-chunk-rows",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
    "name": "fn-heap-reserve-init-connections",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -5838,6 +5848,16 @@
    "declared_in": null
   },
   {
+   "name": "fn-mca-figure-octets",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
    "name": "fn-native-admin-host-apply",
    "class": "program",
    "claim": "none",
@@ -6179,6 +6199,16 @@
   },
   {
    "name": "fn-native-config-output-resources",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-native-config-reclaim-livep",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -7679,6 +7709,16 @@
   },
   {
    "name": "fn-native-operator-host-result-run-posting-enabledp",
+   "class": "program",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-native-operator-host-result-run-reclaim-live",
    "class": "program",
    "claim": "none",
    "bound": null,
@@ -14121,6 +14161,16 @@
   },
   {
    "name": "fn-rpin-step",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-rrv-extend-reservation",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
