@@ -1194,3 +1194,27 @@
                   (code (fn-pull-local-code octets))
                   (conns (fn-csp-conns s))
                   (round (fn-cu-s-round (fn-csp-session s))))))))
+
+(local (defthm fn-csp-record-done-journals-only-settled
+  ; The other caller of batch-finish.  A journal leaves record-done only
+  ; when the spool cursor is already at the batch's end and no conn still
+  ; holds a binding; the effects are then batch-finish's one journal,
+  ; naming the produced round's cursor, with no :local effect.  A record
+  ; still being read, or a verdict still owed, journals nothing.
+  (let* ((pair (fn-csp-record-done s))
+         (effs (cadr pair))
+         (s2 (car pair)))
+    (implies (member-eq :journal (strip-cars effs))
+             (and (not (< (nfix (fn-csp-replay s)) (nfix (fn-csp-offset s))))
+                  (fn-csp-conns-idlep (fn-csp-conns s))
+                  (consp effs)
+                  (eq (car (car effs)) :journal)
+                  (equal (cdr (car effs))
+                         (fn-cu-round-cursor
+                          (fn-cu-s-round (fn-csp-session s2))))
+                  (not (member-eq :journal (strip-cars (cdr effs))))
+                  (not (member-eq :local (strip-cars effs))))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-csp-record-done) (fn-csp-batch-finish fn-cu-next))
+           :use ((:instance fn-csp-batch-finish-effects
+                  (s (fn-csp-with s :slot nil :skip nil :framer nil :msgid nil))))))))
