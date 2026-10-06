@@ -1,5 +1,22 @@
 ; Bounded catchup spool controller. Fixed metadata, one input/output window;
 ; no record index, article line list or complete IHAVE body is retained.
+;
+; THE OFFER WINDOW (PRF-1335/1336): one transit connection is structurally
+; one record in flight (a 335 cannot be rendered before the previous verdict,
+; and the body cannot precede its 335), so catch-up pace is bounded by ONE
+; IHAVE outstanding x the commit barrier.  The controller therefore offers
+; through a WINDOW of W logical transit connections of the same peer (W the
+; begin's argument, read by the host from the operator's log-batch-records:
+; the controller never offers more ahead than the committer would place in
+; one batch), each running the unchanged one-record-at-a-time IHAVE flow.
+; The spool cursor stays sequential: one FILLING record reads the spool
+; (header, then body windows, then its terminator) while earlier records
+; await their verdicts on other connections.  Verdicts are keyed to record
+; identity, not order: the binding (conn j <-> msgid) is created when the
+; IHAVE for msgid is emitted on j and consumed exactly once, by the first
+; reply on j that settles that record; a reply on j in any other conn state
+; is a local protocol violation (:local-refused).  Retained per slot: one
+; Message-ID; at most W of them (the window keystone's claim extended).
 (in-package "ACL2")
 (include-book "peer-catchup")
 (include-book "peer-catchup-spool-framer")
@@ -21,7 +38,10 @@
                          (count 'nil count-p)
                          (resume 'nil resume-p)
                          (verified 'nil verified-p)
-                         (skip 'nil skip-p))
+                         (skip 'nil skip-p)
+                         (window 'nil window-p)
+                         (conns 'nil conns-p)
+                         (slot 'nil slot-p))
   `(list
      ,(if mode-p mode `(fn-pull-at 0 ,s))
      ,(if session-p session `(fn-pull-at 1 ,s))
@@ -39,7 +59,10 @@
      ,(if count-p count `(fn-pull-at 13 ,s))
      ,(if resume-p resume `(fn-pull-at 14 ,s))
      ,(if verified-p verified `(fn-pull-at 15 ,s))
-     ,(if skip-p skip `(fn-pull-at 16 ,s))))
+     ,(if skip-p skip `(fn-pull-at 16 ,s))
+     ,(if window-p window `(fn-pull-at 17 ,s))
+     ,(if conns-p conns `(fn-pull-at 18 ,s))
+     ,(if slot-p slot `(fn-pull-at 19 ,s))))
 
 (defun fn-csp-mode (s) (declare (xargs :guard t)) (fn-pull-at 0 s))
 (defun fn-csp-session (s) (declare (xargs :guard t)) (fn-pull-at 1 s))
@@ -58,6 +81,96 @@
 (defun fn-csp-resume (s) (declare (xargs :guard t)) (fn-pull-at 14 s))
 (defun fn-csp-verified (s) (declare (xargs :guard t)) (fn-pull-at 15 s))
 (defun fn-csp-skip (s) (declare (xargs :guard t)) (fn-pull-at 16 s))
+(defun fn-csp-window (s) (declare (xargs :guard t)) (fn-pull-at 17 s))
+(defun fn-csp-conns (s) (declare (xargs :guard t)) (fn-pull-at 18 s))
+(defun fn-csp-slot (s) (declare (xargs :guard t)) (fn-pull-at 19 s))
+
+; -----------------------------------------------------------------------------
+; The connection window
+;
+; One entry per logical transit connection j of the flight's peer:
+;   :unopened            never opened
+;   :opening             (:open-local j) emitted, its greeting awaited
+;   :free                greeted (200/201), carrying nothing
+;   (msgid . :await335)  IHAVE sent for msgid on j, awaiting the 335
+;   (msgid . :streaming) the filling record: 335 seen, its body windows or
+;                        terminator are being written on j (at most one
+;                        streaming slot -- the spool cursor is sequential)
+;   (msgid . :verdict)   terminator written, awaiting 235/435/437 on j.
+; The binding (j <-> msgid) is created only by the IHAVE effect and consumed
+; only once, by the first reply on j that settles the record.
+
+(defun fn-csp-connp (c)
+  (declare (xargs :guard t))
+  (or (member-eq c '(:unopened :opening :free))
+      (and (consp c) (fn-pull-msgidp (car c))
+           (member-eq (cdr c) '(:await335 :streaming :verdict)))))
+
+(defun fn-csp-connsp (conns)
+  (declare (xargs :guard t))
+  (if (atom conns) t
+    (and (fn-csp-connp (car conns)) (fn-csp-connsp (cdr conns)))))
+
+(defun fn-csp-conn (j s)
+  (declare (xargs :guard (natp j)))
+  (fn-pull-at (nfix j) (fn-csp-conns s)))
+
+(defun fn-csp-conns-set (conns j c)
+  ; UPDATE-NTH's placement without its true-listp guard demand (the conns of
+  ; a real state are a true-list, FN-CSP-INV below): past the end this pads
+  ; with nil exactly as UPDATE-NTH does, so its placement lemmas carry over.
+  (declare (xargs :guard (natp j)))
+  (if (zp j)
+      (if (consp conns) (cons c (cdr conns)) (list c))
+    (if (consp conns)
+        (cons (car conns) (fn-csp-conns-set (cdr conns) (1- j) c))
+      (cons nil (fn-csp-conns-set nil (1- j) c)))))
+
+(defun fn-csp-conns-idlep (conns)
+  ; No (msgid . phase) binding: every offered record settled.
+  (declare (xargs :guard t))
+  (if (atom conns) t
+    (and (not (consp (car conns))) (fn-csp-conns-idlep (cdr conns)))))
+
+(defun fn-csp-conns-idlep-but (conns j)
+  ; Every bound entry except j's is settled: idleness of the conns with j
+  ; freed, read directly off the pre-state (same recursion as CONNS-SET).
+  (declare (xargs :guard (natp j)))
+  (cond ((atom conns) t)
+        ((zp j) (fn-csp-conns-idlep (cdr conns)))
+        (t (and (not (consp (car conns)))
+                (fn-csp-conns-idlep-but (cdr conns) (1- j))))))
+
+(defun fn-csp-conns-fullp (conns)
+  ; No connection a held record could take or open.
+  (declare (xargs :guard t))
+  (if (atom conns) t
+    (and (not (member-eq (car conns) '(:free :unopened)))
+         (fn-csp-conns-fullp (cdr conns)))))
+
+(defun fn-csp-free-conn (conns j)
+  ; The lowest :free index, or nil.
+  (declare (xargs :guard t))
+  (cond ((atom conns) nil)
+        ((eq (car conns) :free) (nfix j))
+        (t (fn-csp-free-conn (cdr conns) (+ 1 (nfix j))))))
+
+(defun fn-csp-unopened-conn (conns j)
+  ; The lowest :unopened index, or nil.
+  (declare (xargs :guard t))
+  (cond ((atom conns) nil)
+        ((eq (car conns) :unopened) (nfix j))
+        (t (fn-csp-unopened-conn (cdr conns) (+ 1 (nfix j))))))
+
+(defun fn-csp-conns-phase-count (conns phase)
+  (declare (xargs :guard (symbolp phase)))
+  (if (atom conns) 0
+    (+ (if (and (consp (car conns)) (eq (cdr (car conns)) phase)) 1 0)
+       (fn-csp-conns-phase-count (cdr conns) phase))))
+
+(defun fn-csp-conns-of (n c)
+  (declare (xargs :guard (natp n)))
+  (if (zp n) nil (cons c (fn-csp-conns-of (- n 1) c))))
 
 (defun fn-csp-session-with-round (s r)
   (declare (xargs :guard t))
@@ -66,10 +179,14 @@
                                (fn-cu-s-refusal session) (fn-cu-s-security session)))))
 
 (defun fn-csp-fail (s reason)
+  ; The round ends: the window is dead (the host closes every connection of
+  ; the flight on the :close effect); no binding outlives the round.
   (declare (xargs :guard t))
   (mv-let (round effects) (fn-cu-fail (fn-cu-s-round (fn-csp-session s)) reason)
     (list (fn-csp-with (fn-csp-session-with-round s round)
-                      :mode :failed :pending nil :header nil) effects)))
+                      :mode :failed :pending nil :header nil :slot nil
+                      :conns (fn-csp-conns-of (nfix (fn-csp-window s)) :free))
+          effects)))
 
 (defun fn-csp-header-window (rev crp input fuel used count)
   ; Maximum512 content bytes, framed once. A pending CR is one scalar.
@@ -114,6 +231,26 @@
           ((equal code 500) :peer-lacks-catch-up)
           (t :peer-refused))))
 
+(defun fn-csp-try-offer (s)
+  ; The parsed record at the cursor meets the connection window: bind the
+  ; lowest :free connection and offer it, or open the lowest :unopened one,
+  ; or (every connection bound or opening) the record holds -- a pure wait:
+  ; no tick is owed while it can do nothing.
+  (declare (xargs :guard t))
+  (let* ((conns (fn-csp-conns s))
+         (j (fn-csp-free-conn conns 0)))
+    (cond
+     (j (list (fn-csp-with s :mode :offer :slot j
+                           :conns (fn-csp-conns-set conns j
+                                                     (cons (fn-csp-msgid s) :await335)))
+              (list (list* :local j (fn-cu-ihave (cons (fn-csp-msgid s) nil))))))
+     (t (let ((k (fn-csp-unopened-conn conns 0)))
+          (if k
+              (list (fn-csp-with s :mode :held :slot nil
+                                  :conns (fn-csp-conns-set conns k :opening))
+                    (list (list :open-local k)))
+            (list (fn-csp-with s :mode :held :slot nil) nil)))))))
+
 (defun fn-csp-after-header (s line rest used)
   (declare (xargs :guard (natp used)))
   (let* ((mode (fn-csp-mode s))
@@ -143,17 +280,18 @@
               ((not (fn-cu-r-localp round))
                (list (fn-csp-with
                       (fn-csp-session-with-round s (fn-cu-with round :localp t))
-                      :mode :local-greeting :verified t :replay 0 :pending nil)
-                     '((:open-local))))
+                      :mode :replay-header :verified t :replay 0 :pending nil
+                      :conns (fn-csp-conns-set (fn-csp-conns s) 0 :opening))
+                     '((:open-local 0))))
               (t (list (fn-csp-with s :mode :replay-header :verified t :replay 0 :pending nil) nil)))))
      (t
       (let ((header (fn-cu-parse-header line)))
         (if (not header) (fn-csp-fail s :malformed)
           (if (eq mode :replay-header)
               (if (not (fn-csp-verified s)) (fn-csp-fail s :unverified)
-                (list (fn-csp-with s :mode :offer :msgid (car header)
-                                  :framer (fn-csp-framer (cdr header) nil) :skip nil)
-                      (list (cons :local (fn-cu-ihave (cons (car header) nil))))))
+                (fn-csp-try-offer
+                 (fn-csp-with s :msgid (car header)
+                              :framer (fn-csp-framer (cdr header) nil) :skip nil)))
             (let* ((bytes (append '(82 32) (fn-pull-list (car header)) '(32)
                                   (fn-cu-u64-hex (cdr header)) '(13 10)))
                    (s (fn-csp-with s :framer (fn-csp-framer (cdr header) t)
@@ -170,6 +308,19 @@
                         :offset 0 :replay 0 :verified nil :batch nil :pending nil)
             effects))))
 
+(defun fn-csp-record-done (s)
+  ; One record is complete at the spool cursor: read the next header, or (the
+  ; spool exhausted) wait for the batch's outstanding verdicts, or (every
+  ; record settled) journal the batch's cursor and ask the next.  The cursor
+  ; journals ONLY at this boundary, never mid-record.
+  (declare (xargs :guard t))
+  (let ((s (fn-csp-with s :slot nil :skip nil :framer nil :msgid nil)))
+    (if (< (nfix (fn-csp-replay s)) (nfix (fn-csp-offset s)))
+        (list (fn-csp-with s :mode :replay-header) nil)
+      (if (fn-csp-conns-idlep (fn-csp-conns s))
+          (fn-csp-batch-finish s)
+        (list (fn-csp-with s :mode :drain) nil)))))
+
 (defun fn-csp-read-replay (s)
   (declare (xargs :guard t))
   (let* ((position (nfix (fn-csp-replay s))) (end (nfix (fn-csp-offset s)))
@@ -177,7 +328,7 @@
     (if (zp count)
         (if (and (eq (fn-csp-mode s) :replay-header) (not (consp (fn-csp-header s)))
                  (not (fn-csp-crp s)))
-            (fn-csp-batch-finish s)
+            (fn-csp-record-done s)
           (fn-csp-fail s :short-spool))
       (list (fn-csp-with s :count count)
             (list (list :spool-read position count))))))
@@ -216,42 +367,99 @@
                 ((eq mode :body)
                  (fn-csp-write s emission (if (eq word :record-end) :hash :body)))
                 ((fn-csp-skip s)
-                 (list (if (eq word :record-end) (fn-csp-with s :mode :replay-header) s) nil))
+                 ; A 435 record's body is skipped through the spool, sent on
+                 ; no connection; the boundary check defers to the next
+                 ; read, exactly as the filled record's does.
+                 (list (if (eq word :record-end)
+                           (fn-csp-with s :mode :replay-header :slot nil
+                                        :framer nil :msgid nil :skip nil)
+                         s)
+                       nil))
                 ((atom emission) (list s nil))
                 (t (list (fn-csp-with s :mode :local-write
                                      :resume (if (eq word :record-end) :terminator :replay-body))
-                         (list (cons :local emission))))))))
+                         (list (list* :local (fn-csp-slot s) emission))))))))
      ((eq mode :terminator)
-      (list (fn-csp-with s :mode :verdict) (list (cons :local '(46 13 10)))))
+      (let* ((j (nfix (fn-csp-slot s))) (m (fn-csp-msgid s))
+             (s2 (fn-csp-with s :conns (fn-csp-conns-set (fn-csp-conns s) j
+                                                         (cons m :verdict))))
+             (done (fn-csp-record-done s2)))
+        (list (car done) (cons (list* :local j '(46 13 10)) (cadr done)))))
+     ((eq mode :held) (fn-csp-try-offer s))
      (t (list s nil)))))
 
-(defun fn-csp-local (s octets)
+(defun fn-csp-local-event-octets (event)
+  ; The octets of (:local j . octets): the local node's reply on connection j.
   (declare (xargs :guard t))
-  (let ((code (fn-pull-local-code octets)) (mode (fn-csp-mode s))
-        (round (fn-cu-s-round (fn-csp-session s))))
+  (if (and (consp event) (consp (cdr event)) (fn-pull-octetsp (cddr event)))
+      (cddr event) nil))
+
+(defun fn-csp-local (s j octets)
+  ; The local node's reply on connection j, keyed to the binding the conn
+  ; holds: the greeting while :opening, the 335/435 while an IHAVE is owed,
+  ; the verdict once the terminator is written.  A reply in any other conn
+  ; state settles nothing: a local protocol violation (:local-refused); a
+  ; 436 holds the round (:local-deferred).  No count moves on a reply that
+  ; settles nothing.
+  (declare (xargs :guard (natp j)))
+  (let* ((code (fn-pull-local-code octets))
+         (conns (fn-csp-conns s))
+         (c (fn-csp-conn j s))
+         (round (fn-cu-s-round (fn-csp-session s))))
     (cond
-     ((eq mode :local-greeting)
-      (if (member-equal code '(200 201)) (list (fn-csp-with s :mode :replay-header) nil)
+     ((eq c :opening)
+      (if (member-equal code '(200 201))
+          (list (fn-csp-with s :conns (fn-csp-conns-set conns j :free)) nil)
         (fn-csp-fail s :local-refused)))
-     ((eq mode :offer)
+     ((and (consp c) (eq (cdr c) :await335)
+           (eq (fn-csp-mode s) :offer) (equal (fn-csp-slot s) (nfix j)))
       (cond ((equal code 335)
-             (list (fn-csp-with s :mode (if (zp (nfix (fn-pull-at 3 (fn-csp-body-framer s))))
-                                           :terminator :replay-body)) nil))
+             (list (fn-csp-with s
+                                :conns (fn-csp-conns-set conns j (cons (car c) :streaming))
+                                :mode (if (zp (nfix (fn-pull-at 3 (fn-csp-body-framer s))))
+                                          :terminator :replay-body))
+                   nil))
             ((equal code 435)
-             (let ((s (fn-csp-session-with-round s (fn-cu-with round :counts (fn-cu-count (fn-cu-r-counts round) 1)))))
-               (list (fn-csp-with s :mode (if (zp (nfix (fn-pull-at 3 (fn-csp-body-framer s))))
-                                             :replay-header :replay-body) :skip t) nil)))
+             (let ((s1 (fn-csp-session-with-round
+                        s (fn-cu-with round :counts
+                                      (fn-cu-count (fn-cu-r-counts round) 1)))))
+               (if (zp (nfix (fn-pull-at 3 (fn-csp-body-framer s1))))
+                   (fn-csp-record-done
+                    (fn-csp-with s1 :conns (fn-csp-conns-set conns j :free)
+                                 :slot nil))
+                 (list (fn-csp-with s1 :conns (fn-csp-conns-set conns j :free)
+                                    :slot nil :mode :replay-body :skip t)
+                       nil))))
             ((equal code 436) (fn-csp-fail s :local-deferred))
             (t (fn-csp-fail s :local-refused))))
-     ((eq mode :verdict)
+     ((and (consp c) (eq (cdr c) :verdict))
       (cond ((member-equal code '(235 437))
-             (list (fn-csp-with
-                    (fn-csp-session-with-round s
-                     (fn-cu-with round :counts (fn-cu-count (fn-cu-r-counts round) (if (equal code 235) 0 2))))
-                    :mode :replay-header) nil))
+             ; The settling reply frees j FIRST: the last verdict of a
+             ; drained batch is itself the one that makes the window idle,
+             ; so idleness is judged on the conns AFTER the free.
+             (let* ((s1 (fn-csp-session-with-round
+                         s (fn-cu-with round :counts
+                                       (fn-cu-count (fn-cu-r-counts round)
+                                                    (if (equal code 235) 0 2)))))
+                    (s2 (fn-csp-with s1 :conns (fn-csp-conns-set conns j :free))))
+               (if (and (eq (fn-csp-mode s2) :drain)
+                        (fn-csp-conns-idlep (fn-csp-conns s2)))
+                   (fn-csp-batch-finish s2)
+                 (list s2 nil))))
             ((equal code 436) (fn-csp-fail s :local-deferred))
             (t (fn-csp-fail s :local-refused))))
      (t (fn-csp-fail s :local-refused)))))
+
+(defun fn-csp-local-window (s j)
+  ; The local node took connection j's body window without a reply: only the
+  ; filling record's own window, only while it streams.
+  (declare (xargs :guard (natp j)))
+  (let ((c (fn-csp-conn j s)))
+    (if (and (eq (fn-csp-mode s) :local-write)
+             (equal (fn-csp-slot s) (nfix j))
+             (consp c) (eq (cdr c) :streaming))
+        (list (fn-csp-with s :mode (fn-csp-resume s)) nil)
+      (fn-csp-fail s :local-refused))))
 
 (defun fn-csp-step (s event)
   (declare (xargs :guard t))
@@ -291,24 +499,27 @@
                  (fn-cbor-octet-listp bytes) (atom (fn-csp-pending s)))
             (list (fn-csp-with s :pending bytes) nil)
           (fn-csp-fail s :spool-read))))
-     ((eq kind :local-window)
-      (if (eq mode :local-write) (list (fn-csp-with s :mode (fn-csp-resume s)) nil)
-        (fn-csp-fail s :local-refused)))
-     ((eq kind :local) (fn-csp-local s (fn-pull-event-octets event)))
+     ((eq kind :local-window) (fn-csp-local-window s (nfix (nth 1 event))))
+     ((eq kind :local)
+      (fn-csp-local s (nfix (nth 1 event)) (fn-csp-local-event-octets event)))
      ((eq kind :tick) (fn-csp-next s))
      (t (fn-csp-fail s :malformed)))))
 
 ; KEYSTONE SUBJECT (host/native/pull-service.lisp `fnn-pull-flight-begin').
 ; LIMIT is the spool allowance of the flight's bank lease, or nil when no
 ; lease was drawn: without one the round never dials and fails by name.
-(defun fn-csp-begin (plan cursor credential limit)
-  (declare (xargs :guard t))
+; WINDOW is W, the offer window's width: the operator's own commit batch
+; bound (log-batch-records), read once by the host -- a work-per-step bound,
+; never a data cap (D27) and never a constant of this book.
+(defun fn-csp-begin (plan cursor credential limit window)
+  (declare (xargs :guard (natp window)))
   (let* ((pair (fn-cu-session-begin-pair plan cursor credential))
          (s (list :status (car pair) nil nil nil 0 0 nil (fn-cu-cursor-chain cursor)
-                  nil nil 0 limit 0 nil nil nil)))
-    (if (posp limit)
-        (list s (cadr pair))
-      (fn-csp-fail s :peer-flight-unfunded))))
+                  nil nil 0 limit 0 nil nil nil
+                  (nfix window) (fn-csp-conns-of window :unopened) nil)))
+    (cond ((not (posp limit)) (fn-csp-fail s :peer-flight-unfunded))
+          ((not (posp window)) (fn-csp-fail s :window-invalid))
+          (t (list s (cadr pair))))))
 
 ; The host's other entry points (one value each).
 (defun fn-csp-done-p (s)
@@ -330,11 +541,18 @@
   512)
 
 (defun fn-csp-tick-p (s)
+  ; A quantum is owed only when it can do work.  :held and :drain are pure
+  ; waits -- no tick while nothing can advance -- EXCEPT a held record that
+  ; can take (or open) a connection: one tick binds or opens it and the
+  ; condition is gone.  No spin.
   (declare (xargs :guard t))
   (and (fn-cu-session-readyp (fn-csp-session s))
        (or (member-eq (fn-csp-mode s) '(:hash :terminator :replay-header :replay-body))
            (and (member-eq (fn-csp-mode s) '(:status :header :body))
-                (consp (fn-csp-pending s))))))
+                (consp (fn-csp-pending s)))
+           (and (eq (fn-csp-mode s) :held)
+                (or (fn-csp-free-conn (fn-csp-conns s) 0)
+                    (fn-csp-unopened-conn (fn-csp-conns s) 0))))))
 
 (defun fn-csp-work-units (s event)
   ; Selected logical framing/dispatch work, not a completed CPU/GC tariff.
@@ -344,8 +562,10 @@
     (cond ((eq kind :tick)
            (+ 1 (len (fn-pull-list (fn-csp-header s)))
               (len (fn-pull-list (fn-csp-pending s)))))
-          ((member-eq kind '(:remote :local))
+          ((eq kind :remote)
            (+ 1 (len (fn-pull-list (cdr (fn-pull-list event))))))
+          ((eq kind :local)
+           (+ 1 (len (fn-pull-list (fn-csp-local-event-octets event)))))
           ((eq kind :spool-read)
            (+ 1 (len (fn-pull-list (fn-pull-at 3 event)))))
           (t 1))))
@@ -434,18 +654,54 @@
   (implies (fn-csp-windowp s) (fn-csp-windowp (car (fn-csp-batch-finish s))))
   :hints (("Goal" :in-theory (e/d (fn-csp-batch-finish) (fn-csp-session-with-round))))))
 
+(local (defthm fn-csp-try-offer-keeps-window
+  (implies (fn-csp-windowp s) (fn-csp-windowp (car (fn-csp-try-offer s))))
+  :hints (("Goal" :in-theory (enable fn-csp-try-offer)))))
+
+(local (defthm fn-csp-with-keeps-window-untouched
+  ; The with of record-done touches only the framer, msgid, skip and slot
+  ; fields: both retained windows are untouched.
+  (implies (fn-csp-windowp s)
+           (fn-csp-windowp (fn-csp-with s :slot nil :skip nil :framer nil :msgid nil)))
+  :hints (("Goal" :in-theory (enable fn-csp-windowp)))))
+
+(local (defthm fn-csp-record-done-keeps-window
+  (implies (fn-csp-windowp s) (fn-csp-windowp (car (fn-csp-record-done s))))
+  :hints (("Goal" :in-theory (e/d (fn-csp-record-done) (fn-csp-batch-finish fn-csp-fail))
+                  :use (fn-csp-with-keeps-window-untouched
+                        (:instance fn-csp-batch-finish-keeps-window
+                          (s (fn-csp-with s :slot nil :skip nil :framer nil :msgid nil))))))))
+
 (local (defthm fn-csp-read-replay-keeps-window
   (implies (fn-csp-windowp s) (fn-csp-windowp (car (fn-csp-read-replay s))))
   :hints (("Goal" :in-theory (e/d (fn-csp-read-replay)
-                                  (fn-csp-batch-finish fn-csp-fail))
-                  :use (fn-csp-batch-finish-keeps-window
+                                  (fn-csp-record-done fn-csp-fail))
+                  :use (fn-csp-record-done-keeps-window
                         (:instance fn-csp-fail-keeps-window (reason :short-spool)))))))
 
+(local (defthm fn-csp-conns-idlep-of-set-free
+  ; The bridge: judging idleness on the conns with j freed is judging every
+  ; OTHER entry of the pre-state's conns.
+  (equal (fn-csp-conns-idlep (fn-csp-conns-set conns j :free))
+         (fn-csp-conns-idlep-but conns (nfix j)))
+  :hints (("Goal" :induct (fn-csp-conns-set conns j :free)))))
+
+(local (defthm fn-csp-with-conns-keeps-window
+  ; Binding/freeing connections and steering the mode/slot/skip touch no
+  ; retained window.
+  (implies (fn-csp-windowp s)
+           (fn-csp-windowp (fn-csp-with s :conns c :mode m :slot k :skip sk)))
+  :hints (("Goal" :in-theory (enable fn-csp-windowp)))))
+
 (local (defthm fn-csp-local-keeps-window
-  (implies (fn-csp-windowp s) (fn-csp-windowp (car (fn-csp-local s octets))))
-  :hints (("Goal" :in-theory (e/d (fn-csp-local) (fn-csp-fail))
-                  :use ((:instance fn-csp-fail-keeps-window (reason :local-refused))
-                        (:instance fn-csp-fail-keeps-window (reason :local-deferred)))))))
+  (implies (fn-csp-windowp s) (fn-csp-windowp (car (fn-csp-local s j octets))))
+  :hints (("Goal" :in-theory (e/d (fn-csp-local)
+                                  (fn-csp-fail fn-csp-record-done fn-csp-batch-finish))))))
+
+(local (defthm fn-csp-local-window-keeps-window
+  (implies (fn-csp-windowp s) (fn-csp-windowp (car (fn-csp-local-window s j))))
+  :hints (("Goal" :in-theory (e/d (fn-csp-local-window) (fn-csp-fail))
+                  :use ((:instance fn-csp-fail-keeps-window (reason :local-refused)))))))
 
 (local (defthm fn-csp-windowp-of-state
   (equal (fn-csp-windowp (list a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16))
@@ -457,7 +713,7 @@
            (fn-csp-windowp (car (fn-csp-after-header s line rest used))))
   :hints (("Goal" :in-theory (e/d (fn-csp-after-header)
                                   (fn-csp-fail fn-csp-write fn-csp-windowp
-                                   fn-csp-session-with-round))))))
+                                   fn-csp-try-offer fn-csp-session-with-round))))))
 
 (local (defthm fn-csp-windowp-facts
   (implies (fn-csp-windowp s)
@@ -539,7 +795,8 @@
                                    fn-csp-read-replay fn-csp-hash-effect fn-csp-header-window
                                    fn-csp-framer-window fn-csp-framer-window-accounts-for-every-octet
                                    fn-csp-write-keeps-window fn-csp-after-header-keeps-window
-                                   fn-csp-read-replay-keeps-window fn-csp-hash-effect-keeps-window))
+                                   fn-csp-read-replay-keeps-window fn-csp-hash-effect-keeps-window
+                                   fn-csp-record-done-keeps-window fn-csp-try-offer-keeps-window))
                   :use (fn-csp-windowp-facts
                         (:instance fn-csp-header-window-rest-shorter-pull-list
                                    (rev (fn-pull-list (fn-pull-at 2 s))) (crp (fn-pull-at 3 s))
@@ -552,11 +809,16 @@
   ; KEYSTONE (a round is bounded). Whatever arrives -- a peer chunk, a spool
   ; read, a local reply, a tick -- the controller retains at most one 512-octet
   ; header window and one 512-octet pending window; no record, line list or
-  ; article is retained, whatever its size.
+  ; article is retained, whatever its size.  The offer window changes the
+  ; claim only by what a slot retains: one Message-ID per bound connection,
+  ; at most W of them, W the begin's argument.
   (implies (fn-csp-windowp s)
            (fn-csp-windowp (car (fn-csp-step s event))))
   :hints (("Goal" :in-theory (e/d (fn-csp-step)
-                                  (fn-csp-fail fn-csp-next fn-csp-local fn-csp-windowp fn-cu-session-step-pair fn-cu-session-readyp fn-blake3-stobj fn-cu-chainp fn-pull-event-octets fn-csp-session))
-                  :use (fn-csp-windowp-facts))))
+                                  (fn-csp-fail fn-csp-next fn-csp-local fn-csp-local-window
+                                   fn-csp-windowp fn-cu-session-step-pair fn-cu-session-readyp
+                                   fn-blake3-stobj fn-cu-chainp fn-pull-event-octets fn-csp-session))
+                  :use (fn-csp-windowp-facts
+                        (:instance fn-csp-local-window-keeps-window)))))
 
 (in-theory (disable fn-csp-windowp))
