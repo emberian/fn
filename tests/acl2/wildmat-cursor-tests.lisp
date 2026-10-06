@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/wildmat-cursor")
+(include-book "../../books/defkeystone")
 
 ; TEST ONLY: decrement BOTH budgets after every accepted engine microstep.
 ; The served caller retains a cursor, never invokes this drain.
@@ -166,3 +167,73 @@
          (next (fn-wmc-step s 1 15)))
     (and (not (fn-wmc-shapedp s))
          (equal (fn-wmc-result next) (fn-wmc-result s)))) :rule-classes nil)
+
+; ---------------------------------------------------------------------------
+; The PRF-1261 keystones of books/wildmat-cursor.lisp with their teeth
+; (TEETH CONTRACT v1), over the fixtures above: the start, the reached
+; midstate and the drained receipt.  A UTF-8 task with matcher frames already
+; pending is a state no start builds (the corrupted shape).
+(defconst *wmct-utf8-with-frames*
+  (list (list :utf8 *wmct-patterns* "fn.block.good" 13 nil) (fn-wmc-at 1 *wmct-mid*)))
+
+(defteeth fn-wmc-start-value-is-group-match
+  :claim (() (equal (fn-wmc-value (fn-wmc-start patterns group))
+                    (fn-nntp-group-matches-parsed-wildmatp patterns group)))
+  :subject fn-wmc-start
+  :witness ((patterns *wmct-patterns*) (group "fn.block"))
+  :mutations ((first-match-decides
+               (:conclusion (equal (fn-wmc-value (fn-wmc-start patterns group))
+                                   (fn-nntp-group-matches-parsed-wildmatp (list (car patterns)) group)))
+               ((patterns *wmct-patterns*) (group "fn.block"))
+               :fault "the first matching pattern decides, not the rightmost (fn.* before !fn.block)")))
+
+(defteeth fn-wmc-one-preserves-result
+  :claim (() (equal (fn-wmc-result (fn-wmc-one s)) (fn-wmc-result s)))
+  :subject fn-wmc-one
+  :witness ((s *wmct-mid*))
+  :mutations ((microstep-idle
+               (:conclusion (equal (fn-wmc-one s) s))
+               ((s *wmct-mid*))
+               :fault "a microstep that leaves the cursor where it was")))
+
+(defteeth fn-wmc-step-preserves-value
+  :claim (() (equal (fn-wmc-value (fn-wmc-step s work cons-grant)) (fn-wmc-value s)))
+  :subject fn-wmc-step
+  :witness ((s *wmct-mid*) (work 1) (cons-grant 13))
+  :mutations ((funded-step-idle
+               (:conclusion (equal (fn-wmc-step s work cons-grant) s))
+               ((s *wmct-mid*) (work 1) (cons-grant 13))
+               :fault "a funded step that does not advance the cursor")))
+
+(defteeth fn-wmc-cumulative-cons-bound
+  :claim (() (<= (fn-wmc-run-cons s work cons-grant) (nfix cons-grant)))
+  :subject fn-wmc-step
+  :witness ((s *wmct-start*) (work 1000) (cons-grant 13000))
+  :mutations ((cons-against-work
+               (:conclusion (<= (fn-wmc-run-cons s work cons-grant) (nfix work)))
+               ((s *wmct-start*) (work 1000) (cons-grant 13000))
+               :fault "the run's cons cells bounded by the work grant instead of the cons grant")))
+
+(defteeth fn-wmc-funded-step-progress
+  :claim (((shaped (fn-wmc-shapedp s)))
+          (equal (fn-wmc-remaining (fn-wmc-step s work cons-grant))
+                 (- (fn-wmc-remaining s) (fn-wmc-consumed-work s work cons-grant))))
+  :subject fn-wmc-step
+  :witness ((s *wmct-mid*) (work 1) (cons-grant 13))
+  :breaks ((shaped ((s *wmct-utf8-with-frames*) (work 1) (cons-grant 100))))
+  :mutations ((unfunded-step-charged
+               (:conclusion (equal (fn-wmc-remaining (fn-wmc-step s work cons-grant))
+                                   (- (fn-wmc-remaining s) 1)))
+               ((s *wmct-mid*) (work 1) (cons-grant 12))
+               :fault "a step charged its unit of work when the cons grant did not fund it")))
+
+(defteeth fn-wmc-accepted-cons-cells-covered
+  :claim (((accepted (fn-wmc-acceptedp s work cons-grant)))
+          (<= (fn-wmc-one-cons-cells s) (fn-wmc-consumed-cons s work cons-grant)))
+  :subject fn-wmc-step
+  :witness ((s *wmct-mid*) (work 1) (cons-grant 13))
+  :breaks ((accepted ((s *wmct-mid*) (work 1) (cons-grant 12))))
+  :mutations ((one-cell-charged
+               (:conclusion (<= (fn-wmc-one-cons-cells s) 1))
+               ((s *wmct-mid*) (work 1) (cons-grant 13))
+               :fault "an accepted microstep charged one cons cell for the thirteen it allocates")))

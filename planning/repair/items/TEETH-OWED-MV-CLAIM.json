@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/defkeystone.lisp",
+ "id": "TEETH-OWED-MV-CLAIM",
+ "notes": [],
+ "owner": "teeth-gate",
+ "severity": "medium",
+ "slice": "proof-tooling",
+ "source": "teeth-gate",
+ "state": "open",
+ "title": "defteeth cannot witness a claim over a multiple-value function: its witnesses are assert-events over the literal claim, and (mv-nth K (F ...)) of an mv-returning F does not translate in executable code (seen: fn-nnm-one-preserves-value). 34 keystones owed by tools/keystone_emit.py's teeth gate have such claims (fn-nnm-one-*, fn-rlo-* over fn-resource-ledger, fn-dwa/fn-dwj retirement, fn-his-build-row-*, fn-hmc-do-*, fn-prl-resident-shrink-*, fn-sl-step-residual, fn-lsr-one-finite-progress, fn-lgu-host-kernel-..., fn-handle-holds-released-*); several also quantify a stobj (TEETH-OWED-STOBJ-WITNESS). Owed: a witness mode that evaluates mv-nth of an mv call through mv-list (or :witness-lemma ground theorems per witness, counted as lemma debt), then their defteeth; list in build/coordinator/lanedumps/teeth-gate.md.",
+ "updated": "2026-10-05T07:50:03Z"
+}

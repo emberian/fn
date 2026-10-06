@@ -5065,3 +5065,46 @@ Landed on lane/access-check (pushed):
 Continuation (not started; context cap): ACCESS-REVOKE-PINNED (repair item, design notes there): access tightening
 applies at once to open connections (coordinator ruling). Red->green = test_source_peer_reader_access_preserves_transit
 old-socket assertions; amend specs/reconfiguration.md 2.3.
+
+## teeth-62 (Sonnet, 2026-10-05) -- lane/teeth-62, base origin/lane/teeth-gate@ab595894d, worktree build/lanes/teeth-62
+38 of the 62 "T not yet written" keystones now carry defteeth (tests/acl2/*-tests.lisp, one commit per book); keystone_emit --check findings 126 -> 88.
+Every changed test book was loaded to its end on an hbox proof REPL (all forms admitted, source deps; NOT certified).
+Done: app-pattern (1), app-pattern-delivery (1), article-kind-acceptance/-hybrid (6, in article-kind-tests), bp-ion-lifetime (1), bp-node-budget-input (3), connection-budget (2), feed-journal-order (1), native-init-resume (2), native-retire (2, in native-retire-observation-tests), nntp-auth (2, in nntp-auth-tests), fn-auth-view-excludes-unreadable-groups-on-any-connection (moderation-tests), output-reservation (3), owner-queued-work (3), owner-reclaim-carry (1), page-read-startup (2), peer-flight-reservation (2), reclaim-chunked-walk (2), reclaim-chunked-seal (1), store-log-entry-bound (2).
+Reclassified: store-log-entry-bound -step x2 -> MV class; fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open -> no-counterexample (both antecedents).
+Continuation: still T = output-command-admission(1), payload-lz-scalar-realizer(1), store-checkpoint-verify(1), served-access-revoke(3), store-log-durable(8), store-log-route-programs(3), tcpcl-received-source-refinement(1), tcpcl-retained-turn(1), tcpcl-source-control-refinement(2).  lanedumps/teeth-gate-owed.md holds the list, the no-counterexample notes and the method notes (let-wrapped claims; trailing-group rule).
+Certify: NOT done.  Narrow certify of the 19 touched tests/acl2/*-tests books via boxq --box hbox is pending INTEGRATOR-4's slot.
+
+### Exact certify command for INTEGRATOR-4 (run from build/lanes/teeth-62 at lane/teeth-62, merged on lane/teeth-gate@ab595894d)
+python3 tools/boxq.py submit --kind certify-lane --box hbox --wait -- --lane --jobs 8 --affected-by tests/acl2/app-pattern-delivery-tests --affected-by tests/acl2/app-pattern-tests --affected-by tests/acl2/article-kind-tests --affected-by tests/acl2/bp-ion-lifetime-tests --affected-by tests/acl2/bp-node-budget-input-tests --affected-by tests/acl2/connection-budget-tests --affected-by tests/acl2/feed-journal-order-tests --affected-by tests/acl2/moderation-tests --affected-by tests/acl2/native-init-resume-tests --affected-by tests/acl2/native-retire-observation-tests --affected-by tests/acl2/nntp-auth-tests --affected-by tests/acl2/output-reservation-tests --affected-by tests/acl2/owner-queued-work-tests --affected-by tests/acl2/owner-reclaim-carry-tests --affected-by tests/acl2/page-read-startup-tests --affected-by tests/acl2/peer-flight-reservation-tests --affected-by tests/acl2/reclaim-chunked-seal-tests --affected-by tests/acl2/reclaim-chunked-walk-tests --affected-by tests/acl2/store-log-entry-bound-tests 
+Books (19):
+- tests/acl2/app-pattern-delivery-tests
+- tests/acl2/app-pattern-tests
+- tests/acl2/article-kind-tests
+- tests/acl2/bp-ion-lifetime-tests
+- tests/acl2/bp-node-budget-input-tests
+- tests/acl2/connection-budget-tests
+- tests/acl2/feed-journal-order-tests
+- tests/acl2/moderation-tests
+- tests/acl2/native-init-resume-tests
+- tests/acl2/native-retire-observation-tests
+- tests/acl2/nntp-auth-tests
+- tests/acl2/output-reservation-tests
+- tests/acl2/owner-queued-work-tests
+- tests/acl2/owner-reclaim-carry-tests
+- tests/acl2/page-read-startup-tests
+- tests/acl2/peer-flight-reservation-tests
+- tests/acl2/reclaim-chunked-seal-tests
+- tests/acl2/reclaim-chunked-walk-tests
+- tests/acl2/store-log-entry-bound-tests
+
+## teeth-21 (Sonnet, 2026-10-05) -- lane/teeth-21, base origin/lane/teeth-62@4aa88cee0, worktree build/lanes/teeth-21
+18 of the 21 remaining "T not yet written" keystones now carry defteeth (one commit per book); keystone_emit --check findings 88 -> 70 (the stale-manifest finding remains; the integrator regenerates it).
+Every changed test book was loaded to its end on an hbox proof REPL (all forms admitted, source deps; NOT certified).
+Done: store-log-durable (6), store-log-route-programs (2), served-access-revoke (3), tcpcl-received-source-refinement (1), tcpcl-retained-turn (1), tcpcl-source-control-refinement (2), output-command-admission (1), payload-lz-scalar-realizer (1), store-checkpoint-verify (1).
+New support book tests/acl2/teeth-ground-lemma.lisp (teeth-ground-lemma, defconst-eval) for claims whose antecedent is fn-bs-crash-imagep; method notes in build/coordinator/lanedumps/teeth-gate-owed.md.
+Owed (3): fn-lgu-recover-program-establishes-the-relation and fn-lgu-open-run-acknowledges-only-recoverable-records (the claim computes fn-lg-recovered-kernel, whose next txid reads the attached fn-record-decode-exact: a ground lemma stalls in the rewriter); fn-lg-open-program-keeps-the-relation-at-every-cut (constrained fn-assume-log-sole-pending-writer, same kernel).  Continuation: either a ground lemma that rewrites fn-lgt-next-after at a no-record store, or a seam-free restatement; counterexamples for the open-run antecedents are listed in the owed file.
+Certify: NOT done.  One narrow certify slot requested of INTEGRATOR-4 for teeth-62's 19 touched tests/acl2 books plus these 11 (incl. teeth-ground-lemma).
+
+### Exact certify command, teeth-21 (supersedes the teeth-62 command above; run from build/lanes/teeth-21 at lane/teeth-21@7f57d7980)
+Append these 10 flags (teeth-ground-lemma, the support book, and nine test books) to the teeth-62 command's 19, 29 books in all; an earlier line of this entry says 11, which counted LANEDUMP.md:
+--affected-by tests/acl2/teeth-ground-lemma --affected-by tests/acl2/store-log-durable-tests --affected-by tests/acl2/store-log-route-programs-tests --affected-by tests/acl2/served-access-revoke-tests --affected-by tests/acl2/tcpcl-received-source-refinement-tests --affected-by tests/acl2/tcpcl-retained-turn-tests --affected-by tests/acl2/tcpcl-source-control-refinement-tests --affected-by tests/acl2/output-command-admission-tests --affected-by tests/acl2/payload-lz-scalar-realizer-tests --affected-by tests/acl2/store-checkpoint-verify-tests

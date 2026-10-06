@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/tcpcl-received-source-refinement")
+(include-book "../../books/defkeystone")
 ; Reach the transferring branch through actual open/contact/session-init.
 (defconst *tcsr-local* (fn-tcl-make-params 10 10 1000 '(100 116 110 58 114) nil nil))
 (defconst *tcsr-initial* (fn-tcl-initial-session :passive *tcsr-local* 0))
@@ -26,3 +27,15 @@
   (and (not (true-listp (fn-tcl-xfer-segment-data bad)))
        (not (equal (fn-tcl-source-result-alpha (fn-tcl-recv-segment-source *tcsr-up* bad 2))
                    (fn-tcl-recv-segment *tcsr-up* bad 2)))))))
+
+; TEETH-21 BEGIN
+(defteeth fn-tcl-source-recv-segment-boundary
+  :claim (((proper-data (true-listp (fn-tcl-xfer-segment-data m))))
+          (equal (fn-tcl-source-result-alpha (fn-tcl-recv-segment-source s m now))
+                 (fn-tcl-recv-segment s m now)))
+  :subject fn-tcl-recv-segment-source
+  :witness ((s *tcsr-up*) (m *tcsr-data*) (now 2))
+  :breaks ((proper-data ((m (fn-tcl-make-xfer-segment 3 7 nil '(65 . :broken))))
+                        :logical "an improper data list is outside the guard of the segment's data readers"))
+  :mutations (:not-applicable "the one hypothesis is labelled; its removal witness is the tooth"))
+; TEETH-21 END

@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/wildmat-live")
+(include-book "../../books/defkeystone")
 
 ; Test-only traces; actual served code invokes one retained step.
 (defun wmlt-find (s tag fuel)
@@ -128,3 +129,59 @@
   (and (not (fn-wildmat-pattern-listp p))
        (not (equal (fn-wml-tree-cells p) (+ (* 3 (len p)) (fn-wm-total-items p))))))
  :rule-classes nil)
+
+; ---------------------------------------------------------------------------
+; The PRF-1261 retention keystones of books/wildmat-live.lisp with their teeth
+; (TEETH CONTRACT v1), over the fixtures above.  fn-wml-retained-owned-bound
+; has none here: its (natp octets) has no counterexample (a negative or
+; fractional octet count leaves fn-wml-retainedp only for target 0, where the
+; room already exceeds the owned capacity's deficit), so its removal waits on
+; a proof of the weakened theorem, not on a failed search.
+(defteeth fn-wml-borrowed-pattern-cells
+  :claim (((parsed (fn-wildmat-pattern-listp patterns)))
+          (equal (fn-wml-tree-cells patterns) (+ (* 3 (len patterns)) (fn-wm-total-items patterns))))
+  :subject fn-wml-tree-cells
+  :witness ((patterns *wmlt-patterns*))
+  :breaks ((parsed ((patterns '((:positive (97) extra))))
+                   :logical "a pattern with a stray element: outside the parsed-pattern guard of fn-wm-total-items"))
+  :mutations ((two-cells-per-pattern
+               (:conclusion (equal (fn-wml-tree-cells patterns)
+                                   (+ (* 2 (len patterns)) (fn-wm-total-items patterns))))
+               ((patterns *wmlt-patterns*))
+               :fault "a pattern node counted as two cells (the kind cell forgotten)")))
+
+(defteeth fn-wml-start-retainedp
+  :claim (((parsed (fn-wildmat-pattern-listp patterns)))
+          (fn-wml-retainedp (fn-wmc-start patterns group) (len patterns) (fn-wm-total-items patterns)
+                            (if (stringp group) (length group) 0)))
+  :subject fn-wmc-start
+  :witness ((patterns *wmlt-patterns*) (group "abb"))
+  :breaks ((parsed ((patterns (list (make-list 40 :initial-element 0))) (group ""))
+                   :logical "a grammar-corrupted pattern list, outside fn-wm-total-items's guard"))
+  :mutations ((group-octets-unowned
+               (:conclusion (fn-wml-retainedp (fn-wmc-start patterns group) (len patterns)
+                                              (fn-wm-total-items patterns) 0))
+               ((patterns *wmlt-patterns*) (group "abb"))
+               :fault "the group's octets left out of the retained capacity")))
+
+(defteeth fn-wml-one-retainedp
+  :claim (((retained (fn-wml-retainedp s patterns tokens octets)))
+          (fn-wml-retainedp (fn-wmc-one s) patterns tokens octets))
+  :subject fn-wmc-one
+  :witness ((s *wmlt-row*) (patterns 3) (tokens 12) (octets 3))
+  :breaks ((retained ((s *wmlt-row*) (patterns 0) (tokens 0) (octets 0))))
+  :mutations ((microstep-allocates-nothing
+               (:conclusion (equal (fn-wml-live-cells (fn-wmc-one s)) (fn-wml-live-cells s)))
+               ((s *wmlt-row*) (patterns 3) (tokens 12) (octets 3))
+               :fault "a microstep counted as allocating no live cells")))
+
+(defteeth fn-wml-step-retainedp
+  :claim (((retained (fn-wml-retainedp s patterns tokens octets)))
+          (fn-wml-retainedp (fn-wmc-step s work grant) patterns tokens octets))
+  :subject fn-wmc-step
+  :witness ((s *wmlt-row*) (patterns 3) (tokens 12) (octets 3) (work 1) (grant (fn-wmc-demand *wmlt-row*)))
+  :breaks ((retained ((s *wmlt-row*) (patterns 0) (tokens 0) (octets 0) (work 1) (grant (fn-wmc-demand *wmlt-row*)))))
+  :mutations ((step-allocates-nothing
+               (:conclusion (equal (fn-wml-live-cells (fn-wmc-step s work grant)) (fn-wml-live-cells s)))
+               ((s *wmlt-row*) (patterns 3) (tokens 12) (octets 3) (work 1) (grant (fn-wmc-demand *wmlt-row*)))
+               :fault "a funded step counted as allocating no live cells")))
