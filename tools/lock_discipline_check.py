@@ -745,6 +745,7 @@ class Analyzer:
         self.run_targets: list = []   # (fn, param) of the argument position a walked closure was passed at
         self._writes_cache: dict = {}  # fn name -> frozenset of names its body writes
         self.cur_def = None
+        self.defer_vars: list = []    # variables whose captured conditions are rethrown on every exit path
         self.leaf_kinds = self._leaf_table()
         self.region_of = {}
         for region, row in contracts.regions.items():
@@ -1008,6 +1009,7 @@ class Analyzer:
         info.thread_of = thread_of
         self.cur = info
         self.cur_def = d
+        self.defer_vars = []
         self.recording = record
         if not record:
             self.pass1_name = name
@@ -1336,8 +1338,117 @@ class Analyzer:
                 parts.append(self.walk(form[2], ctx, env, line))
             body = form[3:]
         ctx2 = Ctx(ctx.locks, noio, ctx.scope, ctx.gated, ctx.ignore, cond2)
-        parts.append(self.walk_body(body, ctx2, env2, line))
+        deferred = self._deferred_rethrow_vars(
+            [str(b[0]) if isinstance(b, list) and b else str(b) for b in
+             (form[1] if h in BINDING_FORMS and len(form) > 1 and isinstance(form[1], list) else [])], body)
+        mark = len(self.defer_vars)
+        self.defer_vars.extend(deferred)
+        try:
+            parts.append(self.walk_body(body, ctx2, env2, line))
+        finally:
+            del self.defer_vars[mark:]
         return sig_union(parts)
+
+    EXIT_HEADS = {"return-from", "return", "go", "throw"}
+
+    def _has_exit(self, forms) -> bool:
+        stack = list(forms)
+        while stack:
+            x = stack.pop()
+            if isinstance(x, list) and x:
+                if head(x) in ("quote", "lambda", "function"):
+                    continue
+                if head(x) in self.EXIT_HEADS:
+                    return True
+                stack.extend(x)
+        return False
+
+    def _terminal_rethrow(self, form, var: str, fences: set) -> bool:
+        """FORM always ends in a re-signal of VAR's captured condition (or
+        a declared fence call): (error ...VAR...), a fence call, an if whose
+        two arms are both terminal, or a progn whose last form is."""
+        if not isinstance(form, list) or not form:
+            return False
+        h = head(form)
+        if h in ("error", "signal"):
+            return any(isinstance(x, Sym) and str(x) == var for x in self._flat(form[1:]))
+        if h in fences:
+            return True
+        if h == "if" and len(form) == 4:
+            return self._terminal_rethrow(form[2], var, fences) and self._terminal_rethrow(form[3], var, fences)
+        if h == "progn" and len(form) > 1:
+            return self._terminal_rethrow(form[-1], var, fences)
+        return False
+
+    @staticmethod
+    def _flat(forms):
+        stack = list(forms)
+        while stack:
+            x = stack.pop()
+            if isinstance(x, list):
+                stack.extend(x)
+            else:
+                yield x
+
+    def _deferred_rethrow_vars(self, names, body) -> set:
+        """Variables V bound by this let whose captured conditions are
+        re-signalled on EVERY exit path of the let body: the body's final
+        form (or, for an unwind-protect, its last cleanup form, which every
+        exit including a throw runs) is (when V ...) / (if V ...) whose
+        taken arm is terminal (error naming V, or a fence call); no form
+        that runs between the captures and that tail can leave the body
+        (return-from, return, go, throw); V is never reset to nil; and the
+        test is V itself, not a conjunction."""
+        if not names or not body:
+            return set()
+        fences = set(self.c.raw.get("fence_functions", []))
+        last = body[-1]
+        if isinstance(last, list) and head(last) == "unwind-protect" and len(last) > 2:
+            tail, between = last[-1], list(body[:-1]) + list(last[2:-1])
+        else:
+            tail, between = last, list(body[:-1])
+        if not (isinstance(tail, list) and head(tail) in ("when", "if") and len(tail) > 2
+                and isinstance(tail[1], Sym)):
+            return set()
+        var = str(tail[1])
+        if var not in names:
+            return set()
+        arms = tail[2:] if head(tail) == "when" else tail[2:3] + ([tail[3]] if len(tail) > 3 else [])
+        if head(tail) == "if" and len(tail) != 4:
+            return set()
+        if head(tail) == "if":
+            if not self._terminal_rethrow(tail[2], var, fences):
+                return set()
+        else:
+            if not self._terminal_rethrow(tail[-1], var, fences):
+                return set()
+        if self._has_exit(between):
+            return set()
+        for f in self._flat_forms(between):
+            if head(f) in ("setq", "setf") and len(f) == 3 and sym(f[1]) == var \
+                    and isinstance(f[2], Sym) and str(f[2]) == "nil":
+                return set()
+        return {var}
+
+    @staticmethod
+    def _flat_forms(forms):
+        stack = list(forms)
+        while stack:
+            x = stack.pop()
+            if isinstance(x, list) and x:
+                yield x
+                stack.extend(x)
+
+    def _captures_deferred(self, clause_body, cvar) -> bool:
+        """The clause body stores its condition variable CVAR into a variable
+        whose rethrow is deferred to the let tail."""
+        for f in self._flat_forms(clause_body):
+            h = head(f)
+            if h in ("push", "pushnew") and len(f) == 3 and sym(f[1]) == cvar and sym(f[2]) in self.defer_vars:
+                return True
+            if h in ("setq", "setf") and len(f) == 3 and sym(f[2]) == cvar and sym(f[1]) in self.defer_vars:
+                return True
+        return False
 
     def _retag(self, ctx: Ctx, cond: tuple) -> Ctx:
         """The innermost test governs: entering an arm of (if PARAM ...)
@@ -1566,9 +1677,9 @@ class Analyzer:
             return rid
         d = Def(rid, self.cur.path, line_of(lam, line), lam[1] if len(lam) > 1 else [], list(lam[2:]),
                 "lambda", "", self.cur.loaded)
-        saved = (self.cur, self.cur_def, self.recording, getattr(self, "gate_class", None))
+        saved = (self.cur, self.cur_def, self.recording, getattr(self, "gate_class", None), self.defer_vars)
         self.walk_def(rid, d, True, thread_of=thread_of, env={k: None for k in env})
-        self.cur, self.cur_def, self.recording, self.gate_class = saved
+        self.cur, self.cur_def, self.recording, self.gate_class, self.defer_vars = saved
         return rid
 
     def walk_handler_case(self, form, ctx, env, line):
@@ -1603,6 +1714,8 @@ class Analyzer:
                 # a rethrow nested deeper (inside a let/when) is still a rethrow
                 if not rethrows:
                     rethrows = self.mentions_rethrow(cl[2:], var)
+                if not rethrows and self.defer_vars:
+                    rethrows = self._captures_deferred(cl[2:], var)
             clauses.append((types, rethrows, body))
             recorded.append((types, rethrows, body, direct_symbols(cl[2:]), render(tspec, 60)))
         self.add_handler(line, inner, recorded, ctx)
