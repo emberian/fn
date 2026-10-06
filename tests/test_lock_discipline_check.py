@@ -473,6 +473,54 @@ class R7DeferredRethrow(unittest.TestCase):
         self.assertEqual(self.swallow("(when failure (error failure))", pre=pre), [])
 
 
+class ActorBeforeStart(unittest.TestCase):
+    """def-actor's starter funcalls its seventh argument (before-start) inside
+    the roster section of fnn-owner-actor-start (owner.lisp:1778-1785), on the
+    caller's thread: that lambda is not a stored callback."""
+    ACTOR = """
+(defun fnn-owner-actor-start (service custody thunk name rosterp escape &optional physical-callback before-start)
+  (sb-thread:with-mutex ((fnn-owner-service-roster service))
+    (when before-start (funcall before-start nil))))
+(def-actor fnn-x-spawn :kind :publisher :thread-name "fn x" :roster t :join fnn-x-join :failure :service)
+"""
+    BARE = """
+(defun fnn-owner-actor-start (service custody thunk name rosterp escape &optional physical-callback before-start)
+  (when before-start (funcall before-start nil)))
+(def-actor fnn-x-spawn :kind :publisher :thread-name "fn x" :roster t :join fnn-x-join :failure :service)
+"""
+
+    def r1(self, actor, args):
+        src = actor + """
+(defun fnn-start (service)
+  (fnn-x-spawn service nil (lambda () nil) %s))
+(defun fnn-go (s) (sb-thread:make-thread (lambda () (fnn-start s)) :name "t"))
+""" % args
+        return [f for f in run(src, ["R1"]) if f.rule == "R1" and "fnn-owner-service-publisher" in f.key]
+
+    TOUCH = "(lambda (worker) (setf (fnn-owner-service-publisher service) worker))"
+
+    def test_before_start_runs_under_the_roster(self):
+        self.assertEqual(self.r1(self.ACTOR, "nil nil " + self.TOUCH), [])
+
+    def test_the_starter_template_is_the_macro_s_expansion(self):
+        owner = (ROOT / "host" / "native" / "owner.lisp").read_text(encoding="utf-8")
+        macro = owner[owner.index("(defmacro def-actor"):]
+        macro = macro[:macro.index("\n(def", 1)]
+        self.assertIn("(defun ,name (service custody thunk &optional escape physical-callback before-start)", macro)
+        self.assertIn("(fnn-owner-actor-start service custody thunk ,thread-name ,roster escape physical-callback before-start)", macro)
+        self.assertEqual(ldc.ACTOR_RUNNER, "fnn-owner-actor-start")
+        self.assertEqual(ldc.ACTOR_BEFORE_START_ARG, 5)
+
+    def test_the_same_lambda_as_the_escape_stays_a_root(self):
+        self.assertTrue(self.r1(self.ACTOR, self.TOUCH + " nil nil"))
+
+    def test_the_same_lambda_as_the_physical_callback_stays_a_root(self):
+        self.assertTrue(self.r1(self.ACTOR, "nil " + self.TOUCH + " nil"))
+
+    def test_before_start_without_the_roster_still_fires(self):
+        self.assertTrue(self.r1(self.BARE, "nil nil " + self.TOUCH))
+
+
 class CallbackContexts(unittest.TestCase):
     """contracts `callback_contexts': a stored callback declared to run in a
     command's own extent gets that command's context, and nothing else does."""

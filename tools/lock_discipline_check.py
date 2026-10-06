@@ -365,6 +365,14 @@ def section_definition(form, line: int):
 # call to it is walked as a make-thread of THUNK under the declared thread
 # name, and rule R4 takes that thread's row from the declaration (its join
 # site and failure policy) instead of a hand-written `threads' contract.
+# The starter def-actor emits is (defun NAME (service custody thunk &optional
+# escape physical-callback before-start) (fnn-owner-actor-start service custody
+# thunk THREAD-NAME ROSTER escape physical-callback before-start)): argument
+# index 5 is before-start (owner.lisp:1833-1834).
+ACTOR_RUNNER = "fnn-owner-actor-start"
+ACTOR_BEFORE_START_ARG = 5
+
+
 def actor_declaration(form):
     """(kind, thread-name, roster, join, failure) of a (def-actor NAME :kind K
     :thread-name S :roster R :join J :failure F), or None without a thread
@@ -1657,7 +1665,22 @@ class Analyzer:
         actor's thread; the other arguments are walked as values (the escape
         and the physical callbacks run later, on that thread or its joiner)."""
         tname = self.tree.actors[actor][3]
-        parts = [self.walk(a, ctx, env, line) for k, a in enumerate(args) if k != 2]
+        parts = []
+        for k, a in enumerate(args):
+            if k == 2:
+                continue
+            if (k == ACTOR_BEFORE_START_ARG and isinstance(a, list) and head(a) == "lambda"):
+                # the starter funcalls BEFORE-START on the caller's thread,
+                # inside fnn-owner-actor-start's own critical section
+                # (owner.lisp:1778-1785): the callee's context for that
+                # parameter, not a stored callback
+                pctx = self.param_ctx.get((ACTOR_RUNNER, "before-start"))
+                extra = pctx if isinstance(pctx, Ctx) else Ctx()
+                inner = Ctx(ctx.locks | extra.locks, ctx.noio, extra.scope or ctx.scope,
+                            extra.gated or ctx.gated, ctx.ignore, ctx.cond)
+                parts.append(self.walk_lambda_inline(a, inner, env, line))
+                continue
+            parts.append(self.walk(a, ctx, env, line))
         if len(args) > 2:
             spawn = Node([Sym("sb-thread:make-thread"), args[2], Sym(":name"), tname])
             spawn.line = line_of(form, line)
