@@ -931,3 +931,165 @@
                         (:instance fn-csp-local-window-keeps-window)))))
 
 (in-theory (disable fn-csp-windowp))
+
+; -----------------------------------------------------------------------------
+; Settling exactly once, per record identity (PRF-1335, the K1 chain)
+
+(local (defthm fn-cu-next-keeps-counts
+  ; The batch-finish round fact: whichever branch fn-cu-next takes, the
+  ; round's counts are untouched -- journals, requests and phase changes
+  ; never move a record class.
+  (equal (fn-cu-r-counts (mv-nth 0 (fn-cu-next r))) (fn-cu-r-counts r))
+  :hints (("Goal" :in-theory (enable fn-cu-next)))))
+
+(local (defthm fn-csp-fail-keeps-counts
+  ; A named failure settles no record either.
+  (equal (fn-cu-r-counts (fn-cu-s-round (fn-csp-session (car (fn-csp-fail s reason)))))
+         (fn-cu-r-counts (fn-cu-s-round (fn-csp-session s))))
+  :hints (("Goal" :in-theory (enable fn-csp-fail fn-cu-fail fn-csp-session-with-round)))))
+
+(local (defthm fn-csp-fail-shape
+  (and (equal (fn-csp-mode (car (fn-csp-fail s reason))) :failed)
+       (equal (fn-cu-r-refusal (fn-cu-s-round (fn-csp-session (car (fn-csp-fail s reason)))))
+              reason))
+  :hints (("Goal" :in-theory (enable fn-csp-fail fn-cu-fail fn-csp-session-with-round)))))
+
+(local (defthm fn-csp-conns-set-is-update-nth
+  ; CONNS-SET is UPDATE-NTH's placement (nil-padded past the end), so the
+  ; nth/len lemmas of UPDATE-NTH carry over to the window.
+  (implies (natp j)
+           (equal (fn-csp-conns-set conns j c) (update-nth j c conns)))
+  :hints (("Goal" :induct (fn-csp-conns-set conns j c)
+                  :in-theory (enable fn-csp-conns-set)))))
+
+(local (defthm fn-csp-batch-finish-effects
+  ; TODO is nil by construction (fn-csp-batch-finish forces it), so the
+  ; session layer cannot emit its own IHAVE here: the effects are exactly
+  ; one (:journal . cursor), first, naming the cursor the produced round
+  ; commits, then the next request or the quit+close -- no :local effect,
+  ; no second journal.
+  (let* ((pair (fn-csp-batch-finish s)) (effs (cadr pair)))
+    (and (consp effs)
+         (eq (car (car effs)) :journal)
+         (equal (cdr (car effs))
+                (fn-cu-round-cursor (fn-cu-s-round (fn-csp-session (car pair)))))
+         (not (member-eq :journal (strip-cars (cdr effs))))
+         (not (member-eq :local (strip-cars effs)))))
+  :hints (("Goal" :in-theory (enable fn-csp-batch-finish fn-csp-session-with-round fn-cu-next)))))
+
+(local (defthm fn-csp-batch-finish-facts
+  (and (equal (fn-cu-r-counts (fn-cu-s-round (fn-csp-session (car (fn-csp-batch-finish s)))))
+              (fn-cu-r-counts (fn-cu-s-round (fn-csp-session s))))
+       (equal (fn-pull-at 18 (car (fn-csp-batch-finish s))) (fn-pull-at 18 s))
+       (not (equal (fn-pull-at 0 (car (fn-csp-batch-finish s))) :failed)))
+  :hints (("Goal" :in-theory (enable fn-csp-batch-finish fn-csp-session-with-round)))))
+
+(local (defthm fn-csp-batch-finish-state-consp
+  (consp (car (fn-csp-batch-finish s)))
+  :rule-classes (:type-prescription :rewrite)
+  :hints (("Goal" :in-theory (enable fn-csp-batch-finish)))))
+
+(local (defthm fn-csp-conns-idlep-of-update-nth-free
+  ; The book's idlep bridge, in the UPDATE-NTH normal form the conns-set
+  ; rule produces.
+  (implies (natp j)
+           (equal (fn-csp-conns-idlep (update-nth j :free conns))
+                  (fn-csp-conns-idlep-but conns j)))
+  :hints (("Goal" :use ((:instance fn-csp-conns-idlep-of-set-free))
+                  :in-theory (e/d (fn-csp-conns-set-is-update-nth)
+                                  (fn-csp-conns-idlep-of-set-free))))))
+
+(local (defthm fn-csp-local-verdict-settles
+  ; The settling reply, at the helper: the count of the reply's own class is
+  ; the only one that moves, by exactly one; the binding's connection is
+  ; freed and no other conn touched; the non-final verdict moves no cursor
+  ; field and emits nothing; the final verdict of a drained batch hands the
+  ; batch to fn-csp-batch-finish (whose journal discipline is its own
+  ; keystone's).  ROUND is pinned to the state's: the fail branches keep the
+  ; state's own round.
+  (implies (and (natp j)
+                (not (equal (fn-csp-mode s) :failed))
+                (equal round (fn-cu-s-round (fn-csp-session s))))
+           (let* ((pair (fn-csp-local-verdict s j code conns round))
+                  (s2 (car pair)))
+             (if (member-equal code '(235 437))
+                 (and (equal (fn-cu-r-counts (fn-cu-s-round (fn-csp-session s2)))
+                             (fn-cu-count (fn-cu-r-counts round)
+                                          (if (equal code 235) 0 2)))
+                      (equal (fn-csp-conns s2) (fn-csp-conns-set conns j :free))
+                      (implies (not (and (eq (fn-csp-mode s) :drain)
+                                         (fn-csp-conns-idlep-but conns (nfix j))))
+                               (and (equal (fn-cu-r-position (fn-cu-s-round (fn-csp-session s2)))
+                                           (fn-cu-r-position round))
+                                    (equal (fn-csp-replay s2) (fn-csp-replay s))
+                                    (equal (fn-csp-offset s2) (fn-csp-offset s))
+                                    (equal (fn-csp-mode s2) (fn-csp-mode s))
+                                    (equal (cadr pair) nil))))
+               (and (equal (fn-cu-r-counts (fn-cu-s-round (fn-csp-session s2)))
+                           (fn-cu-r-counts round))
+                    (equal (fn-csp-mode s2) :failed)
+                    (equal (fn-cu-r-refusal (fn-cu-s-round (fn-csp-session s2)))
+                           (if (equal code 436) :local-deferred :local-refused))))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-csp-local-verdict fn-csp-fail fn-cu-fail
+                             fn-csp-session-with-round)
+                           (fn-csp-batch-finish))
+           :use ((:instance fn-csp-batch-finish-facts
+                  (s (fn-csp-with (fn-csp-session-with-round
+                                   s (fn-cu-with round :counts
+                                                 (fn-cu-count (fn-cu-r-counts round)
+                                                              (if (equal code 235) 0 2))))
+                                  :conns (fn-csp-conns-set conns j :free)))))))))
+
+(local (defthm fn-csp-conn-verdict-fc
+  (implies (equal (fn-csp-conn j s) (cons msgid :verdict))
+           (and (consp (fn-csp-conn j s))
+                (equal (cdr (fn-csp-conn j s)) :verdict)))
+  :rule-classes :forward-chaining))
+
+(defthm fn-csp-step-settles-one-verdict-exactly-once
+  ; KEYSTONE (PRF-1335, safety -- the exactly-once half).  The settling reply
+  ; on connection j for the record whose terminator j carried: with the
+  ; binding (msgid . :verdict) on j, only a 235 or a 437 settles -- the count
+  ; of its OWN class (0 imported / 2 refused) is the only one that moves, by
+  ; exactly one; conns[j] becomes :free and every other conn is untouched
+  ; (conns-set is update-nth).  A 436 fails the round :local-deferred, any
+  ; other code :local-refused, and NO count moves -- so the reply that arrives
+  ; after a record settled (its slot :free) finds no binding and settles
+  ; nothing.  When the freed slot was the drained batch's last outstanding
+  ; verdict the same step finishes the batch and journals it
+  ; (fn-csp-journals-only-a-settled-batch); the cursor fields are pinned here
+  ; for the non-final verdict.
+  (implies (and (fn-cu-session-readyp (fn-csp-session s))
+                (natp j) (fn-pull-octetsp octets)
+                (not (member-eq (fn-csp-mode s) '(:failed :done)))
+                (equal (fn-csp-conn j s) (cons msgid :verdict)))
+           (let* ((pair (fn-csp-step s (list* :local j octets)))
+                  (s2 (car pair))
+                  (r (fn-cu-s-round (fn-csp-session s)))
+                  (r2 (fn-cu-s-round (fn-csp-session s2))))
+             (if (member-equal (fn-pull-local-code octets) '(235 437))
+                 (and (equal (fn-cu-r-counts r2)
+                             (fn-cu-count (fn-cu-r-counts r)
+                                          (if (equal (fn-pull-local-code octets) 235) 0 2)))
+                      (equal (fn-csp-conns s2)
+                             (fn-csp-conns-set (fn-csp-conns s) j :free))
+                      (implies (not (and (eq (fn-csp-mode s) :drain)
+                                         (fn-csp-conns-idlep-but (fn-csp-conns s) (nfix j))))
+                               (and (equal (fn-cu-r-position r2) (fn-cu-r-position r))
+                                    (equal (fn-csp-replay s2) (fn-csp-replay s))
+                                    (equal (fn-csp-offset s2) (fn-csp-offset s))
+                                    (equal (fn-csp-mode s2) (fn-csp-mode s))
+                                    (equal (cadr pair) nil))))
+               (and (equal (fn-cu-r-counts r2) (fn-cu-r-counts r))
+                    (equal (fn-csp-mode s2) :failed)
+                    (equal (fn-cu-r-refusal r2)
+                           (if (equal (fn-pull-local-code octets) 436)
+                               :local-deferred :local-refused))))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-csp-step fn-csp-local fn-csp-local-event-octets)
+                           (fn-csp-local-verdict))
+           :use ((:instance fn-csp-local-verdict-settles
+                  (s s) (j j) (code (fn-pull-local-code octets))
+                  (conns (fn-csp-conns s))
+                  (round (fn-cu-s-round (fn-csp-session s))))))))
