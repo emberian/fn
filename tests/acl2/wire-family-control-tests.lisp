@@ -9,6 +9,7 @@
 ; the kind-23 grammar refuses.
 (in-package "ACL2")
 (include-book "../../books/wire-family-control")
+(include-book "../../books/defkeystone")
 
 (defun wfctl-reasoned-agrees (status reason)
   (let* ((x (fn-native-control-reasoned-reply-encode status reason))
@@ -49,3 +50,111 @@
         ; no line: kind 18, refused by the kind-23 grammar
         (not (fn-wg-okp (fn-wg-decode *fn-wf-ctl-lined-reply-grammar*
                                       (fn-native-control-lined-reply-encode :refused :no-owner nil)))))))
+
+; ---------------------------------------------------------------------------
+; The kind-18 and kind-23 agreement keystones with their teeth (TEETH
+; CONTRACT v1).  A decoder keystone's octet-list hypothesis has no
+; counterexample (a non-octet list is refused by both sides), so it stays
+; inside the claim and the teeth are two conclusion mutations.  An encoder
+; keystone's hypotheses are removed at an unknown status (the encoder refuses,
+; the status has no grammar value) and, for the lined reply, at a missing
+; line (sent as kind 18, which the kind-23 grammar does not accept).
+(defconst *wfctl-reasoned-good* (fn-native-control-reasoned-reply-encode :refused :no-owner))
+(defconst *wfctl-lined-good*
+  (fn-native-control-lined-reply-encode :accepted nil "applied: max-connections 64"))
+
+(defteeth fn-wf-ctl-reasoned-decode-agrees
+  :claim (() (implies (fn-cbor-octet-listp x)
+                      (let ((r (fn-nctrl-reasoned-reply-payload-decode (fn-nctrl-open x 18)))
+                            (w (fn-wg-decode *fn-wf-ctl-reasoned-reply-grammar* x)))
+                        (and (iff (not (equal r :bad))
+                                  (and (fn-wg-okp w) (null (fn-wg-rest w))))
+                             (implies (not (equal r :bad))
+                                      (equal (fn-wg-value w) r))))))
+  :subject fn-nctrl-reasoned-reply-payload-decode
+  :witness ((x *wfctl-reasoned-good*))
+  :mutations ((reason-dropped
+               (:conclusion (implies (fn-cbor-octet-listp x)
+                             (let ((r (fn-nctrl-reasoned-reply-payload-decode (fn-nctrl-open x 18)))
+                                   (w (fn-wg-decode *fn-wf-ctl-reasoned-reply-grammar* x)))
+                               (and (iff (not (equal r :bad))
+                                         (and (fn-wg-okp w) (null (fn-wg-rest w))))
+                                    (implies (not (equal r :bad))
+                                             (equal (fn-wg-value w) (list (car r) nil)))))))
+               ((x *wfctl-reasoned-good*))
+               :fault "a decoder that drops the reason word")
+              (trailing-octets-accepted
+               (:conclusion (implies (fn-cbor-octet-listp x)
+                             (let ((r (fn-nctrl-reasoned-reply-payload-decode (fn-nctrl-open x 18)))
+                                   (w (fn-wg-decode *fn-wf-ctl-reasoned-reply-grammar* x)))
+                               (and (iff (not (equal r :bad)) (fn-wg-okp w))
+                                    (implies (not (equal r :bad))
+                                             (equal (fn-wg-value w) r))))))
+               ((x (append *wfctl-reasoned-good* '(0))))
+               :fault "a decoder that accepts a frame followed by a trailing octet")))
+
+(defteeth fn-wf-ctl-reasoned-encode-agrees
+  :claim (((encodes (not (equal (fn-native-control-reasoned-reply-encode status reason) :bad))))
+          (let ((v (list status (fn-nctrl-reason-word reason))))
+            (and (fn-wg-valuep *fn-wf-ctl-reasoned-reply-grammar* v)
+                 (equal (fn-native-control-reasoned-reply-encode status reason)
+                        (fn-wg-encode *fn-wf-ctl-reasoned-reply-grammar* v)))))
+  :subject fn-native-control-reasoned-reply-encode
+  :witness ((status :refused) (reason :no-owner))
+  :breaks ((encodes ((status :bogus) (reason nil))))
+  :mutations ((reason-dropped
+               (:conclusion (let ((v (list status (fn-nctrl-reason-word nil))))
+                              (and (fn-wg-valuep *fn-wf-ctl-reasoned-reply-grammar* v)
+                                   (equal (fn-native-control-reasoned-reply-encode status reason)
+                                          (fn-wg-encode *fn-wf-ctl-reasoned-reply-grammar* v)))))
+               ((status :refused) (reason :no-owner))
+               :fault "an encoder that never writes the reason it was given")))
+
+(defteeth fn-wf-ctl-lined-decode-agrees
+  :claim (() (implies (fn-cbor-octet-listp x)
+                      (let ((r (fn-ncline-reply-payload-decode (fn-nctrl-open x 23)))
+                            (w (fn-wg-decode *fn-wf-ctl-lined-reply-grammar* x)))
+                        (and (iff (not (equal r :bad))
+                                  (and (fn-wg-okp w) (null (fn-wg-rest w))))
+                             (implies (not (equal r :bad))
+                                      (equal (fn-wg-value w) r))))))
+  :subject fn-ncline-reply-payload-decode
+  :witness ((x *wfctl-lined-good*))
+  :mutations ((line-dropped
+               (:conclusion (implies (fn-cbor-octet-listp x)
+                             (let ((r (fn-ncline-reply-payload-decode (fn-nctrl-open x 23)))
+                                   (w (fn-wg-decode *fn-wf-ctl-lined-reply-grammar* x)))
+                               (and (iff (not (equal r :bad))
+                                         (and (fn-wg-okp w) (null (fn-wg-rest w))))
+                                    (implies (not (equal r :bad))
+                                             (equal (fn-wg-value w) (list (car r) (cadr r) nil)))))))
+               ((x *wfctl-lined-good*))
+               :fault "a decoder that drops the line")
+              (trailing-octets-accepted
+               (:conclusion (implies (fn-cbor-octet-listp x)
+                             (let ((r (fn-ncline-reply-payload-decode (fn-nctrl-open x 23)))
+                                   (w (fn-wg-decode *fn-wf-ctl-lined-reply-grammar* x)))
+                               (and (iff (not (equal r :bad)) (fn-wg-okp w))
+                                    (implies (not (equal r :bad))
+                                             (equal (fn-wg-value w) r))))))
+               ((x (append *wfctl-lined-good* '(0))))
+               :fault "a decoder that accepts a frame followed by a trailing octet")))
+
+(defteeth fn-wf-ctl-lined-encode-agrees
+  :claim (((line (fn-ncline-line line))
+           (encodes (not (equal (fn-native-control-lined-reply-encode status reason line) :bad))))
+          (let ((v (list status (fn-nctrl-reason-word reason) (fn-ncline-line line))))
+            (and (fn-wg-valuep *fn-wf-ctl-lined-reply-grammar* v)
+                 (equal (fn-native-control-lined-reply-encode status reason line)
+                        (fn-wg-encode *fn-wf-ctl-lined-reply-grammar* v)))))
+  :subject fn-native-control-lined-reply-encode
+  :witness ((status :accepted) (reason nil) (line "applied: max-connections 64"))
+  :breaks ((line ((status :accepted) (reason nil) (line nil)))
+           (encodes ((status :bogus) (reason nil) (line "x"))))
+  :mutations ((line-dropped
+               (:conclusion (let ((v (list status (fn-nctrl-reason-word reason) nil)))
+                              (and (fn-wg-valuep *fn-wf-ctl-lined-reply-grammar* v)
+                                   (equal (fn-native-control-lined-reply-encode status reason line)
+                                          (fn-wg-encode *fn-wf-ctl-lined-reply-grammar* v)))))
+               ((status :accepted) (reason nil) (line "applied: max-connections 64"))
+               :fault "an encoder that never writes the line it was given")))
