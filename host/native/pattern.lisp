@@ -109,10 +109,10 @@ the same octets."
                    (nth-value 3 (apply #'fnn-hsig-sign-source
                                        (append keys (list (getf st :source))))))
                   (request
-                   (fnn-core 'fn-native-hybrid-control-host-author-encode
-                             generation (getf st :source)
-                             (cdr (first signatures)) (cdr (second signatures))
-                             (fnn-octet-list (fnn-string-octets (fourth keys))))))
+                   (fnn-hybrid-author-request
+                    generation (getf st :source)
+                    (cdr (first signatures)) (cdr (second signatures))
+                    (fourth keys))))
              (unless (fnn-octet-list-p request)
                (fnn-fault "ACL2 refused the pattern's author request"))
              ;; The signed request is kept before it is sent, so an uncertain

@@ -331,6 +331,7 @@ acceptance (the owner is stopping or fenced then)."
         (values (cdr entry) (cdr (assoc key (fnn-pull-runtime-cursors runtime) :test #'string=)))
       (multiple-value-bind (journal cursor)
           (fnn-pull-journal-open (fnn-owner-service-store (fnn-pull-runtime-service runtime)) peer)
+        (setf (fnn-owner-feed-journal-peer-octets journal) peer)
         (push (cons key journal) (fnn-pull-runtime-journals runtime))
         (push (cons key cursor) (fnn-pull-runtime-cursors runtime))
         (values journal cursor)))))
@@ -346,6 +347,7 @@ acceptance (the owner is stopping or fenced then)."
           (fnn-catchup-journal-open (fnn-owner-service-store
                                      (fnn-pull-runtime-service runtime))
                                     peer)
+        (setf (fnn-owner-feed-journal-peer-octets journal) peer)
         (push (cons key journal) (fnn-pull-runtime-cu-journals runtime))
         (push (cons key cursor) (fnn-pull-runtime-cu-cursors runtime))
         (values journal cursor)))))
@@ -358,8 +360,9 @@ acceptance (the owner is stopping or fenced then)."
          (retired (make-hash-table :test #'equal))
          (keep nil) (close nil))
     (dolist (entry journals)
-      (if (fnn-core 'fn-pull-plan-for
-                    (fnn-octet-list (fnn-string-octets (car entry))) plans)
+      ;; ACL2 decides: the peer octets ACL2's plan gave when the journal was
+      ;; cached are handed back unchanged (no list is built from the key).
+      (if (fnn-core 'fn-pull-plan-for (fnn-owner-feed-journal-peer-octets (cdr entry)) plans)
           (push entry keep)
         (progn
           (setf (gethash (car entry) retired) t)
