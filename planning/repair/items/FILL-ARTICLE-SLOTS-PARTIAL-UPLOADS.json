@@ -2,12 +2,21 @@
  "category": "implementation",
  "detail": "Red on set 55ff708a6: cloud2:/tank/fn/scratch/fill-wt/native-fill-resil-cloud2-55 (scenario_suite run resilience, --allow-skips, jobs 3; logs/test-tests.test_native_article_slots.log). Could be cloud2-specific (12 shared vCPU, 22 GB): re-run on hbox before treating as a regression.",
  "file": "host/native/article-slots.lisp",
+ "harness": "tests/test_native_article_slots.py",
  "id": "FILL-ARTICLE-SLOTS-PARTIAL-UPLOADS",
- "notes": [],
+ "native": "tests.test_native_article_slots",
+ "notes": [
+  "10-05 22:00 claimed: scope=['tests/test_native_article_slots.py'] test=-",
+  "10-05 22:01 DIAGNOSED (serve-next successor 2026-10-06): NOT timing/environment and NOT a pool bug -- deterministic fixture drift. The gate charges each article its record ceiling 4,191,552 + header at its worst 8 history octets a payload octet (heap-pool B9, coordinator decision P1 2026-09-28 21:24, *fn-sbud-header-weight* 8): gate figure at A=4MiB is 37,716,536. H=64MiB admits the 8th at 67,059,640 <= 67,108,864 (49,224 octets of headroom) and refuses the 9th needing 71,251,512 -- exactly the observed (8, 441 history-exhausted), ACL2-computed, reproduced on the control run hbox:/tank/fn/scratch/span-borrow/native-before-ctrl (set 3e53d7bc5, byte-identical tests; span-borrow head run same red). The test (09-28 22:11, 47 min after B9) has NO recorded green on any post-B9 image: cloud2 10-04 was the same refusal unnamed (unaffordable, before c328272cf named it). FIX: the scenario is the article-slot POOL (reserve-to-finish, readmission); its fixture H rises 64->96 MiB so the pool binds again (assertions unchanged: 7x340 + 2x440 by name, 9 accepted, transactions-used 9). The history word keeps its own coverage (test_native_slow_disk). Planted-fault run: fn-heap-article-slots -> 32 (every profile) must redden the 440 assertions.",
+  "10-05 22:01 FIX LANDED lane/serve-next (see repair verify for the sha): H 64->96 MiB, assertions unchanged"
+ ],
  "owner": "unowned",
+ "scope": [
+  "tests/test_native_article_slots.py"
+ ],
  "severity": "medium",
  "source": "fill-20261004",
- "state": "open",
+ "state": "in-progress",
  "title": "tests.test_native_article_slots test_partial_uploads_holding_the_pool_all_complete: the 8th concurrent partial upload is refused '441 posting failed; the store is full: no capacity for this article (unaffordable)' instead of completing",
- "updated": "2026-10-04T20:01:42Z"
+ "updated": "2026-10-06T02:01:39Z"
 }
