@@ -131,11 +131,17 @@ pushed out (the caller releases their rows)."
     ;; WW-DIAG (lane w-window, temporary): the attempt's every precondition
     ;; and the ACL2 word, so an :uncached lease and an immovable window are
     ;; both observable.
-    (fnn-err "WW-DIAG attempt activation=~s storage-eq=~s movable=~s job-type=~s job-len=~s win-type=~s"
+    (fnn-err "WW-DIAG attempt act=~s eq=~s movable=~s"
              (not (null activation)) (eq activation (fnn-cold-worker-decoded-storage worker))
-             movable (and job (type-of job))
-             (and (vectorp job) (ignore-errors (length job)))
-             (and (vectorp job) (> (length job) 7) (type-of (svref job 7))))
+             movable)
+    (let ((w (and (vectorp job) (> (length job) 7) (svref job 7))))
+      (fnn-err "WW-DIAG slot7 arr=~s svp=~s len=~s" (arrayp w) (simple-vector-p w)
+               (ignore-errors (length w)))
+      (fnn-err "WW-DIAG slot7b dim0=~s elem=~s" (ignore-errors (array-dimension w 0))
+               (ignore-errors (array-element-type w)))
+      (when (simple-vector-p w)
+        (fnn-err "WW-DIAG slot7c inner=~s dim=~s"
+                 (type-of (svref w 0)) (ignore-errors (array-dimension (svref w 0) 0)))))
     (when (and activation
                (eq activation (fnn-cold-worker-decoded-storage worker))
                movable)
