@@ -1409,7 +1409,10 @@ class Analyzer:
         test is V itself, not a conjunction."""
         if not names or not body:
             return set()
-        fences = set(self.c.raw.get("fence_functions", []))
+        # a dominated-escape function (contract dominated_escape_functions)
+        # returns only when the escape already in flight outranks every
+        # recorded failure, and signals otherwise: terminal like a fence call
+        fences = set(self.c.raw.get("fence_functions", [])) | set(self.c.raw.get("dominated_escape_functions", {}))
         last = body[-1]
         if isinstance(last, list) and head(last) == "unwind-protect" and len(last) > 2:
             tail, between = last[-1], list(body[:-1]) + list(last[2:-1])

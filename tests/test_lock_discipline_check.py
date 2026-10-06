@@ -468,6 +468,27 @@ class R7DeferredRethrow(unittest.TestCase):
 """
         self.assertEqual([f for f in run(src, ["R7"]) if f.key.startswith("swallow")], [])
 
+    def test_a_declared_dominated_escape_call_is_a_terminal_arm(self):
+        src = """
+(defun fnn-actor (s)
+  (let ((completed nil) (failures nil) (primary nil))
+    (unwind-protect (fnn-out "x")
+      (handler-case (fnn-fault "x") (serious-condition (c) (push c failures)))
+      (when failures
+        (if completed (error (car (last failures))) (fnn-x-escape primary (reverse failures)))))))
+(defun fnn-spawn (s) (sb-thread:make-thread (lambda () (fnn-actor s)) :name "t"))
+"""
+        raw = CONTRACTS.raw
+        self.assertTrue([f for f in run(src, ["R7"]) if f.key.startswith("swallow")])
+        raw["dominated_escape_functions"] = {"fnn-x-escape": "test"}
+        try:
+            self.assertEqual([f for f in run(src, ["R7"]) if f.key.startswith("swallow")], [])
+            # the declaration covers only that name
+            other = src.replace("fnn-x-escape", "fnn-y-escape")
+            self.assertTrue([f for f in run(other, ["R7"]) if f.key.startswith("swallow")])
+        finally:
+            del raw["dominated_escape_functions"]
+
     def test_a_lambda_walked_inside_the_let_does_not_lose_the_deferral(self):
         pre = "(handler-bind ((serious-condition (lambda (c) (setq spare c)))) (fnn-out \"x\"))"
         self.assertEqual(self.swallow("(when failure (error failure))", pre=pre), [])
