@@ -2,12 +2,14 @@
  "category": "proof-owed",
  "file": "books/blake3-tree.lisp",
  "id": "PROOF-OWED-B3-IS-WINDOW-COMPOSITION",
- "notes": [],
+ "notes": [
+  "10-06 19:54 proved as fn-blake3-is-window-composition in books/blake3-tree.lisp, statement unchanged. Teeth are assert-events (defteeth cannot ship a removal witness for (fn-b3-octet-listp m): the equation holds without it). Certify of record pending."
+ ],
  "owner": "streaming",
  "severity": "medium",
  "slice": "blake3",
  "source": "streaming",
- "state": "open",
+ "state": "landed",
  "title": "blake3-tree owes fn-blake3-is-window-composition: for an octet list m, (fn-blake3 m) equals the output root of the window tree over the window outs at iv, flags 0, counter 0; follows from fn-b3-node-is-window-tree.",
- "updated": "2026-10-06T23:32:03Z"
+ "updated": "2026-10-06T23:54:12Z"
 }

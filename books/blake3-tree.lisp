@@ -707,28 +707,31 @@
 ; window outputs of the first j windows' octets and of the remainder (at the
 ; advanced chunk counter), whenever j whole windows leave octets over.
 ;
-(defthm fn-b3-window-outs-count
-  ; The window count m of an input of n >= 1 octets: (m-1) full windows
-  ; leave 1..W octets for the last.
-  (implies (posp (len octets))
-           (and (< (* (+ -1 (len (fn-b3-window-outs key k base octets flags)))
-                      (* 1024 (expt 2 (nfix k))))
-                   (len octets))
-                (<= (len octets)
-                    (* (len (fn-b3-window-outs key k base octets flags))
-                       (* 1024 (expt 2 (nfix k)))))))
-  :hints (("Goal" :induct (fn-b3-window-outs key k base octets flags)
-                  :in-theory (disable fn-b3-node))))
+(local
+ (defthm fn-b3-window-outs-count
+    ; The window count m of an input of n >= 1 octets: (m-1) full windows
+    ; leave 1..W octets for the last.
+    (implies (posp (len octets))
+             (and (< (* (+ -1 (len (fn-b3-window-outs key k base octets flags)))
+                        (* 1024 (expt 2 (nfix k))))
+                     (len octets))
+                  (<= (len octets)
+                      (* (len (fn-b3-window-outs key k base octets flags))
+                         (* 1024 (expt 2 (nfix k)))))))
+    :hints (("Goal" :induct (fn-b3-window-outs key k base octets flags)
+                    :in-theory (disable fn-b3-node)))))
 
-(defthm fn-b3-firstn-of-firstn
-  (implies (and (natp a) (natp b) (<= a b))
-           (equal (fn-b3-firstn a (fn-b3-firstn b x))
-                  (fn-b3-firstn a x))))
+(local
+ (defthm fn-b3-firstn-of-firstn
+    (implies (and (natp a) (natp b) (<= a b))
+             (equal (fn-b3-firstn a (fn-b3-firstn b x))
+                    (fn-b3-firstn a x)))))
 
-(defthm fn-b3-nthcdrx-of-nthcdrx
-  (implies (and (natp a) (natp b))
-           (equal (fn-b3-nthcdrx a (fn-b3-nthcdrx b x))
-                  (fn-b3-nthcdrx (+ a b) x))))
+(local
+ (defthm fn-b3-nthcdrx-of-nthcdrx
+    (implies (and (natp a) (natp b))
+             (equal (fn-b3-nthcdrx a (fn-b3-nthcdrx b x))
+                    (fn-b3-nthcdrx (+ a b) x)))))
 
 (local
  (defthm fn-b3-window-le-multiple-norm
@@ -786,32 +789,35 @@
                    (r (- n (* (+ -1 m) (* 1024 (expt 2 k)))))))
            :in-theory (disable fn-b3-left-chunks-of-windows))))
 
-(defthm fn-b3-window-count-at-least-two
-  ; More octets than one window means at least two windows.
-  (implies (and (natp k) (< (* 1024 (expt 2 k)) (len octets)))
-           (<= 2 (len (fn-b3-window-outs key k base octets flags))))
-  :rule-classes :linear
-  :hints (("Goal" :use fn-b3-window-outs-count
-                  :in-theory (disable fn-b3-window-outs-count)
-                  :nonlinearp t)))
+(local
+ (defthm fn-b3-window-count-at-least-two
+    ; More octets than one window means at least two windows.
+    (implies (and (natp k) (< (* 1024 (expt 2 k)) (len octets)))
+             (<= 2 (len (fn-b3-window-outs key k base octets flags))))
+    :rule-classes :linear
+    :hints (("Goal" :use fn-b3-window-outs-count
+                    :in-theory (disable fn-b3-window-outs-count)
+                    :nonlinearp t))))
 
-(defthm fn-b3-window-tree-of-single-window
-  ; An input of one window: its window tree is its own node.
-  (implies (<= (len octets) (* 1024 (expt 2 (nfix k))))
-           (equal (fn-b3-window-tree key flags
-                    (fn-b3-window-outs key k base octets flags))
-                  (fn-b3-node key octets (nfix base) flags)))
-  :hints (("Goal" :expand ((fn-b3-window-outs key k base octets flags))
-                  :in-theory (disable fn-b3-node))))
+(local
+ (defthm fn-b3-window-tree-of-single-window
+    ; An input of one window: its window tree is its own node.
+    (implies (<= (len octets) (* 1024 (expt 2 (nfix k))))
+             (equal (fn-b3-window-tree key flags
+                      (fn-b3-window-outs key k base octets flags))
+                    (fn-b3-node key octets (nfix base) flags)))
+    :hints (("Goal" :expand ((fn-b3-window-outs key k base octets flags))
+                    :in-theory (disable fn-b3-node)))))
 
-(defthm fn-b3-left-windows-times-window-below
-  ; The first subtree's windows are whole windows with octets to spare.
-  (implies (and (natp k) (natp m) (<= 2 m) (natp n)
-                (< (* (+ -1 m) (* 1024 (expt 2 k))) n))
-           (< (* (fn-b3-left-windows 1 m) (* 1024 (expt 2 k))) n))
-  :hints (("Goal" :use ((:instance fn-b3-left-windows-below (p 1) (j m)))
-                  :in-theory (disable fn-b3-left-windows-below)
-                  :nonlinearp t)))
+(local
+ (defthm fn-b3-left-windows-times-window-below
+    ; The first subtree's windows are whole windows with octets to spare.
+    (implies (and (natp k) (natp m) (<= 2 m) (natp n)
+                  (< (* (+ -1 m) (* 1024 (expt 2 k))) n))
+             (< (* (fn-b3-left-windows 1 m) (* 1024 (expt 2 k))) n))
+    :hints (("Goal" :use ((:instance fn-b3-left-windows-below (p 1) (j m)))
+                    :in-theory (disable fn-b3-left-windows-below)
+                    :nonlinearp t))))
 
 (defun fn-b3-node-ind (key octets counter flags)
   ; The induction scheme of `fn-b3-node': both children of a multi-chunk split.
@@ -1054,9 +1060,10 @@
   (fn-b3-all-non-nil (fn-b3-pair-outs key flags outs))
   :hints (("Goal" :induct (fn-b3-pair-outs key flags outs))))
 
-(defthm fn-b3-all-non-nil-of-append
-  (equal (fn-b3-all-non-nil (append xs ys))
-         (and (fn-b3-all-non-nil xs) (fn-b3-all-non-nil ys))))
+(local
+ (defthm fn-b3-all-non-nil-of-append
+    (equal (fn-b3-all-non-nil (append xs ys))
+           (and (fn-b3-all-non-nil xs) (fn-b3-all-non-nil ys)))))
 
 (defthm fn-b3-cv-push-spine
   ; Absorbing a non-NIL output into a held state does not change what the
@@ -1068,97 +1075,103 @@
                   (fn-b3-stack-spine key flags st x)))
   :hints (("Goal" :induct (fn-b3-cv-push key flags h x st))))
 
-(defthm fn-b3-snoc-split
-  ; A non-empty run is its all-but-last followed by its last.
-  (implies (and (true-listp os) (consp os))
-           (equal (append (fn-b3-firstn (+ -1 (len os)) os)
-                          (list (car (fn-b3-nthcdrx (+ -1 (len os)) os))))
-                  os))
-  :hints (("Goal" :induct (len os)
-                  :expand ((fn-b3-firstn (+ -1 (len os)) os)
-                           (fn-b3-nthcdrx (+ -1 (len os)) os)))))
+(local
+ (defthm fn-b3-snoc-split
+    ; A non-empty run is its all-but-last followed by its last.
+    (implies (and (true-listp os) (consp os))
+             (equal (append (fn-b3-firstn (+ -1 (len os)) os)
+                            (list (car (fn-b3-nthcdrx (+ -1 (len os)) os))))
+                    os))
+    :hints (("Goal" :induct (len os)
+                    :expand ((fn-b3-firstn (+ -1 (len os)) os)
+                             (fn-b3-nthcdrx (+ -1 (len os)) os))))))
 
-(defthm fn-b3-snoc-split-two
-  ; The snoc split with one more output appended after the last.
-  (implies (and (true-listp os) (consp os))
-           (equal (append os (list x))
-                  (append (fn-b3-firstn (+ -1 (len os)) os)
-                          (list (car (fn-b3-nthcdrx (+ -1 (len os)) os)) x))))
-  :rule-classes nil
-  :hints (("Goal" :use fn-b3-snoc-split
-                  :in-theory (disable fn-b3-snoc-split))))
+(local
+ (defthm fn-b3-snoc-split-two
+    ; The snoc split with one more output appended after the last.
+    (implies (and (true-listp os) (consp os))
+             (equal (append os (list x))
+                    (append (fn-b3-firstn (+ -1 (len os)) os)
+                            (list (car (fn-b3-nthcdrx (+ -1 (len os)) os)) x))))
+    :rule-classes nil
+    :hints (("Goal" :use fn-b3-snoc-split
+                    :in-theory (disable fn-b3-snoc-split)))))
 
-(defthm fn-b3-all-non-nil-of-last
-  (implies (and (fn-b3-all-non-nil os) (consp os))
-           (car (fn-b3-nthcdrx (+ -1 (len os)) os)))
-  :hints (("Goal" :induct (len os)
-                  :expand ((fn-b3-nthcdrx (+ -1 (len os)) os)))))
+(local
+ (defthm fn-b3-all-non-nil-of-last
+    (implies (and (fn-b3-all-non-nil os) (consp os))
+             (car (fn-b3-nthcdrx (+ -1 (len os)) os)))
+    :hints (("Goal" :induct (len os)
+                    :expand ((fn-b3-nthcdrx (+ -1 (len os)) os))))))
 
-(defthm fn-b3-all-non-nil-of-firstn
-  (implies (fn-b3-all-non-nil os)
-           (fn-b3-all-non-nil (fn-b3-firstn n os))))
+(local
+ (defthm fn-b3-all-non-nil-of-firstn
+    (implies (fn-b3-all-non-nil os)
+             (fn-b3-all-non-nil (fn-b3-firstn n os)))))
 
-(defthm fn-b3-spine-of-push-all-odd-step
-  ; The odd step: the held state after os' ++ (y) is y's entry in front of
-  ; the state of os''s pairs, so the walk folds to the state of the pairs with
-  ; the parent of y and x on the right.
-  (implies (and (natp h) (true-listp os) (evenp (len os)) y x
-                (equal (fn-b3-stack-spine key flags
-                         (fn-b3-stack-push-all key flags (+ 1 h)
-                           (fn-b3-pair-outs key flags os) nil)
-                         (fn-b3-parent-out key y x flags))
-                       (fn-b3-window-tree key flags
-                         (append (fn-b3-pair-outs key flags os)
-                                 (list (fn-b3-parent-out key y x flags))))))
-           (equal (fn-b3-stack-spine key flags
-                    (fn-b3-stack-push-all key flags h
-                      (append os (list y)) nil)
-                    x)
-                  (fn-b3-window-tree key flags
-                    (append os (list y x)))))
-  :hints (("Goal"
-           :do-not-induct t
-           :use ((:instance fn-b3-stack-push-all-append-single (os os) (x y))
-                 (:instance fn-b3-stack-push-all-of-pairs (outs os) (st nil))
-                 (:instance fn-b3-window-tree-of-pairs
-                   (u (+ 1 (floor (len os) 2)))
-                   (outs (append os (list y x))))
-                 (:instance fn-b3-pair-outs-of-append-two
-                   (i (floor (len os) 2)) (os os) (x y) (y x)))
-           :expand ((fn-b3-stack-above h nil))
-           :in-theory (disable fn-b3-stack-push-all-append-single
-                               fn-b3-stack-push-all-of-pairs
-                               fn-b3-window-tree-of-pairs
-                               fn-b3-pair-outs-of-append-two
-                               fn-b3-window-tree fn-b3-pair-outs
-                               fn-b3-stack-push-all fn-b3-left-windows
-                               fn-b3-left-windows-plus fn-b3-left-windows-1-plus
-                               fn-b3-left-windows-double fn-b3-left-windows-double-minus
-                               fn-b3-left-windows-1-double fn-b3-lw-of-double-len
-                               fn-b3-left-windows-1-of-2u+1))))
+(local
+ (defthm fn-b3-spine-of-push-all-odd-step
+    ; The odd step: the held state after os' ++ (y) is y's entry in front of
+    ; the state of os''s pairs, so the walk folds to the state of the pairs with
+    ; the parent of y and x on the right.
+    (implies (and (natp h) (true-listp os) (evenp (len os)) y x
+                  (equal (fn-b3-stack-spine key flags
+                           (fn-b3-stack-push-all key flags (+ 1 h)
+                             (fn-b3-pair-outs key flags os) nil)
+                           (fn-b3-parent-out key y x flags))
+                         (fn-b3-window-tree key flags
+                           (append (fn-b3-pair-outs key flags os)
+                                   (list (fn-b3-parent-out key y x flags))))))
+             (equal (fn-b3-stack-spine key flags
+                      (fn-b3-stack-push-all key flags h
+                        (append os (list y)) nil)
+                      x)
+                    (fn-b3-window-tree key flags
+                      (append os (list y x)))))
+    :hints (("Goal"
+             :do-not-induct t
+             :use ((:instance fn-b3-stack-push-all-append-single (os os) (x y))
+                   (:instance fn-b3-stack-push-all-of-pairs (outs os) (st nil))
+                   (:instance fn-b3-window-tree-of-pairs
+                     (u (+ 1 (floor (len os) 2)))
+                     (outs (append os (list y x))))
+                   (:instance fn-b3-pair-outs-of-append-two
+                     (i (floor (len os) 2)) (os os) (x y) (y x)))
+             :expand ((fn-b3-stack-above h nil))
+             :in-theory (disable fn-b3-stack-push-all-append-single
+                                 fn-b3-stack-push-all-of-pairs
+                                 fn-b3-window-tree-of-pairs
+                                 fn-b3-pair-outs-of-append-two
+                                 fn-b3-window-tree fn-b3-pair-outs
+                                 fn-b3-stack-push-all fn-b3-left-windows
+                                 fn-b3-left-windows-plus fn-b3-left-windows-1-plus
+                                 fn-b3-left-windows-double fn-b3-left-windows-double-minus
+                                 fn-b3-left-windows-1-double fn-b3-lw-of-double-len
+                                 fn-b3-left-windows-1-of-2u+1)))))
 
-(defthm fn-b3-spine-of-push-all-even-step
-  ; The even step: an even run's state is its pairs' state one level up, and
-  ; the tree over the run and one more output is the tree over the pairs and
-  ; that output.
-  (implies (and (natp h) (true-listp os) (evenp (len os))
-                (equal (fn-b3-stack-spine key flags
-                         (fn-b3-stack-push-all key flags (+ 1 h)
-                           (fn-b3-pair-outs key flags os) nil)
-                         x)
-                       (fn-b3-window-tree key flags
-                         (append (fn-b3-pair-outs key flags os) (list x)))))
-           (equal (fn-b3-stack-spine key flags
-                    (fn-b3-stack-push-all key flags h os nil) x)
-                  (fn-b3-window-tree key flags (append os (list x)))))
-  :hints (("Goal"
-           :do-not-induct t
-           :use ((:instance fn-b3-stack-push-all-of-pairs (outs os) (st nil))
-                 (:instance fn-b3-window-tree-of-pair-tail (u (floor (len os) 2))))
-           :expand ((fn-b3-stack-above h nil))
-           :in-theory (disable fn-b3-stack-push-all-of-pairs
-                               fn-b3-window-tree fn-b3-pair-outs
-                               fn-b3-stack-push-all fn-b3-left-windows))))
+(local
+ (defthm fn-b3-spine-of-push-all-even-step
+    ; The even step: an even run's state is its pairs' state one level up, and
+    ; the tree over the run and one more output is the tree over the pairs and
+    ; that output.
+    (implies (and (natp h) (true-listp os) (evenp (len os))
+                  (equal (fn-b3-stack-spine key flags
+                           (fn-b3-stack-push-all key flags (+ 1 h)
+                             (fn-b3-pair-outs key flags os) nil)
+                           x)
+                         (fn-b3-window-tree key flags
+                           (append (fn-b3-pair-outs key flags os) (list x)))))
+             (equal (fn-b3-stack-spine key flags
+                      (fn-b3-stack-push-all key flags h os nil) x)
+                    (fn-b3-window-tree key flags (append os (list x)))))
+    :hints (("Goal"
+             :do-not-induct t
+             :use ((:instance fn-b3-stack-push-all-of-pairs (outs os) (st nil))
+                   (:instance fn-b3-window-tree-of-pair-tail (u (floor (len os) 2))))
+             :expand ((fn-b3-stack-above h nil))
+             :in-theory (disable fn-b3-stack-push-all-of-pairs
+                                 fn-b3-window-tree fn-b3-pair-outs
+                                 fn-b3-stack-push-all fn-b3-left-windows)))))
 
 (defun fn-b3-f-ind (key flags h os x)
   ; The pairing induction: an even run steps to its pairs, an odd run to the
@@ -1281,17 +1294,19 @@
   :rule-classes :type-prescription
   :hints (("Goal" :expand ((fn-b3-window-outs key k base octets flags)))))
 
-(defthm fn-b3-cv-push-of-nfix-h
-  ; The height is read through NFIX everywhere.
-  (equal (fn-b3-cv-push key flags (nfix h) out st)
-         (fn-b3-cv-push key flags h out st))
-  :hints (("Goal" :induct (fn-b3-cv-push key flags h out st))))
+(local
+ (defthm fn-b3-cv-push-of-nfix-h
+    ; The height is read through NFIX everywhere.
+    (equal (fn-b3-cv-push key flags (nfix h) out st)
+           (fn-b3-cv-push key flags h out st))
+    :hints (("Goal" :induct (fn-b3-cv-push key flags h out st)))))
 
-(defthm fn-b3-stack-push-all-of-nfix-h
-  (equal (fn-b3-stack-push-all key flags (nfix h) outs st)
-         (fn-b3-stack-push-all key flags h outs st))
-  :hints (("Goal" :induct (fn-b3-stack-push-all key flags h outs st)
-                  :in-theory (disable nfix))))
+(local
+ (defthm fn-b3-stack-push-all-of-nfix-h
+    (equal (fn-b3-stack-push-all key flags (nfix h) outs st)
+           (fn-b3-stack-push-all key flags h outs st))
+    :hints (("Goal" :induct (fn-b3-stack-push-all key flags h outs st)
+                    :in-theory (disable nfix)))))
 
 (defthm fn-b3-stack-fold-of-windows-core
   (implies (and (natp k) (natp counter))

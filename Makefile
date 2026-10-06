@@ -374,6 +374,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/blake3-tests \
 	books/blake3-stobj \
 	tests/acl2/blake3-stobj-tests \
+	books/blake3-tree \
+	tests/acl2/blake3-tree-tests \
 	books/frame-octets \
 	tests/acl2/stack-depth-twins-tests \
 	books/frame-fields \

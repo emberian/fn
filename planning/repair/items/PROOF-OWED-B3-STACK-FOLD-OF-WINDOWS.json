@@ -2,12 +2,14 @@
  "category": "proof-owed",
  "file": "books/blake3-tree.lisp",
  "id": "PROOF-OWED-B3-STACK-FOLD-OF-WINDOWS",
- "notes": [],
+ "notes": [
+  "10-06 19:54 proved as fn-b3-stack-fold-of-windows in books/blake3-tree.lisp with the added hypothesis (natp counter), same counterexample as the node theorem. Via fn-b3-spine-of-push-all (pairing). Certify of record pending."
+ ],
  "owner": "streaming",
  "severity": "medium",
  "slice": "blake3",
  "source": "streaming",
- "state": "open",
+ "state": "landed",
  "title": "blake3-tree owes fn-b3-stack-fold-of-windows: folding the stack built by fn-b3-stack-push-all from the window outs is the whole input's fn-b3-node.",
- "updated": "2026-10-06T23:32:03Z"
+ "updated": "2026-10-06T23:54:12Z"
 }
