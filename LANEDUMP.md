@@ -5145,3 +5145,44 @@ Batch 1: families priced 10/30 (was 4): GROUP, neighbour (NEXT and LAST), DATE, 
 1. proof_repl: `start tN books/output-tariff-line --certify-missing`, then `send tN '<defthm>'`; each reply bound proved in seconds by `:in-theory (e/d (<factory> fn-nntp-make-result fn-nntp-result-effects fn-nntp-reply-effect fn-nntp-single fn-tariff-effects-octets ...) (<stobj readers>))`. Lemmas: len of fn-nntp-string-octets / append-pieces / crlf / decimal-field (<=10) are local in the line book. Do NOT open fn-nntp-pad2/pad4 (1.7M steps): state their lengths.
 2. Row = one line in def-family-tariffs; the generator emits the instance. Test witness values: ground defthms over *tfm-* fixture (find a ground value by proving (equal X n) for candidate n).
 3. Gate: explicit book list as above, not --lane.
+
+# consumer-boot (SCEN-CONSUMER-BOOTSTRAP-IDENTITY) — 2026-10-06
+
+Worktree build/lanes/consumer-boot, branch lane/consumer-boot @ 70869e0ab
+(from origin/dev 93c692e38; not merged forward — the three commits on
+origin/dev touch owner-host's fn-owner-reclaim-live-p and two other repair
+rows, not this seam).
+
+## Salvage verified
+
+`python3 -m unittest tests.test_consumer_raw_mocks` from this worktree:
+2 tests, OK, 0.110s (log /tmp/consumer-boot-raw-mocks.log). The file is 53
+lines. Both boundaries the poll-CLI mock prints are the real host
+functions: the mock evals fnn-consumer-local-exchange, fnn-command-consumer-local
+and fnn-consumer-say from host/native/consumer-local.lisp. A `bootstrap`
+command is one request; a register crosses a bootstrap only after acceptance.
+The assertion was not weakened. No failure message to rewrite: the run passed,
+so unittest's "False is not true : " prefix never appeared.
+
+## Classification
+
+(a) The d5b0b9100 line `consumer refused identity` (exit 1) is not a current
+source bug. fn-col-bootstrap refuses :identity when a consumer history already
+exists (books/consumer-owner-local.lisp). f5f340d04 made fn-ncr-cli-after
+answer from the step alone, so an accepted `consumer bootstrap` command sent
+a second bootstrap and that refusal became the command's. Fixed in ancestor
+0f480d107 (fn-ncr-cli-after takes COMMAND and STEP; only a register sends
+more). books/consumer-reason.lisp states that. The host passes
+(operation operation ...) then (operation :bootstrap ...).
+
+(b) Harness gap, closed by 70869e0ab and confirmed by the unittest above.
+Before that commit the mock stubbed the exchange, so the guard did not
+exercise the retry the zmq-2 move put in fnn-consumer-local-exchange.
+
+(c) Not run: native green-after on an image that contains 0f480d107.
+No local image (FN_NATIVE_HOST unset). Not started on hbox. Selectors, one
+module at a time, env FN_RUN_CONSUMER_EXCHANGE=1 where the module requires it:
+tests.test_native_consumer_exchange, tests.test_native_agent_wait,
+tests.test_native_consumer_exchange_two_nodes. The repair row stays open
+until that image run; the diagnostic overlay on d5b0b9100 was not a claim
+(lanedumps/consumers.md).
