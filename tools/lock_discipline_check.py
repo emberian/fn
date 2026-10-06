@@ -89,9 +89,10 @@ not in it is new; a baseline row no longer found must be removed
     python3 tools/lock_discipline_check.py --root DIR      # another checkout (a pre-fix commit)
     python3 tools/lock_discipline_check.py --write-baseline [--initial]
     python3 tools/lock_discipline_check.py --emit-realization  # planning/host-realization.json
-    python3 tools/lock_discipline_check.py --audit-callbacks  # opt-in, no gate runs it: a
-                           # callback_contexts why text that names its own file (file.lisp:NNN)
-                           # must name the line its ordinal resolves to
+    python3 tools/lock_discipline_check.py --audit-callbacks  # standalone: print only the
+                           # callback-ordinal audit (a callback_contexts why text that names
+                           # its own file must name the line its ordinal resolves to); the
+                           # audit is part of --check's verdict either way
 """
 from __future__ import annotations
 
@@ -3115,6 +3116,18 @@ def audit_callbacks(model: Model, raw: dict) -> list[str]:
     return failures
 
 
+def audit_summary(model: Model, raw: dict, failures: list[str]) -> str:
+    marked = 0
+    for lam in model.declared_callbacks:
+        info = model.an.infos.get(lam)
+        why = raw.get("callback_contexts", {}).get(lam, {}).get("why", "")
+        if info is not None and re.search(rf"\b{re.escape(Path(info.path).name)}:\d+", why):
+            marked += 1
+    return (f"lock_discipline_check: callback-ordinal audit: {len(model.declared_callbacks)} "
+            f"declared row(s), {marked} with an own-file line marker, "
+            f"{len(failures)} disagreeing marker(s)")
+
+
 def analyze_tree(root: Path, contracts: Contracts, files: list[str] | None = None,
                  reach: dict | None = None) -> tuple[Analyzer, Model, Checker]:
     tree = collect_tree(root, files)
@@ -3147,28 +3160,22 @@ def main(argv=None) -> int:
     ap.add_argument("--initial", action="store_true")
     ap.add_argument("--emit-realization", action="store_true")
     ap.add_argument("--audit-callbacks", action="store_true",
-                    help="opt-in (no gate runs it): fail when a callback_contexts why text "
-                         "names its own file (file.lisp:NNN) at a line the ordinal does not "
-                         "resolve to; a row without such a marker is not audited")
+                    help="standalone: print only the callback-ordinal audit (which --check's "
+                         "verdict already includes) and exit on its failures: a "
+                         "callback_contexts why text that names its own file (file.lisp:NNN) "
+                         "must name the line the ordinal resolves to; a row without such a "
+                         "marker is not audited")
     ap.add_argument("--summary", action="store_true")
     args = ap.parse_args(argv)
     started = time.time()
     root = Path(args.root).resolve()
     an, model, checker = build(root, Path(args.contracts))
+    audit_failures = audit_callbacks(model, checker.c.raw)
     if args.audit_callbacks:
-        failures = audit_callbacks(model, checker.c.raw)
-        for why in failures:
+        for why in audit_failures:
             print("lock_discipline_check: " + why)
-        marked = 0
-        for lam in model.declared_callbacks:
-            info = model.an.infos.get(lam)
-            why = checker.c.raw.get("callback_contexts", {}).get(lam, {}).get("why", "")
-            if info is not None and re.search(rf"\b{re.escape(Path(info.path).name)}:\d+", why):
-                marked += 1
-        print(f"lock_discipline_check: callback-ordinal audit: {len(model.declared_callbacks)} "
-              f"declared row(s), {marked} with an own-file line marker, "
-              f"{len(failures)} disagreeing marker(s)")
-        return 1 if failures else 0
+        print(audit_summary(model, checker.c.raw, audit_failures))
+        return 1 if audit_failures else 0
     findings = checker.run(set(args.rule) if args.rule else None)
     if not args.rule or "R3" in args.rule:
         check_realization(checker)
@@ -3255,8 +3262,11 @@ def main(argv=None) -> int:
               f"{sum(r.get('count', 1) for r in baseline.values())}); "
               f"new {nb}; stale baseline rows {len(verdict['stale'])}; enclave {len(enclave)} functions"
               f" + {len(enclave_files)} files ({sum(len(v) for v in excepted.values())} excepted)")
+        if args.summary:
+            print(audit_summary(model, checker.c.raw, audit_failures))
     if args.check:
-        bad = verdict["new"] or verdict["stale"] or verdict["enclave_baselined"] or realization_drift
+        bad = (verdict["new"] or verdict["stale"] or verdict["enclave_baselined"]
+               or realization_drift or audit_failures)
         if bad:
             for why, f in verdict["new"][:40]:
                 print(f"lock_discipline_check: {why.upper()} {f.path}:{f.line} {f.rule} {f.function}: {f.message}")
@@ -3264,6 +3274,8 @@ def main(argv=None) -> int:
                 print(f"lock_discipline_check: STALE baseline row (lower it with --write-baseline): {k}")
             for k in verdict["enclave_baselined"]:
                 print(f"lock_discipline_check: an enclave finding cannot be baselined: {k}")
+            for why in audit_failures[:40]:
+                print("lock_discipline_check: CALLBACK-AUDIT " + why)
             return 1
     return 0
 
