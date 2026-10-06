@@ -395,6 +395,84 @@ class FletLambdaInlining(unittest.TestCase):
             "(flet ((both (op) (funcall op) (push op *fnn-hooks*))) (sb-thread:with-mutex ((fnn-owner-service-lock s)) (both (lambda () (fnn-live-arena)))))"))
 
 
+class R7DeferredRethrow(unittest.TestCase):
+    """capture into a let variable in the handler, re-signal it on EVERY exit path"""
+    def swallow(self, let_body_tail, extra="", pre=""):
+        src = """
+(defun fnn-actor (s flag other)
+  (let ((failure nil) (spare nil))
+    %s
+    (flet ((release (thunk)
+             (handler-case (funcall thunk)
+               (serious-condition (c) (unless failure (setq failure c))))))
+      (release (lambda () (fnn-fault "x"))))
+    %s
+    %s))
+(defun fnn-spawn (s) (sb-thread:make-thread (lambda () (fnn-actor s nil nil)) :name "t"))
+""" % (pre, extra, let_body_tail)
+        return [f for f in run(src, ["R7"]) if f.rule == "R7" and f.key.startswith("swallow")]
+
+    def test_tail_rethrow_of_the_captured_variable_is_recognised(self):
+        self.assertEqual(self.swallow("(when failure (error failure))"), [])
+
+    def test_if_with_a_quiet_else_is_recognised(self):
+        self.assertEqual(self.swallow("(if failure (error failure) nil)"), [])
+
+    def test_rethrow_gated_on_another_flag_is_not(self):
+        self.assertTrue(self.swallow("(when flag (error failure))"))
+
+    def test_conjunction_test_is_not(self):
+        self.assertTrue(self.swallow("(when (and failure flag) (error failure))"))
+
+    def test_rethrow_of_a_different_variable_is_not(self):
+        self.assertTrue(self.swallow("(when spare (error spare))"))
+
+    def test_a_non_signalling_arm_is_not(self):
+        self.assertTrue(self.swallow('(when failure (fnn-out "x"))'))
+
+    def test_rethrow_on_one_branch_of_the_arm_is_not(self):
+        self.assertTrue(self.swallow("(when failure (if flag (error failure) (fnn-out \"x\")))"))
+
+    def test_a_nested_conditional_rethrow_is_not_the_tail(self):
+        self.assertTrue(self.swallow('(fnn-out "x")', extra="(when flag (when failure (error failure)))"))
+
+    def test_an_early_return_between_capture_and_tail_is_not(self):
+        self.assertTrue(self.swallow("(when failure (error failure))",
+                                     extra="(when flag (return-from fnn-actor nil))"))
+
+    def test_a_throw_between_capture_and_tail_is_not(self):
+        self.assertTrue(self.swallow("(when failure (error failure))", extra="(when flag (throw :out nil))"))
+
+    def test_a_reset_between_capture_and_tail_is_not(self):
+        self.assertTrue(self.swallow("(when failure (error failure))", extra="(setq failure nil)"))
+
+    def test_a_capture_inside_a_thread_lambda_is_not(self):
+        src = """
+(defun fnn-actor (s)
+  (let ((failure nil))
+    (sb-thread:make-thread
+     (lambda () (handler-case (fnn-fault "x") (serious-condition (c) (setq failure c)))) :name "w")
+    (when failure (error failure))))
+(defun fnn-spawn (s) (sb-thread:make-thread (lambda () (fnn-actor s)) :name "t"))
+"""
+        self.assertTrue([f for f in run(src, ["R7"]) if f.key.startswith("swallow")])
+
+    def test_unwind_protect_cleanup_tail_is_recognised(self):
+        src = """
+(defun fnn-actor (s)
+  (let ((failure nil))
+    (unwind-protect (fnn-out "x")
+      (handler-case (fnn-fault "x") (serious-condition (c) (push c failure)))
+      (when failure (error (car failure))))))
+(defun fnn-spawn (s) (sb-thread:make-thread (lambda () (fnn-actor s)) :name "t"))
+"""
+        self.assertEqual([f for f in run(src, ["R7"]) if f.key.startswith("swallow")], [])
+
+    def test_a_lambda_walked_inside_the_let_does_not_lose_the_deferral(self):
+        pre = "(handler-bind ((serious-condition (lambda (c) (setq spare c)))) (fnn-out \"x\"))"
+        self.assertEqual(self.swallow("(when failure (error failure))", pre=pre), [])
+
+
 class CallbackContexts(unittest.TestCase):
     """contracts `callback_contexts': a stored callback declared to run in a
     command's own extent gets that command's context, and nothing else does."""
