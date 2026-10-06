@@ -185,3 +185,27 @@
                (:conclusion (equal (fn-wml-live-cells (fn-wmc-step s work grant)) (fn-wml-live-cells s)))
                ((s *wmlt-row*) (patterns 3) (tokens 12) (octets 3) (work 1) (grant (fn-wmc-demand *wmlt-row*)))
                :fault "a funded step counted as allocating no live cells")))
+
+; TEETH-22 BEGIN
+; fn-wml-retained-owned-bound with its teeth (TEETH CONTRACT v1).  The
+; octets-count hypothesis is removed at a negative octets budget: capacity is
+; linear in it, so at octets = -123 the start state's room (128) still fits
+; capacity(220, 0, -123) = 128 while the owned capacity 5 no longer covers
+; the seven live cells; that removal is outside fn-wml-capacity's natp guard,
+; so it is evaluated for its logical value.
+(defteeth fn-wml-retained-owned-bound
+  :claim (((octets-natp (natp octets))
+           (retained (fn-wml-retainedp s patterns tokens octets)))
+          (<= (+ (fn-wml-live-cells s) (fn-wml-target s))
+              (fn-wml-owned-capacity patterns tokens octets)))
+  :subject fn-wml-owned-capacity
+  :witness ((s *wmlt-row*) (patterns 3) (tokens 12) (octets 3))
+  :breaks ((octets-natp ((s (fn-wmc-start *wmlt-patterns* "")) (patterns 220) (tokens 0) (octets -123))
+                        :logical "a negative octets budget: outside fn-wml-capacity's natp guard")
+           (retained ((s *wmlt-row*) (patterns 0) (tokens 0) (octets 0))))
+  :mutations ((bound-is-an-equality
+               (:conclusion (equal (+ (fn-wml-live-cells s) (fn-wml-target s))
+                                   (fn-wml-owned-capacity patterns tokens octets)))
+               ((s *wmlt-row*) (patterns 3) (tokens 12) (octets 3))
+               :fault "the owned bound claimed as an exact equality (a slack-free budget)")))
+; TEETH-22 END
