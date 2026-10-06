@@ -738,7 +738,7 @@
 ; Disabled at birth: fired on every folded windowp hypothesis downstream
 ; and its pull-list case splits broke the after-header proof chain.  The
 ; local-reply lemmas enable it in their own hints.
-(in-theory (disable fn-csp-windowp-of-symbol))
+(local (in-theory (disable fn-csp-windowp-of-symbol)))
 
 (local (defthm fn-csp-with-session-round-conns-keeps-window
   ; Steering the session's round, then binding/freeing a connection and the
