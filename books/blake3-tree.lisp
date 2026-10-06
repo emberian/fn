@@ -636,6 +636,42 @@
           ("Subgoal *1/1.4'" :cases ((consp (cddr outs)))
                             :expand ((fn-b3-pair-outs key flags outs)))))
 
+(defthm fn-b3-consp-of-len-pos
+  ; A positive length means a cons.
+  (implies (< 0 (len x)) (consp x)))
+
+(defthm fn-b3-len-of-cdr
+  ; The cdr's length, without opening LEN's definition.
+  (implies (consp x) (equal (len (cdr x)) (- (len x) 1))))
+
+(defthm fn-b3-consp-of-append-single
+  ; A run with one appended single is always a cons.
+  (consp (append xs (list A)))
+  :hints (("Goal" :expand ((append xs (list A))))))
+
+(defthm fn-b3-cdr-consp-of-append-single
+  ; With at least one element before it, the second position is a cons too.
+  (implies (consp xs)
+           (consp (cdr (append xs (list A)))))
+  :hints (("Goal" :expand ((append xs (list A))))))
+
+(defthm fn-b3-firstn-all-when-len
+  ; firstn over the whole run, the length hypothesis linearly relievable from
+  ; the caller's own length hypothesis.
+  (implies (and (natp n) (true-listp x) (equal n (len x)))
+           (equal (fn-b3-firstn n x) x))
+  :hints (("Goal" :induct (fn-b3-firstn n x))))
+
+(defthm fn-b3-nthcdrx-all-when-len
+  ; nthcdrx past the whole run, the same linearly relievable form.
+  (implies (and (natp n) (true-listp x) (equal n (len x)))
+           (equal (fn-b3-nthcdrx n x) nil))
+  :hints (("Goal" :induct (fn-b3-nthcdrx n x))))
+
+(defthm fn-b3-pair-outs-true-listp
+  (true-listp (fn-b3-pair-outs key flags outs))
+  :hints (("Goal" :induct (fn-b3-pair-outs key flags outs))))
+
 ; -----------------------------------------------------------------------------
 ; THE DECOMPOSITION (statements; proofs in progress, see the lanedump):
 
