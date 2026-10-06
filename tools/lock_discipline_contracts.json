@@ -780,7 +780,14 @@
  ],
  "close_sites": {
   "fnn-extent-close": "the :close realization: closes a registered extent fd after fn-pio-file-clear-p (realization row :close)",
-  "fnn-csp-worker-loop": "the catch-up spool worker's own descriptor: fnn-csp-worker-perform's :open (O_EXCL, then unlink) on this worker thread stores it in the worker; the loop's exit retires the number, then closes it once (host/native/catchup-spool.lisp)"
+  "fnn-csp-worker-loop": "the catch-up spool worker's own descriptor: fnn-csp-worker-perform's :open (O_EXCL, then unlink) on this worker thread stores it in the worker; the loop's exit retires the number, then closes it once (host/native/catchup-spool.lisp)",
+  "fnn-log-physical-close": "the log subsystem's consumed fd slots: the caller has already taken the descriptor out of its owner (io.lisp:1096 docstring 'Caller consumed its fd slot'); this closes it once and records the exact physical debt, never retried",
+  "fnn-init-admit": "the init stage lock descriptor fnn-init-stage-lock opened and flocked (io.lisp:4482); every admission exit unlocks and closes it here (io.lisp:4586)",
+  "fnn-immutable-close-handle": "the immutable publication's owning fd slot, consumed by the caller (io.lisp:5399); closed once here, an ambiguous return retained in *fnn-immutable-close-debts*, never retried",
+  "fnn-log-close-active": "the log's active segment descriptor held in the fnn-log struct (fnn-log-fd), opened by the log's open/rotate path; consumed and closed exactly once here, a failure retained as fnn-log-active-close-debt (io.lisp:8352)",
+  "fnn-log-discard-spare": "the staged spare's descriptor (the third of fnn-log-spare), opened by fnn-log-prepare-spare; closed and unlinked once here when the spare is not renamed, a failure retained as fnn-log-spare-close-debt (io.lisp:8371)",
+  "fnn-tcl-spool-release": "the transfer's spool lock descriptor handed to the release (tcpcl.lisp:278); unlocked and closed independently, an ambiguous return retained in *fnn-tcl-spool-close-debts*, never retried",
+  "fnn-app-journal-close": "the application journal's lock fd (fnn-app-journal-lock-fd), consumed here before the close (workflow.lisp:34); unlocked and closed once, custody of an ambiguous return retained via fnn-app-retain-close-debt"
  },
  "unlocked_publication": {},
  "exceptions": [],
