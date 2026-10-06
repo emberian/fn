@@ -604,11 +604,18 @@ the job is released.  Values :released (or a stale word) and whether cached."
     (let ((scope (fnn-cold-worker-scope worker))
           (result (fnn-cold-worker-result worker))
           (cached nil) (evicted nil) (decoded-attempt nil))
+      ;; WW-DIAG (lane w-window, temporary): every decoded release names its
+      ;; arm, so the cache path's preconditions are observable.
+      (when (fnn-cold-worker-decoded worker)
+        (fnn-err "WW-DIAG release entry cachep=~s limit=~d token=~s"
+                 cachep (fnn-extent-cache-limit) token))
       ;; A returned decoded job whose window ACL2 admits (fn-dwj-cache: its
       ;; outcome is :ready, KEEP is funded) is retired and cached in ONE
       ;; ACL2 step; the buffer moves out of the persistent worker below.
       (when (and cachep (fnn-cold-worker-decoded worker) (plusp (fnn-extent-cache-limit)))
         (setq decoded-attempt (fnn-extent-decoded-window-cache-attempt worker token)))
+      (when (fnn-cold-worker-decoded worker)
+        (fnn-err "WW-DIAG release arm decoded-attempt=~s" (not (null decoded-attempt))))
       ;; A torn reset or settlement must never be retried or offered as idle.
       (setf (fnn-cold-worker-phase worker) :retiring)
       (when (and (fnn-cold-worker-decoded worker) (not decoded-attempt))
@@ -699,6 +706,10 @@ caller then stops the owner with the fault."
                (eq (fnn-decoded-activation-stage (fnn-cold-worker-decoded worker)) :calling))
       (fnn-fault "decoded torn semantic step retains its cancelled debit"))
     (let ((scope (fnn-cold-worker-scope worker)))
+      ;; WW-DIAG (lane w-window, temporary): a decoded job on the cancelled
+      ;; settlement arm, not the cache arm.
+      (when (fnn-cold-worker-decoded worker)
+        (fnn-err "WW-DIAG settle-cancelled decoded token=~s" token))
       ;; A torn reset or settlement must never be retried or offered as idle.
       (setf (fnn-cold-worker-phase worker) :retiring)
       (when (fnn-cold-worker-decoded worker)

@@ -17,13 +17,22 @@ its full core-selected cold descriptor while the captured owner is held."
           (values :unavailable nil))
       (cond ((eq word :byte) byte)
             ((member word '(:cancelled :stale-job))
+             ;; WW-DIAG (lane w-window, temporary): a borrow that answers a
+             ;; refusal word never reaches the cache arm.
+             (fnn-err "WW-DIAG realize refused word=~s i=~s borrowed=~s"
+                      word i (if *fnn-extent-window-worker* t nil))
              (throw 'fnn-extent-window-refused (values word nil nil nil)))
             ((eq word :unavailable)
              ;; Not in the borrowed window: a verified cached window, else the
              ;; core's complete cold descriptor.
-             (or (fnn-extent-decoded-window-cache-byte
-                  file eoff elen poff compressed trailer decoded dict-id i)
-                 (throw 'fnn-extent-cold descriptor)))
+             ;; WW-DIAG (lane w-window, temporary)
+             (fnn-err "WW-DIAG realize miss i=~s borrowed=~s cache-entries=~d"
+                      i (if *fnn-extent-window-worker* t nil)
+                      (length *fnn-extent-window-cache*))
+             (let ((hit (fnn-extent-decoded-window-cache-byte
+                         file eoff elen poff compressed trailer decoded dict-id i)))
+               (fnn-err "WW-DIAG realize miss resolved=~s" (not (null hit)))
+               (or hit (throw 'fnn-extent-cold descriptor))))
             (t (error 'fnn-extent-fault
                       :message "arena-extent-read: decoded window was not an authenticated returned result"))))))
 
@@ -116,20 +125,31 @@ carry 0, input 1, hash 2, zin 3, win 4, tab 5, out 6, window 7; the input is (sv
 ROW EVICTED): the job retired and its window moved into the cache; ROW is the
 worker's row ACL2 answered, EVICTED the tokens of the entries the insertion
 pushed out (the caller releases their rows)."
-  (let ((activation (fnn-cold-worker-decoded worker)))
+  (let* ((activation (fnn-cold-worker-decoded worker))
+         (job (and activation (fnn-decoded-activation-job activation)))
+         (movable (and job (fnn-extent-decoded-window-movable-p job))))
+    ;; WW-DIAG (lane w-window, temporary): the attempt's every precondition
+    ;; and the ACL2 word, so an :uncached lease and an immovable window are
+    ;; both observable.
+    (fnn-err "WW-DIAG attempt activation=~s storage-eq=~s movable=~s job-type=~s job-len=~s win-type=~s"
+             (not (null activation)) (eq activation (fnn-cold-worker-decoded-storage worker))
+             movable (and job (type-of job))
+             (and (vectorp job) (ignore-errors (length job)))
+             (and (vectorp job) (> (length job) 7) (type-of (svref job 7))))
     (when (and activation
                (eq activation (fnn-cold-worker-decoded-storage worker))
-               (fnn-extent-decoded-window-movable-p (fnn-decoded-activation-job activation)))
-      (destructuring-bind (word row job &rest ignored)
+               movable)
+      (destructuring-bind (word row job1 &rest ignored)
           (fnn-decoded-semantic (activation)
             (fnn-call 'fn-owner-page-decoded-job-cache
               (fnn-cold-worker-row worker) token
               (fnn-decoded-activation-job activation) (fnn-live-page-read-pool)))
         (declare (ignore ignored))
-        (setf (fnn-decoded-activation-job activation) job)
+        (setf (fnn-decoded-activation-job activation) job1)
+        (fnn-err "WW-DIAG attempt word=~s" word)
         (when (eq word :cached)
-          (let ((window (svref job +fnn-decoded-job-window-slot+)))
-            (setf (svref job +fnn-decoded-job-window-slot+) (create-fn-ew-buffer))
+          (let ((window (svref job1 +fnn-decoded-job-window-slot+)))
+            (setf (svref job1 +fnn-decoded-job-window-slot+) (create-fn-ew-buffer))
             (fnn-err "DECODED-WINDOW backing token=~s word=:REUSABLE scope=:persistent-partial-fixed-storage"
                      token)
             (list :cached row (fnn-extent-window-cache-insert token nil window))))))))
@@ -142,6 +162,14 @@ ACL2 decides the hit (fn-owner-page-decoded-window-cache-byte-at)."
     (dolist (entry *fnn-extent-window-cache* nil)
       (destructuring-bind (token plan window) entry
         (declare (ignore plan))
+        ;; WW-DIAG (lane w-window, temporary): each scanned entry's whole
+        ;; descriptor against the request, so a mismatching field is visible.
+        (fnn-err "WW-DIAG scan kind=~s tok=(~s ~s ~s ~s ~s ~s ~s ~s ~s ~s) want=(~s ~s ~s ~s ~s ~s ~s ~s i=~s)"
+                 (first token)
+                 (second token) (third token) (fourth token) (fifth token)
+                 (sixth token) (seventh token) (eighth token) (ninth token)
+                 (tenth token) (nth 10 token)
+                 file eoff elen poff compressed trailer decoded dict-id i)
         (when (and (eq (first token) :decoded-window)
                    (eql (third token) file) (eql (fourth token) eoff)
                    (eql (fifth token) elen) (eql (sixth token) poff)
@@ -152,6 +180,8 @@ ACL2 decides the hit (fn-owner-page-decoded-window-cache-byte-at)."
               (fnn-core-page-read-pool 'fn-owner-page-decoded-window-cache-byte-at
                                        token file eoff elen poff compressed trailer decoded
                                        dict-id i window)
+            ;; WW-DIAG (lane w-window, temporary)
+            (fnn-err "WW-DIAG scan answer word=~s byte=~s" word byte)
             (when (eq word :byte)
               (incf (first *fnn-extent-stats*))
               (unless (eq entry (first *fnn-extent-window-cache*))
