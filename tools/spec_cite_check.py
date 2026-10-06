@@ -22,7 +22,8 @@ Resolved besides a definition (PKT-446): a record's own name
 (`(fn-defrecord fn-node-state ...)`), and a slash abbreviation
 (`fnn-metadata-config-frame/-decode`) whose every expansion is defined.
 Literal backquoted defstobj, defun and defthm names in a macro also resolve
-when the same book invokes that macro at the start of a line.
+when a book invokes that macro at the start of a line -- the same book, or
+any other (a generator macro defined in one book and invoked in another).
 Named exemptions (tools/spec_cite_exemptions.json `exemptions`) are names a
 person judged are not definitions, each with a reason.  The `stale` section
 names, per packet, the citations known to be stale and not yet repaired,
@@ -136,24 +137,44 @@ def check(defined: set, documents, exemptions: dict) -> Result:
     return result
 
 
-def macro_generated_definitions(text: str) -> set[str]:
-    """Literal definitions in macro templates invoked in the same book."""
+def macro_generated_definitions(text: str, corpus: str | None = None) -> set[str]:
+    """Literal definitions in macro templates invoked somewhere.
+
+    The invocation may be in the same book or, when CORPUS carries the
+    joined text of every book, in any of them: a generator macro defined
+    in one book and invoked in another (books/output-tariff-family.lisp's
+    def-family-tariffs, invoked by books/output-tariff-families.lisp)
+    defines its template's literal names in the world just the same."""
     from ledger import Reader
 
-    # books/recovery-profile-buffer.lisp defines its stobj through a macro.
+    where = text if corpus is None else corpus
+    # books/recovery-profile-buffer.lisp defines its stobj through a macro;
+    # books/output-tariff-family.lisp's generator backquotes one progn and
+    # defines every name the spec cites inside it.
     names = set()
     for macro in re.finditer(r"^[ \t]*\(defmacro\s+([^\s()]+)", text, re.M | re.I):
         name = macro.group(1)
-        if not re.search(r"^\(" + re.escape(name) + r"(?=[\s)])", text, re.M | re.I):
+        if not re.search(r"^\(" + re.escape(name) + r"(?=[\s)])", where, re.M | re.I):
             continue
         # Read just this form to keep the search inside the macro's body.
         reader = Reader(text)
         reader.pos = macro.start()
         reader.form()
         body = text[macro.end():reader.pos]
-        names.update(re.findall(
-            r"`\s*\((?:defstobj|defun|defthm)\s+([a-z][^\s()\"'`,;]*)(?=[\s)])",
-            body, re.I))
+        for tick in re.finditer(r"`", body):
+            # The backquoted region is one form: a definition, or a progn
+            # (or list of) definitions anywhere inside it.  Only the fn-
+            # prefixed names the checker's domain covers are harvested.
+            region = Reader(body)
+            region.pos = tick.start()
+            try:
+                region.form()
+            except Exception:
+                continue
+            template = body[tick.start():region.pos]
+            names.update(re.findall(
+                r"\((?:defstobj|defun|defthm)\s+(fn[a-z0-9]*-[a-z0-9\-*+?!<>=/%.]*)",
+                template, re.I))
     return {name.lower() for name in names}
 
 
@@ -168,10 +189,12 @@ def defined_names() -> set:
         names |= host.defines | host.macros
     # A record's own name, `(fn-defrecord fn-node-state ...)'
     # (books/defrecord.lisp): prose names the record kind by it.
-    for path in sorted((ROOT / "books").glob("*.lisp")):
-        text = path.read_text(encoding="utf-8", errors="replace")
+    books = sorted((ROOT / "books").glob("*.lisp"))
+    book_texts = [path.read_text(encoding="utf-8", errors="replace") for path in books]
+    books_corpus = "\n".join(book_texts)
+    for text in book_texts:
         names |= set(re.findall(r"^\s*\(fn-defrecord\s+([^\s()]+)", text, re.M | re.I))
-        names |= macro_generated_definitions(text)
+        names |= macro_generated_definitions(text, books_corpus)
         # A named theory, `(deftheory fn-tcl-cheap-rules ...)', and an
         # abstract stobj's exported, recognizer and creator names,
         # `(fn-arena-seal-buffer :logic ... :exec ...)' inside `defabsstobj'.

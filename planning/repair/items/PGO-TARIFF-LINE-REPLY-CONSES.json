@@ -1,0 +1,12 @@
+{
+ "category": "proof-owed",
+ "file": "books/output-tariff-line.lisp",
+ "id": "PGO-TARIFF-LINE-REPLY-CONSES",
+ "notes": [],
+ "owner": "tariff4",
+ "severity": "medium",
+ "source": "tariff4",
+ "state": "open",
+ "title": "The line tariff multiplies a stated 10 cells an octet, not a derived bound. The theorem owed: the derived :conses twin of each line-reply factory (fn-av-nntp-group-result-cat, fn-av-nntp-next-or-last-cat, and the session arm of fn-nntp-session-command at DATE, MODE, QUIT, HELP) is at most 10 * (its reply octets, bounded in books/output-tariff-line.lisp) + 32 cells, which is fn-tariff-line-octets / 16. Blocked: def-cost's :conses dimension cannot cost coerce (fn-nntp-string-octets) or explode-nonnegative-integer (fn-nntp-decimal-rev): neither is in *fn-cost-cons-contracts*, so every twin leaves them unaccounted and no total bound exists; the contracts table is the trusted base (changing books/def-cost.lisp recertifies every image world, an integrator change). Also: the derivation will likely show the initial line of ARTICLE/HEAD/BODY/STAT (fn-tariff-article-octets charges 2 cells an octet for it) needs the line figure, ~7 cells an octet; a larger tariff is the safe direction. PGO-TARIFF-ARTICLE-REPLY-WITHIN-TARIFF (PRF-1316) shares the blocker.",
+ "updated": "2026-10-04T17:13:11Z"
+}
