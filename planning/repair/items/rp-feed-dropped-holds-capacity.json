@@ -8,7 +8,8 @@
  "id": "rp-feed-dropped-holds-capacity",
  "locus": "peer-services",
  "notes": [
-  "10-04 16:05 10-04 20:10 READY lane/peer-feed (fix 04669a5c6, witnesses 62468c9d2). RED certify-20261004T171953Z-23799 at 9ab11e8ee (tests/acl2/peer-feed-red-*-tests); GREEN certify-20261004T200106Z-125291 (cloud2, lane closure, 18/19; host/owner-host is an ld host file that no certify-book admits, gated by host_check) + certify-20261004T180200Z-48706 (lat1, 234/235, same). Native: overlay on 6107ceb56 refused (entry layout, def-loop/deftheory: 29 refusals); owed on the integrator's next image set: tests.test_native_peer_hostile_feed (lane/scenarios@6fef491f3) + operator_walk."
+  "10-04 16:05 10-04 20:10 READY lane/peer-feed (fix 04669a5c6, witnesses 62468c9d2). RED certify-20261004T171953Z-23799 at 9ab11e8ee (tests/acl2/peer-feed-red-*-tests); GREEN certify-20261004T200106Z-125291 (cloud2, lane closure, 18/19; host/owner-host is an ld host file that no certify-book admits, gated by host_check) + certify-20261004T180200Z-48706 (lat1, 234/235, same). Native: overlay on 6107ceb56 refused (entry layout, def-loop/deftheory: 29 refusals); owed on the integrator's next image set: tests.test_native_peer_hostile_feed (lane/scenarios@6fef491f3) + operator_walk.",
+  "10-06 11:49 repair-wave-1: verified after merging origin/dev 85dc37bfb. Source LANDED at 04669a5c6 with rp-feed-defer-drop: fn-feed-give-up retires the entry; the queue has no :dropped state, so fn-own-feed-target-capacityp len(queue) counts only entries still owed. Same certify receipts as rp-feed-defer-drop. Native PARKED for the integrator next image batch. State stays ready."
  ],
  "owner": "peer-feed",
  "scenario": "With rp-feed-defer-drop, a friend's server answering 431/436 for 7 s (1+2+4 s at the default 1000 ms base) drops the head article; a throttle or slow disk lasting a few hours drops 1024 of them (or 1024 S053 loss drops over the peer's life). The queue is then full of :dropped entries forever -- the FNFD replay rebuilds them after a restart -- and every local POST to local.* (or whatever that peer is fed) is answered 441 feed-queue-full, every inbound transfer for those groups 436, node-wide, although the peer has nothing in flight and may be healthy again. Memory: the live queue also grows by one entry per drop without bound (D27).",
@@ -17,5 +18,5 @@
  "source": "read-peer-2026-10-04",
  "state": "ready",
  "title": "Dropped feed entries never leave the peer's queue and count against max-queue: once max-queue entries are dropped, every POST and transit for the groups fed to that peer is refused (441 / 436) for good",
- "updated": "2026-10-04T20:05:04Z"
+ "updated": "2026-10-06T15:49:45Z"
 }

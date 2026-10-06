@@ -605,7 +605,14 @@ def book_entries(root: Path, cache: Path, name: str,
     first, then each certification image the image rule allows for it now.
     An entry made in a world the rule no longer allows is never found."""
     found: list[tuple[Path, dict]] = []
-    for world in cert_images.worlds(root.resolve(), name):
+    try:
+        worlds = cert_images.worlds(root.resolve(), name)
+    except cert_images.UnreadableSource as error:
+        # One book the graph cannot read (a parked book over an include a
+        # decision deleted) is this book's unreadable finding, never an
+        # abort of the whole install (FILL-CERTS-INSTALL-DELETED-BOOK).
+        raise UnreadableBook(str(error)) from None
+    for world in worlds:
         key, _ = closure_key(root, name, world)
         found.extend(cached_entries(cache, key, metadata_filter))
     return found

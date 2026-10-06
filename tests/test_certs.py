@@ -604,6 +604,25 @@ class InstallTests(unittest.TestCase):
             self.assertTrue((target / "books/mid.port").is_file())
             self.assertEqual(certs.install(target, cache).kept, 1)
 
+    def test_a_deleted_include_is_a_finding_not_an_abort(self):
+        """FILL-CERTS-INSTALL-DELETED-BOOK: a parked book whose include a
+        decision deleted (books/acceptance-binding-held-gate over the deleted
+        books/held-record-shape) is one unreadable book, reported as such;
+        every other pair still installs."""
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            _, cache = self.published(one, ["books/mid"])
+            target = worktree(two)
+            (target / "books/parked.lisp").write_text(
+                '(in-package "ACL2")\n(include-book "gone")\n')
+            try:
+                report = certs.install(target, cache)
+            except FileNotFoundError:
+                self.fail("install aborted on a deleted include")
+            self.assertEqual(report.installed, 1)
+            self.assertIn("books/parked: books/gone.lisp: missing",
+                          report.unreadable)
+            self.assertTrue(certs.valid_looking(target / "books/mid.cert"))
+
     def test_a_changed_dependency_is_not_a_cache_hit(self):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
             _, cache = self.published(one, ["books/mid"])

@@ -113,6 +113,13 @@ def stobj_events(text: str) -> tuple[frozenset[str], frozenset[str]]:
     return frozenset(defined), frozenset(attached)
 
 
+class UnreadableSource(ValueError):
+    """A book the include graph cannot read: absent from the tree, or not
+    readable Lisp.  `certs.book_entries` retells it as its own per-book
+    unreadable finding, so one parked book over a deleted include reports
+    and never aborts the install (FILL-CERTS-INSTALL-DELETED-BOOK)."""
+
+
 class Graph:
     """The non-local include graph of the tree, from the ledger's reader."""
 
@@ -134,9 +141,11 @@ class Graph:
             if name in self.edges:
                 continue
             source = self.root / f"{name}.lisp"
+            if not source.is_file():
+                raise UnreadableSource(f"{name}.lisp: missing")
             analysis = ledger.analyze_book(source, source.name)
             if analysis.read_error:
-                raise ValueError(f"{name}.lisp: {analysis.read_error}")
+                raise UnreadableSource(f"{name}.lisp: {analysis.read_error}")
 
             def resolve(reference: str) -> str:
                 target = (source.parent / reference).with_suffix(".lisp").resolve()
