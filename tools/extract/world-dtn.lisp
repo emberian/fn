@@ -128,6 +128,7 @@
 (include-book "../../books/cold-read-reservation")
 (include-book "../../books/resource-output")
 (include-book "../../books/served-plan-line-buffer")
+(include-book "../../books/mux-accept-slot")
 (include-book "../../books/resource-syncer")
 (include-book "../../books/response-identity")
 (include-book "../../books/store-log-durable")

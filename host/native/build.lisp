@@ -76,6 +76,9 @@
 ;; fn-splan-cursor-step; fnn-owner-render-next asks fn-splan-at-cursorp).
 (include-book "books/served-plan-cursor")
 (include-book "books/served-plan-line-buffer")
+;; r71 F13: the pending-accept slot the mux's accept threads take (fnn-mux-
+;; reserve asks fn-mxa-reserve; fn-mxa-deferral-line names the deferral).
+(include-book "books/mux-accept-slot")
 (include-book "books/response-plan-pins")
 (include-book "books/owner-scheduler")
 (include-book "books/owner-commit-class")

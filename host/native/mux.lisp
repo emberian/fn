@@ -1803,41 +1803,66 @@ after its wake descriptors are captured; failed setup retains every debt."
   (sb-thread:with-mutex ((fnn-owner-service-mux-slot-lock service))
     (sb-thread:condition-broadcast (fnn-owner-service-mux-slot-free service))))
 
-(defun fnn-mux-slot-free-p (loop)
-  "Slot lock held: LOOP can take one more accepted socket."
-  (and (not (fnn-mux-loop-reserved loop))
-       (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
-         (and (null (fnn-mux-loop-inbox loop))
-              (not (fnn-mux-loop-closed loop))))))
+(defvar *fnn-mux-accept-deferred* nil
+  "Under the service's MUX-SLOT-LOCK: whether the last answer was ACL2's
+deferral, so the service log names a deferral once per episode.")
+
+(defun fnn-mux-slot-observation (loop)
+  "Slot lock held: LOOP's (RESERVED PENDING CLOSED), the observation
+books/mux-accept-slot.lisp fn-mxa-reserve decides over."
+  (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
+    (list (and (fnn-mux-loop-reserved loop) t)
+          (length (fnn-mux-loop-inbox loop))
+          (and (fnn-mux-loop-closed loop) t))))
+
+(defun fnn-mux-reserve-once (service deadline)
+  "One decision under the slot lock: (values LOOP nil) reserved, (values NIL
+nil) none, or (values :again LINE) to decide again (LINE: the deferral to
+log, outside the lock, once per episode)."
+  (let ((loops (fnn-owner-service-mux service)))
+    (sb-thread:with-mutex ((fnn-owner-service-mux-slot-lock service))
+      (let* ((observed (mapcar #'fnn-mux-slot-observation loops))
+             (answer (fnn-core 'fn-mxa-reserve (fnn-owner-service-mux-next service)
+                               observed (and (fnn-owner-service-stopping service) t))))
+        (case (first answer)
+          (:reserved
+           (let ((loop (nth (second answer) loops)))
+             (setf (fnn-mux-loop-reserved loop) t
+                   *fnn-mux-accept-deferred* nil)
+             (incf (fnn-owner-service-mux-next service))
+             (values loop nil)))
+          (:deferred
+           (if (not *fnn-mux-accept-deferred*)
+               (progn (setq *fnn-mux-accept-deferred* t)
+                      (values :again (fnn-core 'fn-mxa-deferral-line observed)))
+             (let ((left (fnn-seconds-to-deadline deadline)))
+               (cond ((<= left 0) (values nil nil))
+                     ;; Timed out: SBCL may return without the mutex held, so
+                     ;; leave touching nothing it protects.
+                     ((sb-thread:condition-wait (fnn-owner-service-mux-slot-free service)
+                                                (fnn-owner-service-mux-slot-lock service)
+                                                :timeout left)
+                      (values :again nil))
+                     (t (values nil nil))))))
+          (otherwise (values nil nil)))))))
 
 (defun fnn-mux-reserve (service seconds)
-  "A loop whose pending-accept slot is now this caller's, round-robin from
-the service's cursor, waiting at most SECONDS for one; NIL when none came
-free (or the service is stopping).  Give it back with fnn-mux-unreserve
-when no socket fills it."
-  (let ((deadline (fnn-mux-ticks seconds))
-        (loops (fnn-owner-service-mux service)))
-    (sb-thread:with-mutex ((fnn-owner-service-mux-slot-lock service))
-      (loop
-        (when (or (null loops) (fnn-owner-service-stopping service))
-          (return nil))
-        (let* ((n (length loops))
-               (start (fnn-owner-service-mux-next service))
-               (loop (loop for k from 0 below n
-                           for candidate = (nth (mod (+ start k) n) loops)
-                           when (fnn-mux-slot-free-p candidate) return candidate)))
-          (when loop
-            (setf (fnn-mux-loop-reserved loop) t)
-            (incf (fnn-owner-service-mux-next service))
-            (return loop)))
-        (let ((left (fnn-seconds-to-deadline deadline)))
-          (when (<= left 0) (return nil))
-          ;; Timed out: SBCL may return without the mutex held, so leave
-          ;; touching nothing it protects (as the committer's wait does).
-          (unless (sb-thread:condition-wait (fnn-owner-service-mux-slot-free service)
-                                            (fnn-owner-service-mux-slot-lock service)
-                                            :timeout left)
-            (return nil)))))))
+  "A loop whose pending-accept slot is now this caller's, waiting at most
+SECONDS for one; NIL when none came free (or the service is stopping).
+ACL2 decides from each loop's observation (books/mux-accept-slot.lisp
+fn-mxa-reserve: round robin from the service's cursor, a loop holding no
+reservation and no pending socket; KEYSTONE
+fn-mxa-reservation-keeps-the-pending-bound).  Its deferral
+(:pending-accept-bound) leaves the connections in the kernel's listen queue
+and is named in the service log once per episode, written outside the slot
+lock.  Give the slot back with fnn-mux-unreserve when no socket fills it."
+  (let ((deadline (fnn-mux-ticks seconds)))
+    (loop
+      (multiple-value-bind (result line) (fnn-mux-reserve-once service deadline)
+        (when line
+          (ignore-errors (fnn-log-line (map 'list #'char-code line))))
+        (unless (eq result :again)
+          (return result))))))
 
 (defun fnn-mux-unreserve (service loop)
   (sb-thread:with-mutex ((fnn-owner-service-mux-slot-lock service))
