@@ -101,15 +101,21 @@ keep baseline backing charged through idle, and quarantine every torn reset."
 ;;; (TOKEN NIL WINDOW), the raw window cache's shape with no plan: a published
 ;;; decoded window's extent is a function of its token
 ;;; (books/decoded-window-read.lisp fn-pwz-token-window-length).
+;;; The inline single-array child IS the array it holds: the slot contains the
+;;; fn-ew-buffer's (simple-array (unsigned-byte 8) (16384)) directly, not a
+;;; field vector around it. Measured on the developer image (3e53d7bc5, run
+;;; w-window/native-ww-diag-c on hbox, lane w-window 2026-10-05): (svref job 7)
+;;; is a rank-1 array of exactly 16384 octets, element type (unsigned-byte 8),
+;;; simple-vector-p NIL. The defconstant below keeps its original bytes: its
+;;; expansion is compiled into the image's callers.
 (defconstant +fnn-decoded-job-window-slot+ 7
   "The fn-dwj-window child of the fn-decoded-job stobj object (books/decoded-worker-job.lisp:
 carry 0, input 1, hash 2, zin 3, win 4, tab 5, out 6, window 7; the input is (svref job 1) above).")
 
 (defun fnn-extent-decoded-window-movable-p (job)
-  (let ((window (and (simple-vector-p job) (> (length job) +fnn-decoded-job-window-slot+)
-                     (svref job +fnn-decoded-job-window-slot+))))
-    (and (simple-vector-p window) (= (length window) 1)
-         (typep (svref window 0) '(simple-array (unsigned-byte 8) (16384))))))
+  (and (simple-vector-p job) (> (length job) +fnn-decoded-job-window-slot+)
+       (typep (svref job +fnn-decoded-job-window-slot+)
+              '(simple-array (unsigned-byte 8) (16384)))))
 
 (defun fnn-extent-decoded-window-cache-attempt (worker token)
   "Extent lock held, the returned job's last borrow released.  NIL, or (:cached
