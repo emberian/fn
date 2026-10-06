@@ -1262,12 +1262,17 @@ followed these writes, under this lock."
 WRITTEN with each journal written added once, in first-written order.  The
 caller owes each one barrier (fnn-owner-feed-barrier-batch)."
   (fnn-owner-measured (:feed-flush)
-    (dolist (pair pairs)
-      (sb-thread:with-mutex ((fnn-owner-feed-journal-lock (car pair)))
-        (fnn-owner-feed-append-locked (car pair) (cdr pair) :barrier nil))
-      (unless (member (car pair) written :test #'eq)
-        (setq written (append written (list (car pair)))))))
-  written)
+    (let ((seen (make-hash-table :test #'eq))
+          (fresh nil))
+      (dolist (journal written)
+        (setf (gethash journal seen) t))
+      (dolist (pair pairs)
+        (sb-thread:with-mutex ((fnn-owner-feed-journal-lock (car pair)))
+          (fnn-owner-feed-append-locked (car pair) (cdr pair) :barrier nil))
+        (unless (gethash (car pair) seen)
+          (setf (gethash (car pair) seen) t)
+          (push (car pair) fresh)))
+      (append written (nreverse fresh)))))
 
 (defun fnn-owner-feed-barrier-batch (journals)
   "One barrier per journal of JOURNALS that still holds unbarriered frames."
