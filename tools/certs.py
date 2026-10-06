@@ -2584,7 +2584,11 @@ def main(argv: list[str] | None = None) -> int:
         report = status(root, cache)
     for line in report.lines():
         print(line)
-    return 1 if arguments.action == "install-set" and report.artifact_set is None else 0
+    if arguments.action == "install-set" and report.artifact_set is None:
+        return 1
+    # `install` reports a book it cannot read (a deleted include) as a finding
+    # and installs the rest; the finding is still a failure of the command.
+    return 1 if arguments.action == "install" and report.unreadable else 0
 
 
 if __name__ == "__main__":
