@@ -6,10 +6,11 @@
  "notes": [
   "10-06 16:00 PARKED. Not landed on the merged tree. assert_foreign_lineage runs plain status; fnn-operator-status-once prints the not-running lines, then fnn-command-stopped-status / fn-omr-stopped-report, which is the checkpoint header and journal sizes (exit 0) and never calls fn-lgl-open. That is the red: exit 0 and the not-running line. The open does refuse: fnn-recover-log calls fnn-log-lineage-genesis before any record, and store checkpoint publishes only after fnn-open-live-store. Row S3 says plain status does not replay. Un-parks: a store-lineage lane with an image, choosing either to run fn-lgl-open before the not-running lines (this item; row S3 changes) or to point the test at status --replay. This shift builds no image and does not retarget the test."
  ],
- "owner": "unowned",
+ "disposition": "PARKED",
+ "owner": "store-lineage",
  "severity": "high",
  "source": "fill-20261004",
- "state": "open",
+ "state": "deferred",
  "title": "tests.test_native_store_lineage 3F: 'checkpoint' over a diverged copy (with a suffix and with an empty suffix) is expected to be refused by name but succeeds with exit 0 / 'not-running (no process holds the store ...)'",
  "updated": "2026-10-06T16:00:42Z"
 }
