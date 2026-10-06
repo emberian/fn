@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/blake3-tree.lisp",
+ "id": "PROOF-OWED-B3-IS-WINDOW-COMPOSITION",
+ "notes": [],
+ "owner": "streaming",
+ "severity": "medium",
+ "slice": "blake3",
+ "source": "streaming",
+ "state": "open",
+ "title": "blake3-tree owes fn-blake3-is-window-composition: for an octet list m, (fn-blake3 m) equals the output root of the window tree over the window outs at iv, flags 0, counter 0; follows from fn-b3-node-is-window-tree.",
+ "updated": "2026-10-06T23:32:03Z"
+}

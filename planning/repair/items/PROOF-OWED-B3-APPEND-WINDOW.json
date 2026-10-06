@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/blake3-tree.lisp",
+ "id": "PROOF-OWED-B3-APPEND-WINDOW",
+ "notes": [],
+ "owner": "streaming",
+ "severity": "medium",
+ "slice": "blake3",
+ "source": "streaming",
+ "state": "open",
+ "title": "blake3-tree owes fn-b3-append-window: absorbing one more window (cv-push of its node) into the stack held over whole windows of prefix, then folding, equals the node of prefix ++ window.",
+ "updated": "2026-10-06T23:32:03Z"
+}
