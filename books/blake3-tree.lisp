@@ -315,6 +315,71 @@
                               (fn-b3-pair-outs key flags outs) st)
                             (fn-b3-pair-outs key flags outs)))))
 
+(defun fn-b3-e-ind (key flags h outs st)
+  ; E induction: same two-step shape as L-pair, the stack absorbing pairs.
+  (declare (xargs :measure (len outs) :verify-guards nil))
+  (if (or (atom outs) (atom (cdr outs)))
+      (list h outs st)
+    (fn-b3-e-ind key flags h (cddr outs)
+      (fn-b3-cv-push key flags (+ 1 (nfix h))
+        (fn-b3-parent-out key (car outs) (cadr outs) flags) st))))
+
+(defthm fn-b3-stack-push-all-even-above
+  ; E: absorbing an EVEN run of singles at height h leaves the whole stack
+  ; above h — nothing single-height survives pairing.
+  (implies (and (natp h) (fn-b3-stack-above h st)
+                (true-listp outs) (evenp (len outs)))
+           (fn-b3-stack-above h
+             (fn-b3-stack-push-all key flags h outs st)))
+  :hints (("Goal" :induct (fn-b3-e-ind key flags h outs st)
+                   :expand ((fn-b3-stack-push-all key flags h outs st)))))
+
+(defthm fn-b3-stack-above-means-no-match
+  ; An above-h stack has no h-height front to merge with.
+  (implies (and (fn-b3-stack-above h st) (consp st))
+           (not (equal (nfix (fn-b3-nthx 0 (car st))) (nfix h))))
+  :hints (("Goal" :in-theory (enable fn-b3-stack-above))))
+
+(defthm fn-b3-cv-push-of-above-front
+  ; Pushing at exactly h onto an above-h stack: no front can match, so it
+  ; conses (empty or full stack alike).
+  (implies (fn-b3-stack-above h st)
+           (equal (fn-b3-cv-push key flags h out st)
+                  (cons (list (nfix h) out) st)))
+  :hints (("Goal" :in-theory (enable fn-b3-stack-above)
+                   :expand ((fn-b3-cv-push key flags h out st)))))
+
+(defthm fn-b3-stack-push-all-append-single
+  ; R: after an EVEN run of singles at h (from empty), one more single at h
+  ; does not merge — the stack is above h — it conses at the front.
+  (implies (and (natp h) (true-listp os) (evenp (len os)))
+           (equal (fn-b3-stack-push-all key flags h (append os (list x)) nil)
+                  (cons (list (nfix h) x)
+                        (fn-b3-stack-push-all key flags h os nil))))
+  :hints (("Goal" :do-not-induct t
+                   :in-theory (disable fn-b3-stack-push-all-of-pairs)
+                   :use ((:instance fn-b3-stack-push-all-even-above (st nil)))
+                   :expand ((fn-b3-stack-above h nil)
+                            (fn-b3-stack-push-all key flags h (list x)
+                              (fn-b3-stack-push-all key flags h os nil))))))
+
+(defthm fn-b3-stack-spine-of-cons
+  ; One unfolding of the spine walk: the front (lowest) entry absorbed as the
+  ; LEFT child over the accumulator; nil names an empty right side.
+  (equal (fn-b3-stack-spine key flags (cons e st) acc)
+         (fn-b3-stack-spine key flags st
+           (if (null acc)
+               (fn-b3-nthx 1 e)
+             (fn-b3-parent-out key (fn-b3-nthx 1 e) acc flags))))
+  :hints (("Goal" :expand ((fn-b3-stack-spine key flags (cons e st) acc)))))
+
+(defthm fn-b3-stack-spine-of-append
+  ; B: the spine walk distributes over stack concatenation, front run first.
+  (equal (fn-b3-stack-spine key flags (append st1 st2) acc)
+         (fn-b3-stack-spine key flags st2
+           (fn-b3-stack-spine key flags st1 acc)))
+  :hints (("Goal" :induct (fn-b3-stack-spine key flags st1 acc))))
+
 ; -----------------------------------------------------------------------------
 ; THE DECOMPOSITION (statements; proofs in progress, see the lanedump):
 
