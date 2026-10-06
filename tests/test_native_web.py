@@ -19,6 +19,7 @@ import http.client
 import re
 import socket
 import ssl
+import sys
 import time
 import unittest
 from urllib.parse import urlencode
@@ -247,6 +248,14 @@ class FaceCases:
                 self.assertTrue(client.command("AUTHINFO PASS " + PASSWORD).startswith(b"281 "))
                 self.assertTrue(client.command("GROUP local.general").startswith(b"211 "))
                 status, data = client.multiline("ARTICLE " + number)
+                if not status.startswith(b"220 "):
+                    # WW-DIAG (lane w-window, temporary): the node starts in
+                    # setUpClass, so its stderr is never registered with the
+                    # failure keeper; dump it here into the module log.
+                    trace = self.node.process.stderr.since(0)
+                    sys.stderr.write("\n=== WW-DIAG node stderr ({} octets, {} dropped) ===\n{}\n=== WW-DIAG end ===\n".format(
+                        len(trace), self.node.process.stderr.dropped,
+                        trace.decode("utf-8", "replace")))
                 self.assertTrue(status.startswith(b"220 "), status)
                 return data
 
