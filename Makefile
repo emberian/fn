@@ -2653,6 +2653,8 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_main_last_check
 	@$(CHECK_STEP) $(PYTHON) tools/lock_discipline_check.py --check --summary
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_lock_discipline_check
+	@$(CHECK_STEP) $(PYTHON) tools/lanedump_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_lanedump_check
 	@$(CHECK_EXECUTE)
 
 check-fast-lane:
