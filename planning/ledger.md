@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 3049 |
-| Certification roots in the Makefile | 2554 |
-| Books inside the root closure | 2873 |
-| `defthm` and `defthmd` events | 40215 |
-| `defun` events | 25938 |
+| Books read | 3051 |
+| Certification roots in the Makefile | 2556 |
+| Books inside the root closure | 2875 |
+| `defthm` and `defthmd` events | 40335 |
+| `defun` events | 25956 |
 | Functions with verified guards | 4053 |
 | Functions declared `:verify-guards nil` and never verified | 3367 |
-| Functions left at the default with an explicit guard | 14356 |
-| Functions left at the default with no guard | 4162 |
-| `assert-event` checks | 27901 |
+| Functions left at the default with an explicit guard | 14367 |
+| Functions left at the default with no guard | 4169 |
+| `assert-event` checks | 27906 |
 | `must-fail` checks | 2708 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 255 |
-| Theorems flagged SUSPECT by shape | 1469 |
+| `encapsulate` events | 257 |
+| Theorems flagged SUSPECT by shape | 1470 |
 | Export-hygiene warnings | 423 |
 | Enabled-projection warnings | 78 |
 | Teeth-form warnings | 296 |
-| Include-hygiene warnings | 4052 |
+| Include-hygiene warnings | 4051 |
 | Host-names warnings | 3558 |
 | Hand-written-record warnings | 19 |
 
@@ -1900,8 +1900,9 @@ that `make certify` requests.
 | `books/wildmat-work.lisp` | root | 52 | 17 | 0/0/0/17 | 0 | 0 | 4 |
 | `books/wildmat.lisp` | root | 20 | 44 | 44/0/0/0 | 0 | 0 | 0 |
 | `books/wire-export.lisp` | root | 2 | 44 | 0/12/32/0 | 0 | 0 | 0 |
-| `books/wire-family-consumer.lisp` | root | 17 | 2 | 0/0/1/1 | 0 | 0 | 0 |
-| `books/wire-family-fnct.lisp` | root | 20 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/wire-family-consumer.lisp` | root | 85 | 8 | 0/0/5/3 | 0 | 0 | 0 |
+| `books/wire-family-control.lisp` | root | 40 | 7 | 0/0/7/0 | 0 | 0 | 1 |
+| `books/wire-family-fnct.lisp` | root | 32 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/wire-family-fncu.lisp` | root | 31 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/wire-family-identity.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/wire-grammar.lisp` | root | 196 | 48 | 4/3/41/0 | 0 | 0 | 12 |
@@ -3128,7 +3129,8 @@ that `make certify` requests.
 | `tests/acl2/wildmat-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 5 | 0 |
 | `tests/acl2/wildmat-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 61 | 0 | 0 |
 | `tests/acl2/wire-bounds-tests.lisp` | root | 0 | 3 | 0/0/1/2 | 52 | 0 | 0 |
-| `tests/acl2/wire-family-consumer-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 2 | 0 | 0 |
+| `tests/acl2/wire-family-consumer-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 5 | 0 | 0 |
+| `tests/acl2/wire-family-control-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 2 | 0 | 0 |
 | `tests/acl2/wire-family-fncu-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/wire-grammar-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 0 | 0 |
 | `tests/acl2/wire-outbound-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 12 | 0 |
@@ -4521,6 +4523,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-vcu-done-meaning-by-definition` | `books/view-delta-cursor-refinement.lisp` | 152 | arm-of-definition: the hypotheses select one IF/COND arm of fn-vcu-meaning and the conclusion is that arm's value |
 | `fn-vdc-put-nonstring-key-is-unchanged` | `books/view-delta-concrete.lisp` | 133 | arm-of-definition: the hypotheses select one IF/COND arm of fn-vdc-put and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-vdc-put and the conclusion is that branch's value |
 | `fn-web-client-address-without-proxy-unfolds` | `books/web-request.lisp` | 1370 | arm-of-definition: the hypotheses select one IF/COND arm of fn-web-client-address and the conclusion is that arm's value |
+| `fn-wf-ctl-bad-of-error` | `books/wire-family-control.lisp` | 354 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ncline-reply-payload-decode and the conclusion is that arm's value |
 | `fn-wg-encode-opener-base64-lines` | `books/wire-grammar.lisp` | 1083 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value |
 | `fn-wg-encode-opener-bytes` | `books/wire-grammar.lisp` | 1065 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value |
 | `fn-wg-encode-opener-const` | `books/wire-grammar.lisp` | 1053 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value |

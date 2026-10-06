@@ -1940,7 +1940,9 @@
     "books/wire-family-identity",
     "books/wire-family-fnct",
     "books/wire-family-consumer",
+    "books/wire-family-control",
     "tests/acl2/wire-family-consumer-tests",
+    "tests/acl2/wire-family-control-tests",
     "books/wire-export",
     "books/store-identity",
     "tests/acl2/store-identity-tests",
@@ -2558,26 +2560,26 @@
     "tests/acl2/withdrawal-index-carried-tests"
   ],
   "totals": {
-    "books": 3049,
-    "books_in_root_closure": 2873,
-    "roots": 2554,
-    "theorems": 40215,
-    "functions": 25938,
-    "assert_events": 27901,
+    "books": 3051,
+    "books_in_root_closure": 2875,
+    "roots": 2556,
+    "theorems": 40335,
+    "functions": 25956,
+    "assert_events": 27906,
     "must_fails": 2708,
     "prover_refusals": 0,
-    "encapsulates": 255,
+    "encapsulates": 257,
     "guards": {
       "verified": 4053,
       "declared-off": 3367,
-      "default-guarded": 14356,
-      "default-unguarded": 4162
+      "default-guarded": 14367,
+      "default-unguarded": 4169
     },
-    "suspect_theorems": 1469,
+    "suspect_theorems": 1470,
     "export_hygiene_warnings": 423,
     "enabled_projection_warnings": 78,
     "teeth_form_warnings": 296,
-    "include_hygiene_warnings": 4052,
+    "include_hygiene_warnings": 4051,
     "host_names_warnings": 3558,
     "hand_written_record_warnings": 19
   },
@@ -55911,12 +55913,13 @@
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 21,
+      "defconsts": 31,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "outcome-class",
         "wire-family-consumer",
+        "wire-family-control",
         "wire-family-fncu",
         "wire-family-identity",
         "wire-grammar"
@@ -55929,34 +55932,65 @@
       "book": "books/wire-family-consumer.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 17,
-      "functions": 2,
+      "theorems": 85,
+      "functions": 8,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 1,
-        "default-unguarded": 1
+        "default-guarded": 5,
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 3,
+      "defconsts": 11,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "consumer-reason",
+        "wire-family-fnct"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/wire-family-control.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 40,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 7,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 5,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "consumer-local-control",
+        "native-control-line",
         "wire-family-fnct"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "fn-wf-ctl-bad-of-error"
+      ],
       "read_error": null
     },
     {
       "book": "books/wire-family-fnct.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 20,
+      "theorems": 32,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -55970,13 +56004,15 @@
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 0,
+      "encapsulates": 1,
       "includes": [
         "native-control",
         "wire-family-fncu",
         "wire-grammar"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -89670,12 +89706,38 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 2,
+      "functions": 4,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 2
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 5,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/wire-family-consumer"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/wire-family-control-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
       "assert_events": 2,
@@ -89685,7 +89747,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/wire-family-consumer"
+        "../../books/wire-family-control"
       ],
       "system_includes": [],
       "suspects": [],
@@ -101126,6 +101188,14 @@
       "line": 1370,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-web-client-address and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-wf-ctl-bad-of-error",
+      "book": "books/wire-family-control.lisp",
+      "line": 354,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-ncline-reply-payload-decode and the conclusion is that arm's value"
       ]
     },
     {
@@ -122407,23 +122477,16 @@
       },
       {
         "book": "books/wire-export.lisp",
-        "line": 35,
+        "line": 36,
         "include": "outcome-class",
         "included": "books/outcome-class.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/wire-family-consumer.lisp",
-        "line": 14,
-        "include": "wire-family-fnct",
-        "included": "books/wire-family-fnct.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/wire-family-consumer.lisp",
         "line": 15,
-        "include": "consumer-local-control",
-        "included": "books/consumer-local-control.lisp",
+        "include": "consumer-reason",
+        "included": "books/consumer-reason.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
