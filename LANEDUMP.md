@@ -5145,3 +5145,21 @@ Batch 1: families priced 10/30 (was 4): GROUP, neighbour (NEXT and LAST), DATE, 
 1. proof_repl: `start tN books/output-tariff-line --certify-missing`, then `send tN '<defthm>'`; each reply bound proved in seconds by `:in-theory (e/d (<factory> fn-nntp-make-result fn-nntp-result-effects fn-nntp-reply-effect fn-nntp-single fn-tariff-effects-octets ...) (<stobj readers>))`. Lemmas: len of fn-nntp-string-octets / append-pieces / crlf / decimal-field (<=10) are local in the line book. Do NOT open fn-nntp-pad2/pad4 (1.7M steps): state their lengths.
 2. Row = one line in def-family-tariffs; the generator emits the instance. Test witness values: ground defthms over *tfm-* fixture (find a ground value by proving (equal X n) for candidate n).
 3. Gate: explicit book list as above, not --lane.
+
+# repair-wave-1 continuation, 2026-10-06
+
+Worktree build/lanes/repair-wave-1, branch lane/repair-wave-1. Merged origin/dev 85dc37bfb before judging. Shift cap three items (4, 5, 5b). Items 2 and 3 stay the 7de33c6d0 note: code-landed at merge 7b3e7edb7, production-image native is the integrator's next image batch. Not reopened.
+
+## Item 4: rp-feed-defer-drop + rp-feed-dropped-holds-capacity
+
+LANDED in source at 04669a5c6 (ancestor). On the merged tree, fn-feed-observe's :defer arm is fn-feed-back-off only; fn-feed-retry-exhaustedp counts losses, so a 431/436 never gives an entry up; fn-feed-give-up retires the entry and the queue has no :dropped state, so fn-own-feed-target-capacityp's len(queue) counts only entries still owed. Certify receipts in planning/evidence-index.tsv: fc324dd76d523f0cc828a0332712f8453361952ab4593a013de47a9d5978b821 (certify-20261004T180200Z-48706) and 0e1caca5daadd98afa458c90f2810a42d734ff78d06ff4e022da2ab3b8233921 (certify-20261004T200106Z-125291). Native PARKED: tests.test_native_peer_hostile_feed, integrator's next image batch (the 6107ceb56 overlay was refused). Repair state stays ready until that recording. Integrator un-parks.
+
+## Item 5: RS-01
+
+LANDED in source at 2ef809d63, staged-abort restatement 5bc9bd69c. The seal gate sets prepared to :refused and aborts the staged record through fn-owner-known-abort; :recovery-required is no longer that path. Green this shift, no image: `python3 -m unittest tests.test_native_raw_scripts.RawHarnessTests.test_post_seal_gate_refusal_raw_mock tests.test_native_post_seal_gate.PostSealGateRefusalSource.test_refused_staged_prepare_is_a_known_abort_not_a_reservation_refusal` (2 tests, 0.074s, OK, lane tree). Native PARKED: tests.test_native_post_seal_gate.NativePostSealGate needs a developer image. Integrator's next image batch un-parks. Repair state stays ready.
+
+## Item 5b: peering transit-hygiene
+
+LANDED 3e53d7bc5. The red on set 3a9806784 (also ecf10066f and the pre-restatement run on f375da27c) was the native case from before ruling 11d067e03: peers 2 and 3 were still expected to draw 438 on CHECK, so the case timed out at QUIT after their IHAVE drew 335. The commit restates the test only (per-offering-peer refused-offer memory). Green on hbox against the f375da27c images, one case, 1.3 s (integrator4). Not a product bug. No image this shift.
+
+Stopped at the shift cap. Next open rows, not started: PEER-OWED-INIT-RESERVES-LAUNCH-EXTRA, FILL-STORE-LINEAGE-DIVERGED-CHECKPOINT, the docs truth pass, the master-list tail.
