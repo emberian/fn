@@ -53,6 +53,7 @@
 (defparameter *base* '(:heap 256 :small 8192 1024 16))
 (defparameter *cold* nil)
 (defparameter *output* nil)
+(defparameter *live* nil)
 (defparameter *core-observation* '(83886080 . 67108864))
 (defparameter *machine* '(8589934592))
 (defparameter *calls* nil)
@@ -69,6 +70,14 @@
     ((fn-heap-reserve-operation-decide fn-heap-status-decide) *base*)
     (fn-native-operator-host-result-run-cold-resources *cold*)
     (fn-native-operator-host-result-run-output-resources *output*)
+    (fn-native-operator-host-result-run-reclaim-live *live*)
+    ;; D53 (books/reclaim-reservation.lisp): the opt-in's extension, first in
+    ;; the chain; recorded, and the base itself when off (its keystone
+    ;; fn-rrv-without-the-opt-in-is-the-base-decision), one more MiB when on.
+    (fn-rrv-extend-reservation
+     (push (cons :reclaim args) *calls*)
+     (let ((base (first args)))
+       (if (second args) (list* (first base) (1+ (second base)) (cddr base)) base)))
     (fn-pio-direct-workers 4)
     (fn-arx-read-cache-entries 8)
     (fn-crv-extend-reservation
@@ -82,8 +91,8 @@
     (fn-heap-reserve-report-line (format nil "~s" (first args)))
     (fn-heap-decision-exit-code (if (eq (caar args) :heap) 0 1))
     (otherwise (apply *original-core* entry args))))
-(defun heap-command (&optional (action :run) cold)
-  (let ((*native-action* action) (*cold* cold)
+(defun heap-command (&optional (action :run) cold live)
+  (let ((*native-action* action) (*cold* cold) (*live* live)
         (*fnn-stdout* (make-string-output-stream))
         (*calls* nil) (*captured-core* 0) (*captured-machine* 0))
     (let ((code (fnn-command-heap "--" '("operator" "CONFIG" "run"))))
@@ -92,15 +101,28 @@
 (multiple-value-bind (code line calls cores machines) (heap-command)
   (assert (= code 0))
   (assert (equal line "(:HEAP 257 :SMALL 8192 1024 16)"))
-  (assert (equal (mapcar #'car calls) '(:cold :default :peer :output)))
-  (assert (equal (subseq (cdr (second calls)) 1 6)
+  (assert (equal (mapcar #'car calls) '(:reclaim :cold :default :peer :output)))
+  ;; Off (no `[resources] reclaim_live'): the store decision, unextended; a
+  ;; served run's base is not sized by an observed history (ACL2's
+  ;; fn-heap-operation-observes-p), so neither is its reserve.
+  (assert (equal (cdr (first calls))
+                 (list *base* nil '(:recorded-profile) nil *core-observation* *machine*)))
+  (assert (equal (subseq (cdr (third calls)) 1 6)
                  '(:run nil "/absolute/fixture" 4 8)))
-  (assert (equal (second (cdr (fourth calls))) nil))
+  (assert (equal (second (cdr (fifth calls))) nil))
   ;; The base decision's own profile and observation reach the launch floor.
-  (assert (equal (nthcdr 8 (cdr (second calls)))
+  (assert (equal (nthcdr 8 (cdr (third calls)))
                  (list (first (car *floor-args*)) (third (car *floor-args*)))))
   (assert (equal (second (car *floor-args*)) *core-observation*))
   (assert (= cores machines 1)))
+;; On: the opt-in reaches ACL2's extension with the base decision's profile
+;; and observation, and the cold, default and output extensions are added to
+;; the space that already holds the reserve.
+(multiple-value-bind (code line calls) (heap-command :run nil t)
+  (assert (= code 0))
+  (assert (equal line "(:HEAP 258 :SMALL 8192 1024 16)"))
+  (assert (equal (second (cdr (first calls))) t))
+  (assert (equal (second (second calls)) '(:heap 257 :small 8192 1024 16))))
 ; No selected backing extension for init/offline/help, or explicit cold.
 (dolist (action '(:init :status :compact nil))
   (multiple-value-bind (code line) (heap-command action)

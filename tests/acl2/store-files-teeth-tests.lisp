@@ -22,6 +22,7 @@
 (include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 (include-book "held-rows-tests")
+(include-book "../../books/defkeystone")
 
 ; -----------------------------------------------------------------------------
 ; A reachable, non-degenerate witness: the whole publication sequence, driven
@@ -537,3 +538,49 @@
                (list (sft-rel 0 0 0) '(:not an event)) 0 0 5 nil))
 (assert-event (sft-record-list-agrees
                (cons (sft-rel 0 0 0) :tail) 0 0 5 nil))
+
+; The owed bridges of def-keyset-check fn-sf-success-listp (books/store-files.lisp):
+; the keyset arm and the walk are the :logic recursion.  Records are retention
+; events; a record's pair is its (sequence . txid).
+(defconst *sft-ks-records*
+  (list (fn-store-retention-event-make :release 0 0 0 "o" "s" "e" 0)
+        (fn-store-retention-event-make :release 3 4 0 "o" "s" "e" 0)
+        (fn-store-retention-event-make :release 5 6 0 "o" "s" "e" 0)))
+
+(defteeth fn-sf-success-listp-ks-is-logic
+  :claim (nil (equal (fn-sf-success-listp-ks successes records)
+                     (fn-sf-success-listp-walk successes records)))
+  :subject fn-sf-success-listp
+  :witness ((successes '((3 . 4) (0 . 0))) (records *sft-ks-records*))
+  :breaks nil
+  :mutations ((lossy-key (:conclusion (equal (fn-sf-success-listp-ks successes records)
+                                             (fn-sf-success-listp-walk
+                                              successes
+                                              (cons (fn-store-retention-event-make
+                                                     :release 7 7 0 "o" "s" "e" 0)
+                                                    records))))
+                         ((successes '((7 . 7))) (records *sft-ks-records*))
+                         :fault "a key put for a record the records do not hold")))
+
+(defteeth fn-sf-success-listp-walk-is-logic
+  :claim (nil (equal (fn-sf-success-listp-walk successes records)
+                     (fn-sf-success-listp successes records)))
+  :subject fn-sf-success-listp
+  :witness ((successes '((5 . 6))) (records *sft-ks-records*))
+  :breaks nil
+  :mutations ((each-forgotten (:conclusion (equal (fn-sf-success-listp-walk successes records)
+                                                  (fn-sf-success-listp (cdr successes) records)))
+                              ((successes '(x (0 . 0))) (records *sft-ks-records*))
+                              :fault "the per-success pair test skipped")))
+
+; The owed rows this book declares the teeth of are met (fn-dt-owed-problem over
+; those rows alone: the other owed rows of this world are the books' own).
+(make-event
+ (let* ((owed (table-alist 'fn-teeth-owed (w state)))
+        (mine (list (assoc-eq 'fn-sf-success-listp-ks-is-logic owed) (assoc-eq 'fn-sf-success-listp-walk-is-logic owed))))
+   (if (member-equal nil mine)
+       (er soft 'defteeth-check "an owed row named here is not in this world")
+     (let ((problem (fn-dt-owed-problem mine (table-alist 'fn-teeth (w state)) (w state))))
+       (if problem
+           (er soft 'defteeth-check "~@0." problem)
+         (value '(value-triple :teeth-complete)))))))

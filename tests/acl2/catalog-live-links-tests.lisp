@@ -25,8 +25,12 @@
 (defun cllt-held (seq msgid groups)
   (declare (xargs :guard t :verify-guards nil))
   (let ((art (append (fn-record-string-octets "Subject: a") '(13 10 13 10 97 13 10))))
-    (fn-held-plain (fn-record-make seq (+ 1 seq) 0 msgid art groups "o" "s" "e" 1 5)
-                   seq)))
+    ;; availability decided from the article's bytes, as the owner's load
+    ;; prepares a row (fn-cat-prepare-row-availability, 1a4020a4a)
+    (fn-held-with-facts
+     (fn-held-plain (fn-record-make seq (+ 1 seq) 0 msgid art groups "o" "s" "e" 1 5)
+                    seq)
+     (fn-held-facts-of art))))
 
 (defconst *cat-h0* (cllt-held 0 "<a@x>" '("fn.test")))
 (defconst *cat-h1* (cllt-held 1 "<b@x>" '("fn.test")))
@@ -50,7 +54,7 @@
 ; The tables the three commits GENERATE from empty ones (Codex r30 F2): the
 ; links each commit's plan installs, "fn.other" 1 included (the shadowed
 ; entries stay in the alist, as the hash table's puts replace them).
-(defmacro cllt-livep (h) `(and (null (fn-held-withdrawn ,h)) (fn-scat-msgid-idp (fn-record-msgid ,h))))
+(defmacro cllt-livep (h) `(fn-cat-live-candidatep ,h))
 (defmacro cllt-gen (dir)
   `(fn-cpl-link ,dir (fn-cpl-cplan (fn-record-groups *cat-h2*) (cllt-livep *cat-h2*) *cllt-c2*)
      (fn-cpl-link ,dir (fn-cpl-cplan (fn-record-groups *cat-h1*) (cllt-livep *cat-h1*) *cllt-c1*)

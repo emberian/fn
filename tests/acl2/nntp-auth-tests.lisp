@@ -9,6 +9,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/nntp-auth")
+(include-book "../../books/defkeystone")
 (include-book "../../books/codec-attach")
 
 (local (in-theory (enable fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
@@ -751,3 +752,34 @@
 (assert-event (member-equal (fn-auth-starttls-effect)
                             (fn-post-result-effects
                              (fn-auth-starttls *au-s-req* nil))))
+
+; TEETH-62 BEGIN
+; The PRF-039/PRF-1269 STARTTLS keystones of books/nntp-auth.lisp with their teeth (TEETH CONTRACT v1).
+(defteeth fn-auth-starttls-after-authentication-is-refused-without-reset
+  :claim (((authenticated (fn-auth-session-subject as)) (no-arguments (null args)) (cleartext (not (fn-auth-session-tlsp as))))
+          (and (equal (fn-post-result-session (fn-auth-starttls as args)) as)
+                (equal (fn-post-result-effects (fn-auth-starttls as args))
+                       (fn-auth-single as "502 already authenticated"))
+                (null (fn-post-result-submission (fn-auth-starttls as args)))))
+  :subject fn-auth-starttls
+  :witness ((as (au-principal-authed)) (args nil))
+  :breaks ((authenticated ((as *au-s-req*) (args nil)))
+           (no-arguments ((as (au-principal-authed)) (args (list (fn-nntp-string-octets "x")))))
+           (cleartext ((as (fn-auth-make-session (fn-auth-session-base *au-s-req-tls*) *au-required* nil *au-principal* t nil nil nil 0)) (args nil))))
+  :mutations ((worded-as-480
+               (:conclusion (equal (fn-post-result-effects (fn-auth-starttls as args)) (fn-auth-single as "480 authentication required")))
+               ((as (au-principal-authed)) (args nil))
+               :fault "the refusal worded as an authentication demand, which RFC 4642 forbids here")))
+
+(defteeth fn-auth-starttls-is-not-advertised-once-authenticated-on-any-connection
+  :claim (((authenticated subject))
+          (not (member-equal (fn-nntp-string-octets "STARTTLS")
+                              (fn-auth-capability-lines-for-peer
+                               acfg subject tlsp postingp record ctx))))
+  :subject fn-auth-capability-lines-for-peer
+  :witness ((acfg *au-required*) (subject *au-principal*) (tlsp nil) (postingp t) (record nil) (ctx nil))
+  :breaks ((authenticated ((acfg *au-required*) (subject nil) (tlsp nil) (postingp t) (record nil) (ctx nil))))
+  :mutations ((as-if-unauthenticated
+               (:conclusion (not (member-equal (fn-nntp-string-octets "STARTTLS") (fn-auth-capability-lines-for-peer acfg nil tlsp postingp record ctx))))
+               ((acfg *au-required*) (subject *au-principal*) (tlsp nil) (postingp t) (record nil) (ctx nil))
+               :fault "the label withheld without regard to the session subject")))

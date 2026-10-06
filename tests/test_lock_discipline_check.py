@@ -7,6 +7,8 @@ negative fixtures are the shapes of this week's defects (r31 F1/F2, the
 committer catch, the publisher's early deregistration, the adopt push, r67
 F2's I/O under the owner); each positive twin is the repaired shape.
 """
+import contextlib
+import io
 import os
 import sys
 import tempfile
@@ -220,6 +222,178 @@ class R1State(unittest.TestCase):
         found = [f for f in run(src, ["R1"]) if f.rule == "R1"]
         self.assertTrue(any(f.function.startswith("lambda@") and "fnn-live-arena" in f.key for f in found))
 
+    def test_a_lambda_an_flet_funcalls_is_not_its_own_root(self):
+        # the cleanup shape: the lambda runs at the funcall, on this call.
+        # Spawning it as an async root invents a second actor.
+        src = """
+(defvar *fnn-box* nil)
+(defun fnn-touch () (setq *fnn-box* t))
+(defun fnn-command-box ()
+  (flet ((cleanup (operation)
+           (handler-case (funcall operation)
+             (serious-condition () nil))))
+    (cleanup (lambda () (fnn-touch)))))
+"""
+        self.assertFalse(any(f.rule == "R1b" and "*fnn-box*" in f.key for f in run(src, ["R1b"])))
+        self.assertFalse(any(name.startswith("lambda@") for name in analyzed(src).infos))
+
+    def test_a_lambda_funcalled_inside_the_flets_lock_holds_it(self):
+        src = """
+(defun fnn-run (service)
+  (flet ((call (operation) (funcall operation)))
+    (sb-thread:with-mutex ((fnn-owner-service-lock service))
+      (call (lambda () (fnn-live-arena))))))
+"""
+        self.assertEqual([f for f in run(src, ["R1"]) if f.rule == "R1"], [])
+
+    def test_a_lambda_an_flet_stores_stays_async(self):
+        src = """
+(defvar *fnn-hooks* nil)
+(defun fnn-register (service)
+  (flet ((save (operation) (setq *fnn-hooks* operation)))
+    (sb-thread:with-mutex ((fnn-owner-service-lock service))
+      (save (lambda () (fnn-live-arena))))))
+"""
+        found = [f for f in run(src, ["R1"]) if f.rule == "R1"]
+        self.assertTrue(any(f.function.startswith("lambda@") and "fnn-live-arena" in f.key for f in found))
+
+    def test_a_close_in_a_funcalled_flet_lambda_stays_with_the_opener(self):
+        src = """
+(defun fnn-command-close ()
+  (let ((fd (fnn-open "x" 0)))
+    (flet ((cleanup (thunk) (funcall thunk)))
+      (cleanup (lambda () (fnn-close fd))))))
+"""
+        self.assertFalse(any(f.key.startswith("foreign-close") for f in run(src, ["R10"])))
+
+
+class ParamRoutePruning(unittest.TestCase):
+    """628df3a0a: a conditional run route is dropped only for a call site
+    passing a SELF-EVALUATING literal that contradicts the arm's test."""
+    CALLEE = """
+(defun fnn-maybe-locked (service thunk locked)
+  (if locked
+      (sb-thread:with-mutex ((fnn-owner-service-lock service)) (funcall thunk))
+      (funcall thunk)))
+"""
+
+    SPAWN = """
+(defun fnn-spawn (s) (sb-thread:make-thread (lambda () (fnn-a s t)) :name "t"))
+"""
+
+    def r1(self, caller):
+        # R1 judges thread roots only: the caller runs on a spawned thread
+        return [f for f in run(self.CALLEE + caller + self.SPAWN, ["R1"])
+                if f.rule == "R1" and "fnn-live-arena" in f.key]
+
+    def test_literal_t_selects_the_locked_arm_and_prunes_the_bare_route(self):
+        self.assertEqual(self.r1("(defun fnn-a (s &optional x) (fnn-maybe-locked s (lambda () (fnn-live-arena)) t))"), [])
+
+    def test_literal_nil_selects_the_bare_arm_and_the_finding_fires(self):
+        self.assertTrue(self.r1("(defun fnn-a (s &optional x) (fnn-maybe-locked s (lambda () (fnn-live-arena)) nil))"))
+
+    def test_a_variable_discriminator_is_not_pruned(self):
+        self.assertTrue(self.r1("(defun fnn-a (s flag) (fnn-maybe-locked s (lambda () (fnn-live-arena)) flag))"))
+
+    def test_a_call_result_discriminator_is_not_pruned(self):
+        self.assertTrue(self.r1("(defun fnn-a (s &optional x) (fnn-maybe-locked s (lambda () (fnn-live-arena)) (fnn-decide s)))"))
+
+    def test_a_written_parameter_is_not_tagged(self):
+        src = """
+(defun fnn-maybe-locked (service thunk locked)
+  (setq locked (fnn-decide service))
+  (if locked
+      (sb-thread:with-mutex ((fnn-owner-service-lock service)) (funcall thunk))
+      (funcall thunk)))
+(defun fnn-a (s &optional x) (fnn-maybe-locked s (lambda () (fnn-live-arena)) t))
+(defun fnn-spawn (s) (sb-thread:make-thread (lambda () (fnn-a s)) :name "t"))
+"""
+        found = [f for f in run(src, ["R1"]) if f.rule == "R1" and "fnn-live-arena" in f.key]
+        self.assertTrue(found)
+
+    def test_a_parameter_written_by_pop_or_mvsetq_is_not_tagged(self):
+        # setq/setf with a value rebind the env entry; these heads rely on the write scan
+        for write in ("(pop locked)", "(multiple-value-setq (locked) (fnn-decide service))"):
+            src = """
+(defun fnn-maybe-locked (service thunk locked)
+  %s
+  (if locked
+      (sb-thread:with-mutex ((fnn-owner-service-lock service)) (funcall thunk))
+      (funcall thunk)))
+(defun fnn-a (s &optional x) (fnn-maybe-locked s (lambda () (fnn-live-arena)) t))
+(defun fnn-spawn (s) (sb-thread:make-thread (lambda () (fnn-a s)) :name "t"))
+""" % write
+            found = [f for f in run(src, ["R1"]) if f.rule == "R1" and "fnn-live-arena" in f.key]
+            self.assertTrue(found, write)
+
+    def test_a_shadowing_let_is_not_tagged(self):
+        src = """
+(defun fnn-maybe-locked (service thunk locked)
+  (let ((locked (fnn-decide service)))
+    (if locked
+        (sb-thread:with-mutex ((fnn-owner-service-lock service)) (funcall thunk))
+        (funcall thunk))))
+(defun fnn-a (s &optional x) (fnn-maybe-locked s (lambda () (fnn-live-arena)) t))
+(defun fnn-spawn (s) (sb-thread:make-thread (lambda () (fnn-a s)) :name "t"))
+"""
+        found = [f for f in run(src, ["R1"]) if f.rule == "R1" and "fnn-live-arena" in f.key]
+        self.assertTrue(found)
+
+
+class FletLambdaInlining(unittest.TestCase):
+    """84a4d8dd6 / 628df3a0a: a closure run synchronously under a lock is
+    inlined into that context; a stored one stays a fresh async root; the
+    inlining never invents a lock."""
+    SECTION = """
+(defvar *fnn-hooks* nil)
+(defstruct fnn-box slot)
+(defun fnn-section (service thunk)
+  (sb-thread:with-mutex ((fnn-owner-service-lock service)) (funcall thunk)))
+"""
+
+    def r1(self, body):
+        src = self.SECTION + "(defun fnn-a (s) %s)\n" % body + \
+            '(defun fnn-spawn (s) (sb-thread:make-thread (lambda () (fnn-a s)) :name "t"))\n'
+        return [f for f in run(src, ["R1"]) if f.rule == "R1" and "fnn-live-arena" in f.key]
+
+    def test_flet_ref_funcalled_by_a_section_runs_under_its_lock(self):
+        self.assertEqual(self.r1("(flet ((call () (fnn-live-arena))) (fnn-section s #'call))"), [])
+
+    def test_flet_lambda_funcalled_immediately_under_the_callers_lock(self):
+        self.assertEqual(self.r1(
+            "(flet ((run1 (op) (funcall op))) (fnn-section s (lambda () (run1 (lambda () (fnn-live-arena))))))"), [])
+
+    def test_flet_lambda_funcalled_without_a_lock_still_fires(self):
+        self.assertTrue(self.r1("(flet ((run1 (op) (funcall op))) (run1 (lambda () (fnn-live-arena))))"))
+
+    def test_flet_ref_called_without_a_lock_still_fires(self):
+        self.assertTrue(self.r1("(flet ((call () (fnn-live-arena))) (call))"))
+
+    def test_flet_ref_stored_instead_of_run_does_not_inherit_the_lock(self):
+        self.assertTrue(self.r1(
+            "(flet ((call () (fnn-live-arena))) (sb-thread:with-mutex ((fnn-owner-service-lock s)) (push #'call *fnn-hooks*)))"))
+
+    def test_flet_called_under_a_lock_and_also_stored_keeps_its_own_walk(self):
+        # one locked call must not hide the stored #'call, which runs later with no lock
+        self.assertTrue(self.r1(
+            "(flet ((call () (fnn-live-arena))) (push #'call *fnn-hooks*) (sb-thread:with-mutex ((fnn-owner-service-lock s)) (call)))"))
+
+    def test_lambda_pushed_by_the_flet_stays_an_async_root(self):
+        self.assertTrue(self.r1(
+            "(flet ((keep (op) (push op *fnn-hooks*))) (sb-thread:with-mutex ((fnn-owner-service-lock s)) (keep (lambda () (fnn-live-arena)))))"))
+
+    def test_lambda_setf_into_a_slot_by_the_flet_stays_an_async_root(self):
+        self.assertTrue(self.r1(
+            "(flet ((keep (op) (setf (fnn-box-slot (make-fnn-box)) op))) (sb-thread:with-mutex ((fnn-owner-service-lock s)) (keep (lambda () (fnn-live-arena)))))"))
+
+    def test_lambda_handed_to_a_thread_by_the_flet_stays_an_async_root(self):
+        self.assertTrue(self.r1(
+            "(flet ((go1 (op) (sb-thread:make-thread op :name \"w\"))) (sb-thread:with-mutex ((fnn-owner-service-lock s)) (go1 (lambda () (fnn-live-arena)))))"))
+
+    def test_lambda_funcalled_and_also_stored_stays_an_async_root(self):
+        self.assertTrue(self.r1(
+            "(flet ((both (op) (funcall op) (push op *fnn-hooks*))) (sb-thread:with-mutex ((fnn-owner-service-lock s)) (both (lambda () (fnn-live-arena)))))"))
+
 
 class CallbackContexts(unittest.TestCase):
     """contracts `callback_contexts': a stored callback declared to run in a
@@ -264,6 +438,79 @@ class CallbackContexts(unittest.TestCase):
         src = self.SRC + "(defun fnn-command-other (grant) (fnn-cbx-loop grant))\n"
         with self.assertRaises(ValueError):
             self.run_with({self.LAMBDA: {"runs_in": "fnn-command-other", "why": "w"}}, src)
+
+
+class CallbackOrdinalAudit(unittest.TestCase):
+    """--audit-callbacks: a why text's own-file file.lisp:NNN marker must name
+    the line the declared ordinal resolves to (declare_callback_contexts
+    refuses a MISSING ordinal, never a MOVED one); a row without a marker is
+    not audited, and a marker naming another file is context, not a claim."""
+    # the spawn-free source, so the declaration itself is accepted
+    SRC = CallbackContexts.SRC.replace(
+        '(defun fnn-cbx-spawn (grant) (sb-thread:make-thread (lambda () (fnn-cbx-loop grant)) :name "t"))',
+        "")
+    LAMBDA = CallbackContexts.LAMBDA
+
+    def audit(self, why):
+        raw = dict(CONTRACTS.raw, callback_contexts={self.LAMBDA: {"runs_in": "fnn-command-cbx", "why": why}})
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + self.SRC)
+            an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+            return ldc.audit_callbacks(model, checker.c.raw), model.an.infos[self.LAMBDA].line
+
+    def test_an_agreeing_marker_passes(self):
+        _, line = self.audit("no marker yet")
+        failures, _ = self.audit(f"the grant's turn callback (fixture.lisp:{line})")
+        self.assertEqual(failures, [])
+
+    def test_a_moved_marker_fails(self):
+        _, line = self.audit("no marker yet")
+        failures, _ = self.audit(f"the grant's turn callback (fixture.lisp:{line + 1})")
+        self.assertEqual(len(failures), 1)
+        self.assertIn(f"fixture.lisp:{line + 1}", failures[0])
+        self.assertIn(f"fixture.lisp:{line}", failures[0])
+
+    def test_a_markerless_row_and_other_file_markers_pass(self):
+        failures, _ = self.audit("the grant's turn callback, funcalled by the loop "
+                                 "(host/native/other.lisp:12); no line claimed here")
+        self.assertEqual(failures, [])
+
+    def check_main(self, why):
+        """--check with no flag: the audit is part of the default verdict over
+        a scratch tree whose single declaration carries this why text."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + self.SRC)
+            contracts = root / "contracts.json"
+            contracts.write_text(json.dumps(dict(
+                CONTRACTS.raw,
+                enclave={"functions": [], "files": []},  # a scratch tree reads one fixture
+                callback_contexts={
+                    self.LAMBDA: {"runs_in": "fnn-command-cbx", "why": why}})))
+            baseline = root / "baseline.json"
+            baseline.write_text(json.dumps({"findings": []}))
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                code = ldc.main(["--root", str(root), "--contracts", str(contracts),
+                                 "--baseline", str(baseline), "--rule", "R1",
+                                 "--check", "--summary"])
+            return code, out.getvalue()
+
+    def test_the_wired_check_fails_on_a_moved_marker_without_the_flag(self):
+        _, line = self.audit("no marker yet")  # the ordinal's true line
+        code, out = self.check_main(f"the grant's turn callback (fixture.lisp:{line + 1})")
+        self.assertEqual(code, 1)
+        self.assertIn("CALLBACK-AUDIT", out)
+        self.assertIn(f"fixture.lisp:{line}", out)
+
+    def test_the_wired_check_passes_on_an_agreeing_marker(self):
+        _, line = self.audit("no marker yet")
+        code, out = self.check_main(f"the grant's turn callback (fixture.lisp:{line})")
+        self.assertEqual(code, 0, out)
+        self.assertIn("callback-ordinal audit: 1 declared row(s), 1 with an own-file "
+                      "line marker, 0 disagreeing", out)
 
 
 class R7Failure(unittest.TestCase):

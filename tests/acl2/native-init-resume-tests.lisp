@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/native-init-resume")
+(include-book "../../books/defkeystone")
 
 (defconst *nirt-first* (fn-cfg-encode *fn-cfg-default-record*))
 (defconst *nirt-later-stamp*
@@ -94,3 +95,36 @@
       (not (not (equal *fn-cfg-default-change* (fn-cfg-record-change *nirt-later-record*))))
       (not (equal (fn-nir-resume-decision '(:sealed) '(:sealed) *nirt-first* *nirt-later* nil)
                   '(:refused :initial-groups-mismatch)))))
+
+; TEETH-62 BEGIN
+; The two PRF native-init-resume keystones with their teeth (TEETH CONTRACT v1).
+(defteeth fn-nir-resume-admits-identical-initial-contract-across-stamps
+  :claim (((requested-decodes (equal (fn-cfg-decode-exact requested-octets)
+               (fn-record-parse-ok (fn-cfg-record-make 0 0 1 change requested-stamp) nil))) (recorded-decodes (equal (fn-cfg-decode-exact recorded-octets)
+               (fn-record-parse-ok (fn-cfg-record-make 0 0 1 change recorded-stamp) nil))))
+          (equal (fn-nir-resume-decision profile profile requested-octets recorded-octets history)
+          '(:accepted :resume)))
+  :subject fn-nir-resume-decision
+  :witness ((profile '(:sealed)) (requested-octets *nirt-first*) (recorded-octets *nirt-later*) (history '("00000001.cfg" "00000002.cfg")) (change *fn-cfg-default-change*) (requested-stamp *fn-cfg-default-stamp*) (recorded-stamp *nirt-later-stamp*))
+  :breaks ((requested-decodes ((profile '(:sealed)) (requested-octets '(0)) (recorded-octets *nirt-later*) (history '("00000001.cfg" "00000002.cfg")) (change *fn-cfg-default-change*) (requested-stamp *fn-cfg-default-stamp*) (recorded-stamp *nirt-later-stamp*)))
+           (recorded-decodes ((profile '(:sealed)) (requested-octets *nirt-first*) (recorded-octets *nirt-changed*) (history '("00000001.cfg" "00000002.cfg")) (change *fn-cfg-default-change*) (requested-stamp *fn-cfg-default-stamp*) (recorded-stamp *nirt-later-stamp*))))
+  :mutations ((first-start
+               (:conclusion (equal (fn-nir-resume-decision profile profile requested-octets recorded-octets history) '(:accepted :first)))
+               ((profile '(:sealed)) (requested-octets *nirt-first*) (recorded-octets *nirt-later*) (history '("00000001.cfg" "00000002.cfg")) (change *fn-cfg-default-change*) (requested-stamp *fn-cfg-default-stamp*) (recorded-stamp *nirt-later-stamp*))
+               :fault "a matching initial contract decided as a first start, not a resume")))
+
+(defteeth fn-nir-resume-refuses-distinct-initial-changes
+  :claim (((requested-decodes (equal (fn-cfg-decode-exact requested-octets)
+               (fn-record-parse-ok (fn-cfg-record-make 0 0 1 requested-change requested-stamp) nil))) (recorded-decodes (equal (fn-cfg-decode-exact recorded-octets)
+               (fn-record-parse-ok (fn-cfg-record-make 0 0 1 recorded-change recorded-stamp) nil))) (distinct (not (equal requested-change recorded-change))))
+          (equal (fn-nir-resume-decision profile profile requested-octets recorded-octets history)
+          '(:refused :initial-groups-mismatch)))
+  :subject fn-nir-resume-decision
+  :witness ((profile '(:sealed)) (requested-octets *nirt-first*) (recorded-octets *nirt-changed*) (history nil) (requested-change *fn-cfg-default-change*) (requested-stamp *fn-cfg-default-stamp*) (recorded-change (fn-cfg-record-change *nirt-changed-record*)) (recorded-stamp *nirt-later-stamp*))
+  :breaks ((requested-decodes ((profile '(:sealed)) (requested-octets '(0)) (recorded-octets *nirt-changed*) (history nil) (requested-change *fn-cfg-default-change*) (requested-stamp *fn-cfg-default-stamp*) (recorded-change (fn-cfg-record-change *nirt-changed-record*)) (recorded-stamp *nirt-later-stamp*)))
+           (recorded-decodes ((profile '(:sealed)) (requested-octets *nirt-first*) (recorded-octets '(0)) (history nil) (requested-change *fn-cfg-default-change*) (requested-stamp *fn-cfg-default-stamp*) (recorded-change (fn-cfg-record-change *nirt-changed-record*)) (recorded-stamp *nirt-later-stamp*)))
+           (distinct ((profile '(:sealed)) (requested-octets *nirt-first*) (recorded-octets *nirt-later*) (history nil) (requested-change *fn-cfg-default-change*) (requested-stamp *fn-cfg-default-stamp*) (recorded-change *fn-cfg-default-change*) (recorded-stamp *nirt-later-stamp*))))
+  :mutations ((profile-mismatch
+               (:conclusion (equal (fn-nir-resume-decision profile profile requested-octets recorded-octets history) '(:refused :profile-mismatch)))
+               ((profile '(:sealed)) (requested-octets *nirt-first*) (recorded-octets *nirt-changed*) (history nil) (requested-change *fn-cfg-default-change*) (requested-stamp *fn-cfg-default-stamp*) (recorded-change (fn-cfg-record-change *nirt-changed-record*)) (recorded-stamp *nirt-later-stamp*))
+               :fault "a changed initial contract refused as a profile mismatch")))

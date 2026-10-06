@@ -375,11 +375,14 @@ def manifest_findings(current: dict[str, dict], base: dict | None, why: str,
     if base is None:
         return [f"teeth gate: {why}"]
     base_entries = {entry["name"]: entry for entry in base.get("entries", [])}
+    # with a base, WHY is its revision (base_manifest); the manifest itself
+    # names none of its own
+    base_rev = why
     for name, entry in sorted(current.items()):
         old = base_entries.get(name)
         if old is None:
             if entry["class"] != "generated":
-                problems.append(f"teeth gate: {name} is new (not in the base {base.get('revision', '?')[:12]}) "
+                problems.append(f"teeth gate: {name} is new (not in the base {base_rev[:12]}) "
                                 f"and has no generated teeth: declare them (defteeth {name} ...)")
             elif entry.get("mutations") == "deferred":
                 problems.append(f"teeth gate: {name} is new and defers its mutation: a new "

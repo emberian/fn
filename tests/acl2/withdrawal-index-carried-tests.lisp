@@ -163,4 +163,28 @@
                                 ((cause "<c1@x>") (ws *wit-ws1*) (carry *wit-c1*))
                                 :fault "a reader that answers the probe's bit for the targets")))
 
-(defteeth-check)
+; The owed rows of this world are held met here, as (defteeth-check) does,
+; less five whose teeth do not live in this world:
+;  - fn-proto-archive-command-cat-is-pinned (books/protocol-served.lisp, by
+;    defprotocol): its claim quantifies the stobjs fn-arena and fn-cat, which
+;    no defteeth witness binds (books/defkeystone.lisp refuses a stobj in a
+;    witness); its teeth are the hand-written ones in
+;    tests/acl2/protocol-served-tests.lisp and the row stays owed by name:
+;    planning/repair/items/TEETH-OWED-STOBJ-WITNESS.json;
+;  - the four def-keyset-check bridges of books/store-files.lisp
+;    (fn-sf-success-listp) and books/retention.lisp (fn-retain-ks-disjointp):
+;    their defteeth are in tests/acl2/store-files-teeth-tests.lisp and
+;    tests/acl2/retention-tests.lisp, each of which holds its two rows met.
+(make-event
+ (let ((problem (fn-dt-owed-problem
+                 (remove1-assoc-eq 'fn-proto-archive-command-cat-is-pinned
+                  (remove1-assoc-eq 'fn-sf-success-listp-ks-is-logic
+                   (remove1-assoc-eq 'fn-sf-success-listp-walk-is-logic
+                    (remove1-assoc-eq 'fn-retain-ks-disjointp-ks-is-logic
+                     (remove1-assoc-eq 'fn-retain-ks-disjointp-walk-is-logic
+                                       (table-alist 'fn-teeth-owed (w state)))))))
+                 (table-alist 'fn-teeth (w state))
+                 (w state))))
+   (if problem
+       (er soft 'defteeth-check "~@0." problem)
+     (value '(value-triple :teeth-complete)))))

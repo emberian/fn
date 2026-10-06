@@ -191,13 +191,20 @@
                    (equal (cvs-tset (cvs-refresh-stamped *cvs-c1* 2 *cvt-ws2*)) '("t9"))))
 (assert-event (cvs-carryp nil))
 
+; The reader's :by fact is over THIS view's index (cvs-tset-okp, cvs-tset-of),
+; as cvt-absent-target-is-untargeted is over cvt's.
+(defthm cvs-absent-target-is-untargeted
+  (implies (and (cvs-tset-okp ws idxs) (stringp x) (not (cvt-has x (cvs-tset-of idxs))))
+           (equal (cvt-targetedp x ws) nil))
+  :hints (("Goal" :in-theory (enable cvs-tset-okp cvs-tset-of))))
+
 (def-carried-reader cvs-targetedp-fast (x stamp ws carry)
   :of cvs :carry carry :list ws :stamp stamp
   :when (stringp x)
   :probe (tset x)
   :fast nil
   :reference (cvt-targetedp x ws)
-  :by cvt-absent-target-is-untargeted)
+  :by cvs-absent-target-is-untargeted)
 
 ; the fast arm needs only the stamp comparison; a stale stamp walks
 (assert-event (equal (cvs-targetedp-fast "n" 0 *cvt-ws0* *cvs-c0*) nil))
@@ -219,7 +226,10 @@
   :subject cvs-refresh-stamped
   :witness ((carry *cvs-c0*) (stamp 1) (ws *cvt-ws1*))
   :breaks ((carried ((carry (cons (cons 0 *cvt-ws0*) nil))))
-           (stamped ((carry (cons (cons 0 *cvt-ws2*) (cvs-tset *cvs-c0*))) (stamp 0) (ws *cvt-ws0*)))
+           ;; a carry whose index is its list's (carried) under a stamp that
+           ;; names another list: the same-stamp rebase keeps the wrong index
+           (stamped ((carry (cons (cons 0 *cvt-ws2*) (cvs-tset (cvs-refresh-stamped nil 2 *cvt-ws2*))))
+                     (stamp 0) (ws *cvt-ws0*)))
            (fresh ((stamp 0) (ws *cvt-ws2*))))
   :mutations ((stamp-ignored (:conclusion (cvs-carryp (cons (cons stamp ws) (cdr carry))))
                              ((carry *cvs-c0*) (stamp 1) (ws *cvt-ws1*))
@@ -231,7 +241,10 @@
   :subject cvs-targetedp-fast
   :witness ((x "n") (stamp 0) (ws *cvt-ws0*) (carry *cvs-c0*))
   :breaks ((carried ((x "t1") (carry (cons (cons 0 *cvt-ws0*) nil))))
-           (stamped ((x "t4") (stamp 0) (ws *cvt-ws1*) (carry (cons (cons 0 *cvt-ws1*) (cvs-tset *cvs-c0*)))))
+           ;; the same mis-stamped carry: the stamp comparison sends a target
+           ;; of the stamped list to the other list's index
+           (stamped ((x "t1") (stamp 0) (ws *cvt-ws0*)
+                     (carry (cons (cons 0 *cvt-ws2*) (cvs-tset (cvs-refresh-stamped nil 2 *cvt-ws2*))))))
            (fresh ((x "t4") (stamp 0) (ws *cvt-ws1*))))
   :mutations ((positive-trusted (:conclusion (equal (cvs-targetedp-fast x stamp ws carry)
                                                     (cvt-has x (cvs-tset carry))))

@@ -188,6 +188,13 @@ the commands, and `fn operator CONFIG help VERB` explains one command.
    `health` prints one line per possible problem. Every line should say
    `clear`. If not, see [the table below](#when-the-node-refuses-something).
 
+   Removing expired articles (`store reclaim`) works with the node
+   stopped. To let it run while the node serves, add
+   `[resources]` with `reclaim_live = true` to `fn.toml` before you start
+   the service. The node then needs more memory: check the `heap=` line
+   of `status` again after adding it (see
+   [the operator's guide](operator.md#reclaiming-while-the-node-runs)).
+
 The log is `log/fn.log` in the node folder. On OpenBSD it goes to syslog.
 
 ### Reading and posting from another machine

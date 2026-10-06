@@ -5065,3 +5065,162 @@ Landed on lane/access-check (pushed):
 Continuation (not started; context cap): ACCESS-REVOKE-PINNED (repair item, design notes there): access tightening
 applies at once to open connections (coordinator ruling). Red->green = test_source_peer_reader_access_preserves_transit
 old-socket assertions; amend specs/reconfiguration.md 2.3.
+
+## teeth-62 (Sonnet, 2026-10-05) -- lane/teeth-62, base origin/lane/teeth-gate@ab595894d, worktree build/lanes/teeth-62
+38 of the 62 "T not yet written" keystones now carry defteeth (tests/acl2/*-tests.lisp, one commit per book); keystone_emit --check findings 126 -> 88.
+Every changed test book was loaded to its end on an hbox proof REPL (all forms admitted, source deps; NOT certified).
+Done: app-pattern (1), app-pattern-delivery (1), article-kind-acceptance/-hybrid (6, in article-kind-tests), bp-ion-lifetime (1), bp-node-budget-input (3), connection-budget (2), feed-journal-order (1), native-init-resume (2), native-retire (2, in native-retire-observation-tests), nntp-auth (2, in nntp-auth-tests), fn-auth-view-excludes-unreadable-groups-on-any-connection (moderation-tests), output-reservation (3), owner-queued-work (3), owner-reclaim-carry (1), page-read-startup (2), peer-flight-reservation (2), reclaim-chunked-walk (2), reclaim-chunked-seal (1), store-log-entry-bound (2).
+Reclassified: store-log-entry-bound -step x2 -> MV class; fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open -> no-counterexample (both antecedents).
+Continuation: still T = output-command-admission(1), payload-lz-scalar-realizer(1), store-checkpoint-verify(1), served-access-revoke(3), store-log-durable(8), store-log-route-programs(3), tcpcl-received-source-refinement(1), tcpcl-retained-turn(1), tcpcl-source-control-refinement(2).  lanedumps/teeth-gate-owed.md holds the list, the no-counterexample notes and the method notes (let-wrapped claims; trailing-group rule).
+Certify: NOT done.  Narrow certify of the 19 touched tests/acl2/*-tests books via boxq --box hbox is pending INTEGRATOR-4's slot.
+
+### Exact certify command for INTEGRATOR-4 (run from build/lanes/teeth-62 at lane/teeth-62, merged on lane/teeth-gate@ab595894d)
+python3 tools/boxq.py submit --kind certify-lane --box hbox --wait -- --lane --jobs 8 --affected-by tests/acl2/app-pattern-delivery-tests --affected-by tests/acl2/app-pattern-tests --affected-by tests/acl2/article-kind-tests --affected-by tests/acl2/bp-ion-lifetime-tests --affected-by tests/acl2/bp-node-budget-input-tests --affected-by tests/acl2/connection-budget-tests --affected-by tests/acl2/feed-journal-order-tests --affected-by tests/acl2/moderation-tests --affected-by tests/acl2/native-init-resume-tests --affected-by tests/acl2/native-retire-observation-tests --affected-by tests/acl2/nntp-auth-tests --affected-by tests/acl2/output-reservation-tests --affected-by tests/acl2/owner-queued-work-tests --affected-by tests/acl2/owner-reclaim-carry-tests --affected-by tests/acl2/page-read-startup-tests --affected-by tests/acl2/peer-flight-reservation-tests --affected-by tests/acl2/reclaim-chunked-seal-tests --affected-by tests/acl2/reclaim-chunked-walk-tests --affected-by tests/acl2/store-log-entry-bound-tests 
+Books (19):
+- tests/acl2/app-pattern-delivery-tests
+- tests/acl2/app-pattern-tests
+- tests/acl2/article-kind-tests
+- tests/acl2/bp-ion-lifetime-tests
+- tests/acl2/bp-node-budget-input-tests
+- tests/acl2/connection-budget-tests
+- tests/acl2/feed-journal-order-tests
+- tests/acl2/moderation-tests
+- tests/acl2/native-init-resume-tests
+- tests/acl2/native-retire-observation-tests
+- tests/acl2/nntp-auth-tests
+- tests/acl2/output-reservation-tests
+- tests/acl2/owner-queued-work-tests
+- tests/acl2/owner-reclaim-carry-tests
+- tests/acl2/page-read-startup-tests
+- tests/acl2/peer-flight-reservation-tests
+- tests/acl2/reclaim-chunked-seal-tests
+- tests/acl2/reclaim-chunked-walk-tests
+- tests/acl2/store-log-entry-bound-tests
+
+## teeth-21 (Sonnet, 2026-10-05) -- lane/teeth-21, base origin/lane/teeth-62@4aa88cee0, worktree build/lanes/teeth-21
+18 of the 21 remaining "T not yet written" keystones now carry defteeth (one commit per book); keystone_emit --check findings 88 -> 70 (the stale-manifest finding remains; the integrator regenerates it).
+Every changed test book was loaded to its end on an hbox proof REPL (all forms admitted, source deps; NOT certified).
+Done: store-log-durable (6), store-log-route-programs (2), served-access-revoke (3), tcpcl-received-source-refinement (1), tcpcl-retained-turn (1), tcpcl-source-control-refinement (2), output-command-admission (1), payload-lz-scalar-realizer (1), store-checkpoint-verify (1).
+New support book tests/acl2/teeth-ground-lemma.lisp (teeth-ground-lemma, defconst-eval) for claims whose antecedent is fn-bs-crash-imagep; method notes in build/coordinator/lanedumps/teeth-gate-owed.md.
+Owed (3): fn-lgu-recover-program-establishes-the-relation and fn-lgu-open-run-acknowledges-only-recoverable-records (the claim computes fn-lg-recovered-kernel, whose next txid reads the attached fn-record-decode-exact: a ground lemma stalls in the rewriter); fn-lg-open-program-keeps-the-relation-at-every-cut (constrained fn-assume-log-sole-pending-writer, same kernel).  Continuation: either a ground lemma that rewrites fn-lgt-next-after at a no-record store, or a seam-free restatement; counterexamples for the open-run antecedents are listed in the owed file.
+Certify: NOT done.  One narrow certify slot requested of INTEGRATOR-4 for teeth-62's 19 touched tests/acl2 books plus these 11 (incl. teeth-ground-lemma).
+
+### Exact certify command, teeth-21 (supersedes the teeth-62 command above; run from build/lanes/teeth-21 at lane/teeth-21@7f57d7980)
+Append these 10 flags (teeth-ground-lemma, the support book, and nine test books) to the teeth-62 command's 19, 29 books in all; an earlier line of this entry says 11, which counted LANEDUMP.md:
+--affected-by tests/acl2/teeth-ground-lemma --affected-by tests/acl2/store-log-durable-tests --affected-by tests/acl2/store-log-route-programs-tests --affected-by tests/acl2/served-access-revoke-tests --affected-by tests/acl2/tcpcl-received-source-refinement-tests --affected-by tests/acl2/tcpcl-retained-turn-tests --affected-by tests/acl2/tcpcl-source-control-refinement-tests --affected-by tests/acl2/output-command-admission-tests --affected-by tests/acl2/payload-lz-scalar-realizer-tests --affected-by tests/acl2/store-checkpoint-verify-tests
+
+## teeth-22 (2026-10-06) -- lane/teeth-22, base origin/dev@c2eb0a1a1, worktree build/lanes/teeth-22
+The mechanical remainder of the teeth gate: defteeth for the "is new and has no generated teeth" findings whose fix follows the landed shape.  Local skips file build/coordinator/lanedumps/teeth-22.md holds the skip list with reasons (MV-claim class 24+2, stobj 1, the 3 owed store-log teeth, no-counterexample 2) and the per-batch log.
+- Batch 1: tests/acl2/tls-key-exchange-tests.lisp, 4 defteeth (fn-tlsk-required-serves-only-the-hybrid-list, -preferred-never-refuses, -library-without-tls-never-refuses, -library-served-tls-never-falls-back); REPL green 72 forms / 0 refused; findings 74 -> 70.  fn-tlsk-hybrid-is-served-only-when-offered reclassified no-counterexample (servep hypothesis is a conjunct of the serve-mode hypothesis).
+- Batch 2: tests/acl2/wildmat-live-tests.lisp, 1 defteeth (fn-wml-retained-owned-bound, octets-count removal :logical at octets=-123); REPL green; findings 70 -> 69.
+- TRIAGE COMPLETE: the mechanical middle was exactly 5 keystones (4 tlsk + 1 wml), all landed and REPL-verified.  All 69 remaining no-teeth findings are skip-class: 36 MV-claim + 1 stobj (prior repair items), 3 owed store-log, 16 stobj-witness newly determined this lane (fn-av x3, fn-lst x4, fn-nnw-stream x5, ocap-preview, qplan-cw-drain, orcs-predict-seal, fn-rcw x4, sca-load-held-rows, fn-scat x2, sccv-step -- each quantifies fn-octets/fn-arena/fn-cat), 1 megabyte-witness (ak-grammar-encode), 4 no-counterexample (tlsk-hybrid, pat-select [definitional tautology under its :deliver hypothesis], cmt x2 [prior-documented, confirmed]).  Note for the owner: no host line reaches any fn-wml-* function (reach_check observation, not a teeth defect).
+- Certify: one narrow farm run for tests/acl2/tls-key-exchange-tests + tests/acl2/wildmat-live-tests (see below).
+- Certified: hbox run-20261006T134231Z-68e1, manifest certify-20261006T134401Z-3451309 (evidence-index line committed): passed 2 (tls-key-exchange-tests, wildmat-live-tests), failed 0, 295 installed from cache, no book over 10 s.  Gate after certify: 136 generated teeth, 102 certified at their digest (the lane's 5 among them), 63 complete; 69 no-teeth findings remain, all skip-class.
+- Exact certify command (integrator, from build/lanes/teeth-22 at lane/teeth-22): python3 tools/farm.py submit hbox --lane --affected-by tests/acl2/tls-key-exchange-tests --affected-by tests/acl2/wildmat-live-tests
+
+
+# tariff4 lane (Sonnet, successor to tariff3), 2026-10-04
+
+Worktree build/lanes/tariff4, branch lane/tariff4 (origin), from lane/tariff3@9b03cdcaf.
+
+Batch 1: families priced 10/30 (was 4): GROUP, neighbour (NEXT and LAST), DATE, MODE, close (QUIT), HELP. Ratchet computed by tools/cost_obligations.py; cost-obligations.json is the integrator's --write.
+
+- books/output-tariff-line.lisp (new, in Makefile): fn-tariff-line-octets N = 16 * (10 * N + 32), a stated cells-an-octet figure over a reply bound; fn-tariff-effects-octets; and the reply bounds PROVED over the factories the host runs: fn-tariff-group-reply-within-line (fn-av-nntp-group-result-cat <= 39 + name), fn-tariff-neighbour-reply-within-line (fn-av-nntp-next-or-last-cat <= the retrieval initial line, hypothesis fn-nntp-sessionp: a non-natural current falls to the raw model that realizes the extent), fn-tariff-{date,mode,quit}-reply-within-line (<= 64) and fn-tariff-help-reply-within-block (<= 248) over fn-nntp-session-command.
+- NEXT/LAST are NOT a STAT-shaped extent price: the host runs fn-av-nntp-next-or-last-cat, which builds the line from held metadata (fn-av-held-article), no pread.
+- books/output-tariff-families.lisp: rows :group :neighbour :date :mode :close :help. Generated: producer arms, ratchet count, one fn-tariff-F-charges-before-effect each.
+- tests/acl2/output-tariff-family-tests.lisp: red/green at the producer ((:unpriced :group) -> (:tariff :group 7872) etc.), gate boundary witnesses, reply-bound witnesses over the fixture (GROUP "fn.test" = 19 octets), three must-fail teeth.
+- host/cost-host.lisp: def-cost rows fn-tariff-line-octets, fn-tariff-group-reply-octets (host world; not evaluated on the bare laptop).
+- Proof-owed: PGO-TARIFF-LINE-REPLY-CONSES (the 10 cells an octet is stated, not derived: def-cost :conses cannot cost coerce / explode-nonnegative-integer; *fn-cost-cons-contracts* is the trusted base, an integrator change). FINDING there: ARTICLE/HEAD/BODY/STAT charge their initial line at 2 cells an octet; the line figure is ~7-10, so the retrieval figures likely need re-pricing upward when the derivation lands.
+- Laptop gate: certify_books.py --jobs 2 --recertify books/output-tariff-line --recertify books/output-tariff-families + both + tests/acl2/output-tariff-family-tests: PASSED, manifest certify-20261004T171351Z-7271 (installed-without-cited-manifest: protocol-served, protocol-served-table, served-available-commands, served-catalog-dispatch: the line book newly includes served-available-commands). `--lane` is NOT usable for this lane: it selects host/owner-host (a Makefile root), which cannot certify-book on the laptop (LD of store-node-host.lisp is no embedded event); the explicit book list is the gate.
+- host_check: --read 0, --world 0 refused, --books 0; --interfaces fails only on stale planning/interfaces.json (integrator's emit --write); --load (FN_ACL2=/opt/homebrew/bin/acl2) see exit line.
+
+## Left (26 -> 20 families), what each needs
+- capabilities: the served reply is auth's composition (fn-auth-capability-lines-for-peer = peer lines + STARTTLS/AUTHINFO/SASL lines + fn-zc/fn-zdn lines); a total bound needs the length of fn-sasl-offers (mechanism words, 20 octets each) and the fixed label tables. Highest client impact (every client sends it): do first.
+- authentication, tls-transition, compression-transition, post, ihave, check, takethis: auth/peer-layer literal lines (fn-auth-authinfo-effects-well-formed etc. say well-formed, not bounded): per arm literal bound as DATE's. CHECK carries the Message-ID.
+- list, group-range (LISTGROUP), overview, header-range, header-pattern, newgroups, newnews: cursor/range replies; need the cursor quantum (a window of W emitted bytes), not a one-line row.
+- previews: closed and partial-input emit nothing (fn-wire-scan on a closed wire yields no events; partial: no complete line) so a 0 price needs the served-step-on-no-events theorem; article-input needs the POST/IHAVE terminal reply bound (a line); protocol-error the non-command event reply literal; extension is per keyword (XREDEEM, XFNCATCHUP, XFN-ZARTICLE: the last streams a stored payload).
+- Do not delete the pass-through until the count is 0 of 30.
+
+## Method that worked (successor: reuse)
+1. proof_repl: `start tN books/output-tariff-line --certify-missing`, then `send tN '<defthm>'`; each reply bound proved in seconds by `:in-theory (e/d (<factory> fn-nntp-make-result fn-nntp-result-effects fn-nntp-reply-effect fn-nntp-single fn-tariff-effects-octets ...) (<stobj readers>))`. Lemmas: len of fn-nntp-string-octets / append-pieces / crlf / decimal-field (<=10) are local in the line book. Do NOT open fn-nntp-pad2/pad4 (1.7M steps): state their lengths.
+2. Row = one line in def-family-tariffs; the generator emits the instance. Test witness values: ground defthms over *tfm-* fixture (find a ground value by proving (equal X n) for candidate n).
+3. Gate: explicit book list as above, not --lane.
+
+# repair-wave-1 continuation, 2026-10-06
+
+Worktree build/lanes/repair-wave-1, branch lane/repair-wave-1. Merged origin/dev 85dc37bfb before judging. Shift cap three items (4, 5, 5b). Items 2 and 3 stay the 7de33c6d0 note: code-landed at merge 7b3e7edb7, production-image native is the integrator's next image batch. Not reopened.
+
+## Item 4: rp-feed-defer-drop + rp-feed-dropped-holds-capacity
+
+LANDED in source at 04669a5c6 (ancestor). On the merged tree, fn-feed-observe's :defer arm is fn-feed-back-off only; fn-feed-retry-exhaustedp counts losses, so a 431/436 never gives an entry up; fn-feed-give-up retires the entry and the queue has no :dropped state, so fn-own-feed-target-capacityp's len(queue) counts only entries still owed. Certify receipts in planning/evidence-index.tsv: fc324dd76d523f0cc828a0332712f8453361952ab4593a013de47a9d5978b821 (certify-20261004T180200Z-48706) and 0e1caca5daadd98afa458c90f2810a42d734ff78d06ff4e022da2ab3b8233921 (certify-20261004T200106Z-125291). Native PARKED: tests.test_native_peer_hostile_feed, integrator's next image batch (the 6107ceb56 overlay was refused). Repair state stays ready until that recording. Integrator un-parks.
+
+## Item 5: RS-01
+
+LANDED in source at 2ef809d63, staged-abort restatement 5bc9bd69c. The seal gate sets prepared to :refused and aborts the staged record through fn-owner-known-abort; :recovery-required is no longer that path. Green this shift, no image: `python3 -m unittest tests.test_native_raw_scripts.RawHarnessTests.test_post_seal_gate_refusal_raw_mock tests.test_native_post_seal_gate.PostSealGateRefusalSource.test_refused_staged_prepare_is_a_known_abort_not_a_reservation_refusal` (2 tests, 0.074s, OK, lane tree). Native PARKED: tests.test_native_post_seal_gate.NativePostSealGate needs a developer image. Integrator's next image batch un-parks. Repair state stays ready.
+
+## Item 5b: peering transit-hygiene
+
+LANDED 3e53d7bc5. The red on set 3a9806784 (also ecf10066f and the pre-restatement run on f375da27c) was the native case from before ruling 11d067e03: peers 2 and 3 were still expected to draw 438 on CHECK, so the case timed out at QUIT after their IHAVE drew 335. The commit restates the test only (per-offering-peer refused-offer memory). Green on hbox against the f375da27c images, one case, 1.3 s (integrator4). Not a product bug. No image this shift.
+
+Stopped at the shift cap. Next open rows, not started: PEER-OWED-INIT-RESERVES-LAUNCH-EXTRA, FILL-STORE-LINEAGE-DIVERGED-CHECKPOINT, the docs truth pass, the master-list tail.
+
+# repair-wave-1 continuation, 2026-10-06 (second shift)
+
+Worktree build/lanes/repair-wave-1. origin/dev 85dc37bfb already merged. No certs.py change, no image, no hbox. Items 2 and 3 stay the 7de33c6d0 note.
+
+## FILL-CERTS-INSTALL-DELETED-BOOK
+
+ready. The notes and verify block already carried the evidence (head 744c016ad, red-at-base AssertionError "install aborted on a deleted include", green-at-head, evidence sha256 f82b42a62e1231d4 archived). bf8150654 had said READY and left state in-progress. State set to ready, updated 2026-10-06T16:00:20Z. The fix commits (c2bcdeb78, 744c016ad, bf8150654) are on this branch, not on origin/dev.
+
+## PEER-OWED-INIT-RESERVES-LAUNCH-EXTRA
+
+LANDED 525cd7d51 (ancestor of origin/dev). init calls fnn-heap-init-decision-noted, which calls fn-pfd-init-decide; the keystone fn-pfd-init-reserves-the-default-launch concludes the extended launch is :heap, and the tooth's mutation is the pre-2b.2 edge init. Repair state landed. Scope unchanged: cold-read, page-read startup and output extensions are not counted; a --budget store for another machine (HELDP nil) is not covered.
+
+## FILL-STORE-LINEAGE-DIVERGED-CHECKPOINT
+
+PARKED. Plain status still exits 0 with the not-running line: fnn-operator-status-once prints it, then fnn-command-stopped-status reads the checkpoint header and never calls fn-lgl-open. That is assert_foreign_lineage's red. The open does refuse (fnn-log-lineage-genesis before any record; store checkpoint publishes only after that open). Row S3 says plain status does not replay. Un-parks: a store-lineage lane with an image, choosing either to run fn-lgl-open before the not-running lines (this item; row S3 changes) or to point the test at status --replay. This shift does not retarget the test. Repair state stays open.
+
+Stopped. Not started: the docs truth pass, the master-list tail.
+
+# consumer-boot (SCEN-CONSUMER-BOOTSTRAP-IDENTITY) — 2026-10-06
+
+Worktree build/lanes/consumer-boot, branch lane/consumer-boot @ 70869e0ab
+(from origin/dev 93c692e38; not merged forward — the three commits on
+origin/dev touch owner-host's fn-owner-reclaim-live-p and two other repair
+rows, not this seam).
+
+## Salvage verified
+
+`python3 -m unittest tests.test_consumer_raw_mocks` from this worktree:
+2 tests, OK, 0.110s (log /tmp/consumer-boot-raw-mocks.log). The file is 53
+lines. Both boundaries the poll-CLI mock prints are the real host
+functions: the mock evals fnn-consumer-local-exchange, fnn-command-consumer-local
+and fnn-consumer-say from host/native/consumer-local.lisp. A `bootstrap`
+command is one request; a register crosses a bootstrap only after acceptance.
+The assertion was not weakened. No failure message to rewrite: the run passed,
+so unittest's "False is not true : " prefix never appeared.
+
+## Classification
+
+(a) The d5b0b9100 line `consumer refused identity` (exit 1) is not a current
+source bug. fn-col-bootstrap refuses :identity when a consumer history already
+exists (books/consumer-owner-local.lisp). f5f340d04 made fn-ncr-cli-after
+answer from the step alone, so an accepted `consumer bootstrap` command sent
+a second bootstrap and that refusal became the command's. Fixed in ancestor
+0f480d107 (fn-ncr-cli-after takes COMMAND and STEP; only a register sends
+more). books/consumer-reason.lisp states that. The host passes
+(operation operation ...) then (operation :bootstrap ...).
+
+(b) Harness gap, closed by 70869e0ab and confirmed by the unittest above.
+Before that commit the mock stubbed the exchange, so the guard did not
+exercise the retry the zmq-2 move put in fnn-consumer-local-exchange.
+
+(c) Not run: native green-after on an image that contains 0f480d107.
+No local image. Not started on hbox (the integrator is certifying there).
+
+Repair row PARKED (state deferred; disposition PARKED). Reason: source fix
+0f480d107 is on dev; native green-after still owed. Un-park when the next
+image batch runs tests.test_native_consumer_exchange,
+tests.test_native_agent_wait, and
+tests.test_native_consumer_exchange_two_nodes, one module at a time.
+The d5b0b9100 overlay was not a claim (lanedumps/consumers.md).

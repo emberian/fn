@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/newnews-matching-selector")
+(include-book "../../books/defkeystone")
 
 ; Test-only drain: production retains exactly one selector/matcher step.
 (defun nnmt-next (s)
@@ -103,3 +104,42 @@
          (not (or (< (fn-nnm-group-remaining next) (fn-nnm-group-remaining s))
                   (and (equal (fn-nnm-group-remaining next) (fn-nnm-group-remaining s))
                        (< (fn-nnm-work-remaining next) (fn-nnm-work-remaining s))))))))
+
+; ---------------------------------------------------------------------------
+; PRF-1257 keystones of books/newnews-matching-selector.lisp with their teeth
+; (TEETH CONTRACT v1).  The three over fn-nnm-one's (mv decided matched next)
+; are not here: a defteeth witness is an assert-event over the literal claim,
+; and (mv-nth 0 (fn-nnm-one s)) is no executable term.
+(defconst *nnmt-blocked-article*
+  (fn-make-article "<b@x>" nil '("fn.block") '(("fn.block" . 1)) 1 1))
+
+(defteeth fn-nnm-start-value
+  :claim (() (equal (fn-nnm-value (fn-nnm-start patterns groups article))
+                    (fn-nntp-newnews-candidatep
+                     (fn-nntp-filter-groups-by-wildmat patterns groups) article)))
+  :subject fn-nnm-start
+  :witness ((patterns *nnmt-patterns*) (groups '("fn.good")) (article *nnmt-article*))
+  :mutations ((wildmat-unfiltered
+               (:conclusion (equal (fn-nnm-value (fn-nnm-start patterns groups article))
+                                   (fn-nntp-newnews-candidatep groups article)))
+               ((patterns *nnmt-patterns*) (groups '("fn.block")) (article *nnmt-blocked-article*))
+               :fault "the NEWNEWS groups not filtered by the wildmat (!fn.block admitted)")))
+
+(defteeth fn-nnm-entry-visits-at-most-one
+  :claim (() (<= (fn-nnm-entry-visits s) 1))
+  :subject fn-nnm-one
+  :witness ((s *nnmt-start*))
+  :mutations ((entry-visits-nothing
+               (:conclusion (<= (fn-nnm-entry-visits s) 0))
+               ((s *nnmt-start*))
+               :fault "a membership step charged no entry visit")))
+
+(defteeth fn-nnm-engine-cons-at-most-demand
+  :claim (() (<= (fn-nnm-engine-cons s)
+                 (if (fn-nnm-matchp s) (fn-wmc-demand (fn-nnw-select-at 1 s)) 0)))
+  :subject fn-nnm-one
+  :witness ((s *nnmt-match*))
+  :mutations ((matcher-free
+               (:conclusion (<= (fn-nnm-engine-cons s) 0))
+               ((s *nnmt-match*))
+               :fault "a matcher microstep charged no cons cells")))

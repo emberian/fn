@@ -7,6 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/retention-invariants")
 (include-book "must-fail-checked")
+(include-book "../../books/defkeystone")
 
 ; -----------------------------------------------------------------------------
 ; Executable scenarios for the finite-capacity retention ledger.
@@ -420,3 +421,41 @@
           (not (fn-retain-ids-disjointp xs ys))
           (not (equal (ret-disjoint-mutant xs ys)
                       (fn-retain-ids-disjointp xs ys)))))))
+
+; The owed bridges of def-keyset-check fn-retain-ks-disjointp
+; (books/retention.lisp): no pin id among the release ids, by the keyset arm
+; and by the walk, is the :logic recursion.  Nine release ids: past the
+; eight-id threshold, where the :exec takes the keyset.
+(defconst *retention-ks-ids* '(1 2 3 4 5 6 7 8 9))
+
+(defteeth fn-retain-ks-disjointp-ks-is-logic
+  :claim (nil (equal (fn-retain-ks-disjointp-ks xs ys) (fn-retain-ks-disjointp-walk xs ys)))
+  :subject fn-retain-ks-disjointp
+  :witness ((xs '(10 7)) (ys *retention-ks-ids*))
+  :breaks nil
+  :mutations ((contaminated (:conclusion (equal (fn-retain-ks-disjointp-ks xs ys)
+                                                (fn-retain-ks-disjointp-walk xs (cons 10 ys))))
+                            ((xs '(10 11)) (ys *retention-ks-ids*))
+                            :fault "a keyset holding a release id the releases never put")))
+
+(defteeth fn-retain-ks-disjointp-walk-is-logic
+  :claim (nil (equal (fn-retain-ks-disjointp-walk xs ys) (fn-retain-ks-disjointp xs ys)))
+  :subject fn-retain-ks-disjointp
+  :witness ((xs '(11 9)) (ys *retention-ks-ids*))
+  :breaks nil
+  :mutations ((inverted (:conclusion (equal (fn-retain-ks-disjointp-walk xs ys)
+                                            (not (fn-retain-ks-disjointp xs ys))))
+                        ((xs '(10 11)) (ys *retention-ks-ids*))
+                        :fault "the sense inverted: a pin among the releases read as disjoint")))
+
+; The owed rows this book declares the teeth of are met (fn-dt-owed-problem over
+; those rows alone: the other owed rows of this world are the books' own).
+(make-event
+ (let* ((owed (table-alist 'fn-teeth-owed (w state)))
+        (mine (list (assoc-eq 'fn-retain-ks-disjointp-ks-is-logic owed) (assoc-eq 'fn-retain-ks-disjointp-walk-is-logic owed))))
+   (if (member-equal nil mine)
+       (er soft 'defteeth-check "an owed row named here is not in this world")
+     (let ((problem (fn-dt-owed-problem mine (table-alist 'fn-teeth (w state)) (w state))))
+       (if problem
+           (er soft 'defteeth-check "~@0." problem)
+         (value '(value-triple :teeth-complete)))))))

@@ -3,6 +3,7 @@
 ; context over it (*xt-ctx*, books/expiry-instant: every article expired).
 (in-package "ACL2")
 (include-book "../../books/reclaim-chunked-walk")
+(include-book "../../books/defkeystone")
 (include-book "must-fail-checked")
 (include-book "arena-lift")
 (include-book "expiry-tests")
@@ -75,3 +76,32 @@
 (must-fail-checked
  (assert-event (equal (fn-rcw-acc-finish (car *rcw-p2-reset*))
                       (fn-sco-capture *rcw-configs* *rcw-canon*))))
+
+; TEETH-62 BEGIN
+; The two PRF reclaim-chunked-walk keystones with their teeth (TEETH CONTRACT v1).
+(defteeth fn-rcw-acc-steps-is-capture
+  :claim (()
+          (equal (fn-rcw-acc-finish (fn-rcw-acc-steps (fn-rcw-acc-init configs) configs chunks))
+         (fn-sco-capture configs (fn-rcw-concat chunks))))
+  :subject fn-rcw-acc-steps
+  :witness ((configs *rcw-configs*) (chunks *rcw-c2*))
+  :mutations ((empty-history
+               (:conclusion (equal (fn-rcw-acc-finish (fn-rcw-acc-steps (fn-rcw-acc-init configs) configs chunks)) (fn-sco-capture configs nil)))
+               ((configs *rcw-configs*) (chunks *rcw-c2*))
+               :fault "the walk finishing to the capture of an empty history")
+              (chunks-reversed
+               (:conclusion (equal (fn-rcw-acc-finish (fn-rcw-acc-steps (fn-rcw-acc-init configs) configs chunks)) (fn-sco-capture configs (fn-rcw-concat (reverse chunks)))))
+               ((configs *rcw-configs*) (chunks *rcw-c2*))
+               :fault "the chunks concatenated in the wrong order")))
+
+(defteeth fn-rcw-finish-of-step
+  :claim (((accumulator (fn-rcw-accp acc)))
+          (equal (fn-rcw-acc-finish (fn-rcw-acc-step acc configs chunk))
+                  (fn-sco-extend (fn-rcw-acc-finish acc) configs (true-list-fix chunk))))
+  :subject fn-rcw-acc-step
+  :witness ((acc (fn-rcw-acc-init *rcw-configs*)) (configs *rcw-configs*) (chunk (take 1 *rcw-new*)))
+  :breaks ((accumulator ((acc (update-nth 1 7 (fn-rcw-acc-init *rcw-configs*))) (configs *rcw-configs*) (chunk (take 1 *rcw-new*))) :logical "an accumulator whose carried count is not its record count: outside the guard of the invariant"))
+  :mutations ((chunk-not-extended
+               (:conclusion (equal (fn-rcw-acc-finish (fn-rcw-acc-step acc configs chunk)) (fn-rcw-acc-finish acc)))
+               ((acc (fn-rcw-acc-init *rcw-configs*)) (configs *rcw-configs*) (chunk (take 1 *rcw-new*)))
+               :fault "a chunk step that leaves the capture where it was")))

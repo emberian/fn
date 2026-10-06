@@ -1473,6 +1473,15 @@ is installed into the owner for both served and control submission."
       (fn-native-config-output-resources (fn-native-operator-result-config result))
     nil))
 
+; The operator's live-reclaim opt-in (D53, `[resources] reclaim_live'): the
+; launcher's reservation and the running owner hold the reclaim work reserve
+; only when the accepted run's configuration asks for it.
+(defun fn-native-operator-result-run-reclaim-live (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-run-planp result)
+      (and (fn-native-config-reclaim-livep (fn-native-operator-result-config result)) t)
+    nil))
+
 (defun fn-native-operator-result-run-store-octets (result)
   (declare (xargs :guard t))
   (if (fn-native-operator-result-run-planp result)
