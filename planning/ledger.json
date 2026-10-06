@@ -2565,7 +2565,7 @@
     "roots": 2556,
     "theorems": 40335,
     "functions": 25956,
-    "assert_events": 27906,
+    "assert_events": 27922,
     "must_fails": 2708,
     "prover_refusals": 0,
     "encapsulates": 257,
@@ -88532,13 +88532,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 50,
+      "assert_events": 62,
       "must_fails": 11,
       "prover_refusals": 0,
       "defconsts": 2,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/tls-key-exchange",
         "must-fail-checked"
       ],
@@ -89579,7 +89580,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 12,
+      "assert_events": 16,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 3,
@@ -107762,13 +107763,13 @@
       {
         "check": "tkxt-tooth-unknown-policy-serves",
         "book": "tests/acl2/tls-key-exchange-tests.lisp",
-        "line": 105,
+        "line": 106,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "tkxt-tooth-token-is-the-name",
         "book": "tests/acl2/tls-key-exchange-tests.lisp",
-        "line": 129,
+        "line": 130,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {

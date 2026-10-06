@@ -19,7 +19,7 @@ stale. Counts describe artifacts, not coverage; see
 | Functions declared `:verify-guards nil` and never verified | 3367 |
 | Functions left at the default with an explicit guard | 14367 |
 | Functions left at the default with no guard | 4169 |
-| `assert-event` checks | 27906 |
+| `assert-event` checks | 27922 |
 | `must-fail` checks | 2708 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 257 |
@@ -3086,7 +3086,7 @@ that `make certify` requests.
 | `tests/acl2/tcpcl-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 171 | 6 | 0 |
 | `tests/acl2/teeth-ground-lemma.lisp` | closure | 0 | 4 | 0/0/0/4 | 0 | 0 | 0 |
 | `tests/acl2/tls-handshake-budget-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 67 | 0 | 0 |
-| `tests/acl2/tls-key-exchange-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 50 | 11 | 0 |
+| `tests/acl2/tls-key-exchange-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 62 | 11 | 0 |
 | `tests/acl2/tls-proxy-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 50 | 4 | 0 |
 | `tests/acl2/tls-reload-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 41 | 1 | 0 |
 | `tests/acl2/tls-self-signed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 23 | 0 | 0 |
@@ -3124,7 +3124,7 @@ that `make certify` requests.
 | `tests/acl2/web-session-tests.lisp` | root | 0 | 13 | 0/0/2/11 | 53 | 10 | 0 |
 | `tests/acl2/web-stream-consumer-source-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 5 | 0 | 0 |
 | `tests/acl2/wildmat-cursor-tests.lisp` | root | 17 | 1 | 0/0/1/0 | 14 | 0 | 0 |
-| `tests/acl2/wildmat-live-tests.lisp` | root | 16 | 3 | 0/3/0/0 | 12 | 0 | 0 |
+| `tests/acl2/wildmat-live-tests.lisp` | root | 16 | 3 | 0/3/0/0 | 16 | 0 | 0 |
 | `tests/acl2/wildmat-parser-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
 | `tests/acl2/wildmat-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 5 | 0 |
 | `tests/acl2/wildmat-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 61 | 0 | 0 |
