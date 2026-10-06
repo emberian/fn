@@ -356,10 +356,15 @@ acceptance (the owner is stopping or fenced then)."
          (journals (if catchup (fnn-pull-runtime-cu-journals runtime)
                      (fnn-pull-runtime-journals runtime)))
          (retired (make-hash-table :test #'equal))
+         ;; The cache's key for a peer is its name as `fnn-pull-cursor-for'
+         ;; derives it from ACL2's plan; the plans ACL2 now names are the
+         ;; live set, so no octet list is built from a cached key.
+         (live (mapcar (lambda (plan)
+                         (fnn-pull-peer-string (fnn-core 'fn-pull-plan-peer plan)))
+                       plans))
          (keep nil) (close nil))
     (dolist (entry journals)
-      (if (fnn-core 'fn-pull-plan-for
-                    (fnn-octet-list (fnn-string-octets (car entry))) plans)
+      (if (member (car entry) live :test #'string=)
           (push entry keep)
         (progn
           (setf (gethash (car entry) retired) t)
