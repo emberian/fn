@@ -697,6 +697,12 @@
                    (outs (fn-b3-firstn (* 2 i) outs)))))))
 
 ;
+; The two list-length helpers above served the pairing proofs and are slow
+; to backchain through everywhere after; the rest of the book leaves them off.
+(local (in-theory (disable fn-b3-consp-of-len-pos fn-b3-len-of-cdr
+                           fn-b3-window-tree-of-1-list)))
+
+;
 ; The window alignment: the first j windows' outputs, and the rest, are the
 ; window outputs of the first j windows' octets and of the remainder (at the
 ; advanced chunk counter), whenever j whole windows leave octets over.
@@ -982,7 +988,10 @@
                  (:instance fn-b3-nthcdrx-of-append-le
                    (a (fn-b3-left-windows 1 (+ 1 u)))
                    (x (fn-b3-pair-outs key flags os)) (y (list x))))
-           :in-theory (disable fn-b3-window-tree fn-b3-pair-outs fn-b3-left-windows
+           :in-theory (e/d (fn-b3-len-of-cdr fn-b3-consp-of-len-pos)
+                           (binary-append fn-b3-firstn fn-b3-nthcdrx fn-b3-nthcdrx-all-when-len
+                            fn-b3-firstn-all-when-len
+                            fn-b3-window-tree fn-b3-pair-outs fn-b3-left-windows
                                fn-b3-window-tree-split fn-b3-left-windows-1-of-2u+1
                                fn-b3-left-windows-below fn-b3-left-windows-posp
                                fn-b3-window-tree-of-even-prefix
@@ -991,7 +1000,7 @@
                                fn-b3-left-windows-plus fn-b3-left-windows-1-plus
                                fn-b3-left-windows-double fn-b3-left-windows-double-minus
                                fn-b3-left-windows-1-double fn-b3-lw-of-double-len
-                               fn-b3-window-tree-of-pairs)
+                               fn-b3-window-tree-of-pairs))
            :nonlinearp t)))
 
 (local
