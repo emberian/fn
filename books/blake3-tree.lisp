@@ -636,13 +636,15 @@
           ("Subgoal *1/1.4'" :cases ((consp (cddr outs)))
                             :expand ((fn-b3-pair-outs key flags outs)))))
 
-(defthm fn-b3-consp-of-len-pos
-  ; A positive length means a cons.
-  (implies (< 0 (len x)) (consp x)))
+(local
+ (defthm fn-b3-consp-of-len-pos
+   ; A positive length means a cons.
+   (implies (< 0 (len x)) (consp x))))
 
-(defthm fn-b3-len-of-cdr
-  ; The cdr's length, without opening LEN's definition.
-  (implies (consp x) (equal (len (cdr x)) (- (len x) 1))))
+(local
+ (defthm fn-b3-len-of-cdr
+   ; The cdr's length, without opening LEN's definition.
+   (implies (consp x) (equal (len (cdr x)) (- (len x) 1)))))
 
 (defthm fn-b3-consp-of-append-single
   ; A run with one appended single is always a cons.
