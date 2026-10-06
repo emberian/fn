@@ -1,0 +1,17 @@
+{
+ "category": "lock-discipline",
+ "detail": "fnn-bpo-call-with-owner-journal (bp-obligation.lisp:34) installs a private owner (fnn-owner-install, owner.lisp:1565) and runs its thunk in fnn-quantum-command (bp-obligation.lisp:44, section def at owner.lisp:2730 -> O). Thunks reach: fnn-carry-execute (bp-obligation.lisp:350-351 write-sequence, finish-output on *fnn-stdout*), and fnn-bpo-request-publish (bp-obligation.lisp:178) -> fnn-bpo-request-pause (bp-obligation.lisp:142-143: fnn-out, finish-output, then (loop (sleep 1)) -- a process-death witness gated by fnn-developer-selector, a developer image only).\nKeys: R2|fnn-carry-execute|O:write-sequence, R2|fnn-carry-execute|O:finish-output, R2|fnn-bpo-request-pause|O:finish-output, R2|fnn-bpo-request-pause|O:sleep.\nHazard: O is provably held; but the owner is private to a one-shot command process (the store is opened exclusively: 'a served store refuses (already locked)', bp-obligation.lisp:~329; no serving threads were found in the head of fnn-owner-install), so no other section contends. The sleep is intentional and developer-image-only. Not verified: that fnn-owner-install starts no thread at all beyond its first ~45 lines.",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "host/native/bp-obligation.lisp",
+ "fix": "Justify by a design decision: declare these one-shot command sites as R2 exceptions (private owner, no contender; pause is a developer-image death witness), or move the report print outside the quantum (return the octets). Low priority.",
+ "id": "LOCK-R2-OFFLINE-ONESHOT-HOLD",
+ "notes": [],
+ "owner": "unassigned",
+ "scenario": "Offline `fn operator ... carry list/inspect' with a blocked stdout holds a private owner mutex; no other thread waits. The pause only fires with FN_BP_OBLIGATION_TEST_PAUSE_AFTER_ATTEMPT on a developer image.",
+ "severity": "low",
+ "source": "lock-triage-r2 on origin/dev d3b392c32 (tools/lock_discipline_check.py --check --json; new R2 findings)",
+ "state": "open",
+ "title": "One-shot BP obligation commands hold the owner mutex across stdout writes and a developer-image pause",
+ "updated": "2026-10-06T23:55:36Z"
+}

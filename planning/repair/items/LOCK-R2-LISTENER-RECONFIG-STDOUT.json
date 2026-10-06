@@ -1,0 +1,17 @@
+{
+ "category": "lock-discipline",
+ "detail": "fnn-bpnc-execute (bp-control.lisp:84-104) runs fnn-quantum-bp (O) around fnn-owner-live-reconfigure-locked and then, inside the same thunk (the cond arm at bp-control.lisp:~104 is lexically in the lambda), fnn-bplc-reconfigure (bp-listener-control.lisp:95) -> fnn-bplc-drive (bp-listener-control.lisp:~36-80): fnn-tcl-listen bind, socket-close (line 70, retire), and fnn-out 'BP NODE LISTENING' (line 48), 'runtime line' (line 78); fnn-out -> fnn-emit (io.lisp:998-999) = write-sequence then finish-output on *fnn-stdout* (a blocking fd-stream, :buffering :full, io.lisp:~988).\nKeys: R2|fnn-emit|O:write-sequence, R2|fnn-emit|O:finish-output (checker counts 13 sites under O; only this one traced; others not enumerated by the checker's output and not individually verified). Same chain also reaches bplc-cut's finish-output/sleep (developer selector FN_BP_LISTENER_TEST_PAUSE_CUT only; test-only pause loop) and socket-close (bp-listener-control.lisp:70), which are baselined/unlisted.\nHazard: a blocked stdout pipe (supervisor not draining) stalls the owner mutex.",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/bp-listener-control.lisp",
+ "fix": "Emit the BP NODE lines after the section returns (return the lines as data), and do the listener drive outside the owner section or justify it as a design decision; fnn-out under O is the baseline hazard of every site in the 13.",
+ "id": "LOCK-R2-LISTENER-RECONFIG-STDOUT",
+ "notes": [],
+ "owner": "unassigned",
+ "scenario": "BP configuration change through the BP control socket: stdout lines are emitted while O is held; a full stdout pipe blocks the owner.",
+ "severity": "medium",
+ "source": "lock-triage-r2 on origin/dev d3b392c32 (tools/lock_discipline_check.py --check --json; new R2 findings)",
+ "state": "open",
+ "title": "BP listener reconfiguration writes stdout (fnn-out) and does listener bind/close inside the owner section",
+ "updated": "2026-10-06T23:55:36Z"
+}
