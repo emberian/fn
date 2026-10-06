@@ -1147,3 +1147,50 @@
                   (s s) (j j) (code (fn-pull-local-code octets))
                   (conns (fn-csp-conns s))
                   (round (fn-cu-s-round (fn-csp-session s))))))))
+
+(defthm fn-csp-step-final-verdict-journals
+  ; The composition.  The drained batch's last settling reply is the step
+  ; that journals: fn-csp-local-verdict frees j and, the window now idle,
+  ; hands the state to fn-csp-batch-finish, which forces todo nil, so the
+  ; nil-todo branch of fn-cu-next emits exactly one (:journal . cursor)
+  ; naming the cursor the produced round commits.  The count of the reply's
+  ; own class (0 imported / 2 refused) is the only one that moves, by one,
+  ; and conns[j] is :free.  The non-final verdict emits nothing
+  ; (fn-csp-step-settles-one-verdict-exactly-once).
+  (implies (and (fn-cu-session-readyp (fn-csp-session s))
+                (natp j)
+                (fn-pull-octetsp octets)
+                (not (member-eq (fn-csp-mode s) '(:failed :done)))
+                (equal (fn-csp-conn j s) (cons msgid :verdict))
+                (member-equal (fn-pull-local-code octets) '(235 437))
+                (eq (fn-csp-mode s) :drain)
+                (fn-csp-conns-idlep-but (fn-csp-conns s) (nfix j)))
+           (let* ((pair (fn-csp-step s (list* :local j octets)))
+                  (s2 (car pair))
+                  (effs (cadr pair))
+                  (r (fn-cu-s-round (fn-csp-session s)))
+                  (r2 (fn-cu-s-round (fn-csp-session s2))))
+             (and (consp effs)
+                  (eq (car (car effs)) :journal)
+                  (equal (cdr (car effs)) (fn-cu-round-cursor r2))
+                  (not (member-eq :journal (strip-cars (cdr effs))))
+                  (not (member-eq :local (strip-cars effs)))
+                  (equal (fn-cu-r-counts r2)
+                         (fn-cu-count (fn-cu-r-counts r)
+                                      (if (equal (fn-pull-local-code octets) 235)
+                                          0 2)))
+                  (equal (fn-csp-conns s2)
+                         (fn-csp-conns-set (fn-csp-conns s) j :free)))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-csp-step fn-csp-local fn-csp-local-event-octets)
+                           (fn-csp-local-verdict fn-csp-batch-finish fn-cu-next))
+           :use ((:instance fn-csp-local-verdict-final-journals
+                  (s s) (j j)
+                  (code (fn-pull-local-code octets))
+                  (conns (fn-csp-conns s))
+                  (round (fn-cu-s-round (fn-csp-session s))))
+                 (:instance fn-csp-local-verdict-settles
+                  (s s) (j j)
+                  (code (fn-pull-local-code octets))
+                  (conns (fn-csp-conns s))
+                  (round (fn-cu-s-round (fn-csp-session s))))))))
