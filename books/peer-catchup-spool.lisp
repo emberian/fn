@@ -1101,6 +1101,12 @@
                 (equal (cdr (fn-csp-conn j s)) :verdict)))
   :rule-classes :forward-chaining))
 
+(local (defthm fn-csp-conns-set-of-nfix
+  ; The step reads its connection index through NFIX; a non-natural index is
+  ; connection 0, as in the update itself.
+  (equal (fn-csp-conns-set conns (nfix j) c) (fn-csp-conns-set conns j c))
+  :hints (("Goal" :in-theory (enable nfix)))))
+
 (defthm fn-csp-step-settles-one-verdict-exactly-once
   ; KEYSTONE (PRF-1335, safety -- the exactly-once half).  The settling reply
   ; on connection j for the record whose terminator j carried: with the
@@ -1115,7 +1121,7 @@
   ; (fn-csp-journals-only-a-settled-batch); the cursor fields are pinned here
   ; for the non-final verdict.
   (implies (and (fn-cu-session-readyp (fn-csp-session s))
-                (natp j) (fn-pull-octetsp octets)
+                (fn-pull-octetsp octets)
                 (not (member-eq (fn-csp-mode s) '(:failed :done)))
                 (equal (fn-csp-conn j s) (cons msgid :verdict)))
            (let* ((pair (fn-csp-step s (list* :local j octets)))
@@ -1144,7 +1150,7 @@
            :in-theory (e/d (fn-csp-step fn-csp-local fn-csp-local-event-octets)
                            (fn-csp-local-verdict))
            :use ((:instance fn-csp-local-verdict-settles
-                  (s s) (j j) (code (fn-pull-local-code octets))
+                  (s s) (j (nfix j)) (code (fn-pull-local-code octets))
                   (conns (fn-csp-conns s))
                   (round (fn-cu-s-round (fn-csp-session s))))))))
 
@@ -1158,7 +1164,6 @@
   ; and conns[j] is :free.  The non-final verdict emits nothing
   ; (fn-csp-step-settles-one-verdict-exactly-once).
   (implies (and (fn-cu-session-readyp (fn-csp-session s))
-                (natp j)
                 (fn-pull-octetsp octets)
                 (not (member-eq (fn-csp-mode s) '(:failed :done)))
                 (equal (fn-csp-conn j s) (cons msgid :verdict))
@@ -1185,12 +1190,12 @@
            :in-theory (e/d (fn-csp-step fn-csp-local fn-csp-local-event-octets)
                            (fn-csp-local-verdict fn-csp-batch-finish fn-cu-next))
            :use ((:instance fn-csp-local-verdict-final-journals
-                  (s s) (j j)
+                  (s s) (j (nfix j))
                   (code (fn-pull-local-code octets))
                   (conns (fn-csp-conns s))
                   (round (fn-cu-s-round (fn-csp-session s))))
                  (:instance fn-csp-local-verdict-settles
-                  (s s) (j j)
+                  (s s) (j (nfix j))
                   (code (fn-pull-local-code octets))
                   (conns (fn-csp-conns s))
                   (round (fn-cu-s-round (fn-csp-session s))))))))
