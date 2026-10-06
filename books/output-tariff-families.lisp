@@ -23,6 +23,7 @@
 (include-book "output-tariff-article-row")
 (include-book "output-tariff-line")
 (include-book "output-tariff-auth")
+(include-book "output-tariff-input")
 
 (def-family-tariffs
   :context ((tokens (fn-ocap-at 3 preview))
@@ -51,4 +52,9 @@
          (:check (fn-tariff-line-octets *fn-tariff-peer-reply-octets*))
          (:takethis (fn-tariff-line-octets *fn-tariff-peer-reply-octets*))
          (:tls-transition (fn-tariff-line-octets *fn-tariff-transition-reply-octets*))
-         (:compression-transition (fn-tariff-line-octets *fn-tariff-transition-reply-octets*))))
+         (:compression-transition (fn-tariff-line-octets *fn-tariff-transition-reply-octets*))
+         (:authentication (fn-tariff-line-octets *fn-nntp-max-response-octets*))
+         (:protocol-error (fn-tariff-line-octets *fn-tariff-session-line-octets*))
+         (:article-input (fn-tariff-line-octets *fn-tariff-article-line-octets*))
+         (:closed 0)
+         (:partial-input 0)))

@@ -166,6 +166,56 @@
                                    fn-auth-xredeem fn-auth-postingp fn-nntp-multi fn-nntp-single
                                    fn-nntp-result-effects)))))
 
+; AUTHINFO: every reply is one line -- the USER/PASS arms' literals, or a
+; SASL exchange's line, which the arm checks against the protocol's
+; response-octet bound before emitting it (fn-auth-sasl-line-okp over the
+; 383/283 payloads; books/nntp-syntax.lisp
+; *fn-nntp-max-response-octets*).  512 holds every literal with margin.
+; The bound is reached in three steps (the line, the line's effects, and
+; the two composed), each a linear rule; fn-auth-sasl-effects stays
+; disabled in the main theorem so the octets function does not expand the
+; constructed effect past them.
+(defthm fn-tariff-sasl-line-within-response-bound
+  (implies (fn-auth-sasl-line-okp code payload)
+           (<= (len (fn-auth-sasl-line code payload))
+               *fn-nntp-max-response-octets*))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable fn-auth-sasl-line fn-auth-sasl-line-okp))))
+
+(defthm fn-tariff-sasl-effects-within
+  (implies (<= (len (fn-auth-sasl-line code payload))
+               *fn-nntp-max-response-octets*)
+           (<= (fn-tariff-effects-octets (fn-auth-sasl-effects code payload))
+               *fn-nntp-max-response-octets*))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable fn-auth-sasl-effects fn-nntp-reply-effect
+                                     fn-tariff-effects-octets))))
+
+(defthm fn-tariff-sasl-effects-octets-within
+  (implies (fn-auth-sasl-line-okp code payload)
+           (<= (fn-tariff-effects-octets (fn-auth-sasl-effects code payload))
+               *fn-nntp-max-response-octets*))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable fn-auth-sasl-effects fn-nntp-reply-effect
+                                     fn-tariff-effects-octets fn-auth-sasl-line-okp
+                                     fn-nntp-crlf))))
+
+(defthm fn-tariff-authinfo-reply-within
+  (implies (fn-nntp-keywordp keyword "AUTHINFO")
+           (<= (fn-tariff-effects-octets
+                (fn-post-result-effects (fn-auth-command as config keyword args)))
+               *fn-nntp-max-response-octets*))
+  :hints (("Goal" :in-theory (e/d (fn-auth-command fn-auth-single fn-auth-authinfo
+                                    fn-auth-sasl-command fn-auth-sasl-finish
+                                    fn-auth-sasl-refuse fn-auth-failed
+                                    fn-auth-bind-principal-peer)
+                                 (fn-post-make-result fn-post-result-effects fn-auth-gatedp
+                                  fn-auth-compressed-refusedp fn-auth-starttls fn-auth-compress
+                                  fn-auth-xredeem fn-auth-postingp fn-nntp-multi fn-nntp-single
+                                  fn-nntp-result-effects fn-auth-sasl-effects
+                                  fn-sasl-response-login
+                                  fn-auth-find-cred fn-sasl-step fn-sasl-outcome-kind)))))
+
 ; ---------------------------------------------------------------------------
 ; The peer layer's transit commands (books/peer-inbound.lisp fn-peer-command):
 ; IHAVE answers one decision line (the reason text at most 100 octets), CHECK

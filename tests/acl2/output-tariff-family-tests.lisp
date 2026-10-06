@@ -416,3 +416,59 @@
           (fn-tariff-family-price '(:preview 9 :ihave ((73 72 65 86 69) (60 97 62))) *tfm-as* nil
                                   *tfm-a* *tfm-c*))
    :rule-classes nil))
+
+; ---------------------------------------------------------------------------
+; AUTHINFO and the gate's non-command previews (lane tariff4, batch 4).
+;
+; RED BEFORE: (:unpriced :authentication), (:unpriced :protocol-error),
+; (:unpriced :article-input), (:unpriced :closed), (:unpriced
+; :partial-input).  GREEN: AUTHINFO is the 512-octet response bound,
+; 16 * (10 * 512 + 32) = 82432; the protocol-error row the session line
+; bound 10752; the article-input row the article line bound
+; 16 * (10 * 201 + 32) = 32672 (the POST refusal and store refusal
+; literals, books/output-tariff-input.lisp); :closed and :partial-input
+; price 0 (no reply exists for either: the machine is not entered).
+(defthm tfm-producer-prices-the-auth-and-input-rows
+  (and (equal (fn-tariff-family-preview '(:preview 9 :authentication ((65 85 84 72))) *tfm-as* nil
+                                        *tfm-a* *tfm-c*)
+              '(:tariff :authentication 82432))
+       (equal (fn-tariff-family-preview '(:preview 9 :protocol-error nil) *tfm-as* nil
+                                        *tfm-a* *tfm-c*)
+              '(:tariff :protocol-error 10752))
+       (equal (fn-tariff-family-preview '(:preview 9 :article-input nil) *tfm-as* nil
+                                        *tfm-a* *tfm-c*)
+              '(:tariff :article-input 32672))
+       (equal (fn-tariff-family-preview '(:preview 9 :closed nil) *tfm-as* nil
+                                        *tfm-a* *tfm-c*)
+              '(:tariff :closed 0))
+       (equal (fn-tariff-family-preview '(:preview 9 :partial-input nil) *tfm-as* nil
+                                        *tfm-a* *tfm-c*)
+              '(:tariff :partial-input 0)))
+  :rule-classes nil)
+
+; The 501 line the reader step's syntax arm answers, at the fixture's
+; session and a wire event that is not a command.
+(defthm tfm-syntax-reply-witness
+  (<= (fn-tariff-effects-octets
+       (fn-nntp-result-effects
+        (fn-nntp-step-pinned *tfm-session* *tfm-archive* nil nil nil
+                             'not-a-command-event *tfm-a*)))
+      *fn-tariff-session-line-octets*)
+  :rule-classes nil)
+
+; A zero price is held, never refused: the closed row's descriptor admits
+; at capacity 0.
+(defthm tfm-closed-row-is-held
+  (equal (fn-ocap-admit-preview '(:preview 9 :closed nil)
+                                (fn-tariff-family-preview '(:preview 9 :closed nil) *tfm-as* nil
+                                                          *tfm-a* *tfm-c*)
+                                0)
+         '(:hold 9 :closed))
+  :rule-classes nil)
+
+(must-fail-checked
+ (defthm tfm-teeth-closed-is-not-protocol-error
+   (equal (fn-tariff-family-price '(:preview 9 :closed nil) *tfm-as* nil *tfm-a* *tfm-c*)
+          (fn-tariff-family-price '(:preview 9 :protocol-error nil) *tfm-as* nil
+                                  *tfm-a* *tfm-c*))
+   :rule-classes nil))
