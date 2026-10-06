@@ -15,6 +15,7 @@
 ;       retained hypotheses, the omitted one false, the conclusion false.
 (in-package "ACL2")
 (include-book "store-log-stream-tests")
+(include-book "../../books/defkeystone")
 (include-book "../../books/store-log-entry-bound")
 
 (assert-event
@@ -98,3 +99,28 @@
         (not (equal (len e) (fn-lgw-entry-len h st0 short)))
         (not (equal (sleb-step e st0 c) (sleb-step nil st0 c))))))
 
+; TEETH-62 BEGIN
+; The two entry-len-bounded-is-entry-len keystones with their teeth (TEETH CONTRACT v1).  fn-lgw-entry-len-bounded-step and fn-lgdm-entry-len-bounded-step state `(equal (fn-lgw-step ...) (fn-lgw-step ...))` over multiple values and stay owed with the TEETH-OWED-MV-CLAIM class.
+(defteeth fn-lgw-entry-len-bounded-is-entry-len
+  :claim (((within-bound (fn-lgw-entry-len-bounded h st extent max)))
+          (equal (fn-lgw-entry-len-bounded h st extent max)
+                  (fn-lgw-entry-len h st extent)))
+  :subject fn-lgw-entry-len-bounded
+  :witness ((h (fn-bs-take 10 (sleb-seg))) (st (fn-lgw-start *fn-lg-genesis* 1)) (extent (sleb-extent)) (max (slw-max)))
+  :breaks ((within-bound ((h (fn-bs-take 10 (sleb-long))) (st (fn-lgw-start *fn-lg-genesis* 1)) (extent (sleb-extent)) (max (slw-max)))))
+  :mutations ((refuses-in-bound
+               (:conclusion (equal (fn-lgw-entry-len-bounded h st extent max) nil))
+               ((h (fn-bs-take 10 (sleb-seg))) (st (fn-lgw-start *fn-lg-genesis* 1)) (extent (sleb-extent)) (max (slw-max)))
+               :fault "the bounded length refusing a record that is within the bound")))
+
+(defteeth fn-lgdm-entry-len-bounded-is-entry-len
+  :claim (((within-bound (fn-lgdm-entry-len-bounded h ps extent max)))
+          (equal (fn-lgdm-entry-len-bounded h ps extent max)
+                  (fn-lgdm-entry-len h ps extent)))
+  :subject fn-lgdm-entry-len-bounded
+  :witness ((h (fn-bs-take 10 (sleb-seg))) (ps (fn-lgdm-start (fn-lgw-start *fn-lg-genesis* 1))) (extent (sleb-extent)) (max (slw-max)))
+  :breaks ((within-bound ((h (fn-bs-take 10 (sleb-long))) (ps (fn-lgdm-start (fn-lgw-start *fn-lg-genesis* 1))) (extent (sleb-extent)) (max (slw-max)))))
+  :mutations ((refuses-in-bound
+               (:conclusion (equal (fn-lgdm-entry-len-bounded h ps extent max) nil))
+               ((h (fn-bs-take 10 (sleb-seg))) (ps (fn-lgdm-start (fn-lgw-start *fn-lg-genesis* 1))) (extent (sleb-extent)) (max (slw-max)))
+               :fault "the bounded probe length refusing a record that is within the bound")))

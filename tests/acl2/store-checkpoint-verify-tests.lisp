@@ -13,6 +13,7 @@
 (in-package "ACL2")
 (include-book "store-checkpoint-arena-tests")
 (include-book "../../books/store-checkpoint-verify")
+(include-book "../../books/defkeystone")
 
 ; The host-called step is guard-verified.
 (assert-event
@@ -122,3 +123,16 @@
 ; is refused.
 (assert-event
  (equal (sccvt-host (sccvt-file) (+ 1 (sccvt-sequence))) '(:refused :segment)))
+
+; TEETH-21 BEGIN
+(defteeth fn-sccv-final-ok-is-runs-ok
+  :claim (((verify-accepts (equal (car (fn-sccv-final (fn-sccv-segs (fn-sccv-initial sequence) segs))) :ok)))
+          (fn-sccv-runs-okp segs *fn-sccv-runs* (nfix sequence)))
+  :subject fn-sccv-final
+  :witness ((sequence (sccvt-sequence)) (segs (sccvt-segs-of-file)))
+  :breaks ((verify-accepts ((segs (butlast (sccvt-segs-of-file) 1)))))
+  :mutations ((runs-joined-at-the-wrong-sequence
+               (:conclusion (fn-sccv-runs-okp segs *fn-sccv-runs* (+ 1 (nfix sequence))))
+               ((sequence (sccvt-sequence)) (segs (sccvt-segs-of-file)))
+               :fault "the runs joined at a sequence the written file does not carry")))
+; TEETH-21 END

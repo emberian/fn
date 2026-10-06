@@ -28,10 +28,10 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [P1](#p1) protected channel | `fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing` | yes | no: caller bridge pending | no: caller bridge pending | no: caller bridge pending |
 | [P2](#p2) 240 after a consumed completion | `fn-own-240-follows-consumed-completion` | yes | yes: `certify-20261005T045423Z-4058702` | no: source changed since 69046a76 | no: dev source not on the node |
 | [P3](#p3) reading resumes | `fn-own-pinned-view-survives-other-post` | yes | no: caller bridge pending | no: caller bridge pending | no: caller bridge pending |
-| [P4](#p4) one owner decides duplicate versus conflict | `fn-pb-same-article-is-answered-already-stored` | yes | no: closure moved | no: source changed since 69046a76 | no: dev source not on the node |
+| [P4](#p4) one owner decides duplicate versus conflict | `fn-pb-same-article-is-answered-already-stored` | yes | yes: `certify-20261006T024232Z-2942710` | no: source changed since 69046a76 | no: dev source not on the node |
 | [P5](#p5) a connection-local fault costs one connection | `fn-ocfg-fault-keeps-every-other-connection` | yes | yes: `certify-20261005T045423Z-4058702` | no: source changed since 69046a76 | no: dev source not on the node |
 | [P6](#p6) live reconfiguration | `fn-ocl-no-reader-observes-a-half-change` | yes | yes: `certify-20261005T045423Z-4058702` | no: source changed since 69046a76 | no: dev source not on the node |
-| [P7](#p7) two nodes exchange both ways | `fn-own-submission-never-targets-a-loop` | yes | no: closure moved | no: source changed since 69046a76 | no: dev source not on the node |
+| [P7](#p7) two nodes exchange both ways | `fn-own-submission-never-targets-a-loop` | yes | yes: `certify-20261006T024232Z-2942710` | no: source changed since 69046a76 | no: dev source not on the node |
 | [P8](#p8) signature verdict visible | `fn-own-read-hdr-fn-verified-is-the-pinned-verdict` | yes | no: caller bridge pending | no: caller bridge pending | no: caller bridge pending |
 | [P9](#p9) keep until release, refuse the unaffordable | `fn-sbud-prepare-refuses-at-budget` | yes | yes: `certify-20261005T045423Z-4058702` | no: source changed since 69046a76 | no: dev source not on the node |
 | [P10](#p10) every cut is a model crash point | `fn-lg-open-program-keeps-the-relation-at-every-cut` | yes | yes: `certify-20261004T175105Z-40177` | no: source changed since 69046a76 | no: dev source not on the node |
@@ -44,14 +44,14 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [operator-init-resume](#operator-init-resume) resumable developer init compatibility | `fn-nir-resume-admits-identical-initial-contract-across-stamps` | yes | yes: `certify-20261004T022302Z-3294774` | no: no matching image evidence | no: profile not deployed |
 | [PRF-1266](#prf-1266) STARTTLS after authentication | `fn-auth-starttls-after-authentication-is-refused-without-reset` | yes | no: caller bridge pending | no: caller bridge pending | no: caller bridge pending |
 | [PRF-1269](#prf-1269) peer reader access | `fn-auth-view-excludes-unreadable-groups-on-any-connection` | yes | no: caller bridge pending | no: caller bridge pending | no: caller bridge pending |
-| [PRF-1268](#prf-1268) published handshake charges | `fn-cbud-live-held-charges-current-and-active` | yes | yes: `certify-20261005T045423Z-4058702` | no: no matching image evidence | no: dev source not on the node |
+| [PRF-1268](#prf-1268) published handshake charges | `fn-cbud-live-held-charges-current-and-active` | yes | no: closure moved | no: no matching image evidence | no: dev source not on the node |
 | [operator-journal-stream](#operator-journal-stream) incremental decision journal replay | `fn-otjs-report-refines-journal-report` | yes | yes: `certify-20261005T072706Z-625950` | no: no matching image evidence | no: profile not deployed |
-| [PRF-1021](#prf-1021) operator configuration preserves resource policy | `fn-ncpath-config-octets-load-the-resolved-configuration` | yes | yes: `certify-20261005T072706Z-625950` | no: no matching image evidence | no: dev source not on the node |
+| [PRF-1021](#prf-1021) operator configuration preserves resource policy | `fn-ncpath-config-octets-load-the-resolved-configuration` | yes | no: closure moved | no: no matching image evidence | no: dev source not on the node |
 | [bp-source-window](#bp-source-window) bounded private TCPCL logical window | `fn-tcim-turn-boundary` | yes | yes: `certify-20261003T133032Z-1944927` | no: no matching image evidence | no: profile not deployed |
 | [bp-source-control](#bp-source-control) KEEPALIVE while exact received-source ACK remains held | `fn-tclsctl-never-releases-ack` | yes | yes: `certify-20261003T163429Z-2470673` | no: no matching image evidence | no: profile not deployed |
-| [operator-default-launch](#operator-default-launch) DEFAULT launcher and configured next-run resource projection | `fn-prstartup-accepted-default-launch-fits-machine` | yes | yes: `certify-20261005T045423Z-4058702` | no: no matching image evidence | no: dev source not on the node |
+| [operator-default-launch](#operator-default-launch) DEFAULT launcher and configured next-run resource projection | `fn-prstartup-accepted-default-launch-fits-machine` | yes | no: closure moved | no: no matching image evidence | no: dev source not on the node |
 | [durable-after-ack](#durable-after-ack) durable after acknowledgement (Mini M1) | `fn-lgu-acknowledged-records-are-recovered-at-every-cut` | yes | yes: `certify-20261004T195103Z-266420` | no: no matching image evidence | no: dev source not on the node |
-| [store-identity](#store-identity) store identity by command (Mini M4) | `fn-stid-reply-of-a-genesis-decodes` | yes | yes: `certify-20261005T072706Z-625950` | no: no matching image evidence | no: dev source not on the node |
+| [store-identity](#store-identity) store identity by command (Mini M4) | `fn-stid-reply-of-a-genesis-decodes` | yes | no: closure moved | no: no matching image evidence | no: dev source not on the node |
 
 ## Records
 
@@ -59,7 +59,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **protected channel.** A gated command before login is answered 480 and changes nothing, AUTHINFO on a clear connection under `protected_only` is 483, and POST needs the principal's posting flag.
 
-- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4561, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-scar-auth-step-pinned-is-auth-step-pinned` (books/served-carried.lisp:192).
+- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4578, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-scar-auth-step-pinned-is-auth-step-pinned` (books/served-carried.lisp:192).
 - Keystone: `fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing` (books/nntp-auth-invariants.lisp:612; PRF-031 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260929T022113Z-1604071` passed this source of `books/nntp-auth-invariants.lisp`, and since then `books/article-header-census.lisp`, `books/article-line-bound.lisp`, `books/article-properties.lisp` and 87 more changed.
 - Tested: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Deployed: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
@@ -71,7 +71,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **240 after a consumed completion.** After the owner consumes an article's completion the POST reply is 240 or uncertain, never a refusal, and each refusal kind stays distinct.
 
-- Host-called subject: `fn-apc-own-finish` at host/owner-host.lisp:2549, equated by `fn-apc-own-finish-is-own-finish` (books/owner-parse-carried.lisp:1077).
+- Host-called subject: `fn-apc-own-finish` at host/owner-host.lisp:2566, equated by `fn-apc-own-finish-is-own-finish` (books/owner-parse-carried.lisp:1077).
 - Keystone: `fn-own-240-follows-consumed-completion` (books/owner-served-invariants.lisp:243; PRF-015 (certified)); certified at the current source and closure by `certify-20261005T045423Z-4058702` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile developer twin for the cuts, production for the kill run (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); absent from it: `books/owner-parse-carried.lisp`.
 - Deployed: no: node image `a3553e6b`; changed since it: `books/owner-parse-carried.lisp`, `books/owner-served-invariants.lisp`, `host/owner-host.lisp`.
@@ -83,7 +83,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **reading resumes.** A reader's pinned view answers the same across other connections' posts, and a local number naming an article is never reassigned.
 
-- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4561, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation` (books/owner-served-carried.lisp:230).
+- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4578, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation` (books/owner-served-carried.lisp:230).
 - Keystone: `fn-own-pinned-view-survives-other-post` (books/owner-served-invariants.lisp:459; PRF-002 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20261005T045423Z-4058702` (earliest archived).
 - Tested: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Deployed: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
@@ -95,8 +95,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **one owner decides duplicate versus conflict.** A resubmission with the same poster bytes (the octets without Path, Xref, Injection-Date, Injection-Info and a node-generated Date) is answered already stored; different poster bytes under the same Message-ID are a conflict.
 
-- Host-called subject: `fn-store-existing-action` at host/owner-host.lisp:1955, equated by `fn-store-existing-action-is-the-verdict-over-alpha` (books/store-intern.lisp:1050).
-- Keystone: `fn-pb-same-article-is-answered-already-stored` (books/poster-bytes-invariants.lisp:557; in no registry row); no archived manifest certifies the current closure; `certify-20260928T161301Z-1382021` passed this source of `books/poster-bytes-invariants.lisp`, and since then `books/accounts.lisp`, `books/article-fields.lisp`, `books/article-header-census.lisp` and 158 more changed.
+- Host-called subject: `fn-store-existing-action` at host/owner-host.lisp:1972, equated by `fn-store-existing-action-is-the-verdict-over-alpha` (books/store-intern.lisp:1050).
+- Keystone: `fn-pb-same-article-is-answered-already-stored` (books/poster-bytes-invariants.lisp:557; in no registry row); certified at the current source and closure by `certify-20261006T024232Z-2942710` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile the matrix postcycle phase against one owner (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); absent from it: `books/store-intern.lisp`.
 - Deployed: no: node image `a3553e6b`; changed since it: `books/poster-bytes-invariants.lisp`, `books/store-intern.lisp`, `host/owner-host.lisp`.
 - Latest positive result: a resend at a later second is answered duplicate where the image before D25 answered conflict ([d25-dup-conflict](evidence/d25-dup-conflict-2026-09-24.md)).
@@ -107,7 +107,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **a connection-local fault costs one connection.** A connection-local fault closes that connection and keeps every other, and an open at `max-conns` answers nothing and leaves the owner unchanged; a fault in a shared owner action fail-stops.
 
-- Host-called subject: `fn-owner-callback-fault` at host/owner-host.lisp:4836, equated by `fn-owner-callback-fault-complete-effects` (books/owner-connection-callback-refinement.lisp:99).
+- Host-called subject: `fn-owner-callback-fault` at host/owner-host.lisp:4853, equated by `fn-owner-callback-fault-complete-effects` (books/owner-connection-callback-refinement.lisp:99).
 - Keystone: `fn-ocfg-fault-keeps-every-other-connection` (books/owner-served-invariants.lisp:522; PRF-040 (certified)); certified at the current source and closure by `certify-20261005T045423Z-4058702` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile native modules, image's own tests (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); absent from it: `books/owner-connection-callback-refinement.lisp`.
 - Deployed: no: node image `a3553e6b`; absent from it: `books/owner-connection-callback-refinement.lisp`.
@@ -119,8 +119,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **live reconfiguration.** No reader observes a half-applied configuration change, and a crash at any instant recovers the live or the whole published generation.
 
-- Host-called subject: `fn-oclc-publish` at host/owner-host.lisp:1656, equated by `fn-oclc-publish-is-publish` (books/config-owner-carried.lisp:465).
-- Keystone: `fn-ocl-no-reader-observes-a-half-change` (books/config-owner-publish.lisp:180; PRF-028 (certified)); certified at the current source and closure by `certify-20261005T045423Z-4058702` (earliest archived).
+- Host-called subject: `fn-oclc-publish` at host/owner-host.lisp:1673, equated by `fn-oclc-publish-is-publish` (books/config-owner-carried.lisp:465).
+- Keystone: `fn-ocl-no-reader-observes-a-half-change` (books/config-owner-publish.lisp:180; PRF-028 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20261005T045423Z-4058702` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile native-operator matrix and native modules (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); absent from it: `books/config-owner-carried.lisp`.
 - Deployed: no: node image `a3553e6b`; changed since it: `host/owner-host.lisp`.
 - Latest positive result: CFG-LIVE accepted and CFG-LIVE-REFUSE refused; live_reconfiguration 11/11, admin 9/9, operator_verbs 18/18, profile_upgrade 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -131,8 +131,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **two nodes exchange both ways.** An accepted article is offered to every configured peer except the one it came from and those its Path names, and a relayed article keeps the received Path tail.
 
-- Host-called subject: `fn-apc-submission-intent` at host/owner-host.lisp:3273, equated by `fn-own-submission-targets-are-feed-targets` (books/owner-feed-subject.lisp:35).
-- Keystone: `fn-own-submission-never-targets-a-loop` (books/owner-feed-subject.lisp:108; PRF-029 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260927T043640Z-3424681` passed this source of `books/owner-feed-subject.lisp`, and since then `books/acceptance-alloc.lisp`, `books/acceptance.lisp`, `books/accounts.lisp` and 220 more changed.
+- Host-called subject: `fn-apc-submission-intent` at host/owner-host.lisp:3290, equated by `fn-own-submission-targets-are-feed-targets` (books/owner-feed-subject.lisp:35).
+- Keystone: `fn-own-submission-never-targets-a-loop` (books/owner-feed-subject.lisp:108; PRF-029 (certified)); certified at the current source and closure by `certify-20261006T024232Z-2942710` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile two-node native-operator matrix with INN (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); changed since it: `books/owner-feed-subject.lisp`, `host/owner-host.lisp`.
 - Deployed: no: node image `a3553e6b`; changed since it: `host/owner-host.lisp`.
 - Latest positive result: all 22 TRANSIT-*-AB/BA rows and INN 33/33; peering 5/5 with the Path-identity transit, protected_peering 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -143,7 +143,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **signature verdict visible.** A reader's `HDR :fn-verified` reports the verdict the completion recorded for the article, and a carried article reads `carried`, never `verified`.
 
-- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4561, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation` (books/owner-served-carried.lisp:230).
+- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4578, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation` (books/owner-served-carried.lisp:230).
 - Keystone: `fn-own-read-hdr-fn-verified-is-the-pinned-verdict` (books/owner-verdict-read.lisp:416; PRF-026 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260929T022113Z-1604071` passed this source of `books/owner-verdict-read.lisp`, and since then `books/article-header-census.lisp`, `books/article-line-bound.lisp`, `books/article-properties.lisp` and 130 more changed.
 - Tested: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Deployed: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
@@ -155,7 +155,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **keep until release, refuse the unaffordable.** An article prepare at the store profile's transaction budget is refused `unaffordable` by name, and below it is exactly the owner's prepare.
 
-- Host-called subject: `fn-pout-prepare-article` at host/owner-host.lisp:2012, equated by `fn-pout-prepare-article-is-sbud-prepare-when-served` (books/owner-prepare-outcome.lisp:488).
+- Host-called subject: `fn-pout-prepare-article` at host/owner-host.lisp:2029, equated by `fn-pout-prepare-article-is-sbud-prepare-when-served` (books/owner-prepare-outcome.lisp:488).
 - Keystone: `fn-sbud-prepare-refuses-at-budget` (books/owner-store-budget.lisp:37; PRF-004 (certified)); certified at the current source and closure by `certify-20261005T045423Z-4058702` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile native-operator matrix, operator verbs, kill run (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); absent from it: `books/owner-prepare-outcome.lisp`.
 - Deployed: no: node image `a3553e6b`; changed since it: `books/owner-prepare-outcome.lisp`, `host/owner-host.lisp`.
@@ -215,7 +215,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **the human client.** LIST COUNTS answers each group's high, low and count from the connection's pinned view, and a numbered Message-ID lookup retrieves the same article, which the web reader renders.
 
-- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4561, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-own-read-is-served-step-on-pinned-prefix` (books/owner-invariants-served.lisp:175).
+- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4578, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-own-read-is-served-step-on-pinned-prefix` (books/owner-invariants-served.lisp:175).
 - Keystone: `fn-served-step-list-counts-is-the-archive-counts` (books/owner-list-counts-read.lisp:186; PRF-074 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260929T112625Z-2745888` passed this source of `books/owner-list-counts-read.lisp`, and since then `books/article.lisp`, `books/assumptions-pgs-host-io.lisp`, `books/assumptions.lisp` and 101 more changed.
 - Tested: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Deployed: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
@@ -227,8 +227,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **the Message-ID index on the served path.** A reader's Message-ID retrieval is answered from the connection's pinned trie and equals the archive scan, with no whole-store check per command.
 
-- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4561, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix` (books/owner-tls-prefix.lisp:77).
-- Keystone: `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` (books/nntp-pinned-msgid.lisp:36; PRF-067 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260928T124849Z-2149901` passed this source of `books/nntp-pinned-msgid.lisp`, and since then `books/article-fields.lisp`, `books/article.lisp`, `books/assumptions-durable.lisp` and 71 more changed.
+- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4578, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved., equated by `fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix` (books/owner-tls-prefix.lisp:77).
+- Keystone: `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` (books/nntp-pinned-msgid.lisp:36; PRF-067 (certified)); certified at the current source and closure by `certify-20261006T024232Z-2942710` (earliest archived).
 - Tested: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Deployed: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Latest positive result: reader_index 4/4, served_differential 7/7, the peering duplicate rows ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -263,7 +263,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **STARTTLS after authentication.** An authenticated connection advertises no STARTTLS and a valid clear-channel STARTTLS answers 502 with the full authenticated session unchanged.
 
-- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4561, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
+- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4578, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Keystone: `fn-auth-starttls-after-authentication-is-refused-without-reset` (books/nntp-auth.lisp:3496; PRF-1266 (certified)); certified at the current source and closure by `certify-20261005T045423Z-4058702` (earliest archived).
 - Tested: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Deployed: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
@@ -275,7 +275,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **peer reader access.** A peer-role reader command uses its login or anonymous pinned READ/POST rule; a projected nonempty rule excludes unreadable groups and article memberships, and queue privacy covers source peers.
 
-- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4561, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
+- Host-called subject: `fn-asto-mca-read-span` at host/owner-host.lisp:4578, caller bridge pending: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Keystone: `fn-auth-view-excludes-unreadable-groups-on-any-connection` (books/nntp-auth.lisp:4157; PRF-1269 (certified)); certified at the current source and closure by `certify-20261005T045423Z-4058702` (earliest archived).
 - Tested: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
 - Deployed: no: Current ARTICLE preflight/available reader route needs a named equivalence to the previously certified raw reader/auth/pinned-view boundary; component keystones remain historical until that bridge is proved..
@@ -287,8 +287,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **published handshake charges.** Durable publication and settled handshake exits charge max(published TLS limit,still-owned admissions); refused proposals do not change the held charge.
 
-- Host-called subject: `fn-owner-connection-held-refresh` at host/owner-host.lisp:1660.
-- Keystone: `fn-cbud-live-held-charges-current-and-active` (books/connection-budget.lisp:800; PRF-1268 (certified)); certified at the current source and closure by `certify-20261005T045423Z-4058702` (earliest archived).
+- Host-called subject: `fn-owner-connection-held-refresh` at host/owner-host.lisp:1677.
+- Keystone: `fn-cbud-live-held-charges-current-and-active` (books/connection-budget.lisp:800; PRF-1268 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20261003T104044Z-1503690` passed this source of `books/connection-budget.lisp`, and since then `books/byte-store-scan.lisp`, `books/feed-events.lisp`, `books/group-access.lisp` and 26 more changed.
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; changed since it: `books/connection-budget.lisp`, `host/owner-host.lisp`.
 - Latest positive result: Connection-budget and exact teeth certified in certify-20261003T104044Z-1503690; actual host adapter outcome-injection fixture PASS, archived sol-access-native-faults-2026-10-03.
@@ -311,8 +311,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **operator configuration preserves resource policy.** The operator loads relative paths resolved under its config directory while retaining both explicit cold/output resource policies; canonical show reloads the complete normalized configuration.
 
-- Host-called subject: `fn-native-operator-host-run-at` at host/native/operator.lisp:1225.
-- Keystone: `fn-ncpath-config-octets-load-the-resolved-configuration` (books/native-config-paths.lisp:183; in no registry row); certified at the current source and closure by `certify-20261005T072706Z-625950` (earliest archived).
+- Host-called subject: `fn-native-operator-host-run-at` at host/native/operator.lisp:1228.
+- Keystone: `fn-ncpath-config-octets-load-the-resolved-configuration` (books/native-config-paths.lisp:184; in no registry row); no archived manifest certifies the current closure; `certify-20261006T024232Z-2942710` passed this source of `books/native-config-paths.lisp`, and since then `books/profile-limits.lisp` changed.
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; absent from it: `books/native-config-paths.lisp`.
 - Latest positive result: Canonical rendering/source171+325 and resolverbb089: show+tests normal115041Z-1706527 PASS; paths/show+paths tests normal120245Z-1732642 PASS at75ad7a81a. Complete output-only/combined resource fixtures pass; exact manifests archived and indexed.
@@ -347,8 +347,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **DEFAULT launcher and configured next-run resource projection.** For an accepted DEFAULT run with no explicit cold policy, the extended selected reservation fits the captured least positive machine allowance; STATUS and HEALTH use the same actual configuration policy chain. This is a partial selected storage projection.
 
-- Host-called subject: `fn-prstartup-extend-operation-reservation` at host/native/heap.lisp:411, equated by `fn-prstartup-operation-extension-refines-default-by-definition` (books/page-read-startup.lisp:594).
-- Keystone: `fn-prstartup-accepted-default-launch-fits-machine` (books/page-read-startup.lisp:573; PRF-1301 (certified)); certified at the current source and closure by `certify-20261005T045423Z-4058702` (earliest archived).
+- Host-called subject: `fn-prstartup-extend-operation-reservation` at host/native/heap.lisp:422, equated by `fn-prstartup-operation-extension-refines-default-by-definition` (books/page-read-startup.lisp:594).
+- Keystone: `fn-prstartup-accepted-default-launch-fits-machine` (books/page-read-startup.lisp:573; PRF-1301 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20261005T045423Z-4058702` passed this source of `books/page-read-startup.lisp`, and since then `books/decoded-worker-backing.lisp`, `books/heap-store-figure.lisp`, `books/native-config.lisp` and 1 more changed.
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; absent from it: `books/page-read-startup.lisp`.
 - Latest positive result: Actual DEFAULT/output/peer heap source consumers, real inert peer policy files, retained private-bank constructor cuts and snapshot/peer terminal conjunction pass. Foundation69b owns actual protected nursery growth and current-worker machine admission; source guard evidence remains separate from normal certification. Earlier manifests remain valid for their exact source coordinates.
@@ -372,7 +372,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **store identity by command (Mini M4).** IDENTITY: `fn identity CONTROL` asks the running owner (FNCT kind 24, a :read control) and prints the reply (kind 25) that ACL2 encodes over the exported wire grammar: the open's genesis format, node, schema and profile digests, the consumer arm (unbootstrapped, or bootstrapped with non-empty history id and incarnation), the created and running revisions and the BLAKE3 of specs/wire-grammar.json; Mini pins its decoder by that digest.
 
 - Host-called subject: `fn-stid-host-reply` at host/native/store-identity.lisp:23, equated by `fn-stid-value-is-a-reply-value` (books/store-identity.lisp:282).
-- Keystone: `fn-stid-reply-of-a-genesis-decodes` (books/store-identity.lisp:317; in no registry row); certified at the current source and closure by `certify-20261005T072706Z-625950` (earliest archived).
+- Keystone: `fn-stid-reply-of-a-genesis-decodes` (books/store-identity.lisp:317; in no registry row); no archived manifest certifies the current closure; `certify-20261004T202723Z-407947` passed this source of `books/store-identity.lisp`, and since then `books/native-config.lisp`, `books/profile-limits.lisp`, `books/wire-export.lisp` and 5 more changed.
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; absent from it: `books/store-identity.lisp`, `host/native/store-identity.lisp`.
 - Latest positive result: M4 on dev ad33dd8c4 (merge dce7b2333 of f84daa568, with the may-seal fix 5ea752578): tests.test_native_store_identity 2 ran OK on the published set ad33dd8c4 (developer image), boxq bq10050444-0146, run hbox:/tank/fn/scratch/mini-contract-3/native-bq10050444-0146; books certified lat1 certify-20261004T202723Z-407947 and certify-20261004T203446Z-443120.

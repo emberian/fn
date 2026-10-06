@@ -138,19 +138,28 @@
   :claim (((okp (fn-rt-okp tree))) (fn-rt-okp (cadr (fn-rt-step tree op))))
   :witness ((tree *rtt-t1*) (op (list (cons 2 1) :draw 0 *rtt-read*)))
   :breaks ((okp ((tree *rtt-corrupt-missing*) (op (list :root :settle 0 1))) :logical "a sub-bank row with no sub-bank behind it; no step builds it"))
-  :mutations (:deferred "no false neighbour named yet"))
+  :mutations ((admitted-draw-unrecorded
+               (:conclusion (equal (cadr (fn-rt-step tree op)) tree))
+               ((tree *rtt-t1*) (op (list (cons 2 1) :draw 0 *rtt-read*)))
+               :fault "an admitted draw that leaves the tree as it was (the read unrecorded)")))
 
 (defteeth fn-rt-run-keeps-okp
   :claim (((okp (fn-rt-okp tree))) (fn-rt-okp (cadr (fn-rt-run tree ops))))
   :witness ((tree *rtt-t7*) (ops *rtt-admitted-run*))
   :breaks ((okp ((tree *rtt-corrupt-missing*) (ops (list (list :root :settle 0 1)))) :logical "a sub-bank row with no sub-bank behind it; no step builds it"))
-  :mutations (:deferred "no false neighbour named yet"))
+  :mutations ((admitted-run-dropped
+               (:conclusion (equal (cadr (fn-rt-run tree ops)) tree))
+               ((tree *rtt-t7*) (ops *rtt-admitted-run*))
+               :fault "a run that drops its admitted steps")))
 
 (defteeth fn-rt-step-refused-keeps-the-tree
   :claim (((refused (not (fn-rv-admittedp (car (fn-rt-step tree op)))))) (equal (cadr (fn-rt-step tree op)) tree))
   :witness ((tree *rtt-t6*) (op (list (cons 2 1) :settle 1 1)))
   :breaks ((refused ((tree *rtt-t6*) (op (list :root :open 2 *rtt-conn-budget* 4))) :logical "pre-contract witness, evaluated logically"))
-  :mutations (:deferred "no false neighbour named yet"))
+  :mutations ((open-counted-refused
+               (:hypothesis refused (not (equal (car (fn-rt-step tree op)) :drawn)))
+               ((tree *rtt-t6*) (op (list :root :open 2 *rtt-conn-budget* 4)))
+               :fault "a refusal test that reads only :drawn as admitted, so an admitted open counts as refused")))
 
 (defteeth fn-rt-sub-bank-steps-keep-the-root
   :claim (() (equal (fn-rt-root (cadr (fn-rt-step tree (cons (cons slot gen) step)))) (fn-rt-root tree)))
@@ -161,4 +170,8 @@
   :claim (((destroyed (equal (car (fn-rt-step tree (list :root :destroy slot gen))) :destroyed))) (let ((later (cadr (fn-rt-run (cadr (fn-rt-step tree (list :root :destroy slot gen))) ops)))) (and (equal (car (fn-rt-step later (cons (cons slot gen) step))) :stale) (equal (cadr (fn-rt-step later (cons (cons slot gen) step))) later))))
   :witness ((tree *rtt-t5*) (slot 2) (gen 1) (ops (list (list :root :open 2 *rtt-conn-budget* 4) (list (cons 2 2) :draw 0 *rtt-read*))) (step (list :settle 1 1)))
   :breaks ((destroyed ((tree *rtt-corrupt-overspent*) (slot 2) (gen 1) (ops nil) (step (list :draw 1 *rtt-read*))) :logical "a sub-bank that spent past its budget refuses its destroy (:sub-bank-overspent) and stays addressable; no step builds it"))
-  :mutations (:deferred "no false neighbour named yet"))
+  :mutations ((slot-revoked-not-token
+               (:conclusion (let ((later (cadr (fn-rt-run (cadr (fn-rt-step tree (list :root :destroy slot gen))) ops))))
+                              (equal (car (fn-rt-step later (cons (cons slot (+ 1 gen)) (list :settle 0 1)))) :stale)))
+               ((tree *rtt-t5*) (slot 2) (gen 1) (ops (list (list :root :open 2 *rtt-conn-budget* 4) (list (cons 2 2) :draw 0 *rtt-read*))) (step (list :settle 1 1)))
+               :fault "a destroy that revokes the slot rather than its token, so the re-opened slot's own completion is refused")))

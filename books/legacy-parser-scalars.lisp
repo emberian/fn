@@ -8,12 +8,14 @@
   (and (natp pos) (natp (fn-lpc-at 1 s))
        (<= (fn-lpc-at 1 s) pos)))
 
-(defthm fn-lps-header-byte-count-preserved
+; Over any requested name projection: fn-lpc-byte steps the header machine
+; through fn-lpc-header-byte-names (legacy-parser-cursor, 8630f38a3).
+(defthm fn-lps-header-byte-names-count-preserved
   (implies (fn-lps-header-count-p s pos)
-           (fn-lps-header-count-p (fn-lpc-header-byte s byte pos h pin)
+           (fn-lps-header-count-p (fn-lpc-header-byte-names s byte pos h pin names)
                                   (+ 1 pos)))
   :hints (("Goal" :in-theory
-           (e/d (fn-lps-header-count-p fn-lpc-header-byte fn-lpc-value-byte
+           (e/d (fn-lps-header-count-p fn-lpc-header-byte-names fn-lpc-value-byte
                  fn-lpc-header-bad fn-lpc-at)
                 (fn-lpc-put fn-lpc-close-fields fn-lpc-name-step fn-lpc-name-key)))))
 
@@ -46,8 +48,10 @@
                  (:instance fn-lps-body-byte-count-preserved
                             (s (fn-lpc-at 6 s)) (pos (fn-lpc-at 3 s))))
            :in-theory
-           (e/d (fn-lps-scalars-p fn-lpc-byte fn-lpc-at fn-lps-body-count-p)
-                (fn-lpc-header-byte fn-lpc-header-bounds-p fn-lpc-cursor-bounds-p
+           (e/d (fn-lps-scalars-p fn-lpc-byte fn-lpc-byte-names fn-lpc-at
+                 fn-lps-body-count-p)
+                (fn-lpc-header-byte fn-lpc-header-byte-names fn-lpc-header-bounds-p
+                 fn-lpc-cursor-bounds-p
                  fn-lpc-body-byte fn-lpc-split-byte fn-lps-header-count-p
                  fn-lps-body-byte-count-preserved fn-lpc-byte-preserves-bounds)))))
 

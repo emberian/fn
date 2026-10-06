@@ -28,6 +28,8 @@
 (defun fnn-mux-write-now (conn)
   (declare (ignorable conn))
   (harness-stub-reached 'fnn-mux-write-now "host/native/mux.lisp"))
+(defun fnn-owner-article-window ()
+  (harness-stub-reached 'fnn-owner-article-window "host/native/owner.lisp"))
 (defun fnn-owner-await-logical (service cid &optional deadline)
   (declare (ignorable service cid deadline))
   (harness-stub-reached 'fnn-owner-await-logical "host/native/owner.lisp"))

@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/output-command-admission")
+(include-book "../../books/defkeystone")
 ; Fixed parser fixtures use the exact existing command tokenizer.
 (assert-event (equal (fn-ocap-command-family '(110 101 119 110 101 119 115 32 102 110 46 116 101 115 116 32 50 48 48 48 48 49 48 49 32 48 48 48 48 48 48)) :newnews))
 (assert-event (equal (fn-ocap-command-family '(65 82 84 73 67 76 69 32 49)) :article))
@@ -72,3 +73,23 @@
        (equal (fn-ocap-admit-preview preview
                 (fn-ocap-unpriced-tariff preview) 1048576)
               '(:refused :unpriced-output-family :newnews)))))
+
+; TEETH-21 BEGIN
+(defteeth fn-ocap-held-prefix-has-matching-funded-tariff
+  :claim (((held (equal (fn-ocap-at 0 (fn-ocap-admit-preview preview tariff capacity)) :hold)))
+          (and (fn-ocap-previewp preview)
+               (fn-ocap-tariffp tariff)
+               (equal (fn-ocap-at 2 preview) (fn-ocap-at 1 tariff))
+               (natp capacity)
+               (<= (fn-ocap-at 2 tariff) capacity)
+               (equal (fn-ocap-at 1 (fn-ocap-admit-preview preview tariff capacity))
+                      (fn-ocap-at 1 preview))))
+  :subject fn-ocap-admit-preview
+  :witness ((preview '(:preview 17 :newnews nil)) (tariff '(:tariff :newnews 8192)) (capacity 8192))
+  :breaks ((held ((tariff nil))))
+  :mutations ((hold-names-another-prefix
+               (:conclusion (equal (fn-ocap-at 1 (fn-ocap-admit-preview preview tariff capacity))
+                                   (+ 1 (fn-ocap-at 1 preview))))
+               ((preview '(:preview 17 :newnews nil)) (tariff '(:tariff :newnews 8192)) (capacity 8192))
+               :fault "a hold that carries a prefix length other than the previewed one")))
+; TEETH-21 END
