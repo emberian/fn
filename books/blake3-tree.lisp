@@ -696,20 +696,217 @@
                    (u i)
                    (outs (fn-b3-firstn (* 2 i) outs)))))))
 
+;
+; The window alignment: the first j windows' outputs, and the rest, are the
+; window outputs of the first j windows' octets and of the remainder (at the
+; advanced chunk counter), whenever j whole windows leave octets over.
+;
+(defthm fn-b3-window-outs-count
+  ; The window count m of an input of n >= 1 octets: (m-1) full windows
+  ; leave 1..W octets for the last.
+  (implies (posp (len octets))
+           (and (< (* (+ -1 (len (fn-b3-window-outs key k base octets flags)))
+                      (* 1024 (expt 2 (nfix k))))
+                   (len octets))
+                (<= (len octets)
+                    (* (len (fn-b3-window-outs key k base octets flags))
+                       (* 1024 (expt 2 (nfix k)))))))
+  :hints (("Goal" :induct (fn-b3-window-outs key k base octets flags)
+                  :in-theory (disable fn-b3-node))))
+
+(defthm fn-b3-firstn-of-firstn
+  (implies (and (natp a) (natp b) (<= a b))
+           (equal (fn-b3-firstn a (fn-b3-firstn b x))
+                  (fn-b3-firstn a x))))
+
+(defthm fn-b3-nthcdrx-of-nthcdrx
+  (implies (and (natp a) (natp b))
+           (equal (fn-b3-nthcdrx a (fn-b3-nthcdrx b x))
+                  (fn-b3-nthcdrx (+ a b) x))))
+
+(local
+ (defthm fn-b3-window-le-multiple-norm
+   (implies (and (natp k) (posp j))
+            (<= (expt 2 (+ 10 k)) (* j (expt 2 (+ 10 k)))))
+   :rule-classes :linear
+   :hints (("Goal" :nonlinearp t))))
+
+(defun fn-b3-wa-ind (j k base octets flags)
+  ; Window-count induction: one window per step.
+  (declare (xargs :measure (nfix j) :verify-guards nil))
+  (if (or (zp j) (not (< (* 1024 (expt 2 (nfix k))) (len octets))))
+      (list j k base octets flags)
+    (fn-b3-wa-ind (- j 1) k (+ (nfix base) (expt 2 (nfix k)))
+                  (fn-b3-nthcdrx (* 1024 (expt 2 (nfix k))) octets) flags)))
+
+(defthm fn-b3-firstn-of-window-outs
+  ; The first j windows' outputs are the window outputs of the first j
+  ; windows' octets.
+  (implies (and (natp k) (posp j)
+                (< (* j (* 1024 (expt 2 (nfix k)))) (len octets)))
+           (equal (fn-b3-firstn j (fn-b3-window-outs key k base octets flags))
+                  (fn-b3-window-outs key k base
+                    (fn-b3-firstn (* j (* 1024 (expt 2 (nfix k)))) octets)
+                    flags)))
+  :hints (("Goal" :induct (fn-b3-wa-ind j k base octets flags)
+                  :in-theory (disable fn-b3-node))
+          ("Subgoal *1/2" :expand ((fn-b3-window-outs key k base octets flags)))))
+
+
+(defthm fn-b3-nthcdrx-of-window-outs
+  ; Dropping j windows' outputs leaves the outputs of the rest, at the
+  ; advanced chunk counter.
+  (implies (and (natp k) (natp base) (natp j)
+                (< (* j (* 1024 (expt 2 (nfix k)))) (len octets)))
+           (equal (fn-b3-nthcdrx j (fn-b3-window-outs key k base octets flags))
+                  (fn-b3-window-outs key k
+                    (+ base (* j (expt 2 (nfix k))))
+                    (fn-b3-nthcdrx (* j (* 1024 (expt 2 (nfix k)))) octets)
+                    flags)))
+  :hints (("Goal" :induct (fn-b3-wa-ind j k base octets flags)
+                  :in-theory (disable fn-b3-node))
+          ("Subgoal *1/1" :cases ((equal j 0)))
+          ("Subgoal *1/2" :expand ((fn-b3-window-outs key k base octets flags)))))
+
+(defthm fn-b3-left-chunks-of-count
+  (implies (and (natp k) (natp m) (<= 2 m) (natp n)
+                (< (* (+ -1 m) (* 1024 (expt 2 k))) n)
+                (<= n (* m (* 1024 (expt 2 k)))))
+           (equal (fn-b3-left-chunks 1 n)
+                  (* (expt 2 k) (fn-b3-left-windows 1 m))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-b3-left-chunks-of-windows
+                   (r (- n (* (+ -1 m) (* 1024 (expt 2 k)))))))
+           :in-theory (disable fn-b3-left-chunks-of-windows))))
+
+(defthm fn-b3-window-count-at-least-two
+  ; More octets than one window means at least two windows.
+  (implies (and (natp k) (< (* 1024 (expt 2 k)) (len octets)))
+           (<= 2 (len (fn-b3-window-outs key k base octets flags))))
+  :rule-classes :linear
+  :hints (("Goal" :use fn-b3-window-outs-count
+                  :in-theory (disable fn-b3-window-outs-count)
+                  :nonlinearp t)))
+
+(defthm fn-b3-window-tree-of-single-window
+  ; An input of one window: its window tree is its own node.
+  (implies (<= (len octets) (* 1024 (expt 2 (nfix k))))
+           (equal (fn-b3-window-tree key flags
+                    (fn-b3-window-outs key k base octets flags))
+                  (fn-b3-node key octets (nfix base) flags)))
+  :hints (("Goal" :expand ((fn-b3-window-outs key k base octets flags))
+                  :in-theory (disable fn-b3-node))))
+
+(defthm fn-b3-left-windows-times-window-below
+  ; The first subtree's windows are whole windows with octets to spare.
+  (implies (and (natp k) (natp m) (<= 2 m) (natp n)
+                (< (* (+ -1 m) (* 1024 (expt 2 k))) n))
+           (< (* (fn-b3-left-windows 1 m) (* 1024 (expt 2 k))) n))
+  :hints (("Goal" :use ((:instance fn-b3-left-windows-below (p 1) (j m)))
+                  :in-theory (disable fn-b3-left-windows-below)
+                  :nonlinearp t)))
+
+(defun fn-b3-node-ind (key octets counter flags)
+  ; The induction scheme of `fn-b3-node': both children of a multi-chunk split.
+  (declare (xargs :measure (len octets) :verify-guards nil))
+  (if (< 1024 (len octets))
+      (let* ((lc (fn-b3-left-chunks 1 (len octets)))
+             (ll (* 1024 lc)))
+        (list (fn-b3-node-ind key (fn-b3-firstn ll octets) counter flags)
+              (fn-b3-node-ind key (fn-b3-nthcdrx ll octets)
+                              (+ (nfix counter) lc) flags)))
+    (list key octets counter flags)))
+
+(defthm fn-b3-node-window-tree-step
+  ; The multi-window step: given the decomposition for both chunk-split
+  ; children, it holds for the parent.
+  (implies (and (natp k) (natp counter)
+                (< (* 1024 (expt 2 k)) (len octets))
+                (equal (fn-b3-node key
+                         (fn-b3-firstn (* 1024 (fn-b3-left-chunks 1 (len octets))) octets)
+                         counter flags)
+                       (fn-b3-window-tree key flags
+                         (fn-b3-window-outs key k counter
+                           (fn-b3-firstn (* 1024 (fn-b3-left-chunks 1 (len octets))) octets)
+                           flags)))
+                (equal (fn-b3-node key
+                         (fn-b3-nthcdrx (* 1024 (fn-b3-left-chunks 1 (len octets))) octets)
+                         (+ counter (fn-b3-left-chunks 1 (len octets))) flags)
+                       (fn-b3-window-tree key flags
+                         (fn-b3-window-outs key k
+                           (+ counter (fn-b3-left-chunks 1 (len octets)))
+                           (fn-b3-nthcdrx (* 1024 (fn-b3-left-chunks 1 (len octets))) octets)
+                           flags))))
+           (equal (fn-b3-node key octets counter flags)
+                  (fn-b3-window-tree key flags
+                    (fn-b3-window-outs key k counter octets flags))))
+  :rule-classes nil
+  :hints (("Goal"
+           :do-not-induct t
+           :use ((:instance fn-b3-left-chunks-of-count
+                   (m (len (fn-b3-window-outs key k counter octets flags)))
+                   (n (len octets)))
+                 (:instance fn-b3-window-outs-count (base counter))
+                 (:instance fn-b3-window-count-at-least-two (base counter))
+                 (:instance fn-b3-left-windows-times-window-below
+                   (m (len (fn-b3-window-outs key k counter octets flags)))
+                   (n (len octets)))
+                 (:instance fn-b3-firstn-of-window-outs
+                   (base counter)
+                   (j (fn-b3-left-windows 1 (len (fn-b3-window-outs key k counter octets flags)))))
+                 (:instance fn-b3-nthcdrx-of-window-outs
+                   (base counter)
+                   (j (fn-b3-left-windows 1 (len (fn-b3-window-outs key k counter octets flags))))))
+           :expand ((fn-b3-window-tree key flags
+                      (fn-b3-window-outs key k counter octets flags)))
+           :in-theory (disable fn-b3-node fn-b3-window-outs fn-b3-window-tree
+                               fn-b3-left-chunks fn-b3-left-windows
+                               fn-b3-window-outs-count
+                               fn-b3-window-count-at-least-two
+                               fn-b3-firstn-of-window-outs
+                               fn-b3-nthcdrx-of-window-outs
+                               fn-b3-left-windows-times-window-below)
+           :nonlinearp t)))
+
+(defthm fn-b3-node-is-window-tree-core
+  (implies (and (natp k) (natp counter))
+           (equal (fn-b3-node key octets counter flags)
+                  (fn-b3-window-tree key flags
+                    (fn-b3-window-outs key k counter octets flags))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-b3-node-ind key octets counter flags)
+                  :in-theory (disable fn-b3-node fn-b3-window-outs fn-b3-window-tree
+                                      fn-b3-left-chunks fn-b3-left-windows))
+          ("Subgoal *1/2" :use ((:instance fn-b3-node-window-tree-step)
+                                (:instance fn-b3-window-tree-of-single-window (base counter))))
+          ("Subgoal *1/1" :use ((:instance fn-b3-node-window-tree-step)
+                                (:instance fn-b3-window-tree-of-single-window (base counter))))))
+
+(defthm fn-b3-window-outs-of-nfix-k
+  ; The granularity is read through NFIX everywhere.
+  (equal (fn-b3-window-outs key (nfix k) base octets flags)
+         (fn-b3-window-outs key k base octets flags))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-b3-window-outs key k base octets flags)
+                  :in-theory (disable fn-b3-node))))
+
+(defthm fn-b3-node-is-window-tree
+  ; The whole input's node equals the window tree over the windows' subtree
+  ; outputs: each window hashed only against itself, at its own chunk counter.
+  ; (natp counter): a counter that is not a natural number reaches the
+  ; compression function raw while the window outputs read it through NFIX,
+  ; so the sides differ (counter -1, octets (1 2 3): see the test book).
+  (implies (natp counter)
+           (equal (fn-b3-node key octets counter flags)
+                  (fn-b3-window-tree key flags
+                    (fn-b3-window-outs key k counter octets flags))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-b3-node-is-window-tree-core (k (nfix k)))
+                        (:instance fn-b3-window-outs-of-nfix-k (base counter))))))
+
 ; -----------------------------------------------------------------------------
 ; THE DECOMPOSITION (statements; proofs in progress, see the lanedump):
-
-; The whole input's node equals the window tree over the windows' subtree
-; outputs — each window hashed only against itself, at its own chunk counter.
-;
-; PROOF-OWED: fn-b3-node-is-window-tree
-;   (equal (fn-b3-node key octets counter flags)
-;          (fn-b3-window-tree key flags
-;            (fn-b3-window-outs key k counter octets flags)))
-;   Strong induction on (len octets): at most one window by definition; more
-;   by fn-b3-node-splits-at-left-chunks, lockstep, and the window-alignment
-;   lemmas (split-windows/window-outs of firstn/nthcdr at window multiples),
-;   with the induction hypotheses on both strictly shorter children.
 
 ; The digest of the whole equals the root of that window composition.
 ;
