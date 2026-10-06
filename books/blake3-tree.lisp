@@ -254,6 +254,67 @@
            (fn-b3-stack-push-all key flags h outs st)))
   :hints (("Goal" :induct (fn-b3-stack-push-all key flags h outs st))))
 
+(defun fn-b3-stack-above (h st)
+  ; Every entry of ST sits strictly above height H; the empty stack does.
+  (declare (xargs :guard t))
+  (if (atom st)
+      t
+    (and (< (nfix h) (nfix (fn-b3-nthx 0 (car st))))
+         (fn-b3-stack-above h (cdr st)))))
+
+(defthm fn-b3-cv-push-of-no-match
+  ; The cons half of `fn-b3-cv-push''s test, as a rewrite.
+  (implies (not (and (consp st)
+                     (equal (nfix (fn-b3-nthx 0 (car st))) (nfix h))))
+           (equal (fn-b3-cv-push key flags h out st)
+                  (cons (list (nfix h) out) st)))
+  :hints (("Goal" :expand ((fn-b3-cv-push key flags h out st)))))
+
+(defthm fn-b3-cv-push-of-above
+  ; Absorbing above an above-H stack keeps it above H: the cascade only
+  ; replaces the front by an entry at least as high, and leaves the rest.
+  (implies (and (natp h) (< (nfix h) (nfix g))
+                (fn-b3-stack-above h st))
+           (fn-b3-stack-above h
+             (fn-b3-cv-push key flags g out st)))
+  :hints (("Goal" :induct (fn-b3-cv-push key flags g out st))))
+
+(defthm fn-b3-cv-push-two-singles
+  ; Two singles at h on an above-h stack = their pair at h+1 (the merge
+  ; cascade continues identically below).
+  (implies (and (natp h) (fn-b3-stack-above h st))
+           (equal (fn-b3-cv-push key flags h b
+                     (fn-b3-cv-push key flags h a st))
+                  (fn-b3-cv-push key flags (+ 1 (nfix h))
+                    (fn-b3-parent-out key a b flags) st)))
+  :hints (("Goal" :expand ((fn-b3-cv-push key flags h a st)
+                           (fn-b3-stack-above h st)))))
+
+(defun fn-b3-lpair-ind (key flags h outs st)
+  ; L-pair induction: step TWO outputs, the stack absorbing their pair.
+  (declare (xargs :measure (len outs) :verify-guards nil))
+  (if (or (atom outs) (atom (cdr outs)))
+      (list h outs st)
+    (fn-b3-lpair-ind key flags h (cddr outs)
+      (fn-b3-cv-push key flags (+ 1 (nfix h))
+        (fn-b3-parent-out key (car outs) (cadr outs) flags) st))))
+
+(defthm fn-b3-stack-push-all-of-pairs
+  ; L-PAIR: absorbing an EVEN run of singles at height h onto a stack already
+  ; above h is absorbing their consecutive pairs at h+1 — the binary counter
+  ; merges each two exactly once.
+  (implies (and (natp h)
+                (fn-b3-stack-above h st)
+                (true-listp outs) (evenp (len outs)))
+           (equal (fn-b3-stack-push-all key flags h outs st)
+                  (fn-b3-stack-push-all key flags (+ 1 (nfix h))
+                    (fn-b3-pair-outs key flags outs) st)))
+  :hints (("Goal" :induct (fn-b3-lpair-ind key flags h outs st)
+                   :expand ((fn-b3-stack-push-all key flags h outs st)
+                            (fn-b3-stack-push-all key flags (+ 1 (nfix h))
+                              (fn-b3-pair-outs key flags outs) st)
+                            (fn-b3-pair-outs key flags outs)))))
+
 ; -----------------------------------------------------------------------------
 ; THE DECOMPOSITION (statements; proofs in progress, see the lanedump):
 
