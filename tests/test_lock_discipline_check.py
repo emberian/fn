@@ -7,6 +7,8 @@ negative fixtures are the shapes of this week's defects (r31 F1/F2, the
 committer catch, the publisher's early deregistration, the adopt push, r67
 F2's I/O under the owner); each positive twin is the repaired shape.
 """
+import contextlib
+import io
 import os
 import sys
 import tempfile
@@ -302,6 +304,41 @@ class CallbackOrdinalAudit(unittest.TestCase):
         failures, _ = self.audit("the grant's turn callback, funcalled by the loop "
                                  "(host/native/other.lisp:12); no line claimed here")
         self.assertEqual(failures, [])
+
+    def check_main(self, why):
+        """--check with no flag: the audit is part of the default verdict over
+        a scratch tree whose single declaration carries this why text."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + self.SRC)
+            contracts = root / "contracts.json"
+            contracts.write_text(json.dumps(dict(
+                CONTRACTS.raw,
+                enclave={"functions": [], "files": []},  # a scratch tree reads one fixture
+                callback_contexts={
+                    self.LAMBDA: {"runs_in": "fnn-command-cbx", "why": why}})))
+            baseline = root / "baseline.json"
+            baseline.write_text(json.dumps({"findings": []}))
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                code = ldc.main(["--root", str(root), "--contracts", str(contracts),
+                                 "--baseline", str(baseline), "--rule", "R1",
+                                 "--check", "--summary"])
+            return code, out.getvalue()
+
+    def test_the_wired_check_fails_on_a_moved_marker_without_the_flag(self):
+        _, line = self.audit("no marker yet")  # the ordinal's true line
+        code, out = self.check_main(f"the grant's turn callback (fixture.lisp:{line + 1})")
+        self.assertEqual(code, 1)
+        self.assertIn("CALLBACK-AUDIT", out)
+        self.assertIn(f"fixture.lisp:{line}", out)
+
+    def test_the_wired_check_passes_on_an_agreeing_marker(self):
+        _, line = self.audit("no marker yet")
+        code, out = self.check_main(f"the grant's turn callback (fixture.lisp:{line})")
+        self.assertEqual(code, 0, out)
+        self.assertIn("callback-ordinal audit: 1 declared row(s), 1 with an own-file "
+                      "line marker, 0 disagreeing", out)
 
 
 class R7Failure(unittest.TestCase):
