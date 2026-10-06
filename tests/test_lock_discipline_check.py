@@ -542,6 +542,49 @@ class ActorBeforeStart(unittest.TestCase):
         self.assertTrue(self.r1(self.BARE, "nil nil " + self.TOUCH))
 
 
+class R7ClassifyingEscape(unittest.TestCase):
+    """contract classifying_escape_functions: fault/indet handed to the named
+    function reach the fence; it is not a fence for connection-local kinds."""
+    SRC = """
+(defun fnn-actor (s)
+  (handler-case (fnn-fault "x")
+    (serious-condition (e) (%s s e "label"))))
+(defun fnn-spawn (s) (sb-thread:make-thread (lambda () (fnn-actor s)) :name "t"))
+"""
+    REFUSAL = """
+(defun fnn-actor (s)
+  (handler-case (error 'fnn-store-error)
+    (serious-condition (e) (%s s e "label"))))
+(defun fnn-spawn (s) (sb-thread:make-thread (lambda () (fnn-actor s)) :name "t"))
+"""
+
+    def keys(self, src, name):
+        return [f.key for f in run(src % name, ["R7"]) if f.rule == "R7"]
+
+    def test_declared_classifier_routes_fault_and_indet(self):
+        raw = CONTRACTS.raw
+        self.assertTrue([k for k in self.keys(self.SRC, "fnn-x-classify") if k.startswith("swallow")])
+        raw["classifying_escape_functions"] = {"fnn-x-classify": "test"}
+        try:
+            self.assertEqual(self.keys(self.SRC, "fnn-x-classify"), [])
+            self.assertTrue([k for k in self.keys(self.SRC, "fnn-y-classify") if k.startswith("swallow")])
+        finally:
+            del raw["classifying_escape_functions"]
+
+    def test_declared_classifier_is_not_a_fence_for_a_refusal(self):
+        raw = CONTRACTS.raw
+        raw["classifying_escape_functions"] = {"fnn-x-classify": "test"}
+        try:
+            self.assertEqual([k for k in self.keys(self.REFUSAL, "fnn-x-classify") if k.startswith("overfence")], [])
+        finally:
+            del raw["classifying_escape_functions"]
+        raw["fence_functions"].append("fnn-x-classify")
+        try:
+            self.assertTrue([k for k in self.keys(self.REFUSAL, "fnn-x-classify") if k.startswith("overfence")])
+        finally:
+            raw["fence_functions"].remove("fnn-x-classify")
+
+
 class CallbackContexts(unittest.TestCase):
     """contracts `callback_contexts': a stored callback declared to run in a
     command's own extent gets that command's context, and nothing else does."""

@@ -3079,6 +3079,11 @@ class Checker:
     # R7 ----------------------------------------------------------------------
     def rule_R7(self):
         fences = set(self.c.raw.get("fence_functions", []))
+        # classify-and-route functions (contract classifying_escape_functions):
+        # a fault or indeterminate condition handed to one reaches the fence
+        # or fault stop; any other kind is answered to the caller. They count
+        # as routing for fault/indet only, never as a fence for connection-local kinds.
+        classifiers = set(self.c.raw.get("classifying_escape_functions", {}))
         scopes = self.c.raw.get("failure_scopes", {})
         for name, info in self.infos.items():
             actors = {self.m.actor_of(r) for r in self.m.actors.get(name, ())}
@@ -3097,7 +3102,7 @@ class Checker:
                     routes = rethrows or bool(names & fences)
                     core = caught & {"fault", "indet"}
                     local = caught & {"socket", "refusal", "connection"}
-                    if core and not routes and scope not in ("private", "result", "converts", "fence"):
+                    if core and not (routes or names & classifiers) and scope not in ("private", "result", "converts", "fence"):
                         self.add("R7", info, line,
                                  f"handler clause {spec} consumes {sorted(core)} without routing it to the fence",
                                  f"swallow:{spec}:{','.join(sorted(core))}",
